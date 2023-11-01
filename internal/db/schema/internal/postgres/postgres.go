@@ -40,7 +40,6 @@ import (
 	"github.com/hashicorp/boundary/internal/db/schema/migration"
 	"github.com/hashicorp/boundary/internal/db/schema/migrations"
 	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/hashicorp/go-multierror"
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
@@ -197,7 +196,7 @@ func (p *Postgres) CommitRun(ctx context.Context) error {
 	}
 	if err := p.tx.Commit(); err != nil {
 		if errRollback := p.tx.Rollback(); errRollback != nil && errRollback != sql.ErrTxDone {
-			err = multierror.Append(err, errRollback)
+			err = stderrors.Join(err, errRollback)
 		}
 		return errors.Wrap(ctx, err, op)
 	}

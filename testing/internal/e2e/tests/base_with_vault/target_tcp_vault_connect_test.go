@@ -103,7 +103,7 @@ func TestCliTcpTargetVaultConnectTarget(t *testing.T) {
 	// Create a credential library
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
-			"credential-libraries", "create", "vault",
+			"credential-libraries", "create", "vault-generic",
 			"-credential-store-id", newCredentialStoreId,
 			"-vault-path", fmt.Sprintf("%s/data/%s", c.VaultSecretPath, privateKeySecretName),
 			"-name", "e2e Automated Test Vault Credential Library",

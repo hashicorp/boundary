@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/hashicorp/boundary/internal/credential"
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
@@ -60,9 +60,9 @@ func (r *Repository) CreateSSHCertificateCredentialLibrary(ctx context.Context, 
 	}
 
 	if l.GetCredentialType() == "" {
-		l.SSHCertificateCredentialLibrary.CredentialType = string(credential.SshCertificateType)
+		l.SSHCertificateCredentialLibrary.CredentialType = string(globals.SshCertificateCredentialType)
 	}
-	if l.GetCredentialType() != string(credential.SshCertificateType) {
+	if l.GetCredentialType() != string(globals.SshCertificateCredentialType) {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "invalid credential type")
 	}
 
@@ -157,7 +157,7 @@ func (r *Repository) UpdateSSHCertificateCredentialLibrary(ctx context.Context, 
 		case strings.EqualFold(keyIdField, f):
 		case strings.EqualFold(CriticalOptionsField, f):
 		case strings.EqualFold(ExtensionsField, f):
-
+		case strings.EqualFold(AdditionalValidPrincipalsField, f):
 		default:
 			return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidFieldMask, op, f)
 		}
@@ -186,16 +186,17 @@ func (r *Repository) UpdateSSHCertificateCredentialLibrary(ctx context.Context, 
 	var dbMask, nullFields []string
 	dbMask, nullFields = dbw.BuildUpdatePaths(
 		map[string]any{
-			nameField:            l.Name,
-			descriptionField:     l.Description,
-			vaultPathField:       l.VaultPath,
-			usernameField:        l.Username,
-			keyTypeField:         l.KeyType,
-			keyBitsField:         l.KeyBits,
-			ttlField:             l.Ttl,
-			keyIdField:           l.KeyId,
-			CriticalOptionsField: l.CriticalOptions,
-			ExtensionsField:      l.Extensions,
+			nameField:                      l.Name,
+			descriptionField:               l.Description,
+			vaultPathField:                 l.VaultPath,
+			usernameField:                  l.Username,
+			keyTypeField:                   l.KeyType,
+			keyBitsField:                   l.KeyBits,
+			ttlField:                       l.Ttl,
+			keyIdField:                     l.KeyId,
+			CriticalOptionsField:           l.CriticalOptions,
+			ExtensionsField:                l.Extensions,
+			AdditionalValidPrincipalsField: l.AdditionalValidPrincipals,
 		},
 		fieldMaskPaths,
 		[]string{keyBitsField},

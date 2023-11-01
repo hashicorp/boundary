@@ -6,6 +6,7 @@ package base
 import (
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"runtime"
@@ -13,7 +14,6 @@ import (
 
 	"github.com/hashicorp/boundary/api/authtokens"
 	nkeyring "github.com/jefferai/keyring"
-	"github.com/pkg/errors"
 	zkeyring "github.com/zalando/go-keyring"
 )
 

@@ -32,7 +32,7 @@ type GetUserRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 }
 
 func (x *GetUserRequest) Reset() {
@@ -126,8 +126,8 @@ type ListUsersRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	ScopeId   string `protobuf:"bytes,1,opt,name=scope_id,json=scopeId,proto3" json:"scope_id,omitempty" class:"public"` // @gotags: `class:"public"`
-	Recursive bool   `protobuf:"varint,20,opt,name=recursive,proto3" json:"recursive,omitempty" class:"public"`          // @gotags: `class:"public"`
+	ScopeId   string `protobuf:"bytes,1,opt,name=scope_id,json=scopeId,proto3" json:"scope_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	Recursive bool   `protobuf:"varint,20,opt,name=recursive,proto3" json:"recursive,omitempty" class:"public" eventstream:"observation"`          // @gotags: `class:"public" eventstream:"observation"`
 	Filter    string `protobuf:"bytes,30,opt,name=filter,proto3" json:"filter,omitempty" class:"sensitive"`                 // @gotags: `class:"sensitive"`
 }
 
@@ -283,7 +283,7 @@ type CreateUserResponse struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Uri  string      `protobuf:"bytes,1,opt,name=uri,proto3" json:"uri,omitempty" class:"public"` // @gotags: `class:"public"`
+	Uri  string      `protobuf:"bytes,1,opt,name=uri,proto3" json:"uri,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	Item *users.User `protobuf:"bytes,2,opt,name=item,proto3" json:"item,omitempty"`
 }
 
@@ -338,7 +338,7 @@ type UpdateUserRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id         string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
+	Id         string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	Item       *users.User            `protobuf:"bytes,2,opt,name=item,proto3" json:"item,omitempty"`
 	UpdateMask *fieldmaskpb.FieldMask `protobuf:"bytes,3,opt,name=update_mask,proto3" json:"update_mask,omitempty"`
 }
@@ -448,7 +448,7 @@ type DeleteUserRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 }
 
 func (x *DeleteUserRequest) Reset() {
@@ -533,10 +533,10 @@ type AddUserAccountsRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// The version ensures the User hasn't changed since it was last retrieved and if it has the request will fail.
 	Version    uint32   `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty" class:"public"`        // @gotags: `class:"public"`
-	AccountIds []string `protobuf:"bytes,3,rep,name=account_ids,proto3" json:"account_ids,omitempty" class:"public"` // @gotags: `class:"public"`
+	AccountIds []string `protobuf:"bytes,3,rep,name=account_ids,proto3" json:"account_ids,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 }
 
 func (x *AddUserAccountsRequest) Reset() {
@@ -644,10 +644,10 @@ type SetUserAccountsRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// The version ensures the User hasn't changed since it was last retrieved and if it has the request will fail.
 	Version    uint32   `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty" class:"public"`        // @gotags: `class:"public"`
-	AccountIds []string `protobuf:"bytes,3,rep,name=account_ids,proto3" json:"account_ids,omitempty" class:"public"` // @gotags: `class:"public"`
+	AccountIds []string `protobuf:"bytes,3,rep,name=account_ids,proto3" json:"account_ids,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 }
 
 func (x *SetUserAccountsRequest) Reset() {
@@ -755,10 +755,10 @@ type RemoveUserAccountsRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// The version ensures the User hasn't changed since it was last retrieved and if it has the request will fail.
 	Version    uint32   `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty" class:"public"`        // @gotags: `class:"public"`
-	AccountIds []string `protobuf:"bytes,3,rep,name=account_ids,proto3" json:"account_ids,omitempty" class:"public"` // @gotags: `class:"public"`
+	AccountIds []string `protobuf:"bytes,3,rep,name=account_ids,proto3" json:"account_ids,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 }
 
 func (x *RemoveUserAccountsRequest) Reset() {

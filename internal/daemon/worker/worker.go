@@ -235,8 +235,8 @@ func New(ctx context.Context, conf *Config) (*Worker, error) {
 		var enableStorageLoopback bool
 
 		for _, enabledPlugin := range w.conf.Server.EnabledPlugins {
-			switch enabledPlugin {
-			case base.EnabledPluginAws:
+			switch {
+			case enabledPlugin == base.EnabledPluginAws && !w.conf.SkipPlugins:
 				pluginType := strings.ToLower(enabledPlugin.String())
 				client, cleanup, err := external_plugins.CreateStoragePlugin(
 					ctx,
@@ -252,12 +252,13 @@ func New(ctx context.Context, conf *Config) (*Worker, error) {
 				}
 				conf.ShutdownFuncs = append(conf.ShutdownFuncs, cleanup)
 				plgClients[pluginType] = client
-			case base.EnabledPluginLoopback:
+			case enabledPlugin == base.EnabledPluginLoopback:
 				enableStorageLoopback = true
 			}
 		}
 
-		s, err := recordingStorageFactory(ctx, w.conf.RawConfig.Worker.RecordingStoragePath, plgClients, enableStorageLoopback)
+		// passing in an empty context so that storage can finish syncing during an emergency shutdown or interrupt
+		s, err := recordingStorageFactory(context.Background(), w.conf.RawConfig.Worker.RecordingStoragePath, plgClients, enableStorageLoopback)
 		if err != nil {
 			return nil, fmt.Errorf("error create recording storage: %w", err)
 		}

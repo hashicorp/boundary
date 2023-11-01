@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -61,6 +62,27 @@ func Test_newError(t *testing.T) {
 				Version:     errorVersion,
 				Op:          Op("valid-all-opts"),
 				Id:          "valid-all-opts",
+				RequestInfo: TestRequestInfo(t),
+				Info:        map[string]any{"msg": "hello"},
+			},
+		},
+		{
+			name:   "multierror-conversion",
+			fromOp: Op("multierror"),
+			e: func() error {
+				return multierror.Append(fmt.Errorf("%s: multierror all opts: %w", "multierror", ErrInvalidParameter))
+			}(),
+			opts: []Option{
+				WithId("multierror"),
+				WithRequestInfo(TestRequestInfo(t)),
+				WithInfo("msg", "hello"),
+			},
+			want: &err{
+				ErrorFields: fmt.Errorf("1 error occurred:\n\t* multierror: multierror all opts: invalid parameter\n\n"),
+				Error:       "1 error occurred:\n\t* multierror: multierror all opts: invalid parameter\n\n",
+				Version:     errorVersion,
+				Op:          Op("multierror"),
+				Id:          "multierror",
 				RequestInfo: TestRequestInfo(t),
 				Info:        map[string]any{"msg": "hello"},
 			},

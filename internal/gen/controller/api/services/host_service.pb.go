@@ -33,7 +33,7 @@ type GetHostRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 }
 
 func (x *GetHostRequest) Reset() {
@@ -127,7 +127,7 @@ type ListHostsRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	HostCatalogId string `protobuf:"bytes,1,opt,name=host_catalog_id,proto3" json:"host_catalog_id,omitempty" class:"public"` // @gotags: `class:"public"`
+	HostCatalogId string `protobuf:"bytes,1,opt,name=host_catalog_id,proto3" json:"host_catalog_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	Filter        string `protobuf:"bytes,30,opt,name=filter,proto3" json:"filter,omitempty" class:"public"`                  // @gotags: `class:"public"`
 }
 
@@ -276,7 +276,7 @@ type CreateHostResponse struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Uri  string      `protobuf:"bytes,1,opt,name=uri,proto3" json:"uri,omitempty" class:"public"` // @gotags: `class:"public"`
+	Uri  string      `protobuf:"bytes,1,opt,name=uri,proto3" json:"uri,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	Item *hosts.Host `protobuf:"bytes,2,opt,name=item,proto3" json:"item,omitempty"`
 }
 
@@ -331,7 +331,7 @@ type UpdateHostRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id         string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
+	Id         string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	Item       *hosts.Host            `protobuf:"bytes,2,opt,name=item,proto3" json:"item,omitempty"`
 	UpdateMask *fieldmaskpb.FieldMask `protobuf:"bytes,3,opt,name=update_mask,proto3" json:"update_mask,omitempty"`
 }
@@ -441,7 +441,7 @@ type DeleteHostRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 }
 
 func (x *DeleteHostRequest) Reset() {

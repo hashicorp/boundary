@@ -4,6 +4,7 @@
 package authmethods_test
 
 import (
+	stdcmp "cmp"
 	"context"
 	"crypto/ed25519"
 	"crypto/rand"
@@ -11,6 +12,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 
@@ -32,7 +34,6 @@ import (
 	"github.com/hashicorp/boundary/internal/types/scope"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/authmethods"
 	scopepb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
-	"golang.org/x/exp/slices"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
@@ -149,7 +150,7 @@ func TestGet(t *testing.T) {
 		ScopeId:     oidcam.GetScopeId(),
 		CreatedTime: oidcam.CreateTime.GetTimestamp(),
 		UpdatedTime: oidcam.UpdateTime.GetTimestamp(),
-		Type:        oidc.Subtype.String(),
+		Type:        globals.OidcSubtype.String(),
 		Attrs: &pb.AuthMethod_OidcAuthMethodsAttributes{
 			OidcAuthMethodsAttributes: &pb.OidcAuthMethodAttributes{
 				Issuer:           wrapperspb.String("https://alice.com"),
@@ -182,7 +183,7 @@ func TestGet(t *testing.T) {
 		ScopeId:     ldapAm.GetScopeId(),
 		CreatedTime: ldapAm.CreateTime.GetTimestamp(),
 		UpdatedTime: ldapAm.UpdateTime.GetTimestamp(),
-		Type:        ldap.Subtype.String(),
+		Type:        globals.LdapSubtype.String(),
 		Attrs: &pb.AuthMethod_LdapAuthMethodsAttributes{
 			LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{
 				State:                string(ldap.InactiveState),
@@ -312,7 +313,7 @@ func TestList(t *testing.T) {
 		UpdatedTime: oidcam.GetUpdateTime().GetTimestamp(),
 		Scope:       &scopepb.ScopeInfo{Id: oWithAuthMethods.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 		Version:     2,
-		Type:        oidc.Subtype.String(),
+		Type:        globals.OidcSubtype.String(),
 		Attrs: &pb.AuthMethod_OidcAuthMethodsAttributes{
 			OidcAuthMethodsAttributes: &pb.OidcAuthMethodAttributes{
 				Issuer:           wrapperspb.String("https://alice.com"),
@@ -351,13 +352,8 @@ func TestList(t *testing.T) {
 		})
 	}
 
-	sorterFn := func(a *pb.AuthMethod, b *pb.AuthMethod) bool {
-		switch {
-		case a.GetId() > b.GetId():
-			return true
-		default:
-			return false
-		}
+	sorterFn := func(a *pb.AuthMethod, b *pb.AuthMethod) int {
+		return stdcmp.Compare(a.GetId(), b.GetId())
 	}
 	cpSorted := func(ams []*pb.AuthMethod) []*pb.AuthMethod {
 		cp := make([]*pb.AuthMethod, 0, len(ams))
@@ -380,7 +376,7 @@ func TestList(t *testing.T) {
 		UpdatedTime: ldapAm.GetUpdateTime().GetTimestamp(),
 		Scope:       &scopepb.ScopeInfo{Id: oWithAuthMethods.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 		Version:     1,
-		Type:        ldap.Subtype.String(),
+		Type:        globals.LdapSubtype.String(),
 		Attrs: &pb.AuthMethod_LdapAuthMethodsAttributes{
 			LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{
 				State:              string(ldap.ActivePublicState),
@@ -717,7 +713,7 @@ func TestCreate(t *testing.T) {
 			name: "Create a valid OIDC AuthMethod",
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId: o.GetPublicId(),
-				Type:    oidc.Subtype.String(),
+				Type:    globals.OidcSubtype.String(),
 				Attrs: &pb.AuthMethod_OidcAuthMethodsAttributes{
 					OidcAuthMethodsAttributes: &pb.OidcAuthMethodAttributes{
 						Issuer:           wrapperspb.String("https://example.discovery.url:4821/.well-known/openid-configuration/"),
@@ -740,7 +736,7 @@ func TestCreate(t *testing.T) {
 					UpdatedTime: defaultAm.GetUpdateTime().GetTimestamp(),
 					Scope:       &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: o.GetType(), ParentScopeId: scope.Global.String()},
 					Version:     1,
-					Type:        oidc.Subtype.String(),
+					Type:        globals.OidcSubtype.String(),
 					Attrs: &pb.AuthMethod_OidcAuthMethodsAttributes{
 						OidcAuthMethodsAttributes: &pb.OidcAuthMethodAttributes{
 							Issuer:           wrapperspb.String("https://example.discovery.url:4821/"),
@@ -763,7 +759,7 @@ func TestCreate(t *testing.T) {
 			name: "create-a-valid-ldap-auth-method",
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId: o.GetPublicId(),
-				Type:    ldap.Subtype.String(),
+				Type:    globals.LdapSubtype.String(),
 				Attrs: &pb.AuthMethod_LdapAuthMethodsAttributes{
 					LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{
 						StartTls:             true,
@@ -800,7 +796,7 @@ func TestCreate(t *testing.T) {
 					UpdatedTime: defaultAm.GetUpdateTime().GetTimestamp(),
 					Scope:       &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: o.GetType(), ParentScopeId: scope.Global.String()},
 					Version:     1,
-					Type:        ldap.Subtype.String(),
+					Type:        globals.LdapSubtype.String(),
 					Attrs: &pb.AuthMethod_LdapAuthMethodsAttributes{
 						LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{
 							State:                string(ldap.InactiveState),
@@ -867,7 +863,7 @@ func TestCreate(t *testing.T) {
 			name: "Create a global OIDC AuthMethod",
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId: scope.Global.String(),
-				Type:    oidc.Subtype.String(),
+				Type:    globals.OidcSubtype.String(),
 				Attrs: &pb.AuthMethod_OidcAuthMethodsAttributes{
 					OidcAuthMethodsAttributes: &pb.OidcAuthMethodAttributes{
 						Issuer:       wrapperspb.String("https://example.discovery.url"),
@@ -887,7 +883,7 @@ func TestCreate(t *testing.T) {
 					UpdatedTime: defaultAm.GetUpdateTime().GetTimestamp(),
 					Scope:       &scopepb.ScopeInfo{Id: scope.Global.String(), Type: scope.Global.String(), Name: scope.Global.String(), Description: "Global Scope"},
 					Version:     1,
-					Type:        oidc.Subtype.String(),
+					Type:        globals.OidcSubtype.String(),
 					Attrs: &pb.AuthMethod_OidcAuthMethodsAttributes{
 						OidcAuthMethodsAttributes: &pb.OidcAuthMethodAttributes{
 							ApiUrlPrefix:     wrapperspb.String("https://api.com"),
@@ -906,7 +902,7 @@ func TestCreate(t *testing.T) {
 			name: "create-a-global-ldap-auth-method",
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId: scope.Global.String(),
-				Type:    ldap.Subtype.String(),
+				Type:    globals.LdapSubtype.String(),
 				Attrs: &pb.AuthMethod_LdapAuthMethodsAttributes{
 					LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{
 						Urls:         []string{"ldap://ldap1", "ldaps://ldap1"},
@@ -924,7 +920,7 @@ func TestCreate(t *testing.T) {
 					UpdatedTime: defaultAm.GetUpdateTime().GetTimestamp(),
 					Scope:       &scopepb.ScopeInfo{Id: scope.Global.String(), Type: scope.Global.String(), Name: scope.Global.String(), Description: "Global Scope"},
 					Version:     1,
-					Type:        ldap.Subtype.String(),
+					Type:        globals.LdapSubtype.String(),
 					Attrs: &pb.AuthMethod_LdapAuthMethodsAttributes{
 						LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{
 							State:        string(ldap.InactiveState),
@@ -953,7 +949,7 @@ func TestCreate(t *testing.T) {
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId:     o.GetPublicId(),
 				CreatedTime: timestamppb.Now(),
-				Type:        password.Subtype.String(),
+				Type:        globals.PasswordSubtype.String(),
 			}},
 			res: nil,
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -963,7 +959,7 @@ func TestCreate(t *testing.T) {
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId:     o.GetPublicId(),
 				UpdatedTime: timestamppb.Now(),
-				Type:        password.Subtype.String(),
+				Type:        globals.PasswordSubtype.String(),
 			}},
 			res: nil,
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -972,7 +968,7 @@ func TestCreate(t *testing.T) {
 			name: "Can't specify IsPrimary",
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId:   o.GetPublicId(),
-				Type:      password.Subtype.String(),
+				Type:      globals.PasswordSubtype.String(),
 				IsPrimary: true,
 			}},
 			res: nil,
@@ -983,7 +979,7 @@ func TestCreate(t *testing.T) {
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId:     o.GetPublicId(),
 				UpdatedTime: timestamppb.Now(),
-				Type:        password.Subtype.String(),
+				Type:        globals.PasswordSubtype.String(),
 			}},
 			res: nil,
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -1002,7 +998,7 @@ func TestCreate(t *testing.T) {
 			name: "OIDC AuthMethod Doesn't Require Issuer",
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId: o.GetPublicId(),
-				Type:    oidc.Subtype.String(),
+				Type:    globals.OidcSubtype.String(),
 				Attrs: &pb.AuthMethod_OidcAuthMethodsAttributes{
 					OidcAuthMethodsAttributes: &pb.OidcAuthMethodAttributes{
 						ApiUrlPrefix: wrapperspb.String("https://api.com"),
@@ -1020,7 +1016,7 @@ func TestCreate(t *testing.T) {
 					UpdatedTime: defaultAm.GetUpdateTime().GetTimestamp(),
 					Scope:       &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: o.GetType(), ParentScopeId: scope.Global.String()},
 					Version:     1,
-					Type:        oidc.Subtype.String(),
+					Type:        globals.OidcSubtype.String(),
 					Attrs: &pb.AuthMethod_OidcAuthMethodsAttributes{
 						OidcAuthMethodsAttributes: &pb.OidcAuthMethodAttributes{
 							ApiUrlPrefix:     wrapperspb.String("https://api.com"),
@@ -1038,7 +1034,7 @@ func TestCreate(t *testing.T) {
 			name: "OIDC AuthMethod Requires ApiUrl",
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId: o.GetPublicId(),
-				Type:    oidc.Subtype.String(),
+				Type:    globals.OidcSubtype.String(),
 				Attrs: &pb.AuthMethod_OidcAuthMethodsAttributes{
 					OidcAuthMethodsAttributes: &pb.OidcAuthMethodAttributes{
 						ClientId:     wrapperspb.String("someclientid"),
@@ -1052,7 +1048,7 @@ func TestCreate(t *testing.T) {
 			name: "OIDC AuthMethod Requires Client Id",
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId: o.GetPublicId(),
-				Type:    oidc.Subtype.String(),
+				Type:    globals.OidcSubtype.String(),
 				Attrs: &pb.AuthMethod_OidcAuthMethodsAttributes{
 					OidcAuthMethodsAttributes: &pb.OidcAuthMethodAttributes{
 						ApiUrlPrefix: wrapperspb.String("https://api.com"),
@@ -1067,7 +1063,7 @@ func TestCreate(t *testing.T) {
 			name: "OIDC AuthMethod Requires Client Secret",
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId: o.GetPublicId(),
-				Type:    oidc.Subtype.String(),
+				Type:    globals.OidcSubtype.String(),
 				Attrs: &pb.AuthMethod_OidcAuthMethodsAttributes{
 					OidcAuthMethodsAttributes: &pb.OidcAuthMethodAttributes{
 						ApiUrlPrefix: wrapperspb.String("https://api.com"),
@@ -1082,7 +1078,7 @@ func TestCreate(t *testing.T) {
 			name: "OIDC AuthMethod cant specify client secret hmac",
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId: o.GetPublicId(),
-				Type:    oidc.Subtype.String(),
+				Type:    globals.OidcSubtype.String(),
 				Attrs: &pb.AuthMethod_OidcAuthMethodsAttributes{
 					OidcAuthMethodsAttributes: &pb.OidcAuthMethodAttributes{
 						ApiUrlPrefix:     wrapperspb.String("https://api.com"),
@@ -1099,7 +1095,7 @@ func TestCreate(t *testing.T) {
 			name: "OIDC AuthMethod cant specify state",
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId: o.GetPublicId(),
-				Type:    oidc.Subtype.String(),
+				Type:    globals.OidcSubtype.String(),
 				Attrs: &pb.AuthMethod_OidcAuthMethodsAttributes{
 					OidcAuthMethodsAttributes: &pb.OidcAuthMethodAttributes{
 						ApiUrlPrefix: wrapperspb.String("https://api.com"),
@@ -1116,7 +1112,7 @@ func TestCreate(t *testing.T) {
 			name: "OIDC AuthMethod Must Match Standard Alg Names",
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId: o.GetPublicId(),
-				Type:    oidc.Subtype.String(),
+				Type:    globals.OidcSubtype.String(),
 				Attrs: &pb.AuthMethod_OidcAuthMethodsAttributes{
 					OidcAuthMethodsAttributes: &pb.OidcAuthMethodAttributes{
 						ApiUrlPrefix:      wrapperspb.String("https://api.com"),
@@ -1133,7 +1129,7 @@ func TestCreate(t *testing.T) {
 			name: "OIDC AuthMethod API Urls Prefix Format",
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId: o.GetPublicId(),
-				Type:    oidc.Subtype.String(),
+				Type:    globals.OidcSubtype.String(),
 				Attrs: &pb.AuthMethod_OidcAuthMethodsAttributes{
 					OidcAuthMethodsAttributes: &pb.OidcAuthMethodAttributes{
 						Issuer:       wrapperspb.String("https://example2.discovery.url:4821"),
@@ -1149,7 +1145,7 @@ func TestCreate(t *testing.T) {
 			name: "OIDC AuthMethod Callback Url Read Only",
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId: o.GetPublicId(),
-				Type:    oidc.Subtype.String(),
+				Type:    globals.OidcSubtype.String(),
 				Attrs: &pb.AuthMethod_OidcAuthMethodsAttributes{
 					OidcAuthMethodsAttributes: &pb.OidcAuthMethodAttributes{
 						Issuer:       wrapperspb.String("https://example2.discovery.url:4821"),
@@ -1165,7 +1161,7 @@ func TestCreate(t *testing.T) {
 			name: "OIDC AuthMethod unparseable certificates",
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId: o.GetPublicId(),
-				Type:    oidc.Subtype.String(),
+				Type:    globals.OidcSubtype.String(),
 				Attrs: &pb.AuthMethod_OidcAuthMethodsAttributes{
 					OidcAuthMethodsAttributes: &pb.OidcAuthMethodAttributes{
 						ApiUrlPrefix: wrapperspb.String("https://api.com"),
@@ -1182,7 +1178,7 @@ func TestCreate(t *testing.T) {
 			name: "OIDC AuthMethod cant specify default claims scopes of openid",
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId: o.GetPublicId(),
-				Type:    oidc.Subtype.String(),
+				Type:    globals.OidcSubtype.String(),
 				Attrs: &pb.AuthMethod_OidcAuthMethodsAttributes{
 					OidcAuthMethodsAttributes: &pb.OidcAuthMethodAttributes{
 						ApiUrlPrefix: wrapperspb.String("https://api.com"),
@@ -1199,7 +1195,7 @@ func TestCreate(t *testing.T) {
 			name: "ldap-auth-method-requires-urls",
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId: o.GetPublicId(),
-				Type:    ldap.Subtype.String(),
+				Type:    globals.LdapSubtype.String(),
 				Attrs: &pb.AuthMethod_LdapAuthMethodsAttributes{
 					LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{},
 				},
@@ -1211,7 +1207,7 @@ func TestCreate(t *testing.T) {
 			name: "ldap-auth-method-invalid-urls",
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId: o.GetPublicId(),
-				Type:    ldap.Subtype.String(),
+				Type:    globals.LdapSubtype.String(),
 				Attrs: &pb.AuthMethod_LdapAuthMethodsAttributes{
 					LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{
 						Urls: []string{"ldap://ldap1", "not-ldap-scheme://ldap2"},
@@ -1225,7 +1221,7 @@ func TestCreate(t *testing.T) {
 			name: "ldap-auth-method-invalid-deref-aliases",
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId: o.GetPublicId(),
-				Type:    ldap.Subtype.String(),
+				Type:    globals.LdapSubtype.String(),
 				Attrs: &pb.AuthMethod_LdapAuthMethodsAttributes{
 					LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{
 						Urls:               []string{"ldap://ldap1"},
@@ -1240,7 +1236,7 @@ func TestCreate(t *testing.T) {
 			name: "ldap-auth-method-invalid-cert",
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId: o.GetPublicId(),
-				Type:    ldap.Subtype.String(),
+				Type:    globals.LdapSubtype.String(),
 				Attrs: &pb.AuthMethod_LdapAuthMethodsAttributes{
 					LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{
 						Urls:         []string{"ldap://ldap1"},
@@ -1255,7 +1251,7 @@ func TestCreate(t *testing.T) {
 			name: "ldap-auth-method-missing-bind-dn",
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId: o.GetPublicId(),
-				Type:    ldap.Subtype.String(),
+				Type:    globals.LdapSubtype.String(),
 				Attrs: &pb.AuthMethod_LdapAuthMethodsAttributes{
 					LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{
 						Urls:         []string{"ldap://ldap1"},
@@ -1269,7 +1265,7 @@ func TestCreate(t *testing.T) {
 			name: "ldap-auth-method-missing-bind-password",
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId: o.GetPublicId(),
-				Type:    ldap.Subtype.String(),
+				Type:    globals.LdapSubtype.String(),
 				Attrs: &pb.AuthMethod_LdapAuthMethodsAttributes{
 					LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{
 						Urls:   []string{"ldap://ldap1"},
@@ -1283,7 +1279,7 @@ func TestCreate(t *testing.T) {
 			name: "ldap-auth-method-invalid-client-cert",
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId: o.GetPublicId(),
-				Type:    ldap.Subtype.String(),
+				Type:    globals.LdapSubtype.String(),
 				Attrs: &pb.AuthMethod_LdapAuthMethodsAttributes{
 					LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{
 						Urls:                 []string{"ldap://ldap1"},
@@ -1299,7 +1295,7 @@ func TestCreate(t *testing.T) {
 			name: "ldap-auth-method-invalid-client-cert-key",
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId: o.GetPublicId(),
-				Type:    ldap.Subtype.String(),
+				Type:    globals.LdapSubtype.String(),
 				Attrs: &pb.AuthMethod_LdapAuthMethodsAttributes{
 					LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{
 						Urls:                 []string{"ldap://ldap1"},
@@ -1315,7 +1311,7 @@ func TestCreate(t *testing.T) {
 			name: "ldap-auth-method-client-cert-key-not-a-key",
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId: o.GetPublicId(),
-				Type:    ldap.Subtype.String(),
+				Type:    globals.LdapSubtype.String(),
 				Attrs: &pb.AuthMethod_LdapAuthMethodsAttributes{
 					LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{
 						Urls:                 []string{"ldap://ldap1"},
@@ -1331,7 +1327,7 @@ func TestCreate(t *testing.T) {
 			name: "ldap-auth-method-missing-client-cert-key",
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId: o.GetPublicId(),
-				Type:    ldap.Subtype.String(),
+				Type:    globals.LdapSubtype.String(),
 				Attrs: &pb.AuthMethod_LdapAuthMethodsAttributes{
 					LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{
 						Urls:              []string{"ldap://ldap1"},
@@ -1346,7 +1342,7 @@ func TestCreate(t *testing.T) {
 			name: "ldap-auth-method-missing-client-cert",
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId: o.GetPublicId(),
-				Type:    ldap.Subtype.String(),
+				Type:    globals.LdapSubtype.String(),
 				Attrs: &pb.AuthMethod_LdapAuthMethodsAttributes{
 					LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{
 						Urls:                 []string{"ldap://ldap1"},
@@ -1361,7 +1357,7 @@ func TestCreate(t *testing.T) {
 			name: "ldap-auth-method-invalid-attribute-map",
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId: o.GetPublicId(),
-				Type:    ldap.Subtype.String(),
+				Type:    globals.LdapSubtype.String(),
 				Attrs: &pb.AuthMethod_LdapAuthMethodsAttributes{
 					LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{
 						Urls:                 []string{"ldap://ldap1"},

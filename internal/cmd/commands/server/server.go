@@ -27,7 +27,6 @@ import (
 	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-secure-stdlib/mlock"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-uuid"
@@ -56,11 +55,13 @@ type Command struct {
 	controller    *controller.Controller
 	worker        *worker.Worker
 
-	flagConfig      []string
-	flagConfigKms   string
-	flagLogLevel    string
-	flagLogFormat   string
-	flagCombineLogs bool
+	flagConfig          []string
+	flagConfigKms       string
+	flagLogLevel        string
+	flagLogFormat       string
+	flagCombineLogs     bool
+	flagSkipPlugins     bool
+	flagWorkerDnsServer string
 
 	reloadedCh                           chan struct{}  // for tests
 	startedCh                            chan struct{}  // for tests
@@ -136,6 +137,19 @@ func (c *Command) Flags() *base.FlagSets {
 	f.DurationVar(&base.DurationVar{
 		Name:   "worker-auth-ca-certificate-lifetime",
 		Target: &c.flagWorkerAuthCaCertificateLifetime,
+		Hidden: true,
+	})
+
+	f.BoolVar(&base.BoolVar{
+		Name:   "skip-plugins",
+		Target: &c.flagSkipPlugins,
+		Usage:  "Skip loading compiled-in plugins. This does not prevent loopback plugins from being loaded if enabled.",
+		Hidden: true,
+	})
+	f.StringVar(&base.StringVar{
+		Name:   "worker-dns-server",
+		Target: &c.flagWorkerDnsServer,
+		Usage:  "Use a custom DNS server when workers resolve endpoints.",
 		Hidden: true,
 	})
 
@@ -256,6 +270,9 @@ func (c *Command) Run(args []string) int {
 				"in a Docker container, provide the IPC_LOCK cap to the container."))
 	}
 
+	c.SkipPlugins = c.flagSkipPlugins
+	c.WorkerDnsServer = c.flagWorkerDnsServer
+
 	// Perform controller-specific listener checks here before setup
 	var clusterAddr string
 	var foundApi bool
@@ -370,6 +387,8 @@ func (c *Command) Run(args []string) int {
 			}
 			if strings.HasPrefix(clusterId, "int-") {
 				clusterId = strings.TrimPrefix(clusterId, "int-")
+			} else if strings.HasPrefix(clusterId, "dev-") {
+				clusterId = strings.TrimPrefix(clusterId, "dev-")
 			}
 			_, err = uuid.ParseUUID(clusterId)
 			if err != nil {
@@ -807,19 +826,19 @@ func (c *Command) Reload(newConf *config.Config) error {
 	c.ReloadFuncsLock.RLock()
 	defer c.ReloadFuncsLock.RUnlock()
 
-	var reloadErrors *multierror.Error
+	var reloadErrors error
 
 	for _, relFunc := range c.ReloadFuncs["listeners"] {
 		if relFunc != nil {
 			if err := relFunc(); err != nil {
-				reloadErrors = multierror.Append(reloadErrors, fmt.Errorf("error encountered reloading listener: %w", err))
+				reloadErrors = stderrors.Join(reloadErrors, fmt.Errorf("error encountered reloading listener: %w", err))
 			}
 		}
 	}
 
 	err := c.reloadControllerDatabase(newConf)
 	if err != nil {
-		reloadErrors = multierror.Append(reloadErrors, fmt.Errorf("failed to reload controller database: %w", err))
+		reloadErrors = stderrors.Join(reloadErrors, fmt.Errorf("failed to reload controller database: %w", err))
 	}
 
 	if newConf != nil && c.worker != nil {
@@ -837,7 +856,7 @@ func (c *Command) Reload(newConf *config.Config) error {
 			return nil
 		}()
 		if workerReloadErr != nil {
-			reloadErrors = multierror.Append(reloadErrors, fmt.Errorf("error encountered reloading worker initial upstreams: %w", workerReloadErr))
+			reloadErrors = stderrors.Join(reloadErrors, fmt.Errorf("error encountered reloading worker initial upstreams: %w", workerReloadErr))
 		}
 	}
 
@@ -850,7 +869,7 @@ func (c *Command) Reload(newConf *config.Config) error {
 		}
 	}
 
-	return reloadErrors.ErrorOrNil()
+	return reloadErrors
 }
 
 func verifyKmsSetup(dbase *db.DB) error {

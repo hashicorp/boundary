@@ -17,8 +17,6 @@ import (
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/credential"
-	"github.com/hashicorp/boundary/internal/credential/static"
-	"github.com/hashicorp/boundary/internal/credential/vault"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/mitchellh/go-wordwrap"
@@ -49,9 +47,9 @@ func extraActionsFlagsMapFuncImpl() map[string][]string {
 		"add-host-sources":          {"id", "host-source", "version"},
 		"remove-host-sources":       {"id", "host-source", "version"},
 		"set-host-sources":          {"id", "host-source", "version"},
-		"add-credential-sources":    {"id", "application-credential-source", "brokered-credential-source", "injected-application-credential-source", "version"},
-		"remove-credential-sources": {"id", "application-credential-source", "brokered-credential-source", "injected-application-credential-source", "version"},
-		"set-credential-sources":    {"id", "application-credential-source", "brokered-credential-source", "injected-application-credential-source", "version"},
+		"add-credential-sources":    {"id", "brokered-credential-source", "injected-application-credential-source", "version"},
+		"remove-credential-sources": {"id", "brokered-credential-source", "injected-application-credential-source", "version"},
+		"set-credential-sources":    {"id", "brokered-credential-source", "injected-application-credential-source", "version"},
 	}
 }
 
@@ -246,12 +244,6 @@ func extraFlagsFuncImpl(c *Command, _ *base.FlagSets, f *base.FlagSet) {
 				Name:   "brokered-credential-source",
 				Target: &c.flagBrokeredCredentialSources,
 				Usage:  "The credential source to add, set, or remove that Boundary will return to the user when creating a connection. May be specified multiple times.",
-			})
-		case "application-credential-source":
-			f.StringSliceVar(&base.StringSliceVar{
-				Name:   "application-credential-source",
-				Target: &c.flagBrokeredCredentialSources,
-				Usage:  "Deprecated: use -brokered-credential-source instead",
 			})
 		case "injected-application-credential-source":
 			f.StringSliceVar(&base.StringSliceVar{
@@ -733,7 +725,7 @@ func printCustomActionOutputImpl(c *Command) (bool, error) {
 
 					var secretStr []string
 					switch cred.CredentialSource.Type {
-					case vault.Subtype.String(), vault.GenericLibrarySubtype.String(), static.Subtype.String():
+					case globals.VaultSubtype.String(), globals.VaultGenericLibrarySubtype.String(), globals.StaticSubtype.String():
 						switch {
 						case cred.Credential != nil:
 							maxLength := 0

@@ -25,7 +25,6 @@ import (
 	"github.com/hashicorp/eventlogger/sinks/writer"
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
-	"github.com/hashicorp/go-multierror"
 	"go.uber.org/atomic"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 )
@@ -39,6 +38,8 @@ const (
 	IdField          = "id"           // IdField in an event.
 	CreatedAtField   = "created_at"   // CreatedAtField in an event.
 	TypeField        = "type"         // TypeField in an event.
+	RequestField     = "request"      // Request field in an event.
+	ResponseField    = "response"     // Response field in an event.
 
 	auditPipeline       = "audit-pipeline"       // auditPipeline is a pipeline for audit events
 	observationPipeline = "observation-pipeline" // observationPipeline is a pipeline for observation events
@@ -60,6 +61,7 @@ type broker interface {
 	Reopen(ctx context.Context) error
 	StopTimeAt(now time.Time)
 	RegisterNode(id eventlogger.NodeID, node eventlogger.Node, opt ...eventlogger.Option) error
+	RemoveNode(ctx context.Context, id eventlogger.NodeID) error
 	SetSuccessThreshold(t eventlogger.EventType, successThreshold int) error
 	RegisterPipeline(def eventlogger.Pipeline, opt ...eventlogger.Option) error
 	RemovePipelineAndNodes(ctx context.Context, t eventlogger.EventType, id eventlogger.PipelineID) (bool, error)
@@ -601,6 +603,7 @@ func newFmtFilterNode(serverName string, c SinkConfig, opt ...Option) (eventlogg
 func DefaultEventerConfig() *EventerConfig {
 	return &EventerConfig{
 		AuditEnabled:        false,
+		TelemetryEnabled:    false,
 		ObservationsEnabled: true,
 		SysEventsEnabled:    true,
 		Sinks:               []*SinkConfig{DefaultSink()},
@@ -784,7 +787,7 @@ func (e *Eventer) ReleaseGate() error {
 		return nil
 	}
 
-	var totalErrs *multierror.Error
+	var totalErrs error
 	for _, qe := range e.gatedQueue {
 		var writeErr error
 		if qe == nil {
@@ -804,11 +807,11 @@ func (e *Eventer) ReleaseGate() error {
 			writeErr = fmt.Errorf("unknown event type %T", t)
 		}
 		if writeErr != nil {
-			totalErrs = multierror.Append(fmt.Errorf("in %s, error sending queued %s event: %w", op, queuedOp, writeErr))
+			totalErrs = errors.Join(fmt.Errorf("in %s, error sending queued %s event: %w", op, queuedOp, writeErr))
 		}
 	}
 	e.gatedQueue = nil
-	return totalErrs.ErrorOrNil()
+	return totalErrs
 }
 
 // StandardLogger will create *log.Logger that will emit events through this

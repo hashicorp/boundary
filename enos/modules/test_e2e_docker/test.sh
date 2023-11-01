@@ -13,7 +13,7 @@ apt update
 # unzip is used to unzip boundary.zip
 # pass is used to store the auth token from `boundary authenticate``
 # lsb-release is used for adding the hashicorp apt source
-# postgresql is used for postgres tests
+# postgresql-client is used for postgres tests
 apt install unzip pass lsb-release postgresql-client -y
 
 # Create a GPG key
@@ -79,7 +79,16 @@ do
 done <<< $lines
 echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | tee /etc/apt/sources.list.d/hashicorp.list
 apt update
-apt install vault
+apt install vault -y
+
+# Install the docker cli
+wget -O- https://download.docker.com/linux/debian/gpg | gpg --batch --yes --dearmor -o /etc/apt/keyrings/docker.gpg
+echo \
+  "deb [arch="$(dpkg --print-architecture)" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian \
+  $(lsb_release -cs) stable" | \
+  tee /etc/apt/sources.list.d/docker.list > /dev/null
+apt update
+apt install docker-ce-cli -y
 
 # Run Tests
 unzip /boundary.zip -d /usr/local/bin/

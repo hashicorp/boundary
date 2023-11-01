@@ -4,7 +4,9 @@
 package event
 
 import (
+	"errors"
 	"fmt"
+	"reflect"
 )
 
 // errorVersion defines the version of error events
@@ -35,6 +37,12 @@ func newError(fromOperation Op, e error, opt ...Option) (*err, error) {
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", op, err)
 		}
+	}
+	// multierror doesn't support json Marshaling which will cause a problem
+	// when the event is formatted, so we're going to convert it here to a
+	// stdlib error
+	if reflect.TypeOf(e).String() == "*multierror.Error" {
+		e = errors.New(e.Error())
 	}
 	newErr := &err{
 		Id:          Id(opts.withId),

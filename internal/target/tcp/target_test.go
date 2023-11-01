@@ -55,7 +55,7 @@ func TestTarget_Create(t *testing.T) {
 			want: func() target.Target {
 				t, _ := target.New(
 					ctx,
-					tcp.Subtype,
+					globals.TcpSubtype,
 					prj.PublicId,
 					target.WithName("valid-proj-id"),
 					target.WithSessionMaxSeconds(uint32((8 * time.Hour).Seconds())),
@@ -69,7 +69,7 @@ func TestTarget_Create(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := target.New(ctx, tcp.Subtype, tt.args.projectId, tt.args.opt...)
+			got, err := target.New(ctx, globals.TcpSubtype, tt.args.projectId, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
 				assert.True(errors.Match(errors.T(tt.wantIsErr), err))
@@ -117,7 +117,7 @@ func TestTarget_Delete(t *testing.T) {
 		{
 			name: "bad-id",
 			target: func() target.Target {
-				tar, _ := target.New(ctx, tcp.Subtype, proj.PublicId)
+				tar, _ := target.New(ctx, globals.TcpSubtype, proj.PublicId)
 
 				id, err := db.NewPublicId(ctx, globals.TcpTargetPrefix)
 				require.NoError(t, err)
@@ -312,7 +312,7 @@ func TestTarget_Update(t *testing.T) {
 		require.NoError(err)
 		assert.Equal(1, updatedRows)
 
-		foundTarget, _ := target.New(ctx, tcp.Subtype, proj2.PublicId)
+		foundTarget, _ := target.New(ctx, globals.TcpSubtype, proj2.PublicId)
 		foundTarget.SetPublicId(ctx, projTarget.GetPublicId())
 		err = rw.LookupByPublicId(ctx, foundTarget)
 		require.NoError(err)
@@ -369,9 +369,9 @@ func TestTable_SetTableName(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			def, _ := target.New(ctx, tcp.Subtype, "testScope")
+			def, _ := target.New(ctx, globals.TcpSubtype, "testScope")
 			require.Equal(defaultTableName, def.(*tcp.Target).TableName())
-			ss, _ := target.New(ctx, tcp.Subtype, "testScope")
+			ss, _ := target.New(ctx, globals.TcpSubtype, "testScope")
 			s := ss.(*tcp.Target)
 			s.SetTableName(tt.setNameTo)
 			assert.Equal(tt.want, s.TableName())
@@ -391,7 +391,7 @@ func TestTarget_oplog(t *testing.T) {
 		{
 			name: "simple",
 			target: func() target.Target {
-				tar, _ := target.New(ctx, tcp.Subtype, id)
+				tar, _ := target.New(ctx, globals.TcpSubtype, id)
 				if err := tar.SetPublicId(ctx, id); err != nil {
 					t.Fatalf("failed to set public id: %s", err)
 				}

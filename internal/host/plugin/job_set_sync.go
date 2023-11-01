@@ -54,7 +54,7 @@ func newSetSyncJob(ctx context.Context, r db.Reader, w db.Writer, kms *kms.Kms, 
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing db.Writer")
 	case kms == nil:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing kms")
-	case len(plgm) == 0:
+	case plgm == nil:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing plugin manager")
 	}
 

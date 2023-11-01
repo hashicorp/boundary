@@ -33,6 +33,26 @@ func TestEventerConfig_Validate(t *testing.T) {
 			name: "valid-with-all-defaults",
 			c:    EventerConfig{},
 		},
+		{
+			name: "valid-observation-telemetry-flag",
+			c: EventerConfig{
+				AuditEnabled:        false,
+				ObservationsEnabled: true,
+				SysEventsEnabled:    false,
+				TelemetryEnabled:    true,
+			},
+		},
+		{
+			name: "invalid-observation-telemetry-flag",
+			c: EventerConfig{
+				AuditEnabled:        false,
+				ObservationsEnabled: false,
+				SysEventsEnabled:    false,
+				TelemetryEnabled:    true,
+			},
+			wantErrIs:       ErrInvalidParameter,
+			wantErrContains: "telemetry events require observation event to be enabled",
+		},
 	}
 
 	for _, tt := range tests {

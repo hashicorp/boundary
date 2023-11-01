@@ -32,8 +32,6 @@ type Target struct {
 	WorkerFilter                           string                 `json:"worker_filter,omitempty"`
 	EgressWorkerFilter                     string                 `json:"egress_worker_filter,omitempty"`
 	IngressWorkerFilter                    string                 `json:"ingress_worker_filter,omitempty"`
-	ApplicationCredentialSourceIds         []string               `json:"application_credential_source_ids,omitempty"`
-	ApplicationCredentialSources           []*CredentialSource    `json:"application_credential_sources,omitempty"`
 	BrokeredCredentialSourceIds            []string               `json:"brokered_credential_source_ids,omitempty"`
 	BrokeredCredentialSources              []*CredentialSource    `json:"brokered_credential_sources,omitempty"`
 	InjectedApplicationCredentialSourceIds []string               `json:"injected_application_credential_source_ids,omitempty"`

@@ -92,7 +92,7 @@ func TestList(t *testing.T) {
 			CreatedTime:                 s.GetCreateTime().GetTimestamp(),
 			UpdatedTime:                 s.GetUpdateTime().GetTimestamp(),
 			Version:                     s.GetVersion(),
-			Type:                        vault.Subtype.String(),
+			Type:                        globals.VaultSubtype.String(),
 			AuthorizedActions:           testAuthorizedActions,
 			AuthorizedCollectionActions: testAuthorizedVaultCollectionActions,
 			Attrs: &pb.CredentialStore_VaultCredentialStoreAttributes{
@@ -116,7 +116,7 @@ func TestList(t *testing.T) {
 			CreatedTime:                 s.GetCreateTime().GetTimestamp(),
 			UpdatedTime:                 s.GetUpdateTime().GetTimestamp(),
 			Version:                     s.GetVersion(),
-			Type:                        credstatic.Subtype.String(),
+			Type:                        globals.StaticSubtype.String(),
 			AuthorizedActions:           testAuthorizedActions,
 			AuthorizedCollectionActions: testAuthorizedStaticCollectionActions,
 		})
@@ -257,7 +257,7 @@ func TestCreateVault(t *testing.T) {
 			name: "missing ca certificate",
 			req: &pbs.CreateCredentialStoreRequest{Item: &pb.CredentialStore{
 				ScopeId: prj.GetPublicId(),
-				Type:    vault.Subtype.String(),
+				Type:    globals.VaultSubtype.String(),
 				Attrs: &pb.CredentialStore_VaultCredentialStoreAttributes{
 					VaultCredentialStoreAttributes: &pb.VaultCredentialStoreAttributes{
 						Address:              wrapperspb.String(v.Addr),
@@ -274,7 +274,7 @@ func TestCreateVault(t *testing.T) {
 			name: "Bad token",
 			req: &pbs.CreateCredentialStoreRequest{Item: &pb.CredentialStore{
 				ScopeId: prj.GetPublicId(),
-				Type:    vault.Subtype.String(),
+				Type:    globals.VaultSubtype.String(),
 				Attrs: &pb.CredentialStore_VaultCredentialStoreAttributes{
 					VaultCredentialStoreAttributes: &pb.VaultCredentialStoreAttributes{
 						Address:              wrapperspb.String(v.Addr),
@@ -292,7 +292,7 @@ func TestCreateVault(t *testing.T) {
 			name: "Define only client cert",
 			req: &pbs.CreateCredentialStoreRequest{Item: &pb.CredentialStore{
 				ScopeId: prj.GetPublicId(),
-				Type:    vault.Subtype.String(),
+				Type:    globals.VaultSubtype.String(),
 				Attrs: &pb.CredentialStore_VaultCredentialStoreAttributes{
 					VaultCredentialStoreAttributes: &pb.VaultCredentialStoreAttributes{
 						Address:           wrapperspb.String(v.Addr),
@@ -309,7 +309,7 @@ func TestCreateVault(t *testing.T) {
 			name: "Define only client cert key",
 			req: &pbs.CreateCredentialStoreRequest{Item: &pb.CredentialStore{
 				ScopeId: prj.GetPublicId(),
-				Type:    vault.Subtype.String(),
+				Type:    globals.VaultSubtype.String(),
 				Attrs: &pb.CredentialStore_VaultCredentialStoreAttributes{
 					VaultCredentialStoreAttributes: &pb.VaultCredentialStoreAttributes{
 						Address:              wrapperspb.String(v.Addr),
@@ -326,7 +326,7 @@ func TestCreateVault(t *testing.T) {
 			name: "Define key in both client cert payload and key field",
 			req: &pbs.CreateCredentialStoreRequest{Item: &pb.CredentialStore{
 				ScopeId: prj.GetPublicId(),
-				Type:    vault.Subtype.String(),
+				Type:    globals.VaultSubtype.String(),
 				Attrs: &pb.CredentialStore_VaultCredentialStoreAttributes{
 					VaultCredentialStoreAttributes: &pb.VaultCredentialStoreAttributes{
 						Address:              wrapperspb.String(v.Addr),
@@ -345,7 +345,7 @@ func TestCreateVault(t *testing.T) {
 			req: &pbs.CreateCredentialStoreRequest{Item: &pb.CredentialStore{
 				ScopeId: prj.GetPublicId(),
 				Id:      globals.VaultCredentialStorePrefix + "_notallowed",
-				Type:    vault.Subtype.String(),
+				Type:    globals.VaultSubtype.String(),
 				Attrs: &pb.CredentialStore_VaultCredentialStoreAttributes{
 					VaultCredentialStoreAttributes: &pb.VaultCredentialStoreAttributes{
 						Address: wrapperspb.String(v.Addr),
@@ -361,7 +361,7 @@ func TestCreateVault(t *testing.T) {
 			req: &pbs.CreateCredentialStoreRequest{Item: &pb.CredentialStore{
 				ScopeId:     prj.GetPublicId(),
 				CreatedTime: timestamppb.Now(),
-				Type:        vault.Subtype.String(),
+				Type:        globals.VaultSubtype.String(),
 				Attrs: &pb.CredentialStore_VaultCredentialStoreAttributes{
 					VaultCredentialStoreAttributes: &pb.VaultCredentialStoreAttributes{
 						Address: wrapperspb.String(v.Addr),
@@ -377,7 +377,7 @@ func TestCreateVault(t *testing.T) {
 			req: &pbs.CreateCredentialStoreRequest{Item: &pb.CredentialStore{
 				ScopeId:     prj.GetPublicId(),
 				UpdatedTime: timestamppb.Now(),
-				Type:        vault.Subtype.String(),
+				Type:        globals.VaultSubtype.String(),
 				Attrs: &pb.CredentialStore_VaultCredentialStoreAttributes{
 					VaultCredentialStoreAttributes: &pb.VaultCredentialStoreAttributes{
 						Address: wrapperspb.String(v.Addr),
@@ -392,7 +392,7 @@ func TestCreateVault(t *testing.T) {
 			name: "Can't specify worker filter",
 			req: &pbs.CreateCredentialStoreRequest{Item: &pb.CredentialStore{
 				ScopeId: prj.GetPublicId(),
-				Type:    vault.Subtype.String(),
+				Type:    globals.VaultSubtype.String(),
 				Attrs: &pb.CredentialStore_VaultCredentialStoreAttributes{
 					VaultCredentialStoreAttributes: &pb.VaultCredentialStoreAttributes{
 						Address:           wrapperspb.String(v.Addr),
@@ -424,7 +424,7 @@ func TestCreateVault(t *testing.T) {
 			name: "Must specify vault VaultAddress",
 			req: &pbs.CreateCredentialStoreRequest{Item: &pb.CredentialStore{
 				ScopeId: prj.GetPublicId(),
-				Type:    vault.Subtype.String(),
+				Type:    globals.VaultSubtype.String(),
 				Attrs: &pb.CredentialStore_VaultCredentialStoreAttributes{
 					VaultCredentialStoreAttributes: &pb.VaultCredentialStoreAttributes{
 						Token: wrapperspb.String(newToken()),
@@ -438,7 +438,7 @@ func TestCreateVault(t *testing.T) {
 			name: "Must specify vault token",
 			req: &pbs.CreateCredentialStoreRequest{Item: &pb.CredentialStore{
 				ScopeId: prj.GetPublicId(),
-				Type:    vault.Subtype.String(),
+				Type:    globals.VaultSubtype.String(),
 				Attrs: &pb.CredentialStore_VaultCredentialStoreAttributes{
 					VaultCredentialStoreAttributes: &pb.VaultCredentialStoreAttributes{
 						Address: wrapperspb.String(v.Addr),
@@ -452,7 +452,7 @@ func TestCreateVault(t *testing.T) {
 			name: "Create a valid vault CredentialStore with client cert and key in same field",
 			req: &pbs.CreateCredentialStoreRequest{Item: &pb.CredentialStore{
 				ScopeId: prj.GetPublicId(),
-				Type:    vault.Subtype.String(),
+				Type:    globals.VaultSubtype.String(),
 				Attrs: &pb.CredentialStore_VaultCredentialStoreAttributes{
 					VaultCredentialStoreAttributes: &pb.VaultCredentialStoreAttributes{
 						Address:           wrapperspb.String(v.Addr),
@@ -469,7 +469,7 @@ func TestCreateVault(t *testing.T) {
 					ScopeId: prj.GetPublicId(),
 					Scope:   &scopepb.ScopeInfo{Id: prj.GetPublicId(), Type: prj.GetType(), ParentScopeId: prj.GetParentId()},
 					Version: 1,
-					Type:    vault.Subtype.String(),
+					Type:    globals.VaultSubtype.String(),
 					Attrs: &pb.CredentialStore_VaultCredentialStoreAttributes{
 						VaultCredentialStoreAttributes: &pb.VaultCredentialStoreAttributes{
 							CaCert:                   wrapperspb.String(string(v.CaCert)),
@@ -491,7 +491,7 @@ func TestCreateVault(t *testing.T) {
 				ScopeId:     prj.GetPublicId(),
 				Name:        &wrapperspb.StringValue{Value: "name"},
 				Description: &wrapperspb.StringValue{Value: "desc"},
-				Type:        vault.Subtype.String(),
+				Type:        globals.VaultSubtype.String(),
 				Attrs: &pb.CredentialStore_VaultCredentialStoreAttributes{
 					VaultCredentialStoreAttributes: &pb.VaultCredentialStoreAttributes{
 						Address:              wrapperspb.String(v.Addr),
@@ -511,7 +511,7 @@ func TestCreateVault(t *testing.T) {
 					Description: &wrapperspb.StringValue{Value: "desc"},
 					Scope:       &scopepb.ScopeInfo{Id: prj.GetPublicId(), Type: prj.GetType(), ParentScopeId: prj.GetParentId()},
 					Version:     1,
-					Type:        vault.Subtype.String(),
+					Type:        globals.VaultSubtype.String(),
 					Attrs: &pb.CredentialStore_VaultCredentialStoreAttributes{
 						VaultCredentialStoreAttributes: &pb.VaultCredentialStoreAttributes{
 							CaCert:                   wrapperspb.String(string(v.CaCert)),
@@ -629,7 +629,7 @@ func TestCreateStatic(t *testing.T) {
 			req: &pbs.CreateCredentialStoreRequest{Item: &pb.CredentialStore{
 				ScopeId: prj.GetPublicId(),
 				Id:      globals.StaticCredentialStorePrefix + "_notallowed",
-				Type:    credstatic.Subtype.String(),
+				Type:    globals.StaticSubtype.String(),
 			}},
 			res: nil,
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -639,7 +639,7 @@ func TestCreateStatic(t *testing.T) {
 			req: &pbs.CreateCredentialStoreRequest{Item: &pb.CredentialStore{
 				ScopeId:     prj.GetPublicId(),
 				CreatedTime: timestamppb.Now(),
-				Type:        credstatic.Subtype.String(),
+				Type:        globals.StaticSubtype.String(),
 			}},
 			res: nil,
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -649,7 +649,7 @@ func TestCreateStatic(t *testing.T) {
 			req: &pbs.CreateCredentialStoreRequest{Item: &pb.CredentialStore{
 				ScopeId:     prj.GetPublicId(),
 				UpdatedTime: timestamppb.Now(),
-				Type:        credstatic.Subtype.String(),
+				Type:        globals.StaticSubtype.String(),
 			}},
 			res: nil,
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -666,7 +666,7 @@ func TestCreateStatic(t *testing.T) {
 			name: "Create a valid static CredentialStore",
 			req: &pbs.CreateCredentialStoreRequest{Item: &pb.CredentialStore{
 				ScopeId: prj.GetPublicId(),
-				Type:    credstatic.Subtype.String(),
+				Type:    globals.StaticSubtype.String(),
 			}},
 			idPrefix: globals.StaticCredentialStorePrefix + "_",
 			res: &pbs.CreateCredentialStoreResponse{
@@ -675,7 +675,7 @@ func TestCreateStatic(t *testing.T) {
 					ScopeId:                     prj.GetPublicId(),
 					Scope:                       &scopepb.ScopeInfo{Id: prj.GetPublicId(), Type: prj.GetType(), ParentScopeId: prj.GetParentId()},
 					Version:                     1,
-					Type:                        credstatic.Subtype.String(),
+					Type:                        globals.StaticSubtype.String(),
 					AuthorizedActions:           testAuthorizedActions,
 					AuthorizedCollectionActions: testAuthorizedStaticCollectionActions,
 				},
@@ -687,7 +687,7 @@ func TestCreateStatic(t *testing.T) {
 				ScopeId:     prj.GetPublicId(),
 				Name:        &wrapperspb.StringValue{Value: "name"},
 				Description: &wrapperspb.StringValue{Value: "desc"},
-				Type:        credstatic.Subtype.String(),
+				Type:        globals.StaticSubtype.String(),
 			}},
 			idPrefix: globals.StaticCredentialStorePrefix + "_",
 			res: &pbs.CreateCredentialStoreResponse{
@@ -696,7 +696,7 @@ func TestCreateStatic(t *testing.T) {
 					ScopeId:                     prj.GetPublicId(),
 					Scope:                       &scopepb.ScopeInfo{Id: prj.GetPublicId(), Type: prj.GetType(), ParentScopeId: prj.GetParentId()},
 					Version:                     1,
-					Type:                        credstatic.Subtype.String(),
+					Type:                        globals.StaticSubtype.String(),
 					AuthorizedActions:           testAuthorizedActions,
 					Name:                        &wrapperspb.StringValue{Value: "name"},
 					Description:                 &wrapperspb.StringValue{Value: "desc"},
@@ -791,7 +791,7 @@ func TestGet(t *testing.T) {
 					Id:                          vaultStore.GetPublicId(),
 					ScopeId:                     vaultStore.GetProjectId(),
 					Scope:                       &scopepb.ScopeInfo{Id: vaultStore.GetProjectId(), Type: scope.Project.String(), ParentScopeId: prj.GetParentId()},
-					Type:                        vault.Subtype.String(),
+					Type:                        globals.VaultSubtype.String(),
 					AuthorizedActions:           testAuthorizedActions,
 					AuthorizedCollectionActions: testAuthorizedVaultCollectionActions,
 					CreatedTime:                 vaultStore.CreateTime.GetTimestamp(),
@@ -817,7 +817,7 @@ func TestGet(t *testing.T) {
 					Id:                          staticStore.GetPublicId(),
 					ScopeId:                     staticStore.GetProjectId(),
 					Scope:                       &scopepb.ScopeInfo{Id: staticStore.GetProjectId(), Type: scope.Project.String(), ParentScopeId: prj.GetParentId()},
-					Type:                        credstatic.Subtype.String(),
+					Type:                        globals.StaticSubtype.String(),
 					AuthorizedActions:           testAuthorizedActions,
 					AuthorizedCollectionActions: testAuthorizedStaticCollectionActions,
 					CreatedTime:                 staticStore.CreateTime.GetTimestamp(),
@@ -834,7 +834,7 @@ func TestGet(t *testing.T) {
 					Id:                          staticStorePrev.GetPublicId(),
 					ScopeId:                     staticStorePrev.GetProjectId(),
 					Scope:                       &scopepb.ScopeInfo{Id: staticStorePrev.GetProjectId(), Type: scope.Project.String(), ParentScopeId: prj.GetParentId()},
-					Type:                        credstatic.Subtype.String(),
+					Type:                        globals.StaticSubtype.String(),
 					AuthorizedActions:           testAuthorizedActions,
 					AuthorizedCollectionActions: testAuthorizedStaticCollectionActions,
 					CreatedTime:                 staticStorePrev.CreateTime.GetTimestamp(),

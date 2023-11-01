@@ -22,6 +22,8 @@ type observation struct {
 	Flush       bool           `json:"-"`
 	Header      map[string]any `json:"header,omitempty"`
 	Detail      map[string]any `json:"detail,omitempty"`
+	Request     *Request       `json:"request,omitempty"`
+	Response    *Response      `json:"response,omitempty"`
 }
 
 func newObservation(fromOperation Op, opt ...Option) (*observation, error) {
@@ -51,6 +53,12 @@ func newObservation(fromOperation Op, opt ...Option) (*observation, error) {
 		RequestInfo: opts.withRequestInfo,
 		Version:     observationVersion,
 	}
+
+	if opts.withTelemetry {
+		i.Request = opts.withRequest
+		i.Response = opts.withResponse
+	}
+
 	if err := i.validate(); err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
@@ -92,6 +100,9 @@ func (o *observation) ComposeFrom(events []*eventlogger.Event) (eventlogger.Even
 				payload[hdrK] = hdrV
 			}
 		}
+		if g.RequestInfo != nil {
+			payload[RequestInfoField] = g.RequestInfo
+		}
 		if g.Detail != nil {
 			if _, ok := payload[DetailsField]; !ok {
 				payload[DetailsField] = []gated.EventPayloadDetails{}
@@ -101,6 +112,55 @@ func (o *observation) ComposeFrom(events []*eventlogger.Event) (eventlogger.Even
 				CreatedAt: v.CreatedAt.String(),
 				Payload:   g.Detail,
 			})
+		}
+		if g.Request != nil {
+			msgReq := &Request{}
+			if v, ok := payload[RequestField]; ok {
+				msgReq, ok = v.(*Request)
+				if !ok {
+					return "", nil, fmt.Errorf("%s: request %d is not an observation request: %w", op, i, eventlogger.ErrInvalidParameter)
+				}
+			}
+			if g.Request.Details != nil {
+				filteredRequest, err := filterProtoMessage(g.Request.Details, telemetryFilter)
+				if err != nil {
+					continue
+				}
+				msgReq.Details = filteredRequest
+			}
+			if g.Request.Operation != "" {
+				msgReq.Operation = g.Request.Operation
+			}
+			if g.Request.Endpoint != "" {
+				msgReq.Endpoint = g.Request.Endpoint
+			}
+			if g.Request.DetailsUpstreamMessage != nil {
+				msgReq.DetailsUpstreamMessage = g.Request.DetailsUpstreamMessage
+			}
+			payload[RequestField] = msgReq
+		}
+		if g.Response != nil {
+			msgRes := &Response{}
+			if v, ok := payload[ResponseField]; ok {
+				msgRes, ok = v.(*Response)
+				if !ok {
+					return "", nil, fmt.Errorf("%s: response %d is not an observation response: %w", op, i, eventlogger.ErrInvalidParameter)
+				}
+			}
+			if g.Response.StatusCode != 0 {
+				msgRes.StatusCode = g.Response.StatusCode
+			}
+			if g.Response.Details != nil {
+				filteredResponse, err := filterProtoMessage(g.Response.Details, telemetryFilter)
+				if err != nil {
+					continue
+				}
+				msgRes.Details = filteredResponse
+			}
+			if g.Response.DetailsUpstreamMessage != nil {
+				msgRes.DetailsUpstreamMessage = g.Response.DetailsUpstreamMessage
+			}
+			payload[ResponseField] = msgRes
 		}
 	}
 	return events[0].Type, payload, nil

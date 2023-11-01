@@ -105,8 +105,18 @@ func WriteObservation(ctx context.Context, caller Op, opt ...Option) error {
 		}
 	}
 	opts := getOpts(opt...)
-	if opts.withDetails == nil && opts.withHeader == nil && !opts.withFlush {
-		return fmt.Errorf("%s: specify either header or details options for an event payload: %w", op, ErrInvalidParameter)
+	if opts.withDetails == nil && opts.withHeader == nil && !opts.withFlush && opts.withRequest == nil && opts.withResponse == nil {
+		return fmt.Errorf("%s: specify either header or details options or request or response for an event payload: "+
+			"%w", op, ErrInvalidParameter)
+	}
+	// For the case that the telemetry is not enabled, and we have events coming from interceptors.
+	// or the case that incoming call only has withDetails without enabling telemetry.
+	if !eventer.conf.TelemetryEnabled && (opts.withRequest != nil || opts.withResponse != nil || opts.withDetails != nil) {
+		return nil
+	}
+	// If telemetry is enabled, we add it to the options.
+	if eventer.conf.TelemetryEnabled {
+		opt = append(opt, WithTelemetry())
 	}
 	if opts.withRequestInfo == nil {
 		var err error
@@ -130,7 +140,9 @@ func WriteObservation(ctx context.Context, caller Op, opt ...Option) error {
 
 // WriteError will write an error event.  It will first check the
 // ctx for an eventer, then try event.SysEventer() and if no eventer can be
-// found an hclog.Logger will be created and used.
+// found an hclog.Logger will be created and used.  Note: any multierror errors
+// will be converted to a stdlib error (because multierror doesn't support json
+// marshaling).
 //
 // The options WithInfoMsg, WithInfo, WithId and WithRequestInfo are supported
 // and all other options are ignored.

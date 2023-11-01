@@ -5,6 +5,7 @@ package oidc
 
 import (
 	"context"
+	stderrors "errors"
 	"fmt"
 	"net/url"
 	"sort"
@@ -16,7 +17,6 @@ import (
 	"github.com/hashicorp/boundary/internal/oplog"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-kms-wrapping/v2/extras/structwrapping"
-	"github.com/hashicorp/go-multierror"
 	kvbuilder "github.com/hashicorp/go-secure-stdlib/kv-builder"
 	"google.golang.org/protobuf/proto"
 )
@@ -254,26 +254,26 @@ func (a *AuthMethod) hmacClientSecret(ctx context.Context, cipher wrapping.Wrapp
 // components of a complete/valid oidc auth method.
 func (am *AuthMethod) isComplete(ctx context.Context) error {
 	const op = "oidc.(AuthMethod).isComplete"
-	var result *multierror.Error
+	var result error
 	if err := am.validate(ctx, op); err != nil {
-		result = multierror.Append(result, errors.Wrap(ctx, err, op))
+		result = stderrors.Join(result, errors.Wrap(ctx, err, op))
 	}
 	if am.Issuer == "" {
-		result = multierror.Append(result, errors.New(ctx, errors.InvalidParameter, op, "missing issuer"))
+		result = stderrors.Join(result, errors.New(ctx, errors.InvalidParameter, op, "missing issuer"))
 	}
 	if am.ApiUrl == "" {
-		result = multierror.Append(result, errors.New(ctx, errors.InvalidParameter, op, "missing api url"))
+		result = stderrors.Join(result, errors.New(ctx, errors.InvalidParameter, op, "missing api url"))
 	}
 	if am.ClientId == "" {
-		result = multierror.Append(result, errors.New(ctx, errors.InvalidParameter, op, "missing client id"))
+		result = stderrors.Join(result, errors.New(ctx, errors.InvalidParameter, op, "missing client id"))
 	}
 	if am.ClientSecret == "" {
-		result = multierror.Append(result, errors.New(ctx, errors.InvalidParameter, op, "missing client secret"))
+		result = stderrors.Join(result, errors.New(ctx, errors.InvalidParameter, op, "missing client secret"))
 	}
 	if len(am.SigningAlgs) == 0 {
-		result = multierror.Append(result, errors.New(ctx, errors.InvalidParameter, op, "missing signing algorithms"))
+		result = stderrors.Join(result, errors.New(ctx, errors.InvalidParameter, op, "missing signing algorithms"))
 	}
-	return result.ErrorOrNil()
+	return result
 }
 
 type convertedValues struct {

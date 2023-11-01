@@ -100,7 +100,7 @@ func TestCliTcpTargetWorkerConnectTarget(t *testing.T) {
 	// Create a credential library
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
-			"credential-libraries", "create", "vault",
+			"credential-libraries", "create", "vault-generic",
 			"-credential-store-id", newCredentialStoreId,
 			"-vault-path", fmt.Sprintf("%s/data/%s", c.VaultSecretPath, privateKeySecretName),
 			"-name", "e2e Automated Test Vault Credential Library",
@@ -114,6 +114,17 @@ func TestCliTcpTargetWorkerConnectTarget(t *testing.T) {
 	require.NoError(t, err)
 	newCredentialLibraryId := newCredentialLibraryResult.Item.Id
 	t.Logf("Created Credential Library: %s", newCredentialLibraryId)
+
+	// Try to set a worker filter on a vault credential-store
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"credential-stores", "update", "vault",
+			"-id", newCredentialStoreId,
+			"worker-filter", fmt.Sprintf(`"%s" in "/tags/type"`, c.WorkerTagEgress),
+		),
+	)
+	require.Error(t, output.Err)
+	require.Equal(t, 1, output.ExitCode)
 
 	// Create a target
 	newTargetId := boundary.CreateNewTargetCli(

@@ -78,7 +78,7 @@ func TestList(t *testing.T) {
 			CreatedTime:       c.GetCreateTime().GetTimestamp(),
 			UpdatedTime:       c.GetUpdateTime().GetTimestamp(),
 			Version:           c.GetVersion(),
-			Type:              credential.UsernamePasswordSubtype.String(),
+			Type:              globals.UsernamePasswordSubtype.String(),
 			AuthorizedActions: testAuthorizedActions,
 			Attrs: &pb.Credential_UsernamePasswordAttributes{
 				UsernamePasswordAttributes: &pb.UsernamePasswordAttributes{
@@ -98,7 +98,7 @@ func TestList(t *testing.T) {
 			CreatedTime:       spk.GetCreateTime().GetTimestamp(),
 			UpdatedTime:       spk.GetUpdateTime().GetTimestamp(),
 			Version:           spk.GetVersion(),
-			Type:              credential.SshPrivateKeySubtype.String(),
+			Type:              globals.SshPrivateKeySubtype.String(),
 			AuthorizedActions: testAuthorizedActions,
 			Attrs: &pb.Credential_SshPrivateKeyAttributes{
 				SshPrivateKeyAttributes: &pb.SshPrivateKeyAttributes{
@@ -108,8 +108,7 @@ func TestList(t *testing.T) {
 			},
 		})
 
-		obj, objBytes, err := static.TestJsonObject()
-		assert.NoError(t, err)
+		obj, objBytes := static.TestJsonObject(t)
 
 		credJson := static.TestJsonCredential(t, conn, wrapper, store.GetPublicId(), prj.GetPublicId(), obj)
 		hm, err = crypto.HmacSha256(ctx, objBytes, databaseWrapper, []byte(store.GetPublicId()), nil)
@@ -121,7 +120,7 @@ func TestList(t *testing.T) {
 			CreatedTime:       credJson.GetCreateTime().GetTimestamp(),
 			UpdatedTime:       credJson.GetUpdateTime().GetTimestamp(),
 			Version:           credJson.GetVersion(),
-			Type:              credential.JsonSubtype.String(),
+			Type:              globals.JsonSubtype.String(),
 			AuthorizedActions: testAuthorizedActions,
 			Attrs: &pb.Credential_JsonAttributes{
 				JsonAttributes: &pb.JsonAttributes{
@@ -244,7 +243,7 @@ func TestGet(t *testing.T) {
 	require.NoError(t, err)
 	passHm, err := crypto.HmacSha256(context.Background(), []byte(testdata.PEMEncryptedKeys[0].EncryptionKey), databaseWrapper, []byte(store.GetPublicId()), nil)
 
-	obj, objBytes, err := static.TestJsonObject()
+	obj, objBytes := static.TestJsonObject(t)
 	assert.NoError(t, err)
 
 	jsonCred := static.TestJsonCredential(t, conn, wrapper, store.GetPublicId(), prj.GetPublicId(), obj)
@@ -265,7 +264,7 @@ func TestGet(t *testing.T) {
 					Id:                upCred.GetPublicId(),
 					CredentialStoreId: upCred.GetStoreId(),
 					Scope:             &scopepb.ScopeInfo{Id: store.GetProjectId(), Type: scope.Project.String(), ParentScopeId: prj.GetParentId()},
-					Type:              credential.UsernamePasswordSubtype.String(),
+					Type:              globals.UsernamePasswordSubtype.String(),
 					AuthorizedActions: testAuthorizedActions,
 					CreatedTime:       upCred.CreateTime.GetTimestamp(),
 					UpdatedTime:       upCred.UpdateTime.GetTimestamp(),
@@ -287,7 +286,7 @@ func TestGet(t *testing.T) {
 					Id:                upCredPrev.GetPublicId(),
 					CredentialStoreId: upCred.GetStoreId(),
 					Scope:             &scopepb.ScopeInfo{Id: store.GetProjectId(), Type: scope.Project.String(), ParentScopeId: prj.GetParentId()},
-					Type:              credential.UsernamePasswordSubtype.String(),
+					Type:              globals.UsernamePasswordSubtype.String(),
 					AuthorizedActions: testAuthorizedActions,
 					CreatedTime:       upCredPrev.CreateTime.GetTimestamp(),
 					UpdatedTime:       upCredPrev.UpdateTime.GetTimestamp(),
@@ -309,7 +308,7 @@ func TestGet(t *testing.T) {
 					Id:                spkCred.GetPublicId(),
 					CredentialStoreId: spkCred.GetStoreId(),
 					Scope:             &scopepb.ScopeInfo{Id: store.GetProjectId(), Type: scope.Project.String(), ParentScopeId: prj.GetParentId()},
-					Type:              credential.SshPrivateKeySubtype.String(),
+					Type:              globals.SshPrivateKeySubtype.String(),
 					AuthorizedActions: testAuthorizedActions,
 					CreatedTime:       spkCred.CreateTime.GetTimestamp(),
 					UpdatedTime:       spkCred.UpdateTime.GetTimestamp(),
@@ -331,7 +330,7 @@ func TestGet(t *testing.T) {
 					Id:                spkCredWithPass.GetPublicId(),
 					CredentialStoreId: spkCredWithPass.GetStoreId(),
 					Scope:             &scopepb.ScopeInfo{Id: store.GetProjectId(), Type: scope.Project.String(), ParentScopeId: prj.GetParentId()},
-					Type:              credential.SshPrivateKeySubtype.String(),
+					Type:              globals.SshPrivateKeySubtype.String(),
 					AuthorizedActions: testAuthorizedActions,
 					CreatedTime:       spkCredWithPass.CreateTime.GetTimestamp(),
 					UpdatedTime:       spkCredWithPass.UpdateTime.GetTimestamp(),
@@ -354,7 +353,7 @@ func TestGet(t *testing.T) {
 					Id:                jsonCred.GetPublicId(),
 					CredentialStoreId: jsonCred.GetStoreId(),
 					Scope:             &scopepb.ScopeInfo{Id: store.GetProjectId(), Type: scope.Project.String(), ParentScopeId: prj.GetParentId()},
-					Type:              credential.JsonSubtype.String(),
+					Type:              globals.JsonSubtype.String(),
 					AuthorizedActions: testAuthorizedActions,
 					CreatedTime:       jsonCred.CreateTime.GetTimestamp(),
 					UpdatedTime:       jsonCred.UpdateTime.GetTimestamp(),
@@ -428,7 +427,7 @@ func TestDelete(t *testing.T) {
 	upCred := static.TestUsernamePasswordCredential(t, conn, wrapper, "user", "pass", store.GetPublicId(), prj.GetPublicId())
 	spkCred := static.TestSshPrivateKeyCredential(t, conn, wrapper, "user", static.TestSshPrivateKeyPem, store.GetPublicId(), prj.GetPublicId())
 
-	obj, _, err := static.TestJsonObject()
+	obj, _ := static.TestJsonObject(t)
 	assert.NoError(t, err)
 
 	jsonCred := static.TestJsonCredential(t, conn, wrapper, store.GetPublicId(), prj.GetPublicId(), obj)
@@ -497,8 +496,7 @@ func TestCreate(t *testing.T) {
 	_, prj := iam.TestScopes(t, iamRepo)
 	store := static.TestCredentialStore(t, conn, wrapper, prj.GetPublicId())
 
-	obj, objBytes, err := static.TestJsonObject()
-	assert.NoError(t, err)
+	obj, objBytes := static.TestJsonObject(t)
 
 	cases := []struct {
 		name     string
@@ -513,7 +511,7 @@ func TestCreate(t *testing.T) {
 			req: &pbs.CreateCredentialRequest{Item: &pb.Credential{
 				CredentialStoreId: store.GetPublicId(),
 				Id:                globals.UsernamePasswordCredentialPrefix + "_notallowed",
-				Type:              credential.UsernamePasswordSubtype.String(),
+				Type:              globals.UsernamePasswordSubtype.String(),
 				Attrs: &pb.Credential_UsernamePasswordAttributes{
 					UsernamePasswordAttributes: &pb.UsernamePasswordAttributes{
 						Username: wrapperspb.String("username"),
@@ -528,7 +526,7 @@ func TestCreate(t *testing.T) {
 			name: "Invalid Credential Store Id",
 			req: &pbs.CreateCredentialRequest{Item: &pb.Credential{
 				CredentialStoreId: "p_invalidid",
-				Type:              credential.UsernamePasswordSubtype.String(),
+				Type:              globals.UsernamePasswordSubtype.String(),
 				Attrs: &pb.Credential_UsernamePasswordAttributes{
 					UsernamePasswordAttributes: &pb.UsernamePasswordAttributes{
 						Username: wrapperspb.String("username"),
@@ -544,7 +542,7 @@ func TestCreate(t *testing.T) {
 			req: &pbs.CreateCredentialRequest{Item: &pb.Credential{
 				CredentialStoreId: store.GetPublicId(),
 				CreatedTime:       timestamppb.Now(),
-				Type:              credential.UsernamePasswordSubtype.String(),
+				Type:              globals.UsernamePasswordSubtype.String(),
 				Attrs: &pb.Credential_UsernamePasswordAttributes{
 					UsernamePasswordAttributes: &pb.UsernamePasswordAttributes{
 						Username: wrapperspb.String("username"),
@@ -559,7 +557,7 @@ func TestCreate(t *testing.T) {
 			req: &pbs.CreateCredentialRequest{Item: &pb.Credential{
 				CredentialStoreId: store.GetPublicId(),
 				UpdatedTime:       timestamppb.Now(),
-				Type:              credential.UsernamePasswordSubtype.String(),
+				Type:              globals.UsernamePasswordSubtype.String(),
 				Attrs: &pb.Credential_UsernamePasswordAttributes{
 					UsernamePasswordAttributes: &pb.UsernamePasswordAttributes{
 						Username: wrapperspb.String("username"),
@@ -588,7 +586,7 @@ func TestCreate(t *testing.T) {
 			name: "Must provide username",
 			req: &pbs.CreateCredentialRequest{Item: &pb.Credential{
 				CredentialStoreId: store.GetPublicId(),
-				Type:              credential.UsernamePasswordSubtype.String(),
+				Type:              globals.UsernamePasswordSubtype.String(),
 				Attrs: &pb.Credential_UsernamePasswordAttributes{
 					UsernamePasswordAttributes: &pb.UsernamePasswordAttributes{
 						Password: wrapperspb.String("password"),
@@ -602,7 +600,7 @@ func TestCreate(t *testing.T) {
 			name: "Must provide password",
 			req: &pbs.CreateCredentialRequest{Item: &pb.Credential{
 				CredentialStoreId: store.GetPublicId(),
-				Type:              credential.UsernamePasswordSubtype.String(),
+				Type:              globals.UsernamePasswordSubtype.String(),
 				Attrs: &pb.Credential_UsernamePasswordAttributes{
 					UsernamePasswordAttributes: &pb.UsernamePasswordAttributes{
 						Username: wrapperspb.String("username"),
@@ -616,7 +614,7 @@ func TestCreate(t *testing.T) {
 			name: "Must provide private key",
 			req: &pbs.CreateCredentialRequest{Item: &pb.Credential{
 				CredentialStoreId: store.GetPublicId(),
-				Type:              credential.SshPrivateKeySubtype.String(),
+				Type:              globals.SshPrivateKeySubtype.String(),
 				Attrs: &pb.Credential_SshPrivateKeyAttributes{
 					SshPrivateKeyAttributes: &pb.SshPrivateKeyAttributes{
 						Username: wrapperspb.String("username"),
@@ -630,7 +628,7 @@ func TestCreate(t *testing.T) {
 			name: "Must provide json secret",
 			req: &pbs.CreateCredentialRequest{Item: &pb.Credential{
 				CredentialStoreId: store.GetPublicId(),
-				Type:              credential.JsonSubtype.String(),
+				Type:              globals.JsonSubtype.String(),
 				Attrs: &pb.Credential_JsonAttributes{
 					JsonAttributes: &pb.JsonAttributes{},
 				},
@@ -642,7 +640,7 @@ func TestCreate(t *testing.T) {
 			name: "valid-up",
 			req: &pbs.CreateCredentialRequest{Item: &pb.Credential{
 				CredentialStoreId: store.GetPublicId(),
-				Type:              credential.UsernamePasswordSubtype.String(),
+				Type:              globals.UsernamePasswordSubtype.String(),
 				Attrs: &pb.Credential_UsernamePasswordAttributes{
 					UsernamePasswordAttributes: &pb.UsernamePasswordAttributes{
 						Username: wrapperspb.String("username"),
@@ -660,7 +658,7 @@ func TestCreate(t *testing.T) {
 					UpdatedTime:       store.GetUpdateTime().GetTimestamp(),
 					Scope:             &scopepb.ScopeInfo{Id: prj.GetPublicId(), Type: prj.GetType(), ParentScopeId: prj.GetParentId()},
 					Version:           1,
-					Type:              credential.UsernamePasswordSubtype.String(),
+					Type:              globals.UsernamePasswordSubtype.String(),
 					AuthorizedActions: testAuthorizedActions,
 				},
 			},
@@ -669,7 +667,7 @@ func TestCreate(t *testing.T) {
 			name: "valid-spk",
 			req: &pbs.CreateCredentialRequest{Item: &pb.Credential{
 				CredentialStoreId: store.GetPublicId(),
-				Type:              credential.SshPrivateKeySubtype.String(),
+				Type:              globals.SshPrivateKeySubtype.String(),
 				Attrs: &pb.Credential_SshPrivateKeyAttributes{
 					SshPrivateKeyAttributes: &pb.SshPrivateKeyAttributes{
 						Username:   wrapperspb.String("username"),
@@ -687,7 +685,7 @@ func TestCreate(t *testing.T) {
 					UpdatedTime:       store.GetUpdateTime().GetTimestamp(),
 					Scope:             &scopepb.ScopeInfo{Id: prj.GetPublicId(), Type: prj.GetType(), ParentScopeId: prj.GetParentId()},
 					Version:           1,
-					Type:              credential.SshPrivateKeySubtype.String(),
+					Type:              globals.SshPrivateKeySubtype.String(),
 					AuthorizedActions: testAuthorizedActions,
 				},
 			},
@@ -696,7 +694,7 @@ func TestCreate(t *testing.T) {
 			name: "valid-spk-with-passphrase",
 			req: &pbs.CreateCredentialRequest{Item: &pb.Credential{
 				CredentialStoreId: store.GetPublicId(),
-				Type:              credential.SshPrivateKeySubtype.String(),
+				Type:              globals.SshPrivateKeySubtype.String(),
 				Attrs: &pb.Credential_SshPrivateKeyAttributes{
 					SshPrivateKeyAttributes: &pb.SshPrivateKeyAttributes{
 						Username:             wrapperspb.String("username"),
@@ -715,7 +713,7 @@ func TestCreate(t *testing.T) {
 					UpdatedTime:       store.GetUpdateTime().GetTimestamp(),
 					Scope:             &scopepb.ScopeInfo{Id: prj.GetPublicId(), Type: prj.GetType(), ParentScopeId: prj.GetParentId()},
 					Version:           1,
-					Type:              credential.SshPrivateKeySubtype.String(),
+					Type:              globals.SshPrivateKeySubtype.String(),
 					AuthorizedActions: testAuthorizedActions,
 				},
 			},
@@ -724,10 +722,10 @@ func TestCreate(t *testing.T) {
 			name: "valid-json",
 			req: &pbs.CreateCredentialRequest{Item: &pb.Credential{
 				CredentialStoreId: store.GetPublicId(),
-				Type:              credential.JsonSubtype.String(),
+				Type:              globals.JsonSubtype.String(),
 				Attrs: &pb.Credential_JsonAttributes{
 					JsonAttributes: &pb.JsonAttributes{
-						Object: &obj.Struct,
+						Object: obj.Struct,
 					},
 				},
 			}},
@@ -741,7 +739,7 @@ func TestCreate(t *testing.T) {
 					UpdatedTime:       store.GetUpdateTime().GetTimestamp(),
 					Scope:             &scopepb.ScopeInfo{Id: prj.GetPublicId(), Type: prj.GetType(), ParentScopeId: prj.GetParentId()},
 					Version:           1,
-					Type:              credential.JsonSubtype.String(),
+					Type:              globals.JsonSubtype.String(),
 					AuthorizedActions: testAuthorizedActions,
 				},
 			},
@@ -781,7 +779,7 @@ func TestCreate(t *testing.T) {
 				require.NoError(err)
 
 				switch tc.req.Item.Type {
-				case credential.UsernamePasswordSubtype.String():
+				case globals.UsernamePasswordSubtype.String():
 					password := tc.req.GetItem().GetUsernamePasswordAttributes().GetPassword().GetValue()
 					hm, err := crypto.HmacSha256(ctx, []byte(password), databaseWrapper, []byte(store.GetPublicId()), nil, crypto.WithEd25519())
 					require.NoError(err)
@@ -792,7 +790,7 @@ func TestCreate(t *testing.T) {
 					assert.Equal(base64.RawURLEncoding.EncodeToString([]byte(hm)), got.GetItem().GetUsernamePasswordAttributes().GetPasswordHmac())
 					assert.Empty(got.GetItem().GetUsernamePasswordAttributes().GetPassword())
 
-				case credential.SshPrivateKeySubtype.String():
+				case globals.SshPrivateKeySubtype.String():
 					pk := tc.req.GetItem().GetSshPrivateKeyAttributes().GetPrivateKey().GetValue()
 					hm, err := crypto.HmacSha256(ctx, []byte(pk), databaseWrapper, []byte(store.GetPublicId()), nil)
 					require.NoError(err)
@@ -811,7 +809,7 @@ func TestCreate(t *testing.T) {
 						assert.Empty(got.GetItem().GetSshPrivateKeyAttributes().GetPrivateKeyPassphrase())
 					}
 
-				case credential.JsonSubtype.String():
+				case globals.JsonSubtype.String():
 					hm, err := crypto.HmacSha256(ctx, objBytes, databaseWrapper, []byte(store.GetPublicId()), nil)
 					require.NoError(err)
 
@@ -894,8 +892,7 @@ func TestUpdate(t *testing.T) {
 
 	freshCredJson := func() (*static.JsonCredential, func()) {
 		t.Helper()
-		obj, _, err := static.TestJsonObject()
-		assert.NoError(t, err)
+		obj, _ := static.TestJsonObject(t)
 		cred := static.TestJsonCredential(t, conn, wrapper, store.GetPublicId(), prj.GetPublicId(), obj)
 		clean := func() {
 			_, err := s.DeleteCredential(ctx, &pbs.DeleteCredentialRequest{Id: cred.GetPublicId()})

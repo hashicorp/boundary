@@ -313,9 +313,12 @@ func Test_WriteObservation(t *testing.T) {
 		name                    string
 		noOperation             bool
 		noFlush                 bool
+		telemetryFlag           bool
 		observationPayload      []observationPayload
 		header                  map[string]any
 		details                 map[string]any
+		Request                 *event.Request
+		Response                *event.Response
 		ctx                     context.Context
 		observationSinkFileName string
 		setup                   func() error
@@ -324,9 +327,10 @@ func Test_WriteObservation(t *testing.T) {
 		wantErrContains         string
 	}{
 		{
-			name:    "no-info-event-id",
-			noFlush: true,
-			ctx:     testCtxNoEventInfoId,
+			name:          "no-info-event-id",
+			noFlush:       true,
+			telemetryFlag: true,
+			ctx:           testCtxNoEventInfoId,
 			observationPayload: []observationPayload{
 				{
 					header: []any{"name", "bar"},
@@ -366,6 +370,27 @@ func Test_WriteObservation(t *testing.T) {
 			wantErrContains: "specify either header or details options",
 		},
 		{
+			name:    "no-header-or-details-in-payload-no-request-no-response",
+			ctx:     testCtx,
+			noFlush: true,
+			observationPayload: []observationPayload{
+				{},
+			},
+			wantErrIs:       event.ErrInvalidParameter,
+			wantErrContains: "specify either header or details options or request or response for an event payload",
+		},
+		{
+			name:          "telemetry-not-enabled-but-request-or-response-available",
+			ctx:           testCtx,
+			noFlush:       true,
+			telemetryFlag: false,
+			Request: &event.Request{
+				Operation: "create-test",
+				Endpoint:  "0.0.0.0",
+			},
+			observationPayload: testPayloads,
+		},
+		{
 			name:               "no-ctx-eventer-and-syseventer-not-initialized",
 			ctx:                context.Background(),
 			observationPayload: testPayloads,
@@ -373,9 +398,10 @@ func Test_WriteObservation(t *testing.T) {
 			wantErrContains:    "missing both context and system eventer",
 		},
 		{
-			name:    "use-syseventer",
-			noFlush: true,
-			ctx:     context.Background(),
+			name:          "use-syseventer",
+			noFlush:       true,
+			telemetryFlag: true,
+			ctx:           context.Background(),
 			observationPayload: []observationPayload{
 				{
 					header: []any{"name", "bar"},
@@ -391,8 +417,9 @@ func Test_WriteObservation(t *testing.T) {
 			cleanup: func() { event.TestResetSystEventer(t) },
 		},
 		{
-			name:    "use-syseventer-with-cancelled-ctx",
-			noFlush: true,
+			name:          "use-syseventer-with-cancelled-ctx",
+			noFlush:       true,
+			telemetryFlag: true,
 			ctx: func() context.Context {
 				ctx, cancel := context.WithCancel(context.Background())
 				defer cancel()
@@ -413,12 +440,18 @@ func Test_WriteObservation(t *testing.T) {
 			cleanup: func() { event.TestResetSystEventer(t) },
 		},
 		{
-			name:                    "simple",
-			ctx:                     testCtx,
-			observationPayload:      testPayloads,
-			header:                  testWantHeader,
-			details:                 testWantDetails,
-			observationSinkFileName: c.AllEvents.Name(),
+			name:               "simple-header",
+			ctx:                testCtx,
+			telemetryFlag:      true,
+			observationPayload: testPayloads,
+			header:             testWantHeader,
+		},
+		{
+			name:               "simple-details",
+			ctx:                testCtx,
+			telemetryFlag:      true,
+			observationPayload: testPayloads,
+			details:            testWantDetails,
 		},
 	}
 	for _, tt := range tests {
@@ -436,7 +469,9 @@ func Test_WriteObservation(t *testing.T) {
 			}
 			require.Greater(len(tt.observationPayload), 0)
 			for _, p := range tt.observationPayload {
-				err := event.WriteObservation(tt.ctx, event.Op(op), event.WithHeader(p.header...), event.WithDetails(p.details...))
+				err := event.WriteObservation(tt.ctx, event.Op(op), event.WithHeader(p.header...), event.WithDetails(p.details...),
+					event.WithRequest(tt.Request),
+					event.WithResponse(tt.Response))
 				if tt.wantErrIs != nil {
 					assert.ErrorIs(err, tt.wantErrIs)
 					if tt.wantErrContains != "" {
@@ -450,6 +485,11 @@ func Test_WriteObservation(t *testing.T) {
 				require.NoError(event.WriteObservation(tt.ctx, event.Op(tt.name), event.WithFlush()))
 			}
 
+			if !tt.telemetryFlag {
+				require.Nil(event.WriteObservation(tt.ctx, event.Op(tt.name), event.WithRequest(tt.Request),
+					event.WithResponse(tt.Response)))
+				require.Nil(event.WriteObservation(tt.ctx, event.Op(tt.name), event.WithDetails(tt.details)))
+			}
 			if tt.observationSinkFileName != "" {
 				defer func() { _ = os.WriteFile(tt.observationSinkFileName, nil, 0o666) }()
 				b, err := ioutil.ReadFile(tt.observationSinkFileName)

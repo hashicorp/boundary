@@ -25,9 +25,9 @@ cli:
 .PHONY: tools
 tools: golangci-lint
 	go generate -tags tools tools/tools.go
-	go install github.com/bufbuild/buf/cmd/buf@v1.15.1
-	go install github.com/mfridman/tparse@v0.10.3
-	go install github.com/hashicorp/copywrite@v0.15.0
+	go install github.com/bufbuild/buf/cmd/buf@v1.27.2
+	go install github.com/mfridman/tparse@v0.13.1
+	go install github.com/hashicorp/copywrite@v0.16.6
 
 # golangci-lint recommends installing the binary directly, instead of using go get
 # See the note: https://golangci-lint.run/usage/install/#install-from-source
@@ -36,7 +36,8 @@ golangci-lint:
 	$(eval GOLINT_INSTALLED := $(shell which golangci-lint))
 
 	if [ "$(GOLINT_INSTALLED)" = "" ]; then \
-		sh scripts/install-golangci-lint.sh -b $(GO_PATH)/bin v1.52.2; \
+		curl -sSfL \
+			https://raw.githubusercontent.com/golangci/golangci-lint/9a8a056e9fe49c0e9ed2287aedce1022c79a115b/install.sh | sh -s -- -b $(GO_PATH)/bin v1.52.2; \
 	fi;
 
 .PHONY: cleangen
@@ -268,6 +269,7 @@ copywrite:
 	cd internal/proto/controller/api && find . -type f -name '*.proto' -exec sed -i '1,3d' {} + &&  copywrite headers
 	cd internal/proto/controller/custom_options && find . -type f -name '*.proto' -exec sed -i '1,3d' {} + &&  copywrite headers
 	cd internal/proto/plugin && find . -type f -name '*.proto' -exec sed -i '1,3d' {} + && copywrite headers
+	cd internal/proto/worker/proxy/v1 && find . -type f -name '*.proto' -exec sed -i '1,3d' {} + && copywrite headers
 
 .PHONY: website
 # must have nodejs and npm installed

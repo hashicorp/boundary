@@ -93,63 +93,6 @@ export NEW_VAULT_LIB="test_vault"
   [ "$status" -eq 0 ]
 }
 
-@test "boundary/credential-libraries: can create $NEW_VAULT_LIB vault library in credential store $NEW_STORE deprecated subcommand" {
-  skip_if_no_vault
-
-  local csid=$(credential_store_id $NEW_STORE $DEFAULT_P_ID)
-  run create_vault_library \
-    -name $NEW_VAULT_LIB -credential-store-id $csid \
-    -vault-path /kv/secret \
-    -vault-http-method GET
-  echo "$output"
-  [ "$status" -eq 0 ]
-
-  local clid=$(credential_library_id $NEW_VAULT_LIB $csid)
-  run read_credential_library $clid
-  echo "$output"
-  [ "$status" -eq 0 ]
-  got=$(echo "$output")
-
-  run field_eq "$got" ".item.attributes.path" '"/kv/secret"'
-  [ "$status" -eq 0 ]
-  run field_eq "$got" ".item.attributes.http_method" '"GET"'
-  [ "$status" -eq 0 ]
-}
-
-@test "boundary/credential-libraries: can not create already created $NEW_VAULT_LIB vault libary deprecated subcommand" {
-  skip_if_no_vault
-
-  local csid=$(credential_store_id $NEW_STORE $DEFAULT_P_ID)
-  run create_vault_library \
-    -name $NEW_VAULT_LIB -credential-store-id $csid \
-    -vault-path /kv/secret \
-    -vault-http-method GET
-  echo "$output"
-  [ "$status" -eq 1 ]
-}
-
-@test "boundary/credential-libraries: can read $NEW_VAULT_LIB vault library depcrecated subcommand" {
-  skip_if_no_vault
-
-  local csid=$(credential_store_id $NEW_STORE $DEFAULT_P_ID)
-  local clid=$(credential_library_id $NEW_VAULT_LIB $csid)
-  run read_credential_library $clid
-  echo "$output"
-  [ "$status" -eq 0 ]
-}
-
-@test "boundary/credential-libraries: can delete $NEW_VAULT_LIB vault library depcrecated subcommand" {
-  skip_if_no_vault
-
-  local csid=$(credential_store_id $NEW_STORE $DEFAULT_P_ID)
-  local clid=$(credential_library_id $NEW_VAULT_LIB $csid)
-  run delete_credential_library $clid
-  echo "$output"
-  [ "$status" -eq 0 ]
-  run has_status_code "$output" "204"
-  [ "$status" -eq 0 ]
-}
-
 @test "boundary/credential-libraries: can create $NEW_VAULT_LIB vault-ssh-certificate library in credential store $NEW_STORE" {
   skip_if_no_vault
 
@@ -157,7 +100,8 @@ export NEW_VAULT_LIB="test_vault"
   run create_vault_ssh_certificate_library \
     -name $NEW_VAULT_LIB -credential-store-id $csid \
     -vault-path /ssh/sign/foo \
-    -username foo
+    -username foo \
+	-additional-valid-principal test-principal
   echo "$output"
   [ "$status" -eq 0 ]
 }
@@ -592,6 +536,42 @@ export NEW_VAULT_LIB="test_vault"
   got=$(echo "$output")
 
   run field_eq "$got" ".item.attributes.key_id" "null"
+  [ "$status" -eq 0 ]
+}
+
+@test "boundary/credential-libraries: can update $NEW_VAULT_LIB vault-ssh-certificate library one additional-valid-principal" {
+  skip_if_no_vault
+
+  local csid=$(credential_store_id $NEW_STORE $DEFAULT_P_ID)
+  local clid=$(credential_library_id $NEW_VAULT_LIB $csid)
+  run update_vault_ssh_certificate_library -id $clid -additional-valid-principal test-principal-0
+  echo "$output"
+  [ "$status" -eq 0 ]
+
+  run read_credential_library $clid
+  echo "$output"
+  [ "$status" -eq 0 ]
+  got=$(echo "$output")
+
+  run field_eq "$got" ".item.attributes.additional_valid_principals" '["test-principal-0"]'
+  [ "$status" -eq 0 ]
+}
+
+@test "boundary/credential-libraries: can update $NEW_VAULT_LIB vault-ssh-certificate library many additional-valid-principals" {
+  skip_if_no_vault
+
+  local csid=$(credential_store_id $NEW_STORE $DEFAULT_P_ID)
+  local clid=$(credential_library_id $NEW_VAULT_LIB $csid)
+  run update_vault_ssh_certificate_library -id $clid -additional-valid-principal test-principal-1 -additional-valid-principal test-principal-2 -additional-valid-principal test-principal-3
+  echo "$output"
+  [ "$status" -eq 0 ]
+
+  run read_credential_library $clid
+  echo "$output"
+  [ "$status" -eq 0 ]
+  got=$(echo "$output")
+
+  run field_eq "$got" ".item.attributes.additional_valid_principals" '["test-principal-1","test-principal-2","test-principal-3"]'
   [ "$status" -eq 0 ]
 }
 

@@ -1,6 +1,14 @@
 # Copyright (c) HashiCorp, Inc.
 # SPDX-License-Identifier: BUSL-1.1
 
+terraform {
+  required_providers {
+    enos = {
+      source = "app.terraform.io/hashicorp-qti/enos"
+    }
+  }
+}
+
 variable "vpc_id" {}
 variable "ami_id" {}
 variable "subnet_ids" {}
@@ -18,6 +26,8 @@ variable "ingress_cidr" {
   default = ["10.0.0.0/8"]
 }
 
+data "enos_environment" "current" {}
+
 resource "aws_security_group" "boundary_target" {
   name_prefix = "boundary-target-sg"
   description = "SSH and boundary Traffic"
@@ -29,6 +39,14 @@ resource "aws_security_group" "boundary_target" {
     to_port     = 22
     protocol    = "tcp"
     cidr_blocks = var.ingress_cidr
+  }
+
+  ingress {
+    description = "SSH to the instance"
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = flatten([formatlist("%s/32", data.enos_environment.current.public_ipv4_addresses)])
   }
 
   egress {
@@ -59,6 +77,20 @@ resource "aws_instance" "target" {
     "Environment" : var.environment
     "Enos User" : var.enos_user,
   })
+}
+
+resource "enos_remote_exec" "wait" {
+  for_each = {
+    for idx, instance in aws_instance.target : idx => instance
+  }
+
+  inline = ["cloud-init status --wait"]
+
+  transport = {
+    ssh = {
+      host = aws_instance.target[each.key].public_ip
+    }
+  }
 }
 
 output "target_ips" {

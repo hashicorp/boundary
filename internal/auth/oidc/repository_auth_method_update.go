@@ -5,6 +5,7 @@ package oidc
 
 import (
 	"context"
+	stderrors "errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -14,7 +15,6 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/go-dbw"
-	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 )
 
@@ -699,21 +699,21 @@ func (r *Repository) ValidateDiscoveryInfo(ctx context.Context, opt ...Option) e
 		return errors.Wrap(ctx, err, op)
 	}
 
-	var result *multierror.Error
+	var result error
 	if info.Issuer != am.Issuer {
-		result = multierror.Append(result, errors.New(ctx, errors.InvalidParameter, op,
+		result = stderrors.Join(result, errors.New(ctx, errors.InvalidParameter, op,
 			fmt.Sprintf("auth method issuer doesn't match discovery issuer: expected %s and got %s", am.Issuer, info.Issuer)))
 	}
 	for _, a := range am.SigningAlgs {
 		if !strutil.StrListContains(info.IdTokenSigningAlgsSupported, a) {
-			result = multierror.Append(result, errors.New(ctx, errors.InvalidParameter, op,
+			result = stderrors.Join(result, errors.New(ctx, errors.InvalidParameter, op,
 				fmt.Sprintf("auth method signing alg is not in discovered supported algs: expected %s and got %s", a, info.IdTokenSigningAlgsSupported)))
 		}
 	}
 	providerClient, err := provider.HTTPClient()
 	if err != nil {
-		result = multierror.Append(result, errors.New(ctx, errors.Unknown, op, "unable to get oidc http client", errors.WithWrap(err)))
-		return result.ErrorOrNil()
+		result = stderrors.Join(result, errors.New(ctx, errors.Unknown, op, "unable to get oidc http client", errors.WithWrap(err)))
+		return result
 	}
 
 	// we need to prevent redirects during these tests... we don't want to have
@@ -725,25 +725,25 @@ func (r *Repository) ValidateDiscoveryInfo(ctx context.Context, opt ...Option) e
 	// test JWKs URL
 	statusCode, err := pingEndpoint(ctx, providerClient, "JWKs", "GET", info.JWKSURL)
 	if err != nil {
-		result = multierror.Append(result, errors.New(ctx, errors.Unknown, op, fmt.Sprintf("unable to verify JWKs endpoint: %s", info.JWKSURL), errors.WithWrap(err)))
+		result = stderrors.Join(result, errors.New(ctx, errors.Unknown, op, fmt.Sprintf("unable to verify JWKs endpoint: %s", info.JWKSURL), errors.WithWrap(err)))
 	}
 	if statusCode != 200 {
-		result = multierror.Append(result, errors.New(ctx, errors.Unknown, op, fmt.Sprintf("non-200 status (%d) from JWKs endpoint: %s", statusCode, info.JWKSURL), errors.WithWrap(err)))
+		result = stderrors.Join(result, errors.New(ctx, errors.Unknown, op, fmt.Sprintf("non-200 status (%d) from JWKs endpoint: %s", statusCode, info.JWKSURL), errors.WithWrap(err)))
 	}
 
 	// test Auth URL
 	if _, err := pingEndpoint(ctx, providerClient, "AuthURL", "GET", info.AuthURL); err != nil {
-		result = multierror.Append(result, errors.New(ctx, errors.Unknown, op, fmt.Sprintf("unable to verify authorize endpoint: %s", info.AuthURL), errors.WithWrap(err)))
+		result = stderrors.Join(result, errors.New(ctx, errors.Unknown, op, fmt.Sprintf("unable to verify authorize endpoint: %s", info.AuthURL), errors.WithWrap(err)))
 	}
 
 	// test Token URL
 	if _, err := pingEndpoint(ctx, providerClient, "TokenURL", "POST", info.TokenURL); err != nil {
-		result = multierror.Append(result, errors.New(ctx, errors.Unknown, op, fmt.Sprintf("unable to verify token endpoint: %s", info.TokenURL), errors.WithWrap(err)))
+		result = stderrors.Join(result, errors.New(ctx, errors.Unknown, op, fmt.Sprintf("unable to verify token endpoint: %s", info.TokenURL), errors.WithWrap(err)))
 	}
 
 	// we're not verifying the UserInfo URL, since it's not a required dependency.
 
-	return result.ErrorOrNil()
+	return result
 }
 
 type HTTPClient interface {

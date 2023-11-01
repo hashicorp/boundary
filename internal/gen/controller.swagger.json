@@ -3322,14 +3322,6 @@
                   "format": "int64",
                   "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
                 },
-                "application_credential_source_ids": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  },
-                  "description": "",
-                  "title": "Deprecated use brokered_credential_source_ids instead"
-                },
                 "brokered_credential_source_ids": {
                   "type": "array",
                   "items": {
@@ -3486,14 +3478,6 @@
                   "format": "int64",
                   "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
                 },
-                "application_credential_source_ids": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  },
-                  "description": "",
-                  "title": "Deprecated use brokered_credential_source_ids instead"
-                },
                 "brokered_credential_source_ids": {
                   "type": "array",
                   "items": {
@@ -3596,14 +3580,6 @@
                   "type": "integer",
                   "format": "int64",
                   "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
-                },
-                "application_credential_source_ids": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  },
-                  "description": "",
-                  "title": "Deprecated use brokered_credential_source_ids instead"
                 },
                 "brokered_credential_source_ids": {
                   "type": "array",
@@ -6457,6 +6433,18 @@
           "description": "Output only. The endpoint address that the worker will connect to, useful for setting TLS parameters.",
           "readOnly": true
         },
+        "endpoint_port": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Output only. The endpoint port that will be connected to, either from a\nport directly on the target or from a service definition.",
+          "readOnly": true
+        },
+        "expiration": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Output only. The expiration time of the session.",
+          "readOnly": true
+        },
         "credentials": {
           "type": "array",
           "items": {
@@ -6590,23 +6578,6 @@
         "ingress_worker_filter": {
           "type": "string",
           "description": "Optional boolean expressions to filter the ingress workers that are allowed to satisfy this request.\nUnsupported on OSS."
-        },
-        "application_credential_source_ids": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "Output only. The IDs of the application credential source ids associated with this Target.\nDeprecated use \"brokered_credential_source_ids\" instead.",
-          "readOnly": true
-        },
-        "application_credential_sources": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/controller.api.resources.targets.v1.CredentialSource"
-          },
-          "description": "Output only. The application credential sources associated with this Target.\nDeprecated use \"brokered_credential_sources\" instead.",
-          "readOnly": true
         },
         "brokered_credential_source_ids": {
           "type": "array",

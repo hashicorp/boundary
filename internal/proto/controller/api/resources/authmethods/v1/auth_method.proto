@@ -18,10 +18,10 @@ option (custom_options.v1.domain) = "auth";
 // AuthMethod contains all fields related to an Auth Method resource
 message AuthMethod {
   // Output only. The ID of the Auth Method.
-  string id = 10; // @gotags: `class:"public"`
+  string id = 10; // @gotags: `class:"public" eventstream:"observation"`
 
   // The ID of the Scope of which this Auth Method is a part.
-  string scope_id = 20 [json_name = "scope_id"]; // @gotags: `class:"public"`
+  string scope_id = 20 [json_name = "scope_id"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. Scope information for this Auth method.
   resources.scopes.v1.ScopeInfo scope = 30;
@@ -45,17 +45,17 @@ message AuthMethod {
   ]; // @gotags: `class:"public"`
 
   // Output only. The time this resource was created.
-  google.protobuf.Timestamp created_time = 60 [json_name = "created_time"]; // @gotags: `class:"public"`
+  google.protobuf.Timestamp created_time = 60 [json_name = "created_time"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. The time this resource was last updated.
-  google.protobuf.Timestamp updated_time = 70 [json_name = "updated_time"]; // @gotags: `class:"public"`
+  google.protobuf.Timestamp updated_time = 70 [json_name = "updated_time"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
   uint32 version = 80; // @gotags: `class:"public"`
 
   // The Auth Method type.
-  string type = 90; // @gotags: `class:"public"`
+  string type = 90; // @gotags: `class:"public" eventstream:"observation"`
 
   oneof attrs {
     // The attributes that are applicable for the specific Auth Method type.
@@ -82,7 +82,7 @@ message AuthMethod {
 
   // Output only. Whether this auth method is the primary auth method for it's scope.
   // To change this value update the primary_auth_method_id field on the scope.
-  bool is_primary = 110 [json_name = "is_primary"]; // @gotags: `class:"public"`
+  bool is_primary = 110 [json_name = "is_primary"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. The available actions on this resource for this user.
   repeated string authorized_actions = 300 [json_name = "authorized_actions"]; // @gotags: `class:"public"`

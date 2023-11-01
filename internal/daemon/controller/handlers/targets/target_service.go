@@ -26,7 +26,6 @@ import (
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	intglobals "github.com/hashicorp/boundary/internal/globals"
 	"github.com/hashicorp/boundary/internal/host"
-	"github.com/hashicorp/boundary/internal/host/plugin"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/perms"
@@ -42,7 +41,6 @@ import (
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
 	fm "github.com/hashicorp/boundary/version"
 	"github.com/hashicorp/go-bexpr"
-	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/mr-tron/base58"
 	"google.golang.org/grpc/codes"
@@ -96,7 +94,7 @@ var (
 		action.List,
 	}
 
-	validateCredentialSourcesFn      = func(context.Context, subtypes.Subtype, []target.CredentialSource) error { return nil }
+	validateCredentialSourcesFn      = func(context.Context, globals.Subtype, []target.CredentialSource) error { return nil }
 	ValidateIngressWorkerFilterFn    = IngressWorkerFilterUnsupported
 	AuthorizeSessionWorkerFilterFn   = AuthorizeSessionWithWorkerFilter
 	PostSessionAuthorizationCallback = DefaultPostSessionAuthorizationCallback
@@ -541,8 +539,7 @@ func (s Service) AddTargetCredentialSources(ctx context.Context, req *pbs.AddTar
 		return nil, authResults.Error
 	}
 
-	brokeredCredentialSources := strutil.MergeSlices(req.GetApplicationCredentialSourceIds(), req.GetBrokeredCredentialSourceIds())
-	t, ts, cl, err := s.addCredentialSourcesInRepo(ctx, req.GetId(), brokeredCredentialSources, req.GetInjectedApplicationCredentialSourceIds(), req.GetVersion())
+	t, ts, cl, err := s.addCredentialSourcesInRepo(ctx, req.GetId(), req.GetBrokeredCredentialSourceIds(), req.GetInjectedApplicationCredentialSourceIds(), req.GetVersion())
 	if err != nil {
 		return nil, err
 	}
@@ -583,8 +580,7 @@ func (s Service) SetTargetCredentialSources(ctx context.Context, req *pbs.SetTar
 		return nil, authResults.Error
 	}
 
-	brokeredCredentialSources := strutil.MergeSlices(req.GetApplicationCredentialSourceIds(), req.GetBrokeredCredentialSourceIds())
-	t, ts, cl, err := s.setCredentialSourcesInRepo(ctx, req.GetId(), brokeredCredentialSources, req.GetInjectedApplicationCredentialSourceIds(), req.GetVersion())
+	t, ts, cl, err := s.setCredentialSourcesInRepo(ctx, req.GetId(), req.GetBrokeredCredentialSourceIds(), req.GetInjectedApplicationCredentialSourceIds(), req.GetVersion())
 	if err != nil {
 		return nil, err
 	}
@@ -625,8 +621,7 @@ func (s Service) RemoveTargetCredentialSources(ctx context.Context, req *pbs.Rem
 		return nil, authResults.Error
 	}
 
-	brokeredCredentialSources := strutil.MergeSlices(req.GetApplicationCredentialSourceIds(), req.GetBrokeredCredentialSourceIds())
-	t, ts, cl, err := s.removeCredentialSourcesInRepo(ctx, req.GetId(), brokeredCredentialSources, req.GetInjectedApplicationCredentialSourceIds(), req.GetVersion())
+	t, ts, cl, err := s.removeCredentialSourcesInRepo(ctx, req.GetId(), req.GetBrokeredCredentialSourceIds(), req.GetInjectedApplicationCredentialSourceIds(), req.GetVersion())
 	if err != nil {
 		return nil, err
 	}
@@ -804,7 +799,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 		for _, hSource := range hostSources {
 			hsId := hSource.Id()
 			switch subtypes.SubtypeFromId(hostDomain, hsId) {
-			case static.Subtype:
+			case globals.StaticSubtype:
 				eps, err := staticHostRepo.Endpoints(ctx, hsId)
 				if err != nil {
 					return nil, err
@@ -965,7 +960,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 			deleteCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
 			_, err := sessionRepo.DeleteSession(deleteCtx, sess.PublicId)
-			retErr = multierror.Append(retErr, err)
+			retErr = stderrors.Join(retErr, err)
 		}
 	}()
 
@@ -996,7 +991,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 				deleteCtx, cancel := context.WithTimeout(context.Background(), time.Minute)
 				defer cancel()
 				err := credRepo.Revoke(deleteCtx, sess.PublicId)
-				retErr = multierror.Append(retErr, err)
+				retErr = stderrors.Join(retErr, err)
 				// This leaves the credential in a state which will allow it to be cleaned up
 				// by the periodic credential cleanup job.
 			}
@@ -1087,6 +1082,8 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 		TargetId:          t.GetPublicId(),
 		Scope:             authResults.Scope,
 		CreatedTime:       sess.CreateTime.GetTimestamp(),
+		Expiration:        sess.ExpirationTime.GetTimestamp(),
+		EndpointPort:      t.GetDefaultPort(),
 		Type:              t.GetType().String(),
 		Certificate:       sess.Certificate,
 		PrivateKey:        sess.CertificatePrivateKey,
@@ -1107,6 +1104,8 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 		TargetId:           t.GetPublicId(),
 		Scope:              authResults.Scope,
 		CreatedTime:        sess.CreateTime.GetTimestamp(),
+		Expiration:         sess.ExpirationTime.GetTimestamp(),
+		EndpointPort:       t.GetDefaultPort(),
 		Type:               t.GetType().String(),
 		AuthorizationToken: encodedMarshaledSad,
 		UserId:             authResults.UserId,
@@ -1626,13 +1625,6 @@ func toProto(ctx context.Context, in target.Target, opt ...handlers.Option) (*pb
 		}
 	}
 
-	// TODO: Application Credentials are deprecated, remove when field removed.
-	if outputFields.Has(globals.ApplicationCredentialSourceIdsField) {
-		out.ApplicationCredentialSourceIds = brokeredSourceIds
-	}
-	if outputFields.Has(globals.ApplicationCredentialSourcesField) {
-		out.ApplicationCredentialSources = brokeredSources
-	}
 	if outputFields.Has(globals.BrokeredCredentialSourceIdsField) {
 		out.BrokeredCredentialSourceIds = brokeredSourceIds
 	}
@@ -1907,21 +1899,9 @@ func validateAddCredentialSourcesRequest(req *pbs.AddTargetCredentialSourcesRequ
 	if req.GetVersion() == 0 {
 		badFields[globals.VersionField] = "Required field."
 	}
-	if len(req.GetApplicationCredentialSourceIds())+len(req.GetBrokeredCredentialSourceIds())+len(req.GetInjectedApplicationCredentialSourceIds()) == 0 {
+	if len(req.GetBrokeredCredentialSourceIds())+len(req.GetInjectedApplicationCredentialSourceIds()) == 0 {
 		badFields[globals.BrokeredCredentialSourceIdsField] = "Brokered or Injected Application Credential Source IDs must be provided."
 		badFields[globals.InjectedApplicationCredentialSourceIdsField] = "Brokered or Injected Application Credential Source IDs must be provided."
-	}
-	// TODO: Application Credentials are deprecated, remove when field removed.
-	for _, cl := range req.GetApplicationCredentialSourceIds() {
-		if !handlers.ValidId(handlers.Id(cl),
-			globals.VaultCredentialLibraryPrefix,
-			globals.UsernamePasswordCredentialPrefix,
-			globals.UsernamePasswordCredentialPreviousPrefix,
-			globals.SshPrivateKeyCredentialPrefix,
-			globals.JsonCredentialPrefix) {
-			badFields[globals.ApplicationCredentialSourceIdsField] = fmt.Sprintf("Incorrectly formatted credential source identifier %q.", cl)
-			break
-		}
 	}
 	for _, cl := range req.GetBrokeredCredentialSourceIds() {
 		if !handlers.ValidId(handlers.Id(cl),
@@ -1959,18 +1939,6 @@ func validateSetCredentialSourcesRequest(req *pbs.SetTargetCredentialSourcesRequ
 	if req.GetVersion() == 0 {
 		badFields[globals.VersionField] = "Required field."
 	}
-	// TODO: Application Credentials are deprecated, remove when field removed.
-	for _, cl := range req.GetApplicationCredentialSourceIds() {
-		if !handlers.ValidId(handlers.Id(cl),
-			globals.VaultCredentialLibraryPrefix,
-			globals.UsernamePasswordCredentialPrefix,
-			globals.UsernamePasswordCredentialPreviousPrefix,
-			globals.SshPrivateKeyCredentialPrefix,
-			globals.JsonCredentialPrefix) {
-			badFields[globals.ApplicationCredentialSourceIdsField] = fmt.Sprintf("Incorrectly formatted credential source identifier %q.", cl)
-			break
-		}
-	}
 	for _, cl := range req.GetBrokeredCredentialSourceIds() {
 		if !handlers.ValidId(handlers.Id(cl),
 			globals.VaultCredentialLibraryPrefix,
@@ -2007,21 +1975,9 @@ func validateRemoveCredentialSourcesRequest(req *pbs.RemoveTargetCredentialSourc
 	if req.GetVersion() == 0 {
 		badFields[globals.VersionField] = "Required field."
 	}
-	if len(req.GetApplicationCredentialSourceIds())+len(req.GetBrokeredCredentialSourceIds())+len(req.GetInjectedApplicationCredentialSourceIds()) == 0 {
+	if len(req.GetBrokeredCredentialSourceIds())+len(req.GetInjectedApplicationCredentialSourceIds()) == 0 {
 		badFields[globals.BrokeredCredentialSourceIdsField] = "Brokered or Injected Application Credential Source IDs must be provided."
 		badFields[globals.InjectedApplicationCredentialSourceIdsField] = "Brokered or Injected Application Credential Source IDs must be provided."
-	}
-	// TODO: Application Credentials are deprecated, remove when field removed.
-	for _, cl := range req.GetApplicationCredentialSourceIds() {
-		if !handlers.ValidId(handlers.Id(cl),
-			globals.VaultCredentialLibraryPrefix,
-			globals.UsernamePasswordCredentialPrefix,
-			globals.UsernamePasswordCredentialPreviousPrefix,
-			globals.SshPrivateKeyCredentialPrefix,
-			globals.JsonCredentialPrefix) {
-			badFields[globals.ApplicationCredentialSourceIdsField] = fmt.Sprintf("Incorrectly formatted credential source identifier %q.", cl)
-			break
-		}
 	}
 	for _, cl := range req.GetBrokeredCredentialSourceIds() {
 		if !handlers.ValidId(handlers.Id(cl),
@@ -2082,7 +2038,7 @@ func validateAuthorizeSessionRequest(req *pbs.AuthorizeSessionRequest) error {
 	}
 	if req.GetHostId() != "" {
 		switch subtypes.SubtypeFromId(hostDomain, req.GetHostId()) {
-		case static.Subtype, plugin.Subtype:
+		case globals.StaticSubtype, globals.PluginSubtype:
 		default:
 			badFields[globals.HostIdField] = "Incorrectly formatted identifier."
 		}

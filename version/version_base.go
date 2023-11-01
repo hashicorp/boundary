@@ -13,7 +13,7 @@ var (
 
 	// Version is the base version
 	// Default values - set when building locally (at build time)
-	Version = "0.13.2"
+	Version = "0.14.0"
 
 	// VersionPrerelease is also set at compile time, similarly to Version.
 	VersionPrerelease string

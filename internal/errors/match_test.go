@@ -8,7 +8,6 @@ import (
 	stderrors "errors"
 	"testing"
 
-	"github.com/hashicorp/go-multierror"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -303,13 +302,13 @@ func TestMatch(t *testing.T) {
 		{
 			name:     "match on hashicorp multi error",
 			template: T(errInvalidFieldMask),
-			err:      multierror.Append(stdErr, errInvalidFieldMask),
+			err:      stderrors.Join(stdErr, errInvalidFieldMask),
 			want:     true,
 		},
 		{
 			name:     "match on hashicorp multi error for specific code",
 			template: T(InvalidFieldMask),
-			err:      multierror.Append(stdErr, errInvalidFieldMask),
+			err:      stderrors.Join(stdErr, errInvalidFieldMask),
 			want:     true,
 		},
 		{

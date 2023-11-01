@@ -55,14 +55,14 @@ resource "random_integer" "az" {
 
 # Create a subnet so that the worker doesn't share one with a controller
 resource "aws_subnet" "default" {
-  vpc_id                  = var.vpc_name
+  vpc_id                  = var.vpc_id
   cidr_block              = "10.13.9.0/24"
   map_public_ip_on_launch = true
   availability_zone       = local.selected_az
   tags = merge(
     local.common_tags,
     {
-      "Name" = "${var.vpc_name}_worker_${random_pet.worker.id}_subnet"
+      "Name" = "${var.vpc_id}_worker_${random_pet.worker.id}_subnet"
     },
   )
 }
@@ -71,7 +71,7 @@ resource "aws_subnet" "default" {
 resource "aws_security_group" "default" {
   name        = "boundary-sg-worker-${random_pet.worker.id}"
   description = "SSH to worker to KMS and controllers"
-  vpc_id      = var.vpc_name
+  vpc_id      = var.vpc_id
 
   ingress {
     description = "SSH to the worker instance"
@@ -99,7 +99,7 @@ resource "aws_security_group" "default" {
   tags = merge(
     local.common_tags,
     {
-      "Name" = "${var.vpc_name}_worker_sg"
+      "Name" = "${var.vpc_id}_worker_sg"
     },
   )
 }
@@ -115,18 +115,13 @@ resource "aws_vpc_security_group_ingress_rule" "worker_to_controller" {
   ip_protocol       = "tcp"
 }
 
-data "aws_route_table" "default" {
-  vpc_id = var.vpc_name
-
-  filter {
-    name   = "tag:Name"
-    values = ["enos-vpc_route"]
-  }
+data "aws_vpc" "vpc" {
+  id = var.vpc_id
 }
 
 resource "aws_route_table_association" "worker_rta" {
   subnet_id      = aws_subnet.default.id
-  route_table_id = data.aws_route_table.default.id
+  route_table_id = data.aws_vpc.vpc.main_route_table_id
 }
 
 resource "aws_instance" "worker" {

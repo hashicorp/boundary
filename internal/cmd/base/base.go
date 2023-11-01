@@ -6,6 +6,7 @@ package base
 import (
 	"bytes"
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -27,7 +28,6 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-secure-stdlib/pluginutil/v2"
 	"github.com/mitchellh/cli"
-	"github.com/pkg/errors"
 	"github.com/posener/complete"
 )
 
@@ -142,12 +142,14 @@ type Command struct {
 }
 
 // New returns a new instance of a base.Command type
-func NewCommand(ui cli.Ui) *Command {
+func NewCommand(ui cli.Ui, opt ...Option) *Command {
+	opts := getOpts(opt...)
 	ctx, cancel := context.WithCancel(context.Background())
 	ret := &Command{
 		UI:         ui,
 		ShutdownCh: MakeShutdownCh(),
 		Context:    ctx,
+		FlagId:     opts.withImplicitId,
 	}
 	go func() {
 		<-ret.ShutdownCh
@@ -246,7 +248,7 @@ func (c *Command) Client(opt ...Option) (*api.Client, error) {
 	if modifiedTLS {
 		// Setup TLS config
 		if err := c.client.SetTLSConfig(tlsConfig); err != nil {
-			return nil, errors.Wrap(err, "failed to setup TLS config")
+			return nil, fmt.Errorf("failed to setup TLS config: %w", err)
 		}
 	}
 

@@ -22,9 +22,9 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/commands/connect"
 	"github.com/hashicorp/boundary/internal/daemon/controller/common"
 	"github.com/hashicorp/boundary/internal/daemon/worker"
-	"github.com/hashicorp/boundary/internal/proxy"
 	"github.com/hashicorp/boundary/internal/session"
 	targetspb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
+	"github.com/hashicorp/boundary/sdk/pbs/proxy"
 	"github.com/hashicorp/go-cleanhttp"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/mr-tron/base58"
@@ -333,8 +333,8 @@ type TestSessionConnection struct {
 }
 
 // Close a test connection
-func (t *TestSessionConnection) Close() error {
-	return t.conn.Close()
+func (c *TestSessionConnection) Close() error {
+	return c.conn.Close()
 }
 
 // Connect returns a TestSessionConnection for a TestSession. Check

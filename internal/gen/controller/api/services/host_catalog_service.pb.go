@@ -33,7 +33,7 @@ type GetHostCatalogRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 }
 
 func (x *GetHostCatalogRequest) Reset() {
@@ -127,8 +127,8 @@ type ListHostCatalogsRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	ScopeId   string `protobuf:"bytes,1,opt,name=scope_id,proto3" json:"scope_id,omitempty" class:"public"`     // @gotags: `class:"public"`
-	Recursive bool   `protobuf:"varint,20,opt,name=recursive,proto3" json:"recursive,omitempty" class:"public"` // @gotags: `class:"public"`
+	ScopeId   string `protobuf:"bytes,1,opt,name=scope_id,proto3" json:"scope_id,omitempty" class:"public" eventstream:"observation"`     // @gotags: `class:"public" eventstream:"observation"`
+	Recursive bool   `protobuf:"varint,20,opt,name=recursive,proto3" json:"recursive,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	Filter    string `protobuf:"bytes,30,opt,name=filter,proto3" json:"filter,omitempty" class:"public"`        // @gotags: `class:"public"`
 }
 
@@ -294,7 +294,7 @@ type CreateHostCatalogResponse struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Uri  string                    `protobuf:"bytes,1,opt,name=uri,proto3" json:"uri,omitempty" class:"public"` // @gotags: `class:"public"`
+	Uri  string                    `protobuf:"bytes,1,opt,name=uri,proto3" json:"uri,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	Item *hostcatalogs.HostCatalog `protobuf:"bytes,2,opt,name=item,proto3" json:"item,omitempty"`
 }
 
@@ -349,7 +349,7 @@ type UpdateHostCatalogRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id         string                    `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
+	Id         string                    `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	Item       *hostcatalogs.HostCatalog `protobuf:"bytes,2,opt,name=item,proto3" json:"item,omitempty"`
 	UpdateMask *fieldmaskpb.FieldMask    `protobuf:"bytes,3,opt,name=update_mask,json=updateMask,proto3" json:"update_mask,omitempty"`
 }
@@ -459,7 +459,7 @@ type DeleteHostCatalogRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 }
 
 func (x *DeleteHostCatalogRequest) Reset() {

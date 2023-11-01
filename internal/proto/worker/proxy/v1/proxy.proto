@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 syntax = "proto3";
 
@@ -7,7 +7,7 @@ package worker.proxy.v1;
 
 import "google/protobuf/timestamp.proto";
 
-option go_package = "github.com/hashicorp/boundary/internal/proxy;proxy";
+option go_package = "github.com/hashicorp/boundary/sdk/pbs/proxy;proxy";
 
 enum HANDSHAKECOMMAND {
   // Note: Unspecified is the desired zero value based on protolint, but for

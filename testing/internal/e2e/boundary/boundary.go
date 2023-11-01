@@ -34,5 +34,5 @@ type DbInitInfo struct {
 
 // CliError parses the Stderr from running a boundary command
 type CliError struct {
-	Status int `json:"status"`
+	Status int `json:"status_code"`
 }

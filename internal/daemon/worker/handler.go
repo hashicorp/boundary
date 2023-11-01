@@ -22,8 +22,8 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/event"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
-	"github.com/hashicorp/boundary/internal/proxy"
 	"github.com/hashicorp/boundary/internal/util"
+	"github.com/hashicorp/boundary/sdk/pbs/proxy"
 	"github.com/hashicorp/go-secure-stdlib/listenerutil"
 	"github.com/hashicorp/nodeenrollment"
 	"github.com/hashicorp/nodeenrollment/types"
@@ -275,7 +275,7 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionMa
 			}
 		}
 
-		pDialer, err := proxyHandlers.GetEndpointDialer(ctx, endpointUrl.Host, workerId, acResp, w.downstreamReceiver)
+		pDialer, err := proxyHandlers.GetEndpointDialer(ctx, endpointUrl.Host, workerId, acResp, w.downstreamReceiver, proxyHandlers.WithDnsServerAddress(w.conf.WorkerDnsServer))
 		if err != nil {
 			conn.Close(proxyHandlers.WebsocketStatusProtocolSetupError, "unable to get endpoint dialer")
 			event.WriteError(ctx, op, err)

@@ -39,6 +39,10 @@ func run(swaggerPath string) error {
 			//   - When gotags appears on its own.
 			//   - When gotags appears at the end of another comment (preceded by \n\n).
 			for _, prefix := range []string{"\\n\\n", ""} {
+				// The two cases we're replacing gotags with empty message:
+				//   - When class gotags is set with eventstream gotags.
+				//   - When class gotags is set by itself.
+				swaggerBytes = bytes.ReplaceAll(swaggerBytes, []byte(fmt.Sprintf("%s@gotags: %sclass:\\\"%s\\\" eventstream:\\\"observation\\\"%s", prefix, wrapper, classification, wrapper)), nil)
 				swaggerBytes = bytes.ReplaceAll(swaggerBytes, []byte(fmt.Sprintf("%s@gotags: %sclass:\\\"%s\\\"%s", prefix, wrapper, classification, wrapper)), nil)
 			}
 		}

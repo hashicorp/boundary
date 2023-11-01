@@ -187,7 +187,7 @@ service TargetService {
 }
 
 message GetTargetRequest {
-  string id = 1; // @gotags: `class:"public"`
+  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
 }
 
 message GetTargetResponse {
@@ -195,8 +195,8 @@ message GetTargetResponse {
 }
 
 message ListTargetsRequest {
-  string scope_id = 1; // @gotags: `class:"public"`
-  bool recursive = 20 [json_name = "recursive"]; // @gotags: `class:"public"`
+  string scope_id = 1; // @gotags: `class:"public" eventstream:"observation"`
+  bool recursive = 20 [json_name = "recursive"]; // @gotags: `class:"public" eventstream:"observation"`
   string filter = 30 [json_name = "filter"]; // @gotags: `class:"public"`
 }
 
@@ -209,12 +209,12 @@ message CreateTargetRequest {
 }
 
 message CreateTargetResponse {
-  string uri = 1; // @gotags: `class:"public"`
+  string uri = 1; // @gotags: `class:"public" eventstream:"observation"`
   resources.targets.v1.Target item = 2;
 }
 
 message UpdateTargetRequest {
-  string id = 1; // @gotags: `class:"public"`
+  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
   resources.targets.v1.Target item = 2;
   google.protobuf.FieldMask update_mask = 3 [json_name = "update_mask"];
 }
@@ -224,17 +224,17 @@ message UpdateTargetResponse {
 }
 
 message DeleteTargetRequest {
-  string id = 1; // @gotags: `class:"public"`
+  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
 }
 
 message DeleteTargetResponse {}
 
 message AddTargetHostSourcesRequest {
-  string id = 1; // @gotags: `class:"public"`
+  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
   // Version is used to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
   uint32 version = 2; // @gotags: `class:"public"`
-  repeated string host_source_ids = 3 [json_name = "host_source_ids"]; // @gotags: `class:"public"`
+  repeated string host_source_ids = 3 [json_name = "host_source_ids"]; // @gotags: `class:"public" eventstream:"observation"`
 }
 
 message AddTargetHostSourcesResponse {
@@ -242,11 +242,11 @@ message AddTargetHostSourcesResponse {
 }
 
 message SetTargetHostSourcesRequest {
-  string id = 1; // @gotags: `class:"public"`
+  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
   // Version is used to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
   uint32 version = 2; // @gotags: `class:"public"`
-  repeated string host_source_ids = 3 [json_name = "host_source_ids"]; // @gotags: `class:"public"`
+  repeated string host_source_ids = 3 [json_name = "host_source_ids"]; // @gotags: `class:"public" eventstream:"observation"`
 }
 
 message SetTargetHostSourcesResponse {
@@ -254,11 +254,11 @@ message SetTargetHostSourcesResponse {
 }
 
 message RemoveTargetHostSourcesRequest {
-  string id = 1; // @gotags: `class:"public"`
+  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
   // Version is used to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
   uint32 version = 2; // @gotags: `class:"public"`
-  repeated string host_source_ids = 3 [json_name = "host_source_ids"]; // @gotags: `class:"public"`
+  repeated string host_source_ids = 3 [json_name = "host_source_ids"]; // @gotags: `class:"public" eventstream:"observation"`
 }
 
 message RemoveTargetHostSourcesResponse {
@@ -271,12 +271,6 @@ message AddTargetCredentialSourcesRequest {
   // The mutation will fail if the version does not match the latest known good version.
   uint32 version = 2; // @gotags: `class:"public"`
 
-  // Deprecated use brokered_credential_source_ids instead
-  repeated string application_credential_source_ids = 3 [
-    json_name = "application_credential_source_ids",
-    deprecated = true
-  ]; // @gotags: `class:"public"`
-
   // Brokered credentials are returned to the user during session authorization.
   repeated string brokered_credential_source_ids = 10 [json_name = "brokered_credential_source_ids"]; // @gotags: `class:"public"`
 
@@ -288,6 +282,8 @@ message AddTargetCredentialSourcesRequest {
   // Deprecated fields
   reserved "egress_credential_source_ids";
   reserved 4;
+  reserved "application_credential_source_ids";
+  reserved 3;
 }
 
 message AddTargetCredentialSourcesResponse {
@@ -302,12 +298,6 @@ message SetTargetCredentialSourcesRequest {
   // The mutation will fail if the version does not match the latest known good version.
   uint32 version = 2; // @gotags: `class:"public"`
 
-  // Deprecated use brokered_credential_source_ids instead
-  repeated string application_credential_source_ids = 3 [
-    json_name = "application_credential_source_ids",
-    deprecated = true
-  ]; // @gotags: `class:"public"`
-
   // Brokered credentials are returned to the user during session authorization.
   repeated string brokered_credential_source_ids = 10 [json_name = "brokered_credential_source_ids"]; // @gotags: `class:"public"`
 
@@ -319,6 +309,8 @@ message SetTargetCredentialSourcesRequest {
   // Deprecated fields
   reserved "egress_credential_source_ids";
   reserved 4;
+  reserved "application_credential_source_ids";
+  reserved 3;
 }
 
 message SetTargetCredentialSourcesResponse {
@@ -331,12 +323,6 @@ message RemoveTargetCredentialSourcesRequest {
   // The mutation will fail if the version does not match the latest known good version.
   uint32 version = 2; // @gotags: `class:"public"`
 
-  // Deprecated use brokered_credential_source_ids instead
-  repeated string application_credential_source_ids = 3 [
-    json_name = "application_credential_source_id",
-    deprecated = true
-  ]; // @gotags: `class:"public"`
-
   // Brokered credentials are returned to the user during session authorization.
   repeated string brokered_credential_source_ids = 10 [json_name = "brokered_credential_source_ids"]; // @gotags: `class:"public"`
 
@@ -348,6 +334,8 @@ message RemoveTargetCredentialSourcesRequest {
   // Deprecated fields
   reserved "egress_credential_source_ids";
   reserved 4;
+  reserved "application_credential_source_ids";
+  reserved 3;
 }
 
 message RemoveTargetCredentialSourcesResponse {
@@ -356,19 +344,19 @@ message RemoveTargetCredentialSourcesResponse {
 
 message AuthorizeSessionRequest {
   // The ID of the target. Required unless some combination of scope_id/scope_name and name are set.
-  string id = 1; // @gotags: `class:"public"`
+  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
 
   // The name of the target. When using this, scope_id or scope_name must be set.
   string name = 3; // @gotags: `class:"public"`
 
   // The scope ID containing the target, if specifying the target by name.
-  string scope_id = 4; // @gotags: `class:"public"`
+  string scope_id = 4; // @gotags: `class:"public" eventstream:"observation"`
 
   // The scope name containing the target, if specifying the target by name.
   string scope_name = 5; // @gotags: `class:"public"`
 
   // An optional parameter allowing specification of the particular Host within the Target's configured Host Sets to connect to during this Session.
-  string host_id = 2 [json_name = "host_id"]; // @gotags: `class:"public"`
+  string host_id = 2 [json_name = "host_id"]; // @gotags: `class:"public" eventstream:"observation"`
 }
 
 message AuthorizeSessionResponse {

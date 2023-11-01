@@ -223,7 +223,7 @@ func TestRepository_DeleteTarget(t *testing.T) {
 			name: "no-public-id",
 			args: args{
 				target: func() target.Target {
-					tar, _ := target.New(ctx, tcp.Subtype, proj.PublicId)
+					tar, _ := target.New(ctx, globals.TcpSubtype, proj.PublicId)
 					return tar
 				}(),
 			},
@@ -237,7 +237,7 @@ func TestRepository_DeleteTarget(t *testing.T) {
 				target: func() target.Target {
 					id, err := db.NewPublicId(ctx, globals.TcpTargetPrefix)
 					require.NoError(t, err)
-					tar, _ := target.New(ctx, tcp.Subtype, proj.PublicId)
+					tar, _ := target.New(ctx, globals.TcpSubtype, proj.PublicId)
 					tar.SetPublicId(ctx, id)
 					return tar
 				}(),

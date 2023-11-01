@@ -7,26 +7,27 @@ import (
 	"context"
 	"testing"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/types/subtypes"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestSubtypeFromId(t *testing.T) {
-	testSubtype := subtypes.Subtype("test")
+	testSubtype := globals.Subtype("test")
 	r := subtypes.NewRegistry()
 	r.Register(context.Background(), testSubtype, "tttst")
 	tests := []struct {
 		name  string
 		given string
-		want  subtypes.Subtype
+		want  globals.Subtype
 	}{
-		{"empty-string", "", subtypes.UnknownSubtype},
-		{"no-prefix-delimiter", "tttst1234", subtypes.UnknownSubtype},
-		{"prefix-first", "_tttst_1234", subtypes.UnknownSubtype},
-		{"unknown-prefix", "kaz_1234", subtypes.UnknownSubtype},
+		{"empty-string", "", globals.UnknownSubtype},
+		{"no-prefix-delimiter", "tttst1234", globals.UnknownSubtype},
+		{"prefix-first", "_tttst_1234", globals.UnknownSubtype},
+		{"unknown-prefix", "kaz_1234", globals.UnknownSubtype},
 		{"prefix-no-id", "tttst_", testSubtype},
 		{"vault-prefix", "tttst_1234", testSubtype},
-		{"prefix-no-delimiter-no-id", "tttst", subtypes.UnknownSubtype},
+		{"prefix-no-delimiter-no-id", "tttst", globals.UnknownSubtype},
 	}
 	for _, tt := range tests {
 		tt := tt
@@ -41,18 +42,18 @@ func TestSubtypeFromId(t *testing.T) {
 }
 
 func TestSubtypeFromType(t *testing.T) {
-	testSubtype := subtypes.Subtype("test")
+	testSubtype := globals.Subtype("test")
 	r := subtypes.NewRegistry()
 	r.Register(context.Background(), testSubtype, "tttst")
 	tests := []struct {
 		name  string
 		given string
-		want  subtypes.Subtype
+		want  globals.Subtype
 	}{
-		{"empty-string", "", subtypes.UnknownSubtype},
+		{"empty-string", "", globals.UnknownSubtype},
 		{"correct-string", "test", testSubtype},
-		{"captialized", "TEST", subtypes.UnknownSubtype},
-		{"typo", "testt", subtypes.UnknownSubtype},
+		{"captialized", "TEST", globals.UnknownSubtype},
+		{"typo", "testt", globals.UnknownSubtype},
 	}
 	for _, tt := range tests {
 		tt := tt

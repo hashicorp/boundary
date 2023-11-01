@@ -151,7 +151,7 @@ func TestGet(t *testing.T) {
 		UpdatedTime:  pwA.GetUpdateTime().GetTimestamp(),
 		Scope:        &scopepb.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 		Version:      1,
-		Type:         password.Subtype.String(),
+		Type:         globals.PasswordSubtype.String(),
 		Attrs: &pb.Account_PasswordAccountAttributes{
 			&pb.PasswordAccountAttributes{LoginName: pwA.GetLoginName()},
 		},
@@ -178,7 +178,7 @@ func TestGet(t *testing.T) {
 		UpdatedTime:  oidcA.GetUpdateTime().GetTimestamp(),
 		Scope:        &scopepb.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 		Version:      1,
-		Type:         oidc.Subtype.String(),
+		Type:         globals.OidcSubtype.String(),
 		Attrs: &pb.Account_OidcAccountAttributes{
 			&pb.OidcAccountAttributes{
 				Issuer:  oidcAm.GetIssuer(),
@@ -213,7 +213,7 @@ func TestGet(t *testing.T) {
 				MemberOfGroups: []string{"admin"},
 			},
 		},
-		Type:              ldap.Subtype.String(),
+		Type:              globals.LdapSubtype.String(),
 		AuthorizedActions: ldapAuthorizedActions,
 		ManagedGroupIds:   []string{ldapMg.GetPublicId()},
 	}
@@ -280,7 +280,7 @@ func TestGet(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			if subtypes.SubtypeFromId(domain, tc.req.Id) == oidc.Subtype {
+			if subtypes.SubtypeFromId(domain, tc.req.Id) == globals.OidcSubtype {
 				// Set up managed groups before getting. First get the current
 				// managed group to make sure we have the right version.
 				oidcRepo, err := oidcRepoFn()
@@ -484,7 +484,7 @@ func TestListOidc(t *testing.T) {
 			UpdatedTime:  aa.GetUpdateTime().GetTimestamp(),
 			Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 			Version:      1,
-			Type:         oidc.Subtype.String(),
+			Type:         globals.OidcSubtype.String(),
 			Attrs: &pb.Account_OidcAccountAttributes{
 				&pb.OidcAccountAttributes{
 					Issuer:  amSomeAccounts.GetIssuer(),
@@ -506,7 +506,7 @@ func TestListOidc(t *testing.T) {
 			UpdatedTime:  aa.GetUpdateTime().GetTimestamp(),
 			Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 			Version:      1,
-			Type:         oidc.Subtype.String(),
+			Type:         globals.OidcSubtype.String(),
 			Attrs: &pb.Account_OidcAccountAttributes{
 				&pb.OidcAccountAttributes{
 					Issuer:  amOtherAccounts.GetIssuer(),
@@ -641,7 +641,7 @@ func TestListLdap(t *testing.T) {
 			UpdatedTime:  aa.GetUpdateTime().GetTimestamp(),
 			Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 			Version:      1,
-			Type:         ldap.Subtype.String(),
+			Type:         globals.LdapSubtype.String(),
 			Attrs: &pb.Account_LdapAccountAttributes{
 				LdapAccountAttributes: &pb.LdapAccountAttributes{
 					LoginName: loginName,
@@ -662,7 +662,7 @@ func TestListLdap(t *testing.T) {
 			UpdatedTime:  aa.GetUpdateTime().GetTimestamp(),
 			Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 			Version:      1,
-			Type:         ldap.Subtype.String(),
+			Type:         globals.LdapSubtype.String(),
 			Attrs: &pb.Account_LdapAccountAttributes{
 				LdapAccountAttributes: &pb.LdapAccountAttributes{
 					LoginName: loginName,
@@ -1210,7 +1210,7 @@ func TestCreateOidc(t *testing.T) {
 					AuthMethodId: am.GetPublicId(),
 					Name:         &wrapperspb.StringValue{Value: "name"},
 					Description:  &wrapperspb.StringValue{Value: "desc"},
-					Type:         oidc.Subtype.String(),
+					Type:         globals.OidcSubtype.String(),
 					Attrs: &pb.Account_OidcAccountAttributes{
 						&pb.OidcAccountAttributes{
 							Subject: "valid-account",
@@ -1226,7 +1226,7 @@ func TestCreateOidc(t *testing.T) {
 					Description:  &wrapperspb.StringValue{Value: "desc"},
 					Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 					Version:      1,
-					Type:         oidc.Subtype.String(),
+					Type:         globals.OidcSubtype.String(),
 					Attrs: &pb.Account_OidcAccountAttributes{
 						&pb.OidcAccountAttributes{
 							Subject: "valid-account",
@@ -1255,7 +1255,7 @@ func TestCreateOidc(t *testing.T) {
 					AuthMethodId: am.GetPublicId(),
 					Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 					Version:      1,
-					Type:         oidc.Subtype.String(),
+					Type:         globals.OidcSubtype.String(),
 					Attrs: &pb.Account_OidcAccountAttributes{
 						&pb.OidcAccountAttributes{
 							Subject: "no type defined",
@@ -1272,7 +1272,7 @@ func TestCreateOidc(t *testing.T) {
 				Item: &pb.Account{
 					AuthMethodId: am.GetPublicId(),
 					Name:         &wrapperspb.StringValue{Value: "overwritten issuer"},
-					Type:         oidc.Subtype.String(),
+					Type:         globals.OidcSubtype.String(),
 					Attrs: &pb.Account_OidcAccountAttributes{
 						&pb.OidcAccountAttributes{
 							Subject: "overwritten-issuer",
@@ -1288,7 +1288,7 @@ func TestCreateOidc(t *testing.T) {
 					Name:         &wrapperspb.StringValue{Value: "overwritten issuer"},
 					Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 					Version:      1,
-					Type:         oidc.Subtype.String(),
+					Type:         globals.OidcSubtype.String(),
 					Attrs: &pb.Account_OidcAccountAttributes{
 						&pb.OidcAccountAttributes{
 							Subject: "overwritten-issuer",
@@ -1304,7 +1304,7 @@ func TestCreateOidc(t *testing.T) {
 			req: &pbs.CreateAccountRequest{
 				Item: &pb.Account{
 					AuthMethodId: am.GetPublicId(),
-					Type:         password.Subtype.String(),
+					Type:         globals.PasswordSubtype.String(),
 					Attrs: &pb.Account_OidcAccountAttributes{
 						&pb.OidcAccountAttributes{
 							Subject: "cant-specify-mismatching-type",
@@ -1321,7 +1321,7 @@ func TestCreateOidc(t *testing.T) {
 				Item: &pb.Account{
 					AuthMethodId: am.GetPublicId(),
 					Id:           globals.OidcAccountPrefix + "_notallowed",
-					Type:         oidc.Subtype.String(),
+					Type:         globals.OidcSubtype.String(),
 					Attrs: &pb.Account_OidcAccountAttributes{
 						&pb.OidcAccountAttributes{
 							Subject: "cant-specify-id",
@@ -1338,7 +1338,7 @@ func TestCreateOidc(t *testing.T) {
 				Item: &pb.Account{
 					AuthMethodId: am.GetPublicId(),
 					CreatedTime:  timestamppb.Now(),
-					Type:         oidc.Subtype.String(),
+					Type:         globals.OidcSubtype.String(),
 					Attrs: &pb.Account_OidcAccountAttributes{
 						&pb.OidcAccountAttributes{
 							Subject: "cant-specify-created-time",
@@ -1355,7 +1355,7 @@ func TestCreateOidc(t *testing.T) {
 				Item: &pb.Account{
 					AuthMethodId: am.GetPublicId(),
 					UpdatedTime:  timestamppb.Now(),
-					Type:         oidc.Subtype.String(),
+					Type:         globals.OidcSubtype.String(),
 					Attrs: &pb.Account_OidcAccountAttributes{
 						&pb.OidcAccountAttributes{
 							Subject: "cant-specify-update-time",
@@ -1371,7 +1371,7 @@ func TestCreateOidc(t *testing.T) {
 			req: &pbs.CreateAccountRequest{
 				Item: &pb.Account{
 					AuthMethodId: am.GetPublicId(),
-					Type:         oidc.Subtype.String(),
+					Type:         globals.OidcSubtype.String(),
 				},
 			},
 			res: nil,
@@ -1442,7 +1442,7 @@ func TestCreateLdap(t *testing.T) {
 					AuthMethodId: am.GetPublicId(),
 					Name:         &wrapperspb.StringValue{Value: "name"},
 					Description:  &wrapperspb.StringValue{Value: "desc"},
-					Type:         ldap.Subtype.String(),
+					Type:         globals.LdapSubtype.String(),
 					Attrs: &pb.Account_LdapAccountAttributes{
 						LdapAccountAttributes: &pb.LdapAccountAttributes{
 							LoginName: "valid-account",
@@ -1458,7 +1458,7 @@ func TestCreateLdap(t *testing.T) {
 					Description:  &wrapperspb.StringValue{Value: "desc"},
 					Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 					Version:      1,
-					Type:         ldap.Subtype.String(),
+					Type:         globals.LdapSubtype.String(),
 					Attrs: &pb.Account_LdapAccountAttributes{
 						LdapAccountAttributes: &pb.LdapAccountAttributes{
 							LoginName: "valid-account",
@@ -1486,7 +1486,7 @@ func TestCreateLdap(t *testing.T) {
 					AuthMethodId: am.GetPublicId(),
 					Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 					Version:      1,
-					Type:         ldap.Subtype.String(),
+					Type:         globals.LdapSubtype.String(),
 					Attrs: &pb.Account_LdapAccountAttributes{
 						LdapAccountAttributes: &pb.LdapAccountAttributes{
 							LoginName: "no type defined",
@@ -1501,7 +1501,7 @@ func TestCreateLdap(t *testing.T) {
 			req: &pbs.CreateAccountRequest{
 				Item: &pb.Account{
 					AuthMethodId: am.GetPublicId(),
-					Type:         password.Subtype.String(),
+					Type:         globals.PasswordSubtype.String(),
 					Attrs: &pb.Account_LdapAccountAttributes{
 						LdapAccountAttributes: &pb.LdapAccountAttributes{
 							LoginName: "cant-specify-mismatching-type",
@@ -1519,7 +1519,7 @@ func TestCreateLdap(t *testing.T) {
 				Item: &pb.Account{
 					AuthMethodId: am.GetPublicId(),
 					Id:           globals.LdapAccountPrefix + "_notallowed",
-					Type:         ldap.Subtype.String(),
+					Type:         globals.LdapSubtype.String(),
 					Attrs: &pb.Account_LdapAccountAttributes{
 						LdapAccountAttributes: &pb.LdapAccountAttributes{
 							LoginName: "cant-specify-mismatching-type",
@@ -1537,7 +1537,7 @@ func TestCreateLdap(t *testing.T) {
 				Item: &pb.Account{
 					AuthMethodId: am.GetPublicId(),
 					CreatedTime:  timestamppb.Now(),
-					Type:         oidc.Subtype.String(),
+					Type:         globals.OidcSubtype.String(),
 					Attrs: &pb.Account_LdapAccountAttributes{
 						LdapAccountAttributes: &pb.LdapAccountAttributes{
 							LoginName: "cant-specify-mismatching-type",
@@ -1555,7 +1555,7 @@ func TestCreateLdap(t *testing.T) {
 				Item: &pb.Account{
 					AuthMethodId: am.GetPublicId(),
 					UpdatedTime:  timestamppb.Now(),
-					Type:         ldap.Subtype.String(),
+					Type:         globals.LdapSubtype.String(),
 					Attrs: &pb.Account_LdapAccountAttributes{
 						LdapAccountAttributes: &pb.LdapAccountAttributes{
 							LoginName: "cant-specify-mismatching-type",
@@ -1572,7 +1572,7 @@ func TestCreateLdap(t *testing.T) {
 			req: &pbs.CreateAccountRequest{
 				Item: &pb.Account{
 					AuthMethodId: am.GetPublicId(),
-					Type:         ldap.Subtype.String(),
+					Type:         globals.LdapSubtype.String(),
 					Attrs: &pb.Account_LdapAccountAttributes{
 						LdapAccountAttributes: &pb.LdapAccountAttributes{},
 					},
@@ -1587,7 +1587,7 @@ func TestCreateLdap(t *testing.T) {
 			req: &pbs.CreateAccountRequest{
 				Item: &pb.Account{
 					AuthMethodId: am.GetPublicId(),
-					Type:         ldap.Subtype.String(),
+					Type:         globals.LdapSubtype.String(),
 					Attrs: &pb.Account_LdapAccountAttributes{
 						LdapAccountAttributes: &pb.LdapAccountAttributes{
 							LoginName: "cant-specify-full-name",
@@ -1605,7 +1605,7 @@ func TestCreateLdap(t *testing.T) {
 			req: &pbs.CreateAccountRequest{
 				Item: &pb.Account{
 					AuthMethodId: am.GetPublicId(),
-					Type:         ldap.Subtype.String(),
+					Type:         globals.LdapSubtype.String(),
 					Attrs: &pb.Account_LdapAccountAttributes{
 						LdapAccountAttributes: &pb.LdapAccountAttributes{
 							LoginName: "cant-specify-email",
@@ -1623,7 +1623,7 @@ func TestCreateLdap(t *testing.T) {
 			req: &pbs.CreateAccountRequest{
 				Item: &pb.Account{
 					AuthMethodId: am.GetPublicId(),
-					Type:         ldap.Subtype.String(),
+					Type:         globals.LdapSubtype.String(),
 					Attrs: &pb.Account_LdapAccountAttributes{
 						LdapAccountAttributes: &pb.LdapAccountAttributes{
 							LoginName: "cant-specify-dn",
@@ -1641,7 +1641,7 @@ func TestCreateLdap(t *testing.T) {
 			req: &pbs.CreateAccountRequest{
 				Item: &pb.Account{
 					AuthMethodId: am.GetPublicId(),
-					Type:         ldap.Subtype.String(),
+					Type:         globals.LdapSubtype.String(),
 					Attrs: &pb.Account_LdapAccountAttributes{
 						LdapAccountAttributes: &pb.LdapAccountAttributes{
 							LoginName:      "cant-specify-member-of",
@@ -2145,7 +2145,7 @@ func TestUpdateOidc(t *testing.T) {
 				Item: &pb.Account{
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
-					Type:        oidc.Subtype.String(),
+					Type:        globals.OidcSubtype.String(),
 				},
 			},
 			res: &pbs.UpdateAccountResponse{
@@ -2153,7 +2153,7 @@ func TestUpdateOidc(t *testing.T) {
 					AuthMethodId:      am.GetPublicId(),
 					Name:              &wrapperspb.StringValue{Value: "new"},
 					Description:       &wrapperspb.StringValue{Value: "desc"},
-					Type:              oidc.Subtype.String(),
+					Type:              globals.OidcSubtype.String(),
 					Attrs:             defaultAttributes,
 					Scope:             defaultScopeInfo,
 					AuthorizedActions: oidcAuthorizedActions,
@@ -2169,7 +2169,7 @@ func TestUpdateOidc(t *testing.T) {
 				Item: &pb.Account{
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
-					Type:        oidc.Subtype.String(),
+					Type:        globals.OidcSubtype.String(),
 				},
 			},
 			res: &pbs.UpdateAccountResponse{
@@ -2177,7 +2177,7 @@ func TestUpdateOidc(t *testing.T) {
 					AuthMethodId:      am.GetPublicId(),
 					Name:              &wrapperspb.StringValue{Value: "new"},
 					Description:       &wrapperspb.StringValue{Value: "desc"},
-					Type:              oidc.Subtype.String(),
+					Type:              globals.OidcSubtype.String(),
 					Attrs:             defaultAttributes,
 					Scope:             defaultScopeInfo,
 					AuthorizedActions: oidcAuthorizedActions,
@@ -2247,7 +2247,7 @@ func TestUpdateOidc(t *testing.T) {
 				Item: &pb.Account{
 					AuthMethodId:      am.GetPublicId(),
 					Description:       &wrapperspb.StringValue{Value: "default"},
-					Type:              oidc.Subtype.String(),
+					Type:              globals.OidcSubtype.String(),
 					Attrs:             defaultAttributes,
 					Scope:             defaultScopeInfo,
 					AuthorizedActions: oidcAuthorizedActions,
@@ -2271,7 +2271,7 @@ func TestUpdateOidc(t *testing.T) {
 					AuthMethodId:      am.GetPublicId(),
 					Name:              &wrapperspb.StringValue{Value: "updated"},
 					Description:       &wrapperspb.StringValue{Value: "default"},
-					Type:              oidc.Subtype.String(),
+					Type:              globals.OidcSubtype.String(),
 					Attrs:             defaultAttributes,
 					Scope:             defaultScopeInfo,
 					AuthorizedActions: oidcAuthorizedActions,
@@ -2295,7 +2295,7 @@ func TestUpdateOidc(t *testing.T) {
 					AuthMethodId:      am.GetPublicId(),
 					Name:              &wrapperspb.StringValue{Value: "default"},
 					Description:       &wrapperspb.StringValue{Value: "notignored"},
-					Type:              oidc.Subtype.String(),
+					Type:              globals.OidcSubtype.String(),
 					Attrs:             defaultAttributes,
 					Scope:             defaultScopeInfo,
 					AuthorizedActions: oidcAuthorizedActions,
@@ -2524,7 +2524,7 @@ func TestUpdateLdap(t *testing.T) {
 				Item: &pb.Account{
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
-					Type:        ldap.Subtype.String(),
+					Type:        globals.LdapSubtype.String(),
 				},
 			},
 			res: &pbs.UpdateAccountResponse{
@@ -2532,7 +2532,7 @@ func TestUpdateLdap(t *testing.T) {
 					AuthMethodId:      am.GetPublicId(),
 					Name:              &wrapperspb.StringValue{Value: "new"},
 					Description:       &wrapperspb.StringValue{Value: "desc"},
-					Type:              ldap.Subtype.String(),
+					Type:              globals.LdapSubtype.String(),
 					Attrs:             defaultAttributes,
 					Scope:             defaultScopeInfo,
 					AuthorizedActions: ldapAuthorizedActions,
@@ -2548,7 +2548,7 @@ func TestUpdateLdap(t *testing.T) {
 				Item: &pb.Account{
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
-					Type:        ldap.Subtype.String(),
+					Type:        globals.LdapSubtype.String(),
 				},
 			},
 			res: &pbs.UpdateAccountResponse{
@@ -2556,7 +2556,7 @@ func TestUpdateLdap(t *testing.T) {
 					AuthMethodId:      am.GetPublicId(),
 					Name:              &wrapperspb.StringValue{Value: "new"},
 					Description:       &wrapperspb.StringValue{Value: "desc"},
-					Type:              ldap.Subtype.String(),
+					Type:              globals.LdapSubtype.String(),
 					Attrs:             defaultAttributes,
 					Scope:             defaultScopeInfo,
 					AuthorizedActions: ldapAuthorizedActions,
@@ -2626,7 +2626,7 @@ func TestUpdateLdap(t *testing.T) {
 				Item: &pb.Account{
 					AuthMethodId:      am.GetPublicId(),
 					Description:       &wrapperspb.StringValue{Value: "default"},
-					Type:              ldap.Subtype.String(),
+					Type:              globals.LdapSubtype.String(),
 					Attrs:             defaultAttributes,
 					Scope:             defaultScopeInfo,
 					AuthorizedActions: ldapAuthorizedActions,
@@ -2649,7 +2649,7 @@ func TestUpdateLdap(t *testing.T) {
 					AuthMethodId:      am.GetPublicId(),
 					Name:              &wrapperspb.StringValue{Value: "updated"},
 					Description:       &wrapperspb.StringValue{Value: "default"},
-					Type:              ldap.Subtype.String(),
+					Type:              globals.LdapSubtype.String(),
 					Attrs:             defaultAttributes,
 					Scope:             defaultScopeInfo,
 					AuthorizedActions: ldapAuthorizedActions,
@@ -2672,7 +2672,7 @@ func TestUpdateLdap(t *testing.T) {
 					AuthMethodId:      am.GetPublicId(),
 					Name:              &wrapperspb.StringValue{Value: "default"},
 					Description:       &wrapperspb.StringValue{Value: "notignored"},
-					Type:              ldap.Subtype.String(),
+					Type:              globals.LdapSubtype.String(),
 					Attrs:             defaultAttributes,
 					Scope:             defaultScopeInfo,
 					AuthorizedActions: ldapAuthorizedActions,

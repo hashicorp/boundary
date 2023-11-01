@@ -5,8 +5,12 @@ package authmethods_test
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"os"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -20,12 +24,14 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/authmethods"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/event"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/authmethods"
 	scopepb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
+	"github.com/hashicorp/eventlogger/formatter_filters/cloudevents"
 	"github.com/hashicorp/go-hclog"
 	"github.com/jimlambrt/gldap"
 	"github.com/jimlambrt/gldap/testdirectory"
@@ -90,7 +96,7 @@ func Test_UpdateLdap(t *testing.T) {
 			ScopeId:     o.GetPublicId(),
 			Name:        wrapperspb.String("default"),
 			Description: wrapperspb.String("default"),
-			Type:        ldap.Subtype.String(),
+			Type:        globals.LdapSubtype.String(),
 			Attrs:       attrs,
 		}})
 		require.NoError(t, err)
@@ -123,7 +129,7 @@ func Test_UpdateLdap(t *testing.T) {
 				Item: &pb.AuthMethod{
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
-					Type:        ldap.Subtype.String(),
+					Type:        globals.LdapSubtype.String(),
 				},
 			},
 			res: &pbs.UpdateAuthMethodResponse{
@@ -132,7 +138,7 @@ func Test_UpdateLdap(t *testing.T) {
 					Name:                        &wrapperspb.StringValue{Value: "new"},
 					Description:                 &wrapperspb.StringValue{Value: "desc"},
 					Version:                     2,
-					Type:                        ldap.Subtype.String(),
+					Type:                        globals.LdapSubtype.String(),
 					Attrs:                       defaultReadAttributes,
 					Scope:                       defaultScopeInfo,
 					AuthorizedActions:           ldapAuthorizedActions,
@@ -149,7 +155,7 @@ func Test_UpdateLdap(t *testing.T) {
 				Item: &pb.AuthMethod{
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
-					Type:        ldap.Subtype.String(),
+					Type:        globals.LdapSubtype.String(),
 				},
 			},
 			res: &pbs.UpdateAuthMethodResponse{
@@ -158,7 +164,7 @@ func Test_UpdateLdap(t *testing.T) {
 					Version:                     2,
 					Name:                        &wrapperspb.StringValue{Value: "new"},
 					Description:                 &wrapperspb.StringValue{Value: "desc"},
-					Type:                        ldap.Subtype.String(),
+					Type:                        globals.LdapSubtype.String(),
 					Attrs:                       defaultReadAttributes,
 					Scope:                       defaultScopeInfo,
 					AuthorizedActions:           ldapAuthorizedActions,
@@ -207,7 +213,7 @@ func Test_UpdateLdap(t *testing.T) {
 				UpdateMask: &field_mask.FieldMask{Paths: []string{"name", "type"}},
 				Item: &pb.AuthMethod{
 					Name: &wrapperspb.StringValue{Value: "updated name"},
-					Type: password.Subtype.String(),
+					Type: globals.PasswordSubtype.String(),
 				},
 			},
 			err:         handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -239,7 +245,7 @@ func Test_UpdateLdap(t *testing.T) {
 					ScopeId:                     o.GetPublicId(),
 					Version:                     2,
 					Description:                 &wrapperspb.StringValue{Value: "default"},
-					Type:                        ldap.Subtype.String(),
+					Type:                        globals.LdapSubtype.String(),
 					Attrs:                       defaultReadAttributes,
 					Scope:                       defaultScopeInfo,
 					AuthorizedActions:           ldapAuthorizedActions,
@@ -262,7 +268,7 @@ func Test_UpdateLdap(t *testing.T) {
 					ScopeId:                     o.GetPublicId(),
 					Version:                     2,
 					Name:                        &wrapperspb.StringValue{Value: "default"},
-					Type:                        ldap.Subtype.String(),
+					Type:                        globals.LdapSubtype.String(),
 					Attrs:                       defaultReadAttributes,
 					Scope:                       defaultScopeInfo,
 					AuthorizedActions:           ldapAuthorizedActions,
@@ -290,7 +296,7 @@ func Test_UpdateLdap(t *testing.T) {
 					Version:     2,
 					Name:        &wrapperspb.StringValue{Value: "default"},
 					Description: &wrapperspb.StringValue{Value: "default"},
-					Type:        ldap.Subtype.String(),
+					Type:        globals.LdapSubtype.String(),
 					Attrs: &pb.AuthMethod_LdapAuthMethodsAttributes{
 						LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{
 							Urls:  []string{"ldaps://ldap1"},
@@ -320,7 +326,7 @@ func Test_UpdateLdap(t *testing.T) {
 					Version:                     2,
 					Name:                        &wrapperspb.StringValue{Value: "updated"},
 					Description:                 &wrapperspb.StringValue{Value: "default"},
-					Type:                        ldap.Subtype.String(),
+					Type:                        globals.LdapSubtype.String(),
 					Attrs:                       defaultReadAttributes,
 					Scope:                       defaultScopeInfo,
 					AuthorizedActions:           ldapAuthorizedActions,
@@ -345,7 +351,7 @@ func Test_UpdateLdap(t *testing.T) {
 					Version:                     2,
 					Name:                        &wrapperspb.StringValue{Value: "default"},
 					Description:                 &wrapperspb.StringValue{Value: "notignored"},
-					Type:                        ldap.Subtype.String(),
+					Type:                        globals.LdapSubtype.String(),
 					Attrs:                       defaultReadAttributes,
 					Scope:                       defaultScopeInfo,
 					AuthorizedActions:           ldapAuthorizedActions,
@@ -381,7 +387,7 @@ func Test_UpdateLdap(t *testing.T) {
 					Version:     2,
 					Name:        &wrapperspb.StringValue{Value: "default"},
 					Description: &wrapperspb.StringValue{Value: "default"},
-					Type:        ldap.Subtype.String(),
+					Type:        globals.LdapSubtype.String(),
 					Attrs: &pb.AuthMethod_LdapAuthMethodsAttributes{
 						LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{
 							Urls:   []string{"ldaps://ldap1"},
@@ -442,7 +448,7 @@ func Test_UpdateLdap(t *testing.T) {
 					Version:     2,
 					Name:        &wrapperspb.StringValue{Value: "default"},
 					Description: &wrapperspb.StringValue{Value: "default"},
-					Type:        ldap.Subtype.String(),
+					Type:        globals.LdapSubtype.String(),
 					Attrs: &pb.AuthMethod_LdapAuthMethodsAttributes{
 						LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{
 							Urls:   []string{"ldaps://ldap1"},
@@ -541,7 +547,7 @@ func Test_UpdateLdap(t *testing.T) {
 					Paths: []string{"type"},
 				},
 				Item: &pb.AuthMethod{
-					Type: ldap.Subtype.String(),
+					Type: globals.LdapSubtype.String(),
 				},
 			},
 			res:         nil,
@@ -603,7 +609,7 @@ func Test_UpdateLdap(t *testing.T) {
 					Version:     2,
 					Name:        &wrapperspb.StringValue{Value: "default"},
 					Description: &wrapperspb.StringValue{Value: "default"},
-					Type:        ldap.Subtype.String(),
+					Type:        globals.LdapSubtype.String(),
 					Attrs: &pb.AuthMethod_LdapAuthMethodsAttributes{
 						LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{
 							Urls:         []string{"ldaps://ldap1"},
@@ -637,7 +643,7 @@ func Test_UpdateLdap(t *testing.T) {
 					Version:     2,
 					Name:        &wrapperspb.StringValue{Value: "default"},
 					Description: &wrapperspb.StringValue{Value: "default"},
-					Type:        ldap.Subtype.String(),
+					Type:        globals.LdapSubtype.String(),
 					Attrs: &pb.AuthMethod_LdapAuthMethodsAttributes{
 						LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{
 							Urls:  []string{"ldaps://ldap2", "ldaps://ldap3"},
@@ -690,7 +696,7 @@ func Test_UpdateLdap(t *testing.T) {
 					Version:     2,
 					Name:        &wrapperspb.StringValue{Value: "default"},
 					Description: &wrapperspb.StringValue{Value: "default"},
-					Type:        ldap.Subtype.String(),
+					Type:        globals.LdapSubtype.String(),
 					Attrs: &pb.AuthMethod_LdapAuthMethodsAttributes{
 						LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{
 							Urls:       []string{"ldaps://ldap1"},
@@ -727,7 +733,7 @@ func Test_UpdateLdap(t *testing.T) {
 					Version:     2,
 					Name:        &wrapperspb.StringValue{Value: "default"},
 					Description: &wrapperspb.StringValue{Value: "default"},
-					Type:        ldap.Subtype.String(),
+					Type:        globals.LdapSubtype.String(),
 					Attrs: &pb.AuthMethod_LdapAuthMethodsAttributes{
 						LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{
 							Urls:           []string{"ldaps://ldap1"},
@@ -782,7 +788,7 @@ func Test_UpdateLdap(t *testing.T) {
 					Version:     2,
 					Name:        &wrapperspb.StringValue{Value: "default"},
 					Description: &wrapperspb.StringValue{Value: "default"},
-					Type:        ldap.Subtype.String(),
+					Type:        globals.LdapSubtype.String(),
 					Attrs: &pb.AuthMethod_LdapAuthMethodsAttributes{
 						LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{
 							Urls:        []string{"ldaps://ldap1"},
@@ -876,7 +882,15 @@ func TestAuthenticate_Ldap(t *testing.T) {
 	testRootWrapper := db.TestWrapper(t)
 	testKms := kms.TestKms(t, testConn, testRootWrapper)
 	o, _ := iam.TestScopes(t, iam.TestRepo(t, testConn, testRootWrapper))
-
+	opt := event.TestWithObservationSink(t)
+	c := event.TestEventerConfig(t, "Test_StartAuth_to_Callback", opt)
+	testLock := &sync.Mutex{}
+	testLogger := hclog.New(&hclog.LoggerOptions{
+		Mutex: testLock,
+		Name:  "test",
+	})
+	c.EventerConfig.TelemetryEnabled = true
+	require.NoError(t, event.InitSysEventer(testLogger, testLock, "use-Test_Authenticate", event.WithEventerConfig(&c.EventerConfig)))
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.TestRepo(t, testConn, testRootWrapper), nil
 	}
@@ -1094,7 +1108,20 @@ func TestAuthenticate_Ldap(t *testing.T) {
 			assert.Equal(aToken.GetCreatedTime(), aToken.GetApproximateLastUsedTime())
 			assert.Equal(testAm.GetPublicId(), aToken.GetAuthMethodId())
 			assert.Equal(tc.wantType, resp.GetType())
-
+			sinkFileName := c.ObservationEvents.Name()
+			defer func() { _ = os.WriteFile(sinkFileName, nil, 0o666) }()
+			b, err := ioutil.ReadFile(sinkFileName)
+			require.NoError(err)
+			gotRes := &cloudevents.Event{}
+			err = json.Unmarshal(b, gotRes)
+			require.NoErrorf(err, "json: %s", string(b))
+			details, ok := gotRes.Data.(map[string]any)["details"]
+			require.True(ok)
+			for _, key := range details.([]any) {
+				assert.Contains(key.(map[string]any)["payload"], "user_id")
+				assert.Contains(key.(map[string]any)["payload"], "auth_token_start")
+				assert.Contains(key.(map[string]any)["payload"], "auth_token_end")
+			}
 			// support testing for pre-provisioned accounts
 			if tc.acctId != "" {
 				assert.Equal(tc.acctId, aToken.GetAccountId())

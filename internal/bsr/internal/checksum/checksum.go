@@ -15,7 +15,6 @@ import (
 
 	"github.com/hashicorp/boundary/internal/bsr/internal/is"
 	"github.com/hashicorp/go-kms-wrapping/v2/extras/crypto"
-	"github.com/hashicorp/go-multierror"
 )
 
 const (
@@ -88,30 +87,30 @@ func (f *File) Read(b []byte) (int, error) {
 func (f *File) Close() error {
 	const op = "checksum.(File).Close"
 
-	var closeErrors *multierror.Error
+	var closeErrors error
 
 	// Call stat before closure; calling it after results in an err
 	s, err := f.Stat()
 	if err != nil {
-		closeErrors = multierror.Append(closeErrors, fmt.Errorf("%s: %w", op, err))
-		return closeErrors.ErrorOrNil()
+		closeErrors = errors.Join(closeErrors, fmt.Errorf("%s: %w", op, err))
+		return closeErrors
 	}
 
 	// f.Sha256SumWriter will close f.underlying
 	if err := f.Sha256SumWriter.Close(); err != nil {
-		closeErrors = multierror.Append(closeErrors, fmt.Errorf("%s: %w", op, err))
+		closeErrors = errors.Join(closeErrors, fmt.Errorf("%s: %w", op, err))
 	}
 
 	sum, err := f.Sha256SumWriter.Sum(f.ctx, crypto.WithHexEncoding(true))
 	if err != nil {
-		closeErrors = multierror.Append(closeErrors, fmt.Errorf("%s: %w", op, err))
-		return closeErrors.ErrorOrNil()
+		closeErrors = errors.Join(closeErrors, fmt.Errorf("%s: %w", op, err))
+		return closeErrors
 	}
 
 	if _, err := f.checksumWriter.Write([]byte(fmt.Sprintf(checksumLine, sum, s.Name()))); err != nil {
-		closeErrors = multierror.Append(closeErrors, fmt.Errorf("%s: %w", op, err))
+		closeErrors = errors.Join(closeErrors, fmt.Errorf("%s: %w", op, err))
 	}
-	return closeErrors.ErrorOrNil()
+	return closeErrors
 }
 
 var _ writerFile = (*File)(nil)

@@ -8,6 +8,7 @@ package credential
 import (
 	"context"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/boundary"
 	"google.golang.org/protobuf/types/known/structpb"
 )
@@ -25,24 +26,12 @@ type Store interface {
 	GetProjectId() string
 }
 
-// Type is the type of credential provided by a library.
-type Type string
-
-// Credential type values.
-const (
-	UnspecifiedType      Type = "unspecified"
-	UsernamePasswordType Type = "username_password"
-	SshPrivateKeyType    Type = "ssh_private_key"
-	SshCertificateType   Type = "ssh_certificate"
-	JsonType             Type = "json"
-)
-
 // A Library is a resource that provides credentials that are of the same
 // type and access level from a single store.
 type Library interface {
 	boundary.Resource
 	GetStoreId() string
-	CredentialType() Type
+	CredentialType() globals.CredentialType
 }
 
 // Purpose is the purpose of the credential.
@@ -136,7 +125,7 @@ type PrivateKey []byte
 
 // JsonObject represents a JSON object that is serialized.
 type JsonObject struct {
-	structpb.Struct
+	*structpb.Struct
 }
 
 // UsernamePassword is a credential containing a username and a password.

@@ -311,7 +311,7 @@ func TestUpdate_OIDC(t *testing.T) {
 			ScopeId:     o.GetPublicId(),
 			Name:        wrapperspb.String("default"),
 			Description: wrapperspb.String("default"),
-			Type:        oidc.Subtype.String(),
+			Type:        globals.OidcSubtype.String(),
 			Attrs:       defaultAttributes,
 		}})
 		require.NoError(t, err)
@@ -351,7 +351,7 @@ func TestUpdate_OIDC(t *testing.T) {
 				Item: &pb.AuthMethod{
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
-					Type:        oidc.Subtype.String(),
+					Type:        globals.OidcSubtype.String(),
 				},
 			},
 			res: &pbs.UpdateAuthMethodResponse{
@@ -359,7 +359,7 @@ func TestUpdate_OIDC(t *testing.T) {
 					ScopeId:                     o.GetPublicId(),
 					Name:                        &wrapperspb.StringValue{Value: "new"},
 					Description:                 &wrapperspb.StringValue{Value: "desc"},
-					Type:                        oidc.Subtype.String(),
+					Type:                        globals.OidcSubtype.String(),
 					Attrs:                       defaultReadAttributes,
 					Scope:                       defaultScopeInfo,
 					AuthorizedActions:           oidcAuthorizedActions,
@@ -376,7 +376,7 @@ func TestUpdate_OIDC(t *testing.T) {
 				Item: &pb.AuthMethod{
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
-					Type:        oidc.Subtype.String(),
+					Type:        globals.OidcSubtype.String(),
 				},
 			},
 			res: &pbs.UpdateAuthMethodResponse{
@@ -384,7 +384,7 @@ func TestUpdate_OIDC(t *testing.T) {
 					ScopeId:                     o.GetPublicId(),
 					Name:                        &wrapperspb.StringValue{Value: "new"},
 					Description:                 &wrapperspb.StringValue{Value: "desc"},
-					Type:                        oidc.Subtype.String(),
+					Type:                        globals.OidcSubtype.String(),
 					Attrs:                       defaultReadAttributes,
 					Scope:                       defaultScopeInfo,
 					AuthorizedActions:           oidcAuthorizedActions,
@@ -412,7 +412,7 @@ func TestUpdate_OIDC(t *testing.T) {
 					ScopeId:     o.GetPublicId(),
 					Name:        &wrapperspb.StringValue{Value: "default"},
 					Description: &wrapperspb.StringValue{Value: "default"},
-					Type:        oidc.Subtype.String(),
+					Type:        globals.OidcSubtype.String(),
 					Attrs: func() *pb.AuthMethod_OidcAuthMethodsAttributes {
 						f := proto.Clone(defaultReadAttributes.OidcAuthMethodsAttributes).(*pb.OidcAuthMethodAttributes)
 						f.Issuer = wrapperspb.String("http://localhost:72759/somepath/")
@@ -481,7 +481,7 @@ func TestUpdate_OIDC(t *testing.T) {
 				UpdateMask: &field_mask.FieldMask{Paths: []string{"name", "type"}},
 				Item: &pb.AuthMethod{
 					Name: &wrapperspb.StringValue{Value: "updated name"},
-					Type: password.Subtype.String(),
+					Type: globals.PasswordSubtype.String(),
 				},
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -510,7 +510,7 @@ func TestUpdate_OIDC(t *testing.T) {
 				Item: &pb.AuthMethod{
 					ScopeId:                     o.GetPublicId(),
 					Description:                 &wrapperspb.StringValue{Value: "default"},
-					Type:                        oidc.Subtype.String(),
+					Type:                        globals.OidcSubtype.String(),
 					Attrs:                       defaultReadAttributes,
 					Scope:                       defaultScopeInfo,
 					AuthorizedActions:           oidcAuthorizedActions,
@@ -532,7 +532,7 @@ func TestUpdate_OIDC(t *testing.T) {
 				Item: &pb.AuthMethod{
 					ScopeId:                     o.GetPublicId(),
 					Name:                        &wrapperspb.StringValue{Value: "default"},
-					Type:                        oidc.Subtype.String(),
+					Type:                        globals.OidcSubtype.String(),
 					Attrs:                       defaultReadAttributes,
 					Scope:                       defaultScopeInfo,
 					AuthorizedActions:           oidcAuthorizedActions,
@@ -556,7 +556,7 @@ func TestUpdate_OIDC(t *testing.T) {
 					ScopeId:                     o.GetPublicId(),
 					Name:                        &wrapperspb.StringValue{Value: "updated"},
 					Description:                 &wrapperspb.StringValue{Value: "default"},
-					Type:                        oidc.Subtype.String(),
+					Type:                        globals.OidcSubtype.String(),
 					Attrs:                       defaultReadAttributes,
 					Scope:                       defaultScopeInfo,
 					AuthorizedActions:           oidcAuthorizedActions,
@@ -580,7 +580,7 @@ func TestUpdate_OIDC(t *testing.T) {
 					ScopeId:                     o.GetPublicId(),
 					Name:                        &wrapperspb.StringValue{Value: "default"},
 					Description:                 &wrapperspb.StringValue{Value: "notignored"},
-					Type:                        oidc.Subtype.String(),
+					Type:                        globals.OidcSubtype.String(),
 					Attrs:                       defaultReadAttributes,
 					Scope:                       defaultScopeInfo,
 					AuthorizedActions:           oidcAuthorizedActions,
@@ -650,7 +650,7 @@ func TestUpdate_OIDC(t *testing.T) {
 					Paths: []string{"type"},
 				},
 				Item: &pb.AuthMethod{
-					Type: oidc.Subtype.String(),
+					Type: globals.OidcSubtype.String(),
 				},
 			},
 			res: nil,
@@ -705,7 +705,7 @@ func TestUpdate_OIDC(t *testing.T) {
 					ScopeId:     o.GetPublicId(),
 					Name:        &wrapperspb.StringValue{Value: "default"},
 					Description: &wrapperspb.StringValue{Value: "default"},
-					Type:        oidc.Subtype.String(),
+					Type:        globals.OidcSubtype.String(),
 					Attrs: func() *pb.AuthMethod_OidcAuthMethodsAttributes {
 						f := proto.Clone(defaultReadAttributes.OidcAuthMethodsAttributes).(*pb.OidcAuthMethodAttributes)
 						f.MaxAge = wrapperspb.UInt32(0)
@@ -736,7 +736,7 @@ func TestUpdate_OIDC(t *testing.T) {
 					ScopeId:     o.GetPublicId(),
 					Name:        &wrapperspb.StringValue{Value: "default"},
 					Description: &wrapperspb.StringValue{Value: "default"},
-					Type:        oidc.Subtype.String(),
+					Type:        globals.OidcSubtype.String(),
 					Attrs: func() *pb.AuthMethod_OidcAuthMethodsAttributes {
 						f := proto.Clone(defaultReadAttributes.OidcAuthMethodsAttributes).(*pb.OidcAuthMethodAttributes)
 						f.MaxAge = wrapperspb.UInt32(4)
@@ -767,7 +767,7 @@ func TestUpdate_OIDC(t *testing.T) {
 					ScopeId:     o.GetPublicId(),
 					Name:        &wrapperspb.StringValue{Value: "default"},
 					Description: &wrapperspb.StringValue{Value: "default"},
-					Type:        oidc.Subtype.String(),
+					Type:        globals.OidcSubtype.String(),
 					Attrs: func() *pb.AuthMethod_OidcAuthMethodsAttributes {
 						f := proto.Clone(defaultReadAttributes.OidcAuthMethodsAttributes).(*pb.OidcAuthMethodAttributes)
 						f.ClientId = wrapperspb.String("new id")
@@ -814,7 +814,7 @@ func TestUpdate_OIDC(t *testing.T) {
 					ScopeId:     o.GetPublicId(),
 					Name:        &wrapperspb.StringValue{Value: "default"},
 					Description: &wrapperspb.StringValue{Value: "default"},
-					Type:        oidc.Subtype.String(),
+					Type:        globals.OidcSubtype.String(),
 					Attrs: func() *pb.AuthMethod_OidcAuthMethodsAttributes {
 						f := proto.Clone(defaultReadAttributes.OidcAuthMethodsAttributes).(*pb.OidcAuthMethodAttributes)
 						f.ApiUrlPrefix = wrapperspb.String("https://callback.prefix:9281/path")
@@ -846,7 +846,7 @@ func TestUpdate_OIDC(t *testing.T) {
 					ScopeId:     o.GetPublicId(),
 					Name:        &wrapperspb.StringValue{Value: "default"},
 					Description: &wrapperspb.StringValue{Value: "default"},
-					Type:        oidc.Subtype.String(),
+					Type:        globals.OidcSubtype.String(),
 					Attrs: func() *pb.AuthMethod_OidcAuthMethodsAttributes {
 						f := proto.Clone(defaultReadAttributes.OidcAuthMethodsAttributes).(*pb.OidcAuthMethodAttributes)
 						f.AllowedAudiences = []string{"bar", "foo"}
@@ -877,7 +877,7 @@ func TestUpdate_OIDC(t *testing.T) {
 					ScopeId:     o.GetPublicId(),
 					Name:        &wrapperspb.StringValue{Value: "default"},
 					Description: &wrapperspb.StringValue{Value: "default"},
-					Type:        oidc.Subtype.String(),
+					Type:        globals.OidcSubtype.String(),
 					Attrs: func() *pb.AuthMethod_OidcAuthMethodsAttributes {
 						f := proto.Clone(defaultReadAttributes.OidcAuthMethodsAttributes).(*pb.OidcAuthMethodAttributes)
 						f.ClaimsScopes = []string{"email", "profile"}
@@ -908,7 +908,7 @@ func TestUpdate_OIDC(t *testing.T) {
 					ScopeId:     o.GetPublicId(),
 					Name:        &wrapperspb.StringValue{Value: "default"},
 					Description: &wrapperspb.StringValue{Value: "default"},
-					Type:        oidc.Subtype.String(),
+					Type:        globals.OidcSubtype.String(),
 					Attrs: func() *pb.AuthMethod_OidcAuthMethodsAttributes {
 						f := proto.Clone(defaultReadAttributes.OidcAuthMethodsAttributes).(*pb.OidcAuthMethodAttributes)
 						f.AccountClaimMaps = []string{"display_name=name"}
@@ -982,7 +982,7 @@ func TestUpdate_OIDC(t *testing.T) {
 					ScopeId:     o.GetPublicId(),
 					Name:        &wrapperspb.StringValue{Value: "default"},
 					Description: &wrapperspb.StringValue{Value: "default"},
-					Type:        oidc.Subtype.String(),
+					Type:        globals.OidcSubtype.String(),
 					Attrs: func() *pb.AuthMethod_OidcAuthMethodsAttributes {
 						f := proto.Clone(defaultReadAttributes.OidcAuthMethodsAttributes).(*pb.OidcAuthMethodAttributes)
 						f.SigningAlgorithms = []string{string(oidc.EdDSA)}
@@ -1115,7 +1115,7 @@ func TestUpdate_OIDCDryRun(t *testing.T) {
 		CreatedTime:                 am.GetCreateTime().GetTimestamp(),
 		UpdatedTime:                 am.GetUpdateTime().GetTimestamp(),
 		Version:                     am.GetVersion(),
-		Type:                        oidc.Subtype.String(),
+		Type:                        globals.OidcSubtype.String(),
 		AuthorizedActions:           oidcAuthorizedActions,
 		AuthorizedCollectionActions: authorizedCollectionActions,
 		Attrs: &pb.AuthMethod_OidcAuthMethodsAttributes{
@@ -1289,7 +1289,7 @@ func TestChangeState_OIDC(t *testing.T) {
 		ScopeId:     oidcam.GetScopeId(),
 		CreatedTime: oidcam.CreateTime.GetTimestamp(),
 		UpdatedTime: oidcam.UpdateTime.GetTimestamp(),
-		Type:        oidc.Subtype.String(),
+		Type:        globals.OidcSubtype.String(),
 		Attrs: &pb.AuthMethod_OidcAuthMethodsAttributes{
 			OidcAuthMethodsAttributes: &pb.OidcAuthMethodAttributes{
 				Issuer:            wrapperspb.String(oidcam.GetIssuer()),

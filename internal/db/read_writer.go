@@ -6,6 +6,7 @@ package db
 import (
 	"context"
 	"database/sql"
+	stderrors "errors"
 	"fmt"
 	"reflect"
 	"sync/atomic"
@@ -16,7 +17,6 @@ import (
 	"github.com/hashicorp/boundary/internal/oplog/store"
 	"github.com/hashicorp/go-dbw"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
-	"github.com/hashicorp/go-multierror"
 )
 
 const (
@@ -76,6 +76,9 @@ type Reader interface {
 type Writer interface {
 	// DoTx will wrap the TxHandler in a retryable transaction
 	DoTx(ctx context.Context, retries uint, backOff Backoff, Handler TxHandler) (RetryInfo, error)
+
+	// IsTx returns true if there's an existing transaction in progress
+	IsTx(ctx context.Context) bool
 
 	// Update an object in the db, fieldMask is required and provides
 	// field_mask.proto paths for fields that should be updated. The i interface
@@ -442,19 +445,24 @@ func (rw *Db) DoTx(ctx context.Context, retries uint, backOff Backoff, handler T
 			return info, errors.Wrap(ctx, err, op, errors.WithoutEvent())
 		}
 
-		var txnErr *multierror.Error
+		var txnErr error
 		if commitErr := beginTx.Commit(ctx); commitErr != nil {
-			txnErr = multierror.Append(txnErr, errors.Wrap(ctx, commitErr, op, errors.WithMsg("commit error")))
+			txnErr = stderrors.Join(txnErr, errors.Wrap(ctx, commitErr, op, errors.WithMsg("commit error")))
 			// unsure if rolling back is required or possible, but including
 			// this attempt to rollback on a commit error just in case it's
 			// possible.
 			if err := beginTx.Rollback(ctx); err != nil {
-				return info, multierror.Append(txnErr, errors.Wrap(ctx, err, op, errors.WithMsg("rollback error")))
+				return info, stderrors.Join(txnErr, errors.Wrap(ctx, err, op, errors.WithMsg("rollback error")))
 			}
 			return info, txnErr
 		}
 		return info, nil // it all worked!!!
 	}
+}
+
+// IsTx returns true if there's an existing transaction in progress
+func (rw *Db) IsTx(_ context.Context) bool {
+	return dbw.New(rw.underlying.wrapped.Load()).IsTx()
 }
 
 // LookupByPublicId will lookup resource by its public_id or private_id, which

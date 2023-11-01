@@ -162,12 +162,12 @@ func (w *Worker) upstreamDialerFunc(extraAlpnProtos ...string) func(context.Cont
 			default:
 				// In this case, event, so that the operator can understand that
 				// it was rejected
-				event.WriteError(ctx, op, fmt.Errorf("controller rejected activation token as invalid"))
+				event.WriteError(w.baseContext, op, fmt.Errorf("controller rejected activation token as invalid"))
 				return nil, errors.Wrap(w.baseContext, err, op)
 			}
 
 		default:
-			event.WriteError(ctx, op, err)
+			event.WriteError(w.baseContext, op, err)
 			return nil, errors.Wrap(w.baseContext, err, op)
 		}
 
@@ -176,7 +176,7 @@ func (w *Worker) upstreamDialerFunc(extraAlpnProtos ...string) func(context.Cont
 				w.everAuthenticated.Store(authenticationStatusFirstAuthentication)
 			}
 
-			event.WriteSysEvent(ctx, op, "worker has successfully authenticated")
+			event.WriteSysEvent(w.baseContext, op, "worker has successfully authenticated")
 		}
 
 		return conn, err
@@ -204,13 +204,13 @@ func (w *Worker) v1KmsAuthDialFn(ctx context.Context, addr string, extraAlpnProt
 	written, err := tlsConn.Write([]byte(authInfo.ConnectionNonce))
 	if err != nil {
 		if err := nonTlsConn.Close(); err != nil {
-			event.WriteError(ctx, op, err, event.WithInfoMsg("error closing connection after writing failure"))
+			event.WriteError(w.baseContext, op, err, event.WithInfoMsg("error closing connection after writing failure"))
 		}
 		return nil, fmt.Errorf("unable to write connection nonce: %w", err)
 	}
 	if written != len(authInfo.ConnectionNonce) {
 		if err := nonTlsConn.Close(); err != nil {
-			event.WriteError(ctx, op, err, event.WithInfoMsg("error closing connection after writing failure"))
+			event.WriteError(w.baseContext, op, err, event.WithInfoMsg("error closing connection after writing failure"))
 		}
 		return nil, fmt.Errorf("expected to write %d bytes of connection nonce, wrote %d", len(authInfo.ConnectionNonce), written)
 	}
@@ -434,13 +434,13 @@ func monitorUpstreamConnectionState(ctx context.Context, cc *grpc.ClientConn, co
 	}
 
 	for cc.WaitForStateChange(ctx, state) {
-		newState := cc.GetState()
+		state = cc.GetState()
 
 		// if the client is shutdown, exit function
-		if newState == connectivity.Shutdown {
+		if state == connectivity.Shutdown {
 			return
 		}
 
-		connectionState.Store(newState)
+		connectionState.Store(state)
 	}
 }

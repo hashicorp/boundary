@@ -31,7 +31,7 @@ type GetSessionRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 }
 
 func (x *GetSessionRequest) Reset() {
@@ -125,12 +125,12 @@ type ListSessionsRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	ScopeId   string `protobuf:"bytes,1,opt,name=scope_id,json=scopeId,proto3" json:"scope_id,omitempty" class:"public"` // @gotags: `class:"public"`
-	Recursive bool   `protobuf:"varint,20,opt,name=recursive,proto3" json:"recursive,omitempty" class:"public"`          // @gotags: `class:"public"`
+	ScopeId   string `protobuf:"bytes,1,opt,name=scope_id,json=scopeId,proto3" json:"scope_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	Recursive bool   `protobuf:"varint,20,opt,name=recursive,proto3" json:"recursive,omitempty" class:"public" eventstream:"observation"`          // @gotags: `class:"public" eventstream:"observation"`
 	Filter    string `protobuf:"bytes,30,opt,name=filter,proto3" json:"filter,omitempty" class:"public"`                 // @gotags: `class:"public"`
 	// Experimental. By default only non-terminated (i.e. pending, active, canceling) are returned.
 	// Set this option to include terminated sessions as well.
-	IncludeTerminated bool `protobuf:"varint,40,opt,name=include_terminated,proto3" json:"include_terminated,omitempty" class:"public"` // @gotags: `class:"public"`
+	IncludeTerminated bool `protobuf:"varint,40,opt,name=include_terminated,proto3" json:"include_terminated,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 }
 
 func (x *ListSessionsRequest) Reset() {
@@ -245,7 +245,7 @@ type CancelSessionRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id      string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public"`            // @gotags: `class:"public"`
+	Id      string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"`            // @gotags: `class:"public" eventstream:"observation"`
 	Version uint32 `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty" class:"public"` // @gotags: `class:"public"`
 }
 

@@ -44,14 +44,14 @@ var (
 
 	// IdActions contains the set of actions that can be performed on
 	// individual resources
-	IdActions = map[subtypes.Subtype]action.ActionSet{
-		oidc.Subtype: {
+	IdActions = map[globals.Subtype]action.ActionSet{
+		globals.OidcSubtype: {
 			action.NoOp,
 			action.Read,
 			action.Update,
 			action.Delete,
 		},
-		ldap.Subtype: {
+		globals.LdapSubtype: {
 			action.NoOp,
 			action.Read,
 			action.Update,
@@ -310,7 +310,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (auth.ManagedGroup,
 	var out auth.ManagedGroup
 	var memberIds []string
 	switch subtypes.SubtypeFromId(domain, id) {
-	case oidc.Subtype:
+	case globals.OidcSubtype:
 		repo, err := s.oidcRepoFn()
 		if err != nil {
 			return nil, nil, err
@@ -333,7 +333,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (auth.ManagedGroup,
 			}
 		}
 		out = mg
-	case ldap.Subtype:
+	case globals.LdapSubtype:
 		repo, err := s.ldapRepoFn()
 		if err != nil {
 			return nil, nil, err
@@ -433,7 +433,7 @@ func (s Service) createInRepo(ctx context.Context, am auth.AuthMethod, item *pb.
 	}
 	var out auth.ManagedGroup
 	switch subtypes.SubtypeFromId(domain, am.GetPublicId()) {
-	case oidc.Subtype:
+	case globals.OidcSubtype:
 		am, err := s.createOidcInRepo(ctx, am, item)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
@@ -442,7 +442,7 @@ func (s Service) createInRepo(ctx context.Context, am auth.AuthMethod, item *pb.
 			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create managed group but no error returned from repository.")
 		}
 		out = am
-	case ldap.Subtype:
+	case globals.LdapSubtype:
 		am, err := s.createLdapInRepo(ctx, am, item)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
@@ -535,7 +535,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, authMethodId string,
 	const op = "managed_groups.(Service).updateInRepo"
 	var out auth.ManagedGroup
 	switch subtypes.SubtypeFromId(domain, req.GetId()) {
-	case oidc.Subtype:
+	case globals.OidcSubtype:
 		mg, err := s.updateOidcInRepo(ctx, scopeId, authMethodId, req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
@@ -544,7 +544,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, authMethodId string,
 			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to update managed group but no error returned from repository.")
 		}
 		out = mg
-	case ldap.Subtype:
+	case globals.LdapSubtype:
 		mg, err := s.updateLdapInRepo(ctx, scopeId, authMethodId, req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
@@ -562,13 +562,13 @@ func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, 
 	var rows int
 	var err error
 	switch subtypes.SubtypeFromId(domain, id) {
-	case oidc.Subtype:
+	case globals.OidcSubtype:
 		repo, iErr := s.oidcRepoFn()
 		if iErr != nil {
 			return false, iErr
 		}
 		rows, err = repo.DeleteManagedGroup(ctx, scopeId, id)
-	case ldap.Subtype:
+	case globals.LdapSubtype:
 		repo, iErr := s.ldapRepoFn()
 		if iErr != nil {
 			return false, iErr
@@ -589,7 +589,7 @@ func (s Service) listFromRepo(ctx context.Context, authMethodId string) ([]auth.
 
 	var outUl []auth.ManagedGroup
 	switch subtypes.SubtypeFromId(domain, authMethodId) {
-	case oidc.Subtype:
+	case globals.OidcSubtype:
 		oidcRepo, err := s.oidcRepoFn()
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
@@ -601,7 +601,7 @@ func (s Service) listFromRepo(ctx context.Context, authMethodId string) ([]auth.
 		for _, a := range oidcl {
 			outUl = append(outUl, a)
 		}
-	case ldap.Subtype:
+	case globals.LdapSubtype:
 		ldapRepo, err := s.ldapRepoFn()
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
@@ -638,7 +638,7 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 		parentId = id
 	default:
 		switch subtypes.SubtypeFromId(domain, id) {
-		case oidc.Subtype:
+		case globals.OidcSubtype:
 			grp, err := oidcRepo.LookupManagedGroup(ctx, id)
 			if err != nil {
 				res.Error = err
@@ -649,7 +649,7 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 				return nil, res
 			}
 			parentId = grp.GetAuthMethodId()
-		case ldap.Subtype:
+		case globals.LdapSubtype:
 			grp, err := ldapRepo.LookupManagedGroup(ctx, id)
 			if err != nil {
 				res.Error = err
@@ -669,7 +669,7 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 
 	var authMeth auth.AuthMethod
 	switch subtypes.SubtypeFromId(domain, parentId) {
-	case oidc.Subtype:
+	case globals.OidcSubtype:
 		am, err := oidcRepo.LookupAuthMethod(ctx, parentId)
 		if err != nil {
 			res.Error = err
@@ -681,7 +681,7 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 		}
 		authMeth = am
 		opts = append(opts, requestauth.WithScopeId(am.GetScopeId()))
-	case ldap.Subtype:
+	case globals.LdapSubtype:
 		am, err := ldapRepo.LookupAuthMethod(ctx, parentId)
 		if err != nil {
 			res.Error = err
@@ -742,7 +742,7 @@ func toProto(ctx context.Context, in auth.ManagedGroup, opt ...handlers.Option) 
 	switch i := in.(type) {
 	case *oidc.ManagedGroup:
 		if outputFields.Has(globals.TypeField) {
-			out.Type = oidc.Subtype.String()
+			out.Type = globals.OidcSubtype.String()
 		}
 		if !outputFields.Has(globals.AttributesField) {
 			break
@@ -755,7 +755,7 @@ func toProto(ctx context.Context, in auth.ManagedGroup, opt ...handlers.Option) 
 		}
 	case *ldap.ManagedGroup:
 		if outputFields.Has(globals.TypeField) {
-			out.Type = ldap.Subtype.String()
+			out.Type = globals.LdapSubtype.String()
 		}
 		if !outputFields.Has(globals.AttributesField) {
 			break
@@ -800,8 +800,8 @@ func validateCreateRequest(ctx context.Context, req *pbs.CreateManagedGroupReque
 			badFields[globals.AuthMethodIdField] = "This field is required."
 		}
 		switch subtypes.SubtypeFromId(domain, req.GetItem().GetAuthMethodId()) {
-		case oidc.Subtype:
-			if req.GetItem().GetType() != "" && req.GetItem().GetType() != oidc.Subtype.String() {
+		case globals.OidcSubtype:
+			if req.GetItem().GetType() != "" && req.GetItem().GetType() != globals.OidcSubtype.String() {
 				badFields[globals.TypeField] = "Doesn't match the parent resource's type."
 			}
 			attrs := req.GetItem().GetOidcManagedGroupAttributes()
@@ -816,8 +816,8 @@ func validateCreateRequest(ctx context.Context, req *pbs.CreateManagedGroupReque
 					}
 				}
 			}
-		case ldap.Subtype:
-			if req.GetItem().GetType() != "" && req.GetItem().GetType() != ldap.Subtype.String() {
+		case globals.LdapSubtype:
+			if req.GetItem().GetType() != "" && req.GetItem().GetType() != globals.LdapSubtype.String() {
 				badFields[globals.TypeField] = "Doesn't match the parent resource's type."
 			}
 			attrs := req.GetItem().GetLdapManagedGroupAttributes()
@@ -843,8 +843,8 @@ func validateUpdateRequest(ctx context.Context, req *pbs.UpdateManagedGroupReque
 	return handlers.ValidateUpdateRequest(req, req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
 		switch subtypes.SubtypeFromId(domain, req.GetId()) {
-		case oidc.Subtype:
-			if req.GetItem().GetType() != "" && req.GetItem().GetType() != oidc.Subtype.String() {
+		case globals.OidcSubtype:
+			if req.GetItem().GetType() != "" && req.GetItem().GetType() != globals.OidcSubtype.String() {
 				badFields[globals.TypeField] = "Cannot modify the resource type."
 			}
 			attrs := req.GetItem().GetOidcManagedGroupAttributes()
@@ -862,8 +862,8 @@ func validateUpdateRequest(ctx context.Context, req *pbs.UpdateManagedGroupReque
 					}
 				}
 			}
-		case ldap.Subtype:
-			if req.GetItem().GetType() != "" && req.GetItem().GetType() != ldap.Subtype.String() {
+		case globals.LdapSubtype:
+			if req.GetItem().GetType() != "" && req.GetItem().GetType() != globals.LdapSubtype.String() {
 				badFields[globals.TypeField] = "Cannot modify the resource type."
 			}
 			attrs := req.GetItem().GetLdapManagedGroupAttributes()

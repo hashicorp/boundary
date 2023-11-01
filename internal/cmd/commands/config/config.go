@@ -15,7 +15,7 @@ type Command struct {
 }
 
 func (c *Command) Synopsis() string {
-	return "Manage resources related to Boundary's local configuration"
+	return "Manage the local client's configuration"
 }
 
 func (c *Command) Help() string {

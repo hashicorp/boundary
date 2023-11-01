@@ -14,5 +14,14 @@ project {
     "website/prettier.config.js",
     "**/*_ent.*",
     "**/*_ent_test.*",
+
+    # licensed under MPL - ignoring for now until the copywrite tool can support
+    # multiple licenses per repo.
+    "api/**",
+    "sdk/**",
+    "internal/proto/plugin/**",
+    "internal/proto/controller/custom_options/**", 
+    "internal/proto/controller/api/**",
+    "internal/proto/worker/proxy/v1/**",
   ]
 }

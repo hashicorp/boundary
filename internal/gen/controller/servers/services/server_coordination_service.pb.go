@@ -328,7 +328,7 @@ type Connection struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	ConnectionId string           `protobuf:"bytes,1,opt,name=connection_id,json=connectionId,proto3" json:"connection_id,omitempty" class:"public"` // @gotags: `class:"public"`
+	ConnectionId string           `protobuf:"bytes,1,opt,name=connection_id,json=connectionId,proto3" json:"connection_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	Status       CONNECTIONSTATUS `protobuf:"varint,2,opt,name=status,proto3,enum=controller.servers.services.v1.CONNECTIONSTATUS" json:"status,omitempty"`
 	BytesUp      int64            `protobuf:"varint,3,opt,name=bytes_up,json=bytesUp,proto3" json:"bytes_up,omitempty" class:"public"`       // @gotags: `class:"public"`
 	BytesDown    int64            `protobuf:"varint,4,opt,name=bytes_down,json=bytesDown,proto3" json:"bytes_down,omitempty" class:"public"` // @gotags: `class:"public"`
@@ -399,7 +399,7 @@ type SessionJobInfo struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	SessionId       string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty" class:"public"` // @gotags: `class:"public"`
+	SessionId       string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	Status          SESSIONSTATUS          `protobuf:"varint,2,opt,name=status,proto3,enum=controller.servers.services.v1.SESSIONSTATUS" json:"status,omitempty"`
 	Connections     []*Connection          `protobuf:"bytes,3,rep,name=connections,proto3" json:"connections,omitempty"`
 	ProcessingError SessionProcessingError `protobuf:"varint,4,opt,name=processing_error,json=processingError,proto3,enum=controller.servers.services.v1.SessionProcessingError" json:"processing_error,omitempty" class:"public"` // @gotags: `class:"public"`
@@ -470,7 +470,7 @@ type MonitorSessionJobInfo struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	SessionId       string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty" class:"public"`                                                                               // @gotags: `class:"public"`
+	SessionId       string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty" class:"public" eventstream:"observation"`                                                                               // @gotags: `class:"public" eventstream:"observation"`
 	Status          SESSIONSTATUS          `protobuf:"varint,2,opt,name=status,proto3,enum=controller.servers.services.v1.SESSIONSTATUS" json:"status,omitempty" class:"public"`                                                   // @gotags: `class:"public"`
 	ProcessingError SessionProcessingError `protobuf:"varint,3,opt,name=processing_error,json=processingError,proto3,enum=controller.servers.services.v1.SessionProcessingError" json:"processing_error,omitempty" class:"public"` // @gotags: `class:"public"`
 }
@@ -1014,7 +1014,7 @@ type StatusResponse struct {
 	CalculatedUpstreams []*UpstreamServer `protobuf:"bytes,30,rep,name=calculated_upstreams,json=calculatedUpstreams,proto3" json:"calculated_upstreams,omitempty"`
 	// The ID of the worker which made the request. The worker can send this value in subsequent requests so the
 	// controller does not need to do a database lookup for the id using the name field.
-	WorkerId string `protobuf:"bytes,40,opt,name=worker_id,json=workerId,proto3" json:"worker_id,omitempty" class:"public"` // @gotags: `class:"public"`
+	WorkerId string `protobuf:"bytes,40,opt,name=worker_id,json=workerId,proto3" json:"worker_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Of the worker key identifiers provided in the request, these are the ones
 	// which are authorized to remain connected.
 	// This is deprecated.  Use authorized_downstream_workers instead. This

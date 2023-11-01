@@ -235,3 +235,21 @@ func TestDb_Create_OnConflict(t *testing.T) {
 		assert.Equal(conflictUser.Name, foundUser.Name)
 	})
 }
+
+func TestRW_IsTx(t *testing.T) {
+	t.Parallel()
+	testCtx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+
+	assert, require := assert.New(t), require.New(t)
+
+	assert.False(rw.IsTx(testCtx))
+
+	_, err := rw.DoTx(context.Background(), 10, db.ExpBackoff{},
+		func(_ db.Reader, txWriter db.Writer) error {
+			assert.True(txWriter.IsTx(testCtx))
+			return nil
+		})
+	require.NoError(err)
+}

@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -19,6 +20,7 @@ import (
 	"github.com/hashicorp/boundary/internal/util/template"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/crypto/ssh"
 )
 
 func TestRepository_getPrivateLibraries(t *testing.T) {
@@ -122,7 +124,7 @@ func TestRepository_getPrivateLibraries(t *testing.T) {
 			}
 			{
 				opts := []Option{
-					WithCredentialType(credential.UsernamePasswordType),
+					WithCredentialType(globals.UsernamePasswordCredentialType),
 				}
 				libIn, err := NewCredentialLibrary(origStore.GetPublicId(), "/vault/path", opts...)
 				assert.NoError(err)
@@ -136,7 +138,7 @@ func TestRepository_getPrivateLibraries(t *testing.T) {
 			}
 			{
 				opts := []Option{
-					WithCredentialType(credential.UsernamePasswordType),
+					WithCredentialType(globals.UsernamePasswordCredentialType),
 					WithMappingOverride(NewUsernamePasswordOverride(
 						WithOverrideUsernameAttribute("test-username"),
 					)),
@@ -153,7 +155,7 @@ func TestRepository_getPrivateLibraries(t *testing.T) {
 			}
 			{
 				opts := []Option{
-					WithCredentialType(credential.UsernamePasswordType),
+					WithCredentialType(globals.UsernamePasswordCredentialType),
 					WithMappingOverride(NewUsernamePasswordOverride(
 						WithOverridePasswordAttribute("test-password"),
 					)),
@@ -170,7 +172,7 @@ func TestRepository_getPrivateLibraries(t *testing.T) {
 			}
 			{
 				opts := []Option{
-					WithCredentialType(credential.UsernamePasswordType),
+					WithCredentialType(globals.UsernamePasswordCredentialType),
 					WithMappingOverride(NewUsernamePasswordOverride(
 						WithOverrideUsernameAttribute("test-username"),
 						WithOverridePasswordAttribute("test-password"),
@@ -188,7 +190,7 @@ func TestRepository_getPrivateLibraries(t *testing.T) {
 			}
 			{
 				opts := []Option{
-					WithCredentialType(credential.SshPrivateKeyType),
+					WithCredentialType(globals.SshPrivateKeyCredentialType),
 				}
 				libIn, err := NewCredentialLibrary(origStore.GetPublicId(), "/vault/path", opts...)
 				assert.NoError(err)
@@ -202,7 +204,7 @@ func TestRepository_getPrivateLibraries(t *testing.T) {
 			}
 			{
 				opts := []Option{
-					WithCredentialType(credential.SshPrivateKeyType),
+					WithCredentialType(globals.SshPrivateKeyCredentialType),
 					WithMappingOverride(NewSshPrivateKeyOverride(
 						WithOverrideUsernameAttribute("test-username"),
 					)),
@@ -219,7 +221,7 @@ func TestRepository_getPrivateLibraries(t *testing.T) {
 			}
 			{
 				opts := []Option{
-					WithCredentialType(credential.SshPrivateKeyType),
+					WithCredentialType(globals.SshPrivateKeyCredentialType),
 					WithMappingOverride(NewSshPrivateKeyOverride(
 						WithOverridePrivateKeyAttribute("test-private-key"),
 					)),
@@ -236,7 +238,7 @@ func TestRepository_getPrivateLibraries(t *testing.T) {
 			}
 			{
 				opts := []Option{
-					WithCredentialType(credential.SshPrivateKeyType),
+					WithCredentialType(globals.SshPrivateKeyCredentialType),
 					WithMappingOverride(NewSshPrivateKeyOverride(
 						WithOverridePrivateKeyPassphraseAttribute("test-passphrase"),
 					)),
@@ -253,7 +255,7 @@ func TestRepository_getPrivateLibraries(t *testing.T) {
 			}
 			{
 				opts := []Option{
-					WithCredentialType(credential.SshPrivateKeyType),
+					WithCredentialType(globals.SshPrivateKeyCredentialType),
 					WithMappingOverride(NewSshPrivateKeyOverride(
 						WithOverrideUsernameAttribute("test-username"),
 						WithOverridePrivateKeyAttribute("test-private-key"),
@@ -427,7 +429,7 @@ func TestBaseToUsrPass(t *testing.T) {
 			name: "library-not-username-password-type",
 			given: &baseCred{
 				lib: &genericIssuingCredentialLibrary{
-					CredType: string(credential.UnspecifiedType),
+					CredType: string(globals.UnspecifiedCredentialType),
 				},
 			},
 			wantErr: errors.InvalidParameter,
@@ -436,7 +438,7 @@ func TestBaseToUsrPass(t *testing.T) {
 			name: "invalid-no-username-default-password-attribute",
 			given: &baseCred{
 				lib: &genericIssuingCredentialLibrary{
-					CredType: string(credential.UsernamePasswordType),
+					CredType: string(globals.UsernamePasswordCredentialType),
 				},
 				secretData: map[string]any{
 					"password": "my-password",
@@ -448,7 +450,7 @@ func TestBaseToUsrPass(t *testing.T) {
 			name: "invalid-no-password-default-username-attribute",
 			given: &baseCred{
 				lib: &genericIssuingCredentialLibrary{
-					CredType: string(credential.UsernamePasswordType),
+					CredType: string(globals.UsernamePasswordCredentialType),
 				},
 				secretData: map[string]any{
 					"username": "my-username",
@@ -460,7 +462,7 @@ func TestBaseToUsrPass(t *testing.T) {
 			name: "valid-default-attributes",
 			given: &baseCred{
 				lib: &genericIssuingCredentialLibrary{
-					CredType: string(credential.UsernamePasswordType),
+					CredType: string(globals.UsernamePasswordCredentialType),
 				},
 				secretData: map[string]any{
 					"username": "my-username",
@@ -476,7 +478,7 @@ func TestBaseToUsrPass(t *testing.T) {
 			name: "valid-override-attributes",
 			given: &baseCred{
 				lib: &genericIssuingCredentialLibrary{
-					CredType:          string(credential.UsernamePasswordType),
+					CredType:          string(globals.UsernamePasswordCredentialType),
 					UsernameAttribute: "test-username",
 					PasswordAttribute: "test-password",
 				},
@@ -496,7 +498,7 @@ func TestBaseToUsrPass(t *testing.T) {
 			name: "valid-default-username-override-password",
 			given: &baseCred{
 				lib: &genericIssuingCredentialLibrary{
-					CredType:          string(credential.UsernamePasswordType),
+					CredType:          string(globals.UsernamePasswordCredentialType),
 					PasswordAttribute: "test-password",
 				},
 				secretData: map[string]any{
@@ -515,7 +517,7 @@ func TestBaseToUsrPass(t *testing.T) {
 			name: "valid-override-username-default-password",
 			given: &baseCred{
 				lib: &genericIssuingCredentialLibrary{
-					CredType:          string(credential.UsernamePasswordType),
+					CredType:          string(globals.UsernamePasswordCredentialType),
 					UsernameAttribute: "test-username",
 				},
 				secretData: map[string]any{
@@ -534,7 +536,7 @@ func TestBaseToUsrPass(t *testing.T) {
 			name: "invalid-username-override",
 			given: &baseCred{
 				lib: &genericIssuingCredentialLibrary{
-					CredType:          string(credential.UsernamePasswordType),
+					CredType:          string(globals.UsernamePasswordCredentialType),
 					UsernameAttribute: "missing-username",
 				},
 				secretData: map[string]any{
@@ -550,7 +552,7 @@ func TestBaseToUsrPass(t *testing.T) {
 			name: "invalid-password-override",
 			given: &baseCred{
 				lib: &genericIssuingCredentialLibrary{
-					CredType:          string(credential.UsernamePasswordType),
+					CredType:          string(globals.UsernamePasswordCredentialType),
 					UsernameAttribute: "missing-password",
 				},
 				secretData: map[string]any{
@@ -566,7 +568,7 @@ func TestBaseToUsrPass(t *testing.T) {
 			name: "invalid-kv2-no-metadata-field",
 			given: &baseCred{
 				lib: &genericIssuingCredentialLibrary{
-					CredType: string(credential.UsernamePasswordType),
+					CredType: string(globals.UsernamePasswordCredentialType),
 				},
 				secretData: map[string]any{
 					"data": map[string]any{
@@ -581,7 +583,7 @@ func TestBaseToUsrPass(t *testing.T) {
 			name: "invalid-kv2-no-data-field",
 			given: &baseCred{
 				lib: &genericIssuingCredentialLibrary{
-					CredType: string(credential.UsernamePasswordType),
+					CredType: string(globals.UsernamePasswordCredentialType),
 				},
 				secretData: map[string]any{
 					"metadata": map[string]any{},
@@ -593,7 +595,7 @@ func TestBaseToUsrPass(t *testing.T) {
 			name: "invalid-kv2-no-username-default-password-attribute",
 			given: &baseCred{
 				lib: &genericIssuingCredentialLibrary{
-					CredType: string(credential.UsernamePasswordType),
+					CredType: string(globals.UsernamePasswordCredentialType),
 				},
 				secretData: map[string]any{
 					"metadata": map[string]any{},
@@ -608,7 +610,7 @@ func TestBaseToUsrPass(t *testing.T) {
 			name: "invalid-kv2-no-passsword-default-username-attribute",
 			given: &baseCred{
 				lib: &genericIssuingCredentialLibrary{
-					CredType: string(credential.UsernamePasswordType),
+					CredType: string(globals.UsernamePasswordCredentialType),
 				},
 				secretData: map[string]any{
 					"metadata": map[string]any{},
@@ -623,7 +625,7 @@ func TestBaseToUsrPass(t *testing.T) {
 			name: "invalid-kv2-invalid-metadata-type",
 			given: &baseCred{
 				lib: &genericIssuingCredentialLibrary{
-					CredType: string(credential.UsernamePasswordType),
+					CredType: string(globals.UsernamePasswordCredentialType),
 				},
 				secretData: map[string]any{
 					"metadata": "hello",
@@ -639,7 +641,7 @@ func TestBaseToUsrPass(t *testing.T) {
 			name: "invalid-kv2-invalid-metadata-type",
 			given: &baseCred{
 				lib: &genericIssuingCredentialLibrary{
-					CredType: string(credential.UsernamePasswordType),
+					CredType: string(globals.UsernamePasswordCredentialType),
 				},
 				secretData: map[string]any{
 					"metadata": map[string]any{},
@@ -652,7 +654,7 @@ func TestBaseToUsrPass(t *testing.T) {
 			name: "invalid-kv2-additional-field",
 			given: &baseCred{
 				lib: &genericIssuingCredentialLibrary{
-					CredType: string(credential.UsernamePasswordType),
+					CredType: string(globals.UsernamePasswordCredentialType),
 				},
 				secretData: map[string]any{
 					"bad-field": "hello",
@@ -669,7 +671,7 @@ func TestBaseToUsrPass(t *testing.T) {
 			name: "valid-kv2-default-attributes",
 			given: &baseCred{
 				lib: &genericIssuingCredentialLibrary{
-					CredType: string(credential.UsernamePasswordType),
+					CredType: string(globals.UsernamePasswordCredentialType),
 				},
 				secretData: map[string]any{
 					"metadata": map[string]any{},
@@ -688,7 +690,7 @@ func TestBaseToUsrPass(t *testing.T) {
 			name: "valid-kv2-override-attributes",
 			given: &baseCred{
 				lib: &genericIssuingCredentialLibrary{
-					CredType:          string(credential.UsernamePasswordType),
+					CredType:          string(globals.UsernamePasswordCredentialType),
 					UsernameAttribute: "test-username",
 					PasswordAttribute: "test-password",
 				},
@@ -711,7 +713,7 @@ func TestBaseToUsrPass(t *testing.T) {
 			name: "valid-kv2-default-username-override-password",
 			given: &baseCred{
 				lib: &genericIssuingCredentialLibrary{
-					CredType:          string(credential.UsernamePasswordType),
+					CredType:          string(globals.UsernamePasswordCredentialType),
 					PasswordAttribute: "test-password",
 				},
 				secretData: map[string]any{
@@ -733,7 +735,7 @@ func TestBaseToUsrPass(t *testing.T) {
 			name: "valid-kv2-override-username-default-password",
 			given: &baseCred{
 				lib: &genericIssuingCredentialLibrary{
-					CredType:          string(credential.UsernamePasswordType),
+					CredType:          string(globals.UsernamePasswordCredentialType),
 					UsernameAttribute: "test-username",
 				},
 				secretData: map[string]any{
@@ -792,7 +794,7 @@ func TestBaseToSshPriKey(t *testing.T) {
 			name: "library-not-ssh-private-key-type",
 			given: &baseCred{
 				lib: &genericIssuingCredentialLibrary{
-					CredType: string(credential.UnspecifiedType),
+					CredType: string(globals.UnspecifiedCredentialType),
 				},
 			},
 			wantErr: errors.InvalidParameter,
@@ -801,7 +803,7 @@ func TestBaseToSshPriKey(t *testing.T) {
 			name: "invalid-no-username-default-pk-attribute",
 			given: &baseCred{
 				lib: &genericIssuingCredentialLibrary{
-					CredType: string(credential.SshPrivateKeyType),
+					CredType: string(globals.SshPrivateKeyCredentialType),
 				},
 				secretData: map[string]any{
 					"private_key": "my-pk",
@@ -813,7 +815,7 @@ func TestBaseToSshPriKey(t *testing.T) {
 			name: "invalid-no-pk-default-username-attribute",
 			given: &baseCred{
 				lib: &genericIssuingCredentialLibrary{
-					CredType: string(credential.SshPrivateKeyType),
+					CredType: string(globals.SshPrivateKeyCredentialType),
 				},
 				secretData: map[string]any{
 					"username": "my-username",
@@ -825,7 +827,7 @@ func TestBaseToSshPriKey(t *testing.T) {
 			name: "valid-default-attributes",
 			given: &baseCred{
 				lib: &genericIssuingCredentialLibrary{
-					CredType: string(credential.SshPrivateKeyType),
+					CredType: string(globals.SshPrivateKeyCredentialType),
 				},
 				secretData: map[string]any{
 					"username":    "my-username",
@@ -841,7 +843,7 @@ func TestBaseToSshPriKey(t *testing.T) {
 			name: "valid-default-attributes-with-passphrase",
 			given: &baseCred{
 				lib: &genericIssuingCredentialLibrary{
-					CredType: string(credential.SshPrivateKeyType),
+					CredType: string(globals.SshPrivateKeyCredentialType),
 				},
 				secretData: map[string]any{
 					"username":               "my-username",
@@ -859,7 +861,7 @@ func TestBaseToSshPriKey(t *testing.T) {
 			name: "valid-override-attributes",
 			given: &baseCred{
 				lib: &genericIssuingCredentialLibrary{
-					CredType:            string(credential.SshPrivateKeyType),
+					CredType:            string(globals.SshPrivateKeyCredentialType),
 					UsernameAttribute:   "test-username",
 					PrivateKeyAttribute: "test-pk",
 				},
@@ -879,7 +881,7 @@ func TestBaseToSshPriKey(t *testing.T) {
 			name: "valid-override-attributes-with-passphrase",
 			given: &baseCred{
 				lib: &genericIssuingCredentialLibrary{
-					CredType:                      string(credential.SshPrivateKeyType),
+					CredType:                      string(globals.SshPrivateKeyCredentialType),
 					UsernameAttribute:             "test-username",
 					PrivateKeyAttribute:           "test-pk",
 					PrivateKeyPassphraseAttribute: "test-pass",
@@ -903,7 +905,7 @@ func TestBaseToSshPriKey(t *testing.T) {
 			name: "valid-default-username-override-pk",
 			given: &baseCred{
 				lib: &genericIssuingCredentialLibrary{
-					CredType:            string(credential.SshPrivateKeyType),
+					CredType:            string(globals.SshPrivateKeyCredentialType),
 					PrivateKeyAttribute: "test-pk",
 				},
 				secretData: map[string]any{
@@ -922,7 +924,7 @@ func TestBaseToSshPriKey(t *testing.T) {
 			name: "valid-override-username-default-pk",
 			given: &baseCred{
 				lib: &genericIssuingCredentialLibrary{
-					CredType:          string(credential.SshPrivateKeyType),
+					CredType:          string(globals.SshPrivateKeyCredentialType),
 					UsernameAttribute: "test-username",
 				},
 				secretData: map[string]any{
@@ -941,7 +943,7 @@ func TestBaseToSshPriKey(t *testing.T) {
 			name: "invalid-username-override",
 			given: &baseCred{
 				lib: &genericIssuingCredentialLibrary{
-					CredType:          string(credential.SshPrivateKeyType),
+					CredType:          string(globals.SshPrivateKeyCredentialType),
 					UsernameAttribute: "missing-username",
 				},
 				secretData: map[string]any{
@@ -957,7 +959,7 @@ func TestBaseToSshPriKey(t *testing.T) {
 			name: "invalid-pk-override",
 			given: &baseCred{
 				lib: &genericIssuingCredentialLibrary{
-					CredType:          string(credential.SshPrivateKeyType),
+					CredType:          string(globals.SshPrivateKeyCredentialType),
 					UsernameAttribute: "missing-pk",
 				},
 				secretData: map[string]any{
@@ -973,7 +975,7 @@ func TestBaseToSshPriKey(t *testing.T) {
 			name: "invalid-kv2-no-metadata-field",
 			given: &baseCred{
 				lib: &genericIssuingCredentialLibrary{
-					CredType: string(credential.SshPrivateKeyType),
+					CredType: string(globals.SshPrivateKeyCredentialType),
 				},
 				secretData: map[string]any{
 					"data": map[string]any{
@@ -988,7 +990,7 @@ func TestBaseToSshPriKey(t *testing.T) {
 			name: "invalid-kv2-no-data-field",
 			given: &baseCred{
 				lib: &genericIssuingCredentialLibrary{
-					CredType: string(credential.SshPrivateKeyType),
+					CredType: string(globals.SshPrivateKeyCredentialType),
 				},
 				secretData: map[string]any{
 					"metadata": map[string]any{},
@@ -1000,7 +1002,7 @@ func TestBaseToSshPriKey(t *testing.T) {
 			name: "invalid-kv2-no-username-default-pk-attribute",
 			given: &baseCred{
 				lib: &genericIssuingCredentialLibrary{
-					CredType: string(credential.SshPrivateKeyType),
+					CredType: string(globals.SshPrivateKeyCredentialType),
 				},
 				secretData: map[string]any{
 					"metadata": map[string]any{},
@@ -1015,7 +1017,7 @@ func TestBaseToSshPriKey(t *testing.T) {
 			name: "invalid-kv2-no-pk-default-username-attribute",
 			given: &baseCred{
 				lib: &genericIssuingCredentialLibrary{
-					CredType: string(credential.SshPrivateKeyType),
+					CredType: string(globals.SshPrivateKeyCredentialType),
 				},
 				secretData: map[string]any{
 					"metadata": map[string]any{},
@@ -1030,7 +1032,7 @@ func TestBaseToSshPriKey(t *testing.T) {
 			name: "invalid-kv2-invalid-metadata-type",
 			given: &baseCred{
 				lib: &genericIssuingCredentialLibrary{
-					CredType: string(credential.SshPrivateKeyType),
+					CredType: string(globals.SshPrivateKeyCredentialType),
 				},
 				secretData: map[string]any{
 					"metadata": "hello",
@@ -1046,7 +1048,7 @@ func TestBaseToSshPriKey(t *testing.T) {
 			name: "invalid-kv2-invalid-data-type",
 			given: &baseCred{
 				lib: &genericIssuingCredentialLibrary{
-					CredType: string(credential.SshPrivateKeyType),
+					CredType: string(globals.SshPrivateKeyCredentialType),
 				},
 				secretData: map[string]any{
 					"metadata": map[string]any{},
@@ -1059,7 +1061,7 @@ func TestBaseToSshPriKey(t *testing.T) {
 			name: "invalid-kv2-additional-field",
 			given: &baseCred{
 				lib: &genericIssuingCredentialLibrary{
-					CredType: string(credential.SshPrivateKeyType),
+					CredType: string(globals.SshPrivateKeyCredentialType),
 				},
 				secretData: map[string]any{
 					"bad-field": "hello",
@@ -1076,7 +1078,7 @@ func TestBaseToSshPriKey(t *testing.T) {
 			name: "valid-kv2-default-attributes",
 			given: &baseCred{
 				lib: &genericIssuingCredentialLibrary{
-					CredType: string(credential.SshPrivateKeyType),
+					CredType: string(globals.SshPrivateKeyCredentialType),
 				},
 				secretData: map[string]any{
 					"metadata": map[string]any{},
@@ -1095,7 +1097,7 @@ func TestBaseToSshPriKey(t *testing.T) {
 			name: "valid-kv2-default-attributes-with-passphrase",
 			given: &baseCred{
 				lib: &genericIssuingCredentialLibrary{
-					CredType: string(credential.SshPrivateKeyType),
+					CredType: string(globals.SshPrivateKeyCredentialType),
 				},
 				secretData: map[string]any{
 					"metadata": map[string]any{},
@@ -1116,7 +1118,7 @@ func TestBaseToSshPriKey(t *testing.T) {
 			name: "valid-kv2-override-attributes",
 			given: &baseCred{
 				lib: &genericIssuingCredentialLibrary{
-					CredType:            string(credential.SshPrivateKeyType),
+					CredType:            string(globals.SshPrivateKeyCredentialType),
 					UsernameAttribute:   "test-username",
 					PrivateKeyAttribute: "test-pk",
 				},
@@ -1139,7 +1141,7 @@ func TestBaseToSshPriKey(t *testing.T) {
 			name: "valid-kv2-override-attributes-with-passphrase",
 			given: &baseCred{
 				lib: &genericIssuingCredentialLibrary{
-					CredType:                      string(credential.SshPrivateKeyType),
+					CredType:                      string(globals.SshPrivateKeyCredentialType),
 					UsernameAttribute:             "test-username",
 					PrivateKeyAttribute:           "test-pk",
 					PrivateKeyPassphraseAttribute: "test-pass",
@@ -1166,7 +1168,7 @@ func TestBaseToSshPriKey(t *testing.T) {
 			name: "valid-kv2-default-username-override-pk",
 			given: &baseCred{
 				lib: &genericIssuingCredentialLibrary{
-					CredType:            string(credential.SshPrivateKeyType),
+					CredType:            string(globals.SshPrivateKeyCredentialType),
 					PrivateKeyAttribute: "test-pk",
 				},
 				secretData: map[string]any{
@@ -1188,7 +1190,7 @@ func TestBaseToSshPriKey(t *testing.T) {
 			name: "valid-kv2-override-username-default-pk",
 			given: &baseCred{
 				lib: &genericIssuingCredentialLibrary{
-					CredType:          string(credential.SshPrivateKeyType),
+					CredType:          string(globals.SshPrivateKeyCredentialType),
 					UsernameAttribute: "test-username",
 				},
 				secretData: map[string]any{
@@ -1269,7 +1271,7 @@ func TestRepository_sshCertIssuingCredentialLibrary_retrieveCredential(t *testin
 		vaulthPath string
 		opts       []Option
 		retOpts    []credential.Option
-		expected   map[string]string
+		expected   map[string]any
 	}{
 		{
 			name:       "vault sign boundary ed25519 key",
@@ -1322,8 +1324,9 @@ func TestRepository_sshCertIssuingCredentialLibrary_retrieveCredential(t *testin
 		{
 			name:     "vault issue ec(256) cert with template username",
 			username: "username-8-{{ .User.Name }}",
-			expected: map[string]string{
-				"username": "username-8-revenge-of-the-template",
+			expected: map[string]any{
+				"username":         "username-8-revenge-of-the-template",
+				"valid_principals": []string{"username-8-revenge-of-the-template"},
 			},
 			vaulthPath: "ssh/issue/boundary",
 			opts:       []Option{WithKeyType(KeyTypeEcdsa), WithKeyBits(256)},
@@ -1332,11 +1335,20 @@ func TestRepository_sshCertIssuingCredentialLibrary_retrieveCredential(t *testin
 		{
 			name:     "vault issue ec(384) cert with disallowed extension",
 			username: "username-10-because-789",
-			expected: map[string]string{
+			expected: map[string]any{
 				"error": "extensions [permit-port-forwarding] are not on allowed list",
 			},
 			vaulthPath: "ssh/issue/boundary",
 			opts:       []Option{WithKeyType(KeyTypeEcdsa), WithKeyBits(384), WithExtensions("{ \"permit-port-forwarding\": \"\" }")},
+		},
+		{
+			name:     "vault issue ed25519 cert with additional valid principals",
+			username: "no-one-expects-the-spanish-inquisition",
+			expected: map[string]any{
+				"valid_principals": []string{"no-one-expects-the-spanish-inquisition", "test-principal"},
+			},
+			vaulthPath: "ssh/issue/boundary",
+			opts:       []Option{WithKeyType(KeyTypeEd25519), WithAdditionalValidPrincipals([]string{"test-principal"})},
 		},
 	}
 
@@ -1370,21 +1382,34 @@ func TestRepository_sshCertIssuingCredentialLibrary_retrieveCredential(t *testin
 
 			cred, err := libs[0].retrieveCredential(ctx, "op", tt.retOpts...)
 			if retErr, ok := tt.expected["error"]; ok {
-				require.ErrorContains(err, retErr)
+				require.ErrorContains(err, retErr.(string))
 				return // retrieveCredential failed (as expected) don't do the rest of the checks
 			}
 			require.NoError(err)
 
-			cert, ok := cred.(*sshCertCred)
+			sshCert, ok := cred.(*sshCertCred)
 			require.True(ok)
 
 			if usr, ok := tt.expected["username"]; ok {
-				require.Equal(usr, cert.username)
+				require.Equal(usr, sshCert.username)
 			}
 
 			// TODO: somehow check that the ssh cert matches the private key
 			// for now, manually check that private key and cert match and that sign/issue both return correct formats
-			fmt.Printf("test: %s\npriv:\n%s\ncert:\n%s\n", tt.name, string(cert.privateKey), string(cert.certificate))
+			fmt.Printf("test: %s\npriv:\n%s\ncert:\n%s\n", tt.name, string(sshCert.privateKey), string(sshCert.certificate))
+			pub, _, _, _, err := ssh.ParseAuthorizedKey(sshCert.certificate)
+			require.NoError(err)
+			priv, err := ssh.ParsePrivateKey(sshCert.privateKey)
+			require.NoError(err)
+			cert, ok := pub.(*ssh.Certificate)
+			require.True(ok)
+
+			// ensure both keys are the same type
+			require.Equal(priv.PublicKey().Type(), cert.Key.Type())
+
+			if vp, ok := tt.expected["valid_principals"]; ok {
+				require.Equal(vp, cert.ValidPrincipals)
+			}
 
 			// ensure credential matches expected SshCertificate
 			_, ok = cred.(credential.SshCertificate)

@@ -54,6 +54,16 @@ variable "worker_tag" {
   type        = string
   default     = "collocated"
 }
+variable "get_auth_token" {
+  description = "Flag to retrieve a boundary auth token"
+  type        = bool
+  default     = false
+}
+variable "get_worker_token" {
+  description = "Flag to retrieve a boundary worker token"
+  type        = bool
+  default     = false
+}
 
 resource "docker_image" "boundary" {
   name         = var.image_name
@@ -150,6 +160,47 @@ resource "enos_local_exec" "check_health" {
   inline = ["timeout 10s bash -c 'until curl -i http://0.0.0.0:9203/health; do sleep 2; done'"]
 }
 
+resource "enos_local_exec" "get_auth_token" {
+  count      = var.get_auth_token ? 1 : 0
+  depends_on = [enos_local_exec.check_health]
+  environment = {
+    TEST_BOUNDARY_IMAGE           = var.image_name
+    BOUNDARY_ADDR                 = local.address
+    TEST_NETWORK_NAME             = var.network_name[0]
+    E2E_PASSWORD_ADMIN_LOGIN_NAME = local.login_name
+    E2E_PASSWORD_ADMIN_PASSWORD   = local.password
+    MODULE_DIR                    = abspath(path.module)
+    SCRIPT                        = "${abspath(path.module)}/get_auth_token.sh"
+  }
+  inline = ["bash ./${path.module}/script_runner.sh"]
+}
+
+locals {
+  auth_info  = var.get_auth_token ? jsondecode(enos_local_exec.get_auth_token[0].stdout) : null
+  auth_token = var.get_auth_token ? local.auth_info["item"]["attributes"]["token"] : ""
+}
+
+resource "enos_local_exec" "get_worker_token" {
+  count      = var.get_worker_token ? 1 : 0
+  depends_on = [enos_local_exec.check_health]
+  environment = {
+    TEST_BOUNDARY_IMAGE           = var.image_name,
+    BOUNDARY_ADDR                 = local.address
+    TEST_NETWORK_NAME             = var.network_name[0]
+    E2E_PASSWORD_ADMIN_LOGIN_NAME = local.login_name
+    E2E_PASSWORD_ADMIN_PASSWORD   = local.password
+    MODULE_DIR                    = abspath(path.module)
+    SCRIPT                        = "${abspath(path.module)}/get_worker_token.sh"
+    BOUNDARY_TOKEN                = local.auth_token
+  }
+  inline = ["bash ./${path.module}/script_runner.sh"]
+}
+
+locals {
+  worker_info  = var.get_worker_token ? jsondecode(enos_local_exec.get_worker_token[0].stdout) : null
+  worker_token = var.get_worker_token ? local.worker_info["item"]["controller_generated_activation_token"] : ""
+}
+
 output "address" {
   value = local.address
 }
@@ -172,4 +223,14 @@ output "password" {
 
 output "worker_tag" {
   value = var.worker_tag
+}
+
+output "auth_token" {
+  value     = local.auth_token
+  sensitive = true
+}
+
+output "worker_token" {
+  value     = local.worker_token
+  sensitive = true
 }
