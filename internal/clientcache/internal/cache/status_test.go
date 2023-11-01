@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package cache
 
 import (
@@ -146,7 +149,8 @@ func TestStatus(t *testing.T) {
 						},
 					},
 				},
-			}}, got)
+			},
+		}, got)
 	})
 
 	t.Run("users with errors", func(t *testing.T) {

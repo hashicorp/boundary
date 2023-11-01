@@ -197,7 +197,7 @@ func printUsersTable(us []daemon.UserStatus) []string {
 			}
 			if r.RefreshToken != nil {
 				nonAttributeMap["Since Last Refresh"] = r.RefreshToken.LastUsed.Round(time.Second)
-				nonAttributeMap["Since Full Refresh"] = r.RefreshToken.Age.Round(time.Second)
+				nonAttributeMap["Since Full Fetch"] = r.RefreshToken.Age.Round(time.Second)
 			}
 			if r.LastError != nil {
 				nonAttributeMap["Since Last Error"] = r.LastError.LastReturned.Round(time.Second)

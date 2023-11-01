@@ -16,49 +16,49 @@ import (
 
 // RefreshTokenStatus is the status of a resource token
 type RefreshTokenStatus struct {
-	Age      time.Duration
-	LastUsed time.Duration
+	Age      time.Duration `json:"age"`
+	LastUsed time.Duration `json:"last_used"`
 }
 
 type ErrorStatus struct {
-	Error        string
-	LastReturned time.Duration
+	Error        string        `json:"error"`
+	LastReturned time.Duration `json:"last_returned"`
 }
 
 // ResourceStatus contains the status of a specific resource type contained in
 // the cache for a specific user.
 type ResourceStatus struct {
-	Name         string
-	Count        int
-	LastError    *ErrorStatus        `json:",omitempty"`
-	RefreshToken *RefreshTokenStatus `json:",omitempty"`
+	Name         string              `json:"name"`
+	Count        int                 `json:"count"`
+	LastError    *ErrorStatus        `json:"last_error,omitempty"`
+	RefreshToken *RefreshTokenStatus `json:"refresh_token,omitempty"`
 }
 
 // AuthTokenStatus contains the status of an auth token tracked in the cache for
 // a specific user.
 type AuthTokenStatus struct {
-	Id                    string
-	KeyringReferences     int `json:",omitempty"`
-	KeyringlessReferences int `json:",omitempty"`
+	Id                    string `json:"id"`
+	KeyringReferences     int    `json:"keyring_references,omitempty"`
+	KeyringlessReferences int    `json:"keyringless_references,omitempty"`
 }
 
 // UserStatus contains the status of a specific user tracked by the cache
 type UserStatus struct {
 	// The Id of the user this status is for
-	Id string
+	Id string `json:"id"`
 	// The boundary address for this user
-	Address string
+	Address string `json:"address"`
 	// The auth tokens used by this user to authenticate with the boundary instance
-	AuthTokens []AuthTokenStatus
+	AuthTokens []AuthTokenStatus `json:"auth_tokens"`
 	// The resources tracked by the cache for this user
-	Resources []ResourceStatus
+	Resources []ResourceStatus `json:"resources"`
 }
 
 // StatusResult is the struct returned to status requests.
 type StatusResult struct {
-	Uptime        time.Duration `json:",omitempty"`
-	SocketAddress string        `json:",omitempty"`
-	Users         []UserStatus  `json:",omitempty"`
+	Uptime        time.Duration `json:"uptime,omitempty"`
+	SocketAddress string        `json:"socket_address,omitempty"`
+	Users         []UserStatus  `json:"users,omitempty"`
 }
 
 func newStatusHandlerFunc(ctx context.Context, repo *cache.Repository, socketAddr string) (http.HandlerFunc, error) {
