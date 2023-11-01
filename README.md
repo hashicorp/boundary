@@ -12,12 +12,12 @@ _please responsibly disclose_ by contacting us at
 
 Boundary provides simple and secure access to hosts and services.
 
-Traditional approaches like SSH bastion hosts or VPNs require distributing and managing 
-credentials, configuring network controls like firewalls, and exposing the private 
-network. Boundary provides a secure way to access hosts and critical systems without 
+Traditional approaches like SSH bastion hosts or VPNs require distributing and managing
+credentials, configuring network controls like firewalls, and exposing the private
+network. Boundary provides a secure way to access hosts and critical systems without
 having to manage credentials or expose your network, and is entirely open source.
 
-Boundary is designed to be straightforward to understand, highly scalable, and 
+Boundary is designed to be straightforward to understand, highly scalable, and
 resilient. It can run in clouds, on-prem, secure enclaves and more, and does not require
 an agent to be installed on every end host.
 
@@ -28,8 +28,9 @@ managers (like HashiCorp's own [Vault](https://www.vaultproject.io/)),
 Boundary fills a different niche, allowing the credential that is eventually
 used to be hidden entirely from the user.
 
-Getting Started
--------------------------------
+For more information, refer to "[What is Boundary?](https://developer.hashicorp.com/boundary/docs/overview/what-is-boundary)" on the Boundary website.
+
+## Getting Started
 
 Boundary consists of two server components: Controllers, which serve the API
 and coordinate session requests; and Workers, which perform the actual session
