@@ -124,6 +124,9 @@ const (
 	ConnectionRecordingPrefix = "cr"
 	// ChannelRecordingPrefix is the prefix for channel recordings
 	ChannelRecordingPrefix = "chr"
+
+	// StoragePolicyPrefix for storage policies.
+	StoragePolicyPrefix = "pst"
 )
 
 type ResourceInfo struct {

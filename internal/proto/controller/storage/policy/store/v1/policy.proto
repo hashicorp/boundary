@@ -1,0 +1,19 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
+syntax = "proto3";
+
+// Package store provides protobufs for storing types in the credential package.
+package controller.storage.policy.store.v1;
+
+option go_package = "github.com/hashicorp/boundary/internal/policy/store;store";
+
+message Store {
+  // public_id is a surrogate key suitable for use in a public API.
+  // @inject_tag: `gorm:"primary_key"`
+  string public_id = 1;
+
+  // The scope_id of the owning org/global. Must be set.
+  // @inject_tag: `gorm:"not_null"`
+  string scope_id = 2;
+}

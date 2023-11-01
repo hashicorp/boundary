@@ -1,0 +1,67 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
+syntax = "proto3";
+
+// Package store provides protobufs for storing types in the static
+// credential package.
+package controller.storage.policy.storage.store.v1;
+
+import "controller/custom_options/v1/options.proto";
+import "controller/storage/timestamp/v1/timestamp.proto";
+
+option go_package = "github.com/hashicorp/boundary/internal/policy/storage/store;store";
+
+message Policy {
+  // public_id is a surrogate key suitable for use in a public API.
+  // @inject_tag: `gorm:"primary_key"`
+  string public_id = 1;
+
+  // scope_id must be either global or an org scope.
+  // @inject_tag: `gorm:"not_null"`
+  string scope_id = 2;
+
+  // retain_for_days is the number of days for which a session recording will be
+  // retained. Must be provided.
+  // @inject_tag: `gorm:"not_null"`
+  int64 retain_for_days = 3;
+
+  // retain_for_days_overridable signals whether this storage policy's retention
+  // duration can be overridden.
+  bool retain_for_days_overridable = 4;
+
+  // delete_after_days is the number of days after which a session recording
+  // will be automatically deleted.
+  // @inject_tag: `gorm:"not_null"`
+  int64 delete_after_days = 5;
+
+  // delete_after_days_overridable signals whether this storage policy's
+  // deletion policy can be overridden.
+  bool delete_after_days_overridable = 6;
+
+  // name is optional.
+  // @inject_tag: `gorm:"default:null"`
+  string name = 7 [(custom_options.v1.mask_mapping) = {
+    this: "Name"
+    that: "name"
+  }];
+
+  // description is optional.
+  // @inject_tag: `gorm:"default:null"`
+  string description = 8 [(custom_options.v1.mask_mapping) = {
+    this: "Description"
+    that: "description"
+  }];
+
+  // The create_time is set by the database.
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp create_time = 9;
+
+  // The update_time is set by the database.
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp update_time = 10;
+
+  // version allows optimistic locking of the resource.
+  // @inject_tag: `gorm:"default:null"`
+  uint32 version = 11;
+}
