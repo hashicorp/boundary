@@ -64,10 +64,11 @@ const (
 	// maxLineLength is the maximum width of any line.
 	maxLineLength int = 78
 
-	envToken          = "BOUNDARY_TOKEN"
-	EnvTokenName      = "BOUNDARY_TOKEN_NAME"
-	EnvKeyringType    = "BOUNDARY_KEYRING_TYPE"
-	envRecoveryConfig = "BOUNDARY_RECOVERY_CONFIG"
+	envToken           = "BOUNDARY_TOKEN"
+	EnvTokenName       = "BOUNDARY_TOKEN_NAME"
+	EnvKeyringType     = "BOUNDARY_KEYRING_TYPE"
+	envRecoveryConfig  = "BOUNDARY_RECOVERY_CONFIG"
+	envSkipCacheDaemon = "BOUNDARY_SKIP_CACHE_DAEMON"
 
 	StoredTokenName = "HashiCorp Boundary Auth Token"
 )
@@ -83,6 +84,8 @@ type Command struct {
 	ContextCancel context.CancelFunc
 	UI            cli.Ui
 	ShutdownCh    chan struct{}
+
+	Opts []Option
 
 	flags     *FlagSets
 	flagsOnce sync.Once
@@ -103,6 +106,7 @@ type Command struct {
 	FlagKeyringType      string
 	FlagRecoveryConfig   string
 	FlagOutputCurlString bool
+	FlagSkipCacheDaemon  bool
 
 	FlagScopeId           string
 	FlagScopeName         string
@@ -187,6 +191,10 @@ func MakeShutdownCh() chan struct{} {
 	return resultCh
 }
 
+func (c *Command) BaseCommand() *Command {
+	return c
+}
+
 // Client returns the HTTP API client. The client is cached on the command to
 // save performance on future calls.
 func (c *Command) Client(opt ...Option) (*api.Client, error) {
@@ -195,7 +203,7 @@ func (c *Command) Client(opt ...Option) (*api.Client, error) {
 		return c.client, nil
 	}
 
-	opts := getOpts(opt...)
+	opts := GetOpts(opt...)
 
 	config, err := api.DefaultConfig()
 	if err != nil {
@@ -452,6 +460,14 @@ func (c *Command) FlagSet(bit FlagSetBit) *FlagSets {
 				Name:   "output-curl-string",
 				Target: &c.FlagOutputCurlString,
 				Usage:  "Instead of executing the request, print an equivalent cURL command string and exit.",
+			})
+
+			f.BoolVar(&BoolVar{
+				Name:    "skip-cache-daemon",
+				Target:  &c.FlagSkipCacheDaemon,
+				Default: false,
+				EnvVar:  envSkipCacheDaemon,
+				Usage:   "Skips starting the caching daemon or sending the current used/retrieved token to the caching daemon.",
 			})
 		}
 
