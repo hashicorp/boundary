@@ -14,13 +14,13 @@ require (
 	github.com/favadi/protoc-go-inject-tag v1.4.0
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
 	github.com/golang-migrate/migrate/v4 v4.16.2
-	github.com/golang-sql/civil v0.0.0-20190719163853-cb61b32ac6fe
+	github.com/golang-sql/civil v0.0.0-20220223132316-b832511892a9
 	github.com/google/go-cmp v0.6.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.16.0
 	github.com/hashicorp/boundary/api v0.0.43
 	github.com/hashicorp/boundary/sdk v0.0.39
-	github.com/hashicorp/cap v0.3.3
+	github.com/hashicorp/cap v0.4.0
 	github.com/hashicorp/dawdle v0.4.0
 	github.com/hashicorp/eventlogger v0.2.6-0.20231025104552-802587e608f0
 	github.com/hashicorp/eventlogger/filters/encrypt v0.1.8-0.20231025104552-802587e608f0
@@ -78,8 +78,8 @@ require (
 	google.golang.org/grpc v1.59.0
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.1.0
 	google.golang.org/protobuf v1.31.0
-	gorm.io/driver/postgres v1.5.2
-	gorm.io/gorm v1.25.4 // indirect
+	gorm.io/driver/postgres v1.5.4
+	gorm.io/gorm v1.25.5 // indirect
 	mvdan.cc/gofumpt v0.5.0
 	nhooyr.io/websocket v1.8.7
 )
@@ -91,13 +91,13 @@ require (
 	github.com/cenkalti/backoff/v4 v4.2.1
 	github.com/creack/pty v1.1.20
 	github.com/golang/protobuf v1.5.3
-	github.com/hashicorp/cap/ldap v0.0.0-20230918191608-899e3f8e8cd6
-	github.com/hashicorp/dbassert v0.0.0-20230622135851-cc4c0f18f4a7
+	github.com/hashicorp/cap/ldap v0.0.0-20231012003312-273118a6e3b8
+	github.com/hashicorp/dbassert v0.0.0-20231012105025-1bc1bd88e22b
 	github.com/hashicorp/go-kms-wrapping/extras/kms/v2 v2.0.0-20231101174321-e9731d8e5bd9
 	github.com/hashicorp/go-version v1.6.0
 	github.com/hashicorp/nodeenrollment v0.2.9
 	github.com/jackc/pgx/v5 v5.4.3
-	github.com/jimlambrt/gldap v0.1.7
+	github.com/jimlambrt/gldap v0.1.8
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/miekg/dns v1.1.56
 	github.com/mikesmitty/edkey v0.0.0-20170222072505-3356ea4e686a
