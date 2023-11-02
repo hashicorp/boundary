@@ -27,12 +27,6 @@ export NEW_USER='test'
   [ "$status" -eq 0 ]
 }
 
-@test "boundary/token: can list tokens" {
-  run list_tokens
-  echo "$output"
-  [ "$status" -eq 0 ]
-}
-
 @test "boundary/token: can delete own token with no id given" {
   run login $DEFAULT_UNPRIVILEGED_LOGIN
   [ "$status" -eq 0 ]

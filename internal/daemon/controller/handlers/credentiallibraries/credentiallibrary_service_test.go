@@ -13,6 +13,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/credential/vault"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
@@ -68,7 +69,7 @@ func TestList(t *testing.T) {
 			CreatedTime:       l.GetCreateTime().GetTimestamp(),
 			UpdatedTime:       l.GetUpdateTime().GetTimestamp(),
 			Version:           l.GetVersion(),
-			Type:              globals.VaultGenericLibrarySubtype.String(),
+			Type:              vault.GenericLibrarySubtype.String(),
 			AuthorizedActions: testAuthorizedActions,
 			Attrs: &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
 				VaultGenericCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
@@ -87,7 +88,7 @@ func TestList(t *testing.T) {
 			CreatedTime:       l.GetCreateTime().GetTimestamp(),
 			UpdatedTime:       l.GetUpdateTime().GetTimestamp(),
 			Version:           l.GetVersion(),
-			Type:              globals.VaultSshCertificateLibrarySubtype.String(),
+			Type:              vault.SSHCertificateLibrarySubtype.String(),
 			AuthorizedActions: testAuthorizedActions,
 			Attrs: &pb.CredentialLibrary_VaultSshCertificateCredentialLibraryAttributes{
 				VaultSshCertificateCredentialLibraryAttributes: &pb.VaultSSHCertificateCredentialLibraryAttributes{
@@ -199,7 +200,7 @@ func TestList_Attributes(t *testing.T) {
 			CreatedTime:       l.GetCreateTime().GetTimestamp(),
 			UpdatedTime:       l.GetUpdateTime().GetTimestamp(),
 			Version:           l.GetVersion(),
-			Type:              globals.VaultGenericLibrarySubtype.String(),
+			Type:              vault.GenericLibrarySubtype.String(),
 			AuthorizedActions: testAuthorizedActions,
 			Attrs: &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
 				VaultGenericCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
@@ -218,7 +219,7 @@ func TestList_Attributes(t *testing.T) {
 			CreatedTime:       l.GetCreateTime().GetTimestamp(),
 			UpdatedTime:       l.GetUpdateTime().GetTimestamp(),
 			Version:           l.GetVersion(),
-			Type:              globals.VaultSshCertificateLibrarySubtype.String(),
+			Type:              vault.SSHCertificateLibrarySubtype.String(),
 			AuthorizedActions: testAuthorizedActions,
 			Attrs: &pb.CredentialLibrary_VaultSshCertificateCredentialLibraryAttributes{
 				VaultSshCertificateCredentialLibraryAttributes: &pb.VaultSSHCertificateCredentialLibraryAttributes{
@@ -317,7 +318,7 @@ func TestCreate(t *testing.T) {
 			name: "missing vault path",
 			req: &pbs.CreateCredentialLibraryRequest{Item: &pb.CredentialLibrary{
 				CredentialStoreId: store.GetPublicId(),
-				Type:              globals.VaultGenericLibrarySubtype.String(),
+				Type:              vault.GenericLibrarySubtype.String(),
 				Attrs: &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
 					VaultGenericCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{},
 				},
@@ -329,7 +330,7 @@ func TestCreate(t *testing.T) {
 			name: "Can't specify Id",
 			req: &pbs.CreateCredentialLibraryRequest{Item: &pb.CredentialLibrary{
 				CredentialStoreId: store.GetPublicId(),
-				Type:              globals.VaultGenericLibrarySubtype.String(),
+				Type:              vault.GenericLibrarySubtype.String(),
 				Id:                globals.VaultCredentialLibraryPrefix + "_notallowed",
 				Attrs: &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
 					VaultGenericCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
@@ -344,7 +345,7 @@ func TestCreate(t *testing.T) {
 			name: "Can't specify Created Time",
 			req: &pbs.CreateCredentialLibraryRequest{Item: &pb.CredentialLibrary{
 				CredentialStoreId: store.GetPublicId(),
-				Type:              globals.VaultGenericLibrarySubtype.String(),
+				Type:              vault.GenericLibrarySubtype.String(),
 				CreatedTime:       timestamppb.Now(),
 				Attrs: &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
 					VaultGenericCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
@@ -359,7 +360,7 @@ func TestCreate(t *testing.T) {
 			name: "Can't specify Update Time",
 			req: &pbs.CreateCredentialLibraryRequest{Item: &pb.CredentialLibrary{
 				CredentialStoreId: store.GetPublicId(),
-				Type:              globals.VaultGenericLibrarySubtype.String(),
+				Type:              vault.GenericLibrarySubtype.String(),
 				UpdatedTime:       timestamppb.Now(),
 				Attrs: &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
 					VaultGenericCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
@@ -387,7 +388,7 @@ func TestCreate(t *testing.T) {
 		{
 			name: "parent id must be included",
 			req: &pbs.CreateCredentialLibraryRequest{Item: &pb.CredentialLibrary{
-				Type: globals.VaultGenericLibrarySubtype.String(),
+				Type: vault.GenericLibrarySubtype.String(),
 				Attrs: &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
 					VaultGenericCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
 						Path: wrapperspb.String("something"),
@@ -401,7 +402,7 @@ func TestCreate(t *testing.T) {
 			name: "Cannot specify a http request body when http method is get",
 			req: &pbs.CreateCredentialLibraryRequest{Item: &pb.CredentialLibrary{
 				CredentialStoreId: store.GetPublicId(),
-				Type:              globals.VaultGenericLibrarySubtype.String(),
+				Type:              vault.GenericLibrarySubtype.String(),
 				Attrs: &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
 					VaultGenericCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
 						Path:            wrapperspb.String("something"),
@@ -416,7 +417,7 @@ func TestCreate(t *testing.T) {
 			name: "Invalid Method",
 			req: &pbs.CreateCredentialLibraryRequest{Item: &pb.CredentialLibrary{
 				CredentialStoreId: store.GetPublicId(),
-				Type:              globals.VaultGenericLibrarySubtype.String(),
+				Type:              vault.GenericLibrarySubtype.String(),
 				Attrs: &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
 					VaultGenericCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
 						Path:       wrapperspb.String("something"),
@@ -431,7 +432,7 @@ func TestCreate(t *testing.T) {
 			name: "Request Body With GET Method",
 			req: &pbs.CreateCredentialLibraryRequest{Item: &pb.CredentialLibrary{
 				CredentialStoreId: store.GetPublicId(),
-				Type:              globals.VaultGenericLibrarySubtype.String(),
+				Type:              vault.GenericLibrarySubtype.String(),
 				Attrs: &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
 					VaultGenericCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
 						Path:            wrapperspb.String("something"),
@@ -446,7 +447,7 @@ func TestCreate(t *testing.T) {
 			name: "Invalid credential type",
 			req: &pbs.CreateCredentialLibraryRequest{Item: &pb.CredentialLibrary{
 				CredentialStoreId: store.GetPublicId(),
-				Type:              globals.VaultGenericLibrarySubtype.String(),
+				Type:              vault.GenericLibrarySubtype.String(),
 				Attrs: &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
 					VaultGenericCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
 						Path: wrapperspb.String("something"),
@@ -461,13 +462,13 @@ func TestCreate(t *testing.T) {
 			name: "Invalid username_password mapping",
 			req: &pbs.CreateCredentialLibraryRequest{Item: &pb.CredentialLibrary{
 				CredentialStoreId: store.GetPublicId(),
-				Type:              globals.VaultGenericLibrarySubtype.String(),
+				Type:              vault.GenericLibrarySubtype.String(),
 				Attrs: &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
 					VaultGenericCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
 						Path: wrapperspb.String("something"),
 					},
 				},
-				CredentialType: string(globals.UsernamePasswordCredentialType),
+				CredentialType: string(credential.UsernamePasswordType),
 				CredentialMappingOverrides: func() *structpb.Struct {
 					v := map[string]any{
 						usernameAttribute: "user-test",
@@ -485,7 +486,7 @@ func TestCreate(t *testing.T) {
 			name: "Using POST method",
 			req: &pbs.CreateCredentialLibraryRequest{Item: &pb.CredentialLibrary{
 				CredentialStoreId: store.GetPublicId(),
-				Type:              globals.VaultGenericLibrarySubtype.String(),
+				Type:              vault.GenericLibrarySubtype.String(),
 				Attrs: &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
 					VaultGenericCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
 						Path:            wrapperspb.String("something"),
@@ -504,7 +505,7 @@ func TestCreate(t *testing.T) {
 					UpdatedTime:       store.GetUpdateTime().GetTimestamp(),
 					Scope:             &scopepb.ScopeInfo{Id: prj.GetPublicId(), Type: prj.GetType(), ParentScopeId: prj.GetParentId()},
 					Version:           1,
-					Type:              globals.VaultGenericLibrarySubtype.String(),
+					Type:              vault.GenericLibrarySubtype.String(),
 					Attrs: &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
 						VaultGenericCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
 							Path:            wrapperspb.String("something"),
@@ -520,7 +521,7 @@ func TestCreate(t *testing.T) {
 			name: "Create a valid vault CredentialLibrary",
 			req: &pbs.CreateCredentialLibraryRequest{Item: &pb.CredentialLibrary{
 				CredentialStoreId: store.GetPublicId(),
-				Type:              globals.VaultGenericLibrarySubtype.String(),
+				Type:              vault.GenericLibrarySubtype.String(),
 				Name:              &wrapperspb.StringValue{Value: "name"},
 				Description:       &wrapperspb.StringValue{Value: "desc"},
 				Attrs: &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
@@ -541,7 +542,7 @@ func TestCreate(t *testing.T) {
 					Description:       &wrapperspb.StringValue{Value: "desc"},
 					Scope:             &scopepb.ScopeInfo{Id: prj.GetPublicId(), Type: prj.GetType(), ParentScopeId: prj.GetParentId()},
 					Version:           1,
-					Type:              globals.VaultGenericLibrarySubtype.String(),
+					Type:              vault.GenericLibrarySubtype.String(),
 					Attrs: &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
 						VaultGenericCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
 							Path:       wrapperspb.String("something"),
@@ -556,13 +557,13 @@ func TestCreate(t *testing.T) {
 			name: "Create a valid vault CredentialLibrary username_password type",
 			req: &pbs.CreateCredentialLibraryRequest{Item: &pb.CredentialLibrary{
 				CredentialStoreId: store.GetPublicId(),
-				Type:              globals.VaultGenericLibrarySubtype.String(),
+				Type:              vault.GenericLibrarySubtype.String(),
 				Attrs: &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
 					VaultGenericCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
 						Path: wrapperspb.String("something"),
 					},
 				},
-				CredentialType: string(globals.UsernamePasswordCredentialType),
+				CredentialType: string(credential.UsernamePasswordType),
 			}},
 			idPrefix: globals.VaultCredentialLibraryPrefix + "_",
 			res: &pbs.CreateCredentialLibraryResponse{
@@ -574,14 +575,14 @@ func TestCreate(t *testing.T) {
 					UpdatedTime:       store.GetUpdateTime().GetTimestamp(),
 					Scope:             &scopepb.ScopeInfo{Id: prj.GetPublicId(), Type: prj.GetType(), ParentScopeId: prj.GetParentId()},
 					Version:           1,
-					Type:              globals.VaultGenericLibrarySubtype.String(),
+					Type:              vault.GenericLibrarySubtype.String(),
 					Attrs: &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
 						VaultGenericCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
 							Path:       wrapperspb.String("something"),
 							HttpMethod: wrapperspb.String("GET"),
 						},
 					},
-					CredentialType:    string(globals.UsernamePasswordCredentialType),
+					CredentialType:    string(credential.UsernamePasswordType),
 					AuthorizedActions: testAuthorizedActions,
 				},
 			},
@@ -590,7 +591,7 @@ func TestCreate(t *testing.T) {
 			name: "Create a valid vault CredentialLibrary username_password type with username mapping",
 			req: &pbs.CreateCredentialLibraryRequest{Item: &pb.CredentialLibrary{
 				CredentialStoreId: store.GetPublicId(),
-				Type:              globals.VaultGenericLibrarySubtype.String(),
+				Type:              vault.GenericLibrarySubtype.String(),
 				Attrs: &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
 					VaultGenericCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
 						Path: wrapperspb.String("something"),
@@ -604,7 +605,7 @@ func TestCreate(t *testing.T) {
 					require.NoError(t, err)
 					return ret
 				}(),
-				CredentialType: string(globals.UsernamePasswordCredentialType),
+				CredentialType: string(credential.UsernamePasswordType),
 			}},
 			idPrefix: globals.VaultCredentialLibraryPrefix + "_",
 			res: &pbs.CreateCredentialLibraryResponse{
@@ -616,14 +617,14 @@ func TestCreate(t *testing.T) {
 					UpdatedTime:       store.GetUpdateTime().GetTimestamp(),
 					Scope:             &scopepb.ScopeInfo{Id: prj.GetPublicId(), Type: prj.GetType(), ParentScopeId: prj.GetParentId()},
 					Version:           1,
-					Type:              globals.VaultGenericLibrarySubtype.String(),
+					Type:              vault.GenericLibrarySubtype.String(),
 					Attrs: &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
 						VaultGenericCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
 							Path:       wrapperspb.String("something"),
 							HttpMethod: wrapperspb.String("GET"),
 						},
 					},
-					CredentialType: string(globals.UsernamePasswordCredentialType),
+					CredentialType: string(credential.UsernamePasswordType),
 					CredentialMappingOverrides: func() *structpb.Struct {
 						v := map[string]any{
 							usernameAttribute: "user-test",
@@ -640,7 +641,7 @@ func TestCreate(t *testing.T) {
 			name: "Create a valid vault CredentialLibrary username_password type with username/password mapping",
 			req: &pbs.CreateCredentialLibraryRequest{Item: &pb.CredentialLibrary{
 				CredentialStoreId: store.GetPublicId(),
-				Type:              globals.VaultGenericLibrarySubtype.String(),
+				Type:              vault.GenericLibrarySubtype.String(),
 				Attrs: &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
 					VaultGenericCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
 						Path: wrapperspb.String("something"),
@@ -655,7 +656,7 @@ func TestCreate(t *testing.T) {
 					require.NoError(t, err)
 					return ret
 				}(),
-				CredentialType: string(globals.UsernamePasswordCredentialType),
+				CredentialType: string(credential.UsernamePasswordType),
 			}},
 			idPrefix: globals.VaultCredentialLibraryPrefix + "_",
 			res: &pbs.CreateCredentialLibraryResponse{
@@ -667,14 +668,14 @@ func TestCreate(t *testing.T) {
 					UpdatedTime:       store.GetUpdateTime().GetTimestamp(),
 					Scope:             &scopepb.ScopeInfo{Id: prj.GetPublicId(), Type: prj.GetType(), ParentScopeId: prj.GetParentId()},
 					Version:           1,
-					Type:              globals.VaultGenericLibrarySubtype.String(),
+					Type:              vault.GenericLibrarySubtype.String(),
 					Attrs: &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
 						VaultGenericCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
 							Path:       wrapperspb.String("something"),
 							HttpMethod: wrapperspb.String("GET"),
 						},
 					},
-					CredentialType: string(globals.UsernamePasswordCredentialType),
+					CredentialType: string(credential.UsernamePasswordType),
 					CredentialMappingOverrides: func() *structpb.Struct {
 						v := map[string]any{
 							usernameAttribute: "user-test",
@@ -692,13 +693,13 @@ func TestCreate(t *testing.T) {
 			name: "Create a valid vault CredentialLibrary ssh_private_key type",
 			req: &pbs.CreateCredentialLibraryRequest{Item: &pb.CredentialLibrary{
 				CredentialStoreId: store.GetPublicId(),
-				Type:              globals.VaultGenericLibrarySubtype.String(),
+				Type:              vault.GenericLibrarySubtype.String(),
 				Attrs: &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
 					VaultGenericCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
 						Path: wrapperspb.String("something"),
 					},
 				},
-				CredentialType: string(globals.SshPrivateKeyCredentialType),
+				CredentialType: string(credential.SshPrivateKeyType),
 			}},
 			idPrefix: globals.VaultCredentialLibraryPrefix + "_",
 			res: &pbs.CreateCredentialLibraryResponse{
@@ -710,14 +711,14 @@ func TestCreate(t *testing.T) {
 					UpdatedTime:       store.GetUpdateTime().GetTimestamp(),
 					Scope:             &scopepb.ScopeInfo{Id: prj.GetPublicId(), Type: prj.GetType(), ParentScopeId: prj.GetParentId()},
 					Version:           1,
-					Type:              globals.VaultGenericLibrarySubtype.String(),
+					Type:              vault.GenericLibrarySubtype.String(),
 					Attrs: &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
 						VaultGenericCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
 							Path:       wrapperspb.String("something"),
 							HttpMethod: wrapperspb.String("GET"),
 						},
 					},
-					CredentialType:    string(globals.SshPrivateKeyCredentialType),
+					CredentialType:    string(credential.SshPrivateKeyType),
 					AuthorizedActions: testAuthorizedActions,
 				},
 			},
@@ -726,7 +727,7 @@ func TestCreate(t *testing.T) {
 			name: "Create a valid vault CredentialLibrary ssh_private_key type with mapping",
 			req: &pbs.CreateCredentialLibraryRequest{Item: &pb.CredentialLibrary{
 				CredentialStoreId: store.GetPublicId(),
-				Type:              globals.VaultGenericLibrarySubtype.String(),
+				Type:              vault.GenericLibrarySubtype.String(),
 				Attrs: &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
 					VaultGenericCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
 						Path: wrapperspb.String("something"),
@@ -742,7 +743,7 @@ func TestCreate(t *testing.T) {
 					require.NoError(t, err)
 					return ret
 				}(),
-				CredentialType: string(globals.SshPrivateKeyCredentialType),
+				CredentialType: string(credential.SshPrivateKeyType),
 			}},
 			idPrefix: globals.VaultCredentialLibraryPrefix + "_",
 			res: &pbs.CreateCredentialLibraryResponse{
@@ -754,14 +755,14 @@ func TestCreate(t *testing.T) {
 					UpdatedTime:       store.GetUpdateTime().GetTimestamp(),
 					Scope:             &scopepb.ScopeInfo{Id: prj.GetPublicId(), Type: prj.GetType(), ParentScopeId: prj.GetParentId()},
 					Version:           1,
-					Type:              globals.VaultGenericLibrarySubtype.String(),
+					Type:              vault.GenericLibrarySubtype.String(),
 					Attrs: &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
 						VaultGenericCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
 							Path:       wrapperspb.String("something"),
 							HttpMethod: wrapperspb.String("GET"),
 						},
 					},
-					CredentialType: string(globals.SshPrivateKeyCredentialType),
+					CredentialType: string(credential.SshPrivateKeyType),
 					CredentialMappingOverrides: func() *structpb.Struct {
 						v := map[string]any{
 							usernameAttribute:     "user-test",
@@ -780,7 +781,7 @@ func TestCreate(t *testing.T) {
 			name: "Create a valid vault CredentialLibrary with the 'vault' subtype",
 			req: &pbs.CreateCredentialLibraryRequest{Item: &pb.CredentialLibrary{
 				CredentialStoreId: store.GetPublicId(),
-				Type:              globals.VaultGenericLibrarySubtype.String(),
+				Type:              vault.GenericLibrarySubtype.String(),
 				Attrs: &pb.CredentialLibrary_VaultCredentialLibraryAttributes{
 					VaultCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
 						Path: wrapperspb.String("something"),
@@ -797,7 +798,7 @@ func TestCreate(t *testing.T) {
 					UpdatedTime:       store.GetUpdateTime().GetTimestamp(),
 					Scope:             &scopepb.ScopeInfo{Id: prj.GetPublicId(), Type: prj.GetType(), ParentScopeId: prj.GetParentId()},
 					Version:           1,
-					Type:              globals.VaultGenericLibrarySubtype.String(),
+					Type:              vault.GenericLibrarySubtype.String(),
 					Attrs: &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
 						VaultGenericCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
 							Path:       wrapperspb.String("something"),
@@ -916,7 +917,7 @@ func TestGet(t *testing.T) {
 					Id:                unspecifiedLib.GetPublicId(),
 					CredentialStoreId: unspecifiedLib.GetStoreId(),
 					Scope:             &scopepb.ScopeInfo{Id: store.GetProjectId(), Type: scope.Project.String(), ParentScopeId: prj.GetParentId()},
-					Type:              globals.VaultGenericLibrarySubtype.String(),
+					Type:              vault.GenericLibrarySubtype.String(),
 					AuthorizedActions: testAuthorizedActions,
 					CreatedTime:       unspecifiedLib.CreateTime.GetTimestamp(),
 					UpdatedTime:       unspecifiedLib.UpdateTime.GetTimestamp(),
@@ -938,7 +939,7 @@ func TestGet(t *testing.T) {
 					Id:                userPassLib.GetPublicId(),
 					CredentialStoreId: userPassLib.GetStoreId(),
 					Scope:             &scopepb.ScopeInfo{Id: store.GetProjectId(), Type: scope.Project.String(), ParentScopeId: prj.GetParentId()},
-					Type:              globals.VaultGenericLibrarySubtype.String(),
+					Type:              vault.GenericLibrarySubtype.String(),
 					AuthorizedActions: testAuthorizedActions,
 					CreatedTime:       userPassLib.CreateTime.GetTimestamp(),
 					UpdatedTime:       userPassLib.UpdateTime.GetTimestamp(),
@@ -970,7 +971,7 @@ func TestGet(t *testing.T) {
 					Id:                sshPkLib.GetPublicId(),
 					CredentialStoreId: sshPkLib.GetStoreId(),
 					Scope:             &scopepb.ScopeInfo{Id: store.GetProjectId(), Type: scope.Project.String(), ParentScopeId: prj.GetParentId()},
-					Type:              globals.VaultGenericLibrarySubtype.String(),
+					Type:              vault.GenericLibrarySubtype.String(),
 					AuthorizedActions: testAuthorizedActions,
 					CreatedTime:       sshPkLib.CreateTime.GetTimestamp(),
 					UpdatedTime:       sshPkLib.UpdateTime.GetTimestamp(),
@@ -1004,7 +1005,7 @@ func TestGet(t *testing.T) {
 					CredentialStoreId: sshCertLib.GetStoreId(),
 					CredentialType:    sshCertLib.GetCredentialType(),
 					Scope:             &scopepb.ScopeInfo{Id: store.GetProjectId(), Type: scope.Project.String(), ParentScopeId: prj.GetParentId()},
-					Type:              globals.VaultSshCertificateLibrarySubtype.String(),
+					Type:              vault.SSHCertificateLibrarySubtype.String(),
 					AuthorizedActions: testAuthorizedActions,
 					CreatedTime:       sshCertLib.CreateTime.GetTimestamp(),
 					UpdatedTime:       sshCertLib.UpdateTime.GetTimestamp(),
@@ -1790,7 +1791,7 @@ func TestUpdate(t *testing.T) {
 		{
 			name: "read only credential type",
 			path: "credential_type",
-			item: &pb.CredentialLibrary{CredentialType: string(globals.UsernamePasswordCredentialType)},
+			item: &pb.CredentialLibrary{CredentialType: string(credential.UsernamePasswordType)},
 		},
 	}
 	for _, tc := range errCases {
@@ -1923,7 +1924,7 @@ func TestCreate_SSHCertificateCredentialLibrary(t *testing.T) {
 			name: "missing vault path",
 			req: &pbs.CreateCredentialLibraryRequest{Item: &pb.CredentialLibrary{
 				CredentialStoreId: store.GetPublicId(),
-				Type:              globals.VaultSshCertificateLibrarySubtype.String(),
+				Type:              vault.SSHCertificateLibrarySubtype.String(),
 				Attrs: &pb.CredentialLibrary_VaultSshCertificateCredentialLibraryAttributes{
 					VaultSshCertificateCredentialLibraryAttributes: &pb.VaultSSHCertificateCredentialLibraryAttributes{
 						Username: wrapperspb.String("username"),
@@ -1937,7 +1938,7 @@ func TestCreate_SSHCertificateCredentialLibrary(t *testing.T) {
 			name: "missing username",
 			req: &pbs.CreateCredentialLibraryRequest{Item: &pb.CredentialLibrary{
 				CredentialStoreId: store.GetPublicId(),
-				Type:              globals.VaultSshCertificateLibrarySubtype.String(),
+				Type:              vault.SSHCertificateLibrarySubtype.String(),
 				Attrs: &pb.CredentialLibrary_VaultSshCertificateCredentialLibraryAttributes{
 					VaultSshCertificateCredentialLibraryAttributes: &pb.VaultSSHCertificateCredentialLibraryAttributes{
 						Path: wrapperspb.String("something"),
@@ -1951,7 +1952,7 @@ func TestCreate_SSHCertificateCredentialLibrary(t *testing.T) {
 			name: "Can't specify Id",
 			req: &pbs.CreateCredentialLibraryRequest{Item: &pb.CredentialLibrary{
 				CredentialStoreId: store.GetPublicId(),
-				Type:              globals.VaultSshCertificateLibrarySubtype.String(),
+				Type:              vault.SSHCertificateLibrarySubtype.String(),
 				Id:                globals.VaultSshCertificateCredentialLibraryPrefix + "_notallowed",
 				Attrs: &pb.CredentialLibrary_VaultSshCertificateCredentialLibraryAttributes{
 					VaultSshCertificateCredentialLibraryAttributes: &pb.VaultSSHCertificateCredentialLibraryAttributes{
@@ -1967,7 +1968,7 @@ func TestCreate_SSHCertificateCredentialLibrary(t *testing.T) {
 			name: "Can't specify Created Time",
 			req: &pbs.CreateCredentialLibraryRequest{Item: &pb.CredentialLibrary{
 				CredentialStoreId: store.GetPublicId(),
-				Type:              globals.VaultSshCertificateLibrarySubtype.String(),
+				Type:              vault.SSHCertificateLibrarySubtype.String(),
 				CreatedTime:       timestamppb.Now(),
 				Attrs: &pb.CredentialLibrary_VaultSshCertificateCredentialLibraryAttributes{
 					VaultSshCertificateCredentialLibraryAttributes: &pb.VaultSSHCertificateCredentialLibraryAttributes{
@@ -1983,7 +1984,7 @@ func TestCreate_SSHCertificateCredentialLibrary(t *testing.T) {
 			name: "Can't specify Update Time",
 			req: &pbs.CreateCredentialLibraryRequest{Item: &pb.CredentialLibrary{
 				CredentialStoreId: store.GetPublicId(),
-				Type:              globals.VaultSshCertificateLibrarySubtype.String(),
+				Type:              vault.SSHCertificateLibrarySubtype.String(),
 				UpdatedTime:       timestamppb.Now(),
 				Attrs: &pb.CredentialLibrary_VaultSshCertificateCredentialLibraryAttributes{
 					VaultSshCertificateCredentialLibraryAttributes: &pb.VaultSSHCertificateCredentialLibraryAttributes{
@@ -2013,7 +2014,7 @@ func TestCreate_SSHCertificateCredentialLibrary(t *testing.T) {
 		{
 			name: "parent id must be included",
 			req: &pbs.CreateCredentialLibraryRequest{Item: &pb.CredentialLibrary{
-				Type: globals.VaultSshCertificateLibrarySubtype.String(),
+				Type: vault.SSHCertificateLibrarySubtype.String(),
 				Attrs: &pb.CredentialLibrary_VaultSshCertificateCredentialLibraryAttributes{
 					VaultSshCertificateCredentialLibraryAttributes: &pb.VaultSSHCertificateCredentialLibraryAttributes{
 						Path:     wrapperspb.String("something"),
@@ -2028,7 +2029,7 @@ func TestCreate_SSHCertificateCredentialLibrary(t *testing.T) {
 			name: "Invalid credential type",
 			req: &pbs.CreateCredentialLibraryRequest{Item: &pb.CredentialLibrary{
 				CredentialStoreId: store.GetPublicId(),
-				Type:              globals.VaultSshCertificateLibrarySubtype.String(),
+				Type:              vault.SSHCertificateLibrarySubtype.String(),
 				Attrs: &pb.CredentialLibrary_VaultSshCertificateCredentialLibraryAttributes{
 					VaultSshCertificateCredentialLibraryAttributes: &pb.VaultSSHCertificateCredentialLibraryAttributes{
 						Path:     wrapperspb.String("something"),
@@ -2044,7 +2045,7 @@ func TestCreate_SSHCertificateCredentialLibrary(t *testing.T) {
 			name: "Invalid key type key bits combination",
 			req: &pbs.CreateCredentialLibraryRequest{Item: &pb.CredentialLibrary{
 				CredentialStoreId: store.GetPublicId(),
-				Type:              globals.VaultSshCertificateLibrarySubtype.String(),
+				Type:              vault.SSHCertificateLibrarySubtype.String(),
 				Attrs: &pb.CredentialLibrary_VaultSshCertificateCredentialLibraryAttributes{
 					VaultSshCertificateCredentialLibraryAttributes: &pb.VaultSSHCertificateCredentialLibraryAttributes{
 						Path:     wrapperspb.String("something"),
@@ -2061,7 +2062,7 @@ func TestCreate_SSHCertificateCredentialLibrary(t *testing.T) {
 			name: "Create a valid vault SSHCertificateCredentialLibrary",
 			req: &pbs.CreateCredentialLibraryRequest{Item: &pb.CredentialLibrary{
 				CredentialStoreId: store.GetPublicId(),
-				Type:              globals.VaultSshCertificateLibrarySubtype.String(),
+				Type:              vault.SSHCertificateLibrarySubtype.String(),
 				Name:              &wrapperspb.StringValue{Value: "name1"},
 				Description:       &wrapperspb.StringValue{Value: "desc"},
 				Attrs: &pb.CredentialLibrary_VaultSshCertificateCredentialLibraryAttributes{
@@ -2083,7 +2084,7 @@ func TestCreate_SSHCertificateCredentialLibrary(t *testing.T) {
 					Description:       &wrapperspb.StringValue{Value: "desc"},
 					Scope:             &scopepb.ScopeInfo{Id: prj.GetPublicId(), Type: prj.GetType(), ParentScopeId: prj.GetParentId()},
 					Version:           1,
-					Type:              globals.VaultSshCertificateLibrarySubtype.String(),
+					Type:              vault.SSHCertificateLibrarySubtype.String(),
 					Attrs: &pb.CredentialLibrary_VaultSshCertificateCredentialLibraryAttributes{
 						VaultSshCertificateCredentialLibraryAttributes: &pb.VaultSSHCertificateCredentialLibraryAttributes{
 							Path:     wrapperspb.String("/ssh/sign/foo"),
@@ -2092,7 +2093,7 @@ func TestCreate_SSHCertificateCredentialLibrary(t *testing.T) {
 						},
 					},
 					AuthorizedActions: testAuthorizedActions,
-					CredentialType:    string(globals.SshCertificateCredentialType),
+					CredentialType:    string(credential.SshCertificateType),
 				},
 			},
 		},
@@ -2100,7 +2101,7 @@ func TestCreate_SSHCertificateCredentialLibrary(t *testing.T) {
 			name: "Seting key type ed25119 with key bits nil",
 			req: &pbs.CreateCredentialLibraryRequest{Item: &pb.CredentialLibrary{
 				CredentialStoreId: store.GetPublicId(),
-				Type:              globals.VaultSshCertificateLibrarySubtype.String(),
+				Type:              vault.SSHCertificateLibrarySubtype.String(),
 				Name:              &wrapperspb.StringValue{Value: "name2"},
 				Attrs: &pb.CredentialLibrary_VaultSshCertificateCredentialLibraryAttributes{
 					VaultSshCertificateCredentialLibraryAttributes: &pb.VaultSSHCertificateCredentialLibraryAttributes{
@@ -2121,7 +2122,7 @@ func TestCreate_SSHCertificateCredentialLibrary(t *testing.T) {
 					Name:              &wrapperspb.StringValue{Value: "name2"},
 					Scope:             &scopepb.ScopeInfo{Id: prj.GetPublicId(), Type: prj.GetType(), ParentScopeId: prj.GetParentId()},
 					Version:           1,
-					Type:              globals.VaultSshCertificateLibrarySubtype.String(),
+					Type:              vault.SSHCertificateLibrarySubtype.String(),
 					Attrs: &pb.CredentialLibrary_VaultSshCertificateCredentialLibraryAttributes{
 						VaultSshCertificateCredentialLibraryAttributes: &pb.VaultSSHCertificateCredentialLibraryAttributes{
 							Path:     wrapperspb.String("/ssh/sign/foo"),
@@ -2130,7 +2131,7 @@ func TestCreate_SSHCertificateCredentialLibrary(t *testing.T) {
 						},
 					},
 					AuthorizedActions: testAuthorizedActions,
-					CredentialType:    string(globals.SshCertificateCredentialType),
+					CredentialType:    string(credential.SshCertificateType),
 				},
 			},
 		},
@@ -2138,7 +2139,7 @@ func TestCreate_SSHCertificateCredentialLibrary(t *testing.T) {
 			name: "valid vault SSHCertificateCredentialLibrary with AdditionalValidPrincipals",
 			req: &pbs.CreateCredentialLibraryRequest{Item: &pb.CredentialLibrary{
 				CredentialStoreId: store.GetPublicId(),
-				Type:              globals.VaultSshCertificateLibrarySubtype.String(),
+				Type:              vault.SSHCertificateLibrarySubtype.String(),
 				Name:              &wrapperspb.StringValue{Value: "name"},
 				Description:       &wrapperspb.StringValue{Value: "desc"},
 				Attrs: &pb.CredentialLibrary_VaultSshCertificateCredentialLibraryAttributes{
@@ -2161,7 +2162,7 @@ func TestCreate_SSHCertificateCredentialLibrary(t *testing.T) {
 					Description:       &wrapperspb.StringValue{Value: "desc"},
 					Scope:             &scopepb.ScopeInfo{Id: prj.GetPublicId(), Type: prj.GetType(), ParentScopeId: prj.GetParentId()},
 					Version:           1,
-					Type:              globals.VaultSshCertificateLibrarySubtype.String(),
+					Type:              vault.SSHCertificateLibrarySubtype.String(),
 					Attrs: &pb.CredentialLibrary_VaultSshCertificateCredentialLibraryAttributes{
 						VaultSshCertificateCredentialLibraryAttributes: &pb.VaultSSHCertificateCredentialLibraryAttributes{
 							Path:                      wrapperspb.String("/ssh/sign/foo"),
@@ -2171,7 +2172,7 @@ func TestCreate_SSHCertificateCredentialLibrary(t *testing.T) {
 						},
 					},
 					AuthorizedActions: testAuthorizedActions,
-					CredentialType:    string(globals.SshCertificateCredentialType),
+					CredentialType:    string(credential.SshCertificateType),
 				},
 			},
 		},
@@ -2292,7 +2293,7 @@ func TestUpdate_SSHCertificateCredentialLibrary(t *testing.T) {
 			req: &pbs.UpdateCredentialLibraryRequest{
 				UpdateMask: fieldmask(sshCertUsernameField),
 				Item: &pb.CredentialLibrary{
-					Type: globals.VaultSshCertificateLibrarySubtype.String(),
+					Type: vault.SSHCertificateLibrarySubtype.String(),
 					Attrs: &pb.CredentialLibrary_VaultSshCertificateCredentialLibraryAttributes{
 						VaultSshCertificateCredentialLibraryAttributes: &pb.VaultSSHCertificateCredentialLibraryAttributes{
 							Username: wrapperspb.String("changed-username"),
@@ -2311,7 +2312,7 @@ func TestUpdate_SSHCertificateCredentialLibrary(t *testing.T) {
 			req: &pbs.UpdateCredentialLibraryRequest{
 				UpdateMask: fieldmask("attributes.key_type", "attributes.key_bits"),
 				Item: &pb.CredentialLibrary{
-					Type: globals.VaultSshCertificateLibrarySubtype.String(),
+					Type: vault.SSHCertificateLibrarySubtype.String(),
 					Attrs: &pb.CredentialLibrary_VaultSshCertificateCredentialLibraryAttributes{
 						VaultSshCertificateCredentialLibraryAttributes: &pb.VaultSSHCertificateCredentialLibraryAttributes{
 							KeyType: wrapperspb.String(vault.KeyTypeRsa),
@@ -2332,7 +2333,7 @@ func TestUpdate_SSHCertificateCredentialLibrary(t *testing.T) {
 			req: &pbs.UpdateCredentialLibraryRequest{
 				UpdateMask: fieldmask(vaultPathField),
 				Item: &pb.CredentialLibrary{
-					Type: globals.VaultSshCertificateLibrarySubtype.String(),
+					Type: vault.SSHCertificateLibrarySubtype.String(),
 					Attrs: &pb.CredentialLibrary_VaultSshCertificateCredentialLibraryAttributes{
 						VaultSshCertificateCredentialLibraryAttributes: &pb.VaultSSHCertificateCredentialLibraryAttributes{
 							Path: wrapperspb.String("/ssh/issue/foo"),
@@ -2351,7 +2352,7 @@ func TestUpdate_SSHCertificateCredentialLibrary(t *testing.T) {
 			req: &pbs.UpdateCredentialLibraryRequest{
 				UpdateMask: fieldmask("attributes.ttl", "attributes.key_id", "attributes.critical_options.some", "attributes.extensions.permity-pty"),
 				Item: &pb.CredentialLibrary{
-					Type: globals.VaultSshCertificateLibrarySubtype.String(),
+					Type: vault.SSHCertificateLibrarySubtype.String(),
 					Attrs: &pb.CredentialLibrary_VaultSshCertificateCredentialLibraryAttributes{
 						VaultSshCertificateCredentialLibraryAttributes: &pb.VaultSSHCertificateCredentialLibraryAttributes{
 							KeyId:           wrapperspb.String("id"),
@@ -2377,7 +2378,7 @@ func TestUpdate_SSHCertificateCredentialLibrary(t *testing.T) {
 			req: &pbs.UpdateCredentialLibraryRequest{
 				UpdateMask: fieldmask("attributes.critical_options", "attributes.extensions.permit-pty"),
 				Item: &pb.CredentialLibrary{
-					Type: globals.VaultSshCertificateLibrarySubtype.String(),
+					Type: vault.SSHCertificateLibrarySubtype.String(),
 					Attrs: &pb.CredentialLibrary_VaultSshCertificateCredentialLibraryAttributes{
 						VaultSshCertificateCredentialLibraryAttributes: &pb.VaultSSHCertificateCredentialLibraryAttributes{
 							CriticalOptions: nil,
@@ -2399,7 +2400,7 @@ func TestUpdate_SSHCertificateCredentialLibrary(t *testing.T) {
 			req: &pbs.UpdateCredentialLibraryRequest{
 				UpdateMask: fieldmask("attributes.critical_options.option-b", "attributes.extensions"),
 				Item: &pb.CredentialLibrary{
-					Type: globals.VaultSshCertificateLibrarySubtype.String(),
+					Type: vault.SSHCertificateLibrarySubtype.String(),
 					Attrs: &pb.CredentialLibrary_VaultSshCertificateCredentialLibraryAttributes{
 						VaultSshCertificateCredentialLibraryAttributes: &pb.VaultSSHCertificateCredentialLibraryAttributes{
 							CriticalOptions: map[string]string{"option-b": "set-b"},
@@ -2421,7 +2422,7 @@ func TestUpdate_SSHCertificateCredentialLibrary(t *testing.T) {
 				UpdateMask: fieldmask("attributes.critical_options.option-a", "attributes.critical_options.option-b", "attributes.critical_options.option-c",
 					"attributes.extensions.permit-pty", "attributes.extensions.permit-port-forwarding", "attributes.extensions.permit-X11-forwarding"),
 				Item: &pb.CredentialLibrary{
-					Type: globals.VaultSshCertificateLibrarySubtype.String(),
+					Type: vault.SSHCertificateLibrarySubtype.String(),
 					Attrs: &pb.CredentialLibrary_VaultSshCertificateCredentialLibraryAttributes{
 						VaultSshCertificateCredentialLibraryAttributes: &pb.VaultSSHCertificateCredentialLibraryAttributes{
 							CriticalOptions: map[string]string{"option-a": "set-a", "option-b": "set-b", "option-c": "set-c"},
@@ -2508,7 +2509,7 @@ func TestUpdate_SSHCertificateCredentialLibrary(t *testing.T) {
 		{
 			name: "read only credential type",
 			path: "credential_type",
-			item: &pb.CredentialLibrary{CredentialType: string(globals.UsernamePasswordCredentialType)},
+			item: &pb.CredentialLibrary{CredentialType: string(credential.UsernamePasswordType)},
 		},
 	}
 	for _, tc := range errCases {
@@ -2536,7 +2537,7 @@ func TestUpdate_SSHCertificateCredentialLibrary(t *testing.T) {
 			req: &pbs.UpdateCredentialLibraryRequest{
 				UpdateMask: fieldmask(keyBitsField, keyTypeField),
 				Item: &pb.CredentialLibrary{
-					Type: globals.VaultSshCertificateLibrarySubtype.String(),
+					Type: vault.SSHCertificateLibrarySubtype.String(),
 					Attrs: &pb.CredentialLibrary_VaultSshCertificateCredentialLibraryAttributes{
 						VaultSshCertificateCredentialLibraryAttributes: &pb.VaultSSHCertificateCredentialLibraryAttributes{
 							KeyType: wrapperspb.String(vault.KeyTypeEcdsa),
@@ -2552,7 +2553,7 @@ func TestUpdate_SSHCertificateCredentialLibrary(t *testing.T) {
 			req: &pbs.UpdateCredentialLibraryRequest{
 				UpdateMask: fieldmask(keyTypeField),
 				Item: &pb.CredentialLibrary{
-					Type: globals.VaultSshCertificateLibrarySubtype.String(),
+					Type: vault.SSHCertificateLibrarySubtype.String(),
 					Attrs: &pb.CredentialLibrary_VaultSshCertificateCredentialLibraryAttributes{
 						VaultSshCertificateCredentialLibraryAttributes: &pb.VaultSSHCertificateCredentialLibraryAttributes{
 							KeyType: wrapperspb.String("unknown-type"),
@@ -2567,7 +2568,7 @@ func TestUpdate_SSHCertificateCredentialLibrary(t *testing.T) {
 			req: &pbs.UpdateCredentialLibraryRequest{
 				UpdateMask: fieldmask(keyBitsField),
 				Item: &pb.CredentialLibrary{
-					Type: globals.VaultSshCertificateLibrarySubtype.String(),
+					Type: vault.SSHCertificateLibrarySubtype.String(),
 					Attrs: &pb.CredentialLibrary_VaultSshCertificateCredentialLibraryAttributes{
 						VaultSshCertificateCredentialLibraryAttributes: &pb.VaultSSHCertificateCredentialLibraryAttributes{
 							KeyBits: wrapperspb.UInt32(1234),

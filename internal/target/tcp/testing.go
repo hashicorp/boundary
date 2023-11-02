@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/go-uuid"
@@ -22,7 +21,7 @@ func TestTarget(ctx context.Context, t testing.TB, conn *db.DB, projectId, name 
 	opts := target.GetOpts(opt...)
 	require := require.New(t)
 	rw := db.New(conn)
-	tar, err := target.New(ctx, globals.TcpSubtype, projectId, opt...)
+	tar, err := target.New(ctx, Subtype, projectId, opt...)
 	require.NoError(err)
 	id, err := db.NewPublicId(ctx, TargetPrefix)
 	require.NoError(err)

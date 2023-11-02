@@ -151,7 +151,7 @@ begin;
   create function has_exclusion_index(history_table_name name) returns text
   as $$
     select case when length(history_table_name || '_valid_range_excl') > 63
-           then hasnt_index(history_table_name, history_table_name || '_valid_range_excl', 'Index name too long: ' || history_table_name || '_valid_range_excl')
+           then hasnt_index(history_table_name, history_table_name || '_valid_range_excl', 'Index name to long: ' || history_table_name || '_valid_range_excl')
            else collect_tap(
                 has_index(history_table_name, history_table_name || '_valid_range_excl', array['public_id', 'valid_range'])
               ) end;

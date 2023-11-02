@@ -439,10 +439,10 @@ func Parse(ctx context.Context, scopeId, grantString string, opt ...Option) (Gra
 			var seenType resource.Type
 			for i, id := range grantIds {
 				if i == 0 {
-					seenType = globals.ResourceInfoFromPrefix(id).Type
+					seenType = globals.ResourceTypeFromPrefix(id)
 					continue
 				}
-				if seenType != globals.ResourceInfoFromPrefix(id).Type {
+				if seenType != globals.ResourceTypeFromPrefix(id) {
 					return Grant{}, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("input grant string %q contains ids of differently-typed resources", grantString))
 				}
 			}
@@ -524,7 +524,7 @@ func Parse(ctx context.Context, scopeId, grantString string, opt ...Option) (Gra
 				// the second example the type corresponding to the ID must have the
 				// specified type as a child type; in the third the ID must be a
 				// type that has child types.
-				idType := globals.ResourceInfoFromPrefix(grantIds[i]).Type
+				idType := globals.ResourceTypeFromPrefix(grantIds[i])
 				if idType == resource.Unknown {
 					return Grant{}, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("parsed grant string %q contains an id %q of an unknown resource type", grant.CanonicalString(), grantIds[i]))
 				}

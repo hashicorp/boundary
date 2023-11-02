@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/credential"
 	credstatic "github.com/hashicorp/boundary/internal/credential/static"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
@@ -99,7 +98,7 @@ func dynamicToSessionCredential(ctx context.Context, cred credential.Dynamic) (*
 
 	var credType string
 	var credData *structpb.Struct
-	if l.CredentialType() != globals.UnspecifiedCredentialType {
+	if l.CredentialType() != credential.UnspecifiedType {
 		credType = string(l.CredentialType())
 
 		switch c := cred.(type) {
@@ -195,7 +194,7 @@ func staticToSessionCredential(ctx context.Context, cred credential.Static) (*pb
 	switch c := cred.(type) {
 	case *credstatic.UsernamePasswordCredential:
 		var err error
-		credType = string(globals.UsernamePasswordCredentialType)
+		credType = string(credential.UsernamePasswordType)
 		credData, err = handlers.ProtoToStruct(
 			&pb.UsernamePasswordCredential{
 				Username: c.GetUsername(),
@@ -212,7 +211,7 @@ func staticToSessionCredential(ctx context.Context, cred credential.Static) (*pb
 
 	case *credstatic.SshPrivateKeyCredential:
 		var err error
-		credType = string(globals.SshPrivateKeyCredentialType)
+		credType = string(credential.SshPrivateKeyType)
 		credData, err = handlers.ProtoToStruct(
 			&pb.SshPrivateKeyCredential{
 				Username:             c.GetUsername(),
@@ -233,7 +232,7 @@ func staticToSessionCredential(ctx context.Context, cred credential.Static) (*pb
 
 	case *credstatic.JsonCredential:
 		var err error
-		credType = string(globals.JsonCredentialType)
+		credType = string(credential.JsonType)
 		object := map[string]any{}
 		err = json.Unmarshal(c.GetObject(), &object)
 		if err != nil {
@@ -265,7 +264,7 @@ func staticToSessionCredential(ctx context.Context, cred credential.Static) (*pb
 			Name:              cred.GetName(),
 			Description:       cred.GetDescription(),
 			CredentialStoreId: cred.GetStoreId(),
-			Type:              globals.StaticSubtype.String(),
+			Type:              credstatic.Subtype.String(),
 			CredentialType:    credType,
 		},
 		Secret: &pb.SessionSecret{

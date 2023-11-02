@@ -28,6 +28,7 @@ import (
 	"github.com/hashicorp/boundary/internal/plugin/loopback"
 	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/hashicorp/boundary/internal/types/subtypes"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostcatalogs"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/plugins"
 	scopepb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
@@ -45,8 +46,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var authorizedCollectionActions = map[globals.Subtype]map[string]*structpb.ListValue{
-	globals.StaticSubtype: {
+var authorizedCollectionActions = map[subtypes.Subtype]map[string]*structpb.ListValue{
+	static.Subtype: {
 		"host-sets": {
 			Values: []*structpb.Value{
 				structpb.NewStringValue("create"),
@@ -60,7 +61,7 @@ var authorizedCollectionActions = map[globals.Subtype]map[string]*structpb.ListV
 			},
 		},
 	},
-	globals.PluginSubtype: {
+	hostplugin.Subtype: {
 		"host-sets": {
 			Values: []*structpb.Value{
 				structpb.NewStringValue("create"),
@@ -112,7 +113,7 @@ func TestGet_Static(t *testing.T) {
 		UpdatedTime:                 hc.UpdateTime.GetTimestamp(),
 		Type:                        "static",
 		AuthorizedActions:           testAuthorizedActions,
-		AuthorizedCollectionActions: authorizedCollectionActions[globals.StaticSubtype],
+		AuthorizedCollectionActions: authorizedCollectionActions[static.Subtype],
 	}
 
 	cases := []struct {
@@ -214,9 +215,9 @@ func TestGet_Plugin(t *testing.T) {
 		},
 		CreatedTime:                 hc.CreateTime.GetTimestamp(),
 		UpdatedTime:                 hc.UpdateTime.GetTimestamp(),
-		Type:                        globals.PluginSubtype.String(),
+		Type:                        hostplugin.Subtype.String(),
 		AuthorizedActions:           testAuthorizedActions,
-		AuthorizedCollectionActions: authorizedCollectionActions[globals.PluginSubtype],
+		AuthorizedCollectionActions: authorizedCollectionActions[hostplugin.Subtype],
 		SecretsHmac:                 base58.Encode([]byte("foobar")),
 	}
 
@@ -320,7 +321,7 @@ func TestList(t *testing.T) {
 			Version:                     1,
 			Type:                        "static",
 			AuthorizedActions:           testAuthorizedActions,
-			AuthorizedCollectionActions: authorizedCollectionActions[globals.StaticSubtype],
+			AuthorizedCollectionActions: authorizedCollectionActions[static.Subtype],
 		})
 	}
 
@@ -342,9 +343,9 @@ func TestList(t *testing.T) {
 				Description: plg.GetDescription(),
 			},
 			Version:                     1,
-			Type:                        globals.PluginSubtype.String(),
+			Type:                        hostplugin.Subtype.String(),
 			AuthorizedActions:           testAuthorizedActions,
-			AuthorizedCollectionActions: authorizedCollectionActions[globals.PluginSubtype],
+			AuthorizedCollectionActions: authorizedCollectionActions[hostplugin.Subtype],
 		}
 		wantSomeCatalogs = append(wantSomeCatalogs, cat)
 		testPluginCatalogs = append(testPluginCatalogs, cat)
@@ -361,7 +362,7 @@ func TestList(t *testing.T) {
 			Version:                     1,
 			Type:                        "static",
 			AuthorizedActions:           testAuthorizedActions,
-			AuthorizedCollectionActions: authorizedCollectionActions[globals.StaticSubtype],
+			AuthorizedCollectionActions: authorizedCollectionActions[static.Subtype],
 		})
 	}
 
@@ -382,9 +383,9 @@ func TestList(t *testing.T) {
 				Description: diffPlg.GetDescription(),
 			},
 			Version:                     1,
-			Type:                        globals.PluginSubtype.String(),
+			Type:                        hostplugin.Subtype.String(),
 			AuthorizedActions:           testAuthorizedActions,
-			AuthorizedCollectionActions: authorizedCollectionActions[globals.PluginSubtype],
+			AuthorizedCollectionActions: authorizedCollectionActions[hostplugin.Subtype],
 		})
 	}
 
@@ -718,7 +719,7 @@ func TestCreate_Static(t *testing.T) {
 					Description:                 &wrappers.StringValue{Value: "desc"},
 					Type:                        "static",
 					AuthorizedActions:           testAuthorizedActions,
-					AuthorizedCollectionActions: authorizedCollectionActions[globals.StaticSubtype],
+					AuthorizedCollectionActions: authorizedCollectionActions[static.Subtype],
 				},
 			},
 		},
@@ -869,7 +870,7 @@ func TestCreate_Plugin(t *testing.T) {
 				ScopeId:     proj.GetPublicId(),
 				Name:        &wrappers.StringValue{Value: "name"},
 				Description: &wrappers.StringValue{Value: "desc"},
-				Type:        globals.PluginSubtype.String(),
+				Type:        hostplugin.Subtype.String(),
 				PluginId:    plg.GetPublicId(),
 			}},
 			res: &pbs.CreateHostCatalogResponse{
@@ -885,9 +886,9 @@ func TestCreate_Plugin(t *testing.T) {
 					},
 					Name:                        &wrappers.StringValue{Value: "name"},
 					Description:                 &wrappers.StringValue{Value: "desc"},
-					Type:                        globals.PluginSubtype.String(),
+					Type:                        hostplugin.Subtype.String(),
 					AuthorizedActions:           testAuthorizedActions,
-					AuthorizedCollectionActions: authorizedCollectionActions[globals.PluginSubtype],
+					AuthorizedCollectionActions: authorizedCollectionActions[hostplugin.Subtype],
 				},
 			},
 		},
@@ -895,7 +896,7 @@ func TestCreate_Plugin(t *testing.T) {
 			name: "Cant create in org",
 			req: &pbs.CreateHostCatalogRequest{Item: &pb.HostCatalog{
 				ScopeId:  org.GetParentId(),
-				Type:     globals.PluginSubtype.String(),
+				Type:     hostplugin.Subtype.String(),
 				PluginId: plg.GetPublicId(),
 			}},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -904,7 +905,7 @@ func TestCreate_Plugin(t *testing.T) {
 			name: "Cant create in global",
 			req: &pbs.CreateHostCatalogRequest{Item: &pb.HostCatalog{
 				ScopeId:  scope.Global.String(),
-				Type:     globals.PluginSubtype.String(),
+				Type:     hostplugin.Subtype.String(),
 				PluginId: plg.GetPublicId(),
 			}},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -931,7 +932,7 @@ func TestCreate_Plugin(t *testing.T) {
 			req: &pbs.CreateHostCatalogRequest{Item: &pb.HostCatalog{
 				Id:       "not allowed to be set",
 				ScopeId:  proj.GetPublicId(),
-				Type:     globals.PluginSubtype.String(),
+				Type:     hostplugin.Subtype.String(),
 				PluginId: plg.GetPublicId(),
 			}},
 			res: nil,
@@ -942,7 +943,7 @@ func TestCreate_Plugin(t *testing.T) {
 			req: &pbs.CreateHostCatalogRequest{Item: &pb.HostCatalog{
 				CreatedTime: timestamppb.Now(),
 				ScopeId:     proj.GetPublicId(),
-				Type:        globals.PluginSubtype.String(),
+				Type:        hostplugin.Subtype.String(),
 				PluginId:    plg.GetPublicId(),
 			}},
 			res: nil,
@@ -953,7 +954,7 @@ func TestCreate_Plugin(t *testing.T) {
 			req: &pbs.CreateHostCatalogRequest{Item: &pb.HostCatalog{
 				UpdatedTime: timestamppb.Now(),
 				ScopeId:     proj.GetPublicId(),
-				Type:        globals.PluginSubtype.String(),
+				Type:        hostplugin.Subtype.String(),
 				PluginId:    plg.GetPublicId(),
 			}},
 			res: nil,
@@ -1076,7 +1077,7 @@ func TestUpdate_Static(t *testing.T) {
 					CreatedTime:                 hc.GetCreateTime().GetTimestamp(),
 					Type:                        "static",
 					AuthorizedActions:           testAuthorizedActions,
-					AuthorizedCollectionActions: authorizedCollectionActions[globals.StaticSubtype],
+					AuthorizedCollectionActions: authorizedCollectionActions[static.Subtype],
 				},
 			},
 		},
@@ -1102,7 +1103,7 @@ func TestUpdate_Static(t *testing.T) {
 					CreatedTime:                 hc.GetCreateTime().GetTimestamp(),
 					Type:                        "static",
 					AuthorizedActions:           testAuthorizedActions,
-					AuthorizedCollectionActions: authorizedCollectionActions[globals.StaticSubtype],
+					AuthorizedCollectionActions: authorizedCollectionActions[static.Subtype],
 				},
 			},
 		},
@@ -1157,7 +1158,7 @@ func TestUpdate_Static(t *testing.T) {
 					CreatedTime:                 hc.GetCreateTime().GetTimestamp(),
 					Type:                        "static",
 					AuthorizedActions:           testAuthorizedActions,
-					AuthorizedCollectionActions: authorizedCollectionActions[globals.StaticSubtype],
+					AuthorizedCollectionActions: authorizedCollectionActions[static.Subtype],
 				},
 			},
 		},
@@ -1180,7 +1181,7 @@ func TestUpdate_Static(t *testing.T) {
 					CreatedTime:                 hc.GetCreateTime().GetTimestamp(),
 					Type:                        "static",
 					AuthorizedActions:           testAuthorizedActions,
-					AuthorizedCollectionActions: authorizedCollectionActions[globals.StaticSubtype],
+					AuthorizedCollectionActions: authorizedCollectionActions[static.Subtype],
 				},
 			},
 		},
@@ -1205,7 +1206,7 @@ func TestUpdate_Static(t *testing.T) {
 					CreatedTime:                 hc.GetCreateTime().GetTimestamp(),
 					Type:                        "static",
 					AuthorizedActions:           testAuthorizedActions,
-					AuthorizedCollectionActions: authorizedCollectionActions[globals.StaticSubtype],
+					AuthorizedCollectionActions: authorizedCollectionActions[static.Subtype],
 				},
 			},
 		},
@@ -1230,7 +1231,7 @@ func TestUpdate_Static(t *testing.T) {
 					CreatedTime:                 hc.GetCreateTime().GetTimestamp(),
 					Type:                        "static",
 					AuthorizedActions:           testAuthorizedActions,
-					AuthorizedCollectionActions: authorizedCollectionActions[globals.StaticSubtype],
+					AuthorizedCollectionActions: authorizedCollectionActions[static.Subtype],
 				},
 			},
 		},
@@ -1481,7 +1482,7 @@ func TestUpdate_Plugin(t *testing.T) {
 			check: func(t *testing.T, in *pb.HostCatalog) {
 				assert.Equal(t, "new", in.Name.GetValue())
 				assert.Equal(t, "desc", in.Description.GetValue())
-				assert.Empty(t, cmp.Diff(authorizedCollectionActions[globals.PluginSubtype], in.GetAuthorizedCollectionActions(), cmpopts.IgnoreUnexported(structpb.ListValue{}, structpb.Value{})))
+				assert.Empty(t, cmp.Diff(authorizedCollectionActions[hostplugin.Subtype], in.GetAuthorizedCollectionActions(), cmpopts.IgnoreUnexported(structpb.ListValue{}, structpb.Value{})))
 			},
 		},
 		{

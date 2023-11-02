@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"io"
 	"reflect"
-	"slices"
 	"sync"
 	"time"
 
@@ -19,6 +18,7 @@ import (
 	"github.com/hashicorp/go-dbw"
 	wrappingKms "github.com/hashicorp/go-kms-wrapping/extras/kms/v2"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	"golang.org/x/exp/slices"
 )
 
 // Kms is a way to access wrappers for a given scope and purpose. Since keys can
@@ -600,8 +600,8 @@ keyLoop:
 		return false, errors.New(ctx, errors.KeyNotFound, op, "key version was not found in the scope")
 	}
 	// Sort versions just in case they aren't already sorted
-	slices.SortFunc(foundKey.Versions, func(i, j wrappingKms.KeyVersion) int {
-		return int(i.Version) - int(j.Version)
+	slices.SortFunc(foundKey.Versions, func(i, j wrappingKms.KeyVersion) bool {
+		return i.Version < j.Version
 	})
 	if foundKey.Versions[len(foundKey.Versions)-1].Id == keyVersionId {
 		// Attempted to destroy currently active key

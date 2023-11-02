@@ -7,7 +7,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -95,9 +95,9 @@ func Test_GetOpts(t *testing.T) {
 		assert.Equal(t, opts, testOpts)
 	})
 	t.Run("WithCredentialType", func(t *testing.T) {
-		opts := getOpts(WithCredentialType(globals.UsernamePasswordCredentialType))
+		opts := getOpts(WithCredentialType(credential.UsernamePasswordType))
 		testOpts := getDefaultOptions()
-		testOpts.withCredentialType = globals.UsernamePasswordCredentialType
+		testOpts.withCredentialType = credential.UsernamePasswordType
 		assert.Equal(t, opts, testOpts)
 	})
 	t.Run("WithOverrideUsernameAttribute", func(t *testing.T) {

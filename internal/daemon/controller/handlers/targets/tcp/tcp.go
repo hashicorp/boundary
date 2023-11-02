@@ -8,12 +8,12 @@ import (
 	"math"
 
 	"github.com/golang/protobuf/ptypes/wrappers"
-	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/targets"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/target/store"
+	"github.com/hashicorp/boundary/internal/target/tcp"
 	tcpStore "github.com/hashicorp/boundary/internal/target/tcp/store"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
 )
@@ -129,5 +129,5 @@ func init() {
 		panic(err)
 	}
 
-	targets.Register(globals.TcpSubtype, maskManager, newAttribute, setAttributes, noopSessionValidation)
+	targets.Register(tcp.Subtype, maskManager, newAttribute, setAttributes, noopSessionValidation)
 }

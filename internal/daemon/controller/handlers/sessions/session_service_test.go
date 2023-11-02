@@ -98,7 +98,7 @@ func TestGetSession(t *testing.T) {
 		Scope:             &scopes.ScopeInfo{Id: p.GetPublicId(), Type: scope.Project.String(), ParentScopeId: o.GetPublicId()},
 		States:            []*pb.SessionState{{Status: session.StatusPending.String(), StartTime: sess.CreateTime.GetTimestamp()}},
 		Certificate:       sess.Certificate,
-		Type:              globals.TcpSubtype.String(),
+		Type:              tcp.Subtype.String(),
 		AuthorizedActions: testAuthorizedActions,
 	}
 
@@ -352,7 +352,7 @@ func TestList(t *testing.T) {
 			Status:            status,
 			States:            states,
 			Certificate:       sess.Certificate,
-			Type:              globals.TcpSubtype.String(),
+			Type:              tcp.Subtype.String(),
 			AuthorizedActions: testAuthorizedActions,
 			Connections:       []*pb.Connection{}, // connections should not be returned for list
 		}
@@ -392,7 +392,7 @@ func TestList(t *testing.T) {
 			Status:            status,
 			States:            states,
 			Certificate:       sess.Certificate,
-			Type:              globals.TcpSubtype.String(),
+			Type:              tcp.Subtype.String(),
 			AuthorizedActions: testAuthorizedActions,
 			Connections:       []*pb.Connection{}, // connections should not be returned for list
 		}
@@ -440,7 +440,7 @@ func TestList(t *testing.T) {
 			States:            states,
 			Certificate:       sess.Certificate,
 			TerminationReason: sess.TerminationReason,
-			Type:              globals.TcpSubtype.String(),
+			Type:              tcp.Subtype.String(),
 			AuthorizedActions: testAuthorizedActions,
 			Connections:       []*pb.Connection{}, // connections should not be returned for list
 		}
@@ -664,7 +664,7 @@ func TestCancel(t *testing.T) {
 		Scope:             &scopes.ScopeInfo{Id: p.GetPublicId(), Type: scope.Project.String(), ParentScopeId: o.GetPublicId()},
 		Status:            session.StatusCanceling.String(),
 		Certificate:       sess.Certificate,
-		Type:              globals.TcpSubtype.String(),
+		Type:              tcp.Subtype.String(),
 		AuthorizedActions: testAuthorizedActions,
 	}
 

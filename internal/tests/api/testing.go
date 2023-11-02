@@ -5,7 +5,7 @@ package api
 
 import (
 	"encoding/json"
-	"os"
+	"io/ioutil"
 	"reflect"
 	"testing"
 
@@ -19,7 +19,7 @@ import (
 // name
 func CloudEventFromFile(t testing.TB, fileName string) *cloudevents.Event {
 	t.Helper()
-	b, err := os.ReadFile(fileName)
+	b, err := ioutil.ReadFile(fileName)
 	assert.NoError(t, err)
 	got := &cloudevents.Event{}
 	err = json.Unmarshal(b, got)

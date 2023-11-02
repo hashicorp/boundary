@@ -13,16 +13,24 @@ import (
 )
 
 func init() {
-	if err := subtypes.Register(Domain, globals.UsernamePasswordSubtype, globals.UsernamePasswordCredentialPrefix, globals.UsernamePasswordCredentialPreviousPrefix); err != nil {
+	if err := subtypes.Register(Domain, UsernamePasswordSubtype, globals.UsernamePasswordCredentialPrefix, globals.UsernamePasswordCredentialPreviousPrefix); err != nil {
 		panic(err)
 	}
-	if err := subtypes.Register(Domain, globals.SshPrivateKeySubtype, globals.SshPrivateKeyCredentialPrefix); err != nil {
+	if err := subtypes.Register(Domain, SshPrivateKeySubtype, globals.SshPrivateKeyCredentialPrefix); err != nil {
 		panic(err)
 	}
-	if err := subtypes.Register(Domain, globals.JsonSubtype, globals.JsonCredentialPrefix); err != nil {
+	if err := subtypes.Register(Domain, JsonSubtype, globals.JsonCredentialPrefix); err != nil {
 		panic(err)
 	}
 }
+
+const (
+	UsernamePasswordSubtype = subtypes.Subtype("username_password")
+
+	SshPrivateKeySubtype = subtypes.Subtype("ssh_private_key")
+
+	JsonSubtype = subtypes.Subtype("json")
+)
 
 func NewUsernamePasswordCredentialId(ctx context.Context) (string, error) {
 	id, err := db.NewPublicId(ctx, globals.UsernamePasswordCredentialPrefix)

@@ -7,7 +7,6 @@ import (
 	"context"
 	"errors"
 
-	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/protooptions"
 	"google.golang.org/grpc"
@@ -115,7 +114,7 @@ func transformRequestAttributes(req proto.Message) error {
 		return m.Get(fd).String()
 	}
 
-	var st globals.Subtype
+	var st Subtype
 	switch {
 	case itemField != nil:
 		itemR := itemField.Message()
@@ -139,7 +138,7 @@ func transformRequestAttributes(req proto.Message) error {
 		case sourceIdField != nil && sourceId != "":
 			st = SubtypeFromId(domain, sourceId)
 		case typeField != nil && t != "":
-			st = globals.Subtype(t)
+			st = Subtype(t)
 		default: // need either type or id
 			return nil
 		}
@@ -173,7 +172,7 @@ func transformResponseItemAttributes(item proto.Message) error {
 		return nil
 	}
 
-	st := globals.Subtype(item.ProtoReflect().Get(typeField).String())
+	st := Subtype(item.ProtoReflect().Get(typeField).String())
 	return convertAttributesToDefault(item, st)
 }
 

@@ -44,7 +44,6 @@ type Options struct {
 	withStatusCode                 int
 	withHostPlugin                 func() (string, plugin.HostPluginServiceClient)
 	withEventGating                bool
-	withImplicitId                 string
 }
 
 func getDefaultOptions() Options {
@@ -199,13 +198,5 @@ func WithHostPlugin(pluginId string, plg plugin.HostPluginServiceClient) Option 
 func WithEventGating(with bool) Option {
 	return func(o *Options) {
 		o.withEventGating = with
-	}
-}
-
-// WithImplicitId is used when creating the command if we are implicitly
-// overriding the ID via a top-level read/update/delete command
-func WithImplicitId(with string) Option {
-	return func(o *Options) {
-		o.withImplicitId = with
 	}
 }

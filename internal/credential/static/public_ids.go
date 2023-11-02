@@ -14,10 +14,15 @@ import (
 )
 
 func init() {
-	if err := subtypes.Register(credential.Domain, globals.StaticSubtype, globals.StaticCredentialStorePrefix, globals.StaticCredentialStorePreviousPrefix); err != nil {
+	if err := subtypes.Register(credential.Domain, Subtype, globals.StaticCredentialStorePrefix, globals.StaticCredentialStorePreviousPrefix); err != nil {
 		panic(err)
 	}
 }
+
+// PublicId prefixes for the resources in the static package.
+const (
+	Subtype = subtypes.Subtype("static")
+)
 
 func newCredentialStoreId(ctx context.Context) (string, error) {
 	id, err := db.NewPublicId(ctx, globals.StaticCredentialStorePrefix)

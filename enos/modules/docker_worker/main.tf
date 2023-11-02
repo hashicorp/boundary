@@ -55,11 +55,6 @@ variable "config_file" {
   type        = string
   default     = "worker-config.hcl"
 }
-variable "token" {
-  description = "Controller generated activation token to initialize worker"
-  type        = string
-  default     = ""
-}
 
 resource "docker_image" "boundary" {
   name         = var.image_name
@@ -107,7 +102,6 @@ resource "docker_container" "worker" {
       recording_storage_path = local.recording_storage_path
       port                   = var.port
       port_ops               = local.port_ops
-      token                  = var.token
     })
     file = "/boundary/worker-config.hcl"
   }

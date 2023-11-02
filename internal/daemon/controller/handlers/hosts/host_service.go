@@ -36,14 +36,14 @@ var (
 
 	// IdActions contains the set of actions that can be performed on
 	// individual resources
-	idActionsTypeMap = map[globals.Subtype]action.ActionSet{
-		globals.StaticSubtype: {
+	idActionsTypeMap = map[subtypes.Subtype]action.ActionSet{
+		static.Subtype: {
 			action.NoOp,
 			action.Read,
 			action.Update,
 			action.Delete,
 		},
-		globals.PluginSubtype: {
+		hostplugin.Subtype: {
 			action.NoOp,
 			action.Read,
 		},
@@ -302,7 +302,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (host.Host, *plugin
 	var h host.Host
 	var plg *plugins.PluginInfo
 	switch subtypes.SubtypeFromId(domain, id) {
-	case globals.StaticSubtype:
+	case static.Subtype:
 		repo, err := s.staticRepoFn()
 		if err != nil {
 			return nil, nil, err
@@ -314,7 +314,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (host.Host, *plugin
 		if h == nil {
 			return nil, nil, handlers.NotFoundErrorf("Host %q doesn't exist.", id)
 		}
-	case globals.PluginSubtype:
+	case hostplugin.Subtype:
 		repo, err := s.pluginRepoFn()
 		if err != nil {
 			return nil, nil, err
@@ -417,7 +417,7 @@ func (s Service) listFromRepo(ctx context.Context, catalogId string) ([]host.Hos
 	var hosts []host.Host
 	var plg *plugins.PluginInfo
 	switch subtypes.SubtypeFromId(domain, catalogId) {
-	case globals.StaticSubtype:
+	case static.Subtype:
 		repo, err := s.staticRepoFn()
 		if err != nil {
 			return nil, nil, err
@@ -429,7 +429,7 @@ func (s Service) listFromRepo(ctx context.Context, catalogId string) ([]host.Hos
 		for _, h := range hl {
 			hosts = append(hosts, h)
 		}
-	case globals.PluginSubtype:
+	case hostplugin.Subtype:
 		repo, err := s.pluginRepoFn()
 		if err != nil {
 			return nil, nil, err
@@ -466,7 +466,7 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 		parentId = id
 	default:
 		switch subtypes.SubtypeFromId(domain, id) {
-		case globals.StaticSubtype:
+		case static.Subtype:
 			h, err := staticRepo.LookupHost(ctx, id)
 			if err != nil {
 				res.Error = err
@@ -477,7 +477,7 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 				return nil, res
 			}
 			parentId = h.GetCatalogId()
-		case globals.PluginSubtype:
+		case hostplugin.Subtype:
 			h, _, err := pluginRepo.LookupHost(ctx, id)
 			if err != nil {
 				res.Error = err
@@ -494,7 +494,7 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 
 	var cat host.Catalog
 	switch subtypes.SubtypeFromId(domain, id) {
-	case globals.StaticSubtype:
+	case static.Subtype:
 		stcat, err := staticRepo.LookupCatalog(ctx, parentId)
 		if err != nil {
 			res.Error = err
@@ -505,7 +505,7 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 			return nil, res
 		}
 		cat = stcat
-	case globals.PluginSubtype:
+	case hostplugin.Subtype:
 		plcat, _, err := pluginRepo.LookupCatalog(ctx, parentId)
 		if err != nil {
 			res.Error = err
@@ -549,9 +549,9 @@ func toProto(ctx context.Context, in host.Host, opt ...handlers.Option) (*pb.Hos
 	if outputFields.Has(globals.TypeField) {
 		switch in.(type) {
 		case *static.Host:
-			out.Type = globals.StaticSubtype.String()
+			out.Type = static.Subtype.String()
 		case *hostplugin.Host:
-			out.Type = globals.PluginSubtype.String()
+			out.Type = hostplugin.Subtype.String()
 		}
 	}
 	if outputFields.Has(globals.DescriptionField) && in.GetDescription() != "" {
@@ -620,7 +620,7 @@ func validateGetRequest(req *pbs.GetHostRequest) error {
 	return handlers.ValidateGetRequest(func() map[string]string {
 		badFields := map[string]string{}
 		ct := subtypes.SubtypeFromId(domain, req.GetId())
-		if ct == globals.UnknownSubtype {
+		if ct == subtypes.UnknownSubtype {
 			badFields["id"] = "Improperly formatted identifier used."
 		}
 		return badFields
@@ -634,8 +634,8 @@ func validateCreateRequest(req *pbs.CreateHostRequest) error {
 			badFields["host_catalog_id"] = "The field is incorrectly formatted."
 		}
 		switch subtypes.SubtypeFromId(domain, req.GetItem().GetHostCatalogId()) {
-		case globals.StaticSubtype:
-			if req.GetItem().GetType() != "" && req.GetItem().GetType() != globals.StaticSubtype.String() {
+		case static.Subtype:
+			if req.GetItem().GetType() != "" && req.GetItem().GetType() != static.Subtype.String() {
 				badFields[globals.TypeField] = "Doesn't match the parent resource's type."
 			}
 			if len(req.GetItem().GetIpAddresses()) > 0 {
@@ -665,7 +665,7 @@ func validateCreateRequest(req *pbs.CreateHostRequest) error {
 					}
 				}
 			}
-		case globals.PluginSubtype:
+		case hostplugin.Subtype:
 			badFields[globals.HostCatalogIdField] = "Cannot manually create hosts for this type of catalog."
 		}
 		return badFields
@@ -676,8 +676,8 @@ func validateUpdateRequest(req *pbs.UpdateHostRequest) error {
 	return handlers.ValidateUpdateRequest(req, req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
 		switch subtypes.SubtypeFromId(domain, req.GetId()) {
-		case globals.StaticSubtype:
-			if req.GetItem().GetType() != "" && req.GetItem().GetType() != globals.StaticSubtype.String() {
+		case static.Subtype:
+			if req.GetItem().GetType() != "" && req.GetItem().GetType() != static.Subtype.String() {
 				badFields[globals.TypeField] = "Cannot modify the resource type."
 			}
 			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), globals.AttributesAddressField) {
@@ -703,7 +703,7 @@ func validateUpdateRequest(req *pbs.UpdateHostRequest) error {
 					}
 				}
 			}
-		case globals.PluginSubtype:
+		case hostplugin.Subtype:
 			badFields[globals.IdField] = "Cannot modify this type of host."
 		default:
 			badFields["id"] = "Improperly formatted identifier used."
@@ -716,7 +716,7 @@ func validateDeleteRequest(req *pbs.DeleteHostRequest) error {
 	return handlers.ValidateDeleteRequest(func() map[string]string {
 		badFields := map[string]string{}
 		switch subtypes.SubtypeFromId(domain, req.GetId()) {
-		case globals.PluginSubtype:
+		case hostplugin.Subtype:
 			badFields[globals.IdField] = "Cannot manually delete this type of host."
 		}
 		return badFields

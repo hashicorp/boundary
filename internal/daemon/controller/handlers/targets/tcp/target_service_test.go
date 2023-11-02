@@ -156,7 +156,7 @@ func TestGet(t *testing.T) {
 		CreatedTime:            tar.GetCreateTime().GetTimestamp(),
 		UpdatedTime:            tar.GetUpdateTime().GetTimestamp(),
 		Scope:                  &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: o.GetPublicId()},
-		Type:                   globals.TcpSubtype.String(),
+		Type:                   tcp.Subtype.String(),
 		HostSourceIds:          []string{hs[0].GetPublicId(), hs[1].GetPublicId()},
 		Attrs:                  &pb.Target_TcpTargetAttributes{},
 		SessionMaxSeconds:      wrapperspb.UInt32(28800),
@@ -175,7 +175,7 @@ func TestGet(t *testing.T) {
 		CreatedTime:            tarAddr.GetCreateTime().GetTimestamp(),
 		UpdatedTime:            tarAddr.GetUpdateTime().GetTimestamp(),
 		Scope:                  &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: o.GetPublicId()},
-		Type:                   globals.TcpSubtype.String(),
+		Type:                   tcp.Subtype.String(),
 		Attrs:                  &pb.Target_TcpTargetAttributes{},
 		SessionMaxSeconds:      wrapperspb.UInt32(28800),
 		SessionConnectionLimit: wrapperspb.Int32(-1),
@@ -299,7 +299,7 @@ func TestList(t *testing.T) {
 			CreatedTime:            tar.GetCreateTime().GetTimestamp(),
 			UpdatedTime:            tar.GetUpdateTime().GetTimestamp(),
 			Version:                tar.GetVersion(),
-			Type:                   globals.TcpSubtype.String(),
+			Type:                   tcp.Subtype.String(),
 			Attrs:                  &pb.Target_TcpTargetAttributes{},
 			SessionMaxSeconds:      wrapperspb.UInt32(28800),
 			SessionConnectionLimit: wrapperspb.Int32(-1),
@@ -316,7 +316,7 @@ func TestList(t *testing.T) {
 			CreatedTime:            tar.GetCreateTime().GetTimestamp(),
 			UpdatedTime:            tar.GetUpdateTime().GetTimestamp(),
 			Version:                tar.GetVersion(),
-			Type:                   globals.TcpSubtype.String(),
+			Type:                   tcp.Subtype.String(),
 			Attrs:                  &pb.Target_TcpTargetAttributes{},
 			SessionMaxSeconds:      wrapperspb.UInt32(28800),
 			SessionConnectionLimit: wrapperspb.Int32(-1),
@@ -586,7 +586,7 @@ func TestCreate(t *testing.T) {
 				ScopeId:     proj.GetPublicId(),
 				Name:        wrapperspb.String("name"),
 				Description: wrapperspb.String("desc"),
-				Type:        globals.TcpSubtype.String(),
+				Type:        tcp.Subtype.String(),
 				Attrs: &pb.Target_TcpTargetAttributes{
 					TcpTargetAttributes: &pb.TcpTargetAttributes{
 						DefaultPort:       wrapperspb.UInt32(2),
@@ -602,7 +602,7 @@ func TestCreate(t *testing.T) {
 					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
 					Name:        wrapperspb.String("name"),
 					Description: wrapperspb.String("desc"),
-					Type:        globals.TcpSubtype.String(),
+					Type:        tcp.Subtype.String(),
 					Attrs: &pb.Target_TcpTargetAttributes{
 						TcpTargetAttributes: &pb.TcpTargetAttributes{
 							DefaultPort:       wrapperspb.UInt32(2),
@@ -623,7 +623,7 @@ func TestCreate(t *testing.T) {
 				ScopeId:            proj.GetPublicId(),
 				Name:               wrapperspb.String("name"),
 				Description:        wrapperspb.String("desc"),
-				Type:               globals.TcpSubtype.String(),
+				Type:               tcp.Subtype.String(),
 				EgressWorkerFilter: wrapperspb.String(`type == "bar"`),
 			}},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -633,7 +633,7 @@ func TestCreate(t *testing.T) {
 			req: &pbs.CreateTargetRequest{Item: &pb.Target{
 				Name:        wrapperspb.String("name"),
 				Description: wrapperspb.String("desc"),
-				Type:        globals.TcpSubtype.String(),
+				Type:        tcp.Subtype.String(),
 				Attrs: &pb.Target_TcpTargetAttributes{
 					TcpTargetAttributes: &pb.TcpTargetAttributes{
 						DefaultPort:       wrapperspb.UInt32(2),
@@ -818,7 +818,7 @@ func TestUpdate(t *testing.T) {
 		{Id: hs[1].GetPublicId(), HostCatalogId: hs[1].GetCatalogId()},
 	}
 
-	ttar, err := target.New(ctx, globals.TcpSubtype, proj.GetPublicId(),
+	ttar, err := target.New(ctx, tcp.Subtype, proj.GetPublicId(),
 		target.WithName("default"),
 		target.WithDescription("default"),
 		target.WithSessionMaxSeconds(1),
@@ -871,7 +871,7 @@ func TestUpdate(t *testing.T) {
 					Description:            wrapperspb.String("desc"),
 					SessionMaxSeconds:      wrapperspb.UInt32(3600),
 					SessionConnectionLimit: wrapperspb.Int32(5),
-					Type:                   globals.TcpSubtype.String(),
+					Type:                   tcp.Subtype.String(),
 				},
 			},
 			res: &pbs.UpdateTargetResponse{
@@ -881,7 +881,7 @@ func TestUpdate(t *testing.T) {
 					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
 					Name:        wrapperspb.String("name"),
 					Description: wrapperspb.String("desc"),
-					Type:        globals.TcpSubtype.String(),
+					Type:        tcp.Subtype.String(),
 					Attrs: &pb.Target_TcpTargetAttributes{
 						TcpTargetAttributes: &pb.TcpTargetAttributes{
 							DefaultPort:       wrapperspb.UInt32(2),
@@ -907,7 +907,7 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.Target{
 					Name:        wrapperspb.String("name"),
 					Description: wrapperspb.String("desc"),
-					Type:        globals.TcpSubtype.String(),
+					Type:        tcp.Subtype.String(),
 				},
 			},
 			res: &pbs.UpdateTargetResponse{
@@ -918,7 +918,7 @@ func TestUpdate(t *testing.T) {
 					Name:        wrapperspb.String("name"),
 					Description: wrapperspb.String("desc"),
 					CreatedTime: tar.GetCreateTime().GetTimestamp(),
-					Type:        globals.TcpSubtype.String(),
+					Type:        tcp.Subtype.String(),
 					Attrs: &pb.Target_TcpTargetAttributes{
 						TcpTargetAttributes: &pb.TcpTargetAttributes{
 							DefaultPort:       wrapperspb.UInt32(2),
@@ -1018,7 +1018,7 @@ func TestUpdate(t *testing.T) {
 					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
 					Name:        wrapperspb.String("default"),
 					CreatedTime: tar.GetCreateTime().GetTimestamp(),
-					Type:        globals.TcpSubtype.String(),
+					Type:        tcp.Subtype.String(),
 					Attrs: &pb.Target_TcpTargetAttributes{
 						TcpTargetAttributes: &pb.TcpTargetAttributes{
 							DefaultPort:       wrapperspb.UInt32(2),
@@ -1053,7 +1053,7 @@ func TestUpdate(t *testing.T) {
 					Name:        wrapperspb.String("updated"),
 					Description: wrapperspb.String("default"),
 					CreatedTime: tar.GetCreateTime().GetTimestamp(),
-					Type:        globals.TcpSubtype.String(),
+					Type:        tcp.Subtype.String(),
 					Attrs: &pb.Target_TcpTargetAttributes{
 						TcpTargetAttributes: &pb.TcpTargetAttributes{
 							DefaultPort:       wrapperspb.UInt32(2),
@@ -1094,7 +1094,7 @@ func TestUpdate(t *testing.T) {
 							DefaultClientPort: wrapperspb.UInt32(3),
 						},
 					},
-					Type:                   globals.TcpSubtype.String(),
+					Type:                   tcp.Subtype.String(),
 					HostSourceIds:          hostSourceIds,
 					HostSources:            hostSources,
 					SessionMaxSeconds:      wrapperspb.UInt32(tar.GetSessionMaxSeconds()),
@@ -1306,7 +1306,7 @@ func TestUpdate_BadVersion(t *testing.T) {
 	repo, err := repoFn()
 	require.NoError(t, err, "Couldn't create new target repo.")
 
-	ttar, err := target.New(ctx, globals.TcpSubtype, proj.GetPublicId(), target.WithName("default"), target.WithDescription("default"))
+	ttar, err := target.New(ctx, tcp.Subtype, proj.GetPublicId(), target.WithName("default"), target.WithDescription("default"))
 	tar := ttar.(*tcp.Target)
 	tar.DefaultPort = 2
 	tar.DefaultClientPort = 3
@@ -2544,7 +2544,7 @@ func TestAuthorizeSession(t *testing.T) {
 		CredentialStoreId: vaultStore.GetPublicId(),
 		Name:              wrapperspb.String("Library Name"),
 		Description:       wrapperspb.String("Library Description"),
-		Type:              globals.VaultGenericLibrarySubtype.String(),
+		Type:              vault.GenericLibrarySubtype.String(),
 		Attrs: &credlibpb.CredentialLibrary_VaultCredentialLibraryAttributes{
 			VaultCredentialLibraryAttributes: &credlibpb.VaultCredentialLibraryAttributes{
 				Path: &wrapperspb.StringValue{
@@ -2652,18 +2652,15 @@ func TestAuthorizeSession(t *testing.T) {
 				HostId:    wantedHostId,
 				Type:      "tcp",
 				Endpoint:  fmt.Sprintf("tcp://%s", tc.wantedEndpoint),
-				Credentials: []*pb.SessionCredential{
-					{
-						CredentialSource: &pb.CredentialSource{
-							Id:                clsResp.GetItem().GetId(),
-							Name:              clsResp.GetItem().GetName().GetValue(),
-							Description:       clsResp.GetItem().GetDescription().GetValue(),
-							CredentialStoreId: vaultStore.GetPublicId(),
-							Type:              globals.VaultGenericLibrarySubtype.String(),
-						},
+				Credentials: []*pb.SessionCredential{{
+					CredentialSource: &pb.CredentialSource{
+						Id:                clsResp.GetItem().GetId(),
+						Name:              clsResp.GetItem().GetName().GetValue(),
+						Description:       clsResp.GetItem().GetDescription().GetValue(),
+						CredentialStoreId: vaultStore.GetPublicId(),
+						Type:              vault.GenericLibrarySubtype.String(),
 					},
-				},
-				EndpointPort: uint32(defaultPort),
+				}},
 				// TODO: validate the contents of the authorization token is what is expected
 			}
 			wantSecret := map[string]any{
@@ -2700,7 +2697,7 @@ func TestAuthorizeSession(t *testing.T) {
 			gotCred.Secret = nil
 
 			got.AuthorizationToken, got.SessionId, got.CreatedTime = "", "", nil
-			assert.Empty(t, cmp.Diff(got, want, protocmp.Transform(), protocmp.IgnoreFields(&pb.SessionAuthorization{}, "expiration")))
+			assert.Empty(t, cmp.Diff(got, want, protocmp.Transform()))
 		})
 	}
 }
@@ -2791,7 +2788,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 		CredentialStoreId: vaultStore.GetPublicId(),
 		Name:              wrapperspb.String("Usernamepassword Library"),
 		Description:       wrapperspb.String("Usernamepassword Library Description"),
-		Type:              globals.VaultGenericLibrarySubtype.String(),
+		Type:              vault.GenericLibrarySubtype.String(),
 		Attrs: &credlibpb.CredentialLibrary_VaultCredentialLibraryAttributes{
 			VaultCredentialLibraryAttributes: &credlibpb.VaultCredentialLibraryAttributes{
 				Path:       wrapperspb.String(path.Join("secret", "data", "default-userpass")),
@@ -2806,7 +2803,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 		CredentialStoreId: vaultStore.GetPublicId(),
 		Name:              wrapperspb.String("Unspecified Library"),
 		Description:       wrapperspb.String("Unspecified Library Description"),
-		Type:              globals.VaultGenericLibrarySubtype.String(),
+		Type:              vault.GenericLibrarySubtype.String(),
 		Attrs: &credlibpb.CredentialLibrary_VaultCredentialLibraryAttributes{
 			VaultCredentialLibraryAttributes: &credlibpb.VaultCredentialLibraryAttributes{
 				Path:       wrapperspb.String(path.Join("secret", "data", "default-userpass")),
@@ -2824,7 +2821,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 		CredentialStoreId: vaultStore.GetPublicId(),
 		Name:              wrapperspb.String("Usernamepassword Mapping Library"),
 		Description:       wrapperspb.String("Usernamepassword Mapping Library Description"),
-		Type:              globals.VaultGenericLibrarySubtype.String(),
+		Type:              vault.GenericLibrarySubtype.String(),
 		Attrs: &credlibpb.CredentialLibrary_VaultCredentialLibraryAttributes{
 			VaultCredentialLibraryAttributes: &credlibpb.VaultCredentialLibraryAttributes{
 				Path:       wrapperspb.String(path.Join("secret", "data", "non-default-userpass")),
@@ -2844,7 +2841,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 	require.NoError(t, err)
 	upCredResp, err := credService.CreateCredential(ctx, &pbs.CreateCredentialRequest{Item: &credpb.Credential{
 		CredentialStoreId: staticStore.GetPublicId(),
-		Type:              globals.UsernamePasswordSubtype.String(),
+		Type:              credential.UsernamePasswordSubtype.String(),
 		Name:              wrapperspb.String("Cred Name"),
 		Description:       wrapperspb.String("Cred Description"),
 		Attrs: &credpb.Credential_UsernamePasswordAttributes{
@@ -2859,7 +2856,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 
 	sshPkCredResp, err := credService.CreateCredential(ctx, &pbs.CreateCredentialRequest{Item: &credpb.Credential{
 		CredentialStoreId: staticStore.GetPublicId(),
-		Type:              globals.SshPrivateKeySubtype.String(),
+		Type:              credential.SshPrivateKeySubtype.String(),
 		Name:              wrapperspb.String("Cred SSH Name"),
 		Description:       wrapperspb.String("Cred SSH Description"),
 		Attrs: &credpb.Credential_SshPrivateKeyAttributes{
@@ -2874,7 +2871,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 
 	sshPkWithPassCredResp, err := credService.CreateCredential(ctx, &pbs.CreateCredentialRequest{Item: &credpb.Credential{
 		CredentialStoreId: staticStore.GetPublicId(),
-		Type:              globals.SshPrivateKeySubtype.String(),
+		Type:              credential.SshPrivateKeySubtype.String(),
 		Name:              wrapperspb.String("Cred SSH With Pass Name"),
 		Description:       wrapperspb.String("Cred SSH Description"),
 		Attrs: &credpb.Credential_SshPrivateKeyAttributes{
@@ -2896,7 +2893,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 		CredentialStoreId: vaultStore.GetPublicId(),
 		Name:              wrapperspb.String("SSH Private Key Library"),
 		Description:       wrapperspb.String("SSH Private Key Library Description"),
-		Type:              globals.VaultGenericLibrarySubtype.String(),
+		Type:              vault.GenericLibrarySubtype.String(),
 		Attrs: &credlibpb.CredentialLibrary_VaultCredentialLibraryAttributes{
 			VaultCredentialLibraryAttributes: &credlibpb.VaultCredentialLibraryAttributes{
 				Path:       wrapperspb.String(path.Join("secret", "data", "default-sshpk")),
@@ -2915,7 +2912,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 		CredentialStoreId: vaultStore.GetPublicId(),
 		Name:              wrapperspb.String("SSH Private Key Mapping Library"),
 		Description:       wrapperspb.String("SSH Private Key Mapping Library Description"),
-		Type:              globals.VaultGenericLibrarySubtype.String(),
+		Type:              vault.GenericLibrarySubtype.String(),
 		Attrs: &credlibpb.CredentialLibrary_VaultCredentialLibraryAttributes{
 			VaultCredentialLibraryAttributes: &credlibpb.VaultCredentialLibraryAttributes{
 				Path:       wrapperspb.String(path.Join("secret", "data", "non-default-sshpk")),
@@ -2938,7 +2935,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 		CredentialStoreId: vaultStore.GetPublicId(),
 		Name:              wrapperspb.String("SSH Private Key With Passphrase Library"),
 		Description:       wrapperspb.String("SSH Private Key Library Description"),
-		Type:              globals.VaultGenericLibrarySubtype.String(),
+		Type:              vault.GenericLibrarySubtype.String(),
 		Attrs: &credlibpb.CredentialLibrary_VaultCredentialLibraryAttributes{
 			VaultCredentialLibraryAttributes: &credlibpb.VaultCredentialLibraryAttributes{
 				Path:       wrapperspb.String(path.Join("secret", "data", "default-sshpk-with-pass")),
@@ -2958,7 +2955,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 		CredentialStoreId: vaultStore.GetPublicId(),
 		Name:              wrapperspb.String("SSH Private Key With Passphrase Mapping Library"),
 		Description:       wrapperspb.String("SSH Private Key Mapping Library Description"),
-		Type:              globals.VaultGenericLibrarySubtype.String(),
+		Type:              vault.GenericLibrarySubtype.String(),
 		Attrs: &credlibpb.CredentialLibrary_VaultCredentialLibraryAttributes{
 			VaultCredentialLibraryAttributes: &credlibpb.VaultCredentialLibraryAttributes{
 				Path:       wrapperspb.String(path.Join("secret", "data", "non-default-sshpk-with-pass")),
@@ -2995,7 +2992,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 					Name:              clsRespUnspecified.GetItem().GetName().GetValue(),
 					Description:       clsRespUnspecified.GetItem().GetDescription().GetValue(),
 					CredentialStoreId: vaultStore.GetPublicId(),
-					Type:              globals.VaultGenericLibrarySubtype.String(),
+					Type:              vault.GenericLibrarySubtype.String(),
 				},
 			},
 		},
@@ -3011,8 +3008,8 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 					Name:              clsRespUsernamePassword.GetItem().GetName().GetValue(),
 					Description:       clsRespUsernamePassword.GetItem().GetDescription().GetValue(),
 					CredentialStoreId: vaultStore.GetPublicId(),
-					Type:              globals.VaultGenericLibrarySubtype.String(),
-					CredentialType:    string(globals.UsernamePasswordCredentialType),
+					Type:              vault.GenericLibrarySubtype.String(),
+					CredentialType:    string(credential.UsernamePasswordType),
 				},
 				Credential: func() *structpb.Struct {
 					data := map[string]any{
@@ -3037,8 +3034,8 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 					Name:              clsRespUsernamePasswordWithMapping.GetItem().GetName().GetValue(),
 					Description:       clsRespUsernamePasswordWithMapping.GetItem().GetDescription().GetValue(),
 					CredentialStoreId: vaultStore.GetPublicId(),
-					Type:              globals.VaultGenericLibrarySubtype.String(),
-					CredentialType:    string(globals.UsernamePasswordCredentialType),
+					Type:              vault.GenericLibrarySubtype.String(),
+					CredentialType:    string(credential.UsernamePasswordType),
 				},
 				Credential: func() *structpb.Struct {
 					data := map[string]any{
@@ -3063,8 +3060,8 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 					Name:              upCredResp.GetItem().GetName().GetValue(),
 					Description:       upCredResp.GetItem().GetDescription().GetValue(),
 					CredentialStoreId: staticStore.GetPublicId(),
-					Type:              globals.StaticSubtype.String(),
-					CredentialType:    string(globals.UsernamePasswordCredentialType),
+					Type:              credstatic.Subtype.String(),
+					CredentialType:    string(credential.UsernamePasswordType),
 				},
 				Credential: func() *structpb.Struct {
 					data := map[string]any{
@@ -3089,8 +3086,8 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 					Name:              sshPkCredResp.GetItem().GetName().GetValue(),
 					Description:       sshPkCredResp.GetItem().GetDescription().GetValue(),
 					CredentialStoreId: staticStore.GetPublicId(),
-					Type:              globals.StaticSubtype.String(),
-					CredentialType:    string(globals.SshPrivateKeyCredentialType),
+					Type:              credstatic.Subtype.String(),
+					CredentialType:    string(credential.SshPrivateKeyType),
 				},
 				Credential: func() *structpb.Struct {
 					data := map[string]any{
@@ -3115,8 +3112,8 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 					Name:              clsRespSshPrivateKey.GetItem().GetName().GetValue(),
 					Description:       clsRespSshPrivateKey.GetItem().GetDescription().GetValue(),
 					CredentialStoreId: vaultStore.GetPublicId(),
-					Type:              globals.VaultGenericLibrarySubtype.String(),
-					CredentialType:    string(globals.SshPrivateKeyCredentialType),
+					Type:              vault.GenericLibrarySubtype.String(),
+					CredentialType:    string(credential.SshPrivateKeyType),
 				},
 				Credential: func() *structpb.Struct {
 					data := map[string]any{
@@ -3141,8 +3138,8 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 					Name:              clsRespSshPrivateKeyWithMapping.GetItem().GetName().GetValue(),
 					Description:       clsRespSshPrivateKeyWithMapping.GetItem().GetDescription().GetValue(),
 					CredentialStoreId: vaultStore.GetPublicId(),
-					Type:              globals.VaultGenericLibrarySubtype.String(),
-					CredentialType:    string(globals.SshPrivateKeyCredentialType),
+					Type:              vault.GenericLibrarySubtype.String(),
+					CredentialType:    string(credential.SshPrivateKeyType),
 				},
 				Credential: func() *structpb.Struct {
 					data := map[string]any{
@@ -3167,8 +3164,8 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 					Name:              sshPkWithPassCredResp.GetItem().GetName().GetValue(),
 					Description:       sshPkWithPassCredResp.GetItem().GetDescription().GetValue(),
 					CredentialStoreId: staticStore.GetPublicId(),
-					Type:              globals.StaticSubtype.String(),
-					CredentialType:    string(globals.SshPrivateKeyCredentialType),
+					Type:              credstatic.Subtype.String(),
+					CredentialType:    string(credential.SshPrivateKeyType),
 				},
 				Credential: func() *structpb.Struct {
 					data := map[string]any{
@@ -3194,8 +3191,8 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 					Name:              clsRespSshPrivateKeyWithPass.GetItem().GetName().GetValue(),
 					Description:       clsRespSshPrivateKeyWithPass.GetItem().GetDescription().GetValue(),
 					CredentialStoreId: vaultStore.GetPublicId(),
-					Type:              globals.VaultGenericLibrarySubtype.String(),
-					CredentialType:    string(globals.SshPrivateKeyCredentialType),
+					Type:              vault.GenericLibrarySubtype.String(),
+					CredentialType:    string(credential.SshPrivateKeyType),
 				},
 				Credential: func() *structpb.Struct {
 					data := map[string]any{
@@ -3221,8 +3218,8 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 					Name:              clsRespSshPrivateKeyWithPassWithMapping.GetItem().GetName().GetValue(),
 					Description:       clsRespSshPrivateKeyWithPassWithMapping.GetItem().GetDescription().GetValue(),
 					CredentialStoreId: vaultStore.GetPublicId(),
-					Type:              globals.VaultGenericLibrarySubtype.String(),
-					CredentialType:    string(globals.SshPrivateKeyCredentialType),
+					Type:              vault.GenericLibrarySubtype.String(),
+					CredentialType:    string(credential.SshPrivateKeyType),
 				},
 				Credential: func() *structpb.Struct {
 					data := map[string]any{
@@ -3272,15 +3269,13 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 					Description:   proj.GetDescription(),
 					ParentScopeId: proj.GetParentId(),
 				},
-				TargetId:     tar.GetPublicId(),
-				UserId:       at.GetIamUserId(),
-				HostSetId:    tc.hostSourceId,
-				HostId:       tc.wantedHostId,
-				Type:         "tcp",
-				Endpoint:     fmt.Sprintf("tcp://%s:%d", tc.wantedEndpoint, defaultPort),
-				Credentials:  []*pb.SessionCredential{tc.wantedCred},
-				EndpointPort: uint32(defaultPort),
-				Expiration:   asRes.Item.Expiration,
+				TargetId:    tar.GetPublicId(),
+				UserId:      at.GetIamUserId(),
+				HostSetId:   tc.hostSourceId,
+				HostId:      tc.wantedHostId,
+				Type:        "tcp",
+				Endpoint:    fmt.Sprintf("tcp://%s:%d", tc.wantedEndpoint, defaultPort),
+				Credentials: []*pb.SessionCredential{tc.wantedCred},
 				// TODO: validate the contents of the authorization token is what is expected
 			}
 			got := asRes.GetItem()
@@ -3435,7 +3430,7 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 		clsResp, err := credService.CreateCredentialLibrary(ctx, &pbs.CreateCredentialLibraryRequest{Item: &credlibpb.CredentialLibrary{
 			CredentialStoreId: store.GetPublicId(),
 			Description:       wrapperspb.String(fmt.Sprintf("Library Description for target %q", tar.GetName())),
-			Type:              globals.VaultGenericLibrarySubtype.String(),
+			Type:              vault.GenericLibrarySubtype.String(),
 			Attrs: &credlibpb.CredentialLibrary_VaultCredentialLibraryAttributes{
 				VaultCredentialLibraryAttributes: &credlibpb.VaultCredentialLibraryAttributes{
 					Path: wrapperspb.String(path.Join("database", "creds", "opened")),
@@ -3460,7 +3455,7 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 		clsResp, err := credService.CreateCredentialLibrary(ctx, &pbs.CreateCredentialLibraryRequest{Item: &credlibpb.CredentialLibrary{
 			CredentialStoreId: store.GetPublicId(),
 			Description:       wrapperspb.String(fmt.Sprintf("Library Description for target %q", tar.GetName())),
-			Type:              globals.VaultGenericLibrarySubtype.String(),
+			Type:              vault.GenericLibrarySubtype.String(),
 			Attrs: &credlibpb.CredentialLibrary_VaultCredentialLibraryAttributes{
 				VaultCredentialLibraryAttributes: &credlibpb.VaultCredentialLibraryAttributes{
 					Path: wrapperspb.String("bad path"),
@@ -3485,7 +3480,7 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 		clsResp, err := credService.CreateCredentialLibrary(ctx, &pbs.CreateCredentialLibraryRequest{Item: &credlibpb.CredentialLibrary{
 			CredentialStoreId: expiredStore.GetPublicId(),
 			Description:       wrapperspb.String(fmt.Sprintf("Library Description for target %q", tar.GetName())),
-			Type:              globals.VaultGenericLibrarySubtype.String(),
+			Type:              vault.GenericLibrarySubtype.String(),
 			Attrs: &credlibpb.CredentialLibrary_VaultCredentialLibraryAttributes{
 				VaultCredentialLibraryAttributes: &credlibpb.VaultCredentialLibraryAttributes{
 					Path: wrapperspb.String(path.Join("database", "creds", "opened")),

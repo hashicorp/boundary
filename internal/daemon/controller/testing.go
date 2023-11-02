@@ -474,19 +474,8 @@ type TestControllerOpts struct {
 	// database
 	LivenessTimeToStaleDuration time.Duration
 
-	// The amount of time between the scheduler waking up to run it's
-	// registered jobs.
-	//
-	// If t.Deadline() has a value and the value is under 1 minute, the
-	// default value is set to half the value of t.Deadline(). If
-	// t.Deadline() has a value and the value is 1 minute or more, the
-	// default value is set to 1 minute.
-	//
-	// Tests using the Vault test server should be aware that Vault
-	// Credential Stores only accept Vault tokens that have a TTL greater
-	// than the SchedulerRunJobInterval. The Vault test server, by default,
-	// creates Vault tokens with a TTL equal to the duration of time
-	// remaining until t.Deadline() is reached.
+	// The amount of time between the scheduler waking up to run it's registered
+	// jobs.
 	SchedulerRunJobInterval time.Duration
 
 	// The time to use for CA certificate lifetime for worker auth
@@ -642,18 +631,6 @@ func TestControllerConfig(t testing.TB, ctx context.Context, tc *TestController,
 	}
 	if opts.Config.Controller.Name == "" {
 		require.NoError(t, opts.Config.Controller.InitNameIfEmpty(ctxTest))
-	}
-
-	if opts.SchedulerRunJobInterval == 0 {
-		if t, ok := t.(*testing.T); ok {
-			if deadline, ok := t.Deadline(); ok {
-				opts.SchedulerRunJobInterval = 1 * time.Minute
-				if time.Until(deadline) < opts.SchedulerRunJobInterval {
-					half := int64(time.Until(deadline) / 2)
-					opts.SchedulerRunJobInterval = time.Duration(half)
-				}
-			}
-		}
 	}
 	opts.Config.Controller.Scheduler.JobRunIntervalDuration = opts.SchedulerRunJobInterval
 

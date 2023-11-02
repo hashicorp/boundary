@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestResourceInfoFromPrefix(t *testing.T) {
+func TestResourceTypeFromPrefix(t *testing.T) {
 	// Test a random sampling
 	vals := map[string]resource.Type{
 		VaultCredentialLibraryPrefix: resource.CredentialLibrary,
@@ -21,8 +21,8 @@ func TestResourceInfoFromPrefix(t *testing.T) {
 	}
 
 	for prefix, typ := range vals {
-		assert.Equal(t, typ, ResourceInfoFromPrefix(prefix).Type)
-		assert.Equal(t, typ, ResourceInfoFromPrefix(fmt.Sprintf("%s_foobar", prefix)).Type)
-		assert.Equal(t, resource.Unknown, ResourceInfoFromPrefix(fmt.Sprintf("%sfoobar", prefix)))
+		assert.Equal(t, typ, ResourceTypeFromPrefix(prefix))
+		assert.Equal(t, typ, ResourceTypeFromPrefix(fmt.Sprintf("%s_foobar", prefix)))
+		assert.Equal(t, resource.Unknown, ResourceTypeFromPrefix(fmt.Sprintf("%sfoobar", prefix)))
 	}
 }

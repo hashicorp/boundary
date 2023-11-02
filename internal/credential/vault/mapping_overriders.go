@@ -4,7 +4,7 @@
 package vault
 
 import (
-	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/credential/vault/store"
 	"github.com/hashicorp/boundary/internal/db/sanitize"
 	"github.com/hashicorp/boundary/internal/db/sentinel"
@@ -13,14 +13,14 @@ import (
 
 // validMappingOverride reports whether the given mapping override is valid
 // for the given credential type.
-func validMappingOverride(m MappingOverride, ct globals.CredentialType) bool {
+func validMappingOverride(m MappingOverride, ct credential.Type) bool {
 	switch m.(type) {
 	case nil:
 		return true // it is always valid to not specify a mapping override
 	case *UsernamePasswordOverride:
-		return ct == globals.UsernamePasswordCredentialType
+		return ct == credential.UsernamePasswordType
 	case *SshPrivateKeyOverride:
-		return ct == globals.SshPrivateKeyCredentialType
+		return ct == credential.SshPrivateKeyType
 	default:
 		return false // an unknown mapping override type is never valid
 	}

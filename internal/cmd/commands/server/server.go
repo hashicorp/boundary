@@ -55,13 +55,11 @@ type Command struct {
 	controller    *controller.Controller
 	worker        *worker.Worker
 
-	flagConfig          []string
-	flagConfigKms       string
-	flagLogLevel        string
-	flagLogFormat       string
-	flagCombineLogs     bool
-	flagSkipPlugins     bool
-	flagWorkerDnsServer string
+	flagConfig      []string
+	flagConfigKms   string
+	flagLogLevel    string
+	flagLogFormat   string
+	flagCombineLogs bool
 
 	reloadedCh                           chan struct{}  // for tests
 	startedCh                            chan struct{}  // for tests
@@ -137,19 +135,6 @@ func (c *Command) Flags() *base.FlagSets {
 	f.DurationVar(&base.DurationVar{
 		Name:   "worker-auth-ca-certificate-lifetime",
 		Target: &c.flagWorkerAuthCaCertificateLifetime,
-		Hidden: true,
-	})
-
-	f.BoolVar(&base.BoolVar{
-		Name:   "skip-plugins",
-		Target: &c.flagSkipPlugins,
-		Usage:  "Skip loading compiled-in plugins. This does not prevent loopback plugins from being loaded if enabled.",
-		Hidden: true,
-	})
-	f.StringVar(&base.StringVar{
-		Name:   "worker-dns-server",
-		Target: &c.flagWorkerDnsServer,
-		Usage:  "Use a custom DNS server when workers resolve endpoints.",
 		Hidden: true,
 	})
 
@@ -270,9 +255,6 @@ func (c *Command) Run(args []string) int {
 				"in a Docker container, provide the IPC_LOCK cap to the container."))
 	}
 
-	c.SkipPlugins = c.flagSkipPlugins
-	c.WorkerDnsServer = c.flagWorkerDnsServer
-
 	// Perform controller-specific listener checks here before setup
 	var clusterAddr string
 	var foundApi bool
@@ -387,8 +369,6 @@ func (c *Command) Run(args []string) int {
 			}
 			if strings.HasPrefix(clusterId, "int-") {
 				clusterId = strings.TrimPrefix(clusterId, "int-")
-			} else if strings.HasPrefix(clusterId, "dev-") {
-				clusterId = strings.TrimPrefix(clusterId, "dev-")
 			}
 			_, err = uuid.ParseUUID(clusterId)
 			if err != nil {

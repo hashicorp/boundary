@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -22,7 +22,7 @@ var _ MappingOverride = unknownMapper(0)
 func TestValidMappingOverrides(t *testing.T) {
 	tests := []struct {
 		m    MappingOverride
-		ct   globals.CredentialType
+		ct   credential.Type
 		want bool
 	}{
 		{
@@ -32,42 +32,42 @@ func TestValidMappingOverrides(t *testing.T) {
 		},
 		{
 			m:    nil,
-			ct:   globals.UnspecifiedCredentialType,
+			ct:   credential.UnspecifiedType,
 			want: true,
 		},
 		{
 			m:    nil,
-			ct:   globals.UsernamePasswordCredentialType,
+			ct:   credential.UsernamePasswordType,
 			want: true,
 		},
 		{
 			m:    unknownMapper(1),
-			ct:   globals.UnspecifiedCredentialType,
+			ct:   credential.UnspecifiedType,
 			want: false,
 		},
 		{
 			m:    unknownMapper(1),
-			ct:   globals.UsernamePasswordCredentialType,
+			ct:   credential.UsernamePasswordType,
 			want: false,
 		},
 		{
 			m:    allocUsernamePasswordOverride(),
-			ct:   globals.UnspecifiedCredentialType,
+			ct:   credential.UnspecifiedType,
 			want: false,
 		},
 		{
 			m:    allocUsernamePasswordOverride(),
-			ct:   globals.UsernamePasswordCredentialType,
+			ct:   credential.UsernamePasswordType,
 			want: true,
 		},
 		{
 			m:    allocSshPrivateKeyOverride(),
-			ct:   globals.UnspecifiedCredentialType,
+			ct:   credential.UnspecifiedType,
 			want: false,
 		},
 		{
 			m:    allocSshPrivateKeyOverride(),
-			ct:   globals.SshPrivateKeyCredentialType,
+			ct:   credential.SshPrivateKeyType,
 			want: true,
 		},
 	}

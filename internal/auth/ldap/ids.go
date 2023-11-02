@@ -14,10 +14,14 @@ import (
 )
 
 func init() {
-	if err := subtypes.Register(auth.Domain, globals.LdapSubtype, globals.LdapAuthMethodPrefix, globals.LdapAccountPrefix, globals.LdapManagedGroupPrefix); err != nil {
+	if err := subtypes.Register(auth.Domain, Subtype, globals.LdapAuthMethodPrefix, globals.LdapAccountPrefix, globals.LdapManagedGroupPrefix); err != nil {
 		panic(err)
 	}
 }
+
+const (
+	Subtype = subtypes.Subtype("ldap")
+)
 
 func newAuthMethodId(ctx context.Context) (string, error) {
 	const op = "ldap.newAuthMethodId"

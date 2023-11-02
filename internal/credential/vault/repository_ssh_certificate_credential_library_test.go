@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/credential/vault/store"
 	"github.com/hashicorp/boundary/internal/db"
 	dbassert "github.com/hashicorp/boundary/internal/db/assert"
@@ -608,7 +609,7 @@ func TestRepository_CreateSSHCertificateCredentialLibrary(t *testing.T) {
 			assert.Equal(tt.want.Ttl, got.Ttl)
 			assert.Equal(tt.want.CriticalOptions, got.CriticalOptions)
 			assert.Equal(tt.want.Extensions, got.Extensions)
-			assert.Equal(got.CredentialType(), globals.SshCertificateCredentialType)
+			assert.Equal(got.CredentialType(), credential.SshCertificateType)
 			assert.Equal(got.CreateTime, got.UpdateTime)
 
 			assert.NoError(db.TestVerifyOplog(t, rw, got.GetPublicId(), db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second)))
@@ -745,7 +746,7 @@ func TestRepository_LookupSSHCertificateCredentialLibrary(t *testing.T) {
 						StoreId:        cs.GetPublicId(),
 						VaultPath:      "/ssh/sign/foo",
 						Username:       "name",
-						CredentialType: string(globals.SshCertificateCredentialType),
+						CredentialType: string(credential.SshCertificateType),
 					},
 				},
 			},

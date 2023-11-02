@@ -25,9 +25,9 @@ cli:
 .PHONY: tools
 tools: golangci-lint
 	go generate -tags tools tools/tools.go
-	go install github.com/bufbuild/buf/cmd/buf@v1.27.2
-	go install github.com/mfridman/tparse@v0.13.1
-	go install github.com/hashicorp/copywrite@v0.16.6
+	go install github.com/bufbuild/buf/cmd/buf@v1.15.1
+	go install github.com/mfridman/tparse@v0.10.3
+	go install github.com/hashicorp/copywrite@v0.15.0
 
 # golangci-lint recommends installing the binary directly, instead of using go get
 # See the note: https://golangci-lint.run/usage/install/#install-from-source
@@ -269,7 +269,6 @@ copywrite:
 	cd internal/proto/controller/api && find . -type f -name '*.proto' -exec sed -i '1,3d' {} + &&  copywrite headers
 	cd internal/proto/controller/custom_options && find . -type f -name '*.proto' -exec sed -i '1,3d' {} + &&  copywrite headers
 	cd internal/proto/plugin && find . -type f -name '*.proto' -exec sed -i '1,3d' {} + && copywrite headers
-	cd internal/proto/worker/proxy/v1 && find . -type f -name '*.proto' -exec sed -i '1,3d' {} + && copywrite headers
 
 .PHONY: website
 # must have nodejs and npm installed

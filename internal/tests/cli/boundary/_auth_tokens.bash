@@ -21,7 +21,7 @@ function delete_token() {
 
 function token_id() {
   local tid=$1
-  strip $(read_token $tid | jq '.item.id')
+  strip $(read_token $tid | jq '.item.id') 
 }
 
 function logout_cmd() {
@@ -34,8 +34,4 @@ function get_token() {
 
 function read_token_no_keyring() {
   boundary auth-tokens read -keyring-type=none -id $1
-}
-
-function list_tokens() {
-  boundary auth-tokens list -format json
 }

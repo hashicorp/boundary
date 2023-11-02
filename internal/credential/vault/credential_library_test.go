@@ -7,7 +7,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/credential/vault/store"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/iam"
@@ -217,7 +217,7 @@ func TestCredentialLibrary_New(t *testing.T) {
 				vaultPath: "vault/path",
 				opts: []Option{
 					WithMethod(MethodGet),
-					WithCredentialType(globals.UsernamePasswordCredentialType),
+					WithCredentialType(credential.UsernamePasswordType),
 				},
 			},
 			want: &CredentialLibrary{
@@ -225,7 +225,7 @@ func TestCredentialLibrary_New(t *testing.T) {
 					StoreId:        cs.PublicId,
 					VaultPath:      "vault/path",
 					HttpMethod:     string(MethodGet),
-					CredentialType: string(globals.UsernamePasswordCredentialType),
+					CredentialType: string(credential.UsernamePasswordType),
 				},
 			},
 		},
@@ -236,7 +236,7 @@ func TestCredentialLibrary_New(t *testing.T) {
 				vaultPath: "vault/path",
 				opts: []Option{
 					WithMethod(MethodGet),
-					WithCredentialType(globals.UsernamePasswordCredentialType),
+					WithCredentialType(credential.UsernamePasswordType),
 					WithMappingOverride(NewUsernamePasswordOverride(
 						WithOverrideUsernameAttribute("test"),
 						WithOverridePasswordAttribute("testpass")),
@@ -249,7 +249,7 @@ func TestCredentialLibrary_New(t *testing.T) {
 					StoreId:        cs.PublicId,
 					VaultPath:      "vault/path",
 					HttpMethod:     string(MethodGet),
-					CredentialType: string(globals.UsernamePasswordCredentialType),
+					CredentialType: string(credential.UsernamePasswordType),
 				},
 			},
 		},
@@ -260,7 +260,7 @@ func TestCredentialLibrary_New(t *testing.T) {
 				vaultPath: "vault/path",
 				opts: []Option{
 					WithMethod(MethodGet),
-					WithCredentialType(globals.SshPrivateKeyCredentialType),
+					WithCredentialType(credential.SshPrivateKeyType),
 					WithMappingOverride(NewSshPrivateKeyOverride(
 						WithOverrideUsernameAttribute("test"),
 						WithOverridePrivateKeyAttribute("testpk")),
@@ -273,7 +273,7 @@ func TestCredentialLibrary_New(t *testing.T) {
 					StoreId:        cs.PublicId,
 					VaultPath:      "vault/path",
 					HttpMethod:     string(MethodGet),
-					CredentialType: string(globals.SshPrivateKeyCredentialType),
+					CredentialType: string(credential.SshPrivateKeyType),
 				},
 			},
 		},
@@ -292,12 +292,12 @@ func TestCredentialLibrary_New(t *testing.T) {
 			assert.Equal(tt.want, got)
 
 			switch ct := tt.want.GetCredentialType(); ct {
-			case string(globals.UsernamePasswordCredentialType):
-				assert.Equal(globals.UsernamePasswordCredentialType, got.CredentialType())
-			case string(globals.SshPrivateKeyCredentialType):
-				assert.Equal(globals.SshPrivateKeyCredentialType, got.CredentialType())
-			case string(globals.UnspecifiedCredentialType), "":
-				assert.Equal(globals.UnspecifiedCredentialType, got.CredentialType())
+			case string(credential.UsernamePasswordType):
+				assert.Equal(credential.UsernamePasswordType, got.CredentialType())
+			case string(credential.SshPrivateKeyType):
+				assert.Equal(credential.SshPrivateKeyType, got.CredentialType())
+			case string(credential.UnspecifiedType), "":
+				assert.Equal(credential.UnspecifiedType, got.CredentialType())
 			default:
 				assert.Failf("Unknown credential type", "%s", ct)
 			}

@@ -6,7 +6,6 @@ package vault
 import (
 	"context"
 
-	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/credential/vault/store"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -116,12 +115,12 @@ func (l *CredentialLibrary) oplog(op oplog.OpType) oplog.Metadata {
 }
 
 // CredentialType returns the type of credential the library retrieves.
-func (l *CredentialLibrary) CredentialType() globals.CredentialType {
+func (l *CredentialLibrary) CredentialType() credential.Type {
 	switch ct := l.GetCredentialType(); ct {
 	case "":
-		return globals.UnspecifiedCredentialType
+		return credential.UnspecifiedType
 	default:
-		return globals.CredentialType(ct)
+		return credential.Type(ct)
 	}
 }
 

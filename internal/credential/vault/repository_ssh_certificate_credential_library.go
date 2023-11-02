@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
@@ -60,9 +60,9 @@ func (r *Repository) CreateSSHCertificateCredentialLibrary(ctx context.Context, 
 	}
 
 	if l.GetCredentialType() == "" {
-		l.SSHCertificateCredentialLibrary.CredentialType = string(globals.SshCertificateCredentialType)
+		l.SSHCertificateCredentialLibrary.CredentialType = string(credential.SshCertificateType)
 	}
-	if l.GetCredentialType() != string(globals.SshCertificateCredentialType) {
+	if l.GetCredentialType() != string(credential.SshCertificateType) {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "invalid credential type")
 	}
 

@@ -21,12 +21,11 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/api"
-	apiproxy "github.com/hashicorp/boundary/api/proxy"
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/base"
+	"github.com/hashicorp/boundary/internal/proxy"
 	targetspb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
-	"github.com/hashicorp/boundary/sdk/pbs/proxy"
 	"github.com/hashicorp/go-cleanhttp"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/mitchellh/cli"
@@ -825,10 +824,10 @@ func (c *Command) handleExec(passthroughArgs []string) {
 	var envs []string
 	var argsErr error
 
-	var creds apiproxy.Credentials
+	var creds credentials
 	if c.sessionAuthz != nil {
 		var err error
-		creds, err = apiproxy.ParseCredentials(c.sessionAuthz.Credentials)
+		creds, err = parseCredentials(c.sessionAuthz.Credentials)
 		if err != nil {
 			c.PrintCliError(fmt.Errorf("Error interpreting secret: %w", err))
 			c.execCmdReturnValue.Store(int32(3))
@@ -885,7 +884,7 @@ func (c *Command) handleExec(passthroughArgs []string) {
 		return
 	}
 
-	if err := c.printCredentials(creds.UnconsumedSessionCredentials()); err != nil {
+	if err := c.printCredentials(creds.unconsumedSessionCredentials()); err != nil {
 		c.PrintCliError(fmt.Errorf("Failed to print credentials: %w", err))
 		c.execCmdReturnValue.Store(int32(2))
 		return

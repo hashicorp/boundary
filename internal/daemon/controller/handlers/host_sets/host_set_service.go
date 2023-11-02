@@ -35,12 +35,12 @@ import (
 )
 
 var (
-	maskManager = map[globals.Subtype]handlers.MaskManager{}
+	maskManager = map[subtypes.Subtype]handlers.MaskManager{}
 
 	// IdActions contains the set of actions that can be performed on
 	// individual resources
-	idActionsTypeMap = map[globals.Subtype]action.ActionSet{
-		globals.StaticSubtype: {
+	idActionsTypeMap = map[subtypes.Subtype]action.ActionSet{
+		static.Subtype: {
 			action.NoOp,
 			action.Read,
 			action.Update,
@@ -49,7 +49,7 @@ var (
 			action.SetHosts,
 			action.RemoveHosts,
 		},
-		globals.PluginSubtype: {
+		hostplugin.Subtype: {
 			action.NoOp,
 			action.Read,
 			action.Update,
@@ -69,14 +69,14 @@ const domain = "host"
 
 func init() {
 	var err error
-	if maskManager[globals.StaticSubtype], err = handlers.NewMaskManager(
+	if maskManager[static.Subtype], err = handlers.NewMaskManager(
 		context.Background(),
 		handlers.MaskDestination{&staticstore.HostSet{}, &staticstore.UnimplementedSetFields{}},
 		handlers.MaskSource{&pb.HostSet{}},
 	); err != nil {
 		panic(err)
 	}
-	if maskManager[globals.PluginSubtype], err = handlers.NewMaskManager(
+	if maskManager[hostplugin.Subtype], err = handlers.NewMaskManager(
 		context.Background(),
 		handlers.MaskDestination{&plugstore.HostSet{}},
 		handlers.MaskSource{&pb.HostSet{}},
@@ -443,7 +443,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (host.Set, []host.H
 	var hl []host.Host
 	var plg *plugins.PluginInfo
 	switch subtypes.SubtypeFromId(domain, id) {
-	case globals.StaticSubtype:
+	case static.Subtype:
 		repo, err := s.staticRepoFn()
 		if err != nil {
 			return nil, nil, nil, err
@@ -459,7 +459,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (host.Set, []host.H
 			hl = append(hl, h)
 		}
 		hs = hset
-	case globals.PluginSubtype:
+	case hostplugin.Subtype:
 		repo, err := s.pluginRepoFn()
 		if err != nil {
 			return nil, nil, nil, err
@@ -493,7 +493,7 @@ func (s Service) createInRepo(ctx context.Context, projectId, catalogId string, 
 	var hSet host.Set
 	var plg *plugins.PluginInfo
 	switch subtypes.SubtypeFromId(domain, catalogId) {
-	case globals.StaticSubtype:
+	case static.Subtype:
 		h, err := toStorageStaticSet(ctx, catalogId, item)
 		if err != nil {
 			return nil, nil, err
@@ -510,7 +510,7 @@ func (s Service) createInRepo(ctx context.Context, projectId, catalogId string, 
 			return nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create host set but no error returned from repository.")
 		}
 		hSet = out
-	case globals.PluginSubtype:
+	case hostplugin.Subtype:
 		h, err := toStoragePluginSet(ctx, catalogId, item)
 		if err != nil {
 			return nil, nil, err
@@ -542,7 +542,7 @@ func (s Service) updateStaticInRepo(ctx context.Context, projectId, catalogId st
 		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("Unable to build host set for update"))
 	}
 	h.PublicId = req.GetId()
-	dbMask := maskManager[globals.StaticSubtype].Translate(req.GetUpdateMask().GetPaths())
+	dbMask := maskManager[static.Subtype].Translate(req.GetUpdateMask().GetPaths())
 	if len(dbMask) == 0 {
 		return nil, nil, handlers.InvalidArgumentErrorf("No valid fields included in the update mask.", map[string]string{"update_mask": "No valid fields provided in the update mask."})
 	}
@@ -572,7 +572,7 @@ func (s Service) updatePluginInRepo(ctx context.Context, projectId string, req *
 		return nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("Unable to build host set for update"))
 	}
 	h.PublicId = req.GetId()
-	dbMask := maskManager[globals.PluginSubtype].Translate(req.GetUpdateMask().GetPaths(), "attributes")
+	dbMask := maskManager[hostplugin.Subtype].Translate(req.GetUpdateMask().GetPaths(), "attributes")
 	if len(dbMask) == 0 {
 		return nil, nil, nil, handlers.InvalidArgumentErrorf("No valid fields included in the update mask.", map[string]string{"update_mask": "No valid fields provided in the update mask."})
 	}
@@ -597,9 +597,9 @@ func (s Service) updatePluginInRepo(ctx context.Context, projectId string, req *
 func (s Service) updateInRepo(ctx context.Context, projectId, catalogId string, req *pbs.UpdateHostSetRequest) (hs host.Set, hosts []host.Host, plg *plugins.PluginInfo, err error) {
 	const op = "host_sets.(Service).updateInRepo"
 	switch subtypes.SubtypeFromId(domain, req.GetId()) {
-	case globals.StaticSubtype:
+	case static.Subtype:
 		hs, hosts, err = s.updateStaticInRepo(ctx, projectId, catalogId, req)
-	case globals.PluginSubtype:
+	case hostplugin.Subtype:
 		hs, hosts, plg, err = s.updatePluginInRepo(ctx, projectId, req)
 	}
 	return
@@ -609,7 +609,7 @@ func (s Service) deleteFromRepo(ctx context.Context, projectId, id string) (bool
 	const op = "host_sets.(Service).deleteFromRepo"
 	rows := 0
 	switch subtypes.SubtypeFromId(domain, id) {
-	case globals.StaticSubtype:
+	case static.Subtype:
 		repo, err := s.staticRepoFn()
 		if err != nil {
 			return false, err
@@ -618,7 +618,7 @@ func (s Service) deleteFromRepo(ctx context.Context, projectId, id string) (bool
 		if err != nil {
 			return false, errors.Wrap(ctx, err, op, errors.WithMsg("unable to delete host"))
 		}
-	case globals.PluginSubtype:
+	case hostplugin.Subtype:
 		repo, err := s.pluginRepoFn()
 		if err != nil {
 			return false, err
@@ -636,7 +636,7 @@ func (s Service) listFromRepo(ctx context.Context, catalogId string, opt ...host
 	var plg *plugins.PluginInfo
 	var sets []host.Set
 	switch subtypes.SubtypeFromId(domain, catalogId) {
-	case globals.StaticSubtype:
+	case static.Subtype:
 		repo, err := s.staticRepoFn()
 		if err != nil {
 			return nil, nil, err
@@ -648,7 +648,7 @@ func (s Service) listFromRepo(ctx context.Context, catalogId string, opt ...host
 		for _, a := range sl {
 			sets = append(sets, a)
 		}
-	case globals.PluginSubtype:
+	case hostplugin.Subtype:
 		repo, err := s.pluginRepoFn()
 		if err != nil {
 			return nil, nil, err
@@ -761,7 +761,7 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 	default:
 		var set host.Set
 		switch subtypes.SubtypeFromId(domain, id) {
-		case globals.StaticSubtype:
+		case static.Subtype:
 			ss, _, err := staticRepo.LookupSet(ctx, id)
 			if err != nil {
 				res.Error = err
@@ -772,7 +772,7 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 				return nil, res
 			}
 			set = ss
-		case globals.PluginSubtype:
+		case hostplugin.Subtype:
 			ps, _, err := pluginRepo.LookupSet(ctx, id)
 			if err != nil {
 				res.Error = err
@@ -790,7 +790,7 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 
 	var cat host.Catalog
 	switch subtypes.SubtypeFromId(domain, id) {
-	case globals.StaticSubtype:
+	case static.Subtype:
 		cs, err := staticRepo.LookupCatalog(ctx, parentId)
 		if err != nil {
 			res.Error = err
@@ -801,7 +801,7 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 			return nil, res
 		}
 		cat = cs
-	case globals.PluginSubtype:
+	case hostplugin.Subtype:
 		pc, _, err := pluginRepo.LookupCatalog(ctx, parentId)
 		if err != nil {
 			res.Error = err
@@ -846,9 +846,9 @@ func toProto(ctx context.Context, in host.Set, hosts []host.Host, opt ...handler
 	if outputFields.Has(globals.TypeField) {
 		switch in.(type) {
 		case *static.HostSet:
-			out.Type = globals.StaticSubtype.String()
+			out.Type = static.Subtype.String()
 		case *hostplugin.HostSet:
-			out.Type = globals.PluginSubtype.String()
+			out.Type = hostplugin.Subtype.String()
 		}
 	}
 	if outputFields.Has(globals.DescriptionField) && in.GetDescription() != "" {
@@ -971,15 +971,15 @@ func validateCreateRequest(ctx context.Context, req *pbs.CreateHostSetRequest) e
 			}
 		}
 		switch subtypes.SubtypeFromId(domain, req.GetItem().GetHostCatalogId()) {
-		case globals.StaticSubtype:
-			if req.GetItem().GetType() != "" && req.GetItem().GetType() != globals.StaticSubtype.String() {
+		case static.Subtype:
+			if req.GetItem().GetType() != "" && req.GetItem().GetType() != static.Subtype.String() {
 				badFields[globals.TypeField] = "Doesn't match the parent resource's type."
 			}
 			if len(req.GetItem().PreferredEndpoints) > 0 {
 				badFields[globals.PreferredEndpointsField] = "This field is not yet supported for static host sets."
 			}
-		case globals.PluginSubtype:
-			if req.GetItem().GetType() != "" && req.GetItem().GetType() != globals.PluginSubtype.String() {
+		case hostplugin.Subtype:
+			if req.GetItem().GetType() != "" && req.GetItem().GetType() != hostplugin.Subtype.String() {
 				badFields[globals.TypeField] = "Doesn't match the parent resource's type."
 			}
 			if val := req.GetItem().GetSyncIntervalSeconds(); val != nil {
@@ -1002,11 +1002,11 @@ func validateUpdateRequest(ctx context.Context, req *pbs.UpdateHostSetRequest) e
 			}
 		}
 		switch subtypes.SubtypeFromId(domain, req.GetId()) {
-		case globals.StaticSubtype:
-			if req.GetItem().GetType() != "" && req.GetItem().GetType() != globals.StaticSubtype.String() {
+		case static.Subtype:
+			if req.GetItem().GetType() != "" && req.GetItem().GetType() != static.Subtype.String() {
 				badFields[globals.TypeField] = "Cannot modify the resource type."
 			}
-		case globals.PluginSubtype:
+		case hostplugin.Subtype:
 			if val := req.GetItem().GetSyncIntervalSeconds(); val != nil {
 				if val.GetValue() == 0 || val.GetValue() < -1 {
 					badFields[globals.SyncIntervalSecondsField] = "Must be -1 or a positive integer."

@@ -235,8 +235,8 @@ func New(ctx context.Context, conf *Config) (*Worker, error) {
 		var enableStorageLoopback bool
 
 		for _, enabledPlugin := range w.conf.Server.EnabledPlugins {
-			switch {
-			case enabledPlugin == base.EnabledPluginAws && !w.conf.SkipPlugins:
+			switch enabledPlugin {
+			case base.EnabledPluginAws:
 				pluginType := strings.ToLower(enabledPlugin.String())
 				client, cleanup, err := external_plugins.CreateStoragePlugin(
 					ctx,
@@ -252,7 +252,7 @@ func New(ctx context.Context, conf *Config) (*Worker, error) {
 				}
 				conf.ShutdownFuncs = append(conf.ShutdownFuncs, cleanup)
 				plgClients[pluginType] = client
-			case enabledPlugin == base.EnabledPluginLoopback:
+			case base.EnabledPluginLoopback:
 				enableStorageLoopback = true
 			}
 		}

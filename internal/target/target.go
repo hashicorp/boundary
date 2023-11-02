@@ -8,12 +8,12 @@ import (
 	goerrs "errors"
 	"fmt"
 
-	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/boundary"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/target/store"
+	"github.com/hashicorp/boundary/internal/types/subtypes"
 )
 
 // Target is a commmon interface for all target subtypes
@@ -25,7 +25,7 @@ type Target interface {
 	GetName() string
 	GetDescription() string
 	GetVersion() uint32
-	GetType() globals.Subtype
+	GetType() subtypes.Subtype
 	GetCreateTime() *timestamp.Timestamp
 	GetUpdateTime() *timestamp.Timestamp
 	GetSessionMaxSeconds() uint32
@@ -140,8 +140,8 @@ func (t targetView) GetUserId() string {
 	return ""
 }
 
-func (t *targetView) Subtype() globals.Subtype {
-	return globals.Subtype(t.Type)
+func (t *targetView) Subtype() subtypes.Subtype {
+	return subtypes.Subtype(t.Type)
 }
 
 // targetSubtype converts the target view to the concrete subtype

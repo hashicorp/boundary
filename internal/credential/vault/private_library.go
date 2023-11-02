@@ -20,7 +20,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/credential/vault/internal/sshprivatekey"
 	"github.com/hashicorp/boundary/internal/credential/vault/internal/usernamepassword"
@@ -57,9 +56,9 @@ func (bc *baseCred) isRevokable() bool             { return bc.ExternalId != sen
 // UnspecifiedType.
 func convert(ctx context.Context, bc *baseCred) (dynamicCred, error) {
 	switch bc.Library().CredentialType() {
-	case globals.UsernamePasswordCredentialType:
+	case credential.UsernamePasswordType:
 		return baseToUsrPass(ctx, bc)
-	case globals.SshPrivateKeyCredentialType:
+	case credential.SshPrivateKeyType:
 		return baseToSshPriKey(ctx, bc)
 	}
 	return bc, nil
@@ -82,7 +81,7 @@ func baseToUsrPass(ctx context.Context, bc *baseCred) (*usrPassCred, error) {
 		return nil, errors.E(ctx, errors.WithCode(errors.InvalidParameter), errors.WithMsg("nil baseCred"))
 	case bc.lib == nil:
 		return nil, errors.E(ctx, errors.WithCode(errors.InvalidParameter), errors.WithMsg("nil baseCred.lib"))
-	case bc.Library().CredentialType() != globals.UsernamePasswordCredentialType:
+	case bc.Library().CredentialType() != credential.UsernamePasswordType:
 		return nil, errors.E(ctx, errors.WithCode(errors.InvalidParameter), errors.WithMsg("invalid credential type"))
 	}
 
@@ -129,7 +128,7 @@ func baseToSshPriKey(ctx context.Context, bc *baseCred) (*sshPrivateKeyCred, err
 		return nil, errors.E(ctx, errors.WithCode(errors.InvalidParameter), errors.WithMsg("nil baseCred"))
 	case bc.lib == nil:
 		return nil, errors.E(ctx, errors.WithCode(errors.InvalidParameter), errors.WithMsg("nil baseCred.lib"))
-	case bc.Library().CredentialType() != globals.SshPrivateKeyCredentialType:
+	case bc.Library().CredentialType() != credential.SshPrivateKeyType:
 		return nil, errors.E(ctx, errors.WithCode(errors.InvalidParameter), errors.WithMsg("invalid credential type"))
 	}
 
@@ -260,12 +259,12 @@ func (pl *genericIssuingCredentialLibrary) GetCreateTime() *timestamp.Timestamp 
 func (pl *genericIssuingCredentialLibrary) GetUpdateTime() *timestamp.Timestamp { return pl.UpdateTime }
 func (pl *genericIssuingCredentialLibrary) GetPurpose() credential.Purpose      { return pl.Purpose }
 
-func (pl *genericIssuingCredentialLibrary) CredentialType() globals.CredentialType {
+func (pl *genericIssuingCredentialLibrary) CredentialType() credential.Type {
 	switch ct := pl.CredType; ct {
 	case "":
-		return globals.UnspecifiedCredentialType
+		return credential.UnspecifiedType
 	default:
-		return globals.CredentialType(ct)
+		return credential.Type(ct)
 	}
 }
 
@@ -745,12 +744,12 @@ func (lib *sshCertIssuingCredentialLibrary) GetUpdateTime() *timestamp.Timestamp
 	return lib.UpdateTime
 }
 
-func (lib *sshCertIssuingCredentialLibrary) CredentialType() globals.CredentialType {
+func (lib *sshCertIssuingCredentialLibrary) CredentialType() credential.Type {
 	switch ct := lib.CredType; ct {
 	case "":
-		return globals.UnspecifiedCredentialType
+		return credential.UnspecifiedType
 	default:
-		return globals.CredentialType(ct)
+		return credential.Type(ct)
 	}
 }
 

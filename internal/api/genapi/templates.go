@@ -6,6 +6,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
@@ -172,7 +173,7 @@ func fillTemplates() {
 		if _, err := os.Stat(outDir); os.IsNotExist(err) {
 			_ = os.Mkdir(outDir, os.ModePerm)
 		}
-		if err := os.WriteFile(outFile, outBuf.Bytes(), 0o644); err != nil {
+		if err := ioutil.WriteFile(outFile, outBuf.Bytes(), 0o644); err != nil {
 			fmt.Printf("error writing file %q: %v\n", outFile, err)
 			os.Exit(1)
 		}
@@ -215,7 +216,7 @@ func fillTemplates() {
 		if _, err := os.Stat(outDir); os.IsNotExist(err) {
 			_ = os.Mkdir(outDir, os.ModePerm)
 		}
-		if err := os.WriteFile(outFile, outBuf.Bytes(), 0o644); err != nil {
+		if err := ioutil.WriteFile(outFile, outBuf.Bytes(), 0o644); err != nil {
 			fmt.Printf("error writing file %q: %v\n", outFile, err)
 			os.Exit(1)
 		}

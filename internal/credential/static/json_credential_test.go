@@ -26,7 +26,8 @@ func TestJsonCredential_New(t *testing.T) {
 	kkms := kms.TestKms(t, conn, wrapper)
 	rw := db.New(conn)
 
-	obj, objBytes := TestJsonObject(t)
+	obj, objBytes, err := TestJsonObject()
+	assert.NoError(t, err)
 
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	cs := TestCredentialStore(t, conn, wrapper, prj.PublicId)
