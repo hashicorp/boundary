@@ -97,7 +97,7 @@ require (
 	github.com/hashicorp/go-version v1.6.0
 	github.com/hashicorp/nodeenrollment v0.2.9
 	github.com/jackc/pgx/v5 v5.4.3
-	github.com/jimlambrt/gldap v0.1.8
+	github.com/jimlambrt/gldap v0.1.9
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/miekg/dns v1.1.56
 	github.com/mikesmitty/edkey v0.0.0-20170222072505-3356ea4e686a
@@ -142,7 +142,7 @@ require (
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/glog v1.1.2 // indirect
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
-	github.com/google/uuid v1.3.1 // indirect
+	github.com/google/uuid v1.4.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-kms-wrapping/plugin/v2 v2.0.5 // indirect
 	github.com/hashicorp/go-plugin v1.5.2 // indirect
