@@ -15,10 +15,14 @@ import (
 const StorageDomain = "storage"
 
 func init() {
-	if err := subtypes.Register(StorageDomain, globals.PluginSubtype, globals.PluginStorageBucketPrefix); err != nil {
+	if err := subtypes.Register(StorageDomain, Subtype, globals.PluginStorageBucketPrefix); err != nil {
 		panic(err)
 	}
 }
+
+const (
+	Subtype = subtypes.Subtype("plugin")
+)
 
 func newStorageBucketId(ctx context.Context) (string, error) {
 	const op = "plugin.newStorageBucketId"

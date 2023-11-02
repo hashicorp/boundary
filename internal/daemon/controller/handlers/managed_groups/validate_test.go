@@ -10,6 +10,9 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/auth/ldap"
+	"github.com/hashicorp/boundary/internal/auth/oidc"
+	"github.com/hashicorp/boundary/internal/auth/password"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/managedgroups"
 	"github.com/stretchr/testify/assert"
@@ -46,7 +49,7 @@ func TestValidateCreateRequest(t *testing.T) {
 		{
 			name: "missing oidc attributes",
 			item: &pb.ManagedGroup{
-				Type:         globals.OidcSubtype.String(),
+				Type:         oidc.Subtype.String(),
 				AuthMethodId: globals.OidcAuthMethodPrefix + "_1234567890",
 				Attrs:        nil,
 			},
@@ -55,7 +58,7 @@ func TestValidateCreateRequest(t *testing.T) {
 		{
 			name: "bad oidc attributes",
 			item: &pb.ManagedGroup{
-				Type:         globals.OidcSubtype.String(),
+				Type:         oidc.Subtype.String(),
 				AuthMethodId: globals.OidcAuthMethodPrefix + "_1234567890",
 				Attrs: &pb.ManagedGroup_OidcManagedGroupAttributes{
 					OidcManagedGroupAttributes: &pb.OidcManagedGroupAttributes{
@@ -68,7 +71,7 @@ func TestValidateCreateRequest(t *testing.T) {
 		{
 			name: "no oidc errors",
 			item: &pb.ManagedGroup{
-				Type:         globals.OidcSubtype.String(),
+				Type:         oidc.Subtype.String(),
 				AuthMethodId: globals.OidcAuthMethodPrefix + "_1234567890",
 				Attrs: &pb.ManagedGroup_OidcManagedGroupAttributes{
 					OidcManagedGroupAttributes: &pb.OidcManagedGroupAttributes{
@@ -88,7 +91,7 @@ func TestValidateCreateRequest(t *testing.T) {
 		{
 			name: "missing ldap attributes",
 			item: &pb.ManagedGroup{
-				Type:         globals.LdapSubtype.String(),
+				Type:         ldap.Subtype.String(),
 				AuthMethodId: globals.LdapAuthMethodPrefix + "_1234567890",
 				Attrs:        nil,
 			},
@@ -97,7 +100,7 @@ func TestValidateCreateRequest(t *testing.T) {
 		{
 			name: "bad ldap attributes",
 			item: &pb.ManagedGroup{
-				Type:         globals.LdapSubtype.String(),
+				Type:         ldap.Subtype.String(),
 				AuthMethodId: globals.LdapAuthMethodPrefix + "_1234567890",
 				Attrs: &pb.ManagedGroup_LdapManagedGroupAttributes{
 					LdapManagedGroupAttributes: &pb.LdapManagedGroupAttributes{
@@ -110,7 +113,7 @@ func TestValidateCreateRequest(t *testing.T) {
 		{
 			name: "no ldap errors",
 			item: &pb.ManagedGroup{
-				Type:         globals.LdapSubtype.String(),
+				Type:         ldap.Subtype.String(),
 				AuthMethodId: globals.LdapAuthMethodPrefix + "_1234567890",
 				Attrs: &pb.ManagedGroup_LdapManagedGroupAttributes{
 					LdapManagedGroupAttributes: &pb.LdapManagedGroupAttributes{
@@ -148,7 +151,7 @@ func TestValidateUpdateRequest(t *testing.T) {
 			req: &pbs.UpdateManagedGroupRequest{
 				Id: globals.OidcManagedGroupPrefix + "_1234567890",
 				Item: &pb.ManagedGroup{
-					Type: globals.PasswordSubtype.String(),
+					Type: password.Subtype.String(),
 				},
 			},
 			errContains: fieldError(globals.TypeField, "Cannot modify the resource type."),
@@ -173,7 +176,7 @@ func TestValidateUpdateRequest(t *testing.T) {
 			req: &pbs.UpdateManagedGroupRequest{
 				Id: globals.LdapManagedGroupPrefix + "_1234567890",
 				Item: &pb.ManagedGroup{
-					Type: globals.PasswordSubtype.String(),
+					Type: password.Subtype.String(),
 				},
 			},
 			errContains: fieldError(globals.TypeField, "Cannot modify the resource type."),

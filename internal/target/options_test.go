@@ -6,10 +6,10 @@ package target
 import (
 	"testing"
 
-	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/target/store"
+	"github.com/hashicorp/boundary/internal/types/subtypes"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -103,7 +103,7 @@ func Test_GetOpts(t *testing.T) {
 		assert.Equal(opts, testOpts)
 	})
 	t.Run("WithType", func(t *testing.T) {
-		subtype := globals.Subtype("testtype")
+		subtype := subtypes.Subtype("testtype")
 		assert := assert.New(t)
 		opts := GetOpts(WithType(subtype))
 		testOpts := getDefaultOptions()

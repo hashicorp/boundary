@@ -59,7 +59,7 @@ func TestRepository_CreateTarget(t *testing.T) {
 			name: "valid-org",
 			args: args{
 				target: func() target.Target {
-					target, err := target.New(ctx, globals.TcpSubtype, proj.PublicId,
+					target, err := target.New(ctx, tcp.Subtype, proj.PublicId,
 						target.WithName("valid-org"),
 						target.WithDescription("valid-org"),
 						target.WithDefaultPort(uint32(22)))
@@ -73,7 +73,7 @@ func TestRepository_CreateTarget(t *testing.T) {
 			name: "with-address",
 			args: args{
 				target: func() target.Target {
-					target, err := target.New(ctx, globals.TcpSubtype, proj.PublicId,
+					target, err := target.New(ctx, tcp.Subtype, proj.PublicId,
 						target.WithName("with-address"),
 						target.WithDescription("with-address"),
 						target.WithDefaultPort(80),
@@ -88,7 +88,7 @@ func TestRepository_CreateTarget(t *testing.T) {
 			name: "with-address-whitespace",
 			args: args{
 				target: func() target.Target {
-					target, err := target.New(ctx, globals.TcpSubtype, proj.PublicId,
+					target, err := target.New(ctx, tcp.Subtype, proj.PublicId,
 						target.WithName("with-address-whitespace"),
 						target.WithDescription("with-address-whitespace"),
 						target.WithDefaultPort(80),
@@ -125,7 +125,7 @@ func TestRepository_CreateTarget(t *testing.T) {
 				target: func() target.Target {
 					tar, err := target.New(
 						ctx,
-						globals.TcpSubtype,
+						tcp.Subtype,
 						proj.PublicId,
 						target.WithName("valid-org"),
 						target.WithDescription("valid-org"),
@@ -147,7 +147,7 @@ func TestRepository_CreateTarget(t *testing.T) {
 				target: func() target.Target {
 					tar, err := target.New(
 						ctx,
-						globals.TcpSubtype,
+						tcp.Subtype,
 						proj.PublicId,
 						target.WithName("empty-project-id"),
 					)
@@ -163,7 +163,7 @@ func TestRepository_CreateTarget(t *testing.T) {
 			name: "valid-with-egress-filter",
 			args: args{
 				target: func() target.Target {
-					target, err := target.New(ctx, globals.TcpSubtype, proj.PublicId,
+					target, err := target.New(ctx, tcp.Subtype, proj.PublicId,
 						target.WithName("valid-egress-filter"),
 						target.WithDescription("valid-org"),
 						target.WithDefaultPort(uint32(22)),
@@ -178,7 +178,7 @@ func TestRepository_CreateTarget(t *testing.T) {
 			name: "deprecated-worker-filter",
 			args: args{
 				target: func() target.Target {
-					target, err := target.New(ctx, globals.TcpSubtype, proj.PublicId,
+					target, err := target.New(ctx, tcp.Subtype, proj.PublicId,
 						target.WithName("bad-worker-filter"),
 						target.WithDescription("valid-org"),
 						target.WithDefaultPort(uint32(22)),
@@ -194,7 +194,7 @@ func TestRepository_CreateTarget(t *testing.T) {
 			name: "invalid-setting-egress-and-worker-filter",
 			args: args{
 				target: func() target.Target {
-					target, err := target.New(ctx, globals.TcpSubtype, proj.PublicId,
+					target, err := target.New(ctx, tcp.Subtype, proj.PublicId,
 						target.WithName("bad-filters"),
 						target.WithDescription("valid-org"),
 						target.WithDefaultPort(uint32(22)),

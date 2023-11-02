@@ -17,6 +17,8 @@ import (
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/credential"
+	"github.com/hashicorp/boundary/internal/credential/static"
+	"github.com/hashicorp/boundary/internal/credential/vault"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/mitchellh/go-wordwrap"
@@ -725,7 +727,7 @@ func printCustomActionOutputImpl(c *Command) (bool, error) {
 
 					var secretStr []string
 					switch cred.CredentialSource.Type {
-					case globals.VaultSubtype.String(), globals.VaultGenericLibrarySubtype.String(), globals.StaticSubtype.String():
+					case vault.Subtype.String(), vault.GenericLibrarySubtype.String(), static.Subtype.String():
 						switch {
 						case cred.Credential != nil:
 							maxLength := 0

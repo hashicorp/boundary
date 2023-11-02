@@ -14,10 +14,15 @@ import (
 )
 
 func init() {
-	if err := subtypes.Register(host.Domain, globals.PluginSubtype, globals.PluginHostCatalogPrefix, globals.PluginHostCatalogPreviousPrefix, globals.PluginHostSetPrefix, globals.PluginHostSetPreviousPrefix, globals.PluginHostPrefix, globals.PluginHostPreviousPrefix); err != nil {
+	if err := subtypes.Register(host.Domain, Subtype, globals.PluginHostCatalogPrefix, globals.PluginHostCatalogPreviousPrefix, globals.PluginHostSetPrefix, globals.PluginHostSetPreviousPrefix, globals.PluginHostPrefix, globals.PluginHostPreviousPrefix); err != nil {
 		panic(err)
 	}
 }
+
+// PublicId prefixes for the resources in the plugin package.
+const (
+	Subtype = subtypes.Subtype("plugin")
+)
 
 func newHostCatalogId(ctx context.Context) (string, error) {
 	id, err := db.NewPublicId(ctx, globals.PluginHostCatalogPrefix)

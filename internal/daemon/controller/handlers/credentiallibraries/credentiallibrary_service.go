@@ -278,7 +278,7 @@ func (s Service) UpdateCredentialLibrary(ctx context.Context, req *pbs.UpdateCre
 	var currentCredentialType globals.CredentialType
 	var mo vault.MappingOverride
 	switch subtypes.SubtypeFromId(domain, req.GetId()) {
-	case globals.VaultSshCertificateLibrarySubtype:
+	case vault.SSHCertificateLibrarySubtype:
 		cur, err := repo.LookupSSHCertificateCredentialLibrary(ctx, req.Id)
 		if err != nil {
 			return nil, err
@@ -375,7 +375,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (credential.Library
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	switch subtypes.SubtypeFromId(domain, id) {
-	case globals.VaultGenericLibrarySubtype:
+	case vault.GenericLibrarySubtype:
 		cs, err := repo.LookupCredentialLibrary(ctx, id)
 		if err != nil && !errors.IsNotFoundError(err) {
 			return nil, errors.Wrap(ctx, err, op)
@@ -384,7 +384,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (credential.Library
 			return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("credential library %q not found", id))
 		}
 		return cs, err
-	case globals.VaultSshCertificateLibrarySubtype:
+	case vault.SSHCertificateLibrarySubtype:
 		cs, err := repo.LookupSSHCertificateCredentialLibrary(ctx, id)
 		if err != nil && !errors.IsNotFoundError(err) {
 			return nil, errors.Wrap(ctx, err, op)
@@ -401,7 +401,7 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Cred
 	const op = "credentiallibraries.(Service).createInRepo"
 	var out credential.Library
 	switch subtypes.SubtypeFromType(domain, item.GetType()) {
-	case globals.VaultSshCertificateLibrarySubtype:
+	case vault.SSHCertificateLibrarySubtype:
 		cl, err := toStorageVaultSSHCertificateLibrary(ctx, item.GetCredentialStoreId(), item)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
@@ -471,7 +471,7 @@ func (s Service) updateInRepo(
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	switch subtypes.SubtypeFromId(domain, id) {
-	case globals.VaultSshCertificateLibrarySubtype:
+	case vault.SSHCertificateLibrarySubtype:
 		dbMasks = append(dbMasks, sshCertMaskManager.Translate(masks)...)
 		if getMapUpdate(criticalOptionsField, masks) {
 			dbMasks = append(dbMasks, vault.CriticalOptionsField)
@@ -523,7 +523,7 @@ func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, 
 	}
 	rows := 0
 	switch subtypes.SubtypeFromId(domain, id) {
-	case globals.VaultSshCertificateLibrarySubtype:
+	case vault.SSHCertificateLibrarySubtype:
 		rows, err = repo.DeleteSSHCertificateCredentialLibrary(ctx, scopeId, id)
 	default:
 		rows, err = repo.DeleteCredentialLibrary(ctx, scopeId, id)
@@ -555,7 +555,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 		opts = append(opts, auth.WithId(id))
 		parentId = id
 		switch subtypes.SubtypeFromId(domain, id) {
-		case globals.VaultGenericLibrarySubtype:
+		case vault.GenericLibrarySubtype:
 			cl, err := repo.LookupCredentialLibrary(ctx, id)
 			if err != nil {
 				res.Error = err
@@ -566,7 +566,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 				return res
 			}
 			parentId = cl.GetStoreId()
-		case globals.VaultSshCertificateLibrarySubtype:
+		case vault.SSHCertificateLibrarySubtype:
 			cl, err := repo.LookupSSHCertificateCredentialLibrary(ctx, id)
 			if err != nil {
 				res.Error = err
@@ -591,7 +591,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 	opts = append(opts, auth.WithPin(parentId))
 
 	switch subtypes.SubtypeFromId(domain, parentId) {
-	case globals.VaultSubtype:
+	case vault.Subtype:
 		cs, err := repo.LookupCredentialStore(ctx, parentId)
 		if err != nil {
 			res.Error = err
@@ -651,7 +651,7 @@ func toProto(ctx context.Context, in credential.Library, opt ...handlers.Option)
 		out.AuthorizedActions = opts.WithAuthorizedActions
 	}
 	switch subtypes.SubtypeFromId(domain, in.GetPublicId()) {
-	case globals.VaultGenericLibrarySubtype:
+	case vault.GenericLibrarySubtype:
 		vaultIn, ok := in.(*vault.CredentialLibrary)
 		if !ok {
 			return nil, errors.New(ctx, errors.Internal, op, "unable to cast to vault credential library")
@@ -704,7 +704,7 @@ func toProto(ctx context.Context, in credential.Library, opt ...handlers.Option)
 				VaultGenericCredentialLibraryAttributes: attrs,
 			}
 		}
-	case globals.VaultSshCertificateLibrarySubtype:
+	case vault.SSHCertificateLibrarySubtype:
 		vaultIn, ok := in.(*vault.SSHCertificateCredentialLibrary)
 		if !ok {
 			return nil, errors.New(ctx, errors.Internal, op, "unable to cast to vault ssh certificate credential library")
@@ -880,7 +880,7 @@ func toStorageVaultSSHCertificateLibrary(ctx context.Context, storeId string, in
 func validateGetRequest(req *pbs.GetCredentialLibraryRequest) error {
 	prefix := ""
 	switch subtypes.SubtypeFromId(domain, req.GetId()) {
-	case globals.VaultSshCertificateLibrarySubtype:
+	case vault.SSHCertificateLibrarySubtype:
 		prefix = globals.VaultSshCertificateCredentialLibraryPrefix
 	default:
 		prefix = globals.VaultCredentialLibraryPrefix
@@ -892,18 +892,18 @@ func validateCreateRequest(req *pbs.CreateCredentialLibraryRequest) error {
 	return handlers.ValidateCreateRequest(req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
 		switch subtypes.SubtypeFromId(domain, req.GetItem().GetCredentialStoreId()) {
-		case globals.VaultSubtype:
+		case vault.Subtype:
 			var t string
 			if version.SupportsFeature(version.Binary, version.CredentialLibraryVaultSubtype) {
 				t = req.GetItem().GetType()
 
 				// To support older cli's that do not send a `type`, assume
 				// subtype of vault-generic based on the credential store's subtype.
-				// To support the deprecated subtype 'globals.VaultSubtype', convert it
+				// To support the deprecated subtype 'vault.Subtype', convert it
 				// to vault-generic.
-				if t == "" || subtypes.SubtypeFromType(domain, t) == globals.VaultSubtype {
+				if t == "" || subtypes.SubtypeFromType(domain, t) == vault.Subtype {
 					// fallback to assuming subtype from credential store.
-					t = globals.VaultGenericLibrarySubtype.String()
+					t = vault.GenericLibrarySubtype.String()
 					req.GetItem().Type = t
 
 					switch req.GetItem().Attrs.(type) {
@@ -927,13 +927,13 @@ func validateCreateRequest(req *pbs.CreateCredentialLibraryRequest) error {
 				}
 			}
 
-			if subtypes.SubtypeFromType(domain, t) != globals.VaultGenericLibrarySubtype &&
-				subtypes.SubtypeFromType(domain, t) != globals.VaultSshCertificateLibrarySubtype {
-				badFields[globals.CredentialStoreIdField] = fmt.Sprintf("Type must be a vault subtype %q or %q", globals.VaultGenericLibrarySubtype.String(), globals.VaultSshCertificateLibrarySubtype.String())
+			if subtypes.SubtypeFromType(domain, t) != vault.GenericLibrarySubtype &&
+				subtypes.SubtypeFromType(domain, t) != vault.SSHCertificateLibrarySubtype {
+				badFields[globals.CredentialStoreIdField] = fmt.Sprintf("Type must be a vault subtype %q or %q", vault.GenericLibrarySubtype.String(), vault.SSHCertificateLibrarySubtype.String())
 			}
 
 			switch subtypes.SubtypeFromType(domain, req.GetItem().GetType()) {
-			case globals.VaultGenericLibrarySubtype:
+			case vault.GenericLibrarySubtype:
 				isValidCred := false
 				ct := req.GetItem().GetCredentialType()
 				for _, t := range validCredentialTypesVaultGeneric {
@@ -964,7 +964,7 @@ func validateCreateRequest(req *pbs.CreateCredentialLibraryRequest) error {
 					badFields[httpRequestBodyField] = fmt.Sprintf("Field can only be set if %q is set to the value 'POST'.", httpMethodField)
 				}
 				validateMapping(badFields, globals.CredentialType(req.GetItem().GetCredentialType()), req.GetItem().CredentialMappingOverrides.AsMap())
-			case globals.VaultSshCertificateLibrarySubtype:
+			case vault.SSHCertificateLibrarySubtype:
 				if req.GetItem().GetCredentialType() != "" {
 					badFields[globals.CredentialTypeField] = fmt.Sprintf("This field is read only and cannot be set.")
 				}
@@ -1003,16 +1003,16 @@ func validateUpdateRequest(req *pbs.UpdateCredentialLibraryRequest, currentCrede
 	prefix := ""
 	st := subtypes.SubtypeFromId(domain, req.GetId())
 	switch st {
-	case globals.VaultGenericLibrarySubtype:
+	case vault.GenericLibrarySubtype:
 		prefix = globals.VaultCredentialLibraryPrefix
-	case globals.VaultSshCertificateLibrarySubtype:
+	case vault.SSHCertificateLibrarySubtype:
 		prefix = globals.VaultSshCertificateCredentialLibraryPrefix
 	}
 	return handlers.ValidateUpdateRequest(req, req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
 		switch st {
-		case globals.VaultGenericLibrarySubtype:
-			if req.GetItem().GetType() != "" && subtypes.SubtypeFromType(domain, req.GetItem().GetType()) != globals.VaultGenericLibrarySubtype {
+		case vault.GenericLibrarySubtype:
+			if req.GetItem().GetType() != "" && subtypes.SubtypeFromType(domain, req.GetItem().GetType()) != vault.GenericLibrarySubtype {
 				badFields[globals.TypeField] = "Cannot modify resource type."
 			}
 			if req.GetItem().GetCredentialType() != "" && req.GetItem().GetCredentialType() != string(currentCredentialType) {
@@ -1035,8 +1035,8 @@ func validateUpdateRequest(req *pbs.UpdateCredentialLibraryRequest, currentCrede
 				}
 				validateMapping(badFields, currentCredentialType, req.GetItem().CredentialMappingOverrides.AsMap())
 			}
-		case globals.VaultSshCertificateLibrarySubtype:
-			if req.GetItem().GetType() != "" && subtypes.SubtypeFromType(domain, req.GetItem().GetType()) != globals.VaultSshCertificateLibrarySubtype {
+		case vault.SSHCertificateLibrarySubtype:
+			if req.GetItem().GetType() != "" && subtypes.SubtypeFromType(domain, req.GetItem().GetType()) != vault.SSHCertificateLibrarySubtype {
 				badFields[globals.TypeField] = "Cannot modify resource type."
 			}
 			if req.GetItem().GetCredentialType() != "" && req.GetItem().GetCredentialType() != string(currentCredentialType) {

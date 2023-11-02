@@ -9,12 +9,12 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/internal/types/subtypes"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 )
 
@@ -536,7 +536,7 @@ func fetchCredentialSources(ctx context.Context, r db.Reader, targetId string) (
 	return ret, nil
 }
 
-func (r *Repository) createSources(ctx context.Context, tId string, tSubtype globals.Subtype, credSources CredentialSources) ([]*CredentialLibrary, []*StaticCredential, error) {
+func (r *Repository) createSources(ctx context.Context, tId string, tSubtype subtypes.Subtype, credSources CredentialSources) ([]*CredentialLibrary, []*StaticCredential, error) {
 	const op = "target.(Repository).createSources"
 
 	// Get a list of unique ids being attached to the target, to be used for looking up the source type (library or static)

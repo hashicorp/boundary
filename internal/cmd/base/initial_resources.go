@@ -17,6 +17,7 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/plugin"
 	"github.com/hashicorp/boundary/internal/target"
+	"github.com/hashicorp/boundary/internal/target/tcp"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/internal/util"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
@@ -460,7 +461,7 @@ func (b *Server) CreateInitialTargetWithAddress(ctx context.Context) (target.Tar
 		target.WithPublicId(b.DevTargetId),
 		target.WithAddress(b.DevTargetAddress),
 	}
-	t, err := target.New(ctx, globals.TcpSubtype, b.DevProjectId, opts...)
+	t, err := target.New(ctx, tcp.Subtype, b.DevProjectId, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create target object: %w", err)
 	}
@@ -524,7 +525,7 @@ func (b *Server) CreateInitialTargetWithHostSources(ctx context.Context) (target
 		target.WithSessionConnectionLimit(int32(b.DevTargetSessionConnectionLimit)),
 		target.WithPublicId(b.DevSecondaryTargetId),
 	}
-	t, err := target.New(ctx, globals.TcpSubtype, b.DevProjectId, opts...)
+	t, err := target.New(ctx, tcp.Subtype, b.DevProjectId, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create target object: %w", err)
 	}

@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/types/subtypes"
 )
@@ -58,12 +57,12 @@ type registryEntry struct {
 }
 
 type registry struct {
-	m map[globals.Subtype]*registryEntry
+	m map[subtypes.Subtype]*registryEntry
 
 	sync.RWMutex
 }
 
-func (r *registry) set(s globals.Subtype, entry *registryEntry) {
+func (r *registry) set(s subtypes.Subtype, entry *registryEntry) {
 	r.Lock()
 	defer r.Unlock()
 
@@ -79,7 +78,7 @@ func (r *registry) set(s globals.Subtype, entry *registryEntry) {
 	r.m[s] = entry
 }
 
-func (r *registry) get(s globals.Subtype) (*registryEntry, bool) {
+func (r *registry) get(s subtypes.Subtype) (*registryEntry, bool) {
 	r.RLock()
 	defer r.RUnlock()
 
@@ -90,7 +89,7 @@ func (r *registry) get(s globals.Subtype) (*registryEntry, bool) {
 	return nil, ok
 }
 
-func (r *registry) newFunc(s globals.Subtype) (NewFunc, bool) {
+func (r *registry) newFunc(s subtypes.Subtype) (NewFunc, bool) {
 	entry, ok := r.get(s)
 	if !ok {
 		return nil, ok
@@ -98,7 +97,7 @@ func (r *registry) newFunc(s globals.Subtype) (NewFunc, bool) {
 	return entry.targetHooks.NewTarget, ok
 }
 
-func (r *registry) allocFunc(s globals.Subtype) (AllocFunc, bool) {
+func (r *registry) allocFunc(s subtypes.Subtype) (AllocFunc, bool) {
 	entry, ok := r.get(s)
 	if !ok {
 		return nil, ok
@@ -106,7 +105,7 @@ func (r *registry) allocFunc(s globals.Subtype) (AllocFunc, bool) {
 	return entry.targetHooks.AllocTarget, ok
 }
 
-func (r *registry) vetFunc(s globals.Subtype) (VetFunc, bool) {
+func (r *registry) vetFunc(s subtypes.Subtype) (VetFunc, bool) {
 	entry, ok := r.get(s)
 	if !ok {
 		return nil, ok
@@ -114,7 +113,7 @@ func (r *registry) vetFunc(s globals.Subtype) (VetFunc, bool) {
 	return entry.targetHooks.Vet, ok
 }
 
-func (r *registry) vetForUpdateFunc(s globals.Subtype) (VetForUpdateFunc, bool) {
+func (r *registry) vetForUpdateFunc(s subtypes.Subtype) (VetForUpdateFunc, bool) {
 	entry, ok := r.get(s)
 	if !ok {
 		return nil, ok
@@ -122,7 +121,7 @@ func (r *registry) vetForUpdateFunc(s globals.Subtype) (VetForUpdateFunc, bool) 
 	return entry.targetHooks.VetForUpdate, ok
 }
 
-func (r *registry) vetCredentialSourcesFunc(s globals.Subtype) (VetCredentialSourcesFunc, bool) {
+func (r *registry) vetCredentialSourcesFunc(s subtypes.Subtype) (VetCredentialSourcesFunc, bool) {
 	entry, ok := r.get(s)
 	if !ok {
 		return nil, ok
@@ -131,7 +130,7 @@ func (r *registry) vetCredentialSourcesFunc(s globals.Subtype) (VetCredentialSou
 	return entry.targetHooks.VetCredentialSources, ok
 }
 
-func (r *registry) idPrefix(s globals.Subtype) (string, bool) {
+func (r *registry) idPrefix(s subtypes.Subtype) (string, bool) {
 	entry, ok := r.get(s)
 	if !ok {
 		return "", ok
@@ -140,18 +139,18 @@ func (r *registry) idPrefix(s globals.Subtype) (string, bool) {
 }
 
 var subtypeRegistry = registry{
-	m: make(map[globals.Subtype]*registryEntry),
+	m: make(map[subtypes.Subtype]*registryEntry),
 }
 
 // SubtypeFromType returns the Subtype from the provided string or if
 // no Subtype was registered with that string Unknown is returned.
-func SubtypeFromType(t string) globals.Subtype {
+func SubtypeFromType(t string) subtypes.Subtype {
 	return subtypes.SubtypeFromType(domain, t)
 }
 
 // SubtypeFromId returns the Subtype from the provided id if the id's prefix
 // was registered with a Subtype. Otherwise Unknown is returned.
-func SubtypeFromId(id string) globals.Subtype {
+func SubtypeFromId(id string) subtypes.Subtype {
 	return subtypes.SubtypeFromId(domain, id)
 }
 
@@ -161,7 +160,7 @@ func Prefixes() []string {
 }
 
 // New creates a Target of the given subtype and projectId.
-func New(ctx context.Context, subtype globals.Subtype, projectId string, opt ...Option) (Target, error) {
+func New(ctx context.Context, subtype subtypes.Subtype, projectId string, opt ...Option) (Target, error) {
 	const op = "target.New"
 	nf, ok := subtypeRegistry.newFunc(subtype)
 	if !ok {
@@ -173,7 +172,7 @@ func New(ctx context.Context, subtype globals.Subtype, projectId string, opt ...
 // Register registers repository hooks and the prefixes for a provided Subtype. Register
 // panics if the subtype has already been registered or if any of the
 // prefixes are associated with another subtype.
-func Register(s globals.Subtype, th targetHooks, prefix string) {
+func Register(s subtypes.Subtype, th targetHooks, prefix string) {
 	subtypeRegistry.set(s, &registryEntry{
 		targetHooks: th,
 		prefix:      prefix,
