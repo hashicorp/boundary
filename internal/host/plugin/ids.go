@@ -17,11 +17,17 @@ func init() {
 	if err := subtypes.Register(host.Domain, Subtype, globals.PluginHostCatalogPrefix, globals.PluginHostCatalogPreviousPrefix, globals.PluginHostSetPrefix, globals.PluginHostSetPreviousPrefix, globals.PluginHostPrefix, globals.PluginHostPreviousPrefix); err != nil {
 		panic(err)
 	}
+	globals.RegisterPrefixSubtype(globals.PluginHostCatalogPrefix, Subtype)
+	globals.RegisterPrefixSubtype(globals.PluginHostCatalogPreviousPrefix, Subtype)
+	globals.RegisterPrefixSubtype(globals.PluginHostSetPrefix, Subtype)
+	globals.RegisterPrefixSubtype(globals.PluginHostSetPreviousPrefix, Subtype)
+	globals.RegisterPrefixSubtype(globals.PluginHostPrefix, Subtype)
+	globals.RegisterPrefixSubtype(globals.PluginHostPreviousPrefix, Subtype)
 }
 
 // PublicId prefixes for the resources in the plugin package.
 const (
-	Subtype = subtypes.Subtype("plugin")
+	Subtype = globals.Subtype("plugin")
 )
 
 func newHostCatalogId(ctx context.Context) (string, error) {

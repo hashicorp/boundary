@@ -35,11 +35,11 @@ import (
 )
 
 var (
-	maskManager = map[subtypes.Subtype]handlers.MaskManager{}
+	maskManager = map[globals.Subtype]handlers.MaskManager{}
 
 	// IdActions contains the set of actions that can be performed on
 	// individual resources
-	idActionsTypeMap = map[subtypes.Subtype]action.ActionSet{
+	idActionsTypeMap = map[globals.Subtype]action.ActionSet{
 		static.Subtype: {
 			action.NoOp,
 			action.Read,

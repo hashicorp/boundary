@@ -11,19 +11,19 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/target/tcp/store"
-	"github.com/hashicorp/boundary/internal/types/subtypes"
 	"google.golang.org/protobuf/proto"
 )
 
 const (
 	defaultTableName = "target_tcp"
-	Subtype          = subtypes.Subtype("tcp")
+	Subtype          = globals.Subtype("tcp")
 )
 
 // Target is a resources that represets a networked service
@@ -132,7 +132,7 @@ func (t *Target) Oplog(op oplog.OpType) oplog.Metadata {
 	return metadata
 }
 
-func (t *Target) GetType() subtypes.Subtype {
+func (t *Target) GetType() globals.Subtype {
 	return Subtype
 }
 

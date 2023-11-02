@@ -17,11 +17,14 @@ func init() {
 	if err := subtypes.Register(auth.Domain, Subtype, globals.PasswordAuthMethodPrefix, globals.PasswordAccountPreviousPrefix, globals.PasswordAccountPrefix); err != nil {
 		panic(err)
 	}
+	globals.RegisterPrefixSubtype(globals.PasswordAuthMethodPrefix, Subtype)
+	globals.RegisterPrefixSubtype(globals.PasswordAccountPreviousPrefix, Subtype)
+	globals.RegisterPrefixSubtype(globals.PasswordAccountPrefix, Subtype)
 }
 
 // PublicId prefixes for the resources in the password package.
 const (
-	Subtype = subtypes.Subtype("password")
+	Subtype = globals.Subtype("password")
 )
 
 func newAuthMethodId(ctx context.Context) (string, error) {

@@ -57,7 +57,7 @@ var (
 		action.List,
 	}
 
-	collectionTypeMap = map[subtypes.Subtype]map[resource.Type]action.ActionSet{
+	collectionTypeMap = map[globals.Subtype]map[resource.Type]action.ActionSet{
 		static.Subtype: {
 			resource.HostSet: host_sets.CollectionActions,
 			resource.Host:    hosts.CollectionActions,
@@ -183,7 +183,7 @@ func (s Service) ListHostCatalogs(ctx context.Context, req *pbs.ListHostCatalogs
 			outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions))
 		}
 		if outputFields.Has(globals.AuthorizedCollectionActionsField) {
-			var subtype subtypes.Subtype
+			var subtype globals.Subtype
 			switch item.(type) {
 			case *static.HostCatalog:
 				subtype = static.Subtype
@@ -253,7 +253,7 @@ func (s Service) GetHostCatalog(ctx context.Context, req *pbs.GetHostCatalogRequ
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, hc.GetPublicId(), IdActions).Strings()))
 	}
 	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
-		var subtype subtypes.Subtype
+		var subtype globals.Subtype
 		switch hc.(type) {
 		case *static.HostCatalog:
 			subtype = static.Subtype
@@ -310,7 +310,7 @@ func (s Service) CreateHostCatalog(ctx context.Context, req *pbs.CreateHostCatal
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, hc.GetPublicId(), IdActions).Strings()))
 	}
 	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
-		var subtype subtypes.Subtype
+		var subtype globals.Subtype
 		switch hc.(type) {
 		case *static.HostCatalog:
 			subtype = static.Subtype
@@ -373,7 +373,7 @@ func (s Service) UpdateHostCatalog(ctx context.Context, req *pbs.UpdateHostCatal
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, hc.GetPublicId(), IdActions).Strings()))
 	}
 	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
-		var subtype subtypes.Subtype
+		var subtype globals.Subtype
 		switch hc.(type) {
 		case *static.HostCatalog:
 			subtype = static.Subtype
