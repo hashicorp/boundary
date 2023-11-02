@@ -671,3 +671,78 @@ func TestRepository_ListRoles_Multiple_Scopes(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, total, len(got))
 }
+
+func Test_listDeletedIds(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
+	org := TestOrg(t, repo)
+
+	// Expect no entries at the start
+	deletedIds, ttime, err := repo.listDeletedRoleIds(ctx, time.Now().AddDate(-1, 0, 0))
+	require.NoError(t, err)
+	require.Empty(t, deletedIds)
+
+	// Transaction time should be within ~10 seconds of now
+	now := time.Now()
+	assert.True(t, ttime.Add(-10*time.Second).Before(now))
+	assert.True(t, ttime.Add(10*time.Second).After(now))
+
+	// Delete a role
+	r := TestRole(t, conn, org.GetPublicId())
+	_, err = repo.DeleteRole(ctx, r.PublicId)
+	require.NoError(t, err)
+
+	// Expect a single entry
+	deletedIds, ttime, err = repo.listDeletedRoleIds(ctx, time.Now().AddDate(-1, 0, 0))
+	require.NoError(t, err)
+	require.Equal(t, []string{r.PublicId}, deletedIds)
+	now = time.Now()
+	assert.True(t, ttime.Add(-10*time.Second).Before(now))
+	assert.True(t, ttime.Add(10*time.Second).After(now))
+
+	// Try again with the time set to now, expect no entries
+	deletedIds, ttime, err = repo.listDeletedRoleIds(ctx, time.Now())
+	require.NoError(t, err)
+	require.Empty(t, deletedIds)
+	now = time.Now()
+	assert.True(t, ttime.Add(-10*time.Second).Before(now))
+	assert.True(t, ttime.Add(10*time.Second).After(now))
+}
+
+func Test_estimatedCount(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
+	sqlDb, err := conn.SqlDB(ctx)
+	require.NoError(t, err)
+
+	// Check total entries at start, expect 0
+	numItems, err := repo.estimatedRolesCount(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 0, numItems)
+
+	// Create a session, expect 1 entries
+	org := TestOrg(t, repo, WithSkipDefaultRoleCreation(true))
+	r := TestRole(t, conn, org.GetPublicId())
+	// Run analyze to update estimate
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
+	numItems, err = repo.estimatedRolesCount(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 1, numItems)
+
+	// Delete the session, expect 0 again
+	_, err = repo.DeleteRole(ctx, r.PublicId)
+	require.NoError(t, err)
+	// Run analyze to update estimate
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
+	numItems, err = repo.estimatedRolesCount(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 0, numItems)
+}

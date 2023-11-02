@@ -5,8 +5,11 @@ package iam
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -184,16 +187,96 @@ func (r *Repository) DeleteRole(ctx context.Context, withPublicId string, _ ...O
 	return rowsDeleted, nil
 }
 
-// ListRoles lists roles in the given scopes and supports WithLimit option.
+// ListRoles lists roles in the given scopes and supports the options:
+//   - WithLimit
+//   - WithStartPageAfterItem
 func (r *Repository) ListRoles(ctx context.Context, withScopeIds []string, opt ...Option) ([]*Role, error) {
 	const op = "iam.(Repository).ListRoles"
 	if len(withScopeIds) == 0 {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing scope ids")
 	}
+
+	opts := getOpts(opt...)
+	limit := r.defaultLimit
+	if opts.withLimit != 0 {
+		// non-zero signals an override of the default limit for the repo.
+		limit = opts.withLimit
+	}
+
+	var inClauses []string
+	var args []any
+	for i, scopeId := range withScopeIds {
+		arg := "scope_id_" + strconv.Itoa(i)
+		inClauses = append(inClauses, "@"+arg)
+		args = append(args, sql.Named(arg, scopeId))
+	}
+	inClause := strings.Join(inClauses, ", ")
+	whereClause := "scope_id in (" + inClause + ")"
+
+	// Ordering and pagination are tightly coupled.
+	// We order by update_time ascending so that new
+	// and updated items appear at the end of the pagination.
+	// We need to further order by public_id to distinguish items
+	// with identical update times.
+	withOrder := "update_time asc, public_id asc"
+	if opts.withStartPageAfterItem != nil {
+		// Now that the order is defined, we can use a simple where
+		// clause to only include items updated since the specified
+		// start of the page. We use greater than or equal for the update
+		// time as there may be items with identical update_times. We
+		// then use PublicId as a tiebreaker.
+		args = append(args,
+			sql.Named("after_item_update_time", opts.withStartPageAfterItem.GetUpdateTime()),
+			sql.Named("after_item_id", opts.withStartPageAfterItem.GetPublicId()),
+		)
+		whereClause = "(" + whereClause + ") and (update_time > @after_item_update_time or (update_time = @after_item_update_time and public_id > @after_item_id))"
+	}
+
 	var roles []*Role
-	err := r.list(ctx, &roles, "scope_id in (?)", []any{withScopeIds}, opt...)
+	err := r.reader.SearchWhere(ctx, &roles, whereClause, args, db.WithLimit(limit), db.WithOrder(withOrder))
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	return roles, nil
+}
+
+// listDeletedRoleIds lists the public IDs of any roles deleted since the timestamp provided.
+func (r *Repository) listDeletedRoleIds(ctx context.Context, since time.Time) ([]string, time.Time, error) {
+	const op = "iam.(Repository).listDeletedRoleIds"
+	var deletedRoles []*deletedRole
+	var transactionTimestamp time.Time
+	if _, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(r db.Reader, w db.Writer) error {
+		if err := r.SearchWhere(ctx, &deletedRoles, "delete_time >= ?", []any{since}); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to query deleted roles"))
+		}
+		var err error
+		transactionTimestamp, err = r.Now(ctx)
+		if err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to query transaction timestamp"))
+		}
+		return nil
+	}); err != nil {
+		return nil, time.Time{}, err
+	}
+	var roleIds []string
+	for _, role := range deletedRoles {
+		roleIds = append(roleIds, role.PublicId)
+	}
+	return roleIds, transactionTimestamp, nil
+}
+
+// estimatedRolesCount returns and estimate of the total number of items in the roles table.
+func (r *Repository) estimatedRolesCount(ctx context.Context) (int, error) {
+	const op = "iam.(Repository).estimatedRolesCount"
+	rows, err := r.reader.Query(ctx, estimateCountRoles, nil)
+	if err != nil {
+		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total roles"))
+	}
+	var count int
+	for rows.Next() {
+		if err := r.reader.ScanRows(ctx, rows, &count); err != nil {
+			return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total roles"))
+		}
+	}
+	return count, nil
 }
