@@ -92,7 +92,9 @@ TCP targets have the following additional attribute:
 - `default_port` - (required)
   The default port to set on this target.
 
-### SSH target attributes <sup>HCP/ENT</sup>
+### SSH target attributes
+
+<EnterpriseAlert product="boundary">This feature requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary or Boundary Enterprise</a></EnterpriseAlert>
 
 SSH targets use injected application credentials to authenticate an SSH session between the client and end host.
 Injected credentials allow users to securely connect to remost hosts using SSH, while never being in the possession of a valid credential for that target host.
