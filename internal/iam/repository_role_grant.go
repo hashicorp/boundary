@@ -396,79 +396,8 @@ func (r *Repository) GrantsForUser(ctx context.Context, userId string, _ ...Opti
 	}
 
 	const (
-		anonUser    = `where public_id in (?)`
-		authUser    = `where public_id in ('u_anon', 'u_auth', ?)`
-		grantsQuery = `
-with
-users (id) as (
-  select public_id
-    from iam_user
-  %s -- anonUser || authUser
-),
-user_groups (id) as (
-  select group_id
-    from iam_group_member_user,
-         users
-   where member_id in (users.id)
-),
-user_accounts (id) as (
-  select public_id
-    from auth_account,
-         users
-   where iam_user_id in (users.id)
-),
-user_managed_groups (id) as (
-  select managed_group_id
-    from auth_managed_group_member_account,
-         user_accounts
-   where member_id in (user_accounts.id)
-),
-managed_group_roles (role_id) as (
-  select role_id
-    from iam_managed_group_role,
-         user_managed_groups
-   where principal_id in (user_managed_groups.id)
-),
-group_roles (role_id) as (
-  select role_id
-    from iam_group_role,
-         user_groups
-   where principal_id in (user_groups.id)
-),
-user_roles (role_id) as (
-  select role_id
-    from iam_user_role,
-         users
-   where principal_id in (users.id)
-),
-user_group_roles (role_id) as (
-  select role_id
-    from group_roles
-   union
-  select role_id
-    from user_roles
-   union
-  select role_id
-    from managed_group_roles
-),
-roles (role_id, grant_scope_id) as (
-  select iam_role.public_id,
-         iam_role.grant_scope_id
-    from iam_role,
-         user_group_roles
-   where public_id in (user_group_roles.role_id)
-),
-final (role_id, role_scope, role_grant) as (
-  select roles.role_id,
-         roles.grant_scope_id,
-         iam_role_grant.canonical_grant
-    from roles
-   inner
-    join iam_role_grant
-      on roles.role_id = iam_role_grant.role_id
-)
-select role_id as role_id, role_scope as scope_id, role_grant as grant from final;
-	`
+		anonUser = `where public_id in (?)`
+		authUser = `where public_id in ('u_anon', 'u_auth', ?)`
 	)
 
 	var query string
