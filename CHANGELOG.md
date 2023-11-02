@@ -21,7 +21,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   the ID are passed through to the type-specific subcommand. Once the ID has
   been entered, autocomplete is also supported.
 
-## 0.14.2 (Not Yet Released)
+## 0.14.2 (2023/11/2)
 
 ### Bug Fixes
 
