@@ -22,14 +22,18 @@ func init() {
 	if err := subtypes.Register(Domain, JsonSubtype, globals.JsonCredentialPrefix); err != nil {
 		panic(err)
 	}
+	globals.RegisterPrefixSubtype(globals.UsernamePasswordCredentialPrefix, UsernamePasswordSubtype)
+	globals.RegisterPrefixSubtype(globals.UsernamePasswordCredentialPreviousPrefix, UsernamePasswordSubtype)
+	globals.RegisterPrefixSubtype(globals.SshPrivateKeyCredentialPrefix, SshPrivateKeySubtype)
+	globals.RegisterPrefixSubtype(globals.JsonCredentialPrefix, JsonSubtype)
 }
 
 const (
-	UsernamePasswordSubtype = subtypes.Subtype("username_password")
+	UsernamePasswordSubtype = globals.Subtype("username_password")
 
-	SshPrivateKeySubtype = subtypes.Subtype("ssh_private_key")
+	SshPrivateKeySubtype = globals.Subtype("ssh_private_key")
 
-	JsonSubtype = subtypes.Subtype("json")
+	JsonSubtype = globals.Subtype("json")
 )
 
 func NewUsernamePasswordCredentialId(ctx context.Context) (string, error) {

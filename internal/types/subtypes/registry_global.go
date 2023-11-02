@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/errors"
 )
 
@@ -17,58 +18,58 @@ var globalRegistry = newRegistry()
 // newGlobalRegistry creates a new boundary resource subtype registry.
 func newRegistry() *registry {
 	return &registry{
-		subtypesPrefixes: make(map[string]map[string]Subtype),
-		knownSubtypes:    make(map[string]map[Subtype]any),
+		subtypesPrefixes: make(map[string]map[string]globals.Subtype),
+		knownSubtypes:    make(map[string]map[globals.Subtype]any),
 	}
 }
 
 // registry stores a collection of boundary resource subtypes along with their
 // prefixes and allows for translating prefixes back to registered subtypes.
 type registry struct {
-	subtypesPrefixes map[string]map[string]Subtype
-	knownSubtypes    map[string]map[Subtype]any
+	subtypesPrefixes map[string]map[string]globals.Subtype
+	knownSubtypes    map[string]map[globals.Subtype]any
 
 	sync.RWMutex
 }
 
 // SubtypeFromType returns the Subtype from the provided string or if
 // no Subtype was registered with that string Unknown is returned.
-func (r *registry) subtypeFromType(domain, t string) Subtype {
+func (r *registry) subtypeFromType(domain, t string) globals.Subtype {
 	r.RLock()
 	defer r.RUnlock()
 
 	knownSubtypes, ok := r.knownSubtypes[domain]
 	if !ok {
-		return UnknownSubtype
+		return globals.UnknownSubtype
 	}
 
-	st := Subtype(t)
+	st := globals.Subtype(t)
 	if _, ok := knownSubtypes[st]; !ok {
-		return UnknownSubtype
+		return globals.UnknownSubtype
 	}
 	return st
 }
 
 // SubtypeFromId returns the Subtype from the provided id if the id's prefix
 // was registered with a Subtype. Otherwise Unknown is returned.
-func (r *registry) subtypeFromId(domain, id string) Subtype {
+func (r *registry) subtypeFromId(domain, id string) globals.Subtype {
 	r.RLock()
 	defer r.RUnlock()
 
 	i := strings.Index(id, "_")
 	if i == -1 {
-		return UnknownSubtype
+		return globals.UnknownSubtype
 	}
 	prefix := id[:i]
 
 	subtypePrefixes, ok := r.subtypesPrefixes[domain]
 	if !ok {
-		return UnknownSubtype
+		return globals.UnknownSubtype
 	}
 
 	subtype, ok := subtypePrefixes[prefix]
 	if !ok {
-		return UnknownSubtype
+		return globals.UnknownSubtype
 	}
 	return subtype
 }
@@ -92,7 +93,7 @@ func (r *registry) prefixes(domain string) []string {
 // Register registers all the prefixes for a provided Subtype. Register returns
 // an error if the subtype has already been registered or if any of the
 // prefixes are associated with another subtype.
-func (r *registry) register(ctx context.Context, domain string, subtype Subtype, prefixes ...string) error {
+func (r *registry) register(ctx context.Context, domain string, subtype globals.Subtype, prefixes ...string) error {
 	r.Lock()
 	defer r.Unlock()
 
@@ -100,9 +101,9 @@ func (r *registry) register(ctx context.Context, domain string, subtype Subtype,
 
 	knownSubtypes, present := r.knownSubtypes[domain]
 	if !present {
-		knownSubtypes = make(map[Subtype]any)
+		knownSubtypes = make(map[globals.Subtype]any)
 		r.knownSubtypes[domain] = knownSubtypes
-		r.subtypesPrefixes[domain] = make(map[string]Subtype)
+		r.subtypesPrefixes[domain] = make(map[string]globals.Subtype)
 	}
 
 	if _, present := knownSubtypes[subtype]; present {
@@ -132,13 +133,13 @@ func (r *registry) register(ctx context.Context, domain string, subtype Subtype,
 
 // SubtypeFromType returns the Subtype from the provided string or if
 // no Subtype was registered with that string Unknown is returned.
-func SubtypeFromType(domain, t string) Subtype {
+func SubtypeFromType(domain, t string) globals.Subtype {
 	return globalRegistry.subtypeFromType(domain, t)
 }
 
 // SubtypeFromId returns the Subtype from the provided id if the id's prefix
 // was registered with a Subtype. Otherwise Unknown is returned.
-func SubtypeFromId(domain, id string) Subtype {
+func SubtypeFromId(domain, id string) globals.Subtype {
 	return globalRegistry.subtypeFromId(domain, id)
 }
 
@@ -150,7 +151,7 @@ func Prefixes(domain string) []string {
 // Register registers all the prefixes for a provided Subtype.  Register returns
 // an error if the subtype has already been registered or if any of the
 // prefixes are associated with another subtype.
-func Register(domain string, subtype Subtype, prefixes ...string) error {
+func Register(domain string, subtype globals.Subtype, prefixes ...string) error {
 	ctx := context.TODO()
 	return globalRegistry.register(ctx, domain, subtype, prefixes...)
 }

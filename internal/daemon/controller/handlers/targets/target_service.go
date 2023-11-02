@@ -95,7 +95,7 @@ var (
 		action.List,
 	}
 
-	validateCredentialSourcesFn      = func(context.Context, subtypes.Subtype, []target.CredentialSource) error { return nil }
+	validateCredentialSourcesFn      = func(context.Context, globals.Subtype, []target.CredentialSource) error { return nil }
 	ValidateIngressWorkerFilterFn    = IngressWorkerFilterUnsupported
 	AuthorizeSessionWorkerFilterFn   = AuthorizeSessionWithWorkerFilter
 	PostSessionAuthorizationCallback = DefaultPostSessionAuthorizationCallback

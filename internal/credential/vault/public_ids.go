@@ -23,13 +23,17 @@ func init() {
 	if err := subtypes.Register(credential.Domain, SSHCertificateLibrarySubtype, globals.VaultSshCertificateCredentialLibraryPrefix); err != nil {
 		panic(err)
 	}
+	globals.RegisterPrefixSubtype(globals.VaultCredentialStorePrefix, Subtype)
+	globals.RegisterPrefixSubtype(globals.VaultDynamicCredentialPrefix, Subtype)
+	globals.RegisterPrefixSubtype(globals.VaultCredentialLibraryPrefix, GenericLibrarySubtype)
+	globals.RegisterPrefixSubtype(globals.VaultSshCertificateCredentialLibraryPrefix, SSHCertificateLibrarySubtype)
 }
 
 // PublicId prefixes for the resources in the vault package.
 const (
-	Subtype                      = subtypes.Subtype("vault")
-	GenericLibrarySubtype        = subtypes.Subtype("vault-generic")
-	SSHCertificateLibrarySubtype = subtypes.Subtype("vault-ssh-certificate")
+	Subtype                      = globals.Subtype("vault")
+	GenericLibrarySubtype        = globals.Subtype("vault-generic")
+	SSHCertificateLibrarySubtype = globals.Subtype("vault-ssh-certificate")
 )
 
 func newCredentialStoreId(ctx context.Context) (string, error) {

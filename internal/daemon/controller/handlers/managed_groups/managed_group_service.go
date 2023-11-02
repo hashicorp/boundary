@@ -44,7 +44,7 @@ var (
 
 	// IdActions contains the set of actions that can be performed on
 	// individual resources
-	IdActions = map[subtypes.Subtype]action.ActionSet{
+	IdActions = map[globals.Subtype]action.ActionSet{
 		oidc.Subtype: {
 			action.NoOp,
 			action.Read,

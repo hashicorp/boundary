@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/gen/testing/attribute"
 	"github.com/stretchr/testify/assert"
@@ -17,8 +18,8 @@ import (
 )
 
 func init() {
-	Register("test", Subtype("sub_resource"), "trsr")
-	Register("test", Subtype("resource_plugin"), "trrp")
+	Register("test", globals.Subtype("sub_resource"), "trsr")
+	Register("test", globals.Subtype("resource_plugin"), "trrp")
 }
 
 func TestTransformRequestAttributes(t *testing.T) {

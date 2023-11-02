@@ -17,10 +17,13 @@ func init() {
 	if err := subtypes.Register(auth.Domain, Subtype, globals.LdapAuthMethodPrefix, globals.LdapAccountPrefix, globals.LdapManagedGroupPrefix); err != nil {
 		panic(err)
 	}
+	globals.RegisterPrefixSubtype(globals.LdapAuthMethodPrefix, Subtype)
+	globals.RegisterPrefixSubtype(globals.LdapAccountPrefix, Subtype)
+	globals.RegisterPrefixSubtype(globals.LdapManagedGroupPrefix, Subtype)
 }
 
 const (
-	Subtype = subtypes.Subtype("ldap")
+	Subtype = globals.Subtype("ldap")
 )
 
 func newAuthMethodId(ctx context.Context) (string, error) {

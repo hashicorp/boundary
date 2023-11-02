@@ -18,10 +18,11 @@ func init() {
 	if err := subtypes.Register(StorageDomain, Subtype, globals.PluginStorageBucketPrefix); err != nil {
 		panic(err)
 	}
+	globals.RegisterPrefixSubtype(globals.PluginStorageBucketPrefix, Subtype)
 }
 
 const (
-	Subtype = subtypes.Subtype("plugin")
+	Subtype = globals.Subtype("plugin")
 )
 
 func newStorageBucketId(ctx context.Context) (string, error) {

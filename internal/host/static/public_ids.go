@@ -17,11 +17,14 @@ func init() {
 	if err := subtypes.Register(host.Domain, Subtype, globals.StaticHostCatalogPrefix, globals.StaticHostSetPrefix, globals.StaticHostPrefix); err != nil {
 		panic(err)
 	}
+	globals.RegisterPrefixSubtype(globals.StaticHostCatalogPrefix, Subtype)
+	globals.RegisterPrefixSubtype(globals.StaticHostSetPrefix, Subtype)
+	globals.RegisterPrefixSubtype(globals.StaticHostPrefix, Subtype)
 }
 
 // PublicId prefixes for the resources in the static package.
 const (
-	Subtype = subtypes.Subtype("static")
+	Subtype = globals.Subtype("static")
 )
 
 func newHostCatalogId(ctx context.Context) (string, error) {

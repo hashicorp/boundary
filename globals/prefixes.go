@@ -125,57 +125,214 @@ const (
 	ChannelRecordingPrefix = "chr"
 )
 
-var prefixToResourceType = map[string]resource.Type{
-	AuthTokenPrefix:                            resource.AuthToken,
-	PasswordAuthMethodPrefix:                   resource.AuthMethod,
-	PasswordAccountPrefix:                      resource.Account,
-	PasswordAccountPreviousPrefix:              resource.Account,
-	OidcAuthMethodPrefix:                       resource.AuthMethod,
-	OidcAccountPrefix:                          resource.Account,
-	OidcManagedGroupPrefix:                     resource.ManagedGroup,
-	GlobalPrefix:                               resource.Scope,
-	ProjectPrefix:                              resource.Scope,
-	OrgPrefix:                                  resource.Scope,
-	UserPrefix:                                 resource.User,
-	GroupPrefix:                                resource.Group,
-	RolePrefix:                                 resource.Role,
-	StaticCredentialStorePrefix:                resource.CredentialStore,
-	StaticCredentialStorePreviousPrefix:        resource.CredentialStore,
-	VaultCredentialStorePrefix:                 resource.CredentialStore,
-	VaultCredentialLibraryPrefix:               resource.CredentialLibrary,
-	VaultSshCertificateCredentialLibraryPrefix: resource.CredentialLibrary,
-	UsernamePasswordCredentialPrefix:           resource.Credential,
-	UsernamePasswordCredentialPreviousPrefix:   resource.Credential,
-	SshPrivateKeyCredentialPrefix:              resource.Credential,
-	JsonCredentialPrefix:                       resource.Credential,
-	StaticHostCatalogPrefix:                    resource.HostCatalog,
-	StaticHostSetPrefix:                        resource.HostSet,
-	StaticHostPrefix:                           resource.Host,
-	PluginHostCatalogPrefix:                    resource.HostCatalog,
-	PluginHostCatalogPreviousPrefix:            resource.HostCatalog,
-	PluginHostSetPrefix:                        resource.HostSet,
-	PluginHostSetPreviousPrefix:                resource.HostSet,
-	PluginHostPrefix:                           resource.Host,
-	PluginHostPreviousPrefix:                   resource.Host,
-	SessionPrefix:                              resource.Session,
-	TcpTargetPrefix:                            resource.Target,
-	SshTargetPrefix:                            resource.Target,
-	WorkerPrefix:                               resource.Worker,
-	PluginStorageBucketPrefix:                  resource.StorageBucket,
-	SessionRecordingPrefix:                     resource.SessionRecording,
+type ResourceInfo struct {
+	Type    resource.Type
+	Subtype Subtype
+}
+
+var prefixToResourceType = map[string]ResourceInfo{
+	AuthTokenPrefix: {
+		Type:    resource.AuthToken,
+		Subtype: UnknownSubtype,
+	},
+
+	PasswordAuthMethodPrefix: {
+		Type:    resource.AuthMethod,
+		Subtype: UnknownSubtype,
+	},
+	PasswordAccountPrefix: {
+		Type:    resource.Account,
+		Subtype: UnknownSubtype,
+	},
+	PasswordAccountPreviousPrefix: {
+		Type:    resource.Account,
+		Subtype: UnknownSubtype,
+	},
+
+	OidcAuthMethodPrefix: {
+		Type:    resource.AuthMethod,
+		Subtype: UnknownSubtype,
+	},
+	OidcAccountPrefix: {
+		Type:    resource.Account,
+		Subtype: UnknownSubtype,
+	},
+	OidcManagedGroupPrefix: {
+		Type:    resource.ManagedGroup,
+		Subtype: UnknownSubtype,
+	},
+
+	LdapManagedGroupPrefix: {
+		Type:    resource.ManagedGroup,
+		Subtype: UnknownSubtype,
+	},
+	LdapAuthMethodPrefix: {
+		Type:    resource.AuthMethod,
+		Subtype: UnknownSubtype,
+	},
+	LdapAccountPrefix: {
+		Type:    resource.Account,
+		Subtype: UnknownSubtype,
+	},
+
+	ProjectPrefix: {
+		Type:    resource.Scope,
+		Subtype: UnknownSubtype,
+	},
+	OrgPrefix: {
+		Type:    resource.Scope,
+		Subtype: UnknownSubtype,
+	},
+	GlobalPrefix: {
+		Type:    resource.Scope,
+		Subtype: UnknownSubtype,
+	},
+
+	UserPrefix: {
+		Type:    resource.User,
+		Subtype: UnknownSubtype,
+	},
+	GroupPrefix: {
+		Type:    resource.Group,
+		Subtype: UnknownSubtype,
+	},
+	RolePrefix: {
+		Type:    resource.Role,
+		Subtype: UnknownSubtype,
+	},
+
+	StaticCredentialStorePrefix: {
+		Type:    resource.CredentialStore,
+		Subtype: UnknownSubtype,
+	},
+	StaticCredentialStorePreviousPrefix: {
+		Type:    resource.CredentialStore,
+		Subtype: UnknownSubtype,
+	},
+
+	VaultCredentialStorePrefix: {
+		Type:    resource.CredentialStore,
+		Subtype: UnknownSubtype,
+	},
+	VaultCredentialLibraryPrefix: {
+		Type:    resource.CredentialLibrary,
+		Subtype: UnknownSubtype,
+	},
+	VaultSshCertificateCredentialLibraryPrefix: {
+		Type:    resource.CredentialLibrary,
+		Subtype: UnknownSubtype,
+	},
+	VaultDynamicCredentialPrefix: {
+		Type:    resource.Credential,
+		Subtype: UnknownSubtype,
+	},
+
+	UsernamePasswordCredentialPrefix: {
+		Type:    resource.Credential,
+		Subtype: UnknownSubtype,
+	},
+	UsernamePasswordCredentialPreviousPrefix: {
+		Type:    resource.Credential,
+		Subtype: UnknownSubtype,
+	},
+	SshPrivateKeyCredentialPrefix: {
+		Type:    resource.Credential,
+		Subtype: UnknownSubtype,
+	},
+	JsonCredentialPrefix: {
+		Type:    resource.Credential,
+		Subtype: UnknownSubtype,
+	},
+
+	StaticHostCatalogPrefix: {
+		Type:    resource.HostCatalog,
+		Subtype: UnknownSubtype,
+	},
+	StaticHostSetPrefix: {
+		Type:    resource.HostSet,
+		Subtype: UnknownSubtype,
+	},
+	StaticHostPrefix: {
+		Type:    resource.Host,
+		Subtype: UnknownSubtype,
+	},
+
+	PluginHostCatalogPrefix: {
+		Type:    resource.HostCatalog,
+		Subtype: UnknownSubtype,
+	},
+	PluginHostCatalogPreviousPrefix: {
+		Type:    resource.HostCatalog,
+		Subtype: UnknownSubtype,
+	},
+	PluginHostSetPrefix: {
+		Type:    resource.HostSet,
+		Subtype: UnknownSubtype,
+	},
+	PluginHostSetPreviousPrefix: {
+		Type:    resource.HostSet,
+		Subtype: UnknownSubtype,
+	},
+	PluginHostPrefix: {
+		Type:    resource.Host,
+		Subtype: UnknownSubtype,
+	},
+	PluginHostPreviousPrefix: {
+		Type:    resource.Host,
+		Subtype: UnknownSubtype,
+	},
+
+	SessionPrefix: {
+		Type:    resource.Session,
+		Subtype: UnknownSubtype,
+	},
+
+	TcpTargetPrefix: {
+		Type:    resource.Target,
+		Subtype: UnknownSubtype,
+	},
+	SshTargetPrefix: {
+		Type:    resource.Target,
+		Subtype: UnknownSubtype,
+	},
+
+	WorkerPrefix: {
+		Type:    resource.Worker,
+		Subtype: UnknownSubtype,
+	},
+
+	PluginStorageBucketPrefix: {
+		Type:    resource.StorageBucket,
+		Subtype: UnknownSubtype,
+	},
+
+	SessionRecordingPrefix: {
+		Type:    resource.SessionRecording,
+		Subtype: UnknownSubtype,
+	},
 }
 
 var resourceTypeToPrefixes map[resource.Type][]string = func() map[resource.Type][]string {
 	ret := make(map[resource.Type][]string)
 	for k, v := range prefixToResourceType {
-		ret[v] = append(ret[v], k)
+		ret[v.Type] = append(ret[v.Type], k)
 	}
 	return ret
 }()
 
-// ResourceTypeFromPrefix takes in a resource ID (or a prefix) and returns the
-// corresponding resource typ
-func ResourceTypeFromPrefix(in string) resource.Type {
+// RegisterPrefixSubtype is called from various packages to register which
+// prefixes belong to their subtypes. This lets the subtypes stay in different
+// packages (important for the reflection introspection we do) while not
+// creating import loops.
+func RegisterPrefixSubtype(prefix string, subtype Subtype) {
+	resInfo := prefixToResourceType[prefix]
+	resInfo.Subtype = subtype
+	prefixToResourceType[prefix] = resInfo
+}
+
+// ResourceInfoFromPrefix takes in a resource ID (or a prefix) and returns the
+// corresponding resource info
+func ResourceInfoFromPrefix(in string) ResourceInfo {
 	// If full ID, trim to just prefix
 	in, _, _ = strings.Cut(in, "_")
 	return prefixToResourceType[in]

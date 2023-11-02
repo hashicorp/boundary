@@ -36,7 +36,7 @@ var (
 
 	// IdActions contains the set of actions that can be performed on
 	// individual resources
-	idActionsTypeMap = map[subtypes.Subtype]action.ActionSet{
+	idActionsTypeMap = map[globals.Subtype]action.ActionSet{
 		static.Subtype: {
 			action.NoOp,
 			action.Read,
@@ -620,7 +620,7 @@ func validateGetRequest(req *pbs.GetHostRequest) error {
 	return handlers.ValidateGetRequest(func() map[string]string {
 		badFields := map[string]string{}
 		ct := subtypes.SubtypeFromId(domain, req.GetId())
-		if ct == subtypes.UnknownSubtype {
+		if ct == globals.UnknownSubtype {
 			badFields["id"] = "Improperly formatted identifier used."
 		}
 		return badFields
