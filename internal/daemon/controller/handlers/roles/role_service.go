@@ -16,17 +16,23 @@ import (
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/iam/store"
+	"github.com/hashicorp/boundary/internal/pagination"
 	"github.com/hashicorp/boundary/internal/perms"
+	"github.com/hashicorp/boundary/internal/refreshtoken"
 	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/roles"
+	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
 	"github.com/hashicorp/boundary/version"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
+
+const defaultMaxPageSize = 1000
 
 var (
 	maskManager handlers.MaskManager
@@ -69,22 +75,28 @@ func init() {
 type Service struct {
 	pbs.UnsafeRoleServiceServer
 
-	repoFn common.IamRepoFactory
+	repoFn      common.IamRepoFactory
+	maxPageSize uint
 }
 
 var _ pbs.RoleServiceServer = (*Service)(nil)
 
 // NewService returns a role service which handles role related requests to boundary.
-func NewService(ctx context.Context, repo common.IamRepoFactory) (Service, error) {
+func NewService(ctx context.Context, repo common.IamRepoFactory, maxPageSize uint) (Service, error) {
 	const op = "roles.NewService"
 	if repo == nil {
 		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing iam repository")
 	}
-	return Service{repoFn: repo}, nil
+	if maxPageSize == 0 {
+		maxPageSize = uint(defaultMaxPageSize)
+	}
+	return Service{repoFn: repo, maxPageSize: maxPageSize}, nil
 }
 
 // ListRoles implements the interface pbs.RoleServiceServer.
 func (s Service) ListRoles(ctx context.Context, req *pbs.ListRolesRequest) (*pbs.ListRolesResponse, error) {
+	const op = "roles.(Service).ListRoles"
+
 	if err := validateListRequest(ctx, req); err != nil {
 		return nil, err
 	}
@@ -112,50 +124,121 @@ func (s Service) ListRoles(ctx context.Context, req *pbs.ListRolesRequest) (*pbs
 		return &pbs.ListRolesResponse{}, nil
 	}
 
-	items, err := s.listFromRepo(ctx, scopeIds)
+	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
 	}
-	if len(items) == 0 {
-		return &pbs.ListRolesResponse{}, nil
+
+	pageSize := int(s.maxPageSize)
+	if req.GetPageSize() != 0 && uint(req.GetPageSize()) < s.maxPageSize {
+		pageSize = int(req.GetPageSize())
 	}
 
 	filter, err := handlers.NewFilter(ctx, req.GetFilter())
 	if err != nil {
 		return nil, err
 	}
-	finalItems := make([]*pb.Role, 0, len(items))
-	res := perms.Resource{
-		Type: resource.Role,
+	filterItemFn := func(ctx context.Context, role *iam.Role) (bool, error) {
+		outputOpts, ok := newOutputOpts(ctx, role, authResults, scopeInfoMap)
+		if !ok {
+			return false, nil
+		}
+		pbItem, err := toProto(ctx, role, nil, nil, outputOpts...)
+		if err != nil {
+			return false, err
+		}
+		return filter.Match(pbItem), nil
 	}
-	for _, item := range items {
-		res.Id = item.GetPublicId()
-		res.ScopeId = item.GetScopeId()
-		authorizedActions := authResults.FetchActionSetForId(ctx, item.GetPublicId(), IdActions, auth.WithResource(&res)).Strings()
-		if len(authorizedActions) == 0 {
-			continue
-		}
 
-		outputFields := authResults.FetchOutputFields(res, action.List).SelfOrDefaults(authResults.UserId)
-		outputOpts := make([]handlers.Option, 0, 3)
-		outputOpts = append(outputOpts, handlers.WithOutputFields(outputFields))
-		if outputFields.Has(globals.ScopeField) {
-			outputOpts = append(outputOpts, handlers.WithScope(scopeInfoMap[item.GetScopeId()]))
-		}
-		if outputFields.Has(globals.AuthorizedActionsField) {
-			outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions))
-		}
+	grantsHash, err := authResults.GrantsHash(ctx)
+	if err != nil {
+		return nil, err
+	}
 
-		item, err := toProto(ctx, item, nil, nil, outputOpts...)
+	var domainRefreshToken *refreshtoken.Token
+	if req.GetRefreshToken() != "" {
+		rt, err := handlers.ParseRefreshToken(ctx, req.GetRefreshToken())
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		// We're doing the conversion from the protobuf types to the
+		// domain types here rather than in the domain so that the domain
+		// doesn't need to know about the protobuf types.
+		domainRefreshToken, err = refreshtoken.New(
+			ctx,
+			rt.CreatedTime.AsTime(),
+			rt.UpdatedTime.AsTime(),
+			handlers.RefreshTokenResourceToResource(rt.ResourceType),
+			rt.GrantsHash,
+			rt.LastItemId,
+			rt.LastItemUpdatedTime.AsTime(),
+		)
 		if err != nil {
 			return nil, err
 		}
-
-		if filter.Match(item) {
-			finalItems = append(finalItems, item)
+		if err := domainRefreshToken.Validate(ctx, resource.Role, grantsHash); err != nil {
+			return nil, err
 		}
 	}
-	return &pbs.ListRolesResponse{Items: finalItems}, nil
+
+	var listResp *pagination.ListResponse[*iam.Role]
+	if domainRefreshToken == nil {
+		listResp, err = iam.ListRoles(ctx, grantsHash, pageSize, filterItemFn, repo, scopeIds)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+	} else {
+		listResp, err = iam.ListRolesRefresh(ctx, grantsHash, pageSize, filterItemFn, domainRefreshToken, repo, scopeIds)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+	}
+
+	finalItems := make([]*pb.Role, 0, len(listResp.Items))
+
+	for _, item := range listResp.Items {
+		outputOpts, ok := newOutputOpts(ctx, item, authResults, scopeInfoMap)
+		if !ok {
+			continue
+		}
+		item, err := toProto(ctx, item, nil, nil, outputOpts...)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		finalItems = append(finalItems, item)
+	}
+
+	respType := "delta"
+	if listResp.CompleteListing {
+		respType = "complete"
+	}
+	resp := &pbs.ListRolesResponse{
+		Items:        finalItems,
+		EstItemCount: uint32(listResp.EstimatedItemCount),
+		RemovedIds:   listResp.DeletedIds,
+		ResponseType: respType,
+		SortBy:       "updated_time",
+		SortDir:      "asc",
+	}
+
+	if listResp.RefreshToken != nil {
+		if listResp.RefreshToken.ResourceType != resource.Role {
+			return nil, errors.New(ctx, errors.Internal, op, "refresh token resource type does not match service resource type")
+		}
+		resp.RefreshToken, err = handlers.MarshalRefreshToken(ctx, &pbs.ListRefreshToken{
+			CreatedTime:         timestamppb.New(listResp.RefreshToken.CreatedTime),
+			UpdatedTime:         timestamppb.New(listResp.RefreshToken.UpdatedTime),
+			ResourceType:        pbs.ResourceType_RESOURCE_TYPE_ROLE,
+			GrantsHash:          listResp.RefreshToken.GrantsHash,
+			LastItemId:          listResp.RefreshToken.LastItemId,
+			LastItemUpdatedTime: timestamppb.New(listResp.RefreshToken.LastItemUpdatedTime),
+		})
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+	}
+
+	return resp, nil
 }
 
 // GetRoles implements the interface pbs.RoleServiceServer.
@@ -615,18 +698,6 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 		return false, errors.Wrap(ctx, err, op, errors.WithMsg("unable to delete role"))
 	}
 	return rows > 0, nil
-}
-
-func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*iam.Role, error) {
-	repo, err := s.repoFn()
-	if err != nil {
-		return nil, err
-	}
-	rl, err := repo.ListRoles(ctx, scopeIds, iam.WithLimit(-1))
-	if err != nil {
-		return nil, err
-	}
-	return rl, nil
 }
 
 func (s Service) addPrinciplesInRepo(ctx context.Context, roleId string, principalIds []string, version uint32) (*iam.Role, []*iam.PrincipalRole, []*iam.RoleGrant, error) {
@@ -1155,4 +1226,28 @@ func validateRemoveRoleGrantsRequest(ctx context.Context, req *pbs.RemoveRoleGra
 		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
 	}
 	return nil
+}
+
+func newOutputOpts(ctx context.Context, item *iam.Role, authResults auth.VerifyResults, scopeInfoMap map[string]*scopes.ScopeInfo) ([]handlers.Option, bool) {
+	res := perms.Resource{
+		Type: resource.Role,
+	}
+	res.Id = item.GetPublicId()
+	res.ScopeId = item.GetScopeId()
+	authorizedActions := authResults.FetchActionSetForId(ctx, item.GetPublicId(), IdActions, auth.WithResource(&res)).Strings()
+	if len(authorizedActions) == 0 {
+		return nil, true
+	}
+
+	outputFields := authResults.FetchOutputFields(res, action.List).SelfOrDefaults(authResults.UserId)
+	outputOpts := make([]handlers.Option, 0, 3)
+	outputOpts = append(outputOpts, handlers.WithOutputFields(outputFields))
+	if outputFields.Has(globals.ScopeField) {
+		outputOpts = append(outputOpts, handlers.WithScope(scopeInfoMap[item.GetScopeId()]))
+	}
+	if outputFields.Has(globals.AuthorizedActionsField) {
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions))
+	}
+
+	return outputOpts, true
 }

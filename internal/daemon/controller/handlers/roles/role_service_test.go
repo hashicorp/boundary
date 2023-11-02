@@ -14,14 +14,19 @@ import (
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth/ldap"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
+	"github.com/hashicorp/boundary/internal/auth/password"
+	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/roles"
 	"github.com/hashicorp/boundary/internal/db"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	authpb "github.com/hashicorp/boundary/internal/gen/controller/auth"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/perms"
+	"github.com/hashicorp/boundary/internal/requests"
+	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/roles"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
@@ -177,7 +182,7 @@ func TestGet(t *testing.T) {
 			req := proto.Clone(toMerge).(*pbs.GetRoleRequest)
 			proto.Merge(req, tc.req)
 
-			s, err := roles.NewService(context.Background(), repoFn)
+			s, err := roles.NewService(context.Background(), repoFn, 1000)
 			require.NoError(err, "Couldn't create new role service.")
 
 			got, gErr := s.GetRole(auth.DisabledAuthTestContext(repoFn, tc.scopeId), req)
@@ -236,60 +241,108 @@ func TestList(t *testing.T) {
 		err  error
 	}{
 		{
-			name: "List Many Role",
+			name: "List Many Roles",
 			req:  &pbs.ListRolesRequest{ScopeId: oWithRoles.GetPublicId()},
-			res:  &pbs.ListRolesResponse{Items: wantOrgRoles},
+			res: &pbs.ListRolesResponse{
+				Items:        wantOrgRoles,
+				EstItemCount: 10,
+				ResponseType: "complete",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+			},
 		},
 		{
 			name: "List No Roles",
 			req:  &pbs.ListRolesRequest{ScopeId: oNoRoles.GetPublicId()},
-			res:  &pbs.ListRolesResponse{},
+			res: &pbs.ListRolesResponse{
+				ResponseType: "complete",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+			},
 		},
 		{
-			name: "List Many Project Role",
+			name: "List Many Project Roles",
 			req:  &pbs.ListRolesRequest{ScopeId: pWithRoles.GetPublicId()},
-			res:  &pbs.ListRolesResponse{Items: wantProjRoles},
+			res: &pbs.ListRolesResponse{
+				Items:        wantProjRoles,
+				EstItemCount: 10,
+				ResponseType: "complete",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+			},
 		},
 		{
 			name: "List No Project Roles",
 			req:  &pbs.ListRolesRequest{ScopeId: pNoRoles.GetPublicId()},
-			res:  &pbs.ListRolesResponse{},
+			res: &pbs.ListRolesResponse{
+				ResponseType: "complete",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+			},
 		},
 		{
 			name: "List proj roles recursively",
 			req:  &pbs.ListRolesRequest{ScopeId: pWithRoles.GetPublicId(), Recursive: true},
 			res: &pbs.ListRolesResponse{
-				Items: wantProjRoles,
+				Items:        wantProjRoles,
+				EstItemCount: 10,
+				ResponseType: "complete",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
 			},
 		},
 		{
 			name: "List org roles recursively",
 			req:  &pbs.ListRolesRequest{ScopeId: oNoRoles.GetPublicId(), Recursive: true},
 			res: &pbs.ListRolesResponse{
-				Items: wantProjRoles,
+				Items:        wantProjRoles,
+				EstItemCount: 10,
+				ResponseType: "complete",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
 			},
 		},
 		{
 			name: "List global roles recursively",
 			req:  &pbs.ListRolesRequest{ScopeId: "global", Recursive: true},
 			res: &pbs.ListRolesResponse{
-				Items: totalRoles,
+				Items:        totalRoles,
+				EstItemCount: 20,
+				ResponseType: "complete",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
 			},
 		},
 		{
 			name: "Filter to org roles",
 			req:  &pbs.ListRolesRequest{ScopeId: "global", Recursive: true, Filter: fmt.Sprintf(`"/item/scope/id"==%q`, oWithRoles.GetPublicId())},
-			res:  &pbs.ListRolesResponse{Items: wantOrgRoles},
+			res: &pbs.ListRolesResponse{
+				Items:        wantOrgRoles,
+				EstItemCount: 10,
+				ResponseType: "complete",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+			},
 		},
 		{
 			name: "Filter to proj roles",
 			req:  &pbs.ListRolesRequest{ScopeId: "global", Recursive: true, Filter: fmt.Sprintf(`"/item/scope/id"==%q`, pWithRoles.GetPublicId())},
-			res:  &pbs.ListRolesResponse{Items: wantProjRoles},
+			res: &pbs.ListRolesResponse{
+				Items:        wantProjRoles,
+				EstItemCount: 10,
+				ResponseType: "complete",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+			},
 		},
 		{
 			name: "Filter to no roles",
 			req:  &pbs.ListRolesRequest{ScopeId: pWithRoles.GetPublicId(), Filter: `"/item/id"=="doesnt match"`},
-			res:  &pbs.ListRolesResponse{},
+			res: &pbs.ListRolesResponse{
+				ResponseType: "complete",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+			},
 		},
 		{
 			name: "Filter Bad Format",
@@ -300,7 +353,7 @@ func TestList(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			s, err := roles.NewService(context.Background(), repoFn)
+			s, err := roles.NewService(context.Background(), repoFn, 1000)
 			require.NoError(err, "Couldn't create new role service.")
 
 			// Test the non-anon case
@@ -311,7 +364,18 @@ func TestList(t *testing.T) {
 				return
 			}
 			require.NoError(gErr)
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListRoles(%q) got response %q, wanted %q", tc.req, got, tc.res)
+			assert.Empty(
+				cmp.Diff(
+					got,
+					tc.res,
+					protocmp.Transform(),
+					protocmp.IgnoreFields(&pbs.ListRolesResponse{}, "refresh_token"),
+				),
+				"ListRoles(%q) got response %q, wanted %q",
+				tc.req,
+				got,
+				tc.res,
+			)
 
 			// Test the anon case
 			got, gErr = s.ListRoles(auth.DisabledAuthTestContext(repoFn, tc.req.GetScopeId(), auth.WithUserId(globals.AnonymousUserId)), tc.req)
@@ -330,10 +394,261 @@ func TestList(t *testing.T) {
 	}
 }
 
+func TestListPagination(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	wrap := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrap)
+	ctx := context.Background()
+
+	iamRepo := iam.TestRepo(t, conn, wrap)
+
+	rw := db.New(conn)
+	sqlDB, err := conn.SqlDB(ctx)
+	require.NoError(t, err)
+
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+	require.NoError(t, err)
+	tokenRepoFn := func() (*authtoken.Repository, error) {
+		return authtoken.NewRepository(ctx, rw, rw, kms)
+	}
+	tokenRepo, err := tokenRepoFn()
+	require.NoError(t, err)
+	serversRepoFn := func() (*server.Repository, error) {
+		return server.NewRepository(ctx, rw, rw, kms)
+	}
+
+	o, _ := iam.TestScopes(t, iamRepo, iam.WithSkipDefaultRoleCreation(true))
+	var wantRole []*pb.Role
+	for i := 0; i < 9; i++ {
+		or := iam.TestRole(t, conn, o.GetPublicId())
+		wantRole = append(wantRole, &pb.Role{
+			Id:                or.GetPublicId(),
+			ScopeId:           or.GetScopeId(),
+			Scope:             &scopes.ScopeInfo{Id: or.GetScopeId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
+			CreatedTime:       or.GetCreateTime().GetTimestamp(),
+			UpdatedTime:       or.GetUpdateTime().GetTimestamp(),
+			GrantScopeId:      &wrapperspb.StringValue{Value: or.GetGrantScopeId()},
+			Version:           or.GetVersion(),
+			AuthorizedActions: testAuthorizedActions,
+		})
+	}
+
+	authMethod := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
+	// auth account is only used to join auth method to user.
+	// We don't do anything else with the auth account in the test setup.
+	acct := password.TestAccount(t, conn, authMethod.GetPublicId(), "test_user")
+
+	u := iam.TestUser(t, iamRepo, o.GetPublicId(), iam.WithAccountIds(acct.PublicId))
+	at, _ := tokenRepo.CreateAuthToken(ctx, u, acct.GetPublicId())
+
+	privOrgRole := iam.TestRole(t, conn, o.GetPublicId())
+	iam.TestRoleGrant(t, conn, privOrgRole.GetPublicId(), "id=*;type=*;actions=*")
+	iam.TestUserRole(t, conn, privOrgRole.GetPublicId(), u.GetPublicId())
+
+	wantRole = append(wantRole, &pb.Role{
+		Id:                privOrgRole.GetPublicId(),
+		ScopeId:           privOrgRole.GetScopeId(),
+		Scope:             &scopes.ScopeInfo{Id: privOrgRole.GetScopeId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
+		CreatedTime:       privOrgRole.GetCreateTime().GetTimestamp(),
+		UpdatedTime:       privOrgRole.GetUpdateTime().GetTimestamp(),
+		GrantScopeId:      &wrapperspb.StringValue{Value: privOrgRole.GetGrantScopeId()},
+		Version:           privOrgRole.GetVersion(),
+		AuthorizedActions: testAuthorizedActions,
+	})
+
+	// Run analyze to update postgres estimates
+	_, err = sqlDB.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
+
+	// Test without anon user
+	requestInfo := authpb.RequestInfo{
+		TokenFormat: uint32(auth.AuthTokenTypeBearer),
+		PublicId:    at.GetPublicId(),
+		Token:       at.GetToken(),
+	}
+	requestContext := context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
+	ctx = auth.NewVerifierContext(requestContext, iamRepoFn, tokenRepoFn, serversRepoFn, kms, &requestInfo)
+
+	s, err := roles.NewService(ctx, iamRepoFn, 1000)
+	require.NoError(t, err)
+
+	req := &pbs.ListRolesRequest{
+		ScopeId:      o.GetPublicId(),
+		Filter:       "",
+		RefreshToken: "",
+		PageSize:     2,
+	}
+
+	// first page
+	got, err := s.ListRoles(ctx, req)
+	require.NoError(t, err)
+	require.Len(t, got.GetItems(), 2)
+	// Compare without comparing the refresh token
+	assert.Empty(t,
+		cmp.Diff(
+			got,
+			&pbs.ListRolesResponse{
+				Items:        wantRole[0:2],
+				ResponseType: "delta",
+				RefreshToken: "",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+				RemovedIds:   nil,
+				EstItemCount: 10,
+			},
+			protocmp.Transform(),
+			protocmp.IgnoreFields(&pbs.ListRolesResponse{}, "refresh_token"),
+		),
+	)
+
+	// Request second page
+	req.RefreshToken = got.RefreshToken
+	got, err = s.ListRoles(ctx, req)
+	require.NoError(t, err)
+	require.Len(t, got.GetItems(), 2)
+	// Compare without comparing the refresh token
+	assert.Empty(t,
+		cmp.Diff(
+			got,
+			&pbs.ListRolesResponse{
+				Items:        wantRole[2:4],
+				ResponseType: "delta",
+				RefreshToken: "",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+				RemovedIds:   nil,
+				EstItemCount: 10,
+			},
+			protocmp.Transform(),
+			protocmp.IgnoreFields(&pbs.ListRolesResponse{}, "refresh_token"),
+		),
+	)
+
+	// Request rest of results
+	req.RefreshToken = got.RefreshToken
+	req.PageSize = 10
+	got, err = s.ListRoles(ctx, req)
+	require.NoError(t, err)
+	require.Len(t, got.GetItems(), 6)
+	// Compare without comparing the refresh token
+	assert.Empty(t,
+		cmp.Diff(
+			got,
+			&pbs.ListRolesResponse{
+				Items:        wantRole[4:],
+				ResponseType: "complete",
+				RefreshToken: "",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+				RemovedIds:   nil,
+				EstItemCount: 10,
+			},
+			protocmp.Transform(),
+			protocmp.IgnoreFields(&pbs.ListRolesResponse{}, "refresh_token"),
+		),
+	)
+
+	// create another role
+	or := iam.TestRole(t, conn, o.GetPublicId())
+	wantRole = append(wantRole, &pb.Role{
+		Id:                or.GetPublicId(),
+		ScopeId:           or.GetScopeId(),
+		Scope:             &scopes.ScopeInfo{Id: or.GetScopeId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
+		CreatedTime:       or.GetCreateTime().GetTimestamp(),
+		UpdatedTime:       or.GetUpdateTime().GetTimestamp(),
+		GrantScopeId:      &wrapperspb.StringValue{Value: or.GetGrantScopeId()},
+		Version:           or.GetVersion(),
+		AuthorizedActions: testAuthorizedActions,
+	})
+
+	// delete a different role
+	deletedRole := wantRole[0]
+	_, err = iamRepo.DeleteRole(ctx, deletedRole.Id)
+	require.NoError(t, err)
+	wantRole = wantRole[1:]
+
+	// Run analyze to update postgres estimates
+	_, err = sqlDB.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
+
+	// Request updated results
+	req.RefreshToken = got.RefreshToken
+	got, err = s.ListRoles(ctx, req)
+	require.NoError(t, err)
+	require.Len(t, got.GetItems(), 1)
+	// Compare without comparing the refresh token
+	assert.Empty(t,
+		cmp.Diff(
+			got,
+			&pbs.ListRolesResponse{
+				Items:        wantRole[len(wantRole)-1:],
+				ResponseType: "complete",
+				RefreshToken: "",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+				// Should contain the deleted role
+				RemovedIds:   []string{deletedRole.Id},
+				EstItemCount: 10,
+			},
+			protocmp.Transform(),
+			protocmp.IgnoreFields(&pbs.ListRolesResponse{}, "refresh_token"),
+		),
+	)
+
+	// Request new page with filter requiring looping
+	// to fill the page.
+	req.RefreshToken = ""
+	req.PageSize = 1
+	req.Filter = fmt.Sprintf(`"/item/id"==%q or "/item/id"==%q`, wantRole[len(wantRole)-2].Id, wantRole[len(wantRole)-1].Id)
+	got, err = s.ListRoles(ctx, req)
+	require.NoError(t, err)
+	require.Len(t, got.GetItems(), 1)
+	assert.Empty(t,
+		cmp.Diff(
+			got,
+			&pbs.ListRolesResponse{
+				Items:        []*pb.Role{wantRole[len(wantRole)-2]},
+				ResponseType: "delta",
+				RefreshToken: "",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+				// Should be empty again
+				RemovedIds:   nil,
+				EstItemCount: 10,
+			},
+			protocmp.Transform(),
+			protocmp.IgnoreFields(&pbs.ListRolesResponse{}, "refresh_token"),
+		),
+	)
+	req.RefreshToken = got.RefreshToken
+	// Get the second page
+	got, err = s.ListRoles(ctx, req)
+	require.NoError(t, err)
+	require.Len(t, got.GetItems(), 1)
+	assert.Empty(t,
+		cmp.Diff(
+			got,
+			&pbs.ListRolesResponse{
+				Items:        []*pb.Role{wantRole[len(wantRole)-1]},
+				ResponseType: "complete",
+				RefreshToken: "",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+				RemovedIds:   nil,
+				EstItemCount: 10,
+			},
+			protocmp.Transform(),
+			protocmp.IgnoreFields(&pbs.ListRolesResponse{}, "refresh_token"),
+		),
+	)
+}
+
 func TestDelete(t *testing.T) {
 	or, pr, repoFn := createDefaultRolesAndRepo(t)
 
-	s, err := roles.NewService(context.Background(), repoFn)
+	s, err := roles.NewService(context.Background(), repoFn, 1000)
 	require.NoError(t, err, "Error when getting new role service.")
 
 	cases := []struct {
@@ -399,7 +714,7 @@ func TestDelete_twice(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 	or, pr, repoFn := createDefaultRolesAndRepo(t)
 
-	s, err := roles.NewService(context.Background(), repoFn)
+	s, err := roles.NewService(context.Background(), repoFn, 1000)
 	require.NoError(err, "Error when getting new role service")
 	req := &pbs.DeleteRoleRequest{
 		Id: or.GetPublicId(),
@@ -544,7 +859,7 @@ func TestCreate(t *testing.T) {
 			req := proto.Clone(toMerge).(*pbs.CreateRoleRequest)
 			proto.Merge(req, tc.req)
 
-			s, err := roles.NewService(context.Background(), repoFn)
+			s, err := roles.NewService(context.Background(), repoFn, 1000)
 			require.NoError(err, "Error when getting new role service.")
 
 			got, gErr := s.CreateRole(auth.DisabledAuthTestContext(repoFn, tc.req.GetItem().GetScopeId()), req)
@@ -614,7 +929,7 @@ func TestUpdate(t *testing.T) {
 	var orVersion uint32 = 1
 	var prVersion uint32 = 1
 
-	tested, err := roles.NewService(ctx, repoFn)
+	tested, err := roles.NewService(ctx, repoFn, 1000)
 	require.NoError(t, err, "Error when getting new role service.")
 
 	resetRoles := func(proj bool) {
@@ -1023,7 +1338,7 @@ func TestAddPrincipal(t *testing.T) {
 		return iamRepo, nil
 	}
 	o, p := iam.TestScopes(t, iamRepo)
-	s, err := roles.NewService(ctx, repoFn)
+	s, err := roles.NewService(ctx, repoFn, 1000)
 	require.NoError(t, err, "Error when getting new role service.")
 
 	kmsCache := kms.TestKms(t, conn, wrap)
@@ -1228,7 +1543,7 @@ func TestSetPrincipal(t *testing.T) {
 	repoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
-	s, err := roles.NewService(context.Background(), repoFn)
+	s, err := roles.NewService(context.Background(), repoFn, 1000)
 	require.NoError(t, err, "Error when getting new role service.")
 
 	o, p := iam.TestScopes(t, iamRepo)
@@ -1430,7 +1745,7 @@ func TestRemovePrincipal(t *testing.T) {
 	repoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
-	s, err := roles.NewService(ctx, repoFn)
+	s, err := roles.NewService(ctx, repoFn, 1000)
 	require.NoError(t, err, "Error when getting new role service.")
 
 	o, p := iam.TestScopes(t, iamRepo)
@@ -1692,7 +2007,7 @@ func TestAddGrants(t *testing.T) {
 	repoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
-	s, err := roles.NewService(context.Background(), repoFn)
+	s, err := roles.NewService(context.Background(), repoFn, 1000)
 	require.NoError(t, err, "Error when getting new role service.")
 
 	addCases := []struct {
@@ -1840,7 +2155,7 @@ func TestSetGrants(t *testing.T) {
 		return iamRepo, nil
 	}
 
-	s, err := roles.NewService(context.Background(), repoFn)
+	s, err := roles.NewService(context.Background(), repoFn, 1000)
 	require.NoError(t, err, "Error when getting new role service.")
 
 	setCases := []struct {
@@ -1985,7 +2300,7 @@ func TestRemoveGrants(t *testing.T) {
 	repoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
-	s, err := roles.NewService(context.Background(), repoFn)
+	s, err := roles.NewService(context.Background(), repoFn, 1000)
 	require.NoError(t, err, "Error when getting new role service.")
 
 	removeCases := []struct {
