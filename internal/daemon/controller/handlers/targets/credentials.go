@@ -265,7 +265,7 @@ func staticToSessionCredential(ctx context.Context, cred credential.Static) (*pb
 			Name:              cred.GetName(),
 			Description:       cred.GetDescription(),
 			CredentialStoreId: cred.GetStoreId(),
-			Type:              globals.StaticSubtype.String(),
+			Type:              credstatic.Subtype.String(),
 			CredentialType:    credType,
 		},
 		Secret: &pb.SessionSecret{

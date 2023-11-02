@@ -69,8 +69,8 @@ var (
 
 	// IdActions contains the set of actions that can be performed on
 	// individual resources
-	IdActions = map[globals.Subtype]action.ActionSet{
-		globals.PasswordSubtype: {
+	IdActions = map[subtypes.Subtype]action.ActionSet{
+		password.Subtype: {
 			action.NoOp,
 			action.Read,
 			action.Update,
@@ -78,13 +78,13 @@ var (
 			action.SetPassword,
 			action.ChangePassword,
 		},
-		globals.OidcSubtype: {
+		oidc.Subtype: {
 			action.NoOp,
 			action.Read,
 			action.Update,
 			action.Delete,
 		},
-		globals.LdapSubtype: {
+		ldap.Subtype: {
 			action.NoOp,
 			action.Read,
 			action.Update,
@@ -418,7 +418,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (auth.Account, []st
 	var acct auth.Account
 	var mgIds []string
 	switch subtypes.SubtypeFromId(domain, id) {
-	case globals.PasswordSubtype:
+	case password.Subtype:
 		repo, err := s.pwRepoFn()
 		if err != nil {
 			return nil, nil, err
@@ -431,7 +431,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (auth.Account, []st
 			return nil, nil, err
 		}
 		acct = a
-	case globals.OidcSubtype:
+	case oidc.Subtype:
 		repo, err := s.oidcRepoFn()
 		if err != nil {
 			return nil, nil, err
@@ -451,7 +451,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (auth.Account, []st
 			mgIds = append(mgIds, mg.GetManagedGroupId())
 		}
 		acct = a
-	case globals.LdapSubtype:
+	case ldap.Subtype:
 		repo, err := s.ldapRepoFn()
 		if err != nil {
 			return nil, nil, err
@@ -593,7 +593,7 @@ func (s Service) createInRepo(ctx context.Context, am auth.AuthMethod, item *pb.
 	}
 	var out auth.Account
 	switch subtypes.SubtypeFromId(domain, am.GetPublicId()) {
-	case globals.PasswordSubtype:
+	case password.Subtype:
 		am, err := s.createPwInRepo(ctx, am, item)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
@@ -602,7 +602,7 @@ func (s Service) createInRepo(ctx context.Context, am auth.AuthMethod, item *pb.
 			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create account but no error returned from repository.")
 		}
 		out = am
-	case globals.OidcSubtype:
+	case oidc.Subtype:
 		am, err := s.createOidcInRepo(ctx, am, item)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
@@ -611,7 +611,7 @@ func (s Service) createInRepo(ctx context.Context, am auth.AuthMethod, item *pb.
 			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create account but no error returned from repository.")
 		}
 		out = am
-	case globals.LdapSubtype:
+	case ldap.Subtype:
 		am, err := s.createLdapInRepo(ctx, am, item)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
@@ -753,7 +753,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, authMethodId string,
 	const op = "accounts.(Service).updateInRepo"
 	var out auth.Account
 	switch subtypes.SubtypeFromId(domain, req.GetId()) {
-	case globals.PasswordSubtype:
+	case password.Subtype:
 		a, err := s.updatePwInRepo(ctx, scopeId, authMethodId, req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
@@ -762,7 +762,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, authMethodId string,
 			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to update account but no error returned from repository.")
 		}
 		out = a
-	case globals.OidcSubtype:
+	case oidc.Subtype:
 		a, err := s.updateOidcInRepo(ctx, scopeId, authMethodId, req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
@@ -771,7 +771,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, authMethodId string,
 			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to update account but no error returned from repository.")
 		}
 		out = a
-	case globals.LdapSubtype:
+	case ldap.Subtype:
 		a, err := s.updateLdapInRepo(ctx, scopeId, authMethodId, req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
@@ -789,19 +789,19 @@ func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, 
 	var rows int
 	var err error
 	switch subtypes.SubtypeFromId(domain, id) {
-	case globals.PasswordSubtype:
+	case password.Subtype:
 		repo, iErr := s.pwRepoFn()
 		if iErr != nil {
 			return false, iErr
 		}
 		rows, err = repo.DeleteAccount(ctx, scopeId, id)
-	case globals.OidcSubtype:
+	case oidc.Subtype:
 		repo, iErr := s.oidcRepoFn()
 		if iErr != nil {
 			return false, iErr
 		}
 		rows, err = repo.DeleteAccount(ctx, scopeId, id)
-	case globals.LdapSubtype:
+	case ldap.Subtype:
 		repo, iErr := s.ldapRepoFn()
 		if iErr != nil {
 			return false, iErr
@@ -822,7 +822,7 @@ func (s Service) listFromRepo(ctx context.Context, authMethodId string) ([]auth.
 
 	var outUl []auth.Account
 	switch subtypes.SubtypeFromId(domain, authMethodId) {
-	case globals.PasswordSubtype:
+	case password.Subtype:
 		pwRepo, err := s.pwRepoFn()
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
@@ -834,7 +834,7 @@ func (s Service) listFromRepo(ctx context.Context, authMethodId string) ([]auth.
 		for _, a := range pwl {
 			outUl = append(outUl, a)
 		}
-	case globals.OidcSubtype:
+	case oidc.Subtype:
 		oidcRepo, err := s.oidcRepoFn()
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
@@ -846,7 +846,7 @@ func (s Service) listFromRepo(ctx context.Context, authMethodId string) ([]auth.
 		for _, a := range oidcl {
 			outUl = append(outUl, a)
 		}
-	case globals.LdapSubtype:
+	case ldap.Subtype:
 		ldapRepo, err := s.ldapRepoFn()
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
@@ -934,7 +934,7 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 		parentId = id
 	default:
 		switch subtypes.SubtypeFromId(domain, id) {
-		case globals.PasswordSubtype:
+		case password.Subtype:
 			acct, err := pwRepo.LookupAccount(ctx, id)
 			if err != nil {
 				res.Error = err
@@ -945,7 +945,7 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 				return nil, res
 			}
 			parentId = acct.GetAuthMethodId()
-		case globals.OidcSubtype:
+		case oidc.Subtype:
 			acct, err := oidcRepo.LookupAccount(ctx, id)
 			if err != nil {
 				res.Error = err
@@ -956,7 +956,7 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 				return nil, res
 			}
 			parentId = acct.GetAuthMethodId()
-		case globals.LdapSubtype:
+		case ldap.Subtype:
 			acct, err := ldapRepo.LookupAccount(ctx, id)
 			if err != nil {
 				res.Error = err
@@ -973,7 +973,7 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 
 	var authMeth auth.AuthMethod
 	switch subtypes.SubtypeFromId(domain, parentId) {
-	case globals.PasswordSubtype:
+	case password.Subtype:
 		am, err := pwRepo.LookupAuthMethod(ctx, parentId)
 		if err != nil {
 			res.Error = err
@@ -984,7 +984,7 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 			return nil, res
 		}
 		authMeth = am
-	case globals.OidcSubtype:
+	case oidc.Subtype:
 		am, err := oidcRepo.LookupAuthMethod(ctx, parentId)
 		if err != nil {
 			res.Error = err
@@ -995,7 +995,7 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 			return nil, res
 		}
 		authMeth = am
-	case globals.LdapSubtype:
+	case ldap.Subtype:
 		am, err := ldapRepo.LookupAuthMethod(ctx, parentId)
 		if err != nil {
 			res.Error = err
@@ -1054,7 +1054,7 @@ func toProto(ctx context.Context, in auth.Account, opt ...handlers.Option) (*pb.
 	switch i := in.(type) {
 	case *password.Account:
 		if outputFields.Has(globals.TypeField) {
-			out.Type = globals.PasswordSubtype.String()
+			out.Type = password.Subtype.String()
 		}
 		if !outputFields.Has(globals.AttributesField) {
 			break
@@ -1066,7 +1066,7 @@ func toProto(ctx context.Context, in auth.Account, opt ...handlers.Option) (*pb.
 		}
 	case *oidc.Account:
 		if outputFields.Has(globals.TypeField) {
-			out.Type = globals.OidcSubtype.String()
+			out.Type = oidc.Subtype.String()
 		}
 		if !outputFields.Has(globals.AttributesField) {
 			break
@@ -1102,7 +1102,7 @@ func toProto(ctx context.Context, in auth.Account, opt ...handlers.Option) (*pb.
 		out.Attrs = attrs
 	case *ldap.Account:
 		if outputFields.Has(globals.TypeField) {
-			out.Type = globals.LdapSubtype.String()
+			out.Type = ldap.Subtype.String()
 		}
 		if !outputFields.Has(globals.AttributesField) {
 			break
@@ -1175,8 +1175,8 @@ func validateCreateRequest(ctx context.Context, req *pbs.CreateAccountRequest) e
 			badFields[authMethodIdField] = "This field is required."
 		}
 		switch subtypes.SubtypeFromId(domain, req.GetItem().GetAuthMethodId()) {
-		case globals.PasswordSubtype:
-			if req.GetItem().GetType() != "" && req.GetItem().GetType() != globals.PasswordSubtype.String() {
+		case password.Subtype:
+			if req.GetItem().GetType() != "" && req.GetItem().GetType() != password.Subtype.String() {
 				badFields[typeField] = "Doesn't match the parent resource's type."
 			}
 			attrs := req.GetItem().GetPasswordAccountAttributes()
@@ -1188,8 +1188,8 @@ func validateCreateRequest(ctx context.Context, req *pbs.CreateAccountRequest) e
 					badFields[loginNameKey] = "This is a required field for this type."
 				}
 			}
-		case globals.OidcSubtype:
-			if req.GetItem().GetType() != "" && req.GetItem().GetType() != globals.OidcSubtype.String() {
+		case oidc.Subtype:
+			if req.GetItem().GetType() != "" && req.GetItem().GetType() != oidc.Subtype.String() {
 				badFields[typeField] = "Doesn't match the parent resource's type."
 			}
 			attrs := req.GetItem().GetOidcAccountAttributes()
@@ -1216,8 +1216,8 @@ func validateCreateRequest(ctx context.Context, req *pbs.CreateAccountRequest) e
 					badFields[emailClaimField] = "This is a read only field."
 				}
 			}
-		case globals.LdapSubtype:
-			if req.GetItem().GetType() != "" && req.GetItem().GetType() != globals.LdapSubtype.String() {
+		case ldap.Subtype:
+			if req.GetItem().GetType() != "" && req.GetItem().GetType() != ldap.Subtype.String() {
 				badFields[typeField] = "Doesn't match the parent resource's type."
 			}
 			attrs := req.GetItem().GetLdapAccountAttributes()
@@ -1256,12 +1256,12 @@ func validateUpdateRequest(ctx context.Context, req *pbs.UpdateAccountRequest) e
 	return handlers.ValidateUpdateRequest(req, req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
 		switch subtypes.SubtypeFromId(domain, req.GetId()) {
-		case globals.PasswordSubtype:
-			if req.GetItem().GetType() != "" && req.GetItem().GetType() != globals.PasswordSubtype.String() {
+		case password.Subtype:
+			if req.GetItem().GetType() != "" && req.GetItem().GetType() != password.Subtype.String() {
 				badFields[typeField] = "Cannot modify the resource type."
 			}
-		case globals.OidcSubtype:
-			if req.GetItem().GetType() != "" && req.GetItem().GetType() != globals.OidcSubtype.String() {
+		case oidc.Subtype:
+			if req.GetItem().GetType() != "" && req.GetItem().GetType() != oidc.Subtype.String() {
 				badFields[typeField] = "Cannot modify the resource type."
 			}
 			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), subjectField) {
@@ -1276,8 +1276,8 @@ func validateUpdateRequest(ctx context.Context, req *pbs.UpdateAccountRequest) e
 			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), nameClaimField) {
 				badFields[nameClaimField] = "Field is read only."
 			}
-		case globals.LdapSubtype:
-			if req.GetItem().GetType() != "" && req.GetItem().GetType() != globals.LdapSubtype.String() {
+		case ldap.Subtype:
+			if req.GetItem().GetType() != "" && req.GetItem().GetType() != ldap.Subtype.String() {
 				badFields[typeField] = "Cannot modify the resource type."
 			}
 			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), loginAttrField) {

@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -291,7 +290,7 @@ func (r *Repository) LookupCredential(ctx context.Context, publicId string, _ ..
 	var cred credential.Static
 
 	switch subtypes.SubtypeFromId(credential.Domain, publicId) {
-	case globals.UsernamePasswordSubtype:
+	case credential.UsernamePasswordSubtype:
 		upCred := allocUsernamePasswordCredential()
 		upCred.PublicId = publicId
 		if err := r.reader.LookupByPublicId(ctx, upCred); err != nil {
@@ -305,7 +304,7 @@ func (r *Repository) LookupCredential(ctx context.Context, publicId string, _ ..
 		upCred.Password = nil
 		cred = upCred
 
-	case globals.SshPrivateKeySubtype:
+	case credential.SshPrivateKeySubtype:
 		spkCred := allocSshPrivateKeyCredential()
 		spkCred.PublicId = publicId
 		if err := r.reader.LookupByPublicId(ctx, spkCred); err != nil {
@@ -322,7 +321,7 @@ func (r *Repository) LookupCredential(ctx context.Context, publicId string, _ ..
 		spkCred.PrivateKeyPassphrase = nil
 		cred = spkCred
 
-	case globals.JsonSubtype:
+	case credential.JsonSubtype:
 		jsonCred := allocJsonCredential()
 		jsonCred.PublicId = publicId
 		if err := r.reader.LookupByPublicId(ctx, jsonCred); err != nil {
@@ -794,17 +793,17 @@ func (r *Repository) DeleteCredential(ctx context.Context, projectId, id string,
 	var input any
 	var md oplog.Metadata
 	switch subtypes.SubtypeFromId(credential.Domain, id) {
-	case globals.UsernamePasswordSubtype:
+	case credential.UsernamePasswordSubtype:
 		c := allocUsernamePasswordCredential()
 		c.PublicId = id
 		input = c
 		md = c.oplog(oplog.OpType_OP_TYPE_DELETE)
-	case globals.SshPrivateKeySubtype:
+	case credential.SshPrivateKeySubtype:
 		c := allocSshPrivateKeyCredential()
 		c.PublicId = id
 		input = c
 		md = c.oplog(oplog.OpType_OP_TYPE_DELETE)
-	case globals.JsonSubtype:
+	case credential.JsonSubtype:
 		c := allocJsonCredential()
 		c.PublicId = id
 		input = c

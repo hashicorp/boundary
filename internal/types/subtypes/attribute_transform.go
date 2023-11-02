@@ -6,14 +6,13 @@ package subtypes
 import (
 	"fmt"
 
-	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
-func convertAttributesToSubtype(msg proto.Message, st globals.Subtype) error {
+func convertAttributesToSubtype(msg proto.Message, st Subtype) error {
 	r := msg.ProtoReflect()
 	d := r.Descriptor()
 
@@ -56,7 +55,7 @@ func convertAttributesToSubtype(msg proto.Message, st globals.Subtype) error {
 	return nil
 }
 
-func convertAttributesToDefault(msg proto.Message, st globals.Subtype) error {
+func convertAttributesToDefault(msg proto.Message, st Subtype) error {
 	r := msg.ProtoReflect()
 	d := r.Descriptor()
 

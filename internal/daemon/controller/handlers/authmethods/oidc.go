@@ -10,7 +10,6 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	oidcstore "github.com/hashicorp/boundary/internal/auth/oidc/store"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
@@ -57,7 +56,7 @@ func init() {
 		panic(err)
 	}
 
-	IdActions[globals.OidcSubtype] = action.ActionSet{
+	IdActions[oidc.Subtype] = action.ActionSet{
 		action.NoOp,
 		action.Read,
 		action.Update,

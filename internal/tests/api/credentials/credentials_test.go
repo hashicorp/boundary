@@ -19,6 +19,7 @@ import (
 	"github.com/hashicorp/boundary/api/scopes"
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/daemon/controller"
 	tg "github.com/hashicorp/boundary/internal/daemon/controller/handlers/targets"
 	_ "github.com/hashicorp/boundary/internal/daemon/controller/handlers/targets/tcp"
@@ -51,7 +52,7 @@ func TestList(t *testing.T) {
 	require.NoError(err)
 	assert.Empty(ul.Items)
 
-	cred, err := credClient.Create(tc.Context(), globals.UsernamePasswordSubtype.String(), cs.Item.Id,
+	cred, err := credClient.Create(tc.Context(), credential.UsernamePasswordSubtype.String(), cs.Item.Id,
 		credentials.WithName("0"),
 		credentials.WithDescription("description"),
 		credentials.WithUsernamePasswordCredentialUsername("user"),
@@ -66,7 +67,7 @@ func TestList(t *testing.T) {
 	assert.ElementsMatch(comparableCatalogSlice(expected[:1]), comparableCatalogSlice(ul.Items))
 
 	for i := 1; i < 10; i++ {
-		cred, err := credClient.Create(tc.Context(), globals.UsernamePasswordSubtype.String(), cs.Item.Id,
+		cred, err := credClient.Create(tc.Context(), credential.UsernamePasswordSubtype.String(), cs.Item.Id,
 			credentials.WithName(fmt.Sprintf("%d", i)),
 			credentials.WithDescription("description"),
 			credentials.WithUsernamePasswordCredentialUsername("user"),
@@ -126,7 +127,7 @@ func TestCrud(t *testing.T) {
 	}
 	credClient := credentials.NewClient(client)
 
-	cred, err := credClient.Create(tc.Context(), globals.UsernamePasswordSubtype.String(), cs.Item.Id, credentials.WithName("foo"),
+	cred, err := credClient.Create(tc.Context(), credential.UsernamePasswordSubtype.String(), cs.Item.Id, credentials.WithName("foo"),
 		credentials.WithUsernamePasswordCredentialUsername("user"), credentials.WithUsernamePasswordCredentialPassword("pass"))
 	require.NoError(err)
 	require.NotNil(cs)
@@ -196,7 +197,7 @@ func TestCrudSpk(t *testing.T) {
 	spkWithPass := string(testdata.PEMEncryptedKeys[0].PEMBytes)
 	pass := testdata.PEMEncryptedKeys[0].EncryptionKey
 
-	cred, err := credClient.Create(tc.Context(), globals.SshPrivateKeySubtype.String(), cs.Item.Id, credentials.WithName("foo"),
+	cred, err := credClient.Create(tc.Context(), credential.SshPrivateKeySubtype.String(), cs.Item.Id, credentials.WithName("foo"),
 		credentials.WithSshPrivateKeyCredentialUsername("user"),
 		credentials.WithSshPrivateKeyCredentialPrivateKey(spkWithPass),
 		credentials.WithSshPrivateKeyCredentialPrivateKeyPassphrase(pass))
@@ -274,7 +275,7 @@ func TestCrudJson(t *testing.T) {
 		"username": "admin",
 		"password": "pass",
 	}
-	cred, err := credClient.Create(tc.Context(), globals.JsonSubtype.String(), cs.Item.Id, credentials.WithName("foo"), credentials.WithJsonCredentialObject(obj))
+	cred, err := credClient.Create(tc.Context(), credential.JsonSubtype.String(), cs.Item.Id, credentials.WithName("foo"), credentials.WithJsonCredentialObject(obj))
 	require.NoError(err)
 	require.NotNil(cred)
 	checkResource("create", cred.Item, "foo", 1)
@@ -360,7 +361,7 @@ func TestErrors(t *testing.T) {
 
 	c := credentials.NewClient(client)
 
-	cred, err := c.Create(tc.Context(), globals.UsernamePasswordSubtype.String(), cs.Item.Id, credentials.WithName("foo"),
+	cred, err := c.Create(tc.Context(), credential.UsernamePasswordSubtype.String(), cs.Item.Id, credentials.WithName("foo"),
 		credentials.WithUsernamePasswordCredentialUsername("user"), credentials.WithUsernamePasswordCredentialPassword("pass"))
 	require.NoError(err)
 	require.NotNil(cred)
@@ -382,7 +383,7 @@ func TestErrors(t *testing.T) {
 	assert.EqualValues(http.StatusNotFound, apiErr.Response().StatusCode())
 
 	// Same name
-	_, err = c.Create(tc.Context(), globals.UsernamePasswordSubtype.String(), proj.GetPublicId(), credentials.WithName("foo"))
+	_, err = c.Create(tc.Context(), credential.UsernamePasswordSubtype.String(), proj.GetPublicId(), credentials.WithName("foo"))
 	require.Error(err)
 	apiErr = api.AsServerError(err)
 	assert.NotNil(apiErr)
@@ -441,7 +442,7 @@ func TestUpdateAfterKeyRotation(t *testing.T) {
 		"username": "admin",
 		"password": "pass",
 	}
-	cred, err := credsClient.Create(ctx, globals.JsonSubtype.String(), cs.Item.Id, credentials.WithName("foo"), credentials.WithJsonCredentialObject(obj))
+	cred, err := credsClient.Create(ctx, credential.JsonSubtype.String(), cs.Item.Id, credentials.WithName("foo"), credentials.WithJsonCredentialObject(obj))
 	require.NoError(err)
 	targ, err := tgClient.Create(ctx, "tcp", proj.PublicId, targets.WithName("my-target"), targets.WithTcpTargetDefaultPort(22))
 	require.NoError(err)

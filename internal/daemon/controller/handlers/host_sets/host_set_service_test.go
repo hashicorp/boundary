@@ -28,6 +28,7 @@ import (
 	"github.com/hashicorp/boundary/internal/plugin/loopback"
 	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/hashicorp/boundary/internal/types/subtypes"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostsets"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/plugins"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
@@ -44,9 +45,9 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-var testAuthorizedActions = map[globals.Subtype][]string{
-	globals.StaticSubtype: {"no-op", "read", "update", "delete", "add-hosts", "set-hosts", "remove-hosts"},
-	globals.PluginSubtype: {"no-op", "read", "update", "delete"},
+var testAuthorizedActions = map[subtypes.Subtype][]string{
+	static.Subtype:     {"no-op", "read", "update", "delete", "add-hosts", "set-hosts", "remove-hosts"},
+	hostplugin.Subtype: {"no-op", "read", "update", "delete"},
 }
 
 func TestGet_Static(t *testing.T) {
@@ -88,7 +89,7 @@ func TestGet_Static(t *testing.T) {
 		Scope:             &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
 		Type:              "static",
 		HostIds:           hIds,
-		AuthorizedActions: testAuthorizedActions[globals.StaticSubtype],
+		AuthorizedActions: testAuthorizedActions[static.Subtype],
 	}
 
 	cases := []struct {
@@ -185,7 +186,7 @@ func TestGet_Plugin(t *testing.T) {
 		Id:            hs.GetPublicId(),
 		CreatedTime:   hs.CreateTime.GetTimestamp(),
 		UpdatedTime:   hs.UpdateTime.GetTimestamp(),
-		Type:          globals.PluginSubtype.String(),
+		Type:          hostplugin.Subtype.String(),
 		Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
 		Plugin: &plugins.PluginInfo{
 			Id:          plg.GetPublicId(),
@@ -194,7 +195,7 @@ func TestGet_Plugin(t *testing.T) {
 		},
 		PreferredEndpoints:  prefEndpoints,
 		SyncIntervalSeconds: &wrappers.Int32Value{Value: -1},
-		AuthorizedActions:   testAuthorizedActions[globals.PluginSubtype],
+		AuthorizedActions:   testAuthorizedActions[hostplugin.Subtype],
 	}
 
 	cases := []struct {
@@ -296,8 +297,8 @@ func TestList_Static(t *testing.T) {
 			CreatedTime:       h.GetCreateTime().GetTimestamp(),
 			UpdatedTime:       h.GetUpdateTime().GetTimestamp(),
 			Version:           h.GetVersion(),
-			Type:              globals.StaticSubtype.String(),
-			AuthorizedActions: testAuthorizedActions[globals.StaticSubtype],
+			Type:              static.Subtype.String(),
+			AuthorizedActions: testAuthorizedActions[static.Subtype],
 		})
 	}
 
@@ -408,8 +409,8 @@ func TestList_Plugin(t *testing.T) {
 			CreatedTime:         h.GetCreateTime().GetTimestamp(),
 			UpdatedTime:         h.GetUpdateTime().GetTimestamp(),
 			Version:             h.GetVersion(),
-			Type:                globals.PluginSubtype.String(),
-			AuthorizedActions:   testAuthorizedActions[globals.PluginSubtype],
+			Type:                hostplugin.Subtype.String(),
+			AuthorizedActions:   testAuthorizedActions[hostplugin.Subtype],
 			PreferredEndpoints:  preferredEndpoints,
 			SyncIntervalSeconds: &wrappers.Int32Value{Value: 5},
 		})
@@ -715,7 +716,7 @@ func TestCreate_Static(t *testing.T) {
 					Name:              &wrappers.StringValue{Value: "name"},
 					Description:       &wrappers.StringValue{Value: "desc"},
 					Type:              "static",
-					AuthorizedActions: testAuthorizedActions[globals.StaticSubtype],
+					AuthorizedActions: testAuthorizedActions[static.Subtype],
 				},
 			},
 		},
@@ -725,7 +726,7 @@ func TestCreate_Static(t *testing.T) {
 				HostCatalogId:      hc.GetPublicId(),
 				Name:               &wrappers.StringValue{Value: "name"},
 				Description:        &wrappers.StringValue{Value: "desc"},
-				Type:               globals.StaticSubtype.String(),
+				Type:               static.Subtype.String(),
 				PreferredEndpoints: prefEndpoints,
 			}},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -755,7 +756,7 @@ func TestCreate_Static(t *testing.T) {
 					Name:              &wrappers.StringValue{Value: "no type name"},
 					Description:       &wrappers.StringValue{Value: "no type desc"},
 					Type:              "static",
-					AuthorizedActions: testAuthorizedActions[globals.StaticSubtype],
+					AuthorizedActions: testAuthorizedActions[static.Subtype],
 				},
 			},
 		},
@@ -899,7 +900,7 @@ func TestCreate_Plugin(t *testing.T) {
 				HostCatalogId:       hc.GetPublicId(),
 				Name:                &wrappers.StringValue{Value: "No Attributes"},
 				Description:         &wrappers.StringValue{Value: "desc"},
-				Type:                globals.PluginSubtype.String(),
+				Type:                hostplugin.Subtype.String(),
 				SyncIntervalSeconds: &wrapperspb.Int32Value{Value: -1},
 			}},
 			res: &pbs.CreateHostSetResponse{
@@ -914,8 +915,8 @@ func TestCreate_Plugin(t *testing.T) {
 					},
 					Name:                &wrappers.StringValue{Value: "No Attributes"},
 					Description:         &wrappers.StringValue{Value: "desc"},
-					Type:                globals.PluginSubtype.String(),
-					AuthorizedActions:   testAuthorizedActions[globals.PluginSubtype],
+					Type:                hostplugin.Subtype.String(),
+					AuthorizedActions:   testAuthorizedActions[hostplugin.Subtype],
 					SyncIntervalSeconds: &wrapperspb.Int32Value{Value: -1},
 				},
 			},
@@ -926,7 +927,7 @@ func TestCreate_Plugin(t *testing.T) {
 				HostCatalogId:       hc.GetPublicId(),
 				Name:                &wrappers.StringValue{Value: "With Attributes"},
 				Description:         &wrappers.StringValue{Value: "desc"},
-				Type:                globals.PluginSubtype.String(),
+				Type:                hostplugin.Subtype.String(),
 				SyncIntervalSeconds: &wrapperspb.Int32Value{Value: 90},
 				Attrs: &pb.HostSet_Attributes{
 					Attributes: testInputAttrs,
@@ -944,9 +945,9 @@ func TestCreate_Plugin(t *testing.T) {
 					},
 					Name:                &wrappers.StringValue{Value: "With Attributes"},
 					Description:         &wrappers.StringValue{Value: "desc"},
-					Type:                globals.PluginSubtype.String(),
+					Type:                hostplugin.Subtype.String(),
 					SyncIntervalSeconds: &wrapperspb.Int32Value{Value: 90},
-					AuthorizedActions:   testAuthorizedActions[globals.PluginSubtype],
+					AuthorizedActions:   testAuthorizedActions[hostplugin.Subtype],
 					Attrs: &pb.HostSet_Attributes{
 						Attributes: testOutputAttrs,
 					},
@@ -959,7 +960,7 @@ func TestCreate_Plugin(t *testing.T) {
 				HostCatalogId:      hc.GetPublicId(),
 				Name:               &wrappers.StringValue{Value: "name"},
 				Description:        &wrappers.StringValue{Value: "desc"},
-				Type:               globals.PluginSubtype.String(),
+				Type:               hostplugin.Subtype.String(),
 				PreferredEndpoints: prefEndpoints,
 			}},
 			res: &pbs.CreateHostSetResponse{
@@ -974,9 +975,9 @@ func TestCreate_Plugin(t *testing.T) {
 					},
 					Name:               &wrappers.StringValue{Value: "name"},
 					Description:        &wrappers.StringValue{Value: "desc"},
-					Type:               globals.PluginSubtype.String(),
+					Type:               hostplugin.Subtype.String(),
 					PreferredEndpoints: prefEndpoints,
-					AuthorizedActions:  testAuthorizedActions[globals.PluginSubtype],
+					AuthorizedActions:  testAuthorizedActions[hostplugin.Subtype],
 				},
 			},
 		},
@@ -986,7 +987,7 @@ func TestCreate_Plugin(t *testing.T) {
 				HostCatalogId:      hc.GetPublicId(),
 				Name:               &wrappers.StringValue{Value: "name"},
 				Description:        &wrappers.StringValue{Value: "desc"},
-				Type:               globals.PluginSubtype.String(),
+				Type:               hostplugin.Subtype.String(),
 				PreferredEndpoints: append(prefEndpoints, "foobar:1.2.3.4"),
 			}},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -1020,8 +1021,8 @@ func TestCreate_Plugin(t *testing.T) {
 					},
 					Name:              &wrappers.StringValue{Value: "no type name"},
 					Description:       &wrappers.StringValue{Value: "no type desc"},
-					Type:              globals.PluginSubtype.String(),
-					AuthorizedActions: testAuthorizedActions[globals.PluginSubtype],
+					Type:              hostplugin.Subtype.String(),
+					AuthorizedActions: testAuthorizedActions[hostplugin.Subtype],
 				},
 			},
 		},
@@ -1173,7 +1174,7 @@ func TestUpdate_Static(t *testing.T) {
 					CreatedTime:       hs.GetCreateTime().GetTimestamp(),
 					Type:              "static",
 					HostIds:           hIds,
-					AuthorizedActions: testAuthorizedActions[globals.StaticSubtype],
+					AuthorizedActions: testAuthorizedActions[static.Subtype],
 				},
 			},
 		},
@@ -1199,7 +1200,7 @@ func TestUpdate_Static(t *testing.T) {
 					CreatedTime:       hs.GetCreateTime().GetTimestamp(),
 					Type:              "static",
 					HostIds:           hIds,
-					AuthorizedActions: testAuthorizedActions[globals.StaticSubtype],
+					AuthorizedActions: testAuthorizedActions[static.Subtype],
 				},
 			},
 		},
@@ -1268,7 +1269,7 @@ func TestUpdate_Static(t *testing.T) {
 					CreatedTime:       hs.GetCreateTime().GetTimestamp(),
 					Type:              "static",
 					HostIds:           hIds,
-					AuthorizedActions: testAuthorizedActions[globals.StaticSubtype],
+					AuthorizedActions: testAuthorizedActions[static.Subtype],
 				},
 			},
 		},
@@ -1291,7 +1292,7 @@ func TestUpdate_Static(t *testing.T) {
 					CreatedTime:       hs.GetCreateTime().GetTimestamp(),
 					Type:              "static",
 					HostIds:           hIds,
-					AuthorizedActions: testAuthorizedActions[globals.StaticSubtype],
+					AuthorizedActions: testAuthorizedActions[static.Subtype],
 				},
 			},
 		},
@@ -1316,7 +1317,7 @@ func TestUpdate_Static(t *testing.T) {
 					CreatedTime:       hs.GetCreateTime().GetTimestamp(),
 					Type:              "static",
 					HostIds:           hIds,
-					AuthorizedActions: testAuthorizedActions[globals.StaticSubtype],
+					AuthorizedActions: testAuthorizedActions[static.Subtype],
 				},
 			},
 		},
@@ -1341,7 +1342,7 @@ func TestUpdate_Static(t *testing.T) {
 					CreatedTime:       hs.GetCreateTime().GetTimestamp(),
 					Type:              "static",
 					HostIds:           hIds,
-					AuthorizedActions: testAuthorizedActions[globals.StaticSubtype],
+					AuthorizedActions: testAuthorizedActions[static.Subtype],
 				},
 			},
 		},
@@ -1514,7 +1515,7 @@ func TestUpdate_Plugin(t *testing.T) {
 			HostCatalogId: hc.GetPublicId(),
 			Name:          wrapperspb.String("default"),
 			Description:   wrapperspb.String("default"),
-			Type:          globals.PluginSubtype.String(),
+			Type:          hostplugin.Subtype.String(),
 			Attrs: &pb.HostSet_Attributes{
 				Attributes: attr,
 			},

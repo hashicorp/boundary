@@ -11,7 +11,6 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth/ldap"
 	ldapstore "github.com/hashicorp/boundary/internal/auth/ldap/store"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
@@ -37,7 +36,7 @@ func init() {
 		panic(err)
 	}
 
-	IdActions[globals.LdapSubtype] = action.ActionSet{
+	IdActions[ldap.Subtype] = action.ActionSet{
 		action.NoOp,
 		action.Read,
 		action.Update,

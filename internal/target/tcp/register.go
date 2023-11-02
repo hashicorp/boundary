@@ -9,7 +9,6 @@ import (
 	"math"
 	"strings"
 
-	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/target"
@@ -18,7 +17,7 @@ import (
 type targetHooks struct{}
 
 func init() {
-	target.Register(globals.TcpSubtype, targetHooks{}, TargetPrefix)
+	target.Register(Subtype, targetHooks{}, TargetPrefix)
 }
 
 const (

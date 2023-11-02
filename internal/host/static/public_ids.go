@@ -14,10 +14,15 @@ import (
 )
 
 func init() {
-	if err := subtypes.Register(host.Domain, globals.StaticSubtype, globals.StaticHostCatalogPrefix, globals.StaticHostSetPrefix, globals.StaticHostPrefix); err != nil {
+	if err := subtypes.Register(host.Domain, Subtype, globals.StaticHostCatalogPrefix, globals.StaticHostSetPrefix, globals.StaticHostPrefix); err != nil {
 		panic(err)
 	}
 }
+
+// PublicId prefixes for the resources in the static package.
+const (
+	Subtype = subtypes.Subtype("static")
+)
 
 func newHostCatalogId(ctx context.Context) (string, error) {
 	id, err := db.NewPublicId(ctx, globals.StaticHostCatalogPrefix)

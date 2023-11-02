@@ -97,7 +97,7 @@ require (
 	github.com/hashicorp/go-version v1.6.0
 	github.com/hashicorp/nodeenrollment v0.2.9
 	github.com/jackc/pgx/v5 v5.4.3
-	github.com/jimlambrt/gldap v0.1.8
+	github.com/jimlambrt/gldap v0.1.9
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/miekg/dns v1.1.56
 	github.com/mikesmitty/edkey v0.0.0-20170222072505-3356ea4e686a

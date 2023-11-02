@@ -2,29 +2,13 @@
 
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
-## Next
-
-### Deprecations/Changes
-
-* Per the note in Boundary 0.12.0, the `vault` credential library subtype has
-  now been removed in favor of `vault-generic`. For example, instead of
-  `boundary credential-libraries create vault`, you must use `boundary
-  credential-libraries create vault-generic`.
-
-### New and Improved
-
-* cli: New generic commands `read`, `update`, and `delete` have been added.
-  These allow operating on resources by directly specifying the ID of the
-  resource as the next parameter (e.g. `boundary update ttcp_1234567890`).
-  Subtypes do not need to be specified (e.g. that command is equivalent to
-  `boundary targets update tcp -id ttcp_1234567890`), and any flags given after
-  the ID are passed through to the type-specific subcommand. Once the ID has
-  been entered, autocomplete is also supported.
-
 ## 0.14.2 (2023/11/2)
 
 ### New and Improved
-* Expose Valid Principals for Vault SSH Signed Certs: Allow users to add additional valid principals when creating a vault ssh signed cert credential library ([PR](https://github.com/hashicorp/boundary/pull/3791)).
+
+* Expose Valid Principals for Vault SSH Signed Certs: Allow users to add
+  additional valid principals when creating a vault ssh signed cert credential
+  library ([PR](https://github.com/hashicorp/boundary/pull/3791)).
 
 ### Bug Fixes
 
@@ -53,6 +37,10 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### Deprecations/Changes
 
+* Per the note in Boundary 0.12.0, the `vault` credential library subtype has
+  now been removed in favor of `vault-generic`. For example, instead of
+  `boundary credential-libraries create vault`, you must use `boundary
+  credential-libraries create vault-generic`.
 * Per the note in Boundary 0.12.0, errors returned from the cli when using the
   `-format=json` option will now only use the `status_code` field. The `status`
   field has been removed.

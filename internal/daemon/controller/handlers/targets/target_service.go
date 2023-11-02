@@ -26,6 +26,7 @@ import (
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	intglobals "github.com/hashicorp/boundary/internal/globals"
 	"github.com/hashicorp/boundary/internal/host"
+	"github.com/hashicorp/boundary/internal/host/plugin"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/perms"
@@ -94,7 +95,7 @@ var (
 		action.List,
 	}
 
-	validateCredentialSourcesFn      = func(context.Context, globals.Subtype, []target.CredentialSource) error { return nil }
+	validateCredentialSourcesFn      = func(context.Context, subtypes.Subtype, []target.CredentialSource) error { return nil }
 	ValidateIngressWorkerFilterFn    = IngressWorkerFilterUnsupported
 	AuthorizeSessionWorkerFilterFn   = AuthorizeSessionWithWorkerFilter
 	PostSessionAuthorizationCallback = DefaultPostSessionAuthorizationCallback
@@ -799,7 +800,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 		for _, hSource := range hostSources {
 			hsId := hSource.Id()
 			switch subtypes.SubtypeFromId(hostDomain, hsId) {
-			case globals.StaticSubtype:
+			case static.Subtype:
 				eps, err := staticHostRepo.Endpoints(ctx, hsId)
 				if err != nil {
 					return nil, err
@@ -2038,7 +2039,7 @@ func validateAuthorizeSessionRequest(req *pbs.AuthorizeSessionRequest) error {
 	}
 	if req.GetHostId() != "" {
 		switch subtypes.SubtypeFromId(hostDomain, req.GetHostId()) {
-		case globals.StaticSubtype, globals.PluginSubtype:
+		case static.Subtype, plugin.Subtype:
 		default:
 			badFields[globals.HostIdField] = "Incorrectly formatted identifier."
 		}
