@@ -12,8 +12,9 @@ import (
 // Test_getOpts provides unit tests for GetOpts and all the options
 func Test_getOpts(t *testing.T) {
 	t.Parallel()
-	assert := assert.New(t)
 	t.Run("WithCloseSyncMode", func(t *testing.T) {
+		t.Parallel()
+		assert := assert.New(t)
 		testOpts := getDefaultOptions()
 		opts := GetOpts(WithCloseSyncMode(Asynchronous))
 		assert.Equal(testOpts, opts)
@@ -29,6 +30,8 @@ func Test_getOpts(t *testing.T) {
 		assert.Equal(opts, testOpts)
 	})
 	t.Run("WithFileAccessMode", func(t *testing.T) {
+		t.Parallel()
+		assert := assert.New(t)
 		testOpts := getDefaultOptions()
 		opts := GetOpts(WithFileAccessMode(ReadOnly))
 		assert.Equal(testOpts, opts)
@@ -44,6 +47,8 @@ func Test_getOpts(t *testing.T) {
 		assert.Equal(opts, testOpts)
 	})
 	t.Run("WithCreateFile", func(t *testing.T) {
+		t.Parallel()
+		assert := assert.New(t)
 		testOpts := getDefaultOptions()
 		opts := GetOpts()
 		testOpts.WithCreateFile = false
