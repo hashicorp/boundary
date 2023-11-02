@@ -264,10 +264,20 @@
           },
           {
             "title": "Session recordings",
+            "badge": {
+              "text": "HCP/ENT",
+              "type": "outlined",
+              "color": "neutral"
+            },
             "path": "concepts/domain-model/session-recordings"
           },
           {
             "title": "Storage buckets",
+            "badge": {
+              "text": "HCP/ENT",
+              "type": "outlined",
+              "color": "neutral"
+            },
             "path": "concepts/domain-model/storage-buckets"
           },
           {
@@ -391,6 +401,11 @@
       },
       {
         "title": "Session recordings",
+        "badge": {
+          "text": "HCP/ENT",
+          "type": "outlined",
+          "color": "neutral"
+        },
         "routes": [
           {
             "title": "Overview",
@@ -454,6 +469,11 @@
       },
       {
         "title": "Session recordings",
+        "badge": {
+          "text": "HCP/ENT",
+          "type": "outlined",
+          "color": "neutral"
+        },
         "routes": [
           {
             "title": "Overview",
@@ -1084,6 +1104,11 @@
       },
       {
         "title": "session-recordings",
+        "badge": {
+          "text": "HCP/ENT",
+          "type": "outlined",
+          "color": "neutral"
+        },
         "routes": [
           {
             "title": "Overview",
@@ -1126,6 +1151,11 @@
       },
       {
         "title": "storage-buckets",
+        "badge": {
+          "text": "HCP/ENT",
+          "type": "outlined",
+          "color": "neutral"
+        },
         "routes": [
           {
             "title": "Overview",
