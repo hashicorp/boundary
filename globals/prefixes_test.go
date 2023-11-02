@@ -20,9 +20,10 @@ func TestResourceInfoFromPrefix(t *testing.T) {
 		JsonCredentialPrefix:         resource.Credential,
 	}
 
+	assert.Equal(t, resource.Unknown, ResourceInfoFromPrefix("foobar").Type)
 	for prefix, typ := range vals {
 		assert.Equal(t, typ, ResourceInfoFromPrefix(prefix).Type)
 		assert.Equal(t, typ, ResourceInfoFromPrefix(fmt.Sprintf("%s_foobar", prefix)).Type)
-		assert.Equal(t, resource.Unknown, ResourceInfoFromPrefix(fmt.Sprintf("%sfoobar", prefix)))
+		assert.Equal(t, resource.Unknown, ResourceInfoFromPrefix(fmt.Sprintf("%sfoobar", prefix)).Type)
 	}
 }

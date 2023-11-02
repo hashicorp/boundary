@@ -311,7 +311,11 @@ var resourceTypeToPrefixes map[resource.Type][]string = func() map[resource.Type
 func ResourceInfoFromPrefix(in string) ResourceInfo {
 	// If full ID, trim to just prefix
 	in, _, _ = strings.Cut(in, "_")
-	return prefixToResourceType[in]
+	res, ok := prefixToResourceType[in]
+	if !ok {
+		return ResourceInfo{Type: resource.Unknown}
+	}
+	return res
 }
 
 // ResourcePrefixesFromType returns the known prefixes for a given type; if a
