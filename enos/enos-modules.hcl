@@ -147,6 +147,10 @@ module "docker_boundary" {
   source = "./modules/docker_boundary"
 }
 
+module "docker_boundary_cmd" {
+  source = "./modules/docker_boundary_cmd"
+}
+
 module "docker_openssh_server" {
   source = "./modules/docker_openssh_server"
 }

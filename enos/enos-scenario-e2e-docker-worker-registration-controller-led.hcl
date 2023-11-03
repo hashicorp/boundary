@@ -104,8 +104,19 @@ scenario "e2e_docker_worker_registration_controller_led" {
       postgres_address = step.create_boundary_database.address
       boundary_license = var.boundary_edition != "oss" ? step.read_license.license : ""
       config_file      = "boundary-config.hcl"
-      get_auth_token   = true
-      get_worker_token = true
+    }
+  }
+
+  step "get_worker_token" {
+    module     = module.docker_boundary_cmd
+    depends_on = [step.create_boundary]
+    variables {
+      address      = step.create_boundary.address
+      image_name   = matrix.builder == "crt" ? var.boundary_docker_image_name : step.build_boundary_docker_image.image_name
+      network_name = local.network_cluster
+      login_name   = step.create_boundary.login_name
+      password     = step.create_boundary.password
+      script       = "get_worker_token.sh"
     }
   }
 
@@ -153,7 +164,7 @@ scenario "e2e_docker_worker_registration_controller_led" {
       network_name     = [local.network_cluster, local.network_host]
       tags             = [local.egress_tag]
       port             = "9402"
-      token            = step.create_boundary.worker_token
+      token            = step.get_worker_token.output["item"]["controller_generated_activation_token"]
     }
   }
 
