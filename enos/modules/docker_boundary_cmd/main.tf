@@ -33,6 +33,11 @@ variable "script" {
   description = "Filename of a script in the module directory to run"
   type        = string
 }
+variable "worker_token" {
+  description = "Worker generated auth token"
+  type        = string
+  default     = ""
+}
 
 resource "enos_local_exec" "get_auth_token" {
   environment = {
@@ -53,6 +58,7 @@ locals {
 }
 
 resource "enos_local_exec" "run_script" {
+  depends_on = [enos_local_exec.get_auth_token]
   environment = {
     TEST_BOUNDARY_IMAGE           = var.image_name
     BOUNDARY_ADDR                 = var.address
@@ -62,6 +68,7 @@ resource "enos_local_exec" "run_script" {
     MODULE_DIR                    = abspath(path.module)
     SCRIPT                        = "${abspath(path.module)}/${var.script}"
     BOUNDARY_TOKEN                = local.auth_token
+    WORKER_TOKEN                  = var.worker_token
   }
   inline = ["bash ./${path.module}/script_runner.sh"]
 }

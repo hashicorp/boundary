@@ -166,3 +166,7 @@ module "docker_worker" {
 module "docker_network" {
   source = "./modules/docker_network"
 }
+
+module "docker_check_health" {
+  source = "./modules/docker_check_health"
+}
