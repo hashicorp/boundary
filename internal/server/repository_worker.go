@@ -599,6 +599,14 @@ func (r *Repository) CreateWorker(ctx context.Context, worker *Worker, opt ...Op
 	worker.OperationalState = UnknownOperationalState.String()
 	worker.LocalStorageState = UnknownLocalStorageState.String()
 
+	if opts.withLocalStorageState != "" {
+		validLocalStorageState := ValidLocalStorageState(opts.withLocalStorageState)
+		if !validLocalStorageState {
+			return nil, errors.New(ctx, errors.InvalidParameter, op, "invalid local storage state")
+		}
+		worker.LocalStorageState = opts.withLocalStorageState
+	}
+
 	var err error
 	if worker.PublicId, err = opts.withNewIdFunc(ctx); err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to generate worker id"))

@@ -71,6 +71,16 @@ func (t OperationalState) String() string {
 	return string(UnknownOperationalState)
 }
 
+func ValidLocalStorageState(s string) bool {
+	switch s {
+	case AvailableLocalStorageState.String(), LowStorageLocalStorageState.String(),
+		OutOfStorageLocalStorageState.String(), NotConfiguredLocalStorageState.String(),
+		UnknownLocalStorageState.String():
+		return true
+	}
+	return false
+}
+
 func (t LocalStorageState) String() string {
 	switch t {
 	case AvailableLocalStorageState, LowStorageLocalStorageState,

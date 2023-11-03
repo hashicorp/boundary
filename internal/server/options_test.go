@@ -243,4 +243,12 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withNewIdFunc = nil
 		assert.Equal(t, opts, testOpts)
 	})
+	t.Run("WithLocalStorageState", func(t *testing.T) {
+		opts := GetOpts(WithLocalStorageState(AvailableLocalStorageState.String()))
+		testOpts := getDefaultOptions()
+		testOpts.withLocalStorageState = AvailableLocalStorageState.String()
+		opts.withNewIdFunc = nil
+		testOpts.withNewIdFunc = nil
+		assert.Equal(t, opts, testOpts)
+	})
 }
