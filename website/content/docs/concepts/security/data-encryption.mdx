@@ -105,7 +105,10 @@ $ boundary scopes list-key-version-destruction-jobs -scope-id p_A4jfDjZ9jf
 Once the job disappears from this list, the associated key version will have
 been destroyed and any existing data will have been re-encrypted.
 
-## The `bsr` KMS key <sup>HCP/ENT</sup>
+## The `bsr` KMS key
+
+<EnterpriseAlert product="boundary">This feature requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary or Boundary Enterprise</a></EnterpriseAlert>
+
 The `bsr` KMS key is required for [session recording](/boundary/docs/configuration/session-recording).
 If you do not add a `bsr` key to your controller configuration, you will receive an error when you attempt to enable session recording.
 The key is used for encrypting data and checking the integrity of recordings.

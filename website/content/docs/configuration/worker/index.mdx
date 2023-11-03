@@ -104,7 +104,9 @@ Any other updated values are ignored.
 The `SIGTERM` and `SIGINT` signals initiate a graceful shutdown on a worker. The worker waits for any sessions to drain
 before shutting down. Workers in a graceful shutdown state do not receive any new work, including session proxying, from the control plane.
 
-## Multi-hop worker capabilities <sup>HCP/ENT</sup>
+## Multi-hop worker capabilities
+
+<EnterpriseAlert product="boundary">This feature requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary or Boundary Enterprise</a></EnterpriseAlert>
 
 Multi-hop capabilities, including multi-hop sessions and Vault private access,
 is when a session or Vault credential request goes through more than one worker.
