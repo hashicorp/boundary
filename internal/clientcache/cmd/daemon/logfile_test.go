@@ -8,6 +8,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/json"
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -44,7 +45,7 @@ func TestWithEventer(t *testing.T) {
 			{
 				Name:       "default",
 				EventTypes: []event.Type{event.EveryType},
-				Format:     event.TextHclogSinkFormat,
+				Format:     event.JSONHclogSinkFormat,
 				Type:       event.WriterSink,
 				WriterConfig: &event.WriterSinkTypeConfig{
 					Writer: l,
@@ -69,7 +70,7 @@ func TestWithEventer(t *testing.T) {
 		t.Logf("Got output of length %d", len(out))
 		jd := json.NewDecoder(bytes.NewReader(out))
 		m := make(map[string]interface{})
-		assert.NoError(t, jd.Decode(&m))
+		assert.NoError(t, jd.Decode(&m), fmt.Sprintf("parsing %q", out))
 	})
 }
 
