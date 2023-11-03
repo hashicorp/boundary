@@ -109,12 +109,15 @@ func status(ctx context.Context, daemonPath string) (*api.Response, error) {
 	if err != nil {
 		return nil, fmt.Errorf("Error creating a new API client: %w", err)
 	}
-	addr := daemon.SocketAddress(daemonPath)
-	_, err = os.Stat(strings.TrimPrefix(addr, "unix://"))
-	if strings.HasPrefix(addr, "unix://") && err != nil {
+	addr, err := daemon.SocketAddress(daemonPath)
+	if err != nil {
+		return nil, fmt.Errorf("Error getting socket address: %w", err)
+	}
+	_, err = os.Stat(addr.Path)
+	if addr.Scheme == "unix" && err != nil {
 		return nil, errDaemonNotRunning
 	}
-	if err := client.SetAddr(addr); err != nil {
+	if err := client.SetAddr(addr.String()); err != nil {
 		return nil, fmt.Errorf("Error when setting the client's address: %w", err)
 	}
 	// Because this is using the real lib it can pick up from stored locations
