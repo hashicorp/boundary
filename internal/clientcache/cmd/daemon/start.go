@@ -21,6 +21,7 @@ import (
 	"github.com/mitchellh/cli"
 	"github.com/mitchellh/go-homedir"
 	"github.com/posener/complete"
+	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 const (
@@ -150,6 +151,10 @@ func (c *StartCommand) Run(args []string) int {
 	if err != nil {
 		return base.CommandCliError
 	}
+	if err := os.MkdirAll(dotDir, 0o700); err != nil {
+		c.PrintCliError(err)
+		return base.CommandCliError
+	}
 
 	continueRun, writers, cleanup, err := makeBackground(ctx, dotDir, c.flagBackground)
 	defer func() {
@@ -168,18 +173,13 @@ func (c *StartCommand) Run(args []string) int {
 	// TODO: print something out for the spawner to consume in case they can easily
 	// report if the daemon started or not.
 
-	logFilePath := filepath.Join(dotDir, logFileName)
-	logFile, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY, 0o600)
+	lf, err := logFile(ctx, dotDir, 5)
 	if err != nil {
 		c.PrintCliError(err)
 		return base.CommandCliError
 	}
-	defer logFile.Close()
-	if _, err := logFile.Seek(0, io.SeekEnd); err != nil {
-		c.PrintCliError(err)
-		return base.CommandCliError
-	}
-	writers = append(writers, logFile)
+	defer lf.Close()
+	writers = append(writers, lf)
 
 	cfg := &daemon.Config{
 		ContextCancel:     cancel,
@@ -231,6 +231,32 @@ func DefaultDotDirectory(ctx context.Context) (string, error) {
 		return "", errors.Wrap(ctx, err, op)
 	}
 	return filepath.Join(homeDir, dotDirname), nil
+}
+
+// logFile returns a log file which is rotated after it reaches the provided
+// maximum size in mb before being rotated out.  The rotated out log file gets
+// a suffix that matches the time that the rotation happened. Up to 3 log files
+// are saved as backup. When a new log file is rotated and there is already 3
+// backups created, the oldest one is deleted.
+func logFile(ctx context.Context, dotDir string, maxSizeMb int) (io.WriteCloser, error) {
+	const op = "daemon.logFile"
+	logFilePath := filepath.Join(dotDir, logFileName)
+	{
+		// Ensure the file is created with the desired permissions.
+		logFile, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY, 0o600)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		logFile.Close()
+	}
+
+	logFile := &lumberjack.Logger{
+		Filename:   logFilePath,
+		MaxSize:    maxSizeMb,
+		MaxBackups: 3,
+		Compress:   true,
+	}
+	return logFile, nil
 }
 
 func makeBackground(ctx context.Context, dotDir string, runBackgroundFlag bool) (bool, []io.Writer, pidCleanup, error) {
