@@ -4,7 +4,9 @@
 package daemon
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	stderr "errors"
 	"fmt"
 	"os"
@@ -12,9 +14,10 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/api"
+	"github.com/hashicorp/boundary/internal/clientcache/internal/client"
 	"github.com/hashicorp/boundary/internal/clientcache/internal/daemon"
 	"github.com/hashicorp/boundary/internal/cmd/base"
-	"github.com/hashicorp/boundary/version"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
 )
@@ -69,14 +72,7 @@ func (c *StatusCommand) Run(args []string) int {
 		return base.CommandUserError
 	}
 
-	resp, err := c.Status(ctx)
-	if err != nil {
-		c.PrintCliError(err)
-		return base.CommandCliError
-	}
-
-	res := &daemon.StatusResult{}
-	apiErr, err := resp.Decode(res)
+	resp, result, apiErr, err := c.Status(ctx)
 	if err != nil {
 		c.PrintCliError(err)
 		return base.CommandCliError
@@ -84,56 +80,57 @@ func (c *StatusCommand) Run(args []string) int {
 	if apiErr != nil {
 		c.PrintApiError(apiErr, "Error from daemon when getting the status")
 		return base.CommandApiError
-
 	}
+
 	switch base.Format(c.UI) {
 	case "json":
-		c.UI.Output(resp.Body.String())
+		c.UI.Output(string(resp.Body()))
 	default:
-		c.UI.Output(printStatusTable(res))
+		c.UI.Output(printStatusTable(result))
 	}
 	return base.CommandSuccess
 }
 
-func (c *StatusCommand) Status(ctx context.Context) (*api.Response, error) {
+func (c *StatusCommand) Status(ctx context.Context) (*client.Response, *daemon.StatusResult, *api.Error, error) {
 	dotPath, err := DefaultDotDirectory(ctx)
 	if err != nil {
-		return nil, err
+		return nil, nil, nil, err
 	}
 
 	return status(ctx, dotPath)
 }
 
-func status(ctx context.Context, daemonPath string) (*api.Response, error) {
-	client, err := api.NewClient(nil)
-	if err != nil {
-		return nil, fmt.Errorf("Error creating a new API client: %w", err)
-	}
+func status(ctx context.Context, daemonPath string) (*client.Response, *daemon.StatusResult, *api.Error, error) {
+	const op = "daemon.status"
 	addr, err := daemon.SocketAddress(daemonPath)
 	if err != nil {
-		return nil, fmt.Errorf("Error getting socket address: %w", err)
+		return nil, nil, nil, fmt.Errorf("Error getting socket address: %w", err)
 	}
 	_, err = os.Stat(addr.Path)
 	if addr.Scheme == "unix" && err != nil {
-		return nil, errDaemonNotRunning
+		return nil, nil, nil, errDaemonNotRunning
 	}
-	if err := client.SetAddr(addr.String()); err != nil {
-		return nil, fmt.Errorf("Error when setting the client's address: %w", err)
+	c, err := client.New(ctx, addr)
+	if err != nil {
+		return nil, nil, nil, err
 	}
-	// Because this is using the real lib it can pick up from stored locations
-	// like the system keychain. Explicitly clear the token for now
-	client.SetToken("")
 
-	req, err := client.NewRequest(ctx, "GET", "/status", nil)
+	resp, apiErr, err := c.Get(ctx, "/v1/status", nil)
 	if err != nil {
-		return nil, err
+		return nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("client do failed"))
 	}
-	req.Header.Add(daemon.VersionHeaderKey, version.Get().VersionNumber())
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
+	if apiErr != nil {
+		return resp, nil, apiErr, nil
 	}
-	return resp, nil
+
+	res := &daemon.StatusResult{}
+	reader := bytes.NewReader(resp.Body())
+	dec := json.NewDecoder(reader)
+	if err := dec.Decode(&res); err != nil {
+		return nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("prasing result"))
+	}
+
+	return resp, res, nil, nil
 }
 
 func printStatusTable(status *daemon.StatusResult) string {

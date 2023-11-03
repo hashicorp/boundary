@@ -4,7 +4,9 @@
 package search
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	stderrors "errors"
 	"fmt"
 	"net/url"
@@ -16,10 +18,10 @@ import (
 	"github.com/hashicorp/boundary/api/sessions"
 	"github.com/hashicorp/boundary/api/targets"
 	daemoncmd "github.com/hashicorp/boundary/internal/clientcache/cmd/daemon"
+	"github.com/hashicorp/boundary/internal/clientcache/internal/client"
 	"github.com/hashicorp/boundary/internal/clientcache/internal/daemon"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/hashicorp/boundary/version"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
 	"golang.org/x/exp/slices"
@@ -104,13 +106,7 @@ func (c *SearchCommand) Run(args []string) int {
 		return base.CommandUserError
 	}
 
-	resp, err := c.Search(ctx)
-	if err != nil {
-		c.PrintCliError(err)
-		return base.CommandCliError
-	}
-	res := &daemon.SearchResult{}
-	apiErr, err := resp.Decode(res)
+	resp, result, apiErr, err := c.Search(ctx)
 	if err != nil {
 		c.PrintCliError(err)
 		return base.CommandCliError
@@ -119,15 +115,16 @@ func (c *SearchCommand) Run(args []string) int {
 		c.PrintApiError(apiErr, "Error from daemon when performing search")
 		return base.CommandApiError
 	}
+
 	switch base.Format(c.UI) {
 	case "json":
-		c.UI.Output(resp.Body.String())
+		c.UI.Output(string(resp.Body()))
 	default:
 		switch {
-		case len(res.Targets) > 0:
-			c.UI.Output(printTargetListTable(res.Targets))
-		case len(res.Sessions) > 0:
-			c.UI.Output(printSessionListTable(res.Sessions))
+		case len(result.Targets) > 0:
+			c.UI.Output(printTargetListTable(result.Targets))
+		case len(result.Sessions) > 0:
+			c.UI.Output(printSessionListTable(result.Sessions))
 		default:
 			c.UI.Output("No items found")
 		}
@@ -135,18 +132,18 @@ func (c *SearchCommand) Run(args []string) int {
 	return base.CommandSuccess
 }
 
-func (c *SearchCommand) Search(ctx context.Context) (*api.Response, error) {
+func (c *SearchCommand) Search(ctx context.Context) (*client.Response, *daemon.SearchResult, *api.Error, error) {
 	client, err := c.Client()
 	if err != nil {
-		return nil, err
+		return nil, nil, nil, err
 	}
 	t := client.Token()
 	if t == "" {
-		return nil, fmt.Errorf("Auth Token selected for searching is empty.")
+		return nil, nil, nil, fmt.Errorf("Auth Token selected for searching is empty.")
 	}
 	tSlice := strings.SplitN(t, "_", 3)
 	if len(tSlice) != 3 {
-		return nil, fmt.Errorf("Auth Token selected for searching is in an unexpected format.")
+		return nil, nil, nil, fmt.Errorf("Auth Token selected for searching is in an unexpected format.")
 	}
 
 	tf := filterBy{
@@ -157,43 +154,45 @@ func (c *SearchCommand) Search(ctx context.Context) (*api.Response, error) {
 
 	dotPath, err := daemoncmd.DefaultDotDirectory(ctx)
 	if err != nil {
-		return nil, err
+		return nil, nil, nil, err
 	}
 	return search(ctx, dotPath, tf)
 }
 
-func search(ctx context.Context, daemonPath string, fb filterBy) (*api.Response, error) {
+func search(ctx context.Context, daemonPath string, fb filterBy) (*client.Response, *daemon.SearchResult, *api.Error, error) {
 	const op = "search.search"
-	client, err := api.NewClient(nil)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
 	addr, err := daemon.SocketAddress(daemonPath)
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+		return nil, nil, nil, errors.Wrap(ctx, err, op)
 	}
 	if _, err := os.Stat(addr.Path); addr.Scheme == "unix" && err == os.ErrNotExist {
-		return nil, errors.New(ctx, errors.Internal, op, "daemon unix socket is not setup")
+		return nil, nil, nil, errors.New(ctx, errors.Internal, op, "daemon unix socket is not setup")
 	}
-	if err := client.SetAddr(addr.String()); err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+	c, err := client.New(ctx, addr)
+	if err != nil {
+		return nil, nil, nil, err
 	}
 
-	req, err := client.NewRequest(ctx, "GET", "/search", nil)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("new client request error"))
-	}
-	req.Header.Add(daemon.VersionHeaderKey, version.Get().VersionNumber())
-	q := url.Values{}
+	q := &url.Values{}
 	q.Add("auth_token_id", fb.authTokenId)
 	q.Add("resource", fb.resource)
 	q.Add("query", fb.flagQuery)
-	req.URL.RawQuery = q.Encode()
-	resp, err := client.Do(req)
+	resp, apiErr, err := c.Get(ctx, "/v1/search", q)
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("client do failed"))
+		return nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("client do failed"))
 	}
-	return resp, err
+	if apiErr != nil {
+		return resp, nil, apiErr, nil
+	}
+
+	res := &daemon.SearchResult{}
+	reader := bytes.NewReader(resp.Body())
+	dec := json.NewDecoder(reader)
+	if err := dec.Decode(&res); err != nil {
+		return nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("prasing result"))
+	}
+
+	return resp, res, nil, nil
 }
 
 func printTargetListTable(items []*targets.Target) string {

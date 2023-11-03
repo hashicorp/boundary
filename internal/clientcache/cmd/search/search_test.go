@@ -106,43 +106,40 @@ func TestSearch(t *testing.T) {
 
 	for _, tc := range errorCases {
 		t.Run(tc.name, func(t *testing.T) {
-			resp, err := search(ctx, srv.BaseDotDir(), tc.fb)
+			resp, r, apiErr, err := search(ctx, srv.BaseDotDir(), tc.fb)
 			require.NoError(t, err)
-			r := daemon.SearchResult{}
-			apiErr, err := resp.Decode(&r)
-			assert.NoError(t, err)
 			assert.NotNil(t, apiErr)
 			assert.Contains(t, apiErr.Message, tc.apiErrContains)
+			assert.NotNil(t, resp)
+			assert.Nil(t, r)
 		})
 	}
 
 	t.Run("empty response from list", func(t *testing.T) {
-		resp, err := search(ctx, srv.BaseDotDir(), filterBy{
+		resp, r, apiErr, err := search(ctx, srv.BaseDotDir(), filterBy{
 			authTokenId: at.Id,
 			resource:    "targets",
 		})
 		require.NoError(t, err)
-		r := daemon.SearchResult{}
-		apiErr, err := resp.Decode(&r)
 		assert.NoError(t, err)
 		assert.Nil(t, apiErr)
+		assert.NotNil(t, resp)
 		assert.NotNil(t, r)
-		assert.EqualValues(t, r, daemon.SearchResult{})
+		assert.EqualValues(t, r, &daemon.SearchResult{})
 	})
 
 	t.Run("empty response from query", func(t *testing.T) {
-		resp, err := search(ctx, srv.BaseDotDir(), filterBy{
+		resp, r, apiErr, err := search(ctx, srv.BaseDotDir(), filterBy{
 			authTokenId: at.Id,
 			flagQuery:   "name=name",
 			resource:    "targets",
 		})
 		require.NoError(t, err)
-		r := daemon.SearchResult{}
-		apiErr, err := resp.Decode(&r)
 		assert.NoError(t, err)
 		assert.Nil(t, apiErr)
+		assert.NotNil(t, resp)
 		assert.NotNil(t, r)
-		assert.EqualValues(t, r, daemon.SearchResult{})
+		assert.EqualValues(t, r, &daemon.SearchResult{})
 	})
 
 	srv.AddResources(t, cmd.at, []*targets.Target{
@@ -154,87 +151,81 @@ func TestSearch(t *testing.T) {
 	}, boundaryTokenReaderFn)
 
 	t.Run("target response from list", func(t *testing.T) {
-		resp, err := search(ctx, srv.BaseDotDir(), filterBy{
+		resp, r, apiErr, err := search(ctx, srv.BaseDotDir(), filterBy{
 			authTokenId: at.Id,
 			resource:    "targets",
 		})
 		require.NoError(t, err)
-		r := daemon.SearchResult{}
-		apiErr, err := resp.Decode(&r)
 		assert.NoError(t, err)
 		assert.Nil(t, apiErr)
+		assert.NotNil(t, resp)
 		assert.NotNil(t, r)
 		assert.Len(t, r.Targets, 2)
 	})
 	t.Run("full target response from query", func(t *testing.T) {
-		resp, err := search(ctx, srv.BaseDotDir(), filterBy{
+		resp, r, apiErr, err := search(ctx, srv.BaseDotDir(), filterBy{
 			authTokenId: at.Id,
 			flagQuery:   "id % ttcp",
 			resource:    "targets",
 		})
 		require.NoError(t, err)
-		r := daemon.SearchResult{}
-		apiErr, err := resp.Decode(&r)
 		assert.NoError(t, err)
 		assert.Nil(t, apiErr)
+		assert.NotNil(t, resp)
 		assert.NotNil(t, r)
 		assert.Len(t, r.Targets, 2)
 	})
 	t.Run("partial target response from query", func(t *testing.T) {
-		resp, err := search(ctx, srv.BaseDotDir(), filterBy{
+		resp, r, apiErr, err := search(ctx, srv.BaseDotDir(), filterBy{
 			authTokenId: at.Id,
 			flagQuery:   "id % ttcp_1234567890",
 			resource:    "targets",
 		})
 		require.NoError(t, err)
-		r := daemon.SearchResult{}
-		apiErr, err := resp.Decode(&r)
 		assert.NoError(t, err)
 		assert.Nil(t, apiErr)
+		assert.NotNil(t, resp)
 		assert.NotNil(t, r)
 		assert.Len(t, r.Sessions, 0)
 		assert.Len(t, r.Targets, 1)
 	})
 
 	t.Run("session response from list", func(t *testing.T) {
-		resp, err := search(ctx, srv.BaseDotDir(), filterBy{
+		resp, r, apiErr, err := search(ctx, srv.BaseDotDir(), filterBy{
 			authTokenId: at.Id,
 			resource:    "sessions",
 		})
 		require.NoError(t, err)
-		r := daemon.SearchResult{}
-		apiErr, err := resp.Decode(&r)
 		assert.NoError(t, err)
 		assert.Nil(t, apiErr)
+		assert.NotNil(t, resp)
 		assert.NotNil(t, r)
 		assert.Len(t, r.Targets, 0)
 		assert.Len(t, r.Sessions, 2)
 	})
 	t.Run("full session response from query", func(t *testing.T) {
-		resp, err := search(ctx, srv.BaseDotDir(), filterBy{
+		resp, r, apiErr, err := search(ctx, srv.BaseDotDir(), filterBy{
 			authTokenId: at.Id,
 			flagQuery:   "id % sess",
 			resource:    "sessions",
 		})
 		require.NoError(t, err)
-		r := daemon.SearchResult{}
-		apiErr, err := resp.Decode(&r)
 		assert.NoError(t, err)
 		assert.Nil(t, apiErr)
+		assert.NotNil(t, resp)
 		assert.NotNil(t, r)
 		assert.Len(t, r.Sessions, 2)
 	})
 	t.Run("partial session response from query", func(t *testing.T) {
-		resp, err := search(ctx, srv.BaseDotDir(), filterBy{
+		resp, r, apiErr, err := search(ctx, srv.BaseDotDir(), filterBy{
 			authTokenId: at.Id,
 			flagQuery:   "id % sess_1234567890",
 			resource:    "sessions",
 		})
 		require.NoError(t, err)
-		r := daemon.SearchResult{}
-		apiErr, err := resp.Decode(&r)
 		assert.NoError(t, err)
 		assert.Nil(t, apiErr)
+		assert.NotNil(t, resp)
 		assert.NotNil(t, r)
 		assert.Len(t, r.Sessions, 1)
 	})

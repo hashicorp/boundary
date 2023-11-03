@@ -13,10 +13,10 @@ import (
 	"path/filepath"
 
 	"github.com/hashicorp/boundary/api"
+	"github.com/hashicorp/boundary/internal/clientcache/internal/client"
 	"github.com/hashicorp/boundary/internal/clientcache/internal/daemon"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/util"
-	"github.com/hashicorp/boundary/version"
 )
 
 // stop will send a term signal to the daemon to shut down.
@@ -73,25 +73,14 @@ func stopThroughHandler(ctx context.Context, dotPath string) (*api.Error, error)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	client, err := api.NewClient(nil)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-	if err := client.SetAddr(sockAddr.String()); err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-	// Because this is using the real lib it can pick up from stored locations
-	// like the system keychain. Explicitly clear the token for now
-	client.SetToken("")
 
-	req, err := client.NewRequest(ctx, "POST", "/stop", nil)
+	c, err := client.New(ctx, addr)
 	if err != nil {
-		return nil, err
+		return nil, nil, errors.Wrap(ctx, err, op)
 	}
-	req.Header.Add(daemon.VersionHeaderKey, version.Get().VersionNumber())
-	resp, err := client.Do(req)
+	_, apiErr, err := c.Post(ctx, "/v1/stop", p)
 	if err != nil {
-		return nil, err
+		return nil, nil, errors.Wrap(ctx, err, op)
 	}
-	return resp.Decode(&struct{}{})
+	return apiErr, err
 }
