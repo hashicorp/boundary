@@ -32,6 +32,11 @@ func init() {
 				Command: base.NewCommand(ui),
 			}, nil
 		}
+		Commands["daemon status"] = func() (cli.Command, error) {
+			return &daemon.StatusCommand{
+				Command: base.NewCommand(ui),
+			}, nil
+		}
 		Commands["search"] = func() (cli.Command, error) {
 			return &search.SearchCommand{
 				Command: base.NewCommand(ui),

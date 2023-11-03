@@ -37,8 +37,27 @@ create table if not exists refresh_token(
     constraint only_known_resource_types_allowed,
   refresh_token text not null
     check (length(refresh_token) > 0),
+  update_time timestamp not null default (strftime('%Y-%m-%d %H:%M:%f','now')),
+  create_time timestamp not null default (strftime('%Y-%m-%d %H:%M:%f','now')),
   primary key (user_id, resource_type)
 );
+
+create trigger immutable_columns_refresh_token before update on refresh_token
+for each row 
+when 
+  new.create_time <> old.create_time 
+begin
+  select raise(abort, 'immutable column');
+end;
+
+
+create trigger update_time_column_refresh_token before update on refresh_token
+for each row 
+when 
+  new.refresh_token <> old.refresh_token 
+begin
+  update refresh_token set update_time = datetime('now','localtime') where rowid == new.rowid;
+end;
 
 -- Contains the boundary auth token
 create table if not exists auth_token (

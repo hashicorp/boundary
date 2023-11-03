@@ -19,6 +19,11 @@ type RefreshService struct {
 }
 
 func NewRefreshService(ctx context.Context, r *Repository) (*RefreshService, error) {
+	const op = "cache.NewRefreshService"
+	switch {
+	case util.IsNil(r):
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "repository is nil")
+	}
 	return &RefreshService{repo: r}, nil
 }
 

@@ -6,6 +6,7 @@ package cache
 import (
 	"context"
 	"database/sql"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -112,6 +113,8 @@ func upsertRefreshToken(ctx context.Context, writer db.Writer, u *user, rt resou
 		UserId:       u.Id,
 		ResourceType: rt,
 		RefreshToken: tok,
+		UpdateTime:   time.Now(),
+		CreateTime:   time.Now(),
 	}
 
 	switch tok {
@@ -120,7 +123,7 @@ func upsertRefreshToken(ctx context.Context, writer db.Writer, u *user, rt resou
 	default:
 		onConflict := &db.OnConflict{
 			Target: db.Columns{"user_id", "resource_type"},
-			Action: db.SetColumns([]string{"refresh_token"}),
+			Action: db.SetColumns([]string{"refresh_token", "update_time"}),
 		}
 		if err := writer.Create(ctx, refTok, db.WithOnConflict(onConflict)); err != nil {
 			return errors.Wrap(ctx, err, op)
@@ -150,6 +153,8 @@ type refreshToken struct {
 	UserId       string       `gorm:"primaryKey"`
 	ResourceType resourceType `gorm:"primaryKey"`
 	RefreshToken RefreshTokenValue
+	UpdateTime   time.Time `gorm:"default:(strftime('%Y-%m-%d %H:%M:%f','now'))"`
+	CreateTime   time.Time `gorm:"default:(strftime('%Y-%m-%d %H:%M:%f','now'))"`
 }
 
 func (*refreshToken) TableName() string {

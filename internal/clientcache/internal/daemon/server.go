@@ -236,11 +236,17 @@ func (s *CacheServer) Serve(ctx context.Context, cmd Commander, opt ...Option) e
 	}()
 
 	mux := http.NewServeMux()
-	searchTargetsFn, err := newSearchHandlerFunc(ctx, repo)
+	searchFn, err := newSearchHandlerFunc(ctx, repo)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
-	mux.HandleFunc("/v1/search", searchTargetsFn)
+	mux.HandleFunc("/v1/search", searchFn)
+
+	statusFn, err := newStatusHandlerFunc(ctx, repo, l.Addr().String())
+	if err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
+	mux.HandleFunc("/v1/status", statusFn)
 
 	tokenFn, err := newTokenHandlerFunc(ctx, repo, tic)
 	if err != nil {
