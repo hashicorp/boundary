@@ -4,7 +4,7 @@ page_title: Validate the data integrity in the external object store
 description: |-
   How Boundary validates the data integrity of recorded sessions in the external object store
 ---
-# How Boundary validates data integrity in the external object store
+# How Boundary validates data integrity in the external object store <sup>HCP/ENT</sup>
 
 When a Boundary worker uploads a BSR file to AWS S3 through the Boundary AWS plugin, the plugin calculates the SHA256 checksum of the contents of the BSR file and attaches this information to the object that is uploaded to S3.
 The SHA256 checksum value attached to the S3 object is returned to the Boundary worker.
