@@ -4,6 +4,7 @@
 package worker_test
 
 import (
+	"bytes"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -109,7 +110,11 @@ func TestRotationTicking(t *testing.T) {
 
 	// Now we wait and check that we see new values in the DB and different
 	// creds on the worker after each rotation period
-	for i := 2; i < 5; i++ {
+	rotationCount := 2
+	for {
+		if rotationCount > 5 {
+			break
+		}
 		nextRotation := w.Worker().AuthRotationNextRotation.Load()
 		time.Sleep((*nextRotation).Sub(time.Now()) + 5*time.Second)
 
@@ -126,6 +131,11 @@ func TestRotationTicking(t *testing.T) {
 			nodeenrollment.WithStorageWrapper(w.Config().WorkerAuthStorageKms),
 		)
 		require.NoError(err)
+		if bytes.Equal(currKey, currNodeCreds.CertificatePublicKeyPkix) {
+			// Load due to parallel tests may mean that we didn't hit rotation
+			// yet, loop back to evaluate again
+			continue
+		}
 		assert.NotEqual(currKey, currNodeCreds.CertificatePublicKeyPkix)
 		currKey = currNodeCreds.CertificatePublicKeyPkix
 		currKeyId, err := nodeenrollment.KeyIdFromPkix(currNodeCreds.CertificatePublicKeyPkix)
@@ -155,5 +165,6 @@ func TestRotationTicking(t *testing.T) {
 		require.NotNil(w.Worker().GrpcClientConn)
 		require.NoError(w.Worker().GrpcClientConn.Close())
 		require.NoError(w.Worker().StartControllerConnections())
+		rotationCount++
 	}
 }
