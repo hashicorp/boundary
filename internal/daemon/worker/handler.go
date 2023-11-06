@@ -23,6 +23,7 @@ import (
 	"github.com/hashicorp/boundary/internal/event"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/util"
+	"github.com/hashicorp/boundary/internal/wspb"
 	"github.com/hashicorp/boundary/sdk/pbs/proxy"
 	"github.com/hashicorp/go-secure-stdlib/listenerutil"
 	"github.com/hashicorp/nodeenrollment"
@@ -31,7 +32,6 @@ import (
 	"google.golang.org/protobuf/types/known/anypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"nhooyr.io/websocket"
-	"nhooyr.io/websocket/wspb"
 )
 
 var GetProtocolContext = nilProtocolContext

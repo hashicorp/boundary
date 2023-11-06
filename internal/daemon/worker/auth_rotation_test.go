@@ -5,6 +5,7 @@ package worker_test
 
 import (
 	"bytes"
+	"context"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -110,6 +111,13 @@ func TestRotationTicking(t *testing.T) {
 
 	// Now we wait and check that we see new values in the DB and different
 	// creds on the worker after each rotation period
+
+	// Make sure we have a failsafe in case the below loop never finds what it's
+	// looking for; at expiration the List will fail and we'll hit the Require,
+	// exiting
+	deadlineCtx, deadlineCtxCancel := context.WithTimeout(c.Context(), 10*time.Minute)
+	defer deadlineCtxCancel()
+
 	rotationCount := 2
 	for {
 		if rotationCount > 5 {
@@ -119,7 +127,7 @@ func TestRotationTicking(t *testing.T) {
 		time.Sleep((*nextRotation).Sub(time.Now()) + 5*time.Second)
 
 		// Verify we see 2- after credentials have rotated, we should see current and previous
-		auths, err = workerAuthRepo.List(c.Context(), (*types.NodeInformation)(nil))
+		auths, err = workerAuthRepo.List(deadlineCtx, (*types.NodeInformation)(nil))
 		require.NoError(err)
 		assert.Len(auths, 2)
 

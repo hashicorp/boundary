@@ -23,6 +23,7 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller/common"
 	"github.com/hashicorp/boundary/internal/daemon/worker"
 	"github.com/hashicorp/boundary/internal/session"
+	"github.com/hashicorp/boundary/internal/wspb"
 	targetspb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
 	"github.com/hashicorp/boundary/sdk/pbs/proxy"
 	"github.com/hashicorp/go-cleanhttp"
@@ -32,7 +33,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
 	"nhooyr.io/websocket"
-	"nhooyr.io/websocket/wspb"
 )
 
 const (

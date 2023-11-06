@@ -52,7 +52,10 @@ with tag “A,” to connect to targets in “Network A.”
 
 ![Boundary architecture example showing workers with tags](/img/worker-tags.png)
 
-## Multi-hop sessions <sup>HCP/ENT</sup>
+## Multi-hop sessions
+
+<EnterpriseAlert product="boundary">This feature requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary or Boundary Enterprise</a></EnterpriseAlert>
+
 Most organizations want to provide access to infrastructure without exposing private networks. Many organizations also have complex network topologies requiring
 inbound traffic to route through multiple network enclaves in order to reach the target system.
 [Multi-hop](/boundary/docs/configuration/worker#multi-hop-worker-capabilities-hcp-ent) sessions allow you to chain together two or more workers

@@ -81,7 +81,7 @@ require (
 	gorm.io/driver/postgres v1.5.4
 	gorm.io/gorm v1.25.5 // indirect
 	mvdan.cc/gofumpt v0.5.0
-	nhooyr.io/websocket v1.8.7
+	nhooyr.io/websocket v1.8.9
 )
 
 require github.com/hashicorp/go-dbw v0.1.1
@@ -142,7 +142,7 @@ require (
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/glog v1.1.2 // indirect
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
-	github.com/google/uuid v1.3.1 // indirect
+	github.com/google/uuid v1.4.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-kms-wrapping/plugin/v2 v2.0.5 // indirect
 	github.com/hashicorp/go-plugin v1.5.2 // indirect
@@ -163,7 +163,6 @@ require (
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect
-	github.com/klauspost/compress v1.15.11 // indirect
 	github.com/lib/pq v1.10.9 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-sqlite3 v2.0.1+incompatible // indirect
@@ -205,5 +204,3 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	gorm.io/driver/sqlite v1.5.4 // indirect
 )
-
-replace nhooyr.io/websocket => github.com/tmessi/websocket v0.0.0-20231006132118-662e2f7878ac
