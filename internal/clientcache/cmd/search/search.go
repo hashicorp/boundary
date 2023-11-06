@@ -21,7 +21,6 @@ import (
 	"github.com/hashicorp/boundary/internal/clientcache/internal/client"
 	"github.com/hashicorp/boundary/internal/clientcache/internal/daemon"
 	"github.com/hashicorp/boundary/internal/cmd/base"
-	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
 	"golang.org/x/exp/slices"
@@ -160,13 +159,12 @@ func (c *SearchCommand) Search(ctx context.Context) (*client.Response, *daemon.S
 }
 
 func search(ctx context.Context, daemonPath string, fb filterBy) (*client.Response, *daemon.SearchResult, *api.Error, error) {
-	const op = "search.search"
 	addr, err := daemon.SocketAddress(daemonPath)
 	if err != nil {
-		return nil, nil, nil, errors.Wrap(ctx, err, op)
+		return nil, nil, nil, fmt.Errorf("Error when retrieving the socket address: %w", err)
 	}
 	if _, err := os.Stat(addr.Path); addr.Scheme == "unix" && err == os.ErrNotExist {
-		return nil, nil, nil, errors.New(ctx, errors.Internal, op, "daemon unix socket is not setup")
+		return nil, nil, nil, fmt.Errorf("Error when detecting if the domain socket is present: %w.", err)
 	}
 	c, err := client.New(ctx, addr)
 	if err != nil {
@@ -179,7 +177,7 @@ func search(ctx context.Context, daemonPath string, fb filterBy) (*client.Respon
 	q.Add("query", fb.flagQuery)
 	resp, apiErr, err := c.Get(ctx, "/v1/search", q)
 	if err != nil {
-		return nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("client do failed"))
+		return nil, nil, nil, fmt.Errorf("Error when sending request to the daemon: %w.", err)
 	}
 	if apiErr != nil {
 		return resp, nil, apiErr, nil
@@ -189,7 +187,7 @@ func search(ctx context.Context, daemonPath string, fb filterBy) (*client.Respon
 	reader := bytes.NewReader(resp.Body())
 	dec := json.NewDecoder(reader)
 	if err := dec.Decode(&res); err != nil {
-		return nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("prasing result"))
+		return nil, nil, nil, fmt.Errorf("Error when decoding the response from the daemon: %w.", err)
 	}
 
 	return resp, res, nil, nil

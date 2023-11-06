@@ -8,6 +8,7 @@ package daemon
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -15,21 +16,19 @@ import (
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/internal/clientcache/internal/client"
 	"github.com/hashicorp/boundary/internal/clientcache/internal/daemon"
-	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/util"
 )
 
 // stop will send a term signal to the daemon to shut down.
 func (s *StopCommand) stop(ctx context.Context) error {
-	const op = "daemon.(StopCommand).stop"
 	switch {
 	case util.IsNil(ctx):
-		return errors.New(ctx, errors.InvalidParameter, op, "context is missing")
+		return errors.New("Invalid parameter provided to stop: context is missing")
 	}
 
 	dotPath, err := DefaultDotDirectory(ctx)
 	if err != nil {
-		return errors.Wrap(ctx, err, op)
+		return fmt.Errorf("Error when getting default dot directory: %w", err)
 	}
 
 	apiErr, err := stopThroughHandler(ctx, dotPath)
@@ -41,7 +40,7 @@ func (s *StopCommand) stop(ctx context.Context) error {
 		} else if apiErr != nil {
 			errMsg = apiErr.Message
 		}
-		s.UI.Warn(fmt.Sprintf("failed stopping the daemon through the handler: %q, now killing the process", errMsg))
+		s.UI.Warn(fmt.Sprintf("Failed stopping the daemon through the handler: %q, now killing the process", errMsg))
 	default:
 		// there wasn't an error stopping it through the handler. No need to
 		// force kill the process
@@ -52,35 +51,33 @@ func (s *StopCommand) stop(ctx context.Context) error {
 	p, err := pidFileInUse(ctx, pidPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return errors.Wrap(ctx, err, op, errors.WithCode(errors.NotFound))
+			return errors.New("Unable to stop the daemon: pid file not found.")
 		}
-		return errors.Wrap(ctx, err, op, errors.WithMsg("Unable to stop the daemon"))
+		return fmt.Errorf("Error when trying to stop the daemon: %w", err)
 	}
 	if p == nil {
-		return errors.New(ctx, errors.NotFound, op, "daemon process was not found")
+		return errors.New("Daemon process was not found.")
 	}
 
 	if err := p.Kill(); err != nil {
-		return errors.Wrap(ctx, err, op, errors.WithMsg("killing the daemon"))
+		return fmt.Errorf("Error when killing the process: %w.", err)
 	}
 	return nil
 }
 
 func stopThroughHandler(ctx context.Context, dotPath string) (*api.Error, error) {
-	const op = "daemon.stopThroughHandler"
-
-	sockAddr, err := daemon.SocketAddress(dotPath)
+	addr, err := daemon.SocketAddress(dotPath)
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+		return nil, fmt.Errorf("Error when retrieving the socket address: %w", err)
 	}
 
 	c, err := client.New(ctx, addr)
 	if err != nil {
-		return nil, nil, errors.Wrap(ctx, err, op)
+		return nil, err
 	}
-	_, apiErr, err := c.Post(ctx, "/v1/stop", p)
+	_, apiErr, err := c.Post(ctx, "/v1/stop", nil)
 	if err != nil {
-		return nil, nil, errors.Wrap(ctx, err, op)
+		return nil, fmt.Errorf("Error when sending request to the daemon: %w.", err)
 	}
 	return apiErr, err
 }
