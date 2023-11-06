@@ -5,10 +5,14 @@ package password
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
@@ -112,18 +116,41 @@ func (r *Repository) LookupAuthMethod(ctx context.Context, publicId string, _ ..
 	return r.lookupAuthMethod(ctx, publicId)
 }
 
-// ListAuthMethods returns a slice of AuthMethods for the scopeId. WithLimit and
-// WithOrder options are the only option supported.
-func (r *Repository) ListAuthMethods(ctx context.Context, scopeIds []string, opt ...Option) ([]*AuthMethod, error) {
+// ListAuthMethods returns a slice of AuthMethods for the scopeId. Supported options:
+//   - auth.WithLimit
+//   - auth.WithStartPageAfterItem
+//
+// This method uses the auth domain options and auth.AuthMethod type to allow it to
+// be called from the auth package. If it was using the password option type we would
+// run into a cyclical dependency issue.
+func (r *Repository) ListAuthMethods(ctx context.Context, scopeIds []string, opt ...auth.Option) ([]auth.AuthMethod, error) {
 	const op = "password.(Repository).ListAuthMethods"
 	if len(scopeIds) == 0 {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
 	}
-	authMethods, err := r.getAuthMethods(ctx, "", scopeIds, opt...)
+	// Convert the auth package options to the password options,
+	// since we share r.getAuthMethods with lookupAuthMethod.
+	opts, err := auth.GetOpts(opt...)
+	if err != nil {
+		return nil, err
+	}
+	newOpts := []Option{}
+	if opts.WithLimit != 0 {
+		newOpts = append(newOpts, WithLimit(opts.WithLimit))
+	}
+	if opts.WithStartPageAfterItem != nil {
+		newOpts = append(newOpts, WithStartPageAfterItem(opts.WithStartPageAfterItem))
+	}
+	authMethods, err := r.getAuthMethods(ctx, "", scopeIds, newOpts...)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	return authMethods, nil
+	// Convert back to the auth types
+	var ams []auth.AuthMethod
+	for _, am := range authMethods {
+		ams = append(ams, am)
+	}
+	return ams, nil
 }
 
 // DeleteAuthMethod deletes the auth method for the provided id from the repository returning a count of the
@@ -276,7 +303,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, authMethod *AuthMetho
 
 // lookupAuthMethod will lookup a single auth method
 func (r *Repository) lookupAuthMethod(ctx context.Context, authMethodId string, opt ...Option) (*AuthMethod, error) {
-	const op = "oidc.(Repository).lookupAuthMethod"
+	const op = "password.(Repository).lookupAuthMethod"
 	var err error
 	ams, err := r.getAuthMethods(ctx, authMethodId, nil, opt...)
 	if err != nil {
@@ -290,6 +317,44 @@ func (r *Repository) lookupAuthMethod(ctx context.Context, authMethodId string, 
 	default:
 		return ams[0], nil
 	}
+}
+
+// ListDeletedAuthMethodIds lists the public IDs of any auth methods deleted since the timestamp provided.
+func (r *Repository) ListDeletedAuthMethodIds(ctx context.Context, since time.Time, options ...auth.Option) ([]string, error) {
+	const op = "password.(Repository).ListDeletedAuthMethodIds"
+	opts, err := auth.GetOpts(options...)
+	if err != nil {
+		return nil, err
+	}
+	rd := r.reader
+	if opts.WithReader != nil {
+		rd = opts.WithReader
+	}
+	var deletedAuthMethods []*deletedAuthMethod
+	if err := rd.SearchWhere(ctx, &deletedAuthMethods, "delete_time >= ?", []any{since}); err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query deleted auth methods"))
+	}
+	var authMethodIds []string
+	for _, am := range deletedAuthMethods {
+		authMethodIds = append(authMethodIds, am.PublicId)
+	}
+	return authMethodIds, nil
+}
+
+// EstimatedAuthMethodCount returns and estimate of the total number of items in the auth methods table.
+func (r *Repository) EstimatedAuthMethodCount(ctx context.Context) (int, error) {
+	const op = "account.(Repository).EstimatedAuthMethodCount"
+	rows, err := r.reader.Query(ctx, estimateCountPasswordAuthMethods, nil)
+	if err != nil {
+		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total auth methods"))
+	}
+	var count int
+	for rows.Next() {
+		if err := r.reader.ScanRows(ctx, rows, &count); err != nil {
+			return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total auth methods"))
+		}
+	}
+	return count, nil
 }
 
 // getAuthMethods allows the caller to either lookup a specific AuthMethod via
@@ -310,34 +375,51 @@ func (r *Repository) getAuthMethods(ctx context.Context, authMethodId string, sc
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "searching for both an auth method id and Scope IDs is not supported")
 	}
 
-	dbArgs := []db.Option{}
 	opts := GetOpts(opt...)
 	limit := r.defaultLimit
 	if opts.withLimit != 0 {
 		// non-zero signals an override of the default limit for the repo.
 		limit = opts.withLimit
 	}
-	dbArgs = append(dbArgs, db.WithLimit(limit))
-
-	if opts.withOrderByCreateTime {
-		if opts.ascending {
-			dbArgs = append(dbArgs, db.WithOrder("create_time asc"))
-		} else {
-			dbArgs = append(dbArgs, db.WithOrder("create_time"))
-		}
-	}
 
 	var args []any
-	var where []string
+	var whereClause string
+	var inClauses []string
 	switch {
 	case authMethodId != "":
-		where, args = append(where, "public_id = ?"), append(args, authMethodId)
+		whereClause += "public_id = @auth_method_id"
+		args = append(args, sql.Named("auth_method_id", authMethodId))
 	default:
-		where, args = append(where, "scope_id in(?)"), append(args, scopeIds)
+		for i, scopeId := range scopeIds {
+			arg := "scope_id_" + strconv.Itoa(i)
+			inClauses = append(inClauses, "@"+arg)
+			args = append(args, sql.Named(arg, scopeId))
+		}
+		inClause := strings.Join(inClauses, ", ")
+		whereClause += "scope_id in (" + inClause + ")"
+	}
+
+	// Ordering and pagination are tightly coupled.
+	// We order by update_time ascending so that new
+	// and updated items appear at the end of the pagination.
+	// We need to further order by public_id to distinguish items
+	// with identical update times.
+	withOrder := "update_time asc, public_id asc"
+	if opts.withStartPageAfterItem != nil {
+		// Now that the order is defined, we can use a simple where
+		// clause to only include items updated since the specified
+		// start of the page. We use greater than or equal for the update
+		// time as there may be items with identical update_times. We
+		// then use PublicId as a tiebreaker.
+		args = append(args,
+			sql.Named("after_item_update_time", opts.withStartPageAfterItem.GetUpdateTime()),
+			sql.Named("after_item_id", opts.withStartPageAfterItem.GetPublicId()),
+		)
+		whereClause = "(" + whereClause + ") and (update_time > @after_item_update_time or (update_time = @after_item_update_time and public_id > @after_item_id))"
 	}
 
 	var views []*authMethodView
-	err := r.reader.SearchWhere(ctx, &views, strings.Join(where, " and "), args, dbArgs...)
+	err := r.reader.SearchWhere(ctx, &views, whereClause, args, db.WithLimit(limit), db.WithOrder(withOrder))
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}

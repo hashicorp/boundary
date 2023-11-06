@@ -44,4 +44,7 @@ select *
         where public_id = @public_id
     );
 `
+	estimateCountPasswordAuthMethods = `
+select reltuples::bigint as estimate from pg_class where oid in ('auth_password_method'::regclass)
+`
 )

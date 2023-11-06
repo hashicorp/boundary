@@ -11,6 +11,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/password/store"
 	"github.com/hashicorp/boundary/internal/db"
 	dbassert "github.com/hashicorp/boundary/internal/db/assert"
@@ -403,13 +404,17 @@ func TestRepository_ListAuthMethods(t *testing.T) {
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	noAuthMethodOrg, _ := iam.TestScopes(t, iamRepo)
 	o, _ := iam.TestScopes(t, iamRepo)
-	authMethods := TestAuthMethods(t, conn, o.GetPublicId(), 3)
+	authMethods := TestAuthMethods(t, conn, o.GetPublicId(), 10)
+	var authAMs []auth.AuthMethod
+	for _, am := range authMethods {
+		authAMs = append(authAMs, am)
+	}
 
 	tests := []struct {
 		name       string
 		in         []string
-		opts       []Option
-		want       []*AuthMethod
+		opts       []auth.Option
+		want       []auth.AuthMethod
 		wantIsErr  errors.Code
 		wantErrMsg string
 	}{
@@ -426,7 +431,7 @@ func TestRepository_ListAuthMethods(t *testing.T) {
 		{
 			name: "With populated scope id",
 			in:   []string{o.GetPublicId()},
-			want: authMethods,
+			want: authAMs,
 		},
 	}
 
@@ -471,18 +476,18 @@ func TestRepository_ListAuthMethods_Multiple_Scopes(t *testing.T) {
 		iam.TestSetPrimaryAuthMethod(t, iam.TestRepo(t, conn, wrapper), o, ams[0].PublicId)
 		total += numPerScope
 	}
-	got, err := repo.ListAuthMethods(ctx, scopeIds, WithOrderByCreateTime(true))
+	got, err := repo.ListAuthMethods(ctx, scopeIds)
 	require.NoError(t, err)
 	assert.Equal(t, total, len(got))
 	found := map[string]struct{}{}
 	for _, am := range got {
 		switch {
-		case am.Clone().ScopeId == "global":
-			assert.Equalf(t, false, am.IsPrimaryAuthMethod, "expected the the global auth method to not be primary")
+		case am.GetScopeId() == "global":
+			assert.Equalf(t, false, am.GetIsPrimaryAuthMethod(), "expected the the global auth method to not be primary")
 		default:
-			if _, ok := found[am.ScopeId]; !ok {
-				found[am.ScopeId] = struct{}{}
-				assert.Equalf(t, true, am.IsPrimaryAuthMethod, "expected the first auth method created for the scope %s to be primary", am.ScopeId)
+			if _, ok := found[am.GetScopeId()]; !ok {
+				found[am.GetScopeId()] = struct{}{}
+				assert.Equalf(t, true, am.GetIsPrimaryAuthMethod(), "expected the first auth method created for the scope %s to be primary", am.GetScopeId())
 			}
 		}
 	}
@@ -504,18 +509,18 @@ func TestRepository_ListAuthMethods_Limits(t *testing.T) {
 	tests := []struct {
 		name     string
 		repoOpts []Option
-		listOpts []Option
+		listOpts []auth.Option
 		wantLen  int
 	}{
 		{
 			name:     "With no limits",
 			wantLen:  authMethodCount,
-			listOpts: []Option{WithOrderByCreateTime(true)},
+			listOpts: []auth.Option{},
 		},
 		{
 			name:     "With repo limit",
 			repoOpts: []Option{WithLimit(3)},
-			listOpts: []Option{WithOrderByCreateTime(true)},
+			listOpts: []auth.Option{},
 			wantLen:  3,
 		},
 		{
@@ -525,24 +530,24 @@ func TestRepository_ListAuthMethods_Limits(t *testing.T) {
 		},
 		{
 			name:     "With List limit",
-			listOpts: []Option{WithLimit(3), WithOrderByCreateTime(true)},
+			listOpts: []auth.Option{auth.WithLimit(ctx, 3)},
 			wantLen:  3,
 		},
 		{
 			name:     "With negative List limit",
-			listOpts: []Option{WithLimit(-1), WithOrderByCreateTime(true)},
+			listOpts: []auth.Option{auth.WithLimit(ctx, -1)},
 			wantLen:  authMethodCount,
 		},
 		{
 			name:     "With repo smaller than list limit",
 			repoOpts: []Option{WithLimit(2)},
-			listOpts: []Option{WithLimit(6), WithOrderByCreateTime(true)},
+			listOpts: []auth.Option{auth.WithLimit(ctx, 6)},
 			wantLen:  6,
 		},
 		{
 			name:     "With repo larger than list limit",
 			repoOpts: []Option{WithLimit(6)},
-			listOpts: []Option{WithLimit(2), WithOrderByCreateTime(true)},
+			listOpts: []auth.Option{auth.WithLimit(ctx, 2)},
 			wantLen:  2,
 		},
 	}
@@ -558,7 +563,7 @@ func TestRepository_ListAuthMethods_Limits(t *testing.T) {
 			require.NoError(err)
 			assert.Len(got, tt.wantLen)
 			if tt.wantLen > 0 {
-				assert.Equal(true, got[0].IsPrimaryAuthMethod)
+				assert.Equal(true, got[0].GetIsPrimaryAuthMethod())
 			}
 		})
 	}
@@ -794,6 +799,177 @@ func TestRepository_UpdateAuthMethod(t *testing.T) {
 			assert.NoError(err)
 		})
 	}
+}
+
+func TestRepository_ListAuthMethods_Pagination(t *testing.T) {
+	testConn, _ := db.TestSetup(t, "postgres")
+	testRw := db.New(testConn)
+	testWrapper := db.TestWrapper(t)
+	testKms := kms.TestKms(t, testConn, testWrapper)
+	testCtx := context.Background()
+	o, _ := iam.TestScopes(t, iam.TestRepo(t, testConn, testWrapper))
+
+	TestAuthMethods(t, testConn, o.GetPublicId(), 10)
+
+	t.Run("withStartPageAfterItem", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		repo, err := NewRepository(testCtx, testRw, testRw, testKms)
+		require.NoError(err)
+
+		page1, err := repo.ListAuthMethods(
+			context.Background(),
+			[]string{o.GetPublicId()},
+			auth.WithLimit(testCtx, 2),
+		)
+		require.NoError(err)
+		require.Len(page1, 2)
+		page2, err := repo.ListAuthMethods(
+			context.Background(),
+			[]string{o.GetPublicId()},
+			auth.WithLimit(testCtx, 2),
+			auth.WithStartPageAfterItem(testCtx, page1[1]),
+		)
+		require.NoError(err)
+		require.Len(page2, 2)
+		for _, item := range page1 {
+			assert.NotEqual(item.GetPublicId(), page2[0].GetPublicId())
+			assert.NotEqual(item.GetPublicId(), page2[1].GetPublicId())
+		}
+		page3, err := repo.ListAuthMethods(
+			context.Background(),
+			[]string{o.GetPublicId()},
+			auth.WithLimit(testCtx, 2),
+			auth.WithStartPageAfterItem(testCtx, page2[1]),
+		)
+		require.NoError(err)
+		require.Len(page3, 2)
+		for _, item := range page2 {
+			assert.NotEqual(item.GetPublicId(), page3[0].GetPublicId())
+			assert.NotEqual(item.GetPublicId(), page3[1].GetPublicId())
+		}
+		page4, err := repo.ListAuthMethods(
+			context.Background(),
+			[]string{o.GetPublicId()},
+			auth.WithLimit(testCtx, 2),
+			auth.WithStartPageAfterItem(testCtx, page3[1]),
+		)
+		require.NoError(err)
+		require.Len(page4, 2)
+		for _, item := range page3 {
+			assert.NotEqual(item.GetPublicId(), page4[0].GetPublicId())
+			assert.NotEqual(item.GetPublicId(), page4[1].GetPublicId())
+		}
+		page5, err := repo.ListAuthMethods(
+			context.Background(),
+			[]string{o.GetPublicId()},
+			auth.WithLimit(testCtx, 2),
+			auth.WithStartPageAfterItem(testCtx, page4[1]),
+		)
+		require.NoError(err)
+		require.Len(page5, 2)
+		for _, item := range page4 {
+			assert.NotEqual(item.GetPublicId(), page5[0].GetPublicId())
+			assert.NotEqual(item.GetPublicId(), page5[1].GetPublicId())
+		}
+		page6, err := repo.ListAuthMethods(
+			context.Background(),
+			[]string{o.GetPublicId()},
+			auth.WithLimit(testCtx, 2),
+			auth.WithStartPageAfterItem(testCtx, page5[1]),
+		)
+		require.NoError(err)
+		require.Empty(page6)
+
+		// Update the first target and check that it gets listed subsequently
+		page1[0].(*AuthMethod).Name = "new-name"
+		_, _, err = repo.UpdateAuthMethod(testCtx, page1[0].(*AuthMethod), page1[0].GetVersion(), []string{"name"})
+		require.NoError(err)
+		page7, err := repo.ListAuthMethods(
+			context.Background(),
+			[]string{o.GetPublicId()},
+			auth.WithLimit(testCtx, 2),
+			auth.WithStartPageAfterItem(testCtx, page5[1]),
+		)
+		require.NoError(err)
+		require.Len(page7, 1)
+		require.Equal(page7[0].GetPublicId(), page1[0].GetPublicId())
+	})
+}
+
+func Test_ListDeletedAuthMethodIds(t *testing.T) {
+	testConn, _ := db.TestSetup(t, "postgres")
+	testRw := db.New(testConn)
+	testWrapper := db.TestWrapper(t)
+
+	ctx := context.Background()
+	testKms := kms.TestKms(t, testConn, testWrapper)
+	iamRepo := iam.TestRepo(t, testConn, testWrapper)
+	org, _ := iam.TestScopes(t, iamRepo)
+
+	repo, err := NewRepository(ctx, testRw, testRw, testKms)
+	assert.NoError(t, err)
+
+	// Expect no entries at the start
+	deletedIds, err := repo.ListDeletedAuthMethodIds(ctx, time.Now().AddDate(-1, 0, 0))
+	require.NoError(t, err)
+	require.Empty(t, deletedIds)
+
+	// Create and delete auth method
+	authMethod := TestAuthMethod(t, testConn, org.PublicId)
+	_, err = repo.DeleteAuthMethod(ctx, org.GetPublicId(), authMethod.GetPublicId())
+	require.NoError(t, err)
+
+	// Expect a single entry
+	deletedIds, err = repo.ListDeletedAuthMethodIds(ctx, time.Now().AddDate(-1, 0, 0))
+	require.NoError(t, err)
+	require.Equal(t, []string{authMethod.PublicId}, deletedIds)
+
+	// Try again with the time set to now, expect no entries
+	deletedIds, err = repo.ListDeletedAuthMethodIds(ctx, time.Now())
+	require.NoError(t, err)
+	require.Empty(t, deletedIds)
+}
+
+func Test_EstimatedAuthMethodCount(t *testing.T) {
+	testConn, _ := db.TestSetup(t, "postgres")
+	testRw := db.New(testConn)
+	testWrapper := db.TestWrapper(t)
+
+	testCtx := context.Background()
+	sqlDb, err := testConn.SqlDB(testCtx)
+	require.NoError(t, err)
+	testKms := kms.TestKms(t, testConn, testWrapper)
+	iamRepo := iam.TestRepo(t, testConn, testWrapper)
+	org, _ := iam.TestScopes(t, iamRepo)
+
+	testRepo, err := NewRepository(testCtx, testRw, testRw, testKms)
+	assert.NoError(t, err)
+
+	// Check total entries at start, expect 0
+	numItems, err := testRepo.EstimatedAuthMethodCount(testCtx)
+	require.NoError(t, err)
+	assert.Equal(t, 0, numItems)
+
+	// Create an auth method, expect 1 entries
+	authMethod := TestAuthMethod(t, testConn, org.PublicId)
+
+	// Run analyze to update postgres meta tables
+	_, err = sqlDb.ExecContext(testCtx, "analyze")
+	require.NoError(t, err)
+
+	numItems, err = testRepo.EstimatedAuthMethodCount(testCtx)
+	require.NoError(t, err)
+	assert.Equal(t, 1, numItems)
+
+	// // Delete the auth method, expect 0 again
+	_, err = testRepo.DeleteAuthMethod(testCtx, org.GetPublicId(), authMethod.GetPublicId())
+	require.NoError(t, err)
+	_, err = sqlDb.ExecContext(testCtx, "analyze")
+	require.NoError(t, err)
+
+	numItems, err = testRepo.EstimatedAuthMethodCount(testCtx)
+	require.NoError(t, err)
+	assert.Equal(t, 0, numItems)
 }
 
 func assertPublicId(t *testing.T, prefix, actual string) {

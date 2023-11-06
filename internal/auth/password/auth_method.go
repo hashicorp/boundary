@@ -7,6 +7,7 @@ import (
 	"context"
 
 	"github.com/hashicorp/boundary/internal/auth/password/store"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/types/resource"
@@ -101,4 +102,14 @@ func (a *authMethodView) TableName() string {
 		return a.tableName
 	}
 	return "auth_password_method_with_is_primary"
+}
+
+type deletedAuthMethod struct {
+	PublicId   string `gorm:"primary_key"`
+	DeleteTime *timestamp.Timestamp
+}
+
+// TableName returns the tablename to override the default gorm table name
+func (s *deletedAuthMethod) TableName() string {
+	return "auth_password_method_deleted"
 }
