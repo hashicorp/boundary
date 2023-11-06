@@ -6,6 +6,7 @@ package roles
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/url"
@@ -354,6 +355,9 @@ func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) (*Role
 	for i, item := range target.Items {
 		idToIndex[item.Id] = i
 	}
+	// Removed IDs in the response may contain duplicates,
+	// maintain a set to avoid returning duplicates to the user.
+	removedIds := map[string]struct{}{}
 	for {
 		req, err := c.client.NewRequest(ctx, "GET", "roles", nil, apiOpts...)
 		if err != nil {
@@ -391,7 +395,9 @@ func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) (*Role
 				idToIndex[item.Id] = len(target.Items) - 1
 			}
 		}
-		target.RemovedIds = append(target.RemovedIds, page.RemovedIds...)
+		for _, removedId := range page.RemovedIds {
+			removedIds[removedId] = struct{}{}
+		}
 		target.EstItemCount = page.EstItemCount
 		target.ListToken = page.ListToken
 		target.ResponseType = page.ResponseType
@@ -410,11 +416,35 @@ func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) (*Role
 			idToIndex[target.Items[i].Id] = i
 		}
 	}
-	// Finally, sort the results again since in-place updates and deletes
-	// may have shuffled items.
+	for deletedId := range removedIds {
+		target.RemovedIds = append(target.RemovedIds, deletedId)
+	}
+	// Sort to make response deterministic
+	slices.Sort(target.RemovedIds)
+	// Since we paginated to the end, we can avoid confusion
+	// for the user by setting the estimated item count to the
+	// length of the items slice. If we don't set this here, it
+	// will equal the value returned in the last response, which is
+	// often much smaller than the total number returned.
+	target.EstItemCount = uint(len(target.Items))
+	// Sort the results again since in-place updates and deletes
+	// may have shuffled items. We sort by created time descending
+	// (most recently created first), same as the API.
 	slices.SortFunc(target.Items, func(i, j *Role) int {
-		return i.UpdatedTime.Compare(j.UpdatedTime)
+		return j.CreatedTime.Compare(i.CreatedTime)
 	})
+	// Finally, since we made at least 2 requests to the server to fulfill this
+	// function call, resp.Body and resp.Map will only contain the most recent response.
+	// Overwrite them with the true response.
+	target.response.Body.Reset()
+	if err := json.NewEncoder(target.response.Body).Encode(target); err != nil {
+		return nil, fmt.Errorf("error encoding final JSON list response: %w", err)
+	}
+	if err := json.Unmarshal(target.response.Body.Bytes(), &target.response.Map); err != nil {
+		return nil, fmt.Errorf("error encoding final map list response: %w", err)
+	}
+	// Note: the HTTP response body is consumed by resp.Decode in the loop,
+	// so it doesn't need to be updated (it will always be, and has always been, empty).
 	return target, nil
 }
 
