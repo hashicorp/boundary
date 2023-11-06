@@ -17,6 +17,10 @@ const (
        `
 
 	estimateCountOidcAuthMethods = `
-select reltuples::bigint as estimate from pg_class where oid in ('auth_oidc_method'::regclass)
-`
+	select reltuples::bigint as estimate from pg_class where oid in ('auth_oidc_method'::regclass)
+	`
+
+	estimateCountOidcAccounts = `
+  	select reltuples::bigint as estimate from pg_class where oid in ('auth_oidc_account'::regclass)
+	`
 )
