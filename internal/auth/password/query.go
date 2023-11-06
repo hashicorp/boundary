@@ -47,4 +47,7 @@ select *
 	estimateCountPasswordAuthMethods = `
 select reltuples::bigint as estimate from pg_class where oid in ('auth_password_method'::regclass)
 `
+	estimateCountPasswordAccounts = `
+select reltuples::bigint as estimate from pg_class where oid in ('auth_password_account'::regclass)
+`
 )

@@ -5,9 +5,11 @@ package password
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
@@ -145,24 +147,92 @@ func (r *Repository) LookupAccount(ctx context.Context, withPublicId string, opt
 	return a, nil
 }
 
-// ListAccounts in an auth method and supports WithLimit option.
+// ListAccounts in an auth method and supports the following options:
+//   - WithLimit
+//   - WithStartPageAfterItem
 func (r *Repository) ListAccounts(ctx context.Context, withAuthMethodId string, opt ...Option) ([]*Account, error) {
 	const op = "password.(Repository).ListAccounts"
 	if withAuthMethodId == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing auth method id")
 	}
 	opts := GetOpts(opt...)
+
 	limit := r.defaultLimit
 	if opts.withLimit != 0 {
 		// non-zero signals an override of the default limit for the repo.
 		limit = opts.withLimit
 	}
+
+	var args []any
+	args = append(args, sql.Named("with_auth_method_id", withAuthMethodId))
+	whereClause := "auth_method_id = @with_auth_method_id"
+
+	// Ordering and pagination are tightly coupled.
+	// We order by update_time ascending so that new
+	// and updated items appear at the end of the pagination.
+	// We need to further order by public_id to distinguish items
+	// with identical update times.
+	withOrder := "update_time asc, public_id asc"
+	if opts.withStartPageAfterItem != nil {
+		// Now that the order is defined, we can use a simple where
+		// clause to only include items updated since the specified
+		// start of the page. We use greater than or equal for the update
+		// time as there may be items with identical update_times. We
+		// then use PublicId as a tiebreaker.
+		args = append(args,
+			sql.Named("after_item_update_time", opts.withStartPageAfterItem.GetUpdateTime()),
+			sql.Named("after_item_id", opts.withStartPageAfterItem.GetPublicId()),
+		)
+		whereClause = "(" + whereClause + ") and (update_time > @after_item_update_time or (update_time = @after_item_update_time and public_id > @after_item_id))"
+	}
+
 	var accts []*Account
-	err := r.reader.SearchWhere(ctx, &accts, "auth_method_id = ?", []any{withAuthMethodId}, db.WithLimit(limit))
+	err := r.reader.SearchWhere(ctx, &accts, whereClause, args, db.WithLimit(limit), db.WithOrder(withOrder))
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	return accts, nil
+}
+
+// listDeletedAccountIds lists the public IDs of any accounts deleted since the timestamp provided.
+func (r *Repository) listDeletedAccountIds(ctx context.Context, since time.Time) ([]string, time.Time, error) {
+	const op = "password.(Repository).listDeletedAccountIds"
+	var deletedAccounts []*deletedAccount
+	var transactionTimestamp time.Time
+	if _, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(r db.Reader, w db.Writer) error {
+		if err := r.SearchWhere(ctx, &deletedAccounts, "delete_time >= ?", []any{since}); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to query deleted accounts"))
+		}
+		var err error
+		transactionTimestamp, err = r.Now(ctx)
+		if err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to query transaction timestamp"))
+		}
+		return nil
+	}); err != nil {
+		return nil, time.Time{}, err
+	}
+	var accountIds []string
+	for _, acct := range deletedAccounts {
+		accountIds = append(accountIds, acct.PublicId)
+	}
+	return accountIds, transactionTimestamp, nil
+}
+
+// estimatedAccountCount returns the total number of items in the accounts table.
+func (r *Repository) estimatedAccountCount(ctx context.Context) (int, error) {
+	const op = "password.(Repository).estimatedAccountCount"
+	rows, err := r.reader.Query(ctx, estimateCountPasswordAccounts, nil)
+	if err != nil {
+		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total accounts"))
+	}
+	var count int
+	for rows.Next() {
+		if err := r.reader.ScanRows(ctx, rows, &count); err != nil {
+			return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total accounts"))
+		}
+	}
+	return count, nil
 }
 
 // DeleteAccount deletes the account for the provided id from the repository returning a count of the
