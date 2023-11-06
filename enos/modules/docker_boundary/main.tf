@@ -54,6 +54,11 @@ variable "worker_tag" {
   type        = string
   default     = "collocated"
 }
+variable "max_page_size" {
+  description = "Max allowed page size for pagination requests"
+  type        = number
+  default     = 10
+}
 
 resource "docker_image" "boundary" {
   name         = var.image_name
@@ -114,7 +119,8 @@ resource "docker_container" "boundary" {
 
   upload {
     content = templatefile("${abspath(path.module)}/${var.config_file}", {
-      worker_type_tag = var.worker_tag
+      worker_type_tag = var.worker_tag,
+      max_page_size   = var.max_page_size
     })
     file = "/boundary/boundary-config.hcl"
   }
@@ -172,4 +178,8 @@ output "password" {
 
 output "worker_tag" {
   value = var.worker_tag
+}
+
+output "max_page_size" {
+  value = var.max_page_size
 }

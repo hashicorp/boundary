@@ -183,6 +183,7 @@ scenario "e2e_docker_base_with_worker" {
       vault_port               = step.create_vault.port
       worker_tag_egress        = local.egress_tag
       worker_tag_collocated    = step.create_boundary.worker_tag
+      max_page_size            = step.create_boundary.max_page_size
     }
   }
 }

@@ -122,6 +122,7 @@ scenario "e2e_docker_base" {
       target_address           = step.create_host.address
       target_port              = step.create_host.port
       target_user              = "ubuntu"
+      max_page_size            = step.create_boundary.max_page_size
     }
   }
 }
