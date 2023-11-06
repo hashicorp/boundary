@@ -250,6 +250,7 @@ jobs:
           export ENOS_VAR_enos_user=$GITHUB_ACTOR && \
           enos scenario launch --timeout 60m0s --chdir ./enos ${{ matrix.filter }}
       - name: Rename e2e tests output
+        continue-on-error: true
         run : |
           pushd enos
           scenario="${{ matrix.filter }}"
