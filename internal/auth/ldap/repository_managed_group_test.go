@@ -783,6 +783,57 @@ func TestRepository_ListManagedGroups_Limits(t *testing.T) {
 	}
 }
 
+func TestRepository_ListManagedGroups_Pagination(t *testing.T) {
+	t.Parallel()
+	testConn, _ := db.TestSetup(t, "postgres")
+	testRw := db.New(testConn)
+	testRootWrapper := db.TestWrapper(t)
+
+	testCtx := context.Background()
+	testKms := kms.TestKms(t, testConn, testRootWrapper)
+	iamRepo := iam.TestRepo(t, testConn, testRootWrapper)
+	org, _ := iam.TestScopes(t, iamRepo)
+
+	orgDbWrapper, err := testKms.GetWrapper(testCtx, org.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+	authMethod1 := TestAuthMethod(t, testConn, orgDbWrapper, org.PublicId, []string{"ldaps://ldap1"})
+
+	mgs1 := []*ManagedGroup{
+		TestManagedGroup(t, testConn, authMethod1, testGrpNames),
+		TestManagedGroup(t, testConn, authMethod1, testGrpNames),
+		TestManagedGroup(t, testConn, authMethod1, testGrpNames),
+		TestManagedGroup(t, testConn, authMethod1, testGrpNames),
+		TestManagedGroup(t, testConn, authMethod1, testGrpNames),
+	}
+	sort.Slice(mgs1, func(i, j int) bool {
+		return strings.Compare(mgs1[i].PublicId, mgs1[j].PublicId) < 0
+	})
+
+	testRepo, err := NewRepository(testCtx, testRw, testRw, testKms)
+	assert.NoError(t, err)
+	require.NotNil(t, testRepo)
+
+	page1, err := testRepo.ListManagedGroups(testCtx, authMethod1.GetPublicId(), WithLimit(testCtx, 2))
+	require.NoError(t, err)
+	require.Len(t, page1, 2)
+	page2, err := testRepo.ListManagedGroups(testCtx, authMethod1.GetPublicId(), WithLimit(testCtx, 2), WithStartPageAfterItem(testCtx, page1[1]))
+	require.NoError(t, err)
+	require.Len(t, page2, 2)
+	for _, item := range page1 {
+		assert.NotEqual(t, item.GetPublicId(), page2[0].GetPublicId())
+		assert.NotEqual(t, item.GetPublicId(), page2[1].GetPublicId())
+	}
+	page3, err := testRepo.ListManagedGroups(testCtx, authMethod1.GetPublicId(), WithLimit(testCtx, 2), WithStartPageAfterItem(testCtx, page2[1]))
+	require.NoError(t, err)
+	require.Len(t, page3, 1)
+	for _, item := range append(page1, page2...) {
+		assert.NotEqual(t, item.GetPublicId(), page3[0].GetPublicId())
+	}
+	page4, err := testRepo.ListManagedGroups(testCtx, authMethod1.GetPublicId(), WithLimit(testCtx, 2), WithStartPageAfterItem(testCtx, page3[0]))
+	require.NoError(t, err)
+	require.Empty(t, page4)
+}
+
 func TestRepository_UpdateManagedGroup(t *testing.T) {
 	t.Parallel()
 	testCtx := context.Background()
@@ -1224,4 +1275,100 @@ func TestRepository_UpdateManagedGroup(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Test_listDeletedManagedGroupIds(t *testing.T) {
+	testConn, _ := db.TestSetup(t, "postgres")
+	testRw := db.New(testConn)
+	testWrapper := db.TestWrapper(t)
+
+	ctx := context.Background()
+	testKms := kms.TestKms(t, testConn, testWrapper)
+	iamRepo := iam.TestRepo(t, testConn, testWrapper)
+	org, _ := iam.TestScopes(t, iamRepo)
+
+	orgDbWrapper, err := testKms.GetWrapper(ctx, org.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+
+	repo, err := NewRepository(ctx, testRw, testRw, testKms)
+	assert.NoError(t, err)
+
+	// Expect no entries at the start
+	deletedIds, ttime, err := repo.listDeletedManagedGroupIds(ctx, time.Now().AddDate(-1, 0, 0))
+	require.NoError(t, err)
+	require.Empty(t, deletedIds)
+	// Transaction time should be within ~10 seconds of now
+	now := time.Now()
+	assert.True(t, ttime.Add(-10*time.Second).Before(now))
+	assert.True(t, ttime.Add(10*time.Second).After(now))
+
+	// Create and delete managed group
+	authMethod := TestAuthMethod(t, testConn, orgDbWrapper, org.PublicId, []string{"ldaps://ldap1"})
+	mg := TestManagedGroup(t, testConn, authMethod, testGrpNames)
+	require.NoError(t, err)
+	_, err = repo.DeleteManagedGroup(ctx, org.GetPublicId(), mg.GetPublicId())
+	require.NoError(t, err)
+
+	// Expect a single entry
+	deletedIds, ttime, err = repo.listDeletedManagedGroupIds(ctx, time.Now().AddDate(-1, 0, 0))
+	require.NoError(t, err)
+	require.Equal(t, []string{mg.PublicId}, deletedIds)
+	now = time.Now()
+	assert.True(t, ttime.Add(-10*time.Second).Before(now))
+	assert.True(t, ttime.Add(10*time.Second).After(now))
+
+	// Try again with the time set to now, expect no entries
+	deletedIds, ttime, err = repo.listDeletedManagedGroupIds(ctx, time.Now())
+	require.NoError(t, err)
+	require.Empty(t, deletedIds)
+	now = time.Now()
+	assert.True(t, ttime.Add(-10*time.Second).Before(now))
+	assert.True(t, ttime.Add(10*time.Second).After(now))
+}
+
+func Test_estimatedManagedGroupCount(t *testing.T) {
+	testConn, _ := db.TestSetup(t, "postgres")
+	testRw := db.New(testConn)
+	testWrapper := db.TestWrapper(t)
+
+	testCtx := context.Background()
+	sqlDb, err := testConn.SqlDB(testCtx)
+	require.NoError(t, err)
+	testKms := kms.TestKms(t, testConn, testWrapper)
+	iamRepo := iam.TestRepo(t, testConn, testWrapper)
+	org, _ := iam.TestScopes(t, iamRepo)
+
+	orgDbWrapper, err := testKms.GetWrapper(testCtx, org.PublicId, kms.KeyPurposeDatabase)
+
+	require.NoError(t, err)
+
+	testRepo, err := NewRepository(testCtx, testRw, testRw, testKms)
+	assert.NoError(t, err)
+
+	// Check total entries at start, expect 0
+	numItems, err := testRepo.estimatedManagedGroupCount(testCtx)
+	require.NoError(t, err)
+	assert.Equal(t, 0, numItems)
+
+	// Create a managed group, expect 1 entries
+	authMethod := TestAuthMethod(t, testConn, orgDbWrapper, org.PublicId, []string{"ldaps://ldap1"})
+	mg := TestManagedGroup(t, testConn, authMethod, testGrpNames)
+
+	// Run analyze to update postgres meta tables
+	_, err = sqlDb.ExecContext(testCtx, "analyze")
+	require.NoError(t, err)
+
+	numItems, err = testRepo.estimatedManagedGroupCount(testCtx)
+	require.NoError(t, err)
+	assert.Equal(t, 1, numItems)
+
+	// Delete the managed group, expect 0 again
+	_, err = testRepo.DeleteManagedGroup(testCtx, org.GetPublicId(), mg.GetPublicId())
+	require.NoError(t, err)
+	_, err = sqlDb.ExecContext(testCtx, "analyze")
+	require.NoError(t, err)
+
+	numItems, err = testRepo.estimatedManagedGroupCount(testCtx)
+	require.NoError(t, err)
+	assert.Equal(t, 0, numItems)
 }

@@ -10,4 +10,7 @@ select reltuples::bigint as estimate from pg_class where oid in ('auth_ldap_acco
 	estimateCountLdapAuthMethods = `
 select reltuples::bigint as estimate from pg_class where oid in ('auth_ldap_method'::regclass)
 `
+	estimateCountLdapManagedGroups = `
+select reltuples::bigint as estimate from pg_class where oid in ('auth_ldap_managed_group'::regclass)
+`
 )
