@@ -14,7 +14,7 @@ begin;
     );
   $$ language sql;
 
-  -- the op table for each deletion table should be tested for the inded
+  -- the op table for each deletion table should be tested for the index
   select plan(a.table_count::integer)
     from (
       select count(*) as table_count
