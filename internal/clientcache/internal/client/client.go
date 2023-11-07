@@ -12,6 +12,7 @@ import (
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/internal/clientcache/internal/daemon"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/version"
 	"github.com/hashicorp/go-cleanhttp"
 	"github.com/hashicorp/go-retryablehttp"
@@ -24,7 +25,19 @@ type Client struct {
 	u      *url.URL
 }
 
+// New returns a client which will always send requests over the unix socket
+// specified in the provided address.  If the address doesn't have the "unix"
+// schema or the path is unset, an error is returned.
 func New(ctx context.Context, address *url.URL) (*Client, error) {
+	const op = "client.New"
+	switch {
+	case address == nil:
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "address is nil")
+	case address.Scheme != "unix":
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "address does not have a unix schema")
+	case address.Path == "":
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "address path is empty")
+	}
 	c := &retryablehttp.Client{
 		HTTPClient:   cleanhttp.DefaultClient(),
 		RetryWaitMin: 100 * time.Millisecond,
@@ -42,11 +55,14 @@ func New(ctx context.Context, address *url.URL) (*Client, error) {
 	return &Client{client: c, u: address}, nil
 }
 
+// Response returns the *http.Response as well as providing the body of the response
+// through a call to Body().
 type Response struct {
 	*http.Response
 	contents []byte
 }
 
+// Body returns the pre-read response body.
 func (r Response) Body() []byte {
 	return r.contents
 }
@@ -119,6 +135,8 @@ func parseReponse(resp *http.Response) (*Response, *api.Error, error) {
 
 	ret := &Response{Response: resp, contents: body.Bytes()}
 	switch {
+	case resp.StatusCode == 404:
+		return ret, api.ErrNotFound, nil
 	case resp.StatusCode >= 400:
 		apiErr := &api.Error{}
 		reader := bytes.NewReader(ret.contents)
