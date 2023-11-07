@@ -14,8 +14,14 @@ import (
 	"github.com/hashicorp/boundary/internal/perms"
 )
 
+// ValidateAppTokenGrants will ensure that the apptokens grants don't exceed the
+// grants of the user
+func ValidateAppTokenGrants(ctx context.Context, gf grantFinder, createdByUserId string, appTokenGrants []string) error {
+	panic("todo")
+}
+
 // CreateAppToken will create an apptoken in the repository and return the written apptoken
-// Takes in grant string
+// Takes in grant string.  Options supported: WithName, WithDescription
 func (r *Repository) CreateAppToken(ctx context.Context, scopeId string, expTime time.Time, createdByUserId string, grantsStr []string, opt ...Option) (*AppToken, []*AppTokenGrant, error) {
 	const op = "apptoken.(Repository).CreateAppToken"
 
@@ -43,6 +49,7 @@ func (r *Repository) CreateAppToken(ctx context.Context, scopeId string, expTime
 		grants = append(grants, &grant)
 	}
 
+	// factory supports options: WithName and WithDescription
 	appT, err := NewAppToken(ctx, scopeId, expTime, createdByUserId, opt...)
 	if err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op)
@@ -66,6 +73,12 @@ func (r *Repository) CreateAppToken(ctx context.Context, scopeId string, expTime
 			return nil, nil, errors.Wrap(ctx, err, op)
 		}
 		appTokenGrants = append(appTokenGrants, g)
+	}
+
+	// TODO: We need to validate that the apptoken grants don't exceed the
+	// grants for the createdByUserId.  You can't give grants you don't have.
+	if err := ValidateAppTokenGrants(ctx, r.grantFinder, createdByUserId, grantsStr); err != nil {
+		return nil, nil, errors.Wrap(ctx, err, op)
 	}
 
 	var retAppToken *AppToken

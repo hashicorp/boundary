@@ -9,13 +9,20 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/perms"
 )
+
+// grantFinder defines a single func interface which is implemented by iam.Repository.
+type grantFinder interface {
+	GrantsForUser(ctx context.Context, userId string, _ ...Option) ([]perms.GrantTuple, error)
+}
 
 // Repository is the apptoken database repository
 type Repository struct {
-	reader db.Reader
-	writer db.Writer
-	kms    *kms.Kms
+	reader      db.Reader
+	writer      db.Writer
+	kms         *kms.Kms
+	grantFinder grantFinder
 
 	// defaultLimit provides a default for limiting the number of results returned from the repo.
 	// If defaultLimit < 0, then unlimited results are returned. If defaultLimit == 0, then boundary
@@ -25,7 +32,7 @@ type Repository struct {
 
 // NewRepository creates a new apptoken Repository. Supports the options: WithLimit
 // which sets a default limit on results returned by repo operations.
-func NewRepository(ctx context.Context, r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repository, error) {
+func NewRepository(ctx context.Context, r db.Reader, w db.Writer, kms *kms.Kms, gf grantFinder, opt ...Option) (*Repository, error) {
 	const op = "apptoken.NewRepository"
 	if r == nil {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil reader")
@@ -48,6 +55,7 @@ func NewRepository(ctx context.Context, r db.Reader, w db.Writer, kms *kms.Kms, 
 		reader:       r,
 		writer:       w,
 		kms:          kms,
+		grantFinder:  gf,
 		defaultLimit: opts.withLimit,
 	}, nil
 }
