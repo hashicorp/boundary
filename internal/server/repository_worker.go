@@ -570,8 +570,10 @@ func (r *Repository) UpdateWorker(ctx context.Context, worker *Worker, version u
 // ReportedStatus and Tags are intentionally ignored when creating a worker (not
 // included).  Currently, a worker can only be created in the global scope
 //
-// Options supported: WithNewIdFunc (this option is likely only useful for
-// tests), WithFetchNodeCredentialsRequest,
+// Options supported:
+// WithNewIdFunc (this option is likely only useful for tests),
+// withLocalStorageState (this option is likely only useful for tests),
+// WithFetchNodeCredentialsRequest,
 // WithCreateControllerLedActivationToken. The latter two are mutually
 // exclusive.
 func (r *Repository) CreateWorker(ctx context.Context, worker *Worker, opt ...Option) (*Worker, error) {
