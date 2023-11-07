@@ -54,18 +54,24 @@ func TestRepository_refreshSessions(t *testing.T) {
 			Id:       "ttcp_1",
 			Status:   "status1",
 			Endpoint: "address1",
+			ScopeId:  "p_123",
+			TargetId: "ttcp_123",
 			Type:     "tcp",
 		},
 		{
 			Id:       "ttcp_2",
 			Status:   "status2",
 			Endpoint: "address2",
+			ScopeId:  "p_123",
+			TargetId: "ttcp_123",
 			Type:     "tcp",
 		},
 		{
 			Id:       "ttcp_3",
 			Status:   "status3",
 			Endpoint: "address3",
+			ScopeId:  "p_123",
+			TargetId: "ttcp_123",
 			Type:     "tcp",
 		},
 	}
@@ -172,12 +178,16 @@ func TestRepository_RefreshSessions_withRefreshTokens(t *testing.T) {
 				Id:       "ttcp_1",
 				Status:   "status1",
 				Endpoint: "address1",
+				ScopeId:  "p_123",
+				TargetId: "ttcp_123",
 				Type:     "tcp",
 			},
 			{
 				Id:       "ttcp_2",
 				Status:   "status2",
 				Endpoint: "address2",
+				ScopeId:  "p_123",
+				TargetId: "ttcp_123",
 				Type:     "tcp",
 			},
 		},
@@ -186,6 +196,8 @@ func TestRepository_RefreshSessions_withRefreshTokens(t *testing.T) {
 				Id:       "ttcp_3",
 				Status:   "status3",
 				Endpoint: "address3",
+				ScopeId:  "p_123",
+				TargetId: "ttcp_123",
 				Type:     "tcp",
 			},
 		},
@@ -283,18 +295,24 @@ func TestRepository_ListSessions(t *testing.T) {
 			Id:       "ttcp_1",
 			Status:   "status1",
 			Endpoint: "address1",
+			ScopeId:  "p_123",
+			TargetId: "ttcp_123",
 			Type:     "tcp",
 		},
 		{
 			Id:       "ttcp_2",
 			Status:   "status2",
 			Endpoint: "address2",
+			ScopeId:  "p_123",
+			TargetId: "ttcp_123",
 			Type:     "tcp",
 		},
 		{
 			Id:       "ttcp_3",
 			Status:   "status3",
 			Endpoint: "address3",
+			ScopeId:  "p_123",
+			TargetId: "ttcp_123",
 			Type:     "tcp",
 		},
 	}
@@ -357,7 +375,7 @@ func TestRepository_QuerySessions(t *testing.T) {
 	require.NoError(t, r.AddKeyringToken(ctx, addr, kt1))
 	require.NoError(t, r.AddKeyringToken(ctx, addr, kt2))
 
-	query := "status % status1 or status % status2"
+	query := `(status % "status1" or status % "status2") and target_id % "ttcp_"`
 
 	errorCases := []struct {
 		name        string
@@ -390,18 +408,24 @@ func TestRepository_QuerySessions(t *testing.T) {
 			Id:       "ttcp_1",
 			Status:   "status1",
 			Endpoint: "address1",
+			ScopeId:  "p_123",
+			TargetId: "ttcp_123",
 			Type:     "tcp",
 		},
 		{
 			Id:       "ttcp_2",
 			Status:   "status2",
 			Endpoint: "address2",
+			ScopeId:  "p_123",
+			TargetId: "ttcp_123",
 			Type:     "tcp",
 		},
 		{
 			Id:       "ttcp_3",
 			Status:   "status3",
 			Endpoint: "address3",
+			ScopeId:  "p_123",
+			TargetId: "ttcp_123",
 			Type:     "tcp",
 		},
 	}
