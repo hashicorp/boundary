@@ -298,7 +298,7 @@ jobs:
           enos scenario destroy --timeout 60m0s --chdir ./enos ${{ matrix.filter }}
       - name: Get logs for aws dependencies error
         # Retrieve logs from the terraform to help diagnose some aws cleanup issues
-        if: always() && (contains(matrix.filter, 'e2e_aws') || matrix.filter == 'e2e_database') && steps.destroy.outcome == 'failure'
+        if: ${{ always() && steps.destroy.outcome == 'failure' }}
         continue-on-error: true
         run: |
           enos scenario exec --cmd graph --chdir ./enos ${{ matrix.filter }}
