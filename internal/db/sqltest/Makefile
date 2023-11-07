@@ -33,7 +33,8 @@ TESTS ?= tests/setup/*.sql \
 		 tests/domain/*.sql \
 		 tests/history/*.sql \
 		 tests/recording/*.sql \
-		 tests/purge/*sql
+		 tests/purge/*sql \
+		 tests/index/*sql
 
 POSTGRES_DOCKER_IMAGE_BASE ?= postgres
 
