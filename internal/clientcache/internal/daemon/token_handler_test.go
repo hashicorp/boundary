@@ -108,7 +108,7 @@ func TestKeyringToken(t *testing.T) {
 		}
 		apiErr := addToken(t, ph, pa)
 		require.NotNil(t, apiErr)
-		assert.Contains(t, apiErr.Message, "KeyringType is a required field but was empty")
+		assert.Contains(t, apiErr.Message, "keyring_type is a required field but was empty")
 		assert.False(t, tr.called)
 	})
 
@@ -123,7 +123,7 @@ func TestKeyringToken(t *testing.T) {
 		}
 		apiErr := addToken(t, ph, pa)
 		require.NotNil(t, apiErr)
-		assert.Contains(t, apiErr.Message, "KeyringType is set to none which is not supported")
+		assert.Contains(t, apiErr.Message, "keyring.keyring_type is set to none which is not supported")
 		assert.False(t, tr.called)
 	})
 
@@ -138,7 +138,7 @@ func TestKeyringToken(t *testing.T) {
 		}
 		apiErr := addToken(t, ph, pa)
 		assert.NotNil(t, apiErr)
-		assert.Contains(t, apiErr.Message, "TokenName is a required field but was empty")
+		assert.Contains(t, apiErr.Message, "keyring.token_name is a required field but was empty")
 		assert.False(t, tr.called)
 	})
 
@@ -153,7 +153,7 @@ func TestKeyringToken(t *testing.T) {
 		}
 		apiErr := addToken(t, ph, pa)
 		assert.NotNil(t, apiErr)
-		assert.Contains(t, apiErr.Message, "BoundaryAddr is a required field but was empty")
+		assert.Contains(t, apiErr.Message, "boundary_addr is a required field but was empty")
 		assert.False(t, tr.called)
 	})
 
@@ -168,7 +168,7 @@ func TestKeyringToken(t *testing.T) {
 		}
 		apiErr := addToken(t, ph, pa)
 		assert.NotNil(t, apiErr)
-		assert.Contains(t, apiErr.Message, "AuthTokenId is a required field but was empty")
+		assert.Contains(t, apiErr.Message, "auth_token_id is a required field but was empty")
 		assert.False(t, tr.called)
 	})
 
@@ -234,7 +234,7 @@ func TestKeyringlessToken(t *testing.T) {
 		}
 		apiErr := addToken(t, ph, pa)
 		assert.NotNil(t, apiErr)
-		assert.Contains(t, apiErr.Message, "BoundaryAddr is a required field but was empty")
+		assert.Contains(t, apiErr.Message, "boundary_addr is a required field but was empty")
 		assert.False(t, tr.called)
 	})
 
@@ -246,7 +246,7 @@ func TestKeyringlessToken(t *testing.T) {
 		}
 		apiErr := addToken(t, ph, pa)
 		assert.NotNil(t, apiErr)
-		assert.Contains(t, apiErr.Message, "AuthTokenId is a required field but was empty")
+		assert.Contains(t, apiErr.Message, "auth_token_id is a required field but was empty")
 		assert.False(t, tr.called)
 	})
 
@@ -258,7 +258,7 @@ func TestKeyringlessToken(t *testing.T) {
 		}
 		apiErr := addToken(t, ph, pa)
 		assert.NotNil(t, apiErr)
-		assert.Contains(t, apiErr.Message, "The auth token id doesn't match the auth token's prefix")
+		assert.Contains(t, apiErr.Message, "auth_token_id doesn't match the auth_token's prefix")
 		assert.False(t, tr.called)
 	})
 
