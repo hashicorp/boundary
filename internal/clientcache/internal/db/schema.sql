@@ -120,6 +120,7 @@ create table if not exists target (
   name text,
   description text,
   address text,
+  scope_id text,
   -- item is the json representation of this resource from the perspective of
   -- the the requesting user.
   item text,
@@ -141,6 +142,8 @@ create table if not exists session (
   endpoint text,
   type text,
   status text,
+  scope_id text,
+  target_id text,
   -- item is the json representation of this resource from the perspective of
   -- of the user whose id is set in user_id
   item text,
