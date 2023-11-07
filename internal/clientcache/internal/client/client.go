@@ -21,8 +21,8 @@ import (
 const hostHeader = "api.boundary.localhost"
 
 type Client struct {
-	client *retryablehttp.Client
-	u      *url.URL
+	client       *retryablehttp.Client
+	unixHostPath string
 }
 
 // New returns a client which will always send requests over the unix socket
@@ -52,7 +52,7 @@ func New(ctx context.Context, address *url.URL) (*Client, error) {
 		dialer := net.Dialer{}
 		return dialer.DialContext(ctx, "unix", address.Path)
 	}
-	return &Client{client: c, u: address}, nil
+	return &Client{client: c, unixHostPath: address.Path}, nil
 }
 
 // Response returns the *http.Response as well as providing the body of the response
@@ -70,22 +70,11 @@ func (r Response) Body() []byte {
 // Get sends a GET http request to the provided path.  The vals provided are
 // encoded and attached to the request if present.
 func (c *Client) Get(ctx context.Context, path string, vals *url.Values) (*Response, *api.Error, error) {
-	req := &http.Request{
-		Method: "GET",
-		URL: &url.URL{
-			Scheme: "http",
-			Host:   c.u.Path,
-			Path:   path,
-		},
-		Host: hostHeader,
-	}
+	req := c.request(ctx, "GET", path)
 	if vals != nil {
 		req.URL.RawQuery = vals.Encode()
 	}
-	req.Header = http.Header{}
-	req.Header.Add(daemon.VersionHeaderKey, version.Get().VersionNumber())
-	ret := &retryablehttp.Request{Request: req}
-	resp, err := c.client.Do(ret)
+	resp, err := c.client.Do(req)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -96,28 +85,15 @@ func (c *Client) Get(ctx context.Context, path string, vals *url.Values) (*Respo
 // Post sends a POST http request to the provided path.  The body is marshaled
 // to  json and added to the request body.
 func (c *Client) Post(ctx context.Context, path string, body any) (*Response, *api.Error, error) {
-	b, err := json.Marshal(body)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error marshaling body: %w", err)
+	req := c.request(ctx, "POST", path)
+	if body != nil {
+		b, err := json.Marshal(body)
+		if err != nil {
+			return nil, nil, fmt.Errorf("error marshaling body: %w", err)
+		}
+		req.SetBody(b)
 	}
-
-	req := &http.Request{
-		Method: "POST",
-		URL: &url.URL{
-			Scheme: "http",
-			Host:   c.u.Path,
-			Path:   path,
-		},
-		Host: hostHeader,
-	}
-	req.Header = http.Header{}
-	req.Header.Add(daemon.VersionHeaderKey, version.Get().VersionNumber())
-
-	ret := &retryablehttp.Request{
-		Request: req,
-	}
-	ret.SetBody(b)
-	resp, err := c.client.Do(ret)
+	resp, err := c.client.Do(req)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -125,6 +101,30 @@ func (c *Client) Post(ctx context.Context, path string, body any) (*Response, *a
 	return parseReponse(resp)
 }
 
+// request returns a retryablehttp.Request with the url set to the domain socket
+// associated with this client and proper headers set for client daemon requests.
+func (c *Client) request(ctx context.Context, method, path string) *retryablehttp.Request {
+	req := &http.Request{
+		Method: method,
+		URL: &url.URL{
+			Scheme: "http",
+			Host:   c.unixHostPath,
+			Path:   path,
+		},
+		Host: hostHeader,
+	}
+	req.Header = http.Header{}
+	req.Header.Set(daemon.VersionHeaderKey, version.Get().VersionNumber())
+	req.Header.Set("content-type", "application/json")
+
+	return &retryablehttp.Request{
+		Request: req.Clone(ctx),
+	}
+}
+
+// parseReponse takes the http.Response, reads and stores the response body
+// and returns it, or if it detects an error, it returns the appropriate error
+// or api.Error.
 func parseReponse(resp *http.Response) (*Response, *api.Error, error) {
 	body := bytes.Buffer{}
 	if resp.Body != nil {
