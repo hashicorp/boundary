@@ -184,7 +184,7 @@ func (c *Controller) registerGrpcServices(s *grpc.Server) error {
 		services.RegisterScopeServiceServer(s, os)
 	}
 	if _, ok := currentServices[services.UserService_ServiceDesc.ServiceName]; !ok {
-		us, err := users.NewService(c.baseContext, c.IamRepoFn)
+		us, err := users.NewService(c.baseContext, c.IamRepoFn, c.conf.RawConfig.Controller.MaxPageSize)
 		if err != nil {
 			return fmt.Errorf("failed to create user handler service: %w", err)
 		}

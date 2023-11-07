@@ -144,7 +144,7 @@ func TestGet(t *testing.T) {
 			req := proto.Clone(toMerge).(*pbs.GetUserRequest)
 			proto.Merge(req, tc.req)
 
-			s, err := users.NewService(context.Background(), repoFn)
+			s, err := users.NewService(context.Background(), repoFn, 1000)
 			require.NoError(err, "Couldn't create new user service.")
 
 			got, gErr := s.GetUser(auth.DisabledAuthTestContext(repoFn, u.GetScopeId()), req)
@@ -183,7 +183,7 @@ func TestList(t *testing.T) {
 	secondaryAm := password.TestAuthMethods(t, conn, oWithUsers.PublicId, 1)
 	require.Len(t, secondaryAm, 1)
 
-	s, err := users.NewService(context.Background(), repoFn)
+	s, err := users.NewService(context.Background(), repoFn, 1000)
 	require.NoError(t, err)
 
 	var wantUsers []*pb.User
@@ -332,7 +332,7 @@ func (s sortableUsers) Swap(i, j int)      { s.users[i], s.users[j] = s.users[j]
 func TestDelete(t *testing.T) {
 	u, _, repoFn := createDefaultUserAndRepo(t, false)
 
-	s, err := users.NewService(context.Background(), repoFn)
+	s, err := users.NewService(context.Background(), repoFn, 1000)
 	require.NoError(t, err, "Error when getting new user service.")
 
 	cases := []struct {
@@ -379,7 +379,7 @@ func TestDelete_twice(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 	u, _, repoFn := createDefaultUserAndRepo(t, false)
 
-	s, err := users.NewService(context.Background(), repoFn)
+	s, err := users.NewService(context.Background(), repoFn, 1000)
 	require.NoError(err, "Error when getting new user service")
 	req := &pbs.DeleteUserRequest{
 		Id: u.GetPublicId(),
@@ -471,7 +471,7 @@ func TestCreate(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			s, err := users.NewService(context.Background(), repoFn)
+			s, err := users.NewService(context.Background(), repoFn, 1000)
 			require.NoError(err, "Error when getting new user service.")
 
 			got, gErr := s.CreateUser(auth.DisabledAuthTestContext(repoFn, tc.req.GetItem().GetScopeId()), tc.req)
@@ -500,7 +500,7 @@ func TestCreate(t *testing.T) {
 
 func TestUpdate(t *testing.T) {
 	u, _, repoFn := createDefaultUserAndRepo(t, false)
-	tested, err := users.NewService(context.Background(), repoFn)
+	tested, err := users.NewService(context.Background(), repoFn, 1000)
 	require.NoError(t, err, "Error when getting new user service.")
 
 	created := u.GetCreateTime().GetTimestamp().AsTime()
@@ -777,7 +777,7 @@ func TestAddAccount(t *testing.T) {
 	repoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
-	s, err := users.NewService(ctx, repoFn)
+	s, err := users.NewService(ctx, repoFn, 1000)
 	require.NoError(t, err, "Error when getting new user service.")
 
 	o, _ := iam.TestScopes(t, iamRepo)
@@ -937,7 +937,7 @@ func TestSetAccount(t *testing.T) {
 	repoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
-	s, err := users.NewService(ctx, repoFn)
+	s, err := users.NewService(ctx, repoFn, 1000)
 	require.NoError(t, err, "Error when getting new user service.")
 
 	o, _ := iam.TestScopes(t, iamRepo)
@@ -1099,7 +1099,7 @@ func TestRemoveAccount(t *testing.T) {
 	repoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
-	s, err := users.NewService(ctx, repoFn)
+	s, err := users.NewService(ctx, repoFn, 1000)
 	require.NoError(t, err, "Error when getting new user service.")
 
 	o, _ := iam.TestScopes(t, iamRepo)
