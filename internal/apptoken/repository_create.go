@@ -5,55 +5,98 @@ package apptoken
 
 import (
 	"context"
-	"fmt"
-	"strings"
+	"time"
 
-	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/internal/perms"
 )
 
 // CreateAppToken will create an apptoken in the repository and return the written apptoken
-func (r *Repository) CreateAppToken(ctx context.Context, appToken *AppToken, opt ...Option) (*AppToken, error) {
+// Takes in grant string
+func (r *Repository) CreateAppToken(ctx context.Context, scopeId string, expTime time.Time, createdByUserId string, grantsStr []string, opt ...Option) (*AppToken, []*AppTokenGrant, error) {
 	const op = "apptoken.(Repository).CreateAppToken"
-	if appToken == nil {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing app token")
-	}
-	if appToken.PublicId != "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "public id is not empty")
-	}
-	appT := appToken.Clone().(*AppToken)
 
-	opts := getOpts(opt...)
+	switch {
+	case scopeId == "":
+		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
+	case createdByUserId == "":
+		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing created by user id")
+	case expTime.IsZero():
+		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing expiration time")
+	case len(grantsStr) == 0:
+		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing grants")
+	}
 
-	if opts.withPublicId != "" {
-		if !strings.HasPrefix(opts.withPublicId, globals.UserPrefix+"_") {
-			return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("passed-in public ID %q has wrong prefix, should be %q", opts.withPublicId, globals.UserPrefix))
-		}
-		u.PublicId = opts.withPublicId
-	} else {
-		id, err := newUserId(ctx)
+	grants := make([]*perms.Grant, 0, len(grantsStr))
+	for _, grantStr := range grantsStr {
+		// Validate that the grant parses successfully. Note that we fake the scope
+		// here to avoid a lookup as the scope is only relevant at actual ACL
+		// checking time and we just care that it parses correctly.
+		const fakeScopeId = "o_abcd1234"
+		grant, err := perms.Parse(ctx, fakeScopeId, grantStr)
 		if err != nil {
-			return nil, errors.Wrap(ctx, err, op)
+			return nil, nil, errors.Wrap(ctx, err, op)
 		}
-		u.PublicId = id
+		grants = append(grants, &grant)
 	}
 
-	// There's no need to use r.lookupUser(...) here, because the new user cannot
-	// be associated with any accounts yet.  Why would you typically want to
-	// call r.lookupUser(...) here vs returning the create resource?  Well, the
-	// created resource doesn't include the user's primary account info (email,
-	// full name, etc), since you can't run DML against the view which does
-	// provide these output only attributes.  But in this case, there's no way a
-	// newly created user could have any accounts, so we don't need to use
-	// r.lookupUser(...). I'm adding this comment so a future version of myself
-	// doesn't come along and decide to start using r.lookupUser(...) here which
-	// would just be an unnecessary database lookup.  You're welcome future me.
-	resource, err := r.create(ctx, u)
+	appT, err := NewAppToken(ctx, scopeId, expTime, createdByUserId, opt...)
 	if err != nil {
-		if errors.IsUniqueError(err) {
-			return nil, errors.New(ctx, errors.NotUnique, op, fmt.Sprintf("user %s already exists in org %s", user.Name, user.ScopeId))
-		}
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("for %s", u.PublicId)))
+		return nil, nil, errors.Wrap(ctx, err, op)
 	}
-	return resource.(*User), nil
+	appTId, err := newAppTokenId(ctx)
+	if err != nil {
+		return nil, nil, errors.Wrap(ctx, err, op)
+	}
+
+	appT.PublicId = appTId
+
+	opLogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
+	if err != nil {
+		return nil, nil, errors.Wrap(ctx, err, op)
+	}
+
+	appTokenGrants := make([]*AppTokenGrant, 0, len(grantsStr))
+	for _, grant := range grants {
+		g, err := NewAppTokenGrant(ctx, appT.PublicId, grant.CanonicalString())
+		if err != nil {
+			return nil, nil, errors.Wrap(ctx, err, op)
+		}
+		appTokenGrants = append(appTokenGrants, g)
+	}
+
+	var retAppToken *AppToken
+	retAppTokenGrants := make([]*AppTokenGrant, 0, len(grantsStr))
+	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(r db.Reader, w db.Writer) error {
+		//TODO: Add ticket type for AppTOken in SQL
+		ticket, err := w.GetTicket(ctx, appT)
+		if err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+		var appTokenOpLogMsg oplog.Message
+
+		retAppToken = appT.clone()
+		if err := w.Create(ctx, retAppToken, db.NewOplogMsg(&appTokenOpLogMsg)); err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+
+		var msgs []*oplog.Message
+		if err := w.CreateItems(ctx, retAppToken, db.NewOplogMsg(&appTokenOpLogMsg)); err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+
+		if err := w.WriteOplogEntryWith(ctx, opLogWrapper, ticket, oplog.Metadata{}, append(msgs, &appTokenOpLogMsg)); err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, nil, errors.Wrap(ctx, err, op)
+	}
+
+	return appT, appTokenGrants, nil
 }
