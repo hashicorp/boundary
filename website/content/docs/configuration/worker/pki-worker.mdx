@@ -77,7 +77,9 @@ kms "aead" {
 }
 ```
 
-## Session recording <sup>(HCP/ENT)</sup>
+## Session recording
+
+<EnterpriseAlert product="boundary">This feature requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary or Boundary Enterprise</a></EnterpriseAlert>
 
 [Session recording](/boundary/docs/configuration/session-recording) requires at least one PKI worker with access to local and remote storage.
 PKI workers used for session recording require an accessible directory defined by `recording_storage_path` for
