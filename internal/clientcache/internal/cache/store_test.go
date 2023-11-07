@@ -443,6 +443,7 @@ func TestTarget(t *testing.T) {
 			Name:        "target",
 			Description: "target desc",
 			Address:     "some address",
+			ScopeId:     "p_123",
 			Item:        "{id:'tssh_1234567890'}",
 		}
 		require.ErrorContains(t, rw.Create(ctx, unknownTarget), "constraint failed")
@@ -455,6 +456,7 @@ func TestTarget(t *testing.T) {
 			Name:        "target",
 			Description: "target desc",
 			Address:     "some address",
+			ScopeId:     "p_123",
 			Item:        "{id:'tssh_1234567890'}",
 		}
 
@@ -482,6 +484,7 @@ func TestTarget(t *testing.T) {
 			Name:        "target",
 			Description: "target desc",
 			Address:     "some address",
+			ScopeId:     "p_123",
 			Item:        "{id:'tssh_1234567890'}",
 		}
 		require.NoError(t, rw.Create(ctx, target))
@@ -505,6 +508,7 @@ func TestTarget(t *testing.T) {
 			Name:        "target",
 			Description: "target desc",
 			Address:     "some address",
+			ScopeId:     "p_123",
 			Item:        "{id:'tssh_1234567890'}",
 		}
 		require.NoError(t, rw.Create(ctx, target))
@@ -548,10 +552,12 @@ func TestSession(t *testing.T) {
 	})
 	t.Run("session actions", func(t *testing.T) {
 		session := &Session{
-			UserId:   u.Id,
-			Id:       "s_1234567890",
-			Endpoint: "endpoint",
-			Item:     "{id:'s_1234567890'}",
+			UserId:      u.Id,
+			Id:          "s_1234567890",
+			Endpoint:    "endpoint",
+			ScopeId:     "p_123",
+			TargetId:    "ttcp_123",
+			Item:        "{id:'s_1234567890'}",
 		}
 
 		require.NoError(t, rw.Create(ctx, session))
@@ -576,6 +582,8 @@ func TestSession(t *testing.T) {
 			UserId:   u.Id,
 			Id:       "s_1234567890",
 			Endpoint: "endpoint",
+			ScopeId:  "p_123",
+			TargetId: "ttcp_123",
 			Item:     "{id:'s_1234567890'}",
 		}
 		require.NoError(t, rw.Create(ctx, session))
@@ -597,6 +605,8 @@ func TestSession(t *testing.T) {
 			UserId:   u.Id,
 			Id:       "s_1234567890",
 			Endpoint: "endpoint",
+			ScopeId:  "p_123",
+			TargetId: "ttcp_123",
 			Item:     "{id:'s_1234567890'}",
 		}
 		require.NoError(t, rw.Create(ctx, session))
