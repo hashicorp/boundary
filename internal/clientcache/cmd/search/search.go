@@ -142,18 +142,23 @@ func (c *SearchCommand) Run(args []string) int {
 }
 
 func (c *SearchCommand) Search(ctx context.Context) (*api.Response, error) {
-	keyringType, tokenName, err := c.DiscoverKeyringTokenInfo()
+	client, err := c.Client()
 	if err != nil {
 		return nil, err
 	}
+	t := client.Token()
+	if t == "" {
+		return nil, fmt.Errorf("Auth Token selected for searching is empty.")
+	}
+	tSlice := strings.SplitN(t, "_", 3)
+	if len(tSlice) != 3 {
+		return nil, fmt.Errorf("Auth Token selected for searching is in an unexpected format.")
+	}
 
 	tf := filterBy{
-		flagQuery: c.flagQuery,
-		resource:  c.flagResource,
-	}
-	at := c.ReadTokenFromKeyring(keyringType, tokenName)
-	if at != nil {
-		tf.authTokenId = at.Id
+		flagQuery:   c.flagQuery,
+		resource:    c.flagResource,
+		authTokenId: strings.Join(tSlice[:2], "_"),
 	}
 
 	dotPath, err := daemoncmd.DefaultDotDirectory(ctx)
