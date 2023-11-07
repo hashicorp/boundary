@@ -6,7 +6,6 @@ begin;
   as $$
     select split_part(deletion_table_name, '_deleted', 1);
   $$ language sql;
-  
   create function has_update_time_index(table_name name) returns text
   as $$
     select * from collect_tap(
