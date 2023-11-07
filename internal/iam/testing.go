@@ -7,6 +7,7 @@ import (
 	"context"
 	"crypto/rand"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/auth/store"
 	"github.com/hashicorp/boundary/internal/db"
@@ -357,4 +358,14 @@ func testAuthMethod(t testing.TB, conn *db.DB, scopeId string) string {
 	_, err = rw.Exec(ctx, insertAuthMethod, []any{id, scopeId})
 	require.NoError(err)
 	return id
+}
+
+func Test_EstimatedUsersCount(t testing.TB, repo *Repository) (int, error) {
+	t.Helper()
+	return repo.estimatedUsersCount(context.Background())
+}
+
+func Test_ListDeletedIds(t testing.TB, repo *Repository, since time.Time) ([]string, time.Time, error) {
+	t.Helper()
+	return repo.listDeletedUserIds(context.Background(), since)
 }

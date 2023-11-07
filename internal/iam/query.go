@@ -111,4 +111,7 @@ const (
 	select * from final
 	order by action, member_id;
 	`
+	estimateCountUsers = `
+	select reltuples::bigint as estimate from pg_class where oid in ('iam_user'::regclass)
+	`
 )

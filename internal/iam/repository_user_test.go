@@ -1437,6 +1437,192 @@ func TestRepository_SetAssociatedAccounts(t *testing.T) {
 	}
 }
 
+func TestRepository_ListUsers_Pagination(t *testing.T) {
+	t.Parallel()
+	testCtx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, wrapper)
+	repo := iam.TestRepo(t, conn, wrapper)
+	org, _ := iam.TestScopes(t, repo)
+	databaseWrapper, err := kmsCache.GetWrapper(testCtx, org.GetPublicId(), kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+	authMethod := oidc.TestAuthMethod(t, conn, databaseWrapper, org.GetPublicId(), oidc.ActivePrivateState, "alice-rp", "fido",
+		oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://alice.com")[0]),
+		oidc.WithSigningAlgs(oidc.RS256),
+		oidc.WithApiUrl(oidc.TestConvertToUrls(t, "http://localhost")[0]))
+
+	iam.TestSetPrimaryAuthMethod(t, repo, org, authMethod.GetPublicId())
+
+	for i := 0; i < 10; i++ {
+		iam.TestUser(t, repo, org.GetPublicId())
+	}
+
+	t.Run("withStartPageAfterItem", func(t *testing.T) {
+		page1, err := repo.ListUsers(
+			context.Background(),
+			[]string{org.GetPublicId()},
+			iam.WithLimit(2),
+		)
+		require.NoError(t, err)
+		require.Len(t, page1, 2)
+		page2, err := repo.ListUsers(
+			context.Background(),
+			[]string{org.GetPublicId()},
+			iam.WithLimit(2),
+			iam.WithStartPageAfterItem(page1[1]),
+		)
+		require.NoError(t, err)
+		require.Len(t, page2, 2)
+		for _, item := range page1 {
+			assert.NotEqual(t, item.GetPublicId(), page2[0].GetPublicId())
+			assert.NotEqual(t, item.GetPublicId(), page2[1].GetPublicId())
+		}
+		page3, err := repo.ListUsers(
+			context.Background(),
+			[]string{org.GetPublicId()},
+			iam.WithLimit(2),
+			iam.WithStartPageAfterItem(page2[1]),
+		)
+		require.NoError(t, err)
+		require.Len(t, page3, 2)
+		for _, item := range page2 {
+			assert.NotEqual(t, item.GetPublicId(), page3[0].GetPublicId())
+			assert.NotEqual(t, item.GetPublicId(), page3[1].GetPublicId())
+		}
+		page4, err := repo.ListUsers(
+			context.Background(),
+			[]string{org.GetPublicId()},
+			iam.WithLimit(2),
+			iam.WithStartPageAfterItem(page3[1]),
+		)
+		require.NoError(t, err)
+		require.Len(t, page4, 2)
+		for _, item := range page3 {
+			assert.NotEqual(t, item.GetPublicId(), page4[0].GetPublicId())
+			assert.NotEqual(t, item.GetPublicId(), page4[1].GetPublicId())
+		}
+		page5, err := repo.ListUsers(
+			context.Background(),
+			[]string{org.GetPublicId()},
+			iam.WithLimit(2),
+			iam.WithStartPageAfterItem(page4[1]),
+		)
+		require.NoError(t, err)
+		require.Len(t, page5, 2)
+		for _, item := range page4 {
+			assert.NotEqual(t, item.GetPublicId(), page5[0].GetPublicId())
+			assert.NotEqual(t, item.GetPublicId(), page5[1].GetPublicId())
+		}
+		page6, err := repo.ListUsers(
+			context.Background(),
+			[]string{org.GetPublicId()},
+			iam.WithLimit(2),
+			iam.WithStartPageAfterItem(page5[1]),
+		)
+		require.NoError(t, err)
+		require.Empty(t, page6)
+
+		// Update the first user and check that it gets listed subsequently
+		page1[0].Name = "new-name"
+		_, _, _, err = repo.UpdateUser(testCtx, page1[0], page1[0].GetVersion(), []string{"name"})
+		require.NoError(t, err)
+		page7, err := repo.ListUsers(
+			context.Background(),
+			[]string{org.GetPublicId()},
+			iam.WithLimit(2),
+			iam.WithStartPageAfterItem(page5[1]),
+		)
+		require.NoError(t, err)
+		require.Len(t, page7, 1)
+		require.Equal(t, page7[0].GetPublicId(), page1[0].GetPublicId())
+	})
+}
+
+func Test_listDeletedIds(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	repo := iam.TestRepo(t, conn, wrapper)
+	org := iam.TestOrg(t, repo)
+
+	// Expect no entries at the start
+	deletedIds, ttime, err := iam.Test_ListDeletedIds(t, repo, time.Now().AddDate(-1, 0, 0))
+	require.NoError(t, err)
+	require.Empty(t, deletedIds)
+
+	// Transaction time should be within ~10 seconds of now
+	now := time.Now()
+	assert.True(t, ttime.Add(-10*time.Second).Before(now))
+	assert.True(t, ttime.Add(10*time.Second).After(now))
+
+	// Delete a user
+	u := iam.TestUser(t, repo, org.GetPublicId())
+	_, err = repo.DeleteUser(ctx, u.PublicId)
+	require.NoError(t, err)
+
+	// Expect a single entry
+	deletedIds, ttime, err = iam.Test_ListDeletedIds(t, repo, time.Now().AddDate(-1, 0, 0))
+	require.NoError(t, err)
+	require.Equal(t, []string{u.PublicId}, deletedIds)
+	now = time.Now()
+	assert.True(t, ttime.Add(-10*time.Second).Before(now))
+	assert.True(t, ttime.Add(10*time.Second).After(now))
+
+	// Try again with the time set to now, expect no entries
+	deletedIds, ttime, err = iam.Test_ListDeletedIds(t, repo, time.Now())
+	require.NoError(t, err)
+	require.Empty(t, deletedIds)
+	now = time.Now()
+	assert.True(t, ttime.Add(-10*time.Second).Before(now))
+	assert.True(t, ttime.Add(10*time.Second).After(now))
+}
+
+func Test_estimatedCount(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	sqlDb, err := conn.SqlDB(ctx)
+	require.NoError(t, err)
+	wrapper := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, wrapper)
+	repo := iam.TestRepo(t, conn, wrapper)
+	org, _ := iam.TestScopes(t, repo)
+	databaseWrapper, err := kmsCache.GetWrapper(ctx, org.GetPublicId(), kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+	authMethod := oidc.TestAuthMethod(t, conn, databaseWrapper, org.PublicId, oidc.ActivePrivateState, "alice-rp", "fido",
+		oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://alice.com")[0]),
+		oidc.WithSigningAlgs(oidc.RS256),
+		oidc.WithApiUrl(oidc.TestConvertToUrls(t, "http://localhost")[0]))
+
+	iam.TestSetPrimaryAuthMethod(t, repo, org, authMethod.PublicId)
+
+	// Check total entries at start, TestRepo creates 3 default users
+	numItems, err := iam.Test_EstimatedUsersCount(t, repo)
+	require.NoError(t, err)
+	assert.Equal(t, 3, numItems)
+
+	// Create a user, expect 4 entries
+	u := iam.TestUser(t, repo, org.GetPublicId())
+	// Run analyze to update estimate
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
+	numItems, err = iam.Test_EstimatedUsersCount(t, repo)
+	require.NoError(t, err)
+	assert.Equal(t, 4, numItems)
+
+	// Delete the user, expect 3 again
+	_, err = repo.DeleteUser(ctx, u.PublicId)
+	require.NoError(t, err)
+	// Run analyze to update estimate
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
+	numItems, err = iam.Test_EstimatedUsersCount(t, repo)
+	require.NoError(t, err)
+	assert.Equal(t, 3, numItems)
+}
+
 func testId(t *testing.T) string {
 	t.Helper()
 	id, err := uuid.GenerateUUID()
