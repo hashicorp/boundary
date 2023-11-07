@@ -46,6 +46,7 @@ func TestRepository_refreshTargets(t *testing.T) {
 			Id:                "ttcp_1",
 			Name:              "name1",
 			Type:              "tcp",
+			ScopeId:           "p_123",
 			SessionMaxSeconds: 111,
 		},
 		{
@@ -53,6 +54,7 @@ func TestRepository_refreshTargets(t *testing.T) {
 			Name:              "name2",
 			Address:           "address2",
 			Type:              "tcp",
+			ScopeId:           "p_123",
 			SessionMaxSeconds: 222,
 		},
 		{
@@ -60,6 +62,7 @@ func TestRepository_refreshTargets(t *testing.T) {
 			Name:              "name3",
 			Address:           "address3",
 			Type:              "tcp",
+			ScopeId:           "p_123",
 			SessionMaxSeconds: 333,
 		},
 	}
@@ -167,6 +170,7 @@ func TestRepository_RefreshTargets_withRefreshTokens(t *testing.T) {
 				Name:              "name1",
 				Address:           "address1",
 				Type:              "tcp",
+				ScopeId:           "p_123",
 				SessionMaxSeconds: 111,
 			},
 			{
@@ -174,6 +178,7 @@ func TestRepository_RefreshTargets_withRefreshTokens(t *testing.T) {
 				Name:              "name2",
 				Address:           "address2",
 				Type:              "tcp",
+				ScopeId:           "p_123",
 				SessionMaxSeconds: 222,
 			},
 		}, {
@@ -182,6 +187,7 @@ func TestRepository_RefreshTargets_withRefreshTokens(t *testing.T) {
 				Name:              "name3",
 				Address:           "address3",
 				Type:              "tcp",
+				ScopeId:           "p_123",
 				SessionMaxSeconds: 333,
 			},
 		},
@@ -272,6 +278,7 @@ func TestRepository_ListTargets(t *testing.T) {
 			Name:              "name1",
 			Address:           "address1",
 			Type:              "tcp",
+			ScopeId:           "p_123",
 			SessionMaxSeconds: 111,
 		},
 		{
@@ -279,6 +286,7 @@ func TestRepository_ListTargets(t *testing.T) {
 			Name:              "name2",
 			Address:           "address2",
 			Type:              "tcp",
+			ScopeId:           "p_123",
 			SessionMaxSeconds: 222,
 		},
 		{
@@ -286,6 +294,7 @@ func TestRepository_ListTargets(t *testing.T) {
 			Name:              "name3",
 			Address:           "address3",
 			Type:              "tcp",
+			ScopeId:           "p_123",
 			SessionMaxSeconds: 333,
 		},
 	}
@@ -341,7 +350,7 @@ func TestRepository_QueryTargets(t *testing.T) {
 	require.NoError(t, r.AddKeyringToken(ctx, addr, kt1))
 	require.NoError(t, r.AddKeyringToken(ctx, addr, kt2))
 
-	query := "name % name1 or name % name2"
+	query := `(name % name1 or name % name2) and scope_id = "p_123"`
 
 	errorCases := []struct {
 		name        string
@@ -376,6 +385,7 @@ func TestRepository_QueryTargets(t *testing.T) {
 			Name:              "name1",
 			Address:           "address1",
 			Type:              "tcp",
+			ScopeId:           "p_123",
 			SessionMaxSeconds: 111,
 		},
 		{
@@ -383,6 +393,7 @@ func TestRepository_QueryTargets(t *testing.T) {
 			Name:              "name2",
 			Address:           "address2",
 			Type:              "tcp",
+			ScopeId:           "p_123",
 			SessionMaxSeconds: 222,
 		},
 		{
@@ -390,6 +401,7 @@ func TestRepository_QueryTargets(t *testing.T) {
 			Name:              "name3",
 			Address:           "address3",
 			Type:              "tcp",
+			ScopeId:           "p_123",
 			SessionMaxSeconds: 333,
 		},
 	}

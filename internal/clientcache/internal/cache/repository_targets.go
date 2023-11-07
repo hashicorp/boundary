@@ -221,6 +221,7 @@ func upsertTargets(ctx context.Context, w db.Writer, u *user, in []*targets.Targ
 			Name:        t.Name,
 			Description: t.Description,
 			Address:     t.Address,
+			ScopeId:     t.ScopeId,
 			Item:        string(item),
 		}
 		onConflict := db.OnConflict{
@@ -313,6 +314,7 @@ type Target struct {
 	Name        string `gorm:"default:null"`
 	Description string `gorm:"default:null"`
 	Address     string `gorm:"default:null"`
+	ScopeId     string `gorm:"default:null"`
 	Item        string `gorm:"default:null"`
 }
 
