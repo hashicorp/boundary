@@ -81,7 +81,7 @@ require (
 	gorm.io/driver/postgres v1.5.4
 	gorm.io/gorm v1.25.5 // indirect
 	mvdan.cc/gofumpt v0.5.0
-	nhooyr.io/websocket v1.8.9
+	nhooyr.io/websocket v1.8.10
 )
 
 require github.com/hashicorp/go-dbw v0.1.1
