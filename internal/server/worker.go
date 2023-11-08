@@ -22,17 +22,18 @@ type (
 )
 
 const (
-	UnknownWorkerType              WorkerType        = "unknown"
-	KmsWorkerType                  WorkerType        = "kms"
-	PkiWorkerType                  WorkerType        = "pki"
-	ActiveOperationalState         OperationalState  = "active"
-	ShutdownOperationalState       OperationalState  = "shutdown"
-	UnknownOperationalState        OperationalState  = "unknown"
-	AvailableLocalStorageState     LocalStorageState = "available"
-	LowStorageLocalStorageState    LocalStorageState = "low storage"
-	OutOfStorageLocalStorageState  LocalStorageState = "out of storage"
-	NotConfiguredLocalStorageState LocalStorageState = "not configured"
-	UnknownLocalStorageState       LocalStorageState = "unknown"
+	UnknownWorkerType                     WorkerType        = "unknown"
+	KmsWorkerType                         WorkerType        = "kms"
+	PkiWorkerType                         WorkerType        = "pki"
+	ActiveOperationalState                OperationalState  = "active"
+	ShutdownOperationalState              OperationalState  = "shutdown"
+	UnknownOperationalState               OperationalState  = "unknown"
+	AvailableLocalStorageState            LocalStorageState = "available"
+	LowStorageLocalStorageState           LocalStorageState = "low storage"
+	CriticallyLowStorageLocalStorageState LocalStorageState = "critically low storage"
+	OutOfStorageLocalStorageState         LocalStorageState = "out of storage"
+	NotConfiguredLocalStorageState        LocalStorageState = "not configured"
+	UnknownLocalStorageState              LocalStorageState = "unknown"
 )
 
 func (t WorkerType) Valid() bool {
@@ -74,8 +75,8 @@ func (t OperationalState) String() string {
 func ValidLocalStorageState(s string) bool {
 	switch s {
 	case AvailableLocalStorageState.String(), LowStorageLocalStorageState.String(),
-		OutOfStorageLocalStorageState.String(), NotConfiguredLocalStorageState.String(),
-		UnknownLocalStorageState.String():
+		CriticallyLowStorageLocalStorageState.String(), OutOfStorageLocalStorageState.String(),
+		NotConfiguredLocalStorageState.String(), UnknownLocalStorageState.String():
 		return true
 	}
 	return false

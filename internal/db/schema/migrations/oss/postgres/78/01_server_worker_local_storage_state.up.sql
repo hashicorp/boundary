@@ -10,7 +10,7 @@ create table server_worker_local_storage_state_state_enm (
       state in (
         'available',
         'low storage',
-        'critically low',
+        'critically low storage',
         'out of storage',
         'not configured',
         'unknown'
@@ -23,7 +23,7 @@ comment on table server_worker_local_storage_state_state_enm is
 insert into server_worker_local_storage_state_state_enm (state) values
   ('available'),
   ('low storage'),
-  ('critically low'),
+  ('critically low storage'),
   ('out of storage'),
   ('not configured'),
   ('unknown');

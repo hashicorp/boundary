@@ -71,7 +71,7 @@ type Worker struct {
 	// Possible values are:
 	// - available: The worker local storage state is at an acceptable state
 	// - low storage: The worker is below the minimum threshold for local storage
-	// - critically low: The worker local storage state is below the critical minimum threshold for local storage
+	// - critically low storage: The worker local storage state is below the critical minimum threshold for local storage
 	// - out of storage: The worker is out of local disk space
 	// - not configured: The worker does not have a local storage path configured
 	// - unknown: The default local storage state of a worker. Used when the local storage state of a worker is not yet known

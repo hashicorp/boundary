@@ -18,7 +18,7 @@ begin;
   insert into server_worker
     (public_id,        scope_id,   type,   local_storage_state)
   values
-    ('w_1234567893',   'global',   'pki',  'critically low');
+    ('w_1234567893',   'global',   'pki',  'critically low storage');
 
   insert into server_worker
     (public_id,        scope_id,   type,   local_storage_state)
