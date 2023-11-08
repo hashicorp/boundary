@@ -4,6 +4,7 @@
 package credential
 
 import (
+	"context"
 	"errors"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -81,6 +82,9 @@ func WithLimit(l int) Option {
 // The next page will start after the provided item.
 func WithStartPageAfterItem(item pagination.Item) Option {
 	return func(o *options) error {
+		if err := pagination.ValidateItem(context.Background(), item); err != nil {
+			return err
+		}
 		o.WithStartPageAfterItem = item
 		return nil
 	}

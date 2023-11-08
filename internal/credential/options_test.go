@@ -9,7 +9,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
-	"github.com/hashicorp/boundary/internal/pagination"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/util"
 	"github.com/hashicorp/boundary/internal/util/template"
 	"github.com/stretchr/testify/assert"
@@ -25,9 +25,9 @@ type fakeReader struct {
 }
 
 type fakeItem struct {
-	pagination.Item
-	publicId   string
-	updateTime time.Time
+	publicId     string
+	updateTime   time.Time
+	resourceType resource.Type
 }
 
 func (p *fakeItem) GetPublicId() string {
@@ -36,6 +36,10 @@ func (p *fakeItem) GetPublicId() string {
 
 func (p *fakeItem) GetUpdateTime() *timestamp.Timestamp {
 	return timestamp.New(p.updateTime)
+}
+
+func (p *fakeItem) GetResourceType() resource.Type {
+	return p.resourceType
 }
 
 func Test_GetOpts(t *testing.T) {
@@ -87,11 +91,35 @@ func Test_GetOpts(t *testing.T) {
 		})
 	})
 	t.Run("WithStartPageAfterItem", func(t *testing.T) {
-		assert := assert.New(t)
-		updateTime := time.Now()
-		opts, err := GetOpts(WithStartPageAfterItem(&fakeItem{nil, "s_1", updateTime}))
-		require.NoError(t, err)
-		assert.Equal(opts.WithStartPageAfterItem.GetPublicId(), "s_1")
-		assert.Equal(opts.WithStartPageAfterItem.GetUpdateTime(), timestamp.New(updateTime))
+		t.Parallel()
+		t.Run("success", func(t *testing.T) {
+			t.Parallel()
+			assert := assert.New(t)
+			updateTime := time.Now()
+			opts, err := GetOpts(WithStartPageAfterItem(&fakeItem{"s_1", updateTime, resource.Session}))
+			require.NoError(t, err)
+			assert.Equal(opts.WithStartPageAfterItem.GetPublicId(), "s_1")
+			assert.Equal(opts.WithStartPageAfterItem.GetUpdateTime(), timestamp.New(updateTime))
+		})
+		t.Run("nil item", func(t *testing.T) {
+			_, err := GetOpts(WithStartPageAfterItem(nil))
+			require.ErrorContains(t, err, "nil item")
+		})
+		t.Run("nil typed item", func(t *testing.T) {
+			_, err := GetOpts(WithStartPageAfterItem((*fakeItem)(nil)))
+			require.ErrorContains(t, err, "nil item")
+		})
+		t.Run("missing public id", func(t *testing.T) {
+			_, err := GetOpts(WithStartPageAfterItem(&fakeItem{"", time.Now(), resource.Session}))
+			require.ErrorContains(t, err, "missing public id")
+		})
+		t.Run("zero update time", func(t *testing.T) {
+			_, err := GetOpts(WithStartPageAfterItem(&fakeItem{"some_id", time.Time{}, resource.Session}))
+			require.ErrorContains(t, err, "missing update time")
+		})
+		t.Run("missing resource type", func(t *testing.T) {
+			_, err := GetOpts(WithStartPageAfterItem(&fakeItem{"some_id", time.Now(), resource.Unknown}))
+			require.ErrorContains(t, err, "missing resource type")
+		})
 	})
 }
