@@ -89,6 +89,8 @@ func (p *ClientProxy) runTcpProxyV1(wsConn *websocket.Conn, listeningConn net.Co
 			p.cancel()
 			return errors.New("session is already in use")
 		default:
+			// If we can't handshake we can't do anything, so quit out
+			p.cancel()
 			return fmt.Errorf("error reading handshake result: %w", err)
 		}
 	}
