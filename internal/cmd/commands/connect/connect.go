@@ -629,10 +629,10 @@ func (c *Command) Run(args []string) (retCode int) {
 		ctx, cancel := context.WithTimeout(context.Background(), sessionCancelTimeout)
 		wsConn, err := c.getWsConn(ctx, workerAddr, transport)
 		if err != nil {
-			c.PrintCliError(fmt.Errorf("error fetching connection to send session teardown request to worker: %w", err))
+			c.PrintCliError(fmt.Errorf("Error fetching connection to send session teardown request to worker: %w", err))
 		} else {
 			if err := c.sendSessionTeardown(ctx, wsConn, tofuToken); err != nil {
-				c.PrintCliError(fmt.Errorf("error sending session teardown request to worker: %w", err))
+				c.PrintCliError(fmt.Errorf("Error sending session teardown request to worker: %w", err))
 			}
 		}
 		cancel()
@@ -651,7 +651,7 @@ func (c *Command) Run(args []string) (retCode int) {
 		case "json":
 			out, err := json.Marshal(&termInfo)
 			if err != nil {
-				c.PrintCliError(fmt.Errorf("error marshaling termination information: %w", err))
+				c.PrintCliError(fmt.Errorf("Error marshaling termination information: %w", err))
 				return base.CommandCliError
 			}
 			c.UI.Output(string(out))
@@ -675,7 +675,7 @@ func (c *Command) printCredentials(creds []*targets.SessionCredential) error {
 			Credentials: creds,
 		})
 		if err != nil {
-			return fmt.Errorf("error marshaling credential information: %w", err)
+			return fmt.Errorf("Error marshaling credential information: %w", err)
 		}
 		c.UI.Output(string(out))
 	}
@@ -744,7 +744,7 @@ func (c *Command) runTcpProxyV1(
 ) error {
 	handshake := proxy.ClientHandshake{TofuToken: tofuToken}
 	if err := wspb.Write(c.proxyCtx, wsConn, &handshake); err != nil {
-		return fmt.Errorf("error sending handshake to worker: %w", err)
+		return fmt.Errorf("Error sending handshake to worker: %w", err)
 	}
 	var handshakeResult proxy.HandshakeResult
 	if err := wspb.Read(c.proxyCtx, wsConn, &handshakeResult); err != nil {
@@ -761,7 +761,9 @@ func (c *Command) runTcpProxyV1(
 			c.proxyCancel()
 			return errors.New("Session token has already been used")
 		default:
-			return fmt.Errorf("error reading handshake result: %w", err)
+			// If we can't handshake we can't do anything, so quit out
+			c.proxyCancel()
+			return fmt.Errorf("Error reading handshake result: %w", err)
 		}
 	}
 
