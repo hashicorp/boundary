@@ -26,7 +26,7 @@ You can use workers in various ways depending on your needs, as follows:
 ### Session proxying
 
 You can use workers to proxy sessions between clients and targets located in public or private networks. In addition, you can configure workers in
-[multi-hop](#multi-hop-sessions-hcp-ent) sessions and form a chain of proxies to reach deeper into protected networks.
+[multi-hop](#multi-hop-sessions) sessions and form a chain of proxies to reach deeper into protected networks.
 
 ### Worker authentication
 
@@ -40,7 +40,7 @@ environment.
 
 ### Protocol decryption
 
-Workers can perform SSH protocol decryption for [credential injection](/boundary/docs/concepts/credential-management#credential-injection-hcp-ent) and [session
+Workers can perform SSH protocol decryption for [credential injection](/boundary/docs/concepts/credential-management#credential-injection) and [session
 recording](/boundary/docs/concepts/domain-model/session-recordings). For session recording, workers also write the recorded session contents directly to the [storage
 bucket](/boundary/docs/concepts/domain-model/storage-buckets).
 
@@ -58,7 +58,7 @@ with tag “A,” to connect to targets in “Network A.”
 
 Most organizations want to provide access to infrastructure without exposing private networks. Many organizations also have complex network topologies requiring
 inbound traffic to route through multiple network enclaves in order to reach the target system.
-[Multi-hop](/boundary/docs/configuration/worker#multi-hop-worker-capabilities-hcp-ent) sessions allow you to chain together two or more workers
+[Multi-hop](/boundary/docs/configuration/worker#multi-hop-worker-capabilities) sessions allow you to chain together two or more workers
 across multiple networks to form reverse proxy connections between the user and the target, even in complex networks with strict outbound-only policies.
 
 In multi-hop scenarios, there are typically three types of workers:

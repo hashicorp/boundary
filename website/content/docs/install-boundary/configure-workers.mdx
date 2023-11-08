@@ -18,7 +18,7 @@ Before you configure workers, you should have completed the following steps:
 
 In the following configuration files, there are common configuration components as well as some unique components depending on the role the Boundary worker performs.
 There are three files, one for each worker in a unique network boundary.
-Additionally, Boundary Enterprise supports a [multi-hop configuration](/boundary/docs/configuration/worker#multi-hop-worker-capabilities-hcp-ent) in which the Boundary workers can serve one of three purposes: an ingress worker, an ingress/egress worker, or an egress worker.
+Additionally, Boundary Enterprise supports a [multi-hop configuration](/boundary/docs/configuration/worker#multi-hop-worker-capabilities) in which the Boundary workers can serve one of three purposes: an ingress worker, an ingress/egress worker, or an egress worker.
 
 ## Prepare the environment files
 
@@ -69,11 +69,11 @@ Select your Boundary edition, and complete the following steps to configure work
 <Tabs>
 <Tab heading="Enterprise">
 
-For Boundary Enterprise, you can configure ingress, intermediary, and egress workers to take advantage of [multi-hop worker capabilities](/boundary/docs/configuration/worker#multi-hop-worker-capabilities-hcp-ent).
+For Boundary Enterprise, you can configure ingress, intermediary, and egress workers to take advantage of [multi-hop worker capabilities](/boundary/docs/configuration/worker#multi-hop-worker-capabilities).
 
 Note that "ingress," "intermediary," and "egress" are general ways to describe how the respective worker interacts with resources.
 A worker can serve more than one of those roles at a time.
-Refer to [Multi-hop sessions](/boundary/docs/concepts/workers#multi-hop-sessions-hcp-ent) for more information.
+Refer to [Multi-hop sessions](/boundary/docs/concepts/workers#multi-hop-sessions) for more information.
 
 Complete the steps below to configure workers for Boundary Enterprise.
 
