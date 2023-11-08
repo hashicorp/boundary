@@ -66,7 +66,7 @@ resource "enos_local_exec" "init_database" {
     TEST_DATABASE_ADDRESS = var.postgres_address
     TEST_DATABASE_NETWORK = var.database_network
     TEST_BOUNDARY_LICENSE = var.boundary_license
-    CONFIG                = "${abspath(path.module)}/${var.config_file}"
+    CONFIG                = "${abspath(path.module)}/boundary-config-init.hcl"
   }
   inline = ["bash ./${path.module}/init.sh"]
 }
