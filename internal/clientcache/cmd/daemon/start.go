@@ -107,7 +107,7 @@ func (c *StartCommand) Flags() *base.FlagSets {
 	f.DurationVar(&base.DurationVar{
 		Name:    "full-fetch-interval-seconds",
 		Target:  &c.flagFullFetchInterval,
-		Usage:   `If set, specifies the number of seconds between full cache refresh for boundary instances which do not support refresh tokens. Default: 5 minutes`,
+		Usage:   `If set, specifies the number of seconds between full cache refresh for boundary instances which do not support refresh tokens. Default: 60 minutes`,
 		Default: daemon.DefaultFullFetchIntervalSeconds * time.Second,
 	})
 	f.BoolVar(&base.BoolVar{
@@ -121,7 +121,7 @@ func (c *StartCommand) Flags() *base.FlagSets {
 		Name:    "background",
 		Target:  &c.flagBackground,
 		Default: false,
-		Usage:   `Turn on store debugging`,
+		Usage:   `Run the client cache daemon in the background.`,
 	})
 
 	return set

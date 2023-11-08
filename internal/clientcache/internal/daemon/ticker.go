@@ -18,7 +18,10 @@ const (
 	DefaultRefreshIntervalSeconds = 60
 	defaultRefreshInterval        = DefaultRefreshIntervalSeconds * time.Second
 
-	DefaultFullFetchIntervalSeconds = 60 * 5
+	// Since old versions of boundary controllers do not use refresh tokens,
+	// querying frequently from them can put too much load on them so we use a
+	// low rate of query.
+	DefaultFullFetchIntervalSeconds = 60 * 60
 	defaultFullFetchInterval        = DefaultFullFetchIntervalSeconds * time.Second
 
 	defaultRandomizationFactor float64 = 0.2
