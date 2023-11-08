@@ -11,7 +11,6 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/internal/clientcache/internal/daemon"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -77,9 +76,10 @@ func TestClient(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("not found", func(t *testing.T) {
-		_, apiErr, err := c.Get(ctx, "/unknown/path", nil)
+		r, err := c.Get(ctx, "/unknown/path", nil)
 		assert.NoError(t, err)
-		assert.Equal(t, apiErr, api.ErrNotFound)
+		assert.NotNil(t, r)
+		assert.Equal(t, http.StatusNotFound, r.HttpResponse().StatusCode)
 	})
 
 	t.Run("empty response", func(t *testing.T) {
@@ -87,7 +87,9 @@ func TestClient(t *testing.T) {
 			assert.Equal(t, r.Method, http.MethodGet)
 			assert.NotEmpty(t, r.Header.Get(daemon.VersionHeaderKey))
 		}
-		r, apiErr, err := c.Get(ctx, testPath, nil)
+		r, err := c.Get(ctx, testPath, nil)
+		assert.NoError(t, err)
+		apiErr, err := r.Decode(nil)
 		assert.NoError(t, err)
 		assert.Nil(t, apiErr)
 		assert.NotNil(t, r)
@@ -98,11 +100,14 @@ func TestClient(t *testing.T) {
 			assert.Equal(t, r.Method, http.MethodGet)
 			assert.NotEmpty(t, r.Header.Get(daemon.VersionHeaderKey))
 		}
-		r, apiErr, err := c.Get(ctx, testPath, nil)
+		r, err := c.Get(ctx, testPath, nil)
+		assert.NoError(t, err)
+		assert.NotNil(t, r)
+
+		apiErr, err := r.Decode(nil)
 		assert.NoError(t, err)
 		assert.Nil(t, apiErr)
-		assert.NotNil(t, r)
-		assert.Empty(t, r.Body())
+		assert.Empty(t, r.Body)
 	})
 
 	t.Run("empty json object", func(t *testing.T) {
@@ -114,10 +119,14 @@ func TestClient(t *testing.T) {
 			w.Write([]byte("{}"))
 			w.WriteHeader(http.StatusOK)
 		}
-		r, apiErr, err := c.Get(ctx, testPath, nil)
+		r, err := c.Get(ctx, testPath, nil)
+		assert.NoError(t, err)
+		assert.NotNil(t, r)
+
+		apiErr, err := r.Decode(nil)
 		assert.NoError(t, err)
 		assert.Nil(t, apiErr)
-		assert.Equal(t, "{}", string(r.Body()))
+		assert.Equal(t, "{}", string(r.Body.Bytes()))
 	})
 
 	t.Run("query params", func(t *testing.T) {
@@ -129,7 +138,9 @@ func TestClient(t *testing.T) {
 			assert.Equal(t, v, r.URL.Query())
 			assert.NotEmpty(t, r.Header.Get(daemon.VersionHeaderKey))
 		}
-		r, apiErr, err := c.Get(ctx, testPath, &v)
+		r, err := c.Get(ctx, testPath, &v)
+		assert.NoError(t, err)
+		apiErr, err := r.Decode(nil)
 		assert.NoError(t, err)
 		assert.Nil(t, apiErr)
 		assert.NotNil(t, r)
@@ -143,10 +154,13 @@ func TestClient(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, string(b), `{"foo":"bar"}`)
 		}
-		r, apiErr, err := c.Post(ctx, testPath, map[string]interface{}{"foo": "bar"})
+		r, err := c.Post(ctx, testPath, map[string]interface{}{"foo": "bar"})
+		assert.NoError(t, err)
+		assert.NotNil(t, r)
+
+		apiErr, err := r.Decode(nil)
 		assert.NoError(t, err)
 		assert.Nil(t, apiErr)
-		assert.NotNil(t, r)
 	})
 
 	l.Close()

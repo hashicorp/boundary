@@ -260,6 +260,9 @@ func (s *CacheServer) Serve(ctx context.Context, cmd Commander, opt ...Option) e
 	}
 	mux.Handle("/v1/stop", versionEnforcement(stopFn))
 
+	// Return custom 404 message when requests don't map to any known path.
+	mux.Handle("/", new404Func(ctx))
+
 	logger, err := event.SysEventer().StandardLogger(ctx, "daemon.serve: ", event.ErrorType)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
