@@ -31,7 +31,7 @@ alter table server_worker
 
 drop view server_worker_aggregate;
 -- Updates view created in 51/01_server_worker_release_version.up.sql to add the worker operational state
--- Replaced in 78/01_server_worker_local_storage.up.sql
+-- Replaced in 79/01_server_worker_local_storage.up.sql
 create view server_worker_aggregate as
 with worker_config_tags(worker_id, source, tags) as (
   select

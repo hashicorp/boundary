@@ -14,13 +14,13 @@ import (
 )
 
 const (
-	insertWorkerQuery78 = "insert into server_worker (public_id, scope_id, type) values ($1, 'global', 'pki')"
-	selectWorkerQuery78 = "select public_id, local_storage_state from server_worker where public_id = $1"
-	priorMigration      = 77004
-	currentMigration    = 78001
+	insertWorkerQuery79 = "insert into server_worker (public_id, scope_id, type) values ($1, 'global', 'pki')"
+	selectWorkerQuery79 = "select public_id, local_storage_state from server_worker where public_id = $1"
+	priorMigration      = 78001
+	currentMigration    = 79001
 )
 
-type testWorker78 struct {
+type testWorker79 struct {
 	LocalStorageState string
 	PublicId          string
 }
@@ -63,7 +63,7 @@ func Test_WorkerLocalStorageStateChanges(t *testing.T) {
 	require.Equal(want, state)
 
 	// Seed the data
-	execResult, err := d.ExecContext(ctx, insertWorkerQuery78, "test-worker-78")
+	execResult, err := d.ExecContext(ctx, insertWorkerQuery79, "test-worker-79")
 	require.NoError(err)
 	rowsAffected, err := execResult.RowsAffected()
 	require.NoError(err)
@@ -94,8 +94,8 @@ func Test_WorkerLocalStorageStateChanges(t *testing.T) {
 	require.Equal(want, state)
 
 	// Assert worker has been migrated and received default state of 'unknown'
-	actualWorker := new(testWorker78)
-	row := d.QueryRowContext(ctx, selectWorkerQuery78, "test-worker-78")
+	actualWorker := new(testWorker79)
+	row := d.QueryRowContext(ctx, selectWorkerQuery79, "test-worker-79")
 	require.NoError(row.Scan(
 		&actualWorker.PublicId,
 		&actualWorker.LocalStorageState,
