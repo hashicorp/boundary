@@ -5,7 +5,6 @@ go 1.21
 toolchain go1.21.3
 
 require (
-	github.com/hashicorp/boundary v0.14.2
 	github.com/hashicorp/eventlogger v0.2.6-0.20231025104552-802587e608f0
 	github.com/hashicorp/eventlogger/filters/encrypt v0.1.8-0.20231025104552-802587e608f0
 	github.com/hashicorp/go-hclog v1.5.0
@@ -22,20 +21,14 @@ require (
 require (
 	github.com/Masterminds/semver/v3 v3.2.0 // indirect
 	github.com/Masterminds/sprig/v3 v3.2.3 // indirect
-	github.com/fatih/structs v1.1.0 // indirect
-	github.com/grpc-ecosystem/grpc-gateway/v2 v2.16.0 // indirect
-	github.com/hashicorp/go-bexpr v0.1.12 // indirect
 	github.com/hashicorp/go-kms-wrapping/plugin/v2 v2.0.5 // indirect
 	github.com/hashicorp/go-secure-stdlib/base62 v0.1.2 // indirect
-	github.com/jackc/pgpassfile v1.0.0 // indirect
-	github.com/jackc/pgservicefile v0.0.0-20221227161230-091c0ba34f0a // indirect
-	github.com/jackc/pgx/v5 v5.4.3 // indirect
-	github.com/mr-tron/base58 v1.2.0 // indirect
+	github.com/kr/pretty v0.3.1 // indirect
 	github.com/shopspring/decimal v1.3.1 // indirect
 	github.com/spf13/cast v1.5.0 // indirect
-	go.uber.org/atomic v1.11.0 // indirect
-	google.golang.org/genproto v0.0.0-20231016165738-49dd2c1f3d0b // indirect
+	go.uber.org/goleak v1.1.12 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20231016165738-49dd2c1f3d0b // indirect
+	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 )
 
 require (
