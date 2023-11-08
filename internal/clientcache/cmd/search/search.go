@@ -4,9 +4,7 @@
 package search
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	stderrors "errors"
 	"fmt"
 	"net/url"
@@ -117,7 +115,9 @@ func (c *SearchCommand) Run(args []string) int {
 
 	switch base.Format(c.UI) {
 	case "json":
-		c.UI.Output(string(resp.Body()))
+		if ok := c.PrintJsonItem(resp); !ok {
+			return base.CommandCliError
+		}
 	default:
 		switch {
 		case len(result.Targets) > 0:
@@ -131,7 +131,7 @@ func (c *SearchCommand) Run(args []string) int {
 	return base.CommandSuccess
 }
 
-func (c *SearchCommand) Search(ctx context.Context) (*client.Response, *daemon.SearchResult, *api.Error, error) {
+func (c *SearchCommand) Search(ctx context.Context) (*api.Response, *daemon.SearchResult, *api.Error, error) {
 	client, err := c.Client()
 	if err != nil {
 		return nil, nil, nil, err
@@ -158,7 +158,7 @@ func (c *SearchCommand) Search(ctx context.Context) (*client.Response, *daemon.S
 	return search(ctx, dotPath, tf)
 }
 
-func search(ctx context.Context, daemonPath string, fb filterBy) (*client.Response, *daemon.SearchResult, *api.Error, error) {
+func search(ctx context.Context, daemonPath string, fb filterBy) (*api.Response, *daemon.SearchResult, *api.Error, error) {
 	addr, err := daemon.SocketAddress(daemonPath)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("Error when retrieving the socket address: %w", err)
@@ -175,21 +175,18 @@ func search(ctx context.Context, daemonPath string, fb filterBy) (*client.Respon
 	q.Add("auth_token_id", fb.authTokenId)
 	q.Add("resource", fb.resource)
 	q.Add("query", fb.flagQuery)
-	resp, apiErr, err := c.Get(ctx, "/v1/search", q)
+	resp, err := c.Get(ctx, "/v1/search", q)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("Error when sending request to the daemon: %w.", err)
+	}
+	res := &daemon.SearchResult{}
+	apiErr, err := resp.Decode(&res)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("Error when sending request to the daemon: %w.", err)
 	}
 	if apiErr != nil {
 		return resp, nil, apiErr, nil
 	}
-
-	res := &daemon.SearchResult{}
-	reader := bytes.NewReader(resp.Body())
-	dec := json.NewDecoder(reader)
-	if err := dec.Decode(&res); err != nil {
-		return nil, nil, nil, fmt.Errorf("Error when decoding the response from the daemon: %w.", err)
-	}
-
 	return resp, res, nil, nil
 }
 

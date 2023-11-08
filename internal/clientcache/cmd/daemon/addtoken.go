@@ -88,11 +88,7 @@ func (c *AddTokenCommand) Run(args []string) int {
 	}
 	switch base.Format(c.UI) {
 	case "json":
-		var opt []base.Option
-		if r := resp.Response; r != nil {
-			opt = append(opt, base.WithStatusCode(r.StatusCode))
-		}
-		if ok := c.PrintJson(resp.Body(), opt...); !ok {
+		if ok := c.PrintJsonItem(resp); !ok {
 			return base.CommandCliError
 		}
 	case "table":
@@ -101,19 +97,24 @@ func (c *AddTokenCommand) Run(args []string) int {
 	return base.CommandSuccess
 }
 
-func (c *AddTokenCommand) Add(ctx context.Context, client *api.Client, keyringType, tokenName string) (*client.Response, *api.Error, error) {
+func (c *AddTokenCommand) Add(ctx context.Context, apiClient *api.Client, keyringType, tokenName string) (*api.Response, *api.Error, error) {
 	pa := daemon.UpsertTokenRequest{
-		BoundaryAddr: client.Addr(),
+		BoundaryAddr: apiClient.Addr(),
 	}
 	switch keyringType {
 	case "", base.NoneKeyring:
-		token := client.Token()
+		token := apiClient.Token()
 		if parts := strings.SplitN(token, "_", 4); len(parts) == 3 {
 			pa.AuthTokenId = strings.Join(parts[:2], "_")
 		} else {
 			return nil, nil, errors.New("The found auth token is not in the proper format.")
 		}
-		pa.AuthToken = token
+		if c.FlagOutputCurlString {
+			// do not output the actual auth token if we are printing out the curl string
+			pa.AuthToken = "$BOUNDARY_TOKEN"
+		} else {
+			pa.AuthToken = token
+		}
 	default:
 		at := c.ReadTokenFromKeyring(keyringType, tokenName)
 		if at == nil {
@@ -130,11 +131,10 @@ func (c *AddTokenCommand) Add(ctx context.Context, client *api.Client, keyringTy
 	if err != nil {
 		return nil, nil, err
 	}
-
 	return addToken(ctx, dotPath, &pa)
 }
 
-func addToken(ctx context.Context, daemonPath string, p *daemon.UpsertTokenRequest) (*client.Response, *api.Error, error) {
+func addToken(ctx context.Context, daemonPath string, p *daemon.UpsertTokenRequest) (*api.Response, *api.Error, error) {
 	addr, err := daemon.SocketAddress(daemonPath)
 	if err != nil {
 		return nil, nil, fmt.Errorf("Error when retrieving the socket address: %w", err)
@@ -148,9 +148,10 @@ func addToken(ctx context.Context, daemonPath string, p *daemon.UpsertTokenReque
 	if err != nil {
 		return nil, nil, fmt.Errorf("Error when making a new client: %w.", err)
 	}
-	resp, apiErr, err := c.Post(ctx, "/v1/tokens", p)
+	resp, err := c.Post(ctx, "/v1/tokens", p)
 	if err != nil {
 		return nil, nil, fmt.Errorf("Error when sending request to the daemon: %w.", err)
 	}
-	return resp, apiErr, nil
+	apiErr, err := resp.Decode(nil)
+	return resp, apiErr, err
 }

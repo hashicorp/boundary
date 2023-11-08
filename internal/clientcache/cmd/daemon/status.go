@@ -4,9 +4,7 @@
 package daemon
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	stderr "errors"
 	"fmt"
 	"os"
@@ -84,14 +82,16 @@ func (c *StatusCommand) Run(args []string) int {
 
 	switch base.Format(c.UI) {
 	case "json":
-		c.UI.Output(string(resp.Body()))
+		if ok := c.PrintJsonItem(resp); !ok {
+			return base.CommandCliError
+		}
 	default:
 		c.UI.Output(printStatusTable(result))
 	}
 	return base.CommandSuccess
 }
 
-func (c *StatusCommand) Status(ctx context.Context) (*client.Response, *daemon.StatusResult, *api.Error, error) {
+func (c *StatusCommand) Status(ctx context.Context) (*api.Response, *daemon.StatusResult, *api.Error, error) {
 	dotPath, err := DefaultDotDirectory(ctx)
 	if err != nil {
 		return nil, nil, nil, err
@@ -100,7 +100,7 @@ func (c *StatusCommand) Status(ctx context.Context) (*client.Response, *daemon.S
 	return status(ctx, dotPath)
 }
 
-func status(ctx context.Context, daemonPath string) (*client.Response, *daemon.StatusResult, *api.Error, error) {
+func status(ctx context.Context, daemonPath string) (*api.Response, *daemon.StatusResult, *api.Error, error) {
 	const op = "daemon.status"
 	addr, err := daemon.SocketAddress(daemonPath)
 	if err != nil {
@@ -115,21 +115,19 @@ func status(ctx context.Context, daemonPath string) (*client.Response, *daemon.S
 		return nil, nil, nil, err
 	}
 
-	resp, apiErr, err := c.Get(ctx, "/v1/status", nil)
+	resp, err := c.Get(ctx, "/v1/status", nil)
 	if err != nil {
 		return nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("client do failed"))
+	}
+
+	res := &daemon.StatusResult{}
+	apiErr, err := resp.Decode(&res)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("Error when sending request to the daemon: %w.", err)
 	}
 	if apiErr != nil {
 		return resp, nil, apiErr, nil
 	}
-
-	res := &daemon.StatusResult{}
-	reader := bytes.NewReader(resp.Body())
-	dec := json.NewDecoder(reader)
-	if err := dec.Decode(&res); err != nil {
-		return nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("prasing result"))
-	}
-
 	return resp, res, nil, nil
 }
 
