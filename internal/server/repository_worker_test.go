@@ -1163,6 +1163,29 @@ func TestRepository_CreateWorker(t *testing.T) {
 			opt:    []server.Option{server.WithCreateControllerLedActivationToken(true)},
 			repo:   testRepo,
 		},
+		{
+			name: "success-with-valid-local-storage-state",
+			setup: func() *server.Worker {
+				w := server.NewWorker(scope.Global.String())
+				return w
+			},
+			reader: rw,
+			opt:    []server.Option{server.WithLocalStorageState("available")},
+			repo:   testRepo,
+		},
+		{
+			name: "failure-with-invalid-local-storage-state",
+			setup: func() *server.Worker {
+				w := server.NewWorker(scope.Global.String())
+				return w
+			},
+			reader:          rw,
+			opt:             []server.Option{server.WithLocalStorageState("invalid")},
+			repo:            testRepo,
+			wantErr:         true,
+			wantErrIs:       errors.InvalidParameter,
+			wantErrContains: "invalid local storage state",
+		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {

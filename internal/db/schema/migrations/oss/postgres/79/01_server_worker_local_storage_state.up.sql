@@ -3,35 +3,40 @@
 
 begin;
 
-create table server_worker_operational_state_enm (
+create table server_worker_local_storage_state_state_enm (
   state text primary key
-  constraint only_predefined_operational_states_allowed
+  constraint only_predefined_local_storage_states_allowed
     check (
       state in (
-        'active',
-        'shutdown',
+        'available',
+        'low storage',
+        'critically low storage',
+        'out of storage',
+        'not configured',
         'unknown'
       )
     )
 );
-comment on table server_worker_operational_state_enm is
-  'server_worker_operational_state_enm is an enumeration table for worker operational states.';
+comment on table server_worker_local_storage_state_state_enm is
+  'server_worker_local_storage_state_state_enm is an enumeration table for worker local storage states.';
 
-insert into server_worker_operational_state_enm (state) values
-  ('active'),
-  ('shutdown'),
+insert into server_worker_local_storage_state_state_enm (state) values
+  ('available'),
+  ('low storage'),
+  ('critically low storage'),
+  ('out of storage'),
+  ('not configured'),
   ('unknown');
 
 alter table server_worker
-  add column operational_state text not null default 'active'
-    constraint server_worker_operational_state_enm_fkey
-      references server_worker_operational_state_enm (state)
+  add column local_storage_state text not null default 'unknown'
+    constraint server_worker_local_storage_state_state_enm_fkey
+      references server_worker_local_storage_state_state_enm (state)
       on delete restrict
       on update cascade;
 
 drop view server_worker_aggregate;
--- Updates view created in 51/01_server_worker_release_version.up.sql to add the worker operational state
--- Replaced in 79/01_server_worker_local_storage.up.sql
+-- Replaces view created in 52/01_worker_operational_state.up.sql to add the worker local storage state
 create view server_worker_aggregate as
 with worker_config_tags(worker_id, source, tags) as (
   select
@@ -63,8 +68,8 @@ select
   w.type,
   w.release_version,
   w.operational_state,
+  w.local_storage_state,
   cc.count as active_connection_count,
-  -- keys and tags can be any lowercase printable character so use uppercase characters as delimitors.
   wt.tags as api_tags,
   ct.tags as worker_config_tags
 from server_worker w
