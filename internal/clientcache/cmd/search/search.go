@@ -182,7 +182,7 @@ func search(ctx context.Context, daemonPath string, fb filterBy) (*api.Response,
 	res := &daemon.SearchResult{}
 	apiErr, err := resp.Decode(&res)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("Error when sending request to the daemon: %w.", err)
+		return nil, nil, nil, fmt.Errorf("Error when decoding request from the daemon: %w.", err)
 	}
 	if apiErr != nil {
 		return resp, nil, apiErr, nil
