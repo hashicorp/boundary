@@ -30,7 +30,7 @@ type fakeWriter struct {
 	db.Writer
 }
 type fakeStoreRepository struct {
-	credential.SubtypeStoreService
+	credential.SubtypeStoreListingService
 }
 
 func TestNewStoreService(t *testing.T) {

@@ -14,9 +14,9 @@ import (
 	"github.com/hashicorp/boundary/internal/util"
 )
 
-// SubtypeStoreService defines the interface expected
+// SubtypeStoreListingService defines the interface expected
 // to gather information about credential stores.
-type SubtypeStoreService interface {
+type SubtypeStoreListingService interface {
 	EstimatedStoreCount(context.Context) (int, error)
 	ListDeletedStoreIds(context.Context, time.Time, ...Option) ([]string, error)
 	ListCredentialStores(context.Context, []string, ...Option) ([]Store, error)
@@ -25,12 +25,12 @@ type SubtypeStoreService interface {
 // StoreService coordinates calls across different subtype services
 // to gather information about all credential stores.
 type StoreService struct {
-	services []SubtypeStoreService
+	services []SubtypeStoreListingService
 	writer   db.Writer
 }
 
 // NewStoreService returns a new credential store service.
-func NewStoreService(ctx context.Context, writer db.Writer, vaultService SubtypeStoreService, staticService SubtypeStoreService) (*StoreService, error) {
+func NewStoreService(ctx context.Context, writer db.Writer, vaultService SubtypeStoreListingService, staticService SubtypeStoreListingService) (*StoreService, error) {
 	const op = "credential.NewStoreService"
 	switch {
 	case util.IsNil(writer):
@@ -41,7 +41,7 @@ func NewStoreService(ctx context.Context, writer db.Writer, vaultService Subtype
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing static service")
 	}
 	return &StoreService{
-		services: []SubtypeStoreService{vaultService, staticService},
+		services: []SubtypeStoreListingService{vaultService, staticService},
 		writer:   writer,
 	}, nil
 }
