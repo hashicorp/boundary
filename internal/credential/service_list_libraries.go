@@ -11,10 +11,10 @@ import (
 	"github.com/hashicorp/boundary/internal/pagination"
 )
 
-// LibraryService defines the interface expected
+// LibraryListingService defines the interface expected
 // to list, estimate the count of and list deleted items of
 // credential libraries.
-type LibraryService interface {
+type LibraryListingService interface {
 	EstimatedCount(context.Context) (int, error)
 	ListDeletedIds(context.Context, time.Time) ([]string, time.Time, error)
 	List(context.Context, string, ...Option) ([]Library, error)
@@ -28,7 +28,7 @@ func ListLibraries(
 	grantsHash []byte,
 	pageSize int,
 	filterItemFn pagination.ListFilterFunc[Library],
-	service LibraryService,
+	service LibraryListingService,
 	credentialStoreId string,
 ) (*pagination.ListResponse[Library], error) {
 	const op = "credential.ListLibraries"

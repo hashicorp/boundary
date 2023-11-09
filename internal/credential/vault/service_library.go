@@ -11,22 +11,22 @@ import (
 	"github.com/hashicorp/boundary/internal/util"
 )
 
-// LibraryService coordinates calls to gather information about all credential libraries.
-type LibraryService struct {
+// LibraryListingService coordinates calls to gather information about all credential libraries.
+type LibraryListingService struct {
 	repo   *Repository
 	writer db.Writer
 }
 
-// NewLibraryService returns a new credential library service.
-func NewLibraryService(ctx context.Context, writer db.Writer, repo *Repository) (*LibraryService, error) {
-	const op = "vault.NewLibraryService"
+// NewLibraryListingService returns a new credential library listing service.
+func NewLibraryListingService(ctx context.Context, writer db.Writer, repo *Repository) (*LibraryListingService, error) {
+	const op = "vault.NewLibraryListingService"
 	switch {
 	case util.IsNil(writer):
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing DB writer")
 	case util.IsNil(repo):
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing vault repo")
 	}
-	return &LibraryService{
+	return &LibraryListingService{
 		repo:   repo,
 		writer: writer,
 	}, nil

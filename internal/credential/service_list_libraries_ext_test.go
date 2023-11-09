@@ -47,7 +47,7 @@ func TestLibraryService_List(t *testing.T) {
 	repo, err := vault.NewRepository(ctx, rw, rw, kms, sche)
 	require.NoError(t, err)
 
-	service, err := vault.NewLibraryService(ctx, rw, repo)
+	service, err := vault.NewLibraryListingService(ctx, rw, repo)
 	require.NoError(t, err)
 
 	// Run analyze to update count estimate

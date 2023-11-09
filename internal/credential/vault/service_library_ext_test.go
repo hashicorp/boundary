@@ -16,28 +16,28 @@ type fakeWriter struct {
 	db.Writer
 }
 
-func TestNewLibraryService(t *testing.T) {
+func TestNewLibraryListingService(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	t.Run("success", func(t *testing.T) {
 		t.Parallel()
-		got, err := vault.NewLibraryService(ctx, &fakeWriter{}, &vault.Repository{})
+		got, err := vault.NewLibraryListingService(ctx, &fakeWriter{}, &vault.Repository{})
 		require.NoError(t, err)
 		require.NotNil(t, got)
 	})
 	t.Run("nil-writer", func(t *testing.T) {
 		t.Parallel()
-		_, err := vault.NewLibraryService(ctx, nil, &vault.Repository{})
+		_, err := vault.NewLibraryListingService(ctx, nil, &vault.Repository{})
 		require.Error(t, err)
 	})
 	t.Run("nil-interface-writer", func(t *testing.T) {
 		t.Parallel()
-		_, err := vault.NewLibraryService(ctx, (*fakeWriter)(nil), &vault.Repository{})
+		_, err := vault.NewLibraryListingService(ctx, (*fakeWriter)(nil), &vault.Repository{})
 		require.Error(t, err)
 	})
 	t.Run("nil-repo", func(t *testing.T) {
 		t.Parallel()
-		_, err := vault.NewLibraryService(ctx, &fakeWriter{}, nil)
+		_, err := vault.NewLibraryListingService(ctx, &fakeWriter{}, nil)
 		require.Error(t, err)
 	})
 }

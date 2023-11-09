@@ -17,9 +17,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestRepository_ListCredentialLibraries_Pagination(t *testing.T) {
+func TestLibraryListingService_List(t *testing.T) {
 	t.Parallel()
-	assert, require := assert.New(t), require.New(t)
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
@@ -37,42 +36,48 @@ func TestRepository_ListCredentialLibraries_Pagination(t *testing.T) {
 		vault.TestSSHCertificateCredentialLibraries(t, conn, wrapper, cs.GetPublicId(), 1)
 	}
 	repo, err := vault.NewRepository(ctx, rw, rw, kms, sche)
-	require.NoError(err)
-	require.NotNil(repo)
+	require.NoError(t, err)
+	require.NotNil(t, repo)
 
-	service, err := vault.NewLibraryService(ctx, rw, repo)
-	require.NoError(err)
+	service, err := vault.NewLibraryListingService(ctx, rw, repo)
+	require.NoError(t, err)
 
-	for _, cs := range css[:2] {
-		page1, err := service.List(ctx, cs.GetPublicId(), credential.WithLimit(2))
-		require.NoError(err)
-		require.Len(page1, 2)
-		page2, err := service.List(ctx, cs.GetPublicId(), credential.WithLimit(2), credential.WithStartPageAfterItem(page1[1]))
-		require.NoError(err)
-		require.Len(page2, 2)
-		for _, item := range page1 {
-			assert.NotEqual(item.GetPublicId(), page2[0].GetPublicId())
-			assert.NotEqual(item.GetPublicId(), page2[1].GetPublicId())
+	t.Run("empty credential store id", func(t *testing.T) {
+		_, err := service.List(ctx, "")
+		require.ErrorContains(t, err, "missing credential store id")
+	})
+
+	t.Run("pagination", func(t *testing.T) {
+		for _, cs := range css[:2] {
+			page1, err := service.List(ctx, cs.GetPublicId(), credential.WithLimit(2))
+			require.NoError(t, err)
+			require.Len(t, page1, 2)
+			page2, err := service.List(ctx, cs.GetPublicId(), credential.WithLimit(2), credential.WithStartPageAfterItem(page1[1]))
+			require.NoError(t, err)
+			require.Len(t, page2, 2)
+			for _, item := range page1 {
+				assert.NotEqual(t, item.GetPublicId(), page2[0].GetPublicId())
+				assert.NotEqual(t, item.GetPublicId(), page2[1].GetPublicId())
+			}
+			page3, err := service.List(ctx, cs.GetPublicId(), credential.WithLimit(2), credential.WithStartPageAfterItem(page2[1]))
+			require.NoError(t, err)
+			require.Len(t, page3, 1)
+			for _, item := range append(page1, page2...) {
+				assert.NotEqual(t, item.GetPublicId(), page3[0].GetPublicId())
+			}
+			page4, err := service.List(ctx, cs.GetPublicId(), credential.WithLimit(2), credential.WithStartPageAfterItem(page3[0]))
+			require.NoError(t, err)
+			require.Empty(t, page4)
 		}
-		page3, err := service.List(ctx, cs.GetPublicId(), credential.WithLimit(2), credential.WithStartPageAfterItem(page2[1]))
-		require.NoError(err)
-		require.Len(page3, 1)
-		for _, item := range append(page1, page2...) {
-			assert.NotEqual(item.GetPublicId(), page3[0].GetPublicId())
-		}
-		page4, err := service.List(ctx, cs.GetPublicId(), credential.WithLimit(2), credential.WithStartPageAfterItem(page3[0]))
-		require.NoError(err)
-		require.Empty(page4)
-	}
 
-	emptyPage, err := service.List(ctx, css[2].GetPublicId(), credential.WithLimit(2))
-	require.NoError(err)
-	require.Empty(emptyPage)
+		emptyPage, err := service.List(ctx, css[2].GetPublicId(), credential.WithLimit(2))
+		require.NoError(t, err)
+		require.Empty(t, emptyPage)
+	})
 }
 
-func TestRepository_ListDeletedLibraryIds(t *testing.T) {
+func TestLibraryListingService_ListDeletedIds(t *testing.T) {
 	t.Parallel()
-	require := require.New(t)
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
@@ -92,51 +97,58 @@ func TestRepository_ListDeletedLibraryIds(t *testing.T) {
 	}
 
 	repo, err := vault.NewRepository(ctx, rw, rw, kms, sche)
-	require.NoError(err)
-	require.NotNil(repo)
+	require.NoError(t, err)
+	require.NotNil(t, repo)
 
-	service, err := vault.NewLibraryService(ctx, rw, repo)
-	require.NoError(err)
+	service, err := vault.NewLibraryListingService(ctx, rw, repo)
+	require.NoError(t, err)
 
-	// Expect no entries at the start
-	deletedIds, ttime, err := service.ListDeletedIds(ctx, time.Now().AddDate(-1, 0, 0))
-	require.NoError(err)
-	require.Empty(deletedIds)
-	// Expect transaction timestamp to be within ~10 seconds of now
-	require.True(time.Now().Before(ttime.Add(10 * time.Second)))
-	require.True(time.Now().After(ttime.Add(-10 * time.Second)))
+	t.Run("missing since", func(t *testing.T) {
+		_, _, err := service.ListDeletedIds(ctx, time.Time{})
+		require.ErrorContains(t, err, "missing since")
+	})
 
-	// Delete a generic library
-	_, err = repo.DeleteCredentialLibrary(ctx, prj.GetPublicId(), libs[0].GetPublicId())
-	require.NoError(err)
+	t.Run("listing", func(t *testing.T) {
+		// Expect no entries at the start
+		deletedIds, ttime, err := service.ListDeletedIds(ctx, time.Now().AddDate(-1, 0, 0))
+		require.NoError(t, err)
+		require.Empty(t, deletedIds)
+		// Expect transaction timestamp to be within ~10 seconds of now
+		require.True(t, time.Now().Before(ttime.Add(10*time.Second)))
+		require.True(t, time.Now().After(ttime.Add(-10*time.Second)))
 
-	// Expect a single entry
-	deletedIds, ttime, err = service.ListDeletedIds(ctx, time.Now().AddDate(-1, 0, 0))
-	require.NoError(err)
-	require.Equal([]string{libs[0].GetPublicId()}, deletedIds)
-	require.True(time.Now().Before(ttime.Add(10 * time.Second)))
-	require.True(time.Now().After(ttime.Add(-10 * time.Second)))
+		// Delete a generic library
+		_, err = repo.DeleteCredentialLibrary(ctx, prj.GetPublicId(), libs[0].GetPublicId())
+		require.NoError(t, err)
 
-	// Delete an ssh cert library
-	_, err = repo.DeleteSSHCertificateCredentialLibrary(ctx, prj.GetPublicId(), libs[2].GetPublicId())
-	require.NoError(err)
+		// Expect a single entry
+		deletedIds, ttime, err = service.ListDeletedIds(ctx, time.Now().AddDate(-1, 0, 0))
+		require.NoError(t, err)
+		require.Equal(t, []string{libs[0].GetPublicId()}, deletedIds)
+		require.True(t, time.Now().Before(ttime.Add(10*time.Second)))
+		require.True(t, time.Now().After(ttime.Add(-10*time.Second)))
 
-	// Expect two entries
-	deletedIds, ttime, err = service.ListDeletedIds(ctx, time.Now().AddDate(-1, 0, 0))
-	require.NoError(err)
-	require.ElementsMatch([]string{libs[0].GetPublicId(), libs[2].GetPublicId()}, deletedIds)
-	require.True(time.Now().Before(ttime.Add(10 * time.Second)))
-	require.True(time.Now().After(ttime.Add(-10 * time.Second)))
+		// Delete an ssh cert library
+		_, err = repo.DeleteSSHCertificateCredentialLibrary(ctx, prj.GetPublicId(), libs[2].GetPublicId())
+		require.NoError(t, err)
 
-	// Try again with the time set to now, expect no entries
-	deletedIds, ttime, err = service.ListDeletedIds(ctx, time.Now())
-	require.NoError(err)
-	require.Empty(deletedIds)
-	require.True(time.Now().Before(ttime.Add(10 * time.Second)))
-	require.True(time.Now().After(ttime.Add(-10 * time.Second)))
+		// Expect two entries
+		deletedIds, ttime, err = service.ListDeletedIds(ctx, time.Now().AddDate(-1, 0, 0))
+		require.NoError(t, err)
+		require.ElementsMatch(t, []string{libs[0].GetPublicId(), libs[2].GetPublicId()}, deletedIds)
+		require.True(t, time.Now().Before(ttime.Add(10*time.Second)))
+		require.True(t, time.Now().After(ttime.Add(-10*time.Second)))
+
+		// Try again with the time set to now, expect no entries
+		deletedIds, ttime, err = service.ListDeletedIds(ctx, time.Now())
+		require.NoError(t, err)
+		require.Empty(t, deletedIds)
+		require.True(t, time.Now().Before(ttime.Add(10*time.Second)))
+		require.True(t, time.Now().After(ttime.Add(-10*time.Second)))
+	})
 }
 
-func TestRepository_EstimatedLibraryCount(t *testing.T) {
+func TestLibraryListingService_EstimatedCount(t *testing.T) {
 	t.Parallel()
 	assert, require := assert.New(t), require.New(t)
 	ctx := context.Background()
@@ -154,7 +166,7 @@ func TestRepository_EstimatedLibraryCount(t *testing.T) {
 	require.NoError(err)
 	require.NotNil(repo)
 
-	service, err := vault.NewLibraryService(ctx, rw, repo)
+	service, err := vault.NewLibraryListingService(ctx, rw, repo)
 	require.NoError(err)
 
 	// Check total entries at start, expect 0

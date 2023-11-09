@@ -17,8 +17,11 @@ import (
 // Supports the following options:
 //   - credential.WithLimit
 //   - credential.WithStartPageAfterItem
-func (s *LibraryService) List(ctx context.Context, credentialStoreId string, opts ...credential.Option) ([]credential.Library, error) {
+func (s *LibraryListingService) List(ctx context.Context, credentialStoreId string, opts ...credential.Option) ([]credential.Library, error) {
 	const op = "vault.(*LibraryService).List"
+	if credentialStoreId == "" {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing credential store id")
+	}
 	opt, err := credential.GetOpts(opts...)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
@@ -51,7 +54,7 @@ func (s *LibraryService) List(ctx context.Context, credentialStoreId string, opt
 }
 
 // EstimatedCount estimates the total count of Vault credential libraries, both generic and SSH.
-func (s *LibraryService) EstimatedCount(ctx context.Context) (int, error) {
+func (s *LibraryListingService) EstimatedCount(ctx context.Context) (int, error) {
 	const op = "vault.(*LibraryService).EstimatedCount"
 	numGenericLibs, err := s.repo.estimatedLibraryCount(ctx)
 	if err != nil {
@@ -66,8 +69,11 @@ func (s *LibraryService) EstimatedCount(ctx context.Context) (int, error) {
 
 // ListDeletedIds lists the IDs of credential libraries deleted since the provided timestamp,
 // both generic and SSH.
-func (s *LibraryService) ListDeletedIds(ctx context.Context, since time.Time) ([]string, time.Time, error) {
+func (s *LibraryListingService) ListDeletedIds(ctx context.Context, since time.Time) ([]string, time.Time, error) {
 	const op = "vault.(*LibraryService).ListDeletedIds"
+	if since.IsZero() {
+		return nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "missing since")
+	}
 	// Request and combine deleted ids from the DB for generic and ssh cert libraries.
 	// This statement here is the reason we need a struct for this. We need all the
 	// deleted libraries to be collated in a single transaction with a single
