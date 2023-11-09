@@ -9,16 +9,12 @@ import (
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/hashicorp/boundary/internal/types/subtypes"
 )
 
 const StorageDomain = "storage"
 
 func init() {
-	if err := subtypes.Register(StorageDomain, Subtype, globals.PluginStorageBucketPrefix); err != nil {
-		panic(err)
-	}
-	globals.RegisterPrefixSubtype(globals.PluginStorageBucketPrefix, Subtype)
+	globals.RegisterPrefixSubtype(globals.PluginStorageBucketPrefix, StorageDomain, Subtype)
 }
 
 const (

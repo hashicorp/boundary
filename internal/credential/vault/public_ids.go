@@ -10,23 +10,13 @@ import (
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/hashicorp/boundary/internal/types/subtypes"
 )
 
 func init() {
-	if err := subtypes.Register(credential.Domain, Subtype, globals.VaultCredentialStorePrefix, globals.VaultDynamicCredentialPrefix); err != nil {
-		panic(err)
-	}
-	if err := subtypes.Register(credential.Domain, GenericLibrarySubtype, globals.VaultCredentialLibraryPrefix); err != nil {
-		panic(err)
-	}
-	if err := subtypes.Register(credential.Domain, SSHCertificateLibrarySubtype, globals.VaultSshCertificateCredentialLibraryPrefix); err != nil {
-		panic(err)
-	}
-	globals.RegisterPrefixSubtype(globals.VaultCredentialStorePrefix, Subtype)
-	globals.RegisterPrefixSubtype(globals.VaultDynamicCredentialPrefix, Subtype)
-	globals.RegisterPrefixSubtype(globals.VaultCredentialLibraryPrefix, GenericLibrarySubtype)
-	globals.RegisterPrefixSubtype(globals.VaultSshCertificateCredentialLibraryPrefix, SSHCertificateLibrarySubtype)
+	globals.RegisterPrefixSubtype(globals.VaultCredentialStorePrefix, credential.Domain, Subtype)
+	globals.RegisterPrefixSubtype(globals.VaultDynamicCredentialPrefix, credential.Domain, Subtype)
+	globals.RegisterPrefixSubtype(globals.VaultCredentialLibraryPrefix, credential.Domain, GenericLibrarySubtype)
+	globals.RegisterPrefixSubtype(globals.VaultSshCertificateCredentialLibraryPrefix, credential.Domain, SSHCertificateLibrarySubtype)
 }
 
 // PublicId prefixes for the resources in the vault package.

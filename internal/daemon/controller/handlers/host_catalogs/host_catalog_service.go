@@ -537,8 +537,8 @@ func (s Service) createPluginInRepo(ctx context.Context, projId string, req *pbs
 
 func (s Service) createInRepo(ctx context.Context, projId string, req *pbs.CreateHostCatalogRequest) (hc host.Catalog, info *plugins.PluginInfo, err error) {
 	var plg *plugins.PluginInfo
-	switch subtypes.SubtypeFromType(domain, req.GetItem().GetType()) {
-	case static.Subtype:
+	switch req.GetItem().GetType() {
+	case static.Subtype.String():
 		hc, err = s.createStaticInRepo(ctx, projId, req.GetItem())
 	default:
 		hc, plg, err = s.createPluginInRepo(ctx, projId, req)
@@ -843,9 +843,9 @@ func validateCreateRequest(req *pbs.CreateHostCatalogRequest) error {
 		if req.GetItem().GetSecretsHmac() != "" {
 			badFields[globals.SecretsHmacField] = "This is a read only field."
 		}
-		switch subtypes.SubtypeFromType(domain, req.GetItem().GetType()) {
-		case static.Subtype:
-		case hostplugin.Subtype:
+		switch req.GetItem().GetType() {
+		case static.Subtype.String():
+		case hostplugin.Subtype.String():
 			if req.GetItem().GetPlugin() != nil {
 				badFields[globals.PluginField] = "This is a read only field."
 			}
@@ -872,14 +872,14 @@ func validateUpdateRequest(req *pbs.UpdateHostCatalogRequest) error {
 		}
 		switch subtypes.SubtypeFromId(domain, req.GetId()) {
 		case static.Subtype:
-			if req.GetItem().GetType() != "" && subtypes.SubtypeFromType(domain, req.GetItem().GetType()) != static.Subtype {
+			if req.GetItem().GetType() != "" && req.GetItem().GetType() != static.Subtype.String() {
 				badFields[globals.TypeField] = "Cannot modify resource type."
 			}
 			if req.GetItem().GetPlugin() != nil {
 				badFields[globals.PluginField] = "This field is unused for this type of host catalog."
 			}
 		case hostplugin.Subtype:
-			if req.GetItem().GetType() != "" && subtypes.SubtypeFromType(domain, req.GetItem().GetType()) != hostplugin.Subtype {
+			if req.GetItem().GetType() != "" && req.GetItem().GetType() != hostplugin.Subtype.String() {
 				badFields[globals.TypeField] = "Cannot modify resource type."
 			}
 			if req.GetItem().GetPlugin() != nil {

@@ -19,7 +19,7 @@ type targetHooks struct{}
 
 func init() {
 	target.Register(Subtype, targetHooks{}, TargetPrefix)
-	globals.RegisterPrefixSubtype(globals.TcpTargetPrefix, Subtype)
+	globals.RegisterPrefixSubtype(globals.TcpTargetPrefix, target.Domain, Subtype)
 }
 
 const (

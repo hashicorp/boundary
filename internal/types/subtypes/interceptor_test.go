@@ -18,8 +18,8 @@ import (
 )
 
 func init() {
-	Register("test", globals.Subtype("sub_resource"), "trsr")
-	Register("test", globals.Subtype("resource_plugin"), "trrp")
+	globals.RegisterPrefixSubtype("trsr", "test", globals.Subtype("sub_resource"))
+	globals.RegisterPrefixSubtype("trrp", "test", globals.Subtype("resource_plugin"))
 }
 
 func TestTransformRequestAttributes(t *testing.T) {

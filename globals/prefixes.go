@@ -127,6 +127,7 @@ const (
 
 type ResourceInfo struct {
 	Type    resource.Type
+	Domain  string
 	Subtype Subtype
 }
 
@@ -324,9 +325,10 @@ var resourceTypeToPrefixes map[resource.Type][]string = func() map[resource.Type
 // prefixes belong to their subtypes. This lets the subtypes stay in different
 // packages (important for the reflection introspection we do) while not
 // creating import loops.
-func RegisterPrefixSubtype(prefix string, subtype Subtype) {
+func RegisterPrefixSubtype(prefix string, domain string, subtype Subtype) {
 	resInfo := prefixToResourceType[prefix]
 	resInfo.Subtype = subtype
+	resInfo.Domain = domain
 	prefixToResourceType[prefix] = resInfo
 }
 
@@ -342,4 +344,14 @@ func ResourceInfoFromPrefix(in string) ResourceInfo {
 // type is not known the return value will be nil
 func ResourcePrefixesFromType(in resource.Type) []string {
 	return resourceTypeToPrefixes[in]
+}
+
+func PrefixesFromDomain(domain string) []string {
+	res := make([]string, 0, 8)
+	for k, v := range prefixToResourceType {
+		if v.Domain == domain {
+			res = append(res, k)
+		}
+	}
+	return res
 }

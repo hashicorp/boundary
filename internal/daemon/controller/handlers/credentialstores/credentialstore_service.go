@@ -790,8 +790,8 @@ func validateCreateRequest(ctx context.Context, req *pbs.CreateCredentialStoreRe
 		if !handlers.ValidId(handlers.Id(req.GetItem().GetScopeId()), scope.Project.Prefix()) {
 			badFields["scope_id"] = "This field must be a valid project scope id."
 		}
-		switch subtypes.SubtypeFromType(domain, req.GetItem().GetType()) {
-		case vault.Subtype:
+		switch req.GetItem().GetType() {
+		case vault.Subtype.String():
 			attrs := req.GetItem().GetVaultCredentialStoreAttributes()
 			if attrs == nil {
 				badFields[globals.AttributesField] = "Attributes are required for creating a vault credential store"
@@ -828,7 +828,7 @@ func validateCreateRequest(ctx context.Context, req *pbs.CreateCredentialStoreRe
 			if len(cs) > 0 && pk == nil {
 				badFields[clientCertField] = "Cannot set a client certificate without a private key."
 			}
-		case static.Subtype:
+		case static.Subtype.String():
 			// No additional validation required for static credential store
 		default:
 			badFields[globals.TypeField] = "This is a required field and must be a known credential store type."
@@ -842,7 +842,7 @@ func validateUpdateRequest(ctx context.Context, req *pbs.UpdateCredentialStoreRe
 		badFields := map[string]string{}
 		switch subtypes.SubtypeFromId(domain, req.GetId()) {
 		case vault.Subtype:
-			if req.GetItem().GetType() != "" && subtypes.SubtypeFromType(domain, req.GetItem().GetType()) != vault.Subtype {
+			if req.GetItem().GetType() != "" && req.GetItem().GetType() != vault.Subtype.String() {
 				badFields["type"] = "Cannot modify resource type."
 			}
 			attrs := req.GetItem().GetVaultCredentialStoreAttributes()

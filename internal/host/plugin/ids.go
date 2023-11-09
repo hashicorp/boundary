@@ -10,19 +10,15 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/host"
-	"github.com/hashicorp/boundary/internal/types/subtypes"
 )
 
 func init() {
-	if err := subtypes.Register(host.Domain, Subtype, globals.PluginHostCatalogPrefix, globals.PluginHostCatalogPreviousPrefix, globals.PluginHostSetPrefix, globals.PluginHostSetPreviousPrefix, globals.PluginHostPrefix, globals.PluginHostPreviousPrefix); err != nil {
-		panic(err)
-	}
-	globals.RegisterPrefixSubtype(globals.PluginHostCatalogPrefix, Subtype)
-	globals.RegisterPrefixSubtype(globals.PluginHostCatalogPreviousPrefix, Subtype)
-	globals.RegisterPrefixSubtype(globals.PluginHostSetPrefix, Subtype)
-	globals.RegisterPrefixSubtype(globals.PluginHostSetPreviousPrefix, Subtype)
-	globals.RegisterPrefixSubtype(globals.PluginHostPrefix, Subtype)
-	globals.RegisterPrefixSubtype(globals.PluginHostPreviousPrefix, Subtype)
+	globals.RegisterPrefixSubtype(globals.PluginHostCatalogPrefix, host.Domain, Subtype)
+	globals.RegisterPrefixSubtype(globals.PluginHostCatalogPreviousPrefix, host.Domain, Subtype)
+	globals.RegisterPrefixSubtype(globals.PluginHostSetPrefix, host.Domain, Subtype)
+	globals.RegisterPrefixSubtype(globals.PluginHostSetPreviousPrefix, host.Domain, Subtype)
+	globals.RegisterPrefixSubtype(globals.PluginHostPrefix, host.Domain, Subtype)
+	globals.RegisterPrefixSubtype(globals.PluginHostPreviousPrefix, host.Domain, Subtype)
 }
 
 // PublicId prefixes for the resources in the plugin package.

@@ -400,8 +400,8 @@ func (s Service) getFromRepo(ctx context.Context, id string) (credential.Library
 func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.CredentialLibrary) (credential.Library, error) {
 	const op = "credentiallibraries.(Service).createInRepo"
 	var out credential.Library
-	switch subtypes.SubtypeFromType(domain, item.GetType()) {
-	case vault.SSHCertificateLibrarySubtype:
+	switch item.GetType() {
+	case vault.SSHCertificateLibrarySubtype.String():
 		cl, err := toStorageVaultSSHCertificateLibrary(ctx, item.GetCredentialStoreId(), item)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
@@ -901,7 +901,7 @@ func validateCreateRequest(req *pbs.CreateCredentialLibraryRequest) error {
 				// subtype of vault-generic based on the credential store's subtype.
 				// To support the deprecated subtype 'vault.Subtype', convert it
 				// to vault-generic.
-				if t == "" || subtypes.SubtypeFromType(domain, t) == vault.Subtype {
+				if t == "" || t == vault.Subtype.String() {
 					// fallback to assuming subtype from credential store.
 					t = vault.GenericLibrarySubtype.String()
 					req.GetItem().Type = t
@@ -927,13 +927,13 @@ func validateCreateRequest(req *pbs.CreateCredentialLibraryRequest) error {
 				}
 			}
 
-			if subtypes.SubtypeFromType(domain, t) != vault.GenericLibrarySubtype &&
-				subtypes.SubtypeFromType(domain, t) != vault.SSHCertificateLibrarySubtype {
+			if t != vault.GenericLibrarySubtype.String() &&
+				t != vault.SSHCertificateLibrarySubtype.String() {
 				badFields[globals.CredentialStoreIdField] = fmt.Sprintf("Type must be a vault subtype %q or %q", vault.GenericLibrarySubtype.String(), vault.SSHCertificateLibrarySubtype.String())
 			}
 
-			switch subtypes.SubtypeFromType(domain, req.GetItem().GetType()) {
-			case vault.GenericLibrarySubtype:
+			switch req.GetItem().GetType() {
+			case vault.GenericLibrarySubtype.String():
 				isValidCred := false
 				ct := req.GetItem().GetCredentialType()
 				for _, t := range validCredentialTypesVaultGeneric {
@@ -964,7 +964,7 @@ func validateCreateRequest(req *pbs.CreateCredentialLibraryRequest) error {
 					badFields[httpRequestBodyField] = fmt.Sprintf("Field can only be set if %q is set to the value 'POST'.", httpMethodField)
 				}
 				validateMapping(badFields, globals.CredentialType(req.GetItem().GetCredentialType()), req.GetItem().CredentialMappingOverrides.AsMap())
-			case vault.SSHCertificateLibrarySubtype:
+			case vault.SSHCertificateLibrarySubtype.String():
 				if req.GetItem().GetCredentialType() != "" {
 					badFields[globals.CredentialTypeField] = fmt.Sprintf("This field is read only and cannot be set.")
 				}
@@ -1012,7 +1012,7 @@ func validateUpdateRequest(req *pbs.UpdateCredentialLibraryRequest, currentCrede
 		badFields := map[string]string{}
 		switch st {
 		case vault.GenericLibrarySubtype:
-			if req.GetItem().GetType() != "" && subtypes.SubtypeFromType(domain, req.GetItem().GetType()) != vault.GenericLibrarySubtype {
+			if req.GetItem().GetType() != "" && req.GetItem().GetType() != vault.GenericLibrarySubtype.String() {
 				badFields[globals.TypeField] = "Cannot modify resource type."
 			}
 			if req.GetItem().GetCredentialType() != "" && req.GetItem().GetCredentialType() != string(currentCredentialType) {
@@ -1036,7 +1036,7 @@ func validateUpdateRequest(req *pbs.UpdateCredentialLibraryRequest, currentCrede
 				validateMapping(badFields, currentCredentialType, req.GetItem().CredentialMappingOverrides.AsMap())
 			}
 		case vault.SSHCertificateLibrarySubtype:
-			if req.GetItem().GetType() != "" && subtypes.SubtypeFromType(domain, req.GetItem().GetType()) != vault.SSHCertificateLibrarySubtype {
+			if req.GetItem().GetType() != "" && req.GetItem().GetType() != vault.SSHCertificateLibrarySubtype.String() {
 				badFields[globals.TypeField] = "Cannot modify resource type."
 			}
 			if req.GetItem().GetCredentialType() != "" && req.GetItem().GetCredentialType() != string(currentCredentialType) {

@@ -10,16 +10,12 @@ import (
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/hashicorp/boundary/internal/types/subtypes"
 )
 
 func init() {
-	if err := subtypes.Register(auth.Domain, Subtype, globals.LdapAuthMethodPrefix, globals.LdapAccountPrefix, globals.LdapManagedGroupPrefix); err != nil {
-		panic(err)
-	}
-	globals.RegisterPrefixSubtype(globals.LdapAuthMethodPrefix, Subtype)
-	globals.RegisterPrefixSubtype(globals.LdapAccountPrefix, Subtype)
-	globals.RegisterPrefixSubtype(globals.LdapManagedGroupPrefix, Subtype)
+	globals.RegisterPrefixSubtype(globals.LdapAuthMethodPrefix, auth.Domain, Subtype)
+	globals.RegisterPrefixSubtype(globals.LdapAccountPrefix, auth.Domain, Subtype)
+	globals.RegisterPrefixSubtype(globals.LdapManagedGroupPrefix, auth.Domain, Subtype)
 }
 
 const (

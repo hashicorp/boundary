@@ -10,16 +10,12 @@ import (
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/hashicorp/boundary/internal/types/subtypes"
 )
 
 func init() {
-	if err := subtypes.Register(auth.Domain, Subtype, globals.PasswordAuthMethodPrefix, globals.PasswordAccountPreviousPrefix, globals.PasswordAccountPrefix); err != nil {
-		panic(err)
-	}
-	globals.RegisterPrefixSubtype(globals.PasswordAuthMethodPrefix, Subtype)
-	globals.RegisterPrefixSubtype(globals.PasswordAccountPreviousPrefix, Subtype)
-	globals.RegisterPrefixSubtype(globals.PasswordAccountPrefix, Subtype)
+	globals.RegisterPrefixSubtype(globals.PasswordAuthMethodPrefix, auth.Domain, Subtype)
+	globals.RegisterPrefixSubtype(globals.PasswordAccountPreviousPrefix, auth.Domain, Subtype)
+	globals.RegisterPrefixSubtype(globals.PasswordAccountPrefix, auth.Domain, Subtype)
 }
 
 // PublicId prefixes for the resources in the password package.

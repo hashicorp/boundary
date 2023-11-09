@@ -549,8 +549,8 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string, authResult
 func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.AuthMethod) (auth.AuthMethod, error) {
 	const op = "authmethods.(Service).createInRepo"
 	var out auth.AuthMethod
-	switch subtypes.SubtypeFromType(domain, item.GetType()) {
-	case password.Subtype:
+	switch item.GetType() {
+	case password.Subtype.String():
 		am, err := s.createPwInRepo(ctx, scopeId, item)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
@@ -559,7 +559,7 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Auth
 			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create auth method but no error returned from repository.")
 		}
 		out = am
-	case oidc.Subtype:
+	case oidc.Subtype.String():
 		am, err := s.createOidcInRepo(ctx, scopeId, item)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
@@ -568,7 +568,7 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Auth
 			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create auth method but no error returned from repository.")
 		}
 		out = am
-	case ldap.Subtype:
+	case ldap.Subtype.String():
 		am, err := s.createLdapInRepo(ctx, scopeId, item)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
@@ -987,10 +987,10 @@ func validateCreateRequest(ctx context.Context, req *pbs.CreateAuthMethodRequest
 		if req.GetItem().GetIsPrimary() {
 			badFields[isPrimaryField] = "This field is read only."
 		}
-		switch subtypes.SubtypeFromType(domain, req.GetItem().GetType()) {
-		case password.Subtype:
+		switch req.GetItem().GetType() {
+		case password.Subtype.String():
 			// Password attributes are not required when creating a password auth method.
-		case oidc.Subtype:
+		case oidc.Subtype.String():
 			attrs := req.GetItem().GetOidcAuthMethodsAttributes()
 			if attrs == nil {
 				// OIDC attributes are required when creating an OIDC auth method.
@@ -1066,7 +1066,7 @@ func validateCreateRequest(ctx context.Context, req *pbs.CreateAuthMethodRequest
 					}
 				}
 			}
-		case ldap.Subtype:
+		case ldap.Subtype.String():
 			if len(req.GetItem().GetLdapAuthMethodsAttributes().GetUrls()) == 0 {
 				badFields[urlsField] = "At least one URL is required"
 			}
@@ -1090,11 +1090,11 @@ func validateUpdateRequest(ctx context.Context, req *pbs.UpdateAuthMethodRequest
 		}
 		switch subtypes.SubtypeFromId(domain, req.GetId()) {
 		case password.Subtype:
-			if req.GetItem().GetType() != "" && subtypes.SubtypeFromType(domain, req.GetItem().GetType()) != password.Subtype {
+			if req.GetItem().GetType() != "" && req.GetItem().GetType() != password.Subtype.String() {
 				badFields[typeField] = "Cannot modify the resource type."
 			}
 		case oidc.Subtype:
-			if req.GetItem().GetType() != "" && subtypes.SubtypeFromType(domain, req.GetItem().GetType()) != oidc.Subtype {
+			if req.GetItem().GetType() != "" && req.GetItem().GetType() != oidc.Subtype.String() {
 				badFields[typeField] = "Cannot modify the resource type."
 			}
 			attrs := req.GetItem().GetOidcAuthMethodsAttributes()
@@ -1198,7 +1198,7 @@ func validateUpdateRequest(ctx context.Context, req *pbs.UpdateAuthMethodRequest
 				}
 			}
 		case ldap.Subtype:
-			if req.GetItem().GetType() != "" && subtypes.SubtypeFromType(domain, req.GetItem().GetType()) != ldap.Subtype {
+			if req.GetItem().GetType() != "" && req.GetItem().GetType() != ldap.Subtype.String() {
 				badFields[typeField] = "Cannot modify the resource type."
 			}
 			validateLdapAttributes(ctx, req.GetItem().GetLdapAuthMethodsAttributes(), badFields)

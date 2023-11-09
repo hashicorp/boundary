@@ -10,15 +10,11 @@ import (
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/hashicorp/boundary/internal/types/subtypes"
 )
 
 func init() {
-	if err := subtypes.Register(credential.Domain, Subtype, globals.StaticCredentialStorePrefix, globals.StaticCredentialStorePreviousPrefix); err != nil {
-		panic(err)
-	}
-	globals.RegisterPrefixSubtype(globals.StaticCredentialStorePrefix, Subtype)
-	globals.RegisterPrefixSubtype(globals.StaticCredentialStorePreviousPrefix, Subtype)
+	globals.RegisterPrefixSubtype(globals.StaticCredentialStorePrefix, credential.Domain, Subtype)
+	globals.RegisterPrefixSubtype(globals.StaticCredentialStorePreviousPrefix, credential.Domain, Subtype)
 }
 
 // PublicId prefixes for the resources in the static package.
