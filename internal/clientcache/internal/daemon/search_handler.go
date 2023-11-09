@@ -18,8 +18,8 @@ import (
 
 // SearchResult is the struct returned to search requests.
 type SearchResult struct {
-	Targets  []*targets.Target   `json:",omitempty"`
-	Sessions []*sessions.Session `json:",omitempty"`
+	Targets  []*targets.Target   `json:"targets,omitempty"`
+	Sessions []*sessions.Session `json:"sessions,omitempty"`
 }
 
 const (
