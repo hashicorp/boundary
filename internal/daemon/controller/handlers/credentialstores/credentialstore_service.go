@@ -394,7 +394,7 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]credent
 func (s Service) getFromRepo(ctx context.Context, id string) (credential.Store, error) {
 	const op = "credentialstores.(Service).getFromRepo"
 
-	switch subtypes.SubtypeFromId(domain, id) {
+	switch globals.ResourceInfoFromPrefix(id).Subtype {
 	case vault.Subtype:
 		repo, err := s.vaultRepoFn()
 		if err != nil {
@@ -475,7 +475,7 @@ func (s Service) updateInRepo(ctx context.Context, projId, id string, mask []str
 		return nil, handlers.InvalidArgumentErrorf("No valid fields included in the update mask.", map[string]string{"update_mask": "No valid fields provided in the update mask."})
 	}
 
-	switch subtypes.SubtypeFromId(domain, id) {
+	switch globals.ResourceInfoFromPrefix(id).Subtype {
 	case vault.Subtype:
 		cs, err := toStorageVaultStore(ctx, projId, item)
 		if err != nil {
@@ -518,7 +518,7 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 	const op = "credentialstores.(Service).deleteFromRepo"
 	var rows int
 
-	switch subtypes.SubtypeFromId(domain, id) {
+	switch globals.ResourceInfoFromPrefix(id).Subtype {
 	case vault.Subtype:
 		repo, err := s.vaultRepoFn()
 		if err != nil {
@@ -581,7 +581,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 			return res
 		}
 	default:
-		switch subtypes.SubtypeFromId(domain, id) {
+		switch globals.ResourceInfoFromPrefix(id).Subtype {
 		case vault.Subtype:
 			cs, err := vaultRepo.LookupCredentialStore(ctx, id)
 			if err != nil {
@@ -630,7 +630,7 @@ func toProto(ctx context.Context, in credential.Store, opt ...handlers.Option) (
 		out.ScopeId = in.GetProjectId()
 	}
 	if outputFields.Has(globals.TypeField) {
-		out.Type = subtypes.SubtypeFromId(domain, in.GetPublicId()).String()
+		out.Type = globals.ResourceInfoFromPrefix(in.GetPublicId()).Subtype.String()
 	}
 	if outputFields.Has(globals.DescriptionField) && in.GetDescription() != "" {
 		out.Description = wrapperspb.String(in.GetDescription())
@@ -657,7 +657,7 @@ func toProto(ctx context.Context, in credential.Store, opt ...handlers.Option) (
 		out.AuthorizedCollectionActions = opts.WithAuthorizedCollectionActions
 	}
 	if outputFields.Has(globals.AttributesField) {
-		switch subtypes.SubtypeFromId(domain, in.GetPublicId()) {
+		switch globals.ResourceInfoFromPrefix(in.GetPublicId()).Subtype {
 		case vault.Subtype:
 			vaultIn, ok := in.(*vault.CredentialStore)
 			if !ok {
@@ -840,7 +840,7 @@ func validateCreateRequest(ctx context.Context, req *pbs.CreateCredentialStoreRe
 func validateUpdateRequest(ctx context.Context, req *pbs.UpdateCredentialStoreRequest) error {
 	return handlers.ValidateUpdateRequest(req, req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
-		switch subtypes.SubtypeFromId(domain, req.GetId()) {
+		switch globals.ResourceInfoFromPrefix(req.GetId()).Subtype {
 		case vault.Subtype:
 			if req.GetItem().GetType() != "" && req.GetItem().GetType() != vault.Subtype.String() {
 				badFields["type"] = "Cannot modify resource type."
@@ -903,7 +903,7 @@ func validateListRequest(ctx context.Context, req *pbs.ListCredentialStoresReque
 func calculateAuthorizedCollectionActions(ctx context.Context, authResults auth.VerifyResults, id string) (map[string]*structpb.ListValue, error) {
 	var collectionActions map[string]*structpb.ListValue
 	var err error
-	switch subtypes.SubtypeFromId(domain, id) {
+	switch globals.ResourceInfoFromPrefix(id).Subtype {
 	case vault.Subtype:
 		collectionActions, err = auth.CalculateAuthorizedCollectionActions(ctx, authResults, vaultCollectionTypeMap, authResults.Scope.Id, id)
 

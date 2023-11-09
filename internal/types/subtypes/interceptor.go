@@ -99,8 +99,6 @@ func messageDomain(m proto.Message) string {
 // Also note that for any of the id based lookups to function, the file that contains
 // the proto.Message definition must set the "domain" custom option.
 func transformRequestAttributes(req proto.Message) error {
-	domain := messageDomain(req)
-
 	r := req.ProtoReflect()
 	fields := r.Descriptor().Fields()
 
@@ -135,9 +133,9 @@ func transformRequestAttributes(req proto.Message) error {
 
 		switch {
 		case idField != nil && id != "":
-			st = SubtypeFromId(domain, id)
+			st = globals.ResourceInfoFromPrefix(id).Subtype
 		case sourceIdField != nil && sourceId != "":
-			st = SubtypeFromId(domain, sourceId)
+			st = globals.ResourceInfoFromPrefix(sourceId).Subtype
 		case typeField != nil && t != "":
 			st = globals.Subtype(t)
 		default: // need either type or id
@@ -146,7 +144,7 @@ func transformRequestAttributes(req proto.Message) error {
 		return convertAttributesToSubtype(item, st)
 	case idField != nil && attributesField != nil:
 		id := r.Get(idField).String()
-		st = SubtypeFromId(domain, id)
+		st = globals.ResourceInfoFromPrefix(id).Subtype
 		return convertAttributesToSubtype(req, st)
 	}
 	return nil

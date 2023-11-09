@@ -415,7 +415,7 @@ func (s Service) DeleteHostCatalog(ctx context.Context, req *pbs.DeleteHostCatal
 func (s Service) getFromRepo(ctx context.Context, id string) (host.Catalog, *plugins.PluginInfo, error) {
 	var plg *plugins.PluginInfo
 	var cat host.Catalog
-	switch subtypes.SubtypeFromId(domain, id) {
+	switch globals.ResourceInfoFromPrefix(id).Subtype {
 	case static.Subtype:
 		repo, err := s.staticRepoFn()
 		if err != nil {
@@ -601,7 +601,7 @@ func (s Service) updatePluginInRepo(ctx context.Context, projId, id string, mask
 
 func (s Service) updateInRepo(ctx context.Context, projId string, req *pbs.UpdateHostCatalogRequest) (hc host.Catalog, plg *plugins.PluginInfo, err error) {
 	const op = "host_catalogs.(Service).updateInRepo"
-	switch subtypes.SubtypeFromId(domain, req.GetId()) {
+	switch globals.ResourceInfoFromPrefix(req.GetId()).Subtype {
 	case static.Subtype:
 		hc, err = s.updateStaticInRepo(ctx, projId, req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
 	case hostplugin.Subtype:
@@ -613,7 +613,7 @@ func (s Service) updateInRepo(ctx context.Context, projId string, req *pbs.Updat
 func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 	const op = "host_catalogs.(Service).deleteFromRepo"
 	rows := 0
-	switch subtypes.SubtypeFromId(domain, id) {
+	switch globals.ResourceInfoFromPrefix(id).Subtype {
 	case static.Subtype:
 		repo, err := s.staticRepoFn()
 		if err != nil {
@@ -659,7 +659,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 			return res
 		}
 	default:
-		switch subtypes.SubtypeFromId(domain, id) {
+		switch globals.ResourceInfoFromPrefix(id).Subtype {
 		case static.Subtype:
 			repo, err := s.staticRepoFn()
 			if err != nil {
@@ -870,7 +870,7 @@ func validateUpdateRequest(req *pbs.UpdateHostCatalogRequest) error {
 		if req.GetItem().GetSecretsHmac() != "" {
 			badFields[globals.SecretsHmacField] = "This is a read only field."
 		}
-		switch subtypes.SubtypeFromId(domain, req.GetId()) {
+		switch globals.ResourceInfoFromPrefix(req.GetId()).Subtype {
 		case static.Subtype:
 			if req.GetItem().GetType() != "" && req.GetItem().GetType() != static.Subtype.String() {
 				badFields[globals.TypeField] = "Cannot modify resource type."

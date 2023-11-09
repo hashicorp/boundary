@@ -140,7 +140,7 @@ func (s Service) ListHostSetsWithOptions(ctx context.Context, req *pbs.ListHostS
 	}
 	for _, item := range hl {
 		res.Id = item.GetPublicId()
-		idActions := idActionsTypeMap[subtypes.SubtypeFromId(domain, res.Id)]
+		idActions := idActionsTypeMap[globals.ResourceInfoFromPrefix(res.Id).Subtype]
 		authorizedActions := authResults.FetchActionSetForId(ctx, item.GetPublicId(), idActions, auth.WithResource(&res)).Strings()
 		if len(authorizedActions) == 0 {
 			continue
@@ -204,7 +204,7 @@ func (s Service) GetHostSet(ctx context.Context, req *pbs.GetHostSetRequest) (*p
 		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
 	if outputFields.Has(globals.AuthorizedActionsField) {
-		idActions := idActionsTypeMap[subtypes.SubtypeFromId(domain, req.GetId())]
+		idActions := idActionsTypeMap[globals.ResourceInfoFromPrefix(req.GetId()).Subtype]
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, hs.GetPublicId(), idActions).Strings()))
 	}
 	if plg != nil {
@@ -246,7 +246,7 @@ func (s Service) CreateHostSet(ctx context.Context, req *pbs.CreateHostSetReques
 		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
 	if outputFields.Has(globals.AuthorizedActionsField) {
-		idActions := idActionsTypeMap[subtypes.SubtypeFromId(domain, req.GetItem().GetHostCatalogId())]
+		idActions := idActionsTypeMap[globals.ResourceInfoFromPrefix(req.GetItem().GetHostCatalogId()).Subtype]
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, hs.GetPublicId(), idActions).Strings()))
 	}
 	if plg != nil {
@@ -294,7 +294,7 @@ func (s Service) UpdateHostSet(ctx context.Context, req *pbs.UpdateHostSetReques
 		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
 	if outputFields.Has(globals.AuthorizedActionsField) {
-		idActions := idActionsTypeMap[subtypes.SubtypeFromId(domain, req.GetId())]
+		idActions := idActionsTypeMap[globals.ResourceInfoFromPrefix(req.GetId()).Subtype]
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, hs.GetPublicId(), idActions).Strings()))
 	}
 
@@ -349,7 +349,7 @@ func (s Service) AddHostSetHosts(ctx context.Context, req *pbs.AddHostSetHostsRe
 		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
 	if outputFields.Has(globals.AuthorizedActionsField) {
-		idActions := idActionsTypeMap[subtypes.SubtypeFromId(domain, req.GetId())]
+		idActions := idActionsTypeMap[globals.ResourceInfoFromPrefix(req.GetId()).Subtype]
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, hs.GetPublicId(), idActions).Strings()))
 	}
 
@@ -387,7 +387,7 @@ func (s Service) SetHostSetHosts(ctx context.Context, req *pbs.SetHostSetHostsRe
 		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
 	if outputFields.Has(globals.AuthorizedActionsField) {
-		idActions := idActionsTypeMap[subtypes.SubtypeFromId(domain, req.GetId())]
+		idActions := idActionsTypeMap[globals.ResourceInfoFromPrefix(req.GetId()).Subtype]
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, hs.GetPublicId(), idActions).Strings()))
 	}
 
@@ -426,7 +426,7 @@ func (s Service) RemoveHostSetHosts(ctx context.Context, req *pbs.RemoveHostSetH
 		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
 	if outputFields.Has(globals.AuthorizedActionsField) {
-		idActions := idActionsTypeMap[subtypes.SubtypeFromId(domain, req.GetId())]
+		idActions := idActionsTypeMap[globals.ResourceInfoFromPrefix(req.GetId()).Subtype]
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, hs.GetPublicId(), idActions).Strings()))
 	}
 
@@ -442,7 +442,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (host.Set, []host.H
 	var hs host.Set
 	var hl []host.Host
 	var plg *plugins.PluginInfo
-	switch subtypes.SubtypeFromId(domain, id) {
+	switch globals.ResourceInfoFromPrefix(id).Subtype {
 	case static.Subtype:
 		repo, err := s.staticRepoFn()
 		if err != nil {
@@ -492,7 +492,7 @@ func (s Service) createInRepo(ctx context.Context, projectId, catalogId string, 
 	}
 	var hSet host.Set
 	var plg *plugins.PluginInfo
-	switch subtypes.SubtypeFromId(domain, catalogId) {
+	switch globals.ResourceInfoFromPrefix(catalogId).Subtype {
 	case static.Subtype:
 		h, err := toStorageStaticSet(ctx, catalogId, item)
 		if err != nil {
@@ -596,7 +596,7 @@ func (s Service) updatePluginInRepo(ctx context.Context, projectId string, req *
 
 func (s Service) updateInRepo(ctx context.Context, projectId, catalogId string, req *pbs.UpdateHostSetRequest) (hs host.Set, hosts []host.Host, plg *plugins.PluginInfo, err error) {
 	const op = "host_sets.(Service).updateInRepo"
-	switch subtypes.SubtypeFromId(domain, req.GetId()) {
+	switch globals.ResourceInfoFromPrefix(req.GetId()).Subtype {
 	case static.Subtype:
 		hs, hosts, err = s.updateStaticInRepo(ctx, projectId, catalogId, req)
 	case hostplugin.Subtype:
@@ -608,7 +608,7 @@ func (s Service) updateInRepo(ctx context.Context, projectId, catalogId string, 
 func (s Service) deleteFromRepo(ctx context.Context, projectId, id string) (bool, error) {
 	const op = "host_sets.(Service).deleteFromRepo"
 	rows := 0
-	switch subtypes.SubtypeFromId(domain, id) {
+	switch globals.ResourceInfoFromPrefix(id).Subtype {
 	case static.Subtype:
 		repo, err := s.staticRepoFn()
 		if err != nil {
@@ -635,7 +635,7 @@ func (s Service) listFromRepo(ctx context.Context, catalogId string, opt ...host
 	const op = "host_sets.(Service).listFromRepo"
 	var plg *plugins.PluginInfo
 	var sets []host.Set
-	switch subtypes.SubtypeFromId(domain, catalogId) {
+	switch globals.ResourceInfoFromPrefix(catalogId).Subtype {
 	case static.Subtype:
 		repo, err := s.staticRepoFn()
 		if err != nil {
@@ -760,7 +760,7 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 		parentId = id
 	default:
 		var set host.Set
-		switch subtypes.SubtypeFromId(domain, id) {
+		switch globals.ResourceInfoFromPrefix(id).Subtype {
 		case static.Subtype:
 			ss, _, err := staticRepo.LookupSet(ctx, id)
 			if err != nil {
@@ -789,7 +789,7 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 	}
 
 	var cat host.Catalog
-	switch subtypes.SubtypeFromId(domain, id) {
+	switch globals.ResourceInfoFromPrefix(id).Subtype {
 	case static.Subtype:
 		cs, err := staticRepo.LookupCatalog(ctx, parentId)
 		if err != nil {
@@ -970,7 +970,7 @@ func validateCreateRequest(ctx context.Context, req *pbs.CreateHostSetRequest) e
 				badFields[globals.PreferredEndpointsField] = fmt.Errorf("Error parsing preferred endpoints: %w.", err).Error()
 			}
 		}
-		switch subtypes.SubtypeFromId(domain, req.GetItem().GetHostCatalogId()) {
+		switch globals.ResourceInfoFromPrefix(req.GetItem().GetHostCatalogId()).Subtype {
 		case static.Subtype:
 			if req.GetItem().GetType() != "" && req.GetItem().GetType() != static.Subtype.String() {
 				badFields[globals.TypeField] = "Doesn't match the parent resource's type."
@@ -1001,7 +1001,7 @@ func validateUpdateRequest(ctx context.Context, req *pbs.UpdateHostSetRequest) e
 				badFields[globals.PreferredEndpointsField] = fmt.Errorf("Error parsing preferred endpoints: %w.", err).Error()
 			}
 		}
-		switch subtypes.SubtypeFromId(domain, req.GetId()) {
+		switch globals.ResourceInfoFromPrefix(req.GetId()).Subtype {
 		case static.Subtype:
 			if req.GetItem().GetType() != "" && req.GetItem().GetType() != static.Subtype.String() {
 				badFields[globals.TypeField] = "Cannot modify the resource type."
