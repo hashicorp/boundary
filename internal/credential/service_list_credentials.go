@@ -11,9 +11,9 @@ import (
 	"github.com/hashicorp/boundary/internal/pagination"
 )
 
-// CredentialService defines the interface expected
+// CredentialListingService defines the interface expected
 // to get the total number of credentials and deleted ids.
-type CredentialService interface {
+type CredentialListingService interface {
 	EstimatedCredentialCount(context.Context) (int, error)
 	ListDeletedCredentialIds(context.Context, time.Time) ([]string, time.Time, error)
 	ListCredentials(context.Context, string, ...Option) ([]Static, error)
@@ -27,7 +27,7 @@ func List(
 	grantsHash []byte,
 	pageSize int,
 	filterItemFn pagination.ListFilterFunc[Static],
-	service CredentialService,
+	service CredentialListingService,
 	credentialStoreId string,
 ) (*pagination.ListResponse[Static], error) {
 	const op = "credential.ListRefresh"

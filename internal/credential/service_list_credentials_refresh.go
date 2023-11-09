@@ -20,7 +20,7 @@ func ListRefresh(
 	pageSize int,
 	filterItemFn pagination.ListFilterFunc[Static],
 	tok *refreshtoken.Token,
-	service CredentialService,
+	service CredentialListingService,
 	credentialStoreId string,
 ) (*pagination.ListResponse[Static], error) {
 	const op = "credential.ListRefresh"
