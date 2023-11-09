@@ -5,7 +5,7 @@
 # 127.0.0.1 localhost boundary
 # 127.0.0.1 localhost worker
 
-scenario "e2e_docker_worker_registration_controller_led" {
+scenario "e2e_docker_worker_registration_worker_led" {
   terraform_cli = terraform_cli.default
   terraform     = terraform.default
   providers = [
@@ -107,19 +107,6 @@ scenario "e2e_docker_worker_registration_controller_led" {
     }
   }
 
-  step "get_worker_token" {
-    module     = module.docker_boundary_cmd
-    depends_on = [step.create_boundary]
-    variables {
-      address      = step.create_boundary.address
-      image_name   = matrix.builder == "crt" ? var.boundary_docker_image_name : step.build_boundary_docker_image.image_name
-      network_name = local.network_cluster
-      login_name   = step.create_boundary.login_name
-      password     = step.create_boundary.password
-      script       = "get_worker_token.sh"
-    }
-  }
-
   step "create_vault" {
     module = module.docker_vault
     depends_on = [
@@ -156,15 +143,42 @@ scenario "e2e_docker_worker_registration_controller_led" {
       step.create_boundary
     ]
     variables {
-      image_name       = matrix.builder == "crt" ? var.boundary_docker_image_name : step.build_boundary_docker_image.image_name
-      boundary_license = var.boundary_edition != "oss" ? step.read_license.license : ""
-      config_file      = "worker-config-controller-led.hcl"
-      container_name   = "worker"
-      initial_upstream = step.create_boundary.upstream_address
-      network_name     = [local.network_cluster, local.network_host]
-      tags             = [local.egress_tag]
-      port             = "9402"
-      token            = step.get_worker_token.output["item"]["controller_generated_activation_token"]
+      image_name              = matrix.builder == "crt" ? var.boundary_docker_image_name : step.build_boundary_docker_image.image_name
+      boundary_license        = var.boundary_edition != "oss" ? step.read_license.license : ""
+      config_file             = "worker-config-worker-led.hcl"
+      container_name          = "worker"
+      initial_upstream        = step.create_boundary.upstream_address
+      network_name            = [local.network_cluster, local.network_host]
+      tags                    = [local.egress_tag]
+      port                    = "9402"
+      worker_led_registration = true
+    }
+  }
+
+  step "init_worker" {
+    module = module.docker_boundary_cmd
+    depends_on = [
+      step.create_docker_network_cluster,
+      step.create_boundary,
+      step.create_worker,
+    ]
+    variables {
+      address      = step.create_boundary.address
+      image_name   = matrix.builder == "crt" ? var.boundary_docker_image_name : step.build_boundary_docker_image.image_name
+      network_name = local.network_cluster
+      login_name   = step.create_boundary.login_name
+      password     = step.create_boundary.password
+      script       = "create_worker.sh"
+      worker_token = step.create_worker.worker_led_token
+    }
+  }
+
+  step "check_worker_health" {
+    module     = module.docker_check_health
+    depends_on = [step.init_worker]
+
+    variables {
+      container_name = "worker"
     }
   }
 
@@ -175,6 +189,7 @@ scenario "e2e_docker_worker_registration_controller_led" {
       step.create_vault,
       step.create_host,
       step.create_worker,
+      step.check_worker_health,
     ]
     variables {
       test_package             = "github.com/hashicorp/boundary/testing/internal/e2e/tests/base_with_worker"
