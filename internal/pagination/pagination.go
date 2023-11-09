@@ -101,55 +101,7 @@ func List[T boundary.Resource](
 		return nil, errors.Wrap(ctx, err, op)
 	}
 
-	resp := &ListResponse[T]{
-		Items:              items,
-		CompleteListing:    completeListing,
-		EstimatedItemCount: len(items),
-	}
-
-	if len(items) > 0 {
-		lastItem := items[len(items)-1]
-
-		if completeListing {
-			// If this is the only page in the pagination, create a
-			// start refresh token so subsequent requests are informed
-			// that they need to start a new refresh phase.
-			resp.ListToken, err = listtoken.NewStartRefresh(
-				ctx,
-				listTime, // Use list time as the create time of the token
-				lastItem.GetResourceType(),
-				grantsHash,
-				listTime, // Use list time as the starting point for listing deleted ids
-				listTime, // Use list time as the lower bound for subsequent refresh
-			)
-			if err != nil {
-				return nil, err
-			}
-		} else {
-			resp.ListToken, err = listtoken.NewPagination(
-				ctx,
-				listTime, // Use list time as the create time of the token
-				lastItem.GetResourceType(),
-				grantsHash,
-				lastItem.GetPublicId(),
-				lastItem.GetCreateTime().AsTime(),
-			)
-			if err != nil {
-				return nil, err
-			}
-		}
-	}
-	if !completeListing {
-		// If this was not a complete listing, get an estimate
-		// of the total items from the DB.
-		var err error
-		resp.EstimatedItemCount, err = estimatedCountFn(ctx)
-		if err != nil {
-			return nil, errors.Wrap(ctx, err, op)
-		}
-	}
-
-	return resp, nil
+	return buildListResp(ctx, grantsHash, items, completeListing, listTime, estimatedCountFn)
 }
 
 // ListPage returns a ListResponse. The response will contain at most pageSize
@@ -195,30 +147,7 @@ func ListPage[T boundary.Resource](
 		return nil, errors.Wrap(ctx, err, op)
 	}
 
-	resp := &ListResponse[T]{
-		Items:           items,
-		CompleteListing: completeListing,
-		ListToken:       tok,
-	}
-
-	resp.EstimatedItemCount, err = estimatedCountFn(ctx)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-	var lastItem boundary.Resource
-	if len(items) > 0 {
-		lastItem = items[len(items)-1]
-	}
-	if err := resp.ListToken.Transition(
-		ctx,
-		completeListing,
-		lastItem,
-		time.Time{}, // We have no deleted ids time
-		listTime,
-	); err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-	return resp, nil
+	return buildListPageResp(ctx, completeListing, nil, time.Time{} /* no deleted ids time */, items, listTime, tok, estimatedCountFn)
 }
 
 // ListRefresh returns a ListResponse. The response will contain at most pageSize
@@ -274,25 +203,7 @@ func ListRefresh[T boundary.Resource](
 		return nil, errors.Wrap(ctx, err, op)
 	}
 
-	resp := &ListResponse[T]{
-		Items:           items,
-		CompleteListing: completeListing,
-		DeletedIds:      deletedIds,
-		ListToken:       tok,
-	}
-
-	resp.EstimatedItemCount, err = estimatedCountFn(ctx)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-	var lastItem boundary.Resource
-	if len(items) > 0 {
-		lastItem = items[len(items)-1]
-	}
-	if err := resp.ListToken.Transition(ctx, completeListing, lastItem, deletedIdsTime, listTime); err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-	return resp, nil
+	return buildListPageResp(ctx, completeListing, deletedIds, deletedIdsTime, items, listTime, tok, estimatedCountFn)
 }
 
 // ListRefreshPage returns a ListResponse. The response will contain at most pageSize
@@ -348,26 +259,7 @@ func ListRefreshPage[T boundary.Resource](
 		return nil, errors.Wrap(ctx, err, op)
 	}
 
-	resp := &ListResponse[T]{
-		Items:           items,
-		CompleteListing: completeListing,
-		DeletedIds:      deletedIds,
-		ListToken:       tok,
-	}
-
-	resp.EstimatedItemCount, err = estimatedCountFn(ctx)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-
-	var lastItem boundary.Resource
-	if len(items) > 0 {
-		lastItem = items[len(items)-1]
-	}
-	if err := resp.ListToken.Transition(ctx, completeListing, lastItem, deletedIdsTime, listTime); err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-	return resp, nil
+	return buildListPageResp(ctx, completeListing, deletedIds, deletedIdsTime, items, listTime, tok, estimatedCountFn)
 }
 
 func list[T boundary.Resource](
@@ -424,4 +316,101 @@ dbLoop:
 	}
 
 	return items, completeListing, firstListTime, nil
+}
+
+func buildListResp[T boundary.Resource](
+	ctx context.Context,
+	grantsHash []byte,
+	items []T,
+	completeListing bool,
+	listTime time.Time,
+	estimatedCountFn EstimatedCountFunc,
+) (*ListResponse[T], error) {
+	resp := &ListResponse[T]{
+		Items:              items,
+		CompleteListing:    completeListing,
+		EstimatedItemCount: len(items),
+	}
+
+	var err error
+	if len(items) > 0 {
+		lastItem := items[len(items)-1]
+
+		if completeListing {
+			// If this is the only page in the pagination, create a
+			// start refresh token so subsequent requests are informed
+			// that they need to start a new refresh phase.
+			resp.ListToken, err = listtoken.NewStartRefresh(
+				ctx,
+				listTime, // Use list time as the create time of the token
+				lastItem.GetResourceType(),
+				grantsHash,
+				listTime, // Use list time as the starting point for listing deleted ids
+				listTime, // Use list time as the lower bound for subsequent refresh
+			)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			resp.ListToken, err = listtoken.NewPagination(
+				ctx,
+				listTime, // Use list time as the create time of the token
+				lastItem.GetResourceType(),
+				grantsHash,
+				lastItem.GetPublicId(),
+				lastItem.GetCreateTime().AsTime(),
+			)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+	if !completeListing {
+		// If this was not a complete listing, get an estimate
+		// of the total items from the DB.
+		var err error
+		resp.EstimatedItemCount, err = estimatedCountFn(ctx)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return resp, err
+}
+
+func buildListPageResp[T boundary.Resource](
+	ctx context.Context,
+	completeListing bool,
+	deletedIds []string,
+	deletedIdsTime time.Time,
+	items []T,
+	listTime time.Time,
+	tok *listtoken.Token,
+	estimatedCountFn EstimatedCountFunc,
+) (*ListResponse[T], error) {
+	resp := &ListResponse[T]{
+		Items:           items,
+		CompleteListing: completeListing,
+		ListToken:       tok,
+		DeletedIds:      deletedIds,
+	}
+
+	var err error
+	resp.EstimatedItemCount, err = estimatedCountFn(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var lastItem boundary.Resource
+	if len(items) > 0 {
+		lastItem = items[len(items)-1]
+	}
+	if err := resp.ListToken.Transition(
+		ctx,
+		completeListing,
+		lastItem,
+		deletedIdsTime,
+		listTime,
+	); err != nil {
+		return nil, err
+	}
+	return resp, err
 }
