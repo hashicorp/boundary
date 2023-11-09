@@ -37,9 +37,8 @@ var (
 
 type SearchCommand struct {
 	*base.Command
-	flagNameStartsWith string
-	flagQuery          string
-	flagResource       string
+	flagQuery    string
+	flagResource string
 }
 
 func (c *SearchCommand) Synopsis() string {
@@ -52,7 +51,7 @@ Usage: boundary search [options]
 
   Search a boundary resource:
 
-      $ boundary search -resource targets
+      $ boundary search -resource targets -query 'name="foo"'
 
   For a full list of examples, please see the documentation.
 
@@ -65,14 +64,9 @@ func (c *SearchCommand) Flags() *base.FlagSets {
 
 	f := set.NewFlagSet("Command Options")
 	f.StringVar(&base.StringVar{
-		Name:   "name-starts-with",
-		Target: &c.flagNameStartsWith,
-		Usage:  `If set, specifies to search for a target that starts with`,
-	})
-	f.StringVar(&base.StringVar{
 		Name:   "query",
 		Target: &c.flagQuery,
-		Usage:  `If set, specifies the target search query`,
+		Usage:  `If set, specifies the resource search query`,
 	})
 	f.StringVar(&base.StringVar{
 		Name:       "resource",
