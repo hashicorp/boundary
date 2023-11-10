@@ -446,6 +446,13 @@ func toStorageOidcAuthMethod(ctx context.Context, scopeId string, in *pb.AuthMet
 	if len(signAlgs) > 0 {
 		opts = append(opts, oidc.WithSigningAlgs(signAlgs...))
 	}
+	var prompts []oidc.PromptParam
+	for _, a := range attrs.GetPrompts() {
+		prompts = append(prompts, oidc.PromptParam(a))
+	}
+	if len(prompts) > 0 {
+		opts = append(opts, oidc.WithPrompts(prompts...))
+	}
 	if len(attrs.GetAllowedAudiences()) > 0 {
 		opts = append(opts, oidc.WithAudClaims(attrs.GetAllowedAudiences()...))
 	}
