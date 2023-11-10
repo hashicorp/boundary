@@ -164,15 +164,15 @@ message AuthMethod {
     that: "attributes.account_claim_maps"
   }];
 
-  // prompts are the optional prompts allowed for an oidc auth method.
+  // promptParam are the optional prompts allowed for an oidc auth method.
   // These value objects specify whether the authorization server prompts
   // the end-user for reauthentication, account selection and consent.
   // These are Value Objects that will be stored as Prompt messages,
   // and are operatated on as a complete set.
   // @inject_tag: `gorm:"-"`
-  repeated string prompts = 220 [(custom_options.v1.mask_mapping) = {
-    this: "Prompts"
-    that: "attributes.prompts"
+  repeated string prompts_param = 220 [(custom_options.v1.mask_mapping) = {
+    this: "PromptsParam"
+    that: "attributes.promptsParam"
   }];
 }
 
@@ -377,7 +377,7 @@ message ManagedGroupMemberAccount {
 }
 
 // Prompt entries are the prompts allowed for an oidc auth method.
-message Prompt {
+message PromptParam {
   // @inject_tag: `gorm:"primary_key"`
   string oidc_method_id = 10;
 

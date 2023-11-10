@@ -46,7 +46,7 @@ const (
 	codeField                              = "attributes.code"
 	claimsScopesField                      = "attributes.claims_scopes"
 	accountClaimMapsField                  = "attributes.account_claim_maps"
-	PromptsField                           = "attributes.prompts"
+	PromptsParamField                      = "attributes.promptsParam"
 )
 
 var oidcMaskManager handlers.MaskManager
