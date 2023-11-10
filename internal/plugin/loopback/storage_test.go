@@ -1381,7 +1381,7 @@ func TestLoopbackDeleteObjects(t *testing.T) {
 				Recursive: false,
 			},
 			expected: &plgpb.DeleteObjectsResponse{
-				ObjectsDeleted: 0,
+				ObjectsDeleted: 1,
 			},
 			check: func() error {
 				return nil

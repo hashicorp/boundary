@@ -453,8 +453,8 @@ func (l *LoopbackStorage) deleteObjects(ctx context.Context, req *plgpb.DeleteOb
 		_, ok := bucket[prefix]
 		if ok {
 			delete(bucket, prefix)
-			deleted++
 		}
+		deleted++ // this is outside the if statement because aws always returns a success
 	}
 	return &plgpb.DeleteObjectsResponse{
 		ObjectsDeleted: deleted,

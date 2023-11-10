@@ -55,7 +55,7 @@ type StoragePluginServiceClient interface {
 	// PutObject is a hook that reads a file stored on local disk and
 	// stores it to an external object store.
 	PutObject(ctx context.Context, in *PutObjectRequest, opts ...grpc.CallOption) (*PutObjectResponse, error)
-	// DeleteObjects is a hook that deletes one or many files in an external object store
+	// DeleteObjects deletes one or many files in an external object store
 	// via a provided key prefix.
 	DeleteObjects(ctx context.Context, in *DeleteObjectsRequest, opts ...grpc.CallOption) (*DeleteObjectsResponse, error)
 }
@@ -186,7 +186,7 @@ type StoragePluginServiceServer interface {
 	// PutObject is a hook that reads a file stored on local disk and
 	// stores it to an external object store.
 	PutObject(context.Context, *PutObjectRequest) (*PutObjectResponse, error)
-	// DeleteObjects is a hook that deletes one or many files in an external object store
+	// DeleteObjects deletes one or many files in an external object store
 	// via a provided key prefix.
 	DeleteObjects(context.Context, *DeleteObjectsRequest) (*DeleteObjectsResponse, error)
 	mustEmbedUnimplementedStoragePluginServiceServer()

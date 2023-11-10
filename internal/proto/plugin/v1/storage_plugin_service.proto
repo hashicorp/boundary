@@ -38,7 +38,7 @@ service StoragePluginService {
   // stores it to an external object store.
   rpc PutObject(PutObjectRequest) returns (PutObjectResponse);
 
-  // DeleteObjects is a hook that deletes one or many files in an external object store
+  // DeleteObjects deletes one or many files in an external object store
   // via a provided key prefix.
   rpc DeleteObjects(DeleteObjectsRequest) returns (DeleteObjectsResponse);
 }
