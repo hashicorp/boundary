@@ -2,7 +2,7 @@
 -- SPDX-License-Identifier: BUSL-1.1
 
 begin;
-  select plan(2);
+  select plan(3);
   select wtt_load('widgets', 'iam', 'kms', 'auth');  
 
   -- Try to insert invalid auth_oidc_prompt value to test constraint
@@ -25,8 +25,10 @@ begin;
      (oidc_method_id,       prompt)
      values
         ('aom___widget',   'select_account');
-
   select lives_ok('valid_auth_oidc_prompt_value');
+
+  select has_view('oidc_auth_method_with_value_obj', 'view for reading an oidc auth method with its associated value objects does not exist');
+
 
   select * from finish();
 rollback;

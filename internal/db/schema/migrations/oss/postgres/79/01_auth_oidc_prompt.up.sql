@@ -17,6 +17,10 @@ create table auth_oidc_prompt_enm (
     )
 );
 
+ -- define the immutable fields for auth_oidc_prompt_enm (all of them)
+create trigger immutable_columns before update on auth_oidc_prompt_enm
+  for each row execute procedure immutable_columns('name');
+
 insert into auth_oidc_prompt_enm (name) values
   ('none'),
   ('login'),
@@ -39,8 +43,7 @@ create table auth_oidc_prompt (
   primary key(oidc_method_id, prompt)
 );
 comment on table auth_oidc_prompt is
-  'auth_oidc_prompt entries are the prompts allowed for an oidc auth method.  An oidc auth method may have 0 or 1 comma separated prompts value';
-
+  'auth_oidc_prompt entries are the prompts allowed for an oidc auth method.';
 
 create trigger
   default_create_time_column
@@ -49,17 +52,18 @@ insert on auth_oidc_prompt
   for each row execute procedure default_create_time();
 
 -- we will drop the oidc_auth_method_with_value_obj view, so we can recreate it
--- and add the oidc claim's scopes to the returned set.
+-- and add the oidc prompts to the returned set.
 drop view oidc_auth_method_with_value_obj;
 
 -- oidc_auth_method_with_value_obj is useful for reading an oidc auth method
--- with its associated value objects (algs, auds, certs, claims scopes and
--- account claim maps) as columns with | delimited values.  The use of the
--- postgres string_agg(...) to aggregate the value objects into a column works
--- because we are only pulling in one column from the associated tables and that
--- value is part of the primary key and unique.  This view will make things like
--- recursive listing of oidc auth methods fairly straightforward to implement
--- for the oidc repo. The view also includes an is_primary_auth_method bool 
+-- with its associated value objects (algs, auds, certs, claims scopes,
+-- account claim maps and prompts) as columns with | delimited values.  The 
+-- use of the postgres string_agg(...) to aggregate the value objects into a 
+-- column works because we are only pulling in one column from the associated 
+-- tables and that value is part of the primary key and unique.  This view 
+-- will make things like recursive listing of oidc auth methods fairly 
+-- straightforward to implement for the oidc repo. The view also includes an 
+-- is_primary_auth_method bool 
 create view oidc_auth_method_with_value_obj as 
 select
   case when s.primary_auth_method_id is not null then
