@@ -9,12 +9,13 @@ import (
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/types/resource"
 )
 
 const StorageDomain = "storage"
 
 func init() {
-	globals.RegisterPrefixSubtype(globals.PluginStorageBucketPrefix, StorageDomain, Subtype)
+	globals.RegisterPrefixToResourceInfo(globals.PluginStorageBucketPrefix, resource.StorageBucket, StorageDomain, Subtype)
 }
 
 const (

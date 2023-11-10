@@ -10,12 +10,13 @@ import (
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/types/resource"
 )
 
 func init() {
-	globals.RegisterPrefixSubtype(globals.LdapAuthMethodPrefix, auth.Domain, Subtype)
-	globals.RegisterPrefixSubtype(globals.LdapAccountPrefix, auth.Domain, Subtype)
-	globals.RegisterPrefixSubtype(globals.LdapManagedGroupPrefix, auth.Domain, Subtype)
+	globals.RegisterPrefixToResourceInfo(globals.LdapAuthMethodPrefix, resource.AuthMethod, auth.Domain, Subtype)
+	globals.RegisterPrefixToResourceInfo(globals.LdapAccountPrefix, resource.Account, auth.Domain, Subtype)
+	globals.RegisterPrefixToResourceInfo(globals.LdapManagedGroupPrefix, resource.ManagedGroup, auth.Domain, Subtype)
 }
 
 const (

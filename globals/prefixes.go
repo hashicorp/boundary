@@ -4,6 +4,7 @@
 package globals
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/types/resource"
@@ -131,187 +132,7 @@ type ResourceInfo struct {
 	Subtype Subtype
 }
 
-var prefixToResourceType = map[string]ResourceInfo{
-	AuthTokenPrefix: {
-		Type:    resource.AuthToken,
-		Subtype: UnknownSubtype,
-	},
-
-	PasswordAuthMethodPrefix: {
-		Type:    resource.AuthMethod,
-		Subtype: UnknownSubtype,
-	},
-	PasswordAccountPrefix: {
-		Type:    resource.Account,
-		Subtype: UnknownSubtype,
-	},
-	PasswordAccountPreviousPrefix: {
-		Type:    resource.Account,
-		Subtype: UnknownSubtype,
-	},
-
-	OidcAuthMethodPrefix: {
-		Type:    resource.AuthMethod,
-		Subtype: UnknownSubtype,
-	},
-	OidcAccountPrefix: {
-		Type:    resource.Account,
-		Subtype: UnknownSubtype,
-	},
-	OidcManagedGroupPrefix: {
-		Type:    resource.ManagedGroup,
-		Subtype: UnknownSubtype,
-	},
-
-	LdapManagedGroupPrefix: {
-		Type:    resource.ManagedGroup,
-		Subtype: UnknownSubtype,
-	},
-	LdapAuthMethodPrefix: {
-		Type:    resource.AuthMethod,
-		Subtype: UnknownSubtype,
-	},
-	LdapAccountPrefix: {
-		Type:    resource.Account,
-		Subtype: UnknownSubtype,
-	},
-
-	ProjectPrefix: {
-		Type:    resource.Scope,
-		Subtype: UnknownSubtype,
-	},
-	OrgPrefix: {
-		Type:    resource.Scope,
-		Subtype: UnknownSubtype,
-	},
-	GlobalPrefix: {
-		Type:    resource.Scope,
-		Subtype: UnknownSubtype,
-	},
-
-	UserPrefix: {
-		Type:    resource.User,
-		Subtype: UnknownSubtype,
-	},
-	GroupPrefix: {
-		Type:    resource.Group,
-		Subtype: UnknownSubtype,
-	},
-	RolePrefix: {
-		Type:    resource.Role,
-		Subtype: UnknownSubtype,
-	},
-
-	StaticCredentialStorePrefix: {
-		Type:    resource.CredentialStore,
-		Subtype: UnknownSubtype,
-	},
-	StaticCredentialStorePreviousPrefix: {
-		Type:    resource.CredentialStore,
-		Subtype: UnknownSubtype,
-	},
-
-	VaultCredentialStorePrefix: {
-		Type:    resource.CredentialStore,
-		Subtype: UnknownSubtype,
-	},
-	VaultCredentialLibraryPrefix: {
-		Type:    resource.CredentialLibrary,
-		Subtype: UnknownSubtype,
-	},
-	VaultSshCertificateCredentialLibraryPrefix: {
-		Type:    resource.CredentialLibrary,
-		Subtype: UnknownSubtype,
-	},
-	VaultDynamicCredentialPrefix: {
-		Type:    resource.Credential,
-		Subtype: UnknownSubtype,
-	},
-
-	UsernamePasswordCredentialPrefix: {
-		Type:    resource.Credential,
-		Subtype: UnknownSubtype,
-	},
-	UsernamePasswordCredentialPreviousPrefix: {
-		Type:    resource.Credential,
-		Subtype: UnknownSubtype,
-	},
-	SshPrivateKeyCredentialPrefix: {
-		Type:    resource.Credential,
-		Subtype: UnknownSubtype,
-	},
-	JsonCredentialPrefix: {
-		Type:    resource.Credential,
-		Subtype: UnknownSubtype,
-	},
-
-	StaticHostCatalogPrefix: {
-		Type:    resource.HostCatalog,
-		Subtype: UnknownSubtype,
-	},
-	StaticHostSetPrefix: {
-		Type:    resource.HostSet,
-		Subtype: UnknownSubtype,
-	},
-	StaticHostPrefix: {
-		Type:    resource.Host,
-		Subtype: UnknownSubtype,
-	},
-
-	PluginHostCatalogPrefix: {
-		Type:    resource.HostCatalog,
-		Subtype: UnknownSubtype,
-	},
-	PluginHostCatalogPreviousPrefix: {
-		Type:    resource.HostCatalog,
-		Subtype: UnknownSubtype,
-	},
-	PluginHostSetPrefix: {
-		Type:    resource.HostSet,
-		Subtype: UnknownSubtype,
-	},
-	PluginHostSetPreviousPrefix: {
-		Type:    resource.HostSet,
-		Subtype: UnknownSubtype,
-	},
-	PluginHostPrefix: {
-		Type:    resource.Host,
-		Subtype: UnknownSubtype,
-	},
-	PluginHostPreviousPrefix: {
-		Type:    resource.Host,
-		Subtype: UnknownSubtype,
-	},
-
-	SessionPrefix: {
-		Type:    resource.Session,
-		Subtype: UnknownSubtype,
-	},
-
-	TcpTargetPrefix: {
-		Type:    resource.Target,
-		Subtype: UnknownSubtype,
-	},
-	SshTargetPrefix: {
-		Type:    resource.Target,
-		Subtype: UnknownSubtype,
-	},
-
-	WorkerPrefix: {
-		Type:    resource.Worker,
-		Subtype: UnknownSubtype,
-	},
-
-	PluginStorageBucketPrefix: {
-		Type:    resource.StorageBucket,
-		Subtype: UnknownSubtype,
-	},
-
-	SessionRecordingPrefix: {
-		Type:    resource.SessionRecording,
-		Subtype: UnknownSubtype,
-	},
-}
+var prefixToResourceType = make(map[string]ResourceInfo, 100)
 
 var resourceTypeToPrefixes map[resource.Type][]string = func() map[resource.Type][]string {
 	ret := make(map[resource.Type][]string)
@@ -321,12 +142,19 @@ var resourceTypeToPrefixes map[resource.Type][]string = func() map[resource.Type
 	return ret
 }()
 
-// RegisterPrefixSubtype is called from various packages to register which
-// prefixes belong to their subtypes. This lets the subtypes stay in different
+// RegisterPrefixToResourceInfo is called from various packages to register
+// which prefixes belong to their them, what types those represent, and any
+// domain and subtype information. This lets the subtypes stay in different
 // packages (important for the reflection introspection we do) while not
 // creating import loops.
-func RegisterPrefixSubtype(prefix string, domain string, subtype Subtype) {
-	resInfo := prefixToResourceType[prefix]
+//
+// If called more than once for the same prefix, this function will panic.
+func RegisterPrefixToResourceInfo(prefix string, res resource.Type, domain string, subtype Subtype) {
+	resInfo, ok := prefixToResourceType[prefix]
+	if ok {
+		panic(fmt.Sprintf("prefix %q already registered to domain %q type %q subtype %q", prefix, resInfo.Domain, resInfo.Type.String(), resInfo.Subtype.String()))
+	}
+	resInfo.Type = res
 	resInfo.Subtype = subtype
 	resInfo.Domain = domain
 	prefixToResourceType[prefix] = resInfo

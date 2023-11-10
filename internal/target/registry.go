@@ -10,6 +10,7 @@ import (
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/types/resource"
 )
 
 const Domain = "target"
@@ -71,7 +72,7 @@ func (r *registry) set(s globals.Subtype, entry *registryEntry) {
 		panic(fmt.Sprintf("target subtype %s already registered", s))
 	}
 
-	globals.RegisterPrefixSubtype(entry.prefix, Domain, s)
+	globals.RegisterPrefixToResourceInfo(entry.prefix, resource.Target, Domain, s)
 
 	r.m[s] = entry
 }

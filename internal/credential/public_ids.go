@@ -9,13 +9,14 @@ import (
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/types/resource"
 )
 
 func init() {
-	globals.RegisterPrefixSubtype(globals.UsernamePasswordCredentialPrefix, Domain, UsernamePasswordSubtype)
-	globals.RegisterPrefixSubtype(globals.UsernamePasswordCredentialPreviousPrefix, Domain, UsernamePasswordSubtype)
-	globals.RegisterPrefixSubtype(globals.SshPrivateKeyCredentialPrefix, Domain, SshPrivateKeySubtype)
-	globals.RegisterPrefixSubtype(globals.JsonCredentialPrefix, Domain, JsonSubtype)
+	globals.RegisterPrefixToResourceInfo(globals.UsernamePasswordCredentialPrefix, resource.Credential, Domain, UsernamePasswordSubtype)
+	globals.RegisterPrefixToResourceInfo(globals.UsernamePasswordCredentialPreviousPrefix, resource.Credential, Domain, UsernamePasswordSubtype)
+	globals.RegisterPrefixToResourceInfo(globals.SshPrivateKeyCredentialPrefix, resource.Credential, Domain, SshPrivateKeySubtype)
+	globals.RegisterPrefixToResourceInfo(globals.JsonCredentialPrefix, resource.Credential, Domain, JsonSubtype)
 }
 
 const (

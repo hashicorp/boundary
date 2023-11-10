@@ -10,12 +10,13 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/host"
+	"github.com/hashicorp/boundary/internal/types/resource"
 )
 
 func init() {
-	globals.RegisterPrefixSubtype(globals.StaticHostCatalogPrefix, host.Domain, Subtype)
-	globals.RegisterPrefixSubtype(globals.StaticHostSetPrefix, host.Domain, Subtype)
-	globals.RegisterPrefixSubtype(globals.StaticHostPrefix, host.Domain, Subtype)
+	globals.RegisterPrefixToResourceInfo(globals.StaticHostCatalogPrefix, resource.HostCatalog, host.Domain, Subtype)
+	globals.RegisterPrefixToResourceInfo(globals.StaticHostSetPrefix, resource.HostSet, host.Domain, Subtype)
+	globals.RegisterPrefixToResourceInfo(globals.StaticHostPrefix, resource.Host, host.Domain, Subtype)
 }
 
 // PublicId prefixes for the resources in the static package.

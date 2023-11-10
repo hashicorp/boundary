@@ -10,12 +10,13 @@ import (
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/types/resource"
 )
 
 func init() {
-	globals.RegisterPrefixSubtype(globals.PasswordAuthMethodPrefix, auth.Domain, Subtype)
-	globals.RegisterPrefixSubtype(globals.PasswordAccountPreviousPrefix, auth.Domain, Subtype)
-	globals.RegisterPrefixSubtype(globals.PasswordAccountPrefix, auth.Domain, Subtype)
+	globals.RegisterPrefixToResourceInfo(globals.PasswordAuthMethodPrefix, resource.AuthMethod, auth.Domain, Subtype)
+	globals.RegisterPrefixToResourceInfo(globals.PasswordAccountPreviousPrefix, resource.Account, auth.Domain, Subtype)
+	globals.RegisterPrefixToResourceInfo(globals.PasswordAccountPrefix, resource.Account, auth.Domain, Subtype)
 }
 
 // PublicId prefixes for the resources in the password package.

@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/gen/testing/attribute"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
@@ -18,8 +19,8 @@ import (
 )
 
 func init() {
-	globals.RegisterPrefixSubtype("trsr", "test", globals.Subtype("sub_resource"))
-	globals.RegisterPrefixSubtype("trrp", "test", globals.Subtype("resource_plugin"))
+	globals.RegisterPrefixToResourceInfo("trsr", resource.Unknown, "test", globals.Subtype("sub_resource"))
+	globals.RegisterPrefixToResourceInfo("trrp", resource.Unknown, "test", globals.Subtype("resource_plugin"))
 }
 
 func TestTransformRequestAttributes(t *testing.T) {

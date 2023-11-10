@@ -9,29 +9,11 @@ import (
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
-	"github.com/hashicorp/boundary/sdk/pbs/controller/protooptions"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
-	"google.golang.org/protobuf/types/descriptorpb"
 )
-
-func messageDomain(m proto.Message) string {
-	r := m.ProtoReflect()
-	fd := r.Descriptor().ParentFile()
-	if fd == nil {
-		return ""
-	}
-
-	opts, ok := fd.Options().(*descriptorpb.FileOptions)
-	if !ok {
-		return ""
-	}
-
-	domain := proto.GetExtension(opts, protooptions.E_Domain).(string)
-	return domain
-}
 
 // transformRequestAttributes will modify the request proto.Message, setting
 // any subtype attribute fields into the corresponding strongly-typed struct
