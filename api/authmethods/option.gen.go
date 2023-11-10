@@ -799,6 +799,30 @@ func DefaultName() Option {
 	}
 }
 
+func WithOidcAuthMethodPrompts(inPrompts []string) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["prompts"] = inPrompts
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultOidcAuthMethodPrompts() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["prompts"] = nil
+		o.postMap["attributes"] = val
+	}
+}
+
 func WithOidcAuthMethodSigningAlgorithms(inSigningAlgorithms []string) Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
