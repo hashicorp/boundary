@@ -5,6 +5,7 @@ package daemon
 
 import (
 	"context"
+	stderrors "errors"
 	"fmt"
 	"io"
 	"net"
@@ -136,7 +137,6 @@ func (c *StartCommand) AutocompleteFlags() complete.Flags {
 }
 
 func (c *StartCommand) Run(args []string) int {
-	const op = "daemon.(StartCommand).Run"
 	ctx, cancel := context.WithCancel(c.Context)
 	defer cancel()
 
@@ -265,9 +265,9 @@ func makeBackground(ctx context.Context, dotDir string, runBackgroundFlag bool) 
 	writers := []io.Writer{}
 	pidPath := filepath.Join(dotDir, pidFileName)
 	if running, err := pidFileInUse(ctx, pidPath); running != nil {
-		return false, writers, noopPidCleanup, errors.New(ctx, errors.Conflict, op, "daemon already running")
+		return false, writers, noopPidCleanup, stderrors.New("The daemon is already running.")
 	} else if err != nil && !errors.Match(errors.T(errors.NotFound), err) {
-		return false, writers, noopPidCleanup, errors.Wrap(ctx, err, op)
+		return false, writers, noopPidCleanup, fmt.Errorf("Error when checking if the daemon pid is in use: %w.", err)
 	}
 
 	if !runBackgroundFlag && os.Getenv(backgroundEnvName) != backgroundEnvVal {
