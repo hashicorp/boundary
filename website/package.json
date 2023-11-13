@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "author": "HashiCorp",
   "engines": {
-    "node": "14.x - 16.x",
+    "node": "18.x - 20.x",
     "npm": ">=7.0.0"
   },
   "devDependencies": {

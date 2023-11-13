@@ -7,6 +7,8 @@ description: |-
 
 # Create a storage bucket
 
+<EnterpriseAlert product="boundary">This feature requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary or Boundary Enterprise</a></EnterpriseAlert>
+
 As of Boundary 0.13.0, you can record and audit user sessions.
 A Boundary resource known as a [storage bucket](/boundary/docs/concepts/domain-model/storage-buckets) is used to store the recorded sessions.
 The storage bucket represents a bucket in an external store.
@@ -123,7 +125,7 @@ At this time, the only supported storage is AWS S3.
 
 [Session recording](/boundary/docs/configuration/session-recording) requires at least one PKI worker that:
 - Has access to the AWS S3 storage bucket
-- Has an accessible directory defined by `recording_storage_path` for storing session recordings while they are in progress. On session closure, Boundary moves the local session recording to remote storage and deletes the local copy. For more details, refer to [PKI workers](/boundary/docs/configuration/worker/pki-worker#session-recording-hcp-ent).
+- Has an accessible directory defined by `recording_storage_path` for storing session recordings while they are in progress. On session closure, Boundary moves the local session recording to remote storage and deletes the local copy. For more details, refer to the [PKI worker configuration](/boundary/docs/configuration/worker/pki-worker#session-recording) documentation.
 - Has at least 1 MB of available disk space.
 - Runs Darwin, Windows, or Linux. The following binaries are not supported for session recording: NetBSD, OpenBSD, Solaris.
 

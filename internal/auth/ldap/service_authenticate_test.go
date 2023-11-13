@@ -5,14 +5,20 @@ package ldap
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"os"
+	"sync"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/eventlogger/formatter_filters/cloudevents"
 	"github.com/hashicorp/go-hclog"
 	"github.com/jimlambrt/gldap"
 	"github.com/jimlambrt/gldap/testdirectory"
@@ -27,7 +33,15 @@ func TestAuthenticate(t *testing.T) {
 	testRw := db.New(testConn)
 	rootWrapper := db.TestWrapper(t)
 	testKms := kms.TestKms(t, testConn, rootWrapper)
-
+	opt := event.TestWithObservationSink(t)
+	c := event.TestEventerConfig(t, "Test_StartAuth_to_Callback", opt)
+	testLock := &sync.Mutex{}
+	testLogger := hclog.New(&hclog.LoggerOptions{
+		Mutex: testLock,
+		Name:  "test",
+	})
+	c.EventerConfig.TelemetryEnabled = true
+	require.NoError(t, event.InitSysEventer(testLogger, testLock, "use-Test_Authenticate", event.WithEventerConfig(&c.EventerConfig)))
 	// some standard factories for unit tests
 	authenticatorFn := func() (Authenticator, error) {
 		return NewRepository(testCtx, testRw, testRw, testKms)
@@ -313,6 +327,20 @@ func TestAuthenticate(t *testing.T) {
 			}
 			require.NoError(err)
 			assert.NotEmpty(got)
+			sinkFileName := c.ObservationEvents.Name()
+			defer func() { _ = os.WriteFile(sinkFileName, nil, 0o666) }()
+			b, err := ioutil.ReadFile(sinkFileName)
+			require.NoError(err)
+			gotRes := &cloudevents.Event{}
+			err = json.Unmarshal(b, gotRes)
+			require.NoErrorf(err, "json: %s", string(b))
+			details, ok := gotRes.Data.(map[string]any)["details"]
+			require.True(ok)
+			for _, key := range details.([]any) {
+				assert.Contains(key.(map[string]any)["payload"], "user_id")
+				assert.Contains(key.(map[string]any)["payload"], "auth_token_start")
+				assert.Contains(key.(map[string]any)["payload"], "auth_token_end")
+			}
 		})
 	}
 }

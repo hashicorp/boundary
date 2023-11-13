@@ -20,6 +20,7 @@ import (
 	"github.com/hashicorp/boundary/internal/util/template"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/crypto/ssh"
 )
 
 func TestRepository_getPrivateLibraries(t *testing.T) {
@@ -1270,7 +1271,7 @@ func TestRepository_sshCertIssuingCredentialLibrary_retrieveCredential(t *testin
 		vaulthPath string
 		opts       []Option
 		retOpts    []credential.Option
-		expected   map[string]string
+		expected   map[string]any
 	}{
 		{
 			name:       "vault sign boundary ed25519 key",
@@ -1323,8 +1324,9 @@ func TestRepository_sshCertIssuingCredentialLibrary_retrieveCredential(t *testin
 		{
 			name:     "vault issue ec(256) cert with template username",
 			username: "username-8-{{ .User.Name }}",
-			expected: map[string]string{
-				"username": "username-8-revenge-of-the-template",
+			expected: map[string]any{
+				"username":         "username-8-revenge-of-the-template",
+				"valid_principals": []string{"username-8-revenge-of-the-template"},
 			},
 			vaulthPath: "ssh/issue/boundary",
 			opts:       []Option{WithKeyType(KeyTypeEcdsa), WithKeyBits(256)},
@@ -1333,11 +1335,20 @@ func TestRepository_sshCertIssuingCredentialLibrary_retrieveCredential(t *testin
 		{
 			name:     "vault issue ec(384) cert with disallowed extension",
 			username: "username-10-because-789",
-			expected: map[string]string{
+			expected: map[string]any{
 				"error": "extensions [permit-port-forwarding] are not on allowed list",
 			},
 			vaulthPath: "ssh/issue/boundary",
 			opts:       []Option{WithKeyType(KeyTypeEcdsa), WithKeyBits(384), WithExtensions("{ \"permit-port-forwarding\": \"\" }")},
+		},
+		{
+			name:     "vault issue ed25519 cert with additional valid principals",
+			username: "no-one-expects-the-spanish-inquisition",
+			expected: map[string]any{
+				"valid_principals": []string{"no-one-expects-the-spanish-inquisition", "test-principal"},
+			},
+			vaulthPath: "ssh/issue/boundary",
+			opts:       []Option{WithKeyType(KeyTypeEd25519), WithAdditionalValidPrincipals([]string{"test-principal"})},
 		},
 	}
 
@@ -1371,21 +1382,34 @@ func TestRepository_sshCertIssuingCredentialLibrary_retrieveCredential(t *testin
 
 			cred, err := libs[0].retrieveCredential(ctx, "op", tt.retOpts...)
 			if retErr, ok := tt.expected["error"]; ok {
-				require.ErrorContains(err, retErr)
+				require.ErrorContains(err, retErr.(string))
 				return // retrieveCredential failed (as expected) don't do the rest of the checks
 			}
 			require.NoError(err)
 
-			cert, ok := cred.(*sshCertCred)
+			sshCert, ok := cred.(*sshCertCred)
 			require.True(ok)
 
 			if usr, ok := tt.expected["username"]; ok {
-				require.Equal(usr, cert.username)
+				require.Equal(usr, sshCert.username)
 			}
 
 			// TODO: somehow check that the ssh cert matches the private key
 			// for now, manually check that private key and cert match and that sign/issue both return correct formats
-			fmt.Printf("test: %s\npriv:\n%s\ncert:\n%s\n", tt.name, string(cert.privateKey), string(cert.certificate))
+			fmt.Printf("test: %s\npriv:\n%s\ncert:\n%s\n", tt.name, string(sshCert.privateKey), string(sshCert.certificate))
+			pub, _, _, _, err := ssh.ParseAuthorizedKey(sshCert.certificate)
+			require.NoError(err)
+			priv, err := ssh.ParsePrivateKey(sshCert.privateKey)
+			require.NoError(err)
+			cert, ok := pub.(*ssh.Certificate)
+			require.True(ok)
+
+			// ensure both keys are the same type
+			require.Equal(priv.PublicKey().Type(), cert.Key.Type())
+
+			if vp, ok := tt.expected["valid_principals"]; ok {
+				require.Equal(vp, cert.ValidPrincipals)
+			}
 
 			// ensure credential matches expected SshCertificate
 			_, ok = cred.(credential.SshCertificate)

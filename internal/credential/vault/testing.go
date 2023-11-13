@@ -368,7 +368,7 @@ func testCaCert(t testing.TB) *testCert {
 }
 
 // testServerCert will generate a test x509 server cert.
-func testServerCert(t testing.TB, ca *testCert, hosts ...string) *testCertBundle {
+func testServerCert(t testing.TB, ca *testCert, opt ...TestOption) *testCertBundle {
 	t.Helper()
 	require := require.New(t)
 
@@ -404,7 +404,8 @@ func testServerCert(t testing.TB, ca *testCert, hosts ...string) *testCertBundle
 		BasicConstraintsValid: true,
 	}
 
-	for _, h := range hosts {
+	opts := getTestOpts(t, opt...)
+	for _, h := range opts.serverCertHostNames {
 		if ip := net.ParseIP(h); ip != nil {
 			template.IPAddresses = append(template.IPAddresses, ip)
 		} else {
@@ -512,19 +513,20 @@ type TestOption func(testing.TB, *testOptions)
 
 // options = how options are represented
 type testOptions struct {
-	orphan            bool
-	periodic          bool
-	renewable         bool
-	policies          []string
-	allowedExtensions []string
-	mountPath         string
-	roleName          string
-	vaultTLS          TestVaultTLS
-	dockerNetwork     bool
-	skipCleanup       bool
-	tokenPeriod       time.Duration
-	clientKey         *ecdsa.PrivateKey
-	vaultVersion      string
+	orphan              bool
+	periodic            bool
+	renewable           bool
+	policies            []string
+	allowedExtensions   []string
+	mountPath           string
+	roleName            string
+	vaultTLS            TestVaultTLS
+	dockerNetwork       bool
+	skipCleanup         bool
+	tokenPeriod         time.Duration
+	clientKey           *ecdsa.PrivateKey
+	vaultVersion        string
+	serverCertHostNames []string
 }
 
 func getDefaultTestOptions(t testing.TB) testOptions {
@@ -537,15 +539,16 @@ func getDefaultTestOptions(t testing.TB) testOptions {
 	}
 
 	return testOptions{
-		orphan:        true,
-		periodic:      true,
-		renewable:     true,
-		policies:      []string{"default", "boundary-controller"},
-		mountPath:     "",
-		roleName:      "boundary",
-		vaultTLS:      TestNoTLS,
-		dockerNetwork: false,
-		tokenPeriod:   defaultPeriod,
+		orphan:              true,
+		periodic:            true,
+		renewable:           true,
+		policies:            []string{"default", "boundary-controller"},
+		mountPath:           "",
+		roleName:            "boundary",
+		vaultTLS:            TestNoTLS,
+		dockerNetwork:       false,
+		tokenPeriod:         defaultPeriod,
+		serverCertHostNames: []string{"localhost"},
 	}
 }
 
@@ -584,6 +587,16 @@ func WithTestVaultTLS(s TestVaultTLS) TestOption {
 	return func(t testing.TB, o *testOptions) {
 		t.Helper()
 		o.vaultTLS = s
+	}
+}
+
+// WithServerCertHostNames sets the host names or IP address to attach to
+// the test server's TLS certificate. The default host name attached to the
+// test server's TLS certificate is 'localhost'.
+func WithServerCertHostNames(h []string) TestOption {
+	return func(t testing.TB, o *testOptions) {
+		t.Helper()
+		o.serverCertHostNames = h
 	}
 }
 
@@ -699,11 +712,13 @@ func (v *TestVaultServer) ClientUsingToken(t testing.TB, token string) *client {
 	ctx := context.Background()
 	require := require.New(t)
 	conf := &clientConfig{
-		Addr:       v.Addr,
-		Token:      TokenSecret(token),
-		CaCert:     v.CaCert,
-		ClientCert: v.ClientCert,
-		ClientKey:  v.ClientKey,
+		Addr:          v.Addr,
+		Token:         TokenSecret(token),
+		CaCert:        v.CaCert,
+		ClientCert:    v.ClientCert,
+		ClientKey:     v.ClientKey,
+		TlsServerName: v.TlsServerName,
+		TlsSkipVerify: v.TlsSkipVerify,
 	}
 
 	client, err := newClient(ctx, conf)
@@ -1008,10 +1023,12 @@ type TestVaultServer struct {
 	RootToken string
 	Addr      string
 
-	CaCert     []byte
-	ServerCert []byte
-	ClientCert []byte
-	ClientKey  []byte
+	CaCert        []byte
+	ServerCert    []byte
+	ClientCert    []byte
+	ClientKey     []byte
+	TlsServerName string
+	TlsSkipVerify bool
 
 	serverCertBundle *testCertBundle
 	clientCertBundle *testCertBundle

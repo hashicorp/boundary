@@ -100,7 +100,8 @@ export NEW_VAULT_LIB="test_vault"
   run create_vault_ssh_certificate_library \
     -name $NEW_VAULT_LIB -credential-store-id $csid \
     -vault-path /ssh/sign/foo \
-    -username foo
+    -username foo \
+	-additional-valid-principal test-principal
   echo "$output"
   [ "$status" -eq 0 ]
 }
@@ -492,7 +493,7 @@ export NEW_VAULT_LIB="test_vault"
   [ "$status" -eq 0 ]
 
   # can unset it
-  run update_vault_ssh_certificate_library -id $clid -extensions null
+  run update_vault_ssh_certificate_library -id $clid -critical-options null
   echo "$output"
   [ "$status" -eq 0 ]
 
@@ -501,7 +502,7 @@ export NEW_VAULT_LIB="test_vault"
   [ "$status" -eq 0 ]
   got=$(echo "$output")
 
-  run field_eq "$got" ".item.attributes.extensions" "null"
+  run field_eq "$got" ".item.attributes.critical_options" "null"
   [ "$status" -eq 0 ]
 }
 
@@ -535,6 +536,42 @@ export NEW_VAULT_LIB="test_vault"
   got=$(echo "$output")
 
   run field_eq "$got" ".item.attributes.key_id" "null"
+  [ "$status" -eq 0 ]
+}
+
+@test "boundary/credential-libraries: can update $NEW_VAULT_LIB vault-ssh-certificate library one additional-valid-principal" {
+  skip_if_no_vault
+
+  local csid=$(credential_store_id $NEW_STORE $DEFAULT_P_ID)
+  local clid=$(credential_library_id $NEW_VAULT_LIB $csid)
+  run update_vault_ssh_certificate_library -id $clid -additional-valid-principal test-principal-0
+  echo "$output"
+  [ "$status" -eq 0 ]
+
+  run read_credential_library $clid
+  echo "$output"
+  [ "$status" -eq 0 ]
+  got=$(echo "$output")
+
+  run field_eq "$got" ".item.attributes.additional_valid_principals" '["test-principal-0"]'
+  [ "$status" -eq 0 ]
+}
+
+@test "boundary/credential-libraries: can update $NEW_VAULT_LIB vault-ssh-certificate library many additional-valid-principals" {
+  skip_if_no_vault
+
+  local csid=$(credential_store_id $NEW_STORE $DEFAULT_P_ID)
+  local clid=$(credential_library_id $NEW_VAULT_LIB $csid)
+  run update_vault_ssh_certificate_library -id $clid -additional-valid-principal test-principal-1 -additional-valid-principal test-principal-2 -additional-valid-principal test-principal-3
+  echo "$output"
+  [ "$status" -eq 0 ]
+
+  run read_credential_library $clid
+  echo "$output"
+  [ "$status" -eq 0 ]
+  got=$(echo "$output")
+
+  run field_eq "$got" ".item.attributes.additional_valid_principals" '["test-principal-1","test-principal-2","test-principal-3"]'
   [ "$status" -eq 0 ]
 }
 

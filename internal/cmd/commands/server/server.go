@@ -387,6 +387,8 @@ func (c *Command) Run(args []string) int {
 			}
 			if strings.HasPrefix(clusterId, "int-") {
 				clusterId = strings.TrimPrefix(clusterId, "int-")
+			} else if strings.HasPrefix(clusterId, "dev-") {
+				clusterId = strings.TrimPrefix(clusterId, "dev-")
 			}
 			_, err = uuid.ParseUUID(clusterId)
 			if err != nil {

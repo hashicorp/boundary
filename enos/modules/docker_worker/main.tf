@@ -55,6 +55,16 @@ variable "config_file" {
   type        = string
   default     = "worker-config.hcl"
 }
+variable "token" {
+  description = "Controller generated activation token to initialize worker"
+  type        = string
+  default     = ""
+}
+variable "worker_led_registration" {
+  description = "Enables worker-led registration flow"
+  type        = bool
+  default     = false
+}
 
 resource "docker_image" "boundary" {
   name         = var.image_name
@@ -102,6 +112,7 @@ resource "docker_container" "worker" {
       recording_storage_path = local.recording_storage_path
       port                   = var.port
       port_ops               = local.port_ops
+      token                  = var.token
     })
     file = "/boundary/worker-config.hcl"
   }
@@ -111,7 +122,7 @@ resource "docker_container" "worker" {
     timeout  = "5s"
     retries  = 5
   }
-  wait     = true
+  wait     = var.worker_led_registration ? false : true
   must_run = true
   dynamic "networks_advanced" {
     for_each = var.network_name
@@ -121,7 +132,17 @@ resource "docker_container" "worker" {
   }
 }
 
+resource "enos_local_exec" "get_worker_led_token" {
+  count = var.worker_led_registration ? 1 : 0
+  depends_on = [
+    docker_container.worker
+  ]
+
+  inline = ["timeout 10s bash -c 'set -eo pipefail; until docker logs ${var.container_name} 2>&1 | grep \"Worker Auth Registration Request: .*\" | cut -f2- -d':' | xargs; do sleep 2; done'"]
+}
+
 resource "enos_local_exec" "check_address" {
+  count = var.worker_led_registration ? 0 : 1
   depends_on = [
     docker_container.worker
   ]
@@ -131,4 +152,8 @@ resource "enos_local_exec" "check_address" {
 
 output "upstream_address" {
   value = "${var.container_name}:${var.port}"
+}
+
+output "worker_led_token" {
+  value = var.worker_led_registration ? enos_local_exec.get_worker_led_token[0].stdout : ""
 }

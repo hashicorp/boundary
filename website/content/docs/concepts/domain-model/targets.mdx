@@ -50,7 +50,7 @@ A target has the following configurable attributes:
   A boolean expression to [filter][] which egress workers can handle sessions
   for this target.
   Egress worker filters determine which workers are used to access targets.
-  You can configure an egress filter to enable [multi-hop](/boundary/docs/configuration/worker#multi-hop-worker-capabilities-hcp-ent) connections.
+  You can configure an egress filter to enable [multi-hop](/boundary/docs/configuration/worker#multi-hop-worker-capabilities) connections.
   If you do not configure an egress filter, then Boundary uses a single worker to connect to the controller.
 
 - `ingress_worker_filter` - (optional) <sup>HCP/ENT</sup>
@@ -92,7 +92,9 @@ TCP targets have the following additional attribute:
 - `default_port` - (required)
   The default port to set on this target.
 
-### SSH target attributes <sup>HCP/ENT</sup>
+### SSH target attributes
+
+<EnterpriseAlert product="boundary">This feature requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary or Boundary Enterprise</a></EnterpriseAlert>
 
 SSH targets use injected application credentials to authenticate an SSH session between the client and end host.
 Injected credentials allow users to securely connect to remost hosts using SSH, while never being in the possession of a valid credential for that target host.

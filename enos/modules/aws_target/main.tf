@@ -79,6 +79,20 @@ resource "aws_instance" "target" {
   })
 }
 
+resource "enos_remote_exec" "wait" {
+  for_each = {
+    for idx, instance in aws_instance.target : idx => instance
+  }
+
+  inline = ["cloud-init status --wait"]
+
+  transport = {
+    ssh = {
+      host = aws_instance.target[each.key].public_ip
+    }
+  }
+}
+
 output "target_ips" {
   value = aws_instance.target.*.private_ip
 }

@@ -4,6 +4,8 @@
 package vault
 
 import (
+	"strings"
+
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/credential/vault/store"
@@ -45,18 +47,19 @@ func NewSSHCertificateCredentialLibrary(storeId string, vaultPath string, userna
 
 	l := &SSHCertificateCredentialLibrary{
 		SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
-			StoreId:         storeId,
-			Name:            opts.withName,
-			Description:     opts.withDescription,
-			VaultPath:       vaultPath,
-			Username:        username,
-			KeyType:         opts.withKeyType,
-			KeyBits:         opts.withKeyBits,
-			Ttl:             opts.withTtl,
-			KeyId:           opts.withKeyId,
-			CriticalOptions: opts.withCriticalOptions,
-			Extensions:      opts.withExtensions,
-			CredentialType:  string(globals.SshCertificateCredentialType),
+			StoreId:                   storeId,
+			Name:                      opts.withName,
+			Description:               opts.withDescription,
+			VaultPath:                 vaultPath,
+			Username:                  username,
+			KeyType:                   opts.withKeyType,
+			KeyBits:                   opts.withKeyBits,
+			Ttl:                       opts.withTtl,
+			KeyId:                     opts.withKeyId,
+			CriticalOptions:           opts.withCriticalOptions,
+			Extensions:                opts.withExtensions,
+			CredentialType:            string(globals.SshCertificateCredentialType),
+			AdditionalValidPrincipals: strings.Join(opts.withAdditionalValidPrincipals, ","),
 		},
 	}
 

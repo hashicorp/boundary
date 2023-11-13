@@ -27,10 +27,9 @@ an agent to be installed on every end host, making it suitable for access to man
 
 <img src="https://www.boundaryproject.io/_next/image?url=https%3A%2F%2Fwww.datocms-assets.com%2F58478%2F1664218843-boundary-illustration-option2-1.png&w=3840&q=75" alt="Watch the video" width="320" height="180">
 
+For more information, refer to "[What is Boundary?](https://developer.hashicorp.com/boundary/docs/overview/what-is-boundary)" on the Boundary website.
 
-
-
-## Getting started
+## Getting Started
 
 Boundary consists of two server components: 
 

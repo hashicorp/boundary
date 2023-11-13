@@ -517,7 +517,7 @@ func (c *Command) Run(args []string) (retCode int) {
 		case "json":
 			out, err := json.Marshal(&termInfo)
 			if err != nil {
-				c.PrintCliError(fmt.Errorf("error marshaling termination information: %w", err))
+				c.PrintCliError(fmt.Errorf("Error marshaling termination information: %w", err))
 				return base.CommandCliError
 			}
 			c.UI.Output(string(out))
@@ -541,7 +541,7 @@ func (c *Command) printCredentials(creds []*targets.SessionCredential) error {
 			Credentials: creds,
 		})
 		if err != nil {
-			return fmt.Errorf("error marshaling credential information: %w", err)
+			return fmt.Errorf("Error marshaling credential information: %w", err)
 		}
 		c.UI.Output(string(out))
 	}

@@ -2,7 +2,27 @@
 
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
-## Next
+## 0.14.2 (2023/11/2)
+
+### New and Improved
+
+* Expose Valid Principals for Vault SSH Signed Certs: Allow users to add
+  additional valid principals when creating a vault ssh signed cert credential
+  library ([PR](https://github.com/hashicorp/boundary/pull/3791)).
+
+### Bug Fixes
+
+* High CPU consumption: A background GRPC connection state check caused high CPU
+  utilization. This was caused by a long running loop that was checking for GRPC
+  connection state changes between a worker and an upstream connection address.
+  The loop was not correctly waiting for GRPC connection state changes before
+  running. The issue was fixed by correctly updating the state that determines
+  when the loop in GRPC connection state check should run.
+  ([PR](https://github.com/hashicorp/boundary/pull/3884))
+* LDAP auth methods: Fix encoding of mTLS client key which prevented Boundary
+  from making mTLS connections to an LDAP server
+  ([Issue](https://github.com/hashicorp/boundary/issues/3927),
+  [PR](https://github.com/hashicorp/boundary/pull/3929)).
 
 ## 0.14.1 (2023/10/17)
 

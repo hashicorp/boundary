@@ -12,8 +12,8 @@ import (
 
 	"github.com/hashicorp/boundary/api/consts"
 	pb "github.com/hashicorp/boundary/sdk/pbs/proxy"
+	"github.com/hashicorp/boundary/sdk/wspb"
 	"nhooyr.io/websocket"
-	"nhooyr.io/websocket/wspb"
 )
 
 func (p *ClientProxy) getWsConn(ctx context.Context) (*websocket.Conn, error) {
