@@ -80,16 +80,12 @@ func newClient(ctx context.Context, c *clientConfig) (*client, error) {
 	}
 	vc := vault.DefaultConfig()
 	vc.Address = c.Addr
-	tlsConfig := vc.HttpClient.Transport.(*http.Transport).TLSClientConfig
-	tlsConfig.InsecureSkipVerify = c.TlsSkipVerify
-	if c.TlsServerName != "" {
-		tlsConfig.ServerName = c.TlsServerName
-	}
-
 	if len(c.CaCert) > 0 {
 		rootConfig := &rootcerts.Config{
 			CACertificate: c.CaCert,
 		}
+		tlsConfig := vc.HttpClient.Transport.(*http.Transport).TLSClientConfig
+		tlsConfig.InsecureSkipVerify = c.TlsSkipVerify
 		if err := rootcerts.ConfigureTLS(tlsConfig, rootConfig); err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}

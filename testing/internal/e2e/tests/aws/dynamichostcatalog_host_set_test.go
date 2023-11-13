@@ -104,6 +104,7 @@ func TestCliCreateAwsDynamicHostCatalogWithHostSet(t *testing.T) {
 	)
 	require.NoError(t, err)
 	expectedHostCatalogCount := expectedHostSetCount1 + expectedHostSetCount2
+	require.NoError(t, err)
 	assert.Equal(t, expectedHostCatalogCount, actualHostCatalogCount, "Numbers of hosts in host catalog did not match expected amount")
 
 	// Create target
@@ -220,8 +221,8 @@ func TestApiCreateAwsDynamicHostCatalog(t *testing.T) {
 	t.Log("Successfully found items in the host set")
 	var targetIps []string
 	err = json.Unmarshal([]byte(c.AwsHostSetIps1), &targetIps)
-	require.NoError(t, err)
 	expectedHostSetCount := len(targetIps)
+	require.NoError(t, err)
 	assert.Equal(t, expectedHostSetCount, actualHostSetCount, "Numbers of hosts in host set did not match expected amount")
 
 	// Get list of all hosts from host catalog
@@ -251,5 +252,6 @@ func TestApiCreateAwsDynamicHostCatalog(t *testing.T) {
 	)
 	require.NoError(t, err)
 	t.Log("Successfully found items in the host catalog")
+	require.NoError(t, err)
 	assert.Equal(t, actualHostCatalogCount, expectedHostSetCount, "Numbers of hosts in host catalog did not match expected amount")
 }

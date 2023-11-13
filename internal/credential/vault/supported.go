@@ -112,7 +112,7 @@ func gotNewServer(t testing.TB, opt ...TestOption) *TestVaultServer {
 			dockerOptions.Env = append(dockerOptions.Env, fmt.Sprintf("VAULT_LOCAL_CONFIG=%s", clientTlsTemplate))
 		}
 
-		serverCert := testServerCert(t, testCaCert(t), opt...)
+		serverCert := testServerCert(t, testCaCert(t), "localhost")
 		server.serverCertBundle = serverCert
 		server.ServerCert = serverCert.Cert.Cert
 		server.CaCert = serverCert.CA.Cert
@@ -147,8 +147,6 @@ func gotNewServer(t testing.TB, opt ...TestOption) *TestVaultServer {
 				return &vaultClientCert, nil
 			}
 		}
-		server.TlsSkipVerify = true
-		clientTLSConfig.InsecureSkipVerify = true
 	}
 
 	// NOTE(mgaffney) 05/2021: creating a docker network is not the default

@@ -22,6 +22,5 @@ project {
     "internal/proto/plugin/**",
     "internal/proto/controller/custom_options/**", 
     "internal/proto/controller/api/**",
-    "internal/proto/worker/proxy/v1/**",
   ]
 }

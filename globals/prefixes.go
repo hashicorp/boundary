@@ -68,8 +68,6 @@ const (
 	// VaultSshCertificateCredentialLibraryPrefix is the prefix for Vault SSH
 	// certificate credential libraries
 	VaultSshCertificateCredentialLibraryPrefix = "clvsclt"
-	// DynamicCredentialPrefix is the prefix for Vault dynamic credentials
-	VaultDynamicCredentialPrefix = "cdvlt"
 
 	// UsernamePasswordCredentialPrefix is the prefix for username/password
 	// creds

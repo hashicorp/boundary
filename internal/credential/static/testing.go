@@ -70,7 +70,7 @@ do/lpv8N1+5Eb3lOB3DrqcEqRwXzSQcO2QcpikNSHyPquGR689I3xUm6kWmpKs49aacTUx
 )
 
 // TestJsonObject returns a json object and it's marshalled format to be used for testing
-func TestJsonObject(t testing.TB) (credential.JsonObject, []byte) {
+func TestJsonObject() (credential.JsonObject, []byte, error) {
 	object := credential.JsonObject{
 		Struct: &structpb.Struct{
 			Fields: map[string]*structpb.Value{
@@ -81,8 +81,7 @@ func TestJsonObject(t testing.TB) (credential.JsonObject, []byte) {
 		},
 	}
 	b, err := json.Marshal(object.AsMap())
-	require.NoError(t, err)
-	return object, b
+	return object, b, err
 }
 
 // TestCredentialStore creates a static credential store in the provided DB with

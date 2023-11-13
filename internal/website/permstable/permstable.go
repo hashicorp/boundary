@@ -5,6 +5,7 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"sort"
 	"strings"
@@ -83,7 +84,7 @@ func main() {
 		worker,
 	)
 
-	fileContents, err := os.ReadFile(permsFile)
+	fileContents, err := ioutil.ReadFile(permsFile)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
@@ -119,7 +120,7 @@ func main() {
 		strings.Join(table.Marshal(), "\n"),
 		strings.Join(post, "\n"))
 
-	if err := os.WriteFile(permsFile, []byte(final), 0o644); err != nil {
+	if err := ioutil.WriteFile(permsFile, []byte(final), 0o644); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}

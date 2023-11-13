@@ -74,10 +74,10 @@ var (
 		action.List,
 	}
 
-	validCredentialTypesVaultGeneric = []globals.CredentialType{
-		globals.UsernamePasswordCredentialType,
-		globals.SshPrivateKeyCredentialType,
-		globals.UnspecifiedCredentialType,
+	validCredentialTypesVaultGeneric = []credential.Type{
+		credential.UsernamePasswordType,
+		credential.SshPrivateKeyType,
+		credential.UnspecifiedType,
 	}
 
 	validKeyTypes = []string{
@@ -275,7 +275,7 @@ func (s Service) UpdateCredentialLibrary(ctx context.Context, req *pbs.UpdateCre
 	if err != nil {
 		return nil, err
 	}
-	var currentCredentialType globals.CredentialType
+	var currentCredentialType credential.Type
 	var mo vault.MappingOverride
 	switch subtypes.SubtypeFromId(domain, req.GetId()) {
 	case vault.SSHCertificateLibrarySubtype:
@@ -283,13 +283,13 @@ func (s Service) UpdateCredentialLibrary(ctx context.Context, req *pbs.UpdateCre
 		if err != nil {
 			return nil, err
 		}
-		currentCredentialType = globals.CredentialType(cur.GetCredentialType())
+		currentCredentialType = credential.Type(cur.GetCredentialType())
 	default:
 		cur, err := repo.LookupCredentialLibrary(ctx, req.Id)
 		if err != nil {
 			return nil, err
 		}
-		currentCredentialType = globals.CredentialType(cur.GetCredentialType())
+		currentCredentialType = credential.Type(cur.GetCredentialType())
 		mo = cur.MappingOverride
 	}
 
@@ -444,7 +444,7 @@ func (s Service) updateInRepo(
 	projId, id string,
 	masks []string,
 	in *pb.CredentialLibrary,
-	currentCredentialType globals.CredentialType,
+	currentCredentialType credential.Type,
 	currentMapping vault.MappingOverride) (credential.Library, error,
 ) {
 	const op = "credentiallibraries.(Service).updateInRepo"
@@ -657,7 +657,7 @@ func toProto(ctx context.Context, in credential.Library, opt ...handlers.Option)
 			return nil, errors.New(ctx, errors.Internal, op, "unable to cast to vault credential library")
 		}
 
-		if outputFields.Has(globals.CredentialTypeField) && vaultIn.GetCredentialType() != string(globals.UnspecifiedCredentialType) {
+		if outputFields.Has(globals.CredentialTypeField) && vaultIn.GetCredentialType() != string(credential.UnspecifiedType) {
 			out.CredentialType = vaultIn.GetCredentialType()
 			if outputFields.Has(globals.CredentialMappingOverridesField) && vaultIn.MappingOverride != nil {
 				m := make(map[string]any)
@@ -778,9 +778,9 @@ func toStorageVaultLibrary(ctx context.Context, storeId string, in *pb.Credentia
 		opts = append(opts, vault.WithRequestBody([]byte(attrs.GetHttpRequestBody().GetValue())))
 	}
 
-	credentialType := globals.CredentialType(in.GetCredentialType())
+	credentialType := credential.Type(in.GetCredentialType())
 	switch credentialType {
-	case globals.UsernamePasswordCredentialType:
+	case credential.UsernamePasswordType:
 		opts = append(opts, vault.WithCredentialType(credentialType))
 		overrides := in.CredentialMappingOverrides.AsMap()
 		var mapOpts []vault.Option
@@ -794,7 +794,7 @@ func toStorageVaultLibrary(ctx context.Context, storeId string, in *pb.Credentia
 			opts = append(opts, vault.WithMappingOverride(vault.NewUsernamePasswordOverride(mapOpts...)))
 		}
 
-	case globals.SshPrivateKeyCredentialType:
+	case credential.SshPrivateKeyType:
 		opts = append(opts, vault.WithCredentialType(credentialType))
 		overrides := in.CredentialMappingOverrides.AsMap()
 		var mapOpts []vault.Option
@@ -828,7 +828,7 @@ func toStorageVaultSSHCertificateLibrary(ctx context.Context, storeId string, in
 	if in.GetDescription() != nil {
 		opts = append(opts, vault.WithDescription(in.GetDescription().GetValue()))
 	}
-	opts = append(opts, vault.WithCredentialType(globals.CredentialType(in.GetCredentialType())))
+	opts = append(opts, vault.WithCredentialType(credential.Type(in.GetCredentialType())))
 
 	attrs := in.GetVaultSshCertificateCredentialLibraryAttributes()
 	if attrs.GetKeyType() != nil {
@@ -963,7 +963,7 @@ func validateCreateRequest(req *pbs.CreateCredentialLibraryRequest) error {
 				if b := attrs.GetHttpRequestBody(); b != nil && strings.ToUpper(attrs.GetHttpMethod().GetValue()) != "POST" {
 					badFields[httpRequestBodyField] = fmt.Sprintf("Field can only be set if %q is set to the value 'POST'.", httpMethodField)
 				}
-				validateMapping(badFields, globals.CredentialType(req.GetItem().GetCredentialType()), req.GetItem().CredentialMappingOverrides.AsMap())
+				validateMapping(badFields, credential.Type(req.GetItem().GetCredentialType()), req.GetItem().CredentialMappingOverrides.AsMap())
 			case vault.SSHCertificateLibrarySubtype:
 				if req.GetItem().GetCredentialType() != "" {
 					badFields[globals.CredentialTypeField] = fmt.Sprintf("This field is read only and cannot be set.")
@@ -999,7 +999,7 @@ func validateCreateRequest(req *pbs.CreateCredentialLibraryRequest) error {
 	})
 }
 
-func validateUpdateRequest(req *pbs.UpdateCredentialLibraryRequest, currentCredentialType globals.CredentialType) error {
+func validateUpdateRequest(req *pbs.UpdateCredentialLibraryRequest, currentCredentialType credential.Type) error {
 	prefix := ""
 	st := subtypes.SubtypeFromId(domain, req.GetId())
 	switch st {
@@ -1078,18 +1078,18 @@ func validateListRequest(ctx context.Context, req *pbs.ListCredentialLibrariesRe
 	return nil
 }
 
-func validateMapping(badFields map[string]string, credentialType globals.CredentialType, overrides map[string]any) {
+func validateMapping(badFields map[string]string, credentialType credential.Type, overrides map[string]any) {
 	validFields := make(map[string]bool)
 	switch credentialType {
-	case "", globals.UnspecifiedCredentialType:
+	case "", credential.UnspecifiedType:
 		if len(overrides) > 0 {
 			badFields[globals.CredentialMappingOverridesField] = fmt.Sprintf("This field can only be set if %q is set", globals.CredentialTypeField)
 		}
 		return
-	case globals.UsernamePasswordCredentialType:
+	case credential.UsernamePasswordType:
 		validFields[usernameAttribute] = true
 		validFields[passwordAttribute] = true
-	case globals.SshPrivateKeyCredentialType:
+	case credential.SshPrivateKeyType:
 		validFields[usernameAttribute] = true
 		validFields[privateKeyAttribute] = true
 		validFields[pkPassphraseAttribute] = true
@@ -1141,7 +1141,7 @@ func getMapUpdate(field string, apiMasks []string) bool {
 	return false
 }
 
-func getMappingUpdates(credentialType globals.CredentialType, current vault.MappingOverride, new map[string]any, apiMasks []string) (map[string]any, bool) {
+func getMappingUpdates(credentialType credential.Type, current vault.MappingOverride, new map[string]any, apiMasks []string) (map[string]any, bool) {
 	ret := make(map[string]any)
 	masks := make(map[string]bool)
 	for _, m := range apiMasks {
@@ -1162,7 +1162,7 @@ func getMappingUpdates(credentialType globals.CredentialType, current vault.Mapp
 	}
 
 	switch credentialType {
-	case globals.UsernamePasswordCredentialType:
+	case credential.UsernamePasswordType:
 		var currentUser, currentPass any
 		if overrides, ok := current.(*vault.UsernamePasswordOverride); ok {
 			currentUser = overrides.UsernameAttribute
@@ -1183,7 +1183,7 @@ func getMappingUpdates(credentialType globals.CredentialType, current vault.Mapp
 			ret[passwordAttribute] = currentPass
 		}
 
-	case globals.SshPrivateKeyCredentialType:
+	case credential.SshPrivateKeyType:
 		var currentUser, currentpPass, currentPk any
 		if overrides, ok := current.(*vault.SshPrivateKeyOverride); ok {
 			currentUser = overrides.UsernameAttribute

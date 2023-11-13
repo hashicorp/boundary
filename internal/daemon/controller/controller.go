@@ -253,8 +253,8 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 				return nil, fmt.Errorf("error creating host catalog plugin logger: %w", err)
 			}
 		}
-		switch {
-		case enabledPlugin == base.EnabledPluginLoopback:
+		switch enabledPlugin {
+		case base.EnabledPluginLoopback:
 			lp, err := loopback.NewLoopbackPlugin()
 			if err != nil {
 				return nil, fmt.Errorf("error creating loopback plugin: %w", err)
@@ -267,7 +267,7 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 			if _, err = conf.RegisterPlugin(ctx, "loopback", plg, []plugin.PluginType{plugin.PluginTypeHost, plugin.PluginTypeStorage}, opts...); err != nil {
 				return nil, err
 			}
-		case enabledPlugin == base.EnabledPluginHostAzure && !c.conf.SkipPlugins:
+		case base.EnabledPluginHostAzure:
 			pluginType := strings.ToLower(enabledPlugin.String())
 			client, cleanup, err := external_plugins.CreateHostPlugin(
 				ctx,
@@ -285,7 +285,7 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 			if _, err := conf.RegisterPlugin(ctx, pluginType, client, []plugin.PluginType{plugin.PluginTypeHost}, plugin.WithDescription(fmt.Sprintf("Built-in %s host plugin", enabledPlugin.String()))); err != nil {
 				return nil, fmt.Errorf("error registering %s host plugin: %w", pluginType, err)
 			}
-		case enabledPlugin == base.EnabledPluginAws && !c.conf.SkipPlugins:
+		case base.EnabledPluginAws:
 			pluginType := strings.ToLower(enabledPlugin.String())
 			client, cleanup, err := external_plugins.CreateHostPlugin(
 				ctx,

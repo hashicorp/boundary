@@ -108,7 +108,8 @@ func TestList(t *testing.T) {
 			},
 		})
 
-		obj, objBytes := static.TestJsonObject(t)
+		obj, objBytes, err := static.TestJsonObject()
+		assert.NoError(t, err)
 
 		credJson := static.TestJsonCredential(t, conn, wrapper, store.GetPublicId(), prj.GetPublicId(), obj)
 		hm, err = crypto.HmacSha256(ctx, objBytes, databaseWrapper, []byte(store.GetPublicId()), nil)
@@ -243,7 +244,7 @@ func TestGet(t *testing.T) {
 	require.NoError(t, err)
 	passHm, err := crypto.HmacSha256(context.Background(), []byte(testdata.PEMEncryptedKeys[0].EncryptionKey), databaseWrapper, []byte(store.GetPublicId()), nil)
 
-	obj, objBytes := static.TestJsonObject(t)
+	obj, objBytes, err := static.TestJsonObject()
 	assert.NoError(t, err)
 
 	jsonCred := static.TestJsonCredential(t, conn, wrapper, store.GetPublicId(), prj.GetPublicId(), obj)
@@ -427,7 +428,7 @@ func TestDelete(t *testing.T) {
 	upCred := static.TestUsernamePasswordCredential(t, conn, wrapper, "user", "pass", store.GetPublicId(), prj.GetPublicId())
 	spkCred := static.TestSshPrivateKeyCredential(t, conn, wrapper, "user", static.TestSshPrivateKeyPem, store.GetPublicId(), prj.GetPublicId())
 
-	obj, _ := static.TestJsonObject(t)
+	obj, _, err := static.TestJsonObject()
 	assert.NoError(t, err)
 
 	jsonCred := static.TestJsonCredential(t, conn, wrapper, store.GetPublicId(), prj.GetPublicId(), obj)
@@ -496,7 +497,8 @@ func TestCreate(t *testing.T) {
 	_, prj := iam.TestScopes(t, iamRepo)
 	store := static.TestCredentialStore(t, conn, wrapper, prj.GetPublicId())
 
-	obj, objBytes := static.TestJsonObject(t)
+	obj, objBytes, err := static.TestJsonObject()
+	assert.NoError(t, err)
 
 	cases := []struct {
 		name     string
@@ -892,7 +894,8 @@ func TestUpdate(t *testing.T) {
 
 	freshCredJson := func() (*static.JsonCredential, func()) {
 		t.Helper()
-		obj, _ := static.TestJsonObject(t)
+		obj, _, err := static.TestJsonObject()
+		assert.NoError(t, err)
 		cred := static.TestJsonCredential(t, conn, wrapper, store.GetPublicId(), prj.GetPublicId(), obj)
 		clean := func() {
 			_, err := s.DeleteCredential(ctx, &pbs.DeleteCredentialRequest{Id: cred.GetPublicId()})

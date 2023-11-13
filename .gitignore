@@ -33,6 +33,7 @@ temp/
 # Icon must end with two \r
 Icon
 
+
 # Thumbnails
 ._*
 
@@ -52,10 +53,6 @@ Icon
 *_REMOTE_*.txt
 
 ### Go ###
-# Files that shouldn't be shared
-go.work
-go.work.sum
-
 # Binaries for programs and plugins
 *.exe
 *.exe~

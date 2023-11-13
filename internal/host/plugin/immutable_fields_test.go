@@ -166,8 +166,8 @@ func TestPluginSet_ImmutableFields(t *testing.T) {
 	}
 }
 
-func (s *HostSet) testCloneHostSet() *HostSet {
-	cp := proto.Clone(s.HostSet)
+func (c *HostSet) testCloneHostSet() *HostSet {
+	cp := proto.Clone(c.HostSet)
 	return &HostSet{
 		HostSet: cp.(*store.HostSet),
 	}

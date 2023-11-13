@@ -6433,18 +6433,6 @@
           "description": "Output only. The endpoint address that the worker will connect to, useful for setting TLS parameters.",
           "readOnly": true
         },
-        "endpoint_port": {
-          "type": "integer",
-          "format": "int64",
-          "description": "Output only. The endpoint port that will be connected to, either from a\nport directly on the target or from a service definition.",
-          "readOnly": true
-        },
-        "expiration": {
-          "type": "string",
-          "format": "date-time",
-          "description": "Output only. The expiration time of the session.",
-          "readOnly": true
-        },
         "credentials": {
           "type": "array",
           "items": {

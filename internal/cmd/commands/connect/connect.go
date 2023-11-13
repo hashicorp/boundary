@@ -21,13 +21,11 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/api"
-	apiproxy "github.com/hashicorp/boundary/api/proxy"
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/base"
+	"github.com/hashicorp/boundary/internal/proxy"
 	targetspb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
-	"github.com/hashicorp/boundary/sdk/pbs/proxy"
-	"github.com/hashicorp/boundary/sdk/wspb"
 	"github.com/hashicorp/go-cleanhttp"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/mitchellh/cli"
@@ -37,6 +35,7 @@ import (
 	exec "golang.org/x/sys/execabs"
 	"google.golang.org/protobuf/proto"
 	"nhooyr.io/websocket"
+	"nhooyr.io/websocket/wspb"
 )
 
 const sessionCancelTimeout = 10 * time.Second
@@ -629,10 +628,10 @@ func (c *Command) Run(args []string) (retCode int) {
 		ctx, cancel := context.WithTimeout(context.Background(), sessionCancelTimeout)
 		wsConn, err := c.getWsConn(ctx, workerAddr, transport)
 		if err != nil {
-			c.PrintCliError(fmt.Errorf("Error fetching connection to send session teardown request to worker: %w", err))
+			c.PrintCliError(fmt.Errorf("error fetching connection to send session teardown request to worker: %w", err))
 		} else {
 			if err := c.sendSessionTeardown(ctx, wsConn, tofuToken); err != nil {
-				c.PrintCliError(fmt.Errorf("Error sending session teardown request to worker: %w", err))
+				c.PrintCliError(fmt.Errorf("error sending session teardown request to worker: %w", err))
 			}
 		}
 		cancel()
@@ -651,7 +650,7 @@ func (c *Command) Run(args []string) (retCode int) {
 		case "json":
 			out, err := json.Marshal(&termInfo)
 			if err != nil {
-				c.PrintCliError(fmt.Errorf("Error marshaling termination information: %w", err))
+				c.PrintCliError(fmt.Errorf("error marshaling termination information: %w", err))
 				return base.CommandCliError
 			}
 			c.UI.Output(string(out))
@@ -675,7 +674,7 @@ func (c *Command) printCredentials(creds []*targets.SessionCredential) error {
 			Credentials: creds,
 		})
 		if err != nil {
-			return fmt.Errorf("Error marshaling credential information: %w", err)
+			return fmt.Errorf("error marshaling credential information: %w", err)
 		}
 		c.UI.Output(string(out))
 	}
@@ -744,7 +743,7 @@ func (c *Command) runTcpProxyV1(
 ) error {
 	handshake := proxy.ClientHandshake{TofuToken: tofuToken}
 	if err := wspb.Write(c.proxyCtx, wsConn, &handshake); err != nil {
-		return fmt.Errorf("Error sending handshake to worker: %w", err)
+		return fmt.Errorf("error sending handshake to worker: %w", err)
 	}
 	var handshakeResult proxy.HandshakeResult
 	if err := wspb.Read(c.proxyCtx, wsConn, &handshakeResult); err != nil {
@@ -761,9 +760,7 @@ func (c *Command) runTcpProxyV1(
 			c.proxyCancel()
 			return errors.New("Session token has already been used")
 		default:
-			// If we can't handshake we can't do anything, so quit out
-			c.proxyCancel()
-			return fmt.Errorf("Error reading handshake result: %w", err)
+			return fmt.Errorf("error reading handshake result: %w", err)
 		}
 	}
 
@@ -827,10 +824,10 @@ func (c *Command) handleExec(passthroughArgs []string) {
 	var envs []string
 	var argsErr error
 
-	var creds apiproxy.Credentials
+	var creds credentials
 	if c.sessionAuthz != nil {
 		var err error
-		creds, err = apiproxy.ParseCredentials(c.sessionAuthz.Credentials)
+		creds, err = parseCredentials(c.sessionAuthz.Credentials)
 		if err != nil {
 			c.PrintCliError(fmt.Errorf("Error interpreting secret: %w", err))
 			c.execCmdReturnValue.Store(int32(3))
@@ -887,7 +884,7 @@ func (c *Command) handleExec(passthroughArgs []string) {
 		return
 	}
 
-	if err := c.printCredentials(creds.UnconsumedSessionCredentials()); err != nil {
+	if err := c.printCredentials(creds.unconsumedSessionCredentials()); err != nil {
 		c.PrintCliError(fmt.Errorf("Failed to print credentials: %w", err))
 		c.execCmdReturnValue.Store(int32(2))
 		return

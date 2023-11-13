@@ -411,7 +411,8 @@ func TestRepository_CreateJsonCredential(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 
-	obj, objBytes := TestJsonObject(t)
+	obj, objBytes, err := TestJsonObject()
+	assert.NoError(t, err)
 
 	cs := TestCredentialStore(t, conn, wrapper, prj.PublicId)
 
@@ -575,7 +576,8 @@ func TestRepository_LookupCredential(t *testing.T) {
 	spkCredWithPass := TestSshPrivateKeyCredential(t, conn, wrapper, "username", string(testdata.PEMEncryptedKeys[0].PEMBytes),
 		store.PublicId, prj.PublicId, WithPrivateKeyPassphrase([]byte(testdata.PEMEncryptedKeys[0].EncryptionKey)))
 
-	obj, _ := TestJsonObject(t)
+	obj, _, err := TestJsonObject()
+	assert.NoError(t, err)
 
 	jsonCred := TestJsonCredential(t, conn, wrapper, store.PublicId, prj.PublicId, obj)
 
@@ -681,7 +683,8 @@ func TestRepository_ListCredentials(t *testing.T) {
 	TestUsernamePasswordCredentials(t, conn, wrapper, "user", "pass", store.GetPublicId(), prj.GetPublicId(), total/3)
 	TestSshPrivateKeyCredentials(t, conn, wrapper, "user", TestSshPrivateKeyPem, store.GetPublicId(), prj.GetPublicId(), total/3)
 
-	obj, _ := TestJsonObject(t)
+	obj, _, err := TestJsonObject()
+	assert.NoError(t, err)
 
 	TestJsonCredentials(t, conn, wrapper, store.GetPublicId(), prj.GetPublicId(), obj, total/3)
 
@@ -773,7 +776,8 @@ func TestRepository_DeleteCredential(t *testing.T) {
 	upCred := TestUsernamePasswordCredential(t, conn, wrapper, "user", "pass", store.GetPublicId(), prj.GetPublicId())
 	spkCred := TestSshPrivateKeyCredential(t, conn, wrapper, "user", TestSshPrivateKeyPem, store.GetPublicId(), prj.GetPublicId())
 
-	obj, _ := TestJsonObject(t)
+	obj, _, err := TestJsonObject()
+	assert.NoError(t, err)
 
 	jsonCred := TestJsonCredential(t, conn, wrapper, store.PublicId, prj.PublicId, obj)
 
@@ -2012,7 +2016,8 @@ func TestRepository_UpdateJsonCredential(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 
-	_, objBytes := TestJsonObject(t)
+	_, objBytes, err := TestJsonObject()
+	assert.NoError(t, err)
 
 	secondJsonSecret := &structpb.Struct{
 		Fields: map[string]*structpb.Value{

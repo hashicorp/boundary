@@ -31,7 +31,7 @@ scenario "e2e_aws" {
   }
 
   step "find_azs" {
-    module = module.aws_az_finder
+    module = module.az_finder
 
     variables {
       instance_type = [
@@ -76,7 +76,7 @@ scenario "e2e_aws" {
   }
 
   step "create_boundary_cluster" {
-    module = module.aws_boundary
+    module = module.boundary
     depends_on = [
       step.create_base_infra,
       step.create_db_password,
@@ -95,7 +95,6 @@ scenario "e2e_aws" {
       local_artifact_path      = step.build_boundary.artifact_path
       ubuntu_ami_id            = step.create_base_infra.ami_ids["ubuntu"]["amd64"]
       vpc_id                   = step.create_base_infra.vpc_id
-      vpc_tag_module           = step.create_base_infra.vpc_tag_module
       worker_count             = var.worker_count
       worker_instance_type     = var.worker_instance_type
     }
@@ -116,7 +115,7 @@ scenario "e2e_aws" {
   }
 
   step "create_targets_with_tag1" {
-    module     = module.aws_target
+    module     = module.target
     depends_on = [step.create_base_infra]
 
     variables {
@@ -146,7 +145,7 @@ scenario "e2e_aws" {
   }
 
   step "create_targets_with_tag2" {
-    module     = module.aws_target
+    module     = module.target
     depends_on = [step.create_base_infra]
 
     variables {
@@ -169,7 +168,7 @@ scenario "e2e_aws" {
   }
 
   step "iam_setup" {
-    module = module.aws_iam_setup
+    module = module.iam_setup
     depends_on = [
       step.create_base_infra,
       step.create_test_id
@@ -186,7 +185,7 @@ scenario "e2e_aws" {
   }
 
   step "create_isolated_worker" {
-    module     = module.aws_worker
+    module     = module.worker
     depends_on = [step.create_boundary_cluster]
     variables {
       vpc_id                    = step.create_base_infra.vpc_id
@@ -206,7 +205,7 @@ scenario "e2e_aws" {
   }
 
   step "create_isolated_target" {
-    module = module.aws_target
+    module = module.target
     depends_on = [
       step.create_base_infra,
       step.create_isolated_worker

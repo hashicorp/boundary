@@ -4,7 +4,6 @@
 package config
 
 import (
-	"encoding/base64"
 	"fmt"
 	"net/http"
 	"os"
@@ -629,9 +628,8 @@ func TestDevWorkerRecordingStoragePath(t *testing.T) {
 func TestDevKeyGeneration(t *testing.T) {
 	t.Parallel()
 	dk := DevKeyGeneration()
-	buf, err := base64.StdEncoding.DecodeString(dk)
-	require.NoError(t, err)
-	require.Len(t, buf, 32)
+	numBytes := 32
+	require.Equal(t, numBytes, len(dk))
 	require.NotEqual(t, dk, DevKeyGeneration())
 }
 

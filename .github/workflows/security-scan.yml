@@ -14,7 +14,7 @@ jobs:
     runs-on: ${{ fromJSON(vars.RUNNER_LARGE) }}
     if: ${{ github.actor != 'dependabot[bot]' || github.actor != 'hc-github-team-secure-boundary' }}
     steps:
-    - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+    - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3.5.3
 
     - name: Determine Go version
       id: get-go-version
@@ -31,17 +31,17 @@ jobs:
         cache: false
 
     - name: Set up Python
-      uses: actions/setup-python@65d7f2d534ac1bc67fcd62888c5f4f3d2cb2b236 # v4.7.1
+      uses: actions/setup-python@61a6322f88396a6271a6ee3565807d608ecaddd1 # v4.7.0
       with:
         python-version: 3.x
 
     - name: Clone Security Scanner repo
-      uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3.5.3
       with:
         repository: hashicorp/security-scanner
         token: ${{ secrets.HASHIBOT_PRODSEC_GITHUB_TOKEN }}
         path: security-scanner
-        ref: main
+        ref: 5a491479f4131d343afe0a4f18f6fcd36639f3fa
 
     - name: Install dependencies
       shell: bash
@@ -58,7 +58,7 @@ jobs:
         mv scan-plugin-codeql "$HOME/.bin"
 
         # Semgrep
-        python3 -m pip install semgrep==1.45.0
+        python3 -m pip install semgrep
 
         # CodeQL
         LATEST=$(gh release list --repo https://github.com/github/codeql-action | cut -f 3 | sort --version-sort | tail -n1)
@@ -76,7 +76,7 @@ jobs:
         repository: "$PWD"
 
     - name: Upload SARIF file
-      uses: github/codeql-action/upload-sarif@bad341350a2f5616f9e048e51360cedc49181ce8 # codeql-bundle-v2.15.1
+      uses: github/codeql-action/upload-sarif@f9a7c6738f28efb36e31d49c53a201a9c5d6a476 # codeql-bundle-v2.14.2
       with:
         sarif_file: results.sarif
 

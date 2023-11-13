@@ -2652,18 +2652,15 @@ func TestAuthorizeSession(t *testing.T) {
 				HostId:    wantedHostId,
 				Type:      "tcp",
 				Endpoint:  fmt.Sprintf("tcp://%s", tc.wantedEndpoint),
-				Credentials: []*pb.SessionCredential{
-					{
-						CredentialSource: &pb.CredentialSource{
-							Id:                clsResp.GetItem().GetId(),
-							Name:              clsResp.GetItem().GetName().GetValue(),
-							Description:       clsResp.GetItem().GetDescription().GetValue(),
-							CredentialStoreId: vaultStore.GetPublicId(),
-							Type:              vault.GenericLibrarySubtype.String(),
-						},
+				Credentials: []*pb.SessionCredential{{
+					CredentialSource: &pb.CredentialSource{
+						Id:                clsResp.GetItem().GetId(),
+						Name:              clsResp.GetItem().GetName().GetValue(),
+						Description:       clsResp.GetItem().GetDescription().GetValue(),
+						CredentialStoreId: vaultStore.GetPublicId(),
+						Type:              vault.GenericLibrarySubtype.String(),
 					},
-				},
-				EndpointPort: uint32(defaultPort),
+				}},
 				// TODO: validate the contents of the authorization token is what is expected
 			}
 			wantSecret := map[string]any{
@@ -2700,7 +2697,7 @@ func TestAuthorizeSession(t *testing.T) {
 			gotCred.Secret = nil
 
 			got.AuthorizationToken, got.SessionId, got.CreatedTime = "", "", nil
-			assert.Empty(t, cmp.Diff(got, want, protocmp.Transform(), protocmp.IgnoreFields(&pb.SessionAuthorization{}, "expiration")))
+			assert.Empty(t, cmp.Diff(got, want, protocmp.Transform()))
 		})
 	}
 }
@@ -3012,7 +3009,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 					Description:       clsRespUsernamePassword.GetItem().GetDescription().GetValue(),
 					CredentialStoreId: vaultStore.GetPublicId(),
 					Type:              vault.GenericLibrarySubtype.String(),
-					CredentialType:    string(globals.UsernamePasswordCredentialType),
+					CredentialType:    string(credential.UsernamePasswordType),
 				},
 				Credential: func() *structpb.Struct {
 					data := map[string]any{
@@ -3038,7 +3035,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 					Description:       clsRespUsernamePasswordWithMapping.GetItem().GetDescription().GetValue(),
 					CredentialStoreId: vaultStore.GetPublicId(),
 					Type:              vault.GenericLibrarySubtype.String(),
-					CredentialType:    string(globals.UsernamePasswordCredentialType),
+					CredentialType:    string(credential.UsernamePasswordType),
 				},
 				Credential: func() *structpb.Struct {
 					data := map[string]any{
@@ -3064,7 +3061,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 					Description:       upCredResp.GetItem().GetDescription().GetValue(),
 					CredentialStoreId: staticStore.GetPublicId(),
 					Type:              credstatic.Subtype.String(),
-					CredentialType:    string(globals.UsernamePasswordCredentialType),
+					CredentialType:    string(credential.UsernamePasswordType),
 				},
 				Credential: func() *structpb.Struct {
 					data := map[string]any{
@@ -3090,7 +3087,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 					Description:       sshPkCredResp.GetItem().GetDescription().GetValue(),
 					CredentialStoreId: staticStore.GetPublicId(),
 					Type:              credstatic.Subtype.String(),
-					CredentialType:    string(globals.SshPrivateKeyCredentialType),
+					CredentialType:    string(credential.SshPrivateKeyType),
 				},
 				Credential: func() *structpb.Struct {
 					data := map[string]any{
@@ -3116,7 +3113,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 					Description:       clsRespSshPrivateKey.GetItem().GetDescription().GetValue(),
 					CredentialStoreId: vaultStore.GetPublicId(),
 					Type:              vault.GenericLibrarySubtype.String(),
-					CredentialType:    string(globals.SshPrivateKeyCredentialType),
+					CredentialType:    string(credential.SshPrivateKeyType),
 				},
 				Credential: func() *structpb.Struct {
 					data := map[string]any{
@@ -3142,7 +3139,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 					Description:       clsRespSshPrivateKeyWithMapping.GetItem().GetDescription().GetValue(),
 					CredentialStoreId: vaultStore.GetPublicId(),
 					Type:              vault.GenericLibrarySubtype.String(),
-					CredentialType:    string(globals.SshPrivateKeyCredentialType),
+					CredentialType:    string(credential.SshPrivateKeyType),
 				},
 				Credential: func() *structpb.Struct {
 					data := map[string]any{
@@ -3168,7 +3165,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 					Description:       sshPkWithPassCredResp.GetItem().GetDescription().GetValue(),
 					CredentialStoreId: staticStore.GetPublicId(),
 					Type:              credstatic.Subtype.String(),
-					CredentialType:    string(globals.SshPrivateKeyCredentialType),
+					CredentialType:    string(credential.SshPrivateKeyType),
 				},
 				Credential: func() *structpb.Struct {
 					data := map[string]any{
@@ -3195,7 +3192,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 					Description:       clsRespSshPrivateKeyWithPass.GetItem().GetDescription().GetValue(),
 					CredentialStoreId: vaultStore.GetPublicId(),
 					Type:              vault.GenericLibrarySubtype.String(),
-					CredentialType:    string(globals.SshPrivateKeyCredentialType),
+					CredentialType:    string(credential.SshPrivateKeyType),
 				},
 				Credential: func() *structpb.Struct {
 					data := map[string]any{
@@ -3222,7 +3219,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 					Description:       clsRespSshPrivateKeyWithPassWithMapping.GetItem().GetDescription().GetValue(),
 					CredentialStoreId: vaultStore.GetPublicId(),
 					Type:              vault.GenericLibrarySubtype.String(),
-					CredentialType:    string(globals.SshPrivateKeyCredentialType),
+					CredentialType:    string(credential.SshPrivateKeyType),
 				},
 				Credential: func() *structpb.Struct {
 					data := map[string]any{
@@ -3272,15 +3269,13 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 					Description:   proj.GetDescription(),
 					ParentScopeId: proj.GetParentId(),
 				},
-				TargetId:     tar.GetPublicId(),
-				UserId:       at.GetIamUserId(),
-				HostSetId:    tc.hostSourceId,
-				HostId:       tc.wantedHostId,
-				Type:         "tcp",
-				Endpoint:     fmt.Sprintf("tcp://%s:%d", tc.wantedEndpoint, defaultPort),
-				Credentials:  []*pb.SessionCredential{tc.wantedCred},
-				EndpointPort: uint32(defaultPort),
-				Expiration:   asRes.Item.Expiration,
+				TargetId:    tar.GetPublicId(),
+				UserId:      at.GetIamUserId(),
+				HostSetId:   tc.hostSourceId,
+				HostId:      tc.wantedHostId,
+				Type:        "tcp",
+				Endpoint:    fmt.Sprintf("tcp://%s:%d", tc.wantedEndpoint, defaultPort),
+				Credentials: []*pb.SessionCredential{tc.wantedCred},
 				// TODO: validate the contents of the authorization token is what is expected
 			}
 			got := asRes.GetItem()

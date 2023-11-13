@@ -493,7 +493,7 @@ export NEW_VAULT_LIB="test_vault"
   [ "$status" -eq 0 ]
 
   # can unset it
-  run update_vault_ssh_certificate_library -id $clid -critical-options null
+  run update_vault_ssh_certificate_library -id $clid -extensions null
   echo "$output"
   [ "$status" -eq 0 ]
 
@@ -502,7 +502,7 @@ export NEW_VAULT_LIB="test_vault"
   [ "$status" -eq 0 ]
   got=$(echo "$output")
 
-  run field_eq "$got" ".item.attributes.critical_options" "null"
+  run field_eq "$got" ".item.attributes.extensions" "null"
   [ "$status" -eq 0 ]
 }
 
