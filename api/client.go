@@ -16,7 +16,6 @@ import (
 	"net/url"
 	"os"
 	"path"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -58,12 +57,7 @@ type Config struct {
 	// HttpClient.
 	Addr string
 
-	// Set when the Addr is a unix socket.  The parsing of this field takes
-	// a filename approach instead of a URL approach since parsing file names
-	// as a URL may error out on some platforms.
-	socketAddr string
-
-	// Token is the client token that results from authentication and can be
+	// Token is the client token that reuslts from authentication and can be
 	// used to make calls into Boundary
 	Token string
 
@@ -240,16 +234,6 @@ func (c *Config) ConfigureTLS() error {
 // This also removes any trailing "/v1"; we'll use that in our commands so we
 // don't require it from users.
 func (c *Config) setAddr(addr string) error {
-	if strings.HasPrefix(addr, "unix://") {
-		c.socketAddr = strings.TrimPrefix(addr, "unix://")
-		c.socketAddr = filepath.Clean(c.socketAddr)
-
-		// Update the specified address to the cleaned up version
-		c.Addr = fmt.Sprintf("unix://%s", c.socketAddr)
-		return nil
-	}
-	c.socketAddr = ""
-
 	u, err := url.Parse(addr)
 	if err != nil {
 		return fmt.Errorf("error parsing address: %w", err)
@@ -578,7 +562,6 @@ func (c *Client) Clone() *Client {
 	config := c.config
 
 	newConfig := &Config{
-		socketAddr:         config.socketAddr,
 		Addr:               config.Addr,
 		Token:              config.Token,
 		RecoveryKmsWrapper: config.RecoveryKmsWrapper,
@@ -642,29 +625,31 @@ func (c *Client) NewRequest(ctx context.Context, method, requestPath string, bod
 	}
 
 	c.modifyLock.RLock()
+	addr := c.config.Addr
 	srvLookup := c.config.SRVLookup
 	token := c.config.Token
 	httpClient := c.config.HttpClient
 	headers := copyHeaders(c.config.Headers)
 	c.modifyLock.RUnlock()
 
-	var hostHeader string
-	var u *url.URL
-	switch {
-	case c.config.socketAddr != "":
+	u, err := url.Parse(addr)
+	if err != nil {
+		return nil, err
+	}
+
+	if strings.HasPrefix(addr, "unix://") {
+		socket := strings.TrimPrefix(addr, "unix://")
 		transport := httpClient.Transport.(*http.Transport)
 		transport.DialContext = func(context.Context, string, string) (net.Conn, error) {
 			dialer := net.Dialer{}
-			return dialer.DialContext(ctx, "unix", c.config.socketAddr)
+			return dialer.DialContext(ctx, "unix", socket)
 		}
 
 		// Since the address points to a unix domain socket, the scheme in the
 		// *URL would be set to `unix`. The *URL in the client is expected to
 		// be pointing to the protocol used in the application layer and not to
 		// the transport layer. Hence, setting the fields accordingly.
-		u = &url.URL{}
 		u.Scheme = "http"
-		u.Host = c.config.socketAddr
 		u.Path = ""
 
 		// Go 1.21.0 introduced strict host header validation for clients.
@@ -675,17 +660,7 @@ func (c *Client) NewRequest(ctx context.Context, method, requestPath string, bod
 		// that isn't the actual unix domain socket address. Following
 		// Docker's lead (https://github.com/moby/moby/pull/45942),
 		// use a localhost TLD.
-		hostHeader = "api.boundary.localhost"
-	case c.config.Addr != "":
-		addr := c.config.Addr
-		var err error
-		u, err = url.Parse(addr)
-		if err != nil {
-			return nil, err
-		}
-		hostHeader = u.Host
-	default:
-		return nil, errors.New("no valid address discovered")
+		u.Host = "api.boundary.localhost"
 	}
 
 	host := u.Host
@@ -712,9 +687,8 @@ func (c *Client) NewRequest(ctx context.Context, method, requestPath string, bod
 			Host:   host,
 			Path:   path.Join(u.Path, "/v1/", requestPath),
 		},
-		Host: hostHeader,
+		Host: u.Host,
 	}
-
 	req.Header = headers
 	req.Header.Set("authorization", "Bearer "+token)
 	req.Header.Set("content-type", "application/json")

@@ -11,70 +11,60 @@ import (
 
 func TestConfigSetAddress(t *testing.T) {
 	type test struct {
-		name       string
-		input      string
-		address    string
-		socketAddr string
+		name    string
+		input   string
+		address string
+		err     string
 	}
 
 	tests := []test{
 		{
-			name:    "bare",
-			input:   "http://127.0.0.1:9200",
-			address: "http://127.0.0.1:9200",
+			"bare",
+			"http://127.0.0.1:9200",
+			"http://127.0.0.1:9200",
+			"",
 		},
 		{
-			name:    "bare with version",
-			input:   "http://127.0.0.1:9200/v1",
-			address: "http://127.0.0.1:9200",
+			"bare with version",
+			"http://127.0.0.1:9200/v1",
+			"http://127.0.0.1:9200",
+			"",
 		},
 		{
-			name:    "bare with version and trailing slash",
-			input:   "http://127.0.0.1:9200/v1/",
-			address: "http://127.0.0.1:9200",
+			"bare with version and trailing slash",
+			"http://127.0.0.1:9200/v1/",
+			"http://127.0.0.1:9200",
+			"",
 		},
 		{
-			name:    "valid top level scope",
-			input:   "http://127.0.0.1:9200/v1/scopes",
-			address: "http://127.0.0.1:9200",
+			"valid top level scope",
+			"http://127.0.0.1:9200/v1/scopes",
+			"http://127.0.0.1:9200",
+			"",
 		},
 		{
-			name:    "valid scope",
-			input:   "http://127.0.0.1:9200/v1/scopes/scopeid",
-			address: "http://127.0.0.1:9200",
+			"valid scope",
+			"http://127.0.0.1:9200/v1/scopes/scopeid",
+			"http://127.0.0.1:9200",
+			"",
 		},
 		{
-			name:    "longer path project",
-			input:   "http://127.0.0.1:9200/v1/auth-methods",
-			address: "http://127.0.0.1:9200",
+			"longer path project",
+			"http://127.0.0.1:9200/v1/auth-methods",
+			"http://127.0.0.1:9200",
+			"",
 		},
 		{
-			name:    "valid project",
-			input:   "http://127.0.0.1:9200/my-install",
-			address: "http://127.0.0.1:9200/my-install",
+			"valid project",
+			"http://127.0.0.1:9200/my-install",
+			"http://127.0.0.1:9200/my-install",
+			"",
 		},
 		{
-			name:    "valid project path containing v1",
-			input:   "http://127.0.0.1:9200/randomPathHasv1InIt",
-			address: "http://127.0.0.1:9200/randomPathHasv1InIt",
-		},
-		{
-			name:       "unix socket with linux pathing",
-			input:      "unix:///home/username/.boundary/socketdir/boundary.sock",
-			address:    "unix:///home/username/.boundary/socketdir/boundary.sock",
-			socketAddr: "/home/username/.boundary/socketdir/boundary.sock",
-		},
-		{
-			name:       "unix socket with weird linux pathing",
-			input:      "unix:///home/username/.boundary/something/../socketdir/boundary.sock",
-			address:    "unix:///home/username/.boundary/socketdir/boundary.sock",
-			socketAddr: "/home/username/.boundary/socketdir/boundary.sock",
-		},
-		{
-			name:       "unix socket with windows pathing",
-			input:      "unix://C:\\Users\\Admin\\AppData\\boundary.sock",
-			address:    "unix://C:\\Users\\Admin\\AppData\\boundary.sock",
-			socketAddr: "C:\\Users\\Admin\\AppData\\boundary.sock",
+			"valid project path containing v1",
+			"http://127.0.0.1:9200/randomPathHasv1InIt",
+			"http://127.0.0.1:9200/randomPathHasv1InIt",
+			"",
 		},
 	}
 
@@ -82,9 +72,10 @@ func TestConfigSetAddress(t *testing.T) {
 		t.Run(v.name, func(t *testing.T) {
 			var c Config
 			err := c.setAddr(v.input)
-			assert.NoError(t, err)
+			if err != nil {
+				assert.Equal(t, v.err, err.Error())
+			}
 			assert.Equal(t, v.address, c.Addr)
-			assert.Equal(t, v.socketAddr, c.socketAddr)
 		})
 	}
 }
