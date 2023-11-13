@@ -382,6 +382,23 @@ func cleanExpiredOrOrphanedAuthTokens(ctx context.Context, writer db.Writer, idT
 	return nil
 }
 
+// lookupUser returns a user if one is present in the repository or nil if not.
+func (r *Repository) lookupUser(ctx context.Context, id string) (*user, error) {
+	const op = "cache.(Repository).lookupUser"
+	switch {
+	case id == "":
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "empty id")
+	}
+	ret := &user{Id: id}
+	if err := r.rw.LookupById(ctx, ret); err != nil {
+		if errors.IsNotFoundError(err) {
+			return nil, nil
+		}
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	return ret, nil
+}
+
 // listUsers returns all known tokens in the cache
 func (r *Repository) listUsers(ctx context.Context) ([]*user, error) {
 	const op = "cache.(Repository).listUsers"

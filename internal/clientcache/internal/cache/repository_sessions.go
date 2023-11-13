@@ -65,9 +65,13 @@ func (r *Repository) refreshSessions(ctx context.Context, u *user, tokens map[Au
 	if opts.withSessionRetrievalFunc == nil {
 		opts.withSessionRetrievalFunc = defaultSessionFunc
 	}
+	var oldRefreshTokenVal RefreshTokenValue
 	oldRefreshToken, err := r.lookupRefreshToken(ctx, u, resourceType)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
+	}
+	if oldRefreshToken != nil {
+		oldRefreshTokenVal = oldRefreshToken.RefreshToken
 	}
 
 	// Find and use a token for retrieving sessions
@@ -77,13 +81,13 @@ func (r *Repository) refreshSessions(ctx context.Context, u *user, tokens map[Au
 	var removedIds []string
 	var retErr error
 	for at, t := range tokens {
-		resp, removedIds, newRefreshToken, err = opts.withSessionRetrievalFunc(ctx, u.Address, t, oldRefreshToken)
+		resp, removedIds, newRefreshToken, err = opts.withSessionRetrievalFunc(ctx, u.Address, t, oldRefreshTokenVal)
 		if api.ErrInvalidRefreshToken.Is(err) {
 			if err := r.deleteRefreshToken(ctx, u, resourceType); err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
 			// try again without the refresh token
-			oldRefreshToken = ""
+			oldRefreshToken = nil
 			resp, removedIds, newRefreshToken, err = opts.withSessionRetrievalFunc(ctx, u.Address, t, "")
 		}
 		if err != nil {
@@ -106,7 +110,7 @@ func (r *Repository) refreshSessions(ctx context.Context, u *user, tokens map[Au
 	event.WriteSysEvent(ctx, op, fmt.Sprintf("updating %d sessions for user %v", len(resp), u))
 	_, err = r.rw.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(_ db.Reader, w db.Writer) error {
 		switch {
-		case oldRefreshToken == "":
+		case oldRefreshToken == nil:
 			if _, err := w.Exec(ctx, "delete from session where user_id = @user_id",
 				[]any{sql.Named("user_id", u.Id)}); err != nil {
 				return err
@@ -218,14 +222,14 @@ func upsertSessions(ctx context.Context, w db.Writer, u *user, in []*sessions.Se
 			return errors.Wrap(ctx, err, op)
 		}
 		newSession := &Session{
-			UserId:      u.Id,
-			Id:          s.Id,
-			Type:        s.Type,
-			Status:      s.Status,
-			Endpoint:    s.Endpoint,
-			ScopeId:     s.ScopeId,
-			TargetId:    s.TargetId,
-			Item:        string(item),
+			UserId:   u.Id,
+			Id:       s.Id,
+			Type:     s.Type,
+			Status:   s.Status,
+			Endpoint: s.Endpoint,
+			ScopeId:  s.ScopeId,
+			TargetId: s.TargetId,
+			Item:     string(item),
 		}
 		onConflict := db.OnConflict{
 			Target: db.Columns{"user_id", "id"},
@@ -312,14 +316,14 @@ func (r *Repository) searchSessions(ctx context.Context, condition string, searc
 }
 
 type Session struct {
-	UserId      string    `gorm:"primaryKey"`
-	Id          string    `gorm:"primaryKey"`
-	Type        string    `gorm:"default:null"`
-	Endpoint    string    `gorm:"default:null"`
-	Status      string    `gorm:"default:null"`
-	ScopeId     string    `gorm:"default:null"`
-	TargetId    string    `gorm:"default:null"`
-	Item        string    `gorm:"default:null"`
+	UserId   string `gorm:"primaryKey"`
+	Id       string `gorm:"primaryKey"`
+	Type     string `gorm:"default:null"`
+	Endpoint string `gorm:"default:null"`
+	Status   string `gorm:"default:null"`
+	ScopeId  string `gorm:"default:null"`
+	TargetId string `gorm:"default:null"`
+	Item     string `gorm:"default:null"`
 }
 
 func (*Session) TableName() string {

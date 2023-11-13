@@ -52,6 +52,8 @@ func testStaticResourceRetrievalFunc[T any](t *testing.T, ret [][]T, removed [][
 	}
 }
 
+// testFullFetchRetrievalFunc simulates a controller that doesn't support refresh
+// since it does not return any refresh token.
 func testFullFetchRetrievalFunc[T any](t *testing.T, ret []T) func(context.Context, string, string, RefreshTokenValue) ([]T, []string, RefreshTokenValue, error) {
 	return func(_ context.Context, _, _ string, _ RefreshTokenValue) ([]T, []string, RefreshTokenValue, error) {
 		return ret, nil, "", nil
@@ -137,7 +139,7 @@ func TestCleanAndPickTokens(t *testing.T) {
 		mapBasedAuthTokenKeyringLookup(atMap),
 		fakeBoundaryLookupFn)
 	require.NoError(t, err)
-	rs, err := NewRefreshService(ctx, r)
+	rs, err := NewRefreshService(ctx, r, 0)
 	require.NoError(t, err)
 
 	t.Run("unknown user", func(t *testing.T) {
@@ -331,6 +333,167 @@ func TestCleanAndPickTokens(t *testing.T) {
 	})
 }
 
+func TestRefreshForSearch(t *testing.T) {
+	ctx := context.Background()
+
+	boundaryAddr := "address"
+	u := &user{Id: "u1", Address: boundaryAddr}
+	at := &authtokens.AuthToken{
+		Id:             "at_1",
+		Token:          "at_1_token",
+		UserId:         u.Id,
+		ExpirationTime: time.Now().Add(time.Minute),
+	}
+
+	boundaryAuthTokens := []*authtokens.AuthToken{at}
+	atMap := make(map[ringToken]*authtokens.AuthToken)
+
+	atMap[ringToken{"k", "t"}] = at
+
+	t.Run("targets refreshed for searching", func(t *testing.T) {
+		s, err := db.Open(ctx)
+		require.NoError(t, err)
+		r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(boundaryAuthTokens))
+		require.NoError(t, err)
+		rs, err := NewRefreshService(ctx, r, time.Millisecond)
+		require.NoError(t, err)
+		require.NoError(t, r.AddKeyringToken(ctx, boundaryAddr, KeyringToken{KeyringType: "k", TokenName: "t", AuthTokenId: at.Id}))
+
+		retTargets := []*targets.Target{
+			target("1"),
+			target("2"),
+			target("3"),
+			target("4"),
+		}
+		opts := []Option{
+			WithSessionRetrievalFunc(testStaticResourceRetrievalFunc[*sessions.Session](t, nil, nil)),
+			WithTargetRetrievalFunc(testStaticResourceRetrievalFunc[*targets.Target](t,
+				[][]*targets.Target{
+					retTargets[:3],
+					retTargets[3:],
+				},
+				[][]string{
+					nil,
+					{retTargets[0].Id, retTargets[1].Id},
+				},
+			)),
+		}
+		assert.NoError(t, rs.RefreshForSearch(ctx, at.Id, Targets, opts...))
+
+		cachedTargets, err := r.ListTargets(ctx, at.Id)
+		assert.NoError(t, err)
+		assert.Empty(t, cachedTargets)
+
+		// Now load up a few resources and a token, and trying again should
+		// see the RefreshForSearch update more fields.
+		assert.NoError(t, rs.Refresh(ctx, opts...))
+		cachedTargets, err = r.ListTargets(ctx, at.Id)
+		assert.NoError(t, err)
+		assert.ElementsMatch(t, retTargets[:3], cachedTargets)
+
+		// Let 2 milliseconds pass so the items are stale enough
+		time.Sleep(2 * time.Millisecond)
+
+		assert.NoError(t, rs.RefreshForSearch(ctx, at.Id, Targets, opts...))
+		cachedTargets, err = r.ListTargets(ctx, at.Id)
+		assert.NoError(t, err)
+		assert.ElementsMatch(t, retTargets[2:], cachedTargets)
+	})
+
+	t.Run("no refresh token no refresh for search", func(t *testing.T) {
+		s, err := db.Open(ctx)
+		require.NoError(t, err)
+		r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(boundaryAuthTokens))
+		require.NoError(t, err)
+		rs, err := NewRefreshService(ctx, r, time.Millisecond)
+		require.NoError(t, err)
+		require.NoError(t, r.AddKeyringToken(ctx, boundaryAddr, KeyringToken{KeyringType: "k", TokenName: "t", AuthTokenId: at.Id}))
+
+		retTargets := []*targets.Target{
+			target("1"),
+			target("2"),
+			target("3"),
+			target("4"),
+		}
+
+		// Get the first set of resources, but no refresh tokens
+		assert.NoError(t, rs.Refresh(ctx,
+			WithSessionRetrievalFunc(testFullFetchRetrievalFunc[*sessions.Session](t, nil)),
+			WithTargetRetrievalFunc(testFullFetchRetrievalFunc[*targets.Target](t, retTargets[:2]))))
+
+		got, err := r.ListTargets(ctx, at.Id)
+		assert.NoError(t, err)
+		assert.ElementsMatch(t, retTargets[:2], got)
+
+		// Let 2 milliseconds pass so the items are stale enough
+		time.Sleep(2 * time.Millisecond)
+
+		assert.NoError(t, rs.RefreshForSearch(ctx, at.Id, Targets,
+			WithSessionRetrievalFunc(testFullFetchRetrievalFunc[*sessions.Session](t, nil)),
+			WithTargetRetrievalFunc(testFullFetchRetrievalFunc[*targets.Target](t, retTargets))))
+		got, err = r.ListTargets(ctx, at.Id)
+		assert.NoError(t, err)
+		// still no change in targets since they weren't refreshed with that search
+		// due to having no refresh token.
+		assert.ElementsMatch(t, retTargets[:2], got)
+
+		// Only a full fetch will get all the resources
+		assert.NoError(t, rs.FullFetch(ctx,
+			WithSessionRetrievalFunc(testFullFetchRetrievalFunc[*sessions.Session](t, nil)),
+			WithTargetRetrievalFunc(testFullFetchRetrievalFunc[*targets.Target](t, retTargets))))
+		got, err = r.ListTargets(ctx, at.Id)
+		assert.NoError(t, err)
+		assert.ElementsMatch(t, got, retTargets)
+	})
+
+	t.Run("sessions refreshed for searching", func(t *testing.T) {
+		s, err := db.Open(ctx)
+		require.NoError(t, err)
+		r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(boundaryAuthTokens))
+		require.NoError(t, err)
+		rs, err := NewRefreshService(ctx, r, 0)
+		require.NoError(t, err)
+		require.NoError(t, r.AddKeyringToken(ctx, boundaryAddr, KeyringToken{KeyringType: "k", TokenName: "t", AuthTokenId: at.Id}))
+
+		retSess := []*sessions.Session{
+			session("1"),
+			session("2"),
+			session("3"),
+			session("4"),
+		}
+		opts := []Option{
+			WithTargetRetrievalFunc(testStaticResourceRetrievalFunc[*targets.Target](t, nil, nil)),
+			WithSessionRetrievalFunc(testStaticResourceRetrievalFunc[*sessions.Session](t,
+				[][]*sessions.Session{
+					retSess[:3],
+					retSess[3:],
+				},
+				[][]string{
+					nil,
+					{retSess[0].Id, retSess[1].Id},
+				},
+			)),
+		}
+
+		// First call doesn't sync anything because no sessions were already synced yet
+		assert.NoError(t, rs.RefreshForSearch(ctx, at.Id, Sessions, opts...))
+		cachedSessions, err := r.ListSessions(ctx, at.Id)
+		assert.NoError(t, err)
+		assert.Empty(t, cachedSessions)
+
+		assert.NoError(t, rs.Refresh(ctx, opts...))
+		cachedSessions, err = r.ListSessions(ctx, at.Id)
+		assert.NoError(t, err)
+		assert.ElementsMatch(t, retSess[:3], cachedSessions)
+
+		// Second call removes the first 2 resources from the cache and adds the last
+		assert.NoError(t, rs.RefreshForSearch(ctx, at.Id, Sessions, opts...))
+		cachedSessions, err = r.ListSessions(ctx, at.Id)
+		assert.NoError(t, err)
+		assert.ElementsMatch(t, retSess[2:], cachedSessions)
+	})
+}
+
 func TestRefresh(t *testing.T) {
 	ctx := context.Background()
 
@@ -353,7 +516,7 @@ func TestRefresh(t *testing.T) {
 		require.NoError(t, err)
 		r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(boundaryAuthTokens))
 		require.NoError(t, err)
-		rs, err := NewRefreshService(ctx, r)
+		rs, err := NewRefreshService(ctx, r, 0)
 		require.NoError(t, err)
 		require.NoError(t, r.AddKeyringToken(ctx, boundaryAddr, KeyringToken{KeyringType: "k", TokenName: "t", AuthTokenId: at.Id}))
 
@@ -394,7 +557,7 @@ func TestRefresh(t *testing.T) {
 		require.NoError(t, err)
 		r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(boundaryAuthTokens))
 		require.NoError(t, err)
-		rs, err := NewRefreshService(ctx, r)
+		rs, err := NewRefreshService(ctx, r, 0)
 		require.NoError(t, err)
 		require.NoError(t, r.AddKeyringToken(ctx, boundaryAddr, KeyringToken{KeyringType: "k", TokenName: "t", AuthTokenId: at.Id}))
 
@@ -434,7 +597,7 @@ func TestRefresh(t *testing.T) {
 		require.NoError(t, err)
 		r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(boundaryAuthTokens))
 		require.NoError(t, err)
-		rs, err := NewRefreshService(ctx, r)
+		rs, err := NewRefreshService(ctx, r, 0)
 		require.NoError(t, err)
 		require.NoError(t, r.AddKeyringToken(ctx, boundaryAddr, KeyringToken{KeyringType: "k", TokenName: "t", AuthTokenId: at.Id}))
 
@@ -462,7 +625,7 @@ func TestRefresh(t *testing.T) {
 		require.NoError(t, err)
 		r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(boundaryAuthTokens))
 		require.NoError(t, err)
-		rs, err := NewRefreshService(ctx, r)
+		rs, err := NewRefreshService(ctx, r, 0)
 		require.NoError(t, err)
 		require.NoError(t, r.AddKeyringToken(ctx, boundaryAddr, KeyringToken{KeyringType: "k", TokenName: "t", AuthTokenId: at.Id}))
 
@@ -516,7 +679,7 @@ func TestFullFetch(t *testing.T) {
 		require.NoError(t, err)
 		r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(boundaryAuthTokens))
 		require.NoError(t, err)
-		rs, err := NewRefreshService(ctx, r)
+		rs, err := NewRefreshService(ctx, r, 0)
 		require.NoError(t, err)
 		require.NoError(t, r.AddKeyringToken(ctx, boundaryAddr, KeyringToken{KeyringType: "k", TokenName: "t", AuthTokenId: at.Id}))
 
@@ -559,7 +722,7 @@ func TestFullFetch(t *testing.T) {
 		require.NoError(t, err)
 		r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(boundaryAuthTokens))
 		require.NoError(t, err)
-		rs, err := NewRefreshService(ctx, r)
+		rs, err := NewRefreshService(ctx, r, 0)
 		require.NoError(t, err)
 		require.NoError(t, r.AddKeyringToken(ctx, boundaryAddr, KeyringToken{KeyringType: "k", TokenName: "t", AuthTokenId: at.Id}))
 
@@ -597,7 +760,7 @@ func TestFullFetch(t *testing.T) {
 		require.NoError(t, err)
 		r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(boundaryAuthTokens))
 		require.NoError(t, err)
-		rs, err := NewRefreshService(ctx, r)
+		rs, err := NewRefreshService(ctx, r, 0)
 		require.NoError(t, err)
 		require.NoError(t, r.AddKeyringToken(ctx, boundaryAddr, KeyringToken{KeyringType: "k", TokenName: "t", AuthTokenId: at.Id}))
 
@@ -630,7 +793,7 @@ func TestFullFetch(t *testing.T) {
 		require.NoError(t, err)
 		r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(boundaryAuthTokens))
 		require.NoError(t, err)
-		rs, err := NewRefreshService(ctx, r)
+		rs, err := NewRefreshService(ctx, r, 0)
 		require.NoError(t, err)
 		require.NoError(t, r.AddKeyringToken(ctx, boundaryAddr, KeyringToken{KeyringType: "k", TokenName: "t", AuthTokenId: at.Id}))
 

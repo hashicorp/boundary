@@ -49,13 +49,15 @@ type server interface {
 type StartCommand struct {
 	*base.Command
 
-	flagRefreshInterval   time.Duration
-	flagFullFetchInterval time.Duration
-	flagDatabaseUrl       string
-	flagLogLevel          string
-	flagLogFormat         string
-	flagStoreDebug        bool
-	flagBackground        bool
+	flagRefreshInterval         time.Duration
+	flagFullFetchInterval       time.Duration
+	flagMaxSearchStaleness      time.Duration
+	flagMaxSearchRefreshTimeout time.Duration
+	flagDatabaseUrl             string
+	flagLogLevel                string
+	flagLogFormat               string
+	flagStoreDebug              bool
+	flagBackground              bool
 }
 
 func (c *StartCommand) Synopsis() string {
@@ -100,29 +102,41 @@ func (c *StartCommand) Flags() *base.FlagSets {
 		Usage:  `If set, specifies the URL used to connect to the sqlite database (store) for caching. This can refer to a file on disk (file://) from which a URL will be read; an env var (env://) from which the URL will be read; or a direct database URL.`,
 	})
 	f.DurationVar(&base.DurationVar{
-		Name:    "refresh-interval-seconds",
+		Name:    "refresh-interval",
 		Target:  &c.flagRefreshInterval,
-		Usage:   `If set, specifies the number of seconds between refresh token supported cache refreshes. Default: 1 minute`,
-		Default: daemon.DefaultRefreshIntervalSeconds * time.Second,
+		Usage:   `Specifies the interval between refresh token supported cache refreshes. Default: 1 minute`,
+		Default: daemon.DefaultRefreshInterval,
 	})
 	f.DurationVar(&base.DurationVar{
-		Name:    "full-fetch-interval-seconds",
+		Name:    "full-fetch-interval",
 		Target:  &c.flagFullFetchInterval,
-		Usage:   `If set, specifies the number of seconds between full cache refresh for boundary instances which do not support refresh tokens. Default: 5 minutes`,
-		Default: daemon.DefaultFullFetchIntervalSeconds * time.Second,
+		Usage:   `Specifies the interval between full cache refresh for boundary instances which do not support refresh tokens. Default: 5 minutes`,
+		Default: daemon.DefaultFullFetchInterval,
+	})
+	f.DurationVar(&base.DurationVar{
+		Name:    "max-search-staleness",
+		Target:  &c.flagMaxSearchStaleness,
+		Usage:   `Specifies the duration of time that can pass since the resource was last updated before performing a search waits for the resources being refreshed first. Default: 1 minute`,
+		Default: daemon.DefaultSearchStaleness,
+	})
+	f.DurationVar(&base.DurationVar{
+		Name:    "max-search-refresh-timeout",
+		Target:  &c.flagMaxSearchRefreshTimeout,
+		Usage:   `If a search request triggers a best effort refresh, this specifies how long the refresh should run before timing out. Default: 1 second`,
+		Default: daemon.DefaultSearchRefreshTimeout,
 	})
 	f.BoolVar(&base.BoolVar{
 		Name:    "store-debug",
 		Target:  &c.flagStoreDebug,
 		Default: false,
-		Usage:   `Turn on store debugging`,
+		Usage:   `Turn on sqlite query debugging`,
 		Aliases: []string{"d"},
 	})
 	f.BoolVar(&base.BoolVar{
 		Name:    "background",
 		Target:  &c.flagBackground,
 		Default: false,
-		Usage:   `Turn on store debugging`,
+		Usage:   `Run the client cache daemon in the background`,
 	})
 
 	return set
@@ -156,7 +170,7 @@ func (c *StartCommand) Run(args []string) int {
 		return base.CommandCliError
 	}
 
-	continueRun, writers, cleanup, err := makeBackground(ctx, dotDir, c.flagBackground)
+	continueRun, writers, cleanup, err := c.makeBackground(ctx, dotDir)
 	defer func() {
 		if cleanup != nil {
 			cleanup()
@@ -182,15 +196,16 @@ func (c *StartCommand) Run(args []string) int {
 	writers = append(writers, lf)
 
 	cfg := &daemon.Config{
-		ContextCancel:     cancel,
-		RefreshInterval:   c.flagRefreshInterval,
-		FullFetchInterval: c.flagFullFetchInterval,
-		DatabaseUrl:       c.flagDatabaseUrl,
-		StoreDebug:        c.flagStoreDebug,
-		LogLevel:          c.flagLogLevel,
-		LogFormat:         c.flagLogFormat,
-		LogWriter:         io.MultiWriter(writers...),
-		DotDirectory:      dotDir,
+		ContextCancel:      cancel,
+		RefreshInterval:    c.flagRefreshInterval,
+		FullFetchInterval:  c.flagFullFetchInterval,
+		MaxSearchStaleness: c.flagMaxSearchStaleness,
+		DatabaseUrl:        c.flagDatabaseUrl,
+		StoreDebug:         c.flagStoreDebug,
+		LogLevel:           c.flagLogLevel,
+		LogFormat:          c.flagLogFormat,
+		LogWriter:          io.MultiWriter(writers...),
+		DotDirectory:       dotDir,
 	}
 
 	srv, err := daemon.New(ctx, cfg)
@@ -259,7 +274,7 @@ func logFile(ctx context.Context, dotDir string, maxSizeMb int) (io.WriteCloser,
 	return logFile, nil
 }
 
-func makeBackground(ctx context.Context, dotDir string, runBackgroundFlag bool) (bool, []io.Writer, pidCleanup, error) {
+func (c *StartCommand) makeBackground(ctx context.Context, dotDir string) (bool, []io.Writer, pidCleanup, error) {
 	const op = "daemon.makeBackground"
 
 	writers := []io.Writer{}
@@ -270,11 +285,11 @@ func makeBackground(ctx context.Context, dotDir string, runBackgroundFlag bool) 
 		return false, writers, noopPidCleanup, fmt.Errorf("Error when checking if the daemon pid is in use: %w.", err)
 	}
 
-	if !runBackgroundFlag && os.Getenv(backgroundEnvName) != backgroundEnvVal {
+	if !c.flagBackground && os.Getenv(backgroundEnvName) != backgroundEnvVal {
 		writers = append(writers, os.Stderr)
 	}
 
-	if !runBackgroundFlag || os.Getenv(backgroundEnvName) == backgroundEnvVal {
+	if !c.flagBackground || os.Getenv(backgroundEnvName) == backgroundEnvVal {
 		// We are either already running in the background or background was
 		// not requested. Write the pid file and continue.
 		cleanup, err := writePidFile(ctx, pidPath)
@@ -291,7 +306,32 @@ func makeBackground(ctx context.Context, dotDir string, runBackgroundFlag bool) 
 
 	env := os.Environ()
 	env = append(env, fmt.Sprintf("%s=%s", backgroundEnvName, backgroundEnvVal))
-	cmd := exec.Command(absPath, "daemon", "start")
+	args := []string{"daemon", "start"}
+	if c.flagLogLevel != "" {
+		args = append(args, "-log-level", c.flagLogLevel)
+	}
+	if c.flagLogFormat != "" {
+		args = append(args, "-log-format", c.flagLogFormat)
+	}
+	if c.flagDatabaseUrl != "" {
+		args = append(args, "-database-url", c.flagDatabaseUrl)
+	}
+	if c.flagRefreshInterval > 0 && c.flagRefreshInterval != daemon.DefaultRefreshInterval {
+		args = append(args, "-refresh-interval", c.flagRefreshInterval.String())
+	}
+	if c.flagFullFetchInterval > 0 && c.flagFullFetchInterval != daemon.DefaultFullFetchInterval {
+		args = append(args, "-full-fetch-interval", c.flagFullFetchInterval.String())
+	}
+	if c.flagMaxSearchStaleness > 0 && c.flagMaxSearchStaleness != daemon.DefaultSearchStaleness {
+		args = append(args, "-max-search-staleness", c.flagMaxSearchStaleness.String())
+	}
+	if c.flagMaxSearchRefreshTimeout > 0 && c.flagMaxSearchRefreshTimeout != daemon.DefaultSearchRefreshTimeout {
+		args = append(args, "-max-search-refresh-timeout", c.flagMaxSearchRefreshTimeout.String())
+	}
+	if c.flagStoreDebug {
+		args = append(args, "-store-debug")
+	}
+	cmd := exec.Command(absPath, args...)
 	cmd.Env = env
 	if err = cmd.Start(); err != nil {
 		return false, writers, noopPidCleanup, errors.Wrap(ctx, err, op)

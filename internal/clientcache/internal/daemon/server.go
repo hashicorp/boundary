@@ -31,6 +31,11 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 )
 
+const (
+	DefaultSearchStaleness      = 60 * time.Second
+	DefaultSearchRefreshTimeout = 1 * time.Second
+)
+
 // Commander is an interface that provides a way to get an apiClient
 // and retrieve the keyring and token information used by a command.
 type Commander interface {
@@ -68,6 +73,12 @@ type Config struct {
 	LogFormat         string
 	LogWriter         io.Writer
 	DotDirectory      string
+	// The amount of time since the last refresh that must have passed for a
+	// search query to trigger an inline refresh.
+	MaxSearchStaleness time.Duration
+	// The maximum amount of time a refresh should block a search request from
+	// completeing before it times out.
+	MaxSearchRefreshTimeout time.Duration
 }
 
 func (sc *Config) validate(ctx context.Context) error {
@@ -79,6 +90,12 @@ func (sc *Config) validate(ctx context.Context) error {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing contextCancel")
 	case sc.DotDirectory == "":
 		return errors.New(ctx, errors.InvalidParameter, op, "missing dot directory")
+	case sc.RefreshInterval < 0:
+		return errors.New(ctx, errors.InvalidParameter, op, "negative refresh interval")
+	case sc.FullFetchInterval < 0:
+		return errors.New(ctx, errors.InvalidParameter, op, "negative full fetch interval")
+	case sc.MaxSearchStaleness < 0:
+		return errors.New(ctx, errors.InvalidParameter, op, "negative max search staleness")
 	}
 	return nil
 }
@@ -196,8 +213,36 @@ func (s *CacheServer) Serve(ctx context.Context, cmd Commander, opt ...Option) e
 	if s.store, s.storeUrl, err = openStore(ctx, s.conf.DatabaseUrl, s.conf.StoreDebug); err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
-	s.info["Database URL"] = s.storeUrl
-	s.infoKeys = append(s.infoKeys, "Database URL")
+	if s.storeUrl != "" {
+		s.info["Database URL"] = s.storeUrl
+		s.infoKeys = append(s.infoKeys, "Database URL")
+	}
+	maxSearchRefreshTimeout := DefaultSearchRefreshTimeout
+	if s.conf.MaxSearchRefreshTimeout > 0 {
+		maxSearchRefreshTimeout = s.conf.MaxSearchRefreshTimeout
+	}
+	maxSearchStaleness := DefaultSearchStaleness
+	if s.conf.MaxSearchStaleness > 0 {
+		maxSearchStaleness = s.conf.MaxSearchStaleness
+	}
+	s.info["Max Search Staleness"] = maxSearchStaleness.String()
+	s.infoKeys = append(s.infoKeys, "Max Search Staleness")
+	s.info["Max Search Refresh Timeout"] = maxSearchRefreshTimeout.String()
+	s.infoKeys = append(s.infoKeys, "Max Search Refresh Timeout")
+	s.info["Refresh Interval"] = DefaultRefreshInterval.String()
+	s.infoKeys = append(s.infoKeys, "Refresh Interval")
+	s.info["Full Fetch Interval"] = DefaultFullFetchInterval.String()
+	s.infoKeys = append(s.infoKeys, "Full Fetch Interval")
+
+	ticOptions := []Option{}
+	if s.conf.RefreshInterval > 0 {
+		s.info["Refresh Interval"] = s.conf.RefreshInterval.String()
+		ticOptions = append(ticOptions, withRefreshInterval(ctx, s.conf.RefreshInterval))
+	}
+	if s.conf.FullFetchInterval > 0 {
+		s.info["Full Fetch Interval"] = s.conf.FullFetchInterval.String()
+		ticOptions = append(ticOptions, withFullFetchInterval(ctx, s.conf.FullFetchInterval))
+	}
 
 	s.printInfo(ctx)
 
@@ -206,16 +251,9 @@ func (s *CacheServer) Serve(ctx context.Context, cmd Commander, opt ...Option) e
 		return errors.Wrap(ctx, err, op)
 	}
 
-	refreshService, err := cache.NewRefreshService(ctx, repo)
+	refreshService, err := cache.NewRefreshService(ctx, repo, maxSearchStaleness, maxSearchRefreshTimeout)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
-	}
-	ticOptions := []Option{}
-	if s.conf.RefreshInterval > 0 {
-		ticOptions = append(ticOptions, withRefreshInterval(ctx, s.conf.RefreshInterval))
-	}
-	if s.conf.FullFetchInterval > 0 {
-		ticOptions = append(ticOptions, withFullFetchInterval(ctx, s.conf.FullFetchInterval))
 	}
 	tic, err := newRefreshTicker(ctx, refreshService, ticOptions...)
 	if err != nil {
@@ -236,23 +274,23 @@ func (s *CacheServer) Serve(ctx context.Context, cmd Commander, opt ...Option) e
 	}()
 
 	mux := http.NewServeMux()
-	searchFn, err := newSearchHandlerFunc(ctx, repo)
+	searchFn, err := newSearchHandlerFunc(ctx, repo, refreshService)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
-	mux.HandleFunc("/v1/search", searchFn)
+	mux.Handle("/v1/search", versionEnforcement(searchFn))
 
 	statusFn, err := newStatusHandlerFunc(ctx, repo, l.Addr().String())
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
-	mux.HandleFunc("/v1/status", statusFn)
+	mux.Handle("/v1/status", versionEnforcement(statusFn))
 
 	tokenFn, err := newTokenHandlerFunc(ctx, repo, tic)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
-	mux.HandleFunc("/v1/tokens", tokenFn)
+	mux.Handle("/v1/tokens", versionEnforcement(tokenFn))
 
 	stopFn, err := newStopHandlerFunc(ctx, s.conf.ContextCancel)
 	if err != nil {

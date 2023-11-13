@@ -610,6 +610,48 @@ func TestRepository_LookupToken(t *testing.T) {
 	})
 }
 
+func TestRepository_lookupUpser(t *testing.T) {
+	ctx := context.Background()
+	s, err := cachedb.Open(ctx)
+	require.NoError(t, err)
+
+	addr := "address"
+	at := &authtokens.AuthToken{
+		Id:     "at_1",
+		Token:  "at_1_token",
+		UserId: "u_1",
+	}
+	kt := KeyringToken{
+		TokenName:   "t1",
+		KeyringType: "k1",
+		AuthTokenId: at.Id,
+	}
+
+	boundaryAuthTokens := []*authtokens.AuthToken{at}
+	atMap := map[ringToken]*authtokens.AuthToken{
+		{kt.KeyringType, kt.TokenName}: at,
+	}
+	r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(boundaryAuthTokens))
+	require.NoError(t, err)
+	assert.NoError(t, r.AddKeyringToken(ctx, addr, kt))
+
+	t.Run("empty user id", func(t *testing.T) {
+		u, err := r.lookupUser(ctx, "")
+		assert.ErrorContains(t, err, "empty id")
+		assert.Nil(t, u)
+	})
+	t.Run("not found user id", func(t *testing.T) {
+		u, err := r.lookupUser(ctx, "notfound")
+		assert.NoError(t, err)
+		assert.Nil(t, u)
+	})
+	t.Run("found", func(t *testing.T) {
+		u, err := r.lookupUser(ctx, at.UserId)
+		assert.NoError(t, err)
+		assert.Equal(t, &user{Id: at.UserId, Address: addr}, u)
+	})
+}
+
 func TestRepository_RemoveStaleTokens(t *testing.T) {
 	ctx := context.Background()
 	s, err := cachedb.Open(ctx)
