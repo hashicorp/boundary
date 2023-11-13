@@ -5,14 +5,15 @@ package daemon
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"os"
 	"strings"
 
 	"github.com/hashicorp/boundary/api"
+	"github.com/hashicorp/boundary/internal/clientcache/internal/client"
 	"github.com/hashicorp/boundary/internal/clientcache/internal/daemon"
 	"github.com/hashicorp/boundary/internal/cmd/base"
-	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/hashicorp/boundary/version"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
 )
@@ -76,7 +77,7 @@ func (c *AddTokenCommand) Run(args []string) int {
 		return base.CommandCliError
 	}
 
-	apiErr, err := c.Add(ctx, client, keyringType, tokenName)
+	resp, apiErr, err := c.Add(ctx, client, keyringType, tokenName)
 	if err != nil {
 		c.PrintCliError(err)
 		return base.CommandCliError
@@ -84,30 +85,35 @@ func (c *AddTokenCommand) Run(args []string) int {
 	if apiErr != nil {
 		c.PrintApiError(apiErr, "Error from daemon when adding a token")
 		return base.CommandApiError
-
+	}
+	switch base.Format(c.UI) {
+	case "json":
+		if ok := c.PrintJsonItem(resp); !ok {
+			return base.CommandCliError
+		}
+	case "table":
+		c.UI.Output("The daemon add-token operation completed successfully.")
 	}
 	return base.CommandSuccess
 }
 
-func (c *AddTokenCommand) Add(ctx context.Context, client *api.Client, keyringType, tokenName string) (*api.Error, error) {
-	const op = "daemon.(AddTokenCommand).Add"
-
+func (c *AddTokenCommand) Add(ctx context.Context, apiClient *api.Client, keyringType, tokenName string) (*api.Response, *api.Error, error) {
 	pa := daemon.UpsertTokenRequest{
-		BoundaryAddr: client.Addr(),
+		BoundaryAddr: apiClient.Addr(),
 	}
 	switch keyringType {
 	case "", base.NoneKeyring:
-		token := client.Token()
+		token := apiClient.Token()
 		if parts := strings.SplitN(token, "_", 4); len(parts) == 3 {
 			pa.AuthTokenId = strings.Join(parts[:2], "_")
 		} else {
-			return nil, errors.New(ctx, errors.InvalidParameter, op, "found auth token is not in the proper format")
+			return nil, nil, errors.New("The found auth token is not in the proper format.")
 		}
 		pa.AuthToken = token
 	default:
 		at := c.ReadTokenFromKeyring(keyringType, tokenName)
 		if at == nil {
-			return nil, errors.New(ctx, errors.Conflict, op, "no auth token available to send to daemon")
+			return nil, nil, errors.New("No auth token could be read from the keyring to send to daemon.")
 		}
 		pa.Keyring = &daemon.KeyringToken{
 			KeyringType: keyringType,
@@ -118,42 +124,29 @@ func (c *AddTokenCommand) Add(ctx context.Context, client *api.Client, keyringTy
 
 	dotPath, err := DefaultDotDirectory(ctx)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-
 	return addToken(ctx, dotPath, &pa)
 }
 
-func addToken(ctx context.Context, daemonPath string, p *daemon.UpsertTokenRequest) (*api.Error, error) {
-	const op = "daemon.addToken"
-	client, err := api.NewClient(nil)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
+func addToken(ctx context.Context, daemonPath string, p *daemon.UpsertTokenRequest) (*api.Response, *api.Error, error) {
 	addr, err := daemon.SocketAddress(daemonPath)
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+		return nil, nil, fmt.Errorf("Error when retrieving the socket address: %w", err)
 	}
 	_, err = os.Stat(addr.Path)
-	if strings.EqualFold(addr.Scheme, "unix") && err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-	if err := client.SetAddr(addr.String()); err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-	// Because this is using the real lib it can pick up from stored locations
-	// like the system keychain. Explicitly clear the token for now
-	client.SetToken("")
-
-	req, err := client.NewRequest(ctx, "POST", "/tokens", p)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Add(daemon.VersionHeaderKey, version.Get().VersionNumber())
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
+	if addr.Scheme == "unix" && err != nil {
+		return nil, nil, fmt.Errorf("Error when detecting if the domain socket is present: %w.", err)
 	}
 
-	return resp.Decode(&struct{}{})
+	c, err := client.New(ctx, addr)
+	if err != nil {
+		return nil, nil, fmt.Errorf("Error when making a new client: %w.", err)
+	}
+	resp, err := c.Post(ctx, "/v1/tokens", p)
+	if err != nil {
+		return nil, nil, fmt.Errorf("Error when sending request to the daemon: %w.", err)
+	}
+	apiErr, err := resp.Decode(nil)
+	return resp, apiErr, err
 }

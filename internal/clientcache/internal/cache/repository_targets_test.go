@@ -350,7 +350,7 @@ func TestRepository_QueryTargets(t *testing.T) {
 	require.NoError(t, r.AddKeyringToken(ctx, addr, kt1))
 	require.NoError(t, r.AddKeyringToken(ctx, addr, kt2))
 
-	query := `(name % name1 or name % name2) and scope_id = "p_123"`
+	query := `(name % 'name1' or name % 'name2') and scope_id = "p_123"`
 
 	errorCases := []struct {
 		name        string
