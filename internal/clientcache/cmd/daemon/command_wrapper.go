@@ -103,7 +103,7 @@ func (w *CommandWrapper) addTokenToCache(ctx context.Context, token string) bool
 		return false
 	}
 
-	apiErr, err := com.Add(ctx, client, keyringType, tokName)
+	_, apiErr, err := com.Add(ctx, client, keyringType, tokName)
 	return err == nil && apiErr == nil
 }
 

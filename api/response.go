@@ -20,6 +20,13 @@ type Response struct {
 	Map  map[string]any
 }
 
+// NewResponse returns a new *Response based on the provided http.Response.
+// Just as when constructing the Response directly, Body and Map will be
+// populated after Decode is called.
+func NewResponse(r *http.Response) *Response {
+	return &Response{resp: r}
+}
+
 // HttpResponse returns the underlying HTTP response
 func (r *Response) HttpResponse() *http.Response {
 	return r.resp
