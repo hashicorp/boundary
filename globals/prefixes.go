@@ -330,6 +330,9 @@ var resourceTypeToPrefixes map[resource.Type][]string = func() map[resource.Type
 //
 // If called more than once for the same prefix, this function will panic.
 func RegisterPrefixToResourceInfo(prefix string, res resource.Type, domain string, subtype Subtype) {
+	if subtype == UnknownSubtype {
+		panic("cannot be called with a subtype of Unknown")
+	}
 	resInfo, ok := prefixToResourceType[prefix]
 	if !ok && domain != "test" {
 		panic(fmt.Sprintf("prefix %q being registered to domain %q type %q subtype %q but did not already exist in map", prefix, domain, res.String(), subtype.String()))
