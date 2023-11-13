@@ -162,6 +162,7 @@ func (p *ClientProxy) Start() (retErr error) {
 		p.listenerCloseOnce.Do(listenerCloseFunc)
 	}()
 
+	fin := make(chan error, 3)
 	p.connWg.Add(1)
 	go func() {
 		defer p.connWg.Done()
@@ -179,7 +180,8 @@ func (p *ClientProxy) Start() (retErr error) {
 						return
 					}
 					// TODO: Log/alert in some way?
-					continue
+					fin <- fmt.Errorf("Accept error: %w", err)
+					return
 				}
 			}
 			p.connWg.Add(1)
@@ -189,10 +191,13 @@ func (p *ClientProxy) Start() (retErr error) {
 				wsConn, err := p.getWsConn(p.ctx)
 				if err != nil {
 					// TODO: Log/alert in some way?
+					fin <- fmt.Errorf("getWsConn error: %w", err)
 					return
 				}
 				if err := p.runTcpProxyV1(wsConn, listeningConn); err != nil {
 					// TODO: Log/alert in some way?
+					fin <- fmt.Errorf("runTcpProxyV1 error: %w", err)
+					return
 				}
 			}()
 		}
@@ -235,6 +240,18 @@ func (p *ClientProxy) Start() (retErr error) {
 	}()
 
 	p.connWg.Wait()
+
+	{
+		// the go funcs are done, so we can safely close the chan and range over any errors
+		close(fin)
+		var finErrors []error
+		for err := range fin {
+			finErrors = append(finErrors, err)
+		}
+		if len(finErrors) > 0 {
+			return errors.Join(finErrors...)
+		}
+	}
 
 	var sendSessionCancel bool
 	// If we're not after expiration, ensure there is a bit of buffer in
