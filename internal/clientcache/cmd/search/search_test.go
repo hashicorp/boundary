@@ -131,7 +131,7 @@ func TestSearch(t *testing.T) {
 	t.Run("empty response from query", func(t *testing.T) {
 		resp, r, apiErr, err := search(ctx, srv.BaseDotDir(), filterBy{
 			authTokenId: at.Id,
-			flagQuery:   "name=name",
+			flagQuery:   "name='name'",
 			resource:    "targets",
 		})
 		require.NoError(t, err)
@@ -165,7 +165,7 @@ func TestSearch(t *testing.T) {
 	t.Run("full target response from query", func(t *testing.T) {
 		resp, r, apiErr, err := search(ctx, srv.BaseDotDir(), filterBy{
 			authTokenId: at.Id,
-			flagQuery:   "id % ttcp",
+			flagQuery:   "id % 'ttcp'",
 			resource:    "targets",
 		})
 		require.NoError(t, err)
@@ -178,7 +178,7 @@ func TestSearch(t *testing.T) {
 	t.Run("partial target response from query", func(t *testing.T) {
 		resp, r, apiErr, err := search(ctx, srv.BaseDotDir(), filterBy{
 			authTokenId: at.Id,
-			flagQuery:   "id % ttcp_1234567890",
+			flagQuery:   "id % 'ttcp_1234567890'",
 			resource:    "targets",
 		})
 		require.NoError(t, err)
@@ -206,7 +206,7 @@ func TestSearch(t *testing.T) {
 	t.Run("full session response from query", func(t *testing.T) {
 		resp, r, apiErr, err := search(ctx, srv.BaseDotDir(), filterBy{
 			authTokenId: at.Id,
-			flagQuery:   "id % sess",
+			flagQuery:   "id % 'sess'",
 			resource:    "sessions",
 		})
 		require.NoError(t, err)
@@ -219,7 +219,7 @@ func TestSearch(t *testing.T) {
 	t.Run("partial session response from query", func(t *testing.T) {
 		resp, r, apiErr, err := search(ctx, srv.BaseDotDir(), filterBy{
 			authTokenId: at.Id,
-			flagQuery:   "id % sess_1234567890",
+			flagQuery:   "id % 'sess_1234567890'",
 			resource:    "sessions",
 		})
 		require.NoError(t, err)
