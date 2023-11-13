@@ -166,6 +166,23 @@
         ]
       },
       {
+        "title": "Connection workflows",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "concepts/connection-workflows"
+          },
+          {
+            "title": "Connect helpers",
+            "path": "concepts/connection-workflows/connect-helpers"
+          },
+          {
+            "title": "SSH proxycommand",
+            "path": "concepts/connection-workflows/workflow-ssh-proxycommand"
+          }
+        ]
+      },
+      {
         "title": "Security",
         "routes": [
           {
@@ -544,10 +561,6 @@
       {
         "title": "Manage users and groups",
         "path": "common-workflows/manage-users-groups"
-      },
-      {
-        "title": "Workflow SSH proxy",
-        "path": "common-workflows/workflow-ssh-proxycommand"
       }
     ]
   },
