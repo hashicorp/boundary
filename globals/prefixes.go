@@ -335,8 +335,8 @@ func RegisterPrefixToResourceInfo(prefix string, res resource.Type, domain strin
 		panic(fmt.Sprintf("prefix %q being registered to domain %q type %q subtype %q but did not already exist in map", prefix, domain, res.String(), subtype.String()))
 	}
 	if domain != "test" &&
-		(resInfo.Domain != "" && resInfo.Domain != domain ||
-			resInfo.Subtype != UnknownSubtype && resInfo.Subtype != subtype) {
+		(resInfo.Domain != "" ||
+			resInfo.Subtype != UnknownSubtype) {
 		panic(fmt.Sprintf("prefix %q being registered to domain %q type %q subtype %q but was already registered to domain %q type %q subtype %q", prefix, domain, res.String(), subtype.String(), resInfo.Domain, resInfo.Type.String(), resInfo.Subtype.String()))
 	}
 	resInfo.Type = res

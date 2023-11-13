@@ -9,18 +9,15 @@ import (
 	"math"
 	"strings"
 
-	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/target"
-	"github.com/hashicorp/boundary/internal/types/resource"
 )
 
 type targetHooks struct{}
 
 func init() {
 	target.Register(Subtype, targetHooks{}, TargetPrefix)
-	globals.RegisterPrefixToResourceInfo(globals.TcpTargetPrefix, resource.Target, target.Domain, Subtype)
 }
 
 const (
