@@ -323,7 +323,7 @@ var resourceTypeToPrefixes map[resource.Type][]string = func() map[resource.Type
 }()
 
 // RegisterPrefixToResourceInfo is called from various packages to register
-// which prefixes belong to their them, what types those represent, and any
+// which prefixes belong to them, what types those represent, and any
 // domain and subtype information. This lets the subtypes stay in different
 // packages (important for the reflection introspection we do) while not
 // creating import loops.
