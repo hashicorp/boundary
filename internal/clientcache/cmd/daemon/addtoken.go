@@ -109,12 +109,7 @@ func (c *AddTokenCommand) Add(ctx context.Context, apiClient *api.Client, keyrin
 		} else {
 			return nil, nil, errors.New("The found auth token is not in the proper format.")
 		}
-		if c.FlagOutputCurlString {
-			// do not output the actual auth token if we are printing out the curl string
-			pa.AuthToken = "$BOUNDARY_TOKEN"
-		} else {
-			pa.AuthToken = token
-		}
+		pa.AuthToken = token
 	default:
 		at := c.ReadTokenFromKeyring(keyringType, tokenName)
 		if at == nil {

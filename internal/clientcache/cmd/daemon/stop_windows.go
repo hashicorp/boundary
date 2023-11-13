@@ -75,9 +75,10 @@ func stopThroughHandler(ctx context.Context, dotPath string) (*api.Error, error)
 	if err != nil {
 		return nil, err
 	}
-	_, apiErr, err := c.Post(ctx, "/v1/stop", nil)
+	resp, err := c.Post(ctx, "/v1/stop", nil)
 	if err != nil {
 		return nil, fmt.Errorf("Error when sending request to the daemon: %w.", err)
 	}
+	apiErr, err := resp.Decode(nil)
 	return apiErr, err
 }
