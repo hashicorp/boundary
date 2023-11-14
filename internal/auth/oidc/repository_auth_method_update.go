@@ -40,6 +40,7 @@ const (
 	TokenClaimsField                       = "TokenClaims"
 	UserinfoClaimsField                    = "UserinfoClaims"
 	KeyIdField                             = "KeyId"
+	PromptsField                           = "Prompts"
 )
 
 // UpdateAuthMethod will retrieve the auth method from the repository,
@@ -59,7 +60,7 @@ const (
 // be updated.  Fields will be set to NULL if the field is a
 // zero value and included in fieldMask. Name, Description, Issuer,
 // ClientId, ClientSecret, MaxAge are all updatable fields.  The AuthMethod's
-// Value Objects of SigningAlgs, CallbackUrls, AudClaims and Certificates are
+// Value Objects of SigningAlgs, Prompts, CallbackUrls, AudClaims and Certificates are
 // also updatable. if no updatable fields are included in the fieldMaskPaths,
 // then an error is returned.
 //
@@ -109,6 +110,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 			CertificatesField:     am.Certificates,
 			ClaimsScopesField:     am.ClaimsScopes,
 			AccountClaimMapsField: am.AccountClaimMaps,
+			PromptsField:          am.Prompts,
 		},
 		fieldMaskPaths,
 		nil,
@@ -177,6 +179,12 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 	if err != nil {
 		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 	}
+
+	addPrompts, deletePrompts, err := valueObjectChanges(ctx, origAm.PublicId, PromptsVO, am.Prompts, origAm.Prompts, dbMask, nullFields)
+	if err != nil {
+		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
+	}
+
 	// we don't allow updates for "sub" claim maps, because we have no way to
 	// determine if the updated "from" claim in the map might create collisions
 	// with any existing account's subject.
@@ -196,7 +204,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 	var filteredDbMask, filteredNullFields []string
 	for _, f := range dbMask {
 		switch f {
-		case SigningAlgsField, AudClaimsField, CertificatesField, ClaimsScopesField, AccountClaimMapsField:
+		case SigningAlgsField, AudClaimsField, CertificatesField, ClaimsScopesField, AccountClaimMapsField, PromptsField:
 			continue
 		default:
 			filteredDbMask = append(filteredDbMask, f)
@@ -204,7 +212,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 	}
 	for _, f := range nullFields {
 		switch f {
-		case SigningAlgsField, AudClaimsField, CertificatesField, ClaimsScopesField, AccountClaimMapsField:
+		case SigningAlgsField, AudClaimsField, CertificatesField, ClaimsScopesField, AccountClaimMapsField, PromptsField:
 			continue
 		default:
 			filteredNullFields = append(filteredNullFields, f)
@@ -223,7 +231,9 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 		len(addScopes) == 0 &&
 		len(deleteScopes) == 0 &&
 		len(addMaps) == 0 &&
-		len(deleteMaps) == 0 {
+		len(deleteMaps) == 0 &&
+		len(addPrompts) == 0 &&
+		len(deletePrompts) == 0 {
 		return origAm, db.NoRowsAffected, nil
 	}
 
@@ -259,7 +269,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
-			msgs := make([]*oplog.Message, 0, 7) // AuthMethod, Algs*2, Certs*2, Audiences*2
+			msgs := make([]*oplog.Message, 0, 9) // AuthMethod, Algs*2, Certs*2, Audiences*2, Prompts*2
 			ticket, err := w.GetTicket(ctx, am)
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
@@ -308,6 +318,25 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to add signing algorithms"))
 				}
 				msgs = append(msgs, addAlgsOplogMsgs...)
+			}
+
+			if len(deletePrompts) > 0 {
+				deletePromptOplogMsgs := make([]*oplog.Message, 0, len(deletePrompts))
+				rowsDeleted, err := w.DeleteItems(ctx, deletePrompts, db.NewOplogMsgs(&deletePromptOplogMsgs))
+				if err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to delete prompts"))
+				}
+				if rowsDeleted != len(deletePrompts) {
+					return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("prompts deleted %d did not match request for %d", rowsDeleted, len(deletePrompts)))
+				}
+				msgs = append(msgs, deletePromptOplogMsgs...)
+			}
+			if len(addPrompts) > 0 {
+				addPromptsOplogMsgs := make([]*oplog.Message, 0, len(addPrompts))
+				if err := w.CreateItems(ctx, addPrompts, db.NewOplogMsgs(&addPromptsOplogMsgs)); err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to add prompts"))
+				}
+				msgs = append(msgs, addPromptsOplogMsgs...)
 			}
 
 			if len(deleteCerts) > 0 {
@@ -426,12 +455,13 @@ const (
 	AudClaimVO         voName = "AudClaims"
 	ClaimsScopesVO     voName = "ClaimsScopes"
 	AccountClaimMapsVO voName = "AccountClaimMaps"
+	PromptsVO          voName = "Prompts"
 )
 
 // validVoName decides if the name is valid
 func validVoName(name voName) bool {
 	switch name {
-	case SigningAlgVO, CertificateVO, AudClaimVO, ClaimsScopesVO, AccountClaimMapsVO:
+	case SigningAlgVO, CertificateVO, AudClaimVO, ClaimsScopesVO, AccountClaimMapsVO, PromptsVO:
 		return true
 	default:
 		return false
@@ -477,6 +507,10 @@ var supportedFactories = map[voName]factoryFunc{
 			return nil, errors.Wrap(ctx, err, op)
 		}
 		return NewAccountClaimMap(ctx, publicId, m.From, to)
+	},
+	PromptsVO: func(ctx context.Context, publicId string, i any) (any, error) {
+		str := fmt.Sprintf("%s", i)
+		return NewPrompt(ctx, publicId, PromptParam(str))
 	},
 }
 
@@ -580,6 +614,7 @@ func validateFieldMask(ctx context.Context, fieldMaskPaths []string) error {
 		case strings.EqualFold(CertificatesField, f):
 		case strings.EqualFold(ClaimsScopesField, f):
 		case strings.EqualFold(AccountClaimMapsField, f):
+		case strings.EqualFold(PromptsField, f):
 		default:
 			return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("invalid field mask: %s", f))
 		}
@@ -645,6 +680,14 @@ func applyUpdate(new, orig *AuthMethod, fieldMaskPaths []string) *AuthMethod {
 			default:
 				cp.AccountClaimMaps = make([]string, 0, len(new.AccountClaimMaps))
 				cp.AccountClaimMaps = append(cp.AccountClaimMaps, new.AccountClaimMaps...)
+			}
+		case PromptsField:
+			switch {
+			case len(new.Prompts) == 0:
+				cp.Prompts = nil
+			default:
+				cp.Prompts = make([]string, 0, len(new.Prompts))
+				cp.Prompts = append(cp.Prompts, new.Prompts...)
 			}
 		}
 	}
