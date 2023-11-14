@@ -10,16 +10,15 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/stretchr/testify/require"
-	"golang.org/x/crypto/ssh"
-
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/testing/internal/e2e"
 	"github.com/hashicorp/boundary/testing/internal/e2e/boundary"
+	"github.com/stretchr/testify/require"
+	"golang.org/x/crypto/ssh"
 )
 
-// TestCliTcpTargetConnectGolangSsh uses the golang ssh library to connect to a target
-func TestCliTcpTargetConnectGolangSsh(t *testing.T) {
+// TestCliTcpTargetConnectGoSsh uses the go experimental ssh library to connect to a target
+func TestCliTcpTargetConnectGoSsh(t *testing.T) {
 	e2e.MaybeSkipTest(t)
 	c, err := loadTestConfig()
 	require.NoError(t, err)
@@ -55,7 +54,7 @@ func TestCliTcpTargetConnectGolangSsh(t *testing.T) {
 
 	boundary.WaitForSessionCli(t, ctx, newProjectId)
 
-	// Connect to the target using the golang ssh library
+	// Connect to the target using the go experimental ssh library
 	privateKeyRaw, err := os.ReadFile(c.TargetSshKeyPath)
 	require.NoError(t, err)
 	signer, err := ssh.ParsePrivateKey(privateKeyRaw)
