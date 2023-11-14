@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/boundary/api/targets"
 	cleanhttp "github.com/hashicorp/go-cleanhttp"
 	"github.com/hashicorp/go-secure-stdlib/base62"
+	"github.com/hashicorp/go-secure-stdlib/temperror"
 	ua "go.uber.org/atomic"
 )
 
@@ -178,6 +179,12 @@ func (p *ClientProxy) Start() (retErr error) {
 						// context or ran out of session connections and are
 						// winding down. This will never revert, so return.
 						return
+					}
+					// If the upstream listener indicates that this is an error
+					// with e.g. just this connection, don't close
+					if temperror.IsTempError(err) {
+						// TODO: Log/alert in some way?
+						continue
 					}
 					// TODO: Log/alert in some way?
 					fin <- fmt.Errorf("Accept error: %w", err)
