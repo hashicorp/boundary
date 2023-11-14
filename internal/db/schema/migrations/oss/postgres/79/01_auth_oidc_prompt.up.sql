@@ -45,6 +45,9 @@ create table auth_oidc_prompt (
 comment on table auth_oidc_prompt is
   'auth_oidc_prompt entries are the prompts allowed for an oidc auth method.';
 
+create trigger immutable_columns before update on auth_oidc_prompt
+  for each row execute procedure immutable_columns('create_time', 'oidc_method_id', 'prompt');  
+
 create trigger
   default_create_time_column
 before
