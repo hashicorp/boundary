@@ -237,7 +237,7 @@ func (c *Controller) registerGrpcServices(s *grpc.Server) error {
 		services.RegisterTargetServiceServer(s, ts)
 	}
 	if _, ok := currentServices[services.GroupService_ServiceDesc.ServiceName]; !ok {
-		gs, err := groups.NewService(c.baseContext, c.IamRepoFn)
+		gs, err := groups.NewService(c.baseContext, c.IamRepoFn, c.conf.RawConfig.Controller.MaxPageSize)
 		if err != nil {
 			return fmt.Errorf("failed to create group handler service: %w", err)
 		}
