@@ -220,8 +220,6 @@ github.com/grpc-ecosystem/go-grpc-middleware v1.4.0/go.mod h1:g5qyo/la0ALbONm6Vb
 github.com/grpc-ecosystem/grpc-gateway v1.16.0/go.mod h1:BDjrQk3hbvj6Nolgz8mAMFbcEtjT1g+wF4CSlocrBnw=
 github.com/grpc-ecosystem/grpc-gateway/v2 v2.18.0 h1:RtRsiaGvWxcwd8y3BiRZxsylPT8hLWZ5SPcfI+3IDNk=
 github.com/grpc-ecosystem/grpc-gateway/v2 v2.18.0/go.mod h1:TzP6duP4Py2pHLVPPQp42aoYI92+PCrVotyR5e8Vqlk=
-github.com/hashicorp/boundary/api v0.0.43 h1:qNZ5/FviFfXtb90N0dgqVk091gg/gasvE316rmWwhj8=
-github.com/hashicorp/boundary/api v0.0.43/go.mod h1:3Q/+rYvjnHI1cO3MEim7Ls1cD8iA9f4BnjSXi4pyhHE=
 github.com/hashicorp/boundary/sdk v0.0.40 h1:HNJcMWHCjoraPJALTZ9JssSoP/vflew2+VB656nvRlY=
 github.com/hashicorp/boundary/sdk v0.0.40/go.mod h1:+XTDYf9YNeKIbGOPJwy7hlO2Le4zgzCtHCG/u+z4THI=
 github.com/hashicorp/cap v0.4.0 h1:FAdBqLcZNPLkZ9WsYPtTvI9egjrhwElDalhArYToI7I=
