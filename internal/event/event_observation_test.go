@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/workers"
 	"github.com/hashicorp/eventlogger"
+	"github.com/hashicorp/eventlogger/filters/gated"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
@@ -161,7 +162,43 @@ func Test_composeFromTelemetryFiltering(t *testing.T) {
 		wantErrContains      string
 		wantFilteredRequest  *Request
 		wantFilteredResponse *Response
+		wantDetailsPaylaod   []gated.EventPayloadDetails
 	}{
+		{
+			name:   "authenticate-op",
+			fromOp: Op("ldap.Authenticate"),
+			opts: []Option{
+				WithId("authenticate-op"),
+				WithRequestInfo(TestRequestInfo(t)),
+				WithNow(now),
+				WithDetails(
+					"user_id", "u_1234567890",
+					"auth_toke_start", "12345789",
+					"auth_toke_end", "12345789"),
+			},
+			wantObservation: &observation{
+				ID:          "authenticate-op",
+				Version:     errorVersion,
+				Op:          Op("ldap.Authenticate"),
+				RequestInfo: TestRequestInfo(t),
+				Detail: map[string]any{
+					"user_id":         "u_1234567890",
+					"auth_toke_start": "12345789",
+					"auth_toke_end":   "12345789",
+				},
+			},
+			wantDetailsPaylaod: []gated.EventPayloadDetails{
+				{
+					CreatedAt: now.String(),
+					Type:      "ldap.Authenticate",
+					Payload: map[string]interface{}{
+						"user_id":         "u_1234567890",
+						"auth_toke_start": "12345789",
+						"auth_toke_end":   "12345789",
+					},
+				},
+			},
+		},
 		{
 			name:   "with-request-no-telemetry",
 			fromOp: Op("with-request-no-telemetry"),
@@ -517,7 +554,15 @@ func Test_composeFromTelemetryFiltering(t *testing.T) {
 				assert.True(ok)
 				assert.NotNil(pmsg)
 				assert.True(proto.Equal(tt.wantFilteredResponse.Details, pmsg.Details), "protos differ:\nexpected: %+v\nactual: %+v", tt.wantFilteredResponse.Details, pmsg.Details)
-
+			}
+			if tt.wantDetailsPaylaod != nil {
+				details, ok := payload["details"]
+				assert.True(ok)
+				assert.NotNil(details)
+				detailsPayload, ok := details.([]gated.EventPayloadDetails)
+				assert.True(ok)
+				assert.NotNil(detailsPayload)
+				assert.Equal(tt.wantDetailsPaylaod, detailsPayload)
 			}
 		})
 	}
