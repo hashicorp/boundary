@@ -19,8 +19,16 @@ var LastOutputStringError *OutputStringError
 
 type OutputStringError struct {
 	*retryablehttp.Request
+	unixSocket       string
 	parsingError     error
 	parsedCurlString string
+}
+
+func NewOutputDomainSocketCurlStringError(req *retryablehttp.Request, socketAddr string) *OutputStringError {
+	return &OutputStringError{
+		Request:    req,
+		unixSocket: socketAddr,
+	}
 }
 
 func (d *OutputStringError) Error() string {
@@ -45,6 +53,9 @@ func (d *OutputStringError) parseRequest() {
 	d.parsedCurlString = "curl"
 	if d.Request.Method != "GET" {
 		d.parsedCurlString = fmt.Sprintf("%s -X %s", d.parsedCurlString, d.Request.Method)
+	}
+	if d.unixSocket != "" {
+		d.parsedCurlString = fmt.Sprintf("%s --unix-socket %s", d.parsedCurlString, d.unixSocket)
 	}
 	for k, v := range d.Request.Header {
 		for _, h := range v {
