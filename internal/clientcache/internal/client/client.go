@@ -17,7 +17,7 @@ import (
 	"github.com/hashicorp/go-retryablehttp"
 )
 
-const hostHeader = "api.boundary.localhost"
+const hostHeader = "clientcache.boundary.localhost"
 
 type Client struct {
 	client           *retryablehttp.Client
@@ -56,10 +56,18 @@ func New(ctx context.Context, address *url.URL) (*Client, error) {
 
 // Get sends a GET http request to the provided path.  The vals provided are
 // encoded and attached to the request if present.
-func (c *Client) Get(ctx context.Context, path string, vals *url.Values) (*api.Response, error) {
+func (c *Client) Get(ctx context.Context, path string, vals *url.Values, opt ...Option) (*api.Response, error) {
 	req := request(ctx, "GET", path)
 	if vals != nil {
 		req.URL.RawQuery = vals.Encode()
+	}
+	opts, err := getOpts(opt...)
+	if err != nil {
+		return nil, err
+	}
+	if opts.withOutputCurlString {
+		api.LastOutputStringError = api.NewOutputDomainSocketCurlStringError(req, c.domainSocketPath)
+		return nil, api.LastOutputStringError
 	}
 	resp, err := c.client.Do(req)
 	if err != nil {
@@ -70,7 +78,7 @@ func (c *Client) Get(ctx context.Context, path string, vals *url.Values) (*api.R
 
 // Post sends a POST http request to the provided path.  The body is marshaled
 // to  json and added to the request body.
-func (c *Client) Post(ctx context.Context, path string, body any) (*api.Response, error) {
+func (c *Client) Post(ctx context.Context, path string, body any, opt ...Option) (*api.Response, error) {
 	req := request(ctx, "POST", path)
 	if body != nil {
 		b, err := json.Marshal(body)
@@ -78,6 +86,14 @@ func (c *Client) Post(ctx context.Context, path string, body any) (*api.Response
 			return nil, fmt.Errorf("error marshaling body: %w", err)
 		}
 		req.SetBody(b)
+	}
+	opts, err := getOpts(opt...)
+	if err != nil {
+		return nil, err
+	}
+	if opts.withOutputCurlString {
+		api.LastOutputStringError = api.NewOutputDomainSocketCurlStringError(req, c.domainSocketPath)
+		return nil, api.LastOutputStringError
 	}
 	resp, err := c.client.Do(req)
 	if err != nil {
