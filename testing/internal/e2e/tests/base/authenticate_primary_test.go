@@ -53,5 +53,36 @@ func TestCliAuthenticatePrimary(t *testing.T) {
 	err = json.Unmarshal([]byte(response), &authenticationResult)
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, authenticationResult.StatusCode, response)
-	require.NotEmpty(t, authenticationResult.Item.Attributes["token"])
+	token := authenticationResult.Item.Attributes["token"].(string)
+	require.NotEmpty(t, token)
+
+	// Use the token
+	output := e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"users", "list",
+			"-token", "env://BOUNDARY_TOKEN",
+			"-format", "json",
+		),
+		e2e.WithEnv("BOUNDARY_TOKEN", token),
+	)
+	require.NoError(t, output.Err, string(output.Stderr))
+
+	// Log out
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs("logout"),
+		e2e.WithEnv("BOUNDARY_TOKEN", token),
+	)
+	// require.NoError(t, output.Err, string(output.Stderr)) // !! It errors here
+
+	// Confirm that token cannot be used
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"users", "list",
+			"-token", "env://BOUNDARY_TOKEN",
+			"-format", "json",
+		),
+		e2e.WithEnv("BOUNDARY_TOKEN", token),
+	)
+	t.Log(string(output.Stdout))
+	require.Error(t, output.Err, string(output.Stderr))
 }
