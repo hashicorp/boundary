@@ -96,11 +96,15 @@ func (c *StatusCommand) Status(ctx context.Context) (*api.Response, *daemon.Stat
 	if err != nil {
 		return nil, nil, nil, err
 	}
+	var opts []client.Option
+	if c.FlagOutputCurlString {
+		opts = append(opts, client.WithOutputCurlString())
+	}
 
-	return status(ctx, dotPath)
+	return status(ctx, dotPath, opts...)
 }
 
-func status(ctx context.Context, daemonPath string) (*api.Response, *daemon.StatusResult, *api.Error, error) {
+func status(ctx context.Context, daemonPath string, opt ...client.Option) (*api.Response, *daemon.StatusResult, *api.Error, error) {
 	const op = "daemon.status"
 	addr, err := daemon.SocketAddress(daemonPath)
 	if err != nil {
@@ -115,7 +119,7 @@ func status(ctx context.Context, daemonPath string) (*api.Response, *daemon.Stat
 		return nil, nil, nil, err
 	}
 
-	resp, err := c.Get(ctx, "/v1/status", nil)
+	resp, err := c.Get(ctx, "/v1/status", nil, opt...)
 	if err != nil {
 		return nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("client do failed"))
 	}
