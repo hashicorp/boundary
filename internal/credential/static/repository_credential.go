@@ -8,12 +8,12 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
-	"github.com/hashicorp/boundary/internal/types/subtypes"
 	"github.com/hashicorp/go-dbw"
 )
 
@@ -289,7 +289,7 @@ func (r *Repository) LookupCredential(ctx context.Context, publicId string, _ ..
 
 	var cred credential.Static
 
-	switch subtypes.SubtypeFromId(credential.Domain, publicId) {
+	switch globals.ResourceInfoFromPrefix(publicId).Subtype {
 	case credential.UsernamePasswordSubtype:
 		upCred := allocUsernamePasswordCredential()
 		upCred.PublicId = publicId
@@ -792,7 +792,7 @@ func (r *Repository) DeleteCredential(ctx context.Context, projectId, id string,
 
 	var input any
 	var md oplog.Metadata
-	switch subtypes.SubtypeFromId(credential.Domain, id) {
+	switch globals.ResourceInfoFromPrefix(id).Subtype {
 	case credential.UsernamePasswordSubtype:
 		c := allocUsernamePasswordCredential()
 		c.PublicId = id

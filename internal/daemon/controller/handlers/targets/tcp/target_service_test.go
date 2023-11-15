@@ -3410,7 +3410,7 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 		h.Address = fmt.Sprintf("%s:54321", h.GetAddress())
 		repo, err := staticHostRepoFn()
 		require.NoError(t, err)
-		h, _, err = repo.UpdateHost(ctx, hc.GetProjectId(), h, h.GetVersion(), []string{"address"})
+		_, _, err = repo.UpdateHost(ctx, hc.GetProjectId(), h, h.GetVersion(), []string{"address"})
 		require.NoError(t, err)
 		return apiTar.GetItem().GetVersion()
 	}

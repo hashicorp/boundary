@@ -10,10 +10,10 @@ import (
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/hashicorp/boundary/internal/types/subtypes"
+	"github.com/hashicorp/boundary/internal/types/resource"
 )
 
-const domain = "target"
+const Domain = "target"
 
 // NewFunc is a function that creates a Target with the provided project and options.
 type NewFunc func(ctx context.Context, projectId string, opt ...Option) (Target, error)
@@ -72,9 +72,7 @@ func (r *registry) set(s globals.Subtype, entry *registryEntry) {
 		panic(fmt.Sprintf("target subtype %s already registered", s))
 	}
 
-	if err := subtypes.Register(domain, s, entry.prefix); err != nil {
-		panic(err)
-	}
+	globals.RegisterPrefixToResourceInfo(entry.prefix, resource.Target, Domain, s)
 
 	r.m[s] = entry
 }
@@ -146,18 +144,18 @@ var subtypeRegistry = registry{
 // SubtypeFromType returns the Subtype from the provided string or if
 // no Subtype was registered with that string Unknown is returned.
 func SubtypeFromType(t string) globals.Subtype {
-	return subtypes.SubtypeFromType(domain, t)
+	return globals.Subtype(t)
 }
 
 // SubtypeFromId returns the Subtype from the provided id if the id's prefix
 // was registered with a Subtype. Otherwise Unknown is returned.
 func SubtypeFromId(id string) globals.Subtype {
-	return subtypes.SubtypeFromId(domain, id)
+	return globals.ResourceInfoFromPrefix(id).Subtype
 }
 
 // Prefixes returns the list of all known target Prefixes.
 func Prefixes() []string {
-	return subtypes.Prefixes(domain)
+	return globals.PrefixesFromDomain(Domain)
 }
 
 // New creates a Target of the given subtype and projectId.

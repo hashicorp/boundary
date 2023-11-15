@@ -9,29 +9,11 @@ import (
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
-	"github.com/hashicorp/boundary/sdk/pbs/controller/protooptions"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
-	"google.golang.org/protobuf/types/descriptorpb"
 )
-
-func messageDomain(m proto.Message) string {
-	r := m.ProtoReflect()
-	fd := r.Descriptor().ParentFile()
-	if fd == nil {
-		return ""
-	}
-
-	opts, ok := fd.Options().(*descriptorpb.FileOptions)
-	if !ok {
-		return ""
-	}
-
-	domain := proto.GetExtension(opts, protooptions.E_Domain).(string)
-	return domain
-}
 
 // transformRequestAttributes will modify the request proto.Message, setting
 // any subtype attribute fields into the corresponding strongly-typed struct
@@ -99,8 +81,6 @@ func messageDomain(m proto.Message) string {
 // Also note that for any of the id based lookups to function, the file that contains
 // the proto.Message definition must set the "domain" custom option.
 func transformRequestAttributes(req proto.Message) error {
-	domain := messageDomain(req)
-
 	r := req.ProtoReflect()
 	fields := r.Descriptor().Fields()
 
@@ -135,9 +115,9 @@ func transformRequestAttributes(req proto.Message) error {
 
 		switch {
 		case idField != nil && id != "":
-			st = SubtypeFromId(domain, id)
+			st = globals.ResourceInfoFromPrefix(id).Subtype
 		case sourceIdField != nil && sourceId != "":
-			st = SubtypeFromId(domain, sourceId)
+			st = globals.ResourceInfoFromPrefix(sourceId).Subtype
 		case typeField != nil && t != "":
 			st = globals.Subtype(t)
 		default: // need either type or id
@@ -146,7 +126,7 @@ func transformRequestAttributes(req proto.Message) error {
 		return convertAttributesToSubtype(item, st)
 	case idField != nil && attributesField != nil:
 		id := r.Get(idField).String()
-		st = SubtypeFromId(domain, id)
+		st = globals.ResourceInfoFromPrefix(id).Subtype
 		return convertAttributesToSubtype(req, st)
 	}
 	return nil

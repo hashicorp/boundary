@@ -10,16 +10,13 @@ import (
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/hashicorp/boundary/internal/types/subtypes"
+	"github.com/hashicorp/boundary/internal/types/resource"
 )
 
 func init() {
-	if err := subtypes.Register(auth.Domain, Subtype, globals.OidcAuthMethodPrefix, globals.OidcAccountPrefix, globals.OidcManagedGroupPrefix); err != nil {
-		panic(err)
-	}
-	globals.RegisterPrefixSubtype(globals.OidcAuthMethodPrefix, Subtype)
-	globals.RegisterPrefixSubtype(globals.OidcAccountPrefix, Subtype)
-	globals.RegisterPrefixSubtype(globals.OidcManagedGroupPrefix, Subtype)
+	globals.RegisterPrefixToResourceInfo(globals.OidcAuthMethodPrefix, resource.AuthMethod, auth.Domain, Subtype)
+	globals.RegisterPrefixToResourceInfo(globals.OidcAccountPrefix, resource.Account, auth.Domain, Subtype)
+	globals.RegisterPrefixToResourceInfo(globals.OidcManagedGroupPrefix, resource.ManagedGroup, auth.Domain, Subtype)
 }
 
 const (

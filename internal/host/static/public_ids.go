@@ -10,16 +10,13 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/host"
-	"github.com/hashicorp/boundary/internal/types/subtypes"
+	"github.com/hashicorp/boundary/internal/types/resource"
 )
 
 func init() {
-	if err := subtypes.Register(host.Domain, Subtype, globals.StaticHostCatalogPrefix, globals.StaticHostSetPrefix, globals.StaticHostPrefix); err != nil {
-		panic(err)
-	}
-	globals.RegisterPrefixSubtype(globals.StaticHostCatalogPrefix, Subtype)
-	globals.RegisterPrefixSubtype(globals.StaticHostSetPrefix, Subtype)
-	globals.RegisterPrefixSubtype(globals.StaticHostPrefix, Subtype)
+	globals.RegisterPrefixToResourceInfo(globals.StaticHostCatalogPrefix, resource.HostCatalog, host.Domain, Subtype)
+	globals.RegisterPrefixToResourceInfo(globals.StaticHostSetPrefix, resource.HostSet, host.Domain, Subtype)
+	globals.RegisterPrefixToResourceInfo(globals.StaticHostPrefix, resource.Host, host.Domain, Subtype)
 }
 
 // PublicId prefixes for the resources in the static package.

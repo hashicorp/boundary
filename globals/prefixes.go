@@ -4,6 +4,7 @@
 package globals
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/types/resource"
@@ -127,6 +128,7 @@ const (
 
 type ResourceInfo struct {
 	Type    resource.Type
+	Domain  string
 	Subtype Subtype
 }
 
@@ -320,13 +322,29 @@ var resourceTypeToPrefixes map[resource.Type][]string = func() map[resource.Type
 	return ret
 }()
 
-// RegisterPrefixSubtype is called from various packages to register which
-// prefixes belong to their subtypes. This lets the subtypes stay in different
+// RegisterPrefixToResourceInfo is called from various packages to register
+// which prefixes belong to them, what types those represent, and any
+// domain and subtype information. This lets the subtypes stay in different
 // packages (important for the reflection introspection we do) while not
 // creating import loops.
-func RegisterPrefixSubtype(prefix string, subtype Subtype) {
-	resInfo := prefixToResourceType[prefix]
+//
+// If called more than once for the same prefix, this function will panic.
+func RegisterPrefixToResourceInfo(prefix string, res resource.Type, domain string, subtype Subtype) {
+	if subtype == UnknownSubtype {
+		panic("cannot be called with a subtype of Unknown")
+	}
+	resInfo, ok := prefixToResourceType[prefix]
+	if !ok && domain != "test" {
+		panic(fmt.Sprintf("prefix %q being registered to domain %q type %q subtype %q but did not already exist in map", prefix, domain, res.String(), subtype.String()))
+	}
+	if domain != "test" &&
+		(resInfo.Domain != "" ||
+			resInfo.Subtype != UnknownSubtype) {
+		panic(fmt.Sprintf("prefix %q being registered to domain %q type %q subtype %q but was already registered to domain %q type %q subtype %q", prefix, domain, res.String(), subtype.String(), resInfo.Domain, resInfo.Type.String(), resInfo.Subtype.String()))
+	}
+	resInfo.Type = res
 	resInfo.Subtype = subtype
+	resInfo.Domain = domain
 	prefixToResourceType[prefix] = resInfo
 }
 
@@ -342,4 +360,14 @@ func ResourceInfoFromPrefix(in string) ResourceInfo {
 // type is not known the return value will be nil
 func ResourcePrefixesFromType(in resource.Type) []string {
 	return resourceTypeToPrefixes[in]
+}
+
+func PrefixesFromDomain(domain string) []string {
+	res := make([]string, 0, 8)
+	for k, v := range prefixToResourceType {
+		if v.Domain == domain {
+			res = append(res, k)
+		}
+	}
+	return res
 }

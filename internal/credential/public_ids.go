@@ -9,23 +9,14 @@ import (
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/hashicorp/boundary/internal/types/subtypes"
+	"github.com/hashicorp/boundary/internal/types/resource"
 )
 
 func init() {
-	if err := subtypes.Register(Domain, UsernamePasswordSubtype, globals.UsernamePasswordCredentialPrefix, globals.UsernamePasswordCredentialPreviousPrefix); err != nil {
-		panic(err)
-	}
-	if err := subtypes.Register(Domain, SshPrivateKeySubtype, globals.SshPrivateKeyCredentialPrefix); err != nil {
-		panic(err)
-	}
-	if err := subtypes.Register(Domain, JsonSubtype, globals.JsonCredentialPrefix); err != nil {
-		panic(err)
-	}
-	globals.RegisterPrefixSubtype(globals.UsernamePasswordCredentialPrefix, UsernamePasswordSubtype)
-	globals.RegisterPrefixSubtype(globals.UsernamePasswordCredentialPreviousPrefix, UsernamePasswordSubtype)
-	globals.RegisterPrefixSubtype(globals.SshPrivateKeyCredentialPrefix, SshPrivateKeySubtype)
-	globals.RegisterPrefixSubtype(globals.JsonCredentialPrefix, JsonSubtype)
+	globals.RegisterPrefixToResourceInfo(globals.UsernamePasswordCredentialPrefix, resource.Credential, Domain, UsernamePasswordSubtype)
+	globals.RegisterPrefixToResourceInfo(globals.UsernamePasswordCredentialPreviousPrefix, resource.Credential, Domain, UsernamePasswordSubtype)
+	globals.RegisterPrefixToResourceInfo(globals.SshPrivateKeyCredentialPrefix, resource.Credential, Domain, SshPrivateKeySubtype)
+	globals.RegisterPrefixToResourceInfo(globals.JsonCredentialPrefix, resource.Credential, Domain, JsonSubtype)
 }
 
 const (

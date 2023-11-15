@@ -167,7 +167,7 @@ func (s Service) ListAuthMethods(ctx context.Context, req *pbs.ListAuthMethodsRe
 	for _, am := range ul {
 		res.Id = am.GetPublicId()
 		res.ScopeId = am.GetScopeId()
-		authorizedActions := authResults.FetchActionSetForId(ctx, am.GetPublicId(), IdActions[subtypes.SubtypeFromId(domain, am.GetPublicId())], requestauth.WithResource(&res)).Strings()
+		authorizedActions := authResults.FetchActionSetForId(ctx, am.GetPublicId(), IdActions[globals.ResourceInfoFromPrefix(am.GetPublicId()).Subtype], requestauth.WithResource(&res)).Strings()
 		if len(authorizedActions) == 0 {
 			continue
 		}
@@ -234,7 +234,7 @@ func (s Service) GetAuthMethod(ctx context.Context, req *pbs.GetAuthMethodReques
 		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
 	if outputFields.Has(globals.AuthorizedActionsField) {
-		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, am.GetPublicId(), IdActions[subtypes.SubtypeFromId(domain, am.GetPublicId())]).Strings()))
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, am.GetPublicId(), IdActions[globals.ResourceInfoFromPrefix(am.GetPublicId()).Subtype]).Strings()))
 	}
 	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
 		collectionActions, err := requestauth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap, authResults.Scope.Id, am.GetPublicId())
@@ -279,7 +279,7 @@ func (s Service) CreateAuthMethod(ctx context.Context, req *pbs.CreateAuthMethod
 		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
 	if outputFields.Has(globals.AuthorizedActionsField) {
-		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, am.GetPublicId(), IdActions[subtypes.SubtypeFromId(domain, am.GetPublicId())]).Strings()))
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, am.GetPublicId(), IdActions[globals.ResourceInfoFromPrefix(am.GetPublicId()).Subtype]).Strings()))
 	}
 	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
 		collectionActions, err := requestauth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap, authResults.Scope.Id, am.GetPublicId())
@@ -329,7 +329,7 @@ func (s Service) UpdateAuthMethod(ctx context.Context, req *pbs.UpdateAuthMethod
 		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
 	if outputFields.Has(globals.AuthorizedActionsField) {
-		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, am.GetPublicId(), IdActions[subtypes.SubtypeFromId(domain, am.GetPublicId())]).Strings()))
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, am.GetPublicId(), IdActions[globals.ResourceInfoFromPrefix(am.GetPublicId()).Subtype]).Strings()))
 	}
 	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
 		collectionActions, err := requestauth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap, authResults.Scope.Id, am.GetPublicId())
@@ -383,7 +383,7 @@ func (s Service) ChangeState(ctx context.Context, req *pbs.ChangeStateRequest) (
 		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
 	if outputFields.Has(globals.AuthorizedActionsField) {
-		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, am.GetPublicId(), IdActions[subtypes.SubtypeFromId(domain, am.GetPublicId())]).Strings()))
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, am.GetPublicId(), IdActions[globals.ResourceInfoFromPrefix(am.GetPublicId()).Subtype]).Strings()))
 	}
 	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
 		collectionActions, err := requestauth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap, authResults.Scope.Id, am.GetPublicId())
@@ -424,7 +424,7 @@ func (s Service) Authenticate(ctx context.Context, req *pbs.AuthenticateRequest)
 		return nil, err
 	}
 
-	switch subtypes.SubtypeFromId(domain, req.GetAuthMethodId()) {
+	switch globals.ResourceInfoFromPrefix(req.GetAuthMethodId()).Subtype {
 	case password.Subtype:
 		if err := validateAuthenticatePasswordRequest(req); err != nil {
 			return nil, err
@@ -444,7 +444,7 @@ func (s Service) Authenticate(ctx context.Context, req *pbs.AuthenticateRequest)
 		return nil, authResults.Error
 	}
 
-	switch subtypes.SubtypeFromId(domain, req.GetAuthMethodId()) {
+	switch globals.ResourceInfoFromPrefix(req.GetAuthMethodId()).Subtype {
 	case password.Subtype:
 		return s.authenticatePassword(ctx, req, &authResults)
 
@@ -459,7 +459,7 @@ func (s Service) Authenticate(ctx context.Context, req *pbs.AuthenticateRequest)
 func (s Service) getFromRepo(ctx context.Context, id string) (auth.AuthMethod, error) {
 	var lookupErr error
 	var am auth.AuthMethod
-	switch subtypes.SubtypeFromId(domain, id) {
+	switch globals.ResourceInfoFromPrefix(id).Subtype {
 	case password.Subtype:
 		repo, err := s.pwRepoFn()
 		if err != nil {
@@ -549,8 +549,8 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string, authResult
 func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.AuthMethod) (auth.AuthMethod, error) {
 	const op = "authmethods.(Service).createInRepo"
 	var out auth.AuthMethod
-	switch subtypes.SubtypeFromType(domain, item.GetType()) {
-	case password.Subtype:
+	switch item.GetType() {
+	case password.Subtype.String():
 		am, err := s.createPwInRepo(ctx, scopeId, item)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
@@ -559,7 +559,7 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Auth
 			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create auth method but no error returned from repository.")
 		}
 		out = am
-	case oidc.Subtype:
+	case oidc.Subtype.String():
 		am, err := s.createOidcInRepo(ctx, scopeId, item)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
@@ -568,7 +568,7 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Auth
 			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create auth method but no error returned from repository.")
 		}
 		out = am
-	case ldap.Subtype:
+	case ldap.Subtype.String():
 		am, err := s.createLdapInRepo(ctx, scopeId, item)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
@@ -587,7 +587,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId string, req *pbs.Upda
 	var am auth.AuthMethod
 	var dryRun bool
 
-	switch subtypes.SubtypeFromId(domain, req.GetId()) {
+	switch globals.ResourceInfoFromPrefix(req.GetId()).Subtype {
 	case password.Subtype:
 		pam, err := s.updatePwInRepo(ctx, scopeId, req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
 		if err != nil {
@@ -635,7 +635,7 @@ func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, 
 	const op = "authmethods.(Service).deleteFromRepo"
 	var rows int
 	var dErr error
-	switch subtypes.SubtypeFromId(domain, id) {
+	switch globals.ResourceInfoFromPrefix(id).Subtype {
 	case password.Subtype:
 		repo, err := s.pwRepoFn()
 		if err != nil {
@@ -656,7 +656,7 @@ func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, 
 		}
 		rows, dErr = repo.DeleteAuthMethod(ctx, id)
 	default:
-		return false, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("invalid auth method subtype: %q", subtypes.SubtypeFromId(domain, id)))
+		return false, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("invalid auth method subtype: %q", globals.ResourceInfoFromPrefix(id).Subtype.String()))
 	}
 
 	if dErr != nil {
@@ -672,7 +672,7 @@ func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, 
 func (s Service) changeStateInRepo(ctx context.Context, req *pbs.ChangeStateRequest) (auth.AuthMethod, error) {
 	const op = "authmethod_service.(Service).changeStateInRepo"
 
-	switch subtypes.SubtypeFromId(domain, req.GetId()) {
+	switch globals.ResourceInfoFromPrefix(req.GetId()).Subtype {
 	case oidc.Subtype:
 		repo, err := s.oidcRepoFn()
 		if err != nil {
@@ -731,7 +731,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) reque
 		}
 	default:
 		var authMeth auth.AuthMethod
-		switch subtypes.SubtypeFromId(domain, id) {
+		switch globals.ResourceInfoFromPrefix(id).Subtype {
 		case password.Subtype:
 			repo, err := s.pwRepoFn()
 			if err != nil {
@@ -987,10 +987,10 @@ func validateCreateRequest(ctx context.Context, req *pbs.CreateAuthMethodRequest
 		if req.GetItem().GetIsPrimary() {
 			badFields[isPrimaryField] = "This field is read only."
 		}
-		switch subtypes.SubtypeFromType(domain, req.GetItem().GetType()) {
-		case password.Subtype:
+		switch req.GetItem().GetType() {
+		case password.Subtype.String():
 			// Password attributes are not required when creating a password auth method.
-		case oidc.Subtype:
+		case oidc.Subtype.String():
 			attrs := req.GetItem().GetOidcAuthMethodsAttributes()
 			if attrs == nil {
 				// OIDC attributes are required when creating an OIDC auth method.
@@ -1066,7 +1066,7 @@ func validateCreateRequest(ctx context.Context, req *pbs.CreateAuthMethodRequest
 					}
 				}
 			}
-		case ldap.Subtype:
+		case ldap.Subtype.String():
 			if len(req.GetItem().GetLdapAuthMethodsAttributes().GetUrls()) == 0 {
 				badFields[urlsField] = "At least one URL is required"
 			}
@@ -1088,13 +1088,13 @@ func validateUpdateRequest(ctx context.Context, req *pbs.UpdateAuthMethodRequest
 		if handlers.MaskContains(req.GetUpdateMask().GetPaths(), isPrimaryField) {
 			badFields[isPrimaryField] = "This field is read only."
 		}
-		switch subtypes.SubtypeFromId(domain, req.GetId()) {
+		switch globals.ResourceInfoFromPrefix(req.GetId()).Subtype {
 		case password.Subtype:
-			if req.GetItem().GetType() != "" && subtypes.SubtypeFromType(domain, req.GetItem().GetType()) != password.Subtype {
+			if req.GetItem().GetType() != "" && req.GetItem().GetType() != password.Subtype.String() {
 				badFields[typeField] = "Cannot modify the resource type."
 			}
 		case oidc.Subtype:
-			if req.GetItem().GetType() != "" && subtypes.SubtypeFromType(domain, req.GetItem().GetType()) != oidc.Subtype {
+			if req.GetItem().GetType() != "" && req.GetItem().GetType() != oidc.Subtype.String() {
 				badFields[typeField] = "Cannot modify the resource type."
 			}
 			attrs := req.GetItem().GetOidcAuthMethodsAttributes()
@@ -1198,7 +1198,7 @@ func validateUpdateRequest(ctx context.Context, req *pbs.UpdateAuthMethodRequest
 				}
 			}
 		case ldap.Subtype:
-			if req.GetItem().GetType() != "" && subtypes.SubtypeFromType(domain, req.GetItem().GetType()) != ldap.Subtype {
+			if req.GetItem().GetType() != "" && req.GetItem().GetType() != ldap.Subtype.String() {
 				badFields[typeField] = "Cannot modify the resource type."
 			}
 			validateLdapAttributes(ctx, req.GetItem().GetLdapAuthMethodsAttributes(), badFields)
@@ -1241,7 +1241,7 @@ func validateChangeStateRequest(ctx context.Context, req *pbs.ChangeStateRequest
 	if req == nil {
 		return errors.New(ctx, errors.InvalidParameter, op, "Missing request")
 	}
-	if st := subtypes.SubtypeFromId(domain, req.GetId()); st != oidc.Subtype {
+	if st := globals.ResourceInfoFromPrefix(req.GetId()).Subtype; st != oidc.Subtype {
 		return handlers.NotFoundErrorf("This endpoint is only available for the %q Auth Method type.", oidc.Subtype.String())
 	}
 	badFields := make(map[string]string)
@@ -1276,7 +1276,7 @@ func validateAuthenticateRequest(ctx context.Context, req *pbs.AuthenticateReque
 	if strings.TrimSpace(req.GetAuthMethodId()) == "" {
 		badFields[authMethodIdField] = "This is a required field."
 	} else {
-		st := subtypes.SubtypeFromId(domain, req.GetAuthMethodId())
+		st := globals.ResourceInfoFromPrefix(req.GetAuthMethodId()).Subtype
 		switch st {
 		case password.Subtype, oidc.Subtype, ldap.Subtype:
 		default:
@@ -1380,7 +1380,7 @@ func transformAuthenticateRequestAttributes(msg proto.Message) error {
 	if attrs == nil {
 		return nil
 	}
-	switch subtypes.SubtypeFromId(domain, authRequest.GetAuthMethodId()) {
+	switch globals.ResourceInfoFromPrefix(authRequest.GetAuthMethodId()).Subtype {
 	case password.Subtype:
 		newAttrs := &pbs.PasswordLoginAttributes{}
 		if err := handlers.StructToProto(attrs, newAttrs); err != nil {
