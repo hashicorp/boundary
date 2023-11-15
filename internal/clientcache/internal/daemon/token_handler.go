@@ -24,23 +24,23 @@ type refresher interface {
 // KeyringToken has keyring held auth token information.
 type KeyringToken struct {
 	// The keyring type used by boundary to access the auth token
-	KeyringType string `json:"keyring_type"`
+	KeyringType string `json:"keyring_type,omitempty"`
 	// The token identifier for the provided keyring type that holds the auth token
-	TokenName string `json:"token_name"`
+	TokenName string `json:"token_name,omitempty"`
 }
 
 // userTokenToAdd is the request body to this handler.
 type UpsertTokenRequest struct {
 	// BoundaryAddr is a required field for all requests
-	BoundaryAddr string `json:"boundary_addr"`
+	BoundaryAddr string `json:"boundary_addr,omitempty"`
 	// The id of the auth token asserted to be attempted to be added
-	AuthTokenId string `json:"auth_token_id"`
+	AuthTokenId string `json:"auth_token_id,omitempty"`
 	// The raw auth token for this user. Either this field or the Keyring field
 	// must be set but not both.
-	AuthToken string `json:"auth_token"`
+	AuthToken string `json:"auth_token,omitempty"`
 	// Keyring is the keyring info used when adding an auth token held in
 	// keyring to the daemon.
-	Keyring *KeyringToken `json:"keyring"`
+	Keyring *KeyringToken `json:"keyring,omitempty"`
 }
 
 func newTokenHandlerFunc(ctx context.Context, repo *cache.Repository, refresher refresher) (http.HandlerFunc, error) {
