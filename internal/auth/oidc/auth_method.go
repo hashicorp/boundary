@@ -471,7 +471,7 @@ func ParseAccountClaimMaps(ctx context.Context, m ...string) ([]ClaimMap, error)
 }
 
 // convertPrompts converts the embedded prompts from []string
-// to []interface{} where each slice element is a *SigningAlg. It will return an
+// to []interface{} where each slice element is a *Prompt. It will return an
 // error if the AuthMethod's public id is not set.
 func (am *AuthMethod) convertPrompts(ctx context.Context) ([]any, error) {
 	const op = "oidc.(AuthMethod).convertPrompts"
