@@ -109,7 +109,11 @@ func (c *AddTokenCommand) Add(ctx context.Context, apiClient *api.Client, keyrin
 		} else {
 			return nil, nil, errors.New("The found auth token is not in the proper format.")
 		}
-		pa.AuthToken = token
+		if c.FlagOutputCurlString {
+			pa.AuthToken = "/*token*/"
+		} else {
+			pa.AuthToken = token
+		}
 	default:
 		at := c.ReadTokenFromKeyring(keyringType, tokenName)
 		if at == nil {
@@ -121,15 +125,19 @@ func (c *AddTokenCommand) Add(ctx context.Context, apiClient *api.Client, keyrin
 		}
 		pa.AuthTokenId = at.Id
 	}
+	var opts []client.Option
+	if c.FlagOutputCurlString {
+		opts = append(opts, client.WithOutputCurlString())
+	}
 
 	dotPath, err := DefaultDotDirectory(ctx)
 	if err != nil {
 		return nil, nil, err
 	}
-	return addToken(ctx, dotPath, &pa)
+	return addToken(ctx, dotPath, &pa, opts...)
 }
 
-func addToken(ctx context.Context, daemonPath string, p *daemon.UpsertTokenRequest) (*api.Response, *api.Error, error) {
+func addToken(ctx context.Context, daemonPath string, p *daemon.UpsertTokenRequest, opt ...client.Option) (*api.Response, *api.Error, error) {
 	addr, err := daemon.SocketAddress(daemonPath)
 	if err != nil {
 		return nil, nil, fmt.Errorf("Error when retrieving the socket address: %w", err)
@@ -143,7 +151,7 @@ func addToken(ctx context.Context, daemonPath string, p *daemon.UpsertTokenReque
 	if err != nil {
 		return nil, nil, fmt.Errorf("Error when making a new client: %w.", err)
 	}
-	resp, err := c.Post(ctx, "/v1/tokens", p)
+	resp, err := c.Post(ctx, "/v1/tokens", p, opt...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("Error when sending request to the daemon: %w.", err)
 	}

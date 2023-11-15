@@ -132,11 +132,11 @@ func (c *SearchCommand) Run(args []string) int {
 }
 
 func (c *SearchCommand) Search(ctx context.Context) (*api.Response, *daemon.SearchResult, *api.Error, error) {
-	client, err := c.Client()
+	cl, err := c.Client()
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	t := client.Token()
+	t := cl.Token()
 	if t == "" {
 		return nil, nil, nil, fmt.Errorf("Auth Token selected for searching is empty.")
 	}
@@ -150,15 +150,19 @@ func (c *SearchCommand) Search(ctx context.Context) (*api.Response, *daemon.Sear
 		resource:    c.flagResource,
 		authTokenId: strings.Join(tSlice[:2], "_"),
 	}
+	var opts []client.Option
+	if c.FlagOutputCurlString {
+		opts = append(opts, client.WithOutputCurlString())
+	}
 
 	dotPath, err := daemoncmd.DefaultDotDirectory(ctx)
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	return search(ctx, dotPath, tf)
+	return search(ctx, dotPath, tf, opts...)
 }
 
-func search(ctx context.Context, daemonPath string, fb filterBy) (*api.Response, *daemon.SearchResult, *api.Error, error) {
+func search(ctx context.Context, daemonPath string, fb filterBy, opt ...client.Option) (*api.Response, *daemon.SearchResult, *api.Error, error) {
 	addr, err := daemon.SocketAddress(daemonPath)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("Error when retrieving the socket address: %w", err)
@@ -175,7 +179,7 @@ func search(ctx context.Context, daemonPath string, fb filterBy) (*api.Response,
 	q.Add("auth_token_id", fb.authTokenId)
 	q.Add("resource", fb.resource)
 	q.Add("query", fb.flagQuery)
-	resp, err := c.Get(ctx, "/v1/search", q)
+	resp, err := c.Get(ctx, "/v1/search", q, opt...)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("Error when sending request to the daemon: %w.", err)
 	}
