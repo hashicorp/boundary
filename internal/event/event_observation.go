@@ -108,7 +108,7 @@ func (o *observation) ComposeFrom(events []*eventlogger.Event) (eventlogger.Even
 				payload[DetailsField] = []gated.EventPayloadDetails{}
 			}
 			payload[DetailsField] = append(payload[DetailsField].([]gated.EventPayloadDetails), gated.EventPayloadDetails{
-				Type:      string(v.Type),
+				Type:      string(g.Op),
 				CreatedAt: v.CreatedAt.String(),
 				Payload:   g.Detail,
 			})
