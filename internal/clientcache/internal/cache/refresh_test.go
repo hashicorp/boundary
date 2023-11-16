@@ -139,7 +139,7 @@ func TestCleanAndPickTokens(t *testing.T) {
 		mapBasedAuthTokenKeyringLookup(atMap),
 		fakeBoundaryLookupFn)
 	require.NoError(t, err)
-	rs, err := NewRefreshService(ctx, r, 0)
+	rs, err := NewRefreshService(ctx, r, 0, 0)
 	require.NoError(t, err)
 
 	t.Run("unknown user", func(t *testing.T) {
@@ -355,7 +355,7 @@ func TestRefreshForSearch(t *testing.T) {
 		require.NoError(t, err)
 		r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(boundaryAuthTokens))
 		require.NoError(t, err)
-		rs, err := NewRefreshService(ctx, r, time.Millisecond)
+		rs, err := NewRefreshService(ctx, r, time.Millisecond, 0)
 		require.NoError(t, err)
 		require.NoError(t, r.AddKeyringToken(ctx, boundaryAddr, KeyringToken{KeyringType: "k", TokenName: "t", AuthTokenId: at.Id}))
 
@@ -405,7 +405,7 @@ func TestRefreshForSearch(t *testing.T) {
 		require.NoError(t, err)
 		r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(boundaryAuthTokens))
 		require.NoError(t, err)
-		rs, err := NewRefreshService(ctx, r, time.Millisecond)
+		rs, err := NewRefreshService(ctx, r, time.Millisecond, 0)
 		require.NoError(t, err)
 		require.NoError(t, r.AddKeyringToken(ctx, boundaryAddr, KeyringToken{KeyringType: "k", TokenName: "t", AuthTokenId: at.Id}))
 
@@ -451,7 +451,7 @@ func TestRefreshForSearch(t *testing.T) {
 		require.NoError(t, err)
 		r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(boundaryAuthTokens))
 		require.NoError(t, err)
-		rs, err := NewRefreshService(ctx, r, 0)
+		rs, err := NewRefreshService(ctx, r, 0, 0)
 		require.NoError(t, err)
 		require.NoError(t, r.AddKeyringToken(ctx, boundaryAddr, KeyringToken{KeyringType: "k", TokenName: "t", AuthTokenId: at.Id}))
 
@@ -516,7 +516,7 @@ func TestRefresh(t *testing.T) {
 		require.NoError(t, err)
 		r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(boundaryAuthTokens))
 		require.NoError(t, err)
-		rs, err := NewRefreshService(ctx, r, 0)
+		rs, err := NewRefreshService(ctx, r, 0, 0)
 		require.NoError(t, err)
 		require.NoError(t, r.AddKeyringToken(ctx, boundaryAddr, KeyringToken{KeyringType: "k", TokenName: "t", AuthTokenId: at.Id}))
 
@@ -557,7 +557,7 @@ func TestRefresh(t *testing.T) {
 		require.NoError(t, err)
 		r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(boundaryAuthTokens))
 		require.NoError(t, err)
-		rs, err := NewRefreshService(ctx, r, 0)
+		rs, err := NewRefreshService(ctx, r, 0, 0)
 		require.NoError(t, err)
 		require.NoError(t, r.AddKeyringToken(ctx, boundaryAddr, KeyringToken{KeyringType: "k", TokenName: "t", AuthTokenId: at.Id}))
 
@@ -597,7 +597,7 @@ func TestRefresh(t *testing.T) {
 		require.NoError(t, err)
 		r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(boundaryAuthTokens))
 		require.NoError(t, err)
-		rs, err := NewRefreshService(ctx, r, 0)
+		rs, err := NewRefreshService(ctx, r, 0, 0)
 		require.NoError(t, err)
 		require.NoError(t, r.AddKeyringToken(ctx, boundaryAddr, KeyringToken{KeyringType: "k", TokenName: "t", AuthTokenId: at.Id}))
 
@@ -625,7 +625,7 @@ func TestRefresh(t *testing.T) {
 		require.NoError(t, err)
 		r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(boundaryAuthTokens))
 		require.NoError(t, err)
-		rs, err := NewRefreshService(ctx, r, 0)
+		rs, err := NewRefreshService(ctx, r, 0, 0)
 		require.NoError(t, err)
 		require.NoError(t, r.AddKeyringToken(ctx, boundaryAddr, KeyringToken{KeyringType: "k", TokenName: "t", AuthTokenId: at.Id}))
 
@@ -679,7 +679,7 @@ func TestFullFetch(t *testing.T) {
 		require.NoError(t, err)
 		r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(boundaryAuthTokens))
 		require.NoError(t, err)
-		rs, err := NewRefreshService(ctx, r, 0)
+		rs, err := NewRefreshService(ctx, r, 0, 0)
 		require.NoError(t, err)
 		require.NoError(t, r.AddKeyringToken(ctx, boundaryAddr, KeyringToken{KeyringType: "k", TokenName: "t", AuthTokenId: at.Id}))
 
@@ -722,7 +722,7 @@ func TestFullFetch(t *testing.T) {
 		require.NoError(t, err)
 		r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(boundaryAuthTokens))
 		require.NoError(t, err)
-		rs, err := NewRefreshService(ctx, r, 0)
+		rs, err := NewRefreshService(ctx, r, 0, 0)
 		require.NoError(t, err)
 		require.NoError(t, r.AddKeyringToken(ctx, boundaryAddr, KeyringToken{KeyringType: "k", TokenName: "t", AuthTokenId: at.Id}))
 
@@ -760,7 +760,7 @@ func TestFullFetch(t *testing.T) {
 		require.NoError(t, err)
 		r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(boundaryAuthTokens))
 		require.NoError(t, err)
-		rs, err := NewRefreshService(ctx, r, 0)
+		rs, err := NewRefreshService(ctx, r, 0, 0)
 		require.NoError(t, err)
 		require.NoError(t, r.AddKeyringToken(ctx, boundaryAddr, KeyringToken{KeyringType: "k", TokenName: "t", AuthTokenId: at.Id}))
 
@@ -793,7 +793,7 @@ func TestFullFetch(t *testing.T) {
 		require.NoError(t, err)
 		r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(boundaryAuthTokens))
 		require.NoError(t, err)
-		rs, err := NewRefreshService(ctx, r, 0)
+		rs, err := NewRefreshService(ctx, r, 0, 0)
 		require.NoError(t, err)
 		require.NoError(t, r.AddKeyringToken(ctx, boundaryAddr, KeyringToken{KeyringType: "k", TokenName: "t", AuthTokenId: at.Id}))
 
