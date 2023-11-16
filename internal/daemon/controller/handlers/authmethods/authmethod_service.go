@@ -862,6 +862,7 @@ func toAuthMethodProto(ctx context.Context, in auth.AuthMethod, opt ...handlers.
 			AllowedAudiences:  i.GetAudClaims(),
 			ClaimsScopes:      i.GetClaimsScopes(),
 			AccountClaimMaps:  i.GetAccountClaimMaps(),
+			Prompts:           i.GetPrompts(),
 		}
 		if i.DisableDiscoveredConfigValidation {
 			attrs.DisableDiscoveredConfigValidation = true
@@ -1031,6 +1032,14 @@ func validateCreateRequest(ctx context.Context, req *pbs.CreateAuthMethodRequest
 						}
 					}
 				}
+				if len(attrs.GetPrompts()) > 0 {
+					for _, p := range attrs.GetPrompts() {
+						if !oidc.SupportedPrompt(oidc.PromptParam(p)) {
+							badFields[promptsField] = fmt.Sprintf("Contains unsupported prompt %q", p)
+							break
+						}
+					}
+				}
 				if strings.TrimSpace(attrs.GetApiUrlPrefix().GetValue()) == "" {
 					// TODO: When we start accepting the address used in the request make this an optional field.
 					badFields[apiUrlPrefixField] = "This field is required."
@@ -1155,6 +1164,14 @@ func validateUpdateRequest(ctx context.Context, req *pbs.UpdateAuthMethodRequest
 					for _, sa := range attrs.GetSigningAlgorithms() {
 						if !oidc.SupportedAlgorithm(oidc.Alg(sa)) {
 							badFields[signingAlgorithmField] = fmt.Sprintf("Contains unsupported algorithm %q", sa)
+							break
+						}
+					}
+				}
+				if len(attrs.GetPrompts()) > 0 {
+					for _, p := range attrs.GetPrompts() {
+						if !oidc.SupportedPrompt(oidc.PromptParam(p)) {
+							badFields[promptsField] = fmt.Sprintf("Contains unsupported prompt %q", p)
 							break
 						}
 					}
