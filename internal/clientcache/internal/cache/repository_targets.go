@@ -97,7 +97,7 @@ func (r *Repository) refreshTargets(ctx context.Context, u *user, tokens map[Aut
 		break
 	}
 	if retErr != nil {
-		if saveErr := r.saveError(ctx, u, resourceType, retErr); saveErr != nil {
+		if saveErr := r.saveError(r.serverCtx, u, resourceType, retErr); saveErr != nil {
 			return stderrors.Join(err, errors.Wrap(ctx, saveErr, op))
 		}
 	}
@@ -172,7 +172,7 @@ func (r *Repository) fullFetchTargets(ctx context.Context, u *user, tokens map[A
 		break
 	}
 	if retErr != nil {
-		if saveErr := r.saveError(ctx, u, resourceType, retErr); saveErr != nil {
+		if saveErr := r.saveError(r.serverCtx, u, resourceType, retErr); saveErr != nil {
 			return stderrors.Join(err, errors.Wrap(ctx, saveErr, op))
 		}
 	}
