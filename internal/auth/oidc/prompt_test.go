@@ -284,3 +284,47 @@ func TestPrompt_SetTableName(t *testing.T) {
 		})
 	}
 }
+
+func TestPrompt_SupportedPrompt(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		prompt PromptParam
+		want   bool
+	}{
+		{
+			name:   "none-prompt",
+			prompt: None,
+			want:   true,
+		},
+		{
+			name:   "login-prompt",
+			prompt: Login,
+			want:   true,
+		},
+		{
+			name:   "consent-prompt",
+			prompt: Consent,
+			want:   true,
+		},
+		{
+			name:   "select-account-prompt",
+			prompt: SelectAccount,
+			want:   true,
+		},
+		{
+			name:   "invalid-prompt",
+			prompt: "invalid",
+			want:   false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert := assert.New(t)
+			got := SupportedPrompt(tt.prompt)
+			assert.Equal(tt.want, got)
+		})
+	}
+}
