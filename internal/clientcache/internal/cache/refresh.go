@@ -61,7 +61,7 @@ func (r *RefreshService) cleanAndPickAuthTokens(ctx context.Context, u *user) (m
 				_, err := r.repo.tokenReadFromBoundaryFn(ctx, u.Address, at.Token)
 				var apiErr *api.Error
 				switch {
-				case err != nil && api.ErrUnauthorized.Is(err):
+				case err != nil && (api.ErrUnauthorized.Is(err) || api.ErrNotFound.Is(err)):
 					if err := r.repo.deleteKeyringToken(ctx, *kt); err != nil {
 						return nil, errors.Wrap(ctx, err, op)
 					}
@@ -78,7 +78,7 @@ func (r *RefreshService) cleanAndPickAuthTokens(ctx context.Context, u *user) (m
 				_, err := r.repo.tokenReadFromBoundaryFn(ctx, u.Address, at.Token)
 				var apiErr *api.Error
 				switch {
-				case err != nil && api.ErrUnauthorized.Is(err):
+				case err != nil && (api.ErrUnauthorized.Is(err) || api.ErrNotFound.Is(err)):
 					r.repo.idToKeyringlessAuthToken.Delete(t.Id)
 					continue
 				case err != nil && !errors.Is(err, apiErr):
