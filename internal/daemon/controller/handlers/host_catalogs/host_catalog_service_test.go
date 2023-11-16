@@ -28,7 +28,6 @@ import (
 	"github.com/hashicorp/boundary/internal/plugin/loopback"
 	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/hashicorp/boundary/internal/types/scope"
-	"github.com/hashicorp/boundary/internal/types/subtypes"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostcatalogs"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/plugins"
 	scopepb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
@@ -46,7 +45,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var authorizedCollectionActions = map[subtypes.Subtype]map[string]*structpb.ListValue{
+var authorizedCollectionActions = map[globals.Subtype]map[string]*structpb.ListValue{
 	static.Subtype: {
 		"host-sets": {
 			Values: []*structpb.Value{

@@ -9,19 +9,17 @@ import (
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/hashicorp/boundary/internal/types/subtypes"
+	"github.com/hashicorp/boundary/internal/types/resource"
 )
 
 const StorageDomain = "storage"
 
 func init() {
-	if err := subtypes.Register(StorageDomain, Subtype, globals.PluginStorageBucketPrefix); err != nil {
-		panic(err)
-	}
+	globals.RegisterPrefixToResourceInfo(globals.PluginStorageBucketPrefix, resource.StorageBucket, StorageDomain, Subtype)
 }
 
 const (
-	Subtype = subtypes.Subtype("plugin")
+	Subtype = globals.Subtype("plugin")
 )
 
 func newStorageBucketId(ctx context.Context) (string, error) {

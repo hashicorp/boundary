@@ -95,7 +95,7 @@ var (
 		action.List,
 	}
 
-	validateCredentialSourcesFn      = func(context.Context, subtypes.Subtype, []target.CredentialSource) error { return nil }
+	validateCredentialSourcesFn      = func(context.Context, globals.Subtype, []target.CredentialSource) error { return nil }
 	ValidateIngressWorkerFilterFn    = IngressWorkerFilterUnsupported
 	AuthorizeSessionWorkerFilterFn   = AuthorizeSessionWithWorkerFilter
 	PostSessionAuthorizationCallback = DefaultPostSessionAuthorizationCallback
@@ -799,7 +799,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 		var endpoints []*host.Endpoint
 		for _, hSource := range hostSources {
 			hsId := hSource.Id()
-			switch subtypes.SubtypeFromId(hostDomain, hsId) {
+			switch globals.ResourceInfoFromPrefix(hsId).Subtype {
 			case static.Subtype:
 				eps, err := staticHostRepo.Endpoints(ctx, hsId)
 				if err != nil {
@@ -2038,7 +2038,7 @@ func validateAuthorizeSessionRequest(req *pbs.AuthorizeSessionRequest) error {
 		}
 	}
 	if req.GetHostId() != "" {
-		switch subtypes.SubtypeFromId(hostDomain, req.GetHostId()) {
+		switch globals.ResourceInfoFromPrefix(req.GetHostId()).Subtype {
 		case static.Subtype, plugin.Subtype:
 		default:
 			badFields[globals.HostIdField] = "Incorrectly formatted identifier."

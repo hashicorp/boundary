@@ -31,7 +31,6 @@ import (
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
-	"github.com/hashicorp/boundary/internal/types/subtypes"
 	"github.com/hashicorp/boundary/internal/util"
 	"github.com/hashicorp/boundary/internal/util/template"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
@@ -555,7 +554,7 @@ func (v verifier) performAuthCheck(ctx context.Context) (
 		const domain = "auth"
 		var acct auth.Account
 		var err error
-		switch subtypes.SubtypeFromId(domain, *userData.Account.Id) {
+		switch globals.ResourceInfoFromPrefix(*userData.Account.Id).Subtype {
 		case password.Subtype:
 			repo, repoErr := v.passwordAuthRepoFn()
 			if repoErr != nil {

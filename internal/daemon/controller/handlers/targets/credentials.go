@@ -16,7 +16,6 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	serverpb "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/session"
-	"github.com/hashicorp/boundary/internal/types/subtypes"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -137,7 +136,7 @@ func dynamicToSessionCredential(ctx context.Context, cred credential.Dynamic) (*
 			Name:              l.GetName(),
 			Description:       l.GetDescription(),
 			CredentialStoreId: l.GetStoreId(),
-			Type:              subtypes.SubtypeFromId(credentialDomain, l.GetPublicId()).String(),
+			Type:              globals.ResourceInfoFromPrefix(l.GetPublicId()).Subtype.String(),
 			CredentialType:    credType,
 		},
 		Secret: &pb.SessionSecret{

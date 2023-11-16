@@ -142,12 +142,14 @@ type Command struct {
 }
 
 // New returns a new instance of a base.Command type
-func NewCommand(ui cli.Ui) *Command {
+func NewCommand(ui cli.Ui, opt ...Option) *Command {
+	opts := getOpts(opt...)
 	ctx, cancel := context.WithCancel(context.Background())
 	ret := &Command{
 		UI:         ui,
 		ShutdownCh: MakeShutdownCh(),
 		Context:    ctx,
+		FlagId:     opts.withImplicitId,
 	}
 	go func() {
 		<-ret.ShutdownCh

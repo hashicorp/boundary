@@ -10,26 +10,21 @@ import (
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/hashicorp/boundary/internal/types/subtypes"
+	"github.com/hashicorp/boundary/internal/types/resource"
 )
 
 func init() {
-	if err := subtypes.Register(credential.Domain, Subtype, globals.VaultCredentialStorePrefix, globals.VaultDynamicCredentialPrefix); err != nil {
-		panic(err)
-	}
-	if err := subtypes.Register(credential.Domain, GenericLibrarySubtype, globals.VaultCredentialLibraryPrefix); err != nil {
-		panic(err)
-	}
-	if err := subtypes.Register(credential.Domain, SSHCertificateLibrarySubtype, globals.VaultSshCertificateCredentialLibraryPrefix); err != nil {
-		panic(err)
-	}
+	globals.RegisterPrefixToResourceInfo(globals.VaultCredentialStorePrefix, resource.CredentialStore, credential.Domain, Subtype)
+	globals.RegisterPrefixToResourceInfo(globals.VaultDynamicCredentialPrefix, resource.Credential, credential.Domain, Subtype)
+	globals.RegisterPrefixToResourceInfo(globals.VaultCredentialLibraryPrefix, resource.CredentialLibrary, credential.Domain, GenericLibrarySubtype)
+	globals.RegisterPrefixToResourceInfo(globals.VaultSshCertificateCredentialLibraryPrefix, resource.CredentialLibrary, credential.Domain, SSHCertificateLibrarySubtype)
 }
 
 // PublicId prefixes for the resources in the vault package.
 const (
-	Subtype                      = subtypes.Subtype("vault")
-	GenericLibrarySubtype        = subtypes.Subtype("vault-generic")
-	SSHCertificateLibrarySubtype = subtypes.Subtype("vault-ssh-certificate")
+	Subtype                      = globals.Subtype("vault")
+	GenericLibrarySubtype        = globals.Subtype("vault-generic")
+	SSHCertificateLibrarySubtype = globals.Subtype("vault-ssh-certificate")
 )
 
 func newCredentialStoreId(ctx context.Context) (string, error) {
