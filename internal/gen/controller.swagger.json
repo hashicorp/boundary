@@ -42,6 +42,9 @@
       "name": "controller.api.services.v1.ManagedGroupService"
     },
     {
+      "name": "controller.api.services.v1.PolicyService"
+    },
+    {
       "name": "controller.api.services.v1.RoleService"
     },
     {
@@ -2240,6 +2243,153 @@
         ],
         "tags": [
           "controller.api.services.v1.ManagedGroupService"
+        ]
+      }
+    },
+    "/v1/policies": {
+      "get": {
+        "summary": "Lists all policies.",
+        "operationId": "PolicyService_ListPolicies",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.ListPoliciesResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "scope_id",
+            "description": "",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "recursive",
+            "description": "",
+            "in": "query",
+            "required": false,
+            "type": "boolean"
+          },
+          {
+            "name": "filter",
+            "description": "",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.PolicyService"
+        ]
+      },
+      "post": {
+        "summary": "Creates a single policy.",
+        "operationId": "PolicyService_CreatePolicy",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.policies.v1.Policy"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "item",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.policies.v1.Policy"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.PolicyService"
+        ]
+      }
+    },
+    "/v1/policies/{id}": {
+      "get": {
+        "summary": "Gets a single policy with the given id.",
+        "operationId": "PolicyService_GetPolicy",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.policies.v1.Policy"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "description": "",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.PolicyService"
+        ]
+      },
+      "delete": {
+        "summary": "Deletes an existing policy.",
+        "operationId": "PolicyService_DeletePolicy",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.DeletePolicyResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "description": "",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.PolicyService"
+        ]
+      },
+      "patch": {
+        "summary": "Updates an existing policy.",
+        "operationId": "PolicyService_UpdatePolicy",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.policies.v1.Policy"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "description": "",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "item",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.policies.v1.Policy"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.PolicyService"
         ]
       }
     },
@@ -5469,6 +5619,65 @@
         }
       }
     },
+    "controller.api.resources.policies.v1.Policy": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Output only. The id of the storage policy.",
+          "readOnly": true
+        },
+        "scope_id": {
+          "type": "string",
+          "description": "The scope id of this policy. This must be defined for policy creation, but\nis otherwise output only."
+        },
+        "scope": {
+          "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
+          "description": "Output only. Scope information for this resource.",
+          "readOnly": true
+        },
+        "name": {
+          "type": "string",
+          "description": "Optional name for identification purposes."
+        },
+        "description": {
+          "type": "string",
+          "description": "Optional user-set description for identification purposes."
+        },
+        "created_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Output only. The time this resource was created.",
+          "readOnly": true
+        },
+        "updated_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Output only. The time this resource was last updated.",
+          "readOnly": true
+        },
+        "type": {
+          "type": "string",
+          "description": "The policy's type."
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Version is used in mutation requests, after the initial creation, to ensure\nthis resource has not changed. The mutation will fail if the version does\nnot match the latest known good version."
+        },
+        "attributes": {
+          "type": "object"
+        },
+        "authorized_actions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Output only. The available actions on this resource for this user.",
+          "readOnly": true
+        }
+      }
+    },
     "controller.api.resources.roles.v1.Grant": {
       "type": "object",
       "properties": {
@@ -7431,6 +7640,18 @@
         }
       }
     },
+    "controller.api.services.v1.CreatePolicyResponse": {
+      "type": "object",
+      "properties": {
+        "uri": {
+          "type": "string",
+          "title": ""
+        },
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.policies.v1.Policy"
+        }
+      }
+    },
     "controller.api.services.v1.CreateRoleResponse": {
       "type": "object",
       "properties": {
@@ -7533,6 +7754,9 @@
       "type": "object"
     },
     "controller.api.services.v1.DeleteManagedGroupResponse": {
+      "type": "object"
+    },
+    "controller.api.services.v1.DeletePolicyResponse": {
       "type": "object"
     },
     "controller.api.services.v1.DeleteRoleResponse": {
@@ -7660,6 +7884,14 @@
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.managedgroups.v1.ManagedGroup"
+        }
+      }
+    },
+    "controller.api.services.v1.GetPolicyResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.policies.v1.Policy"
         }
       }
     },
@@ -8193,6 +8425,18 @@
           "type": "integer",
           "format": "int64",
           "description": "An estimate at the total items available. This may change during pagination."
+        }
+      }
+    },
+    "controller.api.services.v1.ListPoliciesResponse": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/controller.api.resources.policies.v1.Policy"
+          }
         }
       }
     },
@@ -8736,6 +8980,14 @@
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.managedgroups.v1.ManagedGroup"
+        }
+      }
+    },
+    "controller.api.services.v1.UpdatePolicyResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.policies.v1.Policy"
         }
       }
     },

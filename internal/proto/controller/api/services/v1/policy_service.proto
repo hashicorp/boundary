@@ -1,0 +1,114 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
+syntax = "proto3";
+
+package controller.api.services.v1;
+
+import "controller/api/resources/policies/v1/policy.proto";
+import "controller/custom_options/v1/options.proto";
+import "google/api/annotations.proto";
+import "google/protobuf/field_mask.proto";
+import "protoc-gen-openapiv2/options/annotations.proto";
+
+option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/services;services";
+option (custom_options.v1.domain) = "policy";
+
+service PolicyService {
+  // GetPolicy returns a policy with the given id, if it exists. The request
+  // must include a policy id. An error is returned if the id is missing,
+  // malformed, or if a policy with the provided id doesn't exist.
+  rpc GetPolicy(GetPolicyRequest) returns (GetPolicyResponse) {
+    option (google.api.http) = {
+      get: "/v1/policies/{id}"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Gets a single policy with the given id."};
+  }
+
+  // ListPolicies returns a list of stored policies in Boundary which exist
+  // inside the scope referenced in the request. The request must include the
+  // scope id for the policies being retrieved. An error is returned if the
+  // scope id is missing, malformed, or references a non existing scope.
+  rpc ListPolicies(ListPoliciesRequest) returns (ListPoliciesResponse) {
+    option (google.api.http) = {get: "/v1/policies"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Lists all policies."};
+  }
+
+  // CreatePolicy creates and stores a new policy in Boundary. The provided
+  // request must include the scope id in which the policy will be created. An
+  // error is returned if the scope id is missing, malformed or references a non
+  // existing scope.
+  rpc CreatePolicy(CreatePolicyRequest) returns (CreatePolicyResponse) {
+    option (google.api.http) = {
+      post: "/v1/policies"
+      body: "item"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Creates a single policy."};
+  }
+
+  // UpdatePolicy updates an existing policy in Boundary. The provided policy
+  // must not have any read-only fields set. The update mask must be included in
+  // the request and contain at least one mutable field. To unset a field's
+  // value (if unsettable), include it in the update mask and don't set it in
+  // the policy object.
+  rpc UpdatePolicy(UpdatePolicyRequest) returns (UpdatePolicyResponse) {
+    option (google.api.http) = {
+      patch: "/v1/policies/{id}"
+      body: "item"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Updates an existing policy."};
+  }
+
+  // DeletePolicy deletes a policy from Boundary. An error is returned if the
+  // policy id is malformed or not provided.
+  rpc DeletePolicy(DeletePolicyRequest) returns (DeletePolicyResponse) {
+    option (google.api.http) = {delete: "/v1/policies/{id}"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Deletes an existing policy."};
+  }
+}
+
+message GetPolicyRequest {
+  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
+}
+
+message GetPolicyResponse {
+  api.resources.policies.v1.Policy item = 1;
+}
+
+message ListPoliciesRequest {
+  string scope_id = 1; // @gotags: `class:"public" eventstream:"observation"`
+  bool recursive = 2 [json_name = "recursive"]; // @gotags: `class:"public" eventstream:"observation"`
+  string filter = 3 [json_name = "filter"]; // @gotags: `class:"public"`
+}
+
+message ListPoliciesResponse {
+  repeated api.resources.policies.v1.Policy items = 1;
+}
+
+message CreatePolicyRequest {
+  api.resources.policies.v1.Policy item = 1;
+}
+
+message CreatePolicyResponse {
+  string uri = 1; // @gotags: `class:"public" eventstream:"observation"`
+  api.resources.policies.v1.Policy item = 2;
+}
+
+message UpdatePolicyRequest {
+  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
+  api.resources.policies.v1.Policy item = 2;
+  google.protobuf.FieldMask update_mask = 3 [json_name = "update_mask"];
+}
+
+message UpdatePolicyResponse {
+  api.resources.policies.v1.Policy item = 1;
+}
+
+message DeletePolicyRequest {
+  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
+}
+
+message DeletePolicyResponse {}

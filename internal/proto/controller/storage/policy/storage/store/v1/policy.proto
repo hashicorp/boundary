@@ -24,20 +24,32 @@ message Policy {
   // retain_for_days is the number of days for which a session recording will be
   // retained. Must be provided.
   // @inject_tag: `gorm:"not_null"`
-  int64 retain_for_days = 3;
+  int64 retain_for_days = 3 [(custom_options.v1.mask_mapping) = {
+    this: "RetainForDays"
+    that: "attributes.retain_for.days"
+  }];
 
   // retain_for_days_overridable signals whether this storage policy's retention
   // duration can be overridden.
-  bool retain_for_days_overridable = 4;
+  bool retain_for_days_overridable = 4 [(custom_options.v1.mask_mapping) = {
+    this: "RetainForDaysOverridable"
+    that: "attributes.retain_for.overridable"
+  }];
 
   // delete_after_days is the number of days after which a session recording
   // will be automatically deleted.
   // @inject_tag: `gorm:"not_null"`
-  int64 delete_after_days = 5;
+  int64 delete_after_days = 5 [(custom_options.v1.mask_mapping) = {
+    this: "DeleteAfterDays"
+    that: "attributes.delete_after.days"
+  }];
 
   // delete_after_days_overridable signals whether this storage policy's
   // deletion policy can be overridden.
-  bool delete_after_days_overridable = 6;
+  bool delete_after_days_overridable = 6 [(custom_options.v1.mask_mapping) = {
+    this: "DeleteAfterDaysOverridable"
+    that: "attributes.delete_after.overridable"
+  }];
 
   // name is optional.
   // @inject_tag: `gorm:"default:null"`
