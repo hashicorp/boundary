@@ -106,11 +106,17 @@ func TestCleanAndPickTokens(t *testing.T) {
 
 	boundaryAuthTokens := []*authtokens.AuthToken{at1a, keyringAuthToken1, at1b, keyringAuthToken2}
 	unauthorizedAuthTokens := []*authtokens.AuthToken{}
+	notFoundAuthTokens := []*authtokens.AuthToken{}
 	randomErrorAuthTokens := []*authtokens.AuthToken{}
 	fakeBoundaryLookupFn := func(ctx context.Context, addr, at string) (*authtokens.AuthToken, error) {
 		for _, v := range randomErrorAuthTokens {
 			if at == v.Token {
 				return nil, errors.New("test error")
+			}
+		}
+		for _, v := range notFoundAuthTokens {
+			if at == v.Token {
+				return nil, api.ErrNotFound
 			}
 		}
 		for _, v := range unauthorizedAuthTokens {
@@ -183,6 +189,24 @@ func TestCleanAndPickTokens(t *testing.T) {
 		})
 
 		unauthorizedAuthTokens = []*authtokens.AuthToken{at1b}
+		got, err = rs.cleanAndPickAuthTokens(ctx, u1)
+		assert.NoError(t, err)
+		assert.ElementsMatch(t, maps.Values(got), []string{at1a.Token})
+	})
+
+	t.Run("boundary in memory auth token not found", func(t *testing.T) {
+		require.NoError(t, r.AddRawToken(ctx, boundaryAddr, at1a.Token))
+		require.NoError(t, r.AddRawToken(ctx, boundaryAddr, at1b.Token))
+
+		got, err := rs.cleanAndPickAuthTokens(ctx, u1)
+		assert.NoError(t, err)
+		assert.ElementsMatch(t, maps.Values(got), []string{at1a.Token, at1b.Token})
+
+		t.Cleanup(func() {
+			notFoundAuthTokens = nil
+		})
+
+		notFoundAuthTokens = []*authtokens.AuthToken{at1b}
 		got, err = rs.cleanAndPickAuthTokens(ctx, u1)
 		assert.NoError(t, err)
 		assert.ElementsMatch(t, maps.Values(got), []string{at1a.Token})
