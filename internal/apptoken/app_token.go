@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/boundary/internal/apptoken/store"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/oplog"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -77,4 +78,26 @@ func (at *AppToken) TableName() string {
 // SetTableName sets the table name.
 func (at *AppToken) SetTableName(n string) {
 	at.tableName = n
+}
+
+// oplog will create oplog metadata for the AppToken.
+func (at *AppToken) oplog(ctx context.Context, opType oplog.OpType) (oplog.Metadata, error) {
+	const op = "ldap.(Account).oplog"
+	switch {
+	case at == nil:
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing account")
+	case opType == oplog.OpType_OP_TYPE_UNSPECIFIED:
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing op type")
+	case at.PublicId == "":
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing public id")
+	case at.ScopeId == "":
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
+	}
+	metadata := oplog.Metadata{
+		"resource-public-id": []string{at.PublicId},
+		"resource-type":      []string{"app token"},
+		"op-type":            []string{opType.String()},
+		"scope-id":           []string{at.ScopeId},
+	}
+	return metadata, nil
 }

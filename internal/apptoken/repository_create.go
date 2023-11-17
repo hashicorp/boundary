@@ -75,6 +75,11 @@ func (r *Repository) CreateAppToken(ctx context.Context, scopeId string, expTime
 		return nil, nil, errors.Wrap(ctx, err, op)
 	}
 
+	appTokenMetadata, err := appT.oplog(ctx, oplog.OpType_OP_TYPE_CREATE)
+	if err != nil {
+		return nil, nil, errors.Wrap(ctx, err, op)
+	}
+
 	var retAppToken *AppToken
 	var retAppTokenGrants []*AppTokenGrant
 	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(r db.Reader, w db.Writer) error {
@@ -102,7 +107,7 @@ func (r *Repository) CreateAppToken(ctx context.Context, scopeId string, expTime
 			return err
 		}
 		msgs = append(msgs, appTokenGrantOpLogMsgs...)
-		if err := w.WriteOplogEntryWith(ctx, opLogWrapper, ticket, oplog.Metadata{}, msgs); err != nil {
+		if err := w.WriteOplogEntryWith(ctx, opLogWrapper, ticket, appTokenMetadata, msgs); err != nil {
 			return err
 		}
 
