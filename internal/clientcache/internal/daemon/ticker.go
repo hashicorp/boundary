@@ -15,8 +15,12 @@ import (
 )
 
 const (
+	// DefaultRefreshInterval is the default interval that resources that come
+	// from controllers that do support refresh tokens are retrieved and
+	// refreshed.
 	DefaultRefreshInterval = 60 * time.Second
-
+	// DefaultFullFetchInterval is the default interval that resources that come
+	// from controllers that do not support refresh tokens are fetched.
 	DefaultFullFetchInterval = 60 * 5 * time.Second
 
 	defaultRandomizationFactor float64 = 0.2

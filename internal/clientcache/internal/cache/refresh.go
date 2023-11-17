@@ -151,11 +151,14 @@ func (r *RefreshService) refreshableUsers(ctx context.Context, in []*user) ([]*u
 // method returns without any requests to the boundary controller.
 // While the criteria of whether the user will refresh or not is almost the same
 // as the criteria used in Refresh, RefreshForSearch will not refresh any
-// data if there is not at least 1 refresh token stored for the resource. It
+// data if there is not a refresh token stored for the resource. It
 // might make sense to change this in the future, but the reasoning used is
 // that we should not be making an initial load of all resources while blocking
 // a search query, in case we have not yet even attempted to load the resources
 // for this user yet.
+// Note: Currently, if the context timesout we stop refreshing completely and
+// return to the caller.  A possible enhancement in the future would be to return
+// when the context is Done, but allow the refresh to proceed in the background.
 func (r *RefreshService) RefreshForSearch(ctx context.Context, authTokenid string, resourceType SearchableResource, opt ...Option) error {
 	const op = "cache.(RefreshService).RefreshForSearch"
 	if r.maxSearchRefreshTimeout > 0 {
@@ -218,6 +221,8 @@ func (r *RefreshService) RefreshForSearch(ctx context.Context, authTokenid strin
 				return errors.Wrap(ctx, err, op)
 			}
 		}
+	default:
+		return errors.New(ctx, errors.InvalidParameter, op, "unrecognized resource type")
 	}
 
 	return nil
