@@ -102,3 +102,7 @@ func (tpc *WrappingPluginStorageClient) GetObject(ctx context.Context, req *plgp
 func (tpc *WrappingPluginStorageClient) PutObject(ctx context.Context, req *plgpb.PutObjectRequest, opts ...grpc.CallOption) (*plgpb.PutObjectResponse, error) {
 	return tpc.Server.PutObject(ctx, req)
 }
+
+func (tpc *WrappingPluginStorageClient) DeleteObjects(ctx context.Context, req *plgpb.DeleteObjectsRequest, opts ...grpc.CallOption) (*plgpb.DeleteObjectsResponse, error) {
+	return tpc.Server.DeleteObjects(ctx, req)
+}

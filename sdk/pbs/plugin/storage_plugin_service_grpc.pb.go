@@ -54,6 +54,9 @@ type StoragePluginServiceClient interface {
 	// PutObject is a hook that reads a file stored on local disk and
 	// stores it to an external object store.
 	PutObject(ctx context.Context, in *PutObjectRequest, opts ...grpc.CallOption) (*PutObjectResponse, error)
+	// DeleteObjects is a hook that deletes one or many files in an external object store
+	// via a provided key prefix.
+	DeleteObjects(ctx context.Context, in *DeleteObjectsRequest, opts ...grpc.CallOption) (*DeleteObjectsResponse, error)
 }
 
 type storagePluginServiceClient struct {
@@ -150,6 +153,15 @@ func (c *storagePluginServiceClient) PutObject(ctx context.Context, in *PutObjec
 	return out, nil
 }
 
+func (c *storagePluginServiceClient) DeleteObjects(ctx context.Context, in *DeleteObjectsRequest, opts ...grpc.CallOption) (*DeleteObjectsResponse, error) {
+	out := new(DeleteObjectsResponse)
+	err := c.cc.Invoke(ctx, "/plugin.v1.StoragePluginService/DeleteObjects", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // StoragePluginServiceServer is the server API for StoragePluginService service.
 // All implementations must embed UnimplementedStoragePluginServiceServer
 // for forward compatibility
@@ -173,6 +185,9 @@ type StoragePluginServiceServer interface {
 	// PutObject is a hook that reads a file stored on local disk and
 	// stores it to an external object store.
 	PutObject(context.Context, *PutObjectRequest) (*PutObjectResponse, error)
+	// DeleteObjects is a hook that deletes one or many files in an external object store
+	// via a provided key prefix.
+	DeleteObjects(context.Context, *DeleteObjectsRequest) (*DeleteObjectsResponse, error)
 	mustEmbedUnimplementedStoragePluginServiceServer()
 }
 
@@ -200,6 +215,9 @@ func (UnimplementedStoragePluginServiceServer) GetObject(*GetObjectRequest, Stor
 }
 func (UnimplementedStoragePluginServiceServer) PutObject(context.Context, *PutObjectRequest) (*PutObjectResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method PutObject not implemented")
+}
+func (UnimplementedStoragePluginServiceServer) DeleteObjects(context.Context, *DeleteObjectsRequest) (*DeleteObjectsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteObjects not implemented")
 }
 func (UnimplementedStoragePluginServiceServer) mustEmbedUnimplementedStoragePluginServiceServer() {}
 
@@ -343,6 +361,24 @@ func _StoragePluginService_PutObject_Handler(srv interface{}, ctx context.Contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _StoragePluginService_DeleteObjects_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteObjectsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(StoragePluginServiceServer).DeleteObjects(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/plugin.v1.StoragePluginService/DeleteObjects",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(StoragePluginServiceServer).DeleteObjects(ctx, req.(*DeleteObjectsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // StoragePluginService_ServiceDesc is the grpc.ServiceDesc for StoragePluginService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -373,6 +409,10 @@ var StoragePluginService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "PutObject",
 			Handler:    _StoragePluginService_PutObject_Handler,
+		},
+		{
+			MethodName: "DeleteObjects",
+			Handler:    _StoragePluginService_DeleteObjects_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

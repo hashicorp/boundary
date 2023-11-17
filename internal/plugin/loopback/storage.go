@@ -10,6 +10,7 @@ import (
 	"io"
 	"os"
 	"path"
+	"strings"
 	"sync"
 	"time"
 
@@ -32,6 +33,7 @@ type TestPluginStorageServer struct {
 	HeadObjectFn            func(context.Context, *plgpb.HeadObjectRequest) (*plgpb.HeadObjectResponse, error)
 	GetObjectFn             func(*plgpb.GetObjectRequest, plgpb.StoragePluginService_GetObjectServer) error
 	PutObjectFn             func(context.Context, *plgpb.PutObjectRequest) (*plgpb.PutObjectResponse, error)
+	DeleteObjectsFn         func(context.Context, *plgpb.DeleteObjectsRequest) (*plgpb.DeleteObjectsResponse, error)
 	plgpb.UnimplementedStoragePluginServiceServer
 }
 
@@ -82,6 +84,13 @@ func (t TestPluginStorageServer) PutObject(ctx context.Context, req *plgpb.PutOb
 		return t.UnimplementedStoragePluginServiceServer.PutObject(ctx, req)
 	}
 	return t.PutObjectFn(ctx, req)
+}
+
+func (t TestPluginStorageServer) DeleteObjects(ctx context.Context, req *plgpb.DeleteObjectsRequest) (*plgpb.DeleteObjectsResponse, error) {
+	if t.DeleteObjectsFn == nil {
+		return t.UnimplementedStoragePluginServiceServer.DeleteObjects(ctx, req)
+	}
+	return t.DeleteObjectsFn(ctx, req)
 }
 
 type (
@@ -403,6 +412,52 @@ func (l *LoopbackStorage) putObject(ctx context.Context, req *plgpb.PutObjectReq
 
 	return &plgpb.PutObjectResponse{
 		ChecksumSha_256: hash.Sum(nil),
+	}, nil
+}
+
+func (l *LoopbackStorage) deleteObjects(ctx context.Context, req *plgpb.DeleteObjectsRequest) (*plgpb.DeleteObjectsResponse, error) {
+	const op = "loopback.(LoopbackStorage).deleteObjects"
+	if req == nil {
+		return nil, status.Errorf(codes.InvalidArgument, "%s: request is nil", op)
+	}
+	if req.GetBucket() == nil {
+		return nil, status.Errorf(codes.InvalidArgument, "%s: missing storage bucket", op)
+	}
+	if req.GetBucket().GetAttributes() == nil {
+		return nil, status.Errorf(codes.InvalidArgument, "%s: missing attributes", op)
+	}
+	if req.GetKeyPrefix() == "" {
+		return nil, status.Errorf(codes.InvalidArgument, "%s; missing key prefix", op)
+	}
+	l.m.Lock()
+	defer l.m.Unlock()
+	bucket, ok := l.buckets[BucketName(req.GetBucket().GetBucketName())]
+	if !ok {
+		return nil, status.Errorf(codes.NotFound, "%s: bucket not found", op)
+	}
+	for _, err := range l.errs {
+		if err.match(req.GetBucket(), req.GetKeyPrefix(), DeleteObjects) {
+			return nil, status.Errorf(err.ErrCode, "%s: %s", op, err.ErrMsg)
+		}
+	}
+	prefix := ObjectName(req.GetBucket().GetBucketPrefix() + req.GetKeyPrefix())
+	var deleted uint32 = 0
+	if req.GetRecursive() {
+		for key := range bucket {
+			if strings.HasPrefix(string(key), string(prefix)) {
+				delete(bucket, key)
+				deleted++
+			}
+		}
+	} else {
+		_, ok := bucket[prefix]
+		if ok {
+			delete(bucket, prefix)
+			deleted++
+		}
+	}
+	return &plgpb.DeleteObjectsResponse{
+		ObjectsDeleted: deleted,
 	}, nil
 }
 
