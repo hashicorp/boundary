@@ -60,3 +60,27 @@ func NewRepository(ctx context.Context, r db.Reader, w db.Writer, kms *kms.Kms, 
 		defaultLimit: opts.withLimit,
 	}, nil
 }
+
+type userHistory struct {
+	PublicId  string
+	HistoryId string
+}
+
+func (userHistory) TableName() string {
+	return "iam_user_hst"
+}
+
+// ResolveUserHistoryId will lookup the userId and return its user history id
+func (r *Repository) ResolveUserHistoryId(ctx context.Context, userId string) (string, error) {
+	const op = "apptoken.(Repository).ResolveUserHistoryId"
+
+	switch {
+	case userId == "":
+		return "", errors.New(ctx, errors.InvalidParameter, op, "missing user id")
+	}
+	var hst userHistory
+	if err := r.reader.LookupWhere(ctx, &hst, "public_id = ?", []any{userId}, db.WithOrder("DESC valid_range")); err != nil {
+		return "", errors.Wrap(ctx, err, op)
+	}
+	return hst.HistoryId, nil
+}
