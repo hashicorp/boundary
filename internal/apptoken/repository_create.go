@@ -14,12 +14,6 @@ import (
 	"github.com/hashicorp/boundary/internal/perms"
 )
 
-// ValidateAppTokenGrants will ensure that the apptokens grants don't exceed the
-// grants of the user
-func ValidateAppTokenGrants(ctx context.Context, gf grantFinder, createdByUserId string, appTokenGrants []string) error {
-	panic("todo")
-}
-
 // CreateAppToken will create an apptoken in the repository and return the written apptoken
 // Takes in grant string.  Options supported: WithName, WithDescription
 func (r *Repository) CreateAppToken(ctx context.Context, scopeId string, expTime time.Time, createdByUserId string, grantsStr []string, opt ...Option) (*AppToken, []*AppTokenGrant, error) {
@@ -82,34 +76,45 @@ func (r *Repository) CreateAppToken(ctx context.Context, scopeId string, expTime
 	}
 
 	var retAppToken *AppToken
-	retAppTokenGrants := make([]*AppTokenGrant, 0, len(grantsStr))
+	var retAppTokenGrants []*AppTokenGrant
 	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(r db.Reader, w db.Writer) error {
 		//TODO: Add ticket type for AppTOken in SQL
 		ticket, err := w.GetTicket(ctx, appT)
 		if err != nil {
-			return errors.Wrap(ctx, err, op)
+			return err
 		}
+		var msgs []*oplog.Message
 		var appTokenOpLogMsg oplog.Message
 
 		retAppToken = appT.clone()
 		if err := w.Create(ctx, retAppToken, db.NewOplogMsg(&appTokenOpLogMsg)); err != nil {
-			return errors.Wrap(ctx, err, op)
+			return err
+		}
+		msgs = append(msgs, &appTokenOpLogMsg)
+
+		var tg []any
+		for _, g := range appTokenGrants {
+			tg = append(tg, g.clone())
 		}
 
-		var msgs []*oplog.Message
-		if err := w.CreateItems(ctx, retAppToken, db.NewOplogMsg(&appTokenOpLogMsg)); err != nil {
-			return errors.Wrap(ctx, err, op)
+		var appTokenGrantOpLogMsgs []*oplog.Message
+		if err := w.CreateItems(ctx, tg, db.NewOplogMsgs(&appTokenGrantOpLogMsgs)); err != nil {
+			return err
+		}
+		msgs = append(msgs, appTokenGrantOpLogMsgs...)
+		if err := w.WriteOplogEntryWith(ctx, opLogWrapper, ticket, oplog.Metadata{}, msgs); err != nil {
+			return err
 		}
 
-		if err := w.WriteOplogEntryWith(ctx, opLogWrapper, ticket, oplog.Metadata{}, append(msgs, &appTokenOpLogMsg)); err != nil {
-			return errors.Wrap(ctx, err, op)
+		retAppTokenGrants = make([]*AppTokenGrant, 0, len(tg))
+		for _, g := range tg {
+			retAppTokenGrants = append(retAppTokenGrants, g.(*AppTokenGrant))
 		}
-
 		return nil
 	})
 	if err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op)
 	}
 
-	return appT, appTokenGrants, nil
+	return retAppToken, retAppTokenGrants, nil
 }
