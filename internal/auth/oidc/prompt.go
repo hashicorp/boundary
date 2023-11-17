@@ -9,6 +9,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/auth/oidc/store"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/cap/oidc"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -29,6 +30,12 @@ var supportedPrompts = map[PromptParam]bool{
 	Login:         true,
 	Consent:       true,
 	SelectAccount: true,
+}
+
+// SupportedPrompt returns true if the provided prompt is supported
+// by boundary.
+func SupportedPrompt(p PromptParam) bool {
+	return supportedPrompts[p]
 }
 
 // defaultPromptTableName defines the default table name for a Prompt
@@ -69,6 +76,16 @@ func (s *Prompt) validate(ctx context.Context, caller errors.Op) error {
 		return errors.New(ctx, errors.InvalidParameter, caller, fmt.Sprintf("unsupported prompt: %s", s.Prompt))
 	}
 	return nil
+}
+
+func convertToOIDCPrompts(ctx context.Context, p []string) []oidc.Prompt {
+	prompts := make([]oidc.Prompt, 0, len(p))
+	for _, a := range p {
+		prompt := oidc.Prompt(a)
+		prompts = append(prompts, prompt)
+	}
+
+	return prompts
 }
 
 // AllocPrompt makes an empty one in memory
