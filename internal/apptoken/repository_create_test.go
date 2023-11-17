@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/boundary/internal/apptoken"
 	"github.com/hashicorp/boundary/internal/apptoken/store"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
@@ -33,6 +34,8 @@ func Test_CreateAppToken(t *testing.T) {
 	testUserHistoryId, err := testRepo.ResolveUserHistoryId(testCtx, testUser.GetPublicId())
 	require.NoError(t, err)
 
+	testExp := time.Now().Add(10 * time.Minute)
+
 	tests := []struct {
 		name            string
 		scopeId         string
@@ -46,9 +49,9 @@ func Test_CreateAppToken(t *testing.T) {
 		wantErrMatch    *errors.Template
 	}{
 		{
-			name:      "success",
+			name:      "success-with-options",
 			scopeId:   testOrg.GetPublicId(),
-			expTime:   time.Now().Add(10 * time.Minute),
+			expTime:   testExp,
 			createdBy: testUserHistoryId,
 			grants: []string{
 				"id=*;type=*;actions=read",
@@ -58,7 +61,13 @@ func Test_CreateAppToken(t *testing.T) {
 				apptoken.WithDescription(testCtx, "test-description"),
 			},
 			wantToken: &apptoken.AppToken{
-				AppToken: &store.AppToken{},
+				AppToken: &store.AppToken{
+					CreatedBy:      testUserHistoryId,
+					ExpirationTime: timestamp.New(testExp.Truncate(time.Second)),
+					Name:           "test-apptoken",
+					Description:    "test-description",
+					ScopeId:        testOrg.GetPublicId(),
+				},
 			},
 			wantGrants: []*apptoken.AppTokenGrant{
 				{
@@ -82,10 +91,14 @@ func Test_CreateAppToken(t *testing.T) {
 			}
 			require.NoErrorf(err, "unexpected error")
 			require.NotEmptyf(gotToken, "we expected an app token")
+
 			// set fields which are set by the db
-			tc.wantToken.AppToken.CreateTime = gotToken.CreateTime
+			tc.wantToken.CreateTime = gotToken.GetCreateTime()
+			tc.wantToken.PublicId = gotToken.GetPublicId()
+
 			assert.Empty(cmp.Diff(gotToken.AppToken, tc.wantToken.AppToken, protocmp.Transform()))
 			assert.Len(gotGrants, len(tc.wantGrants))
+
 			// TODO: sort grants and cmp.Diff each one
 		})
 	}
