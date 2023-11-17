@@ -33,7 +33,7 @@ func defaultSessionFunc(ctx context.Context, addr, authTok string, refreshTok Re
 		return nil, nil, "", errors.Wrap(ctx, err, op)
 	}
 	sClient := sessions.NewClient(client)
-	l, err := sClient.List(ctx, "global", sessions.WithRecursive(true), sessions.WithRefreshToken(string(refreshTok)))
+	l, err := sClient.List(ctx, "global", sessions.WithIncludeTerminated(true), sessions.WithRecursive(true), sessions.WithRefreshToken(string(refreshTok)))
 	if err != nil {
 		if api.ErrInvalidRefreshToken.Is(err) {
 			return nil, nil, "", err
@@ -218,14 +218,14 @@ func upsertSessions(ctx context.Context, w db.Writer, u *user, in []*sessions.Se
 			return errors.Wrap(ctx, err, op)
 		}
 		newSession := &Session{
-			UserId:      u.Id,
-			Id:          s.Id,
-			Type:        s.Type,
-			Status:      s.Status,
-			Endpoint:    s.Endpoint,
-			ScopeId:     s.ScopeId,
-			TargetId:    s.TargetId,
-			Item:        string(item),
+			UserId:   u.Id,
+			Id:       s.Id,
+			Type:     s.Type,
+			Status:   s.Status,
+			Endpoint: s.Endpoint,
+			ScopeId:  s.ScopeId,
+			TargetId: s.TargetId,
+			Item:     string(item),
 		}
 		onConflict := db.OnConflict{
 			Target: db.Columns{"user_id", "id"},
@@ -312,14 +312,14 @@ func (r *Repository) searchSessions(ctx context.Context, condition string, searc
 }
 
 type Session struct {
-	UserId      string    `gorm:"primaryKey"`
-	Id          string    `gorm:"primaryKey"`
-	Type        string    `gorm:"default:null"`
-	Endpoint    string    `gorm:"default:null"`
-	Status      string    `gorm:"default:null"`
-	ScopeId     string    `gorm:"default:null"`
-	TargetId    string    `gorm:"default:null"`
-	Item        string    `gorm:"default:null"`
+	UserId   string `gorm:"primaryKey"`
+	Id       string `gorm:"primaryKey"`
+	Type     string `gorm:"default:null"`
+	Endpoint string `gorm:"default:null"`
+	Status   string `gorm:"default:null"`
+	ScopeId  string `gorm:"default:null"`
+	TargetId string `gorm:"default:null"`
+	Item     string `gorm:"default:null"`
 }
 
 func (*Session) TableName() string {
