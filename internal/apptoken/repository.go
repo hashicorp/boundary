@@ -8,13 +8,14 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/perms"
 )
 
 // grantFinder defines a single func interface which is implemented by iam.Repository.
 type grantFinder interface {
-	GrantsForUser(ctx context.Context, userId string, _ ...Option) ([]perms.GrantTuple, error)
+	GrantsForUser(ctx context.Context, userId string, opt ...iam.Option) ([]perms.GrantTuple, error)
 }
 
 // Repository is the apptoken database repository
