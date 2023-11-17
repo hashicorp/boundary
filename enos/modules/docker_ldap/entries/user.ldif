@@ -1,0 +1,6 @@
+dn: cn=${user_name},${domain_dn}
+objectClass: inetOrgPerson
+cn: ${user_name}
+sn: ${user_name}
+uid: ${user_name}
+userPassword: ${user_password}
