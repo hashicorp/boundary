@@ -10,17 +10,17 @@ import (
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/hashicorp/boundary/internal/types/subtypes"
+	"github.com/hashicorp/boundary/internal/types/resource"
 )
 
 func init() {
-	if err := subtypes.Register(auth.Domain, Subtype, globals.LdapAuthMethodPrefix, globals.LdapAccountPrefix, globals.LdapManagedGroupPrefix); err != nil {
-		panic(err)
-	}
+	globals.RegisterPrefixToResourceInfo(globals.LdapAuthMethodPrefix, resource.AuthMethod, auth.Domain, Subtype)
+	globals.RegisterPrefixToResourceInfo(globals.LdapAccountPrefix, resource.Account, auth.Domain, Subtype)
+	globals.RegisterPrefixToResourceInfo(globals.LdapManagedGroupPrefix, resource.ManagedGroup, auth.Domain, Subtype)
 }
 
 const (
-	Subtype = subtypes.Subtype("ldap")
+	Subtype = globals.Subtype("ldap")
 )
 
 func newAuthMethodId(ctx context.Context) (string, error) {

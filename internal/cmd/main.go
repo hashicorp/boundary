@@ -8,15 +8,17 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"sort"
+	"strconv"
 	"strings"
 	"text/tabwriter"
 
 	"github.com/fatih/color"
 	"github.com/hashicorp/boundary/api"
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/base"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	colorable "github.com/mattn/go-colorable"
 	"github.com/mitchellh/cli"
 )
@@ -85,10 +87,55 @@ func setupEnv(args []string) (retArgs []string, format string, outputCurlString 
 	return args, format, outputCurlString
 }
 
+func handleHighLevelShortcuts(args []string, runOpts *RunOptions) []string {
+	switch len(args) {
+	case 0, 1:
+		return args
+	}
+
+	switch strings.ToLower(args[0]) {
+	case "read", "update", "delete":
+	default:
+		return args
+	}
+
+	// At this point we know it's something we want to handle in this function
+	info := globals.ResourceInfoFromPrefix(args[1])
+	if info.Type == resource.Unknown {
+		return args
+	}
+
+	newArgs := make([]string, 0, len(args)+5)
+	newArgs = append(newArgs,
+		// Start with the plural of the resource type ("credential-libraries")
+		info.Type.PluralString(),
+		// Add the action to take ("update")
+		args[0],
+	)
+	// If it's update, add the subtype
+	if info.Subtype != globals.UnknownSubtype &&
+		strings.ToLower(args[0]) == "update" {
+		newArgs = append(newArgs,
+			strings.ReplaceAll(info.Subtype.String(), "_", "-"),
+		)
+	}
+
+	// Make sure we override the ID in commands
+	runOpts.ImplicitId = args[1]
+
+	// Now add the rest of the args
+	newArgs = append(newArgs,
+		args[2:]...,
+	)
+
+	return newArgs
+}
+
 type RunOptions struct {
-	Stdout  io.Writer
-	Stderr  io.Writer
-	Address string
+	Stdout     io.Writer
+	Stderr     io.Writer
+	Address    string
+	ImplicitId string
 }
 
 func Run(args []string) int {
@@ -134,7 +181,7 @@ func RunCustom(args []string, runOpts *RunOptions) int {
 
 	uiErrWriter := runOpts.Stderr
 	if outputCurlString {
-		uiErrWriter = ioutil.Discard
+		uiErrWriter = io.Discard
 	}
 
 	ui := &base.BoundaryUI{
@@ -167,6 +214,29 @@ func RunCustom(args []string, runOpts *RunOptions) int {
 	default:
 		ui.Error(fmt.Sprintf("Invalid output format: %s", format))
 		return 1
+	}
+
+	// For autocompletion we need to manage the COMP_LINE var. That means
+	// reading args out of it now and then setting updated args back.
+	compLine := os.Getenv("COMP_LINE")
+	if compLine != "" {
+		point, err := strconv.Atoi(os.Getenv("COMP_POINT"))
+		if err != nil {
+			point = len(compLine)
+		}
+		if point != 0 && point < len(compLine) {
+			compLine = compLine[:point]
+		}
+		args = strings.Split(compLine, " ")
+		args = args[1:] // elide "boundary" since the function below expects it to not be there
+	}
+
+	args = handleHighLevelShortcuts(args, runOpts)
+
+	// Set args back
+	if compLine != "" {
+		// We need to add back "boundary" as well
+		os.Setenv("COMP_LINE", strings.Join(append([]string{"boundary"}, args...), " "))
 	}
 
 	initCommands(ui, serverCmdUi, runOpts)
@@ -222,15 +292,38 @@ func groupedHelpFunc(f cli.HelpFunc) cli.HelpFunc {
 
 		fmt.Fprintf(tw, "Usage: boundary <command> [args]\n")
 
-		otherCommands := make([]string, 0, len(commands))
+		genericCommands := make([]string, 0, 3)
+		clientCommands := make([]string, 0, 6)
+		typeSpecificCommands := make([]string, 0, len(commands)-cap(genericCommands)-cap(clientCommands))
 		for k := range commands {
-			otherCommands = append(otherCommands, k)
+			switch k {
+			case "authenticate", "config", "connect", "dev", "logout", "server":
+				clientCommands = append(clientCommands, k)
+			case "read", "update", "delete":
+				genericCommands = append(genericCommands, k)
+			default:
+				typeSpecificCommands = append(typeSpecificCommands, k)
+			}
 		}
-		sort.Strings(otherCommands)
 
+		sort.Strings(clientCommands)
 		fmt.Fprintf(tw, "\n")
-		fmt.Fprintf(tw, "Commands:\n")
-		for _, v := range otherCommands {
+		fmt.Fprintf(tw, "Local/Client Commands:\n")
+		for _, v := range clientCommands {
+			printCommand(tw, v, commands[v])
+		}
+
+		sort.Strings(genericCommands)
+		fmt.Fprintf(tw, "\n")
+		fmt.Fprintf(tw, "Generic Commands:\n")
+		for _, v := range genericCommands {
+			printCommand(tw, v, commands[v])
+		}
+
+		sort.Strings(typeSpecificCommands)
+		fmt.Fprintf(tw, "\n")
+		fmt.Fprintf(tw, "Type-Specific Commands:\n")
+		for _, v := range typeSpecificCommands {
 			printCommand(tw, v, commands[v])
 		}
 

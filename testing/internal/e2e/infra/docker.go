@@ -34,7 +34,7 @@ func StartBoundaryDatabase(t testing.TB, pool *dockertest.Pool, network *dockert
 	require.NoError(t, err)
 
 	err = pool.Client.PullImage(docker.PullImageOptions{
-		Repository: repository,
+		Repository: fmt.Sprintf("%s/%s", c.DockerMirror, repository),
 		Tag:        tag,
 	}, docker.AuthConfiguration{})
 	require.NoError(t, err)
@@ -92,7 +92,7 @@ func InitBoundaryDatabase(t testing.TB, pool *dockertest.Pool, network *dockerte
 	require.NoError(t, err)
 
 	err = pool.Client.PullImage(docker.PullImageOptions{
-		Repository: repository,
+		Repository: fmt.Sprintf("%s/%s", c.DockerMirror, repository),
 		Tag:        tag,
 	}, docker.AuthConfiguration{})
 	require.NoError(t, err)

@@ -36,7 +36,7 @@ var (
 
 	// IdActions contains the set of actions that can be performed on
 	// individual resources
-	idActionsTypeMap = map[subtypes.Subtype]action.ActionSet{
+	idActionsTypeMap = map[globals.Subtype]action.ActionSet{
 		static.Subtype: {
 			action.NoOp,
 			action.Read,
@@ -121,7 +121,7 @@ func (s Service) ListHosts(ctx context.Context, req *pbs.ListHostsRequest) (*pbs
 	}
 	for _, item := range hl {
 		res.Id = item.GetPublicId()
-		idActions := idActionsTypeMap[subtypes.SubtypeFromId(domain, res.Id)]
+		idActions := idActionsTypeMap[globals.ResourceInfoFromPrefix(res.Id).Subtype]
 		authorizedActions := authResults.FetchActionSetForId(ctx, item.GetPublicId(), idActions, auth.WithResource(&res)).Strings()
 		if len(authorizedActions) == 0 {
 			continue
@@ -188,7 +188,7 @@ func (s Service) GetHost(ctx context.Context, req *pbs.GetHostRequest) (*pbs.Get
 		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
 	if outputFields.Has(globals.AuthorizedActionsField) {
-		idActions := idActionsTypeMap[subtypes.SubtypeFromId(domain, req.GetId())]
+		idActions := idActionsTypeMap[globals.ResourceInfoFromPrefix(req.GetId()).Subtype]
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, h.GetPublicId(), idActions).Strings()))
 	}
 	outputOpts = append(outputOpts, handlers.WithHostSetIds(h.GetSetIds()))
@@ -227,7 +227,7 @@ func (s Service) CreateHost(ctx context.Context, req *pbs.CreateHostRequest) (*p
 		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
 	if outputFields.Has(globals.AuthorizedActionsField) {
-		idActions := idActionsTypeMap[subtypes.SubtypeFromId(domain, req.GetItem().GetHostCatalogId())]
+		idActions := idActionsTypeMap[globals.ResourceInfoFromPrefix(req.GetItem().GetHostCatalogId()).Subtype]
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, h.GetPublicId(), idActions).Strings()))
 	}
 
@@ -269,7 +269,7 @@ func (s Service) UpdateHost(ctx context.Context, req *pbs.UpdateHostRequest) (*p
 		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
 	if outputFields.Has(globals.AuthorizedActionsField) {
-		idActions := idActionsTypeMap[subtypes.SubtypeFromId(domain, req.GetId())]
+		idActions := idActionsTypeMap[globals.ResourceInfoFromPrefix(req.GetId()).Subtype]
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, h.GetPublicId(), idActions).Strings()))
 	}
 	outputOpts = append(outputOpts, handlers.WithHostSetIds(h.GetSetIds()))
@@ -301,7 +301,7 @@ func (s Service) DeleteHost(ctx context.Context, req *pbs.DeleteHostRequest) (*p
 func (s Service) getFromRepo(ctx context.Context, id string) (host.Host, *plugins.PluginInfo, error) {
 	var h host.Host
 	var plg *plugins.PluginInfo
-	switch subtypes.SubtypeFromId(domain, id) {
+	switch globals.ResourceInfoFromPrefix(id).Subtype {
 	case static.Subtype:
 		repo, err := s.staticRepoFn()
 		if err != nil {
@@ -416,7 +416,7 @@ func (s Service) deleteFromRepo(ctx context.Context, projectId, id string) (bool
 func (s Service) listFromRepo(ctx context.Context, catalogId string) ([]host.Host, *plugins.PluginInfo, error) {
 	var hosts []host.Host
 	var plg *plugins.PluginInfo
-	switch subtypes.SubtypeFromId(domain, catalogId) {
+	switch globals.ResourceInfoFromPrefix(catalogId).Subtype {
 	case static.Subtype:
 		repo, err := s.staticRepoFn()
 		if err != nil {
@@ -465,7 +465,7 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 	case action.List, action.Create:
 		parentId = id
 	default:
-		switch subtypes.SubtypeFromId(domain, id) {
+		switch globals.ResourceInfoFromPrefix(id).Subtype {
 		case static.Subtype:
 			h, err := staticRepo.LookupHost(ctx, id)
 			if err != nil {
@@ -493,7 +493,7 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 	}
 
 	var cat host.Catalog
-	switch subtypes.SubtypeFromId(domain, id) {
+	switch globals.ResourceInfoFromPrefix(id).Subtype {
 	case static.Subtype:
 		stcat, err := staticRepo.LookupCatalog(ctx, parentId)
 		if err != nil {
@@ -619,8 +619,8 @@ func toProto(ctx context.Context, in host.Host, opt ...handlers.Option) (*pb.Hos
 func validateGetRequest(req *pbs.GetHostRequest) error {
 	return handlers.ValidateGetRequest(func() map[string]string {
 		badFields := map[string]string{}
-		ct := subtypes.SubtypeFromId(domain, req.GetId())
-		if ct == subtypes.UnknownSubtype {
+		ct := globals.ResourceInfoFromPrefix(req.GetId()).Subtype
+		if ct == globals.UnknownSubtype {
 			badFields["id"] = "Improperly formatted identifier used."
 		}
 		return badFields
@@ -633,7 +633,7 @@ func validateCreateRequest(req *pbs.CreateHostRequest) error {
 		if !handlers.ValidId(handlers.Id(req.GetItem().GetHostCatalogId()), globals.StaticHostCatalogPrefix) {
 			badFields["host_catalog_id"] = "The field is incorrectly formatted."
 		}
-		switch subtypes.SubtypeFromId(domain, req.GetItem().GetHostCatalogId()) {
+		switch globals.ResourceInfoFromPrefix(req.GetItem().GetHostCatalogId()).Subtype {
 		case static.Subtype:
 			if req.GetItem().GetType() != "" && req.GetItem().GetType() != static.Subtype.String() {
 				badFields[globals.TypeField] = "Doesn't match the parent resource's type."
@@ -675,7 +675,7 @@ func validateCreateRequest(req *pbs.CreateHostRequest) error {
 func validateUpdateRequest(req *pbs.UpdateHostRequest) error {
 	return handlers.ValidateUpdateRequest(req, req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
-		switch subtypes.SubtypeFromId(domain, req.GetId()) {
+		switch globals.ResourceInfoFromPrefix(req.GetId()).Subtype {
 		case static.Subtype:
 			if req.GetItem().GetType() != "" && req.GetItem().GetType() != static.Subtype.String() {
 				badFields[globals.TypeField] = "Cannot modify the resource type."
@@ -715,7 +715,7 @@ func validateUpdateRequest(req *pbs.UpdateHostRequest) error {
 func validateDeleteRequest(req *pbs.DeleteHostRequest) error {
 	return handlers.ValidateDeleteRequest(func() map[string]string {
 		badFields := map[string]string{}
-		switch subtypes.SubtypeFromId(domain, req.GetId()) {
+		switch globals.ResourceInfoFromPrefix(req.GetId()).Subtype {
 		case hostplugin.Subtype:
 			badFields[globals.IdField] = "Cannot manually delete this type of host."
 		}

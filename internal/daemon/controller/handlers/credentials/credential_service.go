@@ -413,7 +413,7 @@ func (s Service) updateInRepo(
 	var dbMasks []string
 	item := proto.Clone(in).(*pb.Credential)
 
-	switch subtypes.SubtypeFromId(domain, id) {
+	switch globals.ResourceInfoFromPrefix(id).Subtype {
 	case credential.UsernamePasswordSubtype:
 		dbMasks = append(dbMasks, upMaskManager.Translate(masks)...)
 		if len(dbMasks) == 0 {
@@ -808,7 +808,7 @@ func validateCreateRequest(req *pbs.CreateCredentialRequest) error {
 func validateUpdateRequest(req *pbs.UpdateCredentialRequest) error {
 	return handlers.ValidateUpdateRequest(req, req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
-		switch subtypes.SubtypeFromId(domain, req.GetId()) {
+		switch globals.ResourceInfoFromPrefix(req.GetId()).Subtype {
 		case credential.UsernamePasswordSubtype:
 			attrs := req.GetItem().GetUsernamePasswordAttributes()
 			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), usernameField) && attrs.GetUsername().GetValue() == "" {
