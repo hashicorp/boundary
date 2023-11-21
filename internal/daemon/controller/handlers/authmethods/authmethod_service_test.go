@@ -142,7 +142,8 @@ func TestGet(t *testing.T) {
 	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), o.GetPublicId(), kms.KeyPurposeDatabase)
 	require.NoError(t, err)
 	oidcam := oidc.TestAuthMethod(t, conn, databaseWrapper, o.GetPublicId(), oidc.InactiveState, "alice_rp", "secret",
-		oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://alice.com")[0]), oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://api.com")[0]))
+		oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://alice.com")[0]), oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://api.com")[0]),
+		oidc.WithPrompts(oidc.SelectAccount))
 
 	wantOidc := &pb.AuthMethod{
 		Id:          oidcam.GetPublicId(),
@@ -158,6 +159,7 @@ func TestGet(t *testing.T) {
 				State:            string(oidc.InactiveState),
 				ApiUrlPrefix:     wrapperspb.String("https://api.com"),
 				CallbackUrl:      fmt.Sprintf(oidc.CallbackEndpoint, "https://api.com"),
+				Prompts:          []string{string(oidc.SelectAccount)},
 			},
 		},
 		Version: 1,
@@ -302,7 +304,8 @@ func TestList(t *testing.T) {
 	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), oWithAuthMethods.GetPublicId(), kms.KeyPurposeDatabase)
 	require.NoError(t, err)
 	oidcam := oidc.TestAuthMethod(t, conn, databaseWrapper, oWithAuthMethods.GetPublicId(), oidc.ActivePublicState, "alice_rp", "secret",
-		oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://alice.com")[0]), oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://api.com")[0]), oidc.WithSigningAlgs(oidc.EdDSA))
+		oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://alice.com")[0]), oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://api.com")[0]), oidc.WithSigningAlgs(oidc.EdDSA),
+		oidc.WithPrompts(oidc.Consent))
 	iam.TestSetPrimaryAuthMethod(t, iamRepo, oWithAuthMethods, oidcam.GetPublicId())
 
 	wantSomeAuthMethods = append(wantSomeAuthMethods, &pb.AuthMethod{
@@ -324,6 +327,7 @@ func TestList(t *testing.T) {
 				SigningAlgorithms: []string{
 					string(oidc.EdDSA),
 				},
+				Prompts: []string{string(oidc.Consent)},
 			},
 		},
 		IsPrimary:                   true,
@@ -537,7 +541,8 @@ func TestDelete(t *testing.T) {
 	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), o.GetPublicId(), kms.KeyPurposeDatabase)
 	require.NoError(t, err)
 	oidcam := oidc.TestAuthMethod(t, conn, databaseWrapper, o.GetPublicId(), oidc.InactiveState, "alice_rp", "my-dogs-name",
-		oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://alice.com")[0]), oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://api.com")[0]))
+		oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://alice.com")[0]), oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://api.com")[0]),
+		oidc.WithPrompts(oidc.SelectAccount))
 
 	ldapAm := ldap.TestAuthMethod(t, conn, databaseWrapper, o.GetPublicId(), []string{"ldaps://ldap1"})
 
@@ -1371,6 +1376,66 @@ func TestCreate(t *testing.T) {
 			}},
 			err:         handlers.ApiErrorWithCode(codes.InvalidArgument),
 			errContains: "invalid attributes.account_attribute_maps (unable to parse)",
+		},
+		{
+			name: "OIDC AuthMethod With Unsupported Prompt",
+			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
+				ScopeId: o.GetPublicId(),
+				Type:    oidc.Subtype.String(),
+				Attrs: &pb.AuthMethod_OidcAuthMethodsAttributes{
+					OidcAuthMethodsAttributes: &pb.OidcAuthMethodAttributes{
+						ApiUrlPrefix: wrapperspb.String("https://api.com"),
+						Issuer:       wrapperspb.String("https://example2.discovery.url:4821"),
+						ClientId:     wrapperspb.String("someclientid"),
+						ClientSecret: wrapperspb.String("secret"),
+						Prompts:      []string{string(oidc.SelectAccount), "invalid"},
+					},
+				},
+			}},
+			err:         handlers.ApiErrorWithCode(codes.InvalidArgument),
+			errContains: "Contains unsupported prompt",
+		},
+		{
+			name: "Create OIDC AuthMethod With Supported Prompt",
+			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
+				ScopeId: o.GetPublicId(),
+				Type:    oidc.Subtype.String(),
+				Attrs: &pb.AuthMethod_OidcAuthMethodsAttributes{
+					OidcAuthMethodsAttributes: &pb.OidcAuthMethodAttributes{
+						Issuer:       wrapperspb.String("https://example.discovery.url:4821/.well-known/openid-configuration/"),
+						ClientId:     wrapperspb.String("exampleclientid"),
+						ClientSecret: wrapperspb.String("secret"),
+						ApiUrlPrefix: wrapperspb.String("https://callback.prefix:9281/path"),
+						Prompts:      []string{string(oidc.SelectAccount)},
+					},
+				},
+			}},
+			idPrefix: globals.OidcAuthMethodPrefix + "_",
+			res: &pbs.CreateAuthMethodResponse{
+				Uri: fmt.Sprintf("auth-methods/%s_", globals.OidcAuthMethodPrefix),
+				Item: &pb.AuthMethod{
+					Id:          defaultAm.GetPublicId(),
+					ScopeId:     o.GetPublicId(),
+					CreatedTime: defaultAm.GetCreateTime().GetTimestamp(),
+					UpdatedTime: defaultAm.GetUpdateTime().GetTimestamp(),
+					Scope:       &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: o.GetType(), ParentScopeId: scope.Global.String()},
+					Version:     1,
+					Type:        oidc.Subtype.String(),
+					Attrs: &pb.AuthMethod_OidcAuthMethodsAttributes{
+						OidcAuthMethodsAttributes: &pb.OidcAuthMethodAttributes{
+							Issuer:           wrapperspb.String("https://example.discovery.url:4821/"),
+							ClientId:         wrapperspb.String("exampleclientid"),
+							ClientSecretHmac: "<hmac>",
+							State:            string(oidc.InactiveState),
+							ApiUrlPrefix:     wrapperspb.String("https://callback.prefix:9281/path"),
+							CallbackUrl:      "https://callback.prefix:9281/path/v1/auth-methods/oidc:authenticate:callback",
+							Prompts:          []string{string(oidc.SelectAccount)},
+						},
+					},
+					AuthorizedActions:           oidcAuthorizedActions,
+					AuthorizedCollectionActions: authorizedCollectionActions,
+				},
+			},
 		},
 	}
 	for _, tc := range cases {
