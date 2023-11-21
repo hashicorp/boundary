@@ -177,6 +177,10 @@
             "path": "concepts/connection-workflows/connect-helpers"
           },
           {
+            "title": "Exec flag",
+            "path": "concepts/connection-workflows/exec-flag"
+          },
+          {
             "title": "SSH ProxyCommand",
             "path": "concepts/connection-workflows/workflow-ssh-proxycommand"
           }
