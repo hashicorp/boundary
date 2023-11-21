@@ -177,7 +177,7 @@
             "path": "concepts/connection-workflows/connect-helpers"
           },
           {
-            "title": "SSH proxycommand",
+            "title": "SSH ProxyCommand",
             "path": "concepts/connection-workflows/workflow-ssh-proxycommand"
           }
         ]

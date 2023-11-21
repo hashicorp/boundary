@@ -7,4 +7,32 @@ description: |-
 
 # Connection workflows
 
-Boundary features many different ways to connect to targets.
+This topic provides an overview of the possible workflows you may use to connect to targets with Boundary.
+
+## The `boundary connect` command
+
+When you run the `boundary connect` command against a target, Boundary establishes a local authenticated proxy to the address on the target's default port.
+The `boundary connect` command has a number of notable options, such as `-listen-port` to choose the port on which the connect command listens for an incoming connection.
+
+Refer to the [domain model documentation](/boundary/docs/concepts/domain-model) for more information about the available options.
+
+## Connect helpers
+
+The `listen-port` command is convenient for allowing Boundary to work with applications that allow you to select the connection address but not the port.
+For many applications, there are additional challenges, which is why connect helpers can be useful.
+Connect helpers automatically accept SSH key prompts and are supported for the following connection types:
+
+- SSH
+- RDP
+- PostgreSQL
+- HTTP
+- Kubernetes
+
+Refer to [Connect helpers](/boundary/docs/concepts/connection-workflows/connect-helpers) for more information about configuring connect helpers
+
+## SSH ProxyCommand
+
+The SSH `ProxyCommand` lets you proxy an SSH connection to a target according to a configuration file you create.
+You can configure the file to connect to the target ID or the target domain to simplify common common developer and operator workflows.
+
+Refer to [SSH ProxyCommand](/boundary/docs/concepts/connection-workflows/workflow-ssh-proxycommand) for more information about configuring SSH `ProxyCommand`.
