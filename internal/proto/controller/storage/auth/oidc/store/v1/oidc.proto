@@ -163,6 +163,17 @@ message AuthMethod {
     this: "AccountClaimMaps"
     that: "attributes.account_claim_maps"
   }];
+
+  // prompts are the optional prompts allowed for an oidc auth method.
+  // These value objects specify whether the authorization server prompts
+  // the end-user for reauthentication, account selection and consent.
+  // These are Value Objects that will be stored as Prompt messages,
+  // and are operatated on as a complete set.
+  // @inject_tag: `gorm:"-"`
+  repeated string prompts = 220 [(custom_options.v1.mask_mapping) = {
+    this: "Prompts"
+    that: "attributes.prompts"
+  }];
 }
 
 // Account represents an OIDC account
@@ -363,4 +374,18 @@ message ManagedGroupMemberAccount {
   // member_id is the fk to the oidc account public id
   // @inject_tag: `gorm:"primary_key"`
   string member_id = 30;
+}
+
+// Prompt entries are the prompts allowed for an oidc auth method.
+message Prompt {
+  // @inject_tag: `gorm:"primary_key"`
+  string oidc_method_id = 10;
+
+  // prompt_param is an enum from the auth_oidc_prompt_enm table
+  // @inject_tag: `gorm:"primary_key;column:prompt"`
+  string prompt_param = 20;
+
+  // The create_time is set by the database.
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp create_time = 30;
 }

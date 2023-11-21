@@ -33,6 +33,7 @@ type options struct {
 	withAudClaims           []string
 	withSigningAlgs         []Alg
 	withClaimsScopes        []string
+	withPrompts             []PromptParam
 	withEmail               string
 	withFullName            string
 	withOrderByCreateTime   bool
@@ -230,5 +231,12 @@ func WithAccountClaimMap(acm map[string]AccountToClaim) Option {
 func WithReader(reader db.Reader) Option {
 	return func(o *options) {
 		o.withReader = reader
+	}
+}
+
+// WithPrompts provides optional prompts
+func WithPrompts(prompt ...PromptParam) Option {
+	return func(o *options) {
+		o.withPrompts = prompt
 	}
 }

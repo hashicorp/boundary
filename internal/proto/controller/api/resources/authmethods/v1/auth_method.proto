@@ -264,6 +264,16 @@ message OidcAuthMethodAttributes {
     json_name = "dry_run",
     (custom_options.v1.generate_sdk_option) = true
   ]; // @gotags: `class:"public"`
+
+  // The prompts allowed for the auth method.
+  repeated string prompts = 140 [
+    json_name = "prompts",
+    (custom_options.v1.generate_sdk_option) = true,
+    (custom_options.v1.mask_mapping) = {
+      this: "attributes.prompts"
+      that: "Prompts"
+    }
+  ]; // @gotags: `class:"public"`
 }
 
 // The structure of the OIDC authenticate start response, in the JSON object

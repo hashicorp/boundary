@@ -591,6 +591,14 @@ func Test_convertValueObjects(t *testing.T) {
 		testAccountClaimMaps = append(testAccountClaimMaps, obj)
 	}
 
+	testPrompts := []string{"consent", "select_account"}
+	testExpectedPrompts := make([]any, 0, len(testPrompts))
+	for _, a := range testPrompts {
+		obj, err := NewPrompt(ctx, testPublicId, PromptParam(a))
+		require.NoError(t, err)
+		testExpectedPrompts = append(testExpectedPrompts, obj)
+	}
+
 	tests := []struct {
 		name            string
 		authMethodId    string
@@ -599,6 +607,7 @@ func Test_convertValueObjects(t *testing.T) {
 		certs           []string
 		scopes          []string
 		maps            []string
+		prompts         []string
 		wantValues      *convertedValues
 		wantErrMatch    *errors.Template
 		wantErrContains string
@@ -611,12 +620,14 @@ func Test_convertValueObjects(t *testing.T) {
 			certs:        testCerts,
 			scopes:       testScopes,
 			maps:         testClaimMaps,
+			prompts:      testPrompts,
 			wantValues: &convertedValues{
 				Algs:             testSigningAlgs,
 				Auds:             testAudiences,
 				Certs:            testCertificates,
 				ClaimsScopes:     testClaimsScopes,
 				AccountClaimMaps: testAccountClaimMaps,
+				Prompts:          testExpectedPrompts,
 			},
 		},
 		{
@@ -636,6 +647,7 @@ func Test_convertValueObjects(t *testing.T) {
 					Certificates:     tt.certs,
 					ClaimsScopes:     tt.scopes,
 					AccountClaimMaps: tt.maps,
+					Prompts:          tt.prompts,
 				},
 			}
 
@@ -691,6 +703,14 @@ func Test_convertValueObjects(t *testing.T) {
 					return got[a].ToClaim < got[b].ToClaim
 				})
 				assert.Equal(want, got)
+			}
+
+			convertedPrompts, err := am.convertPrompts(ctx)
+			if tt.wantErrMatch != nil {
+				require.Error(err)
+				assert.Truef(errors.Match(tt.wantErrMatch, err), "wanted err %q and got: %+v", tt.wantErrMatch.Code, err)
+			} else {
+				assert.Equal(tt.wantValues.Prompts, convertedPrompts)
 			}
 
 			values, err := am.convertValueObjects(ctx)
