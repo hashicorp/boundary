@@ -101,6 +101,8 @@ begin;
   alter table credential_static_ssh_private_key_credential
     alter column key_id type kms_private_id;
 
+
+-- Recreated in 79/01_auth_oidc_prompt.up.sql
   create view oidc_auth_method_with_value_obj as 
   select
     case when s.primary_auth_method_id is not null then
