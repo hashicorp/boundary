@@ -264,6 +264,7 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		return nil, fmt.Errorf("error initializing rate limiter: %w", err)
 	}
 	c.rateLimiter.Store(rateLimiter)
+	ratelimit.WriteLimitsSysEvent(c.baseContext, rateLimits, conf.RawConfig.Controller.ApiRateLimiterMaxEntries)
 
 	var pluginLogger hclog.Logger
 	for _, enabledPlugin := range c.enabledPlugins {
@@ -666,6 +667,7 @@ func (c *Controller) ReloadRateLimiter(newLimitConfigs ratelimit.Configs, newMax
 	}
 
 	old := c.rateLimiter.Swap(limiter)
+	ratelimit.WriteLimitsSysEvent(c.baseContext, ratelimits, newMaxEntries)
 
 	c.conf.ApiRateLimits = newLimitConfigs
 	c.conf.ApiRateLimiterMaxEntries = newMaxEntries

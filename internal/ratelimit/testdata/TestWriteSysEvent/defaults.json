@@ -1,0 +1,3903 @@
+{
+  "id": "",
+  "source": "https://hashicorp.com/boundary/TestWriteSysEvent",
+  "specversion": "1.0",
+  "type": "system",
+  "data": {
+    "data": {
+      "limits": {
+        "account": {
+          "change-password": [
+            {
+              "action": "change-password",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "account",
+              "unlimited": false
+            },
+            {
+              "action": "change-password",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "account",
+              "unlimited": false
+            },
+            {
+              "action": "change-password",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "account",
+              "unlimited": false
+            }
+          ],
+          "create": [
+            {
+              "action": "create",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "account",
+              "unlimited": false
+            },
+            {
+              "action": "create",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "account",
+              "unlimited": false
+            },
+            {
+              "action": "create",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "account",
+              "unlimited": false
+            }
+          ],
+          "delete": [
+            {
+              "action": "delete",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "account",
+              "unlimited": false
+            },
+            {
+              "action": "delete",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "account",
+              "unlimited": false
+            },
+            {
+              "action": "delete",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "account",
+              "unlimited": false
+            }
+          ],
+          "list": [
+            {
+              "action": "list",
+              "limit": 60,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "account",
+              "unlimited": false
+            },
+            {
+              "action": "list",
+              "limit": 60,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "account",
+              "unlimited": false
+            },
+            {
+              "action": "list",
+              "limit": 60,
+              "per": "total",
+              "period": "30s",
+              "resource": "account",
+              "unlimited": false
+            }
+          ],
+          "no-op": [
+            {
+              "action": "no-op",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "account",
+              "unlimited": false
+            },
+            {
+              "action": "no-op",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "account",
+              "unlimited": false
+            },
+            {
+              "action": "no-op",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "account",
+              "unlimited": false
+            }
+          ],
+          "read": [
+            {
+              "action": "read",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "account",
+              "unlimited": false
+            },
+            {
+              "action": "read",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "account",
+              "unlimited": false
+            },
+            {
+              "action": "read",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "account",
+              "unlimited": false
+            }
+          ],
+          "set-password": [
+            {
+              "action": "set-password",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "account",
+              "unlimited": false
+            },
+            {
+              "action": "set-password",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "account",
+              "unlimited": false
+            },
+            {
+              "action": "set-password",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "account",
+              "unlimited": false
+            }
+          ],
+          "update": [
+            {
+              "action": "update",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "account",
+              "unlimited": false
+            },
+            {
+              "action": "update",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "account",
+              "unlimited": false
+            },
+            {
+              "action": "update",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "account",
+              "unlimited": false
+            }
+          ]
+        },
+        "auth-method": {
+          "authenticate": [
+            {
+              "action": "authenticate",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "auth-method",
+              "unlimited": false
+            },
+            {
+              "action": "authenticate",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "auth-method",
+              "unlimited": false
+            },
+            {
+              "action": "authenticate",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "auth-method",
+              "unlimited": false
+            }
+          ],
+          "change-state": [
+            {
+              "action": "change-state",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "auth-method",
+              "unlimited": false
+            },
+            {
+              "action": "change-state",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "auth-method",
+              "unlimited": false
+            },
+            {
+              "action": "change-state",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "auth-method",
+              "unlimited": false
+            }
+          ],
+          "create": [
+            {
+              "action": "create",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "auth-method",
+              "unlimited": false
+            },
+            {
+              "action": "create",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "auth-method",
+              "unlimited": false
+            },
+            {
+              "action": "create",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "auth-method",
+              "unlimited": false
+            }
+          ],
+          "delete": [
+            {
+              "action": "delete",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "auth-method",
+              "unlimited": false
+            },
+            {
+              "action": "delete",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "auth-method",
+              "unlimited": false
+            },
+            {
+              "action": "delete",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "auth-method",
+              "unlimited": false
+            }
+          ],
+          "list": [
+            {
+              "action": "list",
+              "limit": 60,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "auth-method",
+              "unlimited": false
+            },
+            {
+              "action": "list",
+              "limit": 60,
+              "per": "total",
+              "period": "30s",
+              "resource": "auth-method",
+              "unlimited": false
+            },
+            {
+              "action": "list",
+              "limit": 60,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "auth-method",
+              "unlimited": false
+            }
+          ],
+          "no-op": [
+            {
+              "action": "no-op",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "auth-method",
+              "unlimited": false
+            },
+            {
+              "action": "no-op",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "auth-method",
+              "unlimited": false
+            },
+            {
+              "action": "no-op",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "auth-method",
+              "unlimited": false
+            }
+          ],
+          "read": [
+            {
+              "action": "read",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "auth-method",
+              "unlimited": false
+            },
+            {
+              "action": "read",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "auth-method",
+              "unlimited": false
+            },
+            {
+              "action": "read",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "auth-method",
+              "unlimited": false
+            }
+          ],
+          "update": [
+            {
+              "action": "update",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "auth-method",
+              "unlimited": false
+            },
+            {
+              "action": "update",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "auth-method",
+              "unlimited": false
+            },
+            {
+              "action": "update",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "auth-method",
+              "unlimited": false
+            }
+          ]
+        },
+        "auth-token": {
+          "delete": [
+            {
+              "action": "delete",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "auth-token",
+              "unlimited": false
+            },
+            {
+              "action": "delete",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "auth-token",
+              "unlimited": false
+            },
+            {
+              "action": "delete",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "auth-token",
+              "unlimited": false
+            }
+          ],
+          "delete:self": [
+            {
+              "action": "delete:self",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "auth-token",
+              "unlimited": false
+            },
+            {
+              "action": "delete:self",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "auth-token",
+              "unlimited": false
+            },
+            {
+              "action": "delete:self",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "auth-token",
+              "unlimited": false
+            }
+          ],
+          "list": [
+            {
+              "action": "list",
+              "limit": 60,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "auth-token",
+              "unlimited": false
+            },
+            {
+              "action": "list",
+              "limit": 60,
+              "per": "total",
+              "period": "30s",
+              "resource": "auth-token",
+              "unlimited": false
+            },
+            {
+              "action": "list",
+              "limit": 60,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "auth-token",
+              "unlimited": false
+            }
+          ],
+          "no-op": [
+            {
+              "action": "no-op",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "auth-token",
+              "unlimited": false
+            },
+            {
+              "action": "no-op",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "auth-token",
+              "unlimited": false
+            },
+            {
+              "action": "no-op",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "auth-token",
+              "unlimited": false
+            }
+          ],
+          "read": [
+            {
+              "action": "read",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "auth-token",
+              "unlimited": false
+            },
+            {
+              "action": "read",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "auth-token",
+              "unlimited": false
+            },
+            {
+              "action": "read",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "auth-token",
+              "unlimited": false
+            }
+          ],
+          "read:self": [
+            {
+              "action": "read:self",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "auth-token",
+              "unlimited": false
+            },
+            {
+              "action": "read:self",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "auth-token",
+              "unlimited": false
+            },
+            {
+              "action": "read:self",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "auth-token",
+              "unlimited": false
+            }
+          ]
+        },
+        "credential": {
+          "create": [
+            {
+              "action": "create",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "credential",
+              "unlimited": false
+            },
+            {
+              "action": "create",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "credential",
+              "unlimited": false
+            },
+            {
+              "action": "create",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "credential",
+              "unlimited": false
+            }
+          ],
+          "delete": [
+            {
+              "action": "delete",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "credential",
+              "unlimited": false
+            },
+            {
+              "action": "delete",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "credential",
+              "unlimited": false
+            },
+            {
+              "action": "delete",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "credential",
+              "unlimited": false
+            }
+          ],
+          "list": [
+            {
+              "action": "list",
+              "limit": 60,
+              "per": "total",
+              "period": "30s",
+              "resource": "credential",
+              "unlimited": false
+            },
+            {
+              "action": "list",
+              "limit": 60,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "credential",
+              "unlimited": false
+            },
+            {
+              "action": "list",
+              "limit": 60,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "credential",
+              "unlimited": false
+            }
+          ],
+          "no-op": [
+            {
+              "action": "no-op",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "credential",
+              "unlimited": false
+            },
+            {
+              "action": "no-op",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "credential",
+              "unlimited": false
+            },
+            {
+              "action": "no-op",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "credential",
+              "unlimited": false
+            }
+          ],
+          "read": [
+            {
+              "action": "read",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "credential",
+              "unlimited": false
+            },
+            {
+              "action": "read",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "credential",
+              "unlimited": false
+            },
+            {
+              "action": "read",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "credential",
+              "unlimited": false
+            }
+          ],
+          "update": [
+            {
+              "action": "update",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "credential",
+              "unlimited": false
+            },
+            {
+              "action": "update",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "credential",
+              "unlimited": false
+            },
+            {
+              "action": "update",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "credential",
+              "unlimited": false
+            }
+          ]
+        },
+        "credential-library": {
+          "create": [
+            {
+              "action": "create",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "credential-library",
+              "unlimited": false
+            },
+            {
+              "action": "create",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "credential-library",
+              "unlimited": false
+            },
+            {
+              "action": "create",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "credential-library",
+              "unlimited": false
+            }
+          ],
+          "delete": [
+            {
+              "action": "delete",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "credential-library",
+              "unlimited": false
+            },
+            {
+              "action": "delete",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "credential-library",
+              "unlimited": false
+            },
+            {
+              "action": "delete",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "credential-library",
+              "unlimited": false
+            }
+          ],
+          "list": [
+            {
+              "action": "list",
+              "limit": 60,
+              "per": "total",
+              "period": "30s",
+              "resource": "credential-library",
+              "unlimited": false
+            },
+            {
+              "action": "list",
+              "limit": 60,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "credential-library",
+              "unlimited": false
+            },
+            {
+              "action": "list",
+              "limit": 60,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "credential-library",
+              "unlimited": false
+            }
+          ],
+          "no-op": [
+            {
+              "action": "no-op",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "credential-library",
+              "unlimited": false
+            },
+            {
+              "action": "no-op",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "credential-library",
+              "unlimited": false
+            },
+            {
+              "action": "no-op",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "credential-library",
+              "unlimited": false
+            }
+          ],
+          "read": [
+            {
+              "action": "read",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "credential-library",
+              "unlimited": false
+            },
+            {
+              "action": "read",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "credential-library",
+              "unlimited": false
+            },
+            {
+              "action": "read",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "credential-library",
+              "unlimited": false
+            }
+          ],
+          "update": [
+            {
+              "action": "update",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "credential-library",
+              "unlimited": false
+            },
+            {
+              "action": "update",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "credential-library",
+              "unlimited": false
+            },
+            {
+              "action": "update",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "credential-library",
+              "unlimited": false
+            }
+          ]
+        },
+        "credential-store": {
+          "create": [
+            {
+              "action": "create",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "credential-store",
+              "unlimited": false
+            },
+            {
+              "action": "create",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "credential-store",
+              "unlimited": false
+            },
+            {
+              "action": "create",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "credential-store",
+              "unlimited": false
+            }
+          ],
+          "delete": [
+            {
+              "action": "delete",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "credential-store",
+              "unlimited": false
+            },
+            {
+              "action": "delete",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "credential-store",
+              "unlimited": false
+            },
+            {
+              "action": "delete",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "credential-store",
+              "unlimited": false
+            }
+          ],
+          "list": [
+            {
+              "action": "list",
+              "limit": 60,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "credential-store",
+              "unlimited": false
+            },
+            {
+              "action": "list",
+              "limit": 60,
+              "per": "total",
+              "period": "30s",
+              "resource": "credential-store",
+              "unlimited": false
+            },
+            {
+              "action": "list",
+              "limit": 60,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "credential-store",
+              "unlimited": false
+            }
+          ],
+          "no-op": [
+            {
+              "action": "no-op",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "credential-store",
+              "unlimited": false
+            },
+            {
+              "action": "no-op",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "credential-store",
+              "unlimited": false
+            },
+            {
+              "action": "no-op",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "credential-store",
+              "unlimited": false
+            }
+          ],
+          "read": [
+            {
+              "action": "read",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "credential-store",
+              "unlimited": false
+            },
+            {
+              "action": "read",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "credential-store",
+              "unlimited": false
+            },
+            {
+              "action": "read",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "credential-store",
+              "unlimited": false
+            }
+          ],
+          "update": [
+            {
+              "action": "update",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "credential-store",
+              "unlimited": false
+            },
+            {
+              "action": "update",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "credential-store",
+              "unlimited": false
+            },
+            {
+              "action": "update",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "credential-store",
+              "unlimited": false
+            }
+          ]
+        },
+        "group": {
+          "add-members": [
+            {
+              "action": "add-members",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "group",
+              "unlimited": false
+            },
+            {
+              "action": "add-members",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "group",
+              "unlimited": false
+            },
+            {
+              "action": "add-members",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "group",
+              "unlimited": false
+            }
+          ],
+          "create": [
+            {
+              "action": "create",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "group",
+              "unlimited": false
+            },
+            {
+              "action": "create",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "group",
+              "unlimited": false
+            },
+            {
+              "action": "create",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "group",
+              "unlimited": false
+            }
+          ],
+          "delete": [
+            {
+              "action": "delete",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "group",
+              "unlimited": false
+            },
+            {
+              "action": "delete",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "group",
+              "unlimited": false
+            },
+            {
+              "action": "delete",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "group",
+              "unlimited": false
+            }
+          ],
+          "list": [
+            {
+              "action": "list",
+              "limit": 60,
+              "per": "total",
+              "period": "30s",
+              "resource": "group",
+              "unlimited": false
+            },
+            {
+              "action": "list",
+              "limit": 60,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "group",
+              "unlimited": false
+            },
+            {
+              "action": "list",
+              "limit": 60,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "group",
+              "unlimited": false
+            }
+          ],
+          "no-op": [
+            {
+              "action": "no-op",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "group",
+              "unlimited": false
+            },
+            {
+              "action": "no-op",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "group",
+              "unlimited": false
+            },
+            {
+              "action": "no-op",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "group",
+              "unlimited": false
+            }
+          ],
+          "read": [
+            {
+              "action": "read",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "group",
+              "unlimited": false
+            },
+            {
+              "action": "read",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "group",
+              "unlimited": false
+            },
+            {
+              "action": "read",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "group",
+              "unlimited": false
+            }
+          ],
+          "remove-members": [
+            {
+              "action": "remove-members",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "group",
+              "unlimited": false
+            },
+            {
+              "action": "remove-members",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "group",
+              "unlimited": false
+            },
+            {
+              "action": "remove-members",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "group",
+              "unlimited": false
+            }
+          ],
+          "set-members": [
+            {
+              "action": "set-members",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "group",
+              "unlimited": false
+            },
+            {
+              "action": "set-members",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "group",
+              "unlimited": false
+            },
+            {
+              "action": "set-members",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "group",
+              "unlimited": false
+            }
+          ],
+          "update": [
+            {
+              "action": "update",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "group",
+              "unlimited": false
+            },
+            {
+              "action": "update",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "group",
+              "unlimited": false
+            },
+            {
+              "action": "update",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "group",
+              "unlimited": false
+            }
+          ]
+        },
+        "host": {
+          "create": [
+            {
+              "action": "create",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "host",
+              "unlimited": false
+            },
+            {
+              "action": "create",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "host",
+              "unlimited": false
+            },
+            {
+              "action": "create",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "host",
+              "unlimited": false
+            }
+          ],
+          "delete": [
+            {
+              "action": "delete",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "host",
+              "unlimited": false
+            },
+            {
+              "action": "delete",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "host",
+              "unlimited": false
+            },
+            {
+              "action": "delete",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "host",
+              "unlimited": false
+            }
+          ],
+          "list": [
+            {
+              "action": "list",
+              "limit": 60,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "host",
+              "unlimited": false
+            },
+            {
+              "action": "list",
+              "limit": 60,
+              "per": "total",
+              "period": "30s",
+              "resource": "host",
+              "unlimited": false
+            },
+            {
+              "action": "list",
+              "limit": 60,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "host",
+              "unlimited": false
+            }
+          ],
+          "no-op": [
+            {
+              "action": "no-op",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "host",
+              "unlimited": false
+            },
+            {
+              "action": "no-op",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "host",
+              "unlimited": false
+            },
+            {
+              "action": "no-op",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "host",
+              "unlimited": false
+            }
+          ],
+          "read": [
+            {
+              "action": "read",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "host",
+              "unlimited": false
+            },
+            {
+              "action": "read",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "host",
+              "unlimited": false
+            },
+            {
+              "action": "read",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "host",
+              "unlimited": false
+            }
+          ],
+          "update": [
+            {
+              "action": "update",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "host",
+              "unlimited": false
+            },
+            {
+              "action": "update",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "host",
+              "unlimited": false
+            },
+            {
+              "action": "update",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "host",
+              "unlimited": false
+            }
+          ]
+        },
+        "host-catalog": {
+          "create": [
+            {
+              "action": "create",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "host-catalog",
+              "unlimited": false
+            },
+            {
+              "action": "create",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "host-catalog",
+              "unlimited": false
+            },
+            {
+              "action": "create",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "host-catalog",
+              "unlimited": false
+            }
+          ],
+          "delete": [
+            {
+              "action": "delete",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "host-catalog",
+              "unlimited": false
+            },
+            {
+              "action": "delete",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "host-catalog",
+              "unlimited": false
+            },
+            {
+              "action": "delete",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "host-catalog",
+              "unlimited": false
+            }
+          ],
+          "list": [
+            {
+              "action": "list",
+              "limit": 60,
+              "per": "total",
+              "period": "30s",
+              "resource": "host-catalog",
+              "unlimited": false
+            },
+            {
+              "action": "list",
+              "limit": 60,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "host-catalog",
+              "unlimited": false
+            },
+            {
+              "action": "list",
+              "limit": 60,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "host-catalog",
+              "unlimited": false
+            }
+          ],
+          "no-op": [
+            {
+              "action": "no-op",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "host-catalog",
+              "unlimited": false
+            },
+            {
+              "action": "no-op",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "host-catalog",
+              "unlimited": false
+            },
+            {
+              "action": "no-op",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "host-catalog",
+              "unlimited": false
+            }
+          ],
+          "read": [
+            {
+              "action": "read",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "host-catalog",
+              "unlimited": false
+            },
+            {
+              "action": "read",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "host-catalog",
+              "unlimited": false
+            },
+            {
+              "action": "read",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "host-catalog",
+              "unlimited": false
+            }
+          ],
+          "update": [
+            {
+              "action": "update",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "host-catalog",
+              "unlimited": false
+            },
+            {
+              "action": "update",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "host-catalog",
+              "unlimited": false
+            },
+            {
+              "action": "update",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "host-catalog",
+              "unlimited": false
+            }
+          ]
+        },
+        "host-set": {
+          "add-hosts": [
+            {
+              "action": "add-hosts",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "host-set",
+              "unlimited": false
+            },
+            {
+              "action": "add-hosts",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "host-set",
+              "unlimited": false
+            },
+            {
+              "action": "add-hosts",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "host-set",
+              "unlimited": false
+            }
+          ],
+          "create": [
+            {
+              "action": "create",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "host-set",
+              "unlimited": false
+            },
+            {
+              "action": "create",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "host-set",
+              "unlimited": false
+            },
+            {
+              "action": "create",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "host-set",
+              "unlimited": false
+            }
+          ],
+          "delete": [
+            {
+              "action": "delete",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "host-set",
+              "unlimited": false
+            },
+            {
+              "action": "delete",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "host-set",
+              "unlimited": false
+            },
+            {
+              "action": "delete",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "host-set",
+              "unlimited": false
+            }
+          ],
+          "list": [
+            {
+              "action": "list",
+              "limit": 60,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "host-set",
+              "unlimited": false
+            },
+            {
+              "action": "list",
+              "limit": 60,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "host-set",
+              "unlimited": false
+            },
+            {
+              "action": "list",
+              "limit": 60,
+              "per": "total",
+              "period": "30s",
+              "resource": "host-set",
+              "unlimited": false
+            }
+          ],
+          "no-op": [
+            {
+              "action": "no-op",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "host-set",
+              "unlimited": false
+            },
+            {
+              "action": "no-op",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "host-set",
+              "unlimited": false
+            },
+            {
+              "action": "no-op",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "host-set",
+              "unlimited": false
+            }
+          ],
+          "read": [
+            {
+              "action": "read",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "host-set",
+              "unlimited": false
+            },
+            {
+              "action": "read",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "host-set",
+              "unlimited": false
+            },
+            {
+              "action": "read",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "host-set",
+              "unlimited": false
+            }
+          ],
+          "remove-hosts": [
+            {
+              "action": "remove-hosts",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "host-set",
+              "unlimited": false
+            },
+            {
+              "action": "remove-hosts",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "host-set",
+              "unlimited": false
+            },
+            {
+              "action": "remove-hosts",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "host-set",
+              "unlimited": false
+            }
+          ],
+          "set-hosts": [
+            {
+              "action": "set-hosts",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "host-set",
+              "unlimited": false
+            },
+            {
+              "action": "set-hosts",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "host-set",
+              "unlimited": false
+            },
+            {
+              "action": "set-hosts",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "host-set",
+              "unlimited": false
+            }
+          ],
+          "update": [
+            {
+              "action": "update",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "host-set",
+              "unlimited": false
+            },
+            {
+              "action": "update",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "host-set",
+              "unlimited": false
+            },
+            {
+              "action": "update",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "host-set",
+              "unlimited": false
+            }
+          ]
+        },
+        "managed-group": {
+          "create": [
+            {
+              "action": "create",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "managed-group",
+              "unlimited": false
+            },
+            {
+              "action": "create",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "managed-group",
+              "unlimited": false
+            },
+            {
+              "action": "create",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "managed-group",
+              "unlimited": false
+            }
+          ],
+          "delete": [
+            {
+              "action": "delete",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "managed-group",
+              "unlimited": false
+            },
+            {
+              "action": "delete",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "managed-group",
+              "unlimited": false
+            },
+            {
+              "action": "delete",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "managed-group",
+              "unlimited": false
+            }
+          ],
+          "list": [
+            {
+              "action": "list",
+              "limit": 60,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "managed-group",
+              "unlimited": false
+            },
+            {
+              "action": "list",
+              "limit": 60,
+              "per": "total",
+              "period": "30s",
+              "resource": "managed-group",
+              "unlimited": false
+            },
+            {
+              "action": "list",
+              "limit": 60,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "managed-group",
+              "unlimited": false
+            }
+          ],
+          "no-op": [
+            {
+              "action": "no-op",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "managed-group",
+              "unlimited": false
+            },
+            {
+              "action": "no-op",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "managed-group",
+              "unlimited": false
+            },
+            {
+              "action": "no-op",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "managed-group",
+              "unlimited": false
+            }
+          ],
+          "read": [
+            {
+              "action": "read",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "managed-group",
+              "unlimited": false
+            },
+            {
+              "action": "read",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "managed-group",
+              "unlimited": false
+            },
+            {
+              "action": "read",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "managed-group",
+              "unlimited": false
+            }
+          ],
+          "update": [
+            {
+              "action": "update",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "managed-group",
+              "unlimited": false
+            },
+            {
+              "action": "update",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "managed-group",
+              "unlimited": false
+            },
+            {
+              "action": "update",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "managed-group",
+              "unlimited": false
+            }
+          ]
+        },
+        "role": {
+          "add-grants": [
+            {
+              "action": "add-grants",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "role",
+              "unlimited": false
+            },
+            {
+              "action": "add-grants",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "role",
+              "unlimited": false
+            },
+            {
+              "action": "add-grants",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "role",
+              "unlimited": false
+            }
+          ],
+          "add-principals": [
+            {
+              "action": "add-principals",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "role",
+              "unlimited": false
+            },
+            {
+              "action": "add-principals",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "role",
+              "unlimited": false
+            },
+            {
+              "action": "add-principals",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "role",
+              "unlimited": false
+            }
+          ],
+          "create": [
+            {
+              "action": "create",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "role",
+              "unlimited": false
+            },
+            {
+              "action": "create",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "role",
+              "unlimited": false
+            },
+            {
+              "action": "create",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "role",
+              "unlimited": false
+            }
+          ],
+          "delete": [
+            {
+              "action": "delete",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "role",
+              "unlimited": false
+            },
+            {
+              "action": "delete",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "role",
+              "unlimited": false
+            },
+            {
+              "action": "delete",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "role",
+              "unlimited": false
+            }
+          ],
+          "list": [
+            {
+              "action": "list",
+              "limit": 60,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "role",
+              "unlimited": false
+            },
+            {
+              "action": "list",
+              "limit": 60,
+              "per": "total",
+              "period": "30s",
+              "resource": "role",
+              "unlimited": false
+            },
+            {
+              "action": "list",
+              "limit": 60,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "role",
+              "unlimited": false
+            }
+          ],
+          "no-op": [
+            {
+              "action": "no-op",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "role",
+              "unlimited": false
+            },
+            {
+              "action": "no-op",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "role",
+              "unlimited": false
+            },
+            {
+              "action": "no-op",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "role",
+              "unlimited": false
+            }
+          ],
+          "read": [
+            {
+              "action": "read",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "role",
+              "unlimited": false
+            },
+            {
+              "action": "read",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "role",
+              "unlimited": false
+            },
+            {
+              "action": "read",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "role",
+              "unlimited": false
+            }
+          ],
+          "remove-grants": [
+            {
+              "action": "remove-grants",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "role",
+              "unlimited": false
+            },
+            {
+              "action": "remove-grants",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "role",
+              "unlimited": false
+            },
+            {
+              "action": "remove-grants",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "role",
+              "unlimited": false
+            }
+          ],
+          "remove-principals": [
+            {
+              "action": "remove-principals",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "role",
+              "unlimited": false
+            },
+            {
+              "action": "remove-principals",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "role",
+              "unlimited": false
+            },
+            {
+              "action": "remove-principals",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "role",
+              "unlimited": false
+            }
+          ],
+          "set-grants": [
+            {
+              "action": "set-grants",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "role",
+              "unlimited": false
+            },
+            {
+              "action": "set-grants",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "role",
+              "unlimited": false
+            },
+            {
+              "action": "set-grants",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "role",
+              "unlimited": false
+            }
+          ],
+          "set-principals": [
+            {
+              "action": "set-principals",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "role",
+              "unlimited": false
+            },
+            {
+              "action": "set-principals",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "role",
+              "unlimited": false
+            },
+            {
+              "action": "set-principals",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "role",
+              "unlimited": false
+            }
+          ],
+          "update": [
+            {
+              "action": "update",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "role",
+              "unlimited": false
+            },
+            {
+              "action": "update",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "role",
+              "unlimited": false
+            },
+            {
+              "action": "update",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "role",
+              "unlimited": false
+            }
+          ]
+        },
+        "scope": {
+          "create": [
+            {
+              "action": "create",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "scope",
+              "unlimited": false
+            },
+            {
+              "action": "create",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "scope",
+              "unlimited": false
+            },
+            {
+              "action": "create",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "scope",
+              "unlimited": false
+            }
+          ],
+          "delete": [
+            {
+              "action": "delete",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "scope",
+              "unlimited": false
+            },
+            {
+              "action": "delete",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "scope",
+              "unlimited": false
+            },
+            {
+              "action": "delete",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "scope",
+              "unlimited": false
+            }
+          ],
+          "destroy-key-version": [
+            {
+              "action": "destroy-key-version",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "scope",
+              "unlimited": false
+            },
+            {
+              "action": "destroy-key-version",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "scope",
+              "unlimited": false
+            },
+            {
+              "action": "destroy-key-version",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "scope",
+              "unlimited": false
+            }
+          ],
+          "list": [
+            {
+              "action": "list",
+              "limit": 60,
+              "per": "total",
+              "period": "30s",
+              "resource": "scope",
+              "unlimited": false
+            },
+            {
+              "action": "list",
+              "limit": 60,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "scope",
+              "unlimited": false
+            },
+            {
+              "action": "list",
+              "limit": 60,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "scope",
+              "unlimited": false
+            }
+          ],
+          "list-key-version-destruction-jobs": [
+            {
+              "action": "list-key-version-destruction-jobs",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "scope",
+              "unlimited": false
+            },
+            {
+              "action": "list-key-version-destruction-jobs",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "scope",
+              "unlimited": false
+            },
+            {
+              "action": "list-key-version-destruction-jobs",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "scope",
+              "unlimited": false
+            }
+          ],
+          "list-keys": [
+            {
+              "action": "list-keys",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "scope",
+              "unlimited": false
+            },
+            {
+              "action": "list-keys",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "scope",
+              "unlimited": false
+            },
+            {
+              "action": "list-keys",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "scope",
+              "unlimited": false
+            }
+          ],
+          "no-op": [
+            {
+              "action": "no-op",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "scope",
+              "unlimited": false
+            },
+            {
+              "action": "no-op",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "scope",
+              "unlimited": false
+            },
+            {
+              "action": "no-op",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "scope",
+              "unlimited": false
+            }
+          ],
+          "read": [
+            {
+              "action": "read",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "scope",
+              "unlimited": false
+            },
+            {
+              "action": "read",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "scope",
+              "unlimited": false
+            },
+            {
+              "action": "read",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "scope",
+              "unlimited": false
+            }
+          ],
+          "rotate-keys": [
+            {
+              "action": "rotate-keys",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "scope",
+              "unlimited": false
+            },
+            {
+              "action": "rotate-keys",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "scope",
+              "unlimited": false
+            },
+            {
+              "action": "rotate-keys",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "scope",
+              "unlimited": false
+            }
+          ],
+          "update": [
+            {
+              "action": "update",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "scope",
+              "unlimited": false
+            },
+            {
+              "action": "update",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "scope",
+              "unlimited": false
+            },
+            {
+              "action": "update",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "scope",
+              "unlimited": false
+            }
+          ]
+        },
+        "session": {
+          "cancel": [
+            {
+              "action": "cancel",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "session",
+              "unlimited": false
+            },
+            {
+              "action": "cancel",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "session",
+              "unlimited": false
+            },
+            {
+              "action": "cancel",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "session",
+              "unlimited": false
+            }
+          ],
+          "cancel:self": [
+            {
+              "action": "cancel:self",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "session",
+              "unlimited": false
+            },
+            {
+              "action": "cancel:self",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "session",
+              "unlimited": false
+            },
+            {
+              "action": "cancel:self",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "session",
+              "unlimited": false
+            }
+          ],
+          "list": [
+            {
+              "action": "list",
+              "limit": 60,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "session",
+              "unlimited": false
+            },
+            {
+              "action": "list",
+              "limit": 60,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "session",
+              "unlimited": false
+            },
+            {
+              "action": "list",
+              "limit": 60,
+              "per": "total",
+              "period": "30s",
+              "resource": "session",
+              "unlimited": false
+            }
+          ],
+          "no-op": [
+            {
+              "action": "no-op",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "session",
+              "unlimited": false
+            },
+            {
+              "action": "no-op",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "session",
+              "unlimited": false
+            },
+            {
+              "action": "no-op",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "session",
+              "unlimited": false
+            }
+          ],
+          "read": [
+            {
+              "action": "read",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "session",
+              "unlimited": false
+            },
+            {
+              "action": "read",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "session",
+              "unlimited": false
+            },
+            {
+              "action": "read",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "session",
+              "unlimited": false
+            }
+          ],
+          "read:self": [
+            {
+              "action": "read:self",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "session",
+              "unlimited": false
+            },
+            {
+              "action": "read:self",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "session",
+              "unlimited": false
+            },
+            {
+              "action": "read:self",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "session",
+              "unlimited": false
+            }
+          ]
+        },
+        "session-recording": {
+          "download": [
+            {
+              "action": "download",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "session-recording",
+              "unlimited": false
+            },
+            {
+              "action": "download",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "session-recording",
+              "unlimited": false
+            },
+            {
+              "action": "download",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "session-recording",
+              "unlimited": false
+            }
+          ],
+          "list": [
+            {
+              "action": "list",
+              "limit": 60,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "session-recording",
+              "unlimited": false
+            },
+            {
+              "action": "list",
+              "limit": 60,
+              "per": "total",
+              "period": "30s",
+              "resource": "session-recording",
+              "unlimited": false
+            },
+            {
+              "action": "list",
+              "limit": 60,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "session-recording",
+              "unlimited": false
+            }
+          ],
+          "no-op": [
+            {
+              "action": "no-op",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "session-recording",
+              "unlimited": false
+            },
+            {
+              "action": "no-op",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "session-recording",
+              "unlimited": false
+            },
+            {
+              "action": "no-op",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "session-recording",
+              "unlimited": false
+            }
+          ],
+          "read": [
+            {
+              "action": "read",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "session-recording",
+              "unlimited": false
+            },
+            {
+              "action": "read",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "session-recording",
+              "unlimited": false
+            },
+            {
+              "action": "read",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "session-recording",
+              "unlimited": false
+            }
+          ]
+        },
+        "storage-bucket": {
+          "create": [
+            {
+              "action": "create",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "storage-bucket",
+              "unlimited": false
+            },
+            {
+              "action": "create",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "storage-bucket",
+              "unlimited": false
+            },
+            {
+              "action": "create",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "storage-bucket",
+              "unlimited": false
+            }
+          ],
+          "delete": [
+            {
+              "action": "delete",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "storage-bucket",
+              "unlimited": false
+            },
+            {
+              "action": "delete",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "storage-bucket",
+              "unlimited": false
+            },
+            {
+              "action": "delete",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "storage-bucket",
+              "unlimited": false
+            }
+          ],
+          "list": [
+            {
+              "action": "list",
+              "limit": 60,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "storage-bucket",
+              "unlimited": false
+            },
+            {
+              "action": "list",
+              "limit": 60,
+              "per": "total",
+              "period": "30s",
+              "resource": "storage-bucket",
+              "unlimited": false
+            },
+            {
+              "action": "list",
+              "limit": 60,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "storage-bucket",
+              "unlimited": false
+            }
+          ],
+          "no-op": [
+            {
+              "action": "no-op",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "storage-bucket",
+              "unlimited": false
+            },
+            {
+              "action": "no-op",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "storage-bucket",
+              "unlimited": false
+            },
+            {
+              "action": "no-op",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "storage-bucket",
+              "unlimited": false
+            }
+          ],
+          "read": [
+            {
+              "action": "read",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "storage-bucket",
+              "unlimited": false
+            },
+            {
+              "action": "read",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "storage-bucket",
+              "unlimited": false
+            },
+            {
+              "action": "read",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "storage-bucket",
+              "unlimited": false
+            }
+          ],
+          "update": [
+            {
+              "action": "update",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "storage-bucket",
+              "unlimited": false
+            },
+            {
+              "action": "update",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "storage-bucket",
+              "unlimited": false
+            },
+            {
+              "action": "update",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "storage-bucket",
+              "unlimited": false
+            }
+          ]
+        },
+        "target": {
+          "add-credential-sources": [
+            {
+              "action": "add-credential-sources",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "target",
+              "unlimited": false
+            },
+            {
+              "action": "add-credential-sources",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "target",
+              "unlimited": false
+            },
+            {
+              "action": "add-credential-sources",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "target",
+              "unlimited": false
+            }
+          ],
+          "add-host-sources": [
+            {
+              "action": "add-host-sources",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "target",
+              "unlimited": false
+            },
+            {
+              "action": "add-host-sources",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "target",
+              "unlimited": false
+            },
+            {
+              "action": "add-host-sources",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "target",
+              "unlimited": false
+            }
+          ],
+          "authorize-session": [
+            {
+              "action": "authorize-session",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "target",
+              "unlimited": false
+            },
+            {
+              "action": "authorize-session",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "target",
+              "unlimited": false
+            },
+            {
+              "action": "authorize-session",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "target",
+              "unlimited": false
+            }
+          ],
+          "create": [
+            {
+              "action": "create",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "target",
+              "unlimited": false
+            },
+            {
+              "action": "create",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "target",
+              "unlimited": false
+            },
+            {
+              "action": "create",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "target",
+              "unlimited": false
+            }
+          ],
+          "delete": [
+            {
+              "action": "delete",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "target",
+              "unlimited": false
+            },
+            {
+              "action": "delete",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "target",
+              "unlimited": false
+            },
+            {
+              "action": "delete",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "target",
+              "unlimited": false
+            }
+          ],
+          "list": [
+            {
+              "action": "list",
+              "limit": 60,
+              "per": "total",
+              "period": "30s",
+              "resource": "target",
+              "unlimited": false
+            },
+            {
+              "action": "list",
+              "limit": 60,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "target",
+              "unlimited": false
+            },
+            {
+              "action": "list",
+              "limit": 60,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "target",
+              "unlimited": false
+            }
+          ],
+          "no-op": [
+            {
+              "action": "no-op",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "target",
+              "unlimited": false
+            },
+            {
+              "action": "no-op",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "target",
+              "unlimited": false
+            },
+            {
+              "action": "no-op",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "target",
+              "unlimited": false
+            }
+          ],
+          "read": [
+            {
+              "action": "read",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "target",
+              "unlimited": false
+            },
+            {
+              "action": "read",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "target",
+              "unlimited": false
+            },
+            {
+              "action": "read",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "target",
+              "unlimited": false
+            }
+          ],
+          "remove-credential-sources": [
+            {
+              "action": "remove-credential-sources",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "target",
+              "unlimited": false
+            },
+            {
+              "action": "remove-credential-sources",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "target",
+              "unlimited": false
+            },
+            {
+              "action": "remove-credential-sources",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "target",
+              "unlimited": false
+            }
+          ],
+          "remove-host-sources": [
+            {
+              "action": "remove-host-sources",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "target",
+              "unlimited": false
+            },
+            {
+              "action": "remove-host-sources",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "target",
+              "unlimited": false
+            },
+            {
+              "action": "remove-host-sources",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "target",
+              "unlimited": false
+            }
+          ],
+          "set-credential-sources": [
+            {
+              "action": "set-credential-sources",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "target",
+              "unlimited": false
+            },
+            {
+              "action": "set-credential-sources",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "target",
+              "unlimited": false
+            },
+            {
+              "action": "set-credential-sources",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "target",
+              "unlimited": false
+            }
+          ],
+          "set-host-sources": [
+            {
+              "action": "set-host-sources",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "target",
+              "unlimited": false
+            },
+            {
+              "action": "set-host-sources",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "target",
+              "unlimited": false
+            },
+            {
+              "action": "set-host-sources",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "target",
+              "unlimited": false
+            }
+          ],
+          "update": [
+            {
+              "action": "update",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "target",
+              "unlimited": false
+            },
+            {
+              "action": "update",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "target",
+              "unlimited": false
+            },
+            {
+              "action": "update",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "target",
+              "unlimited": false
+            }
+          ]
+        },
+        "user": {
+          "add-accounts": [
+            {
+              "action": "add-accounts",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "user",
+              "unlimited": false
+            },
+            {
+              "action": "add-accounts",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "user",
+              "unlimited": false
+            },
+            {
+              "action": "add-accounts",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "user",
+              "unlimited": false
+            }
+          ],
+          "create": [
+            {
+              "action": "create",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "user",
+              "unlimited": false
+            },
+            {
+              "action": "create",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "user",
+              "unlimited": false
+            },
+            {
+              "action": "create",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "user",
+              "unlimited": false
+            }
+          ],
+          "delete": [
+            {
+              "action": "delete",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "user",
+              "unlimited": false
+            },
+            {
+              "action": "delete",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "user",
+              "unlimited": false
+            },
+            {
+              "action": "delete",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "user",
+              "unlimited": false
+            }
+          ],
+          "list": [
+            {
+              "action": "list",
+              "limit": 60,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "user",
+              "unlimited": false
+            },
+            {
+              "action": "list",
+              "limit": 60,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "user",
+              "unlimited": false
+            },
+            {
+              "action": "list",
+              "limit": 60,
+              "per": "total",
+              "period": "30s",
+              "resource": "user",
+              "unlimited": false
+            }
+          ],
+          "no-op": [
+            {
+              "action": "no-op",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "user",
+              "unlimited": false
+            },
+            {
+              "action": "no-op",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "user",
+              "unlimited": false
+            },
+            {
+              "action": "no-op",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "user",
+              "unlimited": false
+            }
+          ],
+          "read": [
+            {
+              "action": "read",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "user",
+              "unlimited": false
+            },
+            {
+              "action": "read",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "user",
+              "unlimited": false
+            },
+            {
+              "action": "read",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "user",
+              "unlimited": false
+            }
+          ],
+          "remove-accounts": [
+            {
+              "action": "remove-accounts",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "user",
+              "unlimited": false
+            },
+            {
+              "action": "remove-accounts",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "user",
+              "unlimited": false
+            },
+            {
+              "action": "remove-accounts",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "user",
+              "unlimited": false
+            }
+          ],
+          "set-accounts": [
+            {
+              "action": "set-accounts",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "user",
+              "unlimited": false
+            },
+            {
+              "action": "set-accounts",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "user",
+              "unlimited": false
+            },
+            {
+              "action": "set-accounts",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "user",
+              "unlimited": false
+            }
+          ],
+          "update": [
+            {
+              "action": "update",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "user",
+              "unlimited": false
+            },
+            {
+              "action": "update",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "user",
+              "unlimited": false
+            },
+            {
+              "action": "update",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "user",
+              "unlimited": false
+            }
+          ]
+        },
+        "worker": {
+          "add-worker-tags": [
+            {
+              "action": "add-worker-tags",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "worker",
+              "unlimited": false
+            },
+            {
+              "action": "add-worker-tags",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "worker",
+              "unlimited": false
+            },
+            {
+              "action": "add-worker-tags",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "worker",
+              "unlimited": false
+            }
+          ],
+          "create:controller-led": [
+            {
+              "action": "create:controller-led",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "worker",
+              "unlimited": false
+            },
+            {
+              "action": "create:controller-led",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "worker",
+              "unlimited": false
+            },
+            {
+              "action": "create:controller-led",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "worker",
+              "unlimited": false
+            }
+          ],
+          "create:worker-led": [
+            {
+              "action": "create:worker-led",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "worker",
+              "unlimited": false
+            },
+            {
+              "action": "create:worker-led",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "worker",
+              "unlimited": false
+            },
+            {
+              "action": "create:worker-led",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "worker",
+              "unlimited": false
+            }
+          ],
+          "delete": [
+            {
+              "action": "delete",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "worker",
+              "unlimited": false
+            },
+            {
+              "action": "delete",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "worker",
+              "unlimited": false
+            },
+            {
+              "action": "delete",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "worker",
+              "unlimited": false
+            }
+          ],
+          "list": [
+            {
+              "action": "list",
+              "limit": 60,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "worker",
+              "unlimited": false
+            },
+            {
+              "action": "list",
+              "limit": 60,
+              "per": "total",
+              "period": "30s",
+              "resource": "worker",
+              "unlimited": false
+            },
+            {
+              "action": "list",
+              "limit": 60,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "worker",
+              "unlimited": false
+            }
+          ],
+          "no-op": [
+            {
+              "action": "no-op",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "worker",
+              "unlimited": false
+            },
+            {
+              "action": "no-op",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "worker",
+              "unlimited": false
+            },
+            {
+              "action": "no-op",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "worker",
+              "unlimited": false
+            }
+          ],
+          "read": [
+            {
+              "action": "read",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "worker",
+              "unlimited": false
+            },
+            {
+              "action": "read",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "worker",
+              "unlimited": false
+            },
+            {
+              "action": "read",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "worker",
+              "unlimited": false
+            }
+          ],
+          "read-certificate-authority": [
+            {
+              "action": "read-certificate-authority",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "worker",
+              "unlimited": false
+            },
+            {
+              "action": "read-certificate-authority",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "worker",
+              "unlimited": false
+            },
+            {
+              "action": "read-certificate-authority",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "worker",
+              "unlimited": false
+            }
+          ],
+          "reinitialize-certificate-authority": [
+            {
+              "action": "reinitialize-certificate-authority",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "worker",
+              "unlimited": false
+            },
+            {
+              "action": "reinitialize-certificate-authority",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "worker",
+              "unlimited": false
+            },
+            {
+              "action": "reinitialize-certificate-authority",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "worker",
+              "unlimited": false
+            }
+          ],
+          "remove-worker-tags": [
+            {
+              "action": "remove-worker-tags",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "worker",
+              "unlimited": false
+            },
+            {
+              "action": "remove-worker-tags",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "worker",
+              "unlimited": false
+            },
+            {
+              "action": "remove-worker-tags",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "worker",
+              "unlimited": false
+            }
+          ],
+          "set-worker-tags": [
+            {
+              "action": "set-worker-tags",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "worker",
+              "unlimited": false
+            },
+            {
+              "action": "set-worker-tags",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "worker",
+              "unlimited": false
+            },
+            {
+              "action": "set-worker-tags",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "worker",
+              "unlimited": false
+            }
+          ],
+          "update": [
+            {
+              "action": "update",
+              "limit": 3000,
+              "per": "total",
+              "period": "30s",
+              "resource": "worker",
+              "unlimited": false
+            },
+            {
+              "action": "update",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "worker",
+              "unlimited": false
+            },
+            {
+              "action": "update",
+              "limit": 3000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "worker",
+              "unlimited": false
+            }
+          ]
+        }
+      },
+      "max_entries": 296148,
+      "msg": "controller api rate limits"
+    },
+    "op": "ratelimit.WritePoliciesSysEvent",
+    "version": "v0.1"
+  },
+  "datacontentype": "application/cloudevents"
+}
