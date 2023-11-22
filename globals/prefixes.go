@@ -315,6 +315,11 @@ var prefixToResourceType = map[string]ResourceInfo{
 		Type:    resource.SessionRecording,
 		Subtype: UnknownSubtype,
 	},
+
+	StoragePolicyPrefix: {
+		Type:    resource.Policy,
+		Subtype: UnknownSubtype,
+	},
 }
 
 var resourceTypeToPrefixes map[resource.Type][]string = func() map[resource.Type][]string {

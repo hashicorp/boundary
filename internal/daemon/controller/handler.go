@@ -33,6 +33,7 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/host_sets"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/hosts"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/managed_groups"
+	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/policies"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/roles"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/scopes"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/session_recordings"
@@ -222,6 +223,17 @@ func (c *Controller) registerGrpcServices(s *grpc.Server) error {
 		}
 		services.RegisterStorageBucketServiceServer(s, sbs)
 	}
+	if _, ok := currentServices[services.PolicyService_ServiceDesc.ServiceName]; !ok {
+		ps, err := policies.NewServiceFn(
+			c.baseContext,
+			c.IamRepoFn,
+			c.ControllerExtension,
+		)
+		if err != nil {
+			return fmt.Errorf("failed to create policy handler service: %w", err)
+		}
+		services.RegisterPolicyServiceServer(s, ps)
+	}
 	if _, ok := currentServices[services.SessionRecordingService_ServiceDesc.ServiceName]; !ok {
 		srs, err := session_recordings.NewServiceFn(
 			c.baseContext,
@@ -402,6 +414,9 @@ func registerGrpcGatewayEndpoints(ctx context.Context, gwMux *runtime.ServeMux, 
 	}
 	if err := services.RegisterSessionRecordingServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
 		return fmt.Errorf("failed to register session recording handler: %w", err)
+	}
+	if err := services.RegisterPolicyServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
+		return fmt.Errorf("failed to register policy handler: %w", err)
 	}
 
 	return nil

@@ -19,6 +19,7 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/credentialstores"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/groups"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/host_catalogs"
+	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/policies"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/roles"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/session_recordings"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/sessions"
@@ -81,6 +82,7 @@ var (
 			resource.User:             users.CollectionActions,
 			resource.Worker:           workers.CollectionActions,
 			resource.SessionRecording: session_recordings.CollectionActions,
+			resource.Policy:           policies.CollectionActions,
 		},
 
 		scope.Org.String(): {
@@ -92,6 +94,7 @@ var (
 			resource.Scope:            CollectionActions,
 			resource.User:             users.CollectionActions,
 			resource.SessionRecording: session_recordings.CollectionActions,
+			resource.Policy:           policies.CollectionActions,
 		},
 
 		scope.Project.String(): {

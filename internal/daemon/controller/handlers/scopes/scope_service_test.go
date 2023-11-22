@@ -93,6 +93,12 @@ var globalAuthorizedCollectionActions = map[string]*structpb.ListValue{
 			structpb.NewStringValue("list"),
 		},
 	},
+	"policies": {
+		Values: []*structpb.Value{
+			structpb.NewStringValue("create"),
+			structpb.NewStringValue("list"),
+		},
+	},
 	"roles": {
 		Values: []*structpb.Value{
 			structpb.NewStringValue("create"),
@@ -150,6 +156,12 @@ var orgAuthorizedCollectionActions = map[string]*structpb.ListValue{
 		},
 	},
 	"groups": {
+		Values: []*structpb.Value{
+			structpb.NewStringValue("create"),
+			structpb.NewStringValue("list"),
+		},
+	},
+	"policies": {
 		Values: []*structpb.Value{
 			structpb.NewStringValue("create"),
 			structpb.NewStringValue("list"),
