@@ -15,7 +15,7 @@ require (
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
 	github.com/golang-migrate/migrate/v4 v4.16.2
 	github.com/golang-sql/civil v0.0.0-20190719163853-cb61b32ac6fe
-	github.com/google/go-cmp v0.5.9
+	github.com/google/go-cmp v0.6.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.16.0
 	github.com/hashicorp/boundary/api v0.0.42
@@ -27,7 +27,7 @@ require (
 	github.com/hashicorp/go-bexpr v0.1.12
 	github.com/hashicorp/go-cleanhttp v0.5.2
 	github.com/hashicorp/go-hclog v1.5.0
-	github.com/hashicorp/go-kms-wrapping/v2 v2.0.13
+	github.com/hashicorp/go-kms-wrapping/v2 v2.0.14
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/go-retryablehttp v0.7.2
 	github.com/hashicorp/go-rootcerts v1.0.2
@@ -70,37 +70,37 @@ require (
 	github.com/zalando/go-keyring v0.2.3
 	go.uber.org/atomic v1.11.0
 	golang.org/x/crypto v0.14.0
-	golang.org/x/sync v0.3.0
+	golang.org/x/sync v0.4.0
 	golang.org/x/sys v0.13.0
 	golang.org/x/term v0.13.0
-	golang.org/x/tools v0.9.1
+	golang.org/x/tools v0.14.0
 	google.golang.org/genproto v0.0.0-20230711160842-782d3b101e98
 	google.golang.org/grpc v1.58.3
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.1.0
 	google.golang.org/protobuf v1.31.0
 	gorm.io/driver/postgres v1.5.2
 	gorm.io/gorm v1.25.4 // indirect
-	mvdan.cc/gofumpt v0.4.0
+	mvdan.cc/gofumpt v0.5.0
 	nhooyr.io/websocket v1.8.7
 )
 
-require github.com/hashicorp/go-dbw v0.1.0
+require github.com/hashicorp/go-dbw v0.1.1-0.20231011231112-ed00db42814c
 
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/cenkalti/backoff/v4 v4.2.0
 	github.com/creack/pty v1.1.18
 	github.com/golang/protobuf v1.5.3
-	github.com/hashicorp/cap/ldap v0.0.0-20230918191608-899e3f8e8cd6
-	github.com/hashicorp/dbassert v0.0.0-20230622135851-cc4c0f18f4a7
-	github.com/hashicorp/go-kms-wrapping/extras/kms/v2 v2.0.0-20230902160534-7a966e6313fd
+	github.com/hashicorp/cap/ldap v0.0.0-20231012003312-273118a6e3b8
+	github.com/hashicorp/dbassert v0.0.0-20231012105025-1bc1bd88e22b
+	github.com/hashicorp/go-kms-wrapping/extras/kms/v2 v2.0.0-20231124110655-4315424d22d0
 	github.com/hashicorp/go-version v1.6.0
 	github.com/hashicorp/nodeenrollment v0.2.6
 	github.com/jackc/pgx/v5 v5.4.3
 	github.com/jimlambrt/gldap v0.1.7
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/mikesmitty/edkey v0.0.0-20170222072505-3356ea4e686a
-	golang.org/x/exp v0.0.0-20230425010034-47ecfdc1ba53
+	golang.org/x/exp v0.0.0-20231006140011-7918f672742d
 	golang.org/x/net v0.17.0
 	google.golang.org/genproto/googleapis/api v0.0.0-20230711160842-782d3b101e98
 	gopkg.in/square/go-jose.v2 v2.5.1
@@ -181,7 +181,7 @@ require (
 	github.com/prometheus/client_model v0.2.0 // indirect
 	github.com/prometheus/common v0.32.1 // indirect
 	github.com/prometheus/procfs v0.7.3 // indirect
-	github.com/rogpeppe/go-internal v1.9.0 // indirect
+	github.com/rogpeppe/go-internal v1.10.0 // indirect
 	github.com/russross/blackfriday/v2 v2.0.1 // indirect
 	github.com/sethvargo/go-diceware v0.3.0 // indirect
 	github.com/shopspring/decimal v1.3.1 // indirect
@@ -194,7 +194,7 @@ require (
 	github.com/xeipuuv/gojsonschema v1.2.0 // indirect
 	github.com/xo/dburl v0.16.0 // indirect
 	go.uber.org/goleak v1.1.12 // indirect
-	golang.org/x/mod v0.10.0 // indirect
+	golang.org/x/mod v0.13.0 // indirect
 	golang.org/x/oauth2 v0.10.0 // indirect
 	golang.org/x/text v0.13.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
