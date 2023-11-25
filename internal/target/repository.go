@@ -12,6 +12,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/boundary"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
@@ -228,101 +229,136 @@ func (r *Repository) FetchAuthzProtectedEntitiesByScope(ctx context.Context, pro
 	return targetsMap, nil
 }
 
-// listTargets lists targets in a project based on the data in the WithPermissions option
+// listTargets lists targets based on the data in the WithPermissions option
 // provided to the Repository constructor. If no permissions are available, this function
 // is a no-op.
 // Supported options:
 //   - WithLimit which overrides the limit set in the Repository object
 //   - WithStartPageAfterItem which sets where to start listing from
-func (r *Repository) listTargets(ctx context.Context, opt ...Option) ([]Target, error) {
-	const op = "target.(Repository).listTargets"
-
+func (r *Repository) listTargets(ctx context.Context, opt ...Option) ([]Target, time.Time, error) {
 	if len(r.permissions) == 0 {
-		return []Target{}, nil
+		return []Target{}, time.Time{}, nil
 	}
-
 	where, args := r.listPermissionWhereClauses()
-	if len(where) == 0 {
-		return []Target{}, nil
-	}
-	whereClause := strings.Join(where, " or ")
+	permissionWhereClause := "(" + strings.Join(where, " or ") + ")"
+
 	opts := GetOpts(opt...)
 	limit := r.defaultLimit
 	if opts.WithLimit != 0 {
 		limit = opts.WithLimit
 	}
-	// Ordering and pagination are tightly coupled.
-	// We order by update_time ascending so that new
-	// and updated items appear at the end of the pagination.
-	// We need to further order by public_id to distinguish items
-	// with identical update times.
-	withOrder := "update_time asc, public_id asc"
+
+	query := fmt.Sprintf(listTargetsTemplate, permissionWhereClause, limit)
 	if opts.WithStartPageAfterItem != nil {
-		// Now that the order is defined, we can use a simple where
-		// clause to only include items updated since the specified
-		// start of the page. We use greater than or equal for the update
-		// time as there may be items with identical update_times. We
-		// then use public_id as a tiebreaker.
+		query = fmt.Sprintf(listTargetsPageTemplate, permissionWhereClause, limit)
 		args = append(args,
-			sql.Named("after_item_update_time", opts.WithStartPageAfterItem.GetUpdateTime()),
-			sql.Named("after_item_id", opts.WithStartPageAfterItem.GetPublicId()),
+			sql.Named("last_item_create_time", opts.WithStartPageAfterItem.GetCreateTime()),
+			sql.Named("last_item_id", opts.WithStartPageAfterItem.GetPublicId()),
 		)
-		whereClause = "(" + whereClause + ") and (update_time > @after_item_update_time or (update_time = @after_item_update_time and public_id > @after_item_id))"
 	}
 
-	var foundTargets []*targetView
-	err := r.reader.SearchWhere(
-		ctx,
-		&foundTargets,
-		whereClause,
-		args,
-		db.WithLimit(limit),
-		db.WithOrder(withOrder),
+	return r.queryTargets(ctx, query, args, limit)
+}
+
+// listTargetsRefresh lists targets based on the data in the WithPermissions option
+// provided to the Repository constructor. If no permissions are available, this function
+// is a no-op.
+// Supported options:
+//   - WithLimit which overrides the limit set in the Repository object
+//   - WithStartPageAfterItem which sets where to start listing from
+func (r *Repository) listTargetsRefresh(ctx context.Context, updatedAfter time.Time, opt ...Option) ([]Target, time.Time, error) {
+	const op = "target.(Repository).listTargetsRefresh"
+
+	if updatedAfter.IsZero() {
+		return nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "missing updated after time")
+	}
+	if len(r.permissions) == 0 {
+		return []Target{}, time.Time{}, nil
+	}
+	where, args := r.listPermissionWhereClauses()
+	permissionWhereClause := "(" + strings.Join(where, " or ") + ")"
+
+	opts := GetOpts(opt...)
+	limit := r.defaultLimit
+	if opts.WithLimit != 0 {
+		limit = opts.WithLimit
+	}
+
+	query := fmt.Sprintf(refreshTargetsTemplate, permissionWhereClause, limit)
+	args = append(args,
+		sql.Named("updated_after_time", timestamp.New(updatedAfter)),
 	)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+	if opts.WithStartPageAfterItem != nil {
+		query = fmt.Sprintf(refreshTargetsPageTemplate, permissionWhereClause, limit)
+		args = append(args,
+			sql.Named("last_item_update_time", opts.WithStartPageAfterItem.GetUpdateTime()),
+			sql.Named("last_item_id", opts.WithStartPageAfterItem.GetPublicId()),
+		)
 	}
 
-	var targetIds []string
-	for _, t := range foundTargets {
-		targetIds = append(targetIds, t.GetPublicId())
-	}
+	return r.queryTargets(ctx, query, args, limit)
+}
 
-	addresses := map[string]string{}
-	var foundAddresses []*Address
-	err = r.reader.SearchWhere(ctx,
-		&foundAddresses,
-		"target_id in (?)",
-		[]any{targetIds},
-		db.WithLimit(limit),
-	)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-	for _, addr := range foundAddresses {
-		addresses[addr.TargetId()] = addr.Address()
-	}
+func (r *Repository) queryTargets(ctx context.Context, query string, args []any, limit int) ([]Target, time.Time, error) {
+	const op = "target.(Repository).queryTargets"
 
-	targets := make([]Target, 0, len(foundTargets))
-	for _, t := range foundTargets {
-		var address string
-		if v, ok := addresses[t.GetPublicId()]; ok {
-			address = v
-		}
-		subtype, err := t.targetSubtype(ctx, address)
-		if errors.Is(err, errTargetSubtypeNotFound) {
-			// In cases where we have mixed target types and the controller
-			// doesn't support all of them, we want to ignore if we can't find
-			// the target subtype and continue listing the others we do support.
-			continue
-		}
+	var targets []Target
+	var transactionTimestamp time.Time
+	if _, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(r db.Reader, w db.Writer) error {
+		rows, err := r.Query(ctx, query, args)
 		if err != nil {
-			return nil, errors.Wrap(ctx, err, op)
+			return err
 		}
-		targets = append(targets, subtype)
+		defer rows.Close()
+		var foundTargets []*targetView
+		for rows.Next() {
+			if err := r.ScanRows(ctx, rows, &foundTargets); err != nil {
+				return err
+			}
+		}
+		var targetIds []string
+		for _, t := range foundTargets {
+			targetIds = append(targetIds, t.GetPublicId())
+		}
+
+		var foundAddresses []*Address
+		if err := r.SearchWhere(ctx,
+			&foundAddresses,
+			"target_id in (?)",
+			[]any{targetIds},
+			db.WithLimit(limit),
+		); err != nil {
+			return err
+		}
+		addresses := make(map[string]string)
+		for _, addr := range foundAddresses {
+			addresses[addr.TargetId()] = addr.Address()
+		}
+
+		for _, t := range foundTargets {
+			var address string
+			if v, ok := addresses[t.GetPublicId()]; ok {
+				address = v
+			}
+			subtype, err := t.targetSubtype(ctx, address)
+			if errors.Is(err, errTargetSubtypeNotFound) {
+				// In cases where we have mixed target types and the controller
+				// doesn't support all of them, we want to ignore if we can't find
+				// the target subtype and continue listing the others we do support.
+				continue
+			}
+			if err != nil {
+				return err
+			}
+			targets = append(targets, subtype)
+		}
+		transactionTimestamp, err = r.Now(ctx)
+		return err
+	}); err != nil {
+		return nil, time.Time{}, errors.Wrap(ctx, err, op)
 	}
 
-	return targets, nil
+	return targets, transactionTimestamp, nil
 }
 
 func (r *Repository) listPermissionWhereClauses() ([]string, []any) {
@@ -357,6 +393,7 @@ func (r *Repository) listDeletedIds(ctx context.Context, since time.Time) ([]str
 	const op = "target.(Repository).listDeletedIds"
 	var deleteTargets []*deletedTarget
 	var transactionTimestamp time.Time
+
 	if _, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(r db.Reader, _ db.Writer) error {
 		if err := r.SearchWhere(ctx, &deleteTargets, "delete_time >= ?", []any{since}); err != nil {
 			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to query deleted targets"))
