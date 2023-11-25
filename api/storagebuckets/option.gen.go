@@ -27,7 +27,7 @@ type options struct {
 	withAutomaticVersioning bool
 	withSkipCurlOutput      bool
 	withFilter              string
-	withRefreshToken        string
+	withListToken           string
 	withRecursive           bool
 }
 
@@ -52,8 +52,8 @@ func getOpts(opt ...Option) (options, []api.Option) {
 	if opts.withFilter != "" {
 		opts.queryMap["filter"] = opts.withFilter
 	}
-	if opts.withRefreshToken != "" {
-		opts.queryMap["refresh_token"] = opts.withRefreshToken
+	if opts.withListToken != "" {
+		opts.queryMap["list_token"] = opts.withListToken
 	}
 	if opts.withRecursive {
 		opts.queryMap["recursive"] = strconv.FormatBool(opts.withRecursive)
@@ -79,11 +79,11 @@ func WithSkipCurlOutput(skip bool) Option {
 	}
 }
 
-// WithRefreshToken tells the API to use the provided refresh token
+// WithListToken tells the API to use the provided list token
 // for listing operations on this resource.
-func WithRefreshToken(refreshToken string) Option {
+func WithListToken(listToken string) Option {
 	return func(o *options) {
-		o.withRefreshToken = refreshToken
+		o.withListToken = listToken
 	}
 }
 
