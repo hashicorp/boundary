@@ -242,7 +242,13 @@ func TestList(t *testing.T) {
 	assert.Equal(filterItem.Id, ul.Items[0].Id)
 }
 
-func TestListWithRefreshToken(t *testing.T) {
+func TestListWithListToken(t *testing.T) {
+	// Set database read timeout to avoid duplicates in response
+	oldReadTimeout := globals.RefreshReadLookbackDuration
+	globals.RefreshReadLookbackDuration = 0
+	t.Cleanup(func() {
+		globals.RefreshReadLookbackDuration = oldReadTimeout
+	})
 	require := require.New(t)
 	tc := controller.NewTestController(t, nil)
 	defer tc.Shutdown()
@@ -262,9 +268,9 @@ func TestListWithRefreshToken(t *testing.T) {
 	res, err := tarClient.List(tc.Context(), proj.GetPublicId(), targets.WithRecursive(true))
 	require.NoError(err)
 	require.Len(res.Items, 2, "expected the 2 targets created above")
-	refTok := res.RefreshToken
+	refTok := res.ListToken
 
-	res, err = tarClient.List(tc.Context(), proj.GetPublicId(), targets.WithRecursive(true), targets.WithRefreshToken(refTok))
+	res, err = tarClient.List(tc.Context(), proj.GetPublicId(), targets.WithRecursive(true), targets.WithListToken(refTok))
 	require.NoError(err)
 	require.Empty(res.Items)
 
@@ -272,9 +278,9 @@ func TestListWithRefreshToken(t *testing.T) {
 	res, err = tarClient.List(tc.Context(), "global", targets.WithRecursive(true))
 	require.NoError(err)
 	require.Len(res.Items, 4, "expected the 2 targets created above and the 2 auto created for the test controller")
-	refTok = res.RefreshToken
+	refTok = res.ListToken
 
-	res, err = tarClient.List(tc.Context(), "global", targets.WithRecursive(true), targets.WithRefreshToken(refTok))
+	res, err = tarClient.List(tc.Context(), "global", targets.WithRecursive(true), targets.WithListToken(refTok))
 	require.NoError(err)
 	require.Empty(res.Items)
 }
