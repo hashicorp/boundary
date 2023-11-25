@@ -282,7 +282,7 @@ func (c *Client) List(ctx context.Context, {{ .CollectionFunctionArg }} string, 
 			return nil, fmt.Errorf("error creating List request: %w", err)
 		}
 
-		opts.queryMap["refresh_token"] = target.RefreshToken
+		opts.queryMap["list_token"] = target.ListToken
 		if len(opts.queryMap) > 0 {
 			q := url.Values{}
 			for k, v := range opts.queryMap {
@@ -315,7 +315,7 @@ func (c *Client) List(ctx context.Context, {{ .CollectionFunctionArg }} string, 
 		}
 		target.RemovedIds = append(target.RemovedIds, page.RemovedIds...)
 		target.EstItemCount = page.EstItemCount
-		target.RefreshToken = page.RefreshToken
+		target.ListToken = page.ListToken
 		target.ResponseType = page.ResponseType
 		target.response = resp
 		if target.ResponseType == "complete" {
@@ -725,7 +725,7 @@ type {{ .Name }}ListResult struct {
 	Items        []*{{ .Name }} `, "`json:\"items,omitempty\"`", `
 	EstItemCount uint           `, "`json:\"est_item_count,omitempty\"`", `
 	RemovedIds   []string       `, "`json:\"removed_ids,omitempty\"`", `
-	RefreshToken string         `, "`json:\"refresh_token,omitempty\"`", `
+	ListToken string            `, "`json:\"list_token,omitempty\"`", `
 	ResponseType string         `, "`json:\"response_type,omitempty\"`", `
 	response *api.Response
 }
@@ -742,8 +742,8 @@ func (n {{ .Name }}ListResult) GetRemovedIds() []string {
 	return n.RemovedIds
 }
 
-func (n {{ .Name }}ListResult) GetRefreshToken() string {
-	return n.RefreshToken
+func (n {{ .Name }}ListResult) GetListToken() string {
+	return n.ListToken
 }
 
 func (n {{ .Name }}ListResult) GetResponseType() string {
@@ -808,7 +808,7 @@ type options struct {
 	withAutomaticVersioning bool
 	withSkipCurlOutput bool
 	withFilter string
-	withRefreshToken string
+	withListToken string
 	{{ if .RecursiveListing }} withRecursive bool {{ end }}
 }
 
@@ -833,8 +833,8 @@ func getOpts(opt ...Option) (options, []api.Option) {
 	if opts.withFilter != "" {
 		opts.queryMap["filter"] = opts.withFilter
 	}
-	if opts.withRefreshToken != "" {
-		opts.queryMap["refresh_token"] = opts.withRefreshToken
+	if opts.withListToken != "" {
+		opts.queryMap["list_token"] = opts.withListToken
 	}{{ if .RecursiveListing }}
 	if opts.withRecursive {
 		opts.queryMap["recursive"] = strconv.FormatBool(opts.withRecursive)
@@ -862,11 +862,11 @@ func WithSkipCurlOutput(skip bool) Option {
 	}
 }
 
-// WithRefreshToken tells the API to use the provided refresh token
+// WithListToken tells the API to use the provided list token
 // for listing operations on this resource.
-func WithRefreshToken(refreshToken string) Option {
+func WithListToken(listToken string) Option {
 	return func(o *options) {
-		o.withRefreshToken = refreshToken
+		o.withListToken = listToken
 	}
 }
 
