@@ -12,23 +12,44 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/internal/boundary"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
-	"github.com/hashicorp/boundary/internal/refreshtoken"
+	"github.com/hashicorp/boundary/internal/listtoken"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
+var (
+	// Some unique timestamps for tests
+	timeNow              = time.Now()
+	fiveDaysAgo          = timeNow.AddDate(0, 0, -5)
+	tokenCreateTime      = timeNow.AddDate(0, 0, -10)
+	prevDeletedTime      = fiveDaysAgo.Add(time.Hour)
+	lastItemCreateTime   = fiveDaysAgo.Add(2 * time.Hour)
+	lastItemUpdateTime   = fiveDaysAgo.Add(3 * time.Hour)
+	listReturnTime       = timeNow.Add(-time.Second)
+	deletedIDsReturnTime = timeNow.Add(-2 * time.Second)
+	prevPhaseUpperBound  = fiveDaysAgo.Add(2 * time.Second)
+	phaseLowerBound      = fiveDaysAgo.Add(3 * time.Second)
+	phaseUpperBound      = fiveDaysAgo.Add(4 * time.Second)
+)
+
 type testType struct {
 	boundary.Resource
-	ID string
+	ID         string
+	CreateTime time.Time
+	UpdateTime time.Time
 }
 
 func (t *testType) GetResourceType() resource.Type {
 	return resource.Unknown
 }
 
+func (t *testType) GetCreateTime() *timestamp.Timestamp {
+	return timestamp.New(t.CreateTime)
+}
+
 func (t *testType) GetUpdateTime() *timestamp.Timestamp {
-	return timestamp.Now()
+	return timestamp.New(t.UpdateTime)
 }
 
 func (t *testType) GetPublicId() string {
@@ -39,107 +60,202 @@ func Test_List(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 
-	t.Run("empty grants hash", func(t *testing.T) {
+	t.Run("validation", func(t *testing.T) {
 		t.Parallel()
-		pageSize := 2
-		listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, error) {
-			assert.Nil(t, prevPageLast)
-			return nil, nil
-		}
-		filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
-			return true, nil
-		}
-		estimatedItemCountFn := func(ctx context.Context) (int, error) {
-			return 10, nil
-		}
-		grantsHash := []byte(nil)
-		_, err := List(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn)
-		require.ErrorContains(t, err, "missing grants hash")
+		t.Run("empty grants hash", func(t *testing.T) {
+			t.Parallel()
+			pageSize := 2
+			listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
+				assert.Nil(t, prevPageLast)
+				return nil, time.Time{}, nil
+			}
+			filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
+				return true, nil
+			}
+			estimatedItemCountFn := func(ctx context.Context) (int, error) {
+				return 10, nil
+			}
+			grantsHash := []byte(nil)
+			_, err := List(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn)
+			require.ErrorContains(t, err, "missing grants hash")
+		})
+		t.Run("zero page size", func(t *testing.T) {
+			t.Parallel()
+			pageSize := 0
+			listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
+				assert.Nil(t, prevPageLast)
+				return nil, time.Time{}, nil
+			}
+			filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
+				return true, nil
+			}
+			estimatedItemCountFn := func(ctx context.Context) (int, error) {
+				return 10, nil
+			}
+			grantsHash := []byte("some hash")
+			_, err := List(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn)
+			require.ErrorContains(t, err, "page size must be at least 1")
+		})
+		t.Run("negative page size", func(t *testing.T) {
+			t.Parallel()
+			pageSize := -1
+			listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
+				assert.Nil(t, prevPageLast)
+				return nil, time.Time{}, nil
+			}
+			filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
+				return true, nil
+			}
+			estimatedItemCountFn := func(ctx context.Context) (int, error) {
+				return 10, nil
+			}
+			grantsHash := []byte("some hash")
+			_, err := List(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn)
+			require.ErrorContains(t, err, "page size must be at least 1")
+		})
+		t.Run("nil filter item callback", func(t *testing.T) {
+			t.Parallel()
+			pageSize := 2
+			listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
+				assert.Nil(t, prevPageLast)
+				return nil, time.Time{}, nil
+			}
+			filterItemFn := ListFilterFunc[*testType](nil)
+			estimatedItemCountFn := func(ctx context.Context) (int, error) {
+				return 10, nil
+			}
+			grantsHash := []byte("some hash")
+			_, err := List(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn)
+			require.ErrorContains(t, err, "missing filter item callback")
+		})
+		t.Run("nil list items callback", func(t *testing.T) {
+			t.Parallel()
+			pageSize := 2
+			listItemsFn := ListItemsFunc[*testType](nil)
+			filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
+				return true, nil
+			}
+			estimatedItemCountFn := func(ctx context.Context) (int, error) {
+				return 10, nil
+			}
+			grantsHash := []byte("some hash")
+			_, err := List(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn)
+			require.ErrorContains(t, err, "missing list items callback")
+		})
+		t.Run("nil estimated count callback", func(t *testing.T) {
+			t.Parallel()
+			pageSize := 2
+			listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
+				assert.Nil(t, prevPageLast)
+				return nil, time.Time{}, nil
+			}
+			filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
+				return true, nil
+			}
+			estimatedItemCountFn := EstimatedCountFunc(nil)
+			grantsHash := []byte("some hash")
+			_, err := List(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn)
+			require.ErrorContains(t, err, "missing estimated count callback")
+		})
 	})
-	t.Run("zero page size", func(t *testing.T) {
+	t.Run("error-cases", func(t *testing.T) {
 		t.Parallel()
-		pageSize := 0
-		listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, error) {
-			assert.Nil(t, prevPageLast)
-			return nil, nil
-		}
-		filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
-			return true, nil
-		}
-		estimatedItemCountFn := func(ctx context.Context) (int, error) {
-			return 10, nil
-		}
-		grantsHash := []byte("some hash")
-		_, err := List(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn)
-		require.ErrorContains(t, err, "page size must be at least 1")
-	})
-	t.Run("negative page size", func(t *testing.T) {
-		t.Parallel()
-		pageSize := -1
-		listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, error) {
-			assert.Nil(t, prevPageLast)
-			return nil, nil
-		}
-		filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
-			return true, nil
-		}
-		estimatedItemCountFn := func(ctx context.Context) (int, error) {
-			return 10, nil
-		}
-		grantsHash := []byte("some hash")
-		_, err := List(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn)
-		require.ErrorContains(t, err, "page size must be at least 1")
-	})
-	t.Run("nil filter item callback", func(t *testing.T) {
-		t.Parallel()
-		pageSize := 2
-		listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, error) {
-			assert.Nil(t, prevPageLast)
-			return nil, nil
-		}
-		filterItemFn := ListFilterFunc[*testType](nil)
-		estimatedItemCountFn := func(ctx context.Context) (int, error) {
-			return 10, nil
-		}
-		grantsHash := []byte("some hash")
-		_, err := List(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn)
-		require.ErrorContains(t, err, "missing filter item callback")
-	})
-	t.Run("nil list items callback", func(t *testing.T) {
-		t.Parallel()
-		pageSize := 2
-		listItemsFn := ListItemsFunc[*testType](nil)
-		filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
-			return true, nil
-		}
-		estimatedItemCountFn := func(ctx context.Context) (int, error) {
-			return 10, nil
-		}
-		grantsHash := []byte("some hash")
-		_, err := List(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn)
-		require.ErrorContains(t, err, "missing list items callback")
-	})
-	t.Run("nil estimated count callback", func(t *testing.T) {
-		t.Parallel()
-		pageSize := 2
-		listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, error) {
-			assert.Nil(t, prevPageLast)
-			return nil, nil
-		}
-		filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
-			return true, nil
-		}
-		estimatedItemCountFn := EstimatedCountFunc(nil)
-		grantsHash := []byte("some hash")
-		_, err := List(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn)
-		require.ErrorContains(t, err, "missing estimated count callback")
+		t.Run("errors-when-list-errors-immediately", func(t *testing.T) {
+			t.Parallel()
+			pageSize := 2
+			listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
+				return nil, time.Time{}, errors.New("failed to list")
+			}
+			filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
+				return true, nil
+			}
+			estimatedItemCountFn := func(ctx context.Context) (int, error) {
+				return 10, nil
+			}
+			grantsHash := []byte("some hash")
+			resp, err := List(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn)
+			require.ErrorContains(t, err, "failed to list")
+			assert.Empty(t, resp)
+		})
+		t.Run("errors-when-list-errors-subsequently", func(t *testing.T) {
+			t.Parallel()
+			pageSize := 2
+			listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
+				if prevPageLast != nil {
+					return nil, time.Time{}, errors.New("failed to list")
+				}
+				return []*testType{
+					{nil, "1", lastItemCreateTime.Add(time.Second), lastItemUpdateTime.Add(time.Second)},
+					{nil, "2", lastItemCreateTime, lastItemUpdateTime},
+					{nil, "3", lastItemCreateTime.Add(-time.Second), lastItemUpdateTime.Add(-time.Second)},
+				}, listReturnTime, nil
+			}
+			filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
+				if item.ID != "1" {
+					// Filter every item except the first
+					return false, nil
+				}
+				return true, nil
+			}
+			estimatedItemCountFn := func(ctx context.Context) (int, error) {
+				return 10, nil
+			}
+			grantsHash := []byte("some hash")
+			resp, err := List(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn)
+			require.ErrorContains(t, err, "failed to list")
+			assert.Empty(t, resp)
+		})
+		t.Run("errors-when-filter-errors", func(t *testing.T) {
+			t.Parallel()
+			pageSize := 2
+			listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
+				assert.Nil(t, prevPageLast)
+				return []*testType{
+					{nil, "1", lastItemCreateTime.Add(time.Second), lastItemUpdateTime.Add(time.Second)},
+					{nil, "2", lastItemCreateTime, lastItemUpdateTime},
+					{nil, "3", lastItemCreateTime.Add(-time.Second), lastItemUpdateTime.Add(-time.Second)},
+				}, listReturnTime, nil
+			}
+			filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
+				return false, errors.New("failed to filter")
+			}
+			estimatedItemCountFn := func(ctx context.Context) (int, error) {
+				return 10, nil
+			}
+			grantsHash := []byte("some hash")
+			resp, err := List(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn)
+			require.ErrorContains(t, err, "failed to filter")
+			assert.Empty(t, resp)
+		})
+		t.Run("errors-when-estimated-count-errors", func(t *testing.T) {
+			t.Parallel()
+			pageSize := 2
+			listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
+				assert.Nil(t, prevPageLast)
+				return []*testType{
+					{nil, "1", lastItemCreateTime.Add(time.Second), lastItemUpdateTime.Add(time.Second)},
+					{nil, "2", lastItemCreateTime, lastItemUpdateTime},
+					{nil, "3", lastItemCreateTime.Add(-time.Second), lastItemUpdateTime.Add(-time.Second)},
+				}, listReturnTime, nil
+			}
+			filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
+				return true, nil
+			}
+			estimatedItemCountFn := func(ctx context.Context) (int, error) {
+				return 0, errors.New("failed to estimate count")
+			}
+			grantsHash := []byte("some hash")
+			resp, err := List(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn)
+			require.ErrorContains(t, err, "failed to estimate count")
+			assert.Empty(t, resp)
+		})
 	})
 	t.Run("no-rows", func(t *testing.T) {
 		t.Parallel()
 		pageSize := 2
-		listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, error) {
+		listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
 			assert.Nil(t, prevPageLast)
-			return nil, nil
+			return nil, listReturnTime, nil
 		}
 		filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
 			return true, nil
@@ -155,14 +271,18 @@ func Test_List(t *testing.T) {
 		assert.Empty(t, resp.DeletedIds)
 		assert.Equal(t, resp.EstimatedItemCount, 0)
 		// No response token expected when there were no results
-		assert.Nil(t, resp.RefreshToken)
+		assert.Nil(t, resp.ListToken)
 	})
 	t.Run("fill-on-first-with-remaining", func(t *testing.T) {
 		t.Parallel()
 		pageSize := 2
-		listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, error) {
+		listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
 			assert.Nil(t, prevPageLast)
-			return []*testType{{nil, "1"}, {nil, "2"}, {nil, "3"}}, nil
+			return []*testType{
+				{nil, "1", lastItemCreateTime.Add(time.Second), lastItemUpdateTime.Add(time.Second)},
+				{nil, "2", lastItemCreateTime, lastItemUpdateTime},
+				{nil, "3", lastItemCreateTime.Add(-time.Second), lastItemUpdateTime.Add(-time.Second)},
+			}, listReturnTime, nil
 		}
 		filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
 			return true, nil
@@ -173,28 +293,28 @@ func Test_List(t *testing.T) {
 		grantsHash := []byte("some hash")
 		resp, err := List(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn)
 		require.NoError(t, err)
-		assert.Empty(t, cmp.Diff(resp.Items, []*testType{{nil, "1"}, {nil, "2"}}))
+		assert.Empty(t, cmp.Diff(resp.Items, []*testType{
+			{nil, "1", lastItemCreateTime.Add(time.Second), lastItemUpdateTime.Add(time.Second)},
+			{nil, "2", lastItemCreateTime, lastItemUpdateTime},
+		}))
 		assert.False(t, resp.CompleteListing)
 		assert.Empty(t, resp.DeletedIds)
 		assert.Equal(t, resp.EstimatedItemCount, 10)
-		require.NotNil(t, resp.RefreshToken)
-		// Times should be within ~10 seconds of now
-		assert.True(t, resp.RefreshToken.CreatedTime.After(time.Now().Add(-10*time.Second)))
-		assert.True(t, resp.RefreshToken.CreatedTime.Before(time.Now().Add(10*time.Second)))
-		assert.True(t, resp.RefreshToken.UpdatedTime.After(time.Now().Add(-10*time.Second)))
-		assert.True(t, resp.RefreshToken.UpdatedTime.Before(time.Now().Add(10*time.Second)))
-		assert.True(t, resp.RefreshToken.UpdatedTime.Equal(resp.RefreshToken.CreatedTime))
-		assert.Equal(t, resp.RefreshToken.GrantsHash, grantsHash)
-		assert.Equal(t, resp.RefreshToken.LastItemId, "2")
-		assert.True(t, resp.RefreshToken.LastItemUpdatedTime.After(time.Now().Add(-10*time.Second)))
-		assert.True(t, resp.RefreshToken.LastItemUpdatedTime.Before(time.Now().Add(10*time.Second)))
+		require.NotNil(t, resp.ListToken)
+		assert.True(t, resp.ListToken.CreateTime.Equal(listReturnTime))
+		assert.Equal(t, resp.ListToken.GrantsHash, grantsHash)
+		assert.Equal(t, resp.ListToken.Subtype.(*listtoken.PaginationToken).LastItemId, "2")
+		assert.True(t, resp.ListToken.Subtype.(*listtoken.PaginationToken).LastItemCreateTime.Equal(lastItemCreateTime))
 	})
 	t.Run("fill-on-first-without-remaining", func(t *testing.T) {
 		t.Parallel()
 		pageSize := 2
-		listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, error) {
+		listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
 			assert.Nil(t, prevPageLast)
-			return []*testType{{nil, "1"}, {nil, "2"}}, nil
+			return []*testType{
+				{nil, "1", lastItemCreateTime.Add(time.Second), lastItemUpdateTime.Add(time.Second)},
+				{nil, "2", lastItemCreateTime, lastItemUpdateTime},
+			}, listReturnTime, nil
 		}
 		filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
 			return true, nil
@@ -205,31 +325,36 @@ func Test_List(t *testing.T) {
 		grantsHash := []byte("some hash")
 		resp, err := List(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn)
 		require.NoError(t, err)
-		assert.Empty(t, cmp.Diff(resp.Items, []*testType{{nil, "1"}, {nil, "2"}}))
+		assert.Empty(t, cmp.Diff(resp.Items, []*testType{
+			{nil, "1", lastItemCreateTime.Add(time.Second), lastItemUpdateTime.Add(time.Second)},
+			{nil, "2", lastItemCreateTime, lastItemUpdateTime},
+		}))
 		assert.True(t, resp.CompleteListing)
 		assert.Empty(t, resp.DeletedIds)
 		assert.Equal(t, resp.EstimatedItemCount, 2)
-		require.NotNil(t, resp.RefreshToken)
-		// Times should be within ~10 seconds of now
-		assert.True(t, resp.RefreshToken.CreatedTime.After(time.Now().Add(-10*time.Second)))
-		assert.True(t, resp.RefreshToken.CreatedTime.Before(time.Now().Add(10*time.Second)))
-		assert.True(t, resp.RefreshToken.UpdatedTime.After(time.Now().Add(-10*time.Second)))
-		assert.True(t, resp.RefreshToken.UpdatedTime.Before(time.Now().Add(10*time.Second)))
-		assert.True(t, resp.RefreshToken.UpdatedTime.Equal(resp.RefreshToken.CreatedTime))
-		assert.Equal(t, resp.RefreshToken.GrantsHash, grantsHash)
-		assert.Equal(t, resp.RefreshToken.LastItemId, "2")
-		assert.True(t, resp.RefreshToken.LastItemUpdatedTime.After(time.Now().Add(-10*time.Second)))
-		assert.True(t, resp.RefreshToken.LastItemUpdatedTime.Before(time.Now().Add(10*time.Second)))
+		require.NotNil(t, resp.ListToken)
+		assert.True(t, resp.ListToken.CreateTime.Equal(listReturnTime))
+		assert.Equal(t, resp.ListToken.GrantsHash, grantsHash)
+		assert.True(t, resp.ListToken.Subtype.(*listtoken.StartRefreshToken).PreviousDeletedIdsTime.Equal(listReturnTime))
+		assert.True(t, resp.ListToken.Subtype.(*listtoken.StartRefreshToken).PreviousPhaseUpperBound.Equal(listReturnTime))
 	})
 	t.Run("fill-on-subsequent-with-remaining", func(t *testing.T) {
 		t.Parallel()
 		pageSize := 2
-		listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, error) {
+		listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
 			if prevPageLast != nil {
 				assert.Equal(t, "3", prevPageLast.ID)
-				return []*testType{{nil, "4"}, {nil, "5"}, {nil, "6"}}, nil
+				return []*testType{
+					{nil, "4", lastItemCreateTime.Add(-time.Second), lastItemUpdateTime.Add(-time.Second)},
+					{nil, "5", lastItemCreateTime.Add(-2 * time.Second), lastItemUpdateTime.Add(-2 * time.Second)},
+					{nil, "6", lastItemCreateTime.Add(-3 * time.Second), lastItemUpdateTime.Add(-3 * time.Second)},
+				}, listReturnTime.Add(time.Second), nil
 			}
-			return []*testType{{nil, "1"}, {nil, "2"}, {nil, "3"}}, nil
+			return []*testType{
+				{nil, "1", lastItemCreateTime.Add(2 * time.Second), lastItemUpdateTime.Add(2 * time.Second)},
+				{nil, "2", lastItemCreateTime.Add(time.Second), lastItemUpdateTime.Add(time.Second)},
+				{nil, "3", lastItemCreateTime, lastItemUpdateTime},
+			}, listReturnTime, nil
 		}
 		filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
 			if item.ID == "2" || item.ID == "4" || item.ID == "6" {
@@ -244,34 +369,38 @@ func Test_List(t *testing.T) {
 		grantsHash := []byte("some hash")
 		resp, err := List(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn)
 		require.NoError(t, err)
-		assert.Empty(t, cmp.Diff(resp.Items, []*testType{{nil, "1"}, {nil, "3"}}))
+		assert.Empty(t, cmp.Diff(resp.Items, []*testType{
+			{nil, "1", lastItemCreateTime.Add(2 * time.Second), lastItemUpdateTime.Add(2 * time.Second)},
+			{nil, "3", lastItemCreateTime, lastItemUpdateTime},
+		}))
 		assert.False(t, resp.CompleteListing)
 		assert.Empty(t, resp.DeletedIds)
 		assert.Equal(t, resp.EstimatedItemCount, 10)
-		require.NotNil(t, resp.RefreshToken)
-		// Times should be within ~10 seconds of now
-		assert.True(t, resp.RefreshToken.CreatedTime.After(time.Now().Add(-10*time.Second)))
-		assert.True(t, resp.RefreshToken.CreatedTime.Before(time.Now().Add(10*time.Second)))
-		assert.True(t, resp.RefreshToken.UpdatedTime.After(time.Now().Add(-10*time.Second)))
-		assert.True(t, resp.RefreshToken.UpdatedTime.Before(time.Now().Add(10*time.Second)))
-		assert.True(t, resp.RefreshToken.UpdatedTime.Equal(resp.RefreshToken.CreatedTime))
-		assert.Equal(t, resp.RefreshToken.GrantsHash, grantsHash)
-		assert.Equal(t, resp.RefreshToken.LastItemId, "3")
-		assert.True(t, resp.RefreshToken.LastItemUpdatedTime.After(time.Now().Add(-10*time.Second)))
-		assert.True(t, resp.RefreshToken.LastItemUpdatedTime.Before(time.Now().Add(10*time.Second)))
+		require.NotNil(t, resp.ListToken)
+		assert.True(t, resp.ListToken.CreateTime.Equal(listReturnTime))
+		assert.Equal(t, resp.ListToken.GrantsHash, grantsHash)
+		assert.Equal(t, resp.ListToken.Subtype.(*listtoken.PaginationToken).LastItemId, "3")
+		assert.True(t, resp.ListToken.Subtype.(*listtoken.PaginationToken).LastItemCreateTime.Equal(lastItemCreateTime))
 	})
 	t.Run("fill-on-subsequent-without-remaining", func(t *testing.T) {
 		t.Parallel()
 		pageSize := 2
-		listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, error) {
+		listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
 			if prevPageLast != nil {
 				assert.Equal(t, "3", prevPageLast.ID)
-				return []*testType{{nil, "4"}, {nil, "5"}}, nil
+				return []*testType{
+					{nil, "4", lastItemCreateTime.Add(-time.Second), lastItemUpdateTime.Add(-time.Second)},
+					{nil, "5", lastItemCreateTime.Add(-2 * time.Second), lastItemUpdateTime.Add(-2 * time.Second)},
+				}, listReturnTime.Add(time.Second), nil
 			}
-			return []*testType{{nil, "1"}, {nil, "2"}, {nil, "3"}}, nil
+			return []*testType{
+				{nil, "1", lastItemCreateTime.Add(2 * time.Second), lastItemUpdateTime.Add(2 * time.Second)},
+				{nil, "2", lastItemCreateTime.Add(time.Second), lastItemUpdateTime.Add(time.Second)},
+				{nil, "3", lastItemCreateTime, lastItemUpdateTime},
+			}, listReturnTime, nil
 		}
 		filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
-			if item.ID == "2" || item.ID == "4" || item.ID == "6" {
+			if item.ID == "2" || item.ID == "4" {
 				// Filter every other item
 				return false, nil
 			}
@@ -283,34 +412,37 @@ func Test_List(t *testing.T) {
 		grantsHash := []byte("some hash")
 		resp, err := List(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn)
 		require.NoError(t, err)
-		assert.Empty(t, cmp.Diff(resp.Items, []*testType{{nil, "1"}, {nil, "3"}}))
+		assert.Empty(t, cmp.Diff(resp.Items, []*testType{
+			{nil, "1", lastItemCreateTime.Add(2 * time.Second), lastItemUpdateTime.Add(2 * time.Second)},
+			{nil, "3", lastItemCreateTime, lastItemUpdateTime},
+		}))
 		assert.False(t, resp.CompleteListing)
 		assert.Empty(t, resp.DeletedIds)
 		assert.Equal(t, resp.EstimatedItemCount, 10)
-		require.NotNil(t, resp.RefreshToken)
-		// Times should be within ~10 seconds of now
-		assert.True(t, resp.RefreshToken.CreatedTime.After(time.Now().Add(-10*time.Second)))
-		assert.True(t, resp.RefreshToken.CreatedTime.Before(time.Now().Add(10*time.Second)))
-		assert.True(t, resp.RefreshToken.UpdatedTime.After(time.Now().Add(-10*time.Second)))
-		assert.True(t, resp.RefreshToken.UpdatedTime.Before(time.Now().Add(10*time.Second)))
-		assert.True(t, resp.RefreshToken.UpdatedTime.Equal(resp.RefreshToken.CreatedTime))
-		assert.Equal(t, resp.RefreshToken.GrantsHash, grantsHash)
-		assert.Equal(t, resp.RefreshToken.LastItemId, "3")
-		assert.True(t, resp.RefreshToken.LastItemUpdatedTime.After(time.Now().Add(-10*time.Second)))
-		assert.True(t, resp.RefreshToken.LastItemUpdatedTime.Before(time.Now().Add(10*time.Second)))
+		require.NotNil(t, resp.ListToken)
+		assert.True(t, resp.ListToken.CreateTime.Equal(listReturnTime))
+		assert.Equal(t, resp.ListToken.GrantsHash, grantsHash)
+		assert.Equal(t, resp.ListToken.Subtype.(*listtoken.PaginationToken).LastItemId, "3")
+		assert.True(t, resp.ListToken.Subtype.(*listtoken.PaginationToken).LastItemCreateTime.Equal(lastItemCreateTime))
 	})
 	t.Run("fill-on-subsequent", func(t *testing.T) {
 		t.Parallel()
 		pageSize := 2
-		listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, error) {
+		listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
 			if prevPageLast != nil {
 				assert.Equal(t, "3", prevPageLast.ID)
-				return []*testType{{nil, "4"}}, nil
+				return []*testType{
+					{nil, "4", lastItemCreateTime.Add(time.Second), lastItemUpdateTime.Add(time.Second)},
+				}, listReturnTime.Add(time.Second), nil
 			}
-			return []*testType{{nil, "1"}, {nil, "2"}, {nil, "3"}}, nil
+			return []*testType{
+				{nil, "1", lastItemCreateTime.Add(2 * time.Second), lastItemUpdateTime.Add(2 * time.Second)},
+				{nil, "2", lastItemCreateTime.Add(time.Second), lastItemUpdateTime.Add(time.Second)},
+				{nil, "3", lastItemCreateTime, lastItemUpdateTime},
+			}, listReturnTime, nil
 		}
 		filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
-			if item.ID == "2" || item.ID == "4" || item.ID == "6" {
+			if item.ID == "2" || item.ID == "4" {
 				// Filter every other item
 				return false, nil
 			}
@@ -322,31 +454,34 @@ func Test_List(t *testing.T) {
 		grantsHash := []byte("some hash")
 		resp, err := List(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn)
 		require.NoError(t, err)
-		assert.Empty(t, cmp.Diff(resp.Items, []*testType{{nil, "1"}, {nil, "3"}}))
+		assert.Empty(t, cmp.Diff(resp.Items, []*testType{
+			{nil, "1", lastItemCreateTime.Add(2 * time.Second), lastItemUpdateTime.Add(2 * time.Second)},
+			{nil, "3", lastItemCreateTime, lastItemUpdateTime},
+		}))
 		assert.True(t, resp.CompleteListing)
 		assert.Empty(t, resp.DeletedIds)
 		assert.Equal(t, resp.EstimatedItemCount, 2)
-		require.NotNil(t, resp.RefreshToken)
-		// Times should be within ~10 seconds of now
-		assert.True(t, resp.RefreshToken.CreatedTime.After(time.Now().Add(-10*time.Second)))
-		assert.True(t, resp.RefreshToken.CreatedTime.Before(time.Now().Add(10*time.Second)))
-		assert.True(t, resp.RefreshToken.UpdatedTime.After(time.Now().Add(-10*time.Second)))
-		assert.True(t, resp.RefreshToken.UpdatedTime.Before(time.Now().Add(10*time.Second)))
-		assert.True(t, resp.RefreshToken.UpdatedTime.Equal(resp.RefreshToken.CreatedTime))
-		assert.Equal(t, resp.RefreshToken.GrantsHash, grantsHash)
-		assert.Equal(t, resp.RefreshToken.LastItemId, "3")
-		assert.True(t, resp.RefreshToken.LastItemUpdatedTime.After(time.Now().Add(-10*time.Second)))
-		assert.True(t, resp.RefreshToken.LastItemUpdatedTime.Before(time.Now().Add(10*time.Second)))
+		require.NotNil(t, resp.ListToken)
+		assert.True(t, resp.ListToken.CreateTime.Equal(listReturnTime))
+		assert.Equal(t, resp.ListToken.GrantsHash, grantsHash)
+		assert.True(t, resp.ListToken.Subtype.(*listtoken.StartRefreshToken).PreviousDeletedIdsTime.Equal(listReturnTime))
+		assert.True(t, resp.ListToken.Subtype.(*listtoken.StartRefreshToken).PreviousPhaseUpperBound.Equal(listReturnTime))
 	})
 	t.Run("dont-fill-without-remaining", func(t *testing.T) {
 		t.Parallel()
 		pageSize := 2
-		listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, error) {
+		listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
 			if prevPageLast != nil {
 				assert.Equal(t, "3", prevPageLast.ID)
-				return []*testType{{nil, "4"}}, nil
+				return []*testType{
+					{nil, "4", lastItemCreateTime.Add(time.Second), lastItemUpdateTime.Add(time.Second)},
+				}, listReturnTime.Add(time.Second), nil
 			}
-			return []*testType{{nil, "1"}, {nil, "2"}, {nil, "3"}}, nil
+			return []*testType{
+				{nil, "1", lastItemCreateTime.Add(2 * time.Second), lastItemUpdateTime.Add(2 * time.Second)},
+				{nil, "2", lastItemCreateTime.Add(time.Second), lastItemUpdateTime.Add(time.Second)},
+				{nil, "3", lastItemCreateTime, lastItemUpdateTime},
+			}, listReturnTime, nil
 		}
 		filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
 			if item.ID != "1" {
@@ -361,36 +496,40 @@ func Test_List(t *testing.T) {
 		grantsHash := []byte("some hash")
 		resp, err := List(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn)
 		require.NoError(t, err)
-		assert.Empty(t, cmp.Diff(resp.Items, []*testType{{nil, "1"}}))
+		assert.Empty(t, cmp.Diff(resp.Items, []*testType{
+			{nil, "1", lastItemCreateTime.Add(2 * time.Second), lastItemUpdateTime.Add(2 * time.Second)},
+		}))
 		assert.True(t, resp.CompleteListing)
 		assert.Empty(t, resp.DeletedIds)
 		assert.Equal(t, resp.EstimatedItemCount, 1)
-		require.NotNil(t, resp.RefreshToken)
-		// Times should be within ~10 seconds of now
-		assert.True(t, resp.RefreshToken.CreatedTime.After(time.Now().Add(-10*time.Second)))
-		assert.True(t, resp.RefreshToken.CreatedTime.Before(time.Now().Add(10*time.Second)))
-		assert.True(t, resp.RefreshToken.UpdatedTime.After(time.Now().Add(-10*time.Second)))
-		assert.True(t, resp.RefreshToken.UpdatedTime.Before(time.Now().Add(10*time.Second)))
-		assert.True(t, resp.RefreshToken.UpdatedTime.Equal(resp.RefreshToken.CreatedTime))
-		assert.Equal(t, resp.RefreshToken.GrantsHash, grantsHash)
-		assert.Equal(t, resp.RefreshToken.LastItemId, "1")
-		assert.True(t, resp.RefreshToken.LastItemUpdatedTime.After(time.Now().Add(-10*time.Second)))
-		assert.True(t, resp.RefreshToken.LastItemUpdatedTime.Before(time.Now().Add(10*time.Second)))
+		require.NotNil(t, resp.ListToken)
+		assert.True(t, resp.ListToken.CreateTime.Equal(listReturnTime))
+		assert.Equal(t, resp.ListToken.GrantsHash, grantsHash)
+		assert.True(t, resp.ListToken.Subtype.(*listtoken.StartRefreshToken).PreviousDeletedIdsTime.Equal(listReturnTime))
+		assert.True(t, resp.ListToken.Subtype.(*listtoken.StartRefreshToken).PreviousPhaseUpperBound.Equal(listReturnTime))
 	})
 	t.Run("dont-fill-with-full-last-page", func(t *testing.T) {
 		t.Parallel()
 		pageSize := 2
-		listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, error) {
+		listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
 			switch {
 			case prevPageLast == nil:
-				return []*testType{{nil, "1"}, {nil, "2"}, {nil, "3"}}, nil
+				return []*testType{
+					{nil, "1", lastItemCreateTime.Add(2 * time.Second), lastItemUpdateTime.Add(2 * time.Second)},
+					{nil, "2", lastItemCreateTime.Add(time.Second), lastItemUpdateTime.Add(time.Second)},
+					{nil, "3", lastItemCreateTime, lastItemUpdateTime},
+				}, listReturnTime, nil
 			case prevPageLast.ID == "3":
-				return []*testType{{nil, "4"}, {nil, "5"}, {nil, "6"}}, nil
+				return []*testType{
+					{nil, "4", lastItemCreateTime.Add(-time.Second), lastItemUpdateTime.Add(-time.Second)},
+					{nil, "5", lastItemCreateTime.Add(-2 * time.Second), lastItemUpdateTime.Add(-2 * time.Second)},
+					{nil, "6", lastItemCreateTime.Add(-3 * time.Second), lastItemUpdateTime.Add(-3 * time.Second)},
+				}, listReturnTime.Add(time.Second), nil
 			case prevPageLast.ID == "6":
-				return nil, nil
+				return nil, listReturnTime.Add(2 * time.Second), nil
 			default:
 				t.Fatalf("unexpected call to listItemsFn with %#v", prevPageLast)
-				return nil, nil
+				return nil, time.Time{}, nil
 			}
 		}
 		filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
@@ -406,36 +545,40 @@ func Test_List(t *testing.T) {
 		grantsHash := []byte("some hash")
 		resp, err := List(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn)
 		require.NoError(t, err)
-		assert.Empty(t, cmp.Diff(resp.Items, []*testType{{nil, "1"}}))
+		assert.Empty(t, cmp.Diff(resp.Items, []*testType{
+			{nil, "1", lastItemCreateTime.Add(2 * time.Second), lastItemUpdateTime.Add(2 * time.Second)},
+		}))
 		assert.True(t, resp.CompleteListing)
 		assert.Empty(t, resp.DeletedIds)
 		assert.Equal(t, resp.EstimatedItemCount, 1)
-		require.NotNil(t, resp.RefreshToken)
-		// Times should be within ~10 seconds of now
-		assert.True(t, resp.RefreshToken.CreatedTime.After(time.Now().Add(-10*time.Second)))
-		assert.True(t, resp.RefreshToken.CreatedTime.Before(time.Now().Add(10*time.Second)))
-		assert.True(t, resp.RefreshToken.UpdatedTime.After(time.Now().Add(-10*time.Second)))
-		assert.True(t, resp.RefreshToken.UpdatedTime.Before(time.Now().Add(10*time.Second)))
-		assert.True(t, resp.RefreshToken.UpdatedTime.Equal(resp.RefreshToken.CreatedTime))
-		assert.Equal(t, resp.RefreshToken.GrantsHash, grantsHash)
-		assert.Equal(t, resp.RefreshToken.LastItemId, "1")
-		assert.True(t, resp.RefreshToken.LastItemUpdatedTime.After(time.Now().Add(-10*time.Second)))
-		assert.True(t, resp.RefreshToken.LastItemUpdatedTime.Before(time.Now().Add(10*time.Second)))
+		require.NotNil(t, resp.ListToken)
+		assert.True(t, resp.ListToken.CreateTime.Equal(listReturnTime))
+		assert.Equal(t, resp.ListToken.GrantsHash, grantsHash)
+		assert.True(t, resp.ListToken.Subtype.(*listtoken.StartRefreshToken).PreviousDeletedIdsTime.Equal(listReturnTime))
+		assert.True(t, resp.ListToken.Subtype.(*listtoken.StartRefreshToken).PreviousPhaseUpperBound.Equal(listReturnTime))
 	})
 	t.Run("filter-everything", func(t *testing.T) {
 		t.Parallel()
 		pageSize := 2
-		listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, error) {
+		listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
 			switch {
 			case prevPageLast == nil:
-				return []*testType{{nil, "1"}, {nil, "2"}, {nil, "3"}}, nil
+				return []*testType{
+					{nil, "1", lastItemCreateTime.Add(2 * time.Second), lastItemUpdateTime.Add(2 * time.Second)},
+					{nil, "2", lastItemCreateTime.Add(time.Second), lastItemUpdateTime.Add(time.Second)},
+					{nil, "3", lastItemCreateTime, lastItemUpdateTime},
+				}, listReturnTime, nil
 			case prevPageLast.ID == "3":
-				return []*testType{{nil, "4"}, {nil, "5"}, {nil, "6"}}, nil
+				return []*testType{
+					{nil, "4", lastItemCreateTime.Add(-time.Second), lastItemUpdateTime.Add(-time.Second)},
+					{nil, "5", lastItemCreateTime.Add(-2 * time.Second), lastItemUpdateTime.Add(-2 * time.Second)},
+					{nil, "6", lastItemCreateTime.Add(-3 * time.Second), lastItemUpdateTime.Add(-3 * time.Second)},
+				}, listReturnTime.Add(time.Second), nil
 			case prevPageLast.ID == "6":
-				return nil, nil
+				return nil, listReturnTime.Add(2 * time.Second), nil
 			default:
 				t.Fatalf("unexpected call to listItemsFn with %#v", prevPageLast)
-				return nil, nil
+				return nil, time.Time{}, nil
 			}
 		}
 		filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
@@ -452,13 +595,351 @@ func Test_List(t *testing.T) {
 		assert.True(t, resp.CompleteListing)
 		assert.Empty(t, resp.DeletedIds)
 		assert.Equal(t, resp.EstimatedItemCount, 0)
-		assert.Nil(t, resp.RefreshToken)
+		assert.Nil(t, resp.ListToken)
 	})
-	t.Run("errors-when-list-errors-immediately", func(t *testing.T) {
+}
+
+func Test_ListPage(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+
+	t.Run("validation", func(t *testing.T) {
+		t.Parallel()
+		t.Run("empty grants hash", func(t *testing.T) {
+			t.Parallel()
+			pageSize := 2
+			tok, err := listtoken.NewPagination(
+				ctx,
+				tokenCreateTime,
+				resource.Unknown,
+				[]byte("some hash"),
+				"some id",
+				lastItemCreateTime,
+			)
+			require.NoError(t, err)
+			listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
+				assert.Nil(t, prevPageLast)
+				return nil, time.Time{}, nil
+			}
+			filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
+				return true, nil
+			}
+			estimatedItemCountFn := func(ctx context.Context) (int, error) {
+				return 10, nil
+			}
+			grantsHash := []byte(nil)
+			_, err = ListPage(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn, tok)
+			require.ErrorContains(t, err, "missing grants hash")
+		})
+		t.Run("zero page size", func(t *testing.T) {
+			t.Parallel()
+			pageSize := 0
+			tok, err := listtoken.NewPagination(
+				ctx,
+				tokenCreateTime,
+				resource.Unknown,
+				[]byte("some hash"),
+				"some id",
+				lastItemCreateTime,
+			)
+			require.NoError(t, err)
+			listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
+				assert.Nil(t, prevPageLast)
+				return nil, time.Time{}, nil
+			}
+			filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
+				return true, nil
+			}
+			estimatedItemCountFn := func(ctx context.Context) (int, error) {
+				return 10, nil
+			}
+			grantsHash := []byte("some hash")
+			_, err = ListPage(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn, tok)
+			require.ErrorContains(t, err, "page size must be at least 1")
+		})
+		t.Run("negative page size", func(t *testing.T) {
+			t.Parallel()
+			pageSize := -1
+			tok, err := listtoken.NewPagination(
+				ctx,
+				tokenCreateTime,
+				resource.Unknown,
+				[]byte("some hash"),
+				"some id",
+				lastItemCreateTime,
+			)
+			require.NoError(t, err)
+			listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
+				assert.Nil(t, prevPageLast)
+				return nil, time.Time{}, nil
+			}
+			filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
+				return true, nil
+			}
+			estimatedItemCountFn := func(ctx context.Context) (int, error) {
+				return 10, nil
+			}
+			grantsHash := []byte("some hash")
+			_, err = ListPage(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn, tok)
+			require.ErrorContains(t, err, "page size must be at least 1")
+		})
+		t.Run("nil filter item callback", func(t *testing.T) {
+			t.Parallel()
+			pageSize := 2
+			tok, err := listtoken.NewPagination(
+				ctx,
+				tokenCreateTime,
+				resource.Unknown,
+				[]byte("some hash"),
+				"some id",
+				lastItemCreateTime,
+			)
+			require.NoError(t, err)
+			listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
+				assert.Nil(t, prevPageLast)
+				return nil, time.Time{}, nil
+			}
+			filterItemFn := ListFilterFunc[*testType](nil)
+			estimatedItemCountFn := func(ctx context.Context) (int, error) {
+				return 10, nil
+			}
+			grantsHash := []byte("some hash")
+			_, err = ListPage(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn, tok)
+			require.ErrorContains(t, err, "missing filter item callback")
+		})
+		t.Run("nil list items callback", func(t *testing.T) {
+			t.Parallel()
+			pageSize := 2
+			tok, err := listtoken.NewPagination(
+				ctx,
+				tokenCreateTime,
+				resource.Unknown,
+				[]byte("some hash"),
+				"some id",
+				lastItemCreateTime,
+			)
+			require.NoError(t, err)
+			listItemsFn := ListItemsFunc[*testType](nil)
+			filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
+				return true, nil
+			}
+			estimatedItemCountFn := func(ctx context.Context) (int, error) {
+				return 10, nil
+			}
+			grantsHash := []byte("some hash")
+			_, err = ListPage(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn, tok)
+			require.ErrorContains(t, err, "missing list items callback")
+		})
+		t.Run("nil token", func(t *testing.T) {
+			t.Parallel()
+			pageSize := 2
+			listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
+				assert.Nil(t, prevPageLast)
+				return nil, time.Time{}, nil
+			}
+			filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
+				return true, nil
+			}
+			estimatedItemCountFn := func(ctx context.Context) (int, error) {
+				return 10, nil
+			}
+			grantsHash := []byte("some hash")
+			_, err := ListPage(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn, nil)
+			require.ErrorContains(t, err, "missing list token")
+		})
+		t.Run("wrong token type", func(t *testing.T) {
+			t.Parallel()
+			pageSize := 2
+			tok, err := listtoken.NewStartRefresh(
+				ctx,
+				tokenCreateTime,
+				resource.Unknown,
+				[]byte("some hash"),
+				prevDeletedTime,
+				phaseUpperBound,
+			)
+			require.NoError(t, err)
+			listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
+				assert.Nil(t, prevPageLast)
+				return nil, time.Time{}, nil
+			}
+			filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
+				return true, nil
+			}
+			estimatedItemCountFn := func(ctx context.Context) (int, error) {
+				return 10, nil
+			}
+			grantsHash := []byte("some hash")
+			_, err = ListPage(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn, tok)
+			require.ErrorContains(t, err, "token did not have a pagination token component")
+		})
+		t.Run("nil estimated count callback", func(t *testing.T) {
+			t.Parallel()
+			pageSize := 2
+			tok, err := listtoken.NewPagination(
+				ctx,
+				tokenCreateTime,
+				resource.Unknown,
+				[]byte("some hash"),
+				"some id",
+				lastItemCreateTime,
+			)
+			require.NoError(t, err)
+			listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
+				assert.Nil(t, prevPageLast)
+				return nil, time.Time{}, nil
+			}
+			filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
+				return true, nil
+			}
+			estimatedItemCountFn := EstimatedCountFunc(nil)
+			grantsHash := []byte("some hash")
+			_, err = ListPage(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn, tok)
+			require.ErrorContains(t, err, "missing estimated count callback")
+		})
+	})
+	t.Run("error-cases", func(t *testing.T) {
+		t.Run("errors-when-list-errors-immediately", func(t *testing.T) {
+			t.Parallel()
+			pageSize := 2
+			tok, err := listtoken.NewPagination(
+				ctx,
+				tokenCreateTime,
+				resource.Unknown,
+				[]byte("some hash"),
+				"some id",
+				lastItemCreateTime,
+			)
+			require.NoError(t, err)
+			listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
+				return nil, time.Time{}, errors.New("failed to list")
+			}
+			filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
+				return true, nil
+			}
+			estimatedItemCountFn := func(ctx context.Context) (int, error) {
+				return 10, nil
+			}
+			grantsHash := []byte("some hash")
+			resp, err := ListPage(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn, tok)
+			require.ErrorContains(t, err, "failed to list")
+			assert.Empty(t, resp)
+		})
+		t.Run("errors-when-list-errors-subsequently", func(t *testing.T) {
+			t.Parallel()
+			pageSize := 2
+			tok, err := listtoken.NewPagination(
+				ctx,
+				tokenCreateTime,
+				resource.Unknown,
+				[]byte("some hash"),
+				"some id",
+				lastItemCreateTime,
+			)
+			require.NoError(t, err)
+			listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
+				if prevPageLast != nil {
+					return nil, time.Time{}, errors.New("failed to list")
+				}
+				return []*testType{
+					{nil, "1", lastItemCreateTime.Add(time.Second), lastItemUpdateTime.Add(time.Second)},
+					{nil, "2", lastItemCreateTime, lastItemUpdateTime},
+					{nil, "3", lastItemCreateTime.Add(-time.Second), lastItemUpdateTime.Add(-time.Second)},
+				}, listReturnTime, nil
+			}
+			filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
+				if item.ID != "1" {
+					// Filter every item except the first
+					return false, nil
+				}
+				return true, nil
+			}
+			estimatedItemCountFn := func(ctx context.Context) (int, error) {
+				return 10, nil
+			}
+			grantsHash := []byte("some hash")
+			resp, err := ListPage(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn, tok)
+			require.ErrorContains(t, err, "failed to list")
+			assert.Empty(t, resp)
+		})
+		t.Run("errors-when-filter-errors", func(t *testing.T) {
+			t.Parallel()
+			pageSize := 2
+			tok, err := listtoken.NewPagination(
+				ctx,
+				tokenCreateTime,
+				resource.Unknown,
+				[]byte("some hash"),
+				"some id",
+				lastItemCreateTime,
+			)
+			require.NoError(t, err)
+			listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
+				assert.Nil(t, prevPageLast)
+				return []*testType{
+					{nil, "1", lastItemCreateTime.Add(time.Second), lastItemUpdateTime.Add(time.Second)},
+					{nil, "2", lastItemCreateTime, lastItemUpdateTime},
+					{nil, "3", lastItemCreateTime.Add(-time.Second), lastItemUpdateTime.Add(-time.Second)},
+				}, listReturnTime, nil
+			}
+			filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
+				return false, errors.New("failed to filter")
+			}
+			estimatedItemCountFn := func(ctx context.Context) (int, error) {
+				return 10, nil
+			}
+			grantsHash := []byte("some hash")
+			resp, err := ListPage(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn, tok)
+			require.ErrorContains(t, err, "failed to filter")
+			assert.Empty(t, resp)
+		})
+		t.Run("errors-when-estimated-count-errors", func(t *testing.T) {
+			t.Parallel()
+			pageSize := 2
+			tok, err := listtoken.NewPagination(
+				ctx,
+				tokenCreateTime,
+				resource.Unknown,
+				[]byte("some hash"),
+				"some id",
+				lastItemCreateTime,
+			)
+			require.NoError(t, err)
+			listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
+				assert.Nil(t, prevPageLast)
+				return []*testType{
+					{nil, "1", lastItemCreateTime.Add(time.Second), lastItemUpdateTime.Add(time.Second)},
+					{nil, "2", lastItemCreateTime, lastItemUpdateTime},
+					{nil, "3", lastItemCreateTime.Add(-time.Second), lastItemUpdateTime.Add(-time.Second)},
+				}, listReturnTime, nil
+			}
+			filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
+				return true, nil
+			}
+			estimatedItemCountFn := func(ctx context.Context) (int, error) {
+				return 0, errors.New("failed to estimate count")
+			}
+			grantsHash := []byte("some hash")
+			resp, err := ListPage(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn, tok)
+			require.ErrorContains(t, err, "failed to estimate count")
+			assert.Empty(t, resp)
+		})
+	})
+	t.Run("no-rows", func(t *testing.T) {
 		t.Parallel()
 		pageSize := 2
-		listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, error) {
-			return nil, errors.New("failed to list")
+		tok, err := listtoken.NewPagination(
+			ctx,
+			tokenCreateTime,
+			resource.Unknown,
+			[]byte("some hash"),
+			"some id",
+			lastItemCreateTime,
+		)
+		require.NoError(t, err)
+		listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
+			assert.Nil(t, prevPageLast)
+			return nil, listReturnTime, nil
 		}
 		filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
 			return true, nil
@@ -467,18 +948,281 @@ func Test_List(t *testing.T) {
 			return 10, nil
 		}
 		grantsHash := []byte("some hash")
-		resp, err := List(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn)
-		require.ErrorContains(t, err, "failed to list")
-		assert.Empty(t, resp)
+		resp, err := ListPage(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn, tok)
+		require.NoError(t, err)
+		assert.Empty(t, resp.Items)
+		assert.True(t, resp.CompleteListing)
+		assert.Empty(t, resp.DeletedIds)
+		assert.Equal(t, resp.EstimatedItemCount, 10)
+		require.NotNil(t, resp.ListToken)
+		assert.True(t, resp.ListToken.CreateTime.Equal(tokenCreateTime))
+		assert.Equal(t, resp.ListToken.GrantsHash, grantsHash)
+		assert.True(t, resp.ListToken.Subtype.(*listtoken.StartRefreshToken).PreviousDeletedIdsTime.Equal(tokenCreateTime))
+		assert.True(t, resp.ListToken.Subtype.(*listtoken.StartRefreshToken).PreviousPhaseUpperBound.Equal(tokenCreateTime))
 	})
-	t.Run("errors-when-list-errors-subsequently", func(t *testing.T) {
+	t.Run("fill-on-first-with-remaining", func(t *testing.T) {
 		t.Parallel()
 		pageSize := 2
-		listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, error) {
+		tok, err := listtoken.NewPagination(
+			ctx,
+			tokenCreateTime,
+			resource.Unknown,
+			[]byte("some hash"),
+			"some id",
+			lastItemCreateTime,
+		)
+		require.NoError(t, err)
+		listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
+			assert.Nil(t, prevPageLast)
+			return []*testType{
+				{nil, "1", lastItemCreateTime.Add(time.Second), lastItemUpdateTime.Add(time.Second)},
+				{nil, "2", lastItemCreateTime, lastItemUpdateTime},
+				{nil, "3", lastItemCreateTime.Add(-time.Second), lastItemUpdateTime.Add(-time.Second)},
+			}, listReturnTime, nil
+		}
+		filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
+			return true, nil
+		}
+		estimatedItemCountFn := func(ctx context.Context) (int, error) {
+			return 10, nil
+		}
+		grantsHash := []byte("some hash")
+		resp, err := ListPage(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn, tok)
+		require.NoError(t, err)
+		assert.Empty(t, cmp.Diff(resp.Items, []*testType{
+			{nil, "1", lastItemCreateTime.Add(time.Second), lastItemUpdateTime.Add(time.Second)},
+			{nil, "2", lastItemCreateTime, lastItemUpdateTime},
+		}))
+		assert.False(t, resp.CompleteListing)
+		assert.Empty(t, resp.DeletedIds)
+		assert.Equal(t, resp.EstimatedItemCount, 10)
+		require.NotNil(t, resp.ListToken)
+		assert.True(t, resp.ListToken.CreateTime.Equal(tokenCreateTime))
+		assert.Equal(t, resp.ListToken.GrantsHash, grantsHash)
+		assert.Equal(t, resp.ListToken.Subtype.(*listtoken.PaginationToken).LastItemId, "2")
+		assert.True(t, resp.ListToken.Subtype.(*listtoken.PaginationToken).LastItemCreateTime.Equal(lastItemCreateTime))
+	})
+	t.Run("fill-on-first-without-remaining", func(t *testing.T) {
+		t.Parallel()
+		pageSize := 2
+		tok, err := listtoken.NewPagination(
+			ctx,
+			tokenCreateTime,
+			resource.Unknown,
+			[]byte("some hash"),
+			"some id",
+			lastItemCreateTime,
+		)
+		require.NoError(t, err)
+		listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
+			assert.Nil(t, prevPageLast)
+			return []*testType{
+				{nil, "1", lastItemCreateTime.Add(time.Second), lastItemUpdateTime.Add(time.Second)},
+				{nil, "2", lastItemCreateTime, lastItemUpdateTime},
+			}, listReturnTime, nil
+		}
+		filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
+			return true, nil
+		}
+		estimatedItemCountFn := func(ctx context.Context) (int, error) {
+			return 10, nil
+		}
+		grantsHash := []byte("some hash")
+		resp, err := ListPage(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn, tok)
+		require.NoError(t, err)
+		assert.Empty(t, cmp.Diff(resp.Items, []*testType{
+			{nil, "1", lastItemCreateTime.Add(time.Second), lastItemUpdateTime.Add(time.Second)},
+			{nil, "2", lastItemCreateTime, lastItemUpdateTime},
+		}))
+		assert.True(t, resp.CompleteListing)
+		assert.Empty(t, resp.DeletedIds)
+		assert.Equal(t, resp.EstimatedItemCount, 10)
+		require.NotNil(t, resp.ListToken)
+		assert.True(t, resp.ListToken.CreateTime.Equal(tokenCreateTime))
+		assert.Equal(t, resp.ListToken.GrantsHash, grantsHash)
+		assert.True(t, resp.ListToken.Subtype.(*listtoken.StartRefreshToken).PreviousDeletedIdsTime.Equal(tokenCreateTime))
+		assert.True(t, resp.ListToken.Subtype.(*listtoken.StartRefreshToken).PreviousPhaseUpperBound.Equal(tokenCreateTime))
+	})
+	t.Run("fill-on-subsequent-with-remaining", func(t *testing.T) {
+		t.Parallel()
+		pageSize := 2
+		tok, err := listtoken.NewPagination(
+			ctx,
+			tokenCreateTime,
+			resource.Unknown,
+			[]byte("some hash"),
+			"some id",
+			lastItemCreateTime,
+		)
+		require.NoError(t, err)
+		listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
 			if prevPageLast != nil {
-				return nil, errors.New("failed to list")
+				assert.Equal(t, "3", prevPageLast.ID)
+				return []*testType{
+					{nil, "4", lastItemCreateTime.Add(-time.Second), lastItemUpdateTime.Add(-time.Second)},
+					{nil, "5", lastItemCreateTime.Add(-2 * time.Second), lastItemUpdateTime.Add(-2 * time.Second)},
+					{nil, "6", lastItemCreateTime.Add(-3 * time.Second), lastItemUpdateTime.Add(-3 * time.Second)},
+				}, listReturnTime.Add(time.Second), nil
 			}
-			return []*testType{{nil, "1"}, {nil, "2"}, {nil, "3"}}, nil
+			return []*testType{
+				{nil, "1", lastItemCreateTime.Add(2 * time.Second), lastItemUpdateTime.Add(2 * time.Second)},
+				{nil, "2", lastItemCreateTime.Add(time.Second), lastItemUpdateTime.Add(time.Second)},
+				{nil, "3", lastItemCreateTime, lastItemUpdateTime},
+			}, listReturnTime, nil
+		}
+		filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
+			if item.ID == "2" || item.ID == "4" || item.ID == "6" {
+				// Filter every other item
+				return false, nil
+			}
+			return true, nil
+		}
+		estimatedItemCountFn := func(ctx context.Context) (int, error) {
+			return 10, nil
+		}
+		grantsHash := []byte("some hash")
+		resp, err := ListPage(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn, tok)
+		require.NoError(t, err)
+		assert.Empty(t, cmp.Diff(resp.Items, []*testType{
+			{nil, "1", lastItemCreateTime.Add(2 * time.Second), lastItemUpdateTime.Add(2 * time.Second)},
+			{nil, "3", lastItemCreateTime, lastItemUpdateTime},
+		}))
+		assert.False(t, resp.CompleteListing)
+		assert.Empty(t, resp.DeletedIds)
+		assert.Equal(t, resp.EstimatedItemCount, 10)
+		require.NotNil(t, resp.ListToken)
+		assert.True(t, resp.ListToken.CreateTime.Equal(tokenCreateTime))
+		assert.Equal(t, resp.ListToken.GrantsHash, grantsHash)
+		assert.Equal(t, resp.ListToken.Subtype.(*listtoken.PaginationToken).LastItemId, "3")
+		assert.True(t, resp.ListToken.Subtype.(*listtoken.PaginationToken).LastItemCreateTime.Equal(lastItemCreateTime))
+	})
+	t.Run("fill-on-subsequent-without-remaining", func(t *testing.T) {
+		t.Parallel()
+		pageSize := 2
+		tok, err := listtoken.NewPagination(
+			ctx,
+			tokenCreateTime,
+			resource.Unknown,
+			[]byte("some hash"),
+			"some id",
+			lastItemCreateTime,
+		)
+		require.NoError(t, err)
+		listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
+			if prevPageLast != nil {
+				assert.Equal(t, "3", prevPageLast.ID)
+				return []*testType{
+					{nil, "4", lastItemCreateTime.Add(-time.Second), lastItemUpdateTime.Add(-time.Second)},
+					{nil, "5", lastItemCreateTime.Add(-2 * time.Second), lastItemUpdateTime.Add(-2 * time.Second)},
+				}, listReturnTime.Add(time.Second), nil
+			}
+			return []*testType{
+				{nil, "1", lastItemCreateTime.Add(2 * time.Second), lastItemUpdateTime.Add(2 * time.Second)},
+				{nil, "2", lastItemCreateTime.Add(time.Second), lastItemUpdateTime.Add(time.Second)},
+				{nil, "3", lastItemCreateTime, lastItemUpdateTime},
+			}, listReturnTime, nil
+		}
+		filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
+			if item.ID == "2" || item.ID == "4" {
+				// Filter every other item
+				return false, nil
+			}
+			return true, nil
+		}
+		estimatedItemCountFn := func(ctx context.Context) (int, error) {
+			return 10, nil
+		}
+		grantsHash := []byte("some hash")
+		resp, err := ListPage(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn, tok)
+		require.NoError(t, err)
+		assert.Empty(t, cmp.Diff(resp.Items, []*testType{
+			{nil, "1", lastItemCreateTime.Add(2 * time.Second), lastItemUpdateTime.Add(2 * time.Second)},
+			{nil, "3", lastItemCreateTime, lastItemUpdateTime},
+		}))
+		assert.False(t, resp.CompleteListing)
+		assert.Empty(t, resp.DeletedIds)
+		assert.Equal(t, resp.EstimatedItemCount, 10)
+		require.NotNil(t, resp.ListToken)
+		assert.True(t, resp.ListToken.CreateTime.Equal(tokenCreateTime))
+		assert.Equal(t, resp.ListToken.GrantsHash, grantsHash)
+		assert.Equal(t, resp.ListToken.Subtype.(*listtoken.PaginationToken).LastItemId, "3")
+		assert.True(t, resp.ListToken.Subtype.(*listtoken.PaginationToken).LastItemCreateTime.Equal(lastItemCreateTime))
+	})
+	t.Run("fill-on-subsequent", func(t *testing.T) {
+		t.Parallel()
+		pageSize := 2
+		tok, err := listtoken.NewPagination(
+			ctx,
+			tokenCreateTime,
+			resource.Unknown,
+			[]byte("some hash"),
+			"some id",
+			lastItemCreateTime,
+		)
+		require.NoError(t, err)
+		listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
+			if prevPageLast != nil {
+				assert.Equal(t, "3", prevPageLast.ID)
+				return []*testType{
+					{nil, "4", lastItemCreateTime.Add(time.Second), lastItemUpdateTime.Add(time.Second)},
+				}, listReturnTime.Add(time.Second), nil
+			}
+			return []*testType{
+				{nil, "1", lastItemCreateTime.Add(2 * time.Second), lastItemUpdateTime.Add(2 * time.Second)},
+				{nil, "2", lastItemCreateTime.Add(time.Second), lastItemUpdateTime.Add(time.Second)},
+				{nil, "3", lastItemCreateTime, lastItemUpdateTime},
+			}, listReturnTime, nil
+		}
+		filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
+			if item.ID == "2" || item.ID == "4" {
+				// Filter every other item
+				return false, nil
+			}
+			return true, nil
+		}
+		estimatedItemCountFn := func(ctx context.Context) (int, error) {
+			return 10, nil
+		}
+		grantsHash := []byte("some hash")
+		resp, err := ListPage(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn, tok)
+		require.NoError(t, err)
+		assert.Empty(t, cmp.Diff(resp.Items, []*testType{
+			{nil, "1", lastItemCreateTime.Add(2 * time.Second), lastItemUpdateTime.Add(2 * time.Second)},
+			{nil, "3", lastItemCreateTime, lastItemUpdateTime},
+		}))
+		assert.True(t, resp.CompleteListing)
+		assert.Empty(t, resp.DeletedIds)
+		assert.Equal(t, resp.EstimatedItemCount, 10)
+		require.NotNil(t, resp.ListToken)
+		assert.True(t, resp.ListToken.CreateTime.Equal(tokenCreateTime))
+		assert.Equal(t, resp.ListToken.GrantsHash, grantsHash)
+		assert.True(t, resp.ListToken.Subtype.(*listtoken.StartRefreshToken).PreviousDeletedIdsTime.Equal(tokenCreateTime))
+		assert.True(t, resp.ListToken.Subtype.(*listtoken.StartRefreshToken).PreviousPhaseUpperBound.Equal(tokenCreateTime))
+	})
+	t.Run("dont-fill-without-remaining", func(t *testing.T) {
+		t.Parallel()
+		pageSize := 2
+		tok, err := listtoken.NewPagination(
+			ctx,
+			tokenCreateTime,
+			resource.Unknown,
+			[]byte("some hash"),
+			"some id",
+			lastItemCreateTime,
+		)
+		require.NoError(t, err)
+		listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
+			if prevPageLast != nil {
+				assert.Equal(t, "3", prevPageLast.ID)
+				return []*testType{
+					{nil, "4", lastItemCreateTime.Add(time.Second), lastItemUpdateTime.Add(time.Second)},
+				}, listReturnTime.Add(time.Second), nil
+			}
+			return []*testType{
+				{nil, "1", lastItemCreateTime.Add(2 * time.Second), lastItemUpdateTime.Add(2 * time.Second)},
+				{nil, "2", lastItemCreateTime.Add(time.Second), lastItemUpdateTime.Add(time.Second)},
+				{nil, "3", lastItemCreateTime, lastItemUpdateTime},
+			}, listReturnTime, nil
 		}
 		filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
 			if item.ID != "1" {
@@ -491,45 +1235,130 @@ func Test_List(t *testing.T) {
 			return 10, nil
 		}
 		grantsHash := []byte("some hash")
-		resp, err := List(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn)
-		require.ErrorContains(t, err, "failed to list")
-		assert.Empty(t, resp)
+		resp, err := ListPage(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn, tok)
+		require.NoError(t, err)
+		assert.Empty(t, cmp.Diff(resp.Items, []*testType{
+			{nil, "1", lastItemCreateTime.Add(2 * time.Second), lastItemUpdateTime.Add(2 * time.Second)},
+		}))
+		assert.True(t, resp.CompleteListing)
+		assert.Empty(t, resp.DeletedIds)
+		assert.Equal(t, resp.EstimatedItemCount, 10)
+		require.NotNil(t, resp.ListToken)
+		assert.True(t, resp.ListToken.CreateTime.Equal(tokenCreateTime))
+		assert.Equal(t, resp.ListToken.GrantsHash, grantsHash)
+		assert.True(t, resp.ListToken.Subtype.(*listtoken.StartRefreshToken).PreviousDeletedIdsTime.Equal(tokenCreateTime))
+		assert.True(t, resp.ListToken.Subtype.(*listtoken.StartRefreshToken).PreviousPhaseUpperBound.Equal(tokenCreateTime))
 	})
-	t.Run("errors-when-filter-errors", func(t *testing.T) {
+	t.Run("dont-fill-with-full-last-page", func(t *testing.T) {
 		t.Parallel()
 		pageSize := 2
-		listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, error) {
-			assert.Nil(t, prevPageLast)
-			return []*testType{{nil, "1"}, {nil, "2"}, {nil, "3"}}, nil
+		tok, err := listtoken.NewPagination(
+			ctx,
+			tokenCreateTime,
+			resource.Unknown,
+			[]byte("some hash"),
+			"some id",
+			lastItemCreateTime,
+		)
+		require.NoError(t, err)
+		listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
+			switch {
+			case prevPageLast == nil:
+				return []*testType{
+					{nil, "1", lastItemCreateTime.Add(2 * time.Second), lastItemUpdateTime.Add(2 * time.Second)},
+					{nil, "2", lastItemCreateTime.Add(time.Second), lastItemUpdateTime.Add(time.Second)},
+					{nil, "3", lastItemCreateTime, lastItemUpdateTime},
+				}, listReturnTime, nil
+			case prevPageLast.ID == "3":
+				return []*testType{
+					{nil, "4", lastItemCreateTime.Add(-time.Second), lastItemUpdateTime.Add(-time.Second)},
+					{nil, "5", lastItemCreateTime.Add(-2 * time.Second), lastItemUpdateTime.Add(-2 * time.Second)},
+					{nil, "6", lastItemCreateTime.Add(-3 * time.Second), lastItemUpdateTime.Add(-3 * time.Second)},
+				}, listReturnTime.Add(time.Second), nil
+			case prevPageLast.ID == "6":
+				return nil, listReturnTime.Add(2 * time.Second), nil
+			default:
+				t.Fatalf("unexpected call to listItemsFn with %#v", prevPageLast)
+				return nil, time.Time{}, nil
+			}
 		}
 		filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
-			return false, errors.New("failed to filter")
+			if item.ID != "1" {
+				// Filter every item except the first
+				return false, nil
+			}
+			return true, nil
 		}
 		estimatedItemCountFn := func(ctx context.Context) (int, error) {
 			return 10, nil
 		}
 		grantsHash := []byte("some hash")
-		resp, err := List(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn)
-		require.ErrorContains(t, err, "failed to filter")
-		assert.Empty(t, resp)
+		resp, err := ListPage(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn, tok)
+		require.NoError(t, err)
+		assert.Empty(t, cmp.Diff(resp.Items, []*testType{
+			{nil, "1", lastItemCreateTime.Add(2 * time.Second), lastItemUpdateTime.Add(2 * time.Second)},
+		}))
+		assert.True(t, resp.CompleteListing)
+		assert.Empty(t, resp.DeletedIds)
+		assert.Equal(t, resp.EstimatedItemCount, 10)
+		require.NotNil(t, resp.ListToken)
+		assert.True(t, resp.ListToken.CreateTime.Equal(tokenCreateTime))
+		assert.Equal(t, resp.ListToken.GrantsHash, grantsHash)
+		assert.True(t, resp.ListToken.Subtype.(*listtoken.StartRefreshToken).PreviousDeletedIdsTime.Equal(tokenCreateTime))
+		assert.True(t, resp.ListToken.Subtype.(*listtoken.StartRefreshToken).PreviousPhaseUpperBound.Equal(tokenCreateTime))
 	})
-	t.Run("errors-when-estimated-count-errors", func(t *testing.T) {
+	t.Run("filter-everything", func(t *testing.T) {
 		t.Parallel()
 		pageSize := 2
-		listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, error) {
-			assert.Nil(t, prevPageLast)
-			return []*testType{{nil, "1"}, {nil, "2"}, {nil, "3"}}, nil
+		tok, err := listtoken.NewPagination(
+			ctx,
+			tokenCreateTime,
+			resource.Unknown,
+			[]byte("some hash"),
+			"some id",
+			lastItemCreateTime,
+		)
+		require.NoError(t, err)
+		listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
+			switch {
+			case prevPageLast == nil:
+				return []*testType{
+					{nil, "1", lastItemCreateTime.Add(2 * time.Second), lastItemUpdateTime.Add(2 * time.Second)},
+					{nil, "2", lastItemCreateTime.Add(time.Second), lastItemUpdateTime.Add(time.Second)},
+					{nil, "3", lastItemCreateTime, lastItemUpdateTime},
+				}, listReturnTime, nil
+			case prevPageLast.ID == "3":
+				return []*testType{
+					{nil, "4", lastItemCreateTime.Add(-time.Second), lastItemUpdateTime.Add(-time.Second)},
+					{nil, "5", lastItemCreateTime.Add(-2 * time.Second), lastItemUpdateTime.Add(-2 * time.Second)},
+					{nil, "6", lastItemCreateTime.Add(-3 * time.Second), lastItemUpdateTime.Add(-3 * time.Second)},
+				}, listReturnTime.Add(time.Second), nil
+			case prevPageLast.ID == "6":
+				return nil, listReturnTime.Add(2 * time.Second), nil
+			default:
+				t.Fatalf("unexpected call to listItemsFn with %#v", prevPageLast)
+				return nil, time.Time{}, nil
+			}
 		}
 		filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
-			return true, nil
+			// Filter every item
+			return false, nil
 		}
 		estimatedItemCountFn := func(ctx context.Context) (int, error) {
-			return 0, errors.New("failed to estimate count")
+			return 10, nil
 		}
 		grantsHash := []byte("some hash")
-		resp, err := List(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn)
-		require.ErrorContains(t, err, "failed to estimate count")
-		assert.Empty(t, resp)
+		resp, err := ListPage(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn, tok)
+		require.NoError(t, err)
+		assert.Empty(t, resp.Items)
+		assert.True(t, resp.CompleteListing)
+		assert.Empty(t, resp.DeletedIds)
+		assert.Equal(t, resp.EstimatedItemCount, 10)
+		require.NotNil(t, resp.ListToken)
+		assert.True(t, resp.ListToken.CreateTime.Equal(tokenCreateTime))
+		assert.Equal(t, resp.ListToken.GrantsHash, grantsHash)
+		assert.True(t, resp.ListToken.Subtype.(*listtoken.StartRefreshToken).PreviousDeletedIdsTime.Equal(tokenCreateTime))
+		assert.True(t, resp.ListToken.Subtype.(*listtoken.StartRefreshToken).PreviousPhaseUpperBound.Equal(tokenCreateTime))
 	})
 }
 
@@ -537,315 +1366,440 @@ func Test_ListRefresh(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 
-	t.Run("empty grants hash", func(t *testing.T) {
+	t.Run("validation", func(t *testing.T) {
 		t.Parallel()
-		pageSize := 2
-		refreshToken, err := refreshtoken.New(
-			ctx,
-			time.Now(),
-			time.Now(),
-			resource.Unknown,
-			[]byte("some hash"),
-			"1",
-			time.Now(),
-		)
-		require.NoError(t, err)
-		listRefreshItemsFn := func(ctx context.Context, tok *refreshtoken.Token, prevPageLast *testType, limit int) ([]*testType, error) {
-			assert.Nil(t, prevPageLast)
-			return nil, nil
-		}
-		filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
-			return true, nil
-		}
-		estimatedItemCountFn := func(ctx context.Context) (int, error) {
-			return 10, nil
-		}
-		deletedIDsFn := func(ctx context.Context, since time.Time) ([]string, time.Time, error) {
-			return nil, time.Time{}, nil
-		}
-		grantsHash := []byte(nil)
-		_, err = ListRefresh(
-			ctx,
-			grantsHash,
-			pageSize,
-			filterItemFn,
-			listRefreshItemsFn,
-			estimatedItemCountFn,
-			deletedIDsFn,
-			refreshToken,
-		)
-		require.ErrorContains(t, err, "missing grants hash")
+		t.Run("empty grants hash", func(t *testing.T) {
+			t.Parallel()
+			pageSize := 2
+			tok, err := listtoken.NewStartRefresh(
+				ctx,
+				tokenCreateTime,
+				resource.Unknown,
+				[]byte("some hash"),
+				prevDeletedTime,
+				prevPhaseUpperBound,
+			)
+			require.NoError(t, err)
+			listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
+				assert.Nil(t, prevPageLast)
+				return nil, time.Time{}, nil
+			}
+			filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
+				return true, nil
+			}
+			estimatedItemCountFn := func(ctx context.Context) (int, error) {
+				return 10, nil
+			}
+			deletedIDsFn := func(ctx context.Context, since time.Time) ([]string, time.Time, error) {
+				return nil, deletedIDsReturnTime, nil
+			}
+			grantsHash := []byte(nil)
+			_, err = ListRefresh(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn, deletedIDsFn, tok)
+			require.ErrorContains(t, err, "missing grants hash")
+		})
+		t.Run("zero page size", func(t *testing.T) {
+			t.Parallel()
+			pageSize := 0
+			tok, err := listtoken.NewStartRefresh(
+				ctx,
+				tokenCreateTime,
+				resource.Unknown,
+				[]byte("some hash"),
+				prevDeletedTime,
+				prevPhaseUpperBound,
+			)
+			require.NoError(t, err)
+			listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
+				assert.Nil(t, prevPageLast)
+				return nil, time.Time{}, nil
+			}
+			filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
+				return true, nil
+			}
+			estimatedItemCountFn := func(ctx context.Context) (int, error) {
+				return 10, nil
+			}
+			deletedIDsFn := func(ctx context.Context, since time.Time) ([]string, time.Time, error) {
+				return nil, deletedIDsReturnTime, nil
+			}
+			grantsHash := []byte("some hash")
+			_, err = ListRefresh(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn, deletedIDsFn, tok)
+			require.ErrorContains(t, err, "page size must be at least 1")
+		})
+		t.Run("negative page size", func(t *testing.T) {
+			t.Parallel()
+			pageSize := -1
+			tok, err := listtoken.NewStartRefresh(
+				ctx,
+				tokenCreateTime,
+				resource.Unknown,
+				[]byte("some hash"),
+				prevDeletedTime,
+				prevPhaseUpperBound,
+			)
+			require.NoError(t, err)
+			listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
+				assert.Nil(t, prevPageLast)
+				return nil, time.Time{}, nil
+			}
+			filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
+				return true, nil
+			}
+			estimatedItemCountFn := func(ctx context.Context) (int, error) {
+				return 10, nil
+			}
+			deletedIDsFn := func(ctx context.Context, since time.Time) ([]string, time.Time, error) {
+				return nil, deletedIDsReturnTime, nil
+			}
+			grantsHash := []byte("some hash")
+			_, err = ListRefresh(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn, deletedIDsFn, tok)
+			require.ErrorContains(t, err, "page size must be at least 1")
+		})
+		t.Run("nil filter item callback", func(t *testing.T) {
+			t.Parallel()
+			pageSize := 2
+			tok, err := listtoken.NewStartRefresh(
+				ctx,
+				tokenCreateTime,
+				resource.Unknown,
+				[]byte("some hash"),
+				prevDeletedTime,
+				prevPhaseUpperBound,
+			)
+			require.NoError(t, err)
+			listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
+				assert.Nil(t, prevPageLast)
+				return nil, time.Time{}, nil
+			}
+			filterItemFn := ListFilterFunc[*testType](nil)
+			estimatedItemCountFn := func(ctx context.Context) (int, error) {
+				return 10, nil
+			}
+			deletedIDsFn := func(ctx context.Context, since time.Time) ([]string, time.Time, error) {
+				return nil, deletedIDsReturnTime, nil
+			}
+			grantsHash := []byte("some hash")
+			_, err = ListRefresh(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn, deletedIDsFn, tok)
+			require.ErrorContains(t, err, "missing filter item callback")
+		})
+		t.Run("nil list items callback", func(t *testing.T) {
+			t.Parallel()
+			pageSize := 2
+			tok, err := listtoken.NewStartRefresh(
+				ctx,
+				tokenCreateTime,
+				resource.Unknown,
+				[]byte("some hash"),
+				prevDeletedTime,
+				prevPhaseUpperBound,
+			)
+			require.NoError(t, err)
+			listItemsFn := ListItemsFunc[*testType](nil)
+			filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
+				return true, nil
+			}
+			estimatedItemCountFn := func(ctx context.Context) (int, error) {
+				return 10, nil
+			}
+			deletedIDsFn := func(ctx context.Context, since time.Time) ([]string, time.Time, error) {
+				return nil, deletedIDsReturnTime, nil
+			}
+			grantsHash := []byte("some hash")
+			_, err = ListRefresh(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn, deletedIDsFn, tok)
+			require.ErrorContains(t, err, "missing list items callback")
+		})
+		t.Run("nil list deleted ids callback", func(t *testing.T) {
+			t.Parallel()
+			pageSize := 2
+			tok, err := listtoken.NewStartRefresh(
+				ctx,
+				tokenCreateTime,
+				resource.Unknown,
+				[]byte("some hash"),
+				prevDeletedTime,
+				prevPhaseUpperBound,
+			)
+			require.NoError(t, err)
+			listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
+				assert.Nil(t, prevPageLast)
+				return nil, time.Time{}, nil
+			}
+			filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
+				return true, nil
+			}
+			estimatedItemCountFn := func(ctx context.Context) (int, error) {
+				return 10, nil
+			}
+			deletedIDsFn := ListDeletedIDsFunc(nil)
+			grantsHash := []byte("some hash")
+			_, err = ListRefresh(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn, deletedIDsFn, tok)
+			require.ErrorContains(t, err, "missing list deleted IDs callback")
+		})
+		t.Run("nil token", func(t *testing.T) {
+			t.Parallel()
+			pageSize := 2
+			listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
+				assert.Nil(t, prevPageLast)
+				return nil, time.Time{}, nil
+			}
+			filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
+				return true, nil
+			}
+			estimatedItemCountFn := func(ctx context.Context) (int, error) {
+				return 10, nil
+			}
+			deletedIDsFn := func(ctx context.Context, since time.Time) ([]string, time.Time, error) {
+				return nil, deletedIDsReturnTime, nil
+			}
+			grantsHash := []byte("some hash")
+			_, err := ListRefresh(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn, deletedIDsFn, nil)
+			require.ErrorContains(t, err, "missing list token")
+		})
+		t.Run("wrong token type", func(t *testing.T) {
+			t.Parallel()
+			pageSize := 2
+			tok, err := listtoken.NewPagination(
+				ctx,
+				tokenCreateTime,
+				resource.Unknown,
+				[]byte("some hash"),
+				"some id",
+				lastItemCreateTime,
+			)
+			require.NoError(t, err)
+			listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
+				assert.Nil(t, prevPageLast)
+				return nil, time.Time{}, nil
+			}
+			filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
+				return true, nil
+			}
+			estimatedItemCountFn := func(ctx context.Context) (int, error) {
+				return 10, nil
+			}
+			deletedIDsFn := func(ctx context.Context, since time.Time) ([]string, time.Time, error) {
+				return nil, deletedIDsReturnTime, nil
+			}
+			grantsHash := []byte("some hash")
+			_, err = ListRefresh(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn, deletedIDsFn, tok)
+			require.ErrorContains(t, err, "token did not have a start-refresh token component")
+		})
+		t.Run("nil estimated count callback", func(t *testing.T) {
+			t.Parallel()
+			pageSize := 2
+			tok, err := listtoken.NewStartRefresh(
+				ctx,
+				tokenCreateTime,
+				resource.Unknown,
+				[]byte("some hash"),
+				prevDeletedTime,
+				prevPhaseUpperBound,
+			)
+			require.NoError(t, err)
+			listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
+				assert.Nil(t, prevPageLast)
+				return nil, time.Time{}, nil
+			}
+			filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
+				return true, nil
+			}
+			estimatedItemCountFn := EstimatedCountFunc(nil)
+			deletedIDsFn := func(ctx context.Context, since time.Time) ([]string, time.Time, error) {
+				return nil, deletedIDsReturnTime, nil
+			}
+			grantsHash := []byte("some hash")
+			_, err = ListRefresh(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn, deletedIDsFn, tok)
+			require.ErrorContains(t, err, "missing estimated count callback")
+		})
 	})
-	t.Run("zero page size", func(t *testing.T) {
-		t.Parallel()
-		pageSize := 0
-		refreshToken, err := refreshtoken.New(
-			ctx,
-			time.Now(),
-			time.Now(),
-			resource.Unknown,
-			[]byte("some hash"),
-			"1",
-			time.Now(),
-		)
-		require.NoError(t, err)
-		listRefreshItemsFn := func(ctx context.Context, tok *refreshtoken.Token, prevPageLast *testType, limit int) ([]*testType, error) {
-			assert.Nil(t, prevPageLast)
-			return nil, nil
-		}
-		filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
-			return true, nil
-		}
-		estimatedItemCountFn := func(ctx context.Context) (int, error) {
-			return 10, nil
-		}
-		deletedIDsFn := func(ctx context.Context, since time.Time) ([]string, time.Time, error) {
-			return nil, time.Time{}, nil
-		}
-		grantsHash := []byte("some hash")
-		_, err = ListRefresh(
-			ctx,
-			grantsHash,
-			pageSize,
-			filterItemFn,
-			listRefreshItemsFn,
-			estimatedItemCountFn,
-			deletedIDsFn,
-			refreshToken,
-		)
-		require.ErrorContains(t, err, "page size must be at least 1")
-	})
-	t.Run("negative page size", func(t *testing.T) {
-		t.Parallel()
-		pageSize := -1
-		refreshToken, err := refreshtoken.New(
-			ctx,
-			time.Now(),
-			time.Now(),
-			resource.Unknown,
-			[]byte("some hash"),
-			"1",
-			time.Now(),
-		)
-		require.NoError(t, err)
-		listRefreshItemsFn := func(ctx context.Context, tok *refreshtoken.Token, prevPageLast *testType, limit int) ([]*testType, error) {
-			assert.Nil(t, prevPageLast)
-			return nil, nil
-		}
-		filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
-			return true, nil
-		}
-		estimatedItemCountFn := func(ctx context.Context) (int, error) {
-			return 10, nil
-		}
-		deletedIDsFn := func(ctx context.Context, since time.Time) ([]string, time.Time, error) {
-			return nil, time.Time{}, nil
-		}
-		grantsHash := []byte("some hash")
-		_, err = ListRefresh(
-			ctx,
-			grantsHash,
-			pageSize,
-			filterItemFn,
-			listRefreshItemsFn,
-			estimatedItemCountFn,
-			deletedIDsFn,
-			refreshToken,
-		)
-		require.ErrorContains(t, err, "page size must be at least 1")
-	})
-	t.Run("nil filter item callback", func(t *testing.T) {
-		t.Parallel()
-		pageSize := 2
-		refreshToken, err := refreshtoken.New(
-			ctx,
-			time.Now(),
-			time.Now(),
-			resource.Unknown,
-			[]byte("some hash"),
-			"1",
-			time.Now(),
-		)
-		require.NoError(t, err)
-		listRefreshItemsFn := func(ctx context.Context, tok *refreshtoken.Token, prevPageLast *testType, limit int) ([]*testType, error) {
-			assert.Nil(t, prevPageLast)
-			return nil, nil
-		}
-		filterItemFn := ListFilterFunc[*testType](nil)
-		estimatedItemCountFn := func(ctx context.Context) (int, error) {
-			return 10, nil
-		}
-		deletedIDsFn := func(ctx context.Context, since time.Time) ([]string, time.Time, error) {
-			return nil, time.Time{}, nil
-		}
-		grantsHash := []byte("some hash")
-		_, err = ListRefresh(
-			ctx,
-			grantsHash,
-			pageSize,
-			filterItemFn,
-			listRefreshItemsFn,
-			estimatedItemCountFn,
-			deletedIDsFn,
-			refreshToken,
-		)
-		require.ErrorContains(t, err, "missing filter item callback")
-	})
-	t.Run("nil list items callback", func(t *testing.T) {
-		t.Parallel()
-		pageSize := 2
-		refreshToken, err := refreshtoken.New(
-			ctx,
-			time.Now(),
-			time.Now(),
-			resource.Unknown,
-			[]byte("some hash"),
-			"1",
-			time.Now(),
-		)
-		require.NoError(t, err)
-		listRefreshItemsFn := ListRefreshItemsFunc[*testType](nil)
-		filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
-			return true, nil
-		}
-		estimatedItemCountFn := func(ctx context.Context) (int, error) {
-			return 10, nil
-		}
-		deletedIDsFn := func(ctx context.Context, since time.Time) ([]string, time.Time, error) {
-			return nil, time.Time{}, nil
-		}
-		grantsHash := []byte("some hash")
-		_, err = ListRefresh(
-			ctx,
-			grantsHash,
-			pageSize,
-			filterItemFn,
-			listRefreshItemsFn,
-			estimatedItemCountFn,
-			deletedIDsFn,
-			refreshToken,
-		)
-		require.ErrorContains(t, err, "missing list refresh items callback")
-	})
-	t.Run("nil estimated count callback", func(t *testing.T) {
-		t.Parallel()
-		pageSize := 2
-		refreshToken, err := refreshtoken.New(
-			ctx,
-			time.Now(),
-			time.Now(),
-			resource.Unknown,
-			[]byte("some hash"),
-			"1",
-			time.Now(),
-		)
-		require.NoError(t, err)
-		listRefreshItemsFn := func(ctx context.Context, tok *refreshtoken.Token, prevPageLast *testType, limit int) ([]*testType, error) {
-			assert.Nil(t, prevPageLast)
-			return nil, nil
-		}
-		filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
-			return true, nil
-		}
-		estimatedItemCountFn := EstimatedCountFunc(nil)
-		deletedIDsFn := func(ctx context.Context, since time.Time) ([]string, time.Time, error) {
-			return nil, time.Time{}, nil
-		}
-		grantsHash := []byte("some hash")
-		_, err = ListRefresh(
-			ctx,
-			grantsHash,
-			pageSize,
-			filterItemFn,
-			listRefreshItemsFn,
-			estimatedItemCountFn,
-			deletedIDsFn,
-			refreshToken,
-		)
-		require.ErrorContains(t, err, "missing estimated count callback")
-	})
-	t.Run("nil deleted ids callback", func(t *testing.T) {
-		t.Parallel()
-		pageSize := 2
-		refreshToken, err := refreshtoken.New(
-			ctx,
-			time.Now(),
-			time.Now(),
-			resource.Unknown,
-			[]byte("some hash"),
-			"1",
-			time.Now(),
-		)
-		require.NoError(t, err)
-		listRefreshItemsFn := func(ctx context.Context, tok *refreshtoken.Token, prevPageLast *testType, limit int) ([]*testType, error) {
-			assert.Nil(t, prevPageLast)
-			return nil, nil
-		}
-		filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
-			return true, nil
-		}
-		estimatedItemCountFn := func(ctx context.Context) (int, error) {
-			return 10, nil
-		}
-		deletedIDsFn := ListDeletedIDsFunc(nil)
-		grantsHash := []byte("some hash")
-		_, err = ListRefresh(
-			ctx,
-			grantsHash,
-			pageSize,
-			filterItemFn,
-			listRefreshItemsFn,
-			estimatedItemCountFn,
-			deletedIDsFn,
-			refreshToken,
-		)
-		require.ErrorContains(t, err, "missing list deleted IDs callback")
-	})
-	t.Run("nil deleted ids callback", func(t *testing.T) {
-		t.Parallel()
-		pageSize := 2
-		listRefreshItemsFn := func(ctx context.Context, tok *refreshtoken.Token, prevPageLast *testType, limit int) ([]*testType, error) {
-			assert.Nil(t, prevPageLast)
-			return nil, nil
-		}
-		filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
-			return true, nil
-		}
-		estimatedItemCountFn := func(ctx context.Context) (int, error) {
-			return 10, nil
-		}
-		deletedIDsFn := func(ctx context.Context, since time.Time) ([]string, time.Time, error) {
-			return nil, time.Time{}, nil
-		}
-		grantsHash := []byte("some hash")
-		_, err := ListRefresh(
-			ctx,
-			grantsHash,
-			pageSize,
-			filterItemFn,
-			listRefreshItemsFn,
-			estimatedItemCountFn,
-			deletedIDsFn,
-			nil,
-		)
-		require.ErrorContains(t, err, "missing refresh token")
+	t.Run("error-cases", func(t *testing.T) {
+		t.Run("errors-when-list-errors-immediately", func(t *testing.T) {
+			t.Parallel()
+			pageSize := 2
+			tok, err := listtoken.NewStartRefresh(
+				ctx,
+				tokenCreateTime,
+				resource.Unknown,
+				[]byte("some hash"),
+				prevDeletedTime,
+				prevPhaseUpperBound,
+			)
+			require.NoError(t, err)
+			listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
+				return nil, time.Time{}, errors.New("failed to list")
+			}
+			filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
+				return true, nil
+			}
+			estimatedItemCountFn := func(ctx context.Context) (int, error) {
+				return 10, nil
+			}
+			deletedIDsFn := func(ctx context.Context, since time.Time) ([]string, time.Time, error) {
+				return nil, deletedIDsReturnTime, nil
+			}
+			grantsHash := []byte("some hash")
+			resp, err := ListRefresh(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn, deletedIDsFn, tok)
+			require.ErrorContains(t, err, "failed to list")
+			assert.Empty(t, resp)
+		})
+		t.Run("errors-when-list-errors-subsequently", func(t *testing.T) {
+			t.Parallel()
+			pageSize := 2
+			tok, err := listtoken.NewStartRefresh(
+				ctx,
+				tokenCreateTime,
+				resource.Unknown,
+				[]byte("some hash"),
+				prevDeletedTime,
+				prevPhaseUpperBound,
+			)
+			require.NoError(t, err)
+			listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
+				if prevPageLast != nil {
+					return nil, time.Time{}, errors.New("failed to list")
+				}
+				return []*testType{
+					{nil, "1", lastItemCreateTime.Add(time.Second), lastItemUpdateTime.Add(time.Second)},
+					{nil, "2", lastItemCreateTime, lastItemUpdateTime},
+					{nil, "3", lastItemCreateTime.Add(-time.Second), lastItemUpdateTime.Add(-time.Second)},
+				}, listReturnTime, nil
+			}
+			filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
+				if item.ID != "1" {
+					// Filter every item except the first
+					return false, nil
+				}
+				return true, nil
+			}
+			estimatedItemCountFn := func(ctx context.Context) (int, error) {
+				return 10, nil
+			}
+			deletedIDsFn := func(ctx context.Context, since time.Time) ([]string, time.Time, error) {
+				return nil, deletedIDsReturnTime, nil
+			}
+			grantsHash := []byte("some hash")
+			resp, err := ListRefresh(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn, deletedIDsFn, tok)
+			require.ErrorContains(t, err, "failed to list")
+			assert.Empty(t, resp)
+		})
+		t.Run("errors-when-filter-errors", func(t *testing.T) {
+			t.Parallel()
+			pageSize := 2
+			tok, err := listtoken.NewStartRefresh(
+				ctx,
+				tokenCreateTime,
+				resource.Unknown,
+				[]byte("some hash"),
+				prevDeletedTime,
+				prevPhaseUpperBound,
+			)
+			require.NoError(t, err)
+			listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
+				assert.Nil(t, prevPageLast)
+				return []*testType{
+					{nil, "1", lastItemCreateTime.Add(time.Second), lastItemUpdateTime.Add(time.Second)},
+					{nil, "2", lastItemCreateTime, lastItemUpdateTime},
+					{nil, "3", lastItemCreateTime.Add(-time.Second), lastItemUpdateTime.Add(-time.Second)},
+				}, listReturnTime, nil
+			}
+			filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
+				return false, errors.New("failed to filter")
+			}
+			estimatedItemCountFn := func(ctx context.Context) (int, error) {
+				return 10, nil
+			}
+			deletedIDsFn := func(ctx context.Context, since time.Time) ([]string, time.Time, error) {
+				return nil, deletedIDsReturnTime, nil
+			}
+			grantsHash := []byte("some hash")
+			resp, err := ListRefresh(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn, deletedIDsFn, tok)
+			require.ErrorContains(t, err, "failed to filter")
+			assert.Empty(t, resp)
+		})
+		t.Run("errors-when-estimated-count-errors", func(t *testing.T) {
+			t.Parallel()
+			pageSize := 2
+			tok, err := listtoken.NewStartRefresh(
+				ctx,
+				tokenCreateTime,
+				resource.Unknown,
+				[]byte("some hash"),
+				prevDeletedTime,
+				prevPhaseUpperBound,
+			)
+			require.NoError(t, err)
+			listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
+				assert.Nil(t, prevPageLast)
+				return []*testType{
+					{nil, "1", lastItemCreateTime.Add(time.Second), lastItemUpdateTime.Add(time.Second)},
+					{nil, "2", lastItemCreateTime, lastItemUpdateTime},
+					{nil, "3", lastItemCreateTime.Add(-time.Second), lastItemUpdateTime.Add(-time.Second)},
+				}, listReturnTime, nil
+			}
+			filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
+				return true, nil
+			}
+			estimatedItemCountFn := func(ctx context.Context) (int, error) {
+				return 0, errors.New("failed to estimate count")
+			}
+			deletedIDsFn := func(ctx context.Context, since time.Time) ([]string, time.Time, error) {
+				return nil, deletedIDsReturnTime, nil
+			}
+			grantsHash := []byte("some hash")
+			resp, err := ListRefresh(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn, deletedIDsFn, tok)
+			require.ErrorContains(t, err, "failed to estimate count")
+			assert.Empty(t, resp)
+		})
+		t.Run("errors-when-list-deleted-ids-errors", func(t *testing.T) {
+			t.Parallel()
+			pageSize := 2
+			tok, err := listtoken.NewStartRefresh(
+				ctx,
+				tokenCreateTime,
+				resource.Unknown,
+				[]byte("some hash"),
+				prevDeletedTime,
+				prevPhaseUpperBound,
+			)
+			require.NoError(t, err)
+			listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
+				assert.Nil(t, prevPageLast)
+				return []*testType{
+					{nil, "1", lastItemCreateTime.Add(time.Second), lastItemUpdateTime.Add(time.Second)},
+					{nil, "2", lastItemCreateTime, lastItemUpdateTime},
+					{nil, "3", lastItemCreateTime.Add(-time.Second), lastItemUpdateTime.Add(-time.Second)},
+				}, listReturnTime, nil
+			}
+			filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
+				return true, nil
+			}
+			estimatedItemCountFn := func(ctx context.Context) (int, error) {
+				return 10, nil
+			}
+			deletedIDsFn := func(ctx context.Context, since time.Time) ([]string, time.Time, error) {
+				return nil, time.Time{}, errors.New("failed to list deleted IDs")
+			}
+			grantsHash := []byte("some hash")
+			resp, err := ListRefresh(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn, deletedIDsFn, tok)
+			require.ErrorContains(t, err, "failed to list deleted IDs")
+			assert.Empty(t, resp)
+		})
 	})
 	t.Run("no-rows", func(t *testing.T) {
 		t.Parallel()
 		pageSize := 2
-		refreshToken, err := refreshtoken.New(
+		tok, err := listtoken.NewStartRefresh(
 			ctx,
-			time.Now(),
-			time.Now(),
+			tokenCreateTime,
 			resource.Unknown,
 			[]byte("some hash"),
-			"1",
-			time.Now(),
+			prevDeletedTime,
+			prevPhaseUpperBound,
 		)
 		require.NoError(t, err)
-		listRefreshItemsFn := func(ctx context.Context, tok *refreshtoken.Token, prevPageLast *testType, limit int) ([]*testType, error) {
+		listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
 			assert.Nil(t, prevPageLast)
-			return nil, nil
+			return nil, listReturnTime, nil
 		}
 		filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
 			return true, nil
@@ -854,51 +1808,40 @@ func Test_ListRefresh(t *testing.T) {
 			return 10, nil
 		}
 		deletedIDsFn := func(ctx context.Context, since time.Time) ([]string, time.Time, error) {
-			return nil, time.Time{}, nil
+			return nil, deletedIDsReturnTime, nil
 		}
 		grantsHash := []byte("some hash")
-		resp, err := ListRefresh(
-			ctx,
-			grantsHash,
-			pageSize,
-			filterItemFn,
-			listRefreshItemsFn,
-			estimatedItemCountFn,
-			deletedIDsFn,
-			refreshToken,
-		)
+		resp, err := ListRefresh(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn, deletedIDsFn, tok)
 		require.NoError(t, err)
 		assert.Empty(t, resp.Items)
 		assert.True(t, resp.CompleteListing)
 		assert.Empty(t, resp.DeletedIds)
 		assert.Equal(t, resp.EstimatedItemCount, 10)
-		// Times should be within ~10 seconds of now
-		assert.True(t, resp.RefreshToken.CreatedTime.After(time.Now().Add(-10*time.Second)))
-		assert.True(t, resp.RefreshToken.CreatedTime.Before(time.Now().Add(10*time.Second)))
-		assert.True(t, resp.RefreshToken.UpdatedTime.After(time.Now().Add(-10*time.Second)))
-		assert.True(t, resp.RefreshToken.UpdatedTime.Before(time.Now().Add(10*time.Second)))
-		assert.True(t, resp.RefreshToken.UpdatedTime.Equal(resp.RefreshToken.CreatedTime))
-		assert.Equal(t, resp.RefreshToken.GrantsHash, grantsHash)
-		assert.Equal(t, resp.RefreshToken.LastItemId, "1")
-		assert.True(t, resp.RefreshToken.LastItemUpdatedTime.After(time.Now().Add(-10*time.Second)))
-		assert.True(t, resp.RefreshToken.LastItemUpdatedTime.Before(time.Now().Add(10*time.Second)))
+		require.NotNil(t, resp.ListToken)
+		assert.True(t, resp.ListToken.CreateTime.Equal(tokenCreateTime))
+		assert.Equal(t, resp.ListToken.GrantsHash, grantsHash)
+		assert.True(t, resp.ListToken.Subtype.(*listtoken.StartRefreshToken).PreviousDeletedIdsTime.Equal(deletedIDsReturnTime))
+		assert.True(t, resp.ListToken.Subtype.(*listtoken.StartRefreshToken).PreviousPhaseUpperBound.Equal(listReturnTime))
 	})
 	t.Run("fill-on-first-with-remaining", func(t *testing.T) {
 		t.Parallel()
 		pageSize := 2
-		refreshToken, err := refreshtoken.New(
+		tok, err := listtoken.NewStartRefresh(
 			ctx,
-			time.Now(),
-			time.Now(),
+			tokenCreateTime,
 			resource.Unknown,
 			[]byte("some hash"),
-			"1",
-			time.Now(),
+			prevDeletedTime,
+			prevPhaseUpperBound,
 		)
 		require.NoError(t, err)
-		listRefreshItemsFn := func(ctx context.Context, tok *refreshtoken.Token, prevPageLast *testType, limit int) ([]*testType, error) {
+		listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
 			assert.Nil(t, prevPageLast)
-			return []*testType{{nil, "1"}, {nil, "2"}, {nil, "3"}}, nil
+			return []*testType{
+				{nil, "1", lastItemCreateTime.Add(time.Second), lastItemUpdateTime.Add(time.Second)},
+				{nil, "2", lastItemCreateTime, lastItemUpdateTime},
+				{nil, "3", lastItemCreateTime.Add(-time.Second), lastItemUpdateTime.Add(-time.Second)},
+			}, listReturnTime, nil
 		}
 		filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
 			return true, nil
@@ -907,52 +1850,44 @@ func Test_ListRefresh(t *testing.T) {
 			return 10, nil
 		}
 		deletedIDsFn := func(ctx context.Context, since time.Time) ([]string, time.Time, error) {
-			return nil, time.Time{}, nil
+			return []string{"deleted-id"}, deletedIDsReturnTime, nil
 		}
 		grantsHash := []byte("some hash")
-		resp, err := ListRefresh(
-			ctx,
-			grantsHash,
-			pageSize,
-			filterItemFn,
-			listRefreshItemsFn,
-			estimatedItemCountFn,
-			deletedIDsFn,
-			refreshToken,
-		)
+		resp, err := ListRefresh(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn, deletedIDsFn, tok)
 		require.NoError(t, err)
-		assert.Empty(t, cmp.Diff(resp.Items, []*testType{{nil, "1"}, {nil, "2"}}))
+		assert.Empty(t, cmp.Diff(resp.Items, []*testType{
+			{nil, "1", lastItemCreateTime.Add(time.Second), lastItemUpdateTime.Add(time.Second)},
+			{nil, "2", lastItemCreateTime, lastItemUpdateTime},
+		}))
 		assert.False(t, resp.CompleteListing)
-		assert.Empty(t, resp.DeletedIds)
+		assert.Equal(t, []string{"deleted-id"}, resp.DeletedIds)
 		assert.Equal(t, resp.EstimatedItemCount, 10)
-		require.NotNil(t, resp.RefreshToken)
-		// Times should be within ~10 seconds of now
-		assert.True(t, resp.RefreshToken.CreatedTime.After(time.Now().Add(-10*time.Second)))
-		assert.True(t, resp.RefreshToken.CreatedTime.Before(time.Now().Add(10*time.Second)))
-		assert.True(t, resp.RefreshToken.UpdatedTime.After(time.Now().Add(-10*time.Second)))
-		assert.True(t, resp.RefreshToken.UpdatedTime.Before(time.Now().Add(10*time.Second)))
-		assert.True(t, resp.RefreshToken.UpdatedTime.Equal(resp.RefreshToken.CreatedTime))
-		assert.Equal(t, resp.RefreshToken.GrantsHash, grantsHash)
-		assert.Equal(t, resp.RefreshToken.LastItemId, "2")
-		assert.True(t, resp.RefreshToken.LastItemUpdatedTime.After(time.Now().Add(-10*time.Second)))
-		assert.True(t, resp.RefreshToken.LastItemUpdatedTime.Before(time.Now().Add(10*time.Second)))
+		require.NotNil(t, resp.ListToken)
+		assert.True(t, resp.ListToken.CreateTime.Equal(tokenCreateTime))
+		assert.Equal(t, resp.ListToken.GrantsHash, grantsHash)
+		assert.Equal(t, resp.ListToken.Subtype.(*listtoken.RefreshToken).LastItemId, "2")
+		assert.True(t, resp.ListToken.Subtype.(*listtoken.RefreshToken).LastItemUpdateTime.Equal(lastItemUpdateTime))
+		assert.True(t, resp.ListToken.Subtype.(*listtoken.RefreshToken).PhaseLowerBound.Equal(prevPhaseUpperBound))
+		assert.True(t, resp.ListToken.Subtype.(*listtoken.RefreshToken).PhaseUpperBound.Equal(listReturnTime))
 	})
 	t.Run("fill-on-first-without-remaining", func(t *testing.T) {
 		t.Parallel()
 		pageSize := 2
-		refreshToken, err := refreshtoken.New(
+		tok, err := listtoken.NewStartRefresh(
 			ctx,
-			time.Now(),
-			time.Now(),
+			tokenCreateTime,
 			resource.Unknown,
 			[]byte("some hash"),
-			"1",
-			time.Now(),
+			prevDeletedTime,
+			prevPhaseUpperBound,
 		)
 		require.NoError(t, err)
-		listRefreshItemsFn := func(ctx context.Context, tok *refreshtoken.Token, prevPageLast *testType, limit int) ([]*testType, error) {
+		listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
 			assert.Nil(t, prevPageLast)
-			return []*testType{{nil, "1"}, {nil, "2"}}, nil
+			return []*testType{
+				{nil, "1", lastItemCreateTime.Add(time.Second), lastItemUpdateTime.Add(time.Second)},
+				{nil, "2", lastItemCreateTime, lastItemUpdateTime},
+			}, listReturnTime, nil
 		}
 		filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
 			return true, nil
@@ -961,55 +1896,50 @@ func Test_ListRefresh(t *testing.T) {
 			return 10, nil
 		}
 		deletedIDsFn := func(ctx context.Context, since time.Time) ([]string, time.Time, error) {
-			return nil, time.Time{}, nil
+			return []string{"deleted-id"}, deletedIDsReturnTime, nil
 		}
 		grantsHash := []byte("some hash")
-		resp, err := ListRefresh(
-			ctx,
-			grantsHash,
-			pageSize,
-			filterItemFn,
-			listRefreshItemsFn,
-			estimatedItemCountFn,
-			deletedIDsFn,
-			refreshToken,
-		)
+		resp, err := ListRefresh(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn, deletedIDsFn, tok)
 		require.NoError(t, err)
-		assert.Empty(t, cmp.Diff(resp.Items, []*testType{{nil, "1"}, {nil, "2"}}))
+		assert.Empty(t, cmp.Diff(resp.Items, []*testType{
+			{nil, "1", lastItemCreateTime.Add(time.Second), lastItemUpdateTime.Add(time.Second)},
+			{nil, "2", lastItemCreateTime, lastItemUpdateTime},
+		}))
 		assert.True(t, resp.CompleteListing)
-		assert.Empty(t, resp.DeletedIds)
+		assert.Equal(t, []string{"deleted-id"}, resp.DeletedIds)
 		assert.Equal(t, resp.EstimatedItemCount, 10)
-		require.NotNil(t, resp.RefreshToken)
-		// Times should be within ~10 seconds of now
-		assert.True(t, resp.RefreshToken.CreatedTime.After(time.Now().Add(-10*time.Second)))
-		assert.True(t, resp.RefreshToken.CreatedTime.Before(time.Now().Add(10*time.Second)))
-		assert.True(t, resp.RefreshToken.UpdatedTime.After(time.Now().Add(-10*time.Second)))
-		assert.True(t, resp.RefreshToken.UpdatedTime.Before(time.Now().Add(10*time.Second)))
-		assert.True(t, resp.RefreshToken.UpdatedTime.Equal(resp.RefreshToken.CreatedTime))
-		assert.Equal(t, resp.RefreshToken.GrantsHash, grantsHash)
-		assert.Equal(t, resp.RefreshToken.LastItemId, "2")
-		assert.True(t, resp.RefreshToken.LastItemUpdatedTime.After(time.Now().Add(-10*time.Second)))
-		assert.True(t, resp.RefreshToken.LastItemUpdatedTime.Before(time.Now().Add(10*time.Second)))
+		require.NotNil(t, resp.ListToken)
+		assert.True(t, resp.ListToken.CreateTime.Equal(tokenCreateTime))
+		assert.Equal(t, resp.ListToken.GrantsHash, grantsHash)
+		assert.True(t, resp.ListToken.Subtype.(*listtoken.StartRefreshToken).PreviousDeletedIdsTime.Equal(deletedIDsReturnTime))
+		assert.True(t, resp.ListToken.Subtype.(*listtoken.StartRefreshToken).PreviousPhaseUpperBound.Equal(listReturnTime))
 	})
 	t.Run("fill-on-subsequent-with-remaining", func(t *testing.T) {
 		t.Parallel()
 		pageSize := 2
-		refreshToken, err := refreshtoken.New(
+		tok, err := listtoken.NewStartRefresh(
 			ctx,
-			time.Now(),
-			time.Now(),
+			tokenCreateTime,
 			resource.Unknown,
 			[]byte("some hash"),
-			"1",
-			time.Now(),
+			prevDeletedTime,
+			prevPhaseUpperBound,
 		)
 		require.NoError(t, err)
-		listRefreshItemsFn := func(ctx context.Context, tok *refreshtoken.Token, prevPageLast *testType, limit int) ([]*testType, error) {
+		listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
 			if prevPageLast != nil {
 				assert.Equal(t, "3", prevPageLast.ID)
-				return []*testType{{nil, "4"}, {nil, "5"}, {nil, "6"}}, nil
+				return []*testType{
+					{nil, "4", lastItemCreateTime.Add(-time.Second), lastItemUpdateTime.Add(-time.Second)},
+					{nil, "5", lastItemCreateTime.Add(-2 * time.Second), lastItemUpdateTime.Add(-2 * time.Second)},
+					{nil, "6", lastItemCreateTime.Add(-3 * time.Second), lastItemUpdateTime.Add(-3 * time.Second)},
+				}, listReturnTime.Add(time.Second), nil
 			}
-			return []*testType{{nil, "1"}, {nil, "2"}, {nil, "3"}}, nil
+			return []*testType{
+				{nil, "1", lastItemCreateTime.Add(2 * time.Second), lastItemUpdateTime.Add(2 * time.Second)},
+				{nil, "2", lastItemCreateTime.Add(time.Second), lastItemUpdateTime.Add(time.Second)},
+				{nil, "3", lastItemCreateTime, lastItemUpdateTime},
+			}, listReturnTime, nil
 		}
 		filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
 			if item.ID == "2" || item.ID == "4" || item.ID == "6" {
@@ -1022,58 +1952,54 @@ func Test_ListRefresh(t *testing.T) {
 			return 10, nil
 		}
 		deletedIDsFn := func(ctx context.Context, since time.Time) ([]string, time.Time, error) {
-			return nil, time.Time{}, nil
+			return []string{"deleted-id"}, deletedIDsReturnTime, nil
 		}
 		grantsHash := []byte("some hash")
-		resp, err := ListRefresh(
-			ctx,
-			grantsHash,
-			pageSize,
-			filterItemFn,
-			listRefreshItemsFn,
-			estimatedItemCountFn,
-			deletedIDsFn,
-			refreshToken,
-		)
+		resp, err := ListRefresh(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn, deletedIDsFn, tok)
 		require.NoError(t, err)
-		assert.Empty(t, cmp.Diff(resp.Items, []*testType{{nil, "1"}, {nil, "3"}}))
+		assert.Empty(t, cmp.Diff(resp.Items, []*testType{
+			{nil, "1", lastItemCreateTime.Add(2 * time.Second), lastItemUpdateTime.Add(2 * time.Second)},
+			{nil, "3", lastItemCreateTime, lastItemUpdateTime},
+		}))
 		assert.False(t, resp.CompleteListing)
-		assert.Empty(t, resp.DeletedIds)
+		assert.Equal(t, []string{"deleted-id"}, resp.DeletedIds)
 		assert.Equal(t, resp.EstimatedItemCount, 10)
-		require.NotNil(t, resp.RefreshToken)
-		// Times should be within ~10 seconds of now
-		assert.True(t, resp.RefreshToken.CreatedTime.After(time.Now().Add(-10*time.Second)))
-		assert.True(t, resp.RefreshToken.CreatedTime.Before(time.Now().Add(10*time.Second)))
-		assert.True(t, resp.RefreshToken.UpdatedTime.After(time.Now().Add(-10*time.Second)))
-		assert.True(t, resp.RefreshToken.UpdatedTime.Before(time.Now().Add(10*time.Second)))
-		assert.True(t, resp.RefreshToken.UpdatedTime.Equal(resp.RefreshToken.CreatedTime))
-		assert.Equal(t, resp.RefreshToken.GrantsHash, grantsHash)
-		assert.Equal(t, resp.RefreshToken.LastItemId, "3")
-		assert.True(t, resp.RefreshToken.LastItemUpdatedTime.After(time.Now().Add(-10*time.Second)))
-		assert.True(t, resp.RefreshToken.LastItemUpdatedTime.Before(time.Now().Add(10*time.Second)))
+		require.NotNil(t, resp.ListToken)
+		assert.True(t, resp.ListToken.CreateTime.Equal(tokenCreateTime))
+		assert.Equal(t, resp.ListToken.GrantsHash, grantsHash)
+		assert.Equal(t, resp.ListToken.Subtype.(*listtoken.RefreshToken).LastItemId, "3")
+		assert.True(t, resp.ListToken.Subtype.(*listtoken.RefreshToken).LastItemUpdateTime.Equal(lastItemUpdateTime))
+		assert.True(t, resp.ListToken.Subtype.(*listtoken.RefreshToken).PhaseLowerBound.Equal(prevPhaseUpperBound))
+		assert.True(t, resp.ListToken.Subtype.(*listtoken.RefreshToken).PhaseUpperBound.Equal(listReturnTime))
 	})
 	t.Run("fill-on-subsequent-without-remaining", func(t *testing.T) {
 		t.Parallel()
 		pageSize := 2
-		refreshToken, err := refreshtoken.New(
+		tok, err := listtoken.NewStartRefresh(
 			ctx,
-			time.Now(),
-			time.Now(),
+			tokenCreateTime,
 			resource.Unknown,
 			[]byte("some hash"),
-			"1",
-			time.Now(),
+			prevDeletedTime,
+			prevPhaseUpperBound,
 		)
 		require.NoError(t, err)
-		listRefreshItemsFn := func(ctx context.Context, tok *refreshtoken.Token, prevPageLast *testType, limit int) ([]*testType, error) {
+		listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
 			if prevPageLast != nil {
 				assert.Equal(t, "3", prevPageLast.ID)
-				return []*testType{{nil, "4"}, {nil, "5"}}, nil
+				return []*testType{
+					{nil, "4", lastItemCreateTime.Add(-time.Second), lastItemUpdateTime.Add(-time.Second)},
+					{nil, "5", lastItemCreateTime.Add(-2 * time.Second), lastItemUpdateTime.Add(-2 * time.Second)},
+				}, listReturnTime.Add(time.Second), nil
 			}
-			return []*testType{{nil, "1"}, {nil, "2"}, {nil, "3"}}, nil
+			return []*testType{
+				{nil, "1", lastItemCreateTime.Add(2 * time.Second), lastItemUpdateTime.Add(2 * time.Second)},
+				{nil, "2", lastItemCreateTime.Add(time.Second), lastItemUpdateTime.Add(time.Second)},
+				{nil, "3", lastItemCreateTime, lastItemUpdateTime},
+			}, listReturnTime, nil
 		}
 		filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
-			if item.ID == "2" || item.ID == "4" || item.ID == "6" {
+			if item.ID == "2" || item.ID == "4" {
 				// Filter every other item
 				return false, nil
 			}
@@ -1083,58 +2009,53 @@ func Test_ListRefresh(t *testing.T) {
 			return 10, nil
 		}
 		deletedIDsFn := func(ctx context.Context, since time.Time) ([]string, time.Time, error) {
-			return nil, time.Time{}, nil
+			return []string{"deleted-id"}, deletedIDsReturnTime, nil
 		}
 		grantsHash := []byte("some hash")
-		resp, err := ListRefresh(
-			ctx,
-			grantsHash,
-			pageSize,
-			filterItemFn,
-			listRefreshItemsFn,
-			estimatedItemCountFn,
-			deletedIDsFn,
-			refreshToken,
-		)
+		resp, err := ListRefresh(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn, deletedIDsFn, tok)
 		require.NoError(t, err)
-		assert.Empty(t, cmp.Diff(resp.Items, []*testType{{nil, "1"}, {nil, "3"}}))
+		assert.Empty(t, cmp.Diff(resp.Items, []*testType{
+			{nil, "1", lastItemCreateTime.Add(2 * time.Second), lastItemUpdateTime.Add(2 * time.Second)},
+			{nil, "3", lastItemCreateTime, lastItemUpdateTime},
+		}))
 		assert.False(t, resp.CompleteListing)
-		assert.Empty(t, resp.DeletedIds)
+		assert.Equal(t, []string{"deleted-id"}, resp.DeletedIds)
 		assert.Equal(t, resp.EstimatedItemCount, 10)
-		require.NotNil(t, resp.RefreshToken)
-		// Times should be within ~10 seconds of now
-		assert.True(t, resp.RefreshToken.CreatedTime.After(time.Now().Add(-10*time.Second)))
-		assert.True(t, resp.RefreshToken.CreatedTime.Before(time.Now().Add(10*time.Second)))
-		assert.True(t, resp.RefreshToken.UpdatedTime.After(time.Now().Add(-10*time.Second)))
-		assert.True(t, resp.RefreshToken.UpdatedTime.Before(time.Now().Add(10*time.Second)))
-		assert.True(t, resp.RefreshToken.UpdatedTime.Equal(resp.RefreshToken.CreatedTime))
-		assert.Equal(t, resp.RefreshToken.GrantsHash, grantsHash)
-		assert.Equal(t, resp.RefreshToken.LastItemId, "3")
-		assert.True(t, resp.RefreshToken.LastItemUpdatedTime.After(time.Now().Add(-10*time.Second)))
-		assert.True(t, resp.RefreshToken.LastItemUpdatedTime.Before(time.Now().Add(10*time.Second)))
+		require.NotNil(t, resp.ListToken)
+		assert.True(t, resp.ListToken.CreateTime.Equal(tokenCreateTime))
+		assert.Equal(t, resp.ListToken.GrantsHash, grantsHash)
+		assert.Equal(t, resp.ListToken.Subtype.(*listtoken.RefreshToken).LastItemId, "3")
+		assert.True(t, resp.ListToken.Subtype.(*listtoken.RefreshToken).LastItemUpdateTime.Equal(lastItemUpdateTime))
+		assert.True(t, resp.ListToken.Subtype.(*listtoken.RefreshToken).PhaseLowerBound.Equal(prevPhaseUpperBound))
+		assert.True(t, resp.ListToken.Subtype.(*listtoken.RefreshToken).PhaseUpperBound.Equal(listReturnTime))
 	})
 	t.Run("fill-on-subsequent", func(t *testing.T) {
 		t.Parallel()
 		pageSize := 2
-		refreshToken, err := refreshtoken.New(
+		tok, err := listtoken.NewStartRefresh(
 			ctx,
-			time.Now(),
-			time.Now(),
+			tokenCreateTime,
 			resource.Unknown,
 			[]byte("some hash"),
-			"1",
-			time.Now(),
+			prevDeletedTime,
+			prevPhaseUpperBound,
 		)
 		require.NoError(t, err)
-		listRefreshItemsFn := func(ctx context.Context, tok *refreshtoken.Token, prevPageLast *testType, limit int) ([]*testType, error) {
+		listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
 			if prevPageLast != nil {
 				assert.Equal(t, "3", prevPageLast.ID)
-				return []*testType{{nil, "4"}}, nil
+				return []*testType{
+					{nil, "4", lastItemCreateTime.Add(time.Second), lastItemUpdateTime.Add(time.Second)},
+				}, listReturnTime.Add(time.Second), nil
 			}
-			return []*testType{{nil, "1"}, {nil, "2"}, {nil, "3"}}, nil
+			return []*testType{
+				{nil, "1", lastItemCreateTime.Add(2 * time.Second), lastItemUpdateTime.Add(2 * time.Second)},
+				{nil, "2", lastItemCreateTime.Add(time.Second), lastItemUpdateTime.Add(time.Second)},
+				{nil, "3", lastItemCreateTime, lastItemUpdateTime},
+			}, listReturnTime, nil
 		}
 		filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
-			if item.ID == "2" || item.ID == "4" || item.ID == "6" {
+			if item.ID == "2" || item.ID == "4" {
 				// Filter every other item
 				return false, nil
 			}
@@ -1144,55 +2065,48 @@ func Test_ListRefresh(t *testing.T) {
 			return 10, nil
 		}
 		deletedIDsFn := func(ctx context.Context, since time.Time) ([]string, time.Time, error) {
-			return nil, time.Time{}, nil
+			return []string{"deleted-id"}, deletedIDsReturnTime, nil
 		}
 		grantsHash := []byte("some hash")
-		resp, err := ListRefresh(
-			ctx,
-			grantsHash,
-			pageSize,
-			filterItemFn,
-			listRefreshItemsFn,
-			estimatedItemCountFn,
-			deletedIDsFn,
-			refreshToken,
-		)
+		resp, err := ListRefresh(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn, deletedIDsFn, tok)
 		require.NoError(t, err)
-		assert.Empty(t, cmp.Diff(resp.Items, []*testType{{nil, "1"}, {nil, "3"}}))
+		assert.Empty(t, cmp.Diff(resp.Items, []*testType{
+			{nil, "1", lastItemCreateTime.Add(2 * time.Second), lastItemUpdateTime.Add(2 * time.Second)},
+			{nil, "3", lastItemCreateTime, lastItemUpdateTime},
+		}))
 		assert.True(t, resp.CompleteListing)
-		assert.Empty(t, resp.DeletedIds)
+		assert.Equal(t, []string{"deleted-id"}, resp.DeletedIds)
 		assert.Equal(t, resp.EstimatedItemCount, 10)
-		require.NotNil(t, resp.RefreshToken)
-		// Times should be within ~10 seconds of now
-		assert.True(t, resp.RefreshToken.CreatedTime.After(time.Now().Add(-10*time.Second)))
-		assert.True(t, resp.RefreshToken.CreatedTime.Before(time.Now().Add(10*time.Second)))
-		assert.True(t, resp.RefreshToken.UpdatedTime.After(time.Now().Add(-10*time.Second)))
-		assert.True(t, resp.RefreshToken.UpdatedTime.Before(time.Now().Add(10*time.Second)))
-		assert.True(t, resp.RefreshToken.UpdatedTime.Equal(resp.RefreshToken.CreatedTime))
-		assert.Equal(t, resp.RefreshToken.GrantsHash, grantsHash)
-		assert.Equal(t, resp.RefreshToken.LastItemId, "3")
-		assert.True(t, resp.RefreshToken.LastItemUpdatedTime.After(time.Now().Add(-10*time.Second)))
-		assert.True(t, resp.RefreshToken.LastItemUpdatedTime.Before(time.Now().Add(10*time.Second)))
+		require.NotNil(t, resp.ListToken)
+		assert.True(t, resp.ListToken.CreateTime.Equal(tokenCreateTime))
+		assert.Equal(t, resp.ListToken.GrantsHash, grantsHash)
+		assert.True(t, resp.ListToken.Subtype.(*listtoken.StartRefreshToken).PreviousDeletedIdsTime.Equal(deletedIDsReturnTime))
+		assert.True(t, resp.ListToken.Subtype.(*listtoken.StartRefreshToken).PreviousPhaseUpperBound.Equal(listReturnTime))
 	})
 	t.Run("dont-fill-without-remaining", func(t *testing.T) {
 		t.Parallel()
 		pageSize := 2
-		refreshToken, err := refreshtoken.New(
+		tok, err := listtoken.NewStartRefresh(
 			ctx,
-			time.Now(),
-			time.Now(),
+			tokenCreateTime,
 			resource.Unknown,
 			[]byte("some hash"),
-			"1",
-			time.Now(),
+			prevDeletedTime,
+			prevPhaseUpperBound,
 		)
 		require.NoError(t, err)
-		listRefreshItemsFn := func(ctx context.Context, tok *refreshtoken.Token, prevPageLast *testType, limit int) ([]*testType, error) {
+		listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
 			if prevPageLast != nil {
 				assert.Equal(t, "3", prevPageLast.ID)
-				return []*testType{{nil, "4"}}, nil
+				return []*testType{
+					{nil, "4", lastItemCreateTime.Add(time.Second), lastItemUpdateTime.Add(time.Second)},
+				}, listReturnTime.Add(time.Second), nil
 			}
-			return []*testType{{nil, "1"}, {nil, "2"}, {nil, "3"}}, nil
+			return []*testType{
+				{nil, "1", lastItemCreateTime.Add(2 * time.Second), lastItemUpdateTime.Add(2 * time.Second)},
+				{nil, "2", lastItemCreateTime.Add(time.Second), lastItemUpdateTime.Add(time.Second)},
+				{nil, "3", lastItemCreateTime, lastItemUpdateTime},
+			}, listReturnTime, nil
 		}
 		filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
 			if item.ID != "1" {
@@ -1205,60 +2119,54 @@ func Test_ListRefresh(t *testing.T) {
 			return 10, nil
 		}
 		deletedIDsFn := func(ctx context.Context, since time.Time) ([]string, time.Time, error) {
-			return nil, time.Time{}, nil
+			return []string{"deleted-id"}, deletedIDsReturnTime, nil
 		}
 		grantsHash := []byte("some hash")
-		resp, err := ListRefresh(
-			ctx,
-			grantsHash,
-			pageSize,
-			filterItemFn,
-			listRefreshItemsFn,
-			estimatedItemCountFn,
-			deletedIDsFn,
-			refreshToken,
-		)
+		resp, err := ListRefresh(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn, deletedIDsFn, tok)
 		require.NoError(t, err)
-		assert.Empty(t, cmp.Diff(resp.Items, []*testType{{nil, "1"}}))
+		assert.Empty(t, cmp.Diff(resp.Items, []*testType{
+			{nil, "1", lastItemCreateTime.Add(2 * time.Second), lastItemUpdateTime.Add(2 * time.Second)},
+		}))
 		assert.True(t, resp.CompleteListing)
-		assert.Empty(t, resp.DeletedIds)
+		assert.Equal(t, []string{"deleted-id"}, resp.DeletedIds)
 		assert.Equal(t, resp.EstimatedItemCount, 10)
-		require.NotNil(t, resp.RefreshToken)
-		// Times should be within ~10 seconds of now
-		assert.True(t, resp.RefreshToken.CreatedTime.After(time.Now().Add(-10*time.Second)))
-		assert.True(t, resp.RefreshToken.CreatedTime.Before(time.Now().Add(10*time.Second)))
-		assert.True(t, resp.RefreshToken.UpdatedTime.After(time.Now().Add(-10*time.Second)))
-		assert.True(t, resp.RefreshToken.UpdatedTime.Before(time.Now().Add(10*time.Second)))
-		assert.True(t, resp.RefreshToken.UpdatedTime.Equal(resp.RefreshToken.CreatedTime))
-		assert.Equal(t, resp.RefreshToken.GrantsHash, grantsHash)
-		assert.Equal(t, resp.RefreshToken.LastItemId, "1")
-		assert.True(t, resp.RefreshToken.LastItemUpdatedTime.After(time.Now().Add(-10*time.Second)))
-		assert.True(t, resp.RefreshToken.LastItemUpdatedTime.Before(time.Now().Add(10*time.Second)))
+		require.NotNil(t, resp.ListToken)
+		assert.True(t, resp.ListToken.CreateTime.Equal(tokenCreateTime))
+		assert.Equal(t, resp.ListToken.GrantsHash, grantsHash)
+		assert.True(t, resp.ListToken.Subtype.(*listtoken.StartRefreshToken).PreviousDeletedIdsTime.Equal(deletedIDsReturnTime))
+		assert.True(t, resp.ListToken.Subtype.(*listtoken.StartRefreshToken).PreviousPhaseUpperBound.Equal(listReturnTime))
 	})
 	t.Run("dont-fill-with-full-last-page", func(t *testing.T) {
 		t.Parallel()
 		pageSize := 2
-		refreshToken, err := refreshtoken.New(
+		tok, err := listtoken.NewStartRefresh(
 			ctx,
-			time.Now(),
-			time.Now(),
+			tokenCreateTime,
 			resource.Unknown,
 			[]byte("some hash"),
-			"1",
-			time.Now(),
+			prevDeletedTime,
+			prevPhaseUpperBound,
 		)
 		require.NoError(t, err)
-		listRefreshItemsFn := func(ctx context.Context, tok *refreshtoken.Token, prevPageLast *testType, limit int) ([]*testType, error) {
+		listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
 			switch {
 			case prevPageLast == nil:
-				return []*testType{{nil, "1"}, {nil, "2"}, {nil, "3"}}, nil
+				return []*testType{
+					{nil, "1", lastItemCreateTime.Add(2 * time.Second), lastItemUpdateTime.Add(2 * time.Second)},
+					{nil, "2", lastItemCreateTime.Add(time.Second), lastItemUpdateTime.Add(time.Second)},
+					{nil, "3", lastItemCreateTime, lastItemUpdateTime},
+				}, listReturnTime, nil
 			case prevPageLast.ID == "3":
-				return []*testType{{nil, "4"}, {nil, "5"}, {nil, "6"}}, nil
+				return []*testType{
+					{nil, "4", lastItemCreateTime.Add(-time.Second), lastItemUpdateTime.Add(-time.Second)},
+					{nil, "5", lastItemCreateTime.Add(-2 * time.Second), lastItemUpdateTime.Add(-2 * time.Second)},
+					{nil, "6", lastItemCreateTime.Add(-3 * time.Second), lastItemUpdateTime.Add(-3 * time.Second)},
+				}, listReturnTime.Add(time.Second), nil
 			case prevPageLast.ID == "6":
-				return nil, nil
+				return nil, listReturnTime.Add(2 * time.Second), nil
 			default:
-				t.Fatalf("unexpected call to listRefreshItemsFn with %#v", prevPageLast)
-				return nil, nil
+				t.Fatalf("unexpected call to listItemsFn with %#v", prevPageLast)
+				return nil, time.Time{}, nil
 			}
 		}
 		filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
@@ -1272,60 +2180,54 @@ func Test_ListRefresh(t *testing.T) {
 			return 10, nil
 		}
 		deletedIDsFn := func(ctx context.Context, since time.Time) ([]string, time.Time, error) {
-			return nil, time.Time{}, nil
+			return []string{"deleted-id"}, deletedIDsReturnTime, nil
 		}
 		grantsHash := []byte("some hash")
-		resp, err := ListRefresh(
-			ctx,
-			grantsHash,
-			pageSize,
-			filterItemFn,
-			listRefreshItemsFn,
-			estimatedItemCountFn,
-			deletedIDsFn,
-			refreshToken,
-		)
+		resp, err := ListRefresh(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn, deletedIDsFn, tok)
 		require.NoError(t, err)
-		assert.Empty(t, cmp.Diff(resp.Items, []*testType{{nil, "1"}}))
+		assert.Empty(t, cmp.Diff(resp.Items, []*testType{
+			{nil, "1", lastItemCreateTime.Add(2 * time.Second), lastItemUpdateTime.Add(2 * time.Second)},
+		}))
 		assert.True(t, resp.CompleteListing)
-		assert.Empty(t, resp.DeletedIds)
+		assert.Equal(t, []string{"deleted-id"}, resp.DeletedIds)
 		assert.Equal(t, resp.EstimatedItemCount, 10)
-		require.NotNil(t, resp.RefreshToken)
-		// Times should be within ~10 seconds of now
-		assert.True(t, resp.RefreshToken.CreatedTime.After(time.Now().Add(-10*time.Second)))
-		assert.True(t, resp.RefreshToken.CreatedTime.Before(time.Now().Add(10*time.Second)))
-		assert.True(t, resp.RefreshToken.UpdatedTime.After(time.Now().Add(-10*time.Second)))
-		assert.True(t, resp.RefreshToken.UpdatedTime.Before(time.Now().Add(10*time.Second)))
-		assert.True(t, resp.RefreshToken.UpdatedTime.Equal(resp.RefreshToken.CreatedTime))
-		assert.Equal(t, resp.RefreshToken.GrantsHash, grantsHash)
-		assert.Equal(t, resp.RefreshToken.LastItemId, "1")
-		assert.True(t, resp.RefreshToken.LastItemUpdatedTime.After(time.Now().Add(-10*time.Second)))
-		assert.True(t, resp.RefreshToken.LastItemUpdatedTime.Before(time.Now().Add(10*time.Second)))
+		require.NotNil(t, resp.ListToken)
+		assert.True(t, resp.ListToken.CreateTime.Equal(tokenCreateTime))
+		assert.Equal(t, resp.ListToken.GrantsHash, grantsHash)
+		assert.True(t, resp.ListToken.Subtype.(*listtoken.StartRefreshToken).PreviousDeletedIdsTime.Equal(deletedIDsReturnTime))
+		assert.True(t, resp.ListToken.Subtype.(*listtoken.StartRefreshToken).PreviousPhaseUpperBound.Equal(listReturnTime))
 	})
 	t.Run("filter-everything", func(t *testing.T) {
 		t.Parallel()
 		pageSize := 2
-		refreshToken, err := refreshtoken.New(
+		tok, err := listtoken.NewStartRefresh(
 			ctx,
-			time.Now(),
-			time.Now(),
+			tokenCreateTime,
 			resource.Unknown,
 			[]byte("some hash"),
-			"1",
-			time.Now(),
+			prevDeletedTime,
+			prevPhaseUpperBound,
 		)
 		require.NoError(t, err)
-		listRefreshItemsFn := func(ctx context.Context, tok *refreshtoken.Token, prevPageLast *testType, limit int) ([]*testType, error) {
+		listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
 			switch {
 			case prevPageLast == nil:
-				return []*testType{{nil, "1"}, {nil, "2"}, {nil, "3"}}, nil
+				return []*testType{
+					{nil, "1", lastItemCreateTime.Add(2 * time.Second), lastItemUpdateTime.Add(2 * time.Second)},
+					{nil, "2", lastItemCreateTime.Add(time.Second), lastItemUpdateTime.Add(time.Second)},
+					{nil, "3", lastItemCreateTime, lastItemUpdateTime},
+				}, listReturnTime, nil
 			case prevPageLast.ID == "3":
-				return []*testType{{nil, "4"}, {nil, "5"}, {nil, "6"}}, nil
+				return []*testType{
+					{nil, "4", lastItemCreateTime.Add(-time.Second), lastItemUpdateTime.Add(-time.Second)},
+					{nil, "5", lastItemCreateTime.Add(-2 * time.Second), lastItemUpdateTime.Add(-2 * time.Second)},
+					{nil, "6", lastItemCreateTime.Add(-3 * time.Second), lastItemUpdateTime.Add(-3 * time.Second)},
+				}, listReturnTime.Add(time.Second), nil
 			case prevPageLast.ID == "6":
-				return nil, nil
+				return nil, listReturnTime.Add(2 * time.Second), nil
 			default:
-				t.Fatalf("unexpected call to listRefreshItemsFn with %#v", prevPageLast)
-				return nil, nil
+				t.Fatalf("unexpected call to listItemsFn with %#v", prevPageLast)
+				return nil, time.Time{}, nil
 			}
 		}
 		filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
@@ -1336,51 +2238,500 @@ func Test_ListRefresh(t *testing.T) {
 			return 10, nil
 		}
 		deletedIDsFn := func(ctx context.Context, since time.Time) ([]string, time.Time, error) {
-			return nil, time.Time{}, nil
+			return []string{"deleted-id"}, deletedIDsReturnTime, nil
 		}
 		grantsHash := []byte("some hash")
-		resp, err := ListRefresh(
-			ctx,
-			grantsHash,
-			pageSize,
-			filterItemFn,
-			listRefreshItemsFn,
-			estimatedItemCountFn,
-			deletedIDsFn,
-			refreshToken,
-		)
+		resp, err := ListRefresh(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn, deletedIDsFn, tok)
 		require.NoError(t, err)
 		assert.Empty(t, resp.Items)
 		assert.True(t, resp.CompleteListing)
-		assert.Empty(t, resp.DeletedIds)
+		assert.Equal(t, []string{"deleted-id"}, resp.DeletedIds)
 		assert.Equal(t, resp.EstimatedItemCount, 10)
-		require.NotNil(t, resp.RefreshToken)
-		// Times should be within ~10 seconds of now
-		assert.True(t, resp.RefreshToken.CreatedTime.After(time.Now().Add(-10*time.Second)))
-		assert.True(t, resp.RefreshToken.CreatedTime.Before(time.Now().Add(10*time.Second)))
-		assert.True(t, resp.RefreshToken.UpdatedTime.After(time.Now().Add(-10*time.Second)))
-		assert.True(t, resp.RefreshToken.UpdatedTime.Before(time.Now().Add(10*time.Second)))
-		assert.True(t, resp.RefreshToken.UpdatedTime.Equal(resp.RefreshToken.CreatedTime))
-		assert.Equal(t, resp.RefreshToken.GrantsHash, grantsHash)
-		assert.Equal(t, resp.RefreshToken.LastItemId, "1")
-		assert.True(t, resp.RefreshToken.LastItemUpdatedTime.After(time.Now().Add(-10*time.Second)))
-		assert.True(t, resp.RefreshToken.LastItemUpdatedTime.Before(time.Now().Add(10*time.Second)))
+		require.NotNil(t, resp.ListToken)
+		assert.True(t, resp.ListToken.CreateTime.Equal(tokenCreateTime))
+		assert.Equal(t, resp.ListToken.GrantsHash, grantsHash)
+		assert.True(t, resp.ListToken.Subtype.(*listtoken.StartRefreshToken).PreviousDeletedIdsTime.Equal(deletedIDsReturnTime))
+		assert.True(t, resp.ListToken.Subtype.(*listtoken.StartRefreshToken).PreviousPhaseUpperBound.Equal(listReturnTime))
 	})
-	t.Run("errors-when-list-errors-immediately", func(t *testing.T) {
+}
+
+func Test_ListRefreshPage(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+
+	t.Run("validation", func(t *testing.T) {
+		t.Parallel()
+		t.Run("empty grants hash", func(t *testing.T) {
+			t.Parallel()
+			pageSize := 2
+			tok, err := listtoken.NewRefresh(
+				ctx,
+				tokenCreateTime,
+				resource.Unknown,
+				[]byte("some hash"),
+				prevDeletedTime,
+				phaseUpperBound,
+				phaseLowerBound,
+				"some id",
+				lastItemUpdateTime,
+			)
+			require.NoError(t, err)
+			listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
+				assert.Nil(t, prevPageLast)
+				return nil, time.Time{}, nil
+			}
+			filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
+				return true, nil
+			}
+			estimatedItemCountFn := func(ctx context.Context) (int, error) {
+				return 10, nil
+			}
+			deletedIDsFn := func(ctx context.Context, since time.Time) ([]string, time.Time, error) {
+				return nil, deletedIDsReturnTime, nil
+			}
+			grantsHash := []byte(nil)
+			_, err = ListRefreshPage(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn, deletedIDsFn, tok)
+			require.ErrorContains(t, err, "missing grants hash")
+		})
+		t.Run("zero page size", func(t *testing.T) {
+			t.Parallel()
+			pageSize := 0
+			tok, err := listtoken.NewRefresh(
+				ctx,
+				tokenCreateTime,
+				resource.Unknown,
+				[]byte("some hash"),
+				prevDeletedTime,
+				phaseUpperBound,
+				phaseLowerBound,
+				"some id",
+				lastItemUpdateTime,
+			)
+			require.NoError(t, err)
+			listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
+				assert.Nil(t, prevPageLast)
+				return nil, time.Time{}, nil
+			}
+			filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
+				return true, nil
+			}
+			estimatedItemCountFn := func(ctx context.Context) (int, error) {
+				return 10, nil
+			}
+			deletedIDsFn := func(ctx context.Context, since time.Time) ([]string, time.Time, error) {
+				return nil, deletedIDsReturnTime, nil
+			}
+			grantsHash := []byte("some hash")
+			_, err = ListRefreshPage(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn, deletedIDsFn, tok)
+			require.ErrorContains(t, err, "page size must be at least 1")
+		})
+		t.Run("negative page size", func(t *testing.T) {
+			t.Parallel()
+			pageSize := -1
+			tok, err := listtoken.NewRefresh(
+				ctx,
+				tokenCreateTime,
+				resource.Unknown,
+				[]byte("some hash"),
+				prevDeletedTime,
+				phaseUpperBound,
+				phaseLowerBound,
+				"some id",
+				lastItemUpdateTime,
+			)
+			require.NoError(t, err)
+			listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
+				assert.Nil(t, prevPageLast)
+				return nil, time.Time{}, nil
+			}
+			filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
+				return true, nil
+			}
+			estimatedItemCountFn := func(ctx context.Context) (int, error) {
+				return 10, nil
+			}
+			deletedIDsFn := func(ctx context.Context, since time.Time) ([]string, time.Time, error) {
+				return nil, deletedIDsReturnTime, nil
+			}
+			grantsHash := []byte("some hash")
+			_, err = ListRefreshPage(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn, deletedIDsFn, tok)
+			require.ErrorContains(t, err, "page size must be at least 1")
+		})
+		t.Run("nil filter item callback", func(t *testing.T) {
+			t.Parallel()
+			pageSize := 2
+			tok, err := listtoken.NewRefresh(
+				ctx,
+				tokenCreateTime,
+				resource.Unknown,
+				[]byte("some hash"),
+				prevDeletedTime,
+				phaseUpperBound,
+				phaseLowerBound,
+				"some id",
+				lastItemUpdateTime,
+			)
+			require.NoError(t, err)
+			listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
+				assert.Nil(t, prevPageLast)
+				return nil, time.Time{}, nil
+			}
+			filterItemFn := ListFilterFunc[*testType](nil)
+			estimatedItemCountFn := func(ctx context.Context) (int, error) {
+				return 10, nil
+			}
+			deletedIDsFn := func(ctx context.Context, since time.Time) ([]string, time.Time, error) {
+				return nil, deletedIDsReturnTime, nil
+			}
+			grantsHash := []byte("some hash")
+			_, err = ListRefreshPage(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn, deletedIDsFn, tok)
+			require.ErrorContains(t, err, "missing filter item callback")
+		})
+		t.Run("nil list items callback", func(t *testing.T) {
+			t.Parallel()
+			pageSize := 2
+			tok, err := listtoken.NewRefresh(
+				ctx,
+				tokenCreateTime,
+				resource.Unknown,
+				[]byte("some hash"),
+				prevDeletedTime,
+				phaseUpperBound,
+				phaseLowerBound,
+				"some id",
+				lastItemUpdateTime,
+			)
+			require.NoError(t, err)
+			listItemsFn := ListItemsFunc[*testType](nil)
+			filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
+				return true, nil
+			}
+			estimatedItemCountFn := func(ctx context.Context) (int, error) {
+				return 10, nil
+			}
+			deletedIDsFn := func(ctx context.Context, since time.Time) ([]string, time.Time, error) {
+				return nil, deletedIDsReturnTime, nil
+			}
+			grantsHash := []byte("some hash")
+			_, err = ListRefreshPage(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn, deletedIDsFn, tok)
+			require.ErrorContains(t, err, "missing list items callback")
+		})
+		t.Run("nil list deleted ids callback", func(t *testing.T) {
+			t.Parallel()
+			pageSize := 2
+			tok, err := listtoken.NewRefresh(
+				ctx,
+				tokenCreateTime,
+				resource.Unknown,
+				[]byte("some hash"),
+				prevDeletedTime,
+				phaseUpperBound,
+				phaseLowerBound,
+				"some id",
+				lastItemUpdateTime,
+			)
+			require.NoError(t, err)
+			listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
+				assert.Nil(t, prevPageLast)
+				return nil, time.Time{}, nil
+			}
+			filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
+				return true, nil
+			}
+			estimatedItemCountFn := func(ctx context.Context) (int, error) {
+				return 10, nil
+			}
+			deletedIDsFn := ListDeletedIDsFunc(nil)
+			grantsHash := []byte("some hash")
+			_, err = ListRefreshPage(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn, deletedIDsFn, tok)
+			require.ErrorContains(t, err, "missing list deleted IDs callback")
+		})
+		t.Run("nil token", func(t *testing.T) {
+			t.Parallel()
+			pageSize := 2
+			listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
+				assert.Nil(t, prevPageLast)
+				return nil, time.Time{}, nil
+			}
+			filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
+				return true, nil
+			}
+			estimatedItemCountFn := func(ctx context.Context) (int, error) {
+				return 10, nil
+			}
+			deletedIDsFn := func(ctx context.Context, since time.Time) ([]string, time.Time, error) {
+				return nil, deletedIDsReturnTime, nil
+			}
+			grantsHash := []byte("some hash")
+			_, err := ListRefreshPage(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn, deletedIDsFn, nil)
+			require.ErrorContains(t, err, "missing list token")
+		})
+		t.Run("wrong token type", func(t *testing.T) {
+			t.Parallel()
+			pageSize := 2
+			tok, err := listtoken.NewPagination(
+				ctx,
+				tokenCreateTime,
+				resource.Unknown,
+				[]byte("some hash"),
+				"some id",
+				lastItemCreateTime,
+			)
+			require.NoError(t, err)
+			listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
+				assert.Nil(t, prevPageLast)
+				return nil, time.Time{}, nil
+			}
+			filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
+				return true, nil
+			}
+			estimatedItemCountFn := func(ctx context.Context) (int, error) {
+				return 10, nil
+			}
+			deletedIDsFn := func(ctx context.Context, since time.Time) ([]string, time.Time, error) {
+				return nil, deletedIDsReturnTime, nil
+			}
+			grantsHash := []byte("some hash")
+			_, err = ListRefreshPage(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn, deletedIDsFn, tok)
+			require.ErrorContains(t, err, "token did not have a refresh token component")
+		})
+		t.Run("nil estimated count callback", func(t *testing.T) {
+			t.Parallel()
+			pageSize := 2
+			tok, err := listtoken.NewRefresh(
+				ctx,
+				tokenCreateTime,
+				resource.Unknown,
+				[]byte("some hash"),
+				prevDeletedTime,
+				phaseUpperBound,
+				phaseLowerBound,
+				"some id",
+				lastItemUpdateTime,
+			)
+			require.NoError(t, err)
+			listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
+				assert.Nil(t, prevPageLast)
+				return nil, time.Time{}, nil
+			}
+			filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
+				return true, nil
+			}
+			estimatedItemCountFn := EstimatedCountFunc(nil)
+			deletedIDsFn := func(ctx context.Context, since time.Time) ([]string, time.Time, error) {
+				return nil, deletedIDsReturnTime, nil
+			}
+			grantsHash := []byte("some hash")
+			_, err = ListRefreshPage(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn, deletedIDsFn, tok)
+			require.ErrorContains(t, err, "missing estimated count callback")
+		})
+	})
+	t.Run("error-cases", func(t *testing.T) {
+		t.Run("errors-when-list-errors-immediately", func(t *testing.T) {
+			t.Parallel()
+			pageSize := 2
+			tok, err := listtoken.NewRefresh(
+				ctx,
+				tokenCreateTime,
+				resource.Unknown,
+				[]byte("some hash"),
+				prevDeletedTime,
+				phaseUpperBound,
+				phaseLowerBound,
+				"some id",
+				lastItemUpdateTime,
+			)
+			require.NoError(t, err)
+			listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
+				return nil, time.Time{}, errors.New("failed to list")
+			}
+			filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
+				return true, nil
+			}
+			estimatedItemCountFn := func(ctx context.Context) (int, error) {
+				return 10, nil
+			}
+			deletedIDsFn := func(ctx context.Context, since time.Time) ([]string, time.Time, error) {
+				return nil, deletedIDsReturnTime, nil
+			}
+			grantsHash := []byte("some hash")
+			resp, err := ListRefreshPage(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn, deletedIDsFn, tok)
+			require.ErrorContains(t, err, "failed to list")
+			assert.Empty(t, resp)
+		})
+		t.Run("errors-when-list-errors-subsequently", func(t *testing.T) {
+			t.Parallel()
+			pageSize := 2
+			tok, err := listtoken.NewRefresh(
+				ctx,
+				tokenCreateTime,
+				resource.Unknown,
+				[]byte("some hash"),
+				prevDeletedTime,
+				phaseUpperBound,
+				phaseLowerBound,
+				"some id",
+				lastItemUpdateTime,
+			)
+			require.NoError(t, err)
+			listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
+				if prevPageLast != nil {
+					return nil, time.Time{}, errors.New("failed to list")
+				}
+				return []*testType{
+					{nil, "1", lastItemCreateTime.Add(time.Second), lastItemUpdateTime.Add(time.Second)},
+					{nil, "2", lastItemCreateTime, lastItemUpdateTime},
+					{nil, "3", lastItemCreateTime.Add(-time.Second), lastItemUpdateTime.Add(-time.Second)},
+				}, listReturnTime, nil
+			}
+			filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
+				if item.ID != "1" {
+					// Filter every item except the first
+					return false, nil
+				}
+				return true, nil
+			}
+			estimatedItemCountFn := func(ctx context.Context) (int, error) {
+				return 10, nil
+			}
+			deletedIDsFn := func(ctx context.Context, since time.Time) ([]string, time.Time, error) {
+				return nil, deletedIDsReturnTime, nil
+			}
+			grantsHash := []byte("some hash")
+			resp, err := ListRefreshPage(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn, deletedIDsFn, tok)
+			require.ErrorContains(t, err, "failed to list")
+			assert.Empty(t, resp)
+		})
+		t.Run("errors-when-filter-errors", func(t *testing.T) {
+			t.Parallel()
+			pageSize := 2
+			tok, err := listtoken.NewRefresh(
+				ctx,
+				tokenCreateTime,
+				resource.Unknown,
+				[]byte("some hash"),
+				prevDeletedTime,
+				phaseUpperBound,
+				phaseLowerBound,
+				"some id",
+				lastItemUpdateTime,
+			)
+			require.NoError(t, err)
+			listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
+				assert.Nil(t, prevPageLast)
+				return []*testType{
+					{nil, "1", lastItemCreateTime.Add(time.Second), lastItemUpdateTime.Add(time.Second)},
+					{nil, "2", lastItemCreateTime, lastItemUpdateTime},
+					{nil, "3", lastItemCreateTime.Add(-time.Second), lastItemUpdateTime.Add(-time.Second)},
+				}, listReturnTime, nil
+			}
+			filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
+				return false, errors.New("failed to filter")
+			}
+			estimatedItemCountFn := func(ctx context.Context) (int, error) {
+				return 10, nil
+			}
+			deletedIDsFn := func(ctx context.Context, since time.Time) ([]string, time.Time, error) {
+				return nil, deletedIDsReturnTime, nil
+			}
+			grantsHash := []byte("some hash")
+			resp, err := ListRefreshPage(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn, deletedIDsFn, tok)
+			require.ErrorContains(t, err, "failed to filter")
+			assert.Empty(t, resp)
+		})
+		t.Run("errors-when-estimated-count-errors", func(t *testing.T) {
+			t.Parallel()
+			pageSize := 2
+			tok, err := listtoken.NewRefresh(
+				ctx,
+				tokenCreateTime,
+				resource.Unknown,
+				[]byte("some hash"),
+				prevDeletedTime,
+				phaseUpperBound,
+				phaseLowerBound,
+				"some id",
+				lastItemUpdateTime,
+			)
+			require.NoError(t, err)
+			listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
+				assert.Nil(t, prevPageLast)
+				return []*testType{
+					{nil, "1", lastItemCreateTime.Add(time.Second), lastItemUpdateTime.Add(time.Second)},
+					{nil, "2", lastItemCreateTime, lastItemUpdateTime},
+					{nil, "3", lastItemCreateTime.Add(-time.Second), lastItemUpdateTime.Add(-time.Second)},
+				}, listReturnTime, nil
+			}
+			filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
+				return true, nil
+			}
+			estimatedItemCountFn := func(ctx context.Context) (int, error) {
+				return 0, errors.New("failed to estimate count")
+			}
+			deletedIDsFn := func(ctx context.Context, since time.Time) ([]string, time.Time, error) {
+				return nil, deletedIDsReturnTime, nil
+			}
+			grantsHash := []byte("some hash")
+			resp, err := ListRefreshPage(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn, deletedIDsFn, tok)
+			require.ErrorContains(t, err, "failed to estimate count")
+			assert.Empty(t, resp)
+		})
+		t.Run("errors-when-list-deleted-ids-errors", func(t *testing.T) {
+			t.Parallel()
+			pageSize := 2
+			tok, err := listtoken.NewRefresh(
+				ctx,
+				tokenCreateTime,
+				resource.Unknown,
+				[]byte("some hash"),
+				prevDeletedTime,
+				phaseUpperBound,
+				phaseLowerBound,
+				"some id",
+				lastItemUpdateTime,
+			)
+			require.NoError(t, err)
+			listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
+				assert.Nil(t, prevPageLast)
+				return []*testType{
+					{nil, "1", lastItemCreateTime.Add(time.Second), lastItemUpdateTime.Add(time.Second)},
+					{nil, "2", lastItemCreateTime, lastItemUpdateTime},
+					{nil, "3", lastItemCreateTime.Add(-time.Second), lastItemUpdateTime.Add(-time.Second)},
+				}, listReturnTime, nil
+			}
+			filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
+				return true, nil
+			}
+			estimatedItemCountFn := func(ctx context.Context) (int, error) {
+				return 10, nil
+			}
+			deletedIDsFn := func(ctx context.Context, since time.Time) ([]string, time.Time, error) {
+				return nil, time.Time{}, errors.New("failed to list deleted IDs")
+			}
+			grantsHash := []byte("some hash")
+			resp, err := ListRefreshPage(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn, deletedIDsFn, tok)
+			require.ErrorContains(t, err, "failed to list deleted IDs")
+			assert.Empty(t, resp)
+		})
+	})
+	t.Run("no-rows", func(t *testing.T) {
 		t.Parallel()
 		pageSize := 2
-		refreshToken, err := refreshtoken.New(
+		tok, err := listtoken.NewRefresh(
 			ctx,
-			time.Now(),
-			time.Now(),
+			tokenCreateTime,
 			resource.Unknown,
 			[]byte("some hash"),
-			"1",
-			time.Now(),
+			prevDeletedTime,
+			phaseUpperBound,
+			phaseLowerBound,
+			"some id",
+			lastItemUpdateTime,
 		)
 		require.NoError(t, err)
-		listRefreshItemsFn := func(ctx context.Context, tok *refreshtoken.Token, prevPageLast *testType, limit int) ([]*testType, error) {
-			return nil, errors.New("failed to list")
+		listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
+			assert.Nil(t, prevPageLast)
+			return nil, listReturnTime, nil
 		}
 		filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
 			return true, nil
@@ -1389,40 +2740,323 @@ func Test_ListRefresh(t *testing.T) {
 			return 10, nil
 		}
 		deletedIDsFn := func(ctx context.Context, since time.Time) ([]string, time.Time, error) {
-			return nil, time.Time{}, nil
+			return nil, deletedIDsReturnTime, nil
 		}
 		grantsHash := []byte("some hash")
-		resp, err := ListRefresh(
-			ctx,
-			grantsHash,
-			pageSize,
-			filterItemFn,
-			listRefreshItemsFn,
-			estimatedItemCountFn,
-			deletedIDsFn,
-			refreshToken,
-		)
-		require.ErrorContains(t, err, "failed to list")
-		assert.Empty(t, resp)
+		resp, err := ListRefreshPage(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn, deletedIDsFn, tok)
+		require.NoError(t, err)
+		assert.Empty(t, resp.Items)
+		assert.True(t, resp.CompleteListing)
+		assert.Empty(t, resp.DeletedIds)
+		assert.Equal(t, resp.EstimatedItemCount, 10)
+		require.NotNil(t, resp.ListToken)
+		assert.True(t, resp.ListToken.CreateTime.Equal(tokenCreateTime))
+		assert.Equal(t, resp.ListToken.GrantsHash, grantsHash)
+		assert.True(t, resp.ListToken.Subtype.(*listtoken.StartRefreshToken).PreviousDeletedIdsTime.Equal(deletedIDsReturnTime))
+		assert.True(t, resp.ListToken.Subtype.(*listtoken.StartRefreshToken).PreviousPhaseUpperBound.Equal(phaseUpperBound))
 	})
-	t.Run("errors-when-list-errors-subsequently", func(t *testing.T) {
+	t.Run("fill-on-first-with-remaining", func(t *testing.T) {
 		t.Parallel()
 		pageSize := 2
-		refreshToken, err := refreshtoken.New(
+		tok, err := listtoken.NewRefresh(
 			ctx,
-			time.Now(),
-			time.Now(),
+			tokenCreateTime,
 			resource.Unknown,
 			[]byte("some hash"),
-			"1",
-			time.Now(),
+			prevDeletedTime,
+			phaseUpperBound,
+			phaseLowerBound,
+			"some id",
+			lastItemUpdateTime,
 		)
 		require.NoError(t, err)
-		listRefreshItemsFn := func(ctx context.Context, tok *refreshtoken.Token, prevPageLast *testType, limit int) ([]*testType, error) {
+		listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
+			assert.Nil(t, prevPageLast)
+			return []*testType{
+				{nil, "1", lastItemCreateTime.Add(time.Second), lastItemUpdateTime.Add(time.Second)},
+				{nil, "2", lastItemCreateTime, lastItemUpdateTime},
+				{nil, "3", lastItemCreateTime.Add(-time.Second), lastItemUpdateTime.Add(-time.Second)},
+			}, listReturnTime, nil
+		}
+		filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
+			return true, nil
+		}
+		estimatedItemCountFn := func(ctx context.Context) (int, error) {
+			return 10, nil
+		}
+		deletedIDsFn := func(ctx context.Context, since time.Time) ([]string, time.Time, error) {
+			return []string{"deleted-id"}, deletedIDsReturnTime, nil
+		}
+		grantsHash := []byte("some hash")
+		resp, err := ListRefreshPage(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn, deletedIDsFn, tok)
+		require.NoError(t, err)
+		assert.Empty(t, cmp.Diff(resp.Items, []*testType{
+			{nil, "1", lastItemCreateTime.Add(time.Second), lastItemUpdateTime.Add(time.Second)},
+			{nil, "2", lastItemCreateTime, lastItemUpdateTime},
+		}))
+		assert.False(t, resp.CompleteListing)
+		assert.Equal(t, []string{"deleted-id"}, resp.DeletedIds)
+		assert.Equal(t, resp.EstimatedItemCount, 10)
+		require.NotNil(t, resp.ListToken)
+		assert.True(t, resp.ListToken.CreateTime.Equal(tokenCreateTime))
+		assert.Equal(t, resp.ListToken.GrantsHash, grantsHash)
+		assert.Equal(t, resp.ListToken.Subtype.(*listtoken.RefreshToken).LastItemId, "2")
+		assert.True(t, resp.ListToken.Subtype.(*listtoken.RefreshToken).LastItemUpdateTime.Equal(lastItemUpdateTime))
+		assert.True(t, resp.ListToken.Subtype.(*listtoken.RefreshToken).PhaseLowerBound.Equal(phaseLowerBound))
+		assert.True(t, resp.ListToken.Subtype.(*listtoken.RefreshToken).PhaseUpperBound.Equal(phaseUpperBound))
+	})
+	t.Run("fill-on-first-without-remaining", func(t *testing.T) {
+		t.Parallel()
+		pageSize := 2
+		tok, err := listtoken.NewRefresh(
+			ctx,
+			tokenCreateTime,
+			resource.Unknown,
+			[]byte("some hash"),
+			prevDeletedTime,
+			phaseUpperBound,
+			phaseLowerBound,
+			"some id",
+			lastItemUpdateTime,
+		)
+		require.NoError(t, err)
+		listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
+			assert.Nil(t, prevPageLast)
+			return []*testType{
+				{nil, "1", lastItemCreateTime.Add(time.Second), lastItemUpdateTime.Add(time.Second)},
+				{nil, "2", lastItemCreateTime, lastItemUpdateTime},
+			}, listReturnTime, nil
+		}
+		filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
+			return true, nil
+		}
+		estimatedItemCountFn := func(ctx context.Context) (int, error) {
+			return 10, nil
+		}
+		deletedIDsFn := func(ctx context.Context, since time.Time) ([]string, time.Time, error) {
+			return []string{"deleted-id"}, deletedIDsReturnTime, nil
+		}
+		grantsHash := []byte("some hash")
+		resp, err := ListRefreshPage(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn, deletedIDsFn, tok)
+		require.NoError(t, err)
+		assert.Empty(t, cmp.Diff(resp.Items, []*testType{
+			{nil, "1", lastItemCreateTime.Add(time.Second), lastItemUpdateTime.Add(time.Second)},
+			{nil, "2", lastItemCreateTime, lastItemUpdateTime},
+		}))
+		assert.True(t, resp.CompleteListing)
+		assert.Equal(t, []string{"deleted-id"}, resp.DeletedIds)
+		assert.Equal(t, resp.EstimatedItemCount, 10)
+		require.NotNil(t, resp.ListToken)
+		assert.True(t, resp.ListToken.CreateTime.Equal(tokenCreateTime))
+		assert.Equal(t, resp.ListToken.GrantsHash, grantsHash)
+		assert.True(t, resp.ListToken.Subtype.(*listtoken.StartRefreshToken).PreviousDeletedIdsTime.Equal(deletedIDsReturnTime))
+		assert.True(t, resp.ListToken.Subtype.(*listtoken.StartRefreshToken).PreviousPhaseUpperBound.Equal(phaseUpperBound))
+	})
+	t.Run("fill-on-subsequent-with-remaining", func(t *testing.T) {
+		t.Parallel()
+		pageSize := 2
+		tok, err := listtoken.NewRefresh(
+			ctx,
+			tokenCreateTime,
+			resource.Unknown,
+			[]byte("some hash"),
+			prevDeletedTime,
+			phaseUpperBound,
+			phaseLowerBound,
+			"some id",
+			lastItemUpdateTime,
+		)
+		require.NoError(t, err)
+		listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
 			if prevPageLast != nil {
-				return nil, errors.New("failed to list")
+				assert.Equal(t, "3", prevPageLast.ID)
+				return []*testType{
+					{nil, "4", lastItemCreateTime.Add(-time.Second), lastItemUpdateTime.Add(-time.Second)},
+					{nil, "5", lastItemCreateTime.Add(-2 * time.Second), lastItemUpdateTime.Add(-2 * time.Second)},
+					{nil, "6", lastItemCreateTime.Add(-3 * time.Second), lastItemUpdateTime.Add(-3 * time.Second)},
+				}, listReturnTime.Add(time.Second), nil
 			}
-			return []*testType{{nil, "1"}, {nil, "2"}, {nil, "3"}}, nil
+			return []*testType{
+				{nil, "1", lastItemCreateTime.Add(2 * time.Second), lastItemUpdateTime.Add(2 * time.Second)},
+				{nil, "2", lastItemCreateTime.Add(time.Second), lastItemUpdateTime.Add(time.Second)},
+				{nil, "3", lastItemCreateTime, lastItemUpdateTime},
+			}, listReturnTime, nil
+		}
+		filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
+			if item.ID == "2" || item.ID == "4" || item.ID == "6" {
+				// Filter every other item
+				return false, nil
+			}
+			return true, nil
+		}
+		estimatedItemCountFn := func(ctx context.Context) (int, error) {
+			return 10, nil
+		}
+		deletedIDsFn := func(ctx context.Context, since time.Time) ([]string, time.Time, error) {
+			return []string{"deleted-id"}, deletedIDsReturnTime, nil
+		}
+		grantsHash := []byte("some hash")
+		resp, err := ListRefreshPage(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn, deletedIDsFn, tok)
+		require.NoError(t, err)
+		assert.Empty(t, cmp.Diff(resp.Items, []*testType{
+			{nil, "1", lastItemCreateTime.Add(2 * time.Second), lastItemUpdateTime.Add(2 * time.Second)},
+			{nil, "3", lastItemCreateTime, lastItemUpdateTime},
+		}))
+		assert.False(t, resp.CompleteListing)
+		assert.Equal(t, []string{"deleted-id"}, resp.DeletedIds)
+		assert.Equal(t, resp.EstimatedItemCount, 10)
+		require.NotNil(t, resp.ListToken)
+		assert.True(t, resp.ListToken.CreateTime.Equal(tokenCreateTime))
+		assert.Equal(t, resp.ListToken.GrantsHash, grantsHash)
+		assert.Equal(t, resp.ListToken.Subtype.(*listtoken.RefreshToken).LastItemId, "3")
+		assert.True(t, resp.ListToken.Subtype.(*listtoken.RefreshToken).LastItemUpdateTime.Equal(lastItemUpdateTime))
+		assert.True(t, resp.ListToken.Subtype.(*listtoken.RefreshToken).PhaseLowerBound.Equal(phaseLowerBound))
+		assert.True(t, resp.ListToken.Subtype.(*listtoken.RefreshToken).PhaseUpperBound.Equal(phaseUpperBound))
+	})
+	t.Run("fill-on-subsequent-without-remaining", func(t *testing.T) {
+		t.Parallel()
+		pageSize := 2
+		tok, err := listtoken.NewRefresh(
+			ctx,
+			tokenCreateTime,
+			resource.Unknown,
+			[]byte("some hash"),
+			prevDeletedTime,
+			phaseUpperBound,
+			phaseLowerBound,
+			"some id",
+			lastItemUpdateTime,
+		)
+		require.NoError(t, err)
+		listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
+			if prevPageLast != nil {
+				assert.Equal(t, "3", prevPageLast.ID)
+				return []*testType{
+					{nil, "4", lastItemCreateTime.Add(-time.Second), lastItemUpdateTime.Add(-time.Second)},
+					{nil, "5", lastItemCreateTime.Add(-2 * time.Second), lastItemUpdateTime.Add(-2 * time.Second)},
+				}, listReturnTime.Add(time.Second), nil
+			}
+			return []*testType{
+				{nil, "1", lastItemCreateTime.Add(2 * time.Second), lastItemUpdateTime.Add(2 * time.Second)},
+				{nil, "2", lastItemCreateTime.Add(time.Second), lastItemUpdateTime.Add(time.Second)},
+				{nil, "3", lastItemCreateTime, lastItemUpdateTime},
+			}, listReturnTime, nil
+		}
+		filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
+			if item.ID == "2" || item.ID == "4" {
+				// Filter every other item
+				return false, nil
+			}
+			return true, nil
+		}
+		estimatedItemCountFn := func(ctx context.Context) (int, error) {
+			return 10, nil
+		}
+		deletedIDsFn := func(ctx context.Context, since time.Time) ([]string, time.Time, error) {
+			return []string{"deleted-id"}, deletedIDsReturnTime, nil
+		}
+		grantsHash := []byte("some hash")
+		resp, err := ListRefreshPage(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn, deletedIDsFn, tok)
+		require.NoError(t, err)
+		assert.Empty(t, cmp.Diff(resp.Items, []*testType{
+			{nil, "1", lastItemCreateTime.Add(2 * time.Second), lastItemUpdateTime.Add(2 * time.Second)},
+			{nil, "3", lastItemCreateTime, lastItemUpdateTime},
+		}))
+		assert.False(t, resp.CompleteListing)
+		assert.Equal(t, []string{"deleted-id"}, resp.DeletedIds)
+		assert.Equal(t, resp.EstimatedItemCount, 10)
+		require.NotNil(t, resp.ListToken)
+		assert.True(t, resp.ListToken.CreateTime.Equal(tokenCreateTime))
+		assert.Equal(t, resp.ListToken.GrantsHash, grantsHash)
+		assert.Equal(t, resp.ListToken.Subtype.(*listtoken.RefreshToken).LastItemId, "3")
+		assert.True(t, resp.ListToken.Subtype.(*listtoken.RefreshToken).LastItemUpdateTime.Equal(lastItemUpdateTime))
+		assert.True(t, resp.ListToken.Subtype.(*listtoken.RefreshToken).PhaseLowerBound.Equal(phaseLowerBound))
+		assert.True(t, resp.ListToken.Subtype.(*listtoken.RefreshToken).PhaseUpperBound.Equal(phaseUpperBound))
+	})
+	t.Run("fill-on-subsequent", func(t *testing.T) {
+		t.Parallel()
+		pageSize := 2
+		tok, err := listtoken.NewRefresh(
+			ctx,
+			tokenCreateTime,
+			resource.Unknown,
+			[]byte("some hash"),
+			prevDeletedTime,
+			phaseUpperBound,
+			phaseLowerBound,
+			"some id",
+			lastItemUpdateTime,
+		)
+		require.NoError(t, err)
+		listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
+			if prevPageLast != nil {
+				assert.Equal(t, "3", prevPageLast.ID)
+				return []*testType{
+					{nil, "4", lastItemCreateTime.Add(time.Second), lastItemUpdateTime.Add(time.Second)},
+				}, listReturnTime.Add(time.Second), nil
+			}
+			return []*testType{
+				{nil, "1", lastItemCreateTime.Add(2 * time.Second), lastItemUpdateTime.Add(2 * time.Second)},
+				{nil, "2", lastItemCreateTime.Add(time.Second), lastItemUpdateTime.Add(time.Second)},
+				{nil, "3", lastItemCreateTime, lastItemUpdateTime},
+			}, listReturnTime, nil
+		}
+		filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
+			if item.ID == "2" || item.ID == "4" {
+				// Filter every other item
+				return false, nil
+			}
+			return true, nil
+		}
+		estimatedItemCountFn := func(ctx context.Context) (int, error) {
+			return 10, nil
+		}
+		deletedIDsFn := func(ctx context.Context, since time.Time) ([]string, time.Time, error) {
+			return []string{"deleted-id"}, deletedIDsReturnTime, nil
+		}
+		grantsHash := []byte("some hash")
+		resp, err := ListRefreshPage(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn, deletedIDsFn, tok)
+		require.NoError(t, err)
+		assert.Empty(t, cmp.Diff(resp.Items, []*testType{
+			{nil, "1", lastItemCreateTime.Add(2 * time.Second), lastItemUpdateTime.Add(2 * time.Second)},
+			{nil, "3", lastItemCreateTime, lastItemUpdateTime},
+		}))
+		assert.True(t, resp.CompleteListing)
+		assert.Equal(t, []string{"deleted-id"}, resp.DeletedIds)
+		assert.Equal(t, resp.EstimatedItemCount, 10)
+		require.NotNil(t, resp.ListToken)
+		assert.True(t, resp.ListToken.CreateTime.Equal(tokenCreateTime))
+		assert.Equal(t, resp.ListToken.GrantsHash, grantsHash)
+		assert.True(t, resp.ListToken.Subtype.(*listtoken.StartRefreshToken).PreviousDeletedIdsTime.Equal(deletedIDsReturnTime))
+		assert.True(t, resp.ListToken.Subtype.(*listtoken.StartRefreshToken).PreviousPhaseUpperBound.Equal(phaseUpperBound))
+	})
+	t.Run("dont-fill-without-remaining", func(t *testing.T) {
+		t.Parallel()
+		pageSize := 2
+		tok, err := listtoken.NewRefresh(
+			ctx,
+			tokenCreateTime,
+			resource.Unknown,
+			[]byte("some hash"),
+			prevDeletedTime,
+			phaseUpperBound,
+			phaseLowerBound,
+			"some id",
+			lastItemUpdateTime,
+		)
+		require.NoError(t, err)
+		listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
+			if prevPageLast != nil {
+				assert.Equal(t, "3", prevPageLast.ID)
+				return []*testType{
+					{nil, "4", lastItemCreateTime.Add(time.Second), lastItemUpdateTime.Add(time.Second)},
+				}, listReturnTime.Add(time.Second), nil
+			}
+			return []*testType{
+				{nil, "1", lastItemCreateTime.Add(2 * time.Second), lastItemUpdateTime.Add(2 * time.Second)},
+				{nil, "2", lastItemCreateTime.Add(time.Second), lastItemUpdateTime.Add(time.Second)},
+				{nil, "3", lastItemCreateTime, lastItemUpdateTime},
+			}, listReturnTime, nil
 		}
 		filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
 			if item.ID != "1" {
@@ -1435,140 +3069,144 @@ func Test_ListRefresh(t *testing.T) {
 			return 10, nil
 		}
 		deletedIDsFn := func(ctx context.Context, since time.Time) ([]string, time.Time, error) {
-			return nil, time.Time{}, nil
+			return []string{"deleted-id"}, deletedIDsReturnTime, nil
 		}
 		grantsHash := []byte("some hash")
-		resp, err := ListRefresh(
-			ctx,
-			grantsHash,
-			pageSize,
-			filterItemFn,
-			listRefreshItemsFn,
-			estimatedItemCountFn,
-			deletedIDsFn,
-			refreshToken,
-		)
-		require.ErrorContains(t, err, "failed to list")
-		assert.Empty(t, resp)
+		resp, err := ListRefreshPage(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn, deletedIDsFn, tok)
+		require.NoError(t, err)
+		assert.Empty(t, cmp.Diff(resp.Items, []*testType{
+			{nil, "1", lastItemCreateTime.Add(2 * time.Second), lastItemUpdateTime.Add(2 * time.Second)},
+		}))
+		assert.True(t, resp.CompleteListing)
+		assert.Equal(t, []string{"deleted-id"}, resp.DeletedIds)
+		assert.Equal(t, resp.EstimatedItemCount, 10)
+		require.NotNil(t, resp.ListToken)
+		assert.True(t, resp.ListToken.CreateTime.Equal(tokenCreateTime))
+		assert.Equal(t, resp.ListToken.GrantsHash, grantsHash)
+		assert.True(t, resp.ListToken.Subtype.(*listtoken.StartRefreshToken).PreviousDeletedIdsTime.Equal(deletedIDsReturnTime))
+		assert.True(t, resp.ListToken.Subtype.(*listtoken.StartRefreshToken).PreviousPhaseUpperBound.Equal(phaseUpperBound))
 	})
-	t.Run("errors-when-filter-errors", func(t *testing.T) {
+	t.Run("dont-fill-with-full-last-page", func(t *testing.T) {
 		t.Parallel()
 		pageSize := 2
-		refreshToken, err := refreshtoken.New(
+		tok, err := listtoken.NewRefresh(
 			ctx,
-			time.Now(),
-			time.Now(),
+			tokenCreateTime,
 			resource.Unknown,
 			[]byte("some hash"),
-			"1",
-			time.Now(),
+			prevDeletedTime,
+			phaseUpperBound,
+			phaseLowerBound,
+			"some id",
+			lastItemUpdateTime,
 		)
 		require.NoError(t, err)
-		listRefreshItemsFn := func(ctx context.Context, tok *refreshtoken.Token, prevPageLast *testType, limit int) ([]*testType, error) {
-			assert.Nil(t, prevPageLast)
-			return []*testType{{nil, "1"}, {nil, "2"}, {nil, "3"}}, nil
+		listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
+			switch {
+			case prevPageLast == nil:
+				return []*testType{
+					{nil, "1", lastItemCreateTime.Add(2 * time.Second), lastItemUpdateTime.Add(2 * time.Second)},
+					{nil, "2", lastItemCreateTime.Add(time.Second), lastItemUpdateTime.Add(time.Second)},
+					{nil, "3", lastItemCreateTime, lastItemUpdateTime},
+				}, listReturnTime, nil
+			case prevPageLast.ID == "3":
+				return []*testType{
+					{nil, "4", lastItemCreateTime.Add(-time.Second), lastItemUpdateTime.Add(-time.Second)},
+					{nil, "5", lastItemCreateTime.Add(-2 * time.Second), lastItemUpdateTime.Add(-2 * time.Second)},
+					{nil, "6", lastItemCreateTime.Add(-3 * time.Second), lastItemUpdateTime.Add(-3 * time.Second)},
+				}, listReturnTime.Add(time.Second), nil
+			case prevPageLast.ID == "6":
+				return nil, listReturnTime.Add(2 * time.Second), nil
+			default:
+				t.Fatalf("unexpected call to listItemsFn with %#v", prevPageLast)
+				return nil, time.Time{}, nil
+			}
 		}
 		filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
-			return false, errors.New("failed to filter")
-		}
-		estimatedItemCountFn := func(ctx context.Context) (int, error) {
-			return 10, nil
-		}
-		deletedIDsFn := func(ctx context.Context, since time.Time) ([]string, time.Time, error) {
-			return nil, time.Time{}, nil
-		}
-		grantsHash := []byte("some hash")
-		resp, err := ListRefresh(
-			ctx,
-			grantsHash,
-			pageSize,
-			filterItemFn,
-			listRefreshItemsFn,
-			estimatedItemCountFn,
-			deletedIDsFn,
-			refreshToken,
-		)
-		require.ErrorContains(t, err, "failed to filter")
-		assert.Empty(t, resp)
-	})
-	t.Run("errors-when-estimated-count-errors", func(t *testing.T) {
-		t.Parallel()
-		pageSize := 2
-		refreshToken, err := refreshtoken.New(
-			ctx,
-			time.Now(),
-			time.Now(),
-			resource.Unknown,
-			[]byte("some hash"),
-			"1",
-			time.Now(),
-		)
-		require.NoError(t, err)
-		listRefreshItemsFn := func(ctx context.Context, tok *refreshtoken.Token, prevPageLast *testType, limit int) ([]*testType, error) {
-			assert.Nil(t, prevPageLast)
-			return []*testType{{nil, "1"}, {nil, "2"}, {nil, "3"}}, nil
-		}
-		filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
-			return true, nil
-		}
-		estimatedItemCountFn := func(ctx context.Context) (int, error) {
-			return 0, errors.New("failed to estimate count")
-		}
-		deletedIDsFn := func(ctx context.Context, since time.Time) ([]string, time.Time, error) {
-			return nil, time.Time{}, nil
-		}
-		grantsHash := []byte("some hash")
-		resp, err := ListRefresh(
-			ctx,
-			grantsHash,
-			pageSize,
-			filterItemFn,
-			listRefreshItemsFn,
-			estimatedItemCountFn,
-			deletedIDsFn,
-			refreshToken,
-		)
-		require.ErrorContains(t, err, "failed to estimate count")
-		assert.Empty(t, resp)
-	})
-	t.Run("errors-when-listing-deleted-ids-errors", func(t *testing.T) {
-		t.Parallel()
-		pageSize := 2
-		refreshToken, err := refreshtoken.New(
-			ctx,
-			time.Now(),
-			time.Now(),
-			resource.Unknown,
-			[]byte("some hash"),
-			"1",
-			time.Now(),
-		)
-		require.NoError(t, err)
-		listRefreshItemsFn := func(ctx context.Context, tok *refreshtoken.Token, prevPageLast *testType, limit int) ([]*testType, error) {
-			assert.Nil(t, prevPageLast)
-			return []*testType{{nil, "1"}, {nil, "2"}, {nil, "3"}}, nil
-		}
-		filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
+			if item.ID != "1" {
+				// Filter every item except the first
+				return false, nil
+			}
 			return true, nil
 		}
 		estimatedItemCountFn := func(ctx context.Context) (int, error) {
 			return 10, nil
 		}
 		deletedIDsFn := func(ctx context.Context, since time.Time) ([]string, time.Time, error) {
-			return nil, time.Time{}, errors.New("failed to list deleted ids")
+			return []string{"deleted-id"}, deletedIDsReturnTime, nil
 		}
 		grantsHash := []byte("some hash")
-		resp, err := ListRefresh(
+		resp, err := ListRefreshPage(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn, deletedIDsFn, tok)
+		require.NoError(t, err)
+		assert.Empty(t, cmp.Diff(resp.Items, []*testType{
+			{nil, "1", lastItemCreateTime.Add(2 * time.Second), lastItemUpdateTime.Add(2 * time.Second)},
+		}))
+		assert.True(t, resp.CompleteListing)
+		assert.Equal(t, []string{"deleted-id"}, resp.DeletedIds)
+		assert.Equal(t, resp.EstimatedItemCount, 10)
+		require.NotNil(t, resp.ListToken)
+		assert.True(t, resp.ListToken.CreateTime.Equal(tokenCreateTime))
+		assert.Equal(t, resp.ListToken.GrantsHash, grantsHash)
+		assert.True(t, resp.ListToken.Subtype.(*listtoken.StartRefreshToken).PreviousDeletedIdsTime.Equal(deletedIDsReturnTime))
+		assert.True(t, resp.ListToken.Subtype.(*listtoken.StartRefreshToken).PreviousPhaseUpperBound.Equal(phaseUpperBound))
+	})
+	t.Run("filter-everything", func(t *testing.T) {
+		t.Parallel()
+		pageSize := 2
+		tok, err := listtoken.NewRefresh(
 			ctx,
-			grantsHash,
-			pageSize,
-			filterItemFn,
-			listRefreshItemsFn,
-			estimatedItemCountFn,
-			deletedIDsFn,
-			refreshToken,
+			tokenCreateTime,
+			resource.Unknown,
+			[]byte("some hash"),
+			prevDeletedTime,
+			phaseUpperBound,
+			phaseLowerBound,
+			"some id",
+			lastItemUpdateTime,
 		)
-		require.ErrorContains(t, err, "failed to list deleted ids")
-		assert.Empty(t, resp)
+		require.NoError(t, err)
+		listItemsFn := func(ctx context.Context, prevPageLast *testType, limit int) ([]*testType, time.Time, error) {
+			switch {
+			case prevPageLast == nil:
+				return []*testType{
+					{nil, "1", lastItemCreateTime.Add(2 * time.Second), lastItemUpdateTime.Add(2 * time.Second)},
+					{nil, "2", lastItemCreateTime.Add(time.Second), lastItemUpdateTime.Add(time.Second)},
+					{nil, "3", lastItemCreateTime, lastItemUpdateTime},
+				}, listReturnTime, nil
+			case prevPageLast.ID == "3":
+				return []*testType{
+					{nil, "4", lastItemCreateTime.Add(-time.Second), lastItemUpdateTime.Add(-time.Second)},
+					{nil, "5", lastItemCreateTime.Add(-2 * time.Second), lastItemUpdateTime.Add(-2 * time.Second)},
+					{nil, "6", lastItemCreateTime.Add(-3 * time.Second), lastItemUpdateTime.Add(-3 * time.Second)},
+				}, listReturnTime.Add(time.Second), nil
+			case prevPageLast.ID == "6":
+				return nil, listReturnTime.Add(2 * time.Second), nil
+			default:
+				t.Fatalf("unexpected call to listItemsFn with %#v", prevPageLast)
+				return nil, time.Time{}, nil
+			}
+		}
+		filterItemFn := func(ctx context.Context, item *testType) (bool, error) {
+			// Filter every item
+			return false, nil
+		}
+		estimatedItemCountFn := func(ctx context.Context) (int, error) {
+			return 10, nil
+		}
+		deletedIDsFn := func(ctx context.Context, since time.Time) ([]string, time.Time, error) {
+			return []string{"deleted-id"}, deletedIDsReturnTime, nil
+		}
+		grantsHash := []byte("some hash")
+		resp, err := ListRefreshPage(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn, deletedIDsFn, tok)
+		require.NoError(t, err)
+		assert.Empty(t, resp.Items)
+		assert.True(t, resp.CompleteListing)
+		assert.Equal(t, []string{"deleted-id"}, resp.DeletedIds)
+		assert.Equal(t, resp.EstimatedItemCount, 10)
+		require.NotNil(t, resp.ListToken)
+		assert.True(t, resp.ListToken.CreateTime.Equal(tokenCreateTime))
+		assert.Equal(t, resp.ListToken.GrantsHash, grantsHash)
+		assert.True(t, resp.ListToken.Subtype.(*listtoken.StartRefreshToken).PreviousDeletedIdsTime.Equal(deletedIDsReturnTime))
+		assert.True(t, resp.ListToken.Subtype.(*listtoken.StartRefreshToken).PreviousPhaseUpperBound.Equal(phaseUpperBound))
 	})
 }

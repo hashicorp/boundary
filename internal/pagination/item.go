@@ -13,6 +13,7 @@ import (
 // of pagination and sorting.
 type Item interface {
 	GetPublicId() string
+	GetCreateTime() *timestamp.Timestamp
 	GetUpdateTime() *timestamp.Timestamp
 	GetResourceType() resource.Type
 }
