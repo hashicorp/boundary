@@ -76,10 +76,17 @@ func TestTargetAddress(t testing.TB, conn *db.DB, targetId, address string) *Add
 }
 
 // TestListTargets exposes the repo listTargets method for testing purposes.
-func TestListTargets(t testing.TB, repo *Repository, ctx context.Context, opts ...Option) []Target {
-	targets, err := repo.listTargets(ctx, opts...)
+func TestListTargets(t testing.TB, repo *Repository, ctx context.Context, opts ...Option) ([]Target, time.Time) {
+	targets, ttime, err := repo.listTargets(ctx, opts...)
 	require.NoError(t, err)
-	return targets
+	return targets, ttime
+}
+
+// TestListTargetsRefresh exposes the repo listTargetsRefresh method for testing purposes.
+func TestListTargetsRefresh(t testing.TB, repo *Repository, ctx context.Context, updateAfter time.Time, opts ...Option) ([]Target, time.Time) {
+	targets, ttime, err := repo.listTargetsRefresh(ctx, updateAfter, opts...)
+	require.NoError(t, err)
+	return targets, ttime
 }
 
 // TestListDeletedIds exposes the repo listDeletedIds method for testing purposes.

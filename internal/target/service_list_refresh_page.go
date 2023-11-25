@@ -13,7 +13,7 @@ import (
 	"github.com/hashicorp/boundary/internal/pagination"
 )
 
-// ListRefresh lists up to page size targets, filtering out entries that
+// ListRefreshPage lists up to page size targets, filtering out entries that
 // do not pass the filter item function. It will automatically request
 // more targets from the database, at page size chunks, to fill the page.
 // It will start its paging based on the information in the token.
@@ -21,8 +21,8 @@ import (
 // Targets are ordered by update time descending (most recently updated first).
 // Targets may contain items that were already returned during the initial
 // pagination phase. It also returns a list of any targets deleted since the
-// start of the initial pagination phase or last response.
-func ListRefresh(
+// last response.
+func ListRefreshPage(
 	ctx context.Context,
 	grantsHash []byte,
 	pageSize int,
@@ -30,7 +30,7 @@ func ListRefresh(
 	tok *listtoken.Token,
 	repo *Repository,
 ) (*pagination.ListResponse[Target], error) {
-	const op = "target.ListRefresh"
+	const op = "target.ListRefreshPage"
 
 	switch {
 	case len(grantsHash) == 0:
@@ -44,9 +44,9 @@ func ListRefresh(
 	case repo == nil:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing repo")
 	}
-	rt, ok := tok.Subtype.(*listtoken.StartRefreshToken)
+	rt, ok := tok.Subtype.(*listtoken.RefreshToken)
 	if !ok {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "token did not have a start-refresh token component")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "token did not have a refresh token component")
 	}
 
 	listItemsFn := func(ctx context.Context, lastPageItem Target, limit int) ([]Target, time.Time, error) {
@@ -55,16 +55,23 @@ func ListRefresh(
 		}
 		if lastPageItem != nil {
 			opts = append(opts, WithStartPageAfterItem(lastPageItem))
+		} else {
+			lastItem, err := tok.LastItem(ctx)
+			if err != nil {
+				return nil, time.Time{}, err
+			}
+			opts = append(opts, WithStartPageAfterItem(lastItem))
 		}
 		// Add the database read timeout to account for any creations missed due to concurrent
-		// transactions in the initial pagination phase.
-		return repo.listTargetsRefresh(ctx, rt.PreviousPhaseUpperBound.Add(-globals.RefreshReadLookbackDuration), opts...)
+		// transactions in the original list pagination phase.
+		return repo.listTargetsRefresh(ctx, rt.PhaseLowerBound.Add(-globals.RefreshReadLookbackDuration), opts...)
 	}
+
 	listDeletedIdsFn := func(ctx context.Context, since time.Time) ([]string, time.Time, error) {
-		// Add the database read timeout to account for any deletions missed due to concurrent
-		// transactions in previous requests.
+		// Add the database read timeout to account for any deletes missed due to concurrent
+		// transactions in the original list pagination phase.
 		return repo.listDeletedIds(ctx, since.Add(-globals.RefreshReadLookbackDuration))
 	}
 
-	return pagination.ListRefresh(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, repo.estimatedCount, listDeletedIdsFn, tok)
+	return pagination.ListRefreshPage(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, repo.estimatedCount, listDeletedIdsFn, tok)
 }
