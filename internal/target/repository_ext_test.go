@@ -81,12 +81,14 @@ func TestListDeletedIds(t *testing.T) {
 	// Expect a single entry
 	deletedIds, ttime = target.TestListDeletedIds(t, repo, ctx, time.Now().AddDate(-1, 0, 0))
 	require.Equal(t, []string{tg.GetPublicId()}, deletedIds)
+	// Transaction timestamp should be within ~10 seconds of now
 	assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
 	assert.True(t, time.Now().After(ttime.Add(-10*time.Second)))
 
 	// Try again with the time set to now, expect no entries
 	deletedIds, ttime = target.TestListDeletedIds(t, repo, ctx, time.Now())
 	require.Empty(t, deletedIds)
+	// Transaction timestamp should be within ~10 seconds of now
 	assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
 	assert.True(t, time.Now().After(ttime.Add(-10*time.Second)))
 }
@@ -169,15 +171,18 @@ func TestRepository_ListTargets(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("no-options", func(t *testing.T) {
-		got := target.TestListTargets(t, repo, ctx)
+		got, ttime := target.TestListTargets(t, repo, ctx)
 		require.NoError(t, err)
 		assert.Equal(t, total, len(got))
+		// Transaction timestamp should be within ~10 seconds of now
+		assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
+		assert.True(t, time.Now().After(ttime.Add(-10*time.Second)))
 	})
 
 	t.Run("withStartPageAfter", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 
-		page1 := target.TestListTargets(
+		page1, ttime := target.TestListTargets(
 			t,
 			repo,
 			context.Background(),
@@ -185,7 +190,10 @@ func TestRepository_ListTargets(t *testing.T) {
 		)
 		require.NoError(err)
 		require.Len(page1, 2)
-		page2 := target.TestListTargets(
+		// Transaction timestamp should be within ~10 seconds of now
+		assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+		assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
+		page2, ttime := target.TestListTargets(
 			t,
 			repo,
 			context.Background(),
@@ -194,11 +202,13 @@ func TestRepository_ListTargets(t *testing.T) {
 		)
 		require.NoError(err)
 		require.Len(page2, 2)
+		assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+		assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
 		for _, item := range page1 {
 			assert.NotEqual(item.GetPublicId(), page2[0].GetPublicId())
 			assert.NotEqual(item.GetPublicId(), page2[1].GetPublicId())
 		}
-		page3 := target.TestListTargets(
+		page3, ttime := target.TestListTargets(
 			t,
 			repo,
 			context.Background(),
@@ -207,11 +217,13 @@ func TestRepository_ListTargets(t *testing.T) {
 		)
 		require.NoError(err)
 		require.Len(page3, 2)
+		assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+		assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
 		for _, item := range page2 {
 			assert.NotEqual(item.GetPublicId(), page3[0].GetPublicId())
 			assert.NotEqual(item.GetPublicId(), page3[1].GetPublicId())
 		}
-		page4 := target.TestListTargets(
+		page4, ttime := target.TestListTargets(
 			t,
 			repo,
 			context.Background(),
@@ -220,11 +232,13 @@ func TestRepository_ListTargets(t *testing.T) {
 		)
 		require.NoError(err)
 		require.Len(page4, 2)
+		assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+		assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
 		for _, item := range page3 {
 			assert.NotEqual(item.GetPublicId(), page4[0].GetPublicId())
 			assert.NotEqual(item.GetPublicId(), page4[1].GetPublicId())
 		}
-		page5 := target.TestListTargets(
+		page5, ttime := target.TestListTargets(
 			t,
 			repo,
 			context.Background(),
@@ -233,11 +247,13 @@ func TestRepository_ListTargets(t *testing.T) {
 		)
 		require.NoError(err)
 		require.Len(page5, 2)
+		assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+		assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
 		for _, item := range page4 {
 			assert.NotEqual(item.GetPublicId(), page5[0].GetPublicId())
 			assert.NotEqual(item.GetPublicId(), page5[1].GetPublicId())
 		}
-		page6 := target.TestListTargets(
+		page6, ttime := target.TestListTargets(
 			t,
 			repo,
 			context.Background(),
@@ -246,21 +262,44 @@ func TestRepository_ListTargets(t *testing.T) {
 		)
 		require.NoError(err)
 		require.Empty(page6)
+		assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+		assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
 
-		// Update the first target and check that it gets listed subsequently
+		// Update the first two targets
 		page1[0].SetName("new-name")
 		_, _, err = repo.UpdateTarget(ctx, page1[0], page1[0].GetVersion(), []string{"name"})
 		require.NoError(err)
-		page7 := target.TestListTargets(
+		page1[1].SetName("newer-name")
+		_, _, err = repo.UpdateTarget(ctx, page1[1], page1[1].GetVersion(), []string{"name"})
+		require.NoError(err)
+
+		// since it will return newest to oldest, we get page1[1] first
+		page7, ttime := target.TestListTargetsRefresh(
 			t,
 			repo,
 			context.Background(),
-			target.WithLimit(2),
-			target.WithStartPageAfterItem(page5[1]),
+			time.Now().Add(-1*time.Second),
+			target.WithLimit(1),
 		)
 		require.NoError(err)
 		require.Len(page7, 1)
-		require.Equal(page7[0].GetPublicId(), page1[0].GetPublicId())
+		require.Equal(page7[0].GetPublicId(), page1[1].GetPublicId())
+		assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+		assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
+
+		page8, ttime := target.TestListTargetsRefresh(
+			t,
+			repo,
+			context.Background(),
+			time.Now().Add(-1*time.Second),
+			target.WithLimit(1),
+			target.WithStartPageAfterItem(page7[0]),
+		)
+		require.NoError(err)
+		require.Len(page8, 1)
+		require.Equal(page8[0].GetPublicId(), page1[0].GetPublicId())
+		assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+		assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
 	})
 }
 
@@ -303,9 +342,11 @@ func TestRepository_ListTargets_Multiple_Scopes(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	got := target.TestListTargets(t, repo, ctx)
+	got, ttime := target.TestListTargets(t, repo, ctx)
 	require.NoError(t, err)
 	assert.Equal(t, total, len(got))
+	assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
+	assert.True(t, time.Now().After(ttime.Add(-10*time.Second)))
 }
 
 func TestRepository_ListRoles_Above_Default_Count(t *testing.T) {
@@ -338,9 +379,11 @@ func TestRepository_ListRoles_Above_Default_Count(t *testing.T) {
 		}))
 	require.NoError(t, err)
 
-	got := target.TestListTargets(t, repo, ctx, target.WithLimit(numToCreate))
+	got, ttime := target.TestListTargets(t, repo, ctx, target.WithLimit(numToCreate))
 	require.NoError(t, err)
 	assert.Equal(t, total, len(got))
+	assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
+	assert.True(t, time.Now().After(ttime.Add(-10*time.Second)))
 
 	for _, tar := range got {
 		assert.Equal(t, "1.2.3.4", tar.GetAddress())
