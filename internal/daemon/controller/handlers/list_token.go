@@ -8,42 +8,82 @@ import (
 
 	"github.com/hashicorp/boundary/internal/errors"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	"github.com/hashicorp/boundary/internal/listtoken"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/mr-tron/base58"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-// ParseRefreshToken parses a refresh token from the input, returning
+// ParseListToken parses a list token from the input, returning
 // an error if the parsing fails.
-func ParseRefreshToken(ctx context.Context, token string) (*pbs.ListRefreshToken, error) {
-	const op = "handlers.ParseRefreshToken"
+func ParseListToken(ctx context.Context, token string) (*pbs.ListToken, error) {
+	const op = "handlers.ParseListToken"
 	marshaled, err := base58.Decode(token)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	var tok pbs.ListRefreshToken
+	var tok pbs.ListToken
 	if err := proto.Unmarshal(marshaled, &tok); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	return &tok, nil
 }
 
-// MarshalRefreshToken marshals a refresh token to its string representation.
-func MarshalRefreshToken(ctx context.Context, token *pbs.ListRefreshToken) (string, error) {
-	const op = "handlers.MarshalRefreshToken"
-	if token == nil {
+// MarshalListToken assembles and marshals a list token to its string representation.
+func MarshalListToken(ctx context.Context, token *listtoken.Token, resourceType pbs.ResourceType) (string, error) {
+	const op = "handlers.MarshalListToken"
+	switch {
+	case token == nil:
 		return "", errors.New(ctx, errors.InvalidParameter, op, "token is required")
+	case resourceType == pbs.ResourceType_RESOURCE_TYPE_UNSPECIFIED:
+		return "", errors.New(ctx, errors.InvalidParameter, op, "missing resource type")
+	case token.ResourceType != ListTokenResourceToResource(resourceType):
+		return "", errors.New(ctx, errors.Internal, op, "list token resource type does not match expected resource type")
 	}
-	marshaled, err := proto.Marshal(token)
+	lt := &pbs.ListToken{
+		CreateTime:   timestamppb.New(token.CreateTime),
+		ResourceType: resourceType,
+		GrantsHash:   token.GrantsHash,
+	}
+	switch st := token.Subtype.(type) {
+	case *listtoken.PaginationToken:
+		lt.Token = &pbs.ListToken_PaginationToken{
+			PaginationToken: &pbs.PaginationToken{
+				LastItemId:         st.LastItemId,
+				LastItemCreateTime: timestamppb.New(st.LastItemCreateTime),
+			},
+		}
+	case *listtoken.StartRefreshToken:
+		lt.Token = &pbs.ListToken_StartRefreshToken{
+			StartRefreshToken: &pbs.StartRefreshToken{
+				PreviousPhaseUpperBound: timestamppb.New(st.PreviousPhaseUpperBound),
+				PreviousDeletedIdsTime:  timestamppb.New(st.PreviousDeletedIdsTime),
+			},
+		}
+	case *listtoken.RefreshToken:
+		lt.Token = &pbs.ListToken_RefreshToken{
+			RefreshToken: &pbs.RefreshToken{
+				PhaseUpperBound:        timestamppb.New(st.PhaseUpperBound),
+				PhaseLowerBound:        timestamppb.New(st.PhaseLowerBound),
+				PreviousDeletedIdsTime: timestamppb.New(st.PreviousDeletedIdsTime),
+				LastItemId:             st.LastItemId,
+				LastItemUpdateTime:     timestamppb.New(st.LastItemUpdateTime),
+			},
+		}
+	default:
+		return "", errors.New(ctx, errors.Internal, op, "unexpected list token subtype")
+	}
+	marshaled, err := proto.Marshal(lt)
 	if err != nil {
 		return "", errors.Wrap(ctx, err, op)
 	}
 	return base58.Encode(marshaled), nil
 }
 
-// RefreshTokenResourceToResource translates a protobuf refresh token resource type
+// ListTokenResourceToResource translates a protobuf list token resource type
 // into a useable domain layer boundary resource type.
-func RefreshTokenResourceToResource(rt pbs.ResourceType) resource.Type {
+func ListTokenResourceToResource(rt pbs.ResourceType) resource.Type {
 	switch rt {
 	case pbs.ResourceType_RESOURCE_TYPE_ACCOUNT:
 		return resource.Account
