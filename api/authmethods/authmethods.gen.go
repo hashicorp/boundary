@@ -67,7 +67,7 @@ type AuthMethodListResult struct {
 	Items        []*AuthMethod `json:"items,omitempty"`
 	EstItemCount uint          `json:"est_item_count,omitempty"`
 	RemovedIds   []string      `json:"removed_ids,omitempty"`
-	RefreshToken string        `json:"refresh_token,omitempty"`
+	ListToken    string        `json:"list_token,omitempty"`
 	ResponseType string        `json:"response_type,omitempty"`
 	response     *api.Response
 }
@@ -84,8 +84,8 @@ func (n AuthMethodListResult) GetRemovedIds() []string {
 	return n.RemovedIds
 }
 
-func (n AuthMethodListResult) GetRefreshToken() string {
-	return n.RefreshToken
+func (n AuthMethodListResult) GetListToken() string {
+	return n.ListToken
 }
 
 func (n AuthMethodListResult) GetResponseType() string {
@@ -364,7 +364,7 @@ func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) (*Auth
 			return nil, fmt.Errorf("error creating List request: %w", err)
 		}
 
-		opts.queryMap["refresh_token"] = target.RefreshToken
+		opts.queryMap["list_token"] = target.ListToken
 		if len(opts.queryMap) > 0 {
 			q := url.Values{}
 			for k, v := range opts.queryMap {
@@ -397,7 +397,7 @@ func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) (*Auth
 		}
 		target.RemovedIds = append(target.RemovedIds, page.RemovedIds...)
 		target.EstItemCount = page.EstItemCount
-		target.RefreshToken = page.RefreshToken
+		target.ListToken = page.ListToken
 		target.ResponseType = page.ResponseType
 		target.response = resp
 		if target.ResponseType == "complete" {
