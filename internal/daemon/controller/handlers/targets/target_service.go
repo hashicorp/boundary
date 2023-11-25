@@ -29,9 +29,9 @@ import (
 	"github.com/hashicorp/boundary/internal/host/plugin"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/listtoken"
 	"github.com/hashicorp/boundary/internal/pagination"
 	"github.com/hashicorp/boundary/internal/perms"
-	"github.com/hashicorp/boundary/internal/refreshtoken"
 	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/session"
@@ -238,29 +238,37 @@ func (s Service) ListTargets(ctx context.Context, req *pbs.ListTargetsRequest) (
 	if req.GetPageSize() != 0 && uint(req.GetPageSize()) < s.maxPageSize {
 		pageSize = int(req.GetPageSize())
 	}
-	filter, err := handlers.NewFilter(ctx, req.GetFilter())
-	if err != nil {
-		return nil, err
+	var filterItemFn func(ctx context.Context, item target.Target) (bool, error)
+	switch {
+	case req.GetFilter() != "":
+		// Only use a filter if we need to
+		filter, err := handlers.NewFilter(ctx, req.GetFilter())
+		if err != nil {
+			return nil, err
+		}
+		// TODO: replace the need for this function with some way to convert the `filter`
+		// to a domain type. This would allow filtering to happen in the domain, and we could
+		// remove this callback altogether.
+		filterItemFn = func(ctx context.Context, item target.Target) (bool, error) {
+			pbItem, err := toProto(ctx, item, newOutputOpts(ctx, item, authResults, authzScopes)...)
+			if err != nil {
+				return false, err
+			}
+			filterable, err := subtypes.Filterable(ctx, pbItem)
+			if err != nil {
+				return false, err
+			}
+			return filter.Match(filterable), nil
+		}
+	default:
+		filterItemFn = func(ctx context.Context, item target.Target) (bool, error) {
+			return true, nil
+		}
 	}
 
 	repo, err := s.repoFn(target.WithPermissions(userPerms))
 	if err != nil {
 		return nil, err
-	}
-	// TODO: replace the need for this function with some way to convert the `filter`
-	// to a domain type. This would allow filtering to happen in the domain, and we could
-	// remove this callback altogether.
-	filterItemFn := func(ctx context.Context, item target.Target) (bool, error) {
-		pbItem, err := toProto(ctx, item, newOutputOpts(ctx, item, authResults, authzScopes)...)
-		if err != nil {
-			return false, err
-		}
-
-		filterable, err := subtypes.Filterable(ctx, pbItem)
-		if err != nil {
-			return false, err
-		}
-		return filter.Match(filterable), nil
 	}
 	grantsHash, err := authResults.GrantsHash(ctx)
 	if err != nil {
@@ -268,37 +276,84 @@ func (s Service) ListTargets(ctx context.Context, req *pbs.ListTargetsRequest) (
 	}
 
 	var listResp *pagination.ListResponse[target.Target]
-	if req.GetRefreshToken() == "" {
+	var sortBy string
+	if req.GetListToken() == "" {
+		sortBy = "created_time"
 		listResp, err = target.List(ctx, grantsHash, pageSize, filterItemFn, repo)
 		if err != nil {
 			return nil, err
 		}
 	} else {
-		rt, err := handlers.ParseRefreshToken(ctx, req.GetRefreshToken())
+		pt, err := handlers.ParseListToken(ctx, req.GetListToken())
 		if err != nil {
 			return nil, err
 		}
-		// We're doing the conversion from the protobuf types to the
-		// domain types here rather than in the domain so that the domain
-		// doesn't need to know about the protobuf types.
-		domainRefreshToken, err := refreshtoken.New(
-			ctx,
-			rt.CreatedTime.AsTime(),
-			rt.UpdatedTime.AsTime(),
-			handlers.RefreshTokenResourceToResource(rt.ResourceType),
-			rt.GrantsHash,
-			rt.LastItemId,
-			rt.LastItemUpdatedTime.AsTime(),
-		)
-		if err != nil {
-			return nil, err
-		}
-		if err := domainRefreshToken.Validate(ctx, resource.Target, grantsHash); err != nil {
-			return nil, err
-		}
-		listResp, err = target.ListRefresh(ctx, grantsHash, pageSize, filterItemFn, domainRefreshToken, repo)
-		if err != nil {
-			return nil, err
+		switch st := pt.Token.(type) {
+		case *pbs.ListToken_PaginationToken:
+			sortBy = "created_time"
+			listToken, err := listtoken.NewPagination(
+				ctx,
+				pt.CreateTime.AsTime(),
+				handlers.ListTokenResourceToResource(pt.ResourceType),
+				pt.GrantsHash,
+				st.PaginationToken.LastItemId,
+				st.PaginationToken.LastItemCreateTime.AsTime(),
+			)
+			if err != nil {
+				return nil, err
+			}
+			if err := listToken.Validate(ctx, resource.Target, grantsHash); err != nil {
+				return nil, err
+			}
+			listResp, err = target.ListPage(ctx, grantsHash, pageSize, filterItemFn, listToken, repo)
+			if err != nil {
+				return nil, err
+			}
+		case *pbs.ListToken_StartRefreshToken:
+			sortBy = "updated_time"
+			listToken, err := listtoken.NewStartRefresh(
+				ctx,
+				pt.CreateTime.AsTime(),
+				handlers.ListTokenResourceToResource(pt.ResourceType),
+				pt.GrantsHash,
+				st.StartRefreshToken.PreviousDeletedIdsTime.AsTime(),
+				st.StartRefreshToken.PreviousPhaseUpperBound.AsTime(),
+			)
+			if err != nil {
+				return nil, err
+			}
+			if err := listToken.Validate(ctx, resource.Target, grantsHash); err != nil {
+				return nil, err
+			}
+			listResp, err = target.ListRefresh(ctx, grantsHash, pageSize, filterItemFn, listToken, repo)
+			if err != nil {
+				return nil, err
+			}
+		case *pbs.ListToken_RefreshToken:
+			sortBy = "updated_time"
+			listToken, err := listtoken.NewRefresh(
+				ctx,
+				pt.CreateTime.AsTime(),
+				handlers.ListTokenResourceToResource(pt.ResourceType),
+				pt.GrantsHash,
+				st.RefreshToken.PreviousDeletedIdsTime.AsTime(),
+				st.RefreshToken.PhaseUpperBound.AsTime(),
+				st.RefreshToken.PhaseLowerBound.AsTime(),
+				st.RefreshToken.LastItemId,
+				st.RefreshToken.LastItemUpdateTime.AsTime(),
+			)
+			if err != nil {
+				return nil, err
+			}
+			if err := listToken.Validate(ctx, resource.Target, grantsHash); err != nil {
+				return nil, err
+			}
+			listResp, err = target.ListRefreshPage(ctx, grantsHash, pageSize, filterItemFn, listToken, repo)
+			if err != nil {
+				return nil, err
+			}
+		default:
+			return nil, handlers.ApiErrorWithCodeAndMessage(codes.InvalidArgument, "unexpected list token subtype: %T", st)
 		}
 	}
 
@@ -319,22 +374,12 @@ func (s Service) ListTargets(ctx context.Context, req *pbs.ListTargetsRequest) (
 		EstItemCount: uint32(listResp.EstimatedItemCount),
 		RemovedIds:   listResp.DeletedIds,
 		ResponseType: respType,
-		SortBy:       "updated_time",
-		SortDir:      "asc",
+		SortBy:       sortBy,
+		SortDir:      "desc",
 	}
 
-	if listResp.RefreshToken != nil {
-		if listResp.RefreshToken.ResourceType != resource.Target {
-			return nil, errors.New(ctx, errors.Internal, op, "refresh token resource type does not match service resource type")
-		}
-		resp.RefreshToken, err = handlers.MarshalRefreshToken(ctx, &pbs.ListRefreshToken{
-			CreatedTime:         timestamppb.New(listResp.RefreshToken.CreatedTime),
-			UpdatedTime:         timestamppb.New(listResp.RefreshToken.UpdatedTime),
-			ResourceType:        pbs.ResourceType_RESOURCE_TYPE_TARGET,
-			GrantsHash:          listResp.RefreshToken.GrantsHash,
-			LastItemId:          listResp.RefreshToken.LastItemId,
-			LastItemUpdatedTime: timestamppb.New(listResp.RefreshToken.LastItemUpdatedTime),
-		})
+	if listResp.ListToken != nil {
+		resp.ListToken, err = handlers.MarshalListToken(ctx, listResp.ListToken, pbs.ResourceType_RESOURCE_TYPE_TARGET)
 		if err != nil {
 			return nil, err
 		}
