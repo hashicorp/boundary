@@ -30,6 +30,10 @@ var (
 	// DefaultMaxPageSize is the maximum list page size allowed if not set in the config.
 	DefaultMaxPageSize = 1000
 
+	// RefreshReadLookbackDuration is used to account for database state mutations
+	// missed due to concurrent transactions.
+	RefreshReadLookbackDuration = 30 * time.Second
+
 	// ContextMaxRequestSizeTypeKey is a value to keep linters from complaining
 	// about clashing string identifiers
 	ContextMaxRequestSizeTypeKey ContextMaxRequestSizeType
