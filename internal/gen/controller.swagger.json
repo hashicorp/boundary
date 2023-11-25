@@ -3178,7 +3178,7 @@
             "type": "string"
           },
           {
-            "name": "refresh_token",
+            "name": "list_token",
             "description": "An opaque token used to continue an existing iteration or\nrequest updated items. If not specified, pagination\nwill start from the beginning.",
             "in": "query",
             "required": false,
@@ -7704,7 +7704,7 @@
           "type": "string",
           "description": "The type of response, either \"delta\" or \"complete\".\nDelta signifies that this is part of a paginated result\nor an update to a previously completed pagination.\nComplete signifies that it is the last page."
         },
-        "refresh_token": {
+        "list_token": {
           "type": "string",
           "description": "An opaque token used to continue an existing pagination or\nrequest updated items. Use this token in the next list request\nto request the next page."
         },
