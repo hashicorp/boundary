@@ -194,7 +194,7 @@ func (s Service) ListCredentialStores(ctx context.Context, req *pbs.ListCredenti
 			return nil, err
 		}
 
-		filterable, err := subtypes.Filterable(item)
+		filterable, err := subtypes.Filterable(ctx, item)
 		if err != nil {
 			return nil, err
 		}

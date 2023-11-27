@@ -104,6 +104,7 @@ func dynamicToSessionCredential(ctx context.Context, cred credential.Dynamic) (*
 		switch c := cred.(type) {
 		case credential.UsernamePassword:
 			credData, err = handlers.ProtoToStruct(
+				ctx,
 				&pb.UsernamePasswordCredential{
 					Username: c.Username(),
 					Password: string(c.Password()),
@@ -115,6 +116,7 @@ func dynamicToSessionCredential(ctx context.Context, cred credential.Dynamic) (*
 
 		case credential.SshPrivateKey:
 			credData, err = handlers.ProtoToStruct(
+				ctx,
 				&pb.SshPrivateKeyCredential{
 					Username:             c.Username(),
 					PrivateKey:           string(c.PrivateKey()),
@@ -196,6 +198,7 @@ func staticToSessionCredential(ctx context.Context, cred credential.Static) (*pb
 		var err error
 		credType = string(globals.UsernamePasswordCredentialType)
 		credData, err = handlers.ProtoToStruct(
+			ctx,
 			&pb.UsernamePasswordCredential{
 				Username: c.GetUsername(),
 				Password: string(c.GetPassword()),
@@ -213,6 +216,7 @@ func staticToSessionCredential(ctx context.Context, cred credential.Static) (*pb
 		var err error
 		credType = string(globals.SshPrivateKeyCredentialType)
 		credData, err = handlers.ProtoToStruct(
+			ctx,
 			&pb.SshPrivateKeyCredential{
 				Username:             c.GetUsername(),
 				PrivateKey:           string(c.GetPrivateKey()),
