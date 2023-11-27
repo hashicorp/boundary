@@ -1,7 +1,7 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: BUSL-1.1
 
-package base_with_postgres_test
+package base_plus_test
 
 import (
 	"bytes"
