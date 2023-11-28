@@ -52,6 +52,8 @@ func getDefaultOptions() Options {
 		WithCloseSyncMode:  Asynchronous,
 		WithFileAccessMode: ReadOnly,
 		WithCreateFile:     false,
+		WithBuffer:         0,
+		WithMinimumBuffer:  0,
 	}
 }
 
@@ -60,6 +62,8 @@ type Options struct {
 	WithCloseSyncMode  SyncMode
 	WithFileAccessMode AccessMode
 	WithCreateFile     bool
+	WithBuffer         uint64
+	WithMinimumBuffer  uint64
 }
 
 // Option is a storage option.
@@ -83,5 +87,21 @@ func WithCreateFile() Option {
 func WithFileAccessMode(m AccessMode) Option {
 	return func(o *Options) {
 		o.WithFileAccessMode = m
+	}
+}
+
+// WithBuffer sets the buffer size.
+// The value must be a factorial of 4KiB.
+func WithBuffer(b uint64) Option {
+	return func(o *Options) {
+		o.WithBuffer = b
+	}
+}
+
+// WithMinimumBuffer sets the threshold to enforce when the
+// buffer expands back to its original size.
+func WithMinimumBuffer(m uint64) Option {
+	return func(o *Options) {
+		o.WithMinimumBuffer = m
 	}
 }
