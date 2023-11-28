@@ -11,6 +11,7 @@ import (
 	"regexp"
 
 	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
@@ -153,6 +154,17 @@ func Handler(ctx context.Context, l *rate.Limiter, next http.Handler) http.Handl
 			// the checks done by extractResourceAction.
 			rw.WriteHeader(http.StatusInternalServerError)
 			return
+		}
+
+		l.SetUsageHeader(quota, rw.Header())
+		if err := l.SetPolicyHeader(res, a, rw.Header()); err != nil {
+			// Wrap error to emit an error event. An error here would be
+			// unexpected, since the only possible error would be
+			// ErrLimitPolicyNotFound which would have been returned by Allow
+			// and handled above. And even that would be unexpected, given how
+			// the limiter is initialized and the checks done by
+			// extractResourceAction.
+			errors.Wrap(ctx, err, op)
 		}
 
 		if !allowed {
