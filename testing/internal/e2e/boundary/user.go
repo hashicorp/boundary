@@ -34,7 +34,7 @@ func CreateNewUserCli(t testing.TB, ctx context.Context, scopeId string) string 
 			"users", "create",
 			"-scope-id", scopeId,
 			"-name", "e2e User",
-			"-description", "e2e User",
+			"-description", "e2e",
 			"-format", "json",
 		),
 	)

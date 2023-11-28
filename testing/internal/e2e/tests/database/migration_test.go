@@ -275,6 +275,7 @@ func populateBoundaryDatabase(t testing.TB, ctx context.Context, c *config, te T
 			"-vault-path", c.VaultSecretPath+"/data/"+privateKeySecretName,
 			"-name", "e2e Automated Test Vault Credential Library",
 			"-credential-type", "ssh_private_key",
+			"-description", "e2e",
 			"-format", "json",
 		),
 	)
@@ -293,6 +294,7 @@ func populateBoundaryDatabase(t testing.TB, ctx context.Context, c *config, te T
 			"-vault-path", c.VaultSecretPath+"/data/"+passwordSecretName,
 			"-name", "e2e Automated Test Vault Credential Library - Password",
 			"-credential-type", "username_password",
+			"-description", "e2e",
 			"-format", "json",
 		),
 	)
