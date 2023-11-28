@@ -6,6 +6,7 @@ package base_plus_test
 import (
 	"context"
 	"encoding/json"
+	"net/http"
 	"testing"
 
 	"github.com/hashicorp/boundary/api/accounts"
@@ -81,19 +82,6 @@ func TestCliLdap(t *testing.T) {
 	newUserId := boundary.CreateNewUserCli(t, ctx, newOrgId)
 	boundary.SetAccountToUserCli(t, ctx, newUserId, newAccountId)
 
-	// Log in as the LDAP user
-	output = e2e.RunCommand(ctx, "boundary",
-		e2e.WithArgs(
-			"authenticate", "ldap",
-			"-auth-method-id", ldapAuthMethodId,
-			"-login-name", c.LdapUserName,
-			"-password", "env://LDAP_PW",
-			"-format", "json",
-		),
-		e2e.WithEnv("LDAP_PW", c.LdapUserPassword),
-	)
-	require.NoError(t, output.Err, string(output.Stderr))
-
 	// Try to log in with the wrong password
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
@@ -101,13 +89,40 @@ func TestCliLdap(t *testing.T) {
 			"-auth-method-id", ldapAuthMethodId,
 			"-login-name", c.LdapUserName,
 			"-password", "env://LDAP_PW",
-			"-format", "json",
 		),
 		e2e.WithEnv("LDAP_PW", c.LdapAdminPassword),
 	)
 	require.Error(t, output.Err, string(output.Stderr))
 
+	// Log in as the LDAP user
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"authenticate", "ldap",
+			"-auth-method-id", ldapAuthMethodId,
+			"-login-name", c.LdapUserName,
+			"-password", "env://LDAP_PW",
+		),
+		e2e.WithEnv("LDAP_PW", c.LdapUserPassword),
+	)
+	require.NoError(t, output.Err, string(output.Stderr))
+
+	// Confirm there is a permissions error when trying to read an auth method
+	// as an LDAP user
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"auth-methods", "read",
+			"-id", ldapAuthMethodId,
+			"-format", "json",
+		),
+	)
+	require.Error(t, output.Err, string(output.Stderr))
+	var response boundary.CliError
+	err = json.Unmarshal(output.Stderr, &response)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusForbidden, response.Status)
+
 	// Create an LDAP managed group
+	boundary.AuthenticateAdminCli(t, ctx)
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"managed-groups", "create", "ldap",
@@ -125,7 +140,44 @@ func TestCliLdap(t *testing.T) {
 	managedGroupId := newManagedGroupResult.Item.Id
 	t.Logf("Created Managed Group: %s", managedGroupId)
 
-	// Add managed group as a principal to a role
+	// Confirm that LDAP user is in the managed group
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"managed-groups", "read",
+			"-id", managedGroupId,
+			"-format", "json",
+		),
+	)
+	require.NoError(t, output.Err, string(output.Stderr))
+	var managedGroupReadResult managedgroups.ManagedGroupReadResult
+	err = json.Unmarshal(output.Stdout, &managedGroupReadResult)
+	require.NoError(t, err)
+	require.Contains(t, managedGroupReadResult.Item.MemberIds, newAccountId)
+
+	// Add managed group as a principal to a role with permissions to read auth methods
 	newRoleId := boundary.CreateNewRoleCli(t, ctx, newOrgId)
 	boundary.AddPrincipalToRoleCli(t, ctx, newRoleId, managedGroupId)
+	boundary.AddGrantToRoleCli(t, ctx, newRoleId, "ids=*;type=auth-method;actions=read")
+
+	// Log in as the LDAP user again
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"authenticate", "ldap",
+			"-auth-method-id", ldapAuthMethodId,
+			"-login-name", c.LdapUserName,
+			"-password", "env://LDAP_PW",
+		),
+		e2e.WithEnv("LDAP_PW", c.LdapUserPassword),
+	)
+	require.NoError(t, output.Err, string(output.Stderr))
+
+	// Read the auth method. Expect no error
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"auth-methods", "read",
+			"-id", ldapAuthMethodId,
+			"-format", "json",
+		),
+	)
+	require.NoError(t, output.Err, string(output.Stderr))
 }
