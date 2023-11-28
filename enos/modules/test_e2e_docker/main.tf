@@ -161,28 +161,69 @@ variable "aws_bucket_name" {
   default     = ""
 }
 variable "worker_tag_ingress" {
-  type    = string
-  default = ""
+  description = "Worker tag for the ingress worker"
+  type        = string
+  default     = ""
 }
 variable "worker_tag_egress" {
-  type    = string
-  default = ""
+  description = "Worker tag for the egress worker"
+  type        = string
+  default     = ""
 }
 variable "worker_tag_collocated" {
-  type    = string
-  default = ""
+  description = "Worker tag for the collocated worker"
+  type        = string
+  default     = ""
 }
 variable "postgres_user" {
-  type    = string
-  default = ""
+  description = "Username for accessing the postgres database"
+  type        = string
+  default     = ""
 }
 variable "postgres_password" {
-  type    = string
-  default = ""
+  description = "Password for accessing the postgres database"
+  type        = string
+  default     = ""
 }
 variable "postgres_database_name" {
-  type    = string
-  default = ""
+  description = "Name of postgres database"
+  type        = string
+  default     = ""
+}
+variable "ldap_address" {
+  description = "URL to LDAP server"
+  type        = string
+  default     = ""
+}
+variable "ldap_domain_dn" {
+  description = "Distinguished Name to the LDAP domain"
+  type        = string
+  default     = ""
+}
+variable "ldap_admin_dn" {
+  description = "Distinguished Name to the LDAP admin user"
+  type        = string
+  default     = ""
+}
+variable "ldap_admin_password" {
+  description = "Password for the LDAP admin user"
+  type        = string
+  default     = ""
+}
+variable "ldap_user_name" {
+  description = "Username of an LDAP user"
+  type        = string
+  default     = ""
+}
+variable "ldap_user_password" {
+  description = "Password for an LDAP user"
+  type        = string
+  default     = ""
+}
+variable "ldap_group_name" {
+  description = "Name of LDAP group"
+  type        = string
+  default     = ""
 }
 variable "test_timeout" {
   type    = string
@@ -246,6 +287,13 @@ resource "enos_local_exec" "run_e2e_test" {
     E2E_WORKER_TAG_INGRESS        = var.worker_tag_ingress
     E2E_WORKER_TAG_EGRESS         = var.worker_tag_egress
     E2E_WORKER_TAG_COLLOCATED     = var.worker_tag_collocated
+    E2E_LDAP_ADDR                 = var.ldap_address
+    E2E_LDAP_DOMAIN_DN            = var.ldap_domain_dn
+    E2E_LDAP_ADMIN_DN             = var.ldap_admin_dn
+    E2E_LDAP_ADMIN_PASSWORD       = var.ldap_admin_password
+    E2E_LDAP_USER_NAME            = var.ldap_user_name
+    E2E_LDAP_USER_PASSWORD        = var.ldap_user_password
+    E2E_LDAP_GROUP_NAME           = var.ldap_group_name
     BOUNDARY_DIR                  = abspath(var.local_boundary_src_dir)
     BOUNDARY_CLI_DIR              = abspath(var.local_boundary_dir)
     MODULE_DIR                    = abspath(path.module)

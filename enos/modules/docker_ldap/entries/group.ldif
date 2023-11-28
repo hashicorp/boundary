@@ -1,0 +1,4 @@
+dn: cn=${group_name},${domain_dn}
+objectClass: groupOfUniqueNames
+cn: ${group_name}
+uniqueMember: cn=${user_name},${domain_dn}

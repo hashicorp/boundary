@@ -171,3 +171,7 @@ module "docker_network" {
 module "docker_check_health" {
   source = "./modules/docker_check_health"
 }
+
+module "docker_ldap" {
+  source = "./modules/docker_ldap"
+}
