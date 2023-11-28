@@ -4,7 +4,7 @@
 # For this scenario to work, add the following line to /etc/hosts
 # 127.0.0.1 localhost boundary
 
-scenario "e2e_docker_base_with_postgres" {
+scenario "e2e_docker_base_plus" {
   terraform_cli = terraform_cli.default
   terraform     = terraform.default
   providers = [
@@ -88,13 +88,24 @@ scenario "e2e_docker_base_with_postgres" {
     }
   }
 
+  step "create_ldap_server" {
+    module = module.docker_ldap
+    depends_on = [
+      step.create_docker_network
+    ]
+    variables {
+      image_name   = "${var.docker_mirror}/osixia/openldap:latest"
+      network_name = [local.network_cluster]
+    }
+  }
+
   step "run_e2e_test" {
     module = module.test_e2e_docker
     depends_on = [
       step.create_boundary,
     ]
     variables {
-      test_package             = "github.com/hashicorp/boundary/testing/internal/e2e/tests/base_with_postgres"
+      test_package             = "github.com/hashicorp/boundary/testing/internal/e2e/tests/base_plus"
       docker_mirror            = var.docker_mirror
       network_name             = step.create_docker_network.network_name
       go_version               = var.go_version
@@ -112,6 +123,13 @@ scenario "e2e_docker_base_with_postgres" {
       postgres_user            = step.create_boundary_database.user
       postgres_password        = step.create_boundary_database.password
       postgres_database_name   = step.create_boundary_database.database_name
+      ldap_address             = step.create_ldap_server.address
+      ldap_domain_dn           = step.create_ldap_server.domain_dn
+      ldap_admin_dn            = step.create_ldap_server.admin_dn
+      ldap_admin_password      = step.create_ldap_server.admin_password
+      ldap_user_name           = step.create_ldap_server.user_name
+      ldap_user_password       = step.create_ldap_server.user_password
+      ldap_group_name          = step.create_ldap_server.group_name
     }
   }
 }
