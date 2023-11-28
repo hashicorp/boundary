@@ -30,12 +30,13 @@ variable "container_name" {
 }
 
 locals {
-  admin_password = "admin"
   user_name      = "einstein"
   user_password  = "password"
   group_name     = "scientists"
   domain         = "example.org"
   domain_dn      = "dc=example,dc=org"
+  admin_dn       = "cn=admin,${local.domain_dn}"
+  admin_password = "admin"
 }
 
 resource "docker_image" "ldap" {
@@ -69,7 +70,7 @@ resource "docker_container" "ldap" {
 
 
   healthcheck {
-    test = ["CMD", "ldapsearch", "-H", "ldap://localhost", "-b", "dc=example,dc=org", "-D", "cn=admin,dc=example,dc=org", "-w", "${local.admin_password}"]
+    test = ["CMD", "ldapsearch", "-H", "ldap://localhost", "-b", "${local.domain_dn}", "-D", "${local.admin_dn}", "-w", "${local.admin_password}"]
   }
   wait     = true
   must_run = true
@@ -86,7 +87,7 @@ resource "enos_local_exec" "create_ldap_user" {
     docker_container.ldap
   ]
 
-  inline = ["docker exec ${var.container_name} ldapadd -x -H ldap://localhost -D \"cn=admin,dc=example,dc=org\" -w ${local.admin_password} -f /tmp/ldap/user.ldif"]
+  inline = ["docker exec ${var.container_name} ldapadd -x -H ldap://localhost -D \"${local.admin_dn}\" -w ${local.admin_password} -f /tmp/ldap/user.ldif"]
 }
 
 resource "enos_local_exec" "create_ldap_group" {
@@ -95,7 +96,7 @@ resource "enos_local_exec" "create_ldap_group" {
     enos_local_exec.create_ldap_user,
   ]
 
-  inline = ["docker exec ${var.container_name} ldapadd -x -H ldap://localhost -D \"cn=admin,dc=example,dc=org\" -w ${local.admin_password} -f /tmp/ldap/group.ldif"]
+  inline = ["docker exec ${var.container_name} ldapadd -x -H ldap://localhost -D \"${local.admin_dn}\" -w ${local.admin_password} -f /tmp/ldap/group.ldif"]
 }
 
 output "address" {
@@ -107,7 +108,7 @@ output "domain_dn" {
 }
 
 output "admin_dn" {
-  value = "cn=admin,${local.domain_dn}"
+  value = local.admin_dn
 }
 output "admin_password" {
   value = local.admin_password
