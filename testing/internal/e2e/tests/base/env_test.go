@@ -10,6 +10,7 @@ type config struct {
 	TargetSshKeyPath string `envconfig:"E2E_SSH_KEY_PATH" required:"true"`   // e.g. /Users/username/key.pem
 	TargetSshUser    string `envconfig:"E2E_SSH_USER" required:"true"`       // e.g. ubuntu
 	TargetPort       string `envconfig:"E2E_TARGET_PORT" required:"true"`
+	MaxPageSize      int    `envconfig:"E2E_MAX_PAGE_SIZE" default:"1000"`
 }
 
 func loadTestConfig() (*config, error) {

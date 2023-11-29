@@ -6,6 +6,8 @@ disable_mlock = true
 controller {
   name        = "docker-controller"
 
+  max_page_size = ${max_page_size}
+
   database {
     url = "env://BOUNDARY_POSTGRES_URL"
   }
