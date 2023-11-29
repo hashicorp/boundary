@@ -88,6 +88,13 @@ You can optionally configure one or more of the following additional attributes 
    - `select_account` (optional) The authorization server prompts users to select a user account.
    The `select_account` setting can be helpful if your users have multiple sets of login credentials.
 
+<Note>
+
+Cloud providers implement `prompt` in different ways.
+You may notice differences in behavior if you configure OIDC authentication on multiple cloud providers.
+
+</Note>
+
 - `signing-algorithm` (required) The allowed signing algorithm. You can specify this attribute
   multiple times for multiple values.
 
