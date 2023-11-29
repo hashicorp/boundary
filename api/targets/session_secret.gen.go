@@ -4,7 +4,9 @@
 
 package targets
 
-import "encoding/json"
+import (
+	"encoding/json"
+)
 
 type SessionSecret struct {
 	Raw     json.RawMessage        `json:"raw,omitempty"`
