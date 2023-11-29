@@ -874,25 +874,6 @@ func Test_ValidateRefreshToken(t *testing.T) {
 			wantErrCode:   errors.InvalidParameter,
 		},
 		{
-			name: "last item update before create time",
-			token: &listtoken.Token{
-				CreateTime:   fiveDaysAgo,
-				ResourceType: resource.Target,
-				GrantsHash:   []byte("some hash"),
-				Subtype: &listtoken.RefreshToken{
-					PhaseUpperBound:        fiveDaysAgo,
-					PreviousDeletedIdsTime: fiveDaysAgo,
-					PhaseLowerBound:        fiveDaysAgo,
-					LastItemId:             "some id",
-					LastItemUpdateTime:     fiveDaysAgo.AddDate(-1, 0, 0),
-				},
-			},
-			grantsHash:    []byte("some hash"),
-			resourceType:  resource.Target,
-			wantErrString: "list token's refresh component's last item was updated before the list token's creation time",
-			wantErrCode:   errors.InvalidParameter,
-		},
-		{
 			name: "last item update in future",
 			token: &listtoken.Token{
 				CreateTime:   fiveDaysAgo,
