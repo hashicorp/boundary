@@ -606,11 +606,11 @@ func (s Service) listFromRepo(ctx context.Context, authMethodId string) ([]auth.
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
-		oidcl, err := ldapRepo.ListManagedGroups(ctx, authMethodId, ldap.WithLimit(ctx, -1))
+		ldapUl, err := ldapRepo.ListManagedGroups(ctx, authMethodId, ldap.WithLimit(ctx, -1))
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
-		for _, a := range oidcl {
+		for _, a := range ldapUl {
 			outUl = append(outUl, a)
 		}
 	}
