@@ -387,8 +387,6 @@ func (tk *Token) Validate(
 			return errors.New(ctx, errors.InvalidParameter, op, "list token's refresh component missing last item ID")
 		case st.LastItemUpdateTime.After(time.Now()):
 			return errors.New(ctx, errors.InvalidParameter, op, "list token's refresh component's last item was updated in the future")
-		case st.LastItemUpdateTime.Before(tk.CreateTime):
-			return errors.New(ctx, errors.InvalidParameter, op, "list token's refresh component's last item was updated before the list token's creation time")
 		}
 	case *PaginationToken:
 		switch {
