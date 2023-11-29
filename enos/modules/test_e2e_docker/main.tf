@@ -175,6 +175,10 @@ variable "worker_tag_collocated" {
   type        = string
   default     = ""
 }
+variable "max_page_size" {
+  description = "Max allowed page size for pagination requests"
+  type        = number
+}
 variable "postgres_user" {
   description = "Username for accessing the postgres database"
   type        = string
@@ -294,6 +298,7 @@ resource "enos_local_exec" "run_e2e_test" {
     E2E_LDAP_USER_NAME            = var.ldap_user_name
     E2E_LDAP_USER_PASSWORD        = var.ldap_user_password
     E2E_LDAP_GROUP_NAME           = var.ldap_group_name
+    E2E_MAX_PAGE_SIZE             = var.max_page_size
     BOUNDARY_DIR                  = abspath(var.local_boundary_src_dir)
     BOUNDARY_CLI_DIR              = abspath(var.local_boundary_dir)
     MODULE_DIR                    = abspath(path.module)
