@@ -43,7 +43,8 @@ export E2E_PASSWORD_AUTH_METHOD_ID=  # e.g. ampw_1234567890
 export E2E_PASSWORD_ADMIN_LOGIN_NAME=  # e.g. "admin"
 export E2E_PASSWORD_ADMIN_PASSWORD=  # e.g. "password"
 
-export E2E_TARGET_IP=  # e.g. 192.168.0.1
+export E2E_TARGET_ADDRESS=  # e.g. 192.168.0.1
+export E2E_TARGET_PORT=  # e.g. 22
 export E2E_SSH_KEY_PATH=  # e.g. /Users/username/key.pem
 export E2E_SSH_USER=  # e.g. ubuntu
 
@@ -55,7 +56,8 @@ export E2E_PASSWORD_ADMIN_PASSWORD=  # e.g. "password"
 
 export VAULT_ADDR=  # e.g. http://127.0.0.1:8200
 export VAULT_TOKEN=
-export E2E_TARGET_IP=  # e.g. 192.168.0.1
+export E2E_TARGET_ADDRESS=  # e.g. 192.168.0.1
+export E2E_TARGET_PORT=  # e.g. 22
 export E2E_SSH_KEY_PATH=  # e.g. /Users/username/key.pem
 export E2E_SSH_USER=  # e.g. ubuntu
 
