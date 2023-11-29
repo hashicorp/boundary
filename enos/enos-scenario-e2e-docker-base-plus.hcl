@@ -132,6 +132,7 @@ scenario "e2e_docker_base_plus" {
       ldap_user_name           = step.create_ldap_server.user_name
       ldap_user_password       = step.create_ldap_server.user_password
       ldap_group_name          = step.create_ldap_server.group_name
+      max_page_size            = step.create_boundary.max_page_size
     }
   }
 }
