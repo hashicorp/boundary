@@ -252,7 +252,7 @@ The following are options are specific to OIDC auth-methods in addition to the c
 - `-max-age` `(string: "")` - Indicates the OIDC "max_age" parameter sent to the provider.
 
 - `prompts` `(string: "")` - Indicates whether the OIDC authorization server should display authentication or consent user interface prompts.
-You can use any of the following types of prompts to customize the behavior of the authentication process:
+You can optionally configure one or more of the following types of prompts to customize the behavior of the authentication process:
    - `none` - The authorization server does not display any authentication or consent prompts.
    - `login` - The authorization server prompts users for reauthentication before allowing them to log in.
    - `consent` - The authorization server prompts users for consent before returning any information to Boundary.
