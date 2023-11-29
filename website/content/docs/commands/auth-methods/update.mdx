@@ -2,7 +2,7 @@
 layout: docs
 page_title: auth-methods update - Command
 description: |-
-  The "auth-methods update" command lets Boundary admin update an auth method.
+  The "auth-methods update" command updates existing auth method resources in Boundary. You can update LDAP, OIDC, and password auth method types.
 ---
 
 # auth-methods update
@@ -250,6 +250,14 @@ The following are options are specific to OIDC auth-methods in addition to the c
 - `-issuer` `(string: "")` - Indicates the provider's Issuer URL.
 
 - `-max-age` `(string: "")` - Indicates the OIDC "max_age" parameter sent to the provider.
+
+- `prompts` `(string: "")` - Indicates whether the OIDC authorization server should display authentication or consent user interface prompts.
+You can use any of the following types of prompts to customize the behavior of the authentication process:
+   - `none` - The authorization server does not display any authentication or consent prompts.
+   - `login` - The authorization server prompts users for reauthentication before allowing them to log in.
+   - `consent` - The authorization server prompts users for consent before returning any information to Boundary.
+   - `select_account` - The authorization server prompts users to select a user account.
+   The `select_account` option can be helpful if your users have multiple sets of login credentials.
 
 - `-signing-algorithm` `(string: "")` - Indicates the allowed signing algorithm. You may specify this value multiple times for multiple values.
 
