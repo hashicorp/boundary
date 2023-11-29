@@ -444,6 +444,7 @@ func TestTarget(t *testing.T) {
 			Description: "target desc",
 			Address:     "some address",
 			ScopeId:     "p_123",
+			Type:        "tcp",
 			Item:        "{id:'tssh_1234567890'}",
 		}
 		require.ErrorContains(t, rw.Create(ctx, unknownTarget), "constraint failed")
@@ -451,12 +452,13 @@ func TestTarget(t *testing.T) {
 
 	t.Run("target actions", func(t *testing.T) {
 		target := &Target{
-			UserId:      u.Id,
+			OwnerUserId: u.Id,
 			Id:          "tssh_1234567890",
 			Name:        "target",
 			Description: "target desc",
 			Address:     "some address",
 			ScopeId:     "p_123",
+			Type:        "tcp",
 			Item:        "{id:'tssh_1234567890'}",
 		}
 
@@ -471,27 +473,28 @@ func TestTarget(t *testing.T) {
 
 		// TODO: Once the sqlite driver properly builds the delete query call
 		// n, err = rw.Delete(ctx, target) instead of the Exec call
-		n, err = rw.Exec(ctx, "delete from target where (user_id, id) IN (values (?, ?))",
-			[]any{target.UserId, target.Id})
+		n, err = rw.Exec(ctx, "delete from target where (owner_user_id, id) IN (values (?, ?))",
+			[]any{target.OwnerUserId, target.Id})
 		assert.NoError(t, err)
 		assert.Equal(t, 1, n)
 	})
 
 	t.Run("lookup a target", func(t *testing.T) {
 		target := &Target{
-			UserId:      u.Id,
+			OwnerUserId: u.Id,
 			Id:          "tssh_1234567890",
 			Name:        "target",
 			Description: "target desc",
 			Address:     "some address",
 			ScopeId:     "p_123",
+			Type:        "tcp",
 			Item:        "{id:'tssh_1234567890'}",
 		}
 		require.NoError(t, rw.Create(ctx, target))
 
 		lookTar := &Target{
-			UserId: target.UserId,
-			Id:     target.Id,
+			OwnerUserId: target.OwnerUserId,
+			Id:          target.Id,
 		}
 		assert.NoError(t, rw.LookupById(ctx, lookTar))
 		assert.NotNil(t, lookTar)
@@ -503,12 +506,13 @@ func TestTarget(t *testing.T) {
 
 	t.Run("deleting the user deletes the target", func(t *testing.T) {
 		target := &Target{
-			UserId:      u.Id,
+			OwnerUserId: u.Id,
 			Id:          "tssh_1234567890",
 			Name:        "target",
 			Description: "target desc",
 			Address:     "some address",
 			ScopeId:     "p_123",
+			Type:        "tcp",
 			Item:        "{id:'tssh_1234567890'}",
 		}
 		require.NoError(t, rw.Create(ctx, target))
@@ -521,8 +525,8 @@ func TestTarget(t *testing.T) {
 		require.Equal(t, 1, n)
 
 		lookTar := &Target{
-			UserId: target.UserId,
-			Id:     target.Id,
+			OwnerUserId: target.OwnerUserId,
+			Id:          target.Id,
 		}
 		assert.ErrorContains(t, rw.LookupById(ctx, lookTar), "not found")
 	})
@@ -552,12 +556,13 @@ func TestSession(t *testing.T) {
 	})
 	t.Run("session actions", func(t *testing.T) {
 		session := &Session{
-			UserId:   u.Id,
-			Id:       "s_1234567890",
-			Endpoint: "endpoint",
-			ScopeId:  "p_123",
-			TargetId: "ttcp_123",
-			Item:     "{id:'s_1234567890'}",
+			OwnerUserId: u.Id,
+			Id:          "s_1234567890",
+			Endpoint:    "endpoint",
+			ScopeId:     "p_123",
+			TargetId:    "ttcp_123",
+			UserId:      "u_123",
+			Item:        "{id:'s_1234567890'}",
 		}
 
 		require.NoError(t, rw.Create(ctx, session))
@@ -571,26 +576,27 @@ func TestSession(t *testing.T) {
 
 		// TODO: Once the sqlite driver properly builds the delete query call
 		// n, err = rw.Delete(ctx, session) instead of the Exec call
-		n, err = rw.Exec(ctx, "delete from session where (user_id, id) IN (values (?, ?))",
-			[]any{session.UserId, session.Id})
+		n, err = rw.Exec(ctx, "delete from session where (owner_user_id, id) IN (values (?, ?))",
+			[]any{session.OwnerUserId, session.Id})
 		assert.NoError(t, err)
 		assert.Equal(t, 1, n)
 	})
 
 	t.Run("lookup a session", func(t *testing.T) {
 		session := &Session{
-			UserId:   u.Id,
-			Id:       "s_1234567890",
-			Endpoint: "endpoint",
-			ScopeId:  "p_123",
-			TargetId: "ttcp_123",
-			Item:     "{id:'s_1234567890'}",
+			OwnerUserId: u.Id,
+			Id:          "s_1234567890",
+			Endpoint:    "endpoint",
+			ScopeId:     "p_123",
+			TargetId:    "ttcp_123",
+			UserId:      "u_123",
+			Item:        "{id:'s_1234567890'}",
 		}
 		require.NoError(t, rw.Create(ctx, session))
 
 		lookSess := &Session{
-			UserId: u.Id,
-			Id:     session.Id,
+			OwnerUserId: u.Id,
+			Id:          session.Id,
 		}
 		assert.NoError(t, rw.LookupById(ctx, lookSess))
 		assert.NotNil(t, lookSess)
@@ -602,12 +608,13 @@ func TestSession(t *testing.T) {
 
 	t.Run("deleting the user deletes the session", func(t *testing.T) {
 		session := &Session{
-			UserId:   u.Id,
-			Id:       "s_1234567890",
-			Endpoint: "endpoint",
-			ScopeId:  "p_123",
-			TargetId: "ttcp_123",
-			Item:     "{id:'s_1234567890'}",
+			OwnerUserId: u.Id,
+			Id:          "s_1234567890",
+			Endpoint:    "endpoint",
+			ScopeId:     "p_123",
+			TargetId:    "ttcp_123",
+			UserId:      "u_123",
+			Item:        "{id:'s_1234567890'}",
 		}
 		require.NoError(t, rw.Create(ctx, session))
 		// Deleting the user deletes the session
@@ -619,8 +626,8 @@ func TestSession(t *testing.T) {
 		require.Equal(t, 1, n)
 
 		lookSess := &Session{
-			UserId: session.UserId,
-			Id:     session.Id,
+			OwnerUserId: session.OwnerUserId,
+			Id:          session.Id,
 		}
 		assert.ErrorContains(t, rw.LookupById(ctx, lookSess), "not found")
 	})

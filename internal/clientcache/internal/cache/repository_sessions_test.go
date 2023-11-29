@@ -5,6 +5,7 @@ package cache
 
 import (
 	"context"
+	"encoding/json"
 	"sync"
 	"testing"
 
@@ -57,6 +58,7 @@ func TestRepository_refreshSessions(t *testing.T) {
 			Endpoint: "address1",
 			ScopeId:  "p_123",
 			TargetId: "ttcp_123",
+			UserId:   "u_123",
 			Type:     "tcp",
 		},
 		{
@@ -65,6 +67,7 @@ func TestRepository_refreshSessions(t *testing.T) {
 			Endpoint: "address2",
 			ScopeId:  "p_123",
 			TargetId: "ttcp_123",
+			UserId:   "u_123",
 			Type:     "tcp",
 		},
 		{
@@ -73,14 +76,31 @@ func TestRepository_refreshSessions(t *testing.T) {
 			Endpoint: "address3",
 			ScopeId:  "p_123",
 			TargetId: "ttcp_123",
+			UserId:   "u_123",
 			Type:     "tcp",
 		},
+	}
+	var want []*Session
+	for _, sess := range ss {
+		si, err := json.Marshal(sess)
+		require.NoError(t, err)
+		want = append(want, &Session{
+			OwnerUserId: u.Id,
+			Id:          sess.Id,
+			Type:        sess.Type,
+			Status:      sess.Status,
+			Endpoint:    sess.Endpoint,
+			ScopeId:     sess.ScopeId,
+			TargetId:    sess.TargetId,
+			UserId:      sess.UserId,
+			Item:        string(si),
+		})
 	}
 	cases := []struct {
 		name          string
 		u             *user
 		sess          []*sessions.Session
-		wantCount     int
+		want          []*Session
 		errorContains string
 	}{
 		{
@@ -89,8 +109,8 @@ func TestRepository_refreshSessions(t *testing.T) {
 				Address: addr,
 				Id:      at.UserId,
 			},
-			sess:      ss,
-			wantCount: len(ss),
+			sess: ss,
+			want: want,
 		},
 		{
 			name: "repeated session with different values",
@@ -102,7 +122,12 @@ func TestRepository_refreshSessions(t *testing.T) {
 				Id:     ss[0].Id,
 				Status: "a different status",
 			}),
-			wantCount: len(ss),
+			want: append(want[1:], &Session{
+				OwnerUserId: want[0].OwnerUserId,
+				Id:          want[0].Id,
+				Status:      "a different status",
+				Item:        `{"id":"ttcp_1","created_time":"0001-01-01T00:00:00Z","updated_time":"0001-01-01T00:00:00Z","expiration_time":"0001-01-01T00:00:00Z","status":"a different status"}`,
+			}),
 		},
 		{
 			name:          "nil user",
@@ -129,7 +154,7 @@ func TestRepository_refreshSessions(t *testing.T) {
 				rw := db.New(s)
 				var got []*Session
 				require.NoError(t, rw.SearchWhere(ctx, &got, "true", nil))
-				assert.Len(t, got, tc.wantCount)
+				assert.ElementsMatch(t, got, tc.want)
 
 				t.Cleanup(func() {
 					refTok := &refreshToken{
@@ -181,6 +206,7 @@ func TestRepository_RefreshSessions_withRefreshTokens(t *testing.T) {
 				Endpoint: "address1",
 				ScopeId:  "p_123",
 				TargetId: "ttcp_123",
+				UserId:   "u_123",
 				Type:     "tcp",
 			},
 			{
@@ -189,6 +215,7 @@ func TestRepository_RefreshSessions_withRefreshTokens(t *testing.T) {
 				Endpoint: "address2",
 				ScopeId:  "p_123",
 				TargetId: "ttcp_123",
+				UserId:   "u_123",
 				Type:     "tcp",
 			},
 		},
@@ -199,6 +226,7 @@ func TestRepository_RefreshSessions_withRefreshTokens(t *testing.T) {
 				Endpoint: "address3",
 				ScopeId:  "p_123",
 				TargetId: "ttcp_123",
+				UserId:   "u_123",
 				Type:     "tcp",
 			},
 		},
@@ -298,6 +326,7 @@ func TestRepository_ListSessions(t *testing.T) {
 			Endpoint: "address1",
 			ScopeId:  "p_123",
 			TargetId: "ttcp_123",
+			UserId:   "u_123",
 			Type:     "tcp",
 		},
 		{
@@ -306,6 +335,7 @@ func TestRepository_ListSessions(t *testing.T) {
 			Endpoint: "address2",
 			ScopeId:  "p_123",
 			TargetId: "ttcp_123",
+			UserId:   "u_123",
 			Type:     "tcp",
 		},
 		{
@@ -314,6 +344,7 @@ func TestRepository_ListSessions(t *testing.T) {
 			Endpoint: "address3",
 			ScopeId:  "p_123",
 			TargetId: "ttcp_123",
+			UserId:   "u_123",
 			Type:     "tcp",
 		},
 	}
@@ -411,6 +442,7 @@ func TestRepository_QuerySessions(t *testing.T) {
 			Endpoint: "address1",
 			ScopeId:  "p_123",
 			TargetId: "ttcp_123",
+			UserId:   "u_123",
 			Type:     "tcp",
 		},
 		{
@@ -419,6 +451,7 @@ func TestRepository_QuerySessions(t *testing.T) {
 			Endpoint: "address2",
 			ScopeId:  "p_123",
 			TargetId: "ttcp_123",
+			UserId:   "u_123",
 			Type:     "tcp",
 		},
 		{
@@ -427,6 +460,7 @@ func TestRepository_QuerySessions(t *testing.T) {
 			Endpoint: "address3",
 			ScopeId:  "p_123",
 			TargetId: "ttcp_123",
+			UserId:   "u_123",
 			Type:     "tcp",
 		},
 	}

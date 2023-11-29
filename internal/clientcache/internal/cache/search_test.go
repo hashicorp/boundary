@@ -119,14 +119,14 @@ func TestSearch(t *testing.T) {
 		require.NoError(t, rw.Create(ctx, at))
 
 		targets := []any{
-			&Target{UserId: u.Id, Id: "t_1", Name: "one", Item: `{"id": "t_1", "name": "one"}`},
-			&Target{UserId: u.Id, Id: "t_2", Name: "two", Item: `{"id": "t_2", "name": "two"}`},
+			&Target{OwnerUserId: u.Id, Id: "t_1", Name: "one", Type: "tcp", Item: `{"id": "t_1", "name": "one", "type": "tcp"}`},
+			&Target{OwnerUserId: u.Id, Id: "t_2", Name: "two", Type: "tcp", Item: `{"id": "t_2", "name": "two", "type": "tcp"}`},
 		}
 		require.NoError(t, rw.CreateItems(ctx, targets))
 
 		sessions := []any{
-			&Session{UserId: u.Id, Id: "s_1", Endpoint: "one", Item: `{"id": "s_1", "endpoint": "one"}`},
-			&Session{UserId: u.Id, Id: "s_2", Endpoint: "two", Item: `{"id": "s_2", "endpoint": "two"}`},
+			&Session{OwnerUserId: u.Id, Id: "s_1", Endpoint: "one", Type: "tcp", UserId: "u123", Item: `{"id": "s_1", "endpoint": "one", "type": "tcp", "user_id": "u123"}`},
+			&Session{OwnerUserId: u.Id, Id: "s_2", Endpoint: "two", Type: "ssh", UserId: "u321", Item: `{"id": "s_2", "endpoint": "two", "type": "ssh", "user_id": "u321"}`},
 		}
 		require.NoError(t, rw.CreateItems(ctx, sessions))
 	}
@@ -147,8 +147,8 @@ func TestSearch(t *testing.T) {
 		})
 		assert.NoError(t, err)
 		assert.EqualValues(t, &SearchResult{Targets: []*targets.Target{
-			{Id: "t_1", Name: "one"},
-			{Id: "t_2", Name: "two"},
+			{Id: "t_1", Name: "one", Type: "tcp"},
+			{Id: "t_2", Name: "two", Type: "tcp"},
 		}}, got)
 	})
 
@@ -160,7 +160,20 @@ func TestSearch(t *testing.T) {
 		})
 		assert.NoError(t, err)
 		assert.EqualValues(t, &SearchResult{Targets: []*targets.Target{
-			{Id: "t_1", Name: "one"},
+			{Id: "t_1", Name: "one", Type: "tcp"},
+		}}, got)
+	})
+
+	t.Run("query targets on type", func(t *testing.T) {
+		got, err := ss.Search(ctx, SearchParams{
+			Resource:    "targets",
+			AuthTokenId: at.Id,
+			Query:       `type="tcp"`,
+		})
+		assert.NoError(t, err)
+		assert.EqualValues(t, &SearchResult{Targets: []*targets.Target{
+			{Id: "t_1", Name: "one", Type: "tcp"},
+			{Id: "t_2", Name: "two", Type: "tcp"},
 		}}, got)
 	})
 
@@ -175,6 +188,17 @@ func TestSearch(t *testing.T) {
 		assert.Nil(t, got)
 	})
 
+	t.Run("query targets bad column owner user id", func(t *testing.T) {
+		got, err := ss.Search(ctx, SearchParams{
+			Resource:    "targets",
+			AuthTokenId: at.Id,
+			Query:       `owner_user_id % "u"`,
+		})
+		assert.Error(t, err)
+		assert.ErrorContains(t, err, `invalid column "owner_user_id"`)
+		assert.Nil(t, got)
+	})
+
 	t.Run("Filter targets", func(t *testing.T) {
 		got, err := ss.Search(ctx, SearchParams{
 			Resource:    "targets",
@@ -183,7 +207,7 @@ func TestSearch(t *testing.T) {
 		})
 		assert.NoError(t, err)
 		assert.EqualValues(t, &SearchResult{Targets: []*targets.Target{
-			{Id: "t_1", Name: "one"},
+			{Id: "t_1", Name: "one", Type: "tcp"},
 		}}, got)
 	})
 
@@ -194,8 +218,8 @@ func TestSearch(t *testing.T) {
 		})
 		assert.NoError(t, err)
 		assert.EqualValues(t, &SearchResult{Sessions: []*sessions.Session{
-			{Id: "s_1", Endpoint: "one"},
-			{Id: "s_2", Endpoint: "two"},
+			{Id: "s_1", Endpoint: "one", Type: "tcp", UserId: "u123"},
+			{Id: "s_2", Endpoint: "two", Type: "ssh", UserId: "u321"},
 		}}, got)
 	})
 
@@ -207,8 +231,31 @@ func TestSearch(t *testing.T) {
 		})
 		assert.NoError(t, err)
 		assert.EqualValues(t, &SearchResult{Sessions: []*sessions.Session{
-			{Id: "s_1", Endpoint: "one"},
+			{Id: "s_1", Endpoint: "one", Type: "tcp", UserId: "u123"},
 		}}, got)
+	})
+
+	t.Run("query sessions user id", func(t *testing.T) {
+		got, err := ss.Search(ctx, SearchParams{
+			Resource:    "sessions",
+			AuthTokenId: at.Id,
+			Query:       `user_id="u123"`,
+		})
+		assert.NoError(t, err)
+		assert.EqualValues(t, &SearchResult{Sessions: []*sessions.Session{
+			{Id: "s_1", Endpoint: "one", Type: "tcp", UserId: "u123"},
+		}}, got)
+	})
+
+	t.Run("query sessions bad column owner user id", func(t *testing.T) {
+		got, err := ss.Search(ctx, SearchParams{
+			Resource:    "sessions",
+			AuthTokenId: at.Id,
+			Query:       `owner_user_id % "u"`,
+		})
+		assert.Error(t, err)
+		assert.ErrorContains(t, err, `invalid column "owner_user_id"`)
+		assert.Nil(t, got)
 	})
 
 	t.Run("Filter sessions", func(t *testing.T) {
@@ -219,7 +266,7 @@ func TestSearch(t *testing.T) {
 		})
 		assert.NoError(t, err)
 		assert.EqualValues(t, &SearchResult{Sessions: []*sessions.Session{
-			{Id: "s_1", Endpoint: "one"},
+			{Id: "s_1", Endpoint: "one", Type: "tcp", UserId: "u123"},
 		}}, got)
 	})
 

@@ -5,6 +5,7 @@ package cache
 
 import (
 	"context"
+	"encoding/json"
 	"sync"
 	"testing"
 
@@ -47,6 +48,7 @@ func TestRepository_refreshTargets(t *testing.T) {
 		{
 			Id:                "ttcp_1",
 			Name:              "name1",
+			Description:       "description1",
 			Type:              "tcp",
 			ScopeId:           "p_123",
 			SessionMaxSeconds: 111,
@@ -68,11 +70,26 @@ func TestRepository_refreshTargets(t *testing.T) {
 			SessionMaxSeconds: 333,
 		},
 	}
+	var want []*Target
+	for _, tar := range ts {
+		ti, err := json.Marshal(tar)
+		require.NoError(t, err)
+		want = append(want, &Target{
+			OwnerUserId: u.Id,
+			Id:          tar.Id,
+			Name:        tar.Name,
+			Description: tar.Description,
+			Address:     tar.Address,
+			ScopeId:     tar.ScopeId,
+			Type:        tar.Type,
+			Item:        string(ti),
+		})
+	}
 	cases := []struct {
 		name          string
 		u             *user
 		targets       []*targets.Target
-		wantCount     int
+		want          []*Target
 		errorContains string
 	}{
 		{
@@ -81,9 +98,11 @@ func TestRepository_refreshTargets(t *testing.T) {
 				Id:      at.UserId,
 				Address: addr,
 			},
-			targets:   ts,
-			wantCount: len(ts),
+			targets: ts,
+			want:    want,
 		},
+		// this test case must run after the above test case so as to exercise
+		// the update logic of refresh.
 		{
 			name: "repeated target with different values",
 			u: &user{
@@ -94,7 +113,13 @@ func TestRepository_refreshTargets(t *testing.T) {
 				Id:   ts[0].Id,
 				Name: "a different name",
 			}),
-			wantCount: len(ts),
+			want: append(want[1:],
+				&Target{
+					OwnerUserId: want[0].OwnerUserId,
+					Id:          want[0].Id,
+					Name:        "a different name",
+					Item:        `{"id":"ttcp_1","name":"a different name","created_time":"0001-01-01T00:00:00Z","updated_time":"0001-01-01T00:00:00Z"}`,
+				}),
 		},
 		{
 			name:          "nil user",
@@ -121,7 +146,7 @@ func TestRepository_refreshTargets(t *testing.T) {
 				rw := db.New(s)
 				var got []*Target
 				require.NoError(t, rw.SearchWhere(ctx, &got, "true", nil))
-				assert.Len(t, got, tc.wantCount)
+				assert.ElementsMatch(t, got, tc.want)
 
 				t.Cleanup(func() {
 					refTok := &refreshToken{
