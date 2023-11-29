@@ -80,13 +80,13 @@ The OIDC auth method has the following additional attributes:
   users to reauthenticate, and an unset `maxAge` results in a Terraform value of
   -1 and the default TTL of the chosen OIDC is used.
 
-- `prompt` (optional) If you configure this attribute, the OIDC authorization server prompts users for reauthentication or consent when they log in.
+- `prompt` (optional) If you configure this attribute, the OIDC authorization server prompts users for reauthentication, account selection, or consent when they log in.
 You can optionally configure one or more of the following additional attributes to customize the behavior of the authentication process:
    - `none` (optional) The authorization server does not display any authentication or consent prompts.
    - `login` (optional) The authorization server prompts users for reauthentication before allowing them to log in.
    - `consent` (optional) The authorization server prompts users for consent before returning any information to Boundary.
    - `select_account` (optional) The authorization server prompts users to select a user account.
-   The `select_account` setting can be helpful if your users have multiple sets of login credentials.
+   The `select_account` setting can be helpful if your users have multiple accounts.
 
 <Note>
 
