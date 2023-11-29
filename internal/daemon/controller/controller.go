@@ -160,6 +160,7 @@ type Controller struct {
 func New(ctx context.Context, conf *Config) (*Controller, error) {
 	const op = "controller.New"
 	metric.InitializeApiCollectors(conf.PrometheusRegisterer)
+	ratelimit.InitializeMetrics(conf.PrometheusRegisterer)
 	c := &Controller{
 		conf:                    conf,
 		logger:                  conf.Logger.Named("controller"),
@@ -255,7 +256,10 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		return nil, fmt.Errorf("error parsing rate limit configuration: %w", err)
 	}
 
-	rateLimiter, err := rate.NewLimiter(rateLimits, conf.RawConfig.Controller.ApiRateLimiterMaxEntries)
+	rateLimiter, err := ratelimit.NewLimiter(
+		rateLimits,
+		conf.RawConfig.Controller.ApiRateLimiterMaxEntries,
+	)
 	if err != nil {
 		return nil, fmt.Errorf("error initializing rate limiter: %w", err)
 	}
@@ -656,7 +660,7 @@ func (c *Controller) ReloadRateLimiter(newLimitConfigs ratelimit.Configs, newMax
 		return fmt.Errorf("error parsing rate limit configuration: %w", err)
 	}
 
-	limiter, err := rate.NewLimiter(ratelimits, newMaxEntries)
+	limiter, err := ratelimit.NewLimiter(ratelimits, newMaxEntries)
 	if err != nil {
 		return err
 	}
