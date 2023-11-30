@@ -159,7 +159,7 @@ func (s Service) ListManagedGroups(ctx context.Context, req *pbs.ListManagedGrou
 
 		// This comes last so that we can use item fields in the filter after
 		// the allowed fields are populated above
-		filterable, err := subtypes.Filterable(item)
+		filterable, err := subtypes.Filterable(ctx, item)
 		if err != nil {
 			return nil, err
 		}
@@ -606,11 +606,11 @@ func (s Service) listFromRepo(ctx context.Context, authMethodId string) ([]auth.
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
-		oidcl, err := ldapRepo.ListManagedGroups(ctx, authMethodId, ldap.WithLimit(ctx, -1))
+		ldapUl, err := ldapRepo.ListManagedGroups(ctx, authMethodId, ldap.WithLimit(ctx, -1))
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
-		for _, a := range oidcl {
+		for _, a := range ldapUl {
 			outUl = append(outUl, a)
 		}
 	}

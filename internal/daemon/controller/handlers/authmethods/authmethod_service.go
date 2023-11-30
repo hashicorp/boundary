@@ -196,7 +196,7 @@ func (s Service) ListAuthMethods(ctx context.Context, req *pbs.ListAuthMethodsRe
 
 		// This comes last so that we can use item fields in the filter after
 		// the allowed fields are populated above
-		filterable, err := subtypes.Filterable(item)
+		filterable, err := subtypes.Filterable(ctx, item)
 		if err != nil {
 			return nil, err
 		}
@@ -862,6 +862,7 @@ func toAuthMethodProto(ctx context.Context, in auth.AuthMethod, opt ...handlers.
 			AllowedAudiences:  i.GetAudClaims(),
 			ClaimsScopes:      i.GetClaimsScopes(),
 			AccountClaimMaps:  i.GetAccountClaimMaps(),
+			Prompts:           i.GetPrompts(),
 		}
 		if i.DisableDiscoveredConfigValidation {
 			attrs.DisableDiscoveredConfigValidation = true
@@ -1031,6 +1032,14 @@ func validateCreateRequest(ctx context.Context, req *pbs.CreateAuthMethodRequest
 						}
 					}
 				}
+				if len(attrs.GetPrompts()) > 0 {
+					for _, p := range attrs.GetPrompts() {
+						if !oidc.SupportedPrompt(oidc.PromptParam(p)) {
+							badFields[promptsField] = fmt.Sprintf("Contains unsupported prompt %q", p)
+							break
+						}
+					}
+				}
 				if strings.TrimSpace(attrs.GetApiUrlPrefix().GetValue()) == "" {
 					// TODO: When we start accepting the address used in the request make this an optional field.
 					badFields[apiUrlPrefixField] = "This field is required."
@@ -1155,6 +1164,14 @@ func validateUpdateRequest(ctx context.Context, req *pbs.UpdateAuthMethodRequest
 					for _, sa := range attrs.GetSigningAlgorithms() {
 						if !oidc.SupportedAlgorithm(oidc.Alg(sa)) {
 							badFields[signingAlgorithmField] = fmt.Sprintf("Contains unsupported algorithm %q", sa)
+							break
+						}
+					}
+				}
+				if len(attrs.GetPrompts()) > 0 {
+					for _, p := range attrs.GetPrompts() {
+						if !oidc.SupportedPrompt(oidc.PromptParam(p)) {
+							badFields[promptsField] = fmt.Sprintf("Contains unsupported prompt %q", p)
 							break
 						}
 					}
@@ -1370,7 +1387,7 @@ func (s Service) convertToAuthenticateResponse(ctx context.Context, req *pbs.Aut
 	}, nil
 }
 
-func transformAuthenticateRequestAttributes(msg proto.Message) error {
+func transformAuthenticateRequestAttributes(ctx context.Context, msg proto.Message) error {
 	const op = "authmethod.transformAuthenticateRequestAttributes"
 	authRequest, ok := msg.(*pbs.AuthenticateRequest)
 	if !ok {
@@ -1434,7 +1451,7 @@ func transformAuthenticateRequestAttributes(msg proto.Message) error {
 	return nil
 }
 
-func transformAuthenticateResponseAttributes(msg proto.Message) error {
+func transformAuthenticateResponseAttributes(ctx context.Context, msg proto.Message) error {
 	const op = "authmethod.transformAuthenticateResponseAttributes"
 	authResponse, ok := msg.(*pbs.AuthenticateResponse)
 	if !ok {
@@ -1451,22 +1468,22 @@ func transformAuthenticateResponseAttributes(msg proto.Message) error {
 		// No transformation necessary
 		newAttrs = attrs.Attributes
 	case *pbs.AuthenticateResponse_AuthTokenResponse:
-		newAttrs, err = handlers.ProtoToStruct(attrs.AuthTokenResponse)
+		newAttrs, err = handlers.ProtoToStruct(ctx, attrs.AuthTokenResponse)
 		if err != nil {
 			return err
 		}
 	case *pbs.AuthenticateResponse_OidcAuthMethodAuthenticateStartResponse:
-		newAttrs, err = handlers.ProtoToStruct(attrs.OidcAuthMethodAuthenticateStartResponse)
+		newAttrs, err = handlers.ProtoToStruct(ctx, attrs.OidcAuthMethodAuthenticateStartResponse)
 		if err != nil {
 			return err
 		}
 	case *pbs.AuthenticateResponse_OidcAuthMethodAuthenticateCallbackResponse:
-		newAttrs, err = handlers.ProtoToStruct(attrs.OidcAuthMethodAuthenticateCallbackResponse)
+		newAttrs, err = handlers.ProtoToStruct(ctx, attrs.OidcAuthMethodAuthenticateCallbackResponse)
 		if err != nil {
 			return err
 		}
 	case *pbs.AuthenticateResponse_OidcAuthMethodAuthenticateTokenResponse:
-		newAttrs, err = handlers.ProtoToStruct(attrs.OidcAuthMethodAuthenticateTokenResponse)
+		newAttrs, err = handlers.ProtoToStruct(ctx, attrs.OidcAuthMethodAuthenticateTokenResponse)
 		if err != nil {
 			return err
 		}

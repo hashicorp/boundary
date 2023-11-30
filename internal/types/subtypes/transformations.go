@@ -65,7 +65,7 @@ func (r *transformationRegistry) registerResponseTransformationFunc(ctx context.
 
 // TransformationFunc defines the signature used to transform
 // protobuf message attributes. The proto.Message is mutated in place.
-type TransformationFunc func(proto.Message) error
+type TransformationFunc func(context.Context, proto.Message) error
 
 // RegisterRequestTransformationFunc registers a transformation function for
 // the provided message. The message should be used as a request parameter to

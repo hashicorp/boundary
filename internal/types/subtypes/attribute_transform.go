@@ -4,7 +4,9 @@
 package subtypes
 
 import (
+	"context"
 	"fmt"
+	"runtime/trace"
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
@@ -56,7 +58,7 @@ func convertAttributesToSubtype(msg proto.Message, st globals.Subtype) error {
 	return nil
 }
 
-func convertAttributesToDefault(msg proto.Message, st globals.Subtype) error {
+func convertAttributesToDefault(ctx context.Context, msg proto.Message, st globals.Subtype) error {
 	r := msg.ProtoReflect()
 	d := r.Descriptor()
 
@@ -86,7 +88,7 @@ func convertAttributesToDefault(msg proto.Message, st globals.Subtype) error {
 	if !ok {
 		return fmt.Errorf("found subtype attribute field that is not proto.Message: %s %s", d.FullName(), stAttrField.FullName())
 	}
-	defaultAttrs, err := handlers.ProtoToStruct(stAttrs)
+	defaultAttrs, err := handlers.ProtoToStruct(ctx, stAttrs)
 	if err != nil {
 		return err
 	}
@@ -113,7 +115,8 @@ func convertAttributesToDefault(msg proto.Message, st globals.Subtype) error {
 //
 // If the message does not conform to this structure,
 // the original message is returned.
-func Filterable(item proto.Message) (proto.Message, error) {
+func Filterable(ctx context.Context, item proto.Message) (proto.Message, error) {
+	defer trace.StartRegion(ctx, "subtypes.Filterable").End()
 	clone := proto.Clone(item)
 	r := clone.ProtoReflect()
 
@@ -138,13 +141,13 @@ func Filterable(item proto.Message) (proto.Message, error) {
 	}
 
 	attr = r.Get(oneofField).Message().Interface()
-	pbAttrs, err = handlers.ProtoToStruct(attr)
+	pbAttrs, err = handlers.ProtoToStruct(ctx, attr)
 	if err != nil {
 		return nil, err
 	}
 
 	r.Set(defaultAttrField, protoreflect.ValueOfMessage(pbAttrs.ProtoReflect()))
-	f, err := handlers.ProtoToStruct(r.Interface())
+	f, err := handlers.ProtoToStruct(ctx, r.Interface())
 	if err != nil {
 		return nil, err
 	}

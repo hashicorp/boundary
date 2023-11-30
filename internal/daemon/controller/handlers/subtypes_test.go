@@ -4,6 +4,7 @@
 package handlers
 
 import (
+	"context"
 	"testing"
 
 	structpb "github.com/golang/protobuf/ptypes/struct"
@@ -49,7 +50,7 @@ func TestStructToProtoToStruct(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			st, err := ProtoToStruct(tc.pb)
+			st, err := ProtoToStruct(context.Background(), tc.pb)
 			require.NoError(t, err)
 
 			wantStruct := &structpb.Struct{}

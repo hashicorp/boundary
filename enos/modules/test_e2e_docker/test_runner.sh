@@ -39,6 +39,13 @@ docker run \
     -e "E2E_WORKER_TAG_INGRESS=$E2E_WORKER_TAG_INGRESS" \
     -e "E2E_WORKER_TAG_EGRESS=$E2E_WORKER_TAG_EGRESS" \
     -e "E2E_WORKER_TAG_COLLOCATED=$E2E_WORKER_TAG_COLLOCATED" \
+    -e "E2E_LDAP_ADDR=$E2E_LDAP_ADDR" \
+    -e "E2E_LDAP_DOMAIN_DN=$E2E_LDAP_DOMAIN_DN" \
+    -e "E2E_LDAP_ADMIN_DN=$E2E_LDAP_ADMIN_DN" \
+    -e "E2E_LDAP_ADMIN_PASSWORD=$E2E_LDAP_ADMIN_PASSWORD" \
+    -e "E2E_LDAP_USER_NAME=$E2E_LDAP_USER_NAME" \
+    -e "E2E_LDAP_USER_PASSWORD=$E2E_LDAP_USER_PASSWORD" \
+    -e "E2E_LDAP_GROUP_NAME=$E2E_LDAP_GROUP_NAME" \
     --mount type=bind,src=$BOUNDARY_DIR,dst=/src/boundary/ \
     --mount type=bind,src=$MODULE_DIR/../..,dst=/testlogs \
     --mount type=bind,src=$(go env GOCACHE),dst=/root/.cache/go-build \
