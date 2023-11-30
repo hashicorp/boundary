@@ -74,7 +74,7 @@ func createMuxWithEndpoints(c *Controller, props HandlerProperties) (http.Handle
 	}
 
 	mux := http.NewServeMux()
-	mux.Handle("/v1/", grpcGwMux)
+	mux.Handle("/v1/", ratelimit.Handler(c.baseContext, c.rateLimiter, grpcGwMux))
 	mux.Handle(uiPath, handleUi(c))
 
 	isUiRequest := func(req *http.Request) bool {
@@ -94,8 +94,7 @@ func (c *Controller) apiHandler(props HandlerProperties) (http.Handler, error) {
 		return nil, err
 	}
 
-	rateLimitedHandler := ratelimit.Handler(c.baseContext, c.rateLimiter, mux)
-	corsWrappedHandler := wrapHandlerWithCors(rateLimitedHandler, props)
+	corsWrappedHandler := wrapHandlerWithCors(mux, props)
 	commonWrappedHandler := wrapHandlerWithCommonFuncs(corsWrappedHandler, c, props)
 	callbackInterceptingHandler := wrapHandlerWithCallbackInterceptor(commonWrappedHandler, c)
 	printablePathCheckHandler := cleanhttp.PrintablePathCheckHandler(callbackInterceptingHandler, nil)
