@@ -11,7 +11,6 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/util"
-	"github.com/hashicorp/go-dbw"
 )
 
 // RefreshTokenValue is the the type for the actual refresh token value handled
@@ -21,15 +20,15 @@ type RefreshTokenValue string
 // lookupRefreshToken returns the last known valid refresh token or an empty
 // string if one is unkonwn. No error is returned if no valid refresh token is
 // found.
-func (r *Repository) lookupRefreshToken(ctx context.Context, u *user, resourceType resourceType) (RefreshTokenValue, error) {
+func (r *Repository) lookupRefreshToken(ctx context.Context, u *user, resourceType resourceType) (*refreshToken, error) {
 	const op = "cache.(Repsoitory).lookupRefreshToken"
 	switch {
 	case util.IsNil(u):
-		return "", errors.New(ctx, errors.InvalidParameter, op, "user is nil")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "user is nil")
 	case u.Id == "":
-		return "", errors.New(ctx, errors.InvalidParameter, op, "user id is empty")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "user id is empty")
 	case !resourceType.valid():
-		return "", errors.New(ctx, errors.InvalidParameter, op, "resource type is invalid")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "resource type is invalid")
 	}
 
 	rt := &refreshToken{
@@ -37,12 +36,12 @@ func (r *Repository) lookupRefreshToken(ctx context.Context, u *user, resourceTy
 		ResourceType: resourceType,
 	}
 	if err := r.rw.LookupById(ctx, rt); err != nil {
-		if errors.Is(err, dbw.ErrRecordNotFound) {
-			return "", nil
+		if errors.IsNotFoundError(err) {
+			return nil, nil
 		}
-		return "", errors.Wrap(ctx, err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
-	return rt.RefreshToken, nil
+	return rt, nil
 }
 
 // listRefreshTokens returns all refresh tokens associated with a specific user
