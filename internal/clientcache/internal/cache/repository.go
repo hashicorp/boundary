@@ -26,6 +26,7 @@ type KeyringTokenLookupFn func(keyring string, tokenName string) *authtokens.Aut
 type BoundaryTokenReaderFn func(ctx context.Context, addr string, authToken string) (*authtokens.AuthToken, error)
 
 type Repository struct {
+	serverCtx               context.Context
 	rw                      *db.Db
 	tokenKeyringFn          KeyringTokenLookupFn
 	tokenReadFromBoundaryFn BoundaryTokenReaderFn
@@ -33,7 +34,8 @@ type Repository struct {
 	idToKeyringlessAuthToken *sync.Map
 }
 
-// NewRepository returns a cache repository. The provided Store must be
+// NewRepository returns a cache repository.  The provided context is stored as
+// the server context for purposes like storing boundary request errors.
 func NewRepository(ctx context.Context, conn *db.DB, idToAuthToken *sync.Map, keyringFn KeyringTokenLookupFn, atReadFn BoundaryTokenReaderFn, opt ...Option) (*Repository, error) {
 	const op = "cache.NewRepository"
 	switch {
@@ -47,6 +49,7 @@ func NewRepository(ctx context.Context, conn *db.DB, idToAuthToken *sync.Map, ke
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing auth token read function")
 	}
 	return &Repository{
+		serverCtx:               ctx,
 		rw:                      db.New(conn),
 		tokenKeyringFn:          keyringFn,
 		tokenReadFromBoundaryFn: atReadFn,
@@ -110,8 +113,8 @@ func (r *Repository) lookupError(ctx context.Context, u *user, resourceType reso
 type apiError struct {
 	UserId       string       `gorm:"primaryKey"`
 	ResourceType resourceType `gorm:"primaryKey"`
-	Error        string
-	CreateTime   time.Time
+	Error        string       `gorm:"default:null"`
+	CreateTime   time.Time    `gorm:"default:(strftime('%Y-%m-%d %H:%M:%f','now'))"`
 }
 
 func (*apiError) TableName() string {

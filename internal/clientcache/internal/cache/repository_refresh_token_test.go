@@ -7,6 +7,7 @@ import (
 	"context"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/boundary/api/authtokens"
 	cachedb "github.com/hashicorp/boundary/internal/clientcache/internal/db"
@@ -119,6 +120,7 @@ func TestLookupRefreshToken(t *testing.T) {
 		known := &user{Id: "withrefreshtoken", Address: "addr"}
 		require.NoError(t, r.rw.Create(ctx, known))
 
+		before := time.Now().Truncate(time.Millisecond).UTC()
 		r.rw.DoTx(ctx, 1, db.ExpBackoff{}, func(r db.Reader, w db.Writer) error {
 			require.NoError(t, upsertRefreshToken(ctx, w, known, targetResourceType, token))
 			return nil
@@ -126,7 +128,8 @@ func TestLookupRefreshToken(t *testing.T) {
 
 		got, err := r.lookupRefreshToken(ctx, known, targetResourceType)
 		assert.NoError(t, err)
-		assert.Equal(t, token, got)
+		assert.Equal(t, token, got.RefreshToken)
+		assert.GreaterOrEqual(t, got.CreateTime, before)
 	})
 }
 

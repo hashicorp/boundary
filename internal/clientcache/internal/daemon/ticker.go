@@ -15,11 +15,13 @@ import (
 )
 
 const (
-	DefaultRefreshIntervalSeconds = 60
-	defaultRefreshInterval        = DefaultRefreshIntervalSeconds * time.Second
-
-	DefaultFullFetchIntervalSeconds = 60 * 5
-	defaultFullFetchInterval        = DefaultFullFetchIntervalSeconds * time.Second
+	// DefaultRefreshInterval is the default interval that resources that come
+	// from controllers that do support refresh tokens are retrieved and
+	// refreshed.
+	DefaultRefreshInterval = 60 * time.Second
+	// DefaultFullFetchInterval is the default interval that resources that come
+	// from controllers that do not support refresh tokens are fetched.
+	DefaultFullFetchInterval = 60 * 5 * time.Second
 
 	defaultRandomizationFactor float64 = 0.2
 )
@@ -58,12 +60,12 @@ func newRefreshTicker(ctx context.Context, refresh refreshService, opt ...Option
 		return nil, errors.Wrap(ctx, err, op)
 	}
 
-	refreshInterval := defaultRefreshInterval
+	refreshInterval := DefaultRefreshInterval
 	if opts.withRefreshInterval != 0 {
 		refreshInterval = opts.withRefreshInterval
 	}
 
-	fullFetchInterval := defaultFullFetchInterval
+	fullFetchInterval := DefaultFullFetchInterval
 	if opts.withFullFetchInterval != 0 {
 		fullFetchInterval = opts.withFullFetchInterval
 	}
