@@ -193,7 +193,7 @@ func TestService_List(t *testing.T) {
 			}
 			tok, err := listtoken.NewStartRefresh(ctx, fiveDaysAgo, resource.Target, []byte("some hash"), fiveDaysAgo, fiveDaysAgo)
 			require.NoError(t, err)
-			_, err = target.ListPage(ctx, nil, 1, filterFunc, tok, repo)
+			_, err = target.ListRefresh(ctx, nil, 1, filterFunc, tok, repo)
 			require.ErrorContains(t, err, "missing grants hash")
 		})
 		t.Run("zero page size", func(t *testing.T) {
@@ -203,7 +203,7 @@ func TestService_List(t *testing.T) {
 			}
 			tok, err := listtoken.NewStartRefresh(ctx, fiveDaysAgo, resource.Target, []byte("some hash"), fiveDaysAgo, fiveDaysAgo)
 			require.NoError(t, err)
-			_, err = target.ListPage(ctx, []byte("some hash"), 0, filterFunc, tok, repo)
+			_, err = target.ListRefresh(ctx, []byte("some hash"), 0, filterFunc, tok, repo)
 			require.ErrorContains(t, err, "page size must be at least 1")
 		})
 		t.Run("negative page size", func(t *testing.T) {
@@ -213,14 +213,14 @@ func TestService_List(t *testing.T) {
 			}
 			tok, err := listtoken.NewStartRefresh(ctx, fiveDaysAgo, resource.Target, []byte("some hash"), fiveDaysAgo, fiveDaysAgo)
 			require.NoError(t, err)
-			_, err = target.ListPage(ctx, []byte("some hash"), -1, filterFunc, tok, repo)
+			_, err = target.ListRefresh(ctx, []byte("some hash"), -1, filterFunc, tok, repo)
 			require.ErrorContains(t, err, "page size must be at least 1")
 		})
 		t.Run("nil filter func", func(t *testing.T) {
 			t.Parallel()
 			tok, err := listtoken.NewStartRefresh(ctx, fiveDaysAgo, resource.Target, []byte("some hash"), fiveDaysAgo, fiveDaysAgo)
 			require.NoError(t, err)
-			_, err = target.ListPage(ctx, []byte("some hash"), 1, nil, tok, repo)
+			_, err = target.ListRefresh(ctx, []byte("some hash"), 1, nil, tok, repo)
 			require.ErrorContains(t, err, "missing filter item callback")
 		})
 		t.Run("nil token", func(t *testing.T) {
@@ -228,7 +228,7 @@ func TestService_List(t *testing.T) {
 			filterFunc := func(_ context.Context, t target.Target) (bool, error) {
 				return true, nil
 			}
-			_, err = target.ListPage(ctx, []byte("some hash"), 1, filterFunc, nil, repo)
+			_, err = target.ListRefresh(ctx, []byte("some hash"), 1, filterFunc, nil, repo)
 			require.ErrorContains(t, err, "missing token")
 		})
 		t.Run("wrong token type", func(t *testing.T) {
@@ -248,143 +248,7 @@ func TestService_List(t *testing.T) {
 			}
 			tok, err := listtoken.NewStartRefresh(ctx, fiveDaysAgo, resource.Target, []byte("some hash"), fiveDaysAgo, fiveDaysAgo)
 			require.NoError(t, err)
-			_, err = target.ListPage(ctx, []byte("some hash"), 1, filterFunc, tok, nil)
-			require.ErrorContains(t, err, "missing repo")
-		})
-	})
-	t.Run("ListRefresh validation", func(t *testing.T) {
-		t.Parallel()
-		t.Run("missing grants hash", func(t *testing.T) {
-			t.Parallel()
-			filterFunc := func(_ context.Context, t target.Target) (bool, error) {
-				return true, nil
-			}
-			tok, err := listtoken.NewStartRefresh(ctx, fiveDaysAgo, resource.Target, []byte("some hash"), fiveDaysAgo, fiveDaysAgo)
-			require.NoError(t, err)
-			_, err = target.ListPage(ctx, nil, 1, filterFunc, tok, repo)
-			require.ErrorContains(t, err, "missing grants hash")
-		})
-		t.Run("zero page size", func(t *testing.T) {
-			t.Parallel()
-			filterFunc := func(_ context.Context, t target.Target) (bool, error) {
-				return true, nil
-			}
-			tok, err := listtoken.NewStartRefresh(ctx, fiveDaysAgo, resource.Target, []byte("some hash"), fiveDaysAgo, fiveDaysAgo)
-			require.NoError(t, err)
-			_, err = target.ListPage(ctx, []byte("some hash"), 0, filterFunc, tok, repo)
-			require.ErrorContains(t, err, "page size must be at least 1")
-		})
-		t.Run("negative page size", func(t *testing.T) {
-			t.Parallel()
-			filterFunc := func(_ context.Context, t target.Target) (bool, error) {
-				return true, nil
-			}
-			tok, err := listtoken.NewStartRefresh(ctx, fiveDaysAgo, resource.Target, []byte("some hash"), fiveDaysAgo, fiveDaysAgo)
-			require.NoError(t, err)
-			_, err = target.ListPage(ctx, []byte("some hash"), -1, filterFunc, tok, repo)
-			require.ErrorContains(t, err, "page size must be at least 1")
-		})
-		t.Run("nil filter func", func(t *testing.T) {
-			t.Parallel()
-			tok, err := listtoken.NewStartRefresh(ctx, fiveDaysAgo, resource.Target, []byte("some hash"), fiveDaysAgo, fiveDaysAgo)
-			require.NoError(t, err)
-			_, err = target.ListPage(ctx, []byte("some hash"), 1, nil, tok, repo)
-			require.ErrorContains(t, err, "missing filter item callback")
-		})
-		t.Run("nil token", func(t *testing.T) {
-			t.Parallel()
-			filterFunc := func(_ context.Context, t target.Target) (bool, error) {
-				return true, nil
-			}
-			_, err = target.ListPage(ctx, []byte("some hash"), 1, filterFunc, nil, repo)
-			require.ErrorContains(t, err, "missing token")
-		})
-		t.Run("wrong token type", func(t *testing.T) {
-			t.Parallel()
-			filterFunc := func(_ context.Context, t target.Target) (bool, error) {
-				return true, nil
-			}
-			tok, err := listtoken.NewPagination(ctx, fiveDaysAgo, resource.Target, []byte("some hash"), "some-id", fiveDaysAgo)
-			require.NoError(t, err)
-			_, err = target.ListRefresh(ctx, []byte("some hash"), 1, filterFunc, tok, repo)
-			require.ErrorContains(t, err, "token did not have a start-refresh token component")
-		})
-		t.Run("nil repo", func(t *testing.T) {
-			t.Parallel()
-			filterFunc := func(_ context.Context, t target.Target) (bool, error) {
-				return true, nil
-			}
-			tok, err := listtoken.NewStartRefresh(ctx, fiveDaysAgo, resource.Target, []byte("some hash"), fiveDaysAgo, fiveDaysAgo)
-			require.NoError(t, err)
-			_, err = target.ListPage(ctx, []byte("some hash"), 1, filterFunc, tok, nil)
-			require.ErrorContains(t, err, "missing repo")
-		})
-	})
-	t.Run("ListRefreshPage validation", func(t *testing.T) {
-		t.Parallel()
-		t.Run("missing grants hash", func(t *testing.T) {
-			t.Parallel()
-			filterFunc := func(_ context.Context, t target.Target) (bool, error) {
-				return true, nil
-			}
-			tok, err := listtoken.NewRefresh(ctx, fiveDaysAgo, resource.Target, []byte("some hash"), fiveDaysAgo, fiveDaysAgo, fiveDaysAgo, "some other id", fiveDaysAgo)
-			require.NoError(t, err)
-			_, err = target.ListRefreshPage(ctx, nil, 1, filterFunc, tok, repo)
-			require.ErrorContains(t, err, "missing grants hash")
-		})
-		t.Run("zero page size", func(t *testing.T) {
-			t.Parallel()
-			filterFunc := func(_ context.Context, t target.Target) (bool, error) {
-				return true, nil
-			}
-			tok, err := listtoken.NewRefresh(ctx, fiveDaysAgo, resource.Target, []byte("some hash"), fiveDaysAgo, fiveDaysAgo, fiveDaysAgo, "some other id", fiveDaysAgo)
-			require.NoError(t, err)
-			_, err = target.ListRefreshPage(ctx, []byte("some hash"), 0, filterFunc, tok, repo)
-			require.ErrorContains(t, err, "page size must be at least 1")
-		})
-		t.Run("negative page size", func(t *testing.T) {
-			t.Parallel()
-			filterFunc := func(_ context.Context, t target.Target) (bool, error) {
-				return true, nil
-			}
-			tok, err := listtoken.NewRefresh(ctx, fiveDaysAgo, resource.Target, []byte("some hash"), fiveDaysAgo, fiveDaysAgo, fiveDaysAgo, "some other id", fiveDaysAgo)
-			require.NoError(t, err)
-			_, err = target.ListRefreshPage(ctx, []byte("some hash"), -1, filterFunc, tok, repo)
-			require.ErrorContains(t, err, "page size must be at least 1")
-		})
-		t.Run("nil filter func", func(t *testing.T) {
-			t.Parallel()
-			tok, err := listtoken.NewRefresh(ctx, fiveDaysAgo, resource.Target, []byte("some hash"), fiveDaysAgo, fiveDaysAgo, fiveDaysAgo, "some other id", fiveDaysAgo)
-			require.NoError(t, err)
-			_, err = target.ListRefreshPage(ctx, []byte("some hash"), 1, nil, tok, repo)
-			require.ErrorContains(t, err, "missing filter item callback")
-		})
-		t.Run("nil token", func(t *testing.T) {
-			t.Parallel()
-			filterFunc := func(_ context.Context, t target.Target) (bool, error) {
-				return true, nil
-			}
-			_, err = target.ListRefreshPage(ctx, []byte("some hash"), 1, filterFunc, nil, repo)
-			require.ErrorContains(t, err, "missing token")
-		})
-		t.Run("wrong token type", func(t *testing.T) {
-			t.Parallel()
-			filterFunc := func(_ context.Context, t target.Target) (bool, error) {
-				return true, nil
-			}
-			tok, err := listtoken.NewPagination(ctx, fiveDaysAgo, resource.Target, []byte("some hash"), "some-id", fiveDaysAgo)
-			require.NoError(t, err)
-			_, err = target.ListRefreshPage(ctx, []byte("some hash"), 1, filterFunc, tok, repo)
-			require.ErrorContains(t, err, "token did not have a refresh token component")
-		})
-		t.Run("nil repo", func(t *testing.T) {
-			t.Parallel()
-			filterFunc := func(_ context.Context, t target.Target) (bool, error) {
-				return true, nil
-			}
-			tok, err := listtoken.NewRefresh(ctx, fiveDaysAgo, resource.Target, []byte("some hash"), fiveDaysAgo, fiveDaysAgo, fiveDaysAgo, "some other id", fiveDaysAgo)
-			require.NoError(t, err)
-			_, err = target.ListRefreshPage(ctx, []byte("some hash"), 1, filterFunc, tok, nil)
+			_, err = target.ListRefresh(ctx, []byte("some hash"), 1, filterFunc, tok, nil)
 			require.ErrorContains(t, err, "missing repo")
 		})
 	})
