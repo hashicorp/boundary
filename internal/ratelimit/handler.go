@@ -33,7 +33,7 @@ func (e *extractResourceActionErr) Error() string {
 	return e.msg
 }
 
-var pathRegex = regexp.MustCompile(`/v1/(?P<resource>[\w-]+)((/(?P<id>[\w/]+))?(:(?P<action>[\w-:]+)?)?)?`)
+var pathRegex = regexp.MustCompile(`/v1/(?P<resource>[\w-]+)((/(?P<id>[^:]+))?(:(?P<action>[\w-:]+)?)?)?`)
 
 func extractResourceAction(path, method string) (res, act string, err error) {
 	var id string
