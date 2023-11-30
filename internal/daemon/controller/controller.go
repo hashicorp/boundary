@@ -121,7 +121,8 @@ type Controller struct {
 	apiGrpcServerListener grpcServerListener
 	apiGrpcGatewayTicket  string
 
-	rateLimiter *atomic.Pointer[rate.Limiter]
+	rateLimiter   ratelimit.Limiter
+	rateLimiterMu sync.RWMutex
 
 	// Repo factory methods
 	AuthTokenRepoFn           common.AuthTokenRepoFactory
@@ -174,7 +175,6 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		pkiConnManager:          cluster.NewDownstreamManager(),
 		workerStatusGracePeriod: new(atomic.Int64),
 		livenessTimeToStale:     new(atomic.Int64),
-		rateLimiter:             new(atomic.Pointer[rate.Limiter]),
 	}
 
 	if downstreamReceiverFactory != nil {
@@ -251,20 +251,24 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	}
 	c.clusterListener = clusterListeners[0]
 
-	rateLimits, err := conf.RawConfig.Controller.ApiRateLimits.Limits(c.baseContext)
-	if err != nil {
-		return nil, fmt.Errorf("error parsing rate limit configuration: %w", err)
-	}
+	switch {
+	case conf.RawConfig.Controller.ApiRateLimitDisable:
+		c.rateLimiter = rate.NopLimiter
+	default:
+		rateLimits, err := conf.RawConfig.Controller.ApiRateLimits.Limits(c.baseContext)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing rate limit configuration: %w", err)
+		}
 
-	rateLimiter, err := ratelimit.NewLimiter(
-		rateLimits,
-		conf.RawConfig.Controller.ApiRateLimiterMaxEntries,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("error initializing rate limiter: %w", err)
+		c.rateLimiter, err = ratelimit.NewLimiter(
+			rateLimits,
+			conf.RawConfig.Controller.ApiRateLimiterMaxEntries,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("error initializing rate limiter: %w", err)
+		}
+		ratelimit.WriteLimitsSysEvent(c.baseContext, rateLimits, conf.RawConfig.Controller.ApiRateLimiterMaxEntries)
 	}
-	c.rateLimiter.Store(rateLimiter)
-	ratelimit.WriteLimitsSysEvent(c.baseContext, rateLimits, conf.RawConfig.Controller.ApiRateLimiterMaxEntries)
 
 	var pluginLogger hclog.Logger
 	for _, enabledPlugin := range c.enabledPlugins {
@@ -640,8 +644,10 @@ func (c *Controller) WorkerStatusUpdateTimes() *sync.Map {
 	return c.workerStatusUpdateTimes
 }
 
-func (c *Controller) getRateLimiter() *rate.Limiter {
-	return c.rateLimiter.Load()
+func (c *Controller) getRateLimiter() ratelimit.Limiter {
+	c.rateLimiterMu.RLock()
+	defer c.rateLimiterMu.RUnlock()
+	return c.rateLimiter
 }
 
 // ReloadRateLimiter replaces the Controller's rate.Limiter with a new rate.Limiter
@@ -650,27 +656,40 @@ func (c *Controller) getRateLimiter() *rate.Limiter {
 // error is returned. Otherwise the rate.Limiter is replaced, and the old rate.Limiter
 // is shutdown. This means that a client's quota is effectively reset if the
 // configuration changes.
-func (c *Controller) ReloadRateLimiter(newLimitConfigs ratelimit.Configs, newMaxEntries int) error {
+func (c *Controller) ReloadRateLimiter(newLimitConfigs ratelimit.Configs, newMaxEntries int, newDisable bool) error {
 	// Config has not changed, no need to reload.
-	if c.conf.ApiRateLimits.Equal(newLimitConfigs) && c.conf.ApiRateLimiterMaxEntries == newMaxEntries {
+	if c.conf.ApiRateLimits.Equal(newLimitConfigs) &&
+		c.conf.ApiRateLimiterMaxEntries == newMaxEntries &&
+		c.conf.ApiRateLimitDisable == newDisable {
 		return nil
 	}
 
-	ratelimits, err := newLimitConfigs.Limits(c.baseContext)
-	if err != nil {
-		return fmt.Errorf("error parsing rate limit configuration: %w", err)
+	var limiter ratelimit.Limiter
+	switch {
+	case newDisable:
+		limiter = rate.NopLimiter
+	default:
+		ratelimits, err := newLimitConfigs.Limits(c.baseContext)
+		if err != nil {
+			return fmt.Errorf("error parsing rate limit configuration: %w", err)
+		}
+
+		limiter, err = ratelimit.NewLimiter(ratelimits, newMaxEntries)
+		if err != nil {
+			return err
+		}
+
+		ratelimit.WriteLimitsSysEvent(c.baseContext, ratelimits, newMaxEntries)
 	}
 
-	limiter, err := ratelimit.NewLimiter(ratelimits, newMaxEntries)
-	if err != nil {
-		return err
-	}
-
-	old := c.rateLimiter.Swap(limiter)
-	ratelimit.WriteLimitsSysEvent(c.baseContext, ratelimits, newMaxEntries)
+	c.rateLimiterMu.Lock()
+	old := c.rateLimiter
+	c.rateLimiter = limiter
+	c.rateLimiterMu.Unlock()
 
 	c.conf.ApiRateLimits = newLimitConfigs
 	c.conf.ApiRateLimiterMaxEntries = newMaxEntries
+	c.conf.ApiRateLimitDisable = newDisable
 
 	return old.Shutdown()
 }

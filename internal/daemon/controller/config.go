@@ -27,4 +27,5 @@ type Config struct {
 	// change via SIGHUP reloads.
 	ApiRateLimits            ratelimit.Configs
 	ApiRateLimiterMaxEntries int
+	ApiRateLimitDisable      bool
 }

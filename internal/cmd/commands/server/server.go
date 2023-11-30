@@ -624,6 +624,7 @@ func (c *Command) StartController(ctx context.Context) error {
 		TestOverrideWorkerAuthCaCertificateLifetime: c.flagWorkerAuthCaCertificateLifetime,
 		ApiRateLimits:            c.Config.Controller.ApiRateLimits,
 		ApiRateLimiterMaxEntries: c.Config.Controller.ApiRateLimiterMaxEntries,
+		ApiRateLimitDisable:      c.Config.Controller.ApiRateLimitDisable,
 	}
 
 	var err error
@@ -962,7 +963,11 @@ func (c *Command) reloadControllerRateLimits(newConfig *config.Config) error {
 	if c.controller == nil || newConfig == nil || newConfig.Controller == nil {
 		return nil
 	}
-	return c.controller.ReloadRateLimiter(newConfig.Controller.ApiRateLimits, newConfig.Controller.ApiRateLimiterMaxEntries)
+	return c.controller.ReloadRateLimiter(
+		newConfig.Controller.ApiRateLimits,
+		newConfig.Controller.ApiRateLimiterMaxEntries,
+		newConfig.Controller.ApiRateLimitDisable,
+	)
 }
 
 // acquireSchemaManager returns a schema manager and generally acquires a shared lock on
