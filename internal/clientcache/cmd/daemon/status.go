@@ -20,7 +20,7 @@ import (
 	"github.com/posener/complete"
 )
 
-var errDaemonNotRunning = stderr.New("daemon is not running")
+var errDaemonNotRunning = stderr.New("The daemon process is not running.")
 
 var (
 	_ cli.Command             = (*AddTokenCommand)(nil)

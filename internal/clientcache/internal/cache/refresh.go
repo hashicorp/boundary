@@ -6,6 +6,7 @@ package cache
 import (
 	"context"
 	stderrors "errors"
+	"time"
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/authtokens"
@@ -16,15 +17,27 @@ import (
 
 type RefreshService struct {
 	repo *Repository
+	// the amount of time that should have passed since the last refresh for a
+	// call to RefreshForSearch will cause a refresh request to be sent to a
+	// boundary controller.
+	maxSearchStaleness time.Duration
+	// the amount of time that RefreshForSearch should run before it times out.
+	maxSearchRefreshTimeout time.Duration
 }
 
-func NewRefreshService(ctx context.Context, r *Repository) (*RefreshService, error) {
+func NewRefreshService(ctx context.Context, r *Repository, maxSearchStaleness, maxSearchRefreshTimeout time.Duration) (*RefreshService, error) {
 	const op = "cache.NewRefreshService"
 	switch {
 	case util.IsNil(r):
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "repository is nil")
+	case maxSearchStaleness < 0:
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "max search staleness is negative")
 	}
-	return &RefreshService{repo: r}, nil
+	return &RefreshService{
+		repo:                    r,
+		maxSearchStaleness:      maxSearchStaleness,
+		maxSearchRefreshTimeout: maxSearchRefreshTimeout,
+	}, nil
 }
 
 // cleanAndPickAuthTokens removes from the cache all auth tokens which are
@@ -129,6 +142,90 @@ func (r *RefreshService) refreshableUsers(ctx context.Context, in []*user) ([]*u
 		ret = append(ret, u)
 	}
 	return ret, nil
+}
+
+// RefreshForSearch refreshes a specific resource type owned by the user associated
+// with the provided auth token id, if it hasn't been refreshed in a certain
+// amount of time. If the resources has been updated recently, or if it is known
+// that the user's boundary instance doesn't support partial refreshing, this
+// method returns without any requests to the boundary controller.
+// While the criteria of whether the user will refresh or not is almost the same
+// as the criteria used in Refresh, RefreshForSearch will not refresh any
+// data if there is not a refresh token stored for the resource. It
+// might make sense to change this in the future, but the reasoning used is
+// that we should not be making an initial load of all resources while blocking
+// a search query, in case we have not yet even attempted to load the resources
+// for this user yet.
+// Note: Currently, if the context timesout we stop refreshing completely and
+// return to the caller.  A possible enhancement in the future would be to return
+// when the context is Done, but allow the refresh to proceed in the background.
+func (r *RefreshService) RefreshForSearch(ctx context.Context, authTokenid string, resourceType SearchableResource, opt ...Option) error {
+	const op = "cache.(RefreshService).RefreshForSearch"
+	if r.maxSearchRefreshTimeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, r.maxSearchRefreshTimeout)
+		defer cancel()
+	}
+	at, err := r.repo.LookupToken(ctx, authTokenid)
+	if err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
+	if at == nil {
+		return errors.New(ctx, errors.NotFound, op, "auth token not found")
+	}
+	u, err := r.repo.lookupUser(ctx, at.UserId)
+	if err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
+	if u == nil {
+		return errors.New(ctx, errors.NotFound, op, "user not found")
+	}
+	us, err := r.refreshableUsers(ctx, []*user{u})
+	if err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
+
+	switch len(us) {
+	case 0:
+		// The provided user is not refreshable, so do not refresh.
+		return nil
+	case 1:
+		u = us[0]
+	default:
+		return errors.New(ctx, errors.Internal, op, "unexpected number of refreshable users")
+	}
+
+	tokens, err := r.cleanAndPickAuthTokens(ctx, u)
+	if err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
+
+	switch resourceType {
+	case Targets:
+		rtv, err := r.repo.lookupRefreshToken(ctx, u, targetResourceType)
+		if err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+		if rtv != nil && time.Since(rtv.UpdateTime) > r.maxSearchStaleness {
+			if err := r.repo.refreshTargets(ctx, u, tokens, opt...); err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+		}
+	case Sessions:
+		rtv, err := r.repo.lookupRefreshToken(ctx, u, sessionResourceType)
+		if err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+		if rtv != nil && time.Since(rtv.UpdateTime) > r.maxSearchStaleness {
+			if err := r.repo.refreshSessions(ctx, u, tokens, opt...); err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+		}
+	default:
+		return errors.New(ctx, errors.InvalidParameter, op, "unrecognized resource type")
+	}
+
+	return nil
 }
 
 // Refresh iterates over all tokens in the cache that are for users who either
