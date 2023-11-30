@@ -8,6 +8,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/credential/static/store"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/libs/crypto"
 	"github.com/hashicorp/boundary/internal/oplog"
@@ -129,4 +130,14 @@ func (c *UsernamePasswordCredential) hmacPassword(ctx context.Context, cipher wr
 	}
 	c.PasswordHmac = []byte(hm)
 	return nil
+}
+
+type deletedUsernamePasswordCredential struct {
+	PublicId   string `gorm:"primary_key"`
+	DeleteTime *timestamp.Timestamp
+}
+
+// TableName returns the tablename to override the default gorm table name
+func (s *deletedUsernamePasswordCredential) TableName() string {
+	return "credential_static_username_password_credential_deleted"
 }
