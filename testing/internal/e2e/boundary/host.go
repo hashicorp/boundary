@@ -74,6 +74,7 @@ func CreateNewHostCatalogCli(t testing.TB, ctx context.Context, projectId string
 			"host-catalogs", "create", "static",
 			"-scope-id", projectId,
 			"-name", "e2e Host Catalog",
+			"-description", "e2e",
 			"-format", "json",
 		),
 	)
@@ -95,6 +96,7 @@ func CreateNewHostSetCli(t testing.TB, ctx context.Context, hostCatalogId string
 			"host-sets", "create", "static",
 			"-host-catalog-id", hostCatalogId,
 			"-name", "e2e Host Set",
+			"-description", "e2e",
 			"-format", "json",
 		),
 	)
@@ -116,6 +118,7 @@ func CreateNewHostCli(t testing.TB, ctx context.Context, hostCatalogId string, a
 			"hosts", "create", "static",
 			"-host-catalog-id", hostCatalogId,
 			"-name", address,
+			"-description", "e2e",
 			"-address", address,
 			"-format", "json",
 		),
@@ -150,6 +153,7 @@ func CreateNewAwsHostCatalogCli(t testing.TB, ctx context.Context, projectId str
 			"-attr", "region=us-east-1",
 			"-secret", "access_key_id=env://E2E_AWS_ACCESS_KEY_ID",
 			"-secret", "secret_access_key=env://E2E_AWS_SECRET_ACCESS_KEY",
+			"-description", "e2e",
 			"-format", "json",
 		),
 		e2e.WithEnv("E2E_AWS_ACCESS_KEY_ID", accessKeyId),
@@ -173,6 +177,7 @@ func CreateNewAwsHostSetCli(t testing.TB, ctx context.Context, hostCatalogId str
 			"host-sets", "create", "plugin",
 			"-host-catalog-id", hostCatalogId,
 			"-attr", "filters="+filter,
+			"-description", "e2e",
 			"-format", "json",
 		),
 	)

@@ -36,6 +36,7 @@ func CreateNewCredentialStoreVaultCli(t testing.TB, ctx context.Context, project
 			"-scope-id", projectId,
 			"-vault-address", vaultAddr,
 			"-vault-token", vaultToken,
+			"-description", "e2e",
 			"-format", "json",
 		),
 	)
@@ -56,6 +57,7 @@ func CreateNewCredentialStoreStaticCli(t testing.TB, ctx context.Context, projec
 		e2e.WithArgs(
 			"credential-stores", "create", "static",
 			"-scope-id", projectId,
+			"-description", "e2e",
 			"-format", "json",
 		),
 	)
@@ -79,6 +81,7 @@ func CreateNewStaticCredentialPrivateKeyCli(t testing.TB, ctx context.Context, c
 			"-credential-store-id", credentialStoreId,
 			"-username", user,
 			"-private-key", "file://"+filePath,
+			"-description", "e2e",
 			"-format", "json",
 		),
 	)
@@ -102,6 +105,7 @@ func CreateNewStaticCredentialPasswordCli(t testing.TB, ctx context.Context, cre
 			"-credential-store-id", credentialStoreId,
 			"-username", user,
 			"-password", "env://E2E_CREDENTIALS_PASSWORD",
+			"-description", "e2e",
 			"-format", "json",
 		),
 		e2e.WithEnv("E2E_CREDENTIALS_PASSWORD", password),
@@ -125,6 +129,7 @@ func CreateNewStaticCredentialJsonCli(t testing.TB, ctx context.Context, credent
 			"credentials", "create", "json",
 			"-credential-store-id", credentialStoreId,
 			"-object", "file://"+jsonFilePath,
+			"-description", "e2e",
 			"-format", "json",
 		),
 	)
