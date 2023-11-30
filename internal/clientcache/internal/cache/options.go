@@ -14,6 +14,7 @@ type options struct {
 	withUserId                 string
 	withTargetRetrievalFunc    TargetRetrievalFunc
 	withSessionRetrievalFunc   SessionRetrievalFunc
+	withIgnoreSearchStaleness  bool
 }
 
 // Option - how options are passed as args
@@ -72,6 +73,14 @@ func WithTargetRetrievalFunc(fn TargetRetrievalFunc) Option {
 func WithSessionRetrievalFunc(fn SessionRetrievalFunc) Option {
 	return func(o *options) error {
 		o.withSessionRetrievalFunc = fn
+		return nil
+	}
+}
+
+// WithIgnoreStalenessTime provides an option for ignoring the staleness time
+func WithIgnoreSearchStaleness(b bool) Option {
+	return func(o *options) error {
+		o.withIgnoreSearchStaleness = b
 		return nil
 	}
 }
