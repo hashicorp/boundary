@@ -722,8 +722,8 @@ func (r *Repository) UpdateJsonCredential(ctx context.Context,
 
 // ListCredentials returns a slice of static credentials
 // for the storeId. Supports the following options:
-//   - WithLimit
-//   - WithStartPageAfterItem
+//   - credential.WithLimit
+//   - credential.WithStartPageAfterItem
 func (r *Repository) ListCredentials(ctx context.Context, storeId string, opt ...credential.Option) ([]credential.Static, time.Time, error) {
 	const op = "static.(Repository).ListCredentials"
 	if storeId == "" {
@@ -764,8 +764,8 @@ func (r *Repository) ListCredentials(ctx context.Context, storeId string, opt ..
 
 // ListCredentialRefresh returns a slice of static credentials
 // for the storeId. Supports the following options:
-//   - WithLimit
-//   - WithStartPageAfterItem
+//   - credential.WithLimit
+//   - credential.WithStartPageAfterItem
 func (r *Repository) ListCredentialsRefresh(ctx context.Context, storeId string, updatedAfter time.Time, opt ...credential.Option) ([]credential.Static, time.Time, error) {
 	const op = "static.(Repository).ListCredentials"
 	switch {
