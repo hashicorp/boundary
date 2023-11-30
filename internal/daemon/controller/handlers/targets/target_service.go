@@ -284,70 +284,25 @@ func (s Service) ListTargets(ctx context.Context, req *pbs.ListTargetsRequest) (
 			return nil, err
 		}
 	} else {
-		pt, err := handlers.ParseListToken(ctx, req.GetListToken())
+		listToken, err := handlers.ParseListToken(ctx, req.GetListToken(), resource.Target, grantsHash)
 		if err != nil {
 			return nil, err
 		}
-		switch st := pt.Token.(type) {
-		case *pbs.ListToken_PaginationToken:
+		switch st := listToken.Subtype.(type) {
+		case *listtoken.PaginationToken:
 			sortBy = "created_time"
-			listToken, err := listtoken.NewPagination(
-				ctx,
-				pt.CreateTime.AsTime(),
-				handlers.ListTokenResourceToResource(pt.ResourceType),
-				pt.GrantsHash,
-				st.PaginationToken.LastItemId,
-				st.PaginationToken.LastItemCreateTime.AsTime(),
-			)
-			if err != nil {
-				return nil, err
-			}
-			if err := listToken.Validate(ctx, resource.Target, grantsHash); err != nil {
-				return nil, err
-			}
 			listResp, err = target.ListPage(ctx, grantsHash, pageSize, filterItemFn, listToken, repo)
 			if err != nil {
 				return nil, err
 			}
-		case *pbs.ListToken_StartRefreshToken:
+		case *listtoken.StartRefreshToken:
 			sortBy = "updated_time"
-			listToken, err := listtoken.NewStartRefresh(
-				ctx,
-				pt.CreateTime.AsTime(),
-				handlers.ListTokenResourceToResource(pt.ResourceType),
-				pt.GrantsHash,
-				st.StartRefreshToken.PreviousDeletedIdsTime.AsTime(),
-				st.StartRefreshToken.PreviousPhaseUpperBound.AsTime(),
-			)
-			if err != nil {
-				return nil, err
-			}
-			if err := listToken.Validate(ctx, resource.Target, grantsHash); err != nil {
-				return nil, err
-			}
 			listResp, err = target.ListRefresh(ctx, grantsHash, pageSize, filterItemFn, listToken, repo)
 			if err != nil {
 				return nil, err
 			}
-		case *pbs.ListToken_RefreshToken:
+		case *listtoken.RefreshToken:
 			sortBy = "updated_time"
-			listToken, err := listtoken.NewRefresh(
-				ctx,
-				pt.CreateTime.AsTime(),
-				handlers.ListTokenResourceToResource(pt.ResourceType),
-				pt.GrantsHash,
-				st.RefreshToken.PreviousDeletedIdsTime.AsTime(),
-				st.RefreshToken.PhaseUpperBound.AsTime(),
-				st.RefreshToken.PhaseLowerBound.AsTime(),
-				st.RefreshToken.LastItemId,
-				st.RefreshToken.LastItemUpdateTime.AsTime(),
-			)
-			if err != nil {
-				return nil, err
-			}
-			if err := listToken.Validate(ctx, resource.Target, grantsHash); err != nil {
-				return nil, err
-			}
 			listResp, err = target.ListRefreshPage(ctx, grantsHash, pageSize, filterItemFn, listToken, repo)
 			if err != nil {
 				return nil, err
