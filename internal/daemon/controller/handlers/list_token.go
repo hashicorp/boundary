@@ -11,13 +11,19 @@ import (
 	"github.com/hashicorp/boundary/internal/listtoken"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/mr-tron/base58"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // ParseListToken parses a list token from the input, returning
 // an error if the parsing fails.
-func ParseListToken(ctx context.Context, token string) (*pbs.ListToken, error) {
+func ParseListToken(
+	ctx context.Context,
+	token string,
+	expectedResourceType resource.Type,
+	expectedGrantsHash []byte,
+) (*listtoken.Token, error) {
 	const op = "handlers.ParseListToken"
 	marshaled, err := base58.Decode(token)
 	if err != nil {
@@ -27,7 +33,54 @@ func ParseListToken(ctx context.Context, token string) (*pbs.ListToken, error) {
 	if err := proto.Unmarshal(marshaled, &tok); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	return &tok, nil
+	var listToken *listtoken.Token
+	switch st := tok.Token.(type) {
+	case *pbs.ListToken_PaginationToken:
+		listToken, err = listtoken.NewPagination(
+			ctx,
+			tok.CreateTime.AsTime(),
+			ListTokenResourceToResource(tok.ResourceType),
+			tok.GrantsHash,
+			st.PaginationToken.LastItemId,
+			st.PaginationToken.LastItemCreateTime.AsTime(),
+		)
+		if err != nil {
+			return nil, err
+		}
+	case *pbs.ListToken_StartRefreshToken:
+		listToken, err = listtoken.NewStartRefresh(
+			ctx,
+			tok.CreateTime.AsTime(),
+			ListTokenResourceToResource(tok.ResourceType),
+			tok.GrantsHash,
+			st.StartRefreshToken.PreviousDeletedIdsTime.AsTime(),
+			st.StartRefreshToken.PreviousPhaseUpperBound.AsTime(),
+		)
+		if err != nil {
+			return nil, err
+		}
+	case *pbs.ListToken_RefreshToken:
+		listToken, err = listtoken.NewRefresh(
+			ctx,
+			tok.CreateTime.AsTime(),
+			ListTokenResourceToResource(tok.ResourceType),
+			tok.GrantsHash,
+			st.RefreshToken.PreviousDeletedIdsTime.AsTime(),
+			st.RefreshToken.PhaseUpperBound.AsTime(),
+			st.RefreshToken.PhaseLowerBound.AsTime(),
+			st.RefreshToken.LastItemId,
+			st.RefreshToken.LastItemUpdateTime.AsTime(),
+		)
+		if err != nil {
+			return nil, err
+		}
+	default:
+		return nil, ApiErrorWithCodeAndMessage(codes.InvalidArgument, "unexpected list token subtype: %T", st)
+	}
+	if err := listToken.Validate(ctx, expectedResourceType, expectedGrantsHash); err != nil {
+		return nil, err
+	}
+	return listToken, nil
 }
 
 // MarshalListToken assembles and marshals a list token to its string representation.
