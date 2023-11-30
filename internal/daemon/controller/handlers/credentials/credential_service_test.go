@@ -8,24 +8,31 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"slices"
 	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/auth/password"
+	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/credential/static"
+	"github.com/hashicorp/boundary/internal/credential/static/store"
 	"github.com/hashicorp/boundary/internal/credential/vault"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	authpb "github.com/hashicorp/boundary/internal/gen/controller/auth"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/libs/crypto"
+	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/scheduler"
+	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/credentials"
 	scopepb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
@@ -42,6 +49,62 @@ import (
 )
 
 var testAuthorizedActions = []string{"no-op", "read", "update", "delete"}
+
+func staticJsonCredentialToProto(cred *static.JsonCredential, prj *iam.Scope, hmac string) *pb.Credential {
+	return &pb.Credential{
+		Id:                cred.GetPublicId(),
+		CredentialStoreId: cred.GetStoreId(),
+		Scope:             &scopepb.ScopeInfo{Id: prj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: prj.GetParentId()},
+		CreatedTime:       cred.GetCreateTime().GetTimestamp(),
+		UpdatedTime:       cred.GetUpdateTime().GetTimestamp(),
+		Version:           cred.GetVersion(),
+		Type:              credential.JsonSubtype.String(),
+		AuthorizedActions: testAuthorizedActions,
+		Attrs: &pb.Credential_JsonAttributes{
+			JsonAttributes: &pb.JsonAttributes{
+				ObjectHmac: base64.RawURLEncoding.EncodeToString([]byte(hmac)),
+			},
+		},
+	}
+}
+
+func staticPasswordCredentialToProto(cred *static.UsernamePasswordCredential, prj *iam.Scope, hmac string) *pb.Credential {
+	return &pb.Credential{
+		Id:                cred.GetPublicId(),
+		CredentialStoreId: cred.GetStoreId(),
+		Scope:             &scopepb.ScopeInfo{Id: prj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: prj.GetParentId()},
+		CreatedTime:       cred.GetCreateTime().GetTimestamp(),
+		UpdatedTime:       cred.GetUpdateTime().GetTimestamp(),
+		Version:           cred.GetVersion(),
+		Type:              credential.UsernamePasswordSubtype.String(),
+		AuthorizedActions: testAuthorizedActions,
+		Attrs: &pb.Credential_UsernamePasswordAttributes{
+			UsernamePasswordAttributes: &pb.UsernamePasswordAttributes{
+				Username:     wrapperspb.String(cred.GetUsername()),
+				PasswordHmac: base64.RawURLEncoding.EncodeToString([]byte(hmac)),
+			},
+		},
+	}
+}
+
+func staticSshCredentialToProto(cred *static.SshPrivateKeyCredential, prj *iam.Scope, hmac string) *pb.Credential {
+	return &pb.Credential{
+		Id:                cred.GetPublicId(),
+		CredentialStoreId: cred.GetStoreId(),
+		Scope:             &scopepb.ScopeInfo{Id: prj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: prj.GetParentId()},
+		CreatedTime:       cred.GetCreateTime().GetTimestamp(),
+		UpdatedTime:       cred.GetUpdateTime().GetTimestamp(),
+		Version:           cred.GetVersion(),
+		Type:              credential.SshPrivateKeySubtype.String(),
+		AuthorizedActions: testAuthorizedActions,
+		Attrs: &pb.Credential_SshPrivateKeyAttributes{
+			SshPrivateKeyAttributes: &pb.SshPrivateKeyAttributes{
+				Username:       wrapperspb.String(cred.GetUsername()),
+				PrivateKeyHmac: base64.RawURLEncoding.EncodeToString([]byte(hmac)),
+			},
+		},
+	}
+}
 
 func TestList(t *testing.T) {
 	ctx := context.Background()
@@ -72,63 +135,19 @@ func TestList(t *testing.T) {
 		c := static.TestUsernamePasswordCredential(t, conn, wrapper, user, pass, store.GetPublicId(), prj.GetPublicId())
 		hm, err := crypto.HmacSha256(ctx, []byte(pass), databaseWrapper, []byte(store.GetPublicId()), nil, crypto.WithEd25519())
 		require.NoError(t, err)
-		wantCreds = append(wantCreds, &pb.Credential{
-			Id:                c.GetPublicId(),
-			CredentialStoreId: store.GetPublicId(),
-			Scope:             &scopepb.ScopeInfo{Id: prj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: prj.GetParentId()},
-			CreatedTime:       c.GetCreateTime().GetTimestamp(),
-			UpdatedTime:       c.GetUpdateTime().GetTimestamp(),
-			Version:           c.GetVersion(),
-			Type:              credential.UsernamePasswordSubtype.String(),
-			AuthorizedActions: testAuthorizedActions,
-			Attrs: &pb.Credential_UsernamePasswordAttributes{
-				UsernamePasswordAttributes: &pb.UsernamePasswordAttributes{
-					Username:     wrapperspb.String(c.GetUsername()),
-					PasswordHmac: base64.RawURLEncoding.EncodeToString([]byte(hm)),
-				},
-			},
-		})
+		wantCreds = append(wantCreds, staticPasswordCredentialToProto(c, prj, hm))
 
 		spk := static.TestSshPrivateKeyCredential(t, conn, wrapper, user, static.TestSshPrivateKeyPem, store.GetPublicId(), prj.GetPublicId())
 		hm, err = crypto.HmacSha256(ctx, []byte(static.TestSshPrivateKeyPem), databaseWrapper, []byte(store.GetPublicId()), nil)
 		require.NoError(t, err)
-		wantCreds = append(wantCreds, &pb.Credential{
-			Id:                spk.GetPublicId(),
-			CredentialStoreId: store.GetPublicId(),
-			Scope:             &scopepb.ScopeInfo{Id: prj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: prj.GetParentId()},
-			CreatedTime:       spk.GetCreateTime().GetTimestamp(),
-			UpdatedTime:       spk.GetUpdateTime().GetTimestamp(),
-			Version:           spk.GetVersion(),
-			Type:              credential.SshPrivateKeySubtype.String(),
-			AuthorizedActions: testAuthorizedActions,
-			Attrs: &pb.Credential_SshPrivateKeyAttributes{
-				SshPrivateKeyAttributes: &pb.SshPrivateKeyAttributes{
-					Username:       wrapperspb.String(c.GetUsername()),
-					PrivateKeyHmac: base64.RawURLEncoding.EncodeToString([]byte(hm)),
-				},
-			},
-		})
+		wantCreds = append(wantCreds, staticSshCredentialToProto(spk, prj, hm))
 
 		obj, objBytes := static.TestJsonObject(t)
 
 		credJson := static.TestJsonCredential(t, conn, wrapper, store.GetPublicId(), prj.GetPublicId(), obj)
 		hm, err = crypto.HmacSha256(ctx, objBytes, databaseWrapper, []byte(store.GetPublicId()), nil)
 		require.NoError(t, err)
-		wantCreds = append(wantCreds, &pb.Credential{
-			Id:                credJson.GetPublicId(),
-			CredentialStoreId: store.GetPublicId(),
-			Scope:             &scopepb.ScopeInfo{Id: prj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: prj.GetParentId()},
-			CreatedTime:       credJson.GetCreateTime().GetTimestamp(),
-			UpdatedTime:       credJson.GetUpdateTime().GetTimestamp(),
-			Version:           credJson.GetVersion(),
-			Type:              credential.JsonSubtype.String(),
-			AuthorizedActions: testAuthorizedActions,
-			Attrs: &pb.Credential_JsonAttributes{
-				JsonAttributes: &pb.JsonAttributes{
-					ObjectHmac: base64.RawURLEncoding.EncodeToString([]byte(hm)),
-				},
-			},
-		})
+		wantCreds = append(wantCreds, staticJsonCredentialToProto(credJson, prj, hm))
 	}
 
 	cases := []struct {
@@ -139,34 +158,104 @@ func TestList(t *testing.T) {
 		err     error
 	}{
 		{
-			name:    "List many credentials",
-			req:     &pbs.ListCredentialsRequest{CredentialStoreId: store.GetPublicId()},
-			res:     &pbs.ListCredentialsResponse{Items: wantCreds},
-			anonRes: &pbs.ListCredentialsResponse{Items: wantCreds},
+			name: "List many credentials",
+			req:  &pbs.ListCredentialsRequest{CredentialStoreId: store.GetPublicId()},
+			res: &pbs.ListCredentialsResponse{
+				Items:        wantCreds,
+				ResponseType: "complete",
+				ListToken:    "",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+				RemovedIds:   nil,
+				EstItemCount: 30,
+			},
+			anonRes: &pbs.ListCredentialsResponse{
+				Items:        wantCreds,
+				ResponseType: "complete",
+				ListToken:    "",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+				RemovedIds:   nil,
+				EstItemCount: 30,
+			},
 		},
 		{
-			name:    "List no credentials",
-			req:     &pbs.ListCredentialsRequest{CredentialStoreId: storeNoCreds.GetPublicId()},
-			res:     &pbs.ListCredentialsResponse{},
-			anonRes: &pbs.ListCredentialsResponse{},
+			name: "List no credentials",
+			req:  &pbs.ListCredentialsRequest{CredentialStoreId: storeNoCreds.GetPublicId()},
+			res: &pbs.ListCredentialsResponse{
+				ResponseType: "complete",
+				ListToken:    "",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+				RemovedIds:   nil,
+			},
+			anonRes: &pbs.ListCredentialsResponse{
+				ResponseType: "complete",
+				ListToken:    "",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+				RemovedIds:   nil,
+			},
 		},
 		{
-			name:    "Filter to one credential",
-			req:     &pbs.ListCredentialsRequest{CredentialStoreId: store.GetPublicId(), Filter: fmt.Sprintf(`"/item/id"==%q`, wantCreds[1].GetId())},
-			res:     &pbs.ListCredentialsResponse{Items: wantCreds[1:2]},
-			anonRes: &pbs.ListCredentialsResponse{Items: wantCreds[1:2]},
+			name: "Filter to one credential",
+			req:  &pbs.ListCredentialsRequest{CredentialStoreId: store.GetPublicId(), Filter: fmt.Sprintf(`"/item/id"==%q`, wantCreds[1].GetId())},
+			res: &pbs.ListCredentialsResponse{
+				Items:        wantCreds[1:2],
+				ResponseType: "complete",
+				ListToken:    "",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+				RemovedIds:   nil,
+				EstItemCount: 1,
+			},
+			anonRes: &pbs.ListCredentialsResponse{
+				Items:        wantCreds[1:2],
+				ResponseType: "complete",
+				ListToken:    "",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+				RemovedIds:   nil,
+				EstItemCount: 1,
+			},
 		},
 		{
-			name:    "Filter on Attribute",
-			req:     &pbs.ListCredentialsRequest{CredentialStoreId: store.GetPublicId(), Filter: fmt.Sprintf(`"/item/attributes/username"==%q`, wantCreds[3].GetUsernamePasswordAttributes().GetUsername().Value)},
-			res:     &pbs.ListCredentialsResponse{Items: wantCreds[3:5]},
-			anonRes: &pbs.ListCredentialsResponse{}, // anonymous user does not have access to attributes
+			name: "Filter on Attribute",
+			req:  &pbs.ListCredentialsRequest{CredentialStoreId: store.GetPublicId(), Filter: fmt.Sprintf(`"/item/attributes/username"==%q`, wantCreds[3].GetUsernamePasswordAttributes().GetUsername().Value)},
+			res: &pbs.ListCredentialsResponse{
+				Items:        wantCreds[3:5],
+				ResponseType: "complete",
+				ListToken:    "",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+				RemovedIds:   nil,
+				EstItemCount: 2,
+			},
+			anonRes: &pbs.ListCredentialsResponse{
+				ResponseType: "complete",
+				ListToken:    "",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+				RemovedIds:   nil,
+			}, // anonymous user does not have access to attributes
 		},
 		{
-			name:    "Filter to no credential",
-			req:     &pbs.ListCredentialsRequest{CredentialStoreId: store.GetPublicId(), Filter: `"/item/id"=="doesnt match"`},
-			res:     &pbs.ListCredentialsResponse{},
-			anonRes: &pbs.ListCredentialsResponse{},
+			name: "Filter to no credential",
+			req:  &pbs.ListCredentialsRequest{CredentialStoreId: store.GetPublicId(), Filter: `"/item/id"=="doesnt match"`},
+			res: &pbs.ListCredentialsResponse{
+				ResponseType: "complete",
+				ListToken:    "",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+				RemovedIds:   nil,
+			},
+			anonRes: &pbs.ListCredentialsResponse{
+				ResponseType: "complete",
+				ListToken:    "",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+				RemovedIds:   nil,
+			},
 		},
 		{
 			name: "Filter Bad Format",
@@ -176,7 +265,7 @@ func TestList(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			s, err := NewService(ctx, staticRepoFn, iamRepoFn)
+			s, err := NewService(ctx, iamRepoFn, staticRepoFn, 1000)
 			require.NoError(t, err, "Couldn't create new host set service.")
 
 			// Test non-anonymous listing
@@ -187,17 +276,21 @@ func TestList(t *testing.T) {
 				return
 			}
 			require.NoError(t, gErr)
-			assert.Empty(t, cmp.Diff(
-				got,
-				tc.res,
-				protocmp.Transform(),
-				protocmp.SortRepeated(func(x, y *pb.Credential) bool {
-					return x.Id < y.Id
-				}),
-				cmpopts.SortSlices(func(a, b string) bool {
-					return a < b
-				}),
-			))
+			assert.Empty(
+				t,
+				cmp.Diff(
+					got,
+					tc.res,
+					protocmp.Transform(),
+					protocmp.SortRepeated(func(x, y *pb.Credential) bool {
+						return x.Id < y.Id
+					}),
+					cmpopts.SortSlices(func(a, b string) bool {
+						return a < b
+					}),
+					protocmp.IgnoreFields(&pbs.ListCredentialsResponse{}, "list_token"),
+				),
+			)
 
 			// Test anonymous listing
 			got, gErr = s.ListCredentials(auth.DisabledAuthTestContext(iamRepoFn, prj.GetPublicId(), auth.WithUserId(globals.AnonymousUserId)), tc.req)
@@ -232,7 +325,7 @@ func TestGet(t *testing.T) {
 	require.NoError(t, err)
 
 	store := static.TestCredentialStore(t, conn, wrapper, prj.GetPublicId())
-	s, err := NewService(ctx, staticRepoFn, iamRepoFn)
+	s, err := NewService(ctx, iamRepoFn, staticRepoFn, 1000)
 	require.NoError(t, err)
 
 	upCred := static.TestUsernamePasswordCredential(t, conn, wrapper, "user", "pass", store.GetPublicId(), prj.GetPublicId())
@@ -251,9 +344,9 @@ func TestGet(t *testing.T) {
 	spkWithPassHm, err := crypto.HmacSha256(context.Background(), []byte(testdata.PEMEncryptedKeys[0].PEMBytes), databaseWrapper, []byte(store.GetPublicId()), nil)
 	require.NoError(t, err)
 	passHm, err := crypto.HmacSha256(context.Background(), []byte(testdata.PEMEncryptedKeys[0].EncryptionKey), databaseWrapper, []byte(store.GetPublicId()), nil)
+	require.NoError(t, err)
 
 	obj, objBytes := static.TestJsonObject(t)
-	assert.NoError(t, err)
 
 	jsonCred := static.TestJsonCredential(t, conn, wrapper, store.GetPublicId(), prj.GetPublicId(), obj)
 	objectHmac, err := crypto.HmacSha256(context.Background(), objBytes, databaseWrapper, []byte(store.GetPublicId()), nil)
@@ -437,14 +530,13 @@ func TestDelete(t *testing.T) {
 	_, prj := iam.TestScopes(t, iamRepo)
 
 	store := static.TestCredentialStore(t, conn, wrapper, prj.GetPublicId())
-	s, err := NewService(ctx, staticRepoFn, iamRepoFn)
+	s, err := NewService(ctx, iamRepoFn, staticRepoFn, 1000)
 	require.NoError(t, err)
 
 	upCred := static.TestUsernamePasswordCredential(t, conn, wrapper, "user", "pass", store.GetPublicId(), prj.GetPublicId())
 	spkCred := static.TestSshPrivateKeyCredential(t, conn, wrapper, "user", static.TestSshPrivateKeyPem, store.GetPublicId(), prj.GetPublicId())
 
 	obj, _ := static.TestJsonObject(t)
-	assert.NoError(t, err)
 
 	jsonCred := static.TestJsonCredential(t, conn, wrapper, store.GetPublicId(), prj.GetPublicId(), obj)
 
@@ -765,7 +857,7 @@ func TestCreate(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			s, err := NewService(ctx, repoFn, iamRepoFn)
+			s, err := NewService(ctx, iamRepoFn, repoFn, 1000)
 			require.NoError(err, "Error when getting new credential store service.")
 
 			got, gErr := s.CreateCredential(auth.DisabledAuthTestContext(iamRepoFn, prj.GetPublicId()), tc.req)
@@ -884,8 +976,7 @@ func TestUpdate(t *testing.T) {
 
 	_, prj := iam.TestScopes(t, iamRepo)
 	ctx := auth.DisabledAuthTestContext(iamRepoFn, prj.GetPublicId())
-
-	s, err := NewService(ctx, staticRepoFn, iamRepoFn)
+	s, err := NewService(ctx, iamRepoFn, staticRepoFn, 1000)
 	require.NoError(t, err)
 
 	fieldmask := func(paths ...string) *fieldmaskpb.FieldMask {
@@ -1386,4 +1477,333 @@ func TestUpdate(t *testing.T) {
 			assert.Nil(t, got)
 		})
 	}
+}
+
+func TestListPagination(t *testing.T) {
+	// Set database read timeout to avoid duplicates in response
+	oldReadTimeout := globals.RefreshReadLookbackDuration
+	globals.RefreshReadLookbackDuration = 0
+	t.Cleanup(func() {
+		globals.RefreshReadLookbackDuration = oldReadTimeout
+	})
+	assert, require := assert.New(t), require.New(t)
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	sqlDB, err := conn.SqlDB(ctx)
+	require.NoError(err)
+	wrapper := db.TestWrapper(t)
+	kmsRepo := kms.TestKms(t, conn, wrapper)
+	rw := db.New(conn)
+
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+	staticRepoFn := func() (*static.Repository, error) {
+		return static.NewRepository(ctx, rw, rw, kmsRepo)
+	}
+	tokenRepoFn := func() (*authtoken.Repository, error) {
+		return authtoken.NewRepository(ctx, rw, rw, kmsRepo)
+	}
+	serversRepoFn := func() (*server.Repository, error) {
+		return server.NewRepository(ctx, rw, rw, kmsRepo)
+	}
+	repo, err := staticRepoFn()
+	require.NoError(err)
+	tokenRepo, err := tokenRepoFn()
+	require.NoError(err)
+
+	_, prjNoStores := iam.TestScopes(t, iamRepo)
+	o, prj := iam.TestScopes(t, iamRepo)
+	credStore := static.TestCredentialStore(t, conn, wrapper, prj.GetPublicId())
+	emptyStore := static.TestCredentialStore(t, conn, wrapper, prj.GetPublicId())
+	databaseWrapper, err := kmsRepo.GetWrapper(ctx, prj.GetPublicId(), kms.KeyPurposeDatabase)
+	require.NoError(err)
+
+	var allCredentials []*pb.Credential
+	testObj, testObjBytes := static.TestJsonObject(t)
+	for _, l := range static.TestJsonCredentials(t, conn, wrapper, credStore.GetPublicId(), prj.PublicId, testObj, 5) {
+		hm, err := crypto.HmacSha256(ctx, []byte(testObjBytes), databaseWrapper, []byte(credStore.GetPublicId()), nil)
+		require.NoError(err)
+		allCredentials = append(allCredentials, staticJsonCredentialToProto(l, prj, hm))
+	}
+	for _, l := range static.TestSshPrivateKeyCredentials(t, conn, wrapper, "username", static.TestSshPrivateKeyPem, credStore.GetPublicId(), prj.PublicId, 5) {
+		hm, err := crypto.HmacSha256(ctx, []byte(static.TestSshPrivateKeyPem), databaseWrapper, []byte(credStore.GetPublicId()), nil)
+		require.NoError(err)
+		allCredentials = append(allCredentials, staticSshCredentialToProto(l, prj, hm))
+	}
+	for _, l := range static.TestUsernamePasswordCredentials(t, conn, wrapper, "username", "password", credStore.GetPublicId(), prj.PublicId, 5) {
+		hm, err := crypto.HmacSha256(ctx, []byte("password"), databaseWrapper, []byte(credStore.GetPublicId()), nil, crypto.WithEd25519())
+		require.NoError(err)
+		allCredentials = append(allCredentials, staticPasswordCredentialToProto(l, prj, hm))
+	}
+
+	// Reverse slices since response is ordered by created_time descending (newest first)
+	slices.Reverse(allCredentials)
+
+	// Run analyze to update postgres meta tables
+	_, err = sqlDB.ExecContext(ctx, "analyze")
+	require.NoError(err)
+
+	authMethod := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
+	// auth account is only used to join auth method to user.
+	// We don't do anything else with the auth account in the test setup.
+	acct := password.TestAccount(t, conn, authMethod.GetPublicId(), "test_user")
+	u := iam.TestUser(t, iamRepo, o.GetPublicId(), iam.WithAccountIds(acct.PublicId))
+	role1 := iam.TestRole(t, conn, prj.GetPublicId())
+	iam.TestRoleGrant(t, conn, role1.GetPublicId(), "id=*;type=*;actions=*")
+	iam.TestUserRole(t, conn, role1.GetPublicId(), u.GetPublicId())
+	role2 := iam.TestRole(t, conn, prjNoStores.GetPublicId())
+	iam.TestRoleGrant(t, conn, role2.GetPublicId(), "id=*;type=*;actions=*")
+	iam.TestUserRole(t, conn, role2.GetPublicId(), u.GetPublicId())
+	at, err := tokenRepo.CreateAuthToken(ctx, u, acct.GetPublicId())
+	require.NoError(err)
+
+	// Test without anon user
+	requestInfo := authpb.RequestInfo{
+		TokenFormat: uint32(auth.AuthTokenTypeBearer),
+		PublicId:    at.GetPublicId(),
+		Token:       at.GetToken(),
+	}
+	requestContext := context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
+	ctx = auth.NewVerifierContext(requestContext, iamRepoFn, tokenRepoFn, serversRepoFn, kmsRepo, &requestInfo)
+
+	s, err := NewService(ctx, iamRepoFn, staticRepoFn, 1000)
+	require.NoError(err)
+
+	// Start paginating, recursively
+	req := &pbs.ListCredentialsRequest{
+		CredentialStoreId: credStore.PublicId,
+		Filter:            "",
+		ListToken:         "",
+		PageSize:          2,
+	}
+	got, err := s.ListCredentials(ctx, req)
+	require.NoError(err)
+	require.Len(got.GetItems(), 2)
+	// Compare without comparing the refresh token
+	assert.Empty(
+		cmp.Diff(
+			got,
+			&pbs.ListCredentialsResponse{
+				Items:        allCredentials[0:2],
+				ResponseType: "delta",
+				ListToken:    "",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+				RemovedIds:   nil,
+				EstItemCount: 15,
+			},
+			protocmp.Transform(),
+			protocmp.IgnoreFields(&pbs.ListCredentialsResponse{}, "list_token"),
+		),
+	)
+
+	// Request second page
+	req.ListToken = got.ListToken
+	got, err = s.ListCredentials(ctx, req)
+	require.NoError(err)
+	require.Len(got.GetItems(), 2)
+	// Compare without comparing the refresh token
+	assert.Empty(
+		cmp.Diff(
+			got,
+			&pbs.ListCredentialsResponse{
+				Items:        allCredentials[2:4],
+				ResponseType: "delta",
+				ListToken:    "",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+				RemovedIds:   nil,
+				EstItemCount: 15,
+			},
+			protocmp.Transform(),
+			protocmp.IgnoreFields(&pbs.ListCredentialsResponse{}, "list_token"),
+		),
+	)
+
+	// Request rest of results
+	req.ListToken = got.ListToken
+	req.PageSize = 15
+	got, err = s.ListCredentials(ctx, req)
+	require.NoError(err)
+	require.Len(got.GetItems(), 11)
+	// Compare without comparing the refresh token
+	assert.Empty(
+		cmp.Diff(
+			got,
+			&pbs.ListCredentialsResponse{
+				Items:        allCredentials[4:],
+				ResponseType: "complete",
+				ListToken:    "",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+				RemovedIds:   nil,
+				EstItemCount: 15,
+			},
+			protocmp.Transform(),
+			protocmp.IgnoreFields(&pbs.ListCredentialsResponse{}, "list_token"),
+		),
+	)
+
+	// Create another credential
+	newCred := static.TestJsonCredential(t, conn, wrapper, credStore.GetPublicId(), prj.GetPublicId(), testObj)
+	hm, err := crypto.HmacSha256(ctx, []byte(testObjBytes), databaseWrapper, []byte(credStore.GetPublicId()), nil)
+	require.NoError(err)
+	pbNewCred := staticJsonCredentialToProto(newCred, prj, hm)
+	// Add to the front since it's most recently updated
+	allCredentials = append([]*pb.Credential{pbNewCred}, allCredentials...)
+
+	// Delete one of the other credentials
+	_, err = repo.DeleteCredential(ctx, prj.GetPublicId(), allCredentials[len(allCredentials)-1].GetId())
+	require.NoError(err)
+	deletedCred := allCredentials[len(allCredentials)-1]
+	allCredentials = allCredentials[:len(allCredentials)-1]
+
+	// Update one of the other credentials
+	allCredentials[1].Name = wrapperspb.String("new-name")
+	allCredentials[1].Version = 2
+	updatedCredential := &static.UsernamePasswordCredential{
+		UsernamePasswordCredential: &store.UsernamePasswordCredential{
+			PublicId: allCredentials[1].GetId(),
+			Name:     allCredentials[1].GetName().GetValue(),
+			StoreId:  allCredentials[1].GetCredentialStoreId(),
+		},
+	}
+	cred, _, err := repo.UpdateUsernamePasswordCredential(ctx, prj.GetPublicId(), updatedCredential, 1, []string{"name"})
+	require.NoError(err)
+	allCredentials[1].UpdatedTime = cred.UpdateTime.GetTimestamp()
+	allCredentials[1].Version = cred.GetVersion()
+	// Add to the front since it's most recently updated
+	allCredentials = append(
+		[]*pb.Credential{allCredentials[1]},
+		append(
+			[]*pb.Credential{allCredentials[0]},
+			allCredentials[2:]...,
+		)...,
+	)
+
+	// Run analyze to update postgres meta tables
+	_, err = sqlDB.ExecContext(ctx, "analyze")
+	require.NoError(err)
+
+	// Request updated results
+	req.ListToken = got.ListToken
+	req.PageSize = 1
+	got, err = s.ListCredentials(ctx, req)
+	require.NoError(err)
+	assert.Len(got.GetItems(), 1)
+	// Compare without comparing the refresh token
+	assert.Empty(
+		cmp.Diff(
+			got,
+			&pbs.ListCredentialsResponse{
+				Items:        []*pb.Credential{allCredentials[0]},
+				ResponseType: "delta",
+				ListToken:    "",
+				SortBy:       "updated_time",
+				SortDir:      "desc",
+				// Should contain the deleted credential
+				RemovedIds:   []string{deletedCred.Id},
+				EstItemCount: 15,
+			},
+			protocmp.Transform(),
+			protocmp.IgnoreFields(&pbs.ListCredentialsResponse{}, "list_token"),
+		),
+	)
+	// Get next page
+	req.ListToken = got.ListToken
+	got, err = s.ListCredentials(ctx, req)
+	require.NoError(err)
+	require.Len(got.GetItems(), 1)
+	// Compare without comparing the list token
+	assert.Empty(
+		cmp.Diff(
+			got,
+			&pbs.ListCredentialsResponse{
+				Items:        []*pb.Credential{allCredentials[1]},
+				ResponseType: "complete",
+				SortBy:       "updated_time",
+				SortDir:      "desc",
+				RemovedIds:   nil,
+				EstItemCount: 15,
+			},
+			protocmp.Transform(),
+			protocmp.IgnoreFields(&pbs.ListCredentialsResponse{}, "list_token"),
+		),
+	)
+
+	// Request new page with filter requiring looping
+	// to fill the page.
+	req.ListToken = ""
+	req.PageSize = 1
+	req.Filter = fmt.Sprintf(`"/item/id"==%q or "/item/id"==%q`, allCredentials[len(allCredentials)-2].Id, allCredentials[len(allCredentials)-1].Id)
+	got, err = s.ListCredentials(ctx, req)
+	require.NoError(err)
+	require.Len(got.GetItems(), 1)
+	assert.Empty(
+		cmp.Diff(
+			got,
+			&pbs.ListCredentialsResponse{
+				Items:        []*pb.Credential{allCredentials[len(allCredentials)-2]},
+				ResponseType: "delta",
+				ListToken:    "",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+				// Should be empty again
+				RemovedIds:   nil,
+				EstItemCount: 15,
+			},
+			protocmp.Transform(),
+			protocmp.IgnoreFields(&pbs.ListCredentialsResponse{}, "list_token"),
+		),
+	)
+	req.ListToken = got.ListToken
+	// Get the second page
+	got, err = s.ListCredentials(ctx, req)
+	require.NoError(err)
+	require.Len(got.GetItems(), 1)
+	assert.Empty(
+		cmp.Diff(
+			got,
+			&pbs.ListCredentialsResponse{
+				Items:        []*pb.Credential{allCredentials[len(allCredentials)-1]},
+				ResponseType: "complete",
+				ListToken:    "",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+				RemovedIds:   nil,
+				EstItemCount: 15,
+			},
+			protocmp.Transform(),
+			protocmp.IgnoreFields(&pbs.ListCredentialsResponse{}, "list_token"),
+		),
+	)
+	req.ListToken = got.ListToken
+
+	// List items in the empty store
+	req = &pbs.ListCredentialsRequest{
+		CredentialStoreId: emptyStore.PublicId,
+		Filter:            "",
+		ListToken:         "",
+		PageSize:          2,
+	}
+	got, err = s.ListCredentials(ctx, req)
+	require.NoError(err)
+	require.Len(got.GetItems(), 0)
+	// Compare without comparing the refresh token
+	assert.Empty(
+		cmp.Diff(
+			got,
+			&pbs.ListCredentialsResponse{
+				Items:        nil,
+				ResponseType: "complete",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+				RemovedIds:   nil,
+			},
+			protocmp.Transform(),
+			protocmp.IgnoreFields(&pbs.ListCredentialsResponse{}, "list_token"),
+		),
+	)
 }
