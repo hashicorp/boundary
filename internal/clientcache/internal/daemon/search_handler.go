@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/internal/clientcache/internal/cache"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/internal/util"
 )
 
@@ -31,11 +32,13 @@ const (
 	authTokenIdKey  = "auth_token_id"
 )
 
-func newSearchHandlerFunc(ctx context.Context, repo *cache.Repository) (http.HandlerFunc, error) {
+func newSearchHandlerFunc(ctx context.Context, repo *cache.Repository, refreshService *cache.RefreshService) (http.HandlerFunc, error) {
 	const op = "daemon.newSearchHandlerFunc"
 	switch {
 	case util.IsNil(repo):
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "repository is missing")
+	case util.IsNil(refreshService):
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "refresh service is missing")
 	}
 
 	s, err := cache.NewSearchService(ctx, repo)
@@ -65,6 +68,14 @@ func newSearchHandlerFunc(ctx context.Context, repo *cache.Repository) (http.Han
 		if err != nil || t == nil {
 			writeError(w, "Forbidden", http.StatusForbidden)
 			return
+		}
+
+		// Refresh the resources for the provided user, if possible. This is best
+		// effort, so if there is any problem refreshing, we just log the error
+		// and move on to handling the search request.
+		if err := refreshService.RefreshForSearch(ctx, authTokenId, searchableResource); err != nil {
+			// we don't stop the search, we just log that the inline refresh failed
+			event.WriteError(ctx, op, err, event.WithInfoMsg("when refreshing the resources inline for search", "auth_token_id", authTokenId, "resource", searchableResource))
 		}
 
 		query := r.URL.Query().Get(queryKey)

@@ -100,7 +100,7 @@ func newTokenHandlerFunc(ctx context.Context, repo *cache.Repository, refresher 
 			}
 		}
 
-		tok, err := repo.LookupToken(ctx, perReq.AuthTokenId)
+		oldTok, err := repo.LookupToken(ctx, perReq.AuthTokenId)
 		if err != nil {
 			writeError(w, "error performing auth token lookup", http.StatusInternalServerError)
 			return
@@ -124,9 +124,15 @@ func newTokenHandlerFunc(ctx context.Context, repo *cache.Repository, refresher 
 			}
 		}
 
+		newTok, err := repo.LookupToken(ctx, perReq.AuthTokenId)
+		if err != nil {
+			writeError(w, "error performing follow up auth token lookup", http.StatusInternalServerError)
+			return
+		}
+
 		w.WriteHeader(http.StatusNoContent)
 
-		if tok == nil {
+		if oldTok == nil && newTok != nil {
 			refresher.refresh()
 		}
 	}, nil

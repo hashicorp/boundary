@@ -51,6 +51,12 @@ func (w *CommandWrapper) Run(args []string) int {
 	w.cacheEnabledCommand.BaseCommand().Opts = append(w.cacheEnabledCommand.BaseCommand().Opts, base.WithInterceptedToken(&token))
 	r := w.cacheEnabledCommand.Run(args)
 
+	if r != base.CommandSuccess {
+		// if we were not successful in running our command, do not continue to
+		// start the daemon and add the token.
+		return r
+	}
+
 	ctx := context.Background()
 	if w.startDaemon(ctx) {
 		w.addTokenToCache(ctx, token)
