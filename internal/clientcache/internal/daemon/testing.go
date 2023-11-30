@@ -34,8 +34,8 @@ func NewTestServer(t *testing.T, cmd Commander, opt ...Option) *TestServer {
 
 	cfg := &Config{
 		ContextCancel:     cancel,
-		RefreshInterval:   defaultRefreshInterval,
-		FullFetchInterval: defaultFullFetchInterval,
+		RefreshInterval:   DefaultRefreshInterval,
+		FullFetchInterval: DefaultFullFetchInterval,
 		StoreDebug:        opts.withDebug,
 		LogWriter:         io.Discard,
 		DotDirectory:      dotDir,
@@ -101,7 +101,7 @@ func (s *TestServer) AddResources(t *testing.T, p *authtokens.AuthToken, tars []
 		}
 		return sess, nil, "", nil
 	}
-	rs, err := cache.NewRefreshService(ctx, r)
+	rs, err := cache.NewRefreshService(ctx, r, 0, 0)
 	require.NoError(t, err)
 	require.NoError(t, rs.Refresh(ctx, cache.WithTargetRetrievalFunc(tarFn), cache.WithSessionRetrievalFunc(sessFn)))
 }

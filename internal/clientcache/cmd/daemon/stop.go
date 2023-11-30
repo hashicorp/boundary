@@ -5,7 +5,6 @@ package daemon
 
 import (
 	"context"
-	stderr "errors"
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
@@ -60,7 +59,7 @@ func (c *StopCommand) Run(args []string) int {
 	}
 	if err := c.stop(c.Context); err != nil {
 		if errors.Match(errors.T(errors.NotFound), err) {
-			c.PrintCliError(stderr.New("The deamon process is not running."))
+			c.PrintCliError(errDaemonNotRunning)
 		} else {
 			c.PrintCliError(err)
 		}
