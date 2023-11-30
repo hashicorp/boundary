@@ -97,6 +97,7 @@ begin;
   -- insert_credential_static_subtype() is a before insert trigger
   -- function for subtypes of credential_static
   -- Replaces the insert_credential_static_subtype function defined in 10/03_credential.up.sql
+  -- Replaced in 79/03_credential_static_base_table_updates.up.sql
   create or replace function insert_credential_static_subtype() returns trigger
   as $$
   begin
