@@ -273,3 +273,31 @@ func TestTofu(t testing.TB) []byte {
 func TestCert(jobId string) (ed25519.PrivateKey, []byte, error) {
 	return newCert(context.Background(), jobId, []string{"127.0.0.1", "localhost"}, time.Now().Add(5*time.Minute), rand.Reader)
 }
+
+// TestListSessions exposes the repo listSessions method for testing purposes.
+func TestListSessions(t testing.TB, repo *Repository, ctx context.Context, opts ...Option) ([]*Session, time.Time) {
+	targets, ttime, err := repo.listSessions(ctx, opts...)
+	require.NoError(t, err)
+	return targets, ttime
+}
+
+// TestListSessionsRefresh exposes the repo listSessionsRefresh method for testing purposes.
+func TestListSessionsRefresh(t testing.TB, repo *Repository, ctx context.Context, updateAfter time.Time, opts ...Option) ([]*Session, time.Time) {
+	targets, ttime, err := repo.listSessionsRefresh(ctx, updateAfter, opts...)
+	require.NoError(t, err)
+	return targets, ttime
+}
+
+// TestListDeletedIds exposes the repo listDeletedIds method for testing purposes.
+func TestListDeletedIds(t testing.TB, repo *Repository, ctx context.Context, since time.Time) ([]string, time.Time) {
+	ids, ttime, err := repo.listDeletedIds(ctx, since)
+	require.NoError(t, err)
+	return ids, ttime
+}
+
+// TestEstimatedCount exposes the repo estimatedCount method for testing purposes.
+func TestEstimatedCount(t testing.TB, repo *Repository, ctx context.Context) int {
+	n, err := repo.estimatedCount(ctx)
+	require.NoError(t, err)
+	return n
+}

@@ -109,7 +109,7 @@ func BenchmarkSessionList(b *testing.B) {
 				return serversRepo, nil
 			}
 
-			s, err := sessions.NewService(ctx, sessRepoFn, iamRepoFn)
+			s, err := sessions.NewService(ctx, sessRepoFn, iamRepoFn, 1000)
 			require.NoError(b, err)
 
 			var users []*userWithToken
