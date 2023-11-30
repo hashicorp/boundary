@@ -291,7 +291,52 @@ func TestHandler(t *testing.T) {
 				return r
 			}(),
 			func(uri string) *http.Request {
-				r, err := http.NewRequest(http.MethodDelete, uri+"/v1/targets/ttcp_123456789:authorize-session", nil)
+				r, err := http.NewRequest(http.MethodPut, uri+"/v1/targets/ttcp_123456789:authorize-session", nil)
+				require.NoError(t, err)
+				return r
+			},
+			"127.0.0.1",
+			"authtoken",
+			http.StatusOK,
+			http.Header{
+				"RateLimit-Policy": []string{`10;w=60;comment="total", 10;w=60;comment="ip-address", 10;w=60;comment="auth-token"`},
+				"RateLimit":        []string{`limit=10, remaining=9, reset=59`},
+			},
+		},
+		{
+			"AllowedAuthorizeSessionTargetNameSlash",
+			func() *rate.Limiter {
+				r, err := rate.NewLimiter([]*rate.Limit{
+					{
+						Resource:    resource.Target.String(),
+						Action:      action.AuthorizeSession.String(),
+						Per:         rate.LimitPerTotal,
+						Unlimited:   false,
+						MaxRequests: 10,
+						Period:      time.Minute,
+					},
+					{
+						Resource:    resource.Target.String(),
+						Action:      action.AuthorizeSession.String(),
+						Per:         rate.LimitPerIPAddress,
+						Unlimited:   false,
+						MaxRequests: 10,
+						Period:      time.Minute,
+					},
+					{
+						Resource:    resource.Target.String(),
+						Action:      action.AuthorizeSession.String(),
+						Per:         rate.LimitPerAuthToken,
+						Unlimited:   false,
+						MaxRequests: 10,
+						Period:      time.Minute,
+					},
+				}, 10)
+				require.NoError(t, err)
+				return r
+			}(),
+			func(uri string) *http.Request {
+				r, err := http.NewRequest(http.MethodPut, uri+`/v1/targets/E2E/Test-Target-With\Name:authorize-session`, nil)
 				require.NoError(t, err)
 				return r
 			},
