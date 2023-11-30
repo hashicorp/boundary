@@ -3166,7 +3166,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 	require.NoError(t, err)
 
 	staticStore := credstatic.TestCredentialStore(t, conn, wrapper, proj.GetPublicId())
-	credService, err := credentials.NewService(ctx, staticCredRepoFn, iamRepoFn)
+	credService, err := credentials.NewService(ctx, iamRepoFn, staticCredRepoFn, 1000)
 	require.NoError(t, err)
 	upCredResp, err := credService.CreateCredential(ctx, &pbs.CreateCredentialRequest{Item: &credpb.Credential{
 		CredentialStoreId: staticStore.GetPublicId(),
