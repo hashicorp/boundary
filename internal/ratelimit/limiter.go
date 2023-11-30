@@ -11,7 +11,7 @@ import (
 )
 
 // NewLimiter creates a rate.Limiter.
-func NewLimiter(limits []*rate.Limit, maxEntries int) (*rate.Limiter, error) {
+func NewLimiter(limits []rate.Limit, maxEntries int) (*rate.Limiter, error) {
 	return rate.NewLimiter(
 		limits,
 		maxEntries,
@@ -39,7 +39,7 @@ type (
 
 // WriteLimitsSysEvent writes a sys event that contains all of the provided
 // rate limits.
-func WriteLimitsSysEvent(ctx context.Context, limits []*rate.Limit, maxEntries int) error {
+func WriteLimitsSysEvent(ctx context.Context, limits []rate.Limit, maxEntries int) error {
 	const op = "ratelimit.WritePoliciesSysEvent"
 
 	e := make(resources)
@@ -48,25 +48,36 @@ func WriteLimitsSysEvent(ctx context.Context, limits []*rate.Limit, maxEntries i
 		var r resourceActions
 		var a actionLimits
 		var ok bool
-		r, ok = e[l.Resource]
+		r, ok = e[l.GetResource()]
 		if !ok {
 			r = make(resourceActions)
-			e[l.Resource] = r
+			e[l.GetResource()] = r
 		}
 
-		a, ok = r[l.Action]
+		a, ok = r[l.GetAction()]
 		if !ok {
 			a = make(actionLimits, 0, 3)
 		}
-		a = append(a, limit{
-			Resource:  l.Resource,
-			Action:    l.Action,
-			Per:       l.Per.String(),
-			Unlimited: l.Unlimited,
-			Limit:     l.MaxRequests,
-			Period:    l.Period.String(),
-		})
-		r[l.Action] = a
+
+		switch ll := l.(type) {
+		case *rate.Limited:
+			a = append(a, limit{
+				Resource:  ll.Resource,
+				Action:    ll.Action,
+				Per:       ll.Per.String(),
+				Unlimited: false,
+				Limit:     ll.MaxRequests,
+				Period:    ll.Period.String(),
+			})
+		case *rate.Unlimited:
+			a = append(a, limit{
+				Resource:  ll.Resource,
+				Action:    ll.Action,
+				Per:       ll.Per.String(),
+				Unlimited: true,
+			})
+		}
+		r[l.GetAction()] = a
 	}
 	event.WriteSysEvent(
 		ctx,

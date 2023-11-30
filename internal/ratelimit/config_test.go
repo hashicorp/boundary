@@ -21,14 +21,14 @@ func TestConfigsLimits(t *testing.T) {
 	cases := []struct {
 		name    string
 		configs Configs
-		want    []*rate.Limit
+		want    []rate.Limit
 		wantErr error
 	}{
 		{
 			"empty",
 			Configs{},
-			func() []*rate.Limit {
-				limits := make([]*rate.Limit, 0, len(resource.Map)*len(action.Map))
+			func() []rate.Limit {
+				limits := make([]rate.Limit, 0, len(resource.Map)*len(action.Map))
 				for _, res := range resource.Map {
 					switch res {
 					case resource.Unknown, resource.All, resource.Controller:
@@ -43,27 +43,24 @@ func TestConfigsLimits(t *testing.T) {
 						case action.List:
 							limits = append(
 								limits,
-								&rate.Limit{
+								&rate.Limited{
 									Resource:    res.String(),
 									Action:      a.String(),
 									Per:         rate.LimitPerTotal,
-									Unlimited:   false,
 									MaxRequests: DefaultInTotalListRequestLimit,
 									Period:      DefaultListPeriod,
 								},
-								&rate.Limit{
+								&rate.Limited{
 									Resource:    res.String(),
 									Action:      a.String(),
 									Per:         rate.LimitPerIPAddress,
-									Unlimited:   false,
 									MaxRequests: DefaultIpAddressListRequestLimit,
 									Period:      DefaultListPeriod,
 								},
-								&rate.Limit{
+								&rate.Limited{
 									Resource:    res.String(),
 									Action:      a.String(),
 									Per:         rate.LimitPerAuthToken,
-									Unlimited:   false,
 									MaxRequests: DefaultAuthTokenListRequestLimit,
 									Period:      DefaultListPeriod,
 								},
@@ -71,27 +68,24 @@ func TestConfigsLimits(t *testing.T) {
 						default:
 							limits = append(
 								limits,
-								&rate.Limit{
+								&rate.Limited{
 									Resource:    res.String(),
 									Action:      a.String(),
 									Per:         rate.LimitPerTotal,
-									Unlimited:   false,
 									MaxRequests: DefaultInTotalRequestLimit,
 									Period:      DefaultPeriod,
 								},
-								&rate.Limit{
+								&rate.Limited{
 									Resource:    res.String(),
 									Action:      a.String(),
 									Per:         rate.LimitPerIPAddress,
-									Unlimited:   false,
 									MaxRequests: DefaultIpAddressRequestLimit,
 									Period:      DefaultPeriod,
 								},
-								&rate.Limit{
+								&rate.Limited{
 									Resource:    res.String(),
 									Action:      a.String(),
 									Per:         rate.LimitPerAuthToken,
-									Unlimited:   false,
 									MaxRequests: DefaultAuthTokenRequestLimit,
 									Period:      DefaultPeriod,
 								},
@@ -128,8 +122,8 @@ func TestConfigsLimits(t *testing.T) {
 					Period:    time.Minute * 5,
 				},
 			},
-			func() []*rate.Limit {
-				limits := make([]*rate.Limit, 0, len(resource.Map)*len(action.Map))
+			func() []rate.Limit {
+				limits := make([]rate.Limit, 0, len(resource.Map)*len(action.Map))
 				for _, res := range resource.Map {
 					switch res {
 					case resource.Unknown, resource.All, resource.Controller:
@@ -144,27 +138,24 @@ func TestConfigsLimits(t *testing.T) {
 						default:
 							limits = append(
 								limits,
-								&rate.Limit{
+								&rate.Limited{
 									Resource:    res.String(),
 									Action:      a.String(),
 									Per:         rate.LimitPerTotal,
-									Unlimited:   false,
 									MaxRequests: 20,
 									Period:      time.Minute * 5,
 								},
-								&rate.Limit{
+								&rate.Limited{
 									Resource:    res.String(),
 									Action:      a.String(),
 									Per:         rate.LimitPerIPAddress,
-									Unlimited:   false,
 									MaxRequests: 10,
 									Period:      time.Minute * 5,
 								},
-								&rate.Limit{
+								&rate.Limited{
 									Resource:    res.String(),
 									Action:      a.String(),
 									Per:         rate.LimitPerAuthToken,
-									Unlimited:   false,
 									MaxRequests: 5,
 									Period:      time.Minute * 5,
 								},
@@ -222,8 +213,8 @@ func TestConfigsLimits(t *testing.T) {
 					Period:    time.Minute,
 				},
 			},
-			func() []*rate.Limit {
-				limits := make([]*rate.Limit, 0, len(resource.Map)*len(action.Map))
+			func() []rate.Limit {
+				limits := make([]rate.Limit, 0, len(resource.Map)*len(action.Map))
 				for _, res := range resource.Map {
 					switch res {
 					case resource.Unknown, resource.All, resource.Controller:
@@ -239,27 +230,24 @@ func TestConfigsLimits(t *testing.T) {
 							if res == resource.Target {
 								limits = append(
 									limits,
-									&rate.Limit{
+									&rate.Limited{
 										Resource:    res.String(),
 										Action:      a.String(),
 										Per:         rate.LimitPerTotal,
-										Unlimited:   false,
 										MaxRequests: 10,
 										Period:      time.Minute,
 									},
-									&rate.Limit{
+									&rate.Limited{
 										Resource:    res.String(),
 										Action:      a.String(),
 										Per:         rate.LimitPerIPAddress,
-										Unlimited:   false,
 										MaxRequests: 5,
 										Period:      time.Minute,
 									},
-									&rate.Limit{
+									&rate.Limited{
 										Resource:    res.String(),
 										Action:      a.String(),
 										Per:         rate.LimitPerAuthToken,
-										Unlimited:   false,
 										MaxRequests: 1,
 										Period:      time.Minute,
 									},
@@ -270,27 +258,24 @@ func TestConfigsLimits(t *testing.T) {
 						default:
 							limits = append(
 								limits,
-								&rate.Limit{
+								&rate.Limited{
 									Resource:    res.String(),
 									Action:      a.String(),
 									Per:         rate.LimitPerTotal,
-									Unlimited:   false,
 									MaxRequests: 20,
 									Period:      time.Minute * 5,
 								},
-								&rate.Limit{
+								&rate.Limited{
 									Resource:    res.String(),
 									Action:      a.String(),
 									Per:         rate.LimitPerIPAddress,
-									Unlimited:   false,
 									MaxRequests: 20,
 									Period:      time.Minute * 5,
 								},
-								&rate.Limit{
+								&rate.Limited{
 									Resource:    res.String(),
 									Action:      a.String(),
 									Per:         rate.LimitPerAuthToken,
-									Unlimited:   false,
 									MaxRequests: 20,
 									Period:      time.Minute * 5,
 								},
@@ -327,8 +312,8 @@ func TestConfigsLimits(t *testing.T) {
 					Period:    time.Minute,
 				},
 			},
-			func() []*rate.Limit {
-				limits := make([]*rate.Limit, 0, len(resource.Map)*len(action.Map))
+			func() []rate.Limit {
+				limits := make([]rate.Limit, 0, len(resource.Map)*len(action.Map))
 				for _, res := range resource.Map {
 					switch res {
 					case resource.Unknown, resource.All, resource.Controller:
@@ -343,27 +328,24 @@ func TestConfigsLimits(t *testing.T) {
 							default:
 								limits = append(
 									limits,
-									&rate.Limit{
+									&rate.Limited{
 										Resource:    res.String(),
 										Action:      a.String(),
 										Per:         rate.LimitPerTotal,
-										Unlimited:   false,
 										MaxRequests: 10,
 										Period:      time.Minute,
 									},
-									&rate.Limit{
+									&rate.Limited{
 										Resource:    res.String(),
 										Action:      a.String(),
 										Per:         rate.LimitPerIPAddress,
-										Unlimited:   false,
 										MaxRequests: 5,
 										Period:      time.Minute,
 									},
-									&rate.Limit{
+									&rate.Limited{
 										Resource:    res.String(),
 										Action:      a.String(),
 										Per:         rate.LimitPerAuthToken,
-										Unlimited:   false,
 										MaxRequests: 1,
 										Period:      time.Minute,
 									},
@@ -380,27 +362,24 @@ func TestConfigsLimits(t *testing.T) {
 							case action.List:
 								limits = append(
 									limits,
-									&rate.Limit{
+									&rate.Limited{
 										Resource:    res.String(),
 										Action:      a.String(),
 										Per:         rate.LimitPerTotal,
-										Unlimited:   false,
 										MaxRequests: DefaultInTotalListRequestLimit,
 										Period:      DefaultListPeriod,
 									},
-									&rate.Limit{
+									&rate.Limited{
 										Resource:    res.String(),
 										Action:      a.String(),
 										Per:         rate.LimitPerIPAddress,
-										Unlimited:   false,
 										MaxRequests: DefaultIpAddressListRequestLimit,
 										Period:      DefaultListPeriod,
 									},
-									&rate.Limit{
+									&rate.Limited{
 										Resource:    res.String(),
 										Action:      a.String(),
 										Per:         rate.LimitPerAuthToken,
-										Unlimited:   false,
 										MaxRequests: DefaultAuthTokenListRequestLimit,
 										Period:      DefaultListPeriod,
 									},
@@ -408,27 +387,24 @@ func TestConfigsLimits(t *testing.T) {
 							default:
 								limits = append(
 									limits,
-									&rate.Limit{
+									&rate.Limited{
 										Resource:    res.String(),
 										Action:      a.String(),
 										Per:         rate.LimitPerTotal,
-										Unlimited:   false,
 										MaxRequests: DefaultInTotalRequestLimit,
 										Period:      DefaultPeriod,
 									},
-									&rate.Limit{
+									&rate.Limited{
 										Resource:    res.String(),
 										Action:      a.String(),
 										Per:         rate.LimitPerIPAddress,
-										Unlimited:   false,
 										MaxRequests: DefaultIpAddressRequestLimit,
 										Period:      DefaultPeriod,
 									},
-									&rate.Limit{
+									&rate.Limited{
 										Resource:    res.String(),
 										Action:      a.String(),
 										Per:         rate.LimitPerAuthToken,
-										Unlimited:   false,
 										MaxRequests: DefaultAuthTokenRequestLimit,
 										Period:      DefaultPeriod,
 									},
@@ -466,8 +442,8 @@ func TestConfigsLimits(t *testing.T) {
 					Period:    time.Minute,
 				},
 			},
-			func() []*rate.Limit {
-				limits := make([]*rate.Limit, 0, len(resource.Map)*len(action.Map))
+			func() []rate.Limit {
+				limits := make([]rate.Limit, 0, len(resource.Map)*len(action.Map))
 				for _, res := range resource.Map {
 					switch res {
 					case resource.Unknown, resource.All, resource.Controller:
@@ -482,27 +458,24 @@ func TestConfigsLimits(t *testing.T) {
 							case action.List, action.Read:
 								limits = append(
 									limits,
-									&rate.Limit{
+									&rate.Limited{
 										Resource:    res.String(),
 										Action:      a.String(),
 										Per:         rate.LimitPerTotal,
-										Unlimited:   false,
 										MaxRequests: 10,
 										Period:      time.Minute,
 									},
-									&rate.Limit{
+									&rate.Limited{
 										Resource:    res.String(),
 										Action:      a.String(),
 										Per:         rate.LimitPerIPAddress,
-										Unlimited:   false,
 										MaxRequests: 5,
 										Period:      time.Minute,
 									},
-									&rate.Limit{
+									&rate.Limited{
 										Resource:    res.String(),
 										Action:      a.String(),
 										Per:         rate.LimitPerAuthToken,
-										Unlimited:   false,
 										MaxRequests: 1,
 										Period:      time.Minute,
 									},
@@ -510,27 +483,24 @@ func TestConfigsLimits(t *testing.T) {
 							default:
 								limits = append(
 									limits,
-									&rate.Limit{
+									&rate.Limited{
 										Resource:    res.String(),
 										Action:      a.String(),
 										Per:         rate.LimitPerTotal,
-										Unlimited:   false,
 										MaxRequests: DefaultInTotalRequestLimit,
 										Period:      DefaultPeriod,
 									},
-									&rate.Limit{
+									&rate.Limited{
 										Resource:    res.String(),
 										Action:      a.String(),
 										Per:         rate.LimitPerIPAddress,
-										Unlimited:   false,
 										MaxRequests: DefaultIpAddressRequestLimit,
 										Period:      DefaultPeriod,
 									},
-									&rate.Limit{
+									&rate.Limited{
 										Resource:    res.String(),
 										Action:      a.String(),
 										Per:         rate.LimitPerAuthToken,
-										Unlimited:   false,
 										MaxRequests: DefaultAuthTokenRequestLimit,
 										Period:      DefaultPeriod,
 									},
@@ -547,27 +517,24 @@ func TestConfigsLimits(t *testing.T) {
 							case action.List:
 								limits = append(
 									limits,
-									&rate.Limit{
+									&rate.Limited{
 										Resource:    res.String(),
 										Action:      a.String(),
 										Per:         rate.LimitPerTotal,
-										Unlimited:   false,
 										MaxRequests: DefaultInTotalListRequestLimit,
 										Period:      DefaultListPeriod,
 									},
-									&rate.Limit{
+									&rate.Limited{
 										Resource:    res.String(),
 										Action:      a.String(),
 										Per:         rate.LimitPerIPAddress,
-										Unlimited:   false,
 										MaxRequests: DefaultIpAddressListRequestLimit,
 										Period:      DefaultListPeriod,
 									},
-									&rate.Limit{
+									&rate.Limited{
 										Resource:    res.String(),
 										Action:      a.String(),
 										Per:         rate.LimitPerAuthToken,
-										Unlimited:   false,
 										MaxRequests: DefaultAuthTokenListRequestLimit,
 										Period:      DefaultListPeriod,
 									},
@@ -575,27 +542,24 @@ func TestConfigsLimits(t *testing.T) {
 							default:
 								limits = append(
 									limits,
-									&rate.Limit{
+									&rate.Limited{
 										Resource:    res.String(),
 										Action:      a.String(),
 										Per:         rate.LimitPerTotal,
-										Unlimited:   false,
 										MaxRequests: DefaultInTotalRequestLimit,
 										Period:      DefaultPeriod,
 									},
-									&rate.Limit{
+									&rate.Limited{
 										Resource:    res.String(),
 										Action:      a.String(),
 										Per:         rate.LimitPerIPAddress,
-										Unlimited:   false,
 										MaxRequests: DefaultIpAddressRequestLimit,
 										Period:      DefaultPeriod,
 									},
-									&rate.Limit{
+									&rate.Limited{
 										Resource:    res.String(),
 										Action:      a.String(),
 										Per:         rate.LimitPerAuthToken,
-										Unlimited:   false,
 										MaxRequests: DefaultAuthTokenRequestLimit,
 										Period:      DefaultPeriod,
 									},
@@ -627,8 +591,8 @@ func TestConfigsLimits(t *testing.T) {
 					Period:    time.Minute * 5,
 				},
 			},
-			func() []*rate.Limit {
-				limits := make([]*rate.Limit, 0, len(resource.Map)*len(action.Map))
+			func() []rate.Limit {
+				limits := make([]rate.Limit, 0, len(resource.Map)*len(action.Map))
 				for _, res := range resource.Map {
 					switch res {
 					case resource.Unknown, resource.All, resource.Controller:
@@ -643,27 +607,24 @@ func TestConfigsLimits(t *testing.T) {
 						case action.List:
 							limits = append(
 								limits,
-								&rate.Limit{
+								&rate.Limited{
 									Resource:    res.String(),
 									Action:      a.String(),
 									Per:         rate.LimitPerTotal,
-									Unlimited:   false,
 									MaxRequests: 20,
 									Period:      time.Minute * 5,
 								},
-								&rate.Limit{
+								&rate.Limited{
 									Resource:    res.String(),
 									Action:      a.String(),
 									Per:         rate.LimitPerIPAddress,
-									Unlimited:   false,
 									MaxRequests: DefaultIpAddressListRequestLimit,
 									Period:      DefaultListPeriod,
 								},
-								&rate.Limit{
+								&rate.Limited{
 									Resource:    res.String(),
 									Action:      a.String(),
 									Per:         rate.LimitPerAuthToken,
-									Unlimited:   false,
 									MaxRequests: DefaultAuthTokenListRequestLimit,
 									Period:      DefaultListPeriod,
 								},
@@ -671,27 +632,24 @@ func TestConfigsLimits(t *testing.T) {
 						default:
 							limits = append(
 								limits,
-								&rate.Limit{
+								&rate.Limited{
 									Resource:    res.String(),
 									Action:      a.String(),
 									Per:         rate.LimitPerTotal,
-									Unlimited:   false,
 									MaxRequests: 20,
 									Period:      time.Minute * 5,
 								},
-								&rate.Limit{
+								&rate.Limited{
 									Resource:    res.String(),
 									Action:      a.String(),
 									Per:         rate.LimitPerIPAddress,
-									Unlimited:   false,
 									MaxRequests: DefaultIpAddressRequestLimit,
 									Period:      DefaultPeriod,
 								},
-								&rate.Limit{
+								&rate.Limited{
 									Resource:    res.String(),
 									Action:      a.String(),
 									Per:         rate.LimitPerAuthToken,
-									Unlimited:   false,
 									MaxRequests: DefaultAuthTokenRequestLimit,
 									Period:      DefaultPeriod,
 								},
@@ -725,8 +683,8 @@ func TestConfigsLimits(t *testing.T) {
 					Unlimited: true,
 				},
 			},
-			func() []*rate.Limit {
-				limits := make([]*rate.Limit, 0, len(resource.Map)*len(action.Map))
+			func() []rate.Limit {
+				limits := make([]rate.Limit, 0, len(resource.Map)*len(action.Map))
 				for _, res := range resource.Map {
 					switch res {
 					case resource.Unknown, resource.All, resource.Controller:
@@ -741,23 +699,20 @@ func TestConfigsLimits(t *testing.T) {
 						default:
 							limits = append(
 								limits,
-								&rate.Limit{
-									Resource:  res.String(),
-									Action:    a.String(),
-									Per:       rate.LimitPerTotal,
-									Unlimited: true,
+								&rate.Unlimited{
+									Resource: res.String(),
+									Action:   a.String(),
+									Per:      rate.LimitPerTotal,
 								},
-								&rate.Limit{
-									Resource:  res.String(),
-									Action:    a.String(),
-									Per:       rate.LimitPerIPAddress,
-									Unlimited: true,
+								&rate.Unlimited{
+									Resource: res.String(),
+									Action:   a.String(),
+									Per:      rate.LimitPerIPAddress,
 								},
-								&rate.Limit{
-									Resource:  res.String(),
-									Action:    a.String(),
-									Per:       rate.LimitPerAuthToken,
-									Unlimited: true,
+								&rate.Unlimited{
+									Resource: res.String(),
+									Action:   a.String(),
+									Per:      rate.LimitPerAuthToken,
 								},
 							)
 						}

@@ -52,7 +52,7 @@ func TestWriteSysEvent(t *testing.T) {
 		setup        func(n string) error
 		cleanup      func()
 		sinkFileName string
-		limits       []*rate.Limit
+		limits       []rate.Limit
 		maxEntries   int
 	}{
 		{
@@ -62,7 +62,7 @@ func TestWriteSysEvent(t *testing.T) {
 			},
 			func() { event.TestResetSystEventer(t) },
 			c.AllEvents.Name(),
-			func() []*rate.Limit {
+			func() []rate.Limit {
 				var c Configs
 				l, err := c.Limits(testCtx)
 				require.NoError(t, err)
@@ -77,7 +77,7 @@ func TestWriteSysEvent(t *testing.T) {
 			},
 			func() { event.TestResetSystEventer(t) },
 			c.AllEvents.Name(),
-			func() []*rate.Limit {
+			func() []rate.Limit {
 				c := Configs{
 					{
 						Resources: []string{"*"},
