@@ -456,6 +456,7 @@ func TestList(t *testing.T) {
 	_, err = sqlDB.ExecContext(ctx, "analyze")
 	require.NoError(t, err)
 
+	// Reverse slices since response is ordered by created_time descending (newest first)
 	slices.Reverse(wantSession)
 	slices.Reverse(wantOtherSession)
 	slices.Reverse(wantAllSessions)
@@ -779,7 +780,7 @@ func TestListPagination(t *testing.T) {
 		}
 		allSessions = append(allSessions, firstOrgSession)
 	}
-	// Reverse since we read items in descending order (newest first)
+	// Reverse slices since response is ordered by created_time descending (newest first)
 	slices.Reverse(allSessions)
 
 	// Run analyze to update postgres estimates
@@ -950,7 +951,7 @@ func TestListPagination(t *testing.T) {
 				ResponseType: "delta",
 				SortBy:       "updated_time",
 				SortDir:      "desc",
-				// Should contain the deleted target
+				// Should contain the deleted session
 				RemovedIds:   []string{deletedSession.Id},
 				EstItemCount: 10,
 			},

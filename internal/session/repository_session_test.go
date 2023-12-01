@@ -24,16 +24,424 @@ import (
 	iamStore "github.com/hashicorp/boundary/internal/iam/store"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/target/tcp"
 	tcpStore "github.com/hashicorp/boundary/internal/target/tcp/store"
+	"github.com/hashicorp/boundary/internal/types/action"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/jackc/pgconn"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
+
+func TestRepository_ListSession(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	const testLimit = 10
+	wrapper := db.TestWrapper(t)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	rw := db.New(conn)
+	kms := kms.TestKms(t, conn, wrapper)
+	ctx := context.Background()
+	composedOf := TestSessionParams(t, conn, wrapper, iamRepo)
+
+	listPerms := &perms.UserPermissions{
+		UserId: composedOf.UserId,
+		Permissions: []perms.Permission{
+			{
+				ScopeId:  composedOf.ProjectId,
+				Resource: resource.Session,
+				Action:   action.List,
+			},
+		},
+	}
+	type args struct {
+		opt []Option
+	}
+	tests := []struct {
+		name            string
+		createCnt       int
+		args            args
+		perms           *perms.UserPermissions
+		wantCnt         int
+		wantErr         bool
+		wantTTime       time.Time
+		withConnections int
+	}{
+		{
+			name:      "default-limit",
+			createCnt: testLimit + 1,
+			args:      args{},
+			perms:     listPerms,
+			wantCnt:   testLimit,
+			wantErr:   false,
+			wantTTime: time.Now(),
+		},
+		{
+			name:      "custom-limit",
+			createCnt: testLimit + 1,
+			args: args{
+				opt: []Option{WithLimit(3)},
+			},
+			perms:     listPerms,
+			wantCnt:   3,
+			wantErr:   false,
+			wantTTime: time.Now(),
+		},
+		{
+			name:      "withNoPerms",
+			createCnt: testLimit + 1,
+			args:      args{},
+			perms:     &perms.UserPermissions{},
+			wantCnt:   0,
+			wantErr:   false,
+			wantTTime: time.Time{},
+		},
+		{
+			name:      "withPermsDifferentScopeId",
+			createCnt: testLimit + 1,
+			args:      args{},
+			perms: &perms.UserPermissions{
+				Permissions: []perms.Permission{
+					{
+						ScopeId:  "o_thisIsNotValid",
+						Resource: resource.Session,
+						Action:   action.List,
+					},
+				},
+			},
+			wantCnt:   0,
+			wantErr:   false,
+			wantTTime: time.Now(),
+		},
+		{
+			name:      "withPermsNonListAction",
+			createCnt: testLimit + 1,
+			args:      args{},
+			perms: &perms.UserPermissions{
+				Permissions: []perms.Permission{
+					{
+						ScopeId:  composedOf.ProjectId,
+						Resource: resource.Session,
+						Action:   action.Read,
+					},
+				},
+			},
+			wantCnt:   0,
+			wantErr:   false,
+			wantTTime: time.Time{},
+		},
+		{
+			name:            "multiple-connections",
+			createCnt:       testLimit + 1,
+			args:            args{},
+			perms:           listPerms,
+			wantCnt:         testLimit,
+			wantErr:         false,
+			withConnections: 3,
+			wantTTime:       time.Now(),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+
+			repo, err := NewRepository(ctx, rw, rw, kms, WithLimit(testLimit), WithPermissions(tt.perms))
+			require.NoError(err)
+
+			db.TestDeleteWhere(t, conn, func() any { i := AllocSession(); return &i }(), "1=1")
+			testSessions := []*Session{}
+			for i := 0; i < tt.createCnt; i++ {
+				s := TestSession(t, conn, wrapper, composedOf)
+				_ = TestState(t, conn, s.PublicId, StatusActive)
+				testSessions = append(testSessions, s)
+				for i := 0; i < tt.withConnections; i++ {
+					_ = TestConnection(t, conn, s.PublicId, "127.0.0.1", 22, "127.0.0.2", 23, "127.0.0.1")
+				}
+			}
+			assert.Equal(tt.createCnt, len(testSessions))
+			got, ttime, err := repo.listSessions(ctx, tt.args.opt...)
+			require.NoError(err)
+			assert.Equal(tt.wantCnt, len(got))
+			// Transaction timestamp should be within ~10 seconds of now
+			assert.True(tt.wantTTime.Before(ttime.Add(10 * time.Second)))
+			assert.True(tt.wantTTime.After(ttime.Add(-10 * time.Second)))
+			for i := 0; i < len(got); i++ {
+				// connections should not be returned for list requests
+				assert.Equal(0, len(got[i].Connections))
+				for _, c := range got[i].Connections {
+					assert.Equal("127.0.0.1", c.ClientTcpAddress)
+					assert.Equal(uint32(22), c.ClientTcpPort)
+					assert.Equal("127.0.0.2", c.EndpointTcpAddress)
+					assert.Equal(uint32(23), c.EndpointTcpPort)
+				}
+			}
+			if tt.wantCnt > 0 {
+				assert.Equal(StatusActive, got[0].States[0].Status)
+				assert.Equal(StatusPending, got[0].States[1].Status)
+			}
+		})
+	}
+	t.Run("onlySelf", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		db.TestDeleteWhere(t, conn, func() any { i := AllocSession(); return &i }(), "1=1")
+		wantCnt := 5
+		for i := 0; i < wantCnt; i++ {
+			_ = TestSession(t, conn, wrapper, composedOf)
+		}
+		s := TestDefaultSession(t, conn, wrapper, iamRepo)
+
+		p := &perms.UserPermissions{
+			UserId: s.UserId,
+			Permissions: []perms.Permission{
+				{
+					ScopeId:  s.ProjectId,
+					Resource: resource.Session,
+					Action:   action.List,
+					OnlySelf: true,
+				},
+			},
+		}
+		repo, err := NewRepository(ctx, rw, rw, kms, WithLimit(testLimit), WithPermissions(p))
+		require.NoError(err)
+		got, ttime, err := repo.listSessions(ctx, WithUserId(s.UserId))
+		require.NoError(err)
+		assert.Equal(1, len(got))
+		assert.Equal(s.UserId, got[0].UserId)
+		// Transaction timestamp should be within ~10 seconds of now
+		assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+		assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
+	})
+	t.Run("withStartPageAfter", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		db.TestDeleteWhere(t, conn, func() any { i := AllocSession(); return &i }(), "1=1")
+
+		composedOf := TestSessionParams(t, conn, wrapper, iamRepo)
+
+		listPerms := &perms.UserPermissions{
+			UserId: composedOf.UserId,
+			Permissions: []perms.Permission{
+				{
+					ScopeId:  composedOf.ProjectId,
+					Resource: resource.Session,
+					Action:   action.List,
+				},
+			},
+		}
+
+		for i := 0; i < 10; i++ {
+			_ = TestSession(t, conn, wrapper, composedOf)
+		}
+
+		repo, err := NewRepository(ctx, rw, rw, kms, WithPermissions(listPerms))
+		require.NoError(err)
+		page1, ttime, err := repo.listSessions(ctx, WithLimit(2))
+		require.NoError(err)
+		require.Len(page1, 2)
+		// Transaction timestamp should be within ~10 seconds of now
+		assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+		assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
+		page2, ttime, err := repo.listSessions(ctx, WithLimit(2), WithStartPageAfterItem(page1[1]))
+		require.NoError(err)
+		require.Len(page2, 2)
+		assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+		assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
+		for _, item := range page1 {
+			assert.NotEqual(item.GetPublicId(), page2[0].GetPublicId())
+			assert.NotEqual(item.GetPublicId(), page2[1].GetPublicId())
+		}
+		page3, ttime, err := repo.listSessions(ctx, WithLimit(2), WithStartPageAfterItem(page2[1]))
+		require.NoError(err)
+		require.Len(page3, 2)
+		assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+		assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
+		for _, item := range page2 {
+			assert.NotEqual(item.GetPublicId(), page3[0].GetPublicId())
+			assert.NotEqual(item.GetPublicId(), page3[1].GetPublicId())
+		}
+		page4, ttime, err := repo.listSessions(ctx, WithLimit(2), WithStartPageAfterItem(page3[1]))
+		require.NoError(err)
+		require.Len(page4, 2)
+		assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+		assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
+		for _, item := range page3 {
+			assert.NotEqual(item.GetPublicId(), page4[0].GetPublicId())
+			assert.NotEqual(item.GetPublicId(), page4[1].GetPublicId())
+		}
+		page5, ttime, err := repo.listSessions(ctx, WithLimit(2), WithStartPageAfterItem(page4[1]))
+		require.NoError(err)
+		require.Len(page5, 2)
+		assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+		assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
+		for _, item := range page4 {
+			assert.NotEqual(item.GetPublicId(), page5[0].GetPublicId())
+			assert.NotEqual(item.GetPublicId(), page5[1].GetPublicId())
+		}
+		page6, ttime, err := repo.listSessions(ctx, WithLimit(2), WithStartPageAfterItem(page5[1]))
+		require.NoError(err)
+		require.Empty(page6)
+		assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+		assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
+
+		// Cancel the first two sessions in lieu of updating
+		_, err = repo.CancelSession(ctx, page1[0].PublicId, page1[0].Version)
+		require.NoError(err)
+		_, err = repo.CancelSession(ctx, page1[1].PublicId, page1[1].Version)
+		require.NoError(err)
+
+		// since it will return newest to oldest, we get page1[1] first
+		page7, ttime, err := repo.listSessionsRefresh(
+			ctx,
+			time.Now().Add(-1*time.Second),
+			WithLimit(1),
+		)
+		require.NoError(err)
+		require.Len(page7, 1)
+		require.Equal(page7[0].GetPublicId(), page1[1].GetPublicId())
+		assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+		assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
+
+		page8, ttime, err := repo.listSessionsRefresh(
+			context.Background(),
+			time.Now().Add(-1*time.Second),
+			WithLimit(1),
+			WithStartPageAfterItem(page7[0]),
+		)
+		require.NoError(err)
+		require.Len(page8, 1)
+		require.Equal(page8[0].GetPublicId(), page1[0].GetPublicId())
+		assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+		assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
+	})
+}
+
+func TestRepository_ListSessions_Multiple_Scopes(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	rw := db.New(conn)
+	kms := kms.TestKms(t, conn, wrapper)
+	ctx := context.Background()
+
+	db.TestDeleteWhere(t, conn, func() any { i := AllocSession(); return &i }(), "1=1")
+
+	const numPerScope = 10
+	var p []perms.Permission
+	for i := 0; i < numPerScope; i++ {
+		composedOf := TestSessionParams(t, conn, wrapper, iamRepo)
+		p = append(p, perms.Permission{
+			ScopeId:  composedOf.ProjectId,
+			Resource: resource.Session,
+			Action:   action.List,
+		})
+		s := TestSession(t, conn, wrapper, composedOf)
+		_ = TestState(t, conn, s.PublicId, StatusActive)
+	}
+
+	repo, err := NewRepository(ctx, rw, rw, kms, WithPermissions(&perms.UserPermissions{
+		Permissions: p,
+	}))
+	require.NoError(t, err)
+	got, ttime, err := repo.listSessions(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, len(p), len(got))
+	// Transaction timestamp should be within ~10 seconds of now
+	assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
+	assert.True(t, time.Now().After(ttime.Add(-10*time.Second)))
+}
+
+func Test_listDeletedIds(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	testKms := kms.TestKms(t, conn, wrapper)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+
+	rw := db.New(conn)
+	repo, err := NewRepository(ctx, rw, rw, testKms)
+	require.NoError(t, err)
+
+	composedOf := TestSessionParams(t, conn, wrapper, iamRepo)
+
+	s := TestSession(t, conn, wrapper, composedOf)
+	_ = TestState(t, conn, s.PublicId, StatusActive)
+
+	// Expect no entries at the start
+	deletedIds, ttime, err := repo.listDeletedIds(ctx, time.Now().AddDate(-1, 0, 0))
+	require.NoError(t, err)
+	require.Empty(t, deletedIds)
+	// Transaction timestamp should be within ~10 seconds of now
+	assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
+	assert.True(t, time.Now().After(ttime.Add(-10*time.Second)))
+
+	// Delete a session
+	_, err = repo.DeleteSession(ctx, s.GetPublicId())
+	require.NoError(t, err)
+
+	// Expect a single entry
+	deletedIds, ttime, err = repo.listDeletedIds(ctx, time.Now().AddDate(-1, 0, 0))
+	require.NoError(t, err)
+	require.Equal(t, []string{s.GetPublicId()}, deletedIds)
+	// Transaction timestamp should be within ~10 seconds of now
+	assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
+	assert.True(t, time.Now().After(ttime.Add(-10*time.Second)))
+
+	// Try again with the time set to now, expect no entries
+	deletedIds, ttime, err = repo.listDeletedIds(ctx, time.Now())
+	require.NoError(t, err)
+	require.Empty(t, deletedIds)
+	// Transaction timestamp should be within ~10 seconds of now
+	assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
+	assert.True(t, time.Now().After(ttime.Add(-10*time.Second)))
+}
+
+func Test_estimatedCount(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	sqlDb, err := conn.SqlDB(ctx)
+	require.NoError(t, err)
+	wrapper := db.TestWrapper(t)
+	testKms := kms.TestKms(t, conn, wrapper)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+
+	rw := db.New(conn)
+	repo, err := NewRepository(ctx, rw, rw, testKms)
+	require.NoError(t, err)
+
+	composedOf := TestSessionParams(t, conn, wrapper, iamRepo)
+
+	// Check total entries at start, expect 0
+	numItems, err := repo.estimatedCount(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 0, numItems)
+
+	// Create a session, expect 1 entries
+	s := TestSession(t, conn, wrapper, composedOf)
+	_ = TestState(t, conn, s.PublicId, StatusActive)
+	// Run analyze to update estimate
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
+	numItems, err = repo.estimatedCount(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 1, numItems)
+
+	// Delete the target, expect 0 again
+	_, err = repo.DeleteSession(ctx, s.GetPublicId())
+	require.NoError(t, err)
+	// Run analyze to update estimate
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
+	numItems, err = repo.estimatedCount(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 0, numItems)
+}
 
 func TestRepository_CreateSession(t *testing.T) {
 	t.Parallel()

@@ -425,12 +425,12 @@ where session_id = ?
 `
 	listSessionsTemplate = `
 with session_ids as (
-	select public_id
-	  from session
-	   -- search condition for applying permissions is constructed
-	 where %s
+    select public_id
+      from session
+           -- search condition for applying permissions is constructed
+     where %s
   order by create_time desc, public_id asc
-	 limit %d
+     limit %d
 )
    select *
      from session_list
@@ -439,13 +439,13 @@ with session_ids as (
 `
 	listSessionsPageTemplate = `
 with session_ids as (
-	select public_id
-	  from session
-	 where (create_time, public_id) < (@last_item_create_time, @last_item_id)
-	   -- search condition for applying permissions is constructed
-	   and %s
+    select public_id
+      from session
+     where (create_time, public_id) < (@last_item_create_time, @last_item_id)
+           -- search condition for applying permissions is constructed
+       and %s
   order by create_time desc, public_id asc
-	 limit %d
+     limit %d
 )
    select *
      from session_list
@@ -454,13 +454,13 @@ with session_ids as (
 `
 	refreshSessionsTemplate = `
 with session_ids as (
-	select public_id
-	  from session
-	 where update_time > @updated_after_time
-	   -- search condition for applying permissions is constructed
-	   and %s
+    select public_id
+      from session
+     where update_time > @updated_after_time
+           -- search condition for applying permissions is constructed
+       and %s
   order by update_time desc, public_id asc
-	 limit %d
+     limit %d
 )
   select *
     from session_list
@@ -469,14 +469,14 @@ order by update_time desc, public_id asc;
 `
 	refreshSessionsPageTemplate = `
 with session_ids as (
-	select public_id
-	  from session
-	 where update_time > @updated_after_time
-	   and (update_time, public_id) < (@last_item_update_time, @last_item_id)
-	   -- search condition for applying permissions is constructed
-	   and %s
+    select public_id
+      from session
+     where update_time > @updated_after_time
+       and (update_time, public_id) < (@last_item_update_time, @last_item_id)
+           -- search condition for applying permissions is constructed
+       and %s
   order by update_time desc, public_id asc
-	 limit %d
+     limit %d
 )
   select *
     from session_list
@@ -484,7 +484,7 @@ with session_ids as (
 order by update_time desc, public_id asc;
 `
 	estimateCountSessions = `
-	select reltuples::bigint as estimate from pg_class where oid in ('session'::regclass)
+    select reltuples::bigint as estimate from pg_class where oid in ('session'::regclass)
 `
 )
 

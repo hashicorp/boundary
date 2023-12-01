@@ -294,11 +294,11 @@ func (r *Repository) listSessions(ctx context.Context, opt ...Option) ([]*Sessio
 	if len(where) > 0 {
 		permissionWhereClause = "(" + strings.Join(where, " or ") + ")"
 		if !opts.withTerminated {
-			permissionWhereClause += " and termination_reason is null "
+			permissionWhereClause += " and termination_reason is null"
 		}
 	} else {
 		if !opts.withTerminated {
-			permissionWhereClause = " where termination_reason is null "
+			permissionWhereClause = " where termination_reason is null"
 		}
 	}
 
@@ -343,11 +343,11 @@ func (r *Repository) listSessionsRefresh(ctx context.Context, updatedAfter time.
 	if len(where) > 0 {
 		permissionWhereClause = "(" + strings.Join(where, " or ") + ")"
 		if !opts.withTerminated {
-			permissionWhereClause += " and termination_reason is null "
+			permissionWhereClause += " and termination_reason is null"
 		}
 	} else {
 		if !opts.withTerminated {
-			permissionWhereClause = " where termination_reason is null "
+			permissionWhereClause = " where termination_reason is null"
 		}
 	}
 

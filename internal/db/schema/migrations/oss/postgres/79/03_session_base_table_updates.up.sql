@@ -3,7 +3,7 @@
 
 begin;
 
-  -- Add new indexes for the update time queries.
+  -- Add new indexes for the create time and update time queries.
   create index session_create_time_public_id_idx
       on session (create_time desc, public_id asc);
   create index session_update_time_public_id_idx

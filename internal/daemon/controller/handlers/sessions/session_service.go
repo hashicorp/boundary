@@ -206,9 +206,10 @@ func (s Service) ListSessions(ctx context.Context, req *pbs.ListSessionsRequest)
 	}
 
 	var listResp *pagination.ListResponse[*session.Session]
-	sortBy := "created_time"
+	var sortBy string
 	includeTerminated := req.GetIncludeTerminated()
 	if req.GetListToken() == "" {
+		sortBy = "created_time"
 		listResp, err = session.List(ctx, grantsHash, pageSize, filterItemFn, repo, includeTerminated)
 		if err != nil {
 			return nil, err
@@ -220,6 +221,7 @@ func (s Service) ListSessions(ctx context.Context, req *pbs.ListSessionsRequest)
 		}
 		switch st := listToken.Subtype.(type) {
 		case *listtoken.PaginationToken:
+			sortBy = "created_time"
 			listResp, err = session.ListPage(ctx, grantsHash, pageSize, filterItemFn, listToken, repo, includeTerminated)
 			if err != nil {
 				return nil, err
