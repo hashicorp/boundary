@@ -5,10 +5,14 @@ package vault
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
+	"slices"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -452,23 +456,173 @@ func (r *Repository) DeleteCredentialLibrary(ctx context.Context, projectId stri
 	return rowsDeleted, nil
 }
 
-// ListCredentialLibraries returns a slice of CredentialLibraries for the
-// storeId. WithLimit is the only option supported.
-func (r *Repository) ListCredentialLibraries(ctx context.Context, storeId string, opt ...Option) ([]*CredentialLibrary, error) {
-	const op = "vault.(Repository).ListCredentialLibraries"
+// ListLibraries returns a slice of CredentialLibraries for the
+// storeId. Supports the following options:
+//   - credential.WithLimit
+//   - credential.WithStartPageAfterItem
+func (r *Repository) ListLibraries(ctx context.Context, storeId string, opt ...credential.Option) ([]credential.Library, time.Time, error) {
+	const op = "vault.(Repository).ListLibraries"
 	if storeId == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "no storeId")
+		return nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "missing store id")
 	}
-	opts := getOpts(opt...)
-	limit := r.defaultLimit
-	if opts.withLimit != 0 {
-		// non-zero signals an override of the default limit for the repo.
-		limit = opts.withLimit
-	}
-	var libs []*CredentialLibrary
-	err := r.reader.SearchWhere(ctx, &libs, "store_id = ?", []any{storeId}, db.WithLimit(limit))
+	opts, err := credential.GetOpts(opt...)
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+		return nil, time.Time{}, errors.Wrap(ctx, err, op)
 	}
-	return libs, nil
+	limit := r.defaultLimit
+	if opts.WithLimit != 0 {
+		// non-zero signals an override of the default limit for the repo.
+		limit = opts.WithLimit
+	}
+	query := fmt.Sprintf(listLibrariesTemplate, limit)
+	args := []any{sql.Named("store_id", storeId)}
+	if opts.WithStartPageAfterItem != nil {
+		query = fmt.Sprintf(listLibrariesPageTemplate, limit)
+		args = append(args,
+			sql.Named("last_item_create_time", opts.WithStartPageAfterItem.GetCreateTime()),
+			sql.Named("last_item_id", opts.WithStartPageAfterItem.GetPublicId()),
+		)
+	}
+
+	libs, transactionTimestamp, err := r.queryLibraries(ctx, query, args)
+	if err != nil {
+		return nil, time.Time{}, errors.Wrap(ctx, err, op)
+	}
+
+	// Sort final slice to ensure correct ordering.
+	// We sort by create time descending (most recently created first).
+	slices.SortFunc(libs, func(i, j credential.Library) int {
+		return j.GetCreateTime().AsTime().Compare(i.GetCreateTime().AsTime())
+	})
+
+	return libs, transactionTimestamp, nil
+}
+
+// ListLibrariesRefresh returns a slice of credential libraries
+// for the store ID. Supports the following options:
+//   - credential.WithLimit
+//   - credential.WithStartPageAfterItem
+func (r *Repository) ListLibrariesRefresh(ctx context.Context, storeId string, updatedAfter time.Time, opt ...credential.Option) ([]credential.Library, time.Time, error) {
+	const op = "vault.(Repository).ListLibrariesRefresh"
+	switch {
+	case storeId == "":
+		return nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "missing credential store ID")
+	case updatedAfter.IsZero():
+		return nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "missing updated after time")
+	}
+	opts, err := credential.GetOpts(opt...)
+	if err != nil {
+		return nil, time.Time{}, errors.Wrap(ctx, err, op)
+	}
+	limit := r.defaultLimit
+	if opts.WithLimit != 0 {
+		// non-zero signals an override of the default limit for the repo.
+		limit = opts.WithLimit
+	}
+
+	query := fmt.Sprintf(listLibrariesRefreshTemplate, limit)
+	args := []any{
+		sql.Named("store_id", storeId),
+		sql.Named("updated_after_time", timestamp.New(updatedAfter)),
+	}
+	if opts.WithStartPageAfterItem != nil {
+		query = fmt.Sprintf(listLibrariesRefreshPageTemplate, limit)
+		args = append(args,
+			sql.Named("last_item_update_time", opts.WithStartPageAfterItem.GetUpdateTime()),
+			sql.Named("last_item_id", opts.WithStartPageAfterItem.GetPublicId()),
+		)
+	}
+
+	libs, transactionTimestamp, err := r.queryLibraries(ctx, query, args)
+	if err != nil {
+		return nil, time.Time{}, errors.Wrap(ctx, err, op)
+	}
+
+	// Sort final slice to ensure correct ordering.
+	// We sort by update time descending (most recently updated first).
+	slices.SortFunc(libs, func(i, j credential.Library) int {
+		return j.GetUpdateTime().AsTime().Compare(i.GetUpdateTime().AsTime())
+	})
+
+	return libs, transactionTimestamp, nil
+}
+
+func (r *Repository) queryLibraries(ctx context.Context, query string, args []any) ([]credential.Library, time.Time, error) {
+	const op = "vault.(Repository).queryLibraries"
+
+	var libs []credential.Library
+	var transactionTimestamp time.Time
+	if _, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(rd db.Reader, w db.Writer) error {
+		rows, err := rd.Query(ctx, query, args)
+		if err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+		var results []listCredentialLibraryResult
+		for rows.Next() {
+			if err := rd.ScanRows(ctx, rows, &results); err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+		}
+		for _, result := range results {
+			lib, err := result.toLibrary(ctx)
+			if err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+			libs = append(libs, lib)
+		}
+		transactionTimestamp, err = rd.Now(ctx)
+		return err
+	}); err != nil {
+		return nil, time.Time{}, err
+	}
+
+	return libs, transactionTimestamp, nil
+}
+
+// EstimatedLibraryCount returns an estimate of the number of Vault credential libraries
+func (r *Repository) EstimatedLibraryCount(ctx context.Context) (int, error) {
+	const op = "vault.(Repository).EstimatedLibraryCount"
+	rows, err := r.reader.Query(ctx, estimateCountCredentialLibraries, nil)
+	if err != nil {
+		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total vault credential libraries"))
+	}
+	var count int
+	for rows.Next() {
+		if err := r.reader.ScanRows(ctx, rows, &count); err != nil {
+			return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total vault credential libraries"))
+		}
+	}
+	return count, nil
+}
+
+// ListDeletedLibraryIds lists the public IDs of any credential libraries deleted since the timestamp provided.
+func (r *Repository) ListDeletedLibraryIds(ctx context.Context, since time.Time) ([]string, time.Time, error) {
+	const op = "vault.(Repository).ListDeletedLibraryIds"
+	var credentialLibraryIds []string
+	var transactionTimestamp time.Time
+	if _, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(r db.Reader, w db.Writer) error {
+		var deletedCredentialLibraries []*deletedCredentialLibrary
+		if err := r.SearchWhere(ctx, &deletedCredentialLibraries, "delete_time >= ?", []any{since}); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to query deleted credential libraries"))
+		}
+		for _, cl := range deletedCredentialLibraries {
+			credentialLibraryIds = append(credentialLibraryIds, cl.PublicId)
+		}
+		var deletedSshCredentialLibraries []*deletedSSHCertificateCredentialLibrary
+		if err := r.SearchWhere(ctx, &deletedSshCredentialLibraries, "delete_time >= ?", []any{since}); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to query deleted SSH certificate credential libraries"))
+		}
+		for _, cl := range deletedSshCredentialLibraries {
+			credentialLibraryIds = append(credentialLibraryIds, cl.PublicId)
+		}
+		var err error
+		transactionTimestamp, err = r.Now(ctx)
+		if err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to query transaction timestamp"))
+		}
+		return nil
+	}); err != nil {
+		return nil, time.Time{}, err
+	}
+	return credentialLibraryIds, transactionTimestamp, nil
 }
