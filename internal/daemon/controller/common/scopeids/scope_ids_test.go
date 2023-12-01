@@ -51,7 +51,7 @@ func TestListingScopeIds(t *testing.T) {
 	sessionsRepoFn := func(opt ...session.Option) (*session.Repository, error) {
 		return session.NewRepository(ctx, rw, rw, kms, opt...)
 	}
-	sess, err := sessions.NewService(ctx, sessionsRepoFn, iamRepoFn)
+	sess, err := sessions.NewService(ctx, sessionsRepoFn, iamRepoFn, 1000)
 	require.NoError(t, err)
 
 	tcs := []struct {
