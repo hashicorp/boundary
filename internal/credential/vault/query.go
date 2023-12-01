@@ -189,4 +189,297 @@ delete from credential_vault_credential
  where session_id is null
    and status not in ('active', 'revoke')
 `
+
+	estimateCountCredentialLibraries = `
+select sum(reltuples::bigint) as estimate
+  from pg_class
+ where oid in (
+  'credential_vault_library'::regclass,
+  'credential_vault_ssh_cert_library'::regclass
+)
+`
+
+	listLibrariesTemplate = `
+with libraries as (
+    select public_id
+      from credential_library
+     where store_id = @store_id
+  order by create_time desc, public_id asc
+     limit %d
+),
+generic_libs as (
+  select *
+    from credential_vault_library
+   where public_id in (select public_id from libraries)
+),
+ssh_libs as (
+  select *
+    from credential_vault_ssh_cert_library
+   where public_id in (select public_id from libraries)
+),
+final as (
+  select public_id,
+         store_id,
+         project_id,
+         name,
+         description,
+         create_time,
+         update_time,
+         version,
+         vault_path,
+         credential_type,
+         http_method,
+         http_request_body,
+         null as username,                     -- Add to make union uniform
+         null as key_type,                     -- Add to make union uniform
+         null as key_bits,                     -- Add to make union uniform
+         null as ttl,                          -- Add to make union uniform
+         null as key_id,                       -- Add to make union uniform
+         null as critical_options,             -- Add to make union uniform
+         null as extensions,                   -- Add to make union uniform
+         null as additional_valid_principals,  -- Add to make union uniform
+         'generic' as type
+    from generic_libs
+   union
+  select public_id,
+         store_id,
+         project_id,
+         name,
+         description,
+         create_time,
+         update_time,
+         version,
+         vault_path,
+         credential_type,
+         null as http_method,       -- Add to make union uniform
+         null as http_request_body, -- Add to make union uniform
+         username,
+         key_type,
+         key_bits,
+         ttl,
+         key_id,
+         critical_options,
+         extensions,
+         additional_valid_principals,
+         'ssh' as type
+    from ssh_libs
+)
+  select *
+    from final
+order by create_time desc, public_id asc;
+`
+
+	listLibrariesPageTemplate = `
+with libraries as (
+    select public_id
+      from credential_library
+     where store_id = @store_id
+       and (create_time, public_id) < (@last_item_create_time, @last_item_id)
+  order by create_time desc, public_id asc
+     limit %d
+),
+generic_libs as (
+  select *
+    from credential_vault_library
+   where public_id in (select public_id from libraries)
+),
+ssh_libs as (
+  select *
+    from credential_vault_ssh_cert_library
+   where public_id in (select public_id from libraries)
+),
+final as (
+  select public_id,
+         store_id,
+         project_id,
+         name,
+         description,
+         create_time,
+         update_time,
+         version,
+         vault_path,
+         credential_type,
+         http_method,
+         http_request_body,
+         null as username,                     -- Add to make union uniform
+         null as key_type,                     -- Add to make union uniform
+         null as key_bits,                     -- Add to make union uniform
+         null as ttl,                          -- Add to make union uniform
+         null as key_id,                       -- Add to make union uniform
+         null as critical_options,             -- Add to make union uniform
+         null as extensions,                   -- Add to make union uniform
+         null as additional_valid_principals,  -- Add to make union uniform
+         'generic' as type
+    from generic_libs
+   union
+  select public_id,
+         store_id,
+         project_id,
+         name,
+         description,
+         create_time,
+         update_time,
+         version,
+         vault_path,
+         credential_type,
+         null as http_method,       -- Add to make union uniform
+         null as http_request_body, -- Add to make union uniform
+         username,
+         key_type,
+         key_bits,
+         ttl,
+         key_id,
+         critical_options,
+         extensions,
+         additional_valid_principals,
+         'ssh' as type
+    from ssh_libs
+)
+  select *
+    from final
+order by create_time desc, public_id asc;
+`
+
+	listLibrariesRefreshTemplate = `
+with libraries as (
+    select public_id
+      from credential_library
+     where store_id = @store_id
+       and update_time > @updated_after_time
+  order by update_time desc, public_id asc
+     limit %d
+),
+generic_libs as (
+  select *
+    from credential_vault_library
+   where public_id in (select public_id from libraries)
+),
+ssh_libs as (
+  select *
+    from credential_vault_ssh_cert_library
+   where public_id in (select public_id from libraries)
+),
+final as (
+  select public_id,
+         store_id,
+         project_id,
+         name,
+         description,
+         create_time,
+         update_time,
+         version,
+         vault_path,
+         credential_type,
+         http_method,
+         http_request_body,
+         null as username,                     -- Add to make union uniform
+         null as key_type,                     -- Add to make union uniform
+         null as key_bits,                     -- Add to make union uniform
+         null as ttl,                          -- Add to make union uniform
+         null as key_id,                       -- Add to make union uniform
+         null as critical_options,             -- Add to make union uniform
+         null as extensions,                   -- Add to make union uniform
+         null as additional_valid_principals,  -- Add to make union uniform
+         'generic' as type
+    from generic_libs
+   union
+  select public_id,
+         store_id,
+         project_id,
+         name,
+         description,
+         create_time,
+         update_time,
+         version,
+         vault_path,
+         credential_type,
+         null as http_method,       -- Add to make union uniform
+         null as http_request_body, -- Add to make union uniform
+         username,
+         key_type,
+         key_bits,
+         ttl,
+         key_id,
+         critical_options,
+         extensions,
+         additional_valid_principals,
+         'ssh' as type
+    from ssh_libs
+)
+  select *
+    from final
+order by update_time desc, public_id asc;
+`
+
+	listLibrariesRefreshPageTemplate = `
+with libraries as (
+    select public_id
+      from credential_library
+     where store_id = @store_id
+       and update_time > @updated_after_time
+       and (update_time, public_id) < (@last_item_update_time, @last_item_id)
+  order by update_time desc, public_id asc
+     limit %d
+),
+generic_libs as (
+  select *
+    from credential_vault_library
+   where public_id in (select public_id from libraries)
+),
+ssh_libs as (
+  select *
+    from credential_vault_ssh_cert_library
+   where public_id in (select public_id from libraries)
+),
+final as (
+  select public_id,
+         store_id,
+         project_id,
+         name,
+         description,
+         create_time,
+         update_time,
+         version,
+         vault_path,
+         credential_type,
+         http_method,
+         http_request_body,
+         null as username,                     -- Add to make union uniform
+         null as key_type,                     -- Add to make union uniform
+         null as key_bits,                     -- Add to make union uniform
+         null as ttl,                          -- Add to make union uniform
+         null as key_id,                       -- Add to make union uniform
+         null as critical_options,             -- Add to make union uniform
+         null as extensions,                   -- Add to make union uniform
+         null as additional_valid_principals,  -- Add to make union uniform
+         'generic' as type
+    from generic_libs
+   union
+  select public_id,
+         store_id,
+         project_id,
+         name,
+         description,
+         create_time,
+         update_time,
+         version,
+         vault_path,
+         credential_type,
+         null as http_method,       -- Add to make union uniform
+         null as http_request_body, -- Add to make union uniform
+         username,
+         key_type,
+         key_bits,
+         ttl,
+         key_id,
+         critical_options,
+         extensions,
+         additional_valid_principals,
+         'ssh' as type
+    from ssh_libs
+)
+  select *
+    from final
+order by update_time desc, public_id asc;
+`
 )
