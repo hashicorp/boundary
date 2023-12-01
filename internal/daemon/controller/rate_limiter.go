@@ -8,8 +8,27 @@ import (
 
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/internal/ratelimit"
 	"github.com/hashicorp/go-rate"
+)
+
+// limit is a representation of a rate.Limit that is used when emitting a sys
+// event to report the rate limit configuration.
+type limit struct {
+	Resource  string `json:"resource"`
+	Action    string `json:"action"`
+	Per       string `json:"per"`
+	Unlimited bool   `json:"unlimited"`
+	Limit     uint64 `json:"limit"`
+	Period    string `json:"period"`
+}
+
+// Types used for the nested structure of the sys event.
+type (
+	actionLimits    []limit
+	resourceActions map[string]actionLimits
+	resources       map[string]resourceActions
 )
 
 type rateLimiterConfig struct {
@@ -42,6 +61,69 @@ func newRateLimiterConfig(ctx context.Context, configs ratelimit.Configs, maxSiz
 		configs:  configs,
 		limits:   limits,
 	}, nil
+}
+
+// writeSysEvent writes a sys event for c
+func (c *rateLimiterConfig) writeSysEvent(ctx context.Context) {
+	const op = "controller.(rateLimiterConfig).writeSysEvent"
+
+	if c.disabled {
+		event.WriteSysEvent(
+			ctx,
+			op,
+			"controller api rate limiter",
+			"disabled",
+			true,
+		)
+		return
+	}
+
+	e := make(resources)
+
+	for _, l := range c.limits {
+		var r resourceActions
+		var a actionLimits
+		var ok bool
+		r, ok = e[l.GetResource()]
+		if !ok {
+			r = make(resourceActions)
+			e[l.GetResource()] = r
+		}
+
+		a, ok = r[l.GetAction()]
+		if !ok {
+			a = make(actionLimits, 0, 3)
+		}
+
+		switch ll := l.(type) {
+		case *rate.Limited:
+			a = append(a, limit{
+				Resource:  ll.Resource,
+				Action:    ll.Action,
+				Per:       ll.Per.String(),
+				Unlimited: false,
+				Limit:     ll.MaxRequests,
+				Period:    ll.Period.String(),
+			})
+		case *rate.Unlimited:
+			a = append(a, limit{
+				Resource:  ll.Resource,
+				Action:    ll.Action,
+				Per:       ll.Per.String(),
+				Unlimited: true,
+			})
+		}
+		r[l.GetAction()] = a
+	}
+	event.WriteSysEvent(
+		ctx,
+		op,
+		"controller api rate limiter",
+		"limits",
+		e,
+		"max_size",
+		c.maxSize,
+	)
 }
 
 func (c *Controller) initializeRateLimiter(conf *config.Config) error {
@@ -78,6 +160,7 @@ func (c *Controller) initializeRateLimiter(conf *config.Config) error {
 
 	c.conf.rateLimiterConfig = rlConfig
 
+	rlConfig.writeSysEvent(c.baseContext)
 	return nil
 }
 
@@ -136,6 +219,7 @@ func (c *Controller) ReloadRateLimiter(newConfig *config.Config) error {
 	c.rateLimiter = limiter
 	c.conf.rateLimiterConfig = rlConfig
 	c.rateLimiterMu.Unlock()
+	rlConfig.writeSysEvent(c.baseContext)
 
 	return old.Shutdown()
 }

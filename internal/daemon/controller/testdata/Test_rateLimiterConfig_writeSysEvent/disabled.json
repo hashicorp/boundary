@@ -1,0 +1,15 @@
+{
+  "id": "",
+  "source": "https://hashicorp.com/boundary/Test_rateLimiterConfig_writeSysEvent",
+  "specversion": "1.0",
+  "type": "system",
+  "data": {
+    "data": {
+      "disabled": true,
+      "msg": "controller api rate limiter"
+    },
+    "op": "controller.(rateLimiterConfig).writeSysEvent",
+    "version": "v0.1"
+  },
+  "datacontentype": "application/cloudevents"
+}
