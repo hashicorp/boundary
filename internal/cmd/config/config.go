@@ -217,6 +217,7 @@ type Controller struct {
 
 	ApiRateLimits            ratelimit.Configs `hcl:"-"`
 	ApiRateLimiterMaxEntries int               `hcl:"api_rate_limit_max_entries"`
+	ApiRateLimitDisable      bool              `hcl:"api_rate_limit_disable"`
 
 	// License is the license used by HCP builds
 	License string `hcl:"license"`
