@@ -113,7 +113,7 @@ func extractResourceAction(path, method string) (res, act string, err error) {
 }
 
 // LimiterFunc returns a rate.Limiter
-type LimiterFunc func() *rate.Limiter
+type LimiterFunc func() Limiter
 
 // Handler is an http middleware handler that checks if a request is allowed
 // using the rate limiter returned by f. If the request is allowed, the next handler

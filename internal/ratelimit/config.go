@@ -116,10 +116,10 @@ func (c Configs) Equal(o Configs) bool {
 
 // Limits creates a slice of rate.Limit from the Configs. This will enumerate
 // every combination of resource+action, defining a Limit for each.
-func (c Configs) Limits(ctx context.Context) ([]*rate.Limit, error) {
+func (c Configs) Limits(ctx context.Context) ([]rate.Limit, error) {
 	const op = "ratelimit.(Configs).Limits"
 
-	defaults := make(map[string]*rate.Limit, len(resource.Map)*len(action.Map))
+	defaults := make(map[string]rate.Limit, len(resource.Map)*len(action.Map))
 
 	allResources := make([]resource.Type, 0, len(resource.Map))
 	for _, res := range resource.Map {
@@ -145,52 +145,46 @@ func (c Configs) Limits(ctx context.Context) ([]*rate.Limit, error) {
 			ipAddressKey := fmt.Sprintf("%s:%s:%s", res.String(), a.String(), rate.LimitPerIPAddress)
 			switch a {
 			case action.List:
-				defaults[inTotalKey] = &rate.Limit{
+				defaults[inTotalKey] = &rate.Limited{
 					Resource:    res.String(),
 					Action:      a.String(),
 					Per:         rate.LimitPerTotal,
-					Unlimited:   false,
 					MaxRequests: DefaultInTotalListRequestLimit,
 					Period:      DefaultListPeriod,
 				}
-				defaults[authTokenKey] = &rate.Limit{
+				defaults[authTokenKey] = &rate.Limited{
 					Resource:    res.String(),
 					Action:      a.String(),
 					Per:         rate.LimitPerAuthToken,
-					Unlimited:   false,
 					MaxRequests: DefaultAuthTokenListRequestLimit,
 					Period:      DefaultListPeriod,
 				}
-				defaults[ipAddressKey] = &rate.Limit{
+				defaults[ipAddressKey] = &rate.Limited{
 					Resource:    res.String(),
 					Action:      a.String(),
 					Per:         rate.LimitPerIPAddress,
-					Unlimited:   false,
 					MaxRequests: DefaultIpAddressListRequestLimit,
 					Period:      DefaultListPeriod,
 				}
 			default:
-				defaults[inTotalKey] = &rate.Limit{
+				defaults[inTotalKey] = &rate.Limited{
 					Resource:    res.String(),
 					Action:      a.String(),
 					Per:         rate.LimitPerTotal,
-					Unlimited:   false,
 					MaxRequests: DefaultInTotalRequestLimit,
 					Period:      DefaultPeriod,
 				}
-				defaults[authTokenKey] = &rate.Limit{
+				defaults[authTokenKey] = &rate.Limited{
 					Resource:    res.String(),
 					Action:      a.String(),
 					Per:         rate.LimitPerAuthToken,
-					Unlimited:   false,
 					MaxRequests: DefaultAuthTokenRequestLimit,
 					Period:      DefaultPeriod,
 				}
-				defaults[ipAddressKey] = &rate.Limit{
+				defaults[ipAddressKey] = &rate.Limited{
 					Resource:    res.String(),
 					Action:      a.String(),
 					Per:         rate.LimitPerIPAddress,
-					Unlimited:   false,
 					MaxRequests: DefaultIpAddressRequestLimit,
 					Period:      DefaultPeriod,
 				}
@@ -223,13 +217,21 @@ func (c Configs) Limits(ctx context.Context) ([]*rate.Limit, error) {
 				for a := range validActions {
 					key := fmt.Sprintf("%s:%s:%s", res.String(), a.String(), rate.LimitPer(cc.Per))
 
-					defaults[key] = &rate.Limit{
-						Resource:    res.String(),
-						Action:      a.String(),
-						Per:         rate.LimitPer(cc.Per),
-						Unlimited:   cc.Unlimited,
-						MaxRequests: uint64(cc.Limit),
-						Period:      cc.Period,
+					switch {
+					case cc.Unlimited:
+						defaults[key] = &rate.Unlimited{
+							Resource: res.String(),
+							Action:   a.String(),
+							Per:      rate.LimitPer(cc.Per),
+						}
+					default:
+						defaults[key] = &rate.Limited{
+							Resource:    res.String(),
+							Action:      a.String(),
+							Per:         rate.LimitPer(cc.Per),
+							MaxRequests: uint64(cc.Limit),
+							Period:      cc.Period,
+						}
 					}
 				}
 			}
@@ -251,20 +253,28 @@ func (c Configs) Limits(ctx context.Context) ([]*rate.Limit, error) {
 					}
 					key := fmt.Sprintf("%s:%s:%s", res.String(), a.String(), rate.LimitPer(cc.Per))
 
-					defaults[key] = &rate.Limit{
-						Resource:    res.String(),
-						Action:      a.String(),
-						Per:         rate.LimitPer(cc.Per),
-						Unlimited:   cc.Unlimited,
-						MaxRequests: uint64(cc.Limit),
-						Period:      cc.Period,
+					switch {
+					case cc.Unlimited:
+						defaults[key] = &rate.Unlimited{
+							Resource: res.String(),
+							Action:   a.String(),
+							Per:      rate.LimitPer(cc.Per),
+						}
+					default:
+						defaults[key] = &rate.Limited{
+							Resource:    res.String(),
+							Action:      a.String(),
+							Per:         rate.LimitPer(cc.Per),
+							MaxRequests: uint64(cc.Limit),
+							Period:      cc.Period,
+						}
 					}
 				}
 			}
 		}
 	}
 
-	limits := make([]*rate.Limit, 0, len(defaults))
+	limits := make([]rate.Limit, 0, len(defaults))
 	for _, v := range defaults {
 		limits = append(limits, v)
 	}

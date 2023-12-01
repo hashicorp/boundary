@@ -36,28 +36,25 @@ func TestHandler(t *testing.T) {
 		{
 			"AllowedList",
 			func() *rate.Limiter {
-				r, err := rate.NewLimiter([]*rate.Limit{
-					{
+				r, err := rate.NewLimiter([]rate.Limit{
+					&rate.Limited{
 						Resource:    resource.Target.String(),
 						Action:      action.List.String(),
 						Per:         rate.LimitPerTotal,
-						Unlimited:   false,
 						MaxRequests: 10,
 						Period:      time.Minute,
 					},
-					{
+					&rate.Limited{
 						Resource:    resource.Target.String(),
 						Action:      action.List.String(),
 						Per:         rate.LimitPerIPAddress,
-						Unlimited:   false,
 						MaxRequests: 10,
 						Period:      time.Minute,
 					},
-					{
+					&rate.Limited{
 						Resource:    resource.Target.String(),
 						Action:      action.List.String(),
 						Per:         rate.LimitPerAuthToken,
-						Unlimited:   false,
 						MaxRequests: 10,
 						Period:      time.Minute,
 					},
@@ -81,28 +78,25 @@ func TestHandler(t *testing.T) {
 		{
 			"AllowedCreate",
 			func() *rate.Limiter {
-				r, err := rate.NewLimiter([]*rate.Limit{
-					{
+				r, err := rate.NewLimiter([]rate.Limit{
+					&rate.Limited{
 						Resource:    resource.Target.String(),
 						Action:      action.Create.String(),
 						Per:         rate.LimitPerTotal,
-						Unlimited:   false,
 						MaxRequests: 10,
 						Period:      time.Minute,
 					},
-					{
+					&rate.Limited{
 						Resource:    resource.Target.String(),
 						Action:      action.Create.String(),
 						Per:         rate.LimitPerIPAddress,
-						Unlimited:   false,
 						MaxRequests: 10,
 						Period:      time.Minute,
 					},
-					{
+					&rate.Limited{
 						Resource:    resource.Target.String(),
 						Action:      action.Create.String(),
 						Per:         rate.LimitPerAuthToken,
-						Unlimited:   false,
 						MaxRequests: 10,
 						Period:      time.Minute,
 					},
@@ -126,28 +120,25 @@ func TestHandler(t *testing.T) {
 		{
 			"AllowedRead",
 			func() *rate.Limiter {
-				r, err := rate.NewLimiter([]*rate.Limit{
-					{
+				r, err := rate.NewLimiter([]rate.Limit{
+					&rate.Limited{
 						Resource:    resource.Target.String(),
 						Action:      action.Read.String(),
 						Per:         rate.LimitPerTotal,
-						Unlimited:   false,
 						MaxRequests: 10,
 						Period:      time.Minute,
 					},
-					{
+					&rate.Limited{
 						Resource:    resource.Target.String(),
 						Action:      action.Read.String(),
 						Per:         rate.LimitPerIPAddress,
-						Unlimited:   false,
 						MaxRequests: 10,
 						Period:      time.Minute,
 					},
-					{
+					&rate.Limited{
 						Resource:    resource.Target.String(),
 						Action:      action.Read.String(),
 						Per:         rate.LimitPerAuthToken,
-						Unlimited:   false,
 						MaxRequests: 10,
 						Period:      time.Minute,
 					},
@@ -171,28 +162,25 @@ func TestHandler(t *testing.T) {
 		{
 			"AllowedUpdate",
 			func() *rate.Limiter {
-				r, err := rate.NewLimiter([]*rate.Limit{
-					{
+				r, err := rate.NewLimiter([]rate.Limit{
+					&rate.Limited{
 						Resource:    resource.Target.String(),
 						Action:      action.Update.String(),
 						Per:         rate.LimitPerTotal,
-						Unlimited:   false,
 						MaxRequests: 10,
 						Period:      time.Minute,
 					},
-					{
+					&rate.Limited{
 						Resource:    resource.Target.String(),
 						Action:      action.Update.String(),
 						Per:         rate.LimitPerIPAddress,
-						Unlimited:   false,
 						MaxRequests: 10,
 						Period:      time.Minute,
 					},
-					{
+					&rate.Limited{
 						Resource:    resource.Target.String(),
 						Action:      action.Update.String(),
 						Per:         rate.LimitPerAuthToken,
-						Unlimited:   false,
 						MaxRequests: 10,
 						Period:      time.Minute,
 					},
@@ -216,28 +204,25 @@ func TestHandler(t *testing.T) {
 		{
 			"AllowedDelete",
 			func() *rate.Limiter {
-				r, err := rate.NewLimiter([]*rate.Limit{
-					{
+				r, err := rate.NewLimiter([]rate.Limit{
+					&rate.Limited{
 						Resource:    resource.Target.String(),
 						Action:      action.Delete.String(),
 						Per:         rate.LimitPerTotal,
-						Unlimited:   false,
 						MaxRequests: 10,
 						Period:      time.Minute,
 					},
-					{
+					&rate.Limited{
 						Resource:    resource.Target.String(),
 						Action:      action.Delete.String(),
 						Per:         rate.LimitPerIPAddress,
-						Unlimited:   false,
 						MaxRequests: 10,
 						Period:      time.Minute,
 					},
-					{
+					&rate.Limited{
 						Resource:    resource.Target.String(),
 						Action:      action.Delete.String(),
 						Per:         rate.LimitPerAuthToken,
-						Unlimited:   false,
 						MaxRequests: 10,
 						Period:      time.Minute,
 					},
@@ -261,28 +246,25 @@ func TestHandler(t *testing.T) {
 		{
 			"AllowedAuthorizeSession",
 			func() *rate.Limiter {
-				r, err := rate.NewLimiter([]*rate.Limit{
-					{
+				r, err := rate.NewLimiter([]rate.Limit{
+					&rate.Limited{
 						Resource:    resource.Target.String(),
 						Action:      action.AuthorizeSession.String(),
 						Per:         rate.LimitPerTotal,
-						Unlimited:   false,
 						MaxRequests: 10,
 						Period:      time.Minute,
 					},
-					{
+					&rate.Limited{
 						Resource:    resource.Target.String(),
 						Action:      action.AuthorizeSession.String(),
 						Per:         rate.LimitPerIPAddress,
-						Unlimited:   false,
 						MaxRequests: 10,
 						Period:      time.Minute,
 					},
-					{
+					&rate.Limited{
 						Resource:    resource.Target.String(),
 						Action:      action.AuthorizeSession.String(),
 						Per:         rate.LimitPerAuthToken,
-						Unlimited:   false,
 						MaxRequests: 10,
 						Period:      time.Minute,
 					},
@@ -306,28 +288,25 @@ func TestHandler(t *testing.T) {
 		{
 			"AllowedAuthorizeSessionTargetNameSlash",
 			func() *rate.Limiter {
-				r, err := rate.NewLimiter([]*rate.Limit{
-					{
+				r, err := rate.NewLimiter([]rate.Limit{
+					&rate.Limited{
 						Resource:    resource.Target.String(),
 						Action:      action.AuthorizeSession.String(),
 						Per:         rate.LimitPerTotal,
-						Unlimited:   false,
 						MaxRequests: 10,
 						Period:      time.Minute,
 					},
-					{
+					&rate.Limited{
 						Resource:    resource.Target.String(),
 						Action:      action.AuthorizeSession.String(),
 						Per:         rate.LimitPerIPAddress,
-						Unlimited:   false,
 						MaxRequests: 10,
 						Period:      time.Minute,
 					},
-					{
+					&rate.Limited{
 						Resource:    resource.Target.String(),
 						Action:      action.AuthorizeSession.String(),
 						Per:         rate.LimitPerAuthToken,
-						Unlimited:   false,
 						MaxRequests: 10,
 						Period:      time.Minute,
 					},
@@ -351,28 +330,25 @@ func TestHandler(t *testing.T) {
 		{
 			"Limited",
 			func() *rate.Limiter {
-				r, err := rate.NewLimiter([]*rate.Limit{
-					{
+				r, err := rate.NewLimiter([]rate.Limit{
+					&rate.Limited{
 						Resource:    resource.Target.String(),
 						Action:      action.List.String(),
 						Per:         rate.LimitPerTotal,
-						Unlimited:   false,
 						MaxRequests: 2,
 						Period:      time.Minute,
 					},
-					{
+					&rate.Limited{
 						Resource:    resource.Target.String(),
 						Action:      action.List.String(),
 						Per:         rate.LimitPerIPAddress,
-						Unlimited:   false,
 						MaxRequests: 2,
 						Period:      time.Minute,
 					},
-					{
+					&rate.Limited{
 						Resource:    resource.Target.String(),
 						Action:      action.List.String(),
 						Per:         rate.LimitPerAuthToken,
-						Unlimited:   false,
 						MaxRequests: 2,
 						Period:      time.Minute,
 					},
@@ -405,52 +381,46 @@ func TestHandler(t *testing.T) {
 		{
 			"LimiterFull",
 			func() *rate.Limiter {
-				r, err := rate.NewLimiter([]*rate.Limit{
-					{
+				r, err := rate.NewLimiter([]rate.Limit{
+					&rate.Limited{
 						Resource:    resource.Target.String(),
 						Action:      action.List.String(),
 						Per:         rate.LimitPerTotal,
-						Unlimited:   false,
 						MaxRequests: 2,
 						Period:      time.Minute,
 					},
-					{
+					&rate.Limited{
 						Resource:    resource.Target.String(),
 						Action:      action.Read.String(),
 						Per:         rate.LimitPerTotal,
-						Unlimited:   false,
 						MaxRequests: 2,
 						Period:      time.Minute,
 					},
-					{
+					&rate.Limited{
 						Resource:    resource.Target.String(),
 						Action:      action.List.String(),
 						Per:         rate.LimitPerIPAddress,
-						Unlimited:   false,
 						MaxRequests: 2,
 						Period:      time.Minute,
 					},
-					{
+					&rate.Limited{
 						Resource:    resource.Target.String(),
 						Action:      action.Read.String(),
 						Per:         rate.LimitPerIPAddress,
-						Unlimited:   false,
 						MaxRequests: 2,
 						Period:      time.Minute,
 					},
-					{
+					&rate.Limited{
 						Resource:    resource.Target.String(),
 						Action:      action.List.String(),
 						Per:         rate.LimitPerAuthToken,
-						Unlimited:   false,
 						MaxRequests: 2,
 						Period:      time.Minute,
 					},
-					{
+					&rate.Limited{
 						Resource:    resource.Target.String(),
 						Action:      action.Read.String(),
 						Per:         rate.LimitPerAuthToken,
-						Unlimited:   false,
 						MaxRequests: 2,
 						Period:      time.Minute,
 					},
@@ -476,28 +446,25 @@ func TestHandler(t *testing.T) {
 		{
 			"MissingLimit",
 			func() *rate.Limiter {
-				r, err := rate.NewLimiter([]*rate.Limit{
-					{
+				r, err := rate.NewLimiter([]rate.Limit{
+					&rate.Limited{
 						Resource:    resource.Target.String(),
 						Action:      action.List.String(),
 						Per:         rate.LimitPerTotal,
-						Unlimited:   false,
 						MaxRequests: 2,
 						Period:      time.Minute,
 					},
-					{
+					&rate.Limited{
 						Resource:    resource.Target.String(),
 						Action:      action.List.String(),
 						Per:         rate.LimitPerIPAddress,
-						Unlimited:   false,
 						MaxRequests: 2,
 						Period:      time.Minute,
 					},
-					{
+					&rate.Limited{
 						Resource:    resource.Target.String(),
 						Action:      action.List.String(),
 						Per:         rate.LimitPerAuthToken,
-						Unlimited:   false,
 						MaxRequests: 2,
 						Period:      time.Minute,
 					},
@@ -518,28 +485,25 @@ func TestHandler(t *testing.T) {
 		{
 			"UnknownResource",
 			func() *rate.Limiter {
-				r, err := rate.NewLimiter([]*rate.Limit{
-					{
+				r, err := rate.NewLimiter([]rate.Limit{
+					&rate.Limited{
 						Resource:    resource.Target.String(),
 						Action:      action.List.String(),
 						Per:         rate.LimitPerTotal,
-						Unlimited:   false,
 						MaxRequests: 2,
 						Period:      time.Minute,
 					},
-					{
+					&rate.Limited{
 						Resource:    resource.Target.String(),
 						Action:      action.List.String(),
 						Per:         rate.LimitPerIPAddress,
-						Unlimited:   false,
 						MaxRequests: 2,
 						Period:      time.Minute,
 					},
-					{
+					&rate.Limited{
 						Resource:    resource.Target.String(),
 						Action:      action.List.String(),
 						Per:         rate.LimitPerAuthToken,
-						Unlimited:   false,
 						MaxRequests: 2,
 						Period:      time.Minute,
 					},
@@ -560,28 +524,25 @@ func TestHandler(t *testing.T) {
 		{
 			"UnknownAction",
 			func() *rate.Limiter {
-				r, err := rate.NewLimiter([]*rate.Limit{
-					{
+				r, err := rate.NewLimiter([]rate.Limit{
+					&rate.Limited{
 						Resource:    resource.Target.String(),
 						Action:      action.List.String(),
 						Per:         rate.LimitPerTotal,
-						Unlimited:   false,
 						MaxRequests: 2,
 						Period:      time.Minute,
 					},
-					{
+					&rate.Limited{
 						Resource:    resource.Target.String(),
 						Action:      action.List.String(),
 						Per:         rate.LimitPerIPAddress,
-						Unlimited:   false,
 						MaxRequests: 2,
 						Period:      time.Minute,
 					},
-					{
+					&rate.Limited{
 						Resource:    resource.Target.String(),
 						Action:      action.List.String(),
 						Per:         rate.LimitPerAuthToken,
-						Unlimited:   false,
 						MaxRequests: 2,
 						Period:      time.Minute,
 					},
@@ -602,28 +563,25 @@ func TestHandler(t *testing.T) {
 		{
 			"UnknownActionInvalidIdHttpMethod",
 			func() *rate.Limiter {
-				r, err := rate.NewLimiter([]*rate.Limit{
-					{
+				r, err := rate.NewLimiter([]rate.Limit{
+					&rate.Limited{
 						Resource:    resource.Target.String(),
 						Action:      action.List.String(),
 						Per:         rate.LimitPerTotal,
-						Unlimited:   false,
 						MaxRequests: 2,
 						Period:      time.Minute,
 					},
-					{
+					&rate.Limited{
 						Resource:    resource.Target.String(),
 						Action:      action.List.String(),
 						Per:         rate.LimitPerIPAddress,
-						Unlimited:   false,
 						MaxRequests: 2,
 						Period:      time.Minute,
 					},
-					{
+					&rate.Limited{
 						Resource:    resource.Target.String(),
 						Action:      action.List.String(),
 						Per:         rate.LimitPerAuthToken,
-						Unlimited:   false,
 						MaxRequests: 2,
 						Period:      time.Minute,
 					},
@@ -644,28 +602,25 @@ func TestHandler(t *testing.T) {
 		{
 			"UnknownActionInvalidHttpMethod",
 			func() *rate.Limiter {
-				r, err := rate.NewLimiter([]*rate.Limit{
-					{
+				r, err := rate.NewLimiter([]rate.Limit{
+					&rate.Limited{
 						Resource:    resource.Target.String(),
 						Action:      action.List.String(),
 						Per:         rate.LimitPerTotal,
-						Unlimited:   false,
 						MaxRequests: 2,
 						Period:      time.Minute,
 					},
-					{
+					&rate.Limited{
 						Resource:    resource.Target.String(),
 						Action:      action.List.String(),
 						Per:         rate.LimitPerIPAddress,
-						Unlimited:   false,
 						MaxRequests: 2,
 						Period:      time.Minute,
 					},
-					{
+					&rate.Limited{
 						Resource:    resource.Target.String(),
 						Action:      action.List.String(),
 						Per:         rate.LimitPerAuthToken,
-						Unlimited:   false,
 						MaxRequests: 2,
 						Period:      time.Minute,
 					},
@@ -686,28 +641,25 @@ func TestHandler(t *testing.T) {
 		{
 			"UnsupportedAction",
 			func() *rate.Limiter {
-				r, err := rate.NewLimiter([]*rate.Limit{
-					{
+				r, err := rate.NewLimiter([]rate.Limit{
+					&rate.Limited{
 						Resource:    resource.Target.String(),
 						Action:      action.List.String(),
 						Per:         rate.LimitPerTotal,
-						Unlimited:   false,
 						MaxRequests: 2,
 						Period:      time.Minute,
 					},
-					{
+					&rate.Limited{
 						Resource:    resource.Target.String(),
 						Action:      action.List.String(),
 						Per:         rate.LimitPerIPAddress,
-						Unlimited:   false,
 						MaxRequests: 2,
 						Period:      time.Minute,
 					},
-					{
+					&rate.Limited{
 						Resource:    resource.Target.String(),
 						Action:      action.List.String(),
 						Per:         rate.LimitPerAuthToken,
-						Unlimited:   false,
 						MaxRequests: 2,
 						Period:      time.Minute,
 					},
@@ -815,28 +767,25 @@ func TestHandlerErrors(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			r, err := rate.NewLimiter([]*rate.Limit{
-				{
+			r, err := rate.NewLimiter([]rate.Limit{
+				&rate.Limited{
 					Resource:    resource.Target.String(),
 					Action:      action.List.String(),
 					Per:         rate.LimitPerTotal,
-					Unlimited:   false,
 					MaxRequests: 10,
 					Period:      time.Minute,
 				},
-				{
+				&rate.Limited{
 					Resource:    resource.Target.String(),
 					Action:      action.List.String(),
 					Per:         rate.LimitPerIPAddress,
-					Unlimited:   false,
 					MaxRequests: 10,
 					Period:      time.Minute,
 				},
-				{
+				&rate.Limited{
 					Resource:    resource.Target.String(),
 					Action:      action.List.String(),
 					Per:         rate.LimitPerAuthToken,
-					Unlimited:   false,
 					MaxRequests: 10,
 					Period:      time.Minute,
 				},
