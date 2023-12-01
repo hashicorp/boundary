@@ -14,6 +14,8 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/errors"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	"github.com/hashicorp/boundary/internal/listtoken"
+	"github.com/hashicorp/boundary/internal/pagination"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/session"
@@ -53,14 +55,15 @@ func init() {
 type Service struct {
 	pbs.UnsafeSessionServiceServer
 
-	repoFn    session.RepositoryFactory
-	iamRepoFn common.IamRepoFactory
+	repoFn      session.RepositoryFactory
+	iamRepoFn   common.IamRepoFactory
+	maxPageSize uint
 }
 
 var _ pbs.SessionServiceServer = (*Service)(nil)
 
 // NewService returns a session service which handles session related requests to boundary.
-func NewService(ctx context.Context, repoFn session.RepositoryFactory, iamRepoFn common.IamRepoFactory) (Service, error) {
+func NewService(ctx context.Context, repoFn session.RepositoryFactory, iamRepoFn common.IamRepoFactory, maxPageSize uint) (Service, error) {
 	const op = "sessions.NewService"
 	if repoFn == nil {
 		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing session repository")
@@ -68,7 +71,10 @@ func NewService(ctx context.Context, repoFn session.RepositoryFactory, iamRepoFn
 	if iamRepoFn == nil {
 		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing iam repository")
 	}
-	return Service{repoFn: repoFn, iamRepoFn: iamRepoFn}, nil
+	if maxPageSize == 0 {
+		maxPageSize = uint(globals.DefaultMaxPageSize)
+	}
+	return Service{repoFn: repoFn, iamRepoFn: iamRepoFn, maxPageSize: maxPageSize}, nil
 }
 
 // GetSessions implements the interface pbs.SessionServiceServer.
@@ -130,7 +136,7 @@ func (s Service) ListSessions(ctx context.Context, req *pbs.ListSessionsRequest)
 	const op = "session.(Service).ListSessions"
 
 	if err := validateListRequest(ctx, req); err != nil {
-		return nil, err
+		return nil, errors.Wrap(ctx, err, op)
 	}
 
 	authResults := s.authResult(ctx, req.GetScopeId(), action.List, false)
@@ -143,13 +149,12 @@ func (s Service) ListSessions(ctx context.Context, req *pbs.ListSessionsRequest)
 			req.GetRecursive() &&
 			authResults.AuthenticationFinished {
 		} else {
-			return nil, authResults.Error
+			return nil, errors.Wrap(ctx, authResults.Error, op)
 		}
 	}
 
 	var scopeIds map[string]*scopes.ScopeInfo
 	var err error
-
 	if !req.GetRecursive() {
 		scopeIds = map[string]*scopes.ScopeInfo{authResults.Scope.Id: authResults.Scope}
 	} else {
@@ -157,6 +162,42 @@ func (s Service) ListSessions(ctx context.Context, req *pbs.ListSessionsRequest)
 		if err != nil {
 			return nil, err
 		}
+	}
+
+	pageSize := int(s.maxPageSize)
+	// Use the requested page size only if it is smaller than
+	// the configured max.
+	if req.GetPageSize() != 0 && uint(req.GetPageSize()) < s.maxPageSize {
+		pageSize = int(req.GetPageSize())
+	}
+	var filterItemFn func(ctx context.Context, item *session.Session) (bool, error)
+	switch {
+	case req.GetFilter() != "":
+		// Only use a filter if we need to
+		filter, err := handlers.NewFilter(ctx, req.GetFilter())
+		if err != nil {
+			return nil, err
+		}
+		filterItemFn = func(ctx context.Context, item *session.Session) (bool, error) {
+			outputOpts, ok := newOutputOpts(ctx, item, scopeIds, authResults)
+			if !ok {
+				return false, nil
+			}
+			pbItem, err := toProto(ctx, item, outputOpts...)
+			if err != nil {
+				return false, err
+			}
+			return filter.Match(pbItem), nil
+		}
+	default:
+		filterItemFn = func(ctx context.Context, item *session.Session) (bool, error) {
+			return true, nil
+		}
+	}
+
+	grantsHash, err := authResults.GrantsHash(ctx)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
 	}
 
 	listPerms := authResults.ACL().ListPermissions(scopeIds, resource.Session, IdActions, authResults.UserId)
@@ -169,51 +210,76 @@ func (s Service) ListSessions(ctx context.Context, req *pbs.ListSessionsRequest)
 		return nil, errors.Wrap(ctx, err, op)
 	}
 
-	sesList, err := repo.ListSessions(ctx, session.WithTerminated(req.GetIncludeTerminated()), session.WithLimit(-1))
-	if err != nil {
-		return nil, err
-	}
-	if len(sesList) == 0 {
-		return &pbs.ListSessionsResponse{}, nil
-	}
-
-	filter, err := handlers.NewFilter(ctx, req.GetFilter())
-	if err != nil {
-		return nil, err
-	}
-	finalItems := make([]*pb.Session, 0, len(sesList))
-	res := perms.Resource{
-		Type: resource.Session,
-	}
-	for _, item := range sesList {
-		res.Id = item.GetPublicId()
-		res.ScopeId = item.GetProjectId()
-		authorizedActions := authResults.FetchActionSetForId(ctx, item.GetPublicId(), IdActions, auth.WithResource(&res)).Strings()
-		if len(authorizedActions) == 0 {
-			continue
-		}
-
-		outputFields := authResults.FetchOutputFields(res, action.List).SelfOrDefaults(authResults.UserId)
-		outputOpts := make([]handlers.Option, 0, 3)
-		outputOpts = append(outputOpts, handlers.WithOutputFields(outputFields))
-		if outputFields.Has(globals.ScopeField) {
-			outputOpts = append(outputOpts, handlers.WithScope(scopeIds[item.ProjectId]))
-		}
-		if outputFields.Has(globals.AuthorizedActionsField) {
-			outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions))
-		}
-
-		item, err := toProto(ctx, item, outputOpts...)
+	var listResp *pagination.ListResponse[*session.Session]
+	var sortBy string
+	includeTerminated := req.GetIncludeTerminated()
+	if req.GetListToken() == "" {
+		sortBy = "created_time"
+		listResp, err = session.List(ctx, grantsHash, pageSize, filterItemFn, repo, includeTerminated)
 		if err != nil {
 			return nil, err
 		}
-
-		if filter.Match(item) {
-			finalItems = append(finalItems, item)
+	} else {
+		listToken, err := handlers.ParseListToken(ctx, req.GetListToken(), resource.Session, grantsHash)
+		if err != nil {
+			return nil, err
+		}
+		switch st := listToken.Subtype.(type) {
+		case *listtoken.PaginationToken:
+			sortBy = "created_time"
+			listResp, err = session.ListPage(ctx, grantsHash, pageSize, filterItemFn, listToken, repo, includeTerminated)
+			if err != nil {
+				return nil, err
+			}
+		case *listtoken.StartRefreshToken:
+			sortBy = "updated_time"
+			listResp, err = session.ListRefresh(ctx, grantsHash, pageSize, filterItemFn, listToken, repo, includeTerminated)
+			if err != nil {
+				return nil, err
+			}
+		case *listtoken.RefreshToken:
+			sortBy = "updated_time"
+			listResp, err = session.ListRefreshPage(ctx, grantsHash, pageSize, filterItemFn, listToken, repo, includeTerminated)
+			if err != nil {
+				return nil, err
+			}
+		default:
+			return nil, handlers.ApiErrorWithCodeAndMessage(codes.InvalidArgument, "unexpected list token subtype: %T", st)
 		}
 	}
 
-	return &pbs.ListSessionsResponse{Items: finalItems}, nil
+	finalItems := make([]*pb.Session, 0, len(listResp.Items))
+	for _, item := range listResp.Items {
+		outputOpts, ok := newOutputOpts(ctx, item, scopeIds, authResults)
+		if !ok {
+			continue
+		}
+		item, err := toProto(ctx, item, outputOpts...)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		finalItems = append(finalItems, item)
+	}
+	respType := "delta"
+	if listResp.CompleteListing {
+		respType = "complete"
+	}
+	resp := &pbs.ListSessionsResponse{
+		Items:        finalItems,
+		EstItemCount: uint32(listResp.EstimatedItemCount),
+		RemovedIds:   listResp.DeletedIds,
+		ResponseType: respType,
+		SortBy:       sortBy,
+		SortDir:      "desc",
+	}
+
+	if listResp.ListToken != nil {
+		resp.ListToken, err = handlers.MarshalListToken(ctx, listResp.ListToken, pbs.ResourceType_RESOURCE_TYPE_SESSION)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return resp, nil
 }
 
 // CancelSession implements the interface pbs.SessionServiceServer.
@@ -505,4 +571,27 @@ func validateCancelRequest(req *pbs.CancelSessionRequest) error {
 		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)
 	}
 	return nil
+}
+
+func newOutputOpts(ctx context.Context, item *session.Session, scopeIds map[string]*scopes.ScopeInfo, authResults auth.VerifyResults) ([]handlers.Option, bool) {
+	res := perms.Resource{
+		Type:    resource.Session,
+		Id:      item.GetPublicId(),
+		ScopeId: item.GetProjectId(),
+	}
+	authorizedActions := authResults.FetchActionSetForId(ctx, item.GetPublicId(), IdActions, auth.WithResource(&res)).Strings()
+	if len(authorizedActions) == 0 {
+		return nil, false
+	}
+
+	outputFields := authResults.FetchOutputFields(res, action.List).SelfOrDefaults(authResults.UserId)
+	outputOpts := make([]handlers.Option, 0, 3)
+	outputOpts = append(outputOpts, handlers.WithOutputFields(outputFields))
+	if outputFields.Has(globals.ScopeField) {
+		outputOpts = append(outputOpts, handlers.WithScope(scopeIds[item.ProjectId]))
+	}
+	if outputFields.Has(globals.AuthorizedActionsField) {
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions))
+	}
+	return outputOpts, true
 }

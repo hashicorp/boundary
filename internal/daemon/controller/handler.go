@@ -252,7 +252,7 @@ func (c *Controller) registerGrpcServices(s *grpc.Server) error {
 		services.RegisterRoleServiceServer(s, rs)
 	}
 	if _, ok := currentServices[services.SessionService_ServiceDesc.ServiceName]; !ok {
-		ss, err := sessions.NewService(c.baseContext, c.SessionRepoFn, c.IamRepoFn)
+		ss, err := sessions.NewService(c.baseContext, c.SessionRepoFn, c.IamRepoFn, c.conf.RawConfig.Controller.MaxPageSize)
 		if err != nil {
 			return fmt.Errorf("failed to create session handler service: %w", err)
 		}
