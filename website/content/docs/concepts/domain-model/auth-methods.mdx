@@ -2,7 +2,7 @@
 layout: docs
 page_title: Domain model - auth methods
 description: |-
-  The anatomy of a Boundary auth method
+  Use auth methods to authenticate users to Boundary. Learn which attributes you can configure for password, OIDC, and LDAP auth methods in Boundary.
 ---
 
 # Auth methods
@@ -79,6 +79,21 @@ The OIDC auth method has the following additional attributes:
   user is challenged again. A value of `0` sets an immediate requirement for all
   users to reauthenticate, and an unset `maxAge` results in a Terraform value of
   -1 and the default TTL of the chosen OIDC is used.
+
+- `prompt` (optional) If you configure this attribute, the OIDC authorization server prompts users for reauthentication, account selection, or consent when they log in.
+You can optionally configure one or more of the following additional attributes to customize the behavior of the authentication process:
+   - `none` (optional) The authorization server does not display any authentication or consent prompts.
+   - `login` (optional) The authorization server prompts users for reauthentication before allowing them to log in.
+   - `consent` (optional) The authorization server prompts users for consent before returning any information to Boundary.
+   - `select_account` (optional) The authorization server prompts users to select a user account.
+   The `select_account` setting can be helpful if your users have multiple accounts.
+
+<Note>
+
+Cloud providers implement `prompt` in different ways.
+You may notice differences in behavior if you configure OIDC authentication on multiple cloud providers.
+
+</Note>
 
 - `signing-algorithm` (required) The allowed signing algorithm. You can specify this attribute
   multiple times for multiple values.
