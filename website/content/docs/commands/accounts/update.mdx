@@ -2,7 +2,7 @@
 layout: docs
 page_title: accounts update - Command
 description: |-
-  The "accounts update" command lets Boundary admin update an account resource.
+  The "accounts update" command updates an existing account resource's LDAP, OIDC, or password authentication information.
 ---
 
 # accounts update
@@ -131,7 +131,7 @@ The `boundary accounts update oidc` command updates an OIDC account.
 
 #### Example
 
-The folloiwng example updates an OIDC account with the ID `acctoidc_1234567890` to add the name `devops` and the description `Oidc account for DevOps`:
+The following example updates an OIDC account with the ID `acctoidc_1234567890` to add the name `devops` and the description `Oidc account for DevOps`:
 
 ```shell-session
 $ boundary accounts update oidc -id acctoidc_1234567890 \
