@@ -123,21 +123,13 @@ At this time, the only supported storage is AWS S3.
 
 ### Boundary workers requirements
 
-[Session recording](/boundary/docs/configuration/session-recording) requires at least one PKI worker that:
+[Session recording](/boundary/docs/configuration/session-recording) requires at least one worker that:
 - Has access to the AWS S3 storage bucket
-- Has an accessible directory defined by `recording_storage_path` for storing session recordings while they are in progress. On session closure, Boundary moves the local session recording to remote storage and deletes the local copy. For more details, refer to the [PKI worker configuration](/boundary/docs/configuration/worker/pki-worker#session-recording) documentation.
+- Has an accessible directory defined by `recording_storage_path` for storing session recordings while they are in progress. On session closure, Boundary moves the local session recording to remote storage and deletes the local copy.
+   - For HCP Boundary, refer to the [Self-managed worker configuration](/hcp/docs/boundary/self-managed-workers) documentation.
+   - For Boundary Enterprise, refer to the refer to the [PKI worker configuration](/boundary/docs/configuration/worker/pki-worker#session-recording) documentation.
 - Has at least 1 MB of available disk space.
 - Runs Darwin, Windows, or Linux. The following binaries are not supported for session recording: NetBSD, OpenBSD, Solaris.
-
-Development example:
-
-```hcl
-worker {
-auth_storage_path="/boundary/demo-worker-1"
-initial_upstreams = ["10.0.0.1"]
-recording_storage_path="/local/storage/directory"
-}
-```
 
 Complete the following steps to create a storage bucket in Boundary for session recording:
 
