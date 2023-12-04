@@ -340,8 +340,8 @@ github.com/hashicorp/go-multierror v1.1.1/go.mod h1:iw975J/qwKPdAO1clOe2L8331t/9
 github.com/hashicorp/go-plugin v1.4.3/go.mod h1:5fGEH17QVwTTcR0zV7yhDPLLmFX9YSZ38b18Udy6vYQ=
 github.com/hashicorp/go-plugin v1.4.9 h1:ESiK220/qE0aGxWdzKIvRH69iLiuN/PjoLTm69RoWtU=
 github.com/hashicorp/go-plugin v1.4.9/go.mod h1:viDMjcLJuDui6pXb8U4HVfb8AamCWhHGUjr2IrTF67s=
-github.com/hashicorp/go-rate v0.0.0-20231130213406-dd41f530f095 h1:l/scdJ8Uy823fhxFEdwlDR5NkDRdoOOaH6g36Uqz1AM=
-github.com/hashicorp/go-rate v0.0.0-20231130213406-dd41f530f095/go.mod h1:uTQC66EFZuSKunHYx0hHIfdH3nhRrv7UOOE8Ug0yI0A=
+github.com/hashicorp/go-rate v0.0.0-20231204194614-cc8d401f70ab h1:XIeGyyCCS80b5MKfU4E6ioLocIYtT4FmfdNH0uNYQi8=
+github.com/hashicorp/go-rate v0.0.0-20231204194614-cc8d401f70ab/go.mod h1:uTQC66EFZuSKunHYx0hHIfdH3nhRrv7UOOE8Ug0yI0A=
 github.com/hashicorp/go-retryablehttp v0.5.3/go.mod h1:9B5zBasrRhHXnJnui7y6sL7es7NDiJgTc6Er0maI1Xs=
 github.com/hashicorp/go-retryablehttp v0.7.2 h1:AcYqCvkpalPnPF2pn0KamgwamS42TqUDDYFRKq/RAd0=
 github.com/hashicorp/go-retryablehttp v0.7.2/go.mod h1:Jy/gPYAdjqffZ/yFGCFV2doI5wjtH1ewM9u8iYVjtX8=
