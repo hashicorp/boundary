@@ -484,6 +484,8 @@ type TestControllerOpts struct {
 
 	// Toggle worker auth debugging
 	WorkerAuthDebuggingEnabled *atomic.Bool
+
+	DisableRateLimiting bool
 }
 
 func NewTestController(t testing.TB, opts *TestControllerOpts) *TestController {
@@ -781,6 +783,10 @@ func TestControllerConfig(t testing.TB, ctx context.Context, tc *TestController,
 		if err := tc.b.CreateDevDatabase(ctx, createOpts...); err != nil {
 			t.Fatal(err)
 		}
+	}
+
+	if opts.DisableRateLimiting {
+		opts.Config.Controller.ApiRateLimitDisable = true
 	}
 
 	return &Config{
