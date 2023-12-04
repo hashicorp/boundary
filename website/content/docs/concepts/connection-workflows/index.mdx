@@ -12,35 +12,36 @@ This topic provides an overview of the possible workflows you may use to connect
 ## Boundary connect
 
 When you run the `boundary connect` command against a target, Boundary establishes a local authenticated proxy to the address on the target's default port.
-The `boundary connect` command has a number of notable options, such as `-listen-port` to choose the port on which the connect command listens for an incoming connection.
+The `boundary connect` command has a number of useful options, such as `-listen-port` which lets you choose the port on which the command listens for an incoming connection.
+Refer to the [`boundary connect`](/boundary/docs/commands/connect) documentation for a list of the available options and usage examples.
 
-Refer to the [domain model documentation](/boundary/docs/concepts/domain-model) for more information about the available options.
+To practice using the `boundary connect` command, refer to the [Connecting to your first target](/boundary/tutorials/oss-getting-started/oss-getting-started-connect) tutorial.
 
 ## Connect helpers
 
-The `listen-port` command is convenient for allowing Boundary to work with applications that allow you to select the connection address but not the port.
-For many applications, there are additional challenges, which is why connect helpers can be useful.
-Connect helpers automatically accept SSH key prompts and are supported for the following connection types:
+Boundary features connect helpers that assist with making connections to targets using certain protocols.
+Connect helpers automatically accept key prompts for you.
+They are supported for the following connection types:
 
-- SSH
-- RDP
-- PostgreSQL
 - HTTP
 - Kubernetes
+- PostgreSQL
+- RDP
+- SSH
 
-Refer to [Connect helpers](/boundary/docs/concepts/connection-workflows/connect-helpers) for more information about configuring connect helpers
+Refer to the [Connect helpers](/boundary/docs/concepts/connection-workflows/connect-helpers) topic for more information about using connect helpers.
 
 ## Exec flag
 
-In addition to the built-in connect helpers, `boundary connect` can accommodate executing clients even when there is no built-in support for a specific client using `-exec`.
-The `-exec` flag is a very powerful tool, allowing you to wrap Boundary TCP sessions in your preferred client.
+In addition to the built-in connect helpers, `boundary connect` can accommodate executing clients even when there is no built-in support for a specific client using the `-exec` flag.
+The `-exec` flag lets you wrap Boundary TCP sessions in your preferred client.
 You can use this flag to create an authenticated proxy to almost anything.
 
 Refer to [Execute clients using -exec](/boundary/docs/concepts/connection-workflows/exec-flag) for more information about using the `-exec` flag.
 
 ## SSH ProxyCommand
 
-SSH `ProxyCommand` lets you proxy an SSH connection to a target according to a configuration file you create.
-You can configure the file to connect to the target ID or the target domain to simplify common common developer and operator workflows.
+SSH `ProxyCommand` lets you proxy an SSH connection to a target according to a configuration file that you create.
+You can configure the file to connect to the target ID or the target domain to simplify common developer and operator workflows.
 
 Refer to [SSH ProxyCommand](/boundary/docs/concepts/connection-workflows/workflow-ssh-proxycommand) for more information about configuring SSH `ProxyCommand`.
