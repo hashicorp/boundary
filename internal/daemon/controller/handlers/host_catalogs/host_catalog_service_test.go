@@ -1552,6 +1552,9 @@ func TestUpdate_Plugin(t *testing.T) {
 					cmpopts.SortSlices(func(a, b protocmp.Message) bool {
 						return a.String() < b.String()
 					}),
+					cmpopts.SortSlices(func(a, b *structpb.Value) bool {
+						return a.String() < b.String()
+					}),
 				))
 			},
 		},
