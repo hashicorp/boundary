@@ -779,7 +779,7 @@ func TestConfigsLimits(t *testing.T) {
 	}
 }
 
-func TestDefaulLimiterMaxEntries(t *testing.T) {
+func TestDefaulLimiterMaxQuotas(t *testing.T) {
 	var want int
 
 	var endpointCount int
@@ -795,6 +795,6 @@ func TestDefaulLimiterMaxEntries(t *testing.T) {
 	}
 	want = endpointCount*2000 + endpointCount
 
-	got := DefaultLimiterMaxEntries()
+	got := DefaultLimiterMaxQuotas()
 	assert.Equal(t, want, got)
 }

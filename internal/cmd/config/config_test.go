@@ -109,10 +109,10 @@ func TestDevController(t *testing.T) {
 			},
 		},
 		Controller: &Controller{
-			Name:                     "dev-controller",
-			Description:              "A default controller created in dev mode",
-			ApiRateLimits:            make(ratelimit.Configs, 0),
-			ApiRateLimiterMaxEntries: ratelimit.DefaultLimiterMaxEntries(),
+			Name:                    "dev-controller",
+			Description:             "A default controller created in dev mode",
+			ApiRateLimits:           make(ratelimit.Configs, 0),
+			ApiRateLimiterMaxQuotas: ratelimit.DefaultLimiterMaxQuotas(),
 		},
 		DevController: true,
 	}
@@ -484,10 +484,10 @@ func TestDevCombined(t *testing.T) {
 			},
 		},
 		Controller: &Controller{
-			Name:                     "dev-controller",
-			Description:              "A default controller created in dev mode",
-			ApiRateLimits:            make(ratelimit.Configs, 0),
-			ApiRateLimiterMaxEntries: ratelimit.DefaultLimiterMaxEntries(),
+			Name:                    "dev-controller",
+			Description:             "A default controller created in dev mode",
+			ApiRateLimits:           make(ratelimit.Configs, 0),
+			ApiRateLimiterMaxQuotas: ratelimit.DefaultLimiterMaxQuotas(),
 		},
 		DevController: true,
 		Worker: &Worker{

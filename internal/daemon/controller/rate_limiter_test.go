@@ -60,7 +60,7 @@ func Test_newRateLimiterConfig(t *testing.T) {
 		{
 			"defaults",
 			nil,
-			ratelimit.DefaultLimiterMaxEntries(),
+			ratelimit.DefaultLimiterMaxQuotas(),
 			false,
 			&rateLimiterConfig{
 				maxSize:  296148,
@@ -82,7 +82,7 @@ func Test_newRateLimiterConfig(t *testing.T) {
 					Unlimited: false,
 				},
 			},
-			ratelimit.DefaultLimiterMaxEntries(),
+			ratelimit.DefaultLimiterMaxQuotas(),
 			true,
 			nil,
 			fmt.Errorf("controller.newRateLimiterConfig: disabled rate limiter with rate limit configs: configuration issue: error #5000"),
@@ -131,7 +131,7 @@ func TestController_initializeRateLimiter(t *testing.T) {
 			"defaults",
 			&config.Config{
 				Controller: &config.Controller{
-					ApiRateLimiterMaxEntries: ratelimit.DefaultLimiterMaxEntries(),
+					ApiRateLimiterMaxQuotas: ratelimit.DefaultLimiterMaxQuotas(),
 				},
 			},
 			false,
@@ -151,8 +151,8 @@ func TestController_initializeRateLimiter(t *testing.T) {
 							Unlimited: false,
 						},
 					},
-					ApiRateLimiterMaxEntries: ratelimit.DefaultLimiterMaxEntries(),
-					ApiRateLimitDisable:      true,
+					ApiRateLimiterMaxQuotas: ratelimit.DefaultLimiterMaxQuotas(),
+					ApiRateLimitDisable:     true,
 				},
 			},
 			false,
@@ -216,7 +216,7 @@ func TestControllerReloadRateLimiter(t *testing.T) {
 			func() *Controller {
 				conf := &config.Config{
 					Controller: &config.Controller{
-						ApiRateLimiterMaxEntries: ratelimit.DefaultLimiterMaxEntries(),
+						ApiRateLimiterMaxQuotas: ratelimit.DefaultLimiterMaxQuotas(),
 					},
 				}
 				c := &Controller{
@@ -241,7 +241,7 @@ func TestControllerReloadRateLimiter(t *testing.T) {
 							Unlimited: false,
 						},
 					},
-					ApiRateLimiterMaxEntries: ratelimit.DefaultLimiterMaxEntries(),
+					ApiRateLimiterMaxQuotas: ratelimit.DefaultLimiterMaxQuotas(),
 				},
 			},
 			true,
@@ -252,7 +252,7 @@ func TestControllerReloadRateLimiter(t *testing.T) {
 			func() *Controller {
 				conf := &config.Config{
 					Controller: &config.Controller{
-						ApiRateLimiterMaxEntries: ratelimit.DefaultLimiterMaxEntries(),
+						ApiRateLimiterMaxQuotas: ratelimit.DefaultLimiterMaxQuotas(),
 					},
 				}
 				c := &Controller{
@@ -267,7 +267,7 @@ func TestControllerReloadRateLimiter(t *testing.T) {
 			}(),
 			&config.Config{
 				Controller: &config.Controller{
-					ApiRateLimiterMaxEntries: 3000,
+					ApiRateLimiterMaxQuotas: 3000,
 				},
 			},
 			true,
@@ -278,7 +278,7 @@ func TestControllerReloadRateLimiter(t *testing.T) {
 			func() *Controller {
 				conf := &config.Config{
 					Controller: &config.Controller{
-						ApiRateLimiterMaxEntries: ratelimit.DefaultLimiterMaxEntries(),
+						ApiRateLimiterMaxQuotas: ratelimit.DefaultLimiterMaxQuotas(),
 					},
 				}
 				c := &Controller{
@@ -319,7 +319,7 @@ func TestControllerReloadRateLimiter(t *testing.T) {
 			}(),
 			&config.Config{
 				Controller: &config.Controller{
-					ApiRateLimiterMaxEntries: ratelimit.DefaultLimiterMaxEntries(),
+					ApiRateLimiterMaxQuotas: ratelimit.DefaultLimiterMaxQuotas(),
 				},
 			},
 			true,
@@ -330,7 +330,7 @@ func TestControllerReloadRateLimiter(t *testing.T) {
 			func() *Controller {
 				conf := &config.Config{
 					Controller: &config.Controller{
-						ApiRateLimiterMaxEntries: ratelimit.DefaultLimiterMaxEntries(),
+						ApiRateLimiterMaxQuotas: ratelimit.DefaultLimiterMaxQuotas(),
 					},
 				}
 				c := &Controller{
@@ -345,7 +345,7 @@ func TestControllerReloadRateLimiter(t *testing.T) {
 			}(),
 			&config.Config{
 				Controller: &config.Controller{
-					ApiRateLimiterMaxEntries: ratelimit.DefaultLimiterMaxEntries(),
+					ApiRateLimiterMaxQuotas: ratelimit.DefaultLimiterMaxQuotas(),
 					ApiRateLimits: ratelimit.Configs{
 						{
 							Resources: []string{"*"},
@@ -367,7 +367,7 @@ func TestControllerReloadRateLimiter(t *testing.T) {
 			func() *Controller {
 				conf := &config.Config{
 					Controller: &config.Controller{
-						ApiRateLimiterMaxEntries: ratelimit.DefaultLimiterMaxEntries(),
+						ApiRateLimiterMaxQuotas: ratelimit.DefaultLimiterMaxQuotas(),
 					},
 				}
 				c := &Controller{
@@ -382,7 +382,7 @@ func TestControllerReloadRateLimiter(t *testing.T) {
 			}(),
 			&config.Config{
 				Controller: &config.Controller{
-					ApiRateLimiterMaxEntries: 0,
+					ApiRateLimiterMaxQuotas: 0,
 					ApiRateLimits: ratelimit.Configs{
 						{
 							Resources: []string{"*"},
@@ -403,7 +403,7 @@ func TestControllerReloadRateLimiter(t *testing.T) {
 			func() *Controller {
 				conf := &config.Config{
 					Controller: &config.Controller{
-						ApiRateLimiterMaxEntries: ratelimit.DefaultLimiterMaxEntries(),
+						ApiRateLimiterMaxQuotas: ratelimit.DefaultLimiterMaxQuotas(),
 					},
 				}
 				c := &Controller{
@@ -418,7 +418,7 @@ func TestControllerReloadRateLimiter(t *testing.T) {
 			}(),
 			&config.Config{
 				Controller: &config.Controller{
-					ApiRateLimiterMaxEntries: ratelimit.DefaultLimiterMaxEntries(),
+					ApiRateLimiterMaxQuotas: ratelimit.DefaultLimiterMaxQuotas(),
 				},
 			},
 			false,
@@ -429,7 +429,7 @@ func TestControllerReloadRateLimiter(t *testing.T) {
 			func() *Controller {
 				conf := &config.Config{
 					Controller: &config.Controller{
-						ApiRateLimiterMaxEntries: ratelimit.DefaultLimiterMaxEntries(),
+						ApiRateLimiterMaxQuotas: ratelimit.DefaultLimiterMaxQuotas(),
 					},
 				}
 				c := &Controller{
@@ -453,7 +453,7 @@ func TestControllerReloadRateLimiter(t *testing.T) {
 			func() *Controller {
 				conf := &config.Config{
 					Controller: &config.Controller{
-						ApiRateLimiterMaxEntries: ratelimit.DefaultLimiterMaxEntries(),
+						ApiRateLimiterMaxQuotas: ratelimit.DefaultLimiterMaxQuotas(),
 					},
 				}
 				c := &Controller{
@@ -522,7 +522,7 @@ func Test_rateLimiterConfig_writeSysEvent(t *testing.T) {
 			func() { event.TestResetSystEventer(t) },
 			c.AllEvents.Name(),
 			nil,
-			ratelimit.DefaultLimiterMaxEntries(),
+			ratelimit.DefaultLimiterMaxQuotas(),
 			false,
 		},
 		{
@@ -558,7 +558,7 @@ func Test_rateLimiterConfig_writeSysEvent(t *testing.T) {
 					Unlimited: false,
 				},
 			},
-			ratelimit.DefaultLimiterMaxEntries(),
+			ratelimit.DefaultLimiterMaxQuotas(),
 			false,
 		},
 		{

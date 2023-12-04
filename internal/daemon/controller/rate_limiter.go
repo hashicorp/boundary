@@ -141,7 +141,7 @@ func (c *Controller) initializeRateLimiter(conf *config.Config) error {
 	rlConfig, err := newRateLimiterConfig(
 		c.baseContext,
 		conf.Controller.ApiRateLimits,
-		conf.Controller.ApiRateLimiterMaxEntries,
+		conf.Controller.ApiRateLimiterMaxQuotas,
 		conf.Controller.ApiRateLimitDisable,
 	)
 	if err != nil {
@@ -189,7 +189,7 @@ func (c *Controller) ReloadRateLimiter(newConfig *config.Config) error {
 	rlConfig, err := newRateLimiterConfig(
 		c.baseContext,
 		newConfig.Controller.ApiRateLimits,
-		newConfig.Controller.ApiRateLimiterMaxEntries,
+		newConfig.Controller.ApiRateLimiterMaxQuotas,
 		newConfig.Controller.ApiRateLimitDisable,
 	)
 	if err != nil {
