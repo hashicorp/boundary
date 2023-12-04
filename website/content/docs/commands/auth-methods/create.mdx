@@ -2,7 +2,7 @@
 layout: docs
 page_title: auth-methods create - Command
 description: |-
-  The "auth-methods create" command lets Boundary admin create an auth method.
+  The "auth-methods create" command creates auth method resources in Boundary. You can create LDAP, OIDC, and password auth method types.
 ---
 
 # auth-methods create
@@ -237,6 +237,21 @@ The following are OIDC-specific options in addition to the command options:
 - `-issuer` `(string: "")` - Indicates the provider's issuer URL.
 
 - `-max-age` `(string: "")` - Indicates the OIDC "max_age" parameter that is sent to the provider.
+
+- `prompts` `(string: "")` - Indicates whether the OIDC authorization server should display reauthentication, account selection, or consent user interface prompts.
+You can optionally configure one or more of the following types of prompts to customize the behavior of the authentication process:
+   - `none` - The authorization server does not display any authentication or consent prompts.
+   - `login` - The authorization server prompts users for reauthentication before allowing them to log in.
+   - `consent` - The authorization server prompts users for consent before returning any information to Boundary.
+   - `select_account` - The authorization server prompts users to select a user account.
+   The `select_account` option can be helpful if your users have multiple accounts.
+
+<Note>
+
+Cloud providers implement `prompts` in different ways.
+You may notice differences in behavior if you configure OIDC authentication on multiple cloud providers.
+
+</Note>
 
 - `-signing-algorithm` `(string: "")` - Indicates the allowed signing algorithm. You may specify this multiple times for multiple values.
 
