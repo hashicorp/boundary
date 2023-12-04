@@ -54,7 +54,7 @@ func TestService_List(t *testing.T) {
 		targets = append(targets, targettest.TestNewTestTarget(ctx, t, conn, proj1.GetPublicId(), fmt.Sprintf("proj1-%d", i)))
 	}
 
-	// since we sort ascending, we need to reverse targets
+	// since we sort descending, we need to reverse targets
 	slices.Reverse(targets)
 
 	// Run analyze to update target estimate
