@@ -50,17 +50,17 @@ const (
 	DefaultListPeriod                = time.Second * 30
 )
 
-// defaultLimiterMaxEntries is the default maximum number of quotas that
+// defaultLimiterMaxQuotas is the default maximum number of quotas that
 // can be tracked by the rate limiter.
 // This is determined at initialization time based on the number of endpoints.
-var defaultLimiterMaxEntries int
+var defaultLimiterMaxQuotas int
 
-var initDefaultLimiterMaxEntries sync.Once
+var initDefaultLimiterMaxQuotas sync.Once
 
-// DefaultLimiterMaxEntries returns the default maximum number of quotas that
+// DefaultLimiterMaxQuotas returns the default maximum number of quotas that
 // can be tracked by the rate limiter.
-func DefaultLimiterMaxEntries() int {
-	initDefaultLimiterMaxEntries.Do(func() {
+func DefaultLimiterMaxQuotas() int {
+	initDefaultLimiterMaxQuotas.Do(func() {
 		// Calculate the default max number of quotas that the rate limiter can
 		// store. This is calculated based on the number of endpoints and a
 		// static number of quotas per endpoint. This seems like a reasonable
@@ -86,11 +86,11 @@ func DefaultLimiterMaxEntries() int {
 			endpointCount += len(actions)
 		}
 
-		defaultLimiterMaxEntries = (endpointCount * quotasPerInTotal) +
+		defaultLimiterMaxQuotas = (endpointCount * quotasPerInTotal) +
 			(endpointCount * quotasPerAuthToken) +
 			(endpointCount * quotasPerIpAddress)
 	})
-	return defaultLimiterMaxEntries
+	return defaultLimiterMaxQuotas
 }
 
 // Config is used to configure rate limits. Each config is used to specify

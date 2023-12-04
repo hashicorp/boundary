@@ -657,7 +657,7 @@ func TestControllerConfig(t testing.TB, ctx context.Context, tc *TestController,
 		}
 	}
 	opts.Config.Controller.Scheduler.JobRunIntervalDuration = opts.SchedulerRunJobInterval
-	opts.Config.Controller.ApiRateLimiterMaxEntries = ratelimit.DefaultLimiterMaxEntries()
+	opts.Config.Controller.ApiRateLimiterMaxQuotas = ratelimit.DefaultLimiterMaxQuotas()
 
 	if opts.EnableEventing {
 		opts.Config.Eventing = &event.EventerConfig{

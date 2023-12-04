@@ -19,10 +19,10 @@ type Limiter interface {
 }
 
 // NewLimiter creates a rate.Limiter.
-func NewLimiter(limits []rate.Limit, maxEntries int) (*rate.Limiter, error) {
+func NewLimiter(limits []rate.Limit, maxQuotas int) (*rate.Limiter, error) {
 	return rate.NewLimiter(
 		limits,
-		maxEntries,
+		maxQuotas,
 		rate.WithQuotaStorageUsageMetric(rateLimitQuotaUsage),
 		rate.WithQuotaStorageCapacityMetric(rateLimitQuotaStorageCapacity),
 	)

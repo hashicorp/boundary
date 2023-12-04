@@ -215,9 +215,9 @@ type Controller struct {
 	// TODO: This field is currently internal.
 	SchedulerRunJobInterval time.Duration `hcl:"-"`
 
-	ApiRateLimits            ratelimit.Configs `hcl:"-"`
-	ApiRateLimiterMaxEntries int               `hcl:"api_rate_limit_max_entries"`
-	ApiRateLimitDisable      bool              `hcl:"api_rate_limit_disable"`
+	ApiRateLimits           ratelimit.Configs `hcl:"-"`
+	ApiRateLimiterMaxQuotas int               `hcl:"api_rate_limit_max_quotas"`
+	ApiRateLimitDisable     bool              `hcl:"api_rate_limit_disable"`
 
 	// License is the license used by HCP builds
 	License string `hcl:"license"`
@@ -693,8 +693,8 @@ func Parse(d string) (*Config, error) {
 			return nil, err
 		}
 
-		if result.Controller.ApiRateLimiterMaxEntries <= 0 {
-			result.Controller.ApiRateLimiterMaxEntries = ratelimit.DefaultLimiterMaxEntries()
+		if result.Controller.ApiRateLimiterMaxQuotas <= 0 {
+			result.Controller.ApiRateLimiterMaxQuotas = ratelimit.DefaultLimiterMaxQuotas()
 		}
 	}
 
