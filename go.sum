@@ -218,8 +218,6 @@ github.com/grpc-ecosystem/go-grpc-middleware v1.4.0/go.mod h1:g5qyo/la0ALbONm6Vb
 github.com/grpc-ecosystem/grpc-gateway v1.16.0/go.mod h1:BDjrQk3hbvj6Nolgz8mAMFbcEtjT1g+wF4CSlocrBnw=
 github.com/grpc-ecosystem/grpc-gateway/v2 v2.18.0 h1:RtRsiaGvWxcwd8y3BiRZxsylPT8hLWZ5SPcfI+3IDNk=
 github.com/grpc-ecosystem/grpc-gateway/v2 v2.18.0/go.mod h1:TzP6duP4Py2pHLVPPQp42aoYI92+PCrVotyR5e8Vqlk=
-github.com/hashicorp/boundary/sdk v0.0.40 h1:HNJcMWHCjoraPJALTZ9JssSoP/vflew2+VB656nvRlY=
-github.com/hashicorp/boundary/sdk v0.0.40/go.mod h1:+XTDYf9YNeKIbGOPJwy7hlO2Le4zgzCtHCG/u+z4THI=
 github.com/hashicorp/cap v0.4.0 h1:FAdBqLcZNPLkZ9WsYPtTvI9egjrhwElDalhArYToI7I=
 github.com/hashicorp/cap v0.4.0/go.mod h1:dHTmyMIVbzT981XxRoci5G//dfWmd/HhuNiCH6J5+IA=
 github.com/hashicorp/cap/ldap v0.0.0-20231012003312-273118a6e3b8 h1:IKSRg1IONHl9ouMwx/Un1OVwdnlqVGWXRjUEg6VQZuY=

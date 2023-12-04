@@ -4,6 +4,8 @@ go 1.21.1
 
 replace github.com/hashicorp/boundary/api => ./api
 
+replace github.com/hashicorp/boundary/sdk => ./sdk
+
 require (
 	github.com/fatih/color v1.15.0
 	github.com/fatih/structs v1.1.0
