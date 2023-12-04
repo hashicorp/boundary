@@ -72,7 +72,7 @@ func TestHandler(t *testing.T) {
 			http.StatusOK,
 			http.Header{
 				"RateLimit-Policy": []string{`10;w=60;comment="total", 10;w=60;comment="ip-address", 10;w=60;comment="auth-token"`},
-				"RateLimit":        []string{`limit=10, remaining=9, reset=59`},
+				"RateLimit":        []string{`limit=10, remaining=9, reset=60`},
 			},
 		},
 		{
@@ -114,7 +114,7 @@ func TestHandler(t *testing.T) {
 			http.StatusOK,
 			http.Header{
 				"RateLimit-Policy": []string{`10;w=60;comment="total", 10;w=60;comment="ip-address", 10;w=60;comment="auth-token"`},
-				"RateLimit":        []string{`limit=10, remaining=9, reset=59`},
+				"RateLimit":        []string{`limit=10, remaining=9, reset=60`},
 			},
 		},
 		{
@@ -156,7 +156,7 @@ func TestHandler(t *testing.T) {
 			http.StatusOK,
 			http.Header{
 				"RateLimit-Policy": []string{`10;w=60;comment="total", 10;w=60;comment="ip-address", 10;w=60;comment="auth-token"`},
-				"RateLimit":        []string{`limit=10, remaining=9, reset=59`},
+				"RateLimit":        []string{`limit=10, remaining=9, reset=60`},
 			},
 		},
 		{
@@ -198,7 +198,7 @@ func TestHandler(t *testing.T) {
 			http.StatusOK,
 			http.Header{
 				"RateLimit-Policy": []string{`10;w=60;comment="total", 10;w=60;comment="ip-address", 10;w=60;comment="auth-token"`},
-				"RateLimit":        []string{`limit=10, remaining=9, reset=59`},
+				"RateLimit":        []string{`limit=10, remaining=9, reset=60`},
 			},
 		},
 		{
@@ -240,7 +240,7 @@ func TestHandler(t *testing.T) {
 			http.StatusOK,
 			http.Header{
 				"RateLimit-Policy": []string{`10;w=60;comment="total", 10;w=60;comment="ip-address", 10;w=60;comment="auth-token"`},
-				"RateLimit":        []string{`limit=10, remaining=9, reset=59`},
+				"RateLimit":        []string{`limit=10, remaining=9, reset=60`},
 			},
 		},
 		{
@@ -282,7 +282,7 @@ func TestHandler(t *testing.T) {
 			http.StatusOK,
 			http.Header{
 				"RateLimit-Policy": []string{`10;w=60;comment="total", 10;w=60;comment="ip-address", 10;w=60;comment="auth-token"`},
-				"RateLimit":        []string{`limit=10, remaining=9, reset=59`},
+				"RateLimit":        []string{`limit=10, remaining=9, reset=60`},
 			},
 		},
 		{
@@ -324,7 +324,7 @@ func TestHandler(t *testing.T) {
 			http.StatusOK,
 			http.Header{
 				"RateLimit-Policy": []string{`10;w=60;comment="total", 10;w=60;comment="ip-address", 10;w=60;comment="auth-token"`},
-				"RateLimit":        []string{`limit=10, remaining=9, reset=59`},
+				"RateLimit":        []string{`limit=10, remaining=9, reset=60`},
 			},
 		},
 		{
@@ -375,7 +375,7 @@ func TestHandler(t *testing.T) {
 			http.Header{
 				"Retry-After":      []string{"60"},
 				"RateLimit-Policy": []string{`2;w=60;comment="total", 2;w=60;comment="ip-address", 2;w=60;comment="auth-token"`},
-				"RateLimit":        []string{`limit=2, remaining=0, reset=59`},
+				"RateLimit":        []string{`limit=2, remaining=0, reset=60`},
 			},
 		},
 		{

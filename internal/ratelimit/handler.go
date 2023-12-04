@@ -172,7 +172,7 @@ func Handler(ctx context.Context, f LimiterFunc, next http.Handler) http.Handler
 		}
 
 		if !allowed {
-			rw.Header().Add("Retry-After", fmt.Sprintf("%.0f", quota.ResetsIn().Seconds()))
+			rw.Header().Add("Retry-After", fmt.Sprintf("%.0f", math.Ceil(quota.ResetsIn().Seconds())))
 			rw.WriteHeader(http.StatusTooManyRequests)
 			return
 		}
