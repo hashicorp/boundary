@@ -16,6 +16,7 @@ begin;
   -- insert_credential_store_subtype() is a before insert trigger
   -- function for subtypes of credential_store.
   -- Replaces the insert_credential_store_subtype function defined in 10/03_credential.up.sql
+  -- Replaced in 80/05_credential_store_base_table_updates.up.sql
   create or replace function insert_credential_store_subtype() returns trigger
   as $$
   begin

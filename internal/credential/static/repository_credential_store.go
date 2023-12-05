@@ -7,7 +7,9 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
+	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
@@ -171,27 +173,6 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 	return returnedCredentialStore, rowsUpdated, nil
 }
 
-// ListCredentialStores returns a slice of CredentialStores for the
-// projectIds. WithLimit is the only option supported.
-func (r *Repository) ListCredentialStores(ctx context.Context, projectIds []string, opt ...Option) ([]*CredentialStore, error) {
-	const op = "static.(Repository).ListCredentialStores"
-	if len(projectIds) == 0 {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "no projectIds")
-	}
-	opts := getOpts(opt...)
-	limit := r.defaultLimit
-	if opts.withLimit != 0 {
-		// non-zero signals an override of the default limit for the repo.
-		limit = opts.withLimit
-	}
-	var credentialStores []*CredentialStore
-	err := r.reader.SearchWhere(ctx, &credentialStores, "project_id in (?)", []any{projectIds}, db.WithLimit(limit))
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-	return credentialStores, nil
-}
-
 // DeleteCredentialStore deletes publicId from the repository and returns
 // the number of records deleted. All options are ignored.
 func (r *Repository) DeleteCredentialStore(ctx context.Context, publicId string, _ ...Option) (int, error) {
@@ -237,4 +218,28 @@ func (r *Repository) DeleteCredentialStore(ctx context.Context, publicId string,
 	}
 
 	return rowsDeleted, nil
+}
+
+// ListDeletedStoreIds lists the public IDs of any credential stores deleted since the timestamp provided.
+// Supported options:
+//   - credential.WithReaderWriter
+func (r *Repository) ListDeletedStoreIds(ctx context.Context, since time.Time, opt ...credential.Option) ([]string, error) {
+	const op = "static.(Repository).ListDeletedStoreIds"
+	opts, err := credential.GetOpts(opt...)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	rdr := r.reader
+	if opts.WithReader != nil {
+		rdr = opts.WithReader
+	}
+	var deletedCredentialStores []*deletedCredentialStore
+	if err := rdr.SearchWhere(ctx, &deletedCredentialStores, "delete_time >= ?", []any{since}); err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query deleted credential stores"))
+	}
+	var credentialStoreIds []string
+	for _, cl := range deletedCredentialStores {
+		credentialStoreIds = append(credentialStoreIds, cl.PublicId)
+	}
+	return credentialStoreIds, nil
 }
