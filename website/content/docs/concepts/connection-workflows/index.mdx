@@ -2,7 +2,7 @@
 layout: docs
 page_title: Connection workflows
 description: |-
-  Details workflows for connecting to targets with Boundary.
+  Workflows that you can use to connect to targets. Learn how connect helpers, the `-exec` flag, and SSH ProxyCommand can help facilitate connections to targets.
 ---
 
 # Connection workflows
@@ -15,7 +15,7 @@ When you run the `boundary connect` command against a target, Boundary establish
 The `boundary connect` command has a number of useful options, such as `-listen-port` which lets you choose the port on which the command listens for an incoming connection.
 Refer to the [`boundary connect`](/boundary/docs/commands/connect) documentation for a list of the available options and usage examples.
 
-To practice using the `boundary connect` command, refer to the [Connecting to your first target](/boundary/tutorials/oss-getting-started/oss-getting-started-connect) tutorial.
+To practice using the `boundary connect` command in a development environment, refer to the [Connecting to your first target](/boundary/tutorials/oss-getting-started/oss-getting-started-connect) tutorial.
 
 ## Connect helpers
 
@@ -29,7 +29,7 @@ They are supported for the following connection types:
 - RDP
 - SSH
 
-Refer to the [Connect helpers](/boundary/docs/concepts/connection-workflows/connect-helpers) topic for more information about using connect helpers.
+Refer to the [Connect helpers](/boundary/docs/concepts/connection-workflows/connect-helpers) documentation for more information.
 
 ## Exec flag
 
@@ -37,7 +37,7 @@ In addition to the built-in connect helpers, `boundary connect` can accommodate 
 The `-exec` flag lets you wrap Boundary TCP sessions in your preferred client.
 You can use this flag to create an authenticated proxy to almost anything.
 
-Refer to [Execute clients using -exec](/boundary/docs/concepts/connection-workflows/exec-flag) for more information about using the `-exec` flag.
+Refer to the [Exec flag](/boundary/docs/concepts/connection-workflows/exec-flag) documentation for more information.
 
 ## SSH ProxyCommand
 
@@ -48,4 +48,4 @@ Using `ProxyCommand` to execute a proxy when invoking the SSH client is a common
 SSH `ProxyCommand` lets you proxy an SSH connection to a target according to a configuration file that you create.
 You can configure the file to connect to the target ID or the target domain.
 
-Refer to [SSH ProxyCommand](/boundary/docs/concepts/connection-workflows/workflow-ssh-proxycommand) for more information about configuring SSH `ProxyCommand`.
+Refer to the [SSH ProxyCommand](/boundary/docs/concepts/connection-workflows/workflow-ssh-proxycommand) documentation for more information.

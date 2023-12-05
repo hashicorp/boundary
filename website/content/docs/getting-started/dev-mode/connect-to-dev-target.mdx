@@ -70,11 +70,19 @@ Here is an SSH example in dev mode:
 $ boundary connect ssh -target-name "Generated target" -target-scope-name "Generated project scope"
 ```
 
-## Use connect helpers
+## Connect helpers
 
 Boundary includes connect helpers that automatically accept host SSH key prompts
-for you. These are written as `boundary connect <subcommand>`.
-Refer to the [Connect helpers documentation](/boundary/docs/concepts/connection-workflows/connect-helpers) for more information.
+for you.
+These are written as `boundary connect <subcommand>` and are supported for the following connection types:
+
+- HTTP
+- Kubernetes
+- PostgreSQL
+- RDP
+- SSH
+
+Refer to the [Connect helpers](/boundary/docs/concepts/connection-workflows/connect-helpers) documentation for more information.
 
 ## Built-in vs. exec
 
@@ -85,9 +93,17 @@ tool, allowing you to wrap Boundary TCP sessions in your preferred
 client. You can use this flag to create an authenticated proxy to almost
 anything.
 
-For more information, refer to [Execute clients using the `-exec` flag](/boundary/docs/concepts/connection-workflows/exec-flag).
+Refer to the [Exec flag](/boundary/docs/concepts/connection-workflows/exec-flag) documentation for more information.
 
-## Connect using the desktop client
+## SSH ProxyCommand
+
+SSH `ProxyCommand` lets you proxy an SSH connection to a target according to a configuration file that you create.
+It can help simplify common developer and operator workflows.
+You can configure the file to connect to the target ID or the target domain.
+
+Refer to the [SSH ProxyCommand](/boundary/docs/concepts/connection-workflows/workflow-ssh-proxycommand) documentation for more information.
+
+## Desktop client
 
 While using the desktop client, choose the target and connect to retrieve local
 proxy details.
