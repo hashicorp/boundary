@@ -67,8 +67,7 @@ select sum(reltuples::bigint) as estimate from pg_class where oid in ('target_tc
 with targets as (
     select public_id
       from target
-     -- search condition for applying permissions is constructed
-     where %s
+     where %s -- search condition for applying permissions is constructed
   order by create_time desc, public_id asc
      limit %d
 ),
@@ -82,7 +81,7 @@ ssh_targets as (
     from target_ssh
    where public_id in (select public_id from targets)
 ),
-all_targets as (
+final as (
   select public_id,
          project_id,
          name,
@@ -122,7 +121,7 @@ all_targets as (
     from ssh_targets
 )
   select *
-    from all_targets
+    from final
 order by create_time desc, public_id asc;
 `
 
@@ -131,8 +130,7 @@ with targets as (
     select public_id
       from target
      where (create_time, public_id) < (@last_item_create_time, @last_item_id)
-           -- search condition for applying permissions is constructed
-           and %s
+       and %s -- search condition for applying permissions is constructed
   order by create_time desc, public_id asc
      limit %d
 ),
@@ -146,7 +144,7 @@ ssh_targets as (
     from target_ssh
    where public_id in (select public_id from targets)
 ),
-all_targets as (
+final as (
   select public_id,
          project_id,
          name,
@@ -186,7 +184,7 @@ all_targets as (
     from ssh_targets
 )
   select *
-    from all_targets
+    from final
 order by create_time desc, public_id asc;
 `
 
@@ -195,8 +193,7 @@ with targets as (
     select public_id
       from target
      where update_time > @updated_after_time
-            -- search condition for applying permissions is constructed
-           and %s
+       and %s -- search condition for applying permissions is constructed
   order by update_time desc, public_id asc
      limit %d
 ),
@@ -210,7 +207,7 @@ ssh_targets as (
     from target_ssh
    where public_id in (select public_id from targets)
 ),
-all_targets as (
+final as (
   select public_id,
          project_id,
          name,
@@ -250,7 +247,7 @@ all_targets as (
     from ssh_targets
 )
   select *
-    from all_targets
+    from final
 order by update_time desc, public_id asc;
 `
 
@@ -259,9 +256,8 @@ with targets as (
     select public_id
       from target
      where update_time > @updated_after_time
-           and (update_time, public_id) < (@last_item_update_time, @last_item_id)
-           -- search condition for applying permissions is constructed
-           and %s
+       and (update_time, public_id) < (@last_item_update_time, @last_item_id)
+       and %s -- search condition for applying permissions is constructed
   order by update_time desc, public_id asc
      limit %d
 ),
@@ -275,7 +271,7 @@ ssh_targets as (
     from target_ssh
    where public_id in (select public_id from targets)
 ),
-all_targets as (
+final as (
   select public_id,
          project_id,
          name,
@@ -315,7 +311,7 @@ all_targets as (
     from ssh_targets
 )
   select *
-    from all_targets
+    from final
 order by update_time desc, public_id asc;
 `
 )
