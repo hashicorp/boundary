@@ -74,7 +74,7 @@ var (
 
 	// IdActions contains the set of actions that can be performed on
 	// individual resources
-	IdActions = action.ActionSet{
+	IdActions = action.NewActionSet(
 		action.NoOp,
 		action.Read,
 		action.Update,
@@ -86,21 +86,26 @@ var (
 		action.SetCredentialSources,
 		action.RemoveCredentialSources,
 		action.AuthorizeSession,
-	}
+	)
 
 	// CollectionActions contains the set of actions that can be performed on
 	// this collection
-	CollectionActions = action.ActionSet{
+	CollectionActions = action.NewActionSet(
 		action.Create,
 		action.List,
-	}
+	)
 
-	validateCredentialSourcesFn      = func(context.Context, subtypes.Subtype, []target.CredentialSource) error { return nil }
+	validateCredentialSourcesFn      = func(context.Context, globals.Subtype, []target.CredentialSource) error { return nil }
 	ValidateIngressWorkerFilterFn    = IngressWorkerFilterUnsupported
 	AuthorizeSessionWorkerFilterFn   = AuthorizeSessionWithWorkerFilter
 	PostSessionAuthorizationCallback = DefaultPostSessionAuthorizationCallback
 	WorkerFilterDeprecationMessage   = fmt.Sprintf("This field is deprecated. Use %s instead.", globals.EgressWorkerFilterField)
 )
+
+func init() {
+	// TODO: refactor to remove IdActions and CollectionActions package variables
+	action.RegisterResource(resource.Target, IdActions, CollectionActions)
+}
 
 func IngressWorkerFilterUnsupported(string) error {
 	return fmt.Errorf("Ingress Worker Filter field is not supported in OSS")
@@ -258,7 +263,7 @@ func (s Service) ListTargets(ctx context.Context, req *pbs.ListTargetsRequest) (
 			return nil, err
 		}
 
-		filterable, err := subtypes.Filterable(item)
+		filterable, err := subtypes.Filterable(ctx, item)
 		if err != nil {
 			return nil, err
 		}
@@ -799,7 +804,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 		var endpoints []*host.Endpoint
 		for _, hSource := range hostSources {
 			hsId := hSource.Id()
-			switch subtypes.SubtypeFromId(hostDomain, hsId) {
+			switch globals.ResourceInfoFromPrefix(hsId).Subtype {
 			case static.Subtype:
 				eps, err := staticHostRepo.Endpoints(ctx, hsId)
 				if err != nil {
@@ -2038,7 +2043,7 @@ func validateAuthorizeSessionRequest(req *pbs.AuthorizeSessionRequest) error {
 		}
 	}
 	if req.GetHostId() != "" {
-		switch subtypes.SubtypeFromId(hostDomain, req.GetHostId()) {
+		switch globals.ResourceInfoFromPrefix(req.GetHostId()).Subtype {
 		case static.Subtype, plugin.Subtype:
 		default:
 			badFields[globals.HostIdField] = "Incorrectly formatted identifier."

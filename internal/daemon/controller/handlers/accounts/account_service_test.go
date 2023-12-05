@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth/ldap"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
@@ -26,7 +27,6 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/scope"
-	"github.com/hashicorp/boundary/internal/types/subtypes"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/accounts"
 	scopepb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
 	"github.com/stretchr/testify/assert"
@@ -280,7 +280,7 @@ func TestGet(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			if subtypes.SubtypeFromId(domain, tc.req.Id) == oidc.Subtype {
+			if globals.ResourceInfoFromPrefix(tc.req.Id).Subtype == oidc.Subtype {
 				// Set up managed groups before getting. First get the current
 				// managed group to make sure we have the right version.
 				oidcRepo, err := oidcRepoFn()
@@ -298,7 +298,14 @@ func TestGet(t *testing.T) {
 				return
 			}
 			require.NoError(gErr)
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "GetAccount(%q) got response %q, wanted %q", tc.req, got, tc.res)
+			assert.Empty(cmp.Diff(
+				got,
+				tc.res,
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+			), "GetAccount(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
 }
@@ -425,7 +432,15 @@ func TestListPassword(t *testing.T) {
 			} else {
 				require.NoError(gErr)
 			}
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform(), protocmp.SortRepeatedFields(got)), "ListAccounts() with scope %q got response %q, wanted %q", tc.req, got, tc.res)
+			assert.Empty(cmp.Diff(
+				got,
+				tc.res,
+				protocmp.Transform(),
+				protocmp.SortRepeatedFields(got),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+			), "ListAccounts() with scope %q got response %q, wanted %q", tc.req, got, tc.res)
 
 			// Now test with anon
 			if tc.skipAnon {
@@ -585,7 +600,14 @@ func TestListOidc(t *testing.T) {
 				return strings.Compare(got.Items[i].GetOidcAccountAttributes().Subject,
 					got.Items[j].GetOidcAccountAttributes().Subject) < 0
 			})
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListAccounts() with scope %q got response %q, wanted %q", tc.req, got, tc.res)
+			assert.Empty(cmp.Diff(
+				got,
+				tc.res,
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+			), "ListAccounts() with scope %q got response %q, wanted %q", tc.req, got, tc.res)
 
 			// Now test with anon
 			if tc.skipAnon {
@@ -740,7 +762,14 @@ func TestListLdap(t *testing.T) {
 				return strings.Compare(got.Items[i].GetLdapAccountAttributes().LoginName,
 					got.Items[j].GetLdapAccountAttributes().LoginName) < 0
 			})
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListAccounts() with scope %q got response %q, wanted %q", tc.req, got, tc.res)
+			assert.Empty(cmp.Diff(
+				got,
+				tc.res,
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+			), "ListAccounts() with scope %q got response %q, wanted %q", tc.req, got, tc.res)
 
 			// Now test with anon
 			if tc.skipAnon {
@@ -1159,7 +1188,14 @@ func TestCreatePassword(t *testing.T) {
 				got.Item.Id, tc.res.Item.Id = "", ""
 				got.Item.CreatedTime, got.Item.UpdatedTime, tc.res.Item.CreatedTime, tc.res.Item.UpdatedTime = nil, nil, nil, nil
 			}
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "CreateAccount(%q) got response %q, wanted %q", tc.req, got, tc.res)
+			assert.Empty(cmp.Diff(
+				got,
+				tc.res,
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+			), "CreateAccount(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
 }
@@ -1396,7 +1432,14 @@ func TestCreateOidc(t *testing.T) {
 				got.Item.Id, tc.res.Item.Id = "", ""
 				got.Item.CreatedTime, got.Item.UpdatedTime, tc.res.Item.CreatedTime, tc.res.Item.UpdatedTime = nil, nil, nil, nil
 			}
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "CreateAccount(%q) got response %q, wanted %q", tc.req, got, tc.res)
+			assert.Empty(cmp.Diff(
+				got,
+				tc.res,
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+			), "CreateAccount(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
 }
@@ -1675,7 +1718,14 @@ func TestCreateLdap(t *testing.T) {
 				got.Item.Id, tc.res.Item.Id = "", ""
 				got.Item.CreatedTime, got.Item.UpdatedTime, tc.res.Item.CreatedTime, tc.res.Item.UpdatedTime = nil, nil, nil, nil
 			}
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "CreateAccount(%q) got response %q, wanted %q", tc.req, got, tc.res)
+			assert.Empty(cmp.Diff(
+				got,
+				tc.res,
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+			), "CreateAccount(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
 }
@@ -2065,7 +2115,14 @@ func TestUpdatePassword(t *testing.T) {
 				assert.EqualValues(2, got.Item.Version)
 				tc.res.Item.Version = 2
 			}
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "UpdateAccount(%q) got response %q, wanted %q", tc.req, got, tc.res)
+			assert.Empty(cmp.Diff(
+				got,
+				tc.res,
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+			), "UpdateAccount(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
 }
@@ -2455,7 +2512,14 @@ func TestUpdateOidc(t *testing.T) {
 				assert.EqualValues(2, got.Item.Version)
 				tc.res.Item.Version = 2
 			}
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "UpdateAccount(%q) got response %q, wanted %q", tc.req, got, tc.res)
+			assert.Empty(cmp.Diff(
+				got,
+				tc.res,
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+			), "UpdateAccount(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
 }
@@ -2829,7 +2893,14 @@ func TestUpdateLdap(t *testing.T) {
 				assert.EqualValues(2, got.Item.Version)
 				tc.res.Item.Version = 2
 			}
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "UpdateAccount(%q) got response %q, wanted %q", tc.req, got, tc.res)
+			assert.Empty(cmp.Diff(
+				got,
+				tc.res,
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+			), "UpdateAccount(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
 }
@@ -2918,7 +2989,14 @@ func TestSetPassword(t *testing.T) {
 			acct.Version, setResp.GetItem().Version = 0, 0
 			acct.UpdatedTime, setResp.GetItem().UpdatedTime = nil, nil
 
-			assert.Empty(cmp.Diff(acct, setResp.GetItem(), protocmp.Transform()))
+			assert.Empty(cmp.Diff(
+				acct,
+				setResp.GetItem(),
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+			))
 		})
 	}
 
@@ -3036,7 +3114,14 @@ func TestChangePassword(t *testing.T) {
 		acct.Version, changeResp.GetItem().Version = 0, 0
 		acct.UpdatedTime, changeResp.GetItem().UpdatedTime = nil, nil
 
-		assert.Empty(cmp.Diff(acct, changeResp.GetItem(), protocmp.Transform()))
+		assert.Empty(cmp.Diff(
+			acct,
+			changeResp.GetItem(),
+			protocmp.Transform(),
+			cmpopts.SortSlices(func(a, b string) bool {
+				return a < b
+			}),
+		))
 	})
 
 	t.Run("unauthenticated update", func(t *testing.T) {

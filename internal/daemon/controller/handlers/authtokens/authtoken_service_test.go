@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
@@ -113,7 +114,7 @@ func TestGetSelf(t *testing.T) {
 			require.NotNil(got)
 			assert.Equal(tc.token.GetPublicId(), got.GetItem().GetId())
 			// Ensure we didn't simply have e.g. read on all tokens
-			assert.Equal([]string{"read:self", "delete:self"}, got.Item.GetAuthorizedActions())
+			assert.ElementsMatch([]string{"read:self", "delete:self"}, got.Item.GetAuthorizedActions())
 		})
 	}
 }
@@ -189,7 +190,14 @@ func TestGet(t *testing.T) {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "GetAuthToken(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
 			}
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "GetAuthToken(%q) got response %q, wanted %q", tc.req, got, tc.res)
+			assert.Empty(cmp.Diff(
+				got,
+				tc.res,
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+			), "GetAuthToken(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
 }
@@ -258,7 +266,7 @@ func TestList_Self(t *testing.T) {
 			require.Len(got.Items, 1)
 			assert.Equal(got.Items[0].GetId(), tc.requester.GetPublicId())
 			// Ensure we didn't simply have e.g. read on all tokens
-			assert.Equal(got.Items[0].GetAuthorizedActions(), []string{"read:self", "delete:self"})
+			assert.ElementsMatch(got.Items[0].GetAuthorizedActions(), []string{"read:self", "delete:self"})
 		})
 	}
 }
@@ -403,7 +411,15 @@ func TestList(t *testing.T) {
 			} else {
 				require.NoError(gErr)
 			}
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform(), protocmp.SortRepeatedFields(got)), "ListAuthTokens() with scope %q got response %q, wanted %q", tc.req.GetScopeId(), got, tc.res)
+			assert.Empty(cmp.Diff(
+				got,
+				tc.res,
+				protocmp.Transform(),
+				protocmp.SortRepeatedFields(got),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+			), "ListAuthTokens() with scope %q got response %q, wanted %q", tc.req.GetScopeId(), got, tc.res)
 
 			// Now check anon listing
 			got, gErr = s.ListAuthTokens(auth.DisabledAuthTestContext(iamRepoFn, tc.req.GetScopeId(), auth.WithUserId(globals.AnonymousUserId)), tc.req)

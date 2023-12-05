@@ -19,9 +19,9 @@ You use the storage bucket's ID to associate a target with the storage bucket.
 - Session recording is only supported for SSH targets at this time.
 - A KMS key with the purpose `bsr` must be added to the controller configuration.
 The key is used for encrypting data and checking the integrity of recordings.
-Refer to [Create the controller configuration](/boundary/docs/install-boundary/configure-controllers#create-the-controller-configuration) and [the `bsr` KMS key](/boundary/docs/concepts/security/data-encryption#the-bsr-kms-key-hcp-ent) documentation for more information about configuring a KMS block.
+Refer to [Create the controller configuration](/boundary/docs/install-boundary/configure-controllers#create-the-controller-configuration) and [the `bsr` KMS key](/boundary/docs/concepts/security/data-encryption#the-bsr-kms-key) documentation for more information about configuring a KMS block.
 - The targets must be configured with an ingress or egress worker filter that includes a worker with access to the storage bucket you created.
-Refer to [SSH target attributes](/boundary/docs/concepts/domain-model/targets#ssh-target-attributes-hcp-ent) for more information.
+Refer to [SSH target attributes](/boundary/docs/concepts/domain-model/targets#ssh-target-attributes) for more information.
 - You must enable injected application credentials on any target that you want to use for session recording.
 
 Complete the following steps to enable session recording on a target.

@@ -79,10 +79,11 @@ jobs:
           - filter: 'e2e_aws builder:crt'
           - filter: 'e2e_database'
           - filter: 'e2e_docker_base builder:crt'
+          - filter: 'e2e_docker_base_plus builder:crt'
           - filter: 'e2e_docker_base_with_vault builder:crt'
-          - filter: 'e2e_docker_base_with_postgres builder:crt'
           - filter: 'e2e_docker_base_with_worker builder:crt'
           - filter: 'e2e_docker_worker_registration_controller_led builder:crt'
+          - filter: 'e2e_docker_worker_registration_worker_led builder:crt'
     runs-on: ${{ fromJSON(vars.RUNNER_LARGE) }}
     env:
       GITHUB_TOKEN: ${{ secrets.SERVICE_USER_GITHUB_TOKEN }}
@@ -251,7 +252,7 @@ jobs:
           enos scenario launch --timeout 60m0s --chdir ./enos ${{ matrix.filter }}
       - name: Rename e2e tests output
         continue-on-error: true
-        run : |
+        run: |
           pushd enos
           scenario="${{ matrix.filter }}"
           for f in *.log; do mv --  "$f" "${f%.log}_${scenario%% *}.log"; done

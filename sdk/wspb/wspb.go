@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/hashicorp/boundary/internal/errors"
 	"google.golang.org/protobuf/proto"
 	"nhooyr.io/websocket"
 )
@@ -33,27 +32,25 @@ func putBuffer(b *bytes.Buffer) {
 
 // Read reads from websocket c into protobuf message m.
 func Read(ctx context.Context, c *websocket.Conn, m proto.Message) error {
-	const op = "wspb.Read"
-
 	t, r, err := c.Reader(ctx)
 	if err != nil {
 		return err
 	}
 
 	if t != websocket.MessageBinary {
-		return errors.New(ctx, errors.Internal, op, "", errors.WithMsg("expected binary message for protobuf but got: %v", t))
+		return fmt.Errorf("expected binary message for protobuf but got %q", t.String())
 	}
 
 	b := getBuffer()
 	defer putBuffer(b)
 
 	if _, err := b.ReadFrom(r); err != nil {
-		return errors.Wrap(ctx, err, op)
+		return fmt.Errorf("error reading from reader: %w", err)
 	}
 
 	if err := proto.Unmarshal(b.Bytes(), m); err != nil {
 		c.Close(websocket.StatusInvalidFramePayloadData, "failed to unmarshal protobuf")
-		return errors.Wrap(ctx, fmt.Errorf("failed to unmarshal protobuf: %w", err), op)
+		return fmt.Errorf("failed to unmarshal protobuf: %w", err)
 	}
 
 	return nil
@@ -65,7 +62,7 @@ func Write(ctx context.Context, c *websocket.Conn, m proto.Message) error {
 
 	bytes, err := proto.Marshal(m)
 	if err != nil {
-		return errors.Wrap(ctx, fmt.Errorf("failed to marshal protobuf: %w", err), op)
+		return fmt.Errorf("failed to marshal protobuf: %w", err)
 	}
 
 	return c.Write(ctx, websocket.MessageBinary, bytes)

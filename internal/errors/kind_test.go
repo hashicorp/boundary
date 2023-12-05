@@ -46,6 +46,11 @@ func TestKind_String(t *testing.T) {
 			e:    VaultToken,
 			want: "vault token issue",
 		},
+		{
+			name: "Configuration",
+			e:    Configuration,
+			want: "configuration issue",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

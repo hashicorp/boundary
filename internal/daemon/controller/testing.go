@@ -32,6 +32,7 @@ import (
 	"github.com/hashicorp/boundary/internal/host/plugin"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/ratelimit"
 	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/session"
@@ -494,6 +495,8 @@ type TestControllerOpts struct {
 
 	// Toggle worker auth debugging
 	WorkerAuthDebuggingEnabled *atomic.Bool
+
+	DisableRateLimiting bool
 }
 
 func NewTestController(t testing.TB, opts *TestControllerOpts) *TestController {
@@ -656,6 +659,7 @@ func TestControllerConfig(t testing.TB, ctx context.Context, tc *TestController,
 		}
 	}
 	opts.Config.Controller.Scheduler.JobRunIntervalDuration = opts.SchedulerRunJobInterval
+	opts.Config.Controller.ApiRateLimiterMaxQuotas = ratelimit.DefaultLimiterMaxQuotas()
 
 	if opts.EnableEventing {
 		opts.Config.Eventing = &event.EventerConfig{
@@ -802,6 +806,10 @@ func TestControllerConfig(t testing.TB, ctx context.Context, tc *TestController,
 		if err := tc.b.CreateDevDatabase(ctx, createOpts...); err != nil {
 			t.Fatal(err)
 		}
+	}
+
+	if opts.DisableRateLimiting {
+		opts.Config.Controller.ApiRateLimitDisable = true
 	}
 
 	return &Config{

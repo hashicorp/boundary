@@ -5,10 +5,13 @@ package iam_test
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	mathrand "math/rand"
 	"testing"
 
+	"github.com/hashicorp/boundary/internal/auth/ldap"
+	"github.com/hashicorp/boundary/internal/auth/ldap/store"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/iam"
@@ -16,6 +19,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestGrantsForUser(t *testing.T) {
@@ -23,11 +27,16 @@ func TestGrantsForUser(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrap := db.TestWrapper(t)
 	iamRepo := iam.TestRepo(t, conn, wrap)
+	rw := db.New(conn)
+	kmsCache := kms.TestKms(t, conn, wrap)
+	ldapRepo, err := ldap.NewRepository(ctx, rw, rw, kmsCache)
+	require.NoError(t, err)
 
 	userCount := 10
 	groupCount := 30
-	managedGroupCount := 30
-	roleCount := 30
+	oidcManagedGroupCount := 30
+	ldapManagedGroupCount := 30
+	roleCount := 1
 	// probFactor acts as a mod value; increasing means less probability. 2 =
 	// 50%, 5 = 20%, etc.
 	probFactor := 5
@@ -45,12 +54,10 @@ func TestGrantsForUser(t *testing.T) {
 		iam.WithSkipAdminRoleCreation(true),
 		iam.WithSkipDefaultRoleCreation(true),
 	)
-
-	kmsCache := kms.TestKms(t, conn, wrap)
 	databaseWrapper, err := kmsCache.GetWrapper(ctx, o.PublicId, kms.KeyPurposeDatabase)
 	require.NoError(t, err)
 
-	authMethod := oidc.TestAuthMethod(
+	oidcAuthMethod := oidc.TestAuthMethod(
 		t, conn, databaseWrapper, o.GetPublicId(), oidc.ActivePrivateState,
 		"alice-rp", "fido",
 		oidc.WithSigningAlgs(oidc.RS256),
@@ -58,23 +65,26 @@ func TestGrantsForUser(t *testing.T) {
 		oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 	)
 
-	// We're going to generate a bunch of users (each tied to an account),
-	// groups, and managed groups. These will be randomly assigned and we will
-	// record assignations.
-	users, accounts := func() (usrs []*iam.User, accts []*oidc.Account) {
+	ldapAuthMethod := ldap.TestAuthMethod(t, conn, databaseWrapper, o.GetPublicId(), []string{"ldap://test"})
+
+	// We're going to generate a bunch of users (each tied to 2 accounts; oidc
+	// and ldap), groups, and managed groups (oidc and ldap). These will be
+	// randomly assigned and we will record assignations.
+	users, oidcAccounts, ldapAccounts := func() (usrs []*iam.User, oidcAccts []*oidc.Account, ldapAccts []*ldap.Account) {
 		usrs = make([]*iam.User, 0, userCount)
-		accts = make([]*oidc.Account, 0, userCount)
+		oidcAccts = make([]*oidc.Account, 0, userCount)
 		scopeId := scope.Global.String()
 		if mathrand.Int()%2 == 0 || testManagedGroups {
 			scopeId = o.GetPublicId()
 		}
 		for i := 0; i < userCount; i++ {
-			accts = append(accts, oidc.TestAccount(t, conn, authMethod, fmt.Sprintf("sub-%d", i)))
+			oidcAccts = append(oidcAccts, oidc.TestAccount(t, conn, oidcAuthMethod, fmt.Sprintf("sub-%d", i)))
+			ldapAccts = append(ldapAccts, ldap.TestAccount(t, conn, ldapAuthMethod, fmt.Sprintf("login-name-%d", i)))
 			usrs = append(usrs, iam.TestUser(
 				t,
 				iamRepo,
 				scopeId,
-				iam.WithAccountIds(accts[i].PublicId),
+				iam.WithAccountIds(oidcAccts[i].PublicId, ldapAccts[i].PublicId),
 				iam.WithName(fmt.Sprintf("testuser%d", i)),
 			))
 		}
@@ -91,10 +101,18 @@ func TestGrantsForUser(t *testing.T) {
 		}
 		return
 	}()
-	managedGroups := func() (ret []*oidc.ManagedGroup) {
-		ret = make([]*oidc.ManagedGroup, 0, managedGroupCount)
-		for i := 0; i < managedGroupCount; i++ {
-			ret = append(ret, oidc.TestManagedGroup(t, conn, authMethod, oidc.TestFakeManagedGroupFilter, oidc.WithName(fmt.Sprintf("testmanagedgroup%d", i))))
+	oidcManagedGroups := func() (ret []*oidc.ManagedGroup) {
+		ret = make([]*oidc.ManagedGroup, 0, oidcManagedGroupCount)
+		for i := 0; i < oidcManagedGroupCount; i++ {
+			ret = append(ret, oidc.TestManagedGroup(t, conn, oidcAuthMethod, oidc.TestFakeManagedGroupFilter, oidc.WithName(fmt.Sprintf("oidc-testmanagedgroup%d", i))))
+		}
+		return
+	}()
+	ldapManagedGroups := func() (ret []*ldap.ManagedGroup) {
+		ret = make([]*ldap.ManagedGroup, 0, ldapManagedGroupCount)
+		for i := 0; i < ldapManagedGroupCount; i++ {
+			name := fmt.Sprintf("ldap-testmanagedgroup%d", i)
+			ret = append(ret, ldap.TestManagedGroup(t, conn, ldapAuthMethod, []string{name}, ldap.WithName(ctx, name)))
 		}
 		return
 	}()
@@ -131,23 +149,92 @@ func TestGrantsForUser(t *testing.T) {
 			}
 		}
 	}
-	// This variable stores an easy way to lookup, given a managed group ID, whether a
-	// user is in that group.
-	userToManagedGroupsMapping := map[string]map[string]bool{}
+	// This variable stores an easy way to lookup, given a user id, whether or
+	// not it's in an oidc managed group.
+	userToOidcManagedGroupsMapping := map[string]map[string]bool{}
 	for i, user := range users {
-		for _, managedGroup := range managedGroups {
+		for _, managedGroup := range oidcManagedGroups {
 			// Give each user (account) a chance of being in any specific managed group
 			if mathrand.Int()%probFactor == 0 {
 				userId := user.PublicId
-				accountId := accounts[i].PublicId
+				accountId := oidcAccounts[i].PublicId
 				managedGroupId := managedGroup.PublicId
 				oidc.TestManagedGroupMember(t, conn, managedGroupId, accountId)
-				currentMapping := userToManagedGroupsMapping[userId]
+				currentMapping := userToOidcManagedGroupsMapping[userId]
 				if currentMapping == nil {
 					currentMapping = make(map[string]bool)
 				}
 				currentMapping[managedGroupId] = true
-				userToManagedGroupsMapping[userId] = currentMapping
+				userToOidcManagedGroupsMapping[userId] = currentMapping
+			}
+		}
+	}
+
+	ldapAcctCloneFunc := func(a *ldap.Account) *ldap.Account {
+		cp := proto.Clone(a.Account)
+		return &ldap.Account{
+			Account: cp.(*store.Account),
+		}
+	}
+	// This variable stores an easy way to lookup, given a user id, whether or
+	// not it's in an ldap managed group.
+	userToLdapManagedGroupsMapping := map[string]map[string]bool{}
+
+	// This variable stores an easy way to lookup, giving an ldap managed group
+	// id, whether or not it has a user id
+	ldapManagedGroupToUser := map[string]map[string]bool{}
+
+	for i, user := range users {
+		userLdapAcct := ldapAccounts[i]              // the first acct goes with the first user
+		acctClone := ldapAcctCloneFunc(userLdapAcct) // clone it just in case it's changed during a db update
+		for _, managedGroup := range ldapManagedGroups {
+			// Give each user (account) a chance of being in any specific managed group
+			if mathrand.Int()%probFactor == 0 {
+				var existingAcctGroups []string
+				if acctClone.GetMemberOfGroups() != "" {
+					require.NoError(t, json.Unmarshal([]byte(acctClone.GetMemberOfGroups()), &existingAcctGroups))
+				}
+				var existingManagedGroups []string
+				require.NoError(t, json.Unmarshal([]byte(managedGroup.GetGroupNames()), &existingManagedGroups))
+				newGrps, err := json.Marshal(append(existingAcctGroups, existingManagedGroups...))
+				require.NoError(t, err)
+				acctClone.MemberOfGroups = string(newGrps)
+				updated, err := rw.Update(ctx, acctClone, []string{"MemberOfGroups"}, nil)
+				require.NoError(t, err)
+				require.Equal(t, 1, updated)
+				userId := user.GetPublicId()
+				currentMapping := userToLdapManagedGroupsMapping[userId]
+				if currentMapping == nil {
+					currentMapping = make(map[string]bool)
+				}
+				currentMapping[managedGroup.GetPublicId()] = true
+				userToLdapManagedGroupsMapping[userId] = currentMapping
+
+				currentMapGrpsToUser := ldapManagedGroupToUser[managedGroup.GetPublicId()]
+				if currentMapGrpsToUser == nil {
+					currentMapGrpsToUser = make(map[string]bool)
+				}
+				currentMapGrpsToUser[userId] = true
+				ldapManagedGroupToUser[managedGroup.GetPublicId()] = currentMapGrpsToUser
+
+				// check that the acct is part of the managed grp
+				// 1) check acct is returned from
+				// 		auth_managed_group_member_account search
+				// 2) check that acct belongs to the user
+				memberAccts, err := ldapRepo.ListManagedGroupMembershipsByMember(ctx, userLdapAcct.GetPublicId())
+				require.NoError(t, err)
+				require.GreaterOrEqual(t, len(memberAccts), 1)
+				found := false
+				for _, m := range memberAccts {
+					if m.GetManagedGroupId() == managedGroup.GetPublicId() && m.GetMemberId() == userLdapAcct.GetPublicId() {
+						found = true
+					}
+				}
+				require.Truef(t, found, "did not find acct in managed grp search")
+
+				accts, err := iamRepo.ListUserAccounts(ctx, userId)
+				require.NoError(t, err)
+				require.Contains(t, accts, userLdapAcct.GetPublicId())
 			}
 		}
 	}
@@ -156,7 +243,8 @@ func TestGrantsForUser(t *testing.T) {
 	// store mappings
 	userToRolesMapping := map[string]map[string]bool{}
 	groupToRolesMapping := map[string]map[string]bool{}
-	managedGroupToRolesMapping := map[string]map[string]bool{}
+	oidcManagedGroupToRolesMapping := map[string]map[string]bool{}
+	ldapManagedGroupToRolesMapping := map[string]map[string]bool{}
 	if addUsersDirectly {
 		for _, role := range roles {
 			for _, user := range users {
@@ -194,19 +282,53 @@ func TestGrantsForUser(t *testing.T) {
 		}
 	}
 	for _, role := range roles {
-		for _, managedGroup := range managedGroups {
-			// Give each managed group a chance of being directly added to any
-			// specific role
+		roleId := role.PublicId
+		for _, oidcManagedGroup := range oidcManagedGroups {
+			// Give each oidc managed group a chance of being directly added to
+			// any specific role
 			if mathrand.Int()%probFactor == 0 {
-				roleId := role.PublicId
-				managedGroupId := managedGroup.PublicId
+				managedGroupId := oidcManagedGroup.PublicId
 				iam.TestManagedGroupRole(t, conn, roleId, managedGroupId)
-				currentMapping := managedGroupToRolesMapping[managedGroupId]
+				currentMapping := oidcManagedGroupToRolesMapping[managedGroupId]
 				if currentMapping == nil {
 					currentMapping = make(map[string]bool)
 				}
 				currentMapping[roleId] = true
-				managedGroupToRolesMapping[managedGroupId] = currentMapping
+				oidcManagedGroupToRolesMapping[managedGroupId] = currentMapping
+			}
+		}
+		for _, ldapManagedGroup := range ldapManagedGroups {
+			// Give each ldap managed group a chance of being directly added to
+			// any specific role
+			if mathrand.Int()%probFactor == 0 {
+				ldapManagedGroupId := ldapManagedGroup.GetPublicId()
+				iam.TestManagedGroupRole(t, conn, roleId, ldapManagedGroupId)
+				currentMapping := ldapManagedGroupToRolesMapping[ldapManagedGroupId]
+				if currentMapping == nil {
+					currentMapping = make(map[string]bool)
+				}
+				currentMapping[roleId] = true
+				ldapManagedGroupToRolesMapping[ldapManagedGroupId] = currentMapping
+
+				// just check if role shows up for the user now.
+				for userId := range ldapManagedGroupToUser[ldapManagedGroupId] {
+					tuples, err := iamRepo.GrantsForUser(ctx, userId)
+					t.Log("userId/tuples:", userId, tuples)
+					require.NoError(t, err)
+					found := false
+					foundRoles := []string{}
+					for _, gt := range tuples {
+						foundRoles = append(foundRoles, gt.RoleId)
+						if gt.RoleId == roleId {
+							found = true
+							break
+						}
+					}
+					if found {
+						t.Log("FOUND:", userId, ldapManagedGroupId, foundRoles)
+					}
+					assert.Truef(t, found, "did not find role id %s in grants for user %s, grp %s, found user roles %s", roleId, userId, ldapManagedGroupId, foundRoles)
+				}
 			}
 		}
 	}
@@ -214,7 +336,7 @@ func TestGrantsForUser(t *testing.T) {
 	// Now, fetch the set of grants. We're going to be testing this by looking
 	// at the role IDs of the matching grant tuples.
 	for _, user := range users {
-		var rolesFromUsers, rolesFromGroups, rolesFromManagedGroups int
+		var rolesFromUsers, rolesFromGroups, rolesFromOidcManagedGroups, rolesFromLdapManagedGroups int
 
 		tuples, err := iamRepo.GrantsForUser(ctx, user.PublicId)
 		require.NoError(t, err)
@@ -240,16 +362,30 @@ func TestGrantsForUser(t *testing.T) {
 				rolesFromGroups++
 			}
 		}
-		for managedGroupId := range userToManagedGroupsMapping[user.PublicId] {
-			for roleId := range managedGroupToRolesMapping[managedGroupId] {
+		for managedGroupId := range userToOidcManagedGroupsMapping[user.PublicId] {
+			for roleId := range oidcManagedGroupToRolesMapping[managedGroupId] {
 				expectedRoleIds[roleId] = true
-				rolesFromManagedGroups++
+				rolesFromOidcManagedGroups++
+			}
+		}
+		for managedGroupId := range userToLdapManagedGroupsMapping[user.PublicId] {
+			for roleId := range ldapManagedGroupToRolesMapping[managedGroupId] {
+				if !expectedRoleIds[roleId] {
+					t.Log("Adding ldap role: ", roleId)
+				}
+				expectedRoleIds[roleId] = true
+				rolesFromLdapManagedGroups++
 			}
 		}
 
 		// Now verify that the expected set and returned set match
-		assert.EqualValues(t, expectedRoleIds, roleIds)
+		require.EqualValues(t, expectedRoleIds, roleIds)
 
-		t.Log("finished user", user.PublicId, "total roles", len(expectedRoleIds), "roles from users", rolesFromUsers, "roles from groups", rolesFromGroups, "roles from managed groups", rolesFromManagedGroups)
+		t.Log("finished user", user.PublicId,
+			"total roles", len(expectedRoleIds),
+			", roles from users", rolesFromUsers,
+			", roles from groups", rolesFromGroups,
+			", roles from oidc managed groups", rolesFromOidcManagedGroups,
+			", roles from ldap managed groups", rolesFromLdapManagedGroups)
 	}
 }

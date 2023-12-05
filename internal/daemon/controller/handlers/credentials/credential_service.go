@@ -48,19 +48,19 @@ var (
 
 	// IdActions contains the set of actions that can be performed on
 	// individual resources
-	IdActions = action.ActionSet{
+	IdActions = action.NewActionSet(
 		action.NoOp,
 		action.Read,
 		action.Update,
 		action.Delete,
-	}
+	)
 
 	// CollectionActions contains the set of actions that can be performed on
 	// this collection
-	CollectionActions = action.ActionSet{
+	CollectionActions = action.NewActionSet(
 		action.Create,
 		action.List,
-	}
+	)
 )
 
 func init() {
@@ -86,6 +86,9 @@ func init() {
 	); err != nil {
 		panic(err)
 	}
+
+	// TODO: refactor to remove IdActionsMap and CollectionActions package variables
+	action.RegisterResource(resource.Credential, IdActions, CollectionActions)
 }
 
 // Service handles request as described by the pbs.CredentialServiceServer interface.
@@ -160,7 +163,7 @@ func (s Service) ListCredentials(ctx context.Context, req *pbs.ListCredentialsRe
 			return nil, err
 		}
 
-		filterable, err := subtypes.Filterable(item)
+		filterable, err := subtypes.Filterable(ctx, item)
 		if err != nil {
 			return nil, err
 		}
@@ -413,7 +416,7 @@ func (s Service) updateInRepo(
 	var dbMasks []string
 	item := proto.Clone(in).(*pb.Credential)
 
-	switch subtypes.SubtypeFromId(domain, id) {
+	switch globals.ResourceInfoFromPrefix(id).Subtype {
 	case credential.UsernamePasswordSubtype:
 		dbMasks = append(dbMasks, upMaskManager.Translate(masks)...)
 		if len(dbMasks) == 0 {
@@ -808,7 +811,7 @@ func validateCreateRequest(req *pbs.CreateCredentialRequest) error {
 func validateUpdateRequest(req *pbs.UpdateCredentialRequest) error {
 	return handlers.ValidateUpdateRequest(req, req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
-		switch subtypes.SubtypeFromId(domain, req.GetId()) {
+		switch globals.ResourceInfoFromPrefix(req.GetId()).Subtype {
 		case credential.UsernamePasswordSubtype:
 			attrs := req.GetItem().GetUsernamePasswordAttributes()
 			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), usernameField) && attrs.GetUsername().GetValue() == "" {

@@ -529,6 +529,71 @@ func Test_UpdateAuthMethod(t *testing.T) {
 			version:      2, // since TestAuthMethod(...) did an update to get it to ActivePublicState
 			wantErrMatch: errors.T(errors.InvalidParameter),
 		},
+		{
+			name: "update-with-prompt",
+			setup: func() *AuthMethod {
+				org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+				databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
+				require.NoError(t, err)
+				return TestAuthMethod(
+					t,
+					conn,
+					databaseWrapper,
+					org.PublicId,
+					InactiveState,
+					"alice-rp",
+					"alice-secret",
+					WithCertificates(tpCert[0]),
+					WithSigningAlgs(Alg(tpAlg)),
+				)
+			},
+			updateWith: func(orig *AuthMethod) *AuthMethod {
+				am := AllocAuthMethod()
+				am.PublicId = orig.PublicId
+				am.Prompts = []string{string(SelectAccount)}
+				return &am
+			},
+			fieldMasks: []string{PromptsField},
+			version:    1,
+			want: func(orig, updateWith *AuthMethod) *AuthMethod {
+				am := orig.Clone()
+				am.Prompts = updateWith.Prompts
+				return am
+			},
+		},
+		{
+			name: "update-with-existing-prompt",
+			setup: func() *AuthMethod {
+				org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+				databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
+				require.NoError(t, err)
+				return TestAuthMethod(
+					t,
+					conn,
+					databaseWrapper,
+					org.PublicId,
+					InactiveState,
+					"alice-rp",
+					"alice-secret",
+					WithCertificates(tpCert[0]),
+					WithSigningAlgs(Alg(tpAlg)),
+					WithPrompts(Consent),
+				)
+			},
+			updateWith: func(orig *AuthMethod) *AuthMethod {
+				am := AllocAuthMethod()
+				am.PublicId = orig.PublicId
+				am.Prompts = []string{string(SelectAccount)}
+				return &am
+			},
+			fieldMasks: []string{PromptsField},
+			version:    1,
+			want: func(orig, updateWith *AuthMethod) *AuthMethod {
+				am := orig.Clone()
+				am.Prompts = updateWith.Prompts
+				return am
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1068,6 +1133,7 @@ func Test_validateFieldMask(t *testing.T) {
 				AudClaimsField,
 				CertificatesField,
 				ClaimsScopesField,
+				PromptsField,
 			},
 		},
 		{
@@ -1114,6 +1180,7 @@ func Test_applyUpdate(t *testing.T) {
 					AudClaims:        []string{"new-aud-1", "new-aud-2"},
 					Certificates:     []string{"new-pem1", "new-pem-2"},
 					ClaimsScopes:     []string{"new-scope1", "new-scope2"},
+					Prompts:          []string{string(SelectAccount)},
 				},
 			},
 			orig: &AuthMethod{
@@ -1130,6 +1197,7 @@ func Test_applyUpdate(t *testing.T) {
 					AudClaims:        []string{"orig-aud-1", "orig-aud-2"},
 					Certificates:     []string{"orig-pem1", "orig-pem-2"},
 					ClaimsScopes:     []string{"orig-scope1", "orig-scope2"},
+					Prompts:          []string{string(None)},
 				},
 			},
 			want: &AuthMethod{
@@ -1146,6 +1214,7 @@ func Test_applyUpdate(t *testing.T) {
 					AudClaims:        []string{"new-aud-1", "new-aud-2"},
 					Certificates:     []string{"new-pem1", "new-pem-2"},
 					ClaimsScopes:     []string{"new-scope1", "new-scope2"},
+					Prompts:          []string{string(SelectAccount)},
 				},
 			},
 			fieldMask: []string{
@@ -1160,6 +1229,7 @@ func Test_applyUpdate(t *testing.T) {
 				AudClaimsField,
 				CertificatesField,
 				ClaimsScopesField,
+				PromptsField,
 			},
 		},
 		{
@@ -1189,6 +1259,7 @@ func Test_applyUpdate(t *testing.T) {
 					AudClaims:        []string{"orig-aud-1", "orig-aud-2"},
 					Certificates:     []string{"orig-pem1", "orig-pem-2"},
 					ClaimsScopes:     []string{"orig-scope1", "orig-scope2"},
+					Prompts:          []string{string(SelectAccount)},
 				},
 			},
 			want: &AuthMethod{
@@ -1214,6 +1285,7 @@ func Test_applyUpdate(t *testing.T) {
 				AudClaimsField,
 				CertificatesField,
 				ClaimsScopesField,
+				PromptsField,
 			},
 		},
 	}

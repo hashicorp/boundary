@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/boundary/globals"
 	wl "github.com/hashicorp/boundary/internal/daemon/common"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
@@ -294,7 +295,14 @@ func TestGet(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 			}
-			assert.Empty(t, cmp.Diff(got, tc.res, protocmp.Transform()), "GetWorker(%q) got response\n%q, wanted\n%q", tc.req, got, tc.res)
+			assert.Empty(t, cmp.Diff(
+				got,
+				tc.res,
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+			), "GetWorker(%q) got response\n%q, wanted\n%q", tc.req, got, tc.res)
 		})
 	}
 }
@@ -435,7 +443,14 @@ func TestList(t *testing.T) {
 			sort.Slice(tc.res.Items, func(i, j int) bool {
 				return tc.res.Items[i].GetName().GetValue() < tc.res.Items[j].GetName().GetValue()
 			})
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListWorkers(%q) got response %q, wanted %q", tc.req.GetScopeId(), got, tc.res)
+			assert.Empty(cmp.Diff(
+				got,
+				tc.res,
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+			), "ListWorkers(%q) got response %q, wanted %q", tc.req.GetScopeId(), got, tc.res)
 
 			// Test the anon case
 			got, gErr = s.ListWorkers(auth.DisabledAuthTestContext(iamRepoFn, tc.req.GetScopeId(), auth.WithUserId(globals.AnonymousUserId)), tc.req)
@@ -1046,7 +1061,14 @@ func TestUpdate(t *testing.T) {
 
 				expRes.Item.Version = tc.req.Item.Version + 1
 
-				assert.Empty(t, cmp.Diff(got, expRes, protocmp.Transform()), "UpdateWorker(%q) got response %q, wanted %q", req, got, expRes)
+				assert.Empty(t, cmp.Diff(
+					got,
+					expRes,
+					protocmp.Transform(),
+					cmpopts.SortSlices(func(a, b string) bool {
+						return a < b
+					}),
+				), "UpdateWorker(%q) got response %q, wanted %q", req, got, expRes)
 			})
 		}
 	}

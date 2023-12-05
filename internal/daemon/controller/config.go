@@ -21,4 +21,9 @@ type Config struct {
 	DisableAuthorizationFailures bool
 	// Override worker auth CA certificate lifetime for testing
 	TestOverrideWorkerAuthCaCertificateLifetime time.Duration
+
+	// This is derived from the config.Config. It tracks the state of the
+	// rate limiter's configuration, and is updated if the config changes via a
+	// SIGHUP.
+	rateLimiterConfig *rateLimiterConfig
 }

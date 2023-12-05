@@ -28,6 +28,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/subtypes"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/accounts"
+	"golang.org/x/exp/maps"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -69,35 +70,35 @@ var (
 
 	// IdActions contains the set of actions that can be performed on
 	// individual resources
-	IdActions = map[subtypes.Subtype]action.ActionSet{
-		password.Subtype: {
+	IdActions = map[globals.Subtype]action.ActionSet{
+		password.Subtype: action.NewActionSet(
 			action.NoOp,
 			action.Read,
 			action.Update,
 			action.Delete,
 			action.SetPassword,
 			action.ChangePassword,
-		},
-		oidc.Subtype: {
+		),
+		oidc.Subtype: action.NewActionSet(
 			action.NoOp,
 			action.Read,
 			action.Update,
 			action.Delete,
-		},
-		ldap.Subtype: {
+		),
+		ldap.Subtype: action.NewActionSet(
 			action.NoOp,
 			action.Read,
 			action.Update,
 			action.Delete,
-		},
+		),
 	}
 
 	// CollectionActions contains the set of actions that can be performed on
 	// this collection
-	CollectionActions = action.ActionSet{
+	CollectionActions = action.NewActionSet(
 		action.Create,
 		action.List,
-	}
+	)
 )
 
 func init() {
@@ -108,6 +109,9 @@ func init() {
 	if oidcMaskManager, err = handlers.NewMaskManager(context.Background(), handlers.MaskDestination{&oidcstore.Account{}}, handlers.MaskSource{&pb.Account{}, &pb.OidcAccountAttributes{}}); err != nil {
 		panic(err)
 	}
+
+	// TODO: refactor to remove IdActions and CollectionActions package variables
+	action.RegisterResource(resource.Account, action.Union(maps.Values(IdActions)...), CollectionActions)
 }
 
 // Service handles request as described by the pbs.AccountServiceServer interface.
@@ -165,7 +169,7 @@ func (s Service) ListAccounts(ctx context.Context, req *pbs.ListAccountsRequest)
 	}
 	for _, acct := range ul {
 		res.Id = acct.GetPublicId()
-		authorizedActions := authResults.FetchActionSetForId(ctx, acct.GetPublicId(), IdActions[subtypes.SubtypeFromId(domain, acct.GetPublicId())], requestauth.WithResource(&res)).Strings()
+		authorizedActions := authResults.FetchActionSetForId(ctx, acct.GetPublicId(), IdActions[globals.ResourceInfoFromPrefix(acct.GetPublicId()).Subtype], requestauth.WithResource(&res)).Strings()
 		if len(authorizedActions) == 0 {
 			continue
 		}
@@ -187,7 +191,7 @@ func (s Service) ListAccounts(ctx context.Context, req *pbs.ListAccountsRequest)
 
 		// This comes last so that we can use item fields in the filter after
 		// the allowed fields are populated above
-		filterable, err := subtypes.Filterable(item)
+		filterable, err := subtypes.Filterable(ctx, item)
 		if err != nil {
 			return nil, err
 		}
@@ -226,7 +230,7 @@ func (s Service) GetAccount(ctx context.Context, req *pbs.GetAccountRequest) (*p
 		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
 	if outputFields.Has(globals.AuthorizedActionsField) {
-		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, acct.GetPublicId(), IdActions[subtypes.SubtypeFromId(domain, acct.GetPublicId())]).Strings()))
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, acct.GetPublicId(), IdActions[globals.ResourceInfoFromPrefix(acct.GetPublicId()).Subtype]).Strings()))
 	}
 	if outputFields.Has(globals.ManagedGroupIdsField) {
 		outputOpts = append(outputOpts, handlers.WithManagedGroupIds(mgIds))
@@ -268,7 +272,7 @@ func (s Service) CreateAccount(ctx context.Context, req *pbs.CreateAccountReques
 		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
 	if outputFields.Has(globals.AuthorizedActionsField) {
-		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, acct.GetPublicId(), IdActions[subtypes.SubtypeFromId(domain, acct.GetPublicId())]).Strings()))
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, acct.GetPublicId(), IdActions[globals.ResourceInfoFromPrefix(acct.GetPublicId()).Subtype]).Strings()))
 	}
 
 	item, err := toProto(ctx, acct, outputOpts...)
@@ -307,7 +311,7 @@ func (s Service) UpdateAccount(ctx context.Context, req *pbs.UpdateAccountReques
 		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
 	if outputFields.Has(globals.AuthorizedActionsField) {
-		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, acct.GetPublicId(), IdActions[subtypes.SubtypeFromId(domain, acct.GetPublicId())]).Strings()))
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, acct.GetPublicId(), IdActions[globals.ResourceInfoFromPrefix(acct.GetPublicId()).Subtype]).Strings()))
 	}
 
 	item, err := toProto(ctx, acct, outputOpts...)
@@ -362,7 +366,7 @@ func (s Service) ChangePassword(ctx context.Context, req *pbs.ChangePasswordRequ
 		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
 	if outputFields.Has(globals.AuthorizedActionsField) {
-		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, acct.GetPublicId(), IdActions[subtypes.SubtypeFromId(domain, acct.GetPublicId())]).Strings()))
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, acct.GetPublicId(), IdActions[globals.ResourceInfoFromPrefix(acct.GetPublicId()).Subtype]).Strings()))
 	}
 
 	item, err := toProto(ctx, acct, outputOpts...)
@@ -401,7 +405,7 @@ func (s Service) SetPassword(ctx context.Context, req *pbs.SetPasswordRequest) (
 		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
 	if outputFields.Has(globals.AuthorizedActionsField) {
-		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, acct.GetPublicId(), IdActions[subtypes.SubtypeFromId(domain, acct.GetPublicId())]).Strings()))
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, acct.GetPublicId(), IdActions[globals.ResourceInfoFromPrefix(acct.GetPublicId()).Subtype]).Strings()))
 	}
 
 	item, err := toProto(ctx, acct, outputOpts...)
@@ -417,7 +421,7 @@ func (s Service) SetPassword(ctx context.Context, req *pbs.SetPasswordRequest) (
 func (s Service) getFromRepo(ctx context.Context, id string) (auth.Account, []string, error) {
 	var acct auth.Account
 	var mgIds []string
-	switch subtypes.SubtypeFromId(domain, id) {
+	switch globals.ResourceInfoFromPrefix(id).Subtype {
 	case password.Subtype:
 		repo, err := s.pwRepoFn()
 		if err != nil {
@@ -592,7 +596,7 @@ func (s Service) createInRepo(ctx context.Context, am auth.AuthMethod, item *pb.
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing item")
 	}
 	var out auth.Account
-	switch subtypes.SubtypeFromId(domain, am.GetPublicId()) {
+	switch globals.ResourceInfoFromPrefix(am.GetPublicId()).Subtype {
 	case password.Subtype:
 		am, err := s.createPwInRepo(ctx, am, item)
 		if err != nil {
@@ -752,7 +756,7 @@ func (s Service) updateLdapInRepo(ctx context.Context, scopeId, amId, id string,
 func (s Service) updateInRepo(ctx context.Context, scopeId, authMethodId string, req *pbs.UpdateAccountRequest) (auth.Account, error) {
 	const op = "accounts.(Service).updateInRepo"
 	var out auth.Account
-	switch subtypes.SubtypeFromId(domain, req.GetId()) {
+	switch globals.ResourceInfoFromPrefix(req.GetId()).Subtype {
 	case password.Subtype:
 		a, err := s.updatePwInRepo(ctx, scopeId, authMethodId, req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
 		if err != nil {
@@ -788,7 +792,7 @@ func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, 
 	const op = "accounts.(Service).deleteFromRepo"
 	var rows int
 	var err error
-	switch subtypes.SubtypeFromId(domain, id) {
+	switch globals.ResourceInfoFromPrefix(id).Subtype {
 	case password.Subtype:
 		repo, iErr := s.pwRepoFn()
 		if iErr != nil {
@@ -821,7 +825,7 @@ func (s Service) listFromRepo(ctx context.Context, authMethodId string) ([]auth.
 	const op = "accounts.(Service).listFromRepo"
 
 	var outUl []auth.Account
-	switch subtypes.SubtypeFromId(domain, authMethodId) {
+	switch globals.ResourceInfoFromPrefix(authMethodId).Subtype {
 	case password.Subtype:
 		pwRepo, err := s.pwRepoFn()
 		if err != nil {
@@ -933,7 +937,7 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 	case action.List, action.Create:
 		parentId = id
 	default:
-		switch subtypes.SubtypeFromId(domain, id) {
+		switch globals.ResourceInfoFromPrefix(id).Subtype {
 		case password.Subtype:
 			acct, err := pwRepo.LookupAccount(ctx, id)
 			if err != nil {
@@ -972,7 +976,7 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 	}
 
 	var authMeth auth.AuthMethod
-	switch subtypes.SubtypeFromId(domain, parentId) {
+	switch globals.ResourceInfoFromPrefix(parentId).Subtype {
 	case password.Subtype:
 		am, err := pwRepo.LookupAuthMethod(ctx, parentId)
 		if err != nil {
@@ -1174,7 +1178,7 @@ func validateCreateRequest(ctx context.Context, req *pbs.CreateAccountRequest) e
 		if req.GetItem().GetAuthMethodId() == "" {
 			badFields[authMethodIdField] = "This field is required."
 		}
-		switch subtypes.SubtypeFromId(domain, req.GetItem().GetAuthMethodId()) {
+		switch globals.ResourceInfoFromPrefix(req.GetItem().GetAuthMethodId()).Subtype {
 		case password.Subtype:
 			if req.GetItem().GetType() != "" && req.GetItem().GetType() != password.Subtype.String() {
 				badFields[typeField] = "Doesn't match the parent resource's type."
@@ -1255,7 +1259,7 @@ func validateUpdateRequest(ctx context.Context, req *pbs.UpdateAccountRequest) e
 	}
 	return handlers.ValidateUpdateRequest(req, req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
-		switch subtypes.SubtypeFromId(domain, req.GetId()) {
+		switch globals.ResourceInfoFromPrefix(req.GetId()).Subtype {
 		case password.Subtype:
 			if req.GetItem().GetType() != "" && req.GetItem().GetType() != password.Subtype.String() {
 				badFields[typeField] = "Cannot modify the resource type."

@@ -49,19 +49,19 @@ var (
 
 	// IdActions contains the set of actions that can be performed on
 	// individual resources
-	IdActions = action.ActionSet{
+	IdActions = action.NewActionSet(
 		action.NoOp,
 		action.Read,
 		action.Update,
 		action.Delete,
-	}
+	)
 
 	// CollectionActions contains the set of actions that can be performed on
 	// this collection
-	CollectionActions = action.ActionSet{
+	CollectionActions = action.NewActionSet(
 		action.Create,
 		action.List,
-	}
+	)
 
 	vaultCollectionTypeMap = map[resource.Type]action.ActionSet{
 		resource.CredentialLibrary: credentiallibraries.CollectionActions,
@@ -86,6 +86,9 @@ func init() {
 	); err != nil {
 		panic(err)
 	}
+
+	// TODO: refactor to remove IdActionsMap and CollectionActions package variables
+	action.RegisterResource(resource.CredentialStore, IdActions, CollectionActions)
 }
 
 // Service handles request as described by the pbs.CredentialStoreServiceServer interface.
@@ -194,7 +197,7 @@ func (s Service) ListCredentialStores(ctx context.Context, req *pbs.ListCredenti
 			return nil, err
 		}
 
-		filterable, err := subtypes.Filterable(item)
+		filterable, err := subtypes.Filterable(ctx, item)
 		if err != nil {
 			return nil, err
 		}
@@ -394,7 +397,7 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]credent
 func (s Service) getFromRepo(ctx context.Context, id string) (credential.Store, error) {
 	const op = "credentialstores.(Service).getFromRepo"
 
-	switch subtypes.SubtypeFromId(domain, id) {
+	switch globals.ResourceInfoFromPrefix(id).Subtype {
 	case vault.Subtype:
 		repo, err := s.vaultRepoFn()
 		if err != nil {
@@ -475,7 +478,7 @@ func (s Service) updateInRepo(ctx context.Context, projId, id string, mask []str
 		return nil, handlers.InvalidArgumentErrorf("No valid fields included in the update mask.", map[string]string{"update_mask": "No valid fields provided in the update mask."})
 	}
 
-	switch subtypes.SubtypeFromId(domain, id) {
+	switch globals.ResourceInfoFromPrefix(id).Subtype {
 	case vault.Subtype:
 		cs, err := toStorageVaultStore(ctx, projId, item)
 		if err != nil {
@@ -518,7 +521,7 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 	const op = "credentialstores.(Service).deleteFromRepo"
 	var rows int
 
-	switch subtypes.SubtypeFromId(domain, id) {
+	switch globals.ResourceInfoFromPrefix(id).Subtype {
 	case vault.Subtype:
 		repo, err := s.vaultRepoFn()
 		if err != nil {
@@ -581,7 +584,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 			return res
 		}
 	default:
-		switch subtypes.SubtypeFromId(domain, id) {
+		switch globals.ResourceInfoFromPrefix(id).Subtype {
 		case vault.Subtype:
 			cs, err := vaultRepo.LookupCredentialStore(ctx, id)
 			if err != nil {
@@ -630,7 +633,7 @@ func toProto(ctx context.Context, in credential.Store, opt ...handlers.Option) (
 		out.ScopeId = in.GetProjectId()
 	}
 	if outputFields.Has(globals.TypeField) {
-		out.Type = subtypes.SubtypeFromId(domain, in.GetPublicId()).String()
+		out.Type = globals.ResourceInfoFromPrefix(in.GetPublicId()).Subtype.String()
 	}
 	if outputFields.Has(globals.DescriptionField) && in.GetDescription() != "" {
 		out.Description = wrapperspb.String(in.GetDescription())
@@ -657,7 +660,7 @@ func toProto(ctx context.Context, in credential.Store, opt ...handlers.Option) (
 		out.AuthorizedCollectionActions = opts.WithAuthorizedCollectionActions
 	}
 	if outputFields.Has(globals.AttributesField) {
-		switch subtypes.SubtypeFromId(domain, in.GetPublicId()) {
+		switch globals.ResourceInfoFromPrefix(in.GetPublicId()).Subtype {
 		case vault.Subtype:
 			vaultIn, ok := in.(*vault.CredentialStore)
 			if !ok {
@@ -790,8 +793,8 @@ func validateCreateRequest(ctx context.Context, req *pbs.CreateCredentialStoreRe
 		if !handlers.ValidId(handlers.Id(req.GetItem().GetScopeId()), scope.Project.Prefix()) {
 			badFields["scope_id"] = "This field must be a valid project scope id."
 		}
-		switch subtypes.SubtypeFromType(domain, req.GetItem().GetType()) {
-		case vault.Subtype:
+		switch req.GetItem().GetType() {
+		case vault.Subtype.String():
 			attrs := req.GetItem().GetVaultCredentialStoreAttributes()
 			if attrs == nil {
 				badFields[globals.AttributesField] = "Attributes are required for creating a vault credential store"
@@ -828,7 +831,7 @@ func validateCreateRequest(ctx context.Context, req *pbs.CreateCredentialStoreRe
 			if len(cs) > 0 && pk == nil {
 				badFields[clientCertField] = "Cannot set a client certificate without a private key."
 			}
-		case static.Subtype:
+		case static.Subtype.String():
 			// No additional validation required for static credential store
 		default:
 			badFields[globals.TypeField] = "This is a required field and must be a known credential store type."
@@ -840,9 +843,9 @@ func validateCreateRequest(ctx context.Context, req *pbs.CreateCredentialStoreRe
 func validateUpdateRequest(ctx context.Context, req *pbs.UpdateCredentialStoreRequest) error {
 	return handlers.ValidateUpdateRequest(req, req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
-		switch subtypes.SubtypeFromId(domain, req.GetId()) {
+		switch globals.ResourceInfoFromPrefix(req.GetId()).Subtype {
 		case vault.Subtype:
-			if req.GetItem().GetType() != "" && subtypes.SubtypeFromType(domain, req.GetItem().GetType()) != vault.Subtype {
+			if req.GetItem().GetType() != "" && req.GetItem().GetType() != vault.Subtype.String() {
 				badFields["type"] = "Cannot modify resource type."
 			}
 			attrs := req.GetItem().GetVaultCredentialStoreAttributes()
@@ -903,7 +906,7 @@ func validateListRequest(ctx context.Context, req *pbs.ListCredentialStoresReque
 func calculateAuthorizedCollectionActions(ctx context.Context, authResults auth.VerifyResults, id string) (map[string]*structpb.ListValue, error) {
 	var collectionActions map[string]*structpb.ListValue
 	var err error
-	switch subtypes.SubtypeFromId(domain, id) {
+	switch globals.ResourceInfoFromPrefix(id).Subtype {
 	case vault.Subtype:
 		collectionActions, err = auth.CalculateAuthorizedCollectionActions(ctx, authResults, vaultCollectionTypeMap, authResults.Scope.Id, id)
 

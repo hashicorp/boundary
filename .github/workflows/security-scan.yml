@@ -76,7 +76,7 @@ jobs:
         repository: "$PWD"
 
     - name: Upload SARIF file
-      uses: github/codeql-action/upload-sarif@bad341350a2f5616f9e048e51360cedc49181ce8 # codeql-bundle-v2.15.1
+      uses: github/codeql-action/upload-sarif@4b6aa0b07da05d6e43d0e5f9c8596a6532ce1c85 # codeql-bundle-v2.15.3
       with:
         sarif_file: results.sarif
 

@@ -118,6 +118,11 @@ func StartAuth(ctx context.Context, oidcRepoFn OidcRepoFactory, authMethodId str
 		oidcOpts = append(oidcOpts, oidc.WithScopes(am.ClaimsScopes...))
 	}
 
+	if len(am.Prompts) > 0 {
+		prompts := convertToOIDCPrompts(ctx, am.Prompts)
+		oidcOpts = append(oidcOpts, oidc.WithPrompts(prompts...))
+	}
+
 	// a bare min oidc.Request needed for the provider.AuthURL(...) call.  We've intentionally not populated
 	// things like Audiences, because this oidc.Request isn't cached and not intended for use in future legs
 	// of the authen flow.

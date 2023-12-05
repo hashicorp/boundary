@@ -146,6 +146,9 @@ func TestList_Plugin(t *testing.T) {
 			comparableSetSlice(ul.Items),
 			cmpopts.IgnoreUnexported(hostsets.HostSet{}),
 			cmpopts.IgnoreFields(hostsets.HostSet{}, "Version", "UpdatedTime"),
+			cmpopts.SortSlices(func(a, b string) bool {
+				return a < b
+			}),
 		),
 	)
 
@@ -164,6 +167,9 @@ func TestList_Plugin(t *testing.T) {
 			cmpopts.IgnoreFields(hostsets.HostSet{}, "Version", "UpdatedTime"),
 			cmpopts.SortSlices(func(x, y *hostsets.HostSet) bool {
 				return x.Id < y.Id
+			}),
+			cmpopts.SortSlices(func(a, b string) bool {
+				return a < b
 			}),
 		),
 	)

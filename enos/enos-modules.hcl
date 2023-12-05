@@ -147,6 +147,10 @@ module "docker_boundary" {
   source = "./modules/docker_boundary"
 }
 
+module "docker_boundary_cmd" {
+  source = "./modules/docker_boundary_cmd"
+}
+
 module "docker_openssh_server" {
   source = "./modules/docker_openssh_server"
 }
@@ -161,4 +165,12 @@ module "docker_worker" {
 
 module "docker_network" {
   source = "./modules/docker_network"
+}
+
+module "docker_check_health" {
+  source = "./modules/docker_check_health"
+}
+
+module "docker_ldap" {
+  source = "./modules/docker_ldap"
 }

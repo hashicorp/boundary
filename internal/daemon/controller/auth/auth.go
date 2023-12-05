@@ -31,7 +31,6 @@ import (
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
-	"github.com/hashicorp/boundary/internal/types/subtypes"
 	"github.com/hashicorp/boundary/internal/util"
 	"github.com/hashicorp/boundary/internal/util/template"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
@@ -555,7 +554,7 @@ func (v verifier) performAuthCheck(ctx context.Context) (
 		const domain = "auth"
 		var acct auth.Account
 		var err error
-		switch subtypes.SubtypeFromId(domain, *userData.Account.Id) {
+		switch globals.ResourceInfoFromPrefix(*userData.Account.Id).Subtype {
 		case password.Subtype:
 			repo, repoErr := v.passwordAuthRepoFn()
 			if repoErr != nil {
@@ -723,10 +722,10 @@ func (r *VerifyResults) fetchActions(id string, typ resource.Type, availableActi
 		res.Type = typ
 	}
 
-	ret := make(action.ActionSet, 0, len(availableActions))
-	for _, act := range availableActions {
+	ret := make(action.ActionSet, len(availableActions))
+	for act := range availableActions {
 		if r.v.acl.Allowed(*res, act, *r.UserData.User.Id).Authorized {
-			ret = append(ret, act)
+			ret.Add(act)
 		}
 	}
 	if len(ret) == 0 {
@@ -855,7 +854,7 @@ func (r *VerifyResults) ScopesAuthorizedForList(ctx context.Context, rootScopeId
 		scpId := scp.GetPublicId()
 		aSet := r.FetchActionSetForType(ctx,
 			resource.Unknown, // This is overridden by `WithResource` option.
-			action.ActionSet{action.List},
+			action.NewActionSet(action.List),
 			WithResource(&perms.Resource{Type: resourceType, ScopeId: scpId}),
 		)
 
@@ -868,7 +867,7 @@ func (r *VerifyResults) ScopesAuthorizedForList(ctx context.Context, rootScopeId
 			// lookup might fail.
 			deferredScopes = append(deferredScopes, scp)
 		case len(aSet) == 1 || r.UserId == globals.RecoveryUserId:
-			if aSet[0] != action.List {
+			if !aSet.HasAction(action.List) {
 				return nil, errors.New(ctx, errors.Internal, op, "unexpected action in set")
 			}
 			if scopeResourceMap[scpId] == nil {

@@ -17,6 +17,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth/ldap"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
@@ -143,7 +144,8 @@ func TestGet(t *testing.T) {
 	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), o.GetPublicId(), kms.KeyPurposeDatabase)
 	require.NoError(t, err)
 	oidcam := oidc.TestAuthMethod(t, conn, databaseWrapper, o.GetPublicId(), oidc.InactiveState, "alice_rp", "secret",
-		oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://alice.com")[0]), oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://api.com")[0]))
+		oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://alice.com")[0]), oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://api.com")[0]),
+		oidc.WithPrompts(oidc.SelectAccount))
 
 	wantOidc := &pb.AuthMethod{
 		Id:          oidcam.GetPublicId(),
@@ -159,6 +161,7 @@ func TestGet(t *testing.T) {
 				State:            string(oidc.InactiveState),
 				ApiUrlPrefix:     wrapperspb.String("https://api.com"),
 				CallbackUrl:      fmt.Sprintf(oidc.CallbackEndpoint, "https://api.com"),
+				Prompts:          []string{string(oidc.SelectAccount)},
 			},
 		},
 		Version: 1,
@@ -267,7 +270,18 @@ func TestGet(t *testing.T) {
 			if oidcAttrs := got.Item.GetOidcAuthMethodsAttributes(); oidcAttrs != nil {
 				assert.NotEqual("secret", oidcAttrs.ClientSecretHmac)
 			}
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform(), protocmp.IgnoreFields(&pb.OidcAuthMethodAttributes{}, "client_secret_hmac")), "GetAuthMethod(%q) got response %q, wanted %q", tc.req, got, tc.res)
+			assert.Empty(cmp.Diff(
+				got,
+				tc.res,
+				protocmp.Transform(),
+				protocmp.IgnoreFields(&pb.OidcAuthMethodAttributes{}, "client_secret_hmac"),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+				cmpopts.SortSlices(func(a, b protocmp.Message) bool {
+					return a.String() < b.String()
+				}),
+			), "GetAuthMethod(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
 }
@@ -303,7 +317,8 @@ func TestList(t *testing.T) {
 	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), oWithAuthMethods.GetPublicId(), kms.KeyPurposeDatabase)
 	require.NoError(t, err)
 	oidcam := oidc.TestAuthMethod(t, conn, databaseWrapper, oWithAuthMethods.GetPublicId(), oidc.ActivePublicState, "alice_rp", "secret",
-		oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://alice.com")[0]), oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://api.com")[0]), oidc.WithSigningAlgs(oidc.EdDSA))
+		oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://alice.com")[0]), oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://api.com")[0]), oidc.WithSigningAlgs(oidc.EdDSA),
+		oidc.WithPrompts(oidc.Consent))
 	iam.TestSetPrimaryAuthMethod(t, iamRepo, oWithAuthMethods, oidcam.GetPublicId())
 
 	wantSomeAuthMethods = append(wantSomeAuthMethods, &pb.AuthMethod{
@@ -325,6 +340,7 @@ func TestList(t *testing.T) {
 				SigningAlgorithms: []string{
 					string(oidc.EdDSA),
 				},
+				Prompts: []string{string(oidc.Consent)},
 			},
 		},
 		IsPrimary:                   true,
@@ -485,10 +501,19 @@ func TestList(t *testing.T) {
 			}
 
 			slices.SortFunc(got.Items, sorterFn)
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform(),
+			assert.Empty(cmp.Diff(
+				got,
+				tc.res,
+				protocmp.Transform(),
 				protocmp.IgnoreFields(&pb.OidcAuthMethodAttributes{}, "client_secret_hmac"),
-				protocmp.IgnoreFields(&pb.LdapAuthMethodAttributes{}, "bind_password_hmac", "client_certificate_key_hmac")),
-				"ListAuthMethods() for scope %q got response %q, wanted %q", tc.req.GetScopeId(), got, tc.res)
+				protocmp.IgnoreFields(&pb.LdapAuthMethodAttributes{}, "bind_password_hmac", "client_certificate_key_hmac"),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+				cmpopts.SortSlices(func(a, b protocmp.Message) bool {
+					return a.String() < b.String()
+				}),
+			), "ListAuthMethods() for scope %q got response %q, wanted %q", tc.req.GetScopeId(), got, tc.res)
 
 			// Now check with anonymous user
 			got, gErr = s.ListAuthMethods(requestauth.DisabledAuthTestContext(iamRepoFn, tc.req.GetScopeId(), requestauth.WithUserId(globals.AnonymousUserId)), tc.req)
@@ -533,7 +558,8 @@ func TestDelete(t *testing.T) {
 	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), o.GetPublicId(), kms.KeyPurposeDatabase)
 	require.NoError(t, err)
 	oidcam := oidc.TestAuthMethod(t, conn, databaseWrapper, o.GetPublicId(), oidc.InactiveState, "alice_rp", "my-dogs-name",
-		oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://alice.com")[0]), oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://api.com")[0]))
+		oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://alice.com")[0]), oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://api.com")[0]),
+		oidc.WithPrompts(oidc.SelectAccount))
 
 	ldapAm := ldap.TestAuthMethod(t, conn, databaseWrapper, o.GetPublicId(), []string{"ldaps://ldap1"})
 
@@ -1368,6 +1394,66 @@ func TestCreate(t *testing.T) {
 			err:         handlers.ApiErrorWithCode(codes.InvalidArgument),
 			errContains: "invalid attributes.account_attribute_maps (unable to parse)",
 		},
+		{
+			name: "OIDC AuthMethod With Unsupported Prompt",
+			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
+				ScopeId: o.GetPublicId(),
+				Type:    oidc.Subtype.String(),
+				Attrs: &pb.AuthMethod_OidcAuthMethodsAttributes{
+					OidcAuthMethodsAttributes: &pb.OidcAuthMethodAttributes{
+						ApiUrlPrefix: wrapperspb.String("https://api.com"),
+						Issuer:       wrapperspb.String("https://example2.discovery.url:4821"),
+						ClientId:     wrapperspb.String("someclientid"),
+						ClientSecret: wrapperspb.String("secret"),
+						Prompts:      []string{string(oidc.SelectAccount), "invalid"},
+					},
+				},
+			}},
+			err:         handlers.ApiErrorWithCode(codes.InvalidArgument),
+			errContains: "Contains unsupported prompt",
+		},
+		{
+			name: "Create OIDC AuthMethod With Supported Prompt",
+			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
+				ScopeId: o.GetPublicId(),
+				Type:    oidc.Subtype.String(),
+				Attrs: &pb.AuthMethod_OidcAuthMethodsAttributes{
+					OidcAuthMethodsAttributes: &pb.OidcAuthMethodAttributes{
+						Issuer:       wrapperspb.String("https://example.discovery.url:4821/.well-known/openid-configuration/"),
+						ClientId:     wrapperspb.String("exampleclientid"),
+						ClientSecret: wrapperspb.String("secret"),
+						ApiUrlPrefix: wrapperspb.String("https://callback.prefix:9281/path"),
+						Prompts:      []string{string(oidc.SelectAccount)},
+					},
+				},
+			}},
+			idPrefix: globals.OidcAuthMethodPrefix + "_",
+			res: &pbs.CreateAuthMethodResponse{
+				Uri: fmt.Sprintf("auth-methods/%s_", globals.OidcAuthMethodPrefix),
+				Item: &pb.AuthMethod{
+					Id:          defaultAm.GetPublicId(),
+					ScopeId:     o.GetPublicId(),
+					CreatedTime: defaultAm.GetCreateTime().GetTimestamp(),
+					UpdatedTime: defaultAm.GetUpdateTime().GetTimestamp(),
+					Scope:       &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: o.GetType(), ParentScopeId: scope.Global.String()},
+					Version:     1,
+					Type:        oidc.Subtype.String(),
+					Attrs: &pb.AuthMethod_OidcAuthMethodsAttributes{
+						OidcAuthMethodsAttributes: &pb.OidcAuthMethodAttributes{
+							Issuer:           wrapperspb.String("https://example.discovery.url:4821/"),
+							ClientId:         wrapperspb.String("exampleclientid"),
+							ClientSecretHmac: "<hmac>",
+							State:            string(oidc.InactiveState),
+							ApiUrlPrefix:     wrapperspb.String("https://callback.prefix:9281/path"),
+							CallbackUrl:      "https://callback.prefix:9281/path/v1/auth-methods/oidc:authenticate:callback",
+							Prompts:          []string{string(oidc.SelectAccount)},
+						},
+					},
+					AuthorizedActions:           oidcAuthorizedActions,
+					AuthorizedCollectionActions: authorizedCollectionActions,
+				},
+			},
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -1395,7 +1481,15 @@ func TestCreate(t *testing.T) {
 			if tc.res == nil {
 				require.Nil(got)
 			}
-			cmpOptions := []cmp.Option{protocmp.Transform()}
+			cmpOptions := []cmp.Option{
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+				cmpopts.SortSlices(func(a, b protocmp.Message) bool {
+					return a.String() < b.String()
+				}),
+			}
 			if got != nil {
 				assert.Contains(got.GetUri(), tc.res.Uri)
 				assert.True(strings.HasPrefix(got.GetItem().GetId(), tc.idPrefix))
@@ -1421,7 +1515,6 @@ func TestCreate(t *testing.T) {
 					assert.True(matches, "%q doesn't match %q", gVal, exp)
 					cmpOptions = append(
 						cmpOptions,
-						protocmp.SortRepeatedFields(&pb.OidcAuthMethodAttributes{}, "account_claim_maps"),
 						protocmp.IgnoreFields(&pb.OidcAuthMethodAttributes{}, "client_secret_hmac", "callback_url"),
 					)
 				}

@@ -20,6 +20,7 @@ func CreateNewGroupCli(t testing.TB, ctx context.Context, scopeId string) string
 		e2e.WithArgs(
 			"groups", "create",
 			"-scope-id", "global",
+			"-description", "e2e",
 			"-format", "json",
 		),
 	)

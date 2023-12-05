@@ -22,7 +22,7 @@ import (
 
 func TestOutgoingSplitCookie(t *testing.T) {
 	rec := httptest.NewRecorder()
-	attrs, err := ProtoToStruct(&pba.AuthToken{Token: "t_abc_1234567890"})
+	attrs, err := ProtoToStruct(context.Background(), &pba.AuthToken{Token: "t_abc_1234567890"})
 	require.NoError(t, err)
 	require.NoError(t, OutgoingResponseFilter(context.Background(), rec, &pbs.AuthenticateResponse{Attrs: &pbs.AuthenticateResponse_Attributes{Attributes: attrs}, Type: "cookie"}))
 	assert.ElementsMatch(t, rec.Result().Cookies(), []*http.Cookie{

@@ -43,30 +43,30 @@ var (
 
 	// IdActions contains the set of actions that can be performed on
 	// individual resources
-	IdActions = action.ActionSet{
+	IdActions = action.NewActionSet(
 		action.NoOp,
 		action.Read,
 		action.Update,
 		action.Delete,
-	}
+	)
 
 	// CollectionActions contains the set of actions that can be performed on
 	// this collection
-	CollectionActions = action.ActionSet{
+	CollectionActions = action.NewActionSet(
 		action.Create,
 		action.List,
-	}
+	)
 
-	collectionTypeMap = map[subtypes.Subtype]map[resource.Type]action.ActionSet{
+	collectionTypeMap = map[globals.Subtype]map[resource.Type]action.ActionSet{
 		static.Subtype: {
 			resource.HostSet: host_sets.CollectionActions,
 			resource.Host:    hosts.CollectionActions,
 		},
 		hostplugin.Subtype: {
 			resource.HostSet: host_sets.CollectionActions,
-			resource.Host: action.ActionSet{
+			resource.Host: action.NewActionSet(
 				action.List,
-			},
+			),
 		},
 	}
 )
@@ -89,6 +89,9 @@ func init() {
 	); err != nil {
 		panic(err)
 	}
+
+	// TODO: refactor to remove idActionsMap and CollectionActions package variables
+	action.RegisterResource(resource.HostCatalog, IdActions, CollectionActions)
 }
 
 type Service struct {
@@ -183,7 +186,7 @@ func (s Service) ListHostCatalogs(ctx context.Context, req *pbs.ListHostCatalogs
 			outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions))
 		}
 		if outputFields.Has(globals.AuthorizedCollectionActionsField) {
-			var subtype subtypes.Subtype
+			var subtype globals.Subtype
 			switch item.(type) {
 			case *static.HostCatalog:
 				subtype = static.Subtype
@@ -212,7 +215,7 @@ func (s Service) ListHostCatalogs(ctx context.Context, req *pbs.ListHostCatalogs
 
 		// This comes last so that we can use item fields in the filter after
 		// the allowed fields are populated above
-		filterable, err := subtypes.Filterable(item)
+		filterable, err := subtypes.Filterable(ctx, item)
 		if err != nil {
 			return nil, err
 		}
@@ -253,7 +256,7 @@ func (s Service) GetHostCatalog(ctx context.Context, req *pbs.GetHostCatalogRequ
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, hc.GetPublicId(), IdActions).Strings()))
 	}
 	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
-		var subtype subtypes.Subtype
+		var subtype globals.Subtype
 		switch hc.(type) {
 		case *static.HostCatalog:
 			subtype = static.Subtype
@@ -310,7 +313,7 @@ func (s Service) CreateHostCatalog(ctx context.Context, req *pbs.CreateHostCatal
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, hc.GetPublicId(), IdActions).Strings()))
 	}
 	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
-		var subtype subtypes.Subtype
+		var subtype globals.Subtype
 		switch hc.(type) {
 		case *static.HostCatalog:
 			subtype = static.Subtype
@@ -373,7 +376,7 @@ func (s Service) UpdateHostCatalog(ctx context.Context, req *pbs.UpdateHostCatal
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, hc.GetPublicId(), IdActions).Strings()))
 	}
 	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
-		var subtype subtypes.Subtype
+		var subtype globals.Subtype
 		switch hc.(type) {
 		case *static.HostCatalog:
 			subtype = static.Subtype
@@ -415,7 +418,7 @@ func (s Service) DeleteHostCatalog(ctx context.Context, req *pbs.DeleteHostCatal
 func (s Service) getFromRepo(ctx context.Context, id string) (host.Catalog, *plugins.PluginInfo, error) {
 	var plg *plugins.PluginInfo
 	var cat host.Catalog
-	switch subtypes.SubtypeFromId(domain, id) {
+	switch globals.ResourceInfoFromPrefix(id).Subtype {
 	case static.Subtype:
 		repo, err := s.staticRepoFn()
 		if err != nil {
@@ -537,8 +540,8 @@ func (s Service) createPluginInRepo(ctx context.Context, projId string, req *pbs
 
 func (s Service) createInRepo(ctx context.Context, projId string, req *pbs.CreateHostCatalogRequest) (hc host.Catalog, info *plugins.PluginInfo, err error) {
 	var plg *plugins.PluginInfo
-	switch subtypes.SubtypeFromType(domain, req.GetItem().GetType()) {
-	case static.Subtype:
+	switch req.GetItem().GetType() {
+	case static.Subtype.String():
 		hc, err = s.createStaticInRepo(ctx, projId, req.GetItem())
 	default:
 		hc, plg, err = s.createPluginInRepo(ctx, projId, req)
@@ -601,7 +604,7 @@ func (s Service) updatePluginInRepo(ctx context.Context, projId, id string, mask
 
 func (s Service) updateInRepo(ctx context.Context, projId string, req *pbs.UpdateHostCatalogRequest) (hc host.Catalog, plg *plugins.PluginInfo, err error) {
 	const op = "host_catalogs.(Service).updateInRepo"
-	switch subtypes.SubtypeFromId(domain, req.GetId()) {
+	switch globals.ResourceInfoFromPrefix(req.GetId()).Subtype {
 	case static.Subtype:
 		hc, err = s.updateStaticInRepo(ctx, projId, req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
 	case hostplugin.Subtype:
@@ -613,7 +616,7 @@ func (s Service) updateInRepo(ctx context.Context, projId string, req *pbs.Updat
 func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 	const op = "host_catalogs.(Service).deleteFromRepo"
 	rows := 0
-	switch subtypes.SubtypeFromId(domain, id) {
+	switch globals.ResourceInfoFromPrefix(id).Subtype {
 	case static.Subtype:
 		repo, err := s.staticRepoFn()
 		if err != nil {
@@ -659,7 +662,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 			return res
 		}
 	default:
-		switch subtypes.SubtypeFromId(domain, id) {
+		switch globals.ResourceInfoFromPrefix(id).Subtype {
 		case static.Subtype:
 			repo, err := s.staticRepoFn()
 			if err != nil {
@@ -843,9 +846,9 @@ func validateCreateRequest(req *pbs.CreateHostCatalogRequest) error {
 		if req.GetItem().GetSecretsHmac() != "" {
 			badFields[globals.SecretsHmacField] = "This is a read only field."
 		}
-		switch subtypes.SubtypeFromType(domain, req.GetItem().GetType()) {
-		case static.Subtype:
-		case hostplugin.Subtype:
+		switch req.GetItem().GetType() {
+		case static.Subtype.String():
+		case hostplugin.Subtype.String():
 			if req.GetItem().GetPlugin() != nil {
 				badFields[globals.PluginField] = "This is a read only field."
 			}
@@ -870,16 +873,16 @@ func validateUpdateRequest(req *pbs.UpdateHostCatalogRequest) error {
 		if req.GetItem().GetSecretsHmac() != "" {
 			badFields[globals.SecretsHmacField] = "This is a read only field."
 		}
-		switch subtypes.SubtypeFromId(domain, req.GetId()) {
+		switch globals.ResourceInfoFromPrefix(req.GetId()).Subtype {
 		case static.Subtype:
-			if req.GetItem().GetType() != "" && subtypes.SubtypeFromType(domain, req.GetItem().GetType()) != static.Subtype {
+			if req.GetItem().GetType() != "" && req.GetItem().GetType() != static.Subtype.String() {
 				badFields[globals.TypeField] = "Cannot modify resource type."
 			}
 			if req.GetItem().GetPlugin() != nil {
 				badFields[globals.PluginField] = "This field is unused for this type of host catalog."
 			}
 		case hostplugin.Subtype:
-			if req.GetItem().GetType() != "" && subtypes.SubtypeFromType(domain, req.GetItem().GetType()) != hostplugin.Subtype {
+			if req.GetItem().GetType() != "" && req.GetItem().GetType() != hostplugin.Subtype.String() {
 				badFields[globals.TypeField] = "Cannot modify resource type."
 			}
 			if req.GetItem().GetPlugin() != nil {

@@ -36,13 +36,13 @@ func init() {
 		panic(err)
 	}
 
-	IdActions[ldap.Subtype] = action.ActionSet{
+	IdActions[ldap.Subtype] = action.NewActionSet(
 		action.NoOp,
 		action.Read,
 		action.Update,
 		action.Delete,
 		action.Authenticate,
-	}
+	)
 }
 
 const (
