@@ -18,31 +18,32 @@ const (
 	// DefaultRefreshInterval is the default interval that resources that come
 	// from controllers that do support refresh tokens are retrieved and
 	// refreshed.
-	DefaultRefreshInterval = 60 * time.Second
-	// DefaultFullFetchInterval is the default interval that resources that come
-	// from controllers that do not support refresh tokens are fetched.
-	DefaultFullFetchInterval = 60 * 5 * time.Second
+	DefaultRefreshInterval = 5 * time.Minute
+	// DefaultRecheckSupportInterval is the default interval that a boundary
+	// instance which is not supported in the cache is rechecked to see if it
+	// has become supported. Support is based on if it supports refresh tokens.
+	DefaultRecheckSupportInterval = 1 * time.Hour
 
 	defaultRandomizationFactor float64 = 0.2
 )
 
 type refreshService interface {
 	Refresh(context.Context, ...cache.Option) error
-	FullFetch(context.Context, ...cache.Option) error
+	RecheckCachingSupport(context.Context, ...cache.Option) error
 }
 
 type refreshTicker struct {
-	tickerCtx           context.Context
-	refreshInterval     time.Duration
-	fullFetchInterval   time.Duration
-	randomizationFactor float64
-	rand                *rand.Rand
-	refreshChan         chan struct{}
-	refresher           refreshService
+	tickerCtx              context.Context
+	refreshInterval        time.Duration
+	recheckSupportInterval time.Duration
+	randomizationFactor    float64
+	rand                   *rand.Rand
+	refreshChan            chan struct{}
+	refresher              refreshService
 }
 
 // newRefreshTicker creates a new refresh ticker. Accepted options are
-// withRefreshInterval, and withFullFetchInterval.
+// withRefreshInterval, and withRecheckSupportInterval.
 // testWithIntervalRandomizationFactor is provided for tests.
 // The intervals can deviate +/- randomizationFactor * configured interval.
 // For example, an interval of 10 seconds and a randomization factor of 0.2 will
@@ -65,9 +66,9 @@ func newRefreshTicker(ctx context.Context, refresh refreshService, opt ...Option
 		refreshInterval = opts.withRefreshInterval
 	}
 
-	fullFetchInterval := DefaultFullFetchInterval
-	if opts.withFullFetchInterval != 0 {
-		fullFetchInterval = opts.withFullFetchInterval
+	recheckSupportInterval := DefaultRecheckSupportInterval
+	if opts.withRecheckSupportInterval != 0 {
+		recheckSupportInterval = opts.withRecheckSupportInterval
 	}
 
 	randomizationFactor := defaultRandomizationFactor
@@ -76,11 +77,11 @@ func newRefreshTicker(ctx context.Context, refresh refreshService, opt ...Option
 	}
 
 	return &refreshTicker{
-		refreshInterval:     refreshInterval,
-		fullFetchInterval:   fullFetchInterval,
-		randomizationFactor: randomizationFactor,
-		rand:                rand.New(rand.NewSource(time.Now().UnixNano())),
-		refresher:           refresh,
+		refreshInterval:        refreshInterval,
+		recheckSupportInterval: recheckSupportInterval,
+		randomizationFactor:    randomizationFactor,
+		rand:                   rand.New(rand.NewSource(time.Now().UnixNano())),
+		refresher:              refresh,
 
 		// We make this channel size 1 so if something happens midway through the refresh
 		// we can immediately refresh again immediately to pick up something that might have been
@@ -100,8 +101,11 @@ func (rt *refreshTicker) refresh() {
 	}
 }
 
-func (rt *refreshTicker) startFullFetch(ctx context.Context) {
-	const op = "daemon.(refreshTicker).startFullFetch"
+// startRecheckCachingSupport repeatedly calls RecheckCachingSupport which
+// checks all users that are marked as not supported by the cache to see if
+// the controller version has been updated to support refresh tokens/caching.
+func (rt *refreshTicker) startRecheckCachingSupport(ctx context.Context) {
+	const op = "daemon.(refreshTicker).startRecheckCachingSupport"
 	timer := time.NewTimer(0)
 	for {
 		// full fetch doesn't listen to the refreshChan since completely new
@@ -112,10 +116,10 @@ func (rt *refreshTicker) startFullFetch(ctx context.Context) {
 			return
 		case <-timer.C:
 		}
-		if err := rt.refresher.FullFetch(ctx); err != nil {
+		if err := rt.refresher.RecheckCachingSupport(ctx); err != nil {
 			event.WriteError(rt.tickerCtx, op, err)
 		}
-		timer.Reset(rt.nextIntervalWithRandomness(rt.fullFetchInterval))
+		timer.Reset(rt.nextIntervalWithRandomness(rt.recheckSupportInterval))
 	}
 }
 

@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/sessions"
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/internal/clientcache/internal/cache"
@@ -70,10 +71,22 @@ func newSearchHandlerFunc(ctx context.Context, repo *cache.Repository, refreshSe
 			return
 		}
 
+		supported, err := s.Supported(ctx, t)
+		if err != nil {
+			event.WriteError(ctx, op, err, event.WithInfoMsg("when checking if search is supported for the provided auth token", "auth_token_id", authTokenId))
+			writeError(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if !supported {
+			writeUnsupportedError(w)
+			return
+		}
+
 		var opts []cache.Option
 		if b, err := strconv.ParseBool(r.URL.Query().Get(forceRefreshKey)); err == nil && b {
 			opts = append(opts, cache.WithIgnoreSearchStaleness(true))
 		}
+
 		// Refresh the resources for the provided user, if possible. This is best
 		// effort, so if there is any problem refreshing, we just log the error
 		// and move on to handling the search request.
@@ -122,4 +135,18 @@ func toApiResult(sr *cache.SearchResult) *SearchResult {
 		Targets:  sr.Targets,
 		Sessions: sr.Sessions,
 	}
+}
+
+var errSearchNotSupported = &api.Error{
+	Kind:    "Unsupported Search Request",
+	Message: "The requesting user is for a Boundary instance that doesn't support search. The Boundary instance must support refresh tokens for search to be supported.",
+}
+
+func writeUnsupportedError(w http.ResponseWriter) {
+	b, err := json.Marshal(errSearchNotSupported)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Unable to marshal error %v into api error format: %s", errSearchNotSupported, err.Error()), http.StatusInternalServerError)
+		return
+	}
+	http.Error(w, string(b), http.StatusBadRequest)
 }

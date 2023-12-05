@@ -121,12 +121,23 @@ func (r *Repository) refreshSessions(ctx context.Context, u *user, tokens map[Au
 				return err
 			}
 		}
-
-		if err := upsertSessions(ctx, w, u, resp); err != nil {
-			return err
-		}
-		if err := upsertRefreshToken(ctx, w, u, resourceType, newRefreshToken); err != nil {
-			return err
+		switch {
+		case newRefreshToken != "":
+			if err := upsertSessions(ctx, w, u, resp); err != nil {
+				return err
+			}
+			if err := upsertRefreshToken(ctx, w, u, resourceType, newRefreshToken); err != nil {
+				return err
+			}
+		case len(resp) > 0:
+			if err := upsertRefreshToken(ctx, w, u, resourceType, sentinelNoRefreshToken); err != nil {
+				return err
+			}
+			return errRefreshNotSupported
+		case len(resp) == 0:
+			if err := deleteRefreshToken(ctx, w, u, resourceType); err != nil {
+				return err
+			}
 		}
 		return nil
 	})
@@ -136,11 +147,11 @@ func (r *Repository) refreshSessions(ctx context.Context, u *user, tokens map[Au
 	return nil
 }
 
-// fullFetchSessions fetches all sessions for the provided user and sets the
+// checkCachingSessions fetches all sessions for the provided user and sets the
 // cache to match the values returned.  If the response includes a refresh
 // token it will save that as well.
-func (r *Repository) fullFetchSessions(ctx context.Context, u *user, tokens map[AuthToken]string, opt ...Option) error {
-	const op = "cache.(Repository).fullFetchSessions"
+func (r *Repository) checkCachingSessions(ctx context.Context, u *user, tokens map[AuthToken]string, opt ...Option) error {
+	const op = "cache.(Repository).checkSessionsForSearchability"
 	switch {
 	case util.IsNil(u):
 		return errors.New(ctx, errors.InvalidParameter, op, "user is nil")
@@ -183,18 +194,28 @@ func (r *Repository) fullFetchSessions(ctx context.Context, u *user, tokens map[
 		return retErr
 	}
 
-	event.WriteSysEvent(ctx, op, fmt.Sprintf("updating %d sessions for user %v", len(resp), u))
-	_, err = r.rw.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(_ db.Reader, w db.Writer) error {
-		if _, err := w.Exec(ctx, "delete from session where fk_user_id = @fk_user_id",
-			[]any{sql.Named("fk_user_id", u.Id)}); err != nil {
-			return err
-		}
-
-		if err := upsertSessions(ctx, w, u, resp); err != nil {
-			return err
-		}
-		if err := upsertRefreshToken(ctx, w, u, resourceType, newRefreshToken); err != nil {
-			return err
+	_, err = r.rw.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(reader db.Reader, w db.Writer) error {
+		switch {
+		case newRefreshToken != "":
+			if _, err := w.Exec(ctx, "delete from session where fk_user_id = @fk_user_id",
+				[]any{sql.Named("fk_user_id", u.Id)}); err != nil {
+				return err
+			}
+			if err := upsertSessions(ctx, w, u, resp); err != nil {
+				return err
+			}
+			if err := upsertRefreshToken(ctx, w, u, resourceType, newRefreshToken); err != nil {
+				return err
+			}
+		case len(resp) > 0:
+			if err := upsertRefreshToken(ctx, w, u, resourceType, sentinelNoRefreshToken); err != nil {
+				return err
+			}
+			return errRefreshNotSupported
+		case len(resp) == 0:
+			if err := deleteRefreshToken(ctx, w, u, resourceType); err != nil {
+				return err
+			}
 		}
 		return nil
 	})

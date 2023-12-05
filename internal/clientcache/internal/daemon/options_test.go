@@ -44,15 +44,15 @@ func Test_GetOpts(t *testing.T) {
 		testOpts := getDefaultOptions()
 		assert.Equal(t, opts, testOpts)
 	})
-	t.Run("withFullFetchInterval", func(t *testing.T) {
-		opts, err := getOpts(withFullFetchInterval(ctx, time.Second))
+	t.Run("withRecheckSupportInterval", func(t *testing.T) {
+		opts, err := getOpts(withRecheckSupportInterval(ctx, time.Second))
 		require.NoError(t, err)
 		testOpts := getDefaultOptions()
-		testOpts.withFullFetchInterval = time.Second
+		testOpts.withRecheckSupportInterval = time.Second
 		assert.Equal(t, opts, testOpts)
 	})
-	t.Run("withFullFetchInterval_negative", func(t *testing.T) {
-		opts, err := getOpts(withFullFetchInterval(ctx, -time.Second))
+	t.Run("withRecheckSupportInterval_negative", func(t *testing.T) {
+		opts, err := getOpts(withRecheckSupportInterval(ctx, -time.Second))
 		require.ErrorContains(t, err, "must be positive")
 		testOpts := getDefaultOptions()
 		assert.Equal(t, opts, testOpts)

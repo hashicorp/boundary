@@ -50,7 +50,7 @@ type StartCommand struct {
 	*base.Command
 
 	flagRefreshInterval         time.Duration
-	flagFullFetchInterval       time.Duration
+	flagRecheckSupportInterval  time.Duration
 	flagMaxSearchStaleness      time.Duration
 	flagMaxSearchRefreshTimeout time.Duration
 	flagDatabaseUrl             string
@@ -104,14 +104,15 @@ func (c *StartCommand) Flags() *base.FlagSets {
 	f.DurationVar(&base.DurationVar{
 		Name:    "refresh-interval",
 		Target:  &c.flagRefreshInterval,
-		Usage:   `Specifies the interval between refresh token supported cache refreshes. Default: 1 minute`,
+		Usage:   `Specifies the interval between refresh token supported cache refreshes. Default: 5 minutes`,
 		Default: daemon.DefaultRefreshInterval,
 	})
 	f.DurationVar(&base.DurationVar{
-		Name:    "full-fetch-interval",
-		Target:  &c.flagFullFetchInterval,
-		Usage:   `Specifies the interval between full cache refresh for boundary instances which do not support refresh tokens. Default: 5 minutes`,
-		Default: daemon.DefaultFullFetchInterval,
+		Name:    "recheck-support-interval",
+		Target:  &c.flagRecheckSupportInterval,
+		Usage:   `Specifies the interval between checking if a boundary instances is supported when it previously was not. Default: 1 hour`,
+		Default: daemon.DefaultRecheckSupportInterval,
+		Hidden:  true,
 	})
 	f.DurationVar(&base.DurationVar{
 		Name:    "max-search-staleness",
@@ -196,16 +197,16 @@ func (c *StartCommand) Run(args []string) int {
 	writers = append(writers, lf)
 
 	cfg := &daemon.Config{
-		ContextCancel:      cancel,
-		RefreshInterval:    c.flagRefreshInterval,
-		FullFetchInterval:  c.flagFullFetchInterval,
-		MaxSearchStaleness: c.flagMaxSearchStaleness,
-		DatabaseUrl:        c.flagDatabaseUrl,
-		StoreDebug:         c.flagStoreDebug,
-		LogLevel:           c.flagLogLevel,
-		LogFormat:          c.flagLogFormat,
-		LogWriter:          io.MultiWriter(writers...),
-		DotDirectory:       dotDir,
+		ContextCancel:          cancel,
+		RefreshInterval:        c.flagRefreshInterval,
+		RecheckSupportInterval: c.flagRecheckSupportInterval,
+		MaxSearchStaleness:     c.flagMaxSearchStaleness,
+		DatabaseUrl:            c.flagDatabaseUrl,
+		StoreDebug:             c.flagStoreDebug,
+		LogLevel:               c.flagLogLevel,
+		LogFormat:              c.flagLogFormat,
+		LogWriter:              io.MultiWriter(writers...),
+		DotDirectory:           dotDir,
 	}
 
 	srv, err := daemon.New(ctx, cfg)
@@ -319,8 +320,8 @@ func (c *StartCommand) makeBackground(ctx context.Context, dotDir string) (bool,
 	if c.flagRefreshInterval > 0 && c.flagRefreshInterval != daemon.DefaultRefreshInterval {
 		args = append(args, "-refresh-interval", c.flagRefreshInterval.String())
 	}
-	if c.flagFullFetchInterval > 0 && c.flagFullFetchInterval != daemon.DefaultFullFetchInterval {
-		args = append(args, "-full-fetch-interval", c.flagFullFetchInterval.String())
+	if c.flagRecheckSupportInterval > 0 && c.flagRecheckSupportInterval != daemon.DefaultRecheckSupportInterval {
+		args = append(args, "-full-fetch-interval", c.flagRecheckSupportInterval.String())
 	}
 	if c.flagMaxSearchStaleness > 0 && c.flagMaxSearchStaleness != daemon.DefaultSearchStaleness {
 		args = append(args, "-max-search-staleness", c.flagMaxSearchStaleness.String())

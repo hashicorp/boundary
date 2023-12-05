@@ -103,8 +103,11 @@ func TestStatus(t *testing.T) {
 		assert.Equal(t, &Status{
 			Users: []UserStatus{
 				{
-					Id:      u1.Id,
-					Address: u1.Address,
+					Id: u1.Id,
+					BoundaryStatus: BoundaryStatus{
+						Address:          u1.Address,
+						CachingSupported: UnknownCacheSupport,
+					},
 					AuthTokens: []AuthTokenStatus{
 						{
 							Id:                    at1a.Id,
@@ -129,8 +132,11 @@ func TestStatus(t *testing.T) {
 					},
 				},
 				{
-					Id:      u2.Id,
-					Address: u2.Address,
+					Id: u2.Id,
+					BoundaryStatus: BoundaryStatus{
+						Address:          u2.Address,
+						CachingSupported: UnknownCacheSupport,
+					},
 					AuthTokens: []AuthTokenStatus{
 						{
 							Id:                    at2.Id,

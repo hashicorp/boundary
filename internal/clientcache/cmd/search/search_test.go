@@ -22,7 +22,7 @@ import (
 
 type testCommander struct {
 	t  *testing.T
-	at *authtokens.AuthToken
+	at map[string]*authtokens.AuthToken
 }
 
 func (r *testCommander) Client(opt ...base.Option) (*api.Client, error) {
@@ -32,7 +32,7 @@ func (r *testCommander) Client(opt ...base.Option) (*api.Client, error) {
 }
 
 func (r *testCommander) ReadTokenFromKeyring(k, a string) *authtokens.AuthToken {
-	return r.at
+	return r.at[a]
 }
 
 func TestSearch(t *testing.T) {
@@ -43,10 +43,19 @@ func TestSearch(t *testing.T) {
 		Token:          "at_1_token",
 		ExpirationTime: time.Now().Add(time.Minute),
 	}
-	cmd := &testCommander{t: t, at: at}
+	unsupportedAt := &authtokens.AuthToken{
+		Id:             "at_2",
+		UserId:         "user_2",
+		Token:          "at_2_token",
+		ExpirationTime: time.Now().Add(time.Minute),
+	}
+	cmd := &testCommander{t: t, at: map[string]*authtokens.AuthToken{"tokenname": at, "unsupported": unsupportedAt}}
 	boundaryTokenReaderFn := func(ctx context.Context, addr, authToken string) (*authtokens.AuthToken, error) {
-		if authToken == at.Token {
+		switch authToken {
+		case at.Token:
 			return at, nil
+		case unsupportedAt.Token:
+			return unsupportedAt, nil
 		}
 		return nil, errors.New("test not found error")
 	}
@@ -61,6 +70,7 @@ func TestSearch(t *testing.T) {
 	// Give the store some time to get initialized
 	time.Sleep(100 * time.Millisecond)
 	srv.AddKeyringToken(t, "address", "keyringtype", "tokenname", at.Id, boundaryTokenReaderFn)
+	srv.AddKeyringToken(t, "address", "keyringtype", "unsupported", unsupportedAt.Id, boundaryTokenReaderFn)
 
 	errorCases := []struct {
 		name           string
@@ -142,7 +152,22 @@ func TestSearch(t *testing.T) {
 		assert.EqualValues(t, r, &daemon.SearchResult{})
 	})
 
-	srv.AddResources(t, cmd.at, []*targets.Target{
+	t.Run("unsupported boundary instance", func(t *testing.T) {
+		srv.AddUnsupportedCachingData(t, unsupportedAt, boundaryTokenReaderFn)
+
+		resp, r, apiErr, err := search(ctx, srv.BaseDotDir(), filterBy{
+			authTokenId: unsupportedAt.Id,
+			resource:    "targets",
+		})
+		assert.NoError(t, err)
+		require.NotNil(t, apiErr)
+		assert.NotNil(t, resp)
+		assert.Nil(t, r)
+
+		assert.Contains(t, apiErr.Message, "does not support search")
+	})
+
+	srv.AddResources(t, at, []*targets.Target{
 		{Id: "ttcp_1234567890", Name: "name1", Description: "description1"},
 		{Id: "ttcp_0987654321", Name: "name2", Description: "description2"},
 	}, []*sessions.Session{
@@ -151,6 +176,17 @@ func TestSearch(t *testing.T) {
 	}, boundaryTokenReaderFn)
 
 	t.Run("target response from list", func(t *testing.T) {
+		resp, r, apiErr, err := search(ctx, srv.BaseDotDir(), filterBy{
+			authTokenId: at.Id,
+			resource:    "targets",
+		})
+		require.NoError(t, err)
+		assert.Nil(t, apiErr)
+		assert.NotNil(t, resp)
+		assert.NotNil(t, r)
+		assert.Len(t, r.Targets, 2)
+	})
+	t.Run("search for unsupported controller", func(t *testing.T) {
 		resp, r, apiErr, err := search(ctx, srv.BaseDotDir(), filterBy{
 			authTokenId: at.Id,
 			resource:    "targets",
