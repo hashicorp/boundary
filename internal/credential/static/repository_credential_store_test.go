@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/credential/static/store"
 	"github.com/hashicorp/boundary/internal/db"
@@ -630,75 +632,6 @@ func TestRepository_UpdateCredentialStore(t *testing.T) {
 	})
 }
 
-func TestRepository_ListCredentialStores(t *testing.T) {
-	t.Parallel()
-	conn, _ := db.TestSetup(t, "postgres")
-	rw := db.New(conn)
-	wrapper := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn, wrapper)
-
-	assert, require := assert.New(t), require.New(t)
-	repo, err := NewRepository(context.Background(), rw, rw, kms)
-	assert.NoError(err)
-	require.NotNil(repo)
-
-	const num = 10
-	var prjs []string
-	var total int
-	for i := 0; i < num; i++ {
-		_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-		prjs = append(prjs, prj.GetPublicId())
-		TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), num)
-		total += num
-	}
-
-	type args struct {
-		projectIds []string
-		opt        []Option
-	}
-	tests := []struct {
-		name    string
-		args    args
-		wantCnt int
-	}{
-		{
-			name: "no-limit",
-			args: args{
-				projectIds: prjs,
-				opt:        []Option{WithLimit(-1)},
-			},
-			wantCnt: total,
-		},
-		{
-			name: "default-limit",
-			args: args{
-				projectIds: prjs,
-			},
-			wantCnt: total,
-		},
-		{
-			name: "custom-limit",
-			args: args{
-				projectIds: prjs,
-				opt:        []Option{WithLimit(3)},
-			},
-			wantCnt: 3,
-		},
-		{
-			name: "bad-project",
-			args: args{
-				projectIds: []string{"bad-id"},
-			},
-			wantCnt: 0,
-		},
-	}
-	for _, tt := range tests {
-		got, err := repo.ListCredentialStores(context.Background(), tt.args.projectIds, tt.args.opt...)
-		require.NoError(err)
-		assert.Equal(tt.wantCnt, len(got))
-	}
-}
-
 func TestRepository_DeleteCredentialStore(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
@@ -750,4 +683,43 @@ func TestRepository_DeleteCredentialStore(t *testing.T) {
 			assert.EqualValues(tt.want, got)
 		})
 	}
+}
+
+func TestRepository_ListDeletedStoreIds(t *testing.T) {
+	t.Parallel()
+	assert, require := assert.New(t), require.New(t)
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	stores := TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 2)
+
+	repo, err := NewRepository(ctx, rw, rw, kms)
+	require.NoError(err)
+	require.NotNil(repo)
+	// Expect no entries at the start
+	deletedIds, err := repo.ListDeletedStoreIds(ctx, time.Now().AddDate(-1, 0, 0))
+	require.NoError(err)
+	require.Empty(deletedIds)
+
+	_, err = repo.DeleteCredentialStore(ctx, stores[0].GetPublicId())
+	require.NoError(err)
+
+	// Expect one entry
+	deletedIds, err = repo.ListDeletedStoreIds(ctx, time.Now().AddDate(-1, 0, 0))
+	require.NoError(err)
+	assert.Empty(
+		cmp.Diff(
+			[]string{stores[0].GetPublicId()},
+			deletedIds,
+			cmpopts.SortSlices(func(i, j string) bool { return i < j }),
+		),
+	)
+
+	// Try again with the time set to now, expect no entries
+	deletedIds, err = repo.ListDeletedStoreIds(ctx, time.Now())
+	require.NoError(err)
+	require.Empty(deletedIds)
 }

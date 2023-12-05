@@ -5,6 +5,7 @@ package static
 
 import (
 	"github.com/hashicorp/boundary/internal/credential/static/store"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"google.golang.org/protobuf/proto"
@@ -71,4 +72,14 @@ func (cs *CredentialStore) oplog(op oplog.OpType) oplog.Metadata {
 		metadata["project-id"] = []string{cs.ProjectId}
 	}
 	return metadata
+}
+
+type deletedCredentialStore struct {
+	PublicId   string `gorm:"primary_key"`
+	DeleteTime *timestamp.Timestamp
+}
+
+// TableName returns the tablename to override the default gorm table name
+func (s *deletedCredentialStore) TableName() string {
+	return "credential_static_store_deleted"
 }
