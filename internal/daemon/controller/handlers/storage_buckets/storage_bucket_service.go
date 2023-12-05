@@ -10,6 +10,7 @@ import (
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/globals"
 	"github.com/hashicorp/boundary/internal/types/action"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -17,20 +18,25 @@ import (
 var (
 	// IdActions contains the set of actions that can be performed on
 	// individual resources
-	IdActions = action.ActionSet{
+	IdActions = action.NewActionSet(
 		action.NoOp,
 		action.Read,
 		action.Update,
 		action.Delete,
-	}
+	)
 
 	// CollectionActions contains the set of actions that can be performed on
 	// this collection
-	CollectionActions = action.ActionSet{
+	CollectionActions = action.NewActionSet(
 		action.Create,
 		action.List,
-	}
+	)
 )
+
+func init() {
+	// TODO: refactor to remove IdActions and CollectionActions package variables
+	action.RegisterResource(resource.StorageBucket, IdActions, CollectionActions)
+}
 
 // NewServiceFn returns a storage bucket service which is not implemented in OSS
 var NewServiceFn = func(ctx context.Context,

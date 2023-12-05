@@ -94,6 +94,7 @@ require (
 	github.com/hashicorp/cap/ldap v0.0.0-20231012003312-273118a6e3b8
 	github.com/hashicorp/dbassert v0.0.0-20231012105025-1bc1bd88e22b
 	github.com/hashicorp/go-kms-wrapping/extras/kms/v2 v2.0.0-20231124110655-4315424d22d0
+	github.com/hashicorp/go-rate v0.0.0-20231204194614-cc8d401f70ab
 	github.com/hashicorp/go-version v1.6.0
 	github.com/hashicorp/nodeenrollment v0.2.6
 	github.com/jackc/pgx/v5 v5.4.3

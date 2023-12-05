@@ -35,6 +35,7 @@ import (
 	kmsjob "github.com/hashicorp/boundary/internal/kms/job"
 	"github.com/hashicorp/boundary/internal/plugin"
 	"github.com/hashicorp/boundary/internal/plugin/loopback"
+	"github.com/hashicorp/boundary/internal/ratelimit"
 	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/hashicorp/boundary/internal/scheduler/cleaner"
 	"github.com/hashicorp/boundary/internal/scheduler/job"
@@ -119,6 +120,9 @@ type Controller struct {
 	apiGrpcServerListener grpcServerListener
 	apiGrpcGatewayTicket  string
 
+	rateLimiter   ratelimit.Limiter
+	rateLimiterMu sync.RWMutex
+
 	// Repo factory methods
 	AuthTokenRepoFn           common.AuthTokenRepoFactory
 	VaultCredentialRepoFn     common.VaultCredentialRepoFactory
@@ -156,6 +160,7 @@ type Controller struct {
 func New(ctx context.Context, conf *Config) (*Controller, error) {
 	const op = "controller.New"
 	metric.InitializeApiCollectors(conf.PrometheusRegisterer)
+	ratelimit.InitializeMetrics(conf.PrometheusRegisterer)
 	c := &Controller{
 		conf:                    conf,
 		logger:                  conf.Logger.Named("controller"),
@@ -244,6 +249,10 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		return nil, fmt.Errorf("exactly one cluster listener is required")
 	}
 	c.clusterListener = clusterListeners[0]
+
+	if err := c.initializeRateLimiter(conf.RawConfig); err != nil {
+		return nil, fmt.Errorf("error initializing rate limiter: %w", err)
+	}
 
 	var pluginLogger hclog.Logger
 	for _, enabledPlugin := range c.enabledPlugins {

@@ -415,7 +415,13 @@ func TestUpdateAfterKeyRotation(t *testing.T) {
 	// This prevents us from running tests in parallel.
 	tg.SetupSuiteTargetFilters(t)
 
-	tc := controller.NewTestController(t, &controller.TestControllerOpts{SchedulerRunJobInterval: 100 * time.Millisecond})
+	tc := controller.NewTestController(
+		t,
+		&controller.TestControllerOpts{
+			SchedulerRunJobInterval: 100 * time.Millisecond,
+			DisableRateLimiting:     true,
+		},
+	)
 	ctx := tc.Context()
 	client := tc.Client()
 	token := tc.Token()

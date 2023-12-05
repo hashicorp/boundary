@@ -13,6 +13,7 @@ import (
 
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
@@ -135,7 +136,14 @@ func TestGet_Static(t *testing.T) {
 			if tc.res != nil {
 				tc.res.Item.Version = 1
 			}
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "GetHost(%q) got response %q, wanted %q", tc.req, got, tc.res)
+			assert.Empty(cmp.Diff(
+				got,
+				tc.res,
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+			), "GetHost(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
 }
@@ -254,7 +262,14 @@ func TestGet_Plugin(t *testing.T) {
 			if tc.res != nil {
 				tc.res.Item.Version = 1
 			}
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "GetHost(%q) got response %q, wanted %q", tc.req, got, tc.res)
+			assert.Empty(cmp.Diff(
+				got,
+				tc.res,
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+			), "GetHost(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
 }
@@ -360,7 +375,14 @@ func TestList_Static(t *testing.T) {
 				return
 			}
 			require.NoError(gErr)
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListHosts(%q) got response %q, wanted %q", tc.req, got, tc.res)
+			assert.Empty(cmp.Diff(
+				got,
+				tc.res,
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+			), "ListHosts(%q) got response %q, wanted %q", tc.req, got, tc.res)
 
 			// Test anonymous listing
 			got, gErr = s.ListHosts(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId(), auth.WithUserId(globals.AnonymousUserId)), tc.req)
@@ -487,7 +509,14 @@ func TestList_Plugin(t *testing.T) {
 			sort.Slice(got.Items, func(i, j int) bool {
 				return got.Items[i].GetId() < got.Items[j].GetId()
 			})
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListHosts(%q) got response %q, wanted %q", tc.req, got, tc.res)
+			assert.Empty(cmp.Diff(
+				got,
+				tc.res,
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+			), "ListHosts(%q) got response %q, wanted %q", tc.req, got, tc.res)
 
 			// Test anonymous listing
 			got, gErr = s.ListHosts(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId(), auth.WithUserId(globals.AnonymousUserId)), tc.req)
@@ -581,7 +610,14 @@ func TestDelete(t *testing.T) {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "DeleteHost(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
 			}
-			assert.Empty(cmp.Diff(tc.res, got, protocmp.Transform()), "DeleteHost(%q) got response %q, wanted %q", tc.req, got, tc.res)
+			assert.Empty(cmp.Diff(
+				tc.res,
+				got,
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+			), "DeleteHost(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
 }
@@ -857,7 +893,14 @@ func TestCreate(t *testing.T) {
 			if tc.res != nil {
 				tc.res.Item.Version = 1
 			}
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "CreateHost(%q) got response %q, wanted %q", tc.req, got, tc.res)
+			assert.Empty(cmp.Diff(
+				got,
+				tc.res,
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+			), "CreateHost(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
 }
@@ -1325,7 +1368,14 @@ func TestUpdate_Static(t *testing.T) {
 			// Clear all values which are hard to compare against.
 			got.Item.UpdatedTime, tc.res.Item.UpdatedTime = nil, nil
 			tc.res.Item.Version = version + 1
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "UpdateHost(%q) got response %q, wanted %q", req, got, tc.res)
+			assert.Empty(cmp.Diff(
+				got,
+				tc.res,
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+			), "UpdateHost(%q) got response %q, wanted %q", req, got, tc.res)
 		})
 	}
 }

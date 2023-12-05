@@ -64,14 +64,15 @@ const (
 var (
 	// IdActions contains the set of actions that can be performed on
 	// individual resources
+	// This will be set in init functions in files for each subtype in this package.
 	IdActions = make(map[subtypes.Subtype]action.ActionSet)
 
 	// CollectionActions contains the set of actions that can be performed on
 	// this collection
-	CollectionActions = action.ActionSet{
+	CollectionActions = action.NewActionSet(
 		action.Create,
 		action.List,
-	}
+	)
 
 	collectionTypeMap = map[resource.Type]action.ActionSet{
 		resource.Account:      accounts.CollectionActions,

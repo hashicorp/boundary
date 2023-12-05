@@ -27,6 +27,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/subtypes"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hosts"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/plugins"
+	"golang.org/x/exp/maps"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -37,24 +38,24 @@ var (
 	// IdActions contains the set of actions that can be performed on
 	// individual resources
 	idActionsTypeMap = map[subtypes.Subtype]action.ActionSet{
-		static.Subtype: {
+		static.Subtype: action.NewActionSet(
 			action.NoOp,
 			action.Read,
 			action.Update,
 			action.Delete,
-		},
-		hostplugin.Subtype: {
+		),
+		hostplugin.Subtype: action.NewActionSet(
 			action.NoOp,
 			action.Read,
-		},
+		),
 	}
 
 	// CollectionActions contains the set of actions that can be performed on
 	// this collection
-	CollectionActions = action.ActionSet{
+	CollectionActions = action.NewActionSet(
 		action.Create,
 		action.List,
-	}
+	)
 )
 
 const domain = "host"
@@ -68,6 +69,9 @@ func init() {
 	); err != nil {
 		panic(err)
 	}
+
+	// TODO: refactor to remove idActionsMap and CollectionActions package variables
+	action.RegisterResource(resource.Host, action.Union(maps.Values(idActionsTypeMap)...), CollectionActions)
 }
 
 type Service struct {
