@@ -11,6 +11,19 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   how to configure rate limits, and how to disable rate limiting see the
   noted PR. ([PR](https://github.com/hashicorp/boundary/pull/4092))
 
+### Bug Fixes
+
+* Two Vault client settings were not being properly used when constructing a
+  Vault client. ([PR](https://github.com/hashicorp/boundary/pull/3973))
+
+  The `TLS Skip Verify` setting was only being set if a `CA Cert` was also
+  configured. This fix sets the `TLS Skip Verify` when configured regardless of
+  other settings.
+
+  The `TLS Server Name` setting was never being set. Bad programmers. This fix
+  now sets it on the Vault client if the Vault Credential Store has been
+  configured to use a value for this setting.
+
 ## 0.14.2 (2023/10/27)
 
 ### New and Improved
