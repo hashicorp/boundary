@@ -58,26 +58,10 @@ with tag “A,” to connect to targets in “Network A.”
 
 Most organizations want to provide access to infrastructure without exposing private networks. Many organizations also have complex network topologies requiring
 inbound traffic to route through multiple network enclaves in order to reach the target system.
-[Multi-hop](/boundary/docs/configuration/worker#multi-hop-worker-capabilities-hcp-ent) sessions allow you to chain together two or more workers
+Multi-hop sessions allow you to chain together two or more workers
 across multiple networks to form reverse proxy connections between the user and the target, even in complex networks with strict outbound-only policies.
 
-In multi-hop scenarios, there are typically three types of workers:
-1. **Ingress worker** - An ingress worker is a worker that is accessible by the client. The client initiates the connection to the ingress worker.
-1. **Intermediary worker** - An optional intermediary worker sits between ingress and egress workers as part of a multi-hop chain. There can be multiple intermediary workers as part of a multi-hop chain.
-1. **Egress worker** - An egress worker is a worker that can access the target. The egress worker initiates reverse proxy connections to intermediary or ingress workers.
-
-<Tip>
-“Ingress,” “intermediary,” and “egress” are general ways to describe how the respective worker interfaces with resources, and a worker can act as more than one of those
-at a time. For example in the diagram below, the intermediary worker is also an egress worker since it can access a target.
-</Tip>
-
-![Multi-hop session example showing ingress, intermediary, and egress workers](/img/concepts-multihop.png)
-
-After the persistent connection chain is established between the workers, when you attempt to connect to a target host, you are automatically proxied from:
-1. Boundary client to ingress worker
-1. Ingress worker to intermediary worker, where applicable
-1. Ingress worker to egress worker
-1. Egress worker to desired target
+Refer to the [multi-hop sessions](/boundary/docs/concepts/connection-workflows/multi-hop) documentation for more information.
 
 ## Deployment
 Workers are services that can run on a container or virtual machine. You should deploy them strategically within networks to provide access to targets. In

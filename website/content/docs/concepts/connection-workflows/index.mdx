@@ -49,3 +49,20 @@ SSH `ProxyCommand` lets you proxy an SSH connection to a target according to a c
 You can configure the file to connect to the target ID or the target domain.
 
 Refer to the [SSH ProxyCommand](/boundary/docs/concepts/connection-workflows/workflow-ssh-proxycommand) documentation for more information.
+
+## Multi-hop sessions
+
+<EnterpriseAlert product="boundary">This feature requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary or Boundary Enterprise</a></EnterpriseAlert>
+
+Most organizations want to provide access to infrastructure without exposing private networks.
+Many organizations also have complex network topologies requiring inbound traffic to route through multiple network enclaves to reach the target system.
+Multi-hop sessions allow you to chain together two or more workers across multiple networks to form reverse proxy connections between the user and the target, even in complex networks with strict outbound-only policies.
+
+You can deploy multi-hop workers in scenarios where inbound network traffic is
+not allowed.
+A worker in a private network can send outbound communication to its upstream worker, and create a reverse proxy to establish a session.
+
+You can configure target worker filters with multi-hop workers to allow for fine-grained control on which workers handle ingress and egress for session traffic to a target.
+Ingress worker filters determine which workers you connect with to initiate a session, and egress worker filters determine which workers are used to access targets.
+
+Refer to the [Multi-hop sessions](/boundary/docs/concepts/connection-workflows/multi-hop) documentation for more information.

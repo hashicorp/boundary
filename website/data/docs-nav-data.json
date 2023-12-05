@@ -183,6 +183,15 @@
           {
             "title": "SSH ProxyCommand",
             "path": "concepts/connection-workflows/workflow-ssh-proxycommand"
+          },
+          {
+            "title": "Multi-hop sessions",
+            "badge": {
+              "text": "HCP/ENT",
+              "type": "outlined",
+              "color": "neutral"
+            },
+            "path": "concepts/connection-workflows/multi-hop"
           }
         ]
       },
