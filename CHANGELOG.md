@@ -20,6 +20,11 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   `boundary targets update tcp -id ttcp_1234567890`), and any flags given after
   the ID are passed through to the type-specific subcommand. Once the ID has
   been entered, autocomplete is also supported.
+* Add support for OIDC prompts. Using prompts, the Relying Party (RP) can 
+  customize the authentication and authorization flow to suit their specific 
+  needs and improve the user experience. [OIDC Authentication request]
+  (https://openid.net/specs/openid-connect-core-1_0.html#AuthRequest) server.
+  ([PR](https://github.com/hashicorp/boundary/pull/4053))  
 
 ## 0.14.2 (2023/11/2)
 
