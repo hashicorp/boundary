@@ -1285,50 +1285,6 @@ func TestRepository_UpdateCredentialStore_ClientCert(t *testing.T) {
 	}
 }
 
-func TestRepository_ListCredentialStores_Multiple_Scopes(t *testing.T) {
-	t.Parallel()
-	conn, _ := db.TestSetup(t, "postgres")
-	rw := db.New(conn)
-	wrapper := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn, wrapper)
-
-	assert, require := assert.New(t), require.New(t)
-	sche := scheduler.TestScheduler(t, conn, wrapper)
-	repo, err := NewRepository(context.Background(), rw, rw, kms, sche)
-	assert.NoError(err)
-	require.NotNil(repo)
-	err = RegisterJobs(context.Background(), sche, rw, rw, kms)
-	require.NoError(err)
-
-	const numPerScope = 10
-	var prjs []string
-	var total int
-	for i := 0; i < numPerScope; i++ {
-		_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-		prjs = append(prjs, prj.GetPublicId())
-		TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), numPerScope)
-		total += numPerScope
-	}
-
-	// Add some credential stores with expired tokens
-	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	prjs = append(prjs, prj.GetPublicId())
-
-	stores := TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), numPerScope)
-	for _, cs := range stores {
-		rows, err := rw.Exec(context.Background(),
-			"update credential_vault_token set status = ? where token_hmac = ?",
-			[]any{ExpiredToken, cs.Token().TokenHmac})
-		require.NoError(err)
-		require.Equal(1, rows)
-	}
-	total += numPerScope
-
-	got, err := repo.ListCredentialStores(context.Background(), prjs)
-	require.NoError(err)
-	assert.Equal(total, len(got))
-}
-
 func TestRepository_DeleteCredentialStore(t *testing.T) {
 	type tokenCount struct {
 		current, maintaining int
@@ -1569,17 +1525,6 @@ group by store_id, status;
 			}
 
 			{
-				stores, err := repo.ListCredentialStores(ctx, []string{projectId})
-				assert.NoError(err)
-				assert.NotEmpty(stores)
-				var storeIds []string
-				for _, v := range stores {
-					storeIds = append(storeIds, v.GetPublicId())
-				}
-				assert.Contains(storeIds, storeId)
-			}
-
-			{
 				libs, _, err := repo.ListLibraries(ctx, storeId)
 				assert.NoError(err)
 				assert.Len(libs, len(actualLibs))
@@ -1625,17 +1570,6 @@ group by store_id, status;
 				lookup, err := repo.LookupCredentialStore(ctx, storeId)
 				assert.NoError(err)
 				assert.Nil(lookup)
-			}
-
-			// should not be in list
-			{
-				stores, err := repo.ListCredentialStores(ctx, []string{projectId})
-				assert.NoError(err)
-				var storeIds []string
-				for _, v := range stores {
-					storeIds = append(storeIds, v.GetPublicId())
-				}
-				assert.NotContains(storeIds, storeId)
 			}
 
 			// libraries should be empty
@@ -1736,4 +1670,43 @@ group by store_id, status;
 			}
 		})
 	}
+}
+
+func TestRepository_ListDeletedStoreIds(t *testing.T) {
+	t.Parallel()
+	require := require.New(t)
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	sche := scheduler.TestScheduler(t, conn, wrapper)
+	kms := kms.TestKms(t, conn, wrapper)
+	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	store := TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 1)[0]
+
+	repo, err := NewRepository(ctx, rw, rw, kms, sche)
+	require.NoError(err)
+	require.NotNil(repo)
+
+	// Expect no entries at the start
+	deletedIds, err := repo.ListDeletedStoreIds(ctx, time.Now().AddDate(-1, 0, 0))
+	require.NoError(err)
+	require.Empty(deletedIds)
+
+	// Delete the credential store
+	// NOTE: Deleting a vault credential store doesn't immediately
+	// delete it, so testing this behaviour for a vault credential store
+	// is kept out of the scope of this test.
+	_, err = repo.DeleteCredentialStore(ctx, store.GetPublicId())
+	require.NoError(err)
+
+	// Expect no entries
+	deletedIds, err = repo.ListDeletedStoreIds(ctx, time.Now().AddDate(-1, 0, 0))
+	require.NoError(err)
+	require.Empty(deletedIds)
+
+	// Try again with the time set to now, expect no entries
+	deletedIds, err = repo.ListDeletedStoreIds(ctx, time.Now())
+	require.NoError(err)
+	require.Empty(deletedIds)
 }
