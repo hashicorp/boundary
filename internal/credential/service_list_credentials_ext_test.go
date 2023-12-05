@@ -51,7 +51,7 @@ func TestService_List(t *testing.T) {
 		static.TestJsonCredential(t, conn, wrapper, credStore.GetPublicId(), prj.GetPublicId(), obj),
 		static.TestJsonCredential(t, conn, wrapper, credStore.GetPublicId(), prj.GetPublicId(), obj),
 	}
-	// since we sort ascending, we need to reverse targets
+	// since we sort by create time descending, we need to reverse the slice
 	slices.Reverse(creds)
 
 	// Run analyze to update count estimates
