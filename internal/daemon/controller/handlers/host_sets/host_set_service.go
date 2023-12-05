@@ -28,6 +28,7 @@ import (
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostsets"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/plugins"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
+	"golang.org/x/exp/maps"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -40,7 +41,7 @@ var (
 	// IdActions contains the set of actions that can be performed on
 	// individual resources
 	idActionsTypeMap = map[globals.Subtype]action.ActionSet{
-		static.Subtype: {
+		static.Subtype: action.NewActionSet(
 			action.NoOp,
 			action.Read,
 			action.Update,
@@ -48,21 +49,21 @@ var (
 			action.AddHosts,
 			action.SetHosts,
 			action.RemoveHosts,
-		},
-		hostplugin.Subtype: {
+		),
+		hostplugin.Subtype: action.NewActionSet(
 			action.NoOp,
 			action.Read,
 			action.Update,
 			action.Delete,
-		},
+		),
 	}
 
 	// CollectionActions contains the set of actions that can be performed on
 	// this collection
-	CollectionActions = action.ActionSet{
+	CollectionActions = action.NewActionSet(
 		action.Create,
 		action.List,
-	}
+	)
 )
 
 const domain = "host"
@@ -83,6 +84,9 @@ func init() {
 	); err != nil {
 		panic(err)
 	}
+
+	// TODO: refactor to remove idActionsMap and CollectionActions package variables
+	action.RegisterResource(resource.HostSet, action.Union(maps.Values(idActionsTypeMap)...), CollectionActions)
 }
 
 type Service struct {

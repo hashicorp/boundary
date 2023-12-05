@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/credential/vault"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
@@ -155,7 +156,14 @@ func TestList(t *testing.T) {
 			sort.Slice(want.Items, func(i, j int) bool {
 				return want.Items[i].GetId() < want.Items[j].GetId()
 			})
-			assert.Empty(t, cmp.Diff(got, want, protocmp.Transform()))
+			assert.Empty(t, cmp.Diff(
+				got,
+				want,
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+			))
 
 			// Test anonymous listing
 			got, gErr = s.ListCredentialLibraries(auth.DisabledAuthTestContext(iamRepoFn, prj.GetPublicId(), auth.WithUserId(globals.AnonymousUserId)), tc.req)
@@ -269,7 +277,14 @@ func TestList_Attributes(t *testing.T) {
 			sort.Slice(want.Items, func(i, j int) bool {
 				return want.Items[i].GetId() < want.Items[j].GetId()
 			})
-			assert.Empty(t, cmp.Diff(got, want, protocmp.Transform()))
+			assert.Empty(t, cmp.Diff(
+				got,
+				want,
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+			))
 
 			// Test anonymous listing
 			got, gErr = s.ListCredentialLibraries(auth.DisabledAuthTestContext(iamRepoFn, prj.GetPublicId(), auth.WithUserId(globals.AnonymousUserId)), tc.req)
@@ -843,7 +858,15 @@ func TestCreate(t *testing.T) {
 				got.Item.Id, tc.res.Item.Id = "", ""
 				got.Item.CreatedTime, got.Item.UpdatedTime, tc.res.Item.CreatedTime, tc.res.Item.UpdatedTime = nil, nil, nil, nil
 			}
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform(), protocmp.SortRepeatedFields(got)), "CreateCredentialLibrary(%q) got response %q, wanted %q", tc.req, got, tc.res)
+			assert.Empty(cmp.Diff(
+				got,
+				tc.res,
+				protocmp.Transform(),
+				protocmp.SortRepeatedFields(got),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+			), "CreateCredentialLibrary(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
 }
@@ -1041,7 +1064,14 @@ func TestGet(t *testing.T) {
 				return
 			}
 			require.NoError(t, gErr)
-			assert.Empty(t, cmp.Diff(got, tc.res, protocmp.Transform()))
+			assert.Empty(t, cmp.Diff(
+				got,
+				tc.res,
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+			))
 
 			// Test anonymous get
 			got, gErr = s.GetCredentialLibrary(auth.DisabledAuthTestContext(iamRepoFn, prj.GetPublicId(), auth.WithUserId(globals.AnonymousUserId)), req)
@@ -1750,7 +1780,14 @@ func TestUpdate(t *testing.T) {
 			assert.EqualValues(2, got.Item.Version)
 			want.Item.Version = 2
 
-			assert.Empty(cmp.Diff(got, want, protocmp.Transform()))
+			assert.Empty(cmp.Diff(
+				got,
+				want,
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+			))
 		})
 	}
 
@@ -2210,7 +2247,15 @@ func TestCreate_SSHCertificateCredentialLibrary(t *testing.T) {
 				got.Item.Id, tc.res.Item.Id = "", ""
 				got.Item.CreatedTime, got.Item.UpdatedTime, tc.res.Item.CreatedTime, tc.res.Item.UpdatedTime = nil, nil, nil, nil
 			}
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform(), protocmp.SortRepeatedFields(got)), "CreateCredentialLibrary(%q) got response %q, wanted %q", tc.req, got, tc.res)
+			assert.Empty(cmp.Diff(
+				got,
+				tc.res,
+				protocmp.Transform(),
+				protocmp.SortRepeatedFields(got),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+			), "CreateCredentialLibrary(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
 }
@@ -2468,7 +2513,14 @@ func TestUpdate_SSHCertificateCredentialLibrary(t *testing.T) {
 			assert.EqualValues(2, got.Item.Version)
 			want.Item.Version = 2
 
-			assert.Empty(cmp.Diff(got, want, protocmp.Transform()))
+			assert.Empty(cmp.Diff(
+				got,
+				want,
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+			))
 		})
 	}
 

@@ -13,6 +13,7 @@ import (
 
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/authtoken"
@@ -98,11 +99,11 @@ var globalAuthorizedCollectionActions = map[string]*structpb.ListValue{
 	"scopes": {
 		Values: []*structpb.Value{
 			structpb.NewStringValue("create"),
+			structpb.NewStringValue("destroy-key-version"),
 			structpb.NewStringValue("list"),
+			structpb.NewStringValue("list-key-version-destruction-jobs"),
 			structpb.NewStringValue("list-keys"),
 			structpb.NewStringValue("rotate-keys"),
-			structpb.NewStringValue("list-key-version-destruction-jobs"),
-			structpb.NewStringValue("destroy-key-version"),
 		},
 	},
 	"session-recordings": {
@@ -160,11 +161,11 @@ var orgAuthorizedCollectionActions = map[string]*structpb.ListValue{
 	"scopes": {
 		Values: []*structpb.Value{
 			structpb.NewStringValue("create"),
+			structpb.NewStringValue("destroy-key-version"),
 			structpb.NewStringValue("list"),
+			structpb.NewStringValue("list-key-version-destruction-jobs"),
 			structpb.NewStringValue("list-keys"),
 			structpb.NewStringValue("rotate-keys"),
-			structpb.NewStringValue("list-key-version-destruction-jobs"),
-			structpb.NewStringValue("destroy-key-version"),
 		},
 	},
 	"session-recordings": {
@@ -218,10 +219,10 @@ var projectAuthorizedCollectionActions = map[string]*structpb.ListValue{
 	},
 	"scopes": {
 		Values: []*structpb.Value{
+			structpb.NewStringValue("destroy-key-version"),
+			structpb.NewStringValue("list-key-version-destruction-jobs"),
 			structpb.NewStringValue("list-keys"),
 			structpb.NewStringValue("rotate-keys"),
-			structpb.NewStringValue("list-key-version-destruction-jobs"),
-			structpb.NewStringValue("destroy-key-version"),
 		},
 	},
 	"targets": {
@@ -329,7 +330,17 @@ func TestGet(t *testing.T) {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "GetScope(%+v) got error\n%v, wanted\n%v", req, gErr, tc.err)
 			}
-			assert.Empty(cmp.Diff(tc.res, got, protocmp.Transform()), "GetScope(%q) got response\n%q, wanted\n%q", req, got, tc.res)
+			assert.Empty(cmp.Diff(
+				tc.res,
+				got,
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+				cmpopts.SortSlices(func(a, b protocmp.Message) bool {
+					return a.String() < b.String()
+				}),
+			), "GetScope(%q) got response\n%q, wanted\n%q", req, got, tc.res)
 		})
 	}
 }
@@ -414,7 +425,17 @@ func TestList(t *testing.T) {
 				assert.True(errors.Is(gErr, tc.err), "ListScopes(%+v) got error\n%v, wanted\n%v", tc.req, gErr, tc.err)
 				return
 			}
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListScopes(%q) got response\n%q\nwanted\n%q", tc.req, got, tc.res)
+			assert.Empty(cmp.Diff(
+				got,
+				tc.res,
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+				cmpopts.SortSlices(func(a, b protocmp.Message) bool {
+					return a.String() < b.String()
+				}),
+			), "ListScopes(%q) got response\n%q\nwanted\n%q", tc.req, got, tc.res)
 
 			// Now test with anonymous listing
 			got, gErr = s.ListScopes(auth.DisabledAuthTestContext(repoFn, tc.scopeId, auth.WithUserId(globals.AnonymousUserId)), tc.req)
@@ -529,7 +550,17 @@ func TestList(t *testing.T) {
 				return
 			}
 			require.NoError(gErr)
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListScopes(%q) got response\n%q, wanted\n%q", tc.req, got, tc.res)
+			assert.Empty(cmp.Diff(
+				got,
+				tc.res,
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+				cmpopts.SortSlices(func(a, b protocmp.Message) bool {
+					return a.String() < b.String()
+				}),
+			), "ListScopes(%q) got response\n%q, wanted\n%q", tc.req, got, tc.res)
 
 			// Now test with anonymous listing
 			got, gErr = s.ListScopes(auth.DisabledAuthTestContext(repoFn, tc.scopeId, auth.WithUserId(globals.AnonymousUserId)), tc.req)
@@ -965,7 +996,17 @@ func TestCreate(t *testing.T) {
 					got.Item.Id, tc.res.Item.Id = "", ""
 					got.Item.CreatedTime, got.Item.UpdatedTime, tc.res.Item.CreatedTime, tc.res.Item.UpdatedTime = nil, nil, nil, nil
 				}
-				assert.Empty(cmp.Diff(tc.res, got, protocmp.Transform()), "CreateScope(%q) got response %q, wanted %q", req, got, tc.res)
+				assert.Empty(cmp.Diff(
+					tc.res,
+					got,
+					protocmp.Transform(),
+					cmpopts.SortSlices(func(a, b string) bool {
+						return a < b
+					}),
+					cmpopts.SortSlices(func(a, b protocmp.Message) bool {
+						return a.String() < b.String()
+					}),
+				), "CreateScope(%q) got response %q, wanted %q", req, got, tc.res)
 			})
 		}
 	}
@@ -1539,7 +1580,17 @@ func TestUpdate(t *testing.T) {
 				assert.Equal(ver+1, got.GetItem().GetVersion())
 				tc.res.Item.Version = ver + 1
 			}
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "UpdateScope(%q) got response\n%q, wanted\n%q", req, got, tc.res)
+			assert.Empty(cmp.Diff(
+				got,
+				tc.res,
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+				cmpopts.SortSlices(func(a, b protocmp.Message) bool {
+					return a.String() < b.String()
+				}),
+			), "UpdateScope(%q) got response\n%q, wanted\n%q", req, got, tc.res)
 		})
 	}
 }
@@ -2027,6 +2078,9 @@ func TestListKeys(t *testing.T) {
 					protocmp.SortRepeated(func(i, j *pb.Key) bool { return i.GetPurpose() < j.GetPurpose() }),
 					protocmp.IgnoreFields(&pb.Key{}, "id", "created_time"),
 					protocmp.IgnoreFields(&pb.KeyVersion{}, "id", "created_time"),
+					cmpopts.SortSlices(func(a, b string) bool {
+						return a < b
+					}),
 				),
 				"ListKeys(%q) got response\n%q, wanted\n%q", tt.req, got, tt.res,
 			)
@@ -2408,6 +2462,12 @@ func TestListKeyVersionDestructionJobs(t *testing.T) {
 					protocmp.Transform(),
 					protocmp.SortRepeated(func(i, j *pb.KeyVersionDestructionJob) bool { return i.GetTotalCount() < j.GetTotalCount() }),
 					protocmp.IgnoreFields(&pb.KeyVersionDestructionJob{}, "key_version_id", "created_time"),
+					cmpopts.SortSlices(func(a, b string) bool {
+						return a < b
+					}),
+					cmpopts.SortSlices(func(a, b protocmp.Message) bool {
+						return a.String() < b.String()
+					}),
 				),
 				"ListKeyVersionDestructionJobs(%q) got response\n%q, wanted\n%q", tt.req, got, tt.res,
 			)
@@ -2658,7 +2718,17 @@ func TestDestroyKeyVersion(t *testing.T) {
 				require.NoError(gErr)
 			}
 
-			assert.Empty(cmp.Diff(tt.res, got, protocmp.Transform()), "DestroyKeyVersion(%q) got response\n%q, wanted\n%q", tt.req, got, tt.res)
+			assert.Empty(cmp.Diff(
+				tt.res,
+				got,
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+				cmpopts.SortSlices(func(a, b protocmp.Message) bool {
+					return a.String() < b.String()
+				}),
+			), "DestroyKeyVersion(%q) got response\n%q, wanted\n%q", tt.req, got, tt.res)
 		})
 	}
 }

@@ -27,20 +27,25 @@ import (
 var (
 	// IdActions contains the set of actions that can be performed on
 	// individual resources
-	IdActions = action.ActionSet{
+	IdActions = action.NewActionSet(
 		action.NoOp,
 		action.Read,
 		action.ReadSelf,
 		action.Delete,
 		action.DeleteSelf,
-	}
+	)
 
 	// CollectionActions contains the set of actions that can be performed on
 	// this collection
-	CollectionActions = action.ActionSet{
+	CollectionActions = action.NewActionSet(
 		action.List,
-	}
+	)
 )
+
+func init() {
+	// TODO: refactor to remove IdActionsMap and CollectionActions package variables
+	action.RegisterResource(resource.AuthToken, IdActions, CollectionActions)
+}
 
 // Service handles request as described by the pbs.AuthTokenServiceServer interface.
 type Service struct {

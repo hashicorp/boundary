@@ -136,6 +136,26 @@ type TLSConfig struct {
 	Insecure bool
 }
 
+// RateLimitLinearJitterBackoff wraps the retryablehttp.LinearJitterBackoff.
+// It first checks if the response status code is http.StatusTooManyRequests
+// (HTTP Code 429) or http.StatusServiceUnavailable (HTTP Code 503). If it is
+// and the response contains a Retry-After response header, it will wait the
+// amount of time specified by the header. Otherwise, this calls
+// LinearJitterBackoff.
+// See: https://pkg.go.dev/github.com/hashicorp/go-retryablehttp#LinearJitterBackoff
+func RateLimitLinearJitterBackoff(min, max time.Duration, attemptNum int, resp *http.Response) time.Duration {
+	if resp != nil {
+		if resp.StatusCode == http.StatusTooManyRequests || resp.StatusCode == http.StatusServiceUnavailable {
+			if s, ok := resp.Header["Retry-After"]; ok {
+				if sleep, err := strconv.ParseInt(s[0], 10, 64); err == nil {
+					return time.Second * time.Duration(sleep)
+				}
+			}
+		}
+	}
+	return retryablehttp.LinearJitterBackoff(min, max, attemptNum, resp)
+}
+
 // DefaultConfig returns a default configuration for the client. It is
 // safe to modify the return value of this function.
 //
@@ -163,7 +183,7 @@ func DefaultConfig() (*Config, error) {
 		MinVersion: tls.VersionTLS12,
 	}
 
-	config.Backoff = retryablehttp.LinearJitterBackoff
+	config.Backoff = RateLimitLinearJitterBackoff
 	config.MaxRetries = 2
 	config.Headers = make(http.Header)
 

@@ -26,6 +26,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/subtypes"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/managedgroups"
 	"github.com/hashicorp/go-bexpr"
+	"golang.org/x/exp/maps"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -45,26 +46,26 @@ var (
 	// IdActions contains the set of actions that can be performed on
 	// individual resources
 	IdActions = map[globals.Subtype]action.ActionSet{
-		oidc.Subtype: {
+		oidc.Subtype: action.NewActionSet(
 			action.NoOp,
 			action.Read,
 			action.Update,
 			action.Delete,
-		},
-		ldap.Subtype: {
+		),
+		ldap.Subtype: action.NewActionSet(
 			action.NoOp,
 			action.Read,
 			action.Update,
 			action.Delete,
-		},
+		),
 	}
 
 	// CollectionActions contains the set of actions that can be performed on
 	// this collection
-	CollectionActions = action.ActionSet{
+	CollectionActions = action.NewActionSet(
 		action.Create,
 		action.List,
-	}
+	)
 )
 
 func init() {
@@ -83,6 +84,9 @@ func init() {
 	); err != nil {
 		panic(err)
 	}
+
+	// TODO: refactor to remove IdActions and CollectionActions package variables
+	action.RegisterResource(resource.ManagedGroup, action.Union(maps.Values(IdActions)...), CollectionActions)
 }
 
 // Service handles request as described by the pbs.ManagedGroupServiceServer interface.

@@ -46,6 +46,7 @@ import (
 	"github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	authpb "github.com/hashicorp/boundary/internal/gen/controller/auth"
 	opsservices "github.com/hashicorp/boundary/internal/gen/ops/services"
+	"github.com/hashicorp/boundary/internal/ratelimit"
 	"github.com/hashicorp/go-cleanhttp"
 	"github.com/hashicorp/go-secure-stdlib/listenerutil"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
@@ -73,7 +74,7 @@ func createMuxWithEndpoints(c *Controller, props HandlerProperties) (http.Handle
 	}
 
 	mux := http.NewServeMux()
-	mux.Handle("/v1/", grpcGwMux)
+	mux.Handle("/v1/", ratelimit.Handler(c.baseContext, c.getRateLimiter, grpcGwMux))
 	mux.Handle(uiPath, handleUi(c))
 
 	isUiRequest := func(req *http.Request) bool {
@@ -410,6 +411,7 @@ func wrapHandlerWithCommonFuncs(h http.Handler, c *Controller, props HandlerProp
 		}
 
 		requestInfo.PublicId, requestInfo.EncryptedToken, requestInfo.TokenFormat = auth.GetTokenFromRequest(ctx, c.kms, r)
+		ctx = context.WithValue(ctx, globals.ContextAuthTokenPublicIdKey, requestInfo.PublicId)
 
 		if info, ok := event.RequestInfoFromContext(ctx); ok {
 			// piggyback some eventing fields with the auth info proto message
