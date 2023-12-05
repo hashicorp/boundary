@@ -10,6 +10,11 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   enables rate limits by default. For details on the default rate limits,
   how to configure rate limits, and how to disable rate limiting see the
   noted PR. ([PR](https://github.com/hashicorp/boundary/pull/4092))
+* Add support for OIDC prompts. Using prompts, the Relying Party (RP) can 
+  customize the authentication and authorization flow to suit their specific 
+  needs and improve the user experience. [OIDC Authentication request]
+  (https://openid.net/specs/openid-connect-core-1_0.html#AuthRequest) server.
+  ([PR](https://github.com/hashicorp/boundary/pull/4053))
 
 ## 0.14.2 (2023/10/27)
 
