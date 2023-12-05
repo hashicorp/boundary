@@ -4,6 +4,13 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+### New and Improved
+
+* Added the ability to enforce rate limits on the Controller API. This version
+  enables rate limits by default. For details on the default rate limits,
+  how to configure rate limits, and how to disable rate limiting see the
+  noted PR. ([PR](https://github.com/hashicorp/boundary/pull/4092))
+
 ## 0.14.2 (2023/10/27)
 
 ### New and Improved
