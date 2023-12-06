@@ -86,7 +86,7 @@ If your controllers try to process every API request, it can lead to situations 
 The controllers may either run out of resources or overwhelm the database server and exhaust its resources.
 API rate limiting lets you configure limits on the rate of API requests to help manage your resources and prevent them from being overwhelmed.
 
-If you enable API rate limiting, Boundary creates quotas to track the number of requests in a given time period.
+Boundary creates quotas to track the number of requests in a given time period.
 You can configure Boundary to track the total number of requests or track requests by auth token or IP address.
 Boundary reserves a portion of its memory for tracking quotas to ensure that it does not consume too much memory if there is a sudden burst of requests.
 If Boundary is unable to store a quota, it limits the request with a 503 HTTP status code.
