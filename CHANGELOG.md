@@ -18,6 +18,11 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### Bug Fixes
 
+* Update go-kms-wrapping/extras/kms dependency to allow external wrappers
+  without a key id to be used within a KMS config stanza.  Note: this fix allows
+  GCP KMS keys to be again with Boundary, which had stopped working in v0.13.0.
+  ([PR](https://github.com/hashicorp/boundary/pull/4058)) 
+
 * Two Vault client settings were not being properly used when constructing a
   Vault client. ([PR](https://github.com/hashicorp/boundary/pull/3973))
 
