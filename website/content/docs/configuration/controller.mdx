@@ -108,6 +108,33 @@ description will be read.
   are anything specified by Go's [ParseDuration()](https://golang.org/pkg/time/#ParseDuration) method. Only
   used when an `ops` listener is set and the Controller is present. Default is 0 seconds.
 
+- `api_rate_limit` - Sets limits on the rate of requests for controller API endpoints.
+This setting can help prevent resources from being overwhelmed with too many requests at a time.
+The `api_rate_limit` configuration stanza contains the following fields:
+
+  - `resources` - Specifies the Boundary resource you want to limit rates for.
+  The resource can be `target` or `credential-library`, for example.
+  You can include all resources by using the wildcard `"*"`.
+  - `actions` - Specifies the actions you want to limit on the resource.
+  The actions could be `create`, `list`, or `authorize-session`, for example.
+  You can include all actions by using the wildcard `"*"`.
+  - `per` - Specifies how the limit is allocated.
+  You can choose from the following values:
+     - `total` - Counts all requests, regardless of auth token or IP address.
+     - `auth-token` - Counts requests per the user's auth token.
+     This value lets you limit requests per auth token.
+     - `ip-address` - Counts requests per IP address.
+     This value lets you limit requests per IP address.
+
+  You can also use the wildcard `"*"` to include all values, but only when `unlimited` is also configured.
+  - `limit` - Specifies the number of requests that are allowed within the `period`.
+  - `period` - Specifies the time window for the `limit`.
+  The limit resets after this period of time has passed.
+  - `unlimited` - Indicates that the corresponding resources and actions should not be rate limited.
+  If you set this value to `true`, you should not specify values for the `limit` and `period` or you will receive an error.
+
+ For more information about how API rate limiting works, refer to the [API rate limiting](/boundary/docs/api-clients/api#rate-limiting) documentation.
+
 ## Signals
 
 The `SIGHUP` signal causes a controller to reload its configuration file to pick up any updates to the `database url` value. Any other updated values are ignored.
