@@ -200,13 +200,18 @@ func (r *RefreshService) RefreshForSearch(ctx context.Context, authTokenid strin
 		return errors.Wrap(ctx, err, op)
 	}
 
+	opts, err := getOpts(opt...)
+	if err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
+
 	switch resourceType {
 	case Targets:
 		rtv, err := r.repo.lookupRefreshToken(ctx, u, targetResourceType)
 		if err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
-		if rtv != nil && time.Since(rtv.UpdateTime) > r.maxSearchStaleness {
+		if opts.withIgnoreSearchStaleness || rtv != nil && time.Since(rtv.UpdateTime) > r.maxSearchStaleness {
 			if err := r.repo.refreshTargets(ctx, u, tokens, opt...); err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
@@ -216,7 +221,7 @@ func (r *RefreshService) RefreshForSearch(ctx context.Context, authTokenid strin
 		if err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
-		if rtv != nil && time.Since(rtv.UpdateTime) > r.maxSearchStaleness {
+		if opts.withIgnoreSearchStaleness || rtv != nil && time.Since(rtv.UpdateTime) > r.maxSearchStaleness {
 			if err := r.repo.refreshSessions(ctx, u, tokens, opt...); err != nil {
 				return errors.Wrap(ctx, err, op)
 			}

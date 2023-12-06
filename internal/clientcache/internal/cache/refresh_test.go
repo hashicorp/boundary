@@ -400,6 +400,61 @@ func TestRefreshForSearch(t *testing.T) {
 		assert.ElementsMatch(t, retTargets[2:], cachedTargets)
 	})
 
+	t.Run("targets forced refreshed for searching", func(t *testing.T) {
+		s, err := db.Open(ctx)
+		require.NoError(t, err)
+		r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(boundaryAuthTokens))
+		require.NoError(t, err)
+		// Everything can stay stale for an hour
+		rs, err := NewRefreshService(ctx, r, time.Hour, 0)
+		require.NoError(t, err)
+		require.NoError(t, r.AddKeyringToken(ctx, boundaryAddr, KeyringToken{KeyringType: "k", TokenName: "t", AuthTokenId: at.Id}))
+
+		retTargets := []*targets.Target{
+			target("1"),
+			target("2"),
+			target("3"),
+			target("4"),
+		}
+		opts := []Option{
+			WithSessionRetrievalFunc(testStaticResourceRetrievalFunc[*sessions.Session](t, nil, nil)),
+			WithTargetRetrievalFunc(testStaticResourceRetrievalFunc[*targets.Target](t,
+				[][]*targets.Target{
+					retTargets[:3],
+					retTargets[3:],
+				},
+				[][]string{
+					nil,
+					{retTargets[0].Id, retTargets[1].Id},
+				},
+			)),
+		}
+		assert.NoError(t, rs.RefreshForSearch(ctx, at.Id, Targets, opts...))
+
+		cachedTargets, err := r.ListTargets(ctx, at.Id)
+		assert.NoError(t, err)
+		assert.Empty(t, cachedTargets)
+
+		// Now load up a few resources and a token, and trying again should
+		// see the RefreshForSearch update more fields.
+		assert.NoError(t, rs.Refresh(ctx, opts...))
+		cachedTargets, err = r.ListTargets(ctx, at.Id)
+		assert.NoError(t, err)
+		assert.ElementsMatch(t, retTargets[:3], cachedTargets)
+
+		// No refresh happened because it is not considered stale
+		assert.NoError(t, rs.RefreshForSearch(ctx, at.Id, Targets, opts...))
+		cachedTargets, err = r.ListTargets(ctx, at.Id)
+		assert.NoError(t, err)
+		assert.ElementsMatch(t, retTargets[:3], cachedTargets)
+
+		// Now force refresh
+		assert.NoError(t, rs.RefreshForSearch(ctx, at.Id, Targets, append(opts, WithIgnoreSearchStaleness(true))...))
+		cachedTargets, err = r.ListTargets(ctx, at.Id)
+		assert.NoError(t, err)
+		assert.ElementsMatch(t, retTargets[2:], cachedTargets)
+	})
+
 	t.Run("no refresh token no refresh for search", func(t *testing.T) {
 		s, err := db.Open(ctx)
 		require.NoError(t, err)
@@ -488,6 +543,60 @@ func TestRefreshForSearch(t *testing.T) {
 
 		// Second call removes the first 2 resources from the cache and adds the last
 		assert.NoError(t, rs.RefreshForSearch(ctx, at.Id, Sessions, opts...))
+		cachedSessions, err = r.ListSessions(ctx, at.Id)
+		assert.NoError(t, err)
+		assert.ElementsMatch(t, retSess[2:], cachedSessions)
+	})
+
+	t.Run("sessions forced refreshed for searching", func(t *testing.T) {
+		s, err := db.Open(ctx)
+		require.NoError(t, err)
+		r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(boundaryAuthTokens))
+		require.NoError(t, err)
+		// Everything stays fresh for 1 hour
+		rs, err := NewRefreshService(ctx, r, time.Hour, 0)
+		require.NoError(t, err)
+		require.NoError(t, r.AddKeyringToken(ctx, boundaryAddr, KeyringToken{KeyringType: "k", TokenName: "t", AuthTokenId: at.Id}))
+
+		retSess := []*sessions.Session{
+			session("1"),
+			session("2"),
+			session("3"),
+			session("4"),
+		}
+		opts := []Option{
+			WithTargetRetrievalFunc(testStaticResourceRetrievalFunc[*targets.Target](t, nil, nil)),
+			WithSessionRetrievalFunc(testStaticResourceRetrievalFunc[*sessions.Session](t,
+				[][]*sessions.Session{
+					retSess[:3],
+					retSess[3:],
+				},
+				[][]string{
+					nil,
+					{retSess[0].Id, retSess[1].Id},
+				},
+			)),
+		}
+
+		// First call doesn't sync anything because no sessions were already synced yet
+		assert.NoError(t, rs.RefreshForSearch(ctx, at.Id, Sessions, opts...))
+		cachedSessions, err := r.ListSessions(ctx, at.Id)
+		assert.NoError(t, err)
+		assert.Empty(t, cachedSessions)
+
+		assert.NoError(t, rs.Refresh(ctx, opts...))
+		cachedSessions, err = r.ListSessions(ctx, at.Id)
+		assert.NoError(t, err)
+		assert.ElementsMatch(t, retSess[:3], cachedSessions)
+
+		// Refresh for search doesn't refresh anything because it isn't stale
+		assert.NoError(t, rs.RefreshForSearch(ctx, at.Id, Sessions, opts...))
+		cachedSessions, err = r.ListSessions(ctx, at.Id)
+		assert.NoError(t, err)
+		assert.ElementsMatch(t, retSess[:3], cachedSessions)
+
+		// Now force the refresh and see things get updated
+		assert.NoError(t, rs.RefreshForSearch(ctx, at.Id, Sessions, append(opts, WithIgnoreSearchStaleness(true))...))
 		cachedSessions, err = r.ListSessions(ctx, at.Id)
 		assert.NoError(t, err)
 		assert.ElementsMatch(t, retSess[2:], cachedSessions)
