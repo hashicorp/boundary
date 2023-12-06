@@ -414,11 +414,11 @@ func TestService_List(t *testing.T) {
 			require.NoError(t, err)
 			_, err = repo.DeleteAuthToken(ctx, newAt2.GetPublicId())
 			require.NoError(t, err)
-			// Run analyze to update target estimate
+			// Run analyze to update count estimate
 			_, err = sqlDB.ExecContext(ctx, "analyze")
 			require.NoError(t, err)
 		})
-		// Run analyze to update target estimate
+		// Run analyze to update count estimate
 		_, err = sqlDB.ExecContext(ctx, "analyze")
 		require.NoError(t, err)
 
@@ -491,7 +491,7 @@ func TestService_List(t *testing.T) {
 		newAt2 := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
 		newAt3 := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
 		newAt4 := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
-		// Run analyze to update target estimate
+		// Run analyze to update count estimate
 		_, err = sqlDB.ExecContext(ctx, "analyze")
 		require.NoError(t, err)
 		t.Cleanup(func() {
@@ -503,7 +503,7 @@ func TestService_List(t *testing.T) {
 			require.NoError(t, err)
 			_, err = repo.DeleteAuthToken(ctx, newAt4.GetPublicId())
 			require.NoError(t, err)
-			// Run analyze to update target estimate
+			// Run analyze to update count estimate
 			_, err = sqlDB.ExecContext(ctx, "analyze")
 			require.NoError(t, err)
 		})
@@ -542,7 +542,7 @@ func TestService_List(t *testing.T) {
 		require.NoError(t, err)
 		allTokens = allTokens[1:]
 
-		// Run analyze to update target estimate
+		// Run analyze to update count estimate
 		_, err = sqlDB.ExecContext(ctx, "analyze")
 		require.NoError(t, err)
 
@@ -571,7 +571,7 @@ func TestService_List(t *testing.T) {
 		require.NoError(t, err)
 		allTokens = allTokens[1:]
 
-		// Run analyze to update target estimate
+		// Run analyze to update count estimate
 		_, err = sqlDB.ExecContext(ctx, "analyze")
 		require.NoError(t, err)
 
