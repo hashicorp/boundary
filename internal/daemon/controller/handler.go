@@ -266,7 +266,14 @@ func (c *Controller) registerGrpcServices(s *grpc.Server) error {
 		services.RegisterManagedGroupServiceServer(s, mgs)
 	}
 	if _, ok := currentServices[services.CredentialStoreService_ServiceDesc.ServiceName]; !ok {
-		cs, err := credentialstores.NewService(c.baseContext, c.VaultCredentialRepoFn, c.StaticCredentialRepoFn, c.IamRepoFn)
+		cs, err := credentialstores.NewService(
+			c.baseContext,
+			c.IamRepoFn,
+			c.VaultCredentialRepoFn,
+			c.StaticCredentialRepoFn,
+			c.CredentialStoreRepoFn,
+			c.conf.RawConfig.Controller.MaxPageSize,
+		)
 		if err != nil {
 			return fmt.Errorf("failed to create credential store handler service: %w", err)
 		}
