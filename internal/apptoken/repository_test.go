@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -19,10 +20,12 @@ func TestNewRepository(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	testKms := kms.TestKms(t, conn, wrapper)
+	testIamRepo := iam.TestRepo(t, conn, wrapper)
 	type args struct {
 		r   db.Reader
 		w   db.Writer
 		kms *kms.Kms
+		gf  grantFinder
 	}
 	tests := []struct {
 		name          string
@@ -37,11 +40,13 @@ func TestNewRepository(t *testing.T) {
 				r:   rw,
 				w:   rw,
 				kms: testKms,
+				gf:  testIamRepo,
 			},
 			want: &Repository{
 				reader:       rw,
 				writer:       rw,
 				kms:          testKms,
+				grantFinder:  testIamRepo,
 				defaultLimit: db.DefaultLimit,
 			},
 			wantErr: false,
@@ -52,6 +57,7 @@ func TestNewRepository(t *testing.T) {
 				r:   rw,
 				w:   rw,
 				kms: nil,
+				gf:  testIamRepo,
 			},
 			want:          nil,
 			wantErr:       true,
@@ -63,6 +69,7 @@ func TestNewRepository(t *testing.T) {
 				r:   rw,
 				w:   nil,
 				kms: testKms,
+				gf:  testIamRepo,
 			},
 			want:          nil,
 			wantErr:       true,
@@ -74,6 +81,7 @@ func TestNewRepository(t *testing.T) {
 				r:   nil,
 				w:   rw,
 				kms: testKms,
+				gf:  testIamRepo,
 			},
 			want:          nil,
 			wantErr:       true,
@@ -83,7 +91,7 @@ func TestNewRepository(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := NewRepository(context.Background(), tt.args.r, tt.args.w, tt.args.kms, tt.want.grantFinder)
+			got, err := NewRepository(context.Background(), tt.args.r, tt.args.w, tt.args.kms, tt.args.gf)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Equal(tt.wantErrString, err.Error())
