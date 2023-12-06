@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/hashicorp/boundary/api/sessions"
 	"github.com/hashicorp/boundary/api/targets"
@@ -24,11 +25,10 @@ type SearchResult struct {
 }
 
 const (
-	filterKey   = "filter"
-	queryKey    = "query"
-	resourceKey = "resource"
-
-	boundaryAddrKey = "boundary_addr"
+	filterKey       = "filter"
+	queryKey        = "query"
+	resourceKey     = "resource"
+	forceRefreshKey = "force_refresh"
 	authTokenIdKey  = "auth_token_id"
 )
 
@@ -70,10 +70,14 @@ func newSearchHandlerFunc(ctx context.Context, repo *cache.Repository, refreshSe
 			return
 		}
 
+		var opts []cache.Option
+		if b, err := strconv.ParseBool(r.URL.Query().Get(forceRefreshKey)); err == nil && b {
+			opts = append(opts, cache.WithIgnoreSearchStaleness(true))
+		}
 		// Refresh the resources for the provided user, if possible. This is best
 		// effort, so if there is any problem refreshing, we just log the error
 		// and move on to handling the search request.
-		if err := refreshService.RefreshForSearch(ctx, authTokenId, searchableResource); err != nil {
+		if err := refreshService.RefreshForSearch(ctx, authTokenId, searchableResource, opts...); err != nil {
 			// we don't stop the search, we just log that the inline refresh failed
 			event.WriteError(ctx, op, err, event.WithInfoMsg("when refreshing the resources inline for search", "auth_token_id", authTokenId, "resource", searchableResource))
 		}

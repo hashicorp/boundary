@@ -72,4 +72,11 @@ func Test_GetOpts(t *testing.T) {
 		testOpts := getDefaultOptions()
 		assert.Equal(t, opts, testOpts)
 	})
+	t.Run("withIgnoreSearchStaleness", func(t *testing.T) {
+		opts, err := getOpts(WithIgnoreSearchStaleness(true))
+		require.NoError(t, err)
+		testOpts := getDefaultOptions()
+		testOpts.withIgnoreSearchStaleness = true
+		assert.Equal(t, opts, testOpts)
+	})
 }

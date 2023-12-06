@@ -38,8 +38,9 @@ var (
 
 type SearchCommand struct {
 	*base.Command
-	flagQuery    string
-	flagResource string
+	flagQuery        string
+	flagResource     string
+	flagForceRefresh bool
 }
 
 func (c *SearchCommand) Synopsis() string {
@@ -74,6 +75,12 @@ func (c *SearchCommand) Flags() *base.FlagSets {
 		Target:     &c.flagResource,
 		Usage:      `Specifies the resource type to search over`,
 		Completion: complete.PredictSet(supportedResourceTypes...),
+	})
+	f.BoolVar(&base.BoolVar{
+		Name:   "force-refresh",
+		Target: &c.flagForceRefresh,
+		Usage:  `Forces a refresh to be attempted prior to performing the search`,
+		Hidden: true,
 	})
 
 	return set
@@ -148,9 +155,10 @@ func (c *SearchCommand) Search(ctx context.Context) (*api.Response, *daemon.Sear
 	}
 
 	tf := filterBy{
-		flagQuery:   c.flagQuery,
-		resource:    c.flagResource,
-		authTokenId: strings.Join(tSlice[:2], "_"),
+		flagQuery:    c.flagQuery,
+		resource:     c.flagResource,
+		authTokenId:  strings.Join(tSlice[:2], "_"),
+		forceRefresh: c.flagForceRefresh,
 	}
 	var opts []client.Option
 	if c.FlagOutputCurlString {
@@ -182,6 +190,9 @@ func search(ctx context.Context, daemonPath string, fb filterBy, opt ...client.O
 	q.Add("auth_token_id", fb.authTokenId)
 	q.Add("resource", fb.resource)
 	q.Add("query", fb.flagQuery)
+	if fb.forceRefresh {
+		q.Add("force_refresh", "true")
+	}
 	resp, err := c.Get(ctx, "/v1/search", q, opt...)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("Error when sending request to the daemon: %w.", err)
@@ -329,7 +340,8 @@ func printSessionListTable(items []*sessions.Session) string {
 }
 
 type filterBy struct {
-	flagQuery   string
-	authTokenId string
-	resource    string
+	flagQuery    string
+	authTokenId  string
+	resource     string
+	forceRefresh bool
 }
