@@ -21,6 +21,13 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   the ID are passed through to the type-specific subcommand. Once the ID has
   been entered, autocomplete is also supported.
 
+### Bug Fixes
+
+* Update go-kms-wrapping/extras/kms dependency to allow external wrappers
+  without a key id to be used within a KMS config stanza.  Note: this fix allows
+  GCP KMS keys to be again with Boundary, which had stopped working in v0.13.0.
+  ([PR](https://github.com/hashicorp/boundary/pull/4058)) 
+
 ## 0.14.2 (2023/11/2)
 
 ### New and Improved
