@@ -45,7 +45,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   running. The issue was fixed by correctly updating the state that determines
   when the loop in GRPC connection state check should run.
   ([PR](https://github.com/hashicorp/boundary/pull/3884))
-* LDAP auth methods: Fix encoding of mTLS client key which prevented **Boundary**
+* LDAP auth methods: Fix encoding of mTLS client key which prevented Boundary
   from making mTLS connections to an LDAP server
   ([Issue](https://github.com/hashicorp/boundary/issues/3927),
   [PR](https://github.com/hashicorp/boundary/pull/3929)).
