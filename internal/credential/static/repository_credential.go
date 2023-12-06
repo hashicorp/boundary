@@ -13,7 +13,6 @@ import (
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/credential"
-	"github.com/hashicorp/boundary/internal/credential/static/store"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -821,95 +820,18 @@ func (r *Repository) queryCredentials(ctx context.Context, query string, args []
 		if err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
-		defer rows.Close()
+		var results []listCredentialResult
 		for rows.Next() {
-			var (
-				publicId, storeId, projectId, name, description,
-				username, keyId, hmac1, hmac2 sql.NullString
-				createTime, updateTime *timestamp.Timestamp
-				version                sql.NullInt64
-				typ                    string
-			)
-			if err := rows.Scan(
-				&publicId,
-				&storeId,
-				&projectId,
-				&name,
-				&description,
-				&createTime,
-				&updateTime,
-				&version,
-				&username,
-				&keyId,
-				&hmac1,
-				&hmac2,
-				&typ,
-			); err != nil {
+			if err := rd.ScanRows(ctx, rows, &results); err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
-			switch typ {
-			case "json":
-				cred := &JsonCredential{
-					JsonCredential: &store.JsonCredential{
-						PublicId:    publicId.String,
-						StoreId:     storeId.String,
-						Name:        name.String,
-						Description: description.String,
-						CreateTime:  createTime,
-						UpdateTime:  updateTime,
-						Version:     uint32(version.Int64),
-						KeyId:       keyId.String,
-					},
-				}
-				// Assign byte slices only if the string isn't empty
-				if hmac1.String != "" {
-					cred.ObjectHmac = []byte(hmac1.String)
-				}
-				creds = append(creds, cred)
-			case "upw":
-				cred := &UsernamePasswordCredential{
-					UsernamePasswordCredential: &store.UsernamePasswordCredential{
-						PublicId:    publicId.String,
-						StoreId:     storeId.String,
-						Name:        name.String,
-						Description: description.String,
-						CreateTime:  createTime,
-						UpdateTime:  updateTime,
-						Version:     uint32(version.Int64),
-						Username:    username.String,
-						KeyId:       keyId.String,
-					},
-				}
-				// Assign byte slices only if the string isn't empty
-				if hmac1.String != "" {
-					cred.PasswordHmac = []byte(hmac1.String)
-				}
-				creds = append(creds, cred)
-			case "ssh":
-				cred := &SshPrivateKeyCredential{
-					SshPrivateKeyCredential: &store.SshPrivateKeyCredential{
-						PublicId:    publicId.String,
-						StoreId:     storeId.String,
-						Name:        name.String,
-						Description: description.String,
-						CreateTime:  createTime,
-						UpdateTime:  updateTime,
-						Version:     uint32(version.Int64),
-						Username:    username.String,
-						KeyId:       keyId.String,
-					},
-				}
-				// Assign byte slices only if the string isn't empty
-				if hmac1.String != "" {
-					cred.PrivateKeyHmac = []byte(hmac1.String)
-				}
-				if hmac2.String != "" {
-					cred.PrivateKeyPassphraseHmac = []byte(hmac2.String)
-				}
-				creds = append(creds, cred)
-			default:
-				return errors.New(ctx, errors.Internal, op, fmt.Sprintf("unexpected static credential type %s returned", typ))
+		}
+		for _, result := range results {
+			cred, err := result.toCredential(ctx)
+			if err != nil {
+				return errors.Wrap(ctx, err, op)
 			}
+			creds = append(creds, cred)
 		}
 		transactionTimestamp, err = rd.Now(ctx)
 		return err
