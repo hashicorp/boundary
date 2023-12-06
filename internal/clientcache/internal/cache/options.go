@@ -77,7 +77,8 @@ func WithSessionRetrievalFunc(fn SessionRetrievalFunc) Option {
 	}
 }
 
-// WithIgnoreStalenessTime provides an option for ignoring the staleness time
+// WithIgnoreSearchStaleness provides an option for ignoring the resource
+// staleness when performing a search.
 func WithIgnoreSearchStaleness(b bool) Option {
 	return func(o *options) error {
 		o.withIgnoreSearchStaleness = b
