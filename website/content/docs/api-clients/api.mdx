@@ -216,7 +216,7 @@ controller {
   api_rate_limit {
 	resources = ["*"]
 	actions   = ["list"]
-	per 	= "total"
+	per 	= "auth-token"
 	limit 	= 50
 	period	= "1s"
   }
