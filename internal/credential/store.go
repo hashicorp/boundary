@@ -57,7 +57,7 @@ type StoreListQueryResult struct {
 }
 
 func (s *StoreListQueryResult) toStore(ctx context.Context) (Store, error) {
-	const op = "credential.(*StoreListQueryResult).storeSubtype"
+	const op = "credential.(*StoreListQueryResult).toStore"
 
 	newFn, ok := subtypeRegistry.newFunc(globals.Subtype(s.Subtype))
 	if !ok {
