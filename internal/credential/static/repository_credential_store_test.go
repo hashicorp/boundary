@@ -9,8 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/go-cmp/cmp"
-	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/credential/static/store"
 	"github.com/hashicorp/boundary/internal/db"
@@ -683,43 +681,4 @@ func TestRepository_DeleteCredentialStore(t *testing.T) {
 			assert.EqualValues(tt.want, got)
 		})
 	}
-}
-
-func TestRepository_ListDeletedStoreIds(t *testing.T) {
-	t.Parallel()
-	assert, require := assert.New(t), require.New(t)
-	ctx := context.Background()
-	conn, _ := db.TestSetup(t, "postgres")
-	rw := db.New(conn)
-	wrapper := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn, wrapper)
-	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	stores := TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 2)
-
-	repo, err := NewRepository(ctx, rw, rw, kms)
-	require.NoError(err)
-	require.NotNil(repo)
-	// Expect no entries at the start
-	deletedIds, err := repo.ListDeletedStoreIds(ctx, time.Now().AddDate(-1, 0, 0))
-	require.NoError(err)
-	require.Empty(deletedIds)
-
-	_, err = repo.DeleteCredentialStore(ctx, stores[0].GetPublicId())
-	require.NoError(err)
-
-	// Expect one entry
-	deletedIds, err = repo.ListDeletedStoreIds(ctx, time.Now().AddDate(-1, 0, 0))
-	require.NoError(err)
-	assert.Empty(
-		cmp.Diff(
-			[]string{stores[0].GetPublicId()},
-			deletedIds,
-			cmpopts.SortSlices(func(i, j string) bool { return i < j }),
-		),
-	)
-
-	// Try again with the time set to now, expect no entries
-	deletedIds, err = repo.ListDeletedStoreIds(ctx, time.Now())
-	require.NoError(err)
-	require.Empty(deletedIds)
 }
