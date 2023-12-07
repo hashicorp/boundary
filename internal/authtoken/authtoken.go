@@ -189,10 +189,14 @@ func (at AuthToken) GetDescription() string {
 	return ""
 }
 
+// GetName returns an empty string so that
+// AuthToken will satisfy resource requirements
 func (at AuthToken) GetName() string {
 	return ""
 }
 
+// GetVersion returns 0 so that
+// AuthToken will satisfy resource requirements
 func (at AuthToken) GetVersion() uint32 {
 	return 0
 }

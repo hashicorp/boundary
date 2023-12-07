@@ -7,6 +7,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -307,12 +308,19 @@ func (r *Repository) listAuthTokens(ctx context.Context, withScopeIds []string, 
 		limit = opts.withLimit
 	}
 
-	whereScopeIds := "('" + strings.Join(withScopeIds, "', '") + "')"
-
 	var args []any
-	query := fmt.Sprintf(listAuthTokensTemplate, whereScopeIds, limit)
+	var inClauses []string
+	for i, scopeId := range withScopeIds {
+		arg := "scope_id_" + strconv.Itoa(i)
+		inClauses = append(inClauses, "@"+arg)
+		args = append(args, sql.Named(arg, scopeId))
+	}
+	inClause := strings.Join(inClauses, ", ")
+	whereClause := "scope_id in (" + inClause + ")"
+
+	query := fmt.Sprintf(listAuthTokensTemplate, limit, whereClause)
 	if opts.withStartPageAfterItem != nil {
-		query = fmt.Sprintf(listAuthTokensPageTemplate, whereScopeIds, limit)
+		query = fmt.Sprintf(listAuthTokensPageTemplate, limit, whereClause)
 		args = append(args,
 			sql.Named("last_item_create_time", opts.withStartPageAfterItem.GetCreateTime()),
 			sql.Named("last_item_id", opts.withStartPageAfterItem.GetPublicId()),
@@ -327,13 +335,14 @@ func (r *Repository) listAuthTokens(ctx context.Context, withScopeIds []string, 
 func (r *Repository) listAuthTokensRefresh(ctx context.Context, updatedAfter time.Time, withScopeIds []string, opt ...Option) ([]*AuthToken, time.Time, error) {
 	const op = "authtoken.(Repository).listAuthTokensRefresh"
 
-	if updatedAfter.IsZero() {
+	switch {
+	case updatedAfter.IsZero():
 		return nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "missing updated after time")
-	}
 
-	if len(withScopeIds) == 0 {
+	case len(withScopeIds) == 0:
 		return nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
 	}
+
 	opts := getOpts(opt...)
 
 	limit := r.limit
@@ -341,15 +350,23 @@ func (r *Repository) listAuthTokensRefresh(ctx context.Context, updatedAfter tim
 		// non-zero signals an override of the default limit for the repo.
 		limit = opts.withLimit
 	}
-	whereScopeIds := "('" + strings.Join(withScopeIds, "', '") + "')"
 
 	var args []any
-	query := fmt.Sprintf(refreshAuthTokensTemplate, whereScopeIds, limit)
+	var inClauses []string
+	for i, scopeId := range withScopeIds {
+		arg := "scope_id_" + strconv.Itoa(i)
+		inClauses = append(inClauses, "@"+arg)
+		args = append(args, sql.Named(arg, scopeId))
+	}
+	inClause := strings.Join(inClauses, ", ")
+	whereClause := "scope_id in (" + inClause + ")"
+
+	query := fmt.Sprintf(refreshAuthTokensTemplate, limit, whereClause)
 	args = append(args,
 		sql.Named("updated_after_time", timestamp.New(updatedAfter)),
 	)
 	if opts.withStartPageAfterItem != nil {
-		query = fmt.Sprintf(refreshAuthTokensPageTemplate, whereScopeIds, limit)
+		query = fmt.Sprintf(refreshAuthTokensPageTemplate, limit, whereClause)
 		args = append(args,
 			sql.Named("last_item_update_time", opts.withStartPageAfterItem.GetUpdateTime()),
 			sql.Named("last_item_id", opts.withStartPageAfterItem.GetPublicId()),
