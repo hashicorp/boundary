@@ -171,7 +171,7 @@ func (c *Controller) registerGrpcServices(s *grpc.Server) error {
 		services.RegisterAuthMethodServiceServer(s, authMethods)
 	}
 	if _, ok := currentServices[services.AuthTokenService_ServiceDesc.ServiceName]; !ok {
-		authtoks, err := authtokens.NewService(c.baseContext, c.AuthTokenRepoFn, c.IamRepoFn)
+		authtoks, err := authtokens.NewService(c.baseContext, c.AuthTokenRepoFn, c.IamRepoFn, c.conf.RawConfig.Controller.MaxPageSize)
 		if err != nil {
 			return fmt.Errorf("failed to create auth token handler service: %w", err)
 		}
