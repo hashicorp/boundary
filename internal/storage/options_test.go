@@ -69,14 +69,4 @@ func Test_getOpts(t *testing.T) {
 		testOpts.WithBuffer = 4096
 		assert.Equal(opts, testOpts)
 	})
-	t.Run("WithMinimumBuffer", func(t *testing.T) {
-		testOpts := getDefaultOptions()
-		opts := GetOpts(WithMinimumBuffer(0))
-		assert.Equal(testOpts, opts)
-
-		testOpts = getDefaultOptions()
-		opts = GetOpts(WithMinimumBuffer(88))
-		testOpts.WithMinimumBuffer = 88
-		assert.Equal(opts, testOpts)
-	})
 }
