@@ -398,8 +398,8 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	c.StaticCredentialRepoFn = func() (*credstatic.Repository, error) {
 		return credstatic.NewRepository(ctx, dbase, dbase, c.kms)
 	}
-	c.CredentialStoreRepoFn = func(vaultRepo *vault.Repository, staticRepo *credstatic.Repository) (*credential.StoreRepository, error) {
-		return credential.NewStoreRepository(ctx, dbase, vaultRepo, staticRepo)
+	c.CredentialStoreRepoFn = func() (*credential.StoreRepository, error) {
+		return credential.NewStoreRepository(ctx, dbase, dbase)
 	}
 	c.ServersRepoFn = func() (*server.Repository, error) {
 		return server.NewRepository(ctx, dbase, dbase, c.kms)

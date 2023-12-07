@@ -124,8 +124,8 @@ func TestList(t *testing.T) {
 	staticRepoFn := func() (*static.Repository, error) {
 		return static.NewRepository(ctx, rw, rw, kms)
 	}
-	credStoreRepoFn := func(vaultRepo *vault.Repository, staticRepo *static.Repository) (*credential.StoreRepository, error) {
-		return credential.NewStoreRepository(context.Background(), rw, vaultRepo, staticRepo)
+	credStoreRepoFn := func() (*credential.StoreRepository, error) {
+		return credential.NewStoreRepository(context.Background(), rw, rw)
 	}
 
 	_, prjNoStores := iam.TestScopes(t, iamRepo)
@@ -334,8 +334,8 @@ func TestCreateVault(t *testing.T) {
 	staticRepoFn := func() (*static.Repository, error) {
 		return static.NewRepository(ctx, rw, rw, kms)
 	}
-	credStoreServiceFn := func(vaultRepo *vault.Repository, staticRepo *static.Repository) (*credential.StoreRepository, error) {
-		return credential.NewStoreRepository(context.Background(), rw, vaultRepo, staticRepo)
+	credStoreServiceFn := func() (*credential.StoreRepository, error) {
+		return credential.NewStoreRepository(context.Background(), rw, rw)
 	}
 
 	_, prj := iam.TestScopes(t, iamRepo)
@@ -718,8 +718,8 @@ func TestCreateStatic(t *testing.T) {
 	staticRepoFn := func() (*static.Repository, error) {
 		return static.NewRepository(ctx, rw, rw, kms)
 	}
-	credStoreServiceFn := func(vaultRepo *vault.Repository, staticRepo *static.Repository) (*credential.StoreRepository, error) {
-		return credential.NewStoreRepository(context.Background(), rw, vaultRepo, staticRepo)
+	credStoreServiceFn := func() (*credential.StoreRepository, error) {
+		return credential.NewStoreRepository(context.Background(), rw, rw)
 	}
 
 	_, prj := iam.TestScopes(t, iamRepo)
@@ -887,8 +887,8 @@ func TestGet(t *testing.T) {
 	staticRepoFn := func() (*static.Repository, error) {
 		return static.NewRepository(ctx, rw, rw, kms)
 	}
-	credStoreServiceFn := func(vaultRepo *vault.Repository, staticRepo *static.Repository) (*credential.StoreRepository, error) {
-		return credential.NewStoreRepository(context.Background(), rw, vaultRepo, staticRepo)
+	credStoreServiceFn := func() (*credential.StoreRepository, error) {
+		return credential.NewStoreRepository(context.Background(), rw, rw)
 	}
 
 	_, prj := iam.TestScopes(t, iamRepo)
@@ -1024,8 +1024,8 @@ func TestDelete(t *testing.T) {
 	staticRepoFn := func() (*static.Repository, error) {
 		return static.NewRepository(ctx, rw, rw, kms)
 	}
-	credStoreServiceFn := func(vaultRepo *vault.Repository, staticRepo *static.Repository) (*credential.StoreRepository, error) {
-		return credential.NewStoreRepository(context.Background(), rw, vaultRepo, staticRepo)
+	credStoreServiceFn := func() (*credential.StoreRepository, error) {
+		return credential.NewStoreRepository(context.Background(), rw, rw)
 	}
 
 	_, prj := iam.TestScopes(t, iamRepo)
@@ -1102,8 +1102,8 @@ func TestUpdateVault(t *testing.T) {
 	staticRepoFn := func() (*static.Repository, error) {
 		return static.NewRepository(testCtx, rw, rw, kms)
 	}
-	credStoreServiceFn := func(vaultRepo *vault.Repository, staticRepo *static.Repository) (*credential.StoreRepository, error) {
-		return credential.NewStoreRepository(context.Background(), rw, vaultRepo, staticRepo)
+	credStoreServiceFn := func() (*credential.StoreRepository, error) {
+		return credential.NewStoreRepository(context.Background(), rw, rw)
 	}
 
 	_, prj := iam.TestScopes(t, iamRepo)
@@ -1439,8 +1439,8 @@ func TestUpdateStatic(t *testing.T) {
 	staticRepoFn := func() (*static.Repository, error) {
 		return static.NewRepository(testCtx, rw, rw, kms)
 	}
-	credStoreServiceFn := func(vaultRepo *vault.Repository, staticRepo *static.Repository) (*credential.StoreRepository, error) {
-		return credential.NewStoreRepository(context.Background(), rw, vaultRepo, staticRepo)
+	credStoreServiceFn := func() (*credential.StoreRepository, error) {
+		return credential.NewStoreRepository(context.Background(), rw, rw)
 	}
 
 	_, prj := iam.TestScopes(t, iamRepo)
@@ -1633,8 +1633,8 @@ func TestListPagination(t *testing.T) {
 	serversRepoFn := func() (*server.Repository, error) {
 		return server.NewRepository(ctx, rw, rw, kms)
 	}
-	credStoreServiceFn := func(vaultRepo *vault.Repository, staticRepo *static.Repository) (*credential.StoreRepository, error) {
-		return credential.NewStoreRepository(context.Background(), rw, vaultRepo, staticRepo)
+	credStoreServiceFn := func() (*credential.StoreRepository, error) {
+		return credential.NewStoreRepository(context.Background(), rw, rw)
 	}
 	staticRepo, err := staticRepoFn()
 	require.NoError(err)

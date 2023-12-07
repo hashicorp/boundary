@@ -205,15 +205,7 @@ func (s Service) ListCredentialStores(ctx context.Context, req *pbs.ListCredenti
 			return true, nil
 		}
 	}
-	vaultRepo, err := s.vaultRepoFn()
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-	staticRepo, err := s.staticRepoFn()
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-	repo, err := s.storeRepoFn(vaultRepo, staticRepo)
+	repo, err := s.storeRepoFn()
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
