@@ -28,6 +28,7 @@ auth_accounts as (
            iam_user_scope_id
       from auth_account
      where %s
+       and public_id in (select auth_account_id from auth_tokens)
 ),
 final as (
     select at.public_id,
@@ -70,6 +71,7 @@ auth_accounts as (
            iam_user_scope_id
       from auth_account
      where %s
+       and public_id in (select auth_account_id from auth_tokens)
 ),
 final as (
     select at.public_id,
@@ -112,6 +114,7 @@ auth_accounts as (
            iam_user_scope_id
       from auth_account
      where %s
+       and public_id in (select auth_account_id from auth_tokens)
 ),
 final as (
     select at.public_id,
@@ -155,6 +158,7 @@ auth_accounts as (
            iam_user_scope_id
       from auth_account
      where %s
+       and public_id in (select auth_account_id from auth_tokens)
 ),
 final as (
     select at.public_id,
