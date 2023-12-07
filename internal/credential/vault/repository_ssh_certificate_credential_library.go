@@ -306,27 +306,6 @@ func (r *Repository) LookupSSHCertificateCredentialLibrary(ctx context.Context, 
 	return l, nil
 }
 
-// ListSSHCertificateCredentialLibraries returns a slice of SSHCertificateCredentialLibraries for the
-// storeId. WithLimit is the only option supported.
-func (r *Repository) ListSSHCertificateCredentialLibraries(ctx context.Context, storeId string, opt ...Option) ([]*SSHCertificateCredentialLibrary, error) {
-	const op = "vault.(Repository).ListSSHCertificateCredentialLibraries"
-	if storeId == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "no storeId")
-	}
-	opts := getOpts(opt...)
-	limit := r.defaultLimit
-	if opts.withLimit != 0 {
-		// non-zero signals an override of the default limit for the repo.
-		limit = opts.withLimit
-	}
-	var libs []*SSHCertificateCredentialLibrary
-	err := r.reader.SearchWhere(ctx, &libs, "store_id = ?", []any{storeId}, db.WithLimit(limit))
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-	return libs, nil
-}
-
 // DeleteSSHCertificateCredentialLibrary deletes publicId from the repository and returns
 // the number of records deleted.
 func (r *Repository) DeleteSSHCertificateCredentialLibrary(ctx context.Context, projectId string, publicId string, _ ...Option) (int, error) {

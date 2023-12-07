@@ -272,7 +272,12 @@ func (c *Controller) registerGrpcServices(s *grpc.Server) error {
 		services.RegisterCredentialStoreServiceServer(s, cs)
 	}
 	if _, ok := currentServices[services.CredentialLibraryService_ServiceDesc.ServiceName]; !ok {
-		cl, err := credentiallibraries.NewService(c.baseContext, c.VaultCredentialRepoFn, c.IamRepoFn)
+		cl, err := credentiallibraries.NewService(
+			c.baseContext,
+			c.IamRepoFn,
+			c.VaultCredentialRepoFn,
+			c.conf.RawConfig.Controller.MaxPageSize,
+		)
 		if err != nil {
 			return fmt.Errorf("failed to create credential library handler service: %w", err)
 		}
