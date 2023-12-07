@@ -11,8 +11,8 @@ import (
 	"github.com/hashicorp/boundary/globals"
 )
 
-// NewFunc is a function that creates a Store from the provided result.
-type NewFunc func(context.Context, *StoreListQueryResult) (Store, error)
+// newStoreFunc is a function that creates a Store from the provided result.
+type newStoreFunc func(context.Context, *StoreListQueryResult) (Store, error)
 
 // StoreSubtypeHooks defines the interface expected to be implemented
 // by credential store subtype hooks.
@@ -49,7 +49,7 @@ func (r *registry) get(s globals.Subtype) (StoreSubtypeHooks, bool) {
 	return nil, ok
 }
 
-func (r *registry) newFunc(s globals.Subtype) (NewFunc, bool) {
+func (r *registry) newFunc(s globals.Subtype) (newStoreFunc, bool) {
 	subtype, ok := r.get(s)
 	if !ok {
 		return nil, ok

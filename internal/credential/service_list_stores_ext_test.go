@@ -22,17 +22,16 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/listtoken"
-	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
+type fakeReader struct {
+	db.Reader
+}
 type fakeWriter struct {
 	db.Writer
-}
-type fakeStoreRepository struct {
-	credential.SubtypeStoreService
 }
 
 func TestNewStoreService(t *testing.T) {
@@ -40,38 +39,28 @@ func TestNewStoreService(t *testing.T) {
 	ctx := context.Background()
 	t.Run("success", func(t *testing.T) {
 		t.Parallel()
-		got, err := credential.NewStoreRepository(ctx, &fakeWriter{}, &fakeStoreRepository{}, &fakeStoreRepository{})
+		got, err := credential.NewStoreRepository(ctx, &fakeReader{}, &fakeWriter{})
 		require.NoError(t, err)
 		require.NotNil(t, got)
 	})
+	t.Run("nil-reader", func(t *testing.T) {
+		t.Parallel()
+		_, err := credential.NewStoreRepository(ctx, nil, &fakeWriter{})
+		require.Error(t, err)
+	})
+	t.Run("nil-interface-reader", func(t *testing.T) {
+		t.Parallel()
+		_, err := credential.NewStoreRepository(ctx, (*fakeReader)(nil), &fakeWriter{})
+		require.Error(t, err)
+	})
 	t.Run("nil-writer", func(t *testing.T) {
 		t.Parallel()
-		_, err := credential.NewStoreRepository(ctx, nil, &fakeStoreRepository{}, &fakeStoreRepository{})
+		_, err := credential.NewStoreRepository(ctx, &fakeReader{}, nil)
 		require.Error(t, err)
 	})
 	t.Run("nil-interface-writer", func(t *testing.T) {
 		t.Parallel()
-		_, err := credential.NewStoreRepository(ctx, (*fakeWriter)(nil), &fakeStoreRepository{}, &fakeStoreRepository{})
-		require.Error(t, err)
-	})
-	t.Run("nil-vault-repo", func(t *testing.T) {
-		t.Parallel()
-		_, err := credential.NewStoreRepository(ctx, &fakeWriter{}, nil, &fakeStoreRepository{})
-		require.Error(t, err)
-	})
-	t.Run("nil-vault-interface-repo", func(t *testing.T) {
-		t.Parallel()
-		_, err := credential.NewStoreRepository(ctx, &fakeWriter{}, (*fakeStoreRepository)(nil), &fakeStoreRepository{})
-		require.Error(t, err)
-	})
-	t.Run("nil-static-repo", func(t *testing.T) {
-		t.Parallel()
-		_, err := credential.NewStoreRepository(ctx, &fakeWriter{}, &fakeStoreRepository{}, nil)
-		require.Error(t, err)
-	})
-	t.Run("nil-static-interface-repo", func(t *testing.T) {
-		t.Parallel()
-		_, err := credential.NewStoreRepository(ctx, &fakeWriter{}, &fakeStoreRepository{}, (*fakeStoreRepository)(nil))
+		_, err := credential.NewStoreRepository(ctx, &fakeReader{}, (*fakeWriter)(nil))
 		require.Error(t, err)
 	})
 }
@@ -90,7 +79,6 @@ func TestStoreService_List(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
-	sche := scheduler.TestScheduler(t, conn, wrapper)
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	fiveDaysAgo := time.Now().AddDate(0, 0, -5)
 	stores := []credential.Store{
@@ -104,11 +92,9 @@ func TestStoreService_List(t *testing.T) {
 	// since we sort descending, we need to reverse the slice
 	slices.Reverse(stores)
 
-	vaultRepo, err := vault.NewRepository(ctx, rw, rw, kms, sche)
-	require.NoError(t, err)
 	staticRepo, err := static.NewRepository(ctx, rw, rw, kms)
 	require.NoError(t, err)
-	repo, err := credential.NewStoreRepository(ctx, rw, vaultRepo, staticRepo)
+	repo, err := credential.NewStoreRepository(ctx, rw, rw)
 	require.NoError(t, err)
 
 	// Run analyze to update count estimate

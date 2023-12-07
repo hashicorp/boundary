@@ -20,7 +20,6 @@ import (
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
-	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -33,8 +32,6 @@ func TestStoreRepository_List(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn, wrapper)
-	sche := scheduler.TestScheduler(t, conn, wrapper)
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 
 	stores := []credential.Store{
@@ -48,11 +45,7 @@ func TestStoreRepository_List(t *testing.T) {
 	// since we sort descending, we need to reverse the slice
 	slices.Reverse(stores)
 
-	staticRepo, err := static.NewRepository(ctx, rw, rw, kms)
-	require.NoError(err)
-	vaultRepo, err := vault.NewRepository(ctx, rw, rw, kms, sche)
-	require.NoError(err)
-	repo, err := credential.NewStoreRepository(ctx, rw, staticRepo, vaultRepo)
+	repo, err := credential.NewStoreRepository(ctx, rw, rw)
 	require.NoError(err)
 
 	cmpOpts := []cmp.Option{
@@ -107,8 +100,6 @@ func TestStoreRepository_ListRefresh(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn, wrapper)
-	sche := scheduler.TestScheduler(t, conn, wrapper)
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	fiveDaysAgo := time.Now().AddDate(0, 0, -5)
 
@@ -123,11 +114,7 @@ func TestStoreRepository_ListRefresh(t *testing.T) {
 	// since we sort descending, we need to reverse the slice
 	slices.Reverse(stores)
 
-	staticRepo, err := static.NewRepository(ctx, rw, rw, kms)
-	require.NoError(err)
-	vaultRepo, err := vault.NewRepository(ctx, rw, rw, kms, sche)
-	require.NoError(err)
-	repo, err := credential.NewStoreRepository(ctx, rw, staticRepo, vaultRepo)
+	repo, err := credential.NewStoreRepository(ctx, rw, rw)
 	require.NoError(err)
 
 	cmpOpts := []cmp.Option{
@@ -207,15 +194,12 @@ func TestStoreRepository_EstimatedCount(t *testing.T) {
 	require.NoError(err)
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn, wrapper)
-	sche := scheduler.TestScheduler(t, conn, wrapper)
+	kmsCache := kms.TestKms(t, conn, wrapper)
+	staticRepo, err := static.NewRepository(ctx, rw, rw, kmsCache)
+	require.NoError(err)
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 
-	staticRepo, err := static.NewRepository(ctx, rw, rw, kms)
-	require.NoError(err)
-	vaultRepo, err := vault.NewRepository(ctx, rw, rw, kms, sche)
-	require.NoError(err)
-	repo, err := credential.NewStoreRepository(ctx, rw, staticRepo, vaultRepo)
+	repo, err := credential.NewStoreRepository(ctx, rw, rw)
 	require.NoError(err)
 
 	// Check total entries at start, expect 0
@@ -243,4 +227,54 @@ func TestStoreRepository_EstimatedCount(t *testing.T) {
 	numItems, err = repo.EstimatedCount(ctx)
 	require.NoError(err)
 	assert.Equal(3, numItems)
+}
+
+func TestRepository_ListDeletedStoreIds(t *testing.T) {
+	t.Parallel()
+	require, assert := require.New(t), assert.New(t)
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	// Note: we're not testing vault credential stores, because they're deleted
+	// asynchronously.
+	staticStore := static.TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 1)[0]
+
+	staticRepo, err := static.NewRepository(ctx, rw, rw, kms)
+	require.NoError(err)
+	repo, err := credential.NewStoreRepository(ctx, rw, rw)
+	require.NoError(err)
+
+	// Expect no entries at the start
+	deletedIds, ttime, err := repo.ListDeletedIds(ctx, time.Now().AddDate(-1, 0, 0))
+	require.NoError(err)
+	require.Empty(deletedIds)
+	// Transaction timestamp should be within ~10 seconds of now
+	assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+	assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
+
+	_, err = staticRepo.DeleteCredentialStore(ctx, staticStore.GetPublicId())
+	require.NoError(err)
+
+	// Expect one entry
+	deletedIds, ttime, err = repo.ListDeletedIds(ctx, time.Now().AddDate(-1, 0, 0))
+	require.NoError(err)
+	assert.Empty(
+		cmp.Diff(
+			[]string{staticStore.GetPublicId()},
+			deletedIds,
+			cmpopts.SortSlices(func(i, j string) bool { return i < j }),
+		),
+	)
+	assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+	assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
+
+	// Try again with the time set to now, expect no entries
+	deletedIds, ttime, err = repo.ListDeletedIds(ctx, time.Now())
+	require.NoError(err)
+	require.Empty(deletedIds)
+	assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+	assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
 }

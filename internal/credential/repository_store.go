@@ -18,33 +18,25 @@ import (
 	"github.com/hashicorp/boundary/internal/util"
 )
 
-// SubtypeStoreService defines the interface used to
-// list deleted store IDs of all subtypes.
-type SubtypeStoreService interface {
-	ListDeletedStoreIds(context.Context, time.Time, ...Option) ([]string, error)
-}
-
 // StoreRepository coordinates calls across different subtype services
 // to gather information about all credential stores.
 type StoreRepository struct {
-	services []SubtypeStoreService
-	writer   db.Writer
+	reader db.Reader
+	writer db.Writer
 }
 
 // NewStoreRepository returns a new credential store repository.
-func NewStoreRepository(ctx context.Context, writer db.Writer, vaultService SubtypeStoreService, staticService SubtypeStoreService) (*StoreRepository, error) {
+func NewStoreRepository(ctx context.Context, reader db.Reader, writer db.Writer) (*StoreRepository, error) {
 	const op = "credential.NewStoreRepository"
 	switch {
+	case util.IsNil(reader):
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing DB reader")
 	case util.IsNil(writer):
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing DB writer")
-	case util.IsNil(vaultService):
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing vault service")
-	case util.IsNil(staticService):
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing static service")
 	}
 	return &StoreRepository{
-		services: []SubtypeStoreService{vaultService, staticService},
-		writer:   writer,
+		reader: reader,
+		writer: writer,
 	}, nil
 }
 
@@ -120,13 +112,13 @@ func (s *StoreRepository) ListRefresh(ctx context.Context, projectIds []string, 
 // EstimatedCount estimates the total number of credential stores.
 func (s *StoreRepository) EstimatedCount(ctx context.Context) (int, error) {
 	const op = "credential.(*StoreRepository).EstimatedCount"
-	rows, err := s.writer.Query(ctx, estimateCountStores, nil)
+	rows, err := s.reader.Query(ctx, estimateCountStoresQuery, nil)
 	if err != nil {
 		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total credential stores"))
 	}
 	var count int
 	for rows.Next() {
-		if err := s.writer.ScanRows(ctx, rows, &count); err != nil {
+		if err := s.reader.ScanRows(ctx, rows, &count); err != nil {
 			return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total credential stores"))
 		}
 	}
@@ -135,24 +127,28 @@ func (s *StoreRepository) EstimatedCount(ctx context.Context) (int, error) {
 
 // ListDeletedIds lists the deleted IDs of all credential stores since the time specified.
 func (s *StoreRepository) ListDeletedIds(ctx context.Context, since time.Time) ([]string, time.Time, error) {
-	// Request and combine deleted ids from the DB for all credential stores.
-	var deletedIds []string
+	const op = "credential.(*StoreRepository).ListDeletedIds"
+	var deletedStoreIDs []string
 	var transactionTimestamp time.Time
 	if _, err := s.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(r db.Reader, w db.Writer) error {
-		for _, service := range s.services {
-			deletedServiceIds, err := service.ListDeletedStoreIds(ctx, since, WithReaderWriter(r, w))
-			if err != nil {
-				return err
-			}
-			deletedIds = append(deletedIds, deletedServiceIds...)
+		rows, err := s.writer.Query(ctx, listDeletedIdsQuery, []any{sql.Named("since", since)})
+		if err != nil {
+			return errors.Wrap(ctx, err, op)
 		}
-		var err error
+		defer rows.Close()
+		for rows.Next() {
+			var id string
+			if err := rows.Scan(&id); err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+			deletedStoreIDs = append(deletedStoreIDs, id)
+		}
 		transactionTimestamp, err = r.Now(ctx)
 		return err
 	}); err != nil {
 		return nil, time.Time{}, err
 	}
-	return deletedIds, transactionTimestamp, nil
+	return deletedStoreIDs, transactionTimestamp, nil
 }
 
 func (s *StoreRepository) queryStores(ctx context.Context, query string, args []any) ([]Store, time.Time, error) {

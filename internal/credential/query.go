@@ -4,11 +4,21 @@
 package credential
 
 const (
-	estimateCountStores = `
+	estimateCountStoresQuery = `
 select sum(reltuples::bigint) as estimate from pg_class where oid in (
 	'credential_vault_store'::regclass,
 	'credential_static_store'::regclass
 )
+`
+
+	listDeletedIdsQuery = `
+select public_id
+  from credential_vault_store_deleted
+ where delete_time >= @since
+ union
+select public_id
+  from credential_static_store_deleted
+ where delete_time >= @since
 `
 
 	listStoresTemplate = `
