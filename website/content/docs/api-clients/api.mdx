@@ -105,7 +105,7 @@ The following example shows a simple configuration where the same limits are app
 
 ```hcl
 controller {
-  // total limit for all resources and actions
+  # total limit for all resources and actions
   api_rate_limit {
 	resources = ["*"]
 	actions   = ["*"]
@@ -114,8 +114,8 @@ controller {
 	period	= "1s"
   }
 
-  // limit for ip addresses to all resources+actions to prevent a malicious
-  // host that is fabricating tokens, or spamming unauthed endpoints
+  # limit for ip addresses to all resources+actions to prevent a malicious
+  # host that is fabricating tokens, or spamming unauthed endpoints
   api_rate_limit {
 	resources = ["*"]
 	actions   = ["*"]
@@ -124,7 +124,7 @@ controller {
 	period	= "1s"
   }
 
-  // Limit of all authed requests, to prevent one user consuming all of the total limit
+  # Limit of all authed requests, to prevent one user consuming all of the total limit
   api_rate_limit {
 	resources = ["*"]
 	actions   = ["*"]
@@ -133,7 +133,7 @@ controller {
 	period	= "1s"
   }
 
-  // other controller configuration
+  # other controller configuration
 }
 ```
 
@@ -144,7 +144,7 @@ You may want to disable rate limiting if you already use an external system like
 controller {
   api_rate_limit_disable = true
 
-  // other controller configuration
+  # other controller configuration
 }
 ```
 
@@ -160,7 +160,7 @@ controller {
 	period	= "1s"
   }
 
-  // other controller configuration
+  # other controller configuration
 }
 ```
 
@@ -170,7 +170,7 @@ Then it configures some specific endpoints with different limits.
 
 ```hcl
 controller {
-  // total limit for all resources and actions
+  # total limit for all resources and actions
   api_rate_limit {
 	resources = ["*"]
 	actions   = ["*"]
@@ -179,8 +179,8 @@ controller {
 	period	= "1s"
   }
 
-  // total limit for all list operations
-  // sets an overall cap on list since it is relatively expensive.
+  # total limit for all list operations
+  # sets an overall cap on list since it is relatively expensive.
   api_rate_limit {
 	resources = ["*"]
 	actions   = ["list"]
@@ -189,8 +189,8 @@ controller {
 	period	= "1s"
   }
 
-  // limit for ip addresses to all resources+actions to prevent a malicious
-  // host that is fabricating tokens, or spamming unauthed endpoints
+  # limit for ip addresses to all resources+actions to prevent a malicious
+  # host that is fabricating tokens, or spamming unauthed endpoints
   api_rate_limit {
 	resources = ["*"]
 	actions   = ["*"]
@@ -199,10 +199,10 @@ controller {
 	period	= "1s"
   }
 
-  // Limit of all authed requests, this essentially sets a default for
-  // all authed requests to prevent one user consuming all of the total limit
-  // set above. Any limits that follow can override the default for
-  // specific sets of resources/actions
+  # Limit of all authed requests, this essentially sets a default for
+  # all authed requests to prevent one user consuming all of the total limit
+  # set above. Any limits that follow can override the default for
+  # specific sets of resources/actions
   api_rate_limit {
 	resources = ["*"]
 	actions   = ["*"]
@@ -211,8 +211,8 @@ controller {
 	period	= "1s"
   }
 
-  // Limit of all list operations by auth token to set a sane default since
-  // they are generally more expensive.
+  # Limit of all list operations by auth token to set a sane default since
+  # they are generally more expensive.
   api_rate_limit {
 	resources = ["*"]
 	actions   = ["list"]
@@ -221,10 +221,10 @@ controller {
 	period	= "1s"
   }
 
-  // Limit for targets and sessions list by auth token. These are resources
-  // that clients will want to list frequently, but might be more expensive if
-  // there is a large number of them for each user. Having a lower limit
-  // encourages the use of refresh tokens and caching.
+  # Limit for targets and sessions list by auth token. These are resources
+  # that clients will want to list frequently, but might be more expensive if
+  # there is a large number of them for each user. Having a lower limit
+  # encourages the use of refresh tokens and caching.
   api_rate_limit {
 	resources = ["target", "session"]
 	actions   = ["list"]
@@ -233,7 +233,7 @@ controller {
 	period	= "1s"
   }
 
-  // Limit for authorize session by auth token
+  # Limit for authorize session by auth token
   api_rate_limit {
 	resources = ["target"]
 	actions   = ["authorize-session"]
@@ -242,6 +242,6 @@ controller {
 	period	= "1s"
   }
 
-  // other controller configuration
+  # other controller configuration
 }
 ```
