@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/pagination"
 )
 
 var (
@@ -38,6 +39,7 @@ type options struct {
 	withPublicId                 string
 	withPasswordOptions          []password.Option
 	withIamOptions               []iam.Option
+	withStartPageAfterItem       pagination.Item
 }
 
 func getDefaultOptions() options {
@@ -114,5 +116,13 @@ func WithPasswordOptions(with ...password.Option) Option {
 func WithIamOptions(with ...iam.Option) Option {
 	return func(o *options) {
 		o.withIamOptions = with
+	}
+}
+
+// WithStartPageAfterItem is used to paginate over the results.
+// The next page will start after the provided item.
+func WithStartPageAfterItem(item pagination.Item) Option {
+	return func(o *options) {
+		o.withStartPageAfterItem = item
 	}
 }
