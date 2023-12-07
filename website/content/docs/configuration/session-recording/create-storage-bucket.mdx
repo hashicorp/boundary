@@ -123,21 +123,20 @@ At this time, the only supported storage is AWS S3.
 
 ### Boundary workers requirements
 
-[Session recording](/boundary/docs/configuration/session-recording) requires at least one PKI worker that:
-- Has access to the AWS S3 storage bucket
-- Has an accessible directory defined by `recording_storage_path` for storing session recordings while they are in progress. On session closure, Boundary moves the local session recording to remote storage and deletes the local copy. For more details, refer to the [PKI worker configuration](/boundary/docs/configuration/worker/pki-worker#session-recording) documentation.
-- Has at least 1 MB of available disk space.
-- Runs Darwin, Windows, or Linux. The following binaries are not supported for session recording: NetBSD, OpenBSD, Solaris.
+[Session recording](/boundary/docs/configuration/session-recording) requires that you [configure at least one worker for local storage](/boundary/docs/configuration/session-recording/create-storage-bucket#boundary-workers-requirements).
 
-Development example:
+<Note>
+You cannot use an HCP managed worker for the local storage. HCP Boundary users must configure a self-managed worker to enable session recording.
+</Note>
 
-```hcl
-worker {
-auth_storage_path="/boundary/demo-worker-1"
-initial_upstreams = ["10.0.0.1"]
-recording_storage_path="/local/storage/directory"
-}
-```
+The worker that you configure for storage must:
+
+- Have access to the AWS S3 storage bucket
+- Have an accessible directory defined by `recording_storage_path` for storing session recordings while they are in progress. On session closure, Boundary moves the local session recording to remote storage and deletes the local copy.
+   - For HCP Boundary, refer to the [Self-managed worker configuration](/hcp/docs/boundary/self-managed-workers/session-recording) documentation.
+   - For Boundary Enterprise, refer to the refer to the [PKI worker configuration](/boundary/docs/configuration/worker/pki-worker#session-recording) documentation.
+- Have at least 1 MB of available disk space.
+- Run Darwin, Windows, or Linux. The following binaries are not supported for session recording: NetBSD, OpenBSD, Solaris.
 
 Complete the following steps to create a storage bucket in Boundary for session recording:
 
