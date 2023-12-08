@@ -40,13 +40,13 @@ import (
 
 // Defaults used when creating default rate.Limits.
 const (
-	DefaultInTotalRequestLimit       = 3000
-	DefaultIpAddressRequestLimit     = 3000
+	DefaultInTotalRequestLimit       = 30000
+	DefaultIpAddressRequestLimit     = 30000
 	DefaultAuthTokenRequestLimit     = 3000
 	DefaultPeriod                    = time.Second * 30
-	DefaultInTotalListRequestLimit   = 60
-	DefaultIpAddressListRequestLimit = 60
-	DefaultAuthTokenListRequestLimit = 60
+	DefaultInTotalListRequestLimit   = 1500
+	DefaultIpAddressListRequestLimit = 1500
+	DefaultAuthTokenListRequestLimit = 150
 	DefaultListPeriod                = time.Second * 30
 )
 

@@ -234,7 +234,7 @@ func TestRealodControllerRateLimits(t *testing.T) {
 	// unauthed request, so we expect a 400
 	assert.Equal(t, http.StatusBadRequest, r.StatusCode)
 	assert.Equal(t, `limit=2, remaining=1, reset=60`, r.Header.Get("Ratelimit"))
-	assert.Equal(t, `2;w=60;comment="total", 60;w=30;comment="ip-address", 60;w=30;comment="auth-token"`, r.Header.Get("Ratelimit-Policy"))
+	assert.Equal(t, `2;w=60;comment="total", 1500;w=30;comment="ip-address", 150;w=30;comment="auth-token"`, r.Header.Get("Ratelimit-Policy"))
 
 	r, err = c.Do(func() *http.Request {
 		r, err := http.NewRequest(http.MethodGet, `http://127.0.0.1:9500/v1/targets`, nil)
@@ -245,7 +245,7 @@ func TestRealodControllerRateLimits(t *testing.T) {
 	// unauthed request, so we expect a 400
 	assert.Equal(t, http.StatusBadRequest, r.StatusCode)
 	assert.Equal(t, `limit=2, remaining=0, reset=60`, r.Header.Get("Ratelimit"))
-	assert.Equal(t, `2;w=60;comment="total", 60;w=30;comment="ip-address", 60;w=30;comment="auth-token"`, r.Header.Get("Ratelimit-Policy"))
+	assert.Equal(t, `2;w=60;comment="total", 1500;w=30;comment="ip-address", 150;w=30;comment="auth-token"`, r.Header.Get("Ratelimit-Policy"))
 
 	r, err = c.Do(func() *http.Request {
 		r, err := http.NewRequest(http.MethodGet, `http://127.0.0.1:9500/v1/targets`, nil)
@@ -256,7 +256,7 @@ func TestRealodControllerRateLimits(t *testing.T) {
 	// out of quota, so we expect a 429
 	assert.Equal(t, http.StatusTooManyRequests, r.StatusCode)
 	assert.Equal(t, `limit=2, remaining=0, reset=60`, r.Header.Get("Ratelimit"))
-	assert.Equal(t, `2;w=60;comment="total", 60;w=30;comment="ip-address", 60;w=30;comment="auth-token"`, r.Header.Get("Ratelimit-Policy"))
+	assert.Equal(t, `2;w=60;comment="total", 1500;w=30;comment="ip-address", 150;w=30;comment="auth-token"`, r.Header.Get("Ratelimit-Policy"))
 
 	cmd.SighupCh <- struct{}{}
 	select {
@@ -276,7 +276,7 @@ func TestRealodControllerRateLimits(t *testing.T) {
 	// unauthed request, so we expect a 400
 	assert.Equal(t, http.StatusBadRequest, r.StatusCode)
 	assert.Equal(t, `limit=5, remaining=4, reset=60`, r.Header.Get("Ratelimit"))
-	assert.Equal(t, `5;w=60;comment="total", 60;w=30;comment="ip-address", 60;w=30;comment="auth-token"`, r.Header.Get("Ratelimit-Policy"))
+	assert.Equal(t, `5;w=60;comment="total", 1500;w=30;comment="ip-address", 150;w=30;comment="auth-token"`, r.Header.Get("Ratelimit-Policy"))
 
 	cmd.ShutdownCh <- struct{}{}
 	wg.Wait()
@@ -329,7 +329,7 @@ func TestRealodControllerRateLimitsSameConfig(t *testing.T) {
 	// unauthed request, so we expect a 400
 	assert.Equal(t, http.StatusBadRequest, r.StatusCode)
 	assert.Equal(t, `limit=2, remaining=1, reset=60`, r.Header.Get("Ratelimit"))
-	assert.Equal(t, `2;w=60;comment="total", 60;w=30;comment="ip-address", 60;w=30;comment="auth-token"`, r.Header.Get("Ratelimit-Policy"))
+	assert.Equal(t, `2;w=60;comment="total", 1500;w=30;comment="ip-address", 150;w=30;comment="auth-token"`, r.Header.Get("Ratelimit-Policy"))
 
 	r, err = c.Do(func() *http.Request {
 		r, err := http.NewRequest(http.MethodGet, `http://127.0.0.1:9500/v1/targets`, nil)
@@ -340,7 +340,7 @@ func TestRealodControllerRateLimitsSameConfig(t *testing.T) {
 	// unauthed request, so we expect a 400
 	assert.Equal(t, http.StatusBadRequest, r.StatusCode)
 	assert.Equal(t, `limit=2, remaining=0, reset=60`, r.Header.Get("Ratelimit"))
-	assert.Equal(t, `2;w=60;comment="total", 60;w=30;comment="ip-address", 60;w=30;comment="auth-token"`, r.Header.Get("Ratelimit-Policy"))
+	assert.Equal(t, `2;w=60;comment="total", 1500;w=30;comment="ip-address", 150;w=30;comment="auth-token"`, r.Header.Get("Ratelimit-Policy"))
 
 	r, err = c.Do(func() *http.Request {
 		r, err := http.NewRequest(http.MethodGet, `http://127.0.0.1:9500/v1/targets`, nil)
@@ -351,7 +351,7 @@ func TestRealodControllerRateLimitsSameConfig(t *testing.T) {
 	// out of quota, so we expect a 429
 	assert.Equal(t, http.StatusTooManyRequests, r.StatusCode)
 	assert.Equal(t, `limit=2, remaining=0, reset=60`, r.Header.Get("Ratelimit"))
-	assert.Equal(t, `2;w=60;comment="total", 60;w=30;comment="ip-address", 60;w=30;comment="auth-token"`, r.Header.Get("Ratelimit-Policy"))
+	assert.Equal(t, `2;w=60;comment="total", 1500;w=30;comment="ip-address", 150;w=30;comment="auth-token"`, r.Header.Get("Ratelimit-Policy"))
 
 	cmd.SighupCh <- struct{}{}
 	select {
@@ -371,7 +371,7 @@ func TestRealodControllerRateLimitsSameConfig(t *testing.T) {
 	// should still be rate limited, so 429
 	assert.Equal(t, http.StatusTooManyRequests, r.StatusCode)
 	assert.Equal(t, `limit=2, remaining=0, reset=60`, r.Header.Get("Ratelimit"))
-	assert.Equal(t, `2;w=60;comment="total", 60;w=30;comment="ip-address", 60;w=30;comment="auth-token"`, r.Header.Get("Ratelimit-Policy"))
+	assert.Equal(t, `2;w=60;comment="total", 1500;w=30;comment="ip-address", 150;w=30;comment="auth-token"`, r.Header.Get("Ratelimit-Policy"))
 
 	cmd.ShutdownCh <- struct{}{}
 	wg.Wait()
@@ -427,7 +427,7 @@ func TestRealodControllerRateLimitsDisable(t *testing.T) {
 	// unauthed request, so we expect a 400
 	assert.Equal(t, http.StatusBadRequest, r.StatusCode)
 	assert.Equal(t, `limit=2, remaining=1, reset=60`, r.Header.Get("Ratelimit"))
-	assert.Equal(t, `2;w=60;comment="total", 60;w=30;comment="ip-address", 60;w=30;comment="auth-token"`, r.Header.Get("Ratelimit-Policy"))
+	assert.Equal(t, `2;w=60;comment="total", 1500;w=30;comment="ip-address", 150;w=30;comment="auth-token"`, r.Header.Get("Ratelimit-Policy"))
 
 	r, err = c.Do(func() *http.Request {
 		r, err := http.NewRequest(http.MethodGet, `http://127.0.0.1:9500/v1/targets`, nil)
@@ -438,7 +438,7 @@ func TestRealodControllerRateLimitsDisable(t *testing.T) {
 	// unauthed request, so we expect a 400
 	assert.Equal(t, http.StatusBadRequest, r.StatusCode)
 	assert.Equal(t, `limit=2, remaining=0, reset=60`, r.Header.Get("Ratelimit"))
-	assert.Equal(t, `2;w=60;comment="total", 60;w=30;comment="ip-address", 60;w=30;comment="auth-token"`, r.Header.Get("Ratelimit-Policy"))
+	assert.Equal(t, `2;w=60;comment="total", 1500;w=30;comment="ip-address", 150;w=30;comment="auth-token"`, r.Header.Get("Ratelimit-Policy"))
 
 	r, err = c.Do(func() *http.Request {
 		r, err := http.NewRequest(http.MethodGet, `http://127.0.0.1:9500/v1/targets`, nil)
@@ -449,7 +449,7 @@ func TestRealodControllerRateLimitsDisable(t *testing.T) {
 	// out of quota, so we expect a 429
 	assert.Equal(t, http.StatusTooManyRequests, r.StatusCode)
 	assert.Equal(t, `limit=2, remaining=0, reset=60`, r.Header.Get("Ratelimit"))
-	assert.Equal(t, `2;w=60;comment="total", 60;w=30;comment="ip-address", 60;w=30;comment="auth-token"`, r.Header.Get("Ratelimit-Policy"))
+	assert.Equal(t, `2;w=60;comment="total", 1500;w=30;comment="ip-address", 150;w=30;comment="auth-token"`, r.Header.Get("Ratelimit-Policy"))
 
 	cmd.SighupCh <- struct{}{}
 	select {
@@ -546,7 +546,7 @@ func TestRealodControllerRateLimitsEnable(t *testing.T) {
 	// unauthed request, so we expect a 400
 	assert.Equal(t, http.StatusBadRequest, r.StatusCode)
 	assert.Equal(t, `limit=2, remaining=1, reset=60`, r.Header.Get("Ratelimit"))
-	assert.Equal(t, `2;w=60;comment="total", 60;w=30;comment="ip-address", 60;w=30;comment="auth-token"`, r.Header.Get("Ratelimit-Policy"))
+	assert.Equal(t, `2;w=60;comment="total", 1500;w=30;comment="ip-address", 150;w=30;comment="auth-token"`, r.Header.Get("Ratelimit-Policy"))
 
 	r, err = c.Do(func() *http.Request {
 		r, err := http.NewRequest(http.MethodGet, `http://127.0.0.1:9500/v1/targets`, nil)
@@ -557,7 +557,7 @@ func TestRealodControllerRateLimitsEnable(t *testing.T) {
 	// unauthed request, so we expect a 400
 	assert.Equal(t, http.StatusBadRequest, r.StatusCode)
 	assert.Equal(t, `limit=2, remaining=0, reset=60`, r.Header.Get("Ratelimit"))
-	assert.Equal(t, `2;w=60;comment="total", 60;w=30;comment="ip-address", 60;w=30;comment="auth-token"`, r.Header.Get("Ratelimit-Policy"))
+	assert.Equal(t, `2;w=60;comment="total", 1500;w=30;comment="ip-address", 150;w=30;comment="auth-token"`, r.Header.Get("Ratelimit-Policy"))
 
 	r, err = c.Do(func() *http.Request {
 		r, err := http.NewRequest(http.MethodGet, `http://127.0.0.1:9500/v1/targets`, nil)
@@ -568,7 +568,7 @@ func TestRealodControllerRateLimitsEnable(t *testing.T) {
 	// out of quota, so we expect a 429
 	assert.Equal(t, http.StatusTooManyRequests, r.StatusCode)
 	assert.Equal(t, `limit=2, remaining=0, reset=60`, r.Header.Get("Ratelimit"))
-	assert.Equal(t, `2;w=60;comment="total", 60;w=30;comment="ip-address", 60;w=30;comment="auth-token"`, r.Header.Get("Ratelimit-Policy"))
+	assert.Equal(t, `2;w=60;comment="total", 1500;w=30;comment="ip-address", 150;w=30;comment="auth-token"`, r.Header.Get("Ratelimit-Policy"))
 
 	cmd.ShutdownCh <- struct{}{}
 	wg.Wait()
