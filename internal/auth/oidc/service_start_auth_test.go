@@ -33,7 +33,9 @@ func Test_StartAuth(t *testing.T) {
 	_, _, tpAlg, _ := tp.SigningKeys()
 	tpCert, err := ParseCertificates(ctx, tp.CACert())
 	require.NoError(t, err)
-	tpPrompt := []PromptParam{Consent, SelectAccount}
+	tpPrompt := []PromptParam{SelectAccount}
+	tpNoneWithMultiplePrompts := []PromptParam{None, SelectAccount}
+	tpWithMultiplePrompts := []PromptParam{Consent, SelectAccount}
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	rootWrapper := db.TestWrapper(t)
@@ -86,6 +88,26 @@ func Test_StartAuth(t *testing.T) {
 		WithSigningAlgs(Alg(tpAlg)),
 		WithCertificates(tpCert...),
 		WithPrompts(tpPrompt...),
+	)
+
+	testAuthMethodWithMultiplePrompts := TestAuthMethod(
+		t, conn, databaseWrapper, org.PublicId, ActivePublicState,
+		"test-rp5", "fido",
+		WithIssuer(TestConvertToUrls(t, tp.Addr())[0]),
+		WithApiUrl(TestConvertToUrls(t, testController.URL)[0]),
+		WithSigningAlgs(Alg(tpAlg)),
+		WithCertificates(tpCert...),
+		WithPrompts(tpWithMultiplePrompts...),
+	)
+
+	testAuthMethodNoneWithMultiplePrompts := TestAuthMethod(
+		t, conn, databaseWrapper, org.PublicId, ActivePublicState,
+		"test-rp6", "fido",
+		WithIssuer(TestConvertToUrls(t, tp.Addr())[0]),
+		WithApiUrl(TestConvertToUrls(t, testController.URL)[0]),
+		WithSigningAlgs(Alg(tpAlg)),
+		WithCertificates(tpCert...),
+		WithPrompts(tpNoneWithMultiplePrompts...),
 	)
 
 	stdSetup := func(am *AuthMethod, repoFn OidcRepoFactory, apiSrv *httptest.Server) (a *AuthMethod, allowedRedirect string) {
@@ -171,6 +193,22 @@ func Test_StartAuth(t *testing.T) {
 			apiSrv:     testController,
 			authMethod: testAuthMethodWithPrompt,
 			setup:      stdSetup,
+		},
+		{
+			name:       "simple-with-multiple-prompts",
+			repoFn:     repoFn,
+			apiSrv:     testController,
+			authMethod: testAuthMethodWithMultiplePrompts,
+			setup:      stdSetup,
+		},
+		{
+			name:            "simple-with-none-and-multiple-prompts",
+			repoFn:          repoFn,
+			apiSrv:          testController,
+			authMethod:      testAuthMethodNoneWithMultiplePrompts,
+			setup:           stdSetup,
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrContains: "prompts ([none select_account]) includes \"none\" with other values",
 		},
 	}
 	for _, tt := range tests {

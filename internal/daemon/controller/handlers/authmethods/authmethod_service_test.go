@@ -1454,6 +1454,25 @@ func TestCreate(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "Create OIDC AuthMethod with none and other prompts",
+			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
+				ScopeId: o.GetPublicId(),
+				Type:    oidc.Subtype.String(),
+				Attrs: &pb.AuthMethod_OidcAuthMethodsAttributes{
+					OidcAuthMethodsAttributes: &pb.OidcAuthMethodAttributes{
+						Issuer:       wrapperspb.String("https://example.discovery.url:4821/.well-known/openid-configuration/"),
+						ClientId:     wrapperspb.String("exampleclientid"),
+						ClientSecret: wrapperspb.String("secret"),
+						ApiUrlPrefix: wrapperspb.String("https://callback.prefix:9281/path"),
+						Prompts:      []string{string(oidc.None), string(oidc.SelectAccount)},
+					},
+				},
+			}},
+			idPrefix:    globals.OidcAuthMethodPrefix + "_",
+			err:         handlers.ApiErrorWithCode(codes.InvalidArgument),
+			errContains: "includes \\\"none\\\" with other values",
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

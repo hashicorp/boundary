@@ -1034,10 +1034,16 @@ func validateCreateRequest(ctx context.Context, req *pbs.CreateAuthMethodRequest
 					}
 				}
 				if len(attrs.GetPrompts()) > 0 {
-					for _, p := range attrs.GetPrompts() {
-						if !oidc.SupportedPrompt(oidc.PromptParam(p)) {
-							badFields[promptsField] = fmt.Sprintf("Contains unsupported prompt %q", p)
-							break
+					prompts := strutil.RemoveDuplicatesStable(attrs.GetPrompts(), false)
+
+					if strutil.StrListContains(prompts, string(oidc.None)) && len(prompts) > 1 {
+						badFields[promptsField] = fmt.Sprintf(`prompts (%s) includes "none" with other values`, prompts)
+					} else {
+						for _, p := range attrs.GetPrompts() {
+							if !oidc.SupportedPrompt(oidc.PromptParam(p)) {
+								badFields[promptsField] = fmt.Sprintf("Contains unsupported prompt %q", p)
+								break
+							}
 						}
 					}
 				}
@@ -1170,10 +1176,16 @@ func validateUpdateRequest(ctx context.Context, req *pbs.UpdateAuthMethodRequest
 					}
 				}
 				if len(attrs.GetPrompts()) > 0 {
-					for _, p := range attrs.GetPrompts() {
-						if !oidc.SupportedPrompt(oidc.PromptParam(p)) {
-							badFields[promptsField] = fmt.Sprintf("Contains unsupported prompt %q", p)
-							break
+					prompts := strutil.RemoveDuplicatesStable(attrs.GetPrompts(), false)
+
+					if strutil.StrListContains(prompts, string(oidc.None)) && len(prompts) > 1 {
+						badFields[promptsField] = fmt.Sprintf(`prompts (%s) includes "none" with other values`, prompts)
+					} else {
+						for _, p := range attrs.GetPrompts() {
+							if !oidc.SupportedPrompt(oidc.PromptParam(p)) {
+								badFields[promptsField] = fmt.Sprintf("Contains unsupported prompt %q", p)
+								break
+							}
 						}
 					}
 				}
