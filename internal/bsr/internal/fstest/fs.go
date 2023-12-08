@@ -284,18 +284,17 @@ func NewMemFile(n string, mode sfs.FileMode, options ...Option) *MemFile {
 	storageOpts := storage.GetOpts(opts.withStorageOptions...)
 
 	return &MemFile{
-		name:              n,
-		Buf:               bytes.NewBuffer([]byte{}),
-		src:               []byte{},
-		mode:              mode,
-		accessMode:        storageOpts.WithFileAccessMode,
-		syncMode:          storageOpts.WithCloseSyncMode,
-		statFunc:          opts.withStatFunc,
-		closeFunc:         opts.withCloseFunc,
-		bufferSize:        storageOpts.WithBuffer,
-		minimumBufferSize: storageOpts.WithMinimumBuffer,
-		currentOffset:     0,
-		bufferOffset:      0,
+		name:          n,
+		Buf:           bytes.NewBuffer([]byte{}),
+		src:           []byte{},
+		mode:          mode,
+		accessMode:    storageOpts.WithFileAccessMode,
+		syncMode:      storageOpts.WithCloseSyncMode,
+		statFunc:      opts.withStatFunc,
+		closeFunc:     opts.withCloseFunc,
+		bufferSize:    storageOpts.WithBuffer,
+		currentOffset: 0,
+		bufferOffset:  0,
 	}
 }
 
