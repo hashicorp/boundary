@@ -88,8 +88,8 @@ require github.com/hashicorp/go-dbw v0.1.1
 
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.0
-	github.com/cenkalti/backoff/v4 v4.2.0
-	github.com/creack/pty v1.1.18
+	github.com/cenkalti/backoff/v4 v4.2.1
+	github.com/creack/pty v1.1.20
 	github.com/glebarez/sqlite v1.9.0
 	github.com/golang/protobuf v1.5.3
 	github.com/hashicorp/cap/ldap v0.0.0-20231012003312-273118a6e3b8
