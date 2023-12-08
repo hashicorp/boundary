@@ -18,7 +18,7 @@
             },
             {
               "action": "change-password",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "account",
@@ -26,7 +26,7 @@
             },
             {
               "action": "change-password",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "account",
@@ -36,7 +36,7 @@
           "create": [
             {
               "action": "create",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "account",
@@ -52,7 +52,7 @@
             },
             {
               "action": "create",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "account",
@@ -62,7 +62,7 @@
           "delete": [
             {
               "action": "delete",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "account",
@@ -78,7 +78,7 @@
             },
             {
               "action": "delete",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "account",
@@ -88,7 +88,7 @@
           "list": [
             {
               "action": "list",
-              "limit": 60,
+              "limit": 150,
               "per": "auth-token",
               "period": "30s",
               "resource": "account",
@@ -96,7 +96,7 @@
             },
             {
               "action": "list",
-              "limit": 60,
+              "limit": 1500,
               "per": "ip-address",
               "period": "30s",
               "resource": "account",
@@ -104,7 +104,7 @@
             },
             {
               "action": "list",
-              "limit": 60,
+              "limit": 1500,
               "per": "total",
               "period": "30s",
               "resource": "account",
@@ -114,7 +114,7 @@
           "no-op": [
             {
               "action": "no-op",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "account",
@@ -130,7 +130,7 @@
             },
             {
               "action": "no-op",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "account",
@@ -140,7 +140,7 @@
           "read": [
             {
               "action": "read",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "account",
@@ -148,7 +148,7 @@
             },
             {
               "action": "read",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "account",
@@ -166,7 +166,7 @@
           "set-password": [
             {
               "action": "set-password",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "account",
@@ -174,7 +174,7 @@
             },
             {
               "action": "set-password",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "account",
@@ -200,7 +200,7 @@
             },
             {
               "action": "update",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "account",
@@ -208,7 +208,7 @@
             },
             {
               "action": "update",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "account",
@@ -220,7 +220,7 @@
           "authenticate": [
             {
               "action": "authenticate",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "auth-method",
@@ -236,7 +236,7 @@
             },
             {
               "action": "authenticate",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "auth-method",
@@ -246,7 +246,7 @@
           "change-state": [
             {
               "action": "change-state",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "auth-method",
@@ -262,7 +262,7 @@
             },
             {
               "action": "change-state",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "auth-method",
@@ -272,7 +272,7 @@
           "create": [
             {
               "action": "create",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "auth-method",
@@ -280,7 +280,7 @@
             },
             {
               "action": "create",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "auth-method",
@@ -298,7 +298,7 @@
           "delete": [
             {
               "action": "delete",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "auth-method",
@@ -306,7 +306,7 @@
             },
             {
               "action": "delete",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "auth-method",
@@ -324,7 +324,7 @@
           "list": [
             {
               "action": "list",
-              "limit": 60,
+              "limit": 150,
               "per": "auth-token",
               "period": "30s",
               "resource": "auth-method",
@@ -332,7 +332,7 @@
             },
             {
               "action": "list",
-              "limit": 60,
+              "limit": 1500,
               "per": "total",
               "period": "30s",
               "resource": "auth-method",
@@ -340,7 +340,7 @@
             },
             {
               "action": "list",
-              "limit": 60,
+              "limit": 1500,
               "per": "ip-address",
               "period": "30s",
               "resource": "auth-method",
@@ -358,7 +358,7 @@
             },
             {
               "action": "no-op",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "auth-method",
@@ -366,7 +366,7 @@
             },
             {
               "action": "no-op",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "auth-method",
@@ -376,7 +376,7 @@
           "read": [
             {
               "action": "read",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "auth-method",
@@ -392,7 +392,7 @@
             },
             {
               "action": "read",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "auth-method",
@@ -410,7 +410,7 @@
             },
             {
               "action": "update",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "auth-method",
@@ -418,7 +418,7 @@
             },
             {
               "action": "update",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "auth-method",
@@ -430,7 +430,7 @@
           "delete": [
             {
               "action": "delete",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "auth-token",
@@ -438,7 +438,7 @@
             },
             {
               "action": "delete",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "auth-token",
@@ -464,7 +464,7 @@
             },
             {
               "action": "delete:self",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "auth-token",
@@ -472,7 +472,7 @@
             },
             {
               "action": "delete:self",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "auth-token",
@@ -482,7 +482,7 @@
           "list": [
             {
               "action": "list",
-              "limit": 60,
+              "limit": 1500,
               "per": "ip-address",
               "period": "30s",
               "resource": "auth-token",
@@ -490,7 +490,7 @@
             },
             {
               "action": "list",
-              "limit": 60,
+              "limit": 1500,
               "per": "total",
               "period": "30s",
               "resource": "auth-token",
@@ -498,7 +498,7 @@
             },
             {
               "action": "list",
-              "limit": 60,
+              "limit": 150,
               "per": "auth-token",
               "period": "30s",
               "resource": "auth-token",
@@ -508,7 +508,7 @@
           "no-op": [
             {
               "action": "no-op",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "auth-token",
@@ -516,7 +516,7 @@
             },
             {
               "action": "no-op",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "auth-token",
@@ -534,7 +534,7 @@
           "read": [
             {
               "action": "read",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "auth-token",
@@ -550,7 +550,7 @@
             },
             {
               "action": "read",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "auth-token",
@@ -560,7 +560,7 @@
           "read:self": [
             {
               "action": "read:self",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "auth-token",
@@ -568,7 +568,7 @@
             },
             {
               "action": "read:self",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "auth-token",
@@ -588,7 +588,7 @@
           "create": [
             {
               "action": "create",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "credential",
@@ -604,7 +604,7 @@
             },
             {
               "action": "create",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "credential",
@@ -614,7 +614,7 @@
           "delete": [
             {
               "action": "delete",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "credential",
@@ -630,7 +630,7 @@
             },
             {
               "action": "delete",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "credential",
@@ -640,7 +640,7 @@
           "list": [
             {
               "action": "list",
-              "limit": 60,
+              "limit": 1500,
               "per": "total",
               "period": "30s",
               "resource": "credential",
@@ -648,7 +648,7 @@
             },
             {
               "action": "list",
-              "limit": 60,
+              "limit": 150,
               "per": "auth-token",
               "period": "30s",
               "resource": "credential",
@@ -656,7 +656,7 @@
             },
             {
               "action": "list",
-              "limit": 60,
+              "limit": 1500,
               "per": "ip-address",
               "period": "30s",
               "resource": "credential",
@@ -666,7 +666,7 @@
           "no-op": [
             {
               "action": "no-op",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "credential",
@@ -682,7 +682,7 @@
             },
             {
               "action": "no-op",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "credential",
@@ -700,7 +700,7 @@
             },
             {
               "action": "read",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "credential",
@@ -708,7 +708,7 @@
             },
             {
               "action": "read",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "credential",
@@ -718,7 +718,7 @@
           "update": [
             {
               "action": "update",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "credential",
@@ -734,7 +734,7 @@
             },
             {
               "action": "update",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "credential",
@@ -746,7 +746,7 @@
           "create": [
             {
               "action": "create",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "credential-library",
@@ -754,7 +754,7 @@
             },
             {
               "action": "create",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "credential-library",
@@ -772,7 +772,7 @@
           "delete": [
             {
               "action": "delete",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "credential-library",
@@ -780,7 +780,7 @@
             },
             {
               "action": "delete",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "credential-library",
@@ -798,7 +798,7 @@
           "list": [
             {
               "action": "list",
-              "limit": 60,
+              "limit": 1500,
               "per": "total",
               "period": "30s",
               "resource": "credential-library",
@@ -806,7 +806,7 @@
             },
             {
               "action": "list",
-              "limit": 60,
+              "limit": 150,
               "per": "auth-token",
               "period": "30s",
               "resource": "credential-library",
@@ -814,7 +814,7 @@
             },
             {
               "action": "list",
-              "limit": 60,
+              "limit": 1500,
               "per": "ip-address",
               "period": "30s",
               "resource": "credential-library",
@@ -824,7 +824,7 @@
           "no-op": [
             {
               "action": "no-op",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "credential-library",
@@ -840,7 +840,7 @@
             },
             {
               "action": "no-op",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "credential-library",
@@ -850,7 +850,7 @@
           "read": [
             {
               "action": "read",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "credential-library",
@@ -866,7 +866,7 @@
             },
             {
               "action": "read",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "credential-library",
@@ -876,7 +876,7 @@
           "update": [
             {
               "action": "update",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "credential-library",
@@ -892,7 +892,7 @@
             },
             {
               "action": "update",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "credential-library",
@@ -912,7 +912,7 @@
             },
             {
               "action": "create",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "credential-store",
@@ -920,7 +920,7 @@
             },
             {
               "action": "create",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "credential-store",
@@ -930,7 +930,7 @@
           "delete": [
             {
               "action": "delete",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "credential-store",
@@ -938,7 +938,7 @@
             },
             {
               "action": "delete",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "credential-store",
@@ -956,7 +956,7 @@
           "list": [
             {
               "action": "list",
-              "limit": 60,
+              "limit": 150,
               "per": "auth-token",
               "period": "30s",
               "resource": "credential-store",
@@ -964,7 +964,7 @@
             },
             {
               "action": "list",
-              "limit": 60,
+              "limit": 1500,
               "per": "total",
               "period": "30s",
               "resource": "credential-store",
@@ -972,7 +972,7 @@
             },
             {
               "action": "list",
-              "limit": 60,
+              "limit": 1500,
               "per": "ip-address",
               "period": "30s",
               "resource": "credential-store",
@@ -982,7 +982,7 @@
           "no-op": [
             {
               "action": "no-op",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "credential-store",
@@ -998,7 +998,7 @@
             },
             {
               "action": "no-op",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "credential-store",
@@ -1008,7 +1008,7 @@
           "read": [
             {
               "action": "read",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "credential-store",
@@ -1024,7 +1024,7 @@
             },
             {
               "action": "read",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "credential-store",
@@ -1042,7 +1042,7 @@
             },
             {
               "action": "update",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "credential-store",
@@ -1050,7 +1050,7 @@
             },
             {
               "action": "update",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "credential-store",
@@ -1070,7 +1070,7 @@
             },
             {
               "action": "add-members",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "group",
@@ -1078,7 +1078,7 @@
             },
             {
               "action": "add-members",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "group",
@@ -1088,7 +1088,7 @@
           "create": [
             {
               "action": "create",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "group",
@@ -1104,7 +1104,7 @@
             },
             {
               "action": "create",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "group",
@@ -1114,7 +1114,7 @@
           "delete": [
             {
               "action": "delete",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "group",
@@ -1122,7 +1122,7 @@
             },
             {
               "action": "delete",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "group",
@@ -1140,7 +1140,7 @@
           "list": [
             {
               "action": "list",
-              "limit": 60,
+              "limit": 1500,
               "per": "total",
               "period": "30s",
               "resource": "group",
@@ -1148,7 +1148,7 @@
             },
             {
               "action": "list",
-              "limit": 60,
+              "limit": 1500,
               "per": "ip-address",
               "period": "30s",
               "resource": "group",
@@ -1156,7 +1156,7 @@
             },
             {
               "action": "list",
-              "limit": 60,
+              "limit": 150,
               "per": "auth-token",
               "period": "30s",
               "resource": "group",
@@ -1174,7 +1174,7 @@
             },
             {
               "action": "no-op",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "group",
@@ -1182,7 +1182,7 @@
             },
             {
               "action": "no-op",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "group",
@@ -1200,7 +1200,7 @@
             },
             {
               "action": "read",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "group",
@@ -1208,7 +1208,7 @@
             },
             {
               "action": "read",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "group",
@@ -1226,7 +1226,7 @@
             },
             {
               "action": "remove-members",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "group",
@@ -1234,7 +1234,7 @@
             },
             {
               "action": "remove-members",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "group",
@@ -1244,7 +1244,7 @@
           "set-members": [
             {
               "action": "set-members",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "group",
@@ -1252,7 +1252,7 @@
             },
             {
               "action": "set-members",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "group",
@@ -1270,7 +1270,7 @@
           "update": [
             {
               "action": "update",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "group",
@@ -1286,7 +1286,7 @@
             },
             {
               "action": "update",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "group",
@@ -1298,7 +1298,7 @@
           "create": [
             {
               "action": "create",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "host",
@@ -1306,7 +1306,7 @@
             },
             {
               "action": "create",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "host",
@@ -1332,7 +1332,7 @@
             },
             {
               "action": "delete",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "host",
@@ -1340,7 +1340,7 @@
             },
             {
               "action": "delete",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "host",
@@ -1350,7 +1350,7 @@
           "list": [
             {
               "action": "list",
-              "limit": 60,
+              "limit": 1500,
               "per": "ip-address",
               "period": "30s",
               "resource": "host",
@@ -1358,7 +1358,7 @@
             },
             {
               "action": "list",
-              "limit": 60,
+              "limit": 1500,
               "per": "total",
               "period": "30s",
               "resource": "host",
@@ -1366,7 +1366,7 @@
             },
             {
               "action": "list",
-              "limit": 60,
+              "limit": 150,
               "per": "auth-token",
               "period": "30s",
               "resource": "host",
@@ -1376,7 +1376,7 @@
           "no-op": [
             {
               "action": "no-op",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "host",
@@ -1392,7 +1392,7 @@
             },
             {
               "action": "no-op",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "host",
@@ -1402,7 +1402,7 @@
           "read": [
             {
               "action": "read",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "host",
@@ -1418,7 +1418,7 @@
             },
             {
               "action": "read",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "host",
@@ -1428,7 +1428,7 @@
           "update": [
             {
               "action": "update",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "host",
@@ -1444,7 +1444,7 @@
             },
             {
               "action": "update",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "host",
@@ -1456,7 +1456,7 @@
           "create": [
             {
               "action": "create",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "host-catalog",
@@ -1472,7 +1472,7 @@
             },
             {
               "action": "create",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "host-catalog",
@@ -1490,7 +1490,7 @@
             },
             {
               "action": "delete",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "host-catalog",
@@ -1498,7 +1498,7 @@
             },
             {
               "action": "delete",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "host-catalog",
@@ -1508,7 +1508,7 @@
           "list": [
             {
               "action": "list",
-              "limit": 60,
+              "limit": 1500,
               "per": "total",
               "period": "30s",
               "resource": "host-catalog",
@@ -1516,7 +1516,7 @@
             },
             {
               "action": "list",
-              "limit": 60,
+              "limit": 1500,
               "per": "ip-address",
               "period": "30s",
               "resource": "host-catalog",
@@ -1524,7 +1524,7 @@
             },
             {
               "action": "list",
-              "limit": 60,
+              "limit": 150,
               "per": "auth-token",
               "period": "30s",
               "resource": "host-catalog",
@@ -1542,7 +1542,7 @@
             },
             {
               "action": "no-op",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "host-catalog",
@@ -1550,7 +1550,7 @@
             },
             {
               "action": "no-op",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "host-catalog",
@@ -1560,7 +1560,7 @@
           "read": [
             {
               "action": "read",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "host-catalog",
@@ -1568,7 +1568,7 @@
             },
             {
               "action": "read",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "host-catalog",
@@ -1586,7 +1586,7 @@
           "update": [
             {
               "action": "update",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "host-catalog",
@@ -1594,7 +1594,7 @@
             },
             {
               "action": "update",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "host-catalog",
@@ -1614,7 +1614,7 @@
           "add-hosts": [
             {
               "action": "add-hosts",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "host-set",
@@ -1630,7 +1630,7 @@
             },
             {
               "action": "add-hosts",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "host-set",
@@ -1640,7 +1640,7 @@
           "create": [
             {
               "action": "create",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "host-set",
@@ -1648,7 +1648,7 @@
             },
             {
               "action": "create",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "host-set",
@@ -1666,7 +1666,7 @@
           "delete": [
             {
               "action": "delete",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "host-set",
@@ -1682,7 +1682,7 @@
             },
             {
               "action": "delete",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "host-set",
@@ -1692,7 +1692,7 @@
           "list": [
             {
               "action": "list",
-              "limit": 60,
+              "limit": 1500,
               "per": "ip-address",
               "period": "30s",
               "resource": "host-set",
@@ -1700,7 +1700,7 @@
             },
             {
               "action": "list",
-              "limit": 60,
+              "limit": 150,
               "per": "auth-token",
               "period": "30s",
               "resource": "host-set",
@@ -1708,7 +1708,7 @@
             },
             {
               "action": "list",
-              "limit": 60,
+              "limit": 1500,
               "per": "total",
               "period": "30s",
               "resource": "host-set",
@@ -1718,7 +1718,7 @@
           "no-op": [
             {
               "action": "no-op",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "host-set",
@@ -1726,7 +1726,7 @@
             },
             {
               "action": "no-op",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "host-set",
@@ -1752,7 +1752,7 @@
             },
             {
               "action": "read",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "host-set",
@@ -1760,7 +1760,7 @@
             },
             {
               "action": "read",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "host-set",
@@ -1770,7 +1770,7 @@
           "remove-hosts": [
             {
               "action": "remove-hosts",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "host-set",
@@ -1786,7 +1786,7 @@
             },
             {
               "action": "remove-hosts",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "host-set",
@@ -1796,7 +1796,7 @@
           "set-hosts": [
             {
               "action": "set-hosts",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "host-set",
@@ -1804,7 +1804,7 @@
             },
             {
               "action": "set-hosts",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "host-set",
@@ -1822,7 +1822,7 @@
           "update": [
             {
               "action": "update",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "host-set",
@@ -1838,7 +1838,7 @@
             },
             {
               "action": "update",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "host-set",
@@ -1850,7 +1850,7 @@
           "create": [
             {
               "action": "create",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "managed-group",
@@ -1866,7 +1866,7 @@
             },
             {
               "action": "create",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "managed-group",
@@ -1884,7 +1884,7 @@
             },
             {
               "action": "delete",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "managed-group",
@@ -1892,7 +1892,7 @@
             },
             {
               "action": "delete",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "managed-group",
@@ -1902,7 +1902,7 @@
           "list": [
             {
               "action": "list",
-              "limit": 60,
+              "limit": 150,
               "per": "auth-token",
               "period": "30s",
               "resource": "managed-group",
@@ -1910,7 +1910,7 @@
             },
             {
               "action": "list",
-              "limit": 60,
+              "limit": 1500,
               "per": "total",
               "period": "30s",
               "resource": "managed-group",
@@ -1918,7 +1918,7 @@
             },
             {
               "action": "list",
-              "limit": 60,
+              "limit": 1500,
               "per": "ip-address",
               "period": "30s",
               "resource": "managed-group",
@@ -1928,7 +1928,7 @@
           "no-op": [
             {
               "action": "no-op",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "managed-group",
@@ -1944,7 +1944,7 @@
             },
             {
               "action": "no-op",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "managed-group",
@@ -1954,7 +1954,7 @@
           "read": [
             {
               "action": "read",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "managed-group",
@@ -1970,7 +1970,7 @@
             },
             {
               "action": "read",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "managed-group",
@@ -1980,7 +1980,7 @@
           "update": [
             {
               "action": "update",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "managed-group",
@@ -1996,7 +1996,7 @@
             },
             {
               "action": "update",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "managed-group",
@@ -2008,7 +2008,7 @@
           "add-grants": [
             {
               "action": "add-grants",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "role",
@@ -2024,7 +2024,7 @@
             },
             {
               "action": "add-grants",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "role",
@@ -2034,7 +2034,7 @@
           "add-principals": [
             {
               "action": "add-principals",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "role",
@@ -2042,7 +2042,7 @@
             },
             {
               "action": "add-principals",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "role",
@@ -2068,7 +2068,7 @@
             },
             {
               "action": "create",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "role",
@@ -2076,7 +2076,7 @@
             },
             {
               "action": "create",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "role",
@@ -2094,7 +2094,7 @@
             },
             {
               "action": "delete",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "role",
@@ -2102,7 +2102,7 @@
             },
             {
               "action": "delete",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "role",
@@ -2112,7 +2112,7 @@
           "list": [
             {
               "action": "list",
-              "limit": 60,
+              "limit": 1500,
               "per": "ip-address",
               "period": "30s",
               "resource": "role",
@@ -2120,7 +2120,7 @@
             },
             {
               "action": "list",
-              "limit": 60,
+              "limit": 1500,
               "per": "total",
               "period": "30s",
               "resource": "role",
@@ -2128,7 +2128,7 @@
             },
             {
               "action": "list",
-              "limit": 60,
+              "limit": 150,
               "per": "auth-token",
               "period": "30s",
               "resource": "role",
@@ -2146,7 +2146,7 @@
             },
             {
               "action": "no-op",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "role",
@@ -2154,7 +2154,7 @@
             },
             {
               "action": "no-op",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "role",
@@ -2164,7 +2164,7 @@
           "read": [
             {
               "action": "read",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "role",
@@ -2180,7 +2180,7 @@
             },
             {
               "action": "read",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "role",
@@ -2190,7 +2190,7 @@
           "remove-grants": [
             {
               "action": "remove-grants",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "role",
@@ -2198,7 +2198,7 @@
             },
             {
               "action": "remove-grants",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "role",
@@ -2224,7 +2224,7 @@
             },
             {
               "action": "remove-principals",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "role",
@@ -2232,7 +2232,7 @@
             },
             {
               "action": "remove-principals",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "role",
@@ -2242,7 +2242,7 @@
           "set-grants": [
             {
               "action": "set-grants",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "role",
@@ -2258,7 +2258,7 @@
             },
             {
               "action": "set-grants",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "role",
@@ -2268,7 +2268,7 @@
           "set-principals": [
             {
               "action": "set-principals",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "role",
@@ -2284,7 +2284,7 @@
             },
             {
               "action": "set-principals",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "role",
@@ -2302,7 +2302,7 @@
             },
             {
               "action": "update",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "role",
@@ -2310,7 +2310,7 @@
             },
             {
               "action": "update",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "role",
@@ -2322,7 +2322,7 @@
           "create": [
             {
               "action": "create",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "scope",
@@ -2338,7 +2338,7 @@
             },
             {
               "action": "create",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "scope",
@@ -2348,7 +2348,7 @@
           "delete": [
             {
               "action": "delete",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "scope",
@@ -2364,7 +2364,7 @@
             },
             {
               "action": "delete",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "scope",
@@ -2374,7 +2374,7 @@
           "destroy-key-version": [
             {
               "action": "destroy-key-version",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "scope",
@@ -2382,7 +2382,7 @@
             },
             {
               "action": "destroy-key-version",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "scope",
@@ -2400,7 +2400,7 @@
           "list": [
             {
               "action": "list",
-              "limit": 60,
+              "limit": 1500,
               "per": "total",
               "period": "30s",
               "resource": "scope",
@@ -2408,7 +2408,7 @@
             },
             {
               "action": "list",
-              "limit": 60,
+              "limit": 150,
               "per": "auth-token",
               "period": "30s",
               "resource": "scope",
@@ -2416,7 +2416,7 @@
             },
             {
               "action": "list",
-              "limit": 60,
+              "limit": 1500,
               "per": "ip-address",
               "period": "30s",
               "resource": "scope",
@@ -2426,7 +2426,7 @@
           "list-key-version-destruction-jobs": [
             {
               "action": "list-key-version-destruction-jobs",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "scope",
@@ -2442,7 +2442,7 @@
             },
             {
               "action": "list-key-version-destruction-jobs",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "scope",
@@ -2452,7 +2452,7 @@
           "list-keys": [
             {
               "action": "list-keys",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "scope",
@@ -2460,7 +2460,7 @@
             },
             {
               "action": "list-keys",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "scope",
@@ -2478,7 +2478,7 @@
           "no-op": [
             {
               "action": "no-op",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "scope",
@@ -2486,7 +2486,7 @@
             },
             {
               "action": "no-op",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "scope",
@@ -2504,7 +2504,7 @@
           "read": [
             {
               "action": "read",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "scope",
@@ -2512,7 +2512,7 @@
             },
             {
               "action": "read",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "scope",
@@ -2530,7 +2530,7 @@
           "rotate-keys": [
             {
               "action": "rotate-keys",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "scope",
@@ -2538,7 +2538,7 @@
             },
             {
               "action": "rotate-keys",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "scope",
@@ -2556,7 +2556,7 @@
           "update": [
             {
               "action": "update",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "scope",
@@ -2564,7 +2564,7 @@
             },
             {
               "action": "update",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "scope",
@@ -2584,7 +2584,7 @@
           "cancel": [
             {
               "action": "cancel",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "session",
@@ -2600,7 +2600,7 @@
             },
             {
               "action": "cancel",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "session",
@@ -2610,7 +2610,7 @@
           "cancel:self": [
             {
               "action": "cancel:self",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "session",
@@ -2626,7 +2626,7 @@
             },
             {
               "action": "cancel:self",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "session",
@@ -2636,7 +2636,7 @@
           "list": [
             {
               "action": "list",
-              "limit": 60,
+              "limit": 150,
               "per": "auth-token",
               "period": "30s",
               "resource": "session",
@@ -2644,7 +2644,7 @@
             },
             {
               "action": "list",
-              "limit": 60,
+              "limit": 1500,
               "per": "ip-address",
               "period": "30s",
               "resource": "session",
@@ -2652,7 +2652,7 @@
             },
             {
               "action": "list",
-              "limit": 60,
+              "limit": 1500,
               "per": "total",
               "period": "30s",
               "resource": "session",
@@ -2662,7 +2662,7 @@
           "no-op": [
             {
               "action": "no-op",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "session",
@@ -2670,7 +2670,7 @@
             },
             {
               "action": "no-op",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "session",
@@ -2696,7 +2696,7 @@
             },
             {
               "action": "read",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "session",
@@ -2704,7 +2704,7 @@
             },
             {
               "action": "read",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "session",
@@ -2722,7 +2722,7 @@
             },
             {
               "action": "read:self",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "session",
@@ -2730,7 +2730,7 @@
             },
             {
               "action": "read:self",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "session",
@@ -2742,7 +2742,7 @@
           "download": [
             {
               "action": "download",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "session-recording",
@@ -2758,7 +2758,7 @@
             },
             {
               "action": "download",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "session-recording",
@@ -2768,7 +2768,7 @@
           "list": [
             {
               "action": "list",
-              "limit": 60,
+              "limit": 150,
               "per": "auth-token",
               "period": "30s",
               "resource": "session-recording",
@@ -2776,7 +2776,7 @@
             },
             {
               "action": "list",
-              "limit": 60,
+              "limit": 1500,
               "per": "total",
               "period": "30s",
               "resource": "session-recording",
@@ -2784,7 +2784,7 @@
             },
             {
               "action": "list",
-              "limit": 60,
+              "limit": 1500,
               "per": "ip-address",
               "period": "30s",
               "resource": "session-recording",
@@ -2794,7 +2794,7 @@
           "no-op": [
             {
               "action": "no-op",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "session-recording",
@@ -2810,7 +2810,7 @@
             },
             {
               "action": "no-op",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "session-recording",
@@ -2828,7 +2828,7 @@
             },
             {
               "action": "read",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "session-recording",
@@ -2836,7 +2836,7 @@
             },
             {
               "action": "read",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "session-recording",
@@ -2848,7 +2848,7 @@
           "create": [
             {
               "action": "create",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "storage-bucket",
@@ -2864,7 +2864,7 @@
             },
             {
               "action": "create",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "storage-bucket",
@@ -2874,7 +2874,7 @@
           "delete": [
             {
               "action": "delete",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "storage-bucket",
@@ -2890,7 +2890,7 @@
             },
             {
               "action": "delete",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "storage-bucket",
@@ -2900,7 +2900,7 @@
           "list": [
             {
               "action": "list",
-              "limit": 60,
+              "limit": 1500,
               "per": "ip-address",
               "period": "30s",
               "resource": "storage-bucket",
@@ -2908,7 +2908,7 @@
             },
             {
               "action": "list",
-              "limit": 60,
+              "limit": 1500,
               "per": "total",
               "period": "30s",
               "resource": "storage-bucket",
@@ -2916,7 +2916,7 @@
             },
             {
               "action": "list",
-              "limit": 60,
+              "limit": 150,
               "per": "auth-token",
               "period": "30s",
               "resource": "storage-bucket",
@@ -2926,7 +2926,7 @@
           "no-op": [
             {
               "action": "no-op",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "storage-bucket",
@@ -2942,7 +2942,7 @@
             },
             {
               "action": "no-op",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "storage-bucket",
@@ -2952,7 +2952,7 @@
           "read": [
             {
               "action": "read",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "storage-bucket",
@@ -2968,7 +2968,7 @@
             },
             {
               "action": "read",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "storage-bucket",
@@ -2986,7 +2986,7 @@
             },
             {
               "action": "update",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "storage-bucket",
@@ -2994,7 +2994,7 @@
             },
             {
               "action": "update",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "storage-bucket",
@@ -3006,7 +3006,7 @@
           "add-credential-sources": [
             {
               "action": "add-credential-sources",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "target",
@@ -3022,7 +3022,7 @@
             },
             {
               "action": "add-credential-sources",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "target",
@@ -3040,7 +3040,7 @@
             },
             {
               "action": "add-host-sources",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "target",
@@ -3048,7 +3048,7 @@
             },
             {
               "action": "add-host-sources",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "target",
@@ -3058,7 +3058,7 @@
           "authorize-session": [
             {
               "action": "authorize-session",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "target",
@@ -3074,7 +3074,7 @@
             },
             {
               "action": "authorize-session",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "target",
@@ -3084,7 +3084,7 @@
           "create": [
             {
               "action": "create",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "target",
@@ -3092,7 +3092,7 @@
             },
             {
               "action": "create",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "target",
@@ -3118,7 +3118,7 @@
             },
             {
               "action": "delete",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "target",
@@ -3126,7 +3126,7 @@
             },
             {
               "action": "delete",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "target",
@@ -3136,7 +3136,7 @@
           "list": [
             {
               "action": "list",
-              "limit": 60,
+              "limit": 1500,
               "per": "total",
               "period": "30s",
               "resource": "target",
@@ -3144,7 +3144,7 @@
             },
             {
               "action": "list",
-              "limit": 60,
+              "limit": 150,
               "per": "auth-token",
               "period": "30s",
               "resource": "target",
@@ -3152,7 +3152,7 @@
             },
             {
               "action": "list",
-              "limit": 60,
+              "limit": 1500,
               "per": "ip-address",
               "period": "30s",
               "resource": "target",
@@ -3170,7 +3170,7 @@
             },
             {
               "action": "no-op",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "target",
@@ -3178,7 +3178,7 @@
             },
             {
               "action": "no-op",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "target",
@@ -3196,7 +3196,7 @@
             },
             {
               "action": "read",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "target",
@@ -3204,7 +3204,7 @@
             },
             {
               "action": "read",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "target",
@@ -3214,7 +3214,7 @@
           "remove-credential-sources": [
             {
               "action": "remove-credential-sources",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "target",
@@ -3222,7 +3222,7 @@
             },
             {
               "action": "remove-credential-sources",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "target",
@@ -3240,7 +3240,7 @@
           "remove-host-sources": [
             {
               "action": "remove-host-sources",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "target",
@@ -3248,7 +3248,7 @@
             },
             {
               "action": "remove-host-sources",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "target",
@@ -3274,7 +3274,7 @@
             },
             {
               "action": "set-credential-sources",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "target",
@@ -3282,7 +3282,7 @@
             },
             {
               "action": "set-credential-sources",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "target",
@@ -3292,7 +3292,7 @@
           "set-host-sources": [
             {
               "action": "set-host-sources",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "target",
@@ -3300,7 +3300,7 @@
             },
             {
               "action": "set-host-sources",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "target",
@@ -3318,7 +3318,7 @@
           "update": [
             {
               "action": "update",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "target",
@@ -3326,7 +3326,7 @@
             },
             {
               "action": "update",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "target",
@@ -3354,7 +3354,7 @@
             },
             {
               "action": "add-accounts",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "user",
@@ -3362,7 +3362,7 @@
             },
             {
               "action": "add-accounts",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "user",
@@ -3372,7 +3372,7 @@
           "create": [
             {
               "action": "create",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "user",
@@ -3380,7 +3380,7 @@
             },
             {
               "action": "create",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "user",
@@ -3406,7 +3406,7 @@
             },
             {
               "action": "delete",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "user",
@@ -3414,7 +3414,7 @@
             },
             {
               "action": "delete",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "user",
@@ -3424,7 +3424,7 @@
           "list": [
             {
               "action": "list",
-              "limit": 60,
+              "limit": 1500,
               "per": "ip-address",
               "period": "30s",
               "resource": "user",
@@ -3432,7 +3432,7 @@
             },
             {
               "action": "list",
-              "limit": 60,
+              "limit": 150,
               "per": "auth-token",
               "period": "30s",
               "resource": "user",
@@ -3440,7 +3440,7 @@
             },
             {
               "action": "list",
-              "limit": 60,
+              "limit": 1500,
               "per": "total",
               "period": "30s",
               "resource": "user",
@@ -3458,7 +3458,7 @@
             },
             {
               "action": "no-op",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "user",
@@ -3466,7 +3466,7 @@
             },
             {
               "action": "no-op",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "user",
@@ -3484,7 +3484,7 @@
             },
             {
               "action": "read",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "user",
@@ -3492,7 +3492,7 @@
             },
             {
               "action": "read",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "user",
@@ -3502,7 +3502,7 @@
           "remove-accounts": [
             {
               "action": "remove-accounts",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "user",
@@ -3518,7 +3518,7 @@
             },
             {
               "action": "remove-accounts",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "user",
@@ -3528,7 +3528,7 @@
           "set-accounts": [
             {
               "action": "set-accounts",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "user",
@@ -3544,7 +3544,7 @@
             },
             {
               "action": "set-accounts",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "user",
@@ -3554,7 +3554,7 @@
           "update": [
             {
               "action": "update",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "user",
@@ -3562,7 +3562,7 @@
             },
             {
               "action": "update",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "user",
@@ -3582,7 +3582,7 @@
           "add-worker-tags": [
             {
               "action": "add-worker-tags",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "worker",
@@ -3590,7 +3590,7 @@
             },
             {
               "action": "add-worker-tags",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "worker",
@@ -3608,7 +3608,7 @@
           "create:controller-led": [
             {
               "action": "create:controller-led",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "worker",
@@ -3616,7 +3616,7 @@
             },
             {
               "action": "create:controller-led",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "worker",
@@ -3634,7 +3634,7 @@
           "create:worker-led": [
             {
               "action": "create:worker-led",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "worker",
@@ -3642,7 +3642,7 @@
             },
             {
               "action": "create:worker-led",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "worker",
@@ -3660,7 +3660,7 @@
           "delete": [
             {
               "action": "delete",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "worker",
@@ -3676,7 +3676,7 @@
             },
             {
               "action": "delete",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "worker",
@@ -3686,7 +3686,7 @@
           "list": [
             {
               "action": "list",
-              "limit": 60,
+              "limit": 1500,
               "per": "ip-address",
               "period": "30s",
               "resource": "worker",
@@ -3694,7 +3694,7 @@
             },
             {
               "action": "list",
-              "limit": 60,
+              "limit": 1500,
               "per": "total",
               "period": "30s",
               "resource": "worker",
@@ -3702,7 +3702,7 @@
             },
             {
               "action": "list",
-              "limit": 60,
+              "limit": 150,
               "per": "auth-token",
               "period": "30s",
               "resource": "worker",
@@ -3720,7 +3720,7 @@
             },
             {
               "action": "no-op",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "worker",
@@ -3728,7 +3728,7 @@
             },
             {
               "action": "no-op",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "worker",
@@ -3746,7 +3746,7 @@
             },
             {
               "action": "read",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "worker",
@@ -3754,7 +3754,7 @@
             },
             {
               "action": "read",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "worker",
@@ -3764,7 +3764,7 @@
           "read-certificate-authority": [
             {
               "action": "read-certificate-authority",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "worker",
@@ -3772,7 +3772,7 @@
             },
             {
               "action": "read-certificate-authority",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "worker",
@@ -3790,7 +3790,7 @@
           "reinitialize-certificate-authority": [
             {
               "action": "reinitialize-certificate-authority",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "worker",
@@ -3806,7 +3806,7 @@
             },
             {
               "action": "reinitialize-certificate-authority",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "worker",
@@ -3824,7 +3824,7 @@
             },
             {
               "action": "remove-worker-tags",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "worker",
@@ -3832,7 +3832,7 @@
             },
             {
               "action": "remove-worker-tags",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "worker",
@@ -3850,7 +3850,7 @@
             },
             {
               "action": "set-worker-tags",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "worker",
@@ -3858,7 +3858,7 @@
             },
             {
               "action": "set-worker-tags",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "worker",
@@ -3868,7 +3868,7 @@
           "update": [
             {
               "action": "update",
-              "limit": 3000,
+              "limit": 30000,
               "per": "total",
               "period": "30s",
               "resource": "worker",
@@ -3884,7 +3884,7 @@
             },
             {
               "action": "update",
-              "limit": 3000,
+              "limit": 30000,
               "per": "ip-address",
               "period": "30s",
               "resource": "worker",
