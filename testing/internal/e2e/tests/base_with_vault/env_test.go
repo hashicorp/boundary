@@ -15,6 +15,7 @@ type config struct {
 	// VaultAddr is the address that the Boundary server uses to interact with the running Vault instance
 	VaultAddr       string `envconfig:"E2E_VAULT_ADDR" required:"true"` // e.g. "http://127.0.0.1:8200"
 	VaultSecretPath string `envconfig:"E2E_VAULT_SECRET_PATH" default:"e2e_secrets"`
+	MaxPageSize     int    `envconfig:"E2E_MAX_PAGE_SIZE" default:"1000"`
 }
 
 func loadTestConfig() (*config, error) {
