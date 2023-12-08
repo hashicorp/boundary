@@ -10,6 +10,7 @@ import (
 
 	"github.com/hashicorp/boundary/api/authtokens"
 	"github.com/hashicorp/boundary/api/targets"
+	"github.com/hashicorp/boundary/globals"
 	cachedb "github.com/hashicorp/boundary/internal/clientcache/internal/db"
 	"github.com/hashicorp/boundary/internal/daemon/controller"
 	"github.com/hashicorp/boundary/internal/db"
@@ -422,6 +423,12 @@ func TestRepository_QueryTargets(t *testing.T) {
 }
 
 func TestDefaultTargetRetrievalFunc(t *testing.T) {
+	oldDur := globals.RefreshReadLookbackDuration
+	globals.RefreshReadLookbackDuration = 0
+	t.Cleanup(func() {
+		globals.RefreshReadLookbackDuration = oldDur
+	})
+
 	tc := controller.NewTestController(t, nil)
 	tc.Client().SetToken(tc.Token().Token)
 	tarClient := targets.NewClient(tc.Client())
@@ -443,7 +450,7 @@ func TestDefaultTargetRetrievalFunc(t *testing.T) {
 	got2, removed2, refTok2, err := defaultTargetFunc(tc.Context(), tc.ApiAddrs()[0], tc.Token().Token, refTok)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, refTok2)
+	assert.NotEqual(t, refTok2, refTok)
 	assert.Empty(t, removed2)
-	// Note: This will sometimes fail until PR 3897 is merged
 	assert.Empty(t, got2)
 }

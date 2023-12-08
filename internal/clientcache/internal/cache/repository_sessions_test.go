@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/boundary/api/authtokens"
 	"github.com/hashicorp/boundary/api/sessions"
 	"github.com/hashicorp/boundary/api/targets"
+	"github.com/hashicorp/boundary/globals"
 	cachedb "github.com/hashicorp/boundary/internal/clientcache/internal/db"
 	"github.com/hashicorp/boundary/internal/daemon/controller"
 	"github.com/hashicorp/boundary/internal/daemon/worker"
@@ -446,6 +447,12 @@ func TestRepository_QuerySessions(t *testing.T) {
 }
 
 func TestDefaultSessionRetrievalFunc(t *testing.T) {
+	oldDur := globals.RefreshReadLookbackDuration
+	globals.RefreshReadLookbackDuration = 0
+	t.Cleanup(func() {
+		globals.RefreshReadLookbackDuration = oldDur
+	})
+
 	tc := controller.NewTestController(t, nil)
 	tc.Client().SetToken(tc.Token().Token)
 	tarClient := targets.NewClient(tc.Client())
