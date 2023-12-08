@@ -552,12 +552,12 @@ func TestSession(t *testing.T) {
 	})
 	t.Run("session actions", func(t *testing.T) {
 		session := &Session{
-			UserId:      u.Id,
-			Id:          "s_1234567890",
-			Endpoint:    "endpoint",
-			ScopeId:     "p_123",
-			TargetId:    "ttcp_123",
-			Item:        "{id:'s_1234567890'}",
+			UserId:   u.Id,
+			Id:       "s_1234567890",
+			Endpoint: "endpoint",
+			ScopeId:  "p_123",
+			TargetId: "ttcp_123",
+			Item:     "{id:'s_1234567890'}",
 		}
 
 		require.NoError(t, rw.Create(ctx, session))
