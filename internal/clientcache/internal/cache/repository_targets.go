@@ -33,14 +33,14 @@ func defaultTargetFunc(ctx context.Context, addr, authTok string, refreshTok Ref
 		return nil, nil, "", errors.Wrap(ctx, err, op)
 	}
 	tarClient := targets.NewClient(client)
-	l, err := tarClient.List(ctx, "global", targets.WithRecursive(true), targets.WithRefreshToken(string(refreshTok)))
+	l, err := tarClient.List(ctx, "global", targets.WithRecursive(true), targets.WithListToken(string(refreshTok)))
 	if err != nil {
 		if api.ErrInvalidRefreshToken.Is(err) {
 			return nil, nil, "", err
 		}
 		return nil, nil, "", errors.Wrap(ctx, err, op)
 	}
-	return l.Items, l.RemovedIds, RefreshTokenValue(l.RefreshToken), nil
+	return l.Items, l.RemovedIds, RefreshTokenValue(l.ListToken), nil
 }
 
 // refreshTargets uses attempts to refresh the targets for the provided user
