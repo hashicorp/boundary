@@ -27,6 +27,23 @@ func CreateNewCredentialStoreStaticApi(t testing.TB, ctx context.Context, client
 	return newCredentialStoreId
 }
 
+// CreateNewCredentialStoreVaultApi uses the API to create a Vault credential store
+// Returns the id of the new credential store
+func CreateNewCredentialStoreVaultApi(t testing.TB, ctx context.Context, client *api.Client, projectId string, vaultAddr string, vaultToken string) string {
+	c := credentialstores.NewClient(client)
+	newCredentialStoreResult, err := c.Create(
+		ctx, "vault", projectId,
+		credentialstores.WithName("e2e Credential Store"),
+		credentialstores.WithVaultCredentialStoreAddress(vaultAddr),
+		credentialstores.WithVaultCredentialStoreToken(vaultToken),
+	)
+	require.NoError(t, err)
+	newVaultCredentialStoreId := newCredentialStoreResult.Item.Id
+	t.Logf("Created Credential Store: %s", newVaultCredentialStoreId)
+
+	return newVaultCredentialStoreId
+}
+
 // CreateNewCredentialStoreVaultCli uses the cli to create a Vault credential store
 // Returns the id of the new credential store
 func CreateNewCredentialStoreVaultCli(t testing.TB, ctx context.Context, projectId string, vaultAddr string, vaultToken string) string {
