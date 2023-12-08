@@ -33,14 +33,14 @@ func defaultSessionFunc(ctx context.Context, addr, authTok string, refreshTok Re
 		return nil, nil, "", errors.Wrap(ctx, err, op)
 	}
 	sClient := sessions.NewClient(client)
-	l, err := sClient.List(ctx, "global", sessions.WithIncludeTerminated(true), sessions.WithRecursive(true), sessions.WithRefreshToken(string(refreshTok)))
+	l, err := sClient.List(ctx, "global", sessions.WithIncludeTerminated(true), sessions.WithRecursive(true), sessions.WithListToken(string(refreshTok)))
 	if err != nil {
 		if api.ErrInvalidRefreshToken.Is(err) {
 			return nil, nil, "", err
 		}
 		return nil, nil, "", errors.Wrap(ctx, err, op)
 	}
-	return l.Items, l.RemovedIds, RefreshTokenValue(l.RefreshToken), nil
+	return l.Items, l.RemovedIds, RefreshTokenValue(l.ListToken), nil
 }
 
 // refreshSessions uses attempts to refresh the sessions for the provided user
