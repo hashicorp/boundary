@@ -142,3 +142,19 @@ func CreateNewStaticCredentialJsonCli(t testing.TB, ctx context.Context, credent
 
 	return newCredentialsId
 }
+
+// CreateNewStaticCredentialPasswordApi uses the API to create a new password credential in the
+// provided static credential store.
+// Returns the id of the new credential
+func CreateNewStaticCredentialPasswordApi(t testing.TB, ctx context.Context, client *api.Client, credentialStoreId string, user string, password string) string {
+	c := credentials.NewClient(client)
+	newCredentialsResult, err := c.Create(ctx, "username_password", credentialStoreId,
+		credentials.WithUsernamePasswordCredentialUsername(user),
+		credentials.WithUsernamePasswordCredentialPassword(password),
+	)
+	require.NoError(t, err)
+	newCredentialsId := newCredentialsResult.Item.Id
+	t.Logf("Created Username/Password Credentials: %s", newCredentialsId)
+
+	return newCredentialsId
+}
