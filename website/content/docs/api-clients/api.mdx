@@ -143,31 +143,31 @@ The following example shows a simple configuration where the same limits are app
 controller {
   # Total limit for all resources and actions
   api_rate_limit {
-	resources = ["*"]
-	actions   = ["*"]
-	per  	= "total"
-	limit 	= 500
-	period	= "1s"
+    resources = ["*"]
+    actions   = ["*"]
+    per       = "total"
+    limit     = 500
+    period    = "1s"
   }
 
   # Limit for all IP addresses to all resources and actions to prevent a
   # malicious host that is fabricating tokens or spamming unauthed endpoints
   api_rate_limit {
-	resources = ["*"]
-	actions   = ["*"]
-	per 	= "ip-address"
-	limit 	= 100
-	period	= "1s"
+    resources = ["*"]
+    actions   = ["*"]
+    per       = "ip-address"
+    limit     = 100
+    period    = "1s"
   }
 
   # Limit for all authed requests to prevent one user
   # from consuming all of the total limit
   api_rate_limit {
-	resources = ["*"]
-	actions   = ["*"]
-	per 	= "auth-token"
-	limit 	= 100
-	period	= "1s"
+    resources = ["*"]
+    actions   = ["*"]
+    per       = "auth-token"
+    limit     = 100
+    period    = "1s"
   }
 }
 ```
@@ -186,11 +186,11 @@ The following example uses the default settings for most endpoints, but configur
 ```hcl
 controller {
   api_rate_limit {
-	resources = ["target"]
-	actions   = ["list"]
-	per 	= "auth-token"
-	limit 	= 10
-	period	= "1s"
+    resources = ["target"]
+    actions   = ["list"]
+    per       = "auth-token"
+    limit     = 10
+    period    = "1s"
   }
 }
 ```
@@ -203,32 +203,32 @@ Then it configures some specific endpoints with different limits.
 controller {
   # Total limit for all resources and actions
   api_rate_limit {
-	resources = ["*"]
-	actions   = ["*"]
-	per 	= "total"
-	limit 	= 500
-	period	= "1s"
+    resources = ["*"]
+    actions   = ["*"]
+    per       = "total"
+    limit     = 500
+    period    = "1s"
   }
 
   # Total limit for all list operations,
   # sets an overall cap on the list action since it is relatively expensive
   api_rate_limit {
-	resources = ["*"]
-	actions   = ["list"]
-	per 	= "total"
-	limit 	= 200
-	period	= "1s"
+    resources = ["*"]
+    actions   = ["list"]
+    per       = "total"
+    limit     = 200
+    period    = "1s"
   }
 
   # Limit for IP address to all resources and actions
   # to prevent a malicious host that is fabricating tokens
   # or spamming unauthed endpoints
   api_rate_limit {
-	resources = ["*"]
-	actions   = ["*"]
-	per 	= "ip-address"
-	limit 	= 50
-	period	= "1s"
+    resources = ["*"]
+    actions   = ["*"]
+    per       = "ip-address"
+    limit     = 50
+    period    = "1s"
   }
 
   # Limit of all authed requests, this essentially sets a default
@@ -236,21 +236,21 @@ controller {
   # all of the total list limit set above. Any limits that follow
   # can override the default for specific sets of resources and actions
   api_rate_limit {
-	resources = ["*"]
-	actions   = ["*"]
-	per 	= "auth-token"
-	limit 	= 100
-	period	= "1s"
+    resources = ["*"]
+    actions   = ["*"]
+    per       = "auth-token"
+    limit     = 100
+    period    = "1s"
   }
 
   # Limit of all list operations by auth token to set a sane default
   # since they are generally more expensive
   api_rate_limit {
-	resources = ["*"]
-	actions   = ["list"]
-	per 	= "auth-token"
-	limit 	= 50
-	period	= "1s"
+    resources = ["*"]
+    actions   = ["list"]
+    per       = "auth-token"
+    limit     = 50
+    period    = "1s"
   }
 
   # Limit for targets and sessions list by auth token. These are resources
@@ -258,20 +258,20 @@ controller {
   # if there is a large number of them for each user. Having a lower limit
   # encourages the use of refresh tokens and caching.
   api_rate_limit {
-	resources = ["target", "session"]
-	actions   = ["list"]
-	per 	= "auth-token"
-	limit 	= 20
-	period	= "1s"
+    resources = ["target", "session"]
+    actions   = ["list"]
+    per       = "auth-token"
+    limit     = 20
+    period    = "1s"
   }
 
   #Limit for authorize session by auth token
   api_rate_limit {
-	resources = ["target"]
-	actions   = ["authorize-session"]
-	per 	= "auth-token"
-	limit 	= 150
-	period	= "1s"
+    resources = ["target"]
+    actions   = ["authorize-session"]
+    per       = "auth-token"
+    limit     = 150
+    period    = "1s"
   }
 }
 ```
