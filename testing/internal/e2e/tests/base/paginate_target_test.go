@@ -10,6 +10,8 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/boundary/api/scopes"
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/internal/target"
@@ -44,13 +46,15 @@ func TestCliPaginateTargets(t *testing.T) {
 	tClient := targets.NewClient(client)
 	targetPort, err := strconv.ParseInt(c.TargetPort, 10, 32)
 	require.NoError(t, err)
+	var targetIds []string
 	for i := 0; i < c.MaxPageSize+1; i++ {
-		_, err := tClient.Create(ctx, "tcp", newProjectId,
+		resp, err := tClient.Create(ctx, "tcp", newProjectId,
 			targets.WithName("test-target-"+strconv.Itoa(i)),
 			targets.WithTcpTargetDefaultPort(uint32(targetPort)),
 			targets.WithAddress(c.TargetAddress),
 		)
 		require.NoError(t, err)
+		targetIds = append(targetIds, resp.Item.Id)
 	}
 
 	// List targets recursively
@@ -66,8 +70,13 @@ func TestCliPaginateTargets(t *testing.T) {
 	var initialTargets targets.TargetListResult
 	err = json.Unmarshal(output.Stdout, &initialTargets)
 	require.NoError(t, err)
+	var returnedIds []string
+	for _, item := range initialTargets.Items {
+		returnedIds = append(returnedIds, item.Id)
+	}
 
 	require.Len(t, initialTargets.Items, c.MaxPageSize+1)
+	assert.Empty(t, cmp.Diff(returnedIds, targetIds, cmpopts.SortSlices(func(i, j string) bool { return i < j })))
 	// Note that none of these are returned to the CLI for now.
 	assert.Empty(t, initialTargets.ResponseType)
 	assert.Empty(t, initialTargets.RemovedIds)
@@ -134,20 +143,27 @@ func TestApiPaginateTargets(t *testing.T) {
 	// Create enough targets to overflow a single page.
 	targetPort, err := strconv.ParseInt(c.TargetPort, 10, 32)
 	require.NoError(t, err)
+	var targetIds []string
 	for i := 0; i < c.MaxPageSize+1; i++ {
-		_, err := tClient.Create(ctx, "tcp", newProjectId,
+		resp, err := tClient.Create(ctx, "tcp", newProjectId,
 			targets.WithName("test-target-"+strconv.Itoa(i)),
 			targets.WithTcpTargetDefaultPort(uint32(targetPort)),
 			targets.WithAddress(c.TargetAddress),
 		)
 		require.NoError(t, err)
+		targetIds = append(targetIds, resp.Item.Id)
 	}
 
 	// List targets recursively
 	initialTargets, err := tClient.List(ctx, newProjectId)
 	require.NoError(t, err)
+	var returnedIds []string
+	for _, item := range initialTargets.Items {
+		returnedIds = append(returnedIds, item.Id)
+	}
 
 	require.Len(t, initialTargets.Items, c.MaxPageSize+1)
+	assert.Empty(t, cmp.Diff(returnedIds, targetIds, cmpopts.SortSlices(func(i, j string) bool { return i < j })))
 	assert.Equal(t, "complete", initialTargets.ResponseType)
 	assert.Empty(t, initialTargets.RemovedIds)
 	assert.NotEmpty(t, initialTargets.ListToken)
