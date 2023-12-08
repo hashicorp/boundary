@@ -12,8 +12,8 @@ Boundary has a Go SDK that sports full coverage of Boundary's API. This SDK is m
 <Note>
 
 The Boundary API is configured with [rate limiting](/boundary/docs/api-clients/api#rate-limiting), by default.
-If Boundary is unable to process a request due to a rate limit being met, it sends the API a `429` or `523` [status code](/boundary/docs/api-clients/api#status-codes) and limits the request.
-The API will wait for the amount of time specified in the `Retry-After` header and then try again for a maximum of 2 retries.
+If the Boundary SDK client is unable to process a request due to a rate limit being met, it sends the API a `429` or `523` [status code](/boundary/docs/api-clients/api#status-codes) and limits the request.
+By default the client will wait for the amount of time specified in the `Retry-After` header and then try again for a maximum of 2 retries.
 
 </Note>
 
