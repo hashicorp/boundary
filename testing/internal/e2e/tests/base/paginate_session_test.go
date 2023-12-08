@@ -8,7 +8,9 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/hashicorp/boundary/api/scopes"
 	"github.com/hashicorp/boundary/api/sessions"
+	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/testing/internal/e2e"
 	"github.com/hashicorp/boundary/testing/internal/e2e/boundary"
 	"github.com/stretchr/testify/assert"
@@ -102,22 +104,30 @@ func TestApiPaginateSessions(t *testing.T) {
 	client, err := boundary.NewApiClient()
 	require.NoError(t, err)
 	ctx := context.Background()
-	sClient := sessions.NewClient(client)
 	newOrgId := boundary.CreateNewOrgApi(t, ctx, client)
+	sClient := sessions.NewClient(client)
+	tClient := targets.NewClient(client)
+	t.Cleanup(func() {
+		ctx := context.Background()
+		scopeClient := scopes.NewClient(client)
+		_, err := scopeClient.Delete(ctx, newOrgId)
+		require.NoError(t, err)
+	})
 
-	newProjectId := boundary.CreateNewProjectCli(t, ctx, newOrgId)
-	newHostCatalogId := boundary.CreateNewHostCatalogCli(t, ctx, newProjectId)
-	newHostSetId := boundary.CreateNewHostSetCli(t, ctx, newHostCatalogId)
-	newHostId := boundary.CreateNewHostCli(t, ctx, newHostCatalogId, c.TargetAddress)
-	boundary.AddHostToHostSetCli(t, ctx, newHostSetId, newHostId)
+	newProjectId := boundary.CreateNewProjectApi(t, ctx, client, newOrgId)
+	newHostCatalogId := boundary.CreateNewHostCatalogApi(t, ctx, client, newProjectId)
+	newHostSetId := boundary.CreateNewHostSetApi(t, ctx, client, newHostCatalogId)
+	newHostId := boundary.CreateNewHostApi(t, ctx, client, newHostCatalogId, c.TargetAddress)
+	boundary.AddHostToHostSetApi(t, ctx, client, newHostSetId, newHostId)
 	require.NoError(t, err)
-	newTargetId := boundary.CreateNewTargetCli(t, ctx, newProjectId, c.TargetPort)
-	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, newHostSetId)
+	newTargetId := boundary.CreateNewTargetApi(t, ctx, client, newProjectId, c.TargetPort)
+	boundary.AddHostSourceToTargetApi(t, ctx, client, newTargetId, newHostSetId)
 
 	// Connect to targets to create a session
 	// Create enough sessions to overflow a single page
 	for i := 0; i < c.MaxPageSize+1; i++ {
-		boundary.ConnectCli(t, ctx, newTargetId)
+		// boundary.ConnectCli(t, ctx, newTargetId)
+		tClient.AuthorizeSession(ctx, newTargetId)
 	}
 
 	// List sessions
