@@ -136,6 +136,7 @@ The `api_rate_limit` configuration stanza contains the following fields:
  For more information about how API rate limiting works, refer to the [API rate limiting](/boundary/docs/api-clients/api#rate-limiting) documentation.
 
 - `api_rate_limit_disable` - Disables API rate limiting, if set to `true`.
+If `api_rate_limit_disable` is set to `true`, and you have provided any `api_rate_limit` stanzas, you will receive an error.
 - `api_rate_limit_max_quotas` - Specifies the maximum number of API rate limiting quotas that Boundary allows.
 
 ## Signals
