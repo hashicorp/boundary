@@ -88,9 +88,12 @@ If your controllers try to process every API request, it can lead to situations 
 The controllers may either run out of resources or overwhelm the database server and exhaust its resources.
 API rate limiting lets you configure limits on the rate of API requests to help manage your resources and prevent them from being overwhelmed.
 
+### Quotas
+
 Boundary creates quotas to track the number of requests in a given time period.
 By default, Boundary tracks the number of requests by auth token, IP address, and the overall total.
 Boundary reserves a portion of its memory for tracking quotas to ensure that it does not consume too much memory if there is a sudden burst of requests.
+
 If Boundary is unable to store a quota, it limits the request with a 503 HTTP status code.
 You can configure the maximum number of quotas Boundary allows using the `api_rate_limit_max_quotas` variable.
 There are also two metrics that allow you to monitor quota tracking:
@@ -98,11 +101,25 @@ There are also two metrics that allow you to monitor quota tracking:
 - `boundary_controller_api_ratelimiter_quota_stroage_capacity`
 - `boundary_controller_api_ratelimiter_quota_storage_usage`
 
+### Default limits
+
 API rate limiting is enforced on the controllers.
 There are separate configurable limits for each combination of resource and action.
-By default, the `list` action has a limit of 120 requests per minute for all resources.
-All other actions have a default limit of 3,000 requests per minute for all resources.
+By default, the limits for `list` actions are:
+
+- 150 requests per 30 seconds per auth token
+- 1,500 requests per 30 seconds per IP address
+- 1,500 requests per 30 seconds in total
+
+The default limits for all other actions are:
+
+- 3,000 requests per 30 seconds per auth token
+- 30,000 requests per 30 seconds per IP address
+- 30,000 requests per 30 seconds in total
+
 You can override the default settings and configure other specific limitations using the `api_rate_limit` stanza in the controller configuration.
+
+### HTTP headers
 
 Clients that make requests to the controller API can inspect HTTP response headers to understand the configured limits and current usage.
 Each response contains the following headers:
@@ -112,6 +129,8 @@ Each response contains the following headers:
 
 If the request is limited, Boundary sends the client a 429 HTTP status code with a `Retry-After` header.
 The `Retry-After` header contains the number of seconds the client should wait before it sends the request again.
+
+### More information
 
 Refer to the [controller stanza](/boundary/docs/configuration/controller#api_rate_limit) documentation for the specific `api_rate_limit` configuration options.
 Some example configurations are listed below.
