@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/api/sessions"
-	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/testing/internal/e2e"
 	"github.com/hashicorp/boundary/testing/internal/e2e/boundary"
 	"github.com/stretchr/testify/assert"
@@ -17,7 +16,8 @@ import (
 )
 
 // TestCliPaginateSessions asserts that the CLI automatically paginates to retrieve
-// all sessions in a single invocation.
+// all sessions in a single invocation. Canceling sessions is flaky so checking for
+// canceled sessions is not included.
 func TestCliPaginateSessions(t *testing.T) {
 	e2e.MaybeSkipTest(t)
 	c, err := loadTestConfig()
@@ -32,45 +32,21 @@ func TestCliPaginateSessions(t *testing.T) {
 		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", newOrgId))
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
+
 	newProjectId := boundary.CreateNewProjectCli(t, ctx, newOrgId)
 	newHostCatalogId := boundary.CreateNewHostCatalogCli(t, ctx, newProjectId)
 	newHostSetId := boundary.CreateNewHostSetCli(t, ctx, newHostCatalogId)
 	newHostId := boundary.CreateNewHostCli(t, ctx, newHostCatalogId, c.TargetAddress)
 	boundary.AddHostToHostSetCli(t, ctx, newHostSetId, newHostId)
+	require.NoError(t, err)
 	newTargetId := boundary.CreateNewTargetCli(t, ctx, newProjectId, c.TargetPort)
 	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, newHostSetId)
 
 	// Connect to targets to create a session
 	// Create enough sessions to overflow a single page
-	ctxCancel, cancel := context.WithCancel(context.Background())
-	errChan := make(chan *e2e.CommandResult)
 	for i := 0; i < c.MaxPageSize+1; i++ {
-		go func() {
-			t.Log("Starting session...")
-			errChan <- e2e.RunCommand(ctxCancel, "boundary",
-				e2e.WithArgs(
-					"connect",
-					"-target-id", newTargetId,
-					"-exec", "/usr/bin/ssh", "--",
-					"-l", c.TargetSshUser,
-					"-i", c.TargetSshKeyPath,
-					"-o", "UserKnownHostsFile=/dev/null",
-					"-o", "StrictHostKeyChecking=no",
-					"-o", "IdentitiesOnly=yes", // forces the use of the provided key
-					"-p", "{{boundary.port}}", // this is provided by boundary
-					"{{boundary.ip}}",
-					"hostname -i; sleep 60",
-				),
-			)
-		}()
-
-		s := boundary.WaitForSessionCli(t, ctx, newProjectId)
-		boundary.WaitForSessionStatusCli(t, ctx, s.Id, session.StatusActive.String())
-		assert.Equal(t, newTargetId, s.TargetId)
-		assert.Equal(t, newHostId, s.HostId)
+		boundary.ConnectCli(t, ctx, newTargetId)
 	}
-
-	t.Cleanup(cancel)
 
 	// List sessions recursively
 	output := e2e.RunCommand(ctx, "boundary",
@@ -92,66 +68,90 @@ func TestCliPaginateSessions(t *testing.T) {
 	assert.Empty(t, initialSessions.RemovedIds)
 	assert.Empty(t, initialSessions.ListToken)
 
-	// Create a new session and destroy one of the other targets
-	go func() {
-		t.Log("Starting session...")
-		errChan <- e2e.RunCommand(ctxCancel, "boundary",
-			e2e.WithArgs(
-				"connect",
-				"-target-id", newTargetId,
-				"-exec", "/usr/bin/ssh", "--",
-				"-l", c.TargetSshUser,
-				"-i", c.TargetSshKeyPath,
-				"-o", "UserKnownHostsFile=/dev/null",
-				"-o", "StrictHostKeyChecking=no",
-				"-o", "IdentitiesOnly=yes", // forces the use of the provided key
-				"-p", "{{boundary.port}}", // this is provided by boundary
-				"{{boundary.ip}}",
-				"hostname -i; sleep 60",
-			),
-		)
-	}()
+	// Create a new session
+	boundary.ConnectCli(t, ctx, newTargetId)
 
-	newSession := boundary.WaitForSessionCli(t, ctx, newProjectId)
-	boundary.WaitForSessionStatusCli(t, ctx, newSession.Id, session.StatusActive.String())
-	assert.Equal(t, newTargetId, newSession.TargetId)
-	assert.Equal(t, newHostId, newSession.HostId)
-
-	// Cancel session
-	t.Log("Canceling session...")
+	// List again, should have the new session
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
-			"sessions", "cancel",
-			"-id", initialSessions.Items[0].Id,
-		),
-	)
-	require.NoError(t, output.Err, string(output.Stderr))
-
-	// List again, should have the new target but not the deleted target
-	output = e2e.RunCommand(ctx, "boundary",
-		e2e.WithArgs(
-			"targets", "list",
+			"sessions", "list",
 			"-scope-id", newProjectId,
 			"-format=json",
 		),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
-	boundary.WaitForSessionStatusCli(t, ctx, initialSessions.Items[0].Id, session.StatusTerminated.String())
 
 	var newSessions sessions.SessionListResult
 	err = json.Unmarshal(output.Stdout, &newSessions)
 	require.NoError(t, err)
 
-	require.Len(t, newSessions.Items, c.MaxPageSize+1)
-	// The first item should be the most recently created, which
-	// should be our new session
-	firstItem := newSessions.Items[0]
-	assert.Equal(t, newSession.Id, firstItem.Id)
+	require.Len(t, newSessions.Items, c.MaxPageSize+2)
 	assert.Empty(t, newSessions.ResponseType)
 	assert.Empty(t, newSessions.RemovedIds)
 	assert.Empty(t, newSessions.ListToken)
-	// Ensure the deleted session isn't returned
-	for _, session := range newSessions.Items {
-		assert.NotEqual(t, session.Id, initialSessions.Items[0].Id)
+}
+
+// TestApiPaginateSessions asserts that the API automatically paginates to retrieve
+// all sessions in a single invocation. Canceling sessions is flaky so checking for
+// canceled sessions is not included.
+func TestApiPaginateSessions(t *testing.T) {
+	e2e.MaybeSkipTest(t)
+	c, err := loadTestConfig()
+	require.NoError(t, err)
+
+	client, err := boundary.NewApiClient()
+	require.NoError(t, err)
+	ctx := context.Background()
+	sClient := sessions.NewClient(client)
+	newOrgId := boundary.CreateNewOrgApi(t, ctx, client)
+
+	newProjectId := boundary.CreateNewProjectCli(t, ctx, newOrgId)
+	newHostCatalogId := boundary.CreateNewHostCatalogCli(t, ctx, newProjectId)
+	newHostSetId := boundary.CreateNewHostSetCli(t, ctx, newHostCatalogId)
+	newHostId := boundary.CreateNewHostCli(t, ctx, newHostCatalogId, c.TargetAddress)
+	boundary.AddHostToHostSetCli(t, ctx, newHostSetId, newHostId)
+	require.NoError(t, err)
+	newTargetId := boundary.CreateNewTargetCli(t, ctx, newProjectId, c.TargetPort)
+	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, newHostSetId)
+
+	// Connect to targets to create a session
+	// Create enough sessions to overflow a single page
+	for i := 0; i < c.MaxPageSize+1; i++ {
+		boundary.ConnectCli(t, ctx, newTargetId)
 	}
+
+	// List sessions
+	initialSessions, err := sClient.List(ctx, newProjectId)
+	require.NoError(t, err)
+
+	require.Len(t, initialSessions.Items, c.MaxPageSize+1)
+	assert.Equal(t, "complete", initialSessions.ResponseType)
+	assert.Empty(t, initialSessions.RemovedIds)
+	assert.NotEmpty(t, initialSessions.ListToken)
+	mapItems, ok := initialSessions.GetResponse().Map["items"]
+	require.True(t, ok)
+	mapSliceItems, ok := mapItems.([]any)
+	require.True(t, ok)
+	assert.Len(t, mapSliceItems, c.MaxPageSize+1)
+
+	// Create a new session
+	boundary.ConnectCli(t, ctx, newTargetId)
+
+	// List again, should have the new session
+	newSessions, err := sClient.List(ctx, newProjectId, sessions.WithListToken(initialSessions.ListToken))
+	require.NoError(t, err)
+
+	// Note that this will likely contain all the sessions,
+	// since they were created very shortly before the listing,
+	// and we add a 30 second buffer to the lower bound of update
+	// times when listing.
+	require.GreaterOrEqual(t, len(newSessions.Items), 1)
+	assert.Equal(t, "complete", newSessions.ResponseType)
+	assert.NotEmpty(t, newSessions.ListToken)
+	// Check that the response map contains all entries
+	mapItems, ok = newSessions.GetResponse().Map["items"]
+	require.True(t, ok)
+	mapSliceItems, ok = mapItems.([]any)
+	require.True(t, ok)
+	assert.GreaterOrEqual(t, len(mapSliceItems), 1)
 }
