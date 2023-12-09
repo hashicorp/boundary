@@ -19,7 +19,7 @@ import (
 // Returns the id of the new credential store
 func CreateNewCredentialStoreStaticApi(t testing.TB, ctx context.Context, client *api.Client, projectId string) string {
 	csClient := credentialstores.NewClient(client)
-	newCredentialStoreResult, err := csClient.Create(ctx, "static", projectId, credentialstores.WithName("e2e Credential Store"))
+	newCredentialStoreResult, err := csClient.Create(ctx, "static", projectId)
 	require.NoError(t, err)
 	newCredentialStoreId := newCredentialStoreResult.Item.Id
 	t.Logf("Created Credential Store: %s", newCredentialStoreId)
