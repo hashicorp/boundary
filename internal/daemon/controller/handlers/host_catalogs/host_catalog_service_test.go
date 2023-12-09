@@ -163,7 +163,17 @@ func TestGet_Static(t *testing.T) {
 			if tc.res != nil {
 				tc.res.Item.Version = 1
 			}
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "GetHostCatalog(%q) got response %q, wanted %q", req, got, tc.res)
+			assert.Empty(cmp.Diff(
+				got,
+				tc.res,
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+				cmpopts.SortSlices(func(a, b protocmp.Message) bool {
+					return a.String() < b.String()
+				}),
+			), "GetHostCatalog(%q) got response %q, wanted %q", req, got, tc.res)
 		})
 	}
 }
@@ -279,7 +289,17 @@ func TestGet_Plugin(t *testing.T) {
 			if tc.res != nil {
 				tc.res.Item.Version = 1
 			}
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "GetHostCatalog(%q) got response %q, wanted %q", req, got, tc.res)
+			assert.Empty(cmp.Diff(
+				got,
+				tc.res,
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+				cmpopts.SortSlices(func(a, b protocmp.Message) bool {
+					return a.String() < b.String()
+				}),
+			), "GetHostCatalog(%q) got response %q, wanted %q", req, got, tc.res)
 		})
 	}
 }
@@ -473,7 +493,17 @@ func TestList(t *testing.T) {
 				return tc.res.Items[i].GetId() < tc.res.Items[j].GetId()
 			})
 
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListHostCatalogs() for scope %q got response %q, wanted %q", tc.req.GetScopeId(), got, tc.res)
+			assert.Empty(cmp.Diff(
+				got,
+				tc.res,
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+				cmpopts.SortSlices(func(a, b protocmp.Message) bool {
+					return a.String() < b.String()
+				}),
+			), "ListHostCatalogs() for scope %q got response %q, wanted %q", tc.req.GetScopeId(), got, tc.res)
 
 			// Test with anon user
 			got, gErr = s.ListHostCatalogs(auth.DisabledAuthTestContext(iamRepoFn, tc.req.GetScopeId(), auth.WithUserId(globals.AnonymousUserId)), tc.req)
@@ -817,7 +847,17 @@ func TestCreate_Static(t *testing.T) {
 			if tc.res != nil {
 				tc.res.Item.Version = 1
 			}
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "CreateHostCatalog(%q) got response %q, wanted %q", req, got, tc.res)
+			assert.Empty(cmp.Diff(
+				got,
+				tc.res,
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+				cmpopts.SortSlices(func(a, b protocmp.Message) bool {
+					return a.String() < b.String()
+				}),
+			), "CreateHostCatalog(%q) got response %q, wanted %q", req, got, tc.res)
 		})
 	}
 }
@@ -995,7 +1035,17 @@ func TestCreate_Plugin(t *testing.T) {
 			if tc.res != nil {
 				tc.res.Item.Version = 1
 			}
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "CreateHostCatalog(%q) got response %q, wanted %q", req, got, tc.res)
+			assert.Empty(cmp.Diff(
+				got,
+				tc.res,
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+				cmpopts.SortSlices(func(a, b protocmp.Message) bool {
+					return a.String() < b.String()
+				}),
+			), "CreateHostCatalog(%q) got response %q, wanted %q", req, got, tc.res)
 		})
 	}
 }
@@ -1364,7 +1414,17 @@ func TestUpdate_Static(t *testing.T) {
 			if tc.res != nil {
 				tc.res.Item.Version = version + 1
 			}
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "UpdateHostCatalog(%q) got response %q, wanted %q", req, got, tc.res)
+			assert.Empty(cmp.Diff(
+				got,
+				tc.res,
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+				cmpopts.SortSlices(func(a, b protocmp.Message) bool {
+					return a.String() < b.String()
+				}),
+			), "UpdateHostCatalog(%q) got response %q, wanted %q", req, got, tc.res)
 		})
 	}
 }
@@ -1481,7 +1541,20 @@ func TestUpdate_Plugin(t *testing.T) {
 			check: func(t *testing.T, in *pb.HostCatalog) {
 				assert.Equal(t, "new", in.Name.GetValue())
 				assert.Equal(t, "desc", in.Description.GetValue())
-				assert.Empty(t, cmp.Diff(authorizedCollectionActions[hostplugin.Subtype], in.GetAuthorizedCollectionActions(), cmpopts.IgnoreUnexported(structpb.ListValue{}, structpb.Value{})))
+				assert.Empty(t, cmp.Diff(
+					authorizedCollectionActions[hostplugin.Subtype],
+					in.GetAuthorizedCollectionActions(),
+					cmpopts.IgnoreUnexported(structpb.ListValue{}, structpb.Value{}),
+					cmpopts.SortSlices(func(a, b string) bool {
+						return a < b
+					}),
+					cmpopts.SortSlices(func(a, b protocmp.Message) bool {
+						return a.String() < b.String()
+					}),
+					cmpopts.SortSlices(func(a, b *structpb.Value) bool {
+						return a.String() < b.String()
+					}),
+				))
 			},
 		},
 		{

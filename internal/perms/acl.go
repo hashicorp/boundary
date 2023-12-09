@@ -316,7 +316,7 @@ func (a ACL) ListPermissions(requestedScopes map[string]*scopes.ScopeInfo,
 			if ok := grant.actions[action.All]; ok {
 				found = true
 			} else {
-				for _, a := range idActions {
+				for a := range idActions {
 					if ok := grant.actions[a]; ok {
 						found = true
 						break
@@ -328,10 +328,10 @@ func (a ACL) ListPermissions(requestedScopes map[string]*scopes.ScopeInfo,
 			}
 
 			actions, _ := grant.Actions()
-			excludeList := make(action.ActionSet, 0, len(actions))
+			excludeList := make(action.ActionSet, len(actions))
 			for _, aa := range actions {
 				if aa != action.List {
-					excludeList = append(excludeList, aa)
+					excludeList.Add(aa)
 				}
 			}
 			p.OnlySelf = p.OnlySelf && excludeList.OnlySelf()

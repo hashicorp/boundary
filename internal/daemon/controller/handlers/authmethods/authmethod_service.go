@@ -64,14 +64,15 @@ const (
 var (
 	// IdActions contains the set of actions that can be performed on
 	// individual resources
+	// This will be set in init functions in files for each subtype in this package.
 	IdActions = make(map[globals.Subtype]action.ActionSet)
 
 	// CollectionActions contains the set of actions that can be performed on
 	// this collection
-	CollectionActions = action.ActionSet{
+	CollectionActions = action.NewActionSet(
 		action.Create,
 		action.List,
-	}
+	)
 
 	collectionTypeMap = map[resource.Type]action.ActionSet{
 		resource.Account:      accounts.CollectionActions,
@@ -1033,10 +1034,16 @@ func validateCreateRequest(ctx context.Context, req *pbs.CreateAuthMethodRequest
 					}
 				}
 				if len(attrs.GetPrompts()) > 0 {
-					for _, p := range attrs.GetPrompts() {
-						if !oidc.SupportedPrompt(oidc.PromptParam(p)) {
-							badFields[promptsField] = fmt.Sprintf("Contains unsupported prompt %q", p)
-							break
+					prompts := strutil.RemoveDuplicatesStable(attrs.GetPrompts(), false)
+
+					if strutil.StrListContains(prompts, string(oidc.None)) && len(prompts) > 1 {
+						badFields[promptsField] = fmt.Sprintf(`prompts (%s) includes "none" with other values`, prompts)
+					} else {
+						for _, p := range attrs.GetPrompts() {
+							if !oidc.SupportedPrompt(oidc.PromptParam(p)) {
+								badFields[promptsField] = fmt.Sprintf("Contains unsupported prompt %q", p)
+								break
+							}
 						}
 					}
 				}
@@ -1169,10 +1176,16 @@ func validateUpdateRequest(ctx context.Context, req *pbs.UpdateAuthMethodRequest
 					}
 				}
 				if len(attrs.GetPrompts()) > 0 {
-					for _, p := range attrs.GetPrompts() {
-						if !oidc.SupportedPrompt(oidc.PromptParam(p)) {
-							badFields[promptsField] = fmt.Sprintf("Contains unsupported prompt %q", p)
-							break
+					prompts := strutil.RemoveDuplicatesStable(attrs.GetPrompts(), false)
+
+					if strutil.StrListContains(prompts, string(oidc.None)) && len(prompts) > 1 {
+						badFields[promptsField] = fmt.Sprintf(`prompts (%s) includes "none" with other values`, prompts)
+					} else {
+						for _, p := range attrs.GetPrompts() {
+							if !oidc.SupportedPrompt(oidc.PromptParam(p)) {
+								badFields[promptsField] = fmt.Sprintf("Contains unsupported prompt %q", p)
+								break
+							}
 						}
 					}
 				}

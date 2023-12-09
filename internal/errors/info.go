@@ -343,4 +343,8 @@ var errorCodeInfo = map[Code]Info{
 		Message: "checksum mismatch",
 		Kind:    Integrity,
 	},
+	InvalidConfiguration: {
+		Message: "invalid configuration",
+		Kind:    Configuration,
+	},
 }

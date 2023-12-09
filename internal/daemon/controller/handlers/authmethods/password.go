@@ -36,13 +36,13 @@ func init() {
 		panic(err)
 	}
 
-	IdActions[password.Subtype] = action.ActionSet{
+	IdActions[password.Subtype] = action.NewActionSet(
 		action.NoOp,
 		action.Read,
 		action.Update,
 		action.Delete,
 		action.Authenticate,
-	}
+	)
 }
 
 // createPwInRepo creates a password auth method in a repo and returns the result.

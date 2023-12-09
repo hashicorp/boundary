@@ -67,13 +67,13 @@ func TestFetchActionSetForId(t *testing.T) {
 		{
 			name:  "no match",
 			id:    "zip",
-			avail: action.ActionSet{action.Read, action.Update},
+			avail: action.NewActionSet(action.Read, action.Update),
 		},
 		{
 			name:    "disjoint match",
 			id:      "ttcp_bar",
-			avail:   action.ActionSet{action.Delete, action.AddGrants, action.Read, action.RemoveHostSets},
-			allowed: action.ActionSet{action.Delete, action.Read},
+			avail:   action.NewActionSet(action.Delete, action.AddGrants, action.Read, action.RemoveHostSets),
+			allowed: action.NewActionSet(action.Delete, action.Read),
 		},
 		{
 			name:         "different type",
@@ -84,8 +84,8 @@ func TestFetchActionSetForId(t *testing.T) {
 			name:         "type match",
 			id:           "anything",
 			typeOverride: resource.Role,
-			avail:        action.ActionSet{action.Read, action.AddGrants},
-			allowed:      action.ActionSet{action.AddGrants},
+			avail:        action.NewActionSet(action.Read, action.AddGrants),
+			allowed:      action.NewActionSet(action.AddGrants),
 		},
 	}
 	for _, tt := range cases {
