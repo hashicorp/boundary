@@ -411,9 +411,9 @@ func TestCode_Both_String_Info(t *testing.T) {
 			want: ChecksumMismatch,
 		},
 		{
-			name: "InvalidRefreshToken",
-			c:    InvalidRefreshToken,
-			want: InvalidRefreshToken,
+			name: "InvalidListToken",
+			c:    InvalidListToken,
+			want: InvalidListToken,
 		},
 	}
 	for _, tt := range tests {
