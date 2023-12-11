@@ -940,11 +940,13 @@ func TestFullFetch(t *testing.T) {
 
 func target(suffix string) *targets.Target {
 	return &targets.Target{
-		Id:          fmt.Sprintf("target_%s", suffix),
-		Name:        fmt.Sprintf("name_%s", suffix),
-		Description: fmt.Sprintf("description_%s", suffix),
-		Address:     fmt.Sprintf("address_%s", suffix),
-		Type:        "tcp",
+		Id:                fmt.Sprintf("target_%s", suffix),
+		Name:              fmt.Sprintf("name_%s", suffix),
+		Description:       fmt.Sprintf("description_%s", suffix),
+		Address:           fmt.Sprintf("address_%s", suffix),
+		ScopeId:           fmt.Sprintf("p_%s", suffix),
+		Type:              "tcp",
+		SessionMaxSeconds: 1234,
 	}
 }
 
