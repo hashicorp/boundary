@@ -4,5 +4,5 @@
 
 # release configuration
 
-/.release/                              @hashicorp/release-engineering @hashicorp/github-secure-boundary
-/.github/workflows/build.yml            @hashicorp/release-engineering @hashicorp/github-secure-boundary
+/.release/                               @hashicorp/github-secure-boundary
+/.github/workflows/build.yml             @hashicorp/github-secure-boundary
