@@ -220,14 +220,14 @@ func TestApiErrorHandler(t *testing.T) {
 			},
 		},
 		{
-			name: "Invalid refresh token error",
-			err:  errors.New(ctx, errors.InvalidRefreshToken, errors.Op("test.op"), "this is a test invalid refresh token error"),
+			name: "Invalid list token error",
+			err:  errors.New(ctx, errors.InvalidListToken, errors.Op("test.op"), "this is a test invalid list token error"),
 			expected: ApiError{
 				Status: http.StatusBadRequest,
 				Inner: &pb.Error{
-					Kind:    "invalid refresh token",
+					Kind:    "invalid list token",
 					Op:      "test.op",
-					Message: "this is a test invalid refresh token error",
+					Message: "this is a test invalid list token error",
 				},
 			},
 		},

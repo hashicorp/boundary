@@ -347,8 +347,8 @@ var errorCodeInfo = map[Code]Info{
 		Message: "invalid configuration",
 		Kind:    Configuration,
 	},
-	InvalidRefreshToken: {
-		Message: "invalid refresh token",
+	InvalidListToken: {
+		Message: "invalid list token",
 		Kind:    Parameter,
 	},
 }

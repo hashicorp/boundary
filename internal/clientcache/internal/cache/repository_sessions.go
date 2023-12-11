@@ -35,7 +35,7 @@ func defaultSessionFunc(ctx context.Context, addr, authTok string, refreshTok Re
 	sClient := sessions.NewClient(client)
 	l, err := sClient.List(ctx, "global", sessions.WithIncludeTerminated(true), sessions.WithRecursive(true), sessions.WithListToken(string(refreshTok)))
 	if err != nil {
-		if api.ErrInvalidRefreshToken.Is(err) {
+		if api.ErrInvalidListToken.Is(err) {
 			return nil, nil, "", err
 		}
 		return nil, nil, "", errors.Wrap(ctx, err, op)
@@ -82,7 +82,7 @@ func (r *Repository) refreshSessions(ctx context.Context, u *user, tokens map[Au
 	var retErr error
 	for at, t := range tokens {
 		resp, removedIds, newRefreshToken, err = opts.withSessionRetrievalFunc(ctx, u.Address, t, oldRefreshTokenVal)
-		if api.ErrInvalidRefreshToken.Is(err) {
+		if api.ErrInvalidListToken.Is(err) {
 			if err := r.deleteRefreshToken(ctx, u, resourceType); err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
