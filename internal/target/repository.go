@@ -306,23 +306,34 @@ func (r *Repository) listPermissionWhereClauses() ([]string, []any) {
 	var where []string
 	var args []any
 
+	var projWithAllIds []string
+
 	inClauseCnt := 0
 	for _, p := range r.permissions {
 		if p.Action != action.List {
 			continue
 		}
-		inClauseCnt++
 
-		var clauses []string
-		clauses = append(clauses, fmt.Sprintf("project_id = @project_id_%d", inClauseCnt))
-		args = append(args, sql.Named(fmt.Sprintf("project_id_%d", inClauseCnt), p.ScopeId))
+		switch {
+		case len(p.ResourceIds) > 0:
+			inClauseCnt++
 
-		if len(p.ResourceIds) > 0 {
+			var clauses []string
+			clauses = append(clauses, fmt.Sprintf("project_id = @project_id_%d", inClauseCnt))
+			args = append(args, sql.Named(fmt.Sprintf("project_id_%d", inClauseCnt), p.ScopeId))
+
 			clauses = append(clauses, fmt.Sprintf("public_id = any(@public_id_%d)", inClauseCnt))
 			args = append(args, sql.Named(fmt.Sprintf("public_id_%d", inClauseCnt), "{"+strings.Join(p.ResourceIds, ",")+"}"))
-		}
 
-		where = append(where, fmt.Sprintf("(%s)", strings.Join(clauses, " and ")))
+			where = append(where, fmt.Sprintf("(%s)", strings.Join(clauses, " and ")))
+		default:
+			projWithAllIds = append(projWithAllIds, p.ScopeId)
+		}
+	}
+
+	if len(projWithAllIds) > 0 {
+		where = append(where, "(public_id = any(@project_id_all)")
+		args = append(args, sql.Named("project_id_all", "{"+strings.Join(projWithAllIds, ",")+"}"))
 	}
 
 	return where, args
