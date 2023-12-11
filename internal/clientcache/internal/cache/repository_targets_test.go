@@ -234,8 +234,6 @@ func TestRepository_RefreshTargets_withRefreshTokens(t *testing.T) {
 		},
 	}
 
-	assert.Fail(t, "add a test for when the controller returns an invalid list token error")
-
 	require.NoError(t, r.refreshTargets(ctx, &u, map[AuthToken]string{{Id: "id"}: "something"},
 		WithTargetRetrievalFunc(testStaticResourceRetrievalFunc(t, ts, [][]string{nil, nil}))))
 
