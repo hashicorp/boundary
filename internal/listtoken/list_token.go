@@ -353,58 +353,58 @@ func (tk *Token) Validate(
 	const op = "listtoken.Validate"
 	switch {
 	case tk == nil:
-		return errors.New(ctx, errors.InvalidParameter, op, "list token was missing")
+		return errors.New(ctx, errors.InvalidListToken, op, "list token was missing")
 	case len(tk.GrantsHash) == 0:
-		return errors.New(ctx, errors.InvalidParameter, op, "list token was missing its grants hash")
+		return errors.New(ctx, errors.InvalidListToken, op, "list token was missing its grants hash")
 	case !bytes.Equal(tk.GrantsHash, expectedGrantsHash):
-		return errors.New(ctx, errors.InvalidParameter, op, "grants have changed since list token was issued")
+		return errors.New(ctx, errors.InvalidListToken, op, "grants have changed since list token was issued")
 	case tk.CreateTime.After(time.Now()):
-		return errors.New(ctx, errors.InvalidParameter, op, "list token was created in the future")
+		return errors.New(ctx, errors.InvalidListToken, op, "list token was created in the future")
 		// Tokens older than 30 days have expired
 	case tk.CreateTime.Before(time.Now().AddDate(0, 0, -30)):
-		return errors.New(ctx, errors.InvalidParameter, op, "list token was expired")
+		return errors.New(ctx, errors.InvalidListToken, op, "list token was expired")
 	case tk.ResourceType != expectedResourceType:
-		return errors.New(ctx, errors.InvalidParameter, op, "list token resource type does not match expected resource type")
+		return errors.New(ctx, errors.InvalidListToken, op, "list token resource type does not match expected resource type")
 	}
 	switch st := tk.Subtype.(type) {
 	case *RefreshToken:
 		switch {
 		case st.PhaseUpperBound.Before(tk.CreateTime):
-			return errors.New(ctx, errors.InvalidParameter, op, "list token's refresh component's phase upper bound was before its creation time")
+			return errors.New(ctx, errors.InvalidListToken, op, "list token's refresh component's phase upper bound was before its creation time")
 		case st.PhaseUpperBound.After(time.Now()):
-			return errors.New(ctx, errors.InvalidParameter, op, "list token's refresh component's phase upper bound was in the future")
+			return errors.New(ctx, errors.InvalidListToken, op, "list token's refresh component's phase upper bound was in the future")
 		case st.PhaseLowerBound.Before(tk.CreateTime):
-			return errors.New(ctx, errors.InvalidParameter, op, "list token's refresh component's phase lower bound was before its creation time")
+			return errors.New(ctx, errors.InvalidListToken, op, "list token's refresh component's phase lower bound was before its creation time")
 		case st.PhaseLowerBound.After(time.Now()):
-			return errors.New(ctx, errors.InvalidParameter, op, "list token's refresh component's phase lower bound was in the future")
+			return errors.New(ctx, errors.InvalidListToken, op, "list token's refresh component's phase lower bound was in the future")
 		case st.PhaseUpperBound.Before(st.PhaseLowerBound):
-			return errors.New(ctx, errors.InvalidParameter, op, "list token's refresh component's phase upper bound was before the phase lower bound")
+			return errors.New(ctx, errors.InvalidListToken, op, "list token's refresh component's phase upper bound was before the phase lower bound")
 		case st.PreviousDeletedIdsTime.Before(tk.CreateTime):
-			return errors.New(ctx, errors.InvalidParameter, op, "list token's refresh component previous deleted ids time was before its creation time")
+			return errors.New(ctx, errors.InvalidListToken, op, "list token's refresh component previous deleted ids time was before its creation time")
 		case st.PreviousDeletedIdsTime.After(time.Now()):
-			return errors.New(ctx, errors.InvalidParameter, op, "list token's refresh component previous deleted ids time was in the future")
+			return errors.New(ctx, errors.InvalidListToken, op, "list token's refresh component previous deleted ids time was in the future")
 		case st.LastItemId == "":
-			return errors.New(ctx, errors.InvalidParameter, op, "list token's refresh component missing last item ID")
+			return errors.New(ctx, errors.InvalidListToken, op, "list token's refresh component missing last item ID")
 		case st.LastItemUpdateTime.After(time.Now()):
-			return errors.New(ctx, errors.InvalidParameter, op, "list token's refresh component's last item was updated in the future")
+			return errors.New(ctx, errors.InvalidListToken, op, "list token's refresh component's last item was updated in the future")
 		}
 	case *PaginationToken:
 		switch {
 		case st.LastItemId == "":
-			return errors.New(ctx, errors.InvalidParameter, op, "list tokens's pagination component missing last item ID")
+			return errors.New(ctx, errors.InvalidListToken, op, "list tokens's pagination component missing last item ID")
 		case st.LastItemCreateTime.After(time.Now()):
-			return errors.New(ctx, errors.InvalidParameter, op, "list token's pagination component's last item was created in the future")
+			return errors.New(ctx, errors.InvalidListToken, op, "list token's pagination component's last item was created in the future")
 		}
 	case *StartRefreshToken:
 		switch {
 		case st.PreviousPhaseUpperBound.Before(tk.CreateTime):
-			return errors.New(ctx, errors.InvalidParameter, op, "list token's start refresh component's previous phase upper bound was before its creation time")
+			return errors.New(ctx, errors.InvalidListToken, op, "list token's start refresh component's previous phase upper bound was before its creation time")
 		case st.PreviousPhaseUpperBound.After(time.Now()):
-			return errors.New(ctx, errors.InvalidParameter, op, "list token's start refresh component's previous phase upper bound was in the future")
+			return errors.New(ctx, errors.InvalidListToken, op, "list token's start refresh component's previous phase upper bound was in the future")
 		case st.PreviousDeletedIdsTime.Before(tk.CreateTime):
-			return errors.New(ctx, errors.InvalidParameter, op, "list token's start refresh component previous deleted ids time was before its creation time")
+			return errors.New(ctx, errors.InvalidListToken, op, "list token's start refresh component previous deleted ids time was before its creation time")
 		case st.PreviousDeletedIdsTime.After(time.Now()):
-			return errors.New(ctx, errors.InvalidParameter, op, "list token's start refresh component previous deleted ids time was in the future")
+			return errors.New(ctx, errors.InvalidListToken, op, "list token's start refresh component previous deleted ids time was in the future")
 		}
 	}
 

@@ -153,13 +153,13 @@ func InvalidArgumentErrorf(msg string, fields map[string]string) *ApiError {
 	return apiErr
 }
 
-func invalidRefreshTokenError(err error) *ApiError {
-	const op = "handlers.invalidRefreshTokenError"
+func invalidListTokenError(err error) *ApiError {
+	const op = "handlers.invalidListTokenError"
 	ctx := context.TODO()
 
 	var domainErr *errors.Err
 	if !errors.As(err, &domainErr) {
-		event.WriteError(ctx, op, err, event.WithInfoMsg("Unable to build invalid argument api error."))
+		event.WriteError(ctx, op, err, event.WithInfoMsg("Unable to build invalid list token api error."))
 	}
 
 	return &ApiError{
@@ -219,7 +219,7 @@ func backendErrorToApiError(inErr error) *ApiError {
 	case errors.Match(errors.T(errors.AccountAlreadyAssociated), inErr):
 		return InvalidArgumentErrorf(inErr.Error(), nil)
 	case errors.Match(errors.T(errors.InvalidListToken), inErr):
-		return invalidRefreshTokenError(inErr)
+		return invalidListTokenError(inErr)
 	case errors.Match(errors.T(errors.InvalidFieldMask), inErr), errors.Match(errors.T(errors.EmptyFieldMask), inErr):
 		return InvalidArgumentErrorf("Error in provided request", map[string]string{"update_mask": "Invalid update mask provided."})
 	case errors.IsUniqueError(inErr):
