@@ -164,7 +164,7 @@ func TestSearch(t *testing.T) {
 		assert.NotNil(t, resp)
 		assert.Nil(t, r)
 
-		assert.Contains(t, apiErr.Message, "does not support search")
+		assert.Contains(t, apiErr.Message, "doesn't support search")
 	})
 
 	srv.AddResources(t, at, []*targets.Target{
