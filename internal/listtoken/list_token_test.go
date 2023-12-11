@@ -437,7 +437,7 @@ func Test_ValidateListToken(t *testing.T) {
 			grantsHash:    []byte("some hash"),
 			resourceType:  resource.Target,
 			wantErrString: "list token was missing",
-			wantErrCode:   errors.InvalidParameter,
+			wantErrCode:   errors.InvalidListToken,
 		},
 		{
 			name: "no grants hash",
@@ -449,7 +449,7 @@ func Test_ValidateListToken(t *testing.T) {
 			grantsHash:    []byte("some hash"),
 			resourceType:  resource.Target,
 			wantErrString: "list token was missing its grants hash",
-			wantErrCode:   errors.InvalidParameter,
+			wantErrCode:   errors.InvalidListToken,
 		},
 		{
 			name: "changed grants hash",
@@ -461,7 +461,7 @@ func Test_ValidateListToken(t *testing.T) {
 			grantsHash:    []byte("some other hash"),
 			resourceType:  resource.Target,
 			wantErrString: "grants have changed since list token was issued",
-			wantErrCode:   errors.InvalidParameter,
+			wantErrCode:   errors.InvalidListToken,
 		},
 		{
 			name: "created in the future",
@@ -473,7 +473,7 @@ func Test_ValidateListToken(t *testing.T) {
 			grantsHash:    []byte("some hash"),
 			resourceType:  resource.Target,
 			wantErrString: "list token was created in the future",
-			wantErrCode:   errors.InvalidParameter,
+			wantErrCode:   errors.InvalidListToken,
 		},
 		{
 			name: "expired",
@@ -485,7 +485,7 @@ func Test_ValidateListToken(t *testing.T) {
 			grantsHash:    []byte("some hash"),
 			resourceType:  resource.Target,
 			wantErrString: "list token was expired",
-			wantErrCode:   errors.InvalidParameter,
+			wantErrCode:   errors.InvalidListToken,
 		},
 		{
 			name: "resource type mismatch",
@@ -497,7 +497,7 @@ func Test_ValidateListToken(t *testing.T) {
 			grantsHash:    []byte("some hash"),
 			resourceType:  resource.SessionRecording,
 			wantErrString: "list token resource type does not match expected resource type",
-			wantErrCode:   errors.InvalidParameter,
+			wantErrCode:   errors.InvalidListToken,
 		},
 	}
 	for _, tt := range tests {
@@ -554,7 +554,7 @@ func Test_ValidatePaginationToken(t *testing.T) {
 			grantsHash:    []byte("some hash"),
 			resourceType:  resource.Target,
 			wantErrString: "list tokens's pagination component missing last item ID",
-			wantErrCode:   errors.InvalidParameter,
+			wantErrCode:   errors.InvalidListToken,
 		},
 		{
 			name: "updated in the future",
@@ -570,7 +570,7 @@ func Test_ValidatePaginationToken(t *testing.T) {
 			grantsHash:    []byte("some hash"),
 			resourceType:  resource.Target,
 			wantErrString: "list token's pagination component's last item was created in the future",
-			wantErrCode:   errors.InvalidParameter,
+			wantErrCode:   errors.InvalidListToken,
 		},
 	}
 	for _, tt := range tests {
@@ -627,7 +627,7 @@ func Test_ValidateStartRefreshToken(t *testing.T) {
 			grantsHash:    []byte("some hash"),
 			resourceType:  resource.Target,
 			wantErrString: "list token's start refresh component's previous phase upper bound was before its creation time",
-			wantErrCode:   errors.InvalidParameter,
+			wantErrCode:   errors.InvalidListToken,
 		},
 		{
 			name: "previous phase upper bound in future",
@@ -643,7 +643,7 @@ func Test_ValidateStartRefreshToken(t *testing.T) {
 			grantsHash:    []byte("some hash"),
 			resourceType:  resource.Target,
 			wantErrString: "list token's start refresh component's previous phase upper bound was in the future",
-			wantErrCode:   errors.InvalidParameter,
+			wantErrCode:   errors.InvalidListToken,
 		},
 		{
 			name: "previous deleted ids time before create time",
@@ -659,7 +659,7 @@ func Test_ValidateStartRefreshToken(t *testing.T) {
 			grantsHash:    []byte("some hash"),
 			resourceType:  resource.Target,
 			wantErrString: "list token's start refresh component previous deleted ids time was before its creation time",
-			wantErrCode:   errors.InvalidParameter,
+			wantErrCode:   errors.InvalidListToken,
 		},
 		{
 			name: "previous deleted ids time in future",
@@ -675,7 +675,7 @@ func Test_ValidateStartRefreshToken(t *testing.T) {
 			grantsHash:    []byte("some hash"),
 			resourceType:  resource.Target,
 			wantErrString: "list token's start refresh component previous deleted ids time was in the future",
-			wantErrCode:   errors.InvalidParameter,
+			wantErrCode:   errors.InvalidListToken,
 		},
 	}
 	for _, tt := range tests {
@@ -738,7 +738,7 @@ func Test_ValidateRefreshToken(t *testing.T) {
 			grantsHash:    []byte("some hash"),
 			resourceType:  resource.Target,
 			wantErrString: "list token's refresh component's phase upper bound was before its creation time",
-			wantErrCode:   errors.InvalidParameter,
+			wantErrCode:   errors.InvalidListToken,
 		},
 		{
 			name: "phase upper bound before phase lower bound",
@@ -757,7 +757,7 @@ func Test_ValidateRefreshToken(t *testing.T) {
 			grantsHash:    []byte("some hash"),
 			resourceType:  resource.Target,
 			wantErrString: "list token's refresh component's phase upper bound was before the phase lower bound",
-			wantErrCode:   errors.InvalidParameter,
+			wantErrCode:   errors.InvalidListToken,
 		},
 		{
 			name: "phase upper bound in future",
@@ -776,7 +776,7 @@ func Test_ValidateRefreshToken(t *testing.T) {
 			grantsHash:    []byte("some hash"),
 			resourceType:  resource.Target,
 			wantErrString: "list token's refresh component's phase upper bound was in the future",
-			wantErrCode:   errors.InvalidParameter,
+			wantErrCode:   errors.InvalidListToken,
 		},
 		{
 			name: "phase lower bound before create time",
@@ -795,7 +795,7 @@ func Test_ValidateRefreshToken(t *testing.T) {
 			grantsHash:    []byte("some hash"),
 			resourceType:  resource.Target,
 			wantErrString: "list token's refresh component's phase lower bound was before its creation time",
-			wantErrCode:   errors.InvalidParameter,
+			wantErrCode:   errors.InvalidListToken,
 		},
 		{
 			name: "phase lower bound in future",
@@ -814,7 +814,7 @@ func Test_ValidateRefreshToken(t *testing.T) {
 			grantsHash:    []byte("some hash"),
 			resourceType:  resource.Target,
 			wantErrString: "list token's refresh component's phase lower bound was in the future",
-			wantErrCode:   errors.InvalidParameter,
+			wantErrCode:   errors.InvalidListToken,
 		},
 		{
 			name: "previous deleted ids time before create time",
@@ -833,7 +833,7 @@ func Test_ValidateRefreshToken(t *testing.T) {
 			grantsHash:    []byte("some hash"),
 			resourceType:  resource.Target,
 			wantErrString: "list token's refresh component previous deleted ids time was before its creation time",
-			wantErrCode:   errors.InvalidParameter,
+			wantErrCode:   errors.InvalidListToken,
 		},
 		{
 			name: "previous deleted ids time in future",
@@ -852,7 +852,7 @@ func Test_ValidateRefreshToken(t *testing.T) {
 			grantsHash:    []byte("some hash"),
 			resourceType:  resource.Target,
 			wantErrString: "list token's refresh component previous deleted ids time was in the future",
-			wantErrCode:   errors.InvalidParameter,
+			wantErrCode:   errors.InvalidListToken,
 		},
 		{
 			name: "emtpy last item id",
@@ -871,7 +871,7 @@ func Test_ValidateRefreshToken(t *testing.T) {
 			grantsHash:    []byte("some hash"),
 			resourceType:  resource.Target,
 			wantErrString: "list token's refresh component missing last item ID",
-			wantErrCode:   errors.InvalidParameter,
+			wantErrCode:   errors.InvalidListToken,
 		},
 		{
 			name: "last item update in future",
@@ -890,7 +890,7 @@ func Test_ValidateRefreshToken(t *testing.T) {
 			grantsHash:    []byte("some hash"),
 			resourceType:  resource.Target,
 			wantErrString: "list token's refresh component's last item was updated in the future",
-			wantErrCode:   errors.InvalidParameter,
+			wantErrCode:   errors.InvalidListToken,
 		},
 	}
 	for _, tt := range tests {
