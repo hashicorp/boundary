@@ -66,7 +66,7 @@ func testFullFetchRetrievalFunc[T any](t *testing.T, ret []T) func(context.Conte
 func testErroringForRefreshTokenRetrievalFunc[T any](t *testing.T, ret []T) func(context.Context, string, string, RefreshTokenValue) ([]T, []string, RefreshTokenValue, error) {
 	return func(ctx context.Context, s1, s2 string, refToken RefreshTokenValue) ([]T, []string, RefreshTokenValue, error) {
 		if refToken != "" {
-			return nil, nil, "", api.ErrInvalidRefreshToken
+			return nil, nil, "", api.ErrInvalidListToken
 		}
 		return ret, nil, "1", nil
 	}
