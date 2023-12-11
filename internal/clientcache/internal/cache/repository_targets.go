@@ -35,7 +35,7 @@ func defaultTargetFunc(ctx context.Context, addr, authTok string, refreshTok Ref
 	tarClient := targets.NewClient(client)
 	l, err := tarClient.List(ctx, "global", targets.WithRecursive(true), targets.WithListToken(string(refreshTok)))
 	if err != nil {
-		if api.ErrInvalidRefreshToken.Is(err) {
+		if api.ErrInvalidListToken.Is(err) {
 			return nil, nil, "", err
 		}
 		return nil, nil, "", errors.Wrap(ctx, err, op)
@@ -81,7 +81,7 @@ func (r *Repository) refreshTargets(ctx context.Context, u *user, tokens map[Aut
 	var retErr error
 	for at, t := range tokens {
 		resp, removedIds, newRefreshTokenVal, err = opts.withTargetRetrievalFunc(ctx, u.Address, t, oldRefreshTokenVal)
-		if api.ErrInvalidRefreshToken.Is(err) {
+		if api.ErrInvalidListToken.Is(err) {
 			if err := r.deleteRefreshToken(ctx, u, resourceType); err != nil {
 				return errors.Wrap(ctx, err, op)
 			}

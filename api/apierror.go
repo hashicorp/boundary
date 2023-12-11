@@ -11,11 +11,11 @@ import (
 )
 
 var (
-	ErrNotFound            = &Error{Kind: codes.NotFound.String(), response: &Response{resp: &http.Response{StatusCode: http.StatusNotFound}}}
-	ErrInvalidArgument     = &Error{Kind: codes.InvalidArgument.String(), response: &Response{resp: &http.Response{StatusCode: http.StatusBadRequest}}}
-	ErrPermissionDenied    = &Error{Kind: codes.PermissionDenied.String(), response: &Response{resp: &http.Response{StatusCode: http.StatusForbidden}}}
-	ErrUnauthorized        = &Error{Kind: codes.Unauthenticated.String(), response: &Response{resp: &http.Response{StatusCode: http.StatusUnauthorized}}}
-	ErrInvalidRefreshToken = &Error{Kind: "invalid refresh token", response: &Response{resp: &http.Response{StatusCode: http.StatusBadRequest}}}
+	ErrNotFound         = &Error{Kind: codes.NotFound.String(), response: &Response{resp: &http.Response{StatusCode: http.StatusNotFound}}}
+	ErrInvalidArgument  = &Error{Kind: codes.InvalidArgument.String(), response: &Response{resp: &http.Response{StatusCode: http.StatusBadRequest}}}
+	ErrPermissionDenied = &Error{Kind: codes.PermissionDenied.String(), response: &Response{resp: &http.Response{StatusCode: http.StatusForbidden}}}
+	ErrUnauthorized     = &Error{Kind: codes.Unauthenticated.String(), response: &Response{resp: &http.Response{StatusCode: http.StatusUnauthorized}}}
+	ErrInvalidListToken = &Error{Kind: "invalid list token", response: &Response{resp: &http.Response{StatusCode: http.StatusBadRequest}}}
 )
 
 // AsServerError returns an api *Error from the provided error.  If the provided error
