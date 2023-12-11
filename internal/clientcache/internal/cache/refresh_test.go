@@ -944,7 +944,9 @@ func target(suffix string) *targets.Target {
 		Name:        fmt.Sprintf("name_%s", suffix),
 		Description: fmt.Sprintf("description_%s", suffix),
 		Address:     fmt.Sprintf("address_%s", suffix),
+		ScopeId: fmt.Sprintf("p_%s", suffix),
 		Type:        "tcp",
+		SessionMaxSeconds: 1234,
 	}
 }
 

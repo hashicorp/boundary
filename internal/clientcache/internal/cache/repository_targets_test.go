@@ -8,6 +8,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/authtokens"
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/globals"
@@ -137,6 +138,66 @@ func TestRepository_refreshTargets(t *testing.T) {
 	}
 }
 
+func TestRepository_RefreshTargets_InvalidListTokenError(t *testing.T) {
+	ctx := context.Background()
+	s, err := cachedb.Open(ctx)
+	require.NoError(t, err)
+
+	addr := "address"
+	u := user{
+		Id:      "u1",
+		Address: addr,
+	}
+	at := &authtokens.AuthToken{
+		Id:     "at_1",
+		Token:  "at_1_token",
+		UserId: u.Id,
+	}
+	kt := KeyringToken{
+		KeyringType: "keyring",
+		TokenName:   "token",
+		AuthTokenId: at.Id,
+	}
+	atMap := map[ringToken]*authtokens.AuthToken{
+		{kt.KeyringType, kt.TokenName}: at,
+	}
+	r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(maps.Values(atMap)))
+	require.NoError(t, err)
+	require.NoError(t, r.AddKeyringToken(ctx, addr, kt))
+
+	ts := [][]*targets.Target{
+		{
+			target("1"),
+			target("2"),
+			target("3"),
+		},
+	}
+
+	var withRefreshToken int
+	var withoutRefreshToken int
+	// invalidAuthTokenFunc returns an invalid auth token error if an auth token
+	// is provided, otherwise it returns the tokens with a new auth token.
+	invalidAuthTokenFunc := func(ctx context.Context, addr, authTok string, refreshTok RefreshTokenValue) (ret []*targets.Target, removedIds []string, refreshToken RefreshTokenValue, err error) {
+		if refreshTok != "" {
+			withRefreshToken += 1
+			return nil, nil, "", api.ErrInvalidListToken
+		}
+		withoutRefreshToken += 1
+		return testStaticResourceRetrievalFunc(t, ts, [][]string{nil})(ctx, addr, authTok, refreshTok)
+	}
+
+	require.NoError(t, r.refreshTargets(ctx, &u, map[AuthToken]string{{Id: "id"}: "something"},
+		WithTargetRetrievalFunc(invalidAuthTokenFunc)))
+
+	// This time an invalid auth token should be returned, and refreshTargets should fall back
+	// to requesting without one.
+	require.NoError(t, r.refreshTargets(ctx, &u, map[AuthToken]string{{Id: "id"}: "something"},
+		WithTargetRetrievalFunc(invalidAuthTokenFunc)))
+
+	assert.Equal(t, 1, withRefreshToken)
+	assert.Equal(t, 2, withoutRefreshToken)
+}
+
 func TestRepository_RefreshTargets_withRefreshTokens(t *testing.T) {
 	ctx := context.Background()
 	s, err := cachedb.Open(ctx)
@@ -166,33 +227,14 @@ func TestRepository_RefreshTargets_withRefreshTokens(t *testing.T) {
 
 	ts := [][]*targets.Target{
 		{
-			{
-				Id:                "ttcp_1",
-				Name:              "name1",
-				Address:           "address1",
-				Type:              "tcp",
-				ScopeId:           "p_123",
-				SessionMaxSeconds: 111,
-			},
-			{
-				Id:                "ttcp_2",
-				Name:              "name2",
-				Address:           "address2",
-				Type:              "tcp",
-				ScopeId:           "p_123",
-				SessionMaxSeconds: 222,
-			},
+			target("1"),
+			target("2"),
 		}, {
-			{
-				Id:                "ttcp_3",
-				Name:              "name3",
-				Address:           "address3",
-				Type:              "tcp",
-				ScopeId:           "p_123",
-				SessionMaxSeconds: 333,
-			},
+			target("3"),
 		},
 	}
+
+	assert.Fail(t, "add a test for when the controller returns an invalid list token error")
 
 	require.NoError(t, r.refreshTargets(ctx, &u, map[AuthToken]string{{Id: "id"}: "something"},
 		WithTargetRetrievalFunc(testStaticResourceRetrievalFunc(t, ts, [][]string{nil, nil}))))
@@ -274,30 +316,9 @@ func TestRepository_ListTargets(t *testing.T) {
 	})
 
 	ts := []*targets.Target{
-		{
-			Id:                "ttcp_1",
-			Name:              "name1",
-			Address:           "address1",
-			Type:              "tcp",
-			ScopeId:           "p_123",
-			SessionMaxSeconds: 111,
-		},
-		{
-			Id:                "ttcp_2",
-			Name:              "name2",
-			Address:           "address2",
-			Type:              "tcp",
-			ScopeId:           "p_123",
-			SessionMaxSeconds: 222,
-		},
-		{
-			Id:                "ttcp_3",
-			Name:              "name3",
-			Address:           "address3",
-			Type:              "tcp",
-			ScopeId:           "p_123",
-			SessionMaxSeconds: 333,
-		},
+		target("1"),
+		target("2"),
+		target("3"),
 	}
 	require.NoError(t, r.refreshTargets(ctx, u1, map[AuthToken]string{{Id: "id"}: "something"},
 		WithTargetRetrievalFunc(testStaticResourceRetrievalFunc(t, [][]*targets.Target{ts}, [][]string{nil}))))
