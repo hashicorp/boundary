@@ -144,6 +144,14 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   being terminated, as is the case with an scp download when using an SSH
   Target. ([PR](https://github.com/hashicorp/boundary/pull/3808))
 
+## 0.13.5 (2023/12/12) (Enterprise and HCP Boundary only)
+
+### Security
+
+* deps: Bump Go version to v1.21.5. This is to address multiple security
+  vulnerabilities. Most notable for boundary is a fix in net/http to limit
+  chunked data overhead. See https://groups.google.com/g/golang-announce/c/iLGK3x6yuN
+
 ## 0.13.1 (2023/07/10)
 
 ### New and Improved
