@@ -648,7 +648,12 @@ func (c *Connection) NewMessagesWriter(ctx context.Context, dir Direction) (io.W
 	if err != nil {
 		return nil, err
 	}
-	m, err := c.container.create(ctx, messagesName)
+	// 65*storage.LogicalBlockSize is equivalent to 260KiB
+	m, err := c.container.create(ctx, messagesName,
+		storage.WithCreateFile(),
+		storage.WithFileAccessMode(storage.ReadWrite),
+		storage.WithBuffer(65*storage.LogicalBlockSize),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -670,7 +675,12 @@ func (c *Connection) NewRequestsWriter(ctx context.Context, dir Direction) (stor
 	if err != nil {
 		return nil, err
 	}
-	m, err := c.container.create(ctx, requestName)
+	// 65*storage.LogicalBlockSize is equivalent to 260KiB
+	m, err := c.container.create(ctx, requestName,
+		storage.WithCreateFile(),
+		storage.WithFileAccessMode(storage.ReadWrite),
+		storage.WithBuffer(65*storage.LogicalBlockSize),
+	)
 	if err != nil {
 		return nil, err
 	}
