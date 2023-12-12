@@ -539,7 +539,7 @@ func TestService_List(t *testing.T) {
 		require.Empty(t, cmp.Diff(resp7.Items[0], newS2, cmpIgnoreUnexportedOpts, cmpIgnoreFieldsOpts))
 
 		// Refresh again, should get newS1
-		resp8, err := session.ListRefreshPage(ctx, []byte("some hash"), 1, filterFunc, resp6.ListToken, repo, true)
+		resp8, err := session.ListRefreshPage(ctx, []byte("some hash"), 1, filterFunc, resp7.ListToken, repo, true)
 		require.NoError(t, err)
 		require.Equal(t, resp8.ListToken.GrantsHash, []byte("some hash"))
 		require.True(t, resp8.CompleteListing)
@@ -549,7 +549,7 @@ func TestService_List(t *testing.T) {
 		require.Empty(t, cmp.Diff(resp8.Items[0], newS1, cmpIgnoreUnexportedOpts, cmpIgnoreFieldsOpts))
 
 		// Refresh again, should get no results
-		resp9, err := session.ListRefresh(ctx, []byte("some hash"), 1, filterFunc, resp6.ListToken, repo, true)
+		resp9, err := session.ListRefresh(ctx, []byte("some hash"), 1, filterFunc, resp8.ListToken, repo, true)
 		require.NoError(t, err)
 		require.Equal(t, resp9.ListToken.GrantsHash, []byte("some hash"))
 		require.True(t, resp9.CompleteListing)
