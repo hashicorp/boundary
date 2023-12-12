@@ -4,13 +4,6 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
-### Deprecations/Changes
-
-* Per the note in Boundary 0.12.0, the `vault` credential library subtype has
-  now been removed in favor of `vault-generic`. For example, instead of
-  `boundary credential-libraries create vault`, you must use `boundary
-  credential-libraries create vault-generic`.
-
 ### New and Improved
 
 * cli: New generic commands `read`, `update`, and `delete` have been added.
@@ -21,12 +14,43 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   the ID are passed through to the type-specific subcommand. Once the ID has
   been entered, autocomplete is also supported.
 
+## 0.14.3 (2023/12/12)
+
+### New and Improved
+
+* Added the ability to enforce rate limits on the Controller API. This version
+  enables rate limits by default. For details on the default rate limits,
+  how to configure rate limits, and how to disable rate limiting see the
+  noted PR. ([PR](https://github.com/hashicorp/boundary/pull/4092))
+* Add support for OIDC prompts. Using prompts, the Relying Party (RP) can 
+  customize the authentication and authorization flow to suit their specific 
+  needs and improve the user experience. [OIDC Authentication request]
+  (https://openid.net/specs/openid-connect-core-1_0.html#AuthRequest) server.
+  ([PR](https://github.com/hashicorp/boundary/pull/4053))
+
 ### Bug Fixes
 
 * Update go-kms-wrapping/extras/kms dependency to allow external wrappers
   without a key id to be used within a KMS config stanza.  Note: this fix allows
   GCP KMS keys to be again with Boundary, which had stopped working in v0.13.0.
   ([PR](https://github.com/hashicorp/boundary/pull/4058)) 
+
+* Two Vault client settings were not being properly used when constructing a
+  Vault client. ([PR](https://github.com/hashicorp/boundary/pull/3973))
+
+  The `TLS Skip Verify` setting was only being set if a `CA Cert` was also
+  configured. This fix sets the `TLS Skip Verify` when configured regardless of
+  other settings.
+
+  The `TLS Server Name` setting was never being set. Bad programmers. This fix
+  now sets it on the Vault client if the Vault Credential Store has been
+  configured to use a value for this setting.
+
+### Security
+
+* deps: Bump Go version to v1.21.5. This is to address multiple security
+  vulnerabilities. Most notable for boundary is a fix in net/http to limit
+  chunked data overhead. See https://groups.google.com/g/golang-announce/c/iLGK3x6yuN
 
 ## 0.14.2 (2023/11/2)
 
