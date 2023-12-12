@@ -94,6 +94,48 @@ description: |-
     </td>
   </tr>
 
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+      Valid principals for Vault SSH signed certificates
+      <br /><br />
+      (Added in version 0.14.2)
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+     You can now add additional valid principals when you create a Vault SSH signed certificate credential library. The additional principals list the names for which the certificate is valid.
+      <br /><br />
+      Learn more:&nbsp;
+      <a href="/boundary/docs/concepts/domain-model/credential-libraries#vault-ssh-certificate-credential-library-attributes">Vault SSH certificate credential library attributes</a>
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+      OIDC prompts
+      <br /><br />
+      (Added in version 0.14.3)
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+      You can now use OIDC prompts to customize the authentication and authorization flow to suit your specific needs. For more information about the OIDC specification, refer to the <a href="https://openid.net/specs/openid-connect-core-1_0.html#AuthRequest">OIDC authentication request documentation</a>.
+      <br /><br />
+      Learn more:&nbsp;
+      <a href="/boundary/docs/concepts/domain-model/auth-methods#oidc-auth-method-attributes">OIDC auth method attributes</a>
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+      API rate limiting
+      <br /><br />
+      (Added in version 0.14.3)
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+      You can now configure rate limits on the controller API to help manage your system resources. Boundary supports separate configurable limits for each resource and action. Rate limiting is enabled by default.
+      <br /><br />
+      Learn more:&nbsp;
+      <a href="/boundary/docs/api-clients/api#rate-limiting">API rate limiting</a>
+    </td>
+  </tr>
+
 
   </tbody>
 </table>
