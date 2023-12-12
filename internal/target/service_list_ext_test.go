@@ -408,7 +408,7 @@ func TestService_List(t *testing.T) {
 		require.Empty(t, cmp.Diff(resp7.Items[0], newT2, cmpOpts))
 
 		// Refresh again, should get newT1
-		resp8, err := target.ListRefreshPage(ctx, []byte("some hash"), 1, filterFunc, resp6.ListToken, repo)
+		resp8, err := target.ListRefreshPage(ctx, []byte("some hash"), 1, filterFunc, resp7.ListToken, repo)
 		require.NoError(t, err)
 		require.Equal(t, resp8.ListToken.GrantsHash, []byte("some hash"))
 		require.True(t, resp8.CompleteListing)
@@ -418,7 +418,7 @@ func TestService_List(t *testing.T) {
 		require.Empty(t, cmp.Diff(resp8.Items[0], newT1, cmpOpts))
 
 		// Refresh again, should get no results
-		resp9, err := target.ListRefresh(ctx, []byte("some hash"), 1, filterFunc, resp6.ListToken, repo)
+		resp9, err := target.ListRefresh(ctx, []byte("some hash"), 1, filterFunc, resp8.ListToken, repo)
 		require.NoError(t, err)
 		require.Equal(t, resp9.ListToken.GrantsHash, []byte("some hash"))
 		require.True(t, resp9.CompleteListing)
