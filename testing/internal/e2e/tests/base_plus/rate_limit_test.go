@@ -186,7 +186,7 @@ func TestHttpRateLimit(t *testing.T) {
 	tokenUser := r.Attributes.Token
 	res.Body.Close()
 
-	// Read target until quota is hit again using the first user
+	// Make request until quota is hit again using the first user
 	t.Log("Sending API requests until quota is hit...")
 	requestURL = fmt.Sprintf("%s/v1/hosts/%s", bc.Address, newHostId)
 	req, err = http.NewRequest(http.MethodGet, requestURL, nil)
@@ -274,6 +274,7 @@ func TestCliRateLimit(t *testing.T) {
 	require.NoError(t, err)
 
 	ctx := context.Background()
+
 	boundary.AuthenticateAdminCli(t, ctx)
 	newOrgId := boundary.CreateNewOrgCli(t, ctx)
 	t.Cleanup(func() {
@@ -309,10 +310,39 @@ func TestCliRateLimit(t *testing.T) {
 	boundary.AddGrantToRoleCli(t, ctx, newRoleId, "ids=*;type=*;actions=*")
 	boundary.AddPrincipalToRoleCli(t, ctx, newRoleId, newUserId)
 
+	// Authenticate over HTTP
+	res, err := boundary.AuthenticateHttp(t, ctx, bc.Address, bc.AuthMethodId, bc.AdminLoginName, bc.AdminLoginPassword)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusOK, res.StatusCode)
+	body, err := io.ReadAll(res.Body)
+	require.NoError(t, err)
+	var r boundary.HttpResponseBody
+	err = json.Unmarshal(body, &r)
+	require.NoError(t, err)
+	tokenAdmin := r.Attributes.Token
+	res.Body.Close()
+
+	// Make initial API request
+	t.Log("Getting rate limit info...")
+	requestURL := fmt.Sprintf("%s/v1/hosts/%s", bc.Address, newHostId)
+	req, err := http.NewRequest(http.MethodGet, requestURL, nil)
+	require.NoError(t, err)
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", tokenAdmin))
+	res, err = http.DefaultClient.Do(req)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusOK, res.StatusCode)
+
+	rateLimitPolicyHeader := res.Header.Get("Ratelimit-Policy")
+	require.NotEmpty(t, rateLimitPolicyHeader)
+	policyLimit, policyPeriod, err := getRateLimitPolicyStat(res.Header.Get("Ratelimit-Policy"), "auth-token")
+	require.NoError(t, err)
+	// Wait for ratelimit to reset
+	time.Sleep(time.Duration(policyPeriod) * time.Second)
+
 	// Run tests until rate limit is hit. Expect to see a HTTP 429 when rate limited
 	t.Log("Sending multiple CLI requests to hit rate limit...")
 	var output *e2e.CommandResult
-	for i := 0; i < 20; i++ {
+	for i := 0; i <= policyLimit; i++ {
 		output = e2e.RunCommand(ctx, "boundary", e2e.WithArgs("hosts", "read", "-id", newHostId))
 		t.Log(output.Duration)
 		if output.Err != nil {
@@ -329,7 +359,7 @@ func TestCliRateLimit(t *testing.T) {
 	// Log in as a second user and confirm you get a HTTP 503 response
 	t.Log("Logging in as another user...")
 	boundary.AuthenticateCli(t, ctx, bc.AuthMethodId, acctName, acctPassword)
-	for i := 0; i < 20; i++ {
+	for i := 0; i < policyLimit; i++ {
 		output = e2e.RunCommand(ctx, "boundary", e2e.WithArgs("hosts", "read", "-id", newHostId))
 		t.Log(output.Duration)
 		if output.Err != nil {
@@ -342,6 +372,7 @@ func TestCliRateLimit(t *testing.T) {
 	require.Equal(t, 1, output.ExitCode)
 	require.Contains(t, string(output.Stderr), strconv.Itoa(http.StatusServiceUnavailable))
 	t.Log("Successfully observed a HTTP 503 response")
+	time.Sleep(time.Duration(policyPeriod) * time.Second)
 
 	// Setting this environment variable sets CLI to use an auto-retry when rate
 	// limited
@@ -355,18 +386,12 @@ func TestCliRateLimit(t *testing.T) {
 	// Run tests until rate limit is hit. Expect to see the CLI auto-retry (the
 	// command will take longer to return)
 	t.Log("Sending multiple CLI requests to hit rate limit...")
-	threshold := time.Duration(3 * time.Second)
-	for i := 0; i < 20; i++ {
+	for i := 0; i <= policyLimit; i++ {
 		output = e2e.RunCommand(ctx, "boundary", e2e.WithArgs("hosts", "read", "-id", newHostId))
 		t.Log(output.Duration)
-
-		if output.Duration >= threshold {
-			break
-		}
+		require.NoError(t, output.Err, string(output.Stderr))
+		require.Equal(t, 0, output.ExitCode)
 	}
-	require.NoError(t, output.Err, string(output.Stderr))
-	require.Equal(t, 0, output.ExitCode)
-	require.GreaterOrEqual(t, output.Duration, threshold, "CLI did not auto-retry request")
 	t.Logf("Successfully auto-retried CLI request")
 }
 
