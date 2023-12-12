@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
+	"github.com/hashicorp/boundary/internal/credential"
 	requestauth "github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/common"
 	"github.com/hashicorp/boundary/internal/daemon/controller/common/scopeids"
@@ -84,18 +85,29 @@ var (
 type Service struct {
 	pbs.UnsafeAuthMethodServiceServer
 
-	kms        *kms.Kms
-	pwRepoFn   common.PasswordAuthRepoFactory
-	oidcRepoFn common.OidcAuthRepoFactory
-	iamRepoFn  common.IamRepoFactory
-	atRepoFn   common.AuthTokenRepoFactory
-	ldapRepoFn common.LdapAuthRepoFactory
+	kms         *kms.Kms
+	pwRepoFn    common.PasswordAuthRepoFactory
+	oidcRepoFn  common.OidcAuthRepoFactory
+	iamRepoFn   common.IamRepoFactory
+	atRepoFn    common.AuthTokenRepoFactory
+	ldapRepoFn  common.LdapAuthRepoFactory
+	maxPageSize uint
 }
 
 var _ pbs.AuthMethodServiceServer = (*Service)(nil)
 
 // NewService returns a auth method service which handles auth method related requests to boundary.
-func NewService(ctx context.Context, kms *kms.Kms, pwRepoFn common.PasswordAuthRepoFactory, oidcRepoFn common.OidcAuthRepoFactory, iamRepoFn common.IamRepoFactory, atRepoFn common.AuthTokenRepoFactory, ldapRepoFn common.LdapAuthRepoFactory, opt ...handlers.Option) (Service, error) {
+func NewService(
+	ctx context.Context,
+	kms *kms.Kms,
+	pwRepoFn common.PasswordAuthRepoFactory,
+	oidcRepoFn common.OidcAuthRepoFactory,
+	iamRepoFn common.IamRepoFactory,
+	atRepoFn common.AuthTokenRepoFactory,
+	ldapRepoFn common.LdapAuthRepoFactory,
+	maxPageSize uint,
+	opt ...handlers.Option,
+) (Service, error) {
 	const op = "authmethods.NewService"
 	if kms == nil {
 		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing kms")
@@ -115,15 +127,27 @@ func NewService(ctx context.Context, kms *kms.Kms, pwRepoFn common.PasswordAuthR
 	if atRepoFn == nil {
 		return Service{}, fmt.Errorf("nil auth token repository provided")
 	}
-	s := Service{kms: kms, pwRepoFn: pwRepoFn, oidcRepoFn: oidcRepoFn, iamRepoFn: iamRepoFn, atRepoFn: atRepoFn, ldapRepoFn: ldapRepoFn}
+	if maxPageSize == 0 {
+		maxPageSize = uint(globals.DefaultMaxPageSize)
+	}
+	s := Service{
+		kms:         kms,
+		pwRepoFn:    pwRepoFn,
+		oidcRepoFn:  oidcRepoFn,
+		iamRepoFn:   iamRepoFn,
+		atRepoFn:    atRepoFn,
+		ldapRepoFn:  ldapRepoFn,
+		maxPageSize: maxPageSize,
+	}
 
 	return s, nil
 }
 
 // ListAuthMethods implements the interface pbs.AuthMethodServiceServer.
 func (s Service) ListAuthMethods(ctx context.Context, req *pbs.ListAuthMethodsRequest) (*pbs.ListAuthMethodsResponse, error) {
+	const op = "authmethods.(Service).ListAuthMethods"
 	if err := validateListRequest(ctx, req); err != nil {
-		return nil, err
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	authResults := s.authResult(ctx, req.GetScopeId(), action.List)
 	if authResults.Error != nil {
@@ -138,6 +162,12 @@ func (s Service) ListAuthMethods(ctx context.Context, req *pbs.ListAuthMethodsRe
 			return nil, authResults.Error
 		}
 	}
+	pageSize := int(s.maxPageSize)
+	// Use the requested page size only if it is smaller than
+	// the configured max.
+	if req.GetPageSize() != 0 && uint(req.GetPageSize()) < s.maxPageSize {
+		pageSize = int(req.GetPageSize())
+	}
 
 	scopeIds, scopeInfoMap, err := scopeids.GetListingScopeIds(
 		ctx, s.iamRepoFn, authResults, req.GetScopeId(), resource.AuthMethod, req.GetRecursive())
@@ -149,13 +179,39 @@ func (s Service) ListAuthMethods(ctx context.Context, req *pbs.ListAuthMethodsRe
 		return &pbs.ListAuthMethodsResponse{}, nil
 	}
 
-	ul, err := s.listFromRepo(ctx, scopeIds, authResults)
-	if err != nil {
-		return nil, err
+	var filterItemFn func(ctx context.Context, item credential.Static) (bool, error)
+	switch {
+	case req.GetFilter() != "":
+		// Only use a filter if we need to
+		filter, err := handlers.NewFilter(ctx, req.GetFilter())
+		if err != nil {
+			return nil, err
+		}
+		// TODO: replace the need for this function with some way to convert the `filter`
+		// to a domain type. This would allow filtering to happen in the domain, and we could
+		// remove this callback altogether.
+		filterItemFn = func(ctx context.Context, item credential.Static) (bool, error) {
+			outputOpts, ok := newOutputOpts(ctx, item, req.CredentialStoreId, authResults)
+			if !ok {
+				return ok, nil
+			}
+			pbItem, err := toProto(item, outputOpts...)
+			if err != nil {
+				return false, err
+			}
+
+			filterable, err := subtypes.Filterable(ctx, pbItem)
+			if err != nil {
+				return false, err
+			}
+			return filter.Match(filterable), nil
+		}
+	default:
+		filterItemFn = func(ctx context.Context, item credential.Static) (bool, error) {
+			return true, nil
+		}
 	}
-	if len(ul) == 0 {
-		return &pbs.ListAuthMethodsResponse{}, nil
-	}
+	repo, err := s.repoFn()
 
 	filter, err := handlers.NewFilter(ctx, req.GetFilter())
 	if err != nil {
