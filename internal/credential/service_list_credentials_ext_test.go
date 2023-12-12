@@ -453,7 +453,7 @@ func TestService_List(t *testing.T) {
 		require.Empty(t, cmp.Diff(resp7.Items[0], newCred3, cmpOpts...))
 
 		// Refresh again, should get newCred2
-		resp8, err := credential.ListRefreshPage(ctx, []byte("some hash"), 1, filterFunc, resp6.ListToken, repo, credStore.GetPublicId())
+		resp8, err := credential.ListRefreshPage(ctx, []byte("some hash"), 1, filterFunc, resp7.ListToken, repo, credStore.GetPublicId())
 		require.NoError(t, err)
 		require.Equal(t, resp8.ListToken.GrantsHash, []byte("some hash"))
 		require.False(t, resp8.CompleteListing)
@@ -463,7 +463,7 @@ func TestService_List(t *testing.T) {
 		require.Empty(t, cmp.Diff(resp8.Items[0], newCred2, cmpOpts...))
 
 		// Refresh again, should get newCred1
-		resp9, err := credential.ListRefreshPage(ctx, []byte("some hash"), 1, filterFunc, resp6.ListToken, repo, credStore.GetPublicId())
+		resp9, err := credential.ListRefreshPage(ctx, []byte("some hash"), 1, filterFunc, resp8.ListToken, repo, credStore.GetPublicId())
 		require.NoError(t, err)
 		require.Equal(t, resp9.ListToken.GrantsHash, []byte("some hash"))
 		require.True(t, resp9.CompleteListing)
@@ -473,7 +473,7 @@ func TestService_List(t *testing.T) {
 		require.Empty(t, cmp.Diff(resp9.Items[0], newCred1, cmpOpts...))
 
 		// Refresh again, should get no results
-		resp10, err := credential.ListRefresh(ctx, []byte("some hash"), 1, filterFunc, resp6.ListToken, repo, credStore.GetPublicId())
+		resp10, err := credential.ListRefresh(ctx, []byte("some hash"), 1, filterFunc, resp9.ListToken, repo, credStore.GetPublicId())
 		require.NoError(t, err)
 		require.Equal(t, resp10.ListToken.GrantsHash, []byte("some hash"))
 		require.True(t, resp10.CompleteListing)
