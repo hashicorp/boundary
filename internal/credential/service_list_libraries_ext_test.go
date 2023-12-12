@@ -423,7 +423,7 @@ func TestLibraryService_List(t *testing.T) {
 		require.Empty(t, cmp.Diff(resp7.Items[0], newLib2, cmpOpts...))
 
 		// Refresh again, should get newLib1
-		resp8, err := credential.ListLibrariesRefreshPage(ctx, []byte("some hash"), 1, filterFunc, resp6.ListToken, repo, credStore.GetPublicId())
+		resp8, err := credential.ListLibrariesRefreshPage(ctx, []byte("some hash"), 1, filterFunc, resp7.ListToken, repo, credStore.GetPublicId())
 		require.NoError(t, err)
 		require.Equal(t, resp8.ListToken.GrantsHash, []byte("some hash"))
 		require.True(t, resp8.CompleteListing)
@@ -433,7 +433,7 @@ func TestLibraryService_List(t *testing.T) {
 		require.Empty(t, cmp.Diff(resp8.Items[0], newLib1, cmpOpts...))
 
 		// Refresh again, should get no results
-		resp9, err := credential.ListLibrariesRefresh(ctx, []byte("some hash"), 1, filterFunc, resp6.ListToken, repo, credStore.GetPublicId())
+		resp9, err := credential.ListLibrariesRefresh(ctx, []byte("some hash"), 1, filterFunc, resp8.ListToken, repo, credStore.GetPublicId())
 		require.NoError(t, err)
 		require.Equal(t, resp9.ListToken.GrantsHash, []byte("some hash"))
 		require.True(t, resp9.CompleteListing)
