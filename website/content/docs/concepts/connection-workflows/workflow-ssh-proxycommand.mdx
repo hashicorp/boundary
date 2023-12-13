@@ -15,16 +15,8 @@ To use SSH `ProxyCommand`, you must configure a `Host` entry in `.ssh/ssh_config
 
 In the following example, `ProxyCommand` configures the SSH client to invoke `boundary connect`.
 
-<Note>
-
-  Windows users will need to install the [Nmap utility](https://nmap.org/download.html) instead of netcat.
-
-</Note>
-
 The command passes the `-exec nc` flag to `boundary connect` to wrap [netcat](http://netcat.sourceforge.net/), and then pass the `boundary.ip` and `boundary.port` environment variables as arguments to `nc`.
 This command allows you to proxy your SSH connection through a local netcat tunnel that's managed as a Boundary session:
-
-<CodeTabs tabs={[ "MacOS/Linux", "Windows" ]}>
 
 <CodeBlockConfig filename="./ssh/ssh_config">
 
@@ -34,17 +26,6 @@ Host ttcp_*
 ```
 
 </CodeBlockConfig>
-
-<CodeBlockConfig filename="./ssh/ssh_config">
-
-```bash
-Host ttcp_*
-  ProxyCommand sh -c "boundary connect -target-id %n -exec nmap -- {{boundary.ip}} {{boundary.port}}"
-```
-
-</CodeBlockConfig>
-
-</CodeTabs>
 
 Using this configuration, if you run `ssh ttcp_1234567890` to connect to a target with the ID `ttcp_1234567890`, SSH invokes `boundary connect`, and tunnels the traffic through the local Boundary proxy in a wrapped netcat session.
 Boundary passes the target ID to the `boundary` command as the hostname.
@@ -128,8 +109,6 @@ In the following example, `ProxyCommand` configures the SSH client to invoke `bo
 The command passes the `-exec nc` flag to `boundary connect` to wrap [netcat](http://netcat.sourceforge.net/), and then pass the `boundary.ip` and `boundary.port` environment variables as arguments to `nc`.
 This command allows you to proxy your SSH connection through a local netcat tunnel that's managed as a Boundary session:
 
-<CodeTabs tabs={[ "MacOS/Linux", "Windows" ]}>
-
 <CodeBlockConfig filename="./ssh/ssh_config">
 
 ```bash
@@ -139,18 +118,6 @@ Host localhost
 ```
 
 </CodeBlockConfig>
-
-<CodeBlockConfig filename="./ssh/ssh_config">
-
-```bash
-Host localhost
-    # requires BOUNDARY_CONNECT_AUTHZ_TOKEN to be set from authorize-session command
-    ProxyCommand sh -c "boundary connect -exec nmap -- {{boundary.ip}} {{boundary.port}}"
-```
-
-</CodeBlockConfig>
-
-</CodeTabs>
 
 Using this configuration, if you run `ssh user@localhost` to connect to the target you created the authorization session for, SSH invokes `boundary connect`, and tunnels the traffic through the local Boundary proxy in a wrapped netcat session.
 Boundary passes the target domain to the `boundary` command as the hostname.
