@@ -99,7 +99,18 @@ func (l *LimitedSpaceContainer) Create(ctx context.Context, n string) (storage.F
 // OpenFile creates a storage.File in the container using the provided options
 // It supports WithCloseSyncMode.
 func (l *LimitedSpaceContainer) OpenFile(ctx context.Context, n string, option ...storage.Option) (storage.File, error) {
-	return l.MemContainer.OpenFile(ctx, n, option...)
+	if l.fs.OutOfSpace() {
+		return nil, ErrOutOfSpace
+	}
+	f, err := l.MemContainer.OpenFile(ctx, n, option...)
+	if err != nil {
+		return nil, err
+	}
+	ff := f.(*MemFile)
+	return &LimitedSpaceFile{
+		MemFile: ff,
+		fs:      l.fs,
+	}, nil
 }
 
 // SubContainer creates a new storage.Container in the container.
@@ -150,4 +161,15 @@ func (l *LimitedSpaceFile) Write(p []byte) (n int, err error) {
 		return 0, fmt.Errorf("%s %w", l.MemFile.name, ErrOutOfSpace)
 	}
 	return l.MemFile.Write(p)
+}
+
+func (l *LimitedSpaceFile) WriteAndClose(p []byte) (n int, err error) {
+	if l.fs.OutOfSpace() {
+		return 0, fmt.Errorf("%s %w", l.MemFile.name, ErrOutOfSpace)
+	}
+	n, err = l.MemFile.Write(p)
+	if err != nil {
+		return
+	}
+	return n, l.MemFile.Close()
 }
