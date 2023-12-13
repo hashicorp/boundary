@@ -138,4 +138,9 @@ module.exports = [
     destination: '/boundary/docs/operations/session-recordings',
     permanent: true,
   },
+  {
+    source: '/boundary/docs/common-workflows/workflow-ssh-proxycommand',
+    destination: '/boundary/docs/concepts/connection-workflows/workflow-ssh-proxycommand',
+    permanent: true,
+  },
 ]
