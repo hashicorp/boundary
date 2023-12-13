@@ -8,13 +8,13 @@ package checksum
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"io"
 	"io/fs"
 
 	"github.com/hashicorp/boundary/internal/bsr/internal/is"
-	"github.com/hashicorp/go-kms-wrapping/v2/extras/crypto"
 )
 
 const (
@@ -45,9 +45,9 @@ type File struct {
 	// std interfaces that to not take a context as an arg.
 	ctx context.Context
 
-	// Performs the checksuming, provides implementations for Write and
-	// WriteString
-	*crypto.Sha256SumWriter
+	// Performs the checksuming, provides implementations for Write,
+	// WriteString, and WriteAndClose
+	*Sha256SumWriter
 
 	checksumWriter io.Writer
 
@@ -66,7 +66,7 @@ func NewFile(ctx context.Context, f writerFile, cs io.Writer) (*File, error) {
 		return nil, fmt.Errorf("%s: missing checksum writer: %w", op, errInvalidParameter)
 	}
 
-	wrapped, err := crypto.NewSha256SumWriter(ctx, f)
+	wrapped, err := NewSha256SumWriter(ctx, f, sha256.New())
 	if err != nil {
 		return nil, err
 	}
@@ -107,7 +107,7 @@ func (f *File) Close() error {
 		closeErrors = errors.Join(closeErrors, fmt.Errorf("%s: %w", op, err))
 	}
 
-	sum, err := f.Sha256SumWriter.Sum(f.ctx, crypto.WithHexEncoding(true))
+	sum, err := f.Sha256SumWriter.Sum(f.ctx, WithHexEncoding(true))
 	if err != nil {
 		closeErrors = errors.Join(closeErrors, fmt.Errorf("%s: %w", op, err))
 		return closeErrors
@@ -133,12 +133,13 @@ func (f *File) WriteAndClose(b []byte) (int, error) {
 		return 0, closeErrors
 	}
 
-	n, err := f.underlying.WriteAndClose(b)
+	// f.Sha256SumWriter will close f.underlying
+	n, err := f.Sha256SumWriter.WriteAndClose(b)
 	if err != nil {
-		return 0, fmt.Errorf("%s: %w", op, err)
+		closeErrors = errors.Join(closeErrors, fmt.Errorf("%s: %w", op, err))
 	}
 
-	sum, err := f.Sha256SumWriter.Sum(f.ctx, crypto.WithHexEncoding(true))
+	sum, err := f.Sha256SumWriter.Sum(f.ctx, WithHexEncoding(true))
 	if err != nil {
 		closeErrors = errors.Join(closeErrors, fmt.Errorf("%s: %w", op, err))
 		return 0, closeErrors
