@@ -6,6 +6,7 @@ package static
 import (
 	"context"
 
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/host/static/store"
 	"github.com/hashicorp/boundary/internal/oplog"
@@ -89,4 +90,14 @@ func newHostSetForMembers(setId string, version uint32) *HostSet {
 			Version:  version + 1,
 		},
 	}
+}
+
+type deletedHostSet struct {
+	PublicId   string `gorm:"primary_key"`
+	DeleteTime *timestamp.Timestamp
+}
+
+// TableName returns the tablename to override the default gorm table name
+func (s *deletedHostSet) TableName() string {
+	return "static_host_set_deleted"
 }

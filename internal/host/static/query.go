@@ -213,4 +213,8 @@ final as (
     from final
 order by update_time desc, public_id asc;
 `
+
+	estimateCountHostSets = `
+select sum(reltuples::bigint) as estimate from pg_class where oid in ('static_host_set'::regclass)
+`
 )
