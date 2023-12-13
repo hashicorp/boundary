@@ -255,7 +255,11 @@ jobs:
         run: |
           pushd enos
           scenario="${{ matrix.filter }}"
-          for f in *.log; do mv --  "$f" "${f%.log}_${scenario%% *}.log"; done
+          count=$(find ./*.log 2>/dev/null | wc -l | xargs)
+          if [ "$count" != 0 ]
+          then
+            for f in *.log; do mv --  "$f" "${f%.log}_${scenario%% *}.log"; done
+          fi
           popd
       - name: Upload e2e tests output
         uses: actions/upload-artifact@a8a3f3ad30e3422c9c7b888a15615d19a852ae32 # v3.1.3
