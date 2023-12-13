@@ -36,3 +36,11 @@ type DbInitInfo struct {
 type CliError struct {
 	Status int `json:"status_code"`
 }
+
+type HttpResponseBody struct {
+	Attributes HttpResponseBodyAttributes `json:"attributes"`
+}
+
+type HttpResponseBodyAttributes struct {
+	Token string `json:"token"`
+}

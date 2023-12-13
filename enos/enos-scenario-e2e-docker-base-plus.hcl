@@ -85,6 +85,8 @@ scenario "e2e_docker_base_plus" {
       database_network = local.network_cluster
       postgres_address = step.create_boundary_database.address
       boundary_license = var.boundary_edition != "oss" ? step.read_license.license : ""
+      config_file      = "boundary-config-rate-limit.hcl"
+
     }
   }
 
