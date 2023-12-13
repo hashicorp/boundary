@@ -463,8 +463,18 @@ func TestDefaultTargetRetrievalFunc(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotEmpty(t, refTok)
 	assert.Empty(t, removed)
-	assert.Contains(t, got, tar1.Item)
-	assert.Contains(t, got, tar2.Item)
+	found1 := false
+	found2 := false
+	for _, t := range got {
+		if t.Id == tar1.Item.Id {
+			found1 = true
+		}
+		if t.Id == tar2.Item.Id {
+			found2 = true
+		}
+	}
+	assert.True(t, found1, "expected to find target %s in list", tar1.Item.Id)
+	assert.True(t, found2, "expected to find target %s in list", tar2.Item.Id)
 
 	got2, removed2, refTok2, err := defaultTargetFunc(tc.Context(), tc.ApiAddrs()[0], tc.Token().Token, refTok)
 	assert.NoError(t, err)
