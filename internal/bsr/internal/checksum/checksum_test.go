@@ -87,7 +87,7 @@ func TestFile(t *testing.T) {
 			testString,
 			testSum + "  test\n",
 			nil,
-			errors.New("checksum.(File).Close: crypto.(Sha256SumWriter).Close: close error"),
+			errors.New("checksum.(File).Close: checksum.(Sha256SumWriter).Close: close error"),
 			true,
 		},
 		{
