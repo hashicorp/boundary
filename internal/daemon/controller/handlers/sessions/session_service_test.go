@@ -665,7 +665,8 @@ func TestList(t *testing.T) {
 				cmpopts.SortSlices(func(a, b string) bool {
 					return a < b
 				}),
-			), "ListSessions(%q) got response %q, wanted %q", tc.req, got, tc.res)
+				protocmp.IgnoreFields(&pbs.ListSessionsResponse{}, "list_token"),
+			))
 
 			// Test with other user
 			otherRequestInfo := authpb.RequestInfo{
@@ -836,6 +837,9 @@ func TestListPagination(t *testing.T) {
 				RemovedIds:   nil,
 				EstItemCount: 10,
 			},
+			cmpopts.SortSlices(func(a, b string) bool {
+				return a < b
+			}),
 			protocmp.Transform(),
 			protocmp.IgnoreFields(&pbs.ListSessionsResponse{}, "list_token"),
 		),
@@ -858,6 +862,9 @@ func TestListPagination(t *testing.T) {
 				RemovedIds:   nil,
 				EstItemCount: 10,
 			},
+			cmpopts.SortSlices(func(a, b string) bool {
+				return a < b
+			}),
 			protocmp.Transform(),
 			protocmp.IgnoreFields(&pbs.ListSessionsResponse{}, "list_token"),
 		),
@@ -881,6 +888,9 @@ func TestListPagination(t *testing.T) {
 				RemovedIds:   nil,
 				EstItemCount: 10,
 			},
+			cmpopts.SortSlices(func(a, b string) bool {
+				return a < b
+			}),
 			protocmp.Transform(),
 			protocmp.IgnoreFields(&pbs.ListSessionsResponse{}, "list_token"),
 		),
@@ -970,6 +980,9 @@ func TestListPagination(t *testing.T) {
 				RemovedIds:   []string{deletedSession.Id},
 				EstItemCount: 10,
 			},
+			cmpopts.SortSlices(func(a, b string) bool {
+				return a < b
+			}),
 			protocmp.Transform(),
 			protocmp.IgnoreFields(&pbs.ListSessionsResponse{}, "list_token"),
 		),
@@ -992,6 +1005,9 @@ func TestListPagination(t *testing.T) {
 				RemovedIds:   nil,
 				EstItemCount: 10,
 			},
+			cmpopts.SortSlices(func(a, b string) bool {
+				return a < b
+			}),
 			protocmp.Transform(),
 			protocmp.IgnoreFields(&pbs.ListSessionsResponse{}, "list_token"),
 		),
@@ -1017,6 +1033,9 @@ func TestListPagination(t *testing.T) {
 				RemovedIds:   nil,
 				EstItemCount: 10,
 			},
+			cmpopts.SortSlices(func(a, b string) bool {
+				return a < b
+			}),
 			protocmp.Transform(),
 			protocmp.IgnoreFields(&pbs.ListSessionsResponse{}, "list_token"),
 		),
@@ -1037,6 +1056,9 @@ func TestListPagination(t *testing.T) {
 				RemovedIds:   nil,
 				EstItemCount: 10,
 			},
+			cmpopts.SortSlices(func(a, b string) bool {
+				return a < b
+			}),
 			protocmp.Transform(),
 			protocmp.IgnoreFields(&pbs.ListSessionsResponse{}, "list_token"),
 		),

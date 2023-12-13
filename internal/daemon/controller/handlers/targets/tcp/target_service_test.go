@@ -569,6 +569,9 @@ func TestListPagination(t *testing.T) {
 				RemovedIds:   nil,
 				EstItemCount: 10,
 			},
+			cmpopts.SortSlices(func(a, b string) bool {
+				return a < b
+			}),
 			protocmp.Transform(),
 			protocmp.IgnoreFields(&pbs.ListTargetsResponse{}, "list_token"),
 		),
@@ -591,6 +594,9 @@ func TestListPagination(t *testing.T) {
 				RemovedIds:   nil,
 				EstItemCount: 10,
 			},
+			cmpopts.SortSlices(func(a, b string) bool {
+				return a < b
+			}),
 			protocmp.Transform(),
 			protocmp.IgnoreFields(&pbs.ListTargetsResponse{}, "list_token"),
 		),
@@ -614,6 +620,9 @@ func TestListPagination(t *testing.T) {
 				RemovedIds:   nil,
 				EstItemCount: 10,
 			},
+			cmpopts.SortSlices(func(a, b string) bool {
+				return a < b
+			}),
 			protocmp.Transform(),
 			protocmp.IgnoreFields(&pbs.ListTargetsResponse{}, "list_token"),
 		),
@@ -691,6 +700,9 @@ func TestListPagination(t *testing.T) {
 				RemovedIds:   []string{deletedTarget.Id},
 				EstItemCount: 10,
 			},
+			cmpopts.SortSlices(func(a, b string) bool {
+				return a < b
+			}),
 			protocmp.Transform(),
 			protocmp.IgnoreFields(&pbs.ListTargetsResponse{}, "list_token"),
 		),
@@ -713,6 +725,9 @@ func TestListPagination(t *testing.T) {
 				RemovedIds:   nil,
 				EstItemCount: 10,
 			},
+			cmpopts.SortSlices(func(a, b string) bool {
+				return a < b
+			}),
 			protocmp.Transform(),
 			protocmp.IgnoreFields(&pbs.ListTargetsResponse{}, "list_token"),
 		),
@@ -738,6 +753,9 @@ func TestListPagination(t *testing.T) {
 				RemovedIds:   nil,
 				EstItemCount: 10,
 			},
+			cmpopts.SortSlices(func(a, b string) bool {
+				return a < b
+			}),
 			protocmp.Transform(),
 			protocmp.IgnoreFields(&pbs.ListTargetsResponse{}, "list_token"),
 		),
@@ -758,6 +776,9 @@ func TestListPagination(t *testing.T) {
 				RemovedIds:   nil,
 				EstItemCount: 10,
 			},
+			cmpopts.SortSlices(func(a, b string) bool {
+				return a < b
+			}),
 			protocmp.Transform(),
 			protocmp.IgnoreFields(&pbs.ListTargetsResponse{}, "list_token"),
 		),
