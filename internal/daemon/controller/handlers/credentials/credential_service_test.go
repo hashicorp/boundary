@@ -1594,6 +1594,9 @@ func TestListPagination(t *testing.T) {
 				RemovedIds:   nil,
 				EstItemCount: 15,
 			},
+			cmpopts.SortSlices(func(a, b string) bool {
+				return a < b
+			}),
 			protocmp.Transform(),
 			protocmp.IgnoreFields(&pbs.ListCredentialsResponse{}, "list_token"),
 		),
@@ -1617,6 +1620,9 @@ func TestListPagination(t *testing.T) {
 				RemovedIds:   nil,
 				EstItemCount: 15,
 			},
+			cmpopts.SortSlices(func(a, b string) bool {
+				return a < b
+			}),
 			protocmp.Transform(),
 			protocmp.IgnoreFields(&pbs.ListCredentialsResponse{}, "list_token"),
 		),
@@ -1641,6 +1647,9 @@ func TestListPagination(t *testing.T) {
 				RemovedIds:   nil,
 				EstItemCount: 15,
 			},
+			cmpopts.SortSlices(func(a, b string) bool {
+				return a < b
+			}),
 			protocmp.Transform(),
 			protocmp.IgnoreFields(&pbs.ListCredentialsResponse{}, "list_token"),
 		),
@@ -1707,6 +1716,9 @@ func TestListPagination(t *testing.T) {
 				RemovedIds:   []string{deletedCred.Id},
 				EstItemCount: 15,
 			},
+			cmpopts.SortSlices(func(a, b string) bool {
+				return a < b
+			}),
 			protocmp.Transform(),
 			protocmp.IgnoreFields(&pbs.ListCredentialsResponse{}, "list_token"),
 		),
@@ -1728,6 +1740,9 @@ func TestListPagination(t *testing.T) {
 				RemovedIds:   nil,
 				EstItemCount: 15,
 			},
+			cmpopts.SortSlices(func(a, b string) bool {
+				return a < b
+			}),
 			protocmp.Transform(),
 			protocmp.IgnoreFields(&pbs.ListCredentialsResponse{}, "list_token"),
 		),
@@ -1754,6 +1769,9 @@ func TestListPagination(t *testing.T) {
 				RemovedIds:   nil,
 				EstItemCount: 15,
 			},
+			cmpopts.SortSlices(func(a, b string) bool {
+				return a < b
+			}),
 			protocmp.Transform(),
 			protocmp.IgnoreFields(&pbs.ListCredentialsResponse{}, "list_token"),
 		),
@@ -1775,6 +1793,9 @@ func TestListPagination(t *testing.T) {
 				RemovedIds:   nil,
 				EstItemCount: 15,
 			},
+			cmpopts.SortSlices(func(a, b string) bool {
+				return a < b
+			}),
 			protocmp.Transform(),
 			protocmp.IgnoreFields(&pbs.ListCredentialsResponse{}, "list_token"),
 		),
@@ -1802,6 +1823,9 @@ func TestListPagination(t *testing.T) {
 				SortDir:      "desc",
 				RemovedIds:   nil,
 			},
+			cmpopts.SortSlices(func(a, b string) bool {
+				return a < b
+			}),
 			protocmp.Transform(),
 			protocmp.IgnoreFields(&pbs.ListCredentialsResponse{}, "list_token"),
 		),

@@ -608,6 +608,9 @@ func TestListPagination(t *testing.T) {
 				RemovedIds:   nil,
 				EstItemCount: 10,
 			},
+			cmpopts.SortSlices(func(a, b string) bool {
+				return a < b
+			}),
 			protocmp.Transform(),
 			protocmp.IgnoreFields(&pbs.ListAuthTokensResponse{}, "list_token"),
 		),
@@ -630,6 +633,9 @@ func TestListPagination(t *testing.T) {
 				RemovedIds:   nil,
 				EstItemCount: 10,
 			},
+			cmpopts.SortSlices(func(a, b string) bool {
+				return a < b
+			}),
 			protocmp.Transform(),
 			protocmp.IgnoreFields(&pbs.ListAuthTokensResponse{}, "list_token"),
 		),
@@ -653,6 +659,9 @@ func TestListPagination(t *testing.T) {
 				RemovedIds:   nil,
 				EstItemCount: 10,
 			},
+			cmpopts.SortSlices(func(a, b string) bool {
+				return a < b
+			}),
 			protocmp.Transform(),
 			protocmp.IgnoreFields(&pbs.ListAuthTokensResponse{}, "list_token"),
 		),
@@ -698,6 +707,9 @@ func TestListPagination(t *testing.T) {
 				RemovedIds:   []string{deletedAuthToken.Id},
 				EstItemCount: 11,
 			},
+			cmpopts.SortSlices(func(a, b string) bool {
+				return a < b
+			}),
 			protocmp.Transform(),
 			protocmp.IgnoreFields(&pbs.ListAuthTokensResponse{}, "list_token"),
 		),
@@ -720,6 +732,9 @@ func TestListPagination(t *testing.T) {
 				RemovedIds:   nil,
 				EstItemCount: 11,
 			},
+			cmpopts.SortSlices(func(a, b string) bool {
+				return a < b
+			}),
 			protocmp.Transform(),
 			protocmp.IgnoreFields(&pbs.ListAuthTokensResponse{}, "list_token"),
 		),
@@ -745,6 +760,9 @@ func TestListPagination(t *testing.T) {
 				RemovedIds:   nil,
 				EstItemCount: 11,
 			},
+			cmpopts.SortSlices(func(a, b string) bool {
+				return a < b
+			}),
 			protocmp.Transform(),
 			protocmp.IgnoreFields(&pbs.ListAuthTokensResponse{}, "list_token"),
 		),
@@ -765,6 +783,9 @@ func TestListPagination(t *testing.T) {
 				RemovedIds:   nil,
 				EstItemCount: 11,
 			},
+			cmpopts.SortSlices(func(a, b string) bool {
+				return a < b
+			}),
 			protocmp.Transform(),
 			protocmp.IgnoreFields(&pbs.ListAuthTokensResponse{}, "list_token"),
 		),
