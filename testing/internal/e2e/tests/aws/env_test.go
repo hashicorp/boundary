@@ -19,6 +19,7 @@ type config struct {
 	TargetPort         string `envconfig:"E2E_TARGET_PORT" required:"true"`          // e.g. "22"
 	TargetAddress      string `envconfig:"E2E_TARGET_ADDRESS" required:"true"`       // e.g. "192.168.0.1"
 	WorkerTagEgress    string `envconfig:"E2E_WORKER_TAG_EGRESS" required:"true"`    // e.g. "egress"
+	WorkerAddress      string `envconfig:"E2E_WORKER_ADDRESS" required:"true"`       // e.g. ""192.168.0.2"
 }
 
 func loadTestConfig() (*config, error) {

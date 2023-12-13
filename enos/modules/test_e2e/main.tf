@@ -135,6 +135,10 @@ variable "worker_tag_egress" {
   type    = string
   default = ""
 }
+variable "worker_address" {
+  type    = string
+  default = ""
+}
 variable "test_timeout" {
   type    = string
   default = "15m"
@@ -179,6 +183,7 @@ resource "enos_local_exec" "run_e2e_test" {
     E2E_AWS_BUCKET_NAME           = var.aws_bucket_name
     E2E_WORKER_TAG_INGRESS        = var.worker_tag_ingress
     E2E_WORKER_TAG_EGRESS         = var.worker_tag_egress
+    E2E_WORKER_ADDRESS            = var.worker_address
   }
 
   inline = var.debug_no_run ? [""] : [
