@@ -176,4 +176,41 @@ const (
 	)
 	select role_id as role_id, role_scope as scope_id, role_grant as grant from final;
 		`
+
+	listRolesTemplate = `
+	select *
+		from iam_role
+		where %s
+	order by create_time desc, public_id asc
+		limit %d;
+	`
+	listRolesPageTemplate = `
+	select *
+		from iam_role
+		where (create_time, public_id) < (@last_item_create_time, @last_item_id)
+			-- search condition for applying permissions is constructed
+		and %s
+	order by create_time desc, public_id asc
+		limit %d;
+	`
+	refreshRolesTemplate = `
+	select *
+		from iam_role
+	where %s
+	order by update_time desc, public_id asc
+		limit %d;
+	`
+	refreshRolesPageTemplate = `
+	select *
+		from iam_role
+	where  update_time > @updated_after_time
+		and (update_time, public_id) < (@last_item_update_time, @last_item_id)
+			-- search condition for applying permissions is constructed
+		and %s
+	order by update_time desc, public_id asc
+		limit %d;
+	`
+	estimateCountRoles = `
+		select reltuples::bigint as estimate from pg_class where oid in ('iam_role'::regclass)
+	`
 )

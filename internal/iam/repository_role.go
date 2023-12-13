@@ -5,10 +5,13 @@ package iam
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/go-dbw"
 )
@@ -184,16 +187,141 @@ func (r *Repository) DeleteRole(ctx context.Context, withPublicId string, _ ...O
 	return rowsDeleted, nil
 }
 
-// ListRoles lists roles in the given scopes and supports WithLimit option.
-func (r *Repository) ListRoles(ctx context.Context, withScopeIds []string, opt ...Option) ([]*Role, error) {
-	const op = "iam.(Repository).ListRoles"
+// listRoles lists roles in the given scopes and supports WithLimit option.
+func (r *Repository) listRoles(ctx context.Context, withScopeIds []string, opt ...Option) ([]*Role, time.Time, error) {
+	const op = "iam.(Repository).listRoles"
 	if len(withScopeIds) == 0 {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing scope ids")
+		return nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
 	}
-	var roles []*Role
-	err := r.list(ctx, &roles, "scope_id in (?)", []any{withScopeIds}, opt...)
+	opts := getOpts(opt...)
+
+	limit := r.defaultLimit
+	if opts.withLimit != 0 {
+		// non-zero signals an override of the default limit for the repo.
+		limit = opts.withLimit
+	}
+
+	var args []any
+	whereClause := "scope_id in @scope_ids"
+	args = append(args, sql.Named("scope_ids", withScopeIds))
+
+	query := fmt.Sprintf(listRolesTemplate, whereClause, limit)
+	if opts.withStartPageAfterItem != nil {
+		query = fmt.Sprintf(listRolesPageTemplate, whereClause, limit)
+		args = append(args,
+			sql.Named("last_item_create_time", opts.withStartPageAfterItem.GetCreateTime()),
+			sql.Named("last_item_id", opts.withStartPageAfterItem.GetPublicId()),
+		)
+	}
+	return r.queryRoles(ctx, query, args, limit)
+}
+
+// listRolesRefresh lists roles in the given scopes and supports the
+// WithLimit and WithStartPageAfterItem options.
+func (r *Repository) listRolesRefresh(ctx context.Context, updatedAfter time.Time, withScopeIds []string, opt ...Option) ([]*Role, time.Time, error) {
+	const op = "iam.(Repository).listRolesRefresh"
+
+	switch {
+	case updatedAfter.IsZero():
+		return nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "missing updated after time")
+
+	case len(withScopeIds) == 0:
+		return nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
+	}
+
+	opts := getOpts(opt...)
+
+	limit := r.defaultLimit
+	if opts.withLimit != 0 {
+		// non-zero signals an override of the default limit for the repo.
+		limit = opts.withLimit
+	}
+
+	var args []any
+	whereClause := "scope_id in @scope_ids"
+	args = append(args, sql.Named("scope_ids", withScopeIds))
+
+	query := fmt.Sprintf(refreshRolesTemplate, whereClause, limit)
+	args = append(args,
+		sql.Named("updated_after_time", timestamp.New(updatedAfter)),
+	)
+	if opts.withStartPageAfterItem != nil {
+		query = fmt.Sprintf(refreshRolesPageTemplate, whereClause, limit)
+		args = append(args,
+			sql.Named("last_item_update_time", opts.withStartPageAfterItem.GetUpdateTime()),
+			sql.Named("last_item_id", opts.withStartPageAfterItem.GetPublicId()),
+		)
+	}
+
+	return r.queryRoles(ctx, query, args, limit)
+}
+
+func (r *Repository) queryRoles(ctx context.Context, query string, args []any, limit int) ([]*Role, time.Time, error) {
+	const op = "iam.(Repository).queryRoles"
+
+	var transactionTimestamp time.Time
+	var ret []*Role
+	if _, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(rd db.Reader, w db.Writer) error {
+		rows, err := rd.Query(ctx, query, args)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+
+		var inRet []*Role
+		for rows.Next() {
+			var rv Role
+			if err := rd.ScanRows(ctx, rows, &rv); err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg("scan row failed"))
+			}
+			inRet = append(inRet, &rv)
+		}
+		ret = inRet
+		transactionTimestamp, err = rd.Now(ctx)
+		return err
+	}); err != nil {
+		return nil, time.Time{}, err
+	}
+	return ret, transactionTimestamp, nil
+}
+
+// listRoleDeletedIds lists the public IDs of any roles deleted since the timestamp provided.
+func (r *Repository) listRoleDeletedIds(ctx context.Context, since time.Time) ([]string, time.Time, error) {
+	const op = "iam.(Repository).listRoleDeletedIds"
+	var deletedResources []*deletedRole
+	var transactionTimestamp time.Time
+	if _, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(r db.Reader, _ db.Writer) error {
+		if err := r.SearchWhere(ctx, &deletedResources, "delete_time >= ?", []any{since}); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to query deleted roles"))
+		}
+		var err error
+		transactionTimestamp, err = r.Now(ctx)
+		if err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to get transaction timestamp"))
+		}
+		return nil
+	}); err != nil {
+		return nil, time.Time{}, err
+	}
+	var dIds []string
+	for _, res := range deletedResources {
+		dIds = append(dIds, res.PublicId)
+	}
+	return dIds, transactionTimestamp, nil
+}
+
+// estimatedRoleCount returns an estimate of the total number of items in the iam_role table.
+func (r *Repository) estimatedRoleCount(ctx context.Context) (int, error) {
+	const op = "iam.(Repository).estimatedRoleCount"
+	rows, err := r.reader.Query(ctx, estimateCountRoles, nil)
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total roles"))
 	}
-	return roles, nil
+	var count int
+	for rows.Next() {
+		if err := r.reader.ScanRows(ctx, rows, &count); err != nil {
+			return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total roles"))
+		}
+	}
+	return count, nil
 }
