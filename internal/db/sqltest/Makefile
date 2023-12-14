@@ -36,7 +36,8 @@ TESTS ?= tests/setup/*.sql \
 		 tests/auth/*/*.sql \
 		 tests/purge/*.sql \
 		 tests/pagination/*.sql \
-		 tests/policy/*.sql
+		 tests/policy/*.sql \
+		 tests/worker/*.sql
 
 POSTGRES_DOCKER_IMAGE_BASE ?= postgres
 
