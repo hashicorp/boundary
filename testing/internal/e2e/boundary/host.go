@@ -49,7 +49,6 @@ func CreateNewHostSetApi(t testing.TB, ctx context.Context, client *api.Client, 
 func CreateNewHostApi(t testing.TB, ctx context.Context, client *api.Client, hostCatalogId string, address string) string {
 	hClient := hosts.NewClient(client)
 	newHostResult, err := hClient.Create(ctx, hostCatalogId,
-		hosts.WithName(address),
 		hosts.WithStaticHostAddress(address),
 	)
 	require.NoError(t, err)
