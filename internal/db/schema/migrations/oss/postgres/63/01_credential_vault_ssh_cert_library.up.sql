@@ -136,6 +136,7 @@ begin;
   comment on table credential_vault_ssh_cert_library is
     'credential_vault_ssh_cert_library a credential library that issues credentials from a vault ssh secret backend.';
 
+  -- Replaced in 82/07_vault_ssh_cert_default.up.sql
   create function default_ssh_certificate_credential_type() returns trigger
   as $$
   begin
