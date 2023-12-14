@@ -114,7 +114,7 @@ func TestService_ListRoles(t *testing.T) {
 			filterFunc := func(_ context.Context, r *iam.Role) (bool, error) {
 				return true, nil
 			}
-			tok, err := listtoken.NewPagination(ctx, fiveDaysAgo, resource.AuthToken, []byte("some hash"), "some-id", fiveDaysAgo)
+			tok, err := listtoken.NewPagination(ctx, fiveDaysAgo, resource.Role, []byte("some hash"), "some-id", fiveDaysAgo)
 			require.NoError(t, err)
 			_, err = iam.ListRolesPage(ctx, nil, 1, filterFunc, tok, repo, []string{org.GetPublicId()})
 			require.ErrorContains(t, err, "missing grants hash")
@@ -124,7 +124,7 @@ func TestService_ListRoles(t *testing.T) {
 			filterFunc := func(_ context.Context, r *iam.Role) (bool, error) {
 				return true, nil
 			}
-			tok, err := listtoken.NewPagination(ctx, fiveDaysAgo, resource.AuthToken, []byte("some hash"), "some-id", fiveDaysAgo)
+			tok, err := listtoken.NewPagination(ctx, fiveDaysAgo, resource.Role, []byte("some hash"), "some-id", fiveDaysAgo)
 			require.NoError(t, err)
 			_, err = iam.ListRolesPage(ctx, []byte("some hash"), 0, filterFunc, tok, repo, []string{org.GetPublicId()})
 			require.ErrorContains(t, err, "page size must be at least 1")
@@ -134,14 +134,14 @@ func TestService_ListRoles(t *testing.T) {
 			filterFunc := func(_ context.Context, r *iam.Role) (bool, error) {
 				return true, nil
 			}
-			tok, err := listtoken.NewPagination(ctx, fiveDaysAgo, resource.AuthToken, []byte("some hash"), "some-id", fiveDaysAgo)
+			tok, err := listtoken.NewPagination(ctx, fiveDaysAgo, resource.Role, []byte("some hash"), "some-id", fiveDaysAgo)
 			require.NoError(t, err)
 			_, err = iam.ListRolesPage(ctx, []byte("some hash"), -1, filterFunc, tok, repo, []string{org.GetPublicId()})
 			require.ErrorContains(t, err, "page size must be at least 1")
 		})
 		t.Run("nil filter func", func(t *testing.T) {
 			t.Parallel()
-			tok, err := listtoken.NewPagination(ctx, fiveDaysAgo, resource.AuthToken, []byte("some hash"), "some-id", fiveDaysAgo)
+			tok, err := listtoken.NewPagination(ctx, fiveDaysAgo, resource.Role, []byte("some hash"), "some-id", fiveDaysAgo)
 			require.NoError(t, err)
 			_, err = iam.ListRolesPage(ctx, []byte("some hash"), 1, nil, tok, repo, []string{org.GetPublicId()})
 			require.ErrorContains(t, err, "missing filter item callback")
@@ -159,7 +159,7 @@ func TestService_ListRoles(t *testing.T) {
 			filterFunc := func(_ context.Context, r *iam.Role) (bool, error) {
 				return true, nil
 			}
-			tok, err := listtoken.NewStartRefresh(ctx, fiveDaysAgo, resource.AuthToken, []byte("some hash"), fiveDaysAgo, fiveDaysAgo)
+			tok, err := listtoken.NewStartRefresh(ctx, fiveDaysAgo, resource.Role, []byte("some hash"), fiveDaysAgo, fiveDaysAgo)
 			require.NoError(t, err)
 			_, err = iam.ListRolesPage(ctx, []byte("some hash"), 1, filterFunc, tok, repo, []string{org.GetPublicId()})
 			require.ErrorContains(t, err, "token did not have a pagination token component")
@@ -169,7 +169,7 @@ func TestService_ListRoles(t *testing.T) {
 			filterFunc := func(_ context.Context, r *iam.Role) (bool, error) {
 				return true, nil
 			}
-			tok, err := listtoken.NewPagination(ctx, fiveDaysAgo, resource.AuthToken, []byte("some hash"), "some-id", fiveDaysAgo)
+			tok, err := listtoken.NewPagination(ctx, fiveDaysAgo, resource.Role, []byte("some hash"), "some-id", fiveDaysAgo)
 			require.NoError(t, err)
 			_, err = iam.ListRolesPage(ctx, []byte("some hash"), 1, filterFunc, tok, nil, []string{org.GetPublicId()})
 			require.ErrorContains(t, err, "missing repo")
@@ -179,7 +179,7 @@ func TestService_ListRoles(t *testing.T) {
 			filterFunc := func(_ context.Context, r *iam.Role) (bool, error) {
 				return true, nil
 			}
-			tok, err := listtoken.NewPagination(ctx, fiveDaysAgo, resource.AuthToken, []byte("some hash"), "some-id", fiveDaysAgo)
+			tok, err := listtoken.NewPagination(ctx, fiveDaysAgo, resource.Role, []byte("some hash"), "some-id", fiveDaysAgo)
 			require.NoError(t, err)
 			_, err = iam.ListRolesPage(ctx, []byte("some hash"), 1, filterFunc, tok, repo, nil)
 			require.ErrorContains(t, err, "missing scope ids")
@@ -192,7 +192,7 @@ func TestService_ListRoles(t *testing.T) {
 			filterFunc := func(_ context.Context, r *iam.Role) (bool, error) {
 				return true, nil
 			}
-			tok, err := listtoken.NewStartRefresh(ctx, fiveDaysAgo, resource.AuthToken, []byte("some hash"), fiveDaysAgo, fiveDaysAgo)
+			tok, err := listtoken.NewStartRefresh(ctx, fiveDaysAgo, resource.Role, []byte("some hash"), fiveDaysAgo, fiveDaysAgo)
 			require.NoError(t, err)
 			_, err = iam.ListRolesRefresh(ctx, nil, 1, filterFunc, tok, repo, []string{org.GetPublicId()})
 			require.ErrorContains(t, err, "missing grants hash")
@@ -202,7 +202,7 @@ func TestService_ListRoles(t *testing.T) {
 			filterFunc := func(_ context.Context, r *iam.Role) (bool, error) {
 				return true, nil
 			}
-			tok, err := listtoken.NewStartRefresh(ctx, fiveDaysAgo, resource.AuthToken, []byte("some hash"), fiveDaysAgo, fiveDaysAgo)
+			tok, err := listtoken.NewStartRefresh(ctx, fiveDaysAgo, resource.Role, []byte("some hash"), fiveDaysAgo, fiveDaysAgo)
 			require.NoError(t, err)
 			_, err = iam.ListRolesRefresh(ctx, []byte("some hash"), 0, filterFunc, tok, repo, []string{org.GetPublicId()})
 			require.ErrorContains(t, err, "page size must be at least 1")
@@ -212,14 +212,14 @@ func TestService_ListRoles(t *testing.T) {
 			filterFunc := func(_ context.Context, r *iam.Role) (bool, error) {
 				return true, nil
 			}
-			tok, err := listtoken.NewStartRefresh(ctx, fiveDaysAgo, resource.AuthToken, []byte("some hash"), fiveDaysAgo, fiveDaysAgo)
+			tok, err := listtoken.NewStartRefresh(ctx, fiveDaysAgo, resource.Role, []byte("some hash"), fiveDaysAgo, fiveDaysAgo)
 			require.NoError(t, err)
 			_, err = iam.ListRolesRefresh(ctx, []byte("some hash"), -1, filterFunc, tok, repo, []string{org.GetPublicId()})
 			require.ErrorContains(t, err, "page size must be at least 1")
 		})
 		t.Run("nil filter func", func(t *testing.T) {
 			t.Parallel()
-			tok, err := listtoken.NewStartRefresh(ctx, fiveDaysAgo, resource.AuthToken, []byte("some hash"), fiveDaysAgo, fiveDaysAgo)
+			tok, err := listtoken.NewStartRefresh(ctx, fiveDaysAgo, resource.Role, []byte("some hash"), fiveDaysAgo, fiveDaysAgo)
 			require.NoError(t, err)
 			_, err = iam.ListRolesRefresh(ctx, []byte("some hash"), 1, nil, tok, repo, []string{org.GetPublicId()})
 			require.ErrorContains(t, err, "missing filter item callback")
@@ -237,7 +237,7 @@ func TestService_ListRoles(t *testing.T) {
 			filterFunc := func(_ context.Context, r *iam.Role) (bool, error) {
 				return true, nil
 			}
-			tok, err := listtoken.NewPagination(ctx, fiveDaysAgo, resource.AuthToken, []byte("some hash"), "some-id", fiveDaysAgo)
+			tok, err := listtoken.NewPagination(ctx, fiveDaysAgo, resource.Role, []byte("some hash"), "some-id", fiveDaysAgo)
 			require.NoError(t, err)
 			_, err = iam.ListRolesRefresh(ctx, []byte("some hash"), 1, filterFunc, tok, repo, []string{org.GetPublicId()})
 			require.ErrorContains(t, err, "token did not have a start-refresh token component")
@@ -247,7 +247,7 @@ func TestService_ListRoles(t *testing.T) {
 			filterFunc := func(_ context.Context, r *iam.Role) (bool, error) {
 				return true, nil
 			}
-			tok, err := listtoken.NewStartRefresh(ctx, fiveDaysAgo, resource.AuthToken, []byte("some hash"), fiveDaysAgo, fiveDaysAgo)
+			tok, err := listtoken.NewStartRefresh(ctx, fiveDaysAgo, resource.Role, []byte("some hash"), fiveDaysAgo, fiveDaysAgo)
 			require.NoError(t, err)
 			_, err = iam.ListRolesRefresh(ctx, []byte("some hash"), 1, filterFunc, tok, nil, []string{org.GetPublicId()})
 			require.ErrorContains(t, err, "missing repo")
@@ -257,7 +257,7 @@ func TestService_ListRoles(t *testing.T) {
 			filterFunc := func(_ context.Context, r *iam.Role) (bool, error) {
 				return true, nil
 			}
-			tok, err := listtoken.NewStartRefresh(ctx, fiveDaysAgo, resource.AuthToken, []byte("some hash"), fiveDaysAgo, fiveDaysAgo)
+			tok, err := listtoken.NewStartRefresh(ctx, fiveDaysAgo, resource.Role, []byte("some hash"), fiveDaysAgo, fiveDaysAgo)
 			require.NoError(t, err)
 			_, err = iam.ListRolesRefresh(ctx, []byte("some hash"), 1, filterFunc, tok, repo, nil)
 			require.ErrorContains(t, err, "missing scope ids")
@@ -270,7 +270,7 @@ func TestService_ListRoles(t *testing.T) {
 			filterFunc := func(_ context.Context, r *iam.Role) (bool, error) {
 				return true, nil
 			}
-			tok, err := listtoken.NewRefresh(ctx, fiveDaysAgo, resource.AuthToken, []byte("some hash"), fiveDaysAgo, fiveDaysAgo, fiveDaysAgo, "some other id", fiveDaysAgo)
+			tok, err := listtoken.NewRefresh(ctx, fiveDaysAgo, resource.Role, []byte("some hash"), fiveDaysAgo, fiveDaysAgo, fiveDaysAgo, "some other id", fiveDaysAgo)
 			require.NoError(t, err)
 			_, err = iam.ListRolesRefreshPage(ctx, nil, 1, filterFunc, tok, repo, []string{org.GetPublicId()})
 			require.ErrorContains(t, err, "missing grants hash")
@@ -280,7 +280,7 @@ func TestService_ListRoles(t *testing.T) {
 			filterFunc := func(_ context.Context, r *iam.Role) (bool, error) {
 				return true, nil
 			}
-			tok, err := listtoken.NewRefresh(ctx, fiveDaysAgo, resource.AuthToken, []byte("some hash"), fiveDaysAgo, fiveDaysAgo, fiveDaysAgo, "some other id", fiveDaysAgo)
+			tok, err := listtoken.NewRefresh(ctx, fiveDaysAgo, resource.Role, []byte("some hash"), fiveDaysAgo, fiveDaysAgo, fiveDaysAgo, "some other id", fiveDaysAgo)
 			require.NoError(t, err)
 			_, err = iam.ListRolesRefreshPage(ctx, []byte("some hash"), 0, filterFunc, tok, repo, []string{org.GetPublicId()})
 			require.ErrorContains(t, err, "page size must be at least 1")
@@ -290,14 +290,14 @@ func TestService_ListRoles(t *testing.T) {
 			filterFunc := func(_ context.Context, r *iam.Role) (bool, error) {
 				return true, nil
 			}
-			tok, err := listtoken.NewRefresh(ctx, fiveDaysAgo, resource.AuthToken, []byte("some hash"), fiveDaysAgo, fiveDaysAgo, fiveDaysAgo, "some other id", fiveDaysAgo)
+			tok, err := listtoken.NewRefresh(ctx, fiveDaysAgo, resource.Role, []byte("some hash"), fiveDaysAgo, fiveDaysAgo, fiveDaysAgo, "some other id", fiveDaysAgo)
 			require.NoError(t, err)
 			_, err = iam.ListRolesRefreshPage(ctx, []byte("some hash"), -1, filterFunc, tok, repo, []string{org.GetPublicId()})
 			require.ErrorContains(t, err, "page size must be at least 1")
 		})
 		t.Run("nil filter func", func(t *testing.T) {
 			t.Parallel()
-			tok, err := listtoken.NewRefresh(ctx, fiveDaysAgo, resource.AuthToken, []byte("some hash"), fiveDaysAgo, fiveDaysAgo, fiveDaysAgo, "some other id", fiveDaysAgo)
+			tok, err := listtoken.NewRefresh(ctx, fiveDaysAgo, resource.Role, []byte("some hash"), fiveDaysAgo, fiveDaysAgo, fiveDaysAgo, "some other id", fiveDaysAgo)
 			require.NoError(t, err)
 			_, err = iam.ListRolesRefreshPage(ctx, []byte("some hash"), 1, nil, tok, repo, []string{org.GetPublicId()})
 			require.ErrorContains(t, err, "missing filter item callback")
@@ -315,7 +315,7 @@ func TestService_ListRoles(t *testing.T) {
 			filterFunc := func(_ context.Context, r *iam.Role) (bool, error) {
 				return true, nil
 			}
-			tok, err := listtoken.NewPagination(ctx, fiveDaysAgo, resource.AuthToken, []byte("some hash"), "some-id", fiveDaysAgo)
+			tok, err := listtoken.NewPagination(ctx, fiveDaysAgo, resource.Role, []byte("some hash"), "some-id", fiveDaysAgo)
 			require.NoError(t, err)
 			_, err = iam.ListRolesRefreshPage(ctx, []byte("some hash"), 1, filterFunc, tok, repo, []string{org.GetPublicId()})
 			require.ErrorContains(t, err, "token did not have a refresh token component")
@@ -325,7 +325,7 @@ func TestService_ListRoles(t *testing.T) {
 			filterFunc := func(_ context.Context, r *iam.Role) (bool, error) {
 				return true, nil
 			}
-			tok, err := listtoken.NewRefresh(ctx, fiveDaysAgo, resource.AuthToken, []byte("some hash"), fiveDaysAgo, fiveDaysAgo, fiveDaysAgo, "some other id", fiveDaysAgo)
+			tok, err := listtoken.NewRefresh(ctx, fiveDaysAgo, resource.Role, []byte("some hash"), fiveDaysAgo, fiveDaysAgo, fiveDaysAgo, "some other id", fiveDaysAgo)
 			require.NoError(t, err)
 			_, err = iam.ListRolesRefreshPage(ctx, []byte("some hash"), 1, filterFunc, tok, nil, []string{org.GetPublicId()})
 			require.ErrorContains(t, err, "missing repo")
@@ -335,7 +335,7 @@ func TestService_ListRoles(t *testing.T) {
 			filterFunc := func(_ context.Context, r *iam.Role) (bool, error) {
 				return true, nil
 			}
-			tok, err := listtoken.NewRefresh(ctx, fiveDaysAgo, resource.AuthToken, []byte("some hash"), fiveDaysAgo, fiveDaysAgo, fiveDaysAgo, "some other id", fiveDaysAgo)
+			tok, err := listtoken.NewRefresh(ctx, fiveDaysAgo, resource.Role, []byte("some hash"), fiveDaysAgo, fiveDaysAgo, fiveDaysAgo, "some other id", fiveDaysAgo)
 			require.NoError(t, err)
 			_, err = iam.ListRolesRefreshPage(ctx, []byte("some hash"), 1, filterFunc, tok, repo, nil)
 			require.ErrorContains(t, err, "missing scope ids")
@@ -402,7 +402,7 @@ func TestService_ListRoles(t *testing.T) {
 		require.Empty(t, resp6.DeletedIds)
 		require.Empty(t, resp6.Items)
 
-		// Create some new auth tokens
+		// Create some new roles
 		newR1 := iam.TestRole(t, conn, org.GetPublicId())
 		newR2 := iam.TestRole(t, conn, org.GetPublicId())
 		t.Cleanup(func() {
@@ -533,8 +533,8 @@ func TestService_ListRoles(t *testing.T) {
 		filterFunc := func(_ context.Context, r *iam.Role) (bool, error) {
 			return true, nil
 		}
-		deletedAuthTokenId := allResources[0].GetPublicId()
-		_, err := repo.DeleteRole(ctx, deletedAuthTokenId)
+		deletedRoleId := allResources[0].GetPublicId()
+		_, err := repo.DeleteRole(ctx, deletedRoleId)
 		require.NoError(t, err)
 		allResources = allResources[1:]
 
@@ -562,8 +562,8 @@ func TestService_ListRoles(t *testing.T) {
 		require.Len(t, resp2.Items, 3)
 		require.Empty(t, cmp.Diff(resp2.Items, allResources[1:], cmpIgnoreUnexportedOpts))
 
-		deletedAuthTokenId = allResources[0].GetPublicId()
-		_, err = repo.DeleteRole(ctx, deletedAuthTokenId)
+		deletedRoleId = allResources[0].GetPublicId()
+		_, err = repo.DeleteRole(ctx, deletedRoleId)
 		require.NoError(t, err)
 		allResources = allResources[1:]
 
@@ -577,7 +577,7 @@ func TestService_ListRoles(t *testing.T) {
 		require.Equal(t, resp3.ListToken.GrantsHash, []byte("some hash"))
 		require.True(t, resp3.CompleteListing)
 		require.Equal(t, resp3.EstimatedItemCount, 3)
-		require.Contains(t, resp3.DeletedIds, deletedAuthTokenId)
+		require.Contains(t, resp3.DeletedIds, deletedRoleId)
 		require.Empty(t, resp3.Items)
 	})
 }

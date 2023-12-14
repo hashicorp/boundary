@@ -196,7 +196,8 @@ const (
 	refreshRolesTemplate = `
 	select *
 		from iam_role
-	where %s
+	where update_time > @updated_after_time
+		and	%s
 	order by update_time desc, public_id asc
 		limit %d;
 	`
