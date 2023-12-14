@@ -42,22 +42,22 @@ begin;
   select is(count(*), 0::bigint) from credential_vault_library_ssh_private_key_mapping_override where library_id = 'vl______wvl8';
   select is(count(*), 0::bigint) from credential_vault_library_mapping_override                 where library_id = 'vl______wvl8';
 
-  prepare insert_credential_vault_library_ssh_private_key_mapping_override as
+  prepare insert_cvl_ssh_private_key_mapping_override as
     insert into credential_vault_library_ssh_private_key_mapping_override
       (library_id,     username_attribute, private_key_attribute)
     values
       ('vl______wvl8', 'my_username',      'my_private_key');
-  select lives_ok('insert_credential_vault_library_ssh_private_key_mapping_override');
+  select lives_ok('insert_cvl_ssh_private_key_mapping_override');
 
   select is(count(*), 1::bigint) from credential_vault_library_ssh_private_key_mapping_override where library_id = 'vl______wvl8';
   select is(count(*), 1::bigint) from credential_vault_library_mapping_override                 where library_id = 'vl______wvl8';
 
   -- validate the delete triggers
-  prepare delete_credential_vault_library_ssh_private_key_mapping_override as
+  prepare delete_cvl_ssh_private_key_mapping_override as
     delete
       from credential_vault_library_ssh_private_key_mapping_override
      where library_id = 'vl______wvl8';
-  select lives_ok('delete_credential_vault_library_ssh_private_key_mapping_override');
+  select lives_ok('delete_cvl_ssh_private_key_mapping_override');
 
   select is(count(*), 0::bigint) from credential_vault_library_ssh_private_key_mapping_override where library_id = 'vl______wvl8';
   select is(count(*), 0::bigint) from credential_vault_library_mapping_override                 where library_id = 'vl______wvl8';
