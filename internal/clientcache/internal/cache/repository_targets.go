@@ -109,8 +109,8 @@ func (r *Repository) refreshTargets(ctx context.Context, u *user, tokens map[Aut
 	_, err = r.rw.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(r db.Reader, w db.Writer) error {
 		switch {
 		case oldRefreshToken == nil:
-			if _, err := w.Exec(ctx, "delete from target where user_id = @user_id",
-				[]any{sql.Named("user_id", u.Id)}); err != nil {
+			if _, err := w.Exec(ctx, "delete from target where fk_user_id = @fk_user_id",
+				[]any{sql.Named("fk_user_id", u.Id)}); err != nil {
 				return err
 			}
 		case len(removedIds) > 0:
@@ -182,8 +182,8 @@ func (r *Repository) fullFetchTargets(ctx context.Context, u *user, tokens map[A
 
 	event.WriteSysEvent(ctx, op, fmt.Sprintf("updating %d targets for user %v", len(resp), u))
 	_, err = r.rw.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(r db.Reader, w db.Writer) error {
-		if _, err := w.Exec(ctx, "delete from target where user_id = @user_id",
-			[]any{sql.Named("user_id", u.Id)}); err != nil {
+		if _, err := w.Exec(ctx, "delete from target where fk_user_id = @fk_user_id",
+			[]any{sql.Named("fk_user_id", u.Id)}); err != nil {
 			return err
 		}
 
@@ -221,17 +221,18 @@ func upsertTargets(ctx context.Context, w db.Writer, u *user, in []*targets.Targ
 			return errors.Wrap(ctx, err, op)
 		}
 		newTarget := &Target{
-			UserId:      u.Id,
+			FkUserId:    u.Id,
 			Id:          t.Id,
 			Name:        t.Name,
 			Description: t.Description,
 			Address:     t.Address,
 			ScopeId:     t.ScopeId,
+			Type:        t.Type,
 			Item:        string(item),
 		}
 		onConflict := db.OnConflict{
-			Target: db.Columns{"user_id", "id"},
-			Action: db.UpdateAll(true),
+			Target: db.Columns{"fk_user_id", "id"},
+			Action: db.SetColumns([]string{"name", "description", "address", "scope_id", "type", "item"}),
 		}
 		if err := w.Create(ctx, newTarget, db.WithOnConflict(&onConflict)); err != nil {
 			return errors.Wrap(ctx, err, op)
@@ -262,7 +263,7 @@ func (r *Repository) QueryTargets(ctx context.Context, authTokenId, query string
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "query is missing")
 	}
 
-	w, err := mql.Parse(query, Target{}, mql.WithIgnoredFields("UserId", "Item"))
+	w, err := mql.Parse(query, Target{}, mql.WithIgnoredFields("FkUserId", "Item"))
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithCode(errors.InvalidParameter))
 	}
@@ -290,10 +291,10 @@ func (r *Repository) searchTargets(ctx context.Context, condition string, search
 	case opts.withAuthTokenId == "" && opts.withUserId == "":
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "neither user id nor auth token id were provided")
 	case opts.withAuthTokenId != "":
-		condition = fmt.Sprintf("%s and user_id in (select user_id from auth_token where id = ?)", condition)
+		condition = fmt.Sprintf("%s and fk_user_id in (select user_id from auth_token where id = ?)", condition)
 		searchArgs = append(searchArgs, opts.withAuthTokenId)
 	case opts.withUserId != "":
-		condition = fmt.Sprintf("%s and user_id = ?", condition)
+		condition = fmt.Sprintf("%s and fk_user_id = ?", condition)
 		searchArgs = append(searchArgs, opts.withUserId)
 	}
 
@@ -314,8 +315,9 @@ func (r *Repository) searchTargets(ctx context.Context, condition string, search
 }
 
 type Target struct {
-	UserId      string `gorm:"primaryKey"`
+	FkUserId    string `gorm:"primaryKey"`
 	Id          string `gorm:"primaryKey"`
+	Type        string `gorm:"default:null"`
 	Name        string `gorm:"default:null"`
 	Description string `gorm:"default:null"`
 	Address     string `gorm:"default:null"`
