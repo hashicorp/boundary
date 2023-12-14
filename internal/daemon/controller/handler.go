@@ -499,6 +499,12 @@ func wrapHandlerWithCors(h http.Handler, props HandlerProperties) http.Handler {
 		"Authorization",
 	}, props.ListenerConfig.CorsAllowedHeaders...)
 
+	allowedResponseHeaders := strings.Join([]string{
+		"Retry-After",
+		"RateLimit",
+		"RateLimit-Policy",
+	}, ", ")
+
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		if props.ListenerConfig.CorsEnabled == nil || !*props.ListenerConfig.CorsEnabled {
 			h.ServeHTTP(w, req)
@@ -548,6 +554,7 @@ func wrapHandlerWithCors(h http.Handler, props HandlerProperties) http.Handler {
 
 		w.Header().Set("Access-Control-Allow-Origin", origin)
 		w.Header().Set("Vary", "Origin")
+		w.Header().Set("Access-Control-Expose-Headers", allowedResponseHeaders)
 
 		// Apply headers for preflight requests
 		if req.Method == http.MethodOptions {
