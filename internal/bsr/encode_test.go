@@ -280,8 +280,6 @@ func TestChunkEncoder(t *testing.T) {
 				require.NoError(t, err)
 				wrote += w
 			}
-			err = enc.Close()
-			require.NoError(t, err)
 
 			got := buf.Bytes()
 			assert.Equal(t, len(tc.want), wrote)

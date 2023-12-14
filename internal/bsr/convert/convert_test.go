@@ -236,12 +236,9 @@ func TestConvert_ToAsciicast_SessionProgram(t *testing.T) {
 			err = writeToChannels(ctx, outW, messageOutboundBsrChunks...)
 			require.NoError(t, err)
 
-			outWC := outW.(io.Closer)
-			outWC.Close()
-
-			ch.Close(ctx)
-			conn.Close(ctx)
-			sesh.Close(ctx)
+			require.NoError(t, ch.Close(ctx))
+			require.NoError(t, conn.Close(ctx))
+			require.NoError(t, sesh.Close(ctx))
 
 			opSesh, err := bsr.OpenSession(ctx, srm.Id, fs, keyFn)
 			require.NoError(t, err)

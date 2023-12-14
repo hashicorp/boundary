@@ -129,15 +129,9 @@ func (e ChunkEncoder) Encode(ctx context.Context, c Chunk) (int, error) {
 	copy(encodedChunk[chunkBaseSize:], encode.compress.Bytes())
 	binary.BigEndian.PutUint32(encodedChunk[chunkBaseSize+length:], sum)
 
-	return e.w.Write(encodedChunk)
-}
-
-// Close closes the encoder.
-func (e *ChunkEncoder) Close() error {
-	var i interface{} = e.w
-	v, ok := i.(io.WriteCloser)
-	if ok {
-		return v.Close()
+	if c.GetType() == ChunkEnd {
+		return e.w.WriteAndClose(encodedChunk)
 	}
-	return nil
+
+	return e.w.Write(encodedChunk)
 }
