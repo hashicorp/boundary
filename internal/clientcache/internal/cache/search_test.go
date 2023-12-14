@@ -119,14 +119,14 @@ func TestSearch(t *testing.T) {
 		require.NoError(t, rw.Create(ctx, at))
 
 		targets := []any{
-			&Target{OwnerUserId: u.Id, Id: "t_1", Name: "one", Type: "tcp", Item: `{"id": "t_1", "name": "one", "type": "tcp"}`},
-			&Target{OwnerUserId: u.Id, Id: "t_2", Name: "two", Type: "tcp", Item: `{"id": "t_2", "name": "two", "type": "tcp"}`},
+			&Target{FkUserId: u.Id, Id: "t_1", Name: "one", Type: "tcp", Item: `{"id": "t_1", "name": "one", "type": "tcp"}`},
+			&Target{FkUserId: u.Id, Id: "t_2", Name: "two", Type: "tcp", Item: `{"id": "t_2", "name": "two", "type": "tcp"}`},
 		}
 		require.NoError(t, rw.CreateItems(ctx, targets))
 
 		sessions := []any{
-			&Session{OwnerUserId: u.Id, Id: "s_1", Endpoint: "one", Type: "tcp", UserId: "u123", Item: `{"id": "s_1", "endpoint": "one", "type": "tcp", "user_id": "u123"}`},
-			&Session{OwnerUserId: u.Id, Id: "s_2", Endpoint: "two", Type: "ssh", UserId: "u321", Item: `{"id": "s_2", "endpoint": "two", "type": "ssh", "user_id": "u321"}`},
+			&Session{FkUserId: u.Id, Id: "s_1", Endpoint: "one", Type: "tcp", UserId: "u123", Item: `{"id": "s_1", "endpoint": "one", "type": "tcp", "user_id": "u123"}`},
+			&Session{FkUserId: u.Id, Id: "s_2", Endpoint: "two", Type: "ssh", UserId: "u321", Item: `{"id": "s_2", "endpoint": "two", "type": "ssh", "user_id": "u321"}`},
 		}
 		require.NoError(t, rw.CreateItems(ctx, sessions))
 	}
@@ -192,10 +192,10 @@ func TestSearch(t *testing.T) {
 		got, err := ss.Search(ctx, SearchParams{
 			Resource:    "targets",
 			AuthTokenId: at.Id,
-			Query:       `owner_user_id % "u"`,
+			Query:       `fk_user_id % "u"`,
 		})
 		assert.Error(t, err)
-		assert.ErrorContains(t, err, `invalid column "owner_user_id"`)
+		assert.ErrorContains(t, err, `invalid column "fk_user_id"`)
 		assert.Nil(t, got)
 	})
 
@@ -251,10 +251,10 @@ func TestSearch(t *testing.T) {
 		got, err := ss.Search(ctx, SearchParams{
 			Resource:    "sessions",
 			AuthTokenId: at.Id,
-			Query:       `owner_user_id % "u"`,
+			Query:       `fk_user_id % "u"`,
 		})
 		assert.Error(t, err)
-		assert.ErrorContains(t, err, `invalid column "owner_user_id"`)
+		assert.ErrorContains(t, err, `invalid column "fk_user_id"`)
 		assert.Nil(t, got)
 	})
 

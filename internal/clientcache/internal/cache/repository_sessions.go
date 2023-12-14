@@ -111,8 +111,8 @@ func (r *Repository) refreshSessions(ctx context.Context, u *user, tokens map[Au
 	_, err = r.rw.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(_ db.Reader, w db.Writer) error {
 		switch {
 		case oldRefreshToken == nil:
-			if _, err := w.Exec(ctx, "delete from session where owner_user_id = @owner_user_id",
-				[]any{sql.Named("owner_user_id", u.Id)}); err != nil {
+			if _, err := w.Exec(ctx, "delete from session where fk_user_id = @fk_user_id",
+				[]any{sql.Named("fk_user_id", u.Id)}); err != nil {
 				return err
 			}
 		case len(removedIds) > 0:
@@ -185,8 +185,8 @@ func (r *Repository) fullFetchSessions(ctx context.Context, u *user, tokens map[
 
 	event.WriteSysEvent(ctx, op, fmt.Sprintf("updating %d sessions for user %v", len(resp), u))
 	_, err = r.rw.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(_ db.Reader, w db.Writer) error {
-		if _, err := w.Exec(ctx, "delete from session where owner_user_id = @owner_user_id",
-			[]any{sql.Named("owner_user_id", u.Id)}); err != nil {
+		if _, err := w.Exec(ctx, "delete from session where fk_user_id = @fk_user_id",
+			[]any{sql.Named("fk_user_id", u.Id)}); err != nil {
 			return err
 		}
 
@@ -222,18 +222,18 @@ func upsertSessions(ctx context.Context, w db.Writer, u *user, in []*sessions.Se
 			return errors.Wrap(ctx, err, op)
 		}
 		newSession := &Session{
-			OwnerUserId: u.Id,
-			Id:          s.Id,
-			Type:        s.Type,
-			Status:      s.Status,
-			Endpoint:    s.Endpoint,
-			ScopeId:     s.ScopeId,
-			TargetId:    s.TargetId,
-			UserId:      s.UserId,
-			Item:        string(item),
+			FkUserId: u.Id,
+			Id:       s.Id,
+			Type:     s.Type,
+			Status:   s.Status,
+			Endpoint: s.Endpoint,
+			ScopeId:  s.ScopeId,
+			TargetId: s.TargetId,
+			UserId:   s.UserId,
+			Item:     string(item),
 		}
 		onConflict := db.OnConflict{
-			Target: db.Columns{"owner_user_id", "id"},
+			Target: db.Columns{"fk_user_id", "id"},
 			Action: db.SetColumns([]string{"type", "status", "endpoint", "scope_id", "target_id", "user_id", "item"}),
 		}
 		if err := w.Create(ctx, newSession, db.WithOnConflict(&onConflict)); err != nil {
@@ -265,7 +265,7 @@ func (r *Repository) QuerySessions(ctx context.Context, authTokenId, query strin
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "query is missing")
 	}
 
-	w, err := mql.Parse(query, Session{}, mql.WithIgnoredFields("OwnerUserId", "Item"))
+	w, err := mql.Parse(query, Session{}, mql.WithIgnoredFields("FkUserId", "Item"))
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithCode(errors.InvalidParameter))
 	}
@@ -293,10 +293,10 @@ func (r *Repository) searchSessions(ctx context.Context, condition string, searc
 	case opts.withAuthTokenId == "" && opts.withUserId == "":
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "neither user id nor auth token id were provided")
 	case opts.withAuthTokenId != "":
-		condition = fmt.Sprintf("%s and owner_user_id in (select user_id from auth_token where id = ?)", condition)
+		condition = fmt.Sprintf("%s and fk_user_id in (select user_id from auth_token where id = ?)", condition)
 		searchArgs = append(searchArgs, opts.withAuthTokenId)
 	case opts.withUserId != "":
-		condition = fmt.Sprintf("%s and owner_user_id = ?", condition)
+		condition = fmt.Sprintf("%s and fk_user_id = ?", condition)
 		searchArgs = append(searchArgs, opts.withUserId)
 	}
 
@@ -317,15 +317,15 @@ func (r *Repository) searchSessions(ctx context.Context, condition string, searc
 }
 
 type Session struct {
-	OwnerUserId string `gorm:"primaryKey"`
-	Id          string `gorm:"primaryKey"`
-	Type        string `gorm:"default:null"`
-	Endpoint    string `gorm:"default:null"`
-	Status      string `gorm:"default:null"`
-	ScopeId     string `gorm:"default:null"`
-	TargetId    string `gorm:"default:null"`
-	UserId      string `gorm:"default:null"`
-	Item        string `gorm:"default:null"`
+	FkUserId string `gorm:"primaryKey"`
+	Id       string `gorm:"primaryKey"`
+	Type     string `gorm:"default:null"`
+	Endpoint string `gorm:"default:null"`
+	Status   string `gorm:"default:null"`
+	ScopeId  string `gorm:"default:null"`
+	TargetId string `gorm:"default:null"`
+	UserId   string `gorm:"default:null"`
+	Item     string `gorm:"default:null"`
 }
 
 func (*Session) TableName() string {

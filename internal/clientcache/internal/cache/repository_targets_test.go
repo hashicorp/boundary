@@ -75,7 +75,7 @@ func TestRepository_refreshTargets(t *testing.T) {
 		ti, err := json.Marshal(tar)
 		require.NoError(t, err)
 		want = append(want, &Target{
-			OwnerUserId: u.Id,
+			FkUserId:    u.Id,
 			Id:          tar.Id,
 			Name:        tar.Name,
 			Description: tar.Description,
@@ -115,10 +115,10 @@ func TestRepository_refreshTargets(t *testing.T) {
 			}),
 			want: append(want[1:],
 				&Target{
-					OwnerUserId: want[0].OwnerUserId,
-					Id:          want[0].Id,
-					Name:        "a different name",
-					Item:        `{"id":"ttcp_1","name":"a different name","created_time":"0001-01-01T00:00:00Z","updated_time":"0001-01-01T00:00:00Z"}`,
+					FkUserId: want[0].FkUserId,
+					Id:       want[0].Id,
+					Name:     "a different name",
+					Item:     `{"id":"ttcp_1","name":"a different name","created_time":"0001-01-01T00:00:00Z","updated_time":"0001-01-01T00:00:00Z"}`,
 				}),
 		},
 		{

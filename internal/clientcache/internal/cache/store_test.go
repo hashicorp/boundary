@@ -452,7 +452,7 @@ func TestTarget(t *testing.T) {
 
 	t.Run("target actions", func(t *testing.T) {
 		target := &Target{
-			OwnerUserId: u.Id,
+			FkUserId:    u.Id,
 			Id:          "tssh_1234567890",
 			Name:        "target",
 			Description: "target desc",
@@ -473,15 +473,15 @@ func TestTarget(t *testing.T) {
 
 		// TODO: Once the sqlite driver properly builds the delete query call
 		// n, err = rw.Delete(ctx, target) instead of the Exec call
-		n, err = rw.Exec(ctx, "delete from target where (owner_user_id, id) IN (values (?, ?))",
-			[]any{target.OwnerUserId, target.Id})
+		n, err = rw.Exec(ctx, "delete from target where (fk_user_id, id) IN (values (?, ?))",
+			[]any{target.FkUserId, target.Id})
 		assert.NoError(t, err)
 		assert.Equal(t, 1, n)
 	})
 
 	t.Run("lookup a target", func(t *testing.T) {
 		target := &Target{
-			OwnerUserId: u.Id,
+			FkUserId:    u.Id,
 			Id:          "tssh_1234567890",
 			Name:        "target",
 			Description: "target desc",
@@ -493,8 +493,8 @@ func TestTarget(t *testing.T) {
 		require.NoError(t, rw.Create(ctx, target))
 
 		lookTar := &Target{
-			OwnerUserId: target.OwnerUserId,
-			Id:          target.Id,
+			FkUserId: target.FkUserId,
+			Id:       target.Id,
 		}
 		assert.NoError(t, rw.LookupById(ctx, lookTar))
 		assert.NotNil(t, lookTar)
@@ -506,7 +506,7 @@ func TestTarget(t *testing.T) {
 
 	t.Run("deleting the user deletes the target", func(t *testing.T) {
 		target := &Target{
-			OwnerUserId: u.Id,
+			FkUserId:    u.Id,
 			Id:          "tssh_1234567890",
 			Name:        "target",
 			Description: "target desc",
@@ -525,8 +525,8 @@ func TestTarget(t *testing.T) {
 		require.Equal(t, 1, n)
 
 		lookTar := &Target{
-			OwnerUserId: target.OwnerUserId,
-			Id:          target.Id,
+			FkUserId: target.FkUserId,
+			Id:       target.Id,
 		}
 		assert.ErrorContains(t, rw.LookupById(ctx, lookTar), "not found")
 	})
@@ -556,13 +556,13 @@ func TestSession(t *testing.T) {
 	})
 	t.Run("session actions", func(t *testing.T) {
 		session := &Session{
-			OwnerUserId: u.Id,
-			Id:          "s_1234567890",
-			Endpoint:    "endpoint",
-			ScopeId:     "p_123",
-			TargetId:    "ttcp_123",
-			UserId:      "u_123",
-			Item:        "{id:'s_1234567890'}",
+			FkUserId: u.Id,
+			Id:       "s_1234567890",
+			Endpoint: "endpoint",
+			ScopeId:  "p_123",
+			TargetId: "ttcp_123",
+			UserId:   "u_123",
+			Item:     "{id:'s_1234567890'}",
 		}
 
 		require.NoError(t, rw.Create(ctx, session))
@@ -576,27 +576,27 @@ func TestSession(t *testing.T) {
 
 		// TODO: Once the sqlite driver properly builds the delete query call
 		// n, err = rw.Delete(ctx, session) instead of the Exec call
-		n, err = rw.Exec(ctx, "delete from session where (owner_user_id, id) IN (values (?, ?))",
-			[]any{session.OwnerUserId, session.Id})
+		n, err = rw.Exec(ctx, "delete from session where (fk_user_id, id) IN (values (?, ?))",
+			[]any{session.FkUserId, session.Id})
 		assert.NoError(t, err)
 		assert.Equal(t, 1, n)
 	})
 
 	t.Run("lookup a session", func(t *testing.T) {
 		session := &Session{
-			OwnerUserId: u.Id,
-			Id:          "s_1234567890",
-			Endpoint:    "endpoint",
-			ScopeId:     "p_123",
-			TargetId:    "ttcp_123",
-			UserId:      "u_123",
-			Item:        "{id:'s_1234567890'}",
+			FkUserId: u.Id,
+			Id:       "s_1234567890",
+			Endpoint: "endpoint",
+			ScopeId:  "p_123",
+			TargetId: "ttcp_123",
+			UserId:   "u_123",
+			Item:     "{id:'s_1234567890'}",
 		}
 		require.NoError(t, rw.Create(ctx, session))
 
 		lookSess := &Session{
-			OwnerUserId: u.Id,
-			Id:          session.Id,
+			FkUserId: u.Id,
+			Id:       session.Id,
 		}
 		assert.NoError(t, rw.LookupById(ctx, lookSess))
 		assert.NotNil(t, lookSess)
@@ -608,13 +608,13 @@ func TestSession(t *testing.T) {
 
 	t.Run("deleting the user deletes the session", func(t *testing.T) {
 		session := &Session{
-			OwnerUserId: u.Id,
-			Id:          "s_1234567890",
-			Endpoint:    "endpoint",
-			ScopeId:     "p_123",
-			TargetId:    "ttcp_123",
-			UserId:      "u_123",
-			Item:        "{id:'s_1234567890'}",
+			FkUserId: u.Id,
+			Id:       "s_1234567890",
+			Endpoint: "endpoint",
+			ScopeId:  "p_123",
+			TargetId: "ttcp_123",
+			UserId:   "u_123",
+			Item:     "{id:'s_1234567890'}",
 		}
 		require.NoError(t, rw.Create(ctx, session))
 		// Deleting the user deletes the session
@@ -626,8 +626,8 @@ func TestSession(t *testing.T) {
 		require.Equal(t, 1, n)
 
 		lookSess := &Session{
-			OwnerUserId: session.OwnerUserId,
-			Id:          session.Id,
+			FkUserId: session.FkUserId,
+			Id:       session.Id,
 		}
 		assert.ErrorContains(t, rw.LookupById(ctx, lookSess), "not found")
 	})

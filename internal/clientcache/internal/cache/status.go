@@ -149,7 +149,7 @@ func (s *StatusService) resourceStatus(ctx context.Context, u *user, rt resource
 	ret.LastError = errStatus
 
 	err = func() error {
-		query := fmt.Sprintf("select count(*) from %s where owner_user_id = @user_id", rt)
+		query := fmt.Sprintf("select count(*) from %s where fk_user_id = @user_id", rt)
 		r, err := s.repo.rw.Query(ctx, query, []any{sql.Named("user_id", u.Id)})
 		if err != nil {
 			return errors.Wrap(ctx, err, op)

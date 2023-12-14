@@ -85,15 +85,15 @@ func TestRepository_refreshSessions(t *testing.T) {
 		si, err := json.Marshal(sess)
 		require.NoError(t, err)
 		want = append(want, &Session{
-			OwnerUserId: u.Id,
-			Id:          sess.Id,
-			Type:        sess.Type,
-			Status:      sess.Status,
-			Endpoint:    sess.Endpoint,
-			ScopeId:     sess.ScopeId,
-			TargetId:    sess.TargetId,
-			UserId:      sess.UserId,
-			Item:        string(si),
+			FkUserId: u.Id,
+			Id:       sess.Id,
+			Type:     sess.Type,
+			Status:   sess.Status,
+			Endpoint: sess.Endpoint,
+			ScopeId:  sess.ScopeId,
+			TargetId: sess.TargetId,
+			UserId:   sess.UserId,
+			Item:     string(si),
 		})
 	}
 	cases := []struct {
@@ -123,10 +123,10 @@ func TestRepository_refreshSessions(t *testing.T) {
 				Status: "a different status",
 			}),
 			want: append(want[1:], &Session{
-				OwnerUserId: want[0].OwnerUserId,
-				Id:          want[0].Id,
-				Status:      "a different status",
-				Item:        `{"id":"ttcp_1","created_time":"0001-01-01T00:00:00Z","updated_time":"0001-01-01T00:00:00Z","expiration_time":"0001-01-01T00:00:00Z","status":"a different status"}`,
+				FkUserId: want[0].FkUserId,
+				Id:       want[0].Id,
+				Status:   "a different status",
+				Item:     `{"id":"ttcp_1","created_time":"0001-01-01T00:00:00Z","updated_time":"0001-01-01T00:00:00Z","expiration_time":"0001-01-01T00:00:00Z","status":"a different status"}`,
 			}),
 		},
 		{

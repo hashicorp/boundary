@@ -109,7 +109,7 @@ create table if not exists keyring_token (
 -- specific fields extracted to facilitate searching over those fields
 create table if not exists target (
   -- the boundary user id of the user who has was able to read/list this target
-  owner_user_id text not null
+  fk_user_id text not null
     references user(id)
     on delete cascade,
   -- the boundary id of the target
@@ -125,14 +125,14 @@ create table if not exists target (
   -- item is the json representation of this resource from the perspective of
   -- the the requesting user.
   item text,
-  primary key (owner_user_id, id)
+  primary key (fk_user_id, id)
 );
 
 -- session contains cached boundary session resource for a specific user and
 -- with specific fields extracted to facilitate searching over those fields
 create table if not exists session (
   -- the boundary user id of the user who has was able to read/list this resource
-  owner_user_id text not null
+  fk_user_id text not null
     references user(id)
     on delete cascade,
   -- the resource id from boundary of this session
@@ -146,13 +146,13 @@ create table if not exists session (
   scope_id text,
   target_id text,
   -- The user_id is the the id of the user that created this session. This can
-  -- be different from the owner_user_id which is the id of the boundary user
+  -- be different from the fk_user_id which is the id of the boundary user
   -- which synced this record into the cache.
   user_id text,
   -- item is the json representation of this resource from the perspective of
-  -- of the user whose id is set in owner_user_id
+  -- of the user whose id is set in fk_user_id
   item text,
-  primary key (owner_user_id, id)
+  primary key (fk_user_id, id)
 );
 
 -- contains errors from the last attempt to sync data from boundary for a
