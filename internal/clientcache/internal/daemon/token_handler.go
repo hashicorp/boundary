@@ -114,7 +114,7 @@ func newTokenHandlerFunc(ctx context.Context, repo *cache.Repository, refresher 
 				AuthTokenId: perReq.AuthTokenId,
 			}
 			if err = repo.AddKeyringToken(ctx, perReq.BoundaryAddr, kt); err != nil {
-				writeError(w, "Failed to add a keyring stored token", http.StatusInternalServerError)
+				writeError(w, fmt.Sprintf("Failed to add a keyring stored token: %v", err), http.StatusInternalServerError)
 				return
 			}
 		case perReq.AuthToken != "":
