@@ -196,9 +196,12 @@ func (r *Repository) listRoles(ctx context.Context, withScopeIds []string, opt .
 	opts := getOpts(opt...)
 
 	limit := r.defaultLimit
-	if opts.withLimit != 0 {
+	switch {
+	case opts.withLimit > 0:
 		// non-zero signals an override of the default limit for the repo.
 		limit = opts.withLimit
+	case opts.withLimit < 0:
+		return nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "limit must be non-negative")
 	}
 
 	var args []any
@@ -232,9 +235,12 @@ func (r *Repository) listRolesRefresh(ctx context.Context, updatedAfter time.Tim
 	opts := getOpts(opt...)
 
 	limit := r.defaultLimit
-	if opts.withLimit != 0 {
+	switch {
+	case opts.withLimit > 0:
 		// non-zero signals an override of the default limit for the repo.
 		limit = opts.withLimit
+	case opts.withLimit < 0:
+		return nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "limit must be non-negative")
 	}
 
 	var args []any
