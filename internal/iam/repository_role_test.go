@@ -647,7 +647,8 @@ func TestRepository_listRoles(t *testing.T) {
 				return
 			}
 			require.NoError(err)
-			assert.Equal(tt.wantCnt, len(got)) // Transaction timestamp should be within ~10 seconds of now
+			assert.Equal(tt.wantCnt, len(got))
+			// Transaction timestamp should be within ~10 seconds of now
 			assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
 			assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
 		})
