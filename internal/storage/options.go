@@ -21,6 +21,11 @@ const (
 	// NoSync mode will result in Close not syncing the file to the storage
 	// bucket.
 	NoSync
+
+	// minimumAvailableDiskSpace represents the minimum amount of available disk
+	// space a worker needs in the path defined by RecordingStoragePath for processing
+	// sessions with recording enabled.
+	minimumAvailableDiskSpace
 )
 
 // AccessMode is use to determine the access mode a file is opened with.
@@ -49,19 +54,21 @@ func GetOpts(opt ...Option) Options {
 
 func getDefaultOptions() Options {
 	return Options{
-		WithCloseSyncMode:  Asynchronous,
-		WithFileAccessMode: ReadOnly,
-		WithCreateFile:     false,
-		WithBuffer:         0,
+		WithCloseSyncMode:             Asynchronous,
+		WithFileAccessMode:            ReadOnly,
+		WithCreateFile:                false,
+		WithBuffer:                    0,
+		WithMinimumAvailableDiskSpace: DefaultMinimumAvailableDiskSpace,
 	}
 }
 
 // Options are storage options.
 type Options struct {
-	WithCloseSyncMode  SyncMode
-	WithFileAccessMode AccessMode
-	WithCreateFile     bool
-	WithBuffer         uint64
+	WithCloseSyncMode             SyncMode
+	WithFileAccessMode            AccessMode
+	WithCreateFile                bool
+	WithBuffer                    uint64
+	WithMinimumAvailableDiskSpace uint64
 }
 
 // Option is a storage option.
@@ -97,5 +104,14 @@ func WithFileAccessMode(m AccessMode) Option {
 func WithBuffer(b uint64) Option {
 	return func(o *Options) {
 		o.WithBuffer = b
+	}
+}
+
+// WithMinimumAvailableDiskSpace sets the minimum amount of
+// available disk space a worker needs in the local path defined for
+// processing sessions with recording enabled.
+func WithMinimumAvailableDiskSpace(m uint64) Option {
+	return func(o *Options) {
+		o.WithMinimumAvailableDiskSpace = m
 	}
 }

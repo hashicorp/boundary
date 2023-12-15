@@ -66,54 +66,55 @@ type Command struct {
 	controller *controller.Controller
 	worker     *worker.Worker
 
-	flagLogLevel                         string
-	flagLogFormat                        string
-	flagCombineLogs                      bool
-	flagLoginName                        string
-	flagPassword                         string
-	flagUnprivilegedLoginName            string
-	flagUnprivilegedPassword             string
-	flagIdSuffix                         string
-	flagSecondaryIdSuffix                string
-	flagHostAddress                      string
-	flagTargetDefaultPort                int
-	flagTargetSessionMaxSeconds          int
-	flagTargetSessionConnectionLimit     int
-	flagControllerApiListenAddr          string
-	flagControllerClusterListenAddr      string
-	flagControllerPublicClusterAddr      string
-	flagControllerOnly                   bool
-	flagWorkerAuthKey                    string
-	flagWorkerProxyListenAddr            string
-	flagWorkerPublicAddr                 string
-	flagOpsListenAddr                    string
-	flagUiPassthroughDir                 string
-	flagRecoveryKey                      string
-	flagDatabaseUrl                      string
-	flagContainerImage                   string
-	flagDisableDatabaseDestruction       bool
-	flagEventFormat                      string
-	flagAudit                            string
-	flagObservations                     string
-	flagTelemetry                        string
-	flagSysEvents                        string
-	flagEveryEventAllowFilters           []string
-	flagEveryEventDenyFilters            []string
-	flagCreateLoopbackPlugin             bool
-	flagPluginExecutionDir               string
-	flagSkipPlugins                      bool
-	flagSkipOidcAuthMethodCreation       bool
-	flagSkipLdapAuthMethodCreation       bool
-	flagSkipAliasTargetCreation          bool
-	flagWorkerDnsServer                  string
-	flagWorkerAuthMethod                 string
-	flagWorkerAuthStorageDir             string
-	flagWorkerAuthStorageSkipCleanup     bool
-	flagWorkerAuthWorkerRotationInterval time.Duration
-	flagWorkerAuthCaCertificateLifetime  time.Duration
-	flagWorkerAuthDebuggingEnabled       bool
-	flagWorkerRecordingStorageDir        string
-	flagBsrKey                           string
+	flagLogLevel                                       string
+	flagLogFormat                                      string
+	flagCombineLogs                                    bool
+	flagLoginName                                      string
+	flagPassword                                       string
+	flagUnprivilegedLoginName                          string
+	flagUnprivilegedPassword                           string
+	flagIdSuffix                                       string
+	flagSecondaryIdSuffix                              string
+	flagHostAddress                                    string
+	flagTargetDefaultPort                              int
+	flagTargetSessionMaxSeconds                        int
+	flagTargetSessionConnectionLimit                   int
+	flagControllerApiListenAddr                        string
+	flagControllerClusterListenAddr                    string
+	flagControllerPublicClusterAddr                    string
+	flagControllerOnly                                 bool
+	flagWorkerAuthKey                                  string
+	flagWorkerProxyListenAddr                          string
+	flagWorkerPublicAddr                               string
+	flagOpsListenAddr                                  string
+	flagUiPassthroughDir                               string
+	flagRecoveryKey                                    string
+	flagDatabaseUrl                                    string
+	flagContainerImage                                 string
+	flagDisableDatabaseDestruction                     bool
+	flagEventFormat                                    string
+	flagAudit                                          string
+	flagObservations                                   string
+	flagTelemetry                                      string
+	flagSysEvents                                      string
+	flagEveryEventAllowFilters                         []string
+	flagEveryEventDenyFilters                          []string
+	flagCreateLoopbackPlugin                           bool
+	flagPluginExecutionDir                             string
+	flagSkipPlugins                                    bool
+	flagSkipOidcAuthMethodCreation                     bool
+	flagSkipLdapAuthMethodCreation                     bool
+	flagSkipAliasTargetCreation                        bool
+	flagWorkerDnsServer                                string
+	flagWorkerAuthMethod                               string
+	flagWorkerAuthStorageDir                           string
+	flagWorkerAuthStorageSkipCleanup                   bool
+	flagWorkerAuthWorkerRotationInterval               time.Duration
+	flagWorkerAuthCaCertificateLifetime                time.Duration
+	flagWorkerAuthDebuggingEnabled                     bool
+	flagWorkerRecordingStorageDir                      string
+	flagWorkerRecordingStorageMinimumAvailableCapacity string
+	flagBsrKey                                         string
 }
 
 func (c *Command) Synopsis() string {
@@ -426,6 +427,12 @@ func (c *Command) Flags() *base.FlagSets {
 		Usage:  "Specifies the directory to store worker session recordings in dev mode. If not provided a temp directory will be created. Session recording is an Enterprise-only feature.",
 	})
 
+	f.StringVar(&base.StringVar{
+		Name:   "worker-recording-storage-minimum-available-capacity",
+		Target: &c.flagWorkerRecordingStorageMinimumAvailableCapacity,
+		Usage:  "Specifies the minimum amount of available disk space a worker needs in the recording storage directory to process sessions with session recording enabled. Input should be a capacity string: 4kib or 3GB. Defaults to 500mib.",
+	})
+
 	f.BoolVar(&base.BoolVar{
 		Name:   "worker-auth-storage-skip-cleanup",
 		Target: &c.flagWorkerAuthStorageSkipCleanup,
@@ -528,6 +535,7 @@ func (c *Command) Run(args []string) int {
 	if !c.flagControllerOnly {
 		c.Config.Worker.AuthStoragePath = c.flagWorkerAuthStorageDir
 		c.Config.Worker.RecordingStoragePath = c.flagWorkerRecordingStorageDir
+		c.Config.Worker.RecordingStorageMinimumAvailableCapacity = c.flagWorkerRecordingStorageMinimumAvailableCapacity
 
 		if c.Config.Worker.RecordingStoragePath == "" {
 			// Create a temp dir for recording storage

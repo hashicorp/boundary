@@ -99,7 +99,13 @@ type recorderManager interface {
 // create its reverseConnReceiver
 var reverseConnReceiverFactory func() reverseConnReceiver
 
-var recordingStorageFactory func(ctx context.Context, path string, plgClients map[string]plgpb.StoragePluginServiceClient, enableLoopback bool) (storage.RecordingStorage, error)
+var recordingStorageFactory func(
+	ctx context.Context,
+	path string,
+	plgClients map[string]plgpb.StoragePluginServiceClient,
+	enableLoopback bool,
+	minimumAvailableDiskSpace uint64,
+) (storage.RecordingStorage, error)
 
 var recorderManagerFactory func(*Worker) (recorderManager, error)
 
@@ -268,7 +274,12 @@ func New(ctx context.Context, conf *Config) (*Worker, error) {
 		}
 
 		// passing in an empty context so that storage can finish syncing during an emergency shutdown or interrupt
-		s, err := recordingStorageFactory(context.Background(), w.conf.RawConfig.Worker.RecordingStoragePath, plgClients, enableStorageLoopback)
+		s, err := recordingStorageFactory(
+			context.Background(),
+			w.conf.RawConfig.Worker.RecordingStoragePath,
+			plgClients, enableStorageLoopback,
+			w.conf.RawConfig.Worker.RecordingStorageMinimumAvailableDiskSpace,
+		)
 		if err != nil {
 			return nil, fmt.Errorf("error create recording storage: %w", err)
 		}

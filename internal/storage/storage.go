@@ -13,6 +13,12 @@ import (
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 )
 
+// DefaultMinimumAvailableDiskSpace is the default value a Boundary worker will use
+// if the user does not configure the worker with a RecordingStorageMinimumAvailableCapacity
+// value. This value is equivalent to 500MiB. This value is used to determine the worker's
+// local storage state.
+const DefaultMinimumAvailableDiskSpace = 500 * 1024 * 1024
+
 // RecordingStorage can be used to create an FS usable for session recording.
 type RecordingStorage interface {
 	// NewSyncingFS returns an FS that will use local storage as a cache and sync files when they are closed.
