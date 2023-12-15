@@ -205,15 +205,15 @@ func (r *Repository) listRoles(ctx context.Context, withScopeIds []string, opt .
 	whereClause := "scope_id in @scope_ids"
 	args = append(args, sql.Named("scope_ids", withScopeIds))
 
-	query := fmt.Sprintf(listRolesTemplate, whereClause, limit)
 	if opts.withStartPageAfterItem != nil {
-		query = fmt.Sprintf(listRolesPageTemplate, whereClause, limit)
+		whereClause = fmt.Sprintf("(create_time, public_id) < (@last_item_create_time, @last_item_id) and %s", whereClause)
 		args = append(args,
 			sql.Named("last_item_create_time", opts.withStartPageAfterItem.GetCreateTime()),
 			sql.Named("last_item_id", opts.withStartPageAfterItem.GetPublicId()),
 		)
 	}
-	return r.queryRoles(ctx, query, args, limit)
+	dbOpts := []db.Option{db.WithLimit(limit), db.WithOrder("create_time desc, public_id asc")}
+	return r.queryRoles(ctx, whereClause, args, dbOpts...)
 }
 
 // listRolesRefresh lists roles in the given scopes and supports the
@@ -238,45 +238,35 @@ func (r *Repository) listRolesRefresh(ctx context.Context, updatedAfter time.Tim
 	}
 
 	var args []any
-	whereClause := "scope_id in @scope_ids"
-	args = append(args, sql.Named("scope_ids", withScopeIds))
-
-	query := fmt.Sprintf(refreshRolesTemplate, whereClause, limit)
+	whereClause := "update_time > @updated_after_time and scope_id in @scope_ids"
 	args = append(args,
 		sql.Named("updated_after_time", timestamp.New(updatedAfter)),
+		sql.Named("scope_ids", withScopeIds),
 	)
 	if opts.withStartPageAfterItem != nil {
-		query = fmt.Sprintf(refreshRolesPageTemplate, whereClause, limit)
+		whereClause = fmt.Sprintf("(update_time, public_id) < (@last_item_update_time, @last_item_id) and %s", whereClause)
 		args = append(args,
 			sql.Named("last_item_update_time", opts.withStartPageAfterItem.GetUpdateTime()),
 			sql.Named("last_item_id", opts.withStartPageAfterItem.GetPublicId()),
 		)
 	}
 
-	return r.queryRoles(ctx, query, args, limit)
+	dbOpts := []db.Option{db.WithLimit(limit), db.WithOrder("update_time desc, public_id asc")}
+	return r.queryRoles(ctx, whereClause, args, dbOpts...)
 }
 
-func (r *Repository) queryRoles(ctx context.Context, query string, args []any, limit int) ([]*Role, time.Time, error) {
+func (r *Repository) queryRoles(ctx context.Context, whereClause string, args []any, opt ...db.Option) ([]*Role, time.Time, error) {
 	const op = "iam.(Repository).queryRoles"
 
 	var transactionTimestamp time.Time
 	var ret []*Role
 	if _, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(rd db.Reader, w db.Writer) error {
-		rows, err := rd.Query(ctx, query, args)
-		if err != nil {
-			return err
-		}
-		defer rows.Close()
-
 		var inRet []*Role
-		for rows.Next() {
-			var rv Role
-			if err := rd.ScanRows(ctx, rows, &rv); err != nil {
-				return errors.Wrap(ctx, err, op, errors.WithMsg("scan row failed"))
-			}
-			inRet = append(inRet, &rv)
+		if err := rd.SearchWhere(ctx, &inRet, whereClause, args, opt...); err != nil {
+			return errors.Wrap(ctx, err, op)
 		}
 		ret = inRet
+		var err error
 		transactionTimestamp, err = rd.Now(ctx)
 		return err
 	}); err != nil {
