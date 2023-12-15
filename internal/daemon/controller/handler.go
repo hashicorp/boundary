@@ -172,6 +172,7 @@ func (c *Controller) registerGrpcServices(s *grpc.Server) error {
 			c.IamRepoFn,
 			c.AuthTokenRepoFn,
 			c.LdapRepoFn,
+			c.AuthMethodRepoFn,
 			c.conf.RawConfig.Controller.MaxPageSize,
 		)
 		if err != nil {

@@ -19,6 +19,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/ldap"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
@@ -29,8 +30,11 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	authpb "github.com/hashicorp/boundary/internal/gen/controller/auth"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/requests"
+	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/authmethods"
@@ -51,6 +55,7 @@ const (
 	testLoginName = "default"
 )
 
+// TODO: fix this
 var (
 	pwAuthorizedActions = []string{
 		action.NoOp.String(),
@@ -111,6 +116,9 @@ func TestGet(t *testing.T) {
 	}
 	atRepoFn := func() (*authtoken.Repository, error) {
 		return authtoken.NewRepository(ctx, rw, rw, kmsCache)
+	}
+	authMethodRepoFn := func() (*auth.AuthMethodRepository, error) {
+		return auth.NewAuthMethodRepository(ctx, rw, rw, kmsCache)
 	}
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 
@@ -257,7 +265,7 @@ func TestGet(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			s, err := authmethods.NewService(ctx, kmsCache, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn, ldapRepoFn)
+			s, err := authmethods.NewService(ctx, kmsCache, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn, ldapRepoFn, authMethodRepoFn, 1000)
 			require.NoError(err, "Couldn't create new auth_method service.")
 
 			got, gErr := s.GetAuthMethod(requestauth.DisabledAuthTestContext(iamRepoFn, tc.scopeId), tc.req)
@@ -306,6 +314,9 @@ func TestList(t *testing.T) {
 	}
 	atRepoFn := func() (*authtoken.Repository, error) {
 		return authtoken.NewRepository(ctx, rw, rw, kmsCache)
+	}
+	authMethodRepoFn := func() (*auth.AuthMethodRepository, error) {
+		return auth.NewAuthMethodRepository(ctx, rw, rw, kmsCache)
 	}
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 
@@ -435,17 +446,33 @@ func TestList(t *testing.T) {
 		{
 			name: "List Some Auth Methods",
 			req:  &pbs.ListAuthMethodsRequest{ScopeId: oWithAuthMethods.GetPublicId()},
-			res:  &pbs.ListAuthMethodsResponse{Items: cpSorted(wantSomeAuthMethods)},
+			res: &pbs.ListAuthMethodsResponse{
+				Items:        cpSorted(wantSomeAuthMethods),
+				EstItemCount: 5,
+				ResponseType: "complete",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+			},
 		},
 		{
 			name: "List Other Auth Methods",
 			req:  &pbs.ListAuthMethodsRequest{ScopeId: oWithOtherAuthMethods.GetPublicId()},
-			res:  &pbs.ListAuthMethodsResponse{Items: cpSorted(wantOtherAuthMethods)},
+			res: &pbs.ListAuthMethodsResponse{
+				Items:        cpSorted(wantOtherAuthMethods),
+				EstItemCount: 3,
+				ResponseType: "complete",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+			},
 		},
 		{
 			name: "List No Auth Methods",
 			req:  &pbs.ListAuthMethodsRequest{ScopeId: oNoAuthMethods.GetPublicId()},
-			res:  &pbs.ListAuthMethodsResponse{},
+			res: &pbs.ListAuthMethodsResponse{
+				ResponseType: "complete",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+			},
 		},
 		{
 			name: "Unfound Auth Method",
@@ -459,6 +486,10 @@ func TestList(t *testing.T) {
 				Items: func() []*pb.AuthMethod {
 					return cpSorted(append(wantSomeAuthMethods, wantOtherAuthMethods...))
 				}(),
+				EstItemCount: 8,
+				ResponseType: "complete",
+				SortBy:       "created_time",
+				SortDir:      "desc",
 			},
 		},
 		{
@@ -467,12 +498,22 @@ func TestList(t *testing.T) {
 				ScopeId: "global", Recursive: true,
 				Filter: fmt.Sprintf(`"/item/scope/id"==%q`, oWithAuthMethods.GetPublicId()),
 			},
-			res: &pbs.ListAuthMethodsResponse{Items: cpSorted(wantSomeAuthMethods)},
+			res: &pbs.ListAuthMethodsResponse{
+				Items:        cpSorted(wantSomeAuthMethods),
+				EstItemCount: 5,
+				ResponseType: "complete",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+			},
 		},
 		{
 			name: "Filter All Auth Methods",
 			req:  &pbs.ListAuthMethodsRequest{ScopeId: oWithAuthMethods.GetPublicId(), Filter: `"/item/id"=="nothingmatchesthis"`},
-			res:  &pbs.ListAuthMethodsResponse{},
+			res: &pbs.ListAuthMethodsResponse{
+				ResponseType: "complete",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+			},
 		},
 		{
 			name: "Filter Bad Format",
@@ -483,7 +524,7 @@ func TestList(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			s, err := authmethods.NewService(ctx, kmsCache, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn, ldapRepoFn)
+			s, err := authmethods.NewService(ctx, kmsCache, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn, ldapRepoFn, authMethodRepoFn, 1000)
 			require.NoError(err, "Couldn't create new auth_method service.")
 
 			// First check with non-anonymous user
@@ -501,10 +542,8 @@ func TestList(t *testing.T) {
 			}
 
 			slices.SortFunc(got.Items, sorterFn)
-			assert.Empty(cmp.Diff(
-				got,
-				tc.res,
-				protocmp.Transform(),
+			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform(),
+				protocmp.IgnoreFields(&pbs.ListAuthMethodsResponse{}, "list_token"),
 				protocmp.IgnoreFields(&pb.OidcAuthMethodAttributes{}, "client_secret_hmac"),
 				protocmp.IgnoreFields(&pb.LdapAuthMethodAttributes{}, "bind_password_hmac", "client_certificate_key_hmac"),
 				cmpopts.SortSlices(func(a, b string) bool {
@@ -550,6 +589,9 @@ func TestDelete(t *testing.T) {
 	atRepoFn := func() (*authtoken.Repository, error) {
 		return authtoken.NewRepository(ctx, rw, rw, kmsCache)
 	}
+	authMethodRepoFn := func() (*auth.AuthMethodRepository, error) {
+		return auth.NewAuthMethodRepository(ctx, rw, rw, kmsCache)
+	}
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 
 	o, _ := iam.TestScopes(t, iamRepo)
@@ -563,7 +605,7 @@ func TestDelete(t *testing.T) {
 
 	ldapAm := ldap.TestAuthMethod(t, conn, databaseWrapper, o.GetPublicId(), []string{"ldaps://ldap1"})
 
-	s, err := authmethods.NewService(ctx, kmsCache, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn, ldapRepoFn)
+	s, err := authmethods.NewService(ctx, kmsCache, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn, ldapRepoFn, authMethodRepoFn, 1000)
 	require.NoError(t, err, "Error when getting new auth_method service.")
 
 	cases := []struct {
@@ -643,12 +685,15 @@ func TestDelete_twice(t *testing.T) {
 	atRepoFn := func() (*authtoken.Repository, error) {
 		return authtoken.NewRepository(ctx, rw, rw, kms)
 	}
+	authMethodRepoFn := func() (*auth.AuthMethodRepository, error) {
+		return auth.NewAuthMethodRepository(ctx, rw, rw, kms)
+	}
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 
 	o, _ := iam.TestScopes(t, iamRepo)
 	am := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
 
-	s, err := authmethods.NewService(ctx, kms, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn, ldapRepoFn)
+	s, err := authmethods.NewService(ctx, kms, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn, ldapRepoFn, authMethodRepoFn, 1000)
 	require.NoError(err, "Error when getting new auth_method service.")
 
 	req := &pbs.DeleteAuthMethodRequest{
@@ -681,6 +726,9 @@ func TestCreate(t *testing.T) {
 	}
 	atRepoFn := func() (*authtoken.Repository, error) {
 		return authtoken.NewRepository(ctx, rw, rw, testKms)
+	}
+	authMethodRepoFn := func() (*auth.AuthMethodRepository, error) {
+		return auth.NewAuthMethodRepository(ctx, rw, rw, testKms)
 	}
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 
@@ -1478,7 +1526,7 @@ func TestCreate(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			s, err := authmethods.NewService(ctx, testKms, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn, ldapRepoFn)
+			s, err := authmethods.NewService(ctx, testKms, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn, ldapRepoFn, authMethodRepoFn, 1000)
 			require.NoError(err, "Error when getting new auth_method service.")
 
 			got, gErr := s.CreateAuthMethod(requestauth.DisabledAuthTestContext(iamRepoFn, tc.req.GetItem().GetScopeId()), tc.req)
@@ -1549,4 +1597,438 @@ func TestCreate(t *testing.T) {
 			assert.Empty(cmp.Diff(got, tc.res, cmpOptions...), "CreateAuthMethod(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
+}
+
+func TestListPagination(t *testing.T) {
+	// Set database read timeout to avoid duplicates in response
+	oldReadTimeout := globals.RefreshReadLookbackDuration
+	globals.RefreshReadLookbackDuration = 0
+	t.Cleanup(func() {
+		globals.RefreshReadLookbackDuration = oldReadTimeout
+	})
+	ctx := context.TODO()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	sqlDB, err := conn.SqlDB(ctx)
+	require.NoError(t, err)
+	wrapper := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, wrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iam.TestRepo(t, conn, wrapper), nil
+	}
+	oidcRepoFn := func() (*oidc.Repository, error) {
+		return oidc.NewRepository(ctx, rw, rw, kmsCache)
+	}
+	ldapRepoFn := func() (*ldap.Repository, error) {
+		return ldap.NewRepository(ctx, rw, rw, kmsCache)
+	}
+	pwRepoFn := func() (*password.Repository, error) {
+		return password.NewRepository(ctx, rw, rw, kmsCache)
+	}
+	tokenRepoFn := func() (*authtoken.Repository, error) {
+		return authtoken.NewRepository(ctx, rw, rw, kmsCache)
+	}
+	serversRepoFn := func() (*server.Repository, error) {
+		return server.NewRepository(ctx, rw, rw, kmsCache)
+	}
+	authMethodRepoFn := func() (*auth.AuthMethodRepository, error) {
+		return auth.NewAuthMethodRepository(ctx, rw, rw, kmsCache)
+	}
+
+	iamRepo, err := iamRepoFn()
+	require.NoError(t, err)
+	tokenRepo, err := tokenRepoFn()
+	require.NoError(t, err)
+	ldapRepo, err := ldapRepoFn()
+	require.NoError(t, err)
+	oidcRepo, err := oidcRepoFn()
+	require.NoError(t, err)
+
+	orgNoAms, _ := iam.TestScopes(t, iamRepo)
+	org, proj := iam.TestScopes(t, iamRepo)
+	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.GetPublicId(), kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+
+	var allAuthMethods []*pb.AuthMethod
+
+	oidcam := oidc.TestAuthMethod(t, conn, databaseWrapper, org.GetPublicId(), oidc.ActivePublicState, "alice_rp", "secret",
+		oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://alice.com")[0]), oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://api.com")[0]), oidc.WithSigningAlgs(oidc.EdDSA),
+		oidc.WithPrompts(oidc.Consent))
+	iam.TestSetPrimaryAuthMethod(t, iamRepo, org, oidcam.GetPublicId())
+
+	allAuthMethods = append(allAuthMethods, &pb.AuthMethod{
+		Id:          oidcam.GetPublicId(),
+		ScopeId:     org.GetPublicId(),
+		CreatedTime: oidcam.GetCreateTime().GetTimestamp(),
+		UpdatedTime: oidcam.GetUpdateTime().GetTimestamp(),
+		Scope:       &scopepb.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
+		Version:     2,
+		Type:        oidc.Subtype.String(),
+		Attrs: &pb.AuthMethod_OidcAuthMethodsAttributes{
+			OidcAuthMethodsAttributes: &pb.OidcAuthMethodAttributes{
+				Issuer:           wrapperspb.String("https://alice.com"),
+				ClientId:         wrapperspb.String("alice_rp"),
+				ClientSecretHmac: "<hmac>",
+				State:            string(oidc.ActivePublicState),
+				ApiUrlPrefix:     wrapperspb.String("https://api.com"),
+				CallbackUrl:      fmt.Sprintf(oidc.CallbackEndpoint, "https://api.com"),
+				SigningAlgorithms: []string{
+					string(oidc.EdDSA),
+				},
+				Prompts: []string{string(oidc.Consent)},
+			},
+		},
+		IsPrimary:                   true,
+		AuthorizedActions:           oidcAuthorizedActions,
+		AuthorizedCollectionActions: authorizedCollectionActions,
+	})
+
+	ldapAm := ldap.TestAuthMethod(t, conn, databaseWrapper, org.GetPublicId(), []string{"ldaps://ldap1"},
+		ldap.WithOperationalState(ctx, ldap.ActivePublicState),
+		ldap.WithMaximumPageSize(ctx, 10),
+		ldap.WithDerefAliases(ctx, ldap.DerefAlways),
+	)
+	allAuthMethods = append(allAuthMethods, &pb.AuthMethod{
+		Id:          ldapAm.GetPublicId(),
+		ScopeId:     org.GetPublicId(),
+		CreatedTime: ldapAm.GetCreateTime().GetTimestamp(),
+		UpdatedTime: ldapAm.GetUpdateTime().GetTimestamp(),
+		Scope:       &scopepb.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
+		Version:     1,
+		Type:        ldap.Subtype.String(),
+		Attrs: &pb.AuthMethod_LdapAuthMethodsAttributes{
+			LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{
+				State:              string(ldap.ActivePublicState),
+				Urls:               []string{"ldaps://ldap1"},
+				MaximumPageSize:    10,
+				DereferenceAliases: wrapperspb.String(string(ldap.DerefAlways)),
+			},
+		},
+		AuthorizedActions:           ldapAuthorizedActions,
+		AuthorizedCollectionActions: authorizedCollectionActions,
+	})
+
+	for _, am := range password.TestAuthMethods(t, conn, org.GetPublicId(), 7) {
+		allAuthMethods = append(allAuthMethods, &pb.AuthMethod{
+			Id:          am.GetPublicId(),
+			ScopeId:     org.GetPublicId(),
+			CreatedTime: am.GetCreateTime().GetTimestamp(),
+			UpdatedTime: am.GetUpdateTime().GetTimestamp(),
+			Scope:       &scopepb.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
+			Version:     1,
+			Type:        "password",
+			Attrs: &pb.AuthMethod_PasswordAuthMethodAttributes{
+				PasswordAuthMethodAttributes: &pb.PasswordAuthMethodAttributes{
+					MinPasswordLength:  8,
+					MinLoginNameLength: 3,
+				},
+			},
+			AuthorizedActions:           pwAuthorizedActions,
+			AuthorizedCollectionActions: authorizedCollectionActions,
+		})
+	}
+
+	masterAuthMethod := password.TestAuthMethods(t, conn, org.GetPublicId(), 1)[0]
+	acct := password.TestAccount(t, conn, masterAuthMethod.GetPublicId(), "test_user")
+	u := iam.TestUser(t, iamRepo, org.GetPublicId(), iam.WithAccountIds(acct.PublicId))
+	orgRole := iam.TestRole(t, conn, org.GetPublicId())
+	iam.TestRoleGrant(t, conn, orgRole.GetPublicId(), "id=*;type=*;actions=*")
+	iam.TestUserRole(t, conn, orgRole.GetPublicId(), u.GetPublicId())
+	projRole := iam.TestRole(t, conn, proj.GetPublicId())
+	iam.TestRoleGrant(t, conn, projRole.GetPublicId(), "id=*;type=*;actions=*")
+	iam.TestUserRole(t, conn, projRole.GetPublicId(), u.GetPublicId())
+	at, err := tokenRepo.CreateAuthToken(ctx, u, acct.GetPublicId())
+	require.NoError(t, err)
+
+	allAuthMethods = append(allAuthMethods, &pb.AuthMethod{
+		Id:          masterAuthMethod.GetPublicId(),
+		ScopeId:     org.GetPublicId(),
+		CreatedTime: masterAuthMethod.GetCreateTime().GetTimestamp(),
+		UpdatedTime: masterAuthMethod.GetUpdateTime().GetTimestamp(),
+		Scope:       &scopepb.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
+		Version:     1,
+		Type:        "password",
+		Attrs: &pb.AuthMethod_PasswordAuthMethodAttributes{
+			PasswordAuthMethodAttributes: &pb.PasswordAuthMethodAttributes{
+				MinPasswordLength:  8,
+				MinLoginNameLength: 3,
+			},
+		},
+		AuthorizedActions:           pwAuthorizedActions,
+		AuthorizedCollectionActions: authorizedCollectionActions,
+	})
+
+	// Reverse slice since we're sorting by create time descending
+	slices.Reverse(allAuthMethods)
+
+	// Run analyze to update postgres meta tables
+	_, err = sqlDB.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
+
+	// Test without anon user
+	requestInfo := authpb.RequestInfo{
+		TokenFormat: uint32(requestauth.AuthTokenTypeBearer),
+		PublicId:    at.GetPublicId(),
+		Token:       at.GetToken(),
+	}
+	requestContext := context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
+	ctx = requestauth.NewVerifierContext(requestContext, iamRepoFn, tokenRepoFn, serversRepoFn, kmsCache, &requestInfo)
+
+	s, err := authmethods.NewService(ctx, kmsCache, pwRepoFn, oidcRepoFn, iamRepoFn, tokenRepoFn, ldapRepoFn, authMethodRepoFn, 1000)
+	require.NoError(t, err)
+
+	// Start paginating, recursively
+	req := &pbs.ListAuthMethodsRequest{
+		ScopeId:   org.PublicId,
+		Filter:    "",
+		ListToken: "",
+		PageSize:  2,
+	}
+	got, err := s.ListAuthMethods(ctx, req)
+	require.NoError(t, err)
+	require.Len(t, got.GetItems(), 2)
+	assert.Empty(
+		t,
+		cmp.Diff(
+			got,
+			&pbs.ListAuthMethodsResponse{
+				Items:        allAuthMethods[0:2],
+				ResponseType: "delta",
+				ListToken:    "",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+				RemovedIds:   nil,
+				EstItemCount: 10,
+			},
+			protocmp.Transform(),
+			protocmp.IgnoreFields(&pb.OidcAuthMethodAttributes{}, "client_secret_hmac"),
+			protocmp.IgnoreFields(&pb.LdapAuthMethodAttributes{}, "bind_password_hmac", "client_certificate_key_hmac"),
+			protocmp.IgnoreFields(&pbs.ListAuthMethodsResponse{}, "list_token"),
+		),
+	)
+
+	// Request second page
+	req.ListToken = got.ListToken
+	got, err = s.ListAuthMethods(ctx, req)
+	require.NoError(t, err)
+	require.Len(t, got.GetItems(), 2)
+	assert.Empty(
+		t,
+		cmp.Diff(
+			got,
+			&pbs.ListAuthMethodsResponse{
+				Items:        allAuthMethods[2:4],
+				ResponseType: "delta",
+				ListToken:    "",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+				RemovedIds:   nil,
+				EstItemCount: 10,
+			},
+			protocmp.Transform(),
+			protocmp.IgnoreFields(&pb.OidcAuthMethodAttributes{}, "client_secret_hmac"),
+			protocmp.IgnoreFields(&pb.LdapAuthMethodAttributes{}, "bind_password_hmac", "client_certificate_key_hmac"),
+			protocmp.IgnoreFields(&pbs.ListAuthMethodsResponse{}, "list_token"),
+		),
+	)
+
+	// Request rest of results
+	req.ListToken = got.ListToken
+	req.PageSize = 10
+	got, err = s.ListAuthMethods(ctx, req)
+	require.NoError(t, err)
+	require.Len(t, got.GetItems(), 6)
+	assert.Empty(
+		t,
+		cmp.Diff(
+			got,
+			&pbs.ListAuthMethodsResponse{
+				Items:        allAuthMethods[4:],
+				ResponseType: "complete",
+				ListToken:    "",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+				RemovedIds:   nil,
+				EstItemCount: 10,
+			},
+			protocmp.Transform(),
+			protocmp.IgnoreFields(&pb.OidcAuthMethodAttributes{}, "client_secret_hmac"),
+			protocmp.IgnoreFields(&pb.LdapAuthMethodAttributes{}, "bind_password_hmac", "client_certificate_key_hmac"),
+			protocmp.IgnoreFields(&pbs.ListAuthMethodsResponse{}, "list_token"),
+		),
+	)
+
+	// create another auth method
+	am := password.TestAuthMethods(t, conn, org.GetPublicId(), 1)[0]
+	ampb := &pb.AuthMethod{
+		Id:          am.GetPublicId(),
+		ScopeId:     org.GetPublicId(),
+		CreatedTime: am.GetCreateTime().GetTimestamp(),
+		UpdatedTime: am.GetUpdateTime().GetTimestamp(),
+		Scope:       &scopepb.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
+		Version:     1,
+		Type:        "password",
+		Attrs: &pb.AuthMethod_PasswordAuthMethodAttributes{
+			PasswordAuthMethodAttributes: &pb.PasswordAuthMethodAttributes{
+				MinPasswordLength:  8,
+				MinLoginNameLength: 3,
+			},
+		},
+		AuthorizedActions:           pwAuthorizedActions,
+		AuthorizedCollectionActions: authorizedCollectionActions,
+	}
+	// add to front since it's most recently updated
+	allAuthMethods = append([]*pb.AuthMethod{ampb}, allAuthMethods...)
+
+	// delete a different auth method
+	_, err = oidcRepo.DeleteAuthMethod(ctx, allAuthMethods[len(allAuthMethods)-1].Id)
+	require.NoError(t, err)
+	deletedAM := allAuthMethods[len(allAuthMethods)-1]
+	allAuthMethods = allAuthMethods[:len(allAuthMethods)-1]
+
+	// update a different auth method
+	ldapAm.AuthMethod.Description = "new description"
+	allAuthMethods[len(allAuthMethods)-1].Description = wrapperspb.String("new description")
+	updatedAM, _, err := ldapRepo.UpdateAuthMethod(ctx, ldapAm, ldapAm.Version, []string{"description"})
+	require.NoError(t, err)
+	allAuthMethods[len(allAuthMethods)-1].UpdatedTime = updatedAM.UpdateTime.GetTimestamp()
+	allAuthMethods[len(allAuthMethods)-1].Version = updatedAM.GetVersion()
+	// add to front since it's most recently updated
+	allAuthMethods = append([]*pb.AuthMethod{allAuthMethods[len(allAuthMethods)-1]}, allAuthMethods[:len(allAuthMethods)-1]...)
+
+	// request updated results
+	req.ListToken = got.ListToken
+	req.PageSize = 1
+	got, err = s.ListAuthMethods(ctx, req)
+	require.NoError(t, err)
+	require.Len(t, got.GetItems(), 1)
+	assert.Empty(
+		t,
+		cmp.Diff(
+			got,
+			&pbs.ListAuthMethodsResponse{
+				Items:        []*pb.AuthMethod{allAuthMethods[0]},
+				ResponseType: "delta",
+				ListToken:    "",
+				SortBy:       "updated_time",
+				SortDir:      "desc",
+				// should be the deleted auth method
+				RemovedIds:   []string{deletedAM.Id},
+				EstItemCount: 10,
+			},
+			protocmp.Transform(),
+			protocmp.IgnoreFields(&pb.OidcAuthMethodAttributes{}, "client_secret_hmac"),
+			protocmp.IgnoreFields(&pb.LdapAuthMethodAttributes{}, "bind_password_hmac", "client_certificate_key_hmac"),
+			protocmp.IgnoreFields(&pbs.ListAuthMethodsResponse{}, "list_token"),
+		),
+	)
+
+	// get next page
+	req.ListToken = got.ListToken
+	got, err = s.ListAuthMethods(ctx, req)
+	require.NoError(t, err)
+	require.Len(t, got.GetItems(), 1)
+	assert.Empty(
+		t,
+		cmp.Diff(
+			got,
+			&pbs.ListAuthMethodsResponse{
+				Items:        []*pb.AuthMethod{allAuthMethods[1]},
+				ResponseType: "complete",
+				ListToken:    "",
+				SortBy:       "updated_time",
+				SortDir:      "desc",
+				RemovedIds:   nil,
+				EstItemCount: 10,
+			},
+			protocmp.Transform(),
+			protocmp.IgnoreFields(&pb.OidcAuthMethodAttributes{}, "client_secret_hmac"),
+			protocmp.IgnoreFields(&pb.LdapAuthMethodAttributes{}, "bind_password_hmac", "client_certificate_key_hmac"),
+			protocmp.IgnoreFields(&pbs.ListAuthMethodsResponse{}, "list_token"),
+		),
+	)
+
+	// Request new page with filter requiring looping
+	// to fill the page.
+	req.ListToken = ""
+	req.PageSize = 1
+	req.Filter = fmt.Sprintf(`"/item/id"==%q or "/item/id"==%q`, allAuthMethods[len(allAuthMethods)-2].Id, allAuthMethods[len(allAuthMethods)-1].Id)
+	got, err = s.ListAuthMethods(ctx, req)
+	require.NoError(t, err)
+	require.Len(t, got.GetItems(), 1)
+	assert.Empty(
+		t,
+		cmp.Diff(
+			got,
+			&pbs.ListAuthMethodsResponse{
+				Items:        []*pb.AuthMethod{allAuthMethods[len(allAuthMethods)-2]},
+				ResponseType: "delta",
+				ListToken:    "",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+				// Should be empty again
+				RemovedIds:   nil,
+				EstItemCount: 10,
+			},
+			protocmp.Transform(),
+			protocmp.IgnoreFields(&pb.OidcAuthMethodAttributes{}, "client_secret_hmac"),
+			protocmp.IgnoreFields(&pb.LdapAuthMethodAttributes{}, "bind_password_hmac", "client_certificate_key_hmac"),
+			protocmp.IgnoreFields(&pbs.ListAuthMethodsResponse{}, "list_token"),
+		),
+	)
+	req.ListToken = got.ListToken
+	// Get the second page
+	got, err = s.ListAuthMethods(ctx, req)
+	require.NoError(t, err)
+	require.Len(t, got.GetItems(), 1)
+	assert.Empty(
+		t,
+		cmp.Diff(
+			got,
+			&pbs.ListAuthMethodsResponse{
+				Items:        []*pb.AuthMethod{allAuthMethods[len(allAuthMethods)-1]},
+				ResponseType: "complete",
+				ListToken:    "",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+				RemovedIds:   nil,
+				EstItemCount: 10,
+			},
+			protocmp.Transform(),
+			protocmp.IgnoreFields(&pb.OidcAuthMethodAttributes{}, "client_secret_hmac"),
+			protocmp.IgnoreFields(&pb.LdapAuthMethodAttributes{}, "bind_password_hmac", "client_certificate_key_hmac"),
+			protocmp.IgnoreFields(&pbs.ListAuthMethodsResponse{}, "list_token"),
+		),
+	)
+	req.ListToken = got.ListToken
+
+	// List items in the empty scope
+	req = &pbs.ListAuthMethodsRequest{
+		ScopeId:   orgNoAms.PublicId,
+		Filter:    "",
+		ListToken: "",
+		PageSize:  2,
+	}
+	got, err = s.ListAuthMethods(ctx, req)
+	require.NoError(t, err)
+	require.Len(t, got.GetItems(), 0)
+	// Compare without comparing the refresh token
+	assert.Empty(
+		t,
+		cmp.Diff(
+			got,
+			&pbs.ListAuthMethodsResponse{
+				Items:        nil,
+				ResponseType: "complete",
+				ListToken:    "",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+				RemovedIds:   nil,
+			},
+			protocmp.Transform(),
+			protocmp.IgnoreFields(&pb.OidcAuthMethodAttributes{}, "client_secret_hmac"),
+			protocmp.IgnoreFields(&pb.LdapAuthMethodAttributes{}, "bind_password_hmac", "client_certificate_key_hmac"),
+			protocmp.IgnoreFields(&pbs.ListAuthMethodsResponse{}, "list_token"),
+		),
+	)
 }
