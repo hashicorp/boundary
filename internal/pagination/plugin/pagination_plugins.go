@@ -26,7 +26,8 @@ type ListPluginsFilterFunc[T boundary.Resource] func(ctx context.Context, item T
 type ListPluginsItemsFunc[T boundary.Resource] func(ctx context.Context, prevPageLastItem T, limit int) ([]T, []*plugin.Plugin, time.Time, error)
 
 // ListPlugins returns a ListResponse and a map of plugin id to the plugins associated
-// with the returned resources. The response will contain at most pageSize number of items.
+// with the returned resources. The map may contain a superset of the plugins associated with
+// the plugins. The response will contain at most pageSize number of items.
 // Items are fetched using the listItemsFn and checked using
 // the filterItemFn to determine if they should be included in the response.
 // The response includes a new list token used to continue pagination or refresh.
@@ -70,8 +71,9 @@ func ListPlugins[T boundary.Resource](
 }
 
 // ListPluginsPage returns a ListResponse and a map of plugin id to the plugins associated
-// with the returned resources. The response will contain at most pageSize
-// number of items. Items are fetched using the listItemsFn and checked using
+// with the returned resources. The map may contain a superset of the plugins associated with
+// the plugins. The response will contain at most pageSize number of items.
+// Items are fetched using the listItemsFn and checked using
 // the filterItemFn to determine if they should be included in the response.
 // Items will be fetched based on the contents of the list token. The list
 // token must contain a PaginationToken component.
@@ -122,8 +124,9 @@ func ListPluginsPage[T boundary.Resource](
 }
 
 // ListPluginsRefresh returns a ListResponse and a map of plugin id to the plugins associated
-// with the returned resources. The response will contain at most pageSize
-// number of items. Items are fetched using the listItemsFn and checked using
+// with the returned resources. The map may contain a superset of the plugins associated with
+// the plugins. The response will contain at most pageSize number of items.
+// Items are fetched using the listItemsFn and checked using
 // the filterItemFn to determine if they should be included in the response.
 // Items will be fetched based on the contents of the list token. The list
 // token must contain a StartRefreshToken component.
@@ -183,8 +186,10 @@ func ListPluginsRefresh[T boundary.Resource](
 	return resp, plgs, nil
 }
 
-// ListPluginsRefreshPage returns a ListResponse and a plugin. The response will contain at most pageSize
-// number of items. Items are fetched using the listItemsFn and checked using
+// ListPluginsRefreshPage returns a ListResponse and a map of plugin id to the plugins associated
+// with the returned resources. The map may contain a superset of the plugins associated with
+// the plugins. The response will contain at most pageSize number of items.
+// Items are fetched using the listItemsFn and checked using
 // the filterItemFn to determine if they should be included in the response.
 // Items will be fetched based on the contents of the list token. The list
 // token must contain a RefreshToken component.
@@ -303,5 +308,10 @@ dbLoop:
 		items = items[:pageSize]
 	}
 
+	// Note that plgs can contain a superset of the plugins associated with the items,
+	// since we get plugins from the listFn based on a limit of pageSize+1. If the last
+	// item that we request is removed, there is no way to tell if a plugin was associated
+	// with that item only. This is fine in practice, as callers should never loop over
+	// the map, they should look up plugins by ID from the resource used.
 	return items, plgs, completeListing, firstListTime, nil
 }
