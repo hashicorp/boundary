@@ -281,14 +281,14 @@ func TestGet(t *testing.T) {
 			assert.Empty(cmp.Diff(
 				got,
 				tc.res,
-				protocmp.Transform(),
-				protocmp.IgnoreFields(&pb.OidcAuthMethodAttributes{}, "client_secret_hmac"),
 				cmpopts.SortSlices(func(a, b string) bool {
 					return a < b
 				}),
 				cmpopts.SortSlices(func(a, b protocmp.Message) bool {
 					return a.String() < b.String()
 				}),
+				protocmp.Transform(),
+				protocmp.IgnoreFields(&pb.OidcAuthMethodAttributes{}, "client_secret_hmac"),
 			), "GetAuthMethod(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
@@ -542,16 +542,17 @@ func TestList(t *testing.T) {
 			}
 
 			slices.SortFunc(got.Items, sorterFn)
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform(),
-				protocmp.IgnoreFields(&pbs.ListAuthMethodsResponse{}, "list_token"),
-				protocmp.IgnoreFields(&pb.OidcAuthMethodAttributes{}, "client_secret_hmac"),
-				protocmp.IgnoreFields(&pb.LdapAuthMethodAttributes{}, "bind_password_hmac", "client_certificate_key_hmac"),
+			assert.Empty(cmp.Diff(got, tc.res,
 				cmpopts.SortSlices(func(a, b string) bool {
 					return a < b
 				}),
 				cmpopts.SortSlices(func(a, b protocmp.Message) bool {
 					return a.String() < b.String()
 				}),
+				protocmp.Transform(),
+				protocmp.IgnoreFields(&pbs.ListAuthMethodsResponse{}, "list_token"),
+				protocmp.IgnoreFields(&pb.OidcAuthMethodAttributes{}, "client_secret_hmac"),
+				protocmp.IgnoreFields(&pb.LdapAuthMethodAttributes{}, "bind_password_hmac", "client_certificate_key_hmac"),
 			), "ListAuthMethods() for scope %q got response %q, wanted %q", tc.req.GetScopeId(), got, tc.res)
 
 			// Now check with anonymous user
@@ -1800,6 +1801,12 @@ func TestListPagination(t *testing.T) {
 				RemovedIds:   nil,
 				EstItemCount: 10,
 			},
+			cmpopts.SortSlices(func(a, b string) bool {
+				return a < b
+			}),
+			cmpopts.SortSlices(func(a, b protocmp.Message) bool {
+				return a.String() < b.String()
+			}),
 			protocmp.Transform(),
 			protocmp.IgnoreFields(&pb.OidcAuthMethodAttributes{}, "client_secret_hmac"),
 			protocmp.IgnoreFields(&pb.LdapAuthMethodAttributes{}, "bind_password_hmac", "client_certificate_key_hmac"),
@@ -1825,6 +1832,12 @@ func TestListPagination(t *testing.T) {
 				RemovedIds:   nil,
 				EstItemCount: 10,
 			},
+			cmpopts.SortSlices(func(a, b string) bool {
+				return a < b
+			}),
+			cmpopts.SortSlices(func(a, b protocmp.Message) bool {
+				return a.String() < b.String()
+			}),
 			protocmp.Transform(),
 			protocmp.IgnoreFields(&pb.OidcAuthMethodAttributes{}, "client_secret_hmac"),
 			protocmp.IgnoreFields(&pb.LdapAuthMethodAttributes{}, "bind_password_hmac", "client_certificate_key_hmac"),
@@ -1851,6 +1864,12 @@ func TestListPagination(t *testing.T) {
 				RemovedIds:   nil,
 				EstItemCount: 10,
 			},
+			cmpopts.SortSlices(func(a, b string) bool {
+				return a < b
+			}),
+			cmpopts.SortSlices(func(a, b protocmp.Message) bool {
+				return a.String() < b.String()
+			}),
 			protocmp.Transform(),
 			protocmp.IgnoreFields(&pb.OidcAuthMethodAttributes{}, "client_secret_hmac"),
 			protocmp.IgnoreFields(&pb.LdapAuthMethodAttributes{}, "bind_password_hmac", "client_certificate_key_hmac"),
@@ -1916,6 +1935,12 @@ func TestListPagination(t *testing.T) {
 				RemovedIds:   []string{deletedAM.Id},
 				EstItemCount: 10,
 			},
+			cmpopts.SortSlices(func(a, b string) bool {
+				return a < b
+			}),
+			cmpopts.SortSlices(func(a, b protocmp.Message) bool {
+				return a.String() < b.String()
+			}),
 			protocmp.Transform(),
 			protocmp.IgnoreFields(&pb.OidcAuthMethodAttributes{}, "client_secret_hmac"),
 			protocmp.IgnoreFields(&pb.LdapAuthMethodAttributes{}, "bind_password_hmac", "client_certificate_key_hmac"),
@@ -1941,6 +1966,12 @@ func TestListPagination(t *testing.T) {
 				RemovedIds:   nil,
 				EstItemCount: 10,
 			},
+			cmpopts.SortSlices(func(a, b string) bool {
+				return a < b
+			}),
+			cmpopts.SortSlices(func(a, b protocmp.Message) bool {
+				return a.String() < b.String()
+			}),
 			protocmp.Transform(),
 			protocmp.IgnoreFields(&pb.OidcAuthMethodAttributes{}, "client_secret_hmac"),
 			protocmp.IgnoreFields(&pb.LdapAuthMethodAttributes{}, "bind_password_hmac", "client_certificate_key_hmac"),
@@ -1970,6 +2001,12 @@ func TestListPagination(t *testing.T) {
 				RemovedIds:   nil,
 				EstItemCount: 10,
 			},
+			cmpopts.SortSlices(func(a, b string) bool {
+				return a < b
+			}),
+			cmpopts.SortSlices(func(a, b protocmp.Message) bool {
+				return a.String() < b.String()
+			}),
 			protocmp.Transform(),
 			protocmp.IgnoreFields(&pb.OidcAuthMethodAttributes{}, "client_secret_hmac"),
 			protocmp.IgnoreFields(&pb.LdapAuthMethodAttributes{}, "bind_password_hmac", "client_certificate_key_hmac"),
@@ -1994,6 +2031,12 @@ func TestListPagination(t *testing.T) {
 				RemovedIds:   nil,
 				EstItemCount: 10,
 			},
+			cmpopts.SortSlices(func(a, b string) bool {
+				return a < b
+			}),
+			cmpopts.SortSlices(func(a, b protocmp.Message) bool {
+				return a.String() < b.String()
+			}),
 			protocmp.Transform(),
 			protocmp.IgnoreFields(&pb.OidcAuthMethodAttributes{}, "client_secret_hmac"),
 			protocmp.IgnoreFields(&pb.LdapAuthMethodAttributes{}, "bind_password_hmac", "client_certificate_key_hmac"),
@@ -2025,6 +2068,18 @@ func TestListPagination(t *testing.T) {
 				SortDir:      "desc",
 				RemovedIds:   nil,
 			},
+			cmpopts.SortSlices(func(a, b string) bool {
+				return a < b
+			}),
+			cmpopts.SortSlices(func(a, b protocmp.Message) bool {
+				return a.String() < b.String()
+			}),
+			cmpopts.SortSlices(func(a, b string) bool {
+				return a < b
+			}),
+			cmpopts.SortSlices(func(a, b protocmp.Message) bool {
+				return a.String() < b.String()
+			}),
 			protocmp.Transform(),
 			protocmp.IgnoreFields(&pb.OidcAuthMethodAttributes{}, "client_secret_hmac"),
 			protocmp.IgnoreFields(&pb.LdapAuthMethodAttributes{}, "bind_password_hmac", "client_certificate_key_hmac"),
