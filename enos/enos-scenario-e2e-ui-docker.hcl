@@ -135,8 +135,6 @@ scenario "e2e_ui_docker" {
     }
   }
 
-  // !! add variables to test_e2e_ui (i.e. ldap, worker variables)
-
   step "create_ldap_server" {
     module = module.docker_ldap
     depends_on = [
