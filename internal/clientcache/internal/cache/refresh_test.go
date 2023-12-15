@@ -54,9 +54,9 @@ func testStaticResourceRetrievalFunc[T any](t *testing.T, ret [][]T, removed [][
 
 // testNoRefreshRetrievalFunc simulates a controller that doesn't support refresh
 // since it does not return any refresh token.
-func testNoRefreshRetrievalFunc[T any](t *testing.T, ret []T) func(context.Context, string, string, RefreshTokenValue) ([]T, []string, RefreshTokenValue, error) {
+func testNoRefreshRetrievalFunc[T any](t *testing.T) func(context.Context, string, string, RefreshTokenValue) ([]T, []string, RefreshTokenValue, error) {
 	return func(_ context.Context, _, _ string, _ RefreshTokenValue) ([]T, []string, RefreshTokenValue, error) {
-		return ret, nil, "", nil
+		return nil, nil, "", ErrRefreshNotSupported
 	}
 }
 
@@ -471,9 +471,9 @@ func TestRefreshForSearch(t *testing.T) {
 
 		// Get the first set of resources, but no refresh tokens
 		err = rs.Refresh(ctx,
-			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t, nil)),
-			WithTargetRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t, retTargets)))
-		assert.ErrorContains(t, err, errRefreshNotSupported.Error())
+			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t)),
+			WithTargetRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t)))
+		assert.ErrorContains(t, err, ErrRefreshNotSupported.Error())
 
 		got, err := r.ListTargets(ctx, at.Id)
 		assert.NoError(t, err)
@@ -483,13 +483,13 @@ func TestRefreshForSearch(t *testing.T) {
 		// wont be refreshed any more, and we wont see the error when refreshing
 		// any more.
 		err = rs.Refresh(ctx,
-			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t, nil)),
-			WithTargetRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t, retTargets)))
+			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t)),
+			WithTargetRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t)))
 		assert.Nil(t, err)
 
 		err = rs.RecheckCachingSupport(ctx,
-			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t, nil)),
-			WithTargetRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t, retTargets)))
+			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t)),
+			WithTargetRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t)))
 		assert.Nil(t, err)
 
 		got, err = r.ListTargets(ctx, at.Id)
@@ -499,9 +499,9 @@ func TestRefreshForSearch(t *testing.T) {
 		// Now simulate the controller updating to support refresh tokens and
 		// the resources starting to be cached.
 		err = rs.RecheckCachingSupport(ctx,
-			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t, nil)),
+			WithSessionRetrievalFunc(testStaticResourceRetrievalFunc[*sessions.Session](t, nil, nil)),
 			WithTargetRetrievalFunc(testStaticResourceRetrievalFunc[*targets.Target](t, [][]*targets.Target{retTargets}, [][]string{{}})))
-		assert.Nil(t, err)
+		assert.Nil(t, err, err)
 
 		got, err = r.ListTargets(ctx, at.Id)
 		assert.NoError(t, err)
@@ -799,23 +799,20 @@ func TestRecheckCachingSupport(t *testing.T) {
 		require.NoError(t, err)
 		require.NoError(t, r.AddKeyringToken(ctx, boundaryAddr, KeyringToken{KeyringType: "k", TokenName: "t", AuthTokenId: at.Id}))
 
-		retTargets := []*targets.Target{
-			target("1"),
-		}
 		// Since this user doesn't have any resources, the user's data will still
 		// only get updated with a call to Refresh.
 		assert.NoError(t, rs.RecheckCachingSupport(ctx,
-			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t, nil)),
-			WithTargetRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t, retTargets))))
+			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t)),
+			WithTargetRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t))))
 
 		got, err := r.ListTargets(ctx, at.Id)
 		assert.NoError(t, err)
 		assert.Empty(t, got)
 
 		err = rs.Refresh(ctx,
-			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t, nil)),
-			WithTargetRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t, retTargets)))
-		assert.ErrorIs(t, err, errRefreshNotSupported)
+			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t)),
+			WithTargetRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t)))
+		assert.ErrorIs(t, err, ErrRefreshNotSupported)
 
 		got, err = r.ListTargets(ctx, at.Id)
 		assert.NoError(t, err)
@@ -823,8 +820,8 @@ func TestRecheckCachingSupport(t *testing.T) {
 
 		// now a full fetch will work since the user has resources and no refresh token
 		assert.NoError(t, rs.RecheckCachingSupport(ctx,
-			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t, nil)),
-			WithTargetRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t, retTargets))))
+			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t)),
+			WithTargetRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t))))
 	})
 
 	t.Run("sessions", func(t *testing.T) {
@@ -836,29 +833,26 @@ func TestRecheckCachingSupport(t *testing.T) {
 		require.NoError(t, err)
 		require.NoError(t, r.AddKeyringToken(ctx, boundaryAddr, KeyringToken{KeyringType: "k", TokenName: "t", AuthTokenId: at.Id}))
 
-		retSess := []*sessions.Session{
-			session("1"),
-		}
 		assert.NoError(t, rs.RecheckCachingSupport(ctx,
-			WithTargetRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t, nil)),
-			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t, retSess))))
+			WithTargetRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t)),
+			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t))))
 
 		got, err := r.ListSessions(ctx, at.Id)
 		assert.NoError(t, err)
 		assert.Empty(t, got)
 
 		err = rs.Refresh(ctx,
-			WithTargetRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t, nil)),
-			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t, retSess)))
-		assert.ErrorIs(t, err, errRefreshNotSupported)
+			WithTargetRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t)),
+			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t)))
+		assert.ErrorIs(t, err, ErrRefreshNotSupported)
 
 		got, err = r.ListSessions(ctx, at.Id)
 		assert.NoError(t, err)
 		assert.Empty(t, got)
 
 		assert.NoError(t, rs.RecheckCachingSupport(ctx,
-			WithTargetRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t, nil)),
-			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t, retSess))))
+			WithTargetRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t)),
+			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t))))
 		got, err = r.ListSessions(ctx, at.Id)
 		assert.NoError(t, err)
 		assert.Empty(t, got)
@@ -874,13 +868,13 @@ func TestRecheckCachingSupport(t *testing.T) {
 		require.NoError(t, r.AddKeyringToken(ctx, boundaryAddr, KeyringToken{KeyringType: "k", TokenName: "t", AuthTokenId: at.Id}))
 
 		err = rs.Refresh(ctx,
-			WithTargetRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t, []*targets.Target{target("1")})),
-			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t, []*sessions.Session{session("1")})))
-		assert.ErrorIs(t, err, errRefreshNotSupported)
+			WithTargetRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t)),
+			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t)))
+		assert.ErrorIs(t, err, ErrRefreshNotSupported)
 
 		innerErr := errors.New("test error")
 		err = rs.RecheckCachingSupport(ctx,
-			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t, nil)),
+			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t)),
 			WithTargetRetrievalFunc(func(ctx context.Context, addr, token string, refreshTok RefreshTokenValue) ([]*targets.Target, []string, RefreshTokenValue, error) {
 				require.Equal(t, boundaryAddr, addr)
 				require.Equal(t, at.Token, token)
@@ -889,8 +883,8 @@ func TestRecheckCachingSupport(t *testing.T) {
 		assert.ErrorContains(t, err, innerErr.Error())
 
 		err = rs.RecheckCachingSupport(ctx,
-			WithTargetRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t, nil)),
-			WithSessionRetrievalFunc(func(ctx context.Context, addr, token string, refreshTok RefreshTokenValue) ([]*sessions.Session, []string, RefreshTokenValue, error) {
+			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t)),
+			WithTargetRetrievalFunc(func(ctx context.Context, addr, token string, refreshTok RefreshTokenValue) ([]*targets.Target, []string, RefreshTokenValue, error) {
 				require.Equal(t, boundaryAddr, addr)
 				require.Equal(t, at.Token, token)
 				return nil, nil, "", innerErr
@@ -908,9 +902,9 @@ func TestRecheckCachingSupport(t *testing.T) {
 		require.NoError(t, r.AddKeyringToken(ctx, boundaryAddr, KeyringToken{KeyringType: "k", TokenName: "t", AuthTokenId: at.Id}))
 
 		err = rs.Refresh(ctx,
-			WithTargetRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t, []*targets.Target{target("1")})),
-			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t, []*sessions.Session{session("1")})))
-		assert.ErrorIs(t, err, errRefreshNotSupported)
+			WithTargetRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t)),
+			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t)))
+		assert.ErrorIs(t, err, ErrRefreshNotSupported)
 
 		// Remove the token from the keyring, see that we can still see the
 		// token and then user until a Refresh happens which causes them to be
@@ -926,8 +920,8 @@ func TestRecheckCachingSupport(t *testing.T) {
 		assert.Len(t, us, 1)
 
 		err = rs.RecheckCachingSupport(ctx,
-			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t, nil)),
-			WithTargetRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t, nil)))
+			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t)),
+			WithTargetRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t)))
 		assert.NoError(t, err)
 
 		ps, err = r.listTokens(ctx, u)

@@ -40,6 +40,9 @@ func defaultSessionFunc(ctx context.Context, addr, authTok string, refreshTok Re
 		}
 		return nil, nil, "", errors.Wrap(ctx, err, op)
 	}
+	if l.ResponseType == "" {
+		return nil, nil, "", ErrRefreshNotSupported
+	}
 	return l.Items, l.RemovedIds, RefreshTokenValue(l.ListToken), nil
 }
 
@@ -78,6 +81,7 @@ func (r *Repository) refreshSessions(ctx context.Context, u *user, tokens map[Au
 	var gotResponse bool
 	var resp []*sessions.Session
 	var newRefreshToken RefreshTokenValue
+	var unsupportedCacheRequest bool
 	var removedIds []string
 	var retErr error
 	for at, t := range tokens {
@@ -91,8 +95,12 @@ func (r *Repository) refreshSessions(ctx context.Context, u *user, tokens map[Au
 			resp, removedIds, newRefreshToken, err = opts.withSessionRetrievalFunc(ctx, u.Address, t, "")
 		}
 		if err != nil {
-			retErr = stderrors.Join(retErr, errors.Wrap(ctx, err, op, errors.WithMsg("for token %q", at.Id)))
-			continue
+			if err == ErrRefreshNotSupported {
+				unsupportedCacheRequest = true
+			} else {
+				retErr = stderrors.Join(retErr, errors.Wrap(ctx, err, op, errors.WithMsg("for token %q", at.Id)))
+				continue
+			}
 		}
 		gotResponse = true
 		break
@@ -122,6 +130,10 @@ func (r *Repository) refreshSessions(ctx context.Context, u *user, tokens map[Au
 			}
 		}
 		switch {
+		case unsupportedCacheRequest:
+			if err := upsertRefreshToken(ctx, w, u, resourceType, sentinelNoRefreshToken); err != nil {
+				return err
+			}
 		case newRefreshToken != "":
 			if err := upsertSessions(ctx, w, u, resp); err != nil {
 				return err
@@ -129,20 +141,16 @@ func (r *Repository) refreshSessions(ctx context.Context, u *user, tokens map[Au
 			if err := upsertRefreshToken(ctx, w, u, resourceType, newRefreshToken); err != nil {
 				return err
 			}
-		case len(resp) > 0:
-			if err := upsertRefreshToken(ctx, w, u, resourceType, sentinelNoRefreshToken); err != nil {
-				return err
-			}
-			return errRefreshNotSupported
-		case len(resp) == 0:
-			if err := deleteRefreshToken(ctx, w, u, resourceType); err != nil {
-				return err
-			}
+		default:
+			// controller supports caching, but doesn't have any resources
 		}
 		return nil
 	})
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
+	}
+	if unsupportedCacheRequest {
+		return ErrRefreshNotSupported
 	}
 	return nil
 }
@@ -174,12 +182,17 @@ func (r *Repository) checkCachingSessions(ctx context.Context, u *user, tokens m
 	var gotResponse bool
 	var resp []*sessions.Session
 	var newRefreshToken RefreshTokenValue
+	var unsupportedCacheRequest bool
 	var retErr error
 	for at, t := range tokens {
 		resp, _, newRefreshToken, err = opts.withSessionRetrievalFunc(ctx, u.Address, t, "")
 		if err != nil {
-			retErr = stderrors.Join(retErr, errors.Wrap(ctx, err, op, errors.WithMsg("for token %q", at.Id)))
-			continue
+			if err == ErrRefreshNotSupported {
+				unsupportedCacheRequest = true
+			} else {
+				retErr = stderrors.Join(retErr, errors.Wrap(ctx, err, op, errors.WithMsg("for token %q", at.Id)))
+				continue
+			}
 		}
 		gotResponse = true
 		break
@@ -196,6 +209,10 @@ func (r *Repository) checkCachingSessions(ctx context.Context, u *user, tokens m
 
 	_, err = r.rw.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(reader db.Reader, w db.Writer) error {
 		switch {
+		case unsupportedCacheRequest:
+			if err := upsertRefreshToken(ctx, w, u, resourceType, sentinelNoRefreshToken); err != nil {
+				return err
+			}
 		case newRefreshToken != "":
 			if _, err := w.Exec(ctx, "delete from session where fk_user_id = @fk_user_id",
 				[]any{sql.Named("fk_user_id", u.Id)}); err != nil {
@@ -207,12 +224,9 @@ func (r *Repository) checkCachingSessions(ctx context.Context, u *user, tokens m
 			if err := upsertRefreshToken(ctx, w, u, resourceType, newRefreshToken); err != nil {
 				return err
 			}
-		case len(resp) > 0:
-			if err := upsertRefreshToken(ctx, w, u, resourceType, sentinelNoRefreshToken); err != nil {
-				return err
-			}
-			return errRefreshNotSupported
-		case len(resp) == 0:
+		default:
+			// This is no longer flagged as not supported, but we dont have a
+			// refresh token so clear out any refresh token we have stored.
 			if err := deleteRefreshToken(ctx, w, u, resourceType); err != nil {
 				return err
 			}
@@ -221,6 +235,9 @@ func (r *Repository) checkCachingSessions(ctx context.Context, u *user, tokens m
 	})
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
+	}
+	if unsupportedCacheRequest {
+		return ErrRefreshNotSupported
 	}
 	return nil
 }

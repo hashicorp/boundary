@@ -154,7 +154,6 @@ func TestSearch(t *testing.T) {
 
 	t.Run("unsupported boundary instance", func(t *testing.T) {
 		srv.AddUnsupportedCachingData(t, unsupportedAt, boundaryTokenReaderFn)
-
 		resp, r, apiErr, err := search(ctx, srv.BaseDotDir(), filterBy{
 			authTokenId: unsupportedAt.Id,
 			resource:    "targets",

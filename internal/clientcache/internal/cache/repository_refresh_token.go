@@ -14,9 +14,9 @@ import (
 	"github.com/hashicorp/boundary/internal/util"
 )
 
-// errRefreshNotSupported is returned whenever it is determined a boundary
+// ErrRefreshNotSupported is returned whenever it is determined a boundary
 // instance does not support refresh tokens.
-var errRefreshNotSupported = stderrors.New("refresh tokens are not supported for this controller")
+var ErrRefreshNotSupported = stderrors.New("refresh tokens are not supported for this controller")
 
 // RefreshTokenValue is the the type for the actual refresh token value handled
 // by the client cache.

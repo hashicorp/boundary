@@ -122,13 +122,13 @@ func (s *TestServer) AddUnsupportedCachingData(t *testing.T, p *authtokens.AuthT
 		}
 		return []*targets.Target{
 			{Id: "ttcp_unsupported", Name: "unsupported", Description: "not supported"},
-		}, nil, "", nil
+		}, nil, "", cache.ErrRefreshNotSupported
 	}
 	sessFn := func(ctx context.Context, _, tok string, _ cache.RefreshTokenValue) ([]*sessions.Session, []string, cache.RefreshTokenValue, error) {
 		if tok != p.Token {
 			return nil, nil, "", nil
 		}
-		return []*sessions.Session{}, nil, "", nil
+		return []*sessions.Session{}, nil, "", cache.ErrRefreshNotSupported
 	}
 	rs, err := cache.NewRefreshService(ctx, r, 0, 0)
 	require.NoError(t, err)
