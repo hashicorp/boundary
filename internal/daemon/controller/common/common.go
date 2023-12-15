@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/credential"
 	credstatic "github.com/hashicorp/boundary/internal/credential/static"
 	"github.com/hashicorp/boundary/internal/credential/vault"
+	"github.com/hashicorp/boundary/internal/host"
 	pluginhost "github.com/hashicorp/boundary/internal/host/plugin"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
@@ -25,6 +26,7 @@ type (
 	VaultCredentialRepoFactory     = func() (*vault.Repository, error)
 	StaticCredentialRepoFactory    = func() (*credstatic.Repository, error)
 	CredentialStoreRepoFactory     func() (*credential.StoreRepository, error)
+	HostCatalogRepoFactory         func() (*host.CatalogRepository, error)
 	IamRepoFactory                 = iam.IamRepoFactory
 	OidcAuthRepoFactory            = oidc.OidcRepoFactory
 	LdapAuthRepoFactory            = ldap.RepoFactory
