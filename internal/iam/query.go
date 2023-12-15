@@ -176,4 +176,8 @@ const (
 	)
 	select role_id as role_id, role_scope as scope_id, role_grant as grant from final;
 		`
+
+	estimateCountRoles = `
+		select reltuples::bigint as estimate from pg_class where oid in ('iam_role'::regclass)
+	`
 )

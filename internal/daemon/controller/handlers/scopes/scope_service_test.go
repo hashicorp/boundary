@@ -967,15 +967,18 @@ func TestCreate(t *testing.T) {
 					if withUserId {
 						repo, err := repoFn()
 						require.NoError(err)
-						roles, err := repo.ListRoles(ctx, []string{got.GetItem().GetId()})
+						noopFilter := func(ctx context.Context, item *iam.Role) (bool, error) {
+							return true, nil
+						}
+						roles, err := iam.ListRoles(ctx, []byte("test"), globals.DefaultMaxPageSize, noopFilter, repo, []string{got.GetItem().GetId()})
 						require.NoError(err)
 						switch tc.scopeId {
 						case defaultOrg.PublicId:
-							require.Len(roles, 2)
+							require.Len(roles.Items, 2)
 						case "global":
-							require.Len(roles, 2)
+							require.Len(roles.Items, 2)
 						}
-						for _, role := range roles {
+						for _, role := range roles.Items {
 							switch role.GetName() {
 							case "Administration":
 								assert.Equal(fmt.Sprintf("Role created for administration of scope %s by user %s at its creation time", got.GetItem().GetId(), userId), role.GetDescription())
