@@ -11,7 +11,6 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/event"
-	"github.com/hashicorp/boundary/internal/host"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/libs/patchstruct"
 	"github.com/hashicorp/boundary/internal/oplog"
@@ -590,36 +589,6 @@ func (r *Repository) LookupCatalog(ctx context.Context, id string, _ ...Option) 
 		return nil, nil, errors.Wrap(ctx, err, op)
 	}
 	return c, plg, nil
-}
-
-// ListCatalogs returns a slice of HostCatalogs for the project IDs. WithLimit is the only option supported.
-func (r *Repository) ListCatalogs(ctx context.Context, projectIds []string, opt ...host.Option) ([]*HostCatalog, []*plg.Plugin, error) {
-	const op = "plugin.(Repository).ListCatalogs"
-	if len(projectIds) == 0 {
-		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "no project id")
-	}
-	opts, err := host.GetOpts(opt...)
-	if err != nil {
-		return nil, nil, errors.Wrap(ctx, err, op)
-	}
-	limit := r.defaultLimit
-	if opts.WithLimit != 0 {
-		// non-zero signals an override of the default limit for the repo.
-		limit = opts.WithLimit
-	}
-	var hostCatalogs []*HostCatalog
-	if err := r.reader.SearchWhere(ctx, &hostCatalogs, "project_id in (?)", []any{projectIds}, db.WithLimit(limit)); err != nil {
-		return nil, nil, errors.Wrap(ctx, err, op)
-	}
-	plgIds := make([]string, 0, len(hostCatalogs))
-	for _, c := range hostCatalogs {
-		plgIds = append(plgIds, c.PluginId)
-	}
-	var plgs []*plg.Plugin
-	if err := r.reader.SearchWhere(ctx, &plgs, "public_id in (?)", []any{plgIds}); err != nil {
-		return nil, nil, errors.Wrap(ctx, err, op)
-	}
-	return hostCatalogs, plgs, nil
 }
 
 // DeleteCatalog deletes catalog for the provided id from the repository
