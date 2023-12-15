@@ -1887,8 +1887,8 @@ func TestListPagination(t *testing.T) {
 	allAuthMethods = allAuthMethods[:len(allAuthMethods)-1]
 
 	// update a different auth method
-	ldapAm.AuthMethod.Description = "new description"
-	allAuthMethods[len(allAuthMethods)-1].Description = wrapperspb.String("new description")
+	ldapAm.AuthMethod.Description = "new-description"
+	allAuthMethods[len(allAuthMethods)-1].Description = wrapperspb.String("new-description")
 	updatedAM, _, err := ldapRepo.UpdateAuthMethod(ctx, ldapAm, ldapAm.Version, []string{"description"})
 	require.NoError(t, err)
 	allAuthMethods[len(allAuthMethods)-1].UpdatedTime = updatedAM.UpdateTime.GetTimestamp()
@@ -2012,7 +2012,7 @@ func TestListPagination(t *testing.T) {
 	got, err = s.ListAuthMethods(ctx, req)
 	require.NoError(t, err)
 	require.Len(t, got.GetItems(), 0)
-	// Compare without comparing the refresh token
+	// Compare without comparing the list token
 	assert.Empty(
 		t,
 		cmp.Diff(

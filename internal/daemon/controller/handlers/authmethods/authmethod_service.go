@@ -1567,10 +1567,7 @@ func newOutputOpts(ctx context.Context, item auth.AuthMethod, scopeInfoMap map[s
 	}
 	res.Id = item.GetPublicId()
 	res.ScopeId = item.GetScopeId()
-	subtype := globals.ResourceInfoFromPrefix(item.GetPublicId()).Subtype
-	idActions := IdActions[subtype]
-	authorizedActions := authResults.FetchActionSetForId(ctx, item.GetPublicId(), idActions, requestauth.WithResource(&res)).Strings()
-	authorizedActions = authResults.FetchActionSetForId(ctx, item.GetPublicId(), IdActions[globals.ResourceInfoFromPrefix(item.GetPublicId()).Subtype], requestauth.WithResource(&res)).Strings()
+	authorizedActions := authResults.FetchActionSetForId(ctx, item.GetPublicId(), IdActions[globals.ResourceInfoFromPrefix(item.GetPublicId()).Subtype], requestauth.WithResource(&res)).Strings()
 	if len(authorizedActions) == 0 {
 		return nil, false, nil
 	}
