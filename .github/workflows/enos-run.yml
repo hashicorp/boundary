@@ -187,7 +187,7 @@ jobs:
         run: |
           wget https://releases.hashicorp.com/vault/1.12.2/vault_1.12.2_linux_amd64.zip -O /tmp/test-deps/vault.zip
       - name: Install Vault CLI
-        if: contains(matrix.filter, 'vault') || contains(matrix.filter, 'e2e_docker') || matrix.filter == 'e2e_database' || matrix.filter == 'e2e_ui builder:crt'
+        if: contains(matrix.filter, 'vault') || contains(matrix.filter, 'e2e_docker') || matrix.filter == 'e2e_database' || matrix.filter == 'e2e_ui_aws builder:crt'
         run: |
           unzip /tmp/test-deps/vault.zip -d /usr/local/bin
       - name: GH fix for localhost resolution
@@ -220,20 +220,20 @@ jobs:
           mv ${{ steps.download-docker.outputs.download-path }}/*.tar enos/support/boundary_docker_image.tar
       - name: Set up Node.js
         uses: actions/setup-node@8f152de45cc393bb48ce5d89d36b731f54556e65 # v4.0.0
-        if: matrix.filter == 'e2e_ui builder:crt'
+        if: contains(matrix.filter, 'e2e_ui')
         with:
           node-version: '16.x'
       - name: Checkout boundary-ui
         uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
-        if: matrix.filter == 'e2e_ui builder:crt'
+        if: contains(matrix.filter, 'e2e_ui')
         with:
           repository: hashicorp/boundary-ui
           path: enos/support/src/boundary-ui
       - name: Install boundary-ui dependencies
-        if: matrix.filter == 'e2e_ui builder:crt'
+        if: contains(matrix.filter, 'e2e_ui')
         run: yarn --cwd enos/support/src/boundary-ui install
       - name: Install playwright dependencies (i.e. browsers)
-        if: matrix.filter == 'e2e_ui builder:crt'
+        if: contains(matrix.filter, 'e2e_ui')
         run: npx playwright install --with-deps
         working-directory: enos/support/src/boundary-ui
       - name: Output Terraform version info
@@ -274,7 +274,7 @@ jobs:
         run: |
           docker logs database
       - name: Upload e2e UI tests debug info
-        if: matrix.filter == 'e2e_ui builder:crt' && steps.run.outcome == 'failure'
+        if: contains(matrix.filter, 'e2e_ui') && steps.run.outcome == 'failure'
         uses: actions/upload-artifact@a8a3f3ad30e3422c9c7b888a15615d19a852ae32 # v3.1.3
         with:
           name: test-e2e-ui-debug
