@@ -13,6 +13,7 @@ import (
 	dbassert "github.com/hashicorp/boundary/internal/db/assert"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam/store"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/go-uuid"
 	"github.com/stretchr/testify/assert"
@@ -553,13 +554,15 @@ func TestRepository_DeleteRole(t *testing.T) {
 	}
 }
 
-func TestRepository_ListRoles(t *testing.T) {
+func TestRepository_listRoles(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
 	const testLimit = 10
 	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
 	repo := TestRepo(t, conn, wrapper, WithLimit(testLimit))
-	org, proj := TestScopes(t, repo)
+	org, proj := TestScopes(t, repo, WithSkipDefaultRoleCreation(true))
 
 	type args struct {
 		withScopeId string
@@ -574,7 +577,7 @@ func TestRepository_ListRoles(t *testing.T) {
 		wantErr       bool
 	}{
 		{
-			name:          "no-limit",
+			name:          "negative-limit",
 			createCnt:     repo.defaultLimit + 1,
 			createScopeId: org.PublicId,
 			args: args{
@@ -582,10 +585,10 @@ func TestRepository_ListRoles(t *testing.T) {
 				opt:         []Option{WithLimit(-1)},
 			},
 			wantCnt: repo.defaultLimit + 1,
-			wantErr: false,
+			wantErr: true,
 		},
 		{
-			name:          "no-limit-proj-role",
+			name:          "negative-limit-proj-role",
 			createCnt:     repo.defaultLimit + 1,
 			createScopeId: proj.PublicId,
 			args: args{
@@ -593,7 +596,7 @@ func TestRepository_ListRoles(t *testing.T) {
 				opt:         []Option{WithLimit(-1)},
 			},
 			wantCnt: repo.defaultLimit + 1,
-			wantErr: false,
+			wantErr: true,
 		},
 		{
 			name:          "default-limit",
@@ -630,21 +633,114 @@ func TestRepository_ListRoles(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			db.TestDeleteWhere(t, conn, func() any { r := allocRole(); return &r }(), "1=1")
+			t.Cleanup(func() {
+				db.TestDeleteWhere(t, conn, func() any { r := allocRole(); return &r }(), "1=1")
+			})
 			testRoles := []*Role{}
 			for i := 0; i < tt.createCnt; i++ {
 				testRoles = append(testRoles, TestRole(t, conn, tt.createScopeId))
 			}
 			assert.Equal(tt.createCnt, len(testRoles))
-			got, err := repo.ListRoles(context.Background(), []string{tt.args.withScopeId}, tt.args.opt...)
+			got, ttime, err := repo.listRoles(context.Background(), []string{tt.args.withScopeId}, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
 				return
 			}
 			require.NoError(err)
 			assert.Equal(tt.wantCnt, len(got))
+			// Transaction timestamp should be within ~10 seconds of now
+			assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+			assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
 		})
 	}
+	t.Run("withStartPageAfter", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		ctx := context.Background()
+
+		for i := 0; i < 10; i++ {
+			_ = TestRole(t, conn, org.GetPublicId())
+		}
+
+		repo, err := NewRepository(ctx, rw, rw, kms)
+		require.NoError(err)
+		page1, ttime, err := repo.listRoles(ctx, []string{org.GetPublicId()}, WithLimit(2))
+		require.NoError(err)
+		require.Len(page1, 2)
+		// Transaction timestamp should be within ~10 seconds of now
+		assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+		assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
+		page2, ttime, err := repo.listRoles(ctx, []string{org.GetPublicId()}, WithLimit(2), WithStartPageAfterItem(page1[1]))
+		require.NoError(err)
+		require.Len(page2, 2)
+		assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+		assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
+		for _, item := range page1 {
+			assert.NotEqual(item.GetPublicId(), page2[0].GetPublicId())
+			assert.NotEqual(item.GetPublicId(), page2[1].GetPublicId())
+		}
+		page3, ttime, err := repo.listRoles(ctx, []string{org.GetPublicId()}, WithLimit(2), WithStartPageAfterItem(page2[1]))
+		require.NoError(err)
+		require.Len(page3, 2)
+		assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+		assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
+		for _, item := range page2 {
+			assert.NotEqual(item.GetPublicId(), page3[0].GetPublicId())
+			assert.NotEqual(item.GetPublicId(), page3[1].GetPublicId())
+		}
+		page4, ttime, err := repo.listRoles(ctx, []string{org.GetPublicId()}, WithLimit(2), WithStartPageAfterItem(page3[1]))
+		require.NoError(err)
+		assert.Len(page4, 2)
+		assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+		assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
+		for _, item := range page3 {
+			assert.NotEqual(item.GetPublicId(), page4[0].GetPublicId())
+			assert.NotEqual(item.GetPublicId(), page4[1].GetPublicId())
+		}
+		page5, ttime, err := repo.listRoles(ctx, []string{org.GetPublicId()}, WithLimit(2), WithStartPageAfterItem(page4[1]))
+		require.NoError(err)
+		assert.Len(page5, 2)
+		assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+		assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
+		for _, item := range page4 {
+			assert.NotEqual(item.GetPublicId(), page5[0].GetPublicId())
+			assert.NotEqual(item.GetPublicId(), page5[1].GetPublicId())
+		}
+		page6, ttime, err := repo.listRoles(ctx, []string{org.GetPublicId()}, WithLimit(2), WithStartPageAfterItem(page5[1]))
+		require.NoError(err)
+		assert.Empty(page6)
+		assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+		assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
+
+		// Create 2 new roles
+		newR1 := TestRole(t, conn, org.GetPublicId())
+		newR2 := TestRole(t, conn, org.GetPublicId())
+
+		// since it will return newest to oldest, we get page1[1] first
+		page7, ttime, err := repo.listRolesRefresh(
+			ctx,
+			time.Now().Add(-1*time.Second),
+			[]string{org.GetPublicId()},
+			WithLimit(1),
+		)
+		require.NoError(err)
+		require.Len(page7, 1)
+		require.Equal(page7[0].GetPublicId(), newR2.GetPublicId())
+		assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+		assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
+
+		page8, ttime, err := repo.listRolesRefresh(
+			context.Background(),
+			time.Now().Add(-1*time.Second),
+			[]string{org.GetPublicId()},
+			WithLimit(1),
+			WithStartPageAfterItem(page7[0]),
+		)
+		require.NoError(err)
+		require.Len(page8, 1)
+		require.Equal(page8[0].GetPublicId(), newR1.GetPublicId())
+		assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+		assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
+	})
 }
 
 func TestRepository_ListRoles_Multiple_Scopes(t *testing.T) {
@@ -667,7 +763,92 @@ func TestRepository_ListRoles_Multiple_Scopes(t *testing.T) {
 		total++
 	}
 
-	got, err := repo.ListRoles(context.Background(), []string{"global", org.GetPublicId(), proj.GetPublicId()})
+	got, ttime, err := repo.listRoles(context.Background(), []string{"global", org.GetPublicId(), proj.GetPublicId()})
 	require.NoError(t, err)
-	assert.Equal(t, total, len(got))
+	assert.Equal(t, total, len(got)) // Transaction timestamp should be within ~10 seconds of now
+	assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
+	assert.True(t, time.Now().After(ttime.Add(-10*time.Second)))
+}
+
+func Test_listRoleDeletedIds(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
+	org, _ := TestScopes(t, repo, WithSkipDefaultRoleCreation(true))
+	r := TestRole(t, conn, org.GetPublicId())
+
+	// Expect no entries at the start
+	deletedIds, ttime, err := repo.listRoleDeletedIds(ctx, time.Now().AddDate(-1, 0, 0))
+	require.NoError(t, err)
+	require.Empty(t, deletedIds)
+	// Transaction timestamp should be within ~10 seconds of now
+	assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
+	assert.True(t, time.Now().After(ttime.Add(-10*time.Second)))
+
+	// Delete a role
+	_, err = repo.DeleteRole(ctx, r.GetPublicId())
+	require.NoError(t, err)
+
+	// Expect a single entry
+	deletedIds, ttime, err = repo.listRoleDeletedIds(ctx, time.Now().AddDate(-1, 0, 0))
+	require.NoError(t, err)
+	require.Equal(t, []string{r.GetPublicId()}, deletedIds)
+	// Transaction timestamp should be within ~10 seconds of now
+	assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
+	assert.True(t, time.Now().After(ttime.Add(-10*time.Second)))
+
+	// Try again with the time set to now, expect no entries
+	deletedIds, ttime, err = repo.listRoleDeletedIds(ctx, time.Now())
+	require.NoError(t, err)
+	require.Empty(t, deletedIds)
+	// Transaction timestamp should be within ~10 seconds of now
+	assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
+	assert.True(t, time.Now().After(ttime.Add(-10*time.Second)))
+}
+
+func Test_estimatedRoleCount(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	sqlDb, err := conn.SqlDB(ctx)
+	require.NoError(t, err)
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	repo, err := NewRepository(ctx, rw, rw, kms)
+	require.NoError(t, err)
+
+	// Run analyze to update estimate
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
+
+	// Check total entries at start, expect 0
+	numItems, err := repo.estimatedRoleCount(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 0, numItems)
+
+	iamRepo := TestRepo(t, conn, wrapper)
+	org, _ := TestScopes(t, iamRepo, WithSkipDefaultRoleCreation(true))
+	// Create a role, expect 1 entry
+	r := TestRole(t, conn, org.GetPublicId())
+
+	// Run analyze to update estimate
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
+	numItems, err = repo.estimatedRoleCount(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 1, numItems)
+
+	// Delete the role, expect 0 again
+	_, err = repo.DeleteRole(ctx, r.GetPublicId())
+	require.NoError(t, err)
+
+	// Run analyze to update estimate
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
+	numItems, err = repo.estimatedRoleCount(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 0, numItems)
 }
