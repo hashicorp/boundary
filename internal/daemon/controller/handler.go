@@ -136,7 +136,15 @@ func (c *Controller) registerGrpcServices(s *grpc.Server) error {
 	currentServices := s.GetServiceInfo()
 
 	if _, ok := currentServices[services.HostCatalogService_ServiceDesc.ServiceName]; !ok {
-		hcs, err := host_catalogs.NewService(c.baseContext, c.StaticHostRepoFn, c.PluginHostRepoFn, c.PluginRepoFn, c.IamRepoFn)
+		hcs, err := host_catalogs.NewService(
+			c.baseContext,
+			c.StaticHostRepoFn,
+			c.PluginHostRepoFn,
+			c.PluginRepoFn,
+			c.IamRepoFn,
+			c.HostCatalogRepoFn,
+			c.conf.RawConfig.Controller.MaxPageSize,
+		)
 		if err != nil {
 			return fmt.Errorf("failed to create host catalog handler service: %w", err)
 		}
