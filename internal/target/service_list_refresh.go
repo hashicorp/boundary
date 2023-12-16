@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/listtoken"
 	"github.com/hashicorp/boundary/internal/pagination"
+	"github.com/hashicorp/boundary/internal/types/resource"
 )
 
 // ListRefresh lists up to page size targets, filtering out entries that
@@ -43,6 +44,8 @@ func ListRefresh(
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing token")
 	case repo == nil:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing repo")
+	case tok.ResourceType != resource.Target:
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "token did not have a target resource type")
 	}
 	rt, ok := tok.Subtype.(*listtoken.StartRefreshToken)
 	if !ok {
