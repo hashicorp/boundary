@@ -7,8 +7,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
@@ -308,15 +306,8 @@ func (r *Repository) listAuthTokens(ctx context.Context, withScopeIds []string, 
 		limit = opts.withLimit
 	}
 
-	var args []any
-	var inClauses []string
-	for i, scopeId := range withScopeIds {
-		arg := "scope_id_" + strconv.Itoa(i)
-		inClauses = append(inClauses, "@"+arg)
-		args = append(args, sql.Named(arg, scopeId))
-	}
-	inClause := strings.Join(inClauses, ", ")
-	whereClause := "scope_id in (" + inClause + ")"
+	args := []any{sql.Named("scope_ids", withScopeIds)}
+	whereClause := "scope_id in @scope_ids"
 
 	query := fmt.Sprintf(listAuthTokensTemplate, limit, whereClause)
 	if opts.withStartPageAfterItem != nil {
@@ -351,15 +342,8 @@ func (r *Repository) listAuthTokensRefresh(ctx context.Context, updatedAfter tim
 		limit = opts.withLimit
 	}
 
-	var args []any
-	var inClauses []string
-	for i, scopeId := range withScopeIds {
-		arg := "scope_id_" + strconv.Itoa(i)
-		inClauses = append(inClauses, "@"+arg)
-		args = append(args, sql.Named(arg, scopeId))
-	}
-	inClause := strings.Join(inClauses, ", ")
-	whereClause := "scope_id in (" + inClause + ")"
+	args := []any{sql.Named("scope_ids", withScopeIds)}
+	whereClause := "scope_id in @scope_ids"
 
 	query := fmt.Sprintf(refreshAuthTokensTemplate, limit, whereClause)
 	args = append(args,
