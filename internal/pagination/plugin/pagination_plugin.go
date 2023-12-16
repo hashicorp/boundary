@@ -1,7 +1,7 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: BUSL-1.1
 
-package pagination
+package plugin
 
 import (
 	"context"
@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/boundary/internal/boundary"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/listtoken"
+	"github.com/hashicorp/boundary/internal/pagination"
 	"github.com/hashicorp/boundary/internal/plugin"
 )
 
@@ -38,8 +39,8 @@ func ListPlugin[T boundary.Resource](
 	pageSize int,
 	filterItemFn ListPluginFilterFunc[T],
 	listItemsFn ListPluginItemsFunc[T],
-	estimatedCountFn EstimatedCountFunc,
-) (*ListResponse[T], *plugin.Plugin, error) {
+	estimatedCountFn pagination.EstimatedCountFunc,
+) (*pagination.ListResponse[T], *plugin.Plugin, error) {
 	const op = "pagination.ListPlugin"
 
 	switch {
@@ -84,9 +85,9 @@ func ListPluginPage[T boundary.Resource](
 	pageSize int,
 	filterItemFn ListPluginFilterFunc[T],
 	listItemsFn ListPluginItemsFunc[T],
-	estimatedCountFn EstimatedCountFunc,
+	estimatedCountFn pagination.EstimatedCountFunc,
 	tok *listtoken.Token,
-) (*ListResponse[T], *plugin.Plugin, error) {
+) (*pagination.ListResponse[T], *plugin.Plugin, error) {
 	const op = "pagination.ListPluginPage"
 
 	switch {
@@ -137,10 +138,10 @@ func ListPluginRefresh[T boundary.Resource](
 	pageSize int,
 	filterItemFn ListPluginFilterFunc[T],
 	listItemsFn ListPluginItemsFunc[T],
-	estimatedCountFn EstimatedCountFunc,
-	listDeletedIDsFn ListDeletedIDsFunc,
+	estimatedCountFn pagination.EstimatedCountFunc,
+	listDeletedIDsFn pagination.ListDeletedIDsFunc,
 	tok *listtoken.Token,
-) (*ListResponse[T], *plugin.Plugin, error) {
+) (*pagination.ListResponse[T], *plugin.Plugin, error) {
 	const op = "pagination.ListPluginRefresh"
 
 	switch {
@@ -199,10 +200,10 @@ func ListPluginRefreshPage[T boundary.Resource](
 	pageSize int,
 	filterItemFn ListPluginFilterFunc[T],
 	listItemsFn ListPluginItemsFunc[T],
-	estimatedCountFn EstimatedCountFunc,
-	listDeletedIDsFn ListDeletedIDsFunc,
+	estimatedCountFn pagination.EstimatedCountFunc,
+	listDeletedIDsFn pagination.ListDeletedIDsFunc,
 	tok *listtoken.Token,
-) (*ListResponse[T], *plugin.Plugin, error) {
+) (*pagination.ListResponse[T], *plugin.Plugin, error) {
 	const op = "pagination.ListPluginRefreshPage"
 
 	switch {
@@ -304,4 +305,101 @@ dbLoop:
 	}
 
 	return items, plg, completeListing, firstListTime, nil
+}
+
+func buildListResp[T boundary.Resource](
+	ctx context.Context,
+	grantsHash []byte,
+	items []T,
+	completeListing bool,
+	listTime time.Time,
+	estimatedCountFn pagination.EstimatedCountFunc,
+) (*pagination.ListResponse[T], error) {
+	resp := &pagination.ListResponse[T]{
+		Items:              items,
+		CompleteListing:    completeListing,
+		EstimatedItemCount: len(items),
+	}
+
+	var err error
+	if len(items) > 0 {
+		lastItem := items[len(items)-1]
+
+		if completeListing {
+			// If this is the only page in the pagination, create a
+			// start refresh token so subsequent requests are informed
+			// that they need to start a new refresh phase.
+			resp.ListToken, err = listtoken.NewStartRefresh(
+				ctx,
+				listTime, // Use list time as the create time of the token
+				lastItem.GetResourceType(),
+				grantsHash,
+				listTime, // Use list time as the starting point for listing deleted ids
+				listTime, // Use list time as the lower bound for subsequent refresh
+			)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			resp.ListToken, err = listtoken.NewPagination(
+				ctx,
+				listTime, // Use list time as the create time of the token
+				lastItem.GetResourceType(),
+				grantsHash,
+				lastItem.GetPublicId(),
+				lastItem.GetCreateTime().AsTime(),
+			)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+	if !completeListing {
+		// If this was not a complete listing, get an estimate
+		// of the total items from the DB.
+		var err error
+		resp.EstimatedItemCount, err = estimatedCountFn(ctx)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return resp, err
+}
+
+func buildListPageResp[T boundary.Resource](
+	ctx context.Context,
+	completeListing bool,
+	deletedIds []string,
+	deletedIdsTime time.Time,
+	items []T,
+	listTime time.Time,
+	tok *listtoken.Token,
+	estimatedCountFn pagination.EstimatedCountFunc,
+) (*pagination.ListResponse[T], error) {
+	resp := &pagination.ListResponse[T]{
+		Items:           items,
+		CompleteListing: completeListing,
+		ListToken:       tok,
+		DeletedIds:      deletedIds,
+	}
+
+	var err error
+	resp.EstimatedItemCount, err = estimatedCountFn(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var lastItem boundary.Resource
+	if len(items) > 0 {
+		lastItem = items[len(items)-1]
+	}
+	if err := resp.ListToken.Transition(
+		ctx,
+		completeListing,
+		lastItem,
+		deletedIdsTime,
+		listTime,
+	); err != nil {
+		return nil, err
+	}
+	return resp, err
 }
