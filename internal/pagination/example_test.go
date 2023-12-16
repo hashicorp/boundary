@@ -35,7 +35,7 @@ func (e *ExampleResource) GetCreateTime() *timestamp.Timestamp {
 }
 
 func (e *ExampleResource) GetResourceType() resource.Type {
-	return resource.Unknown
+	return resource.Target
 }
 
 func ExampleList() {
@@ -122,7 +122,7 @@ func ExampleListPage() {
 	listToken, err := listtoken.NewPagination( // Normally from incoming request
 		context.Background(),
 		time.Now(),
-		resource.Unknown,
+		resource.Target,
 		grantsHash,
 		"ttcp_1234567890",
 		time.Now().Add(-time.Hour),
@@ -216,7 +216,7 @@ func ExampleListRefresh() {
 	listToken, err := listtoken.NewStartRefresh( // Normally from incoming request
 		context.Background(),
 		time.Now(),
-		resource.Unknown,
+		resource.Target,
 		grantsHash,
 		time.Now().Add(-2*time.Hour),
 		time.Now().Add(-time.Hour),
@@ -325,7 +325,7 @@ func ExampleListRefreshPage() {
 	listToken, err := listtoken.NewRefresh( // Normally from incoming request
 		context.Background(),
 		time.Now(),
-		resource.Unknown,
+		resource.Target,
 		grantsHash,
 		time.Now().Add(-time.Hour),
 		time.Now().Add(-2*time.Hour),
