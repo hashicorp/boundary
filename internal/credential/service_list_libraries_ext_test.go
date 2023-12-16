@@ -196,7 +196,17 @@ func TestLibraryService_List(t *testing.T) {
 			tok, err := listtoken.NewPagination(ctx, fiveDaysAgo, resource.CredentialLibrary, []byte("some hash"), "some-id", fiveDaysAgo)
 			require.NoError(t, err)
 			_, err = credential.ListLibrariesPage(ctx, []byte("some hash"), 1, filterFunc, tok, repo, "")
-			require.ErrorContains(t, err, "missing store id")
+			require.ErrorContains(t, err, "missing credential store id")
+		})
+		t.Run("wrong token resource type", func(t *testing.T) {
+			t.Parallel()
+			filterFunc := func(_ context.Context, l credential.Library) (bool, error) {
+				return true, nil
+			}
+			tok, err := listtoken.NewPagination(ctx, fiveDaysAgo, resource.Target, []byte("some hash"), "some-id", fiveDaysAgo)
+			require.NoError(t, err)
+			_, err = credential.ListLibrariesPage(ctx, []byte("some hash"), 1, filterFunc, tok, repo, credStore.GetPublicId())
+			require.ErrorContains(t, err, "token did not have an credential library resource type")
 		})
 	})
 	t.Run("ListLibrariesRefresh validation", func(t *testing.T) {
@@ -266,6 +276,16 @@ func TestLibraryService_List(t *testing.T) {
 			_, err = credential.ListLibrariesRefresh(ctx, []byte("some hash"), 1, filterFunc, tok, repo, "")
 			require.ErrorContains(t, err, "missing credential store ID")
 		})
+		t.Run("wrong token resource type", func(t *testing.T) {
+			t.Parallel()
+			filterFunc := func(_ context.Context, l credential.Library) (bool, error) {
+				return true, nil
+			}
+			tok, err := listtoken.NewStartRefresh(ctx, fiveDaysAgo, resource.Target, []byte("some hash"), fiveDaysAgo, fiveDaysAgo)
+			require.NoError(t, err)
+			_, err = credential.ListLibrariesRefresh(ctx, []byte("some hash"), 1, filterFunc, tok, repo, credStore.GetPublicId())
+			require.ErrorContains(t, err, "token did not have an credential library resource type")
+		})
 	})
 	t.Run("ListLibrariesRefreshPage validation", func(t *testing.T) {
 		t.Parallel()
@@ -333,6 +353,26 @@ func TestLibraryService_List(t *testing.T) {
 			require.NoError(t, err)
 			_, err = credential.ListLibrariesRefreshPage(ctx, []byte("some hash"), 1, filterFunc, tok, nil, credStore.GetPublicId())
 			require.ErrorContains(t, err, "missing service")
+		})
+		t.Run("missing credential store ID", func(t *testing.T) {
+			t.Parallel()
+			filterFunc := func(_ context.Context, l credential.Library) (bool, error) {
+				return true, nil
+			}
+			tok, err := listtoken.NewRefresh(ctx, fiveDaysAgo, resource.CredentialLibrary, []byte("some hash"), fiveDaysAgo, fiveDaysAgo, fiveDaysAgo, "some other id", fiveDaysAgo)
+			require.NoError(t, err)
+			_, err = credential.ListLibrariesRefreshPage(ctx, []byte("some hash"), 1, filterFunc, tok, repo, "")
+			require.ErrorContains(t, err, "missing credential store id")
+		})
+		t.Run("wrong token resource type", func(t *testing.T) {
+			t.Parallel()
+			filterFunc := func(_ context.Context, l credential.Library) (bool, error) {
+				return true, nil
+			}
+			tok, err := listtoken.NewRefresh(ctx, fiveDaysAgo, resource.Target, []byte("some hash"), fiveDaysAgo, fiveDaysAgo, fiveDaysAgo, "some other id", fiveDaysAgo)
+			require.NoError(t, err)
+			_, err = credential.ListLibrariesRefreshPage(ctx, []byte("some hash"), 1, filterFunc, tok, repo, credStore.GetPublicId())
+			require.ErrorContains(t, err, "token did not have an credential library resource type")
 		})
 	})
 

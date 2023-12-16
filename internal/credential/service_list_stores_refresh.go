@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/listtoken"
 	"github.com/hashicorp/boundary/internal/pagination"
+	"github.com/hashicorp/boundary/internal/types/resource"
 )
 
 // ListStoresRefresh lists up to page size credential stores, filtering out entries that
@@ -42,10 +43,12 @@ func ListStoresRefresh(
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing filter item callback")
 	case tok == nil:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing token")
-	case projectIds == nil:
+	case len(projectIds) == 0:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing project ids")
 	case repo == nil:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing repo")
+	case tok.ResourceType != resource.CredentialStore:
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "token did not have a credential store resource type")
 	}
 	rt, ok := tok.Subtype.(*listtoken.StartRefreshToken)
 	if !ok {
