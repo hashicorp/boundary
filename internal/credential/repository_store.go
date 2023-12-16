@@ -7,8 +7,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -50,15 +48,8 @@ func (s *StoreRepository) List(ctx context.Context, projectIds []string, afterIt
 		return nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "missing limit")
 	}
 
-	var inClauses []string
-	var args []any
-	for i, projectId := range projectIds {
-		arg := "project_id_" + strconv.Itoa(i)
-		inClauses = append(inClauses, "@"+arg)
-		args = append(args, sql.Named(arg, projectId))
-	}
-	inClause := strings.Join(inClauses, ", ")
-	whereClause := "project_id in (" + inClause + ")"
+	args := []any{sql.Named("project_ids", projectIds)}
+	whereClause := "project_id in @project_ids"
 
 	query := fmt.Sprintf(listStoresTemplate, whereClause, limit)
 	if afterItem != nil {
@@ -84,15 +75,8 @@ func (s *StoreRepository) ListRefresh(ctx context.Context, projectIds []string, 
 		return nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "missing limit")
 	}
 
-	var inClauses []string
-	var args []any
-	for i, projectId := range projectIds {
-		arg := "project_id_" + strconv.Itoa(i)
-		inClauses = append(inClauses, "@"+arg)
-		args = append(args, sql.Named(arg, projectId))
-	}
-	inClause := strings.Join(inClauses, ", ")
-	whereClause := "project_id in (" + inClause + ")"
+	args := []any{sql.Named("project_ids", projectIds)}
+	whereClause := "project_id in @project_ids"
 
 	query := fmt.Sprintf(listStoresRefreshTemplate, whereClause, limit)
 	args = append(args,
