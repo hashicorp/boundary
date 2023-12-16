@@ -33,7 +33,7 @@ func ListStores(
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "page size must be at least 1")
 	case filterItemFn == nil:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing filter item callback")
-	case projectIds == nil:
+	case len(projectIds) == 0:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing project ids")
 	case repo == nil:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing repo")

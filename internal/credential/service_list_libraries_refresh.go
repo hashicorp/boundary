@@ -11,6 +11,8 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/listtoken"
 	"github.com/hashicorp/boundary/internal/pagination"
+	"github.com/hashicorp/boundary/internal/types/resource"
+	"github.com/hashicorp/boundary/internal/util"
 )
 
 // ListRefresh lists up to page size credential libraries, filtering out entries that
@@ -42,10 +44,12 @@ func ListLibrariesRefresh(
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing filter item callback")
 	case tok == nil:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing token")
-	case service == nil:
+	case util.IsNil(service):
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing service")
 	case credentialStoreId == "":
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing credential store ID")
+	case tok.ResourceType != resource.CredentialLibrary:
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "token did not have an credential library resource type")
 	}
 	rt, ok := tok.Subtype.(*listtoken.StartRefreshToken)
 	if !ok {
