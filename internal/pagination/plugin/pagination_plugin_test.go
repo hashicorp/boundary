@@ -1,7 +1,7 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: BUSL-1.1
 
-package pagination
+package plugin
 
 import (
 	"context"
@@ -10,12 +10,53 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/hashicorp/boundary/internal/boundary"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/listtoken"
+	"github.com/hashicorp/boundary/internal/pagination"
 	"github.com/hashicorp/boundary/internal/plugin"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+var (
+	// Some unique timestamps for tests
+	timeNow              = time.Now()
+	fiveDaysAgo          = timeNow.AddDate(0, 0, -5)
+	tokenCreateTime      = timeNow.AddDate(0, 0, -10)
+	prevDeletedTime      = fiveDaysAgo.Add(time.Hour)
+	lastItemCreateTime   = fiveDaysAgo.Add(2 * time.Hour)
+	lastItemUpdateTime   = fiveDaysAgo.Add(3 * time.Hour)
+	listReturnTime       = timeNow.Add(-time.Second)
+	deletedIDsReturnTime = timeNow.Add(-2 * time.Second)
+	prevPhaseUpperBound  = fiveDaysAgo.Add(2 * time.Second)
+	phaseLowerBound      = fiveDaysAgo.Add(3 * time.Second)
+	phaseUpperBound      = fiveDaysAgo.Add(4 * time.Second)
+)
+
+type testType struct {
+	boundary.Resource
+	ID         string
+	CreateTime time.Time
+	UpdateTime time.Time
+}
+
+func (t *testType) GetResourceType() resource.Type {
+	return resource.Unknown
+}
+
+func (t *testType) GetCreateTime() *timestamp.Timestamp {
+	return timestamp.New(t.CreateTime)
+}
+
+func (t *testType) GetUpdateTime() *timestamp.Timestamp {
+	return timestamp.New(t.UpdateTime)
+}
+
+func (t *testType) GetPublicId() string {
+	return t.ID
+}
 
 func Test_ListPlugin(t *testing.T) {
 	t.Parallel()
@@ -113,7 +154,7 @@ func Test_ListPlugin(t *testing.T) {
 			filterItemFn := func(ctx context.Context, item *testType, plg *plugin.Plugin) (bool, error) {
 				return true, nil
 			}
-			estimatedItemCountFn := EstimatedCountFunc(nil)
+			estimatedItemCountFn := pagination.EstimatedCountFunc(nil)
 			grantsHash := []byte("some hash")
 			_, _, err := ListPlugin(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn)
 			require.ErrorContains(t, err, "missing estimated count callback")
@@ -815,7 +856,7 @@ func Test_ListPluginPage(t *testing.T) {
 			filterItemFn := func(ctx context.Context, item *testType, plg *plugin.Plugin) (bool, error) {
 				return true, nil
 			}
-			estimatedItemCountFn := EstimatedCountFunc(nil)
+			estimatedItemCountFn := pagination.EstimatedCountFunc(nil)
 			grantsHash := []byte("some hash")
 			_, _, err = ListPluginPage(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn, tok)
 			require.ErrorContains(t, err, "missing estimated count callback")
@@ -1624,7 +1665,7 @@ func Test_ListPluginRefresh(t *testing.T) {
 			estimatedItemCountFn := func(ctx context.Context) (int, error) {
 				return 10, nil
 			}
-			deletedIDsFn := ListDeletedIDsFunc(nil)
+			deletedIDsFn := pagination.ListDeletedIDsFunc(nil)
 			grantsHash := []byte("some hash")
 			_, _, err = ListPluginRefresh(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn, deletedIDsFn, tok)
 			require.ErrorContains(t, err, "missing list deleted IDs callback")
@@ -1697,7 +1738,7 @@ func Test_ListPluginRefresh(t *testing.T) {
 			filterItemFn := func(ctx context.Context, item *testType, plg *plugin.Plugin) (bool, error) {
 				return true, nil
 			}
-			estimatedItemCountFn := EstimatedCountFunc(nil)
+			estimatedItemCountFn := pagination.EstimatedCountFunc(nil)
 			deletedIDsFn := func(ctx context.Context, since time.Time) ([]string, time.Time, error) {
 				return nil, deletedIDsReturnTime, nil
 			}
@@ -2611,7 +2652,7 @@ func Test_ListPluginRefreshPage(t *testing.T) {
 			estimatedItemCountFn := func(ctx context.Context) (int, error) {
 				return 10, nil
 			}
-			deletedIDsFn := ListDeletedIDsFunc(nil)
+			deletedIDsFn := pagination.ListDeletedIDsFunc(nil)
 			grantsHash := []byte("some hash")
 			_, _, err = ListPluginRefreshPage(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, estimatedItemCountFn, deletedIDsFn, tok)
 			require.ErrorContains(t, err, "missing list deleted IDs callback")
@@ -2687,7 +2728,7 @@ func Test_ListPluginRefreshPage(t *testing.T) {
 			filterItemFn := func(ctx context.Context, item *testType, plg *plugin.Plugin) (bool, error) {
 				return true, nil
 			}
-			estimatedItemCountFn := EstimatedCountFunc(nil)
+			estimatedItemCountFn := pagination.EstimatedCountFunc(nil)
 			deletedIDsFn := func(ctx context.Context, since time.Time) ([]string, time.Time, error) {
 				return nil, deletedIDsReturnTime, nil
 			}
