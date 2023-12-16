@@ -124,7 +124,7 @@ func Test_Repository_Scope_Create(t *testing.T) {
 			require.NoError(err)
 			assert.True(proto.Equal(foundScope, s))
 
-			foundRoles, _, err := repo.listRoles(context.Background(), []string{foundScope.GetPublicId()})
+			foundRoles, err := repo.ListRoles(context.Background(), []string{foundScope.GetPublicId()})
 			require.NoError(err)
 			numFound := 2
 			if skipCreate {
