@@ -9,6 +9,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/pagination"
+	"github.com/hashicorp/boundary/internal/util"
 )
 
 // LibraryService defines the interface expected
@@ -43,7 +44,7 @@ func ListLibraries(
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "page size must be at least 1")
 	case filterItemFn == nil:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing filter item callback")
-	case service == nil:
+	case util.IsNil(service):
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing service")
 	case credentialStoreId == "":
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing credential store ID")
