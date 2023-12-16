@@ -738,7 +738,7 @@ func Test_ListPluginsPage(t *testing.T) {
 			tok, err := listtoken.NewPagination(
 				ctx,
 				tokenCreateTime,
-				resource.Unknown,
+				resource.Target,
 				[]byte("some hash"),
 				"some id",
 				lastItemCreateTime,
@@ -764,7 +764,7 @@ func Test_ListPluginsPage(t *testing.T) {
 			tok, err := listtoken.NewPagination(
 				ctx,
 				tokenCreateTime,
-				resource.Unknown,
+				resource.Target,
 				[]byte("some hash"),
 				"some id",
 				lastItemCreateTime,
@@ -790,7 +790,7 @@ func Test_ListPluginsPage(t *testing.T) {
 			tok, err := listtoken.NewPagination(
 				ctx,
 				tokenCreateTime,
-				resource.Unknown,
+				resource.Target,
 				[]byte("some hash"),
 				"some id",
 				lastItemCreateTime,
@@ -816,7 +816,7 @@ func Test_ListPluginsPage(t *testing.T) {
 			tok, err := listtoken.NewPagination(
 				ctx,
 				tokenCreateTime,
-				resource.Unknown,
+				resource.Target,
 				[]byte("some hash"),
 				"some id",
 				lastItemCreateTime,
@@ -840,7 +840,7 @@ func Test_ListPluginsPage(t *testing.T) {
 			tok, err := listtoken.NewPagination(
 				ctx,
 				tokenCreateTime,
-				resource.Unknown,
+				resource.Target,
 				[]byte("some hash"),
 				"some id",
 				lastItemCreateTime,
@@ -880,7 +880,7 @@ func Test_ListPluginsPage(t *testing.T) {
 			tok, err := listtoken.NewStartRefresh(
 				ctx,
 				tokenCreateTime,
-				resource.Unknown,
+				resource.Target,
 				[]byte("some hash"),
 				prevDeletedTime,
 				phaseUpperBound,
@@ -906,7 +906,7 @@ func Test_ListPluginsPage(t *testing.T) {
 			tok, err := listtoken.NewPagination(
 				ctx,
 				tokenCreateTime,
-				resource.Unknown,
+				resource.Target,
 				[]byte("some hash"),
 				"some id",
 				lastItemCreateTime,
@@ -932,7 +932,7 @@ func Test_ListPluginsPage(t *testing.T) {
 			tok, err := listtoken.NewPagination(
 				ctx,
 				tokenCreateTime,
-				resource.Unknown,
+				resource.Target,
 				[]byte("some hash"),
 				"some id",
 				lastItemCreateTime,
@@ -959,7 +959,7 @@ func Test_ListPluginsPage(t *testing.T) {
 			tok, err := listtoken.NewPagination(
 				ctx,
 				tokenCreateTime,
-				resource.Unknown,
+				resource.Target,
 				[]byte("some hash"),
 				"some id",
 				lastItemCreateTime,
@@ -1002,7 +1002,7 @@ func Test_ListPluginsPage(t *testing.T) {
 			tok, err := listtoken.NewPagination(
 				ctx,
 				tokenCreateTime,
-				resource.Unknown,
+				resource.Target,
 				[]byte("some hash"),
 				"some id",
 				lastItemCreateTime,
@@ -1039,7 +1039,7 @@ func Test_ListPluginsPage(t *testing.T) {
 			tok, err := listtoken.NewPagination(
 				ctx,
 				tokenCreateTime,
-				resource.Unknown,
+				resource.Target,
 				[]byte("some hash"),
 				"some id",
 				lastItemCreateTime,
@@ -1077,7 +1077,7 @@ func Test_ListPluginsPage(t *testing.T) {
 		tok, err := listtoken.NewPagination(
 			ctx,
 			tokenCreateTime,
-			resource.Unknown,
+			resource.Target,
 			[]byte("some hash"),
 			"some id",
 			lastItemCreateTime,
@@ -1122,7 +1122,7 @@ func Test_ListPluginsPage(t *testing.T) {
 		tok, err := listtoken.NewPagination(
 			ctx,
 			tokenCreateTime,
-			resource.Unknown,
+			resource.Target,
 			[]byte("some hash"),
 			"some id",
 			lastItemCreateTime,
@@ -1174,7 +1174,7 @@ func Test_ListPluginsPage(t *testing.T) {
 		tok, err := listtoken.NewPagination(
 			ctx,
 			tokenCreateTime,
-			resource.Unknown,
+			resource.Target,
 			[]byte("some hash"),
 			"some id",
 			lastItemCreateTime,
@@ -1225,7 +1225,7 @@ func Test_ListPluginsPage(t *testing.T) {
 		tok, err := listtoken.NewPagination(
 			ctx,
 			tokenCreateTime,
-			resource.Unknown,
+			resource.Target,
 			[]byte("some hash"),
 			"some id",
 			lastItemCreateTime,
@@ -1288,7 +1288,7 @@ func Test_ListPluginsPage(t *testing.T) {
 		tok, err := listtoken.NewPagination(
 			ctx,
 			tokenCreateTime,
-			resource.Unknown,
+			resource.Target,
 			[]byte("some hash"),
 			"some id",
 			lastItemCreateTime,
@@ -1350,7 +1350,7 @@ func Test_ListPluginsPage(t *testing.T) {
 		tok, err := listtoken.NewPagination(
 			ctx,
 			tokenCreateTime,
-			resource.Unknown,
+			resource.Target,
 			[]byte("some hash"),
 			"some id",
 			lastItemCreateTime,
@@ -1411,7 +1411,7 @@ func Test_ListPluginsPage(t *testing.T) {
 		tok, err := listtoken.NewPagination(
 			ctx,
 			tokenCreateTime,
-			resource.Unknown,
+			resource.Target,
 			[]byte("some hash"),
 			"some id",
 			lastItemCreateTime,
@@ -1471,7 +1471,7 @@ func Test_ListPluginsPage(t *testing.T) {
 		tok, err := listtoken.NewPagination(
 			ctx,
 			tokenCreateTime,
-			resource.Unknown,
+			resource.Target,
 			[]byte("some hash"),
 			"some id",
 			lastItemCreateTime,
@@ -1539,7 +1539,7 @@ func Test_ListPluginsPage(t *testing.T) {
 		tok, err := listtoken.NewPagination(
 			ctx,
 			tokenCreateTime,
-			resource.Unknown,
+			resource.Target,
 			[]byte("some hash"),
 			"some id",
 			lastItemCreateTime,
@@ -1602,7 +1602,7 @@ func Test_ListPluginsPage(t *testing.T) {
 		tok, err := listtoken.NewPagination(
 			ctx,
 			tokenCreateTime,
-			resource.Unknown,
+			resource.Target,
 			[]byte("some hash"),
 			"some id",
 			lastItemCreateTime,
@@ -1675,7 +1675,7 @@ func Test_ListPluginsRefresh(t *testing.T) {
 			tok, err := listtoken.NewStartRefresh(
 				ctx,
 				tokenCreateTime,
-				resource.Unknown,
+				resource.Target,
 				[]byte("some hash"),
 				prevDeletedTime,
 				prevPhaseUpperBound,
@@ -1704,7 +1704,7 @@ func Test_ListPluginsRefresh(t *testing.T) {
 			tok, err := listtoken.NewStartRefresh(
 				ctx,
 				tokenCreateTime,
-				resource.Unknown,
+				resource.Target,
 				[]byte("some hash"),
 				prevDeletedTime,
 				prevPhaseUpperBound,
@@ -1733,7 +1733,7 @@ func Test_ListPluginsRefresh(t *testing.T) {
 			tok, err := listtoken.NewStartRefresh(
 				ctx,
 				tokenCreateTime,
-				resource.Unknown,
+				resource.Target,
 				[]byte("some hash"),
 				prevDeletedTime,
 				prevPhaseUpperBound,
@@ -1762,7 +1762,7 @@ func Test_ListPluginsRefresh(t *testing.T) {
 			tok, err := listtoken.NewStartRefresh(
 				ctx,
 				tokenCreateTime,
-				resource.Unknown,
+				resource.Target,
 				[]byte("some hash"),
 				prevDeletedTime,
 				prevPhaseUpperBound,
@@ -1789,7 +1789,7 @@ func Test_ListPluginsRefresh(t *testing.T) {
 			tok, err := listtoken.NewStartRefresh(
 				ctx,
 				tokenCreateTime,
-				resource.Unknown,
+				resource.Target,
 				[]byte("some hash"),
 				prevDeletedTime,
 				prevPhaseUpperBound,
@@ -1815,7 +1815,7 @@ func Test_ListPluginsRefresh(t *testing.T) {
 			tok, err := listtoken.NewStartRefresh(
 				ctx,
 				tokenCreateTime,
-				resource.Unknown,
+				resource.Target,
 				[]byte("some hash"),
 				prevDeletedTime,
 				prevPhaseUpperBound,
@@ -1862,7 +1862,7 @@ func Test_ListPluginsRefresh(t *testing.T) {
 			tok, err := listtoken.NewPagination(
 				ctx,
 				tokenCreateTime,
-				resource.Unknown,
+				resource.Target,
 				[]byte("some hash"),
 				"some id",
 				lastItemCreateTime,
@@ -1891,7 +1891,7 @@ func Test_ListPluginsRefresh(t *testing.T) {
 			tok, err := listtoken.NewStartRefresh(
 				ctx,
 				tokenCreateTime,
-				resource.Unknown,
+				resource.Target,
 				[]byte("some hash"),
 				prevDeletedTime,
 				prevPhaseUpperBound,
@@ -1920,7 +1920,7 @@ func Test_ListPluginsRefresh(t *testing.T) {
 			tok, err := listtoken.NewStartRefresh(
 				ctx,
 				tokenCreateTime,
-				resource.Unknown,
+				resource.Target,
 				[]byte("some hash"),
 				prevDeletedTime,
 				prevPhaseUpperBound,
@@ -1950,7 +1950,7 @@ func Test_ListPluginsRefresh(t *testing.T) {
 			tok, err := listtoken.NewStartRefresh(
 				ctx,
 				tokenCreateTime,
-				resource.Unknown,
+				resource.Target,
 				[]byte("some hash"),
 				prevDeletedTime,
 				prevPhaseUpperBound,
@@ -1996,7 +1996,7 @@ func Test_ListPluginsRefresh(t *testing.T) {
 			tok, err := listtoken.NewStartRefresh(
 				ctx,
 				tokenCreateTime,
-				resource.Unknown,
+				resource.Target,
 				[]byte("some hash"),
 				prevDeletedTime,
 				prevPhaseUpperBound,
@@ -2036,7 +2036,7 @@ func Test_ListPluginsRefresh(t *testing.T) {
 			tok, err := listtoken.NewStartRefresh(
 				ctx,
 				tokenCreateTime,
-				resource.Unknown,
+				resource.Target,
 				[]byte("some hash"),
 				prevDeletedTime,
 				prevPhaseUpperBound,
@@ -2076,7 +2076,7 @@ func Test_ListPluginsRefresh(t *testing.T) {
 			tok, err := listtoken.NewStartRefresh(
 				ctx,
 				tokenCreateTime,
-				resource.Unknown,
+				resource.Target,
 				[]byte("some hash"),
 				prevDeletedTime,
 				prevPhaseUpperBound,
@@ -2117,7 +2117,7 @@ func Test_ListPluginsRefresh(t *testing.T) {
 		tok, err := listtoken.NewStartRefresh(
 			ctx,
 			tokenCreateTime,
-			resource.Unknown,
+			resource.Target,
 			[]byte("some hash"),
 			prevDeletedTime,
 			prevPhaseUpperBound,
@@ -2165,7 +2165,7 @@ func Test_ListPluginsRefresh(t *testing.T) {
 		tok, err := listtoken.NewStartRefresh(
 			ctx,
 			tokenCreateTime,
-			resource.Unknown,
+			resource.Target,
 			[]byte("some hash"),
 			prevDeletedTime,
 			prevPhaseUpperBound,
@@ -2222,7 +2222,7 @@ func Test_ListPluginsRefresh(t *testing.T) {
 		tok, err := listtoken.NewStartRefresh(
 			ctx,
 			tokenCreateTime,
-			resource.Unknown,
+			resource.Target,
 			[]byte("some hash"),
 			prevDeletedTime,
 			prevPhaseUpperBound,
@@ -2276,7 +2276,7 @@ func Test_ListPluginsRefresh(t *testing.T) {
 		tok, err := listtoken.NewStartRefresh(
 			ctx,
 			tokenCreateTime,
-			resource.Unknown,
+			resource.Target,
 			[]byte("some hash"),
 			prevDeletedTime,
 			prevPhaseUpperBound,
@@ -2344,7 +2344,7 @@ func Test_ListPluginsRefresh(t *testing.T) {
 		tok, err := listtoken.NewStartRefresh(
 			ctx,
 			tokenCreateTime,
-			resource.Unknown,
+			resource.Target,
 			[]byte("some hash"),
 			prevDeletedTime,
 			prevPhaseUpperBound,
@@ -2411,7 +2411,7 @@ func Test_ListPluginsRefresh(t *testing.T) {
 		tok, err := listtoken.NewStartRefresh(
 			ctx,
 			tokenCreateTime,
-			resource.Unknown,
+			resource.Target,
 			[]byte("some hash"),
 			prevDeletedTime,
 			prevPhaseUpperBound,
@@ -2475,7 +2475,7 @@ func Test_ListPluginsRefresh(t *testing.T) {
 		tok, err := listtoken.NewStartRefresh(
 			ctx,
 			tokenCreateTime,
-			resource.Unknown,
+			resource.Target,
 			[]byte("some hash"),
 			prevDeletedTime,
 			prevPhaseUpperBound,
@@ -2538,7 +2538,7 @@ func Test_ListPluginsRefresh(t *testing.T) {
 		tok, err := listtoken.NewStartRefresh(
 			ctx,
 			tokenCreateTime,
-			resource.Unknown,
+			resource.Target,
 			[]byte("some hash"),
 			prevDeletedTime,
 			prevPhaseUpperBound,
@@ -2609,7 +2609,7 @@ func Test_ListPluginsRefresh(t *testing.T) {
 		tok, err := listtoken.NewStartRefresh(
 			ctx,
 			tokenCreateTime,
-			resource.Unknown,
+			resource.Target,
 			[]byte("some hash"),
 			prevDeletedTime,
 			prevPhaseUpperBound,
@@ -2675,7 +2675,7 @@ func Test_ListPluginsRefresh(t *testing.T) {
 		tok, err := listtoken.NewStartRefresh(
 			ctx,
 			tokenCreateTime,
-			resource.Unknown,
+			resource.Target,
 			[]byte("some hash"),
 			prevDeletedTime,
 			prevPhaseUpperBound,
@@ -2750,7 +2750,7 @@ func Test_ListPluginsRefreshPage(t *testing.T) {
 			tok, err := listtoken.NewRefresh(
 				ctx,
 				tokenCreateTime,
-				resource.Unknown,
+				resource.Target,
 				[]byte("some hash"),
 				prevDeletedTime,
 				phaseUpperBound,
@@ -2782,7 +2782,7 @@ func Test_ListPluginsRefreshPage(t *testing.T) {
 			tok, err := listtoken.NewRefresh(
 				ctx,
 				tokenCreateTime,
-				resource.Unknown,
+				resource.Target,
 				[]byte("some hash"),
 				prevDeletedTime,
 				phaseUpperBound,
@@ -2814,7 +2814,7 @@ func Test_ListPluginsRefreshPage(t *testing.T) {
 			tok, err := listtoken.NewRefresh(
 				ctx,
 				tokenCreateTime,
-				resource.Unknown,
+				resource.Target,
 				[]byte("some hash"),
 				prevDeletedTime,
 				phaseUpperBound,
@@ -2846,7 +2846,7 @@ func Test_ListPluginsRefreshPage(t *testing.T) {
 			tok, err := listtoken.NewRefresh(
 				ctx,
 				tokenCreateTime,
-				resource.Unknown,
+				resource.Target,
 				[]byte("some hash"),
 				prevDeletedTime,
 				phaseUpperBound,
@@ -2876,7 +2876,7 @@ func Test_ListPluginsRefreshPage(t *testing.T) {
 			tok, err := listtoken.NewRefresh(
 				ctx,
 				tokenCreateTime,
-				resource.Unknown,
+				resource.Target,
 				[]byte("some hash"),
 				prevDeletedTime,
 				phaseUpperBound,
@@ -2905,7 +2905,7 @@ func Test_ListPluginsRefreshPage(t *testing.T) {
 			tok, err := listtoken.NewRefresh(
 				ctx,
 				tokenCreateTime,
-				resource.Unknown,
+				resource.Target,
 				[]byte("some hash"),
 				prevDeletedTime,
 				phaseUpperBound,
@@ -2955,7 +2955,7 @@ func Test_ListPluginsRefreshPage(t *testing.T) {
 			tok, err := listtoken.NewPagination(
 				ctx,
 				tokenCreateTime,
-				resource.Unknown,
+				resource.Target,
 				[]byte("some hash"),
 				"some id",
 				lastItemCreateTime,
@@ -2984,7 +2984,7 @@ func Test_ListPluginsRefreshPage(t *testing.T) {
 			tok, err := listtoken.NewRefresh(
 				ctx,
 				tokenCreateTime,
-				resource.Unknown,
+				resource.Target,
 				[]byte("some hash"),
 				prevDeletedTime,
 				phaseUpperBound,
@@ -3016,7 +3016,7 @@ func Test_ListPluginsRefreshPage(t *testing.T) {
 			tok, err := listtoken.NewRefresh(
 				ctx,
 				tokenCreateTime,
-				resource.Unknown,
+				resource.Target,
 				[]byte("some hash"),
 				prevDeletedTime,
 				phaseUpperBound,
@@ -3049,7 +3049,7 @@ func Test_ListPluginsRefreshPage(t *testing.T) {
 			tok, err := listtoken.NewRefresh(
 				ctx,
 				tokenCreateTime,
-				resource.Unknown,
+				resource.Target,
 				[]byte("some hash"),
 				prevDeletedTime,
 				phaseUpperBound,
@@ -3098,7 +3098,7 @@ func Test_ListPluginsRefreshPage(t *testing.T) {
 			tok, err := listtoken.NewRefresh(
 				ctx,
 				tokenCreateTime,
-				resource.Unknown,
+				resource.Target,
 				[]byte("some hash"),
 				prevDeletedTime,
 				phaseUpperBound,
@@ -3141,7 +3141,7 @@ func Test_ListPluginsRefreshPage(t *testing.T) {
 			tok, err := listtoken.NewRefresh(
 				ctx,
 				tokenCreateTime,
-				resource.Unknown,
+				resource.Target,
 				[]byte("some hash"),
 				prevDeletedTime,
 				phaseUpperBound,
@@ -3184,7 +3184,7 @@ func Test_ListPluginsRefreshPage(t *testing.T) {
 			tok, err := listtoken.NewRefresh(
 				ctx,
 				tokenCreateTime,
-				resource.Unknown,
+				resource.Target,
 				[]byte("some hash"),
 				prevDeletedTime,
 				phaseUpperBound,
@@ -3228,7 +3228,7 @@ func Test_ListPluginsRefreshPage(t *testing.T) {
 		tok, err := listtoken.NewRefresh(
 			ctx,
 			tokenCreateTime,
-			resource.Unknown,
+			resource.Target,
 			[]byte("some hash"),
 			prevDeletedTime,
 			phaseUpperBound,
@@ -3279,7 +3279,7 @@ func Test_ListPluginsRefreshPage(t *testing.T) {
 		tok, err := listtoken.NewRefresh(
 			ctx,
 			tokenCreateTime,
-			resource.Unknown,
+			resource.Target,
 			[]byte("some hash"),
 			prevDeletedTime,
 			phaseUpperBound,
@@ -3339,7 +3339,7 @@ func Test_ListPluginsRefreshPage(t *testing.T) {
 		tok, err := listtoken.NewRefresh(
 			ctx,
 			tokenCreateTime,
-			resource.Unknown,
+			resource.Target,
 			[]byte("some hash"),
 			prevDeletedTime,
 			phaseUpperBound,
@@ -3396,7 +3396,7 @@ func Test_ListPluginsRefreshPage(t *testing.T) {
 		tok, err := listtoken.NewRefresh(
 			ctx,
 			tokenCreateTime,
-			resource.Unknown,
+			resource.Target,
 			[]byte("some hash"),
 			prevDeletedTime,
 			phaseUpperBound,
@@ -3467,7 +3467,7 @@ func Test_ListPluginsRefreshPage(t *testing.T) {
 		tok, err := listtoken.NewRefresh(
 			ctx,
 			tokenCreateTime,
-			resource.Unknown,
+			resource.Target,
 			[]byte("some hash"),
 			prevDeletedTime,
 			phaseUpperBound,
@@ -3537,7 +3537,7 @@ func Test_ListPluginsRefreshPage(t *testing.T) {
 		tok, err := listtoken.NewRefresh(
 			ctx,
 			tokenCreateTime,
-			resource.Unknown,
+			resource.Target,
 			[]byte("some hash"),
 			prevDeletedTime,
 			phaseUpperBound,
@@ -3604,7 +3604,7 @@ func Test_ListPluginsRefreshPage(t *testing.T) {
 		tok, err := listtoken.NewRefresh(
 			ctx,
 			tokenCreateTime,
-			resource.Unknown,
+			resource.Target,
 			[]byte("some hash"),
 			prevDeletedTime,
 			phaseUpperBound,
@@ -3670,7 +3670,7 @@ func Test_ListPluginsRefreshPage(t *testing.T) {
 		tok, err := listtoken.NewRefresh(
 			ctx,
 			tokenCreateTime,
-			resource.Unknown,
+			resource.Target,
 			[]byte("some hash"),
 			prevDeletedTime,
 			phaseUpperBound,
@@ -3744,7 +3744,7 @@ func Test_ListPluginsRefreshPage(t *testing.T) {
 		tok, err := listtoken.NewRefresh(
 			ctx,
 			tokenCreateTime,
-			resource.Unknown,
+			resource.Target,
 			[]byte("some hash"),
 			prevDeletedTime,
 			phaseUpperBound,
@@ -3813,7 +3813,7 @@ func Test_ListPluginsRefreshPage(t *testing.T) {
 		tok, err := listtoken.NewRefresh(
 			ctx,
 			tokenCreateTime,
-			resource.Unknown,
+			resource.Target,
 			[]byte("some hash"),
 			prevDeletedTime,
 			phaseUpperBound,
