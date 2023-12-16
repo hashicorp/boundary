@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/listtoken"
 	"github.com/hashicorp/boundary/internal/pagination"
+	"github.com/hashicorp/boundary/internal/types/resource"
 )
 
 // ListRolesPage lists up to page size roles, filtering out entries that
@@ -40,8 +41,10 @@ func ListRolesPage(
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing token")
 	case repo == nil:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing repo")
-	case withScopeIds == nil:
+	case len(withScopeIds) == 0:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing scope ids")
+	case tok.ResourceType != resource.Role:
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "token did not have a role resource type")
 	}
 	if _, ok := tok.Subtype.(*listtoken.PaginationToken); !ok {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "token did not have a pagination token component")

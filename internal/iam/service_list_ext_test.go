@@ -184,6 +184,16 @@ func TestService_ListRoles(t *testing.T) {
 			_, err = iam.ListRolesPage(ctx, []byte("some hash"), 1, filterFunc, tok, repo, nil)
 			require.ErrorContains(t, err, "missing scope ids")
 		})
+		t.Run("wrong token resource type", func(t *testing.T) {
+			t.Parallel()
+			filterFunc := func(_ context.Context, r *iam.Role) (bool, error) {
+				return true, nil
+			}
+			tok, err := listtoken.NewPagination(ctx, fiveDaysAgo, resource.Target, []byte("some hash"), "some-id", fiveDaysAgo)
+			require.NoError(t, err)
+			_, err = iam.ListRolesPage(ctx, []byte("some hash"), 1, filterFunc, tok, repo, []string{org.GetPublicId()})
+			require.ErrorContains(t, err, "token did not have a role resource type")
+		})
 	})
 	t.Run("ListRefresh validation", func(t *testing.T) {
 		t.Parallel()
@@ -262,6 +272,16 @@ func TestService_ListRoles(t *testing.T) {
 			_, err = iam.ListRolesRefresh(ctx, []byte("some hash"), 1, filterFunc, tok, repo, nil)
 			require.ErrorContains(t, err, "missing scope ids")
 		})
+		t.Run("wrong token resource type", func(t *testing.T) {
+			t.Parallel()
+			filterFunc := func(_ context.Context, r *iam.Role) (bool, error) {
+				return true, nil
+			}
+			tok, err := listtoken.NewStartRefresh(ctx, fiveDaysAgo, resource.Target, []byte("some hash"), fiveDaysAgo, fiveDaysAgo)
+			require.NoError(t, err)
+			_, err = iam.ListRolesRefresh(ctx, []byte("some hash"), 1, filterFunc, tok, repo, []string{org.GetPublicId()})
+			require.ErrorContains(t, err, "token did not have a role resource type")
+		})
 	})
 	t.Run("ListRefreshPage validation", func(t *testing.T) {
 		t.Parallel()
@@ -339,6 +359,16 @@ func TestService_ListRoles(t *testing.T) {
 			require.NoError(t, err)
 			_, err = iam.ListRolesRefreshPage(ctx, []byte("some hash"), 1, filterFunc, tok, repo, nil)
 			require.ErrorContains(t, err, "missing scope ids")
+		})
+		t.Run("wrong token resource type", func(t *testing.T) {
+			t.Parallel()
+			filterFunc := func(_ context.Context, r *iam.Role) (bool, error) {
+				return true, nil
+			}
+			tok, err := listtoken.NewRefresh(ctx, fiveDaysAgo, resource.Target, []byte("some hash"), fiveDaysAgo, fiveDaysAgo, fiveDaysAgo, "some other id", fiveDaysAgo)
+			require.NoError(t, err)
+			_, err = iam.ListRolesRefreshPage(ctx, []byte("some hash"), 1, filterFunc, tok, repo, []string{org.GetPublicId()})
+			require.ErrorContains(t, err, "token did not have a role resource type")
 		})
 	})
 

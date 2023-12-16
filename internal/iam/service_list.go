@@ -35,7 +35,7 @@ func ListRoles(
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing filter item callback")
 	case repo == nil:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing repo")
-	case withScopeIds == nil:
+	case len(withScopeIds) == 0:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing scope ids")
 	}
 
