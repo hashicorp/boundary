@@ -1,7 +1,7 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: BUSL-1.1
 
-package pagination
+package plugin
 
 import (
 	"context"
@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/boundary/internal/boundary"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/listtoken"
+	"github.com/hashicorp/boundary/internal/pagination"
 	"github.com/hashicorp/boundary/internal/plugin"
 )
 
@@ -38,8 +39,8 @@ func ListPlugins[T boundary.Resource](
 	pageSize int,
 	filterItemFn ListPluginsFilterFunc[T],
 	listItemsFn ListPluginsItemsFunc[T],
-	estimatedCountFn EstimatedCountFunc,
-) (*ListResponse[T], map[string]*plugin.Plugin, error) {
+	estimatedCountFn pagination.EstimatedCountFunc,
+) (*pagination.ListResponse[T], map[string]*plugin.Plugin, error) {
 	const op = "pagination.ListsPlugin"
 
 	switch {
@@ -84,9 +85,9 @@ func ListPluginsPage[T boundary.Resource](
 	pageSize int,
 	filterItemFn ListPluginsFilterFunc[T],
 	listItemsFn ListPluginsItemsFunc[T],
-	estimatedCountFn EstimatedCountFunc,
+	estimatedCountFn pagination.EstimatedCountFunc,
 	tok *listtoken.Token,
-) (*ListResponse[T], map[string]*plugin.Plugin, error) {
+) (*pagination.ListResponse[T], map[string]*plugin.Plugin, error) {
 	const op = "pagination.ListPluginsPage"
 
 	switch {
@@ -137,10 +138,10 @@ func ListPluginsRefresh[T boundary.Resource](
 	pageSize int,
 	filterItemFn ListPluginsFilterFunc[T],
 	listItemsFn ListPluginsItemsFunc[T],
-	estimatedCountFn EstimatedCountFunc,
-	listDeletedIDsFn ListDeletedIDsFunc,
+	estimatedCountFn pagination.EstimatedCountFunc,
+	listDeletedIDsFn pagination.ListDeletedIDsFunc,
 	tok *listtoken.Token,
-) (*ListResponse[T], map[string]*plugin.Plugin, error) {
+) (*pagination.ListResponse[T], map[string]*plugin.Plugin, error) {
 	const op = "pagination.ListPluginsRefresh"
 
 	switch {
@@ -198,10 +199,10 @@ func ListPluginsRefreshPage[T boundary.Resource](
 	pageSize int,
 	filterItemFn ListPluginsFilterFunc[T],
 	listItemsFn ListPluginsItemsFunc[T],
-	estimatedCountFn EstimatedCountFunc,
-	listDeletedIDsFn ListDeletedIDsFunc,
+	estimatedCountFn pagination.EstimatedCountFunc,
+	listDeletedIDsFn pagination.ListDeletedIDsFunc,
 	tok *listtoken.Token,
-) (*ListResponse[T], map[string]*plugin.Plugin, error) {
+) (*pagination.ListResponse[T], map[string]*plugin.Plugin, error) {
 	const op = "pagination.ListPluginsRefreshPage"
 
 	switch {
