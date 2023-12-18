@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"testing"
+	"time"
 )
 
 // CommandResult captures the output from running an external command
@@ -19,6 +20,7 @@ type CommandResult struct {
 	Stderr   []byte
 	ExitCode int
 	Err      error
+	Duration time.Duration
 }
 
 // Option is a func that sets optional attributes for a call. This does not need
@@ -77,7 +79,10 @@ func RunCommand(ctx context.Context, command string, opt ...Option) *CommandResu
 	cmd.Stdout = &outbuf
 	cmd.Stderr = &errbuf
 
+	startTime := time.Now()
 	err := cmd.Run()
+	endTime := time.Now()
+	duration := endTime.Sub(startTime)
 
 	var ee *exec.ExitError
 	var exitCode int
@@ -90,6 +95,7 @@ func RunCommand(ctx context.Context, command string, opt ...Option) *CommandResu
 		Stderr:   errbuf.Bytes(),
 		ExitCode: exitCode,
 		Err:      err,
+		Duration: duration,
 	}
 }
 
