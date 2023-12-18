@@ -197,6 +197,7 @@ func (c *Controller) registerGrpcServices(s *grpc.Server) error {
 			c.PluginStorageBucketRepoFn,
 			c.IamRepoFn,
 			c.PluginRepoFn,
+			c.conf.RawConfig.Controller.MaxPageSize,
 			c.ControllerExtension)
 		if err != nil {
 			return fmt.Errorf("failed to create storage bucket handler service: %w", err)
