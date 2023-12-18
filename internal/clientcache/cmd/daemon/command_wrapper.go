@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -66,6 +67,16 @@ func (w *CommandWrapper) Run(args []string) int {
 // startDaemon attempts to start a daemon and returns true if we have attempted to start
 // the daemon and either it was successful or it was already running.
 func (w *CommandWrapper) startDaemon(ctx context.Context) bool {
+	// Ignore errors related to checking if the process is already running since
+	// this can fall back to running the process.
+	if dotPath, err := DefaultDotDirectory(ctx); err == nil {
+		pidPath := filepath.Join(dotPath, pidFileName)
+		if running, _ := pidFileInUse(ctx, pidPath); running != nil {
+			// return true since it is already running, no need to run it again.
+			return true
+		}
+	}
+
 	cmdName, err := os.Executable()
 	if err != nil {
 		w.BaseCommand().UI.Error(fmt.Sprintf("unable to find boundary binary for daemon startup: %s", err.Error()))
