@@ -93,40 +93,36 @@ func (s *StatusService) Status(ctx context.Context) (*Status, error) {
 			Id: u.Id,
 		}
 
-		{
-			cacheSupported, err := s.repo.cacheSupportState(ctx, u)
-			if err != nil {
-				return nil, errors.Wrap(ctx, err, op)
-			}
-
-			us.BoundaryStatus = BoundaryStatus{
-				Address:          u.Address,
-				CachingSupported: cacheSupported.supported,
-			}
-			if cacheSupported.lastChecked != nil && !cacheSupported.lastChecked.IsZero() {
-				us.BoundaryStatus.LastSupportCheck = time.Since(*cacheSupported.lastChecked)
-			}
+		cacheSupported, err := s.repo.cacheSupportState(ctx, u)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
 		}
 
-		{
-			toks, err := s.repo.listTokens(ctx, u)
+		us.BoundaryStatus = BoundaryStatus{
+			Address:          u.Address,
+			CachingSupported: cacheSupported.supported,
+		}
+		if cacheSupported.lastChecked != nil && !cacheSupported.lastChecked.IsZero() {
+			us.BoundaryStatus.LastSupportCheck = time.Since(*cacheSupported.lastChecked)
+		}
+
+		toks, err := s.repo.listTokens(ctx, u)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		for _, t := range toks {
+			ts := &AuthTokenStatus{
+				Id: t.Id,
+			}
+			kt, err := s.repo.listKeyringTokens(ctx, t)
 			if err != nil {
 				return nil, errors.Wrap(ctx, err, op)
 			}
-			for _, t := range toks {
-				ts := &AuthTokenStatus{
-					Id: t.Id,
-				}
-				kt, err := s.repo.listKeyringTokens(ctx, t)
-				if err != nil {
-					return nil, errors.Wrap(ctx, err, op)
-				}
-				ts.KeyringReferences = len(kt)
-				if _, ok := s.repo.idToKeyringlessAuthToken.Load(t.Id); ok {
-					ts.KeyringlessReferences = 1
-				}
-				us.AuthTokens = append(us.AuthTokens, *ts)
+			ts.KeyringReferences = len(kt)
+			if _, ok := s.repo.idToKeyringlessAuthToken.Load(t.Id); ok {
+				ts.KeyringlessReferences = 1
 			}
+			us.AuthTokens = append(us.AuthTokens, *ts)
 		}
 
 		for _, rt := range []resourceType{targetResourceType, sessionResourceType} {

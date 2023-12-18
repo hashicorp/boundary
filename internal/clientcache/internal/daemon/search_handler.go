@@ -139,7 +139,7 @@ func toApiResult(sr *cache.SearchResult) *SearchResult {
 
 var errSearchNotSupported = &api.Error{
 	Kind:    "Unsupported Search Request",
-	Message: "The requesting user is for a Boundary instance that doesn't support search. The Boundary instance must support refresh tokens for search to be supported.",
+	Message: "The request is for a Boundary instance that doesn't support search. The Boundary instance must support refresh tokens for search to be supported.",
 }
 
 func writeUnsupportedError(w http.ResponseWriter) {
