@@ -210,6 +210,7 @@ func (c *Controller) registerGrpcServices(s *grpc.Server) error {
 			c.IamRepoFn,
 			c.workerStatusGracePeriod,
 			c.kms,
+			c.conf.RawConfig.Controller.MaxPageSize,
 			c.ControllerExtension)
 		if err != nil {
 			return fmt.Errorf("failed to create session recording handler service: %w", err)
