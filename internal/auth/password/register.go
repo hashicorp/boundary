@@ -20,9 +20,7 @@ func (authMethodHooks) NewAuthMethod(ctx context.Context, result *auth.AuthMetho
 	am := allocAuthMethod()
 	am.PublicId = result.PublicId
 	am.ScopeId = result.ScopeId
-	if result.PrimaryAuthMethodSubtype == "password" {
-		am.IsPrimaryAuthMethod = true
-	}
+	am.IsPrimaryAuthMethod = result.IsPrimaryAuthMethod
 	am.CreateTime = result.CreateTime
 	am.UpdateTime = result.UpdateTime
 	am.Name = result.Name

@@ -270,6 +270,16 @@ func TestStoreService_List(t *testing.T) {
 			_, err = auth.ListAuthMethodsPage(ctx, []byte("some hash"), 1, filterFunc, tok, repo, nil, true)
 			require.ErrorContains(t, err, "missing scope ids")
 		})
+		t.Run("wrong token resource type", func(t *testing.T) {
+			t.Parallel()
+			filterFunc := func(_ context.Context, am auth.AuthMethod) (bool, error) {
+				return true, nil
+			}
+			tok, err := listtoken.NewPagination(ctx, fiveDaysAgo, resource.Target, []byte("some hash"), "some-id", fiveDaysAgo)
+			require.NoError(t, err)
+			_, err = auth.ListAuthMethodsPage(ctx, []byte("some hash"), 1, filterFunc, tok, repo, []string{org.GetPublicId()}, true)
+			require.ErrorContains(t, err, "token did not have an auth method resource type")
+		})
 	})
 	t.Run("ListRefresh validation", func(t *testing.T) {
 		t.Parallel()
@@ -337,6 +347,16 @@ func TestStoreService_List(t *testing.T) {
 			require.NoError(t, err)
 			_, err = auth.ListAuthMethodsRefresh(ctx, []byte("some hash"), 1, filterFunc, tok, repo, nil, true)
 			require.ErrorContains(t, err, "missing scope ids")
+		})
+		t.Run("wrong token resource type", func(t *testing.T) {
+			t.Parallel()
+			filterFunc := func(_ context.Context, am auth.AuthMethod) (bool, error) {
+				return true, nil
+			}
+			tok, err := listtoken.NewStartRefresh(ctx, fiveDaysAgo, resource.Target, []byte("some hash"), fiveDaysAgo, fiveDaysAgo)
+			require.NoError(t, err)
+			_, err = auth.ListAuthMethodsRefresh(ctx, []byte("some hash"), 1, filterFunc, tok, repo, []string{org.GetPublicId()}, true)
+			require.ErrorContains(t, err, "token did not have an auth method resource type")
 		})
 	})
 	t.Run("ListRefreshPage validation", func(t *testing.T) {
@@ -415,6 +435,16 @@ func TestStoreService_List(t *testing.T) {
 			require.NoError(t, err)
 			_, err = auth.ListAuthMethodsRefreshPage(ctx, []byte("some hash"), 1, filterFunc, tok, repo, nil, true)
 			require.ErrorContains(t, err, "missing scope ids")
+		})
+		t.Run("wrong token resource type", func(t *testing.T) {
+			t.Parallel()
+			filterFunc := func(_ context.Context, am auth.AuthMethod) (bool, error) {
+				return true, nil
+			}
+			tok, err := listtoken.NewRefresh(ctx, fiveDaysAgo, resource.Target, []byte("some hash"), fiveDaysAgo, fiveDaysAgo, fiveDaysAgo, "some other id", fiveDaysAgo)
+			require.NoError(t, err)
+			_, err = auth.ListAuthMethodsRefreshPage(ctx, []byte("some hash"), 1, filterFunc, tok, repo, []string{org.GetPublicId()}, true)
+			require.ErrorContains(t, err, "token did not have an auth method resource type")
 		})
 	})
 

@@ -19,8 +19,8 @@ type AuthMethodListQueryResult struct {
 	PublicId string `gorm:"primary_key"`
 	// The Scope Id of the scope this auth method belongs to, must be set.
 	ScopeId string
-	// Optionally set, the primary subtype of the auth method.
-	PrimaryAuthMethodSubtype string
+	// Sets the primary subtype of the auth method.
+	IsPrimaryAuthMethod bool
 	// Optional name of the auth method.
 	Name string
 	// Optional description of the auth method.

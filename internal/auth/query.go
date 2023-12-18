@@ -52,10 +52,7 @@ password as (
 final as (
     select public_id,
            scope_id,
-           case
-             when ldap.is_primary_auth_method is true then 'ldap'
-             else null
-           end as primary_auth_method_subtype,
+           is_primary_auth_method,
            name,
            description,
            create_time,
@@ -110,10 +107,7 @@ final as (
      union
     select public_id,
            scope_id,
-           case
-             when oidc.is_primary_auth_method is true then 'oidc'
-             else null
-           end as primary_auth_method_subtype,
+           is_primary_auth_method,
            name,
            description,
            create_time,
@@ -168,10 +162,7 @@ final as (
      union
     select public_id,
            scope_id,
-           case
-             when password.is_primary_auth_method is true then 'password'
-             else null
-           end as primary_auth_method_subtype,
+           is_primary_auth_method,
            name,
            description,
            create_time,
@@ -256,10 +247,7 @@ password as (
 final as (
     select public_id,
            scope_id,
-           case
-             when ldap.is_primary_auth_method is true then 'ldap'
-             else null
-           end as primary_auth_method_subtype,
+           is_primary_auth_method,
            name,
            description,
            create_time,
@@ -314,10 +302,7 @@ final as (
      union
     select public_id,
            scope_id,
-           case
-             when oidc.is_primary_auth_method is true then 'oidc'
-             else null
-           end as primary_auth_method_subtype,
+           is_primary_auth_method,
            name,
            description,
            create_time,
@@ -372,10 +357,7 @@ final as (
      union
     select public_id,
            scope_id,
-           case
-             when password.is_primary_auth_method is true then 'password'
-             else null
-           end as primary_auth_method_subtype,
+           is_primary_auth_method,
            name,
            description,
            create_time,
@@ -460,10 +442,7 @@ password as (
 final as (
     select public_id,
            scope_id,
-           case
-             when ldap.is_primary_auth_method is true then 'ldap'
-             else null
-           end as primary_auth_method_subtype,
+           is_primary_auth_method,
            name,
            description,
            create_time,
@@ -518,10 +497,7 @@ final as (
      union
     select public_id,
            scope_id,
-           case
-             when oidc.is_primary_auth_method is true then 'oidc'
-             else null
-           end as primary_auth_method_subtype,
+           is_primary_auth_method,
            name,
            description,
            create_time,
@@ -576,10 +552,7 @@ final as (
      union
     select public_id,
            scope_id,
-           case
-             when password.is_primary_auth_method is true then 'password'
-             else null
-           end as primary_auth_method_subtype,
+           is_primary_auth_method,
            name,
            description,
            create_time,
@@ -665,10 +638,7 @@ password as (
 final as (
     select public_id,
            scope_id,
-           case
-             when ldap.is_primary_auth_method is true then 'ldap'
-             else null
-           end as primary_auth_method_subtype,
+           is_primary_auth_method,
            name,
            description,
            create_time,
@@ -723,10 +693,7 @@ final as (
      union
     select public_id,
            scope_id,
-           case
-             when oidc.is_primary_auth_method is true then 'oidc'
-             else null
-           end as primary_auth_method_subtype,
+           is_primary_auth_method,
            name,
            description,
            create_time,
@@ -781,10 +748,7 @@ final as (
      union
     select public_id,
            scope_id,
-           case
-             when password.is_primary_auth_method is true then 'password'
-             else null
-           end as primary_auth_method_subtype,
+           is_primary_auth_method,
            name,
            description,
            create_time,

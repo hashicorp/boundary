@@ -23,9 +23,7 @@ func (authMethodHooks) NewAuthMethod(ctx context.Context, result *auth.AuthMetho
 	am := AllocAuthMethod()
 	am.PublicId = result.PublicId
 	am.ScopeId = result.ScopeId
-	if result.PrimaryAuthMethodSubtype == "ldap" {
-		am.IsPrimaryAuthMethod = true
-	}
+	am.IsPrimaryAuthMethod = result.IsPrimaryAuthMethod
 	am.Name = result.Name
 	am.Description = result.Description
 	am.CreateTime = result.CreateTime
