@@ -273,3 +273,10 @@ func TestTofu(t testing.TB) []byte {
 func TestCert(jobId string) (ed25519.PrivateKey, []byte, error) {
 	return newCert(context.Background(), jobId, []string{"127.0.0.1", "localhost"}, time.Now().Add(5*time.Minute), rand.Reader)
 }
+
+// TestListSessions returns a list of sessions and the timestamp of the query for testing purposes
+func TestListSessions(t testing.TB, ctx context.Context, repo *Repository) ([]*Session, time.Time) {
+	sess, ttime, err := repo.listSessions(ctx)
+	require.NoError(t, err)
+	return sess, ttime
+}
