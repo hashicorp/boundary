@@ -43,6 +43,7 @@ var NewServiceFn = func(ctx context.Context,
 	pluginStorageRepoFn common.PluginStorageBucketRepoFactory,
 	iamRepoFn common.IamRepoFactory,
 	pluginRepoFn common.PluginRepoFactory,
+	maxPageSize uint,
 	controllerExt globals.ControllerExtension,
 ) (pbs.StorageBucketServiceServer, error) {
 	return Service{}, nil
