@@ -42,14 +42,13 @@ func Wrap(c cacheEnabledCommand) cli.CommandFactory {
 // Run runs the wrapped command and then attempts to start the boundary daemon and send
 // the current persona
 func (w *CommandWrapper) Run(args []string) int {
-	if w.BaseCommand().FlagSkipCacheDaemon {
-		return w.cacheEnabledCommand.Run(args)
-	}
-
 	// potentially intercept the token in case it isn't stored in the keyring
 	var token string
 	w.cacheEnabledCommand.BaseCommand().Opts = append(w.cacheEnabledCommand.BaseCommand().Opts, base.WithInterceptedToken(&token))
 	r := w.cacheEnabledCommand.Run(args)
+	if w.BaseCommand().FlagSkipCacheDaemon {
+		return r
+	}
 
 	if r != base.CommandSuccess {
 		// if we were not successful in running our command, do not continue to
