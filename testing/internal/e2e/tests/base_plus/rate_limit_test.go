@@ -275,6 +275,14 @@ func TestCliRateLimit(t *testing.T) {
 
 	ctx := context.Background()
 
+	// TODO: Remove this whem CLI request time is improved (when cache daemon is enabled)
+	cmd := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("daemon", "stop"))
+	require.NoError(t, cmd.Err, string(cmd.Stderr))
+	os.Setenv("BOUNDARY_SKIP_CACHE_DAEMON", "true")
+	t.Cleanup(func() {
+		os.Unsetenv("BOUNDARY_SKIP_CACHE_DAEMON")
+	})
+
 	boundary.AuthenticateAdminCli(t, ctx)
 	newOrgId := boundary.CreateNewOrgCli(t, ctx)
 	t.Cleanup(func() {
