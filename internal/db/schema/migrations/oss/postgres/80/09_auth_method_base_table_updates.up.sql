@@ -8,18 +8,26 @@ begin;
   alter table auth_method add column update_time wt_timestamp;
 
   -- Update rows with current values
-  update auth_method
-    set create_time = ldap.create_time, update_time = ldap.update_time
-    from auth_method as am
-    left join auth_ldap_method as ldap on am.public_id = ldap.public_id;
-  update auth_method
-    set create_time = oidc.create_time, update_time = oidc.update_time
-    from auth_method as am
-    left join auth_oidc_method as oidc on am.public_id = oidc.public_id;
-  update auth_method
-    set create_time = pw.create_time, update_time = pw.update_time
-    from auth_method as am
-    left join auth_password_method as pw on am.public_id = pw.public_id;
+     update auth_method
+        set create_time = ldap.create_time,
+            update_time = ldap.update_time
+       from auth_method as am
+  left join auth_ldap_method as ldap
+         on am.public_id = ldap.public_id;
+  
+     update auth_method
+        set create_time = oidc.create_time,
+            update_time = oidc.update_time
+       from auth_method as am
+  left join auth_oidc_method as oidc
+         on am.public_id = oidc.public_id;
+  
+     update auth_method
+        set create_time = pw.create_time,
+            update_time = pw.update_time
+       from auth_method as am
+  left join auth_password_method as pw
+         on am.public_id = pw.public_id;
 
   -- Replace the insert trigger to also set the create_time
   -- Replaces the insert_auth_method_subtype function defined in 2/10_auth.up.sql

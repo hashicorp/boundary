@@ -27,7 +27,7 @@ where
 -- migration 07_auth.up.sql  This new definition also inserts the sub type's name
 -- into the base type. The name column must be on the base type, so the database
 -- can ensure that auth method names are unique across all sub types.
--- Replaced in 80/07_auth_method_base_table_updates.up.sql
+-- Replaced in 80/09_auth_method_base_table_updates.up.sql
 create or replace function insert_auth_method_subtype() returns trigger
 as $$
 begin

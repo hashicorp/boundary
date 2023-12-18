@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/listtoken"
 	"github.com/hashicorp/boundary/internal/pagination"
+	"github.com/hashicorp/boundary/internal/types/resource"
 )
 
 // ListAuthMethodsRefresh lists up to page size auth methods, filtering out entries that
@@ -30,6 +31,7 @@ func ListAuthMethodsRefresh(
 	tok *listtoken.Token,
 	repo *AuthMethodRepository,
 	scopeIds []string,
+	withUnauthenticatedUser bool,
 ) (*pagination.ListResponse[AuthMethod], error) {
 	const op = "auth.ListAuthMethodsRefresh"
 
@@ -42,10 +44,12 @@ func ListAuthMethodsRefresh(
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing filter item callback")
 	case tok == nil:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing token")
-	case scopeIds == nil:
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing scope ids")
 	case repo == nil:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing repo")
+	case len(scopeIds) == 0:
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing scope ids")
+	case tok.ResourceType != resource.AuthMethod:
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "token did not have an auth method resource type")
 	}
 	rt, ok := tok.Subtype.(*listtoken.StartRefreshToken)
 	if !ok {
@@ -53,9 +57,15 @@ func ListAuthMethodsRefresh(
 	}
 
 	listItemsFn := func(ctx context.Context, lastPageItem AuthMethod, limit int) ([]AuthMethod, time.Time, error) {
+		opts := []Option{
+			WithLimit(ctx, limit),
+		}
+		if withUnauthenticatedUser {
+			opts = append(opts, WithUnauthenticatedUser(ctx, true))
+		}
 		// Add the database read timeout to account for any creations missed due to concurrent
 		// transactions in the initial pagination phase.
-		return repo.ListRefresh(ctx, scopeIds, rt.PreviousPhaseUpperBound.Add(-globals.RefreshReadLookbackDuration), lastPageItem, limit)
+		return repo.ListRefresh(ctx, scopeIds, rt.PreviousPhaseUpperBound.Add(-globals.RefreshReadLookbackDuration), lastPageItem, opts...)
 	}
 	listDeletedIDsFn := func(ctx context.Context, since time.Time) ([]string, time.Time, error) {
 		// Add the database read timeout to account for any deletions missed due to concurrent

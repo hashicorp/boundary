@@ -5,23 +5,21 @@ package auth
 
 import (
 	"context"
-	"errors"
 
-	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/pagination"
-	"github.com/hashicorp/boundary/internal/util"
 )
 
+// The option type is how options are passed as arugments
 type Option func(*Options) error
 
+// Options is a struct that contains all the possible auth options
 type Options struct {
 	WithLimit               int
 	WithStartPageAfterItem  pagination.Item
-	WithReader              db.Reader
-	WithWriter              db.Writer
 	WithUnauthenticatedUser bool
 }
 
+// getDefaultOptions returns a new Options struct
 func getDefaultOptions() *Options {
 	return &Options{}
 }
@@ -38,9 +36,8 @@ func GetOpts(opts ...Option) (*Options, error) {
 	return newOpts, nil
 }
 
-// WithLimit provides an option to provide a limit.  Intentionally allowing
-// negative integers.   If WithLimit < 0, then unlimited results are returned.
-// If WithLimit == 0, then default limits are used for results.
+// WithLimit provides an option to provide a limit.
+// If WithLimit <= 0, then default limits are used for results.
 func WithLimit(_ context.Context, l int) Option {
 	return func(o *Options) error {
 		o.WithLimit = l
@@ -53,23 +50,6 @@ func WithLimit(_ context.Context, l int) Option {
 func WithStartPageAfterItem(_ context.Context, item pagination.Item) Option {
 	return func(o *Options) error {
 		o.WithStartPageAfterItem = item
-		return nil
-	}
-}
-
-// WithReaderWriter allows the caller to pass an inflight transaction to be used
-// for all database operations. If WithReaderWriter(...) is used, then the
-// caller is responsible for managing the transaction.
-func WithReaderWriter(_ context.Context, r db.Reader, w db.Writer) Option {
-	return func(o *Options) error {
-		switch {
-		case util.IsNil(r):
-			return errors.New("nil reader")
-		case util.IsNil(w):
-			return errors.New("nil writer")
-		}
-		o.WithReader = r
-		o.WithWriter = w
 		return nil
 	}
 }

@@ -80,19 +80,19 @@ func TestAuthMethodRepository_List(t *testing.T) {
 		t.Parallel()
 		t.Run("missing scope ids", func(t *testing.T) {
 			t.Parallel()
-			_, _, err := repo.List(ctx, nil, nil, 1)
+			_, _, err := repo.List(ctx, nil, nil, auth.WithLimit(ctx, 1))
 			require.ErrorContains(t, err, "missing scope ids")
 		})
 		t.Run("invalid limit", func(t *testing.T) {
 			t.Parallel()
-			_, _, err := repo.List(ctx, []string{org.PublicId}, nil, 0)
+			_, _, err := repo.List(ctx, []string{org.PublicId}, nil, auth.WithLimit(ctx, 0))
 			require.ErrorContains(t, err, "missing limit")
 		})
 	})
 
 	t.Run("success-without-after-item", func(t *testing.T) {
 		t.Parallel()
-		resp, ttime, err := repo.List(ctx, []string{org.PublicId}, nil, 10)
+		resp, ttime, err := repo.List(ctx, []string{org.PublicId}, nil, auth.WithLimit(ctx, 10))
 		require.NoError(t, err)
 		// Transaction timestamp should be within ~10 seconds of now
 		assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
@@ -101,12 +101,21 @@ func TestAuthMethodRepository_List(t *testing.T) {
 	})
 	t.Run("success-with-after-item", func(t *testing.T) {
 		t.Parallel()
-		resp, ttime, err := repo.List(ctx, []string{org.PublicId}, ams[0], 10)
+		resp, ttime, err := repo.List(ctx, []string{org.PublicId}, ams[0], auth.WithLimit(ctx, 10))
 		require.NoError(t, err)
 		// Transaction timestamp should be within ~10 seconds of now
 		assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
 		assert.True(t, time.Now().After(ttime.Add(-10*time.Second)))
 		require.Empty(t, cmp.Diff(resp, ams[1:], cmpOpts...))
+	})
+	t.Run("success-with-unauthenticated-user", func(t *testing.T) {
+		t.Parallel()
+		resp, ttime, err := repo.List(ctx, []string{org.PublicId}, nil, auth.WithLimit(ctx, 10), auth.WithUnauthenticatedUser(ctx, true))
+		require.NoError(t, err)
+		// Transaction timestamp should be within ~10 seconds of now
+		assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
+		assert.True(t, time.Now().After(ttime.Add(-10*time.Second)))
+		require.Empty(t, cmp.Diff(resp, ams, cmpOpts...))
 	})
 }
 
@@ -163,24 +172,24 @@ func TestAuthMethodRepository_ListRefresh(t *testing.T) {
 		t.Parallel()
 		t.Run("missing updated after", func(t *testing.T) {
 			t.Parallel()
-			_, _, err := repo.ListRefresh(ctx, []string{org.PublicId}, time.Time{}, nil, 1)
+			_, _, err := repo.ListRefresh(ctx, []string{org.PublicId}, time.Time{}, nil, auth.WithLimit(ctx, 1))
 			require.ErrorContains(t, err, "missing updated after time")
 		})
 		t.Run("missing scope ids", func(t *testing.T) {
 			t.Parallel()
-			_, _, err := repo.ListRefresh(ctx, nil, fiveDaysAgo, nil, 1)
+			_, _, err := repo.ListRefresh(ctx, nil, fiveDaysAgo, nil, auth.WithLimit(ctx, 1))
 			require.ErrorContains(t, err, "missing scope ids")
 		})
 		t.Run("invalid limit", func(t *testing.T) {
 			t.Parallel()
-			_, _, err := repo.ListRefresh(ctx, []string{org.PublicId}, fiveDaysAgo, nil, 0)
+			_, _, err := repo.ListRefresh(ctx, []string{org.PublicId}, fiveDaysAgo, nil, auth.WithLimit(ctx, 0))
 			require.ErrorContains(t, err, "missing limit")
 		})
 	})
 
 	t.Run("success-without-after-item", func(t *testing.T) {
 		t.Parallel()
-		resp, ttime, err := repo.ListRefresh(ctx, []string{org.PublicId}, fiveDaysAgo, nil, 10)
+		resp, ttime, err := repo.ListRefresh(ctx, []string{org.PublicId}, fiveDaysAgo, nil, auth.WithLimit(ctx, 10))
 		require.NoError(t, err)
 		// Transaction timestamp should be within ~10 seconds of now
 		assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
@@ -189,7 +198,7 @@ func TestAuthMethodRepository_ListRefresh(t *testing.T) {
 	})
 	t.Run("success-with-after-item", func(t *testing.T) {
 		t.Parallel()
-		resp, ttime, err := repo.ListRefresh(ctx, []string{org.PublicId}, fiveDaysAgo, ams[0], 10)
+		resp, ttime, err := repo.ListRefresh(ctx, []string{org.PublicId}, fiveDaysAgo, ams[0], auth.WithLimit(ctx, 10))
 		require.NoError(t, err)
 		// Transaction timestamp should be within ~10 seconds of now
 		assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
@@ -198,7 +207,7 @@ func TestAuthMethodRepository_ListRefresh(t *testing.T) {
 	})
 	t.Run("success-without-after-item-recent-updated-after", func(t *testing.T) {
 		t.Parallel()
-		resp, ttime, err := repo.ListRefresh(ctx, []string{org.PublicId}, ams[len(ams)-1].GetUpdateTime().AsTime(), nil, 10)
+		resp, ttime, err := repo.ListRefresh(ctx, []string{org.PublicId}, ams[len(ams)-1].GetUpdateTime().AsTime(), nil, auth.WithLimit(ctx, 10))
 		require.NoError(t, err)
 		// Transaction timestamp should be within ~10 seconds of now
 		assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
@@ -207,7 +216,7 @@ func TestAuthMethodRepository_ListRefresh(t *testing.T) {
 	})
 	t.Run("success-with-after-item-recent-updated-after", func(t *testing.T) {
 		t.Parallel()
-		resp, ttime, err := repo.ListRefresh(ctx, []string{org.PublicId}, ams[len(ams)-1].GetUpdateTime().AsTime(), ams[0], 10)
+		resp, ttime, err := repo.ListRefresh(ctx, []string{org.PublicId}, ams[len(ams)-1].GetUpdateTime().AsTime(), ams[0], auth.WithLimit(ctx, 10))
 		require.NoError(t, err)
 		// Transaction timestamp should be within ~10 seconds of now
 		assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))

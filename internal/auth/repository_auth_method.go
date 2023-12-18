@@ -7,8 +7,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -36,6 +34,8 @@ func NewAuthMethodRepository(ctx context.Context, reader db.Reader, writer db.Wr
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing DB reader")
 	case util.IsNil(writer):
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing DB writer")
+	case util.IsNil(kms):
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing kms")
 	}
 	return &AuthMethodRepository{
 		reader: reader,
@@ -45,8 +45,16 @@ func NewAuthMethodRepository(ctx context.Context, reader db.Reader, writer db.Wr
 }
 
 // List lists auth methods across all subtypes.
-func (amr *AuthMethodRepository) List(ctx context.Context, scopeIds []string, afterItem pagination.Item, limit int) ([]AuthMethod, time.Time, error) {
+func (amr *AuthMethodRepository) List(ctx context.Context, scopeIds []string, afterItem pagination.Item, opt ...Option) ([]AuthMethod, time.Time, error) {
 	const op = "auth.(*AuthMethodRepository).list"
+
+	opts, err := GetOpts(opt...)
+	if err != nil {
+		return nil, time.Time{}, errors.Wrap(ctx, err, op)
+	}
+
+	limit := opts.WithLimit
+
 	switch {
 	case len(scopeIds) == 0:
 		return nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "missing scope ids")
@@ -54,15 +62,13 @@ func (amr *AuthMethodRepository) List(ctx context.Context, scopeIds []string, af
 		return nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "missing limit")
 	}
 
-	var inClauses []string
-	var args []any
-	for i, scopeId := range scopeIds {
-		arg := "scope_id_" + strconv.Itoa(i)
-		inClauses = append(inClauses, "@"+arg)
-		args = append(args, sql.Named(arg, scopeId))
-	}
-	inClause := strings.Join(inClauses, ", ")
-	whereClause := "scope_id in (" + inClause + ")"
+	whereClause := "scope_id in @scope_ids"
+	args := []any{sql.Named("scope_ids", scopeIds)}
+
+	// need to return to this once we have a better idea of how to handle it
+	// if opts.WithUnauthenticatedUser {
+	// 	whereClause += " and state = 'active-public'"
+	// }
 
 	query := fmt.Sprintf(listAuthMethodsTemplate, whereClause, limit)
 	if afterItem != nil {
@@ -77,8 +83,16 @@ func (amr *AuthMethodRepository) List(ctx context.Context, scopeIds []string, af
 }
 
 // ListRefresh lists auth methods across all subtypes.
-func (amr *AuthMethodRepository) ListRefresh(ctx context.Context, scopeIds []string, updatedAfter time.Time, afterItem pagination.Item, limit int) ([]AuthMethod, time.Time, error) {
+func (amr *AuthMethodRepository) ListRefresh(ctx context.Context, scopeIds []string, updatedAfter time.Time, afterItem pagination.Item, opt ...Option) ([]AuthMethod, time.Time, error) {
 	const op = "auth.(*AuthMethodRepository).list"
+
+	opts, err := GetOpts(opt...)
+	if err != nil {
+		return nil, time.Time{}, errors.Wrap(ctx, err, op)
+	}
+
+	limit := opts.WithLimit
+
 	switch {
 	case len(scopeIds) == 0:
 		return nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "missing scope ids")
@@ -88,15 +102,12 @@ func (amr *AuthMethodRepository) ListRefresh(ctx context.Context, scopeIds []str
 		return nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "missing limit")
 	}
 
-	var inClauses []string
-	var args []any
-	for i, scopeId := range scopeIds {
-		arg := "scope_id_" + strconv.Itoa(i)
-		inClauses = append(inClauses, "@"+arg)
-		args = append(args, sql.Named(arg, scopeId))
-	}
-	inClause := strings.Join(inClauses, ", ")
-	whereClause := "scope_id in (" + inClause + ")"
+	whereClause := "scope_id in @scope_ids"
+	args := []any{sql.Named("scope_ids", scopeIds)}
+
+	// if opts.WithUnauthenticatedUser {
+	// 	whereClause += " and state = 'active-public'"
+	// }
 
 	query := fmt.Sprintf(listAuthMethodsRefreshTemplate, whereClause, limit)
 	args = append(args,
@@ -141,11 +152,9 @@ func (amr *AuthMethodRepository) ListDeletedIds(ctx context.Context, since time.
 		}
 		defer rows.Close()
 		for rows.Next() {
-			var id string
-			if err := rows.Scan(&id); err != nil {
+			if err := r.ScanRows(ctx, rows, &deletedAuthMethodIDs); err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
-			deletedAuthMethodIDs = append(deletedAuthMethodIDs, id)
 		}
 		transactionTimestamp, err = r.Now(ctx)
 		return err

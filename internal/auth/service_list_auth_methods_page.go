@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/listtoken"
 	"github.com/hashicorp/boundary/internal/pagination"
+	"github.com/hashicorp/boundary/internal/types/resource"
 )
 
 // ListAuthMethodsPage lists up to page size auth methods, filtering out entries that
@@ -26,6 +27,7 @@ func ListAuthMethodsPage(
 	tok *listtoken.Token,
 	repo *AuthMethodRepository,
 	scopeIds []string,
+	withUnauthenticatedUser bool,
 ) (*pagination.ListResponse[AuthMethod], error) {
 	const op = "auth.ListAuthMethodsPage"
 
@@ -40,20 +42,31 @@ func ListAuthMethodsPage(
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing token")
 	case repo == nil:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing repo")
+	case len(scopeIds) == 0:
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing scope ids")
+	case tok.ResourceType != resource.AuthMethod:
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "token did not have an auth method resource type")
 	}
 	if _, ok := tok.Subtype.(*listtoken.PaginationToken); !ok {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "token did not have a pagination token component")
 	}
 
 	listItemsFn := func(ctx context.Context, lastPageItem AuthMethod, limit int) ([]AuthMethod, time.Time, error) {
+		opts := []Option{
+			WithLimit(ctx, limit),
+		}
+		if withUnauthenticatedUser {
+			opts = append(opts, WithUnauthenticatedUser(ctx, true))
+		}
+
 		if lastPageItem != nil {
-			return repo.List(ctx, scopeIds, lastPageItem, limit)
+			return repo.List(ctx, scopeIds, lastPageItem, opts...)
 		}
 		lastItem, err := tok.LastItem(ctx)
 		if err != nil {
 			return nil, time.Time{}, err
 		}
-		return repo.List(ctx, scopeIds, lastItem, limit)
+		return repo.List(ctx, scopeIds, lastItem, opts...)
 	}
 
 	return pagination.ListPage(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, repo.EstimatedCount, tok)

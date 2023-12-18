@@ -55,7 +55,6 @@ const (
 	testLoginName = "default"
 )
 
-// TODO: fix this
 var (
 	pwAuthorizedActions = []string{
 		action.NoOp.String(),
@@ -1607,7 +1606,7 @@ func TestListPagination(t *testing.T) {
 	t.Cleanup(func() {
 		globals.RefreshReadLookbackDuration = oldReadTimeout
 	})
-	ctx := context.TODO()
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	sqlDB, err := conn.SqlDB(ctx)
@@ -1778,6 +1777,19 @@ func TestListPagination(t *testing.T) {
 	s, err := authmethods.NewService(ctx, kmsCache, pwRepoFn, oidcRepoFn, iamRepoFn, tokenRepoFn, ldapRepoFn, authMethodRepoFn, 1000)
 	require.NoError(t, err)
 
+	cmpOptions := []cmp.Option{
+		protocmp.Transform(),
+		cmpopts.SortSlices(func(a, b string) bool {
+			return a < b
+		}),
+		cmpopts.SortSlices(func(a, b protocmp.Message) bool {
+			return a.String() < b.String()
+		}),
+		protocmp.IgnoreFields(&pb.OidcAuthMethodAttributes{}, "client_secret_hmac"),
+		protocmp.IgnoreFields(&pb.LdapAuthMethodAttributes{}, "bind_password_hmac", "client_certificate_key_hmac"),
+		protocmp.IgnoreFields(&pbs.ListAuthMethodsResponse{}, "list_token"),
+	}
+
 	// Start paginating, recursively
 	req := &pbs.ListAuthMethodsRequest{
 		ScopeId:   org.PublicId,
@@ -1801,16 +1813,7 @@ func TestListPagination(t *testing.T) {
 				RemovedIds:   nil,
 				EstItemCount: 10,
 			},
-			cmpopts.SortSlices(func(a, b string) bool {
-				return a < b
-			}),
-			cmpopts.SortSlices(func(a, b protocmp.Message) bool {
-				return a.String() < b.String()
-			}),
-			protocmp.Transform(),
-			protocmp.IgnoreFields(&pb.OidcAuthMethodAttributes{}, "client_secret_hmac"),
-			protocmp.IgnoreFields(&pb.LdapAuthMethodAttributes{}, "bind_password_hmac", "client_certificate_key_hmac"),
-			protocmp.IgnoreFields(&pbs.ListAuthMethodsResponse{}, "list_token"),
+			cmpOptions...,
 		),
 	)
 
@@ -1832,16 +1835,7 @@ func TestListPagination(t *testing.T) {
 				RemovedIds:   nil,
 				EstItemCount: 10,
 			},
-			cmpopts.SortSlices(func(a, b string) bool {
-				return a < b
-			}),
-			cmpopts.SortSlices(func(a, b protocmp.Message) bool {
-				return a.String() < b.String()
-			}),
-			protocmp.Transform(),
-			protocmp.IgnoreFields(&pb.OidcAuthMethodAttributes{}, "client_secret_hmac"),
-			protocmp.IgnoreFields(&pb.LdapAuthMethodAttributes{}, "bind_password_hmac", "client_certificate_key_hmac"),
-			protocmp.IgnoreFields(&pbs.ListAuthMethodsResponse{}, "list_token"),
+			cmpOptions...,
 		),
 	)
 
@@ -1864,16 +1858,7 @@ func TestListPagination(t *testing.T) {
 				RemovedIds:   nil,
 				EstItemCount: 10,
 			},
-			cmpopts.SortSlices(func(a, b string) bool {
-				return a < b
-			}),
-			cmpopts.SortSlices(func(a, b protocmp.Message) bool {
-				return a.String() < b.String()
-			}),
-			protocmp.Transform(),
-			protocmp.IgnoreFields(&pb.OidcAuthMethodAttributes{}, "client_secret_hmac"),
-			protocmp.IgnoreFields(&pb.LdapAuthMethodAttributes{}, "bind_password_hmac", "client_certificate_key_hmac"),
-			protocmp.IgnoreFields(&pbs.ListAuthMethodsResponse{}, "list_token"),
+			cmpOptions...,
 		),
 	)
 
@@ -1935,16 +1920,7 @@ func TestListPagination(t *testing.T) {
 				RemovedIds:   []string{deletedAM.Id},
 				EstItemCount: 10,
 			},
-			cmpopts.SortSlices(func(a, b string) bool {
-				return a < b
-			}),
-			cmpopts.SortSlices(func(a, b protocmp.Message) bool {
-				return a.String() < b.String()
-			}),
-			protocmp.Transform(),
-			protocmp.IgnoreFields(&pb.OidcAuthMethodAttributes{}, "client_secret_hmac"),
-			protocmp.IgnoreFields(&pb.LdapAuthMethodAttributes{}, "bind_password_hmac", "client_certificate_key_hmac"),
-			protocmp.IgnoreFields(&pbs.ListAuthMethodsResponse{}, "list_token"),
+			cmpOptions...,
 		),
 	)
 
@@ -1966,16 +1942,7 @@ func TestListPagination(t *testing.T) {
 				RemovedIds:   nil,
 				EstItemCount: 10,
 			},
-			cmpopts.SortSlices(func(a, b string) bool {
-				return a < b
-			}),
-			cmpopts.SortSlices(func(a, b protocmp.Message) bool {
-				return a.String() < b.String()
-			}),
-			protocmp.Transform(),
-			protocmp.IgnoreFields(&pb.OidcAuthMethodAttributes{}, "client_secret_hmac"),
-			protocmp.IgnoreFields(&pb.LdapAuthMethodAttributes{}, "bind_password_hmac", "client_certificate_key_hmac"),
-			protocmp.IgnoreFields(&pbs.ListAuthMethodsResponse{}, "list_token"),
+			cmpOptions...,
 		),
 	)
 
@@ -2001,16 +1968,7 @@ func TestListPagination(t *testing.T) {
 				RemovedIds:   nil,
 				EstItemCount: 10,
 			},
-			cmpopts.SortSlices(func(a, b string) bool {
-				return a < b
-			}),
-			cmpopts.SortSlices(func(a, b protocmp.Message) bool {
-				return a.String() < b.String()
-			}),
-			protocmp.Transform(),
-			protocmp.IgnoreFields(&pb.OidcAuthMethodAttributes{}, "client_secret_hmac"),
-			protocmp.IgnoreFields(&pb.LdapAuthMethodAttributes{}, "bind_password_hmac", "client_certificate_key_hmac"),
-			protocmp.IgnoreFields(&pbs.ListAuthMethodsResponse{}, "list_token"),
+			cmpOptions...,
 		),
 	)
 	req.ListToken = got.ListToken
@@ -2031,16 +1989,7 @@ func TestListPagination(t *testing.T) {
 				RemovedIds:   nil,
 				EstItemCount: 10,
 			},
-			cmpopts.SortSlices(func(a, b string) bool {
-				return a < b
-			}),
-			cmpopts.SortSlices(func(a, b protocmp.Message) bool {
-				return a.String() < b.String()
-			}),
-			protocmp.Transform(),
-			protocmp.IgnoreFields(&pb.OidcAuthMethodAttributes{}, "client_secret_hmac"),
-			protocmp.IgnoreFields(&pb.LdapAuthMethodAttributes{}, "bind_password_hmac", "client_certificate_key_hmac"),
-			protocmp.IgnoreFields(&pbs.ListAuthMethodsResponse{}, "list_token"),
+			cmpOptions...,
 		),
 	)
 	req.ListToken = got.ListToken
@@ -2068,22 +2017,7 @@ func TestListPagination(t *testing.T) {
 				SortDir:      "desc",
 				RemovedIds:   nil,
 			},
-			cmpopts.SortSlices(func(a, b string) bool {
-				return a < b
-			}),
-			cmpopts.SortSlices(func(a, b protocmp.Message) bool {
-				return a.String() < b.String()
-			}),
-			cmpopts.SortSlices(func(a, b string) bool {
-				return a < b
-			}),
-			cmpopts.SortSlices(func(a, b protocmp.Message) bool {
-				return a.String() < b.String()
-			}),
-			protocmp.Transform(),
-			protocmp.IgnoreFields(&pb.OidcAuthMethodAttributes{}, "client_secret_hmac"),
-			protocmp.IgnoreFields(&pb.LdapAuthMethodAttributes{}, "bind_password_hmac", "client_certificate_key_hmac"),
-			protocmp.IgnoreFields(&pbs.ListAuthMethodsResponse{}, "list_token"),
+			cmpOptions...,
 		),
 	)
 }

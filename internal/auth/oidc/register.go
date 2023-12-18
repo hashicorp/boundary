@@ -16,7 +16,7 @@ func init() {
 
 type authMethodHooks struct{}
 
-// NewAuthMethod creates a new static auth method from the result
+// NewAuthMethod creates a new oidc auth method from the result
 func (authMethodHooks) NewAuthMethod(ctx context.Context, result *auth.AuthMethodListQueryResult) (auth.AuthMethod, error) {
 	delimiter := "|"
 

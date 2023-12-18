@@ -175,6 +175,15 @@ func (s Service) ListAuthMethods(ctx context.Context, req *pbs.ListAuthMethodsRe
 		pageSize = int(req.GetPageSize())
 	}
 
+	withUnauthenticatedUser := false
+	reqCtx, ok := requests.RequestContextFromCtx(ctx)
+	if !ok {
+		return nil, errors.New(ctx, errors.Internal, op, "no request context found")
+	}
+	if reqCtx.UserId == globals.AnonymousUserId {
+		withUnauthenticatedUser = true
+	}
+
 	scopeIds, scopeInfoMap, err := scopeids.GetListingScopeIds(
 		ctx, s.iamRepoFn, authResults, req.GetScopeId(), resource.AuthMethod, req.GetRecursive())
 	if err != nil {
@@ -236,7 +245,7 @@ func (s Service) ListAuthMethods(ctx context.Context, req *pbs.ListAuthMethodsRe
 	var sortBy string
 	if req.GetListToken() == "" {
 		sortBy = "created_time"
-		listResp, err = auth.ListAuthMethods(ctx, grantsHash, pageSize, filterItemFn, repo, scopeIds)
+		listResp, err = auth.ListAuthMethods(ctx, grantsHash, pageSize, filterItemFn, repo, scopeIds, withUnauthenticatedUser)
 		if err != nil {
 			return nil, err
 		}
@@ -248,19 +257,19 @@ func (s Service) ListAuthMethods(ctx context.Context, req *pbs.ListAuthMethodsRe
 		switch st := listToken.Subtype.(type) {
 		case *listtoken.PaginationToken:
 			sortBy = "created_time"
-			listResp, err = auth.ListAuthMethodsPage(ctx, grantsHash, pageSize, filterItemFn, listToken, repo, scopeIds)
+			listResp, err = auth.ListAuthMethodsPage(ctx, grantsHash, pageSize, filterItemFn, listToken, repo, scopeIds, withUnauthenticatedUser)
 			if err != nil {
 				return nil, err
 			}
 		case *listtoken.StartRefreshToken:
 			sortBy = "updated_time"
-			listResp, err = auth.ListAuthMethodsRefresh(ctx, grantsHash, pageSize, filterItemFn, listToken, repo, scopeIds)
+			listResp, err = auth.ListAuthMethodsRefresh(ctx, grantsHash, pageSize, filterItemFn, listToken, repo, scopeIds, withUnauthenticatedUser)
 			if err != nil {
 				return nil, err
 			}
 		case *listtoken.RefreshToken:
 			sortBy = "updated_time"
-			listResp, err = auth.ListAuthMethodsRefreshPage(ctx, grantsHash, pageSize, filterItemFn, listToken, repo, scopeIds)
+			listResp, err = auth.ListAuthMethodsRefreshPage(ctx, grantsHash, pageSize, filterItemFn, listToken, repo, scopeIds, withUnauthenticatedUser)
 			if err != nil {
 				return nil, err
 			}

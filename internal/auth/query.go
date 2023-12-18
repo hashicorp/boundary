@@ -52,10 +52,10 @@ password as (
 final as (
     select public_id,
            scope_id,
-           case when ldap.is_primary_auth_method is true then
-             'ldap'
-           else null end
-           as primary_auth_method_subtype,
+           case
+             when ldap.is_primary_auth_method is true then 'ldap'
+             else null
+           end as primary_auth_method_subtype,
            name,
            description,
            create_time,
@@ -90,11 +90,11 @@ final as (
            dereference_aliases,
            null as disable_discovered_config_validation, -- Add to make union uniform
            null as api_url,
-           null as issuer, 
-           null as client_id, 
-           null as client_secret, 
-           null as client_secret_hmac, 
-           null as key_id, 
+           null as issuer,
+           null as client_id,
+           null as client_secret,
+           null as client_secret_hmac,
+           null as key_id,
            null as max_age,
            null as algs,
            null as auds,
@@ -102,18 +102,18 @@ final as (
            null as claims_scopes,
            null as prompts,
            null as account_claim_maps,
-           null as password_conf_id,          -- Add to make union uniform
-           null::integer as min_login_name_length,  
+           null as password_conf_id,
+           null::integer as min_login_name_length,
            null::integer as min_password_length,
            'ldap' as subtype
       from ldap
      union
     select public_id,
            scope_id,
-           case when oidc.is_primary_auth_method is true then
-             'oidc'
-           else null end
-           as primary_auth_method_subtype,
+           case
+             when oidc.is_primary_auth_method is true then 'oidc'
+             else null
+           end as primary_auth_method_subtype,
            name,
            description,
            create_time,
@@ -121,13 +121,13 @@ final as (
            version,
            state,
            null as start_tls,                    -- Add to make union uniform
-           null as insecure_tls,                 -- Add to make union uniform
-           null as discover_dn,                  -- Add to make union uniform
-           null as anon_group_search,            -- Add to make union uniform
-           null as upn_domain,                   -- Add to make union uniform
-           null as enable_groups,                -- Add to make union uniform
-           null as use_token_groups,             -- Add to make union uniform
-           null as maximum_page_size,            -- Add to make union uniform
+           null as insecure_tls,
+           null as discover_dn,
+           null as anon_group_search,
+           null as upn_domain,
+           null as enable_groups,
+           null as use_token_groups,
+           null as maximum_page_size,
            null as urls,
            null as certs,
            null as account_attribute_map,
@@ -159,33 +159,33 @@ final as (
            certs,
            claims_scopes,
            prompts,
-           account_claim_maps,           
-           null as password_conf_id,  
-           null::integer as min_login_name_length,  
-           null::integer as min_password_length,  
+           account_claim_maps,
+           null as password_conf_id,
+           null::integer as min_login_name_length,
+           null::integer as min_password_length,
            'oidc' as subtype
       from oidc
      union
     select public_id,
            scope_id,
-           case when password.is_primary_auth_method is true then
-             'password'
-           else null end
-           as primary_auth_method_subtype,
+           case
+             when password.is_primary_auth_method is true then 'password'
+             else null
+           end as primary_auth_method_subtype,
            name,
            description,
            create_time,
            update_time,
            version,
            null as state,                        -- Add to make union uniform
-           null as start_tls,                    -- Add to make union uniform
-           null as insecure_tls,                 -- Add to make union uniform
-           null as discover_dn,                  -- Add to make union uniform
-           null as anon_group_search,            -- Add to make union uniform
-           null as upn_domain,                   -- Add to make union uniform
-           null as enable_groups,                -- Add to make union uniform
-           null as use_token_groups,             -- Add to make union uniform
-           null as maximum_page_size,            -- Add to make union uniform
+           null as start_tls,
+           null as insecure_tls,
+           null as discover_dn,
+           null as anon_group_search,
+           null as upn_domain,
+           null as enable_groups,
+           null as use_token_groups,
+           null as maximum_page_size,
            null as urls,
            null as certs,
            null as account_attribute_map,
@@ -204,13 +204,13 @@ final as (
            null as bind_password_hmac,
            null as bind_password_key_id,
            null as dereference_aliases,
-           null as disable_discovered_config_validation, -- Add to make union uniform
+           null as disable_discovered_config_validation,
            null as api_url,
-           null as issuer, 
-           null as client_id, 
-           null as client_secret, 
-           null as client_secret_hmac, 
-           null as key_id, 
+           null as issuer,
+           null as client_id,
+           null as client_secret,
+           null as client_secret_hmac,
+           null as key_id,
            null as max_age,
            null as algs,
            null as auds,
@@ -256,10 +256,10 @@ password as (
 final as (
     select public_id,
            scope_id,
-           case when ldap.is_primary_auth_method is true then
-             'ldap'
-           else null end
-           as primary_auth_method_subtype,
+           case
+             when ldap.is_primary_auth_method is true then 'ldap'
+             else null
+           end as primary_auth_method_subtype,
            name,
            description,
            create_time,
@@ -294,11 +294,11 @@ final as (
            dereference_aliases,
            null as disable_discovered_config_validation, -- Add to make union uniform
            null as api_url,
-           null as issuer, 
-           null as client_id, 
-           null as client_secret, 
-           null as client_secret_hmac, 
-           null as key_id, 
+           null as issuer,
+           null as client_id,
+           null as client_secret,
+           null as client_secret_hmac,
+           null as key_id,
            null as max_age,
            null as algs,
            null as auds,
@@ -306,18 +306,18 @@ final as (
            null as claims_scopes,
            null as prompts,
            null as account_claim_maps,
-           null as password_conf_id,          -- Add to make union uniform
-           null::integer as min_login_name_length,  
+           null as password_conf_id,
+           null::integer as min_login_name_length,
            null::integer as min_password_length,
            'ldap' as subtype
       from ldap
      union
     select public_id,
            scope_id,
-           case when oidc.is_primary_auth_method is true then
-             'oidc'
-           else null end
-           as primary_auth_method_subtype,
+           case
+             when oidc.is_primary_auth_method is true then 'oidc'
+             else null
+           end as primary_auth_method_subtype,
            name,
            description,
            create_time,
@@ -325,13 +325,13 @@ final as (
            version,
            state,
            null as start_tls,                    -- Add to make union uniform
-           null as insecure_tls,                 -- Add to make union uniform
-           null as discover_dn,                  -- Add to make union uniform
-           null as anon_group_search,            -- Add to make union uniform
-           null as upn_domain,                   -- Add to make union uniform
-           null as enable_groups,                -- Add to make union uniform
-           null as use_token_groups,             -- Add to make union uniform
-           null as maximum_page_size,            -- Add to make union uniform
+           null as insecure_tls,
+           null as discover_dn,
+           null as anon_group_search,
+           null as upn_domain,
+           null as enable_groups,
+           null as use_token_groups,
+           null as maximum_page_size,
            null as urls,
            null as certs,
            null as account_attribute_map,
@@ -363,33 +363,33 @@ final as (
            certs,
            claims_scopes,
            prompts,
-           account_claim_maps,           
-           null as password_conf_id,  
-           null::integer as min_login_name_length,  
-           null::integer as min_password_length,  
+           account_claim_maps,
+           null as password_conf_id,
+           null::integer as min_login_name_length,
+           null::integer as min_password_length,
            'oidc' as subtype
       from oidc
      union
     select public_id,
            scope_id,
-           case when password.is_primary_auth_method is true then
-             'password'
-           else null end
-           as primary_auth_method_subtype,
+           case
+             when password.is_primary_auth_method is true then 'password'
+             else null
+           end as primary_auth_method_subtype,
            name,
            description,
            create_time,
            update_time,
            version,
            null as state,                        -- Add to make union uniform
-           null as start_tls,                    -- Add to make union uniform
-           null as insecure_tls,                 -- Add to make union uniform
-           null as discover_dn,                  -- Add to make union uniform
-           null as anon_group_search,            -- Add to make union uniform
-           null as upn_domain,                   -- Add to make union uniform
-           null as enable_groups,                -- Add to make union uniform
-           null as use_token_groups,             -- Add to make union uniform
-           null as maximum_page_size,            -- Add to make union uniform
+           null as start_tls,
+           null as insecure_tls,
+           null as discover_dn,
+           null as anon_group_search,
+           null as upn_domain,
+           null as enable_groups,
+           null as use_token_groups,
+           null as maximum_page_size,
            null as urls,
            null as certs,
            null as account_attribute_map,
@@ -408,13 +408,13 @@ final as (
            null as bind_password_hmac,
            null as bind_password_key_id,
            null as dereference_aliases,
-           null as disable_discovered_config_validation, -- Add to make union uniform
+           null as disable_discovered_config_validation,
            null as api_url,
-           null as issuer, 
-           null as client_id, 
-           null as client_secret, 
-           null as client_secret_hmac, 
-           null as key_id, 
+           null as issuer,
+           null as client_id,
+           null as client_secret,
+           null as client_secret_hmac,
+           null as key_id,
            null as max_age,
            null as algs,
            null as auds,
@@ -460,10 +460,10 @@ password as (
 final as (
     select public_id,
            scope_id,
-           case when ldap.is_primary_auth_method is true then
-             'ldap'
-           else null end
-           as primary_auth_method_subtype,
+           case
+             when ldap.is_primary_auth_method is true then 'ldap'
+             else null
+           end as primary_auth_method_subtype,
            name,
            description,
            create_time,
@@ -498,11 +498,11 @@ final as (
            dereference_aliases,
            null as disable_discovered_config_validation, -- Add to make union uniform
            null as api_url,
-           null as issuer, 
-           null as client_id, 
-           null as client_secret, 
-           null as client_secret_hmac, 
-           null as key_id, 
+           null as issuer,
+           null as client_id,
+           null as client_secret,
+           null as client_secret_hmac,
+           null as key_id,
            null as max_age,
            null as algs,
            null as auds,
@@ -510,18 +510,18 @@ final as (
            null as claims_scopes,
            null as prompts,
            null as account_claim_maps,
-           null as password_conf_id,          -- Add to make union uniform
-           null::integer as min_login_name_length,  
+           null as password_conf_id,
+           null::integer as min_login_name_length,
            null::integer as min_password_length,
            'ldap' as subtype
       from ldap
      union
     select public_id,
            scope_id,
-           case when oidc.is_primary_auth_method is true then
-             'oidc'
-           else null end
-           as primary_auth_method_subtype,
+           case
+             when oidc.is_primary_auth_method is true then 'oidc'
+             else null
+           end as primary_auth_method_subtype,
            name,
            description,
            create_time,
@@ -529,13 +529,13 @@ final as (
            version,
            state,
            null as start_tls,                    -- Add to make union uniform
-           null as insecure_tls,                 -- Add to make union uniform
-           null as discover_dn,                  -- Add to make union uniform
-           null as anon_group_search,            -- Add to make union uniform
-           null as upn_domain,                   -- Add to make union uniform
-           null as enable_groups,                -- Add to make union uniform
-           null as use_token_groups,             -- Add to make union uniform
-           null as maximum_page_size,            -- Add to make union uniform
+           null as insecure_tls,
+           null as discover_dn,
+           null as anon_group_search,
+           null as upn_domain,
+           null as enable_groups,
+           null as use_token_groups,
+           null as maximum_page_size,
            null as urls,
            null as certs,
            null as account_attribute_map,
@@ -567,33 +567,33 @@ final as (
            certs,
            claims_scopes,
            prompts,
-           account_claim_maps,           
-           null as password_conf_id,  
-           null::integer as min_login_name_length,  
-           null::integer as min_password_length,  
+           account_claim_maps,
+           null as password_conf_id,
+           null::integer as min_login_name_length,
+           null::integer as min_password_length,
            'oidc' as subtype
       from oidc
      union
     select public_id,
            scope_id,
-           case when password.is_primary_auth_method is true then
-             'password'
-           else null end
-           as primary_auth_method_subtype,
+           case
+             when password.is_primary_auth_method is true then 'password'
+             else null
+           end as primary_auth_method_subtype,
            name,
            description,
            create_time,
            update_time,
            version,
            null as state,                        -- Add to make union uniform
-           null as start_tls,                    -- Add to make union uniform
-           null as insecure_tls,                 -- Add to make union uniform
-           null as discover_dn,                  -- Add to make union uniform
-           null as anon_group_search,            -- Add to make union uniform
-           null as upn_domain,                   -- Add to make union uniform
-           null as enable_groups,                -- Add to make union uniform
-           null as use_token_groups,             -- Add to make union uniform
-           null as maximum_page_size,            -- Add to make union uniform
+           null as start_tls,
+           null as insecure_tls,
+           null as discover_dn,
+           null as anon_group_search,
+           null as upn_domain,
+           null as enable_groups,
+           null as use_token_groups,
+           null as maximum_page_size,
            null as urls,
            null as certs,
            null as account_attribute_map,
@@ -612,13 +612,13 @@ final as (
            null as bind_password_hmac,
            null as bind_password_key_id,
            null as dereference_aliases,
-           null as disable_discovered_config_validation, -- Add to make union uniform
+           null as disable_discovered_config_validation,
            null as api_url,
-           null as issuer, 
-           null as client_id, 
-           null as client_secret, 
-           null as client_secret_hmac, 
-           null as key_id, 
+           null as issuer,
+           null as client_id,
+           null as client_secret,
+           null as client_secret_hmac,
+           null as key_id,
            null as max_age,
            null as algs,
            null as auds,
@@ -665,10 +665,10 @@ password as (
 final as (
     select public_id,
            scope_id,
-           case when ldap.is_primary_auth_method is true then
-             'ldap'
-           else null end
-           as primary_auth_method_subtype,
+           case
+             when ldap.is_primary_auth_method is true then 'ldap'
+             else null
+           end as primary_auth_method_subtype,
            name,
            description,
            create_time,
@@ -703,11 +703,11 @@ final as (
            dereference_aliases,
            null as disable_discovered_config_validation, -- Add to make union uniform
            null as api_url,
-           null as issuer, 
-           null as client_id, 
-           null as client_secret, 
-           null as client_secret_hmac, 
-           null as key_id, 
+           null as issuer,
+           null as client_id,
+           null as client_secret,
+           null as client_secret_hmac,
+           null as key_id,
            null as max_age,
            null as algs,
            null as auds,
@@ -715,18 +715,18 @@ final as (
            null as claims_scopes,
            null as prompts,
            null as account_claim_maps,
-           null as password_conf_id,          -- Add to make union uniform
-           null::integer as min_login_name_length,  
+           null as password_conf_id,
+           null::integer as min_login_name_length,
            null::integer as min_password_length,
            'ldap' as subtype
       from ldap
      union
     select public_id,
            scope_id,
-           case when oidc.is_primary_auth_method is true then
-             'oidc'
-           else null end
-           as primary_auth_method_subtype,
+           case
+             when oidc.is_primary_auth_method is true then 'oidc'
+             else null
+           end as primary_auth_method_subtype,
            name,
            description,
            create_time,
@@ -734,13 +734,13 @@ final as (
            version,
            state,
            null as start_tls,                    -- Add to make union uniform
-           null as insecure_tls,                 -- Add to make union uniform
-           null as discover_dn,                  -- Add to make union uniform
-           null as anon_group_search,            -- Add to make union uniform
-           null as upn_domain,                   -- Add to make union uniform
-           null as enable_groups,                -- Add to make union uniform
-           null as use_token_groups,             -- Add to make union uniform
-           null as maximum_page_size,            -- Add to make union uniform
+           null as insecure_tls,
+           null as discover_dn,
+           null as anon_group_search,
+           null as upn_domain,
+           null as enable_groups,
+           null as use_token_groups,
+           null as maximum_page_size,
            null as urls,
            null as certs,
            null as account_attribute_map,
@@ -772,33 +772,33 @@ final as (
            certs,
            claims_scopes,
            prompts,
-           account_claim_maps,           
-           null as password_conf_id,  
-           null::integer as min_login_name_length,  
-           null::integer as min_password_length,  
+           account_claim_maps,
+           null as password_conf_id,
+           null::integer as min_login_name_length,
+           null::integer as min_password_length,
            'oidc' as subtype
       from oidc
      union
     select public_id,
            scope_id,
-           case when password.is_primary_auth_method is true then
-             'password'
-           else null end
-           as primary_auth_method_subtype,
+           case
+             when password.is_primary_auth_method is true then 'password'
+             else null
+           end as primary_auth_method_subtype,
            name,
            description,
            create_time,
            update_time,
            version,
            null as state,                        -- Add to make union uniform
-           null as start_tls,                    -- Add to make union uniform
-           null as insecure_tls,                 -- Add to make union uniform
-           null as discover_dn,                  -- Add to make union uniform
-           null as anon_group_search,            -- Add to make union uniform
-           null as upn_domain,                   -- Add to make union uniform
-           null as enable_groups,                -- Add to make union uniform
-           null as use_token_groups,             -- Add to make union uniform
-           null as maximum_page_size,            -- Add to make union uniform
+           null as start_tls,
+           null as insecure_tls,
+           null as discover_dn,
+           null as anon_group_search,
+           null as upn_domain,
+           null as enable_groups,
+           null as use_token_groups,
+           null as maximum_page_size,
            null as urls,
            null as certs,
            null as account_attribute_map,
@@ -817,13 +817,13 @@ final as (
            null as bind_password_hmac,
            null as bind_password_key_id,
            null as dereference_aliases,
-           null as disable_discovered_config_validation, -- Add to make union uniform
+           null as disable_discovered_config_validation,
            null as api_url,
-           null as issuer, 
-           null as client_id, 
-           null as client_secret, 
-           null as client_secret_hmac, 
-           null as key_id, 
+           null as issuer,
+           null as client_id,
+           null as client_secret,
+           null as client_secret_hmac,
+           null as key_id,
            null as max_age,
            null as algs,
            null as auds,

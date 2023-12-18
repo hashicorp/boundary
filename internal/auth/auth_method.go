@@ -84,7 +84,7 @@ type AuthMethodListQueryResult struct {
 }
 
 func (am *AuthMethodListQueryResult) toAuthMethod(ctx context.Context) (AuthMethod, error) {
-	const op = "credential.(*AuthMethodListQueryResult).toAuthMethod"
+	const op = "auth.(*AuthMethodListQueryResult).toAuthMethod"
 
 	newFn, ok := subtypeRegistry.newFunc(globals.Subtype(am.Subtype))
 	if !ok {
