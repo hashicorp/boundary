@@ -233,6 +233,9 @@ func (s *StatusService) refreshTokenStatus(ctx context.Context, u *user, rt reso
 		}
 		return nil, errors.Wrap(ctx, err, op)
 	}
+	if refTok.RefreshToken == sentinelNoRefreshToken {
+		return nil, nil
+	}
 
 	ret := &RefreshTokenStatus{
 		LastUsed: time.Since(refTok.UpdateTime),

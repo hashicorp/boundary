@@ -258,3 +258,72 @@ func Map[T, U any](in []T, f func(T) U) []U {
 	}
 	return ret
 }
+
+func TestStatus_unsupported(t *testing.T) {
+	ctx := context.Background()
+	s, err := cachedb.Open(ctx)
+	require.NoError(t, err)
+
+	boundaryAddr := "address"
+	u1 := &user{Id: "u1", Address: boundaryAddr}
+	at1 := &authtokens.AuthToken{
+		Id:             "at_1a",
+		Token:          "at_1a_token",
+		UserId:         u1.Id,
+		ExpirationTime: time.Now().Add(time.Minute),
+	}
+
+	boundaryAuthTokens := []*authtokens.AuthToken{at1}
+	atMap := map[ringToken]*authtokens.AuthToken{
+		{k: "default", t: "default"}: at1,
+	}
+	r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(boundaryAuthTokens))
+	require.NoError(t, err)
+
+	ss, err := NewStatusService(ctx, r)
+	require.NoError(t, err)
+
+	require.NoError(t, r.AddKeyringToken(ctx, boundaryAddr, KeyringToken{
+		KeyringType: "default",
+		TokenName:   "default",
+		AuthTokenId: at1.Id,
+	}))
+
+	err = r.refreshTargets(ctx, u1, map[AuthToken]string{{Id: "id"}: "something"},
+		WithTargetRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t)))
+	require.ErrorIs(t, err, ErrRefreshNotSupported)
+
+	got, err := ss.Status(ctx)
+	assert.NoError(t, err)
+
+	assert.Len(t, got.Users, 1)
+	assert.Greater(t, got.Users[0].BoundaryStatus.LastSupportCheck, time.Duration(0))
+	assert.LessOrEqual(t, got.Users[0].BoundaryStatus.LastSupportCheck, time.Second)
+	got.Users[0].BoundaryStatus.LastSupportCheck = 0
+
+	assert.Equal(t, got.Users, []UserStatus{
+		{
+			Id: u1.Id,
+			BoundaryStatus: BoundaryStatus{
+				Address:          u1.Address,
+				CachingSupported: NotSupportedCacheSupport,
+			},
+			AuthTokens: []AuthTokenStatus{
+				{
+					Id:                at1.Id,
+					KeyringReferences: 1,
+				},
+			},
+			Resources: []ResourceStatus{
+				{
+					Name:  string(targetResourceType),
+					Count: 0,
+				},
+				{
+					Name:  string(sessionResourceType),
+					Count: 0,
+				},
+			},
+		},
+	})
+}
