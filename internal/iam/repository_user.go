@@ -5,11 +5,14 @@ package iam
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
@@ -207,19 +210,6 @@ func (r *Repository) DeleteUser(ctx context.Context, withPublicId string, _ ...O
 		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("for %s", withPublicId)))
 	}
 	return rowsDeleted, nil
-}
-
-// ListUsers lists users in the given scopes and supports the WithLimit option.
-func (r *Repository) ListUsers(ctx context.Context, withScopeIds []string, opt ...Option) ([]*User, error) {
-	const op = "iam.(Repository).ListUsers"
-	if len(withScopeIds) == 0 {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
-	}
-	users, err := r.getUsers(ctx, "", withScopeIds, opt...)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-	return users, nil
 }
 
 // LookupUserWithLogin will attempt to lookup the user with a matching
@@ -841,65 +831,160 @@ func associationChanges(ctx context.Context, reader db.Reader, userId string, ac
 }
 
 // lookupUser will lookup a single user and returns nil, nil when no user is found.
+// no options are currently supported
 func (r *Repository) lookupUser(ctx context.Context, userId string, opt ...Option) (*User, error) {
 	const op = "iam.(Repository).lookupUser"
-	users, err := r.getUsers(ctx, userId, nil, opt...)
-	if err != nil {
+	if userId == "" {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing user id")
+	}
+	ret := allocUserAccountInfo()
+	ret.PublicId = userId
+	if err := r.reader.LookupById(ctx, ret); err != nil {
+		if errors.IsNotFoundError(err) {
+			return nil, nil
+		}
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	switch {
-	case len(users) == 0:
-		return nil, nil // not an error to return no rows for a lookup
-	case len(users) > 1:
-		return nil, errors.New(ctx, errors.NotSpecificIntegrity, op, fmt.Sprintf("%s matched more than 1 ", userId))
-	default:
-		return users[0], nil
-	}
+	return ret.shallowConversion(), nil
 }
 
-// getUsers allows the caller to specify to either lookup a specific User via
-// its ID or search for a set of Users within a set of scopes.  Passing both
-// scopeIds and a userId is an error.  The WithLimit option is supported and all
-// other options are ignored.
-//
-// When no record is found then it returns nil, nil
-func (r *Repository) getUsers(ctx context.Context, userId string, scopeIds []string, opt ...Option) ([]*User, error) {
-	const op = "iam.(Repository).getUsers"
-	if userId == "" && len(scopeIds) == 0 {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing search criteria: both user id and scope ids are empty")
+// listUsers lists users in the given scopes and supports WithLimit option.
+func (r *Repository) ListUsers(ctx context.Context, withScopeIds []string, opt ...Option) ([]*User, time.Time, error) {
+	const op = "iam.(Repository).listUsers"
+	if len(withScopeIds) == 0 {
+		return nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
 	}
-	if userId != "" && len(scopeIds) > 0 {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "searching for both a specific user id and scope ids is not supported")
+	opts := getOpts(opt...)
+
+	limit := r.defaultLimit
+	switch {
+	case opts.withLimit > 0:
+		// non-zero signals an override of the default limit for the repo.
+		limit = opts.withLimit
+	case opts.withLimit < 0:
+		return nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "limit must be non-negative")
+	}
+
+	var args []any
+	whereClause := "scope_id in @scope_ids"
+	args = append(args, sql.Named("scope_ids", withScopeIds))
+
+	if opts.withStartPageAfterItem != nil {
+		whereClause = fmt.Sprintf("(create_time, public_id) < (@last_item_create_time, @last_item_id) and %s", whereClause)
+		args = append(args,
+			sql.Named("last_item_create_time", opts.withStartPageAfterItem.GetCreateTime()),
+			sql.Named("last_item_id", opts.withStartPageAfterItem.GetPublicId()),
+		)
+	}
+	dbOpts := []db.Option{db.WithLimit(limit), db.WithOrder("create_time desc, public_id desc")}
+	return r.queryUsers(ctx, whereClause, args, dbOpts...)
+}
+
+// listUsersRefresh lists users in the given scopes and supports the
+// WithLimit and WithStartPageAfterItem options.
+func (r *Repository) listUsersRefresh(ctx context.Context, updatedAfter time.Time, withScopeIds []string, opt ...Option) ([]*User, time.Time, error) {
+	const op = "iam.(Repository).listUsersRefresh"
+
+	switch {
+	case updatedAfter.IsZero():
+		return nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "missing updated after time")
+
+	case len(withScopeIds) == 0:
+		return nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
 	}
 
 	opts := getOpts(opt...)
-	dbArgs := []db.Option{}
+
 	limit := r.defaultLimit
-	if opts.withLimit != 0 {
+	switch {
+	case opts.withLimit > 0:
 		// non-zero signals an override of the default limit for the repo.
 		limit = opts.withLimit
+	case opts.withLimit < 0:
+		return nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "limit must be non-negative")
 	}
-	dbArgs = append(dbArgs, db.WithLimit(limit))
 
 	var args []any
-	var where []string
-	switch {
-	case userId != "":
-		where, args = append(where, "public_id = ?"), append(args, userId)
-	default:
-		where, args = append(where, "scope_id in(?)"), append(args, scopeIds)
+	whereClause := "update_time > @updated_after_time and scope_id in @scope_ids"
+	args = append(args,
+		sql.Named("updated_after_time", timestamp.New(updatedAfter)),
+		sql.Named("scope_ids", withScopeIds),
+	)
+	if opts.withStartPageAfterItem != nil {
+		whereClause = fmt.Sprintf("(update_time, public_id) < (@last_item_update_time, @last_item_id) and %s", whereClause)
+		args = append(args,
+			sql.Named("last_item_update_time", opts.withStartPageAfterItem.GetUpdateTime()),
+			sql.Named("last_item_id", opts.withStartPageAfterItem.GetPublicId()),
+		)
 	}
-	var usersAcctInfo []*userAccountInfo
-	err := r.reader.SearchWhere(ctx, &usersAcctInfo, strings.Join(where, " and "), args, dbArgs...)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+
+	dbOpts := []db.Option{db.WithLimit(limit), db.WithOrder("update_time desc, public_id desc")}
+	return r.queryUsers(ctx, whereClause, args, dbOpts...)
+}
+
+func (r *Repository) queryUsers(ctx context.Context, whereClause string, args []any, opt ...db.Option) ([]*User, time.Time, error) {
+	const op = "iam.(Repository).queryUsers"
+
+	var transactionTimestamp time.Time
+	var ret []*userAccountInfo
+	if _, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(rd db.Reader, w db.Writer) error {
+		var inRet []*userAccountInfo
+		if err := rd.SearchWhere(ctx, &inRet, whereClause, args, opt...); err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+		ret = inRet
+		var err error
+		transactionTimestamp, err = rd.Now(ctx)
+		return err
+	}); err != nil {
+		return nil, time.Time{}, err
 	}
-	if len(usersAcctInfo) == 0 { // we're done if nothing is found.
-		return nil, nil
-	}
-	users := make([]*User, 0, len(usersAcctInfo))
-	for _, u := range usersAcctInfo {
+
+	users := make([]*User, 0, len(ret))
+	for _, u := range ret {
 		users = append(users, u.shallowConversion())
 	}
-	return users, nil
+
+	return users, transactionTimestamp, nil
+}
+
+// listUserDeletedIds lists the public IDs of any users deleted since the timestamp provided.
+func (r *Repository) listUserDeletedIds(ctx context.Context, since time.Time) ([]string, time.Time, error) {
+	const op = "iam.(Repository).listUserDeletedIds"
+	var deletedResources []*deletedUser
+	var transactionTimestamp time.Time
+	if _, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(r db.Reader, _ db.Writer) error {
+		if err := r.SearchWhere(ctx, &deletedResources, "delete_time >= ?", []any{since}); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to query deleted users"))
+		}
+		var err error
+		transactionTimestamp, err = r.Now(ctx)
+		if err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to get transaction timestamp"))
+		}
+		return nil
+	}); err != nil {
+		return nil, time.Time{}, err
+	}
+	var dIds []string
+	for _, res := range deletedResources {
+		dIds = append(dIds, res.PublicId)
+	}
+	return dIds, transactionTimestamp, nil
+}
+
+// estimatedUserCount returns an estimate of the total number of items in the iam_user table.
+func (r *Repository) estimatedUserCount(ctx context.Context) (int, error) {
+	const op = "iam.(Repository).estimatedUserCount"
+	rows, err := r.reader.Query(ctx, estimateCountUsers, nil)
+	if err != nil {
+		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total users"))
+	}
+	var count int
+	for rows.Next() {
+		if err := r.reader.ScanRows(ctx, rows, &count); err != nil {
+			return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total users"))
+		}
+	}
+	return count, nil
 }
