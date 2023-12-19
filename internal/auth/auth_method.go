@@ -49,7 +49,6 @@ type AuthMethodListQueryResult struct {
 	GroupDn                  string
 	GroupAttr                string
 	GroupFilter              string
-	ClientCertificateKey     []byte
 	ClientCertificateKeyHmac []byte
 	ClientCertificateKeyId   string
 	ClientCertificateCert    []byte

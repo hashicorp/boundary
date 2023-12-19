@@ -15,7 +15,6 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/pagination"
 	"github.com/hashicorp/boundary/internal/util"
-	"github.com/hashicorp/go-kms-wrapping/v2/extras/structwrapping"
 )
 
 // AuthMethodRepository coordinates calls across different subtype services
@@ -182,46 +181,6 @@ func (amr *AuthMethodRepository) queryAuthMethods(ctx context.Context, query str
 		}
 
 		for _, am := range foundAuthMethods {
-			// switch am.Subtype {
-			// case "ldap":
-			// 	ccKey := struct {
-			// 		Ct []byte `wrapping:"ct,certificate_key"`
-			// 		Pt []byte `wrapping:"pt,certificate_key"`
-			// 	}{Ct: am.ClientCertificateKey}
-			// 	if am.ClientCertificateKey != nil {
-			// 		ccWrapper, err := amr.kms.GetWrapper(ctx, am.ScopeId, kms.KeyPurposeDatabase, kms.WithKeyId(am.ClientCertificateKeyId))
-			// 		if err != nil {
-			// 			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to get database wrapper for client certificate key"))
-			// 		}
-			// 		if err := structwrapping.UnwrapStruct(ctx, ccWrapper, &ccKey); err != nil {
-			// 			return errors.Wrap(ctx, err, op, errors.WithCode(errors.Decrypt), errors.WithMsg("failed to decrypt client certificate key"))
-			// 		}
-			// 		am.ClientCertificateKey = ccKey.Pt
-			// 	}
-			// 	bindPassword := struct {
-			// 		Ct []byte `wrapping:"ct,password"`
-			// 		Pt []byte `wrapping:"pt,password"`
-			// 	}{Ct: am.BindPassword}
-			// 	if am.BindPassword != nil {
-			// 		bindWrapper, err := amr.kms.GetWrapper(ctx, am.ScopeId, kms.KeyPurposeDatabase, kms.WithKeyId(am.BindKeyId))
-			// 		if err != nil {
-			// 			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to get database wrapper for bind password"))
-			// 		}
-			// 		if err := structwrapping.UnwrapStruct(ctx, bindWrapper, &bindPassword); err != nil {
-			// 			return errors.Wrap(ctx, err, op, errors.WithCode(errors.Decrypt), errors.WithMsg("failed to decrypt bind password"))
-			// 		}
-			// 		am.BindPassword = bindPassword.Pt
-			// 	}
-			if am.Subtype == "oidc" {
-				databaseWrapper, err := amr.kms.GetWrapper(ctx, am.ScopeId, kms.KeyPurposeDatabase, kms.WithKeyId(am.KeyId))
-				if err != nil {
-					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
-				}
-				if err := structwrapping.UnwrapStruct(ctx, databaseWrapper, am); err != nil {
-					return errors.Wrap(ctx, err, op, errors.WithCode(errors.Decrypt))
-				}
-			}
-
 			authmethod, err := am.toAuthMethod(ctx)
 			if err != nil {
 				return err

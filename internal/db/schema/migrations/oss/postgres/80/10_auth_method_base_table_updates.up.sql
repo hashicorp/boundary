@@ -6,7 +6,7 @@ begin;
   -- Add create_time, update_time and is_active_public_state to auth_method table.
   alter table auth_method add column create_time wt_timestamp;
   alter table auth_method add column update_time wt_timestamp;
-  alter table auth_method add column is_active_public_state boolean not null;
+  alter table auth_method add column is_active_public_state boolean;
 
   -- Update rows with current values
      update auth_method
@@ -129,6 +129,9 @@ begin;
       on auth_method (create_time desc, public_id asc);
   create index auth_method_update_time_public_id_idx
       on auth_method (update_time desc, public_id asc);
+
+  -- Make column not null
+  alter table auth_method alter column is_active_public_state set not null;
 
   analyze auth_method;
 

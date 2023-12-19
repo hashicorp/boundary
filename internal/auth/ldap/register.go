@@ -49,7 +49,6 @@ func (authMethodHooks) NewAuthMethod(ctx context.Context, result *auth.AuthMetho
 	am.GroupDn = result.GroupDn
 	am.GroupAttr = result.GroupAttr
 	am.GroupFilter = result.GroupFilter
-	am.ClientCertificateKey = result.ClientCertificateKey
 	am.ClientCertificateKeyHmac = result.ClientCertificateKeyHmac
 	am.ClientCertificate = string(result.ClientCertificateCert)
 	am.BindDn = result.BindDn
