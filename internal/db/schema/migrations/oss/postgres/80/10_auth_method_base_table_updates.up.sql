@@ -6,7 +6,7 @@ begin;
   -- Add create_time, update_time and is_active_public_state to auth_method table.
   alter table auth_method add column create_time wt_timestamp;
   alter table auth_method add column update_time wt_timestamp;
-  alter table auth_method add column is_active_public_state boolean;
+  alter table auth_method add column is_active_public_state boolean not null;
 
   -- Update rows with current values
      update auth_method
