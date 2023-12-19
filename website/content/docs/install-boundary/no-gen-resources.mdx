@@ -88,7 +88,7 @@ To configure your provider to use the recovery KMS workflow, provide the KMS blo
 
 ```hcl
 provider "boundary" {
-  addr             = 'https://boundary.mycorp.com:9200'
+  addr             = "https://boundary.mycorp.com:9200"
   recovery_kms_hcl = <<EOT
 kms "aead" {
 	purpose   = "recovery"
