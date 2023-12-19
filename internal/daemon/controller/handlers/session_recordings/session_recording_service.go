@@ -43,6 +43,7 @@ var NewServiceFn = func(ctx context.Context,
 	iamRepoFn common.IamRepoFactory,
 	workerStatusGracePeriod *atomic.Int64,
 	kms *kms.Kms,
+	maxPageSize uint,
 	controllerExt intglobals.ControllerExtension,
 ) (pbs.SessionRecordingServiceServer, error) {
 	return Service{}, nil
