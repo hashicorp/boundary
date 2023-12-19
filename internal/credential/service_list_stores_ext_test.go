@@ -151,7 +151,7 @@ func TestStoreService_List(t *testing.T) {
 			_, err := credential.ListStores(ctx, []byte("some hash"), 1, filterFunc, nil, []string{prj.PublicId})
 			require.ErrorContains(t, err, "missing repo")
 		})
-		t.Run("missing public Ids", func(t *testing.T) {
+		t.Run("missing project ids", func(t *testing.T) {
 			t.Parallel()
 			filterFunc := func(_ context.Context, s credential.Store) (bool, error) {
 				return true, nil
@@ -167,7 +167,7 @@ func TestStoreService_List(t *testing.T) {
 			filterFunc := func(_ context.Context, s credential.Store) (bool, error) {
 				return true, nil
 			}
-			tok, err := listtoken.NewPagination(ctx, fiveDaysAgo, resource.CredentialLibrary, []byte("some hash"), "some-id", fiveDaysAgo)
+			tok, err := listtoken.NewPagination(ctx, fiveDaysAgo, resource.CredentialStore, []byte("some hash"), "some-id", fiveDaysAgo)
 			require.NoError(t, err)
 			_, err = credential.ListStoresPage(ctx, nil, 1, filterFunc, tok, repo, []string{prj.PublicId})
 			require.ErrorContains(t, err, "missing grants hash")
@@ -177,7 +177,7 @@ func TestStoreService_List(t *testing.T) {
 			filterFunc := func(_ context.Context, s credential.Store) (bool, error) {
 				return true, nil
 			}
-			tok, err := listtoken.NewPagination(ctx, fiveDaysAgo, resource.CredentialLibrary, []byte("some hash"), "some-id", fiveDaysAgo)
+			tok, err := listtoken.NewPagination(ctx, fiveDaysAgo, resource.CredentialStore, []byte("some hash"), "some-id", fiveDaysAgo)
 			require.NoError(t, err)
 			_, err = credential.ListStoresPage(ctx, []byte("some hash"), 0, filterFunc, tok, repo, []string{prj.PublicId})
 			require.ErrorContains(t, err, "page size must be at least 1")
@@ -187,14 +187,14 @@ func TestStoreService_List(t *testing.T) {
 			filterFunc := func(_ context.Context, s credential.Store) (bool, error) {
 				return true, nil
 			}
-			tok, err := listtoken.NewPagination(ctx, fiveDaysAgo, resource.CredentialLibrary, []byte("some hash"), "some-id", fiveDaysAgo)
+			tok, err := listtoken.NewPagination(ctx, fiveDaysAgo, resource.CredentialStore, []byte("some hash"), "some-id", fiveDaysAgo)
 			require.NoError(t, err)
 			_, err = credential.ListStoresPage(ctx, []byte("some hash"), -1, filterFunc, tok, repo, []string{prj.PublicId})
 			require.ErrorContains(t, err, "page size must be at least 1")
 		})
 		t.Run("nil filter func", func(t *testing.T) {
 			t.Parallel()
-			tok, err := listtoken.NewPagination(ctx, fiveDaysAgo, resource.CredentialLibrary, []byte("some hash"), "some-id", fiveDaysAgo)
+			tok, err := listtoken.NewPagination(ctx, fiveDaysAgo, resource.CredentialStore, []byte("some hash"), "some-id", fiveDaysAgo)
 			require.NoError(t, err)
 			_, err = credential.ListStoresPage(ctx, []byte("some hash"), 1, nil, tok, repo, []string{prj.PublicId})
 			require.ErrorContains(t, err, "missing filter item callback")
@@ -212,7 +212,7 @@ func TestStoreService_List(t *testing.T) {
 			filterFunc := func(_ context.Context, s credential.Store) (bool, error) {
 				return true, nil
 			}
-			tok, err := listtoken.NewStartRefresh(ctx, fiveDaysAgo, resource.CredentialLibrary, []byte("some hash"), fiveDaysAgo, fiveDaysAgo)
+			tok, err := listtoken.NewStartRefresh(ctx, fiveDaysAgo, resource.CredentialStore, []byte("some hash"), fiveDaysAgo, fiveDaysAgo)
 			require.NoError(t, err)
 			_, err = credential.ListStoresPage(ctx, []byte("some hash"), 1, filterFunc, tok, repo, []string{prj.PublicId})
 			require.ErrorContains(t, err, "token did not have a pagination token component")
@@ -222,7 +222,7 @@ func TestStoreService_List(t *testing.T) {
 			filterFunc := func(_ context.Context, s credential.Store) (bool, error) {
 				return true, nil
 			}
-			tok, err := listtoken.NewPagination(ctx, fiveDaysAgo, resource.CredentialLibrary, []byte("some hash"), "some-id", fiveDaysAgo)
+			tok, err := listtoken.NewPagination(ctx, fiveDaysAgo, resource.CredentialStore, []byte("some hash"), "some-id", fiveDaysAgo)
 			require.NoError(t, err)
 			_, err = credential.ListStoresPage(ctx, []byte("some hash"), 1, filterFunc, tok, nil, []string{prj.PublicId})
 			require.ErrorContains(t, err, "missing repo")
@@ -232,10 +232,20 @@ func TestStoreService_List(t *testing.T) {
 			filterFunc := func(_ context.Context, s credential.Store) (bool, error) {
 				return true, nil
 			}
-			tok, err := listtoken.NewPagination(ctx, fiveDaysAgo, resource.CredentialLibrary, []byte("some hash"), "some-id", fiveDaysAgo)
+			tok, err := listtoken.NewPagination(ctx, fiveDaysAgo, resource.CredentialStore, []byte("some hash"), "some-id", fiveDaysAgo)
 			require.NoError(t, err)
 			_, err = credential.ListStoresPage(ctx, []byte("some hash"), 1, filterFunc, tok, repo, nil)
 			require.ErrorContains(t, err, "missing project ids")
+		})
+		t.Run("wrong token resource type", func(t *testing.T) {
+			t.Parallel()
+			filterFunc := func(_ context.Context, s credential.Store) (bool, error) {
+				return true, nil
+			}
+			tok, err := listtoken.NewPagination(ctx, fiveDaysAgo, resource.Target, []byte("some hash"), "some-id", fiveDaysAgo)
+			require.NoError(t, err)
+			_, err = credential.ListStoresPage(ctx, []byte("some hash"), 1, filterFunc, tok, repo, []string{prj.PublicId})
+			require.ErrorContains(t, err, "token did not have a credential store resource type")
 		})
 	})
 	t.Run("ListRefresh validation", func(t *testing.T) {
@@ -245,7 +255,7 @@ func TestStoreService_List(t *testing.T) {
 			filterFunc := func(_ context.Context, s credential.Store) (bool, error) {
 				return true, nil
 			}
-			tok, err := listtoken.NewStartRefresh(ctx, fiveDaysAgo, resource.CredentialLibrary, []byte("some hash"), fiveDaysAgo, fiveDaysAgo)
+			tok, err := listtoken.NewStartRefresh(ctx, fiveDaysAgo, resource.CredentialStore, []byte("some hash"), fiveDaysAgo, fiveDaysAgo)
 			require.NoError(t, err)
 			_, err = credential.ListStoresRefresh(ctx, nil, 1, filterFunc, tok, repo, []string{prj.PublicId})
 			require.ErrorContains(t, err, "missing grants hash")
@@ -255,7 +265,7 @@ func TestStoreService_List(t *testing.T) {
 			filterFunc := func(_ context.Context, s credential.Store) (bool, error) {
 				return true, nil
 			}
-			tok, err := listtoken.NewStartRefresh(ctx, fiveDaysAgo, resource.CredentialLibrary, []byte("some hash"), fiveDaysAgo, fiveDaysAgo)
+			tok, err := listtoken.NewStartRefresh(ctx, fiveDaysAgo, resource.CredentialStore, []byte("some hash"), fiveDaysAgo, fiveDaysAgo)
 			require.NoError(t, err)
 			_, err = credential.ListStoresRefresh(ctx, []byte("some hash"), 0, filterFunc, tok, repo, []string{prj.PublicId})
 			require.ErrorContains(t, err, "page size must be at least 1")
@@ -265,14 +275,14 @@ func TestStoreService_List(t *testing.T) {
 			filterFunc := func(_ context.Context, s credential.Store) (bool, error) {
 				return true, nil
 			}
-			tok, err := listtoken.NewStartRefresh(ctx, fiveDaysAgo, resource.CredentialLibrary, []byte("some hash"), fiveDaysAgo, fiveDaysAgo)
+			tok, err := listtoken.NewStartRefresh(ctx, fiveDaysAgo, resource.CredentialStore, []byte("some hash"), fiveDaysAgo, fiveDaysAgo)
 			require.NoError(t, err)
 			_, err = credential.ListStoresRefresh(ctx, []byte("some hash"), -1, filterFunc, tok, repo, []string{prj.PublicId})
 			require.ErrorContains(t, err, "page size must be at least 1")
 		})
 		t.Run("nil filter func", func(t *testing.T) {
 			t.Parallel()
-			tok, err := listtoken.NewStartRefresh(ctx, fiveDaysAgo, resource.CredentialLibrary, []byte("some hash"), fiveDaysAgo, fiveDaysAgo)
+			tok, err := listtoken.NewStartRefresh(ctx, fiveDaysAgo, resource.CredentialStore, []byte("some hash"), fiveDaysAgo, fiveDaysAgo)
 			require.NoError(t, err)
 			_, err = credential.ListStoresRefresh(ctx, []byte("some hash"), 1, nil, tok, repo, []string{prj.PublicId})
 			require.ErrorContains(t, err, "missing filter item callback")
@@ -290,7 +300,7 @@ func TestStoreService_List(t *testing.T) {
 			filterFunc := func(_ context.Context, s credential.Store) (bool, error) {
 				return true, nil
 			}
-			tok, err := listtoken.NewStartRefresh(ctx, fiveDaysAgo, resource.CredentialLibrary, []byte("some hash"), fiveDaysAgo, fiveDaysAgo)
+			tok, err := listtoken.NewStartRefresh(ctx, fiveDaysAgo, resource.CredentialStore, []byte("some hash"), fiveDaysAgo, fiveDaysAgo)
 			require.NoError(t, err)
 			_, err = credential.ListStoresRefresh(ctx, []byte("some hash"), 1, filterFunc, tok, nil, []string{prj.PublicId})
 			require.ErrorContains(t, err, "missing repo")
@@ -300,10 +310,20 @@ func TestStoreService_List(t *testing.T) {
 			filterFunc := func(_ context.Context, s credential.Store) (bool, error) {
 				return true, nil
 			}
-			tok, err := listtoken.NewStartRefresh(ctx, fiveDaysAgo, resource.CredentialLibrary, []byte("some hash"), fiveDaysAgo, fiveDaysAgo)
+			tok, err := listtoken.NewStartRefresh(ctx, fiveDaysAgo, resource.CredentialStore, []byte("some hash"), fiveDaysAgo, fiveDaysAgo)
 			require.NoError(t, err)
 			_, err = credential.ListStoresRefresh(ctx, []byte("some hash"), 1, filterFunc, tok, repo, nil)
 			require.ErrorContains(t, err, "missing project ids")
+		})
+		t.Run("wrong token resource type", func(t *testing.T) {
+			t.Parallel()
+			filterFunc := func(_ context.Context, s credential.Store) (bool, error) {
+				return true, nil
+			}
+			tok, err := listtoken.NewStartRefresh(ctx, fiveDaysAgo, resource.Target, []byte("some hash"), fiveDaysAgo, fiveDaysAgo)
+			require.NoError(t, err)
+			_, err = credential.ListStoresRefresh(ctx, []byte("some hash"), 1, filterFunc, tok, repo, []string{prj.PublicId})
+			require.ErrorContains(t, err, "token did not have a credential store resource type")
 		})
 	})
 	t.Run("ListRefreshPage validation", func(t *testing.T) {
@@ -313,7 +333,7 @@ func TestStoreService_List(t *testing.T) {
 			filterFunc := func(_ context.Context, s credential.Store) (bool, error) {
 				return true, nil
 			}
-			tok, err := listtoken.NewRefresh(ctx, fiveDaysAgo, resource.CredentialLibrary, []byte("some hash"), fiveDaysAgo, fiveDaysAgo, fiveDaysAgo, "some other id", fiveDaysAgo)
+			tok, err := listtoken.NewRefresh(ctx, fiveDaysAgo, resource.CredentialStore, []byte("some hash"), fiveDaysAgo, fiveDaysAgo, fiveDaysAgo, "some other id", fiveDaysAgo)
 			require.NoError(t, err)
 			_, err = credential.ListStoresRefreshPage(ctx, nil, 1, filterFunc, tok, repo, []string{prj.PublicId})
 			require.ErrorContains(t, err, "missing grants hash")
@@ -323,7 +343,7 @@ func TestStoreService_List(t *testing.T) {
 			filterFunc := func(_ context.Context, s credential.Store) (bool, error) {
 				return true, nil
 			}
-			tok, err := listtoken.NewRefresh(ctx, fiveDaysAgo, resource.CredentialLibrary, []byte("some hash"), fiveDaysAgo, fiveDaysAgo, fiveDaysAgo, "some other id", fiveDaysAgo)
+			tok, err := listtoken.NewRefresh(ctx, fiveDaysAgo, resource.CredentialStore, []byte("some hash"), fiveDaysAgo, fiveDaysAgo, fiveDaysAgo, "some other id", fiveDaysAgo)
 			require.NoError(t, err)
 			_, err = credential.ListStoresRefreshPage(ctx, []byte("some hash"), 0, filterFunc, tok, repo, []string{prj.PublicId})
 			require.ErrorContains(t, err, "page size must be at least 1")
@@ -333,14 +353,14 @@ func TestStoreService_List(t *testing.T) {
 			filterFunc := func(_ context.Context, s credential.Store) (bool, error) {
 				return true, nil
 			}
-			tok, err := listtoken.NewRefresh(ctx, fiveDaysAgo, resource.CredentialLibrary, []byte("some hash"), fiveDaysAgo, fiveDaysAgo, fiveDaysAgo, "some other id", fiveDaysAgo)
+			tok, err := listtoken.NewRefresh(ctx, fiveDaysAgo, resource.CredentialStore, []byte("some hash"), fiveDaysAgo, fiveDaysAgo, fiveDaysAgo, "some other id", fiveDaysAgo)
 			require.NoError(t, err)
 			_, err = credential.ListStoresRefreshPage(ctx, []byte("some hash"), -1, filterFunc, tok, repo, []string{prj.PublicId})
 			require.ErrorContains(t, err, "page size must be at least 1")
 		})
 		t.Run("nil filter func", func(t *testing.T) {
 			t.Parallel()
-			tok, err := listtoken.NewRefresh(ctx, fiveDaysAgo, resource.CredentialLibrary, []byte("some hash"), fiveDaysAgo, fiveDaysAgo, fiveDaysAgo, "some other id", fiveDaysAgo)
+			tok, err := listtoken.NewRefresh(ctx, fiveDaysAgo, resource.CredentialStore, []byte("some hash"), fiveDaysAgo, fiveDaysAgo, fiveDaysAgo, "some other id", fiveDaysAgo)
 			require.NoError(t, err)
 			_, err = credential.ListStoresRefreshPage(ctx, []byte("some hash"), 1, nil, tok, repo, []string{prj.PublicId})
 			require.ErrorContains(t, err, "missing filter item callback")
@@ -358,7 +378,7 @@ func TestStoreService_List(t *testing.T) {
 			filterFunc := func(_ context.Context, s credential.Store) (bool, error) {
 				return true, nil
 			}
-			tok, err := listtoken.NewPagination(ctx, fiveDaysAgo, resource.CredentialLibrary, []byte("some hash"), "some-id", fiveDaysAgo)
+			tok, err := listtoken.NewPagination(ctx, fiveDaysAgo, resource.CredentialStore, []byte("some hash"), "some-id", fiveDaysAgo)
 			require.NoError(t, err)
 			_, err = credential.ListStoresRefreshPage(ctx, []byte("some hash"), 1, filterFunc, tok, repo, []string{prj.PublicId})
 			require.ErrorContains(t, err, "token did not have a refresh token component")
@@ -368,7 +388,7 @@ func TestStoreService_List(t *testing.T) {
 			filterFunc := func(_ context.Context, s credential.Store) (bool, error) {
 				return true, nil
 			}
-			tok, err := listtoken.NewRefresh(ctx, fiveDaysAgo, resource.CredentialLibrary, []byte("some hash"), fiveDaysAgo, fiveDaysAgo, fiveDaysAgo, "some other id", fiveDaysAgo)
+			tok, err := listtoken.NewRefresh(ctx, fiveDaysAgo, resource.CredentialStore, []byte("some hash"), fiveDaysAgo, fiveDaysAgo, fiveDaysAgo, "some other id", fiveDaysAgo)
 			require.NoError(t, err)
 			_, err = credential.ListStoresRefreshPage(ctx, []byte("some hash"), 1, filterFunc, tok, nil, []string{prj.PublicId})
 			require.ErrorContains(t, err, "missing repo")
@@ -378,10 +398,20 @@ func TestStoreService_List(t *testing.T) {
 			filterFunc := func(_ context.Context, s credential.Store) (bool, error) {
 				return true, nil
 			}
-			tok, err := listtoken.NewRefresh(ctx, fiveDaysAgo, resource.CredentialLibrary, []byte("some hash"), fiveDaysAgo, fiveDaysAgo, fiveDaysAgo, "some other id", fiveDaysAgo)
+			tok, err := listtoken.NewRefresh(ctx, fiveDaysAgo, resource.CredentialStore, []byte("some hash"), fiveDaysAgo, fiveDaysAgo, fiveDaysAgo, "some other id", fiveDaysAgo)
 			require.NoError(t, err)
 			_, err = credential.ListStoresRefreshPage(ctx, []byte("some hash"), 1, filterFunc, tok, repo, nil)
 			require.ErrorContains(t, err, "missing project ids")
+		})
+		t.Run("wrong token resource type", func(t *testing.T) {
+			t.Parallel()
+			filterFunc := func(_ context.Context, s credential.Store) (bool, error) {
+				return true, nil
+			}
+			tok, err := listtoken.NewRefresh(ctx, fiveDaysAgo, resource.Target, []byte("some hash"), fiveDaysAgo, fiveDaysAgo, fiveDaysAgo, "some other id", fiveDaysAgo)
+			require.NoError(t, err)
+			_, err = credential.ListStoresRefreshPage(ctx, []byte("some hash"), 1, filterFunc, tok, repo, []string{prj.PublicId})
+			require.ErrorContains(t, err, "token did not have a credential store resource type")
 		})
 	})
 

@@ -1739,7 +1739,7 @@ func TestListPagination(t *testing.T) {
 	got, err := s.ListCredentialStores(ctx, req)
 	require.NoError(err)
 	require.Len(got.GetItems(), 2)
-	// Compare without comparing the refresh token
+	// Compare without comparing the list token
 	assert.Empty(
 		cmp.Diff(
 			got,
@@ -1768,7 +1768,7 @@ func TestListPagination(t *testing.T) {
 	got, err = s.ListCredentialStores(ctx, req)
 	require.NoError(err)
 	require.Len(got.GetItems(), 2)
-	// Compare without comparing the refresh token
+	// Compare without comparing the list token
 	assert.Empty(
 		cmp.Diff(
 			got,
@@ -1798,7 +1798,7 @@ func TestListPagination(t *testing.T) {
 	got, err = s.ListCredentialStores(ctx, req)
 	require.NoError(err)
 	require.Len(got.GetItems(), 6)
-	// Compare without comparing the refresh token
+	// Compare without comparing the list token
 	assert.Empty(
 		cmp.Diff(
 			got,
@@ -1864,7 +1864,7 @@ func TestListPagination(t *testing.T) {
 	got, err = s.ListCredentialStores(ctx, req)
 	require.NoError(err)
 	require.Len(got.GetItems(), 1)
-	// Compare without comparing the refresh token
+	// Compare without comparing the list token
 	assert.Empty(
 		cmp.Diff(
 			got,
@@ -1986,7 +1986,7 @@ func TestListPagination(t *testing.T) {
 	got, err = s.ListCredentialStores(ctx, req)
 	require.NoError(err)
 	require.Len(got.GetItems(), 0)
-	// Compare without comparing the refresh token
+	// Compare without comparing the list token
 	assert.Empty(
 		cmp.Diff(
 			got,
