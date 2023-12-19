@@ -36,7 +36,7 @@ type LoopbackPlugin struct {
 	*LoopbackStorage
 }
 
-// NewLoopbackPlugin returns a new loopback pluginre
+// NewLoopbackPlugin returns a new loopback plugin.
 // For storage service testings NewLoopbackPlugin Supports WithMockErrors
 // and WithMockBuckets as options. If no mock buckets are provided,
 // a bucket named `default` will be created.
