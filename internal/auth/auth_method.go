@@ -54,8 +54,6 @@ type AuthMethodListQueryResult struct {
 	ClientCertificateKeyId   string
 	ClientCertificateCert    []byte
 	BindDn                   string
-	BindPassword             []byte
-	BindPasswordHmac         []byte
 	BindKeyId                string
 	AccountAttributeMap      string
 	DereferenceAliases       string
@@ -64,8 +62,6 @@ type AuthMethodListQueryResult struct {
 	DisableDiscoveredConfigValidation bool
 	Issuer                            string
 	ClientId                          string
-	CtClientSecret                    []byte
-	ClientSecret                      string
 	ClientSecretHmac                  string
 	KeyId                             string
 	MaxAge                            int

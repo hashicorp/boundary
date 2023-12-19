@@ -53,8 +53,6 @@ func (authMethodHooks) NewAuthMethod(ctx context.Context, result *auth.AuthMetho
 	am.ClientCertificateKeyHmac = result.ClientCertificateKeyHmac
 	am.ClientCertificate = string(result.ClientCertificateCert)
 	am.BindDn = result.BindDn
-	am.BindPassword = string(result.BindPassword)
-	am.BindPasswordHmac = result.BindPasswordHmac
 	if result.AccountAttributeMap != "" {
 		am.AccountAttributeMaps = strings.Split(result.AccountAttributeMap, delimiter)
 	}

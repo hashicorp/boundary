@@ -65,10 +65,9 @@ func (amr *AuthMethodRepository) List(ctx context.Context, scopeIds []string, af
 	whereClause := "scope_id in @scope_ids"
 	args := []any{sql.Named("scope_ids", scopeIds)}
 
-	// need to return to this once we have a better idea of how to handle it
-	// if opts.WithUnauthenticatedUser {
-	// 	whereClause += " and state = 'active-public'"
-	// }
+	if opts.WithUnauthenticatedUser {
+		whereClause += " and is_active_public_state = true"
+	}
 
 	query := fmt.Sprintf(listAuthMethodsTemplate, whereClause, limit)
 	if afterItem != nil {
@@ -105,9 +104,9 @@ func (amr *AuthMethodRepository) ListRefresh(ctx context.Context, scopeIds []str
 	whereClause := "scope_id in @scope_ids"
 	args := []any{sql.Named("scope_ids", scopeIds)}
 
-	// if opts.WithUnauthenticatedUser {
-	// 	whereClause += " and state = 'active-public'"
-	// }
+	if opts.WithUnauthenticatedUser {
+		whereClause += " and is_active_public_state = true"
+	}
 
 	query := fmt.Sprintf(listAuthMethodsRefreshTemplate, whereClause, limit)
 	args = append(args,
@@ -183,37 +182,37 @@ func (amr *AuthMethodRepository) queryAuthMethods(ctx context.Context, query str
 		}
 
 		for _, am := range foundAuthMethods {
-			switch am.Subtype {
-			case "ldap":
-				ccKey := struct {
-					Ct []byte `wrapping:"ct,certificate_key"`
-					Pt []byte `wrapping:"pt,certificate_key"`
-				}{Ct: am.ClientCertificateKey}
-				if am.ClientCertificateKey != nil {
-					ccWrapper, err := amr.kms.GetWrapper(ctx, am.ScopeId, kms.KeyPurposeDatabase, kms.WithKeyId(am.ClientCertificateKeyId))
-					if err != nil {
-						return errors.Wrap(ctx, err, op, errors.WithMsg("failed to get database wrapper for client certificate key"))
-					}
-					if err := structwrapping.UnwrapStruct(ctx, ccWrapper, &ccKey); err != nil {
-						return errors.Wrap(ctx, err, op, errors.WithCode(errors.Decrypt), errors.WithMsg("failed to decrypt client certificate key"))
-					}
-					am.ClientCertificateKey = ccKey.Pt
-				}
-				bindPassword := struct {
-					Ct []byte `wrapping:"ct,password"`
-					Pt []byte `wrapping:"pt,password"`
-				}{Ct: am.BindPassword}
-				if am.BindPassword != nil {
-					bindWrapper, err := amr.kms.GetWrapper(ctx, am.ScopeId, kms.KeyPurposeDatabase, kms.WithKeyId(am.BindKeyId))
-					if err != nil {
-						return errors.Wrap(ctx, err, op, errors.WithMsg("failed to get database wrapper for bind password"))
-					}
-					if err := structwrapping.UnwrapStruct(ctx, bindWrapper, &bindPassword); err != nil {
-						return errors.Wrap(ctx, err, op, errors.WithCode(errors.Decrypt), errors.WithMsg("failed to decrypt bind password"))
-					}
-					am.BindPassword = bindPassword.Pt
-				}
-			case "oidc":
+			// switch am.Subtype {
+			// case "ldap":
+			// 	ccKey := struct {
+			// 		Ct []byte `wrapping:"ct,certificate_key"`
+			// 		Pt []byte `wrapping:"pt,certificate_key"`
+			// 	}{Ct: am.ClientCertificateKey}
+			// 	if am.ClientCertificateKey != nil {
+			// 		ccWrapper, err := amr.kms.GetWrapper(ctx, am.ScopeId, kms.KeyPurposeDatabase, kms.WithKeyId(am.ClientCertificateKeyId))
+			// 		if err != nil {
+			// 			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to get database wrapper for client certificate key"))
+			// 		}
+			// 		if err := structwrapping.UnwrapStruct(ctx, ccWrapper, &ccKey); err != nil {
+			// 			return errors.Wrap(ctx, err, op, errors.WithCode(errors.Decrypt), errors.WithMsg("failed to decrypt client certificate key"))
+			// 		}
+			// 		am.ClientCertificateKey = ccKey.Pt
+			// 	}
+			// 	bindPassword := struct {
+			// 		Ct []byte `wrapping:"ct,password"`
+			// 		Pt []byte `wrapping:"pt,password"`
+			// 	}{Ct: am.BindPassword}
+			// 	if am.BindPassword != nil {
+			// 		bindWrapper, err := amr.kms.GetWrapper(ctx, am.ScopeId, kms.KeyPurposeDatabase, kms.WithKeyId(am.BindKeyId))
+			// 		if err != nil {
+			// 			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to get database wrapper for bind password"))
+			// 		}
+			// 		if err := structwrapping.UnwrapStruct(ctx, bindWrapper, &bindPassword); err != nil {
+			// 			return errors.Wrap(ctx, err, op, errors.WithCode(errors.Decrypt), errors.WithMsg("failed to decrypt bind password"))
+			// 		}
+			// 		am.BindPassword = bindPassword.Pt
+			// 	}
+			if am.Subtype == "oidc" {
 				databaseWrapper, err := amr.kms.GetWrapper(ctx, am.ScopeId, kms.KeyPurposeDatabase, kms.WithKeyId(am.KeyId))
 				if err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))

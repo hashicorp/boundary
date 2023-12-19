@@ -115,7 +115,7 @@ func TestAuthMethodRepository_List(t *testing.T) {
 		// Transaction timestamp should be within ~10 seconds of now
 		assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
 		assert.True(t, time.Now().After(ttime.Add(-10*time.Second)))
-		require.Empty(t, cmp.Diff(resp, ams, cmpOpts...))
+		require.Empty(t, cmp.Diff(resp, ams[0:2], cmpOpts...))
 	})
 }
 

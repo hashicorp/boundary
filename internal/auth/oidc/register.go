@@ -33,8 +33,6 @@ func (authMethodHooks) NewAuthMethod(ctx context.Context, result *auth.AuthMetho
 	am.DisableDiscoveredConfigValidation = result.DisableDiscoveredConfigValidation
 	am.Issuer = result.Issuer
 	am.ClientId = result.ClientId
-	am.CtClientSecret = result.CtClientSecret
-	am.ClientSecret = result.ClientSecret
 	am.ClientSecretHmac = result.ClientSecretHmac
 	am.KeyId = result.KeyId
 	am.MaxAge = int32(result.MaxAge)
