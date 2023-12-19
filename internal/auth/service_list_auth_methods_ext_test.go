@@ -184,7 +184,7 @@ func TestStoreService_List(t *testing.T) {
 			_, err := auth.ListAuthMethods(ctx, []byte("some hash"), 1, filterFunc, nil, []string{org.PublicId}, true)
 			require.ErrorContains(t, err, "missing repo")
 		})
-		t.Run("missing public Ids", func(t *testing.T) {
+		t.Run("missing scope ids", func(t *testing.T) {
 			t.Parallel()
 			filterFunc := func(_ context.Context, am auth.AuthMethod) (bool, error) {
 				return true, nil
