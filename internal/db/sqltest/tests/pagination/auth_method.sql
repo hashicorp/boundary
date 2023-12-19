@@ -2,7 +2,7 @@
 -- SPDX-License-Identifier: BUSL-1.1
 
 begin;
-  select plan(9);
+  select plan(13);
 
   -- Verify the trigger functions exist and are declared properly
   select has_function('update_auth_method_table_update_time');
@@ -11,6 +11,8 @@ begin;
   select has_trigger('auth_ldap_method', 'update_auth_method_table_update_time');
   select has_trigger('auth_oidc_method', 'update_auth_method_table_update_time');
   select has_trigger('auth_password_method', 'update_auth_method_table_update_time');
+  select has_trigger('auth_ldap_method', 'update_auth_method_table_is_active_public_state');
+  select has_trigger('auth_oidc_method', 'update_auth_method_table_is_active_public_state');
   select has_index('auth_method', 'auth_method_create_time_public_id_idx', array['create_time', 'public_id']);
   select has_index('auth_method', 'auth_method_update_time_public_id_idx', array['update_time', 'public_id']);
 
@@ -20,13 +22,22 @@ begin;
   prepare auth_method_create_time as select create_time from auth_method where public_id='apm___colors';
   prepare auth_ldap_method_create_time as select create_time from auth_ldap_method where public_id='apm___colors';
   select results_eq('auth_method_create_time','auth_ldap_method_create_time');
+
   -- To test the trigger that updates the update_time of the base table,
-  -- we update one of the existing creds and check that the base table
+  -- we update one of the existing subtypes and check that the base table
   -- entry has the same update_time as the subtype one.
-  update auth_ldap_method set name='blue black vault store' where public_id='apm___colors';
+  update auth_ldap_method set name='blue black am' where public_id='apm___colors';
   prepare auth_method_update_time as select update_time from auth_method where public_id='apm___colors';
   prepare auth_ldap_method_update_time as select update_time from auth_ldap_method where public_id='apm___colors';
   select results_eq('auth_method_update_time','auth_ldap_method_update_time');
+
+  -- To test the trigger that updates the is_active_public_state of the base table,
+  -- we set one of the existing subtypes states to 'active-public' and check that the base table
+  -- entry has updated its column to true.
+  update auth_ldap_method set state='active-public' where public_id='apm___colors';
+  prepare auth_method_is_active_public_state as select is_active_public_state from auth_method where public_id='apm___colors';
+  prepare auth_ldap_method_state_is_active_public_state as select state = 'active-public' from auth_ldap_method where public_id='apm___colors';
+  select results_eq('auth_method_is_active_public_state','auth_ldap_method_state_is_active_public_state');
 
   select * from finish();
 
