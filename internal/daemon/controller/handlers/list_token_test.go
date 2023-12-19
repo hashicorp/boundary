@@ -24,12 +24,12 @@ func Test_ParseListToken(t *testing.T) {
 	t.Parallel()
 	fiveDaysAgo := time.Now().AddDate(0, 0, -5)
 	tokenCreateTime := fiveDaysAgo
-	lastItemCreateTime := fiveDaysAgo.Add(time.Hour)
-	lastItemUpdateTime := fiveDaysAgo.Add(2 * time.Hour)
-	previousPhaseUpperBoundTime := fiveDaysAgo.Add(3 * time.Hour)
-	previousDeletedIdsTime := fiveDaysAgo.Add(4 * time.Hour)
-	phaseLowerBound := fiveDaysAgo.Add(5 * time.Hour)
-	phaseUpperBound := fiveDaysAgo.Add(6 * time.Hour)
+	lastItemCreateTime := fiveDaysAgo.Add(-2 * time.Hour)
+	lastItemUpdateTime := fiveDaysAgo.Add(-time.Hour)
+	previousPhaseUpperBoundTime := fiveDaysAgo.Add(4 * time.Hour)
+	previousDeletedIdsTime := fiveDaysAgo.Add(3 * time.Hour)
+	phaseLowerBound := fiveDaysAgo.Add(time.Hour)
+	phaseUpperBound := fiveDaysAgo.Add(2 * time.Hour)
 
 	t.Run("valid pagination", func(t *testing.T) {
 		t.Parallel()

@@ -135,16 +135,16 @@ func NewPagination(
 	const op = "listtoken.NewPagination"
 
 	switch {
+	case createTime.IsZero():
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing create time")
+	case typ == resource.Unknown:
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing resource type")
 	case len(grantsHash) == 0:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing grants hash")
-	case createTime.After(time.Now()):
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "create time is in the future")
-	case createTime.Before(time.Now().AddDate(0, 0, -30)):
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "create time is too old")
 	case lastItemId == "":
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing last item ID")
-	case lastItemCreateTime.After(time.Now()):
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "last item create time is in the future")
+	case lastItemCreateTime.IsZero():
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing last item create time")
 	}
 
 	return &Token{
@@ -170,16 +170,16 @@ func NewStartRefresh(
 	const op = "listtoken.NewStartRefresh"
 
 	switch {
+	case createTime.IsZero():
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing create time")
+	case typ == resource.Unknown:
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing resource type")
 	case len(grantsHash) == 0:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing grants hash")
-	case createTime.After(time.Now()):
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "create time is in the future")
-	case createTime.Before(time.Now().AddDate(0, 0, -30)):
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "create time is too old")
-	case previousDeletedIdsTime.After(time.Now()):
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "previous deleted ids time is in the future")
-	case previousPhaseUpperBound.After(time.Now()):
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "previous phase upper bound is in the future")
+	case previousDeletedIdsTime.IsZero():
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing previous deleted ids time")
+	case previousPhaseUpperBound.IsZero():
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing previous phase upper bound time")
 	}
 
 	return &Token{
@@ -208,24 +208,20 @@ func NewRefresh(
 	const op = "listtoken.NewRefresh"
 
 	switch {
+	case createTime.IsZero():
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing create time")
+	case typ == resource.Unknown:
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing resource type")
 	case len(grantsHash) == 0:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing grants hash")
-	case createTime.After(time.Now()):
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "create time is in the future")
-	case createTime.Before(time.Now().AddDate(0, 0, -30)):
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "create time is too old")
-	case previousDeletedIdsTime.After(time.Now()):
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "previous deleted ids time is in the future")
-	case phaseUpperBound.After(time.Now()):
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "phase upper bound is in the future")
-	case phaseLowerBound.After(time.Now()):
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "phase lower bound is in the future")
-	case phaseLowerBound.After(phaseUpperBound):
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "phase lower bound is after phase upper bound")
+	case previousDeletedIdsTime.IsZero():
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing previous deleted ids time")
+	case phaseUpperBound.IsZero():
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing phase upper bound")
+	case phaseLowerBound.IsZero():
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing phase lower bound")
 	case lastItemId == "":
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing last item ID")
-	case lastItemUpdateTime.After(time.Now()):
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "last item update time is in the future")
 	}
 
 	return &Token{
@@ -358,10 +354,8 @@ func (tk *Token) Validate(
 		return errors.New(ctx, errors.InvalidListToken, op, "list token was missing its grants hash")
 	case !bytes.Equal(tk.GrantsHash, expectedGrantsHash):
 		return errors.New(ctx, errors.InvalidListToken, op, "grants have changed since list token was issued")
-	case tk.CreateTime.After(time.Now()):
-		return errors.New(ctx, errors.InvalidListToken, op, "list token was created in the future")
-		// Tokens older than 30 days have expired
 	case tk.CreateTime.Before(time.Now().AddDate(0, 0, -30)):
+		// Tokens older than 30 days have expired
 		return errors.New(ctx, errors.InvalidListToken, op, "list token was expired")
 	case tk.ResourceType != expectedResourceType:
 		return errors.New(ctx, errors.InvalidListToken, op, "list token resource type does not match expected resource type")
@@ -370,41 +364,47 @@ func (tk *Token) Validate(
 	case *RefreshToken:
 		switch {
 		case st.PhaseUpperBound.Before(tk.CreateTime):
+			// The phase upper bound time should always be equal to or after
+			// the create time of the token, as it is the start time of the refresh phase,
+			// which is always preceded by a pagination phase.
 			return errors.New(ctx, errors.InvalidListToken, op, "list token's refresh component's phase upper bound was before its creation time")
-		case st.PhaseUpperBound.After(time.Now()):
-			return errors.New(ctx, errors.InvalidListToken, op, "list token's refresh component's phase upper bound was in the future")
 		case st.PhaseLowerBound.Before(tk.CreateTime):
+			// The phase lower bound time should always be equal to or after
+			// the create time of the token, as for the first refresh phase it is the create time,
+			// and for subsequent refresh phases it is the upper bound of the previous refresh phase.
 			return errors.New(ctx, errors.InvalidListToken, op, "list token's refresh component's phase lower bound was before its creation time")
-		case st.PhaseLowerBound.After(time.Now()):
-			return errors.New(ctx, errors.InvalidListToken, op, "list token's refresh component's phase lower bound was in the future")
-		case st.PhaseUpperBound.Before(st.PhaseLowerBound):
+		case st.PhaseLowerBound.After(st.PhaseUpperBound):
+			// The lower bound should always be before the upper bound.
 			return errors.New(ctx, errors.InvalidListToken, op, "list token's refresh component's phase upper bound was before the phase lower bound")
 		case st.PreviousDeletedIdsTime.Before(tk.CreateTime):
+			// The previous deleted ids time should always be equal to or after
+			// the create time of the token.
 			return errors.New(ctx, errors.InvalidListToken, op, "list token's refresh component previous deleted ids time was before its creation time")
-		case st.PreviousDeletedIdsTime.After(time.Now()):
-			return errors.New(ctx, errors.InvalidListToken, op, "list token's refresh component previous deleted ids time was in the future")
 		case st.LastItemId == "":
 			return errors.New(ctx, errors.InvalidListToken, op, "list token's refresh component missing last item ID")
-		case st.LastItemUpdateTime.After(time.Now()):
-			return errors.New(ctx, errors.InvalidListToken, op, "list token's refresh component's last item was updated in the future")
 		}
 	case *PaginationToken:
 		switch {
 		case st.LastItemId == "":
 			return errors.New(ctx, errors.InvalidListToken, op, "list tokens's pagination component missing last item ID")
-		case st.LastItemCreateTime.After(time.Now()):
-			return errors.New(ctx, errors.InvalidListToken, op, "list token's pagination component's last item was created in the future")
+		case st.LastItemCreateTime.After(tk.CreateTime):
+			// A resource created in the same instant that we did the intial listing
+			// would have a timestamp equal to the create time. If it's after the
+			// create time, something weird is going on.
+			return errors.New(ctx, errors.InvalidListToken, op, "list token's pagination component's last item was created after the token")
 		}
 	case *StartRefreshToken:
 		switch {
 		case st.PreviousPhaseUpperBound.Before(tk.CreateTime):
+			// The previous phase upper bound time should always be equal to or after
+			// the create time of the token, as it is set relative to the upper bound
+			// of the previous phase, which for the first refresh phase is the create time,
+			// and subsequent refresh phases is the upper bound of the previous refresh phase.
 			return errors.New(ctx, errors.InvalidListToken, op, "list token's start refresh component's previous phase upper bound was before its creation time")
-		case st.PreviousPhaseUpperBound.After(time.Now()):
-			return errors.New(ctx, errors.InvalidListToken, op, "list token's start refresh component's previous phase upper bound was in the future")
 		case st.PreviousDeletedIdsTime.Before(tk.CreateTime):
+			// The previous deleted ids time should always be equal to or after
+			// the create time of the token.
 			return errors.New(ctx, errors.InvalidListToken, op, "list token's start refresh component previous deleted ids time was before its creation time")
-		case st.PreviousDeletedIdsTime.After(time.Now()):
-			return errors.New(ctx, errors.InvalidListToken, op, "list token's start refresh component previous deleted ids time was in the future")
 		}
 	}
 
