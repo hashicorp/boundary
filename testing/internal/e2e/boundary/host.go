@@ -36,7 +36,7 @@ func CreateNewHostCatalogApi(t testing.TB, ctx context.Context, client *api.Clie
 // Returns the id of the new host set.
 func CreateNewHostSetApi(t testing.TB, ctx context.Context, client *api.Client, hostCatalogId string) string {
 	hsClient := hostsets.NewClient(client)
-	newHostSetResult, err := hsClient.Create(ctx, hostCatalogId, hostsets.WithName("e2e Host"))
+	newHostSetResult, err := hsClient.Create(ctx, hostCatalogId)
 	require.NoError(t, err)
 	newHostSetId := newHostSetResult.Item.Id
 	t.Logf("Created Host Set: %s", newHostSetId)
