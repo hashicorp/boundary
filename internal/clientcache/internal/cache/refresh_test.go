@@ -52,11 +52,11 @@ func testStaticResourceRetrievalFunc[T any](t *testing.T, ret [][]T, removed [][
 	}
 }
 
-// testFullFetchRetrievalFunc simulates a controller that doesn't support refresh
+// testNoRefreshRetrievalFunc simulates a controller that doesn't support refresh
 // since it does not return any refresh token.
-func testFullFetchRetrievalFunc[T any](t *testing.T, ret []T) func(context.Context, string, string, RefreshTokenValue) ([]T, []string, RefreshTokenValue, error) {
+func testNoRefreshRetrievalFunc[T any](t *testing.T) func(context.Context, string, string, RefreshTokenValue) ([]T, []string, RefreshTokenValue, error) {
 	return func(_ context.Context, _, _ string, _ RefreshTokenValue) ([]T, []string, RefreshTokenValue, error) {
-		return ret, nil, "", nil
+		return nil, nil, "", ErrRefreshNotSupported
 	}
 }
 
@@ -460,45 +460,52 @@ func TestRefreshForSearch(t *testing.T) {
 		require.NoError(t, err)
 		r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(boundaryAuthTokens))
 		require.NoError(t, err)
-		rs, err := NewRefreshService(ctx, r, time.Millisecond, 0)
+		rs, err := NewRefreshService(ctx, r, 0, 0)
 		require.NoError(t, err)
 		require.NoError(t, r.AddKeyringToken(ctx, boundaryAddr, KeyringToken{KeyringType: "k", TokenName: "t", AuthTokenId: at.Id}))
 
 		retTargets := []*targets.Target{
 			target("1"),
 			target("2"),
-			target("3"),
-			target("4"),
 		}
 
 		// Get the first set of resources, but no refresh tokens
-		assert.NoError(t, rs.Refresh(ctx,
-			WithSessionRetrievalFunc(testFullFetchRetrievalFunc[*sessions.Session](t, nil)),
-			WithTargetRetrievalFunc(testFullFetchRetrievalFunc[*targets.Target](t, retTargets[:2]))))
+		err = rs.Refresh(ctx,
+			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t)),
+			WithTargetRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t)))
+		assert.ErrorContains(t, err, ErrRefreshNotSupported.Error())
 
 		got, err := r.ListTargets(ctx, at.Id)
 		assert.NoError(t, err)
-		assert.ElementsMatch(t, retTargets[:2], got)
+		assert.Empty(t, got)
 
-		// Let 2 milliseconds pass so the items are stale enough
-		time.Sleep(2 * time.Millisecond)
+		// Now that we know that this user doesn't support refresh tokens, they
+		// wont be refreshed any more, and we wont see the error when refreshing
+		// any more.
+		err = rs.Refresh(ctx,
+			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t)),
+			WithTargetRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t)))
+		assert.Nil(t, err)
 
-		assert.NoError(t, rs.RefreshForSearch(ctx, at.Id, Targets,
-			WithSessionRetrievalFunc(testFullFetchRetrievalFunc[*sessions.Session](t, nil)),
-			WithTargetRetrievalFunc(testFullFetchRetrievalFunc[*targets.Target](t, retTargets))))
+		err = rs.RecheckCachingSupport(ctx,
+			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t)),
+			WithTargetRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t)))
+		assert.Nil(t, err)
+
 		got, err = r.ListTargets(ctx, at.Id)
 		assert.NoError(t, err)
-		// still no change in targets since they weren't refreshed with that search
-		// due to having no refresh token.
-		assert.ElementsMatch(t, retTargets[:2], got)
+		assert.Empty(t, got)
 
-		// Only a full fetch will get all the resources
-		assert.NoError(t, rs.FullFetch(ctx,
-			WithSessionRetrievalFunc(testFullFetchRetrievalFunc[*sessions.Session](t, nil)),
-			WithTargetRetrievalFunc(testFullFetchRetrievalFunc[*targets.Target](t, retTargets))))
+		// Now simulate the controller updating to support refresh tokens and
+		// the resources starting to be cached.
+		err = rs.RecheckCachingSupport(ctx,
+			WithSessionRetrievalFunc(testStaticResourceRetrievalFunc[*sessions.Session](t, nil, nil)),
+			WithTargetRetrievalFunc(testStaticResourceRetrievalFunc[*targets.Target](t, [][]*targets.Target{retTargets}, [][]string{{}})))
+		assert.Nil(t, err, err)
+
 		got, err = r.ListTargets(ctx, at.Id)
 		assert.NoError(t, err)
-		assert.ElementsMatch(t, got, retTargets)
+		assert.Len(t, got, 2)
 	})
 
 	t.Run("sessions refreshed for searching", func(t *testing.T) {
@@ -766,7 +773,7 @@ func TestRefresh(t *testing.T) {
 	})
 }
 
-func TestFullFetch(t *testing.T) {
+func TestRecheckCachingSupport(t *testing.T) {
 	ctx := context.Background()
 
 	boundaryAddr := "address"
@@ -783,7 +790,7 @@ func TestFullFetch(t *testing.T) {
 
 	atMap[ringToken{"k", "t"}] = at
 
-	t.Run("set targets", func(t *testing.T) {
+	t.Run("targets", func(t *testing.T) {
 		s, err := db.Open(ctx)
 		require.NoError(t, err)
 		r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(boundaryAuthTokens))
@@ -792,41 +799,32 @@ func TestFullFetch(t *testing.T) {
 		require.NoError(t, err)
 		require.NoError(t, r.AddKeyringToken(ctx, boundaryAddr, KeyringToken{KeyringType: "k", TokenName: "t", AuthTokenId: at.Id}))
 
-		retTargets := []*targets.Target{
-			target("1"),
-			target("2"),
-			target("3"),
-			target("4"),
-		}
 		// Since this user doesn't have any resources, the user's data will still
 		// only get updated with a call to Refresh.
-		assert.NoError(t, rs.FullFetch(ctx,
-			WithSessionRetrievalFunc(testFullFetchRetrievalFunc[*sessions.Session](t, nil)),
-			WithTargetRetrievalFunc(testFullFetchRetrievalFunc[*targets.Target](t, retTargets))))
+		assert.NoError(t, rs.RecheckCachingSupport(ctx,
+			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t)),
+			WithTargetRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t))))
 
 		got, err := r.ListTargets(ctx, at.Id)
 		assert.NoError(t, err)
 		assert.Empty(t, got)
 
-		assert.NoError(t, rs.Refresh(ctx,
-			WithSessionRetrievalFunc(testFullFetchRetrievalFunc[*sessions.Session](t, nil)),
-			WithTargetRetrievalFunc(testFullFetchRetrievalFunc[*targets.Target](t, retTargets[:2]))))
+		err = rs.Refresh(ctx,
+			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t)),
+			WithTargetRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t)))
+		assert.ErrorIs(t, err, ErrRefreshNotSupported)
 
 		got, err = r.ListTargets(ctx, at.Id)
 		assert.NoError(t, err)
-		assert.ElementsMatch(t, got, retTargets[:2])
+		assert.Empty(t, got)
 
 		// now a full fetch will work since the user has resources and no refresh token
-		assert.NoError(t, rs.FullFetch(ctx,
-			WithSessionRetrievalFunc(testFullFetchRetrievalFunc[*sessions.Session](t, nil)),
-			WithTargetRetrievalFunc(testFullFetchRetrievalFunc[*targets.Target](t, retTargets))))
-
-		got, err = r.ListTargets(ctx, at.Id)
-		assert.NoError(t, err)
-		assert.ElementsMatch(t, got, retTargets)
+		assert.NoError(t, rs.RecheckCachingSupport(ctx,
+			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t)),
+			WithTargetRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t))))
 	})
 
-	t.Run("set sessions", func(t *testing.T) {
+	t.Run("sessions", func(t *testing.T) {
 		s, err := db.Open(ctx)
 		require.NoError(t, err)
 		r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(boundaryAuthTokens))
@@ -835,33 +833,29 @@ func TestFullFetch(t *testing.T) {
 		require.NoError(t, err)
 		require.NoError(t, r.AddKeyringToken(ctx, boundaryAddr, KeyringToken{KeyringType: "k", TokenName: "t", AuthTokenId: at.Id}))
 
-		retSess := []*sessions.Session{
-			session("1"),
-			session("2"),
-			session("3"),
-			session("4"),
-		}
-		assert.NoError(t, rs.FullFetch(ctx,
-			WithTargetRetrievalFunc(testFullFetchRetrievalFunc[*targets.Target](t, nil)),
-			WithSessionRetrievalFunc(testFullFetchRetrievalFunc[*sessions.Session](t, retSess))))
+		assert.NoError(t, rs.RecheckCachingSupport(ctx,
+			WithTargetRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t)),
+			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t))))
 
 		got, err := r.ListSessions(ctx, at.Id)
 		assert.NoError(t, err)
 		assert.Empty(t, got)
 
-		assert.NoError(t, rs.Refresh(ctx,
-			WithTargetRetrievalFunc(testFullFetchRetrievalFunc[*targets.Target](t, nil)),
-			WithSessionRetrievalFunc(testFullFetchRetrievalFunc[*sessions.Session](t, retSess[:2]))))
-		got, err = r.ListSessions(ctx, at.Id)
-		assert.NoError(t, err)
-		assert.ElementsMatch(t, got, retSess[:2])
+		err = rs.Refresh(ctx,
+			WithTargetRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t)),
+			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t)))
+		assert.ErrorIs(t, err, ErrRefreshNotSupported)
 
-		assert.NoError(t, rs.FullFetch(ctx,
-			WithTargetRetrievalFunc(testFullFetchRetrievalFunc[*targets.Target](t, nil)),
-			WithSessionRetrievalFunc(testFullFetchRetrievalFunc[*sessions.Session](t, retSess))))
 		got, err = r.ListSessions(ctx, at.Id)
 		assert.NoError(t, err)
-		assert.ElementsMatch(t, got, retSess)
+		assert.Empty(t, got)
+
+		assert.NoError(t, rs.RecheckCachingSupport(ctx,
+			WithTargetRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t)),
+			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t))))
+		got, err = r.ListSessions(ctx, at.Id)
+		assert.NoError(t, err)
+		assert.Empty(t, got)
 	})
 
 	t.Run("error propogates up", func(t *testing.T) {
@@ -873,13 +867,14 @@ func TestFullFetch(t *testing.T) {
 		require.NoError(t, err)
 		require.NoError(t, r.AddKeyringToken(ctx, boundaryAddr, KeyringToken{KeyringType: "k", TokenName: "t", AuthTokenId: at.Id}))
 
-		assert.NoError(t, rs.Refresh(ctx,
-			WithTargetRetrievalFunc(testFullFetchRetrievalFunc[*targets.Target](t, []*targets.Target{target("1")})),
-			WithSessionRetrievalFunc(testFullFetchRetrievalFunc[*sessions.Session](t, []*sessions.Session{session("1")}))))
+		err = rs.Refresh(ctx,
+			WithTargetRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t)),
+			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t)))
+		assert.ErrorIs(t, err, ErrRefreshNotSupported)
 
 		innerErr := errors.New("test error")
-		err = rs.FullFetch(ctx,
-			WithSessionRetrievalFunc(testFullFetchRetrievalFunc[*sessions.Session](t, nil)),
+		err = rs.RecheckCachingSupport(ctx,
+			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t)),
 			WithTargetRetrievalFunc(func(ctx context.Context, addr, token string, refreshTok RefreshTokenValue) ([]*targets.Target, []string, RefreshTokenValue, error) {
 				require.Equal(t, boundaryAddr, addr)
 				require.Equal(t, at.Token, token)
@@ -887,9 +882,9 @@ func TestFullFetch(t *testing.T) {
 			}))
 		assert.ErrorContains(t, err, innerErr.Error())
 
-		err = rs.FullFetch(ctx,
-			WithTargetRetrievalFunc(testFullFetchRetrievalFunc[*targets.Target](t, nil)),
-			WithSessionRetrievalFunc(func(ctx context.Context, addr, token string, refreshTok RefreshTokenValue) ([]*sessions.Session, []string, RefreshTokenValue, error) {
+		err = rs.RecheckCachingSupport(ctx,
+			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t)),
+			WithTargetRetrievalFunc(func(ctx context.Context, addr, token string, refreshTok RefreshTokenValue) ([]*targets.Target, []string, RefreshTokenValue, error) {
 				require.Equal(t, boundaryAddr, addr)
 				require.Equal(t, at.Token, token)
 				return nil, nil, "", innerErr
@@ -906,9 +901,10 @@ func TestFullFetch(t *testing.T) {
 		require.NoError(t, err)
 		require.NoError(t, r.AddKeyringToken(ctx, boundaryAddr, KeyringToken{KeyringType: "k", TokenName: "t", AuthTokenId: at.Id}))
 
-		assert.NoError(t, rs.Refresh(ctx,
-			WithTargetRetrievalFunc(testFullFetchRetrievalFunc[*targets.Target](t, []*targets.Target{target("1")})),
-			WithSessionRetrievalFunc(testFullFetchRetrievalFunc[*sessions.Session](t, []*sessions.Session{session("1")}))))
+		err = rs.Refresh(ctx,
+			WithTargetRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t)),
+			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t)))
+		assert.ErrorIs(t, err, ErrRefreshNotSupported)
 
 		// Remove the token from the keyring, see that we can still see the
 		// token and then user until a Refresh happens which causes them to be
@@ -923,9 +919,10 @@ func TestFullFetch(t *testing.T) {
 		require.NoError(t, err)
 		assert.Len(t, us, 1)
 
-		rs.FullFetch(ctx,
-			WithSessionRetrievalFunc(testFullFetchRetrievalFunc[*sessions.Session](t, nil)),
-			WithTargetRetrievalFunc(testFullFetchRetrievalFunc[*targets.Target](t, nil)))
+		err = rs.RecheckCachingSupport(ctx,
+			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t)),
+			WithTargetRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t)))
+		assert.NoError(t, err)
 
 		ps, err = r.listTokens(ctx, u)
 		require.NoError(t, err)

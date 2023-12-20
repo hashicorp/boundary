@@ -47,7 +47,7 @@ func TestTickerRefresh(t *testing.T) {
 	}
 }
 
-func TestTickerFullFetch(t *testing.T) {
+func TestTickerRecheckCachingSupport(t *testing.T) {
 	ctx := context.Background()
 
 	refresher := &fakeRefresher{make(chan struct{})}
@@ -56,7 +56,7 @@ func TestTickerFullFetch(t *testing.T) {
 	require.NoError(t, err)
 
 	tickerCtx, tickerCancel := context.WithCancel(ctx)
-	go rt.startFullFetch(tickerCtx)
+	go rt.startRecheckCachingSupport(tickerCtx)
 	t.Cleanup(func() {
 		tickerCancel()
 	})
@@ -106,7 +106,7 @@ func (r *fakeRefresher) Refresh(context.Context, ...cache.Option) error {
 	return nil
 }
 
-func (r *fakeRefresher) FullFetch(context.Context, ...cache.Option) error {
+func (r *fakeRefresher) RecheckCachingSupport(context.Context, ...cache.Option) error {
 	r.called <- struct{}{}
 	return nil
 }

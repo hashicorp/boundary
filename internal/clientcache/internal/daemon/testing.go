@@ -33,12 +33,12 @@ func NewTestServer(t *testing.T, cmd Commander, opt ...Option) *TestServer {
 	dotDir := t.TempDir()
 
 	cfg := &Config{
-		ContextCancel:     cancel,
-		RefreshInterval:   DefaultRefreshInterval,
-		FullFetchInterval: DefaultFullFetchInterval,
-		StoreDebug:        opts.withDebug,
-		LogWriter:         io.Discard,
-		DotDirectory:      dotDir,
+		ContextCancel:          cancel,
+		RefreshInterval:        DefaultRefreshInterval,
+		RecheckSupportInterval: DefaultRecheckSupportInterval,
+		StoreDebug:             opts.withDebug,
+		LogWriter:              io.Discard,
+		DotDirectory:           dotDir,
 	}
 
 	s, err := New(ctx, cfg)
@@ -93,15 +93,45 @@ func (s *TestServer) AddResources(t *testing.T, p *authtokens.AuthToken, tars []
 		if tok != p.Token {
 			return nil, nil, "", nil
 		}
-		return tars, nil, "", nil
+		return tars, nil, "addedtargets", nil
 	}
 	sessFn := func(ctx context.Context, _, tok string, _ cache.RefreshTokenValue) ([]*sessions.Session, []string, cache.RefreshTokenValue, error) {
 		if tok != p.Token {
 			return nil, nil, "", nil
 		}
-		return sess, nil, "", nil
+		return sess, nil, "addedsessions", nil
 	}
 	rs, err := cache.NewRefreshService(ctx, r, 0, 0)
 	require.NoError(t, err)
 	require.NoError(t, rs.Refresh(ctx, cache.WithTargetRetrievalFunc(tarFn), cache.WithSessionRetrievalFunc(sessFn)))
+}
+
+// AddUnsupportedCachingData provides data in a way that simulates it coming from
+// a boundary instance that does not support refresh tokens. Since refresh tokens
+// are required for caching, this has the effect of the data not being cached and
+// the user being identified as not supported in the cache.
+func (s *TestServer) AddUnsupportedCachingData(t *testing.T, p *authtokens.AuthToken, atReadFn cache.BoundaryTokenReaderFn) {
+	t.Helper()
+	ctx := context.Background()
+	r, err := cache.NewRepository(ctx, s.CacheServer.store, &sync.Map{}, s.cmd.ReadTokenFromKeyring, atReadFn)
+	require.NoError(t, err)
+
+	tarFn := func(ctx context.Context, _, tok string, _ cache.RefreshTokenValue) ([]*targets.Target, []string, cache.RefreshTokenValue, error) {
+		if tok != p.Token {
+			return nil, nil, "", nil
+		}
+		return []*targets.Target{
+			{Id: "ttcp_unsupported", Name: "unsupported", Description: "not supported"},
+		}, nil, "", cache.ErrRefreshNotSupported
+	}
+	sessFn := func(ctx context.Context, _, tok string, _ cache.RefreshTokenValue) ([]*sessions.Session, []string, cache.RefreshTokenValue, error) {
+		if tok != p.Token {
+			return nil, nil, "", nil
+		}
+		return []*sessions.Session{}, nil, "", cache.ErrRefreshNotSupported
+	}
+	rs, err := cache.NewRefreshService(ctx, r, 0, 0)
+	require.NoError(t, err)
+	err = rs.Refresh(ctx, cache.WithTargetRetrievalFunc(tarFn), cache.WithSessionRetrievalFunc(sessFn))
+	require.ErrorContains(t, err, "not supported for this controller")
 }
