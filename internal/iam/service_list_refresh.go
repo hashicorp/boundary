@@ -108,6 +108,8 @@ func ListUsersRefresh(
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing repo")
 	case withScopeIds == nil:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing scope ids")
+	case tok.ResourceType != resource.User:
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "token did not have a user resource type")
 	}
 	rt, ok := tok.Subtype.(*listtoken.StartRefreshToken)
 	if !ok {
