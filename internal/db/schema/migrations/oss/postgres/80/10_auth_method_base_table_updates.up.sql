@@ -39,6 +39,9 @@ begin;
   left join auth_password_method as pw
          on am.public_id = pw.public_id;
 
+  -- Ensure that is_active_public_state is always set from now on
+  alter table auth_method alter column is_active_public_state set not null;
+
   -- Replace the insert trigger to also set the create_time
   -- Partially replaces the insert_auth_method_subtype function defined in 2/10_auth.up.sql
   -- This is because ldap and oidc subtypes have a state column, but password does not.
@@ -129,9 +132,6 @@ begin;
       on auth_method (create_time desc, public_id asc);
   create index auth_method_update_time_public_id_idx
       on auth_method (update_time desc, public_id asc);
-
-  -- Make column not null
-  alter table auth_method alter column is_active_public_state set not null;
 
   analyze auth_method;
 
