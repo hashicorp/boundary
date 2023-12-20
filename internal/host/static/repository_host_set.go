@@ -267,7 +267,7 @@ func (r *Repository) listSets(ctx context.Context, catalogId string, opt ...Opti
 	}
 	whereClause := "catalog_id = @catalog_id"
 	args := []any{sql.Named("catalog_id", catalogId)}
-	order := "create_time desc, public_id asc"
+	order := "create_time desc, public_id desc"
 	if opts.withStartPageAfterItem != nil {
 		args = append(args,
 			sql.Named("last_item_create_time", opts.withStartPageAfterItem.GetCreateTime()),
@@ -301,7 +301,7 @@ func (r *Repository) listSetsRefresh(ctx context.Context, catalogId string, upda
 		sql.Named("catalog_id", catalogId),
 		sql.Named("updated_after_time", updatedAfter),
 	}
-	order := "update_time desc, public_id asc"
+	order := "update_time desc, public_id desc"
 	if opts.withStartPageAfterItem != nil {
 		args = append(args,
 			sql.Named("last_item_update_time", opts.withStartPageAfterItem.GetUpdateTime()),
