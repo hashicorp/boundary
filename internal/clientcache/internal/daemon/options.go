@@ -14,7 +14,7 @@ import (
 type options struct {
 	withDebug                              bool
 	withRefreshInterval                    time.Duration
-	withFullFetchInterval                  time.Duration
+	withRecheckSupportInterval             time.Duration
 	testWithIntervalRandomizationFactor    float64
 	testWithIntervalRandomizationFactorSet bool
 	withBoundaryTokenReaderFunc            cache.BoundaryTokenReaderFn
@@ -57,13 +57,13 @@ func withRefreshInterval(_ context.Context, d time.Duration) Option {
 	}
 }
 
-// withFullFetchInterval provides an optional full fetch interval.
-func withFullFetchInterval(_ context.Context, d time.Duration) Option {
+// withRecheckSupportInterval provides an optional full fetch interval.
+func withRecheckSupportInterval(_ context.Context, d time.Duration) Option {
 	return func(o *options) error {
 		if d <= 0 {
-			return fmt.Errorf("provided full fetch interval %q must be positive", d)
+			return fmt.Errorf("provided recheck support interval %q must be positive", d)
 		}
-		o.withFullFetchInterval = d
+		o.withRecheckSupportInterval = d
 		return nil
 	}
 }

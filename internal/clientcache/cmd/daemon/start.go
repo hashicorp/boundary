@@ -50,7 +50,7 @@ type StartCommand struct {
 	*base.Command
 
 	flagRefreshInterval         time.Duration
-	flagFullFetchInterval       time.Duration
+	flagRecheckSupportInterval  time.Duration
 	flagMaxSearchStaleness      time.Duration
 	flagMaxSearchRefreshTimeout time.Duration
 	flagDatabaseUrl             string
@@ -104,25 +104,26 @@ func (c *StartCommand) Flags() *base.FlagSets {
 	f.DurationVar(&base.DurationVar{
 		Name:    "refresh-interval",
 		Target:  &c.flagRefreshInterval,
-		Usage:   `Specifies the interval between refresh token supported cache refreshes. Default: 1 minute`,
+		Usage:   `Specifies the interval between refresh token supported cache refreshes.`,
 		Default: daemon.DefaultRefreshInterval,
 	})
 	f.DurationVar(&base.DurationVar{
-		Name:    "full-fetch-interval",
-		Target:  &c.flagFullFetchInterval,
-		Usage:   `Specifies the interval between full cache refresh for boundary instances which do not support refresh tokens. Default: 5 minutes`,
-		Default: daemon.DefaultFullFetchInterval,
+		Name:    "recheck-support-interval",
+		Target:  &c.flagRecheckSupportInterval,
+		Usage:   `Specifies the interval between checking if a boundary instances is supported when it previously was not.`,
+		Default: daemon.DefaultRecheckSupportInterval,
+		Hidden:  true,
 	})
 	f.DurationVar(&base.DurationVar{
 		Name:    "max-search-staleness",
 		Target:  &c.flagMaxSearchStaleness,
-		Usage:   `Specifies the duration of time that can pass since the resource was last updated before performing a search waits for the resources being refreshed first. Default: 1 minute`,
+		Usage:   `Specifies the duration of time that can pass since the resource was last updated before performing a search waits for the resources being refreshed first.`,
 		Default: daemon.DefaultSearchStaleness,
 	})
 	f.DurationVar(&base.DurationVar{
 		Name:    "max-search-refresh-timeout",
 		Target:  &c.flagMaxSearchRefreshTimeout,
-		Usage:   `If a search request triggers a best effort refresh, this specifies how long the refresh should run before timing out. Default: 1 second`,
+		Usage:   `If a search request triggers a best effort refresh, this specifies how long the refresh should run before timing out.`,
 		Default: daemon.DefaultSearchRefreshTimeout,
 	})
 	f.BoolVar(&base.BoolVar{
@@ -196,16 +197,16 @@ func (c *StartCommand) Run(args []string) int {
 	writers = append(writers, lf)
 
 	cfg := &daemon.Config{
-		ContextCancel:      cancel,
-		RefreshInterval:    c.flagRefreshInterval,
-		FullFetchInterval:  c.flagFullFetchInterval,
-		MaxSearchStaleness: c.flagMaxSearchStaleness,
-		DatabaseUrl:        c.flagDatabaseUrl,
-		StoreDebug:         c.flagStoreDebug,
-		LogLevel:           c.flagLogLevel,
-		LogFormat:          c.flagLogFormat,
-		LogWriter:          io.MultiWriter(writers...),
-		DotDirectory:       dotDir,
+		ContextCancel:          cancel,
+		RefreshInterval:        c.flagRefreshInterval,
+		RecheckSupportInterval: c.flagRecheckSupportInterval,
+		MaxSearchStaleness:     c.flagMaxSearchStaleness,
+		DatabaseUrl:            c.flagDatabaseUrl,
+		StoreDebug:             c.flagStoreDebug,
+		LogLevel:               c.flagLogLevel,
+		LogFormat:              c.flagLogFormat,
+		LogWriter:              io.MultiWriter(writers...),
+		DotDirectory:           dotDir,
 	}
 
 	srv, err := daemon.New(ctx, cfg)
@@ -307,6 +308,10 @@ func (c *StartCommand) makeBackground(ctx context.Context, dotDir string) (bool,
 	env := os.Environ()
 	env = append(env, fmt.Sprintf("%s=%s", backgroundEnvName, backgroundEnvVal))
 	args := []string{"daemon", "start"}
+	args = append(args, "-refresh-interval", c.flagRefreshInterval.String())
+	args = append(args, "-max-search-staleness", c.flagMaxSearchStaleness.String())
+	args = append(args, "-max-search-refresh-timeout", c.flagMaxSearchRefreshTimeout.String())
+	args = append(args, "-recheck-support-interval", c.flagRecheckSupportInterval.String())
 	if c.flagLogLevel != "" {
 		args = append(args, "-log-level", c.flagLogLevel)
 	}
@@ -315,18 +320,6 @@ func (c *StartCommand) makeBackground(ctx context.Context, dotDir string) (bool,
 	}
 	if c.flagDatabaseUrl != "" {
 		args = append(args, "-database-url", c.flagDatabaseUrl)
-	}
-	if c.flagRefreshInterval > 0 && c.flagRefreshInterval != daemon.DefaultRefreshInterval {
-		args = append(args, "-refresh-interval", c.flagRefreshInterval.String())
-	}
-	if c.flagFullFetchInterval > 0 && c.flagFullFetchInterval != daemon.DefaultFullFetchInterval {
-		args = append(args, "-full-fetch-interval", c.flagFullFetchInterval.String())
-	}
-	if c.flagMaxSearchStaleness > 0 && c.flagMaxSearchStaleness != daemon.DefaultSearchStaleness {
-		args = append(args, "-max-search-staleness", c.flagMaxSearchStaleness.String())
-	}
-	if c.flagMaxSearchRefreshTimeout > 0 && c.flagMaxSearchRefreshTimeout != daemon.DefaultSearchRefreshTimeout {
-		args = append(args, "-max-search-refresh-timeout", c.flagMaxSearchRefreshTimeout.String())
 	}
 	if c.flagStoreDebug {
 		args = append(args, "-store-debug")

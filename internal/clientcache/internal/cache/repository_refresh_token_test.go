@@ -55,6 +55,20 @@ func TestListRefreshToken(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Len(t, got, 1)
 	})
+	t.Run("sentinel values", func(t *testing.T) {
+		known := &user{Id: "sentinelValues", Address: "addr"}
+		require.NoError(t, r.rw.Create(ctx, known))
+
+		token := sentinelNoRefreshToken
+		r.rw.DoTx(ctx, 1, db.ExpBackoff{}, func(r db.Reader, w db.Writer) error {
+			require.NoError(t, upsertRefreshToken(ctx, w, known, targetResourceType, token))
+			return nil
+		})
+
+		got, err := r.listRefreshTokens(ctx, known)
+		assert.NoError(t, err)
+		assert.Empty(t, got)
+	})
 	t.Run("got multiple responses", func(t *testing.T) {
 		known := &user{Id: "with multiple responses", Address: "addr"}
 		require.NoError(t, r.rw.Create(ctx, known))
@@ -69,6 +83,76 @@ func TestListRefreshToken(t *testing.T) {
 		got, err := r.listRefreshTokens(ctx, known)
 		assert.NoError(t, err)
 		assert.Len(t, got, 2)
+	})
+}
+
+func TestCacheSupportState(t *testing.T) {
+	ctx := context.Background()
+	s, err := cachedb.Open(ctx)
+	require.NoError(t, err)
+
+	r, err := NewRepository(ctx, s, &sync.Map{},
+		mapBasedAuthTokenKeyringLookup(map[ringToken]*authtokens.AuthToken{}),
+		sliceBasedAuthTokenBoundaryReader(nil))
+	require.NoError(t, err)
+
+	t.Run("unknown", func(t *testing.T) {
+		known := &user{Id: "unknown", Address: "addr"}
+		require.NoError(t, r.rw.Create(ctx, known))
+
+		got, err := r.listRefreshTokens(ctx, known)
+		assert.NoError(t, err)
+		assert.Empty(t, got)
+
+		cs, err := r.cacheSupportState(ctx, known)
+		assert.NoError(t, err)
+		assert.Equal(t, cs.supported, UnknownCacheSupport)
+		assert.Nil(t, cs.lastChecked)
+	})
+
+	t.Run("unsupported", func(t *testing.T) {
+		known := &user{Id: "unsupported", Address: "addr"}
+		require.NoError(t, r.rw.Create(ctx, known))
+
+		now := time.Now().Truncate(time.Millisecond)
+		token := sentinelNoRefreshToken
+		r.rw.DoTx(ctx, 1, db.ExpBackoff{}, func(r db.Reader, w db.Writer) error {
+			require.NoError(t, upsertRefreshToken(ctx, w, known, targetResourceType, token))
+			return nil
+		})
+
+		got, err := r.listRefreshTokens(ctx, known)
+		assert.NoError(t, err)
+		assert.Empty(t, got)
+
+		cs, err := r.cacheSupportState(ctx, known)
+		assert.NoError(t, err)
+		assert.Equal(t, cs.supported, NotSupportedCacheSupport)
+		assert.NotNil(t, cs.lastChecked)
+		assert.LessOrEqual(t, now, *cs.lastChecked)
+	})
+
+	t.Run("Supported", func(t *testing.T) {
+		known := &user{Id: "supported", Address: "addr"}
+		require.NoError(t, r.rw.Create(ctx, known))
+
+		now := time.Now().Truncate(time.Millisecond)
+		token := RefreshTokenValue("something")
+		r.rw.DoTx(ctx, 1, db.ExpBackoff{}, func(r db.Reader, w db.Writer) error {
+			require.NoError(t, upsertRefreshToken(ctx, w, known, targetResourceType, token))
+			require.NoError(t, upsertRefreshToken(ctx, w, known, sessionResourceType, token))
+			return nil
+		})
+
+		got, err := r.listRefreshTokens(ctx, known)
+		assert.NoError(t, err)
+		assert.Len(t, got, 2)
+
+		cs, err := r.cacheSupportState(ctx, known)
+		assert.NoError(t, err)
+		assert.Equal(t, cs.supported, SupportedCacheSupport)
+		assert.NotNil(t, cs.lastChecked)
+		assert.LessOrEqual(t, now, *cs.lastChecked)
 	})
 }
 
