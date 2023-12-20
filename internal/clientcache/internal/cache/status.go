@@ -41,12 +41,18 @@ type AuthTokenStatus struct {
 	KeyringlessReferences int
 }
 
+type BoundaryStatus struct {
+	// The boundary address for this user
+	Address          string
+	CachingSupported CacheSupport
+	LastSupportCheck time.Duration
+}
+
 // UserStatus contains the status of a specific user tracked by the cache
 type UserStatus struct {
 	// The Id of the user this status is for
-	Id string
-	// The boundary address for this user
-	Address string
+	Id             string
+	BoundaryStatus BoundaryStatus
 	// The auth tokens used by this user to authenticate with the boundary instance
 	AuthTokens []AuthTokenStatus
 	// The resources tracked by the cache for this user
@@ -84,29 +90,39 @@ func (s *StatusService) Status(ctx context.Context) (*Status, error) {
 	}
 	for _, u := range users {
 		us := UserStatus{
-			Id:      u.Id,
-			Address: u.Address,
+			Id: u.Id,
 		}
 
-		{
-			toks, err := s.repo.listTokens(ctx, u)
+		cacheSupported, err := s.repo.cacheSupportState(ctx, u)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+
+		us.BoundaryStatus = BoundaryStatus{
+			Address:          u.Address,
+			CachingSupported: cacheSupported.supported,
+		}
+		if cacheSupported.lastChecked != nil && !cacheSupported.lastChecked.IsZero() {
+			us.BoundaryStatus.LastSupportCheck = time.Since(*cacheSupported.lastChecked)
+		}
+
+		toks, err := s.repo.listTokens(ctx, u)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		for _, t := range toks {
+			ts := &AuthTokenStatus{
+				Id: t.Id,
+			}
+			kt, err := s.repo.listKeyringTokens(ctx, t)
 			if err != nil {
 				return nil, errors.Wrap(ctx, err, op)
 			}
-			for _, t := range toks {
-				ts := &AuthTokenStatus{
-					Id: t.Id,
-				}
-				kt, err := s.repo.listKeyringTokens(ctx, t)
-				if err != nil {
-					return nil, errors.Wrap(ctx, err, op)
-				}
-				ts.KeyringReferences = len(kt)
-				if _, ok := s.repo.idToKeyringlessAuthToken.Load(t.Id); ok {
-					ts.KeyringlessReferences = 1
-				}
-				us.AuthTokens = append(us.AuthTokens, *ts)
+			ts.KeyringReferences = len(kt)
+			if _, ok := s.repo.idToKeyringlessAuthToken.Load(t.Id); ok {
+				ts.KeyringlessReferences = 1
 			}
+			us.AuthTokens = append(us.AuthTokens, *ts)
 		}
 
 		for _, rt := range []resourceType{targetResourceType, sessionResourceType} {
@@ -212,6 +228,9 @@ func (s *StatusService) refreshTokenStatus(ctx context.Context, u *user, rt reso
 			return nil, nil
 		}
 		return nil, errors.Wrap(ctx, err, op)
+	}
+	if refTok.RefreshToken == sentinelNoRefreshToken {
+		return nil, nil
 	}
 
 	ret := &RefreshTokenStatus{

@@ -7,6 +7,7 @@ import (
 	"context"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/boundary/api/sessions"
 	"github.com/hashicorp/boundary/api/targets"
@@ -101,6 +102,90 @@ func TestSearch_Errors(t *testing.T) {
 			assert.Nil(t, res)
 		})
 	}
+}
+
+func TestSupported(t *testing.T) {
+	ctx := context.Background()
+	s, err := cachedb.Open(ctx)
+	require.NoError(t, err)
+
+	r, err := NewRepository(ctx, s, &sync.Map{},
+		mapBasedAuthTokenKeyringLookup(nil),
+		sliceBasedAuthTokenBoundaryReader(nil))
+	assert.NoError(t, err)
+
+	ss, err := NewSearchService(ctx, r)
+	require.NoError(t, err)
+	require.NotNil(t, ss)
+
+	t.Run("supported", func(t *testing.T) {
+		at := &AuthToken{
+			Id:     "supported",
+			UserId: "supported",
+		}
+		{
+			rw := db.New(s)
+			u := &user{Id: at.UserId, Address: "address"}
+			require.NoError(t, rw.Create(ctx, u))
+			require.NoError(t, rw.Create(ctx, at))
+
+			refTok := &refreshToken{
+				UserId:       at.Id,
+				ResourceType: targetResourceType,
+				RefreshToken: "sometherefreshtoken",
+				UpdateTime:   time.Now(),
+				CreateTime:   time.Now(),
+			}
+			require.NoError(t, rw.Create(ctx, refTok))
+		}
+		got, err := ss.Supported(ctx, at)
+		assert.NoError(t, err)
+		assert.True(t, got)
+	})
+
+	t.Run("unsupported", func(t *testing.T) {
+		at := &AuthToken{
+			Id:     "unsupported",
+			UserId: "unsupported",
+		}
+		{
+			rw := db.New(s)
+			u := &user{Id: at.UserId, Address: "address"}
+			require.NoError(t, rw.Create(ctx, u))
+			require.NoError(t, rw.Create(ctx, at))
+
+			refTok := &refreshToken{
+				UserId:       at.Id,
+				ResourceType: targetResourceType,
+				RefreshToken: sentinelNoRefreshToken,
+				UpdateTime:   time.Now(),
+				CreateTime:   time.Now(),
+			}
+			require.NoError(t, rw.Create(ctx, refTok))
+		}
+		got, err := ss.Supported(ctx, at)
+		assert.NoError(t, err)
+		assert.False(t, got)
+	})
+
+	t.Run("unkonwn", func(t *testing.T) {
+		at := &AuthToken{
+			Id:     "unknown",
+			UserId: "unknown",
+		}
+		{
+			rw := db.New(s)
+			u := &user{Id: at.UserId, Address: "address"}
+			require.NoError(t, rw.Create(ctx, u))
+			require.NoError(t, rw.Create(ctx, at))
+		}
+		got, err := ss.Supported(ctx, at)
+		assert.NoError(t, err)
+		// No refresh token means we don't know if the boundary instance
+		// supports refresh tokens. Since we likely don't have any resources
+		// to search for anyways, default to saying it is supported.
+		assert.True(t, got)
+	})
 }
 
 func TestSearch(t *testing.T) {

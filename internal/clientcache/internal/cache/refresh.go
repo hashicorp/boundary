@@ -6,6 +6,7 @@ package cache
 import (
 	"context"
 	stderrors "errors"
+	"fmt"
 	"time"
 
 	"github.com/hashicorp/boundary/api"
@@ -114,32 +115,13 @@ func (r *RefreshService) refreshableUsers(ctx context.Context, in []*user) ([]*u
 	const op = "cache.(RefreshService).refreshableUsers"
 	var ret []*user
 	for _, u := range in {
-		rt, err := r.repo.listRefreshTokens(ctx, u)
+		cs, err := r.repo.cacheSupportState(ctx, u)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
-		if len(rt) > 0 {
+		if cs.supported != NotSupportedCacheSupport {
 			ret = append(ret, u)
-			continue
 		}
-
-		// If any resource exists for this user, since it doesn't have a refresh
-		// token yet it is not refreshable.
-		ts, err := r.repo.searchTargets(ctx, "true", nil, withUserId(u.Id))
-		if err != nil {
-			return nil, errors.Wrap(ctx, err, op)
-		}
-		if len(ts) > 0 {
-			continue
-		}
-		ss, err := r.repo.searchSessions(ctx, "true", nil, withUserId(u.Id))
-		if err != nil {
-			return nil, errors.Wrap(ctx, err, op)
-		}
-		if len(ss) > 0 {
-			continue
-		}
-		ret = append(ret, u)
 	}
 	return ret, nil
 }
@@ -267,24 +249,24 @@ func (r *RefreshService) Refresh(ctx context.Context, opt ...Option) error {
 		}
 
 		if err := r.repo.refreshTargets(ctx, u, tokens, opt...); err != nil {
-			retErr = stderrors.Join(retErr, errors.Wrap(ctx, err, op))
+			retErr = stderrors.Join(retErr, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("for user id %s", u.Id))))
 		}
 		if err := r.repo.refreshSessions(ctx, u, tokens, opt...); err != nil {
-			retErr = stderrors.Join(retErr, errors.Wrap(ctx, err, op))
+			retErr = stderrors.Join(retErr, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("for user id %s", u.Id))))
 		}
 
 	}
 	return retErr
 }
 
-// FullFetch is used for users of boundary instances which do not support
-// refresh tokens. For these users a call to FullFetch retrieves all resources
-// for that user and updates the database with the result. Users are identified
-// as being in this group if they have at least one resource in the cache and
-// do not have any refresh tokens. Users who do not have any resources nor
-// refresh tokens are updated using Refresh.
-func (r *RefreshService) FullFetch(ctx context.Context, opt ...Option) error {
-	const op = "cache.(RefreshService).Refresh"
+// RecheckCachingSupport is used for users of boundary instances which do not
+// support refresh tokens. For these users a call to RecheckCachingSupport
+// retrieves resources for that user to see if the controller now returns a
+// refresh token. Users who do not have any resources nor refresh tokens still
+// are Refreshed. If caching moves from unsupported to supported this method
+// will cache the results automatically.
+func (r *RefreshService) RecheckCachingSupport(ctx context.Context, opt ...Option) error {
+	const op = "cache.(RefreshService).RecheckCachingSupport"
 	if err := r.repo.cleanExpiredOrOrphanedAuthTokens(ctx); err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
@@ -318,11 +300,19 @@ func (r *RefreshService) FullFetch(ctx context.Context, opt ...Option) error {
 			continue
 		}
 
-		if err := r.repo.fullFetchTargets(ctx, u, tokens, opt...); err != nil {
-			retErr = stderrors.Join(retErr, errors.Wrap(ctx, err, op))
+		if err := r.repo.checkCachingTargets(ctx, u, tokens, opt...); err != nil {
+			if err == ErrRefreshNotSupported {
+				// This is expected so no need to propogate the error up
+				continue
+			}
+			retErr = stderrors.Join(retErr, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("for user id %s", u.Id))))
 		}
-		if err := r.repo.fullFetchSessions(ctx, u, tokens, opt...); err != nil {
-			retErr = stderrors.Join(retErr, errors.Wrap(ctx, err, op))
+		if err := r.repo.checkCachingSessions(ctx, u, tokens, opt...); err != nil {
+			if err == ErrRefreshNotSupported {
+				// This is expected so no need to propogate the error up
+				continue
+			}
+			retErr = stderrors.Join(retErr, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("for user id %s", u.Id))))
 		}
 
 	}

@@ -63,24 +63,17 @@ type SearchResult struct {
 // cache.
 type SearchService struct {
 	searchableResources map[SearchableResource]resourceSearcher
+	repo                *Repository
 }
 
-// QueryAndLister defines the methods needed for listing an querying the
-// resources supported by the boundary frontend.
-type QueryAndLister interface {
-	QueryTargets(context.Context, string, string) ([]*targets.Target, error)
-	ListTargets(context.Context, string) ([]*targets.Target, error)
-	QuerySessions(context.Context, string, string) ([]*sessions.Session, error)
-	ListSessions(context.Context, string) ([]*sessions.Session, error)
-}
-
-func NewSearchService(ctx context.Context, repo QueryAndLister) (*SearchService, error) {
+func NewSearchService(ctx context.Context, repo *Repository) (*SearchService, error) {
 	const op = "cache.NewSearchService"
 	switch {
 	case util.IsNil(repo):
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "repo is nil")
 	}
 	return &SearchService{
+		repo: repo,
 		searchableResources: map[SearchableResource]resourceSearcher{
 			Targets: &resourceSearchFns[*targets.Target]{
 				list:  repo.ListTargets,
@@ -98,6 +91,30 @@ func NewSearchService(ctx context.Context, repo QueryAndLister) (*SearchService,
 			},
 		},
 	}, nil
+}
+
+// Supported returns true if the provided search is supported for the provided
+// auth token.
+func (s *SearchService) Supported(ctx context.Context, t *AuthToken) (bool, error) {
+	const op = "cache.(SearchService).Supported"
+	switch {
+	case util.IsNil(t):
+		return false, errors.New(ctx, errors.InvalidParameter, op, "auth token is nil")
+	case t.UserId == "":
+		return false, errors.New(ctx, errors.InvalidParameter, op, "auth token's user id is empty")
+	}
+	u, err := s.repo.lookupUser(ctx, t.UserId)
+	if err != nil {
+		return false, errors.Wrap(ctx, err, op)
+	}
+	if u == nil {
+		return false, errors.New(ctx, errors.NotFound, op, "user not found for auth token")
+	}
+	cs, err := s.repo.cacheSupportState(ctx, u)
+	if err != nil {
+		return false, errors.Wrap(ctx, err, op)
+	}
+	return cs.supported != NotSupportedCacheSupport, nil
 }
 
 // Search returns a SearchResult based on the provided SearchParams.  If the

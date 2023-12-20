@@ -69,15 +69,15 @@ type CacheServer struct {
 }
 
 type Config struct {
-	ContextCancel     context.CancelFunc
-	RefreshInterval   time.Duration
-	FullFetchInterval time.Duration
-	DatabaseUrl       string
-	StoreDebug        bool
-	LogLevel          string
-	LogFormat         string
-	LogWriter         io.Writer
-	DotDirectory      string
+	ContextCancel          context.CancelFunc
+	RefreshInterval        time.Duration
+	RecheckSupportInterval time.Duration
+	DatabaseUrl            string
+	StoreDebug             bool
+	LogLevel               string
+	LogFormat              string
+	LogWriter              io.Writer
+	DotDirectory           string
 	// The amount of time since the last refresh that must have passed for a
 	// search query to trigger an inline refresh.
 	MaxSearchStaleness time.Duration
@@ -97,8 +97,8 @@ func (sc *Config) validate(ctx context.Context) error {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing dot directory")
 	case sc.RefreshInterval < 0:
 		return errors.New(ctx, errors.InvalidParameter, op, "negative refresh interval")
-	case sc.FullFetchInterval < 0:
-		return errors.New(ctx, errors.InvalidParameter, op, "negative full fetch interval")
+	case sc.RecheckSupportInterval < 0:
+		return errors.New(ctx, errors.InvalidParameter, op, "negative recheck support interval")
 	case sc.MaxSearchStaleness < 0:
 		return errors.New(ctx, errors.InvalidParameter, op, "negative max search staleness")
 	}
@@ -236,7 +236,7 @@ func (s *CacheServer) Serve(ctx context.Context, cmd Commander, opt ...Option) e
 	s.infoKeys = append(s.infoKeys, "Max Search Refresh Timeout")
 	s.info["Refresh Interval"] = DefaultRefreshInterval.String()
 	s.infoKeys = append(s.infoKeys, "Refresh Interval")
-	s.info["Full Fetch Interval"] = DefaultFullFetchInterval.String()
+	s.info["Full Fetch Interval"] = DefaultRecheckSupportInterval.String()
 	s.infoKeys = append(s.infoKeys, "Full Fetch Interval")
 
 	ticOptions := []Option{}
@@ -244,9 +244,9 @@ func (s *CacheServer) Serve(ctx context.Context, cmd Commander, opt ...Option) e
 		s.info["Refresh Interval"] = s.conf.RefreshInterval.String()
 		ticOptions = append(ticOptions, withRefreshInterval(ctx, s.conf.RefreshInterval))
 	}
-	if s.conf.FullFetchInterval > 0 {
-		s.info["Full Fetch Interval"] = s.conf.FullFetchInterval.String()
-		ticOptions = append(ticOptions, withFullFetchInterval(ctx, s.conf.FullFetchInterval))
+	if s.conf.RecheckSupportInterval > 0 {
+		s.info["Recheck Support Interval"] = s.conf.RecheckSupportInterval.String()
+		ticOptions = append(ticOptions, withRecheckSupportInterval(ctx, s.conf.RecheckSupportInterval))
 	}
 
 	s.printInfo(ctx)
@@ -275,7 +275,7 @@ func (s *CacheServer) Serve(ctx context.Context, cmd Commander, opt ...Option) e
 	}()
 	go func() {
 		defer tickerWg.Done()
-		tic.startFullFetch(tickingCtx)
+		tic.startRecheckCachingSupport(tickingCtx)
 	}()
 
 	mux := http.NewServeMux()

@@ -40,6 +40,9 @@ func defaultTargetFunc(ctx context.Context, addr, authTok string, refreshTok Ref
 		}
 		return nil, nil, "", errors.Wrap(ctx, err, op)
 	}
+	if l.ResponseType == "" {
+		return nil, nil, "", ErrRefreshNotSupported
+	}
 	return l.Items, l.RemovedIds, RefreshTokenValue(l.ListToken), nil
 }
 
@@ -77,21 +80,26 @@ func (r *Repository) refreshTargets(ctx context.Context, u *user, tokens map[Aut
 	var gotResponse bool
 	var resp []*targets.Target
 	var removedIds []string
-	var newRefreshTokenVal RefreshTokenValue
+	var newRefreshToken RefreshTokenValue
+	var unsupportedCacheRequest bool
 	var retErr error
 	for at, t := range tokens {
-		resp, removedIds, newRefreshTokenVal, err = opts.withTargetRetrievalFunc(ctx, u.Address, t, oldRefreshTokenVal)
+		resp, removedIds, newRefreshToken, err = opts.withTargetRetrievalFunc(ctx, u.Address, t, oldRefreshTokenVal)
 		if api.ErrInvalidListToken.Is(err) {
 			if err := r.deleteRefreshToken(ctx, u, resourceType); err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
 			// try again without the refresh token
 			oldRefreshToken = nil
-			resp, removedIds, newRefreshTokenVal, err = opts.withTargetRetrievalFunc(ctx, u.Address, t, "")
+			resp, removedIds, newRefreshToken, err = opts.withTargetRetrievalFunc(ctx, u.Address, t, "")
 		}
 		if err != nil {
-			retErr = stderrors.Join(retErr, errors.Wrap(ctx, err, op, errors.WithMsg("for token %q", at.Id)))
-			continue
+			if err == ErrRefreshNotSupported {
+				unsupportedCacheRequest = true
+			} else {
+				retErr = stderrors.Join(retErr, errors.Wrap(ctx, err, op, errors.WithMsg("for token %q", at.Id)))
+				continue
+			}
 		}
 		gotResponse = true
 		break
@@ -106,9 +114,9 @@ func (r *Repository) refreshTargets(ctx context.Context, u *user, tokens map[Aut
 	}
 
 	event.WriteSysEvent(ctx, op, fmt.Sprintf("updating %d targets for user %v", len(resp), u))
-	_, err = r.rw.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(r db.Reader, w db.Writer) error {
+	_, err = r.rw.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(_ db.Reader, w db.Writer) error {
 		switch {
-		case oldRefreshToken == nil:
+		case oldRefreshToken == nil || unsupportedCacheRequest:
 			if _, err := w.Exec(ctx, "delete from target where fk_user_id = @fk_user_id",
 				[]any{sql.Named("fk_user_id", u.Id)}); err != nil {
 				return err
@@ -119,28 +127,40 @@ func (r *Repository) refreshTargets(ctx context.Context, u *user, tokens map[Aut
 				return err
 			}
 		}
-
-		if err := upsertTargets(ctx, w, u, resp); err != nil {
-			return err
-		}
-		if newRefreshTokenVal != "" || oldRefreshToken != nil {
-			if err := upsertRefreshToken(ctx, w, u, resourceType, newRefreshTokenVal); err != nil {
+		switch {
+		case unsupportedCacheRequest:
+			if err := upsertRefreshToken(ctx, w, u, resourceType, sentinelNoRefreshToken); err != nil {
 				return err
 			}
+		case newRefreshToken != "":
+			if err := upsertTargets(ctx, w, u, resp); err != nil {
+				return err
+			}
+			if err := upsertRefreshToken(ctx, w, u, resourceType, newRefreshToken); err != nil {
+				return err
+			}
+		default:
+			// controller supports caching, but doesn't have any resources
 		}
 		return nil
 	})
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
+	if unsupportedCacheRequest {
+		return ErrRefreshNotSupported
+	}
 	return nil
 }
 
-// fullFetchTargets fetches all targets for the provided user and sets the
-// cache to match the values returned.  If the response includes a refresh
-// token it will save that as well.
-func (r *Repository) fullFetchTargets(ctx context.Context, u *user, tokens map[AuthToken]string, opt ...Option) error {
-	const op = "cache.(Repository).fullFetchTargets"
+// checkCachingTargets fetches all targets for the provided user. If the
+// response has at least one target and a refresh token, it makes the targets
+// cachable and stores the refresh token. If there is no refresh token in the
+// response it marks this user as unable to cache the data. If no data and no
+// refresh token is stored it is unknown if the targets are cachable, the user
+// is not marked as unknown.
+func (r *Repository) checkCachingTargets(ctx context.Context, u *user, tokens map[AuthToken]string, opt ...Option) error {
+	const op = "cache.(Repository).checkCachingTargets"
 	switch {
 	case util.IsNil(u):
 		return errors.New(ctx, errors.InvalidParameter, op, "user is nil")
@@ -161,12 +181,17 @@ func (r *Repository) fullFetchTargets(ctx context.Context, u *user, tokens map[A
 	var gotResponse bool
 	var resp []*targets.Target
 	var newRefreshToken RefreshTokenValue
+	var unsupportedCacheRequest bool
 	var retErr error
 	for at, t := range tokens {
 		resp, _, newRefreshToken, err = opts.withTargetRetrievalFunc(ctx, u.Address, t, "")
 		if err != nil {
-			retErr = stderrors.Join(retErr, errors.Wrap(ctx, err, op, errors.WithMsg("for token %q", at.Id)))
-			continue
+			if err == ErrRefreshNotSupported {
+				unsupportedCacheRequest = true
+			} else {
+				retErr = stderrors.Join(retErr, errors.Wrap(ctx, err, op, errors.WithMsg("for token %q", at.Id)))
+				continue
+			}
 		}
 		gotResponse = true
 		break
@@ -180,18 +205,31 @@ func (r *Repository) fullFetchTargets(ctx context.Context, u *user, tokens map[A
 		return retErr
 	}
 
-	event.WriteSysEvent(ctx, op, fmt.Sprintf("updating %d targets for user %v", len(resp), u))
-	_, err = r.rw.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(r db.Reader, w db.Writer) error {
-		if _, err := w.Exec(ctx, "delete from target where fk_user_id = @fk_user_id",
-			[]any{sql.Named("fk_user_id", u.Id)}); err != nil {
-			return err
-		}
-
-		if err := upsertTargets(ctx, w, u, resp); err != nil {
-			return err
-		}
-		if newRefreshToken != "" {
+	_, err = r.rw.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(reader db.Reader, w db.Writer) error {
+		switch {
+		case unsupportedCacheRequest:
+			// Since we know the controller doesn't support caching, we mark the
+			// user as unable to cache the data.
+			if err := upsertRefreshToken(ctx, w, u, resourceType, sentinelNoRefreshToken); err != nil {
+				return err
+			}
+		case newRefreshToken != "":
+			// Now that there is a refresh token, the data can be cached, so
+			// cache it and store the refresh token for future refreshes.
+			if _, err := w.Exec(ctx, "delete from target where fk_user_id = @fk_user_id",
+				[]any{sql.Named("fk_user_id", u.Id)}); err != nil {
+				return err
+			}
+			if err := upsertTargets(ctx, w, u, resp); err != nil {
+				return err
+			}
 			if err := upsertRefreshToken(ctx, w, u, resourceType, newRefreshToken); err != nil {
+				return err
+			}
+		default:
+			// We know the controller supports caching, but doesn't have a
+			// refresh token so clear out any refresh token we have for this resource.
+			if err := deleteRefreshToken(ctx, w, u, resourceType); err != nil {
 				return err
 			}
 		}
@@ -199,6 +237,9 @@ func (r *Repository) fullFetchTargets(ctx context.Context, u *user, tokens map[A
 	})
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
+	}
+	if unsupportedCacheRequest {
+		return ErrRefreshNotSupported
 	}
 	return nil
 }

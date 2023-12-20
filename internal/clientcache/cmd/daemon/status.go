@@ -168,8 +168,12 @@ func printUsersTable(us []daemon.UserStatus) []string {
 		ret = append(ret, "  User:")
 		nonAttributeMap := map[string]any{
 			"Id":              u.Id,
-			"Address":         u.Address,
+			"Address":         u.BoundaryInstance.Address,
 			"AuthToken Count": len(u.AuthTokens),
+			"Search Support":  u.BoundaryInstance.CacheSupport,
+		}
+		if u.BoundaryInstance.LastSupportCheck > 0 {
+			nonAttributeMap["Since Search Support Check"] = u.BoundaryInstance.LastSupportCheck.Round(time.Second)
 		}
 		maxLength := base.MaxAttributesLength(nonAttributeMap, nil, nil)
 		ret = append(ret,
@@ -196,7 +200,7 @@ func printUsersTable(us []daemon.UserStatus) []string {
 			}
 			if r.RefreshToken != nil {
 				nonAttributeMap["Since Last Refresh"] = r.RefreshToken.LastUsed.Round(time.Second)
-				nonAttributeMap["Since Full Fetch"] = r.RefreshToken.Age.Round(time.Second)
+				nonAttributeMap["Since Initial Fetch"] = r.RefreshToken.Age.Round(time.Second)
 			}
 			if r.LastError != nil {
 				nonAttributeMap["Since Last Error"] = r.LastError.LastReturned.Round(time.Second)

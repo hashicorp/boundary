@@ -42,12 +42,22 @@ type AuthTokenStatus struct {
 	KeyringlessReferences int    `json:"keyringless_references,omitempty"`
 }
 
+// Information about the boundary controller the data is being cached from.
+type BoundaryStatus struct {
+	// The boundary address for this user
+	Address string `json:"address,omitempty"`
+	// Whether the controller responses are supported by the cache
+	CacheSupport string `json:"cache_support,omitempty"`
+	// How long ago the Boundary instance was checked for cache compatability
+	LastSupportCheck time.Duration `json:"last_support_check,omitempty"`
+}
+
 // UserStatus contains the status of a specific user tracked by the cache
 type UserStatus struct {
 	// The Id of the user this status is for
 	Id string `json:"id,omitempty"`
-	// The boundary address for this user
-	Address string `json:"address,omitempty"`
+	// The boundary instance this user connects to
+	BoundaryInstance BoundaryStatus `json:"boundary_instance,omitempty"`
 	// The auth tokens used by this user to authenticate with the boundary instance
 	AuthTokens []AuthTokenStatus `json:"auth_tokens,omitempty"`
 	// The resources tracked by the cache for this user
@@ -116,8 +126,12 @@ func toApiStatus(in *cache.Status, started time.Time, socketAddr string) *Status
 
 	for _, inU := range in.Users {
 		outU := UserStatus{
-			Id:      inU.Id,
-			Address: inU.Address,
+			Id: inU.Id,
+			BoundaryInstance: BoundaryStatus{
+				Address:          inU.BoundaryStatus.Address,
+				CacheSupport:     string(inU.BoundaryStatus.CachingSupported),
+				LastSupportCheck: inU.BoundaryStatus.LastSupportCheck,
+			},
 		}
 		for _, inAt := range inU.AuthTokens {
 			outU.AuthTokens = append(outU.AuthTokens, AuthTokenStatus{
