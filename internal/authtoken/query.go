@@ -17,7 +17,7 @@ with auth_tokens as (
             expiration_time,
             status
        from auth_token
-   order by create_time desc, public_id asc
+   order by create_time desc, public_id desc
       limit %d
 ),
 auth_accounts as (
@@ -47,7 +47,7 @@ final as (
 )
   select *
     from final
-order by create_time desc, public_id asc;
+order by create_time desc, public_id desc;
 `
 	listAuthTokensPageTemplate = `
 with auth_tokens as (
@@ -60,7 +60,7 @@ with auth_tokens as (
             status
        from auth_token
       where (create_time, public_id) < (@last_item_create_time, @last_item_id)
-   order by create_time desc, public_id asc
+   order by create_time desc, public_id desc
       limit %d
 ),
 auth_accounts as (
@@ -90,7 +90,7 @@ final as (
 )
   select *
     from final
-order by create_time desc, public_id asc;
+order by create_time desc, public_id desc;
 `
 	refreshAuthTokensTemplate = `
 with auth_tokens as (
@@ -103,7 +103,7 @@ with auth_tokens as (
             status
        from auth_token
       where update_time > @updated_after_time
-   order by update_time desc, public_id asc
+   order by update_time desc, public_id desc
       limit %d
 ),
 auth_accounts as (
@@ -133,7 +133,7 @@ final as (
 )
   select *
     from final
-order by update_time desc, public_id asc;
+order by update_time desc, public_id desc;
 `
 	refreshAuthTokensPageTemplate = `
 with auth_tokens as (
@@ -147,7 +147,7 @@ with auth_tokens as (
        from auth_token
       where update_time > @updated_after_time
         and (update_time, public_id) < (@last_item_update_time, @last_item_id)
-   order by update_time desc, public_id asc
+   order by update_time desc, public_id desc
       limit %d
 ),
 auth_accounts as (
@@ -177,6 +177,6 @@ final as (
 )
   select *
     from final
-order by update_time desc, public_id asc;
+order by update_time desc, public_id desc;
 `
 )
