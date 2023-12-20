@@ -56,7 +56,7 @@ with credentials as (
     select public_id
       from credential_static
      where store_id = @store_id
-  order by create_time desc, public_id asc
+  order by create_time desc, public_id desc
      limit %d
 ),
 json_creds as (
@@ -122,7 +122,7 @@ final as (
 )
   select *
     from final
-order by create_time desc, public_id asc;
+order by create_time desc, public_id desc;
 `
 
 	listCredentialsPageTemplate = `
@@ -131,7 +131,7 @@ with credentials as (
       from credential_static
      where store_id = @store_id
        and (create_time, public_id) < (@last_item_create_time, @last_item_id)
-  order by create_time desc, public_id asc
+  order by create_time desc, public_id desc
      limit %d
 ),
 json_creds as (
@@ -197,7 +197,7 @@ final as (
 )
   select *
     from final
-order by create_time desc, public_id asc;
+order by create_time desc, public_id desc;
 `
 
 	listCredentialsRefreshTemplate = `
@@ -206,7 +206,7 @@ with credentials as (
       from credential_static
      where store_id = @store_id
        and update_time > @updated_after_time
-  order by update_time desc, public_id asc
+  order by update_time desc, public_id desc
      limit %d
 ),
 json_creds as (
@@ -272,7 +272,7 @@ final as (
 )
   select *
     from final
-order by update_time desc, public_id asc;
+order by update_time desc, public_id desc;
 `
 
 	listCredentialsRefreshPageTemplate = `
@@ -282,7 +282,7 @@ with credentials as (
      where store_id = @store_id
        and update_time > @updated_after_time
        and (update_time, public_id) < (@last_item_update_time, @last_item_id)
-  order by update_time desc, public_id asc
+  order by update_time desc, public_id desc
      limit %d
 ),
 json_creds as (
@@ -348,6 +348,6 @@ final as (
 )
   select *
     from final
-order by update_time desc, public_id asc;
+order by update_time desc, public_id desc;
 `
 )
