@@ -215,7 +215,7 @@ func (r *Repository) listRoles(ctx context.Context, withScopeIds []string, opt .
 			sql.Named("last_item_id", opts.withStartPageAfterItem.GetPublicId()),
 		)
 	}
-	dbOpts := []db.Option{db.WithLimit(limit), db.WithOrder("create_time desc, public_id asc")}
+	dbOpts := []db.Option{db.WithLimit(limit), db.WithOrder("create_time desc, public_id desc")}
 	return r.queryRoles(ctx, whereClause, args, dbOpts...)
 }
 
@@ -257,7 +257,7 @@ func (r *Repository) listRolesRefresh(ctx context.Context, updatedAfter time.Tim
 		)
 	}
 
-	dbOpts := []db.Option{db.WithLimit(limit), db.WithOrder("update_time desc, public_id asc")}
+	dbOpts := []db.Option{db.WithLimit(limit), db.WithOrder("update_time desc, public_id desc")}
 	return r.queryRoles(ctx, whereClause, args, dbOpts...)
 }
 
