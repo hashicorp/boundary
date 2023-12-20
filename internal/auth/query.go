@@ -31,7 +31,7 @@ with auth_methods as (
     select public_id
       from auth_method
      where %s -- search condition for scope IDs is constructed
-  order by create_time desc, public_id asc
+  order by create_time desc, public_id desc
      limit %d
 ),
 ldap as (
@@ -217,7 +217,7 @@ final as (
 )
   select *
     from final
-order by create_time desc, public_id asc;
+order by create_time desc, public_id desc;
 `
 
 	listAuthMethodsPageTemplate = `
@@ -226,7 +226,7 @@ with auth_methods as (
       from auth_method
      where (create_time, public_id) < (@last_item_create_time, @last_item_id)
        and %s -- search condition for scope IDs is constructed
-  order by create_time desc, public_id asc
+  order by create_time desc, public_id desc
      limit %d
 ),
 ldap as (
@@ -412,7 +412,7 @@ final as (
 )
   select *
     from final
-order by create_time desc, public_id asc;
+order by create_time desc, public_id desc;
 `
 
 	listAuthMethodsRefreshTemplate = `
@@ -421,7 +421,7 @@ with auth_methods as (
       from auth_method
      where update_time > @updated_after_time
        and %s -- search condition for scope IDs is constructed
-  order by update_time desc, public_id asc
+  order by update_time desc, public_id desc
      limit %d
 ),
 ldap as (
@@ -607,7 +607,7 @@ final as (
 )
   select *
     from final
-order by update_time desc, public_id asc;
+order by update_time desc, public_id desc;
 `
 
 	listAuthMethodsRefreshPageTemplate = `
@@ -617,7 +617,7 @@ with auth_methods as (
      where update_time > @updated_after_time
        and (update_time, public_id) < (@last_item_update_time, @last_item_id)
        and %s -- search condition for scope IDs is constructed
-  order by update_time desc, public_id asc
+  order by update_time desc, public_id desc
      limit %d
 ),
 ldap as (
@@ -803,6 +803,6 @@ final as (
 )
   select *
     from final
-order by update_time desc, public_id asc;
+order by update_time desc, public_id desc;
 `
 )

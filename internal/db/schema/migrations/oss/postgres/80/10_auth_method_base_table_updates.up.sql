@@ -129,9 +129,9 @@ begin;
 
   -- Add new indexes for the create and update time queries.
   create index auth_method_create_time_public_id_idx
-      on auth_method (create_time desc, public_id asc);
+      on auth_method (create_time desc, public_id desc);
   create index auth_method_update_time_public_id_idx
-      on auth_method (update_time desc, public_id asc);
+      on auth_method (update_time desc, public_id desc);
 
   analyze auth_method;
 
