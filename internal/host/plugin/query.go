@@ -362,7 +362,7 @@ with host_sets as (
            attributes
       from host_plugin_set
      where catalog_id = @catalog_id
-  order by create_time desc, public_id asc
+  order by create_time desc, public_id desc
      limit %d
 ),
 host_catalog as (
@@ -407,7 +407,7 @@ final as (
 )
   select *  
     from final
-order by create_time desc, public_id asc;
+order by create_time desc, public_id desc;
 `
 
 	listSetsPageTemplate = `
@@ -426,7 +426,7 @@ with host_sets as (
       from host_plugin_set
      where catalog_id = @catalog_id
        and (create_time, public_id) < (@last_item_create_time, @last_item_id)
-  order by create_time desc, public_id asc
+  order by create_time desc, public_id desc
      limit %d
 ),
 host_catalog as (
@@ -471,7 +471,7 @@ final as (
 )
   select *  
     from final
-order by create_time desc, public_id asc;
+order by create_time desc, public_id desc;
 `
 
 	listSetsRefreshTemplate = `
@@ -490,7 +490,7 @@ with host_sets as (
       from host_plugin_set
      where catalog_id = @catalog_id
        and update_time > @updated_after_time
-  order by update_time desc, public_id asc
+  order by update_time desc, public_id desc
      limit %d
 ),
 host_catalog as (
@@ -535,7 +535,7 @@ final as (
 )
   select *  
     from final
-order by update_time desc, public_id asc;
+order by update_time desc, public_id desc;
 `
 
 	listSetsRefreshPageTemplate = `
@@ -555,7 +555,7 @@ with host_sets as (
      where catalog_id = @catalog_id
        and update_time > @updated_after_time
        and (update_time, public_id) < (@last_item_update_time, @last_item_id)
-  order by update_time desc, public_id asc
+  order by update_time desc, public_id desc
      limit %d
 ),
 host_catalog as (
@@ -600,6 +600,6 @@ final as (
 )
   select *  
     from final
-order by update_time desc, public_id asc;
+order by update_time desc, public_id desc;
 `
 )
