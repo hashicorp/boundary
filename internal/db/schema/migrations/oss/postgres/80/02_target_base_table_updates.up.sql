@@ -36,9 +36,9 @@ begin;
 
   -- Add new indexes for the update time queries.
   create index target_create_time_public_id_idx
-      on target (create_time desc, public_id asc);
+      on target (create_time desc, public_id desc);
   create index target_update_time_public_id_idx
-      on target (update_time desc, public_id asc);
+      on target (update_time desc, public_id desc);
 
   analyze target;
 
