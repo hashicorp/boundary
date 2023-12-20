@@ -191,3 +191,13 @@ func (agg *hostSetAgg) GetPublicId() string {
 func (agg *hostSetAgg) TableName() string {
 	return "host_plugin_host_set_with_value_obj"
 }
+
+type deletedHostSet struct {
+	PublicId   string `gorm:"primary_key"`
+	DeleteTime *timestamp.Timestamp
+}
+
+// TableName returns the tablename to override the default gorm table name
+func (s *deletedHostSet) TableName() string {
+	return "host_plugin_set_deleted"
+}
