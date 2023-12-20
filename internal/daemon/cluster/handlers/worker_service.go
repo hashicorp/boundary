@@ -134,13 +134,20 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 		}
 	}
 
+	if wStat.LocalStorageState == "" {
+		// If this is an older worker (pre 0.15), it will not have LocalStorageState as part of it's status
+		// so we'll default to unknown.
+		wStat.LocalStorageState = server.UnknownLocalStorageState.String()
+	}
+
 	wConf := server.NewWorker(scope.Global.String(),
 		server.WithName(wStat.GetName()),
 		server.WithDescription(wStat.GetDescription()),
 		server.WithAddress(wStat.GetAddress()),
 		server.WithWorkerTags(workerTags...),
 		server.WithReleaseVersion(wStat.ReleaseVersion),
-		server.WithOperationalState(wStat.OperationalState))
+		server.WithOperationalState(wStat.OperationalState),
+		server.WithLocalStorageState(wStat.LocalStorageState))
 	opts := []server.Option{server.WithUpdateTags(req.GetUpdateTags())}
 	if wStat.GetPublicId() != "" {
 		opts = append(opts, server.WithPublicId(wStat.GetPublicId()))

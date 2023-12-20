@@ -1357,3 +1357,167 @@ func TestWorkerOperationalStatus(t *testing.T) {
 		})
 	}
 }
+
+func TestWorkerLocalStorageStateStatus(t *testing.T) {
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+
+	serverRepo, _ := server.NewRepository(ctx, rw, rw, kms)
+	serverRepo.UpsertController(ctx, &store.Controller{
+		PrivateId: "test_controller1",
+		Address:   "127.0.0.1",
+	})
+	serversRepoFn := func() (*server.Repository, error) {
+		return serverRepo, nil
+	}
+	workerAuthRepoFn := func() (*server.WorkerAuthRepositoryStorage, error) {
+		return server.NewRepositoryStorage(ctx, rw, rw, kms)
+	}
+	sessionRepoFn := func(opt ...session.Option) (*session.Repository, error) {
+		return session.NewRepository(ctx, rw, rw, kms)
+	}
+	connRepoFn := func() (*session.ConnectionRepository, error) {
+		return session.NewConnectionRepository(ctx, rw, rw, kms)
+	}
+	fce := &fakeControllerExtension{
+		reader: rw,
+		writer: rw,
+	}
+
+	worker1 := server.TestKmsWorker(t, conn, wrapper)
+
+	s := NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connRepoFn, nil, new(sync.Map), kms, new(atomic.Int64), fce)
+	require.NotNil(t, s)
+
+	cases := []struct {
+		name            string
+		wantErr         bool
+		wantErrContains string
+		req             *pbs.StatusRequest
+		wantState       string
+	}{
+		{
+			name:    "Available local storage worker",
+			wantErr: false,
+			req: &pbs.StatusRequest{
+				WorkerStatus: &pb.ServerWorkerStatus{
+					PublicId:          worker1.GetPublicId(),
+					Name:              worker1.GetName(),
+					Address:           worker1.GetAddress(),
+					LocalStorageState: server.AvailableLocalStorageState.String(),
+				},
+			},
+			wantState: server.AvailableLocalStorageState.String(),
+		},
+		{
+			name:    "Worker in low local storage",
+			wantErr: false,
+			req: &pbs.StatusRequest{
+				WorkerStatus: &pb.ServerWorkerStatus{
+					PublicId:          worker1.GetPublicId(),
+					Name:              worker1.GetName(),
+					Address:           worker1.GetAddress(),
+					LocalStorageState: server.LowStorageLocalStorageState.String(),
+				},
+			},
+			wantState: server.LowStorageLocalStorageState.String(),
+		},
+		{
+			name:    "Worker in critically low local storage",
+			wantErr: false,
+			req: &pbs.StatusRequest{
+				WorkerStatus: &pb.ServerWorkerStatus{
+					PublicId:          worker1.GetPublicId(),
+					Name:              worker1.GetName(),
+					Address:           worker1.GetAddress(),
+					LocalStorageState: server.CriticallyLowStorageLocalStorageState.String(),
+				},
+			},
+			wantState: server.CriticallyLowStorageLocalStorageState.String(),
+		},
+		{
+			name:    "Worker in out of space local storage",
+			wantErr: false,
+			req: &pbs.StatusRequest{
+				WorkerStatus: &pb.ServerWorkerStatus{
+					PublicId:          worker1.GetPublicId(),
+					Name:              worker1.GetName(),
+					Address:           worker1.GetAddress(),
+					LocalStorageState: server.OutOfStorageLocalStorageState.String(),
+				},
+			},
+			wantState: server.OutOfStorageLocalStorageState.String(),
+		},
+		{
+			name:    "Worker in not configured local storage",
+			wantErr: false,
+			req: &pbs.StatusRequest{
+				WorkerStatus: &pb.ServerWorkerStatus{
+					PublicId:          worker1.GetPublicId(),
+					Name:              worker1.GetName(),
+					Address:           worker1.GetAddress(),
+					LocalStorageState: server.NotConfiguredLocalStorageState.String(),
+				},
+			},
+			wantState: server.NotConfiguredLocalStorageState.String(),
+		},
+		{
+			name:    "No local storage state - default to unknown",
+			wantErr: false,
+			req: &pbs.StatusRequest{
+				WorkerStatus: &pb.ServerWorkerStatus{
+					PublicId:       worker1.GetPublicId(),
+					Name:           worker1.GetName(),
+					Address:        worker1.GetAddress(),
+					ReleaseVersion: "Boundary v0.11.0",
+				},
+			},
+			wantState: server.UnknownLocalStorageState.String(),
+		},
+		{
+			name:    "Old worker (empty release version) and no local storage state - default to active",
+			wantErr: false,
+			req: &pbs.StatusRequest{
+				WorkerStatus: &pb.ServerWorkerStatus{
+					PublicId: worker1.GetPublicId(),
+					Name:     worker1.GetName(),
+					Address:  worker1.GetAddress(),
+				},
+			},
+			wantState: server.UnknownLocalStorageState.String(),
+		},
+		{
+			name:    "Worker with invalid local storage type",
+			wantErr: true,
+			req: &pbs.StatusRequest{
+				WorkerStatus: &pb.ServerWorkerStatus{
+					PublicId:          worker1.GetPublicId(),
+					Name:              worker1.GetName(),
+					Address:           worker1.GetAddress(),
+					LocalStorageState: "invalid",
+				},
+			},
+			wantErrContains: "foreign key constraint",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			got, err := s.Status(ctx, tc.req)
+			if tc.wantErr {
+				require.Error(err)
+				assert.Contains(err.Error(), tc.wantErrContains)
+				return
+			}
+			require.NoError(err)
+			require.NotNil(got)
+			repoWorker, err := serverRepo.LookupWorkerByName(ctx, worker1.Name)
+			require.NoError(err)
+			assert.Equal(tc.wantState, repoWorker.LocalStorageState)
+		})
+	}
+}

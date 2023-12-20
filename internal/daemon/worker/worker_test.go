@@ -16,7 +16,9 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/daemon/worker/session"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/internal/gen/controller/servers/services"
+	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/configutil/v2"
 	"github.com/hashicorp/go-secure-stdlib/listenerutil"
@@ -121,13 +123,61 @@ func TestWorkerNew(t *testing.T) {
 				require.NotNil(t, w.nonceFn)
 			},
 		},
+		{
+			name: "worker recording storage path is not set",
+			in: &Config{
+				Server: &base.Server{
+					Listeners: []*base.ServerListener{
+						{Config: &listenerutil.ListenerConfig{Purpose: []string{"proxy"}}},
+					},
+					Eventer: &event.Eventer{},
+				},
+				RawConfig: &config.Config{
+					Worker: &config.Worker{},
+					SharedConfig: &configutil.SharedConfig{
+						DisableMlock: true,
+					},
+				},
+			},
+			expErr: false,
+			assertions: func(t *testing.T, w *Worker) {
+				assert.Equal(t, w.conf.RawConfig.Worker.RecordingStoragePath, "")
+				assert.Equal(t, w.localStorageState.Load().(server.LocalStorageState).String(), server.NotConfiguredLocalStorageState.String())
+			},
+		},
+		{
+			name: "worker recording storage path is set",
+			in: &Config{
+				Server: &base.Server{
+					Listeners: []*base.ServerListener{
+						{Config: &listenerutil.ListenerConfig{Purpose: []string{"proxy"}}},
+					},
+					Eventer: &event.Eventer{},
+				},
+				RawConfig: &config.Config{
+					Worker: &config.Worker{
+						RecordingStoragePath: "/tmp",
+					},
+					SharedConfig: &configutil.SharedConfig{
+						DisableMlock: true,
+					},
+				},
+			},
+			expErr: false,
+			assertions: func(t *testing.T, w *Worker) {
+				assert.Equal(t, w.conf.RawConfig.Worker.RecordingStoragePath, "/tmp")
+				assert.Equal(t, w.localStorageState.Load().(server.LocalStorageState).String(), server.UnknownLocalStorageState.String())
+			},
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// New() panics if these aren't set
 			tt.in.Logger = hclog.Default()
-			tt.in.RawConfig = &config.Config{SharedConfig: &configutil.SharedConfig{DisableMlock: true}}
+			if tt.in.RawConfig == nil {
+				tt.in.RawConfig = &config.Config{SharedConfig: &configutil.SharedConfig{DisableMlock: true}}
+			}
 
 			w, err := New(context.Background(), tt.in)
 			if tt.expErr {

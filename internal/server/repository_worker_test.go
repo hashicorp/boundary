@@ -308,6 +308,19 @@ func TestUpsertWorkerStatus(t *testing.T) {
 		// Version does not change for status updates
 		assert.Equal(t, uint32(1), worker.Version)
 		assert.Equal(t, "shutdown", worker.GetOperationalState())
+		assert.Equal(t, server.UnknownLocalStorageState.String(), worker.GetLocalStorageState())
+
+		// update again with available local storage state
+		wStatus4 := server.NewWorker(scope.Global.String(),
+			server.WithAddress("new_address"), server.WithName("config_name1"),
+			server.WithOperationalState("shutdown"), server.WithReleaseVersion("Boundary v0.11.0"),
+			server.WithLocalStorageState("available"))
+		worker, err = repo.UpsertWorkerStatus(ctx, wStatus4)
+		require.NoError(t, err)
+		assert.Greater(t, worker.GetLastStatusTime().AsTime(), worker.GetCreateTime().AsTime())
+		// Version does not change for status updates
+		assert.Equal(t, uint32(1), worker.Version)
+		assert.Equal(t, server.AvailableLocalStorageState.String(), worker.GetLocalStorageState())
 
 		// Should no longer see this worker in listing if we exclude shutdown workers
 		workers, err = repo.ListWorkers(ctx, []string{scope.Global.String()}, server.WithActiveWorkers(true))

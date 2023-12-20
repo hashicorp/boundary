@@ -146,6 +146,7 @@ type Worker struct {
 	lastStatusSuccess       *atomic.Value
 	workerStartTime         time.Time
 	operationalState        *atomic.Value
+	localStorageState       *atomic.Value
 	upstreamConnectionState *atomic.Value
 
 	controllerMultihopConn *atomic.Value
@@ -221,6 +222,7 @@ func New(ctx context.Context, conf *Config) (*Worker, error) {
 		WorkerAuthCurrentKeyId:      new(ua.String),
 		operationalState:            new(atomic.Value),
 		downstreamConnManager:       cluster.NewDownstreamManager(),
+		localStorageState:           new(atomic.Value),
 		successfulStatusGracePeriod: new(atomic.Int64),
 		statusCallTimeoutDuration:   new(atomic.Int64),
 		upstreamConnectionState:     new(atomic.Value),
@@ -228,6 +230,7 @@ func New(ctx context.Context, conf *Config) (*Worker, error) {
 	}
 
 	w.operationalState.Store(server.UnknownOperationalState)
+	w.localStorageState.Store(server.UnknownLocalStorageState)
 
 	if reverseConnReceiverFactory != nil {
 		w.downstreamReceiver = reverseConnReceiverFactory()
@@ -240,6 +243,10 @@ func New(ctx context.Context, conf *Config) (*Worker, error) {
 
 	if conf.RawConfig.Worker == nil {
 		conf.RawConfig.Worker = new(config.Worker)
+	}
+
+	if w.conf.RawConfig.Worker.RecordingStoragePath == "" {
+		w.localStorageState.Store(server.NotConfiguredLocalStorageState)
 	}
 
 	if w.conf.RawConfig.Worker.RecordingStoragePath != "" && recordingStorageFactory != nil {
