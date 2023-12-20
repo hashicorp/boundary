@@ -429,13 +429,13 @@ with session_ids as (
       from session
            -- search condition for applying permissions is constructed
      where %s
-  order by create_time desc, public_id asc
+  order by create_time desc, public_id desc
      limit %d
 )
    select *
      from session_list
     where session_list.public_id in (select * from session_ids)
- order by create_time desc, public_id asc;
+ order by create_time desc, public_id desc;
 `
 	listSessionsPageTemplate = `
 with session_ids as (
@@ -444,13 +444,13 @@ with session_ids as (
      where (create_time, public_id) < (@last_item_create_time, @last_item_id)
            -- search condition for applying permissions is constructed
        and %s
-  order by create_time desc, public_id asc
+  order by create_time desc, public_id desc
      limit %d
 )
    select *
      from session_list
     where session_list.public_id in (select * from session_ids)
- order by create_time desc, public_id asc;
+ order by create_time desc, public_id desc;
 `
 	refreshSessionsTemplate = `
 with session_ids as (
@@ -459,13 +459,13 @@ with session_ids as (
      where update_time > @updated_after_time
            -- search condition for applying permissions is constructed
        and %s
-  order by update_time desc, public_id asc
+  order by update_time desc, public_id desc
      limit %d
 )
   select *
     from session_list
    where session_list.public_id in (select * from session_ids)
-order by update_time desc, public_id asc;
+order by update_time desc, public_id desc;
 `
 	refreshSessionsPageTemplate = `
 with session_ids as (
@@ -475,13 +475,13 @@ with session_ids as (
        and (update_time, public_id) < (@last_item_update_time, @last_item_id)
            -- search condition for applying permissions is constructed
        and %s
-  order by update_time desc, public_id asc
+  order by update_time desc, public_id desc
      limit %d
 )
   select *
     from session_list
    where session_list.public_id in (select * from session_ids)
-order by update_time desc, public_id asc;
+order by update_time desc, public_id desc;
 `
 	estimateCountSessions = `
     select reltuples::bigint as estimate from pg_class where oid in ('session'::regclass)
