@@ -4,43 +4,59 @@
 begin;
 
   -- Add create_time, update_time and is_active_public_state to auth_method table.
-  alter table auth_method add column create_time wt_timestamp;
-  alter table auth_method add column update_time wt_timestamp;
-  alter table auth_method add column is_active_public_state boolean;
+  alter table auth_method
+    add column create_time wt_timestamp,
+    add column update_time wt_timestamp,
+    add column is_active_public_state boolean not null default false
+  ;
 
-  -- Update rows with current values
-     update auth_method
-        set create_time            = ldap.create_time,
-            update_time            = ldap.update_time,
-            is_active_public_state = case 
-                                      when ldap.state = 'active-public' then true
-                                      else false
-                                     end
-       from auth_method as am
-  left join auth_ldap_method as ldap
-         on am.public_id = ldap.public_id;
-  
-     update auth_method
-        set create_time            = oidc.create_time,
-            update_time            = oidc.update_time,
-            is_active_public_state = case 
-                                      when oidc.state = 'active-public' then true
-                                      else false
-                                     end
-       from auth_method as am
-  left join auth_oidc_method as oidc
-         on am.public_id = oidc.public_id;
-  
-     update auth_method
-        set create_time            = pw.create_time,
-            update_time            = pw.update_time,
-            is_active_public_state = true
-       from auth_method as am
-  left join auth_password_method as pw
-         on am.public_id = pw.public_id;
+  -- Update rows with current values from LDAP auth method
+  with
+  sub_auth_method (public_id, create_time, update_time, is_active_public_state) as (
+      select public_id,
+             create_time,
+             update_time,
+             state = 'active-public'
+        from auth_ldap_method
+  )
+  update auth_method
+     set create_time            = sub_auth_method.create_time,
+         update_time            = sub_auth_method.update_time,
+         is_active_public_state = sub_auth_method.is_active_public_state
+    from sub_auth_method
+   where auth_method.public_id = sub_auth_method.public_id;
 
-  -- Ensure that is_active_public_state is always set from now on
-  alter table auth_method alter column is_active_public_state set not null;
+  -- Update rows with current values from OIDC auth method
+  with
+  sub_auth_method (public_id, create_time, update_time, is_active_public_state) as (
+      select public_id,
+             create_time,
+             update_time,
+             state = 'active-public'
+        from auth_oidc_method
+  )
+  update auth_method
+     set create_time            = sub_auth_method.create_time,
+         update_time            = sub_auth_method.update_time,
+         is_active_public_state = sub_auth_method.is_active_public_state
+    from sub_auth_method
+   where auth_method.public_id = sub_auth_method.public_id;
+
+  -- Update rows with current values from password auth method
+  with
+  sub_auth_method (public_id, create_time, update_time, is_active_public_state) as (
+      select public_id,
+             create_time,
+             update_time,
+             true
+        from auth_password_method
+  )
+  update auth_method
+     set create_time            = sub_auth_method.create_time,
+         update_time            = sub_auth_method.update_time,
+         is_active_public_state = sub_auth_method.is_active_public_state
+    from sub_auth_method
+   where auth_method.public_id = sub_auth_method.public_id;
 
   -- Replace the insert trigger to also set the create_time
   -- Partially replaces the insert_auth_method_subtype function defined in 2/10_auth.up.sql
@@ -63,7 +79,7 @@ begin;
   -- Replace the insert trigger to also set the create_time
   -- Partially replaces the insert_auth_method_subtype function defined in 2/10_auth.up.sql
   -- This is because ldap and oidc subtypes have a state column, but password does not.
-  create or replace function insert_auth_method_password_subtype() returns trigger
+  create function insert_auth_method_password_subtype() returns trigger
   as $$
   begin
     insert into auth_method
