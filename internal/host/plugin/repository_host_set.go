@@ -776,7 +776,7 @@ func (r *Repository) DeleteSet(ctx context.Context, projectId string, publicId s
 	return rowsDeleted, nil
 }
 
-func (r *Repository) getSets(ctx context.Context, publicId string, catalogId string, opt ...Option) ([]*HostSet, *plugin.Plugin, error) {
+func (r *Repository) getSets(ctx context.Context, publicId string, catalogId string, opt ...host.Option) ([]*HostSet, *plugin.Plugin, error) {
 	const op = "plugin.(Repository).getSets"
 	if publicId == "" && catalogId == "" {
 		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing search criteria: both host set id and catalog id are empty")
@@ -785,44 +785,35 @@ func (r *Repository) getSets(ctx context.Context, publicId string, catalogId str
 		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "searching for both a host set id and a catalog id is not supported")
 	}
 
-	opts := getOpts(opt...)
+	opts, err := host.GetOpts(opt...)
+	if err != nil {
+		return nil, nil, errors.Wrap(ctx, err, op)
+	}
 
 	limit := r.defaultLimit
-	if opts.withLimit != 0 {
+	if opts.WithLimit != 0 {
 		// non-zero signals an override of the default limit for the repo.
-		limit = opts.withLimit
+		limit = opts.WithLimit
 	}
 
-	var args []any
+	args := make([]any, 0, 1)
 	var where string
+
 	switch {
 	case publicId != "":
-		where, args = "public_id = @public_id", append(args, sql.Named("public_id", publicId))
+		where, args = "public_id = ?", append(args, publicId)
 	default:
-		where, args = "catalog_id = @catalog_id", append(args, sql.Named("catalog_id", catalogId))
-	}
-	// Ordering and pagination are tightly coupled.
-	// We order by update_time ascending so that new
-	// and updated items appear at the end of the pagination.
-	// We need to further order by public_id to distinguish items
-	// with identical update times.
-	withOrder := "update_time asc, public_id asc"
-	if opts.withStartPageAfterItem != nil {
-		// Now that the order is defined, we can use a simple where
-		// clause to only include items updated since the specified
-		// start of the page. We use greater than or equal for the update
-		// time as there may be items with identical update_times. We
-		// then use public_id as a tiebreaker.
-		args = append(args,
-			sql.Named("after_item_update_time", opts.withStartPageAfterItem.GetUpdateTime()),
-			sql.Named("after_item_id", opts.withStartPageAfterItem.GetPublicId()),
-		)
-		where = "(" + where + ") and (update_time > @after_item_update_time or (update_time = @after_item_update_time and public_id > @after_item_id))"
+		where, args = "catalog_id = ?", append(args, catalogId)
 	}
 
-	dbArgs := []db.Option{
-		db.WithLimit(limit),
-		db.WithOrder(withOrder),
+	dbArgs := []db.Option{db.WithLimit(limit)}
+
+	if opts.WithOrderByCreateTime {
+		if opts.Ascending {
+			dbArgs = append(dbArgs, db.WithOrder("create_time asc"))
+		} else {
+			dbArgs = append(dbArgs, db.WithOrder("create_time"))
+		}
 	}
 
 	var aggHostSets []*hostSetAgg
@@ -845,7 +836,6 @@ func (r *Repository) getSets(ctx context.Context, publicId string, catalogId str
 	}
 	var plg *plugin.Plugin
 	if plgId != "" {
-		var err error
 		plg, err = r.getPlugin(ctx, plgId)
 		if err != nil {
 			return nil, nil, errors.Wrap(ctx, err, op)
