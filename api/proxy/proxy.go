@@ -135,6 +135,12 @@ func New(ctx context.Context, authzToken string, opt ...Option) (*ClientProxy, e
 // the listener is closed and no connections are left. Cancel the client's proxy
 // to force this to happen early. Once call exits, it is not safe to call Start
 // again; create a new ClientProxy with New().
+//
+// Note: if a custom listener implementation is used and the implementation can
+// return a Temporary error, the listener will not be closed on that condition,
+// and no feedback will be given. It is up to the listener implementation to
+// inform the client, if needed, of any status causing a Temporary error to be
+// returned on accept.
 func (p *ClientProxy) Start() (retErr error) {
 	defer p.cancel()
 
@@ -151,19 +157,20 @@ func (p *ClientProxy) Start() (retErr error) {
 	}
 
 	listenerCloseFunc := func() {
-		// Forces the for loop to exit instead of spinning on errors
-		p.connectionsLeft.Store(0)
-		if err := p.listener.Load().(net.Listener).Close(); err != nil && err != net.ErrClosed {
-			retErr = errors.Join(retErr, fmt.Errorf("error closing proxy listener: %w", err))
-		}
+		p.listenerCloseOnce.Do(func() {
+			// Forces the for loop to exit instead of spinning on errors
+			p.cancel()
+			p.connectionsLeft.Store(0)
+			if err := p.listener.Load().(net.Listener).Close(); err != nil && err != net.ErrClosed {
+				retErr = errors.Join(retErr, fmt.Errorf("error closing proxy listener: %w", err))
+			}
+		})
 	}
 
 	// Ensure closing the listener runs on any other return condition
-	defer func() {
-		p.listenerCloseOnce.Do(listenerCloseFunc)
-	}()
+	defer listenerCloseFunc()
 
-	fin := make(chan error, 3)
+	fin := make(chan error, 10)
 	p.connWg.Add(1)
 	go func() {
 		defer p.connWg.Done()
@@ -181,13 +188,15 @@ func (p *ClientProxy) Start() (retErr error) {
 						return
 					}
 					// If the upstream listener indicates that this is an error
-					// with e.g. just this connection, don't close
+					// with e.g. just this connection, don't close, just
+					// continue
 					if temperror.IsTempError(err) {
-						// TODO: Log/alert in some way?
 						continue
 					}
-					// TODO: Log/alert in some way?
-					fin <- fmt.Errorf("Accept error: %w", err)
+					// No reason to think we can successfully handle the next
+					// connection that comes our way, so cancel the proxy
+					fin <- fmt.Errorf("error from accept: %w", err)
+					listenerCloseFunc()
 					return
 				}
 			}
@@ -197,13 +206,17 @@ func (p *ClientProxy) Start() (retErr error) {
 				defer p.connWg.Done()
 				wsConn, err := p.getWsConn(p.ctx)
 				if err != nil {
-					// TODO: Log/alert in some way?
-					fin <- fmt.Errorf("getWsConn error: %w", err)
+					fin <- fmt.Errorf("error from getWsConn: %w", err)
+					// No reason to think we can successfully handle the next
+					// connection that comes our way, so cancel the proxy
+					listenerCloseFunc()
 					return
 				}
 				if err := p.runTcpProxyV1(wsConn, listeningConn); err != nil {
-					// TODO: Log/alert in some way?
-					fin <- fmt.Errorf("runTcpProxyV1 error: %w", err)
+					fin <- fmt.Errorf("error from runTcpProxyV1: %w", err)
+					// No reason to think we can successfully handle the next
+					// connection that comes our way, so cancel the proxy
+					listenerCloseFunc()
 					return
 				}
 			}()
@@ -225,7 +238,7 @@ func (p *ClientProxy) Start() (retErr error) {
 			}
 		}()
 		defer p.connWg.Done()
-		defer p.listenerCloseOnce.Do(listenerCloseFunc)
+		defer listenerCloseFunc()
 
 		for {
 			select {
