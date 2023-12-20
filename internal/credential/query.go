@@ -26,7 +26,7 @@ with stores as (
     select public_id
       from credential_store
      where %s -- search condition for project IDs is constructed
-  order by create_time desc, public_id asc
+  order by create_time desc, public_id desc
      limit %d
 ),
 vault_stores as (
@@ -102,7 +102,7 @@ final as (
 )
   select *
     from final
-order by create_time desc, public_id asc;
+order by create_time desc, public_id desc;
 `
 
 	listStoresPageTemplate = `
@@ -111,7 +111,7 @@ with stores as (
       from credential_store
      where (create_time, public_id) < (@last_item_create_time, @last_item_id) and
            %s -- search condition for project IDs is constructed
-  order by create_time desc, public_id asc
+  order by create_time desc, public_id desc
      limit %d
 ),
 vault_stores as (
@@ -187,7 +187,7 @@ final as (
 )
   select *
     from final
-order by create_time desc, public_id asc;
+order by create_time desc, public_id desc;
 `
 
 	listStoresRefreshTemplate = `
@@ -196,7 +196,7 @@ with stores as (
       from credential_store
      where update_time > @updated_after_time and
            %s -- search condition for project IDs is constructed
-  order by update_time desc, public_id asc
+  order by update_time desc, public_id desc
      limit %d
 ),
 vault_stores as (
@@ -272,7 +272,7 @@ final as (
 )
   select *
     from final
-order by update_time desc, public_id asc;
+order by update_time desc, public_id desc;
 `
 
 	listStoresRefreshPageTemplate = `
@@ -282,7 +282,7 @@ with stores as (
      where update_time > @updated_after_time and
            (update_time, public_id) < (@last_item_update_time, @last_item_id) and
            %s -- search condition for project IDs is constructed
-  order by update_time desc, public_id asc
+  order by update_time desc, public_id desc
      limit %d
 ),
 vault_stores as (
@@ -358,6 +358,6 @@ final as (
 )
   select *
     from final
-order by update_time desc, public_id asc;
+order by update_time desc, public_id desc;
 `
 )

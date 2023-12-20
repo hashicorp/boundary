@@ -54,9 +54,9 @@ begin;
 
   -- Add new indexes for the create and update time queries.
   create index credential_library_create_time_public_id_idx
-      on credential_library (create_time desc, public_id asc);
+      on credential_library (create_time desc, public_id desc);
   create index credential_library_update_time_public_id_idx
-      on credential_library (update_time desc, public_id asc);
+      on credential_library (update_time desc, public_id desc);
 
   analyze credential_library;
 
