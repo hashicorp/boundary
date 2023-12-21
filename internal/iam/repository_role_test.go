@@ -765,7 +765,8 @@ func TestRepository_ListRoles_Multiple_Scopes(t *testing.T) {
 
 	got, ttime, err := repo.listRoles(context.Background(), []string{"global", org.GetPublicId(), proj.GetPublicId()})
 	require.NoError(t, err)
-	assert.Equal(t, total, len(got)) // Transaction timestamp should be within ~10 seconds of now
+	assert.Equal(t, total, len(got))
+	// Transaction timestamp should be within ~10 seconds of now
 	assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
 	assert.True(t, time.Now().After(ttime.Add(-10*time.Second)))
 }
