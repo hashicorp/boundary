@@ -7,15 +7,23 @@ begin;
   -- It already has the create time.
   alter table target add column update_time wt_timestamp;
 
-  -- Update rows with current values
+
+  -- Update rows with current values from the subtype target tables.
+  with sub_target as (
+    select public_id,
+           update_time
+      from target_tcp
+     union
+    select public_id,
+           update_time
+      from target_ssh
+  )
   update target
-    set update_time = target_tcp.update_time
-    from target as t
-    left join target_tcp on t.public_id = target_tcp.public_id;
-  update target
-    set update_time = target_ssh.update_time
-    from target as t
-    left join target_ssh on t.public_id = target_ssh.public_id;
+     set update_time = sub_target.update_time
+    from sub_target
+   where target.public_id = sub_target.public_id;
+
+  alter table target alter column update_time set not null;
 
   -- Add trigger to update the new column on every subtype update.
   create function update_target_table_update_time() returns trigger

@@ -4,22 +4,36 @@
 begin;
 
   -- Add create_time and update_time to credential_static table.
-  alter table credential_static add column create_time wt_timestamp;
-  alter table credential_static add column update_time wt_timestamp;
+  alter table credential_static
+    add column create_time wt_timestamp,
+    add column update_time wt_timestamp;
 
-  -- Update rows with current values
+  -- Update rows with current values from the subtype static credential tables.
+  with sub_credential as (
+    select public_id,
+           create_time,
+           update_time
+      from credential_static_json_credential
+     union
+    select public_id,
+           create_time,
+           update_time
+      from credential_static_ssh_private_key_credential
+     union
+    select public_id,
+           create_time,
+           update_time
+      from credential_static_username_password_credential
+  )
   update credential_static
-    set create_time = csj.create_time, update_time = csj.update_time
-    from credential_static as cs
-    left join credential_static_json_credential as csj on cs.public_id = csj.public_id;
-  update credential_static
-    set create_time = cssshpk.create_time, update_time = cssshpk.update_time
-    from credential_static as cs
-    left join credential_static_ssh_private_key_credential as cssshpk on cs.public_id = cssshpk.public_id;
-  update credential_static
-    set create_time = csupw.create_time, update_time = csupw.update_time
-    from credential_static as cs
-    left join credential_static_username_password_credential as csupw on cs.public_id = csupw.public_id;
+     set create_time = sub_credential.create_time,
+         update_time = sub_credential.update_time
+    from sub_credential
+   where credential_static.public_id = sub_credential.public_id;
+
+  alter table credential_static
+    alter column create_time set not null,
+    alter column update_time set not null;
 
   -- Replace the insert trigger to also set the create_time
   -- Replaces the insert_credential_static_subtype function defined in 46/01_credentials.up.sql
