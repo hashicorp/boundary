@@ -4,6 +4,7 @@
 package common
 
 import (
+	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/ldap"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
@@ -28,6 +29,7 @@ type (
 	OidcAuthRepoFactory            = oidc.OidcRepoFactory
 	LdapAuthRepoFactory            = ldap.RepoFactory
 	PasswordAuthRepoFactory        func() (*password.Repository, error)
+	AuthMethodRepoFactory          func() (*auth.AuthMethodRepository, error)
 	ServersRepoFactory             func() (*server.Repository, error)
 	StaticRepoFactory              func() (*static.Repository, error)
 	PluginHostRepoFactory          func() (*pluginhost.Repository, error)

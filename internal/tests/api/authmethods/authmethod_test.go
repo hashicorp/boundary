@@ -200,9 +200,9 @@ func TestList(t *testing.T) {
 	result, err := amClient.List(tc.Context(), global)
 	require.NoError(err)
 	require.Len(result.Items, 3)
-	genOIDCAM := result.Items[0]
-	genPWAM := result.Items[1]
-	genLDAPAM := result.Items[2]
+	genLDAPAM := result.Items[0]
+	genOIDCAM := result.Items[1]
+	genPWAM := result.Items[2]
 
 	pwAM, err := amClient.Create(tc.Context(), "password", global,
 		authmethods.WithName("bar"),
