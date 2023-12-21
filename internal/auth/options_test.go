@@ -68,7 +68,7 @@ func Test_GetOpts(t *testing.T) {
 		assert := assert.New(t)
 		updateTime := time.Now()
 		createTime := time.Now()
-		opts, err := GetOpts(WithStartPageAfterItem(context.Background(), &fakeItem{nil, "s_1", updateTime, createTime}))
+		opts, err := GetOpts(WithStartPageAfterItem(context.Background(), &fakeItem{nil, "s_1", createTime, updateTime}))
 		require.NoError(t, err)
 		assert.Equal(opts.WithStartPageAfterItem.GetPublicId(), "s_1")
 		assert.Equal(opts.WithStartPageAfterItem.GetUpdateTime(), timestamp.New(updateTime))
