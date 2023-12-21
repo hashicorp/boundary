@@ -71,7 +71,7 @@ func TestCliPaginateCredentialStores(t *testing.T) {
 	assert.Empty(t, initialStores.ListToken)
 
 	// Create a new store and destroy one of the other stores
-	newStoreId := boundary.CreateNewCredentialStoreStaticCli(t, ctx, newProjectId)
+	newStoreId := boundary.CreateNewCredentialStoreStaticApi(t, ctx, client, newProjectId)
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"credential-stores", "delete",

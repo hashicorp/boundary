@@ -72,7 +72,7 @@ func TestCliPaginateHosts(t *testing.T) {
 	assert.Empty(t, initialHosts.ListToken)
 
 	// Create a new host and destroy one of the other hosts
-	newHostId := boundary.CreateNewHostCli(t, ctx, newHostCatalogId, c.TargetAddress)
+	newHostId := boundary.CreateNewHostApi(t, ctx, client, newHostCatalogId, c.TargetAddress)
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"hosts", "delete",
