@@ -42,6 +42,7 @@ type ClientProxy struct {
 	listenerCloseOnce       *sync.Once
 	clientTlsConf           *tls.Config
 	connWg                  *sync.WaitGroup
+	started                 *atomic.Bool
 }
 
 // New creates a new client proxy. The given context should be cancelable; once
@@ -58,6 +59,12 @@ type ClientProxy struct {
 //
 // * WithSessionAuthorizationData - Specify an already-unmarshaled session
 // authorization object. If set, authzToken can be empty.
+//
+// * WithConnectionsLeftCh - Specify a channel on which to send the number of
+// remaining connections as they are consumed
+//
+// * WithWorkerHost - If set, use this host name as the SNI host when making the
+// TLS connection to the worker
 func New(ctx context.Context, authzToken string, opt ...Option) (*ClientProxy, error) {
 	opts, err := getOpts(opt...)
 	if err != nil {
@@ -77,6 +84,7 @@ func New(ctx context.Context, authzToken string, opt ...Option) (*ClientProxy, e
 		connWg:                  new(sync.WaitGroup),
 		listenAddrPort:          opts.WithListenAddrPort,
 		callerConnectionsLeftCh: opts.WithConnectionsLeftCh,
+		started:                 new(atomic.Bool),
 	}
 
 	if opts.WithListener != nil {
@@ -91,6 +99,9 @@ func New(ctx context.Context, authzToken string, opt ...Option) (*ClientProxy, e
 	p.sessionAuthzData = opts.WithSessionAuthorizationData
 	if p.sessionAuthzData == nil {
 		p.sessionAuthzData, err = targets.SessionAuthorization{AuthorizationToken: authzToken}.GetSessionAuthorizationData()
+		if err != nil {
+			return nil, fmt.Errorf("error turning authz token into authorization data: %w", err)
+		}
 	}
 
 	if len(p.sessionAuthzData.WorkerInfo) == 0 {
@@ -133,15 +144,20 @@ func New(ctx context.Context, authzToken string, opt ...Option) (*ClientProxy, e
 
 // Start starts the listener for client proxying. It ends, with any errors, when
 // the listener is closed and no connections are left. Cancel the client's proxy
-// to force this to happen early. Once call exits, it is not safe to call Start
-// again; create a new ClientProxy with New().
+// to force this to happen early. It is not safe to call Start twice, including
+// once it has exited, and will immediately error in this case; create a new
+// ClientProxy with New().
 //
 // Note: if a custom listener implementation is used and the implementation can
-// return a Temporary error, the listener will not be closed on that condition,
+// return a Temporary error, the listener will not be closed on that condition
 // and no feedback will be given. It is up to the listener implementation to
 // inform the client, if needed, of any status causing a Temporary error to be
 // returned on accept.
 func (p *ClientProxy) Start() (retErr error) {
+	if !p.started.CompareAndSwap(false, true) {
+		return errors.New("proxy was already started")
+	}
+
 	defer p.cancel()
 
 	if p.listener.Load() == nil {
@@ -249,7 +265,6 @@ func (p *ClientProxy) Start() (retErr error) {
 				if p.callerConnectionsLeftCh != nil {
 					p.callerConnectionsLeftCh <- connsLeft
 				}
-				// TODO: Surface this to caller
 				if connsLeft == 0 {
 					// Close the listener as we can't authorize any more
 					// connections
