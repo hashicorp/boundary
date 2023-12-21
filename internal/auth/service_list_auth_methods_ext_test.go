@@ -152,7 +152,7 @@ func TestStoreService_List(t *testing.T) {
 			filterFunc := func(_ context.Context, am auth.AuthMethod) (bool, error) {
 				return true, nil
 			}
-			_, err := auth.ListAuthMethods(ctx, nil, 1, filterFunc, repo, []string{org.PublicId}, true)
+			_, err := auth.ListAuthMethods(ctx, nil, 1, filterFunc, repo, []string{org.PublicId}, false)
 			require.ErrorContains(t, err, "missing grants hash")
 		})
 		t.Run("zero page size", func(t *testing.T) {
@@ -160,7 +160,7 @@ func TestStoreService_List(t *testing.T) {
 			filterFunc := func(_ context.Context, am auth.AuthMethod) (bool, error) {
 				return true, nil
 			}
-			_, err := auth.ListAuthMethods(ctx, []byte("some hash"), 0, filterFunc, repo, []string{org.PublicId}, true)
+			_, err := auth.ListAuthMethods(ctx, []byte("some hash"), 0, filterFunc, repo, []string{org.PublicId}, false)
 			require.ErrorContains(t, err, "page size must be at least 1")
 		})
 		t.Run("negative page size", func(t *testing.T) {
@@ -168,12 +168,12 @@ func TestStoreService_List(t *testing.T) {
 			filterFunc := func(_ context.Context, am auth.AuthMethod) (bool, error) {
 				return true, nil
 			}
-			_, err := auth.ListAuthMethods(ctx, []byte("some hash"), -1, filterFunc, repo, []string{org.PublicId}, true)
+			_, err := auth.ListAuthMethods(ctx, []byte("some hash"), -1, filterFunc, repo, []string{org.PublicId}, false)
 			require.ErrorContains(t, err, "page size must be at least 1")
 		})
 		t.Run("nil filter func", func(t *testing.T) {
 			t.Parallel()
-			_, err := auth.ListAuthMethods(ctx, []byte("some hash"), 1, nil, repo, []string{org.PublicId}, true)
+			_, err := auth.ListAuthMethods(ctx, []byte("some hash"), 1, nil, repo, []string{org.PublicId}, false)
 			require.ErrorContains(t, err, "missing filter item callback")
 		})
 		t.Run("missing repo", func(t *testing.T) {
@@ -181,7 +181,7 @@ func TestStoreService_List(t *testing.T) {
 			filterFunc := func(_ context.Context, am auth.AuthMethod) (bool, error) {
 				return true, nil
 			}
-			_, err := auth.ListAuthMethods(ctx, []byte("some hash"), 1, filterFunc, nil, []string{org.PublicId}, true)
+			_, err := auth.ListAuthMethods(ctx, []byte("some hash"), 1, filterFunc, nil, []string{org.PublicId}, false)
 			require.ErrorContains(t, err, "missing repo")
 		})
 		t.Run("missing scope ids", func(t *testing.T) {
@@ -189,7 +189,7 @@ func TestStoreService_List(t *testing.T) {
 			filterFunc := func(_ context.Context, am auth.AuthMethod) (bool, error) {
 				return true, nil
 			}
-			_, err := auth.ListAuthMethods(ctx, []byte("some hash"), 1, filterFunc, repo, nil, true)
+			_, err := auth.ListAuthMethods(ctx, []byte("some hash"), 1, filterFunc, repo, nil, false)
 			require.ErrorContains(t, err, "missing scope ids")
 		})
 	})
@@ -202,7 +202,7 @@ func TestStoreService_List(t *testing.T) {
 			}
 			tok, err := listtoken.NewPagination(ctx, fiveDaysAgo, resource.AuthMethod, []byte("some hash"), "some-id", fiveDaysAgo)
 			require.NoError(t, err)
-			_, err = auth.ListAuthMethodsPage(ctx, nil, 1, filterFunc, tok, repo, []string{org.PublicId}, true)
+			_, err = auth.ListAuthMethodsPage(ctx, nil, 1, filterFunc, tok, repo, []string{org.PublicId}, false)
 			require.ErrorContains(t, err, "missing grants hash")
 		})
 		t.Run("zero page size", func(t *testing.T) {
@@ -212,7 +212,7 @@ func TestStoreService_List(t *testing.T) {
 			}
 			tok, err := listtoken.NewPagination(ctx, fiveDaysAgo, resource.AuthMethod, []byte("some hash"), "some-id", fiveDaysAgo)
 			require.NoError(t, err)
-			_, err = auth.ListAuthMethodsPage(ctx, []byte("some hash"), 0, filterFunc, tok, repo, []string{org.PublicId}, true)
+			_, err = auth.ListAuthMethodsPage(ctx, []byte("some hash"), 0, filterFunc, tok, repo, []string{org.PublicId}, false)
 			require.ErrorContains(t, err, "page size must be at least 1")
 		})
 		t.Run("negative page size", func(t *testing.T) {
@@ -222,14 +222,14 @@ func TestStoreService_List(t *testing.T) {
 			}
 			tok, err := listtoken.NewPagination(ctx, fiveDaysAgo, resource.AuthMethod, []byte("some hash"), "some-id", fiveDaysAgo)
 			require.NoError(t, err)
-			_, err = auth.ListAuthMethodsPage(ctx, []byte("some hash"), -1, filterFunc, tok, repo, []string{org.PublicId}, true)
+			_, err = auth.ListAuthMethodsPage(ctx, []byte("some hash"), -1, filterFunc, tok, repo, []string{org.PublicId}, false)
 			require.ErrorContains(t, err, "page size must be at least 1")
 		})
 		t.Run("nil filter func", func(t *testing.T) {
 			t.Parallel()
 			tok, err := listtoken.NewPagination(ctx, fiveDaysAgo, resource.AuthMethod, []byte("some hash"), "some-id", fiveDaysAgo)
 			require.NoError(t, err)
-			_, err = auth.ListAuthMethodsPage(ctx, []byte("some hash"), 1, nil, tok, repo, []string{org.PublicId}, true)
+			_, err = auth.ListAuthMethodsPage(ctx, []byte("some hash"), 1, nil, tok, repo, []string{org.PublicId}, false)
 			require.ErrorContains(t, err, "missing filter item callback")
 		})
 		t.Run("nil token", func(t *testing.T) {
@@ -237,7 +237,7 @@ func TestStoreService_List(t *testing.T) {
 			filterFunc := func(_ context.Context, am auth.AuthMethod) (bool, error) {
 				return true, nil
 			}
-			_, err = auth.ListAuthMethodsPage(ctx, []byte("some hash"), 1, filterFunc, nil, repo, []string{org.PublicId}, true)
+			_, err = auth.ListAuthMethodsPage(ctx, []byte("some hash"), 1, filterFunc, nil, repo, []string{org.PublicId}, false)
 			require.ErrorContains(t, err, "missing token")
 		})
 		t.Run("wrong token type", func(t *testing.T) {
@@ -247,7 +247,7 @@ func TestStoreService_List(t *testing.T) {
 			}
 			tok, err := listtoken.NewStartRefresh(ctx, fiveDaysAgo, resource.AuthMethod, []byte("some hash"), fiveDaysAgo, fiveDaysAgo)
 			require.NoError(t, err)
-			_, err = auth.ListAuthMethodsPage(ctx, []byte("some hash"), 1, filterFunc, tok, repo, []string{org.PublicId}, true)
+			_, err = auth.ListAuthMethodsPage(ctx, []byte("some hash"), 1, filterFunc, tok, repo, []string{org.PublicId}, false)
 			require.ErrorContains(t, err, "token did not have a pagination token component")
 		})
 		t.Run("missing repo", func(t *testing.T) {
@@ -257,7 +257,7 @@ func TestStoreService_List(t *testing.T) {
 			}
 			tok, err := listtoken.NewPagination(ctx, fiveDaysAgo, resource.AuthMethod, []byte("some hash"), "some-id", fiveDaysAgo)
 			require.NoError(t, err)
-			_, err = auth.ListAuthMethodsPage(ctx, []byte("some hash"), 1, filterFunc, tok, nil, []string{org.PublicId}, true)
+			_, err = auth.ListAuthMethodsPage(ctx, []byte("some hash"), 1, filterFunc, tok, nil, []string{org.PublicId}, false)
 			require.ErrorContains(t, err, "missing repo")
 		})
 		t.Run("missing scope ids", func(t *testing.T) {
@@ -267,7 +267,7 @@ func TestStoreService_List(t *testing.T) {
 			}
 			tok, err := listtoken.NewPagination(ctx, fiveDaysAgo, resource.AuthMethod, []byte("some hash"), "some-id", fiveDaysAgo)
 			require.NoError(t, err)
-			_, err = auth.ListAuthMethodsPage(ctx, []byte("some hash"), 1, filterFunc, tok, repo, nil, true)
+			_, err = auth.ListAuthMethodsPage(ctx, []byte("some hash"), 1, filterFunc, tok, repo, nil, false)
 			require.ErrorContains(t, err, "missing scope ids")
 		})
 		t.Run("wrong token resource type", func(t *testing.T) {
@@ -277,7 +277,7 @@ func TestStoreService_List(t *testing.T) {
 			}
 			tok, err := listtoken.NewPagination(ctx, fiveDaysAgo, resource.Target, []byte("some hash"), "some-id", fiveDaysAgo)
 			require.NoError(t, err)
-			_, err = auth.ListAuthMethodsPage(ctx, []byte("some hash"), 1, filterFunc, tok, repo, []string{org.GetPublicId()}, true)
+			_, err = auth.ListAuthMethodsPage(ctx, []byte("some hash"), 1, filterFunc, tok, repo, []string{org.GetPublicId()}, false)
 			require.ErrorContains(t, err, "token did not have an auth method resource type")
 		})
 	})
@@ -290,7 +290,7 @@ func TestStoreService_List(t *testing.T) {
 			}
 			tok, err := listtoken.NewStartRefresh(ctx, fiveDaysAgo, resource.AuthMethod, []byte("some hash"), fiveDaysAgo, fiveDaysAgo)
 			require.NoError(t, err)
-			_, err = auth.ListAuthMethodsRefresh(ctx, nil, 1, filterFunc, tok, repo, []string{org.PublicId}, true)
+			_, err = auth.ListAuthMethodsRefresh(ctx, nil, 1, filterFunc, tok, repo, []string{org.PublicId}, false)
 			require.ErrorContains(t, err, "missing grants hash")
 		})
 		t.Run("zero page size", func(t *testing.T) {
@@ -300,7 +300,7 @@ func TestStoreService_List(t *testing.T) {
 			}
 			tok, err := listtoken.NewStartRefresh(ctx, fiveDaysAgo, resource.AuthMethod, []byte("some hash"), fiveDaysAgo, fiveDaysAgo)
 			require.NoError(t, err)
-			_, err = auth.ListAuthMethodsRefresh(ctx, []byte("some hash"), 0, filterFunc, tok, repo, []string{org.PublicId}, true)
+			_, err = auth.ListAuthMethodsRefresh(ctx, []byte("some hash"), 0, filterFunc, tok, repo, []string{org.PublicId}, false)
 			require.ErrorContains(t, err, "page size must be at least 1")
 		})
 		t.Run("negative page size", func(t *testing.T) {
@@ -310,14 +310,14 @@ func TestStoreService_List(t *testing.T) {
 			}
 			tok, err := listtoken.NewStartRefresh(ctx, fiveDaysAgo, resource.AuthMethod, []byte("some hash"), fiveDaysAgo, fiveDaysAgo)
 			require.NoError(t, err)
-			_, err = auth.ListAuthMethodsRefresh(ctx, []byte("some hash"), -1, filterFunc, tok, repo, []string{org.PublicId}, true)
+			_, err = auth.ListAuthMethodsRefresh(ctx, []byte("some hash"), -1, filterFunc, tok, repo, []string{org.PublicId}, false)
 			require.ErrorContains(t, err, "page size must be at least 1")
 		})
 		t.Run("nil filter func", func(t *testing.T) {
 			t.Parallel()
 			tok, err := listtoken.NewStartRefresh(ctx, fiveDaysAgo, resource.AuthMethod, []byte("some hash"), fiveDaysAgo, fiveDaysAgo)
 			require.NoError(t, err)
-			_, err = auth.ListAuthMethodsRefresh(ctx, []byte("some hash"), 1, nil, tok, repo, []string{org.PublicId}, true)
+			_, err = auth.ListAuthMethodsRefresh(ctx, []byte("some hash"), 1, nil, tok, repo, []string{org.PublicId}, false)
 			require.ErrorContains(t, err, "missing filter item callback")
 		})
 		t.Run("nil token", func(t *testing.T) {
@@ -325,7 +325,7 @@ func TestStoreService_List(t *testing.T) {
 			filterFunc := func(_ context.Context, am auth.AuthMethod) (bool, error) {
 				return true, nil
 			}
-			_, err = auth.ListAuthMethodsRefresh(ctx, []byte("some hash"), 1, filterFunc, nil, repo, []string{org.PublicId}, true)
+			_, err = auth.ListAuthMethodsRefresh(ctx, []byte("some hash"), 1, filterFunc, nil, repo, []string{org.PublicId}, false)
 			require.ErrorContains(t, err, "missing token")
 		})
 		t.Run("missing repo", func(t *testing.T) {
@@ -335,7 +335,7 @@ func TestStoreService_List(t *testing.T) {
 			}
 			tok, err := listtoken.NewStartRefresh(ctx, fiveDaysAgo, resource.AuthMethod, []byte("some hash"), fiveDaysAgo, fiveDaysAgo)
 			require.NoError(t, err)
-			_, err = auth.ListAuthMethodsRefresh(ctx, []byte("some hash"), 1, filterFunc, tok, nil, []string{org.PublicId}, true)
+			_, err = auth.ListAuthMethodsRefresh(ctx, []byte("some hash"), 1, filterFunc, tok, nil, []string{org.PublicId}, false)
 			require.ErrorContains(t, err, "missing repo")
 		})
 		t.Run("missing scope ids", func(t *testing.T) {
@@ -345,7 +345,7 @@ func TestStoreService_List(t *testing.T) {
 			}
 			tok, err := listtoken.NewStartRefresh(ctx, fiveDaysAgo, resource.AuthMethod, []byte("some hash"), fiveDaysAgo, fiveDaysAgo)
 			require.NoError(t, err)
-			_, err = auth.ListAuthMethodsRefresh(ctx, []byte("some hash"), 1, filterFunc, tok, repo, nil, true)
+			_, err = auth.ListAuthMethodsRefresh(ctx, []byte("some hash"), 1, filterFunc, tok, repo, nil, false)
 			require.ErrorContains(t, err, "missing scope ids")
 		})
 		t.Run("wrong token resource type", func(t *testing.T) {
@@ -355,7 +355,7 @@ func TestStoreService_List(t *testing.T) {
 			}
 			tok, err := listtoken.NewStartRefresh(ctx, fiveDaysAgo, resource.Target, []byte("some hash"), fiveDaysAgo, fiveDaysAgo)
 			require.NoError(t, err)
-			_, err = auth.ListAuthMethodsRefresh(ctx, []byte("some hash"), 1, filterFunc, tok, repo, []string{org.GetPublicId()}, true)
+			_, err = auth.ListAuthMethodsRefresh(ctx, []byte("some hash"), 1, filterFunc, tok, repo, []string{org.GetPublicId()}, false)
 			require.ErrorContains(t, err, "token did not have an auth method resource type")
 		})
 	})
@@ -368,7 +368,7 @@ func TestStoreService_List(t *testing.T) {
 			}
 			tok, err := listtoken.NewRefresh(ctx, fiveDaysAgo, resource.AuthMethod, []byte("some hash"), fiveDaysAgo, fiveDaysAgo, fiveDaysAgo, "some other id", fiveDaysAgo)
 			require.NoError(t, err)
-			_, err = auth.ListAuthMethodsRefreshPage(ctx, nil, 1, filterFunc, tok, repo, []string{org.PublicId}, true)
+			_, err = auth.ListAuthMethodsRefreshPage(ctx, nil, 1, filterFunc, tok, repo, []string{org.PublicId}, false)
 			require.ErrorContains(t, err, "missing grants hash")
 		})
 		t.Run("zero page size", func(t *testing.T) {
@@ -378,7 +378,7 @@ func TestStoreService_List(t *testing.T) {
 			}
 			tok, err := listtoken.NewRefresh(ctx, fiveDaysAgo, resource.AuthMethod, []byte("some hash"), fiveDaysAgo, fiveDaysAgo, fiveDaysAgo, "some other id", fiveDaysAgo)
 			require.NoError(t, err)
-			_, err = auth.ListAuthMethodsRefreshPage(ctx, []byte("some hash"), 0, filterFunc, tok, repo, []string{org.PublicId}, true)
+			_, err = auth.ListAuthMethodsRefreshPage(ctx, []byte("some hash"), 0, filterFunc, tok, repo, []string{org.PublicId}, false)
 			require.ErrorContains(t, err, "page size must be at least 1")
 		})
 		t.Run("negative page size", func(t *testing.T) {
@@ -388,14 +388,14 @@ func TestStoreService_List(t *testing.T) {
 			}
 			tok, err := listtoken.NewRefresh(ctx, fiveDaysAgo, resource.AuthMethod, []byte("some hash"), fiveDaysAgo, fiveDaysAgo, fiveDaysAgo, "some other id", fiveDaysAgo)
 			require.NoError(t, err)
-			_, err = auth.ListAuthMethodsRefreshPage(ctx, []byte("some hash"), -1, filterFunc, tok, repo, []string{org.PublicId}, true)
+			_, err = auth.ListAuthMethodsRefreshPage(ctx, []byte("some hash"), -1, filterFunc, tok, repo, []string{org.PublicId}, false)
 			require.ErrorContains(t, err, "page size must be at least 1")
 		})
 		t.Run("nil filter func", func(t *testing.T) {
 			t.Parallel()
 			tok, err := listtoken.NewRefresh(ctx, fiveDaysAgo, resource.AuthMethod, []byte("some hash"), fiveDaysAgo, fiveDaysAgo, fiveDaysAgo, "some other id", fiveDaysAgo)
 			require.NoError(t, err)
-			_, err = auth.ListAuthMethodsRefreshPage(ctx, []byte("some hash"), 1, nil, tok, repo, []string{org.PublicId}, true)
+			_, err = auth.ListAuthMethodsRefreshPage(ctx, []byte("some hash"), 1, nil, tok, repo, []string{org.PublicId}, false)
 			require.ErrorContains(t, err, "missing filter item callback")
 		})
 		t.Run("nil token", func(t *testing.T) {
@@ -403,7 +403,7 @@ func TestStoreService_List(t *testing.T) {
 			filterFunc := func(_ context.Context, am auth.AuthMethod) (bool, error) {
 				return true, nil
 			}
-			_, err = auth.ListAuthMethodsRefreshPage(ctx, []byte("some hash"), 1, filterFunc, nil, repo, []string{org.PublicId}, true)
+			_, err = auth.ListAuthMethodsRefreshPage(ctx, []byte("some hash"), 1, filterFunc, nil, repo, []string{org.PublicId}, false)
 			require.ErrorContains(t, err, "missing token")
 		})
 		t.Run("wrong token type", func(t *testing.T) {
@@ -413,7 +413,7 @@ func TestStoreService_List(t *testing.T) {
 			}
 			tok, err := listtoken.NewPagination(ctx, fiveDaysAgo, resource.AuthMethod, []byte("some hash"), "some-id", fiveDaysAgo)
 			require.NoError(t, err)
-			_, err = auth.ListAuthMethodsRefreshPage(ctx, []byte("some hash"), 1, filterFunc, tok, repo, []string{org.PublicId}, true)
+			_, err = auth.ListAuthMethodsRefreshPage(ctx, []byte("some hash"), 1, filterFunc, tok, repo, []string{org.PublicId}, false)
 			require.ErrorContains(t, err, "token did not have a refresh token component")
 		})
 		t.Run("missing repo", func(t *testing.T) {
@@ -423,7 +423,7 @@ func TestStoreService_List(t *testing.T) {
 			}
 			tok, err := listtoken.NewRefresh(ctx, fiveDaysAgo, resource.AuthMethod, []byte("some hash"), fiveDaysAgo, fiveDaysAgo, fiveDaysAgo, "some other id", fiveDaysAgo)
 			require.NoError(t, err)
-			_, err = auth.ListAuthMethodsRefreshPage(ctx, []byte("some hash"), 1, filterFunc, tok, nil, []string{org.PublicId}, true)
+			_, err = auth.ListAuthMethodsRefreshPage(ctx, []byte("some hash"), 1, filterFunc, tok, nil, []string{org.PublicId}, false)
 			require.ErrorContains(t, err, "missing repo")
 		})
 		t.Run("missing scope ids", func(t *testing.T) {
@@ -433,7 +433,7 @@ func TestStoreService_List(t *testing.T) {
 			}
 			tok, err := listtoken.NewRefresh(ctx, fiveDaysAgo, resource.AuthMethod, []byte("some hash"), fiveDaysAgo, fiveDaysAgo, fiveDaysAgo, "some other id", fiveDaysAgo)
 			require.NoError(t, err)
-			_, err = auth.ListAuthMethodsRefreshPage(ctx, []byte("some hash"), 1, filterFunc, tok, repo, nil, true)
+			_, err = auth.ListAuthMethodsRefreshPage(ctx, []byte("some hash"), 1, filterFunc, tok, repo, nil, false)
 			require.ErrorContains(t, err, "missing scope ids")
 		})
 		t.Run("wrong token resource type", func(t *testing.T) {
@@ -443,7 +443,7 @@ func TestStoreService_List(t *testing.T) {
 			}
 			tok, err := listtoken.NewRefresh(ctx, fiveDaysAgo, resource.Target, []byte("some hash"), fiveDaysAgo, fiveDaysAgo, fiveDaysAgo, "some other id", fiveDaysAgo)
 			require.NoError(t, err)
-			_, err = auth.ListAuthMethodsRefreshPage(ctx, []byte("some hash"), 1, filterFunc, tok, repo, []string{org.GetPublicId()}, true)
+			_, err = auth.ListAuthMethodsRefreshPage(ctx, []byte("some hash"), 1, filterFunc, tok, repo, []string{org.GetPublicId()}, false)
 			require.ErrorContains(t, err, "token did not have an auth method resource type")
 		})
 	})
@@ -452,7 +452,7 @@ func TestStoreService_List(t *testing.T) {
 		filterFunc := func(context.Context, auth.AuthMethod) (bool, error) {
 			return true, nil
 		}
-		resp, err := auth.ListAuthMethods(ctx, []byte("some hash"), 1, filterFunc, repo, []string{org.PublicId}, true)
+		resp, err := auth.ListAuthMethods(ctx, []byte("some hash"), 1, filterFunc, repo, []string{org.PublicId}, false)
 		require.NoError(t, err)
 		require.NotNil(t, resp.ListToken)
 		require.Equal(t, resp.ListToken.GrantsHash, []byte("some hash"))
@@ -462,7 +462,7 @@ func TestStoreService_List(t *testing.T) {
 		require.Empty(t, resp.DeletedIds)
 		require.Empty(t, cmp.Diff(resp.Items[0], ams[0], cmpOpts...))
 
-		resp2, err := auth.ListAuthMethodsPage(ctx, []byte("some hash"), 1, filterFunc, resp.ListToken, repo, []string{org.PublicId}, true)
+		resp2, err := auth.ListAuthMethodsPage(ctx, []byte("some hash"), 1, filterFunc, resp.ListToken, repo, []string{org.PublicId}, false)
 		require.NoError(t, err)
 		require.Equal(t, resp2.ListToken.GrantsHash, []byte("some hash"))
 		require.False(t, resp2.CompleteListing)
@@ -471,7 +471,7 @@ func TestStoreService_List(t *testing.T) {
 		require.Len(t, resp2.Items, 1)
 		require.Empty(t, cmp.Diff(resp2.Items[0], ams[1], cmpOpts...))
 
-		resp3, err := auth.ListAuthMethodsPage(ctx, []byte("some hash"), 1, filterFunc, resp2.ListToken, repo, []string{org.PublicId}, true)
+		resp3, err := auth.ListAuthMethodsPage(ctx, []byte("some hash"), 1, filterFunc, resp2.ListToken, repo, []string{org.PublicId}, false)
 		require.NoError(t, err)
 		require.Equal(t, resp3.ListToken.GrantsHash, []byte("some hash"))
 		require.False(t, resp3.CompleteListing)
@@ -480,7 +480,7 @@ func TestStoreService_List(t *testing.T) {
 		require.Len(t, resp3.Items, 1)
 		require.Empty(t, cmp.Diff(resp3.Items[0], ams[2], cmpOpts...))
 
-		resp4, err := auth.ListAuthMethodsPage(ctx, []byte("some hash"), 1, filterFunc, resp3.ListToken, repo, []string{org.PublicId}, true)
+		resp4, err := auth.ListAuthMethodsPage(ctx, []byte("some hash"), 1, filterFunc, resp3.ListToken, repo, []string{org.PublicId}, false)
 		require.NoError(t, err)
 		require.Equal(t, resp4.ListToken.GrantsHash, []byte("some hash"))
 		require.False(t, resp4.CompleteListing)
@@ -490,7 +490,7 @@ func TestStoreService_List(t *testing.T) {
 		require.Empty(t, cmp.Diff(resp4.Items[0], ams[3], cmpOpts...))
 
 		// get the rest
-		resp5, err := auth.ListAuthMethodsPage(ctx, []byte("some hash"), 2, filterFunc, resp4.ListToken, repo, []string{org.PublicId}, true)
+		resp5, err := auth.ListAuthMethodsPage(ctx, []byte("some hash"), 2, filterFunc, resp4.ListToken, repo, []string{org.PublicId}, false)
 		require.NoError(t, err)
 		require.Equal(t, resp5.ListToken.GrantsHash, []byte("some hash"))
 		require.True(t, resp5.CompleteListing)
@@ -501,7 +501,7 @@ func TestStoreService_List(t *testing.T) {
 
 		// Finished initial pagination phase, request refresh
 		// Expect no results.
-		resp6, err := auth.ListAuthMethodsRefresh(ctx, []byte("some hash"), 1, filterFunc, resp5.ListToken, repo, []string{org.PublicId}, true)
+		resp6, err := auth.ListAuthMethodsRefresh(ctx, []byte("some hash"), 1, filterFunc, resp5.ListToken, repo, []string{org.PublicId}, false)
 		require.NoError(t, err)
 		require.Equal(t, resp6.ListToken.GrantsHash, []byte("some hash"))
 		require.True(t, resp6.CompleteListing)
@@ -530,7 +530,7 @@ func TestStoreService_List(t *testing.T) {
 		require.NoError(t, err)
 
 		// Refresh again, should get am3
-		resp7, err := auth.ListAuthMethodsRefresh(ctx, []byte("some hash"), 1, filterFunc, resp6.ListToken, repo, []string{org.PublicId}, true)
+		resp7, err := auth.ListAuthMethodsRefresh(ctx, []byte("some hash"), 1, filterFunc, resp6.ListToken, repo, []string{org.PublicId}, false)
 		require.NoError(t, err)
 		require.Equal(t, resp7.ListToken.GrantsHash, []byte("some hash"))
 		require.False(t, resp7.CompleteListing)
@@ -540,7 +540,7 @@ func TestStoreService_List(t *testing.T) {
 		require.Empty(t, cmp.Diff(resp7.Items[0], am3, cmpOpts...))
 
 		// Refresh again, should get am2
-		resp8, err := auth.ListAuthMethodsRefreshPage(ctx, []byte("some hash"), 1, filterFunc, resp7.ListToken, repo, []string{org.PublicId}, true)
+		resp8, err := auth.ListAuthMethodsRefreshPage(ctx, []byte("some hash"), 1, filterFunc, resp7.ListToken, repo, []string{org.PublicId}, false)
 		require.NoError(t, err)
 		require.Equal(t, resp8.ListToken.GrantsHash, []byte("some hash"))
 		require.False(t, resp8.CompleteListing)
@@ -550,7 +550,7 @@ func TestStoreService_List(t *testing.T) {
 		require.Empty(t, cmp.Diff(resp8.Items[0], am2, cmpOpts...))
 
 		// Refresh again, should get am1
-		resp9, err := auth.ListAuthMethodsRefreshPage(ctx, []byte("some hash"), 1, filterFunc, resp8.ListToken, repo, []string{org.PublicId}, true)
+		resp9, err := auth.ListAuthMethodsRefreshPage(ctx, []byte("some hash"), 1, filterFunc, resp8.ListToken, repo, []string{org.PublicId}, false)
 		require.NoError(t, err)
 		require.Equal(t, resp9.ListToken.GrantsHash, []byte("some hash"))
 		require.True(t, resp9.CompleteListing)
@@ -560,7 +560,7 @@ func TestStoreService_List(t *testing.T) {
 		require.Empty(t, cmp.Diff(resp9.Items[0], am1, cmpOpts...))
 
 		// Refresh again, should get no results
-		resp10, err := auth.ListAuthMethodsRefresh(ctx, []byte("some hash"), 1, filterFunc, resp9.ListToken, repo, []string{org.PublicId}, true)
+		resp10, err := auth.ListAuthMethodsRefresh(ctx, []byte("some hash"), 1, filterFunc, resp9.ListToken, repo, []string{org.PublicId}, false)
 		require.NoError(t, err)
 		require.Equal(t, resp10.ListToken.GrantsHash, []byte("some hash"))
 		require.True(t, resp10.CompleteListing)
@@ -574,7 +574,7 @@ func TestStoreService_List(t *testing.T) {
 			return am.GetPublicId() == ams[1].GetPublicId() ||
 				am.GetPublicId() == ams[len(ams)-1].GetPublicId(), nil
 		}
-		resp, err := auth.ListAuthMethods(ctx, []byte("some hash"), 1, filterFunc, repo, []string{org.PublicId}, true)
+		resp, err := auth.ListAuthMethods(ctx, []byte("some hash"), 1, filterFunc, repo, []string{org.PublicId}, false)
 		require.NoError(t, err)
 		require.NotNil(t, resp.ListToken)
 		require.Equal(t, resp.ListToken.GrantsHash, []byte("some hash"))
@@ -584,7 +584,7 @@ func TestStoreService_List(t *testing.T) {
 		require.Len(t, resp.Items, 1)
 		require.Empty(t, cmp.Diff(resp.Items[0], ams[1], cmpOpts...))
 
-		resp2, err := auth.ListAuthMethodsPage(ctx, []byte("some hash"), 2, filterFunc, resp.ListToken, repo, []string{org.PublicId}, true)
+		resp2, err := auth.ListAuthMethodsPage(ctx, []byte("some hash"), 2, filterFunc, resp.ListToken, repo, []string{org.PublicId}, false)
 		require.NoError(t, err)
 		require.NotNil(t, resp2.ListToken)
 		require.Equal(t, resp2.ListToken.GrantsHash, []byte("some hash"))
@@ -595,7 +595,7 @@ func TestStoreService_List(t *testing.T) {
 		require.Empty(t, cmp.Diff(resp2.Items[0], ams[len(ams)-1], cmpOpts...))
 
 		// request a refresh, nothing should be returned
-		resp3, err := auth.ListAuthMethodsRefresh(ctx, []byte("some hash"), 1, filterFunc, resp.ListToken, repo, []string{org.PublicId}, true)
+		resp3, err := auth.ListAuthMethodsRefresh(ctx, []byte("some hash"), 1, filterFunc, resp.ListToken, repo, []string{org.PublicId}, false)
 		require.NoError(t, err)
 		require.Equal(t, resp3.ListToken.GrantsHash, []byte("some hash"))
 		require.True(t, resp3.CompleteListing)
@@ -628,7 +628,7 @@ func TestStoreService_List(t *testing.T) {
 				am.GetPublicId() == am3.GetPublicId(), nil
 		}
 		// Refresh again, should get am3
-		resp4, err := auth.ListAuthMethodsRefresh(ctx, []byte("some hash"), 1, filterFunc, resp3.ListToken, repo, []string{org.PublicId}, true)
+		resp4, err := auth.ListAuthMethodsRefresh(ctx, []byte("some hash"), 1, filterFunc, resp3.ListToken, repo, []string{org.PublicId}, false)
 		require.NoError(t, err)
 		require.Equal(t, resp4.ListToken.GrantsHash, []byte("some hash"))
 		require.False(t, resp4.CompleteListing)
@@ -638,7 +638,7 @@ func TestStoreService_List(t *testing.T) {
 		require.Empty(t, cmp.Diff(resp4.Items[0], am3, cmpOpts...))
 
 		// Refresh again, should get am1
-		resp5, err := auth.ListAuthMethodsRefreshPage(ctx, []byte("some hash"), 1, filterFunc, resp4.ListToken, repo, []string{org.PublicId}, true)
+		resp5, err := auth.ListAuthMethodsRefreshPage(ctx, []byte("some hash"), 1, filterFunc, resp4.ListToken, repo, []string{org.PublicId}, false)
 		require.NoError(t, err)
 		require.Equal(t, resp5.ListToken.GrantsHash, []byte("some hash"))
 		require.True(t, resp5.CompleteListing)
@@ -666,7 +666,7 @@ func TestStoreService_List(t *testing.T) {
 		_, err = sqlDb.ExecContext(ctx, "analyze")
 		require.NoError(t, err)
 
-		resp, err := auth.ListAuthMethods(ctx, []byte("some hash"), 1, filterFunc, repo, []string{org.PublicId}, true)
+		resp, err := auth.ListAuthMethods(ctx, []byte("some hash"), 1, filterFunc, repo, []string{org.PublicId}, false)
 		require.NoError(t, err)
 		require.NotNil(t, resp.ListToken)
 		require.Equal(t, resp.ListToken.GrantsHash, []byte("some hash"))
@@ -677,7 +677,7 @@ func TestStoreService_List(t *testing.T) {
 		require.Empty(t, cmp.Diff(resp.Items[0], ams[0], cmpOpts...))
 
 		// request remaining results
-		resp2, err := auth.ListAuthMethodsPage(ctx, []byte("some hash"), 3, filterFunc, resp.ListToken, repo, []string{org.PublicId}, true)
+		resp2, err := auth.ListAuthMethodsPage(ctx, []byte("some hash"), 3, filterFunc, resp.ListToken, repo, []string{org.PublicId}, false)
 		require.NoError(t, err)
 		require.Equal(t, resp2.ListToken.GrantsHash, []byte("some hash"))
 		require.True(t, resp2.CompleteListing)
@@ -700,7 +700,7 @@ func TestStoreService_List(t *testing.T) {
 		_, err = sqlDb.ExecContext(ctx, "analyze")
 		require.NoError(t, err)
 
-		resp3, err := auth.ListAuthMethodsRefresh(ctx, []byte("some hash"), 1, filterFunc, resp2.ListToken, repo, []string{org.PublicId}, true)
+		resp3, err := auth.ListAuthMethodsRefresh(ctx, []byte("some hash"), 1, filterFunc, resp2.ListToken, repo, []string{org.PublicId}, false)
 		require.NoError(t, err)
 		require.Equal(t, resp3.ListToken.GrantsHash, []byte("some hash"))
 		require.True(t, resp3.CompleteListing)
