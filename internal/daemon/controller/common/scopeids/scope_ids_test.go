@@ -45,7 +45,7 @@ func TestListingScopeIds(t *testing.T) {
 	serversRepoFn := func() (*server.Repository, error) {
 		return server.NewRepository(ctx, rw, rw, kms)
 	}
-	s, err := groups.NewService(ctx, iamRepoFn)
+	s, err := groups.NewService(ctx, iamRepoFn, 1000)
 	require.NoError(t, err)
 
 	sessionsRepoFn := func(opt ...session.Option) (*session.Repository, error) {
