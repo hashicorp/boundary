@@ -56,7 +56,7 @@ func TestCliSearch(t *testing.T) {
 		func() error {
 			output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("daemon", "status", "-format", "json"))
 			if output.Err != nil {
-				return errors.New("Daemon is still starting up...")
+				return errors.New("Daemon is still starting up")
 			}
 
 			require.NoError(t, output.Err, string(output.Stderr))
@@ -120,6 +120,10 @@ func TestCliSearch(t *testing.T) {
 	}
 	require.Equal(t, len(targetIds), len(listedIds))
 
+	// Search for targets that contain the target prefix.
+	// This requests data from the client cache daemon.
+	t.Log("Searching targets...")
+	var searchResult clientcache.SearchResult
 	err = backoff.RetryNotify(
 		func() error {
 			output = e2e.RunCommand(ctx, "boundary",
@@ -134,9 +138,7 @@ func TestCliSearch(t *testing.T) {
 				return backoff.Permanent(errors.New(string(output.Stderr)))
 			}
 
-			var searchResult clientcache.SearchResult
 			err = json.Unmarshal(output.Stdout, &searchResult)
-			require.NoError(t, err)
 			if err != nil {
 				return backoff.Permanent(err)
 			}
@@ -145,7 +147,6 @@ func TestCliSearch(t *testing.T) {
 			if targetCount == 0 {
 				return errors.New("No targets are appearing in the search results")
 			}
-
 			t.Logf("Found %d target(s)", targetCount)
 			return nil
 		},
@@ -154,24 +155,6 @@ func TestCliSearch(t *testing.T) {
 			t.Logf("%s. Retrying...", err.Error())
 		},
 	)
-	require.NoError(t, err)
-
-	// Search for targets that contain the target prefix.
-	// This requests data from the client cache daemon.
-	// The force refresh option forces the client daemon to fetch new data
-	t.Log("Searching targets...")
-	output = e2e.RunCommand(ctx, "boundary",
-		e2e.WithArgs(
-			"search",
-			"-resource", "targets",
-			"-format", "json",
-			"-query", fmt.Sprintf(`name %% "%s" and scope_id = "%s"`, targetPrefix, newProjectId),
-			"-force-refresh",
-		),
-	)
-	require.NoError(t, output.Err, string(output.Stderr))
-	var searchResult clientcache.SearchResult
-	err = json.Unmarshal(output.Stdout, &searchResult)
 	require.NoError(t, err)
 	var searchedIds []string
 	for _, target := range searchResult.Item.Targets {

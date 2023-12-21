@@ -5,11 +5,13 @@ package clientcache
 
 import "github.com/hashicorp/boundary/internal/clientcache/internal/daemon"
 
+// SearchResult describes the output from a search query when using the CLI
 type SearchResult struct {
 	StatusCode int                 `json:"status_code"`
 	Item       daemon.SearchResult `json:"item"`
 }
 
+// StatusResult describe the output from a status query when using the CLI
 type StatusResult struct {
 	StatusCode int                 `json:"status_code"`
 	Item       daemon.StatusResult `json:"item"`
