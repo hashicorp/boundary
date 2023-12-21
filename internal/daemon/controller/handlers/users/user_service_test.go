@@ -7,7 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"sort"
+	"slices"
 	"strings"
 	"testing"
 
@@ -17,13 +17,17 @@ import (
 	"github.com/hashicorp/boundary/internal/auth/ldap"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
+	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/users"
 	"github.com/hashicorp/boundary/internal/db"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	authpb "github.com/hashicorp/boundary/internal/gen/controller/auth"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/requests"
+	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/users"
@@ -145,7 +149,7 @@ func TestGet(t *testing.T) {
 			req := proto.Clone(toMerge).(*pbs.GetUserRequest)
 			proto.Merge(req, tc.req)
 
-			s, err := users.NewService(context.Background(), repoFn)
+			s, err := users.NewService(context.Background(), repoFn, 1000)
 			require.NoError(err, "Couldn't create new user service.")
 
 			got, gErr := s.GetUser(auth.DisabledAuthTestContext(repoFn, u.GetScopeId()), req)
@@ -166,6 +170,7 @@ func TestGet(t *testing.T) {
 }
 
 func TestList(t *testing.T) {
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrap := db.TestWrapper(t)
 	iamRepo := iam.TestRepo(t, conn, wrap)
@@ -191,23 +196,25 @@ func TestList(t *testing.T) {
 	secondaryAm := password.TestAuthMethods(t, conn, oWithUsers.PublicId, 1)
 	require.Len(t, secondaryAm, 1)
 
-	s, err := users.NewService(context.Background(), repoFn)
+	s, err := users.NewService(context.Background(), repoFn, 1000)
 	require.NoError(t, err)
 
 	var wantUsers []*pb.User
 
 	// Populate expected values for recursive test
 	var totalUsers []*pb.User
-	ctx := auth.DisabledAuthTestContext(repoFn, "global")
-	anon, err := s.GetUser(ctx, &pbs.GetUserRequest{Id: globals.AnonymousUserId})
-	require.NoError(t, err)
-	totalUsers = append(totalUsers, anon.GetItem())
-	authUser, err := s.GetUser(ctx, &pbs.GetUserRequest{Id: globals.AnyAuthenticatedUserId})
-	require.NoError(t, err)
-	totalUsers = append(totalUsers, authUser.GetItem())
-	recovery, err := s.GetUser(ctx, &pbs.GetUserRequest{Id: globals.RecoveryUserId})
-	require.NoError(t, err)
-	totalUsers = append(totalUsers, recovery.GetItem())
+	{
+		disabledAuthCtx := auth.DisabledAuthTestContext(repoFn, "global")
+		anon, err := s.GetUser(disabledAuthCtx, &pbs.GetUserRequest{Id: globals.AnonymousUserId})
+		require.NoError(t, err)
+		totalUsers = append(totalUsers, anon.GetItem())
+		authUser, err := s.GetUser(disabledAuthCtx, &pbs.GetUserRequest{Id: globals.AnyAuthenticatedUserId})
+		require.NoError(t, err)
+		totalUsers = append(totalUsers, authUser.GetItem())
+		recovery, err := s.GetUser(disabledAuthCtx, &pbs.GetUserRequest{Id: globals.RecoveryUserId})
+		require.NoError(t, err)
+		totalUsers = append(totalUsers, recovery.GetItem())
+	}
 
 	// Add new users
 	for i := 0; i < 10; i++ {
@@ -238,12 +245,17 @@ func TestList(t *testing.T) {
 			PrimaryAccountId:  oidcAcct.GetPublicId(),
 		})
 	}
-
 	// Populate these users into the total
-	ctx = auth.DisabledAuthTestContext(repoFn, oWithUsers.GetPublicId(), auth.WithUserId(globals.AnyAuthenticatedUserId))
-	usersInOrg, err := s.ListUsers(ctx, &pbs.ListUsersRequest{ScopeId: oWithUsers.GetPublicId()})
+	totalUsers = append(totalUsers, wantUsers...)
+	slices.Reverse(totalUsers)
+	slices.Reverse(wantUsers)
+
+	// Run analyze to update postgres estimates
+	sqlDb, err := conn.SqlDB(ctx)
 	require.NoError(t, err)
-	totalUsers = append(totalUsers, usersInOrg.GetItems()...)
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
+
 	cases := []struct {
 		name string
 		req  *pbs.ListUsersRequest
@@ -253,32 +265,64 @@ func TestList(t *testing.T) {
 		{
 			name: "List Many Users",
 			req:  &pbs.ListUsersRequest{ScopeId: oWithUsers.GetPublicId()},
-			res:  &pbs.ListUsersResponse{Items: wantUsers},
+			res: &pbs.ListUsersResponse{
+				Items:        wantUsers,
+				EstItemCount: uint32(len(wantUsers)),
+				ResponseType: "complete",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+			},
 		},
 		{
 			name: "List No Users",
 			req:  &pbs.ListUsersRequest{ScopeId: oNoUsers.GetPublicId()},
-			res:  &pbs.ListUsersResponse{},
+			res: &pbs.ListUsersResponse{
+				ResponseType: "complete",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+			},
 		},
 		{
 			name: "List Recursively in Org",
 			req:  &pbs.ListUsersRequest{ScopeId: oWithUsers.GetPublicId(), Recursive: true},
-			res:  &pbs.ListUsersResponse{Items: wantUsers},
+			res: &pbs.ListUsersResponse{
+				Items:        wantUsers,
+				EstItemCount: uint32(len(wantUsers)),
+				ResponseType: "complete",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+			},
 		},
 		{
 			name: "List Recursively in Global",
 			req:  &pbs.ListUsersRequest{ScopeId: "global", Recursive: true},
-			res:  &pbs.ListUsersResponse{Items: totalUsers},
+			res: &pbs.ListUsersResponse{
+				Items:        totalUsers,
+				EstItemCount: uint32(len(totalUsers)),
+				ResponseType: "complete",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+			},
 		},
 		{
 			name: "Filter Many Users",
 			req:  &pbs.ListUsersRequest{ScopeId: "global", Recursive: true, Filter: fmt.Sprintf(`"/item/scope/id"==%q`, oWithUsers.GetPublicId())},
-			res:  &pbs.ListUsersResponse{Items: wantUsers},
+			res: &pbs.ListUsersResponse{
+				Items:        wantUsers,
+				EstItemCount: uint32(len(wantUsers)),
+				ResponseType: "complete",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+			},
 		},
 		{
 			name: "Filter To No Users",
 			req:  &pbs.ListUsersRequest{ScopeId: oWithUsers.GetPublicId(), Filter: `"/item/id"=="doesntmatch"`},
-			res:  &pbs.ListUsersResponse{},
+			res: &pbs.ListUsersResponse{
+				ResponseType: "complete",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+			},
 		},
 		{
 			name: "Filter Bad Format",
@@ -298,20 +342,6 @@ func TestList(t *testing.T) {
 				assert.True(errors.Is(gErr, tc.err), "ListUsers(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
 				return
 			}
-			gotUsers := sortableUsers{
-				users: got.GetItems(),
-			}
-			resUsers := sortableUsers{
-				users: tc.res.GetItems(),
-			}
-			if got != nil {
-				sort.Sort(gotUsers)
-				got.Items = gotUsers.users
-			}
-			if tc.res != nil {
-				sort.Sort(resUsers)
-				tc.res.Items = resUsers.users
-			}
 			assert.Empty(cmp.Diff(
 				got,
 				tc.res,
@@ -319,6 +349,7 @@ func TestList(t *testing.T) {
 				cmpopts.SortSlices(func(a, b string) bool {
 					return a < b
 				}),
+				protocmp.IgnoreFields(&pbs.ListUsersResponse{}, "list_token"),
 			), "ListUsers(%q) got response %q, wanted %q", tc.req, got, tc.res)
 			// Test with anon user
 
@@ -336,18 +367,372 @@ func TestList(t *testing.T) {
 	}
 }
 
-type sortableUsers struct {
-	users []*pb.User
+func userToProto(u *iam.User, si *scopes.ScopeInfo, authorizedActions []string) *pb.User {
+	pu := &pb.User{
+		Id:                u.GetPublicId(),
+		ScopeId:           u.GetScopeId(),
+		Scope:             si,
+		CreatedTime:       u.GetCreateTime().GetTimestamp(),
+		UpdatedTime:       u.GetUpdateTime().GetTimestamp(),
+		Version:           u.GetVersion(),
+		AuthorizedActions: testAuthorizedActions,
+	}
+	if u.GetName() != "" {
+		pu.Name = wrapperspb.String(u.GetName())
+	}
+	if u.GetDescription() != "" {
+		pu.Description = wrapperspb.String(u.GetDescription())
+	}
+	return pu
 }
 
-func (s sortableUsers) Len() int           { return len(s.users) }
-func (s sortableUsers) Less(i, j int) bool { return s.users[i].GetId() < s.users[j].GetId() }
-func (s sortableUsers) Swap(i, j int)      { s.users[i], s.users[j] = s.users[j], s.users[i] }
+func TestListPagination(t *testing.T) {
+	// Set database read timeout to avoid duplicates in response
+	oldReadTimeout := globals.RefreshReadLookbackDuration
+	globals.RefreshReadLookbackDuration = 0
+	t.Cleanup(func() {
+		globals.RefreshReadLookbackDuration = oldReadTimeout
+	})
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	sqlDB, err := conn.SqlDB(ctx)
+	require.NoError(t, err)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	rw := db.New(conn)
+
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+	tokenRepoFn := func() (*authtoken.Repository, error) {
+		return authtoken.NewRepository(ctx, rw, rw, kms)
+	}
+	serversRepoFn := func() (*server.Repository, error) {
+		return server.NewRepository(ctx, rw, rw, kms)
+	}
+	tokenRepo, err := tokenRepoFn()
+	require.NoError(t, err)
+
+	// Run analyze to update postgres meta tables
+	_, err = sqlDB.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
+
+	oNoUsers, _ := iam.TestScopes(t, iamRepo)
+	oWithUsers, _ := iam.TestScopes(t, iamRepo)
+
+	var allUsers []*pb.User
+	// Get the 3 system users (u_recovery, u_anon, u_auth)
+	us, _, err := iamRepo.ListUsers(ctx, []string{"global"})
+	require.NoError(t, err)
+	require.Len(t, us, 3)
+	// They (should) be returned in reverse order by create time, so we reverse
+	slices.Reverse(us)
+	for _, u := range us {
+		allUsers = append(allUsers, userToProto(u, &scopes.ScopeInfo{
+			Id:          u.ScopeId,
+			Name:        scope.Global.String(),
+			Description: "Global Scope",
+			Type:        scope.Global.String(),
+		}, testAuthorizedActions))
+	}
+
+	authMethod := password.TestAuthMethods(t, conn, "global", 1)[0]
+	acct := password.TestAccount(t, conn, authMethod.GetPublicId(), "test_user")
+	u := iam.TestUser(t, iamRepo, "global", iam.WithAccountIds(acct.PublicId))
+	allUsers = append(allUsers, userToProto(u, &scopes.ScopeInfo{
+		Id:          u.ScopeId,
+		Name:        scope.Global.String(),
+		Description: "Global Scope",
+		Type:        scope.Global.String(),
+	}, testAuthorizedActions))
+
+	// add roles to be able to see all users
+	allowedRole := iam.TestRole(t, conn, "global")
+	iam.TestRoleGrant(t, conn, allowedRole.GetPublicId(), "id=*;type=*;actions=*")
+	iam.TestUserRole(t, conn, allowedRole.GetPublicId(), u.GetPublicId())
+	for _, scope := range []*iam.Scope{oWithUsers, oNoUsers} {
+		allowedRole := iam.TestRole(t, conn, scope.GetPublicId())
+		iam.TestRoleGrant(t, conn, allowedRole.GetPublicId(), "id=*;type=*;actions=*")
+		iam.TestUserRole(t, conn, allowedRole.GetPublicId(), u.GetPublicId())
+	}
+
+	at, err := tokenRepo.CreateAuthToken(ctx, u, acct.GetPublicId())
+	require.NoError(t, err)
+
+	// Test without anon user
+	requestInfo := authpb.RequestInfo{
+		TokenFormat: uint32(auth.AuthTokenTypeBearer),
+		PublicId:    at.GetPublicId(),
+		Token:       at.GetToken(),
+	}
+	requestContext := context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
+	ctx = auth.NewVerifierContext(requestContext, iamRepoFn, tokenRepoFn, serversRepoFn, kms, &requestInfo)
+
+	var safeToDeleteUser string
+	orgScopeInfo := &scopes.ScopeInfo{Id: oWithUsers.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()}
+	for i := 0; i < 10; i++ {
+		ou := iam.TestUser(t, iamRepo, oWithUsers.GetPublicId())
+		allUsers = append(allUsers, userToProto(ou, orgScopeInfo, testAuthorizedActions))
+		safeToDeleteUser = ou.GetPublicId()
+	}
+	slices.Reverse(allUsers)
+
+	a, err := users.NewService(ctx, iamRepoFn, 1000)
+	require.NoError(t, err, "Couldn't create new user service.")
+
+	// Run analyze to update postgres estimates
+	_, err = sqlDB.ExecContext(context.Background(), "analyze")
+	require.NoError(t, err)
+
+	itemCount := uint32(len(allUsers))
+	testPageSize := int((itemCount - 2) / 2)
+
+	// Start paginating, recursively
+	req := &pbs.ListUsersRequest{
+		ScopeId:   "global",
+		Recursive: true,
+		Filter:    "",
+		ListToken: "",
+		PageSize:  uint32(testPageSize),
+	}
+	got, err := a.ListUsers(ctx, req)
+	require.NoError(t, err)
+	require.Len(t, got.GetItems(), testPageSize)
+	// Compare without comparing the list token
+	assert.Empty(t,
+		cmp.Diff(
+			got,
+			&pbs.ListUsersResponse{
+				Items:        allUsers[0:testPageSize],
+				ResponseType: "delta",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+				RemovedIds:   nil,
+				// In addition to the added users, there are the users added
+				// by the test setup when specifying the permissions of the
+				// requester
+				EstItemCount: itemCount,
+			},
+			protocmp.SortRepeated(func(a, b string) bool {
+				return strings.Compare(a, b) < 0
+			}),
+			protocmp.Transform(),
+			protocmp.IgnoreFields(&pbs.ListUsersResponse{}, "list_token"),
+		),
+	)
+
+	// Request second page
+	req.ListToken = got.ListToken
+	got, err = a.ListUsers(ctx, req)
+	require.NoError(t, err)
+	require.Len(t, got.GetItems(), testPageSize)
+	// Compare without comparing the list token
+	assert.Empty(t,
+		cmp.Diff(
+			got,
+			&pbs.ListUsersResponse{
+				Items:        allUsers[testPageSize : testPageSize*2],
+				ResponseType: "delta",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+				RemovedIds:   nil,
+				EstItemCount: itemCount,
+			},
+			protocmp.Transform(),
+			protocmp.SortRepeated(func(a, b string) bool {
+				return strings.Compare(a, b) < 0
+			}),
+			protocmp.IgnoreFields(&pbs.ListUsersResponse{}, "list_token"),
+		),
+	)
+
+	// Request rest of results
+	req.ListToken = got.ListToken
+	req.PageSize = 10
+	got, err = a.ListUsers(ctx, req)
+	require.NoError(t, err)
+	require.Len(t, got.GetItems(), 2)
+	// Compare without comparing the list token
+	assert.Empty(t,
+		cmp.Diff(
+			got,
+			&pbs.ListUsersResponse{
+				Items:        allUsers[testPageSize*2:],
+				ResponseType: "complete",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+				RemovedIds:   nil,
+				EstItemCount: itemCount,
+			},
+			protocmp.Transform(),
+			protocmp.SortRepeated(func(a, b string) bool {
+				return strings.Compare(a, b) < 0
+			}),
+			protocmp.IgnoreFields(&pbs.ListUsersResponse{}, "list_token"),
+		),
+	)
+
+	// Update 2 users and see them in the refresh
+	r1 := allUsers[len(allUsers)-1]
+	r1.Description = wrapperspb.String("updated1")
+	resp1, err := a.UpdateUser(ctx, &pbs.UpdateUserRequest{
+		Id:         r1.GetId(),
+		Item:       &pb.User{Description: r1.GetDescription(), Version: r1.GetVersion()},
+		UpdateMask: &field_mask.FieldMask{Paths: []string{"description"}},
+	})
+	require.NoError(t, err)
+	r1.UpdatedTime = resp1.GetItem().GetUpdatedTime()
+	r1.Version = resp1.GetItem().GetVersion()
+	allUsers = append([]*pb.User{r1}, allUsers[:len(allUsers)-1]...)
+
+	r2 := allUsers[len(allUsers)-1]
+	r2.Description = wrapperspb.String("updated2")
+	resp2, err := a.UpdateUser(ctx, &pbs.UpdateUserRequest{
+		Id:         r2.GetId(),
+		Item:       &pb.User{Description: r2.GetDescription(), Version: r2.GetVersion()},
+		UpdateMask: &field_mask.FieldMask{Paths: []string{"description"}},
+	})
+	require.NoError(t, err)
+	r2.UpdatedTime = resp2.GetItem().GetUpdatedTime()
+	r2.Version = resp2.GetItem().GetVersion()
+	allUsers = append([]*pb.User{r2}, allUsers[:len(allUsers)-1]...)
+
+	// Run analyze to update postgres estimates
+	_, err = sqlDB.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
+
+	// Request updated results
+	req.ListToken = got.ListToken
+	req.PageSize = 1
+	got, err = a.ListUsers(ctx, req)
+	require.NoError(t, err)
+	require.Len(t, got.GetItems(), 1)
+	// Compare without comparing the list token
+	assert.Empty(t,
+		cmp.Diff(
+			got,
+			&pbs.ListUsersResponse{
+				Items:        []*pb.User{allUsers[0]},
+				ResponseType: "delta",
+				SortBy:       "updated_time",
+				SortDir:      "desc",
+				RemovedIds:   nil,
+				EstItemCount: itemCount,
+			},
+			protocmp.Transform(),
+			protocmp.SortRepeated(func(a, b string) bool {
+				return strings.Compare(a, b) < 0
+			}),
+			protocmp.IgnoreFields(&pbs.ListUsersResponse{}, "list_token"),
+		),
+	)
+
+	// Get next page
+	req.ListToken = got.ListToken
+	got, err = a.ListUsers(ctx, req)
+	require.NoError(t, err)
+	require.Len(t, got.GetItems(), 1)
+	// Compare without comparing the list token
+	assert.Empty(t,
+		cmp.Diff(
+			got,
+			&pbs.ListUsersResponse{
+				Items:        []*pb.User{allUsers[1]},
+				ResponseType: "complete",
+				SortBy:       "updated_time",
+				SortDir:      "desc",
+				RemovedIds:   nil,
+				EstItemCount: itemCount,
+			},
+			protocmp.Transform(),
+			protocmp.SortRepeated(func(a, b string) bool {
+				return strings.Compare(a, b) < 0
+			}),
+			protocmp.IgnoreFields(&pbs.ListUsersResponse{}, "list_token"),
+		),
+	)
+
+	// Request new page with filter requiring looping
+	// to fill the page.
+	req.ListToken = ""
+	req.PageSize = 1
+	req.Filter = fmt.Sprintf(`"/item/id"==%q or "/item/id"==%q`, allUsers[len(allUsers)-2].Id, allUsers[len(allUsers)-1].Id)
+	got, err = a.ListUsers(ctx, req)
+	require.NoError(t, err)
+	require.Len(t, got.GetItems(), 1)
+	assert.Empty(t,
+		cmp.Diff(
+			got,
+			&pbs.ListUsersResponse{
+				Items:        []*pb.User{allUsers[len(allUsers)-2]},
+				ResponseType: "delta",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+				// Should be empty again
+				RemovedIds:   nil,
+				EstItemCount: itemCount,
+			},
+			protocmp.Transform(),
+			protocmp.SortRepeated(func(a, b string) bool {
+				return strings.Compare(a, b) < 0
+			}),
+			protocmp.IgnoreFields(&pbs.ListUsersResponse{}, "list_token"),
+		),
+	)
+	req.ListToken = got.ListToken
+	// Get the second page
+	got, err = a.ListUsers(ctx, req)
+	require.NoError(t, err)
+	require.Len(t, got.GetItems(), 1)
+	assert.Empty(t,
+		cmp.Diff(
+			got,
+			&pbs.ListUsersResponse{
+				Items:        []*pb.User{allUsers[len(allUsers)-1]},
+				ResponseType: "complete",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+				RemovedIds:   nil,
+				EstItemCount: itemCount,
+			},
+			protocmp.Transform(),
+			protocmp.SortRepeated(func(a, b string) bool {
+				return strings.Compare(a, b) < 0
+			}),
+			protocmp.IgnoreFields(&pbs.ListUsersResponse{}, "list_token"),
+		),
+	)
+
+	_, err = iamRepo.DeleteUser(ctx, safeToDeleteUser)
+	require.NoError(t, err)
+	req.ListToken = got.ListToken
+	got, err = a.ListUsers(ctx, req)
+	require.NoError(t, err)
+	assert.Empty(t,
+		cmp.Diff(
+			got,
+			&pbs.ListUsersResponse{
+				Items:        nil,
+				ResponseType: "complete",
+				SortBy:       "updated_time",
+				SortDir:      "desc",
+				RemovedIds:   []string{safeToDeleteUser},
+				EstItemCount: itemCount,
+			},
+			protocmp.Transform(),
+			protocmp.SortRepeated(func(a, b string) bool {
+				return strings.Compare(a, b) < 0
+			}),
+			protocmp.IgnoreFields(&pbs.ListUsersResponse{}, "list_token"),
+		),
+	)
+}
 
 func TestDelete(t *testing.T) {
 	u, _, repoFn := createDefaultUserAndRepo(t, false)
 
-	s, err := users.NewService(context.Background(), repoFn)
+	s, err := users.NewService(context.Background(), repoFn, 1000)
 	require.NoError(t, err, "Error when getting new user service.")
 
 	cases := []struct {
@@ -394,7 +779,7 @@ func TestDelete_twice(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 	u, _, repoFn := createDefaultUserAndRepo(t, false)
 
-	s, err := users.NewService(context.Background(), repoFn)
+	s, err := users.NewService(context.Background(), repoFn, 1000)
 	require.NoError(err, "Error when getting new user service")
 	req := &pbs.DeleteUserRequest{
 		Id: u.GetPublicId(),
@@ -486,7 +871,7 @@ func TestCreate(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			s, err := users.NewService(context.Background(), repoFn)
+			s, err := users.NewService(context.Background(), repoFn, 1000)
 			require.NoError(err, "Error when getting new user service.")
 
 			got, gErr := s.CreateUser(auth.DisabledAuthTestContext(repoFn, tc.req.GetItem().GetScopeId()), tc.req)
@@ -522,7 +907,7 @@ func TestCreate(t *testing.T) {
 
 func TestUpdate(t *testing.T) {
 	u, _, repoFn := createDefaultUserAndRepo(t, false)
-	tested, err := users.NewService(context.Background(), repoFn)
+	tested, err := users.NewService(context.Background(), repoFn, 1000)
 	require.NoError(t, err, "Error when getting new user service.")
 
 	created := u.GetCreateTime().GetTimestamp().AsTime()
@@ -806,7 +1191,7 @@ func TestAddAccount(t *testing.T) {
 	repoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
-	s, err := users.NewService(ctx, repoFn)
+	s, err := users.NewService(ctx, repoFn, 1000)
 	require.NoError(t, err, "Error when getting new user service.")
 
 	o, _ := iam.TestScopes(t, iamRepo)
@@ -966,7 +1351,7 @@ func TestSetAccount(t *testing.T) {
 	repoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
-	s, err := users.NewService(ctx, repoFn)
+	s, err := users.NewService(ctx, repoFn, 1000)
 	require.NoError(t, err, "Error when getting new user service.")
 
 	o, _ := iam.TestScopes(t, iamRepo)
@@ -1128,7 +1513,7 @@ func TestRemoveAccount(t *testing.T) {
 	repoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
-	s, err := users.NewService(ctx, repoFn)
+	s, err := users.NewService(ctx, repoFn, 1000)
 	require.NoError(t, err, "Error when getting new user service.")
 
 	o, _ := iam.TestScopes(t, iamRepo)
