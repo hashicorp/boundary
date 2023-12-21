@@ -848,7 +848,7 @@ func (r *Repository) lookupUser(ctx context.Context, userId string, opt ...Optio
 	return ret.shallowConversion(), nil
 }
 
-// listUsers lists users in the given scopes and supports WithLimit option.
+// ListUsers lists users in the given scopes and supports WithLimit option.
 func (r *Repository) ListUsers(ctx context.Context, withScopeIds []string, opt ...Option) ([]*User, time.Time, error) {
 	const op = "iam.(Repository).listUsers"
 	if len(withScopeIds) == 0 {

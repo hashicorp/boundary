@@ -1162,6 +1162,21 @@
             "in": "query",
             "required": false,
             "type": "string"
+          },
+          {
+            "name": "list_token",
+            "description": "An opaque token used to continue an existing iteration or\nrequest updated items. If not specified, pagination\nwill start from the beginning.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "page_size",
+            "description": "The maximum size of a page in this iteration.\nIf unset, the default page size configured will be used.\nIf the page_size is greater than the default page configured,\nan error will be returned.",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int64"
           }
         ],
         "tags": [
@@ -7834,6 +7849,34 @@
             "type": "object",
             "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
           }
+        },
+        "response_type": {
+          "type": "string",
+          "description": "The type of response, either \"delta\" or \"complete\".\nDelta signifies that this is part of a paginated result\nor an update to a previously completed pagination.\nComplete signifies that it is the last page."
+        },
+        "list_token": {
+          "type": "string",
+          "description": "An opaque token used to continue an existing pagination or\nrequest updated items. Use this token in the next list request\nto request the next page."
+        },
+        "sort_by": {
+          "type": "string",
+          "description": "The name of the field which the items are sorted by."
+        },
+        "sort_dir": {
+          "type": "string",
+          "description": "The direction of the sort, either \"asc\" or \"desc\"."
+        },
+        "removed_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "A list of item IDs that have been removed since they were returned\nas part of a pagination. They should be dropped from any client cache.\nThis may contain items that are not known to the cache, if they were\ncreated and deleted between listings."
+        },
+        "est_item_count": {
+          "type": "integer",
+          "format": "int64",
+          "description": "An estimate at the total items available. This may change during pagination."
         }
       }
     },
