@@ -20,6 +20,7 @@ import (
 	"github.com/hashicorp/boundary/globals"
 	authpb "github.com/hashicorp/boundary/internal/gen/controller/auth"
 
+	am "github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/ldap"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
@@ -63,6 +64,8 @@ type setup struct {
 	ldapRepoFn                  common.LdapAuthRepoFactory
 	pwRepoFn                    common.PasswordAuthRepoFactory
 	atRepoFn                    common.AuthTokenRepoFactory
+	authMethodRepoFn            common.AuthMethodRepoFactory
+	maxPageSize                 int
 	org                         *iam.Scope
 	proj                        *iam.Scope
 	databaseWrapper             wrapping.Wrapper
@@ -104,12 +107,26 @@ func getSetup(t *testing.T) setup {
 	ret.atRepoFn = func() (*authtoken.Repository, error) {
 		return authtoken.NewRepository(ctx, ret.rw, ret.rw, ret.kmsCache)
 	}
+	ret.authMethodRepoFn = func() (*am.AuthMethodRepository, error) {
+		return am.NewAuthMethodRepository(ctx, ret.rw, ret.rw, ret.kmsCache)
+	}
+	ret.maxPageSize = 1000
 
 	ret.org, ret.proj = iam.TestScopes(t, ret.iamRepo)
 	ret.databaseWrapper, err = ret.kmsCache.GetWrapper(ret.ctx, ret.org.PublicId, kms.KeyPurposeDatabase)
 	require.NoError(err)
 
-	ret.authMethodService, err = authmethods.NewService(ret.ctx, ret.kmsCache, ret.pwRepoFn, ret.oidcRepoFn, ret.iamRepoFn, ret.atRepoFn, ret.ldapRepoFn)
+	ret.authMethodService, err = authmethods.NewService(
+		ret.ctx,
+		ret.kmsCache,
+		ret.pwRepoFn,
+		ret.oidcRepoFn,
+		ret.iamRepoFn,
+		ret.atRepoFn,
+		ret.ldapRepoFn,
+		ret.authMethodRepoFn,
+		uint(ret.maxPageSize),
+	)
 	require.NoError(err)
 
 	ret.testProvider = capoidc.StartTestProvider(t)
@@ -168,6 +185,9 @@ func TestList_FilterNonPublic(t *testing.T) {
 	serversRepoFn := func() (*server.Repository, error) {
 		return server.NewRepository(ctx, rw, rw, kmsCache)
 	}
+	authMethodRepoFn := func() (*am.AuthMethodRepository, error) {
+		return am.NewAuthMethodRepository(ctx, rw, rw, kmsCache)
+	}
 
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 
@@ -195,7 +215,7 @@ func TestList_FilterNonPublic(t *testing.T) {
 			oidc.WithIssuer(oidc.TestConvertToUrls(t, fmt.Sprintf("https://alice%d.com", i))[0]), oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://api.com")[0]))
 	}
 
-	s, err := authmethods.NewService(ctx, kmsCache, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn, ldapRepoFn)
+	s, err := authmethods.NewService(ctx, kmsCache, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn, ldapRepoFn, authMethodRepoFn, 1000)
 	require.NoError(t, err, "Couldn't create new auth_method service.")
 
 	req := &pbs.ListAuthMethodsRequest{
@@ -270,10 +290,13 @@ func TestUpdate_OIDC(t *testing.T) {
 	atRepoFn := func() (*authtoken.Repository, error) {
 		return authtoken.NewRepository(ctx, rw, rw, kms)
 	}
+	authMethodRepoFn := func() (*am.AuthMethodRepository, error) {
+		return am.NewAuthMethodRepository(ctx, rw, rw, kms)
+	}
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 
 	o, _ := iam.TestScopes(t, iamRepo)
-	tested, err := authmethods.NewService(ctx, kms, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn, ldapRepoFn)
+	tested, err := authmethods.NewService(ctx, kms, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn, ldapRepoFn, authMethodRepoFn, 1000)
 	require.NoError(t, err, "Error when getting new auth_method service.")
 
 	defaultScopeInfo := &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: o.GetType(), ParentScopeId: scope.Global.String()}
@@ -1139,6 +1162,9 @@ func TestUpdate_OIDCDryRun(t *testing.T) {
 	atRepoFn := func() (*authtoken.Repository, error) {
 		return authtoken.NewRepository(ctx, rw, rw, kmsCache)
 	}
+	authMethodRepoFn := func() (*am.AuthMethodRepository, error) {
+		return am.NewAuthMethodRepository(ctx, rw, rw, kmsCache)
+	}
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 
 	o, _ := iam.TestScopes(t, iamRepo)
@@ -1192,7 +1218,7 @@ func TestUpdate_OIDCDryRun(t *testing.T) {
 		},
 	}
 
-	tested, err := authmethods.NewService(ctx, kmsCache, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn, ldapRepoFn)
+	tested, err := authmethods.NewService(ctx, kmsCache, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn, ldapRepoFn, authMethodRepoFn, 1000)
 	require.NoError(t, err, "Error when getting new auth_method service.")
 	cases := []struct {
 		name    string
@@ -1339,6 +1365,9 @@ func TestChangeState_OIDC(t *testing.T) {
 	atRepoFn := func() (*authtoken.Repository, error) {
 		return authtoken.NewRepository(ctx, rw, rw, kmsCache)
 	}
+	authMethodRepoFn := func() (*am.AuthMethodRepository, error) {
+		return am.NewAuthMethodRepository(ctx, rw, rw, kmsCache)
+	}
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 
 	o, _ := iam.TestScopes(t, iamRepo)
@@ -1362,7 +1391,7 @@ func TestChangeState_OIDC(t *testing.T) {
 	mismatchedAM := oidc.TestAuthMethod(t, conn, databaseWrapper, o.PublicId, "inactive", "different_client_id", oidc.ClientSecret(tpClientSecret),
 		oidc.WithIssuer(oidc.TestConvertToUrls(t, tp.Addr())[0]), oidc.WithSigningAlgs(oidc.EdDSA), oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://example.callback:58")[0]), oidc.WithCertificates(tpCert...))
 
-	s, err := authmethods.NewService(ctx, kmsCache, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn, ldapRepoFn)
+	s, err := authmethods.NewService(ctx, kmsCache, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn, ldapRepoFn, authMethodRepoFn, 1000)
 	require.NoError(t, err, "Error when getting new auth_method service.")
 
 	wantTemplate := &pb.AuthMethod{
