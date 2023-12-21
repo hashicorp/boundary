@@ -124,3 +124,59 @@ func ListUsersPage(
 
 	return pagination.ListPage(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, repo.estimatedUserCount, tok)
 }
+
+// ListGroupsPage lists up to page size groups, filtering out entries that
+// do not pass the filter item function. It will automatically request
+// more groups from the database, at page size chunks, to fill the page.
+// It will start its paging based on the information in the token.
+// It returns a new list token used to continue pagination or refresh items.
+// Groups are ordered by create time descending (most recently created first).
+func ListGroupsPage(
+	ctx context.Context,
+	grantsHash []byte,
+	pageSize int,
+	filterItemFn pagination.ListFilterFunc[*Group],
+	tok *listtoken.Token,
+	repo *Repository,
+	withScopeIds []string,
+) (*pagination.ListResponse[*Group], error) {
+	const op = "iam.ListGroupsPage"
+
+	switch {
+	case len(grantsHash) == 0:
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing grants hash")
+	case pageSize < 1:
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "page size must be at least 1")
+	case filterItemFn == nil:
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing filter item callback")
+	case tok == nil:
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing token")
+	case repo == nil:
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing repo")
+	case withScopeIds == nil:
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing scope ids")
+	case tok.ResourceType != resource.Group:
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "token did not have a group resource type")
+	}
+	if _, ok := tok.Subtype.(*listtoken.PaginationToken); !ok {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "token did not have a pagination token component")
+	}
+
+	listItemsFn := func(ctx context.Context, lastPageItem *Group, limit int) ([]*Group, time.Time, error) {
+		opts := []Option{
+			WithLimit(limit),
+		}
+		if lastPageItem != nil {
+			opts = append(opts, WithStartPageAfterItem(lastPageItem))
+		} else {
+			lastItem, err := tok.LastItem(ctx)
+			if err != nil {
+				return nil, time.Time{}, err
+			}
+			opts = append(opts, WithStartPageAfterItem(lastItem))
+		}
+		return repo.listGroups(ctx, withScopeIds, opts...)
+	}
+
+	return pagination.ListPage(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, repo.estimatedGroupCount, tok)
+}

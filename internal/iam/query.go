@@ -184,4 +184,8 @@ const (
 	estimateCountUsers = `
 		select reltuples::bigint as estimate from pg_class where oid in ('iam_user'::regclass)
 	`
+
+	estimateCountGroups = `
+		select reltuples::bigint as estimate from pg_class where oid in ('iam_group'::regclass)
+	`
 )
