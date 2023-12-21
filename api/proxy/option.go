@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package proxy
 
 import (
@@ -55,16 +58,15 @@ func WithListener(with net.Listener) Option {
 	}
 }
 
-// WithListenAddrPort allows overriding an address to listen on. It is _not_ an
-// error to pass an invalid netip.AddrPort, e.g. from an allocated but unset
-// AddrPort; this will simply cause it to use the default. Mutually exclusive
-// with WithListener; that option will take precedence. If you do not want a TCP
-// connection you must use WithListener.
+// WithListenAddrPort allows overriding an address to listen on. Mutually
+// exclusive with WithListener; that option will take precedence. If you do not
+// want a TCP connection you must use WithListener.
 func WithListenAddrPort(with netip.AddrPort) Option {
 	return func(o *Options) error {
-		if with.IsValid() {
-			o.WithListenAddrPort = with
+		if !with.IsValid() {
+			return errors.New("invalid addr/port passed to WithListenAddrPort")
 		}
+		o.WithListenAddrPort = with
 		return nil
 	}
 }
@@ -83,7 +85,8 @@ func WithConnectionsLeftCh(with chan int32) Option {
 }
 
 // WithWorkerHost can be used to override the worker host read from the session
-// authorization data. This is mostly useful for tests.
+// authorization data. This can be used to override the SNI value in the client
+// TLS configuration and is mostly useful for tests.
 func WithWorkerHost(with string) Option {
 	return func(o *Options) error {
 		o.WithWorkerHost = new(string)
@@ -96,6 +99,9 @@ func WithWorkerHost(with string) Option {
 // session authorization instead of a string token.
 func WithSessionAuthorizationData(with *targets.SessionAuthorizationData) Option {
 	return func(o *Options) error {
+		if with == nil {
+			return errors.New("data passed to WithSessionAuthorizationData is nil")
+		}
 		o.WithSessionAuthorizationData = with
 		return nil
 	}

@@ -390,7 +390,15 @@ func (c *Command) Run(args []string) (retCode int) {
 	}
 
 	connsLeftCh := make(chan int32)
-	clientProxy, err := apiproxy.New(c.proxyCtx, authzString, apiproxy.WithListenAddrPort(listenAddr), apiproxy.WithConnectionsLeftCh(connsLeftCh))
+	apiProxyOpts := []apiproxy.Option{apiproxy.WithConnectionsLeftCh(connsLeftCh)}
+	if listenAddr.IsValid() {
+		apiProxyOpts = append(apiProxyOpts, apiproxy.WithListenAddrPort(listenAddr))
+	}
+	clientProxy, err := apiproxy.New(
+		c.proxyCtx,
+		authzString,
+		apiProxyOpts...,
+	)
 	if err != nil {
 		c.PrintCliError(fmt.Errorf("Could not create client proxy: %w", err))
 		return base.CommandCliError
