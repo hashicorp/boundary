@@ -24,14 +24,14 @@ create table if not exists test_auth_method (
 	name wt_name,
 	create_time wt_timestamp,
 	update_time wt_timestamp,
-	is_active_public_state boolean
+	state text
 );
 `
 		insert = `
 insert into test_auth_method
-  (public_id, scope_id, create_time, update_time, is_active_public_state)
+  (public_id, scope_id, create_time, update_time, state)
 values
-  (@public_id, @scoped_id, @create_time, @update_time, true);
+  (@public_id, @scoped_id, @create_time, @update_time, @state);
 `
 		addTriggers = `
 create trigger
