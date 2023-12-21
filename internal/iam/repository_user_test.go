@@ -608,14 +608,13 @@ func TestRepository_ListUsers(t *testing.T) {
 		wantErr   bool
 	}{
 		{
-			name:      "no-limit",
+			name:      "negative-limit",
 			createCnt: testLimit + 1,
 			args: args{
 				withOrgId: org.PublicId,
 				opt:       []iam.Option{iam.WithLimit(-1)},
 			},
-			wantCnt: testLimit + 1,
-			wantErr: false,
+			wantErr: true,
 		},
 		{
 			name:      "default-limit",
@@ -674,7 +673,7 @@ func TestRepository_ListUsers(t *testing.T) {
 
 			}
 			assert.Equal(tt.createCnt, len(testUsers))
-			got, err := repo.ListUsers(context.Background(), []string{tt.args.withOrgId}, tt.args.opt...)
+			got, _, err := repo.ListUsers(context.Background(), []string{tt.args.withOrgId}, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
 				return
@@ -699,7 +698,9 @@ func TestRepository_ListUsers_Multiple_Scopes(t *testing.T) {
 	repo := iam.TestRepo(t, conn, wrapper)
 	org, _ := iam.TestScopes(t, repo)
 
-	db.TestDeleteWhere(t, conn, func() any { i := iam.AllocUser(); return &i }(), "public_id != 'u_anon' and public_id != 'u_auth' and public_id != 'u_recovery'")
+	t.Cleanup(func() {
+		db.TestDeleteWhere(t, conn, func() any { i := iam.AllocUser(); return &i }(), "public_id != 'u_anon' and public_id != 'u_auth' and public_id != 'u_recovery'")
+	})
 
 	const numPerScope = 10
 	var total int = 3 // anon, auth, recovery
@@ -710,9 +711,12 @@ func TestRepository_ListUsers_Multiple_Scopes(t *testing.T) {
 		total++
 	}
 
-	got, err := repo.ListUsers(context.Background(), []string{"global", org.GetPublicId()})
+	got, ttime, err := repo.ListUsers(context.Background(), []string{"global", org.GetPublicId()})
 	require.NoError(t, err)
 	assert.Equal(t, total, len(got))
+	// Transaction timestamp should be within ~10 seconds of now
+	assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
+	assert.True(t, time.Now().After(ttime.Add(-10*time.Second)))
 }
 
 func TestRepository_LookupUserWithLogin(t *testing.T) {

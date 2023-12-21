@@ -7,6 +7,7 @@ import (
 	"context"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam/store"
 	"github.com/hashicorp/boundary/internal/types/action"
@@ -119,6 +120,13 @@ type userAccountInfo struct {
 	tableName string `gorm:"-"`
 }
 
+// allocUserAccountInfo will allocate an empty userAccountInfo
+func allocUserAccountInfo() *userAccountInfo {
+	return &userAccountInfo{
+		User: &store.User{},
+	}
+}
+
 func (u *userAccountInfo) shallowConversion() *User {
 	return &User{
 		User: u.User,
@@ -142,4 +150,14 @@ func (u *userAccountInfo) SetTableName(n string) {
 	default:
 		u.tableName = n
 	}
+}
+
+type deletedUser struct {
+	PublicId   string `gorm:"primary_key"`
+	DeleteTime *timestamp.Timestamp
+}
+
+// TableName returns the tablename to override the default gorm table name
+func (u *deletedUser) TableName() string {
+	return "iam_user_deleted"
 }
