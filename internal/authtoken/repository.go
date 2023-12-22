@@ -307,11 +307,9 @@ func (r *Repository) listAuthTokens(ctx context.Context, withScopeIds []string, 
 	}
 
 	args := []any{sql.Named("scope_ids", withScopeIds)}
-	whereClause := "scope_id in @scope_ids"
-
-	query := fmt.Sprintf(listAuthTokensTemplate, limit, whereClause)
+	query := fmt.Sprintf(listAuthTokensTemplate, limit)
 	if opts.withStartPageAfterItem != nil {
-		query = fmt.Sprintf(listAuthTokensPageTemplate, limit, whereClause)
+		query = fmt.Sprintf(listAuthTokensPageTemplate, limit)
 		args = append(args,
 			sql.Named("last_item_create_time", opts.withStartPageAfterItem.GetCreateTime()),
 			sql.Named("last_item_id", opts.withStartPageAfterItem.GetPublicId()),
@@ -342,15 +340,13 @@ func (r *Repository) listAuthTokensRefresh(ctx context.Context, updatedAfter tim
 		limit = opts.withLimit
 	}
 
-	args := []any{sql.Named("scope_ids", withScopeIds)}
-	whereClause := "scope_id in @scope_ids"
-
-	query := fmt.Sprintf(refreshAuthTokensTemplate, limit, whereClause)
-	args = append(args,
+	args := []any{
+		sql.Named("scope_ids", withScopeIds),
 		sql.Named("updated_after_time", timestamp.New(updatedAfter)),
-	)
+	}
+	query := fmt.Sprintf(refreshAuthTokensTemplate, limit)
 	if opts.withStartPageAfterItem != nil {
-		query = fmt.Sprintf(refreshAuthTokensPageTemplate, limit, whereClause)
+		query = fmt.Sprintf(refreshAuthTokensPageTemplate, limit)
 		args = append(args,
 			sql.Named("last_item_update_time", opts.withStartPageAfterItem.GetUpdateTime()),
 			sql.Named("last_item_id", opts.withStartPageAfterItem.GetPublicId()),
