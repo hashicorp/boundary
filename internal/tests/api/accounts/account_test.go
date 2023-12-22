@@ -357,10 +357,7 @@ func TestCustomMethods(t *testing.T) {
 	require.NoError(err)
 	require.Len(al.Items, 2)
 
-	userAcct := al.Items[0]
-	if userAcct.Name == "admin" {
-		userAcct = al.Items[1]
-	}
+	userAcct := al.Items[1]
 
 	_, err = userAccountClient.SetPassword(tc.Context(), userAcct.Id, "setpassword", userAcct.Version)
 	require.Error(err)
