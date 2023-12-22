@@ -85,7 +85,7 @@ func (at *AppToken) oplog(ctx context.Context, opType oplog.OpType) (oplog.Metad
 	const op = "ldap.(Account).oplog"
 	switch {
 	case at == nil:
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing account")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing app token")
 	case opType == oplog.OpType_OP_TYPE_UNSPECIFIED:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing op type")
 	case at.PublicId == "":
