@@ -11,8 +11,11 @@ type SearchResult struct {
 	Item       daemon.SearchResult `json:"item"`
 }
 
-// StatusResult describe the output from a status query when using the CLI
+// StatusResult describes the output from a status query when using the CLI
 type StatusResult struct {
 	StatusCode int                 `json:"status_code"`
 	Item       daemon.StatusResult `json:"item"`
 }
+
+// ResourceStatus describes a field in daemon.StatusResult
+type ResourceStatus = daemon.ResourceStatus

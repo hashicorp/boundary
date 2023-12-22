@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -20,6 +21,7 @@ import (
 	"github.com/hashicorp/boundary/testing/internal/e2e"
 	"github.com/hashicorp/boundary/testing/internal/e2e/boundary"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/exp/slices"
 )
 
 // TestCliSearch asserts that the CLI can search for targets
@@ -51,21 +53,21 @@ func TestCliSearch(t *testing.T) {
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
 
-	// Wait for daemon to start
+	// Wait for daemon to be up and running
+	t.Log("Waiting for daemon to start...")
+	var statusResult clientcache.StatusResult
 	err = backoff.RetryNotify(
 		func() error {
 			output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("daemon", "status", "-format", "json"))
 			if output.Err != nil {
-				return errors.New("Daemon is still starting up")
+				return errors.New(strings.TrimSpace(string(output.Stderr)))
 			}
 
-			require.NoError(t, output.Err, string(output.Stderr))
-			var statusResult clientcache.StatusResult
 			err = json.Unmarshal(output.Stdout, &statusResult)
-			require.NoError(t, err)
-			require.Equal(t, statusResult.StatusCode, 200)
-			require.GreaterOrEqual(t, statusResult.Item.Uptime, 0*time.Second)
-			t.Log("Daemon has started")
+			if err != nil {
+				return backoff.Permanent(err)
+			}
+
 			return nil
 		},
 		backoff.WithMaxRetries(backoff.NewConstantBackOff(1*time.Second), 5),
@@ -74,6 +76,8 @@ func TestCliSearch(t *testing.T) {
 		},
 	)
 	require.NoError(t, err)
+	require.Equal(t, statusResult.StatusCode, 200)
+	require.GreaterOrEqual(t, statusResult.Item.Uptime, 0*time.Second)
 
 	// Set up a new org and project
 	boundary.AuthenticateAdminCli(t, ctx)
@@ -85,6 +89,21 @@ func TestCliSearch(t *testing.T) {
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
 	newProjectId := boundary.CreateNewProjectCli(t, ctx, newOrgId)
+
+	// Get current number of targets
+	output = e2e.RunCommand(ctx, "boundary", e2e.WithArgs("daemon", "status", "-format", "json"))
+	require.NoError(t, output.Err, string(output.Stderr))
+	statusResult = clientcache.StatusResult{}
+	err = json.Unmarshal(output.Stdout, &statusResult)
+	require.Len(t, statusResult.Item.Users, 1)
+	idx := slices.IndexFunc(
+		statusResult.Item.Users[0].Resources,
+		func(r clientcache.ResourceStatus) bool {
+			return r.Name == "target"
+		},
+	)
+	require.NotEqual(t, idx, -1)
+	currentCount := statusResult.Item.Users[0].Resources[idx].Count
 
 	// Create enough targets to overflow a single page.
 	// Use the API to make creation faster.
@@ -106,7 +125,7 @@ func TestCliSearch(t *testing.T) {
 		targetIds = append(targetIds, resp.Item.Id)
 	}
 
-	// List targets recursively.
+	// List targets.
 	// This requests data from the controller/database.
 	t.Log("Listing targets...")
 	output = e2e.RunCommand(ctx, "boundary", e2e.WithArgs("targets", "list", "-scope-id", newProjectId, "-format", "json"))
@@ -120,34 +139,46 @@ func TestCliSearch(t *testing.T) {
 	}
 	require.Equal(t, len(targetIds), len(listedIds))
 
-	// Search for targets that contain the target prefix.
-	// This requests data from the client cache daemon.
-	t.Log("Searching targets...")
-	var searchResult clientcache.SearchResult
+	// Wait for data to be populated in the client cache
+	t.Log("Waiting for client cache to populate data...")
 	err = backoff.RetryNotify(
 		func() error {
-			output = e2e.RunCommand(ctx, "boundary",
-				e2e.WithArgs(
-					"search",
-					"-resource", "targets",
-					"-format", "json",
-					"-query", fmt.Sprintf(`name %% "%s" and scope_id = "%s"`, targetPrefix, newProjectId),
-				),
-			)
+			output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("daemon", "status", "-format", "json"))
 			if output.Err != nil {
 				return backoff.Permanent(errors.New(string(output.Stderr)))
 			}
 
-			err = json.Unmarshal(output.Stdout, &searchResult)
+			var statusResult clientcache.StatusResult
+			err = json.Unmarshal(output.Stdout, &statusResult)
 			if err != nil {
 				return backoff.Permanent(err)
 			}
 
-			targetCount := len(searchResult.Item.Targets)
-			if targetCount == 0 {
-				return errors.New("No targets are appearing in the search results")
+			if len(statusResult.Item.Users) == 0 {
+				return errors.New("No users are appearing in the status")
 			}
-			t.Logf("Found %d target(s)", targetCount)
+
+			idx := slices.IndexFunc(
+				statusResult.Item.Users[0].Resources,
+				func(r clientcache.ResourceStatus) bool {
+					return r.Name == "target"
+				},
+			)
+			if idx == -1 {
+				return errors.New("No targets are appearing in the status")
+			}
+
+			if statusResult.Item.Users[0].Resources[idx].Count != currentCount+c.MaxPageSize+1 {
+				return errors.New(
+					fmt.Sprintf(
+						"Did not see expected number of targets in status, EXPECTED: %d, ACTUAL: %d",
+						currentCount+c.MaxPageSize+1,
+						statusResult.Item.Users[0].Resources[idx].Count,
+					),
+				)
+			}
+
+			t.Logf("Found %d target(s)", statusResult.Item.Users[0].Resources[idx].Count)
 			return nil
 		},
 		backoff.WithMaxRetries(backoff.NewConstantBackOff(3*time.Second), 5),
@@ -156,6 +187,21 @@ func TestCliSearch(t *testing.T) {
 		},
 	)
 	require.NoError(t, err)
+
+	// Search for targets that contain the target prefix.
+	// This requests data from the client cache daemon.
+	t.Log("Searching targets...")
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"search",
+			"-resource", "targets",
+			"-format", "json",
+			"-query", fmt.Sprintf(`name %% "%s" and scope_id = "%s"`, targetPrefix, newProjectId),
+		),
+	)
+	require.NoError(t, output.Err, string(output.Stderr))
+	var searchResult clientcache.SearchResult
+	err = json.Unmarshal(output.Stdout, &searchResult)
 	var searchedIds []string
 	for _, target := range searchResult.Item.Targets {
 		searchedIds = append(searchedIds, target.Id)
