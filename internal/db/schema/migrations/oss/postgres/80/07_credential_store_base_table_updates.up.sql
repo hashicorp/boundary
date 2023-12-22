@@ -4,22 +4,35 @@
 begin;
 
   -- Add create_time and update_time to credential_store table.
-  alter table credential_store add column create_time wt_timestamp;
-  alter table credential_store add column update_time wt_timestamp;
+  alter table credential_store
+    add column create_time wt_timestamp,
+    add column update_time wt_timestamp;
 
-  -- Update rows with current values
+  -- Update rows with current values from the subtype credential store tables.
+  with sub_credential_store as (
+    select public_id,
+           create_time,
+           update_time
+      from credential_vault_store
+     union
+    select public_id,
+           create_time,
+           update_time
+      from credential_static_store
+  )
   update credential_store
-    set create_time = cvs.create_time, update_time = cvs.update_time
-    from credential_store as cl
-    left join credential_vault_store as cvs on cl.public_id = cvs.public_id;
-  update credential_store
-    set create_time = css.create_time, update_time = css.update_time
-    from credential_store as cl
-    left join credential_static_store as css on cl.public_id = css.public_id;
+     set create_time = sub_credential_store.create_time,
+         update_time = sub_credential_store.update_time
+    from sub_credential_store
+   where credential_store.public_id = sub_credential_store.public_id;
+
+  alter table credential_store
+    alter column create_time set not null,
+    alter column update_time set not null;
 
   -- Replace the insert trigger to also set the create_time
   -- Replaces the insert_credential_store_subtype function defined in 44/01_credentials.up.sql
-   create or replace function insert_credential_store_subtype() returns trigger
+  create or replace function insert_credential_store_subtype() returns trigger
   as $$
   begin
     insert into credential_store

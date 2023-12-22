@@ -4,18 +4,31 @@
 begin;
 
   -- Add create_time and update_time to credential_library table.
-  alter table credential_library add column create_time wt_timestamp;
-  alter table credential_library add column update_time wt_timestamp;
+  alter table credential_library
+    add column create_time wt_timestamp,
+    add column update_time wt_timestamp;
 
-  -- Update rows with current values
+  -- Update rows with current values from the subtype credential library tables.
+  with sub_credential_library as (
+    select public_id,
+           create_time,
+           update_time
+      from credential_vault_library
+     union
+    select public_id,
+           create_time,
+           update_time
+      from credential_vault_ssh_cert_library
+  )
   update credential_library
-    set create_time = cvl.create_time, update_time = cvl.update_time
-    from credential_library as cl
-    left join credential_vault_library as cvl on cl.public_id = cvl.public_id;
-  update credential_library
-    set create_time = cvscl.create_time, update_time = cvscl.update_time
-    from credential_library as cl
-    left join credential_vault_ssh_cert_library as cvscl on cl.public_id = cvscl.public_id;
+     set create_time = sub_credential_library.create_time,
+         update_time = sub_credential_library.update_time
+    from sub_credential_library
+   where credential_library.public_id = sub_credential_library.public_id;
+
+  alter table credential_library
+    alter column create_time set not null,
+    alter column update_time set not null;
 
   -- Replace the insert trigger to also set the create_time
   -- Replaces the insert_credential_library_subtype function defined in 46/01_credentials.up.sql
