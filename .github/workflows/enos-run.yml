@@ -267,6 +267,10 @@ jobs:
           name: test-e2e-output
           path: enos/*.log
           retention-days: 5
+      - name: Get logs from boundary container
+        if: contains(matrix.filter, 'e2e_docker') && steps.run.outcome == 'failure'
+        run: |
+          docker logs boundary
       - name: Get logs from postgres container
         # Retrieve logs from the postgres container on a failed
         # run to help diagnose a deadlock issue

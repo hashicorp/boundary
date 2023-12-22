@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/internal/clientcache/internal/client"
@@ -115,7 +116,9 @@ func (c *AddTokenCommand) Add(ctx context.Context, apiClient *api.Client, keyrin
 			pa.AuthToken = token
 		}
 	default:
+		keyringReadStart := time.Now()
 		at := c.ReadTokenFromKeyring(keyringType, tokenName)
+		fmt.Printf("Read token from keyring in %s\n", time.Since(keyringReadStart))
 		if at == nil {
 			return nil, nil, errors.New("No auth token could be read from the keyring to send to daemon.")
 		}
