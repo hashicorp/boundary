@@ -1329,40 +1329,6 @@ func TestRepository_LookupCatalog(t *testing.T) {
 	}
 }
 
-func TestRepository_ListCatalogs_Multiple_Scopes(t *testing.T) {
-	t.Parallel()
-	ctx := context.Background()
-	conn, _ := db.TestSetup(t, "postgres")
-	wrapper := db.TestWrapper(t)
-	rw := db.New(conn)
-	kms := kms.TestKms(t, conn, wrapper)
-	sched := scheduler.TestScheduler(t, conn, wrapper)
-	plg := plugin.TestPlugin(t, conn, "test")
-	plgm := map[string]plgpb.HostPluginServiceClient{
-		plg.GetPublicId(): &loopback.WrappingPluginHostClient{Server: &loopback.TestPluginServer{}},
-	}
-	repo, err := NewRepository(ctx, rw, rw, kms, sched, plgm)
-	assert.NoError(t, err)
-	assert.NotNil(t, repo)
-
-	const numPerScope = 10
-	var projs []string
-	var total int
-	for i := 0; i < numPerScope; i++ {
-		_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-		projs = append(projs, prj.GetPublicId())
-		for j := 0; j < numPerScope; j++ {
-			TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
-			total++
-		}
-	}
-
-	got, plgs, err := repo.ListCatalogs(context.Background(), projs)
-	require.NoError(t, err)
-	assert.Equal(t, total, len(got))
-	assert.Contains(t, plgs, plg)
-}
-
 func TestRepository_DeleteCatalog(t *testing.T) {
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")

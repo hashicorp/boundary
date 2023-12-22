@@ -30,6 +30,7 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/event"
 	intglobals "github.com/hashicorp/boundary/internal/globals"
+	"github.com/hashicorp/boundary/internal/host"
 	pluginhost "github.com/hashicorp/boundary/internal/host/plugin"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
@@ -131,6 +132,7 @@ type Controller struct {
 	VaultCredentialRepoFn     common.VaultCredentialRepoFactory
 	StaticCredentialRepoFn    common.StaticCredentialRepoFactory
 	CredentialStoreRepoFn     common.CredentialStoreRepoFactory
+	HostCatalogRepoFn         common.HostCatalogRepoFactory
 	IamRepoFn                 common.IamRepoFactory
 	OidcRepoFn                common.OidcAuthRepoFactory
 	LdapRepoFn                common.LdapAuthRepoFactory
@@ -411,6 +413,9 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	}
 	c.CredentialStoreRepoFn = func() (*credential.StoreRepository, error) {
 		return credential.NewStoreRepository(ctx, dbase, dbase)
+	}
+	c.HostCatalogRepoFn = func() (*host.CatalogRepository, error) {
+		return host.NewCatalogRepository(ctx, dbase, dbase)
 	}
 	c.ServersRepoFn = func() (*server.Repository, error) {
 		return server.NewRepository(ctx, dbase, dbase, c.kms)
