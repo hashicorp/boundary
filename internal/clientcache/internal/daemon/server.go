@@ -35,10 +35,10 @@ const (
 	// DefaultSearchStaleness is the default amount of time that can pass before
 	// a search request causes a blocking refresh to happen for the resources
 	// being searched for.
-	DefaultSearchStaleness = 60 * time.Second
+	DefaultSearchStaleness = 30 * time.Second
 	// DefaultSearchRefreshTimeout is the default amount of time that a refresh
 	// that is blocking a search request can run before timing out.
-	DefaultSearchRefreshTimeout = 1 * time.Second
+	DefaultSearchRefreshTimeout = 7 * time.Second
 )
 
 // Commander is an interface that provides a way to get an apiClient
