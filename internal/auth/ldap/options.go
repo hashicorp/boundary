@@ -11,6 +11,8 @@ import (
 	"net/url"
 
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/pagination"
+	"github.com/hashicorp/boundary/internal/util"
 )
 
 type options struct {
@@ -48,6 +50,7 @@ type options struct {
 	withPublicId             string
 	withDerefAliases         DerefAliasType
 	withMaximumPageSize      uint32
+	withStartPageAfterItem   pagination.Item
 }
 
 // Option - how options are passed as args
@@ -411,5 +414,18 @@ func (d DerefAliasType) IsValid(ctx context.Context) error {
 		return nil
 	default:
 		return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("%q is not a valid ldap dereference alias type", d))
+	}
+}
+
+// WithStartPageAfterItem is used to paginate over the results.
+// The next page will start after the provided item.
+func WithStartPageAfterItem(ctx context.Context, item pagination.Item) Option {
+	const op = "ldap.WithStartPageAfterItem"
+	return func(o *options) error {
+		if util.IsNil(item) {
+			return errors.New(ctx, errors.InvalidParameter, op, "item cannot be nil")
+		}
+		o.withStartPageAfterItem = item
+		return nil
 	}
 }

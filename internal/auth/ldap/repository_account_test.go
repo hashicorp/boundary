@@ -6,24 +6,27 @@ package ldap
 import (
 	"context"
 	"fmt"
-	"sort"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth/ldap/store"
 	"github.com/hashicorp/boundary/internal/db"
 	dbassert "github.com/hashicorp/boundary/internal/db/assert"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/testing/protocmp"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func TestRepository_CreateAccount(t *testing.T) {
@@ -640,7 +643,13 @@ func TestRepository_DeleteAccount(t *testing.T) {
 	}
 }
 
-func TestRepository_ListAccounts(t *testing.T) {
+func TestRepository_listAccounts(t *testing.T) {
+	oldReadTimeout := globals.RefreshReadLookbackDuration
+	globals.RefreshReadLookbackDuration = 0
+	t.Cleanup(func() {
+		globals.RefreshReadLookbackDuration = oldReadTimeout
+	})
+
 	testConn, _ := db.TestSetup(t, "postgres")
 	testRw := db.New(testConn)
 	testWrapper := db.TestWrapper(t)
@@ -669,7 +678,17 @@ func TestRepository_ListAccounts(t *testing.T) {
 		TestAccount(t, testConn, authMethod2, "create-success2"),
 		TestAccount(t, testConn, authMethod2, "create-success3"),
 	}
-	_ = accounts2
+	slices.Reverse(accounts1)
+	slices.Reverse(accounts2)
+
+	cmpOpts := []cmp.Option{
+		cmpopts.IgnoreUnexported(
+			Account{},
+			store.Account{},
+			timestamp.Timestamp{},
+			timestamppb.Timestamp{},
+		),
+	}
 
 	tests := []struct {
 		name            string
@@ -717,7 +736,7 @@ func TestRepository_ListAccounts(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := tc.repo.ListAccounts(testCtx, tc.publicId, tc.opts...)
+			got, ttime, err := tc.repo.listAccounts(testCtx, tc.publicId, tc.opts...)
 			if tc.wantErrMatch != nil {
 				assert.Truef(errors.Match(tc.wantErrMatch, err), "Unexpected error %s", err)
 				if tc.wantErrContains != "" {
@@ -726,13 +745,262 @@ func TestRepository_ListAccounts(t *testing.T) {
 				return
 			}
 			require.NoError(err)
+			// Transaction timestamp should be within ~10 seconds of now
+			assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+			assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
 
-			sort.Slice(got, func(i, j int) bool {
-				return strings.Compare(got[i].LoginName, got[j].LoginName) < 0
-			})
-			assert.EqualValues(tc.want, got)
+			require.Empty(cmp.Diff(got, tc.want, cmpOpts...))
 		})
 	}
+
+	t.Run("validation", func(t *testing.T) {
+		t.Parallel()
+		t.Run("missing auth method id", func(t *testing.T) {
+			t.Parallel()
+			_, _, err := testRepo.listAccounts(testCtx, "", WithLimit(testCtx, 1))
+			require.ErrorContains(t, err, "missing auth method id")
+		})
+	})
+
+	t.Run("success-without-after-item", func(t *testing.T) {
+		t.Parallel()
+		resp, ttime, err := testRepo.listAccounts(testCtx, authMethod1.PublicId, WithLimit(testCtx, 10))
+		require.NoError(t, err)
+		// Transaction timestamp should be within ~10 seconds of now
+		assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
+		assert.True(t, time.Now().After(ttime.Add(-10*time.Second)))
+		require.Empty(t, cmp.Diff(resp, accounts1, cmpOpts...))
+	})
+	t.Run("success-with-after-item", func(t *testing.T) {
+		t.Parallel()
+		resp, ttime, err := testRepo.listAccounts(testCtx, authMethod1.PublicId, WithStartPageAfterItem(testCtx, accounts1[0]), WithLimit(testCtx, 10))
+		require.NoError(t, err)
+		// Transaction timestamp should be within ~10 seconds of now
+		assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
+		assert.True(t, time.Now().After(ttime.Add(-10*time.Second)))
+		require.Empty(t, cmp.Diff(resp, accounts1[1:], cmpOpts...))
+	})
+}
+
+func TestRepository_listAccountsRefresh(t *testing.T) {
+	oldReadTimeout := globals.RefreshReadLookbackDuration
+	globals.RefreshReadLookbackDuration = 0
+	t.Cleanup(func() {
+		globals.RefreshReadLookbackDuration = oldReadTimeout
+	})
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	testWrapper := db.TestWrapper(t)
+
+	ctx := context.Background()
+	testKms := kms.TestKms(t, conn, testWrapper)
+	iamRepo := iam.TestRepo(t, conn, testWrapper)
+	org, _ := iam.TestScopes(t, iamRepo)
+
+	databaseWrapper, err := testKms.GetWrapper(ctx, org.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+
+	repo, err := NewRepository(ctx, rw, rw, testKms)
+	assert.NoError(t, err)
+
+	fiveDaysAgo := time.Now().AddDate(0, 0, -5)
+
+	authMethod1 := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, []string{"ldaps://ldap1"})
+	authMethod2 := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, []string{"ldaps://ldap2"})
+	accounts1 := []*Account{
+		TestAccount(t, conn, authMethod1, "create-success"),
+		TestAccount(t, conn, authMethod1, "create-success2"),
+		TestAccount(t, conn, authMethod1, "create-success3"),
+	}
+	accounts2 := []*Account{
+		TestAccount(t, conn, authMethod2, "create-success"),
+		TestAccount(t, conn, authMethod2, "create-success2"),
+		TestAccount(t, conn, authMethod2, "create-success3"),
+	}
+
+	slices.Reverse(accounts1)
+	_ = accounts2
+
+	cmpOpts := []cmp.Option{
+		cmpopts.IgnoreUnexported(
+			Account{},
+			store.Account{},
+			timestamp.Timestamp{},
+			timestamppb.Timestamp{},
+		),
+		cmpopts.SortSlices(func(i, j string) bool { return i < j }),
+	}
+
+	t.Run("validation", func(t *testing.T) {
+		t.Parallel()
+		t.Run("missing updated after", func(t *testing.T) {
+			t.Parallel()
+			_, _, err := repo.listAccountsRefresh(ctx, authMethod1.PublicId, time.Time{}, WithLimit(ctx, 1))
+			require.ErrorContains(t, err, "missing updated after time")
+		})
+		t.Run("missing auth method id", func(t *testing.T) {
+			t.Parallel()
+			_, _, err := repo.listAccountsRefresh(ctx, "", fiveDaysAgo, WithLimit(ctx, 1))
+			require.ErrorContains(t, err, "missing auth method id")
+		})
+	})
+
+	t.Run("success-without-after-item", func(t *testing.T) {
+		t.Parallel()
+		resp, ttime, err := repo.listAccountsRefresh(ctx, authMethod1.PublicId, fiveDaysAgo, WithLimit(ctx, 10))
+		require.NoError(t, err)
+		// Transaction timestamp should be within ~10 seconds of now
+		assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
+		assert.True(t, time.Now().After(ttime.Add(-10*time.Second)))
+		require.Empty(t, cmp.Diff(resp, accounts1, cmpOpts...))
+	})
+	t.Run("success-with-after-item", func(t *testing.T) {
+		t.Parallel()
+		resp, ttime, err := repo.listAccountsRefresh(ctx, authMethod1.PublicId, fiveDaysAgo, WithStartPageAfterItem(ctx, accounts1[0]), WithLimit(ctx, 10))
+		require.NoError(t, err)
+		// Transaction timestamp should be within ~10 seconds of now
+		assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
+		assert.True(t, time.Now().After(ttime.Add(-10*time.Second)))
+		require.Empty(t, cmp.Diff(resp, accounts1[1:], cmpOpts...))
+	})
+	t.Run("success-without-after-item-recent-updated-after", func(t *testing.T) {
+		t.Parallel()
+		resp, ttime, err := repo.listAccountsRefresh(ctx, authMethod1.PublicId, accounts1[len(accounts1)-1].GetUpdateTime().AsTime(), WithLimit(ctx, 10))
+		require.NoError(t, err)
+		// Transaction timestamp should be within ~10 seconds of now
+		assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
+		assert.True(t, time.Now().After(ttime.Add(-10*time.Second)))
+		require.Empty(t, cmp.Diff(resp, accounts1[:len(accounts1)-1], cmpOpts...))
+	})
+	t.Run("success-with-after-item-recent-updated-after", func(t *testing.T) {
+		t.Parallel()
+		resp, ttime, err := repo.listAccountsRefresh(ctx, authMethod1.PublicId, accounts1[len(accounts1)-1].GetUpdateTime().AsTime(), WithStartPageAfterItem(ctx, accounts1[0]), WithLimit(ctx, 10))
+		require.NoError(t, err)
+		// Transaction timestamp should be within ~10 seconds of now
+		assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
+		assert.True(t, time.Now().After(ttime.Add(-10*time.Second)))
+		require.Empty(t, cmp.Diff(resp, accounts1[1:len(accounts1)-1], cmpOpts...))
+	})
+}
+
+func TestRepository_estimatedCount(t *testing.T) {
+	oldReadTimeout := globals.RefreshReadLookbackDuration
+	globals.RefreshReadLookbackDuration = 0
+	t.Cleanup(func() {
+		globals.RefreshReadLookbackDuration = oldReadTimeout
+	})
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	testWrapper := db.TestWrapper(t)
+
+	ctx := context.Background()
+	testKms := kms.TestKms(t, conn, testWrapper)
+	iamRepo := iam.TestRepo(t, conn, testWrapper)
+	org, _ := iam.TestScopes(t, iamRepo)
+
+	databaseWrapper, err := testKms.GetWrapper(ctx, org.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+
+	repo, err := NewRepository(ctx, rw, rw, testKms)
+	assert.NoError(t, err)
+
+	sqlDb, err := conn.SqlDB(ctx)
+	require.NoError(t, err)
+
+	// Check total entries at start, expect 0
+	numItems, err := repo.estimatedAccountCount(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 0, numItems)
+
+	// create account and check count, expect 1
+	authMethod1 := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, []string{"ldaps://ldap1"})
+	acct := TestAccount(t, conn, authMethod1, "create-success")
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
+
+	numItems, err = repo.estimatedAccountCount(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 1, numItems)
+
+	// Delete acct and check count, expect 0 again
+	_, err = repo.DeleteAccount(ctx, acct.GetPublicId())
+	require.NoError(t, err)
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
+
+	numItems, err = repo.estimatedAccountCount(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 0, numItems)
+}
+
+func TestRepository_listDeletedIds(t *testing.T) {
+	oldReadTimeout := globals.RefreshReadLookbackDuration
+	globals.RefreshReadLookbackDuration = 0
+	t.Cleanup(func() {
+		globals.RefreshReadLookbackDuration = oldReadTimeout
+	})
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	testWrapper := db.TestWrapper(t)
+
+	ctx := context.Background()
+	testKms := kms.TestKms(t, conn, testWrapper)
+	iamRepo := iam.TestRepo(t, conn, testWrapper)
+	org, _ := iam.TestScopes(t, iamRepo)
+
+	databaseWrapper, err := testKms.GetWrapper(ctx, org.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+
+	repo, err := NewRepository(ctx, rw, rw, testKms)
+	assert.NoError(t, err)
+
+	sqlDb, err := conn.SqlDB(ctx)
+	require.NoError(t, err)
+
+	// Check total entries at start, expect 0
+	numItems, err := repo.estimatedAccountCount(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 0, numItems)
+
+	// create account and check deleted ids, should be empty
+	authMethod1 := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, []string{"ldaps://ldap1"})
+	acct := TestAccount(t, conn, authMethod1, "create-success")
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
+
+	deletedIds, ttime, err := repo.listDeletedAccountIds(ctx, time.Now().AddDate(-1, 0, 0))
+	require.NoError(t, err)
+	require.Empty(t, deletedIds)
+	// Transaction timestamp should be within ~10 seconds of now
+	assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
+	assert.True(t, time.Now().After(ttime.Add(-10*time.Second)))
+
+	// Delete acct and check count, expect 1 entry
+	_, err = repo.DeleteAccount(ctx, acct.GetPublicId())
+	require.NoError(t, err)
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
+
+	deletedIds, ttime, err = repo.listDeletedAccountIds(ctx, time.Now().AddDate(-1, 0, 0))
+	require.NoError(t, err)
+	assert.Empty(
+		t,
+		cmp.Diff(
+			[]string{acct.GetPublicId()},
+			deletedIds,
+			cmpopts.SortSlices(func(i, j string) bool { return i < j }),
+		),
+	)
+	// Transaction timestamp should be within ~10 seconds of now
+	assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
+	assert.True(t, time.Now().After(ttime.Add(-10*time.Second)))
+
+	// Try again with the time set to now, expect no entries
+	deletedIds, ttime, err = repo.listDeletedAccountIds(ctx, time.Now())
+	require.NoError(t, err)
+	require.Empty(t, deletedIds)
+	assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
+	assert.True(t, time.Now().After(ttime.Add(-10*time.Second)))
 }
 
 func TestRepository_ListAccounts_Limits(t *testing.T) {
@@ -805,9 +1073,12 @@ func TestRepository_ListAccounts_Limits(t *testing.T) {
 			repo, err := NewRepository(testCtx, testRw, testRw, testKms, tc.repoOpts...)
 			assert.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.ListAccounts(context.Background(), am.GetPublicId(), tc.listOpts...)
+			got, ttime, err := repo.listAccounts(context.Background(), am.GetPublicId(), tc.listOpts...)
 			require.NoError(err)
 			assert.Len(got, tc.wantLen)
+			// Transaction timestamp should be within ~10 seconds of now
+			assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+			assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
 		})
 	}
 }
