@@ -5,10 +5,13 @@ package ldap
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
@@ -96,27 +99,103 @@ func (r *Repository) LookupAccount(ctx context.Context, withPublicId string, _ .
 	return a, nil
 }
 
-// ListAccounts in an auth method and supports WithLimit option.
-func (r *Repository) ListAccounts(ctx context.Context, withAuthMethodId string, opt ...Option) ([]*Account, error) {
-	const op = "ldap.(Repository).ListAccounts"
+// listAccounts returns a slice of accounts in the auth method.
+// Supported options:
+//   - WithLimit which overrides the limit set in the Repository object
+//   - WithStartPageAfterItem which sets where to start listing from
+func (r *Repository) listAccounts(ctx context.Context, withAuthMethodId string, opt ...Option) ([]*Account, time.Time, error) {
+	const op = "ldap.(Repository).listAccounts"
 	if withAuthMethodId == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing auth method id")
+		return nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "missing auth method id")
 	}
 	opts, err := getOpts(opt...)
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+		return nil, time.Time{}, errors.Wrap(ctx, err, op)
 	}
+
 	limit := r.defaultLimit
 	if opts.withLimit != 0 {
 		// non-zero signals an override of the default limit for the repo.
 		limit = opts.withLimit
 	}
-	var accts []*Account
-	err = r.reader.SearchWhere(ctx, &accts, "auth_method_id = ?", []any{withAuthMethodId}, db.WithLimit(limit))
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+
+	var args []any
+	whereClause := "auth_method_id = @auth_method_id"
+	args = append(args, sql.Named("auth_method_id", withAuthMethodId))
+
+	if opts.withStartPageAfterItem != nil {
+		whereClause = fmt.Sprintf("(create_time, public_id) < (@last_item_create_time, @last_item_id) and %s", whereClause)
+		args = append(args,
+			sql.Named("last_item_create_time", opts.withStartPageAfterItem.GetCreateTime()),
+			sql.Named("last_item_id", opts.withStartPageAfterItem.GetPublicId()),
+		)
 	}
-	return accts, nil
+
+	dbOpts := []db.Option{db.WithLimit(limit), db.WithOrder("create_time desc, public_id desc")}
+	return r.queryAccounts(ctx, whereClause, args, dbOpts...)
+}
+
+// listAccountsRefresh returns a slice of accounts in the auth method.
+// Supported options:
+//   - WithLimit which overrides the limit set in the Repository object
+//   - WithStartPageAfterItem which sets where to start listing from
+func (r *Repository) listAccountsRefresh(ctx context.Context, withAuthMethodId string, updatedAfter time.Time, opt ...Option) ([]*Account, time.Time, error) {
+	const op = "ldap.(Repository).listAccountsRefresh"
+	switch {
+	case withAuthMethodId == "":
+		return nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "missing auth method id")
+	case updatedAfter.IsZero():
+		return nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "missing updated after time")
+	}
+
+	opts, err := getOpts(opt...)
+	if err != nil {
+		return nil, time.Time{}, errors.Wrap(ctx, err, op)
+	}
+
+	limit := r.defaultLimit
+	if opts.withLimit != 0 {
+		// non-zero signals an override of the default limit for the repo.
+		limit = opts.withLimit
+	}
+
+	var args []any
+	whereClause := "update_time > @updated_after_time and auth_method_id = @auth_method_id"
+	args = append(args,
+		sql.Named("updated_after_time", timestamp.New(updatedAfter)),
+		sql.Named("auth_method_id", withAuthMethodId),
+	)
+
+	if opts.withStartPageAfterItem != nil {
+		whereClause = fmt.Sprintf("(update_time, public_id) < (@last_item_update_time, @last_item_id) and %s", whereClause)
+		args = append(args,
+			sql.Named("last_item_update_time", opts.withStartPageAfterItem.GetUpdateTime()),
+			sql.Named("last_item_id", opts.withStartPageAfterItem.GetPublicId()),
+		)
+	}
+
+	dbOpts := []db.Option{db.WithLimit(limit), db.WithOrder("update_time desc, public_id desc")}
+	return r.queryAccounts(ctx, whereClause, args, dbOpts...)
+}
+
+func (r *Repository) queryAccounts(ctx context.Context, whereClause string, args []any, opt ...db.Option) ([]*Account, time.Time, error) {
+	const op = "ldap.(Repository).queryAccounts"
+
+	var accts []*Account
+	var transactionTimestamp time.Time
+	if _, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(rd db.Reader, w db.Writer) error {
+		var inAccts []*Account
+		if err := rd.SearchWhere(ctx, &inAccts, whereClause, args, opt...); err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+		accts = inAccts
+		var err error
+		transactionTimestamp, err = rd.Now(ctx)
+		return err
+	}); err != nil {
+		return nil, time.Time{}, errors.Wrap(ctx, err, op)
+	}
+	return accts, transactionTimestamp, nil
 }
 
 // DeleteAccount deletes the account for the provided id from the repository returning a count of the
@@ -251,4 +330,46 @@ func (r *Repository) UpdateAccount(ctx context.Context, scopeId string, a *Accou
 	}
 
 	return returnedAccount, rowsUpdated, nil
+}
+
+// listDeletedAccountIds lists the public IDs of any accounts deleted since the timestamp provided,
+// and the timestamp of the transaction within which the accounts were listed.
+func (r *Repository) listDeletedAccountIds(ctx context.Context, since time.Time) ([]string, time.Time, error) {
+	const op = "ldap.(Repository).listDeletedAccountIds"
+	var deleteAccounts []*deletedAccount
+	var transactionTimestamp time.Time
+	if _, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(r db.Reader, _ db.Writer) error {
+		if err := r.SearchWhere(ctx, &deleteAccounts, "delete_time >= ?", []any{since}); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to query deleted accounts"))
+		}
+		var err error
+		transactionTimestamp, err = r.Now(ctx)
+		if err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to get transaction timestamp"))
+		}
+		return nil
+	}); err != nil {
+		return nil, time.Time{}, err
+	}
+	var accountIds []string
+	for _, a := range deleteAccounts {
+		accountIds = append(accountIds, a.PublicId)
+	}
+	return accountIds, transactionTimestamp, nil
+}
+
+// estimatedAccountCount returns an estimate of the total number of accounts.
+func (r *Repository) estimatedAccountCount(ctx context.Context) (int, error) {
+	const op = "ldap.(Repository).estimatedAccountCount"
+	rows, err := r.reader.Query(ctx, estimateCountAccounts, nil)
+	if err != nil {
+		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query ldap account counts"))
+	}
+	var count int
+	for rows.Next() {
+		if err := r.reader.ScanRows(ctx, rows, &count); err != nil {
+			return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query ldap account counts"))
+		}
+	}
+	return count, nil
 }
