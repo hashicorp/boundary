@@ -727,7 +727,11 @@ func (c *Channel) NewMessagesWriter(ctx context.Context, dir Direction) (storage
 	if err != nil {
 		return nil, err
 	}
-	m, err := c.container.create(ctx, messagesName)
+	m, err := c.container.create(ctx, messagesName,
+		storage.WithCreateFile(),
+		storage.WithFileAccessMode(storage.ReadWrite),
+		storage.WithBuffer(65*storage.LogicalBlockSize),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -749,7 +753,11 @@ func (c *Channel) NewRequestsWriter(ctx context.Context, dir Direction) (storage
 	if err != nil {
 		return nil, err
 	}
-	m, err := c.container.create(ctx, requestName)
+	m, err := c.container.create(ctx, requestName,
+		storage.WithCreateFile(),
+		storage.WithFileAccessMode(storage.ReadWrite),
+		storage.WithBuffer(65*storage.LogicalBlockSize),
+	)
 	if err != nil {
 		return nil, err
 	}
