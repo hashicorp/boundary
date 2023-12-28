@@ -549,9 +549,9 @@ begin;
     ('s2_____clare', 's2c1___clare');
 
   insert into recording_session
-    (session_id,     storage_bucket_id, public_id)
+    (session_id,     storage_bucket_id, public_id,      target_org_id)
   values
-    ('s1_____clare', 'sb____global',    'sr1____clare'),
-    ('s1______cora', 'sb____colors',    'sr1_____cora');
+    ('s1_____clare', 'sb____global',    'sr1____clare', 'o_____colors'),
+    ('s1______cora', 'sb____colors',    'sr1_____cora', 'o_____colors');
 
 commit;

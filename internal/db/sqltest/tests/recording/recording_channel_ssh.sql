@@ -17,9 +17,9 @@ begin;
   select has_view('recording_channel_ssh_aggregate', 'view for aggregating channel recording info does not exist');
 
   insert into recording_session
-    (public_id,      storage_bucket_id, session_id,     state)
+    (public_id,      storage_bucket_id, session_id,     state,     target_org_id)
   values
-    ('sr_123456789', 'sb____global',    's2_____clare', 'started');
+    ('sr_123456789', 'sb____global',    's2_____clare', 'started', 'o_____colors');
   insert into session_connection
     (public_id,      session_id)
   values
