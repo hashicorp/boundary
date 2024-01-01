@@ -7,6 +7,7 @@ import (
 	"context"
 	"crypto/rand"
 	"database/sql"
+	stderr "errors"
 	"fmt"
 	"strings"
 	"time"
@@ -421,6 +422,14 @@ func (r *Repository) UpdateScope(ctx context.Context, scope *Scope, version uint
 		}
 		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("for public id %s", scope.PublicId)))
 	}
+	var childComponentErrs error
+	item := resource.(*Scope)
+	if err := setScopeStoragePolicyId(ctx, r.reader, item); err != nil && !errors.IsNotFoundError(err) {
+		childComponentErrs = stderr.Join(err)
+	}
+	if childComponentErrs != nil {
+		return nil, rowsUpdated, errors.Wrap(ctx, childComponentErrs, op, errors.WithMsg(fmt.Sprintf("failed to fetch one or more child components for %s", item.PublicId)))
+	}
 	return resource.(*Scope), rowsUpdated, nil
 }
 
@@ -438,6 +447,13 @@ func (r *Repository) LookupScope(ctx context.Context, withPublicId string, _ ...
 			return nil, nil
 		}
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %s", withPublicId)))
+	}
+	var childComponentErrs error
+	if err := setScopeStoragePolicyId(ctx, r.reader, &scope); err != nil && !errors.IsNotFoundError(err) {
+		childComponentErrs = stderr.Join(err)
+	}
+	if childComponentErrs != nil {
+		return nil, errors.Wrap(ctx, childComponentErrs, op, errors.WithMsg(fmt.Sprintf("failed to fetch one or more child components for %s", scope.PublicId)))
 	}
 	return &scope, nil
 }
@@ -492,7 +508,22 @@ func (r *Repository) listScopes(ctx context.Context, withParentIds []string, opt
 		)
 	}
 	dbOpts := []db.Option{db.WithLimit(limit), db.WithOrder("create_time desc, public_id desc")}
-	return r.queryScopes(ctx, whereClause, args, dbOpts...)
+	scopes, t, err := r.queryScopes(ctx, whereClause, args, dbOpts...)
+	if err != nil {
+		return scopes, t, err
+	}
+
+	var childComponentErrs error
+	for _, scope := range scopes {
+		if err := setScopeStoragePolicyId(ctx, r.reader, scope); err != nil && !errors.IsNotFoundError(err) {
+			childComponentErrs = stderr.Join(err)
+		}
+	}
+	if childComponentErrs != nil {
+		return scopes, t, errors.Wrap(ctx, childComponentErrs, op, errors.WithMsg("failed to fetch one or more child components"))
+	}
+
+	return scopes, t, nil
 }
 
 // listScopesRefresh lists scopes in the given scopes and supports the
@@ -534,7 +565,22 @@ func (r *Repository) listScopesRefresh(ctx context.Context, updatedAfter time.Ti
 	}
 
 	dbOpts := []db.Option{db.WithLimit(limit), db.WithOrder("update_time desc, public_id desc")}
-	return r.queryScopes(ctx, whereClause, args, dbOpts...)
+	scopes, t, err := r.queryScopes(ctx, whereClause, args, dbOpts...)
+	if err != nil {
+		return scopes, t, err
+	}
+
+	var childComponentErrs error
+	for _, scope := range scopes {
+		if err := setScopeStoragePolicyId(ctx, r.reader, scope); err != nil && !errors.IsNotFoundError(err) {
+			childComponentErrs = stderr.Join(err)
+		}
+	}
+	if childComponentErrs != nil {
+		return scopes, t, errors.Wrap(ctx, childComponentErrs, op, errors.WithMsg("failed to fetch one or more child components"))
+	}
+
+	return scopes, t, nil
 }
 
 func (r *Repository) queryScopes(ctx context.Context, whereClause string, args []any, opt ...db.Option) ([]*Scope, time.Time, error) {
@@ -583,6 +629,15 @@ func (r *Repository) ListScopesRecursively(ctx context.Context, rootScopeId stri
 	err := r.list(ctx, &scopes, where, args, opt...)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op+":ListQuery")
+	}
+	var childComponentErrs error
+	for _, scope := range scopes {
+		if err := setScopeStoragePolicyId(ctx, r.reader, scope); err != nil && !errors.IsNotFoundError(err) {
+			childComponentErrs = stderr.Join(err)
+		}
+	}
+	if childComponentErrs != nil {
+		return nil, errors.Wrap(ctx, childComponentErrs, op, errors.WithMsg("failed to fetch one or more child components"))
 	}
 	return scopes, nil
 }
