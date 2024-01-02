@@ -455,13 +455,13 @@ func (b *Server) CreateInitialTargetWithAddress(ctx context.Context) (target.Tar
 		b.DevTargetAddress = "127.0.0.1"
 	}
 	opts := []target.Option{
-		target.WithName("www.hashicorp.com"),
+		target.WithName("Generated target with a direct address"),
 		target.WithDescription("Provides an initial target using an address in Boundary"),
-		target.WithDefaultPort(443),
-		target.WithSessionMaxSeconds(5),
+		target.WithDefaultPort(uint32(b.DevTargetDefaultPort)),
+		target.WithSessionMaxSeconds(uint32(b.DevTargetSessionMaxSeconds)),
 		target.WithSessionConnectionLimit(int32(b.DevTargetSessionConnectionLimit)),
 		target.WithPublicId(b.DevTargetId),
-		target.WithAddress("www.hashicorp.com"),
+		target.WithAddress(b.DevTargetAddress),
 	}
 	t, err := target.New(ctx, tcp.Subtype, b.DevProjectId, opts...)
 	if err != nil {
@@ -473,6 +473,25 @@ func (b *Server) CreateInitialTargetWithAddress(ctx context.Context) (target.Tar
 	}
 	b.InfoKeys = append(b.InfoKeys, "generated target with address id")
 	b.Info["generated target with address id"] = b.DevTargetId
+
+	// Create another one for ts testing
+	opts = []target.Option{
+		target.WithName("www.hashicorp.com"),
+		target.WithDescription("Provides an initial target using an address in Boundary"),
+		target.WithDefaultPort(443),
+		target.WithSessionMaxSeconds(5),
+		target.WithSessionConnectionLimit(int32(b.DevTargetSessionConnectionLimit)),
+		target.WithPublicId("ttcp_tstestinghc"),
+		target.WithAddress("www.hashicorp.com"),
+	}
+	t, err = target.New(ctx, tcp.Subtype, b.DevProjectId, opts...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create target object: %w", err)
+	}
+	_, err = targetRepo.CreateTarget(ctx, t, opts...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to save target to the db: %w", err)
+	}
 
 	if b.DevUnprivilegedUserId != "" {
 		iamRepo, err := iam.NewRepository(ctx, rw, rw, kmsCache, iam.WithRandomReader(b.SecureRandomReader))
@@ -526,7 +545,6 @@ func (b *Server) CreateInitialTargetWithHostSources(ctx context.Context) (target
 		target.WithSessionMaxSeconds(uint32(b.DevTargetSessionMaxSeconds)),
 		target.WithSessionConnectionLimit(int32(b.DevTargetSessionConnectionLimit)),
 		target.WithPublicId(b.DevSecondaryTargetId),
-		target.WithName("foo.boundary"),
 	}
 	t, err := target.New(ctx, tcp.Subtype, b.DevProjectId, opts...)
 	if err != nil {
@@ -536,12 +554,34 @@ func (b *Server) CreateInitialTargetWithHostSources(ctx context.Context) (target
 	if err != nil {
 		return nil, fmt.Errorf("failed to save target to the db: %w", err)
 	}
-	tt, err = targetRepo.AddTargetHostSources(ctx, tt.GetPublicId(), tt.GetVersion(), []string{b.DevHostSetId})
+	_, err = targetRepo.AddTargetHostSources(ctx, tt.GetPublicId(), tt.GetVersion(), []string{b.DevHostSetId})
 	if err != nil {
 		return nil, fmt.Errorf("failed to add host source %q to target: %w", b.DevHostSetId, err)
 	}
 	b.InfoKeys = append(b.InfoKeys, "generated target with host source id")
 	b.Info["generated target with host source id"] = b.DevSecondaryTargetId
+
+	// Add second one for ts testing
+	opts = []target.Option{
+		target.WithDescription("Provides a target using host sources in Boundary"),
+		target.WithDefaultPort(uint32(b.DevTargetDefaultPort)),
+		target.WithSessionMaxSeconds(uint32(b.DevTargetSessionMaxSeconds)),
+		target.WithSessionConnectionLimit(int32(b.DevTargetSessionConnectionLimit)),
+		target.WithPublicId("ttcp_tstestinghs"),
+		target.WithName("foo.boundary"),
+	}
+	t, err = target.New(ctx, tcp.Subtype, b.DevProjectId, opts...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create target object: %w", err)
+	}
+	tt, err = targetRepo.CreateTarget(ctx, t, opts...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to save target to the db: %w", err)
+	}
+	tt, err = targetRepo.AddTargetHostSources(ctx, tt.GetPublicId(), tt.GetVersion(), []string{b.DevHostSetId})
+	if err != nil {
+		return nil, fmt.Errorf("failed to add host source %q to target: %w", b.DevHostSetId, err)
+	}
 
 	credsRepo, err := credstatic.NewRepository(ctx, rw, rw, kmsCache)
 	if err != nil {
@@ -567,12 +607,11 @@ func (b *Server) CreateInitialTargetWithHostSources(ctx context.Context) (target
 	}
 
 	opts = []target.Option{
-		target.WithName("Generated target to local postgres"),
 		target.WithDescription("Provides a target to a local postgres instance"),
 		target.WithDefaultPort(5432),
 		target.WithSessionMaxSeconds(28800),
 		target.WithSessionConnectionLimit(2),
-		target.WithPublicId("ttcp_postgresdb"),
+		target.WithPublicId("ttcp_tstestingdb"),
 		target.WithAddress("localhost"),
 		target.WithName("postgres.mine"),
 	}
