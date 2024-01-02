@@ -106,11 +106,8 @@ func (c *StatusCommand) Status(ctx context.Context) (*api.Response, *daemon.Stat
 
 func status(ctx context.Context, daemonPath string, opt ...client.Option) (*api.Response, *daemon.StatusResult, *api.Error, error) {
 	const op = "daemon.status"
-	addr, err := daemon.SocketAddress(daemonPath)
-	if err != nil {
-		return nil, nil, nil, fmt.Errorf("Error getting socket address: %w", err)
-	}
-	_, err = os.Stat(addr.Path)
+	addr := daemon.SocketAddress(daemonPath)
+	_, err := os.Stat(addr.Path)
 	if addr.Scheme == "unix" && err != nil {
 		return nil, nil, nil, errDaemonNotRunning
 	}

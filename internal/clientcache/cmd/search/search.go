@@ -173,11 +173,8 @@ func (c *SearchCommand) Search(ctx context.Context) (*api.Response, *daemon.Sear
 }
 
 func search(ctx context.Context, daemonPath string, fb filterBy, opt ...client.Option) (*api.Response, *daemon.SearchResult, *api.Error, error) {
-	addr, err := daemon.SocketAddress(daemonPath)
-	if err != nil {
-		return nil, nil, nil, fmt.Errorf("Error getting socket address: %w", err)
-	}
-	_, err = os.Stat(addr.Path)
+	addr := daemon.SocketAddress(daemonPath)
+	_, err := os.Stat(addr.Path)
 	if addr.Scheme == "unix" && err != nil {
 		return nil, nil, nil, errDaemonNotRunning
 	}
