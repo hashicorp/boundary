@@ -8,6 +8,7 @@ import (
 	"net/url"
 
 	"github.com/hashicorp/boundary/internal/auth/oidc/store"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/types/resource"
@@ -141,4 +142,14 @@ func (c *Account) oplog(op oplog.OpType, authMethodScopeId string) oplog.Metadat
 		metadata["scope-id"] = []string{authMethodScopeId}
 	}
 	return metadata
+}
+
+type deletedAccount struct {
+	PublicId   string `gorm:"primary_key"`
+	DeleteTime *timestamp.Timestamp
+}
+
+// TableName returns the tablename to override the default gorm table name
+func (s *deletedAccount) TableName() string {
+	return "auth_oidc_account_deleted"
 }
