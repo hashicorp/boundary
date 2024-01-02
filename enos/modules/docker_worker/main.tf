@@ -155,5 +155,5 @@ output "upstream_address" {
 }
 
 output "worker_led_token" {
-  value = var.worker_led_registration ? enos_local_exec.get_worker_led_token[0].stdout : ""
+  value = var.worker_led_registration ? trimspace(enos_local_exec.get_worker_led_token[0].stdout) : ""
 }
