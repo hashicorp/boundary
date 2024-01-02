@@ -15,7 +15,9 @@ import (
 // clientTlsConfig creates a TLS configuration to connect to a worker proxy, or
 // returns a cached config
 //
-// Supported options: WithWorkerHost
+// Supported options: WithWorkerHost. If provided will use that host (minus
+// port) for the SNI header. Otherwise, it will use the first worker host
+// provided in the session authorization data.
 func (p *ClientProxy) clientTlsConfig(opt ...Option) (*tls.Config, error) {
 	if p.clientTlsConf != nil {
 		return p.clientTlsConf, nil
@@ -25,27 +27,31 @@ func (p *ClientProxy) clientTlsConfig(opt ...Option) (*tls.Config, error) {
 	if p.sessionAuthzData == nil {
 		return nil, fmt.Errorf("%s: nil session authorization data", op)
 	}
+	if len(p.sessionAuthzData.WorkerInfo) == 0 {
+		return nil, fmt.Errorf("%s: no worker info", op)
+	}
 
 	opts, err := getOpts(opt...)
 	if err != nil {
 		return nil, fmt.Errorf("%s: error getting options: %w", op, err)
 	}
 
-	var workerHost string
-	if opts.WithWorkerHost == nil {
-		workerHost, _, err = net.SplitHostPort(p.workerAddr)
-		if err != nil {
-			if strings.Contains(err.Error(), "missing port") {
-				workerHost = p.workerAddr
-			} else {
-				return nil, fmt.Errorf("%s: error splitting worker adddress host/port: %w", op, err)
-			}
-		}
-	}
-
 	parsedCert, err := x509.ParseCertificate(p.sessionAuthzData.Certificate)
 	if err != nil {
 		return nil, fmt.Errorf("%s: unable to decode mTLS certificate: %w", op, err)
+	}
+
+	workerHostRaw := opts.WithWorkerHost
+	if workerHostRaw == "" {
+		workerHostRaw = p.sessionAuthzData.WorkerInfo[0].Address
+	}
+	workerHost, _, err := net.SplitHostPort(workerHostRaw)
+	if err != nil {
+		if strings.Contains(err.Error(), "missing port") {
+			workerHost = workerHostRaw
+		} else {
+			return nil, fmt.Errorf("%s: error splitting worker host/port: %w", op, err)
+		}
 	}
 
 	certPool := x509.NewCertPool()
@@ -66,10 +72,6 @@ func (p *ClientProxy) clientTlsConfig(opt ...Option) (*tls.Config, error) {
 		// This is set this way so we can make use of VerifyConnection, which we
 		// set on this TLS config below. We are not skipping verification!
 		InsecureSkipVerify: true,
-	}
-
-	if workerHost == "" {
-		tlsConf.ServerName = parsedCert.DNSNames[0]
 	}
 
 	// We disable normal DNS SAN behavior as we don't rely on DNS or IP

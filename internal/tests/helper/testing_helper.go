@@ -17,9 +17,9 @@ import (
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
-	apiproxy "github.com/hashicorp/boundary/api/proxy"
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/cmd/commands/connect"
 	"github.com/hashicorp/boundary/internal/daemon/controller/common"
 	"github.com/hashicorp/boundary/internal/daemon/worker"
 	"github.com/hashicorp/boundary/internal/session"
@@ -94,7 +94,9 @@ func NewTestSession(
 
 	s.WorkerAddr = s.SessionAuthzData.GetWorkerInfo()[0].GetAddress()
 
-	tlsConf := apiproxy.TestClientTlsConfig(t, authzString, apiproxy.WithWorkerHost(""))
+	//	tlsConf := apiproxy.TestClientTlsConfig(t, authzString)
+	tlsConf, err := connect.ClientTlsConfig(s.SessionAuthzData, s.SessionAuthzData.SessionId)
+	require.NoError(err)
 
 	s.Transport = cleanhttp.DefaultTransport()
 	s.Transport.DisableKeepAlives = false

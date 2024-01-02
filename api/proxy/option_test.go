@@ -60,11 +60,10 @@ func Test_GetOpts(t *testing.T) {
 		assert := assert.New(t)
 		opts, err := getOpts()
 		require.NoError(t, err)
-		assert.Nil(opts.WithWorkerHost)
+		assert.Empty(opts.WithWorkerHost)
 		opts, err = getOpts(WithWorkerHost("foo"))
 		require.NoError(t, err)
-		require.NotNil(t, opts.WithWorkerHost)
-		assert.Equal("foo", *opts.WithWorkerHost)
+		assert.Equal("foo", opts.WithWorkerHost)
 	})
 	t.Run("with-session-authorization-data", func(t *testing.T) {
 		assert := assert.New(t)

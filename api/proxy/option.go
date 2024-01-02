@@ -32,7 +32,7 @@ type Options struct {
 	WithListener                 net.Listener
 	WithListenAddrPort           netip.AddrPort
 	WithConnectionsLeftCh        chan int32
-	WithWorkerHost               *string
+	WithWorkerHost               string
 	WithSessionAuthorizationData *targets.SessionAuthorizationData
 }
 
@@ -89,8 +89,7 @@ func WithConnectionsLeftCh(with chan int32) Option {
 // TLS configuration and is mostly useful for tests.
 func WithWorkerHost(with string) Option {
 	return func(o *Options) error {
-		o.WithWorkerHost = new(string)
-		*o.WithWorkerHost = with
+		o.WithWorkerHost = with
 		return nil
 	}
 }
