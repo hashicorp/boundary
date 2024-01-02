@@ -15,7 +15,6 @@ import (
 
 	"github.com/hashicorp/boundary/internal/clientcache/internal/daemon"
 	"github.com/hashicorp/boundary/internal/cmd/base"
-	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/mitchellh/cli"
 )
 
@@ -134,10 +133,7 @@ func waitForDaemon(ctx context.Context) error {
 	}
 	timer := time.NewTimer(0)
 
-	addr, err := daemon.SocketAddress(dotPath)
-	if err != nil {
-		return errors.Wrap(ctx, err, op)
-	}
+	addr := daemon.SocketAddress(dotPath)
 	_, err = os.Stat(addr.Path)
 	for os.IsNotExist(err) {
 		select {
