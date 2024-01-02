@@ -79,6 +79,7 @@ func (r *RefreshService) cleanAndPickAuthTokens(ctx context.Context, u *user) (m
 					if err := r.repo.deleteKeyringToken(ctx, *kt); err != nil {
 						return nil, errors.Wrap(ctx, err, op)
 					}
+					event.WriteSysEvent(ctx, op, "Removed auth token from cache because it was not found to be valid in boundary", "auth token id", at.Id)
 					continue
 				case err != nil && !errors.Is(err, apiErr):
 					event.WriteError(ctx, op, err, event.WithInfoMsg("validating keyring stored token against boundary", "auth token id", at.Id))
@@ -94,6 +95,7 @@ func (r *RefreshService) cleanAndPickAuthTokens(ctx context.Context, u *user) (m
 				switch {
 				case err != nil && (api.ErrUnauthorized.Is(err) || api.ErrNotFound.Is(err)):
 					r.repo.idToKeyringlessAuthToken.Delete(t.Id)
+					event.WriteSysEvent(ctx, op, "Removed auth token from cache because it was not found to be valid in boundary", "auth token id", at.Id)
 					continue
 				case err != nil && !errors.Is(err, apiErr):
 					event.WriteError(ctx, op, err, event.WithInfoMsg("validating in memory stored token against boundary", "auth token id", at.Id))
@@ -107,12 +109,12 @@ func (r *RefreshService) cleanAndPickAuthTokens(ctx context.Context, u *user) (m
 	return ret, nil
 }
 
-// refreshableUsers filters the provided users down to the set of users who can
-// have their resources refreshed using refresh tokens.  A user is returned by
-// this method if it has no resources in storage at all or it has a refresh
-// token for any resource.
-func (r *RefreshService) refreshableUsers(ctx context.Context, in []*user) ([]*user, error) {
-	const op = "cache.(RefreshService).refreshableUsers"
+// cacheSupportedUsers filters the provided users down to the set of users who
+// can have their resources refreshed using refresh tokens.  A user is returned
+// by this method if it does not have a sentinel value refresh token marking it
+// as unsupported for caching.
+func (r *RefreshService) cacheSupportedUsers(ctx context.Context, in []*user) ([]*user, error) {
+	const op = "cache.(RefreshService).cacheSupportedUsers"
 	var ret []*user
 	for _, u := range in {
 		cs, err := r.repo.cacheSupportState(ctx, u)
@@ -162,7 +164,7 @@ func (r *RefreshService) RefreshForSearch(ctx context.Context, authTokenid strin
 	if u == nil {
 		return errors.New(ctx, errors.NotFound, op, "user not found")
 	}
-	us, err := r.refreshableUsers(ctx, []*user{u})
+	us, err := r.cacheSupportedUsers(ctx, []*user{u})
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
@@ -235,7 +237,7 @@ func (r *RefreshService) Refresh(ctx context.Context, opt ...Option) error {
 		return errors.Wrap(ctx, err, op)
 	}
 
-	us, err = r.refreshableUsers(ctx, us)
+	us, err = r.cacheSupportedUsers(ctx, us)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
@@ -279,7 +281,7 @@ func (r *RefreshService) RecheckCachingSupport(ctx context.Context, opt ...Optio
 		return errors.Wrap(ctx, err, op)
 	}
 
-	removeUsers, err := r.refreshableUsers(ctx, us)
+	removeUsers, err := r.cacheSupportedUsers(ctx, us)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
