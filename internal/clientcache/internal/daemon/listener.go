@@ -5,7 +5,6 @@ package daemon
 
 import (
 	"context"
-	"fmt"
 	"net"
 	"net/url"
 	"os"
@@ -53,7 +52,12 @@ func listener(ctx context.Context, path string) (net.Listener, error) {
 	return l, nil
 }
 
-// SocketAddress returns the unix socket *url.URL with the scheme set to 'unix'.
-func SocketAddress(path string) (*url.URL, error) {
-	return url.Parse(fmt.Sprintf("unix://%s", filepath.Join(path, sockAddr)))
+// SocketAddress returns the unix socket *url.URL with the scheme set to 'unix'
+// and the path set to the provided path. Verifying the path is valid is the
+// responsibility of the caller.
+func SocketAddress(path string) *url.URL {
+	return &url.URL{
+		Scheme: "unix",
+		Path:   filepath.Join(path, sockAddr),
+	}
 }

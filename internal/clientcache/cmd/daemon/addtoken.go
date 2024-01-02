@@ -138,11 +138,8 @@ func (c *AddTokenCommand) Add(ctx context.Context, apiClient *api.Client, keyrin
 }
 
 func addToken(ctx context.Context, daemonPath string, p *daemon.UpsertTokenRequest, opt ...client.Option) (*api.Response, *api.Error, error) {
-	addr, err := daemon.SocketAddress(daemonPath)
-	if err != nil {
-		return nil, nil, fmt.Errorf("Error when retrieving the socket address: %w", err)
-	}
-	_, err = os.Stat(addr.Path)
+	addr := daemon.SocketAddress(daemonPath)
+	_, err := os.Stat(addr.Path)
 	if addr.Scheme == "unix" && err != nil {
 		return nil, nil, fmt.Errorf("Error when detecting if the domain socket is present: %w.", err)
 	}
