@@ -1,5 +1,6 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
+
 
 // Package oplog_test provides some gorm helper funcs for testing oplog database integrations
 package oplog_test

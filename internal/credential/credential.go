@@ -1,5 +1,6 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
+
 
 // Package credential defines interfaces shared by other packages that
 // manage credentials for Boundary sessions.

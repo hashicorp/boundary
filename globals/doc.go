@@ -1,5 +1,6 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
+
 
 /*
 Globals, in the traditional sense, are usually bad. But there are some

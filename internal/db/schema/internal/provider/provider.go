@@ -1,5 +1,6 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
+
 
 // Package provider provides an iterator for iterating over all of the
 // migration statements that need to be applied. It will provide the statements

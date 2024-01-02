@@ -1,5 +1,6 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
+
 
 // Package checksum provides a wrapper to compute a checksum on a writable file
 // while it is being written to, and record the final checksum when the file is
