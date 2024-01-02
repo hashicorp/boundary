@@ -46,7 +46,7 @@ func TestWorkerSessionProxyMultipleConnections(t *testing.T) {
 	})
 	defer c1.Shutdown()
 
-	expectWorkers(t, c1)
+	ExpectWorkers(t, c1)
 
 	// Wire up the testing proxies
 	require.Len(c1.ClusterAddrs(), 1)
@@ -71,7 +71,7 @@ func TestWorkerSessionProxyMultipleConnections(t *testing.T) {
 	require.NoError(err)
 	err = c1.WaitForNextWorkerStatusUpdate(w1.Name())
 	require.NoError(err)
-	expectWorkers(t, c1, w1)
+	ExpectWorkers(t, c1, w1)
 
 	// Use an independent context for test things that take a context so
 	// that we aren't tied to any timeouts in the controller, etc. This

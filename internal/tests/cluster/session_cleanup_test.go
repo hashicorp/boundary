@@ -96,7 +96,7 @@ func testWorkerSessionCleanupSingle(burdenCase timeoutBurdenType) func(t *testin
 			WorkerStatusGracePeriodDuration: controllerGracePeriod(burdenCase),
 		})
 
-		expectWorkers(t, c1)
+		ExpectWorkers(t, c1)
 
 		// Wire up the testing proxies
 		require.Len(c1.ClusterAddrs(), 1)
@@ -120,7 +120,7 @@ func testWorkerSessionCleanupSingle(burdenCase timeoutBurdenType) func(t *testin
 		require.NoError(err)
 		err = c1.WaitForNextWorkerStatusUpdate(w1.Name())
 		require.NoError(err)
-		expectWorkers(t, c1, w1)
+		ExpectWorkers(t, c1, w1)
 
 		// Use an independent context for test things that take a context so
 		// that we aren't tied to any timeouts in the controller, etc. This
@@ -235,8 +235,8 @@ func testWorkerSessionCleanupMulti(burdenCase timeoutBurdenType) func(t *testing
 			PublicClusterAddr:               pl2.Addr().String(),
 			WorkerStatusGracePeriodDuration: controllerGracePeriod(burdenCase),
 		})
-		expectWorkers(t, c1)
-		expectWorkers(t, c2)
+		ExpectWorkers(t, c1)
+		ExpectWorkers(t, c2)
 
 		// *************
 		// ** Proxy 1 **
@@ -284,8 +284,8 @@ func testWorkerSessionCleanupMulti(burdenCase timeoutBurdenType) func(t *testing
 		require.NoError(err)
 		err = c2.WaitForNextWorkerStatusUpdate(w1.Name())
 		require.NoError(err)
-		expectWorkers(t, c1, w1)
-		expectWorkers(t, c2, w1)
+		ExpectWorkers(t, c1, w1)
+		ExpectWorkers(t, c2, w1)
 
 		// Use an independent context for test things that take a context so
 		// that we aren't tied to any timeouts in the controller, etc. This

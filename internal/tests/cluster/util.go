@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func expectWorkers(t *testing.T, c *controller.TestController, workers ...*worker.TestWorker) {
+func ExpectWorkers(t *testing.T, c *controller.TestController, workers ...*worker.TestWorker) {
 	updateTimes := c.Controller().WorkerStatusUpdateTimes()
 	workerMap := map[string]*worker.TestWorker{}
 	for _, w := range workers {

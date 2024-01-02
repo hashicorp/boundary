@@ -37,8 +37,8 @@ func TestMultiControllerMultiWorkerConnections(t *testing.T) {
 	})
 	defer c2.Shutdown()
 
-	expectWorkers(t, c1)
-	expectWorkers(t, c2)
+	ExpectWorkers(t, c1)
+	ExpectWorkers(t, c2)
 
 	w1 := worker.NewTestWorker(t, &worker.TestWorkerOpts{
 		WorkerAuthKms:    c1.Config().WorkerAuthKms,
@@ -48,8 +48,8 @@ func TestMultiControllerMultiWorkerConnections(t *testing.T) {
 	defer w1.Shutdown()
 
 	time.Sleep(10 * time.Second)
-	expectWorkers(t, c1, w1)
-	expectWorkers(t, c2, w1)
+	ExpectWorkers(t, c1, w1)
+	ExpectWorkers(t, c2, w1)
 
 	w2 := w1.AddClusterWorkerMember(t, &worker.TestWorkerOpts{
 		Logger: logger.Named("w2"),
@@ -57,13 +57,13 @@ func TestMultiControllerMultiWorkerConnections(t *testing.T) {
 	defer w2.Shutdown()
 
 	time.Sleep(10 * time.Second)
-	expectWorkers(t, c1, w1, w2)
-	expectWorkers(t, c2, w1, w2)
+	ExpectWorkers(t, c1, w1, w2)
+	ExpectWorkers(t, c2, w1, w2)
 
 	require.NoError(w1.Worker().Shutdown())
 	time.Sleep(10 * time.Second)
-	expectWorkers(t, c1, w2)
-	expectWorkers(t, c2, w2)
+	ExpectWorkers(t, c1, w2)
+	ExpectWorkers(t, c2, w2)
 
 	w1 = worker.NewTestWorker(t, &worker.TestWorkerOpts{
 		WorkerAuthKms:    c1.Config().WorkerAuthKms,
@@ -73,12 +73,12 @@ func TestMultiControllerMultiWorkerConnections(t *testing.T) {
 	defer w1.Shutdown()
 
 	time.Sleep(10 * time.Second)
-	expectWorkers(t, c1, w1, w2)
-	expectWorkers(t, c2, w1, w2)
+	ExpectWorkers(t, c1, w1, w2)
+	ExpectWorkers(t, c2, w1, w2)
 
 	require.NoError(c2.Controller().Shutdown())
 	time.Sleep(10 * time.Second)
-	expectWorkers(t, c1, w1, w2)
+	ExpectWorkers(t, c1, w1, w2)
 
 	c2 = c1.AddClusterControllerMember(t, &controller.TestControllerOpts{
 		Logger: c1.Config().Logger.ResetNamed("c2"),
@@ -86,8 +86,8 @@ func TestMultiControllerMultiWorkerConnections(t *testing.T) {
 	defer c2.Shutdown()
 
 	time.Sleep(10 * time.Second)
-	expectWorkers(t, c1, w1, w2)
-	expectWorkers(t, c2, w1, w2)
+	ExpectWorkers(t, c1, w1, w2)
+	ExpectWorkers(t, c2, w1, w2)
 }
 
 func TestWorkerAppendInitialUpstreams(t *testing.T) {
@@ -106,7 +106,7 @@ func TestWorkerAppendInitialUpstreams(t *testing.T) {
 	})
 	defer c1.Shutdown()
 
-	expectWorkers(t, c1)
+	ExpectWorkers(t, c1)
 
 	initialUpstreams := append(c1.ClusterAddrs(), "127.0.0.9")
 	w1 := worker.NewTestWorker(t, &worker.TestWorkerOpts{
@@ -131,7 +131,7 @@ func TestWorkerAppendInitialUpstreams(t *testing.T) {
 			break
 		}
 	}
-	expectWorkers(t, c1, w1)
+	ExpectWorkers(t, c1, w1)
 
 	// Upstreams should be equivalent to the controller cluster addr after status updates
 	assert.Equal(c1.ClusterAddrs(), w1.Worker().LastStatusSuccess().LastCalculatedUpstreams)

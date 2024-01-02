@@ -37,7 +37,7 @@ func TestWorkerTagging(t *testing.T) {
 	ctx := c1.Context()
 
 	// No workers yet
-	expectWorkers(t, c1)
+	ExpectWorkers(t, c1)
 
 	// Ensure target is valid
 	client := c1.Client()
@@ -102,7 +102,7 @@ func TestWorkerTagging(t *testing.T) {
 
 	w3.Worker().WaitForNextSuccessfulStatusUpdate()
 
-	expectWorkers(t, c1, w1, w2, w3)
+	ExpectWorkers(t, c1, w1, w2, w3)
 
 	// Ensure we are using the OSS filter, which uses egress only for worker selection
 	oldAuthFun := ct.AuthorizeSessionWorkerFilterFn
