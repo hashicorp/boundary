@@ -5,10 +5,13 @@ package ldap
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
@@ -97,27 +100,103 @@ func (r *Repository) LookupManagedGroup(ctx context.Context, withPublicId string
 	return a, nil
 }
 
-// ListManagedGroups in an auth method and supports WithLimit option.
-func (r *Repository) ListManagedGroups(ctx context.Context, withAuthMethodId string, opt ...Option) ([]*ManagedGroup, error) {
+// ListManagedGroups returns a slice of managed groups in the auth method.
+// Supported options:
+//   - WithLimit which overrides the limit set in the Repository object
+//   - WithStartPageAfterItem which sets where to start listing from
+func (r *Repository) ListManagedGroups(ctx context.Context, withAuthMethodId string, opt ...Option) ([]*ManagedGroup, time.Time, error) {
 	const op = "ldap.(Repository).ListManagedGroups"
 	if withAuthMethodId == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing auth method id")
+		return nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "missing auth method id")
 	}
 	opts, err := getOpts(opt...)
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+		return nil, time.Time{}, errors.Wrap(ctx, err, op)
 	}
+
 	limit := r.defaultLimit
 	if opts.withLimit != 0 {
 		// non-zero signals an override of the default limit for the repo.
 		limit = opts.withLimit
 	}
-	var mgs []*ManagedGroup
-	err = r.reader.SearchWhere(ctx, &mgs, "auth_method_id = ?", []any{withAuthMethodId}, db.WithLimit(limit))
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+
+	var args []any
+	whereClause := "auth_method_id = @auth_method_id"
+	args = append(args, sql.Named("auth_method_id", withAuthMethodId))
+
+	if opts.withStartPageAfterItem != nil {
+		whereClause = fmt.Sprintf("(create_time, public_id) < (@last_item_create_time, @last_item_id) and %s", whereClause)
+		args = append(args,
+			sql.Named("last_item_create_time", opts.withStartPageAfterItem.GetCreateTime()),
+			sql.Named("last_item_id", opts.withStartPageAfterItem.GetPublicId()),
+		)
 	}
-	return mgs, nil
+
+	dbOpts := []db.Option{db.WithLimit(limit), db.WithOrder("create_time desc, public_id desc")}
+	return r.queryManagedGroups(ctx, whereClause, args, dbOpts...)
+}
+
+// ListManagedGroupsRefresh returns a slice of managed groups in the auth method.
+// Supported options:
+//   - WithLimit which overrides the limit set in the Repository object
+//   - WithStartPageAfterItem which sets where to start listing from
+func (r *Repository) ListManagedGroupsRefresh(ctx context.Context, withAuthMethodId string, updatedAfter time.Time, opt ...Option) ([]*ManagedGroup, time.Time, error) {
+	const op = "ldap.(Repository).ListManagedGroupsRefresh"
+	switch {
+	case withAuthMethodId == "":
+		return nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "missing auth method id")
+	case updatedAfter.IsZero():
+		return nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "missing updated after time")
+	}
+
+	opts, err := getOpts(opt...)
+	if err != nil {
+		return nil, time.Time{}, errors.Wrap(ctx, err, op)
+	}
+
+	limit := r.defaultLimit
+	if opts.withLimit != 0 {
+		// non-zero signals an override of the default limit for the repo.
+		limit = opts.withLimit
+	}
+
+	var args []any
+	whereClause := "update_time > @updated_after_time and auth_method_id = @auth_method_id"
+	args = append(args,
+		sql.Named("updated_after_time", timestamp.New(updatedAfter)),
+		sql.Named("auth_method_id", withAuthMethodId),
+	)
+
+	if opts.withStartPageAfterItem != nil {
+		whereClause = fmt.Sprintf("(update_time, public_id) < (@last_item_update_time, @last_item_id) and %s", whereClause)
+		args = append(args,
+			sql.Named("last_item_update_time", opts.withStartPageAfterItem.GetUpdateTime()),
+			sql.Named("last_item_id", opts.withStartPageAfterItem.GetPublicId()),
+		)
+	}
+
+	dbOpts := []db.Option{db.WithLimit(limit), db.WithOrder("update_time desc, public_id desc")}
+	return r.queryManagedGroups(ctx, whereClause, args, dbOpts...)
+}
+
+func (r *Repository) queryManagedGroups(ctx context.Context, whereClause string, args []any, opt ...db.Option) ([]*ManagedGroup, time.Time, error) {
+	const op = "ldap.(Repository).queryManagedGroups"
+
+	var mgs []*ManagedGroup
+	var transactionTimestamp time.Time
+	if _, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(rd db.Reader, w db.Writer) error {
+		var inMgs []*ManagedGroup
+		if err := rd.SearchWhere(ctx, &inMgs, whereClause, args, opt...); err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+		mgs = inMgs
+		var err error
+		transactionTimestamp, err = rd.Now(ctx)
+		return err
+	}); err != nil {
+		return nil, time.Time{}, errors.Wrap(ctx, err, op)
+	}
+	return mgs, transactionTimestamp, nil
 }
 
 // DeleteManagedGroup deletes the managed group for the provided id from the
@@ -261,4 +340,46 @@ func (r *Repository) UpdateManagedGroup(ctx context.Context, scopeId string, mg 
 	}
 
 	return returnedManagedGroup, rowsUpdated, nil
+}
+
+// listDeletedManagedGroupIds lists the public IDs of any managed groups deleted since the timestamp provided,
+// and the timestamp of the transaction within which the managed groups were listed.
+func (r *Repository) listDeletedManagedGroupIds(ctx context.Context, since time.Time) ([]string, time.Time, error) {
+	const op = "ldap.(Repository).listDeletedManagedGroupIds"
+	var deletedManagedGroups []*deletedManagedGroup
+	var transactionTimestamp time.Time
+	if _, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(r db.Reader, _ db.Writer) error {
+		if err := r.SearchWhere(ctx, &deletedManagedGroups, "delete_time >= ?", []any{since}); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to query deleted managed groups"))
+		}
+		var err error
+		transactionTimestamp, err = r.Now(ctx)
+		if err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to get transaction timestamp"))
+		}
+		return nil
+	}); err != nil {
+		return nil, time.Time{}, err
+	}
+	var managedGroupIds []string
+	for _, a := range deletedManagedGroups {
+		managedGroupIds = append(managedGroupIds, a.PublicId)
+	}
+	return managedGroupIds, transactionTimestamp, nil
+}
+
+// estimatedManagedGroupCount returns an estimate of the total number of managed groups.
+func (r *Repository) estimatedManagedGroupCount(ctx context.Context) (int, error) {
+	const op = "ldap.(Repository).estimatedManagedGroupCount"
+	rows, err := r.reader.Query(ctx, estimateCountManagedGroups, nil)
+	if err != nil {
+		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query ldap managed group counts"))
+	}
+	var count int
+	for rows.Next() {
+		if err := r.reader.ScanRows(ctx, rows, &count); err != nil {
+			return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query ldap managed group counts"))
+		}
+	}
+	return count, nil
 }

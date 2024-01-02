@@ -6,23 +6,27 @@ package ldap
 import (
 	"context"
 	"fmt"
-	"sort"
+	"slices"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/ldap/store"
 	"github.com/hashicorp/boundary/internal/db"
 	dbassert "github.com/hashicorp/boundary/internal/db/assert"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func TestRepository_CreateManagedGroup(t *testing.T) {
@@ -594,6 +598,11 @@ func TestRepository_DeleteManagedGroup(t *testing.T) {
 
 func TestRepository_ListManagedGroups(t *testing.T) {
 	t.Parallel()
+	oldReadTimeout := globals.RefreshReadLookbackDuration
+	globals.RefreshReadLookbackDuration = 0
+	t.Cleanup(func() {
+		globals.RefreshReadLookbackDuration = oldReadTimeout
+	})
 	testConn, _ := db.TestSetup(t, "postgres")
 	testRw := db.New(testConn)
 	testRootWrapper := db.TestWrapper(t)
@@ -614,18 +623,24 @@ func TestRepository_ListManagedGroups(t *testing.T) {
 		TestManagedGroup(t, testConn, authMethod1, testGrpNames),
 		TestManagedGroup(t, testConn, authMethod1, testGrpNames),
 	}
-	sort.Slice(mgs1, func(i, j int) bool {
-		return strings.Compare(mgs1[i].PublicId, mgs1[j].PublicId) < 0
-	})
 
 	mgs2 := []*ManagedGroup{
 		TestManagedGroup(t, testConn, authMethod2, testGrpNames),
 		TestManagedGroup(t, testConn, authMethod2, testGrpNames),
 		TestManagedGroup(t, testConn, authMethod2, testGrpNames),
 	}
-	sort.Slice(mgs2, func(i, j int) bool {
-		return strings.Compare(mgs2[i].PublicId, mgs2[j].PublicId) < 0
-	})
+
+	slices.Reverse(mgs1)
+	slices.Reverse(mgs2)
+
+	cmpOpts := []cmp.Option{
+		cmpopts.IgnoreUnexported(
+			ManagedGroup{},
+			store.ManagedGroup{},
+			timestamp.Timestamp{},
+			timestamppb.Timestamp{},
+		),
+	}
 
 	testRepo, err := NewRepository(testCtx, testRw, testRw, testKms)
 	assert.NoError(t, err)
@@ -688,7 +703,7 @@ func TestRepository_ListManagedGroups(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := tc.repo.ListManagedGroups(tc.ctx, tc.in, tc.opts...)
+			got, ttime, err := tc.repo.ListManagedGroups(tc.ctx, tc.in, tc.opts...)
 			if tc.wantErrMatch != nil {
 				require.Error(err)
 				assert.Truef(errors.Match(tc.wantErrMatch, err), "Unexpected error %s", err)
@@ -698,13 +713,43 @@ func TestRepository_ListManagedGroups(t *testing.T) {
 				return
 			}
 			require.NoError(err)
-
-			sort.Slice(got, func(i, j int) bool {
-				return strings.Compare(got[i].PublicId, got[j].PublicId) < 0
-			})
+			// Transaction timestamp should be within ~10 seconds of now
+			assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+			assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
+			require.Empty(cmp.Diff(got, tc.want, cmpOpts...))
+			// sort.Slice(got, func(i, j int) bool {
+			// 	return strings.Compare(got[i].PublicId, got[j].PublicId) < 0
+			// })
 			assert.EqualValues(tc.want, got)
 		})
 	}
+	t.Run("validation", func(t *testing.T) {
+		t.Parallel()
+		t.Run("missing auth method id", func(t *testing.T) {
+			t.Parallel()
+			_, _, err := testRepo.ListManagedGroups(testCtx, "", WithLimit(testCtx, 1))
+			require.ErrorContains(t, err, "missing auth method id")
+		})
+	})
+
+	t.Run("success-without-after-item", func(t *testing.T) {
+		t.Parallel()
+		resp, ttime, err := testRepo.ListManagedGroups(testCtx, authMethod1.PublicId, WithLimit(testCtx, 10))
+		require.NoError(t, err)
+		// Transaction timestamp should be within ~10 seconds of now
+		assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
+		assert.True(t, time.Now().After(ttime.Add(-10*time.Second)))
+		require.Empty(t, cmp.Diff(resp, mgs1, cmpOpts...))
+	})
+	t.Run("success-with-after-item", func(t *testing.T) {
+		t.Parallel()
+		resp, ttime, err := testRepo.ListManagedGroups(testCtx, authMethod1.PublicId, WithStartPageAfterItem(testCtx, mgs1[0]), WithLimit(testCtx, 10))
+		require.NoError(t, err)
+		// Transaction timestamp should be within ~10 seconds of now
+		assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
+		assert.True(t, time.Now().After(ttime.Add(-10*time.Second)))
+		require.Empty(t, cmp.Diff(resp, mgs1[1:], cmpOpts...))
+	})
 }
 
 func TestRepository_ListManagedGroups_Limits(t *testing.T) {
@@ -776,9 +821,11 @@ func TestRepository_ListManagedGroups_Limits(t *testing.T) {
 			repo, err := NewRepository(testCtx, testRw, testRw, testKms, tc.repoOpts...)
 			assert.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.ListManagedGroups(context.Background(), am.GetPublicId(), tc.listOpts...)
+			got, ttime, err := repo.ListManagedGroups(context.Background(), am.GetPublicId(), tc.listOpts...)
 			require.NoError(err)
 			assert.Len(got, tc.wantLen)
+			assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+			assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
 		})
 	}
 }
@@ -1224,4 +1271,228 @@ func TestRepository_UpdateManagedGroup(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestRepository_ListManagedGroupsRefresh(t *testing.T) {
+	t.Parallel()
+	oldReadTimeout := globals.RefreshReadLookbackDuration
+	globals.RefreshReadLookbackDuration = 0
+	t.Cleanup(func() {
+		globals.RefreshReadLookbackDuration = oldReadTimeout
+	})
+	testConn, _ := db.TestSetup(t, "postgres")
+	testRw := db.New(testConn)
+	testRootWrapper := db.TestWrapper(t)
+
+	ctx := context.Background()
+	testKms := kms.TestKms(t, testConn, testRootWrapper)
+	iamRepo := iam.TestRepo(t, testConn, testRootWrapper)
+	org, _ := iam.TestScopes(t, iamRepo)
+
+	orgDbWrapper, err := testKms.GetWrapper(ctx, org.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+	authMethod1 := TestAuthMethod(t, testConn, orgDbWrapper, org.PublicId, []string{"ldaps://ldap1"})
+	authMethod2 := TestAuthMethod(t, testConn, orgDbWrapper, org.PublicId, []string{"ldaps://ldap2"})
+
+	mgs1 := []*ManagedGroup{
+		TestManagedGroup(t, testConn, authMethod1, testGrpNames),
+		TestManagedGroup(t, testConn, authMethod1, testGrpNames),
+		TestManagedGroup(t, testConn, authMethod1, testGrpNames),
+	}
+
+	mgs2 := []*ManagedGroup{
+		TestManagedGroup(t, testConn, authMethod2, testGrpNames),
+		TestManagedGroup(t, testConn, authMethod2, testGrpNames),
+		TestManagedGroup(t, testConn, authMethod2, testGrpNames),
+	}
+
+	slices.Reverse(mgs1)
+	slices.Reverse(mgs2)
+
+	fiveDaysAgo := time.Now().AddDate(0, 0, -5)
+
+	cmpOpts := []cmp.Option{
+		cmpopts.IgnoreUnexported(
+			ManagedGroup{},
+			store.ManagedGroup{},
+			timestamp.Timestamp{},
+			timestamppb.Timestamp{},
+		),
+		cmpopts.SortSlices(func(i, j string) bool { return i < j }),
+	}
+
+	repo, err := NewRepository(ctx, testRw, testRw, testKms)
+	require.NotNil(t, repo)
+	assert.NoError(t, err)
+
+	t.Run("validation", func(t *testing.T) {
+		t.Parallel()
+		t.Run("missing updated after", func(t *testing.T) {
+			t.Parallel()
+			_, _, err := repo.ListManagedGroupsRefresh(ctx, authMethod1.PublicId, time.Time{}, WithLimit(ctx, 1))
+			require.ErrorContains(t, err, "missing updated after time")
+		})
+		t.Run("missing auth method id", func(t *testing.T) {
+			t.Parallel()
+			_, _, err := repo.ListManagedGroupsRefresh(ctx, "", fiveDaysAgo, WithLimit(ctx, 1))
+			require.ErrorContains(t, err, "missing auth method id")
+		})
+	})
+
+	t.Run("success-without-after-item", func(t *testing.T) {
+		t.Parallel()
+		resp, ttime, err := repo.ListManagedGroupsRefresh(ctx, authMethod1.PublicId, fiveDaysAgo, WithLimit(ctx, 10))
+		require.NoError(t, err)
+		// Transaction timestamp should be within ~10 seconds of now
+		assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
+		assert.True(t, time.Now().After(ttime.Add(-10*time.Second)))
+		require.Empty(t, cmp.Diff(resp, mgs1, cmpOpts...))
+	})
+	t.Run("success-with-after-item", func(t *testing.T) {
+		t.Parallel()
+		resp, ttime, err := repo.ListManagedGroupsRefresh(ctx, authMethod1.PublicId, fiveDaysAgo, WithStartPageAfterItem(ctx, mgs1[0]), WithLimit(ctx, 10))
+		require.NoError(t, err)
+		// Transaction timestamp should be within ~10 seconds of now
+		assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
+		assert.True(t, time.Now().After(ttime.Add(-10*time.Second)))
+		require.Empty(t, cmp.Diff(resp, mgs1[1:], cmpOpts...))
+	})
+	t.Run("success-without-after-item-recent-updated-after", func(t *testing.T) {
+		t.Parallel()
+		resp, ttime, err := repo.ListManagedGroupsRefresh(ctx, authMethod1.PublicId, mgs1[len(mgs1)-1].GetUpdateTime().AsTime(), WithLimit(ctx, 10))
+		require.NoError(t, err)
+		// Transaction timestamp should be within ~10 seconds of now
+		assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
+		assert.True(t, time.Now().After(ttime.Add(-10*time.Second)))
+		require.Empty(t, cmp.Diff(resp, mgs1[:len(mgs1)-1], cmpOpts...))
+	})
+	t.Run("success-with-after-item-recent-updated-after", func(t *testing.T) {
+		t.Parallel()
+		resp, ttime, err := repo.ListManagedGroupsRefresh(ctx, authMethod1.PublicId, mgs1[len(mgs1)-1].GetUpdateTime().AsTime(), WithStartPageAfterItem(ctx, mgs1[0]), WithLimit(ctx, 10))
+		require.NoError(t, err)
+		// Transaction timestamp should be within ~10 seconds of now
+		assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
+		assert.True(t, time.Now().After(ttime.Add(-10*time.Second)))
+		require.Empty(t, cmp.Diff(resp, mgs1[1:len(mgs1)-1], cmpOpts...))
+	})
+}
+
+func TestRepository_estimatedCount(t *testing.T) {
+	oldReadTimeout := globals.RefreshReadLookbackDuration
+	globals.RefreshReadLookbackDuration = 0
+	t.Cleanup(func() {
+		globals.RefreshReadLookbackDuration = oldReadTimeout
+	})
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	testWrapper := db.TestWrapper(t)
+
+	ctx := context.Background()
+	testKms := kms.TestKms(t, conn, testWrapper)
+	iamRepo := iam.TestRepo(t, conn, testWrapper)
+	org, _ := iam.TestScopes(t, iamRepo)
+
+	databaseWrapper, err := testKms.GetWrapper(ctx, org.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+
+	repo, err := NewRepository(ctx, rw, rw, testKms)
+	assert.NoError(t, err)
+
+	sqlDb, err := conn.SqlDB(ctx)
+	require.NoError(t, err)
+
+	// Check total entries at start, expect 0
+	numItems, err := repo.estimatedManagedGroupCount(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 0, numItems)
+
+	// create managed group and check count, expect 1
+	authMethod1 := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, []string{"ldaps://ldap1"})
+	mg := TestManagedGroup(t, conn, authMethod1, testGrpNames)
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
+
+	numItems, err = repo.estimatedManagedGroupCount(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 1, numItems)
+
+	// Delete managed group and check count, expect 0 again
+	_, err = repo.DeleteManagedGroup(ctx, org.GetPublicId(), mg.GetPublicId())
+	require.NoError(t, err)
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
+
+	numItems, err = repo.estimatedManagedGroupCount(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 0, numItems)
+}
+
+func TestRepository_listDeletedIds(t *testing.T) {
+	oldReadTimeout := globals.RefreshReadLookbackDuration
+	globals.RefreshReadLookbackDuration = 0
+	t.Cleanup(func() {
+		globals.RefreshReadLookbackDuration = oldReadTimeout
+	})
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	testWrapper := db.TestWrapper(t)
+
+	ctx := context.Background()
+	testKms := kms.TestKms(t, conn, testWrapper)
+	iamRepo := iam.TestRepo(t, conn, testWrapper)
+	org, _ := iam.TestScopes(t, iamRepo)
+
+	databaseWrapper, err := testKms.GetWrapper(ctx, org.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+
+	repo, err := NewRepository(ctx, rw, rw, testKms)
+	assert.NoError(t, err)
+
+	sqlDb, err := conn.SqlDB(ctx)
+	require.NoError(t, err)
+
+	// Check total entries at start, expect 0
+	numItems, err := repo.estimatedManagedGroupCount(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 0, numItems)
+
+	// create managed group and check count, expect 1
+	authMethod1 := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, []string{"ldaps://ldap1"})
+	mg := TestManagedGroup(t, conn, authMethod1, testGrpNames)
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
+
+	deletedIds, ttime, err := repo.listDeletedManagedGroupIds(ctx, time.Now().AddDate(-1, 0, 0))
+	require.NoError(t, err)
+	require.Empty(t, deletedIds)
+	// Transaction timestamp should be within ~10 seconds of now
+	assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
+	assert.True(t, time.Now().After(ttime.Add(-10*time.Second)))
+
+	// Delete mg and check count, expect 1 entry
+	_, err = repo.DeleteManagedGroup(ctx, org.GetPublicId(), mg.GetPublicId())
+	require.NoError(t, err)
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
+
+	deletedIds, ttime, err = repo.listDeletedManagedGroupIds(ctx, time.Now().AddDate(-1, 0, 0))
+	require.NoError(t, err)
+	assert.Empty(
+		t,
+		cmp.Diff(
+			[]string{mg.GetPublicId()},
+			deletedIds,
+			cmpopts.SortSlices(func(i, j string) bool { return i < j }),
+		),
+	)
+	// Transaction timestamp should be within ~10 seconds of now
+	assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
+	assert.True(t, time.Now().After(ttime.Add(-10*time.Second)))
+
+	// Try again with the time set to now, expect no entries
+	deletedIds, ttime, err = repo.listDeletedManagedGroupIds(ctx, time.Now())
+	require.NoError(t, err)
+	require.Empty(t, deletedIds)
+	assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
+	assert.True(t, time.Now().After(ttime.Add(-10*time.Second)))
 }
