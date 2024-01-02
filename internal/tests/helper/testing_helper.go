@@ -94,7 +94,7 @@ func NewTestSession(
 
 	s.WorkerAddr = s.SessionAuthzData.GetWorkerInfo()[0].GetAddress()
 
-	tlsConf := apiproxy.TestClientTlsConfig(t, authzString)
+	tlsConf := apiproxy.TestClientTlsConfig(t, authzString, apiproxy.WithWorkerHost(s.SessionAuthzData.SessionId))
 
 	s.Transport = cleanhttp.DefaultTransport()
 	s.Transport.DisableKeepAlives = false
