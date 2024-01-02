@@ -94,8 +94,7 @@ func NewTestSession(
 
 	s.WorkerAddr = s.SessionAuthzData.GetWorkerInfo()[0].GetAddress()
 
-	//	tlsConf := apiproxy.TestClientTlsConfig(t, authzString)
-	tlsConf, err := connect.ClientTlsConfig(s.SessionAuthzData, s.SessionAuthzData.SessionId)
+	tlsConf, err := connect.ClientTlsConfig(s.SessionAuthzData, "")
 	require.NoError(err)
 
 	s.Transport = cleanhttp.DefaultTransport()
