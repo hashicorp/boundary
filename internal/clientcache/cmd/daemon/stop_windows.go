@@ -66,11 +66,7 @@ func (s *StopCommand) stop(ctx context.Context) error {
 }
 
 func stopThroughHandler(ctx context.Context, dotPath string) (*api.Error, error) {
-	addr, err := daemon.SocketAddress(dotPath)
-	if err != nil {
-		return nil, fmt.Errorf("Error when retrieving the socket address: %w", err)
-	}
-
+	addr := daemon.SocketAddress(dotPath)
 	c, err := client.New(ctx, addr)
 	if err != nil {
 		return nil, err
