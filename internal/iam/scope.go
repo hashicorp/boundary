@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam/store"
 	"github.com/hashicorp/boundary/internal/types/action"
@@ -213,4 +214,14 @@ func (s *Scope) TableName() string {
 // reset to the default name.
 func (s *Scope) SetTableName(n string) {
 	s.tableName = n
+}
+
+type deletedScope struct {
+	PublicId   string `gorm:"primary_key"`
+	DeleteTime *timestamp.Timestamp
+}
+
+// TableName returns the tablename to override the default gorm table name
+func (s *deletedScope) TableName() string {
+	return "iam_scope_deleted"
 }
