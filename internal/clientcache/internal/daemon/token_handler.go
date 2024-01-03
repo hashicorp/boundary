@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/boundary/internal/clientcache/internal/cache"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/internal/util"
 )
 
@@ -114,12 +115,16 @@ func newTokenHandlerFunc(ctx context.Context, repo *cache.Repository, refresher 
 				AuthTokenId: perReq.AuthTokenId,
 			}
 			if err = repo.AddKeyringToken(ctx, perReq.BoundaryAddr, kt); err != nil {
-				writeError(w, fmt.Sprintf("Failed to add a keyring stored token: %v", err), http.StatusInternalServerError)
+				err := fmt.Errorf("Failed to add a keyring stored token with id %q: %w", perReq.AuthTokenId, err)
+				event.WriteError(ctx, op, err)
+				writeError(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
 		case perReq.AuthToken != "":
 			if err = repo.AddRawToken(ctx, perReq.BoundaryAddr, perReq.AuthToken); err != nil {
-				writeError(w, "Failed to add a raw token", http.StatusInternalServerError)
+				err := fmt.Errorf("Failed to add a raw token with id %q: %w", perReq.AuthTokenId, err)
+				event.WriteError(ctx, op, err)
+				writeError(w, fmt.Sprintf("Failed to add a raw token: %v", err), http.StatusInternalServerError)
 				return
 			}
 		}

@@ -87,6 +87,7 @@ func (r *Repository) refreshSessions(ctx context.Context, u *user, tokens map[Au
 	for at, t := range tokens {
 		resp, removedIds, newRefreshToken, err = opts.withSessionRetrievalFunc(ctx, u.Address, t, oldRefreshTokenVal)
 		if api.ErrInvalidListToken.Is(err) {
+			event.WriteSysEvent(ctx, op, "old list token is no longer valid, starting new initial fetch", "user_id", u.Id)
 			if err := r.deleteRefreshToken(ctx, u, resourceType); err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
@@ -115,16 +116,17 @@ func (r *Repository) refreshSessions(ctx context.Context, u *user, tokens map[Au
 		return retErr
 	}
 
-	event.WriteSysEvent(ctx, op, fmt.Sprintf("updating %d sessions for user %v", len(resp), u))
+	var numDeleted int
 	_, err = r.rw.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(_ db.Reader, w db.Writer) error {
+		var err error
 		switch {
 		case oldRefreshToken == nil:
-			if _, err := w.Exec(ctx, "delete from session where fk_user_id = @fk_user_id",
+			if numDeleted, err = w.Exec(ctx, "delete from session where fk_user_id = @fk_user_id",
 				[]any{sql.Named("fk_user_id", u.Id)}); err != nil {
 				return err
 			}
 		case len(removedIds) > 0:
-			if _, err := w.Exec(ctx, "delete from session where id in @ids",
+			if numDeleted, err = w.Exec(ctx, "delete from session where id in @ids",
 				[]any{sql.Named("ids", removedIds)}); err != nil {
 				return err
 			}
@@ -152,6 +154,7 @@ func (r *Repository) refreshSessions(ctx context.Context, u *user, tokens map[Au
 	if unsupportedCacheRequest {
 		return ErrRefreshNotSupported
 	}
+	event.WriteSysEvent(ctx, op, "sessions updated", "deleted", numDeleted, "upserted", len(resp), "user_id", u.Id)
 	return nil
 }
 
@@ -207,6 +210,7 @@ func (r *Repository) checkCachingSessions(ctx context.Context, u *user, tokens m
 		return retErr
 	}
 
+	var numDeleted int
 	_, err = r.rw.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(reader db.Reader, w db.Writer) error {
 		switch {
 		case unsupportedCacheRequest:
@@ -214,7 +218,8 @@ func (r *Repository) checkCachingSessions(ctx context.Context, u *user, tokens m
 				return err
 			}
 		case newRefreshToken != "":
-			if _, err := w.Exec(ctx, "delete from session where fk_user_id = @fk_user_id",
+			var err error
+			if numDeleted, err = w.Exec(ctx, "delete from session where fk_user_id = @fk_user_id",
 				[]any{sql.Named("fk_user_id", u.Id)}); err != nil {
 				return err
 			}
@@ -239,6 +244,7 @@ func (r *Repository) checkCachingSessions(ctx context.Context, u *user, tokens m
 	if unsupportedCacheRequest {
 		return ErrRefreshNotSupported
 	}
+	event.WriteSysEvent(ctx, op, "sessions updated", "deleted", numDeleted, "upserted", len(resp), "user_id", u.Id)
 	return nil
 }
 
