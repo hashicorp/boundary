@@ -819,8 +819,11 @@ func Test_ManagedGroupFiltering(t *testing.T) {
 			tp.SetExpectedState(state)
 
 			// Set the filters on the MGs for this test. First we need to get the current versions.
-			currMgs, err := repo.ListManagedGroups(ctx, testAuthMethod.PublicId)
+			currMgs, ttime, err := repo.ListManagedGroups(ctx, testAuthMethod.PublicId)
 			require.NoError(err)
+			// Transaction timestamp should be within ~10 seconds of now
+			assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+			assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
 			require.Len(currMgs, 2)
 			currVersionMap := map[string]uint32{
 				currMgs[0].PublicId: currMgs[0].Version,

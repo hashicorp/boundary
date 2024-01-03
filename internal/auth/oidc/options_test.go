@@ -7,11 +7,33 @@ import (
 	"crypto/x509"
 	"net/url"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
+	"github.com/hashicorp/boundary/internal/pagination"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+type fakeItem struct {
+	pagination.Item
+	publicId   string
+	createTime time.Time
+	updateTime time.Time
+}
+
+func (p *fakeItem) GetPublicId() string {
+	return p.publicId
+}
+
+func (p *fakeItem) GetCreateTime() *timestamp.Timestamp {
+	return timestamp.New(p.createTime)
+}
+
+func (p *fakeItem) GetUpdateTime() *timestamp.Timestamp {
+	return timestamp.New(p.updateTime)
+}
 
 // Test_GetOpts provides unit tests for GetOpts and all the options
 func Test_GetOpts(t *testing.T) {
@@ -205,5 +227,14 @@ func Test_GetOpts(t *testing.T) {
 		var r db.Reader
 		opts := getOpts(WithReader(r))
 		assert.Equal(r, opts.withReader)
+	})
+	t.Run("WithStartPageAfterItem", func(t *testing.T) {
+		assert := assert.New(t)
+		updateTime := time.Now()
+		createTime := time.Now()
+		opts := getOpts(WithStartPageAfterItem(&fakeItem{nil, "s_1", createTime, updateTime}))
+		assert.Equal(opts.withStartPageAfterItem.GetPublicId(), "s_1")
+		assert.Equal(opts.withStartPageAfterItem.GetUpdateTime(), timestamp.New(updateTime))
+		assert.Equal(opts.withStartPageAfterItem.GetCreateTime(), timestamp.New(createTime))
 	})
 }

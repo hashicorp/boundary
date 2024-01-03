@@ -193,7 +193,7 @@ func Callback(
 	}
 
 	// Get the set of all managed groups so we can filter
-	mgs, err := r.ListManagedGroups(ctx, am.GetPublicId())
+	mgs, _, err := r.ListManagedGroups(ctx, am.GetPublicId())
 	if err != nil {
 		return "", errors.Wrap(ctx, err, op)
 	}

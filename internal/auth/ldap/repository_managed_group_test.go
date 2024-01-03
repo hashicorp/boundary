@@ -717,9 +717,6 @@ func TestRepository_ListManagedGroups(t *testing.T) {
 			assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
 			assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
 			require.Empty(cmp.Diff(got, tc.want, cmpOpts...))
-			// sort.Slice(got, func(i, j int) bool {
-			// 	return strings.Compare(got[i].PublicId, got[j].PublicId) < 0
-			// })
 			assert.EqualValues(tc.want, got)
 		})
 	}
@@ -1377,7 +1374,7 @@ func TestRepository_ListManagedGroupsRefresh(t *testing.T) {
 	})
 }
 
-func TestRepository_estimatedCount(t *testing.T) {
+func TestRepository_estimatedCountManagedGroups(t *testing.T) {
 	oldReadTimeout := globals.RefreshReadLookbackDuration
 	globals.RefreshReadLookbackDuration = 0
 	t.Cleanup(func() {
@@ -1427,7 +1424,7 @@ func TestRepository_estimatedCount(t *testing.T) {
 	assert.Equal(t, 0, numItems)
 }
 
-func TestRepository_listDeletedIds(t *testing.T) {
+func TestRepository_listDeletedIdsManagedGroups(t *testing.T) {
 	oldReadTimeout := globals.RefreshReadLookbackDuration
 	globals.RefreshReadLookbackDuration = 0
 	t.Cleanup(func() {
