@@ -86,6 +86,7 @@ func (r *Repository) refreshTargets(ctx context.Context, u *user, tokens map[Aut
 	for at, t := range tokens {
 		resp, removedIds, newRefreshToken, err = opts.withTargetRetrievalFunc(ctx, u.Address, t, oldRefreshTokenVal)
 		if api.ErrInvalidListToken.Is(err) {
+			event.WriteSysEvent(ctx, op, "old list token is no longer valid, starting new initial fetch", "user_id", u.Id)
 			if err := r.deleteRefreshToken(ctx, u, resourceType); err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
@@ -113,16 +114,17 @@ func (r *Repository) refreshTargets(ctx context.Context, u *user, tokens map[Aut
 		return retErr
 	}
 
-	event.WriteSysEvent(ctx, op, fmt.Sprintf("updating %d targets for user %v", len(resp), u))
+	var numDeleted int
 	_, err = r.rw.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(_ db.Reader, w db.Writer) error {
+		var err error
 		switch {
 		case oldRefreshToken == nil || unsupportedCacheRequest:
-			if _, err := w.Exec(ctx, "delete from target where fk_user_id = @fk_user_id",
+			if numDeleted, err = w.Exec(ctx, "delete from target where fk_user_id = @fk_user_id",
 				[]any{sql.Named("fk_user_id", u.Id)}); err != nil {
 				return err
 			}
 		case len(removedIds) > 0:
-			if _, err := w.Exec(ctx, "delete from target where id in @ids",
+			if numDeleted, err = w.Exec(ctx, "delete from target where id in @ids",
 				[]any{sql.Named("ids", removedIds)}); err != nil {
 				return err
 			}
@@ -150,6 +152,7 @@ func (r *Repository) refreshTargets(ctx context.Context, u *user, tokens map[Aut
 	if unsupportedCacheRequest {
 		return ErrRefreshNotSupported
 	}
+	event.WriteSysEvent(ctx, op, "targets updated", "deleted", numDeleted, "upserted", len(resp), "user_id", u.Id)
 	return nil
 }
 
@@ -205,6 +208,7 @@ func (r *Repository) checkCachingTargets(ctx context.Context, u *user, tokens ma
 		return retErr
 	}
 
+	var numDeleted int
 	_, err = r.rw.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(reader db.Reader, w db.Writer) error {
 		switch {
 		case unsupportedCacheRequest:
@@ -214,9 +218,10 @@ func (r *Repository) checkCachingTargets(ctx context.Context, u *user, tokens ma
 				return err
 			}
 		case newRefreshToken != "":
+			var err error
 			// Now that there is a refresh token, the data can be cached, so
 			// cache it and store the refresh token for future refreshes.
-			if _, err := w.Exec(ctx, "delete from target where fk_user_id = @fk_user_id",
+			if numDeleted, err = w.Exec(ctx, "delete from target where fk_user_id = @fk_user_id",
 				[]any{sql.Named("fk_user_id", u.Id)}); err != nil {
 				return err
 			}
@@ -241,6 +246,7 @@ func (r *Repository) checkCachingTargets(ctx context.Context, u *user, tokens ma
 	if unsupportedCacheRequest {
 		return ErrRefreshNotSupported
 	}
+	event.WriteSysEvent(ctx, op, "targets updated", "deleted", numDeleted, "upserted", len(resp), "user_id", u.Id)
 	return nil
 }
 
