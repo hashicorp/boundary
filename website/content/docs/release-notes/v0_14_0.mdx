@@ -187,13 +187,16 @@ description: |-
     (Fixed in 0.14.1)
     </td>
     <td style={{verticalAlign: 'middle'}}>
-    Go CVE-2023-39325
+    Go CVE-2023-39325 and Go CVE-2023-39326
     </td>
     <td style={{verticalAlign: 'middle'}}>
-    The version of Go that was used in Boundary release 0.14.0 contained a CVE. The issue was fixed in Go versions 1.21.3 and 1.20. Boundary was updated to use the new Go versions in release 0.14.1, and the issue is resolved.
+    The version of Go that was used in Boundary release 0.14.0 contained security vulnerabilities. The vulnerabilities were fixed in Go version 1.21.3. Boundary was updated to use the new Go version in release 0.14.1, and the issue is resolved.
     <br /><br />
     Learn more:&nbsp;
-    <a href="https://github.com/advisories/GHSA-4374-p667-p6c8">HTTP/2 rapid reset can cause excessive work in net/http</a>
+    <br /><br />
+    Go CVE-2023-39325: <a href="https://github.com/advisories/GHSA-4374-p667-p6c8">HTTP/2 rapid reset can cause excessive work in net/http</a>
+    <br /><br />
+    Go CVE-2023-39326: <a href="https://github.com/advisories/GHSA-9f76-wg39-x86h">A malicious HTTP sender can use chunk extensions</a>
     <br /><br />
     <a href="/boundary/tutorials/self-managed-deployment/upgrade-version">Upgrade to the latest version of Boundary</a>
     </td>
@@ -203,18 +206,21 @@ description: |-
     <td style={{verticalAlign: 'middle'}}>
     0.14.0
     <br /><br />
-    (Fixed in 0.13.5 and 0.14.1)
+    (Fixed in 0.14.3 and 0.13.5 HCP/ENT)
     </td>
     <td style={{verticalAlign: 'middle'}}>
-    Go CVE-2023-39326
+    Go CVE-2023-39322 and Go CVE-2022-45285
     </td>
     <td style={{verticalAlign: 'middle'}}>
-    The version of Go that was used in Boundary release 0.14.0 contained a CVE. The issue was fixed in Go version 1.21.5. Boundary was updated to use the new Go versions in release 0.14.1, and the issue is resolved.
+    The version of Go that was used in Boundary release 0.14.0 contained security vulnerabilities. The vulnerabilities were fixed in Go version 1.21.5. Boundary was updated to use the new Go version in release 0.14.3, and the issue is resolved.
     <br /><br />
-    Note that CVE-2023-39326 was also fixed in version 0.13.5 of HCP Boundary and Boundary Enterprise.
+    Note that version 0.13.5 of HCP Boundary and Boundary Enterprise was also updated to use the new Go version.
     <br /><br />
     Learn more:&nbsp;
-    <a href="https://github.com/advisories/GHSA-9f76-wg39-x86h">A malicious HTTP sender can use chunk extensions</a>
+    <br /><br />
+    Go CVE-2023-39322: <a href="https://github.com/advisories/GHSA-892h-r6cr-53g4">QUIC connections do not set an upper bound on the amount of data buffered</a>
+    <br /><br />
+    Go CVE-2022-45285: <a href="https://github.com/advisories/GHSA-5f94-vhjq-rpg8">Using go get to fetch a module with the ".git" suffix may unexpectedly fallback to insecure protocol</a>
     <br /><br />
     <a href="/boundary/tutorials/self-managed-deployment/upgrade-version">Upgrade to the latest version of Boundary</a>
     </td>
