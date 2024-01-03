@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"math/rand"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/auth/ldap"
 	"github.com/hashicorp/boundary/internal/auth/oidc/store"
@@ -124,8 +125,10 @@ func Test_ManagedGroupMemberships(t *testing.T) {
 			// We are intentionally carrying things over between tests to be
 			// more realistic but that means we need correct versions, so update
 			// them first.
-			currMgs, err := repo.ListManagedGroups(testCtx, testAuthMethod.PublicId)
+			currMgs, ttime, err := repo.ListManagedGroups(testCtx, testAuthMethod.PublicId)
 			require.NoError(err)
+			assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+			assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
 			require.Len(currMgs, 101)
 			currVersionMap := make(map[string]uint32, len(currMgs))
 			for _, currMg := range currMgs {
