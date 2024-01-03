@@ -19,7 +19,7 @@ import (
 // more ldap managed groups from the database, at page size chunks, to fill the page.
 // It will start its paging based on the information in the token.
 // It returns a new list token used to continue pagination or refresh items.
-// ManagedGroups are ordered by create time descending (most recently created first).
+// Managed groups are ordered by create time descending (most recently created first).
 func ListManagedGroupsPage(
 	ctx context.Context,
 	grantsHash []byte,

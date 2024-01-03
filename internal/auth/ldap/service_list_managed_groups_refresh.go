@@ -15,11 +15,11 @@ import (
 	"github.com/hashicorp/boundary/internal/types/resource"
 )
 
-// ListManagedGroupsRefresh lists ldap managedGroups according to the page size
+// ListManagedGroupsRefresh lists ldap managed groups according to the page size
 // and list token, filtering out entries that do not
 // pass the filter item fn. It returns a new list token
 // based on the old one, the grants hash, and the returned
-// ldap managedGroups.
+// ldap managed groups.
 func ListManagedGroupsRefresh(
 	ctx context.Context,
 	grantsHash []byte,

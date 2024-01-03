@@ -82,7 +82,7 @@ func ListManagedGroupsRefreshPage(
 		return managedGroups, listTime, nil
 	}
 	listDeletedIdsFn := func(ctx context.Context, since time.Time) ([]string, time.Time, error) {
-		// Add the database read timeout to managedGroup for any deletes missed due to concurrent
+		// Add the database read timeout to managed group for any deletes missed due to concurrent
 		// transactions in the original list pagination phase.
 		return repo.listDeletedManagedGroupIds(ctx, since.Add(-globals.RefreshReadLookbackDuration))
 	}

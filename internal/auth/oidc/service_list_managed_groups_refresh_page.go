@@ -20,8 +20,8 @@ import (
 // more managed groups from the database, at page size chunks, to fill the page.
 // It will start its paging based on the information in the token.
 // It returns a new list token used to continue pagination or refresh items.
-// ManagedGroups are ordered by update time descending (most recently updated first).
-// ManagedGroups may contain items that were already returned during the initial
+// Managed groups are ordered by update time descending (most recently updated first).
+// Managed groups may contain items that were already returned during the initial
 // pagination phase. It also returns a list of any managed groups deleted since the
 // last response.
 func ListManagedGroupsRefreshPage(
@@ -82,7 +82,7 @@ func ListManagedGroupsRefreshPage(
 		return managedGroups, listTime, nil
 	}
 	listDeletedIdsFn := func(ctx context.Context, since time.Time) ([]string, time.Time, error) {
-		// Add the database read timeout to managedGroup for any deletes missed due to concurrent
+		// Add the database read timeout to managed group for any deletes missed due to concurrent
 		// transactions in the original list pagination phase.
 		return repo.listDeletedManagedGroupIds(ctx, since.Add(-globals.RefreshReadLookbackDuration))
 	}

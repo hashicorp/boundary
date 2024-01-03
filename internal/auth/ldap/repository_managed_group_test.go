@@ -1271,7 +1271,6 @@ func TestRepository_UpdateManagedGroup(t *testing.T) {
 }
 
 func TestRepository_ListManagedGroupsRefresh(t *testing.T) {
-	t.Parallel()
 	oldReadTimeout := globals.RefreshReadLookbackDuration
 	globals.RefreshReadLookbackDuration = 0
 	t.Cleanup(func() {

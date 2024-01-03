@@ -16,7 +16,7 @@ import (
 // do not pass the filter item function. It will automatically request
 // more managed groups from the database, at page size chunks, to fill the page.
 // It returns a new list token used to continue pagination or refresh items.
-// ManagedGroups are ordered by create time descending (most recently created first).
+// Managed groups are ordered by create time descending (most recently created first).
 func ListManagedGroups(
 	ctx context.Context,
 	grantsHash []byte,
