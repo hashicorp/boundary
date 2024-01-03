@@ -317,7 +317,7 @@ func (p *ClientProxy) Start() (retErr error) {
 // canceling the context, or passing a nil context when the listener has not yet
 // been started, will cause the function to return an empty AddrPort. Otherwise
 // the function will return when the address is available. In either case, test
-// the result with IsValid.
+// the result to ensure it's not empty.
 //
 // Warning: a non-cancelable context will cause this call to block forever until
 // the listener's address can be determined.
