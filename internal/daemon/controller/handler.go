@@ -196,7 +196,7 @@ func (c *Controller) registerGrpcServices(s *grpc.Server) error {
 		services.RegisterAuthTokenServiceServer(s, authtoks)
 	}
 	if _, ok := currentServices[services.ScopeService_ServiceDesc.ServiceName]; !ok {
-		os, err := scopes.NewService(c.baseContext, c.IamRepoFn, c.kms)
+		os, err := scopes.NewService(c.baseContext, c.IamRepoFn, c.kms, c.conf.RawConfig.Controller.MaxPageSize)
 		if err != nil {
 			return fmt.Errorf("failed to create scope handler service: %w", err)
 		}
