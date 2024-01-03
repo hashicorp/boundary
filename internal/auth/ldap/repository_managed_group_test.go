@@ -597,7 +597,6 @@ func TestRepository_DeleteManagedGroup(t *testing.T) {
 }
 
 func TestRepository_ListManagedGroups(t *testing.T) {
-	t.Parallel()
 	oldReadTimeout := globals.RefreshReadLookbackDuration
 	globals.RefreshReadLookbackDuration = 0
 	t.Cleanup(func() {
@@ -750,7 +749,6 @@ func TestRepository_ListManagedGroups(t *testing.T) {
 }
 
 func TestRepository_ListManagedGroups_Limits(t *testing.T) {
-	t.Parallel()
 	testConn, _ := db.TestSetup(t, "postgres")
 	testRw := db.New(testConn)
 	testRootWrapper := db.TestWrapper(t)
