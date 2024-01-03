@@ -31,6 +31,8 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/iam/store"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/listtoken"
+	"github.com/hashicorp/boundary/internal/pagination"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/types/action"
@@ -127,14 +129,15 @@ func init() {
 type Service struct {
 	pbs.UnsafeScopeServiceServer
 
-	repoFn  common.IamRepoFactory
-	kmsRepo *kms.Kms
+	repoFn      common.IamRepoFactory
+	kmsRepo     *kms.Kms
+	maxPageSize uint
 }
 
 var _ pbs.ScopeServiceServer = (*Service)(nil)
 
 // NewService returns a project service which handles project related requests to boundary.
-func NewService(ctx context.Context, repo common.IamRepoFactory, kmsRepo *kms.Kms) (Service, error) {
+func NewService(ctx context.Context, repo common.IamRepoFactory, kmsRepo *kms.Kms, maxPageSize uint) (Service, error) {
 	const op = "scopes.(Service).NewService"
 	if util.IsNil(repo) {
 		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing iam repository")
@@ -142,11 +145,15 @@ func NewService(ctx context.Context, repo common.IamRepoFactory, kmsRepo *kms.Km
 	if kmsRepo == nil {
 		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing kms")
 	}
-	return Service{repoFn: repo, kmsRepo: kmsRepo}, nil
+	if maxPageSize == 0 {
+		maxPageSize = uint(globals.DefaultMaxPageSize)
+	}
+	return Service{repoFn: repo, kmsRepo: kmsRepo, maxPageSize: maxPageSize}, nil
 }
 
 // ListScopes implements the interface pbs.ScopeServiceServer.
 func (s Service) ListScopes(ctx context.Context, req *pbs.ListScopesRequest) (*pbs.ListScopesResponse, error) {
+	const op = "scopes.(Service).ListScopes"
 	if req.GetScopeId() == "" {
 		req.ScopeId = scope.Global.String()
 	}
@@ -177,59 +184,123 @@ func (s Service) ListScopes(ctx context.Context, req *pbs.ListScopesRequest) (*p
 		return &pbs.ListScopesResponse{}, nil
 	}
 
-	pl, err := s.listFromRepo(ctx, scopeIds)
-	if err != nil {
-		return nil, err
-	}
-	if len(pl) == 0 {
-		return &pbs.ListScopesResponse{}, nil
+	pageSize := int(s.maxPageSize)
+	// Use the requested page size only if it is smaller than
+	// the configured max.
+	if req.GetPageSize() != 0 && uint(req.GetPageSize()) < s.maxPageSize {
+		pageSize = int(req.GetPageSize())
 	}
 
-	filter, err := handlers.NewFilter(ctx, req.GetFilter())
-	if err != nil {
-		return nil, err
-	}
-	finalItems := make([]*pb.Scope, 0, len(pl))
-	res := perms.Resource{
-		Type: resource.Scope,
-	}
-	for _, item := range pl {
-		res.Id = item.GetPublicId()
-		res.ScopeId = item.GetParentId()
-
-		authorizedActions := authResults.FetchActionSetForId(ctx, item.GetPublicId(), IdActions, auth.WithResource(&res)).Strings()
-		if len(authorizedActions) == 0 {
-			continue
-		}
-
-		outputFields := authResults.FetchOutputFields(res, action.List).SelfOrDefaults(authResults.UserId)
-		outputOpts := make([]handlers.Option, 0, 3)
-		outputOpts = append(outputOpts, handlers.WithOutputFields(outputFields))
-		if outputFields.Has(globals.ScopeField) {
-			outputOpts = append(outputOpts, handlers.WithScope(scopeInfoMap[item.GetParentId()]))
-		}
-		if outputFields.Has(globals.AuthorizedActionsField) {
-			outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions))
-		}
-		if outputFields.Has(globals.AuthorizedCollectionActionsField) {
-			collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, scopeCollectionTypeMapMap[item.Type], item.GetPublicId(), "")
-			if err != nil {
-				return nil, err
-			}
-			outputOpts = append(outputOpts, handlers.WithAuthorizedCollectionActions(collectionActions))
-		}
-
-		item, err := ToProto(ctx, item, outputOpts...)
+	var filterItemFn func(ctx context.Context, item *iam.Scope) (bool, error)
+	switch {
+	case req.GetFilter() != "":
+		// Only use a filter if we need to
+		filter, err := handlers.NewFilter(ctx, req.GetFilter())
 		if err != nil {
 			return nil, err
 		}
-
-		if filter.Match(item) {
-			finalItems = append(finalItems, item)
+		filterItemFn = func(ctx context.Context, item *iam.Scope) (bool, error) {
+			outputOpts, ok, err := newOutputOpts(ctx, item, authResults, scopeInfoMap)
+			if err != nil {
+				return false, err
+			}
+			if !ok {
+				return false, nil
+			}
+			pbItem, err := ToProto(ctx, item, outputOpts...)
+			if err != nil {
+				return false, err
+			}
+			return filter.Match(pbItem), nil
+		}
+	default:
+		filterItemFn = func(ctx context.Context, item *iam.Scope) (bool, error) {
+			return true, nil
 		}
 	}
-	SortScopes(finalItems)
-	return &pbs.ListScopesResponse{Items: finalItems}, nil
+
+	grantsHash, err := authResults.GrantsHash(ctx)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+
+	repo, err := s.repoFn()
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+
+	var listResp *pagination.ListResponse[*iam.Scope]
+	var sortBy string
+	if req.GetListToken() == "" {
+		sortBy = "created_time"
+		listResp, err = iam.ListScopes(ctx, grantsHash, pageSize, filterItemFn, repo, scopeIds)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		listToken, err := handlers.ParseListToken(ctx, req.GetListToken(), resource.Scope, grantsHash)
+		if err != nil {
+			return nil, err
+		}
+		switch st := listToken.Subtype.(type) {
+		case *listtoken.PaginationToken:
+			sortBy = "created_time"
+			listResp, err = iam.ListScopesPage(ctx, grantsHash, pageSize, filterItemFn, listToken, repo, scopeIds)
+			if err != nil {
+				return nil, err
+			}
+		case *listtoken.StartRefreshToken:
+			sortBy = "updated_time"
+			listResp, err = iam.ListScopesRefresh(ctx, grantsHash, pageSize, filterItemFn, listToken, repo, scopeIds)
+			if err != nil {
+				return nil, err
+			}
+		case *listtoken.RefreshToken:
+			sortBy = "updated_time"
+			listResp, err = iam.ListScopesRefreshPage(ctx, grantsHash, pageSize, filterItemFn, listToken, repo, scopeIds)
+			if err != nil {
+				return nil, err
+			}
+		default:
+			return nil, handlers.ApiErrorWithCodeAndMessage(codes.InvalidArgument, "unexpected list token subtype: %T", st)
+		}
+	}
+
+	finalItems := make([]*pb.Scope, 0, len(listResp.Items))
+	for _, item := range listResp.Items {
+		outputOpts, ok, err := newOutputOpts(ctx, item, authResults, scopeInfoMap)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		if !ok {
+			continue
+		}
+		item, err := ToProto(ctx, item, outputOpts...)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		finalItems = append(finalItems, item)
+	}
+	respType := "delta"
+	if listResp.CompleteListing {
+		respType = "complete"
+	}
+	resp := &pbs.ListScopesResponse{
+		Items:        finalItems,
+		EstItemCount: uint32(listResp.EstimatedItemCount),
+		RemovedIds:   listResp.DeletedIds,
+		ResponseType: respType,
+		SortBy:       sortBy,
+		SortDir:      "desc",
+	}
+
+	if listResp.ListToken != nil {
+		resp.ListToken, err = handlers.MarshalListToken(ctx, listResp.ListToken, pbs.ResourceType_RESOURCE_TYPE_SCOPE)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return resp, nil
 }
 
 // GetScopes implements the interface pbs.ScopeServiceServer.
@@ -651,14 +722,6 @@ func (s Service) deleteFromRepo(ctx context.Context, scopeId string) (bool, erro
 	return rows > 0, nil
 }
 
-func SortScopes(scps []*pb.Scope) {
-	// We stable sort here even though the database may not return things in
-	// sorted order, still nice to have them as consistent as possible.
-	sort.SliceStable(scps, func(i, j int) bool {
-		return scps[i].GetId() < scps[j].GetId()
-	})
-}
-
 func sortKeys(keys []*pb.Key) {
 	// We stable sort here even though the database may not return things in
 	// sorted order, still nice to have them as consistent as possible.
@@ -672,18 +735,6 @@ func sortKeys(keys []*pb.Key) {
 			return key.Versions[i].Version > key.Versions[j].Version
 		})
 	}
-}
-
-func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*iam.Scope, error) {
-	repo, err := s.repoFn()
-	if err != nil {
-		return nil, err
-	}
-	scps, err := repo.ListScopes(ctx, scopeIds, iam.WithLimit(-1))
-	if err != nil {
-		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to list scopes: %v", err)
-	}
-	return scps, nil
 }
 
 func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.VerifyResults {
@@ -1050,4 +1101,36 @@ func validateDestroyKeyVersionRequest(req *pbs.DestroyKeyVersionRequest) error {
 		return handlers.InvalidArgumentErrorf("Error in provided request.", badFields)
 	}
 	return nil
+}
+
+func newOutputOpts(ctx context.Context, item *iam.Scope, authResults auth.VerifyResults, scopeInfoMap map[string]*pb.ScopeInfo) ([]handlers.Option, bool, error) {
+	res := perms.Resource{
+		Type:    resource.Scope,
+		Id:      item.GetPublicId(),
+		ScopeId: item.GetParentId(),
+	}
+
+	authorizedActions := authResults.FetchActionSetForId(ctx, item.GetPublicId(), IdActions, auth.WithResource(&res)).Strings()
+	if len(authorizedActions) == 0 {
+		return nil, true, nil
+	}
+
+	outputFields := authResults.FetchOutputFields(res, action.List).SelfOrDefaults(authResults.UserId)
+	outputOpts := make([]handlers.Option, 0, 3)
+	outputOpts = append(outputOpts, handlers.WithOutputFields(outputFields))
+	if outputFields.Has(globals.ScopeField) {
+		outputOpts = append(outputOpts, handlers.WithScope(scopeInfoMap[item.GetParentId()]))
+	}
+	if outputFields.Has(globals.AuthorizedActionsField) {
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions))
+	}
+	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
+		collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, scopeCollectionTypeMapMap[item.Type], item.GetPublicId(), "")
+		if err != nil {
+			return nil, false, err
+		}
+		outputOpts = append(outputOpts, handlers.WithAuthorizedCollectionActions(collectionActions))
+	}
+
+	return outputOpts, true, nil
 }
