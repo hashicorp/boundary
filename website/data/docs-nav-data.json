@@ -1368,7 +1368,20 @@
       },
       {
         "title": "API",
-        "path": "api-clients/api"
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "api-clients/api"
+          },
+          {
+            "title": "Rate limiting",
+            "path": "api-clients/api/rate-limiting"
+          },
+          {
+            "title": "Pagination",
+            "path": "api-clients/api/pagination"
+          }
+        ]
       },
       {
         "title": "Go SDK",
