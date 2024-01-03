@@ -9,6 +9,7 @@ import (
 	"net/netip"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/boundary/api/proxy"
 	"github.com/hashicorp/boundary/api/targets"
@@ -24,7 +25,7 @@ import (
 
 // TestConnectionsLeft tests general proxy functionality, as well as the
 // mechanism to notify the caller of the number of connections left on the
-// caller's channel. It also tests starting a proxy twice.
+// caller's channel and in the ConnectionsLeft function.
 func TestConnectionsLeft(t *testing.T) {
 	require := require.New(t)
 	logger := hclog.New(&hclog.LoggerOptions{
@@ -109,6 +110,10 @@ func TestConnectionsLeft(t *testing.T) {
 	// through the proxy, and to read the conns left from the channel. Once we
 	// have hit the connection limit, we expect an error on dial.
 	for i := sessionConnsLimit; i >= 0; i-- {
+		// Give time for the listener to be closed. The information about conns
+		// left comes from upstream responses and we can circle around too fast
+		// to have the listener be closed, leading to indeterminate results.
+		time.Sleep(time.Second)
 		conn, err := net.DialTCP("tcp", nil, net.TCPAddrFromAddrPort(addrPort))
 		if i == 0 {
 			require.Error(err)
@@ -123,6 +128,7 @@ func TestConnectionsLeft(t *testing.T) {
 		require.Equal(read, len(echo))
 		connsLeft := <-connsLeftCh
 		require.Equal(i-1, connsLeft)
+		require.Equal(i-1, pxy.ConnectionsLeft())
 	}
 
 	pxyCancel()
