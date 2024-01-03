@@ -22,4 +22,10 @@ begin;
       on iam_group (update_time desc, public_id desc);
   analyze iam_group;
 
+  create index iam_scope_create_time_public_id_idx
+      on iam_scope (create_time desc, public_id desc);
+  create index iam_scope_update_time_public_id_idx
+      on iam_scope (update_time desc, public_id desc);
+  analyze iam_scope;
+
 commit;
