@@ -5,8 +5,8 @@ package scopes_test
 
 import (
 	"context"
-	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"testing"
 	"unicode"
@@ -15,6 +15,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/auth/ldap"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/daemon/controller"
@@ -22,11 +23,13 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/scopes"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	authpb "github.com/hashicorp/boundary/internal/gen/controller/auth"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/perms"
+	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
@@ -322,7 +325,7 @@ func TestGet(t *testing.T) {
 			req := proto.Clone(toMerge).(*pbs.GetScopeRequest)
 			proto.Merge(req, tc.req)
 
-			s, err := scopes.NewService(context.Background(), repoFn, kms)
+			s, err := scopes.NewService(context.Background(), repoFn, kms, 1000)
 			require.NoError(err, "Couldn't create new project service.")
 
 			got, gErr := s.GetScope(auth.DisabledAuthTestContext(repoFn, tc.scopeId), req)
@@ -378,7 +381,9 @@ func TestList(t *testing.T) {
 	oWithProjectsProto.AuthorizedActions = testAuthorizedActions
 	oWithProjectsProto.AuthorizedCollectionActions = orgAuthorizedCollectionActions
 	initialOrgs = append(initialOrgs, oNoProjectsProto, oWithProjectsProto)
-	scopes.SortScopes(initialOrgs)
+
+	// Reverse slice since we order by create time (newest first)
+	slices.Reverse(initialOrgs)
 
 	cases := []struct {
 		name    string
@@ -391,13 +396,23 @@ func TestList(t *testing.T) {
 			name:    "List initial orgs",
 			scopeId: scope.Global.String(),
 			req:     &pbs.ListScopesRequest{ScopeId: "global"},
-			res:     &pbs.ListScopesResponse{Items: initialOrgs},
+			res: &pbs.ListScopesResponse{
+				Items:        initialOrgs,
+				EstItemCount: 2,
+				ResponseType: "complete",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+			},
 		},
 		{
 			name:    "List No Projects",
 			scopeId: oNoProjects.GetPublicId(),
 			req:     &pbs.ListScopesRequest{ScopeId: oNoProjects.GetPublicId()},
-			res:     &pbs.ListScopesResponse{},
+			res: &pbs.ListScopesResponse{
+				ResponseType: "complete",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+			},
 		},
 		{
 			name:    "Cant List Project Scopes",
@@ -409,13 +424,19 @@ func TestList(t *testing.T) {
 			name:    "Filter To Single Org",
 			scopeId: scope.Global.String(),
 			req:     &pbs.ListScopesRequest{ScopeId: "global", Filter: fmt.Sprintf(`"/item/id"==%q`, initialOrgs[1].GetId())},
-			res:     &pbs.ListScopesResponse{Items: initialOrgs[1:2]},
+			res: &pbs.ListScopesResponse{
+				Items:        initialOrgs[1:2],
+				EstItemCount: 1,
+				ResponseType: "complete",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+			},
 		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			s, err := scopes.NewService(context.Background(), repoFn, kms)
+			s, err := scopes.NewService(context.Background(), repoFn, kms, 1000)
 			require.NoError(err, "Couldn't create new role service.")
 
 			// Test with non-anonymous listing first
@@ -425,17 +446,20 @@ func TestList(t *testing.T) {
 				assert.True(errors.Is(gErr, tc.err), "ListScopes(%+v) got error\n%v, wanted\n%v", tc.req, gErr, tc.err)
 				return
 			}
-			assert.Empty(cmp.Diff(
-				got,
-				tc.res,
-				protocmp.Transform(),
-				cmpopts.SortSlices(func(a, b string) bool {
-					return a < b
-				}),
-				cmpopts.SortSlices(func(a, b protocmp.Message) bool {
-					return a.String() < b.String()
-				}),
-			), "ListScopes(%q) got response\n%q\nwanted\n%q", tc.req, got, tc.res)
+			assert.Empty(
+				cmp.Diff(
+					got,
+					tc.res,
+					cmpopts.SortSlices(func(a, b string) bool {
+						return a < b
+					}),
+					cmpopts.SortSlices(func(a, b protocmp.Message) bool {
+						return a.String() < b.String()
+					}),
+					protocmp.Transform(),
+					protocmp.IgnoreFields(&pbs.ListScopesResponse{}, "list_token"),
+				),
+			)
 
 			// Now test with anonymous listing
 			got, gErr = s.ListScopes(auth.DisabledAuthTestContext(repoFn, tc.scopeId, auth.WithUserId(globals.AnonymousUserId)), tc.req)
@@ -467,8 +491,11 @@ func TestList(t *testing.T) {
 			AuthorizedCollectionActions: orgAuthorizedCollectionActions,
 		})
 	}
+
+	// Reverse slice since we order by create time (newest first)
+	slices.Reverse(wantOrgs)
+
 	wantOrgs = append(wantOrgs, initialOrgs...)
-	scopes.SortScopes(wantOrgs)
 
 	var wantProjects []*pb.Scope
 	for i := 0; i < 10; i++ {
@@ -488,10 +515,11 @@ func TestList(t *testing.T) {
 			AuthorizedCollectionActions: projectAuthorizedCollectionActions,
 		})
 	}
-	scopes.SortScopes(wantProjects)
+
+	// Reverse slice since we order by create time (newest first)
+	slices.Reverse(wantProjects)
 
 	totalScopes := append(wantOrgs, wantProjects...)
-	scopes.SortScopes(totalScopes)
 
 	cases = []struct {
 		name    string
@@ -504,31 +532,61 @@ func TestList(t *testing.T) {
 			name:    "List Many Orgs",
 			scopeId: scope.Global.String(),
 			req:     &pbs.ListScopesRequest{ScopeId: "global"},
-			res:     &pbs.ListScopesResponse{Items: wantOrgs},
+			res: &pbs.ListScopesResponse{
+				Items:        wantOrgs,
+				EstItemCount: 12,
+				ResponseType: "complete",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+			},
 		},
 		{
 			name:    "List Many Projects",
 			scopeId: oWithProjects.GetPublicId(),
 			req:     &pbs.ListScopesRequest{ScopeId: oWithProjects.GetPublicId()},
-			res:     &pbs.ListScopesResponse{Items: wantProjects},
+			res: &pbs.ListScopesResponse{
+				Items:        wantProjects,
+				EstItemCount: 10,
+				ResponseType: "complete",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+			},
 		},
 		{
 			name:    "List Global Recursively",
 			scopeId: scope.Global.String(),
 			req:     &pbs.ListScopesRequest{ScopeId: scope.Global.String(), Recursive: true},
-			res:     &pbs.ListScopesResponse{Items: totalScopes},
+			res: &pbs.ListScopesResponse{
+				Items:        totalScopes,
+				EstItemCount: 22,
+				ResponseType: "complete",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+			},
 		},
 		{
 			name:    "Filter To Orgs",
 			scopeId: scope.Global.String(),
 			req:     &pbs.ListScopesRequest{ScopeId: scope.Global.String(), Recursive: true, Filter: fmt.Sprintf(`"/item/scope/type"==%q`, scope.Global.String())},
-			res:     &pbs.ListScopesResponse{Items: wantOrgs},
+			res: &pbs.ListScopesResponse{
+				Items:        wantOrgs,
+				EstItemCount: 12,
+				ResponseType: "complete",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+			},
 		},
 		{
 			name:    "Filter To Projects",
 			scopeId: scope.Global.String(),
 			req:     &pbs.ListScopesRequest{ScopeId: scope.Global.String(), Recursive: true, Filter: fmt.Sprintf(`"/item/scope/type"==%q`, scope.Org.String())},
-			res:     &pbs.ListScopesResponse{Items: wantProjects},
+			res: &pbs.ListScopesResponse{
+				Items:        wantProjects,
+				EstItemCount: 10,
+				ResponseType: "complete",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+			},
 		},
 		{
 			name: "Filter Bad Format",
@@ -539,8 +597,8 @@ func TestList(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			s, err := scopes.NewService(context.Background(), repoFn, kms)
-			require.NoError(err, "Couldn't create new role service.")
+			s, err := scopes.NewService(context.Background(), repoFn, kms, 1000)
+			require.NoError(err, "Couldn't create new scope service.")
 
 			// Test with non-anonymous listing first
 			got, gErr := s.ListScopes(auth.DisabledAuthTestContext(repoFn, tc.scopeId), tc.req)
@@ -550,17 +608,20 @@ func TestList(t *testing.T) {
 				return
 			}
 			require.NoError(gErr)
-			assert.Empty(cmp.Diff(
-				got,
-				tc.res,
-				protocmp.Transform(),
-				cmpopts.SortSlices(func(a, b string) bool {
-					return a < b
-				}),
-				cmpopts.SortSlices(func(a, b protocmp.Message) bool {
-					return a.String() < b.String()
-				}),
-			), "ListScopes(%q) got response\n%q, wanted\n%q", tc.req, got, tc.res)
+			assert.Empty(
+				cmp.Diff(
+					got,
+					tc.res,
+					cmpopts.SortSlices(func(a, b string) bool {
+						return a < b
+					}),
+					cmpopts.SortSlices(func(a, b protocmp.Message) bool {
+						return a.String() < b.String()
+					}),
+					protocmp.Transform(),
+					protocmp.IgnoreFields(&pbs.ListScopesResponse{}, "list_token"),
+				),
+			)
 
 			// Now test with anonymous listing
 			got, gErr = s.ListScopes(auth.DisabledAuthTestContext(repoFn, tc.scopeId, auth.WithUserId(globals.AnonymousUserId)), tc.req)
@@ -575,10 +636,333 @@ func TestList(t *testing.T) {
 	}
 }
 
+func TestListPagination(t *testing.T) {
+	// Set database read timeout to avoid duplicates in response
+	oldReadTimeout := globals.RefreshReadLookbackDuration
+	globals.RefreshReadLookbackDuration = 0
+	t.Cleanup(func() {
+		globals.RefreshReadLookbackDuration = oldReadTimeout
+	})
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	sqlDb, err := conn.SqlDB(ctx)
+	require.NoError(t, err)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	rw := db.New(conn)
+
+	repoFn := func() (*iam.Repository, error) {
+		return iam.TestRepo(t, conn, wrapper), nil
+	}
+	repo, err := repoFn()
+	require.NoError(t, err)
+
+	iamRepoFn := func() (*iam.Repository, error) {
+		return repo, nil
+	}
+	iamRepo, err := iamRepoFn()
+	require.NoError(t, err)
+
+	tokenRepoFn := func() (*authtoken.Repository, error) {
+		return authtoken.NewRepository(ctx, rw, rw, kms)
+	}
+	tokenRepo, err := tokenRepoFn()
+	require.NoError(t, err)
+
+	serversRepoFn := func() (*server.Repository, error) {
+		return server.NewRepository(ctx, rw, rw, kms)
+	}
+
+	oWithProjects, p2 := iam.TestScopes(t, repo)
+	_, err = repo.DeleteScope(context.Background(), p2.GetPublicId())
+	require.NoError(t, err)
+
+	paginationAuthorizedCollectionActions := map[string]*structpb.ListValue{
+		"sessions": {
+			Values: []*structpb.Value{
+				structpb.NewStringValue("list"),
+			},
+		},
+		"targets": {
+			Values: []*structpb.Value{
+				structpb.NewStringValue("list"),
+			},
+		},
+	}
+
+	var wantProjects []*pb.Scope
+	for i := 0; i < 10; i++ {
+		newP, err := iam.NewProject(ctx, oWithProjects.GetPublicId())
+		require.NoError(t, err)
+		p, err := repo.CreateScope(ctx, newP, "")
+		require.NoError(t, err)
+		wantProjects = append(wantProjects, &pb.Scope{
+			Id:                          p.GetPublicId(),
+			ScopeId:                     oWithProjects.GetPublicId(),
+			Scope:                       &pb.ScopeInfo{Id: oWithProjects.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
+			CreatedTime:                 p.GetCreateTime().GetTimestamp(),
+			UpdatedTime:                 p.GetUpdateTime().GetTimestamp(),
+			Version:                     1,
+			Type:                        scope.Project.String(),
+			AuthorizedActions:           testAuthorizedActions,
+			AuthorizedCollectionActions: paginationAuthorizedCollectionActions,
+		})
+	}
+
+	// Reverse slice since we order by create time (newest first)
+	slices.Reverse(wantProjects)
+
+	// Run analyze to update scope estimate
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
+
+	authMethod := ldap.TestAuthMethod(t, conn, wrapper, oWithProjects.PublicId, []string{"ldaps://no-managed-groups"})
+	acct := ldap.TestAccount(t, conn, authMethod, "test-login-last")
+	u := iam.TestUser(t, iamRepo, oWithProjects.GetPublicId(), iam.WithAccountIds(acct.PublicId))
+
+	// privProjRole := iam.TestRole(t, conn, pwt.GetPublicId())
+	// iam.TestRoleGrant(t, conn, privProjRole.GetPublicId(), "id=*;type=*;actions=*")
+	// iam.TestUserRole(t, conn, privProjRole.GetPublicId(), u.GetPublicId())
+	privOrgRole := iam.TestRole(t, conn, oWithProjects.GetPublicId())
+	iam.TestRoleGrant(t, conn, privOrgRole.GetPublicId(), "id=*;type=*;actions=*")
+	iam.TestUserRole(t, conn, privOrgRole.GetPublicId(), u.GetPublicId())
+
+	at, _ := tokenRepo.CreateAuthToken(ctx, u, acct.GetPublicId())
+
+	requestInfo := authpb.RequestInfo{
+		TokenFormat: uint32(auth.AuthTokenTypeBearer),
+		PublicId:    at.GetPublicId(),
+		Token:       at.GetToken(),
+	}
+	requestContext := context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
+	ctx = auth.NewVerifierContext(requestContext, iamRepoFn, tokenRepoFn, serversRepoFn, kms, &requestInfo)
+
+	req := &pbs.ListScopesRequest{
+		ScopeId:   oWithProjects.GetPublicId(),
+		Filter:    "",
+		ListToken: "",
+		PageSize:  2,
+	}
+
+	s, err := scopes.NewService(ctx, repoFn, kms, 1000)
+	require.NoError(t, err)
+
+	got, err := s.ListScopes(ctx, req)
+	require.NoError(t, err)
+	require.Len(t, got.GetItems(), 2)
+
+	// all comparisons will be done without refresh token
+	assert.Empty(t,
+		cmp.Diff(
+			got,
+			&pbs.ListScopesResponse{
+				Items:        wantProjects[0:2],
+				ResponseType: "delta",
+				ListToken:    "",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+				RemovedIds:   nil,
+				EstItemCount: 12,
+			},
+			cmpopts.SortSlices(func(a, b string) bool {
+				return a < b
+			}),
+			cmpopts.SortSlices(func(a, b protocmp.Message) bool {
+				return a.String() < b.String()
+			}),
+			protocmp.Transform(),
+			protocmp.IgnoreFields(&pbs.ListScopesResponse{}, "list_token"),
+		),
+	)
+
+	// second page
+	req.ListToken = got.ListToken
+	got, err = s.ListScopes(ctx, req)
+	require.NoError(t, err)
+	require.Len(t, got.GetItems(), 2)
+
+	assert.Empty(t,
+		cmp.Diff(
+			got,
+			&pbs.ListScopesResponse{
+				Items:        wantProjects[2:4],
+				ResponseType: "delta",
+				ListToken:    "",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+				RemovedIds:   nil,
+				EstItemCount: 12,
+			},
+			cmpopts.SortSlices(func(a, b string) bool {
+				return a < b
+			}),
+			cmpopts.SortSlices(func(a, b protocmp.Message) bool {
+				return a.String() < b.String()
+			}),
+			protocmp.Transform(),
+			protocmp.IgnoreFields(&pbs.ListScopesResponse{}, "list_token"),
+		),
+	)
+
+	// remainder of results
+	req.ListToken = got.ListToken
+	req.PageSize = 6
+	got, err = s.ListScopes(ctx, req)
+	require.NoError(t, err)
+	require.Len(t, got.GetItems(), 6)
+
+	assert.Empty(t,
+		cmp.Diff(
+			got,
+			&pbs.ListScopesResponse{
+				Items:        wantProjects[4:],
+				ResponseType: "complete",
+				ListToken:    "",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+				RemovedIds:   nil,
+				EstItemCount: 12,
+			},
+			cmpopts.SortSlices(func(a, b string) bool {
+				return a < b
+			}),
+			cmpopts.SortSlices(func(a, b protocmp.Message) bool {
+				return a.String() < b.String()
+			}),
+			protocmp.Transform(),
+			protocmp.IgnoreFields(&pbs.ListScopesResponse{}, "list_token"),
+		),
+	)
+
+	// create another scope
+	newP, err := iam.NewProject(ctx, oWithProjects.GetPublicId())
+	require.NoError(t, err)
+	p, err := repo.CreateScope(ctx, newP, "")
+	require.NoError(t, err)
+	newScope := &pb.Scope{
+		Id:                          p.GetPublicId(),
+		ScopeId:                     oWithProjects.GetPublicId(),
+		Scope:                       &pb.ScopeInfo{Id: oWithProjects.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
+		CreatedTime:                 p.GetCreateTime().GetTimestamp(),
+		UpdatedTime:                 p.GetUpdateTime().GetTimestamp(),
+		Version:                     1,
+		Type:                        scope.Project.String(),
+		AuthorizedActions:           testAuthorizedActions,
+		AuthorizedCollectionActions: paginationAuthorizedCollectionActions,
+	}
+	// Add to the front of the slice since it's the most recently updated
+	wantProjects = append([]*pb.Scope{newScope}, wantProjects...)
+
+	// delete different scope
+	_, err = repo.DeleteScope(ctx, wantProjects[len(wantProjects)-1].Id)
+	wantProjects = wantProjects[:len(wantProjects)-1]
+	require.NoError(t, err)
+
+	// Run analyze to update postgres estimates
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
+
+	// request updated results
+	// since both creating and deleting scopes will affect the grantsHash
+	// we expect this to error
+	req.ListToken = got.ListToken
+	_, err = s.ListScopes(ctx, req)
+	require.Error(t, err)
+	require.True(t, errors.Match(errors.T(errors.InvalidListToken), err))
+
+	// clear the refresh token
+	req.ListToken = ""
+	req.PageSize = 2
+	got, err = s.ListScopes(ctx, req)
+	require.NoError(t, err)
+	require.Len(t, got.GetItems(), 2)
+	assert.Empty(t,
+		cmp.Diff(
+			got,
+			&pbs.ListScopesResponse{
+				Items:        wantProjects[0:2],
+				ResponseType: "delta",
+				ListToken:    "",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+				RemovedIds:   nil,
+				EstItemCount: 12,
+			},
+			cmpopts.SortSlices(func(a, b string) bool {
+				return a < b
+			}),
+			cmpopts.SortSlices(func(a, b protocmp.Message) bool {
+				return a.String() < b.String()
+			}),
+			protocmp.Transform(),
+			protocmp.IgnoreFields(&pbs.ListScopesResponse{}, "list_token"),
+		),
+	)
+
+	// Request new page with filter requiring looping
+	// to fill the page.
+	req.ListToken = ""
+	req.PageSize = 1
+	req.Filter = fmt.Sprintf(`"/item/id"==%q or "/item/id"==%q`, wantProjects[len(wantProjects)-2].Id, wantProjects[len(wantProjects)-1].Id)
+	got, err = s.ListScopes(ctx, req)
+	require.NoError(t, err)
+	require.Len(t, got.GetItems(), 1)
+	assert.Empty(t,
+		cmp.Diff(
+			got,
+			&pbs.ListScopesResponse{
+				Items:        []*pb.Scope{wantProjects[len(wantProjects)-2]},
+				ResponseType: "delta",
+				ListToken:    "",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+				// Should be empty again
+				RemovedIds:   nil,
+				EstItemCount: 12,
+			},
+			cmpopts.SortSlices(func(a, b string) bool {
+				return a < b
+			}),
+			cmpopts.SortSlices(func(a, b protocmp.Message) bool {
+				return a.String() < b.String()
+			}),
+			protocmp.Transform(),
+			protocmp.IgnoreFields(&pbs.ListScopesResponse{}, "list_token"),
+		),
+	)
+	req.ListToken = got.ListToken
+	// Get the second page
+	got, err = s.ListScopes(ctx, req)
+	require.NoError(t, err)
+	require.Len(t, got.GetItems(), 1)
+	assert.Empty(t,
+		cmp.Diff(
+			got,
+			&pbs.ListScopesResponse{
+				Items:        []*pb.Scope{wantProjects[len(wantProjects)-1]},
+				ResponseType: "complete",
+				ListToken:    "",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+				RemovedIds:   nil,
+				EstItemCount: 12,
+			},
+			cmpopts.SortSlices(func(a, b string) bool {
+				return a < b
+			}),
+			cmpopts.SortSlices(func(a, b protocmp.Message) bool {
+				return a.String() < b.String()
+			}),
+			protocmp.Transform(),
+			protocmp.IgnoreFields(&pbs.ListScopesResponse{}, "list_token"),
+		),
+	)
+}
+
 func TestDelete(t *testing.T) {
 	org, proj, repoFn, kms := createDefaultScopesRepoAndKms(t)
 
-	s, err := scopes.NewService(context.Background(), repoFn, kms)
+	s, err := scopes.NewService(context.Background(), repoFn, kms, 1000)
 	require.NoError(t, err, "Error when getting new project service.")
 
 	cases := []struct {
@@ -652,7 +1036,7 @@ func TestDelete_twice(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 	org, proj, repoFn, kms := createDefaultScopesRepoAndKms(t)
 
-	s, err := scopes.NewService(context.Background(), repoFn, kms)
+	s, err := scopes.NewService(context.Background(), repoFn, kms, 1000)
 	require.NoError(err, "Error when getting new scopes service")
 	ctx := auth.DisabledAuthTestContext(repoFn, org.GetPublicId())
 	req := &pbs.DeleteScopeRequest{
@@ -910,7 +1294,7 @@ func TestCreate(t *testing.T) {
 				req := proto.Clone(toMerge).(*pbs.CreateScopeRequest)
 				proto.Merge(req, tc.req)
 
-				s, err := scopes.NewService(context.Background(), repoFn, kms)
+				s, err := scopes.NewService(context.Background(), repoFn, kms, 1000)
 				require.NoError(err, "Error when getting new project service.")
 
 				if name != "" {
@@ -1017,7 +1401,7 @@ func TestCreate(t *testing.T) {
 
 func TestUpdate(t *testing.T) {
 	org, proj, repoFn, kms := createDefaultScopesRepoAndKms(t)
-	tested, err := scopes.NewService(context.Background(), repoFn, kms)
+	tested, err := scopes.NewService(context.Background(), repoFn, kms, 1000)
 	require.NoError(t, err, "Error when getting new project service.")
 
 	iamRepo, err := repoFn()
@@ -2062,7 +2446,7 @@ func TestListKeys(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			s, err := scopes.NewService(context.Background(), iamRepoFn, tc.Kms())
+			s, err := scopes.NewService(context.Background(), iamRepoFn, tc.Kms(), 1000)
 			require.NoError(err, "Couldn't create new project service.")
 
 			got, gErr := s.ListKeys(tt.authCtx, tt.req)
@@ -2187,7 +2571,7 @@ func TestRotateKeys(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			s, err := scopes.NewService(context.Background(), iamRepoFn, tc.Kms())
+			s, err := scopes.NewService(context.Background(), iamRepoFn, tc.Kms(), 1000)
 			require.NoError(err, "Couldn't create new project service.")
 
 			prevKeyVersions := map[uint32]int{}
@@ -2448,7 +2832,7 @@ func TestListKeyVersionDestructionJobs(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			s, err := scopes.NewService(context.Background(), iamRepoFn, tc.Kms())
+			s, err := scopes.NewService(context.Background(), iamRepoFn, tc.Kms(), 1000)
 			require.NoError(err, "Couldn't create new project service.")
 
 			got, gErr := s.ListKeyVersionDestructionJobs(tt.authCtx, tt.req)
@@ -2710,7 +3094,7 @@ func TestDestroyKeyVersion(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			s, err := scopes.NewService(context.Background(), iamRepoFn, tc.Kms())
+			s, err := scopes.NewService(context.Background(), iamRepoFn, tc.Kms(), 1000)
 			require.NoError(err, "Couldn't create new project service.")
 
 			got, gErr := s.DestroyKeyVersion(tt.authCtx, tt.req)
