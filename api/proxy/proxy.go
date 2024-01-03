@@ -22,6 +22,10 @@ import (
 	ua "go.uber.org/atomic"
 )
 
+// Note: Much of the proxying behavior is tested in internal/tests/api/proxy and
+// other tests but those cannot be included in this package as they would create
+// a dependency on the main module from this module.
+
 // This can take more time than you might expect, especially if a lot of these
 // are sent at once, so the timeout is quite long. We could allow a custom
 // timeout to be an option if we wish.
@@ -361,7 +365,7 @@ func (p *ClientProxy) SessionExpiration() time.Time {
 }
 
 // ConnectionsLeft returns the number of connections left in the session, or -1
-// if unlimited
+// if unlimited.
 func (p *ClientProxy) ConnectionsLeft() int32 {
 	return p.connectionsLeft.Load()
 }
