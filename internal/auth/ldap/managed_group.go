@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 
 	"github.com/hashicorp/boundary/internal/auth/ldap/store"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/types/resource"
@@ -109,4 +110,14 @@ func (mg *ManagedGroup) oplog(ctx context.Context, opType oplog.OpType, authMeth
 		"auth-method-id":     []string{mg.AuthMethodId},
 	}
 	return metadata, nil
+}
+
+type deletedManagedGroup struct {
+	PublicId   string `gorm:"primary_key"`
+	DeleteTime *timestamp.Timestamp
+}
+
+// TableName returns the tablename to override the default gorm table name
+func (s *deletedManagedGroup) TableName() string {
+	return "auth_ldap_managed_group_deleted"
 }
