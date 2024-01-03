@@ -44,7 +44,7 @@ func TestWorkerBytesUpDown(t *testing.T) {
 		WorkerStatusGracePeriodDuration: helper.DefaultWorkerStatusGracePeriod,
 	})
 
-	expectWorkers(t, c1)
+	helper.ExpectWorkers(t, c1)
 
 	// Wire up the testing proxies
 	require.Len(c1.ClusterAddrs(), 1)
@@ -66,7 +66,7 @@ func TestWorkerBytesUpDown(t *testing.T) {
 
 	require.NoError(w1.Worker().WaitForNextSuccessfulStatusUpdate())
 	require.NoError(c1.WaitForNextWorkerStatusUpdate(w1.Name()))
-	expectWorkers(t, c1, w1)
+	helper.ExpectWorkers(t, c1, w1)
 
 	// Use an independent context for test things that take a context so
 	// that we aren't tied to any timeouts in the controller, etc. This
