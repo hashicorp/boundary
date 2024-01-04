@@ -354,8 +354,8 @@ func (p *ClientProxy) ListenerAddr(ctx context.Context) string {
 	}
 }
 
-// SessionCreation returns the creation time of the session
-func (p *ClientProxy) SessionCreation() time.Time {
+// SessionCreatedTime returns the creation time of the session
+func (p *ClientProxy) SessionCreatedTime() time.Time {
 	return p.createTime
 }
 
