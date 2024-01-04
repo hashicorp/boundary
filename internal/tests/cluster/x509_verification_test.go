@@ -185,7 +185,6 @@ func TestCustomX509Verification_Client(t *testing.T) {
 	}
 }
 
-/*
 func TestCustomX509Verification_Server(t *testing.T) {
 	ec := event.TestEventerConfig(t, "TestCustomX509Verification_Server", event.TestWithObservationSink(t), event.TestWithSysSink(t))
 	testLock := &sync.Mutex{}
@@ -246,14 +245,33 @@ func testCustomX509Verification_Server(ec event.TestConfig, certPool *x509.CertP
 		req.NoError(err)
 		req.NotNil(tgt)
 
-		sess := helper.NewTestSession(ctx, t, tcl, "ttcp_1234567890")
+		sar, err := tcl.AuthorizeSession(ctx, "ttcp_1234567890")
+		req.NoError(err)
+		req.NotNil(sar)
+		sessAuth, err := sar.GetSessionAuthorization()
+		req.NoError(err)
+		sessAuthzData, err := sessAuth.GetSessionAuthorizationData()
+		req.NoError(err)
+		req.LessOrEqual(1, len(sessAuthzData.WorkerInfo))
+		tlsConf := apiproxy.TestClientTlsConfig(t, sessAuth.AuthorizationToken, apiproxy.WithWorkerHost(sessAuth.SessionId))
+
+		transport := cleanhttp.DefaultTransport()
+		transport.DisableKeepAlives = false
+		// This isn't/shouldn't used anyways really because the connection is
+		// hijacked, just setting for completeness
+		transport.IdleConnTimeout = 0
+		transport.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
+			// time.Sleep(1000 * time.Second)
+			dialer := &tls.Dialer{Config: tlsConf}
+			return dialer.DialContext(ctx, network, addr)
+		}
 
 		conn, _, err := websocket.Dial(
 			ctx,
-			fmt.Sprintf("wss://%s/v1/proxy", sess.WorkerAddr),
+			fmt.Sprintf("wss://%s/v1/proxy", sessAuthzData.WorkerInfo[0].Address),
 			&websocket.DialOptions{
 				HTTPClient: &http.Client{
-					Transport: sess.Transport,
+					Transport: transport,
 				},
 				Subprotocols: []string{globals.TcpProxyV1},
 			},
@@ -270,4 +288,3 @@ func testCustomX509Verification_Server(ec event.TestConfig, certPool *x509.CertP
 		}
 	}
 }
-*/
