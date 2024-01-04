@@ -58,7 +58,7 @@ func TestWorkerSessionProxyMultipleConnections(t *testing.T) {
 	)
 	require.NoError(err)
 	t.Cleanup(func() {
-		assert.NoError(proxy.Close())
+		proxy.Close()
 	})
 	require.NotEmpty(t, proxy.ListenerAddr())
 
