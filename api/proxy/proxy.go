@@ -72,6 +72,9 @@ type ClientProxy struct {
 //
 // * WithWorkerHost - If set, use this host name as the SNI host when making the
 // TLS connection to the worker
+//
+// EXPERIMENTAL: While this API is not expected to change, it is new and
+// feedback from users may necessitate changes.
 func New(ctx context.Context, authzToken string, opt ...Option) (*ClientProxy, error) {
 	opts, err := getOpts(opt...)
 	if err != nil {
@@ -160,6 +163,9 @@ func New(ctx context.Context, authzToken string, opt ...Option) (*ClientProxy, e
 // and no feedback will be given. It is up to the listener implementation to
 // inform the client, if needed, of any status causing a Temporary error to be
 // returned on accept.
+//
+// EXPERIMENTAL: While this API is not expected to change, it is new and
+// feedback from users may necessitate changes.
 func (p *ClientProxy) Start() (retErr error) {
 	if !p.started.CompareAndSwap(false, true) {
 		return errors.New("proxy was already started")
@@ -315,17 +321,20 @@ func (p *ClientProxy) Start() (retErr error) {
 	return nil
 }
 
-// ListenerAddr returns the address of the client proxy listener. Because the
+// ListenerAddress returns the address of the client proxy listener. Because the
 // listener is started with Start(), this could be called before listening
 // occurs. To avoid returning until we have a valid value, pass a context;
-// canceling the context, or passing a nil context when the listener has not yet
+// canceling the context, or passing a TODO context when the listener has not yet
 // been started, will cause the function to return an empty AddrPort. Otherwise
 // the function will return when the address is available. In either case, test
 // the result to ensure it's not empty.
 //
 // Warning: a non-cancelable context will cause this call to block forever until
 // the listener's address can be determined.
-func (p *ClientProxy) ListenerAddr(ctx context.Context) string {
+//
+// EXPERIMENTAL: While this API is not expected to change, it is new and
+// feedback from users may necessitate changes.
+func (p *ClientProxy) ListenerAddress(ctx context.Context) string {
 	switch {
 	case p.cachedListenerAddress.Load() != "":
 		return p.cachedListenerAddress.Load()
@@ -333,7 +342,7 @@ func (p *ClientProxy) ListenerAddr(ctx context.Context) string {
 		addr := p.listener.Load().(net.Listener).Addr().String()
 		p.cachedListenerAddress.Store(addr)
 		return addr
-	case ctx == nil:
+	case ctx == nil || ctx == context.TODO():
 		return ""
 	}
 	timer := time.NewTimer(0)
@@ -355,17 +364,26 @@ func (p *ClientProxy) ListenerAddr(ctx context.Context) string {
 }
 
 // SessionCreatedTime returns the creation time of the session
+//
+// EXPERIMENTAL: While this API is not expected to change, it is new and
+// feedback from users may necessitate changes.
 func (p *ClientProxy) SessionCreatedTime() time.Time {
 	return p.createTime
 }
 
 // SessionExpiration returns the expiration time of the session
+//
+// EXPERIMENTAL: While this API is not expected to change, it is new and
+// feedback from users may necessitate changes.
 func (p *ClientProxy) SessionExpiration() time.Time {
 	return p.expiration
 }
 
 // ConnectionsLeft returns the number of connections left in the session, or -1
 // if unlimited.
+//
+// EXPERIMENTAL: While this API is not expected to change, it is new and
+// feedback from users may necessitate changes.
 func (p *ClientProxy) ConnectionsLeft() int32 {
 	return p.connectionsLeft.Load()
 }

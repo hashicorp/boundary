@@ -444,7 +444,7 @@ func (c *Command) Run(args []string) (retCode int) {
 			creds = c.sessionAuthz.Credentials
 		}
 
-		proxyAddr := clientProxy.ListenerAddr(context.Background())
+		proxyAddr := clientProxy.ListenerAddress(context.Background())
 		var clientProxyHost, clientProxyPort string
 		clientProxyHost, clientProxyPort, err = net.SplitHostPort(proxyAddr)
 		if err != nil {
@@ -578,7 +578,7 @@ func (c *Command) updateConnsLeft(connsLeft int32) {
 func (c *Command) handleExec(clientProxy *apiproxy.ClientProxy, passthroughArgs []string) {
 	defer c.proxyCancel()
 
-	addr := clientProxy.ListenerAddr(context.Background())
+	addr := clientProxy.ListenerAddress(context.Background())
 	var host, port string
 	var err error
 	host, port, err = net.SplitHostPort(addr)

@@ -11,6 +11,7 @@ import (
 	"math/big"
 	mathrand "math/rand"
 	"net"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -24,48 +25,8 @@ import (
 func TestNew(t *testing.T) {
 	t.Parallel()
 
-	sessionAuth := &targets.SessionAuthorizationData{
-		SessionId: "s_1234567890",
-		TargetId:  "ttcp_1234567890",
-		Scope: &scopes.ScopeInfo{
-			Id:            "p_1234567890",
-			Type:          "project",
-			ParentScopeId: "o_1234567890",
-		},
-		CreatedTime:     time.Now().Add(-time.Minute),
-		Type:            "tcp",
-		ConnectionLimit: 4,
-		EndpointPort:    22,
-		Expiration:      time.Now().Add(time.Minute),
-		HostId:          "h_1234567890",
-		Endpoint:        "localhost",
-		WorkerInfo: []*targets.WorkerInfo{
-			{
-				Address: "localhost:9202",
-			},
-		},
-	}
+	sessionAuth := testSessionAuth(t)
 	l := &net.TCPListener{}
-
-	pubKey, privKey, err := ed25519.GenerateKey(nil)
-	require.NoError(t, err)
-	template := &x509.Certificate{
-		ExtKeyUsage: []x509.ExtKeyUsage{
-			x509.ExtKeyUsageServerAuth,
-			x509.ExtKeyUsageClientAuth,
-		},
-		DNSNames:              []string{"s_1234567890"},
-		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment | x509.KeyUsageKeyAgreement | x509.KeyUsageCertSign,
-		SerialNumber:          big.NewInt(mathrand.Int63()),
-		NotBefore:             sessionAuth.CreatedTime.Add(-1 * time.Minute),
-		NotAfter:              sessionAuth.Expiration,
-		BasicConstraintsValid: true,
-		IsCA:                  true,
-		IPAddresses:           []net.IP{net.ParseIP("127.0.0.1")},
-	}
-	certBytes, err := x509.CreateCertificate(rand.Reader, template, template, pubKey, privKey)
-	require.NoError(t, err)
-	sessionAuth.Certificate = certBytes
 
 	tc := []struct {
 		name        string
@@ -145,4 +106,91 @@ func TestNew(t *testing.T) {
 			assert.NotNil(p.transport)
 		})
 	}
+}
+
+func TestListenerAddr(t *testing.T) {
+	t.Parallel()
+	require, assert := require.New(t), assert.New(t)
+
+	sessionAuth := testSessionAuth(t)
+
+	l, err := net.ListenTCP("tcp", &net.TCPAddr{Port: 0})
+	require.NoError(err)
+	defer l.Close()
+	expAddr := l.Addr().String()
+
+	p, err := New(context.Background(), "", WithSessionAuthorizationData(sessionAuth), WithListener(l))
+	require.NoError(err)
+
+	// Listener should be cached so we should get the address of the listener
+	assert.Equal(expAddr, p.ListenerAddress(context.Background()))
+	assert.NotNil(p.cachedListenerAddress.Load())
+	assert.Equal(expAddr, p.cachedListenerAddress.Load())
+	// This should be returning the cached value now, which we already verified
+	// above, but this will provide coverage
+	assert.Equal(expAddr, p.ListenerAddress(context.Background()))
+
+	// Now test the context cases, starting with ctx being TODO
+	p.cachedListenerAddress.Store("")
+	p.listener = new(atomic.Value)
+	assert.Equal("", p.ListenerAddress(context.TODO()))
+
+	// Check a canceled context
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	assert.Equal("", p.ListenerAddress(ctx))
+
+	// Pass in a new listener after a few seconds and ensure we block until
+	// then, then receive a valid address
+	start := time.Now()
+	time.AfterFunc(3*time.Second, func() {
+		p.listener.Store(l)
+	})
+	assert.Equal(expAddr, p.ListenerAddress(context.Background()))
+	assert.WithinDuration(start.Add(3*time.Second), time.Now(), 500*time.Millisecond)
+}
+
+func testSessionAuth(t *testing.T) *targets.SessionAuthorizationData {
+	sessionAuth := &targets.SessionAuthorizationData{
+		SessionId: "s_1234567890",
+		TargetId:  "ttcp_1234567890",
+		Scope: &scopes.ScopeInfo{
+			Id:            "p_1234567890",
+			Type:          "project",
+			ParentScopeId: "o_1234567890",
+		},
+		CreatedTime:     time.Now().Add(-time.Minute),
+		Type:            "tcp",
+		ConnectionLimit: 4,
+		EndpointPort:    22,
+		Expiration:      time.Now().Add(time.Minute),
+		HostId:          "h_1234567890",
+		Endpoint:        "localhost",
+		WorkerInfo: []*targets.WorkerInfo{
+			{
+				Address: "localhost:9202",
+			},
+		},
+	}
+
+	pubKey, privKey, err := ed25519.GenerateKey(nil)
+	require.NoError(t, err)
+	template := &x509.Certificate{
+		ExtKeyUsage: []x509.ExtKeyUsage{
+			x509.ExtKeyUsageServerAuth,
+			x509.ExtKeyUsageClientAuth,
+		},
+		DNSNames:              []string{"s_1234567890"},
+		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment | x509.KeyUsageKeyAgreement | x509.KeyUsageCertSign,
+		SerialNumber:          big.NewInt(mathrand.Int63()),
+		NotBefore:             sessionAuth.CreatedTime.Add(-1 * time.Minute),
+		NotAfter:              sessionAuth.Expiration,
+		BasicConstraintsValid: true,
+		IsCA:                  true,
+		IPAddresses:           []net.IP{net.ParseIP("127.0.0.1")},
+	}
+	certBytes, err := x509.CreateCertificate(rand.Reader, template, template, pubKey, privKey)
+	require.NoError(t, err)
+	sessionAuth.Certificate = certBytes
+	return sessionAuth
 }

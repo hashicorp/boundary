@@ -99,7 +99,7 @@ func TestConnectionsLeft(t *testing.T) {
 		require.ErrorContains(pxy.Start(), "already started")
 	}()
 
-	addr := pxy.ListenerAddr(context.Background())
+	addr := pxy.ListenerAddress(context.Background())
 	require.NotEmpty(addr)
 	addrPort, err := netip.ParseAddrPort(addr)
 	require.NoError(err)
