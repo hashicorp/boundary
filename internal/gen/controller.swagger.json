@@ -3019,6 +3019,92 @@
         ]
       }
     },
+    "/v1/scopes/{id}:attach-storage-policy": {
+      "post": {
+        "summary": "Attaches the specified Storage Policy to the Scope.",
+        "operationId": "ScopeService_AttachStoragePolicy",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.scopes.v1.Scope"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "description": "",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "storage_policy_id": {
+                  "type": "string",
+                  "title": ""
+                },
+                "version": {
+                  "type": "integer",
+                  "format": "int64",
+                  "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+                }
+              }
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.ScopeService"
+        ]
+      }
+    },
+    "/v1/scopes/{id}:detach-storage-policy": {
+      "post": {
+        "summary": "Detaches the specified Storage Policy from the Scope.",
+        "operationId": "ScopeService_DetachStoragePolicy",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.scopes.v1.Scope"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "description": "",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "version": {
+                  "type": "integer",
+                  "format": "int64",
+                  "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+                }
+              }
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.ScopeService"
+        ]
+      }
+    },
     "/v1/scopes/{id}:list-keys": {
       "get": {
         "summary": "List all keys in a Scope.",
@@ -5997,6 +6083,11 @@
           },
           "description": "Output only. The authorized actions for the scope's collections.",
           "readOnly": true
+        },
+        "storage_policy_id": {
+          "type": "string",
+          "description": "Output only. The attached storage policy id.",
+          "readOnly": true
         }
       },
       "title": "Scope contains all fields related to a Scope resource"
@@ -7459,6 +7550,14 @@
         }
       }
     },
+    "controller.api.services.v1.AttachStoragePolicyResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.scopes.v1.Scope"
+        }
+      }
+    },
     "controller.api.services.v1.AuthenticateResponse": {
       "type": "object",
       "properties": {
@@ -7796,6 +7895,14 @@
         "state": {
           "type": "string",
           "description": "Destruction state. One of \"pending\" or \"completed\".\nUse GET /v1/scopes/{scope_id}:list-key-version-destruction-jobs\nto monitor pending destruction jobs."
+        }
+      }
+    },
+    "controller.api.services.v1.DetachStoragePolicyResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.scopes.v1.Scope"
         }
       }
     },

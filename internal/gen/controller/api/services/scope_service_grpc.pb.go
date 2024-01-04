@@ -31,6 +31,8 @@ const (
 	ScopeService_RotateKeys_FullMethodName                    = "/controller.api.services.v1.ScopeService/RotateKeys"
 	ScopeService_ListKeyVersionDestructionJobs_FullMethodName = "/controller.api.services.v1.ScopeService/ListKeyVersionDestructionJobs"
 	ScopeService_DestroyKeyVersion_FullMethodName             = "/controller.api.services.v1.ScopeService/DestroyKeyVersion"
+	ScopeService_AttachStoragePolicy_FullMethodName           = "/controller.api.services.v1.ScopeService/AttachStoragePolicy"
+	ScopeService_DetachStoragePolicy_FullMethodName           = "/controller.api.services.v1.ScopeService/DetachStoragePolicy"
 )
 
 // ScopeServiceClient is the client API for ScopeService service.
@@ -76,6 +78,21 @@ type ScopeServiceClient interface {
 	// existing data, it will start an asynchronous process to complete this operation
 	// before destroying the key. Use ListKeyVersionDestructionJobs to monitor pending destruction jobs.
 	DestroyKeyVersion(ctx context.Context, in *DestroyKeyVersionRequest, opts ...grpc.CallOption) (*DestroyKeyVersionResponse, error)
+	// AttachStoragePolicy sets the Scope's Storage Policy. Any existing Storage
+	// Policy on the Scope will be overwritten. The provided request must include
+	// the Scope ID and the Storage Policy ID on which the Storage Policy will be
+	// set. A Storage Policy created under the global scope may be attached to any
+	// global or org scope. A Storage Policy created under a org scope may be attached
+	// to the same org scope. If any ID is missing, malformed, or references a
+	// non-existing resource, an error is returned.
+	AttachStoragePolicy(ctx context.Context, in *AttachStoragePolicyRequest, opts ...grpc.CallOption) (*AttachStoragePolicyResponse, error)
+	// DetachStoragePolicy removes the Storage Policy from the specified Scope.
+	// The provided request must include the Scope ID for the Scope from which
+	// the Storage Policy will be removed. If the ID is missing, malformed, or
+	// references a non-existing scope, an error is returned. An error is returned
+	// if a Storage Policy is attempted to be removed from the Scope when the Scope
+	// does not have the Storage Policy attached to it.
+	DetachStoragePolicy(ctx context.Context, in *DetachStoragePolicyRequest, opts ...grpc.CallOption) (*DetachStoragePolicyResponse, error)
 }
 
 type scopeServiceClient struct {
@@ -167,6 +184,24 @@ func (c *scopeServiceClient) DestroyKeyVersion(ctx context.Context, in *DestroyK
 	return out, nil
 }
 
+func (c *scopeServiceClient) AttachStoragePolicy(ctx context.Context, in *AttachStoragePolicyRequest, opts ...grpc.CallOption) (*AttachStoragePolicyResponse, error) {
+	out := new(AttachStoragePolicyResponse)
+	err := c.cc.Invoke(ctx, ScopeService_AttachStoragePolicy_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *scopeServiceClient) DetachStoragePolicy(ctx context.Context, in *DetachStoragePolicyRequest, opts ...grpc.CallOption) (*DetachStoragePolicyResponse, error) {
+	out := new(DetachStoragePolicyResponse)
+	err := c.cc.Invoke(ctx, ScopeService_DetachStoragePolicy_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ScopeServiceServer is the server API for ScopeService service.
 // All implementations must embed UnimplementedScopeServiceServer
 // for forward compatibility
@@ -210,6 +245,21 @@ type ScopeServiceServer interface {
 	// existing data, it will start an asynchronous process to complete this operation
 	// before destroying the key. Use ListKeyVersionDestructionJobs to monitor pending destruction jobs.
 	DestroyKeyVersion(context.Context, *DestroyKeyVersionRequest) (*DestroyKeyVersionResponse, error)
+	// AttachStoragePolicy sets the Scope's Storage Policy. Any existing Storage
+	// Policy on the Scope will be overwritten. The provided request must include
+	// the Scope ID and the Storage Policy ID on which the Storage Policy will be
+	// set. A Storage Policy created under the global scope may be attached to any
+	// global or org scope. A Storage Policy created under a org scope may be attached
+	// to the same org scope. If any ID is missing, malformed, or references a
+	// non-existing resource, an error is returned.
+	AttachStoragePolicy(context.Context, *AttachStoragePolicyRequest) (*AttachStoragePolicyResponse, error)
+	// DetachStoragePolicy removes the Storage Policy from the specified Scope.
+	// The provided request must include the Scope ID for the Scope from which
+	// the Storage Policy will be removed. If the ID is missing, malformed, or
+	// references a non-existing scope, an error is returned. An error is returned
+	// if a Storage Policy is attempted to be removed from the Scope when the Scope
+	// does not have the Storage Policy attached to it.
+	DetachStoragePolicy(context.Context, *DetachStoragePolicyRequest) (*DetachStoragePolicyResponse, error)
 	mustEmbedUnimplementedScopeServiceServer()
 }
 
@@ -243,6 +293,12 @@ func (UnimplementedScopeServiceServer) ListKeyVersionDestructionJobs(context.Con
 }
 func (UnimplementedScopeServiceServer) DestroyKeyVersion(context.Context, *DestroyKeyVersionRequest) (*DestroyKeyVersionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DestroyKeyVersion not implemented")
+}
+func (UnimplementedScopeServiceServer) AttachStoragePolicy(context.Context, *AttachStoragePolicyRequest) (*AttachStoragePolicyResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AttachStoragePolicy not implemented")
+}
+func (UnimplementedScopeServiceServer) DetachStoragePolicy(context.Context, *DetachStoragePolicyRequest) (*DetachStoragePolicyResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DetachStoragePolicy not implemented")
 }
 func (UnimplementedScopeServiceServer) mustEmbedUnimplementedScopeServiceServer() {}
 
@@ -419,6 +475,42 @@ func _ScopeService_DestroyKeyVersion_Handler(srv interface{}, ctx context.Contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ScopeService_AttachStoragePolicy_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AttachStoragePolicyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ScopeServiceServer).AttachStoragePolicy(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ScopeService_AttachStoragePolicy_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ScopeServiceServer).AttachStoragePolicy(ctx, req.(*AttachStoragePolicyRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ScopeService_DetachStoragePolicy_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DetachStoragePolicyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ScopeServiceServer).DetachStoragePolicy(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ScopeService_DetachStoragePolicy_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ScopeServiceServer).DetachStoragePolicy(ctx, req.(*DetachStoragePolicyRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ScopeService_ServiceDesc is the grpc.ServiceDesc for ScopeService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -461,6 +553,14 @@ var ScopeService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DestroyKeyVersion",
 			Handler:    _ScopeService_DestroyKeyVersion_Handler,
+		},
+		{
+			MethodName: "AttachStoragePolicy",
+			Handler:    _ScopeService_AttachStoragePolicy_Handler,
+		},
+		{
+			MethodName: "DetachStoragePolicy",
+			Handler:    _ScopeService_DetachStoragePolicy_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
