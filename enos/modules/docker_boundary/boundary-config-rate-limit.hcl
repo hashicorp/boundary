@@ -35,8 +35,8 @@ controller {
     resources = ["host"]
     actions = ["read"]
     per = "auth-token"
-    limit = 3
-    period = "10s"
+    limit = 5
+    period = "5s"
   }
 
   api_rate_limit_max_quotas = 1
