@@ -3,7 +3,34 @@
 
 package cluster
 
-/*
+import (
+	"bytes"
+	"context"
+	"crypto/tls"
+	"crypto/x509"
+	"errors"
+	"fmt"
+	"net"
+	"net/http"
+	"sync"
+	"testing"
+	"time"
+
+	apiproxy "github.com/hashicorp/boundary/api/proxy"
+	"github.com/hashicorp/boundary/api/targets"
+	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/cmd/config"
+	"github.com/hashicorp/boundary/internal/daemon/controller"
+	tg "github.com/hashicorp/boundary/internal/daemon/controller/handlers/targets"
+	"github.com/hashicorp/boundary/internal/daemon/worker"
+	"github.com/hashicorp/boundary/internal/event"
+	"github.com/hashicorp/boundary/internal/tests/helper"
+	"github.com/hashicorp/go-cleanhttp"
+	"github.com/hashicorp/go-hclog"
+	"github.com/stretchr/testify/require"
+	"nhooyr.io/websocket"
+)
+
 func TestCustomX509Verification_Client(t *testing.T) {
 	req := require.New(t)
 	ctx := context.Background()
@@ -40,6 +67,7 @@ func TestCustomX509Verification_Client(t *testing.T) {
 
 	err = w1.Worker().WaitForNextSuccessfulStatusUpdate()
 	req.NoError(err)
+	helper.ExpectWorkers(t, c1, w1)
 
 	// Connect target
 	client := c1.Client()
@@ -80,17 +108,26 @@ func TestCustomX509Verification_Client(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			require := require.New(t)
-			sess := helper.NewTestSession(ctx, t, tcl, "ttcp_1234567890")
+			sar, err := tcl.AuthorizeSession(ctx, "ttcp_1234567890")
+			require.NoError(err)
+			require.NotNil(sar)
+
+			sessAuth, err := sar.GetSessionAuthorization()
+			require.NoError(err)
+			sessAuthzData, err := sessAuth.GetSessionAuthorizationData()
+			require.NoError(err)
+			require.LessOrEqual(1, len(sessAuthzData.WorkerInfo))
+			tlsConf := apiproxy.TestClientTlsConfig(t, sessAuth.AuthorizationToken, apiproxy.WithWorkerHost(sessAuth.SessionId))
 
 			certPool := tc.certPool
 			if certPool == nil {
-				parsedCert, err := x509.ParseCertificate(sess.SessionAuthzData.Certificate)
+				parsedCert, err := x509.ParseCertificate(sessAuthzData.Certificate)
 				require.NoError(err)
 				certPool = x509.NewCertPool()
 				certPool.AddCert(parsedCert)
 			}
 
-			dnsName := sess.SessionId
+			dnsName := sessAuth.SessionId
 			if tc.dnsName != nil {
 				dnsName = tc.dnsName.String()
 			}
@@ -103,7 +140,7 @@ func TestCustomX509Verification_Client(t *testing.T) {
 					x509.ExtKeyUsageServerAuth,
 				},
 			}
-			sess.Transport.TLSClientConfig.VerifyConnection = func(cs tls.ConnectionState) error {
+			tlsConf.VerifyConnection = func(cs tls.ConnectionState) error {
 				// Go will not run this without at least one peer certificate, but
 				// doesn't hurt to check
 				if len(cs.PeerCertificates) == 0 {
@@ -112,12 +149,24 @@ func TestCustomX509Verification_Client(t *testing.T) {
 				_, err := cs.PeerCertificates[0].Verify(verifyOpts)
 				return err
 			}
+
+			transport := cleanhttp.DefaultTransport()
+			transport.DisableKeepAlives = false
+			// This isn't/shouldn't used anyways really because the connection is
+			// hijacked, just setting for completeness
+			transport.IdleConnTimeout = 0
+			transport.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
+				// time.Sleep(1000 * time.Second)
+				dialer := &tls.Dialer{Config: tlsConf}
+				return dialer.DialContext(ctx, network, addr)
+			}
+
 			conn, _, err := websocket.Dial(
 				ctx,
-				fmt.Sprintf("wss://%s/v1/proxy", sess.WorkerAddr),
+				fmt.Sprintf("ws://%s/v1/proxy", sessAuthzData.WorkerInfo[0].Address),
 				&websocket.DialOptions{
 					HTTPClient: &http.Client{
-						Transport: sess.Transport,
+						Transport: transport,
 					},
 					Subprotocols: []string{globals.TcpProxyV1},
 				},
@@ -136,6 +185,7 @@ func TestCustomX509Verification_Client(t *testing.T) {
 	}
 }
 
+/*
 func TestCustomX509Verification_Server(t *testing.T) {
 	ec := event.TestEventerConfig(t, "TestCustomX509Verification_Server", event.TestWithObservationSink(t), event.TestWithSysSink(t))
 	testLock := &sync.Mutex{}
