@@ -29,6 +29,8 @@ import (
 	"github.com/hashicorp/boundary/version"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 const (
@@ -359,7 +361,7 @@ func (s *CacheServer) printInfo(ctx context.Context) {
 		output = append(output, fmt.Sprintf(
 			"%s%s: %s",
 			strings.Repeat(" ", padding-len(k)),
-			strings.Title(k),
+			cases.Title(language.English).String(k),
 			s.info[k]))
 	}
 	output = append(output, "")

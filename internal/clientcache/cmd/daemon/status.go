@@ -18,6 +18,8 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 var errDaemonNotRunning = stderr.New("The daemon process is not running.")
@@ -205,7 +207,7 @@ func printUsersTable(us []daemon.UserStatus) []string {
 			}
 			maxLength := base.MaxAttributesLength(nonAttributeMap, nil, nil)
 			ret = append(ret,
-				fmt.Sprintf("    %s:", strings.Title(r.Name)),
+				fmt.Sprintf("    %s:", cases.Title(language.English).String(r.Name)),
 				base.WrapMap(6, maxLength+6, nonAttributeMap),
 			)
 		}

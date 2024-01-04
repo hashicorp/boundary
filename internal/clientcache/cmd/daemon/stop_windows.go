@@ -20,7 +20,7 @@ import (
 )
 
 // stop will send a term signal to the daemon to shut down.
-func (s *StopCommand) stop(ctx context.Context) error {
+func (c *StopCommand) stop(ctx context.Context) error {
 	switch {
 	case util.IsNil(ctx):
 		return errors.New("Invalid parameter provided to stop: context is missing")
@@ -40,7 +40,7 @@ func (s *StopCommand) stop(ctx context.Context) error {
 		} else if apiErr != nil {
 			errMsg = apiErr.Message
 		}
-		s.UI.Warn(fmt.Sprintf("Failed stopping the daemon through the handler: %q, now killing the process", errMsg))
+		c.UI.Warn(fmt.Sprintf("Failed stopping the daemon through the handler: %q, now killing the process", errMsg))
 	default:
 		// there wasn't an error stopping it through the handler. No need to
 		// force kill the process

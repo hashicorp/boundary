@@ -98,6 +98,6 @@ type deletedHostSet struct {
 }
 
 // TableName returns the tablename to override the default gorm table name
-func (s *deletedHostSet) TableName() string {
+func (ds *deletedHostSet) TableName() string {
 	return "static_host_set_deleted"
 }

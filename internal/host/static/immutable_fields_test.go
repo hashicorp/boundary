@@ -147,8 +147,8 @@ func TestStaticHost_ImmutableFields(t *testing.T) {
 	}
 }
 
-func (c *Host) testCloneHost() *Host {
-	cp := proto.Clone(c.Host)
+func (h *Host) testCloneHost() *Host {
+	cp := proto.Clone(h.Host)
 	return &Host{
 		Host: cp.(*store.Host),
 	}
@@ -221,8 +221,8 @@ func TestStaticHostSet_ImmutableFields(t *testing.T) {
 	}
 }
 
-func (c *HostSet) testCloneHostSet() *HostSet {
-	cp := proto.Clone(c.HostSet)
+func (s *HostSet) testCloneHostSet() *HostSet {
+	cp := proto.Clone(s.HostSet)
 	return &HostSet{
 		HostSet: cp.(*store.HostSet),
 	}
@@ -290,8 +290,8 @@ func TestStaticHostSetMember_ImmutableFields(t *testing.T) {
 	}
 }
 
-func (c *HostSetMember) testCloneHostSetMember() *HostSetMember {
-	cp := proto.Clone(c.HostSetMember)
+func (m *HostSetMember) testCloneHostSetMember() *HostSetMember {
+	cp := proto.Clone(m.HostSetMember)
 	return &HostSetMember{
 		HostSetMember: cp.(*store.HostSetMember),
 	}
