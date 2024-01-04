@@ -24,7 +24,7 @@ import (
 // Returns the id of the new host catalog.
 func CreateNewHostCatalogApi(t testing.TB, ctx context.Context, client *api.Client, projectId string) string {
 	hcClient := hostcatalogs.NewClient(client)
-	newHostCatalogResult, err := hcClient.Create(ctx, "static", projectId, hostcatalogs.WithName("e2e Host Catalog"))
+	newHostCatalogResult, err := hcClient.Create(ctx, "static", projectId)
 	require.NoError(t, err)
 	newHostCatalogId := newHostCatalogResult.Item.Id
 	t.Logf("Created Host Catalog: %s", newHostCatalogId)
