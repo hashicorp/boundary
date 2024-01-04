@@ -38,6 +38,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/genproto/protobuf/field_mask"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -337,7 +338,7 @@ func TestGet(t *testing.T) {
 			req := proto.Clone(toMerge).(*pbs.GetScopeRequest)
 			proto.Merge(req, tc.req)
 
-			s, err := scopes.NewService(context.Background(), repoFn, kms, 1000)
+			s, err := scopes.NewServiceFn(context.Background(), repoFn, kms, 1000)
 			require.NoError(err, "Couldn't create new project service.")
 
 			got, gErr := s.GetScope(auth.DisabledAuthTestContext(repoFn, tc.scopeId), req)
@@ -448,7 +449,7 @@ func TestList(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			s, err := scopes.NewService(context.Background(), repoFn, kms, 1000)
+			s, err := scopes.NewServiceFn(context.Background(), repoFn, kms, 1000)
 			require.NoError(err, "Couldn't create new role service.")
 
 			// Test with non-anonymous listing first
@@ -609,7 +610,7 @@ func TestList(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			s, err := scopes.NewService(context.Background(), repoFn, kms, 1000)
+			s, err := scopes.NewServiceFn(context.Background(), repoFn, kms, 1000)
 			require.NoError(err, "Couldn't create new scope service.")
 
 			// Test with non-anonymous listing first
@@ -756,7 +757,7 @@ func TestListPagination(t *testing.T) {
 		PageSize:  2,
 	}
 
-	s, err := scopes.NewService(ctx, repoFn, kms, 1000)
+	s, err := scopes.NewServiceFn(ctx, repoFn, kms, 1000)
 	require.NoError(t, err)
 
 	got, err := s.ListScopes(ctx, req)
@@ -974,7 +975,7 @@ func TestListPagination(t *testing.T) {
 func TestDelete(t *testing.T) {
 	org, proj, repoFn, kms := createDefaultScopesRepoAndKms(t)
 
-	s, err := scopes.NewService(context.Background(), repoFn, kms, 1000)
+	s, err := scopes.NewServiceFn(context.Background(), repoFn, kms, 1000)
 	require.NoError(t, err, "Error when getting new project service.")
 
 	cases := []struct {
@@ -1048,7 +1049,7 @@ func TestDelete_twice(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 	org, proj, repoFn, kms := createDefaultScopesRepoAndKms(t)
 
-	s, err := scopes.NewService(context.Background(), repoFn, kms, 1000)
+	s, err := scopes.NewServiceFn(context.Background(), repoFn, kms, 1000)
 	require.NoError(err, "Error when getting new scopes service")
 	ctx := auth.DisabledAuthTestContext(repoFn, org.GetPublicId())
 	req := &pbs.DeleteScopeRequest{
@@ -1306,7 +1307,7 @@ func TestCreate(t *testing.T) {
 				req := proto.Clone(toMerge).(*pbs.CreateScopeRequest)
 				proto.Merge(req, tc.req)
 
-				s, err := scopes.NewService(context.Background(), repoFn, kms, 1000)
+				s, err := scopes.NewServiceFn(context.Background(), repoFn, kms, 1000)
 				require.NoError(err, "Error when getting new project service.")
 
 				if name != "" {
@@ -1413,7 +1414,7 @@ func TestCreate(t *testing.T) {
 
 func TestUpdate(t *testing.T) {
 	org, proj, repoFn, kms := createDefaultScopesRepoAndKms(t)
-	tested, err := scopes.NewService(context.Background(), repoFn, kms, 1000)
+	tested, err := scopes.NewServiceFn(context.Background(), repoFn, kms, 1000)
 	require.NoError(t, err, "Error when getting new project service.")
 
 	iamRepo, err := repoFn()
@@ -2458,7 +2459,7 @@ func TestListKeys(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			s, err := scopes.NewService(context.Background(), iamRepoFn, tc.Kms(), 1000)
+			s, err := scopes.NewServiceFn(context.Background(), iamRepoFn, tc.Kms(), 1000)
 			require.NoError(err, "Couldn't create new project service.")
 
 			got, gErr := s.ListKeys(tt.authCtx, tt.req)
@@ -2583,7 +2584,7 @@ func TestRotateKeys(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			s, err := scopes.NewService(context.Background(), iamRepoFn, tc.Kms(), 1000)
+			s, err := scopes.NewServiceFn(context.Background(), iamRepoFn, tc.Kms(), 1000)
 			require.NoError(err, "Couldn't create new project service.")
 
 			prevKeyVersions := map[uint32]int{}
@@ -2844,7 +2845,7 @@ func TestListKeyVersionDestructionJobs(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			s, err := scopes.NewService(context.Background(), iamRepoFn, tc.Kms(), 1000)
+			s, err := scopes.NewServiceFn(context.Background(), iamRepoFn, tc.Kms(), 1000)
 			require.NoError(err, "Couldn't create new project service.")
 
 			got, gErr := s.ListKeyVersionDestructionJobs(tt.authCtx, tt.req)
@@ -3106,7 +3107,7 @@ func TestDestroyKeyVersion(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			s, err := scopes.NewService(context.Background(), iamRepoFn, tc.Kms(), 1000)
+			s, err := scopes.NewServiceFn(context.Background(), iamRepoFn, tc.Kms(), 1000)
 			require.NoError(err, "Couldn't create new project service.")
 
 			got, gErr := s.DestroyKeyVersion(tt.authCtx, tt.req)
@@ -3130,4 +3131,28 @@ func TestDestroyKeyVersion(t *testing.T) {
 			), "DestroyKeyVersion(%q) got response\n%q, wanted\n%q", tt.req, got, tt.res)
 		})
 	}
+}
+
+func TestAttachStoragePolicy(t *testing.T) {
+	t.Run("unimplemented", func(t *testing.T) {
+		service := &scopes.Service{}
+		_, err := service.AttachStoragePolicy(context.Background(), &pbs.AttachStoragePolicyRequest{})
+		require.Error(t, err)
+		gotStatus, ok := status.FromError(err)
+		require.True(t, ok)
+		assert.Equal(t, gotStatus.Code(), codes.Unimplemented)
+		assert.Equal(t, gotStatus.Message(), "Policies are an Enterprise-only feature")
+	})
+}
+
+func TestDetachStoragePolicy(t *testing.T) {
+	t.Run("unimplemented", func(t *testing.T) {
+		service := &scopes.Service{}
+		_, err := service.DetachStoragePolicy(context.Background(), &pbs.DetachStoragePolicyRequest{})
+		require.Error(t, err)
+		gotStatus, ok := status.FromError(err)
+		require.True(t, ok)
+		assert.Equal(t, gotStatus.Code(), codes.Unimplemented)
+		assert.Equal(t, gotStatus.Message(), "Policies are an Enterprise-only feature")
+	})
 }

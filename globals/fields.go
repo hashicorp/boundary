@@ -115,4 +115,5 @@ const (
 	ConnectionRecordingsField                   = "connection_recordings"
 	CreateTimeValues                            = "create_time_values"
 	DefaultPortField                            = "default_port"
+	StoragePolicyIdField                        = "storage_policy_id"
 )

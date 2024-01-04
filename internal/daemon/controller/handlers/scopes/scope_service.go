@@ -43,6 +43,7 @@ import (
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
 	wrappingKms "github.com/hashicorp/go-kms-wrapping/extras/kms/v2"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -139,23 +140,23 @@ type Service struct {
 
 var _ pbs.ScopeServiceServer = (*Service)(nil)
 
-// NewService returns a project service which handles project related requests to boundary.
-func NewService(ctx context.Context, repo common.IamRepoFactory, kmsRepo *kms.Kms, maxPageSize uint) (Service, error) {
+// NewServiceFn returns a service which handles scope related requests to boundary.
+var NewServiceFn = func(ctx context.Context, repo common.IamRepoFactory, kmsRepo *kms.Kms, maxPageSize uint) (pbs.ScopeServiceServer, error) {
 	const op = "scopes.(Service).NewService"
 	if util.IsNil(repo) {
-		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing iam repository")
+		return &Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing iam repository")
 	}
 	if kmsRepo == nil {
-		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing kms")
+		return &Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing kms")
 	}
 	if maxPageSize == 0 {
 		maxPageSize = uint(globals.DefaultMaxPageSize)
 	}
-	return Service{repoFn: repo, kmsRepo: kmsRepo, maxPageSize: maxPageSize}, nil
+	return &Service{repoFn: repo, kmsRepo: kmsRepo, maxPageSize: maxPageSize}, nil
 }
 
 // ListScopes implements the interface pbs.ScopeServiceServer.
-func (s Service) ListScopes(ctx context.Context, req *pbs.ListScopesRequest) (*pbs.ListScopesResponse, error) {
+func (s *Service) ListScopes(ctx context.Context, req *pbs.ListScopesRequest) (*pbs.ListScopesResponse, error) {
 	const op = "scopes.(Service).ListScopes"
 	if req.GetScopeId() == "" {
 		req.ScopeId = scope.Global.String()
@@ -307,7 +308,7 @@ func (s Service) ListScopes(ctx context.Context, req *pbs.ListScopesRequest) (*p
 }
 
 // GetScopes implements the interface pbs.ScopeServiceServer.
-func (s Service) GetScope(ctx context.Context, req *pbs.GetScopeRequest) (*pbs.GetScopeResponse, error) {
+func (s *Service) GetScope(ctx context.Context, req *pbs.GetScopeRequest) (*pbs.GetScopeResponse, error) {
 	const op = "scopes.(Service).GetScope"
 
 	if err := validateGetRequest(req); err != nil {
@@ -357,7 +358,7 @@ func (s Service) GetScope(ctx context.Context, req *pbs.GetScopeRequest) (*pbs.G
 }
 
 // CreateScope implements the interface pbs.ScopeServiceServer.
-func (s Service) CreateScope(ctx context.Context, req *pbs.CreateScopeRequest) (*pbs.CreateScopeResponse, error) {
+func (s *Service) CreateScope(ctx context.Context, req *pbs.CreateScopeRequest) (*pbs.CreateScopeResponse, error) {
 	const op = "scopes.(Service).CreateScope"
 
 	if err := validateCreateRequest(req); err != nil {
@@ -402,7 +403,7 @@ func (s Service) CreateScope(ctx context.Context, req *pbs.CreateScopeRequest) (
 }
 
 // UpdateScope implements the interface pbs.ScopeServiceServer.
-func (s Service) UpdateScope(ctx context.Context, req *pbs.UpdateScopeRequest) (*pbs.UpdateScopeResponse, error) {
+func (s *Service) UpdateScope(ctx context.Context, req *pbs.UpdateScopeRequest) (*pbs.UpdateScopeResponse, error) {
 	const op = "scopes.(Service).UpdateScope"
 
 	if err := validateUpdateRequest(req); err != nil {
@@ -447,7 +448,7 @@ func (s Service) UpdateScope(ctx context.Context, req *pbs.UpdateScopeRequest) (
 }
 
 // DeleteScope implements the interface pbs.ScopeServiceServer.
-func (s Service) DeleteScope(ctx context.Context, req *pbs.DeleteScopeRequest) (*pbs.DeleteScopeResponse, error) {
+func (s *Service) DeleteScope(ctx context.Context, req *pbs.DeleteScopeRequest) (*pbs.DeleteScopeResponse, error) {
 	if err := validateDeleteRequest(req); err != nil {
 		return nil, err
 	}
@@ -463,7 +464,7 @@ func (s Service) DeleteScope(ctx context.Context, req *pbs.DeleteScopeRequest) (
 }
 
 // ListKeys implements the interface pbs.ScopeServiceServer.
-func (s Service) ListKeys(ctx context.Context, req *pbs.ListKeysRequest) (*pbs.ListKeysResponse, error) {
+func (s *Service) ListKeys(ctx context.Context, req *pbs.ListKeysRequest) (*pbs.ListKeysResponse, error) {
 	if req.GetId() == "" {
 		req.Id = scope.Global.String()
 	}
@@ -509,7 +510,7 @@ func (s Service) ListKeys(ctx context.Context, req *pbs.ListKeysRequest) (*pbs.L
 }
 
 // RotateKeys implements the interface pbs.ScopeServiceServer.
-func (s Service) RotateKeys(ctx context.Context, req *pbs.RotateKeysRequest) (*pbs.RotateKeysResponse, error) {
+func (s *Service) RotateKeys(ctx context.Context, req *pbs.RotateKeysRequest) (*pbs.RotateKeysResponse, error) {
 	if req.GetScopeId() == "" {
 		req.ScopeId = scope.Global.String()
 	}
@@ -529,7 +530,7 @@ func (s Service) RotateKeys(ctx context.Context, req *pbs.RotateKeysRequest) (*p
 }
 
 // ListKeyVersionDestructionJobs implements the interface pbs.ScopeServiceServer.
-func (s Service) ListKeyVersionDestructionJobs(ctx context.Context, req *pbs.ListKeyVersionDestructionJobsRequest) (*pbs.ListKeyVersionDestructionJobsResponse, error) {
+func (s *Service) ListKeyVersionDestructionJobs(ctx context.Context, req *pbs.ListKeyVersionDestructionJobsRequest) (*pbs.ListKeyVersionDestructionJobsResponse, error) {
 	if req.GetScopeId() == "" {
 		req.ScopeId = scope.Global.String()
 	}
@@ -571,7 +572,7 @@ func (s Service) ListKeyVersionDestructionJobs(ctx context.Context, req *pbs.Lis
 }
 
 // DestroyKeyVersion implements the interface pbs.ScopeServiceServer.
-func (s Service) DestroyKeyVersion(ctx context.Context, req *pbs.DestroyKeyVersionRequest) (*pbs.DestroyKeyVersionResponse, error) {
+func (s *Service) DestroyKeyVersion(ctx context.Context, req *pbs.DestroyKeyVersionRequest) (*pbs.DestroyKeyVersionResponse, error) {
 	if req.GetScopeId() == "" {
 		req.ScopeId = scope.Global.String()
 	}
@@ -598,7 +599,17 @@ func (s Service) DestroyKeyVersion(ctx context.Context, req *pbs.DestroyKeyVersi
 	}, nil
 }
 
-func (s Service) getFromRepo(ctx context.Context, id string) (*iam.Scope, error) {
+// AttachStoragePolicy implements the interface pbs.ScopeServiceServer.
+func (s *Service) AttachStoragePolicy(ctx context.Context, req *pbs.AttachStoragePolicyRequest) (*pbs.AttachStoragePolicyResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "Policies are an Enterprise-only feature")
+}
+
+// DetachStoragePolicy implements the interface pbs.ScopeServiceServer.
+func (s *Service) DetachStoragePolicy(ctx context.Context, req *pbs.DetachStoragePolicyRequest) (*pbs.DetachStoragePolicyResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "Policies are an Enterprise-only feature")
+}
+
+func (s *Service) getFromRepo(ctx context.Context, id string) (*iam.Scope, error) {
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
@@ -613,7 +624,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*iam.Scope, error)
 	return out, nil
 }
 
-func (s Service) createInRepo(ctx context.Context, authResults auth.VerifyResults, req *pbs.CreateScopeRequest) (*iam.Scope, error) {
+func (s *Service) createInRepo(ctx context.Context, authResults auth.VerifyResults, req *pbs.CreateScopeRequest) (*iam.Scope, error) {
 	const op = "scopes.(Service).createInRepo"
 	item := req.GetItem()
 	var opts []iam.Option
@@ -652,7 +663,7 @@ func (s Service) createInRepo(ctx context.Context, authResults auth.VerifyResult
 	return out, nil
 }
 
-func (s Service) updateInRepo(ctx context.Context, parentScope *pb.ScopeInfo, scopeId string, mask []string, item *pb.Scope) (*iam.Scope, error) {
+func (s *Service) updateInRepo(ctx context.Context, parentScope *pb.ScopeInfo, scopeId string, mask []string, item *pb.Scope) (*iam.Scope, error) {
 	const op = "scope.(Service).updateInRepo"
 	var opts []iam.Option
 	var scopeDesc, scopeName, scopePrimaryAuthMethodId string
@@ -712,7 +723,7 @@ func (s Service) updateInRepo(ctx context.Context, parentScope *pb.ScopeInfo, sc
 	return out, nil
 }
 
-func (s Service) deleteFromRepo(ctx context.Context, scopeId string) (bool, error) {
+func (s *Service) deleteFromRepo(ctx context.Context, scopeId string) (bool, error) {
 	const op = "scope.(Service).deleteFromRepo"
 	repo, err := s.repoFn()
 	if err != nil {
@@ -822,6 +833,9 @@ func ToProto(ctx context.Context, in *iam.Scope, opt ...handlers.Option) (*pb.Sc
 	}
 	if outputFields.Has(globals.PrimaryAuthMethodIdField) && in.GetPrimaryAuthMethodId() != "" {
 		out.PrimaryAuthMethodId = &wrapperspb.StringValue{Value: in.GetPrimaryAuthMethodId()}
+	}
+	if outputFields.Has(globals.StoragePolicyIdField) {
+		out.StoragePolicyId = in.GetStoragePolicyId()
 	}
 
 	return &out, nil
