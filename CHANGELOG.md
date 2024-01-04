@@ -6,13 +6,17 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### New and Improved
 
-* cli: New generic commands `read`, `update`, and `delete` have been added.
-  These allow operating on resources by directly specifying the ID of the
-  resource as the next parameter (e.g. `boundary update ttcp_1234567890`).
-  Subtypes do not need to be specified (e.g. that command is equivalent to
-  `boundary targets update tcp -id ttcp_1234567890`), and any flags given after
-  the ID are passed through to the type-specific subcommand. Once the ID has
-  been entered, autocomplete is also supported.
+* New generic commands `read`, `update`, and `delete` have been added. These
+  allow operating on resources by directly specifying the ID of the resource as
+  the next parameter (e.g. `boundary update ttcp_1234567890`). Subtypes do not
+  need to be specified (e.g. that command is equivalent to `boundary targets
+  update tcp -id ttcp_1234567890`), and any flags given after the ID are passed
+  through to the type-specific subcommand. Once the ID has been entered,
+  autocomplete is also supported.
+  ([PR](https://github.com/hashicorp/boundary/pull/3992))
+* The `key_id` parameter within SSH Certificate Credential Libraries now accepts
+  the use of templated parameters
+  ([PR](https://github.com/hashicorp/boundary/pull/4215))
 
 ## 0.14.3 (2023/12/12)
 
@@ -22,8 +26,8 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   enables rate limits by default. For details on the default rate limits,
   how to configure rate limits, and how to disable rate limiting see the
   noted PR. ([PR](https://github.com/hashicorp/boundary/pull/4092))
-* Add support for OIDC prompts. Using prompts, the Relying Party (RP) can 
-  customize the authentication and authorization flow to suit their specific 
+* Add support for OIDC prompts. Using prompts, the Relying Party (RP) can
+  customize the authentication and authorization flow to suit their specific
   needs and improve the user experience. [OIDC Authentication request]
   (https://openid.net/specs/openid-connect-core-1_0.html#AuthRequest) server.
   ([PR](https://github.com/hashicorp/boundary/pull/4053))
