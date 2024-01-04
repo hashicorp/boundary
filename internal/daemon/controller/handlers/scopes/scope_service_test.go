@@ -5,7 +5,6 @@ package scopes_test
 
 import (
 	"context"
-	stderrors "errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -332,7 +331,7 @@ func TestGet(t *testing.T) {
 			got, gErr := s.GetScope(auth.DisabledAuthTestContext(repoFn, tc.scopeId), req)
 			if tc.err != nil {
 				require.Error(gErr)
-				assert.True(stderrors.Is(gErr, tc.err), "GetScope(%+v) got error\n%v, wanted\n%v", req, gErr, tc.err)
+				assert.True(errors.Is(gErr, tc.err), "GetScope(%+v) got error\n%v, wanted\n%v", req, gErr, tc.err)
 			}
 			assert.Empty(cmp.Diff(
 				tc.res,
@@ -444,7 +443,7 @@ func TestList(t *testing.T) {
 			got, gErr := s.ListScopes(auth.DisabledAuthTestContext(repoFn, tc.scopeId), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
-				assert.True(stderrors.Is(gErr, tc.err), "ListScopes(%+v) got error\n%v, wanted\n%v", tc.req, gErr, tc.err)
+				assert.True(errors.Is(gErr, tc.err), "ListScopes(%+v) got error\n%v, wanted\n%v", tc.req, gErr, tc.err)
 				return
 			}
 			assert.Empty(
@@ -605,7 +604,7 @@ func TestList(t *testing.T) {
 			got, gErr := s.ListScopes(auth.DisabledAuthTestContext(repoFn, tc.scopeId), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
-				assert.True(stderrors.Is(gErr, tc.err), "ListScopes(%+v) got error\n%v, wanted\n%v", tc.req, gErr, tc.err)
+				assert.True(errors.Is(gErr, tc.err), "ListScopes(%+v) got error\n%v, wanted\n%v", tc.req, gErr, tc.err)
 				return
 			}
 			require.NoError(gErr)
@@ -746,10 +745,6 @@ func TestListPagination(t *testing.T) {
 	}
 
 	s, err := scopes.NewService(ctx, repoFn, kms, 1000)
-	require.NoError(t, err)
-
-	// Run analyze in the DB to update the estimate tables
-	_, err = sqlDb.ExecContext(ctx, "analyze")
 	require.NoError(t, err)
 
 	got, err := s.ListScopes(ctx, req)
@@ -1030,7 +1025,7 @@ func TestDelete(t *testing.T) {
 			got, gErr := s.DeleteScope(auth.DisabledAuthTestContext(repoFn, tc.scopeId), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
-				assert.True(stderrors.Is(gErr, tc.err), "DeleteScope(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+				assert.True(errors.Is(gErr, tc.err), "DeleteScope(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
 			}
 			assert.EqualValuesf(tc.res, got, "DeleteScope(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
@@ -1051,7 +1046,7 @@ func TestDelete_twice(t *testing.T) {
 	assert.NoError(gErr, "First attempt")
 	_, gErr = s.DeleteScope(ctx, req)
 	assert.Error(gErr, "Second attempt")
-	assert.True(stderrors.Is(gErr, handlers.ApiErrorWithCode(codes.NotFound)), "Expected not found for the second delete.")
+	assert.True(errors.Is(gErr, handlers.ApiErrorWithCode(codes.NotFound)), "Expected not found for the second delete.")
 
 	ctx = auth.DisabledAuthTestContext(repoFn, scope.Global.String())
 	req = &pbs.DeleteScopeRequest{
@@ -1061,7 +1056,7 @@ func TestDelete_twice(t *testing.T) {
 	assert.NoError(gErr, "First attempt")
 	_, gErr = s.DeleteScope(ctx, req)
 	assert.Error(gErr, "Second attempt")
-	assert.True(stderrors.Is(gErr, handlers.ApiErrorWithCode(codes.NotFound)), "Expected not found for the second delete.")
+	assert.True(errors.Is(gErr, handlers.ApiErrorWithCode(codes.NotFound)), "Expected not found for the second delete.")
 }
 
 func TestCreate(t *testing.T) {
@@ -1337,7 +1332,7 @@ func TestCreate(t *testing.T) {
 				got, gErr := s.CreateScope(auth.DisabledAuthTestContext(repoFn, tc.scopeId, auth.WithUserId(userId)), req)
 				if tc.err != nil {
 					require.Error(gErr)
-					assert.True(stderrors.Is(gErr, tc.err), "CreateScope(%+v) got error %v, wanted %v", req, gErr, tc.err)
+					assert.True(errors.Is(gErr, tc.err), "CreateScope(%+v) got error %v, wanted %v", req, gErr, tc.err)
 				}
 				if got != nil {
 					assert.Contains(got.GetUri(), tc.res.Uri)
@@ -1957,7 +1952,7 @@ func TestUpdate(t *testing.T) {
 			got, gErr := tested.UpdateScope(auth.DisabledAuthTestContext(repoFn, tc.scopeId), req)
 			if tc.err != nil {
 				require.Error(gErr)
-				assert.True(stderrors.Is(gErr, tc.err), "UpdateScope(%+v) got error\n%v, wanted\n%v", req, gErr, tc.err)
+				assert.True(errors.Is(gErr, tc.err), "UpdateScope(%+v) got error\n%v, wanted\n%v", req, gErr, tc.err)
 			}
 
 			if got != nil {
@@ -2457,7 +2452,7 @@ func TestListKeys(t *testing.T) {
 			got, gErr := s.ListKeys(tt.authCtx, tt.req)
 			if tt.err != nil {
 				require.Error(gErr)
-				assert.True(stderrors.Is(gErr, tt.err), "ListKeys(%+v) got error\n%v, wanted\n%v", tt.req, gErr, tt.err)
+				assert.True(errors.Is(gErr, tt.err), "ListKeys(%+v) got error\n%v, wanted\n%v", tt.req, gErr, tt.err)
 			} else {
 				require.NoError(gErr)
 			}
@@ -2606,7 +2601,7 @@ func TestRotateKeys(t *testing.T) {
 
 			if tt.err != nil {
 				require.Error(kErr)
-				assert.True(stderrors.Is(kErr, tt.err), "RotateKeys(%+v) got error\n%v, wanted\n%v", tt.req, kErr, tt.err)
+				assert.True(errors.Is(kErr, tt.err), "RotateKeys(%+v) got error\n%v, wanted\n%v", tt.req, kErr, tt.err)
 			} else {
 				require.NoError(kErr)
 				keys, gErr := s.ListKeys(privCtx, &pbs.ListKeysRequest{Id: tt.req.ScopeId})
@@ -2843,7 +2838,7 @@ func TestListKeyVersionDestructionJobs(t *testing.T) {
 			got, gErr := s.ListKeyVersionDestructionJobs(tt.authCtx, tt.req)
 			if tt.err != nil {
 				require.Error(gErr)
-				assert.True(stderrors.Is(gErr, tt.err), "ListKeyVersionDestructionJobs(%+v) got error\n%v, wanted\n%v", tt.req, gErr, tt.err)
+				assert.True(errors.Is(gErr, tt.err), "ListKeyVersionDestructionJobs(%+v) got error\n%v, wanted\n%v", tt.req, gErr, tt.err)
 			} else {
 				require.NoError(gErr)
 			}
@@ -3105,7 +3100,7 @@ func TestDestroyKeyVersion(t *testing.T) {
 			got, gErr := s.DestroyKeyVersion(tt.authCtx, tt.req)
 			if tt.err != nil {
 				require.Error(gErr)
-				assert.True(stderrors.Is(gErr, tt.err), "DestroyKeyVersion(%+v) got error\n%v, wanted\n%v", tt.req, gErr, tt.err)
+				assert.True(errors.Is(gErr, tt.err), "DestroyKeyVersion(%+v) got error\n%v, wanted\n%v", tt.req, gErr, tt.err)
 			} else {
 				require.NoError(gErr)
 			}
