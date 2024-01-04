@@ -2253,6 +2253,8 @@ func TestRepository_ListCredentialLibraries_Pagination(t *testing.T) {
 		page4, ttime, err := repo.ListLibraries(ctx, cs.GetPublicId(), credential.WithLimit(2), credential.WithStartPageAfterItem(page3[0]))
 		require.NoError(err)
 		require.Empty(page4)
+		assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+		assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
 	}
 
 	emptyPage, ttime, err := repo.ListLibraries(ctx, css[2].GetPublicId(), credential.WithLimit(2))

@@ -57,7 +57,7 @@ func TestClient(t *testing.T) {
 	require.NoError(t, err)
 
 	var assertRequest func(*http.Request)
-	var writeResp func(http.ResponseWriter) = func(w http.ResponseWriter) {
+	writeResp := func(w http.ResponseWriter) {
 		w.WriteHeader(http.StatusNoContent)
 	}
 	mux := http.NewServeMux()

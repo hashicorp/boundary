@@ -17,7 +17,7 @@ import (
 )
 
 // stop will send a term signal to the daemon to shut down.
-func (s *StopCommand) stop(ctx context.Context) error {
+func (c *StopCommand) stop(ctx context.Context) error {
 	switch {
 	case util.IsNil(ctx):
 		return errors.New("Invalid parameter provided to stop: context is missing")

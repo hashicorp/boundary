@@ -15,29 +15,29 @@ const (
 )
 
 // TableName returns the table name for the auth token.
-func (s *AuthToken) TableName() string {
-	if s.tableName != "" {
-		return s.tableName
+func (at *AuthToken) TableName() string {
+	if at.tableName != "" {
+		return at.tableName
 	}
 	return defaultAuthTokenTableName
 }
 
 // SetTableName sets the table name.  If the caller attempts to
 // set the name to "" the name will be reset to the default name.
-func (s *AuthToken) SetTableName(n string) {
-	s.tableName = n
+func (at *AuthToken) SetTableName(n string) {
+	at.tableName = n
 }
 
 // TableName returns the table name for the authTokenView.
-func (s *authTokenView) TableName() string {
-	if s.tableName != "" {
-		return s.tableName
+func (atv *authTokenView) TableName() string {
+	if atv.tableName != "" {
+		return atv.tableName
 	}
 	return defaultAuthTokenViewName
 }
 
 // SetTableName sets the table name.  If the caller attempts to
 // set the name to "" the name will be reset to the default name.
-func (s *authTokenView) SetTableName(n string) {
-	s.tableName = n
+func (atv *authTokenView) SetTableName(n string) {
+	atv.tableName = n
 }

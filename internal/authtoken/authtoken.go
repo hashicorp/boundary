@@ -207,6 +207,6 @@ type deletedAuthToken struct {
 }
 
 // TableName returns the tablename to override the default gorm table name
-func (s *deletedAuthToken) TableName() string {
+func (at *deletedAuthToken) TableName() string {
 	return "auth_token_deleted"
 }
