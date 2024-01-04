@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam/store"
+	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
@@ -26,6 +27,8 @@ const (
 // an IAM resource.  Scopes are Global, Orgs and Projects.
 type Scope struct {
 	*store.Scope
+
+	StoragePolicyId string `json:"storage_policy_id,omitempty" gorm:"-"`
 
 	// tableName which is used to support overriding the table name in the db
 	// and making the Scope a ReplayableMessage
@@ -102,6 +105,16 @@ func (s *Scope) Clone() any {
 	cp := proto.Clone(s.Scope)
 	return &Scope{
 		Scope: cp.(*store.Scope),
+	}
+}
+
+// Oplog provides the oplog.Metadata for recording operations taken on a Scope.
+func (s *Scope) Oplog(op oplog.OpType) oplog.Metadata {
+	return oplog.Metadata{
+		"resource-public-id": []string{s.PublicId},
+		"resource-type":      []string{"scope"},
+		"op-type":            []string{op.String()},
+		"parent-id":          []string{s.ParentId},
 	}
 }
 
@@ -199,6 +212,16 @@ func (s *Scope) GetScope(ctx context.Context, r db.Reader) (*Scope, error) {
 		}
 		return &p, nil
 	}
+}
+
+// GetStoragePolicyId returns the storage policy id attached to the scope
+func (s *Scope) GetStoragePolicyId() string {
+	return s.StoragePolicyId
+}
+
+// SetStoragePolicyId sets the storage policy id
+func (s *Scope) SetStoragePolicyId(v string) {
+	s.StoragePolicyId = v
 }
 
 // TableName returns the tablename to override the default gorm table name
