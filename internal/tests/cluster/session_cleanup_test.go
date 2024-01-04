@@ -106,7 +106,9 @@ func testWorkerSessionCleanupSingle(burdenCase timeoutBurdenType) func(t *testin
 			dawdle.WithWbufSize(256),
 		)
 		require.NoError(err)
-		defer proxy.Close()
+		t.Cleanup(func() {
+			proxy.Close()
+		})
 		require.NotEmpty(t, proxy.ListenerAddr())
 
 		w1 := worker.NewTestWorker(t, &worker.TestWorkerOpts{
@@ -138,7 +140,7 @@ func testWorkerSessionCleanupSingle(burdenCase timeoutBurdenType) func(t *testin
 		// Create test server, update default port on target
 		ts := helper.NewTestTcpServer(t)
 		require.NotNil(t, ts)
-		defer ts.Close()
+		t.Cleanup(ts.Close)
 		tgt, err = tcl.Update(ctx, tgt.Item.Id, tgt.Item.Version, targets.WithTcpTargetDefaultPort(ts.Port()), targets.WithSessionConnectionLimit(-1))
 		require.NoError(err)
 		require.NotNil(tgt)
@@ -248,7 +250,9 @@ func testWorkerSessionCleanupMulti(burdenCase timeoutBurdenType) func(t *testing
 			dawdle.WithWbufSize(256),
 		)
 		require.NoError(err)
-		defer p1.Close()
+		t.Cleanup(func() {
+			p1.Close()
+		})
 		require.NotEmpty(t, p1.ListenerAddr())
 
 		// *************
@@ -261,7 +265,9 @@ func testWorkerSessionCleanupMulti(burdenCase timeoutBurdenType) func(t *testing
 			dawdle.WithWbufSize(256),
 		)
 		require.NoError(err)
-		defer p2.Close()
+		t.Cleanup(func() {
+			p2.Close()
+		})
 		require.NotEmpty(t, p2.ListenerAddr())
 
 		// ************
@@ -303,7 +309,7 @@ func testWorkerSessionCleanupMulti(burdenCase timeoutBurdenType) func(t *testing
 		// Create test server, update default port on target
 		ts := helper.NewTestTcpServer(t)
 		require.NotNil(ts)
-		defer ts.Close()
+		t.Cleanup(ts.Close)
 		tgt, err = tcl.Update(ctx, tgt.Item.Id, tgt.Item.Version, targets.WithTcpTargetDefaultPort(ts.Port()), targets.WithSessionConnectionLimit(-1))
 		require.NoError(err)
 		require.NotNil(tgt)

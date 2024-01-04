@@ -94,8 +94,14 @@ func (h *httpFlags) buildArgs(c *Command, port, ip, addr string) ([]string, erro
 		if host != "" {
 			host = strings.TrimSuffix(host, "/")
 			args = append(args, "-H", fmt.Sprintf("Host: %s", host))
-			args = append(args, "--resolve", fmt.Sprintf("%s:%s:%s", host, port, ip))
-			uri = fmt.Sprintf("%s://%s:%s", h.flagHttpScheme, host, port)
+			switch port == "" {
+			case false:
+				args = append(args, "--resolve", fmt.Sprintf("%s:%s:%s", host, port, ip))
+				uri = fmt.Sprintf("%s://%s:%s", h.flagHttpScheme, host, port)
+			default:
+				args = append(args, "--resolve", fmt.Sprintf("%s:%s", host, ip))
+				uri = fmt.Sprintf("%s://%s", h.flagHttpScheme, host)
+			}
 		} else {
 			uri = fmt.Sprintf("%s://%s", h.flagHttpScheme, addr)
 		}
