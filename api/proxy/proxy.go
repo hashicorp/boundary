@@ -22,9 +22,9 @@ import (
 	ua "go.uber.org/atomic"
 )
 
-// Note: Much of the proxying behavior is tested in internal/tests/api/proxy and
-// other tests but those cannot be included in this package as they would create
-// a dependency on the main module from this module.
+// Note: Much of the proxying behavior is tested in various tests within
+// internal/tests but those cannot be included in this package as they would
+// create a dependency on the main module from this module.
 
 // This can take more time than you might expect, especially if a lot of these
 // are sent at once, so the timeout is quite long. We could allow a custom
@@ -50,6 +50,7 @@ type ClientProxy struct {
 	clientTlsConf           *tls.Config
 	connWg                  *sync.WaitGroup
 	started                 *atomic.Bool
+	skipSessionTeardown     bool
 }
 
 // New creates a new client proxy. The given context should be cancelable; once
@@ -95,6 +96,7 @@ func New(ctx context.Context, authzToken string, opt ...Option) (*ClientProxy, e
 		listenAddrPort:          opts.WithListenAddrPort,
 		callerConnectionsLeftCh: opts.WithConnectionsLeftCh,
 		started:                 new(atomic.Bool),
+		skipSessionTeardown:     opts.WithSkipSessionTeardown,
 	}
 
 	if opts.WithListener != nil {
@@ -308,7 +310,7 @@ func (p *ClientProxy) Start() (retErr error) {
 		sendSessionCancel = true
 	}
 
-	if !sendSessionCancel {
+	if !sendSessionCancel || p.skipSessionTeardown {
 		return nil
 	}
 

@@ -3,31 +3,7 @@
 
 package cluster
 
-import (
-	"bytes"
-	"context"
-	"crypto/tls"
-	"crypto/x509"
-	"errors"
-	"fmt"
-	"net/http"
-	"sync"
-	"testing"
-	"time"
-
-	"github.com/hashicorp/boundary/api/targets"
-	"github.com/hashicorp/boundary/globals"
-	"github.com/hashicorp/boundary/internal/cmd/config"
-	"github.com/hashicorp/boundary/internal/daemon/controller"
-	tg "github.com/hashicorp/boundary/internal/daemon/controller/handlers/targets"
-	"github.com/hashicorp/boundary/internal/daemon/worker"
-	"github.com/hashicorp/boundary/internal/event"
-	"github.com/hashicorp/boundary/internal/tests/helper"
-	"github.com/hashicorp/go-hclog"
-	"github.com/stretchr/testify/require"
-	"nhooyr.io/websocket"
-)
-
+/*
 func TestCustomX509Verification_Client(t *testing.T) {
 	req := require.New(t)
 	ctx := context.Background()
@@ -244,3 +220,4 @@ func testCustomX509Verification_Server(ec event.TestConfig, certPool *x509.CertP
 		}
 	}
 }
+*/

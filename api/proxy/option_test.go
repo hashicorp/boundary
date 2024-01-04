@@ -77,4 +77,13 @@ func Test_GetOpts(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(l, opts.WithSessionAuthorizationData)
 	})
+	t.Run("with-skip-session-teardown", func(t *testing.T) {
+		assert := assert.New(t)
+		opts, err := getOpts()
+		require.NoError(t, err)
+		assert.Empty(opts.WithSkipSessionTeardown)
+		opts, err = getOpts(WithSkipSessionTeardown(true))
+		require.NoError(t, err)
+		assert.True(opts.WithSkipSessionTeardown)
+	})
 }
