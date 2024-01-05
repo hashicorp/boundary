@@ -72,6 +72,8 @@ var (
 	// TODO: get this from action registry
 	scopeCollectionTypeMapMap = map[string]map[resource.Type]action.ActionSet{
 		scope.Global.String(): {
+			// TODO: uncomment this line.
+			// resource.Alias:            aliases.CollectionActions,
 			resource.AuthMethod:       authmethods.CollectionActions,
 			resource.StorageBucket:    storage_buckets.CollectionActions,
 			resource.AuthToken:        authtokens.CollectionActions,

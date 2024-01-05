@@ -124,6 +124,9 @@ const (
 	ConnectionRecordingPrefix = "cr"
 	// ChannelRecordingPrefix is the prefix for channel recordings
 	ChannelRecordingPrefix = "chr"
+
+	// TargetAliasPrefix is the prefix for target aliases
+	TargetAliasPrefix = "alt"
 )
 
 type ResourceInfo struct {
@@ -209,6 +212,11 @@ var prefixToResourceType = map[string]ResourceInfo{
 	},
 	StaticCredentialStorePreviousPrefix: {
 		Type:    resource.CredentialStore,
+		Subtype: UnknownSubtype,
+	},
+
+	TargetAliasPrefix: {
+		Type:    resource.Alias,
 		Subtype: UnknownSubtype,
 	},
 
