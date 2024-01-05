@@ -207,23 +207,6 @@ func (r *Repository) LookupAlias(ctx context.Context, id string, opt ...Option) 
 	return a, nil
 }
 
-// LookupAliasByValue returns the Alias for the provided value. Returns nil, nil
-// if no Alias is found for the provided value.
-func (r *Repository) LookupAliasByValue(ctx context.Context, value string, opt ...Option) (*Alias, error) {
-	const op = "target.(Repository).LookupAliasByValue"
-	if value == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "value is empty")
-	}
-	a := allocAlias()
-	if err := r.reader.LookupWhere(ctx, a, "value = $1", []any{value}); err != nil {
-		if errors.IsNotFoundError(err) {
-			return nil, nil
-		}
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %q", value)))
-	}
-	return a, nil
-}
-
 // DeleteAlias deletes id from the repository returning a count of the
 // number of records deleted.
 func (r *Repository) DeleteAlias(ctx context.Context, id string, opt ...Option) (int, error) {
