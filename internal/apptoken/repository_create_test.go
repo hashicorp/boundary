@@ -129,6 +129,20 @@ func Test_CreateAppToken(t *testing.T) {
 			},
 			wantErrContains: "missing grants",
 		},
+		{
+			name:      "invalid-grant",
+			scopeId:   testOrg.GetPublicId(),
+			expTime:   testExp,
+			createdBy: testUserHistoryId,
+			grants: []string{
+				"id=type=actions=read",
+			},
+			opts: []apptoken.Option{
+				apptoken.WithName(testCtx, "test-apptoken"),
+				apptoken.WithDescription(testCtx, "test-description"),
+			},
+			wantErrContains: "unable to parse grant string",
+		},
 	}
 	for _, tc := range tests {
 		tc := tc
