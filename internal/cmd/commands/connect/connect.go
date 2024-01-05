@@ -380,14 +380,16 @@ func (c *Command) Run(args []string) (retCode int) {
 	}
 
 	var listenAddr netip.AddrPort
-	if c.flagListenAddr != "" {
-		parsedAddr, err := netip.ParseAddr(c.flagListenAddr)
-		if err != nil {
-			c.PrintCliError(fmt.Errorf("Error parsing listen address: %w", err))
-			return base.CommandCliError
-		}
-		listenAddr = netip.AddrPortFrom(parsedAddr, uint16(c.flagListenPort))
+	var addr netip.Addr
+	if c.flagListenAddr == "" {
+		c.flagListenAddr = "127.0.0.1"
 	}
+	addr, err := netip.ParseAddr(c.flagListenAddr)
+	if err != nil {
+		c.PrintCliError(fmt.Errorf("Error parsing listen address: %w", err))
+		return base.CommandCliError
+	}
+	listenAddr = netip.AddrPortFrom(addr, uint16(c.flagListenPort))
 
 	connsLeftCh := make(chan int32)
 	apiProxyOpts := []apiproxy.Option{apiproxy.WithConnectionsLeftCh(connsLeftCh)}
