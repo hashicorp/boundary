@@ -75,6 +75,60 @@ func Test_CreateAppToken(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:      "missing-scope-id",
+			scopeId:   "",
+			expTime:   testExp,
+			createdBy: testUserHistoryId,
+			grants: []string{
+				"id=*;type=*;actions=read",
+			},
+			opts: []apptoken.Option{
+				apptoken.WithName(testCtx, "test-apptoken"),
+				apptoken.WithDescription(testCtx, "test-description"),
+			},
+			wantErrContains: "missing scope id",
+		},
+		{
+			name:      "missing-created-by-user-id",
+			scopeId:   testOrg.GetPublicId(),
+			expTime:   testExp,
+			createdBy: "",
+			grants: []string{
+				"id=*;type=*;actions=read",
+			},
+			opts: []apptoken.Option{
+				apptoken.WithName(testCtx, "test-apptoken"),
+				apptoken.WithDescription(testCtx, "test-description"),
+			},
+			wantErrContains: "missing created by user id",
+		},
+		{
+			name:      "missing-expiration-time",
+			scopeId:   testOrg.GetPublicId(),
+			expTime:   time.Time{},
+			createdBy: testUserHistoryId,
+			grants: []string{
+				"id=*;type=*;actions=read",
+			},
+			opts: []apptoken.Option{
+				apptoken.WithName(testCtx, "test-apptoken"),
+				apptoken.WithDescription(testCtx, "test-description"),
+			},
+			wantErrContains: "missing expiration time",
+		},
+		{
+			name:      "missing-grants",
+			scopeId:   testOrg.GetPublicId(),
+			expTime:   testExp,
+			createdBy: testUserHistoryId,
+			grants:    []string{},
+			opts: []apptoken.Option{
+				apptoken.WithName(testCtx, "test-apptoken"),
+				apptoken.WithDescription(testCtx, "test-description"),
+			},
+			wantErrContains: "missing grants",
+		},
 	}
 	for _, tc := range tests {
 		tc := tc
