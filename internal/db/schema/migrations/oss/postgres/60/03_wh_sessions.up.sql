@@ -216,7 +216,8 @@ begin;
   create trigger wh_update_session_connection_accumulating_fact after insert on session_host_set_host
     for each row execute procedure wh_upsert_host();
 
-  -- replaced function in 16/04_wh_credential_dimension.up.sql
+  -- Replaces function from 16/04_wh_credential_dimension.up.sql
+  -- Replaced in 82/02_wh_upsert_user_refact.up.sql
   create or replace function wh_insert_session() returns trigger
   as $$
   declare
