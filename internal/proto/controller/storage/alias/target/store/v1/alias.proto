@@ -1,0 +1,59 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
+syntax = "proto3";
+
+package controller.storage.alias.target.store.v1;
+
+import "controller/storage/timestamp/v1/timestamp.proto";
+
+option go_package = "github.com/hashicorp/boundary/internal/alias/target/store;store";
+
+message Alias {
+  // public_id is used to access the auth token via an API
+  // @inject_tag: gorm:"primary_key"
+  string public_id = 1;
+
+  // The scope_id of the owning scope and must be set.
+  // @inject_tag: `gorm:"not_null"`
+  string scope_id = 2;
+
+  // create_time from the RDBMS
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp create_time = 3;
+
+  // update_time from the RDBMS
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp update_time = 4;
+
+  // name is optional
+  // @inject_tag: `gorm:"default:null"`
+  string name = 5;
+
+  // description is optional.
+  // @inject_tag: `gorm:"default:null"`
+  string description = 6;
+
+  // version allows optimistic locking of the resource
+  // @inject_tag: `gorm:"default:null"`
+  uint32 version = 7;
+
+  // value is required and is the value of the value.
+  // @inject_tag: `gorm:"default:null"`
+  string value = 8;
+
+  // destination_id is optional and is the ID of the target this alias points
+  // to.
+  // @inject_tag: `gorm:"default:null"`
+  string destination_id = 9;
+
+  // host_id is optional and can only be set if destination_id is also set.
+  // The value of this field is used when performing an authorize-session
+  // action using this alias and specifies the host id to which the session
+  // is authorized on the target if possible. The host id this points does not
+  // need to be associated with the target yet nor even exist. If that is the
+  // case then the authorize-session action will return an error when using
+  // this alias.
+  // @inject_tag: `gorm:"default:null"`
+  string host_id = 10;
+}

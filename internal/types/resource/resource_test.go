@@ -92,6 +92,11 @@ func Test_Resource(t *testing.T) {
 			topLevelType: true,
 		},
 		{
+			typeString:   "alias",
+			want:         Alias,
+			topLevelType: true,
+		},
+		{
 			typeString:   "session",
 			want:         Session,
 			topLevelType: true,

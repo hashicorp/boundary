@@ -34,6 +34,7 @@ const (
 	CredentialLibrary
 	Credential
 	StorageBucket
+	Alias
 	// NOTE: When adding a new type, be sure to update:
 	//
 	// * The Grant.validateType function and test
@@ -72,6 +73,7 @@ func (r Type) String() string {
 		"credential-library",
 		"credential",
 		"storage-bucket",
+		"alias",
 	}[r]
 }
 
@@ -88,6 +90,8 @@ func FromPlural(s string) (Type, bool) {
 	switch s {
 	case "credential-libraries":
 		return CredentialLibrary, true
+	case "aliases":
+		return Alias, true
 	default:
 		t, ok := Map[strings.TrimSuffix(s, "s")]
 		return t, ok
@@ -117,6 +121,7 @@ var Map = map[string]Type{
 	CredentialLibrary.String(): CredentialLibrary,
 	Credential.String():        Credential,
 	StorageBucket.String():     StorageBucket,
+	Alias.String():             Alias,
 }
 
 // Parent returns the parent type for a given type; if there is no parent, it
@@ -159,6 +164,7 @@ func TopLevelType(typ Type) bool {
 		Target,
 		User,
 		StorageBucket,
+		Alias,
 		Worker:
 		return true
 	}
