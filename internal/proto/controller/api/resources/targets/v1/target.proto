@@ -371,6 +371,9 @@ message SessionAuthorization {
   // Output only. The marshaled SessionAuthorizationData message containing all information that the proxy needs.
   string authorization_token = 90 [json_name = "authorization_token"]; // @gotags: `class:"secret"`
 
+  // Output only. The connection limit being applied to this session. -1 means unlimited. This is not actually enforced on the client side but it provides for better listener handling by including it.
+  int32 connection_limit = 95 [json_name = "connection_limit"];
+
   // Output only. The endpoint address that the worker will connect to, useful for setting TLS parameters.
   string endpoint = 100; // @gotags: `class:"public"`
 

@@ -20,6 +20,7 @@ type SessionAuthorization struct {
 	HostId             string               `json:"host_id,omitempty"`
 	Type               string               `json:"type,omitempty"`
 	AuthorizationToken string               `json:"authorization_token,omitempty"`
+	ConnectionLimit    int32                `json:"connection_limit,omitempty"`
 	Endpoint           string               `json:"endpoint,omitempty"`
 	EndpointPort       uint32               `json:"endpoint_port,omitempty"`
 	Expiration         time.Time            `json:"expiration,omitempty"`

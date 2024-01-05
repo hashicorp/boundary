@@ -22,7 +22,6 @@ import (
 	apiproxy "github.com/hashicorp/boundary/api/proxy"
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/internal/cmd/base"
-	targetspb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
 	"go.uber.org/atomic"
@@ -84,8 +83,7 @@ type Command struct {
 
 	Func string
 
-	sessionAuthz     *targets.SessionAuthorization
-	sessionAuthzData *targetspb.SessionAuthorizationData
+	sessionAuthz *targets.SessionAuthorization
 
 	execCmdReturnValue *atomic.Int32
 	proxyCtx           context.Context
@@ -458,11 +456,11 @@ func (c *Command) Run(args []string) (retCode int) {
 			}
 		}
 		sessInfo := SessionInfo{
-			Protocol:        c.sessionAuthzData.GetType(),
+			Protocol:        c.sessionAuthz.Type,
 			Address:         clientProxyHost,
 			Expiration:      clientProxy.SessionExpiration(),
-			ConnectionLimit: c.sessionAuthzData.GetConnectionLimit(),
-			SessionId:       c.sessionAuthzData.GetSessionId(),
+			ConnectionLimit: c.sessionAuthz.ConnectionLimit,
+			SessionId:       c.sessionAuthz.SessionId,
 			Credentials:     creds,
 		}
 		if clientProxyPort != "" {

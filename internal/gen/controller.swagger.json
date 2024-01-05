@@ -6428,6 +6428,12 @@
           "description": "Output only. The marshaled SessionAuthorizationData message containing all information that the proxy needs.",
           "readOnly": true
         },
+        "connection_limit": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Output only. The connection limit being applied to this session. -1 means unlimited. This is not actually enforced on the client side but it provides for better listener handling by including it.",
+          "readOnly": true
+        },
         "endpoint": {
           "type": "string",
           "description": "Output only. The endpoint address that the worker will connect to, useful for setting TLS parameters.",
