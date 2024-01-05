@@ -898,6 +898,19 @@ func (lib *sshCertIssuingCredentialLibrary) retrieveCredential(ctx context.Conte
 		return nil, errors.Wrap(ctx, err, op)
 	}
 
+	// Template the key ID if it's not empty
+	keyId := lib.KeyId
+	if keyId != "" {
+		tplate, err = template.New(ctx, lib.KeyId)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		keyId, err = tplate.Generate(ctx, opts.WithTemplateData)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+	}
+
 	var criticalOptions map[string]string
 	if lib.CriticalOptions != nil {
 		if json.Unmarshal(lib.CriticalOptions, &criticalOptions) != nil {
@@ -923,7 +936,7 @@ func (lib *sshCertIssuingCredentialLibrary) retrieveCredential(ctx context.Conte
 		CriticalOptions: criticalOptions,
 		Extensions:      extensions,
 		TTL:             lib.Ttl,
-		KeyId:           lib.KeyId,
+		KeyId:           keyId,
 	}
 
 	var privateKey credential.PrivateKey

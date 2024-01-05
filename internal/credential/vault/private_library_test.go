@@ -1268,6 +1268,7 @@ func TestRepository_sshCertIssuingCredentialLibrary_retrieveCredential(t *testin
 	tests := []struct {
 		name       string
 		username   string
+		keyId      string
 		vaulthPath string
 		opts       []Option
 		retOpts    []credential.Option
@@ -1331,6 +1332,18 @@ func TestRepository_sshCertIssuingCredentialLibrary_retrieveCredential(t *testin
 			vaulthPath: "ssh/issue/boundary",
 			opts:       []Option{WithKeyType(KeyTypeEcdsa), WithKeyBits(256)},
 			retOpts:    []credential.Option{credential.WithTemplateData(template.Data{User: template.User{Name: util.Pointer("revenge-of-the-template")}})},
+		},
+		{
+			name:     "vault issue ec(256) cert with template key ID",
+			username: "username-7-because-789",
+			keyId:    `{{truncateFrom .Account.Email "@"}}`,
+			expected: map[string]any{
+				"key_id":           "rise-of-the-template",
+				"valid_principals": []string{"username-7-because-789"},
+			},
+			vaulthPath: "ssh/issue/boundary",
+			opts:       []Option{WithKeyType(KeyTypeEcdsa), WithKeyBits(256)},
+			retOpts:    []credential.Option{credential.WithTemplateData(template.Data{Account: template.Account{Email: util.Pointer("rise-of-the-template@foobar.com")}})},
 		},
 		{
 			name:     "vault issue ec(384) cert with disallowed extension",
