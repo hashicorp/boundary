@@ -25,11 +25,11 @@ begin;
 
   alter table recording_session add column delete_after rec_timestamp
     constraint delete_after_null_or_after_retain_until
-    check(delete_after >= retain_until);
+    check(delete_after is null or delete_after >= retain_until);
 
   alter table recording_session add column delete_time rec_timestamp
     constraint delete_time_null_or_after_retain_until
-    check(delete_time >= retain_until);
+    check(delete_time is null or delete_time >= retain_until);
 
   alter table recording_session add column target_org_id wt_public_id null
     references iam_scope_org(scope_id)
@@ -176,8 +176,8 @@ begin;
       rs.host_hst_id = shh.history_id
     left join host_plugin_host_hst as hph on
       rs.host_hst_id = hph.history_id
-    where (rs.delete_after is null or rs.delete_after < now())
-      and (rs.delete_time is null or rs.delete_time < now());
+    where (rs.delete_after is null or rs.delete_after > now())
+      and (rs.delete_time is null or rs.delete_time > now());
   comment on view session_recording_aggregate is
     'session_recording_aggregate contains the session recording resource with its storage bucket scope info and historical user info.';
 
