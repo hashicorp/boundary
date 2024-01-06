@@ -77,8 +77,8 @@ func (h *httpFlags) defaultExec() string {
 func (h *httpFlags) buildArgs(c *Command, port, ip, addr string) ([]string, error) {
 	var args []string
 	host := h.flagHttpHost
-	if host == "" && c.sessionAuthz.Endpoint != "" {
-		hostUrl := c.sessionAuthz.Endpoint
+	if host == "" && c.sessInfo.Endpoint != "" {
+		hostUrl := c.sessInfo.Endpoint
 		u, err := url.Parse(hostUrl)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing endpoint URL: %w", err)

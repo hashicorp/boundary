@@ -37,6 +37,10 @@ type SessionInfo struct {
 	Expiration      time.Time                    `json:"expiration"`
 	ConnectionLimit int32                        `json:"connection_limit"`
 	SessionId       string                       `json:"session_id"`
+	Endpoint        string                       `json:"-"`
+	Type            string                       `json:"-"`
+	TargetId        string                       `json:"-"`
+	HostId          string                       `json:"-"`
 	Credentials     []*targets.SessionCredential `json:"credentials,omitempty"`
 }
 
@@ -83,7 +87,7 @@ type Command struct {
 
 	Func string
 
-	sessionAuthz *targets.SessionAuthorization
+	sessInfo SessionInfo
 
 	execCmdReturnValue *atomic.Int32
 	proxyCtx           context.Context
@@ -329,10 +333,25 @@ func (c *Command) Run(args []string) (retCode int) {
 		if authzString[0] == '{' {
 			// Attempt to decode the JSON output of an authorize-session call
 			// and pull the token out of there
-			c.sessionAuthz = new(targets.SessionAuthorization)
-			if err := json.Unmarshal([]byte(authzString), c.sessionAuthz); err == nil {
-				authzString = c.sessionAuthz.AuthorizationToken
+			sa := new(targets.SessionAuthorization)
+			if err := json.Unmarshal([]byte(authzString), sa); err == nil {
+				authzString = sa.AuthorizationToken
 			}
+		}
+
+		sad, err := targets.SessionAuthorization{AuthorizationToken: authzString}.GetSessionAuthorizationData()
+		if err != nil {
+			c.PrintCliError(fmt.Errorf("Error decoding session authorization data: %w", err))
+			return base.CommandUserError
+		}
+		c.sessInfo = SessionInfo{
+			Protocol:        sad.Type,
+			ConnectionLimit: sad.ConnectionLimit,
+			SessionId:       sad.SessionId,
+			Endpoint:        sad.Endpoint,
+			Type:            sad.Type,
+			TargetId:        sad.TargetId,
+			HostId:          sad.HostId,
 		}
 
 	default:
@@ -373,8 +392,19 @@ func (c *Command) Run(args []string) (retCode int) {
 			c.PrintCliError(fmt.Errorf("Error trying to authorize a session against target: %w", err))
 			return base.CommandCliError
 		}
-		c.sessionAuthz = sar.GetItem().(*targets.SessionAuthorization)
-		authzString = c.sessionAuthz.AuthorizationToken
+
+		sa := sar.GetItem().(*targets.SessionAuthorization)
+		c.sessInfo = SessionInfo{
+			Protocol:        sa.Type,
+			ConnectionLimit: sa.ConnectionLimit,
+			SessionId:       sa.SessionId,
+			Endpoint:        sa.Endpoint,
+			Type:            sa.Type,
+			TargetId:        sa.TargetId,
+			HostId:          sa.HostId,
+			Credentials:     sa.Credentials,
+		}
+		authzString = sa.AuthorizationToken
 	}
 
 	var listenAddr netip.AddrPort
@@ -403,6 +433,7 @@ func (c *Command) Run(args []string) (retCode int) {
 		c.PrintCliError(fmt.Errorf("Could not create client proxy: %w", err))
 		return base.CommandCliError
 	}
+	c.sessInfo.Expiration = clientProxy.SessionExpiration()
 
 	// Why use channels instead of a WaitGroup? It turns out that in some
 	// failure conditions, especially if an exec is used and the exec'd command
@@ -439,11 +470,6 @@ func (c *Command) Run(args []string) (retCode int) {
 		// The only way a user will be able to connect to the session is by
 		// connecting directly to the port and address we report to them here.
 
-		var creds []*targets.SessionCredential
-		if c.sessionAuthz != nil && len(c.sessionAuthz.Credentials) > 0 {
-			creds = c.sessionAuthz.Credentials
-		}
-
 		proxyAddr := clientProxy.ListenerAddress(context.Background())
 		var clientProxyHost, clientProxyPort string
 		clientProxyHost, clientProxyPort, err = net.SplitHostPort(proxyAddr)
@@ -455,16 +481,10 @@ func (c *Command) Run(args []string) (retCode int) {
 				return base.CommandCliError
 			}
 		}
-		sessInfo := SessionInfo{
-			Protocol:        c.sessionAuthz.Type,
-			Address:         clientProxyHost,
-			Expiration:      clientProxy.SessionExpiration(),
-			ConnectionLimit: c.sessionAuthz.ConnectionLimit,
-			SessionId:       c.sessionAuthz.SessionId,
-			Credentials:     creds,
-		}
+		c.sessInfo.Address = clientProxyHost
+
 		if clientProxyPort != "" {
-			sessInfo.Port, err = strconv.Atoi(clientProxyPort)
+			c.sessInfo.Port, err = strconv.Atoi(clientProxyPort)
 			if err != nil {
 				c.PrintCliError(fmt.Errorf("error parsing listener port: %w", err))
 				return base.CommandCliError
@@ -472,9 +492,9 @@ func (c *Command) Run(args []string) (retCode int) {
 		}
 		switch base.Format(c.UI) {
 		case "table":
-			c.UI.Output(generateSessionInfoTableOutput(sessInfo))
+			c.UI.Output(generateSessionInfoTableOutput(c.sessInfo))
 		case "json":
-			out, err := json.Marshal(&sessInfo)
+			out, err := json.Marshal(&c.sessInfo)
 			if err != nil {
 				c.PrintCliError(fmt.Errorf("error marshaling session information: %w", err))
 				return base.CommandCliError
@@ -597,9 +617,9 @@ func (c *Command) handleExec(clientProxy *apiproxy.ClientProxy, passthroughArgs 
 	var argsErr error
 
 	var creds apiproxy.Credentials
-	if c.sessionAuthz != nil {
+	if len(c.sessInfo.Credentials) > 0 {
 		var err error
-		creds, err = apiproxy.ParseCredentials(c.sessionAuthz.Credentials)
+		creds, err = apiproxy.ParseCredentials(c.sessInfo.Credentials)
 		if err != nil {
 			c.PrintCliError(fmt.Errorf("Error interpreting secret: %w", err))
 			c.execCmdReturnValue.Store(int32(3))

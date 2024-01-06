@@ -60,7 +60,7 @@ func (s *sshFlags) buildArgs(c *Command, port, ip, _ string, creds apiproxy.Cred
 	retCreds = creds
 
 	var tryConsume bool
-	switch string(target.SubtypeFromId(c.sessionAuthz.TargetId)) {
+	switch string(target.SubtypeFromId(c.sessInfo.TargetId)) {
 	case "tcp":
 		tryConsume = true
 	}
@@ -72,19 +72,19 @@ func (s *sshFlags) buildArgs(c *Command, port, ip, _ string, creds apiproxy.Cred
 			args = append(args, "-p", port)
 		}
 
-		switch c.sessionAuthz.Type {
+		switch c.sessInfo.Type {
 		case "tcp":
 			// SSH detects a host key change when the localhost proxy port changes
 			// This uses the host ID instead of 'localhost:port'.
-			if len(c.sessionAuthz.HostId) > 0 {
-				args = append(args, "-o", fmt.Sprintf("HostKeyAlias=%s", c.sessionAuthz.HostId))
+			if len(c.sessInfo.HostId) > 0 {
+				args = append(args, "-o", fmt.Sprintf("HostKeyAlias=%s", c.sessInfo.HostId))
 			} else {
 				// In cases where the Target has no host sources and has an
 				// address directly attached to it, we have no Host Id. Use
 				// Target Id instead. Only one address can ever be present on a
 				// target, and no other host sources may be present at the same
 				// time, so this is a reasonable alternative.
-				args = append(args, "-o", fmt.Sprintf("HostKeyAlias=%s", c.sessionAuthz.TargetId))
+				args = append(args, "-o", fmt.Sprintf("HostKeyAlias=%s", c.sessInfo.TargetId))
 			}
 		case "ssh":
 			args = append(args, "-o", "NoHostAuthenticationForLocalhost=yes")
