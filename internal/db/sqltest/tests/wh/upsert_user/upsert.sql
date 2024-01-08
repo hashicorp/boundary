@@ -9,7 +9,7 @@ begin;
   select wtt_load('widgets', 'iam', 'kms', 'auth', 'hosts', 'targets');
 
   -- ensure no existing dimensions
-  select is(count(*), 0::bigint) from wh_user_dimension where user_id = 'u_____walter';
+  select is(count(*), 0::bigint) from wh_user_dimension where user_id = 'u_____wilson';
 
   insert into wh_user_dimension
     (
@@ -25,8 +25,8 @@ begin;
   values
     (
       'wud_____1',
-      'u_____walter',           'Walter',                        'This is Walter',
-      'apa___walter',           'password auth account',         'walter',                      'Account for Walter',
+      'u_____wilson',           'Wilson',                        'This is Wilson',
+      'apa___wilson',           'password auth account',         'wilson',                      'Account for Wilson',
       'None',                   'None',                          'None',
       'apm___widget',           'password auth method',          'Widget Auth Password',        'None',
       'None',
@@ -34,11 +34,11 @@ begin;
       'Current',                '2021-07-21T12:01'::timestamptz, 'infinity'::timestamptz
     );
 
-  select lives_ok($$select wh_upsert_user('u_____walter', 'tok___walter')$$);
+  select lives_ok($$select wh_upsert_user('tok___wilson')$$);
 
   -- upsert should insert a user_dimension
-  select is(count(*), 2::bigint) from wh_user_dimension where user_id = 'u_____walter';
-  select is(count(*), 1::bigint) from wh_user_dimension where user_id = 'u_____walter' and current_row_indicator = 'Current';
+  select is(count(*), 2::bigint) from wh_user_dimension where user_id = 'u_____wilson';
+  select is(count(*), 1::bigint) from wh_user_dimension where user_id = 'u_____wilson' and current_row_indicator = 'Current';
 
   select * from finish();
 rollback;

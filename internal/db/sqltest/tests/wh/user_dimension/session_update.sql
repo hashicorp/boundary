@@ -8,8 +8,10 @@ begin;
 
   select wtt_load('widgets', 'iam', 'kms', 'auth', 'hosts', 'targets');
 
-  -- ensure no existing dimensions
-  select is(count(*), 0::bigint) from wh_user_dimension where user_organization_id = 'o_____widget';
+  -- existing dimension via auth tokens
+  select is(count(*), 4::bigint)
+    from wh_user_dimension
+   where user_id = 'u_____walter';
 
   -- insert first session, should result in a new user dimension
   insert into session
@@ -21,7 +23,9 @@ begin;
   values
     ('s1____walter', 's___1wb-sths', 'h_____wb__01');
 
-  select is(count(*), 1::bigint) from wh_user_dimension where user_organization_id = 'o_____widget';
+  select is(count(*), 4::bigint)
+    from wh_user_dimension
+   where user_id = 'u_____walter';
 
   -- update session, should not impact wh_user_dimension
   update session set
@@ -29,7 +33,9 @@ begin;
   where
     public_id = 's1____walter';
 
-  select is(count(*), 1::bigint) from wh_user_dimension where user_organization_id = 'o_____widget';
+  select is(count(*), 4::bigint)
+    from wh_user_dimension
+   where user_id = 'u_____walter';
 
   select * from finish();
 rollback;
