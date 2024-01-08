@@ -199,13 +199,13 @@ begin;
     ('p____gcolors', 'hc__st_____g', 'Green Color Static Catalog');
 
   insert into auth_token
-    (key_id,         auth_account_id, public_id,      token)
+    (key_id,         auth_account_id, public_id,      token,                 expiration_time,            status)
   values
-    ('kdkv__colors', 'apa____clare',  'tok____clare', 'tok____clare'::bytea),
-    ('kdkv__colors', 'apa____cindy',  'tok____cindy', 'tok____cindy'::bytea),
-    ('kdkv__colors', 'apa____ciara',  'tok____ciara', 'tok____ciara'::bytea),
-    ('kdkv__colors', 'apa____carly',  'tok____carly', 'tok____carly'::bytea),
-    ('kdkv__colors', 'apa_____cora',  'tok_____cora', 'tok_____cora'::bytea);
+    ('kdkv__colors', 'apa____clare',  'tok____clare', 'tok____clare'::bytea, now() + interval '15 days', 'token issued'),
+    ('kdkv__colors', 'apa____cindy',  'tok____cindy', 'tok____cindy'::bytea, now() + interval '15 days', 'token issued'),
+    ('kdkv__colors', 'apa____ciara',  'tok____ciara', 'tok____ciara'::bytea, now() + interval '15 days', 'auth token pending'),
+    ('kdkv__colors', 'apa____carly',  'tok____carly', 'tok____carly'::bytea, now() + interval '15 days', 'token issued'),
+    ('kdkv__colors', 'apa_____cora',  'tok_____cora', 'tok_____cora'::bytea, now() + interval '15 days', 'auth token pending');
 
   insert into static_host
     (catalog_id,     public_id,      address)
