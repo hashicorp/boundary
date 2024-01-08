@@ -19,8 +19,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var _ storage.Writer = (*testFile)(nil)
-var _ hash.Hash = (*testHash)(nil)
+var (
+	_ storage.Writer = (*testFile)(nil)
+	_ hash.Hash      = (*testHash)(nil)
+)
 
 type testFile struct {
 	b      strings.Builder
