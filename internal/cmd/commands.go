@@ -23,6 +23,7 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/commands/hostsetscmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/logout"
 	"github.com/hashicorp/boundary/internal/cmd/commands/managedgroupscmd"
+	"github.com/hashicorp/boundary/internal/cmd/commands/policiescmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/rolescmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/scopescmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/server"
@@ -778,6 +779,54 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Command: base.NewCommand(ui),
 				Func:    "update",
 			}),
+
+		"policies": func() (cli.Command, error) {
+			return &policiescmd.Command{
+				Command: base.NewCommand(ui, opts...),
+			}, nil
+		},
+		"policies read": func() (cli.Command, error) {
+			return &policiescmd.Command{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "read",
+			}, nil
+		},
+		"policies delete": func() (cli.Command, error) {
+			return &policiescmd.Command{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "delete",
+			}, nil
+		},
+		"policies list": func() (cli.Command, error) {
+			return &policiescmd.Command{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "list",
+			}, nil
+		},
+		"policies create": func() (cli.Command, error) {
+			return &policiescmd.Command{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "create",
+			}, nil
+		},
+		"policies create storage": func() (cli.Command, error) {
+			return &policiescmd.StorageCommand{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "create",
+			}, nil
+		},
+		"policies update": func() (cli.Command, error) {
+			return &policiescmd.Command{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "update",
+			}, nil
+		},
+		"policies update storage": func() (cli.Command, error) {
+			return &policiescmd.StorageCommand{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "update",
+			}, nil
+		},
 
 		"read": func() (cli.Command, error) {
 			return &genericcmd.Command{

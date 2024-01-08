@@ -530,6 +530,32 @@ var inputStructs = map[string][]*cmdInfo{
 			VersionedActions:    []string{"update"},
 		},
 	},
+	"policies": {
+		{
+			ResourceType:     resource.Policy.String(),
+			Pkg:              "policies",
+			StdActions:       []string{"read", "delete", "list"},
+			HasExtraHelpFunc: true,
+			HasName:          true,
+			HasDescription:   true,
+			Container:        "Scope",
+		},
+		{
+			ResourceType:         resource.Policy.String(),
+			Pkg:                  "policies",
+			StdActions:           []string{"create", "update"},
+			SubActionPrefix:      "storage",
+			HasExtraCommandVars:  true,
+			SkipNormalHelp:       true,
+			HasExtraHelpFunc:     true,
+			HasId:                true,
+			HasName:              true,
+			Container:            "Scope",
+			HasDescription:       true,
+			VersionedActions:     []string{"update"},
+			NeedsSubtypeInCreate: true,
+		},
+	},
 	"roles": {
 		{
 			ResourceType:        resource.Role.String(),
