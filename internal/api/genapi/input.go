@@ -19,6 +19,7 @@ import (
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostsets"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/managedgroups"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/plugins"
+	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/policies"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/roles"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/session_recordings"
@@ -750,6 +751,63 @@ var inputStructs = []*structInfo{
 		pluralResourceName:  "storage-buckets",
 		versionEnabled:      true,
 		createResponseTypes: []string{CreateResponseType, ReadResponseType, UpdateResponseType, DeleteResponseType, ListResponseType},
+		recursiveListing:    true,
+	},
+
+	// Policy-related resources.
+	{
+		inProto:        &policies.StoragePolicyAttributes{},
+		outFile:        "policies/storage_policy_attributes.gen.go",
+		parentTypeName: "Policy",
+		subtypeName:    "StoragePolicy",
+		subtype:        "storage",
+		fieldOverrides: []fieldInfo{
+			{
+				Name:      "RetainFor",
+				ProtoName: "retain_for",
+				FieldType: "map[string]any",
+			},
+			{
+				Name:      "DeleteAfter",
+				ProtoName: "delete_after",
+				FieldType: "map[string]any",
+			},
+		},
+		templates: []*template.Template{mapstructureConversionTemplate},
+	},
+	{
+		inProto: &policies.Policy{},
+		outFile: "policies/policy.gen.go",
+		templates: []*template.Template{
+			clientTemplate,
+			template.Must(template.New("").Funcs(
+				template.FuncMap{
+					"snakeCase": snakeCase,
+					"funcName": func() string {
+						return "Create"
+					},
+					"apiAction": func() string {
+						return ""
+					},
+					"extraRequiredParams": func() []requiredParam {
+						return []requiredParam{
+							{
+								Name:     "resourceType",
+								Typ:      "string",
+								PostType: "type",
+							},
+						}
+					},
+				},
+			).Parse(createTemplateStr)),
+			readTemplate,
+			updateTemplate,
+			deleteTemplate,
+			listTemplate,
+		},
+		pluralResourceName:  "policies",
+		createResponseTypes: []string{CreateResponseType, ReadResponseType, UpdateResponseType, DeleteResponseType, ListResponseType},
+		versionEnabled:      true,
 		recursiveListing:    true,
 	},
 
