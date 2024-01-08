@@ -9,11 +9,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"testing"
 	"time"
 
 	"github.com/hashicorp/boundary/internal/bsr"
+	"github.com/hashicorp/boundary/internal/bsr/internal/fstest"
+	"github.com/hashicorp/boundary/internal/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -268,8 +269,9 @@ func TestChunkEncoder(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			var buf bytes.Buffer
-			enc, err := bsr.NewChunkEncoder(ctx, &buf, tc.c, tc.e)
+			buf, err := fstest.NewTempBuffer()
+			require.NoError(t, err)
+			enc, err := bsr.NewChunkEncoder(ctx, buf, tc.c, tc.e)
 			require.NoError(t, err)
 
 			var wrote int
@@ -294,6 +296,10 @@ func (e errorWriter) Write(_ []byte) (int, error) {
 	return 0, fmt.Errorf("write error")
 }
 
+func (e errorWriter) WriteAndClose(_ []byte) (int, error) {
+	return 0, fmt.Errorf("write error")
+}
+
 func TestChunkEncoderEncodeError(t *testing.T) {
 	ctx := context.Background()
 
@@ -301,7 +307,7 @@ func TestChunkEncoderEncodeError(t *testing.T) {
 
 	cases := []struct {
 		name  string
-		w     io.Writer
+		w     storage.Writer
 		c     bsr.Compression
 		e     bsr.Encryption
 		chunk bsr.Chunk
@@ -309,7 +315,11 @@ func TestChunkEncoderEncodeError(t *testing.T) {
 	}{
 		{
 			"chunk-marshal-error",
-			func() io.Writer { var buf bytes.Buffer; return &buf }(),
+			func() storage.Writer {
+				buf, err := fstest.NewTempBuffer()
+				require.NoError(t, err)
+				return buf
+			}(),
 			bsr.NoCompression,
 			bsr.NoEncryption,
 			&testChunk{
@@ -325,7 +335,7 @@ func TestChunkEncoderEncodeError(t *testing.T) {
 		},
 		{
 			"writer-error",
-			func() io.Writer { return errorWriter{} }(),
+			func() storage.Writer { return errorWriter{} }(),
 			bsr.NoCompression,
 			bsr.NoEncryption,
 			&testChunk{
@@ -357,21 +367,29 @@ func TestChunkEncoderErrors(t *testing.T) {
 
 	cases := []struct {
 		name string
-		w    io.Writer
+		w    storage.Writer
 		c    bsr.Compression
 		e    bsr.Encryption
 		want error
 	}{
 		{
 			"invalid-compression",
-			func() io.Writer { var buf bytes.Buffer; return &buf }(),
+			func() storage.Writer {
+				buf, err := fstest.NewTempBuffer()
+				require.NoError(t, err)
+				return buf
+			}(),
 			bsr.Compression(255),
 			bsr.NoEncryption,
 			errors.New("bsr.NewChunkEncoder: invalid compression: invalid parameter"),
 		},
 		{
 			"invalid-encryption",
-			func() io.Writer { var buf bytes.Buffer; return &buf }(),
+			func() storage.Writer {
+				buf, err := fstest.NewTempBuffer()
+				require.NoError(t, err)
+				return buf
+			}(),
 			bsr.NoCompression,
 			bsr.Encryption(255),
 			errors.New("bsr.NewChunkEncoder: invalid encryption: invalid parameter"),

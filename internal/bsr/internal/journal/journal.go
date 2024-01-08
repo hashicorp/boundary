@@ -20,6 +20,7 @@ type writerFile interface {
 	fs.File
 	io.WriteCloser
 	io.StringWriter
+	WriteAndClose([]byte) (int, error)
 }
 
 // Journal is used to record meta data about the operations that will be and
@@ -61,6 +62,11 @@ func (j *Journal) Record(op, f string) error {
 	return err
 }
 
+// WriteAndClose writes and closes the journal
+func (j *Journal) WriteAndClose(b []byte) (int, error) {
+	panic("not implemented")
+}
+
 // File is a writable file that will update a Journal as it closed.
 type File struct {
 	j *Journal
@@ -100,6 +106,32 @@ func (f *File) Close() error {
 		return fmt.Errorf("%s: %w", op, err)
 	}
 	return f.j.Record("CLOSED", s.Name())
+}
+
+// WriteAndClose writes to the underlying file and closes the underlying file,
+// writing to the journal prior to and after
+func (f *File) WriteAndClose(b []byte) (int, error) {
+	const op = "journal.(File).Close"
+
+	s, err := f.Stat()
+	if err != nil {
+		return 0, fmt.Errorf("%s: %w", op, err)
+	}
+
+	if err := f.j.Record("CLOSING", s.Name()); err != nil {
+		return 0, fmt.Errorf("%s: %w", op, err)
+	}
+
+	n, err := f.writerFile.WriteAndClose(b)
+	if err != nil {
+		return n, fmt.Errorf("%s: %w", op, err)
+	}
+
+	if err := f.j.Record("CLOSED", s.Name()); err != nil {
+		return n, fmt.Errorf("%s: %w", op, err)
+	}
+
+	return n, err
 }
 
 var _ writerFile = (*File)(nil)
