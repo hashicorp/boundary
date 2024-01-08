@@ -27,6 +27,9 @@ func TestWithEventer(t *testing.T) {
 	dir := t.TempDir()
 	l, err := logFile(ctx, dir, 1)
 	require.NoError(t, err)
+	t.Cleanup(func() {
+		assert.NoError(t, l.Close())
+	})
 
 	var logLock sync.Mutex
 	logger := hclog.New(&hclog.LoggerOptions{
@@ -79,6 +82,9 @@ func TestRotation(t *testing.T) {
 	dir := t.TempDir()
 	l, err := logFile(ctx, dir, 1)
 	require.NoError(t, err)
+	t.Cleanup(func() {
+		assert.NoError(t, l.Close())
+	})
 
 	fi, err := os.Stat(filepath.Join(dir, logFileName))
 	require.NoError(t, err)
