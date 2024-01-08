@@ -314,9 +314,15 @@ func (f *LocalFile) Read(b []byte) (int, error) {
 
 // Close closes the file preventing reads or writes.
 func (f *LocalFile) Close() error {
-	const op = "fstest.(LocalFile).Stat"
 	f.Lock()
 	defer f.Unlock()
+
+	return f.close()
+}
+
+func (f *LocalFile) close() error {
+	const op = "fstest.(LocalFile).close"
+
 	if f.closed {
 		return nil
 	}
@@ -330,9 +336,15 @@ func (f *LocalFile) Close() error {
 }
 
 func (f *LocalFile) Write(b []byte) (int, error) {
-	const op = "fstest.(localFile).Write"
 	f.Lock()
 	defer f.Unlock()
+
+	return f.write(b)
+}
+
+func (f *LocalFile) write(b []byte) (int, error) {
+	const op = "fstest.(localFile).write"
+
 	if f.closed {
 		return 0, fmt.Errorf("%s: file is closed", op)
 	}
@@ -351,4 +363,22 @@ func (f *LocalFile) Write(b []byte) (int, error) {
 func (f *LocalFile) WriteString(s string) (int, error) {
 	const op = "storage.(localFile).WriteString"
 	return f.Write([]byte(s))
+}
+
+// WriteAndClose writes and closes the file.
+func (f *LocalFile) WriteAndClose(b []byte) (int, error) {
+	f.Lock()
+	defer f.Unlock()
+
+	n, err := f.write(b)
+	if err != nil {
+		return n, fmt.Errorf("write failed: %w", err)
+	}
+
+	err = f.close()
+	if err != nil {
+		return n, fmt.Errorf("close failed: %w", err)
+	}
+
+	return n, nil
 }

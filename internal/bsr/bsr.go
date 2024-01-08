@@ -657,7 +657,7 @@ func (c *Connection) NewMessagesWriter(ctx context.Context, dir Direction) (io.W
 }
 
 // NewRequestsWriter creates a writer for recording connection requests.
-func (c *Connection) NewRequestsWriter(ctx context.Context, dir Direction) (io.Writer, error) {
+func (c *Connection) NewRequestsWriter(ctx context.Context, dir Direction) (storage.Writer, error) {
 	const op = "bsr.(Connection).NewRequestsWriter"
 
 	switch {
@@ -704,7 +704,7 @@ func (c *Channel) Close(ctx context.Context) error {
 }
 
 // NewMessagesWriter creates a writer for recording channel messages.
-func (c *Channel) NewMessagesWriter(ctx context.Context, dir Direction) (io.Writer, error) {
+func (c *Channel) NewMessagesWriter(ctx context.Context, dir Direction) (storage.Writer, error) {
 	const op = "bsr.(Channel).NewMessagesWriter"
 
 	switch {
@@ -726,7 +726,7 @@ func (c *Channel) NewMessagesWriter(ctx context.Context, dir Direction) (io.Writ
 }
 
 // NewRequestsWriter creates a writer for recording channel requests.
-func (c *Channel) NewRequestsWriter(ctx context.Context, dir Direction) (io.Writer, error) {
+func (c *Channel) NewRequestsWriter(ctx context.Context, dir Direction) (storage.Writer, error) {
 	const op = "bsr.(Channel).NewRequestsWriter"
 
 	switch {

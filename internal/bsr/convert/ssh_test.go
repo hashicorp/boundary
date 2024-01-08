@@ -14,6 +14,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/bsr"
 	sshv1 "github.com/hashicorp/boundary/internal/bsr/gen/ssh/v1"
+	"github.com/hashicorp/boundary/internal/bsr/internal/fstest"
 	"github.com/hashicorp/boundary/internal/bsr/ssh"
 	"github.com/stretchr/testify/require"
 )
@@ -31,9 +32,10 @@ func Test_sshChannelToAsciicast(t *testing.T) {
 		return f
 	}
 	newScanner := func(chunks ...bsr.Chunk) *bsr.ChunkScanner {
-		var buf bytes.Buffer
+		buf, err := fstest.NewTempBuffer()
+		require.NoError(t, err)
 		buf.Write(bsr.Magic.Bytes())
-		enc, err := bsr.NewChunkEncoder(ctx, &buf, bsr.NoCompression, bsr.NoEncryption)
+		enc, err := bsr.NewChunkEncoder(ctx, buf, bsr.NoCompression, bsr.NoEncryption)
 		require.NoError(t, err)
 
 		for _, c := range chunks {

@@ -268,6 +268,11 @@ type MemFile struct {
 	syncMode   storage.SyncMode
 	accessMode storage.AccessMode
 
+	bufferSize        uint64
+	minimumBufferSize uint64
+	bufferOffset      int64
+	currentOffset     int64
+
 	sync.RWMutex
 }
 
@@ -279,14 +284,18 @@ func NewMemFile(n string, mode sfs.FileMode, options ...Option) *MemFile {
 	storageOpts := storage.GetOpts(opts.withStorageOptions...)
 
 	return &MemFile{
-		name:       n,
-		Buf:        bytes.NewBuffer([]byte{}),
-		src:        []byte{},
-		mode:       mode,
-		accessMode: storageOpts.WithFileAccessMode,
-		syncMode:   storageOpts.WithCloseSyncMode,
-		statFunc:   opts.withStatFunc,
-		closeFunc:  opts.withCloseFunc,
+		name:              n,
+		Buf:               bytes.NewBuffer([]byte{}),
+		src:               []byte{},
+		mode:              mode,
+		accessMode:        storageOpts.WithFileAccessMode,
+		syncMode:          storageOpts.WithCloseSyncMode,
+		statFunc:          opts.withStatFunc,
+		closeFunc:         opts.withCloseFunc,
+		bufferSize:        storageOpts.WithBuffer,
+		minimumBufferSize: storageOpts.WithMinimumBuffer,
+		currentOffset:     0,
+		bufferOffset:      0,
 	}
 }
 
@@ -347,6 +356,10 @@ func (m *MemFile) Close() error {
 	m.Lock()
 	defer m.Unlock()
 
+	return m.close()
+}
+
+func (m *MemFile) close() error {
 	if m.Closed {
 		return fmt.Errorf("close on closed file")
 	}
@@ -367,6 +380,10 @@ func (m *MemFile) Write(p []byte) (n int, err error) {
 	m.Lock()
 	defer m.Unlock()
 
+	return m.write(p)
+}
+
+func (m *MemFile) write(p []byte) (n int, err error) {
 	if m.Closed {
 		return 0, fmt.Errorf("write on closed file")
 	}
@@ -383,6 +400,24 @@ func (m *MemFile) Write(p []byte) (n int, err error) {
 	}()
 	m.src = append(m.src, p...)
 	return m.Buf.Write(p)
+}
+
+// WriteAndClose writes and closes the file.
+func (m *MemFile) WriteAndClose(p []byte) (int, error) {
+	m.Lock()
+	defer m.Unlock()
+
+	n, err := m.write(p)
+	if err != nil {
+		return n, fmt.Errorf("write failed: %w", err)
+	}
+
+	err = m.close()
+	if err != nil {
+		return n, fmt.Errorf("close failed: %w", err)
+	}
+
+	return n, nil
 }
 
 // TempFile implements storage.TempFile
@@ -411,4 +446,25 @@ func (t *TempFile) Close() error {
 		return err
 	}
 	return os.Remove(fname.Name())
+}
+
+func (t *TempFile) WriteAndClose(b []byte) (int, error) {
+	panic("not implemented")
+}
+
+type TempBuffer struct {
+	bytes.Buffer
+}
+
+// NewTempBuffer creates a TempBuffer.
+func NewTempBuffer() (*TempBuffer, error) {
+	var testBuffer bytes.Buffer
+	return &TempBuffer{
+		testBuffer,
+	}, nil
+}
+
+// WriteAndClose writes and closes the file.
+func (t *TempBuffer) WriteAndClose(b []byte) (int, error) {
+	return t.Write(b)
 }

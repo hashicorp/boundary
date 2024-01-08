@@ -29,6 +29,12 @@ type writerFile interface {
 	fs.File
 	io.WriteCloser
 	io.StringWriter
+	WriteAndClose([]byte) (int, error)
+}
+
+type underlyingFile interface {
+	fs.File
+	WriteAndClose([]byte) (int, error)
 }
 
 // File is a writable file that will compute its checksum while it is written
@@ -45,7 +51,7 @@ type File struct {
 
 	checksumWriter io.Writer
 
-	underlying fs.File
+	underlying underlyingFile
 }
 
 // NewFile wraps the provided writerFile in a checksumed File. When the file is
@@ -111,6 +117,38 @@ func (f *File) Close() error {
 		closeErrors = errors.Join(closeErrors, fmt.Errorf("%s: %w", op, err))
 	}
 	return closeErrors
+}
+
+// WriteAndClose writes to the underlying file, closes the Sha256SumWriter
+// and computes the checksum and writes it to f.checksumWriter
+func (f *File) WriteAndClose(b []byte) (int, error) {
+	const op = "checksum.(File).WriteAndClose"
+
+	var closeErrors error
+
+	// Call stat before closure; calling it after results in an err
+	s, err := f.Stat()
+	if err != nil {
+		closeErrors = errors.Join(closeErrors, fmt.Errorf("%s: %w", op, err))
+		return 0, closeErrors
+	}
+
+	n, err := f.underlying.WriteAndClose(b)
+	if err != nil {
+		return 0, fmt.Errorf("%s: %w", op, err)
+	}
+
+	sum, err := f.Sha256SumWriter.Sum(f.ctx, crypto.WithHexEncoding(true))
+	if err != nil {
+		closeErrors = errors.Join(closeErrors, fmt.Errorf("%s: %w", op, err))
+		return 0, closeErrors
+	}
+
+	if _, err := f.checksumWriter.Write([]byte(fmt.Sprintf(checksumLine, sum, s.Name()))); err != nil {
+		closeErrors = errors.Join(closeErrors, fmt.Errorf("%s: %w", op, err))
+	}
+
+	return n, closeErrors
 }
 
 var _ writerFile = (*File)(nil)
