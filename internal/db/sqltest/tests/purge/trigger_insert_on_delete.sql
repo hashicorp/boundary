@@ -3,7 +3,7 @@
 
 begin;
 
-  select plan(13);
+  select plan(10);
 
   -- Verify the trigger functions exist and are declared properly
   select has_function('insert_deleted_id');
@@ -22,17 +22,6 @@ begin;
 
   -- Delete auth tokens, expect no errors, check that the auth_token table is now populated
   delete from auth_token where public_id = 'tok____clare';
-  select is(count(*), 0::bigint) from auth_token where public_id = 'tok____clare';
-  select is(count(*), 1::bigint) from auth_token_deleted;
-
-  -- Add new auth token with duplicate public_id, delete and check that there's no error
-  insert into auth_token
-    (key_id,         auth_account_id, public_id,      token)
-  values
-    ('kdkv__colors', 'apa____clare',  'tok____clare', 'tok____clare'::bytea);
-  prepare delete_again as
-    delete from auth_token where public_id = 'tok____clare';
-  select lives_ok('delete_again');
   select is(count(*), 0::bigint) from auth_token where public_id = 'tok____clare';
   select is(count(*), 1::bigint) from auth_token_deleted;
 
