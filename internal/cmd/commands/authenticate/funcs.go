@@ -28,6 +28,14 @@ func saveAndOrPrintToken(c *base.Command, result *authmethods.AuthenticateResult
 
 	switch base.Format(c.UI) {
 	case "table":
+		warnings, err := result.GetResponse().Warnings()
+		if err != nil {
+			c.PrintCliError(fmt.Errorf("Error getting warnings: %w", err))
+		}
+		for _, w := range warnings {
+			c.PrintWarning(w)
+		}
+
 		c.UI.Output(base.WrapForHelpText([]string{
 			"",
 			"Authentication information:",

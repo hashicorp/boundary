@@ -4,6 +4,7 @@
 package base
 
 import (
+	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/sdk/pbs/plugin"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
@@ -42,6 +43,7 @@ type Options struct {
 	withEventWrapper               wrapping.Wrapper
 	withAttributeFieldPrefix       string
 	withStatusCode                 int
+	withApiWarnings                []*api.Warning
 	withHostPlugin                 func() (string, plugin.HostPluginServiceClient)
 	withEventGating                bool
 	withImplicitId                 string
@@ -169,6 +171,13 @@ func WithEventAuditWrapper(w wrapping.Wrapper) Option {
 func WithAttributeFieldPrefix(p string) Option {
 	return func(o *Options) {
 		o.withAttributeFieldPrefix = p
+	}
+}
+
+// WithApiWarning allows passing api warnings to functions
+func WithApiWarning(warnings []*api.Warning) Option {
+	return func(o *Options) {
+		o.withApiWarnings = warnings
 	}
 }
 

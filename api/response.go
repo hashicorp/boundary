@@ -37,6 +37,20 @@ func (r *Response) StatusCode() int {
 	return r.resp.StatusCode
 }
 
+func (r *Response) Warnings() ([]*Warning, error) {
+	ws := r.resp.Header.Get("X-Boundary-Warnings")
+	if ws == "" {
+		return nil, nil
+	}
+
+	var ret WarningResponse
+	if err := json.Unmarshal([]byte(ws), &ret); err != nil {
+		return nil, fmt.Errorf("when unmarshaling warning %q: %w", ws, err)
+	}
+
+	return ret.Warnings, nil
+}
+
 func (r *Response) Decode(inStruct any) (*Error, error) {
 	if r == nil || r.resp == nil {
 		return nil, fmt.Errorf("nil response, cannot decode")

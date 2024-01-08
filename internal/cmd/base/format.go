@@ -280,6 +280,25 @@ func (c *Command) PrintApiError(in *api.Error, contextStr string, opt ...Option)
 	}
 }
 
+func (c *Command) PrintWarning(w *api.Warning) {
+	if w == nil {
+		return
+	}
+	switch Format(c.UI) {
+	case "table":
+		var descStr string
+		switch {
+		case w.Action != nil:
+			descStr = fmt.Sprintf("%s: %s", w.Action.Name, w.Action.Warning)
+		case w.Behavior != nil:
+			descStr = w.Behavior.Warning
+		case w.RequestField != nil:
+			descStr = fmt.Sprintf("%s: %s", w.RequestField.Name, w.RequestField.Warning)
+		}
+		c.UI.Warn(fmt.Sprintf("Code %d: %s", w.Code, descStr))
+	}
+}
+
 // PrintCliError prints the given CLI error to the UI in the appropriate format
 func (c *Command) PrintCliError(err error) {
 	switch Format(c.UI) {
@@ -302,6 +321,14 @@ func (c *Command) PrintJsonItem(resp *api.Response, opt ...Option) bool {
 		c.PrintCliError(errors.New("Error formatting as JSON: no response given to item formatter"))
 		return false
 	}
+	ws, err := resp.Warnings()
+	if err != nil {
+		c.PrintCliError(fmt.Errorf("Error getting warnings: %w", err))
+	}
+	if len(ws) > 0 {
+		opt = append(opt, WithApiWarning(ws))
+	}
+
 	if r := resp.HttpResponse(); r != nil {
 		opt = append(opt, WithStatusCode(r.StatusCode))
 	}
@@ -312,11 +339,13 @@ func (c *Command) PrintJsonItem(resp *api.Response, opt ...Option) bool {
 func (c *Command) PrintJson(input json.RawMessage, opt ...Option) bool {
 	opts := GetOpts(opt...)
 	output := struct {
-		StatusCode int             `json:"status_code,omitempty"`
-		Item       json.RawMessage `json:"item,omitempty"`
+		StatusCode  int             `json:"status_code,omitempty"`
+		Item        json.RawMessage `json:"item,omitempty"`
+		ApiWarnings []*api.Warning  `json:"api_warnings,omitempty"`
 	}{
-		StatusCode: opts.withStatusCode,
-		Item:       input,
+		StatusCode:  opts.withStatusCode,
+		ApiWarnings: opts.withApiWarnings,
+		Item:        input,
 	}
 	b, err := JsonFormatter{}.Format(output)
 	if err != nil {
@@ -347,12 +376,19 @@ func (c *Command) PrintJsonItems(resp *api.Response) bool {
 			return false
 		}
 	}
+	ws, err := resp.Warnings()
+	if err != nil {
+		c.PrintCliError(fmt.Errorf("Error getting warnings: %w", err))
+		return false
+	}
 	output := struct {
-		StatusCode int             `json:"status_code"`
-		Items      json.RawMessage `json:"items"`
+		StatusCode  int             `json:"status_code"`
+		Items       json.RawMessage `json:"items"`
+		ApiWarnings []*api.Warning  `json:"api_warnings"`
 	}{
-		StatusCode: resp.HttpResponse().StatusCode,
-		Items:      input.Items,
+		StatusCode:  resp.HttpResponse().StatusCode,
+		Items:       input.Items,
+		ApiWarnings: ws,
 	}
 	b, err := JsonFormatter{}.Format(output)
 	if err != nil {

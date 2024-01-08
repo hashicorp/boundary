@@ -499,6 +499,10 @@ func wrapHandlerWithCors(h http.Handler, props HandlerProperties) http.Handler {
 		"Authorization",
 	}, props.ListenerConfig.CorsAllowedHeaders...)
 
+	exposedHeaders := []string{
+		"X-Boundary-Warnings",
+	}
+
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		if props.ListenerConfig.CorsEnabled == nil || !*props.ListenerConfig.CorsEnabled {
 			h.ServeHTTP(w, req)
@@ -553,6 +557,7 @@ func wrapHandlerWithCors(h http.Handler, props HandlerProperties) http.Handler {
 		if req.Method == http.MethodOptions {
 			w.Header().Set("Access-Control-Allow-Methods", strings.Join(allowedMethods, ", "))
 			w.Header().Set("Access-Control-Allow-Headers", strings.Join(allowedHeaders, ", "))
+			w.Header().Set("Access-Control-Expose-Headers", strings.Join(exposedHeaders, ", "))
 			w.Header().Set("Access-Control-Max-Age", "300")
 			w.WriteHeader(http.StatusNoContent)
 			return

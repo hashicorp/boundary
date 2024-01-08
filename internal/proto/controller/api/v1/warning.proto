@@ -1,0 +1,49 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
+syntax = "proto3";
+
+package controller.api.v1;
+
+option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api;api";
+
+// FieldWarning contains warning information on a per field basis.
+message FieldWarning {
+  // The name of the field.
+  string name = 1;
+
+  // The warning regarding the provided field name.
+  string warning = 2;
+}
+
+// ActionWarning contains warning information regarding a specific action.
+message ActionWarning {
+  // The name of the action
+  string name = 1;
+
+  // The warning regarding the provided action
+  string warning = 2;
+}
+
+// BehaviorWarning contains a warning about Boundary behavior which may be
+// surprising or not intuitive.
+message BehaviorWarning {
+  // The warning text regarding the behavior
+  string warning = 1;
+}
+
+// A warning in the Boundary system.
+message Warning {
+  uint32 code = 1;
+  oneof warning {
+    FieldWarning request_field = 2 [json_name = "request_fields"];
+    ActionWarning action = 3;
+    BehaviorWarning behavior = 4;
+  }
+}
+
+// Warning is returned by the JSON API when a warning occurs.
+message WarningResponse {
+  // Request-field-specific warning details.
+  repeated Warning warnings = 1;
+}

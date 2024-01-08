@@ -10,10 +10,12 @@ import (
 
 	"github.com/hashicorp/boundary/api/workers"
 	"github.com/hashicorp/boundary/internal/daemon/controller"
+	"github.com/hashicorp/boundary/internal/daemon/worker"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/hashicorp/boundary/internal/warning"
 	"github.com/hashicorp/nodeenrollment/rotation"
 	"github.com/hashicorp/nodeenrollment/storage/file"
 	"github.com/hashicorp/nodeenrollment/types"
@@ -27,7 +29,6 @@ func TestWorkerTagsASD(t *testing.T) {
 	ctx := context.Background()
 	assert, require := assert.New(t), require.New(t)
 	tc := controller.NewTestController(t, nil)
-	defer tc.Shutdown()
 
 	client := tc.Client()
 	token := tc.Token()
@@ -131,4 +132,71 @@ func TestWorkerTagsASD(t *testing.T) {
 	ewcr, err = workerClient.RemoveWorkerTags(tc.Context(), wcr.Item.Id, wcr.Item.Version, inputTags)
 	require.Error(err)
 	require.Nil(ewcr)
+}
+
+func TestWorkerTagsUpdateDelete(t *testing.T) {
+	ctx := context.Background()
+	assert, require := assert.New(t), require.New(t)
+	tc := controller.NewTestController(t, nil)
+
+	tw := worker.NewTestWorker(t, &worker.TestWorkerOpts{
+		Name:             "testworker",
+		InitialUpstreams: tc.ClusterAddrs(),
+		WorkerAuthKms:    tc.Config().WorkerAuthKms,
+	})
+	require.NoError(tc.WaitForNextWorkerStatusUpdate(tw.Name()))
+
+	client := tc.Client()
+	token := tc.Token()
+	client.SetToken(token.Token)
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, wrapper)
+
+	// Ensures the global scope contains a valid root key
+	err := kmsCache.CreateKeys(ctx, scope.Global.String(), kms.WithRandomReader(rand.Reader))
+	require.NoError(err)
+	wrapper, err = kmsCache.GetWrapper(ctx, scope.Global.String(), kms.KeyPurposeDatabase)
+	require.NoError(err)
+	require.NotNil(wrapper)
+
+	// Set up certs on the controller
+	rootStorage, err := server.NewRepositoryStorage(ctx, rw, rw, kmsCache)
+	require.NoError(err)
+	_, err = rotation.RotateRootCertificates(ctx, rootStorage)
+	require.NoError(err)
+
+	workerClient := workers.NewClient(client)
+
+	// Controller led workers can be created, updated, and deleted
+	clW, err := workerClient.CreateControllerLed(ctx, "global")
+	require.NoError(err)
+	require.NotNil(clW)
+	assert.Empty(clW.GetResponse().Warnings())
+
+	r, err := workerClient.Update(ctx, clW.Item.Id, 0, workers.WithName("updated"), workers.WithAutomaticVersioning(true))
+	require.NoError(err)
+	assert.Equal("updated", r.GetItem().Name)
+
+	delResp, err := workerClient.Delete(ctx, clW.Item.Id)
+	assert.NoError(err)
+	assert.Empty(delResp.GetResponse().Warnings())
+
+	// KMS led PKI workers cannot have name updated and warns when deleted
+	res, err := workerClient.List(ctx, "global")
+	require.NoError(err)
+	assert.Len(res.GetItems(), 1)
+	klW := res.GetItems()[0]
+
+	r, err = workerClient.Update(ctx, klW.Id, 0, workers.WithName("cant update"), workers.WithAutomaticVersioning(true))
+	require.Error(err)
+	assert.Nil(r)
+
+	delResp, err = workerClient.Delete(ctx, klW.Id)
+	assert.NoError(err)
+	war, err := delResp.GetResponse().Warnings()
+	assert.NoError(err)
+	assert.Len(war, 1)
+	assert.EqualValues(warning.DeletingKmsLedWorkersMayNotBePermanent, war[0].Code)
 }

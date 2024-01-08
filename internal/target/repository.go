@@ -20,6 +20,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/hashicorp/boundary/internal/warning"
 	"github.com/hashicorp/go-dbw"
 )
 
@@ -668,6 +669,8 @@ func (r *Repository) UpdateTarget(ctx context.Context, target Target, version ui
 		switch {
 		case strings.EqualFold("Address", f):
 			updateAddress = true
+		case strings.EqualFold("WorkerFilter", f):
+			warning.Warn(ctx, warning.FieldDeprecatedTargetWorkerFilters)
 		default:
 			filteredDbMask = append(filteredDbMask, f)
 		}
