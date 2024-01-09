@@ -69,3 +69,8 @@ func (s Service) ListSessionRecordings(context.Context, *pbs.ListSessionRecordin
 func (s Service) Download(*pbs.DownloadRequest, pbs.SessionRecordingService_DownloadServer) error {
 	return status.Errorf(codes.Unimplemented, "session recordings are an Enterprise-only feature")
 }
+
+// ReApplyStoragePolicy implements the interface pbs.SessionRecordingServiceServer.
+func (s Service) ReApplyStoragePolicy(context.Context, *pbs.ReApplyStoragePolicyRequest) (*pbs.ReApplyStoragePolicyResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "session recordings are an Enterprise-only feature")
+}
