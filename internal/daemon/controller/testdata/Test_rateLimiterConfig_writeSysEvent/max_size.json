@@ -2578,6 +2578,58 @@
               "resource": "scope",
               "unlimited": false
             }
+          ],
+          "attach-storage-policy": [
+            {
+              "action": "attach-storage-policy",
+              "limit": 30000,
+              "per": "total",
+              "period": "30s",
+              "resource": "scope",
+              "unlimited": false
+            },
+            {
+              "action": "attach-storage-policy",
+              "limit": 30000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "scope",
+              "unlimited": false
+            },
+            {
+              "action": "attach-storage-policy",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "scope",
+              "unlimited": false
+            }
+          ],
+          "detach-storage-policy": [
+            {
+              "action": "detach-storage-policy",
+              "limit": 30000,
+              "per": "total",
+              "period": "30s",
+              "resource": "scope",
+              "unlimited": false
+            },
+            {
+              "action": "detach-storage-policy",
+              "limit": 30000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "scope",
+              "unlimited": false
+            },
+            {
+              "action": "detach-storage-policy",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "scope",
+              "unlimited": false
+            }
           ]
         },
         "session": {

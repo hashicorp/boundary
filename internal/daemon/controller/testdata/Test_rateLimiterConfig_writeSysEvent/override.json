@@ -2578,6 +2578,58 @@
               "resource": "scope",
               "unlimited": false
             }
+          ],
+          "attach-storage-policy": [
+            {
+              "action": "attach-storage-policy",
+              "limit": 100,
+              "per": "total",
+              "period": "1m0s",
+              "resource": "scope",
+              "unlimited": false
+            },
+            {
+              "action": "attach-storage-policy",
+              "limit": 100,
+              "per": "ip-address",
+              "period": "1m0s",
+              "resource": "scope",
+              "unlimited": false
+            },
+            {
+              "action": "attach-storage-policy",
+              "limit": 100,
+              "per": "auth-token",
+              "period": "1m0s",
+              "resource": "scope",
+              "unlimited": false
+            }
+          ],
+          "detach-storage-policy": [
+            {
+              "action": "detach-storage-policy",
+              "limit": 100,
+              "per": "total",
+              "period": "1m0s",
+              "resource": "scope",
+              "unlimited": false
+            },
+            {
+              "action": "detach-storage-policy",
+              "limit": 100,
+              "per": "ip-address",
+              "period": "1m0s",
+              "resource": "scope",
+              "unlimited": false
+            },
+            {
+              "action": "detach-storage-policy",
+              "limit": 100,
+              "per": "auth-token",
+              "period": "1m0s",
+              "resource": "scope",
+              "unlimited": false
+            }
           ]
         },
         "session": {
@@ -3893,7 +3945,7 @@
           ]
         }
       },
-      "max_size": 308154,
+      "max_size": 312156,
       "msg": "controller api rate limiter"
     },
     "op": "controller.(rateLimiterConfig).writeSysEvent",
