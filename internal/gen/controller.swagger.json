@@ -3336,6 +3336,32 @@
         ]
       }
     },
+    "/v1/session-recordings/{id}:reapply-storage-policy": {
+      "get": {
+        "summary": "ReApplyStoragePolicy will recalculate the resultant set of policy and apply the result to the given session recording.",
+        "operationId": "SessionRecordingService_ReApplyStoragePolicy",
+        "responses": {
+          "200": {
+            "description": "The requested recording.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.sessionrecordings.v1.SessionRecording"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "description": "The Session Recording ID",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.SessionRecordingService"
+        ]
+      }
+    },
     "/v1/sessions": {
       "get": {
         "summary": "Lists all Sessions.",
@@ -8892,6 +8918,15 @@
             "type": "object",
             "$ref": "#/definitions/controller.api.resources.workers.v1.Worker"
           }
+        }
+      }
+    },
+    "controller.api.services.v1.ReApplyStoragePolicyResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.sessionrecordings.v1.SessionRecording",
+          "description": "The requested recording."
         }
       }
     },

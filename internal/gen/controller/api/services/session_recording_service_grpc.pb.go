@@ -26,6 +26,7 @@ const (
 	SessionRecordingService_GetSessionRecording_FullMethodName   = "/controller.api.services.v1.SessionRecordingService/GetSessionRecording"
 	SessionRecordingService_ListSessionRecordings_FullMethodName = "/controller.api.services.v1.SessionRecordingService/ListSessionRecordings"
 	SessionRecordingService_Download_FullMethodName              = "/controller.api.services.v1.SessionRecordingService/Download"
+	SessionRecordingService_ReApplyStoragePolicy_FullMethodName  = "/controller.api.services.v1.SessionRecordingService/ReApplyStoragePolicy"
 )
 
 // SessionRecordingServiceClient is the client API for SessionRecordingService service.
@@ -46,6 +47,7 @@ type SessionRecordingServiceClient interface {
 	// A Channel recording ID is required to look up a Channel recording.
 	// The only supported mime type is "application/x-asciicast".
 	Download(ctx context.Context, in *DownloadRequest, opts ...grpc.CallOption) (SessionRecordingService_DownloadClient, error)
+	ReApplyStoragePolicy(ctx context.Context, in *ReApplyStoragePolicyRequest, opts ...grpc.CallOption) (*ReApplyStoragePolicyResponse, error)
 }
 
 type sessionRecordingServiceClient struct {
@@ -106,6 +108,15 @@ func (x *sessionRecordingServiceDownloadClient) Recv() (*httpbody.HttpBody, erro
 	return m, nil
 }
 
+func (c *sessionRecordingServiceClient) ReApplyStoragePolicy(ctx context.Context, in *ReApplyStoragePolicyRequest, opts ...grpc.CallOption) (*ReApplyStoragePolicyResponse, error) {
+	out := new(ReApplyStoragePolicyResponse)
+	err := c.cc.Invoke(ctx, SessionRecordingService_ReApplyStoragePolicy_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // SessionRecordingServiceServer is the server API for SessionRecordingService service.
 // All implementations must embed UnimplementedSessionRecordingServiceServer
 // for forward compatibility
@@ -124,6 +135,7 @@ type SessionRecordingServiceServer interface {
 	// A Channel recording ID is required to look up a Channel recording.
 	// The only supported mime type is "application/x-asciicast".
 	Download(*DownloadRequest, SessionRecordingService_DownloadServer) error
+	ReApplyStoragePolicy(context.Context, *ReApplyStoragePolicyRequest) (*ReApplyStoragePolicyResponse, error)
 	mustEmbedUnimplementedSessionRecordingServiceServer()
 }
 
@@ -139,6 +151,9 @@ func (UnimplementedSessionRecordingServiceServer) ListSessionRecordings(context.
 }
 func (UnimplementedSessionRecordingServiceServer) Download(*DownloadRequest, SessionRecordingService_DownloadServer) error {
 	return status.Errorf(codes.Unimplemented, "method Download not implemented")
+}
+func (UnimplementedSessionRecordingServiceServer) ReApplyStoragePolicy(context.Context, *ReApplyStoragePolicyRequest) (*ReApplyStoragePolicyResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ReApplyStoragePolicy not implemented")
 }
 func (UnimplementedSessionRecordingServiceServer) mustEmbedUnimplementedSessionRecordingServiceServer() {
 }
@@ -211,6 +226,24 @@ func (x *sessionRecordingServiceDownloadServer) Send(m *httpbody.HttpBody) error
 	return x.ServerStream.SendMsg(m)
 }
 
+func _SessionRecordingService_ReApplyStoragePolicy_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ReApplyStoragePolicyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SessionRecordingServiceServer).ReApplyStoragePolicy(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SessionRecordingService_ReApplyStoragePolicy_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SessionRecordingServiceServer).ReApplyStoragePolicy(ctx, req.(*ReApplyStoragePolicyRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // SessionRecordingService_ServiceDesc is the grpc.ServiceDesc for SessionRecordingService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -225,6 +258,10 @@ var SessionRecordingService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListSessionRecordings",
 			Handler:    _SessionRecordingService_ListSessionRecordings_Handler,
+		},
+		{
+			MethodName: "ReApplyStoragePolicy",
+			Handler:    _SessionRecordingService_ReApplyStoragePolicy_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{
