@@ -409,7 +409,7 @@ func (r *Repository) listDeletedIds(ctx context.Context, since time.Time) ([]str
 	var transactionTimestamp time.Time
 	if _, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(r db.Reader, _ db.Writer) error {
 		if err := r.SearchWhere(ctx, &deletedSessions, "delete_time >= ?", []any{since}); err != nil {
-			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to query deleted auth tokens"))
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to query deleted sessions"))
 		}
 		var err error
 		transactionTimestamp, err = r.Now(ctx)
