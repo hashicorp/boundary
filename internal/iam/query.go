@@ -112,7 +112,7 @@ const (
 	order by action, member_id;
 	`
 
-	grantsQuery = `
+	grantsBaseQuery = `
 	with
 	users (id) as (
 	  select public_id
@@ -160,22 +160,55 @@ const (
 		from managed_group_roles
 	),
 	roles (role_id, grant_scope_id) as (
-	  select iam_role.public_id,
-			 iam_role.grant_scope_id
-		from iam_role
-	   where public_id in (select role_id from user_group_roles)
+		select iam_role.public_id,
+				iam_role.grant_scope_id
+			from iam_role
+		where public_id in (select role_id from user_group_roles)
 	),
+`
+
+	grantsQuery = grantsBaseQuery + `
 	final (role_id, role_scope, role_grant) as (
-	  select roles.role_id,
-			 roles.grant_scope_id,
-			 iam_role_grant.canonical_grant
+		select
+			roles.role_id,
+			roles.grant_scope_id,
+			iam_role_grant.canonical_grant
 		from roles
-	   inner join iam_role_grant
-		  on roles.role_id = iam_role_grant.role_id
-		  -- only retrieves roles with a grant! there can be roles that don't have grants (it's a valid state in boundary)
+		inner join iam_role_grant
+			on roles.role_id = iam_role_grant.role_id
+			-- only retrieves roles with a grant! there can be roles that don't have grants (it's a valid state in boundary)
 	)
 	select role_id as role_id, role_scope as scope_id, role_grant as grant from final;
-		`
+`
+
+	grantScopesQuery = grantsBaseQuery + `
+	final (role_id, role_grant_scope_id) as (
+		select
+			roles.role_id,
+			grant_scopes.scope_id,
+		from roles
+		inner join iam_role_grant_scope
+			on roles.role_id = iam_role_grant_scope.role_id
+	)
+	select role_id as role_id, scope_id as scope_id from final;
+`
+
+	grantsFromRolesQuery = `
+	with roles as (
+		select role_id from iam_role where public_id in @role_ids
+	)
+	with final(role_id, role_scope, role_grant) as (
+		select
+			roles.role_id,
+			roles.grant_scope_id,
+			iam_role_grant.canonical_grant
+		from roles
+		inner join iam_role_grant
+			on roles.role_id = iam_role_grant.role_id
+			-- only retrieves roles with a grant! there can be roles that don't have grants (it's a valid state in boundary)
+	)
+	select role_id as role_id, role_scope as scope_id, role_grant as grant from final;
+`
 
 	estimateCountRoles = `
 		select reltuples::bigint as estimate from pg_class where oid in ('iam_role'::regclass)

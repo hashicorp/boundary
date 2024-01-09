@@ -5,6 +5,7 @@ package iam
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 
 	"github.com/hashicorp/boundary/globals"
@@ -417,13 +418,34 @@ func (r *Repository) GrantsForUser(ctx context.Context, userId string, _ ...Opti
 	var query string
 	switch userId {
 	case globals.AnonymousUserId:
-		query = fmt.Sprintf(grantsQuery, anonUser)
+		query = fmt.Sprintf(grantScopesQuery, anonUser)
 	default:
-		query = fmt.Sprintf(grantsQuery, authUser)
+		query = fmt.Sprintf(grantScopesQuery, authUser)
 	}
 
-	var grants []perms.GrantTuple
+	type grantScopeValue struct {
+		RoleId  string
+		ScopeId string
+	}
+	var grantScopes []grantScopeValue
 	rows, err := r.reader.Query(ctx, query, []any{userId})
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	defer rows.Close()
+	var roleIds []string
+	for rows.Next() {
+		var gs grantScopeValue
+		if err := r.reader.ScanRows(ctx, rows, &gs); err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		grantScopes = append(grantScopes, gs)
+		roleIds = append(roleIds, gs.RoleId)
+	}
+
+	args := []any{sql.Named("role_ids", roleIds)}
+	var grants []perms.GrantTuple
+	rows, err = r.reader.Query(ctx, query, args)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}

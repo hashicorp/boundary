@@ -77,10 +77,7 @@ func (r *Repository) CreateRole(ctx context.Context, role *Role, _ ...Option) (*
 		}
 		return nil, nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("for %s", c.PublicId)))
 	}
-	// FIXME: This is for ensuring that we properly fix perms calculations
-	role = resource.(*Role)
-	role.GrantScopeId = ""
-	return role, pr, rg, grantScopes, nil
+	return resource.(*Role), pr, rg, grantScopes, nil
 }
 
 // UpdateRole will update a role in the repository and return the written role.
@@ -168,10 +165,7 @@ func (r *Repository) UpdateRole(ctx context.Context, role *Role, version uint32,
 		}
 		return nil, nil, nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("for %s", role.PublicId)))
 	}
-	// FIXME: This is for ensuring that we properly fix perms calculations
-	role = resource.(*Role)
-	role.GrantScopeId = ""
-	return role, pr, rg, grantScopes, rowsUpdated, nil
+	return resource.(*Role), pr, rg, grantScopes, rowsUpdated, nil
 }
 
 // LookupRole will look up a role in the repository.  If the role is not
@@ -230,8 +224,6 @@ func (r *Repository) LookupRole(ctx context.Context, withPublicId string, opt ..
 		}
 		return nil, nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("for %s", withPublicId)))
 	}
-	// FIXME: This is for ensuring that we properly fix perms calculations
-	role.GrantScopeId = ""
 	return &role, pr, rg, rgs, nil
 }
 
