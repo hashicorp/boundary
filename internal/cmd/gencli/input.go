@@ -580,7 +580,7 @@ var inputStructs = map[string][]*cmdInfo{
 			Container:           "Scope",
 			HasName:             true,
 			HasDescription:      true,
-			VersionedActions:    []string{"update"},
+			VersionedActions:    []string{"update", "attach-storage-policy", "detach-storage-policy"},
 		},
 	},
 	"sessions": {

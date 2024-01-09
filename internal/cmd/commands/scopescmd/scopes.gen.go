@@ -221,6 +221,22 @@ func (c *Command) Run(args []string) int {
 			version = uint32(c.FlagVersion)
 		}
 
+	case "attach-storage-policy":
+		switch c.FlagVersion {
+		case 0:
+			opts = append(opts, scopes.WithAutomaticVersioning(true))
+		default:
+			version = uint32(c.FlagVersion)
+		}
+
+	case "detach-storage-policy":
+		switch c.FlagVersion {
+		case 0:
+			opts = append(opts, scopes.WithAutomaticVersioning(true))
+		default:
+			version = uint32(c.FlagVersion)
+		}
+
 	}
 
 	if ok := extraFlagsHandlingFunc(c, f, &opts); !ok {

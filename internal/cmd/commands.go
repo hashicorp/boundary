@@ -942,6 +942,16 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 			&scopescmd.DestroyKeyVersionCommand{
 				Command: base.NewCommand(ui),
 			}),
+		"scopes attach-storage-policy": clientCacheWrapper(
+			&scopescmd.Command{
+				Command: base.NewCommand(ui),
+				Func:    "attach-storage-policy",
+			}),
+		"scopes detach-storage-policy": clientCacheWrapper(
+			&scopescmd.Command{
+				Command: base.NewCommand(ui),
+				Func:    "detach-storage-policy",
+			}),
 
 		"search": func() (cli.Command, error) {
 			return &unsupported.UnsupportedCommand{
