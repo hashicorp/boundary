@@ -238,9 +238,11 @@ protobuild:
 	@protoc-go-inject-tag -input=./sdk/pbs/controller/api/resources/users/user.pb.go
 	@protoc-go-inject-tag -input=./internal/gen/controller/api/services/user_service.pb.go
 	@protoc-go-inject-tag -input=./sdk/pbs/controller/api/resources/workers/worker.pb.go
+	@protoc-go-inject-tag -input=./internal/gen/controller/api/services/worker_service.pb.go
 	@protoc-go-inject-tag -input=./internal/gen/controller/api/services/session_recording_service.pb.go
 	@protoc-go-inject-tag -input=./sdk/pbs/controller/api/resources/session_recordings/session_recording.pb.go
-	@protoc-go-inject-tag -input=./internal/gen/controller/api/services/worker_service.pb.go
+	@protoc-go-inject-tag -input=./internal/gen/controller/api/services/alias_service.pb.go
+	@protoc-go-inject-tag -input=./sdk/pbs/controller/api/resources/aliases/alias.pb.go
 	@protoc-go-inject-tag -input=./internal/gen/controller/servers/services/server_coordination_service.pb.go
 	@protoc-go-inject-tag -input=./internal/gen/controller/servers/servers.pb.go
 	@protoc-go-inject-tag -input=./sdk/pbs/controller/api/resources/policies/policy.pb.go

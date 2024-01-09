@@ -1,0 +1,113 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
+syntax = "proto3";
+
+package controller.api.resources.aliases.v1;
+
+import "controller/api/resources/scopes/v1/scope.proto";
+import "controller/custom_options/v1/options.proto";
+import "google/api/visibility.proto";
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+option go_package = "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/aliases;aliases";
+
+// Alias contains all fields related to an Alias resource
+message Alias {
+  // Output only. The ID of the Alias.
+  string id = 10; // @gotags: `class:"public" eventstream:"observation"`
+
+  // The ID of the scope of which this Alias is a part.
+  string scope_id = 20 [json_name = "scope_id"]; // @gotags: `class:"public" eventstream:"observation"`
+
+  // Output only. Scope information for this Alias.
+  resources.scopes.v1.ScopeInfo scope = 30;
+
+  // Optional user-set name for identification purposes.
+  google.protobuf.StringValue name = 40 [
+    (custom_options.v1.generate_sdk_option) = true,
+    (custom_options.v1.mask_mapping) = {
+      this: "name"
+      that: "Name"
+    }
+  ]; // @gotags: `class:"public"`
+
+  // Optional user-set descripton for identification purposes.
+  google.protobuf.StringValue description = 50 [
+    (custom_options.v1.generate_sdk_option) = true,
+    (custom_options.v1.mask_mapping) = {
+      this: "description"
+      that: "Description"
+    }
+  ]; // @gotags: `class:"public"`
+
+  // Output only. The time this resource was created.
+  google.protobuf.Timestamp created_time = 60 [json_name = "created_time"]; // @gotags: `class:"public" eventstream:"observation"`
+
+  // Output only. The time this resource was last updated.
+  google.protobuf.Timestamp updated_time = 70 [json_name = "updated_time"]; // @gotags: `class:"public" eventstream:"observation"`
+
+  // Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.
+  // The mutation will fail if the version does not match the latest known good version.
+  uint32 version = 80; // @gotags: `class:"public"`
+
+  // Required value of the alias. This is the value referenced by the user that
+  // is resolved to the destination id.
+  string value = 90 [
+    (custom_options.v1.generate_sdk_option) = true,
+    (custom_options.v1.mask_mapping) = {
+      this: "value"
+      that: "Value"
+    }
+  ]; // @gotags: `class:"public"`
+
+  // destination_id is the id of the resource that this Alias points to.
+  google.protobuf.StringValue destination_id = 100 [
+    json_name = "destination_id",
+    (custom_options.v1.generate_sdk_option) = true,
+    (custom_options.v1.mask_mapping) = {
+      this: "destination_id"
+      that: "DestinationId"
+    }
+  ]; // @gotags: `class:"public" eventstream:"observation"`
+
+  oneof attrs {
+    // The attributes that are applicable for the specific Alias type.
+    google.protobuf.Struct attributes = 110 [
+      (custom_options.v1.generate_sdk_option) = true,
+      (custom_options.v1.subtype) = "default"
+    ];
+    TargetAliasAttributes target_alias_attributes = 101 [
+      (google.api.field_visibility).restriction = "INTERNAL",
+      (custom_options.v1.generate_sdk_option) = true,
+      (custom_options.v1.subtype) = "target"
+    ];
+  }
+
+  // Output only. The available actions on this resource for this user.
+  repeated string authorized_actions = 300 [json_name = "authorized_actions"]; // @gotags: `class:"public"`
+}
+
+// Attributes associated only with Aliases with type "target".
+message TargetAliasAttributes {
+  AuthorizeSessionArguments authorize_session_arguments = 1 [json_name = "authorize_session_arguments"];
+}
+
+message AuthorizeSessionArguments {
+  // host_id is the id of the host that the session will be authorized for.
+  // When specified authorizing a session using this alias will have the same
+  // effect of authorizing a session to the aliase's destination_id and passing
+  // in this value through the -host-id flag. If the host-id flag is also
+  // specified when calling authorize-session an error will be returned unless
+  // the provided host-id matches this value.
+  string host_id = 100 [
+    json_name = "login_name",
+    (custom_options.v1.generate_sdk_option) = true,
+    (custom_options.v1.mask_mapping) = {
+      this: "attributes.authorize_session_arguments.host_id"
+      that: "HostId"
+    }
+  ]; // @gotags: `class:"sensitive"`
+}

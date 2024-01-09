@@ -119,4 +119,6 @@ const (
 	StoragePolicyIdField                        = "storage_policy_id"
 	RetainUntilField                            = "retain_until"
 	DeleteAfterField                            = "delete_after"
+	DestinationIdField                          = "destination_id"
+	ValueField                                  = "value"
 )
