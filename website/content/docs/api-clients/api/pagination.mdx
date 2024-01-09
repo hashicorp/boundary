@@ -5,3 +5,110 @@ description: Learn how the API pagination and cache works in Boundary to prevent
 ---
 
 # API pagination
+
+To support search and filtering large lists of results in Boundary, the Desktop client uses an API pagination feature.
+When you perform a `list` operation, the client caches the results locally.
+On subsequent `list` operations, the client compares any new or updated results to the existing cache.
+The client paginates `list` results in two phases: the initial pagination phase and the refresh phase.
+
+## Initial pagination
+
+By default, after the initial `list` operation, query results are sorted in descending order by creation time and public ID.
+
+## Refresh
+
+Once the initial pagination is complete, you can refresh the list at any time.
+In scenarios where updates are so frequent that they may be updated while the refresh operation runs, those updates may note appear at all in the refreshed list.
+If you make frequent updates, or if you are updating data while you are running a search, HashiCorp recommends that you instead perform a new initial pagination.
+
+Workers are not included in refresh operations because the updates they send to the controller are too frequent to be captured in a refresh.
+To update a list of worker resources, you should run the full pagination operation.
+
+## Deleted items
+
+Deleted resources are included in the results of the list for 30 days after they are deleted.
+Resources that have been deleted include the suffix `_deleted`.
+
+## Response structure
+
+All `list` endpoints support the following parameters:
+
+- `list_token` (optional) - An opaque token that is returned from the previous `list` response.
+If you do not supply a value, pagination starts from the beginning.
+- `page_size` (optional) - An unsigned integer that indicates the number of items that should be included on the page of search results.
+If you do not provide a value, or if you provide a value of `0`, Boundary uses the default page size of 1000 items.
+If you configure it, the `page_size` value overrides the default page size.
+Controller administrators can also configure a `max_page_size` option that constrains the maximum page size a user can request.
+
+Boundary returns the following response parameters:
+
+- `response_type` - Defines whether the response is a `delta` or `complete` listing.
+The value will be `delta` until the last page is returned, at which point it will be `complete`.
+- `list_token` - An opaque token which is included in subsequent listing requests after the initial one, so that the client can continue to paginate the results.
+- `sort_by` - The column name that the returned items should be sorted on.
+Each list endpoint has one defined column which defines the sorting for all returned items.
+This attribute is included in the response, so that the sort order for each endpoint is explicit.
+- `sort_dir` - The direction in which the returned items are sorted.
+Responses can include `desc` for descending, or `asc` for ascending.
+- `items` - The list of items.
+The items represent replacements for any existing items with matching IDs in the client's cache.
+- `est_item_count` - An unsigned integer that indicates the total number of items that are available in the list of results.
+This number may be an estimate, since the number of items may change during the pagination process.
+
+### Example json response
+
+```json
+{
+  "response_type": "<delta|complete>",
+  "pagination_token": "<opaque-token>",
+  "sort_by": "created_time",
+  "sort_dir": "desc",
+  "est_item_count": 1000,
+  "items": [
+    {
+      "id": "ttcp_1234567890",
+      "scope_id": "p_1234567890"
+    },
+    {
+      "id": "ttcp_2234567890",
+      "scope_id": "p_1234567890"
+    }
+  ]
+}
+```
+
+### List tokens
+
+List tokens contain general metadata associated with the ongoing pagination and either a pagination or refresh token part, depending on the phase of the pagination.
+If you compose an invalid token, you will receive an invalid token error.
+
+When you make a `list` request using a valid `list_token`, Boundary builds a page of items following from the page returned with the token:
+
+- Must contain a `response_type` equal to `delta` or `complete`
+- Must contain a `sort_by`
+- Must contain a `sort_dir`
+- Must contain a `list_token`
+- May contain `items`
+- May contain `est_item_count`
+
+When you make a `list` request without a `list_token`, Boundary builds a page of items that contains all of the resources currently available, subject to the page size, with the following attributes:
+
+- Must contain a `response_type` equal to `delta` or `complete`
+- Must contain a `sort_by`
+- Must contain a `sort_dir`
+- May contain a `list_token`
+- May contain `items`
+- May contain `est_item_count`
+
+#### Token expiration
+
+Boundary treats requests with tokens with a `create_time` older than 30 days in the past as a request with an invalid token and returns an error.
+
+#### User permissions
+
+Users can only see items that they have permissions to see.
+
+## Backward compatibility
+
+List pagination was introduced in Boundary version 0.15.0.
+Since pagination is mandatory, in the case where the total number of items is larger than the default or configured page size, you must implement pagination to get the full result set.
