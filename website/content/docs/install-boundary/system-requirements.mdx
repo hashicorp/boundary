@@ -100,16 +100,25 @@ If any of the default port mappings below do not meet your organization's requir
 | Load balancer   | Controller servers          | 9203                     | tcp       | Health checks                           |
 | Worker servers  | Controller load balancer    | 9201                     | tcp       | Session authorization, credentials, etc |
 | Controllers     | Postgres                    | 5432                     | tcp       | Storing system state                    |
-| Client machines | Worker servers \*           | 9202                     | tcp       | Session proxing                         |
-| Worker servers  | Boundary targets\*          | various                  | tcp       | Session proxing                         |
-| Client machines | Ingress worker servers \*\* | 9202                     | tcp       | Multi-hop session proxing               |
-| Egress workers  | Ingress worker servers \*\* | 9202                     | tcp       | Multi-hop session proxing               |
-| Egress workers  | Boundary targets \*\*       | various                  | tcp       | Multi-hop session proxing               |
+| Client machines | Worker servers \*           | 9202                     | tcp       | Session proxying                         |
+| Worker servers  | Boundary targets\*          | various                  | tcp       | Session proxying                         |
+| Client machines | Ingress worker servers \*\* | 9202                     | tcp       | Multi-hop session proxying               |
+| Egress workers  | Ingress worker servers \*\* | 9202                     | tcp       | Multi-hop session proxying               |
+| Egress workers  | Boundary targets \*\*       | various                  | tcp       | Multi-hop session proxying               |
 
 \* In this scenario, the client connects directly to one worker, which then proxies the connection to the Boundary target.
 
-** In this scenario, the client connects to an ingress worker, then the ingress worker connects to a downstream egress worker, then the downstream egress worker connects to the Boundary target.
-Ingress and egress workers can be chained together further to provide multiple layers of session proxying.
+** Multi-hop sessions use reverse proxy tunnels that are initiated when the downstream workers start and connect to upstream workers.
+There are four steps when a client requests to connect to a target that requires a multi-hop path:
+
+1. The client connects to an ingress worker.
+1. The ingress worker connects with the next-downstream or egress worker through that worker's established reverse-proxy tunnel.
+
+  This step may be repeated multiple times if there are multiple worker connections in the middle of the tunnel chain.
+1. The final downstream egress worker connects to the Boundary target.
+1. The client can now send data through the tunnel chain.
+
+A multi-hop worker that acts as a downstream can initiate a tunnel to one or multiple upstream workers, specified in the `initial_upstreams` list in the worker configuration.
 
 ## Network traffic encryption
 

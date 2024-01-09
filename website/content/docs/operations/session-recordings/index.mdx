@@ -1,0 +1,36 @@
+---
+layout: docs
+page_title: Recorded sessions operations
+description: |-
+  How to work with Boundary's recorded sessions
+---
+
+# Recorded sessions operations
+
+<EnterpriseAlert product="boundary">This feature requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary or Boundary Enterprise</a></EnterpriseAlert>
+
+Boundary provides [auditing](/boundary/docs/concepts/auditing) capabilities via [session recording](/boundary/docs/configuration/session-recording).
+In Boundary, a session represents a set of connections between a user and a host from a target.
+The session begins when an authorized user requests access to a target, and it ends when that access is terminated.
+When you enable session recording on a target, any user session that connects to the target is automatically recorded.
+An administrator can later view the recordings to investigate security issues, review system activity, or perform regular assessments of security policies and procedures.
+
+Recorded sessions are stored in an external storage bucket that you create.
+Storing session recordings in a system external to Boundary means those recordings can be accessed, modified, deleted, and even restored independently of Boundary.
+You can view any sessions that Boundary recorded in your storage provider or via the CLI.
+
+When you view recorded sessions using the CLI or Admin UI, Boundary can convert the recording into other formats for playback.
+Currently Boundary supports converting the recording of an individual SSH channel into an [asciicast](https://github.com/asciinema/asciinema/blob/develop/doc/asciicast-v2.md) format to play back an interactive SSH session.
+
+The asciicast format is well suited for the playback of interactive shell activity.
+However, some aspects of the recording cannot be translated into asciicast.
+For example, if an SSH session uses the `RemoteCommand` option, or is used to `exec` a command, the command is not displayed in the asciicast.
+The output of the command may be displayed, though.
+If you use SSH for something other than an interactive shell, such as for file transfer, X11 forwarding, or port forwarding, Boundary does not attempt to create an asciicast.
+In all cases, the SSH session is still recorded in the [BSR file](/boundary/docs/concepts/auditing/#bsr-directory-structure) and you can view the BSR file in the external storage bucket.
+
+For more information about working with recorded sessions, refer to the following topics:
+
+- [Find and view recorded sessions](/boundary/docs/operations/session-recordings/manage-recorded-sessions)
+- [Validate the integrity of session recordings](/boundary/docs/operations/session-recordings/validate-session-recordings)
+- [How Boundary validates data integrity in the external data store](/boundary/docs/operations/session-recordings/validate-data-store)

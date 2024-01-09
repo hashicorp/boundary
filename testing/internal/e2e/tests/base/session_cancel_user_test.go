@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package base_test
 
@@ -43,7 +43,7 @@ func TestCliSessionCancelUser(t *testing.T) {
 	newProjectId := boundary.CreateNewProjectCli(t, ctx, newOrgId)
 	newHostCatalogId := boundary.CreateNewHostCatalogCli(t, ctx, newProjectId)
 	newHostSetId := boundary.CreateNewHostSetCli(t, ctx, newHostCatalogId)
-	newHostId := boundary.CreateNewHostCli(t, ctx, newHostCatalogId, c.TargetIp)
+	newHostId := boundary.CreateNewHostCli(t, ctx, newHostCatalogId, c.TargetAddress)
 	boundary.AddHostToHostSetCli(t, ctx, newHostSetId, newHostId)
 	newTargetId := boundary.CreateNewTargetCli(t, ctx, newProjectId, c.TargetPort)
 	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, newHostSetId)
@@ -94,7 +94,7 @@ func TestCliSessionCancelUser(t *testing.T) {
 	// Create a role for user
 	boundary.AuthenticateAdminCli(t, ctx)
 	newRoleId := boundary.CreateNewRoleCli(t, ctx, newProjectId)
-	boundary.AddGrantToRoleCli(t, ctx, newRoleId, "id=*;type=target;actions=authorize-session")
+	boundary.AddGrantToRoleCli(t, ctx, newRoleId, "ids=*;type=target;actions=authorize-session")
 	boundary.AddPrincipalToRoleCli(t, ctx, newRoleId, newUserId)
 
 	// Connect to target to create a session
@@ -166,7 +166,7 @@ func TestApiCreateUser(t *testing.T) {
 	newProjectId := boundary.CreateNewProjectApi(t, ctx, client, newOrgId)
 	newHostCatalogId := boundary.CreateNewHostCatalogApi(t, ctx, client, newProjectId)
 	newHostSetId := boundary.CreateNewHostSetApi(t, ctx, client, newHostCatalogId)
-	newHostId := boundary.CreateNewHostApi(t, ctx, client, newHostCatalogId, c.TargetIp)
+	newHostId := boundary.CreateNewHostApi(t, ctx, client, newHostCatalogId, c.TargetAddress)
 	boundary.AddHostToHostSetApi(t, ctx, client, newHostSetId, newHostId)
 	newTargetId := boundary.CreateNewTargetApi(t, ctx, client, newProjectId, c.TargetPort)
 	boundary.AddHostSourceToTargetApi(t, ctx, client, newTargetId, newHostSetId)
@@ -193,7 +193,7 @@ func TestApiCreateUser(t *testing.T) {
 	newRoleId := newRoleResult.Item.Id
 	t.Logf("Created Role: %s", newRoleId)
 
-	_, err = rClient.AddGrants(ctx, newRoleId, 0, []string{"id=*;type=target;actions=authorize-session"},
+	_, err = rClient.AddGrants(ctx, newRoleId, 0, []string{"ids=*;type=target;actions=authorize-session"},
 		roles.WithAutomaticVersioning(true),
 	)
 	require.NoError(t, err)

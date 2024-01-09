@@ -1,0 +1,14 @@
+#!/usr/bin/with-contenv bash
+# Copyright (c) HashiCorp, Inc.
+# SPDX-License-Identifier: BUSL-1.1
+
+cp /ca/ca-key.pub /etc/ssh/ca-key.pub
+chown 1000:1000 /etc/ssh/ca-key.pub
+chmod 644 /etc/ssh/ca-key.pub
+echo TrustedUserCAKeys /etc/ssh/ca-key.pub >> /etc/ssh/sshd_config
+echo PermitTTY yes >> /etc/ssh/sshd_config
+sed -i 's/X11Forwarding no/X11Forwarding yes/' /etc/ssh/sshd_config
+echo "X11UseLocalhost no" >> /etc/ssh/sshd_config
+
+apk update
+apk add xterm util-linux dbus ttf-freefont xauth firefox

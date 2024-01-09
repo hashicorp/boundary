@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package cluster
 
@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller"
 	ct "github.com/hashicorp/boundary/internal/daemon/controller/handlers/targets"
 	"github.com/hashicorp/boundary/internal/daemon/worker"
+	"github.com/hashicorp/boundary/internal/tests/helper"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
 	"github.com/hashicorp/go-hclog"
 	"github.com/mr-tron/base58"
@@ -37,7 +38,7 @@ func TestWorkerTagging(t *testing.T) {
 	ctx := c1.Context()
 
 	// No workers yet
-	expectWorkers(t, c1)
+	helper.ExpectWorkers(t, c1)
 
 	// Ensure target is valid
 	client := c1.Client()
@@ -102,7 +103,7 @@ func TestWorkerTagging(t *testing.T) {
 
 	w3.Worker().WaitForNextSuccessfulStatusUpdate()
 
-	expectWorkers(t, c1, w1, w2, w3)
+	helper.ExpectWorkers(t, c1, w1, w2, w3)
 
 	// Ensure we are using the OSS filter, which uses egress only for worker selection
 	oldAuthFun := ct.AuthorizeSessionWorkerFilterFn

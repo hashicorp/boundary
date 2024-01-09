@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package sign_test
 
@@ -16,7 +16,6 @@ import (
 	"github.com/hashicorp/boundary/internal/bsr/internal/sign"
 	"github.com/hashicorp/boundary/internal/bsr/kms"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
-	"github.com/hashicorp/go-multierror"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
@@ -111,11 +110,7 @@ func TestFile(t *testing.T) {
 			testString,
 			testSig,
 			nil,
-			func() error {
-				var wantErrors *multierror.Error
-				wantErrors = multierror.Append(wantErrors, errors.New("sign.(File).Close: sign.(Writer).Close: close error"))
-				return wantErrors.ErrorOrNil()
-			}(),
+			errors.New("sign.(File).Close: sign.(Writer).Close: close error"),
 			true,
 		},
 		{
@@ -126,11 +121,7 @@ func TestFile(t *testing.T) {
 			testString,
 			testSig,
 			nil,
-			func() error {
-				var wantErrors *multierror.Error
-				wantErrors = multierror.Append(wantErrors, errors.New("sign.(File).Close: write failed"))
-				return wantErrors.ErrorOrNil()
-			}(),
+			errors.New("sign.(File).Close: write failed"),
 			false,
 		},
 	}

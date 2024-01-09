@@ -1,11 +1,11 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package api
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"os"
 	"reflect"
 	"testing"
 
@@ -19,7 +19,7 @@ import (
 // name
 func CloudEventFromFile(t testing.TB, fileName string) *cloudevents.Event {
 	t.Helper()
-	b, err := ioutil.ReadFile(fileName)
+	b, err := os.ReadFile(fileName)
 	assert.NoError(t, err)
 	got := &cloudevents.Event{}
 	err = json.Unmarshal(b, got)

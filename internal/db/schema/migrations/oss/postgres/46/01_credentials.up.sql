@@ -1,5 +1,5 @@
 -- Copyright (c) HashiCorp, Inc.
--- SPDX-License-Identifier: MPL-2.0
+-- SPDX-License-Identifier: BUSL-1.1
 
 begin;
 
@@ -46,6 +46,7 @@ begin;
   -- insert_credential_library_subtype() is a before insert trigger
   -- function for subtypes of credential_library.
   -- Replaces the insert_credential_library_subtype function defined in 22/02_credential_type.up.sql
+  -- Replaced in 81/04_credential_library_base_table_updates.up.sql
   create or replace function insert_credential_library_subtype() returns trigger
   as $$
   begin
@@ -97,6 +98,7 @@ begin;
   -- insert_credential_static_subtype() is a before insert trigger
   -- function for subtypes of credential_static
   -- Replaces the insert_credential_static_subtype function defined in 10/03_credential.up.sql
+  -- Replaced in 81/03_credential_static_base_table_updates.up.sql
   create or replace function insert_credential_static_subtype() returns trigger
   as $$
   begin

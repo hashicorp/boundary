@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package ops
 
@@ -726,7 +726,14 @@ func TestCreateOpsHandler(t *testing.T) {
 					State:              server.ActiveOperationalState.String(),
 					ActiveSessionCount: wrapperspb.UInt32(0),
 				}}
-				assert.Empty(t, cmp.Diff(want, pbResp, protocmp.Transform()))
+				assert.Empty(t,
+					cmp.Diff(
+						want,
+						pbResp,
+						protocmp.Transform(),
+						protocmp.IgnoreFields(&pbhealth.HealthInfo{}, "upstream_connection_state"),
+					),
+				)
 			},
 		},
 		{
@@ -750,7 +757,14 @@ func TestCreateOpsHandler(t *testing.T) {
 					State:              server.ActiveOperationalState.String(),
 					ActiveSessionCount: wrapperspb.UInt32(0),
 				}}
-				assert.Empty(t, cmp.Diff(want, pbResp, protocmp.Transform()))
+				assert.Empty(t,
+					cmp.Diff(
+						want,
+						pbResp,
+						protocmp.Transform(),
+						protocmp.IgnoreFields(&pbhealth.HealthInfo{}, "upstream_connection_state"),
+					),
+				)
 			},
 		},
 		{

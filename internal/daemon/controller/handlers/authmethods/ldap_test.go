@@ -1,16 +1,22 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package authmethods_test
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"os"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/boundary/globals"
+	am "github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/ldap"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
@@ -20,12 +26,14 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/authmethods"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/event"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/authmethods"
 	scopepb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
+	"github.com/hashicorp/eventlogger/formatter_filters/cloudevents"
 	"github.com/hashicorp/go-hclog"
 	"github.com/jimlambrt/gldap"
 	"github.com/jimlambrt/gldap/testdirectory"
@@ -60,10 +68,13 @@ func Test_UpdateLdap(t *testing.T) {
 	atRepoFn := func() (*authtoken.Repository, error) {
 		return authtoken.NewRepository(ctx, rw, rw, kms)
 	}
+	authMethodRepoFn := func() (*am.AuthMethodRepository, error) {
+		return am.NewAuthMethodRepository(ctx, rw, rw, kms)
+	}
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 
 	o, _ := iam.TestScopes(t, iamRepo)
-	tested, err := authmethods.NewService(ctx, kms, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn, ldapRepoFn)
+	tested, err := authmethods.NewService(ctx, kms, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn, ldapRepoFn, authMethodRepoFn, 1000)
 	require.NoError(t, err, "Error when getting new auth_method service.")
 
 	defaultScopeInfo := &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: o.GetType(), ParentScopeId: scope.Global.String()}
@@ -81,14 +92,17 @@ func Test_UpdateLdap(t *testing.T) {
 		},
 	}
 
-	freshAuthMethod := func(t *testing.T) (*pb.AuthMethod, func()) {
+	freshAuthMethod := func(t *testing.T, attrs *pb.AuthMethod_LdapAuthMethodsAttributes) (*pb.AuthMethod, func()) {
+		if attrs == nil {
+			attrs = defaultAttributes
+		}
 		ctx := auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId())
 		am, err := tested.CreateAuthMethod(ctx, &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 			ScopeId:     o.GetPublicId(),
 			Name:        wrapperspb.String("default"),
 			Description: wrapperspb.String("default"),
 			Type:        ldap.Subtype.String(),
-			Attrs:       defaultAttributes,
+			Attrs:       attrs,
 		}})
 		require.NoError(t, err)
 
@@ -103,12 +117,13 @@ func Test_UpdateLdap(t *testing.T) {
 	_, testEncodedCert := ldap.TestGenerateCA(t, "localhost")
 
 	tests := []struct {
-		name        string
-		req         *pbs.UpdateAuthMethodRequest
-		res         *pbs.UpdateAuthMethodResponse
-		err         error
-		errContains string
-		wantErr     bool
+		name             string
+		newAttrsOverride *pb.AuthMethod_LdapAuthMethodsAttributes
+		req              *pbs.UpdateAuthMethodRequest
+		res              *pbs.UpdateAuthMethodResponse
+		err              error
+		errContains      string
+		wantErr          bool
 	}{
 		{
 			name: "update-an-existing-auth-method",
@@ -348,6 +363,128 @@ func Test_UpdateLdap(t *testing.T) {
 					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
 			},
+		},
+		{
+			name: "update-only-bind-dn",
+			newAttrsOverride: &pb.AuthMethod_LdapAuthMethodsAttributes{
+				LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{
+					Urls:         []string{"ldaps://ldap1"},
+					State:        "active-private",
+					BindDn:       &wrapperspb.StringValue{Value: "bind-dn"},
+					BindPassword: &wrapperspb.StringValue{Value: "bind-password"},
+				},
+			},
+			req: &pbs.UpdateAuthMethodRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"attributes.bind_dn"},
+				},
+				Item: &pb.AuthMethod{
+					Attrs: &pb.AuthMethod_LdapAuthMethodsAttributes{
+						LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{
+							BindDn: &wrapperspb.StringValue{Value: "updated"},
+						},
+					},
+				},
+			},
+			res: &pbs.UpdateAuthMethodResponse{
+				Item: &pb.AuthMethod{
+					ScopeId:     o.GetPublicId(),
+					Version:     2,
+					Name:        &wrapperspb.StringValue{Value: "default"},
+					Description: &wrapperspb.StringValue{Value: "default"},
+					Type:        ldap.Subtype.String(),
+					Attrs: &pb.AuthMethod_LdapAuthMethodsAttributes{
+						LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{
+							Urls:   []string{"ldaps://ldap1"},
+							State:  "active-private",
+							BindDn: &wrapperspb.StringValue{Value: "updated"},
+							// note: BindPassword is never returned (an HMAC'd
+							// value is returned in a separate attribute)
+						},
+					},
+					Scope:                       defaultScopeInfo,
+					AuthorizedActions:           ldapAuthorizedActions,
+					AuthorizedCollectionActions: authorizedCollectionActions,
+				},
+			},
+		},
+		{
+			name: "err-update-only-bind-dn-with-no-orig-bind-password",
+			req: &pbs.UpdateAuthMethodRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"attributes.bind_dn"},
+				},
+				Item: &pb.AuthMethod{
+					Attrs: &pb.AuthMethod_LdapAuthMethodsAttributes{
+						LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{
+							BindDn: &wrapperspb.StringValue{Value: "updated"},
+						},
+					},
+				},
+			},
+			err:         handlers.ApiErrorWithCode(codes.InvalidArgument),
+			errContains: "missing password",
+		},
+		{
+			name: "update-only-bind-password",
+			newAttrsOverride: &pb.AuthMethod_LdapAuthMethodsAttributes{
+				LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{
+					Urls:         []string{"ldaps://ldap1"},
+					State:        "active-private",
+					BindDn:       &wrapperspb.StringValue{Value: "bind-dn"},
+					BindPassword: &wrapperspb.StringValue{Value: "bind-password"},
+				},
+			},
+			req: &pbs.UpdateAuthMethodRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"attributes.bind_password"},
+				},
+				Item: &pb.AuthMethod{
+					Attrs: &pb.AuthMethod_LdapAuthMethodsAttributes{
+						LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{
+							BindPassword: &wrapperspb.StringValue{Value: "updated"},
+						},
+					},
+				},
+			},
+			res: &pbs.UpdateAuthMethodResponse{
+				Item: &pb.AuthMethod{
+					ScopeId:     o.GetPublicId(),
+					Version:     2,
+					Name:        &wrapperspb.StringValue{Value: "default"},
+					Description: &wrapperspb.StringValue{Value: "default"},
+					Type:        ldap.Subtype.String(),
+					Attrs: &pb.AuthMethod_LdapAuthMethodsAttributes{
+						LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{
+							Urls:   []string{"ldaps://ldap1"},
+							State:  "active-private",
+							BindDn: &wrapperspb.StringValue{Value: "bind-dn"},
+							// note: BindPassword is never returned (an HMAC'd
+							// value is returned in a separate attribute)
+						},
+					},
+					Scope:                       defaultScopeInfo,
+					AuthorizedActions:           ldapAuthorizedActions,
+					AuthorizedCollectionActions: authorizedCollectionActions,
+				},
+			},
+		},
+		{
+			name: "err-update-only-bind-password-with-no-orig-bind-dn",
+			req: &pbs.UpdateAuthMethodRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"attributes.bind_password"},
+				},
+				Item: &pb.AuthMethod{
+					Attrs: &pb.AuthMethod_LdapAuthMethodsAttributes{
+						LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{
+							BindPassword: &wrapperspb.StringValue{Value: "updated"},
+						},
+					},
+				},
+			},
+			err:         handlers.ApiErrorWithCode(codes.InvalidArgument),
+			errContains: "missing dn",
 		},
 		{
 			name: "update-a-non-existent-auth-method",
@@ -689,7 +826,7 @@ func Test_UpdateLdap(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			am, cleanup := freshAuthMethod(t)
+			am, cleanup := freshAuthMethod(t, tc.newAttrsOverride)
 			defer cleanup()
 
 			tc.req.Item.Version = am.GetVersion()
@@ -718,7 +855,15 @@ func Test_UpdateLdap(t *testing.T) {
 			if tc.res == nil {
 				require.Nil(got)
 			}
-			cmpOptions := []cmp.Option{protocmp.Transform()}
+			cmpOptions := []cmp.Option{
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+				cmpopts.SortSlices(func(a, b protocmp.Message) bool {
+					return a.String() < b.String()
+				}),
+			}
 			if got != nil {
 				assert.NotNilf(tc.res, "Expected UpdateAuthMethod response to be nil, but was %v", got)
 				gotUpdateTime := got.GetItem().GetUpdatedTime().AsTime()
@@ -750,7 +895,15 @@ func TestAuthenticate_Ldap(t *testing.T) {
 	testRootWrapper := db.TestWrapper(t)
 	testKms := kms.TestKms(t, testConn, testRootWrapper)
 	o, _ := iam.TestScopes(t, iam.TestRepo(t, testConn, testRootWrapper))
-
+	opt := event.TestWithObservationSink(t)
+	c := event.TestEventerConfig(t, "Test_StartAuth_to_Callback", opt)
+	testLock := &sync.Mutex{}
+	testLogger := hclog.New(&hclog.LoggerOptions{
+		Mutex: testLock,
+		Name:  "test",
+	})
+	c.EventerConfig.TelemetryEnabled = true
+	require.NoError(t, event.InitSysEventer(testLogger, testLock, "use-Test_Authenticate", event.WithEventerConfig(&c.EventerConfig)))
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.TestRepo(t, testConn, testRootWrapper), nil
 	}
@@ -765,6 +918,9 @@ func TestAuthenticate_Ldap(t *testing.T) {
 	}
 	atRepoFn := func() (*authtoken.Repository, error) {
 		return authtoken.NewRepository(testCtx, testRw, testRw, testKms)
+	}
+	authMethodRepoFn := func() (*am.AuthMethodRepository, error) {
+		return am.NewAuthMethodRepository(testCtx, testRw, testRw, testKms)
 	}
 
 	orgDbWrapper, err := testKms.GetWrapper(testCtx, o.GetPublicId(), kms.KeyPurposeDatabase)
@@ -945,7 +1101,7 @@ func TestAuthenticate_Ldap(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			s, err := authmethods.NewService(testCtx, testKms, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn, ldapRepoFn)
+			s, err := authmethods.NewService(testCtx, testKms, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn, ldapRepoFn, authMethodRepoFn, 1000)
 			require.NoError(err)
 
 			resp, err := s.Authenticate(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.request)
@@ -968,7 +1124,20 @@ func TestAuthenticate_Ldap(t *testing.T) {
 			assert.Equal(aToken.GetCreatedTime(), aToken.GetApproximateLastUsedTime())
 			assert.Equal(testAm.GetPublicId(), aToken.GetAuthMethodId())
 			assert.Equal(tc.wantType, resp.GetType())
-
+			sinkFileName := c.ObservationEvents.Name()
+			defer func() { _ = os.WriteFile(sinkFileName, nil, 0o666) }()
+			b, err := ioutil.ReadFile(sinkFileName)
+			require.NoError(err)
+			gotRes := &cloudevents.Event{}
+			err = json.Unmarshal(b, gotRes)
+			require.NoErrorf(err, "json: %s", string(b))
+			details, ok := gotRes.Data.(map[string]any)["details"]
+			require.True(ok)
+			for _, key := range details.([]any) {
+				assert.Contains(key.(map[string]any)["payload"], "user_id")
+				assert.Contains(key.(map[string]any)["payload"], "auth_token_start")
+				assert.Contains(key.(map[string]any)["payload"], "auth_token_end")
+			}
 			// support testing for pre-provisioned accounts
 			if tc.acctId != "" {
 				assert.Equal(tc.acctId, aToken.GetAccountId())

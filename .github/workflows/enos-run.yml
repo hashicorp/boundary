@@ -34,11 +34,11 @@ jobs:
       go-cache-key: ${{ steps.go-cache-key.outputs.key }}
     runs-on: ${{ fromJSON(vars.RUNNER) }}
     steps:
-      - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3.5.2
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
         with:
           fetch-depth: '0'
       - name: Set up Go
-        uses: actions/setup-go@4d34df0c2316fe8122ab82dc22947d607c0c91f9 # v4.0.0
+        uses: actions/setup-go@93397bea11091df50f3d7e59dc26a7711a8bcfbe # v4.1.0
         with:
           go-version: ${{ inputs.go-version }}
           cache: false
@@ -53,7 +53,7 @@ jobs:
           echo "go-mod=$(go env GOMODCACHE)" >> "$GITHUB_OUTPUT"
           echo "go-bin=$(go env GOPATH)/bin" >> "$GITHUB_OUTPUT"
       - name: Set up Go modules cache
-        uses: actions/cache@88522ab9f39a2ea568f7027eddc7d8d8bc9d59c8 # v3.3.1
+        uses: actions/cache@704facf57e6136b1bc63b828d79edcd491f0ee84 # v3.3.2
         with:
           path: |
             ${{ steps.go-cache-paths.outputs.go-build }}
@@ -79,7 +79,11 @@ jobs:
           - filter: 'e2e_aws builder:crt'
           - filter: 'e2e_database'
           - filter: 'e2e_docker_base builder:crt'
+          - filter: 'e2e_docker_base_plus builder:crt'
           - filter: 'e2e_docker_base_with_vault builder:crt'
+          - filter: 'e2e_docker_base_with_worker builder:crt'
+          - filter: 'e2e_docker_worker_registration_controller_led builder:crt'
+          - filter: 'e2e_docker_worker_registration_worker_led builder:crt'
     runs-on: ${{ fromJSON(vars.RUNNER_LARGE) }}
     env:
       GITHUB_TOKEN: ${{ secrets.SERVICE_USER_GITHUB_TOKEN }}
@@ -89,23 +93,25 @@ jobs:
       ENOS_VAR_aws_ssh_keypair_name: ${{ github.event.repository.name }}-ci-ssh-key
       ENOS_VAR_aws_ssh_private_key_path: ./support/private_key.pem
       ENOS_VAR_local_boundary_dir: ./support/boundary
-      ENOS_VAR_local_boundary_ui_dir: ./support/boundary-ui
+      ENOS_VAR_local_boundary_src_dir: ${{ github.workspace }}
+      ENOS_VAR_local_boundary_ui_src_dir: ./support/src/boundary-ui
       ENOS_VAR_crt_bundle_path: ./support/boundary.zip
       ENOS_VAR_tfc_api_token: ${{ secrets.TF_API_TOKEN }}
       ENOS_VAR_test_email: ${{ secrets.SERVICE_USER_EMAIL }}
       ENOS_VAR_boundary_edition: ${{ inputs.edition }}
       ENOS_VAR_boundary_docker_image_name: ${{ inputs.docker-image-name }}
       ENOS_VAR_boundary_docker_image_file: ./support/boundary_docker_image.tar
+      ENOS_VAR_go_version: ${{ inputs.go-version }}
     steps:
       - name: Checkout
-        uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3.5.2
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
       - name: Set up Go
-        uses: actions/setup-go@4d34df0c2316fe8122ab82dc22947d607c0c91f9 # v4.0.0
+        uses: actions/setup-go@93397bea11091df50f3d7e59dc26a7711a8bcfbe # v4.1.0
         with:
           go-version: ${{ inputs.go-version }}
           cache: false
       - name: Set up Go modules cache
-        uses: actions/cache@88522ab9f39a2ea568f7027eddc7d8d8bc9d59c8 # v3.3.1
+        uses: actions/cache@704facf57e6136b1bc63b828d79edcd491f0ee84 # v3.3.2
         with:
           path: |
             ${{ needs.setup.outputs.cache-go-build }}
@@ -116,14 +122,14 @@ jobs:
             ${{ runner.os }}-go
           fail-on-cache-miss: true
       - name: Set up Terraform
-        uses: hashicorp/setup-terraform@633666f66e0061ca3b725c73b2ec20cd13a8fdd1    # TSCCR: loading action configs: failed to query HEAD reference: failed to get advertised references: authorization failed
+        uses: hashicorp/setup-terraform@a1502cd9e758c50496cc9ac5308c4843bcd56d36    # TSCCR: loading action configs: failed to query HEAD reference: failed to get advertised references: authorization failed
         with:
           # the terraform wrapper will break Terraform execution in enos because
           # it changes the output to text when we expect it to be JSON.
           terraform_wrapper: false
       - name: Import GPG key for Boundary pass keystore
         id: import_gpg
-        uses: crazy-max/ghaction-import-gpg@111c56156bcc6918c056dbef52164cfa583dc549 # v5.2.0
+        uses: crazy-max/ghaction-import-gpg@82a020f1f7f605c65dd2449b392a52c3fcfef7ef # v6.0.0
         with:
           gpg_private_key: ${{ secrets.ENOS_GPG_PRIVATE_KEY }}
           passphrase: ${{ secrets.ENOS_GPG_PASSPHRASE }}
@@ -134,7 +140,7 @@ jobs:
           echo "trusted-key ${{ secrets.ENOS_GPG_UID }}" >> ~/.gnupg/gpg.conf
           cat ~/.gnupg/gpg.conf
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@e1e17a757e536f70e52b5a12b2e8d1d1c60e04ef # v2.0.0
+        uses: aws-actions/configure-aws-credentials@010d0da01d0b5a38af31e9c3470dbfdabdecca3a # v4.0.1
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID_CI }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_CI }}
@@ -155,7 +161,7 @@ jobs:
           echo "debug_data_artifact_name=enos-debug-data_$(echo ${{ matrix.filter }} | sed -e 's/ /_/g' | sed -e 's/:/=/g')" >> "$GITHUB_OUTPUT"
       - name: Set up dependency cache
         id: dep-cache
-        uses: actions/cache@88522ab9f39a2ea568f7027eddc7d8d8bc9d59c8 # v3.3.1
+        uses: actions/cache@704facf57e6136b1bc63b828d79edcd491f0ee84 # v3.3.2
         with:
           path: /tmp/test-deps
           key: enos-test-deps-password-store-1.7.4-vault-1.12.2
@@ -181,14 +187,9 @@ jobs:
         run: |
           wget https://releases.hashicorp.com/vault/1.12.2/vault_1.12.2_linux_amd64.zip -O /tmp/test-deps/vault.zip
       - name: Install Vault CLI
-        if: matrix.filter == 'e2e_aws_base_with_vault builder:crt' || matrix.filter == 'e2e_database' || matrix.filter == 'e2e_ui builder:crt' || matrix.filter == 'e2e_docker_base_with_vault builder:crt'
+        if: contains(matrix.filter, 'vault') || contains(matrix.filter, 'e2e_docker') || matrix.filter == 'e2e_database' || matrix.filter == 'e2e_ui_aws builder:crt'
         run: |
           unzip /tmp/test-deps/vault.zip -d /usr/local/bin
-      - name: Add hosts to /etc/hosts
-        # This enables the use of `boundary connect` with docker containers
-        if: contains(matrix.filter, 'e2e_docker')
-        run: |
-          sudo echo "127.0.0.1 localhost boundary" | sudo tee -a /etc/hosts
       - name: GH fix for localhost resolution
         if: github.repository == 'hashicorp/boundary' && contains(matrix.filter, 'e2e_docker')
         run: |
@@ -218,23 +219,23 @@ jobs:
         run: |
           mv ${{ steps.download-docker.outputs.download-path }}/*.tar enos/support/boundary_docker_image.tar
       - name: Set up Node.js
-        uses: actions/setup-node@64ed1c7eab4cce3362f8c340dee64e5eaeef8f7c # v3.6.0
-        if: matrix.filter == 'e2e_ui builder:crt'
+        uses: actions/setup-node@8f152de45cc393bb48ce5d89d36b731f54556e65 # v4.0.0
+        if: contains(matrix.filter, 'e2e_ui')
         with:
           node-version: '16.x'
       - name: Checkout boundary-ui
-        uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3.5.2
-        if: matrix.filter == 'e2e_ui builder:crt'
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        if: contains(matrix.filter, 'e2e_ui')
         with:
           repository: hashicorp/boundary-ui
-          path: enos/support/boundary-ui
+          path: enos/support/src/boundary-ui
       - name: Install boundary-ui dependencies
-        if: matrix.filter == 'e2e_ui builder:crt'
-        run: yarn --cwd enos/support/boundary-ui install
+        if: contains(matrix.filter, 'e2e_ui')
+        run: yarn --cwd enos/support/src/boundary-ui install
       - name: Install playwright dependencies (i.e. browsers)
-        if: matrix.filter == 'e2e_ui builder:crt'
+        if: contains(matrix.filter, 'e2e_ui')
         run: npx playwright install --with-deps
-        working-directory: enos/support/boundary-ui
+        working-directory: enos/support/src/boundary-ui
       - name: Output Terraform version info
         run: |
           mkdir -p ./enos/terraform-plugin-cache
@@ -248,36 +249,71 @@ jobs:
         run: |
           mkdir -p ./enos/terraform-plugin-cache
           export ENOS_VAR_enos_user=$GITHUB_ACTOR && \
-          enos scenario run --timeout 60m0s --chdir ./enos ${{ matrix.filter }}
+          enos scenario launch --timeout 60m0s --chdir ./enos ${{ matrix.filter }}
+      - name: Rename e2e tests output
+        continue-on-error: true
+        run: |
+          pushd enos
+          scenario="${{ matrix.filter }}"
+          count=$(find ./*.log 2>/dev/null | wc -l | xargs)
+          if [ "$count" != 0 ]
+          then
+            for f in *.log; do mv --  "$f" "${f%.log}_${scenario%% *}.log"; done
+          fi
+          popd
       - name: Upload e2e tests output
-        uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
+        uses: actions/upload-artifact@a8a3f3ad30e3422c9c7b888a15615d19a852ae32 # v3.1.3
         with:
           name: test-e2e-output
-          path: enos/test*.log
+          path: enos/*.log
           retention-days: 5
+      - name: Get logs from postgres container
+        # Retrieve logs from the postgres container on a failed
+        # run to help diagnose a deadlock issue
+        if: contains(matrix.filter, 'e2e_docker') && steps.run.outcome == 'failure'
+        run: |
+          docker logs database
       - name: Upload e2e UI tests debug info
-        if: matrix.filter == 'e2e_ui builder:crt' && steps.run.outcome == 'failure'
-        uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
+        if: contains(matrix.filter, 'e2e_ui') && steps.run.outcome == 'failure'
+        uses: actions/upload-artifact@a8a3f3ad30e3422c9c7b888a15615d19a852ae32 # v3.1.3
         with:
           name: test-e2e-ui-debug
-          path: enos/support/boundary-ui/ui/admin/tests/e2e/artifacts/test-failures
+          path: enos/support/src/boundary-ui/ui/admin/tests/e2e/artifacts/test-failures
           retention-days: 5
       - name: Retry Enos scenario
         id: run_retry
         if: steps.run.outcome == 'failure'
         run: |
           export ENOS_VAR_enos_user=$GITHUB_ACTOR && \
-          enos scenario run --timeout 60m0s --chdir ./enos ${{ matrix.filter }}
+          enos scenario launch --timeout 60m0s --chdir ./enos ${{ matrix.filter }}
       - name: Upload Debug Data
         if: ${{ always() && steps.run_retry.outcome == 'failure' }}
-        uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
+        uses: actions/upload-artifact@a8a3f3ad30e3422c9c7b888a15615d19a852ae32 # v3.1.3
         with:
           # The name of the artifact is the same as the matrix scenario name with the spaces replaced with underscores and colons replaced by equals.
           name: ${{ steps.prepare_scenario.outputs.debug_data_artifact_name }}
           path: ${{ env.ENOS_DEBUG_DATA_ROOT_DIR }}
           retention-days: 30
       - name: Destroy Enos scenario
-        if: ${{ always() && steps.run_retry.outcome == 'failure' }}
+        id: destroy
+        continue-on-error: true
+        if: ${{ always() }}
+        run: |
+          export ENOS_VAR_enos_user=$GITHUB_ACTOR && \
+          enos scenario destroy --timeout 60m0s --chdir ./enos ${{ matrix.filter }}
+      - name: Get logs for aws dependencies error
+        # Retrieve logs from the terraform to help diagnose some aws cleanup issues
+        if: ${{ always() && steps.destroy.outcome == 'failure' }}
+        continue-on-error: true
+        run: |
+          enos scenario exec --cmd graph --chdir ./enos ${{ matrix.filter }}
+          TF_DIR=$(find ./enos/.enos/ -type d -mindepth 1 -maxdepth 1  | tail -1)
+          pushd "${TF_DIR}"
+          terraform state list
+          terraform state show module.create_base_infra.aws_route.igw
+          popd
+      - name: Destroy Enos scenario (Retry)
+        if: ${{ always() && steps.destroy.outcome == 'failure' }}
         run: |
           export ENOS_VAR_enos_user=$GITHUB_ACTOR && \
           enos scenario destroy --timeout 60m0s --chdir ./enos ${{ matrix.filter }}

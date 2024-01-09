@@ -1,11 +1,12 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package ldap
 
 import (
 	"context"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"strings"
 
@@ -54,6 +55,11 @@ func (r *Repository) Authenticate(ctx context.Context, authMethodId, loginName, 
 		return nil, errors.New(ctx, errors.RecordNotFound, op, fmt.Sprintf("auth method id %q not found", authMethodId))
 	}
 
+	var clientTLSKeyPem string
+	if am.ClientCertificateKey != nil {
+		clientTLSKeyPem = string(pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: am.ClientCertificateKey}))
+	}
+
 	// config cap ldap provider
 	client, err := ldap.NewClient(ctx, &ldap.ClientConfig{
 		IncludeUserAttributes: true,
@@ -72,11 +78,13 @@ func (r *Repository) Authenticate(ctx context.Context, authMethodId, loginName, 
 		GroupAttr:             am.GroupAttr,
 		GroupFilter:           am.GroupFilter,
 		Certificates:          am.Certificates,
-		ClientTLSKey:          string(am.ClientCertificateKey),
+		ClientTLSKey:          clientTLSKeyPem,
 		ClientTLSCert:         am.ClientCertificate,
 		BindDN:                am.BindDn,
 		BindPassword:          am.BindPassword,
 		RequestTimeout:        DefaultRequestTimeout,
+		DerefAliases:          am.DereferenceAliases,
+		MaximumPageSize:       int(am.MaximumPageSize),
 	})
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to initialize ldap client with auth method retrieved from database"))
@@ -117,7 +125,7 @@ func (r *Repository) Authenticate(ctx context.Context, authMethodId, loginName, 
 		acct.MemberOfGroups = string(encodedGroups)
 	}
 
-	databaseWrapper, err := r.kms.GetWrapper(ctx, am.ScopeId, kms.KeyPurposeDatabase)
+	oplogWrapper, err := r.kms.GetWrapper(ctx, am.ScopeId, kms.KeyPurposeOplog)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
@@ -134,7 +142,7 @@ func (r *Repository) Authenticate(ctx context.Context, authMethodId, loginName, 
 			Target: db.Columns{"public_id"}, // id is predictable and uses both auth method id and login name for inputs
 			Action: db.SetColumns([]string{"full_name", "email", "dn", "member_of_groups"}),
 		}),
-		db.WithOplog(databaseWrapper, md),
+		db.WithOplog(oplogWrapper, md),
 	); err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create/update ldap account"))
 	}

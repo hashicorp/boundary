@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package bsr_test
 
@@ -337,6 +337,22 @@ func TestChunkDecoderDecodeErrors(t *testing.T) {
 					"",
 			)),
 			errors.New("bsr.(ChunkDecoder).Decode: unexpected EOF: error decoding chunk"),
+		},
+		{
+			"chuck-length-exceeds-max",
+			bytes.NewBuffer([]byte(
+				"" + // so everything else aligns better
+					"\xff\xff\xff\xff" + // length
+					"TEST" + // protocol
+					"HEAD" + // type
+					"\x01" + // direction
+					"\x00\x00\x00\x00\x64\x12\xf3\xa7" + // time seconds
+					"\x00\x00\x00\x0e" + // time nanoseconds
+					"\x00" + // compression method
+					"\x00" + // encryption method
+					"",
+			)),
+			errors.New("bsr.(ChunkDecoder).Decode: chunk length 4294967295 exceeds max chunk length of 6400000: error decoding chunk"),
 		},
 		{
 			"chuck-missing-data",

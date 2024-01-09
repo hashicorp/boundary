@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package helper
 
@@ -20,11 +20,13 @@ import (
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/commands/connect"
+	"github.com/hashicorp/boundary/internal/daemon/controller"
 	"github.com/hashicorp/boundary/internal/daemon/controller/common"
 	"github.com/hashicorp/boundary/internal/daemon/worker"
-	"github.com/hashicorp/boundary/internal/proxy"
 	"github.com/hashicorp/boundary/internal/session"
 	targetspb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
+	"github.com/hashicorp/boundary/sdk/pbs/proxy"
+	"github.com/hashicorp/boundary/sdk/wspb"
 	"github.com/hashicorp/go-cleanhttp"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/mr-tron/base58"
@@ -32,7 +34,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
 	"nhooyr.io/websocket"
-	"nhooyr.io/websocket/wspb"
 )
 
 const (
@@ -333,8 +334,8 @@ type TestSessionConnection struct {
 }
 
 // Close a test connection
-func (t *TestSessionConnection) Close() error {
-	return t.conn.Close()
+func (c *TestSessionConnection) Close() error {
+	return c.conn.Close()
 }
 
 // Connect returns a TestSessionConnection for a TestSession. Check
@@ -501,4 +502,25 @@ func NewTestTcpServer(t *testing.T) *TestTcpServer {
 
 	go ts.run()
 	return ts
+}
+
+func ExpectWorkers(t *testing.T, c *controller.TestController, workers ...*worker.TestWorker) {
+	updateTimes := c.Controller().WorkerStatusUpdateTimes()
+	workerMap := map[string]*worker.TestWorker{}
+	for _, w := range workers {
+		workerMap[w.Name()] = w
+	}
+	updateTimes.Range(func(k, v any) bool {
+		require.NotNil(t, k)
+		require.NotNil(t, v)
+		if workerMap[k.(string)] == nil {
+			// We don't remove from updateTimes currently so if we're not
+			// expecting it we'll see an out-of-date entry
+			return true
+		}
+		assert.WithinDuration(t, time.Now(), v.(time.Time), 30*time.Second)
+		delete(workerMap, k.(string))
+		return true
+	})
+	assert.Empty(t, workerMap)
 }

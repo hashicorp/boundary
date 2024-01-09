@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package iam
 
@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	dbassert "github.com/hashicorp/boundary/internal/db/assert"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/go-uuid"
 	"github.com/stretchr/testify/assert"
@@ -577,15 +578,14 @@ func TestRepository_ListGroups(t *testing.T) {
 		wantErr       bool
 	}{
 		{
-			name:          "no-limit",
+			name:          "negative-limit",
 			createCnt:     repo.defaultLimit + 1,
 			createScopeId: org.PublicId,
 			args: args{
 				withScopeId: org.PublicId,
 				opt:         []Option{WithLimit(-1)},
 			},
-			wantCnt: repo.defaultLimit + 1,
-			wantErr: false,
+			wantErr: true,
 		},
 		{
 			name:          "no-limit-proj-group",
@@ -595,8 +595,7 @@ func TestRepository_ListGroups(t *testing.T) {
 				withScopeId: proj.PublicId,
 				opt:         []Option{WithLimit(-1)},
 			},
-			wantCnt: repo.defaultLimit + 1,
-			wantErr: false,
+			wantErr: true,
 		},
 		{
 			name:          "default-limit",
@@ -642,7 +641,7 @@ func TestRepository_ListGroups(t *testing.T) {
 				testGroups = append(testGroups, TestGroup(t, conn, tt.createScopeId))
 			}
 			assert.Equal(tt.createCnt, len(testGroups))
-			got, err := repo.ListGroups(context.Background(), []string{tt.args.withScopeId}, tt.args.opt...)
+			got, _, err := repo.listGroups(context.Background(), []string{tt.args.withScopeId}, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
 				return
@@ -673,9 +672,13 @@ func TestRepository_ListGroups_Multiple_Scopes(t *testing.T) {
 		total++
 	}
 
-	got, err := repo.ListGroups(context.Background(), []string{"global", org.GetPublicId(), proj.GetPublicId()})
+	got, ttime, err := repo.listGroups(context.Background(), []string{"global", org.GetPublicId(), proj.GetPublicId()})
 	require.NoError(t, err)
 	assert.Equal(t, total, len(got))
+
+	// Transaction timestamp should be within ~10 seconds of now
+	assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
+	assert.True(t, time.Now().After(ttime.Add(-10*time.Second)))
 }
 
 func TestRepository_ListMembers(t *testing.T) {
@@ -1173,4 +1176,88 @@ func TestRepository_SetGroupMembers(t *testing.T) {
 			assert.Equal(wantIds, wantIds)
 		})
 	}
+}
+
+func Test_listGroupDeletedIds(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
+	org, _ := TestScopes(t, repo)
+	r := TestGroup(t, conn, org.GetPublicId())
+
+	// Expect no entries at the start
+	deletedIds, ttime, err := repo.listGroupDeletedIds(ctx, time.Now().AddDate(-1, 0, 0))
+	require.NoError(t, err)
+	require.Empty(t, deletedIds)
+	// Transaction timestamp should be within ~10 seconds of now
+	assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
+	assert.True(t, time.Now().After(ttime.Add(-10*time.Second)))
+
+	// Delete a group
+	_, err = repo.DeleteGroup(ctx, r.GetPublicId())
+	require.NoError(t, err)
+
+	// Expect a single entry
+	deletedIds, ttime, err = repo.listGroupDeletedIds(ctx, time.Now().AddDate(-1, 0, 0))
+	require.NoError(t, err)
+	require.Equal(t, []string{r.GetPublicId()}, deletedIds)
+	// Transaction timestamp should be within ~10 seconds of now
+	assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
+	assert.True(t, time.Now().After(ttime.Add(-10*time.Second)))
+
+	// Try again with the time set to now, expect no entries
+	deletedIds, ttime, err = repo.listGroupDeletedIds(ctx, time.Now())
+	require.NoError(t, err)
+	require.Empty(t, deletedIds)
+	// Transaction timestamp should be within ~10 seconds of now
+	assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
+	assert.True(t, time.Now().After(ttime.Add(-10*time.Second)))
+}
+
+func Test_estimatedGroupCount(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	sqlDb, err := conn.SqlDB(ctx)
+	require.NoError(t, err)
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	repo, err := NewRepository(ctx, rw, rw, kms)
+	require.NoError(t, err)
+
+	// Run analyze to update estimate
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
+
+	// Check total entries at start, expect 0
+	numItems, err := repo.estimatedGroupCount(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 0, numItems)
+
+	iamRepo := TestRepo(t, conn, wrapper)
+	org, _ := TestScopes(t, iamRepo)
+	// Create a group, expect 1 entry
+	u := TestGroup(t, conn, org.GetPublicId())
+
+	// Run analyze to update estimate
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
+	numItems, err = repo.estimatedGroupCount(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 1, numItems)
+
+	// Delete the group, expect 3 again
+	_, err = repo.DeleteGroup(ctx, u.GetPublicId())
+	require.NoError(t, err)
+
+	// Run analyze to update estimate
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
+
+	numItems, err = repo.estimatedGroupCount(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 0, numItems)
 }

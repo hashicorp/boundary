@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package iam
 
@@ -175,7 +175,7 @@ func TestScope_Actions(t *testing.T) {
 func TestScope_ResourceType(t *testing.T) {
 	o, err := NewOrg(context.Background())
 	require.NoError(t, err)
-	assert.Equal(t, o.ResourceType(), resource.Scope)
+	assert.Equal(t, o.GetResourceType(), resource.Scope)
 	assert.Equal(t, o.GetParentId(), scope.Global.String())
 }
 

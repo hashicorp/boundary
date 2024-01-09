@@ -1,11 +1,12 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package base
 
 import (
 	"context"
 	"crypto/ed25519"
+	"errors"
 	"fmt"
 	"net"
 	"net/url"
@@ -18,13 +19,12 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/base/internal/docker"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/schema"
+	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
-	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/testing/dbtest"
 	capoidc "github.com/hashicorp/cap/oidc"
-	"github.com/hashicorp/go-multierror"
 	"github.com/jimlambrt/gldap"
 	"github.com/jimlambrt/gldap/testdirectory"
 )
@@ -35,7 +35,7 @@ func (b *Server) CreateDevDatabase(ctx context.Context, opt ...Option) error {
 	var err error
 	var c func() error
 
-	opts := getOpts(opt...)
+	opts := GetOpts(opt...)
 
 	// We should only get back postgres for now, but laying the foundation for non-postgres
 	switch opts.withDialect {
@@ -75,7 +75,7 @@ func (b *Server) CreateDevDatabase(ctx context.Context, opt ...Option) error {
 		if err != nil {
 			err = fmt.Errorf("unable to initialize dev database with dialect %s: %w", dialect, err)
 			if c != nil {
-				err = multierror.Append(err, c())
+				err = errors.Join(err, c())
 			}
 			return err
 		}
@@ -87,7 +87,7 @@ func (b *Server) CreateDevDatabase(ctx context.Context, opt ...Option) error {
 		if _, err := schema.MigrateStore(ctx, schema.Dialect(dialect), b.DatabaseUrl); err != nil {
 			err = fmt.Errorf("error initializing store: %w", err)
 			if c != nil {
-				err = multierror.Append(err, c())
+				err = errors.Join(err, c())
 			}
 			return err
 		}
@@ -102,21 +102,21 @@ func (b *Server) CreateDevDatabase(ctx context.Context, opt ...Option) error {
 
 	if err := b.OpenAndSetServerDatabase(ctx, dialect); err != nil {
 		if c != nil {
-			err = multierror.Append(err, c())
+			err = errors.Join(err, c())
 		}
 		return err
 	}
 
 	if err := b.CreateGlobalKmsKeys(ctx); err != nil {
 		if c != nil {
-			err = multierror.Append(err, c())
+			err = errors.Join(err, c())
 		}
 		return err
 	}
 
 	if _, err := b.CreateInitialLoginRole(ctx); err != nil {
 		if c != nil {
-			err = multierror.Append(err, c())
+			err = errors.Join(err, c())
 		}
 		return err
 	}

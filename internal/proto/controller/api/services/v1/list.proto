@@ -1,0 +1,112 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
+syntax = "proto3";
+
+package controller.api.services.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/services;services";
+
+// ListToken is used to maintain state
+// between list endpoint invocations. It
+// is never exposed to the user directly,
+// only in its marshaled form.
+message ListToken {
+  // when the token was created
+  google.protobuf.Timestamp create_time = 1;
+  // the resource type listed
+  ResourceType resource_type = 2;
+  // A hash of the users permissions
+  // at the time of the token issuing.
+  bytes grants_hash = 3;
+  // The subtype of the token. It changes
+  // between different stages of the pagination.
+  oneof token {
+    // Set for any responses from the initial pagination phase,
+    // except the last.
+    PaginationToken pagination_token = 4;
+    // Set for the final response of either phase to indicate the next request
+    // will be a new refresh pagination phase.
+    StartRefreshToken start_refresh_token = 5;
+    // Set in any response from a refresh phase pagination,
+    // except the last.
+    RefreshToken refresh_token = 6;
+  }
+}
+
+// PaginationToken describes the list token subtype
+// used during the initial pagination phase.
+message PaginationToken {
+  // The public ID of the last item that was included
+  // in the page which this token was returned with.
+  string last_item_id = 1;
+  // The create time of the last item that was included
+  // in the page which this token was returned with.
+  google.protobuf.Timestamp last_item_create_time = 2;
+}
+
+// StartRefreshToken describes the list token subtype
+// used at the end of any pagination phase, both the
+// initial and any refresh phases.
+message StartRefreshToken {
+  // The end time of the phase previous to this one,
+  // which should be used as the lower bound for the
+  // new refresh phase.
+  google.protobuf.Timestamp previous_phase_upper_bound = 1;
+  // The timestamp of the transaction that last listed the deleted IDs,
+  // for use as a lower bound in the next deleted IDs list.
+  google.protobuf.Timestamp previous_deleted_ids_time = 2;
+}
+
+// RefreshToken describes the list token subtype used
+// between pages in a refresh pagination phase.
+message RefreshToken {
+  // The upper bound for the timestamp comparisons in
+  // this refresh phase. This is equal to the time that
+  // the first request in this phase was processed.
+  // Constant for the lifetime of the refresh phase.
+  google.protobuf.Timestamp phase_upper_bound = 1;
+  // The lower bound for the timestamp comparisons in
+  // this refresh phase. This is equal to the initial
+  // create time of the token if the previous phase was
+  // the initial pagination phase, or the upper bound of
+  // the previous refresh phase otherwise.
+  // Constant for the lifetime of the refresh phase.
+  google.protobuf.Timestamp phase_lower_bound = 2;
+  // The timestamp of the transaction that last listed the deleted IDs,
+  // for use as a lower bound in the next deleted IDs list.
+  google.protobuf.Timestamp previous_deleted_ids_time = 3;
+  // The public ID of the last item that was included
+  // in the page which this token was returned with.
+  string last_item_id = 4;
+  // The update time of the last item that was included
+  // in the page which this token was returned with.
+  google.protobuf.Timestamp last_item_update_time = 5;
+}
+
+// ResourceType represents the different list
+// endpoint resource types supported.
+enum ResourceType {
+  RESOURCE_TYPE_UNSPECIFIED = 0;
+  RESOURCE_TYPE_ACCOUNT = 1;
+  RESOURCE_TYPE_AUTH_METHOD = 2;
+  RESOURCE_TYPE_AUTH_TOKEN = 3;
+  RESOURCE_TYPE_CREDENTIAL = 4;
+  RESOURCE_TYPE_CREDENTIAL_LIBRARY = 5;
+  RESOURCE_TYPE_CREDENTIAL_STORE = 6;
+  RESOURCE_TYPE_GROUP = 7;
+  RESOURCE_TYPE_HOST = 8;
+  RESOURCE_TYPE_HOST_CATALOG = 9;
+  RESOURCE_TYPE_HOST_SET = 10;
+  RESOURCE_TYPE_MANAGED_GROUP = 11;
+  RESOURCE_TYPE_ROLE = 12;
+  RESOURCE_TYPE_SCOPE = 13;
+  RESOURCE_TYPE_SESSION = 14;
+  RESOURCE_TYPE_SESSION_RECORDING = 15;
+  RESOURCE_TYPE_STORAGE_BUCKET = 16;
+  RESOURCE_TYPE_TARGET = 17;
+  RESOURCE_TYPE_USER = 18;
+  RESOURCE_TYPE_WORKER = 19;
+}

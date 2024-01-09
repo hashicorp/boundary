@@ -1,10 +1,11 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package oidc
 
 import (
 	"context"
+	stderrors "errors"
 	"fmt"
 	"net/url"
 	"sort"
@@ -14,9 +15,9 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/libs/crypto"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-kms-wrapping/v2/extras/structwrapping"
-	"github.com/hashicorp/go-multierror"
 	kvbuilder "github.com/hashicorp/go-secure-stdlib/kv-builder"
 	"google.golang.org/protobuf/proto"
 )
@@ -107,6 +108,12 @@ func NewAuthMethod(ctx context.Context, scopeId string, clientId string, clientS
 			a.SigningAlgs = append(a.SigningAlgs, string(alg))
 		}
 	}
+	if len(opts.withPrompts) > 0 {
+		a.Prompts = make([]string, 0, len(opts.withPrompts))
+		for _, prompts := range opts.withPrompts {
+			a.Prompts = append(a.Prompts, string(prompts))
+		}
+	}
 	if len(opts.withAccountClaimMap) > 0 {
 		a.AccountClaimMaps = make([]string, 0, len(opts.withAccountClaimMap))
 		for k, v := range opts.withAccountClaimMap {
@@ -190,6 +197,11 @@ func (a *AuthMethod) SetTableName(n string) {
 	a.tableName = n
 }
 
+// GetResourceType returns the resource type of the AuthMethod
+func (a *AuthMethod) GetResourceType() resource.Type {
+	return resource.AuthMethod
+}
+
 // oplog will create oplog metadata for the AuthMethod.
 func (a *AuthMethod) oplog(op oplog.OpType) oplog.Metadata {
 	metadata := oplog.Metadata{
@@ -254,26 +266,26 @@ func (a *AuthMethod) hmacClientSecret(ctx context.Context, cipher wrapping.Wrapp
 // components of a complete/valid oidc auth method.
 func (am *AuthMethod) isComplete(ctx context.Context) error {
 	const op = "oidc.(AuthMethod).isComplete"
-	var result *multierror.Error
+	var result error
 	if err := am.validate(ctx, op); err != nil {
-		result = multierror.Append(result, errors.Wrap(ctx, err, op))
+		result = stderrors.Join(result, errors.Wrap(ctx, err, op))
 	}
 	if am.Issuer == "" {
-		result = multierror.Append(result, errors.New(ctx, errors.InvalidParameter, op, "missing issuer"))
+		result = stderrors.Join(result, errors.New(ctx, errors.InvalidParameter, op, "missing issuer"))
 	}
 	if am.ApiUrl == "" {
-		result = multierror.Append(result, errors.New(ctx, errors.InvalidParameter, op, "missing api url"))
+		result = stderrors.Join(result, errors.New(ctx, errors.InvalidParameter, op, "missing api url"))
 	}
 	if am.ClientId == "" {
-		result = multierror.Append(result, errors.New(ctx, errors.InvalidParameter, op, "missing client id"))
+		result = stderrors.Join(result, errors.New(ctx, errors.InvalidParameter, op, "missing client id"))
 	}
 	if am.ClientSecret == "" {
-		result = multierror.Append(result, errors.New(ctx, errors.InvalidParameter, op, "missing client secret"))
+		result = stderrors.Join(result, errors.New(ctx, errors.InvalidParameter, op, "missing client secret"))
 	}
 	if len(am.SigningAlgs) == 0 {
-		result = multierror.Append(result, errors.New(ctx, errors.InvalidParameter, op, "missing signing algorithms"))
+		result = stderrors.Join(result, errors.New(ctx, errors.InvalidParameter, op, "missing signing algorithms"))
 	}
-	return result.ErrorOrNil()
+	return result
 }
 
 type convertedValues struct {
@@ -282,6 +294,7 @@ type convertedValues struct {
 	Certs            []any
 	ClaimsScopes     []any
 	AccountClaimMaps []any
+	Prompts          []any
 }
 
 // convertValueObjects converts the embedded value objects. It will return an
@@ -292,7 +305,7 @@ func (am *AuthMethod) convertValueObjects(ctx context.Context) (*convertedValues
 		return nil, errors.New(ctx, errors.InvalidPublicId, op, "missing public id")
 	}
 	var err error
-	var addAlgs, addAuds, addCerts, addScopes, addAccountClaimMaps []any
+	var addAlgs, addAuds, addCerts, addScopes, addAccountClaimMaps, addPrompts []any
 	if addAlgs, err = am.convertSigningAlgs(ctx); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
@@ -308,12 +321,16 @@ func (am *AuthMethod) convertValueObjects(ctx context.Context) (*convertedValues
 	if addAccountClaimMaps, err = am.convertAccountClaimMaps(ctx); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
+	if addPrompts, err = am.convertPrompts(ctx); err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
 	return &convertedValues{
 		Algs:             addAlgs,
 		Auds:             addAuds,
 		Certs:            addCerts,
 		ClaimsScopes:     addScopes,
 		AccountClaimMaps: addAccountClaimMaps,
+		Prompts:          addPrompts,
 	}, nil
 }
 
@@ -457,4 +474,23 @@ func ParseAccountClaimMaps(ctx context.Context, m ...string) ([]ClaimMap, error)
 		})
 	}
 	return claimMap, nil
+}
+
+// convertPrompts converts the embedded prompts from []string
+// to []interface{} where each slice element is a *Prompt. It will return an
+// error if the AuthMethod's public id is not set.
+func (am *AuthMethod) convertPrompts(ctx context.Context) ([]any, error) {
+	const op = "oidc.(AuthMethod).convertPrompts"
+	if am.PublicId == "" {
+		return nil, errors.New(ctx, errors.InvalidPublicId, op, "missing public id")
+	}
+	newInterfaces := make([]any, 0, len(am.Prompts))
+	for _, a := range am.Prompts {
+		obj, err := NewPrompt(ctx, am.PublicId, PromptParam(a))
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		newInterfaces = append(newInterfaces, obj)
+	}
+	return newInterfaces, nil
 }

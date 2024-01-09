@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package cmd
 
@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/commands/credentialstorescmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/database"
 	"github.com/hashicorp/boundary/internal/cmd/commands/dev"
+	"github.com/hashicorp/boundary/internal/cmd/commands/genericcmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/groupscmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/hostcatalogscmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/hostscmd"
@@ -29,6 +30,7 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/commands/sessionscmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/storagebucketscmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/targetscmd"
+	"github.com/hashicorp/boundary/internal/cmd/commands/unsupported"
 	"github.com/hashicorp/boundary/internal/cmd/commands/userscmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/version"
 	"github.com/hashicorp/boundary/internal/cmd/commands/workerscmd"
@@ -40,6 +42,10 @@ import (
 var Commands map[string]cli.CommandFactory
 
 func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
+	var opts []base.Option
+	if runOpts.ImplicitId != "" {
+		opts = append(opts, base.WithImplicitId(runOpts.ImplicitId))
+	}
 	Commands = map[string]cli.CommandFactory{
 		"server": func() (cli.Command, error) {
 			return &server.Command{
@@ -57,1296 +63,1160 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 		},
 		"version": func() (cli.Command, error) {
 			return &version.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
 
-		"authenticate": func() (cli.Command, error) {
-			return &authenticate.Command{
+		"authenticate": clientCacheWrapper(
+			&authenticate.Command{
 				Command: base.NewCommand(ui),
-			}, nil
-		},
-		"authenticate password": func() (cli.Command, error) {
-			return &authenticate.PasswordCommand{
+			}),
+		"authenticate password": clientCacheWrapper(
+			&authenticate.PasswordCommand{
 				Command: base.NewCommand(ui),
-			}, nil
-		},
-		"authenticate oidc": func() (cli.Command, error) {
-			return &authenticate.OidcCommand{
+			}),
+		"authenticate oidc": clientCacheWrapper(
+			&authenticate.OidcCommand{
 				Command: base.NewCommand(ui),
-			}, nil
-		},
-		"authenticate ldap": func() (cli.Command, error) {
-			return &authenticate.LdapCommand{
+			}),
+		"authenticate ldap": clientCacheWrapper(
+			&authenticate.LdapCommand{
 				Command: base.NewCommand(ui),
-			}, nil
-		},
+			}),
 
 		"accounts": func() (cli.Command, error) {
 			return &accountscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
-		"accounts read": func() (cli.Command, error) {
-			return &accountscmd.Command{
+		"accounts read": clientCacheWrapper(
+			&accountscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "read",
-			}, nil
-		},
-		"accounts delete": func() (cli.Command, error) {
-			return &accountscmd.Command{
+			}),
+		"accounts delete": clientCacheWrapper(
+			&accountscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "delete",
-			}, nil
-		},
-		"accounts list": func() (cli.Command, error) {
-			return &accountscmd.Command{
+			}),
+		"accounts list": clientCacheWrapper(
+			&accountscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "list",
-			}, nil
-		},
-		"accounts set-password": func() (cli.Command, error) {
-			return &accountscmd.Command{
+			}),
+		"accounts set-password": clientCacheWrapper(
+			&accountscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "set-password",
-			}, nil
-		},
-		"accounts change-password": func() (cli.Command, error) {
-			return &accountscmd.Command{
+			}),
+		"accounts change-password": clientCacheWrapper(
+			&accountscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "change-password",
-			}, nil
-		},
-		"accounts create": func() (cli.Command, error) {
-			return &accountscmd.Command{
+			}),
+		"accounts create": clientCacheWrapper(
+			&accountscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "create",
-			}, nil
-		},
-		"accounts create password": func() (cli.Command, error) {
-			return &accountscmd.PasswordCommand{
+			}),
+		"accounts create password": clientCacheWrapper(
+			&accountscmd.PasswordCommand{
 				Command: base.NewCommand(ui),
 				Func:    "create",
-			}, nil
-		},
-		"accounts create oidc": func() (cli.Command, error) {
-			return &accountscmd.OidcCommand{
+			}),
+		"accounts create oidc": clientCacheWrapper(
+			&accountscmd.OidcCommand{
 				Command: base.NewCommand(ui),
 				Func:    "create",
-			}, nil
-		},
-		"accounts create ldap": func() (cli.Command, error) {
-			return &accountscmd.LdapCommand{
+			}),
+		"accounts create ldap": clientCacheWrapper(
+			&accountscmd.LdapCommand{
 				Command: base.NewCommand(ui),
 				Func:    "create",
-			}, nil
-		},
-		"accounts update": func() (cli.Command, error) {
-			return &accountscmd.Command{
+			}),
+		"accounts update": clientCacheWrapper(
+			&accountscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "update",
-			}, nil
-		},
-		"accounts update password": func() (cli.Command, error) {
-			return &accountscmd.PasswordCommand{
+			}),
+		"accounts update password": clientCacheWrapper(
+			&accountscmd.PasswordCommand{
 				Command: base.NewCommand(ui),
 				Func:    "update",
-			}, nil
-		},
-		"accounts update oidc": func() (cli.Command, error) {
-			return &accountscmd.OidcCommand{
+			}),
+		"accounts update oidc": clientCacheWrapper(
+			&accountscmd.OidcCommand{
 				Command: base.NewCommand(ui),
 				Func:    "update",
-			}, nil
-		},
-		"accounts update ldap": func() (cli.Command, error) {
-			return &accountscmd.LdapCommand{
+			}),
+		"accounts update ldap": clientCacheWrapper(
+			&accountscmd.LdapCommand{
 				Command: base.NewCommand(ui),
 				Func:    "update",
-			}, nil
-		},
+			}),
 
 		"auth-methods": func() (cli.Command, error) {
 			return &authmethodscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
-		"auth-methods read": func() (cli.Command, error) {
-			return &authmethodscmd.Command{
+		"auth-methods read": clientCacheWrapper(
+			&authmethodscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "read",
-			}, nil
-		},
-		"auth-methods delete": func() (cli.Command, error) {
-			return &authmethodscmd.Command{
+			}),
+		"auth-methods delete": clientCacheWrapper(
+			&authmethodscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "delete",
-			}, nil
-		},
-		"auth-methods list": func() (cli.Command, error) {
-			return &authmethodscmd.Command{
+			}),
+		"auth-methods list": clientCacheWrapper(
+			&authmethodscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "list",
-			}, nil
-		},
-		"auth-methods create": func() (cli.Command, error) {
-			return &authmethodscmd.Command{
+			}),
+		"auth-methods create": clientCacheWrapper(
+			&authmethodscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "create",
-			}, nil
-		},
-		"auth-methods create password": func() (cli.Command, error) {
-			return &authmethodscmd.PasswordCommand{
+			}),
+		"auth-methods create password": clientCacheWrapper(
+			&authmethodscmd.PasswordCommand{
 				Command: base.NewCommand(ui),
 				Func:    "create",
-			}, nil
-		},
-		"auth-methods create oidc": func() (cli.Command, error) {
-			return &authmethodscmd.OidcCommand{
+			}),
+		"auth-methods create oidc": clientCacheWrapper(
+			&authmethodscmd.OidcCommand{
 				Command: base.NewCommand(ui),
 				Func:    "create",
-			}, nil
-		},
-		"auth-methods create ldap": func() (cli.Command, error) {
-			return &authmethodscmd.LdapCommand{
+			}),
+		"auth-methods create ldap": clientCacheWrapper(
+			&authmethodscmd.LdapCommand{
 				Command: base.NewCommand(ui),
 				Func:    "create",
-			}, nil
-		},
-		"auth-methods update": func() (cli.Command, error) {
-			return &authmethodscmd.Command{
+			}),
+		"auth-methods update": clientCacheWrapper(
+			&authmethodscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "update",
-			}, nil
-		},
-		"auth-methods update password": func() (cli.Command, error) {
-			return &authmethodscmd.PasswordCommand{
+			}),
+		"auth-methods update password": clientCacheWrapper(
+			&authmethodscmd.PasswordCommand{
 				Command: base.NewCommand(ui),
 				Func:    "update",
-			}, nil
-		},
-		"auth-methods update oidc": func() (cli.Command, error) {
-			return &authmethodscmd.OidcCommand{
+			}),
+		"auth-methods update oidc": clientCacheWrapper(
+			&authmethodscmd.OidcCommand{
 				Command: base.NewCommand(ui),
 				Func:    "update",
-			}, nil
-		},
-		"auth-methods update ldap": func() (cli.Command, error) {
-			return &authmethodscmd.LdapCommand{
+			}),
+		"auth-methods update ldap": clientCacheWrapper(
+			&authmethodscmd.LdapCommand{
 				Command: base.NewCommand(ui),
 				Func:    "update",
-			}, nil
-		},
-		"auth-methods change-state oidc": func() (cli.Command, error) {
-			return &authmethodscmd.OidcCommand{
+			}),
+		"auth-methods change-state oidc": clientCacheWrapper(
+			&authmethodscmd.OidcCommand{
 				Command: base.NewCommand(ui),
 				Func:    "change-state",
-			}, nil
-		},
+			}),
 
 		"auth-tokens": func() (cli.Command, error) {
 			return &authtokenscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
-		"auth-tokens read": func() (cli.Command, error) {
-			return &authtokenscmd.Command{
+		"auth-tokens read": clientCacheWrapper(
+			&authtokenscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "read",
-			}, nil
-		},
-		"auth-tokens delete": func() (cli.Command, error) {
-			return &authtokenscmd.Command{
+			}),
+		"auth-tokens delete": clientCacheWrapper(
+			&authtokenscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "delete",
-			}, nil
-		},
-		"auth-tokens list": func() (cli.Command, error) {
-			return &authtokenscmd.Command{
+			}),
+		"auth-tokens list": clientCacheWrapper(
+			&authtokenscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "list",
-			}, nil
-		},
+			}),
 
 		"config": func() (cli.Command, error) {
 			return &config.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
 		"config encrypt": func() (cli.Command, error) {
 			return &config.EncryptDecryptCommand{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "encrypt",
 			}, nil
 		},
 		"config decrypt": func() (cli.Command, error) {
 			return &config.EncryptDecryptCommand{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "decrypt",
 			}, nil
 		},
 		"config get-token": func() (cli.Command, error) {
 			return &config.TokenCommand{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "get-token",
 			}, nil
 		},
 		"config autocomplete": func() (cli.Command, error) {
 			return &config.AutocompleteCommand{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "base",
 			}, nil
 		},
 		"config autocomplete install": func() (cli.Command, error) {
 			return &config.AutocompleteCommand{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "install",
 			}, nil
 		},
 		"config autocomplete uninstall": func() (cli.Command, error) {
 			return &config.AutocompleteCommand{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 				Func:    "uninstall",
 			}, nil
 		},
 
-		"connect": func() (cli.Command, error) {
-			return &connect.Command{
+		"connect": clientCacheWrapper(
+			&connect.Command{
 				Command: base.NewCommand(ui),
 				Func:    "connect",
-			}, nil
-		},
-		"connect http": func() (cli.Command, error) {
-			return &connect.Command{
+			}),
+		"connect http": clientCacheWrapper(
+			&connect.Command{
 				Command: base.NewCommand(ui),
 				Func:    "http",
-			}, nil
-		},
-		"connect kube": func() (cli.Command, error) {
-			return &connect.Command{
+			}),
+		"connect kube": clientCacheWrapper(
+			&connect.Command{
 				Command: base.NewCommand(ui),
 				Func:    "kube",
-			}, nil
-		},
-		"connect postgres": func() (cli.Command, error) {
-			return &connect.Command{
+			}),
+		"connect postgres": clientCacheWrapper(
+			&connect.Command{
 				Command: base.NewCommand(ui),
 				Func:    "postgres",
-			}, nil
-		},
-		"connect rdp": func() (cli.Command, error) {
-			return &connect.Command{
+			}),
+		"connect rdp": clientCacheWrapper(
+			&connect.Command{
 				Command: base.NewCommand(ui),
 				Func:    "rdp",
-			}, nil
-		},
-		"connect ssh": func() (cli.Command, error) {
-			return &connect.Command{
+			}),
+		"connect ssh": clientCacheWrapper(
+			&connect.Command{
 				Command: base.NewCommand(ui),
 				Func:    "ssh",
-			}, nil
-		},
+			}),
 
 		"database": func() (cli.Command, error) {
 			return &database.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
 		"database init": func() (cli.Command, error) {
 			return &database.InitCommand{
-				Server: base.NewServer(base.NewCommand(ui)),
+				Server: base.NewServer(base.NewCommand(ui, opts...)),
 			}, nil
 		},
 		"database migrate": func() (cli.Command, error) {
 			return &database.MigrateCommand{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
 
 		"credential-libraries": func() (cli.Command, error) {
 			return &credentiallibrariescmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
-		"credential-libraries read": func() (cli.Command, error) {
-			return &credentiallibrariescmd.Command{
+		"credential-libraries read": clientCacheWrapper(
+			&credentiallibrariescmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "read",
-			}, nil
-		},
-		"credential-libraries delete": func() (cli.Command, error) {
-			return &credentiallibrariescmd.Command{
+			}),
+		"credential-libraries delete": clientCacheWrapper(
+			&credentiallibrariescmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "delete",
-			}, nil
-		},
-		"credential-libraries list": func() (cli.Command, error) {
-			return &credentiallibrariescmd.Command{
+			}),
+		"credential-libraries list": clientCacheWrapper(
+			&credentiallibrariescmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "list",
-			}, nil
-		},
-		"credential-libraries create": func() (cli.Command, error) {
-			return &credentiallibrariescmd.Command{
+			}),
+		"credential-libraries create": clientCacheWrapper(
+			&credentiallibrariescmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "create",
-			}, nil
-		},
-		"credential-libraries create vault": func() (cli.Command, error) {
-			return &credentiallibrariescmd.VaultCommand{
+			}),
+		"credential-libraries create vault": clientCacheWrapper(
+			&credentiallibrariescmd.VaultCommand{
 				Command: base.NewCommand(ui),
 				Func:    "create",
-			}, nil
-		},
-		"credential-libraries create vault-generic": func() (cli.Command, error) {
-			return &credentiallibrariescmd.VaultGenericCommand{
+			}),
+		"credential-libraries create vault-generic": clientCacheWrapper(
+			&credentiallibrariescmd.VaultGenericCommand{
 				Command: base.NewCommand(ui),
 				Func:    "create",
-			}, nil
-		},
-		"credential-libraries create vault-ssh-certificate": func() (cli.Command, error) {
-			return &credentiallibrariescmd.VaultSshCertificateCommand{
+			}),
+		"credential-libraries create vault-ssh-certificate": clientCacheWrapper(
+			&credentiallibrariescmd.VaultSshCertificateCommand{
 				Command: base.NewCommand(ui),
 				Func:    "create",
-			}, nil
-		},
-		"credential-libraries update": func() (cli.Command, error) {
-			return &credentiallibrariescmd.Command{
+			}),
+		"credential-libraries update": clientCacheWrapper(
+			&credentiallibrariescmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "update",
-			}, nil
-		},
-		"credential-libraries update vault": func() (cli.Command, error) {
-			return &credentiallibrariescmd.VaultGenericCommand{
+			}),
+		"credential-libraries update vault": clientCacheWrapper(
+			&credentiallibrariescmd.VaultGenericCommand{
 				Command: base.NewCommand(ui),
 				Func:    "update",
-			}, nil
-		},
-		"credential-libraries update vault-generic": func() (cli.Command, error) {
-			return &credentiallibrariescmd.VaultGenericCommand{
+			}),
+		"credential-libraries update vault-generic": clientCacheWrapper(
+			&credentiallibrariescmd.VaultGenericCommand{
 				Command: base.NewCommand(ui),
 				Func:    "update",
-			}, nil
-		},
-		"credential-libraries update vault-ssh-certificate": func() (cli.Command, error) {
-			return &credentiallibrariescmd.VaultSshCertificateCommand{
+			}),
+		"credential-libraries update vault-ssh-certificate": clientCacheWrapper(
+			&credentiallibrariescmd.VaultSshCertificateCommand{
 				Command: base.NewCommand(ui),
 				Func:    "update",
-			}, nil
-		},
+			}),
 
 		"credential-stores": func() (cli.Command, error) {
 			return &credentialstorescmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
-		"credential-stores read": func() (cli.Command, error) {
-			return &credentialstorescmd.Command{
+		"credential-stores read": clientCacheWrapper(
+			&credentialstorescmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "read",
-			}, nil
-		},
-		"credential-stores delete": func() (cli.Command, error) {
-			return &credentialstorescmd.Command{
+			}),
+		"credential-stores delete": clientCacheWrapper(
+			&credentialstorescmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "delete",
-			}, nil
-		},
-		"credential-stores list": func() (cli.Command, error) {
-			return &credentialstorescmd.Command{
+			}),
+		"credential-stores list": clientCacheWrapper(
+			&credentialstorescmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "list",
-			}, nil
-		},
-		"credential-stores create": func() (cli.Command, error) {
-			return &credentialstorescmd.Command{
+			}),
+		"credential-stores create": clientCacheWrapper(
+			&credentialstorescmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "create",
-			}, nil
-		},
-		"credential-stores create vault": func() (cli.Command, error) {
-			return &credentialstorescmd.VaultCommand{
+			}),
+		"credential-stores create vault": clientCacheWrapper(
+			&credentialstorescmd.VaultCommand{
 				Command: base.NewCommand(ui),
 				Func:    "create",
-			}, nil
-		},
-		"credential-stores create static": func() (cli.Command, error) {
-			return &credentialstorescmd.StaticCommand{
+			}),
+		"credential-stores create static": clientCacheWrapper(
+			&credentialstorescmd.StaticCommand{
 				Command: base.NewCommand(ui),
 				Func:    "create",
-			}, nil
-		},
-		"credential-stores update": func() (cli.Command, error) {
-			return &credentialstorescmd.Command{
+			}),
+		"credential-stores update": clientCacheWrapper(
+			&credentialstorescmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "update",
-			}, nil
-		},
-		"credential-stores update vault": func() (cli.Command, error) {
-			return &credentialstorescmd.VaultCommand{
+			}),
+		"credential-stores update vault": clientCacheWrapper(
+			&credentialstorescmd.VaultCommand{
 				Command: base.NewCommand(ui),
 				Func:    "update",
-			}, nil
-		},
-		"credential-stores update static": func() (cli.Command, error) {
-			return &credentialstorescmd.StaticCommand{
+			}),
+		"credential-stores update static": clientCacheWrapper(
+			&credentialstorescmd.StaticCommand{
 				Command: base.NewCommand(ui),
 				Func:    "update",
-			}, nil
-		},
+			}),
 
 		"credentials": func() (cli.Command, error) {
 			return &credentialscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
-		"credentials read": func() (cli.Command, error) {
-			return &credentialscmd.Command{
+		"credentials read": clientCacheWrapper(
+			&credentialscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "read",
-			}, nil
-		},
-		"credentials delete": func() (cli.Command, error) {
-			return &credentialscmd.Command{
+			}),
+		"credentials delete": clientCacheWrapper(
+			&credentialscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "delete",
-			}, nil
-		},
-		"credentials list": func() (cli.Command, error) {
-			return &credentialscmd.Command{
+			}),
+		"credentials list": clientCacheWrapper(
+			&credentialscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "list",
-			}, nil
-		},
-		"credentials create": func() (cli.Command, error) {
-			return &credentialscmd.Command{
+			}),
+		"credentials create": clientCacheWrapper(
+			&credentialscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "create",
-			}, nil
-		},
-		"credentials create username-password": func() (cli.Command, error) {
-			return &credentialscmd.UsernamePasswordCommand{
+			}),
+		"credentials create username-password": clientCacheWrapper(
+			&credentialscmd.UsernamePasswordCommand{
 				Command: base.NewCommand(ui),
 				Func:    "create",
-			}, nil
-		},
-		"credentials create ssh-private-key": func() (cli.Command, error) {
-			return &credentialscmd.SshPrivateKeyCommand{
+			}),
+		"credentials create ssh-private-key": clientCacheWrapper(
+			&credentialscmd.SshPrivateKeyCommand{
 				Command: base.NewCommand(ui),
 				Func:    "create",
-			}, nil
-		},
-		"credentials create json": func() (cli.Command, error) {
-			return &credentialscmd.JsonCommand{
+			}),
+		"credentials create json": clientCacheWrapper(
+			&credentialscmd.JsonCommand{
 				Command: base.NewCommand(ui),
 				Func:    "create",
-			}, nil
-		},
-		"credentials update": func() (cli.Command, error) {
-			return &credentialscmd.Command{
+			}),
+		"credentials update": clientCacheWrapper(
+			&credentialscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "update",
-			}, nil
-		},
-		"credentials update username-password": func() (cli.Command, error) {
-			return &credentialscmd.UsernamePasswordCommand{
+			}),
+		"credentials update username-password": clientCacheWrapper(
+			&credentialscmd.UsernamePasswordCommand{
 				Command: base.NewCommand(ui),
 				Func:    "update",
-			}, nil
-		},
-		"credentials update ssh-private-key": func() (cli.Command, error) {
-			return &credentialscmd.SshPrivateKeyCommand{
+			}),
+		"credentials update ssh-private-key": clientCacheWrapper(
+			&credentialscmd.SshPrivateKeyCommand{
 				Command: base.NewCommand(ui),
 				Func:    "update",
-			}, nil
-		},
-		"credentials update json": func() (cli.Command, error) {
-			return &credentialscmd.JsonCommand{
+			}),
+		"credentials update json": clientCacheWrapper(
+			&credentialscmd.JsonCommand{
 				Command: base.NewCommand(ui),
 				Func:    "update",
+			}),
+
+		"daemon": func() (cli.Command, error) {
+			return &unsupported.UnsupportedCommand{
+				Command:     base.NewCommand(ui),
+				CommandName: "daemon",
+			}, nil
+		},
+
+		"delete": func() (cli.Command, error) {
+			return &genericcmd.Command{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "delete",
 			}, nil
 		},
 
 		"groups": func() (cli.Command, error) {
 			return &groupscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
-		"groups create": func() (cli.Command, error) {
-			return &groupscmd.Command{
+		"groups create": clientCacheWrapper(
+			&groupscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "create",
-			}, nil
-		},
-		"groups update": func() (cli.Command, error) {
-			return &groupscmd.Command{
+			}),
+		"groups update": clientCacheWrapper(
+			&groupscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "update",
-			}, nil
-		},
-		"groups read": func() (cli.Command, error) {
-			return &groupscmd.Command{
+			}),
+		"groups read": clientCacheWrapper(
+			&groupscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "read",
-			}, nil
-		},
-		"groups delete": func() (cli.Command, error) {
-			return &groupscmd.Command{
+			}),
+		"groups delete": clientCacheWrapper(
+			&groupscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "delete",
-			}, nil
-		},
-		"groups list": func() (cli.Command, error) {
-			return &groupscmd.Command{
+			}),
+		"groups list": clientCacheWrapper(
+			&groupscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "list",
-			}, nil
-		},
-		"groups add-members": func() (cli.Command, error) {
-			return &groupscmd.Command{
+			}),
+		"groups add-members": clientCacheWrapper(
+			&groupscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "add-members",
-			}, nil
-		},
-		"groups set-members": func() (cli.Command, error) {
-			return &groupscmd.Command{
+			}),
+		"groups set-members": clientCacheWrapper(
+			&groupscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "set-members",
-			}, nil
-		},
-		"groups remove-members": func() (cli.Command, error) {
-			return &groupscmd.Command{
+			}),
+		"groups remove-members": clientCacheWrapper(
+			&groupscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "remove-members",
-			}, nil
-		},
+			}),
 
 		"host-catalogs": func() (cli.Command, error) {
 			return &hostcatalogscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
-		"host-catalogs read": func() (cli.Command, error) {
-			return &hostcatalogscmd.Command{
+		"host-catalogs read": clientCacheWrapper(
+			&hostcatalogscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "read",
-			}, nil
-		},
-		"host-catalogs delete": func() (cli.Command, error) {
-			return &hostcatalogscmd.Command{
+			}),
+		"host-catalogs delete": clientCacheWrapper(
+			&hostcatalogscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "delete",
-			}, nil
-		},
-		"host-catalogs list": func() (cli.Command, error) {
-			return &hostcatalogscmd.Command{
+			}),
+		"host-catalogs list": clientCacheWrapper(
+			&hostcatalogscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "list",
-			}, nil
-		},
-		"host-catalogs create": func() (cli.Command, error) {
-			return &hostcatalogscmd.Command{
+			}),
+		"host-catalogs create": clientCacheWrapper(
+			&hostcatalogscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "create",
-			}, nil
-		},
-		"host-catalogs create static": func() (cli.Command, error) {
-			return &hostcatalogscmd.StaticCommand{
+			}),
+		"host-catalogs create static": clientCacheWrapper(
+			&hostcatalogscmd.StaticCommand{
 				Command: base.NewCommand(ui),
 				Func:    "create",
-			}, nil
-		},
-		"host-catalogs create plugin": func() (cli.Command, error) {
-			return &hostcatalogscmd.PluginCommand{
+			}),
+		"host-catalogs create plugin": clientCacheWrapper(
+			&hostcatalogscmd.PluginCommand{
 				Command: base.NewCommand(ui),
 				Func:    "create",
-			}, nil
-		},
-		"host-catalogs update": func() (cli.Command, error) {
-			return &hostcatalogscmd.Command{
+			}),
+		"host-catalogs update": clientCacheWrapper(
+			&hostcatalogscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "update",
-			}, nil
-		},
-		"host-catalogs update static": func() (cli.Command, error) {
-			return &hostcatalogscmd.StaticCommand{
+			}),
+		"host-catalogs update static": clientCacheWrapper(
+			&hostcatalogscmd.StaticCommand{
 				Command: base.NewCommand(ui),
 				Func:    "update",
-			}, nil
-		},
-		"host-catalogs update plugin": func() (cli.Command, error) {
-			return &hostcatalogscmd.PluginCommand{
+			}),
+		"host-catalogs update plugin": clientCacheWrapper(
+			&hostcatalogscmd.PluginCommand{
 				Command: base.NewCommand(ui),
 				Func:    "update",
-			}, nil
-		},
+			}),
 
 		"host-sets": func() (cli.Command, error) {
 			return &hostsetscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
-		"host-sets read": func() (cli.Command, error) {
-			return &hostsetscmd.Command{
+		"host-sets read": clientCacheWrapper(
+			&hostsetscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "read",
-			}, nil
-		},
-		"host-sets delete": func() (cli.Command, error) {
-			return &hostsetscmd.Command{
+			}),
+		"host-sets delete": clientCacheWrapper(
+			&hostsetscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "delete",
-			}, nil
-		},
-		"host-sets list": func() (cli.Command, error) {
-			return &hostsetscmd.Command{
+			}),
+		"host-sets list": clientCacheWrapper(
+			&hostsetscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "list",
-			}, nil
-		},
-		"host-sets create": func() (cli.Command, error) {
-			return &hostsetscmd.Command{
+			}),
+		"host-sets create": clientCacheWrapper(
+			&hostsetscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "create",
-			}, nil
-		},
-		"host-sets create static": func() (cli.Command, error) {
-			return &hostsetscmd.StaticCommand{
+			}),
+		"host-sets create static": clientCacheWrapper(
+			&hostsetscmd.StaticCommand{
 				Command: base.NewCommand(ui),
 				Func:    "create",
-			}, nil
-		},
-		"host-sets create plugin": func() (cli.Command, error) {
-			return &hostsetscmd.PluginCommand{
+			}),
+		"host-sets create plugin": clientCacheWrapper(
+			&hostsetscmd.PluginCommand{
 				Command: base.NewCommand(ui),
 				Func:    "create",
-			}, nil
-		},
-		"host-sets update": func() (cli.Command, error) {
-			return &hostsetscmd.Command{
+			}),
+		"host-sets update": clientCacheWrapper(
+			&hostsetscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "update",
-			}, nil
-		},
-		"host-sets update static": func() (cli.Command, error) {
-			return &hostsetscmd.StaticCommand{
+			}),
+		"host-sets update static": clientCacheWrapper(
+			&hostsetscmd.StaticCommand{
 				Command: base.NewCommand(ui),
 				Func:    "update",
-			}, nil
-		},
-		"host-sets update plugin": func() (cli.Command, error) {
-			return &hostsetscmd.PluginCommand{
+			}),
+		"host-sets update plugin": clientCacheWrapper(
+			&hostsetscmd.PluginCommand{
 				Command: base.NewCommand(ui),
 				Func:    "update",
-			}, nil
-		},
-		"host-sets add-hosts": func() (cli.Command, error) {
-			return &hostsetscmd.Command{
+			}),
+		"host-sets add-hosts": clientCacheWrapper(
+			&hostsetscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "add-hosts",
-			}, nil
-		},
-		"host-sets remove-hosts": func() (cli.Command, error) {
-			return &hostsetscmd.Command{
+			}),
+		"host-sets remove-hosts": clientCacheWrapper(
+			&hostsetscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "remove-hosts",
-			}, nil
-		},
-		"host-sets set-hosts": func() (cli.Command, error) {
-			return &hostsetscmd.Command{
+			}),
+		"host-sets set-hosts": clientCacheWrapper(
+			&hostsetscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "set-hosts",
-			}, nil
-		},
+			}),
 
 		"hosts": func() (cli.Command, error) {
 			return &hostscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
-		"hosts read": func() (cli.Command, error) {
-			return &hostscmd.Command{
+		"hosts read": clientCacheWrapper(
+			&hostscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "read",
-			}, nil
-		},
-		"hosts delete": func() (cli.Command, error) {
-			return &hostscmd.Command{
+			}),
+		"hosts delete": clientCacheWrapper(
+			&hostscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "delete",
-			}, nil
-		},
-		"hosts list": func() (cli.Command, error) {
-			return &hostscmd.Command{
+			}),
+		"hosts list": clientCacheWrapper(
+			&hostscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "list",
-			}, nil
-		},
-		"hosts create": func() (cli.Command, error) {
-			return &hostscmd.Command{
+			}),
+		"hosts create": clientCacheWrapper(
+			&hostscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "create",
-			}, nil
-		},
-		"hosts create static": func() (cli.Command, error) {
-			return &hostscmd.StaticCommand{
+			}),
+		"hosts create static": clientCacheWrapper(
+			&hostscmd.StaticCommand{
 				Command: base.NewCommand(ui),
 				Func:    "create",
-			}, nil
-		},
-		"hosts update": func() (cli.Command, error) {
-			return &hostscmd.Command{
+			}),
+		"hosts update": clientCacheWrapper(
+			&hostscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "update",
-			}, nil
-		},
-		"hosts update static": func() (cli.Command, error) {
-			return &hostscmd.StaticCommand{
+			}),
+		"hosts update static": clientCacheWrapper(
+			&hostscmd.StaticCommand{
 				Command: base.NewCommand(ui),
 				Func:    "update",
-			}, nil
-		},
+			}),
 
 		"logout": func() (cli.Command, error) {
 			return &logout.LogoutCommand{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
 
 		"managed-groups": func() (cli.Command, error) {
 			return &managedgroupscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
-		"managed-groups read": func() (cli.Command, error) {
-			return &managedgroupscmd.Command{
+		"managed-groups read": clientCacheWrapper(
+			&managedgroupscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "read",
-			}, nil
-		},
-		"managed-groups delete": func() (cli.Command, error) {
-			return &managedgroupscmd.Command{
+			}),
+		"managed-groups delete": clientCacheWrapper(
+			&managedgroupscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "delete",
-			}, nil
-		},
-		"managed-groups list": func() (cli.Command, error) {
-			return &managedgroupscmd.Command{
+			}),
+		"managed-groups list": clientCacheWrapper(
+			&managedgroupscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "list",
-			}, nil
-		},
-		"managed-groups create": func() (cli.Command, error) {
-			return &managedgroupscmd.Command{
+			}),
+		"managed-groups create": clientCacheWrapper(
+			&managedgroupscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "create",
-			}, nil
-		},
-		"managed-groups create oidc": func() (cli.Command, error) {
-			return &managedgroupscmd.OidcCommand{
+			}),
+		"managed-groups create oidc": clientCacheWrapper(
+			&managedgroupscmd.OidcCommand{
 				Command: base.NewCommand(ui),
 				Func:    "create",
-			}, nil
-		},
-		"managed-groups create ldap": func() (cli.Command, error) {
-			return &managedgroupscmd.LdapCommand{
+			}),
+		"managed-groups create ldap": clientCacheWrapper(
+			&managedgroupscmd.LdapCommand{
 				Command: base.NewCommand(ui),
 				Func:    "create",
-			}, nil
-		},
-		"managed-groups update": func() (cli.Command, error) {
-			return &managedgroupscmd.Command{
+			}),
+		"managed-groups update": clientCacheWrapper(
+			&managedgroupscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "update",
-			}, nil
-		},
-		"managed-groups update oidc": func() (cli.Command, error) {
-			return &managedgroupscmd.OidcCommand{
+			}),
+		"managed-groups update oidc": clientCacheWrapper(
+			&managedgroupscmd.OidcCommand{
 				Command: base.NewCommand(ui),
 				Func:    "update",
-			}, nil
-		},
-		"managed-groups update ldap": func() (cli.Command, error) {
-			return &managedgroupscmd.LdapCommand{
+			}),
+		"managed-groups update ldap": clientCacheWrapper(
+			&managedgroupscmd.LdapCommand{
 				Command: base.NewCommand(ui),
 				Func:    "update",
+			}),
+
+		"read": func() (cli.Command, error) {
+			return &genericcmd.Command{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "read",
 			}, nil
 		},
 
 		"roles": func() (cli.Command, error) {
 			return &rolescmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
-		"roles create": func() (cli.Command, error) {
-			return &rolescmd.Command{
+		"roles create": clientCacheWrapper(
+			&rolescmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "create",
-			}, nil
-		},
-		"roles update": func() (cli.Command, error) {
-			return &rolescmd.Command{
+			}),
+		"roles update": clientCacheWrapper(
+			&rolescmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "update",
-			}, nil
-		},
-		"roles read": func() (cli.Command, error) {
-			return &rolescmd.Command{
+			}),
+		"roles read": clientCacheWrapper(
+			&rolescmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "read",
-			}, nil
-		},
-		"roles delete": func() (cli.Command, error) {
-			return &rolescmd.Command{
+			}),
+		"roles delete": clientCacheWrapper(
+			&rolescmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "delete",
-			}, nil
-		},
-		"roles list": func() (cli.Command, error) {
-			return &rolescmd.Command{
+			}),
+		"roles list": clientCacheWrapper(
+			&rolescmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "list",
-			}, nil
-		},
-		"roles add-principals": func() (cli.Command, error) {
-			return &rolescmd.Command{
+			}),
+		"roles add-principals": clientCacheWrapper(
+			&rolescmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "add-principals",
-			}, nil
-		},
-		"roles set-principals": func() (cli.Command, error) {
-			return &rolescmd.Command{
+			}),
+		"roles set-principals": clientCacheWrapper(
+			&rolescmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "set-principals",
-			}, nil
-		},
-		"roles remove-principals": func() (cli.Command, error) {
-			return &rolescmd.Command{
+			}),
+		"roles remove-principals": clientCacheWrapper(
+			&rolescmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "remove-principals",
-			}, nil
-		},
-		"roles add-grants": func() (cli.Command, error) {
-			return &rolescmd.Command{
+			}),
+		"roles add-grants": clientCacheWrapper(
+			&rolescmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "add-grants",
-			}, nil
-		},
-		"roles set-grants": func() (cli.Command, error) {
-			return &rolescmd.Command{
+			}),
+		"roles set-grants": clientCacheWrapper(
+			&rolescmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "set-grants",
-			}, nil
-		},
-		"roles remove-grants": func() (cli.Command, error) {
-			return &rolescmd.Command{
+			}),
+		"roles remove-grants": clientCacheWrapper(
+			&rolescmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "remove-grants",
-			}, nil
-		},
-		"roles add-grant-scopes": func() (cli.Command, error) {
-			return &rolescmd.Command{
+			}),
+		"roles add-grant-scopes": clientCacheWrapper(
+			&rolescmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "add-grant-scopes",
-			}, nil
-		},
-		"roles set-grant-scopes": func() (cli.Command, error) {
-			return &rolescmd.Command{
+			}),
+		"roles set-grant-scopes": clientCacheWrapper(
+			&rolescmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "set-grant-scopes",
-			}, nil
-		},
-		"roles remove-grant-scopes": func() (cli.Command, error) {
-			return &rolescmd.Command{
+			}),
+		"roles remove-grant-scopes": clientCacheWrapper(
+			&rolescmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "remove-grant-scopes",
-			}, nil
-		},
+			}),
 
 		"scopes": func() (cli.Command, error) {
 			return &scopescmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
-		"scopes create": func() (cli.Command, error) {
-			return &scopescmd.Command{
+		"scopes create": clientCacheWrapper(
+			&scopescmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "create",
-			}, nil
-		},
-		"scopes read": func() (cli.Command, error) {
-			return &scopescmd.Command{
+			}),
+		"scopes read": clientCacheWrapper(
+			&scopescmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "read",
-			}, nil
-		},
-		"scopes update": func() (cli.Command, error) {
-			return &scopescmd.Command{
+			}),
+		"scopes update": clientCacheWrapper(
+			&scopescmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "update",
-			}, nil
-		},
-		"scopes delete": func() (cli.Command, error) {
-			return &scopescmd.Command{
+			}),
+		"scopes delete": clientCacheWrapper(
+			&scopescmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "delete",
-			}, nil
-		},
-		"scopes list": func() (cli.Command, error) {
-			return &scopescmd.Command{
+			}),
+		"scopes list": clientCacheWrapper(
+			&scopescmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "list",
-			}, nil
-		},
-		"scopes list-keys": func() (cli.Command, error) {
-			return &scopescmd.ListKeysCommand{
+			}),
+		"scopes list-keys": clientCacheWrapper(
+			&scopescmd.ListKeysCommand{
 				Command: base.NewCommand(ui),
-			}, nil
-		},
-		"scopes rotate-keys": func() (cli.Command, error) {
-			return &scopescmd.RotateKeysCommand{
+			}),
+		"scopes rotate-keys": clientCacheWrapper(
+			&scopescmd.RotateKeysCommand{
 				Command: base.NewCommand(ui),
-			}, nil
-		},
-		"scopes list-key-version-destruction-jobs": func() (cli.Command, error) {
-			return &scopescmd.ListKeyVersionDestructionJobsCommand{
+			}),
+		"scopes list-key-version-destruction-jobs": clientCacheWrapper(
+			&scopescmd.ListKeyVersionDestructionJobsCommand{
 				Command: base.NewCommand(ui),
-			}, nil
-		},
-		"scopes destroy-key-version": func() (cli.Command, error) {
-			return &scopescmd.DestroyKeyVersionCommand{
+			}),
+		"scopes destroy-key-version": clientCacheWrapper(
+			&scopescmd.DestroyKeyVersionCommand{
 				Command: base.NewCommand(ui),
+			}),
+
+		"search": func() (cli.Command, error) {
+			return &unsupported.UnsupportedCommand{
+				Command:     base.NewCommand(ui),
+				CommandName: "search",
 			}, nil
 		},
 
 		"sessions": func() (cli.Command, error) {
 			return &sessionscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
-		"sessions read": func() (cli.Command, error) {
-			return &sessionscmd.Command{
+		"sessions read": clientCacheWrapper(
+			&sessionscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "read",
-			}, nil
-		},
-		"sessions list": func() (cli.Command, error) {
-			return &sessionscmd.Command{
+			}),
+		"sessions list": clientCacheWrapper(
+			&sessionscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "list",
-			}, nil
-		},
-		"sessions cancel": func() (cli.Command, error) {
-			return &sessionscmd.Command{
+			}),
+		"sessions cancel": clientCacheWrapper(
+			&sessionscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "cancel",
-			}, nil
-		},
+			}),
 
 		"session-recordings": func() (cli.Command, error) {
 			return &sessionrecordingscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
-		"session-recordings read": func() (cli.Command, error) {
-			return &sessionrecordingscmd.Command{
+		"session-recordings read": clientCacheWrapper(
+			&sessionrecordingscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "read",
-			}, nil
-		},
-		"session-recordings list": func() (cli.Command, error) {
-			return &sessionrecordingscmd.Command{
+			}),
+		"session-recordings list": clientCacheWrapper(
+			&sessionrecordingscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "list",
-			}, nil
-		},
-		"session-recordings download": func() (cli.Command, error) {
-			return &sessionrecordingscmd.DownloadCommand{
+			}),
+		"session-recordings download": clientCacheWrapper(
+			&sessionrecordingscmd.DownloadCommand{
 				Command: base.NewCommand(ui),
-			}, nil
-		},
+			}),
 
 		"storage-buckets": func() (cli.Command, error) {
 			return &storagebucketscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
-		"storage-buckets read": func() (cli.Command, error) {
-			return &storagebucketscmd.Command{
+		"storage-buckets read": clientCacheWrapper(
+			&storagebucketscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "read",
-			}, nil
-		},
-		"storage-buckets delete": func() (cli.Command, error) {
-			return &storagebucketscmd.Command{
+			}),
+		"storage-buckets delete": clientCacheWrapper(
+			&storagebucketscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "delete",
-			}, nil
-		},
-		"storage-buckets list": func() (cli.Command, error) {
-			return &storagebucketscmd.Command{
+			}),
+		"storage-buckets list": clientCacheWrapper(
+			&storagebucketscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "list",
-			}, nil
-		},
-		"storage-buckets create": func() (cli.Command, error) {
-			return &storagebucketscmd.Command{
+			}),
+		"storage-buckets create": clientCacheWrapper(
+			&storagebucketscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "create",
-			}, nil
-		},
-		"storage-buckets update": func() (cli.Command, error) {
-			return &storagebucketscmd.Command{
+			}),
+		"storage-buckets update": clientCacheWrapper(
+			&storagebucketscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "update",
-			}, nil
-		},
+			}),
 
 		"targets": func() (cli.Command, error) {
 			return &targetscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
-		"targets authorize-session": func() (cli.Command, error) {
-			return &targetscmd.Command{
+		"targets authorize-session": clientCacheWrapper(
+			&targetscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "authorize-session",
-			}, nil
-		},
-		"targets read": func() (cli.Command, error) {
-			return &targetscmd.Command{
+			}),
+		"targets read": clientCacheWrapper(
+			&targetscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "read",
-			}, nil
-		},
-		"targets delete": func() (cli.Command, error) {
-			return &targetscmd.Command{
+			}),
+		"targets delete": clientCacheWrapper(
+			&targetscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "delete",
-			}, nil
-		},
-		"targets list": func() (cli.Command, error) {
-			return &targetscmd.Command{
+			}),
+		"targets list": clientCacheWrapper(
+			&targetscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "list",
-			}, nil
-		},
-		"targets create": func() (cli.Command, error) {
-			return &targetscmd.Command{
+			}),
+		"targets create": clientCacheWrapper(
+			&targetscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "create",
-			}, nil
-		},
-		"targets create tcp": func() (cli.Command, error) {
-			return &targetscmd.TcpCommand{
+			}),
+		"targets create tcp": clientCacheWrapper(
+			&targetscmd.TcpCommand{
 				Command: base.NewCommand(ui),
 				Func:    "create",
-			}, nil
-		},
-		"targets create ssh": func() (cli.Command, error) {
-			return &targetscmd.SshCommand{
+			}),
+		"targets create ssh": clientCacheWrapper(
+			&targetscmd.SshCommand{
 				Command: base.NewCommand(ui),
 				Func:    "create",
-			}, nil
-		},
-		"targets update": func() (cli.Command, error) {
-			return &targetscmd.Command{
+			}),
+		"targets update": clientCacheWrapper(
+			&targetscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "update",
-			}, nil
-		},
-		"targets update tcp": func() (cli.Command, error) {
-			return &targetscmd.TcpCommand{
+			}),
+		"targets update tcp": clientCacheWrapper(
+			&targetscmd.TcpCommand{
 				Command: base.NewCommand(ui),
 				Func:    "update",
-			}, nil
-		},
-		"targets update ssh": func() (cli.Command, error) {
-			return &targetscmd.SshCommand{
+			}),
+		"targets update ssh": clientCacheWrapper(
+			&targetscmd.SshCommand{
 				Command: base.NewCommand(ui),
 				Func:    "update",
-			}, nil
-		},
-		"targets add-host-sources": func() (cli.Command, error) {
-			return &targetscmd.Command{
+			}),
+		"targets add-host-sources": clientCacheWrapper(
+			&targetscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "add-host-sources",
-			}, nil
-		},
-		"targets remove-host-sources": func() (cli.Command, error) {
-			return &targetscmd.Command{
+			}),
+		"targets remove-host-sources": clientCacheWrapper(
+			&targetscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "remove-host-sources",
-			}, nil
-		},
-		"targets set-host-sources": func() (cli.Command, error) {
-			return &targetscmd.Command{
+			}),
+		"targets set-host-sources": clientCacheWrapper(
+			&targetscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "set-host-sources",
-			}, nil
-		},
-		"targets add-credential-sources": func() (cli.Command, error) {
-			return &targetscmd.Command{
+			}),
+		"targets add-credential-sources": clientCacheWrapper(
+			&targetscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "add-credential-sources",
-			}, nil
-		},
-		"targets remove-credential-sources": func() (cli.Command, error) {
-			return &targetscmd.Command{
+			}),
+		"targets remove-credential-sources": clientCacheWrapper(
+			&targetscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "remove-credential-sources",
-			}, nil
-		},
-		"targets set-credential-sources": func() (cli.Command, error) {
-			return &targetscmd.Command{
+			}),
+		"targets set-credential-sources": clientCacheWrapper(
+			&targetscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "set-credential-sources",
+			}),
+
+		"update": func() (cli.Command, error) {
+			return &genericcmd.Command{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "update",
 			}, nil
 		},
 
 		"users": func() (cli.Command, error) {
 			return &userscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
-		"users create": func() (cli.Command, error) {
-			return &userscmd.Command{
+		"users create": clientCacheWrapper(
+			&userscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "create",
-			}, nil
-		},
-		"users read": func() (cli.Command, error) {
-			return &userscmd.Command{
+			}),
+		"users read": clientCacheWrapper(
+			&userscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "read",
-			}, nil
-		},
-		"users update": func() (cli.Command, error) {
-			return &userscmd.Command{
+			}),
+		"users update": clientCacheWrapper(
+			&userscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "update",
-			}, nil
-		},
-		"users delete": func() (cli.Command, error) {
-			return &userscmd.Command{
+			}),
+		"users delete": clientCacheWrapper(
+			&userscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "delete",
-			}, nil
-		},
-		"users list": func() (cli.Command, error) {
-			return &userscmd.Command{
+			}),
+		"users list": clientCacheWrapper(
+			&userscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "list",
-			}, nil
-		},
-		"users add-accounts": func() (cli.Command, error) {
-			return &userscmd.Command{
+			}),
+		"users add-accounts": clientCacheWrapper(
+			&userscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "add-accounts",
-			}, nil
-		},
-		"users set-accounts": func() (cli.Command, error) {
-			return &userscmd.Command{
+			}),
+		"users set-accounts": clientCacheWrapper(
+			&userscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "set-accounts",
-			}, nil
-		},
-		"users remove-accounts": func() (cli.Command, error) {
-			return &userscmd.Command{
+			}),
+		"users remove-accounts": clientCacheWrapper(
+			&userscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "remove-accounts",
-			}, nil
-		},
+			}),
 
 		"workers": func() (cli.Command, error) {
 			return &workerscmd.Command{
-				Command: base.NewCommand(ui),
+				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
-		"workers create": func() (cli.Command, error) {
-			return &workerscmd.Command{
-				Command: base.NewCommand(ui),
-				Func:    "create",
-			}, nil
-		},
-		"workers create worker-led": func() (cli.Command, error) {
-			return &workerscmd.WorkerLedCommand{
+		"workers create": clientCacheWrapper(
+			&workerscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "create",
-			}, nil
-		},
-		"workers create controller-led": func() (cli.Command, error) {
-			return &workerscmd.ControllerLedCommand{
+			}),
+		"workers create worker-led": clientCacheWrapper(
+			&workerscmd.WorkerLedCommand{
 				Command: base.NewCommand(ui),
 				Func:    "create",
-			}, nil
-		},
-		"workers read": func() (cli.Command, error) {
-			return &workerscmd.Command{
+			}),
+		"workers create controller-led": clientCacheWrapper(
+			&workerscmd.ControllerLedCommand{
+				Command: base.NewCommand(ui),
+				Func:    "create",
+			}),
+		"workers read": clientCacheWrapper(
+			&workerscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "read",
-			}, nil
-		},
-		"workers update": func() (cli.Command, error) {
-			return &workerscmd.Command{
+			}),
+		"workers update": clientCacheWrapper(
+			&workerscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "update",
-			}, nil
-		},
-		"workers delete": func() (cli.Command, error) {
-			return &workerscmd.Command{
+			}),
+		"workers delete": clientCacheWrapper(
+			&workerscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "delete",
-			}, nil
-		},
-		"workers list": func() (cli.Command, error) {
-			return &workerscmd.Command{
+			}),
+		"workers list": clientCacheWrapper(
+			&workerscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "list",
-			}, nil
-		},
-		"workers add-worker-tags": func() (cli.Command, error) {
-			return &workerscmd.Command{
+			}),
+		"workers add-worker-tags": clientCacheWrapper(
+			&workerscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "add-worker-tags",
-			}, nil
-		},
-		"workers set-worker-tags": func() (cli.Command, error) {
-			return &workerscmd.Command{
+			}),
+		"workers set-worker-tags": clientCacheWrapper(
+			&workerscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "set-worker-tags",
-			}, nil
-		},
-		"workers remove-worker-tags": func() (cli.Command, error) {
-			return &workerscmd.Command{
+			}),
+		"workers remove-worker-tags": clientCacheWrapper(
+			&workerscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "remove-worker-tags",
-			}, nil
-		},
-		"workers certificate-authority": func() (cli.Command, error) {
-			return &workerscmd.WorkerCACommand{
+			}),
+		"workers certificate-authority": clientCacheWrapper(
+			&workerscmd.WorkerCACommand{
 				Command: base.NewCommand(ui),
-			}, nil
-		},
-		"workers certificate-authority read": func() (cli.Command, error) {
-			return &workerscmd.WorkerCACommand{
+			}),
+		"workers certificate-authority read": clientCacheWrapper(
+			&workerscmd.WorkerCACommand{
 				Command: base.NewCommand(ui),
 				Func:    "read",
-			}, nil
-		},
-		"workers certificate-authority reinitialize": func() (cli.Command, error) {
-			return &workerscmd.WorkerCACommand{
+			}),
+		"workers certificate-authority reinitialize": clientCacheWrapper(
+			&workerscmd.WorkerCACommand{
 				Command: base.NewCommand(ui),
 				Func:    "reinitialize",
-			}, nil
-		},
+			}),
 	}
 
 	for _, fn := range extraCommandsFuncs {
 		if fn != nil {
-			fn()
+			fn(ui, serverCmdUi, runOpts)
 		}
 	}
 }
 
-var extraCommandsFuncs []func()
+var extraCommandsFuncs []func(ui, serverCmdUi cli.Ui, runOpts *RunOptions)
+
+// Keep this interface aligned with the interface at internal/clientcache/cmd/daemon/command_wrapper.go
+type cacheEnabledCommand interface {
+	cli.Command
+	BaseCommand() *base.Command
+}
+
+// clientCacheWrapper wraps all short lived, non server, command factories.
+// The default func is a noop.
+var clientCacheWrapper = func(c cacheEnabledCommand) cli.CommandFactory {
+	return func() (cli.Command, error) {
+		return c, nil
+	}
+}

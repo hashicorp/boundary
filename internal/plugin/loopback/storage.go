@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package loopback
 
@@ -17,6 +17,7 @@ import (
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -121,8 +122,8 @@ func (l *LoopbackStorage) onCreateStorageBucket(ctx context.Context, req *plgpb.
 	if req.GetBucket() == nil {
 		return nil, status.Errorf(codes.InvalidArgument, "%s: missing storage bucket", op)
 	}
-	if req.GetBucket().GetSecrets() == nil {
-		return nil, status.Errorf(codes.InvalidArgument, "%s: missing secrets", op)
+	if req.GetBucket().GetAttributes() == nil {
+		return nil, status.Errorf(codes.InvalidArgument, "%s: missing attributes", op)
 	}
 	l.m.Lock()
 	defer l.m.Unlock()
@@ -134,9 +135,15 @@ func (l *LoopbackStorage) onCreateStorageBucket(ctx context.Context, req *plgpb.
 			return nil, status.Errorf(err.ErrCode, err.ErrMsg)
 		}
 	}
+	secrets := req.GetBucket().GetSecrets()
+	if secrets == nil {
+		secrets = &structpb.Struct{
+			Fields: make(map[string]*structpb.Value),
+		}
+	}
 	return &plgpb.OnCreateStorageBucketResponse{
 		Persisted: &storagebuckets.StorageBucketPersisted{
-			Data: req.GetBucket().GetSecrets(),
+			Data: secrets,
 		},
 	}, nil
 }
@@ -149,8 +156,8 @@ func (l *LoopbackStorage) onUpdateStorageBucket(ctx context.Context, req *plgpb.
 	if req.GetNewBucket() == nil {
 		return nil, status.Errorf(codes.InvalidArgument, "%s: missing storage bucket", op)
 	}
-	if req.Persisted == nil {
-		return nil, status.Errorf(codes.InvalidArgument, "%s: missing secrets", op)
+	if req.GetNewBucket().GetAttributes() == nil {
+		return nil, status.Errorf(codes.InvalidArgument, "%s: missing attributes", op)
 	}
 	l.m.Lock()
 	defer l.m.Unlock()
@@ -162,16 +169,20 @@ func (l *LoopbackStorage) onUpdateStorageBucket(ctx context.Context, req *plgpb.
 			return nil, status.Errorf(err.ErrCode, "%s: %s", op, err.ErrMsg)
 		}
 	}
-	var sec *storagebuckets.StorageBucketPersisted
-	if req.NewBucket.Secrets != nil {
-		sec = &storagebuckets.StorageBucketPersisted{
-			Data: req.GetNewBucket().GetSecrets(),
-		}
+	var secrets *structpb.Struct
+	if req.GetNewBucket().GetSecrets() != nil {
+		secrets = req.GetNewBucket().GetSecrets()
+	} else if req.GetPersisted().GetData() != nil {
+		secrets = req.GetPersisted().GetData()
 	} else {
-		sec = req.Persisted
+		secrets = &structpb.Struct{
+			Fields: make(map[string]*structpb.Value),
+		}
 	}
 	return &plgpb.OnUpdateStorageBucketResponse{
-		Persisted: sec,
+		Persisted: &storagebuckets.StorageBucketPersisted{
+			Data: secrets,
+		},
 	}, nil
 }
 
@@ -183,8 +194,8 @@ func (l *LoopbackStorage) onDeleteStorageBucket(ctx context.Context, req *plgpb.
 	if req.GetBucket() == nil {
 		return nil, status.Errorf(codes.InvalidArgument, "%s: missing storage bucket", op)
 	}
-	if req.Persisted == nil {
-		return nil, status.Errorf(codes.InvalidArgument, "%s: missing secrets", op)
+	if req.GetBucket().GetAttributes() == nil {
+		return nil, status.Errorf(codes.InvalidArgument, "%s: missing attributes", op)
 	}
 	return &plgpb.OnDeleteStorageBucketResponse{}, nil
 }
@@ -197,8 +208,8 @@ func (l *LoopbackStorage) validatePermissions(ctx context.Context, req *plgpb.Va
 	if req.GetBucket() == nil {
 		return nil, status.Errorf(codes.InvalidArgument, "%s: missing storage bucket", op)
 	}
-	if req.GetBucket().GetSecrets() == nil {
-		return nil, status.Errorf(codes.InvalidArgument, "%s: missing secrets", op)
+	if req.GetBucket().GetAttributes() == nil {
+		return nil, status.Errorf(codes.InvalidArgument, "%s: missing attributes", op)
 	}
 	l.m.Lock()
 	defer l.m.Unlock()
@@ -221,8 +232,8 @@ func (l *LoopbackStorage) headObject(ctx context.Context, req *plgpb.HeadObjectR
 	if req.GetBucket() == nil {
 		return nil, status.Errorf(codes.InvalidArgument, "$%s: missing storage bucket", op)
 	}
-	if req.GetBucket().GetSecrets() == nil {
-		return nil, status.Errorf(codes.InvalidArgument, "%s: missing secrets", op)
+	if req.GetBucket().GetAttributes() == nil {
+		return nil, status.Errorf(codes.InvalidArgument, "%s: missing attributes", op)
 	}
 	if req.GetKey() == "" {
 		return nil, status.Errorf(codes.InvalidArgument, "%s; missing object key", op)
@@ -261,8 +272,8 @@ func (l *LoopbackStorage) getObject(req *plgpb.GetObjectRequest, stream plgpb.St
 	if req.GetBucket() == nil {
 		return status.Errorf(codes.InvalidArgument, "%s: missing storage bucket", op)
 	}
-	if req.GetBucket().GetSecrets() == nil {
-		return status.Errorf(codes.InvalidArgument, "%s: missing secrets", op)
+	if req.GetBucket().GetAttributes() == nil {
+		return status.Errorf(codes.InvalidArgument, "%s: missing attributes", op)
 	}
 	if req.GetKey() == "" {
 		return status.Errorf(codes.InvalidArgument, "%s; missing object key", op)
@@ -317,11 +328,11 @@ func (l *LoopbackStorage) putObject(ctx context.Context, req *plgpb.PutObjectReq
 	if req.GetBucket() == nil {
 		return nil, status.Errorf(codes.InvalidArgument, "%s: missing storage bucket", op)
 	}
+	if req.GetBucket().GetAttributes() == nil {
+		return nil, status.Errorf(codes.InvalidArgument, "%s: missing attributes", op)
+	}
 	if req.GetBucket().GetBucketName() == "" {
 		return nil, status.Errorf(codes.InvalidArgument, "%s: missing bucket name", op)
-	}
-	if req.GetBucket().GetSecrets() == nil {
-		return nil, status.Errorf(codes.InvalidArgument, "%s: missing secrets", op)
 	}
 	if req.GetKey() == "" {
 		return nil, status.Errorf(codes.InvalidArgument, "%s; missing object key", op)

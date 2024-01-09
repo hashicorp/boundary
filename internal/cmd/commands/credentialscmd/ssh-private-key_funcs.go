@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package credentialscmd
 
@@ -84,7 +84,7 @@ func extraSshPrivateKeyFlagHandlingFuncImpl(c *SshPrivateKeyCommand, _ *base.Fla
 	privateKey, err := parseutil.MustParsePath(c.flagPrivateKey)
 	switch {
 	case err == nil:
-	case errors.Is(err, parseutil.ErrNotParsed):
+	case errors.Is(err, parseutil.ErrNotAUrl), errors.Is(err, parseutil.ErrNotParsed):
 		c.UI.Error("Private key flag must be used with env:// or file:// syntax")
 		return false
 	default:

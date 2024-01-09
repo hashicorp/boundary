@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package base
 
@@ -12,7 +12,7 @@ import (
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-kms-wrapping/v2/extras/multi"
@@ -301,12 +301,14 @@ func TestServer_SetupEventing(t *testing.T) {
 				AuditEnabled:        &setTrue,
 				ObservationsEnabled: &setFalse,
 				SysEventsEnabled:    &setFalse,
+				TelemetryEnabled:    &setFalse,
 			})},
 			want: func() event.EventerConfig {
 				c := event.DefaultEventerConfig()
 				c.AuditEnabled = true
 				c.ObservationsEnabled = false
 				c.SysEventsEnabled = false
+				c.TelemetryEnabled = false
 				return *c
 			}(),
 		},
@@ -330,12 +332,14 @@ func TestServer_SetupEventing(t *testing.T) {
 				ObservationsEnabled: false,
 				SysEventsEnabled:    false,
 				AuditEnabled:        true,
+				TelemetryEnabled:    false,
 			})},
 			want: func() event.EventerConfig {
 				c := event.DefaultEventerConfig()
 				c.AuditEnabled = true
 				c.ObservationsEnabled = false
 				c.SysEventsEnabled = false
+				c.TelemetryEnabled = false
 				return *c
 			}(),
 		},
@@ -353,6 +357,42 @@ func TestServer_SetupEventing(t *testing.T) {
 			})},
 			wantErrIs:       event.ErrInvalidParameter,
 			wantErrContains: "sink 0 is invalid",
+		},
+		{
+			name:   "opts-eventer-config-observation-telemetry-invalid",
+			s:      &Server{},
+			logger: testLogger,
+			lock:   testLock,
+			opt: []Option{WithEventFlags(&EventFlags{
+				Format:              event.JSONSinkFormat,
+				AuditEnabled:        &setTrue,
+				ObservationsEnabled: &setFalse,
+				SysEventsEnabled:    &setFalse,
+				TelemetryEnabled:    &setTrue,
+			})},
+			wantErrIs:       event.ErrInvalidParameter,
+			wantErrContains: "telemetry events require observation event to be enabled",
+		},
+		{
+			name:   "opts-eventer-config-observation-on-telemetry-off",
+			s:      &Server{},
+			logger: testLogger,
+			lock:   testLock,
+			opt: []Option{WithEventFlags(&EventFlags{
+				Format:              event.JSONSinkFormat,
+				AuditEnabled:        &setFalse,
+				ObservationsEnabled: &setTrue,
+				SysEventsEnabled:    &setFalse,
+				TelemetryEnabled:    &setFalse,
+			})},
+			want: func() event.EventerConfig {
+				c := event.DefaultEventerConfig()
+				c.AuditEnabled = false
+				c.ObservationsEnabled = true
+				c.SysEventsEnabled = false
+				c.TelemetryEnabled = false
+				return *c
+			}(),
 		},
 	}
 

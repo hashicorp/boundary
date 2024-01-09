@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 // Package boundary provides methods for commonly used boundary actions that are used in end-to-end tests.
 package boundary
@@ -34,5 +34,13 @@ type DbInitInfo struct {
 
 // CliError parses the Stderr from running a boundary command
 type CliError struct {
-	Status int `json:"status"`
+	Status int `json:"status_code"`
+}
+
+type HttpResponseBody struct {
+	Attributes HttpResponseBodyAttributes `json:"attributes"`
+}
+
+type HttpResponseBodyAttributes struct {
+	Token string `json:"token"`
 }

@@ -11,13 +11,14 @@ import (
 )
 
 type VaultSSHCertificateCredentialLibraryAttributes struct {
-	Path            string            `json:"path,omitempty"`
-	Username        string            `json:"username,omitempty"`
-	KeyType         string            `json:"key_type,omitempty"`
-	KeyBits         uint32            `json:"key_bits,omitempty"`
-	Ttl             string            `json:"ttl,omitempty"`
-	CriticalOptions map[string]string `json:"critical_options,omitempty"`
-	Extensions      map[string]string `json:"extensions,omitempty"`
+	Path                      string            `json:"path,omitempty"`
+	Username                  string            `json:"username,omitempty"`
+	KeyType                   string            `json:"key_type,omitempty"`
+	KeyBits                   uint32            `json:"key_bits,omitempty"`
+	Ttl                       string            `json:"ttl,omitempty"`
+	CriticalOptions           map[string]string `json:"critical_options,omitempty"`
+	Extensions                map[string]string `json:"extensions,omitempty"`
+	AdditionalValidPrincipals []string          `json:"additional_valid_principals,omitempty"`
 }
 
 func AttributesMapToVaultSSHCertificateCredentialLibraryAttributes(in map[string]interface{}) (*VaultSSHCertificateCredentialLibraryAttributes, error) {

@@ -1,5 +1,5 @@
 -- Copyright (c) HashiCorp, Inc.
--- SPDX-License-Identifier: MPL-2.0
+-- SPDX-License-Identifier: BUSL-1.1
 
 begin;
 
@@ -17,6 +17,7 @@ begin;
   -- insert_host_catalog_subtype() is a before insert trigger function for
   -- subtypes of host_catalog.
   -- Replaces the insert_host_catalog_subtype function defined in 20/04_host.up.sql
+  -- Replaced in 80/10_host_catalog_base_table_updates.up.sql
   create or replace function insert_host_catalog_subtype() returns trigger
   as $$
   begin

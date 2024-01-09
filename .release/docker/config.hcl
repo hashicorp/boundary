@@ -1,5 +1,5 @@
 # Copyright (c) HashiCorp, Inc.
-# SPDX-License-Identifier: MPL-2.0
+# SPDX-License-Identifier: BUSL-1.1
 
 # This is a default configuration provided for our Docker image. It's meant to
 # be a starting point and to help new users get started. It's strongly

@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package session
 
@@ -422,6 +422,69 @@ update session_credential
 		key_id = ?
 where session_id = ?
 	and credential_sha256 = ?;
+`
+	listSessionsTemplate = `
+with session_ids as (
+    select public_id
+      from session
+           -- search condition for applying permissions is constructed
+     where %s
+  order by create_time desc, public_id desc
+     limit %d
+)
+   select *
+     from session_list
+    where session_list.public_id in (select * from session_ids)
+ order by create_time desc, public_id desc;
+`
+	listSessionsPageTemplate = `
+with session_ids as (
+    select public_id
+      from session
+     where (create_time, public_id) < (@last_item_create_time, @last_item_id)
+           -- search condition for applying permissions is constructed
+       and %s
+  order by create_time desc, public_id desc
+     limit %d
+)
+   select *
+     from session_list
+    where session_list.public_id in (select * from session_ids)
+ order by create_time desc, public_id desc;
+`
+	refreshSessionsTemplate = `
+with session_ids as (
+    select public_id
+      from session
+     where update_time > @updated_after_time
+           -- search condition for applying permissions is constructed
+       and %s
+  order by update_time desc, public_id desc
+     limit %d
+)
+  select *
+    from session_list
+   where session_list.public_id in (select * from session_ids)
+order by update_time desc, public_id desc;
+`
+	refreshSessionsPageTemplate = `
+with session_ids as (
+    select public_id
+      from session
+     where update_time > @updated_after_time
+       and (update_time, public_id) < (@last_item_update_time, @last_item_id)
+           -- search condition for applying permissions is constructed
+       and %s
+  order by update_time desc, public_id desc
+     limit %d
+)
+  select *
+    from session_list
+   where session_list.public_id in (select * from session_ids)
+order by update_time desc, public_id desc;
+`
+	estimateCountSessions = `
+    select reltuples::bigint as estimate from pg_class where oid in ('session'::regclass)
 `
 )
 

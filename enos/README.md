@@ -85,7 +85,7 @@ It support either a local build or the output of the `build` workflow (CRT). All
 test scenarios create a Boundary cluster consisting of an RDS database, 1 worker, and
 1 controller (behind an ALB). The count and instance type for  workers and
 controllers is configurable. All tests require that a local copy of `boundary`
-is availble in the `local_boundary_dir` to access the Boundary cluster API
+is available in the `local_boundary_dir` to access the Boundary cluster API
 through the ALB. For example, if you install `boundary` locally via `make install`
 you could test that version against the cluster by setting `local_boundary_dir` to
 `/Users/<user>/.go/bin`, or wherever you have configured `$GOPATH/bin`.
@@ -151,7 +151,7 @@ Here are the steps to configure the GitHub Actions service user:
 
 1. **Create the Terraform Cloud Workspace** - The name of the workspace to be created depends on the
    repository for which it is being created, but the pattern is: `<repository>-ci-service-user-iam`,
-   e.g. `boundary-ci-service-user-iam`. It is important that the execution mode for the workspace be 
+   e.g. `boundary-ci-service-user-iam`. It is important that the execution mode for the workspace be
    set to `local`. For help on setting up the workspace, contact the QT team on Slack (#team-quality)
 
 

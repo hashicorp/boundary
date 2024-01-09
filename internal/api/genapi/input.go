@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package main
 
@@ -883,6 +883,11 @@ var inputStructs = []*structInfo{
 		subtypeName: "SessionAuthorization",
 	},
 	{
+		inProto:     &targets.SessionAuthorizationData{},
+		outFile:     "targets/session_authorization_data.gen.go",
+		subtypeName: "SessionAuthorizationData",
+	},
+	{
 		inProto:     &targets.WorkerInfo{},
 		outFile:     "targets/worker_info.gen.go",
 		subtypeName: "WorkerInfo",
@@ -967,11 +972,6 @@ var inputStructs = []*structInfo{
 				ProtoName:   "scope_name",
 				FieldType:   "string",
 				SkipDefault: true,
-			},
-			{
-				Name:      "ApplicationCredentialSourceIds",
-				ProtoName: "application_credential_source_ids",
-				FieldType: "[]string",
 			},
 			{
 				Name:      "BrokeredCredentialSourceIds",

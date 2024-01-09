@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package perms
 
@@ -219,8 +219,13 @@ func (g *Grant) unmarshalJSON(ctx context.Context, data []byte) error {
 	}
 	if rawId, ok := raw["id"]; ok {
 		id, ok := rawId.(string)
-		if !ok {
+		switch {
+		case !ok:
 			return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unable to interpret %q as string", "id"))
+		case id == "":
+			return errors.New(ctx, errors.InvalidParameter, op, "empty ID provided")
+		case strings.ContainsAny(id, ",;="):
+			return errors.New(ctx, errors.InvalidParameter, op, "ID cannot contain a comma, semicolon or equals sign")
 		}
 		g.id = id
 	}
@@ -232,8 +237,13 @@ func (g *Grant) unmarshalJSON(ctx context.Context, data []byte) error {
 		g.ids = make([]string, len(ids))
 		for i, id := range ids {
 			idStr, ok := id.(string)
-			if !ok {
+			switch {
+			case !ok:
 				return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unable to interpret %q element %q as string", "ids", id))
+			case idStr == "":
+				return errors.New(ctx, errors.InvalidParameter, op, "empty ID provided")
+			case strings.ContainsAny(idStr, ",;="):
+				return errors.New(ctx, errors.InvalidParameter, op, "ID cannot contain a comma, semicolon or equals sign")
 			}
 			g.ids[i] = idStr
 		}
@@ -262,6 +272,8 @@ func (g *Grant) unmarshalJSON(ctx context.Context, data []byte) error {
 					return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unable to interpret %v in actions array as string", v))
 				case actionStr == "":
 					return errors.New(ctx, errors.InvalidParameter, op, "empty action found")
+				case strings.ContainsAny(actionStr, ",;="):
+					return errors.New(ctx, errors.InvalidParameter, op, "action cannot contain a comma, semicolon or equals sign")
 				default:
 					g.actionsBeingParsed = append(g.actionsBeingParsed, strings.ToLower(actionStr))
 				}
@@ -286,6 +298,8 @@ func (g *Grant) unmarshalJSON(ctx context.Context, data []byte) error {
 				switch {
 				case !ok:
 					return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unable to interpret %v in output_fields array as string", v))
+				case strings.ContainsAny(field, ",;="):
+					return errors.New(ctx, errors.InvalidParameter, op, "output fields cannot contain a comma, semicolon or equals sign")
 				default:
 					fields = append(fields, field)
 				}
@@ -315,9 +329,17 @@ func (g *Grant) unmarshalText(ctx context.Context, grantString string) error {
 		switch kv[0] {
 		case "id":
 			g.id = kv[1]
+			if strings.Contains(g.id, ",") {
+				return errors.New(ctx, errors.InvalidParameter, op, "ID cannot contain a comma")
+			}
 
 		case "ids":
 			g.ids = strings.Split(kv[1], ",")
+			for _, id := range g.ids {
+				if id == "" {
+					return errors.New(ctx, errors.InvalidParameter, op, "empty ID provided")
+				}
+			}
 
 		case "type":
 			typeString := strings.ToLower(kv[1])
@@ -417,10 +439,10 @@ func Parse(ctx context.Context, scopeId, grantString string, opt ...Option) (Gra
 			var seenType resource.Type
 			for i, id := range grantIds {
 				if i == 0 {
-					seenType = globals.ResourceTypeFromPrefix(id)
+					seenType = globals.ResourceInfoFromPrefix(id).Type
 					continue
 				}
-				if seenType != globals.ResourceTypeFromPrefix(id) {
+				if seenType != globals.ResourceInfoFromPrefix(id).Type {
 					return Grant{}, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("input grant string %q contains ids of differently-typed resources", grantString))
 				}
 			}
@@ -502,7 +524,7 @@ func Parse(ctx context.Context, scopeId, grantString string, opt ...Option) (Gra
 				// the second example the type corresponding to the ID must have the
 				// specified type as a child type; in the third the ID must be a
 				// type that has child types.
-				idType := globals.ResourceTypeFromPrefix(grantIds[i])
+				idType := globals.ResourceInfoFromPrefix(grantIds[i]).Type
 				if idType == resource.Unknown {
 					return Grant{}, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("parsed grant string %q contains an id %q of an unknown resource type", grant.CanonicalString(), grantIds[i]))
 				}

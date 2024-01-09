@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package oidc
 
@@ -676,7 +676,7 @@ func TestRepository_ListAccounts(t *testing.T) {
 		{
 			name:       "With no auth method id",
 			wantIsErr:  errors.InvalidParameter,
-			wantErrMsg: "oidc.(Repository).ListAccounts: missing auth method id: parameter violation: error #100",
+			wantErrMsg: "missing auth method id",
 		},
 		{
 			name: "With no accounts id",
@@ -697,13 +697,16 @@ func TestRepository_ListAccounts(t *testing.T) {
 			repo, err := NewRepository(ctx, rw, rw, kmsCache)
 			assert.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.ListAccounts(context.Background(), tt.in, tt.opts...)
+			got, ttime, err := repo.listAccounts(context.Background(), tt.in, tt.opts...)
 			if tt.wantIsErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "Unexpected error %s", err)
-				assert.Equal(tt.wantErrMsg, err.Error())
+				assert.Contains(err.Error(), tt.wantErrMsg)
 				return
 			}
 			require.NoError(err)
+			// Transaction timestamp should be within ~10 seconds of now
+			assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+			assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
 
 			sort.Slice(got, func(i, j int) bool {
 				return strings.Compare(got[i].Subject, got[j].Subject) < 0
@@ -790,9 +793,12 @@ func TestRepository_ListAccounts_Limits(t *testing.T) {
 			repo, err := NewRepository(ctx, rw, rw, kmsCache, tt.repoOpts...)
 			assert.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.ListAccounts(context.Background(), am.GetPublicId(), tt.listOpts...)
+			got, ttime, err := repo.listAccounts(context.Background(), am.GetPublicId(), tt.listOpts...)
+			// Transaction timestamp should be within ~10 seconds of now
 			require.NoError(err)
 			assert.Len(got, tt.wantLen)
+			assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+			assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
 		})
 	}
 }

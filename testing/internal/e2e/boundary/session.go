@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package boundary
 
@@ -49,6 +49,7 @@ func WaitForSessionCli(t testing.TB, ctx context.Context, projectId string) *ses
 			}
 
 			session = sessionListResult.Items[0]
+			t.Logf("Created Session: %s", session.Id)
 			return nil
 		},
 		backoff.WithMaxRetries(backoff.NewConstantBackOff(3*time.Second), 5),

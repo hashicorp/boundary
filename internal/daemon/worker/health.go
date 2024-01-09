@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package worker
 
@@ -14,6 +14,7 @@ import (
 	pbhealth "github.com/hashicorp/boundary/internal/gen/worker/health"
 	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/util"
+	"google.golang.org/grpc/connectivity"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -50,12 +51,19 @@ func (w workerHealthServer) GetHealth(ctx context.Context, req *opsservices.GetH
 
 // HealthInformation returns the current worker process health information.
 func (w *Worker) HealthInformation() *pbhealth.HealthInfo {
-	state := server.UnknownOperationalState
+	operationalState := server.UnknownOperationalState
 	if v := w.operationalState.Load(); !util.IsNil(v) {
-		state = v.(server.OperationalState)
+		operationalState = v.(server.OperationalState)
 	}
+
+	var upstreamConnectionState connectivity.State
+	if v := w.upstreamConnectionState.Load(); !util.IsNil(v) {
+		upstreamConnectionState = v.(connectivity.State)
+	}
+
 	healthInfo := &pbhealth.HealthInfo{
-		State: state.String(),
+		State:                   operationalState.String(),
+		UpstreamConnectionState: upstreamConnectionState.String(),
 	}
 
 	if w.sessionManager == nil {

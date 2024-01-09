@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package session
 
@@ -18,6 +18,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/util"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-kms-wrapping/v2/extras/structwrapping"
@@ -150,6 +151,33 @@ func (s Session) GetProjectId() string {
 
 func (s Session) GetUserId() string {
 	return s.UserId
+}
+
+// GetResourceType returns the resource type of the Session
+func (s Session) GetResourceType() resource.Type {
+	return resource.Session
+}
+
+func (s Session) GetUpdateTime() *timestamp.Timestamp {
+	return s.UpdateTime
+}
+
+func (s Session) GetCreateTime() *timestamp.Timestamp {
+	return s.CreateTime
+}
+
+// GetDescription returns an empty string so that
+// Session will satisfy resource requirements
+func (s Session) GetDescription() string {
+	return ""
+}
+
+func (s Session) GetName() string {
+	return ""
+}
+
+func (s Session) GetVersion() uint32 {
+	return 0
 }
 
 var (
@@ -570,4 +598,14 @@ type sessionListView struct {
 // TableName returns the tablename to override the default gorm table name
 func (s *sessionListView) TableName() string {
 	return "session_list"
+}
+
+type deletedSession struct {
+	PublicId   string `gorm:"primary_key"`
+	DeleteTime *timestamp.Timestamp
+}
+
+// TableName returns the tablename to override the default gorm table name
+func (s *deletedSession) TableName() string {
+	return "session_deleted"
 }

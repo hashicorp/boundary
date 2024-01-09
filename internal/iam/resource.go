@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package iam
 
@@ -33,7 +33,7 @@ type Resource interface {
 	GetScope(ctx context.Context, r db.Reader) (*Scope, error)
 
 	// Type of Resource (Target, Policy, User, Group, etc)
-	ResourceType() resource.Type
+	GetResourceType() resource.Type
 
 	// Actions that can be assigned permissions for
 	// the Resource in Policies. Action String() is key for

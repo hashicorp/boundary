@@ -1,0 +1,62 @@
+---
+layout: docs
+page_title: credential-libraries list - Command
+description: |-
+  The "credential-libraries list" command lists credential libraries within an enclosing scope or resource.
+---
+
+# credential-libraries list
+
+Command: `boundary credential-libraries list`
+
+The `credential-libraries list` command lists credential libraries within an enclosing scope or resource.
+
+## Examples
+
+The following example lists all credential libraries for a credential store with the ID `clvlt_QYnQPAjA24`:
+
+```shell-session
+$ boundary credential-libraries list \
+   -credential-store-id
+```
+
+**Example output:**
+
+<CodeBlockConfig hideClipboard>
+
+```plaintext
+Credential Library information:
+  ID:                    clvlt_QYnQPAjA24
+    Version:             1
+    Type:                vault-generic
+    Name:                northwind dba
+    Authorized Actions:
+      no-op
+      read
+      update
+      delete
+```
+
+</CodeBlockConfig>
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary credential-libraries list [options] [args]
+```
+
+</CodeBlockConfig>
+
+
+### Command options
+
+- `-credential-store-id` `(string: "")` - The credential store resource to list credential libraries for.
+You can also specify the credential store using the **BOUNDARY_CREDENTIAL_STORE_ID** environment variable.
+- `-filter` `(string: "")` - If set, Boundary filters the list operation before the results are returned.
+The filter operates against each item in the list.
+We recommend that you use single quotes, because the filters contain double quotes.
+Refer to the [Filter resource listings documentation](/boundary/docs/concepts/filtering/resource-listing) for more details.
+
+@include 'cmd-option-note.mdx'

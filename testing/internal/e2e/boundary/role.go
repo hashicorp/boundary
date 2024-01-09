@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package boundary
 
@@ -21,6 +21,7 @@ func CreateNewRoleCli(t testing.TB, ctx context.Context, scopeId string) string 
 			"roles", "create",
 			"-scope-id", scopeId,
 			"-name", "e2e Role",
+			"-description", "e2e",
 			"-format", "json",
 		),
 	)

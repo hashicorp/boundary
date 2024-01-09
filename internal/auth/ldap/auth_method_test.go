@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package ldap
 
@@ -64,6 +64,8 @@ func TestNewAuthMethod(t *testing.T) {
 				WithCertificates(testCtx, testCert),
 				WithClientCertificate(testCtx, derPrivKey, testCert), // not a client cert but good enough for this test.
 				WithAccountAttributeMap(testCtx, map[string]AccountToAttribute{"mail": "email"}),
+				WithDerefAliases(testCtx, DerefAlways),
+				WithMaximumPageSize(testCtx, 10),
 			},
 			want: &AuthMethod{
 				AuthMethod: &store.AuthMethod{
@@ -90,6 +92,8 @@ func TestNewAuthMethod(t *testing.T) {
 					ClientCertificate:    testCertEncoded,
 					ClientCertificateKey: derPrivKey,
 					AccountAttributeMaps: []string{"mail=email"},
+					DereferenceAliases:   string(DerefAlways),
+					MaximumPageSize:      10,
 				},
 			},
 		},
@@ -128,14 +132,16 @@ func TestNewAuthMethod(t *testing.T) {
 			wantErrContains: `https scheme in url "https://alice.com" is not either ldap or ldaps`,
 		},
 		{
-			name:            "opt-error",
-			ctx:             testCtx,
-			scopeId:         "global",
-			urls:            TestConvertToUrls(t, "ldaps://alice.com"),
-			opts:            []Option{WithBindCredential(testCtx, "dn", "")},
+			name:    "invalid-deref-aliases",
+			ctx:     testCtx,
+			scopeId: "global",
+			urls:    TestConvertToUrls(t, "ldaps://alice.com"),
+			opts: []Option{
+				WithDerefAliases(testCtx, "invalid"),
+			},
 			wantErr:         true,
 			wantErrCode:     errors.InvalidParameter,
-			wantErrContains: "ldap.WithBindCredential: missing password",
+			wantErrContains: `"invalid" is not a valid ldap dereference alias type`,
 		},
 	}
 	for _, tc := range tests {
@@ -218,6 +224,8 @@ func TestAuthMethod_clone(t *testing.T) {
 			WithBindCredential(testCtx, "bind-dn", "bind-password"),
 			WithCertificates(testCtx, testCert),
 			WithClientCertificate(testCtx, derPrivKey, testCert), // not a client cert but good enough for this test.
+			WithDerefAliases(testCtx, DerefAlways),
+			WithMaximumPageSize(testCtx, 10),
 		)
 		require.NoError(err)
 		cp := am.clone()
@@ -380,6 +388,9 @@ func Test_convertValueObjects(t *testing.T) {
 	testBindCredential, err := NewBindCredential(testCtx, testPublicId, "bind-dn", []byte("bind-password"))
 	require.NoError(t, err)
 
+	testDerefAliases, err := NewDerefAliases(testCtx, testPublicId, DerefAlways)
+	require.NoError(t, err)
+
 	tests := []struct {
 		name            string
 		am              *AuthMethod
@@ -403,6 +414,7 @@ func Test_convertValueObjects(t *testing.T) {
 					BindDn:               "bind-dn",
 					BindPassword:         "bind-password",
 					AccountAttributeMaps: testAttrMaps,
+					DereferenceAliases:   string(DerefAlways),
 				},
 			},
 			wantValues: &convertedValues{
@@ -413,6 +425,7 @@ func Test_convertValueObjects(t *testing.T) {
 				ClientCertificate:    testClientCertificate,
 				BindCredential:       testBindCredential,
 				AccountAttributeMaps: testAccountAttributeMaps,
+				DerefAliases:         testDerefAliases,
 			},
 		},
 		{
@@ -500,6 +513,17 @@ func Test_convertValueObjects(t *testing.T) {
 			wantErrMatch:    errors.T(errors.InvalidParameter),
 			wantErrContains: "failed to parse certificate",
 		},
+		{
+			name: "invalid-deref-aliases",
+			am: &AuthMethod{
+				AuthMethod: &store.AuthMethod{
+					PublicId:           testPublicId,
+					DereferenceAliases: "invalid",
+				},
+			},
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrContains: `"invalid" is not a valid ldap dereference alias type:`,
+		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -570,6 +594,11 @@ func Test_convertValueObjects(t *testing.T) {
 		convertedBindCredential, err := am.convertBindCredential(testCtx)
 		require.Error(err)
 		assert.Nil(convertedBindCredential)
+		assert.Truef(errors.Match(wantErrMatch, err), "wanted err %q and got: %+v", wantErrMatch.Code, err)
+
+		convertedDerefAliases, err := am.convertDerefAliases(testCtx)
+		require.Error(err)
+		assert.Nil(convertedDerefAliases)
 		assert.Truef(errors.Match(wantErrMatch, err), "wanted err %q and got: %+v", wantErrMatch.Code, err)
 	})
 }

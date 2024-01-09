@@ -1,5 +1,5 @@
 # Copyright (c) HashiCorp, Inc.
-# SPDX-License-Identifier: MPL-2.0
+# SPDX-License-Identifier: BUSL-1.1
 
 # This scenario requires access to the boundary team's test AWS account
 scenario "e2e_aws" {
@@ -31,7 +31,7 @@ scenario "e2e_aws" {
   }
 
   step "find_azs" {
-    module = module.az_finder
+    module = module.aws_az_finder
 
     variables {
       instance_type = [
@@ -58,12 +58,13 @@ scenario "e2e_aws" {
     module = matrix.builder == "crt" ? module.build_crt : module.build_local
 
     variables {
-      path = local.build_path[matrix.builder]
+      path    = local.build_path[matrix.builder]
+      edition = var.boundary_edition
     }
   }
 
   step "create_base_infra" {
-    module = module.infra
+    module = module.aws_vpc
     depends_on = [
       step.find_azs,
     ]
@@ -75,7 +76,7 @@ scenario "e2e_aws" {
   }
 
   step "create_boundary_cluster" {
-    module = module.boundary
+    module = module.aws_boundary
     depends_on = [
       step.create_base_infra,
       step.create_db_password,
@@ -94,6 +95,7 @@ scenario "e2e_aws" {
       local_artifact_path      = step.build_boundary.artifact_path
       ubuntu_ami_id            = step.create_base_infra.ami_ids["ubuntu"]["amd64"]
       vpc_id                   = step.create_base_infra.vpc_id
+      vpc_tag_module           = step.create_base_infra.vpc_tag_module
       worker_count             = var.worker_count
       worker_instance_type     = var.worker_instance_type
     }
@@ -114,7 +116,7 @@ scenario "e2e_aws" {
   }
 
   step "create_targets_with_tag1" {
-    module     = module.target
+    module     = module.aws_target
     depends_on = [step.create_base_infra]
 
     variables {
@@ -144,7 +146,7 @@ scenario "e2e_aws" {
   }
 
   step "create_targets_with_tag2" {
-    module     = module.target
+    module     = module.aws_target
     depends_on = [step.create_base_infra]
 
     variables {
@@ -167,7 +169,7 @@ scenario "e2e_aws" {
   }
 
   step "iam_setup" {
-    module = module.iam_setup
+    module = module.aws_iam_setup
     depends_on = [
       step.create_base_infra,
       step.create_test_id
@@ -179,11 +181,15 @@ scenario "e2e_aws" {
     }
   }
 
+  locals {
+    egress_tag = "egress"
+  }
+
   step "create_isolated_worker" {
-    module     = module.worker
+    module     = module.aws_worker
     depends_on = [step.create_boundary_cluster]
     variables {
-      vpc_name                  = step.create_base_infra.vpc_id
+      vpc_id                    = step.create_base_infra.vpc_id
       availability_zones        = step.create_base_infra.availability_zone_names
       kms_key_arn               = step.create_base_infra.kms_key_arn
       ubuntu_ami_id             = step.create_base_infra.ami_ids["ubuntu"]["amd64"]
@@ -194,13 +200,13 @@ scenario "e2e_aws" {
       cluster_tag               = step.create_boundary_cluster.cluster_tag
       controller_addresses      = step.create_boundary_cluster.public_controller_addresses
       controller_sg_id          = step.create_boundary_cluster.controller_aux_sg_id
-      worker_type_tags          = ["worker_e2e_test"]
+      worker_type_tags          = [local.egress_tag]
       config_file_path          = "templates/worker.hcl"
     }
   }
 
   step "create_isolated_target" {
-    module = module.target
+    module = module.aws_target
     depends_on = [
       step.create_base_infra,
       step.create_isolated_worker
@@ -246,8 +252,8 @@ scenario "e2e_aws" {
       aws_host_set_ips1        = step.create_targets_with_tag1.target_ips
       aws_host_set_filter2     = step.create_tag2_inputs.tag_string
       aws_host_set_ips2        = step.create_targets_with_tag2.target_ips
-      target_ip                = step.create_isolated_target.target_ips[0]
-      worker_tags              = step.create_isolated_worker.worker_tags
+      target_address           = step.create_isolated_target.target_ips[0]
+      worker_tag_egress        = local.egress_tag
     }
   }
 

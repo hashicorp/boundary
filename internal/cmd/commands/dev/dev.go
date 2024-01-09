@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package dev
 
@@ -23,7 +23,7 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/daemon/worker"
-	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/server/store"
 	"github.com/hashicorp/boundary/internal/types/scope"
@@ -95,11 +95,14 @@ type Command struct {
 	flagEventFormat                      string
 	flagAudit                            string
 	flagObservations                     string
+	flagTelemetry                        string
 	flagSysEvents                        string
 	flagEveryEventAllowFilters           []string
 	flagEveryEventDenyFilters            []string
 	flagCreateLoopbackPlugin             bool
 	flagPluginExecutionDir               string
+	flagSkipPlugins                      bool
+	flagWorkerDnsServer                  string
 	flagWorkerAuthMethod                 string
 	flagWorkerAuthStorageDir             string
 	flagWorkerAuthStorageSkipCleanup     bool
@@ -338,6 +341,12 @@ func (c *Command) Flags() *base.FlagSets {
 		Usage:      `Emit observation events. Supported values are "true" and "false".`,
 	})
 	f.StringVar(&base.StringVar{
+		Name:       "telemetry-events",
+		Target:     &c.flagTelemetry,
+		Completion: complete.PredictSet("true", "false"),
+		Usage:      `Emit telemetry events. Supported values are "true" and "false".`,
+	})
+	f.StringVar(&base.StringVar{
 		Name:       "audit-events",
 		Target:     &c.flagAudit,
 		Completion: complete.PredictSet("true", "false"),
@@ -365,6 +374,18 @@ func (c *Command) Flags() *base.FlagSets {
 		Target: &c.flagPluginExecutionDir,
 		EnvVar: "BOUNDARY_DEV_PLUGIN_EXECUTION_DIR",
 		Usage:  "Specifies where Boundary should write plugins that it is executing; if not set defaults to system temp directory.",
+	})
+	f.BoolVar(&base.BoolVar{
+		Name:   "skip-plugins",
+		Target: &c.flagSkipPlugins,
+		Usage:  "Skip loading compiled-in plugins. This does not prevent loopback plugins from being loaded if enabled.",
+		Hidden: true,
+	})
+	f.StringVar(&base.StringVar{
+		Name:   "worker-dns-server",
+		Target: &c.flagWorkerDnsServer,
+		Usage:  "Use a custom DNS server when workers resolve endpoints.",
+		Hidden: true,
 	})
 
 	f.StringVar(&base.StringVar{
@@ -563,6 +584,9 @@ func (c *Command) Run(args []string) int {
 
 	c.Config.DevUiPassthroughDir = c.flagUiPassthroughDir
 
+	c.SkipPlugins = c.flagSkipPlugins
+	c.WorkerDnsServer = c.flagWorkerDnsServer
+
 	for _, l := range c.Config.Listeners {
 		if len(l.Purpose) != 1 {
 			c.UI.Error("Only one purpose supported for each listener")
@@ -646,6 +670,7 @@ func (c *Command) Run(args []string) int {
 		Format:       c.flagEventFormat,
 		Audit:        c.flagAudit,
 		Observations: c.flagObservations,
+		Telemetry:    c.flagTelemetry,
 		SysEvents:    c.flagSysEvents,
 		Allow:        c.flagEveryEventAllowFilters,
 		Deny:         c.flagEveryEventDenyFilters,
@@ -699,14 +724,18 @@ func (c *Command) Run(args []string) int {
 		}
 	}
 
-	c.InfoKeys = append(c.InfoKeys, "[Controller] AEAD Key Bytes")
-	c.Info["[Controller] AEAD Key Bytes"] = c.Config.DevControllerKey
+	c.InfoKeys = append(c.InfoKeys, "[Root] AEAD Key Bytes")
+	c.Info["[Root] AEAD Key Bytes"] = c.Config.DevControllerKey
 	c.InfoKeys = append(c.InfoKeys, "[Recovery] AEAD Key Bytes")
 	c.Info["[Recovery] AEAD Key Bytes"] = c.Config.DevRecoveryKey
 	c.InfoKeys = append(c.InfoKeys, "[Worker-Auth] AEAD Key Bytes")
 	c.Info["[Worker-Auth] AEAD Key Bytes"] = c.Config.DevWorkerAuthKey
 	c.InfoKeys = append(c.InfoKeys, "[Bsr] AEAD Key Bytes")
 	c.Info["[Bsr] AEAD Key Bytes"] = c.Config.DevBsrKey
+	if c.Config.DevWorkerAuthStorageKey != "" {
+		c.InfoKeys = append(c.InfoKeys, "[Worker-Auth-Storage] AEAD Key Bytes")
+		c.Info["[Worker-Auth-Storage] AEAD Key Bytes"] = c.Config.DevWorkerAuthStorageKey
+	}
 
 	// Initialize the listeners
 	if err := c.SetupListeners(c.UI, c.Config.SharedConfig, []string{"api", "cluster", "proxy", "ops"}); err != nil {

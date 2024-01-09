@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package plugin
 
@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/libs/crypto"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/storage/plugin/store"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/util"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/storagebuckets"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
@@ -63,6 +64,11 @@ func (s *StorageBucket) TableName() string {
 // SetTableName sets the table name.
 func (s *StorageBucket) SetTableName(n string) {
 	s.tableName = n
+}
+
+// GetResourceType implements the boundary.Resource interface.
+func (s *StorageBucket) GetResourceType() resource.Type {
+	return resource.StorageBucket
 }
 
 func (s *StorageBucket) oplog(op oplog.OpType) oplog.Metadata {
@@ -251,4 +257,14 @@ func (sba *storageBucketAgg) toStorageBucketAndSecret() (*StorageBucket, *Storag
 		sbs.KeyId = sba.KeyId
 	}
 	return sb, sbs
+}
+
+type deletedStorageBucket struct {
+	PublicId   string `gorm:"primary_key"`
+	DeleteTime *timestamp.Timestamp
+}
+
+// TableName returns the tablename to override the default gorm table name
+func (s *deletedStorageBucket) TableName() string {
+	return "storage_plugin_storage_bucket_deleted"
 }

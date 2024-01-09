@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package authmethodscmd
 
@@ -9,8 +9,10 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"strings"
 
 	"github.com/hashicorp/boundary/api/authmethods"
+	"github.com/hashicorp/boundary/internal/auth/ldap"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 )
@@ -43,6 +45,8 @@ type extraLdapCmdVars struct {
 	flagBindPassword         string
 	flagUseTokenGroups       bool
 	flagAccountAttributeMaps []string
+	flagMaxPageSize          uint
+	flagDerefAliases         string
 }
 
 const (
@@ -66,6 +70,8 @@ const (
 	bindPasswordFlagName         = "bind-password"
 	useTokenGroupsFlagName       = "use-token-groups"
 	accountAttributeMaps         = "account-attribute-map"
+	maxPageSizeFlagName          = "max-page-size"
+	derefAliasesFlagName         = "deref-aliases"
 )
 
 func extraLdapActionsFlagsMapFuncImpl() map[string][]string {
@@ -92,6 +98,8 @@ func extraLdapActionsFlagsMapFuncImpl() map[string][]string {
 			useTokenGroupsFlagName,
 			accountAttributeMaps,
 			stateFlagName,
+			maxPageSizeFlagName,
+			derefAliasesFlagName,
 		},
 	}
 	flags["update"] = flags["create"]
@@ -222,6 +230,18 @@ func extraLdapFlagsFuncImpl(c *LdapCommand, set *base.FlagSets, _ *base.FlagSet)
 				Name:   stateFlagName,
 				Target: &c.flagState,
 				Usage:  "The desired operational state of the auth method.",
+			})
+		case maxPageSizeFlagName:
+			f.UintVar(&base.UintVar{
+				Name:   maxPageSizeFlagName,
+				Target: &c.flagMaxPageSize,
+				Usage:  "MaximumPageSize specifies a maximum search result size to use when retrieving the authenticated user's groups (optional).",
+			})
+		case derefAliasesFlagName:
+			f.StringVar(&base.StringVar{
+				Name:   derefAliasesFlagName,
+				Target: &c.flagDerefAliases,
+				Usage:  "Control how aliases are dereferenced when performing the search. Possible values are: never, finding, searching, and always (optional).",
 			})
 		}
 	}
@@ -367,6 +387,36 @@ func extraLdapFlagHandlingFuncImpl(c *LdapCommand, _ *base.FlagSets, opts *[]aut
 		*opts = append(*opts, authmethods.DefaultLdapAuthMethodGroupFilter())
 	default:
 		*opts = append(*opts, authmethods.WithLdapAuthMethodGroupFilter(c.flagGroupFilter))
+	}
+
+	switch c.flagDerefAliases {
+	case "":
+	case "null":
+		*opts = append(*opts, authmethods.DefaultLdapAuthMethodDereferenceAliases())
+	default:
+		// never, finding, searching, and always
+		var derefAliases ldap.DerefAliasType
+		switch strings.ToLower(c.flagDerefAliases) {
+		case "never":
+			derefAliases = ldap.NeverDerefAliases
+		case "finding":
+			derefAliases = ldap.DerefFindingBaseObj
+		case "searching":
+			derefAliases = ldap.DerefInSearching
+		case "always":
+			derefAliases = ldap.DerefAlways
+		default:
+			c.UI.Error(fmt.Sprintf("%q is an invalid deref aliases (valid values are: never, finding, searching or always)", c.flagDerefAliases))
+			return false
+		}
+		*opts = append(*opts, authmethods.WithLdapAuthMethodDereferenceAliases(string(derefAliases)))
+	}
+
+	switch c.flagMaxPageSize {
+	case 0:
+		*opts = append(*opts, authmethods.DefaultLdapAuthMethodMaximumPageSize())
+	default:
+		*opts = append(*opts, authmethods.WithLdapAuthMethodMaximumPageSize(uint32(c.flagMaxPageSize)))
 	}
 
 	switch {

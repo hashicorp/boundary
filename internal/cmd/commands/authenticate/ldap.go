@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package authenticate
 
@@ -13,7 +13,6 @@ import (
 	"github.com/hashicorp/boundary/api/authmethods"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/base"
-	"github.com/hashicorp/boundary/internal/cmd/common"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-secure-stdlib/password"
@@ -32,8 +31,7 @@ type LdapCommand struct {
 
 	flagLoginName string
 	flagPassword  string
-	Opts          []common.Option
-	parsedOpts    *common.Options
+	parsedOpts    base.Options
 }
 
 func (c *LdapCommand) Synopsis() string {
@@ -77,7 +75,7 @@ func (c *LdapCommand) Flags() *base.FlagSets {
 		Usage:  "The auth-method resource to use for the operation.",
 	})
 
-	if c.parsedOpts == nil || !c.parsedOpts.WithSkipScopeIdFlag {
+	if !c.parsedOpts.WithSkipScopeIdFlag {
 		f.StringVar(&base.StringVar{
 			Name:   "scope-id",
 			EnvVar: "BOUNDARY_SCOPE_ID",
@@ -98,12 +96,7 @@ func (c *LdapCommand) AutocompleteFlags() complete.Flags {
 }
 
 func (c *LdapCommand) Run(args []string) int {
-	opts, err := common.GetOpts(c.Opts...)
-	if err != nil {
-		c.PrintCliError(err)
-		return base.CommandCliError
-	}
-	c.parsedOpts = opts
+	c.parsedOpts = base.GetOpts(c.Opts...)
 
 	f := c.Flags()
 	if err := f.Parse(args); err != nil {
@@ -193,5 +186,5 @@ func (c *LdapCommand) Run(args []string) int {
 		return base.CommandCliError
 	}
 
-	return saveAndOrPrintToken(c.Command, result)
+	return saveAndOrPrintToken(c.Command, result, c.Opts...)
 }

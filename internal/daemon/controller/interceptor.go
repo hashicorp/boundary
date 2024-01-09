@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package controller
 
@@ -16,11 +16,11 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller/common"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/event"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api"
 	authpb "github.com/hashicorp/boundary/internal/gen/controller/auth"
 	pberrors "github.com/hashicorp/boundary/internal/gen/errors"
 	"github.com/hashicorp/boundary/internal/kms"
-	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/mr-tron/base58"
 	"google.golang.org/grpc"
@@ -364,10 +364,10 @@ func isNil(i any) bool {
 	return false
 }
 
-func auditRequestInterceptor(
+func eventsRequestInterceptor(
 	_ context.Context,
 ) grpc.UnaryServerInterceptor {
-	const op = "controller.auditRequestInterceptor"
+	const op = "controller.eventsRequestInterceptor"
 	return func(interceptorCtx context.Context,
 		req any,
 		_ *grpc.UnaryServerInfo,
@@ -380,16 +380,19 @@ func auditRequestInterceptor(
 			if err := event.WriteAudit(interceptorCtx, op, event.WithRequest(&event.Request{Details: clonedMsg})); err != nil {
 				return req, status.Errorf(codes.Internal, "unable to write request msg audit: %s", err)
 			}
+			if err := event.WriteObservation(interceptorCtx, op, event.WithRequest(&event.Request{Details: clonedMsg})); err != nil {
+				return req, status.Errorf(codes.Internal, "unable to write request msg observation: %s", err)
+			}
 		}
 
 		return handler(interceptorCtx, req)
 	}
 }
 
-func auditResponseInterceptor(
+func eventsResponseInterceptor(
 	_ context.Context,
 ) grpc.UnaryServerInterceptor {
-	const op = "controller.auditResponseInterceptor"
+	const op = "controller.eventsResponseInterceptor"
 	return func(interceptorCtx context.Context,
 		req any,
 		_ *grpc.UnaryServerInfo,
@@ -404,6 +407,9 @@ func auditResponseInterceptor(
 			clonedMsg := proto.Clone(msg)
 			if err := event.WriteAudit(interceptorCtx, op, event.WithResponse(&event.Response{Details: clonedMsg})); err != nil {
 				return req, status.Errorf(codes.Internal, "unable to write response msg audit: %s", err)
+			}
+			if err := event.WriteObservation(interceptorCtx, op, event.WithResponse(&event.Response{Details: clonedMsg})); err != nil {
+				return req, status.Errorf(codes.Internal, "unable to write response msg observation: %s", err)
 			}
 		}
 

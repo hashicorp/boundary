@@ -1,5 +1,5 @@
 # Copyright (c) HashiCorp, Inc.
-# SPDX-License-Identifier: MPL-2.0
+# SPDX-License-Identifier: BUSL-1.1
 
 # Infrastructure
 variable "aws_ssh_keypair_name" {
@@ -96,8 +96,13 @@ variable "local_boundary_dir" {
   type        = string
 }
 
-variable "local_boundary_ui_dir" {
-  description = "Path to local boundary-ui directory"
+variable "local_boundary_src_dir" {
+  description = "Path to local boundary source code directory"
+  type        = string
+}
+
+variable "local_boundary_ui_src_dir" {
+  description = "Path to local boundary-ui source code directory"
   type        = string
   default     = null
 }
@@ -150,7 +155,7 @@ variable "e2e_debug_no_run" {
 }
 
 variable "docker_mirror" {
-  description = ""
+  description = "URL to the docker repository"
   type        = string
   default     = "docker.mirror.hashicorp.services"
 }
@@ -182,4 +187,10 @@ variable "go_test_timeout" {
 variable "aws_region" {
   description = "AWS region where the resources will be created"
   type        = string
+}
+
+variable "go_version" {
+  description = "Version of Golang used by the application under test"
+  type        = string
+  default     = ""
 }

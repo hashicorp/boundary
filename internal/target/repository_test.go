@@ -1,17 +1,16 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package target
 
 import (
 	"context"
-	"database/sql"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/perms"
-	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -143,172 +142,17 @@ func TestNewRepository(t *testing.T) {
 	}
 }
 
-func TestRepositoryListPermissionWhereClauses(t *testing.T) {
-	tests := []struct {
-		name     string
-		perms    []perms.Permission
-		expWhere []string
-		expArgs  []any
-	}{
-		{
-			name:     "nilPerms",
-			perms:    nil,
-			expWhere: []string{},
-			expArgs:  []any{},
-		},
-		{
-			name:     "emptyPerms",
-			perms:    []perms.Permission{},
-			expWhere: []string{},
-			expArgs:  []any{},
-		},
-		{
-			name: "noListActionPerms",
-			perms: []perms.Permission{
-				{
-					ScopeId: "scope_a",
-					Action:  action.Create,
-				},
-				{
-					ScopeId: "scope_b",
-					Action:  action.Read,
-				},
-				{
-					ScopeId: "scope_c",
-					Action:  action.Delete,
-				},
-			},
-			expWhere: []string{},
-			expArgs:  []any{},
-		},
-		{
-			name: "onePermissionAllResources",
-			perms: []perms.Permission{
-				{
-					ScopeId: "scope_a",
-					Action:  action.List,
-				},
-			},
-			expWhere: []string{"(project_id = @project_id_1)"},
-			expArgs:  []any{sql.Named("project_id_1", "scope_a")},
-		},
-		{
-			name: "onePermissionAllResourcesNonListIgnored",
-			perms: []perms.Permission{
-				{
-					ScopeId: "scope_a",
-					Action:  action.List,
-				},
-				{
-					ScopeId: "scope_b",
-					Action:  action.Create,
-				},
-			},
-			expWhere: []string{"(project_id = @project_id_1)"},
-			expArgs:  []any{sql.Named("project_id_1", "scope_a")},
-		},
-		{
-			name: "onePermissionResourceIds",
-			perms: []perms.Permission{
-				{
-					ScopeId:     "scope_a",
-					Action:      action.List,
-					ResourceIds: []string{"resourceid1", "resourceid2"},
-				},
-			},
-			expWhere: []string{"(project_id = @project_id_1 and public_id = any(@public_id_1))"},
-			expArgs: []any{
-				sql.Named("project_id_1", "scope_a"),
-				sql.Named("public_id_1", "{resourceid1,resourceid2}"),
-			},
-		},
-		{
-			name: "multiplePermissionsAllResources",
-			perms: []perms.Permission{
-				{ScopeId: "scope_a", Action: action.List},
-				{ScopeId: "scope_b", Action: action.List},
-				{ScopeId: "scope_c", Action: action.List},
-				{ScopeId: "scope_d", Action: action.List},
-			},
-			expWhere: []string{
-				"(project_id = @project_id_1)",
-				"(project_id = @project_id_2)",
-				"(project_id = @project_id_3)",
-				"(project_id = @project_id_4)",
-			},
-			expArgs: []any{
-				sql.Named("project_id_1", "scope_a"),
-				sql.Named("project_id_2", "scope_b"),
-				sql.Named("project_id_3", "scope_c"),
-				sql.Named("project_id_4", "scope_d"),
-			},
-		},
-		{
-			name: "multiplePermissionsResourceIds",
-			perms: []perms.Permission{
-				{
-					ScopeId:     "scope_a",
-					Action:      action.List,
-					ResourceIds: []string{"resourceid1", "resourceid2"},
-				},
-				{
-					ScopeId:     "scope_b",
-					Action:      action.List,
-					ResourceIds: []string{"resourceid3", "resourceid4"},
-				},
-			},
-			expWhere: []string{
-				"(project_id = @project_id_1 and public_id = any(@public_id_1))",
-				"(project_id = @project_id_2 and public_id = any(@public_id_2))",
-			},
-			expArgs: []any{
-				sql.Named("project_id_1", "scope_a"),
-				sql.Named("project_id_2", "scope_b"),
-				sql.Named("public_id_1", "{resourceid1,resourceid2}"),
-				sql.Named("public_id_2", "{resourceid3,resourceid4}"),
-			},
-		},
-		{
-			name: "multiplePermissionsMix",
-			perms: []perms.Permission{
-				{
-					ScopeId:     "scope_a",
-					Action:      action.List,
-					ResourceIds: []string{"resourceid1", "resourceid2"},
-				},
-				{
-					ScopeId:     "scope_b",
-					Action:      action.List,
-					ResourceIds: []string{"resourceid3", "resourceid4"},
-				},
-				{ScopeId: "scope_c", Action: action.List},
-				{ScopeId: "scope_d", Action: action.List},
-			},
-			expWhere: []string{
-				"(project_id = @project_id_1 and public_id = any(@public_id_1))",
-				"(project_id = @project_id_2 and public_id = any(@public_id_2))",
-				"(project_id = @project_id_3)",
-				"(project_id = @project_id_4)",
-			},
-			expArgs: []any{
-				sql.Named("project_id_1", "scope_a"),
-				sql.Named("public_id_1", "{resourceid1,resourceid2}"),
-				sql.Named("project_id_2", "scope_b"),
-				sql.Named("public_id_2", "{resourceid3,resourceid4}"),
-				sql.Named("project_id_3", "scope_c"),
-				sql.Named("project_id_4", "scope_d"),
-			},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			repo := Repository{}
-			repo.permissions = tt.perms
-
-			where, args := repo.listPermissionWhereClauses()
-			require.ElementsMatch(t, tt.expWhere, where)
-			require.ElementsMatch(t, tt.expArgs, args)
-		})
-	}
+func Test_listTargetsRefresh(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	testKms := kms.TestKms(t, conn, wrapper)
+	repo, err := NewRepository(context.Background(), rw, rw, testKms)
+	require.NoError(t, err)
+	t.Run("missing updated after", func(t *testing.T) {
+		t.Parallel()
+		_, _, err := repo.listTargetsRefresh(context.Background(), time.Time{})
+		require.ErrorContains(t, err, "missing updated after")
+	})
 }

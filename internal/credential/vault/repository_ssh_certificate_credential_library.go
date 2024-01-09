@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package vault
 
@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/hashicorp/boundary/internal/credential"
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
@@ -60,9 +60,9 @@ func (r *Repository) CreateSSHCertificateCredentialLibrary(ctx context.Context, 
 	}
 
 	if l.GetCredentialType() == "" {
-		l.SSHCertificateCredentialLibrary.CredentialType = string(credential.SshCertificateType)
+		l.SSHCertificateCredentialLibrary.CredentialType = string(globals.SshCertificateCredentialType)
 	}
-	if l.GetCredentialType() != string(credential.SshCertificateType) {
+	if l.GetCredentialType() != string(globals.SshCertificateCredentialType) {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "invalid credential type")
 	}
 
@@ -157,7 +157,7 @@ func (r *Repository) UpdateSSHCertificateCredentialLibrary(ctx context.Context, 
 		case strings.EqualFold(keyIdField, f):
 		case strings.EqualFold(CriticalOptionsField, f):
 		case strings.EqualFold(ExtensionsField, f):
-
+		case strings.EqualFold(AdditionalValidPrincipalsField, f):
 		default:
 			return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidFieldMask, op, f)
 		}
@@ -186,16 +186,17 @@ func (r *Repository) UpdateSSHCertificateCredentialLibrary(ctx context.Context, 
 	var dbMask, nullFields []string
 	dbMask, nullFields = dbw.BuildUpdatePaths(
 		map[string]any{
-			nameField:            l.Name,
-			descriptionField:     l.Description,
-			vaultPathField:       l.VaultPath,
-			usernameField:        l.Username,
-			keyTypeField:         l.KeyType,
-			keyBitsField:         l.KeyBits,
-			ttlField:             l.Ttl,
-			keyIdField:           l.KeyId,
-			CriticalOptionsField: l.CriticalOptions,
-			ExtensionsField:      l.Extensions,
+			nameField:                      l.Name,
+			descriptionField:               l.Description,
+			vaultPathField:                 l.VaultPath,
+			usernameField:                  l.Username,
+			keyTypeField:                   l.KeyType,
+			keyBitsField:                   l.KeyBits,
+			ttlField:                       l.Ttl,
+			keyIdField:                     l.KeyId,
+			CriticalOptionsField:           l.CriticalOptions,
+			ExtensionsField:                l.Extensions,
+			AdditionalValidPrincipalsField: l.AdditionalValidPrincipals,
 		},
 		fieldMaskPaths,
 		[]string{keyBitsField},
@@ -303,27 +304,6 @@ func (r *Repository) LookupSSHCertificateCredentialLibrary(ctx context.Context, 
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for: %s", publicId)))
 	}
 	return l, nil
-}
-
-// ListSSHCertificateCredentialLibraries returns a slice of SSHCertificateCredentialLibraries for the
-// storeId. WithLimit is the only option supported.
-func (r *Repository) ListSSHCertificateCredentialLibraries(ctx context.Context, storeId string, opt ...Option) ([]*SSHCertificateCredentialLibrary, error) {
-	const op = "vault.(Repository).ListSSHCertificateCredentialLibraries"
-	if storeId == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "no storeId")
-	}
-	opts := getOpts(opt...)
-	limit := r.defaultLimit
-	if opts.withLimit != 0 {
-		// non-zero signals an override of the default limit for the repo.
-		limit = opts.withLimit
-	}
-	var libs []*SSHCertificateCredentialLibrary
-	err := r.reader.SearchWhere(ctx, &libs, "store_id = ?", []any{storeId}, db.WithLimit(limit))
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-	return libs, nil
 }
 
 // DeleteSSHCertificateCredentialLibrary deletes publicId from the repository and returns

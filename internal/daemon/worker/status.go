@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package worker
 
@@ -12,11 +12,12 @@ import (
 
 	"github.com/hashicorp/boundary/internal/daemon/worker/common"
 	"github.com/hashicorp/boundary/internal/daemon/worker/session"
+	"github.com/hashicorp/boundary/internal/event"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/servers"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
-	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/version"
+	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"google.golang.org/grpc/connectivity"
 )
@@ -249,8 +250,13 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager sess
 					if len(w.conf.RawConfig.Worker.InitialUpstreams) > 0 {
 						addrs = append(addrs, w.conf.RawConfig.Worker.InitialUpstreams...)
 					} else if HandleHcpbClusterId != nil && len(w.conf.RawConfig.HcpbClusterId) > 0 {
-						clusterAddress := HandleHcpbClusterId(w.conf.RawConfig.HcpbClusterId)
-						addrs = append(addrs, clusterAddress)
+						clusterId, err := parseutil.ParsePath(w.conf.RawConfig.HcpbClusterId)
+						if err != nil && !errors.Is(err, parseutil.ErrNotAUrl) {
+							event.WriteError(cancelCtx, op, err, event.WithInfoMsg("failed to parse HCP Boundary cluster ID"))
+						} else {
+							clusterAddress := HandleHcpbClusterId(clusterId)
+							addrs = append(addrs, clusterAddress)
+						}
 					}
 
 					addrs = strutil.RemoveDuplicates(addrs, false)

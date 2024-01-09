@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package bsr
 
@@ -18,6 +18,11 @@ const (
 	crcDataSize   = protocolSize + chunkTypeSize + directionSize + timestampSize
 	chunkBaseSize = lengthSize + crcDataSize
 	crcSize       = 4
+
+	// MaxChunkDataLength sets an upper bound on BSR chunk lengths
+	// Default to 64MB, as this is the limit for protobufs, which back our chunks
+	// TODO: Should this be configurable as an option?
+	MaxChunkDataLength = 64 * 100 * 1000
 )
 
 // Chunk Types

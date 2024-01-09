@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package plugin
 
@@ -10,9 +10,9 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/libs/endpoint"
-	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/scheduler"
 	hcpb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostcatalogs"
@@ -54,7 +54,7 @@ func newSetSyncJob(ctx context.Context, r db.Reader, w db.Writer, kms *kms.Kms, 
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing db.Writer")
 	case kms == nil:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing kms")
-	case len(plgm) == 0:
+	case plgm == nil:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing plugin manager")
 	}
 

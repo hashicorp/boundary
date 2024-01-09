@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 //go:build !hsm
 // +build !hsm
@@ -95,6 +95,7 @@ func TestServer_ShutdownWorker(t *testing.T) {
 	require.NotNil(tgtR)
 
 	// Authorize and connect
+	// This prevents us from running tests in parallel.
 	tg.SetupSuiteTargetFilters(t)
 	sess := helper.NewTestSession(ctx, t, tcl, tgt.Id)
 	sConn := sess.Connect(ctx, t)

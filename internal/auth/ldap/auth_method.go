@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package ldap
 
@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/auth/ldap/store"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -31,7 +32,8 @@ type AuthMethod struct {
 //
 // Supports the options: WithUrls, WithName, WithDescription, WithStartTLS,
 // WithInsecureTLS, WithDiscoverDN, WithAnonGroupSearch, WithUpnDomain,
-// WithUserSearchConf, WithGroupSearchConf, WithCertificates, WithBindCredential
+// WithUserSearchConf, WithGroupSearchConf, WithCertificates,
+// WithBindCredential, WithDerefAliases, WithMaximumPageSize
 // are the only valid options and all other options are ignored.
 func NewAuthMethod(ctx context.Context, scopeId string, opt ...Option) (*AuthMethod, error) {
 	const op = "ldap.NewAuthMethod"
@@ -69,6 +71,8 @@ func NewAuthMethod(ctx context.Context, scopeId string, opt ...Option) (*AuthMet
 			Certificates:         opts.withCertificates,
 			ClientCertificate:    opts.withClientCertificate,
 			ClientCertificateKey: opts.withClientCertificateKey,
+			DereferenceAliases:   string(opts.withDerefAliases),
+			MaximumPageSize:      uint32(opts.withMaximumPageSize),
 		},
 	}
 	if len(opts.withAccountAttributeMap) > 0 {
@@ -109,6 +113,11 @@ func (am *AuthMethod) SetTableName(n string) {
 	am.tableName = n
 }
 
+// GetResourceType returns the resource type of the AuthMethod
+func (am *AuthMethod) GetResourceType() resource.Type {
+	return resource.AuthMethod
+}
+
 // oplog will create oplog metadata for the AuthMethod.
 func (am *AuthMethod) oplog(ctx context.Context, opType oplog.OpType) (oplog.Metadata, error) {
 	const op = "ldap.(AuthMethod).oplog"
@@ -139,6 +148,7 @@ type convertedValues struct {
 	ClientCertificate    any
 	BindCredential       any
 	AccountAttributeMaps []any
+	DerefAliases         any
 }
 
 // convertValueObjects converts the embedded value objects. It will return an
@@ -179,6 +189,11 @@ func (am *AuthMethod) convertValueObjects(ctx context.Context) (*convertedValues
 	}
 	if converted.AccountAttributeMaps, err = am.convertAccountAttributeMaps(ctx); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
+	}
+	if am.DereferenceAliases != "" {
+		if converted.DerefAliases, err = am.convertDerefAliases(ctx); err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
 	}
 
 	return converted, nil
@@ -284,6 +299,21 @@ func (am *AuthMethod) convertBindCredential(ctx context.Context) (any, error) {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	return bc, nil
+}
+
+// convertDerefAliases converts an embedded deref aliases entry into
+// an any type.  It will return an error if the AuthMethod's public id is not
+// set.
+func (am *AuthMethod) convertDerefAliases(ctx context.Context) (any, error) {
+	const op = "ldap.(AuthMethod).convertDerefAliases"
+	if am.PublicId == "" {
+		return nil, errors.New(ctx, errors.InvalidPublicId, op, "missing auth method id")
+	}
+	da, err := NewDerefAliases(ctx, am.PublicId, DerefAliasType(am.DereferenceAliases))
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	return da, nil
 }
 
 // convertAccountAttributeMaps converts the embedded account attribute maps from

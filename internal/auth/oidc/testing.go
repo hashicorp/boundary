@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package oidc
 
@@ -39,8 +39,8 @@ import (
 const TestFakeManagedGroupFilter = `"/foo" == "bar"`
 
 // TestAuthMethod creates a test oidc auth method.  WithName, WithDescription,
-// WithMaxAge, WithApiUrl, WithIssuer, WithCertificates, WithAudClaims, and
-// WithSigningAlgs options are supported.
+// WithMaxAge, WithApiUrl, WithIssuer, WithCertificates, WithAudClaims,
+// WithSigningAlgs and WithPrompts options are supported.
 func TestAuthMethod(
 	t testing.TB,
 	conn *db.DB,
@@ -122,6 +122,17 @@ func TestAuthMethod(
 		}
 		require.NoError(rw.CreateItems(ctx, newAccountClaimMaps))
 		require.Equal(len(opts.withAccountClaimMap), len(authMethod.AccountClaimMaps))
+	}
+	if len(opts.withPrompts) > 0 {
+		newPrompts := make([]any, 0, len(opts.withPrompts))
+		for _, p := range opts.withPrompts {
+			prompt, err := NewPrompt(ctx, authMethod.PublicId, p)
+			require.NoError(err)
+			newPrompts = append(newPrompts, prompt)
+		}
+		err := rw.CreateItems(ctx, newPrompts)
+		require.NoError(err)
+		require.Equal(len(opts.withPrompts), len(authMethod.Prompts))
 	}
 	authMethod.OperationalState = string(state)
 	rowsUpdated, err := rw.Update(ctx, authMethod, []string{OperationalStateField}, nil)

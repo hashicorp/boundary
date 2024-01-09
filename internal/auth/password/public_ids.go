@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package password
 
@@ -10,18 +10,18 @@ import (
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/hashicorp/boundary/internal/types/subtypes"
+	"github.com/hashicorp/boundary/internal/types/resource"
 )
 
 func init() {
-	if err := subtypes.Register(auth.Domain, Subtype, globals.PasswordAuthMethodPrefix, globals.PasswordAccountPreviousPrefix, globals.PasswordAccountPrefix); err != nil {
-		panic(err)
-	}
+	globals.RegisterPrefixToResourceInfo(globals.PasswordAuthMethodPrefix, resource.AuthMethod, auth.Domain, Subtype)
+	globals.RegisterPrefixToResourceInfo(globals.PasswordAccountPreviousPrefix, resource.Account, auth.Domain, Subtype)
+	globals.RegisterPrefixToResourceInfo(globals.PasswordAccountPrefix, resource.Account, auth.Domain, Subtype)
 }
 
 // PublicId prefixes for the resources in the password package.
 const (
-	Subtype = subtypes.Subtype("password")
+	Subtype = globals.Subtype("password")
 )
 
 func newAuthMethodId(ctx context.Context) (string, error) {

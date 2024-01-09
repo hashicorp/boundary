@@ -1,11 +1,12 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package base
 
 import (
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"runtime"
@@ -13,7 +14,6 @@ import (
 
 	"github.com/hashicorp/boundary/api/authtokens"
 	nkeyring "github.com/jefferai/keyring"
-	"github.com/pkg/errors"
 	zkeyring "github.com/zalando/go-keyring"
 )
 

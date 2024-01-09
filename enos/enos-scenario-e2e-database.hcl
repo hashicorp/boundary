@@ -1,5 +1,5 @@
 # Copyright (c) HashiCorp, Inc.
-# SPDX-License-Identifier: MPL-2.0
+# SPDX-License-Identifier: BUSL-1.1
 
 scenario "e2e_database" {
   terraform_cli = terraform_cli.default
@@ -12,6 +12,8 @@ scenario "e2e_database" {
   locals {
     aws_ssh_private_key_path = abspath(var.aws_ssh_private_key_path)
     local_boundary_dir       = abspath(var.local_boundary_dir)
+    license_path             = abspath(var.boundary_license_path != null ? var.boundary_license_path : joinpath(path.root, "./support/boundary.hclic"))
+
     tags = merge({
       "Project Name" : var.project_name
       "Project" : "Enos",
@@ -19,8 +21,17 @@ scenario "e2e_database" {
     }, var.tags)
   }
 
+  step "read_license" {
+    skip_step = var.boundary_edition == "oss"
+    module    = module.read_license
+
+    variables {
+      file_name = local.license_path
+    }
+  }
+
   step "find_azs" {
-    module = module.az_finder
+    module = module.aws_az_finder
 
     variables {
       instance_type = [
@@ -31,7 +42,7 @@ scenario "e2e_database" {
   }
 
   step "create_base_infra" {
-    module = module.infra
+    module = module.aws_vpc
     depends_on = [
       step.find_azs,
     ]
@@ -64,7 +75,7 @@ scenario "e2e_database" {
   }
 
   step "create_targets_with_tag" {
-    module     = module.target
+    module     = module.aws_target
     depends_on = [step.create_base_infra]
 
     variables {
@@ -87,7 +98,7 @@ scenario "e2e_database" {
   }
 
   step "iam_setup" {
-    module = module.iam_setup
+    module = module.aws_iam_setup
     depends_on = [
       step.create_base_infra,
       step.create_test_id
@@ -109,6 +120,7 @@ scenario "e2e_database" {
     variables {
       test_package             = "github.com/hashicorp/boundary/testing/internal/e2e/tests/database"
       debug_no_run             = var.e2e_debug_no_run
+      boundary_license         = var.boundary_edition != "oss" ? step.read_license.license : ""
       local_boundary_dir       = local.local_boundary_dir
       target_user              = "ubuntu"
       aws_ssh_private_key_path = local.aws_ssh_private_key_path

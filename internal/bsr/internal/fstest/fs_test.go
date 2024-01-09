@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package fstest_test
 
@@ -222,11 +222,12 @@ func TestContainerOpenFile(t *testing.T) {
 	}
 
 	cases := []struct {
-		name    string
-		setupFn func(t *testing.T, f storage.FS) storage.Container
-		n       string
-		opts    []storage.Option
-		wantErr error
+		name     string
+		setupFn  func(t *testing.T, f storage.FS) storage.Container
+		n        string
+		opts     []storage.Option
+		wantErr  error
+		wantData string
 	}{
 		{
 			"create",
@@ -238,6 +239,7 @@ func TestContainerOpenFile(t *testing.T) {
 			"test",
 			[]storage.Option{storage.WithCreateFile(), storage.WithFileAccessMode(storage.ReadWrite)},
 			nil,
+			"",
 		},
 		{
 			"create-already-exists",
@@ -251,6 +253,7 @@ func TestContainerOpenFile(t *testing.T) {
 			"test",
 			[]storage.Option{storage.WithCreateFile(), storage.WithFileAccessMode(storage.ReadWrite)},
 			nil,
+			"",
 		},
 		{
 			"create-read-only",
@@ -262,6 +265,7 @@ func TestContainerOpenFile(t *testing.T) {
 			"test",
 			[]storage.Option{storage.WithCreateFile(), storage.WithFileAccessMode(storage.ReadOnly)},
 			fstest.ErrReadOnly,
+			"",
 		},
 		{
 			"read-only-does-not-exist",
@@ -273,6 +277,7 @@ func TestContainerOpenFile(t *testing.T) {
 			"test",
 			[]storage.Option{storage.WithFileAccessMode(storage.ReadOnly)},
 			fstest.ErrDoesNotExist,
+			"",
 		},
 		{
 			"read-only-exist",
@@ -286,6 +291,30 @@ func TestContainerOpenFile(t *testing.T) {
 			"test",
 			[]storage.Option{storage.WithFileAccessMode(storage.ReadOnly)},
 			nil,
+			"",
+		},
+		{
+			"open-twice",
+			func(t *testing.T, f storage.FS) storage.Container {
+				c, err := f.New(ctx, "test")
+				require.NoError(t, err)
+				w, err := c.OpenFile(ctx, "test", storage.WithCreateFile(), storage.WithFileAccessMode(storage.ReadWrite))
+				require.NoError(t, err)
+				n, err := w.WriteString("hello world")
+				require.NoError(t, err)
+				require.Equal(t, len("hello world"), n)
+				r, err := c.OpenFile(ctx, "test", storage.WithFileAccessMode(storage.ReadOnly))
+				require.NoError(t, err)
+				data := make([]byte, len("hello world"))
+				n, err = r.Read(data)
+				require.NoError(t, err)
+				require.Equal(t, len("hello world"), n)
+				return c
+			},
+			"test",
+			[]storage.Option{storage.WithFileAccessMode(storage.ReadOnly)},
+			nil,
+			"hello world",
 		},
 	}
 	for _, tfs := range fsCases {
@@ -301,6 +330,13 @@ func TestContainerOpenFile(t *testing.T) {
 					}
 					require.NoError(t, err)
 					require.NotNil(t, f)
+					if tc.wantData != "" {
+						data := make([]byte, len(tc.wantData))
+						n, err := f.Read(data)
+						require.NoError(t, err)
+						require.Equal(t, len(tc.wantData), n)
+						require.Equal(t, tc.wantData, string(data))
+					}
 				})
 			}
 		})
@@ -494,6 +530,41 @@ func TestMemContainerSubContainer(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestOpeningFileTwice(t *testing.T) {
+	ctx := context.Background()
+	f := fstest.NewMemFS()
+	c, err := f.New(ctx, "test")
+	require.NoError(t, err)
+
+	expectedData := "hello world"
+
+	// Create File
+	w, err := c.OpenFile(ctx, "test", storage.WithCreateFile(), storage.WithFileAccessMode(storage.ReadWrite))
+	require.NoError(t, err)
+	n, err := w.WriteString(expectedData)
+	require.NoError(t, err)
+	require.Equal(t, len(expectedData), n)
+
+	r1, err := c.OpenFile(ctx, "test", storage.WithFileAccessMode(storage.ReadOnly))
+	require.NoError(t, err)
+	r2, err := c.OpenFile(ctx, "test", storage.WithFileAccessMode(storage.ReadOnly))
+	require.NoError(t, err)
+
+	// reader 1 works independently from reader 2
+	actualData := make([]byte, len(expectedData))
+	n, err = r1.Read(actualData)
+	require.NoError(t, err)
+	require.Equal(t, len(expectedData), n)
+	require.Equal(t, expectedData, string(actualData))
+
+	// reader 2 works independently from reader 1
+	actualData = make([]byte, len(expectedData))
+	n, err = r2.Read(actualData)
+	require.NoError(t, err)
+	require.Equal(t, len(expectedData), n)
+	require.Equal(t, expectedData, string(actualData))
 }
 
 func TestOutOfSpace(t *testing.T) {

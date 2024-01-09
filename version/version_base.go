@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package version
 
@@ -13,7 +13,7 @@ var (
 
 	// Version is the base version
 	// Default values - set when building locally (at build time)
-	Version = "0.13.1"
+	Version = "0.14.0"
 
 	// VersionPrerelease is also set at compile time, similarly to Version.
 	VersionPrerelease string

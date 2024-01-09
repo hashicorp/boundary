@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package credentiallibrariescmd
 
@@ -19,28 +19,30 @@ func init() {
 }
 
 const (
-	usernameName                 = "username"
-	keyTypeName                  = "key-type"
-	keyBitsName                  = "key-bits"
-	ttlName                      = "ttl"
-	keyIdName                    = "key-id"
-	criticalOptionsName          = "critical-options"
-	piecewiseCriticalOptionsName = "critical-option"
-	extensionsName               = "extensions"
-	piecewiseExtensionName       = "extension"
+	usernameName                  = "username"
+	keyTypeName                   = "key-type"
+	keyBitsName                   = "key-bits"
+	ttlName                       = "ttl"
+	keyIdName                     = "key-id"
+	criticalOptionsName           = "critical-options"
+	piecewiseCriticalOptionsName  = "critical-option"
+	extensionsName                = "extensions"
+	piecewiseExtensionName        = "extension"
+	additionalValidPrincipalsName = "additional-valid-principal"
 )
 
 type extraVaultSshCertificateCmdVars struct {
-	flagPath            string
-	flagUsername        string
-	flagKeyType         string
-	flagKeyBits         string
-	flagTtl             string
-	flagKeyId           string
-	flagCriticalOptions string
-	flagCriticalOpts    []base.CombinedSliceFlagValue
-	flagExtensions      string
-	flagExtens          []base.CombinedSliceFlagValue
+	flagPath                      string
+	flagUsername                  string
+	flagKeyType                   string
+	flagKeyBits                   string
+	flagTtl                       string
+	flagKeyId                     string
+	flagCriticalOptions           string
+	flagCriticalOpts              []base.CombinedSliceFlagValue
+	flagExtensions                string
+	flagExtens                    []base.CombinedSliceFlagValue
+	flagAdditionalValidPrincipals []base.CombinedSliceFlagValue
 }
 
 func extraVaultSshCertificateActionsFlagsMapFuncImpl() map[string][]string {
@@ -56,6 +58,7 @@ func extraVaultSshCertificateActionsFlagsMapFuncImpl() map[string][]string {
 			piecewiseCriticalOptionsName,
 			extensionsName,
 			piecewiseExtensionName,
+			additionalValidPrincipalsName,
 		},
 		"update": {
 			pathFlagName,
@@ -68,6 +71,7 @@ func extraVaultSshCertificateActionsFlagsMapFuncImpl() map[string][]string {
 			piecewiseCriticalOptionsName,
 			extensionsName,
 			piecewiseExtensionName,
+			additionalValidPrincipalsName,
 		},
 	}
 	return flags
@@ -113,6 +117,12 @@ func extraVaultSshCertificateFlagsFuncImpl(c *VaultSshCertificateCommand, set *b
 				Name:   keyIdName,
 				Target: &c.flagKeyId,
 				Usage:  "The key id that the created certificate should have.",
+			})
+		case additionalValidPrincipalsName:
+			f.CombinationSliceVar(&base.CombinationSliceVar{
+				Name:   additionalValidPrincipalsName,
+				Target: &c.flagAdditionalValidPrincipals,
+				Usage:  "Principals to be signed as \"valid_principles\" in addition to username.",
 			})
 		}
 	}
@@ -184,6 +194,22 @@ func extraVaultSshCertificateFlagHandlingFuncImpl(c *VaultSshCertificateCommand,
 		*opts = append(*opts, credentiallibraries.DefaultVaultSSHCertificateCredentialLibraryKeyId())
 	default:
 		*opts = append(*opts, credentiallibraries.WithVaultSSHCertificateCredentialLibraryKeyId(c.flagKeyId))
+	}
+	// the weird formatting of this switch is to determine if there was only 0 or 1 principals passed, and if that signifies using default (nil)
+	switch len(c.flagAdditionalValidPrincipals) {
+	case 0:
+	case 1:
+		if len(c.flagAdditionalValidPrincipals[0].Keys) == 1 && c.flagAdditionalValidPrincipals[0].Keys[0] == "null" && c.flagAdditionalValidPrincipals[0].Value == nil {
+			*opts = append(*opts, credentiallibraries.DefaultVaultSSHCertificateCredentialLibraryAdditionalValidPrincipals())
+			break
+		}
+		fallthrough
+	default:
+		avp := make([]string, len(c.flagAdditionalValidPrincipals))
+		for i, p := range c.flagAdditionalValidPrincipals {
+			avp[i] = p.Value.GetValue()
+		}
+		*opts = append(*opts, credentiallibraries.WithVaultSSHCertificateCredentialLibraryAdditionalValidPrincipals(avp))
 	}
 
 	if err := common.HandleAttributeFlags(

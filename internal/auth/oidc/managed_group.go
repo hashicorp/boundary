@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package oidc
 
@@ -7,8 +7,10 @@ import (
 	"context"
 
 	"github.com/hashicorp/boundary/internal/auth/oidc/store"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/go-bexpr"
 	"google.golang.org/protobuf/proto"
 )
@@ -86,6 +88,11 @@ func (mg *ManagedGroup) SetTableName(n string) {
 	mg.tableName = n
 }
 
+// GetResourceType returns the resource type of the ManagedGroup
+func (mg *ManagedGroup) GetResourceType() resource.Type {
+	return resource.ManagedGroup
+}
+
 // oplog will create oplog metadata for the ManagedGroup.
 func (mg *ManagedGroup) oplog(op oplog.OpType, authMethodScopeId string) oplog.Metadata {
 	metadata := oplog.Metadata{
@@ -100,4 +107,14 @@ func (mg *ManagedGroup) oplog(op oplog.OpType, authMethodScopeId string) oplog.M
 		metadata["scope-id"] = []string{authMethodScopeId}
 	}
 	return metadata
+}
+
+type deletedManagedGroup struct {
+	PublicId   string `gorm:"primary_key"`
+	DeleteTime *timestamp.Timestamp
+}
+
+// TableName returns the tablename to override the default gorm table name
+func (s *deletedManagedGroup) TableName() string {
+	return "auth_oidc_managed_group_deleted"
 }

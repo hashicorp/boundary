@@ -1,9 +1,9 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package vault
 
-import "github.com/hashicorp/boundary/internal/credential"
+import "github.com/hashicorp/boundary/globals"
 
 // getOpts - iterate the inbound Options and return a struct
 func getOpts(opt ...Option) options {
@@ -30,7 +30,7 @@ type options struct {
 	withClientCert     *ClientCertificate
 	withMethod         Method
 	withRequestBody    []byte
-	withCredentialType credential.Type
+	withCredentialType globals.CredentialType
 
 	withOverrideUsernameAttribute             string
 	withOverridePasswordAttribute             string
@@ -38,12 +38,13 @@ type options struct {
 	withOverridePrivateKeyPassphraseAttribute string
 	withMappingOverride                       MappingOverride
 
-	withKeyType         string
-	withKeyBits         uint32
-	withTtl             string
-	withKeyId           string
-	withCriticalOptions string
-	withExtensions      string
+	withKeyType                   string
+	withKeyBits                   uint32
+	withTtl                       string
+	withKeyId                     string
+	withCriticalOptions           string
+	withExtensions                string
+	withAdditionalValidPrincipals []string
 }
 
 func getDefaultOptions() options {
@@ -139,7 +140,7 @@ func WithRequestBody(b []byte) Option {
 
 // WithCredentialType provides an optional credential type to associate
 // with a credential library.
-func WithCredentialType(t credential.Type) Option {
+func WithCredentialType(t globals.CredentialType) Option {
 	return func(o *options) {
 		o.withCredentialType = t
 	}
@@ -227,5 +228,13 @@ func WithCriticalOptions(s string) Option {
 func WithExtensions(s string) Option {
 	return func(o *options) {
 		o.withExtensions = s
+	}
+}
+
+// WithAdditionalValidPrincipals adds principals to be signed for as
+// "valid_principles" in addition to username.
+func WithAdditionalValidPrincipals(p []string) Option {
+	return func(o *options) {
+		o.withAdditionalValidPrincipals = p
 	}
 }

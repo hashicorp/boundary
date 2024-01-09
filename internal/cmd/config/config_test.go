@@ -1,16 +1,18 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package config
 
 import (
+	"encoding/base64"
 	"fmt"
 	"net/http"
 	"os"
 	"testing"
 	"time"
 
-	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/event"
+	"github.com/hashicorp/boundary/internal/ratelimit"
 	configutil "github.com/hashicorp/go-secure-stdlib/configutil/v2"
 	"github.com/hashicorp/go-secure-stdlib/listenerutil"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
@@ -108,8 +110,10 @@ func TestDevController(t *testing.T) {
 			},
 		},
 		Controller: &Controller{
-			Name:        "dev-controller",
-			Description: "A default controller created in dev mode",
+			Name:                    "dev-controller",
+			Description:             "A default controller created in dev mode",
+			ApiRateLimits:           make(ratelimit.Configs, 0),
+			ApiRateLimiterMaxQuotas: ratelimit.DefaultLimiterMaxQuotas(),
 		},
 		DevController: true,
 	}
@@ -481,8 +485,10 @@ func TestDevCombined(t *testing.T) {
 			},
 		},
 		Controller: &Controller{
-			Name:        "dev-controller",
-			Description: "A default controller created in dev mode",
+			Name:                    "dev-controller",
+			Description:             "A default controller created in dev mode",
+			ApiRateLimits:           make(ratelimit.Configs, 0),
+			ApiRateLimiterMaxQuotas: ratelimit.DefaultLimiterMaxQuotas(),
 		},
 		DevController: true,
 		Worker: &Worker{
@@ -628,8 +634,9 @@ func TestDevWorkerRecordingStoragePath(t *testing.T) {
 func TestDevKeyGeneration(t *testing.T) {
 	t.Parallel()
 	dk := DevKeyGeneration()
-	numBytes := 32
-	require.Equal(t, numBytes, len(dk))
+	buf, err := base64.StdEncoding.DecodeString(dk)
+	require.NoError(t, err)
+	require.Len(t, buf, 32)
 	require.NotEqual(t, dk, DevKeyGeneration())
 }
 
@@ -1543,6 +1550,208 @@ func TestControllerDescription(t *testing.T) {
 			require.NotNil(t, c)
 			require.NotNil(t, c.Controller)
 			require.Equal(t, tt.expDescription, c.Controller.Description)
+		})
+	}
+}
+
+func TestControllerApiRateLimits(t *testing.T) {
+	tests := []struct {
+		name      string
+		in        string
+		expLimits ratelimit.Configs
+		expErr    bool
+		expErrStr string
+	}{
+		{
+			name: "Single Rate limit",
+			in: `
+			controller {
+				api_rate_limit {
+					resources = ["*"]
+					actions   = ["*"]
+					per       = "total"
+					limit     = 50
+					period    = "1m"
+				}
+			}`,
+			expLimits: ratelimit.Configs{
+				{
+					Resources: []string{"*"},
+					Actions:   []string{"*"},
+					Per:       "total",
+					Limit:     50,
+					PeriodHCL: "1m",
+					Period:    time.Minute,
+					Unlimited: false,
+				},
+			},
+			expErr: false,
+		},
+		{
+			name: "Single Rate with name",
+			in: `
+			controller {
+				api_rate_limit "default" {
+					resources = ["*"]
+					actions   = ["*"]
+					per       = "total"
+					limit     = 50
+					period    = "1m"
+				}
+			}`,
+			expLimits: ratelimit.Configs{
+				{
+					Resources: []string{"*"},
+					Actions:   []string{"*"},
+					Per:       "total",
+					Limit:     50,
+					PeriodHCL: "1m",
+					Period:    time.Minute,
+					Unlimited: false,
+				},
+			},
+			expErr: false,
+		},
+		{
+			name: "Multiple Rate limit",
+			in: `
+			controller {
+				api_rate_limit {
+					resources = ["*"]
+					actions   = ["*"]
+					per       = "total"
+					limit     = 50
+					period    = "1m"
+				}
+
+				api_rate_limit {
+					resources = ["*"]
+					actions   = ["list"]
+					per       = "total"
+					limit     = 20
+					period    = "1m"
+				}
+			}`,
+			expLimits: ratelimit.Configs{
+				{
+					Resources: []string{"*"},
+					Actions:   []string{"*"},
+					Per:       "total",
+					Limit:     50,
+					PeriodHCL: "1m",
+					Period:    time.Minute,
+					Unlimited: false,
+				},
+				{
+					Resources: []string{"*"},
+					Actions:   []string{"list"},
+					Per:       "total",
+					Limit:     20,
+					PeriodHCL: "1m",
+					Period:    time.Minute,
+					Unlimited: false,
+				},
+			},
+			expErr: false,
+		},
+		{
+			name: "Multiple Rate limit with names",
+			in: `
+			controller {
+				api_rate_limit "default" {
+					resources = ["*"]
+					actions   = ["*"]
+					per       = "total"
+					limit     = 50
+					period    = "1m"
+				}
+
+				api_rate_limit "default-list" {
+					resources = ["*"]
+					actions   = ["list"]
+					per       = "total"
+					limit     = 20
+					period    = "1m"
+				}
+			}`,
+			expLimits: ratelimit.Configs{
+				{
+					Resources: []string{"*"},
+					Actions:   []string{"*"},
+					Per:       "total",
+					Limit:     50,
+					PeriodHCL: "1m",
+					Period:    time.Minute,
+					Unlimited: false,
+				},
+				{
+					Resources: []string{"*"},
+					Actions:   []string{"list"},
+					Per:       "total",
+					Limit:     20,
+					PeriodHCL: "1m",
+					Period:    time.Minute,
+					Unlimited: false,
+				},
+			},
+			expErr: false,
+		},
+		{
+			name: "Multiple Rate limit with name and no name",
+			in: `
+			controller {
+				api_rate_limit {
+					resources = ["*"]
+					actions   = ["*"]
+					per       = "total"
+					limit     = 50
+					period    = "1m"
+				}
+
+				api_rate_limit "list" {
+					resources = ["*"]
+					actions   = ["list"]
+					per       = "total"
+					limit     = 20
+					period    = "1m"
+				}
+			}`,
+			expLimits: ratelimit.Configs{
+				{
+					Resources: []string{"*"},
+					Actions:   []string{"*"},
+					Per:       "total",
+					Limit:     50,
+					PeriodHCL: "1m",
+					Period:    time.Minute,
+					Unlimited: false,
+				},
+				{
+					Resources: []string{"*"},
+					Actions:   []string{"list"},
+					Per:       "total",
+					Limit:     20,
+					PeriodHCL: "1m",
+					Period:    time.Minute,
+					Unlimited: false,
+				},
+			},
+			expErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c, err := Parse(tt.in)
+			if tt.expErr {
+				require.EqualError(t, err, tt.expErrStr)
+				require.Nil(t, c)
+				return
+			}
+
+			require.NoError(t, err)
+			require.NotNil(t, c)
+			require.NotNil(t, c.Controller)
+			require.Equal(t, tt.expLimits, c.Controller.ApiRateLimits)
 		})
 	}
 }
@@ -2471,6 +2680,108 @@ func TestSetupWorkerInitialUpstreams(t *testing.T) {
 			} else {
 				require.ElementsMatch(t, tt.expInitialUpstreams, tt.inputConfig.Worker.InitialUpstreams)
 			}
+		})
+	}
+}
+
+func TestMaxPageSize(t *testing.T) {
+	tests := []struct {
+		name           string
+		in             string
+		envMaxPageSize string
+		expMaxPageSize uint
+		expErr         bool
+		expErrStr      string
+	}{
+		{
+			name: "Valid integer value",
+			in: `
+			controller {
+				name = "example-controller"
+				max_page_size = 5
+			}`,
+			expMaxPageSize: 5,
+			expErr:         false,
+		},
+		{
+			name: "Valid string value",
+			in: `
+			controller {
+				name = "example-controller"
+				max_page_size = "5"
+			}`,
+			expMaxPageSize: 5,
+			expErr:         false,
+		},
+		{
+			name: "Invalid value integer",
+			in: `
+			controller {
+				name = "example-controller"
+				max_page_size = 0
+			}`,
+			expErr:    true,
+			expErrStr: "Max page size value must be at least 1, was 0",
+		},
+		{
+			name: "Invalid value string",
+			in: `
+			controller {
+				name = "example-controller"
+				max_page_size = "string bad"
+			}`,
+			expErr: true,
+			expErrStr: "Max page size value is not an int: " +
+				"strconv.Atoi: parsing \"string bad\": invalid syntax",
+		},
+		{
+			name: "Invalid value type",
+			in: `
+			controller {
+				name = "example-controller"
+				max_page_size = false
+			}`,
+			expErr:    true,
+			expErrStr: "Max page size: unsupported type \"bool\"",
+		},
+		{
+			name: "Valid env var",
+			in: `
+			controller {
+				name = "example-controller"
+				max_page_size = "env://ENV_MAX_CONN"
+			}`,
+			expMaxPageSize: 8,
+			envMaxPageSize: "8",
+			expErr:         false,
+		},
+		{
+			name: "Invalid env var",
+			in: `
+			controller {
+				name = "example-controller"
+				max_page_size = "env://ENV_MAX_CONN"
+			}`,
+			envMaxPageSize: "bogus value",
+			expErr:         true,
+			expErrStr: "Max page size value is not an int: " +
+				"strconv.Atoi: parsing \"bogus value\": invalid syntax",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("ENV_MAX_CONN", tt.envMaxPageSize)
+			c, err := Parse(tt.in)
+			if tt.expErr {
+				require.EqualError(t, err, tt.expErrStr)
+				require.Nil(t, c)
+				return
+			}
+
+			require.NoError(t, err)
+			require.NotNil(t, c)
+			require.NotNil(t, c.Controller)
+			require.Equal(t, tt.expMaxPageSize, c.Controller.MaxPageSize)
 		})
 	}
 }

@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package kms
 
@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"reflect"
+	"slices"
 	"sync"
 	"time"
 
@@ -18,7 +19,6 @@ import (
 	"github.com/hashicorp/go-dbw"
 	wrappingKms "github.com/hashicorp/go-kms-wrapping/extras/kms/v2"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
-	"golang.org/x/exp/slices"
 )
 
 // Kms is a way to access wrappers for a given scope and purpose. Since keys can
@@ -26,6 +26,7 @@ import (
 // caches, going to the database as needed.
 type Kms struct {
 	underlying          *wrappingKms.Kms
+	underlyingForOplog  *wrappingKms.Kms // Yep, this kms is only used for oplog DEKs
 	reader              db.Reader
 	writer              db.Writer
 	derivedPurposeCache sync.Map
@@ -47,10 +48,22 @@ func New(ctx context.Context, reader *db.Db, writer *db.Db, _ ...Option) (*Kms, 
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error creating new in-memory kms"))
 	}
+
+	oplogK, err := wrappingKms.New(
+		db.NewChangeSafeDbwReader(reader),
+		db.NewChangeSafeDbwWriter(writer),
+		[]wrappingKms.KeyPurpose{wrappingKms.KeyPurpose(KeyPurposeOplog.String())},
+		wrappingKms.WithTableNamePrefix("kms_oplog"),
+	)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error creating new in-memory kms"))
+	}
+
 	return &Kms{
-		underlying: k,
-		reader:     reader,
-		writer:     writer,
+		underlying:         k,
+		underlyingForOplog: oplogK,
+		reader:             reader,
+		writer:             writer,
 	}, nil
 }
 
@@ -78,9 +91,19 @@ func NewUsingReaderWriter(ctx context.Context, reader db.Reader, writer db.Write
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error creating new in-memory kms"))
 	}
+	oplogK, err := wrappingKms.New(
+		db.NewChangeSafeDbwReader(r),
+		db.NewChangeSafeDbwWriter(w),
+		[]wrappingKms.KeyPurpose{wrappingKms.KeyPurpose(KeyPurposeOplog.String())},
+		wrappingKms.WithTableNamePrefix("kms_oplog"),
+	)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error creating new in-memory kms"))
+	}
 	return &Kms{
-		underlying: k,
-		reader:     reader,
+		underlying:         k,
+		underlyingForOplog: oplogK,
+		reader:             reader,
 	}, nil
 }
 
@@ -92,6 +115,10 @@ func (k *Kms) AddExternalWrappers(ctx context.Context, opt ...Option) error {
 	if opts.withRootWrapper != nil {
 		if err := k.underlying.AddExternalWrapper(ctx, wrappingKms.KeyPurpose(KeyPurposeRootKey.String()), opts.withRootWrapper); err != nil {
 			return errors.Wrap(ctx, err, op, errors.WithMsg("unable to add root wrapper"))
+		}
+		// we need this external wrapper for the oplog KMS
+		if err := k.underlyingForOplog.AddExternalWrapper(ctx, wrappingKms.KeyPurpose(KeyPurposeRootKey.String()), opts.withRootWrapper); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("unable to add root wrapper to kms_oplog"))
 		}
 	}
 	if opts.withWorkerAuthWrapper != nil {
@@ -125,7 +152,14 @@ func (k *Kms) GetWrapper(ctx context.Context, scopeId string, purpose KeyPurpose
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing purpose")
 	}
 	opts := getOpts(opt...)
-	w, err := k.underlying.GetWrapper(ctx, scopeId, wrappingKms.KeyPurpose(purpose.String()), wrappingKms.WithKeyId(opts.withKeyId))
+	var underlying *wrappingKms.Kms
+	switch purpose {
+	case KeyPurposeOplog:
+		underlying = k.underlyingForOplog
+	default:
+		underlying = k.underlying
+	}
+	w, err := underlying.GetWrapper(ctx, scopeId, wrappingKms.KeyPurpose(purpose.String()), wrappingKms.WithKeyId(opts.withKeyId))
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get wrapper"))
 	}
@@ -200,7 +234,7 @@ func (k *Kms) ReconcileKeys(ctx context.Context, randomReader io.Reader, opt ...
 // transaction which allows this capability to be shared with the iam repo when
 // it's creating Scopes.
 func (k *Kms) CreateKeys(ctx context.Context, scopeId string, opt ...Option) error {
-	const op = "kms.(Kms).CreateKeysTx"
+	const op = "kms.(Kms).CreateKeys"
 	if scopeId == "" {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
 	}
@@ -222,12 +256,62 @@ func (k *Kms) CreateKeys(ctx context.Context, scopeId string, opt ...Option) err
 		}
 		kmsOpts = append(kmsOpts, wrappingKms.WithReaderWriter(db.NewChangeSafeDbwReader(r), db.NewChangeSafeDbwWriter(w)))
 	}
-	purposes := make([]wrappingKms.KeyPurpose, 0, len(ValidDekPurposes()))
+	purposes := make([]wrappingKms.KeyPurpose, 0, len(ValidDekPurposes())-1) // -1 because it's all of the DEKs except for the oplog DEK
 	for _, p := range ValidDekPurposes() {
-		purposes = append(purposes, wrappingKms.KeyPurpose(p.String()))
+		switch p {
+		case KeyPurposeOplog:
+			continue
+		default:
+			purposes = append(purposes, wrappingKms.KeyPurpose(p.String()))
+		}
 	}
-	if err := k.underlying.CreateKeys(ctx, scopeId, purposes, kmsOpts...); err != nil {
-		return errors.Wrap(ctx, err, op)
+
+	{
+		switch {
+		case isNil(opts.withWriter) && isNil(opts.withReader):
+			// it appears we don't have an inflight transaction, so we'll create
+			// our own to ensure that all keys are created successfully or
+			// they're rolled back.
+			_, err := k.writer.DoTx(ctx, db.StdRetryCnt,
+				db.ExpBackoff{},
+				func(txReader db.Reader, txWriter db.Writer) error {
+					r, ok := txReader.(*db.Db)
+					if !ok {
+						return errors.New(ctx, errors.InvalidParameter, op, "unable to convert reader to db.Db")
+					}
+					w, ok := txWriter.(*db.Db)
+					if !ok {
+						return errors.New(ctx, errors.InvalidParameter, op, "unable to convert writer to db.Db")
+					}
+					kmsOpts = append(kmsOpts,
+						wrappingKms.WithRandomReader(opts.withRandomReader),
+						wrappingKms.WithReaderWriter(
+							db.NewChangeSafeDbwReader(r),
+							db.NewChangeSafeDbwWriter(w),
+						),
+					)
+					if err := k.underlying.CreateKeys(ctx, scopeId, purposes, kmsOpts...); err != nil {
+						return err
+					}
+					if err := k.underlyingForOplog.CreateKeys(ctx, scopeId, []wrappingKms.KeyPurpose{wrappingKms.KeyPurpose(KeyPurposeOplog.String())}, kmsOpts...); err != nil {
+						return err
+					}
+					return nil
+				})
+			if err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+		default:
+			// it appears we have an inflight transaction, so we can just
+			// make multiple calls to CreateKeys(...) and let the caller's
+			// transaction rollback when needed.
+			if err := k.underlying.CreateKeys(ctx, scopeId, purposes, kmsOpts...); err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+			if err := k.underlyingForOplog.CreateKeys(ctx, scopeId, []wrappingKms.KeyPurpose{wrappingKms.KeyPurpose(KeyPurposeOplog.String())}, kmsOpts...); err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+		}
 	}
 	return nil
 }
@@ -242,6 +326,18 @@ func (k *Kms) ListKeys(ctx context.Context, scopeId string, _ ...Option) ([]wrap
 			return nil, errors.E(ctx, errors.WithCode(errors.RecordNotFound), errors.WithOp(op))
 		}
 		return nil, errors.Wrap(ctx, err, op)
+	}
+	oplogKeys, err := k.underlyingForOplog.ListKeys(ctx, scopeId)
+	if err != nil {
+		if errors.Is(err, dbw.ErrRecordNotFound) {
+			return nil, errors.E(ctx, errors.WithCode(errors.RecordNotFound), errors.WithOp(op))
+		}
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	for _, k := range oplogKeys {
+		if k.Purpose == wrappingKms.KeyPurpose(KeyPurposeOplog.String()) {
+			keys = append(keys, k)
+		}
 	}
 	return keys, nil
 }
@@ -277,6 +373,10 @@ func (k *Kms) RotateKeys(ctx context.Context, scopeId string, opt ...Option) err
 	}
 
 	err := k.underlying.RotateKeys(ctx, scopeId, kmsOpts...)
+	if err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
+	err = k.underlyingForOplog.RotateKeys(ctx, scopeId, kmsOpts...)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
@@ -500,8 +600,8 @@ keyLoop:
 		return false, errors.New(ctx, errors.KeyNotFound, op, "key version was not found in the scope")
 	}
 	// Sort versions just in case they aren't already sorted
-	slices.SortFunc(foundKey.Versions, func(i, j wrappingKms.KeyVersion) bool {
-		return i.Version < j.Version
+	slices.SortFunc(foundKey.Versions, func(i, j wrappingKms.KeyVersion) int {
+		return int(i.Version) - int(j.Version)
 	})
 	if foundKey.Versions[len(foundKey.Versions)-1].Id == keyVersionId {
 		// Attempted to destroy currently active key
@@ -600,7 +700,12 @@ func (k *Kms) VerifyGlobalRoot(ctx context.Context) error {
 func stdNewKmsPurposes() []wrappingKms.KeyPurpose {
 	purposes := make([]wrappingKms.KeyPurpose, 0, len(ValidDekPurposes()))
 	for _, p := range ValidDekPurposes() {
-		purposes = append(purposes, wrappingKms.KeyPurpose(p.String()))
+		switch p {
+		case KeyPurposeOplog:
+			continue
+		default:
+			purposes = append(purposes, wrappingKms.KeyPurpose(p.String()))
+		}
 	}
 	purposes = append(purposes,
 		wrappingKms.KeyPurpose(KeyPurposeWorkerAuth.String()),
@@ -629,3 +734,11 @@ type rootKey struct {
 }
 
 func (*rootKey) TableName() string { return "kms_root_key" }
+
+type rootOplogKey struct {
+	PrivateId  string    `gorm:"primary_key"`
+	ScopeId    string    `gorm:"default:null"`
+	CreateTime time.Time `gorm:"default:current_timestamp"`
+}
+
+func (*rootOplogKey) TableName() string { return "kms_oplog_root_key" }

@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package static
 
@@ -9,9 +9,11 @@ import (
 
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/credential/static/store"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/libs/crypto"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-kms-wrapping/v2/extras/structwrapping"
 	"google.golang.org/protobuf/proto"
@@ -88,6 +90,11 @@ func (c *JsonCredential) SetTableName(n string) {
 	c.tableName = n
 }
 
+// GetResourceType returns the resource type of the Credential
+func (c *JsonCredential) GetResourceType() resource.Type {
+	return resource.Credential
+}
+
 func (c *JsonCredential) oplog(op oplog.OpType) oplog.Metadata {
 	metadata := oplog.Metadata{
 		"resource-public-id": []string{c.PublicId},
@@ -138,4 +145,14 @@ func (c *JsonCredential) hmacObject(ctx context.Context, cipher wrapping.Wrapper
 	}
 	c.ObjectHmac = []byte(hm)
 	return nil
+}
+
+type deletedJSONCredential struct {
+	PublicId   string `gorm:"primary_key"`
+	DeleteTime *timestamp.Timestamp
+}
+
+// TableName returns the tablename to override the default gorm table name
+func (s *deletedJSONCredential) TableName() string {
+	return "credential_static_json_credential_deleted"
 }

@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package errors
 
@@ -342,5 +342,13 @@ var errorCodeInfo = map[Code]Info{
 	ChecksumMismatch: {
 		Message: "checksum mismatch",
 		Kind:    Integrity,
+	},
+	InvalidConfiguration: {
+		Message: "invalid configuration",
+		Kind:    Configuration,
+	},
+	InvalidListToken: {
+		Message: "invalid list token",
+		Kind:    Parameter,
 	},
 }

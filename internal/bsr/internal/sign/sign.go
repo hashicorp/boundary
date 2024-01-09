@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 // Package sign provides wrappers to compute a signature of data written to an
 // io.Writer
@@ -16,7 +16,6 @@ import (
 	"github.com/hashicorp/boundary/internal/bsr/internal/is"
 	"github.com/hashicorp/boundary/internal/bsr/kms"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
-	"github.com/hashicorp/go-multierror"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -142,28 +141,28 @@ func NewFile(ctx context.Context, f writerFile, w io.Writer, keys *kms.Keys) (*F
 func (f *File) Close() error {
 	const op = "sign.(File).Close"
 
-	var closeErrors *multierror.Error
+	var closeErrors error
 	if err := f.Writer.Close(); err != nil {
-		closeErrors = multierror.Append(closeErrors, fmt.Errorf("%s: %w", op, err))
+		closeErrors = errors.Join(closeErrors, fmt.Errorf("%s: %w", op, err))
 	}
 
 	sig, err := f.Writer.Sign(f.ctx)
 	if err != nil {
-		closeErrors = multierror.Append(closeErrors, fmt.Errorf("%s: %w", op, err))
-		return closeErrors.ErrorOrNil()
+		closeErrors = errors.Join(closeErrors, fmt.Errorf("%s: %w", op, err))
+		return closeErrors
 	}
 
 	b, err := proto.Marshal(sig)
 	if err != nil {
-		closeErrors = multierror.Append(closeErrors, fmt.Errorf("%s: %w", op, err))
-		return closeErrors.ErrorOrNil()
+		closeErrors = errors.Join(closeErrors, fmt.Errorf("%s: %w", op, err))
+		return closeErrors
 	}
 
 	if _, err := f.signatureWriter.Write(b); err != nil {
-		closeErrors = multierror.Append(closeErrors, fmt.Errorf("%s: %w", op, err))
+		closeErrors = errors.Join(closeErrors, fmt.Errorf("%s: %w", op, err))
 	}
 
-	return closeErrors.ErrorOrNil()
+	return closeErrors
 }
 
 var _ writerFile = (*File)(nil)

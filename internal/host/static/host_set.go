@@ -1,14 +1,16 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package static
 
 import (
 	"context"
 
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/host/static/store"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -51,6 +53,11 @@ func (s *HostSet) SetTableName(n string) {
 	s.tableName = n
 }
 
+// GetResourceType returns the resource type of the HostSet
+func (s *HostSet) GetResourceType() resource.Type {
+	return resource.HostSet
+}
+
 func allocHostSet() *HostSet {
 	return &HostSet{
 		HostSet: &store.HostSet{},
@@ -83,4 +90,14 @@ func newHostSetForMembers(setId string, version uint32) *HostSet {
 			Version:  version + 1,
 		},
 	}
+}
+
+type deletedHostSet struct {
+	PublicId   string `gorm:"primary_key"`
+	DeleteTime *timestamp.Timestamp
+}
+
+// TableName returns the tablename to override the default gorm table name
+func (ds *deletedHostSet) TableName() string {
+	return "static_host_set_deleted"
 }

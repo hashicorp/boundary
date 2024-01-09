@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package scopeids
 
@@ -153,7 +153,7 @@ func GetListingResourceInformation(
 		aSet := input.AuthResults.FetchActionSetForType(ctx,
 			// This is overridden by WithResource
 			resource.Unknown,
-			action.ActionSet{action.List},
+			action.NewActionSet(action.List),
 			auth.WithResource(&res),
 		)
 		switch len(aSet) {
@@ -163,7 +163,7 @@ func GetListingResourceInformation(
 			// lookup might fail.
 			deferredScopes = append(deferredScopes, scp)
 		case 1:
-			if aSet[0] != action.List {
+			if !aSet.HasAction(action.List) {
 				return nil, errors.New(ctx, errors.Internal, op, "unexpected action in set")
 			}
 			if output.ScopeResourceMap[scpId] == nil {

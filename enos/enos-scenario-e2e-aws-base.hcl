@@ -1,5 +1,5 @@
 # Copyright (c) HashiCorp, Inc.
-# SPDX-License-Identifier: MPL-2.0
+# SPDX-License-Identifier: BUSL-1.1
 
 scenario "e2e_aws_base" {
   terraform_cli = terraform_cli.default
@@ -30,7 +30,7 @@ scenario "e2e_aws_base" {
   }
 
   step "find_azs" {
-    module = module.az_finder
+    module = module.aws_az_finder
 
     variables {
       instance_type = [
@@ -57,12 +57,13 @@ scenario "e2e_aws_base" {
     module = matrix.builder == "crt" ? module.build_crt : module.build_local
 
     variables {
-      path = local.build_path[matrix.builder]
+      path    = local.build_path[matrix.builder]
+      edition = var.boundary_edition
     }
   }
 
   step "create_base_infra" {
-    module = module.infra
+    module = module.aws_vpc
     depends_on = [
       step.find_azs,
     ]
@@ -74,7 +75,7 @@ scenario "e2e_aws_base" {
   }
 
   step "create_boundary_cluster" {
-    module = module.boundary
+    module = module.aws_boundary
     depends_on = [
       step.create_base_infra,
       step.create_db_password,
@@ -93,13 +94,14 @@ scenario "e2e_aws_base" {
       local_artifact_path      = step.build_boundary.artifact_path
       ubuntu_ami_id            = step.create_base_infra.ami_ids["ubuntu"]["amd64"]
       vpc_id                   = step.create_base_infra.vpc_id
+      vpc_tag_module           = step.create_base_infra.vpc_tag_module
       worker_count             = var.worker_count
       worker_instance_type     = var.worker_instance_type
     }
   }
 
   step "create_target" {
-    module     = module.target
+    module     = module.aws_target
     depends_on = [step.create_base_infra]
 
     variables {
@@ -129,7 +131,7 @@ scenario "e2e_aws_base" {
       auth_password            = step.create_boundary_cluster.auth_password
       local_boundary_dir       = local.local_boundary_dir
       aws_ssh_private_key_path = local.aws_ssh_private_key_path
-      target_ip                = step.create_target.target_ips[0]
+      target_address           = step.create_target.target_ips[0]
       target_user              = "ubuntu"
       target_port              = "22"
     }

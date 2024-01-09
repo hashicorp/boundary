@@ -1,10 +1,11 @@
 -- Copyright (c) HashiCorp, Inc.
--- SPDX-License-Identifier: MPL-2.0
+-- SPDX-License-Identifier: BUSL-1.1
 
 begin;
 
   truncate table oplog_entry, oplog_metadata;
 
+  -- replaced by 77/04_alter_oplog_entry.up.sql
   alter table oplog_entry
     add column key_id kms_private_id not null
       constraint kms_data_key_version_fkey
@@ -16,7 +17,8 @@ begin;
         references iam_scope (public_id)
         on delete cascade
         on update cascade;
-
+        
+  -- replaced by 77/04_alter_oplog_entry.up.sql
   create function insert_oplog_entry() returns trigger
   as $$
   begin

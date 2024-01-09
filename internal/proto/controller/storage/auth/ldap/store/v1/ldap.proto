@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 syntax = "proto3";
 
@@ -256,6 +256,27 @@ message AuthMethod {
   repeated string account_attribute_maps = 300 [(custom_options.v1.mask_mapping) = {
     this: "AccountAttributeMaps"
     that: "attributes.account_attribute_maps"
+  }];
+
+  // MaximumPageSize optionally specifies a maximum ldap search result size to
+  // use when retrieving the authenticated user's group memberships. This can
+  // be used to avoid reaching the LDAP server's max result size.
+  // @inject_tag: `gorm:"not_null;default:0"`
+  uint32 maximum_page_size = 310 [(custom_options.v1.mask_mapping) = {
+    this: "MaximumPageSize"
+    that: "attributes.maximum_page_size"
+  }];
+
+  // dereference_aliases will control how aliases are dereferenced when
+  // performing the search. Possible values are: never, finding, searching,
+  // and always. If unset, a default of "never" is used. When set to
+  // "finding", it will only dereference aliases during name resolution of the
+  // base. When set to "searching", it will dereference aliases after name
+  // resolution.
+  // @inject_tag: `gorm:"-"`
+  string dereference_aliases = 320 [(custom_options.v1.mask_mapping) = {
+    this: "DereferenceAliases"
+    that: "attributes.dereference_aliases"
   }];
 }
 
@@ -530,6 +551,26 @@ message AccountAttributeMap {
   // The create_time is set by the database.
   // @inject_tag: `gorm:"default:current_timestamp"`
   timestamp.v1.Timestamp create_time = 40;
+}
+
+// DerefAliases represent aan optional configuration field used to
+// determine how to derefence aliases when searching ldap.
+message DerefAliases {
+  // create_time is set by the database.
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp create_time = 10;
+
+  // ldap_method_id is the FK to the UserEntrySearchConf's LDAP auth method.
+  // @inject_tag: `gorm:"primary_key"`
+  string ldap_method_id = 20;
+
+  // dereference_aliases will control how aliases are dereferenced when
+  // performing the search. Possible values are: never, finding, searching,
+  // and always. If unset, a default of "never" is used. When set to
+  // "finding", it will only dereference aliases during name resolution of the
+  // base. When set to "searching", it will dereference aliases after name
+  // resolution.
+  string dereference_aliases = 30;
 }
 
 // ManagedGroup entries provide an LDAP auth method implementation of managed

@@ -1,15 +1,16 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package base_test
 
 import "github.com/kelseyhightower/envconfig"
 
 type config struct {
-	TargetIp         string `envconfig:"E2E_TARGET_IP" required:"true"`    // e.g. 192.168.0.1
-	TargetSshKeyPath string `envconfig:"E2E_SSH_KEY_PATH" required:"true"` // e.g. /Users/username/key.pem
-	TargetSshUser    string `envconfig:"E2E_SSH_USER" required:"true"`     // e.g. ubuntu
-	TargetPort       string `envconfig:"E2E_SSH_PORT" required:"true"`
+	TargetAddress    string `envconfig:"E2E_TARGET_ADDRESS" required:"true"` // e.g. 192.168.0.1
+	TargetSshKeyPath string `envconfig:"E2E_SSH_KEY_PATH" required:"true"`   // e.g. /Users/username/key.pem
+	TargetSshUser    string `envconfig:"E2E_SSH_USER" required:"true"`       // e.g. ubuntu
+	TargetPort       string `envconfig:"E2E_TARGET_PORT" required:"true"`
+	MaxPageSize      int    `envconfig:"E2E_MAX_PAGE_SIZE" default:"1000"`
 }
 
 func loadTestConfig() (*config, error) {

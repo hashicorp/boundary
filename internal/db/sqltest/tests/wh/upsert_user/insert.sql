@@ -1,5 +1,5 @@
 -- Copyright (c) HashiCorp, Inc.
--- SPDX-License-Identifier: MPL-2.0
+-- SPDX-License-Identifier: BUSL-1.1
 
 -- insert tests that the wh_upsert_user function will do an insert when
 -- no existing source wh_user_dimension exists.

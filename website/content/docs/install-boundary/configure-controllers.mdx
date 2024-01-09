@@ -110,7 +110,9 @@ AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
 </CodeBlockConfig>
 
 <Note>
+
 In the example above, the proper IAM roles and permissions for the given `AWS_ACCESS_KEY` and `AWS_SECRET_ACCESS_KEY` must be in place so that Boundary can use them to access the different KMS keys.
+
 </Note>
 
 Next, populate the `controller.hcl` file with any relevant configuration information.
@@ -171,7 +173,7 @@ controller {
 
   # This is the public hostname or IP where the workers can reach the
   # controller. This should typically be a load balancer address
-  public_cluster_address = "example-cluster-lb.example.com"
+  public_cluster_addr = "example-cluster-lb.example.com"
 
   # Enterprise license file, can also be the raw value or env:// value
   license = "file:///path/to/license/file.hclic"

@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package kms
 
@@ -37,6 +37,7 @@ func TestKmsDeleteKeyPurpose(t testing.TB, conn *db.DB, purpose KeyPurpose) {
 func TestKmsDeleteAllKeys(t testing.TB, conn *db.DB) {
 	oplog.TestOplogDeleteAllEntries(t, db.New(conn).UnderlyingDB()())
 	db.TestDeleteWhere(t, conn, func() any { i := rootKey{}; return &i }(), "1=1")
+	db.TestDeleteWhere(t, conn, func() any { i := rootOplogKey{}; return &i }(), "1=1")
 }
 
 type dataKey struct{}

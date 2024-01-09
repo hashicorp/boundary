@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package controller
 
@@ -21,4 +21,9 @@ type Config struct {
 	DisableAuthorizationFailures bool
 	// Override worker auth CA certificate lifetime for testing
 	TestOverrideWorkerAuthCaCertificateLifetime time.Duration
+
+	// This is derived from the config.Config. It tracks the state of the
+	// rate limiter's configuration, and is updated if the config changes via a
+	// SIGHUP.
+	rateLimiterConfig *rateLimiterConfig
 }

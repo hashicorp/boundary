@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package oidc
 
@@ -8,6 +8,7 @@ import (
 	"net/url"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/pagination"
 )
 
 // getOpts - iterate the inbound Options and return a struct.
@@ -33,6 +34,7 @@ type options struct {
 	withAudClaims           []string
 	withSigningAlgs         []Alg
 	withClaimsScopes        []string
+	withPrompts             []PromptParam
 	withEmail               string
 	withFullName            string
 	withOrderByCreateTime   bool
@@ -48,6 +50,7 @@ type options struct {
 	withOperationalState    AuthMethodState
 	withAccountClaimMap     map[string]AccountToClaim
 	withReader              db.Reader
+	withStartPageAfterItem  pagination.Item
 }
 
 func getDefaultOptions() options {
@@ -230,5 +233,20 @@ func WithAccountClaimMap(acm map[string]AccountToClaim) Option {
 func WithReader(reader db.Reader) Option {
 	return func(o *options) {
 		o.withReader = reader
+	}
+}
+
+// WithPrompts provides optional prompts
+func WithPrompts(prompt ...PromptParam) Option {
+	return func(o *options) {
+		o.withPrompts = prompt
+	}
+}
+
+// WithStartPageAfterItem is used to paginate over the results.
+// The next page will start after the provided item.
+func WithStartPageAfterItem(item pagination.Item) Option {
+	return func(o *options) {
+		o.withStartPageAfterItem = item
 	}
 }

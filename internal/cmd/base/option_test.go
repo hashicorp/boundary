@@ -1,12 +1,12 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package base
 
 import (
 	"testing"
 
-	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/event"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -15,7 +15,7 @@ func Test_GetOpts(t *testing.T) {
 	t.Parallel()
 	t.Run("nil-options", func(t *testing.T) {
 		assert := assert.New(t)
-		opts := getOpts(nil, nil)
+		opts := GetOpts(nil, nil)
 		testOpts := getDefaultOptions()
 		assert.Equal(opts, testOpts)
 	})
@@ -28,7 +28,7 @@ func Test_GetOpts(t *testing.T) {
 			ObservationsEnabled: &isTrue,
 			SysEventsEnabled:    &isTrue,
 		}
-		opts := getOpts(WithEventFlags(&f))
+		opts := GetOpts(WithEventFlags(&f))
 		testOpts := getDefaultOptions()
 		testOpts.withEventFlags = &f
 		assert.Equal(opts, testOpts)
@@ -45,84 +45,84 @@ func Test_GetOpts(t *testing.T) {
 				},
 			},
 		}
-		opts := getOpts(WithEventerConfig(&c))
+		opts := GetOpts(WithEventerConfig(&c))
 		testOpts := getDefaultOptions()
 		testOpts.withEventerConfig = &c
 		assert.Equal(opts, testOpts)
 	})
 	t.Run("WithNoTokenScope", func(t *testing.T) {
 		assert := assert.New(t)
-		opts := getOpts(WithNoTokenScope())
+		opts := GetOpts(WithNoTokenScope())
 		testOpts := getDefaultOptions()
 		testOpts.withNoTokenScope = true
 		assert.Equal(opts, testOpts)
 	})
 	t.Run("WithSkipDatabaseDestruction", func(t *testing.T) {
 		assert := assert.New(t)
-		opts := getOpts(WithSkipDatabaseDestruction())
+		opts := GetOpts(WithSkipDatabaseDestruction())
 		testOpts := getDefaultOptions()
 		testOpts.withSkipDatabaseDestruction = true
 		assert.Equal(opts, testOpts)
 	})
 	t.Run("WithNoTokenValue", func(t *testing.T) {
 		assert := assert.New(t)
-		opts := getOpts(WithNoTokenValue())
+		opts := GetOpts(WithNoTokenValue())
 		testOpts := getDefaultOptions()
 		testOpts.withNoTokenValue = true
 		assert.Equal(opts, testOpts)
 	})
 	t.Run("WithSkipAuthMethodCreation", func(t *testing.T) {
 		assert := assert.New(t)
-		opts := getOpts(WithSkipAuthMethodCreation())
+		opts := GetOpts(WithSkipAuthMethodCreation())
 		testOpts := getDefaultOptions()
 		testOpts.withSkipAuthMethodCreation = true
 		assert.Equal(opts, testOpts)
 	})
 	t.Run("WithSkipOidcAuthMethodCreation", func(t *testing.T) {
 		assert := assert.New(t)
-		opts := getOpts(WithSkipOidcAuthMethodCreation())
+		opts := GetOpts(WithSkipOidcAuthMethodCreation())
 		testOpts := getDefaultOptions()
 		testOpts.withSkipOidcAuthMethodCreation = true
 		assert.Equal(opts, testOpts)
 	})
 	t.Run("WithSkipLdapAuthMethodCreation", func(t *testing.T) {
 		assert := assert.New(t)
-		opts := getOpts(WithSkipLdapAuthMethodCreation())
+		opts := GetOpts(WithSkipLdapAuthMethodCreation())
 		testOpts := getDefaultOptions()
 		testOpts.withSkipLdapAuthMethodCreation = true
 		assert.Equal(opts, testOpts)
 	})
 	t.Run("WithSkipScopesCreation", func(t *testing.T) {
 		assert := assert.New(t)
-		opts := getOpts(WithSkipScopesCreation())
+		opts := GetOpts(WithSkipScopesCreation())
 		testOpts := getDefaultOptions()
 		testOpts.withSkipScopesCreation = true
 		assert.Equal(opts, testOpts)
 	})
 	t.Run("WithSkipHostResourcesCreation", func(t *testing.T) {
 		assert := assert.New(t)
-		opts := getOpts(WithSkipHostResourcesCreation())
+		opts := GetOpts(WithSkipHostResourcesCreation())
 		testOpts := getDefaultOptions()
 		testOpts.withSkipHostResourcesCreation = true
 		assert.Equal(opts, testOpts)
 	})
 	t.Run("WithSkipTargetCreation", func(t *testing.T) {
 		assert := assert.New(t)
-		opts := getOpts(WithSkipTargetCreation())
+		opts := GetOpts(WithSkipTargetCreation())
 		testOpts := getDefaultOptions()
 		testOpts.withSkipTargetCreation = true
 		assert.Equal(opts, testOpts)
 	})
 	t.Run("WithContainerImage", func(t *testing.T) {
 		assert := assert.New(t)
-		opts := getOpts(WithContainerImage("test-container"))
+		opts := GetOpts(WithContainerImage("test-container"))
 		testOpts := getDefaultOptions()
 		testOpts.withContainerImage = "test-container"
 		assert.Equal(opts, testOpts)
 	})
 	t.Run("withDialect", func(t *testing.T) {
 		assert := assert.New(t)
-		opts := getOpts(withDialect("test-dialect"))
+		opts := GetOpts(withDialect("test-dialect"))
 		testOpts := getDefaultOptions()
 		testOpts.withDialect = "test-dialect"
 		assert.Equal(opts, testOpts)
@@ -131,7 +131,24 @@ func Test_GetOpts(t *testing.T) {
 		assert := assert.New(t)
 		testOpts := getDefaultOptions()
 		assert.False(testOpts.withEventGating)
-		opts := getOpts(WithEventGating(true))
+		opts := GetOpts(WithEventGating(true))
 		assert.True(opts.withEventGating)
+	})
+
+	t.Run("WithSkipScopeIdFlag", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := GetOpts(WithSkipScopeIdFlag(true))
+		testOpts := getDefaultOptions()
+		testOpts.WithSkipScopeIdFlag = true
+		assert.Equal(opts, testOpts)
+	})
+
+	t.Run("WithSkipScopeIdFlag", func(t *testing.T) {
+		assert := assert.New(t)
+		var s string
+		opts := GetOpts(WithInterceptedToken(&s))
+		testOpts := getDefaultOptions()
+		testOpts.WithInterceptedToken = &s
+		assert.Equal(opts, testOpts)
 	})
 }

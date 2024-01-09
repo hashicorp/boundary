@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package target
 
@@ -7,9 +7,10 @@ import (
 	"net"
 	"time"
 
+	"github.com/hashicorp/boundary/globals"
 	intglobals "github.com/hashicorp/boundary/internal/globals"
+	"github.com/hashicorp/boundary/internal/pagination"
 	"github.com/hashicorp/boundary/internal/perms"
-	"github.com/hashicorp/boundary/internal/types/subtypes"
 )
 
 // GetOpts - iterate the inbound Options and return a struct
@@ -35,7 +36,7 @@ type options struct {
 	WithProjectIds             []string
 	WithProjectName            string
 	WithUserId                 string
-	WithType                   subtypes.Subtype
+	WithType                   globals.Subtype
 	WithHostSources            []string
 	WithCredentialLibraries    []*CredentialLibrary
 	WithStaticCredentials      []*StaticCredential
@@ -52,6 +53,7 @@ type options struct {
 	WithStorageBucketId        string
 	WithEnableSessionRecording bool
 	WithNetResolver            intglobals.NetIpResolver
+	WithStartPageAfterItem     pagination.Item
 }
 
 func getDefaultOptions() options {
@@ -148,7 +150,7 @@ func WithUserId(userId string) Option {
 }
 
 // WithType provides an option to search by a target type
-func WithType(t subtypes.Subtype) Option {
+func WithType(t globals.Subtype) Option {
 	return func(o *options) {
 		o.WithType = t
 	}
@@ -263,5 +265,13 @@ func WithStorageBucketId(id string) Option {
 func WithNetResolver(resolver intglobals.NetIpResolver) Option {
 	return func(o *options) {
 		o.WithNetResolver = resolver
+	}
+}
+
+// WithStartPageAfterItem is used to paginate over the results.
+// The next page will start after the provided item.
+func WithStartPageAfterItem(item pagination.Item) Option {
+	return func(o *options) {
+		o.WithStartPageAfterItem = item
 	}
 }

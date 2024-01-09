@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package auth
 
@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -20,14 +21,17 @@ func TestDB_AuthMethodIDTrigger(t *testing.T) {
 create table if not exists test_auth_method (
     public_id wt_public_id primary key,
     scope_id wt_public_id not null references iam_scope(public_id),
-	name wt_name
+	name wt_name,
+	create_time wt_timestamp,
+	update_time wt_timestamp,
+	state text
 );
 `
 		insert = `
 insert into test_auth_method
-  (public_id, scope_id)
+  (public_id, scope_id, create_time, update_time, state)
 values
-  (@public_id, @scoped_id);
+  (@public_id, @scoped_id, @create_time, @update_time, @state);
 `
 		addTriggers = `
 create trigger
@@ -59,7 +63,17 @@ select count(*) from test_auth_method where public_id = @public_id
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 
 	id := "l1Ocw0TpHn800CekIxIXlmQqRDgFDfYl"
-	inserted, err := rw.Exec(ctx, insert, []any{sql.Named("public_id", id), sql.Named("scoped_id", org.GetPublicId())})
+	inserted, err := rw.Exec(
+		ctx,
+		insert,
+		[]any{
+			sql.Named("public_id", id),
+			sql.Named("scoped_id", org.GetPublicId()),
+			sql.Named("create_time", timestamp.Now()),
+			sql.Named("update_time", timestamp.Now()),
+			sql.Named("state", "active-public"),
+		},
+	)
 	require.NoError(err)
 	require.Equal(1, inserted)
 

@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package ldap
 
@@ -199,7 +199,8 @@ func (r *Repository) getAuthMethods(ctx context.Context, authMethodId string, sc
 		if agg.AccountAttributeMap != "" {
 			am.AccountAttributeMaps = strings.Split(agg.AccountAttributeMap, aggregateDelimiter)
 		}
-
+		am.DereferenceAliases = agg.DereferenceAliases
+		am.MaximumPageSize = agg.MaximumPageSize
 		authMethods = append(authMethods, &am)
 	}
 	return authMethods, nil
@@ -242,6 +243,8 @@ type authMethodAgg struct {
 	BindPasswordHmac         []byte
 	BindKeyId                string
 	AccountAttributeMap      string
+	DereferenceAliases       string
+	MaximumPageSize          uint32
 }
 
 // TableName returns the table name for gorm

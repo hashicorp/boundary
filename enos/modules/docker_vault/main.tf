@@ -1,5 +1,5 @@
 # Copyright (c) HashiCorp, Inc.
-# SPDX-License-Identifier: MPL-2.0
+# SPDX-License-Identifier: BUSL-1.1
 
 terraform {
   required_providers {
@@ -24,8 +24,8 @@ variable "image_name" {
   type        = string
 }
 variable "network_name" {
-  description = "Name of Docker Network"
-  type        = string
+  description = "Name of Docker Networks to join"
+  type        = list(string)
 }
 variable "container_name" {
   description = "Name of Docker Container"
@@ -61,8 +61,11 @@ resource "docker_container" "vault" {
   capabilities {
     add = ["IPC_LOCK"]
   }
-  networks_advanced {
-    name = var.network_name
+  dynamic "networks_advanced" {
+    for_each = var.network_name
+    content {
+      name = networks_advanced.value
+    }
   }
 }
 

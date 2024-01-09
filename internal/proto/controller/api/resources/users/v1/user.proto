@@ -14,19 +14,19 @@ option go_package = "github.com/hashicorp/boundary/sdk/pbs/controller/api/resour
 
 message Account {
   // Output only. The ID of the Account.
-  string id = 10; // @gotags: `class:"public"`
+  string id = 10; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. The Scope containing the Account.
-  string scope_id = 20 [json_name = "scope_id"]; // @gotags: `class:"public"`
+  string scope_id = 20 [json_name = "scope_id"]; // @gotags: `class:"public" eventstream:"observation"`
 }
 
 // User contains all fields related to a User resource
 message User {
   // Output only. The ID of the User.
-  string id = 10; // @gotags: `class:"public"`
+  string id = 10; // @gotags: `class:"public" eventstream:"observation"`
 
   // The ID of the Scope this resource is in.
-  string scope_id = 20 [json_name = "scope_id"]; // @gotags: `class:"public"`
+  string scope_id = 20 [json_name = "scope_id"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. Scope information for this resource.
   resources.scopes.v1.ScopeInfo scope = 30;
@@ -50,17 +50,17 @@ message User {
   ]; // @gotags: `class:"sensitive"`
 
   // Output only. The time this resource was created.
-  google.protobuf.Timestamp created_time = 60 [json_name = "created_time"]; // @gotags: `class:"public"`
+  google.protobuf.Timestamp created_time = 60 [json_name = "created_time"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. The time this resource was last updated.
-  google.protobuf.Timestamp updated_time = 70 [json_name = "updated_time"]; // @gotags: `class:"public"`
+  google.protobuf.Timestamp updated_time = 70 [json_name = "updated_time"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
   uint32 version = 80; // @gotags: `class:"public"`
 
   // Output only. Contains the list of Account IDs linked to this User.
-  repeated string account_ids = 90 [json_name = "account_ids"]; // @gotags: `class:"public"`
+  repeated string account_ids = 90 [json_name = "account_ids"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. The Accounts linked to this User.
   repeated Account accounts = 100;
@@ -82,5 +82,5 @@ message User {
 
   // Output only. primary_account_id is a string that maps to the user's account
   // public_id from the scope's primary auth method
-  string primary_account_id = 140 [json_name = "primary_account_id"]; // @gotags: `class:"public"`
+  string primary_account_id = 140 [json_name = "primary_account_id"]; // @gotags: `class:"public" eventstream:"observation"`
 }

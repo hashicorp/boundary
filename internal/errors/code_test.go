@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package errors
 
@@ -409,6 +409,16 @@ func TestCode_Both_String_Info(t *testing.T) {
 			name: "ChecksumMismatch",
 			c:    ChecksumMismatch,
 			want: ChecksumMismatch,
+		},
+		{
+			name: "InvalidConfiguration",
+			c:    InvalidConfiguration,
+			want: InvalidConfiguration,
+		},
+		{
+			name: "InvalidListToken",
+			c:    InvalidListToken,
+			want: InvalidListToken,
 		},
 	}
 	for _, tt := range tests {

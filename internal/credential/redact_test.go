@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package credential
 
@@ -177,7 +177,7 @@ func TestJsonObject_MarshalJSON(t *testing.T) {
 	t.Run("within-struct", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		secret := JsonObject{
-			structpb.Struct{
+			Struct: &structpb.Struct{
 				Fields: map[string]*structpb.Value{
 					"secret": structpb.NewStringValue("password"),
 				},

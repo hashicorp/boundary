@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 //go:build memprofiler
 // +build memprofiler
@@ -14,7 +14,7 @@ import (
 	"runtime/pprof"
 	"time"
 
-	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/event"
 )
 
 func StartMemProfiler(ctx context.Context) {

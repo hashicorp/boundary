@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package worker
 
@@ -26,9 +26,9 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/worker/proxy"
 	"github.com/hashicorp/boundary/internal/daemon/worker/session"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/event"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/servers"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
-	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/storage"
 	boundary_plugin_assets "github.com/hashicorp/boundary/plugins/boundary"
@@ -127,10 +127,11 @@ type Worker struct {
 
 	recorderManager recorderManager
 
-	everAuthenticated *ua.Uint32
-	lastStatusSuccess *atomic.Value
-	workerStartTime   time.Time
-	operationalState  *atomic.Value
+	everAuthenticated       *ua.Uint32
+	lastStatusSuccess       *atomic.Value
+	workerStartTime         time.Time
+	operationalState        *atomic.Value
+	upstreamConnectionState *atomic.Value
 
 	controllerMultihopConn *atomic.Value
 
@@ -207,6 +208,7 @@ func New(ctx context.Context, conf *Config) (*Worker, error) {
 		pkiConnManager:              cluster.NewDownstreamManager(),
 		successfulStatusGracePeriod: new(atomic.Int64),
 		statusCallTimeoutDuration:   new(atomic.Int64),
+		upstreamConnectionState:     new(atomic.Value),
 	}
 
 	w.operationalState.Store(server.UnknownOperationalState)
@@ -233,8 +235,8 @@ func New(ctx context.Context, conf *Config) (*Worker, error) {
 		var enableStorageLoopback bool
 
 		for _, enabledPlugin := range w.conf.Server.EnabledPlugins {
-			switch enabledPlugin {
-			case base.EnabledPluginAws:
+			switch {
+			case enabledPlugin == base.EnabledPluginAws && !w.conf.SkipPlugins:
 				pluginType := strings.ToLower(enabledPlugin.String())
 				client, cleanup, err := external_plugins.CreateStoragePlugin(
 					ctx,
@@ -250,12 +252,13 @@ func New(ctx context.Context, conf *Config) (*Worker, error) {
 				}
 				conf.ShutdownFuncs = append(conf.ShutdownFuncs, cleanup)
 				plgClients[pluginType] = client
-			case base.EnabledPluginLoopback:
+			case enabledPlugin == base.EnabledPluginLoopback:
 				enableStorageLoopback = true
 			}
 		}
 
-		s, err := recordingStorageFactory(ctx, w.conf.RawConfig.Worker.RecordingStoragePath, plgClients, enableStorageLoopback)
+		// passing in an empty context so that storage can finish syncing during an emergency shutdown or interrupt
+		s, err := recordingStorageFactory(context.Background(), w.conf.RawConfig.Worker.RecordingStoragePath, plgClients, enableStorageLoopback)
 		if err != nil {
 			return nil, fmt.Errorf("error create recording storage: %w", err)
 		}

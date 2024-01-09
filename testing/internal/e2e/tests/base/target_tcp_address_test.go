@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package base_test
 
@@ -33,7 +33,7 @@ func TestCliCreateUpdateTargetAddress(t *testing.T) {
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
 	newProjectId := boundary.CreateNewProjectCli(t, ctx, newOrgId)
-	newTargetId := boundary.CreateNewTargetCli(t, ctx, newProjectId, c.TargetPort, target.WithAddress(c.TargetIp))
+	newTargetId := boundary.CreateNewTargetCli(t, ctx, newProjectId, c.TargetPort, target.WithAddress(c.TargetAddress))
 
 	// Connect to target and print host's IP address
 	output := e2e.RunCommand(ctx, "boundary",
@@ -55,7 +55,7 @@ func TestCliCreateUpdateTargetAddress(t *testing.T) {
 
 	parts := strings.Fields(string(output.Stdout))
 	hostIp := parts[len(parts)-1]
-	require.Equal(t, c.TargetIp, hostIp, "SSH session did not return expected output")
+	require.Equal(t, c.TargetAddress, hostIp, "SSH session did not return expected output")
 	t.Log("Successfully connected to target")
 
 	// Remove target address. We have now no address or host sources.
@@ -98,7 +98,7 @@ func TestCliCreateUpdateTargetAddress(t *testing.T) {
 		e2e.WithArgs(
 			"targets", "update", "tcp",
 			"-id", newTargetId,
-			"-address", c.TargetIp,
+			"-address", c.TargetAddress,
 			"-format", "json",
 		),
 	)
@@ -124,7 +124,7 @@ func TestCliCreateUpdateTargetAddress(t *testing.T) {
 
 	parts = strings.Fields(string(output.Stdout))
 	hostIp = parts[len(parts)-1]
-	require.Equal(t, c.TargetIp, hostIp, "SSH session did not return expected output")
+	require.Equal(t, c.TargetAddress, hostIp, "SSH session did not return expected output")
 	t.Log("Successfully connected to target")
 }
 
@@ -150,9 +150,9 @@ func TestCliTargetAddressToHostSource(t *testing.T) {
 	newProjectId := boundary.CreateNewProjectCli(t, ctx, newOrgId)
 	newHostCatalogId := boundary.CreateNewHostCatalogCli(t, ctx, newProjectId)
 	newHostSetId := boundary.CreateNewHostSetCli(t, ctx, newHostCatalogId)
-	newHostId := boundary.CreateNewHostCli(t, ctx, newHostCatalogId, c.TargetIp)
+	newHostId := boundary.CreateNewHostCli(t, ctx, newHostCatalogId, c.TargetAddress)
 	boundary.AddHostToHostSetCli(t, ctx, newHostSetId, newHostId)
-	newTargetId := boundary.CreateNewTargetCli(t, ctx, newProjectId, c.TargetPort, target.WithAddress(c.TargetIp))
+	newTargetId := boundary.CreateNewTargetCli(t, ctx, newProjectId, c.TargetPort, target.WithAddress(c.TargetAddress))
 
 	// Connect to target and print host's IP address
 	output := e2e.RunCommand(ctx, "boundary",
@@ -174,7 +174,7 @@ func TestCliTargetAddressToHostSource(t *testing.T) {
 
 	parts := strings.Fields(string(output.Stdout))
 	hostIp := parts[len(parts)-1]
-	require.Equal(t, c.TargetIp, hostIp, "SSH session did not return expected output")
+	require.Equal(t, c.TargetAddress, hostIp, "SSH session did not return expected output")
 	t.Log("Successfully connected to target")
 
 	// Attempt add-host-sources. Should error because the target has an address.
@@ -240,7 +240,7 @@ func TestCliTargetAddressToHostSource(t *testing.T) {
 
 	parts = strings.Fields(string(output.Stdout))
 	hostIp = parts[len(parts)-1]
-	require.Equal(t, c.TargetIp, hostIp, "SSH session did not return expected output")
+	require.Equal(t, c.TargetAddress, hostIp, "SSH session did not return expected output")
 	t.Log("Successfully connected to target")
 }
 
@@ -267,7 +267,7 @@ func TestCliTargetHostSourceToAddress(t *testing.T) {
 	newProjectId := boundary.CreateNewProjectCli(t, ctx, newOrgId)
 	newHostCatalogId := boundary.CreateNewHostCatalogCli(t, ctx, newProjectId)
 	newHostSetId := boundary.CreateNewHostSetCli(t, ctx, newHostCatalogId)
-	newHostId := boundary.CreateNewHostCli(t, ctx, newHostCatalogId, c.TargetIp)
+	newHostId := boundary.CreateNewHostCli(t, ctx, newHostCatalogId, c.TargetAddress)
 	boundary.AddHostToHostSetCli(t, ctx, newHostSetId, newHostId)
 	newTargetId := boundary.CreateNewTargetCli(t, ctx, newProjectId, c.TargetPort)
 	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, newHostSetId)
@@ -292,7 +292,7 @@ func TestCliTargetHostSourceToAddress(t *testing.T) {
 
 	parts := strings.Fields(string(output.Stdout))
 	hostIp := parts[len(parts)-1]
-	require.Equal(t, c.TargetIp, hostIp, "SSH session did not return expected output")
+	require.Equal(t, c.TargetAddress, hostIp, "SSH session did not return expected output")
 	t.Log("Successfully connected to target")
 
 	// Attempt to add an address to the target - should error because we have
@@ -301,7 +301,7 @@ func TestCliTargetHostSourceToAddress(t *testing.T) {
 		e2e.WithArgs(
 			"targets", "update", "tcp",
 			"-id", newTargetId,
-			"-address", c.TargetIp,
+			"-address", c.TargetAddress,
 			"-format", "json",
 		),
 	)
@@ -318,7 +318,7 @@ func TestCliTargetHostSourceToAddress(t *testing.T) {
 		e2e.WithArgs(
 			"targets", "update", "tcp",
 			"-id", newTargetId,
-			"-address", c.TargetIp,
+			"-address", c.TargetAddress,
 			"-format", "json",
 		),
 	)

@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package cluster
 
@@ -13,7 +13,7 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller"
 	tg "github.com/hashicorp/boundary/internal/daemon/controller/handlers/targets"
 	"github.com/hashicorp/boundary/internal/daemon/worker"
-	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/internal/tests/helper"
 	"github.com/hashicorp/dawdle"
 	"github.com/hashicorp/go-hclog"
@@ -22,8 +22,8 @@ import (
 
 func TestWorkerSessionProxyMultipleConnections(t *testing.T) {
 	const op = "cluster.TestWorkerSessionMultipleConnections"
-	t.Parallel()
 
+	// This prevents us from running tests in parallel.
 	tg.SetupSuiteTargetFilters(t)
 
 	require := require.New(t)
@@ -46,7 +46,7 @@ func TestWorkerSessionProxyMultipleConnections(t *testing.T) {
 	})
 	defer c1.Shutdown()
 
-	expectWorkers(t, c1)
+	helper.ExpectWorkers(t, c1)
 
 	// Wire up the testing proxies
 	require.Len(c1.ClusterAddrs(), 1)
@@ -71,7 +71,7 @@ func TestWorkerSessionProxyMultipleConnections(t *testing.T) {
 	require.NoError(err)
 	err = c1.WaitForNextWorkerStatusUpdate(w1.Name())
 	require.NoError(err)
-	expectWorkers(t, c1, w1)
+	helper.ExpectWorkers(t, c1, w1)
 
 	// Use an independent context for test things that take a context so
 	// that we aren't tied to any timeouts in the controller, etc. This

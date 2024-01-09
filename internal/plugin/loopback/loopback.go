@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package loopback
 
@@ -36,7 +36,7 @@ type LoopbackPlugin struct {
 	*LoopbackStorage
 }
 
-// NewLoopbackPlugin returns a new loopback pluginre
+// NewLoopbackPlugin returns a new loopback plugin.
 // For storage service testings NewLoopbackPlugin Supports WithMockErrors
 // and WithMockBuckets as options. If no mock buckets are provided,
 // a bucket named `default` will be created.

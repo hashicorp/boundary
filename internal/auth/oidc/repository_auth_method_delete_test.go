@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package oidc
 
@@ -38,6 +38,27 @@ func TestRepository_DeleteAuthMethod(t *testing.T) {
 				require.NoError(t, err)
 				return TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, "alice_rp", "alices-dogs-name",
 					WithIssuer(TestConvertToUrls(t, "https://alice.com")[0]), WithApiUrl(TestConvertToUrls(t, "https://api.com")[0]))
+			}(),
+			wantRowsDeleted: 1,
+		},
+		{
+			name: "valid-with-prompts",
+			authMethod: func() *AuthMethod {
+				org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+				databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
+				require.NoError(t, err)
+				return TestAuthMethod(
+					t,
+					conn,
+					databaseWrapper,
+					org.PublicId,
+					InactiveState,
+					"alice_rp",
+					"alices-dogs-name",
+					WithIssuer(TestConvertToUrls(t, "https://alice.com")[0]),
+					WithApiUrl(TestConvertToUrls(t, "https://api.com")[0]),
+					WithPrompts(SelectAccount),
+				)
 			}(),
 			wantRowsDeleted: 1,
 		},

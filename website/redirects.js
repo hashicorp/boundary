@@ -1,6 +1,6 @@
 /**
  * Copyright (c) HashiCorp, Inc.
- * SPDX-License-Identifier: MPL-2.0
+ * SPDX-License-Identifier: BUSL-1.1
  */
 
 module.exports = [
@@ -131,6 +131,17 @@ module.exports = [
   {
     source: '/boundary/docs/concepts/service-discovery',
     destination: '/boundary/docs/concepts/host-discovery',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/operations/manage-recorded-sessions',
+    destination: '/boundary/docs/operations/session-recordings',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/common-workflows/workflow-ssh-proxycommand',
+    destination:
+      '/boundary/docs/concepts/connection-workflows/workflow-ssh-proxycommand',
     permanent: true,
   },
 ]

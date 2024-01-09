@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package oidc
 
@@ -425,6 +425,83 @@ func TestAccount_ImmutableFields(t *testing.T) {
 			after.SetTableName(defaultAccountTableName)
 			err = rw.LookupById(context.Background(), after)
 			require.NoError(err)
+
+			assert.True(proto.Equal(orig, after))
+		})
+	}
+}
+
+func TestPrompt_ImmutableFields(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, wrapper)
+	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	rw := db.New(conn)
+	ctx := context.Background()
+	databaseWrapper, err := kmsCache.GetWrapper(ctx, org.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+
+	ts := timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{Seconds: 0, Nanos: 0}}
+
+	am := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, "alice_rp", "my-dogs-name",
+		WithApiUrl(TestConvertToUrls(t, "https://api.com")[0]), WithPrompts(SelectAccount))
+
+	new := AllocPrompt()
+	require.NoError(t, rw.LookupWhere(ctx, &new, "oidc_method_id = ? and prompt = ?", []any{am.PublicId, SelectAccount}))
+
+	tests := []struct {
+		name      string
+		update    *Prompt
+		fieldMask []string
+	}{
+		{
+			name: "oidc_method_id",
+			update: func() *Prompt {
+				cp := new.Clone()
+				cp.OidcMethodId = "p_thisIsNotAValidId"
+				return cp
+			}(),
+			fieldMask: []string{"PublicId"},
+		},
+		{
+			name: "create time",
+			update: func() *Prompt {
+				cp := new.Clone()
+				cp.CreateTime = &ts
+				return cp
+			}(),
+			fieldMask: []string{"CreateTime"},
+		},
+		{
+			name: "prompt",
+			update: func() *Prompt {
+				cp := new.Clone()
+				cp.PromptParam = string(Consent)
+				return cp
+			}(),
+			fieldMask: []string{"PromptParam"},
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+
+			orig := new.Clone()
+			orig.SetTableName(defaultAuthMethodTableName)
+			require.NoError(rw.LookupWhere(ctx, &new, "oidc_method_id = ? and prompt = ?", []any{orig.OidcMethodId, orig.PromptParam}))
+
+			require.NoError(err)
+
+			tt.update.SetTableName(defaultAuthMethodTableName)
+			rowsUpdated, err := rw.Update(context.Background(), tt.update, tt.fieldMask, nil, db.WithSkipVetForWrite(true))
+			require.Error(err)
+			assert.Equal(0, rowsUpdated)
+
+			after := new.Clone()
+			after.SetTableName(defaultAuthMethodTableName)
+			require.NoError(rw.LookupWhere(ctx, &new, "oidc_method_id = ? and prompt = ?", []any{after.OidcMethodId, after.PromptParam}))
 
 			assert.True(proto.Equal(orig, after))
 		})

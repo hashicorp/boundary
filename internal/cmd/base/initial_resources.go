@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package base
 
@@ -632,14 +632,17 @@ func (b *Server) RegisterPlugin(ctx context.Context, name string, hostClient plg
 // tokens. It also creates a role with an `authorize-session` grant for the
 // provided targetId.
 func unprivilegedDevUserRoleSetup(ctx context.Context, repo *iam.Repository, userId, projectId, targetId string) error {
-	roles, err := repo.ListRoles(ctx, []string{projectId})
+	noopFilter := func(ctx context.Context, item *iam.Role) (bool, error) {
+		return true, nil
+	}
+	roles, err := iam.ListRoles(ctx, []byte("dummy grant"), globals.DefaultMaxPageSize, noopFilter, repo, []string{projectId})
 	if err != nil {
 		return fmt.Errorf("failed to list existing roles for project id %q: %w", projectId, err)
 	}
 
 	// Look for default grants role to set unprivileged user as a principal.
 	defaultRoleIdx := -1
-	for i, r := range roles {
+	for i, r := range roles.Items {
 		// Hacky, I know, but saves a DB trip to look up other
 		// characteristics like "if any principals are currently attached".
 		// No matter what we pick here it's a bit heuristical.
@@ -651,7 +654,7 @@ func unprivilegedDevUserRoleSetup(ctx context.Context, repo *iam.Repository, use
 	if defaultRoleIdx == -1 {
 		return fmt.Errorf("couldn't find default grants role for project id %q", projectId)
 	}
-	defaultRole := roles[defaultRoleIdx]
+	defaultRole := roles.Items[defaultRoleIdx]
 
 	// This function may be called more than once for the same boundary
 	// deployment (eg: if we're creating more than one target), so we need to

@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package ldap
 
@@ -8,6 +8,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/internal/iam"
 )
 
@@ -82,7 +83,10 @@ func Authenticate(
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-
+	if err := event.WriteObservation(ctx, op, event.WithDetails("user_id", user.GetPublicId(), "auth_token_start",
+		token.GetCreateTime(), "auth_token_end", token.GetExpirationTime())); err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("Unable to write observation event for authenticate method"))
+	}
 	return token, nil
 }
 

@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package vault
 
@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -132,6 +133,11 @@ func (cs *CredentialStore) TableName() string {
 // SetTableName sets the table name.
 func (cs *CredentialStore) SetTableName(n string) {
 	cs.tableName = n
+}
+
+// GetResourceType returns the resource type of the CredentialStore
+func (cs *CredentialStore) GetResourceType() resource.Type {
+	return resource.CredentialStore
 }
 
 func (cs *CredentialStore) oplog(op oplog.OpType) oplog.Metadata {

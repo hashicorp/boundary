@@ -1,15 +1,19 @@
-// Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// Copyright (c) HashiCorp Inc.
+// SPDX-License-Identifier: BUSL-1.1
 
 package vault
 
 import (
 	"context"
+	"fmt"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/credential/vault/store"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -102,6 +106,11 @@ func (l *CredentialLibrary) SetTableName(n string) {
 	l.tableName = n
 }
 
+// GetResourceType returns the resource type of the CredentialLibrary
+func (l *CredentialLibrary) GetResourceType() resource.Type {
+	return resource.CredentialLibrary
+}
+
 func (l *CredentialLibrary) oplog(op oplog.OpType) oplog.Metadata {
 	metadata := oplog.Metadata{
 		"resource-public-id": []string{l.PublicId},
@@ -115,13 +124,99 @@ func (l *CredentialLibrary) oplog(op oplog.OpType) oplog.Metadata {
 }
 
 // CredentialType returns the type of credential the library retrieves.
-func (l *CredentialLibrary) CredentialType() credential.Type {
+func (l *CredentialLibrary) CredentialType() globals.CredentialType {
 	switch ct := l.GetCredentialType(); ct {
 	case "":
-		return credential.UnspecifiedType
+		return globals.UnspecifiedCredentialType
 	default:
-		return credential.Type(ct)
+		return globals.CredentialType(ct)
 	}
 }
 
 var _ credential.Library = (*CredentialLibrary)(nil)
+
+// listCredentialLibraryResult represents the result of the
+// list queries used to list all credential libraries.
+type listCredentialLibraryResult struct {
+	PublicId                  string
+	StoreId                   string
+	ProjectId                 string
+	Name                      string
+	Description               string
+	VaultPath                 string
+	CredentialType            string
+	HttpMethod                string
+	HttpRequestBody           string
+	Username                  string
+	KeyType                   string
+	Ttl                       string
+	KeyId                     string
+	CriticalOptions           string
+	Extensions                string
+	AdditionalValidPrincipals string
+	CreateTime                *timestamp.Timestamp
+	UpdateTime                *timestamp.Timestamp
+	Version                   int
+	KeyBits                   int
+	Type                      string
+}
+
+func (l *listCredentialLibraryResult) toLibrary(ctx context.Context) (credential.Library, error) {
+	const op = "vault.(*listCredentialLibraryResult).toLibrary"
+	switch l.Type {
+	case "generic":
+		cl := &CredentialLibrary{
+			CredentialLibrary: &store.CredentialLibrary{
+				PublicId:       l.PublicId,
+				StoreId:        l.StoreId,
+				Name:           l.Name,
+				Description:    l.Description,
+				CreateTime:     l.CreateTime,
+				UpdateTime:     l.UpdateTime,
+				Version:        uint32(l.Version),
+				VaultPath:      l.VaultPath,
+				CredentialType: l.CredentialType,
+				HttpMethod:     l.HttpMethod,
+			},
+		}
+		// Assign byte slices only if the string isn't empty
+		if l.HttpRequestBody != "" {
+			cl.HttpRequestBody = []byte(l.HttpRequestBody)
+		}
+		return cl, nil
+	case "ssh":
+		return &SSHCertificateCredentialLibrary{
+			SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
+				PublicId:                  l.PublicId,
+				StoreId:                   l.StoreId,
+				Name:                      l.Name,
+				Description:               l.Description,
+				CreateTime:                l.CreateTime,
+				UpdateTime:                l.UpdateTime,
+				Version:                   uint32(l.Version),
+				VaultPath:                 l.VaultPath,
+				CredentialType:            l.CredentialType,
+				Username:                  l.Username,
+				KeyType:                   l.KeyType,
+				KeyBits:                   uint32(l.KeyBits),
+				Ttl:                       l.Ttl,
+				KeyId:                     l.KeyId,
+				CriticalOptions:           l.CriticalOptions,
+				Extensions:                l.Extensions,
+				AdditionalValidPrincipals: l.AdditionalValidPrincipals,
+			},
+		}, nil
+	default:
+		return nil, errors.New(ctx, errors.Internal, op, fmt.Sprintf("unexpected vault credential library type %s returned", l.Type))
+	}
+}
+
+type deletedCredentialLibrary struct {
+	PublicId   string `gorm:"primary_key"`
+	DeleteTime *timestamp.Timestamp
+}
+
+// TableName returns the tablename to override the default gorm table name
+func (s *deletedCredentialLibrary) TableName() string {
+	return "credential_vault_library_deleted"
+}

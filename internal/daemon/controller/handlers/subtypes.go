@@ -1,9 +1,12 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package handlers
 
 import (
+	"context"
+	"runtime/trace"
+
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -30,7 +33,8 @@ func StructToProto(fields *structpb.Struct, p proto.Message, opt ...Option) erro
 	return nil
 }
 
-func ProtoToStruct(p proto.Message) (*structpb.Struct, error) {
+func ProtoToStruct(ctx context.Context, p proto.Message) (*structpb.Struct, error) {
+	defer trace.StartRegion(ctx, "subtypes.ProtoToStruct").End()
 	js, err := protojson.MarshalOptions{UseProtoNames: true}.Marshal(p)
 	if err != nil {
 		return nil, err

@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package base_test
 
@@ -16,9 +16,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestCliTcpTargetConnectTargetWithSsh uses the boundary cli to create a credential using boundary's
-// built-in credential store. The test attaches that credential to a target and attempts to connect
-// to that target using those credentials.
+// TestCliTcpTargetConnectTargetWithSsh uses the boundary cli to
+// connect to a target using `connect ssh`
 func TestCliTcpTargetConnectTargetWithSsh(t *testing.T) {
 	e2e.MaybeSkipTest(t)
 	c, err := loadTestConfig()
@@ -36,7 +35,7 @@ func TestCliTcpTargetConnectTargetWithSsh(t *testing.T) {
 	newProjectId := boundary.CreateNewProjectCli(t, ctx, newOrgId)
 	newHostCatalogId := boundary.CreateNewHostCatalogCli(t, ctx, newProjectId)
 	newHostSetId := boundary.CreateNewHostSetCli(t, ctx, newHostCatalogId)
-	newHostId := boundary.CreateNewHostCli(t, ctx, newHostCatalogId, c.TargetIp)
+	newHostId := boundary.CreateNewHostCli(t, ctx, newHostCatalogId, c.TargetAddress)
 	boundary.AddHostToHostSetCli(t, ctx, newHostSetId, newHostId)
 	newTargetId := boundary.CreateNewTargetCli(t, ctx, newProjectId, c.TargetPort)
 	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, newHostSetId)

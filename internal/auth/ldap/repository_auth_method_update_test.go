@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package ldap
 
@@ -87,6 +87,8 @@ func TestRepository_UpdateAuthMethod(t *testing.T) {
 						"displayName": ToFullNameAttribute,
 						"mail":        ToEmailAttribute,
 					}),
+					WithDerefAliases(testCtx, DerefAlways),
+					WithMaximumPageSize(testCtx, 10),
 				)
 			},
 			updateWith: func(orig *AuthMethod) *AuthMethod {
@@ -117,6 +119,8 @@ func TestRepository_UpdateAuthMethod(t *testing.T) {
 				am.AccountAttributeMaps = []string{
 					fmt.Sprintf("%s=%s", "cn", ToFullNameAttribute),
 				}
+				am.DereferenceAliases = string(NeverDerefAliases)
+				am.MaximumPageSize = 100
 				return &am
 			},
 			fieldMasks: []string{
@@ -143,6 +147,8 @@ func TestRepository_UpdateAuthMethod(t *testing.T) {
 				ClientCertificateField,
 				ClientCertificateKeyField,
 				AccountAttributeMapsField,
+				DerefAliasesField,
+				MaximumPageSizeField,
 			},
 			version: 1,
 			want: func(orig, updateWith *AuthMethod) *AuthMethod {
@@ -172,6 +178,8 @@ func TestRepository_UpdateAuthMethod(t *testing.T) {
 				am.ClientCertificate = updateWith.ClientCertificate
 				am.ClientCertificateKeyHmac = updateWith.ClientCertificateKeyHmac
 				am.AccountAttributeMaps = updateWith.AccountAttributeMaps
+				am.DereferenceAliases = string(NeverDerefAliases)
+				am.MaximumPageSize = 100
 				return am
 			},
 		},
@@ -318,6 +326,8 @@ func TestRepository_UpdateAuthMethod(t *testing.T) {
 					WithBindCredential(testCtx, "orig-bind-dn", "orig-bind-password"),
 					WithCertificates(testCtx, testCert),
 					WithClientCertificate(testCtx, derPrivKey, testCert), // not a client cert but good enough for this test.
+					WithDerefAliases(testCtx, DerefAlways),
+					WithMaximumPageSize(testCtx, 10),
 				)
 			},
 			updateWith: func(orig *AuthMethod) *AuthMethod {
@@ -335,6 +345,8 @@ func TestRepository_UpdateAuthMethod(t *testing.T) {
 				UpnDomainField,
 				EnableGroupsField,
 				UseTokenGroupsField,
+				DerefAliasesField,
+				MaximumPageSizeField,
 			},
 			version: 1,
 			want: func(orig, updateWith *AuthMethod) *AuthMethod {
@@ -348,6 +360,8 @@ func TestRepository_UpdateAuthMethod(t *testing.T) {
 				am.UpnDomain = updateWith.UpnDomain
 				am.EnableGroups = updateWith.EnableGroups
 				am.UseTokenGroups = updateWith.UseTokenGroups
+				am.MaximumPageSize = updateWith.MaximumPageSize
+				am.DereferenceAliases = updateWith.DereferenceAliases
 				return am
 			},
 		},
@@ -376,6 +390,7 @@ func TestRepository_UpdateAuthMethod(t *testing.T) {
 						"mail": ToEmailAttribute,
 						"cn":   ToFullNameAttribute,
 					}),
+					WithDerefAliases(testCtx, NeverDerefAliases),
 				)
 			},
 			updateWith: func(orig *AuthMethod) *AuthMethod {
@@ -394,6 +409,7 @@ func TestRepository_UpdateAuthMethod(t *testing.T) {
 				am.ClientCertificate = testCertEncoded
 				am.ClientCertificateKey = derPrivKey
 				am.AccountAttributeMaps = []string{"cn=fullName"}
+				am.DereferenceAliases = string(DerefAlways)
 				return &am
 			},
 			fieldMasks: []string{
@@ -410,6 +426,7 @@ func TestRepository_UpdateAuthMethod(t *testing.T) {
 				ClientCertificateField,
 				ClientCertificateKeyField,
 				AccountAttributeMapsField,
+				DerefAliasesField,
 			},
 			version: 1,
 			want: func(orig, updateWith *AuthMethod) *AuthMethod {
@@ -428,6 +445,7 @@ func TestRepository_UpdateAuthMethod(t *testing.T) {
 				am.ClientCertificate = updateWith.ClientCertificate
 				am.ClientCertificateKeyHmac = updateWith.ClientCertificateKeyHmac
 				am.AccountAttributeMaps = updateWith.AccountAttributeMaps
+				am.DereferenceAliases = updateWith.DereferenceAliases
 				return am
 			},
 		},
@@ -453,6 +471,7 @@ func TestRepository_UpdateAuthMethod(t *testing.T) {
 						"mail": ToEmailAttribute,
 						"cn":   ToFullNameAttribute,
 					}),
+					WithDerefAliases(testCtx, DerefAlways),
 				)
 			},
 			updateWith: func(orig *AuthMethod) *AuthMethod {
@@ -473,6 +492,7 @@ func TestRepository_UpdateAuthMethod(t *testing.T) {
 				ClientCertificateField,
 				ClientCertificateKeyField,
 				AccountAttributeMapsField,
+				DerefAliasesField,
 			},
 			version: 1,
 			want: func(orig, updateWith *AuthMethod) *AuthMethod {
@@ -491,6 +511,63 @@ func TestRepository_UpdateAuthMethod(t *testing.T) {
 				am.ClientCertificate = updateWith.ClientCertificate
 				am.ClientCertificateKeyHmac = updateWith.ClientCertificateKeyHmac
 				am.AccountAttributeMaps = updateWith.AccountAttributeMaps
+				am.DereferenceAliases = updateWith.DereferenceAliases
+				return am
+			},
+		},
+		{
+			name: "update-just-binddn",
+			ctx:  testCtx,
+			repo: testRepo,
+			setup: func() *AuthMethod {
+				return TestAuthMethod(t,
+					testConn, databaseWrapper,
+					org.PublicId,
+					[]string{"ldaps://ldap1", "ldap://ldap2"},
+					WithBindCredential(testCtx, "orig-bind-dn", "orig-bind-password"),
+				)
+			},
+			updateWith: func(orig *AuthMethod) *AuthMethod {
+				am := AllocAuthMethod()
+				am.PublicId = orig.PublicId
+				am.BindDn = "bind-dn"
+				return &am
+			},
+			fieldMasks: []string{
+				BindDnField,
+			},
+			version: 1,
+			want: func(orig, updateWith *AuthMethod) *AuthMethod {
+				am := orig.clone()
+				am.BindDn = updateWith.BindDn
+				return am
+			},
+		},
+		{
+			name: "update-just-bind-password",
+			ctx:  testCtx,
+			repo: testRepo,
+			setup: func() *AuthMethod {
+				return TestAuthMethod(t,
+					testConn, databaseWrapper,
+					org.PublicId,
+					[]string{"ldaps://ldap1", "ldap://ldap2"},
+					WithBindCredential(testCtx, "orig-bind-dn", "orig-bind-password"),
+				)
+			},
+			updateWith: func(orig *AuthMethod) *AuthMethod {
+				am := AllocAuthMethod()
+				am.PublicId = orig.PublicId
+				am.BindPassword = "bind-password"
+				return &am
+			},
+			fieldMasks: []string{
+				BindPasswordField,
+			},
+			version: 1,
+			want: func(orig, updateWith *AuthMethod) *AuthMethod {
+				am := orig.clone()
+				am.BindPassword = updateWith.BindPassword
 				return am
 			},
 		},

@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package static
 
@@ -690,32 +690,4 @@ func TestRepository_DeleteCatalog(t *testing.T) {
 			assert.Equal(tt.want, got, "row count")
 		})
 	}
-}
-
-func TestRepository_ListCatalogs_Multiple_Scopes(t *testing.T) {
-	t.Parallel()
-	ctx := context.Background()
-	conn, _ := db.TestSetup(t, "postgres")
-	wrapper := db.TestWrapper(t)
-	rw := db.New(conn)
-	kms := kms.TestKms(t, conn, wrapper)
-	repo, err := NewRepository(ctx, rw, rw, kms)
-	assert.NoError(t, err)
-	assert.NotNil(t, repo)
-
-	const numPerScope = 10
-	var projs []string
-	var total int
-	for i := 0; i < numPerScope; i++ {
-		_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-		projs = append(projs, prj.GetPublicId())
-		for j := 0; j < numPerScope; j++ {
-			testCatalog(t, conn, prj.PublicId)
-			total++
-		}
-	}
-
-	got, err := repo.ListCatalogs(ctx, projs)
-	require.NoError(t, err)
-	assert.Equal(t, total, len(got))
 }

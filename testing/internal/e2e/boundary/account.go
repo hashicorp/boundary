@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package boundary
 
@@ -47,7 +47,7 @@ func CreateNewAccountCli(t testing.TB, ctx context.Context, authMethodId string,
 			"-login-name", loginName,
 			"-password", "env://E2E_TEST_ACCOUNT_PASSWORD",
 			"-name", "e2e Account "+loginName,
-			"-description", "e2e Account",
+			"-description", "e2e",
 			"-format", "json",
 		),
 		e2e.WithEnv("E2E_TEST_ACCOUNT_PASSWORD", password),

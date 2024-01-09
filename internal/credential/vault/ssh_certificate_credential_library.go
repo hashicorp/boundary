@@ -1,12 +1,17 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package vault
 
 import (
+	"strings"
+
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/credential/vault/store"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -44,18 +49,19 @@ func NewSSHCertificateCredentialLibrary(storeId string, vaultPath string, userna
 
 	l := &SSHCertificateCredentialLibrary{
 		SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
-			StoreId:         storeId,
-			Name:            opts.withName,
-			Description:     opts.withDescription,
-			VaultPath:       vaultPath,
-			Username:        username,
-			KeyType:         opts.withKeyType,
-			KeyBits:         opts.withKeyBits,
-			Ttl:             opts.withTtl,
-			KeyId:           opts.withKeyId,
-			CriticalOptions: opts.withCriticalOptions,
-			Extensions:      opts.withExtensions,
-			CredentialType:  string(credential.SshCertificateType),
+			StoreId:                   storeId,
+			Name:                      opts.withName,
+			Description:               opts.withDescription,
+			VaultPath:                 vaultPath,
+			Username:                  username,
+			KeyType:                   opts.withKeyType,
+			KeyBits:                   opts.withKeyBits,
+			Ttl:                       opts.withTtl,
+			KeyId:                     opts.withKeyId,
+			CriticalOptions:           opts.withCriticalOptions,
+			Extensions:                opts.withExtensions,
+			CredentialType:            string(globals.SshCertificateCredentialType),
+			AdditionalValidPrincipals: strings.Join(opts.withAdditionalValidPrincipals, ","),
 		},
 	}
 
@@ -92,6 +98,11 @@ func (l *SSHCertificateCredentialLibrary) SetTableName(n string) {
 	l.tableName = n
 }
 
+// GetResourceType returns the resource type of the CredentialLibrary
+func (l *SSHCertificateCredentialLibrary) GetResourceType() resource.Type {
+	return resource.CredentialLibrary
+}
+
 func (l *SSHCertificateCredentialLibrary) oplog(op oplog.OpType) oplog.Metadata {
 	metadata := oplog.Metadata{
 		"resource-public-id": []string{l.PublicId},
@@ -116,8 +127,18 @@ func (l *SSHCertificateCredentialLibrary) getDefaultKeyBits() uint32 {
 }
 
 // CredentialType returns the type of credential the library retrieves.
-func (l *SSHCertificateCredentialLibrary) CredentialType() credential.Type {
-	return credential.Type(l.SSHCertificateCredentialLibrary.CredentialType)
+func (l *SSHCertificateCredentialLibrary) CredentialType() globals.CredentialType {
+	return globals.CredentialType(l.SSHCertificateCredentialLibrary.CredentialType)
 }
 
 var _ credential.Library = (*SSHCertificateCredentialLibrary)(nil)
+
+type deletedSSHCertificateCredentialLibrary struct {
+	PublicId   string `gorm:"primary_key"`
+	DeleteTime *timestamp.Timestamp
+}
+
+// TableName returns the tablename to override the default gorm table name
+func (s *deletedSSHCertificateCredentialLibrary) TableName() string {
+	return "credential_vault_ssh_cert_library_deleted"
+}

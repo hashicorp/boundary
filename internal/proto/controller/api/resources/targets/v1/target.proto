@@ -16,10 +16,10 @@ option go_package = "github.com/hashicorp/boundary/sdk/pbs/controller/api/resour
 
 message HostSource {
   // Output only. The ID of the Host Set.
-  string id = 10; // @gotags: `class:"public"`
+  string id = 10; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. The Host Catalog to which this Host Source belongs.
-  string host_catalog_id = 20 [json_name = "host_catalog_id"]; // @gotags: `class:"public"`
+  string host_catalog_id = 20 [json_name = "host_catalog_id"]; // @gotags: `class:"public" eventstream:"observation"`
 }
 
 message CredentialSource {
@@ -72,10 +72,10 @@ message SessionCredential {
 // Target contains all fields related to a Target resource
 message Target {
   // Output only. The ID of the resource.
-  string id = 10; // @gotags: `class:"public"`
+  string id = 10; // @gotags: `class:"public" eventstream:"observation"`
 
   // The Scope of of this resource. This must be defined for creation of this resource, but is otherwise output only.
-  string scope_id = 20 [json_name = "scope_id"]; // @gotags: `class:"public"`
+  string scope_id = 20 [json_name = "scope_id"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. Scope information for this resource.
   resources.scopes.v1.ScopeInfo scope = 30;
@@ -99,20 +99,20 @@ message Target {
   ]; // @gotags: `class:"public"`
 
   // Output only. The time this resource was created.
-  google.protobuf.Timestamp created_time = 60 [json_name = "created_time"]; // @gotags: `class:"public"`
+  google.protobuf.Timestamp created_time = 60 [json_name = "created_time"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. The time this resource was last updated.
-  google.protobuf.Timestamp updated_time = 70 [json_name = "updated_time"]; // @gotags: `class:"public"`
+  google.protobuf.Timestamp updated_time = 70 [json_name = "updated_time"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
   uint32 version = 80; // @gotags: `class:"public"`
 
   // The type of the Target.
-  string type = 90; // @gotags: `class:"public"`
+  string type = 90; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. The IDs of the Host Sources associated with this Target.
-  repeated string host_source_ids = 420 [json_name = "host_source_ids"]; // @gotags: `class:"public"`
+  repeated string host_source_ids = 420 [json_name = "host_source_ids"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. The Host Sources associated with this Target.
   repeated HostSource host_sources = 430 [json_name = "host_sources"];
@@ -170,19 +170,6 @@ message Target {
     }
   ]; // @gotags: `class:"public"`
 
-  // Output only. The IDs of the application credential source ids associated with this Target.
-  // Deprecated use "brokered_credential_source_ids" instead.
-  repeated string application_credential_source_ids = 400 [
-    json_name = "application_credential_source_ids",
-    deprecated = true
-  ]; // @gotags: `class:"public"`
-  // Output only. The application credential sources associated with this Target.
-  // Deprecated use "brokered_credential_sources" instead.
-  repeated CredentialSource application_credential_sources = 410 [
-    json_name = "application_credential_sources",
-    deprecated = true
-  ];
-
   // Output only. The IDs of the brokered credential source ids associated with this Target.
   repeated string brokered_credential_source_ids = 440 [json_name = "brokered_credential_source_ids"]; // @gotags: `class:"public"`
   // Output only. The brokered credential sources associated with this Target.
@@ -231,6 +218,8 @@ message Target {
   reserved 500, 510;
   reserved "host_set_ids", "host_sets";
   reserved 100, 110;
+  reserved "application_credential_source_ids", "application_credential_sources";
+  reserved 400, 410;
 }
 
 // TcpTargetAttributes contains attributes relevant to Targets of type "tcp"
@@ -297,7 +286,7 @@ message SshTargetAttributes {
       this: "attributes.enable_session_recording"
       that: "EnableSessionRecording"
     }
-  ]; // @gotags: `class:"public"`
+  ]; // @gotags: `class:"public" eventstream:"observation"`
 }
 
 // WorkerInfo contains information about workers, returned in to the client in SessionAuthorization
@@ -306,25 +295,33 @@ message WorkerInfo {
   string address = 10; // @gotags: `class:"public"`
 }
 
-// SessionAuthorizationData contains the fields needed by the proxy command to connect to a worker. It is marshaled inside the SessionAuthorization message.
+// SessionAuthorizationData contains the fields needed by the proxy command to
+// connect to a worker. It is marshaled inside the SessionAuthorization message.
 message SessionAuthorizationData {
   // Output only. The ID of the session.
-  string session_id = 10 [json_name = "session_id"]; // @gotags: `class:"public"`
+  string session_id = 10 [json_name = "session_id"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. The ID of the Target authorizing this session.
-  string target_id = 20 [json_name = "target_id"]; // @gotags: `class:"public"`
+  string target_id = 20 [json_name = "target_id"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. Scope information for this the Target that authorized this session.
   resources.scopes.v1.ScopeInfo scope = 30;
 
   // Output only. The time this resource was created.
-  google.protobuf.Timestamp created_time = 40 [json_name = "created_time"]; // @gotags: `class:"public"`
+  google.protobuf.Timestamp created_time = 40 [json_name = "created_time"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. Type of the session (e.g. tcp, ssh, etc.).
-  string type = 80; // @gotags: `class:"public"`
+  string type = 80; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. The connection limit being applied to this session. -1 means unlimited. This is not actually enforced on the client side but it provides for better listener handling by including it.
   int32 connection_limit = 90 [json_name = "connection_limit"];
+
+  // Output only. The endpoint port that will be connected to, either from a
+  // port directly on the target or from a service definition.
+  uint32 endpoint_port = 102 [json_name = "endpoint_port"]; // @gotags: `class:"public" eventstream:"observation"`
+
+  // Output only. The expiration time of the session.
+  google.protobuf.Timestamp expiration = 105; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. The certificate to use when connecting. Raw DER bytes.
   bytes certificate = 120; // @gotags: `class:"sensitive"`
@@ -333,7 +330,7 @@ message SessionAuthorizationData {
   bytes private_key = 130 [json_name = "private_key"]; // @gotags: `class:"secret"`
 
   // Output only. The host ID...not used for security purposes, but for some special command handling (e.g. ssh host key aliasing).
-  string host_id = 140; // @gotags: `class:"public"`
+  string host_id = 140; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. The endpoint, for some special command handling.
   string endpoint = 141; // @gotags: `class:"public"`
@@ -348,34 +345,41 @@ message SessionAuthorizationData {
 // SessionAuthorization contains all fields related to authorization for a Session. It's in the Targets package because it's returned by a Target's authorize action.
 message SessionAuthorization {
   // Output only. The ID of the Session.
-  string session_id = 10 [json_name = "session_id"]; // @gotags: `class:"public"`
+  string session_id = 10 [json_name = "session_id"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. The ID of the Target authorizing this Session.
-  string target_id = 20 [json_name = "target_id"]; // @gotags: `class:"public"`
+  string target_id = 20 [json_name = "target_id"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. Scope information for this resource.
   resources.scopes.v1.ScopeInfo scope = 30;
 
   // Output only. The time this resource was created.
-  google.protobuf.Timestamp created_time = 40 [json_name = "created_time"]; // @gotags: `class:"public"`
+  google.protobuf.Timestamp created_time = 40 [json_name = "created_time"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. The User for which this Session was authorized.
-  string user_id = 50 [json_name = "user_id"]; // @gotags: `class:"public"`
+  string user_id = 50 [json_name = "user_id"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. The Host Set containing the Host being used for this Session.
-  string host_set_id = 60 [json_name = "host_set_id"]; // @gotags: `class:"public"`
+  string host_set_id = 60 [json_name = "host_set_id"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. The Host whose address is being used as the endpoint for this Session.
-  string host_id = 70 [json_name = "host_id"]; // @gotags: `class:"public"`
+  string host_id = 70 [json_name = "host_id"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. Type of the Session (e.g. tcp, ssh, etc.).
-  string type = 80; // @gotags: `class:"public"`
+  string type = 80; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. The marshaled SessionAuthorizationData message containing all information that the proxy needs.
   string authorization_token = 90 [json_name = "authorization_token"]; // @gotags: `class:"secret"`
 
   // Output only. The endpoint address that the worker will connect to, useful for setting TLS parameters.
   string endpoint = 100; // @gotags: `class:"public"`
+
+  // Output only. The endpoint port that will be connected to, either from a
+  // port directly on the target or from a service definition.
+  uint32 endpoint_port = 102 [json_name = "endpoint_port"]; // @gotags: `class:"public" eventstream:"observation"`
+
+  // Output only. The expiration time of the session.
+  google.protobuf.Timestamp expiration = 105; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. The credentials for this session.
   repeated SessionCredential credentials = 110 [json_name = "credentials"];

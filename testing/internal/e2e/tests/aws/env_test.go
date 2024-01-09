@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package aws_test
 
@@ -16,9 +16,10 @@ type config struct {
 	AwsRegion          string `envconfig:"E2E_AWS_REGION" required:"true"`           // e.g. "us-east-1"
 	TargetSshKeyPath   string `envconfig:"E2E_SSH_KEY_PATH" required:"true"`         // e.g. "/Users/username/key.pem"
 	TargetSshUser      string `envconfig:"E2E_SSH_USER" required:"true"`             // e.g. "ubuntu"
-	TargetPort         string `envconfig:"E2E_SSH_PORT" required:"true"`             // e.g. "22"
-	TargetIp           string `envconfig:"E2E_TARGET_IP" required:"true"`            // e.g. "192.168.0.1"
-	WorkerTags         string `envconfig:"E2E_WORKER_TAG" required:"true"`           // e.g. "[\"tag1\", \"tag2\"]"
+	TargetPort         string `envconfig:"E2E_TARGET_PORT" required:"true"`          // e.g. "22"
+	TargetAddress      string `envconfig:"E2E_TARGET_ADDRESS" required:"true"`       // e.g. "192.168.0.1"
+	WorkerTagEgress    string `envconfig:"E2E_WORKER_TAG_EGRESS" required:"true"`    // e.g. "egress"
+	WorkerAddress      string `envconfig:"E2E_WORKER_ADDRESS" required:"true"`       // e.g. ""192.168.0.2"
 }
 
 func loadTestConfig() (*config, error) {

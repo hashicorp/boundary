@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package oidc
 
@@ -33,7 +33,8 @@ func TestRepository_LookupAuthMethod(t *testing.T) {
 		"alice_rp", "alices-dogs-name",
 		WithAccountClaimMap(map[string]AccountToClaim{"oid": ToSubClaim, "display_name": ToNameClaim}),
 		WithApiUrl(TestConvertToUrls(t, "https://alice-active-priv.com/callback")[0]),
-		WithSigningAlgs(RS256))
+		WithSigningAlgs(RS256),
+		WithPrompts(Consent, SelectAccount))
 	amActivePub := TestAuthMethod(
 		t,
 		conn, databaseWrapper, org.PublicId, ActivePublicState,
@@ -151,6 +152,32 @@ func TestRepository_ListAuthMethods(t *testing.T) {
 				return []string{am1a.ScopeId}, []*AuthMethod{am1a}, am1a.PublicId
 			},
 			opt: []Option{WithLimit(1), WithOrderByCreateTime(true)},
+		},
+		{
+			name: "with-prompts",
+			setupFn: func() ([]string, []*AuthMethod, string) {
+				org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+				databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
+				require.NoError(t, err)
+
+				am1a := TestAuthMethod(
+					t,
+					conn,
+					databaseWrapper,
+					org.PublicId,
+					InactiveState,
+					"alice_rp",
+					"alices-dogs-name",
+					WithIssuer(TestConvertToUrls(t, "https://alice.com")[0]),
+					WithApiUrl(TestConvertToUrls(t, "https://api.com")[0]),
+					WithClaimsScopes("email", "profile"),
+					WithPrompts(Consent, SelectAccount),
+				)
+				iam.TestSetPrimaryAuthMethod(t, iamRepo, org, am1a.PublicId)
+				am1a.IsPrimaryAuthMethod = true
+
+				return []string{am1a.ScopeId}, []*AuthMethod{am1a}, am1a.PublicId
+			},
 		},
 		{
 			name: "no-search-criteria",

@@ -1,0 +1,59 @@
+---
+layout: docs
+page_title: database migrate - Command
+description: |-
+  The "database migrate" command migrates database within an enclosing scope or resource.
+---
+
+# database migrate
+
+Command: `boundary database migrate`
+
+The `database migrate` command migrates the Boundary database within an enclosing scope or resource.
+
+## Examples
+
+The following example migrates Boundary's database to the database URL specified in the controller configuration file:
+
+```shell-session
+$ boundary database migrate -config=/etc/boundary/controller.hcl
+```
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary database migrate [options]
+```
+
+</CodeBlockConfig>
+
+
+### Command options
+
+- `-config` `(string: "")` - The path to the configuration file.
+- `-config-kms` `(string: "")` - The path to a configuration file containing a `kms` block marked for the `config` purpose.
+The KMS block performs decryption of the main configuration file.
+If you don't set a `kms` block, Boundary looks for such a block in the main configuration file, which has some drawbacks; see the help output for `boundary config encrypt -h` for details.
+- `-log-format` `(string: "")` - The log format. Supported values are `standard` and `json`.
+- `-log-level` `(string: "")` - The log verbosity level. Supported values include the following in order of more detail to less:
+
+  - `trace`
+  - `debug`
+  - `info`
+  - `warn`
+  - `err`
+
+  You can also specify a log level using the **BOUNDARY_LOG_LEVEL** environment variable.
+
+### Migration options:
+
+- `-migration-url` `(string: "")` - If set, this value overrides the migration URL set in the configuration file, and specifies the URL use to connect to the database for migration.
+Configuring this option can allow different permissions for the user running initialization or migration vs. a standard operation.
+This value can refer to a direct database URL, or it can refer to a file on disk (`file://`) or an environment variable (env://) from which Boundary reads the URL.
+- `-repair` `(string: "")` - If set, runs the repair function for the provided migration
+  version.
+
+
+@include 'cmd-option-note.mdx'

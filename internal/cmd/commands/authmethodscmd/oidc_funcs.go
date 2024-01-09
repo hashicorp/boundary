@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package authmethodscmd
 
@@ -33,6 +33,7 @@ type extraOidcCmdVars struct {
 	flagAccountClaimMaps                  []string
 	flagDisableDiscoveredConfigValidation bool
 	flagDryRun                            bool
+	flagPrompts                           []string
 }
 
 const (
@@ -50,6 +51,7 @@ const (
 	stateFlagName                             = "state"
 	disableDiscoveredConfigValidationFlagName = "disable-discovered-config-validation"
 	dryRunFlagName                            = "dry-run"
+	promptsFlagName                           = "prompts"
 )
 
 func extraOidcActionsFlagsMapFuncImpl() map[string][]string {
@@ -65,6 +67,7 @@ func extraOidcActionsFlagsMapFuncImpl() map[string][]string {
 			allowedAudienceFlagName,
 			claimsScopes,
 			accountClaimMaps,
+			promptsFlagName,
 		},
 		"change-state": {
 			idFlagName,
@@ -158,6 +161,12 @@ func extraOidcFlagsFuncImpl(c *OidcCommand, set *base.FlagSets, _ *base.FlagSet)
 				Name:   dryRunFlagName,
 				Target: &c.flagDryRun,
 				Usage:  "Performs all completeness and validation checks with any newly-provided values without persisting the changes.",
+			})
+		case promptsFlagName:
+			f.StringSliceVar(&base.StringSliceVar{
+				Name:   promptsFlagName,
+				Target: &c.flagPrompts,
+				Usage:  "The optional prompt parameter that can be included in the authentication request to control the behavior of the authentication flow.",
 			})
 		}
 	}
@@ -282,6 +291,13 @@ func extraOidcFlagHandlingFuncImpl(c *OidcCommand, f *base.FlagSets, opts *[]aut
 	}
 	if c.flagDryRun {
 		*opts = append(*opts, authmethods.WithOidcAuthMethodDryRun(c.flagDryRun))
+	}
+	switch {
+	case len(c.flagPrompts) == 0:
+	case len(c.flagPrompts) == 1 && c.flagPrompts[0] == "null":
+		*opts = append(*opts, authmethods.DefaultOidcAuthMethodPrompts())
+	default:
+		*opts = append(*opts, authmethods.WithOidcAuthMethodPrompts(c.flagPrompts))
 	}
 
 	return true

@@ -26,7 +26,7 @@ The video below provides an overview of the Boundary architecture, components, a
 It also gives a brief walkthrough of the end user's experience.
 
 <video controls>
-  <source src="https://www.datocms-assets.com/2885/1686339121-how-boundary-works-v2.mp4" type="video/mp4" />
+  <source src="https://www.datocms-assets.com/2885/1694719896-how-boundary-works-v3.mp4" type="video/mp4" />
 </video>
 
 The illustration below displays Boundary's core workflow.
@@ -44,13 +44,31 @@ The core Boundary workflow consists of four stages:
 
 - **HCP Boundary**: a managed Boundary offering with commercial features. HashiCorp hosts Boundary's control plane and you have the option of running private workers within your environment.
 - **Boundary Enterprise**: a self-managed Boundary offering with full feature parity to HCP Boundary.
-- **Boundary OSS**: an open source, self-managed version of Boundary.
+- **Boundary Community Edition**: a free, self-managed version of Boundary.
 
 
 If you're not sure which edition is right for you, we recommend [**HCP Boundary**](https://developer.hashicorp.com/boundary/tutorials/hcp-getting-started) because it eliminates deployment operations.
 
 Regardless of which server edition of Boundary you use, all editions require the same Desktop and CLI clients, which you can download [here](https://developer.hashicorp.com/boundary/downloads).
 
+| Feature| Community | HCP | HCP | Enterprise |
+|---|:-:|:-:|:-:|:-:|
+|   | | Standard  | Plus  |  Plus |
+| Just-in-time credential access via HashiCorp Vault  | &#10003;  | &#10003;  | &#10003;  | &#10003;  |
+| Just-in-time network access for TCP, SSH, RDS, K8s database | &#10003;  | &#10003;  | &#10003;  | &#10003;  |
+| Single sign-on access via OIDC and LDAP  | &#10003;  | &#10003;  | &#10003;  | &#10003;  |
+| Identity provider managed groups  | &#10003;  | &#10003;  | &#10003;  | &#10003;  |
+| Terraform support for fully automated deployment and configuration  | &#10003; | &#10003;  | &#10003;  | &#10003;  |
+| Credential brokering  | &#10003;   | &#10003;   | &#10003;   | &#10003;  |
+| Automated target discovery  | &#10003;   | &#10003;  | &#10003;  | &#10003;  |
+| Audit logs  | &#10003;  | &#10003;  | &#10003;  | &#10003;  |
+| Multi-hop sessions  |   | &#10003;  | &#10003;  | &#10003;  |
+| Credential injection  |   | &#10003;  | &#10003;  | &#10003;  |
+| Audit log streaming  |   | &#10003;  | &#10003;  |   |
+| Automatic updates  |   | &#10003;  | &#10003;  |   |
+| Disaster recovery  |   | &#10003;  | &#10003;  |   |
+| Push button deployment  |   | &#10003;  | &#10003;  |   |
+| Session recording  |   |   | &#10003;  | &#10003;  |
 
 ## Get started
 

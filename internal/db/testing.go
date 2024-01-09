@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package db
 
@@ -135,21 +135,16 @@ func TestWrapper(t testing.TB) wrapping.Wrapper {
 	return root
 }
 
-// TestDBWrapper initializes a DB wrapper for testing
-func TestDBWrapper(t testing.TB, conn *DB, purpose kms.KeyPurpose) wrapping.Wrapper {
+// TestOplogWrapper initializes a DB wrapper for testing
+func TestOplogWrapper(t testing.TB, conn *DB) wrapping.Wrapper {
 	t.Helper()
-	purposes := []kms.KeyPurpose{purpose}
-	if purpose != "oplog" {
-		// Always add the oplog purpose, most tests need it
-		purposes = append(purposes, "oplog")
-	}
-	kmsCache, err := kms.New(dbw.New(conn.wrapped.Load()), dbw.New(conn.wrapped.Load()), purposes)
+	kmsCache, err := kms.New(dbw.New(conn.wrapped.Load()), dbw.New(conn.wrapped.Load()), []kms.KeyPurpose{"oplog"}, kms.WithTableNamePrefix("kms_oplog"))
 	require.NoError(t, err)
 	err = kmsCache.AddExternalWrapper(context.Background(), kms.KeyPurposeRootKey, TestWrapper(t))
 	require.NoError(t, err)
-	err = kmsCache.CreateKeys(context.Background(), "global", purposes)
+	err = kmsCache.CreateKeys(context.Background(), "global", []kms.KeyPurpose{"oplog"})
 	require.NoError(t, err)
-	wrapper, err := kmsCache.GetWrapper(context.Background(), "global", purpose)
+	wrapper, err := kmsCache.GetWrapper(context.Background(), "global", "oplog")
 	require.NoError(t, err)
 	return wrapper
 }

@@ -1,5 +1,5 @@
 # Copyright (c) HashiCorp, Inc.
-# SPDX-License-Identifier: MPL-2.0
+# SPDX-License-Identifier: BUSL-1.1
 
 disable_mlock = true
 
@@ -9,6 +9,14 @@ controller {
 
   database {
     url = "env://LOAD_TEST_BOUNDARY_POSTGRES_URL"
+  }
+
+  api_rate_limit {
+    resources = ["*"]
+    actions   = ["*"]
+    per       = "total"
+    limit     = 50
+    period    = "1m"
   }
 }
 

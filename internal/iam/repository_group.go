@@ -1,14 +1,17 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package iam
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
@@ -171,20 +174,6 @@ func (r *Repository) DeleteGroup(ctx context.Context, withPublicId string, _ ...
 		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("for group %s", withPublicId)))
 	}
 	return rowsDeleted, nil
-}
-
-// ListGroups lists groups in the given scopes and supports WithLimit option.
-func (r *Repository) ListGroups(ctx context.Context, withScopeIds []string, opt ...Option) ([]*Group, error) {
-	const op = "iam.(Repository).ListGroups"
-	if len(withScopeIds) == 0 {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
-	}
-	var grps []*Group
-	err := r.list(ctx, &grps, "scope_id in (?)", []any{withScopeIds}, opt...)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-	return grps, nil
 }
 
 // ListGroupMembers of a group and supports WithLimit option.
@@ -559,4 +548,140 @@ func groupMemberChanges(ctx context.Context, reader db.Reader, groupId string, u
 
 	}
 	return addMembers, deleteMembers, nil
+}
+
+// listGroups lists groups in the given scopes and supports WithLimit option.
+func (r *Repository) listGroups(ctx context.Context, withScopeIds []string, opt ...Option) ([]*Group, time.Time, error) {
+	const op = "iam.(Repository).listGroups"
+	if len(withScopeIds) == 0 {
+		return nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
+	}
+	opts := getOpts(opt...)
+
+	limit := r.defaultLimit
+	switch {
+	case opts.withLimit > 0:
+		// non-zero signals an override of the default limit for the repo.
+		limit = opts.withLimit
+	case opts.withLimit < 0:
+		return nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "limit must be non-negative")
+	}
+
+	var args []any
+	whereClause := "scope_id in @scope_ids"
+	args = append(args, sql.Named("scope_ids", withScopeIds))
+
+	if opts.withStartPageAfterItem != nil {
+		whereClause = fmt.Sprintf("(create_time, public_id) < (@last_item_create_time, @last_item_id) and %s", whereClause)
+		args = append(args,
+			sql.Named("last_item_create_time", opts.withStartPageAfterItem.GetCreateTime()),
+			sql.Named("last_item_id", opts.withStartPageAfterItem.GetPublicId()),
+		)
+	}
+	dbOpts := []db.Option{db.WithLimit(limit), db.WithOrder("create_time desc, public_id desc")}
+	return r.queryGroups(ctx, whereClause, args, dbOpts...)
+}
+
+// listGroupsRefresh lists groups in the given scopes and supports the
+// WithLimit and WithStartPageAfterItem options.
+func (r *Repository) listGroupsRefresh(ctx context.Context, updatedAfter time.Time, withScopeIds []string, opt ...Option) ([]*Group, time.Time, error) {
+	const op = "iam.(Repository).listGroupsRefresh"
+
+	switch {
+	case updatedAfter.IsZero():
+		return nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "missing updated after time")
+
+	case len(withScopeIds) == 0:
+		return nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
+	}
+
+	opts := getOpts(opt...)
+
+	limit := r.defaultLimit
+	switch {
+	case opts.withLimit > 0:
+		// non-zero signals an override of the default limit for the repo.
+		limit = opts.withLimit
+	case opts.withLimit < 0:
+		return nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "limit must be non-negative")
+	}
+
+	var args []any
+	whereClause := "update_time > @updated_after_time and scope_id in @scope_ids"
+	args = append(args,
+		sql.Named("updated_after_time", timestamp.New(updatedAfter)),
+		sql.Named("scope_ids", withScopeIds),
+	)
+	if opts.withStartPageAfterItem != nil {
+		whereClause = fmt.Sprintf("(update_time, public_id) < (@last_item_update_time, @last_item_id) and %s", whereClause)
+		args = append(args,
+			sql.Named("last_item_update_time", opts.withStartPageAfterItem.GetUpdateTime()),
+			sql.Named("last_item_id", opts.withStartPageAfterItem.GetPublicId()),
+		)
+	}
+
+	dbOpts := []db.Option{db.WithLimit(limit), db.WithOrder("update_time desc, public_id desc")}
+	return r.queryGroups(ctx, whereClause, args, dbOpts...)
+}
+
+func (r *Repository) queryGroups(ctx context.Context, whereClause string, args []any, opt ...db.Option) ([]*Group, time.Time, error) {
+	const op = "iam.(Repository).queryGroups"
+
+	var transactionTimestamp time.Time
+	var ret []*Group
+	if _, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(rd db.Reader, w db.Writer) error {
+		var inRet []*Group
+		if err := rd.SearchWhere(ctx, &inRet, whereClause, args, opt...); err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+		ret = inRet
+		var err error
+		transactionTimestamp, err = rd.Now(ctx)
+		return err
+	}); err != nil {
+		return nil, time.Time{}, err
+	}
+
+	return ret, transactionTimestamp, nil
+}
+
+// listGroupDeletedIds lists the public IDs of any groups deleted since the timestamp provided.
+func (r *Repository) listGroupDeletedIds(ctx context.Context, since time.Time) ([]string, time.Time, error) {
+	const op = "iam.(Repository).listGroupDeletedIds"
+	var deletedResources []*deletedGroup
+	var transactionTimestamp time.Time
+	if _, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(r db.Reader, _ db.Writer) error {
+		if err := r.SearchWhere(ctx, &deletedResources, "delete_time >= ?", []any{since}); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to query deleted groups"))
+		}
+		var err error
+		transactionTimestamp, err = r.Now(ctx)
+		if err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to get transaction timestamp"))
+		}
+		return nil
+	}); err != nil {
+		return nil, time.Time{}, err
+	}
+	var dIds []string
+	for _, res := range deletedResources {
+		dIds = append(dIds, res.PublicId)
+	}
+	return dIds, transactionTimestamp, nil
+}
+
+// estimatedGroupCount returns an estimate of the total number of items in the iam_group table.
+func (r *Repository) estimatedGroupCount(ctx context.Context) (int, error) {
+	const op = "iam.(Repository).estimatedGroupCount"
+	rows, err := r.reader.Query(ctx, estimateCountGroups, nil)
+	if err != nil {
+		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total groups"))
+	}
+	var count int
+	for rows.Next() {
+		if err := r.reader.ScanRows(ctx, rows, &count); err != nil {
+			return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total groups"))
+		}
+	}
+	return count, nil
 }

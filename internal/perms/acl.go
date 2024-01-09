@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package perms
 
@@ -207,7 +207,7 @@ func (a ACL) Allowed(r Resource, aType action.Type, userId string, opt ...Option
 		case grant.id == r.Id &&
 			grant.id != "" &&
 			grant.id != "*" &&
-			(grant.typ == resource.Unknown || grant.typ == globals.ResourceTypeFromPrefix(grant.id)) &&
+			(grant.typ == resource.Unknown || grant.typ == globals.ResourceInfoFromPrefix(grant.id).Type) &&
 			!action.List.IsActionOrParent(aType) &&
 			!action.Create.IsActionOrParent(aType):
 
@@ -306,7 +306,7 @@ func (a ACL) ListPermissions(requestedScopes map[string]*scopes.ScopeInfo,
 		grants := a.scopeMap[scopeId]
 		for _, grant := range grants {
 			// This grant doesn't match what we're looking for, ignore.
-			if grant.typ != requestedType && grant.typ != resource.All && globals.ResourceTypeFromPrefix(grant.id) != requestedType {
+			if grant.typ != requestedType && grant.typ != resource.All && globals.ResourceInfoFromPrefix(grant.id).Type != requestedType {
 				continue
 			}
 
@@ -316,7 +316,7 @@ func (a ACL) ListPermissions(requestedScopes map[string]*scopes.ScopeInfo,
 			if ok := grant.actions[action.All]; ok {
 				found = true
 			} else {
-				for _, a := range idActions {
+				for a := range idActions {
 					if ok := grant.actions[a]; ok {
 						found = true
 						break
@@ -328,10 +328,10 @@ func (a ACL) ListPermissions(requestedScopes map[string]*scopes.ScopeInfo,
 			}
 
 			actions, _ := grant.Actions()
-			excludeList := make(action.ActionSet, 0, len(actions))
+			excludeList := make(action.ActionSet, len(actions))
 			for _, aa := range actions {
 				if aa != action.List {
-					excludeList = append(excludeList, aa)
+					excludeList.Add(aa)
 				}
 			}
 			p.OnlySelf = p.OnlySelf && excludeList.OnlySelf()

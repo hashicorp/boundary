@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package vault
 
@@ -267,6 +267,58 @@ func TestNewVaultServer(t *testing.T) {
 		require.NotNil(client)
 		require.NoError(client.ping(ctx))
 	})
+	t.Run("TestServerTLS-InsecureSkipVerify", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		v := NewTestVaultServer(t, WithTestVaultTLS(TestServerTLS), WithServerCertHostNames([]string{"kaz"}))
+		require.NotNil(v)
+
+		assert.NotEmpty(v.RootToken)
+		assert.NotEmpty(v.Addr)
+		assert.NotEmpty(v.CaCert)
+
+		conf := &clientConfig{
+			Addr:   v.Addr,
+			Token:  TokenSecret(v.RootToken),
+			CaCert: v.CaCert,
+		}
+
+		client, err := newClient(ctx, conf)
+		require.NoError(err)
+		require.NotNil(client)
+		require.Error(client.ping(ctx))
+
+		conf.TlsSkipVerify = true
+		client, err = newClient(ctx, conf)
+		require.NoError(err)
+		require.NotNil(client)
+		require.NoError(client.ping(ctx))
+	})
+	t.Run("TestServerTLS-TlsServerName", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		v := NewTestVaultServer(t, WithTestVaultTLS(TestServerTLS), WithServerCertHostNames([]string{"kaz"}))
+		require.NotNil(v)
+
+		assert.NotEmpty(v.RootToken)
+		assert.NotEmpty(v.Addr)
+		assert.NotEmpty(v.CaCert)
+
+		conf := &clientConfig{
+			Addr:   v.Addr,
+			Token:  TokenSecret(v.RootToken),
+			CaCert: v.CaCert,
+		}
+
+		client, err := newClient(ctx, conf)
+		require.NoError(err)
+		require.NotNil(client)
+		require.Error(client.ping(ctx))
+
+		conf.TlsServerName = "kaz"
+		client, err = newClient(ctx, conf)
+		require.NoError(err)
+		require.NotNil(client)
+		require.NoError(client.ping(ctx))
+	})
 	t.Run("TestClientTLS", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		v := NewTestVaultServer(t, WithTestVaultTLS(TestClientTLS))
@@ -311,11 +363,13 @@ func TestNewVaultServer(t *testing.T) {
 		assert.Equal(pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: k}), v.ClientKey)
 
 		conf := &clientConfig{
-			Addr:       v.Addr,
-			Token:      TokenSecret(v.RootToken),
-			CaCert:     v.CaCert,
-			ClientCert: v.ClientCert,
-			ClientKey:  v.ClientKey,
+			Addr:          v.Addr,
+			Token:         TokenSecret(v.RootToken),
+			CaCert:        v.CaCert,
+			TlsServerName: v.TlsServerName,
+			TlsSkipVerify: v.TlsSkipVerify,
+			ClientCert:    v.ClientCert,
+			ClientKey:     v.ClientKey,
 		}
 
 		client, err := newClient(ctx, conf)

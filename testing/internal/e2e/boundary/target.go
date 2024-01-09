@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package boundary
 
@@ -60,6 +60,7 @@ func CreateNewTargetCli(t testing.TB, ctx context.Context, projectId string, def
 	args = append(args,
 		"-scope-id", projectId,
 		"-default-port", defaultPort,
+		"-description", "e2e",
 		"-format", "json",
 	)
 
@@ -82,6 +83,9 @@ func CreateNewTargetCli(t testing.TB, ctx context.Context, projectId string, def
 	}
 	if opts.WithIngressWorkerFilter != "" {
 		args = append(args, "-ingress-worker-filter", opts.WithIngressWorkerFilter)
+	}
+	if opts.WithEgressWorkerFilter != "" {
+		args = append(args, "-egress-worker-filter", opts.WithEgressWorkerFilter)
 	}
 
 	output := e2e.RunCommand(ctx, "boundary",

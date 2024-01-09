@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package errors
 
@@ -66,6 +66,8 @@ const (
 	WorkerNotFoundForRequest = 133 // WorkerNotFoundForRequest represents an error when no appropriate worker is found which meets the conditions required to handle a request
 	Closed                   = 134 // Closed represents an error when an operation cannot be completed because the thing being operated on is closed
 	ChecksumMismatch         = 135 // ChecksumMismatch represents an error when a checksum is mismatched
+
+	InvalidListToken Code = 136 // InvalidListToken represents an error where the provided list token is invalid
 
 	AuthAttemptExpired Code = 198 // AuthAttemptExpired represents an expired authentication attempt
 	AuthMethodInactive Code = 199 // AuthMethodInactive represents an error that means the auth method is not active.
@@ -146,4 +148,7 @@ const (
 
 	// OIDC authentication provided errors
 	OidcProviderCallbackError Code = 4000 // OidcProviderCallbackError represents an error that is passed by the OIDC provider to the callback endpoint
+
+	// Configuration error codes
+	InvalidConfiguration Code = 5000 // InvalidConfiguration represents an error with the configuration file.
 )

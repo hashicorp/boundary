@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package bsr
 
@@ -12,6 +12,8 @@ import (
 const (
 	secondSize     = 8
 	nanosecondSize = 4
+	// Values over 999999999 are 1 second and over
+	nanosecondLimit = 999999999
 
 	timestampSize = secondSize + nanosecondSize
 )
@@ -52,6 +54,9 @@ func decodeTimestamp(data []byte) (*Timestamp, error) {
 
 	seconds, data = binary.BigEndian.Uint64(data[:secondSize]), data[secondSize:]
 	nanoseconds, data = binary.BigEndian.Uint32(data[:nanosecondSize]), data[nanosecondSize:]
+	if nanoseconds > nanosecondLimit {
+		return nil, fmt.Errorf("%s: nanosecond value of %d exceeds the max nanosecond value of %d: %w", op, nanoseconds, nanosecondLimit, ErrTimestampDecode)
+	}
 	if len(data) != 0 {
 		return nil, fmt.Errorf("%s: extra data", op)
 	}

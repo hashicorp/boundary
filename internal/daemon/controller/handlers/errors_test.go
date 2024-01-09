@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package handlers
 
@@ -216,6 +216,18 @@ func TestApiErrorHandler(t *testing.T) {
 				Inner: &pb.Error{
 					Kind:    "Internal",
 					Message: "test msg: unknown: error #403",
+				},
+			},
+		},
+		{
+			name: "Invalid list token error",
+			err:  errors.New(ctx, errors.InvalidListToken, errors.Op("test.op"), "this is a test invalid list token error"),
+			expected: ApiError{
+				Status: http.StatusBadRequest,
+				Inner: &pb.Error{
+					Kind:    "invalid list token",
+					Op:      "test.op",
+					Message: "this is a test invalid list token error",
 				},
 			},
 		},

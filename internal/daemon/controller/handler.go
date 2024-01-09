@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package controller
 
@@ -42,10 +42,11 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/users"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/workers"
 	"github.com/hashicorp/boundary/internal/daemon/controller/internal/metric"
+	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	authpb "github.com/hashicorp/boundary/internal/gen/controller/auth"
 	opsservices "github.com/hashicorp/boundary/internal/gen/ops/services"
-	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/ratelimit"
 	"github.com/hashicorp/go-cleanhttp"
 	"github.com/hashicorp/go-secure-stdlib/listenerutil"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
@@ -73,7 +74,7 @@ func createMuxWithEndpoints(c *Controller, props HandlerProperties) (http.Handle
 	}
 
 	mux := http.NewServeMux()
-	mux.Handle("/v1/", grpcGwMux)
+	mux.Handle("/v1/", ratelimit.Handler(c.baseContext, c.getRateLimiter, grpcGwMux))
 	mux.Handle(uiPath, handleUi(c))
 
 	isUiRequest := func(req *http.Request) bool {
@@ -135,56 +136,74 @@ func (c *Controller) registerGrpcServices(s *grpc.Server) error {
 	currentServices := s.GetServiceInfo()
 
 	if _, ok := currentServices[services.HostCatalogService_ServiceDesc.ServiceName]; !ok {
-		hcs, err := host_catalogs.NewService(c.baseContext, c.StaticHostRepoFn, c.PluginHostRepoFn, c.PluginRepoFn, c.IamRepoFn)
+		hcs, err := host_catalogs.NewService(
+			c.baseContext,
+			c.StaticHostRepoFn,
+			c.PluginHostRepoFn,
+			c.PluginRepoFn,
+			c.IamRepoFn,
+			c.HostCatalogRepoFn,
+			c.conf.RawConfig.Controller.MaxPageSize,
+		)
 		if err != nil {
 			return fmt.Errorf("failed to create host catalog handler service: %w", err)
 		}
 		services.RegisterHostCatalogServiceServer(s, hcs)
 	}
 	if _, ok := currentServices[services.HostSetService_ServiceDesc.ServiceName]; !ok {
-		hss, err := host_sets.NewService(c.baseContext, c.StaticHostRepoFn, c.PluginHostRepoFn)
+		hss, err := host_sets.NewService(c.baseContext, c.StaticHostRepoFn, c.PluginHostRepoFn, c.conf.RawConfig.Controller.MaxPageSize)
 		if err != nil {
 			return fmt.Errorf("failed to create host set handler service: %w", err)
 		}
 		services.RegisterHostSetServiceServer(s, hss)
 	}
 	if _, ok := currentServices[services.HostService_ServiceDesc.ServiceName]; !ok {
-		hs, err := hosts.NewService(c.baseContext, c.StaticHostRepoFn, c.PluginHostRepoFn)
+		hs, err := hosts.NewService(c.baseContext, c.StaticHostRepoFn, c.PluginHostRepoFn, c.conf.RawConfig.Controller.MaxPageSize)
 		if err != nil {
 			return fmt.Errorf("failed to create host handler service: %w", err)
 		}
 		services.RegisterHostServiceServer(s, hs)
 	}
 	if _, ok := currentServices[services.AccountService_ServiceDesc.ServiceName]; !ok {
-		accts, err := accounts.NewService(c.baseContext, c.PasswordAuthRepoFn, c.OidcRepoFn, c.LdapRepoFn)
+		accts, err := accounts.NewService(c.baseContext, c.PasswordAuthRepoFn, c.OidcRepoFn, c.LdapRepoFn, c.conf.RawConfig.Controller.MaxPageSize)
 		if err != nil {
 			return fmt.Errorf("failed to create account handler service: %w", err)
 		}
 		services.RegisterAccountServiceServer(s, accts)
 	}
 	if _, ok := currentServices[services.AuthMethodService_ServiceDesc.ServiceName]; !ok {
-		authMethods, err := authmethods.NewService(c.baseContext, c.kms, c.PasswordAuthRepoFn, c.OidcRepoFn, c.IamRepoFn, c.AuthTokenRepoFn, c.LdapRepoFn)
+		authMethods, err := authmethods.NewService(
+			c.baseContext,
+			c.kms,
+			c.PasswordAuthRepoFn,
+			c.OidcRepoFn,
+			c.IamRepoFn,
+			c.AuthTokenRepoFn,
+			c.LdapRepoFn,
+			c.AuthMethodRepoFn,
+			c.conf.RawConfig.Controller.MaxPageSize,
+		)
 		if err != nil {
 			return fmt.Errorf("failed to create auth method handler service: %w", err)
 		}
 		services.RegisterAuthMethodServiceServer(s, authMethods)
 	}
 	if _, ok := currentServices[services.AuthTokenService_ServiceDesc.ServiceName]; !ok {
-		authtoks, err := authtokens.NewService(c.baseContext, c.AuthTokenRepoFn, c.IamRepoFn)
+		authtoks, err := authtokens.NewService(c.baseContext, c.AuthTokenRepoFn, c.IamRepoFn, c.conf.RawConfig.Controller.MaxPageSize)
 		if err != nil {
 			return fmt.Errorf("failed to create auth token handler service: %w", err)
 		}
 		services.RegisterAuthTokenServiceServer(s, authtoks)
 	}
 	if _, ok := currentServices[services.ScopeService_ServiceDesc.ServiceName]; !ok {
-		os, err := scopes.NewService(c.baseContext, c.IamRepoFn, c.kms)
+		os, err := scopes.NewService(c.baseContext, c.IamRepoFn, c.kms, c.conf.RawConfig.Controller.MaxPageSize)
 		if err != nil {
 			return fmt.Errorf("failed to create scope handler service: %w", err)
 		}
 		services.RegisterScopeServiceServer(s, os)
 	}
 	if _, ok := currentServices[services.UserService_ServiceDesc.ServiceName]; !ok {
-		us, err := users.NewService(c.baseContext, c.IamRepoFn)
+		us, err := users.NewService(c.baseContext, c.IamRepoFn, c.conf.RawConfig.Controller.MaxPageSize)
 		if err != nil {
 			return fmt.Errorf("failed to create user handler service: %w", err)
 		}
@@ -196,6 +215,7 @@ func (c *Controller) registerGrpcServices(s *grpc.Server) error {
 			c.PluginStorageBucketRepoFn,
 			c.IamRepoFn,
 			c.PluginRepoFn,
+			c.conf.RawConfig.Controller.MaxPageSize,
 			c.ControllerExtension)
 		if err != nil {
 			return fmt.Errorf("failed to create storage bucket handler service: %w", err)
@@ -208,6 +228,7 @@ func (c *Controller) registerGrpcServices(s *grpc.Server) error {
 			c.IamRepoFn,
 			c.workerStatusGracePeriod,
 			c.kms,
+			c.conf.RawConfig.Controller.MaxPageSize,
 			c.ControllerExtension)
 		if err != nil {
 			return fmt.Errorf("failed to create session recording handler service: %w", err)
@@ -228,6 +249,7 @@ func (c *Controller) registerGrpcServices(s *grpc.Server) error {
 			c.StaticCredentialRepoFn,
 			c.downstreamWorkers,
 			c.workerStatusGracePeriod,
+			c.conf.RawConfig.Controller.MaxPageSize,
 			c.ControllerExtension,
 		)
 		if err != nil {
@@ -236,42 +258,54 @@ func (c *Controller) registerGrpcServices(s *grpc.Server) error {
 		services.RegisterTargetServiceServer(s, ts)
 	}
 	if _, ok := currentServices[services.GroupService_ServiceDesc.ServiceName]; !ok {
-		gs, err := groups.NewService(c.baseContext, c.IamRepoFn)
+		gs, err := groups.NewService(c.baseContext, c.IamRepoFn, c.conf.RawConfig.Controller.MaxPageSize)
 		if err != nil {
 			return fmt.Errorf("failed to create group handler service: %w", err)
 		}
 		services.RegisterGroupServiceServer(s, gs)
 	}
 	if _, ok := currentServices[services.RoleService_ServiceDesc.ServiceName]; !ok {
-		rs, err := roles.NewService(c.baseContext, c.IamRepoFn)
+		rs, err := roles.NewService(c.baseContext, c.IamRepoFn, c.conf.RawConfig.Controller.MaxPageSize)
 		if err != nil {
 			return fmt.Errorf("failed to create role handler service: %w", err)
 		}
 		services.RegisterRoleServiceServer(s, rs)
 	}
 	if _, ok := currentServices[services.SessionService_ServiceDesc.ServiceName]; !ok {
-		ss, err := sessions.NewService(c.baseContext, c.SessionRepoFn, c.IamRepoFn)
+		ss, err := sessions.NewService(c.baseContext, c.SessionRepoFn, c.IamRepoFn, c.conf.RawConfig.Controller.MaxPageSize)
 		if err != nil {
 			return fmt.Errorf("failed to create session handler service: %w", err)
 		}
 		services.RegisterSessionServiceServer(s, ss)
 	}
 	if _, ok := currentServices[services.ManagedGroupService_ServiceDesc.ServiceName]; !ok {
-		mgs, err := managed_groups.NewService(c.baseContext, c.OidcRepoFn, c.LdapRepoFn)
+		mgs, err := managed_groups.NewService(c.baseContext, c.OidcRepoFn, c.LdapRepoFn, c.conf.RawConfig.Controller.MaxPageSize)
 		if err != nil {
 			return fmt.Errorf("failed to create managed groups handler service: %w", err)
 		}
 		services.RegisterManagedGroupServiceServer(s, mgs)
 	}
 	if _, ok := currentServices[services.CredentialStoreService_ServiceDesc.ServiceName]; !ok {
-		cs, err := credentialstores.NewService(c.baseContext, c.VaultCredentialRepoFn, c.StaticCredentialRepoFn, c.IamRepoFn)
+		cs, err := credentialstores.NewService(
+			c.baseContext,
+			c.IamRepoFn,
+			c.VaultCredentialRepoFn,
+			c.StaticCredentialRepoFn,
+			c.CredentialStoreRepoFn,
+			c.conf.RawConfig.Controller.MaxPageSize,
+		)
 		if err != nil {
 			return fmt.Errorf("failed to create credential store handler service: %w", err)
 		}
 		services.RegisterCredentialStoreServiceServer(s, cs)
 	}
 	if _, ok := currentServices[services.CredentialLibraryService_ServiceDesc.ServiceName]; !ok {
-		cl, err := credentiallibraries.NewService(c.baseContext, c.VaultCredentialRepoFn, c.IamRepoFn)
+		cl, err := credentiallibraries.NewService(
+			c.baseContext,
+			c.IamRepoFn,
+			c.VaultCredentialRepoFn,
+			c.conf.RawConfig.Controller.MaxPageSize,
+		)
 		if err != nil {
 			return fmt.Errorf("failed to create credential library handler service: %w", err)
 		}
@@ -286,7 +320,12 @@ func (c *Controller) registerGrpcServices(s *grpc.Server) error {
 		services.RegisterWorkerServiceServer(s, ws)
 	}
 	if _, ok := currentServices[services.CredentialService_ServiceDesc.ServiceName]; !ok {
-		c, err := credentials.NewService(c.baseContext, c.StaticCredentialRepoFn, c.IamRepoFn)
+		c, err := credentials.NewService(
+			c.baseContext,
+			c.IamRepoFn,
+			c.StaticCredentialRepoFn,
+			c.conf.RawConfig.Controller.MaxPageSize,
+		)
 		if err != nil {
 			return fmt.Errorf("failed to create credential handler service: %w", err)
 		}
@@ -410,6 +449,7 @@ func wrapHandlerWithCommonFuncs(h http.Handler, c *Controller, props HandlerProp
 		}
 
 		requestInfo.PublicId, requestInfo.EncryptedToken, requestInfo.TokenFormat = auth.GetTokenFromRequest(ctx, c.kms, r)
+		ctx = context.WithValue(ctx, globals.ContextAuthTokenPublicIdKey, requestInfo.PublicId)
 
 		if info, ok := event.RequestInfoFromContext(ctx); ok {
 			// piggyback some eventing fields with the auth info proto message

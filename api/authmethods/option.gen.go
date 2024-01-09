@@ -26,6 +26,7 @@ type options struct {
 	withAutomaticVersioning bool
 	withSkipCurlOutput      bool
 	withFilter              string
+	withListToken           string
 	withRecursive           bool
 }
 
@@ -50,6 +51,9 @@ func getOpts(opt ...Option) (options, []api.Option) {
 	if opts.withFilter != "" {
 		opts.queryMap["filter"] = opts.withFilter
 	}
+	if opts.withListToken != "" {
+		opts.queryMap["list_token"] = opts.withListToken
+	}
 	if opts.withRecursive {
 		opts.queryMap["recursive"] = strconv.FormatBool(opts.withRecursive)
 	}
@@ -71,6 +75,14 @@ func WithAutomaticVersioning(enable bool) Option {
 func WithSkipCurlOutput(skip bool) Option {
 	return func(o *options) {
 		o.withSkipCurlOutput = true
+	}
+}
+
+// WithListToken tells the API to use the provided list token
+// for listing operations on this resource.
+func WithListToken(listToken string) Option {
+	return func(o *options) {
+		o.withListToken = listToken
 	}
 }
 
@@ -415,6 +427,30 @@ func DefaultOidcAuthMethodClientSecret() Option {
 	}
 }
 
+func WithLdapAuthMethodDereferenceAliases(inDereferenceAliases string) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["dereference_aliases"] = inDereferenceAliases
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultLdapAuthMethodDereferenceAliases() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["dereference_aliases"] = nil
+		o.postMap["attributes"] = val
+	}
+}
+
 func WithDescription(inDescription string) Option {
 	return func(o *options) {
 		o.postMap["description"] = inDescription
@@ -691,6 +727,30 @@ func DefaultOidcAuthMethodMaxAge() Option {
 	}
 }
 
+func WithLdapAuthMethodMaximumPageSize(inMaximumPageSize uint32) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["maximum_page_size"] = inMaximumPageSize
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultLdapAuthMethodMaximumPageSize() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["maximum_page_size"] = nil
+		o.postMap["attributes"] = val
+	}
+}
+
 func WithPasswordAuthMethodMinLoginNameLength(inMinLoginNameLength uint32) Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
@@ -748,6 +808,30 @@ func WithName(inName string) Option {
 func DefaultName() Option {
 	return func(o *options) {
 		o.postMap["name"] = nil
+	}
+}
+
+func WithOidcAuthMethodPrompts(inPrompts []string) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["prompts"] = inPrompts
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultOidcAuthMethodPrompts() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["prompts"] = nil
+		o.postMap["attributes"] = val
 	}
 }
 

@@ -18,10 +18,10 @@ option (custom_options.v1.domain) = "auth";
 // AuthMethod contains all fields related to an Auth Method resource
 message AuthMethod {
   // Output only. The ID of the Auth Method.
-  string id = 10; // @gotags: `class:"public"`
+  string id = 10; // @gotags: `class:"public" eventstream:"observation"`
 
   // The ID of the Scope of which this Auth Method is a part.
-  string scope_id = 20 [json_name = "scope_id"]; // @gotags: `class:"public"`
+  string scope_id = 20 [json_name = "scope_id"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. Scope information for this Auth method.
   resources.scopes.v1.ScopeInfo scope = 30;
@@ -45,17 +45,17 @@ message AuthMethod {
   ]; // @gotags: `class:"public"`
 
   // Output only. The time this resource was created.
-  google.protobuf.Timestamp created_time = 60 [json_name = "created_time"]; // @gotags: `class:"public"`
+  google.protobuf.Timestamp created_time = 60 [json_name = "created_time"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. The time this resource was last updated.
-  google.protobuf.Timestamp updated_time = 70 [json_name = "updated_time"]; // @gotags: `class:"public"`
+  google.protobuf.Timestamp updated_time = 70 [json_name = "updated_time"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
   uint32 version = 80; // @gotags: `class:"public"`
 
   // The Auth Method type.
-  string type = 90; // @gotags: `class:"public"`
+  string type = 90; // @gotags: `class:"public" eventstream:"observation"`
 
   oneof attrs {
     // The attributes that are applicable for the specific Auth Method type.
@@ -82,7 +82,7 @@ message AuthMethod {
 
   // Output only. Whether this auth method is the primary auth method for it's scope.
   // To change this value update the primary_auth_method_id field on the scope.
-  bool is_primary = 110 [json_name = "is_primary"]; // @gotags: `class:"public"`
+  bool is_primary = 110 [json_name = "is_primary"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. The available actions on this resource for this user.
   repeated string authorized_actions = 300 [json_name = "authorized_actions"]; // @gotags: `class:"public"`
@@ -263,6 +263,16 @@ message OidcAuthMethodAttributes {
   bool dry_run = 130 [
     json_name = "dry_run",
     (custom_options.v1.generate_sdk_option) = true
+  ]; // @gotags: `class:"public"`
+
+  // The prompts allowed for the auth method.
+  repeated string prompts = 140 [
+    json_name = "prompts",
+    (custom_options.v1.generate_sdk_option) = true,
+    (custom_options.v1.mask_mapping) = {
+      this: "attributes.prompts"
+      that: "Prompts"
+    }
   ]; // @gotags: `class:"public"`
 }
 
@@ -568,6 +578,33 @@ message LdapAuthMethodAttributes {
     (custom_options.v1.mask_mapping) = {
       this: "attributes.account_attribute_maps"
       that: "AccountAttributeMaps"
+    }
+  ]; // @gotags: `class:"public"`
+
+  // maximum_page_size (optional) specifies a maximum ldap search result size to
+  // use when retrieving the authenticated user's group memberships. This can
+  // be used to avoid reaching the LDAP server's max result size.
+  uint32 maximum_page_size = 240 [
+    json_name = "maximum_page_size",
+    (custom_options.v1.generate_sdk_option) = true,
+    (custom_options.v1.mask_mapping) = {
+      this: "attributes.maximum_page_size",
+      that: "MaximumPageSize"
+    }
+  ]; // @gotags: `class:"public"`
+
+  // dereference_aliases (optional) will control how aliases are dereferenced when
+  // performing the search. Possible values are: never, finding, searching,
+  // and always. If unset, a default of "never" is used. When set to
+  // "finding", it will only dereference aliases during name resolution of the
+  // base. When set to "searching", it will dereference aliases after name
+  // resolution.
+  google.protobuf.StringValue dereference_aliases = 250 [
+    json_name = "dereference_aliases",
+    (custom_options.v1.generate_sdk_option) = true,
+    (custom_options.v1.mask_mapping) = {
+      this: "attributes.dereference_aliases",
+      that: "DereferenceAliases"
     }
   ]; // @gotags: `class:"public"`
 }

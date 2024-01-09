@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 syntax = "proto3";
 
@@ -27,7 +27,7 @@ enum CONNECTIONSTATUS {
 }
 
 message Connection {
-  string connection_id = 1; // @gotags: `class:"public"`
+  string connection_id = 1; // @gotags: `class:"public" eventstream:"observation"`
   CONNECTIONSTATUS status = 2;
   int64 bytes_up = 3; // @gotags: `class:"public"`
   int64 bytes_down = 4; // @gotags: `class:"public"`
@@ -42,7 +42,7 @@ enum SESSIONSTATUS {
 }
 
 message SessionJobInfo {
-  string session_id = 1; // @gotags: `class:"public"`
+  string session_id = 1; // @gotags: `class:"public" eventstream:"observation"`
   SESSIONSTATUS status = 2;
   repeated Connection connections = 3;
   SessionProcessingError processing_error = 4; // @gotags: `class:"public"`
@@ -54,7 +54,7 @@ enum SessionProcessingError {
 }
 
 message MonitorSessionJobInfo {
-  string session_id = 1; // @gotags: `class:"public"`
+  string session_id = 1; // @gotags: `class:"public" eventstream:"observation"`
   SESSIONSTATUS status = 2; // @gotags: `class:"public"`
   SessionProcessingError processing_error = 3; // @gotags: `class:"public"`
 }
@@ -173,7 +173,7 @@ message StatusResponse {
 
   // The ID of the worker which made the request. The worker can send this value in subsequent requests so the
   // controller does not need to do a database lookup for the id using the name field.
-  string worker_id = 40; // @gotags: `class:"public"`
+  string worker_id = 40; // @gotags: `class:"public" eventstream:"observation"`
 
   // Of the worker key identifiers provided in the request, these are the ones
   // which are authorized to remain connected.

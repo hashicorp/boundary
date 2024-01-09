@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package iam
 
@@ -110,5 +110,86 @@ const (
 	)
 	select * from final
 	order by action, member_id;
+	`
+
+	grantsQuery = `
+	with
+	users (id) as (
+	  select public_id
+		from iam_user
+	  %s -- anonUser || authUser
+	),
+	user_groups (id) as (
+	  select group_id
+		from iam_group_member_user
+	   where member_id in (select id from users)
+	),
+	user_accounts (id) as (
+	  select public_id
+		from auth_account
+	   where iam_user_id in (select id from users)
+	),
+	user_managed_groups (id) as (
+	  select managed_group_id
+		from auth_managed_group_member_account
+	   where member_id in (select id from user_accounts)
+	),
+	managed_group_roles (role_id) as (
+	  select role_id
+		from iam_managed_group_role
+	   where principal_id in (select id from user_managed_groups)
+	),
+	group_roles (role_id) as (
+	  select role_id
+		from iam_group_role
+	   where principal_id in (select id from user_groups)
+	),
+	user_roles (role_id) as (
+	  select role_id
+		from iam_user_role
+	   where principal_id in (select id from users)
+	),
+	user_group_roles (role_id) as (
+	  select role_id
+		from group_roles
+	   union
+	  select role_id
+		from user_roles
+	   union
+	  select role_id
+		from managed_group_roles
+	),
+	roles (role_id, grant_scope_id) as (
+	  select iam_role.public_id,
+			 iam_role.grant_scope_id
+		from iam_role
+	   where public_id in (select role_id from user_group_roles)
+	),
+	final (role_id, role_scope, role_grant) as (
+	  select roles.role_id,
+			 roles.grant_scope_id,
+			 iam_role_grant.canonical_grant
+		from roles
+	   inner join iam_role_grant
+		  on roles.role_id = iam_role_grant.role_id
+		  -- only retrieves roles with a grant! there can be roles that don't have grants (it's a valid state in boundary)
+	)
+	select role_id as role_id, role_scope as scope_id, role_grant as grant from final;
+		`
+
+	estimateCountRoles = `
+		select reltuples::bigint as estimate from pg_class where oid in ('iam_role'::regclass)
+	`
+
+	estimateCountUsers = `
+		select reltuples::bigint as estimate from pg_class where oid in ('iam_user'::regclass)
+	`
+
+	estimateCountGroups = `
+		select reltuples::bigint as estimate from pg_class where oid in ('iam_group'::regclass)
+	`
+
+	estimateCountScopes = `
+		select reltuples::bigint as estimate from pg_class where oid in ('iam_scope'::regclass)
 	`
 )

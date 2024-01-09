@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 // Package ops encapsulates the lifecycle of Boundary's ops-purpose listeners
 // and servers: Creating, setting them up, starting and shutdown.
@@ -7,6 +7,7 @@ package ops
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -18,10 +19,8 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/worker"
 	"github.com/hashicorp/go-cleanhttp"
 	"github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-secure-stdlib/listenerutil"
 	"github.com/mitchellh/cli"
-	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
@@ -89,7 +88,7 @@ func (s *Server) Start() {
 func (s *Server) Shutdown() error {
 	const op = "ops.(Server).Shutdown"
 
-	var closeErrors *multierror.Error
+	var closeErrors error
 	for _, b := range s.bundles {
 		if b == nil || b.ln == nil || b.ln.Config == nil || b.ln.OpsListener == nil || b.ln.HTTPServer == nil {
 			return fmt.Errorf("%s: missing bundle, listener or its fields", op)
@@ -100,17 +99,17 @@ func (s *Server) Shutdown() error {
 
 		err := b.ln.HTTPServer.Shutdown(ctx)
 		if err != nil {
-			multierror.Append(closeErrors, fmt.Errorf("%s: failed to shutdown http server: %w", op, err))
+			errors.Join(closeErrors, fmt.Errorf("%s: failed to shutdown http server: %w", op, err))
 		}
 
 		err = b.ln.OpsListener.Close()
 		err = listenerCloseErrorCheck(b.ln.Config.Type, err)
 		if err != nil {
-			multierror.Append(closeErrors, fmt.Errorf("%s: failed to close listener mux: %w", op, err))
+			errors.Join(closeErrors, fmt.Errorf("%s: failed to close listener mux: %w", op, err))
 		}
 	}
 
-	return closeErrors.ErrorOrNil()
+	return closeErrors
 }
 
 // WaitIfHealthExists waits for a configurable period of time `d` if the health endpoint has been

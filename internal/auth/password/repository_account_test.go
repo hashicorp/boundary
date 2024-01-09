@@ -1,23 +1,28 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package password
 
 import (
 	"context"
+	"slices"
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth/password/store"
 	"github.com/hashicorp/boundary/internal/db"
 	dbassert "github.com/hashicorp/boundary/internal/db/assert"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func TestCheckLoginName(t *testing.T) {
@@ -471,6 +476,7 @@ func TestRepository_ListAccounts(t *testing.T) {
 	accounts1 := TestMultipleAccounts(t, conn, authMethods[0].GetPublicId(), 3)
 	accounts2 := TestMultipleAccounts(t, conn, authMethods[1].GetPublicId(), 4)
 	_ = accounts2
+	slices.Reverse(accounts1)
 
 	tests := []struct {
 		name       string
@@ -483,7 +489,7 @@ func TestRepository_ListAccounts(t *testing.T) {
 		{
 			name:       "With no auth method id",
 			wantIsErr:  errors.InvalidParameter,
-			wantErrMsg: "password.(Repository).ListAccounts: missing auth method id: parameter violation: error #100",
+			wantErrMsg: "password.(Repository).listAccounts: missing auth method id: parameter violation: error #100",
 		},
 		{
 			name: "With no accounts id",
@@ -504,14 +510,17 @@ func TestRepository_ListAccounts(t *testing.T) {
 			repo, err := NewRepository(context.Background(), rw, rw, kms)
 			assert.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.ListAccounts(context.Background(), tt.in, tt.opts...)
+			got, ttime, err := repo.listAccounts(context.Background(), tt.in, tt.opts...)
 			if tt.wantIsErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "Unexpected error %s", err)
 				assert.Equal(tt.wantErrMsg, err.Error())
 				return
 			}
 			require.NoError(err)
-			assert.EqualValues(tt.want, got)
+			assert.Empty(cmp.Diff(tt.want, got, cmpopts.IgnoreUnexported(Account{}, store.Account{}, timestamp.Timestamp{}, timestamppb.Timestamp{})))
+			// Transaction timestamp should be within ~10 seconds of now
+			assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+			assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
 		})
 	}
 }
@@ -581,9 +590,12 @@ func TestRepository_ListAccounts_Limits(t *testing.T) {
 			repo, err := NewRepository(context.Background(), rw, rw, kms, tt.repoOpts...)
 			assert.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.ListAccounts(context.Background(), am.GetPublicId(), tt.listOpts...)
+			got, ttime, err := repo.listAccounts(context.Background(), am.GetPublicId(), tt.listOpts...)
 			require.NoError(err)
 			assert.Len(got, tt.wantLen)
+			// Transaction timestamp should be within ~10 seconds of now
+			assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+			assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
 		})
 	}
 }

@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package authenticate
 
@@ -11,7 +11,6 @@ import (
 	"github.com/hashicorp/boundary/api/authmethods"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/base"
-	"github.com/hashicorp/boundary/internal/cmd/common"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/mitchellh/cli"
 	"github.com/mitchellh/go-wordwrap"
@@ -24,7 +23,7 @@ type Command struct {
 }
 
 func (c *Command) Synopsis() string {
-	return wordwrap.WrapString("Authenticate the Boundary command-line client", base.TermWidth)
+	return wordwrap.WrapString("Authenticate the local client", base.TermWidth)
 }
 
 func (c *Command) Help() string {
@@ -104,15 +103,18 @@ func (c *Command) Run(args []string) int {
 
 	switch {
 	case strings.HasPrefix(c.FlagAuthMethodId, globals.PasswordAuthMethodPrefix):
-		cmd := PasswordCommand{Command: c.Command, Opts: []common.Option{common.WithSkipScopeIdFlag(true)}}
+		cmd := PasswordCommand{Command: c.Command}
+		cmd.Opts = append(c.Opts, base.WithSkipScopeIdFlag(true))
 		cmd.Run([]string{})
 
 	case strings.HasPrefix(c.FlagAuthMethodId, globals.OidcAuthMethodPrefix):
-		cmd := OidcCommand{Command: c.Command, Opts: []common.Option{common.WithSkipScopeIdFlag(true)}}
+		cmd := OidcCommand{Command: c.Command}
+		cmd.Opts = append(c.Opts, base.WithSkipScopeIdFlag(true))
 		cmd.Run([]string{})
 
 	case strings.HasPrefix(c.FlagAuthMethodId, globals.LdapAuthMethodPrefix):
-		cmd := LdapCommand{Command: c.Command, Opts: []common.Option{common.WithSkipScopeIdFlag(true)}}
+		cmd := LdapCommand{Command: c.Command}
+		cmd.Opts = append(c.Opts, base.WithSkipScopeIdFlag(true))
 		cmd.Run([]string{})
 
 	default:

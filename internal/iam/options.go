@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package iam
 
@@ -7,6 +7,7 @@ import (
 	"io"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/pagination"
 )
 
 // getOpts - iterate the inbound Options and return a struct
@@ -38,6 +39,7 @@ type options struct {
 	withPrimaryAuthMethodId     string
 	withReader                  db.Reader
 	withWriter                  db.Writer
+	withStartPageAfterItem      pagination.Item
 }
 
 func getDefaultOptions() options {
@@ -160,5 +162,13 @@ func WithReaderWriter(r db.Reader, w db.Writer) Option {
 	return func(o *options) {
 		o.withReader = r
 		o.withWriter = w
+	}
+}
+
+// WithStartPageAfterItem is used to paginate over the results.
+// The next page will start after the provided item.
+func WithStartPageAfterItem(item pagination.Item) Option {
+	return func(o *options) {
+		o.withStartPageAfterItem = item
 	}
 }

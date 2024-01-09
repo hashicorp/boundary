@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package errors
 
@@ -10,8 +10,8 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/hashicorp/boundary/internal/event"
 	pberrors "github.com/hashicorp/boundary/internal/gen/errors"
-	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/jackc/pgx/v5/pgconn"
 )
 

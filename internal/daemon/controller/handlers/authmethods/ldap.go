@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package authmethods
 
@@ -36,13 +36,13 @@ func init() {
 		panic(err)
 	}
 
-	IdActions[ldap.Subtype] = action.ActionSet{
+	IdActions[ldap.Subtype] = action.NewActionSet(
 		action.NoOp,
 		action.Read,
 		action.Update,
 		action.Delete,
 		action.Authenticate,
-	}
+	)
 }
 
 const (
@@ -53,6 +53,7 @@ const (
 	clientCertificateKeyField = "attributes.client_certificate_key"
 	certificatesField         = "attributes.certificates"
 	accountAttributesMapField = "attributes.account_attribute_maps"
+	derefAliasesField         = "attributes.dereference_aliases"
 )
 
 func (s Service) authenticateLdap(ctx context.Context, req *pbs.AuthenticateRequest, authResults *auth.VerifyResults) (*pbs.AuthenticateResponse, error) {
@@ -257,6 +258,12 @@ func toStorageLdapAuthMethod(ctx context.Context, scopeId string, in *pb.AuthMet
 			}
 			opts = append(opts, ldap.WithUrls(ctx, urls...))
 		}
+		if attrs.GetMaximumPageSize() > 0 {
+			opts = append(opts, ldap.WithMaximumPageSize(ctx, attrs.MaximumPageSize))
+		}
+		if attrs.GetDereferenceAliases().GetValue() != "" {
+			opts = append(opts, ldap.WithDerefAliases(ctx, ldap.DerefAliasType(attrs.GetDereferenceAliases().GetValue())))
+		}
 	}
 	u, err := ldap.NewAuthMethod(ctx, scopeId, opts...)
 	if err != nil {
@@ -299,12 +306,6 @@ func validateLdapAttributes(ctx context.Context, attrs *pb.LdapAuthMethodAttribu
 			badFields[certificatesField] = fmt.Sprintf("invalid %s: %s", certificatesField, err.Error())
 		}
 	}
-	if attrs.GetBindDn().GetValue() != "" && attrs.GetBindPassword().GetValue() == "" {
-		badFields[bindPasswordField] = fmt.Sprintf("%s is missing required %s field", bindDnField, bindPasswordField)
-	}
-	if attrs.GetBindPassword().GetValue() != "" && attrs.GetBindDn().GetValue() == "" {
-		badFields[bindDnField] = fmt.Sprintf("%s is missing required %s field", bindPasswordField, bindDnField)
-	}
 	if attrs.GetClientCertificate().GetValue() != "" && attrs.GetClientCertificateKey().GetValue() == "" {
 		badFields[clientCertificateKeyField] = fmt.Sprintf("%s is missing required %s field", clientCertificateField, clientCertificateKeyField)
 	}
@@ -329,6 +330,12 @@ func validateLdapAttributes(ctx context.Context, attrs *pb.LdapAuthMethodAttribu
 	if len(attrs.AccountAttributeMaps) > 0 {
 		if _, err := ldap.ParseAccountAttributeMaps(ctx, attrs.AccountAttributeMaps...); err != nil {
 			badFields[accountAttributesMapField] = fmt.Sprintf("invalid %s (unable to parse)", accountAttributesMapField)
+		}
+	}
+	if attrs.GetDereferenceAliases().GetValue() != "" {
+		d := ldap.DerefAliasType(attrs.GetDereferenceAliases().GetValue())
+		if err := d.IsValid(ctx); err != nil {
+			badFields[derefAliasesField] = fmt.Sprintf("%s is not a valid %s", attrs.GetDereferenceAliases().GetValue(), derefAliasesField)
 		}
 	}
 }

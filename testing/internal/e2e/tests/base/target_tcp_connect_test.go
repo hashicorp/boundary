@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package base_test
 
@@ -36,7 +36,7 @@ func TestCliTcpTargetConnectTargetBasic(t *testing.T) {
 	newProjectId := boundary.CreateNewProjectCli(t, ctx, newOrgId)
 	newHostCatalogId := boundary.CreateNewHostCatalogCli(t, ctx, newProjectId)
 	newHostSetId := boundary.CreateNewHostSetCli(t, ctx, newHostCatalogId)
-	newHostId := boundary.CreateNewHostCli(t, ctx, newHostCatalogId, c.TargetIp)
+	newHostId := boundary.CreateNewHostCli(t, ctx, newHostCatalogId, c.TargetAddress)
 	boundary.AddHostToHostSetCli(t, ctx, newHostSetId, newHostId)
 	newTargetId := boundary.CreateNewTargetCli(t, ctx, newProjectId, c.TargetPort)
 	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, newHostSetId)
@@ -61,7 +61,7 @@ func TestCliTcpTargetConnectTargetBasic(t *testing.T) {
 
 	parts := strings.Fields(string(output.Stdout))
 	hostIp := parts[len(parts)-1]
-	require.Equal(t, c.TargetIp, hostIp, "SSH session did not return expected output")
+	require.Equal(t, c.TargetAddress, hostIp, "SSH session did not return expected output")
 	t.Log("Successfully connected to target")
 }
 
@@ -88,7 +88,7 @@ func TestCliTcpTargetConnectTargetViaTargetAndScopeNames(t *testing.T) {
 	newProjectId := boundary.CreateNewProjectCli(t, ctx, newOrgId, boundary.WithName(testProjectName))
 	newHostCatalogId := boundary.CreateNewHostCatalogCli(t, ctx, newProjectId)
 	newHostSetId := boundary.CreateNewHostSetCli(t, ctx, newHostCatalogId)
-	newHostId := boundary.CreateNewHostCli(t, ctx, newHostCatalogId, c.TargetIp)
+	newHostId := boundary.CreateNewHostCli(t, ctx, newHostCatalogId, c.TargetAddress)
 	boundary.AddHostToHostSetCli(t, ctx, newHostSetId, newHostId)
 	newTargetId := boundary.CreateNewTargetCli(t, ctx, newProjectId, c.TargetPort, target.WithName(testTargetName))
 	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, newHostSetId)
@@ -114,7 +114,7 @@ func TestCliTcpTargetConnectTargetViaTargetAndScopeNames(t *testing.T) {
 
 	parts := strings.Fields(string(output.Stdout))
 	hostIp := parts[len(parts)-1]
-	require.Equal(t, c.TargetIp, hostIp, "SSH session did not return expected output")
+	require.Equal(t, c.TargetAddress, hostIp, "SSH session did not return expected output")
 	t.Log("Successfully connected to target by its name and scope name")
 
 	// Connect to target via target name and scope ID, and print host's IP address
@@ -138,7 +138,7 @@ func TestCliTcpTargetConnectTargetViaTargetAndScopeNames(t *testing.T) {
 
 	parts = strings.Fields(string(output.Stdout))
 	hostIp = parts[len(parts)-1]
-	require.Equal(t, c.TargetIp, hostIp, "SSH session did not return expected output")
+	require.Equal(t, c.TargetAddress, hostIp, "SSH session did not return expected output")
 	t.Log("Successfully connected to target by its name and scope ID")
 }
 
@@ -162,7 +162,7 @@ func TestCliTcpTargetConnectTargetWithTargetClientPort(t *testing.T) {
 	newProjectId := boundary.CreateNewProjectCli(t, ctx, newOrgId)
 	newHostCatalogId := boundary.CreateNewHostCatalogCli(t, ctx, newProjectId)
 	newHostSetId := boundary.CreateNewHostSetCli(t, ctx, newHostCatalogId)
-	newHostId := boundary.CreateNewHostCli(t, ctx, newHostCatalogId, c.TargetIp)
+	newHostId := boundary.CreateNewHostCli(t, ctx, newHostCatalogId, c.TargetAddress)
 	boundary.AddHostToHostSetCli(t, ctx, newHostSetId, newHostId)
 	newTargetId := boundary.CreateNewTargetCli(t, ctx, newProjectId, c.TargetPort, target.WithDefaultClientPort(expPort))
 	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, newHostSetId)

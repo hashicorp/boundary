@@ -15,7 +15,7 @@ Example (not safe for production!):
 
 ```hcl
 worker {
-  auth_storage_path="/boundary/demo-worker-1"
+  auth_storage_path="/var/lib/boundary"
   initial_upstreams = ["10.0.0.1"]
 }
 ```
@@ -34,7 +34,7 @@ either directly or via an env var or file by using `env://` or `file://` syntax:
 
 ```hcl
 worker {
-  auth_storage_path="/boundary/demo-worker-1"
+  auth_storage_path="/var/lib/boundary"
   initial_upstreams = ["10.0.0.1"]
   controller_generated_activation_token = "neslat_........."
   # controller_generated_activation_token = "env://ACT_TOKEN"
@@ -77,7 +77,9 @@ kms "aead" {
 }
 ```
 
-## Session recording <sup>(HCP/ENT)</sup>
+## Session recording
+
+<EnterpriseAlert product="boundary">This feature requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary or Boundary Enterprise</a></EnterpriseAlert>
 
 [Session recording](/boundary/docs/configuration/session-recording) requires at least one PKI worker with access to local and remote storage.
 PKI workers used for session recording require an accessible directory defined by `recording_storage_path` for
@@ -88,7 +90,7 @@ Development example:
 
 ```hcl
 worker {
-  auth_storage_path="/boundary/demo-worker-1"
+  auth_storage_path="/var/lib/boundary"
   initial_upstreams = ["10.0.0.1"]
   recording_storage_path="/local/storage/directory"
 }

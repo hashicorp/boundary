@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package kms
 
@@ -54,7 +54,12 @@ func Test_New(t *testing.T) {
 				underlying: func() *wrappingKms.Kms {
 					purposes := make([]wrappingKms.KeyPurpose, 0, len(ValidDekPurposes()))
 					for _, p := range ValidDekPurposes() {
-						purposes = append(purposes, wrappingKms.KeyPurpose(p.String()))
+						switch p {
+						case KeyPurposeOplog:
+							continue
+						default:
+							purposes = append(purposes, wrappingKms.KeyPurpose(p.String()))
+						}
 					}
 					purposes = append(purposes,
 						wrappingKms.KeyPurpose(KeyPurposeWorkerAuth.String()),
@@ -64,6 +69,16 @@ func Test_New(t *testing.T) {
 					)
 
 					wrapped, err := wrappingKms.New(db.NewChangeSafeDbwReader(rw), db.NewChangeSafeDbwWriter(rw), purposes)
+					require.NoError(t, err)
+					return wrapped
+				}(),
+				underlyingForOplog: func() *wrappingKms.Kms {
+					wrapped, err := wrappingKms.New(
+						db.NewChangeSafeDbwReader(rw),
+						db.NewChangeSafeDbwWriter(rw),
+						[]wrappingKms.KeyPurpose{wrappingKms.KeyPurpose(KeyPurposeOplog.String())},
+						wrappingKms.WithTableNamePrefix("kms_oplog"),
+					)
 					require.NoError(t, err)
 					return wrapped
 				}(),
@@ -145,6 +160,16 @@ func Test_NewUsingReaderWriter(t *testing.T) {
 				underlying: func() *wrappingKms.Kms {
 					purposes := stdNewKmsPurposes()
 					wrapped, err := wrappingKms.New(db.NewChangeSafeDbwReader(rw), db.NewChangeSafeDbwWriter(rw), purposes)
+					require.NoError(t, err)
+					return wrapped
+				}(),
+				underlyingForOplog: func() *wrappingKms.Kms {
+					wrapped, err := wrappingKms.New(
+						db.NewChangeSafeDbwReader(rw),
+						db.NewChangeSafeDbwWriter(rw),
+						[]wrappingKms.KeyPurpose{wrappingKms.KeyPurpose(KeyPurposeOplog.String())},
+						wrappingKms.WithTableNamePrefix("kms_oplog"),
+					)
 					require.NoError(t, err)
 					return wrapped
 				}(),
@@ -802,9 +827,10 @@ func TestDestroyKeyVersion(t *testing.T) {
 				kvToDestroy = key.Versions[0]
 			}
 		}
+		require.NotEmpty(t, kvToDestroy.Id)
 		_, err := kmsCache.DestroyKeyVersion(testCtx, "global", kvToDestroy.Id)
 		require.Error(t, err)
-		assert.True(t, errors.Match(errors.T(errors.InvalidParameter), err))
+		assert.True(t, errors.Match(errors.T(errors.KeyNotFound), err))
 	})
 	t.Run("succeeds-synchronously-when-destroying-old-root-key-version", func(t *testing.T) {
 		var chosenKey wrappingKms.Key

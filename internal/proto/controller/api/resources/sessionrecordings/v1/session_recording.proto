@@ -6,6 +6,8 @@ syntax = "proto3";
 package controller.api.resources.sessionrecordings.v1;
 
 import "controller/api/resources/scopes/v1/scope.proto";
+import "controller/custom_options/v1/options.proto";
+import "google/api/visibility.proto";
 import "google/protobuf/duration.proto";
 import "google/protobuf/struct.proto";
 import "google/protobuf/timestamp.proto";
@@ -150,7 +152,11 @@ message Host {
     // how attributes are done when attributes is a top level field.
 
     // The attributes that are applicable for the specific Host.
-    google.protobuf.Struct attributes = 6; // @gotags: class:"public"
+    google.protobuf.Struct attributes = 6 [(custom_options.v1.subtype) = "default"];
+    StaticHostAttributes static_host_attributes = 9 [
+      (google.api.field_visibility).restriction = "INTERNAL",
+      (custom_options.v1.subtype) = "static"
+    ];
   }
 
   // The external id of the Host, if any.
@@ -205,7 +211,11 @@ message Target {
     // how attributes are done when attributes is a top level field.
 
     // The attributes that are applicable for the specific Target.
-    google.protobuf.Struct attributes = 11; // @gotags: class:"public"
+    google.protobuf.Struct attributes = 11 [(custom_options.v1.subtype) = "default"];
+    SshTargetAttributes ssh_target_attributes = 12 [
+      (google.api.field_visibility).restriction = "INTERNAL",
+      (custom_options.v1.subtype) = "ssh"
+    ];
   }
 }
 
@@ -237,7 +247,11 @@ message CredentialStore {
 
   oneof attrs {
     // The attributes that are applicable for the specific Credential Store type.
-    google.protobuf.Struct attributes = 6;
+    google.protobuf.Struct attributes = 6 [(custom_options.v1.subtype) = "default"];
+    VaultCredentialStoreAttributes vault_credential_store_attributes = 7 [
+      (google.api.field_visibility).restriction = "INTERNAL",
+      (custom_options.v1.subtype) = "vault"
+    ];
   }
 }
 
@@ -274,14 +288,26 @@ message Credential {
   string description = 4; // @gotags: class:"public"
 
   // The purposes for which this Credential was attached to the sesssion.
-  repeated string purposes = 5;
+  repeated string purposes = 5; // @gotags: class:"public"
 
   // The Credential type.
   string type = 6; // @gotags: class:"public"
 
   oneof attrs {
     // The attributes that are applicable for the specific Credential type.
-    google.protobuf.Struct attributes = 7;
+    google.protobuf.Struct attributes = 7 [(custom_options.v1.subtype) = "default"];
+    UsernamePasswordCredentialAttributes username_password_attributes = 8 [
+      (google.api.field_visibility).restriction = "INTERNAL",
+      (custom_options.v1.subtype) = "username_password"
+    ];
+    SshPrivateKeyCredentialAttributes ssh_private_key_attributes = 9 [
+      (google.api.field_visibility).restriction = "INTERNAL",
+      (custom_options.v1.subtype) = "ssh_private_key"
+    ];
+    JsonCredentialAttributes json_attributes = 10 [
+      (google.api.field_visibility).restriction = "INTERNAL",
+      (custom_options.v1.subtype) = "json"
+    ];
   }
 }
 
@@ -327,14 +353,26 @@ message CredentialLibrary {
   string description = 4; // @gotags: class:"public"
 
   // The purposes for which this CredentialLibrary was attached to the sesssion.
-  repeated string purposes = 5;
+  repeated string purposes = 5; // @gotags: class:"public"
 
   // The Credential Library type.
   string type = 6; // @gotags: class:"public"
 
   oneof attrs {
     // The attributes that are applicable for the specific Credential Library type.
-    google.protobuf.Struct attributes = 7;
+    google.protobuf.Struct attributes = 7 [(custom_options.v1.subtype) = "default"];
+    VaultCredentialLibraryAttributes vault_credential_library_attributes = 8 [
+      (google.api.field_visibility).restriction = "INTERNAL",
+      (custom_options.v1.subtype) = "vault"
+    ];
+    VaultCredentialLibraryAttributes vault_generic_credential_library_attributes = 9 [
+      (google.api.field_visibility).restriction = "INTERNAL",
+      (custom_options.v1.subtype) = "vault-generic"
+    ];
+    VaultSSHCertificateCredentialLibraryAttributes vault_ssh_certificate_credential_library_attributes = 10 [
+      (google.api.field_visibility).restriction = "INTERNAL",
+      (custom_options.v1.subtype) = "vault-ssh-certificate"
+    ];
   }
 }
 
@@ -372,6 +410,9 @@ message VaultSSHCertificateCredentialLibraryAttributes {
 
   // The extensions that the certificate should be signed for.
   map<string, string> extensions = 7; // @gotags: class:"public"
+
+  // Principals to be signed as "valid_principles" in addition to username.
+  repeated string additional_valid_principals = 8; // @gotags: class:"public"
 }
 
 // ValuesAtTime contain information about other Boundary resources as they
@@ -407,7 +448,7 @@ message SessionRecording {
   string session_id = 3 [json_name = "session_id"]; // @gotags: class:"public"
 
   // The ID of the Storage Bucket for the Target of this Session Recording.
-  string storage_bucket_id = 4 [json_name = "storage_bucket_id"];
+  string storage_bucket_id = 4 [json_name = "storage_bucket_id"]; // @gotags: class:"public"
 
   // The total number of bytes uploaded from the client in the Session.
   // This includes all bytes uploaded over all Connections, including

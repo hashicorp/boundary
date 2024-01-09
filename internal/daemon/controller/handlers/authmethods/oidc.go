@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package authmethods
 
@@ -15,8 +15,8 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/event"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
-	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/types/action"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/authmethods"
 	"google.golang.org/grpc/codes"
@@ -46,6 +46,7 @@ const (
 	codeField                              = "attributes.code"
 	claimsScopesField                      = "attributes.claims_scopes"
 	accountClaimMapsField                  = "attributes.account_claim_maps"
+	promptsField                           = "attributes.prompts"
 )
 
 var oidcMaskManager handlers.MaskManager
@@ -56,14 +57,14 @@ func init() {
 		panic(err)
 	}
 
-	IdActions[oidc.Subtype] = action.ActionSet{
+	IdActions[oidc.Subtype] = action.NewActionSet(
 		action.NoOp,
 		action.Read,
 		action.Update,
 		action.Delete,
 		action.ChangeState,
 		action.Authenticate,
-	}
+	)
 }
 
 type oidcState uint
@@ -444,6 +445,13 @@ func toStorageOidcAuthMethod(ctx context.Context, scopeId string, in *pb.AuthMet
 	}
 	if len(signAlgs) > 0 {
 		opts = append(opts, oidc.WithSigningAlgs(signAlgs...))
+	}
+	var prompts []oidc.PromptParam
+	for _, a := range attrs.GetPrompts() {
+		prompts = append(prompts, oidc.PromptParam(a))
+	}
+	if len(prompts) > 0 {
+		opts = append(opts, oidc.WithPrompts(prompts...))
 	}
 	if len(attrs.GetAllowedAudiences()) > 0 {
 		opts = append(opts, oidc.WithAudClaims(attrs.GetAllowedAudiences()...))

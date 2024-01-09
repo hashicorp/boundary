@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package globals
 
@@ -17,6 +17,7 @@ const (
 type (
 	ContextMaxRequestSizeType      struct{}
 	ContextOriginalRequestPathType struct{}
+	ContextAuthTokenPublicIdType   struct{}
 )
 
 var (
@@ -26,9 +27,20 @@ var (
 	// DefaultMaxRequestSize is the maximum size of a request we allow by default
 	DefaultMaxRequestSize = int64(1024 * 1024)
 
+	// DefaultMaxPageSize is the maximum list page size allowed if not set in the config.
+	DefaultMaxPageSize = 1000
+
+	// RefreshReadLookbackDuration is used to account for database state mutations
+	// missed due to concurrent transactions.
+	RefreshReadLookbackDuration = 30 * time.Second
+
 	// ContextMaxRequestSizeTypeKey is a value to keep linters from complaining
 	// about clashing string identifiers
 	ContextMaxRequestSizeTypeKey ContextMaxRequestSizeType
+
+	// ContextAuthTokenPublicIdKey is a value to keep linters from complaining
+	// about clashing string identifiers
+	ContextAuthTokenPublicIdKey ContextAuthTokenPublicIdType
 
 	// ContextOriginalRequestPathTypeKey is a value to keep linters from complaining
 	// about clashing string identifiers

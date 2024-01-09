@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package plugin
 
@@ -10,18 +10,21 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/host"
-	"github.com/hashicorp/boundary/internal/types/subtypes"
+	"github.com/hashicorp/boundary/internal/types/resource"
 )
 
 func init() {
-	if err := subtypes.Register(host.Domain, Subtype, globals.PluginHostCatalogPrefix, globals.PluginHostCatalogPreviousPrefix, globals.PluginHostSetPrefix, globals.PluginHostSetPreviousPrefix, globals.PluginHostPrefix, globals.PluginHostPreviousPrefix); err != nil {
-		panic(err)
-	}
+	globals.RegisterPrefixToResourceInfo(globals.PluginHostCatalogPrefix, resource.HostCatalog, host.Domain, Subtype)
+	globals.RegisterPrefixToResourceInfo(globals.PluginHostCatalogPreviousPrefix, resource.HostCatalog, host.Domain, Subtype)
+	globals.RegisterPrefixToResourceInfo(globals.PluginHostSetPrefix, resource.HostSet, host.Domain, Subtype)
+	globals.RegisterPrefixToResourceInfo(globals.PluginHostSetPreviousPrefix, resource.HostSet, host.Domain, Subtype)
+	globals.RegisterPrefixToResourceInfo(globals.PluginHostPrefix, resource.Host, host.Domain, Subtype)
+	globals.RegisterPrefixToResourceInfo(globals.PluginHostPreviousPrefix, resource.Host, host.Domain, Subtype)
 }
 
 // PublicId prefixes for the resources in the plugin package.
 const (
-	Subtype = subtypes.Subtype("plugin")
+	Subtype = globals.Subtype("plugin")
 )
 
 func newHostCatalogId(ctx context.Context) (string, error) {

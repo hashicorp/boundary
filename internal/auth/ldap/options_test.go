@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package ldap
 
@@ -9,10 +9,33 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 	"testing"
+	"time"
 
+	"github.com/hashicorp/boundary/internal/db/timestamp"
+	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/pagination"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+type fakeItem struct {
+	pagination.Item
+	publicId   string
+	createTime time.Time
+	updateTime time.Time
+}
+
+func (p *fakeItem) GetPublicId() string {
+	return p.publicId
+}
+
+func (p *fakeItem) GetCreateTime() *timestamp.Timestamp {
+	return timestamp.New(p.createTime)
+}
+
+func (p *fakeItem) GetUpdateTime() *timestamp.Timestamp {
+	return timestamp.New(p.updateTime)
+}
 
 func Test_getOpts(t *testing.T) {
 	t.Parallel()
@@ -184,18 +207,18 @@ func Test_getOpts(t *testing.T) {
 		testOpts.withBindPassword = "password"
 		assert.Equal(opts, testOpts)
 	})
-	t.Run("WithBindCredential-missing-dn", func(t *testing.T) {
+	t.Run("WithBindCredential-only-password", func(t *testing.T) {
 		assert := assert.New(t)
 		opts, err := getOpts(WithBindCredential(testCtx, "", "password"))
-		require.Error(t, err)
+		require.NoError(t, err)
 		assert.Empty(opts.withBindDn)
-		assert.Empty(opts.withBindPassword)
+		assert.NotEmpty(opts.withBindPassword)
 	})
-	t.Run("WithBindCredential-missing-password", func(t *testing.T) {
+	t.Run("WithBindCredential-only-dn", func(t *testing.T) {
 		assert := assert.New(t)
 		opts, err := getOpts(WithBindCredential(testCtx, "dn", ""))
-		require.Error(t, err)
-		assert.Empty(opts.withBindDn)
+		require.NoError(t, err)
+		assert.NotEmpty(opts.withBindDn)
 		assert.Empty(opts.withBindPassword)
 	})
 	t.Run("WithBindCredential-missing-dn-and-password", func(t *testing.T) {
@@ -323,5 +346,44 @@ func Test_getOpts(t *testing.T) {
 		assert.NotEqual(opts, testOpts)
 		testOpts.withPublicId = "test"
 		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithMaximumPageSize", func(t *testing.T) {
+		assert := assert.New(t)
+		opts, err := getOpts(WithMaximumPageSize(testCtx, 10))
+		require.NoError(t, err)
+		testOpts := getDefaultOptions()
+		assert.NotEqual(opts, testOpts)
+		testOpts.withMaximumPageSize = 10
+		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithDerefAliases", func(t *testing.T) {
+		assert := assert.New(t)
+		opts, err := getOpts(WithDerefAliases(testCtx, DerefAlways))
+		require.NoError(t, err)
+		testOpts := getDefaultOptions()
+		assert.NotEqual(opts, testOpts)
+		testOpts.withDerefAliases = DerefAlways
+		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithDerefAliases-invalid", func(t *testing.T) {
+		assert := assert.New(t)
+		_, err := getOpts(WithDerefAliases(testCtx, "Invalid"))
+		require.Error(t, err)
+		assert.ErrorContains(err, `"Invalid" is not a valid ldap dereference alias type`)
+		assert.Truef(errors.Match(errors.T(errors.InvalidParameter), err), "want err code: %q got: %q", errors.InvalidParameter, err)
+	})
+	t.Run("WithStartPageAfterItem", func(t *testing.T) {
+		t.Run("nil item", func(t *testing.T) {
+			_, err := getOpts(WithStartPageAfterItem(context.Background(), nil))
+			require.Error(t, err)
+		})
+		assert := assert.New(t)
+		updateTime := time.Now()
+		createTime := time.Now()
+		opts, err := getOpts(WithStartPageAfterItem(context.Background(), &fakeItem{nil, "s_1", createTime, updateTime}))
+		require.NoError(t, err)
+		assert.Equal(opts.withStartPageAfterItem.GetPublicId(), "s_1")
+		assert.Equal(opts.withStartPageAfterItem.GetUpdateTime(), timestamp.New(updateTime))
+		assert.Equal(opts.withStartPageAfterItem.GetCreateTime(), timestamp.New(createTime))
 	})
 }

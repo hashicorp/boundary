@@ -1,16 +1,19 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package iam
 
 import (
 	"context"
 	"crypto/rand"
+	"database/sql"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
@@ -460,18 +463,98 @@ func (r *Repository) DeleteScope(ctx context.Context, withPublicId string, _ ...
 	return rowsDeleted, nil
 }
 
-// ListScopes with the parent IDs, supports the WithLimit option.
-func (r *Repository) ListScopes(ctx context.Context, withParentIds []string, opt ...Option) ([]*Scope, error) {
-	const op = "iam.(Repository).ListScopes"
+// listScopes lists scopes in the given scopes and supports WithLimit option.
+func (r *Repository) listScopes(ctx context.Context, withParentIds []string, opt ...Option) ([]*Scope, time.Time, error) {
+	const op = "iam.(Repository).listScopes"
 	if len(withParentIds) == 0 {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing parent id")
+		return nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "missing parent id")
 	}
-	var items []*Scope
-	err := r.list(ctx, &items, "parent_id in (?)", []any{withParentIds}, opt...)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+	opts := getOpts(opt...)
+
+	limit := r.defaultLimit
+	switch {
+	case opts.withLimit > 0:
+		// non-zero signals an override of the default limit for the repo.
+		limit = opts.withLimit
+	case opts.withLimit < 0:
+		return nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "limit must be non-negative")
 	}
-	return items, nil
+
+	var args []any
+	whereClause := "parent_id in @parent_ids"
+	args = append(args, sql.Named("parent_ids", withParentIds))
+
+	if opts.withStartPageAfterItem != nil {
+		whereClause = fmt.Sprintf("(create_time, public_id) < (@last_item_create_time, @last_item_id) and %s", whereClause)
+		args = append(args,
+			sql.Named("last_item_create_time", opts.withStartPageAfterItem.GetCreateTime()),
+			sql.Named("last_item_id", opts.withStartPageAfterItem.GetPublicId()),
+		)
+	}
+	dbOpts := []db.Option{db.WithLimit(limit), db.WithOrder("create_time desc, public_id desc")}
+	return r.queryScopes(ctx, whereClause, args, dbOpts...)
+}
+
+// listScopesRefresh lists scopes in the given scopes and supports the
+// WithLimit and WithStartPageAfterItem options.
+func (r *Repository) listScopesRefresh(ctx context.Context, updatedAfter time.Time, withParentIds []string, opt ...Option) ([]*Scope, time.Time, error) {
+	const op = "iam.(Repository).listScopesRefresh"
+
+	switch {
+	case updatedAfter.IsZero():
+		return nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "missing updated after time")
+
+	case len(withParentIds) == 0:
+		return nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "missing parent id")
+	}
+
+	opts := getOpts(opt...)
+
+	limit := r.defaultLimit
+	switch {
+	case opts.withLimit > 0:
+		// non-zero signals an override of the default limit for the repo.
+		limit = opts.withLimit
+	case opts.withLimit < 0:
+		return nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "limit must be non-negative")
+	}
+
+	var args []any
+	whereClause := "update_time > @updated_after_time and parent_id in @parent_ids"
+	args = append(args,
+		sql.Named("updated_after_time", timestamp.New(updatedAfter)),
+		sql.Named("parent_ids", withParentIds),
+	)
+	if opts.withStartPageAfterItem != nil {
+		whereClause = fmt.Sprintf("(update_time, public_id) < (@last_item_update_time, @last_item_id) and %s", whereClause)
+		args = append(args,
+			sql.Named("last_item_update_time", opts.withStartPageAfterItem.GetUpdateTime()),
+			sql.Named("last_item_id", opts.withStartPageAfterItem.GetPublicId()),
+		)
+	}
+
+	dbOpts := []db.Option{db.WithLimit(limit), db.WithOrder("update_time desc, public_id desc")}
+	return r.queryScopes(ctx, whereClause, args, dbOpts...)
+}
+
+func (r *Repository) queryScopes(ctx context.Context, whereClause string, args []any, opt ...db.Option) ([]*Scope, time.Time, error) {
+	const op = "iam.(Repository).queryScopes"
+
+	var transactionTimestamp time.Time
+	var ret []*Scope
+	if _, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(rd db.Reader, w db.Writer) error {
+		var inRet []*Scope
+		if err := rd.SearchWhere(ctx, &inRet, whereClause, args, opt...); err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+		ret = inRet
+		var err error
+		transactionTimestamp, err = rd.Now(ctx)
+		return err
+	}); err != nil {
+		return nil, time.Time{}, err
+	}
+	return ret, transactionTimestamp, nil
 }
 
 // ListScopesRecursively allows for recursive listing of scopes based on a root scope
@@ -502,4 +585,45 @@ func (r *Repository) ListScopesRecursively(ctx context.Context, rootScopeId stri
 		return nil, errors.Wrap(ctx, err, op+":ListQuery")
 	}
 	return scopes, nil
+}
+
+// listScopeDeletedIds lists the public IDs of any scopes deleted since the timestamp provided.
+func (r *Repository) listScopeDeletedIds(ctx context.Context, since time.Time) ([]string, time.Time, error) {
+	const op = "iam.(Repository).listScopeDeletedIds"
+	var deletedScopes []*deletedScope
+	var transactionTimestamp time.Time
+	if _, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(r db.Reader, w db.Writer) error {
+		if err := r.SearchWhere(ctx, &deletedScopes, "delete_time >= ?", []any{since}); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to query deleted scopes"))
+		}
+		var err error
+		transactionTimestamp, err = r.Now(ctx)
+		if err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to query transaction timestamp"))
+		}
+		return nil
+	}); err != nil {
+		return nil, time.Time{}, err
+	}
+	var scopeIds []string
+	for _, user := range deletedScopes {
+		scopeIds = append(scopeIds, user.PublicId)
+	}
+	return scopeIds, transactionTimestamp, nil
+}
+
+// estimatedScopeCount returns and estimate of the total number of items in the scopes table.
+func (r *Repository) estimatedScopeCount(ctx context.Context) (int, error) {
+	const op = "iam.(Repository).estimatedScopeCount"
+	rows, err := r.reader.Query(ctx, estimateCountScopes, nil)
+	if err != nil {
+		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total scopes"))
+	}
+	var count int
+	for rows.Next() {
+		if err := r.reader.ScanRows(ctx, rows, &count); err != nil {
+			return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total scopes"))
+		}
+	}
+	return count, nil
 }

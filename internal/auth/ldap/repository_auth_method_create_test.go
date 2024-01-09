@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package ldap
 
@@ -63,6 +63,8 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 		WithAccountAttributeMap(testCtx, map[string]AccountToAttribute{
 			"mail": ToEmailAttribute,
 		}),
+		WithDerefAliases(testCtx, DerefFindingBaseObj),
+		WithMaximumPageSize(testCtx, 10),
 	)
 	require.NoError(t, err)
 

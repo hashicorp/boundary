@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package credential
 
@@ -9,27 +9,22 @@ import (
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/hashicorp/boundary/internal/types/subtypes"
+	"github.com/hashicorp/boundary/internal/types/resource"
 )
 
 func init() {
-	if err := subtypes.Register(Domain, UsernamePasswordSubtype, globals.UsernamePasswordCredentialPrefix, globals.UsernamePasswordCredentialPreviousPrefix); err != nil {
-		panic(err)
-	}
-	if err := subtypes.Register(Domain, SshPrivateKeySubtype, globals.SshPrivateKeyCredentialPrefix); err != nil {
-		panic(err)
-	}
-	if err := subtypes.Register(Domain, JsonSubtype, globals.JsonCredentialPrefix); err != nil {
-		panic(err)
-	}
+	globals.RegisterPrefixToResourceInfo(globals.UsernamePasswordCredentialPrefix, resource.Credential, Domain, UsernamePasswordSubtype)
+	globals.RegisterPrefixToResourceInfo(globals.UsernamePasswordCredentialPreviousPrefix, resource.Credential, Domain, UsernamePasswordSubtype)
+	globals.RegisterPrefixToResourceInfo(globals.SshPrivateKeyCredentialPrefix, resource.Credential, Domain, SshPrivateKeySubtype)
+	globals.RegisterPrefixToResourceInfo(globals.JsonCredentialPrefix, resource.Credential, Domain, JsonSubtype)
 }
 
 const (
-	UsernamePasswordSubtype = subtypes.Subtype("username_password")
+	UsernamePasswordSubtype = globals.Subtype("username_password")
 
-	SshPrivateKeySubtype = subtypes.Subtype("ssh_private_key")
+	SshPrivateKeySubtype = globals.Subtype("ssh_private_key")
 
-	JsonSubtype = subtypes.Subtype("json")
+	JsonSubtype = globals.Subtype("json")
 )
 
 func NewUsernamePasswordCredentialId(ctx context.Context) (string, error) {

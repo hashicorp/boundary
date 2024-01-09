@@ -1,9 +1,12 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package resource
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"strings"
+)
 
 // Type defines the types of resources in the system
 type Type uint
@@ -78,6 +81,16 @@ func (r Type) PluralString() string {
 		return "credential-libraries"
 	default:
 		return r.String() + "s"
+	}
+}
+
+func FromPlural(s string) (Type, bool) {
+	switch s {
+	case "credential-libraries":
+		return CredentialLibrary, true
+	default:
+		t, ok := Map[strings.TrimSuffix(s, "s")]
+		return t, ok
 	}
 }
 

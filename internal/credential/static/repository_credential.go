@@ -1,19 +1,23 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package static
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
+	"slices"
 	"strings"
+	"time"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
-	"github.com/hashicorp/boundary/internal/types/subtypes"
 	"github.com/hashicorp/go-dbw"
 )
 
@@ -289,7 +293,7 @@ func (r *Repository) LookupCredential(ctx context.Context, publicId string, _ ..
 
 	var cred credential.Static
 
-	switch subtypes.SubtypeFromId(credential.Domain, publicId) {
+	switch globals.ResourceInfoFromPrefix(publicId).Subtype {
 	case credential.UsernamePasswordSubtype:
 		upCred := allocUsernamePasswordCredential()
 		upCred.PublicId = publicId
@@ -715,67 +719,127 @@ func (r *Repository) UpdateJsonCredential(ctx context.Context,
 	return returnedCredential, rowsUpdated, nil
 }
 
-// ListCredentials returns a slice of UsernamePasswordCredentials, SshPrivateKeyCredentials, and JsonCredentials
-// for the storeId. WithLimit is the only option supported.
-// TODO: This should hit a view and return the interface type...
-func (r *Repository) ListCredentials(ctx context.Context, storeId string, opt ...Option) ([]credential.Static, error) {
+// ListCredentials returns a slice of static credentials
+// for the storeId. Supports the following options:
+//   - credential.WithLimit
+//   - credential.WithStartPageAfterItem
+func (r *Repository) ListCredentials(ctx context.Context, storeId string, opt ...credential.Option) ([]credential.Static, time.Time, error) {
 	const op = "static.(Repository).ListCredentials"
 	if storeId == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "no storeId")
+		return nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "no storeId")
 	}
-	opts := getOpts(opt...)
+	opts, err := credential.GetOpts(opt...)
+	if err != nil {
+		return nil, time.Time{}, errors.Wrap(ctx, err, op)
+	}
 	limit := r.defaultLimit
-	if opts.withLimit != 0 {
+	if opts.WithLimit != 0 {
 		// non-zero signals an override of the default limit for the repo.
-		limit = opts.withLimit
+		limit = opts.WithLimit
+	}
+	query := fmt.Sprintf(listCredentialsTemplate, limit)
+	args := []any{sql.Named("store_id", storeId)}
+	if opts.WithStartPageAfterItem != nil {
+		query = fmt.Sprintf(listCredentialsPageTemplate, limit)
+		args = append(args,
+			sql.Named("last_item_create_time", opts.WithStartPageAfterItem.GetCreateTime()),
+			sql.Named("last_item_id", opts.WithStartPageAfterItem.GetPublicId()),
+		)
 	}
 
-	var upCreds []*UsernamePasswordCredential
-	err := r.reader.SearchWhere(ctx, &upCreds, "store_id = ?", []any{storeId}, db.WithLimit(limit))
+	creds, transactionTimestamp, err := r.queryCredentials(ctx, query, args)
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+		return nil, time.Time{}, errors.Wrap(ctx, err, op)
 	}
 
-	var spkCreds []*SshPrivateKeyCredential
-	err = r.reader.SearchWhere(ctx, &spkCreds, "store_id = ?", []any{storeId}, db.WithLimit(limit))
+	// Sort final slice to ensure correct ordering.
+	// We sort by create time descending (most recently created first).
+	slices.SortFunc(creds, func(i, j credential.Static) int {
+		return j.GetCreateTime().AsTime().Compare(i.GetCreateTime().AsTime())
+	})
+
+	return creds, transactionTimestamp, nil
+}
+
+// ListCredentialRefresh returns a slice of static credentials
+// for the storeId. Supports the following options:
+//   - credential.WithLimit
+//   - credential.WithStartPageAfterItem
+func (r *Repository) ListCredentialsRefresh(ctx context.Context, storeId string, updatedAfter time.Time, opt ...credential.Option) ([]credential.Static, time.Time, error) {
+	const op = "static.(Repository).ListCredentials"
+	switch {
+	case storeId == "":
+		return nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "missing credential store ID")
+	case updatedAfter.IsZero():
+		return nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "missing updated after time")
+	}
+	opts, err := credential.GetOpts(opt...)
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+		return nil, time.Time{}, errors.Wrap(ctx, err, op)
+	}
+	limit := r.defaultLimit
+	if opts.WithLimit != 0 {
+		// non-zero signals an override of the default limit for the repo.
+		limit = opts.WithLimit
 	}
 
-	var jsonCreds []*JsonCredential
-	err = r.reader.SearchWhere(ctx, &jsonCreds, "store_id = ?", []any{storeId}, db.WithLimit(limit))
+	query := fmt.Sprintf(listCredentialsRefreshTemplate, limit)
+	args := []any{
+		sql.Named("store_id", storeId),
+		sql.Named("updated_after_time", timestamp.New(updatedAfter)),
+	}
+	if opts.WithStartPageAfterItem != nil {
+		query = fmt.Sprintf(listCredentialsRefreshPageTemplate, limit)
+		args = append(args,
+			sql.Named("last_item_update_time", opts.WithStartPageAfterItem.GetUpdateTime()),
+			sql.Named("last_item_id", opts.WithStartPageAfterItem.GetPublicId()),
+		)
+	}
+
+	creds, transactionTimestamp, err := r.queryCredentials(ctx, query, args)
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+		return nil, time.Time{}, errors.Wrap(ctx, err, op)
 	}
 
-	ret := make([]credential.Static, 0, len(upCreds)+len(spkCreds)+len(jsonCreds))
+	// Sort final slice to ensure correct ordering.
+	// We sort by update time descending (most recently updated first).
+	slices.SortFunc(creds, func(i, j credential.Static) int {
+		return j.GetUpdateTime().AsTime().Compare(i.GetUpdateTime().AsTime())
+	})
 
-	for _, c := range upCreds {
-		// Clear password fields, only PasswordHmac should be returned
-		c.CtPassword = nil
-		c.Password = nil
-		ret = append(ret, c)
+	return creds, transactionTimestamp, nil
+}
+
+func (r *Repository) queryCredentials(ctx context.Context, query string, args []any) ([]credential.Static, time.Time, error) {
+	const op = "static.(Repository).queryCredentials"
+
+	var creds []credential.Static
+	var transactionTimestamp time.Time
+	if _, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(rd db.Reader, w db.Writer) error {
+		rows, err := rd.Query(ctx, query, args)
+		if err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+		var results []listCredentialResult
+		for rows.Next() {
+			if err := rd.ScanRows(ctx, rows, &results); err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+		}
+		for _, result := range results {
+			cred, err := result.toCredential(ctx)
+			if err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+			creds = append(creds, cred)
+		}
+		transactionTimestamp, err = rd.Now(ctx)
+		return err
+	}); err != nil {
+		return nil, time.Time{}, err
 	}
 
-	for _, c := range spkCreds {
-		// Clear private key fields, only PrivateKeyHmac should be returned
-		c.PrivateKeyEncrypted = nil
-		c.PrivateKey = nil
-
-		// Clear passphrase fields, only PrivateKeyPassphraseHmac should be returned if it exists
-		c.PrivateKeyPassphraseEncrypted = nil
-		c.PrivateKeyPassphrase = nil
-		ret = append(ret, c)
-	}
-
-	for _, c := range jsonCreds {
-		// Clear the object fields, only ObjectHmac should be returned
-		c.ObjectEncrypted = nil
-		c.Object = nil
-		ret = append(ret, c)
-	}
-
-	return ret, nil
+	return creds, transactionTimestamp, nil
 }
 
 // DeleteCredential deletes publicId from the repository and returns
@@ -792,7 +856,7 @@ func (r *Repository) DeleteCredential(ctx context.Context, projectId, id string,
 
 	var input any
 	var md oplog.Metadata
-	switch subtypes.SubtypeFromId(credential.Domain, id) {
+	switch globals.ResourceInfoFromPrefix(id).Subtype {
 	case credential.UsernamePasswordSubtype:
 		c := allocUsernamePasswordCredential()
 		c.PublicId = id
@@ -838,4 +902,59 @@ func (r *Repository) DeleteCredential(ctx context.Context, projectId, id string,
 	}
 
 	return rowsDeleted, nil
+}
+
+// EstimatedCredentialCount returns an estimate of the number of static credentials
+func (r *Repository) EstimatedCredentialCount(ctx context.Context) (int, error) {
+	const op = "static.(Repository).EstimatedCredentialCount"
+	rows, err := r.reader.Query(ctx, estimateCountCredentials, nil)
+	if err != nil {
+		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total static credentials"))
+	}
+	var count int
+	for rows.Next() {
+		if err := r.reader.ScanRows(ctx, rows, &count); err != nil {
+			return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total static credentials"))
+		}
+	}
+	return count, nil
+}
+
+// ListDeletedCredentialIds lists the public IDs of any credentials deleted since the timestamp provided.
+func (r *Repository) ListDeletedCredentialIds(ctx context.Context, since time.Time) ([]string, time.Time, error) {
+	const op = "static.(Repository).ListDeletedCredentialIds"
+	var credentialStoreIds []string
+	var transactionTimestamp time.Time
+	if _, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(r db.Reader, w db.Writer) error {
+		var deletedJSONCredentials []*deletedJSONCredential
+		if err := r.SearchWhere(ctx, &deletedJSONCredentials, "delete_time >= ?", []any{since}); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to query deleted JSON credentials"))
+		}
+		for _, cl := range deletedJSONCredentials {
+			credentialStoreIds = append(credentialStoreIds, cl.PublicId)
+		}
+		var deletedUsernamePasswordCredentials []*deletedUsernamePasswordCredential
+		if err := r.SearchWhere(ctx, &deletedUsernamePasswordCredentials, "delete_time >= ?", []any{since}); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to query deleted username password credentials"))
+		}
+		for _, cl := range deletedUsernamePasswordCredentials {
+			credentialStoreIds = append(credentialStoreIds, cl.PublicId)
+		}
+		var deletedSSHPrivateKeyCredentials []*deletedSSHPrivateKeyCredential
+		if err := r.SearchWhere(ctx, &deletedSSHPrivateKeyCredentials, "delete_time >= ?", []any{since}); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to query deleted ssh private key credentials"))
+		}
+		for _, cl := range deletedSSHPrivateKeyCredentials {
+			credentialStoreIds = append(credentialStoreIds, cl.PublicId)
+		}
+		var err error
+		transactionTimestamp, err = r.Now(ctx)
+		if err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to query transaction timestamp"))
+		}
+		return nil
+	}); err != nil {
+		return nil, time.Time{}, err
+	}
+	return credentialStoreIds, transactionTimestamp, nil
 }

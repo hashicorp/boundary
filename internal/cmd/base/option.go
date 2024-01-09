@@ -1,16 +1,16 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package base
 
 import (
-	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/sdk/pbs/plugin"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 )
 
-// getOpts - iterate the inbound Options and return a struct.
-func getOpts(opt ...Option) Options {
+// GetOpts - iterate the inbound Options and return a struct.
+func GetOpts(opt ...Option) Options {
 	opts := getDefaultOptions()
 	for _, o := range opt {
 		if o != nil {
@@ -44,6 +44,9 @@ type Options struct {
 	withStatusCode                 int
 	withHostPlugin                 func() (string, plugin.HostPluginServiceClient)
 	withEventGating                bool
+	withImplicitId                 string
+	WithSkipScopeIdFlag            bool
+	WithInterceptedToken           *string
 }
 
 func getDefaultOptions() Options {
@@ -198,5 +201,29 @@ func WithHostPlugin(pluginId string, plg plugin.HostPluginServiceClient) Option 
 func WithEventGating(with bool) Option {
 	return func(o *Options) {
 		o.withEventGating = with
+	}
+}
+
+// WithImplicitId is used when creating the command if we are implicitly
+// overriding the ID via a top-level read/update/delete command
+func WithImplicitId(with string) Option {
+	return func(o *Options) {
+		o.withImplicitId = with
+	}
+}
+
+// WithSkipScopeIdFlag tells a command to not create a scope ID flag (usually
+// because it's already been defined)
+func WithSkipScopeIdFlag(with bool) Option {
+	return func(o *Options) {
+		o.WithSkipScopeIdFlag = with
+	}
+}
+
+// WithInterceptedToken provides a string pointer that will have the token
+// assigned to it when performing an authenticate command.
+func WithInterceptedToken(s *string) Option {
+	return func(o *Options) {
+		o.WithInterceptedToken = s
 	}
 }

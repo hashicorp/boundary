@@ -1,11 +1,12 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package subtypes
 
 import (
 	"testing"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/gen/testing/attribute"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -17,7 +18,7 @@ func TestProtoAttributeKey(t *testing.T) {
 	cases := []struct {
 		name     string
 		msg      proto.Message
-		subtype  Subtype
+		subtype  globals.Subtype
 		expected protoreflect.FullName
 	}{
 		{
@@ -35,7 +36,7 @@ func TestProtoAttributeKey(t *testing.T) {
 		{
 			"TestResource/unknown",
 			&attribute.TestResource{},
-			UnknownSubtype,
+			globals.UnknownSubtype,
 			"testing.attribute.v1.TestResource.attributes",
 		},
 	}
@@ -54,7 +55,7 @@ func TestProtoAttributeKeyErrors(t *testing.T) {
 	cases := []struct {
 		name        string
 		msg         proto.Message
-		subtype     Subtype
+		subtype     globals.Subtype
 		expectedErr string
 	}{
 		{
@@ -72,7 +73,7 @@ func TestProtoAttributeKeyErrors(t *testing.T) {
 		{
 			"TestNoAttributes/unknown",
 			&attribute.TestNoAttributes{},
-			UnknownSubtype,
+			globals.UnknownSubtype,
 			"proto message testing.attribute.v1.TestNoAttributes not registered",
 		},
 	}

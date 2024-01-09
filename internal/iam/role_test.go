@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package iam
 
@@ -558,7 +558,7 @@ func TestRole_Actions(t *testing.T) {
 func TestRole_ResourceType(t *testing.T) {
 	assert := assert.New(t)
 	r := &Role{}
-	ty := r.ResourceType()
+	ty := r.GetResourceType()
 	assert.Equal(ty, resource.Role)
 }
 

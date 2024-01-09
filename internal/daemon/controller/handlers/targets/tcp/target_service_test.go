@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package tcp_test
 
@@ -12,11 +12,13 @@ import (
 	"errors"
 	"fmt"
 	"path"
+	"slices"
 	"strings"
 	"sync/atomic"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth/ldap"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
@@ -45,6 +47,7 @@ import (
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/target/tcp"
+	"github.com/hashicorp/boundary/internal/target/tcp/store"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	credlibpb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/credentiallibraries"
 	credpb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/credentials"
@@ -113,7 +116,7 @@ func testService(t *testing.T, ctx context.Context, conn *db.DB, kms *kms.Kms, w
 	staticCredRepoFn := func() (*credstatic.Repository, error) {
 		return credstatic.NewRepository(context.Background(), rw, rw, kms)
 	}
-	return targets.NewService(ctx, kms, repoFn, iamRepoFn, serversRepoFn, sessionRepoFn, pluginHostRepoFn, staticHostRepoFn, vaultCredRepoFn, staticCredRepoFn, nil, statusGracePeriod, nil)
+	return targets.NewService(ctx, kms, repoFn, iamRepoFn, serversRepoFn, sessionRepoFn, pluginHostRepoFn, staticHostRepoFn, vaultCredRepoFn, staticCredRepoFn, nil, statusGracePeriod, 1000, nil)
 }
 
 func TestGet(t *testing.T) {
@@ -241,14 +244,24 @@ func TestGet(t *testing.T) {
 			if tc.res != nil {
 				tc.res.Item.Version = 1
 			}
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "GetTarget(%q) got response %q, wanted %q", tc.req, got, tc.res)
+			assert.Empty(cmp.Diff(
+				got,
+				tc.res,
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+			), "GetTarget(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
 }
 
 func TestList(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
+	sqlDB, err := conn.SqlDB(ctx)
+	require.NoError(t, err)
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
 
@@ -324,6 +337,14 @@ func TestList(t *testing.T) {
 		})
 	}
 
+	// Run analyze to update postgres estimates
+	_, err = sqlDB.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
+
+	// Reverse slices since response is ordered by created_time descending (newest first)
+	slices.Reverse(wantTars)
+	slices.Reverse(totalTars)
+
 	cases := []struct {
 		name string
 		req  *pbs.ListTargetsRequest
@@ -333,7 +354,13 @@ func TestList(t *testing.T) {
 		{
 			name: "List Many Targets",
 			req:  &pbs.ListTargetsRequest{ScopeId: proj.GetPublicId()},
-			res:  &pbs.ListTargetsResponse{Items: wantTars},
+			res: &pbs.ListTargetsResponse{
+				Items:        wantTars,
+				ResponseType: "complete",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+				EstItemCount: 5,
+			},
 		},
 		{
 			name: "List No Targets",
@@ -343,17 +370,44 @@ func TestList(t *testing.T) {
 		{
 			name: "List Targets Recursively",
 			req:  &pbs.ListTargetsRequest{ScopeId: scope.Global.String(), Recursive: true},
-			res:  &pbs.ListTargetsResponse{Items: totalTars},
+			res: &pbs.ListTargetsResponse{
+				Items:        totalTars,
+				ResponseType: "complete",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+				EstItemCount: 10,
+			},
+		},
+		{
+			name: "Paginate listing",
+			req:  &pbs.ListTargetsRequest{ScopeId: scope.Global.String(), Recursive: true, PageSize: 2},
+			res: &pbs.ListTargetsResponse{
+				Items:        totalTars[:2],
+				ResponseType: "delta",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+				EstItemCount: 10,
+			},
 		},
 		{
 			name: "Filter To Many Targets",
 			req:  &pbs.ListTargetsRequest{ScopeId: scope.Global.String(), Recursive: true, Filter: fmt.Sprintf(`"/item/scope/id"==%q`, proj.GetPublicId())},
-			res:  &pbs.ListTargetsResponse{Items: wantTars},
+			res: &pbs.ListTargetsResponse{
+				Items:        wantTars,
+				ResponseType: "complete",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+				EstItemCount: 5,
+			},
 		},
 		{
 			name: "Filter To No Targets",
 			req:  &pbs.ListTargetsRequest{ScopeId: proj.GetPublicId(), Filter: `"/item/id"=="doesnt match"`},
-			res:  &pbs.ListTargetsResponse{},
+			res: &pbs.ListTargetsResponse{
+				ResponseType: "complete",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+			},
 		},
 		{
 			name: "Filter Bad Format",
@@ -389,7 +443,14 @@ func TestList(t *testing.T) {
 			for _, t := range got.Items {
 				want, ok := wantById[t.Id]
 				assert.True(ok, "Got unexpected target with id: %s", t.Id)
-				assert.Empty(cmp.Diff(t, want, protocmp.Transform()), "got %v, wanted %v", t, want)
+				assert.Empty(cmp.Diff(
+					t,
+					want,
+					protocmp.Transform(),
+					cmpopts.SortSlices(func(a, b string) bool {
+						return a < b
+					}),
+				), "got %v, wanted %v", t, want)
 			}
 
 			// Test with anon user
@@ -410,6 +471,318 @@ func TestList(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestListPagination(t *testing.T) {
+	// Set database read timeout to avoid duplicates in response
+	oldReadTimeout := globals.RefreshReadLookbackDuration
+	globals.RefreshReadLookbackDuration = 0
+	t.Cleanup(func() {
+		globals.RefreshReadLookbackDuration = oldReadTimeout
+	})
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	sqlDB, err := conn.SqlDB(ctx)
+	require.NoError(t, err)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+
+	rw := db.New(conn)
+
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+	tokenRepoFn := func() (*authtoken.Repository, error) {
+		return authtoken.NewRepository(ctx, rw, rw, kms)
+	}
+	serversRepoFn := func() (*server.Repository, error) {
+		return server.NewRepository(ctx, rw, rw, kms)
+	}
+	repo, err := target.NewRepository(ctx, rw, rw, kms)
+	require.NoError(t, err)
+
+	org, proj := iam.TestScopes(t, iamRepo)
+	at := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
+	r := iam.TestRole(t, conn, proj.GetPublicId())
+	_ = iam.TestUserRole(t, conn, r.GetPublicId(), at.GetIamUserId())
+	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "id=*;type=*;actions=*")
+	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
+	hss := static.TestSets(t, conn, hc.GetPublicId(), 2)
+	s, err := testService(t, context.Background(), conn, kms, wrapper)
+	require.NoError(t, err)
+
+	var allTargets []*pb.Target
+	for i := 0; i < 10; i++ {
+		tar := tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), fmt.Sprintf("tar%d", i), target.WithHostSources([]string{hss[0].GetPublicId(), hss[1].GetPublicId()}))
+		allTargets = append(allTargets, &pb.Target{
+			Id:                     tar.GetPublicId(),
+			ScopeId:                proj.GetPublicId(),
+			Name:                   wrapperspb.String(tar.GetName()),
+			Scope:                  &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
+			CreatedTime:            tar.GetCreateTime().GetTimestamp(),
+			UpdatedTime:            tar.GetUpdateTime().GetTimestamp(),
+			Version:                tar.GetVersion(),
+			Type:                   tcp.Subtype.String(),
+			Attrs:                  &pb.Target_TcpTargetAttributes{},
+			SessionMaxSeconds:      wrapperspb.UInt32(28800),
+			SessionConnectionLimit: wrapperspb.Int32(-1),
+			AuthorizedActions:      testAuthorizedActions,
+			Address:                &wrapperspb.StringValue{},
+		})
+	}
+	// Reverse since we read items in descending order (newest first)
+	slices.Reverse(allTargets)
+
+	// Run analyze to update postgres estimates
+	_, err = sqlDB.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
+
+	requestInfo := authpb.RequestInfo{
+		TokenFormat: uint32(auth.AuthTokenTypeBearer),
+		PublicId:    at.GetPublicId(),
+		Token:       at.GetToken(),
+	}
+	requestContext := context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
+	ctx = auth.NewVerifierContext(requestContext, iamRepoFn, tokenRepoFn, serversRepoFn, kms, &requestInfo)
+
+	// Start paginating, recursively
+	req := &pbs.ListTargetsRequest{
+		ScopeId:   "global",
+		Recursive: true,
+		Filter:    "",
+		ListToken: "",
+		PageSize:  2,
+	}
+	got, err := s.ListTargets(ctx, req)
+	require.NoError(t, err)
+	require.Len(t, got.GetItems(), 2)
+	// Compare without comparing the list token
+	assert.Empty(t,
+		cmp.Diff(
+			got,
+			&pbs.ListTargetsResponse{
+				Items:        allTargets[0:2],
+				ResponseType: "delta",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+				RemovedIds:   nil,
+				EstItemCount: 10,
+			},
+			cmpopts.SortSlices(func(a, b string) bool {
+				return a < b
+			}),
+			protocmp.Transform(),
+			protocmp.IgnoreFields(&pbs.ListTargetsResponse{}, "list_token"),
+		),
+	)
+
+	// Request second page
+	req.ListToken = got.ListToken
+	got, err = s.ListTargets(ctx, req)
+	require.NoError(t, err)
+	require.Len(t, got.GetItems(), 2)
+	// Compare without comparing the list token
+	assert.Empty(t,
+		cmp.Diff(
+			got,
+			&pbs.ListTargetsResponse{
+				Items:        allTargets[2:4],
+				ResponseType: "delta",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+				RemovedIds:   nil,
+				EstItemCount: 10,
+			},
+			cmpopts.SortSlices(func(a, b string) bool {
+				return a < b
+			}),
+			protocmp.Transform(),
+			protocmp.IgnoreFields(&pbs.ListTargetsResponse{}, "list_token"),
+		),
+	)
+
+	// Request rest of results
+	req.ListToken = got.ListToken
+	req.PageSize = 10
+	got, err = s.ListTargets(ctx, req)
+	require.NoError(t, err)
+	require.Len(t, got.GetItems(), 6)
+	// Compare without comparing the list token
+	assert.Empty(t,
+		cmp.Diff(
+			got,
+			&pbs.ListTargetsResponse{
+				Items:        allTargets[4:],
+				ResponseType: "complete",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+				RemovedIds:   nil,
+				EstItemCount: 10,
+			},
+			cmpopts.SortSlices(func(a, b string) bool {
+				return a < b
+			}),
+			protocmp.Transform(),
+			protocmp.IgnoreFields(&pbs.ListTargetsResponse{}, "list_token"),
+		),
+	)
+
+	// Create another target
+	tar := tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "test-target", target.WithHostSources([]string{hss[0].GetPublicId(), hss[1].GetPublicId()}))
+	newTarget := &pb.Target{
+		Id:                     tar.GetPublicId(),
+		ScopeId:                proj.GetPublicId(),
+		Name:                   wrapperspb.String(tar.GetName()),
+		Scope:                  &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
+		CreatedTime:            tar.GetCreateTime().GetTimestamp(),
+		UpdatedTime:            tar.GetUpdateTime().GetTimestamp(),
+		Version:                tar.GetVersion(),
+		Type:                   tcp.Subtype.String(),
+		Attrs:                  &pb.Target_TcpTargetAttributes{},
+		SessionMaxSeconds:      wrapperspb.UInt32(28800),
+		SessionConnectionLimit: wrapperspb.Int32(-1),
+		AuthorizedActions:      testAuthorizedActions,
+		Address:                &wrapperspb.StringValue{},
+	}
+	// Add to the front since it's most recently updated
+	allTargets = append([]*pb.Target{newTarget}, allTargets...)
+
+	// Delete one of the other targets
+	_, err = repo.DeleteTarget(ctx, allTargets[len(allTargets)-1].Id)
+	require.NoError(t, err)
+	deletedTarget := allTargets[len(allTargets)-1]
+	allTargets = allTargets[:len(allTargets)-1]
+
+	// Update one of the other targets
+	allTargets[1].Name = wrapperspb.String("new-name")
+	allTargets[1].Version = 2
+	updatedTarget := &tcp.Target{
+		Target: &store.Target{
+			PublicId:  allTargets[1].Id,
+			Name:      allTargets[1].Name.GetValue(),
+			ProjectId: allTargets[1].ScopeId,
+		},
+	}
+	tg, _, err := repo.UpdateTarget(ctx, updatedTarget, 1, []string{"name"})
+	require.NoError(t, err)
+	allTargets[1].UpdatedTime = tg.GetUpdateTime().GetTimestamp()
+	allTargets[1].Version = tg.GetVersion()
+	// Add to the front since it's most recently updated
+	allTargets = append(
+		[]*pb.Target{allTargets[1]},
+		append(
+			[]*pb.Target{allTargets[0]},
+			allTargets[2:]...,
+		)...,
+	)
+
+	// Run analyze to update postgres estimates
+	_, err = sqlDB.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
+
+	// Request updated results
+	req.ListToken = got.ListToken
+	req.PageSize = 1
+	got, err = s.ListTargets(ctx, req)
+	require.NoError(t, err)
+	require.Len(t, got.GetItems(), 1)
+	// Compare without comparing the list token
+	assert.Empty(t,
+		cmp.Diff(
+			got,
+			&pbs.ListTargetsResponse{
+				Items:        []*pb.Target{allTargets[0]},
+				ResponseType: "delta",
+				SortBy:       "updated_time",
+				SortDir:      "desc",
+				// Should contain the deleted target
+				RemovedIds:   []string{deletedTarget.Id},
+				EstItemCount: 10,
+			},
+			cmpopts.SortSlices(func(a, b string) bool {
+				return a < b
+			}),
+			protocmp.Transform(),
+			protocmp.IgnoreFields(&pbs.ListTargetsResponse{}, "list_token"),
+		),
+	)
+
+	// Get next page
+	req.ListToken = got.ListToken
+	got, err = s.ListTargets(ctx, req)
+	require.NoError(t, err)
+	require.Len(t, got.GetItems(), 1)
+	// Compare without comparing the list token
+	assert.Empty(t,
+		cmp.Diff(
+			got,
+			&pbs.ListTargetsResponse{
+				Items:        []*pb.Target{allTargets[1]},
+				ResponseType: "complete",
+				SortBy:       "updated_time",
+				SortDir:      "desc",
+				RemovedIds:   nil,
+				EstItemCount: 10,
+			},
+			cmpopts.SortSlices(func(a, b string) bool {
+				return a < b
+			}),
+			protocmp.Transform(),
+			protocmp.IgnoreFields(&pbs.ListTargetsResponse{}, "list_token"),
+		),
+	)
+
+	// Request new page with filter requiring looping
+	// to fill the page.
+	req.ListToken = ""
+	req.PageSize = 1
+	req.Filter = fmt.Sprintf(`"/item/id"==%q or "/item/id"==%q`, allTargets[len(allTargets)-2].Id, allTargets[len(allTargets)-1].Id)
+	got, err = s.ListTargets(ctx, req)
+	require.NoError(t, err)
+	require.Len(t, got.GetItems(), 1)
+	assert.Empty(t,
+		cmp.Diff(
+			got,
+			&pbs.ListTargetsResponse{
+				Items:        []*pb.Target{allTargets[len(allTargets)-2]},
+				ResponseType: "delta",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+				// Should be empty again
+				RemovedIds:   nil,
+				EstItemCount: 10,
+			},
+			cmpopts.SortSlices(func(a, b string) bool {
+				return a < b
+			}),
+			protocmp.Transform(),
+			protocmp.IgnoreFields(&pbs.ListTargetsResponse{}, "list_token"),
+		),
+	)
+	req.ListToken = got.ListToken
+	// Get the second page
+	got, err = s.ListTargets(ctx, req)
+	require.NoError(t, err)
+	require.Len(t, got.GetItems(), 1)
+	assert.Empty(t,
+		cmp.Diff(
+			got,
+			&pbs.ListTargetsResponse{
+				Items:        []*pb.Target{allTargets[len(allTargets)-1]},
+				ResponseType: "complete",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+				RemovedIds:   nil,
+				EstItemCount: 10,
+			},
+			cmpopts.SortSlices(func(a, b string) bool {
+				return a < b
+			}),
+			protocmp.Transform(),
+			protocmp.IgnoreFields(&pbs.ListTargetsResponse{}, "list_token"),
+		),
+	)
 }
 
 func TestDelete(t *testing.T) {
@@ -489,7 +862,14 @@ func TestDelete(t *testing.T) {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "DeleteTarget(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
 			}
-			assert.Empty(cmp.Diff(tc.res, got, protocmp.Transform()), "DeleteTarget(%q) got response %q, wanted %q", tc.req, got, tc.res)
+			assert.Empty(cmp.Diff(
+				tc.res,
+				got,
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+			), "DeleteTarget(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
 }
@@ -771,7 +1151,14 @@ func TestCreate(t *testing.T) {
 			if tc.res != nil {
 				tc.res.Item.Version = 1
 			}
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "CreateTarget(%q)\n got response %q\n, wanted %q\n", tc.req, got, tc.res)
+			assert.Empty(cmp.Diff(
+				got,
+				tc.res,
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+			), "CreateTarget(%q)\n got response %q\n, wanted %q\n", tc.req, got, tc.res)
 		})
 	}
 	// Reset worker filter func
@@ -1265,7 +1652,14 @@ func TestUpdate(t *testing.T) {
 			if tc.res != nil {
 				tc.res.Item.Version = tc.req.Item.Version + 1
 			}
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "UpdateTarget(%q) got response %q, wanted %q", req, got, tc.res)
+			assert.Empty(cmp.Diff(
+				got,
+				tc.res,
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+			), "UpdateTarget(%q) got response %q, wanted %q", req, got, tc.res)
 		})
 	}
 	// Reset worker filter funcs
@@ -1337,6 +1731,7 @@ func TestUpdate_BadVersion(t *testing.T) {
 }
 
 func TestAddTargetHostSources(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
@@ -1499,6 +1894,7 @@ func TestAddTargetHostSources(t *testing.T) {
 }
 
 func TestSetTargetHostSources(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
@@ -1649,6 +2045,7 @@ func TestSetTargetHostSources(t *testing.T) {
 }
 
 func TestRemoveTargetHostSources(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
@@ -1817,6 +2214,7 @@ func TestRemoveTargetHostSources(t *testing.T) {
 }
 
 func TestAddTargetCredentialSources(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
@@ -1926,9 +2324,6 @@ func TestAddTargetCredentialSources(t *testing.T) {
 
 			assert.ElementsMatch(t, tc.resultSourceIds, got.GetItem().GetBrokeredCredentialSourceIds())
 			assert.Equal(t, len(tc.resultSourceIds), len(got.GetItem().GetBrokeredCredentialSources()))
-
-			assert.ElementsMatch(t, tc.resultSourceIds, got.GetItem().GetApplicationCredentialSourceIds())
-			assert.Equal(t, len(tc.resultSourceIds), len(got.GetItem().GetApplicationCredentialSources()))
 		})
 	}
 
@@ -1999,6 +2394,7 @@ func TestAddTargetCredentialSources(t *testing.T) {
 }
 
 func TestSetTargetCredentialSources(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
@@ -2114,9 +2510,6 @@ func TestSetTargetCredentialSources(t *testing.T) {
 			require.NoError(t, err, "Got error: %v", s)
 			assert.ElementsMatch(t, tc.resultCredentialSourceIds, got.GetItem().GetBrokeredCredentialSourceIds())
 			assert.Equal(t, len(tc.resultCredentialSourceIds), len(got.GetItem().GetBrokeredCredentialSources()))
-
-			assert.ElementsMatch(t, tc.resultCredentialSourceIds, got.GetItem().GetApplicationCredentialSourceIds())
-			assert.Equal(t, len(tc.resultCredentialSourceIds), len(got.GetItem().GetApplicationCredentialSources()))
 		})
 	}
 
@@ -2175,6 +2568,7 @@ func TestSetTargetCredentialSources(t *testing.T) {
 }
 
 func TestRemoveTargetCredentialSources(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
@@ -2332,9 +2726,6 @@ func TestRemoveTargetCredentialSources(t *testing.T) {
 
 			assert.ElementsMatch(t, tc.resultCredentialSourceIds, got.GetItem().GetBrokeredCredentialSourceIds())
 			assert.Equal(t, len(tc.resultCredentialSourceIds), len(got.GetItem().GetBrokeredCredentialSources()))
-
-			assert.ElementsMatch(t, tc.resultCredentialSourceIds, got.GetItem().GetApplicationCredentialSourceIds())
-			assert.Equal(t, len(tc.resultCredentialSourceIds), len(got.GetItem().GetApplicationCredentialSources()))
 		})
 	}
 
@@ -2409,6 +2800,7 @@ func TestRemoveTargetCredentialSources(t *testing.T) {
 
 func TestAuthorizeSession(t *testing.T) {
 	ctx := context.Background()
+	// This prevents us from running tests in parallel.
 	targets.SetupSuiteTargetFilters(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
@@ -2539,7 +2931,7 @@ func TestAuthorizeSession(t *testing.T) {
 	sec, tok := v.CreateToken(t, vault.WithPolicies([]string{"default", "boundary-controller", "pki"}))
 
 	vaultStore := vault.TestCredentialStore(t, conn, wrapper, proj.GetPublicId(), v.Addr, tok, sec.Auth.Accessor)
-	credService, err := credentiallibraries.NewService(ctx, vaultCredRepoFn, iamRepoFn)
+	credService, err := credentiallibraries.NewService(ctx, iamRepoFn, vaultCredRepoFn, 1000)
 	require.NoError(t, err)
 	clsResp, err := credService.CreateCredentialLibrary(ctx, &pbs.CreateCredentialLibraryRequest{Item: &credlibpb.CredentialLibrary{
 		CredentialStoreId: vaultStore.GetPublicId(),
@@ -2595,7 +2987,7 @@ func TestAuthorizeSession(t *testing.T) {
 
 	statusGracePeriod := new(atomic.Int64)
 	statusGracePeriod.Store(int64(server.DefaultLiveness))
-	s, err := targets.NewService(ctx, kms, repoFn, iamRepoFn, serversRepoFn, sessionRepoFn, pluginHostRepoFn, staticHostRepoFn, vaultCredRepoFn, staticCredRepoFn, nil, statusGracePeriod, nil)
+	s, err := targets.NewService(ctx, kms, repoFn, iamRepoFn, serversRepoFn, sessionRepoFn, pluginHostRepoFn, staticHostRepoFn, vaultCredRepoFn, staticCredRepoFn, nil, statusGracePeriod, 1000, nil)
 	require.NoError(t, err)
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -2625,7 +3017,14 @@ func TestAuthorizeSession(t *testing.T) {
 				Id: tar.GetPublicId(),
 			})
 			require.NoError(t, err)
-			assert.NotEmpty(t, cmp.Diff(asRes1.GetItem().GetCredentials(), asRes2.GetItem().GetCredentials(), protocmp.Transform()),
+			assert.NotEmpty(t, cmp.Diff(
+				asRes1.GetItem().GetCredentials(),
+				asRes2.GetItem().GetCredentials(),
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+			),
 				"the credentials aren't unique per request authorized session")
 
 			_, err = s.AuthorizeSession(ctx, &pbs.AuthorizeSessionRequest{
@@ -2653,15 +3052,18 @@ func TestAuthorizeSession(t *testing.T) {
 				HostId:    wantedHostId,
 				Type:      "tcp",
 				Endpoint:  fmt.Sprintf("tcp://%s", tc.wantedEndpoint),
-				Credentials: []*pb.SessionCredential{{
-					CredentialSource: &pb.CredentialSource{
-						Id:                clsResp.GetItem().GetId(),
-						Name:              clsResp.GetItem().GetName().GetValue(),
-						Description:       clsResp.GetItem().GetDescription().GetValue(),
-						CredentialStoreId: vaultStore.GetPublicId(),
-						Type:              vault.GenericLibrarySubtype.String(),
+				Credentials: []*pb.SessionCredential{
+					{
+						CredentialSource: &pb.CredentialSource{
+							Id:                clsResp.GetItem().GetId(),
+							Name:              clsResp.GetItem().GetName().GetValue(),
+							Description:       clsResp.GetItem().GetDescription().GetValue(),
+							CredentialStoreId: vaultStore.GetPublicId(),
+							Type:              vault.GenericLibrarySubtype.String(),
+						},
 					},
-				}},
+				},
+				EndpointPort: uint32(defaultPort),
 				// TODO: validate the contents of the authorization token is what is expected
 			}
 			wantSecret := map[string]any{
@@ -2698,7 +3100,15 @@ func TestAuthorizeSession(t *testing.T) {
 			gotCred.Secret = nil
 
 			got.AuthorizationToken, got.SessionId, got.CreatedTime = "", "", nil
-			assert.Empty(t, cmp.Diff(got, want, protocmp.Transform()))
+			assert.Empty(t, cmp.Diff(
+				got,
+				want,
+				protocmp.Transform(),
+				protocmp.IgnoreFields(&pb.SessionAuthorization{}, "expiration"),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+			))
 		})
 	}
 }
@@ -2710,6 +3120,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
 
+	// This prevents us from running tests in parallel.
 	targets.SetupSuiteTargetFilters(t)
 
 	sche := scheduler.TestScheduler(t, conn, wrapper)
@@ -2764,7 +3175,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 
 	statusGracePeriod := new(atomic.Int64)
 	statusGracePeriod.Store(int64(server.DefaultLiveness))
-	s, err := targets.NewService(ctx, kms, repoFn, iamRepoFn, serversRepoFn, sessionRepoFn, pluginHostRepoFn, staticHostRepoFn, vaultCredRepoFn, staticCredRepoFn, nil, statusGracePeriod, nil)
+	s, err := targets.NewService(ctx, kms, repoFn, iamRepoFn, serversRepoFn, sessionRepoFn, pluginHostRepoFn, staticHostRepoFn, vaultCredRepoFn, staticCredRepoFn, nil, statusGracePeriod, 1000, nil)
 	require.NoError(t, err)
 
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
@@ -2777,7 +3188,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 	sec, tok := v.CreateToken(t, vault.WithPolicies([]string{"default", "boundary-controller", "secret"}))
 
 	vaultStore := vault.TestCredentialStore(t, conn, wrapper, proj.GetPublicId(), v.Addr, tok, sec.Auth.Accessor)
-	credLibService, err := credentiallibraries.NewService(ctx, vaultCredRepoFn, iamRepoFn)
+	credLibService, err := credentiallibraries.NewService(ctx, iamRepoFn, vaultCredRepoFn, 1000)
 	require.NoError(t, err)
 
 	// Create secret in vault with default username and password fields
@@ -2837,7 +3248,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 	require.NoError(t, err)
 
 	staticStore := credstatic.TestCredentialStore(t, conn, wrapper, proj.GetPublicId())
-	credService, err := credentials.NewService(ctx, staticCredRepoFn, iamRepoFn)
+	credService, err := credentials.NewService(ctx, iamRepoFn, staticCredRepoFn, 1000)
 	require.NoError(t, err)
 	upCredResp, err := credService.CreateCredential(ctx, &pbs.CreateCredentialRequest{Item: &credpb.Credential{
 		CredentialStoreId: staticStore.GetPublicId(),
@@ -3009,7 +3420,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 					Description:       clsRespUsernamePassword.GetItem().GetDescription().GetValue(),
 					CredentialStoreId: vaultStore.GetPublicId(),
 					Type:              vault.GenericLibrarySubtype.String(),
-					CredentialType:    string(credential.UsernamePasswordType),
+					CredentialType:    string(globals.UsernamePasswordCredentialType),
 				},
 				Credential: func() *structpb.Struct {
 					data := map[string]any{
@@ -3035,7 +3446,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 					Description:       clsRespUsernamePasswordWithMapping.GetItem().GetDescription().GetValue(),
 					CredentialStoreId: vaultStore.GetPublicId(),
 					Type:              vault.GenericLibrarySubtype.String(),
-					CredentialType:    string(credential.UsernamePasswordType),
+					CredentialType:    string(globals.UsernamePasswordCredentialType),
 				},
 				Credential: func() *structpb.Struct {
 					data := map[string]any{
@@ -3061,7 +3472,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 					Description:       upCredResp.GetItem().GetDescription().GetValue(),
 					CredentialStoreId: staticStore.GetPublicId(),
 					Type:              credstatic.Subtype.String(),
-					CredentialType:    string(credential.UsernamePasswordType),
+					CredentialType:    string(globals.UsernamePasswordCredentialType),
 				},
 				Credential: func() *structpb.Struct {
 					data := map[string]any{
@@ -3087,7 +3498,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 					Description:       sshPkCredResp.GetItem().GetDescription().GetValue(),
 					CredentialStoreId: staticStore.GetPublicId(),
 					Type:              credstatic.Subtype.String(),
-					CredentialType:    string(credential.SshPrivateKeyType),
+					CredentialType:    string(globals.SshPrivateKeyCredentialType),
 				},
 				Credential: func() *structpb.Struct {
 					data := map[string]any{
@@ -3113,7 +3524,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 					Description:       clsRespSshPrivateKey.GetItem().GetDescription().GetValue(),
 					CredentialStoreId: vaultStore.GetPublicId(),
 					Type:              vault.GenericLibrarySubtype.String(),
-					CredentialType:    string(credential.SshPrivateKeyType),
+					CredentialType:    string(globals.SshPrivateKeyCredentialType),
 				},
 				Credential: func() *structpb.Struct {
 					data := map[string]any{
@@ -3139,7 +3550,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 					Description:       clsRespSshPrivateKeyWithMapping.GetItem().GetDescription().GetValue(),
 					CredentialStoreId: vaultStore.GetPublicId(),
 					Type:              vault.GenericLibrarySubtype.String(),
-					CredentialType:    string(credential.SshPrivateKeyType),
+					CredentialType:    string(globals.SshPrivateKeyCredentialType),
 				},
 				Credential: func() *structpb.Struct {
 					data := map[string]any{
@@ -3165,7 +3576,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 					Description:       sshPkWithPassCredResp.GetItem().GetDescription().GetValue(),
 					CredentialStoreId: staticStore.GetPublicId(),
 					Type:              credstatic.Subtype.String(),
-					CredentialType:    string(credential.SshPrivateKeyType),
+					CredentialType:    string(globals.SshPrivateKeyCredentialType),
 				},
 				Credential: func() *structpb.Struct {
 					data := map[string]any{
@@ -3192,7 +3603,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 					Description:       clsRespSshPrivateKeyWithPass.GetItem().GetDescription().GetValue(),
 					CredentialStoreId: vaultStore.GetPublicId(),
 					Type:              vault.GenericLibrarySubtype.String(),
-					CredentialType:    string(credential.SshPrivateKeyType),
+					CredentialType:    string(globals.SshPrivateKeyCredentialType),
 				},
 				Credential: func() *structpb.Struct {
 					data := map[string]any{
@@ -3219,7 +3630,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 					Description:       clsRespSshPrivateKeyWithPassWithMapping.GetItem().GetDescription().GetValue(),
 					CredentialStoreId: vaultStore.GetPublicId(),
 					Type:              vault.GenericLibrarySubtype.String(),
-					CredentialType:    string(credential.SshPrivateKeyType),
+					CredentialType:    string(globals.SshPrivateKeyCredentialType),
 				},
 				Credential: func() *structpb.Struct {
 					data := map[string]any{
@@ -3269,13 +3680,15 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 					Description:   proj.GetDescription(),
 					ParentScopeId: proj.GetParentId(),
 				},
-				TargetId:    tar.GetPublicId(),
-				UserId:      at.GetIamUserId(),
-				HostSetId:   tc.hostSourceId,
-				HostId:      tc.wantedHostId,
-				Type:        "tcp",
-				Endpoint:    fmt.Sprintf("tcp://%s:%d", tc.wantedEndpoint, defaultPort),
-				Credentials: []*pb.SessionCredential{tc.wantedCred},
+				TargetId:     tar.GetPublicId(),
+				UserId:       at.GetIamUserId(),
+				HostSetId:    tc.hostSourceId,
+				HostId:       tc.wantedHostId,
+				Type:         "tcp",
+				Endpoint:     fmt.Sprintf("tcp://%s:%d", tc.wantedEndpoint, defaultPort),
+				Credentials:  []*pb.SessionCredential{tc.wantedCred},
+				EndpointPort: uint32(defaultPort),
+				Expiration:   asRes.Item.Expiration,
 				// TODO: validate the contents of the authorization token is what is expected
 			}
 			got := asRes.GetItem()
@@ -3288,13 +3701,21 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 
 			gotCred.Secret = nil
 			got.AuthorizationToken, got.SessionId, got.CreatedTime = "", "", nil
-			assert.Empty(t, cmp.Diff(got, want, protocmp.Transform()))
+			assert.Empty(t, cmp.Diff(
+				got,
+				want,
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+			))
 		})
 	}
 }
 
 func TestAuthorizeSession_Errors(t *testing.T) {
 	ctx := context.Background()
+	// This prevents us from running tests in parallel.
 	targets.SetupSuiteTargetFilters(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
@@ -3337,7 +3758,7 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 
 	statusGracePeriod := new(atomic.Int64)
 	statusGracePeriod.Store(int64(server.DefaultLiveness))
-	s, err := targets.NewService(ctx, kms, repoFn, iamRepoFn, serversRepoFn, sessionRepoFn, pluginHostRepoFn, staticHostRepoFn, vaultCredRepoFn, staticCredRepoFn, nil, statusGracePeriod, nil)
+	s, err := targets.NewService(ctx, kms, repoFn, iamRepoFn, serversRepoFn, sessionRepoFn, pluginHostRepoFn, staticHostRepoFn, vaultCredRepoFn, staticCredRepoFn, nil, statusGracePeriod, 1000, nil)
 	require.NoError(t, err)
 
 	// Authorized user gets full permissions
@@ -3404,7 +3825,7 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 		h.Address = fmt.Sprintf("%s:54321", h.GetAddress())
 		repo, err := staticHostRepoFn()
 		require.NoError(t, err)
-		h, _, err = repo.UpdateHost(ctx, hc.GetProjectId(), h, h.GetVersion(), []string{"address"})
+		_, _, err = repo.UpdateHost(ctx, hc.GetProjectId(), h, h.GetVersion(), []string{"address"})
 		require.NoError(t, err)
 		return apiTar.GetItem().GetVersion()
 	}
@@ -3424,7 +3845,7 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 	}
 
 	libraryExists := func(tar target.Target) (version uint32) {
-		credService, err := credentiallibraries.NewService(ctx, vaultCredRepoFn, iamRepoFn)
+		credService, err := credentiallibraries.NewService(ctx, iamRepoFn, vaultCredRepoFn, 1000)
 		require.NoError(t, err)
 		clsResp, err := credService.CreateCredentialLibrary(ctx, &pbs.CreateCredentialLibraryRequest{Item: &credlibpb.CredentialLibrary{
 			CredentialStoreId: store.GetPublicId(),
@@ -3449,7 +3870,7 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 	}
 
 	misConfiguredlibraryExists := func(tar target.Target) (version uint32) {
-		credService, err := credentiallibraries.NewService(ctx, vaultCredRepoFn, iamRepoFn)
+		credService, err := credentiallibraries.NewService(ctx, iamRepoFn, vaultCredRepoFn, 1000)
 		require.NoError(t, err)
 		clsResp, err := credService.CreateCredentialLibrary(ctx, &pbs.CreateCredentialLibraryRequest{Item: &credlibpb.CredentialLibrary{
 			CredentialStoreId: store.GetPublicId(),
@@ -3474,7 +3895,7 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 	}
 
 	expiredTokenLibrary := func(tar target.Target) (version uint32) {
-		credService, err := credentiallibraries.NewService(ctx, vaultCredRepoFn, iamRepoFn)
+		credService, err := credentiallibraries.NewService(ctx, iamRepoFn, vaultCredRepoFn, 1000)
 		require.NoError(t, err)
 		clsResp, err := credService.CreateCredentialLibrary(ctx, &pbs.CreateCredentialLibraryRequest{Item: &credlibpb.CredentialLibrary{
 			CredentialStoreId: expiredStore.GetPublicId(),
@@ -3499,38 +3920,57 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 	}
 
 	cases := []struct {
-		name  string
-		setup []func(target.Target) uint32
-		err   bool
+		name            string
+		setup           []func(target.Target) uint32
+		useTargetId     bool
+		wantErr         bool
+		wantErrContains string
 	}{
 		{
 			// This one must be run first since it relies on the DB not having any worker details
-			name:  "no worker",
-			setup: []func(tcpTarget target.Target) uint32{hostExists, libraryExists},
-			err:   true,
+			name:            "no worker",
+			setup:           []func(tcpTarget target.Target) uint32{hostExists, libraryExists},
+			useTargetId:     true,
+			wantErr:         true,
+			wantErrContains: "No workers are available to handle this session",
 		},
 		{
-			name:  "success",
-			setup: []func(tcpTarget target.Target) uint32{workerExists, hostExists, libraryExists},
+			name:        "success",
+			setup:       []func(tcpTarget target.Target) uint32{workerExists, hostExists, libraryExists},
+			useTargetId: true,
 		},
 		{
-			name:  "no host port",
-			setup: []func(tcpTarget target.Target) uint32{workerExists, hostWithoutPort, libraryExists},
+			name:            "no target",
+			setup:           []func(tcpTarget target.Target) uint32{workerExists, hostExists, libraryExists},
+			useTargetId:     false,
+			wantErr:         true,
+			wantErrContains: "Resource not found",
 		},
 		{
-			name:  "no hosts",
-			setup: []func(tcpTarget target.Target) uint32{workerExists, hostSetNoHostExists, libraryExists},
-			err:   true,
+			name:        "no host port",
+			setup:       []func(tcpTarget target.Target) uint32{workerExists, hostWithoutPort, libraryExists},
+			useTargetId: true,
 		},
 		{
-			name:  "bad library configuration",
-			setup: []func(tcpTarget target.Target) uint32{workerExists, hostExists, misConfiguredlibraryExists},
-			err:   true,
+			name:            "no hosts",
+			setup:           []func(tcpTarget target.Target) uint32{workerExists, hostSetNoHostExists, libraryExists},
+			useTargetId:     true,
+			wantErr:         true,
+			wantErrContains: "No host sources or address found for given target",
 		},
 		{
-			name:  "expired token library",
-			setup: []func(tcpTarget target.Target) uint32{workerExists, hostExists, expiredTokenLibrary},
-			err:   true,
+			name:            "bad library configuration",
+			setup:           []func(tcpTarget target.Target) uint32{workerExists, hostExists, misConfiguredlibraryExists},
+			useTargetId:     true,
+			wantErr:         true,
+			wantErrContains: "external system issue: error #3014: Error making API request",
+		},
+		{
+			name:            "expired token library",
+			setup:           []func(tcpTarget target.Target) uint32{workerExists, hostExists, expiredTokenLibrary},
+			useTargetId:     true,
+			wantErr:         true,
+			wantErrContains: "vault.newClient: invalid configuration",
 		},
 	}
 	for i, tc := range cases {
@@ -3542,12 +3982,18 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 				tar.SetVersion(ver)
 			}
 
+			id := tar.GetPublicId()
+			if !tc.useTargetId {
+				id = "ttcp_bogusid"
+			}
+
 			res, err := s.AuthorizeSession(ctx, &pbs.AuthorizeSessionRequest{
-				Id: tar.GetPublicId(),
+				Id: id,
 			})
-			if tc.err {
+			if tc.wantErr {
 				require.Error(t, err)
 				require.Nil(t, res)
+				require.ErrorContains(t, err, tc.wantErrContains)
 				return
 			}
 			require.NoError(t, err)

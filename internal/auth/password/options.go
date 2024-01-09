@@ -1,7 +1,9 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package password
+
+import "github.com/hashicorp/boundary/internal/pagination"
 
 // GetOpts - iterate the inbound Options and return a struct.
 func GetOpts(opt ...Option) options {
@@ -17,16 +19,17 @@ type Option func(*options)
 
 // options = how options are represented
 type options struct {
-	withName              string
-	withDescription       string
-	WithLoginName         string
-	withLimit             int
-	withConfig            Configuration
-	withPublicId          string
-	password              string
-	withPassword          bool
-	withOrderByCreateTime bool
-	ascending             bool
+	withName               string
+	withDescription        string
+	WithLoginName          string
+	withLimit              int
+	withConfig             Configuration
+	withPublicId           string
+	password               string
+	withPassword           bool
+	withOrderByCreateTime  bool
+	ascending              bool
+	withStartPageAfterItem pagination.Item
 }
 
 func getDefaultOptions() options {
@@ -93,5 +96,13 @@ func WithOrderByCreateTime(ascending bool) Option {
 	return func(o *options) {
 		o.withOrderByCreateTime = true
 		o.ascending = ascending
+	}
+}
+
+// WithStartPageAfterItem is used to paginate over the results.
+// The next page will start after the provided item.
+func WithStartPageAfterItem(item pagination.Item) Option {
+	return func(o *options) {
+		o.withStartPageAfterItem = item
 	}
 }

@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package bsr
 
@@ -27,8 +27,8 @@ var (
 	// particular protocol.
 	ErrNotSupported = errors.New("not supported by protocol")
 
-	// ErrAlreadyRegistered is an error with registering chunk decoder functions.
-	ErrAlreadyRegistered = errors.New("chunk type already registered")
+	// ErrAlreadyRegistered is an error with registering functions.
+	ErrAlreadyRegistered = errors.New("type already registered")
 
 	// ErrEndChunkNotEmpty indicates a malformed END chunk.
 	ErrEndChunkNotEmpty = errors.New("end chunk not empty")
@@ -41,4 +41,7 @@ var (
 
 	// ErrChecksum indicates that a checksum did not match.
 	ErrChecksum = errors.New("computed checksum did NOT match")
+
+	// ErrTimestampDecode indicates an error decoding a timestamp
+	ErrTimestampDecode = errors.New("error decoding timestamp")
 )

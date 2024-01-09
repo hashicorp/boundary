@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package common
 
@@ -54,9 +54,10 @@ func PopulateCommonFlags(c *base.Command, f *base.FlagSet, resourceType string, 
 			})
 		case "id":
 			f.StringVar(&base.StringVar{
-				Name:   "id",
-				Target: &c.FlagId,
-				Usage:  fmt.Sprintf("ID of the %s on which to operate.", resourceType),
+				Name:    "id",
+				Target:  &c.FlagId,
+				Default: c.FlagId,
+				Usage:   fmt.Sprintf("ID of the %s on which to operate.", resourceType),
 			})
 		case "name":
 			f.StringVar(&base.StringVar{

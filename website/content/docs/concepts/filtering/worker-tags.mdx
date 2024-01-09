@@ -148,7 +148,10 @@ The `ingress_worker_filter`<sup>HCP/ENT</sup> attribute controls which workers a
 This is the worker a client connects to when initiating a connection to a target.
 
 
-## Vault workers <sup>HCP/ENT</sup>
+## Vault workers
+
+<EnterpriseAlert product="boundary">This feature requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary or Boundary Enterprise</a></EnterpriseAlert>
+
 Tags are used to control which [PKI workers] can manage Vault requests by specifying
 a `worker_filter`attribute when configuring [credential stores].
 

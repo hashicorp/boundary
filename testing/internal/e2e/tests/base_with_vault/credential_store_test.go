@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package base_with_vault_test
 
@@ -39,13 +39,13 @@ func TestCliVaultCredentialStore(t *testing.T) {
 	newProjectId := boundary.CreateNewProjectCli(t, ctx, newOrgId)
 	newHostCatalogId := boundary.CreateNewHostCatalogCli(t, ctx, newProjectId)
 	newHostSetId := boundary.CreateNewHostSetCli(t, ctx, newHostCatalogId)
-	newHostId := boundary.CreateNewHostCli(t, ctx, newHostCatalogId, c.TargetIp)
+	newHostId := boundary.CreateNewHostCli(t, ctx, newHostCatalogId, c.TargetAddress)
 	boundary.AddHostToHostSetCli(t, ctx, newHostSetId, newHostId)
 	newTargetId := boundary.CreateNewTargetCli(t, ctx, newProjectId, c.TargetPort)
 	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, newHostSetId)
 
 	// Configure vault
-	boundaryPolicyName, kvPolicyFilePath := vault.Setup(t)
+	boundaryPolicyName, kvPolicyFilePath := vault.Setup(t, "testdata/boundary-controller-policy.hcl")
 	t.Cleanup(func() {
 		output := e2e.RunCommand(ctx, "vault",
 			e2e.WithArgs("policy", "delete", boundaryPolicyName),
@@ -102,7 +102,7 @@ func TestCliVaultCredentialStore(t *testing.T) {
 	// Create a credential library for the private key
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
-			"credential-libraries", "create", "vault",
+			"credential-libraries", "create", "vault-generic",
 			"-credential-store-id", newCredentialStoreId,
 			"-vault-path", c.VaultSecretPath+"/data/"+privateKeySecretName,
 			"-name", "e2e Automated Test Vault Credential Library - Private Key",
@@ -120,7 +120,7 @@ func TestCliVaultCredentialStore(t *testing.T) {
 	// Create a credential library for the password
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
-			"credential-libraries", "create", "vault",
+			"credential-libraries", "create", "vault-generic",
 			"-credential-store-id", newCredentialStoreId,
 			"-vault-path", c.VaultSecretPath+"/data/"+passwordSecretName,
 			"-name", "e2e Automated Test Vault Credential Library - Password",
@@ -203,13 +203,13 @@ func TestApiVaultCredentialStore(t *testing.T) {
 	newProjectId := boundary.CreateNewProjectApi(t, ctx, client, newOrgId)
 	newHostCatalogId := boundary.CreateNewHostCatalogApi(t, ctx, client, newProjectId)
 	newHostSetId := boundary.CreateNewHostSetApi(t, ctx, client, newHostCatalogId)
-	newHostId := boundary.CreateNewHostApi(t, ctx, client, newHostCatalogId, c.TargetIp)
+	newHostId := boundary.CreateNewHostApi(t, ctx, client, newHostCatalogId, c.TargetAddress)
 	boundary.AddHostToHostSetApi(t, ctx, client, newHostSetId, newHostId)
 	newTargetId := boundary.CreateNewTargetApi(t, ctx, client, newProjectId, c.TargetPort)
 	boundary.AddHostSourceToTargetApi(t, ctx, client, newTargetId, newHostSetId)
 
 	// Configure vault
-	boundaryPolicyName, kvPolicyFilePath := vault.Setup(t)
+	boundaryPolicyName, kvPolicyFilePath := vault.Setup(t, "testdata/boundary-controller-policy.hcl")
 	output := e2e.RunCommand(ctx, "vault",
 		e2e.WithArgs("secrets", "enable", "-path="+c.VaultSecretPath, "kv-v2"),
 	)
@@ -259,7 +259,7 @@ func TestApiVaultCredentialStore(t *testing.T) {
 
 	// Create a credential library for the private key
 	clClient := credentiallibraries.NewClient(client)
-	newCredentialLibraryResult, err := clClient.Create(ctx, "vault", newCredentialStoreId,
+	newCredentialLibraryResult, err := clClient.Create(ctx, "vault-generic", newCredentialStoreId,
 		credentiallibraries.WithVaultCredentialLibraryPath(c.VaultSecretPath+"/data/"+privateKeySecretName),
 		credentiallibraries.WithCredentialType("ssh_private_key"),
 	)
@@ -268,7 +268,7 @@ func TestApiVaultCredentialStore(t *testing.T) {
 	t.Logf("Created Credential Library: %s", newPrivateKeyCredentialLibraryId)
 
 	// Create a credential library for the password
-	newCredentialLibraryResult, err = clClient.Create(ctx, "vault", newCredentialStoreId,
+	newCredentialLibraryResult, err = clClient.Create(ctx, "vault-generic", newCredentialStoreId,
 		credentiallibraries.WithVaultCredentialLibraryPath(c.VaultSecretPath+"/data/"+passwordSecretName),
 		credentiallibraries.WithCredentialType("username_password"),
 	)

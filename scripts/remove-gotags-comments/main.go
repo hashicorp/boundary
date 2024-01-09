@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package main
 
@@ -11,7 +11,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/event"
 )
 
 var swaggerPath = flag.String("path", "", "The path to the swagger file to parse. Will also be written to")
@@ -39,6 +39,10 @@ func run(swaggerPath string) error {
 			//   - When gotags appears on its own.
 			//   - When gotags appears at the end of another comment (preceded by \n\n).
 			for _, prefix := range []string{"\\n\\n", ""} {
+				// The two cases we're replacing gotags with empty message:
+				//   - When class gotags is set with eventstream gotags.
+				//   - When class gotags is set by itself.
+				swaggerBytes = bytes.ReplaceAll(swaggerBytes, []byte(fmt.Sprintf("%s@gotags: %sclass:\\\"%s\\\" eventstream:\\\"observation\\\"%s", prefix, wrapper, classification, wrapper)), nil)
 				swaggerBytes = bytes.ReplaceAll(swaggerBytes, []byte(fmt.Sprintf("%s@gotags: %sclass:\\\"%s\\\"%s", prefix, wrapper, classification, wrapper)), nil)
 			}
 		}

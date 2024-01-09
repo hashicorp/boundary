@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package base_test
 
@@ -16,6 +16,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestCliTcpTargetConnectTargetWithLocalhost uses the boundary cli to connect
+// to a target using `boundary connect` and then `ssh localhost`
 func TestCliTcpTargetConnectTargetWithLocalhost(t *testing.T) {
 	e2e.MaybeSkipTest(t)
 	c, err := loadTestConfig()
@@ -33,7 +35,7 @@ func TestCliTcpTargetConnectTargetWithLocalhost(t *testing.T) {
 	newProjectId := boundary.CreateNewProjectCli(t, ctx, newOrgId)
 	newHostCatalogId := boundary.CreateNewHostCatalogCli(t, ctx, newProjectId)
 	newHostSetId := boundary.CreateNewHostSetCli(t, ctx, newHostCatalogId)
-	newHostId := boundary.CreateNewHostCli(t, ctx, newHostCatalogId, c.TargetIp)
+	newHostId := boundary.CreateNewHostCli(t, ctx, newHostCatalogId, c.TargetAddress)
 	boundary.AddHostToHostSetCli(t, ctx, newHostSetId, newHostId)
 	newTargetId := boundary.CreateNewTargetCli(t, ctx, newProjectId, c.TargetPort)
 	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, newHostSetId)
@@ -71,7 +73,57 @@ func TestCliTcpTargetConnectTargetWithLocalhost(t *testing.T) {
 		),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
-	require.Equal(t, c.TargetIp, strings.TrimSpace(string(output.Stdout)))
+	require.Equal(t, c.TargetAddress, strings.TrimSpace(string(output.Stdout)))
+	require.Equal(t, 0, output.ExitCode)
+
+	// Run a bash command
+	output = e2e.RunCommand(ctx, "ssh",
+		e2e.WithArgs(
+			"localhost",
+			"-p", port,
+			"-l", c.TargetSshUser,
+			"-i", c.TargetSshKeyPath,
+			"-o", "UserKnownHostsFile=/dev/null",
+			"-o", "StrictHostKeyChecking=no",
+			"-o", "IdentitiesOnly=yes", // forces the use of the provided key
+			"bash -c 'mkdir /tmp/hello && rmdir /tmp/hello'",
+		),
+	)
+	require.NoError(t, output.Err, string(output.Stderr))
+	require.Equal(t, 0, output.ExitCode)
+
+	// Run another bash command
+	output = e2e.RunCommand(ctx, "ssh",
+		e2e.WithArgs(
+			"localhost",
+			"-p", port,
+			"-l", c.TargetSshUser,
+			"-i", c.TargetSshKeyPath,
+			"-o", "UserKnownHostsFile=/dev/null",
+			"-o", "StrictHostKeyChecking=no",
+			"-o", "IdentitiesOnly=yes", // forces the use of the provided key
+			"bash -c 'echo hello'",
+		),
+	)
+	require.NoError(t, output.Err, string(output.Stderr))
+	require.Equal(t, "hello", strings.TrimSpace(string(output.Stdout)))
+	require.Equal(t, 0, output.ExitCode)
+
+	// Run a command with exit code of 1
+	output = e2e.RunCommand(ctx, "ssh",
+		e2e.WithArgs(
+			"localhost",
+			"-p", port,
+			"-l", c.TargetSshUser,
+			"-i", c.TargetSshKeyPath,
+			"-o", "UserKnownHostsFile=/dev/null",
+			"-o", "StrictHostKeyChecking=no",
+			"-o", "IdentitiesOnly=yes", // forces the use of the provided key
+			"rm test.txt",
+		),
+	)
+	require.Error(t, output.Err, string(output.Stderr))
+	require.Equal(t, 1, output.ExitCode) // rm: cannot remove 'test.txt': No such file or directory
 
 	// Cancel session
 	cancel()

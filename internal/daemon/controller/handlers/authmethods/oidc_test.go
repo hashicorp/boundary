@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package authmethods_test
 
@@ -16,9 +16,11 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/boundary/globals"
 	authpb "github.com/hashicorp/boundary/internal/gen/controller/auth"
 
+	am "github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/ldap"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
@@ -62,6 +64,8 @@ type setup struct {
 	ldapRepoFn                  common.LdapAuthRepoFactory
 	pwRepoFn                    common.PasswordAuthRepoFactory
 	atRepoFn                    common.AuthTokenRepoFactory
+	authMethodRepoFn            common.AuthMethodRepoFactory
+	maxPageSize                 int
 	org                         *iam.Scope
 	proj                        *iam.Scope
 	databaseWrapper             wrapping.Wrapper
@@ -103,12 +107,26 @@ func getSetup(t *testing.T) setup {
 	ret.atRepoFn = func() (*authtoken.Repository, error) {
 		return authtoken.NewRepository(ctx, ret.rw, ret.rw, ret.kmsCache)
 	}
+	ret.authMethodRepoFn = func() (*am.AuthMethodRepository, error) {
+		return am.NewAuthMethodRepository(ctx, ret.rw, ret.rw, ret.kmsCache)
+	}
+	ret.maxPageSize = 1000
 
 	ret.org, ret.proj = iam.TestScopes(t, ret.iamRepo)
 	ret.databaseWrapper, err = ret.kmsCache.GetWrapper(ret.ctx, ret.org.PublicId, kms.KeyPurposeDatabase)
 	require.NoError(err)
 
-	ret.authMethodService, err = authmethods.NewService(ret.ctx, ret.kmsCache, ret.pwRepoFn, ret.oidcRepoFn, ret.iamRepoFn, ret.atRepoFn, ret.ldapRepoFn)
+	ret.authMethodService, err = authmethods.NewService(
+		ret.ctx,
+		ret.kmsCache,
+		ret.pwRepoFn,
+		ret.oidcRepoFn,
+		ret.iamRepoFn,
+		ret.atRepoFn,
+		ret.ldapRepoFn,
+		ret.authMethodRepoFn,
+		uint(ret.maxPageSize),
+	)
 	require.NoError(err)
 
 	ret.testProvider = capoidc.StartTestProvider(t)
@@ -128,6 +146,7 @@ func getSetup(t *testing.T) setup {
 		oidc.WithApiUrl(oidc.TestConvertToUrls(t, ret.testController.URL)[0]),
 		oidc.WithSigningAlgs(oidc.Alg(ret.testProviderAlg)),
 		oidc.WithCertificates(ret.testProviderCaCert...),
+		oidc.WithPrompts(oidc.Consent),
 	)
 
 	ret.testProviderAllowedRedirect = fmt.Sprintf(oidc.CallbackEndpoint, ret.testController.URL)
@@ -166,6 +185,9 @@ func TestList_FilterNonPublic(t *testing.T) {
 	serversRepoFn := func() (*server.Repository, error) {
 		return server.NewRepository(ctx, rw, rw, kmsCache)
 	}
+	authMethodRepoFn := func() (*am.AuthMethodRepository, error) {
+		return am.NewAuthMethodRepository(ctx, rw, rw, kmsCache)
+	}
 
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 
@@ -193,7 +215,7 @@ func TestList_FilterNonPublic(t *testing.T) {
 			oidc.WithIssuer(oidc.TestConvertToUrls(t, fmt.Sprintf("https://alice%d.com", i))[0]), oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://api.com")[0]))
 	}
 
-	s, err := authmethods.NewService(ctx, kmsCache, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn, ldapRepoFn)
+	s, err := authmethods.NewService(ctx, kmsCache, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn, ldapRepoFn, authMethodRepoFn, 1000)
 	require.NoError(t, err, "Couldn't create new auth_method service.")
 
 	req := &pbs.ListAuthMethodsRequest{
@@ -268,10 +290,13 @@ func TestUpdate_OIDC(t *testing.T) {
 	atRepoFn := func() (*authtoken.Repository, error) {
 		return authtoken.NewRepository(ctx, rw, rw, kms)
 	}
+	authMethodRepoFn := func() (*am.AuthMethodRepository, error) {
+		return am.NewAuthMethodRepository(ctx, rw, rw, kms)
+	}
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 
 	o, _ := iam.TestScopes(t, iamRepo)
-	tested, err := authmethods.NewService(ctx, kms, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn, ldapRepoFn)
+	tested, err := authmethods.NewService(ctx, kms, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn, ldapRepoFn, authMethodRepoFn, 1000)
 	require.NoError(t, err, "Error when getting new auth_method service.")
 
 	defaultScopeInfo := &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: o.GetType(), ParentScopeId: scope.Global.String()}
@@ -281,6 +306,7 @@ func TestUpdate_OIDC(t *testing.T) {
 	tpClientSecret := "her-dog's-name"
 	tp.SetClientCreds(tpClientId, tpClientSecret)
 	_, _, tpAlg, _ := tp.SigningKeys()
+	tpPrompt := capoidc.None
 
 	defaultAttributes := &pb.AuthMethod_OidcAuthMethodsAttributes{
 		OidcAuthMethodsAttributes: &pb.OidcAuthMethodAttributes{
@@ -290,6 +316,7 @@ func TestUpdate_OIDC(t *testing.T) {
 			ApiUrlPrefix:      wrapperspb.String("https://example.com"),
 			IdpCaCerts:        []string{tp.CACert()},
 			SigningAlgorithms: []string{string(tpAlg)},
+			Prompts:           []string{string(tpPrompt)},
 		},
 	}
 	defaultReadAttributes := &pb.AuthMethod_OidcAuthMethodsAttributes{
@@ -302,6 +329,7 @@ func TestUpdate_OIDC(t *testing.T) {
 			CallbackUrl:       "https://example.com/v1/auth-methods/oidc:authenticate:callback",
 			IdpCaCerts:        []string{tp.CACert()},
 			SigningAlgorithms: []string{string(tpAlg)},
+			Prompts:           []string{string(tpPrompt)},
 		},
 	}
 
@@ -995,6 +1023,53 @@ func TestUpdate_OIDC(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "Unsupported Prompts",
+			req: &pbs.UpdateAuthMethodRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"attributes.prompts"},
+				},
+				Item: &pb.AuthMethod{
+					Attrs: &pb.AuthMethod_OidcAuthMethodsAttributes{
+						OidcAuthMethodsAttributes: &pb.OidcAuthMethodAttributes{
+							Prompts: []string{string("invalid")},
+						},
+					},
+				},
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Update Prompt With Valid Values",
+			req: &pbs.UpdateAuthMethodRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"attributes.prompts"},
+				},
+				Item: &pb.AuthMethod{
+					Attrs: &pb.AuthMethod_OidcAuthMethodsAttributes{
+						OidcAuthMethodsAttributes: &pb.OidcAuthMethodAttributes{
+							Prompts: []string{string(oidc.Consent), string(oidc.SelectAccount)},
+						},
+					},
+				},
+			},
+			res: &pbs.UpdateAuthMethodResponse{
+				Item: &pb.AuthMethod{
+					ScopeId:     o.GetPublicId(),
+					Name:        &wrapperspb.StringValue{Value: "default"},
+					Description: &wrapperspb.StringValue{Value: "default"},
+					Type:        oidc.Subtype.String(),
+					Attrs: func() *pb.AuthMethod_OidcAuthMethodsAttributes {
+						f := proto.Clone(defaultReadAttributes.OidcAuthMethodsAttributes).(*pb.OidcAuthMethodAttributes)
+						f.Prompts = []string{string(oidc.Consent), string(oidc.SelectAccount)}
+						return &pb.AuthMethod_OidcAuthMethodsAttributes{OidcAuthMethodsAttributes: f}
+					}(),
+					Scope:                       defaultScopeInfo,
+					AuthorizedActions:           oidcAuthorizedActions,
+					AuthorizedCollectionActions: authorizedCollectionActions,
+				},
+			},
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -1025,7 +1100,15 @@ func TestUpdate_OIDC(t *testing.T) {
 			if tc.res == nil {
 				require.Nil(got)
 			}
-			cmpOptions := []cmp.Option{protocmp.Transform()}
+			cmpOptions := []cmp.Option{
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+				cmpopts.SortSlices(func(a, b protocmp.Message) bool {
+					return a.String() < b.String()
+				}),
+			}
 			if got != nil {
 				assert.NotNilf(tc.res, "Expected UpdateAuthMethod response to be nil, but was %v", got)
 				gotUpdateTime := got.GetItem().GetUpdatedTime().AsTime()
@@ -1078,6 +1161,9 @@ func TestUpdate_OIDCDryRun(t *testing.T) {
 	}
 	atRepoFn := func() (*authtoken.Repository, error) {
 		return authtoken.NewRepository(ctx, rw, rw, kmsCache)
+	}
+	authMethodRepoFn := func() (*am.AuthMethodRepository, error) {
+		return am.NewAuthMethodRepository(ctx, rw, rw, kmsCache)
 	}
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 
@@ -1132,7 +1218,7 @@ func TestUpdate_OIDCDryRun(t *testing.T) {
 		},
 	}
 
-	tested, err := authmethods.NewService(ctx, kmsCache, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn, ldapRepoFn)
+	tested, err := authmethods.NewService(ctx, kmsCache, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn, ldapRepoFn, authMethodRepoFn, 1000)
 	require.NoError(t, err, "Error when getting new auth_method service.")
 	cases := []struct {
 		name    string
@@ -1228,11 +1314,32 @@ func TestUpdate_OIDCDryRun(t *testing.T) {
 				return
 			}
 			require.NoError(t, err)
-			assert.Empty(t, cmp.Diff(dryUpdated.GetItem(), tc.want, protocmp.Transform(), protocmp.SortRepeatedFields(dryUpdated)))
+			assert.Empty(t, cmp.Diff(
+				dryUpdated.GetItem(),
+				tc.want,
+				protocmp.Transform(),
+				protocmp.SortRepeatedFields(dryUpdated),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+				cmpopts.SortSlices(func(a, b protocmp.Message) bool {
+					return a.String() < b.String()
+				}),
+			))
 
 			got, err := tested.GetAuthMethod(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), &pbs.GetAuthMethodRequest{Id: tc.id})
 			require.NoError(t, err)
-			assert.Empty(t, cmp.Diff(got.GetItem(), wireAuthMethod, protocmp.Transform()))
+			assert.Empty(t, cmp.Diff(
+				got.GetItem(),
+				wireAuthMethod,
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+				cmpopts.SortSlices(func(a, b protocmp.Message) bool {
+					return a.String() < b.String()
+				}),
+			))
 		})
 	}
 }
@@ -1258,6 +1365,9 @@ func TestChangeState_OIDC(t *testing.T) {
 	atRepoFn := func() (*authtoken.Repository, error) {
 		return authtoken.NewRepository(ctx, rw, rw, kmsCache)
 	}
+	authMethodRepoFn := func() (*am.AuthMethodRepository, error) {
+		return am.NewAuthMethodRepository(ctx, rw, rw, kmsCache)
+	}
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 
 	o, _ := iam.TestScopes(t, iamRepo)
@@ -1281,7 +1391,7 @@ func TestChangeState_OIDC(t *testing.T) {
 	mismatchedAM := oidc.TestAuthMethod(t, conn, databaseWrapper, o.PublicId, "inactive", "different_client_id", oidc.ClientSecret(tpClientSecret),
 		oidc.WithIssuer(oidc.TestConvertToUrls(t, tp.Addr())[0]), oidc.WithSigningAlgs(oidc.EdDSA), oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://example.callback:58")[0]), oidc.WithCertificates(tpCert...))
 
-	s, err := authmethods.NewService(ctx, kmsCache, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn, ldapRepoFn)
+	s, err := authmethods.NewService(ctx, kmsCache, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn, ldapRepoFn, authMethodRepoFn, 1000)
 	require.NoError(t, err, "Error when getting new auth_method service.")
 
 	wantTemplate := &pb.AuthMethod{
@@ -1492,7 +1602,18 @@ func TestChangeState_OIDC(t *testing.T) {
 			got.Item.UpdatedTime, tc.res.Item.UpdatedTime = nil, nil
 
 			assert.Empty(
-				cmp.Diff(got, tc.res, protocmp.Transform(), protocmp.IgnoreFields(&pb.OidcAuthMethodAttributes{}, "client_secret_hmac", "callback_url")),
+				cmp.Diff(
+					got,
+					tc.res,
+					protocmp.Transform(),
+					protocmp.IgnoreFields(&pb.OidcAuthMethodAttributes{}, "client_secret_hmac", "callback_url"),
+					cmpopts.SortSlices(func(a, b string) bool {
+						return a < b
+					}),
+					cmpopts.SortSlices(func(a, b protocmp.Message) bool {
+						return a.String() < b.String()
+					}),
+				),
 				"ChangeState() got response %q, wanted %q", got, tc.res,
 			)
 		})

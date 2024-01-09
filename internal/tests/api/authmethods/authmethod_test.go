@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package authmethods_test
 
@@ -17,7 +17,7 @@ import (
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/daemon/controller"
-	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/event"
 	tests_api "github.com/hashicorp/boundary/internal/tests/api"
 	capoidc "github.com/hashicorp/cap/oidc"
 	"github.com/hashicorp/go-hclog"
@@ -200,9 +200,9 @@ func TestList(t *testing.T) {
 	result, err := amClient.List(tc.Context(), global)
 	require.NoError(err)
 	require.Len(result.Items, 3)
-	genOIDCAM := result.Items[0]
-	genPWAM := result.Items[1]
-	genLDAPAM := result.Items[2]
+	genLDAPAM := result.Items[0]
+	genOIDCAM := result.Items[1]
+	genPWAM := result.Items[2]
 
 	pwAM, err := amClient.Create(tc.Context(), "password", global,
 		authmethods.WithName("bar"),
@@ -224,6 +224,9 @@ func TestList(t *testing.T) {
 			cmpopts.IgnoreUnexported(authmethods.AuthMethod{}),
 			cmpopts.SortSlices(func(a, b *authmethods.AuthMethod) bool {
 				return a.Name < b.Name
+			}),
+			cmpopts.SortSlices(func(a, b string) bool {
+				return a < b
 			}),
 		),
 	)
@@ -251,6 +254,9 @@ func TestList(t *testing.T) {
 			cmpopts.SortSlices(func(a, b *authmethods.AuthMethod) bool {
 				return a.Name < b.Name
 			}),
+			cmpopts.SortSlices(func(a, b string) bool {
+				return a < b
+			}),
 		),
 	)
 
@@ -274,6 +280,9 @@ func TestList(t *testing.T) {
 			cmpopts.SortSlices(func(a, b *authmethods.AuthMethod) bool {
 				return a.Name < b.Name
 			}),
+			cmpopts.SortSlices(func(a, b string) bool {
+				return a < b
+			}),
 		),
 	)
 
@@ -281,7 +290,14 @@ func TestList(t *testing.T) {
 		authmethods.WithFilter(`"/item/attributes/client_id"=="client-id"`))
 	require.NoError(err)
 	require.Len(result.Items, 1)
-	assert.Empty(cmp.Diff(oidcAM.Item, result.Items[0], cmpopts.IgnoreUnexported(authmethods.AuthMethod{})))
+	assert.Empty(cmp.Diff(
+		oidcAM.Item,
+		result.Items[0],
+		cmpopts.IgnoreUnexported(authmethods.AuthMethod{}),
+		cmpopts.SortSlices(func(a, b string) bool {
+			return a < b
+		}),
+	))
 
 	result, err = amClient.List(tc.Context(), global,
 		authmethods.WithFilter(`"/item/attributes/min_login_name_length"==3`))
@@ -295,6 +311,9 @@ func TestList(t *testing.T) {
 			cmpopts.SortSlices(func(a, b *authmethods.AuthMethod) bool {
 				return a.Name < b.Name
 			}),
+			cmpopts.SortSlices(func(a, b string) bool {
+				return a < b
+			}),
 		),
 	)
 
@@ -302,7 +321,14 @@ func TestList(t *testing.T) {
 		authmethods.WithFilter(`"/item/attributes/min_password_length"==10`))
 	require.NoError(err)
 	require.Len(result.Items, 1)
-	assert.Empty(cmp.Diff(pwAM.Item, result.Items[0], cmpopts.IgnoreUnexported(authmethods.AuthMethod{})))
+	assert.Empty(cmp.Diff(
+		pwAM.Item,
+		result.Items[0],
+		cmpopts.IgnoreUnexported(authmethods.AuthMethod{}),
+		cmpopts.SortSlices(func(a, b string) bool {
+			return a < b
+		}),
+	))
 }
 
 func TestCustomMethods(t *testing.T) {

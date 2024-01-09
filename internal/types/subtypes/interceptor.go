@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package subtypes
 
@@ -7,30 +7,13 @@ import (
 	"context"
 	"errors"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
-	"github.com/hashicorp/boundary/sdk/pbs/controller/protooptions"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
-	"google.golang.org/protobuf/types/descriptorpb"
 )
-
-func messageDomain(m proto.Message) string {
-	r := m.ProtoReflect()
-	fd := r.Descriptor().ParentFile()
-	if fd == nil {
-		return ""
-	}
-
-	opts, ok := fd.Options().(*descriptorpb.FileOptions)
-	if !ok {
-		return ""
-	}
-
-	domain := proto.GetExtension(opts, protooptions.E_Domain).(string)
-	return domain
-}
 
 // transformRequestAttributes will modify the request proto.Message, setting
 // any subtype attribute fields into the corresponding strongly-typed struct
@@ -98,8 +81,6 @@ func messageDomain(m proto.Message) string {
 // Also note that for any of the id based lookups to function, the file that contains
 // the proto.Message definition must set the "domain" custom option.
 func transformRequestAttributes(req proto.Message) error {
-	domain := messageDomain(req)
-
 	r := req.ProtoReflect()
 	fields := r.Descriptor().Fields()
 
@@ -114,7 +95,7 @@ func transformRequestAttributes(req proto.Message) error {
 		return m.Get(fd).String()
 	}
 
-	var st Subtype
+	var st globals.Subtype
 	switch {
 	case itemField != nil:
 		itemR := itemField.Message()
@@ -134,24 +115,24 @@ func transformRequestAttributes(req proto.Message) error {
 
 		switch {
 		case idField != nil && id != "":
-			st = SubtypeFromId(domain, id)
+			st = globals.ResourceInfoFromPrefix(id).Subtype
 		case sourceIdField != nil && sourceId != "":
-			st = SubtypeFromId(domain, sourceId)
+			st = globals.ResourceInfoFromPrefix(sourceId).Subtype
 		case typeField != nil && t != "":
-			st = Subtype(t)
+			st = globals.Subtype(t)
 		default: // need either type or id
 			return nil
 		}
 		return convertAttributesToSubtype(item, st)
 	case idField != nil && attributesField != nil:
 		id := r.Get(idField).String()
-		st = SubtypeFromId(domain, id)
+		st = globals.ResourceInfoFromPrefix(id).Subtype
 		return convertAttributesToSubtype(req, st)
 	}
 	return nil
 }
 
-func transformResponseItemAttributes(item proto.Message) error {
+func transformResponseItemAttributes(ctx context.Context, item proto.Message) error {
 	r := item.ProtoReflect()
 	desc := r.Descriptor()
 
@@ -172,14 +153,14 @@ func transformResponseItemAttributes(item proto.Message) error {
 		return nil
 	}
 
-	st := Subtype(item.ProtoReflect().Get(typeField).String())
-	return convertAttributesToDefault(item, st)
+	st := globals.Subtype(item.ProtoReflect().Get(typeField).String())
+	return convertAttributesToDefault(ctx, item, st)
 }
 
-func transformRequest(msg proto.Message) error {
+func transformRequest(ctx context.Context, msg proto.Message) error {
 	fqn := msg.ProtoReflect().Descriptor().FullName()
 	if fn, ok := globalTransformationRegistry.requestTransformationFuncs[fqn]; ok {
-		return fn(msg)
+		return fn(ctx, msg)
 	}
 	return transformRequestAttributes(msg)
 }
@@ -214,7 +195,7 @@ func transformRequest(msg proto.Message) error {
 //	    // other subtype attributes types
 //	  }
 //	}
-func transformResponseAttributes(res proto.Message) error {
+func transformResponseAttributes(ctx context.Context, res proto.Message) error {
 	r := res.ProtoReflect()
 	fields := r.Descriptor().Fields()
 
@@ -227,7 +208,7 @@ func transformResponseAttributes(res proto.Message) error {
 		}
 
 		item := r.Get(itemField).Message().Interface()
-		return transformResponseItemAttributes(item)
+		return transformResponseItemAttributes(ctx, item)
 	case itemsField != nil:
 		if !itemsField.IsList() {
 			return nil
@@ -236,7 +217,7 @@ func transformResponseAttributes(res proto.Message) error {
 
 		for i := 0; i < items.Len(); i++ {
 			item := items.Get(i).Message().Interface()
-			if err := transformResponseItemAttributes(item); err != nil {
+			if err := transformResponseItemAttributes(ctx, item); err != nil {
 				return err
 			}
 		}
@@ -244,12 +225,12 @@ func transformResponseAttributes(res proto.Message) error {
 	return nil
 }
 
-func transformResponse(msg proto.Message) error {
+func transformResponse(ctx context.Context, msg proto.Message) error {
 	fqn := msg.ProtoReflect().Descriptor().FullName()
 	if fn, ok := globalTransformationRegistry.responseTransformationFuncs[fqn]; ok {
-		return fn(msg)
+		return fn(ctx, msg)
 	}
-	return transformResponseAttributes(msg)
+	return transformResponseAttributes(ctx, msg)
 }
 
 // AttributeTransformerInterceptor is a grpc server interceptor that will
@@ -297,11 +278,11 @@ func transformResponse(msg proto.Message) error {
 // This request will be transformed into:
 //
 //	type:"password" password_attributes:{login_name:"tim"}
-func AttributeTransformerInterceptor(_ context.Context) grpc.UnaryServerInterceptor {
+func AttributeTransformerInterceptor(ctx context.Context) grpc.UnaryServerInterceptor {
 	const op = "subtypes.AttributeTransformInterceptor"
 	return func(interceptorCtx context.Context, req any, _ *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 		if reqMsg, ok := req.(proto.Message); ok {
-			if err := transformRequest(reqMsg); err != nil {
+			if err := transformRequest(ctx, reqMsg); err != nil {
 				fieldErrs := map[string]string{
 					"attributes": "Attribute fields do not match the expected format.",
 				}
@@ -318,7 +299,7 @@ func AttributeTransformerInterceptor(_ context.Context) grpc.UnaryServerIntercep
 		res, handlerErr := handler(interceptorCtx, req)
 
 		if res, ok := res.(proto.Message); ok {
-			if err := transformResponse(res); err != nil {
+			if err := transformResponse(ctx, res); err != nil {
 				return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "failed building attribute struct: %v", err)
 			}
 		}

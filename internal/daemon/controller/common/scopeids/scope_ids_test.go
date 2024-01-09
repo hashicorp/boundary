@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package scopeids_test
 
@@ -45,13 +45,13 @@ func TestListingScopeIds(t *testing.T) {
 	serversRepoFn := func() (*server.Repository, error) {
 		return server.NewRepository(ctx, rw, rw, kms)
 	}
-	s, err := groups.NewService(ctx, iamRepoFn)
+	s, err := groups.NewService(ctx, iamRepoFn, 1000)
 	require.NoError(t, err)
 
 	sessionsRepoFn := func(opt ...session.Option) (*session.Repository, error) {
 		return session.NewRepository(ctx, rw, rw, kms, opt...)
 	}
-	sess, err := sessions.NewService(ctx, sessionsRepoFn, iamRepoFn)
+	sess, err := sessions.NewService(ctx, sessionsRepoFn, iamRepoFn, 1000)
 	require.NoError(t, err)
 
 	tcs := []struct {

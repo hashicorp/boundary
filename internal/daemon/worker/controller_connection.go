@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package worker
 
@@ -19,6 +19,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/hashicorp/boundary/globals"
@@ -27,17 +28,20 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/cluster/handlers"
 	"github.com/hashicorp/boundary/internal/daemon/worker/internal/metric"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/event"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
-	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/server"
+	"github.com/hashicorp/boundary/internal/util"
 	"github.com/hashicorp/boundary/version"
 	"github.com/hashicorp/go-secure-stdlib/base62"
+	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/nodeenrollment"
 	"github.com/hashicorp/nodeenrollment/multihop"
 	"github.com/hashicorp/nodeenrollment/protocol"
 	"github.com/hashicorp/nodeenrollment/util/toggledlogger"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/backoff"
+	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/resolver"
 	"google.golang.org/protobuf/proto"
@@ -69,7 +73,11 @@ func (w *Worker) StartControllerConnections() error {
 
 	if len(initialAddrs) == 0 {
 		if w.conf.RawConfig.HcpbClusterId != "" && HandleHcpbClusterId != nil {
-			clusterAddress := HandleHcpbClusterId(w.conf.RawConfig.HcpbClusterId)
+			clusterId, err := parseutil.ParsePath(w.conf.RawConfig.HcpbClusterId)
+			if err != nil && !errors.Is(err, parseutil.ErrNotAUrl) {
+				return fmt.Errorf("failed to parse HCP Boundary cluster ID:  %q: %w", clusterId, err)
+			}
+			clusterAddress := HandleHcpbClusterId(clusterId)
 			initialAddrs = append(initialAddrs, clusterAddress)
 			event.WriteSysEvent(w.baseContext, op, fmt.Sprintf("Setting HCP Boundary cluster address %s as upstream address", clusterAddress))
 		} else {
@@ -154,12 +162,12 @@ func (w *Worker) upstreamDialerFunc(extraAlpnProtos ...string) func(context.Cont
 			default:
 				// In this case, event, so that the operator can understand that
 				// it was rejected
-				event.WriteError(ctx, op, fmt.Errorf("controller rejected activation token as invalid"))
+				event.WriteError(w.baseContext, op, fmt.Errorf("controller rejected activation token as invalid"))
 				return nil, errors.Wrap(w.baseContext, err, op)
 			}
 
 		default:
-			event.WriteError(ctx, op, err)
+			event.WriteError(w.baseContext, op, err)
 			return nil, errors.Wrap(w.baseContext, err, op)
 		}
 
@@ -168,7 +176,7 @@ func (w *Worker) upstreamDialerFunc(extraAlpnProtos ...string) func(context.Cont
 				w.everAuthenticated.Store(authenticationStatusFirstAuthentication)
 			}
 
-			event.WriteSysEvent(ctx, op, "worker has successfully authenticated")
+			event.WriteSysEvent(w.baseContext, op, "worker has successfully authenticated")
 		}
 
 		return conn, err
@@ -196,13 +204,13 @@ func (w *Worker) v1KmsAuthDialFn(ctx context.Context, addr string, extraAlpnProt
 	written, err := tlsConn.Write([]byte(authInfo.ConnectionNonce))
 	if err != nil {
 		if err := nonTlsConn.Close(); err != nil {
-			event.WriteError(ctx, op, err, event.WithInfoMsg("error closing connection after writing failure"))
+			event.WriteError(w.baseContext, op, err, event.WithInfoMsg("error closing connection after writing failure"))
 		}
 		return nil, fmt.Errorf("unable to write connection nonce: %w", err)
 	}
 	if written != len(authInfo.ConnectionNonce) {
 		if err := nonTlsConn.Close(); err != nil {
-			event.WriteError(ctx, op, err, event.WithInfoMsg("error closing connection after writing failure"))
+			event.WriteError(w.baseContext, op, err, event.WithInfoMsg("error closing connection after writing failure"))
 		}
 		return nil, fmt.Errorf("expected to write %d bytes of connection nonce, wrote %d", len(authInfo.ConnectionNonce), written)
 	}
@@ -211,19 +219,7 @@ func (w *Worker) v1KmsAuthDialFn(ctx context.Context, addr string, extraAlpnProt
 
 func (w *Worker) createClientConn(addr string) error {
 	const op = "worker.(Worker).createClientConn"
-	defaultTimeout := (time.Second + time.Nanosecond).String()
-	defServiceConfig := fmt.Sprintf(`
-	  {
-		"loadBalancingConfig": [ { "round_robin": {} } ],
-		"methodConfig": [
-		  {
-			"name": [],
-			"timeout": %q,
-			"waitForReady": true
-		  }
-		]
-	  }
-	  `, defaultTimeout)
+
 	var res resolver.Builder
 	for _, v := range w.addressReceivers {
 		if rec, ok := v.(*grpcResolverReceiver); ok {
@@ -233,26 +229,9 @@ func (w *Worker) createClientConn(addr string) error {
 	if res == nil {
 		return errors.New(w.baseContext, errors.Internal, op, "unable to find a resolver.Builder amongst the address receivers")
 	}
-	dialOpts := []grpc.DialOption{
-		grpc.WithResolvers(res),
-		grpc.WithUnaryInterceptor(metric.InstrumentClusterClient()),
-		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(math.MaxInt32)),
-		grpc.WithDefaultCallOptions(grpc.MaxCallSendMsgSize(math.MaxInt32)),
-		grpc.WithContextDialer(w.upstreamDialerFunc()),
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithDefaultServiceConfig(defServiceConfig),
-		// Don't have the resolver reach out for a service config from the
-		// resolver, use the one specified as default
-		grpc.WithDisableServiceConfig(),
-		grpc.WithConnectParams(grpc.ConnectParams{
-			Backoff: backoff.Config{
-				BaseDelay:  time.Second,
-				Multiplier: 1.2,
-				Jitter:     0.2,
-				MaxDelay:   3 * time.Second,
-			},
-		}),
-	}
+
+	dialOpts := createDefaultGRPCDialOptions(res, w.upstreamDialerFunc())
+
 	cc, err := grpc.DialContext(w.baseContext,
 		fmt.Sprintf("%s:///%s", res.Scheme(), addr),
 		dialOpts...,
@@ -271,7 +250,49 @@ func (w *Worker) createClientConn(addr string) error {
 
 	w.controllerUpstreamMsgConn.Store(&producer)
 
+	go monitorUpstreamConnectionState(w.baseContext, cc, w.upstreamConnectionState)
+
 	return nil
+}
+
+// createDefaultGRPCDialOptions creates grpc.DialOption using default options
+func createDefaultGRPCDialOptions(res resolver.Builder, upstreamDialerFn func(context.Context, string) (net.Conn, error)) []grpc.DialOption {
+	defaultTimeout := (time.Second + time.Nanosecond).String()
+	defServiceConfig := fmt.Sprintf(`
+	  {
+		"loadBalancingConfig": [ { "round_robin": {} } ],
+		"methodConfig": [
+		  {
+			"name": [],
+			"timeout": %q,
+			"waitForReady": true
+		  }
+		]
+	  }
+	  `, defaultTimeout)
+
+	dialOpts := []grpc.DialOption{
+		grpc.WithResolvers(res),
+		grpc.WithUnaryInterceptor(metric.InstrumentClusterClient()),
+		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(math.MaxInt32)),
+		grpc.WithDefaultCallOptions(grpc.MaxCallSendMsgSize(math.MaxInt32)),
+		grpc.WithContextDialer(upstreamDialerFn),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithDefaultServiceConfig(defServiceConfig),
+		// Don't have the resolver reach out for a service config from the
+		// resolver, use the one specified as default
+		grpc.WithDisableServiceConfig(),
+		grpc.WithConnectParams(grpc.ConnectParams{
+			Backoff: backoff.Config{
+				BaseDelay:  time.Second,
+				Multiplier: 1.2,
+				Jitter:     0.2,
+				MaxDelay:   3 * time.Second,
+			},
+		}),
+	}
+
+	return dialOpts
 }
 
 func (w *Worker) workerAuthTLSConfig(extraAlpnProtos ...string) (*tls.Config, *base.WorkerAuthInfo, error) {
@@ -402,4 +423,24 @@ func (w *Worker) workerConnectionInfo(addr string) (*structpb.Struct, error) {
 		return nil, errors.Wrap(w.baseContext, err, op, errors.WithMsg("getting worker state"))
 	}
 	return st, nil
+}
+
+// monitorUpstreamConnectionState listens for new state changes from grpc client
+// connection and updates the state
+func monitorUpstreamConnectionState(ctx context.Context, cc *grpc.ClientConn, connectionState *atomic.Value) {
+	var state connectivity.State
+	if v := connectionState.Load(); !util.IsNil(v) {
+		state = v.(connectivity.State)
+	}
+
+	for cc.WaitForStateChange(ctx, state) {
+		state = cc.GetState()
+
+		// if the client is shutdown, exit function
+		if state == connectivity.Shutdown {
+			return
+		}
+
+		connectionState.Store(state)
+	}
 }

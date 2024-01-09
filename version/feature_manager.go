@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package version
 
@@ -60,7 +60,7 @@ func init() {
 
 	// UseTargetIdForHostId supports old CLI clients that are unaware of host-sourceless targets,
 	// this feature populates the target's public id into the AuthorizeSessionResponse
-	// and the SessionAuthroizationData so the CLI can properly build the ssh command
+	// and the SessionAuthorizationData so the CLI can properly build the ssh command
 	// when calling "boundary connect ssh..."
 	featureMap[UseTargetIdForHostId] = MetadataConstraint{
 		Constraints: mustNewConstraints("< 0.14.0"),

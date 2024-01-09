@@ -1,17 +1,16 @@
 # Copyright (c) HashiCorp, Inc.
-# SPDX-License-Identifier: MPL-2.0
+# SPDX-License-Identifier: BUSL-1.1
 
-module "az_finder" {
-  source = "./modules/az_finder"
+module "aws_az_finder" {
+  source = "./modules/aws_az_finder"
 }
 
 module "bats_deps" {
   source = "./modules/bats_deps"
 }
 
-module "boundary" {
-  source  = "app.terraform.io/hashicorp-qti/aws-boundary/enos"
-  version = ">= 0.6.2"
+module "aws_boundary" {
+  source = "./modules/aws_boundary"
 
   project_name = "qti-enos-boundary"
   environment  = var.environment
@@ -27,8 +26,8 @@ module "boundary" {
   ssh_aws_keypair       = var.aws_ssh_keypair_name
 }
 
-module "worker" {
-  source = "./modules/worker"
+module "aws_worker" {
+  source = "./modules/aws_worker"
 
   common_tags = {
     "Project" : "Enos",
@@ -40,8 +39,8 @@ module "worker" {
   ssh_aws_keypair = var.aws_ssh_keypair_name
 }
 
-module "bucket" {
-  source = "./modules/bucket"
+module "aws_bucket" {
+  source = "./modules/aws_bucket"
 }
 
 module "build_crt" {
@@ -67,16 +66,14 @@ module "generate_aws_host_tag_vars" {
   source = "./modules/generate_aws_host_tag_vars"
 }
 
-module "iam_setup" {
-  source = "./modules/iam_setup"
+module "aws_iam_setup" {
+  source = "./modules/aws_iam_setup"
 }
 
-module "infra" {
-  source  = "app.terraform.io/hashicorp-qti/aws-infra/enos"
-  version = ">= 0.3.1"
+module "aws_vpc" {
+  source = "./modules/aws_vpc"
 
-  project_name = "qti-enos-boundary"
-  environment  = var.environment
+  environment = var.environment
   common_tags = {
     "Project" : "Enos",
     "Project Name" : "qti-enos-boundary",
@@ -97,8 +94,8 @@ module "map2list" {
   source = "./modules/map2list"
 }
 
-module "target" {
-  source       = "./modules/target"
+module "aws_target" {
+  source       = "./modules/aws_target"
   target_count = var.target_count
 
   project_name = "qti-enos-boundary"
@@ -130,6 +127,10 @@ module "test_e2e_ui" {
   source = "./modules/test_e2e_ui"
 }
 
+module "test_e2e_docker" {
+  source = "./modules/test_e2e_docker"
+}
+
 module "test_smoke" {
   source = "./modules/test_smoke"
 }
@@ -146,10 +147,30 @@ module "docker_boundary" {
   source = "./modules/docker_boundary"
 }
 
+module "docker_boundary_cmd" {
+  source = "./modules/docker_boundary_cmd"
+}
+
 module "docker_openssh_server" {
   source = "./modules/docker_openssh_server"
 }
 
+module "docker_openssh_server_ca_key" {
+  source = "./modules/docker_openssh_server_ca_key"
+}
+
+module "docker_worker" {
+  source = "./modules/docker_worker"
+}
+
 module "docker_network" {
   source = "./modules/docker_network"
+}
+
+module "docker_check_health" {
+  source = "./modules/docker_check_health"
+}
+
+module "docker_ldap" {
+  source = "./modules/docker_ldap"
 }

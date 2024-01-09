@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package oplog
 
@@ -51,7 +51,7 @@ func setup(ctx context.Context, t testing.TB) (*dbw.DB, wrapping.Wrapper) {
 	require.NoError(err)
 	r := dbw.New(db)
 	w := dbw.New(db)
-	kmsCache, err := kms.New(r, w, []kms.KeyPurpose{kms.KeyPurposeRootKey, "oplog"})
+	kmsCache, err := kms.New(r, w, []kms.KeyPurpose{kms.KeyPurposeRootKey, "oplog"}, kms.WithTableNamePrefix("kms_oplog"))
 	require.NoError(err)
 	err = kmsCache.AddExternalWrapper(ctx, kms.KeyPurposeRootKey, root)
 	require.NoError(err)

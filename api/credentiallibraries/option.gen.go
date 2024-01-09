@@ -25,6 +25,7 @@ type options struct {
 	withAutomaticVersioning bool
 	withSkipCurlOutput      bool
 	withFilter              string
+	withListToken           string
 }
 
 func getDefaultOptions() options {
@@ -48,6 +49,9 @@ func getOpts(opt ...Option) (options, []api.Option) {
 	if opts.withFilter != "" {
 		opts.queryMap["filter"] = opts.withFilter
 	}
+	if opts.withListToken != "" {
+		opts.queryMap["list_token"] = opts.withListToken
+	}
 	return opts, apiOpts
 }
 
@@ -69,12 +73,44 @@ func WithSkipCurlOutput(skip bool) Option {
 	}
 }
 
+// WithListToken tells the API to use the provided list token
+// for listing operations on this resource.
+func WithListToken(listToken string) Option {
+	return func(o *options) {
+		o.withListToken = listToken
+	}
+}
+
 // WithFilter tells the API to filter the items returned using the provided
 // filter term.  The filter should be in a format supported by
 // hashicorp/go-bexpr.
 func WithFilter(filter string) Option {
 	return func(o *options) {
 		o.withFilter = strings.TrimSpace(filter)
+	}
+}
+
+func WithVaultSSHCertificateCredentialLibraryAdditionalValidPrincipals(inAdditionalValidPrincipals []string) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["additional_valid_principals"] = inAdditionalValidPrincipals
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultVaultSSHCertificateCredentialLibraryAdditionalValidPrincipals() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["additional_valid_principals"] = nil
+		o.postMap["attributes"] = val
 	}
 }
 

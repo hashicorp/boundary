@@ -1,7 +1,13 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package host
+
+import (
+	"errors"
+
+	"github.com/hashicorp/boundary/internal/pagination"
+)
 
 // GetOpts - iterate the inbound Options and return a struct
 func GetOpts(opt ...Option) (options, error) {
@@ -19,9 +25,10 @@ type Option func(*options) error
 
 // options = how options are represented
 type options struct {
-	WithLimit             int
-	WithOrderByCreateTime bool
-	Ascending             bool
+	WithLimit              int
+	WithOrderByCreateTime  bool
+	Ascending              bool
+	WithStartPageAfterItem pagination.Item
 }
 
 func getDefaultOptions() options {
@@ -44,6 +51,18 @@ func WithOrderByCreateTime(ascending bool) Option {
 	return func(o *options) error {
 		o.WithOrderByCreateTime = true
 		o.Ascending = ascending
+		return nil
+	}
+}
+
+// WithStartPageAfterItem is used to paginate over the results.
+// The next page will start after the provided item.
+func WithStartPageAfterItem(item pagination.Item) Option {
+	return func(o *options) error {
+		if item == nil {
+			return errors.New("item cannot be nil")
+		}
+		o.WithStartPageAfterItem = item
 		return nil
 	}
 }

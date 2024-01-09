@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package targets
 
@@ -8,10 +8,10 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
-	"github.com/hashicorp/boundary/internal/types/subtypes"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
 	"google.golang.org/protobuf/proto"
 )
@@ -52,7 +52,7 @@ type registry struct {
 	*sync.Map
 }
 
-func (r registry) get(s subtypes.Subtype) (*registryEntry, error) {
+func (r registry) get(s globals.Subtype) (*registryEntry, error) {
 	v, ok := r.Load(s)
 	if !ok {
 		return nil, fmt.Errorf("subtype %q not registered", s)
@@ -65,7 +65,7 @@ func (r registry) get(s subtypes.Subtype) (*registryEntry, error) {
 	return re, nil
 }
 
-func (r registry) maskManager(s subtypes.Subtype) (handlers.MaskManager, error) {
+func (r registry) maskManager(s globals.Subtype) (handlers.MaskManager, error) {
 	re, err := r.get(s)
 	if err != nil {
 		return nil, err
@@ -77,7 +77,7 @@ func (r registry) maskManager(s subtypes.Subtype) (handlers.MaskManager, error) 
 // newAttribute creates an Attribute for the given subtype. It delegates the
 // allocation of the Attribute to the registered attrFunc for the given
 // subtype. An error is returned if the provided subtype is not registered
-func (r registry) newAttribute(s subtypes.Subtype, m any) (Attributes, error) {
+func (r registry) newAttribute(s globals.Subtype, m any) (Attributes, error) {
 	re, err := r.get(s)
 	if err != nil {
 		return nil, err
@@ -92,7 +92,7 @@ func (r registry) newAttribute(s subtypes.Subtype, m any) (Attributes, error) {
 // setting of the specific attribute type to the registered setAttributeFunc for
 // the given subtype. An error is returned if the provided subtype is not
 // registered.
-func (r registry) setAttributes(s subtypes.Subtype, in target.Target, out *pb.Target) error {
+func (r registry) setAttributes(s globals.Subtype, in target.Target, out *pb.Target) error {
 	re, err := r.get(s)
 	if err != nil {
 		return err
@@ -106,7 +106,7 @@ var subtypeRegistry = registry{
 }
 
 // Register registers a subtype for used by the service handler.
-func Register(s subtypes.Subtype, maskManager handlers.MaskManager, af attributeFunc, sf setAttributeFunc, vsf validateSessionStateFunc) {
+func Register(s globals.Subtype, maskManager handlers.MaskManager, af attributeFunc, sf setAttributeFunc, vsf validateSessionStateFunc) {
 	if _, existed := subtypeRegistry.LoadOrStore(s, &registryEntry{
 		maskManager:              maskManager,
 		attrFunc:                 af,

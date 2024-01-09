@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package hosts_test
 
@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/hostcatalogs"
 	"github.com/hashicorp/boundary/api/hosts"
@@ -125,7 +127,17 @@ func TestPluginHosts(t *testing.T) {
 
 	h, err := hClient.Read(tc.Context(), hl.Items[0].Id)
 	require.NoError(err)
-	assert.Equal(hl.Items[0], h.Item)
+	assert.Empty(
+		cmp.Diff(
+			hl.Items[0],
+			h.Item,
+			cmpopts.IgnoreUnexported(hosts.Host{}),
+			cmpopts.IgnoreFields(hosts.Host{}, "Version", "UpdatedTime"),
+			cmpopts.SortSlices(func(a, b string) bool {
+				return a < b
+			}),
+		),
+	)
 
 	_, err = hClient.Update(tc.Context(), h.Item.Id, h.Item.Version, hosts.WithName("foo"))
 	require.Error(err)

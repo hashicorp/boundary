@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package static
 
@@ -26,8 +26,7 @@ func TestJsonCredential_New(t *testing.T) {
 	kkms := kms.TestKms(t, conn, wrapper)
 	rw := db.New(conn)
 
-	obj, objBytes, err := TestJsonObject()
-	assert.NoError(t, err)
+	obj, objBytes := TestJsonObject(t)
 
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	cs := TestCredentialStore(t, conn, wrapper, prj.PublicId)

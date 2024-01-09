@@ -1,9 +1,10 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package credentials_test
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"testing"
@@ -411,9 +412,16 @@ func TestUpdateAfterKeyRotation(t *testing.T) {
 		Level: hclog.Trace,
 	})
 
+	// This prevents us from running tests in parallel.
 	tg.SetupSuiteTargetFilters(t)
 
-	tc := controller.NewTestController(t, &controller.TestControllerOpts{SchedulerRunJobInterval: 100 * time.Millisecond})
+	tc := controller.NewTestController(
+		t,
+		&controller.TestControllerOpts{
+			SchedulerRunJobInterval: 100 * time.Millisecond,
+			DisableRateLimiting:     true,
+		},
+	)
 	ctx := tc.Context()
 	client := tc.Client()
 	token := tc.Token()
@@ -466,7 +474,7 @@ func TestUpdateAfterKeyRotation(t *testing.T) {
 
 	// Update JSON credential, will re-encrypt with new key versions
 	obj["password"] = "password"
-	cred, err = credsClient.Update(ctx, cred.Item.Id, 1, credentials.WithJsonCredentialObject(obj))
+	_, err = credsClient.Update(ctx, cred.Item.Id, 1, credentials.WithJsonCredentialObject(obj))
 	require.NoError(err)
 
 	// Create new key versions again
@@ -493,14 +501,17 @@ func TestUpdateAfterKeyRotation(t *testing.T) {
 	// Should start asynchronous rewrapping of the encrypted JSON credential
 	assert.Equal("pending", result.State)
 
+	ctx, cancel := context.WithTimeout(ctx, 3*time.Minute)
+	defer cancel()
 	for {
 		jobs, err := scopesClient.ListKeyVersionDestructionJobs(ctx, proj.PublicId)
 		require.NoError(err)
-		if len(jobs.Items) == 1 {
+		if len(jobs.Items) >= 1 {
 			break
 		}
 		select {
 		case <-ctx.Done():
+			t.Fatalf("Timed out waiting for key version destruction job, got jobs: %#v", jobs.Items)
 			break
 		case <-time.After(time.Millisecond * 100):
 		}

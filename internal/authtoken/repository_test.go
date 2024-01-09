@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package authtoken
 
@@ -657,24 +657,28 @@ func TestRepository_ListAuthTokens(t *testing.T) {
 	emptyOrg, _ := iam.TestScopes(t, repo)
 
 	tests := []struct {
-		name  string
-		orgId string
-		want  []*AuthToken
+		name      string
+		orgId     string
+		want      []*AuthToken
+		wantTTime time.Time
 	}{
 		{
-			name:  "populated",
-			orgId: org.GetPublicId(),
-			want:  []*AuthToken{at1, at2, at3},
+			name:      "populated",
+			orgId:     org.GetPublicId(),
+			want:      []*AuthToken{at1, at2, at3},
+			wantTTime: time.Now(),
 		},
 		{
-			name:  "empty",
-			orgId: emptyOrg.GetPublicId(),
-			want:  []*AuthToken{},
+			name:      "empty",
+			orgId:     emptyOrg.GetPublicId(),
+			want:      []*AuthToken{},
+			wantTTime: time.Now(),
 		},
 		{
-			name:  "empty-org-id",
-			orgId: "",
-			want:  []*AuthToken{},
+			name:      "empty-org-id",
+			orgId:     "",
+			want:      []*AuthToken{},
+			wantTTime: time.Now(),
 		},
 	}
 
@@ -685,13 +689,109 @@ func TestRepository_ListAuthTokens(t *testing.T) {
 			repo, err := NewRepository(ctx, rw, rw, kms)
 			require.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.ListAuthTokens(ctx, []string{tt.orgId})
+			got, ttime, err := repo.listAuthTokens(ctx, []string{tt.orgId})
 			assert.NoError(err)
 			sort.Slice(tt.want, func(i, j int) bool { return tt.want[i].PublicId < tt.want[j].PublicId })
 			sort.Slice(got, func(i, j int) bool { return got[i].PublicId < got[j].PublicId })
 			assert.Empty(cmp.Diff(tt.want, got, protocmp.Transform()), "row count")
+			// Transaction timestamp should be within ~10 seconds of now
+			assert.True(tt.wantTTime.Before(ttime.Add(10 * time.Second)))
+			assert.True(tt.wantTTime.After(ttime.Add(-10 * time.Second)))
 		})
 	}
+	t.Run("withStartPageAfter", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+
+		for i := 0; i < 7; i++ {
+			at := TestAuthToken(t, conn, kms, org.GetPublicId())
+			at.Token = ""
+			at.KeyId = ""
+		}
+
+		repo, err := NewRepository(ctx, rw, rw, kms)
+		require.NoError(err)
+		page1, ttime, err := repo.listAuthTokens(ctx, []string{org.GetPublicId()}, WithLimit(2))
+		require.NoError(err)
+		require.Len(page1, 2)
+		// Transaction timestamp should be within ~10 seconds of now
+		assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+		assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
+		page2, ttime, err := repo.listAuthTokens(ctx, []string{org.GetPublicId()}, WithLimit(2), WithStartPageAfterItem(page1[1]))
+		require.NoError(err)
+		require.Len(page2, 2)
+		assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+		assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
+		for _, item := range page1 {
+			assert.NotEqual(item.GetPublicId(), page2[0].GetPublicId())
+			assert.NotEqual(item.GetPublicId(), page2[1].GetPublicId())
+		}
+		page3, ttime, err := repo.listAuthTokens(ctx, []string{org.GetPublicId()}, WithLimit(2), WithStartPageAfterItem(page2[1]))
+		require.NoError(err)
+		require.Len(page3, 2)
+		assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+		assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
+		for _, item := range page2 {
+			assert.NotEqual(item.GetPublicId(), page3[0].GetPublicId())
+			assert.NotEqual(item.GetPublicId(), page3[1].GetPublicId())
+		}
+		page4, ttime, err := repo.listAuthTokens(ctx, []string{org.GetPublicId()}, WithLimit(2), WithStartPageAfterItem(page3[1]))
+		require.NoError(err)
+		require.Len(page4, 2)
+		assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+		assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
+		for _, item := range page3 {
+			assert.NotEqual(item.GetPublicId(), page4[0].GetPublicId())
+			assert.NotEqual(item.GetPublicId(), page4[1].GetPublicId())
+		}
+		page5, ttime, err := repo.listAuthTokens(ctx, []string{org.GetPublicId()}, WithLimit(2), WithStartPageAfterItem(page4[1]))
+		require.NoError(err)
+		require.Len(page5, 2)
+		assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+		assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
+		for _, item := range page4 {
+			assert.NotEqual(item.GetPublicId(), page5[0].GetPublicId())
+			assert.NotEqual(item.GetPublicId(), page5[1].GetPublicId())
+		}
+		page6, ttime, err := repo.listAuthTokens(ctx, []string{org.GetPublicId()}, WithLimit(2), WithStartPageAfterItem(page5[1]))
+		require.NoError(err)
+		require.Empty(page6)
+		assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+		assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
+
+		// Create 2 new auth tokens
+		newAt1 := TestAuthToken(t, conn, kms, org.GetPublicId())
+		newAt1.Token = ""
+		newAt1.KeyId = ""
+		newAt2 := TestAuthToken(t, conn, kms, org.GetPublicId())
+		newAt2.Token = ""
+		newAt2.KeyId = ""
+
+		// since it will return newest to oldest, we get page1[1] first
+		page7, ttime, err := repo.listAuthTokensRefresh(
+			ctx,
+			time.Now().Add(-1*time.Second),
+			[]string{org.GetPublicId()},
+			WithLimit(1),
+		)
+		require.NoError(err)
+		require.Len(page7, 1)
+		require.Equal(page7[0].GetPublicId(), newAt2.GetPublicId())
+		assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+		assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
+
+		page8, ttime, err := repo.listAuthTokensRefresh(
+			context.Background(),
+			time.Now().Add(-1*time.Second),
+			[]string{org.GetPublicId()},
+			WithLimit(1),
+			WithStartPageAfterItem(page7[0]),
+		)
+		require.NoError(err)
+		require.Len(page8, 1)
+		require.Equal(page8[0].GetPublicId(), newAt1.GetPublicId())
+		assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+		assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
+	})
 }
 
 func TestRepository_ListAuthTokens_Multiple_Scopes(t *testing.T) {
@@ -715,9 +815,11 @@ func TestRepository_ListAuthTokens_Multiple_Scopes(t *testing.T) {
 		total++
 	}
 
-	got, err := repo.ListAuthTokens(ctx, []string{"global", org.GetPublicId(), proj.GetPublicId()})
+	got, ttime, err := repo.listAuthTokens(ctx, []string{"global", org.GetPublicId(), proj.GetPublicId()})
 	require.NoError(t, err)
-	assert.Equal(t, total, len(got))
+	assert.Equal(t, total, len(got)) // Transaction timestamp should be within ~10 seconds of now
+	assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
+	assert.True(t, time.Now().After(ttime.Add(-10*time.Second)))
 }
 
 func Test_IssuePendingToken(t *testing.T) {
@@ -879,4 +981,95 @@ func Test_CloseExpiredPendingTokens(t *testing.T) {
 			assert.Equal(tt.wantCnt, tokensClosed)
 		})
 	}
+}
+
+func Test_listDeletedIds(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	org, _ := iam.TestScopes(t, iamRepo)
+	at := TestAuthToken(t, conn, kms, org.GetPublicId())
+	at.Token = ""
+	at.KeyId = ""
+	repo, err := NewRepository(ctx, rw, rw, kms)
+	require.NoError(t, err)
+
+	// Expect no entries at the start
+	deletedIds, ttime, err := repo.listDeletedIds(ctx, time.Now().AddDate(-1, 0, 0))
+	require.NoError(t, err)
+	require.Empty(t, deletedIds)
+	// Transaction timestamp should be within ~10 seconds of now
+	assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
+	assert.True(t, time.Now().After(ttime.Add(-10*time.Second)))
+
+	// Delete an auth token
+	_, err = repo.DeleteAuthToken(ctx, at.GetPublicId())
+	require.NoError(t, err)
+
+	// Expect a single entry
+	deletedIds, ttime, err = repo.listDeletedIds(ctx, time.Now().AddDate(-1, 0, 0))
+	require.NoError(t, err)
+	require.Equal(t, []string{at.GetPublicId()}, deletedIds)
+	// Transaction timestamp should be within ~10 seconds of now
+	assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
+	assert.True(t, time.Now().After(ttime.Add(-10*time.Second)))
+
+	// Try again with the time set to now, expect no entries
+	deletedIds, ttime, err = repo.listDeletedIds(ctx, time.Now())
+	require.NoError(t, err)
+	require.Empty(t, deletedIds)
+	// Transaction timestamp should be within ~10 seconds of now
+	assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
+	assert.True(t, time.Now().After(ttime.Add(-10*time.Second)))
+}
+
+func Test_estimatedCount(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	sqlDb, err := conn.SqlDB(ctx)
+	require.NoError(t, err)
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	repo, err := NewRepository(ctx, rw, rw, kms)
+	require.NoError(t, err)
+
+	// Run analyze to update estimate
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
+
+	// Check total entries at start, expect 0
+	numItems, err := repo.estimatedCount(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 0, numItems)
+
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	org, _ := iam.TestScopes(t, iamRepo)
+	// Create an auth token, expect 1 entry
+	at := TestAuthToken(t, conn, kms, org.GetPublicId())
+	at.Token = ""
+	at.KeyId = ""
+
+	// Run analyze to update estimate
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
+	numItems, err = repo.estimatedCount(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 1, numItems)
+
+	// Delete the auth token, expect 0 again
+	_, err = repo.DeleteAuthToken(ctx, at.GetPublicId())
+	require.NoError(t, err)
+
+	// Run analyze to update estimate
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
+	numItems, err = repo.estimatedCount(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 0, numItems)
 }

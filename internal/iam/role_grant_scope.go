@@ -44,7 +44,7 @@ func NewRoleGrantScope(ctx context.Context, roleId string, grantScope string, _ 
 		grantScope == "this",
 		grantScope == "children",
 		grantScope == "descendants":
-	case globals.ResourceTypeFromPrefix(grantScope) == resource.Scope:
+	case globals.ResourceInfoFromPrefix(grantScope).Type == resource.Scope:
 	default:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unknown grant scope id %q", grantScope))
 	}
@@ -85,7 +85,7 @@ func (g *RoleGrantScope) VetForWrite(ctx context.Context, _ db.Reader, _ db.OpTy
 	case g.ScopeId == "global",
 		g.ScopeId == "this",
 		g.ScopeId == "children":
-	case globals.ResourceTypeFromPrefix(g.ScopeId) == resource.Scope:
+	case globals.ResourceInfoFromPrefix(g.ScopeId).Type == resource.Scope:
 	default:
 		return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unknown grant scope id %q", g.ScopeId))
 	}

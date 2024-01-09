@@ -1,11 +1,10 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package aws_test
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"testing"
 
@@ -31,7 +30,7 @@ func TestCliWorker(t *testing.T) {
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
 	newProjectId := boundary.CreateNewProjectCli(t, ctx, newOrgId)
-	newTargetId := boundary.CreateNewTargetCli(t, ctx, newProjectId, c.TargetPort, target.WithAddress(c.TargetIp))
+	newTargetId := boundary.CreateNewTargetCli(t, ctx, newProjectId, c.TargetPort, target.WithAddress(c.TargetAddress))
 
 	// Set incorrect worker filter, expect connection failure
 	t.Logf("Setting incorrect worker filter...")
@@ -67,17 +66,12 @@ func TestCliWorker(t *testing.T) {
 	t.Logf("Successfully detected connection failure")
 
 	// Set correct worker filter, expect connection success
-	var workerTags []string
-	err = json.Unmarshal([]byte(c.WorkerTags), &workerTags)
-	require.NoError(t, err)
-	require.NotEmpty(t, workerTags)
-
 	t.Logf("Setting correct worker filter...")
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"targets", "update", "tcp",
 			"-id", newTargetId,
-			"-egress-worker-filter", fmt.Sprintf(`"%s" in "/tags/type"`, workerTags[0]),
+			"-egress-worker-filter", fmt.Sprintf(`"%s" in "/tags/type"`, c.WorkerTagEgress),
 			"-format", "json",
 		),
 	)

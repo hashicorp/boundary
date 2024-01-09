@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 // Package plugin provides a plugin host catalog, and plugin host set resource
 // which are used to interact with a host plugin as well as a repository to

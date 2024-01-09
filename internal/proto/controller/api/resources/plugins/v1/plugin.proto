@@ -9,7 +9,7 @@ option go_package = "github.com/hashicorp/boundary/sdk/pbs/controller/api/resour
 
 message PluginInfo {
   // Output only. The ID of the Plugin.
-  string id = 1; // @gotags: `class:"public"`
+  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. The name of the plugin resource in boundary, if any.
   string name = 2; // @gotags: `class:"public"`

@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package iam
 
@@ -453,7 +453,7 @@ func TestGroup_Actions(t *testing.T) {
 func TestGroup_ResourceType(t *testing.T) {
 	assert := assert.New(t)
 	r := &Group{}
-	ty := r.ResourceType()
+	ty := r.GetResourceType()
 	assert.Equal(ty, resource.Group)
 }
 

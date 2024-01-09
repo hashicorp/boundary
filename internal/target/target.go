@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package target
 
@@ -8,12 +8,13 @@ import (
 	goerrs "errors"
 	"fmt"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/boundary"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/target/store"
-	"github.com/hashicorp/boundary/internal/types/subtypes"
+	"github.com/hashicorp/boundary/internal/types/resource"
 )
 
 // Target is a commmon interface for all target subtypes
@@ -25,7 +26,8 @@ type Target interface {
 	GetName() string
 	GetDescription() string
 	GetVersion() uint32
-	GetType() subtypes.Subtype
+	GetType() globals.Subtype
+	GetResourceType() resource.Type
 	GetCreateTime() *timestamp.Timestamp
 	GetUpdateTime() *timestamp.Timestamp
 	GetSessionMaxSeconds() uint32
@@ -108,6 +110,11 @@ func (t *targetView) SetTableName(n string) {
 	}
 }
 
+// GetResourceType returns the resource type of the Target
+func (t *targetView) GetResourceType() resource.Type {
+	return resource.Target
+}
+
 func (t *targetView) SetHostSources(hs []HostSource) {
 	t.HostSource = hs
 }
@@ -140,8 +147,8 @@ func (t targetView) GetUserId() string {
 	return ""
 }
 
-func (t *targetView) Subtype() subtypes.Subtype {
-	return subtypes.Subtype(t.Type)
+func (t *targetView) Subtype() globals.Subtype {
+	return globals.Subtype(t.Type)
 }
 
 // targetSubtype converts the target view to the concrete subtype
@@ -181,4 +188,14 @@ func (t *targetView) targetSubtype(ctx context.Context, address string) (Target,
 	tt.SetEnableSessionRecording(t.EnableSessionRecording)
 	tt.SetStorageBucketId(t.StorageBucketId)
 	return tt, nil
+}
+
+type deletedTarget struct {
+	PublicId   string `gorm:"primary_key"`
+	DeleteTime *timestamp.Timestamp
+}
+
+// TableName returns the tablename to override the default gorm table name
+func (s *deletedTarget) TableName() string {
+	return "target_all_subtypes_deleted_view"
 }

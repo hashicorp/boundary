@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package cluster
 
@@ -14,7 +14,7 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller"
 	tg "github.com/hashicorp/boundary/internal/daemon/controller/handlers/targets"
 	"github.com/hashicorp/boundary/internal/daemon/worker"
-	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/tests/helper"
 	"github.com/hashicorp/dawdle"
@@ -63,11 +63,9 @@ func workerGracePeriod(ty timeoutBurdenType) time.Duration {
 // TestSessionCleanup is the main test for session cleanup, and
 // dispatches to the individual subtests.
 func TestSessionCleanup(t *testing.T) {
-	t.Parallel()
 	for _, burdenCase := range timeoutBurdenCases {
 		burdenCase := burdenCase
 		t.Run(string(burdenCase), func(t *testing.T) {
-			t.Parallel()
 			t.Run("single_controller", testWorkerSessionCleanupSingle(burdenCase))
 			t.Run("multi_controller", testWorkerSessionCleanupMulti(burdenCase))
 		})
@@ -77,8 +75,8 @@ func TestSessionCleanup(t *testing.T) {
 func testWorkerSessionCleanupSingle(burdenCase timeoutBurdenType) func(t *testing.T) {
 	const op = "cluster.testWorkerSessionCleanupSingle"
 	return func(t *testing.T) {
-		t.Parallel()
 		require := require.New(t)
+		// This prevents us from running tests in parallel.
 		tg.SetupSuiteTargetFilters(t)
 		logger := hclog.New(&hclog.LoggerOptions{
 			Name:  t.Name(),
@@ -98,7 +96,7 @@ func testWorkerSessionCleanupSingle(burdenCase timeoutBurdenType) func(t *testin
 			WorkerStatusGracePeriodDuration: controllerGracePeriod(burdenCase),
 		})
 
-		expectWorkers(t, c1)
+		helper.ExpectWorkers(t, c1)
 
 		// Wire up the testing proxies
 		require.Len(c1.ClusterAddrs(), 1)
@@ -122,7 +120,7 @@ func testWorkerSessionCleanupSingle(burdenCase timeoutBurdenType) func(t *testin
 		require.NoError(err)
 		err = c1.WaitForNextWorkerStatusUpdate(w1.Name())
 		require.NoError(err)
-		expectWorkers(t, c1, w1)
+		helper.ExpectWorkers(t, c1, w1)
 
 		// Use an independent context for test things that take a context so
 		// that we aren't tied to any timeouts in the controller, etc. This
@@ -203,7 +201,7 @@ func testWorkerSessionCleanupSingle(burdenCase timeoutBurdenType) func(t *testin
 func testWorkerSessionCleanupMulti(burdenCase timeoutBurdenType) func(t *testing.T) {
 	const op = "cluster.testWorkerSessionCleanupMulti"
 	return func(t *testing.T) {
-		t.Parallel()
+		// This prevents us from running tests in parallel.
 		tg.SetupSuiteTargetFilters(t)
 		require := require.New(t)
 		logger := hclog.New(&hclog.LoggerOptions{
@@ -237,8 +235,8 @@ func testWorkerSessionCleanupMulti(burdenCase timeoutBurdenType) func(t *testing
 			PublicClusterAddr:               pl2.Addr().String(),
 			WorkerStatusGracePeriodDuration: controllerGracePeriod(burdenCase),
 		})
-		expectWorkers(t, c1)
-		expectWorkers(t, c2)
+		helper.ExpectWorkers(t, c1)
+		helper.ExpectWorkers(t, c2)
 
 		// *************
 		// ** Proxy 1 **
@@ -286,8 +284,8 @@ func testWorkerSessionCleanupMulti(burdenCase timeoutBurdenType) func(t *testing
 		require.NoError(err)
 		err = c2.WaitForNextWorkerStatusUpdate(w1.Name())
 		require.NoError(err)
-		expectWorkers(t, c1, w1)
-		expectWorkers(t, c2, w1)
+		helper.ExpectWorkers(t, c1, w1)
+		helper.ExpectWorkers(t, c2, w1)
 
 		// Use an independent context for test things that take a context so
 		// that we aren't tied to any timeouts in the controller, etc. This

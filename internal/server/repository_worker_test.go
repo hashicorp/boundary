@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package server_test
 
@@ -1059,6 +1059,7 @@ func TestRepository_CreateWorker(t *testing.T) {
 			)},
 			repo: func() *server.Repository {
 				mockConn, mock := db.TestSetupWithMock(t)
+				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
 				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
 				mock.ExpectQuery(`SELECT`).WillReturnError(errors.New(testCtx, errors.Internal, "test", "no-database-key"))
 				k := kms.TestKms(t, mockConn, wrapper)

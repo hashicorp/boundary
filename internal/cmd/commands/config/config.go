@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package config
 
@@ -15,7 +15,7 @@ type Command struct {
 }
 
 func (c *Command) Synopsis() string {
-	return "Manage resources related to Boundary's local configuration"
+	return "Manage the local client's configuration"
 }
 
 func (c *Command) Help() string {

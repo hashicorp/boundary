@@ -114,7 +114,7 @@ If a test is interrupted check to make certain that all Docker containers have b
 
 ### Running individual tests
 
-If you don't want to run the entire test suite, you can just run a singe test
+If you don't want to run the entire test suite, you can just run a single test
 with go. For example, if you wanted to run the tests TestAuthTokenAuthenticator, you would
 run:
 

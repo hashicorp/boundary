@@ -1,10 +1,12 @@
 # Copyright (c) HashiCorp, Inc.
-# SPDX-License-Identifier: MPL-2.0
+# SPDX-License-Identifier: BUSL-1.1
 
 disable_mlock = true
 
 controller {
   name        = "docker-controller"
+
+  max_page_size = ${max_page_size}
 
   database {
     url = "env://BOUNDARY_POSTGRES_URL"
@@ -12,9 +14,13 @@ controller {
 }
 
 worker {
-  name        = "boundary-colocated-worker"
+  name        = "boundary-collocated-worker"
   description = "A worker that runs alongside the controller in the same process"
   address     = "boundary:9202"
+
+  tags {
+    type = ["${worker_type_tag}"]
+  }
 }
 
 listener "tcp" {
@@ -48,10 +54,12 @@ kms "aead" {
   key_id    = "global_root"
 }
 
+# This key_id needs to match the corresponding downstream worker's
+# "worker-auth" kms
 kms "aead" {
   purpose   = "worker-auth"
   aead_type = "aes-gcm"
-  key       = "8fZBjCUfN0TzjEGLQldGY4+iE9AkOvCfjh7+p0GtRBQ="
+  key       = "OLFhJNbEb3umRjdhY15QKNEmNXokY1Iq"
   key_id    = "global_worker-auth"
 }
 

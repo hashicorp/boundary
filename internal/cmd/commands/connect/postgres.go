@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package connect
 
@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/hashicorp/boundary/api/proxy"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/posener/complete"
 )
@@ -53,17 +54,17 @@ func (p *postgresFlags) defaultExec() string {
 	return strings.ToLower(p.flagPostgresStyle)
 }
 
-func (p *postgresFlags) buildArgs(c *Command, port, ip, _ string, creds credentials) (args, envs []string, retCreds credentials, retErr error) {
+func (p *postgresFlags) buildArgs(c *Command, port, ip, _ string, creds proxy.Credentials) (args, envs []string, retCreds proxy.Credentials, retErr error) {
 	var username, password string
 
 	retCreds = creds
-	if len(retCreds.usernamePassword) > 0 {
+	if len(retCreds.UsernamePassword) > 0 {
 		// Mark credential as consumed so it is not printed to user
-		retCreds.usernamePassword[0].consumed = true
+		retCreds.UsernamePassword[0].Consumed = true
 
 		// For now just grab the first username password credential brokered
-		username = retCreds.usernamePassword[0].Username
-		password = retCreds.usernamePassword[0].Password
+		username = retCreds.UsernamePassword[0].Username
+		password = retCreds.UsernamePassword[0].Password
 	}
 
 	switch p.flagPostgresStyle {
@@ -84,7 +85,7 @@ func (p *postgresFlags) buildArgs(c *Command, port, ip, _ string, creds credenti
 		if password != "" {
 			passfile, err := os.CreateTemp("", "*")
 			if err != nil {
-				return nil, nil, credentials{}, fmt.Errorf("Error saving postgres password to tmp file: %w", err)
+				return nil, nil, proxy.Credentials{}, fmt.Errorf("Error saving postgres password to tmp file: %w", err)
 			}
 			c.cleanupFuncs = append(c.cleanupFuncs, func() error {
 				if err := os.Remove(passfile.Name()); err != nil {
@@ -94,10 +95,10 @@ func (p *postgresFlags) buildArgs(c *Command, port, ip, _ string, creds credenti
 			})
 			_, err = passfile.WriteString(fmt.Sprintf("*:*:*:*:%s", password))
 			if err != nil {
-				return nil, nil, credentials{}, fmt.Errorf("Error writing password file to %s: %w", passfile.Name(), err)
+				return nil, nil, proxy.Credentials{}, fmt.Errorf("Error writing password file to %s: %w", passfile.Name(), err)
 			}
 			if err := passfile.Close(); err != nil {
-				return nil, nil, credentials{}, fmt.Errorf("Error closing password file after writing to %s: %w", passfile.Name(), err)
+				return nil, nil, proxy.Credentials{}, fmt.Errorf("Error closing password file after writing to %s: %w", passfile.Name(), err)
 			}
 			envs = append(envs, fmt.Sprintf("PGPASSFILE=%s", passfile.Name()))
 

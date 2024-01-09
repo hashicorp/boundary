@@ -1,12 +1,14 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package static
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
@@ -248,12 +250,14 @@ func (r *Repository) lookupSet(ctx context.Context, publicId string, opt ...Opti
 	return s, hosts, nil
 }
 
-// ListSets returns a slice of HostSets for the catalogId. WithLimit is the
-// only option supported.
-func (r *Repository) ListSets(ctx context.Context, catalogId string, opt ...Option) ([]*HostSet, error) {
-	const op = "static.(Repository).ListSets"
+// listSets returns a slice of HostSets for the catalogId.
+// Supported options:
+//   - WithLimit which overrides the limit set in the Repository object
+//   - WithStartPageAfterItem which sets where to start listing from
+func (r *Repository) listSets(ctx context.Context, catalogId string, opt ...Option) ([]*HostSet, time.Time, error) {
+	const op = "static.(Repository).listSets"
 	if catalogId == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "no catalog id")
+		return nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "no catalog id")
 	}
 	opts := getOpts(opt...)
 	limit := r.defaultLimit
@@ -261,12 +265,68 @@ func (r *Repository) ListSets(ctx context.Context, catalogId string, opt ...Opti
 		// non-zero signals an override of the default limit for the repo.
 		limit = opts.withLimit
 	}
-	var sets []*HostSet
-	err := r.reader.SearchWhere(ctx, &sets, "catalog_id = ?", []any{catalogId}, db.WithLimit(limit))
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+	whereClause := "catalog_id = @catalog_id"
+	args := []any{sql.Named("catalog_id", catalogId)}
+	order := "create_time desc, public_id desc"
+	if opts.withStartPageAfterItem != nil {
+		args = append(args,
+			sql.Named("last_item_create_time", opts.withStartPageAfterItem.GetCreateTime()),
+			sql.Named("last_item_id", opts.withStartPageAfterItem.GetPublicId()),
+		)
+		whereClause = whereClause + " and (create_time, public_id) < (@last_item_create_time, @last_item_id)"
 	}
-	return sets, nil
+	return r.querySets(ctx, whereClause, args, order, limit)
+}
+
+// listSetsRefresh returns a slice of HostSets for the catalogId.
+// Supported options:
+//   - WithLimit which overrides the limit set in the Repository object
+//   - WithStartPageAfterItem which sets where to start listing from
+func (r *Repository) listSetsRefresh(ctx context.Context, catalogId string, updatedAfter time.Time, opt ...Option) ([]*HostSet, time.Time, error) {
+	const op = "static.(Repository).listSetsRefresh"
+	switch {
+	case catalogId == "":
+		return nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "no catalog id")
+	case updatedAfter.IsZero():
+		return nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "no updated after time")
+	}
+	opts := getOpts(opt...)
+	limit := r.defaultLimit
+	if opts.withLimit != 0 {
+		// non-zero signals an override of the default limit for the repo.
+		limit = opts.withLimit
+	}
+	whereClause := "catalog_id = @catalog_id and update_time > @updated_after_time"
+	args := []any{
+		sql.Named("catalog_id", catalogId),
+		sql.Named("updated_after_time", updatedAfter),
+	}
+	order := "update_time desc, public_id desc"
+	if opts.withStartPageAfterItem != nil {
+		args = append(args,
+			sql.Named("last_item_update_time", opts.withStartPageAfterItem.GetUpdateTime()),
+			sql.Named("last_item_id", opts.withStartPageAfterItem.GetPublicId()),
+		)
+		whereClause = whereClause + " and (update_time, public_id) < (@last_item_update_time, @last_item_id)"
+	}
+	return r.querySets(ctx, whereClause, args, order, limit)
+}
+
+func (r *Repository) querySets(ctx context.Context, whereClause string, args []any, order string, limit int) ([]*HostSet, time.Time, error) {
+	const op = "static.(Repository).querySets"
+	var sets []*HostSet
+	var transactionTimestamp time.Time
+	if _, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(r db.Reader, _ db.Writer) error {
+		err := r.SearchWhere(ctx, &sets, whereClause, args, db.WithLimit(limit), db.WithOrder(order))
+		if err != nil {
+			return err
+		}
+		transactionTimestamp, err = r.Now(ctx)
+		return err
+	}); err != nil {
+		return nil, time.Time{}, errors.Wrap(ctx, err, op)
+	}
+	return sets, transactionTimestamp, nil
 }
 
 // DeleteSet deletes the host set for the provided id from the repository
@@ -309,4 +369,46 @@ func (r *Repository) DeleteSet(ctx context.Context, projectId string, publicId s
 	}
 
 	return rowsDeleted, nil
+}
+
+// listDeletedSetIds lists the public IDs of any host sets deleted since the timestamp provided,
+// and the timestamp of the transaction within which the host sets were listed.
+func (r *Repository) listDeletedSetIds(ctx context.Context, since time.Time) ([]string, time.Time, error) {
+	const op = "static.(Repository).listDeletedSetIds"
+	var deleteHostSets []*deletedHostSet
+	var transactionTimestamp time.Time
+	if _, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(r db.Reader, _ db.Writer) error {
+		if err := r.SearchWhere(ctx, &deleteHostSets, "delete_time >= ?", []any{since}); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to query deleted host sets"))
+		}
+		var err error
+		transactionTimestamp, err = r.Now(ctx)
+		if err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to get transaction timestamp"))
+		}
+		return nil
+	}); err != nil {
+		return nil, time.Time{}, err
+	}
+	var hostSetIds []string
+	for _, t := range deleteHostSets {
+		hostSetIds = append(hostSetIds, t.PublicId)
+	}
+	return hostSetIds, transactionTimestamp, nil
+}
+
+// estimatedSetCount returns an estimate of the total number of static host sets.
+func (r *Repository) estimatedSetCount(ctx context.Context) (int, error) {
+	const op = "static.(Repository).estimatedHostSetCount"
+	rows, err := r.reader.Query(ctx, estimateCountHostSets, nil)
+	if err != nil {
+		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query static host sets"))
+	}
+	var count int
+	for rows.Next() {
+		if err := r.reader.ScanRows(ctx, rows, &count); err != nil {
+			return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query static host sets"))
+		}
+	}
+	return count, nil
 }

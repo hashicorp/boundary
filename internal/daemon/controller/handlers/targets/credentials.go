@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package targets
 
@@ -9,13 +9,13 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/credential"
 	credstatic "github.com/hashicorp/boundary/internal/credential/static"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/errors"
 	serverpb "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/session"
-	"github.com/hashicorp/boundary/internal/types/subtypes"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -98,12 +98,13 @@ func dynamicToSessionCredential(ctx context.Context, cred credential.Dynamic) (*
 
 	var credType string
 	var credData *structpb.Struct
-	if l.CredentialType() != credential.UnspecifiedType {
+	if l.CredentialType() != globals.UnspecifiedCredentialType {
 		credType = string(l.CredentialType())
 
 		switch c := cred.(type) {
 		case credential.UsernamePassword:
 			credData, err = handlers.ProtoToStruct(
+				ctx,
 				&pb.UsernamePasswordCredential{
 					Username: c.Username(),
 					Password: string(c.Password()),
@@ -115,6 +116,7 @@ func dynamicToSessionCredential(ctx context.Context, cred credential.Dynamic) (*
 
 		case credential.SshPrivateKey:
 			credData, err = handlers.ProtoToStruct(
+				ctx,
 				&pb.SshPrivateKeyCredential{
 					Username:             c.Username(),
 					PrivateKey:           string(c.PrivateKey()),
@@ -136,7 +138,7 @@ func dynamicToSessionCredential(ctx context.Context, cred credential.Dynamic) (*
 			Name:              l.GetName(),
 			Description:       l.GetDescription(),
 			CredentialStoreId: l.GetStoreId(),
-			Type:              subtypes.SubtypeFromId(credentialDomain, l.GetPublicId()).String(),
+			Type:              globals.ResourceInfoFromPrefix(l.GetPublicId()).Subtype.String(),
 			CredentialType:    credType,
 		},
 		Secret: &pb.SessionSecret{
@@ -194,8 +196,9 @@ func staticToSessionCredential(ctx context.Context, cred credential.Static) (*pb
 	switch c := cred.(type) {
 	case *credstatic.UsernamePasswordCredential:
 		var err error
-		credType = string(credential.UsernamePasswordType)
+		credType = string(globals.UsernamePasswordCredentialType)
 		credData, err = handlers.ProtoToStruct(
+			ctx,
 			&pb.UsernamePasswordCredential{
 				Username: c.GetUsername(),
 				Password: string(c.GetPassword()),
@@ -211,8 +214,9 @@ func staticToSessionCredential(ctx context.Context, cred credential.Static) (*pb
 
 	case *credstatic.SshPrivateKeyCredential:
 		var err error
-		credType = string(credential.SshPrivateKeyType)
+		credType = string(globals.SshPrivateKeyCredentialType)
 		credData, err = handlers.ProtoToStruct(
+			ctx,
 			&pb.SshPrivateKeyCredential{
 				Username:             c.GetUsername(),
 				PrivateKey:           string(c.GetPrivateKey()),
@@ -232,7 +236,7 @@ func staticToSessionCredential(ctx context.Context, cred credential.Static) (*pb
 
 	case *credstatic.JsonCredential:
 		var err error
-		credType = string(credential.JsonType)
+		credType = string(globals.JsonCredentialType)
 		object := map[string]any{}
 		err = json.Unmarshal(c.GetObject(), &object)
 		if err != nil {

@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 syntax = "proto3";
 
@@ -16,7 +16,7 @@ message TagPair {
 // ServerWorkerStatus is the new message used in place of Server to relay status request info.
 message ServerWorkerStatus {
   // Id of the worker.
-  string public_id = 10; // @gotags: `class:"public"`
+  string public_id = 10; // @gotags: `class:"public" eventstream:"observation"`
 
   // Name of the resource (optional)
   string name = 20; // @gotags: `class:"public"`
@@ -34,8 +34,8 @@ message ServerWorkerStatus {
   string key_id = 50; // @gotags: `class:"public"`
 
   // The version of Boundary the worker binary is running
-  string release_version = 60 [json_name = "release_version"]; // @gotags: `class:"public"`
+  string release_version = 60 [json_name = "release_version"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // The state of the worker, to indicate if the worker is active or in shutdown.
-  string operational_state = 70; // @gotags: `class:"public"`
+  string operational_state = 70; // @gotags: `class:"public" eventstream:"observation"`
 }

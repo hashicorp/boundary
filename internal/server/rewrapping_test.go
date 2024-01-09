@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package server
 
@@ -28,6 +28,9 @@ func TestRewrap_workerAuthCertRewrapFn(t *testing.T) {
 		wrapper := db.TestWrapper(t)
 		mock.ExpectQuery(
 			`SELECT \* FROM "kms_schema_version" WHERE 1=1 ORDER BY "kms_schema_version"\."version" LIMIT 1`,
+		).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
+		mock.ExpectQuery(
+			`SELECT \* FROM "kms_oplog_schema_version" WHERE 1=1 ORDER BY "kms_oplog_schema_version"."version" LIMIT 1`,
 		).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
 		kmsCache := kms.TestKms(t, conn, wrapper)
 		rw := db.New(conn)
@@ -85,6 +88,9 @@ func TestRewrap_workerAuthRewrapFn(t *testing.T) {
 		mock.ExpectQuery(
 			`SELECT \* FROM "kms_schema_version" WHERE 1=1 ORDER BY "kms_schema_version"\."version" LIMIT 1`,
 		).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
+		mock.ExpectQuery(
+			`SELECT \* FROM "kms_oplog_schema_version" WHERE 1=1 ORDER BY "kms_oplog_schema_version"."version" LIMIT 1`,
+		).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
 		kmsCache := kms.TestKms(t, conn, wrapper)
 		rw := db.New(conn)
 		mock.ExpectQuery(
@@ -141,6 +147,9 @@ func TestRewrap_workerAuthServerLedActivationTokenRewrapFn(t *testing.T) {
 		wrapper := db.TestWrapper(t)
 		mock.ExpectQuery(
 			`SELECT \* FROM "kms_schema_version" WHERE 1=1 ORDER BY "kms_schema_version"\."version" LIMIT 1`,
+		).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
+		mock.ExpectQuery(
+			`SELECT \* FROM "kms_oplog_schema_version" WHERE 1=1 ORDER BY "kms_oplog_schema_version"."version" LIMIT 1`,
 		).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
 		kmsCache := kms.TestKms(t, conn, wrapper)
 		rw := db.New(conn)

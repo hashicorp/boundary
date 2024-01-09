@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package cluster
 
@@ -21,7 +21,7 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller"
 	tg "github.com/hashicorp/boundary/internal/daemon/controller/handlers/targets"
 	"github.com/hashicorp/boundary/internal/daemon/worker"
-	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/internal/tests/helper"
 	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/require"
@@ -33,6 +33,7 @@ func TestCustomX509Verification_Client(t *testing.T) {
 	ctx := context.Background()
 	ec := event.TestEventerConfig(t, "TestWorkerReplay", event.TestWithObservationSink(t), event.TestWithSysSink(t))
 	testLock := &sync.Mutex{}
+	// This prevents us from running tests in parallel.
 	tg.SetupSuiteTargetFilters(t)
 	logger := hclog.New(&hclog.LoggerOptions{
 		Mutex: testLock,
@@ -174,9 +175,9 @@ func TestCustomX509Verification_Server(t *testing.T) {
 
 func testCustomX509Verification_Server(ec event.TestConfig, certPool *x509.CertPool, dnsName, wantErrContains string) func(t *testing.T) {
 	return func(t *testing.T) {
-		t.Parallel()
 		req := require.New(t)
 		ctx := context.Background()
+		// This prevents us from running tests in parallel.
 		tg.SetupSuiteTargetFilters(t)
 
 		conf, err := config.DevController()

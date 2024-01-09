@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package static
 
@@ -202,26 +202,6 @@ func (r *Repository) LookupCatalog(ctx context.Context, id string, opt ...Option
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for: %s", id)))
 	}
 	return c, nil
-}
-
-// ListCatalogs returns a slice of HostCatalogs for the project IDs. WithLimit is the only option supported.
-func (r *Repository) ListCatalogs(ctx context.Context, projectIds []string, opt ...Option) ([]*HostCatalog, error) {
-	const op = "static.(Repository).ListCatalogs"
-	if len(projectIds) == 0 {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "no project id")
-	}
-	opts := getOpts(opt...)
-	limit := r.defaultLimit
-	if opts.withLimit != 0 {
-		// non-zero signals an override of the default limit for the repo.
-		limit = opts.withLimit
-	}
-	var hostCatalogs []*HostCatalog
-	err := r.reader.SearchWhere(ctx, &hostCatalogs, "project_id in (?)", []any{projectIds}, db.WithLimit(limit))
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-	return hostCatalogs, nil
 }
 
 // DeleteCatalog deletes id from the repository returning a count of the

@@ -100,6 +100,21 @@
             "in": "query",
             "required": false,
             "type": "string"
+          },
+          {
+            "name": "list_token",
+            "description": "An opaque token used to continue an existing iteration or\nrequest updated items. If not specified, pagination\nwill start from the beginning.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "page_size",
+            "description": "The maximum size of a page in this iteration.\nIf unset, the default page size configured will be used.\nIf the page_size is greater than the default page configured,\nan error will be returned.",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int64"
           }
         ],
         "tags": [
@@ -341,6 +356,21 @@
             "in": "query",
             "required": false,
             "type": "string"
+          },
+          {
+            "name": "list_token",
+            "description": "An opaque token used to continue an existing iteration or\nrequest updated items. If not specified, pagination\nwill start from the beginning.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "page_size",
+            "description": "The maximum size of a page in this iteration.\nIf unset, the default page size configured will be used.\nIf the page_size is greater than the max page size configured,\nthe page size will be truncated to this number.",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int64"
           }
         ],
         "tags": [
@@ -585,6 +615,21 @@
             "in": "query",
             "required": false,
             "type": "string"
+          },
+          {
+            "name": "list_token",
+            "description": "An opaque token used to continue an existing iteration or\nrequest updated items. If not specified, pagination\nwill start from the beginning.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "page_size",
+            "description": "The maximum size of a page in this iteration.\nIf unset, the default page size configured will be used.\nIf the page_size is greater than the default page configured,\nan error will be returned.",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int64"
           }
         ],
         "tags": [
@@ -668,6 +713,21 @@
             "in": "query",
             "required": false,
             "type": "string"
+          },
+          {
+            "name": "list_token",
+            "description": "An opaque token used to continue an existing iteration or\nrequest updated items. If not specified, pagination\nwill start from the beginning.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "page_size",
+            "description": "The maximum size of a page in this iteration.\nIf unset, the default page size configured will be used.\nIf the page_size is greater than the max page size configured,\nthe page size will be truncated to this number.",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int64"
           }
         ],
         "tags": [
@@ -815,6 +875,21 @@
             "in": "query",
             "required": false,
             "type": "string"
+          },
+          {
+            "name": "list_token",
+            "description": "An opaque token used to continue an existing iteration or\nrequest updated items. If not specified, pagination\nwill start from the beginning.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "page_size",
+            "description": "The maximum size of a page in this iteration.\nIf unset, the default page size configured will be used.\nIf the page_size is greater than the max page size configured,\nthe page size will be truncated to this number.",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int64"
           }
         ],
         "tags": [
@@ -955,6 +1030,21 @@
             "in": "query",
             "required": false,
             "type": "string"
+          },
+          {
+            "name": "list_token",
+            "description": "An opaque token used to continue an existing iteration or\nrequest updated items. If not specified, pagination\nwill start from the beginning.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "page_size",
+            "description": "The maximum size of a page in this iteration.\nIf unset, the default page size configured will be used.\nIf the page_size is greater than the max page size configured,\nthe page size will be truncated to this number.",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int64"
           }
         ],
         "tags": [
@@ -1102,6 +1192,21 @@
             "in": "query",
             "required": false,
             "type": "string"
+          },
+          {
+            "name": "list_token",
+            "description": "An opaque token used to continue an existing iteration or\nrequest updated items. If not specified, pagination\nwill start from the beginning.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "page_size",
+            "description": "The maximum size of a page in this iteration.\nIf unset, the default page size configured will be used.\nIf the page_size is greater than the default page configured,\nan error will be returned.",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int64"
           }
         ],
         "tags": [
@@ -1393,6 +1498,21 @@
             "in": "query",
             "required": false,
             "type": "string"
+          },
+          {
+            "name": "list_token",
+            "description": "An opaque token used to continue an existing iteration or\nrequest updated items. If not specified, pagination\nwill start from the beginning.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "page_size",
+            "description": "The maximum size of a page in this iteration.\nIf unset, the default page size configured will be used.\nIf the page_size is greater than the default page configured,\nan error will be returned.",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int64"
           }
         ],
         "tags": [
@@ -1540,6 +1660,21 @@
             "in": "query",
             "required": false,
             "type": "string"
+          },
+          {
+            "name": "list_token",
+            "description": "An opaque token used to continue an existing iteration or\nrequest updated items. If not specified, pagination\nwill start from the beginning.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "page_size",
+            "description": "The maximum size of a page in this iteration.\nIf unset, the default page size configured will be used.\nIf the page_size is greater than the default page configured,\nan error will be returned.",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int64"
           }
         ],
         "tags": [
@@ -1824,6 +1959,21 @@
             "in": "query",
             "required": false,
             "type": "string"
+          },
+          {
+            "name": "list_token",
+            "description": "An opaque token used to continue an existing iteration or\nrequest updated items. If not specified, pagination\nwill start from the beginning.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "page_size",
+            "description": "The maximum size of a page in this iteration.\nIf unset, the default page size configured will be used.\nIf the page_size is greater than the default page configured,\nan error will be returned.",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int64"
           }
         ],
         "tags": [
@@ -1964,6 +2114,21 @@
             "in": "query",
             "required": false,
             "type": "string"
+          },
+          {
+            "name": "list_token",
+            "description": "An opaque token used to continue an existing iteration or\nrequest updated items. If not specified, pagination\nwill start from the beginning.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "page_size",
+            "description": "The maximum size of a page in this iteration.\nIf unset, the default page size configured will be used.\nIf the page_size is greater than the default page configured,\nan error will be returned.",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int64"
           }
         ],
         "tags": [
@@ -2111,6 +2276,21 @@
             "in": "query",
             "required": false,
             "type": "string"
+          },
+          {
+            "name": "list_token",
+            "description": "An opaque token used to continue an existing iteration or\nrequest updated items. If not specified, pagination\nwill start from the beginning.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "page_size",
+            "description": "The maximum size of a page in this iteration.\nIf unset, the default page size configured will be used.\nIf the page_size is greater than the default page configured,\nan error will be returned.",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int64"
           }
         ],
         "tags": [
@@ -2690,6 +2870,21 @@
             "in": "query",
             "required": false,
             "type": "string"
+          },
+          {
+            "name": "list_token",
+            "description": "An opaque token used to continue an existing iteration or\nrequest updated items. If paginating, use this token in the\nnext list request.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "page_size",
+            "description": "The maximum size of a page in this iteration.\nIf unset, the default page size configured will be used.\nIf the page_size is greater than the max page size configured,\nthe page size will be truncated to this number.",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int64"
           }
         ],
         "tags": [
@@ -2950,6 +3145,21 @@
             "in": "query",
             "required": false,
             "type": "boolean"
+          },
+          {
+            "name": "list_token",
+            "description": "An opaque token used to continue an existing iteration or\nrequest updated items. If not specified, pagination\nwill start from the beginning.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "page_size",
+            "description": "The maximum size of a page in this iteration.\nIf unset, the default page size configured will be used.\nIf the page_size is greater than the max page size configured,\nthe page size will be truncated to this number.",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int64"
           }
         ],
         "tags": [
@@ -3059,6 +3269,21 @@
             "in": "query",
             "required": false,
             "type": "boolean"
+          },
+          {
+            "name": "list_token",
+            "description": "An opaque token used to continue an existing iteration or\nrequest updated items. If not specified, pagination\nwill start from the beginning.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "page_size",
+            "description": "The maximum size of a page in this iteration.\nIf unset, the default page size configured will be used.\nIf the page_size is greater than the default page configured,\nan error will be returned.",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int64"
           }
         ],
         "tags": [
@@ -3166,6 +3391,21 @@
             "in": "query",
             "required": false,
             "type": "string"
+          },
+          {
+            "name": "list_token",
+            "description": "An opaque token used to continue an existing iteration or\nrequest updated items. If not specified, pagination\nwill start from the beginning.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "page_size",
+            "description": "The maximum size of a page in this iteration.\nIf unset, the default page size configured will be used.\nIf the page_size is greater than the max page size configured,\nthe page size will be truncated to this number.",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int64"
           }
         ],
         "tags": [
@@ -3320,6 +3560,21 @@
             "in": "query",
             "required": false,
             "type": "string"
+          },
+          {
+            "name": "list_token",
+            "description": "An opaque token used to continue an existing iteration or\nrequest updated items. If not specified, pagination\nwill start from the beginning.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "page_size",
+            "description": "The maximum size of a page in this iteration.\nIf unset, the default page size configured will be used.\nIf the page_size is greater than the default page configured,\nan error will be returned.",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int64"
           }
         ],
         "tags": [
@@ -3465,14 +3720,6 @@
                   "type": "integer",
                   "format": "int64",
                   "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
-                },
-                "application_credential_source_ids": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  },
-                  "description": "",
-                  "title": "Deprecated use brokered_credential_source_ids instead"
                 },
                 "brokered_credential_source_ids": {
                   "type": "array",
@@ -3630,14 +3877,6 @@
                   "format": "int64",
                   "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
                 },
-                "application_credential_source_ids": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  },
-                  "description": "",
-                  "title": "Deprecated use brokered_credential_source_ids instead"
-                },
                 "brokered_credential_source_ids": {
                   "type": "array",
                   "items": {
@@ -3740,14 +3979,6 @@
                   "type": "integer",
                   "format": "int64",
                   "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
-                },
-                "application_credential_source_ids": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  },
-                  "description": "",
-                  "title": "Deprecated use brokered_credential_source_ids instead"
                 },
                 "brokered_credential_source_ids": {
                   "type": "array",
@@ -3854,6 +4085,21 @@
             "in": "query",
             "required": false,
             "type": "string"
+          },
+          {
+            "name": "list_token",
+            "description": "An opaque token used to continue an existing iteration or\nrequest updated items. If not specified, pagination\nwill start from the beginning.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "page_size",
+            "description": "The maximum size of a page in this iteration.\nIf unset, the default page size configured will be used.\nIf the page_size is greater than the default page configured,\nan error will be returned.",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int64"
           }
         ],
         "tags": [
@@ -6609,6 +6855,18 @@
           "description": "Output only. The endpoint address that the worker will connect to, useful for setting TLS parameters.",
           "readOnly": true
         },
+        "endpoint_port": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Output only. The endpoint port that will be connected to, either from a\nport directly on the target or from a service definition.",
+          "readOnly": true
+        },
+        "expiration": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Output only. The expiration time of the session.",
+          "readOnly": true
+        },
         "credentials": {
           "type": "array",
           "items": {
@@ -6742,23 +7000,6 @@
         "ingress_worker_filter": {
           "type": "string",
           "description": "Optional boolean expressions to filter the ingress workers that are allowed to satisfy this request.\nUnsupported on OSS."
-        },
-        "application_credential_source_ids": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "Output only. The IDs of the application credential source ids associated with this Target.\nDeprecated use \"brokered_credential_source_ids\" instead.",
-          "readOnly": true
-        },
-        "application_credential_sources": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/controller.api.resources.targets.v1.CredentialSource"
-          },
-          "description": "Output only. The application credential sources associated with this Target.\nDeprecated use \"brokered_credential_sources\" instead.",
-          "readOnly": true
         },
         "brokered_credential_source_ids": {
           "type": "array",
@@ -7656,6 +7897,34 @@
             "type": "object",
             "$ref": "#/definitions/controller.api.resources.accounts.v1.Account"
           }
+        },
+        "response_type": {
+          "type": "string",
+          "description": "The type of response, either \"delta\" or \"complete\".\nDelta signifies that this is part of a paginated result\nor an update to a previously completed pagination.\nComplete signifies that it is the last page."
+        },
+        "list_token": {
+          "type": "string",
+          "description": "An opaque token used to continue an existing pagination or\nrequest updated items. Use this token in the next list request\nto request the next page."
+        },
+        "sort_by": {
+          "type": "string",
+          "description": "The name of the field which the items are sorted by."
+        },
+        "sort_dir": {
+          "type": "string",
+          "description": "The direction of the sort, either \"asc\" or \"desc\"."
+        },
+        "removed_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "A list of item IDs that have been removed since they were returned\nas part of a pagination. They should be dropped from any client cache.\nThis may contain items that are not known to the cache, if they were\ncreated and deleted between listings."
+        },
+        "est_item_count": {
+          "type": "integer",
+          "format": "int64",
+          "description": "An estimate at the total items available. This may change during pagination."
         }
       }
     },
@@ -7667,7 +7936,36 @@
           "items": {
             "type": "object",
             "$ref": "#/definitions/controller.api.resources.authmethods.v1.AuthMethod"
-          }
+          },
+          "description": "The items returned in this page."
+        },
+        "response_type": {
+          "type": "string",
+          "description": "The type of response, either \"delta\" or \"complete\".\nDelta signifies that this is part of a paginated result\nor an update to a previously completed pagination.\nComplete signifies that it is the last page."
+        },
+        "list_token": {
+          "type": "string",
+          "description": "An opaque token used to continue an existing pagination or\nrequest updated items. Use this token in the next list request\nto request the next page."
+        },
+        "sort_by": {
+          "type": "string",
+          "description": "The name of the field which the items are sorted by."
+        },
+        "sort_dir": {
+          "type": "string",
+          "description": "The direction of the sort, either \"asc\" or \"desc\"."
+        },
+        "removed_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "A list of item IDs that have been removed since they were returned\nas part of a pagination. They should be dropped from any client cache.\nThis may contain items that are not known to the cache, if they were\ncreated and deleted between listings."
+        },
+        "est_item_count": {
+          "type": "integer",
+          "format": "int64",
+          "description": "An estimate at the total items available. This may change during pagination."
         }
       }
     },
@@ -7680,6 +7978,34 @@
             "type": "object",
             "$ref": "#/definitions/controller.api.resources.authtokens.v1.AuthToken"
           }
+        },
+        "response_type": {
+          "type": "string",
+          "description": "The type of response, either \"delta\" or \"complete\".\nDelta signifies that this is part of a paginated result\nor an update to a previously completed pagination.\nComplete signifies that it is the last page."
+        },
+        "list_token": {
+          "type": "string",
+          "description": "An opaque token used to continue an existing pagination or\nrequest updated items. Use this token in the next list request\nto request the next page."
+        },
+        "sort_by": {
+          "type": "string",
+          "description": "The name of the field which the items are sorted by."
+        },
+        "sort_dir": {
+          "type": "string",
+          "description": "The direction of the sort, either \"asc\" or \"desc\"."
+        },
+        "removed_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "A list of item IDs that have been removed since they were returned\nas part of a pagination. They should be dropped from any client cache.\nThis may contain items that are not known to the cache, if they were\ncreated and deleted between listings."
+        },
+        "est_item_count": {
+          "type": "integer",
+          "format": "int64",
+          "description": "An estimate at the total items available. This may change during pagination."
         }
       }
     },
@@ -7691,7 +8017,36 @@
           "items": {
             "type": "object",
             "$ref": "#/definitions/controller.api.resources.credentiallibraries.v1.CredentialLibrary"
-          }
+          },
+          "description": "The items returned in this page."
+        },
+        "response_type": {
+          "type": "string",
+          "description": "The type of response, either \"delta\" or \"complete\".\nDelta signifies that this is part of a paginated result\nor an update to a previously completed pagination.\nComplete signifies that it is the last page."
+        },
+        "list_token": {
+          "type": "string",
+          "description": "An opaque token used to continue an existing pagination or\nrequest updated items. Use this token in the next list request\nto request the next page."
+        },
+        "sort_by": {
+          "type": "string",
+          "description": "The name of the field which the items are sorted by."
+        },
+        "sort_dir": {
+          "type": "string",
+          "description": "The direction of the sort, either \"asc\" or \"desc\"."
+        },
+        "removed_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "A list of item IDs that have been removed since they were returned\nas part of a pagination. They should be dropped from any client cache.\nThis may contain items that are not known to the cache, if they were\ncreated and deleted between listings."
+        },
+        "est_item_count": {
+          "type": "integer",
+          "format": "int64",
+          "description": "An estimate at the total items available. This may change during pagination."
         }
       }
     },
@@ -7703,7 +8058,36 @@
           "items": {
             "type": "object",
             "$ref": "#/definitions/controller.api.resources.credentialstores.v1.CredentialStore"
-          }
+          },
+          "description": "The items returned in this page."
+        },
+        "response_type": {
+          "type": "string",
+          "description": "The type of response, either \"delta\" or \"complete\".\nDelta signifies that this is part of a paginated result\nor an update to a previously completed pagination.\nComplete signifies that it is the last page."
+        },
+        "list_token": {
+          "type": "string",
+          "description": "An opaque token used to continue an existing pagination or\nrequest updated items. Use this token in the next list request\nto request the next page."
+        },
+        "sort_by": {
+          "type": "string",
+          "description": "The name of the field which the items are sorted by."
+        },
+        "sort_dir": {
+          "type": "string",
+          "description": "The direction of the sort, either \"asc\" or \"desc\"."
+        },
+        "removed_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "A list of item IDs that have been removed since they were returned\nas part of a pagination. They should be dropped from any client cache.\nThis may contain items that are not known to the cache, if they were\ncreated and deleted between listings."
+        },
+        "est_item_count": {
+          "type": "integer",
+          "format": "int64",
+          "description": "An estimate at the total items available. This may change during pagination."
         }
       }
     },
@@ -7715,7 +8099,36 @@
           "items": {
             "type": "object",
             "$ref": "#/definitions/controller.api.resources.credentials.v1.Credential"
-          }
+          },
+          "description": "The items returned in this page."
+        },
+        "response_type": {
+          "type": "string",
+          "description": "The type of response, either \"delta\" or \"complete\".\nDelta signifies that this is part of a paginated result\nor an update to a previously completed pagination.\nComplete signifies that it is the last page."
+        },
+        "list_token": {
+          "type": "string",
+          "description": "An opaque token used to continue an existing pagination or\nrequest updated items. Use this token in the next list request\nto request the next page."
+        },
+        "sort_by": {
+          "type": "string",
+          "description": "The name of the field which the items are sorted by."
+        },
+        "sort_dir": {
+          "type": "string",
+          "description": "The direction of the sort, either \"asc\" or \"desc\"."
+        },
+        "removed_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "A list of item IDs that have been removed since they were returned\nas part of a pagination. They should be dropped from any client cache.\nThis may contain items that are not known to the cache, if they were\ncreated and deleted between listings."
+        },
+        "est_item_count": {
+          "type": "integer",
+          "format": "int64",
+          "description": "An estimate at the total items available. This may change during pagination."
         }
       }
     },
@@ -7728,6 +8141,34 @@
             "type": "object",
             "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
           }
+        },
+        "response_type": {
+          "type": "string",
+          "description": "The type of response, either \"delta\" or \"complete\".\nDelta signifies that this is part of a paginated result\nor an update to a previously completed pagination.\nComplete signifies that it is the last page."
+        },
+        "list_token": {
+          "type": "string",
+          "description": "An opaque token used to continue an existing pagination or\nrequest updated items. Use this token in the next list request\nto request the next page."
+        },
+        "sort_by": {
+          "type": "string",
+          "description": "The name of the field which the items are sorted by."
+        },
+        "sort_dir": {
+          "type": "string",
+          "description": "The direction of the sort, either \"asc\" or \"desc\"."
+        },
+        "removed_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "A list of item IDs that have been removed since they were returned\nas part of a pagination. They should be dropped from any client cache.\nThis may contain items that are not known to the cache, if they were\ncreated and deleted between listings."
+        },
+        "est_item_count": {
+          "type": "integer",
+          "format": "int64",
+          "description": "An estimate at the total items available. This may change during pagination."
         }
       }
     },
@@ -7740,6 +8181,34 @@
             "type": "object",
             "$ref": "#/definitions/controller.api.resources.hostcatalogs.v1.HostCatalog"
           }
+        },
+        "response_type": {
+          "type": "string",
+          "description": "The type of response, either \"delta\" or \"complete\".\nDelta signifies that this is part of a paginated result\nor an update to a previously completed pagination.\nComplete signifies that it is the last page."
+        },
+        "list_token": {
+          "type": "string",
+          "description": "An opaque token used to continue an existing pagination or\nrequest updated items. Use this token in the next list request\nto request the next page."
+        },
+        "sort_by": {
+          "type": "string",
+          "description": "The name of the field which the items are sorted by."
+        },
+        "sort_dir": {
+          "type": "string",
+          "description": "The direction of the sort, either \"asc\" or \"desc\"."
+        },
+        "removed_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "A list of item IDs that have been removed since they were returned\nas part of a pagination. They should be dropped from any client cache.\nThis may contain items that are not known to the cache, if they were\ncreated and deleted between listings."
+        },
+        "est_item_count": {
+          "type": "integer",
+          "format": "int64",
+          "description": "An estimate at the total items available. This may change during pagination."
         }
       }
     },
@@ -7752,6 +8221,34 @@
             "type": "object",
             "$ref": "#/definitions/controller.api.resources.hostsets.v1.HostSet"
           }
+        },
+        "response_type": {
+          "type": "string",
+          "description": "The type of response, either \"delta\" or \"complete\".\nDelta signifies that this is part of a paginated result\nor an update to a previously completed pagination.\nComplete signifies that it is the last page."
+        },
+        "list_token": {
+          "type": "string",
+          "description": "An opaque token used to continue an existing pagination or\nrequest updated items. Use this token in the next list request\nto request the next page."
+        },
+        "sort_by": {
+          "type": "string",
+          "description": "The name of the field which the items are sorted by."
+        },
+        "sort_dir": {
+          "type": "string",
+          "description": "The direction of the sort, either \"asc\" or \"desc\"."
+        },
+        "removed_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "A list of item IDs that have been removed since they were returned\nas part of a pagination. They should be dropped from any client cache.\nThis may contain items that are not known to the cache, if they were\ncreated and deleted between listings."
+        },
+        "est_item_count": {
+          "type": "integer",
+          "format": "int64",
+          "description": "An estimate at the total items available. This may change during pagination."
         }
       }
     },
@@ -7764,6 +8261,34 @@
             "type": "object",
             "$ref": "#/definitions/controller.api.resources.hosts.v1.Host"
           }
+        },
+        "response_type": {
+          "type": "string",
+          "description": "The type of response, either \"delta\" or \"complete\".\nDelta signifies that this is part of a paginated result\nor an update to a previously completed pagination.\nComplete signifies that it is the last page."
+        },
+        "list_token": {
+          "type": "string",
+          "description": "An opaque token used to continue an existing pagination or\nrequest updated items. Use this token in the next list request\nto request the next page."
+        },
+        "sort_by": {
+          "type": "string",
+          "description": "The name of the field which the items are sorted by."
+        },
+        "sort_dir": {
+          "type": "string",
+          "description": "The direction of the sort, either \"asc\" or \"desc\"."
+        },
+        "removed_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "A list of item IDs that have been removed since they were returned\nas part of a pagination. They should be dropped from any client cache.\nThis may contain items that are not known to the cache, if they were\ncreated and deleted between listings."
+        },
+        "est_item_count": {
+          "type": "integer",
+          "format": "int64",
+          "description": "An estimate at the total items available. This may change during pagination."
         }
       }
     },
@@ -7800,6 +8325,34 @@
             "type": "object",
             "$ref": "#/definitions/controller.api.resources.managedgroups.v1.ManagedGroup"
           }
+        },
+        "response_type": {
+          "type": "string",
+          "description": "The type of response, either \"delta\" or \"complete\".\nDelta signifies that this is part of a paginated result\nor an update to a previously completed pagination.\nComplete signifies that it is the last page."
+        },
+        "list_token": {
+          "type": "string",
+          "description": "An opaque token used to continue an existing pagination or\nrequest updated items. Use this token in the next list request\nto request the next page."
+        },
+        "sort_by": {
+          "type": "string",
+          "description": "The name of the field which the items are sorted by."
+        },
+        "sort_dir": {
+          "type": "string",
+          "description": "The direction of the sort, either \"asc\" or \"desc\"."
+        },
+        "removed_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "A list of item IDs that have been removed since they were returned\nas part of a pagination. They should be dropped from any client cache.\nThis may contain items that are not known to the cache, if they were\ncreated and deleted between listings."
+        },
+        "est_item_count": {
+          "type": "integer",
+          "format": "int64",
+          "description": "An estimate at the total items available. This may change during pagination."
         }
       }
     },
@@ -7812,6 +8365,34 @@
             "type": "object",
             "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
           }
+        },
+        "response_type": {
+          "type": "string",
+          "description": "The type of response, either \"delta\" or \"complete\".\nDelta signifies that this is part of a paginated result\nor an update to a previously completed pagination.\nComplete signifies that it is the last page."
+        },
+        "list_token": {
+          "type": "string",
+          "description": "An opaque token used to continue an existing pagination or\nrequest updated items. Use this token in the next list request\nto request the next page."
+        },
+        "sort_by": {
+          "type": "string",
+          "description": "The name of the field which the items are sorted by."
+        },
+        "sort_dir": {
+          "type": "string",
+          "description": "The direction of the sort, either \"asc\" or \"desc\"."
+        },
+        "removed_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "A list of item IDs that have been removed since they were returned\nas part of a pagination. They should be dropped from any client cache.\nThis may contain items that are not known to the cache, if they were\ncreated and deleted between listings."
+        },
+        "est_item_count": {
+          "type": "integer",
+          "format": "int64",
+          "description": "An estimate at the total items available. This may change during pagination."
         }
       }
     },
@@ -7823,7 +8404,36 @@
           "items": {
             "type": "object",
             "$ref": "#/definitions/controller.api.resources.scopes.v1.Scope"
-          }
+          },
+          "description": "The items returned in this page."
+        },
+        "response_type": {
+          "type": "string",
+          "description": "The type of response, either \"delta\" or \"complete\".\nDelta signifies that this is part of a paginated result\nor an update to a previously completed pagination.\nComplete signifies that it is the last page."
+        },
+        "list_token": {
+          "type": "string",
+          "description": "An opaque token used to continue an existing pagination or\nrequest updated items. Use this token in the next list request\nto request the next page."
+        },
+        "sort_by": {
+          "type": "string",
+          "description": "The name of the field which the items are sorted by."
+        },
+        "sort_dir": {
+          "type": "string",
+          "description": "The direction of the sort, either \"asc\" or \"desc\"."
+        },
+        "removed_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "A list of item IDs that have been removed since they were returned\nas part of an pagination. They should be dropped from any client cache.\nThis may contain items that are not known to the cache, if they were\ncreated and deleted between listings."
+        },
+        "est_item_count": {
+          "type": "integer",
+          "format": "int64",
+          "description": "An estimate at the total items available. This may change during pagination."
         }
       }
     },
@@ -7836,7 +8446,35 @@
             "type": "object",
             "$ref": "#/definitions/controller.api.resources.sessionrecordings.v1.SessionRecording"
           },
-          "description": "All Session recordings, ordered by start_time descending (most recently started first)."
+          "description": "The items returned in this page."
+        },
+        "response_type": {
+          "type": "string",
+          "description": "The type of response, either \"delta\" or \"complete\".\nDelta signifies that this is part of a paginated result\nor an update to a previously completed pagination.\nComplete signifies that it is the last page."
+        },
+        "list_token": {
+          "type": "string",
+          "description": "An opaque token used to continue an existing pagination or\nrequest updated items. Use this token in the next list request\nto request the next page."
+        },
+        "sort_by": {
+          "type": "string",
+          "description": "The name of the field which the items are sorted by."
+        },
+        "sort_dir": {
+          "type": "string",
+          "description": "The direction of the sort, either \"asc\" or \"desc\"."
+        },
+        "removed_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "A list of item IDs that have been removed since they were returned\nas part of a pagination. They should be dropped from any client cache.\nThis may contain items that are not known to the cache, if they were\ncreated and deleted between listings."
+        },
+        "est_item_count": {
+          "type": "integer",
+          "format": "int64",
+          "description": "An estimate at the total items available. This may change during pagination."
         }
       }
     },
@@ -7849,6 +8487,34 @@
             "type": "object",
             "$ref": "#/definitions/controller.api.resources.sessions.v1.Session"
           }
+        },
+        "response_type": {
+          "type": "string",
+          "description": "The type of response, either \"delta\" or \"complete\".\nDelta signifies that this is part of a paginated result\nor an update to a previously completed pagination.\nComplete signifies that it is the last page."
+        },
+        "list_token": {
+          "type": "string",
+          "description": "An opaque token used to continue an existing pagination or\nrequest updated items. Use this token in the next list request\nto request the next page."
+        },
+        "sort_by": {
+          "type": "string",
+          "description": "The name of the field which the items are sorted by."
+        },
+        "sort_dir": {
+          "type": "string",
+          "description": "The direction of the sort, either \"asc\" or \"desc\"."
+        },
+        "removed_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "A list of item IDs that have been removed since they were returned\nas part of a pagination. They should be dropped from any client cache.\nThis may contain items that are not known to the cache, if they were\ncreated and deleted between listings."
+        },
+        "est_item_count": {
+          "type": "integer",
+          "format": "int64",
+          "description": "An estimate at the total items available. This may change during pagination."
         }
       }
     },
@@ -7860,7 +8526,36 @@
           "items": {
             "type": "object",
             "$ref": "#/definitions/controller.api.resources.storagebuckets.v1.StorageBucket"
-          }
+          },
+          "title": "The items returned in this page"
+        },
+        "response_type": {
+          "type": "string",
+          "description": "The type of response, either \"delta\" or \"complete\".\nDelta signifies that this is part of a paginated result\nor an update to a previously completed pagination.\nComplete signifies that it is the last page."
+        },
+        "list_token": {
+          "type": "string",
+          "description": "An opaque token used to continue an existing pagination or\nrequest updated items. Use this token in the next list request\nto request the next page."
+        },
+        "sort_by": {
+          "type": "string",
+          "description": "The name of the field which the items are sorted by."
+        },
+        "sort_dir": {
+          "type": "string",
+          "description": "The direction of the sort, either \"asc\" or \"desc\"."
+        },
+        "removed_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "A list of item IDs that have been removed since they were returned\nas part of a pagination. They should be dropped from any client cache.\nThis may contain items that are not known to the cache, if they were\ncreated and deleted between listings."
+        },
+        "est_item_count": {
+          "type": "integer",
+          "format": "int64",
+          "description": "An estimate at the total items available. This may change during pagination."
         }
       }
     },
@@ -7873,6 +8568,34 @@
             "type": "object",
             "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
           }
+        },
+        "response_type": {
+          "type": "string",
+          "description": "The type of response, either \"delta\" or \"complete\".\nDelta signifies that this is part of a paginated result\nor an update to a previously completed pagination.\nComplete signifies that it is the last page."
+        },
+        "list_token": {
+          "type": "string",
+          "description": "An opaque token used to continue an existing pagination or\nrequest updated items. Use this token in the next list request\nto request the next page."
+        },
+        "sort_by": {
+          "type": "string",
+          "description": "The name of the field which the items are sorted by."
+        },
+        "sort_dir": {
+          "type": "string",
+          "description": "The direction of the sort, either \"asc\" or \"desc\"."
+        },
+        "removed_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "A list of item IDs that have been removed since they were returned\nas part of a pagination. They should be dropped from any client cache.\nThis may contain items that are not known to the cache, if they were\ncreated and deleted between listings."
+        },
+        "est_item_count": {
+          "type": "integer",
+          "format": "int64",
+          "description": "An estimate at the total items available. This may change during pagination."
         }
       }
     },
@@ -7885,6 +8608,34 @@
             "type": "object",
             "$ref": "#/definitions/controller.api.resources.users.v1.User"
           }
+        },
+        "response_type": {
+          "type": "string",
+          "description": "The type of response, either \"delta\" or \"complete\".\nDelta signifies that this is part of a paginated result\nor an update to a previously completed pagination.\nComplete signifies that it is the last page."
+        },
+        "list_token": {
+          "type": "string",
+          "description": "An opaque token used to continue an existing pagination or\nrequest updated items. Use this token in the next list request\nto request the next page."
+        },
+        "sort_by": {
+          "type": "string",
+          "description": "The name of the field which the items are sorted by."
+        },
+        "sort_dir": {
+          "type": "string",
+          "description": "The direction of the sort, either \"asc\" or \"desc\"."
+        },
+        "removed_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "A list of item IDs that have been removed since they were returned\nas part of a pagination. They should be dropped from any client cache.\nThis may contain items that are not known to the cache, if they were\ncreated and deleted between listings."
+        },
+        "est_item_count": {
+          "type": "integer",
+          "format": "int64",
+          "description": "An estimate at the total items available. This may change during pagination."
         }
       }
     },

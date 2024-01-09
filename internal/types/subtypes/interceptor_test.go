@@ -1,14 +1,17 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package subtypes
 
 import (
+	"context"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/gen/testing/attribute"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
@@ -17,8 +20,8 @@ import (
 )
 
 func init() {
-	Register("test", Subtype("sub_resource"), "trsr")
-	Register("test", Subtype("resource_plugin"), "trrp")
+	globals.RegisterPrefixToResourceInfo("trsr", resource.Unknown, "test", globals.Subtype("sub_resource"))
+	globals.RegisterPrefixToResourceInfo("trrp", resource.Unknown, "test", globals.Subtype("resource_plugin"))
 }
 
 func TestTransformRequestAttributes(t *testing.T) {
@@ -302,7 +305,7 @@ func TestTransformRequestAttributes(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			err := transformRequest(tc.req)
+			err := transformRequest(context.Background(), tc.req)
 			require.NoError(t, err)
 			assert.Empty(t, cmp.Diff(tc.req, tc.expected, protocmp.Transform()))
 		})
@@ -586,7 +589,7 @@ func TestTransformResponseAttributes(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			err := transformResponse(tc.resp)
+			err := transformResponse(context.Background(), tc.resp)
 			require.NoError(t, err)
 			assert.Empty(t, cmp.Diff(tc.resp, tc.expected, protocmp.Transform()))
 		})
@@ -596,7 +599,7 @@ func TestTransformResponseAttributes(t *testing.T) {
 func TestCustomTransformRequest(t *testing.T) {
 	RegisterRequestTransformationFunc(
 		&attribute.TestCustomTransformation{},
-		func(m proto.Message) error {
+		func(_ context.Context, m proto.Message) error {
 			msg, ok := m.(*attribute.TestCustomTransformation)
 			require.True(t, ok, "wrong message passed to request transformation callback")
 			if msg.SomeRandomId == "some_random_id" && msg.SecondaryId == "secondary_id" {
@@ -632,7 +635,7 @@ func TestCustomTransformRequest(t *testing.T) {
 		},
 	}
 
-	err := transformRequest(request)
+	err := transformRequest(context.Background(), request)
 	require.NoError(t, err)
 	assert.Empty(t, cmp.Diff(request, expected, protocmp.Transform()))
 }
@@ -640,11 +643,11 @@ func TestCustomTransformRequest(t *testing.T) {
 func TestCustomTransformResponse(t *testing.T) {
 	RegisterResponseTransformationFunc(
 		&attribute.TestCustomTransformation{},
-		func(m proto.Message) error {
+		func(_ context.Context, m proto.Message) error {
 			msg, ok := m.(*attribute.TestCustomTransformation)
 			require.True(t, ok, "wrong message passed to response transformation callback")
 			if msg.SomeRandomId == "some_random_id" && msg.SecondaryId == "secondary_id" {
-				newAttrs, err := handlers.ProtoToStruct(msg.GetSubResourceAttributes())
+				newAttrs, err := handlers.ProtoToStruct(context.Background(), msg.GetSubResourceAttributes())
 				require.NoError(t, err)
 				msg.Attrs = &attribute.TestCustomTransformation_Attributes{
 					Attributes: newAttrs,
@@ -675,7 +678,7 @@ func TestCustomTransformResponse(t *testing.T) {
 		},
 	}
 
-	err := transformResponse(response)
+	err := transformResponse(context.Background(), response)
 	require.NoError(t, err)
 	assert.Empty(t, cmp.Diff(response, expected, protocmp.Transform()))
 }

@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package worker
 
@@ -21,7 +21,7 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/worker/internal/metric"
 	"github.com/hashicorp/boundary/internal/daemon/worker/session"
 	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/internal/util"
 	"github.com/hashicorp/go-multierror"
 	nodee "github.com/hashicorp/nodeenrollment"
@@ -309,13 +309,14 @@ func (w *Worker) stopServersAndListeners() error {
 	mg.Go(w.stopClusterGrpcServer)
 
 	stopErrors := mg.Wait()
+	convertedStopErrors := stopErrors.ErrorOrNil()
 
 	err := w.stopAnyListeners()
 	if err != nil {
-		stopErrors = multierror.Append(stopErrors, err)
+		convertedStopErrors = stderrors.Join(convertedStopErrors, err)
 	}
 
-	return stopErrors.ErrorOrNil()
+	return convertedStopErrors
 }
 
 func (w *Worker) stopHttpServer() error {

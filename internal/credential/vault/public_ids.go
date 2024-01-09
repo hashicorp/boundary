@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package vault
 
@@ -10,29 +10,21 @@ import (
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/hashicorp/boundary/internal/types/subtypes"
+	"github.com/hashicorp/boundary/internal/types/resource"
 )
 
 func init() {
-	if err := subtypes.Register(credential.Domain, Subtype, globals.VaultCredentialStorePrefix, DynamicCredentialPrefix); err != nil {
-		panic(err)
-	}
-	if err := subtypes.Register(credential.Domain, GenericLibrarySubtype, globals.VaultCredentialLibraryPrefix); err != nil {
-		panic(err)
-	}
-	if err := subtypes.Register(credential.Domain, SSHCertificateLibrarySubtype, globals.VaultSshCertificateCredentialLibraryPrefix); err != nil {
-		panic(err)
-	}
+	globals.RegisterPrefixToResourceInfo(globals.VaultCredentialStorePrefix, resource.CredentialStore, credential.Domain, Subtype)
+	globals.RegisterPrefixToResourceInfo(globals.VaultDynamicCredentialPrefix, resource.Credential, credential.Domain, Subtype)
+	globals.RegisterPrefixToResourceInfo(globals.VaultCredentialLibraryPrefix, resource.CredentialLibrary, credential.Domain, GenericLibrarySubtype)
+	globals.RegisterPrefixToResourceInfo(globals.VaultSshCertificateCredentialLibraryPrefix, resource.CredentialLibrary, credential.Domain, SSHCertificateLibrarySubtype)
 }
 
 // PublicId prefixes for the resources in the vault package.
 const (
-	// DynamicCredentialPrefix is the prefix for Vault dynamic credentials
-	DynamicCredentialPrefix = "cdvlt"
-
-	Subtype                      = subtypes.Subtype("vault")
-	GenericLibrarySubtype        = subtypes.Subtype("vault-generic")
-	SSHCertificateLibrarySubtype = subtypes.Subtype("vault-ssh-certificate")
+	Subtype                      = globals.Subtype("vault")
+	GenericLibrarySubtype        = globals.Subtype("vault-generic")
+	SSHCertificateLibrarySubtype = globals.Subtype("vault-ssh-certificate")
 )
 
 func newCredentialStoreId(ctx context.Context) (string, error) {
@@ -44,7 +36,7 @@ func newCredentialStoreId(ctx context.Context) (string, error) {
 }
 
 func newCredentialId(ctx context.Context) (string, error) {
-	id, err := db.NewPublicId(ctx, DynamicCredentialPrefix)
+	id, err := db.NewPublicId(ctx, globals.VaultDynamicCredentialPrefix)
 	if err != nil {
 		return "", errors.Wrap(ctx, err, "vault.newCredentialId")
 	}

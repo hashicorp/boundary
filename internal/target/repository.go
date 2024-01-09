@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package target
 
@@ -8,9 +8,11 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/boundary"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
@@ -227,21 +229,18 @@ func (r *Repository) FetchAuthzProtectedEntitiesByScope(ctx context.Context, pro
 	return targetsMap, nil
 }
 
-// ListTargets lists targets in a project based on the data in the WithPermissions option
+// listTargets lists targets based on the data in the WithPermissions option
 // provided to the Repository constructor. If no permissions are available, this function
 // is a no-op.
-// Supports WithLimit which overrides the limit set in the Repository object.
-func (r *Repository) ListTargets(ctx context.Context, opt ...Option) ([]Target, error) {
-	const op = "target.(Repository).ListTargets"
-
+// Supported options:
+//   - WithLimit which overrides the limit set in the Repository object
+//   - WithStartPageAfterItem which sets where to start listing from
+func (r *Repository) listTargets(ctx context.Context, opt ...Option) ([]Target, time.Time, error) {
 	if len(r.permissions) == 0 {
-		return []Target{}, nil
+		return []Target{}, time.Time{}, nil
 	}
-
 	where, args := r.listPermissionWhereClauses()
-	if len(where) == 0 {
-		return []Target{}, nil
-	}
+	permissionWhereClause := "(" + strings.Join(where, " or ") + ")"
 
 	opts := GetOpts(opt...)
 	limit := r.defaultLimit
@@ -249,48 +248,117 @@ func (r *Repository) ListTargets(ctx context.Context, opt ...Option) ([]Target, 
 		limit = opts.WithLimit
 	}
 
-	var foundTargets []*targetView
-	err := r.reader.SearchWhere(ctx, &foundTargets, strings.Join(where, " or "), args,
-		db.WithLimit(limit))
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+	query := fmt.Sprintf(listTargetsTemplate, permissionWhereClause, limit)
+	if opts.WithStartPageAfterItem != nil {
+		query = fmt.Sprintf(listTargetsPageTemplate, permissionWhereClause, limit)
+		args = append(args,
+			sql.Named("last_item_create_time", opts.WithStartPageAfterItem.GetCreateTime()),
+			sql.Named("last_item_id", opts.WithStartPageAfterItem.GetPublicId()),
+		)
 	}
 
-	var targetIds []string
-	for _, t := range foundTargets {
-		targetIds = append(targetIds, t.GetPublicId())
+	return r.queryTargets(ctx, query, args, limit)
+}
+
+// listTargetsRefresh lists targets based on the data in the WithPermissions option
+// provided to the Repository constructor. If no permissions are available, this function
+// is a no-op.
+// Supported options:
+//   - WithLimit which overrides the limit set in the Repository object
+//   - WithStartPageAfterItem which sets where to start listing from
+func (r *Repository) listTargetsRefresh(ctx context.Context, updatedAfter time.Time, opt ...Option) ([]Target, time.Time, error) {
+	const op = "target.(Repository).listTargetsRefresh"
+
+	if updatedAfter.IsZero() {
+		return nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "missing updated after time")
+	}
+	if len(r.permissions) == 0 {
+		return []Target{}, time.Time{}, nil
+	}
+	where, args := r.listPermissionWhereClauses()
+	permissionWhereClause := "(" + strings.Join(where, " or ") + ")"
+
+	opts := GetOpts(opt...)
+	limit := r.defaultLimit
+	if opts.WithLimit != 0 {
+		limit = opts.WithLimit
 	}
 
-	addresses := map[string]string{}
-	var foundAddresses []*Address
-	err = r.reader.SearchWhere(ctx, &foundAddresses, "target_id in (?)", []any{targetIds})
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-	for _, addr := range foundAddresses {
-		addresses[addr.TargetId()] = addr.Address()
+	query := fmt.Sprintf(refreshTargetsTemplate, permissionWhereClause, limit)
+	args = append(args,
+		sql.Named("updated_after_time", timestamp.New(updatedAfter)),
+	)
+	if opts.WithStartPageAfterItem != nil {
+		query = fmt.Sprintf(refreshTargetsPageTemplate, permissionWhereClause, limit)
+		args = append(args,
+			sql.Named("last_item_update_time", opts.WithStartPageAfterItem.GetUpdateTime()),
+			sql.Named("last_item_id", opts.WithStartPageAfterItem.GetPublicId()),
+		)
 	}
 
-	targets := make([]Target, 0, len(foundTargets))
-	for _, t := range foundTargets {
-		var address string
-		if v, ok := addresses[t.GetPublicId()]; ok {
-			address = v
-		}
-		subtype, err := t.targetSubtype(ctx, address)
-		if errors.Is(err, errTargetSubtypeNotFound) {
-			// In cases where we have mixed target types and the controller
-			// doesn't support all of them, we want to ignore if we can't find
-			// the target subtype and continue listing the others we do support.
-			continue
-		}
+	return r.queryTargets(ctx, query, args, limit)
+}
+
+func (r *Repository) queryTargets(ctx context.Context, query string, args []any, limit int) ([]Target, time.Time, error) {
+	const op = "target.(Repository).queryTargets"
+
+	var targets []Target
+	var transactionTimestamp time.Time
+	if _, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(r db.Reader, w db.Writer) error {
+		rows, err := r.Query(ctx, query, args)
 		if err != nil {
-			return nil, errors.Wrap(ctx, err, op)
+			return err
 		}
-		targets = append(targets, subtype)
+		defer rows.Close()
+		var foundTargets []*targetView
+		for rows.Next() {
+			if err := r.ScanRows(ctx, rows, &foundTargets); err != nil {
+				return err
+			}
+		}
+		var targetIds []string
+		for _, t := range foundTargets {
+			targetIds = append(targetIds, t.GetPublicId())
+		}
+
+		var foundAddresses []*Address
+		if err := r.SearchWhere(ctx,
+			&foundAddresses,
+			"target_id in (?)",
+			[]any{targetIds},
+			db.WithLimit(limit),
+		); err != nil {
+			return err
+		}
+		addresses := make(map[string]string)
+		for _, addr := range foundAddresses {
+			addresses[addr.TargetId()] = addr.Address()
+		}
+
+		for _, t := range foundTargets {
+			var address string
+			if v, ok := addresses[t.GetPublicId()]; ok {
+				address = v
+			}
+			subtype, err := t.targetSubtype(ctx, address)
+			if errors.Is(err, errTargetSubtypeNotFound) {
+				// In cases where we have mixed target types and the controller
+				// doesn't support all of them, we want to ignore if we can't find
+				// the target subtype and continue listing the others we do support.
+				continue
+			}
+			if err != nil {
+				return err
+			}
+			targets = append(targets, subtype)
+		}
+		transactionTimestamp, err = r.Now(ctx)
+		return err
+	}); err != nil {
+		return nil, time.Time{}, errors.Wrap(ctx, err, op)
 	}
 
-	return targets, nil
+	return targets, transactionTimestamp, nil
 }
 
 func (r *Repository) listPermissionWhereClauses() ([]string, []any) {
@@ -317,6 +385,49 @@ func (r *Repository) listPermissionWhereClauses() ([]string, []any) {
 	}
 
 	return where, args
+}
+
+// listDeletedIds lists the public IDs of any targets deleted since the timestamp provided,
+// and the timestamp of the transaction within which the targets were listed.
+func (r *Repository) listDeletedIds(ctx context.Context, since time.Time) ([]string, time.Time, error) {
+	const op = "target.(Repository).listDeletedIds"
+	var deleteTargets []*deletedTarget
+	var transactionTimestamp time.Time
+
+	if _, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(r db.Reader, _ db.Writer) error {
+		if err := r.SearchWhere(ctx, &deleteTargets, "delete_time >= ?", []any{since}); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to query deleted targets"))
+		}
+		var err error
+		transactionTimestamp, err = r.Now(ctx)
+		if err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to get transaction timestamp"))
+		}
+		return nil
+	}); err != nil {
+		return nil, time.Time{}, err
+	}
+	var targetIds []string
+	for _, t := range deleteTargets {
+		targetIds = append(targetIds, t.PublicId)
+	}
+	return targetIds, transactionTimestamp, nil
+}
+
+// estimatedCount returns an estimate of the total number of items across all targets.
+func (r *Repository) estimatedCount(ctx context.Context) (int, error) {
+	const op = "target.(Repository).estimatedCount"
+	rows, err := r.reader.Query(ctx, estimateCountTargets, nil)
+	if err != nil {
+		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total targets"))
+	}
+	var count int
+	for rows.Next() {
+		if err := r.reader.ScanRows(ctx, rows, &count); err != nil {
+			return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total targets"))
+		}
+	}
+	return count, nil
 }
 
 // DeleteTarget will delete a target from the repository.

@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package config
 
@@ -21,7 +21,8 @@ import (
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
-	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/event"
+	"github.com/hashicorp/boundary/internal/ratelimit"
 	"github.com/hashicorp/boundary/internal/util"
 	kms_plugin_assets "github.com/hashicorp/boundary/plugins/kms"
 	"github.com/hashicorp/boundary/sdk/wrapper"
@@ -214,8 +215,20 @@ type Controller struct {
 	// TODO: This field is currently internal.
 	SchedulerRunJobInterval time.Duration `hcl:"-"`
 
+	ApiRateLimits           ratelimit.Configs `hcl:"-"`
+	ApiRateLimiterMaxQuotas int               `hcl:"api_rate_limit_max_quotas"`
+	ApiRateLimitDisable     bool              `hcl:"api_rate_limit_disable"`
+
 	// License is the license used by HCP builds
 	License string `hcl:"license"`
+
+	// MaxPageSize overrides the default and max page size.
+	// The default page size is what is used when the page size
+	// is not explicitly provided by the user. The max page size
+	// is the greatest number the page size can be set to before
+	// it is rejected by the controller.
+	MaxPageSizeRaw any  `hcl:"max_page_size"`
+	MaxPageSize    uint `hcl:"-"`
 }
 
 func (c *Controller) InitNameIfEmpty(ctx context.Context) error {
@@ -370,7 +383,7 @@ func DevKeyGeneration() string {
 	if n != numBytes {
 		panic(fmt.Errorf("expected to read 32 bytes, read %d", n))
 	}
-	devKey := base64.StdEncoding.EncodeToString(randBuf.Bytes())[:numBytes]
+	devKey := base64.StdEncoding.EncodeToString(randBuf.Bytes())
 	return devKey
 }
 
@@ -625,6 +638,31 @@ func Parse(d string) (*Config, error) {
 			return nil, errors.New("Controller liveness time to stale value is negative")
 		}
 
+		if result.Controller.MaxPageSizeRaw != nil {
+			switch t := result.Controller.MaxPageSizeRaw.(type) {
+			case string:
+				maxPageSizeString, err := parseutil.ParsePath(t)
+				if err != nil && !errors.Is(err, parseutil.ErrNotAUrl) {
+					return nil, fmt.Errorf("Error parsing max page size: %w", err)
+				}
+				pageSize, err := strconv.Atoi(maxPageSizeString)
+				if err != nil {
+					return nil, fmt.Errorf("Max page size value is not an int: %w", err)
+				}
+				if pageSize <= 0 {
+					return nil, fmt.Errorf("Max page size value must be at least 1, was %d", pageSize)
+				}
+				result.Controller.MaxPageSize = uint(pageSize)
+			case int:
+				if t <= 0 {
+					return nil, fmt.Errorf("Max page size value must be at least 1, was %d", t)
+				}
+				result.Controller.MaxPageSize = uint(t)
+			default:
+				return nil, fmt.Errorf("Max page size: unsupported type %q", reflect.TypeOf(t).String())
+			}
+		}
+
 		if result.Controller.Database != nil {
 			if result.Controller.Database.MaxOpenConnectionsRaw != nil {
 				switch t := result.Controller.Database.MaxOpenConnectionsRaw.(type) {
@@ -680,7 +718,15 @@ func Parse(d string) (*Config, error) {
 						reflect.TypeOf(t).String())
 				}
 			}
+		}
 
+		result.Controller.ApiRateLimits, err = parseApiRateLimits(obj.Node)
+		if err != nil {
+			return nil, err
+		}
+
+		if result.Controller.ApiRateLimiterMaxQuotas <= 0 {
+			result.Controller.ApiRateLimiterMaxQuotas = ratelimit.DefaultLimiterMaxQuotas()
 		}
 	}
 
@@ -942,6 +988,38 @@ func supportControllersRawConfig(initialUpstreamsRaw, controllersRaw any) (any, 
 		return nil, fmt.Errorf("both initial_upstreams and controllers fields are populated")
 	}
 	return initialUpstreamsRaw, nil
+}
+
+func parseApiRateLimits(node ast.Node) (ratelimit.Configs, error) {
+	list, ok := node.(*ast.ObjectList)
+	if !ok {
+		return nil, fmt.Errorf("error parsing: file doesn't contain a root object")
+	}
+	controllerList := list.Filter("controller")
+
+	configs := make(ratelimit.Configs, 0)
+	for _, item := range controllerList.Items {
+		controller, ok := item.Val.(*ast.ObjectType)
+		if !ok {
+			return nil, fmt.Errorf("error parsing: file doesn't contain controller object")
+		}
+		apiRateLimitsList := controller.List.Filter("api_rate_limit")
+
+		var err error
+		for i, item := range apiRateLimitsList.Items {
+			var a ratelimit.Config
+			if err := hcl.DecodeObject(&a, item.Val); err != nil {
+				return nil, fmt.Errorf("error decoding controller api_rate_limit entry %d", i)
+			}
+			a.Period, err = parseutil.ParseDurationSecond(a.PeriodHCL)
+			if err != nil {
+				return nil, fmt.Errorf("error decoding controller api_rate_limit period for entry %d", i)
+			}
+			configs = append(configs, &a)
+		}
+	}
+
+	return configs, nil
 }
 
 func parseWorkerUpstreams(c *Config) ([]string, error) {

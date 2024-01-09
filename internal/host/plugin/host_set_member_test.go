@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package plugin
 
@@ -162,7 +162,7 @@ func TestHostSetMember_InsertDelete(t *testing.T) {
 	require.Len(t, hosts, 2)
 
 	// Base case the count by catalog ID
-	hosts, _, err = repo.ListHostsByCatalogId(ctx, blueCat.PublicId)
+	hosts, _, _, err = repo.listHosts(ctx, blueCat.PublicId)
 	require.NoError(t, err)
 	assert.Len(t, hosts, 4)
 
@@ -179,7 +179,7 @@ func TestHostSetMember_InsertDelete(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 1, count)
 	assert.NoError(t, db.TestVerifyOplog(t, rw, blueHost1.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second)))
-	hosts, _, err = repo.ListHostsByCatalogId(ctx, blueCat.PublicId)
+	hosts, _, _, err = repo.listHosts(ctx, blueCat.PublicId)
 	require.NoError(t, err)
 	require.Len(t, hosts, 3)
 
@@ -194,7 +194,7 @@ func TestHostSetMember_InsertDelete(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 1, count)
 	assert.NoError(t, db.TestVerifyOplog(t, rw, blueHost2.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second)))
-	hosts, _, err = repo.ListHostsByCatalogId(ctx, blueCat.PublicId)
+	hosts, _, _, err = repo.listHosts(ctx, blueCat.PublicId)
 	require.NoError(t, err)
 	require.Len(t, hosts, 2)
 
@@ -211,7 +211,7 @@ func TestHostSetMember_InsertDelete(t *testing.T) {
 	assert.Equal(t, 2, count)
 	assert.NoError(t, db.TestVerifyOplog(t, rw, blueHost3.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second)))
 	assert.NoError(t, db.TestVerifyOplog(t, rw, blueHost4.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second)))
-	hosts, _, err = repo.ListHostsByCatalogId(ctx, blueCat.PublicId)
+	hosts, _, _, err = repo.listHosts(ctx, blueCat.PublicId)
 	require.NoError(t, err)
 	require.Len(t, hosts, 0)
 }

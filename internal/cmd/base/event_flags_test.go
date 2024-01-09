@@ -1,12 +1,12 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package base
 
 import (
 	"testing"
 
-	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/event"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -158,6 +158,24 @@ func Test_NewEventFlags(t *testing.T) {
 			wantFlags: &EventFlags{
 				Format:           "cloudevents-json",
 				SysEventsEnabled: &setFalse,
+			},
+		},
+		{
+			name:          "telemetry-true",
+			defaultFormat: "cloudevents-json",
+			composedOf:    ComposedOfEventArgs{Format: "cloudevents-json", Telemetry: "true"},
+			wantFlags: &EventFlags{
+				Format:           "cloudevents-json",
+				TelemetryEnabled: &setTrue,
+			},
+		},
+		{
+			name:          "telemetry-false",
+			defaultFormat: "cloudevents-json",
+			composedOf:    ComposedOfEventArgs{Format: "cloudevents-json", Telemetry: "false"},
+			wantFlags: &EventFlags{
+				Format:           "cloudevents-json",
+				TelemetryEnabled: &setFalse,
 			},
 		},
 		{

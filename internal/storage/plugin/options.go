@@ -1,9 +1,12 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package plugin
 
-import "google.golang.org/protobuf/types/known/structpb"
+import (
+	"github.com/hashicorp/boundary/internal/pagination"
+	"google.golang.org/protobuf/types/known/structpb"
+)
 
 const (
 	// DefaultChunkSize is the default chunk size for streaming
@@ -24,15 +27,16 @@ type Option func(*options)
 
 // options = how options are represented
 type options struct {
-	withChunkSize    uint32
-	withName         string
-	withDescription  string
-	withAttributes   *structpb.Struct
-	withSecrets      *structpb.Struct
-	withWorkerFilter string
-	withBucketPrefix string
-	withLimit        int
-	withVersion      uint32
+	withChunkSize          uint32
+	withName               string
+	withDescription        string
+	withAttributes         *structpb.Struct
+	withSecrets            *structpb.Struct
+	withWorkerFilter       string
+	withBucketPrefix       string
+	withLimit              int
+	withVersion            uint32
+	withStartPageAfterItem pagination.Item
 }
 
 func getDefaultOptions() options {
@@ -109,5 +113,13 @@ func WithLimit(l int) Option {
 func WithVersion(v uint32) Option {
 	return func(o *options) {
 		o.withVersion = v
+	}
+}
+
+// WithStartPageAfterItem is used to paginate over the results.
+// The next page will start after the provided item.
+func WithStartPageAfterItem(item pagination.Item) Option {
+	return func(o *options) {
+		o.withStartPageAfterItem = item
 	}
 }

@@ -2,6 +2,17 @@ name: schema-diff
 
 on:
   pull_request:
+    types:
+      # By default, a workflow only runs when a pull_request event's activity
+      # type is `opened`, `synchronize`, or `reopened`.
+      # https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#pull_request
+      # Since we care about the PR state, we also need to run when there is a PR
+      # state change: From "Draft" to "Ready for Review" and vice-versa.
+      - 'opened'
+      - 'synchronize'
+      - 'reopened'
+      - 'converted_to_draft'
+      - 'ready_for_review'
     paths:
       - 'internal/db/schema/migrations/**/*.sql'
       - 'scripts/schema-diff.sh'
@@ -16,9 +27,10 @@ permissions:
 jobs:
   schema-diff:
     name: "Schema Diff"
+    if: '! github.event.pull_request.draft'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3.5.2
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
         with:
           fetch-depth: '0'
       - name: Generate Schema Diff
@@ -86,7 +98,7 @@ jobs:
 
           # Parse it through jq to build a valid json object.
           jq --null-input \
-            --arg comment "$(cat github-comment.txt)" \
+            --rawfile comment github-comment.txt \
             '{"body": $comment}' > body.json
 
           # Post comment on PR.

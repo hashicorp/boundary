@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package static
 
@@ -27,6 +27,9 @@ func TestRewrap_credStaticUsernamePasswordRewrapFn(t *testing.T) {
 		wrapper := db.TestWrapper(t)
 		mock.ExpectQuery(
 			`SELECT \* FROM "kms_schema_version" WHERE 1=1 ORDER BY "kms_schema_version"\."version" LIMIT 1`,
+		).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
+		mock.ExpectQuery(
+			`SELECT \* FROM "kms_oplog_schema_version" WHERE 1=1 ORDER BY "kms_oplog_schema_version"."version" LIMIT 1`,
 		).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
 		kmsCache := kms.TestKms(t, conn, wrapper)
 		rw := db.New(conn)
@@ -88,6 +91,9 @@ func TestRewrap_credStaticSshPrivKeyRewrapFn(t *testing.T) {
 		wrapper := db.TestWrapper(t)
 		mock.ExpectQuery(
 			`SELECT \* FROM "kms_schema_version" WHERE 1=1 ORDER BY "kms_schema_version"\."version" LIMIT 1`,
+		).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
+		mock.ExpectQuery(
+			`SELECT \* FROM "kms_oplog_schema_version" WHERE 1=1 ORDER BY "kms_oplog_schema_version"."version" LIMIT 1`,
 		).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
 		kmsCache := kms.TestKms(t, conn, wrapper)
 		rw := db.New(conn)
@@ -194,6 +200,9 @@ func TestRewrap_credStaticJsonRewrapFn(t *testing.T) {
 		mock.ExpectQuery(
 			`SELECT \* FROM "kms_schema_version" WHERE 1=1 ORDER BY "kms_schema_version"\."version" LIMIT 1`,
 		).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
+		mock.ExpectQuery(
+			`SELECT \* FROM "kms_oplog_schema_version" WHERE 1=1 ORDER BY "kms_oplog_schema_version"."version" LIMIT 1`,
+		).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
 		kmsCache := kms.TestKms(t, conn, wrapper)
 		rw := db.New(conn)
 		mock.ExpectQuery(
@@ -210,8 +219,7 @@ func TestRewrap_credStaticJsonRewrapFn(t *testing.T) {
 
 		_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 		cs := TestCredentialStore(t, conn, wrapper, prj.PublicId)
-		obj, objBytes, err := TestJsonObject()
-		assert.NoError(t, err)
+		obj, objBytes := TestJsonObject(t)
 		cred, err := NewJsonCredential(ctx, cs.GetPublicId(), obj)
 		assert.NoError(t, err)
 

@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package boundary
 
@@ -20,6 +20,7 @@ func CreateNewGroupCli(t testing.TB, ctx context.Context, scopeId string) string
 		e2e.WithArgs(
 			"groups", "create",
 			"-scope-id", "global",
+			"-description", "e2e",
 			"-format", "json",
 		),
 	)

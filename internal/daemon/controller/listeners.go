@@ -1,11 +1,12 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package controller
 
 import (
 	"context"
 	"crypto/tls"
+	stderrors "errors"
 	"fmt"
 	"math"
 	"net"
@@ -19,7 +20,7 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/common"
 	"github.com/hashicorp/boundary/internal/daemon/controller/internal/metric"
 	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/internal/util"
 	"github.com/hashicorp/go-multierror"
 	nodee "github.com/hashicorp/nodeenrollment"
@@ -250,8 +251,8 @@ func (c *Controller) configureForCluster(ln *base.ServerListener) (func(), error
 		grpc.UnaryInterceptor(
 			grpc_middleware.ChainUnaryServer(
 				workerReqInterceptor,
-				auditRequestInterceptor(c.baseContext),  // before we get started, audit the request
-				auditResponseInterceptor(c.baseContext), // as we finish, audit the response
+				eventsRequestInterceptor(c.baseContext),  // before we get started, send the required events with the request
+				eventsResponseInterceptor(c.baseContext), // as we finish, send the required events with the response
 			),
 		),
 	)
@@ -275,13 +276,13 @@ func (c *Controller) configureForCluster(ln *base.ServerListener) (func(), error
 		}
 		go func() {
 			err := splitListener.Start()
-			if err != nil {
+			if err != nil && !errors.Is(err, net.ErrClosed) {
 				event.WriteError(c.baseContext, op, err, event.WithInfoMsg("splitListener.Start() error"))
 			}
 		}()
 		go func() {
 			err := ln.GrpcServer.Serve(metric.InstrumentClusterTrackingListener(multiplexingAuthedListener, grpcListenerPurpose))
-			if err != nil {
+			if err != nil && !errors.Is(err, net.ErrClosed) {
 				event.WriteError(c.baseContext, op, err, event.WithInfoMsg("multiplexingAuthedListener error"))
 			}
 		}()
@@ -295,13 +296,14 @@ func (c *Controller) stopServersAndListeners() error {
 	mg.Go(c.stopApiGrpcServerAndListener)
 
 	stopErrors := mg.Wait()
+	convertedStopErrors := stopErrors.ErrorOrNil()
 
 	err := c.stopAnyListeners()
 	if err != nil {
-		stopErrors = multierror.Append(stopErrors, err)
+		convertedStopErrors = stderrors.Join(convertedStopErrors, err)
 	}
 
-	return stopErrors.ErrorOrNil()
+	return convertedStopErrors
 }
 
 func (c *Controller) stopClusterGrpcServerAndListener() error {
@@ -321,7 +323,7 @@ func (c *Controller) stopClusterGrpcServerAndListener() error {
 }
 
 func (c *Controller) stopHttpServersAndListeners() error {
-	var closeErrors *multierror.Error
+	var closeErrors error
 	for i := range c.apiListeners {
 		ln := c.apiListeners[i]
 		if ln.HTTPServer == nil {
@@ -335,11 +337,11 @@ func (c *Controller) stopHttpServersAndListeners() error {
 		err := ln.ApiListener.Close() // The HTTP Shutdown call should close this, but just in case.
 		err = listenerCloseErrorCheck(ln.Config.Type, err)
 		if err != nil {
-			multierror.Append(closeErrors, err)
+			closeErrors = stderrors.Join(closeErrors, err)
 		}
 	}
 
-	return closeErrors.ErrorOrNil()
+	return closeErrors
 }
 
 func (c *Controller) stopApiGrpcServerAndListener() error {
@@ -357,7 +359,7 @@ func (c *Controller) stopApiGrpcServerAndListener() error {
 // listeners to make sure we didn't miss any;
 // expected to run at the end of stopServersAndListeners.
 func (c *Controller) stopAnyListeners() error {
-	var closeErrors *multierror.Error
+	var closeErrors error
 	for i := range c.apiListeners {
 		ln := c.apiListeners[i]
 		if ln == nil || ln.ApiListener == nil {
@@ -367,11 +369,11 @@ func (c *Controller) stopAnyListeners() error {
 		err := ln.ApiListener.Close()
 		err = listenerCloseErrorCheck(ln.Config.Type, err)
 		if err != nil {
-			multierror.Append(closeErrors, err)
+			closeErrors = stderrors.Join(closeErrors, err)
 		}
 	}
 
-	return closeErrors.ErrorOrNil()
+	return closeErrors
 }
 
 // listenerCloseErrorCheck does some validation on an error returned

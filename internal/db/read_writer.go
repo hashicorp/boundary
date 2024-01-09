@@ -1,11 +1,12 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package db
 
 import (
 	"context"
 	"database/sql"
+	stderrors "errors"
 	"fmt"
 	"reflect"
 	"sync/atomic"
@@ -16,7 +17,6 @@ import (
 	"github.com/hashicorp/boundary/internal/oplog/store"
 	"github.com/hashicorp/go-dbw"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
-	"github.com/hashicorp/go-multierror"
 )
 
 const (
@@ -70,12 +70,20 @@ type Reader interface {
 
 	// ScanRows will scan sql rows into the interface provided
 	ScanRows(ctx context.Context, rows *sql.Rows, result any) error
+
+	// Now returns the current transaction timestamp. Now will return the same
+	// timestamp whenever it is called within a transaction. In other words, calling
+	// Now at the start and at the end of a transaction will return the same value.
+	Now(ctx context.Context) (time.Time, error)
 }
 
 // Writer interface defines create, update and retryable transaction handlers
 type Writer interface {
 	// DoTx will wrap the TxHandler in a retryable transaction
 	DoTx(ctx context.Context, retries uint, backOff Backoff, Handler TxHandler) (RetryInfo, error)
+
+	// IsTx returns true if there's an existing transaction in progress
+	IsTx(ctx context.Context) bool
 
 	// Update an object in the db, fieldMask is required and provides
 	// field_mask.proto paths for fields that should be updated. The i interface
@@ -442,19 +450,24 @@ func (rw *Db) DoTx(ctx context.Context, retries uint, backOff Backoff, handler T
 			return info, errors.Wrap(ctx, err, op, errors.WithoutEvent())
 		}
 
-		var txnErr *multierror.Error
+		var txnErr error
 		if commitErr := beginTx.Commit(ctx); commitErr != nil {
-			txnErr = multierror.Append(txnErr, errors.Wrap(ctx, commitErr, op, errors.WithMsg("commit error")))
+			txnErr = stderrors.Join(txnErr, errors.Wrap(ctx, commitErr, op, errors.WithMsg("commit error")))
 			// unsure if rolling back is required or possible, but including
 			// this attempt to rollback on a commit error just in case it's
 			// possible.
 			if err := beginTx.Rollback(ctx); err != nil {
-				return info, multierror.Append(txnErr, errors.Wrap(ctx, err, op, errors.WithMsg("rollback error")))
+				return info, stderrors.Join(txnErr, errors.Wrap(ctx, err, op, errors.WithMsg("rollback error")))
 			}
 			return info, txnErr
 		}
 		return info, nil // it all worked!!!
 	}
+}
+
+// IsTx returns true if there's an existing transaction in progress
+func (rw *Db) IsTx(_ context.Context) bool {
+	return dbw.New(rw.underlying.wrapped.Load()).IsTx()
 }
 
 // LookupByPublicId will lookup resource by its public_id or private_id, which
@@ -523,6 +536,27 @@ func (rw *Db) SearchWhere(ctx context.Context, resources any, where string, args
 		return wrapError(ctx, err, op)
 	}
 	return nil
+}
+
+// Now returns the current transaction timestamp. Now will return the same
+// timestamp whenever it is called within a transaction. In other words, calling
+// Now at the start and at the end of a transaction will return the same value.
+func (rw *Db) Now(ctx context.Context) (time.Time, error) {
+	const op = "db.(*Db).Now"
+	// The Postgres docs define the different pre-defined time variables available:
+	// https://www.postgresql.org/docs/current/functions-datetime.html#FUNCTIONS-DATETIME-CURRENT.
+	// The value produced by this function is equivalent to current_timestamp.
+	rows, err := rw.Query(ctx, "select now()", nil)
+	if err != nil {
+		return time.Time{}, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query current timestamp"))
+	}
+	var now time.Time
+	for rows.Next() {
+		if err := rw.ScanRows(ctx, rows, &now); err != nil {
+			return time.Time{}, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query current timestamp"))
+		}
+	}
+	return now, nil
 }
 
 func isNil(i any) bool {

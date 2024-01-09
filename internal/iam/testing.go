@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package iam
 
@@ -176,6 +176,10 @@ func TestUser(t testing.TB, repo *Repository, scopeId string, opt ...Option) *Us
 	opts := getOpts(opt...)
 	if len(opts.withAccountIds) > 0 {
 		_, err := repo.AddUserAccounts(ctx, user.PublicId, user.Version, opts.withAccountIds)
+		require.NoError(err)
+		// now that we have updated user accounts, we need to re-fetch the user
+		// to get the updated version and update time
+		user, err = repo.lookupUser(ctx, user.GetPublicId())
 		require.NoError(err)
 	}
 	return user

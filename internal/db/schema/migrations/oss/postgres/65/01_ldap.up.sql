@@ -1,5 +1,5 @@
 -- Copyright (c) HashiCorp, Inc.
--- SPDX-License-Identifier: MPL-2.0
+-- SPDX-License-Identifier: BUSL-1.1
 
 begin;
 
@@ -18,6 +18,7 @@ insert into auth_ldap_method_state_enm(name)
     ('active-private'),
     ('active-public');
 
+-- column added to auth_ldap_method in in 76/01_ldap.up.sql
 create table auth_ldap_method (
   public_id wt_public_id primary key,
   scope_id wt_scope_id not null,
@@ -465,6 +466,7 @@ values
   ('auth_ldap_managed_group', 1);
   
 
+-- updated in 76/01_ldap.up.sql
 -- ldap_auth_method_with_value_obj is useful for reading an ldap auth method 
 -- with its associated value objects (urls, certs, search config, etc). The use
 -- of the postgres string_agg(...) to aggregate the url and cert value objects

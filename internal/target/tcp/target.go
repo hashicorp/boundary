@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 // Package tcp provides a Target subtype for a TCP Target.
 // Importing this package will register it with the target package and
@@ -11,19 +11,20 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/target/tcp/store"
-	"github.com/hashicorp/boundary/internal/types/subtypes"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	"google.golang.org/protobuf/proto"
 )
 
 const (
 	defaultTableName = "target_tcp"
-	Subtype          = subtypes.Subtype("tcp")
+	Subtype          = globals.Subtype("tcp")
 )
 
 // Target is a resources that represets a networked service
@@ -132,7 +133,7 @@ func (t *Target) Oplog(op oplog.OpType) oplog.Metadata {
 	return metadata
 }
 
-func (t *Target) GetType() subtypes.Subtype {
+func (t *Target) GetType() globals.Subtype {
 	return Subtype
 }
 
@@ -176,6 +177,11 @@ func (t *Target) SetName(name string) {
 
 func (t *Target) SetDescription(description string) {
 	t.Description = description
+}
+
+// GetResourceType returns the resource type of the Target
+func (t *Target) GetResourceType() resource.Type {
+	return resource.Target
 }
 
 func (t *Target) SetVersion(v uint32) {

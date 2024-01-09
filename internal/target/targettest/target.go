@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 // Package targettest provides a test target subtype for use by the target
 // package.  Note that it leverages the tcp.Target's database table to avoid
@@ -18,13 +18,13 @@ import (
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/target/targettest/store"
-	"github.com/hashicorp/boundary/internal/types/subtypes"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
 )
 
 const (
-	Subtype = subtypes.Subtype("tcp")
+	Subtype = globals.Subtype("tcp")
 )
 
 // Target is a target.Target used for tests.
@@ -103,7 +103,7 @@ func (t *Target) GetVersion() uint32 {
 	return t.Version
 }
 
-func (t *Target) GetType() subtypes.Subtype {
+func (t *Target) GetType() globals.Subtype {
 	return Subtype
 }
 
@@ -180,6 +180,11 @@ func (t *Target) SetName(name string) {
 
 func (t *Target) SetDescription(description string) {
 	t.Description = description
+}
+
+// GetResourceType returns the resource type of the Target
+func (t *Target) GetResourceType() resource.Type {
+	return resource.Target
 }
 
 func (t *Target) SetVersion(v uint32) {
@@ -324,6 +329,7 @@ func New(ctx context.Context, projectId string, opt ...target.Option) (target.Ta
 			EgressWorkerFilter:     opts.WithEgressWorkerFilter,
 			IngressWorkerFilter:    opts.WithIngressWorkerFilter,
 		},
+		Address: opts.WithAddress,
 	}
 	return t, nil
 }
@@ -360,6 +366,11 @@ func TestNewTestTarget(ctx context.Context, t *testing.T, conn *db.DB, projectId
 			newCredLibs = append(newCredLibs, cl)
 		}
 		err := rw.CreateItems(context.Background(), newCredLibs)
+		require.NoError(err)
+	}
+	if len(opts.WithAddress) != 0 {
+		addr := target.TestNewTargetAddress(id, opts.WithAddress)
+		err := rw.Create(ctx, addr)
 		require.NoError(err)
 	}
 	return tar

@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package connect
 
@@ -9,6 +9,7 @@ import (
 	"os"
 	"strings"
 
+	apiproxy "github.com/hashicorp/boundary/api/proxy"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/posener/complete"
@@ -31,6 +32,12 @@ func sshOptions(c *Command, set *base.FlagSets) {
 	})
 
 	f.StringVar(&base.StringVar{
+		Name:   "remote-command",
+		Target: &c.flagRemoteCommand,
+		Usage:  `Specifies a command that will be executed on the remote host. A complete command line may be specified as command, or it may have additional arguments. If supplied, the arguments will be appended to the command, separated by spaces.`,
+	})
+
+	f.StringVar(&base.StringVar{
 		Name:       "username",
 		Target:     &c.flagUsername,
 		EnvVar:     "BOUNDARY_CONNECT_USERNAME",
@@ -40,14 +47,15 @@ func sshOptions(c *Command, set *base.FlagSets) {
 }
 
 type sshFlags struct {
-	flagSshStyle string
+	flagSshStyle      string
+	flagRemoteCommand string
 }
 
 func (s *sshFlags) defaultExec() string {
 	return strings.ToLower(s.flagSshStyle)
 }
 
-func (s *sshFlags) buildArgs(c *Command, port, ip, _ string, creds credentials) (args, envs []string, retCreds credentials, retErr error) {
+func (s *sshFlags) buildArgs(c *Command, port, ip, _ string, creds apiproxy.Credentials) (args, envs []string, retCreds apiproxy.Credentials, retErr error) {
 	var username string
 	retCreds = creds
 
@@ -60,7 +68,7 @@ func (s *sshFlags) buildArgs(c *Command, port, ip, _ string, creds credentials) 
 	switch strings.ToLower(s.flagSshStyle) {
 	case "ssh":
 		// Might want -t for ssh or -tt but seems fine without it for now...
-		args = append(args, "-p", port, ip)
+		args = append(args, "-p", port)
 
 		switch c.sessionAuthzData.GetType() {
 		case "tcp":
@@ -82,34 +90,34 @@ func (s *sshFlags) buildArgs(c *Command, port, ip, _ string, creds credentials) 
 
 	case "sshpass":
 		if !tryConsume {
-			return nil, nil, credentials{}, errors.New("Credentials must be consumed when using sshpass")
+			return nil, nil, apiproxy.Credentials{}, errors.New("Credentials must be consumed when using sshpass")
 		}
 		var password string
-		if len(retCreds.usernamePassword) > 0 {
+		if len(retCreds.UsernamePassword) > 0 {
 			// For now just grab the first username password credential brokered
 			// Mark credential as consumed so that it is not printed to user
-			retCreds.usernamePassword[0].consumed = true
+			retCreds.UsernamePassword[0].Consumed = true
 
-			username = retCreds.usernamePassword[0].Username
-			password = retCreds.usernamePassword[0].Password
+			username = retCreds.UsernamePassword[0].Username
+			password = retCreds.UsernamePassword[0].Password
 		}
 
 		if password == "" {
-			return nil, nil, credentials{}, errors.New("Password is required when using sshpass")
+			return nil, nil, apiproxy.Credentials{}, errors.New("Password is required when using sshpass")
 		}
 
 		// sshpass requires that the password is passed as env-var "SSHPASS"
 		// when the using env-vars.
 		envs = append(envs, fmt.Sprintf("SSHPASS=%s", password))
 		args = append(args, "-e", "ssh")
-		args = append(args, "-p", port, ip)
+		args = append(args, "-p", port)
 
 		// sshpass cannot handle host key checking, disable localhost key verification
 		// to avoid error: 'SSHPASS detected host authentication prompt. Exiting.'
 		args = append(args, "-o", "NoHostAuthenticationForLocalhost=yes")
 
 	case "putty":
-		args = append(args, "-P", port, ip)
+		args = append(args, "-P", port)
 	}
 
 	// Check if we got credentials to attempt to use for ssh or putty,
@@ -123,24 +131,24 @@ func (s *sshFlags) buildArgs(c *Command, port, ip, _ string, creds credentials) 
 			// Do nothing
 
 		// If we want to consume check if we have a private key available first
-		case len(creds.sshPrivateKey) > 0:
+		case len(creds.SshPrivateKey) > 0:
 			// For now just grab the first ssh private key credential brokered
-			cred := retCreds.sshPrivateKey[0]
+			cred := retCreds.SshPrivateKey[0]
 
 			username = cred.Username
 			privateKey := cred.PrivateKey
-			cred.consumed = true
+			cred.Consumed = true
 			if cred.Passphrase != "" {
 				// Don't re-print everything, but print the passphrase they'll need
-				cred.consumed = false
-				delete(cred.raw.Credential, "username")
-				delete(cred.raw.Credential, "private_key")
+				cred.Consumed = false
+				delete(cred.Raw.Credential, "username")
+				delete(cred.Raw.Credential, "private_key")
 			}
-			retCreds.sshPrivateKey[0] = cred
+			retCreds.SshPrivateKey[0] = cred
 
 			pkFile, err := os.CreateTemp("", "*")
 			if err != nil {
-				return nil, nil, credentials{}, fmt.Errorf("Error saving ssh private key to tmp file: %w", err)
+				return nil, nil, apiproxy.Credentials{}, fmt.Errorf("Error saving ssh private key to tmp file: %w", err)
 			}
 			c.cleanupFuncs = append(c.cleanupFuncs, func() error {
 				if err := os.Remove(pkFile.Name()); err != nil {
@@ -156,15 +164,15 @@ func (s *sshFlags) buildArgs(c *Command, port, ip, _ string, creds credentials) 
 			}
 			_, err = pkFile.WriteString(privateKey)
 			if err != nil {
-				return nil, nil, credentials{}, fmt.Errorf("Error writing private key file to %s: %w", pkFile.Name(), err)
+				return nil, nil, apiproxy.Credentials{}, fmt.Errorf("Error writing private key file to %s: %w", pkFile.Name(), err)
 			}
 			if err := pkFile.Close(); err != nil {
-				return nil, nil, credentials{}, fmt.Errorf("Error closing private key file after writing to %s: %w", pkFile.Name(), err)
+				return nil, nil, apiproxy.Credentials{}, fmt.Errorf("Error closing private key file after writing to %s: %w", pkFile.Name(), err)
 			}
 			args = append(args, "-i", pkFile.Name())
 
 		// Next check if we have a username password credential
-		case len(creds.usernamePassword) > 0:
+		case len(creds.UsernamePassword) > 0:
 			// We cannot use the password of the credential outside of sshpass, but we
 			// can use the username.
 			// N.B. Do not mark credential as consumed, as user will still need enter
@@ -173,7 +181,7 @@ func (s *sshFlags) buildArgs(c *Command, port, ip, _ string, creds credentials) 
 			if c.flagUsername == "" {
 				// If the user did not actively provide a username flag set the
 				// username to that of the first credential we got.
-				username = retCreds.usernamePassword[0].Username
+				username = retCreds.UsernamePassword[0].Username
 			}
 		}
 	}
@@ -183,6 +191,15 @@ func (s *sshFlags) buildArgs(c *Command, port, ip, _ string, creds credentials) 
 		args = append(args, "-l", username)
 	case c.flagUsername != "":
 		args = append(args, "-l", c.flagUsername)
+	}
+
+	// Add destination
+	args = append(args, ip)
+
+	// Add optional command to run on remote host
+	if s.flagRemoteCommand != "" {
+		cmdArgs := strings.Split(s.flagRemoteCommand, " ")
+		args = append(args, cmdArgs...)
 	}
 
 	return args, envs, retCreds, nil

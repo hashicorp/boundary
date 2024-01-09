@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package controller
 
@@ -27,11 +27,12 @@ import (
 	"github.com/hashicorp/boundary/internal/credential/vault"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/schema"
+	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/internal/gen/testing/interceptor"
 	"github.com/hashicorp/boundary/internal/host/plugin"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
-	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/ratelimit"
 	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/session"
@@ -474,8 +475,19 @@ type TestControllerOpts struct {
 	// database
 	LivenessTimeToStaleDuration time.Duration
 
-	// The amount of time between the scheduler waking up to run it's registered
-	// jobs.
+	// The amount of time between the scheduler waking up to run it's
+	// registered jobs.
+	//
+	// If t.Deadline() has a value and the value is under 1 minute, the
+	// default value is set to half the value of t.Deadline(). If
+	// t.Deadline() has a value and the value is 1 minute or more, the
+	// default value is set to 1 minute.
+	//
+	// Tests using the Vault test server should be aware that Vault
+	// Credential Stores only accept Vault tokens that have a TTL greater
+	// than the SchedulerRunJobInterval. The Vault test server, by default,
+	// creates Vault tokens with a TTL equal to the duration of time
+	// remaining until t.Deadline() is reached.
 	SchedulerRunJobInterval time.Duration
 
 	// The time to use for CA certificate lifetime for worker auth
@@ -483,6 +495,8 @@ type TestControllerOpts struct {
 
 	// Toggle worker auth debugging
 	WorkerAuthDebuggingEnabled *atomic.Bool
+
+	DisableRateLimiting bool
 }
 
 func NewTestController(t testing.TB, opts *TestControllerOpts) *TestController {
@@ -632,7 +646,20 @@ func TestControllerConfig(t testing.TB, ctx context.Context, tc *TestController,
 	if opts.Config.Controller.Name == "" {
 		require.NoError(t, opts.Config.Controller.InitNameIfEmpty(ctxTest))
 	}
+
+	if opts.SchedulerRunJobInterval == 0 {
+		if t, ok := t.(*testing.T); ok {
+			if deadline, ok := t.Deadline(); ok {
+				opts.SchedulerRunJobInterval = 1 * time.Minute
+				if time.Until(deadline) < opts.SchedulerRunJobInterval {
+					half := int64(time.Until(deadline) / 2)
+					opts.SchedulerRunJobInterval = time.Duration(half)
+				}
+			}
+		}
+	}
 	opts.Config.Controller.Scheduler.JobRunIntervalDuration = opts.SchedulerRunJobInterval
+	opts.Config.Controller.ApiRateLimiterMaxQuotas = ratelimit.DefaultLimiterMaxQuotas()
 
 	if opts.EnableEventing {
 		opts.Config.Eventing = &event.EventerConfig{
@@ -781,6 +808,10 @@ func TestControllerConfig(t testing.TB, ctx context.Context, tc *TestController,
 		}
 	}
 
+	if opts.DisableRateLimiting {
+		opts.Config.Controller.ApiRateLimitDisable = true
+	}
+
 	return &Config{
 		RawConfig:                    opts.Config,
 		Server:                       tc.b,
@@ -810,6 +841,7 @@ func (tc *TestController) AddClusterControllerMember(t testing.TB, opts *TestCon
 		DefaultPassword:                 tc.b.DevPassword,
 		DisableKmsKeyCreation:           true,
 		DisableAuthMethodCreation:       true,
+		DisableAutoStart:                opts.DisableAutoStart,
 		PublicClusterAddr:               opts.PublicClusterAddr,
 		WorkerStatusGracePeriodDuration: opts.WorkerStatusGracePeriodDuration,
 		LivenessTimeToStaleDuration:     opts.LivenessTimeToStaleDuration,

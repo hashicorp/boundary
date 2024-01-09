@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package ldap
 
@@ -139,6 +139,16 @@ func TestAuthMethod(t testing.TB,
 				return err
 			}
 			am.BindPasswordHmac = bc.PasswordHmac
+		}
+		if opts.withDerefAliases != "" {
+			d, err := NewDerefAliases(testCtx, am.PublicId, opts.withDerefAliases)
+			if err != nil {
+				return err
+			}
+			if err := w.Create(testCtx, d); err != nil {
+				return err
+			}
+			am.DereferenceAliases = d.DereferenceAliases
 		}
 		return nil
 	})

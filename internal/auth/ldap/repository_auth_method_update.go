@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package ldap
 
@@ -45,6 +45,8 @@ const (
 	BindPasswordField         = "BindPassword"
 	AccountAttributeMapsField = "AccountAttributeMaps"
 	GroupNamesField           = "GroupNames"
+	DerefAliasesField         = "DereferenceAliases"
+	MaximumPageSizeField      = "MaximumPageSize"
 )
 
 // isEmpty returns true if all the args are empty.  Only supports checking
@@ -116,6 +118,8 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 			BindPasswordField:         am.BindPassword,
 			UrlsField:                 am.Urls,
 			AccountAttributeMapsField: am.AccountAttributeMaps,
+			DerefAliasesField:         am.DereferenceAliases,
+			MaximumPageSizeField:      am.MaximumPageSize,
 		},
 		fieldMaskPaths,
 		[]string{
@@ -125,6 +129,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 			AnonGroupSearchField,
 			EnableGroupsField,
 			UseTokenGroupsField,
+			MaximumPageSizeField,
 		},
 	)
 	if len(dbMask) == 0 && len(nullFields) == 0 {
@@ -297,9 +302,32 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 				return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 			}
 			if err := bc.encrypt(ctx, dbWrapper); err != nil {
-				return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
+				return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("error wrapping updated bind credential"))
 			}
 			addBindCred = bc
+		}
+	}
+
+	var addDerefAliases, deleteDerefAliases any
+	if strListContainsOneOf(combinedMasks, DerefAliasesField) {
+		if !isEmpty(origAm.DereferenceAliases) {
+			d := allocDerefAliases()
+			d.LdapMethodId = am.PublicId
+			deleteDerefAliases = d
+		}
+		derefAliases := origAm.DereferenceAliases
+		switch {
+		case strutil.StrListContains(dbMask, DerefAliasesField):
+			derefAliases = am.DereferenceAliases
+		case strutil.StrListContains(nullFields, DerefAliasesField):
+			derefAliases = ""
+		}
+		if !isEmpty(derefAliases) {
+			d, err := NewDerefAliases(ctx, am.PublicId, DerefAliasType(derefAliases))
+			if err != nil {
+				return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
+			}
+			addDerefAliases = d
 		}
 	}
 
@@ -313,7 +341,8 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 			UserDnField, UserAttrField, UserFilterField,
 			GroupDnField, GroupAttrField, GroupFilterField,
 			ClientCertificateField, ClientCertificateKeyField,
-			BindDnField, BindPasswordField:
+			BindDnField, BindPasswordField,
+			DerefAliasesField:
 			continue
 		default:
 			filteredDbMask = append(filteredDbMask, f)
@@ -329,7 +358,8 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 			UserDnField, UserAttrField, UserFilterField,
 			GroupDnField, GroupAttrField, GroupFilterField,
 			ClientCertificateField, ClientCertificateKeyField,
-			BindDnField, BindPasswordField:
+			BindDnField, BindPasswordField,
+			DerefAliasesField:
 			continue
 		default:
 			filteredNullFields = append(filteredNullFields, f)
@@ -352,7 +382,9 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 		addBindCred == nil &&
 		deleteBindCred == nil &&
 		len(addMaps) == 0 &&
-		len(deleteMaps) == 0 {
+		len(deleteMaps) == 0 &&
+		addDerefAliases == nil &&
+		deleteDerefAliases == nil {
 		return origAm, db.NoRowsAffected, nil
 	}
 
@@ -529,6 +561,24 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 				}
 				msgs = append(msgs, addMapsOplogMsgs...)
 			}
+			if deleteDerefAliases != nil {
+				var deleteDerefMsg oplog.Message
+				rowsDeleted, err := w.Delete(ctx, deleteDerefAliases, db.NewOplogMsg(&deleteDerefMsg))
+				if err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to delete deref aliases"))
+				}
+				if rowsDeleted != 1 {
+					return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("deref aliases deleted %d did not match request for 1", rowsDeleted))
+				}
+				msgs = append(msgs, &deleteDerefMsg)
+			}
+			if addDerefAliases != nil {
+				var addDerefOplogMsg oplog.Message
+				if err := w.Create(ctx, addDerefAliases, db.NewOplogMsg(&addDerefOplogMsg)); err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to add deref aliases"))
+				}
+				msgs = append(msgs, &addDerefOplogMsg)
+			}
 
 			metadata, err := updatedAm.oplog(ctx, oplog.OpType_OP_TYPE_UPDATE)
 			if err != nil {
@@ -589,6 +639,8 @@ func validateFieldMask(ctx context.Context, fieldMaskPaths []string) error {
 		case strings.EqualFold(BindPasswordField, f):
 		case strings.EqualFold(UrlsField, f):
 		case strings.EqualFold(AccountAttributeMapsField, f):
+		case strings.EqualFold(DerefAliasesField, f):
+		case strings.EqualFold(MaximumPageSizeField, f):
 		default:
 			return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("invalid field mask: %q", f))
 		}

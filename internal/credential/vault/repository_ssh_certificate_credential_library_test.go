@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package vault
 
@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/globals"
-	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/credential/vault/store"
 	"github.com/hashicorp/boundary/internal/db"
 	dbassert "github.com/hashicorp/boundary/internal/db/assert"
@@ -609,7 +608,7 @@ func TestRepository_CreateSSHCertificateCredentialLibrary(t *testing.T) {
 			assert.Equal(tt.want.Ttl, got.Ttl)
 			assert.Equal(tt.want.CriticalOptions, got.CriticalOptions)
 			assert.Equal(tt.want.Extensions, got.Extensions)
-			assert.Equal(got.CredentialType(), credential.SshCertificateType)
+			assert.Equal(got.CredentialType(), globals.SshCertificateCredentialType)
 			assert.Equal(got.CreateTime, got.UpdateTime)
 
 			assert.NoError(db.TestVerifyOplog(t, rw, got.GetPublicId(), db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second)))
@@ -746,7 +745,7 @@ func TestRepository_LookupSSHCertificateCredentialLibrary(t *testing.T) {
 						StoreId:        cs.GetPublicId(),
 						VaultPath:      "/ssh/sign/foo",
 						Username:       "name",
-						CredentialType: string(credential.SshCertificateType),
+						CredentialType: string(globals.SshCertificateCredentialType),
 					},
 				},
 			},
@@ -810,78 +809,6 @@ func TestRepository_LookupSSHCertificateCredentialLibrary(t *testing.T) {
 		assert.NoError(err)
 		assert.Empty(got)
 	})
-}
-
-func TestRepository_ListSSHCertificateCredentialLibraries_Limits(t *testing.T) {
-	t.Parallel()
-	conn, _ := db.TestSetup(t, "postgres")
-	rw := db.New(conn)
-	wrapper := db.TestWrapper(t)
-	sche := scheduler.TestScheduler(t, conn, wrapper)
-
-	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	cs := TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 1)[0]
-	const count = 10
-	libs := TestSSHCertificateCredentialLibraries(t, conn, wrapper, cs.GetPublicId(), count)
-
-	tests := []struct {
-		name     string
-		repoOpts []Option
-		listOpts []Option
-		wantLen  int
-	}{
-		{
-			name:    "with-no-limits",
-			wantLen: count,
-		},
-		{
-			name:     "with-repo-limit",
-			repoOpts: []Option{WithLimit(3)},
-			wantLen:  3,
-		},
-		{
-			name:     "with-negative-repo-limit",
-			repoOpts: []Option{WithLimit(-1)},
-			wantLen:  count,
-		},
-		{
-			name:     "with-list-limit",
-			listOpts: []Option{WithLimit(3)},
-			wantLen:  3,
-		},
-		{
-			name:     "with-negative-list-limit",
-			listOpts: []Option{WithLimit(-1)},
-			wantLen:  count,
-		},
-		{
-			name:     "with-repo-smaller-than-list-limit",
-			repoOpts: []Option{WithLimit(2)},
-			listOpts: []Option{WithLimit(6)},
-			wantLen:  6,
-		},
-		{
-			name:     "with-repo-larger-than-list-limit",
-			repoOpts: []Option{WithLimit(6)},
-			listOpts: []Option{WithLimit(2)},
-			wantLen:  2,
-		},
-	}
-
-	for _, tt := range tests {
-		tt := tt
-		t.Run(tt.name, func(t *testing.T) {
-			assert, require := assert.New(t), require.New(t)
-			ctx := context.Background()
-			kms := kms.TestKms(t, conn, wrapper)
-			repo, err := NewRepository(ctx, rw, rw, kms, sche, tt.repoOpts...)
-			assert.NoError(err)
-			require.NotNil(repo)
-			got, err := repo.ListSSHCertificateCredentialLibraries(ctx, libs[0].StoreId, tt.listOpts...)
-			require.NoError(err)
-			assert.Len(got, tt.wantLen)
-		})
-	}
 }
 
 func TestRepository_UpdateSSHCertificateCredentialLibrary(t *testing.T) {

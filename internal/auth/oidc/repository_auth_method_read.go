@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package oidc
 
@@ -167,6 +167,9 @@ func (r *Repository) getAuthMethods(ctx context.Context, authMethodId string, sc
 		if agg.AccountClaimMaps != "" {
 			am.AccountClaimMaps = strings.Split(agg.AccountClaimMaps, aggregateDelimiter)
 		}
+		if agg.Prompts != "" {
+			am.Prompts = strings.Split(agg.Prompts, aggregateDelimiter)
+		}
 		authMethods = append(authMethods, &am)
 	}
 	return authMethods, nil
@@ -198,6 +201,7 @@ type authMethodAgg struct {
 	Certs                             string
 	ClaimsScopes                      string
 	AccountClaimMaps                  string
+	Prompts                           string
 }
 
 // TableName returns the table name for gorm

@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package session
 
@@ -10,6 +10,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
+	"github.com/hashicorp/boundary/internal/pagination"
 	"github.com/hashicorp/boundary/internal/perms"
 )
 
@@ -40,6 +41,7 @@ type options struct {
 	withPermissions              *perms.UserPermissions
 	withIgnoreDecryptionFailures bool
 	withRandomReader             io.Reader
+	withStartPageAfterItem       pagination.Item
 }
 
 func getDefaultOptions() options {
@@ -147,5 +149,13 @@ func WithIgnoreDecryptionFailures(ignoreFailures bool) Option {
 func WithRandomReader(rand io.Reader) Option {
 	return func(o *options) {
 		o.withRandomReader = rand
+	}
+}
+
+// WithStartPageAfterItem is used to paginate over the results.
+// The next page will start after the provided item.
+func WithStartPageAfterItem(item pagination.Item) Option {
+	return func(o *options) {
+		o.withStartPageAfterItem = item
 	}
 }

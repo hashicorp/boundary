@@ -1,12 +1,29 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package ssh
 
 import (
+	"context"
+	"time"
+
 	"github.com/hashicorp/boundary/internal/bsr"
 	"golang.org/x/crypto/ssh"
 )
+
+func init() {
+	if err := bsr.RegisterSummaryAllocFunc(Protocol, bsr.ChannelContainer, allocChannelSummary); err != nil {
+		panic(err)
+	}
+
+	if err := bsr.RegisterSummaryAllocFunc(Protocol, bsr.SessionContainer, bsr.AllocSessionSummary); err != nil {
+		panic(err)
+	}
+
+	if err := bsr.RegisterSummaryAllocFunc(Protocol, bsr.ConnectionContainer, bsr.AllocConnectionSummary); err != nil {
+		panic(err)
+	}
+}
 
 // SessionProgram identifies the program running on this channel
 // as outlined in https://www.rfc-editor.org/rfc/rfc4254.html#section-6.5 :
@@ -85,10 +102,49 @@ type OpenChannelError ssh.OpenChannelError
 //
 // OpenFailure will be nil if the Channel was successfully opened.
 type ChannelSummary struct {
-	ChannelSummary        *bsr.ChannelSummary
+	ChannelSummary        *bsr.BaseChannelSummary
 	SessionProgram        SessionProgram
 	SubsystemName         string
 	ExecProgram           ExecApplicationProgram
 	FileTransferDirection FileTransferDirection
 	OpenFailure           *OpenChannelError `json:",omitempty"`
+}
+
+// GetId returns the Id of the container.
+func (c *ChannelSummary) GetId() string {
+	return c.ChannelSummary.Id
+}
+
+// GetId returns the Id of the container.
+func (c *ChannelSummary) GetConnectionRecordingId() string {
+	return c.ChannelSummary.ConnectionRecordingId
+}
+
+// GetStartTime returns the start time using a monotonic clock.
+func (c *ChannelSummary) GetStartTime() time.Time {
+	return c.ChannelSummary.StartTime
+}
+
+// GetEndTime returns the end time using a monotonic clock.
+func (c *ChannelSummary) GetEndTime() time.Time {
+	return c.ChannelSummary.EndTime
+}
+
+// GetBytesUp returns upload bytes.
+func (c *ChannelSummary) GetBytesUp() uint64 {
+	return c.ChannelSummary.BytesUp
+}
+
+// GetBytesDown returns download bytes.
+func (c *ChannelSummary) GetBytesDown() uint64 {
+	return c.ChannelSummary.BytesDown
+}
+
+// GetChannelType the type of summary channel.
+func (c *ChannelSummary) GetChannelType() string {
+	return c.ChannelSummary.ChannelType
+}
+
+func allocChannelSummary(_ context.Context) bsr.Summary {
+	return &ChannelSummary{}
 }

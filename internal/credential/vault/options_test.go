@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package vault
 
@@ -7,7 +7,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/hashicorp/boundary/internal/credential"
+	"github.com/hashicorp/boundary/globals"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -95,9 +95,9 @@ func Test_GetOpts(t *testing.T) {
 		assert.Equal(t, opts, testOpts)
 	})
 	t.Run("WithCredentialType", func(t *testing.T) {
-		opts := getOpts(WithCredentialType(credential.UsernamePasswordType))
+		opts := getOpts(WithCredentialType(globals.UsernamePasswordCredentialType))
 		testOpts := getDefaultOptions()
-		testOpts.withCredentialType = credential.UsernamePasswordType
+		testOpts.withCredentialType = globals.UsernamePasswordCredentialType
 		assert.Equal(t, opts, testOpts)
 	})
 	t.Run("WithOverrideUsernameAttribute", func(t *testing.T) {

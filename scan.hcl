@@ -1,9 +1,9 @@
 # Copyright (c) HashiCorp, Inc.
-# SPDX-License-Identifier: MPL-2.0
+# SPDX-License-Identifier: BUSL-1.1
 
 repository {
   go_modules = true
-  # osv = true
+  osv = true
   secrets {
     all = true
   } 
@@ -14,12 +14,11 @@ repository {
   
   plugin "semgrep" {
     use_git_ignore = true
-    exclude = ["testing", "website"]
-    config = ["p/r2c-security-audit"]
-    exclude_rule = ["generic.html-templates.security.unquoted-attribute-var.unquoted-attribute-var"]
+    exclude = ["*_test.go", "website/*", "testing/*"]
+    config = ["p/gosec"]
   }
   
-  # plugin "codeql" {
-  #  languages = ["go"]
-  # }
+  plugin "codeql" {
+    languages = ["go"]
+   }
 }

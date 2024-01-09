@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package checksum_test
 
@@ -13,7 +13,6 @@ import (
 
 	"github.com/hashicorp/boundary/internal/bsr/internal/checksum"
 	"github.com/hashicorp/boundary/internal/bsr/internal/fstest"
-	"github.com/hashicorp/go-multierror"
 	"github.com/stretchr/testify/require"
 )
 
@@ -88,11 +87,7 @@ func TestFile(t *testing.T) {
 			testString,
 			testSum + "  test\n",
 			nil,
-			func() error {
-				var wantErrors *multierror.Error
-				wantErrors = multierror.Append(wantErrors, errors.New("checksum.(File).Close: crypto.(Sha256SumWriter).Close: close error"))
-				return wantErrors.ErrorOrNil()
-			}(),
+			errors.New("checksum.(File).Close: crypto.(Sha256SumWriter).Close: close error"),
 			true,
 		},
 		{
@@ -102,11 +97,7 @@ func TestFile(t *testing.T) {
 			testString,
 			testSum + "  test\n",
 			nil,
-			func() error {
-				var wantErrors *multierror.Error
-				wantErrors = multierror.Append(wantErrors, errors.New("checksum.(File).Close: stat error"))
-				return wantErrors.ErrorOrNil()
-			}(),
+			errors.New("checksum.(File).Close: stat error"),
 			false,
 		},
 		{
@@ -116,11 +107,7 @@ func TestFile(t *testing.T) {
 			testString,
 			testSum + "  test\n",
 			nil,
-			func() error {
-				var wantErrors *multierror.Error
-				wantErrors = multierror.Append(wantErrors, errors.New("checksum.(File).Close: write failed"))
-				return wantErrors.ErrorOrNil()
-			}(),
+			errors.New("checksum.(File).Close: write failed"),
 			false,
 		},
 	}

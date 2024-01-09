@@ -14,13 +14,13 @@ option go_package = "github.com/hashicorp/boundary/sdk/pbs/controller/api/resour
 
 message Principal {
   // Output only. The ID of the principal.
-  string id = 1; // @gotags: `class:"public"`
+  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. The type of the principal.
-  string type = 2; // @gotags: `class:"public"`
+  string type = 2; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. The Scope of the principal.
-  string scope_id = 3 [json_name = "scope_id"]; // @gotags: `class:"public"`
+  string scope_id = 3 [json_name = "scope_id"]; // @gotags: `class:"public" eventstream:"observation"`
 }
 
 message GrantJson {
@@ -52,10 +52,10 @@ message Grant {
 // Role contains all fields related to a Role resource
 message Role {
   // Output only. The ID of the Role.
-  string id = 10; // @gotags: `class:"public"`
+  string id = 10; // @gotags: `class:"public" eventstream:"observation"`
 
   // The ID of the Scope containing this Role.
-  string scope_id = 20 [json_name = "scope_id"]; // @gotags: `class:"public"`
+  string scope_id = 20 [json_name = "scope_id"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. Scope information for this resource.
   resources.scopes.v1.ScopeInfo scope = 30;
@@ -79,10 +79,10 @@ message Role {
   ]; // @gotags: `class:"public"`
 
   // Output only. The time this resource was created.
-  google.protobuf.Timestamp created_time = 60 [json_name = "created_time"]; // @gotags: `class:"public"`
+  google.protobuf.Timestamp created_time = 60 [json_name = "created_time"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. The time this resource was last updated.
-  google.protobuf.Timestamp updated_time = 70 [json_name = "updated_time"]; // @gotags: `class:"public"`
+  google.protobuf.Timestamp updated_time = 70 [json_name = "updated_time"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
@@ -97,7 +97,7 @@ message Role {
       this: "grant_scope_id"
       that: "GrantScopeId"
     }
-  ]; // @gotags: `class:"public"`
+  ]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. The IDs of Scopes the grants will apply to. This can include
   // the role's own scope ID, or "this" for the same behavior; specific IDs of
@@ -107,7 +107,7 @@ message Role {
   repeated string grant_scope_ids = 91 [json_name = "grant_scope_ids"]; // @gotags: `class:"public"`
 
   // Output only. The IDs (only) of principals that are assigned to this role.
-  repeated string principal_ids = 100 [json_name = "principal_ids"]; // @gotags: `class:"public"`
+  repeated string principal_ids = 100 [json_name = "principal_ids"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. The principals that are assigned to this role.
   repeated Principal principals = 110;

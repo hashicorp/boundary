@@ -1,11 +1,12 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package base
 
 import (
 	"bytes"
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -27,7 +28,6 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-secure-stdlib/pluginutil/v2"
 	"github.com/mitchellh/cli"
-	"github.com/pkg/errors"
 	"github.com/posener/complete"
 )
 
@@ -64,10 +64,11 @@ const (
 	// maxLineLength is the maximum width of any line.
 	maxLineLength int = 78
 
-	envToken          = "BOUNDARY_TOKEN"
-	EnvTokenName      = "BOUNDARY_TOKEN_NAME"
-	EnvKeyringType    = "BOUNDARY_KEYRING_TYPE"
-	envRecoveryConfig = "BOUNDARY_RECOVERY_CONFIG"
+	envToken           = "BOUNDARY_TOKEN"
+	EnvTokenName       = "BOUNDARY_TOKEN_NAME"
+	EnvKeyringType     = "BOUNDARY_KEYRING_TYPE"
+	envRecoveryConfig  = "BOUNDARY_RECOVERY_CONFIG"
+	envSkipCacheDaemon = "BOUNDARY_SKIP_CACHE_DAEMON"
 
 	StoredTokenName = "HashiCorp Boundary Auth Token"
 )
@@ -83,6 +84,8 @@ type Command struct {
 	ContextCancel context.CancelFunc
 	UI            cli.Ui
 	ShutdownCh    chan struct{}
+
+	Opts []Option
 
 	flags     *FlagSets
 	flagsOnce sync.Once
@@ -102,7 +105,8 @@ type Command struct {
 	FlagTokenName        string
 	FlagKeyringType      string
 	FlagRecoveryConfig   string
-	flagOutputCurlString bool
+	FlagOutputCurlString bool
+	FlagSkipCacheDaemon  bool
 
 	FlagScopeId           string
 	FlagScopeName         string
@@ -142,12 +146,14 @@ type Command struct {
 }
 
 // New returns a new instance of a base.Command type
-func NewCommand(ui cli.Ui) *Command {
+func NewCommand(ui cli.Ui, opt ...Option) *Command {
+	opts := GetOpts(opt...)
 	ctx, cancel := context.WithCancel(context.Background())
 	ret := &Command{
 		UI:         ui,
 		ShutdownCh: MakeShutdownCh(),
 		Context:    ctx,
+		FlagId:     opts.withImplicitId,
 	}
 	go func() {
 		<-ret.ShutdownCh
@@ -187,6 +193,10 @@ func MakeShutdownCh() chan struct{} {
 	return resultCh
 }
 
+func (c *Command) BaseCommand() *Command {
+	return c
+}
+
 // Client returns the HTTP API client. The client is cached on the command to
 // save performance on future calls.
 func (c *Command) Client(opt ...Option) (*api.Client, error) {
@@ -195,15 +205,15 @@ func (c *Command) Client(opt ...Option) (*api.Client, error) {
 		return c.client, nil
 	}
 
-	opts := getOpts(opt...)
+	opts := GetOpts(opt...)
 
 	config, err := api.DefaultConfig()
 	if err != nil {
 		return nil, err
 	}
 
-	if c.flagOutputCurlString {
-		config.OutputCurlString = c.flagOutputCurlString
+	if c.FlagOutputCurlString {
+		config.OutputCurlString = c.FlagOutputCurlString
 	}
 
 	c.client, err = api.NewClient(config)
@@ -246,7 +256,7 @@ func (c *Command) Client(opt ...Option) (*api.Client, error) {
 	if modifiedTLS {
 		// Setup TLS config
 		if err := c.client.SetTLSConfig(tlsConfig); err != nil {
-			return nil, errors.Wrap(err, "failed to setup TLS config")
+			return nil, fmt.Errorf("failed to setup TLS config: %w", err)
 		}
 	}
 
@@ -450,8 +460,16 @@ func (c *Command) FlagSet(bit FlagSetBit) *FlagSets {
 
 			f.BoolVar(&BoolVar{
 				Name:   "output-curl-string",
-				Target: &c.flagOutputCurlString,
+				Target: &c.FlagOutputCurlString,
 				Usage:  "Instead of executing the request, print an equivalent cURL command string and exit.",
+			})
+
+			f.BoolVar(&BoolVar{
+				Name:    "skip-cache-daemon",
+				Target:  &c.FlagSkipCacheDaemon,
+				Default: false,
+				EnvVar:  envSkipCacheDaemon,
+				Usage:   "Skips starting the caching daemon or sending the current used/retrieved token to the caching daemon.",
 			})
 		}
 

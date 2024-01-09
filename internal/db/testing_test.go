@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package db
 
@@ -28,7 +28,7 @@ func TestVerifyOplogEntry(t *testing.T) {
 	d, _ := TestSetup(t, "postgres")
 	assert := assert.New(t)
 	TestCreateTables(t, d)
-	wrapper := TestDBWrapper(t, d, "oplog")
+	oplogWrapper := TestOplogWrapper(t, d)
 
 	t.Run("valid", func(t *testing.T) {
 		rw := New(d)
@@ -41,7 +41,7 @@ func TestVerifyOplogEntry(t *testing.T) {
 			context.Background(),
 			user,
 			WithOplog(
-				wrapper,
+				oplogWrapper,
 				oplog.Metadata{
 					"op-type":            []string{oplog.OpType_OP_TYPE_CREATE.String()},
 					"resource-public-id": []string{user.GetPublicId()},

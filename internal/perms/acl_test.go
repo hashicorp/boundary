@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package perms
 
@@ -440,7 +440,7 @@ func TestACL_ListPermissions(t *testing.T) {
 				"o_this_one_too":       nil,
 			},
 			resourceType:   resource.Session,
-			actionSet:      action.ActionSet{action.Read},
+			actionSet:      action.NewActionSet(action.Read),
 			expPermissions: []Permission{},
 		},
 		{
@@ -453,7 +453,7 @@ func TestACL_ListPermissions(t *testing.T) {
 			},
 			scopes:         map[string]*scopes.ScopeInfo{"o_1": nil},
 			resourceType:   resource.Session, // We're requesting sessions.
-			actionSet:      action.ActionSet{action.Read},
+			actionSet:      action.NewActionSet(action.Read),
 			expPermissions: []Permission{},
 		},
 		{
@@ -466,7 +466,7 @@ func TestACL_ListPermissions(t *testing.T) {
 			},
 			scopes:         map[string]*scopes.ScopeInfo{"o_1": nil},
 			resourceType:   resource.Session,
-			actionSet:      action.ActionSet{action.Read},
+			actionSet:      action.NewActionSet(action.Read),
 			expPermissions: []Permission{},
 		},
 		{
@@ -479,7 +479,7 @@ func TestACL_ListPermissions(t *testing.T) {
 			},
 			scopes:                      map[string]*scopes.ScopeInfo{"o_1": nil},
 			resourceType:                resource.Session,
-			actionSet:                   action.ActionSet{action.Read},
+			actionSet:                   action.NewActionSet(action.Read),
 			expPermissions:              []Permission{},
 			skipGrantValidationChecking: true,
 		},
@@ -493,7 +493,7 @@ func TestACL_ListPermissions(t *testing.T) {
 			},
 			scopes:       map[string]*scopes.ScopeInfo{"o_1": nil},
 			resourceType: resource.Session,
-			actionSet:    action.ActionSet{action.Read},
+			actionSet:    action.NewActionSet(action.Read),
 			expPermissions: []Permission{
 				{
 					ScopeId:     "o_1",
@@ -515,7 +515,7 @@ func TestACL_ListPermissions(t *testing.T) {
 			},
 			scopes:       map[string]*scopes.ScopeInfo{"o_1": nil},
 			resourceType: resource.Session,
-			actionSet:    action.ActionSet{action.ReadSelf},
+			actionSet:    action.NewActionSet(action.ReadSelf),
 			expPermissions: []Permission{
 				{
 					ScopeId:     "o_1",
@@ -540,7 +540,7 @@ func TestACL_ListPermissions(t *testing.T) {
 			},
 			scopes:       map[string]*scopes.ScopeInfo{"o_1": nil},
 			resourceType: resource.Session,
-			actionSet:    action.ActionSet{action.Read},
+			actionSet:    action.NewActionSet(action.Read),
 			expPermissions: []Permission{
 				{
 					ScopeId:     "o_1",
@@ -562,7 +562,7 @@ func TestACL_ListPermissions(t *testing.T) {
 			},
 			scopes:       map[string]*scopes.ScopeInfo{"o_1": nil},
 			resourceType: resource.Session,
-			actionSet:    action.ActionSet{action.ReadSelf},
+			actionSet:    action.NewActionSet(action.ReadSelf),
 			expPermissions: []Permission{
 				{
 					ScopeId:     "o_1",
@@ -584,7 +584,7 @@ func TestACL_ListPermissions(t *testing.T) {
 			},
 			scopes:       map[string]*scopes.ScopeInfo{"o_1": nil},
 			resourceType: resource.Session,
-			actionSet:    action.ActionSet{action.NoOp},
+			actionSet:    action.NewActionSet(action.NoOp),
 			expPermissions: []Permission{
 				{
 					ScopeId:     "o_1",
@@ -606,7 +606,7 @@ func TestACL_ListPermissions(t *testing.T) {
 			},
 			scopes:         map[string]*scopes.ScopeInfo{"o_1": nil},
 			resourceType:   resource.Session,
-			actionSet:      action.ActionSet{action.Read},
+			actionSet:      action.NewActionSet(action.Read),
 			expPermissions: []Permission{},
 		},
 		{
@@ -622,7 +622,7 @@ func TestACL_ListPermissions(t *testing.T) {
 			},
 			scopes:       map[string]*scopes.ScopeInfo{"o_1": nil},
 			resourceType: resource.Session,
-			actionSet:    action.ActionSet{action.NoOp},
+			actionSet:    action.NewActionSet(action.NoOp),
 			expPermissions: []Permission{
 				{
 					ScopeId:     "o_1",
@@ -644,7 +644,7 @@ func TestACL_ListPermissions(t *testing.T) {
 			},
 			scopes:       map[string]*scopes.ScopeInfo{"o_1": nil},
 			resourceType: resource.Host,
-			actionSet:    action.ActionSet{action.ReadSelf},
+			actionSet:    action.NewActionSet(action.ReadSelf),
 			expPermissions: []Permission{
 				{
 					ScopeId:     "o_1",
@@ -669,7 +669,7 @@ func TestACL_ListPermissions(t *testing.T) {
 			},
 			scopes:       map[string]*scopes.ScopeInfo{"o_1": nil},
 			resourceType: resource.Session,
-			actionSet:    action.ActionSet{action.NoOp, action.Read, action.ReadSelf, action.Cancel, action.CancelSelf},
+			actionSet:    action.NewActionSet(action.NoOp, action.Read, action.ReadSelf, action.Cancel, action.CancelSelf),
 			expPermissions: []Permission{
 				{
 					ScopeId:     "o_1",
@@ -691,7 +691,7 @@ func TestACL_ListPermissions(t *testing.T) {
 			},
 			scopes:       map[string]*scopes.ScopeInfo{"o_1": nil},
 			resourceType: resource.Session,
-			actionSet:    action.ActionSet{action.Read, action.Create, action.Delete},
+			actionSet:    action.NewActionSet(action.Read, action.Create, action.Delete),
 			expPermissions: []Permission{
 				{
 					ScopeId:     "o_1",
@@ -713,7 +713,7 @@ func TestACL_ListPermissions(t *testing.T) {
 			},
 			scopes:       map[string]*scopes.ScopeInfo{"o_1": nil},
 			resourceType: resource.Host,
-			actionSet:    action.ActionSet{action.Read, action.Create, action.Delete},
+			actionSet:    action.NewActionSet(action.Read, action.Create, action.Delete),
 			expPermissions: []Permission{
 				{
 					ScopeId:     "o_1",
@@ -742,7 +742,7 @@ func TestACL_ListPermissions(t *testing.T) {
 			},
 			scopes:       map[string]*scopes.ScopeInfo{"o_1": nil, "o_2": nil},
 			resourceType: resource.Session,
-			actionSet:    action.ActionSet{action.Read, action.ReadSelf},
+			actionSet:    action.NewActionSet(action.Read, action.ReadSelf),
 			expPermissions: []Permission{
 				{
 					ScopeId:     "o_1",
@@ -767,7 +767,7 @@ func TestACL_ListPermissions(t *testing.T) {
 			userId:       globals.RecoveryUserId,
 			scopes:       map[string]*scopes.ScopeInfo{"o_1": nil, "o_2": nil},
 			resourceType: resource.Session,
-			actionSet:    action.ActionSet{action.Read, action.Create, action.Delete},
+			actionSet:    action.NewActionSet(action.Read, action.Create, action.Delete),
 			expPermissions: []Permission{
 				{
 					ScopeId:     "o_1",
@@ -792,7 +792,7 @@ func TestACL_ListPermissions(t *testing.T) {
 			userId:       globals.RecoveryUserId,
 			scopes:       map[string]*scopes.ScopeInfo{"o_1": nil, "o_2": nil},
 			resourceType: resource.Target,
-			actionSet:    action.ActionSet{action.Read, action.Create, action.Delete},
+			actionSet:    action.NewActionSet(action.Read, action.Create, action.Delete),
 			expPermissions: []Permission{
 				{
 					ScopeId:     "o_1",
@@ -816,7 +816,7 @@ func TestACL_ListPermissions(t *testing.T) {
 			name:         "separate_type_id_resource_grants",
 			scopes:       map[string]*scopes.ScopeInfo{"p_1": nil},
 			resourceType: resource.Target,
-			actionSet:    action.ActionSet{action.Read, action.Cancel},
+			actionSet:    action.NewActionSet(action.Read, action.Cancel),
 			aclGrants: []scopeGrant{
 				{
 					scope: "p_1",

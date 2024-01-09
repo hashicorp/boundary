@@ -1,13 +1,17 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package auth
 
 import (
 	"context"
+	"encoding/binary"
 	stderrors "errors"
 	"fmt"
+	"hash"
+	"hash/fnv"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -20,18 +24,17 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller/common"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/event"
 	authpb "github.com/hashicorp/boundary/internal/gen/controller/auth"
 	"github.com/hashicorp/boundary/internal/gen/controller/tokens"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
-	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
-	"github.com/hashicorp/boundary/internal/types/subtypes"
 	"github.com/hashicorp/boundary/internal/util"
 	"github.com/hashicorp/boundary/internal/util/template"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
@@ -97,6 +100,9 @@ type VerifyResults struct {
 
 	// Used for additional verification
 	v *verifier
+
+	// Used to generate a hash of all grants
+	grants []perms.GrantTuple
 }
 
 type verifier struct {
@@ -272,10 +278,9 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 	}
 
 	var authResults perms.ACLResults
-	var grantTuples []perms.GrantTuple
 	var userData template.Data
 	var err error
-	authResults, ret.UserData, ret.Scope, v.acl, grantTuples, err = v.performAuthCheck(ctx)
+	authResults, ret.UserData, ret.Scope, v.acl, ret.grants, err = v.performAuthCheck(ctx)
 	if err != nil {
 		event.WriteError(ctx, op, err, event.WithInfoMsg("error performing authn/authz check"))
 		return
@@ -320,8 +325,8 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 		}
 	}
 
-	grants := make([]event.Grant, 0, len(grantTuples))
-	for _, g := range grantTuples {
+	grants := make([]event.Grant, 0, len(ret.grants))
+	for _, g := range ret.grants {
 		grants = append(grants, event.Grant{
 			Grant:   g.Grant,
 			RoleId:  g.RoleId,
@@ -555,7 +560,7 @@ func (v verifier) performAuthCheck(ctx context.Context) (
 		const domain = "auth"
 		var acct auth.Account
 		var err error
-		switch subtypes.SubtypeFromId(domain, *userData.Account.Id) {
+		switch globals.ResourceInfoFromPrefix(*userData.Account.Id).Subtype {
 		case password.Subtype:
 			repo, repoErr := v.passwordAuthRepoFn()
 			if repoErr != nil {
@@ -723,10 +728,10 @@ func (r *VerifyResults) fetchActions(id string, typ resource.Type, availableActi
 		res.Type = typ
 	}
 
-	ret := make(action.ActionSet, 0, len(availableActions))
-	for _, act := range availableActions {
+	ret := make(action.ActionSet, len(availableActions))
+	for act := range availableActions {
 		if r.v.acl.Allowed(*res, act, *r.UserData.User.Id).Authorized {
-			ret = append(ret, act)
+			ret.Add(act)
 		}
 	}
 	if len(ret) == 0 {
@@ -855,7 +860,7 @@ func (r *VerifyResults) ScopesAuthorizedForList(ctx context.Context, rootScopeId
 		scpId := scp.GetPublicId()
 		aSet := r.FetchActionSetForType(ctx,
 			resource.Unknown, // This is overridden by `WithResource` option.
-			action.ActionSet{action.List},
+			action.NewActionSet(action.List),
 			WithResource(&perms.Resource{Type: resourceType, ScopeId: scpId}),
 		)
 
@@ -868,7 +873,7 @@ func (r *VerifyResults) ScopesAuthorizedForList(ctx context.Context, rootScopeId
 			// lookup might fail.
 			deferredScopes = append(deferredScopes, scp)
 		case len(aSet) == 1 || r.UserId == globals.RecoveryUserId:
-			if aSet[0] != action.List {
+			if !aSet.HasAction(action.List) {
 				return nil, errors.New(ctx, errors.Internal, op, "unexpected action in set")
 			}
 			if scopeResourceMap[scpId] == nil {
@@ -934,4 +939,53 @@ func (r *VerifyResults) ScopesAuthorizedForList(ctx context.Context, rootScopeId
 	}
 
 	return scopeResourceMap, nil
+}
+
+// GrantsHash returns a stable hash of all the grants in the verify results.
+func (r *VerifyResults) GrantsHash(ctx context.Context) ([]byte, error) {
+	const op = "auth.GrantsHash"
+	var values []string
+	for _, grant := range r.grants {
+		values = append(values, grant.Grant, grant.RoleId, grant.ScopeId)
+	}
+	// Sort for deterministic output
+	slices.Sort(values)
+	hashVal, err := hashStrings(values...)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	return binary.LittleEndian.AppendUint64(make([]byte, 0, 4), hashVal), nil
+}
+
+func hashStrings(s ...string) (uint64, error) {
+	hasher := fnv.New64()
+	var h uint64
+	var err error
+	for _, current := range s {
+		hasher.Reset()
+		if _, err = hasher.Write([]byte(current)); err != nil {
+			return 0, err
+		}
+		if h, err = hashUpdateOrdered(hasher, h, hasher.Sum64()); err != nil {
+			return 0, err
+		}
+	}
+	return h, nil
+}
+
+// hashUpdateOrdered is taken directly from
+// https://github.com/mitchellh/hashstructure
+func hashUpdateOrdered(h hash.Hash64, a, b uint64) (uint64, error) {
+	// For ordered updates, use a real hash function
+	h.Reset()
+
+	e1 := binary.Write(h, binary.LittleEndian, a)
+	e2 := binary.Write(h, binary.LittleEndian, b)
+	if e1 != nil {
+		return 0, e1
+	}
+	if e2 != nil {
+		return 0, e2
+	}
+	return h.Sum64(), nil
 }

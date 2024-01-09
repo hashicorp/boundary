@@ -1,0 +1,122 @@
+---
+layout: docs
+page_title: targets create - Command
+description: |-
+  The "targets create" command lets you create a new target.
+---
+
+# targets create
+
+Command: `targets create`
+
+The `targets create` command lets you create a new target.
+
+## Example
+
+This example creates a TCP target with the name `prodops` and the description `For ProdOps usage`:
+
+```shell-session
+$ boundary targets create tcp -name prodops -description "For ProdOps usage"
+```
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary targets create [type] [sub command] [options] [args]
+
+Please see the typed subcommand help for detailed usage information.
+
+Subcommands:
+    ssh    Create a ssh-type target (HCP only)
+    tcp    Create a tcp-type target
+```
+
+</CodeBlockConfig>
+
+### Usages by type
+
+You can create SSH or TCP targets.
+
+<Tabs>
+<Tab heading="SSH">
+
+The `targets create ssh` command lets you create SSH targets.
+
+#### Example
+
+This example creates an SSH target with the name `prodops` and the description `SSH target for ProdOps`:
+
+```shell-session
+$ boundary targets create ssh -name prodops -description "SSH target for ProdOps"
+```
+
+#### Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary targets create ssh [options] [args]
+```
+
+</CodeBlockConfig>
+
+#### SSH target options
+
+- `-address=<string>` - An optional valid network address for the target to connect to.
+You cannot use an address alongside host sources.
+- `-default-client-port=<string>` - The default client port on the target.
+- `-default-port=<string>` - The default port on the target.
+If you do not specify a default port, Boundary uses port 22.
+- `-egress-worker-filter=<string>` - A Boolean expression that filters which egress workers can process sessions for the target.
+- `-enable-session-recording=<string>` - A Boolean expression you can use to enable session recording for the target.
+- `-ingress-worker-filter=<string>` - A Boolean expression that filters which ingress workers can process sessions for the target.
+- `-session-connection-limit=<string>` - The maximum number of connections allowed for a session.
+A value of `-1` means the connections are unlimited.
+- `-session-max-seconds=<string>` - The maximum lifetime of the session, including all connections.
+You can specify an integer number of seconds or a duration string.
+- `-storage-bucket-id=<string>` - The public ID of the storage bucket to associate with the target.
+
+
+</Tab>
+<Tab heading="TCP">
+
+The `targets create tcp` command lets you create TCP targets.
+
+#### Example
+
+This example creates a TCP target with the name `prodops` and the description `TCP target for ProdOps`:
+
+```shell-session
+$ boundary targets create tcp -name prodops -description "TCP target for ProdOps"
+```
+
+#### Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary targets create tcp [options] [args]
+```
+
+</CodeBlockConfig>
+
+#### TCP target options
+
+- `-address=<string>` - An optional valid network address for the target to connect to.
+You cannot use an address alongside host sources.
+- `-default-client-port=<string>` - The default client port on the target.
+- `-default-port=<string>` - The default port on the target.
+If you do not specify a default port, Boundary uses port 22.
+- `-egress-worker-filter=<string>` - A Boolean expression that filters which egress workers can process sessions for the target.
+- `-ingress-worker-filter=<string>` - A Boolean expression that filters which ingress workers can process sessions for the target.
+- `-session-connection-limit=<string>` - The maximum number of connections allowed for a session.
+A value of `-1` means the connections are unlimited.
+- `-session-max-seconds=<string>` - The maximum lifetime of the session, including all connections.
+You can specify an integer number of seconds or a duration string.
+
+</Tab>
+</Tabs>
+
+@include 'cmd-option-note.mdx'

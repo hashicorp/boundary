@@ -1,9 +1,10 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package subtypes
 
 import (
+	"context"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -99,7 +100,7 @@ func TestFilterable(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := Filterable(tc.item)
+			got, err := Filterable(context.Background(), tc.item)
 			require.NoError(t, err)
 			require.Empty(t, cmp.Diff(got, tc.want, protocmp.Transform()))
 		})

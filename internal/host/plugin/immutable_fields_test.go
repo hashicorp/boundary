@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package plugin
 
@@ -166,8 +166,8 @@ func TestPluginSet_ImmutableFields(t *testing.T) {
 	}
 }
 
-func (c *HostSet) testCloneHostSet() *HostSet {
-	cp := proto.Clone(c.HostSet)
+func (s *HostSet) testCloneHostSet() *HostSet {
+	cp := proto.Clone(s.HostSet)
 	return &HostSet{
 		HostSet: cp.(*store.HostSet),
 	}

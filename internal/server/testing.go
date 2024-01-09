@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package server
 
@@ -64,6 +64,7 @@ func TestRootCertificate(ctx context.Context, t *testing.T, conn *db.DB, kmsKey 
 
 	cert, err := newRootCertificate(ctx, mathRand.Uint64(), populateBytes(defaultLength), beforeTimestamp, afterTimestamp,
 		rootCertKeys, kmsKey, CurrentState)
+	require.NoError(t, err)
 	err = rw.Create(ctx, cert)
 	require.NoError(t, err)
 	return cert
@@ -114,10 +115,12 @@ func TestKmsWorker(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, opt ...O
 		address := "127.0.0.1"
 		opt = append(opt, WithAddress(address))
 	}
-	versionInfo := version.Get()
-	relVer := versionInfo.FullVersionNumber(false)
-
-	opt = append(opt, WithReleaseVersion(relVer))
+	if opts.withReleaseVersion == "" {
+		// Only set the release version if it isn't already set
+		versionInfo := version.Get()
+		relVer := versionInfo.FullVersionNumber(false)
+		opt = append(opt, WithReleaseVersion(relVer))
+	}
 
 	wrk := NewWorker(scope.Global.String(), opt...)
 	wrk, err = serversRepo.UpsertWorkerStatus(ctx, wrk)

@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 syntax = "proto3";
 
@@ -13,4 +13,5 @@ message HealthInfo {
   string state = 1;
   google.protobuf.UInt32Value active_session_count = 2 [json_name = "active_connection_count"];
   map<string, uint32> session_connections = 3 [json_name = "session_connections"];
+  string upstream_connection_state = 4 [json_name = "upstream_connection_state"];
 }

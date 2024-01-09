@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package controller
 
@@ -11,6 +11,7 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/ldap"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
@@ -18,6 +19,7 @@ import (
 	"github.com/hashicorp/boundary/internal/census"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
+	"github.com/hashicorp/boundary/internal/credential"
 	credstatic "github.com/hashicorp/boundary/internal/credential/static"
 	"github.com/hashicorp/boundary/internal/credential/vault"
 	"github.com/hashicorp/boundary/internal/daemon/cluster"
@@ -26,15 +28,18 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller/internal/metric"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/event"
 	intglobals "github.com/hashicorp/boundary/internal/globals"
+	"github.com/hashicorp/boundary/internal/host"
 	pluginhost "github.com/hashicorp/boundary/internal/host/plugin"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	kmsjob "github.com/hashicorp/boundary/internal/kms/job"
-	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/pagination/purge"
 	"github.com/hashicorp/boundary/internal/plugin"
 	"github.com/hashicorp/boundary/internal/plugin/loopback"
+	"github.com/hashicorp/boundary/internal/ratelimit"
 	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/hashicorp/boundary/internal/scheduler/cleaner"
 	"github.com/hashicorp/boundary/internal/scheduler/job"
@@ -119,14 +124,20 @@ type Controller struct {
 	apiGrpcServerListener grpcServerListener
 	apiGrpcGatewayTicket  string
 
+	rateLimiter   ratelimit.Limiter
+	rateLimiterMu sync.RWMutex
+
 	// Repo factory methods
 	AuthTokenRepoFn           common.AuthTokenRepoFactory
 	VaultCredentialRepoFn     common.VaultCredentialRepoFactory
 	StaticCredentialRepoFn    common.StaticCredentialRepoFactory
+	CredentialStoreRepoFn     common.CredentialStoreRepoFactory
+	HostCatalogRepoFn         common.HostCatalogRepoFactory
 	IamRepoFn                 common.IamRepoFactory
 	OidcRepoFn                common.OidcAuthRepoFactory
 	LdapRepoFn                common.LdapAuthRepoFactory
 	PasswordAuthRepoFn        common.PasswordAuthRepoFactory
+	AuthMethodRepoFn          common.AuthMethodRepoFactory
 	ServersRepoFn             common.ServersRepoFactory
 	SessionRepoFn             session.RepositoryFactory
 	ConnectionRepoFn          common.ConnectionRepoFactory
@@ -156,6 +167,7 @@ type Controller struct {
 func New(ctx context.Context, conf *Config) (*Controller, error) {
 	const op = "controller.New"
 	metric.InitializeApiCollectors(conf.PrometheusRegisterer)
+	ratelimit.InitializeMetrics(conf.PrometheusRegisterer)
 	c := &Controller{
 		conf:                    conf,
 		logger:                  conf.Logger.Named("controller"),
@@ -245,6 +257,10 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	}
 	c.clusterListener = clusterListeners[0]
 
+	if err := c.initializeRateLimiter(conf.RawConfig); err != nil {
+		return nil, fmt.Errorf("error initializing rate limiter: %w", err)
+	}
+
 	var pluginLogger hclog.Logger
 	for _, enabledPlugin := range c.enabledPlugins {
 		if pluginLogger == nil {
@@ -253,8 +269,8 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 				return nil, fmt.Errorf("error creating host catalog plugin logger: %w", err)
 			}
 		}
-		switch enabledPlugin {
-		case base.EnabledPluginLoopback:
+		switch {
+		case enabledPlugin == base.EnabledPluginLoopback:
 			lp, err := loopback.NewLoopbackPlugin()
 			if err != nil {
 				return nil, fmt.Errorf("error creating loopback plugin: %w", err)
@@ -267,7 +283,7 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 			if _, err = conf.RegisterPlugin(ctx, "loopback", plg, []plugin.PluginType{plugin.PluginTypeHost, plugin.PluginTypeStorage}, opts...); err != nil {
 				return nil, err
 			}
-		case base.EnabledPluginHostAzure:
+		case enabledPlugin == base.EnabledPluginHostAzure && !c.conf.SkipPlugins:
 			pluginType := strings.ToLower(enabledPlugin.String())
 			client, cleanup, err := external_plugins.CreateHostPlugin(
 				ctx,
@@ -285,7 +301,7 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 			if _, err := conf.RegisterPlugin(ctx, pluginType, client, []plugin.PluginType{plugin.PluginTypeHost}, plugin.WithDescription(fmt.Sprintf("Built-in %s host plugin", enabledPlugin.String()))); err != nil {
 				return nil, fmt.Errorf("error registering %s host plugin: %w", pluginType, err)
 			}
-		case base.EnabledPluginAws:
+		case enabledPlugin == base.EnabledPluginAws && !c.conf.SkipPlugins:
 			pluginType := strings.ToLower(enabledPlugin.String())
 			client, cleanup, err := external_plugins.CreateHostPlugin(
 				ctx,
@@ -395,6 +411,12 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	c.StaticCredentialRepoFn = func() (*credstatic.Repository, error) {
 		return credstatic.NewRepository(ctx, dbase, dbase, c.kms)
 	}
+	c.CredentialStoreRepoFn = func() (*credential.StoreRepository, error) {
+		return credential.NewStoreRepository(ctx, dbase, dbase)
+	}
+	c.HostCatalogRepoFn = func() (*host.CatalogRepository, error) {
+		return host.NewCatalogRepository(ctx, dbase, dbase)
+	}
 	c.ServersRepoFn = func() (*server.Repository, error) {
 		return server.NewRepository(ctx, dbase, dbase, c.kms)
 	}
@@ -406,6 +428,9 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	}
 	c.PasswordAuthRepoFn = func() (*password.Repository, error) {
 		return password.NewRepository(ctx, dbase, dbase, c.kms)
+	}
+	c.AuthMethodRepoFn = func() (*auth.AuthMethodRepository, error) {
+		return auth.NewAuthMethodRepository(ctx, dbase, dbase, c.kms)
 	}
 	c.TargetRepoFn = func(o ...target.Option) (*target.Repository, error) {
 		return target.NewRepository(ctx, dbase, dbase, c.kms, o...)
@@ -585,6 +610,9 @@ func (c *Controller) registerJobs() error {
 		return err
 	}
 	if err := census.RegisterJob(c.baseContext, c.scheduler, c.conf.RawConfig.Reporting.License.Enabled, rw, rw); err != nil {
+		return err
+	}
+	if err := purge.RegisterJobs(c.baseContext, c.scheduler, rw, rw); err != nil {
 		return err
 	}
 

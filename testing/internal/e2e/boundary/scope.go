@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package boundary
 
@@ -46,6 +46,7 @@ func CreateNewOrgCli(t testing.TB, ctx context.Context) string {
 		e2e.WithArgs(
 			"scopes", "create",
 			"-name", "e2e Org",
+			"-description", "e2e",
 			"-scope-id", "global",
 			"-format", "json",
 		),
@@ -71,6 +72,7 @@ func CreateNewProjectCli(t testing.TB, ctx context.Context, orgId string, opt ..
 	args = append(args,
 		"scopes", "create",
 		"-scope-id", orgId,
+		"-description", "e2e",
 		"-format", "json",
 	)
 
