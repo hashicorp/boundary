@@ -19,10 +19,10 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
-var testDBPort = "5432"
-
-// StartUsingTemplate creates a new test database from a postgres template database.
-var StartUsingTemplate func(dialect string, opt ...Option) (func() error, string, string, error) = startUsingTemplate
+var (
+	testDBPort = "5432"
+	testDBHost = "127.0.0.1"
+)
 
 func init() {
 	rand.Seed(time.Now().UnixNano())
@@ -30,6 +30,10 @@ func init() {
 	p := os.Getenv("TEST_DB_PORT")
 	if p != "" {
 		testDBPort = p
+	}
+	h := os.Getenv("TEST_DB_HOST")
+	if h != "" {
+		testDBHost = h
 	}
 }
 
@@ -110,7 +114,8 @@ func randStr(n int) string {
 	return string(b)
 }
 
-func startUsingTemplate(dialect string, opt ...Option) (cleanup func() error, retURL, dbname string, err error) {
+// StartUsingTemplate creates a new test database from a postgres template database.
+func StartUsingTemplate(dialect string, opt ...Option) (cleanup func() error, retURL, dbname string, err error) {
 	if _, ok := supportedDialects[dialect]; !ok {
 		return func() error { return nil }, "", "", fmt.Errorf("unsupported dialect: %s", dialect)
 	}
@@ -118,7 +123,7 @@ func startUsingTemplate(dialect string, opt ...Option) (cleanup func() error, re
 	if dialect == "postgres" {
 		dialect = "pgx"
 	}
-	db, err := common.SqlOpen(dialect, fmt.Sprintf("postgres://boundary:boundary@127.0.0.1:%s/boundary?sslmode=disable", testDBPort))
+	db, err := common.SqlOpen(dialect, fmt.Sprintf("postgres://boundary:boundary@%s:%s/boundary?sslmode=disable", testDBHost, testDBPort))
 	if err != nil {
 		return func() error { return nil }, "", "", fmt.Errorf("could not connect to source database: %w", err)
 	}
