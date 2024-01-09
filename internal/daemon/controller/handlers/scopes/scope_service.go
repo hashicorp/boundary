@@ -58,6 +58,8 @@ var (
 		action.Read,
 		action.Update,
 		action.Delete,
+		action.AttachStoragePolicy,
+		action.DetachStoragePolicy,
 	)
 
 	// CollectionActions contains the set of actions that can be performed on

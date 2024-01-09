@@ -46,7 +46,7 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-var testAuthorizedActions = []string{"no-op", "read", "update", "delete"}
+var testAuthorizedActions = []string{"no-op", "read", "update", "delete", "attach-storage-policy", "detach-storage-policy"}
 
 func createDefaultScopesRepoAndKms(t *testing.T) (*iam.Scope, *iam.Scope, func() (*iam.Repository, error), *kms.Kms) {
 	t.Helper()
