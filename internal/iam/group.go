@@ -78,7 +78,7 @@ func (g *Group) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, 
 	return nil
 }
 
-func (u *Group) validScopeTypes() []scope.Type {
+func (g *Group) validScopeTypes() []scope.Type {
 	return []scope.Type{scope.Global, scope.Org, scope.Project}
 }
 
