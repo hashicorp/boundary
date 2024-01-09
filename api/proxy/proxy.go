@@ -142,7 +142,7 @@ func New(ctx context.Context, authzToken string, opt ...Option) (*ClientProxy, e
 
 	transport := cleanhttp.DefaultTransport()
 	transport.DisableKeepAlives = false
-	// This isn't/shouldn't used anyways really because the connection is
+	// This isn't/shouldn't be used anyways really because the connection is
 	// hijacked, just setting for completeness
 	transport.IdleConnTimeout = 0
 	transport.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
