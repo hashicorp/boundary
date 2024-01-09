@@ -435,11 +435,6 @@ func (c *Command) Run(args []string) (retCode int) {
 	}
 	c.sessInfo.Expiration = clientProxy.SessionExpiration()
 
-	// Why use channels instead of a WaitGroup? It turns out that in some
-	// failure conditions, especially if an exec is used and the exec'd command
-	// errors out, we can Done() all of the additions to the waitgroup before we
-	// even call Wait() -- causing us to call Wait() on a waitgroup with a zero
-	// count, blocking forever. This is not theoretical.
 	clientProxyCloseCh := make(chan struct{})
 	connCountCloseCh := make(chan struct{})
 
