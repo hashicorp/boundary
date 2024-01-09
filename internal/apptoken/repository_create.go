@@ -83,7 +83,6 @@ func (r *Repository) CreateAppToken(ctx context.Context, scopeId string, expTime
 	var retAppToken *AppToken
 	var retAppTokenGrants []*AppTokenGrant
 	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(r db.Reader, w db.Writer) error {
-		//TODO: Add ticket type for AppTOken in SQL
 		ticket, err := w.GetTicket(ctx, appT)
 		if err != nil {
 			return err
