@@ -106,59 +106,34 @@ begin;
     ('g___cg-group', 'u_______cora');
 
   insert into iam_role
-    (scope_id,       public_id,      name)
+    (scope_id,       grant_scope_id, public_id,      name)
   values
-    ('p____bcolors', 'r_pp_bc__mix', 'Blue Color Mixer'),
-    ('p____rcolors', 'r_pp_rc__mix', 'Red Color Mixer'),
-    ('p____gcolors', 'r_pp_gc__mix', 'Green Color Mixer'),
-    ('o_____colors', 'r_op_bc__art', 'Blue Color Artist'),
-    ('o_____colors', 'r_op_rc__art', 'Red Color Artist'),
-    ('o_____colors', 'r_op_gc__art', 'Green Color Artist'),
-    ('o_____colors', 'r_oo_____mix', 'Color Mixer'),
-    ('o_____colors', 'r_oo___shake', 'Color Shaker'),
-          ('global', 'r_go____name', 'Color Namer'),
-          ('global', 'r_gp_b__spec', 'Blue Color Inspector'),
-          ('global', 'r_gg_____buy', 'Purchaser'),
-          ('global', 'r_gg____shop', 'Shopper'),
-          ('global', 'r_gop____hue', 'Hue Decider'),
-          ('global', 'r_go_____art', 'Color Artist');
-
-  insert into iam_role_grant_scope
-    (role_id,        scope_id)
-  values
-    ('r_pp_bc__mix', 'this'),
-    ('r_pp_rc__mix', 'p____rcolors'),
-    ('r_pp_gc__mix', 'this'),
-    ('r_op_bc__art', 'p____bcolors'),
-    ('r_op_rc__art', 'p____rcolors'),
-    ('r_op_gc__art', 'p____gcolors'),
-    ('r_oo_____mix', 'children'),
-    ('r_oo_____mix', 'this'),
-    ('r_oo___shake', 'o_____colors'),
-    ('r_go____name', 'o_____colors'),
-    ('r_gp_b__spec', 'p____bcolors'),
-    ('r_gg_____buy', 'global'),
-    ('r_gg____shop', 'this'),
-    ('r_gop____hue', 'descendants'),
-    ('r_go_____art', 'children');
+    ('p____bcolors', 'p____bcolors', 'r_pp_bc__mix', 'Color Mixer'),
+    ('p____rcolors', 'p____rcolors', 'r_pp_rc__mix', 'Color Mixer'),
+    ('p____gcolors', 'p____gcolors', 'r_pp_gc__mix', 'Color Mixer'),
+    ('o_____colors', 'p____bcolors', 'r_op_bc__art', 'Blue Color Artist'),
+    ('o_____colors', 'p____rcolors', 'r_op_rc__art', 'Red Color Artist'),
+    ('o_____colors', 'p____gcolors', 'r_op_gc__art', 'Green Color Artist'),
+    ('o_____colors', 'o_____colors', 'r_oo_____art', 'Color Artist'),
+          ('global', 'o_____colors', 'r_go____name', 'Color Namer'),
+          ('global', 'p____bcolors', 'r_gp____spec', 'Blue Color Inspector'),
+          ('global', 'global',       'r_gg_____buy', 'Purchaser'),
+          ('global', 'global',       'r_gg____shop', 'Shopper');
 
   insert into iam_role_grant
     (role_id,        canonical_grant,             raw_grant)
   values
-    ('r_pp_bc__mix', 'type=color;action=mix:blue',     'mix blue color'),
-    ('r_pp_rc__mix', 'type=color;action=mix:red',      'mix red color'),
-    ('r_pp_gc__mix', 'type=color;action=mix:green',    'mix green color'),
-    ('r_op_bc__art', 'type=color;action=create:blue',  'create blue color'),
-    ('r_op_rc__art', 'type=color;action=create:red',   'create red color'),
-    ('r_op_gc__art', 'type=color;action=create:green', 'create green color'),
-    ('r_oo_____mix', 'type=color;action=mix',          'mix all colors'),
-    ('r_oo___shake', 'type=color;action=shake',        'shake paints'),
-    ('r_go____name', 'type=color;action=name',         'name colors'),
-    ('r_gp_b__spec', 'type=color;action=inspect:blue', 'inspect blue colors'),
-    ('r_gg_____buy', 'type=*;action=purchase',         'purchase anything'),
-    ('r_gg____shop', 'type=*;action=view',             'window shop anything'),
-    ('r_gg_____hue', 'type=color;action=decide-hue',   'decide hue'),
-    ('r_go_____art', 'type=color;action=create',       'create color');
+    ('r_gg_____buy', 'type=*;action=purchase',    'purchase anything'),
+    ('r_gg____shop', 'type=*;action=view',        'view anything'),
+    ('r_go____name', 'type=color;action=name',    'name colors'),
+    ('r_gp____spec', 'type=color;action=inspect', 'inspect colors'),
+    ('r_oo_____art', 'type=color;action=create',  'create color'),
+    ('r_op_bc__art', 'type=color;action=create',  'create color'),
+    ('r_op_rc__art', 'type=color;action=create',  'create color'),
+    ('r_op_gc__art', 'type=color;action=create',  'create color'),
+    ('r_pp_bc__mix', 'type=color;action=mix',     'mix color'),
+    ('r_pp_rc__mix', 'type=color;action=mix',     'mix color'),
+    ('r_pp_gc__mix', 'type=color;action=mix',     'mix color');
 
   insert into iam_group_role
     (role_id,        principal_id)
