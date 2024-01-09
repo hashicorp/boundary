@@ -88,9 +88,8 @@ message StoragePolicyAttributes {
 message StoragePolicyRetainFor {
   // days is the number of days for which a session recording will be
   // retained. Must be provided.
-  int64 days = 10 [
+  int32 days = 10 [
     json_name = "days",
-    (custom_options.v1.generate_sdk_option) = true,
     (custom_options.v1.mask_mapping) = {
       this: "attributes.retain_for.days"
       that: "RetainForDays"
@@ -101,7 +100,6 @@ message StoragePolicyRetainFor {
   // overridden.
   google.protobuf.BoolValue overridable = 20 [
     json_name = "overridable",
-    (custom_options.v1.generate_sdk_option) = true,
     (custom_options.v1.mask_mapping) = {
       this: "attributes.retain_for.overridable"
       that: "RetainForDaysOverridable"
@@ -112,9 +110,8 @@ message StoragePolicyRetainFor {
 message StoragePolicyDeleteAfter {
   // days is the number of days after which a session recording will be
   // automatically deleted.
-  int64 days = 10 [
+  int32 days = 10 [
     json_name = "days",
-    (custom_options.v1.generate_sdk_option) = true,
     (custom_options.v1.mask_mapping) = {
       this: "attributes.delete_after.days"
       that: "DeleteAfterDays"
@@ -125,7 +122,6 @@ message StoragePolicyDeleteAfter {
   // overridden.
   google.protobuf.BoolValue overridable = 20 [
     json_name = "overridable",
-    (custom_options.v1.generate_sdk_option) = true,
     (custom_options.v1.mask_mapping) = {
       this: "attributes.delete_after.overridable"
       that: "DeleteAfterDaysOverridable"

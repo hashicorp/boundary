@@ -24,7 +24,7 @@ message Policy {
   // retain_for_days is the number of days for which a session recording will be
   // retained. Must be provided.
   // @inject_tag: `gorm:"not_null"`
-  int64 retain_for_days = 3 [(custom_options.v1.mask_mapping) = {
+  int32 retain_for_days = 3 [(custom_options.v1.mask_mapping) = {
     this: "RetainForDays"
     that: "attributes.retain_for.days"
   }];
@@ -39,7 +39,7 @@ message Policy {
   // delete_after_days is the number of days after which a session recording
   // will be automatically deleted.
   // @inject_tag: `gorm:"not_null"`
-  int64 delete_after_days = 5 [(custom_options.v1.mask_mapping) = {
+  int32 delete_after_days = 5 [(custom_options.v1.mask_mapping) = {
     this: "DeleteAfterDays"
     that: "attributes.delete_after.days"
   }];
