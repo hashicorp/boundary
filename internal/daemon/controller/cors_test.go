@@ -265,6 +265,7 @@ func TestHandler_CORS(t *testing.T) {
 			if req.Method == http.MethodOptions && c.code == http.StatusNoContent {
 				assert.Equal(t, fmt.Sprintf("%s, %s, %s, %s, %s", http.MethodDelete, http.MethodGet, http.MethodOptions, http.MethodPost, http.MethodPatch), resp.HttpResponse().Header.Get("Access-Control-Allow-Methods"))
 				assert.Equal(t, fmt.Sprintf("%s, %s, %s, %s", "Content-Type", "X-Requested-With", "Authorization", "X-Foobar"), resp.HttpResponse().Header.Get("Access-Control-Allow-Headers"))
+				assert.Equal(t, "Retry-After, RateLimit, RateLimit-Policy", resp.HttpResponse().Header.Get("Access-Control-Expose-Headers"))
 				assert.Equal(t, "300", resp.HttpResponse().Header.Get("Access-Control-Max-Age"))
 			}
 

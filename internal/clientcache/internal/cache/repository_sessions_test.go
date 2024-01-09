@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/boundary/api/authtokens"
 	"github.com/hashicorp/boundary/api/sessions"
@@ -501,8 +502,18 @@ func TestDefaultSessionRetrievalFunc(t *testing.T) {
 	require.NotNil(t, tar1)
 
 	require.NoError(t, tc.WaitForNextWorkerStatusUpdate("test"))
-	_, err = tarClient.AuthorizeSession(tc.Context(), tar1.Item.Id)
-	require.NoError(t, err)
+	ctx, cancel := context.WithTimeout(tc.Context(), 10*time.Second)
+	defer cancel()
+	for {
+		_, err = tarClient.AuthorizeSession(ctx, tar1.Item.Id)
+		if err == nil {
+			break
+		}
+		if err != nil && ctx.Err() != nil {
+			require.FailNow(t, "timed out waiting to authorize session without an error. Last error: %s", err.Error())
+			break
+		}
+	}
 
 	got, removed, refTok, err := defaultSessionFunc(tc.Context(), tc.ApiAddrs()[0], tc.Token().Token, "")
 	assert.NoError(t, err)
