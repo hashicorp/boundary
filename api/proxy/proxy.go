@@ -326,10 +326,9 @@ func (p *ClientProxy) Start() (retErr error) {
 // ListenerAddress returns the address of the client proxy listener. Because the
 // listener is started with Start(), this could be called before listening
 // occurs. To avoid returning until we have a valid value, pass a context;
-// canceling the context, or passing a TODO context when the listener has not yet
-// been started, will cause the function to return an empty AddrPort. Otherwise
-// the function will return when the address is available. In either case, test
-// the result to ensure it's not empty.
+// canceling the context will cause the function to return an empty AddrPort if
+// it's not yet known. Otherwise the function will return when the address is
+// available. In either case, test the result to ensure it's not empty.
 //
 // Warning: a non-cancelable context will cause this call to block forever until
 // the listener's address can be determined.
@@ -344,7 +343,7 @@ func (p *ClientProxy) ListenerAddress(ctx context.Context) string {
 		addr := p.listener.Load().(net.Listener).Addr().String()
 		p.cachedListenerAddress.Store(addr)
 		return addr
-	case ctx == nil || ctx == context.TODO():
+	case ctx == nil:
 		return ""
 	}
 	timer := time.NewTimer(0)

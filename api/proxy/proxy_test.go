@@ -130,10 +130,9 @@ func TestListenerAddr(t *testing.T) {
 	// above, but this will provide coverage
 	assert.Equal(expAddr, p.ListenerAddress(context.Background()))
 
-	// Now test the context cases, starting with ctx being TODO
+	// Now test the context cases
 	p.cachedListenerAddress.Store("")
 	p.listener = new(atomic.Value)
-	assert.Equal("", p.ListenerAddress(context.TODO()))
 
 	// Check a canceled context
 	ctx, cancel := context.WithCancel(context.Background())
