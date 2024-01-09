@@ -699,7 +699,6 @@ func (c *Command) handleExec(clientProxy *apiproxy.ClientProxy, passthroughArgs 
 	for i := range args {
 		args[i] = stringReplacer(args[i], "port", port)
 		args[i] = stringReplacer(args[i], "ip", host)
-		args[i] = stringReplacer(args[i], "host", host)
 		args[i] = stringReplacer(args[i], "addr", addr)
 	}
 
@@ -711,7 +710,6 @@ func (c *Command) handleExec(clientProxy *apiproxy.ClientProxy, passthroughArgs 
 	cmd.Env = append(os.Environ(),
 		fmt.Sprintf("BOUNDARY_PROXIED_PORT=%s", port),
 		fmt.Sprintf("BOUNDARY_PROXIED_IP=%s", host),
-		fmt.Sprintf("BOUNDARY_PROXIED_HOST=%s", host),
 		fmt.Sprintf("BOUNDARY_PROXIED_ADDR=%s", addr),
 	)
 	// Envs that came from subcommand handling
