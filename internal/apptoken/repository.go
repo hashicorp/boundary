@@ -22,7 +22,7 @@ type grantFinder interface {
 type Repository struct {
 	reader      db.Reader
 	writer      db.Writer
-	kms         *kms.Kms
+	kms         kms.GetWrapperer
 	grantFinder grantFinder
 
 	// defaultLimit provides a default for limiting the number of results returned from the repo.
@@ -33,7 +33,7 @@ type Repository struct {
 
 // NewRepository creates a new apptoken Repository. Supports the options: WithLimit
 // which sets a default limit on results returned by repo operations.
-func NewRepository(ctx context.Context, r db.Reader, w db.Writer, kms *kms.Kms, gf grantFinder, opt ...Option) (*Repository, error) {
+func NewRepository(ctx context.Context, r db.Reader, w db.Writer, kms kms.GetWrapperer, gf grantFinder, opt ...Option) (*Repository, error) {
 	const op = "apptoken.NewRepository"
 	if r == nil {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil reader")

@@ -171,3 +171,38 @@ func Test_CreateAppToken(t *testing.T) {
 		})
 	}
 }
+
+func Test_CreateAppToken_KMSGetWrapperError(t *testing.T) {
+	testCtx := context.Background()
+	testConn, _ := db.TestSetup(t, "postgres")
+	testRw := db.New(testConn)
+	testRootWrapper := db.TestWrapper(t)
+	testKms := &kms.MockGetWrapperer{
+		GetErr: errors.New(testCtx, errors.Encrypt, "test", "get-db-wrapper-err"),
+	}
+	testIamRepo := iam.TestRepo(t, testConn, testRootWrapper)
+	testOrg, _ := iam.TestScopes(t, testIamRepo)
+	testRepo, err := apptoken.NewRepository(testCtx, testRw, testRw, testKms, testIamRepo)
+	testUser := iam.TestUser(t, testIamRepo, testOrg.GetPublicId())
+	require.NoError(t, err)
+
+	testUserHistoryId, err := testRepo.ResolveUserHistoryId(testCtx, testUser.GetPublicId())
+	require.NoError(t, err)
+
+	testExp := time.Now().Add(10 * time.Minute)
+
+	grants := []string{
+		"id=*;type=*;actions=read",
+	}
+	opts := []apptoken.Option{
+		apptoken.WithName(testCtx, "test-apptoken"),
+		apptoken.WithDescription(testCtx, "test-description"),
+	}
+
+	assert, require := assert.New(t), require.New(t)
+	gotToken, gotGrants, err := testRepo.CreateAppToken(testCtx, testOrg.PublicId, testExp, testUserHistoryId, grants, opts...)
+	require.Error(err)
+	assert.ErrorContains(err, "get-db-wrapper-err")
+	require.Empty(gotToken)
+	require.Empty(gotGrants)
+}
