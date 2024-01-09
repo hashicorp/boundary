@@ -78,7 +78,7 @@ type deletedAlias struct {
 
 // TableName returns the tablename to override the default gorm table name
 func (al *deletedAlias) TableName() string {
-	return "alias_deleted"
+	return "alias_target_deleted"
 }
 
 func newAliasMetadata(a *Alias, op oplog.OpType) oplog.Metadata {
