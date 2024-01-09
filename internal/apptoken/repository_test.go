@@ -102,3 +102,48 @@ func TestNewRepository(t *testing.T) {
 		})
 	}
 }
+
+func TestRepository_ResolveUserHistoryId(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	testKms := kms.TestKms(t, conn, wrapper)
+	testIamRepo := iam.TestRepo(t, conn, wrapper)
+	testOrg, _ := iam.TestScopes(t, testIamRepo)
+	testUser := iam.TestUser(t, testIamRepo, testOrg.GetPublicId())
+
+	testcases := []struct {
+		name            string
+		userId          string
+		wantErrContains string
+	}{
+		{
+			name:   "valid",
+			userId: testUser.PublicId,
+		},
+		{
+			name:            "missing-user-id",
+			wantErrContains: "missing user id",
+		},
+		{
+			name:            "user-id-not-exists",
+			userId:          "fake-user-id",
+			wantErrContains: "record not found",
+		},
+	}
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			r, err := NewRepository(context.Background(), rw, rw, testKms, testIamRepo)
+			require.NoError(err)
+
+			_, err = r.ResolveUserHistoryId(context.Background(), tc.userId)
+			if tc.wantErrContains != "" {
+				require.Errorf(err, "we expected an error")
+				assert.Contains(err.Error(), tc.wantErrContains)
+				return
+			}
+			require.NoErrorf(err, "unexpected error")
+		})
+	}
+}
