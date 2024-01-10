@@ -62,11 +62,6 @@ func (j *Journal) Record(op, f string) error {
 	return err
 }
 
-// WriteAndClose writes and closes the journal
-func (j *Journal) WriteAndClose(b []byte) (int, error) {
-	panic("not implemented")
-}
-
 // File is a writable file that will update a Journal as it closed.
 type File struct {
 	j *Journal
