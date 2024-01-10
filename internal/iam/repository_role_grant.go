@@ -428,8 +428,8 @@ func (r *Repository) GrantsForUser(ctx context.Context, userId string, _ ...Opti
 	// First we need to get a mapping of roles and the scopes they affect; we'll
 	// process those later
 	type grantScopeValue struct {
-		RoleId       string
-		RoleScopeId  string
+		RoleId       string // The role id (iam_role.public_id)
+		RoleScopeId  string // The scope of the role (iam_role.scope_id)
 		GrantScopeId string
 	}
 	var grantScopes []grantScopeValue

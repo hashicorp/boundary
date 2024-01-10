@@ -207,8 +207,12 @@ func TestRole(t testing.TB, conn *db.DB, scopeId string, opt ...Option) *Role {
 	require.NotEmpty(role.PublicId)
 
 	grantScopeIds := opts.withGrantScopeIds
-	if len(grantScopeIds) == 0 && opts.withGrantScopeId != "" {
-		grantScopeIds = []string{opts.withGrantScopeId}
+	if len(grantScopeIds) == 0 {
+		scpId := opts.withGrantScopeId
+		if scpId == "" {
+			scpId = "this"
+		}
+		grantScopeIds = []string{scpId}
 	}
 	for _, gsi := range grantScopeIds {
 		gs, err := NewRoleGrantScope(ctx, id, gsi)
