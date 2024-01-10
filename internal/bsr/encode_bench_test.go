@@ -51,7 +51,7 @@ func BenchmarkEncodeParallel(b *testing.B) {
 			for pb.Next() {
 				buf, err := fstest.NewTempBuffer()
 				if err != nil {
-					panic("could not create buffer")
+					b.Fatal("could not create buffer")
 				}
 				enc, _ := NewChunkEncoder(ctx, buf, NoCompression, NoEncryption)
 				for _, c := range chunks {
@@ -81,7 +81,7 @@ func BenchmarkEncodeSequential(b *testing.B) {
 			for i := 0; i < b.N; i++ {
 				buf, err := fstest.NewTempBuffer()
 				if err != nil {
-					panic("could not create buffer")
+					b.Fatal("could not create buffer")
 				}
 				enc, _ := NewChunkEncoder(ctx, buf, NoCompression, NoEncryption)
 				for _, c := range chunks {
