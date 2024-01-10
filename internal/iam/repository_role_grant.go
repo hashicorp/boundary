@@ -7,6 +7,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log"
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
@@ -423,6 +424,8 @@ func (r *Repository) GrantsForUser(ctx context.Context, userId string, _ ...Opti
 		query = fmt.Sprintf(grantScopesQuery, authUser)
 	}
 
+	// First we need to get a mapping of roles and the scopes they affect; we'll
+	// process those later
 	type grantScopeValue struct {
 		RoleId  string
 		ScopeId string
@@ -443,9 +446,46 @@ func (r *Repository) GrantsForUser(ctx context.Context, userId string, _ ...Opti
 		roleIds = append(roleIds, gs.RoleId)
 	}
 
+	log.Println("grant scopes", grantScopes)
+	// We also need the grants for those roles
 	args := []any{sql.Named("role_ids", roleIds)}
 	var grants []perms.GrantTuple
-	rows, err = r.reader.Query(ctx, query, args)
+	rows, err = r.reader.Query(ctx, grantsFromRolesQuery, args)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var g perms.GrantTuple
+		if err := r.reader.ScanRows(ctx, rows, &g); err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		grants = append(grants, g)
+	}
+	return grants, nil
+}
+
+func (r *Repository) OldGrantsForUser(ctx context.Context, userId string, _ ...Option) ([]perms.GrantTuple, error) {
+	const op = "iam.(Repository).GrantsForUser"
+	if userId == "" {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing user id")
+	}
+
+	const (
+		anonUser = `where public_id in (?)`
+		authUser = `where public_id in ('u_anon', 'u_auth', ?)`
+	)
+
+	var query string
+	switch userId {
+	case globals.AnonymousUserId:
+		query = fmt.Sprintf(grantsQuery, anonUser)
+	default:
+		query = fmt.Sprintf(grantsQuery, authUser)
+	}
+
+	var grants []perms.GrantTuple
+	rows, err := r.reader.Query(ctx, query, []any{userId})
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}

@@ -26,6 +26,37 @@ func TestGrantsForUser(t *testing.T) {
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrap := db.TestWrapper(t)
+
+	iamRepo := iam.TestRepo(t, conn, wrap)
+	user := iam.TestUser(t, iamRepo, "global")
+	org1, proj1 := iam.TestScopes(
+		t,
+		iamRepo,
+		iam.WithSkipAdminRoleCreation(true),
+		iam.WithSkipDefaultRoleCreation(true),
+	)
+	org2, proj2 := iam.TestScopes(
+		t,
+		iamRepo,
+		iam.WithSkipAdminRoleCreation(true),
+		iam.WithSkipDefaultRoleCreation(true),
+	)
+	t.Log("org1", org1.GetPublicId(), "proj1", proj1.GetPublicId(), "org2", org2.GetPublicId(), "proj2", proj2.GetPublicId())
+	org1Proj1Role := iam.TestRole(t, conn, org1.GetPublicId(), iam.WithGrantScopeId(proj1.PublicId))
+	org2Proj2Role := iam.TestRole(t, conn, org2.GetPublicId(), iam.WithGrantScopeIds([]string{"this", "children"}))
+	iam.TestUserRole(t, conn, org1Proj1Role.PublicId, user.PublicId)
+	iam.TestUserRole(t, conn, org2Proj2Role.PublicId, user.PublicId)
+	iam.TestRoleGrant(t, conn, org1Proj1Role.PublicId, "id=*;type=*;actions=read")
+	iam.TestRoleGrant(t, conn, org2Proj2Role.PublicId, "id=*;type=*;actions=create")
+	grantTuples, err := iamRepo.GrantsForUser(ctx, user.PublicId)
+	require.NoError(t, err)
+	t.Log(grantTuples)
+}
+
+func TestGrantsForUserRandomized(t *testing.T) {
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrap := db.TestWrapper(t)
 	iamRepo := iam.TestRepo(t, conn, wrap)
 	rw := db.New(conn)
 	kmsCache := kms.TestKms(t, conn, wrap)

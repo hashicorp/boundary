@@ -84,7 +84,8 @@ func (g *RoleGrantScope) VetForWrite(ctx context.Context, _ db.Reader, _ db.OpTy
 	switch {
 	case g.ScopeId == "global",
 		g.ScopeId == "this",
-		g.ScopeId == "children":
+		g.ScopeId == "children",
+		g.ScopeId == "descendants":
 	case globals.ResourceInfoFromPrefix(g.ScopeId).Type == resource.Scope:
 	default:
 		return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unknown grant scope id %q", g.ScopeId))

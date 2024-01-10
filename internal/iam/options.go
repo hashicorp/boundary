@@ -29,6 +29,7 @@ type options struct {
 	withDescription             string
 	withLimit                   int
 	withGrantScopeId            string
+	withGrantScopeIds           []string
 	withSkipVetForWrite         bool
 	withDisassociate            bool
 	withSkipAdminRoleCreation   bool
@@ -88,6 +89,16 @@ func WithLimit(limit int) Option {
 func WithGrantScopeId(id string) Option {
 	return func(o *options) {
 		o.withGrantScopeId = id
+	}
+}
+
+// WithGrantScopeIds provides an option to specify the scope ID for grants in
+// roles. In most tests this is likely the option to use, however, for tests
+// that call repo functions instead of test functions the other option is still
+// correct to specify a grant scope at creation time.
+func WithGrantScopeIds(ids []string) Option {
+	return func(o *options) {
+		o.withGrantScopeIds = ids
 	}
 }
 

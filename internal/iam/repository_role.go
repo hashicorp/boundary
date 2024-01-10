@@ -43,6 +43,7 @@ func (r *Repository) CreateRole(ctx context.Context, role *Role, _ ...Option) (*
 	if initialScope == "" {
 		initialScope = "this"
 	}
+	c.GrantScopeId = c.ScopeId
 
 	var resource Resource
 	var pr []*PrincipalRole
@@ -97,13 +98,19 @@ func (r *Repository) UpdateRole(ctx context.Context, role *Role, version uint32,
 	if role.PublicId == "" {
 		return nil, nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing public id")
 	}
-	var wantGrantScopeIdUpdate bool
+	var grantScopeIdToSet []string
 	for _, f := range fieldMaskPaths {
 		switch {
 		case strings.EqualFold("name", f):
 		case strings.EqualFold("description", f):
 		case strings.EqualFold("grantscopeid", f):
-			wantGrantScopeIdUpdate = true
+			// If the value is empty, they're trying to clear it (e.g. a
+			// null field), which is represented by an empty slice in
+			// SetRoleGrantScopes
+			grantScopeIdToSet = make([]string, 0, 1)
+			if role.GrantScopeId != "" {
+				grantScopeIdToSet = append(grantScopeIdToSet, role.GrantScopeId)
+			}
 		default:
 			return nil, nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidFieldMask, op, fmt.Sprintf("invalid field mask: %s", f))
 		}
@@ -137,14 +144,7 @@ func (r *Repository) UpdateRole(ctx context.Context, role *Role, version uint32,
 			if err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
-			if wantGrantScopeIdUpdate {
-				// If the value is empty, they're trying to clear it (e.g. a
-				// null field), which is represented by an empty slice in
-				// SetRoleGrantScopes
-				grantScopeIdToSet := make([]string, 0, 1)
-				if c.GrantScopeId != "" {
-					grantScopeIdToSet = append(grantScopeIdToSet, c.GrantScopeId)
-				}
+			if grantScopeIdToSet != nil {
 				_, _, err = r.SetRoleGrantScopes(ctx, role.PublicId, resource.(*Role).Version, grantScopeIdToSet, WithReaderWriter(read, w))
 				if err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("while setting grant scopes"))

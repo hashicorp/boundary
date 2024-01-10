@@ -188,6 +188,11 @@ func TestUser(t testing.TB, repo *Repository, scopeId string, opt ...Option) *Us
 // TestRole creates a role suitable for testing.
 func TestRole(t testing.TB, conn *db.DB, scopeId string, opt ...Option) *Role {
 	t.Helper()
+	opts := getOpts(opt...)
+	if opts.withGrantScopeId != "" && len(opts.withGrantScopeIds) > 0 {
+		require.FailNow(t, "cannot specify both withGrantScopeId and withGrantScopeIds")
+	}
+
 	ctx := context.Background()
 	require := require.New(t)
 	rw := db.New(conn)
@@ -197,11 +202,19 @@ func TestRole(t testing.TB, conn *db.DB, scopeId string, opt ...Option) *Role {
 	id, err := newRoleId(ctx)
 	require.NoError(err)
 	role.PublicId = id
-	err = rw.Create(ctx, role)
-	require.NoError(err)
+	role.GrantScopeId = scopeId
+	require.NoError(rw.Create(ctx, role))
 	require.NotEmpty(role.PublicId)
 
-	opts := getOpts(opt...)
+	grantScopeIds := opts.withGrantScopeIds
+	if len(grantScopeIds) == 0 && opts.withGrantScopeId != "" {
+		grantScopeIds = []string{opts.withGrantScopeId}
+	}
+	for _, gsi := range grantScopeIds {
+		gs, err := NewRoleGrantScope(ctx, id, gsi)
+		require.NoError(err)
+		require.NoError(rw.Create(ctx, gs))
+	}
 	require.Equal(opts.withDescription, role.Description)
 	require.Equal(opts.withName, role.Name)
 	return role
