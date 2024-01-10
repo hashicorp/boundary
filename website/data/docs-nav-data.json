@@ -1378,7 +1378,7 @@
             "path": "api-clients/api/rate-limiting"
           },
           {
-            "title": "Pagination",
+            "title": "List pagination",
             "path": "api-clients/api/pagination"
           }
         ]
