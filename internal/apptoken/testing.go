@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func withOptError(ctx context.Context) Option {
+func TestWithOptError(ctx context.Context) Option {
 	return func(o *options) error {
 		return errors.New(ctx, errors.Unknown, "withOptErrors", "with opt error")
 	}

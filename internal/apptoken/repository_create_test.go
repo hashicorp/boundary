@@ -143,6 +143,19 @@ func Test_CreateAppToken(t *testing.T) {
 			},
 			wantErrContains: "unable to parse grant string",
 		},
+		{
+			name:      "invalid-opt",
+			scopeId:   testOrg.GetPublicId(),
+			expTime:   testExp,
+			createdBy: testUserHistoryId,
+			grants: []string{
+				"id=*;type=*;actions=read",
+			},
+			opts: []apptoken.Option{
+				apptoken.TestWithOptError(testCtx),
+			},
+			wantErrContains: "with opt error",
+		},
 	}
 	for _, tc := range tests {
 		tc := tc

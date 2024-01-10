@@ -64,7 +64,7 @@ func TestNewAppToken(t *testing.T) {
 			expTime:   testTime,
 			createdBy: testCreatedBy,
 			opts: []Option{
-				withOptError(testCtx),
+				TestWithOptError(testCtx),
 			},
 			wantErrContains: "with opt err",
 			wantErrMatch:    errors.T(errors.Unknown),
