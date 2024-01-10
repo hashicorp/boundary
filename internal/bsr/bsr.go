@@ -32,6 +32,10 @@ const (
 	wrappedPrivKeyFileName      = "wrappedPrivKey"
 	pubKeyBsrSignatureFileName  = "pubKeyBsrSignature.sign"
 	pubKeySelfSignatureFileName = "pubKeySelfSignature.sign"
+
+	// bsrBufferSize is the buffer size for files in a BSR.
+	// 65 * storage.LogicalBlockSize is equivalent to 260KiB
+	bsrBufferSize = 65 * storage.LogicalBlockSize
 )
 
 // Session is the top level container in a bsr that contains the files for
@@ -648,11 +652,11 @@ func (c *Connection) NewMessagesWriter(ctx context.Context, dir Direction) (io.W
 	if err != nil {
 		return nil, err
 	}
-	// 65*storage.LogicalBlockSize is equivalent to 260KiB
+
 	m, err := c.container.create(ctx, messagesName,
 		storage.WithCreateFile(),
 		storage.WithFileAccessMode(storage.ReadWrite),
-		storage.WithBuffer(65*storage.LogicalBlockSize),
+		storage.WithBuffer(bsrBufferSize),
 	)
 	if err != nil {
 		return nil, err
@@ -675,11 +679,11 @@ func (c *Connection) NewRequestsWriter(ctx context.Context, dir Direction) (stor
 	if err != nil {
 		return nil, err
 	}
-	// 65*storage.LogicalBlockSize is equivalent to 260KiB
+
 	m, err := c.container.create(ctx, requestName,
 		storage.WithCreateFile(),
 		storage.WithFileAccessMode(storage.ReadWrite),
-		storage.WithBuffer(65*storage.LogicalBlockSize),
+		storage.WithBuffer(bsrBufferSize),
 	)
 	if err != nil {
 		return nil, err
@@ -730,7 +734,7 @@ func (c *Channel) NewMessagesWriter(ctx context.Context, dir Direction) (storage
 	m, err := c.container.create(ctx, messagesName,
 		storage.WithCreateFile(),
 		storage.WithFileAccessMode(storage.ReadWrite),
-		storage.WithBuffer(65*storage.LogicalBlockSize),
+		storage.WithBuffer(bsrBufferSize),
 	)
 	if err != nil {
 		return nil, err
@@ -756,7 +760,7 @@ func (c *Channel) NewRequestsWriter(ctx context.Context, dir Direction) (storage
 	m, err := c.container.create(ctx, requestName,
 		storage.WithCreateFile(),
 		storage.WithFileAccessMode(storage.ReadWrite),
-		storage.WithBuffer(65*storage.LogicalBlockSize),
+		storage.WithBuffer(bsrBufferSize),
 	)
 	if err != nil {
 		return nil, err
