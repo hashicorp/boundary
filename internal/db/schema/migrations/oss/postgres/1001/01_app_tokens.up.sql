@@ -143,4 +143,23 @@ comment on table app_token is
 create trigger limit_app_token_usage before insert on app_token_usage
   for each row execute procedure limit_app_token_usage_rows();
 
+create view app_token_agg as
+select
+  t.public_id,
+  t.create_time,
+  t.expiration_time,
+  t.name,
+  t.description,
+  t.created_by,
+  t.scope_id,
+  g.canonical_grant,
+  g.raw_grant
+from 
+  app_token t,
+  app_token_grant g
+where 
+  t.public_id = g.app_token_id;
+comment on view app_token_agg is
+ 'app_token_agg is an aggregate of the app token with its grants';
+
 commit;
