@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/perms"
+	"github.com/hashicorp/boundary/internal/types/scope"
 )
 
 // AddRoleGrant will add role grants associated with the role ID in the
@@ -427,8 +428,9 @@ func (r *Repository) GrantsForUser(ctx context.Context, userId string, _ ...Opti
 	// First we need to get a mapping of roles and the scopes they affect; we'll
 	// process those later
 	type grantScopeValue struct {
-		RoleId  string
-		ScopeId string
+		RoleId       string
+		RoleScopeId  string
+		GrantScopeId string
 	}
 	var grantScopes []grantScopeValue
 	rows, err := r.reader.Query(ctx, query, []any{userId})
@@ -448,20 +450,96 @@ func (r *Repository) GrantsForUser(ctx context.Context, userId string, _ ...Opti
 
 	log.Println("grant scopes", grantScopes)
 	// We also need the grants for those roles
+	type roleGrantValue struct {
+		RoleId string
+		Grant  string
+	}
 	args := []any{sql.Named("role_ids", roleIds)}
-	var grants []perms.GrantTuple
+	roleGrants := map[string][]string{}
 	rows, err = r.reader.Query(ctx, grantsFromRolesQuery, args)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	defer rows.Close()
 	for rows.Next() {
-		var g perms.GrantTuple
+		var g roleGrantValue
 		if err := r.reader.ScanRows(ctx, rows, &g); err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
-		grants = append(grants, g)
+		currGrants := roleGrants[g.RoleId]
+		roleGrants[g.RoleId] = append(currGrants, g.Grant)
 	}
+	log.Println(fmt.Sprintf("role grants: %#v", roleGrants))
+
+	// Now we start interpreting and fetching scopes as we go. Ideally we'd
+	// collapse this into a single query but we need to keep the role
+	// association so any results would have to be role/scope tuples.
+	grants := make([]perms.GrantTuple, 0, len(grantScopes))
+	queryBase := "select public_id from iam_scope where"
+
+	populateRoleGrants := func(roleId string, scopes []string) {
+		for _, grant := range roleGrants[roleId] {
+			for _, scp := range scopes {
+				grants = append(grants, perms.GrantTuple{
+					RoleId:  roleId,
+					ScopeId: scp,
+					Grant:   grant,
+				})
+			}
+		}
+	}
+
+	for _, gs := range grantScopes {
+		switch gs.GrantScopeId {
+		case "descendants":
+			if gs.RoleScopeId != scope.Global.String() {
+				return nil, fmt.Errorf("found descendants grant scope in role %q with scope %q but it is only valid for global scope; this is a database integrity issue", gs.RoleId, gs.RoleScopeId)
+			}
+			// This can only be global scope, so we need everything that isn't
+			// global (since "global" or "this" would be a separate scope ID
+			// we'll loop through later)
+			query := fmt.Sprintf("%s public_id != ?", queryBase)
+			log.Println(query)
+			rows, err = r.reader.Query(ctx, query, []any{"global"})
+			if err != nil {
+				return nil, errors.Wrap(ctx, err, op)
+			}
+			scopes := make([]string, 0, len(grantScopes))
+			defer rows.Close()
+			for rows.Next() {
+				if err := r.reader.ScanRows(ctx, rows, &scopes); err != nil {
+					return nil, errors.Wrap(ctx, err, op)
+				}
+			}
+			log.Println("scopes in descendants", scopes)
+			populateRoleGrants(gs.RoleId, scopes)
+
+		case "children":
+			query := fmt.Sprintf("%s parent_id = ?", queryBase)
+			rows, err = r.reader.Query(ctx, query, []any{gs.RoleScopeId})
+			if err != nil {
+				return nil, errors.Wrap(ctx, err, op)
+			}
+			scopes := make([]string, 0, len(grantScopes))
+			defer rows.Close()
+			for rows.Next() {
+				if err := r.reader.ScanRows(ctx, rows, &scopes); err != nil {
+					return nil, errors.Wrap(ctx, err, op)
+				}
+			}
+			log.Println("scopes in children", scopes)
+			populateRoleGrants(gs.RoleId, scopes)
+
+		default: // bare scope ID or "this"
+			scopeId := gs.GrantScopeId
+			if scopeId == "this" {
+				scopeId = gs.RoleScopeId
+			}
+			// It's a bare scope ID
+			populateRoleGrants(gs.RoleId, []string{scopeId})
+		}
+	}
+
 	return grants, nil
 }
 
