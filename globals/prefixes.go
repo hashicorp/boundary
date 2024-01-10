@@ -19,6 +19,9 @@ const (
 	// AuthTokenPrefix is the prefix for auth tokens
 	AuthTokenPrefix = "at"
 
+	// AppTokenPrefix is the prefix for app tokens
+	AppTokenPrefix = "appt"
+
 	// PasswordAuthMethodPrefix is the prefix for the password auth method
 	PasswordAuthMethodPrefix = "ampw"
 	// PasswordAccountPreviousPrefix is the previously-used account prefix

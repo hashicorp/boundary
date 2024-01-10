@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/apptoken/store"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
@@ -63,7 +64,7 @@ func TestNewAppToken(t *testing.T) {
 			expTime:   testTime,
 			createdBy: testCreatedBy,
 			opts: []Option{
-				withOptError(testCtx),
+				TestWithOptError(testCtx),
 			},
 			wantErrContains: "with opt err",
 			wantErrMatch:    errors.T(errors.Unknown),
@@ -166,6 +167,90 @@ func TestAppToken_SetTableName(t *testing.T) {
 			m := AllocAppToken()
 			m.SetTableName(tc.setNameTo)
 			assert.Equal(tc.want, m.TableName())
+		})
+	}
+}
+
+func TestAppToken_oplog(t *testing.T) {
+	t.Parallel()
+	testCtx := context.Background()
+	testTk := &AppToken{
+		AppToken: &store.AppToken{
+			PublicId: "resource-public-id",
+			ScopeId:  "scope-id",
+		},
+	}
+	tests := []struct {
+		name            string
+		oplogType       oplog.OpType
+		appTk           *AppToken
+		want            oplog.Metadata
+		wantErrContains string
+		wantErrMatch    *errors.Template
+	}{
+		{
+			name:      "oplog-create",
+			oplogType: oplog.OpType_OP_TYPE_CREATE,
+			appTk:     testTk,
+			want: oplog.Metadata{
+				"resource-public-id": []string{"resource-public-id"},
+				"resource-type":      []string{"app token"},
+				"op-type":            []string{oplog.OpType_OP_TYPE_CREATE.String()},
+				"scope-id":           []string{"scope-id"},
+			},
+		},
+		{
+			name:            "invalid-oplog-type",
+			appTk:           testTk,
+			oplogType:       oplog.OpType_OP_TYPE_UNSPECIFIED,
+			wantErrContains: "missing op type",
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+		},
+		{
+			name:            "missing-app-token",
+			oplogType:       oplog.OpType_OP_TYPE_CREATE,
+			wantErrContains: "missing app token",
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+		},
+		{
+			name: "missing-public-id",
+			appTk: &AppToken{
+				AppToken: &store.AppToken{
+					ScopeId: "scope-id",
+				},
+			},
+			oplogType:       oplog.OpType_OP_TYPE_CREATE,
+			wantErrContains: "missing public id",
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+		},
+		{
+			name: "missing-scope-id",
+			appTk: &AppToken{
+				AppToken: &store.AppToken{
+					PublicId: "resource-public-id",
+				},
+			},
+			oplogType:       oplog.OpType_OP_TYPE_CREATE,
+			wantErrContains: "missing scope id",
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+		},
+	}
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			got, err := tc.appTk.oplog(testCtx, tc.oplogType)
+			if tc.wantErrContains != "" {
+				require.Error(err)
+				assert.Contains(err.Error(), tc.wantErrContains)
+				if tc.wantErrMatch != nil {
+					assert.True(errors.Match(tc.wantErrMatch, err))
+				}
+				return
+			}
+			require.NoError(err)
+			require.NotNil(got)
+			assert.Equal(tc.want, got)
 		})
 	}
 }
