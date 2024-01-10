@@ -116,4 +116,6 @@ const (
 	CreateTimeValues                            = "create_time_values"
 	DefaultPortField                            = "default_port"
 	StoragePolicyIdField                        = "storage_policy_id"
+	RetainUntilField                            = "retain_until"
+	DeleteAfterField                            = "delete_after"
 )

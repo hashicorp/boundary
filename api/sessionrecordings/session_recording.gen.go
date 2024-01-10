@@ -36,6 +36,8 @@ type SessionRecording struct {
 	ConnectionRecordings []*ConnectionRecording `json:"connection_recordings,omitempty"`
 	CreateTimeValues     *ValuesAtTime          `json:"create_time_values,omitempty"`
 	AuthorizedActions    []string               `json:"authorized_actions,omitempty"`
+	RetainUntil          time.Time              `json:"retain_until,omitempty"`
+	DeleteAfter          time.Time              `json:"delete_after,omitempty"`
 
 	response *api.Response
 }

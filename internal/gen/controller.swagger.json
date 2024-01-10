@@ -6509,6 +6509,16 @@
             "type": "string"
           },
           "description": "The available actions on this resource for this user."
+        },
+        "retain_until": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time until a session recording is required to be stored."
+        },
+        "delete_after": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time a session recording is scheduled to be automatically deleted."
         }
       },
       "description": "SessionRecording contains information about the recording of a Session."
