@@ -227,6 +227,7 @@ func (c *Controller) registerGrpcServices(s *grpc.Server) error {
 		ps, err := policies.NewServiceFn(
 			c.baseContext,
 			c.IamRepoFn,
+			c.conf.RawConfig.Controller.MaxPageSize,
 			c.ControllerExtension,
 		)
 		if err != nil {

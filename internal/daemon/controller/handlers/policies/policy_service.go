@@ -37,6 +37,7 @@ var (
 // NewServiceFn returns a policy service which is not implemented in OSS
 var NewServiceFn = func(ctx context.Context,
 	iamRepoFn common.IamRepoFactory,
+	maxPageSize uint,
 	controllerExt internalglobals.ControllerExtension,
 ) (pbs.PolicyServiceServer, error) {
 	return &Service{}, nil
