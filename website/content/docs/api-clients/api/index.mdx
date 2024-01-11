@@ -82,10 +82,13 @@ The following method conventions are used within Boundary's API:
 
 `DELETE` is used for deleting a specific resource, and is only used against a particular resource path.
 
-## More information
+## Manage system resources
 
-Boundary's API features rate limiting to help prevent system resources from being overwhlemed by too many simultaneous requests.
+If your controllers try to process every API request, they may either run out of resources or overwhelm the database server.
+Boundary features API rate limiting to help prevent system resources from being overwhlemed by too many simultaneous requests.
 For more information, refer to [API rate limiting](/boundary/docs/api-clients/api/rate-limiting).
 
-The search and filter feature introduced pagination for the results of API searches.
-Refer to [API pagination](/boundary/docs/api-clients/api/pagination) for more information about pagination and the local cache used for searches.
+When you search for Boundary resources using the `list` operation, you could potentially receive a very large number of results.
+Boundary uses an API pagination feature to enable you to search and filter large lists of search results without overwhelming your system resources.
+The results of the operation are cached locally, to help reduce server cost and further protect your system resources.
+Refer to [API list pagination](/boundary/docs/api-clients/api/pagination) for more information about pagination and using the local cache for searches.

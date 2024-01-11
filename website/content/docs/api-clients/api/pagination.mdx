@@ -1,61 +1,51 @@
 ---
 layout: docs
 page_title: API list pagination
-description: Learn how the API pagination and cache works in Boundary to prevent system resources from being overwhlemed, and to help you find resources.
+description: Learn how the API pagination and cache works in Boundary to prevent system resources from being overwhlemed and to help you find resources.
 ---
 
 # API list pagination
 
-Boundary uses an API pagination feature to support searching and filtering large lists of results without overwhelming your system's resources.
+Boundary uses an API pagination feature to support searching and filtering large lists of results without overwhelming your system resources.
 
-When you perform a `list` operation, the API request returns the first 1000 results, by default.
-You can configure a different number using the `max_page_size` parameter.
-When you reach the end of the initial list, you can request the next page of results by repeating the `list` command with a token.
+## Introduction
 
-The results of the operation are cached locally, to help reduce cost and protect your system resources.
-You can refresh the local list for up to 30 days before you must perform a new `list` operation.
+When you perform a `list` operation on a resource, the API request returns the first 1000 results, by default.
+You can request the next page of results by repeating the `list` command and including a parameter with a token provided by Boundary.
 
-Note that users can only see items that they have permissions to see in the list of results.
+The results of the `list` operation are cached locally to help protect your system resources.
+Maintaining a local cache of results for a frequently used `list` operation can also help to reduce server cost.
+You can refresh the local results of your initial `list` operation as many times as you want for up to 30 days.
 
 ## Initial pagination
 
-By default, after the initial `list` operation, query results are sorted in descending order by creation time and public ID.
-Boundary also returns the top-level fields `response_type` and `list_token`.
+When you run a `list` operation on a resource, the initial results are sorted in descending order by creation time and public ID, by default.
+Boundary returns the maximum number of responses along with the top-level fields `response_type` and `list_token`.
 If the `response_type` is `delta`, it means there are more items available in the list.
-If the `response_type` is `complete`, it means the list is complete.
 
-To request the next page of results, run the `list` operation again and include the `list_token` as a parameter.
+To request the next page of results, run the `list` operation again and include the `list_token` that Boundary provided as a parameter.
 Boundary returns the next page of results with new `response_type` and `list_token` values.
-You can continue viewing new pages of results until the `response_type` reads `complete`.
 
-## Refresh
+![API pagination workflow](/img/api-pagination/pagination-workflow.png)
 
-When the `response_type` reads `complete`, you have paged through all the results that were available when you ran the initial `list` operation.
-You can now refresh the cached list results to return any targets that were updated since you started paginating the list responses.
+You can continue viewing new pages of results using the `list_token` values until the `response_type` reads `complete`.
 
-To refresh the list results, make another `list` request using the `list_token` from the previous response.
-Boundary returns a `response_type` as part of the response, similarly to when you ran the initial operation.
+## Refresh the local cache
+
+When the `response_type` reads `complete`, you have viewed all the results that were available when you ran the initial `list` operation.
+You can now refresh the cached list of results to return any resources that were updated since you started viewing the list responses.
+
+To refresh the cached list results, make another `list` request using the `list_token` from the previous response.
+Boundary returns a `response_type` and `list_token` as part of the response, similarly to when you ran the initial operation.
 If the `response_type` is `delta`, it means there are more items available in the list.
-If the `response_type` is `complete`, it means the list is complete.
-
-To request the next page of results, run the `list` operation again and include the `list_token` as a parameter.
-Boundary returns the next page of results with new `response_type` and `list_token` values.
-You can continue viewing new pages of results until the `response_type` reads `complete`.
+You can use the `list_token` as a parameter to continue viewing new pages of results until the `response_type` reads `complete`.
 
 Boundary also includes the top-level response `deleted_ids` as part of the refresh operation.
-The `deleted_ids` response contains the IDs of any targets that were deleted since you started the pagination process.
+The `deleted_ids` response contains the IDs of any resources that were deleted since the initial `list` operation.
 Deleted resources are included in the results of the list for 30 days after they are deleted.
 Resources that have been deleted include the suffix `_deleted`.
 
-You can refresh the local results of your initial `list` operation as many times as you want for up to 30 days.
-Maintaining a local cache of results for a frequently used `list` operation can help to reduce server cost.
 After 30 days, the `list_token` expires and you must make a new `list` request without the token to regenerate the full list of results.
-
-In scenarios where updates are so frequent that the results may change while the refresh operation runs, those updates may not appear at all in the refreshed list.
-If you make frequent updates to a resource, or if you are updating data while you run a `list` operation, HashiCorp recommends that you generate the full list of results instead of performing a refresh.
-
-Workers are not included in refresh operations because the updates they send to the controller are too frequent to be captured in a refresh.
-To update a list of worker resources, you must regenerate the full list of results.
 
 ## Response structure
 
@@ -71,7 +61,7 @@ Controller administrators can also configure a `max_page_size` option that const
 Boundary returns the following response parameters:
 
 - `response_type` - Defines whether the response is a `delta` or `complete` listing.
-The value will be `delta` until the last page is returned, at which point it will be `complete`.
+The value is `delta` until the last page is returned, at which point it will be `complete`.
 - `list_token` - An opaque token which is included in subsequent listing requests after the initial one, so that the client can continue to paginate the results.
 - `sort_by` - The column name that the returned items should be sorted on.
 Each list endpoint has one defined column which defines the sorting for all returned items.
@@ -107,8 +97,8 @@ This number may be an estimate, since the number of items may change during the 
 
 ## List tokens
 
-List tokens contain general metadata associated with the ongoing pagination and either a pagination or refresh token part, depending on the phase of the pagination.
-If you compose an invalid token, you will receive an invalid token error.
+List tokens contain general metadata associated with the ongoing pagination and either a pagination or refresh token, depending on the phase of the pagination.
+If you compose an invalid token, you receive an invalid token error.
 
 When you make a `list` request without a `list_token`, Boundary builds a page of items that contains all the resources currently available, subject to the page size, with the following attributes:
 
@@ -130,7 +120,10 @@ When you make a `list` request using a valid `list_token`, Boundary builds a pag
 
 If you make a `list` request using a token that has a `create_time` older than 30 days, Boundary treats it as an invalid token and returns an error.
 
-## Backward compatibility
+## Constraints and limitations
 
-List pagination was introduced in Boundary version 0.15.0.
-Since pagination is mandatory, in the case where the total number of items is larger than the default or configured page size, you must implement pagination to get the full result set.
+In scenarios where updates are so frequent that the results may change while the refresh operation runs, those updates may not appear at all in the refreshed list.
+If you make frequent updates to a resource, or if you are updating data while you run a `list` operation, HashiCorp recommends that you generate the full list of results instead of performing a refresh.
+
+Workers are not included in refresh operations because the updates they send to the controller are too frequent to be captured in a refresh.
+To update a list of worker resources, you must regenerate the full list of results.
