@@ -290,16 +290,9 @@ func (r *Repository) listSessions(ctx context.Context, opt ...Option) ([]*Sessio
 
 	opts := getOpts(opt...)
 
-	var permissionWhereClause string
-	if len(where) > 0 {
-		permissionWhereClause = "(" + strings.Join(where, " or ") + ")"
-		if !opts.withTerminated {
-			permissionWhereClause += " and termination_reason is null"
-		}
-	} else {
-		if !opts.withTerminated {
-			permissionWhereClause = " where termination_reason is null"
-		}
+	permissionWhereClause := "(" + strings.Join(where, " or ") + ")"
+	if !opts.withTerminated {
+		permissionWhereClause += " and termination_reason is null"
 	}
 
 	limit := r.defaultLimit
@@ -339,16 +332,9 @@ func (r *Repository) listSessionsRefresh(ctx context.Context, updatedAfter time.
 
 	opts := getOpts(opt...)
 
-	var permissionWhereClause string
-	if len(where) > 0 {
-		permissionWhereClause = "(" + strings.Join(where, " or ") + ")"
-		if !opts.withTerminated {
-			permissionWhereClause += " and termination_reason is null"
-		}
-	} else {
-		if !opts.withTerminated {
-			permissionWhereClause = " where termination_reason is null"
-		}
+	permissionWhereClause := "(" + strings.Join(where, " or ") + ")"
+	if !opts.withTerminated {
+		permissionWhereClause += " and termination_reason is null"
 	}
 
 	limit := r.defaultLimit
