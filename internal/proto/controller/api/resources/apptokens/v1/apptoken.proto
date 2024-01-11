@@ -62,6 +62,16 @@ message AppToken {
   // Output only. The parsed grant information.
   repeated Grant grants = 100;
 
+  // Optional expiration interval for the app token in max seconds.
+  uint32 expiration_interval = 110 [
+    json_name = "expiration_interval",
+    (custom_options.v1.generate_sdk_option) = true,
+    (custom_options.v1.mask_mapping) = {
+      this: "expiration_interval"
+      that: "ExpirationInterval"
+    }
+  ]; // @gotags: `class:"public" eventstream:"observation"`
+
   // Output only. The available actions on this resource for this user.
   repeated string authorized_actions = 120 [json_name = "authorized_actions"]; // @gotags: `class:"public"`
 }
