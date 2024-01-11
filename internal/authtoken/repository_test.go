@@ -890,7 +890,9 @@ func Test_CloseExpiredPendingTokens(t *testing.T) {
 	repo, err := NewRepository(ctx, rw, rw, kmsCache)
 	require.NoError(t, err)
 
-	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, rootWrapper))
+	iamRepo := iam.TestRepo(t, conn, rootWrapper)
+	org, _ := iam.TestScopes(t, iamRepo)
+	user := iam.TestUser(t, iamRepo, org.GetPublicId())
 	databaseWrapper, err := kmsCache.GetWrapper(ctx, org.PublicId, kms.KeyPurposeDatabase)
 	require.NoError(t, err)
 
@@ -900,6 +902,11 @@ func Test_CloseExpiredPendingTokens(t *testing.T) {
 
 		accts := password.TestMultipleAccounts(t, conn, authMethodId, cnt)
 		for i := 0; i < cnt; i++ {
+			user, _, err = iamRepo.LookupUser(ctx, user.GetPublicId())
+			require.NoError(t, err)
+
+			iamRepo.AddUserAccounts(ctx, user.GetPublicId(), user.GetVersion(), []string{accts[i].GetPublicId()})
+
 			at := allocAuthToken()
 			id, err := NewAuthTokenId(ctx)
 			require.NoError(t, err)
