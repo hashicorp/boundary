@@ -203,7 +203,6 @@ const (
 		canonical_grant as canonical_grant
 	from final;
 	`
-	--https://dba.stackexchange.com/questions/97903/call-function-where-argument-is-a-subselect-statement
 
 	reconciliationQuery = grantsBaseQuery + `
 	joined_scopes (role_id, role_scope_id, grant_scope_id) as (
