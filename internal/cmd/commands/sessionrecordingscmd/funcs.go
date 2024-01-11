@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/boundary/api/scopes"
 	"github.com/hashicorp/boundary/api/sessionrecordings"
 	"github.com/hashicorp/boundary/internal/cmd/base"
+	"github.com/hashicorp/boundary/internal/policy/storage"
 )
 
 type extraCmdVars struct{}
@@ -115,6 +116,23 @@ func (c *Command) printListTable(items []*sessionrecordings.SessionRecording) st
 				fmt.Sprintf("    State:               %s", item.State),
 			)
 		}
+		if !item.RetainUntil.IsZero() {
+			var retention string
+			switch item.RetainUntil {
+			case storage.InfinityTS:
+				retention = "Keep Forever"
+			default:
+				retention = item.RetainUntil.Local().Format(time.RFC1123)
+			}
+			output = append(output,
+				fmt.Sprintf("    Retain Until:        %s", retention),
+			)
+		}
+		if !item.DeleteAfter.IsZero() {
+			output = append(output,
+				fmt.Sprintf("    Delete After:        %s", item.DeleteAfter.Local().Format(time.RFC1123)),
+			)
+		}
 		if len(item.AuthorizedActions) > 0 {
 			output = append(output,
 				"    Authorized Actions:",
@@ -163,6 +181,19 @@ func printItemTable(item *sessionrecordings.SessionRecording, resp *api.Response
 	}
 	if item.Duration.Duration != 0 {
 		nonAttributeMap[durationKey] = item.Duration.Seconds()
+	}
+	if !item.RetainUntil.IsZero() {
+		var retention string
+		switch item.RetainUntil {
+		case storage.InfinityTS:
+			retention = "Keep Forever"
+		default:
+			retention = item.RetainUntil.Local().Format(time.RFC1123)
+		}
+		nonAttributeMap["Retain Until"] = retention
+	}
+	if !item.DeleteAfter.IsZero() {
+		nonAttributeMap["Delete After"] = item.DeleteAfter.Local().Format(time.RFC1123)
 	}
 	if item.Type != "" {
 		nonAttributeMap["Type"] = item.Type
