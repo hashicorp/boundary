@@ -178,4 +178,50 @@ begin;
   create trigger a_override_role_grant_scope_id_update before insert or update on iam_role
     for each row execute procedure override_iam_role_grant_scope_id();
 
+  create type
+    roleScopeInputTuple
+  as (
+    role_id text,
+    role_scope_id text,
+    grant_scope_id text
+  );
+  create type
+    roleScopeOutputTuple
+  as (
+    role_id text,
+    grant_scope_id text
+  );
+  create or replace function
+    reconcileRoleScopes(tuples roleScopeInputTuple[])
+  returns
+    setof roleScopeOutputTuple
+  as $$
+    declare
+      tuple roleScopeInputTuple;
+    begin
+      foreach tuple in array tuples
+      loop
+        case
+          when tuple.grant_scope_id = 'descendants' then
+            return query
+              select
+                tuple.role_id, public_id as grant_scope_id from iam_scope
+              where
+                iam_scope.public_id != 'global';
+          when tuple.grant_scope_id = 'children' then
+            return query
+              select
+                tuple.role_id, public_id as grant_scope_id from iam_scope
+              where
+                iam_scope.parent_id = tuple.role_scope_id;
+          else
+            return query
+              select
+                tuple.role_id, tuple.role_scope_id;
+          end case;
+      end loop;
+      return;
+    end;
+  $$ language plpgsql;
+
 commit;

@@ -6,6 +6,7 @@ package iam
 import (
 	"context"
 	"fmt"
+	"log"
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
@@ -14,6 +15,7 @@ import (
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/kr/pretty"
 )
 
 // AddRoleGrant will add role grants associated with the role ID in the
@@ -491,6 +493,14 @@ func (r *Repository) GrantsForUser(ctx context.Context, userId string, _ ...Opti
 		}
 	}
 
+	// Test out the new logic
+	type roleScopeTuple struct {
+		RoleId       string
+		GrantScopeId string
+		RoleScopeId  string
+	}
+	var roleScopeTuples []roleScopeTuple
+
 	for _, gs := range grantScopes {
 		currScopes := roleScopes[gs.RoleId]
 		if currScopes[gs.GrantScopeId] {
@@ -504,6 +514,12 @@ func (r *Repository) GrantsForUser(ctx context.Context, userId string, _ ...Opti
 
 		switch gs.GrantScopeId {
 		case "descendants", "children":
+			roleScopeTuples = append(roleScopeTuples, roleScopeTuple{
+				RoleId:       gs.RoleId,
+				GrantScopeId: gs.GrantScopeId,
+				RoleScopeId:  gs.RoleScopeId,
+			})
+
 			var query string
 			args := make([]any, 0, 1)
 
@@ -546,6 +562,20 @@ func (r *Repository) GrantsForUser(ctx context.Context, userId string, _ ...Opti
 
 		// log.Println("current grants", pretty.Sprint(grants))
 	}
+
+	// Now try out the new logic
+	rows, err = r.reader.Query(ctx, fmt.Sprintf(reconciliationQuery, authUser), []any{userId})
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	reconciledGrants := make([]grantScopeValue, 0)
+	defer rows.Close()
+	for rows.Next() {
+		if err := r.reader.ScanRows(ctx, rows, &reconciledGrants); err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+	}
+	log.Println("roleScopeResults", pretty.Sprint(reconciledGrants))
 
 	return grants, nil
 }

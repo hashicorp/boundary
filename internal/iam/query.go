@@ -203,6 +203,50 @@ const (
 		canonical_grant as canonical_grant
 	from final;
 	`
+	--https://dba.stackexchange.com/questions/97903/call-function-where-argument-is-a-subselect-statement
+
+	reconciliationQuery = grantsBaseQuery + `
+	joined_scopes (role_id, role_scope_id, grant_scope_id) as (
+		select
+			roles.role_id,
+			roles.role_scope_id,
+			iam_role_grant_scope.scope_id
+		from roles
+		inner join iam_role_grant_scope
+			on roles.role_id = iam_role_grant_scope.role_id
+	),
+	exploded_scopes (role_id, grant_scope_id) as (
+		select
+			role_id as role_id,
+			grant_scope_id as grant_scope_id
+		from reconcileRoleScopes(
+			select 
+				role_id,
+				role_scope_id,
+				grant_scope_id
+			from
+				joined_scopes
+		)
+	),
+	final as (role_id, role_scope_id, grant_scope_id, canonical_grant) as (
+		select
+			exploded_scopes.role_id,
+			roles.role_scope_id,
+			exploded_scopes.grant_scope_id,
+			iam_role_grant.canonical_grant
+		from roles
+		inner join exploded_scopes
+			on roles.role_id = exploded_scopes.role_id
+		inner join iam_role_grant
+			on roles.role_id = iam_role_grant.role_id
+	)
+	select
+		role_id as role_id,
+		role_scope_id as role_scope_id,
+		grant_scope_id as grant_scope_id,
+		canonical_grant as canonical_grant
+	from final;
+	`
 
 	estimateCountRoles = `
 		select reltuples::bigint as estimate from pg_class where oid in ('iam_role'::regclass)
