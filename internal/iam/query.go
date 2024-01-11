@@ -169,7 +169,7 @@ const (
 	),
 	`
 
-	grantsQuery = grantsBaseQuery + `
+	oldGrantsQuery = grantsBaseQuery + `
 	final (role_id, role_scope, role_grant) as (
 		select
 			roles.role_id,
@@ -184,33 +184,24 @@ const (
 	`
 
 	grantScopesQuery = grantsBaseQuery + `
-	final (role_id, role_scope_id, grant_scope_id) as (
+	final (role_id, role_scope_id, grant_scope_id, canonical_grant) as (
 		select
 			roles.role_id,
 			roles.role_scope_id,
-			iam_role_grant_scope.scope_id
+			iam_role_grant_scope.scope_id,
+			iam_role_grant.canonical_grant
 		from roles
 		inner join iam_role_grant_scope
 			on roles.role_id = iam_role_grant_scope.role_id
-	)
-	select role_id as role_id, role_scope_id as role_scope_id, grant_scope_id as grant_scope_id from final;
-	`
-
-	grantsFromRolesQuery = `
-	with
-	roles (role_id) as (
-		select public_id from iam_role where public_id in @role_ids
-	),
-	final (role_id, role_grant) as (
-		select
-			roles.role_id,
-			iam_role_grant.canonical_grant
-		from roles
 		inner join iam_role_grant
 			on roles.role_id = iam_role_grant.role_id
-			-- only retrieves roles with a grant! there can be roles that don't have grants (it's a valid state in boundary)
 	)
-	select role_id as role_id, role_grant as grant from final;
+	select
+		role_id as role_id,
+		role_scope_id as role_scope_id,
+		grant_scope_id as grant_scope_id,
+		canonical_grant as canonical_grant
+	from final;
 	`
 
 	estimateCountRoles = `
