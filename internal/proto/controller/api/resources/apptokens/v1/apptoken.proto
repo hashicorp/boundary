@@ -1,0 +1,89 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
+syntax = "proto3";
+
+package controller.api.resources.apptokens.v1;
+
+import "controller/api/resources/scopes/v1/scope.proto";
+import "controller/custom_options/v1/options.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+option go_package = "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/apptokens;apptokens";
+
+message AppToken {
+  // Output only. The ID of the AppToken.
+  string id = 10; // @gotags: `class:"public" eventstream:"observation"`
+
+  // Output only. Scope information for the Account.
+  resources.scopes.v1.ScopeInfo scope = 20;
+
+  // Optional name for identification purposes.
+  google.protobuf.StringValue name = 30 [
+    (custom_options.v1.generate_sdk_option) = true,
+    (custom_options.v1.mask_mapping) = {
+      this: "name"
+      that: "Name"
+    }
+  ]; // @gotags: `class:"public"`
+
+  // Optional user-set description for identification purposes.
+  google.protobuf.StringValue description = 40 [
+    (custom_options.v1.generate_sdk_option) = true,
+    (custom_options.v1.mask_mapping) = {
+      this: "description"
+      that: "Description"
+    }
+  ]; // @gotags: `class:"public"`
+
+  // Output only. The time this resource was created.
+  google.protobuf.Timestamp created_time = 50 [json_name = "created_time"]; // @gotags: `class:"public" eventstream:"observation"`
+
+  // When does the app token expire.  This date cannot be longer than 3 yrs from the creation date.
+  google.protobuf.Timestamp expiration_time = 60 [json_name = "expiration_time"]; // @gotags: `class:"public" eventstream:"observation"`
+
+  // Output only. The user ID of the user that created this resource.
+  string created_by_user_id = 70 [json_name = "created_by_user_id"]; // @gotags: `class:"public" eventstream:"observation"`
+
+  // The Scope the grants will apply to. If the Role is at the global scope, this can be an org or project. If the Role is at an org scope, this can be a project within the org. It is invalid for this to be anything other than the Role's scope when the Role's scope is a project.
+  google.protobuf.StringValue grant_scope_id = 80 [
+    json_name = "grant_scope_id",
+    (custom_options.v1.generate_sdk_option) = true,
+    (custom_options.v1.mask_mapping) = {
+      this: "grant_scope_id"
+      that: "GrantScopeId"
+    }
+  ]; // @gotags: `class:"public" eventstream:"observation"`
+
+  // The grants that this apptoken provides.
+  repeated string grant_strings = 90 [json_name = "grant_strings"]; // @gotags: `class:"public"`
+
+  // Output only. The parsed grant information.
+  repeated Grant grants = 100;
+
+  // Output only. The available actions on this resource for this user.
+  repeated string authorized_actions = 120 [json_name = "authorized_actions"]; // @gotags: `class:"public"`
+}
+
+message GrantJson {
+  // Output only. The IDs, if set.
+  repeated string ids = 10; // @gotags: `class:"public"`
+
+  // Output only. The type, if set.
+  string type = 20; // @gotags: `class:"public"`
+
+  // Output only. The actions.
+  repeated string actions = 30; // @gotags: `class:"public"`
+}
+
+message Grant {
+  // Output only. The original user-supplied string.
+  string raw = 10; // @gotags: `class:"public"`
+
+  // Output only. The canonically-formatted string.
+  string canonical = 20; // @gotags: `class:"public"`
+
+  // Output only. The JSON representation of the grant.
+  GrantJson json = 30;
+}
