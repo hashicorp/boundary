@@ -216,11 +216,15 @@ const (
 	),
 	exploded_scopes (role_id, grant_scope_id) as (
 		select
-			rs.role_id as role_id,
-			rs.grant_scope_id as grant_scope_id
-		from reconcileRoleScopes(array['r_1234567890', 'global', 'descendants']) as rs
+			role_id as role_id,
+			grant_scope_id as grant_scope_id
+		from reconcileRoleScopes(
+			array(select joined_scopes.role_id from joined_scopes),
+			array(select joined_scopes.role_scope_id from joined_scopes),
+			array(select joined_scopes.grant_scope_id from joined_scopes)
+		)
 	)
-	select role_id from roles;
+	select * from exploded_scopes;
 	`
 
 	foobar = `

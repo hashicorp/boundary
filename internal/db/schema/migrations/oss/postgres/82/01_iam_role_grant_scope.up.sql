@@ -179,20 +179,13 @@ begin;
     for each row execute procedure override_iam_role_grant_scope_id();
 
   create type
-    roleScopeInputTuple
-  as (
-    role_id text,
-    role_scope_id text,
-    grant_scope_id text
-  );
-  create type
     roleScopeOutputTuple
   as (
     role_id text,
     grant_scope_id text
   );
   create or replace function
-    reconcileRoleScopes(tuples roleScopeInputTuple[])
+    reconcileRoleScopes(roleIds text[], scopeIds text[], grantScopeIds text[])
   returns
     setof roleScopeOutputTuple
   as $$

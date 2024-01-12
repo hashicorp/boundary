@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	mathrand "math/rand"
 	"testing"
 
@@ -25,8 +26,9 @@ import (
 
 func TestGrantsForUser(t *testing.T) {
 	ctx := context.Background()
-	conn, _ := db.TestSetup(t, "postgres")
+	conn, dbUrl := db.TestSetup(t, "postgres")
 	wrap := db.TestWrapper(t)
+	log.Println(dbUrl)
 
 	iamRepo := iam.TestRepo(t, conn, wrap)
 	user := iam.TestUser(t, iamRepo, "global")
@@ -54,6 +56,7 @@ func TestGrantsForUser(t *testing.T) {
 	iam.TestRoleGrant(t, conn, org2Proj2Role.PublicId, "id=*;type=*;actions=list,no-op")
 	iam.TestRoleGrant(t, conn, globalRole.PublicId, "id=*;type=auth-method;actions=update")
 	iam.TestRoleGrant(t, conn, globalRole.PublicId, "id=*;type=credential-store;actions=list,no-op")
+	// time.Sleep(10000 * time.Second)
 	grantTuples, err := iamRepo.GrantsForUser(ctx, user.PublicId)
 	require.NoError(t, err)
 	t.Log(pretty.Sprint(grantTuples))
