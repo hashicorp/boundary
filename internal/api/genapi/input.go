@@ -1224,10 +1224,11 @@ var inputStructs = []*structInfo{
 		templates: []*template.Template{
 			clientTemplate,
 			readTemplate,
+			deleteTemplate,
 			listTemplate,
 		},
 		pluralResourceName:  "session-recordings",
-		createResponseTypes: []string{ReadResponseType, ListResponseType},
+		createResponseTypes: []string{ReadResponseType, DeleteResponseType, ListResponseType},
 		recursiveListing:    true,
 		skipListFiltering:   true,
 		versionEnabled:      false,

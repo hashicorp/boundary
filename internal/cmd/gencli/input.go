@@ -599,7 +599,7 @@ var inputStructs = map[string][]*cmdInfo{
 		{
 			ResourceType:        resource.SessionRecording.String(),
 			Pkg:                 "sessionrecordings",
-			StdActions:          []string{"read", "list"},
+			StdActions:          []string{"delete", "read", "list"},
 			Container:           "Scope",
 			HasExtraCommandVars: true,
 			HasExtraHelpFunc:    true,

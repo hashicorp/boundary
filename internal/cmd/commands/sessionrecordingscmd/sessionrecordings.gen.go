@@ -70,6 +70,9 @@ func (c *Command) Help() string {
 
 	switch c.Func {
 
+	case "delete":
+		helpStr = helpMap[c.Func]() + c.Flags().Help()
+
 	case "read":
 		helpStr = helpMap[c.Func]() + c.Flags().Help()
 
@@ -88,6 +91,8 @@ func (c *Command) Help() string {
 }
 
 var flagsMap = map[string][]string{
+
+	"delete": {"id"},
 
 	"read": {"id"},
 
@@ -185,11 +190,20 @@ func (c *Command) Run(args []string) int {
 
 	var items []*sessionrecordings.SessionRecording
 
+	var deleteResult *sessionrecordings.SessionRecordingDeleteResult
+
 	var readResult *sessionrecordings.SessionRecordingReadResult
 
 	var listResult *sessionrecordings.SessionRecordingListResult
 
 	switch c.Func {
+
+	case "delete":
+		deleteResult, err = sessionrecordingsClient.Delete(c.Context, c.FlagId, opts...)
+		if exitCode := c.checkFuncError(err); exitCode > 0 {
+			return exitCode
+		}
+		resp = deleteResult.GetResponse()
 
 	case "read":
 		readResult, err = sessionrecordingsClient.Read(c.Context, c.FlagId, opts...)
@@ -224,6 +238,19 @@ func (c *Command) Run(args []string) int {
 	}
 
 	switch c.Func {
+
+	case "delete":
+		switch base.Format(c.UI) {
+		case "json":
+			if ok := c.PrintJsonItem(resp); !ok {
+				return base.CommandCliError
+			}
+
+		case "table":
+			c.UI.Output("The delete operation completed successfully.")
+		}
+
+		return base.CommandSuccess
 
 	case "list":
 		switch base.Format(c.UI) {

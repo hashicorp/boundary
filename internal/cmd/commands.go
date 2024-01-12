@@ -1000,6 +1000,11 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 			&sessionrecordingscmd.DownloadCommand{
 				Command: base.NewCommand(ui),
 			}),
+		"session-recordings delete": clientCacheWrapper(
+			&sessionrecordingscmd.Command{
+				Command: base.NewCommand(ui),
+				Func:    "delete",
+			}),
 
 		"storage-buckets": func() (cli.Command, error) {
 			return &storagebucketscmd.Command{

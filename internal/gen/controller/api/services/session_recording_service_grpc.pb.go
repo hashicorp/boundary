@@ -23,10 +23,11 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	SessionRecordingService_GetSessionRecording_FullMethodName   = "/controller.api.services.v1.SessionRecordingService/GetSessionRecording"
-	SessionRecordingService_ListSessionRecordings_FullMethodName = "/controller.api.services.v1.SessionRecordingService/ListSessionRecordings"
-	SessionRecordingService_Download_FullMethodName              = "/controller.api.services.v1.SessionRecordingService/Download"
-	SessionRecordingService_ReApplyStoragePolicy_FullMethodName  = "/controller.api.services.v1.SessionRecordingService/ReApplyStoragePolicy"
+	SessionRecordingService_GetSessionRecording_FullMethodName    = "/controller.api.services.v1.SessionRecordingService/GetSessionRecording"
+	SessionRecordingService_ListSessionRecordings_FullMethodName  = "/controller.api.services.v1.SessionRecordingService/ListSessionRecordings"
+	SessionRecordingService_Download_FullMethodName               = "/controller.api.services.v1.SessionRecordingService/Download"
+	SessionRecordingService_ReApplyStoragePolicy_FullMethodName   = "/controller.api.services.v1.SessionRecordingService/ReApplyStoragePolicy"
+	SessionRecordingService_DeleteSessionRecording_FullMethodName = "/controller.api.services.v1.SessionRecordingService/DeleteSessionRecording"
 )
 
 // SessionRecordingServiceClient is the client API for SessionRecordingService service.
@@ -48,6 +49,9 @@ type SessionRecordingServiceClient interface {
 	// The only supported mime type is "application/x-asciicast".
 	Download(ctx context.Context, in *DownloadRequest, opts ...grpc.CallOption) (SessionRecordingService_DownloadClient, error)
 	ReApplyStoragePolicy(ctx context.Context, in *ReApplyStoragePolicyRequest, opts ...grpc.CallOption) (*ReApplyStoragePolicyResponse, error)
+	// DeleteSessionRecording removes a Session Recording from Boundary. If the Session Recording id
+	// is malformed or not provided an error is returned.
+	DeleteSessionRecording(ctx context.Context, in *DeleteSessionRecordingRequest, opts ...grpc.CallOption) (*DeleteSessionRecordingResponse, error)
 }
 
 type sessionRecordingServiceClient struct {
@@ -117,6 +121,15 @@ func (c *sessionRecordingServiceClient) ReApplyStoragePolicy(ctx context.Context
 	return out, nil
 }
 
+func (c *sessionRecordingServiceClient) DeleteSessionRecording(ctx context.Context, in *DeleteSessionRecordingRequest, opts ...grpc.CallOption) (*DeleteSessionRecordingResponse, error) {
+	out := new(DeleteSessionRecordingResponse)
+	err := c.cc.Invoke(ctx, SessionRecordingService_DeleteSessionRecording_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // SessionRecordingServiceServer is the server API for SessionRecordingService service.
 // All implementations must embed UnimplementedSessionRecordingServiceServer
 // for forward compatibility
@@ -136,6 +149,9 @@ type SessionRecordingServiceServer interface {
 	// The only supported mime type is "application/x-asciicast".
 	Download(*DownloadRequest, SessionRecordingService_DownloadServer) error
 	ReApplyStoragePolicy(context.Context, *ReApplyStoragePolicyRequest) (*ReApplyStoragePolicyResponse, error)
+	// DeleteSessionRecording removes a Session Recording from Boundary. If the Session Recording id
+	// is malformed or not provided an error is returned.
+	DeleteSessionRecording(context.Context, *DeleteSessionRecordingRequest) (*DeleteSessionRecordingResponse, error)
 	mustEmbedUnimplementedSessionRecordingServiceServer()
 }
 
@@ -154,6 +170,9 @@ func (UnimplementedSessionRecordingServiceServer) Download(*DownloadRequest, Ses
 }
 func (UnimplementedSessionRecordingServiceServer) ReApplyStoragePolicy(context.Context, *ReApplyStoragePolicyRequest) (*ReApplyStoragePolicyResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ReApplyStoragePolicy not implemented")
+}
+func (UnimplementedSessionRecordingServiceServer) DeleteSessionRecording(context.Context, *DeleteSessionRecordingRequest) (*DeleteSessionRecordingResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteSessionRecording not implemented")
 }
 func (UnimplementedSessionRecordingServiceServer) mustEmbedUnimplementedSessionRecordingServiceServer() {
 }
@@ -244,6 +263,24 @@ func _SessionRecordingService_ReApplyStoragePolicy_Handler(srv interface{}, ctx 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _SessionRecordingService_DeleteSessionRecording_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteSessionRecordingRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SessionRecordingServiceServer).DeleteSessionRecording(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SessionRecordingService_DeleteSessionRecording_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SessionRecordingServiceServer).DeleteSessionRecording(ctx, req.(*DeleteSessionRecordingRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // SessionRecordingService_ServiceDesc is the grpc.ServiceDesc for SessionRecordingService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -262,6 +299,10 @@ var SessionRecordingService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ReApplyStoragePolicy",
 			Handler:    _SessionRecordingService_ReApplyStoragePolicy_Handler,
+		},
+		{
+			MethodName: "DeleteSessionRecording",
+			Handler:    _SessionRecordingService_DeleteSessionRecording_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

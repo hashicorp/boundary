@@ -2894,6 +2894,32 @@
               "resource": "session-recording",
               "unlimited": false
             }
+          ],
+          "delete": [
+            {
+              "action": "delete",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "session-recording",
+              "unlimited": false
+            },
+            {
+              "action": "delete",
+              "limit": 30000,
+              "per": "total",
+              "period": "30s",
+              "resource": "session-recording",
+              "unlimited": false
+            },
+            {
+              "action": "delete",
+              "limit": 30000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "session-recording",
+              "unlimited": false
+            }
           ]
         },
         "storage-bucket": {

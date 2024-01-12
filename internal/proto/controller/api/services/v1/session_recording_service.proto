@@ -49,6 +49,13 @@ service SessionRecordingService {
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "ReApplyStoragePolicy will recalculate the resultant set of policy and apply the result to the given session recording."};
   }
+
+  // DeleteSessionRecording removes a Session Recording from Boundary. If the Session Recording id
+  // is malformed or not provided an error is returned.
+  rpc DeleteSessionRecording(DeleteSessionRecordingRequest) returns (DeleteSessionRecordingResponse) {
+    option (google.api.http) = {delete: "/v1/session-recordings/{id}"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Deletes a Session Recording"};
+  }
 }
 
 message GetSessionRecordingRequest {
@@ -125,3 +132,9 @@ message ReApplyStoragePolicyResponse {
   // The requested recording.
   resources.sessionrecordings.v1.SessionRecording item = 1;
 }
+
+message DeleteSessionRecordingRequest {
+  string id = 1; // @gotags: `class:"public"`
+}
+
+message DeleteSessionRecordingResponse {}

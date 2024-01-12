@@ -24,6 +24,7 @@ var (
 		action.NoOp,
 		action.Read,
 		action.Download,
+		action.Delete,
 	)
 
 	// CollectionActions contains the set of actions that can be performed on
@@ -73,4 +74,9 @@ func (s Service) Download(*pbs.DownloadRequest, pbs.SessionRecordingService_Down
 // ReApplyStoragePolicy implements the interface pbs.SessionRecordingServiceServer.
 func (s Service) ReApplyStoragePolicy(context.Context, *pbs.ReApplyStoragePolicyRequest) (*pbs.ReApplyStoragePolicyResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "session recordings are an Enterprise-only feature")
+}
+
+// Delete implements the interface pbs.SessionRecordingServiceServer.
+func (s Service) Delete(*pbs.DownloadRequest, *pbs.DeleteSessionRecordingRequest) error {
+	return status.Errorf(codes.Unimplemented, "session recordings are an Enterprise-only feature")
 }

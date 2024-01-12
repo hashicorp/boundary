@@ -3298,6 +3298,30 @@
         "tags": [
           "controller.api.services.v1.SessionRecordingService"
         ]
+      },
+      "delete": {
+        "summary": "Deletes a Session Recording",
+        "operationId": "SessionRecordingService_DeleteSessionRecording",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.DeleteSessionRecordingResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "description": "",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.SessionRecordingService"
+        ]
       }
     },
     "/v1/session-recordings/{id}:download": {
@@ -7913,6 +7937,9 @@
       "type": "object"
     },
     "controller.api.services.v1.DeleteScopeResponse": {
+      "type": "object"
+    },
+    "controller.api.services.v1.DeleteSessionRecordingResponse": {
       "type": "object"
     },
     "controller.api.services.v1.DeleteStorageBucketResponse": {
