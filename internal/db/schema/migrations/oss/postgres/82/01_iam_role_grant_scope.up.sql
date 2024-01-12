@@ -178,12 +178,6 @@ begin;
   create trigger a_override_role_grant_scope_id_update before insert or update on iam_role
     for each row execute procedure override_iam_role_grant_scope_id();
 
-  create type
-    roleScopeOutputTuple
-  as (
-    role_id text,
-    grant_scope_id text
-  );
   create or replace function
     explodeRoleGrantScopes(roleIds text[], roleScopeIds text[], grantScopeIds text[])
   returns
