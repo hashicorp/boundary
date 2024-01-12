@@ -223,8 +223,8 @@ begin
 end;
 $$ language plpgsql;
 
--- Replaced in 82/01_iam_role_grant_scope to always set the grant scope id to
--- the scope id since it's deprecated and not used for logic anymore
+-- Dropped in 82/01_iam_role_grant_scope since we moved to multiple scopes per
+-- role
 create or replace function grant_scope_id_valid() returns trigger
 as $$
 declare parent_scope_id text;

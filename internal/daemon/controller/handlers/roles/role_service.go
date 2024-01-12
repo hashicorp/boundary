@@ -754,7 +754,7 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Role
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
-	out, pr, roleGrants, roleGrantScopes, err := repo.CreateRole(ctx, u)
+	out, pr, roleGrants, roleGrantScopes, err := repo.CreateRole(ctx, u, opts...)
 	if err != nil {
 		return nil, nil, nil, nil, errors.Wrap(ctx, err, op)
 	}
@@ -791,7 +791,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
-	out, pr, gr, grantScopes, rowsUpdated, err := repo.UpdateRole(ctx, u, version, dbMask)
+	out, pr, gr, grantScopes, rowsUpdated, err := repo.UpdateRole(ctx, u, version, dbMask, opts...)
 	if err != nil {
 		return nil, nil, nil, nil, errors.Wrap(ctx, err, op)
 	}
@@ -1125,12 +1125,8 @@ func toProto(ctx context.Context, in *iam.Role, principals []*iam.PrincipalRole,
 		}
 	}
 	if outputFields.Has(globals.GrantsField) {
-		scopeId := in.GetGrantScopeId()
-		if scopeId == "" {
-			scopeId = in.GetScopeId()
-		}
 		for _, g := range grants {
-			parsed, err := perms.Parse(ctx, scopeId, g.GetRawGrant())
+			parsed, err := perms.Parse(ctx, in.GetScopeId(), g.GetRawGrant())
 			if err != nil {
 				// This should never happen as we validate on the way in, but let's
 				// return what we can since we are still returning the raw grant
@@ -1176,9 +1172,15 @@ func validateCreateRequest(req *pbs.CreateRoleRequest) error {
 			scope.Global.String() != item.GetScopeId() {
 			badFields["scope_id"] = "This field is missing or improperly formatted."
 		}
-		if item.GetGrantScopeId() != nil && handlers.ValidId(handlers.Id(item.GetScopeId()), scope.Project.Prefix()) {
-			if item.GetGrantScopeId().GetValue() != item.GetScopeId() {
-				badFields["grant_scope_id"] = "When the role is in a project scope this value must be that project's scope ID."
+		if item.GetGrantScopeId() != nil {
+			switch {
+			case handlers.ValidId(handlers.Id(item.GetScopeId()), scope.Project.Prefix()):
+				switch item.GetGrantScopeId().GetValue() {
+				case item.GetScopeId(),
+					"this":
+				default:
+					badFields["grant_scope_id"] = "When the role is in a project scope this value must be that project's scope ID or \"this\"."
+				}
 			}
 		}
 		if item.GetPrincipals() != nil {
@@ -1206,9 +1208,15 @@ func validateUpdateRequest(req *pbs.UpdateRoleRequest) error {
 		if req.GetItem().GetGrantStrings() != nil {
 			badFields["grant_strings"] = "This is a read only field and cannot be specified in an update request."
 		}
-		if req.GetItem().GetGrantScopeId() != nil && handlers.ValidId(handlers.Id(req.GetItem().GetScopeId()), scope.Project.Prefix()) {
-			if req.GetItem().GetGrantScopeId().GetValue() != req.GetItem().GetScopeId() {
-				badFields["grant_scope_id"] = "When the role is in a project scope this value must be that project's scope ID"
+		if item := req.GetItem(); item != nil {
+			switch {
+			case handlers.ValidId(handlers.Id(item.GetScopeId()), scope.Project.Prefix()):
+				switch item.GetGrantScopeId().GetValue() {
+				case item.GetScopeId(),
+					"this":
+				default:
+					badFields["grant_scope_id"] = "When the role is in a project scope this value must be that project's scope ID or \"this\"."
+				}
 			}
 		}
 		return badFields

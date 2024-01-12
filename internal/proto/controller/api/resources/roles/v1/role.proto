@@ -92,11 +92,7 @@ message Role {
   google.protobuf.StringValue grant_scope_id = 90 [
     json_name = "grant_scope_id",
     deprecated = true,
-    (custom_options.v1.generate_sdk_option) = true,
-    (custom_options.v1.mask_mapping) = {
-      this: "grant_scope_id"
-      that: "GrantScopeId"
-    }
+    (custom_options.v1.generate_sdk_option) = true
   ]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. The IDs of Scopes the grants will apply to. This can include

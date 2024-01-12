@@ -47,11 +47,6 @@ message Role {
   // @inject_tag: `gorm:"default:null"`
   uint32 version = 70;
 
-  // grant_scope_id is used for delegating access; it defines a scope other than
-  // the role's scope that is used when compiling these grants into an ACL
-  // @inject_tag: `gorm:"default:null"`
-  string grant_scope_id = 80 [(custom_options.v1.mask_mapping) = {
-    this: "GrantScopeId"
-    that: "grant_scope_id"
-  }];
+  // Previously grant_scope_id
+  reserved 80;
 }

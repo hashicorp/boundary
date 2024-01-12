@@ -53,6 +53,10 @@ func TestRoles(t *testing.T) {
 					UpdatedTime:  pbNow,
 					Version:      0,
 					GrantScopeId: &wrapperspb.StringValue{Value: "grant-scope-id"},
+					GrantScopeIds: []string{
+						"this",
+						"grant-scope-id",
+					},
 					PrincipalIds: []string{
 						"principal-id",
 					},
@@ -99,6 +103,10 @@ func TestRoles(t *testing.T) {
 					UpdatedTime:  pbNow,
 					Version:      0,
 					GrantScopeId: &wrapperspb.StringValue{Value: "grant-scope-id"},
+					GrantScopeIds: []string{
+						"this",
+						"grant-scope-id",
+					},
 					PrincipalIds: []string{
 						"principal-id",
 					},

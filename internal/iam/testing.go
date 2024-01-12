@@ -202,7 +202,6 @@ func TestRole(t testing.TB, conn *db.DB, scopeId string, opt ...Option) *Role {
 	id, err := newRoleId(ctx)
 	require.NoError(err)
 	role.PublicId = id
-	role.GrantScopeId = scopeId
 	require.NoError(rw.Create(ctx, role))
 	require.NotEmpty(role.PublicId)
 

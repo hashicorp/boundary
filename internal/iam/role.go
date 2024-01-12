@@ -34,7 +34,7 @@ var (
 )
 
 // NewRole creates a new in memory role with a scope (project/org)
-// allowed options include: withDescripion, WithName, withGrantScopeId.
+// allowed options include: withDescripion, WithName.
 func NewRole(ctx context.Context, scopeId string, opt ...Option) (*Role, error) {
 	const op = "iam.NewRole"
 	if scopeId == "" {
@@ -43,10 +43,9 @@ func NewRole(ctx context.Context, scopeId string, opt ...Option) (*Role, error) 
 	opts := getOpts(opt...)
 	r := &Role{
 		Role: &store.Role{
-			ScopeId:      scopeId,
-			Name:         opts.withName,
-			Description:  opts.withDescription,
-			GrantScopeId: opts.withGrantScopeId,
+			ScopeId:     scopeId,
+			Name:        opts.withName,
+			Description: opts.withDescription,
 		},
 	}
 	return r, nil

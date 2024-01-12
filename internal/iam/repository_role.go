@@ -18,7 +18,7 @@ import (
 
 // CreateRole will create a role in the repository and return the written
 // role.  No options are currently supported.
-func (r *Repository) CreateRole(ctx context.Context, role *Role, _ ...Option) (*Role, []*PrincipalRole, []*RoleGrant, []*RoleGrantScope, error) {
+func (r *Repository) CreateRole(ctx context.Context, role *Role, opt ...Option) (*Role, []*PrincipalRole, []*RoleGrant, []*RoleGrantScope, error) {
 	const op = "iam.(Repository).CreateRole"
 	if role == nil {
 		return nil, nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing role")
@@ -39,11 +39,12 @@ func (r *Repository) CreateRole(ctx context.Context, role *Role, _ ...Option) (*
 	c := role.Clone().(*Role)
 	c.PublicId = id
 
-	initialScope := c.GrantScopeId
+	opts := getOpts(opt...)
+
+	initialScope := opts.withGrantScopeId
 	if initialScope == "" {
 		initialScope = "this"
 	}
-	c.GrantScopeId = c.ScopeId
 
 	var resource Resource
 	var pr []*PrincipalRole
@@ -87,7 +88,7 @@ func (r *Repository) CreateRole(ctx context.Context, role *Role, _ ...Option) (*
 // included in fieldMask. Name, Description, and GrantScopeId are the only
 // updatable fields, If no updatable fields are included in the fieldMaskPaths,
 // then an error is returned.
-func (r *Repository) UpdateRole(ctx context.Context, role *Role, version uint32, fieldMaskPaths []string, _ ...Option) (*Role, []*PrincipalRole, []*RoleGrant, []*RoleGrantScope, int, error) {
+func (r *Repository) UpdateRole(ctx context.Context, role *Role, version uint32, fieldMaskPaths []string, opt ...Option) (*Role, []*PrincipalRole, []*RoleGrant, []*RoleGrantScope, int, error) {
 	const op = "iam.(Repository).UpdateRole"
 	if role == nil {
 		return nil, nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing role")
@@ -98,6 +99,7 @@ func (r *Repository) UpdateRole(ctx context.Context, role *Role, version uint32,
 	if role.PublicId == "" {
 		return nil, nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing public id")
 	}
+	opts := getOpts(opt...)
 	var grantScopeIdToSet []string
 	for _, f := range fieldMaskPaths {
 		switch {
@@ -108,9 +110,8 @@ func (r *Repository) UpdateRole(ctx context.Context, role *Role, version uint32,
 			// null field), which is represented by an empty slice in
 			// SetRoleGrantScopes
 			grantScopeIdToSet = make([]string, 0, 1)
-			if role.GrantScopeId != "" {
-				grantScopeIdToSet = append(grantScopeIdToSet, role.GrantScopeId)
-				role.GrantScopeId = "" // We need to not trigger the immutability check
+			if opts.withGrantScopeId != "" {
+				grantScopeIdToSet = append(grantScopeIdToSet, opts.withGrantScopeId)
 			}
 		default:
 			return nil, nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidFieldMask, op, fmt.Sprintf("invalid field mask: %s", f))
@@ -121,7 +122,7 @@ func (r *Repository) UpdateRole(ctx context.Context, role *Role, version uint32,
 		map[string]any{
 			"name":         role.Name,
 			"description":  role.Description,
-			"GrantScopeId": role.GrantScopeId,
+			"GrantScopeId": opts.withGrantScopeId,
 		},
 		fieldMaskPaths,
 		nil,

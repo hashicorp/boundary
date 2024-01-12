@@ -140,43 +140,13 @@ begin;
   -- table and set the grant scope ID value on each role to the scope ID
   insert into iam_role_grant_scope(role_id, scope_id)
     select public_id as role_id, grant_scope_id as scope_id from iam_role;
-  update iam_role set grant_scope_id=scope_id;
 
-  -- Next, replace the original grant scope id valid function with one that
-  -- requires that the grant scope id is not null and is the same as the role
-  -- (we will enforce this on the application side too)
-  -- Replaces function from 0/06_iam
-  create or replace function grant_scope_id_valid() returns trigger
-  as $$
-  begin
-    new.grant_scope_id = new.scope_id;
-    return new;
-  end;
-  $$ language plpgsql;
+  -- Drop the now-unnecessary trigger and function from 0/06_iam
+  drop trigger ensure_grant_scope_id_valid on iam_role;
+  drop function grant_scope_id_valid;
 
-  -- Finally, set that field immutable
-  drop trigger a_immutable_columns on iam_role;
-  -- Replaces trigger from 0/06_iam. Note that we have changed this to
-  -- b_immutable_columns, so that we can have the forcing function for
-  -- overriding grant scope id (below) run first to not fall afoul of this.
-  create trigger b_immutable_columns before update on iam_role
-    for each row execute procedure immutable_columns('public_id', 'create_time', 'scope_id', 'grant_scope_id');
-
-
-  -- Provide an easy path for allowing existing update logic but no longer
-  -- applying to the immutable column, which we do by just forcing the value on
-  -- any update.
-  create or replace function override_iam_role_grant_scope_id() returns trigger
-  as $$
-  begin
-    new.grant_scope_id = old.grant_scope_id;
-    return new;
-  end;
-  $$ language plpgsql;
-
-  -- The trigger to run this is named to come before the immutable columns check
-  create trigger a_override_role_grant_scope_id_update before insert or update on iam_role
-    for each row execute procedure override_iam_role_grant_scope_id();
+  -- Remove the column from iam_role
+  alter table iam_role drop column grant_scope_id;
 
   create or replace function
     explodeRoleGrantScopes(roleIds text[], roleScopeIds text[], grantScopeIds text[])
