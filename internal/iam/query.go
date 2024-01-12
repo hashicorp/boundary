@@ -159,11 +159,10 @@ const (
 	  select role_id
 		from managed_group_roles
 	),
-	roles (role_id, role_scope_id, grant_scope_id) as (
+	roles (role_id, role_scope_id) as (
 		select
 			iam_role.public_id,
-			iam_role.scope_id,
-			iam_role.grant_scope_id
+			iam_role.scope_id
 		from iam_role
 		where public_id in (select role_id from user_group_roles)
 	),
