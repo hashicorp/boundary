@@ -6,8 +6,6 @@ replace github.com/hashicorp/boundary/api => ./api
 
 replace github.com/hashicorp/boundary/sdk => ./sdk
 
-//replace github.com/hashicorp/nodeenrollment => ../nodeenrollment
-
 require (
 	github.com/fatih/color v1.15.0
 	github.com/fatih/structs v1.1.0

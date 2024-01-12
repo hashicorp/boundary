@@ -299,9 +299,9 @@ type Worker struct {
 	// var, or direct value.
 	ControllerGeneratedActivationToken string `hcl:"controller_generated_activation_token"`
 
-	// UseDeprecatedKmsAuthMethod indicates that the worker should use the pre-0.13
-	// method of using KMSes to authenticate. This should not be used when the
-	// controller version supports the new style.
+	// UseDeprecatedKmsAuthMethod indicates that the worker should use the
+	// pre-0.13 method of using KMSes to authenticate. This is currently only
+	// supported to throw an error if used telling people they need to upgrade.
 	UseDeprecatedKmsAuthMethod bool `hcl:"use_deprecated_kms_auth_method"`
 }
 
@@ -732,6 +732,10 @@ func Parse(d string) (*Config, error) {
 
 	// Parse worker tags
 	if result.Worker != nil {
+		if result.Worker.UseDeprecatedKmsAuthMethod {
+			return nil, fmt.Errorf("The flag 'use_deprecated_auth_method' is unsupported as of version 0.15.")
+		}
+
 		result.Worker.Name, err = parseutil.ParsePath(result.Worker.Name)
 		if err != nil && !errors.Is(err, parseutil.ErrNotAUrl) {
 			return nil, fmt.Errorf("Error parsing worker name: %w", err)

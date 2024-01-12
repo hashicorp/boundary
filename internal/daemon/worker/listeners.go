@@ -224,8 +224,8 @@ func (w *Worker) configureForWorker(ln *base.ServerListener, logger *log.Logger,
 	}
 
 	// This handles connections coming in that are authenticated via
-	// nodeenrollment but not with any extra purpose; these are normal PKI
-	// worker connections
+	// nodeenrollment but not with any extra purpose; these are normal worker
+	// connections
 	nodeeAuthListener, err := w.workerAuthSplitListener.GetListener(nodeenet.AuthenticatedNonSpecificNextProto, nodee.WithNativeConns(true))
 	if err != nil {
 		return nil, fmt.Errorf("error instantiating worker split listener: %w", err)
@@ -245,11 +245,12 @@ func (w *Worker) configureForWorker(ln *base.ServerListener, logger *log.Logger,
 		return nil, fmt.Errorf("error instantiating reverse grpc split listener: %w", err)
 	}
 
-	// This wraps the reverse grpc pki worker connections with a listener which
-	// adds the worker key id of the connections to the worker's pkiConnManager.
-	revPkiWorkerTrackingListener, err := cluster.NewTrackingListener(w.baseContext, reverseGrpcListener, w.pkiConnManager, sourcePurpose(reverseGrpcListenerPurpose))
+	// This wraps the reverse grpc worker connections with a listener which adds
+	// the worker key id of the connections to the worker's downstream
+	// ConnManager.
+	revWorkerTrackingListener, err := cluster.NewTrackingListener(w.baseContext, reverseGrpcListener, w.downstreamConnManager, sourcePurpose(reverseGrpcListenerPurpose))
 	if err != nil {
-		return nil, fmt.Errorf("%s: error creating reverse grpc pki worker tracking listener: %w", op, err)
+		return nil, fmt.Errorf("%s: error creating reverse grpc worker tracking listener: %w", op, err)
 	}
 
 	// Connections coming in here are authed by nodeenrollment and are for the
@@ -260,10 +261,10 @@ func (w *Worker) configureForWorker(ln *base.ServerListener, logger *log.Logger,
 	}
 
 	// This wraps the web socket proxying worker connections with a listener which
-	// adds the worker key id of the connections to the worker's pkiConnManager.
-	dataPlaneProxyTrackingListener, err := cluster.NewTrackingListener(w.baseContext, dataPlaneProxyListener, w.pkiConnManager, sourcePurpose(multihopProxyDataplaneListenerPurpose))
+	// adds the worker key id of the connections to the worker's downstreamConnManager.
+	dataPlaneProxyTrackingListener, err := cluster.NewTrackingListener(w.baseContext, dataPlaneProxyListener, w.downstreamConnManager, sourcePurpose(multihopProxyDataplaneListenerPurpose))
 	if err != nil {
-		return nil, fmt.Errorf("%s: error creating web socket proxying tracking listener: %w", op, err)
+		return nil, fmt.Errorf("%s: error creating websocket proxying tracking listener: %w", op, err)
 	}
 
 	statsHandler, err := metric.InstrumentClusterStatsHandler(w.baseContext)
@@ -287,19 +288,19 @@ func (w *Worker) configureForWorker(ln *base.ServerListener, logger *log.Logger,
 
 	ln.GrpcServer = downstreamServer
 
-	// This wraps the normal pki worker connections with a listener which adds
-	// the worker key id of the  connections to the worker's pkiConnManager.
-	pkiWorkerTrackingListener, err := cluster.NewTrackingListener(cancelCtx, nodeeAuthListener, w.pkiConnManager, sourcePurpose(grpcListenerPurpose))
+	// This wraps the normal worker connections with a listener which adds the
+	// worker key id of the connections to the worker's downstreamConnManager.
+	workerTrackingListener, err := cluster.NewTrackingListener(cancelCtx, nodeeAuthListener, w.downstreamConnManager, sourcePurpose(grpcListenerPurpose))
 	if err != nil {
-		return nil, fmt.Errorf("%s: error creating pki worker tracking listener: %w", op, err)
+		return nil, fmt.Errorf("%s: error creating worker tracking listener: %w", op, err)
 	}
 
 	return func() {
-		handleSecondaryConnection(cancelCtx, metric.InstrumentWorkerClusterTrackingListener(revPkiWorkerTrackingListener, reverseGrpcListenerPurpose),
+		handleSecondaryConnection(cancelCtx, metric.InstrumentWorkerClusterTrackingListener(revWorkerTrackingListener, reverseGrpcListenerPurpose),
 			metric.InstrumentWorkerClusterTrackingListener(dataPlaneProxyTrackingListener, multihopProxyDataplaneListenerPurpose), w.downstreamReceiver)
 		go w.workerAuthSplitListener.Start()
 		go httpServer.Serve(proxyListener)
-		go ln.GrpcServer.Serve(metric.InstrumentWorkerClusterTrackingListener(pkiWorkerTrackingListener, grpcListenerPurpose))
+		go ln.GrpcServer.Serve(metric.InstrumentWorkerClusterTrackingListener(workerTrackingListener, grpcListenerPurpose))
 	}, nil
 }
 

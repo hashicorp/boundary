@@ -5,16 +5,8 @@ package worker
 
 import (
 	"context"
-	"crypto/ed25519"
-	"crypto/tls"
-	"crypto/x509"
-	"encoding/base64"
-	"encoding/json"
-	"encoding/pem"
 	"fmt"
 	"math"
-	"math/big"
-	mathrand "math/rand"
 	"net"
 	"os"
 	"path/filepath"
@@ -33,7 +25,6 @@ import (
 	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/util"
 	"github.com/hashicorp/boundary/version"
-	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/nodeenrollment"
 	"github.com/hashicorp/nodeenrollment/multihop"
@@ -44,7 +35,6 @@ import (
 	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/resolver"
-	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
@@ -96,10 +86,8 @@ func (w *Worker) StartControllerConnections() error {
 
 // upstreamDialerFunc dials an upstream server. extraAlpnProtos can be provided
 // to kms and pki connections and are used for identifying, on the server side,
-// the intended purpose of the connection.  upstreamDialerFunc takes an optional
-// stateProvidingFunction which, if the connection is made using the nodeenrollment
-// library, sends the state provided by it to the server and can be retrieved
-// from the resulting *protocol.Conn.
+// the intended purpose of the connection. The state provided by the worker to
+// the server can be retrieved from the resulting *protocol.Conn.
 func (w *Worker) upstreamDialerFunc(extraAlpnProtos ...string) func(context.Context, string) (net.Conn, error) {
 	const op = "worker.(Worker).upstreamDialerFunc"
 	return func(ctx context.Context, addr string) (net.Conn, error) {
@@ -119,32 +107,27 @@ func (w *Worker) upstreamDialerFunc(extraAlpnProtos ...string) func(context.Cont
 			event.WriteError(w.baseContext, op, err)
 			return nil, errors.Wrap(w.baseContext, err, op)
 		}
-		switch {
-		case w.conf.RawConfig.Worker.UseDeprecatedKmsAuthMethod:
-			conn, err = w.v1KmsAuthDialFn(ctx, addr, extraAlpnProtos...)
-		default:
-			conn, err = protocol.Dial(
-				ctx,
-				w.WorkerAuthStorage,
-				addr,
-				nodeenrollment.WithLogger(eventLogger),
-				nodeenrollment.WithState(st),
-				nodeenrollment.WithStorageWrapper(w.conf.WorkerAuthStorageKms),
-				nodeenrollment.WithRegistrationWrapper(w.conf.WorkerAuthKms),
-				nodeenrollment.WithWrappingRegistrationFlowApplicationSpecificParams(st),
-				nodeenrollment.WithExtraAlpnProtos(extraAlpnProtos),
-				// If the activation token hasn't been populated, this won't do
-				// anything, and it won't do anything if it's already been used
-				nodeenrollment.WithActivationToken(w.conf.RawConfig.Worker.ControllerGeneratedActivationToken),
-			)
-			// No error and a valid connection means the WorkerAuthRegistrationRequest was populated
-			// We can remove the stored workerAuthRequest file
-			if err == nil && conn != nil {
-				if w.conf.RawConfig.Worker.AuthStoragePath != "" {
-					workerAuthReqFilePath := filepath.Join(w.conf.RawConfig.Worker.AuthStoragePath, base.WorkerAuthReqFile)
-					// Intentionally ignoring any error removing this file
-					_ = os.Remove(workerAuthReqFilePath)
-				}
+		conn, err = protocol.Dial(
+			ctx,
+			w.WorkerAuthStorage,
+			addr,
+			nodeenrollment.WithLogger(eventLogger),
+			nodeenrollment.WithState(st),
+			nodeenrollment.WithStorageWrapper(w.conf.WorkerAuthStorageKms),
+			nodeenrollment.WithRegistrationWrapper(w.conf.WorkerAuthKms),
+			nodeenrollment.WithWrappingRegistrationFlowApplicationSpecificParams(st),
+			nodeenrollment.WithExtraAlpnProtos(extraAlpnProtos),
+			// If the activation token hasn't been populated, this won't do
+			// anything, and it won't do anything if it's already been used
+			nodeenrollment.WithActivationToken(w.conf.RawConfig.Worker.ControllerGeneratedActivationToken),
+		)
+		// No error and a valid connection means the WorkerAuthRegistrationRequest was populated
+		// We can remove the stored workerAuthRequest file
+		if err == nil && conn != nil {
+			if w.conf.RawConfig.Worker.AuthStoragePath != "" {
+				workerAuthReqFilePath := filepath.Join(w.conf.RawConfig.Worker.AuthStoragePath, base.WorkerAuthReqFile)
+				// Intentionally ignoring any error removing this file
+				_ = os.Remove(workerAuthReqFilePath)
 			}
 		}
 		switch {
@@ -181,40 +164,6 @@ func (w *Worker) upstreamDialerFunc(extraAlpnProtos ...string) func(context.Cont
 
 		return conn, err
 	}
-}
-
-func (w *Worker) v1KmsAuthDialFn(ctx context.Context, addr string, extraAlpnProtos ...string) (net.Conn, error) {
-	const op = "worker.(Worker).v1KmsAuthDialFn"
-	tlsConf, authInfo, err := w.workerAuthTLSConfig(extraAlpnProtos...)
-	if err != nil {
-		return nil, fmt.Errorf("error creating tls config for worker auth: %w", err)
-	}
-	dialer := &net.Dialer{}
-	var nonTlsConn net.Conn
-	switch {
-	case strings.HasPrefix(addr, "/"):
-		nonTlsConn, err = dialer.DialContext(ctx, "unix", addr)
-	default:
-		nonTlsConn, err = dialer.DialContext(ctx, "tcp", addr)
-	}
-	if err != nil {
-		return nil, fmt.Errorf("unable to dial to upstream: %w", err)
-	}
-	tlsConn := tls.Client(nonTlsConn, tlsConf)
-	written, err := tlsConn.Write([]byte(authInfo.ConnectionNonce))
-	if err != nil {
-		if err := nonTlsConn.Close(); err != nil {
-			event.WriteError(w.baseContext, op, err, event.WithInfoMsg("error closing connection after writing failure"))
-		}
-		return nil, fmt.Errorf("unable to write connection nonce: %w", err)
-	}
-	if written != len(authInfo.ConnectionNonce) {
-		if err := nonTlsConn.Close(); err != nil {
-			event.WriteError(w.baseContext, op, err, event.WithInfoMsg("error closing connection after writing failure"))
-		}
-		return nil, fmt.Errorf("expected to write %d bytes of connection nonce, wrote %d", len(authInfo.ConnectionNonce), written)
-	}
-	return tlsConn, nil
 }
 
 func (w *Worker) createClientConn(addr string) error {
@@ -293,112 +242,6 @@ func createDefaultGRPCDialOptions(res resolver.Builder, upstreamDialerFn func(co
 	}
 
 	return dialOpts
-}
-
-func (w *Worker) workerAuthTLSConfig(extraAlpnProtos ...string) (*tls.Config, *base.WorkerAuthInfo, error) {
-	var err error
-	info := &base.WorkerAuthInfo{
-		Name:            w.conf.RawConfig.Worker.Name,
-		Description:     w.conf.RawConfig.Worker.Description,
-		ProxyAddress:    w.conf.RawConfig.Worker.PublicAddr,
-		BoundaryVersion: version.Get().VersionNumber(),
-	}
-
-	info.ConnectionNonce, err = w.nonceFn(20)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	pubKey, privKey, err := ed25519.GenerateKey(w.conf.SecureRandomReader)
-	if err != nil {
-		return nil, nil, err
-	}
-	host, err := base62.Random(20)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	template := &x509.Certificate{
-		ExtKeyUsage: []x509.ExtKeyUsage{
-			x509.ExtKeyUsageServerAuth,
-			x509.ExtKeyUsageClientAuth,
-		},
-		DNSNames:              []string{host},
-		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment | x509.KeyUsageKeyAgreement | x509.KeyUsageCertSign,
-		SerialNumber:          big.NewInt(mathrand.Int63()),
-		NotBefore:             time.Now().Add(-30 * time.Second),
-		NotAfter:              time.Now().Add(globals.WorkerAuthNonceValidityPeriod),
-		BasicConstraintsValid: true,
-		IsCA:                  true,
-	}
-	certBytes, err := x509.CreateCertificate(w.conf.SecureRandomReader, template, template, pubKey, privKey)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	certPEMBlock := &pem.Block{
-		Type:  "CERTIFICATE",
-		Bytes: certBytes,
-	}
-	info.CertPEM = pem.EncodeToMemory(certPEMBlock)
-
-	marshaledKey, err := x509.MarshalPKCS8PrivateKey(privKey)
-	if err != nil {
-		return nil, nil, err
-	}
-	keyPEMBlock := &pem.Block{
-		Type:  "PRIVATE KEY",
-		Bytes: marshaledKey,
-	}
-	info.KeyPEM = pem.EncodeToMemory(keyPEMBlock)
-
-	// Marshal and encrypt
-	marshaledInfo, err := json.Marshal(info)
-	if err != nil {
-		return nil, nil, err
-	}
-	encInfo, err := w.conf.WorkerAuthKms.Encrypt(w.baseContext, marshaledInfo)
-	if err != nil {
-		return nil, nil, err
-	}
-	marshaledEncInfo, err := proto.Marshal(encInfo)
-	if err != nil {
-		return nil, nil, err
-	}
-	b64alpn := base64.RawStdEncoding.EncodeToString(marshaledEncInfo)
-	var nextProtos []string
-	nextProtos = append(nextProtos, extraAlpnProtos...)
-	var count int
-	for i := 0; i < len(b64alpn); i += 230 {
-		end := i + 230
-		if end > len(b64alpn) {
-			end = len(b64alpn)
-		}
-		nextProtos = append(nextProtos, fmt.Sprintf("v1workerauth-%02d-%s", count, b64alpn[i:end]))
-		count++
-	}
-
-	cert, err := x509.ParseCertificate(certBytes)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	// Build local tls config
-	rootCAs := x509.NewCertPool()
-	rootCAs.AddCert(cert)
-	tlsCert, err := tls.X509KeyPair(info.CertPEM, info.KeyPEM)
-	if err != nil {
-		return nil, nil, err
-	}
-	tlsConfig := &tls.Config{
-		ServerName:   host,
-		Certificates: []tls.Certificate{tlsCert},
-		RootCAs:      rootCAs,
-		NextProtos:   nextProtos,
-		MinVersion:   tls.VersionTLS13,
-	}
-
-	return tlsConfig, info, nil
 }
 
 // workerConnectionInfo returns the worker's cluster.WorkerConnectionInfo as
