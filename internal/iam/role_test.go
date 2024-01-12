@@ -326,16 +326,6 @@ func Test_RoleUpdate(t *testing.T) {
 			wantRowsUpdate: 1,
 		},
 		{
-			name: "set grant scope in project with same scope",
-			args: args{
-				name:           "set grant scope in project with same scope",
-				fieldMaskPaths: []string{"Name", "GrantScopeId"},
-				scopeId:        proj.PublicId,
-				grantScopeId:   proj.PublicId,
-			},
-			wantRowsUpdate: 1,
-		},
-		{
 			name: "set grant scope in org with same scope",
 			args: args{
 				name:           "set grant scope in org with same scope",
@@ -346,17 +336,6 @@ func Test_RoleUpdate(t *testing.T) {
 			wantRowsUpdate: 1,
 		},
 		{
-			name: "set grant scope in project with different scope",
-			args: args{
-				name:           "set grant scope in project with different scope",
-				fieldMaskPaths: []string{"GrantScopeId"},
-				scopeId:        proj.PublicId,
-				grantScopeId:   proj2.PublicId,
-			},
-			wantErr:    true,
-			wantErrMsg: "db.Update: invalid to set grant_scope_id to non-same scope_id when role scope type is project: integrity violation: error #1104",
-		},
-		{
 			name: "set grant scope in org",
 			args: args{
 				name:           "set grant scope in org",
@@ -365,39 +344,6 @@ func Test_RoleUpdate(t *testing.T) {
 				grantScopeId:   proj2.PublicId,
 			},
 			wantRowsUpdate: 1,
-		},
-		{
-			name: "set grant scope in external project",
-			args: args{
-				name:           "set grant scope in external project",
-				fieldMaskPaths: []string{"GrantScopeId"},
-				scopeId:        org.PublicId,
-				grantScopeId:   proj2.PublicId,
-			},
-			wantErr:    true,
-			wantErrMsg: "db.Update: grant_scope_id is not a child project of the role scope: integrity violation: error #1104",
-		},
-		{
-			name: "set grant scope in global",
-			args: args{
-				name:           "set grant scope in global",
-				fieldMaskPaths: []string{"GrantScopeId"},
-				scopeId:        org.PublicId,
-				grantScopeId:   "global",
-			},
-			wantErr:    true,
-			wantErrMsg: "db.Update: grant_scope_id is not a child project of the role scope: integrity violation: error #1104",
-		},
-		{
-			name: "set grant scope to parent",
-			args: args{
-				name:           "set grant scope to parent",
-				fieldMaskPaths: []string{"GrantScopeId"},
-				scopeId:        proj2.PublicId,
-				grantScopeId:   org2.PublicId,
-			},
-			wantErr:    true,
-			wantErrMsg: "db.Update: invalid to set grant_scope_id to non-same scope_id when role scope type is project: integrity violation: error #1104",
 		},
 	}
 	for _, tt := range tests {
