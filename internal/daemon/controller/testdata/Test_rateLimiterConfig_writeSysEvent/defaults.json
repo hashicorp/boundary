@@ -2031,6 +2031,32 @@
               "unlimited": false
             }
           ],
+          "add-grant-scopes": [
+            {
+              "action": "add-grant-scopes",
+              "limit": 30000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "role",
+              "unlimited": false
+            },
+            {
+              "action": "add-grant-scopes",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "role",
+              "unlimited": false
+            },
+            {
+              "action": "add-grant-scopes",
+              "limit": 30000,
+              "per": "total",
+              "period": "30s",
+              "resource": "role",
+              "unlimited": false
+            }
+          ],
           "add-principals": [
             {
               "action": "add-principals",
@@ -2213,6 +2239,32 @@
               "unlimited": false
             }
           ],
+          "remove-grant-scopes": [
+            {
+              "action": "remove-grant-scopes",
+              "limit": 30000,
+              "per": "total",
+              "period": "30s",
+              "resource": "role",
+              "unlimited": false
+            },
+            {
+              "action": "remove-grant-scopes",
+              "limit": 30000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "role",
+              "unlimited": false
+            },
+            {
+              "action": "remove-grant-scopes",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "role",
+              "unlimited": false
+            }
+          ],
           "remove-principals": [
             {
               "action": "remove-principals",
@@ -2258,6 +2310,32 @@
             },
             {
               "action": "set-grants",
+              "limit": 30000,
+              "per": "total",
+              "period": "30s",
+              "resource": "role",
+              "unlimited": false
+            }
+          ],
+          "set-grant-scopes": [
+            {
+              "action": "set-grant-scopes",
+              "limit": 30000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "role",
+              "unlimited": false
+            },
+            {
+              "action": "set-grant-scopes",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "role",
+              "unlimited": false
+            },
+            {
+              "action": "set-grant-scopes",
               "limit": 30000,
               "per": "total",
               "period": "30s",
@@ -3893,7 +3971,7 @@
           ]
         }
       },
-      "max_size": 296148,
+      "max_size": 302151,
       "msg": "controller api rate limiter"
     },
     "op": "controller.(rateLimiterConfig).writeSysEvent",
