@@ -4,6 +4,13 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+### Deprecations/Changes
+
+* Per the note in Boundary 0.13.0, the previous `kms` worker method has been
+  removed. Since 0.13.0, unless the `use_deprecated_kms_auth_method` value was
+  set on the worker config, the new `kms` mechanism was already being used; this
+  is simply no longer an available option.
+
 ### New and Improved
 
 * New generic commands `read`, `update`, and `delete` have been added. These
