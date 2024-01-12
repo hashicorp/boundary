@@ -112,11 +112,11 @@ const (
 	order by action, member_id;
 	`
 
-	grantsBaseQuery = `
+	grantsForUserQuery = `
 	with
 	users (id) as (
 	  select public_id
-		from iam_user
+	    from iam_user
 	  %s -- anonUser || authUser
 	),
 	user_groups (id) as (
@@ -167,44 +167,6 @@ const (
 		from iam_role
 		where public_id in (select role_id from user_group_roles)
 	),
-	`
-
-	oldGrantsQuery = grantsBaseQuery + `
-	final (role_id, role_scope, role_grant) as (
-		select
-			roles.role_id,
-			roles.grant_scope_id,
-			iam_role_grant.canonical_grant
-		from roles
-		inner join iam_role_grant
-			on roles.role_id = iam_role_grant.role_id
-			-- only retrieves roles with a grant! there can be roles that don't have grants (it's a valid state in boundary)
-	)
-	select role_id as role_id, role_scope as scope_id, role_grant as grant from final;
-	`
-
-	grantScopesQuery = grantsBaseQuery + `
-	final (role_id, role_scope_id, grant_scope_id, canonical_grant) as (
-		select
-			roles.role_id,
-			roles.role_scope_id,
-			iam_role_grant_scope.scope_id,
-			iam_role_grant.canonical_grant
-		from roles
-		inner join iam_role_grant_scope
-			on roles.role_id = iam_role_grant_scope.role_id
-		inner join iam_role_grant
-			on roles.role_id = iam_role_grant.role_id
-	)
-	select
-		role_id as role_id,
-		role_scope_id as role_scope_id,
-		grant_scope_id as grant_scope_id,
-		canonical_grant as canonical_grant
-	from final;
-	`
-
-	reconciliationQuery = grantsBaseQuery + `
 	joined_scopes (role_id, role_scope_id, grant_scope_id) as (
 		select
 			roles.role_id,
@@ -223,41 +185,20 @@ const (
 			array(select joined_scopes.role_scope_id from joined_scopes),
 			array(select joined_scopes.grant_scope_id from joined_scopes)
 		)
-	)
-	select * from exploded_scopes;
-	`
-
-	foobar = `
-	exploded_scopes (role_id, grant_scope_id) as (
-		select
-			role_id as role_id,
-			grant_scope_id as grant_scope_id
-		from reconcileRoleScopes(
-			(select 
-				role_id,
-				role_scope_id,
-				grant_scope_id
-			from
-				joined_scopes)
-		)
 	),
-	final as (role_id, role_scope_id, grant_scope_id, canonical_grant) as (
+	final (role_id, grant_scope_id, canonical_grant) as (
 		select
 			exploded_scopes.role_id,
-			roles.role_scope_id,
 			exploded_scopes.grant_scope_id,
 			iam_role_grant.canonical_grant
-		from roles
-		inner join exploded_scopes
-			on roles.role_id = exploded_scopes.role_id
+		from exploded_scopes
 		inner join iam_role_grant
-			on roles.role_id = iam_role_grant.role_id
+			on exploded_scopes.role_id = iam_role_grant.role_id
 	)
 	select
 		role_id as role_id,
-		role_scope_id as role_scope_id,
-		grant_scope_id as grant_scope_id,
-		canonical_grant as canonical_grant
+		grant_scope_id as scope_id,
+		canonical_grant as grant
 	from final;
 	`
 

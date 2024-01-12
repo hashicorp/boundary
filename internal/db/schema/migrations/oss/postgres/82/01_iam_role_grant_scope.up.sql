@@ -185,33 +185,39 @@ begin;
     grant_scope_id text
   );
   create or replace function
-    reconcileRoleScopes(roleIds text[], scopeIds text[], grantScopeIds text[])
+    reconcileRoleScopes(roleIds text[], roleScopeIds text[], grantScopeIds text[])
   returns
-    setof roleScopeOutputTuple
+    table(role_id text, grant_scope_id text)
   as $$
     declare
-      tuple roleScopeInputTuple;
+      idx int := 1;
+      roleId text;
     begin
-      foreach tuple in array tuples
+      foreach roleId in array roleIds
       loop
         case
-          when tuple.grant_scope_id = 'descendants' then
+          when grantScopeIds[idx] = 'descendants' then
             return query
               select
-                tuple.role_id, public_id as grant_scope_id from iam_scope
+                roleIds[idx]::text as role_id, public_id::text as grant_scope_id from iam_scope
               where
                 iam_scope.public_id != 'global';
-          when tuple.grant_scope_id = 'children' then
+          when grantScopeIds[idx] = 'children' then
             return query
               select
-                tuple.role_id, public_id as grant_scope_id from iam_scope
+                roleIds[idx]::text as role_id, public_id::text as grant_scope_id from iam_scope
               where
-                iam_scope.parent_id = tuple.role_scope_id;
+                iam_scope.parent_id = roleScopeIds[idx];
+          when grantScopeIds[idx] = 'this' then
+            return query
+              select
+                roleIds[idx]::text as role_id, roleScopeIds[idx]::text as grant_scope_id;
           else
             return query
               select
-                tuple.role_id, tuple.role_scope_id;
+                roleIds[idx]::text as role_id, grantScopeIds[idx]::text as grant_scope_id;
           end case;
+      idx := idx + 1;
       end loop;
       return;
     end;
