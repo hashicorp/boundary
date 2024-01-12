@@ -185,7 +185,7 @@ begin;
     grant_scope_id text
   );
   create or replace function
-    reconcileRoleScopes(roleIds text[], roleScopeIds text[], grantScopeIds text[])
+    explodeRoleGrantScopes(roleIds text[], roleScopeIds text[], grantScopeIds text[])
   returns
     table(role_id text, grant_scope_id text)
   as $$

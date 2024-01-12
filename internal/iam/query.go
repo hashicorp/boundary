@@ -180,7 +180,7 @@ const (
 		select
 			role_id as role_id,
 			grant_scope_id as grant_scope_id
-		from reconcileRoleScopes(
+		from explodeRoleGrantScopes(
 			array(select role_grant_scopes.role_id from role_grant_scopes),
 			array(select role_grant_scopes.role_scope_id from role_grant_scopes),
 			array(select role_grant_scopes.grant_scope_id from role_grant_scopes)
