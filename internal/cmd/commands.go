@@ -1005,6 +1005,10 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Command: base.NewCommand(ui),
 				Func:    "delete",
 			}),
+		"session-recordings reapply-storage-policy": clientCacheWrapper(
+			&sessionrecordingscmd.ReApplyStoragePolicyCommand{
+				Command: base.NewCommand(ui),
+			}),
 
 		"storage-buckets": func() (cli.Command, error) {
 			return &storagebucketscmd.Command{
