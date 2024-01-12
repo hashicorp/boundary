@@ -6,7 +6,6 @@ package iam
 import (
 	"context"
 	"fmt"
-	"log"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -289,7 +288,6 @@ func (r *Repository) SetRoleGrantScopes(ctx context.Context, roleId string, role
 
 	if len(found) > 0 {
 		for _, rgs := range found {
-			log.Println("Appending delete rgs", rgs.RoleId, rgs.ScopeId)
 			deleteRoleGrantScopes = append(deleteRoleGrantScopes, rgs)
 		}
 	}

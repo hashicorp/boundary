@@ -110,6 +110,7 @@ func (r *Repository) UpdateRole(ctx context.Context, role *Role, version uint32,
 			grantScopeIdToSet = make([]string, 0, 1)
 			if role.GrantScopeId != "" {
 				grantScopeIdToSet = append(grantScopeIdToSet, role.GrantScopeId)
+				role.GrantScopeId = "" // We need to not trigger the immutability check
 			}
 		default:
 			return nil, nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidFieldMask, op, fmt.Sprintf("invalid field mask: %s", f))
