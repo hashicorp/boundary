@@ -95,6 +95,7 @@ begin;
       rs.endpoint,
       rs.retain_until,
       rs.delete_after,
+      rs.target_org_id,
       sb.scope_id as storage_bucket_scope_id,
       -- fields that cover the user fields at creation time
       uh.public_id as user_history_public_id,
