@@ -628,3 +628,28 @@ func TestOutOfSpace(t *testing.T) {
 	require.ErrorIs(t, err, fstest.ErrOutOfSpace)
 	assert.Nil(t, r2)
 }
+
+func TestMemFile_WriteAndClose(t *testing.T) {
+	mf := fstest.NewMemFile(
+		"test-write-and-close-file",
+		0o644,
+		fstest.WithStorageOptions([]storage.Option{
+			storage.WithFileAccessMode(storage.ReadWrite),
+		}))
+	require.False(t, mf.Closed, "MemFile is closed")
+
+	str1 := "Input 1"
+	n, err := mf.Write([]byte(str1))
+	require.NoError(t, err)
+	assert.NotNil(t, n)
+
+	str2 := "Input 2"
+	n, err = mf.WriteAndClose([]byte(str2))
+	require.NoError(t, err)
+	assert.NotNil(t, n)
+
+	expectedString := "Input 1Input 2"
+	assert.Equal(t, expectedString, mf.Buf.String())
+
+	require.True(t, mf.Closed, "MemFile is not closed")
+}

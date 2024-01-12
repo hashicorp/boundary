@@ -11,6 +11,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db/common"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/ory/dockertest/v3"
@@ -113,7 +114,7 @@ func splitImage(opts Options) (string, string, error) {
 	switch separatedlen {
 	case 1:
 		if separated[0] == "postgres" {
-			return separated[0], "11", nil
+			return separated[0], globals.MinimumSupportedPostgresVersion, nil
 		}
 		return "", "", fmt.Errorf("valid reference format is repo:tag, if"+
 			" no tag provided then repo must be postgres, got: %s", opts.withContainerImage)

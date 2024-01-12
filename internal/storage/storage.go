@@ -55,12 +55,20 @@ type Container interface {
 // File represents a storage File.
 type File interface {
 	fs.File
-	io.Writer
 	io.StringWriter
+	Writer
 }
 
 // TempFile is a temporary File. It will get removed when Closed.
 type TempFile interface {
 	File
 	io.Seeker
+}
+
+// Writer is an interface that extends the io.Writer interface with an additional
+// WriteAndClose method. WriteAndClose writes a byte slice and closes the file in
+// a single call.
+type Writer interface {
+	io.Writer
+	WriteAndClose([]byte) (int, error)
 }

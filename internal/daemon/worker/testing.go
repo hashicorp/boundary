@@ -224,9 +224,6 @@ type TestWorkerOpts struct {
 	// If set, override the normal auth rotation period
 	AuthRotationPeriod time.Duration
 
-	// If set, will use the deprecated KMS auth method
-	UseDeprecatedKmsAuthMethod bool
-
 	// Toggle worker auth debugging
 	WorkerAuthDebuggingEnabled *atomic.Bool
 
@@ -285,7 +282,6 @@ func NewTestWorker(t testing.TB, opts *TestWorkerOpts) *TestWorker {
 		}
 	}
 
-	opts.Config.Worker.UseDeprecatedKmsAuthMethod = opts.UseDeprecatedKmsAuthMethod
 	if len(opts.InitialUpstreams) > 0 {
 		opts.Config.Worker.InitialUpstreams = opts.InitialUpstreams
 	}

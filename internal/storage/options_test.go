@@ -59,4 +59,16 @@ func Test_getOpts(t *testing.T) {
 		testOpts.WithCreateFile = true
 		assert.Equal(opts, testOpts)
 	})
+	t.Run("WithBuffer", func(t *testing.T) {
+		t.Parallel()
+		assert := assert.New(t)
+		testOpts := getDefaultOptions()
+		opts := GetOpts(WithBuffer(0))
+		assert.Equal(testOpts, opts)
+
+		testOpts = getDefaultOptions()
+		opts = GetOpts(WithBuffer(4096))
+		testOpts.WithBuffer = 4096
+		assert.Equal(opts, testOpts)
+	})
 }

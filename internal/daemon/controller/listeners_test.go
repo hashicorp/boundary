@@ -9,28 +9,36 @@ import (
 	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
-	"encoding/base64"
-	"encoding/json"
 	"encoding/pem"
 	"fmt"
-	"io/ioutil"
+	"io"
+	"log"
 	"math/big"
 	"net"
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
+	"github.com/hashicorp/boundary/internal/daemon/cluster"
+	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/version"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/hashicorp/go-secure-stdlib/configutil/v2"
 	"github.com/hashicorp/go-secure-stdlib/listenerutil"
+	"github.com/hashicorp/nodeenrollment"
+	"github.com/hashicorp/nodeenrollment/protocol"
+	"github.com/hashicorp/nodeenrollment/storage/inmem"
+	"github.com/hashicorp/nodeenrollment/types"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
-	"google.golang.org/protobuf/proto"
+	"google.golang.org/grpc/backoff"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 func TestStartListeners(t *testing.T) {
@@ -240,17 +248,24 @@ func TestStartListeners(t *testing.T) {
 
 			ctx, cancel := context.WithCancel(context.Background())
 
+			debugEnabled := new(atomic.Bool)
+			debugEnabled.Store(false)
+			opts := &TestControllerOpts{
+				EnableEventing:             false,
+				WorkerAuthDebuggingEnabled: debugEnabled,
+			}
+
 			tc := &TestController{
 				t:              t,
 				ctx:            ctx,
 				cancel:         cancel,
+				opts:           opts,
 				shutdownDoneCh: make(chan struct{}),
 				shutdownOnce:   new(sync.Once),
-				opts:           new(TestControllerOpts),
 			}
 			t.Cleanup(func() { tc.Shutdown() })
 
-			conf := TestControllerConfig(t, ctx, tc, nil)
+			conf := TestControllerConfig(t, ctx, tc, opts)
 			conf.RawConfig.SharedConfig = &configutil.SharedConfig{Listeners: tt.listeners, DisableMlock: true}
 
 			err := conf.SetupListeners(nil, conf.RawConfig.SharedConfig, []string{"api", "cluster"})
@@ -718,11 +733,21 @@ func TestListenerCloseErrorCheck(t *testing.T) {
 }
 
 func clusterGrpcDialNoError(t *testing.T, c *Controller, network, addr string) {
-	grpcConn, err := grpc.Dial(addr,
-		grpc.WithInsecure(),
+	grpcConn, err := grpc.DialContext(
+		context.Background(),
+		addr,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithBlock(),
-		grpc.WithTimeout(5*time.Second),
 		grpc.WithContextDialer(clusterTestDialer(t, c, network)),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithConnectParams(grpc.ConnectParams{
+			Backoff: backoff.Config{
+				BaseDelay:  time.Second,
+				Multiplier: 1.2,
+				Jitter:     0.2,
+				MaxDelay:   3 * time.Second,
+			},
+		}),
 	)
 	require.NoError(t, err)
 	require.NoError(t, grpcConn.Close())
@@ -757,7 +782,7 @@ func testTlsHttpClient(t *testing.T, filePath string) *http.Client {
 	f, err := os.Open(filePath)
 	require.NoError(t, err)
 
-	certBytes, err := ioutil.ReadAll(f)
+	certBytes, err := io.ReadAll(f)
 	require.NoError(t, err)
 	require.NoError(t, f.Close())
 
@@ -795,68 +820,39 @@ func createTestCert(t *testing.T) ([]byte, ed25519.PublicKey, ed25519.PrivateKey
 
 func clusterTestDialer(t *testing.T, c *Controller, network string) func(context.Context, string) (net.Conn, error) {
 	return func(ctx context.Context, addr string) (net.Conn, error) {
-		certBytes, _, priv := createTestCert(t)
-
-		marshaledKey, err := x509.MarshalPKCS8PrivateKey(priv)
+		storage, err := inmem.New(ctx)
 		require.NoError(t, err)
 
-		nonce, err := base62.Random(20)
+		_, err = types.NewNodeCredentials(
+			ctx,
+			storage,
+		)
 		require.NoError(t, err)
 
-		// after 0.13.0 we need to include the version that matches between the
-		// controller and the worker otherwise worker tls auth with fail
-		v := version.Get().Version
-		if version.Get().VersionMetadata != "" {
-			v += "+" + version.Get().VersionMetadata
+		name, err := base62.Random(20)
+		require.NoError(t, err)
+
+		wci := &cluster.WorkerConnectionInfo{
+			BoundaryVersion:  version.Get().VersionNumber(),
+			Name:             strings.ToLower(name),
+			OperationalState: server.ActiveOperationalState.String(),
 		}
-		info := base.WorkerAuthInfo{
-			CertPEM:         pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certBytes}),
-			KeyPEM:          pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: marshaledKey}),
-			ConnectionNonce: nonce,
-			BoundaryVersion: v,
+		st, err := wci.AsConnectionStateStruct()
+		require.NoError(t, err)
+
+		conn, err := protocol.Dial(
+			ctx,
+			storage,
+			addr,
+			nodeenrollment.WithState(st),
+			nodeenrollment.WithRegistrationWrapper(c.conf.WorkerAuthKms),
+			nodeenrollment.WithLogger(c.conf.Logger),
+			nodeenrollment.WithWrappingRegistrationFlowApplicationSpecificParams(st),
+		)
+		if err != nil {
+			log.Println(err)
 		}
-		infoBytes, err := json.Marshal(info)
 		require.NoError(t, err)
-
-		encInfo, err := c.conf.WorkerAuthKms.Encrypt(ctx, infoBytes, nil)
-		require.NoError(t, err)
-
-		protoEncInfo, err := proto.Marshal(encInfo)
-		require.NoError(t, err)
-
-		b64alpn := base64.RawStdEncoding.EncodeToString(protoEncInfo)
-
-		var nextProtos []string
-		var count int
-		for i := 0; i < len(b64alpn); i += 230 {
-			end := i + 230
-			if end > len(b64alpn) {
-				end = len(b64alpn)
-			}
-			nextProtos = append(nextProtos, fmt.Sprintf("v1workerauth-%02d-%s", count, b64alpn[i:end]))
-			count++
-		}
-
-		cert, err := x509.ParseCertificate(certBytes)
-		require.NoError(t, err)
-
-		rootCAs := x509.NewCertPool()
-		rootCAs.AddCert(cert)
-
-		tlsCert, err := tls.X509KeyPair(info.CertPEM, info.KeyPEM)
-		require.NoError(t, err)
-
-		conn, err := tls.Dial(network, addr, &tls.Config{
-			Certificates: []tls.Certificate{tlsCert},
-			RootCAs:      rootCAs,
-			NextProtos:   nextProtos,
-			MinVersion:   tls.VersionTLS13,
-		})
-		require.NoError(t, err)
-
-		_, err = conn.Write([]byte(nonce))
-		require.NoError(t, err)
-
 		return conn, nil
 	}
 }

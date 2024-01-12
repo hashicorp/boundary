@@ -132,7 +132,7 @@ func TestRepository_convertToSessions(t *testing.T) {
 	sess, err = repo.CreateSession(ctx, sessionWrapper, sess, []string{"0.0.0.0"})
 	require.NoError(t, err)
 
-	query := fmt.Sprintf(sessionList, "", "", "", "")
+	query := fmt.Sprintf(listSessionsTemplate, "termination_reason is null", 1000)
 	rows, err := rw.Query(ctx, query, nil)
 	require.NoError(t, err)
 	t.Cleanup(func() {

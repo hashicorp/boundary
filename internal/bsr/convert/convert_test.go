@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/boundary/internal/bsr/internal/fstest"
 	"github.com/hashicorp/boundary/internal/bsr/kms"
 	"github.com/hashicorp/boundary/internal/bsr/ssh"
+	"github.com/hashicorp/boundary/internal/storage"
 	"github.com/stretchr/testify/require"
 )
 
@@ -45,7 +46,7 @@ func testChunks(s string, d bsr.Direction, p bsr.Protocol) []bsr.Chunk {
 	}
 }
 
-func writeToChannels(ctx context.Context, w io.Writer, chunks ...bsr.Chunk) error {
+func writeToChannels(ctx context.Context, w storage.Writer, chunks ...bsr.Chunk) error {
 	w.Write(bsr.Magic.Bytes())
 	enc, err := bsr.NewChunkEncoder(ctx, w, bsr.NoCompression, bsr.NoEncryption)
 	if err != nil {
@@ -235,12 +236,9 @@ func TestConvert_ToAsciicast_SessionProgram(t *testing.T) {
 			err = writeToChannels(ctx, outW, messageOutboundBsrChunks...)
 			require.NoError(t, err)
 
-			outWC := outW.(io.Closer)
-			outWC.Close()
-
-			ch.Close(ctx)
-			conn.Close(ctx)
-			sesh.Close(ctx)
+			require.NoError(t, ch.Close(ctx))
+			require.NoError(t, conn.Close(ctx))
+			require.NoError(t, sesh.Close(ctx))
 
 			opSesh, err := bsr.OpenSession(ctx, srm.Id, fs, keyFn)
 			require.NoError(t, err)
