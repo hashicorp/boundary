@@ -11,6 +11,7 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/ldap"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
@@ -18,6 +19,7 @@ import (
 	"github.com/hashicorp/boundary/internal/census"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
+	"github.com/hashicorp/boundary/internal/credential"
 	credstatic "github.com/hashicorp/boundary/internal/credential/static"
 	"github.com/hashicorp/boundary/internal/credential/vault"
 	"github.com/hashicorp/boundary/internal/daemon/cluster"
@@ -28,11 +30,13 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/event"
 	intglobals "github.com/hashicorp/boundary/internal/globals"
+	"github.com/hashicorp/boundary/internal/host"
 	pluginhost "github.com/hashicorp/boundary/internal/host/plugin"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	kmsjob "github.com/hashicorp/boundary/internal/kms/job"
+	"github.com/hashicorp/boundary/internal/pagination/purge"
 	"github.com/hashicorp/boundary/internal/plugin"
 	"github.com/hashicorp/boundary/internal/plugin/loopback"
 	"github.com/hashicorp/boundary/internal/ratelimit"
@@ -127,10 +131,13 @@ type Controller struct {
 	AuthTokenRepoFn           common.AuthTokenRepoFactory
 	VaultCredentialRepoFn     common.VaultCredentialRepoFactory
 	StaticCredentialRepoFn    common.StaticCredentialRepoFactory
+	CredentialStoreRepoFn     common.CredentialStoreRepoFactory
+	HostCatalogRepoFn         common.HostCatalogRepoFactory
 	IamRepoFn                 common.IamRepoFactory
 	OidcRepoFn                common.OidcAuthRepoFactory
 	LdapRepoFn                common.LdapAuthRepoFactory
 	PasswordAuthRepoFn        common.PasswordAuthRepoFactory
+	AuthMethodRepoFn          common.AuthMethodRepoFactory
 	ServersRepoFn             common.ServersRepoFactory
 	SessionRepoFn             session.RepositoryFactory
 	ConnectionRepoFn          common.ConnectionRepoFactory
@@ -151,7 +158,7 @@ type Controller struct {
 	// replying to queries with "503 Service Unavailable".
 	HealthService *health.Service
 
-	pkiConnManager *cluster.DownstreamManager
+	downstreamConnManager *cluster.DownstreamManager
 
 	// ControllerExtension defines a std way to extend the controller
 	ControllerExtension intglobals.ControllerExtension
@@ -171,7 +178,7 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		workerStatusUpdateTimes: new(sync.Map),
 		enabledPlugins:          conf.Server.EnabledPlugins,
 		apiListeners:            make([]*base.ServerListener, 0),
-		pkiConnManager:          cluster.NewDownstreamManager(),
+		downstreamConnManager:   cluster.NewDownstreamManager(),
 		workerStatusGracePeriod: new(atomic.Int64),
 		livenessTimeToStale:     new(atomic.Int64),
 	}
@@ -404,6 +411,12 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	c.StaticCredentialRepoFn = func() (*credstatic.Repository, error) {
 		return credstatic.NewRepository(ctx, dbase, dbase, c.kms)
 	}
+	c.CredentialStoreRepoFn = func() (*credential.StoreRepository, error) {
+		return credential.NewStoreRepository(ctx, dbase, dbase)
+	}
+	c.HostCatalogRepoFn = func() (*host.CatalogRepository, error) {
+		return host.NewCatalogRepository(ctx, dbase, dbase)
+	}
 	c.ServersRepoFn = func() (*server.Repository, error) {
 		return server.NewRepository(ctx, dbase, dbase, c.kms)
 	}
@@ -415,6 +428,9 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	}
 	c.PasswordAuthRepoFn = func() (*password.Repository, error) {
 		return password.NewRepository(ctx, dbase, dbase, c.kms)
+	}
+	c.AuthMethodRepoFn = func() (*auth.AuthMethodRepository, error) {
+		return auth.NewAuthMethodRepository(ctx, dbase, dbase, c.kms)
 	}
 	c.TargetRepoFn = func(o ...target.Option) (*target.Repository, error) {
 		return target.NewRepository(ctx, dbase, dbase, c.kms, o...)
@@ -507,7 +523,7 @@ func (c *Controller) Start() error {
 		defer c.tickerWg.Done()
 		c.startCloseExpiredPendingTokens(c.baseContext)
 	}()
-	if err := c.startWorkerConnectionMaintenanceTicking(c.baseContext, c.tickerWg, c.pkiConnManager); err != nil {
+	if err := c.startWorkerConnectionMaintenanceTicking(c.baseContext, c.tickerWg, c.downstreamConnManager); err != nil {
 		return errors.Wrap(c.baseContext, err, op)
 	}
 
@@ -594,6 +610,9 @@ func (c *Controller) registerJobs() error {
 		return err
 	}
 	if err := census.RegisterJob(c.baseContext, c.scheduler, c.conf.RawConfig.Reporting.License.Enabled, rw, rw); err != nil {
+		return err
+	}
+	if err := purge.RegisterJobs(c.baseContext, c.scheduler, rw, rw); err != nil {
 		return err
 	}
 

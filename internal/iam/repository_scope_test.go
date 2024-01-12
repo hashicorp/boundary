@@ -124,7 +124,7 @@ func Test_Repository_Scope_Create(t *testing.T) {
 			require.NoError(err)
 			assert.True(proto.Equal(foundScope, s))
 
-			foundRoles, err := repo.ListRoles(context.Background(), []string{foundScope.GetPublicId()})
+			foundRoles, _, err := repo.listRoles(context.Background(), []string{foundScope.GetPublicId()})
 			require.NoError(err)
 			numFound := 2
 			if skipCreate {
@@ -497,15 +497,6 @@ func Test_Repository_ListScopes(t *testing.T) {
 		wantErr   bool
 	}{
 		{
-			name:      "no-limit",
-			createCnt: repo.defaultLimit + 1,
-			args: args{
-				opt: []Option{WithLimit(-1)},
-			},
-			wantCnt: repo.defaultLimit + 1,
-			wantErr: false,
-		},
-		{
 			name:      "default-limit",
 			createCnt: repo.defaultLimit + 1,
 			args:      args{},
@@ -532,15 +523,107 @@ func Test_Repository_ListScopes(t *testing.T) {
 				testOrgs = append(testOrgs, testOrg(t, repo, "", ""))
 			}
 			assert.Equal(tt.createCnt, len(testOrgs))
-			got, err := repo.ListScopes(context.Background(), []string{"global"}, tt.args.opt...)
+			got, ttime, err := repo.listScopes(context.Background(), []string{"global"}, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
 				return
 			}
 			require.NoError(err)
 			assert.Equal(tt.wantCnt, len(got))
+			// Transaction timestamp should be within ~10 seconds of now
+			assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+			assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
 		})
 	}
+
+	t.Run("withStartPageAfter", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		ctx := context.Background()
+
+		// Create 10 projects in a new org
+		org := testOrg(t, repo, "", "")
+		for i := 0; i < 10; i++ {
+			_ = testProject(t, repo, org.GetPublicId())
+		}
+
+		page1, ttime, err := repo.listScopes(ctx, []string{org.GetPublicId()}, WithLimit(2))
+		require.NoError(err)
+		require.Len(page1, 2)
+		// Transaction timestamp should be within ~10 seconds of now
+		assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+		assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
+		page2, ttime, err := repo.listScopes(ctx, []string{org.GetPublicId()}, WithLimit(2), WithStartPageAfterItem(page1[1]))
+		require.NoError(err)
+		require.Len(page2, 2)
+		assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+		assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
+		for _, item := range page1 {
+			assert.NotEqual(item.GetPublicId(), page2[0].GetPublicId())
+			assert.NotEqual(item.GetPublicId(), page2[1].GetPublicId())
+		}
+		page3, ttime, err := repo.listScopes(ctx, []string{org.GetPublicId()}, WithLimit(2), WithStartPageAfterItem(page2[1]))
+		require.NoError(err)
+		require.Len(page3, 2)
+		assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+		assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
+		for _, item := range page2 {
+			assert.NotEqual(item.GetPublicId(), page3[0].GetPublicId())
+			assert.NotEqual(item.GetPublicId(), page3[1].GetPublicId())
+		}
+		page4, ttime, err := repo.listScopes(ctx, []string{org.GetPublicId()}, WithLimit(2), WithStartPageAfterItem(page3[1]))
+		require.NoError(err)
+		assert.Len(page4, 2)
+		assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+		assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
+		for _, item := range page3 {
+			assert.NotEqual(item.GetPublicId(), page4[0].GetPublicId())
+			assert.NotEqual(item.GetPublicId(), page4[1].GetPublicId())
+		}
+		page5, ttime, err := repo.listScopes(ctx, []string{org.GetPublicId()}, WithLimit(2), WithStartPageAfterItem(page4[1]))
+		require.NoError(err)
+		assert.Len(page5, 2)
+		assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+		assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
+		for _, item := range page4 {
+			assert.NotEqual(item.GetPublicId(), page5[0].GetPublicId())
+			assert.NotEqual(item.GetPublicId(), page5[1].GetPublicId())
+		}
+		page6, ttime, err := repo.listScopes(ctx, []string{org.GetPublicId()}, WithLimit(2), WithStartPageAfterItem(page5[1]))
+		require.NoError(err)
+		assert.Empty(page6)
+		assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+		assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
+
+		// Create 2 new Scopes
+		newP1 := testProject(t, repo, org.GetPublicId())
+		newP2 := testProject(t, repo, org.GetPublicId())
+
+		// since it will return newest to oldest, we get page1[1] first
+		page7, ttime, err := repo.listScopesRefresh(
+			ctx,
+			time.Now().Add(-1*time.Second),
+			[]string{org.GetPublicId()},
+			WithLimit(1),
+		)
+		require.NoError(err)
+		require.Len(page7, 1)
+		require.Equal(page7[0].GetPublicId(), newP2.GetPublicId())
+		assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+		assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
+
+		page8, ttime, err := repo.listScopesRefresh(
+			context.Background(),
+			time.Now().Add(-1*time.Second),
+			[]string{org.GetPublicId()},
+			WithLimit(1),
+			WithStartPageAfterItem(page7[0]),
+		)
+		require.NoError(err)
+		require.Len(page8, 1)
+		require.Equal(page8[0].GetPublicId(), newP1.GetPublicId())
+		assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+		assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
+	})
 }
 
 func TestRepository_ListScopes_Multiple_Scopes(t *testing.T) {
@@ -565,7 +648,7 @@ func TestRepository_ListScopes_Multiple_Scopes(t *testing.T) {
 	// Add global to the mix
 	scopeIds = append(scopeIds, "global")
 
-	got, err := repo.ListScopes(context.Background(), scopeIds)
+	got, _, err := repo.listScopes(context.Background(), scopeIds)
 	require.NoError(t, err)
 	assert.Equal(t, total, len(got))
 }
@@ -619,4 +702,78 @@ func Test_Repository_ListRecursive(t *testing.T) {
 			assert.Equal(tt.wantCnt, len(got))
 		})
 	}
+}
+
+func Test_listDeletedIds(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
+	org := TestOrg(t, repo)
+
+	// Expect no entries at the start
+	deletedIds, ttime, err := repo.listScopeDeletedIds(ctx, time.Now().AddDate(-1, 0, 0))
+	require.NoError(t, err)
+	require.Empty(t, deletedIds)
+
+	// Transaction time should be within ~10 seconds of now
+	now := time.Now()
+	assert.True(t, ttime.Add(-10*time.Second).Before(now))
+	assert.True(t, ttime.Add(10*time.Second).After(now))
+
+	// Delete a scope
+	p := TestProject(t, repo, org.GetPublicId())
+	_, err = repo.DeleteScope(ctx, p.PublicId)
+	require.NoError(t, err)
+
+	// Expect a single entry
+	deletedIds, ttime, err = repo.listScopeDeletedIds(ctx, time.Now().AddDate(-1, 0, 0))
+	require.NoError(t, err)
+	require.Equal(t, []string{p.PublicId}, deletedIds)
+	now = time.Now()
+	assert.True(t, ttime.Add(-10*time.Second).Before(now))
+	assert.True(t, ttime.Add(10*time.Second).After(now))
+
+	// Try again with the time set to now, expect no entries
+	deletedIds, ttime, err = repo.listScopeDeletedIds(ctx, time.Now())
+	require.NoError(t, err)
+	require.Empty(t, deletedIds)
+	now = time.Now()
+	assert.True(t, ttime.Add(-10*time.Second).Before(now))
+	assert.True(t, ttime.Add(10*time.Second).After(now))
+}
+
+func Test_estimatedScopeCount(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
+	sqlDb, err := conn.SqlDB(ctx)
+	require.NoError(t, err)
+
+	// Check total entries at start, expect 1 (global)
+	numItems, err := repo.estimatedScopeCount(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 1, numItems)
+
+	// Create a scope, expect 2 entries
+	org := TestOrg(t, repo)
+	// Run analyze to update estimate
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
+	numItems, err = repo.estimatedScopeCount(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 2, numItems)
+
+	// Delete the scope, expect 1 again
+	_, err = repo.DeleteScope(ctx, org.PublicId)
+	require.NoError(t, err)
+	// Run analyze to update estimate
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
+	numItems, err = repo.estimatedScopeCount(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 1, numItems)
 }

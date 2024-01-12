@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/host/static/store"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -69,6 +70,11 @@ func (h *Host) TableName() string {
 // set the name to "" the name will be reset to the default name.
 func (h *Host) SetTableName(n string) {
 	h.tableName = n
+}
+
+// GetResourceType returns the resource type of the Host
+func (h *Host) GetResourceType() resource.Type {
+	return resource.Host
 }
 
 func allocHost() *Host {
@@ -155,4 +161,14 @@ func (agg *hostAgg) getSetIds() []string {
 		sort.Strings(ids)
 	}
 	return ids
+}
+
+type deletedHost struct {
+	PublicId   string `gorm:"primary_key"`
+	DeleteTime *timestamp.Timestamp
+}
+
+// TableName returns the tablename to override the default gorm table name
+func (s *deletedHost) TableName() string {
+	return "static_host_deleted"
 }

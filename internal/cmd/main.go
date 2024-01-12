@@ -144,7 +144,7 @@ func Run(args []string) int {
 
 // RunCustom allows passing in a base command template to pass to other
 // commands. Currently, this is only used for setting a custom token helper.
-func RunCustom(args []string, runOpts *RunOptions) int {
+func RunCustom(args []string, runOpts *RunOptions) (exitCode int) {
 	if runOpts == nil {
 		runOpts = &RunOptions{}
 	}
@@ -256,7 +256,8 @@ func RunCustom(args []string, runOpts *RunOptions) int {
 		AutocompleteNoDefaultFlags: true,
 	}
 
-	exitCode, err := cli.Run()
+	var err error
+	exitCode, err = cli.Run()
 	if outputCurlString {
 		if exitCode == 0 {
 			fmt.Fprint(runOpts.Stderr, "Could not generate cURL command\n")

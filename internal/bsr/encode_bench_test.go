@@ -4,11 +4,12 @@
 package bsr
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"testing"
 	"time"
+
+	"github.com/hashicorp/boundary/internal/bsr/internal/fstest"
 )
 
 type testChunk struct {
@@ -48,8 +49,11 @@ func BenchmarkEncodeParallel(b *testing.B) {
 		b.StartTimer()
 		b.RunParallel(func(pb *testing.PB) {
 			for pb.Next() {
-				var buf bytes.Buffer
-				enc, _ := NewChunkEncoder(ctx, &buf, NoCompression, NoEncryption)
+				buf, err := fstest.NewTempBuffer()
+				if err != nil {
+					b.Fatal("could not create buffer")
+				}
+				enc, _ := NewChunkEncoder(ctx, buf, NoCompression, NoEncryption)
 				for _, c := range chunks {
 					if _, err := enc.Encode(ctx, c); err != nil {
 						b.Fatal("Encode:", err)
@@ -75,8 +79,11 @@ func BenchmarkEncodeSequential(b *testing.B) {
 			b.StartTimer()
 
 			for i := 0; i < b.N; i++ {
-				var buf bytes.Buffer
-				enc, _ := NewChunkEncoder(ctx, &buf, NoCompression, NoEncryption)
+				buf, err := fstest.NewTempBuffer()
+				if err != nil {
+					b.Fatal("could not create buffer")
+				}
+				enc, _ := NewChunkEncoder(ctx, buf, NoCompression, NoEncryption)
 				for _, c := range chunks {
 					if _, err := enc.Encode(ctx, c); err != nil {
 						b.Fatal("Encode:", err)

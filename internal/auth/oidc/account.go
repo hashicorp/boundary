@@ -8,8 +8,10 @@ import (
 	"net/url"
 
 	"github.com/hashicorp/boundary/internal/auth/oidc/store"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -115,6 +117,11 @@ func (a *Account) SetTableName(n string) {
 	a.tableName = n
 }
 
+// GetResourceType returns the resource type of the Account
+func (a *Account) GetResourceType() resource.Type {
+	return resource.Account
+}
+
 // GetLoginName returns the login name, which will always be empty as this type
 // doesn't currently support login name
 func (a *Account) GetLoginName() string {
@@ -135,4 +142,14 @@ func (c *Account) oplog(op oplog.OpType, authMethodScopeId string) oplog.Metadat
 		metadata["scope-id"] = []string{authMethodScopeId}
 	}
 	return metadata
+}
+
+type deletedAccount struct {
+	PublicId   string `gorm:"primary_key"`
+	DeleteTime *timestamp.Timestamp
+}
+
+// TableName returns the tablename to override the default gorm table name
+func (s *deletedAccount) TableName() string {
+	return "auth_oidc_account_deleted"
 }

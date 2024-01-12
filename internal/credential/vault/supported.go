@@ -18,6 +18,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db/common"
 	"github.com/hashicorp/go-rootcerts"
 	vault "github.com/hashicorp/vault/api"
@@ -26,10 +27,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const DefaultVaultVersion = "1.7.2"
+const DefaultVaultVersion = "1.15.1"
 
 var (
-	vaultRepository    = "vault"
+	vaultRepository    = "hashicorp/vault"
 	postgresRepository = "postgres"
 )
 
@@ -226,7 +227,7 @@ func gotMountDatabase(t testing.TB, v *TestVaultServer, opt ...TestOption) *Test
 
 	dockerOptions := &dockertest.RunOptions{
 		Repository: postgresRepository,
-		Tag:        "11",
+		Tag:        globals.MinimumSupportedPostgresVersion,
 		Networks:   []*dockertest.Network{network},
 		Env:        []string{"POSTGRES_PASSWORD=password", "POSTGRES_DB=boundarytest"},
 	}
@@ -332,7 +333,7 @@ func gotMountDatabase(t testing.TB, v *TestVaultServer, opt ...TestOption) *Test
 	}
 	s, err := vc.Logical().Write(postgresConfPath, postgresConfOptions)
 	require.NoError(err)
-	require.NotEmpty(s)
+	require.Empty(s)
 
 	const (
 		vaultOpenedCreationStatement = `

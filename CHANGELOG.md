@@ -4,6 +4,13 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+### Deprecations/Changes
+
+* Per the note in Boundary 0.13.0, the previous `kms` worker method has been
+  removed. Since 0.13.0, unless the `use_deprecated_kms_auth_method` value was
+  set on the worker config, the new `kms` mechanism was already being used; this
+  is simply no longer an available option.
+
 ### New and Improved
 
 * New generic commands `read`, `update`, and `delete` have been added. These
@@ -17,6 +24,12 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * The `key_id` parameter within SSH Certificate Credential Libraries now accepts
   the use of templated parameters
   ([PR](https://github.com/hashicorp/boundary/pull/4215))
+* List endpoint pagination: All list endpoints except workers now support pagination.
+  * api: All list endpoints except workers have added support for pagination. The new
+    WithListToken option can be used to request a list of updated and deleted resources
+    relative to the last result received.
+  * config: add new controller max_page_size field for controlling the default and max size
+    of pages when paginating through results.
 
 ## 0.14.3 (2023/12/12)
 

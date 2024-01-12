@@ -359,7 +359,7 @@ func TestCliRateLimit(t *testing.T) {
 	// Log in as a second user and confirm you get a HTTP 503 response
 	t.Log("Logging in as another user...")
 	boundary.AuthenticateCli(t, ctx, bc.AuthMethodId, acctName, acctPassword)
-	for i := 0; i < policyLimit; i++ {
+	for i := 0; i <= policyLimit; i++ {
 		output = e2e.RunCommand(ctx, "boundary", e2e.WithArgs("hosts", "read", "-id", newHostId))
 		t.Log(output.Duration)
 		if output.Err != nil {

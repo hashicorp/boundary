@@ -9,7 +9,9 @@ import (
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/credential/vault/store"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -96,6 +98,11 @@ func (l *SSHCertificateCredentialLibrary) SetTableName(n string) {
 	l.tableName = n
 }
 
+// GetResourceType returns the resource type of the CredentialLibrary
+func (l *SSHCertificateCredentialLibrary) GetResourceType() resource.Type {
+	return resource.CredentialLibrary
+}
+
 func (l *SSHCertificateCredentialLibrary) oplog(op oplog.OpType) oplog.Metadata {
 	metadata := oplog.Metadata{
 		"resource-public-id": []string{l.PublicId},
@@ -125,3 +132,13 @@ func (l *SSHCertificateCredentialLibrary) CredentialType() globals.CredentialTyp
 }
 
 var _ credential.Library = (*SSHCertificateCredentialLibrary)(nil)
+
+type deletedSSHCertificateCredentialLibrary struct {
+	PublicId   string `gorm:"primary_key"`
+	DeleteTime *timestamp.Timestamp
+}
+
+// TableName returns the tablename to override the default gorm table name
+func (s *deletedSSHCertificateCredentialLibrary) TableName() string {
+	return "credential_vault_ssh_cert_library_deleted"
+}

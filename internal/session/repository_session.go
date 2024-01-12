@@ -274,71 +274,159 @@ func (r *Repository) LookupSession(ctx context.Context, sessionId string, opt ..
 	return &session, authzSummary, nil
 }
 
-// ListSessions lists sessions. Sessions returned will be limited by the list
-// permissions of the repository. Supports the WithTerminated, WithLimit,
-// WithOrderByCreateTime options.
-func (r *Repository) ListSessions(ctx context.Context, opt ...Option) ([]*Session, error) {
+// listSessions lists sessions. Sessions returned will be limited by the list
+// permissions of the repository.
+// Supported options:
+//   - withTerminated
+//   - withLimit
+//   - withStartPageAfterItem
+func (r *Repository) listSessions(ctx context.Context, opt ...Option) ([]*Session, time.Time, error) {
 	const op = "session.(Repository).ListSessions"
-	opts := getOpts(opt...)
 
 	where, args := r.listPermissionWhereClauses()
 	if len(where) == 0 {
-		return nil, nil
+		return nil, time.Time{}, nil
 	}
 
-	var whereClause string
-	if len(where) > 0 {
-		whereClause = " where (" + strings.Join(where, " or ") + ")"
-		if !opts.withTerminated {
-			whereClause += "and termination_reason is null"
+	opts := getOpts(opt...)
+
+	permissionWhereClause := "(" + strings.Join(where, " or ") + ")"
+	if !opts.withTerminated {
+		permissionWhereClause += " and termination_reason is null"
+	}
+
+	limit := r.defaultLimit
+	if opts.withLimit > 0 {
+		limit = opts.withLimit
+	}
+
+	query := fmt.Sprintf(listSessionsTemplate, permissionWhereClause, limit)
+	if opts.withStartPageAfterItem != nil {
+		query = fmt.Sprintf(listSessionsPageTemplate, permissionWhereClause, limit)
+		args = append(args,
+			sql.Named("last_item_create_time", opts.withStartPageAfterItem.GetCreateTime()),
+			sql.Named("last_item_id", opts.withStartPageAfterItem.GetPublicId()),
+		)
+	}
+
+	return r.querySessions(ctx, query, args, limit)
+}
+
+// listSessionsRefresh lists sessions limited by the list
+// permissions of the repository.
+// Supported options:
+//   - withTerminated
+//   - withLimit
+//   - withStartPageAfterItem
+func (r *Repository) listSessionsRefresh(ctx context.Context, updatedAfter time.Time, opt ...Option) ([]*Session, time.Time, error) {
+	const op = "session.(Repository).ListSessionsRefresh"
+
+	if updatedAfter.IsZero() {
+		return nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "missing updated after time")
+	}
+
+	where, args := r.listPermissionWhereClauses()
+	if len(where) == 0 {
+		return nil, time.Time{}, nil
+	}
+
+	opts := getOpts(opt...)
+
+	permissionWhereClause := "(" + strings.Join(where, " or ") + ")"
+	if !opts.withTerminated {
+		permissionWhereClause += " and termination_reason is null"
+	}
+
+	limit := r.defaultLimit
+	if opts.withLimit > 0 {
+		limit = opts.withLimit
+	}
+
+	query := fmt.Sprintf(refreshSessionsTemplate, permissionWhereClause, limit)
+	args = append(args,
+		sql.Named("updated_after_time", timestamp.New(updatedAfter)),
+	)
+	if opts.withStartPageAfterItem != nil {
+		query = fmt.Sprintf(refreshSessionsPageTemplate, permissionWhereClause, limit)
+		args = append(args,
+			sql.Named("last_item_update_time", opts.withStartPageAfterItem.GetUpdateTime()),
+			sql.Named("last_item_id", opts.withStartPageAfterItem.GetPublicId()),
+		)
+	}
+
+	return r.querySessions(ctx, query, args, limit)
+}
+
+func (r *Repository) querySessions(ctx context.Context, query string, args []any, limit int) ([]*Session, time.Time, error) {
+	const op = "session.(Repository).querySessions"
+
+	var sessions []*Session
+	var transactionTimestamp time.Time
+	if _, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(rd db.Reader, w db.Writer) error {
+		rows, err := rd.Query(ctx, query, args)
+		if err != nil {
+			return err
 		}
-	} else {
-		if !opts.withTerminated {
-			whereClause = "where termination_reason is null"
+		defer rows.Close()
+		var sessionsList []*sessionListView
+		for rows.Next() {
+			var s sessionListView
+			if err := rd.ScanRows(ctx, rows, &s); err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg("scan row failed"))
+			}
+			sessionsList = append(sessionsList, &s)
 		}
+		sessions, err = r.convertToSessions(ctx, sessionsList)
+		if err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+		transactionTimestamp, err = rd.Now(ctx)
+		return err
+	}); err != nil {
+		return nil, time.Time{}, err
 	}
+	return sessions, transactionTimestamp, nil
+}
 
-	var limit string
-	switch {
-	case opts.withLimit < 0: // any negative number signals unlimited results
-	case opts.withLimit == 0: // zero signals the default value and default limits
-		limit = fmt.Sprintf("limit %d", r.defaultLimit)
-	default:
-		// non-zero signals an override of the default limit for the repo.
-		limit = fmt.Sprintf("limit %d", opts.withLimit)
+// listDeletedIds lists the public IDs of any sessions deleted since the timestamp provided.
+func (r *Repository) listDeletedIds(ctx context.Context, since time.Time) ([]string, time.Time, error) {
+	const op = "session.(Repository).listDeletedIds"
+	var deletedSessions []*deletedSession
+	var transactionTimestamp time.Time
+	if _, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(r db.Reader, _ db.Writer) error {
+		if err := r.SearchWhere(ctx, &deletedSessions, "delete_time >= ?", []any{since}); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to query deleted sessions"))
+		}
+		var err error
+		transactionTimestamp, err = r.Now(ctx)
+		if err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to get transaction timestamp"))
+		}
+		return nil
+	}); err != nil {
+		return nil, time.Time{}, err
 	}
-	var withOrder string
-	switch opts.withOrderByCreateTime {
-	case db.AscendingOrderBy:
-		withOrder = "order by create_time asc"
-	case db.DescendingOrderBy:
-		fallthrough
-	default:
-		withOrder = "order by create_time"
+	var sessionIds []string
+	for _, sess := range deletedSessions {
+		sessionIds = append(sessionIds, sess.PublicId)
 	}
+	return sessionIds, transactionTimestamp, nil
+}
 
-	q := sessionList
-	query := fmt.Sprintf(q, whereClause, withOrder, limit, withOrder)
-
-	rows, err := r.reader.Query(ctx, query, args)
+// estimatedCount returns an estimate of the total number of items in the session table.
+func (r *Repository) estimatedCount(ctx context.Context) (int, error) {
+	const op = "session.(Repository).estimatedCount"
+	rows, err := r.reader.Query(ctx, estimateCountSessions, nil)
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total sessions"))
 	}
-	defer rows.Close()
-
-	var sessionsList []*sessionListView
+	var count int
 	for rows.Next() {
-		var s sessionListView
-		if err := r.reader.ScanRows(ctx, rows, &s); err != nil {
-			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("scan row failed"))
+		if err := r.reader.ScanRows(ctx, rows, &count); err != nil {
+			return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total sessions"))
 		}
-		sessionsList = append(sessionsList, &s)
 	}
-	sessions, err := r.convertToSessions(ctx, sessionsList)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-	return sessions, nil
+	return count, nil
 }
 
 // DeleteSession will delete a session from the repository.

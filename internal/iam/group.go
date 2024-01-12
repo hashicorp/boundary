@@ -7,6 +7,7 @@ import (
 	"context"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam/store"
 	"github.com/hashicorp/boundary/internal/types/action"
@@ -86,8 +87,8 @@ func (g *Group) GetScope(ctx context.Context, r db.Reader) (*Scope, error) {
 	return LookupScope(ctx, r, g)
 }
 
-// ResourceType returns the type of the Group.
-func (*Group) ResourceType() resource.Type { return resource.Group }
+// GetResourceType returns the type of the Group.
+func (*Group) GetResourceType() resource.Type { return resource.Group }
 
 // Actions returns the  available actions for Group
 func (*Group) Actions() map[string]action.Type {
@@ -107,4 +108,14 @@ func (g *Group) TableName() string {
 // reset to the default name.
 func (g *Group) SetTableName(n string) {
 	g.tableName = n
+}
+
+type deletedGroup struct {
+	PublicId   string `gorm:"primary_key"`
+	DeleteTime *timestamp.Timestamp
+}
+
+// TableName returns the tablename to override the default gorm table name
+func (u *deletedGroup) TableName() string {
+	return "iam_group_deleted"
 }

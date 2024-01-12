@@ -52,6 +52,7 @@ func getDefaultOptions() Options {
 		WithCloseSyncMode:  Asynchronous,
 		WithFileAccessMode: ReadOnly,
 		WithCreateFile:     false,
+		WithBuffer:         0,
 	}
 }
 
@@ -60,6 +61,7 @@ type Options struct {
 	WithCloseSyncMode  SyncMode
 	WithFileAccessMode AccessMode
 	WithCreateFile     bool
+	WithBuffer         uint64
 }
 
 // Option is a storage option.
@@ -83,5 +85,17 @@ func WithCreateFile() Option {
 func WithFileAccessMode(m AccessMode) Option {
 	return func(o *Options) {
 		o.WithFileAccessMode = m
+	}
+}
+
+// WithBuffer sets the buffer size. If the buffer size is not
+// a factorial of 4KiB, the input will be used as a minimum
+// buffer threshold used to determine the minimum number of
+// emtpy bytes allowed in the buffer before having the buffer
+// expand. In this case, the buffer size will be rounded up
+// to the nearest 4KiB factorial.
+func WithBuffer(b uint64) Option {
+	return func(o *Options) {
+		o.WithBuffer = b
 	}
 }

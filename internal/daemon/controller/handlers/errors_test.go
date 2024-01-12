@@ -220,6 +220,18 @@ func TestApiErrorHandler(t *testing.T) {
 			},
 		},
 		{
+			name: "Invalid list token error",
+			err:  errors.New(ctx, errors.InvalidListToken, errors.Op("test.op"), "this is a test invalid list token error"),
+			expected: ApiError{
+				Status: http.StatusBadRequest,
+				Inner: &pb.Error{
+					Kind:    "invalid list token",
+					Op:      "test.op",
+					Message: "this is a test invalid list token error",
+				},
+			},
+		},
+		{
 			name: "Wrapped forbidden domain error",
 			err:  fmt.Errorf("got error: %w", errors.E(ctx, errors.WithCode(errors.Forbidden), errors.WithMsg("test msg"))),
 			expected: ApiError{

@@ -6,21 +6,25 @@ package oidc
 import (
 	"context"
 	"fmt"
-	"sort"
+	"slices"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth/oidc/store"
 	"github.com/hashicorp/boundary/internal/db"
 	dbassert "github.com/hashicorp/boundary/internal/db/assert"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func TestRepository_CreateManagedGroup(t *testing.T) {
@@ -356,6 +360,12 @@ func TestRepository_DeleteManagedGroup(t *testing.T) {
 }
 
 func TestRepository_ListManagedGroups(t *testing.T) {
+	oldReadTimeout := globals.RefreshReadLookbackDuration
+	globals.RefreshReadLookbackDuration = 0
+	t.Cleanup(func() {
+		globals.RefreshReadLookbackDuration = oldReadTimeout
+	})
+
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -367,6 +377,11 @@ func TestRepository_ListManagedGroups(t *testing.T) {
 
 	databaseWrapper, err := kmsCache.GetWrapper(ctx, org.PublicId, kms.KeyPurposeDatabase)
 	require.NoError(t, err)
+
+	repo, err := NewRepository(ctx, rw, rw, kmsCache)
+	assert.NoError(t, err)
+	require.NotNil(t, repo)
+
 	authMethod1 := TestAuthMethod(
 		t, conn, databaseWrapper, org.PublicId, ActivePrivateState,
 		"alice-rp", "fido",
@@ -393,18 +408,24 @@ func TestRepository_ListManagedGroups(t *testing.T) {
 		TestManagedGroup(t, conn, authMethod1, TestFakeManagedGroupFilter),
 		TestManagedGroup(t, conn, authMethod1, TestFakeManagedGroupFilter),
 	}
-	sort.Slice(mgs1, func(i, j int) bool {
-		return strings.Compare(mgs1[i].PublicId, mgs1[j].PublicId) < 0
-	})
 
 	mgs2 := []*ManagedGroup{
 		TestManagedGroup(t, conn, authMethod2, TestFakeManagedGroupFilter),
 		TestManagedGroup(t, conn, authMethod2, TestFakeManagedGroupFilter),
 		TestManagedGroup(t, conn, authMethod2, TestFakeManagedGroupFilter),
 	}
-	sort.Slice(mgs2, func(i, j int) bool {
-		return strings.Compare(mgs2[i].PublicId, mgs2[j].PublicId) < 0
-	})
+
+	slices.Reverse(mgs1)
+	slices.Reverse(mgs2)
+
+	cmpOpts := []cmp.Option{
+		cmpopts.IgnoreUnexported(
+			ManagedGroup{},
+			store.ManagedGroup{},
+			timestamp.Timestamp{},
+			timestamppb.Timestamp{},
+		),
+	}
 
 	tests := []struct {
 		name       string
@@ -439,25 +460,48 @@ func TestRepository_ListManagedGroups(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(ctx, rw, rw, kmsCache)
-			assert.NoError(err)
-			require.NotNil(repo)
-			got, err := repo.ListManagedGroups(context.Background(), tt.in, tt.opts...)
+			got, ttime, err := repo.ListManagedGroups(context.Background(), tt.in, tt.opts...)
 			if tt.wantIsErr != 0 {
-				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "Unexpected error %s", err)
-				assert.Equal(tt.wantErrMsg, err.Error())
+				assert.Truef(t, errors.Match(errors.T(tt.wantIsErr), err), "Unexpected error %s", err)
+				assert.Equal(t, tt.wantErrMsg, err.Error())
 				return
 			}
-			require.NoError(err)
+			require.NoError(t, err)
+			// Transaction timestamp should be within ~10 seconds of now
+			assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
+			assert.True(t, time.Now().After(ttime.Add(-10*time.Second)))
 
-			sort.Slice(got, func(i, j int) bool {
-				return strings.Compare(got[i].PublicId, got[j].PublicId) < 0
-			})
-
-			assert.EqualValues(tt.want, got)
+			assert.EqualValues(t, tt.want, got)
 		})
 	}
+
+	t.Run("validation", func(t *testing.T) {
+		t.Parallel()
+		t.Run("missing auth method id", func(t *testing.T) {
+			t.Parallel()
+			_, _, err := repo.ListManagedGroups(ctx, "", WithLimit(1))
+			require.ErrorContains(t, err, "missing auth method id")
+		})
+	})
+
+	t.Run("success-without-after-item", func(t *testing.T) {
+		t.Parallel()
+		resp, ttime, err := repo.ListManagedGroups(ctx, authMethod1.PublicId, WithLimit(10))
+		require.NoError(t, err)
+		// Transaction timestamp should be within ~10 seconds of now
+		assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
+		assert.True(t, time.Now().After(ttime.Add(-10*time.Second)))
+		require.Empty(t, cmp.Diff(resp, mgs1, cmpOpts...))
+	})
+	t.Run("success-with-after-item", func(t *testing.T) {
+		t.Parallel()
+		resp, ttime, err := repo.ListManagedGroups(ctx, authMethod1.PublicId, WithStartPageAfterItem(mgs1[0]), WithLimit(10))
+		require.NoError(t, err)
+		// Transaction timestamp should be within ~10 seconds of now
+		assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
+		assert.True(t, time.Now().After(ttime.Add(-10*time.Second)))
+		require.Empty(t, cmp.Diff(resp, mgs1[1:], cmpOpts...))
+	})
 }
 
 func TestRepository_ListManagedGroups_Limits(t *testing.T) {
@@ -537,11 +581,130 @@ func TestRepository_ListManagedGroups_Limits(t *testing.T) {
 			repo, err := NewRepository(ctx, rw, rw, kmsCache, tt.repoOpts...)
 			assert.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.ListManagedGroups(context.Background(), am.GetPublicId(), tt.listOpts...)
+			got, ttime, err := repo.ListManagedGroups(context.Background(), am.GetPublicId(), tt.listOpts...)
 			require.NoError(err)
+			// Transaction timestamp should be within ~10 seconds of now
+			assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+			assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
 			assert.Len(got, tt.wantLen)
 		})
 	}
+}
+
+func TestRepository_ListManagedGroupsRefresh(t *testing.T) {
+	oldReadTimeout := globals.RefreshReadLookbackDuration
+	globals.RefreshReadLookbackDuration = 0
+	t.Cleanup(func() {
+		globals.RefreshReadLookbackDuration = oldReadTimeout
+	})
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+
+	ctx := context.Background()
+	kmsCache := kms.TestKms(t, conn, wrapper)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	org, _ := iam.TestScopes(t, iamRepo)
+
+	databaseWrapper, err := kmsCache.GetWrapper(ctx, org.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+
+	authMethod1 := TestAuthMethod(
+		t, conn, databaseWrapper, org.PublicId, ActivePrivateState,
+		"alice-rp", "fido",
+		WithSigningAlgs(RS256),
+		WithIssuer(TestConvertToUrls(t, "https://www.alice1.com")[0]),
+		WithApiUrl(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+	)
+	authMethod2 := TestAuthMethod(
+		t, conn, databaseWrapper, org.PublicId, ActivePrivateState,
+		"alice-rp", "fido",
+		WithSigningAlgs(RS256),
+		WithIssuer(TestConvertToUrls(t, "https://www.alice2.com")[0]),
+		WithApiUrl(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+	)
+
+	mgs1 := []*ManagedGroup{
+		TestManagedGroup(t, conn, authMethod1, TestFakeManagedGroupFilter),
+		TestManagedGroup(t, conn, authMethod1, TestFakeManagedGroupFilter),
+		TestManagedGroup(t, conn, authMethod1, TestFakeManagedGroupFilter),
+	}
+
+	mgs2 := []*ManagedGroup{
+		TestManagedGroup(t, conn, authMethod2, TestFakeManagedGroupFilter),
+		TestManagedGroup(t, conn, authMethod2, TestFakeManagedGroupFilter),
+		TestManagedGroup(t, conn, authMethod2, TestFakeManagedGroupFilter),
+	}
+
+	slices.Reverse(mgs1)
+	slices.Reverse(mgs2)
+
+	fiveDaysAgo := time.Now().AddDate(0, 0, -5)
+
+	cmpOpts := []cmp.Option{
+		cmpopts.IgnoreUnexported(
+			ManagedGroup{},
+			store.ManagedGroup{},
+			timestamp.Timestamp{},
+			timestamppb.Timestamp{},
+		),
+		cmpopts.SortSlices(func(i, j string) bool { return i < j }),
+	}
+
+	repo, err := NewRepository(ctx, rw, rw, kmsCache)
+	require.NotNil(t, repo)
+	assert.NoError(t, err)
+
+	t.Run("validation", func(t *testing.T) {
+		t.Parallel()
+		t.Run("missing updated after", func(t *testing.T) {
+			t.Parallel()
+			_, _, err := repo.ListManagedGroupsRefresh(ctx, authMethod1.PublicId, time.Time{}, WithLimit(1))
+			require.ErrorContains(t, err, "missing updated after time")
+		})
+		t.Run("missing auth method id", func(t *testing.T) {
+			t.Parallel()
+			_, _, err := repo.ListManagedGroupsRefresh(ctx, "", fiveDaysAgo, WithLimit(1))
+			require.ErrorContains(t, err, "missing auth method id")
+		})
+	})
+
+	t.Run("success-without-after-item", func(t *testing.T) {
+		t.Parallel()
+		resp, ttime, err := repo.ListManagedGroupsRefresh(ctx, authMethod1.PublicId, fiveDaysAgo, WithLimit(10))
+		require.NoError(t, err)
+		// Transaction timestamp should be within ~10 seconds of now
+		assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
+		assert.True(t, time.Now().After(ttime.Add(-10*time.Second)))
+		require.Empty(t, cmp.Diff(resp, mgs1, cmpOpts...))
+	})
+	t.Run("success-with-after-item", func(t *testing.T) {
+		t.Parallel()
+		resp, ttime, err := repo.ListManagedGroupsRefresh(ctx, authMethod1.PublicId, fiveDaysAgo, WithStartPageAfterItem(mgs1[0]), WithLimit(10))
+		require.NoError(t, err)
+		// Transaction timestamp should be within ~10 seconds of now
+		assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
+		assert.True(t, time.Now().After(ttime.Add(-10*time.Second)))
+		require.Empty(t, cmp.Diff(resp, mgs1[1:], cmpOpts...))
+	})
+	t.Run("success-without-after-item-recent-updated-after", func(t *testing.T) {
+		t.Parallel()
+		resp, ttime, err := repo.ListManagedGroupsRefresh(ctx, authMethod1.PublicId, mgs1[len(mgs1)-1].GetUpdateTime().AsTime(), WithLimit(10))
+		require.NoError(t, err)
+		// Transaction timestamp should be within ~10 seconds of now
+		assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
+		assert.True(t, time.Now().After(ttime.Add(-10*time.Second)))
+		require.Empty(t, cmp.Diff(resp, mgs1[:len(mgs1)-1], cmpOpts...))
+	})
+	t.Run("success-with-after-item-recent-updated-after", func(t *testing.T) {
+		t.Parallel()
+		resp, ttime, err := repo.ListManagedGroupsRefresh(ctx, authMethod1.PublicId, mgs1[len(mgs1)-1].GetUpdateTime().AsTime(), WithStartPageAfterItem(mgs1[0]), WithLimit(10))
+		require.NoError(t, err)
+		// Transaction timestamp should be within ~10 seconds of now
+		assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
+		assert.True(t, time.Now().After(ttime.Add(-10*time.Second)))
+		require.Empty(t, cmp.Diff(resp, mgs1[1:len(mgs1)-1], cmpOpts...))
+	})
 }
 
 func TestRepository_UpdateManagedGroup(t *testing.T) {
@@ -973,4 +1136,136 @@ func TestRepository_UpdateManagedGroup(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestRepository_estimatedCountManagedGroups(t *testing.T) {
+	oldReadTimeout := globals.RefreshReadLookbackDuration
+	globals.RefreshReadLookbackDuration = 0
+	t.Cleanup(func() {
+		globals.RefreshReadLookbackDuration = oldReadTimeout
+	})
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+
+	ctx := context.Background()
+	kmsCache := kms.TestKms(t, conn, wrapper)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	org, _ := iam.TestScopes(t, iamRepo)
+
+	databaseWrapper, err := kmsCache.GetWrapper(ctx, org.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+
+	repo, err := NewRepository(ctx, rw, rw, kmsCache)
+	assert.NoError(t, err)
+
+	sqlDb, err := conn.SqlDB(ctx)
+	require.NoError(t, err)
+
+	// Check total entries at start, expect 0
+	numItems, err := repo.estimatedManagedGroupCount(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 0, numItems)
+
+	// create managed group and check count, expect 1
+	authMethod1 := TestAuthMethod(
+		t, conn, databaseWrapper, org.PublicId, ActivePrivateState,
+		"alice-rp", "fido",
+		WithSigningAlgs(RS256),
+		WithIssuer(TestConvertToUrls(t, "https://www.alice1.com")[0]),
+		WithApiUrl(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+	)
+	mg := TestManagedGroup(t, conn, authMethod1, TestFakeManagedGroupFilter)
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
+
+	numItems, err = repo.estimatedManagedGroupCount(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 1, numItems)
+
+	// Delete managed group and check count, expect 0 again
+	_, err = repo.DeleteManagedGroup(ctx, org.GetPublicId(), mg.GetPublicId())
+	require.NoError(t, err)
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
+
+	numItems, err = repo.estimatedManagedGroupCount(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 0, numItems)
+}
+
+func TestRepository_listDeletedIdsManagedGroups(t *testing.T) {
+	oldReadTimeout := globals.RefreshReadLookbackDuration
+	globals.RefreshReadLookbackDuration = 0
+	t.Cleanup(func() {
+		globals.RefreshReadLookbackDuration = oldReadTimeout
+	})
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+
+	ctx := context.Background()
+	kmsCache := kms.TestKms(t, conn, wrapper)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	org, _ := iam.TestScopes(t, iamRepo)
+
+	databaseWrapper, err := kmsCache.GetWrapper(ctx, org.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+
+	repo, err := NewRepository(ctx, rw, rw, kmsCache)
+	assert.NoError(t, err)
+
+	sqlDb, err := conn.SqlDB(ctx)
+	require.NoError(t, err)
+
+	// Check total entries at start, expect 0
+	numItems, err := repo.estimatedManagedGroupCount(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 0, numItems)
+
+	// create managed group and check count, expect 1
+	authMethod1 := TestAuthMethod(
+		t, conn, databaseWrapper, org.PublicId, ActivePrivateState,
+		"alice-rp", "fido",
+		WithSigningAlgs(RS256),
+		WithIssuer(TestConvertToUrls(t, "https://www.alice1.com")[0]),
+		WithApiUrl(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+	)
+	mg := TestManagedGroup(t, conn, authMethod1, TestFakeManagedGroupFilter)
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
+
+	deletedIds, ttime, err := repo.listDeletedManagedGroupIds(ctx, time.Now().AddDate(-1, 0, 0))
+	require.NoError(t, err)
+	require.Empty(t, deletedIds)
+	// Transaction timestamp should be within ~10 seconds of now
+	assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
+	assert.True(t, time.Now().After(ttime.Add(-10*time.Second)))
+
+	// Delete mg and check count, expect 1 entry
+	_, err = repo.DeleteManagedGroup(ctx, org.GetPublicId(), mg.GetPublicId())
+	require.NoError(t, err)
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
+
+	deletedIds, ttime, err = repo.listDeletedManagedGroupIds(ctx, time.Now().AddDate(-1, 0, 0))
+	require.NoError(t, err)
+	assert.Empty(
+		t,
+		cmp.Diff(
+			[]string{mg.GetPublicId()},
+			deletedIds,
+			cmpopts.SortSlices(func(i, j string) bool { return i < j }),
+		),
+	)
+	// Transaction timestamp should be within ~10 seconds of now
+	assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
+	assert.True(t, time.Now().After(ttime.Add(-10*time.Second)))
+
+	// Try again with the time set to now, expect no entries
+	deletedIds, ttime, err = repo.listDeletedManagedGroupIds(ctx, time.Now())
+	require.NoError(t, err)
+	require.Empty(t, deletedIds)
+	assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
+	assert.True(t, time.Now().After(ttime.Add(-10*time.Second)))
 }

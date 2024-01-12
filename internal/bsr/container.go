@@ -28,10 +28,116 @@ const (
 	checksumFileName        = "SHA256SUM"
 	sigFileName             = "SHA256SUM.sig"
 	journalFileName         = ".journal"
+
+	// sigFileBufferSize represents the number of free bytes required in the CHECKSUM.sig file to close safely
+	sigFileBufferSize = 89
+	// checksumFileBufferSize represents the number of free bytes required in the CHECKSUM file to safely
+	// write a single line: "{hash_value} {file_name}\n"
+	checksumFileBufferSize = 320
+	// sessionRecordingSummaryBufferSize represents the number of free bytes required in the session-recording-summary.json
+	// to close safely. This value is determined by the BaseSessionSummary definition.
+	sessionRecordingSummaryBufferSize = 183
+	// connectionRecordingSummaryBufferSize represents the number of free bytes required in the connection-recording-summary.json
+	// to close safely. This value is determined by the BaseConnectionSummary definition.
+	connectionRecordingSummaryBufferSize = 252
+	// connectionRecordingSummaryBufferSize represents the number of free bytes required in the channel-recording-summary.json
+	// to close safely. This value is determined by the ChannelSummary definition.
+	channelRecordingSummaryBufferSize = 518
+	// sessionRecordingMetaBufferSize represents the number of free bytes required in the session-recording.meta to safely
+	// write a single line: "connection: {connection_recorder_id}"
+	sessionRecordingMetaBufferSize = 36
+	// connectionRecordingMetaBufferSize represents the number of free bytes required in the connection-recording.meta to safely
+	// write a single line: "channel: {channel_recorder_id}"
+	connnectionRecordingMetaBufferSize = 31
+	// channelRecordingMetaBufferSize represents the number of free bytes required in the channel-recording.meta
+	// to close safely. This value is determined by the ChannelRecordingMeta definition.
+	channelRecordingMetaBufferSize = 114
+	// sessionJournalBufferSize represents the number of free bytes required in the session container .journal file to
+	// close safely. This value is determined by the number of files that exist in a session container.
+	sessionJournalBufferSize = 1060
+	// connectionJournalBufferSize represents the number of free bytes required in the connection container .journal file to
+	// close safely. This value is determined by the number of files that exist in a connection container.
+	connectionJournalBufferSize = 708
+	// connectionJournalBufferSize represents the number of free bytes required in the channel container .journal file to
+	// close safely. This value is determined by the number of files that exist in a channel container.
+	channelJournalBufferSize = 928
 )
 
 // ContainerType defines the type of container.
 type ContainerType string
+
+// ChecksumBufferSize returns the buffer size needed
+// for the rolling buffer of a checksum file
+func (c ContainerType) ChecksumBufferSize() (uint64, error) {
+	switch c {
+	case SessionContainer:
+		fallthrough
+	case ConnectionContainer:
+		fallthrough
+	case ChannelContainer:
+		return checksumFileBufferSize, nil
+	}
+	return 0, fmt.Errorf("unknown container type: %s", c)
+}
+
+// ChecksumSignatureBufferSize returns the buffer size
+// needed for the rolling buffer of a checksum file
+func (c ContainerType) ChecksumSignatureBufferSize() (uint64, error) {
+	switch c {
+	case SessionContainer:
+		fallthrough
+	case ConnectionContainer:
+		fallthrough
+	case ChannelContainer:
+		return sigFileBufferSize, nil
+	}
+	return 0, fmt.Errorf("unknown container type: %s", c)
+}
+
+// RecordingSummaryBufferSize returns the buffer size needed
+// for the rolling buffer of a recording summary file based
+// on the container type
+func (c ContainerType) RecordingSummaryBufferSize() (uint64, error) {
+	switch c {
+	case SessionContainer:
+		return sessionRecordingSummaryBufferSize, nil
+	case ConnectionContainer:
+		return connectionRecordingSummaryBufferSize, nil
+	case ChannelContainer:
+		return channelRecordingSummaryBufferSize, nil
+	}
+	return 0, fmt.Errorf("unknown container type: %s", c)
+}
+
+// RecordingMetaBufferSize returns the buffer size needed
+// for the rolling buffer of a recording meta file based
+// on the container type
+func (c ContainerType) RecordingMetaBufferSize() (uint64, error) {
+	switch c {
+	case SessionContainer:
+		return sessionRecordingMetaBufferSize, nil
+	case ConnectionContainer:
+		return connnectionRecordingMetaBufferSize, nil
+	case ChannelContainer:
+		return channelRecordingMetaBufferSize, nil
+	}
+	return 0, fmt.Errorf("unknown container type: %s", c)
+}
+
+// JournalBufferSize returns the buffer size needed
+// for the rolling buffer for a journal file based
+// on the container type
+func (c ContainerType) JournalBufferSize() (uint64, error) {
+	switch c {
+	case SessionContainer:
+		return sessionJournalBufferSize, nil
+	case ConnectionContainer:
+		return connectionJournalBufferSize, nil
+	case ChannelContainer:
+		return channelJournalBufferSize, nil
+	}
+	return 0, fmt.Errorf("unknown container type: %s", c)
+}
 
 // FileChecksumValidation is a validation report on a file's checksum value
 type FileChecksumValidation struct {
@@ -89,10 +195,16 @@ type container struct {
 
 // newContainer creates a container for the given type backed by the provide storage.Container.
 func newContainer(ctx context.Context, t ContainerType, c storage.Container, keys *kms.Keys) (*container, error) {
+	journalBufferSize, err := t.JournalBufferSize()
+	if err != nil {
+		return nil, err
+	}
 	j, err := c.OpenFile(ctx, journalFileName,
 		storage.WithCreateFile(),
-		storage.WithFileAccessMode(storage.WriteOnly),
-		storage.WithCloseSyncMode(storage.NoSync))
+		storage.WithFileAccessMode(storage.ReadWrite),
+		storage.WithCloseSyncMode(storage.NoSync),
+		storage.WithBuffer(journalBufferSize),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -106,12 +218,28 @@ func newContainer(ctx context.Context, t ContainerType, c storage.Container, key
 		keys:      keys,
 	}
 
-	cc.sigs, err = cc.create(ctx, sigFileName)
+	sigFileBufferSize, err := t.ChecksumSignatureBufferSize()
+	if err != nil {
+		return nil, err
+	}
+	cc.sigs, err = cc.create(ctx, sigFileName,
+		storage.WithCreateFile(),
+		storage.WithFileAccessMode(storage.ReadWrite),
+		storage.WithBuffer(sigFileBufferSize),
+	)
 	if err != nil {
 		return nil, err
 	}
 
-	cs, err := cc.create(ctx, checksumFileName)
+	checksumFileBufferSize, err := t.ChecksumBufferSize()
+	if err != nil {
+		return nil, err
+	}
+	cs, err := cc.create(ctx, checksumFileName,
+		storage.WithCreateFile(),
+		storage.WithFileAccessMode(storage.ReadWrite),
+		storage.WithBuffer(checksumFileBufferSize),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -120,8 +248,16 @@ func newContainer(ctx context.Context, t ContainerType, c storage.Container, key
 		return nil, err
 	}
 
+	metaBufferSize, err := t.RecordingMetaBufferSize()
+	if err != nil {
+		return nil, err
+	}
 	cc.metaName = fmt.Sprintf(metaFileNameTemplate, t)
-	meta, err := cc.create(ctx, cc.metaName)
+	meta, err := cc.create(ctx, cc.metaName,
+		storage.WithCreateFile(),
+		storage.WithFileAccessMode(storage.ReadWrite),
+		storage.WithBuffer(metaBufferSize),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -130,8 +266,16 @@ func newContainer(ctx context.Context, t ContainerType, c storage.Container, key
 		return nil, err
 	}
 
+	summaryBufferSize, err := t.RecordingSummaryBufferSize()
+	if err != nil {
+		return nil, err
+	}
 	cc.sumName = fmt.Sprintf(summaryFileNameTemplate, t)
-	sum, err := cc.create(ctx, cc.sumName)
+	sum, err := cc.create(ctx, cc.sumName,
+		storage.WithCreateFile(),
+		storage.WithFileAccessMode(storage.ReadWrite),
+		storage.WithBuffer(summaryBufferSize),
+	)
 	if err != nil {
 		return nil, err
 	}

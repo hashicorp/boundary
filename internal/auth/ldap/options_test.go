@@ -9,11 +9,33 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 	"testing"
+	"time"
 
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/pagination"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+type fakeItem struct {
+	pagination.Item
+	publicId   string
+	createTime time.Time
+	updateTime time.Time
+}
+
+func (p *fakeItem) GetPublicId() string {
+	return p.publicId
+}
+
+func (p *fakeItem) GetCreateTime() *timestamp.Timestamp {
+	return timestamp.New(p.createTime)
+}
+
+func (p *fakeItem) GetUpdateTime() *timestamp.Timestamp {
+	return timestamp.New(p.updateTime)
+}
 
 func Test_getOpts(t *testing.T) {
 	t.Parallel()
@@ -349,5 +371,19 @@ func Test_getOpts(t *testing.T) {
 		require.Error(t, err)
 		assert.ErrorContains(err, `"Invalid" is not a valid ldap dereference alias type`)
 		assert.Truef(errors.Match(errors.T(errors.InvalidParameter), err), "want err code: %q got: %q", errors.InvalidParameter, err)
+	})
+	t.Run("WithStartPageAfterItem", func(t *testing.T) {
+		t.Run("nil item", func(t *testing.T) {
+			_, err := getOpts(WithStartPageAfterItem(context.Background(), nil))
+			require.Error(t, err)
+		})
+		assert := assert.New(t)
+		updateTime := time.Now()
+		createTime := time.Now()
+		opts, err := getOpts(WithStartPageAfterItem(context.Background(), &fakeItem{nil, "s_1", createTime, updateTime}))
+		require.NoError(t, err)
+		assert.Equal(opts.withStartPageAfterItem.GetPublicId(), "s_1")
+		assert.Equal(opts.withStartPageAfterItem.GetUpdateTime(), timestamp.New(updateTime))
+		assert.Equal(opts.withStartPageAfterItem.GetCreateTime(), timestamp.New(createTime))
 	})
 }

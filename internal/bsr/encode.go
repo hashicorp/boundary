@@ -13,6 +13,8 @@ import (
 	"hash/crc32"
 	"io"
 	"sync"
+
+	"github.com/hashicorp/boundary/internal/storage"
 )
 
 type encodeCache struct {
@@ -43,13 +45,13 @@ var encodeCachePool = &sync.Pool{
 // ChunkEncoder will encode a chunk and write it to the writer.
 // It will compress the chunk data based on the compression.
 type ChunkEncoder struct {
-	w           io.Writer
+	w           storage.Writer
 	compression Compression
 	encryption  Encryption
 }
 
 // NewChunkEncoder creates a ChunkEncoder.
-func NewChunkEncoder(ctx context.Context, w io.Writer, c Compression, e Encryption) (*ChunkEncoder, error) {
+func NewChunkEncoder(ctx context.Context, w storage.Writer, c Compression, e Encryption) (*ChunkEncoder, error) {
 	const op = "bsr.NewChunkEncoder"
 
 	if w == nil {
@@ -127,15 +129,9 @@ func (e ChunkEncoder) Encode(ctx context.Context, c Chunk) (int, error) {
 	copy(encodedChunk[chunkBaseSize:], encode.compress.Bytes())
 	binary.BigEndian.PutUint32(encodedChunk[chunkBaseSize+length:], sum)
 
-	return e.w.Write(encodedChunk)
-}
-
-// Close closes the encoder.
-func (e *ChunkEncoder) Close() error {
-	var i interface{} = e.w
-	v, ok := i.(io.WriteCloser)
-	if ok {
-		return v.Close()
+	if c.GetType() == ChunkEnd {
+		return e.w.WriteAndClose(encodedChunk)
 	}
-	return nil
+
+	return e.w.Write(encodedChunk)
 }

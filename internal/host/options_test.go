@@ -5,14 +5,41 @@ package host
 
 import (
 	"testing"
+	"time"
 
+	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
+	"github.com/hashicorp/boundary/internal/pagination"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
+type fakeWriter struct {
+	db.Writer
+}
+
+type fakeReader struct {
+	db.Reader
+}
+
+type fakeItem struct {
+	pagination.Item
+	publicId   string
+	updateTime time.Time
+}
+
+func (p *fakeItem) GetPublicId() string {
+	return p.publicId
+}
+
+func (p *fakeItem) GetUpdateTime() *timestamp.Timestamp {
+	return timestamp.New(p.updateTime)
+}
+
 func Test_GetOpts(t *testing.T) {
 	t.Parallel()
 	t.Run("WithLimit", func(t *testing.T) {
+		t.Parallel()
 		opts, err := GetOpts(WithLimit(1))
 		require.NoError(t, err)
 		testOpts := getDefaultOptions()
@@ -20,6 +47,7 @@ func Test_GetOpts(t *testing.T) {
 		assert.Equal(t, opts, testOpts)
 	})
 	t.Run("WithOrderByCreateTime-desc", func(t *testing.T) {
+		t.Parallel()
 		opts, err := GetOpts(WithOrderByCreateTime(false))
 		require.NoError(t, err)
 		testOpts := getDefaultOptions()
@@ -27,11 +55,26 @@ func Test_GetOpts(t *testing.T) {
 		assert.Equal(t, opts, testOpts)
 	})
 	t.Run("WithOrderByCreateTime-asc", func(t *testing.T) {
+		t.Parallel()
 		opts, err := GetOpts(WithOrderByCreateTime(true))
 		require.NoError(t, err)
 		testOpts := getDefaultOptions()
 		testOpts.WithOrderByCreateTime = true
 		testOpts.Ascending = true
 		assert.Equal(t, opts, testOpts)
+	})
+	t.Run("WithStartPageAfterItem", func(t *testing.T) {
+		t.Parallel()
+		t.Run("nil item", func(t *testing.T) {
+			t.Parallel()
+			_, err := GetOpts(WithStartPageAfterItem(nil))
+			require.Error(t, err)
+		})
+		assert := assert.New(t)
+		updateTime := time.Now()
+		opts, err := GetOpts(WithStartPageAfterItem(&fakeItem{nil, "s_1", updateTime}))
+		require.NoError(t, err)
+		assert.Equal(opts.WithStartPageAfterItem.GetPublicId(), "s_1")
+		assert.Equal(opts.WithStartPageAfterItem.GetUpdateTime(), timestamp.New(updateTime))
 	})
 }

@@ -24,7 +24,7 @@ import (
 // Returns the id of the new host catalog.
 func CreateNewHostCatalogApi(t testing.TB, ctx context.Context, client *api.Client, projectId string) string {
 	hcClient := hostcatalogs.NewClient(client)
-	newHostCatalogResult, err := hcClient.Create(ctx, "static", projectId, hostcatalogs.WithName("e2e Host Catalog"))
+	newHostCatalogResult, err := hcClient.Create(ctx, "static", projectId)
 	require.NoError(t, err)
 	newHostCatalogId := newHostCatalogResult.Item.Id
 	t.Logf("Created Host Catalog: %s", newHostCatalogId)
@@ -36,7 +36,7 @@ func CreateNewHostCatalogApi(t testing.TB, ctx context.Context, client *api.Clie
 // Returns the id of the new host set.
 func CreateNewHostSetApi(t testing.TB, ctx context.Context, client *api.Client, hostCatalogId string) string {
 	hsClient := hostsets.NewClient(client)
-	newHostSetResult, err := hsClient.Create(ctx, hostCatalogId, hostsets.WithName("e2e Host"))
+	newHostSetResult, err := hsClient.Create(ctx, hostCatalogId)
 	require.NoError(t, err)
 	newHostSetId := newHostSetResult.Item.Id
 	t.Logf("Created Host Set: %s", newHostSetId)
@@ -49,7 +49,6 @@ func CreateNewHostSetApi(t testing.TB, ctx context.Context, client *api.Client, 
 func CreateNewHostApi(t testing.TB, ctx context.Context, client *api.Client, hostCatalogId string, address string) string {
 	hClient := hosts.NewClient(client)
 	newHostResult, err := hClient.Create(ctx, hostCatalogId,
-		hosts.WithName(address),
 		hosts.WithStaticHostAddress(address),
 	)
 	require.NoError(t, err)

@@ -221,6 +221,14 @@ type Controller struct {
 
 	// License is the license used by HCP builds
 	License string `hcl:"license"`
+
+	// MaxPageSize overrides the default and max page size.
+	// The default page size is what is used when the page size
+	// is not explicitly provided by the user. The max page size
+	// is the greatest number the page size can be set to before
+	// it is rejected by the controller.
+	MaxPageSizeRaw any  `hcl:"max_page_size"`
+	MaxPageSize    uint `hcl:"-"`
 }
 
 func (c *Controller) InitNameIfEmpty(ctx context.Context) error {
@@ -291,9 +299,9 @@ type Worker struct {
 	// var, or direct value.
 	ControllerGeneratedActivationToken string `hcl:"controller_generated_activation_token"`
 
-	// UseDeprecatedKmsAuthMethod indicates that the worker should use the pre-0.13
-	// method of using KMSes to authenticate. This should not be used when the
-	// controller version supports the new style.
+	// UseDeprecatedKmsAuthMethod indicates that the worker should use the
+	// pre-0.13 method of using KMSes to authenticate. This is currently only
+	// supported to throw an error if used telling people they need to upgrade.
 	UseDeprecatedKmsAuthMethod bool `hcl:"use_deprecated_kms_auth_method"`
 }
 
@@ -630,6 +638,31 @@ func Parse(d string) (*Config, error) {
 			return nil, errors.New("Controller liveness time to stale value is negative")
 		}
 
+		if result.Controller.MaxPageSizeRaw != nil {
+			switch t := result.Controller.MaxPageSizeRaw.(type) {
+			case string:
+				maxPageSizeString, err := parseutil.ParsePath(t)
+				if err != nil && !errors.Is(err, parseutil.ErrNotAUrl) {
+					return nil, fmt.Errorf("Error parsing max page size: %w", err)
+				}
+				pageSize, err := strconv.Atoi(maxPageSizeString)
+				if err != nil {
+					return nil, fmt.Errorf("Max page size value is not an int: %w", err)
+				}
+				if pageSize <= 0 {
+					return nil, fmt.Errorf("Max page size value must be at least 1, was %d", pageSize)
+				}
+				result.Controller.MaxPageSize = uint(pageSize)
+			case int:
+				if t <= 0 {
+					return nil, fmt.Errorf("Max page size value must be at least 1, was %d", t)
+				}
+				result.Controller.MaxPageSize = uint(t)
+			default:
+				return nil, fmt.Errorf("Max page size: unsupported type %q", reflect.TypeOf(t).String())
+			}
+		}
+
 		if result.Controller.Database != nil {
 			if result.Controller.Database.MaxOpenConnectionsRaw != nil {
 				switch t := result.Controller.Database.MaxOpenConnectionsRaw.(type) {
@@ -685,7 +718,6 @@ func Parse(d string) (*Config, error) {
 						reflect.TypeOf(t).String())
 				}
 			}
-
 		}
 
 		result.Controller.ApiRateLimits, err = parseApiRateLimits(obj.Node)
@@ -700,6 +732,10 @@ func Parse(d string) (*Config, error) {
 
 	// Parse worker tags
 	if result.Worker != nil {
+		if result.Worker.UseDeprecatedKmsAuthMethod {
+			return nil, fmt.Errorf("The flag 'use_deprecated_auth_method' is unsupported as of version 0.15.")
+		}
+
 		result.Worker.Name, err = parseutil.ParsePath(result.Worker.Name)
 		if err != nil && !errors.Is(err, parseutil.ErrNotAUrl) {
 			return nil, fmt.Errorf("Error parsing worker name: %w", err)

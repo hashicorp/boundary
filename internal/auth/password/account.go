@@ -7,8 +7,10 @@ import (
 	"context"
 
 	"github.com/hashicorp/boundary/internal/auth/password/store"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -70,6 +72,11 @@ func (a *Account) SetTableName(n string) {
 	a.tableName = n
 }
 
+// GetResourceType returns the resource type of the Account
+func (a *Account) GetResourceType() resource.Type {
+	return resource.Account
+}
+
 // GetEmail returns the email, which will always be empty as this type doesn't
 // currently support email
 func (a *Account) GetEmail() string {
@@ -92,4 +99,14 @@ func (a *Account) oplog(op oplog.OpType) oplog.Metadata {
 		metadata["auth-method-id"] = []string{a.AuthMethodId}
 	}
 	return metadata
+}
+
+type deletedAccount struct {
+	PublicId   string `gorm:"primary_key"`
+	DeleteTime *timestamp.Timestamp
+}
+
+// TableName returns the tablename to override the default gorm table name
+func (s *deletedAccount) TableName() string {
+	return "auth_password_account_deleted"
 }

@@ -8,6 +8,7 @@ import (
 	"math/rand"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/oidc/store"
@@ -205,8 +206,11 @@ func Test_ManagedGroupMemberships(t *testing.T) {
 			// We are intentionally carrying things over between tests to be
 			// more realistic but that means we need correct versions, so update
 			// them first.
-			currMgs, err := repo.ListManagedGroups(ctx, authMethod.PublicId)
+			currMgs, ttime, err := repo.ListManagedGroups(ctx, authMethod.PublicId)
 			require.NoError(err)
+			// Transaction timestamp should be within ~10 seconds of now
+			assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+			assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
 			require.Len(currMgs, 100)
 			currVersionMap := make(map[string]uint32, len(currMgs))
 			for _, currMg := range currMgs {

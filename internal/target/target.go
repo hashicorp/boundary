@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/target/store"
+	"github.com/hashicorp/boundary/internal/types/resource"
 )
 
 // Target is a commmon interface for all target subtypes
@@ -26,6 +27,7 @@ type Target interface {
 	GetDescription() string
 	GetVersion() uint32
 	GetType() globals.Subtype
+	GetResourceType() resource.Type
 	GetCreateTime() *timestamp.Timestamp
 	GetUpdateTime() *timestamp.Timestamp
 	GetSessionMaxSeconds() uint32
@@ -108,6 +110,11 @@ func (t *targetView) SetTableName(n string) {
 	}
 }
 
+// GetResourceType returns the resource type of the Target
+func (t *targetView) GetResourceType() resource.Type {
+	return resource.Target
+}
+
 func (t *targetView) SetHostSources(hs []HostSource) {
 	t.HostSource = hs
 }
@@ -181,4 +188,14 @@ func (t *targetView) targetSubtype(ctx context.Context, address string) (Target,
 	tt.SetEnableSessionRecording(t.EnableSessionRecording)
 	tt.SetStorageBucketId(t.StorageBucketId)
 	return tt, nil
+}
+
+type deletedTarget struct {
+	PublicId   string `gorm:"primary_key"`
+	DeleteTime *timestamp.Timestamp
+}
+
+// TableName returns the tablename to override the default gorm table name
+func (s *deletedTarget) TableName() string {
+	return "target_all_subtypes_deleted_view"
 }

@@ -1556,7 +1556,7 @@ func TestRepository_Endpoints(t *testing.T) {
 	}
 }
 
-func TestRepository_ListSets(t *testing.T) {
+func TestRepository_listSets(t *testing.T) {
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
@@ -1583,7 +1583,7 @@ func TestRepository_ListSets(t *testing.T) {
 	tests := []struct {
 		name      string
 		in        string
-		opts      []host.Option
+		opts      []Option
 		want      []*HostSet
 		wantIsErr errors.Code
 	}{
@@ -1610,7 +1610,7 @@ func TestRepository_ListSets(t *testing.T) {
 			repo, err := NewRepository(ctx, rw, rw, kms, sched, plgm)
 			assert.NoError(err)
 			require.NotNil(repo)
-			got, gotPlg, err := repo.ListSets(ctx, tt.in, tt.opts...)
+			got, gotPlg, ttime, err := repo.listSets(ctx, tt.in, tt.opts...)
 			if tt.wantIsErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
@@ -1625,11 +1625,14 @@ func TestRepository_ListSets(t *testing.T) {
 			if got != nil {
 				assert.Empty(cmp.Diff(plg, gotPlg, protocmp.Transform()))
 			}
+			// Transaction timestamp should be within ~10 seconds of now
+			assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+			assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
 		})
 	}
 }
 
-func TestRepository_ListSets_Limits(t *testing.T) {
+func TestRepository_listSets_Limits(t *testing.T) {
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
@@ -1652,7 +1655,7 @@ func TestRepository_ListSets_Limits(t *testing.T) {
 	tests := []struct {
 		name     string
 		repoOpts []host.Option
-		listOpts []host.Option
+		listOpts []Option
 		wantLen  int
 	}{
 		{
@@ -1665,30 +1668,20 @@ func TestRepository_ListSets_Limits(t *testing.T) {
 			wantLen:  3,
 		},
 		{
-			name:     "With negative repo limit",
-			repoOpts: []host.Option{host.WithLimit(-1)},
-			wantLen:  count,
-		},
-		{
 			name:     "With List limit",
-			listOpts: []host.Option{host.WithLimit(3)},
+			listOpts: []Option{WithLimit(3)},
 			wantLen:  3,
-		},
-		{
-			name:     "With negative List limit",
-			listOpts: []host.Option{host.WithLimit(-1)},
-			wantLen:  count,
 		},
 		{
 			name:     "With repo smaller than list limit",
 			repoOpts: []host.Option{host.WithLimit(2)},
-			listOpts: []host.Option{host.WithLimit(6)},
+			listOpts: []Option{WithLimit(6)},
 			wantLen:  6,
 		},
 		{
 			name:     "With repo larger than list limit",
 			repoOpts: []host.Option{host.WithLimit(6)},
-			listOpts: []host.Option{host.WithLimit(2)},
+			listOpts: []Option{WithLimit(2)},
 			wantLen:  2,
 		},
 	}
@@ -1700,12 +1693,199 @@ func TestRepository_ListSets_Limits(t *testing.T) {
 			repo, err := NewRepository(ctx, rw, rw, kms, sched, plgm, tt.repoOpts...)
 			assert.NoError(err)
 			require.NotNil(repo)
-			got, gotPlg, err := repo.ListSets(ctx, hostSets[0].CatalogId, tt.listOpts...)
+			got, gotPlg, ttime, err := repo.listSets(ctx, hostSets[0].CatalogId, tt.listOpts...)
 			require.NoError(err)
 			assert.Len(got, tt.wantLen)
 			assert.Empty(cmp.Diff(plg, gotPlg, protocmp.Transform()))
+			// Transaction timestamp should be within ~10 seconds of now
+			assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+			assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
 		})
 	}
+}
+
+func TestRepository_listSets_Pagination(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	_, proj1 := iam.TestScopes(t, iamRepo)
+	sched := scheduler.TestScheduler(t, conn, wrapper)
+	plg := plugin.TestPlugin(t, conn, "test")
+	plgm := map[string]plgpb.HostPluginServiceClient{
+		plg.GetPublicId(): &loopback.WrappingPluginHostClient{Server: &loopback.TestPluginServer{}},
+	}
+	catalog := TestCatalog(t, conn, proj1.GetPublicId(), plg.GetPublicId())
+
+	total := 5
+	for i := 0; i < total; i++ {
+		TestSet(t, conn, kms, sched, catalog, plgm)
+	}
+
+	rw := db.New(conn)
+	repo, err := NewRepository(ctx, rw, rw, kms, sched, plgm)
+	require.NoError(t, err)
+
+	t.Run("no-options", func(t *testing.T) {
+		got, retPlg, ttime, err := repo.listSets(ctx, catalog.GetPublicId())
+		require.NoError(t, err)
+		assert.Equal(t, total, len(got))
+		assert.Equal(t, retPlg, plg)
+		// Transaction timestamp should be within ~10 seconds of now
+		assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
+		assert.True(t, time.Now().After(ttime.Add(-10*time.Second)))
+	})
+
+	t.Run("withStartPageAfter", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+
+		page1, retPlg, ttime, err := repo.listSets(
+			context.Background(),
+			catalog.GetPublicId(),
+			WithLimit(2),
+		)
+		require.NoError(err)
+		require.Len(page1, 2)
+		assert.Equal(retPlg, plg)
+		// Transaction timestamp should be within ~10 seconds of now
+		assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+		assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
+		page2, retPlg, ttime, err := repo.listSets(
+			context.Background(),
+			catalog.GetPublicId(),
+			WithLimit(2),
+			WithStartPageAfterItem(page1[1]),
+		)
+		require.NoError(err)
+		require.Len(page2, 2)
+		assert.Equal(retPlg, plg)
+		for _, item := range page1 {
+			assert.NotEqual(item.GetPublicId(), page2[0].GetPublicId())
+			assert.NotEqual(item.GetPublicId(), page2[1].GetPublicId())
+		}
+		assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+		assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
+		page3, retPlg, ttime, err := repo.listSets(
+			context.Background(),
+			catalog.GetPublicId(),
+			WithLimit(2),
+			WithStartPageAfterItem(page2[1]),
+		)
+		require.NoError(err)
+		require.Len(page3, 1)
+		assert.Equal(retPlg, plg)
+		for _, item := range page2 {
+			assert.NotEqual(item.GetPublicId(), page3[0].GetPublicId())
+		}
+		assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+		assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
+		page4, retPlg, ttime, err := repo.listSets(
+			context.Background(),
+			catalog.GetPublicId(),
+			WithLimit(2),
+			WithStartPageAfterItem(page3[0]),
+		)
+		require.NoError(err)
+		require.Empty(page4)
+		require.Empty(retPlg)
+		assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+		assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
+	})
+}
+
+func Test_listDeletedSetIds(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	testKms := kms.TestKms(t, conn, wrapper)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	_, proj := iam.TestScopes(t, iamRepo)
+	sched := scheduler.TestScheduler(t, conn, wrapper)
+	plg := plugin.TestPlugin(t, conn, "test")
+	plgm := map[string]plgpb.HostPluginServiceClient{
+		plg.GetPublicId(): &loopback.WrappingPluginHostClient{Server: &loopback.TestPluginServer{}},
+	}
+	catalog := TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
+
+	rw := db.New(conn)
+	repo, err := NewRepository(ctx, rw, rw, testKms, sched, plgm)
+	require.NoError(t, err)
+
+	// Expect no entries at the start
+	deletedIds, ttime, err := repo.listDeletedSetIds(ctx, time.Now().AddDate(-1, 0, 0))
+	require.NoError(t, err)
+	require.Empty(t, deletedIds)
+	// Transaction timestamp should be within ~10 seconds of now
+	assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
+	assert.True(t, time.Now().After(ttime.Add(-10*time.Second)))
+
+	// Delete a set
+	s := TestSet(t, conn, testKms, sched, catalog, plgm)
+	_, err = repo.DeleteSet(ctx, proj.GetPublicId(), s.GetPublicId())
+	require.NoError(t, err)
+
+	// Expect a single entry
+	deletedIds, ttime, err = repo.listDeletedSetIds(ctx, time.Now().AddDate(-1, 0, 0))
+	require.NoError(t, err)
+	require.Equal(t, []string{s.GetPublicId()}, deletedIds)
+	assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
+	assert.True(t, time.Now().After(ttime.Add(-10*time.Second)))
+
+	// Try again with the time set to now, expect no entries
+	deletedIds, ttime, err = repo.listDeletedSetIds(ctx, time.Now())
+	require.NoError(t, err)
+	require.Empty(t, deletedIds)
+	assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
+	assert.True(t, time.Now().After(ttime.Add(-10*time.Second)))
+}
+
+func Test_estimatedHostSetCount(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	sqlDb, err := conn.SqlDB(ctx)
+	require.NoError(t, err)
+	wrapper := db.TestWrapper(t)
+	testKms := kms.TestKms(t, conn, wrapper)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	_, proj := iam.TestScopes(t, iamRepo)
+	sched := scheduler.TestScheduler(t, conn, wrapper)
+	plg := plugin.TestPlugin(t, conn, "test")
+	plgm := map[string]plgpb.HostPluginServiceClient{
+		plg.GetPublicId(): &loopback.WrappingPluginHostClient{Server: &loopback.TestPluginServer{}},
+	}
+	catalog := TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
+
+	rw := db.New(conn)
+	repo, err := NewRepository(ctx, rw, rw, testKms, sched, plgm)
+	require.NoError(t, err)
+
+	// Check total entries at start, expect 0
+	numItems, err := repo.estimatedSetCount(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 0, numItems)
+
+	// Create a set, expect 1 entries
+	s := TestSet(t, conn, testKms, sched, catalog, plgm)
+	// Run analyze to update estimate
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
+	numItems, err = repo.estimatedSetCount(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 1, numItems)
+
+	// Delete the set, expect 0 again
+	_, err = repo.DeleteSet(ctx, proj.GetPublicId(), s.GetPublicId())
+	require.NoError(t, err)
+	// Run analyze to update estimate
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
+	numItems, err = repo.estimatedSetCount(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 0, numItems)
 }
 
 func TestRepository_DeleteSet(t *testing.T) {

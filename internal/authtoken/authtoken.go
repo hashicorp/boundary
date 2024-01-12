@@ -12,9 +12,11 @@ import (
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/authtoken/store"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/gen/controller/tokens"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-kms-wrapping/v2/extras/structwrapping"
 	"github.com/hashicorp/go-secure-stdlib/base62"
@@ -56,8 +58,8 @@ type AuthToken struct {
 	tableName string `gorm:"-"`
 }
 
-func (s *AuthToken) clone() *AuthToken {
-	cp := proto.Clone(s.AuthToken)
+func (at *AuthToken) clone() *AuthToken {
+	cp := proto.Clone(at.AuthToken)
 	return &AuthToken{
 		AuthToken: cp.(*store.AuthToken),
 	}
@@ -166,4 +168,45 @@ func EncryptToken(ctx context.Context, kmsCache *kms.Kms, scopeId, publicId, tok
 	encoded := base58.FastBase58Encoding(marshaledBlob)
 
 	return globals.ServiceTokenV1 + encoded, nil
+}
+
+// GetResourceType returns the resource type of the AuthToken
+func (at AuthToken) GetResourceType() resource.Type {
+	return resource.AuthToken
+}
+
+func (at AuthToken) GetUpdateTime() *timestamp.Timestamp {
+	return at.UpdateTime
+}
+
+func (at AuthToken) GetCreateTime() *timestamp.Timestamp {
+	return at.CreateTime
+}
+
+// GetDescription returns an empty string so that
+// AuthToken will satisfy resource requirements
+func (at AuthToken) GetDescription() string {
+	return ""
+}
+
+// GetName returns an empty string so that
+// AuthToken will satisfy resource requirements
+func (at AuthToken) GetName() string {
+	return ""
+}
+
+// GetVersion returns 0 so that
+// AuthToken will satisfy resource requirements
+func (at AuthToken) GetVersion() uint32 {
+	return 0
+}
+
+type deletedAuthToken struct {
+	PublicId   string `gorm:"primary_key"`
+	DeleteTime *timestamp.Timestamp
+}
+
+// TableName returns the tablename to override the default gorm table name
+func (at *deletedAuthToken) TableName() string {
+	return "auth_token_deleted"
 }

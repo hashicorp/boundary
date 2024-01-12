@@ -19,6 +19,8 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/errors"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	"github.com/hashicorp/boundary/internal/listtoken"
+	"github.com/hashicorp/boundary/internal/pagination"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/types/action"
@@ -93,14 +95,15 @@ func init() {
 type Service struct {
 	pbs.UnsafeManagedGroupServiceServer
 
-	oidcRepoFn common.OidcAuthRepoFactory
-	ldapRepoFn common.LdapAuthRepoFactory
+	oidcRepoFn  common.OidcAuthRepoFactory
+	ldapRepoFn  common.LdapAuthRepoFactory
+	maxPageSize uint
 }
 
 var _ pbs.ManagedGroupServiceServer = (*Service)(nil)
 
 // NewService returns a managed group service which handles managed group related requests to boundary.
-func NewService(ctx context.Context, oidcRepo common.OidcAuthRepoFactory, ldapRepo common.LdapAuthRepoFactory) (Service, error) {
+func NewService(ctx context.Context, oidcRepo common.OidcAuthRepoFactory, ldapRepo common.LdapAuthRepoFactory, maxPageSize uint) (Service, error) {
 	const op = "managed_groups.NewService"
 	switch {
 	case oidcRepo == nil:
@@ -108,70 +111,187 @@ func NewService(ctx context.Context, oidcRepo common.OidcAuthRepoFactory, ldapRe
 	case ldapRepo == nil:
 		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing ldap repository provided")
 	}
-	return Service{oidcRepoFn: oidcRepo, ldapRepoFn: ldapRepo}, nil
+	if maxPageSize == 0 {
+		maxPageSize = uint(globals.DefaultMaxPageSize)
+	}
+	return Service{oidcRepoFn: oidcRepo, ldapRepoFn: ldapRepo, maxPageSize: maxPageSize}, nil
 }
 
 // ListManagedGroups implements the interface pbs.ManagedGroupsServiceServer.
 func (s Service) ListManagedGroups(ctx context.Context, req *pbs.ListManagedGroupsRequest) (*pbs.ListManagedGroupsResponse, error) {
+	const op = "managed_groups.(Service).ListManagedGroups"
 	if err := validateListRequest(ctx, req); err != nil {
-		return nil, err
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	_, authResults := s.parentAndAuthResult(ctx, req.GetAuthMethodId(), action.List)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	ul, err := s.listFromRepo(ctx, req.GetAuthMethodId())
+
+	authMethodId := req.GetAuthMethodId()
+	pageSize := int(s.maxPageSize)
+	// Use the requested page size only if it is smaller than
+	// the configured max.
+	if req.GetPageSize() != 0 && uint(req.GetPageSize()) < s.maxPageSize {
+		pageSize = int(req.GetPageSize())
+	}
+
+	var filterItemFn func(ctx context.Context, item auth.ManagedGroup) (bool, error)
+	switch {
+	case req.GetFilter() != "":
+		// Only use a filter if we need to
+		filter, err := handlers.NewFilter(ctx, req.GetFilter())
+		if err != nil {
+			return nil, err
+		}
+		// TODO: replace the need for this function with some way to convert the `filter`
+		// to a domain type. This would allow filtering to happen in the domain, and we could
+		// remove this callback altogether.
+		filterItemFn = func(ctx context.Context, item auth.ManagedGroup) (bool, error) {
+			outputOpts, ok := newOutputOpts(ctx, item, authMethodId, authResults)
+			if !ok {
+				return false, nil
+			}
+			pbItem, err := toProto(ctx, item, outputOpts...)
+			if err != nil {
+				return false, err
+			}
+
+			filterable, err := subtypes.Filterable(ctx, pbItem)
+			if err != nil {
+				return false, err
+			}
+			return filter.Match(filterable), nil
+		}
+	default:
+		filterItemFn = func(ctx context.Context, item auth.ManagedGroup) (bool, error) {
+			return true, nil
+		}
+	}
+
+	grantsHash, err := authResults.GrantsHash(ctx)
 	if err != nil {
 		return nil, err
 	}
-	if len(ul) == 0 {
-		return &pbs.ListManagedGroupsResponse{}, nil
+
+	var listResp *pagination.ListResponse[auth.ManagedGroup]
+	var sortBy string
+	switch globals.ResourceInfoFromPrefix(authMethodId).Subtype {
+	case ldap.Subtype:
+		repo, err := s.ldapRepoFn()
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		if req.GetListToken() == "" {
+			sortBy = "created_time"
+			listResp, err = ldap.ListManagedGroups(ctx, grantsHash, pageSize, filterItemFn, repo, authMethodId)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			listToken, err := handlers.ParseListToken(ctx, req.GetListToken(), resource.ManagedGroup, grantsHash)
+			if err != nil {
+				return nil, err
+			}
+			switch st := listToken.Subtype.(type) {
+			case *listtoken.PaginationToken:
+				sortBy = "created_time"
+				listResp, err = ldap.ListManagedGroupsPage(ctx, grantsHash, pageSize, filterItemFn, listToken, repo, authMethodId)
+				if err != nil {
+					return nil, err
+				}
+			case *listtoken.StartRefreshToken:
+				sortBy = "updated_time"
+				listResp, err = ldap.ListManagedGroupsRefresh(ctx, grantsHash, pageSize, filterItemFn, listToken, repo, authMethodId)
+				if err != nil {
+					return nil, err
+				}
+			case *listtoken.RefreshToken:
+				sortBy = "updated_time"
+				listResp, err = ldap.ListManagedGroupsRefreshPage(ctx, grantsHash, pageSize, filterItemFn, listToken, repo, authMethodId)
+				if err != nil {
+					return nil, err
+				}
+			default:
+				return nil, handlers.ApiErrorWithCodeAndMessage(codes.InvalidArgument, "unexpected list token subtype: %T", st)
+			}
+		}
+	case oidc.Subtype:
+		repo, err := s.oidcRepoFn()
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		if req.GetListToken() == "" {
+			sortBy = "created_time"
+			listResp, err = oidc.ListManagedGroups(ctx, grantsHash, pageSize, filterItemFn, repo, authMethodId)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			listToken, err := handlers.ParseListToken(ctx, req.GetListToken(), resource.ManagedGroup, grantsHash)
+			if err != nil {
+				return nil, err
+			}
+			switch st := listToken.Subtype.(type) {
+			case *listtoken.PaginationToken:
+				sortBy = "created_time"
+				listResp, err = oidc.ListManagedGroupsPage(ctx, grantsHash, pageSize, filterItemFn, listToken, repo, authMethodId)
+				if err != nil {
+					return nil, err
+				}
+			case *listtoken.StartRefreshToken:
+				sortBy = "updated_time"
+				listResp, err = oidc.ListManagedGroupsRefresh(ctx, grantsHash, pageSize, filterItemFn, listToken, repo, authMethodId)
+				if err != nil {
+					return nil, err
+				}
+			case *listtoken.RefreshToken:
+				sortBy = "updated_time"
+				listResp, err = oidc.ListManagedGroupsRefreshPage(ctx, grantsHash, pageSize, filterItemFn, listToken, repo, authMethodId)
+				if err != nil {
+					return nil, err
+				}
+			default:
+				return nil, handlers.ApiErrorWithCodeAndMessage(codes.InvalidArgument, "unexpected list token subtype: %T", st)
+			}
+		}
+	default:
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.InvalidArgument, "unknown auth method type for id: %s", authMethodId)
 	}
 
-	filter, err := handlers.NewFilter(ctx, req.GetFilter())
-	if err != nil {
-		return nil, err
-	}
-	finalItems := make([]*pb.ManagedGroup, 0, len(ul))
-
-	res := perms.Resource{
-		ScopeId: authResults.Scope.Id,
-		Type:    resource.ManagedGroup,
-		Pin:     req.GetAuthMethodId(),
-	}
-	for _, mg := range ul {
-		res.Id = mg.GetPublicId()
-		authorizedActions := authResults.FetchActionSetForId(ctx, mg.GetPublicId(), IdActions[globals.ResourceInfoFromPrefix(mg.GetPublicId()).Subtype], requestauth.WithResource(&res)).Strings()
-		if len(authorizedActions) == 0 {
+	finalItems := make([]*pb.ManagedGroup, 0, len(listResp.Items))
+	for _, item := range listResp.Items {
+		outputOpts, ok := newOutputOpts(ctx, item, authMethodId, authResults)
+		if !ok {
 			continue
 		}
-
-		outputFields := authResults.FetchOutputFields(res, action.List).SelfOrDefaults(authResults.UserId)
-		outputOpts := make([]handlers.Option, 0, 3)
-		outputOpts = append(outputOpts, handlers.WithOutputFields(outputFields))
-		if outputFields.Has(globals.ScopeField) {
-			outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
+		pbItem, err := toProto(ctx, item, outputOpts...)
+		if err != nil {
+			continue
 		}
-		if outputFields.Has(globals.AuthorizedActionsField) {
-			outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions))
-		}
+		finalItems = append(finalItems, pbItem)
+	}
+	respType := "delta"
+	if listResp.CompleteListing {
+		respType = "complete"
+	}
+	resp := &pbs.ListManagedGroupsResponse{
+		Items:        finalItems,
+		EstItemCount: uint32(listResp.EstimatedItemCount),
+		RemovedIds:   listResp.DeletedIds,
+		ResponseType: respType,
+		SortBy:       sortBy,
+		SortDir:      "desc",
+	}
 
-		item, err := toProto(ctx, mg, outputOpts...)
+	if listResp.ListToken != nil {
+		resp.ListToken, err = handlers.MarshalListToken(ctx, listResp.ListToken, pbs.ResourceType_RESOURCE_TYPE_MANAGED_GROUP)
 		if err != nil {
 			return nil, err
-		}
-
-		// This comes last so that we can use item fields in the filter after
-		// the allowed fields are populated above
-		filterable, err := subtypes.Filterable(ctx, item)
-		if err != nil {
-			return nil, err
-		}
-		if filter.Match(filterable) {
-			finalItems = append(finalItems, item)
 		}
 	}
-	return &pbs.ListManagedGroupsResponse{Items: finalItems}, nil
+
+	return resp, nil
 }
 
 // GetManagedGroup implements the interface pbs.ManagedGroupServiceServer.
@@ -588,39 +708,6 @@ func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, 
 	return rows > 0, nil
 }
 
-func (s Service) listFromRepo(ctx context.Context, authMethodId string) ([]auth.ManagedGroup, error) {
-	const op = "managed_groups.(Service).listFromRepo"
-
-	var outUl []auth.ManagedGroup
-	switch globals.ResourceInfoFromPrefix(authMethodId).Subtype {
-	case oidc.Subtype:
-		oidcRepo, err := s.oidcRepoFn()
-		if err != nil {
-			return nil, errors.Wrap(ctx, err, op)
-		}
-		oidcl, err := oidcRepo.ListManagedGroups(ctx, authMethodId, oidc.WithLimit(-1))
-		if err != nil {
-			return nil, errors.Wrap(ctx, err, op)
-		}
-		for _, a := range oidcl {
-			outUl = append(outUl, a)
-		}
-	case ldap.Subtype:
-		ldapRepo, err := s.ldapRepoFn()
-		if err != nil {
-			return nil, errors.Wrap(ctx, err, op)
-		}
-		ldapUl, err := ldapRepo.ListManagedGroups(ctx, authMethodId, ldap.WithLimit(ctx, -1))
-		if err != nil {
-			return nil, errors.Wrap(ctx, err, op)
-		}
-		for _, a := range ldapUl {
-			outUl = append(outUl, a)
-		}
-	}
-	return outUl, nil
-}
-
 func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Type) (auth.AuthMethod, requestauth.VerifyResults) {
 	const op = "managed_groups.(Service)."
 	res := requestauth.VerifyResults{}
@@ -907,4 +994,28 @@ func validateListRequest(ctx context.Context, req *pbs.ListManagedGroupsRequest)
 		return handlers.InvalidArgumentErrorf("Error in provided request.", badFields)
 	}
 	return nil
+}
+
+func newOutputOpts(ctx context.Context, item auth.ManagedGroup, authMethodId string, authResults requestauth.VerifyResults) ([]handlers.Option, bool) {
+	res := perms.Resource{
+		ScopeId: authResults.Scope.Id,
+		Type:    resource.ManagedGroup,
+		Pin:     authMethodId,
+	}
+	res.Id = item.GetPublicId()
+	authorizedActions := authResults.FetchActionSetForId(ctx, item.GetPublicId(), IdActions[globals.ResourceInfoFromPrefix(item.GetPublicId()).Subtype], requestauth.WithResource(&res)).Strings()
+	if len(authorizedActions) == 0 {
+		return nil, false
+	}
+
+	outputFields := authResults.FetchOutputFields(res, action.List).SelfOrDefaults(authResults.UserId)
+	outputOpts := make([]handlers.Option, 0, 3)
+	outputOpts = append(outputOpts, handlers.WithOutputFields(outputFields))
+	if outputFields.Has(globals.ScopeField) {
+		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
+	}
+	if outputFields.Has(globals.AuthorizedActionsField) {
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions))
+	}
+	return outputOpts, true
 }

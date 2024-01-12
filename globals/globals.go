@@ -12,6 +12,8 @@ const (
 	AnyAuthenticatedUserId = "u_auth"
 	AnonymousUserId        = "u_anon"
 	RecoveryUserId         = "u_recovery"
+
+	MinimumSupportedPostgresVersion = "12"
 )
 
 type (
@@ -26,6 +28,13 @@ var (
 
 	// DefaultMaxRequestSize is the maximum size of a request we allow by default
 	DefaultMaxRequestSize = int64(1024 * 1024)
+
+	// DefaultMaxPageSize is the maximum list page size allowed if not set in the config.
+	DefaultMaxPageSize = 1000
+
+	// RefreshReadLookbackDuration is used to account for database state mutations
+	// missed due to concurrent transactions.
+	RefreshReadLookbackDuration = 30 * time.Second
 
 	// ContextMaxRequestSizeTypeKey is a value to keep linters from complaining
 	// about clashing string identifiers

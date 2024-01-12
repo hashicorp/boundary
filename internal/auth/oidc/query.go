@@ -15,4 +15,11 @@ const (
 			%s
 	returning public_id, version
        `
+
+	estimateCountAccounts = `
+	select sum(reltuples::bigint) as estimate from pg_class where oid in ('auth_oidc_account'::regclass)
+	`
+	estimateCountManagedGroups = `
+	select sum(reltuples::bigint) as estimate from pg_class where oid in ('auth_oidc_managed_group'::regclass)
+	`
 )

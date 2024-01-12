@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/internal/host/plugin/store"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"google.golang.org/protobuf/proto"
 )
@@ -88,6 +89,11 @@ func (s *Host) TableName() string {
 // set the name to "" the name will be reset to the default name.
 func (s *Host) SetTableName(n string) {
 	s.tableName = n
+}
+
+// GetResourceType returns the resource type of the Host
+func (s *Host) GetResourceType() resource.Type {
+	return resource.Host
 }
 
 func allocHost() *Host {
@@ -189,4 +195,14 @@ func (agg *hostAgg) TableName() string {
 // GetPublicId returns the host public id as a string
 func (agg *hostAgg) GetPublicId() string {
 	return agg.PublicId
+}
+
+type deletedHost struct {
+	PublicId   string `gorm:"primary_key"`
+	DeleteTime *timestamp.Timestamp
+}
+
+// TableName returns the tablename to override the default gorm table name
+func (s *deletedHost) TableName() string {
+	return "host_plugin_host_deleted"
 }

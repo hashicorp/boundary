@@ -16,6 +16,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/boundary/globals"
+	am "github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/ldap"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
@@ -67,10 +68,13 @@ func Test_UpdateLdap(t *testing.T) {
 	atRepoFn := func() (*authtoken.Repository, error) {
 		return authtoken.NewRepository(ctx, rw, rw, kms)
 	}
+	authMethodRepoFn := func() (*am.AuthMethodRepository, error) {
+		return am.NewAuthMethodRepository(ctx, rw, rw, kms)
+	}
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 
 	o, _ := iam.TestScopes(t, iamRepo)
-	tested, err := authmethods.NewService(ctx, kms, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn, ldapRepoFn)
+	tested, err := authmethods.NewService(ctx, kms, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn, ldapRepoFn, authMethodRepoFn, 1000)
 	require.NoError(t, err, "Error when getting new auth_method service.")
 
 	defaultScopeInfo := &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: o.GetType(), ParentScopeId: scope.Global.String()}
@@ -915,6 +919,9 @@ func TestAuthenticate_Ldap(t *testing.T) {
 	atRepoFn := func() (*authtoken.Repository, error) {
 		return authtoken.NewRepository(testCtx, testRw, testRw, testKms)
 	}
+	authMethodRepoFn := func() (*am.AuthMethodRepository, error) {
+		return am.NewAuthMethodRepository(testCtx, testRw, testRw, testKms)
+	}
 
 	orgDbWrapper, err := testKms.GetWrapper(testCtx, o.GetPublicId(), kms.KeyPurposeDatabase)
 	require.NoError(t, err)
@@ -1094,7 +1101,7 @@ func TestAuthenticate_Ldap(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			s, err := authmethods.NewService(testCtx, testKms, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn, ldapRepoFn)
+			s, err := authmethods.NewService(testCtx, testKms, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn, ldapRepoFn, authMethodRepoFn, 1000)
 			require.NoError(err)
 
 			resp, err := s.Authenticate(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.request)

@@ -32,6 +32,10 @@ const (
 	wrappedPrivKeyFileName      = "wrappedPrivKey"
 	pubKeyBsrSignatureFileName  = "pubKeyBsrSignature.sign"
 	pubKeySelfSignatureFileName = "pubKeySelfSignature.sign"
+
+	// bsrBufferSize is the buffer size for files in a BSR.
+	// 65 * storage.LogicalBlockSize is equivalent to 260KiB
+	bsrBufferSize = 65 * storage.LogicalBlockSize
 )
 
 // Session is the top level container in a bsr that contains the files for
@@ -648,7 +652,12 @@ func (c *Connection) NewMessagesWriter(ctx context.Context, dir Direction) (io.W
 	if err != nil {
 		return nil, err
 	}
-	m, err := c.container.create(ctx, messagesName)
+
+	m, err := c.container.create(ctx, messagesName,
+		storage.WithCreateFile(),
+		storage.WithFileAccessMode(storage.ReadWrite),
+		storage.WithBuffer(bsrBufferSize),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -657,7 +666,7 @@ func (c *Connection) NewMessagesWriter(ctx context.Context, dir Direction) (io.W
 }
 
 // NewRequestsWriter creates a writer for recording connection requests.
-func (c *Connection) NewRequestsWriter(ctx context.Context, dir Direction) (io.Writer, error) {
+func (c *Connection) NewRequestsWriter(ctx context.Context, dir Direction) (storage.Writer, error) {
 	const op = "bsr.(Connection).NewRequestsWriter"
 
 	switch {
@@ -670,7 +679,12 @@ func (c *Connection) NewRequestsWriter(ctx context.Context, dir Direction) (io.W
 	if err != nil {
 		return nil, err
 	}
-	m, err := c.container.create(ctx, requestName)
+
+	m, err := c.container.create(ctx, requestName,
+		storage.WithCreateFile(),
+		storage.WithFileAccessMode(storage.ReadWrite),
+		storage.WithBuffer(bsrBufferSize),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -704,7 +718,7 @@ func (c *Channel) Close(ctx context.Context) error {
 }
 
 // NewMessagesWriter creates a writer for recording channel messages.
-func (c *Channel) NewMessagesWriter(ctx context.Context, dir Direction) (io.Writer, error) {
+func (c *Channel) NewMessagesWriter(ctx context.Context, dir Direction) (storage.Writer, error) {
 	const op = "bsr.(Channel).NewMessagesWriter"
 
 	switch {
@@ -717,7 +731,11 @@ func (c *Channel) NewMessagesWriter(ctx context.Context, dir Direction) (io.Writ
 	if err != nil {
 		return nil, err
 	}
-	m, err := c.container.create(ctx, messagesName)
+	m, err := c.container.create(ctx, messagesName,
+		storage.WithCreateFile(),
+		storage.WithFileAccessMode(storage.ReadWrite),
+		storage.WithBuffer(bsrBufferSize),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -726,7 +744,7 @@ func (c *Channel) NewMessagesWriter(ctx context.Context, dir Direction) (io.Writ
 }
 
 // NewRequestsWriter creates a writer for recording channel requests.
-func (c *Channel) NewRequestsWriter(ctx context.Context, dir Direction) (io.Writer, error) {
+func (c *Channel) NewRequestsWriter(ctx context.Context, dir Direction) (storage.Writer, error) {
 	const op = "bsr.(Channel).NewRequestsWriter"
 
 	switch {
@@ -739,7 +757,11 @@ func (c *Channel) NewRequestsWriter(ctx context.Context, dir Direction) (io.Writ
 	if err != nil {
 		return nil, err
 	}
-	m, err := c.container.create(ctx, requestName)
+	m, err := c.container.create(ctx, requestName,
+		storage.WithCreateFile(),
+		storage.WithFileAccessMode(storage.ReadWrite),
+		storage.WithBuffer(bsrBufferSize),
+	)
 	if err != nil {
 		return nil, err
 	}

@@ -124,27 +124,6 @@ from
 	session_connection_limit, session_connection_count;
 `
 
-	sessionList = `
-with
-session_ids as (
-	select public_id
-	from session as s
-	-- where clause is constructed
-	%s
-	-- order by clause is constructed
-	%s
-	-- limit is constructed
-	%s
-)
-select *
-from session_list
-where
-	session_list.public_id in (select * from session_ids)
--- order by clause again since order from cte is not guaranteed to be preserved
-%s
-;
-`
-
 	terminateSessionIfPossible = `
     -- is terminate_session_id in a canceling state
     with session_version as (
@@ -422,6 +401,65 @@ update session_credential
 		key_id = ?
 where session_id = ?
 	and credential_sha256 = ?;
+`
+	listSessionsTemplate = `
+with session_ids as (
+    select public_id
+      from session
+     where %s -- search condition for applying permissions is constructed
+  order by create_time desc, public_id desc
+     limit %d
+)
+   select *
+     from session_list
+    where session_list.public_id in (select * from session_ids)
+ order by create_time desc, public_id desc;
+`
+	listSessionsPageTemplate = `
+with session_ids as (
+    select public_id
+      from session
+     where (create_time, public_id) < (@last_item_create_time, @last_item_id)
+       and %s -- search condition for applying permissions is constructed
+  order by create_time desc, public_id desc
+     limit %d
+)
+   select *
+     from session_list
+    where session_list.public_id in (select * from session_ids)
+ order by create_time desc, public_id desc;
+`
+	refreshSessionsTemplate = `
+with session_ids as (
+    select public_id
+      from session
+     where update_time > @updated_after_time
+       and %s -- search condition for applying permissions is constructed
+  order by update_time desc, public_id desc
+     limit %d
+)
+  select *
+    from session_list
+   where session_list.public_id in (select * from session_ids)
+order by update_time desc, public_id desc;
+`
+	refreshSessionsPageTemplate = `
+with session_ids as (
+    select public_id
+      from session
+     where update_time > @updated_after_time
+       and (update_time, public_id) < (@last_item_update_time, @last_item_id)
+       and %s -- search condition for applying permissions is constructed
+  order by update_time desc, public_id desc
+     limit %d
+)
+  select *
+    from session_list
+   where session_list.public_id in (select * from session_ids)
+order by update_time desc, public_id desc;
+`
+	estimateCountSessions = `
+    select reltuples::bigint as estimate from pg_class where oid in ('session'::regclass)
 `
 )
 

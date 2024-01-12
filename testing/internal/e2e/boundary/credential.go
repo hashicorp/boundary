@@ -19,12 +19,29 @@ import (
 // Returns the id of the new credential store
 func CreateNewCredentialStoreStaticApi(t testing.TB, ctx context.Context, client *api.Client, projectId string) string {
 	csClient := credentialstores.NewClient(client)
-	newCredentialStoreResult, err := csClient.Create(ctx, "static", projectId, credentialstores.WithName("e2e Credential Store"))
+	newCredentialStoreResult, err := csClient.Create(ctx, "static", projectId)
 	require.NoError(t, err)
 	newCredentialStoreId := newCredentialStoreResult.Item.Id
 	t.Logf("Created Credential Store: %s", newCredentialStoreId)
 
 	return newCredentialStoreId
+}
+
+// CreateNewCredentialStoreVaultApi uses the API to create a Vault credential store
+// Returns the id of the new credential store
+func CreateNewCredentialStoreVaultApi(t testing.TB, ctx context.Context, client *api.Client, projectId string, vaultAddr string, vaultToken string) string {
+	c := credentialstores.NewClient(client)
+	newCredentialStoreResult, err := c.Create(
+		ctx, "vault", projectId,
+		credentialstores.WithName("e2e Credential Store"),
+		credentialstores.WithVaultCredentialStoreAddress(vaultAddr),
+		credentialstores.WithVaultCredentialStoreToken(vaultToken),
+	)
+	require.NoError(t, err)
+	newVaultCredentialStoreId := newCredentialStoreResult.Item.Id
+	t.Logf("Created Credential Store: %s", newVaultCredentialStoreId)
+
+	return newVaultCredentialStoreId
 }
 
 // CreateNewCredentialStoreVaultCli uses the cli to create a Vault credential store
@@ -136,6 +153,22 @@ func CreateNewStaticCredentialJsonCli(t testing.TB, ctx context.Context, credent
 	require.NoError(t, output.Err, string(output.Stderr))
 	var newCredentialsResult credentials.CredentialCreateResult
 	err := json.Unmarshal(output.Stdout, &newCredentialsResult)
+	require.NoError(t, err)
+	newCredentialsId := newCredentialsResult.Item.Id
+	t.Logf("Created Username/Password Credentials: %s", newCredentialsId)
+
+	return newCredentialsId
+}
+
+// CreateNewStaticCredentialPasswordApi uses the API to create a new password credential in the
+// provided static credential store.
+// Returns the id of the new credential
+func CreateNewStaticCredentialPasswordApi(t testing.TB, ctx context.Context, client *api.Client, credentialStoreId string, user string, password string) string {
+	c := credentials.NewClient(client)
+	newCredentialsResult, err := c.Create(ctx, "username_password", credentialStoreId,
+		credentials.WithUsernamePasswordCredentialUsername(user),
+		credentials.WithUsernamePasswordCredentialPassword(password),
+	)
 	require.NoError(t, err)
 	newCredentialsId := newCredentialsResult.Item.Id
 	t.Logf("Created Username/Password Credentials: %s", newCredentialsId)
