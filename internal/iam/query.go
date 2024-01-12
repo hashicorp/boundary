@@ -167,7 +167,7 @@ const (
 		from iam_role
 		where public_id in (select role_id from user_group_roles)
 	),
-	joined_scopes (role_id, role_scope_id, grant_scope_id) as (
+	role_grant_scopes (role_id, role_scope_id, grant_scope_id) as (
 		select
 			roles.role_id,
 			roles.role_scope_id,
@@ -176,24 +176,24 @@ const (
 		inner join iam_role_grant_scope
 			on roles.role_id = iam_role_grant_scope.role_id
 	),
-	exploded_scopes (role_id, grant_scope_id) as (
+	exploded_grant_scopes (role_id, grant_scope_id) as (
 		select
 			role_id as role_id,
 			grant_scope_id as grant_scope_id
 		from reconcileRoleScopes(
-			array(select joined_scopes.role_id from joined_scopes),
-			array(select joined_scopes.role_scope_id from joined_scopes),
-			array(select joined_scopes.grant_scope_id from joined_scopes)
+			array(select role_grant_scopes.role_id from role_grant_scopes),
+			array(select role_grant_scopes.role_scope_id from role_grant_scopes),
+			array(select role_grant_scopes.grant_scope_id from role_grant_scopes)
 		)
 	),
 	final (role_id, grant_scope_id, canonical_grant) as (
 		select
-			exploded_scopes.role_id,
-			exploded_scopes.grant_scope_id,
+			exploded_grant_scopes.role_id,
+			exploded_grant_scopes.grant_scope_id,
 			iam_role_grant.canonical_grant
-		from exploded_scopes
+		from exploded_grant_scopes
 		inner join iam_role_grant
-			on exploded_scopes.role_id = iam_role_grant.role_id
+			on exploded_grant_scopes.role_id = iam_role_grant.role_id
 	)
 	select
 		role_id as role_id,
