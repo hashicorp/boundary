@@ -147,18 +147,23 @@ func TestCrud(t *testing.T) {
 	hcClient := hostcatalogs.NewClient(client)
 
 	hc, err := hcClient.Create(tc.Context(), "static", proj.GetPublicId(), hostcatalogs.WithName("foo"))
+	require.NoError(err)
 	checkCatalog("create", hc.Item, err, "foo", 1)
 
 	hc, err = hcClient.Read(tc.Context(), hc.Item.Id)
+	require.NoError(err)
 	checkCatalog("read", hc.Item, err, "foo", 1)
 
 	hc, err = hcClient.Update(tc.Context(), hc.Item.Id, hc.Item.Version, hostcatalogs.WithName("foo"))
+	require.NoError(err)
 	checkCatalog("update", hc.Item, err, "foo", 1)
 
 	hc, err = hcClient.Update(tc.Context(), hc.Item.Id, hc.Item.Version, hostcatalogs.WithName("bar"))
+	require.NoError(err)
 	checkCatalog("update", hc.Item, err, "bar", 2)
 
 	hc, err = hcClient.Update(tc.Context(), hc.Item.Id, hc.Item.Version, hostcatalogs.DefaultName())
+	require.NoError(err)
 	checkCatalog("update", hc.Item, err, "", 3)
 
 	_, err = hcClient.Delete(tc.Context(), hc.Item.Id)

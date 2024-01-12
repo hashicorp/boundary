@@ -208,7 +208,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 
 				adminRole = adminRoleRaw.(*Role)
 
-				msgs := make([]*oplog.Message, 0, 3)
+				msgs := make([]*oplog.Message, 0, 4)
 				roleTicket, err := w.GetTicket(ctx, adminRole)
 				if err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
@@ -235,6 +235,16 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to add grants"))
 				}
 				msgs = append(msgs, roleGrantOplogMsgs...)
+
+				roleGrantScope, err := NewRoleGrantScope(ctx, adminRolePublicId, adminRole.ScopeId)
+				if err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory role grant scope"))
+				}
+				roleGrantScopeOplogMsgs := make([]*oplog.Message, 0, 1)
+				if err := w.CreateItems(ctx, []any{roleGrantScope}, db.NewOplogMsgs(&roleGrantScopeOplogMsgs)); err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to add grant scope"))
+				}
+				msgs = append(msgs, roleGrantScopeOplogMsgs...)
 
 				rolePrincipal, err := NewUserRole(ctx, adminRolePublicId, userId)
 				if err != nil {
@@ -271,7 +281,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 
 				defaultRole = defaultRoleRaw.(*Role)
 
-				msgs := make([]*oplog.Message, 0, 6)
+				msgs := make([]*oplog.Message, 0, 7)
 				roleTicket, err := w.GetTicket(ctx, defaultRole)
 				if err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
@@ -358,6 +368,16 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 					}
 					msgs = append(msgs, roleUserOplogMsgs...)
 				}
+
+				roleGrantScope, err := NewRoleGrantScope(ctx, defaultRolePublicId, defaultRole.ScopeId)
+				if err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory role grant scope"))
+				}
+				roleGrantScopeOplogMsgs := make([]*oplog.Message, 0, 1)
+				if err := w.CreateItems(ctx, []any{roleGrantScope}, db.NewOplogMsgs(&roleGrantScopeOplogMsgs)); err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to add grant scope"))
+				}
+				msgs = append(msgs, roleGrantScopeOplogMsgs...)
 
 				metadata := oplog.Metadata{
 					"op-type":            []string{oplog.OpType_OP_TYPE_CREATE.String()},

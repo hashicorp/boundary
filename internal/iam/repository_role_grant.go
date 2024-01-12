@@ -6,7 +6,6 @@ package iam
 import (
 	"context"
 	"fmt"
-	"log"
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
@@ -14,7 +13,6 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/perms"
-	"github.com/kr/pretty"
 )
 
 // AddRoleGrant will add role grants associated with the role ID in the
@@ -436,7 +434,7 @@ func (r *Repository) GrantsForUser(ctx context.Context, userId string, _ ...Opti
 			return nil, errors.Wrap(ctx, err, op)
 		}
 	}
-	log.Println("grants", pretty.Sprint(grants))
+	// log.Println("grants", pretty.Sprint(grants))
 
 	return grants, nil
 }
