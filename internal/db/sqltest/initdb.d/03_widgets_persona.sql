@@ -55,14 +55,22 @@ begin;
       ('g___ws-group', 'u_____waylon');
 
     insert into iam_role
-      (scope_id, grant_scope_id, public_id, name)
+      (scope_id, public_id, name)
     values
-            -- ('global', 'global',       'r_gg_____buy', 'Purchaser'),
-            -- ('global', 'global',       'r_gg____shop', 'Shopper'),
-      ('p____bwidget', 'p____bwidget', 'r_pp_bw__bld', 'Widget Builder'),
-      ('p____swidget', 'p____swidget', 'r_pp_sw__bld', 'Widget Builder'),
-      ('o_____widget', 'p____swidget', 'r_op_sw__eng', 'Small Widget Engineer'),
-      ('o_____widget', 'o_____widget', 'r_oo_____eng', 'Widget Engineer');
+            -- ('global', 'r_gg_____buy', 'Purchaser'),
+            -- ('global', 'r_gg____shop', 'Shopper'),
+      ('p____bwidget', 'r_pp_bw__bld', 'Widget Builder'),
+      ('p____swidget', 'r_pp_sw__bld', 'Widget Builder'),
+      ('o_____widget', 'r_op_sw__eng', 'Small Widget Engineer'),
+      ('o_____widget', 'r_oo_____eng', 'Widget Engineer');
+
+    insert into iam_role_grant_scope
+      (role_id,          scope_id)
+    values
+      ('r_pp_bw__bld', 'p____bwidget'),
+      ('r_pp_sw__bld', 'this'),
+      ('r_op_sw__eng', 'p____swidget'),
+      ('r_oo_____eng', 'o_____widget');
 
     insert into iam_role_grant
       (role_id, canonical_grant, raw_grant)

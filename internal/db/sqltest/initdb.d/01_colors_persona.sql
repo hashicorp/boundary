@@ -106,19 +106,33 @@ begin;
     ('g___cg-group', 'u_______cora');
 
   insert into iam_role
-    (scope_id,       grant_scope_id, public_id,      name)
+    (scope_id,       public_id,      name)
   values
-    ('p____bcolors', 'p____bcolors', 'r_pp_bc__mix', 'Color Mixer'),
-    ('p____rcolors', 'p____rcolors', 'r_pp_rc__mix', 'Color Mixer'),
-    ('p____gcolors', 'p____gcolors', 'r_pp_gc__mix', 'Color Mixer'),
-    ('o_____colors', 'p____bcolors', 'r_op_bc__art', 'Blue Color Artist'),
-    ('o_____colors', 'p____rcolors', 'r_op_rc__art', 'Red Color Artist'),
-    ('o_____colors', 'p____gcolors', 'r_op_gc__art', 'Green Color Artist'),
-    ('o_____colors', 'o_____colors', 'r_oo_____art', 'Color Artist'),
-          ('global', 'o_____colors', 'r_go____name', 'Color Namer'),
-          ('global', 'p____bcolors', 'r_gp____spec', 'Blue Color Inspector'),
-          ('global', 'global',       'r_gg_____buy', 'Purchaser'),
-          ('global', 'global',       'r_gg____shop', 'Shopper');
+    ('p____bcolors', 'r_pp_bc__mix', 'Color Mixer'),
+    ('p____rcolors', 'r_pp_rc__mix', 'Color Mixer'),
+    ('p____gcolors', 'r_pp_gc__mix', 'Color Mixer'),
+    ('o_____colors', 'r_op_bc__art', 'Blue Color Artist'),
+    ('o_____colors', 'r_op_rc__art', 'Red Color Artist'),
+    ('o_____colors', 'r_op_gc__art', 'Green Color Artist'),
+    ('o_____colors', 'r_oo_____art', 'Color Artist'),
+          ('global', 'r_go____name', 'Color Namer'),
+          ('global', 'r_gp____spec', 'Blue Color Inspector'),
+          ('global', 'r_gg_____buy', 'Purchaser'),
+          ('global', 'r_gg____shop', 'Shopper');
+
+  insert into iam_role_grant_scope
+    (role_id,          scope_id)
+  values
+    ('r_pp_bc__mix', 'this'),
+    ('r_pp_rc__mix', 'p____rcolors'),
+    ('r_pp_gc__mix', 'this'),
+    ('r_op_bc__art', 'p____bcolors'),
+    ('r_op_rc__art', 'p____rcolors'),
+    ('r_op_gc__art', 'p____gcolors'),
+    ('r_go____name', 'o_____colors'),
+    ('r_gp____spec', 'p____bcolors'),
+    ('r_gg_____buy', 'global'),
+    ('r_gg____shop', 'global');
 
   insert into iam_role_grant
     (role_id,        canonical_grant,             raw_grant)
