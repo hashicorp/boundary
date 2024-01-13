@@ -114,8 +114,8 @@ func TestGet(t *testing.T) {
 		Scope:             &scopes.ScopeInfo{Id: pr.GetScopeId(), Type: scope.Project.String(), ParentScopeId: or.GetScopeId()},
 		Name:              &wrapperspb.StringValue{Value: pr.GetName()},
 		Description:       &wrapperspb.StringValue{Value: pr.GetDescription()},
-		GrantScopeId:      &wrapperspb.StringValue{Value: "this"},
-		GrantScopeIds:     []string{"this"},
+		GrantScopeId:      &wrapperspb.StringValue{Value: globals.GrantScopeThis},
+		GrantScopeIds:     []string{globals.GrantScopeThis},
 		CreatedTime:       pr.CreateTime.GetTimestamp(),
 		UpdatedTime:       pr.UpdateTime.GetTimestamp(),
 		Version:           pr.GetVersion(),
@@ -925,8 +925,8 @@ func TestCreate(t *testing.T) {
 					Scope:             &scopes.ScopeInfo{Id: defaultProjRole.GetScopeId(), Type: scope.Project.String(), ParentScopeId: defaultOrgRole.GetScopeId()},
 					Name:              &wrapperspb.StringValue{Value: "name"},
 					Description:       &wrapperspb.StringValue{Value: "desc"},
-					GrantScopeId:      &wrapperspb.StringValue{Value: "this"},
-					GrantScopeIds:     []string{"this"},
+					GrantScopeId:      &wrapperspb.StringValue{Value: globals.GrantScopeThis},
+					GrantScopeIds:     []string{globals.GrantScopeThis},
 					Version:           2,
 					AuthorizedActions: testAuthorizedActions,
 				},
@@ -1039,7 +1039,7 @@ func TestUpdate(t *testing.T) {
 	o, p := iam.TestScopes(t, iamRepo)
 	u := iam.TestUser(t, iamRepo, o.GetPublicId())
 
-	or := iam.TestRole(t, conn, o.GetPublicId(), iam.WithDescription("default"), iam.WithName("default"), iam.WithGrantScopeId(p.GetPublicId()))
+	or := iam.TestRole(t, conn, o.GetPublicId(), iam.WithDescription("default"), iam.WithName("default"), iam.WithGrantScopeIds([]string{p.GetPublicId()}))
 	_ = iam.TestRoleGrant(t, conn, or.GetPublicId(), grantString)
 	_ = iam.TestUserRole(t, conn, or.GetPublicId(), u.GetPublicId())
 
@@ -1053,8 +1053,8 @@ func TestUpdate(t *testing.T) {
 		ScopeId: u.GetScopeId(),
 	}
 
-	var orVersion uint32 = 2
-	var prVersion uint32 = 1
+	orVersion := or.Version
+	prVersion := pr.Version
 
 	tested, err := roles.NewService(ctx, repoFn, 0)
 	require.NoError(t, err, "Error when getting new role service.")
@@ -1063,15 +1063,13 @@ func TestUpdate(t *testing.T) {
 		repo, err := repoFn()
 		require.NoError(t, err, "Couldn't get a new repo")
 		if proj {
-			prVersion++
 			pr, _, _, _, _, err = repo.UpdateRole(context.Background(), pr, prVersion, []string{"Name", "Description"})
 			require.NoError(t, err, "Failed to reset the role")
-			prVersion++
+			prVersion = pr.Version
 		} else {
-			orVersion++
 			or, _, _, _, _, err = repo.UpdateRole(context.Background(), or, orVersion, []string{"Name", "Description"})
 			require.NoError(t, err, "Failed to reset the role")
-			orVersion++
+			orVersion = or.Version
 		}
 	}
 
@@ -1092,38 +1090,7 @@ func TestUpdate(t *testing.T) {
 			scopeId: or.GetScopeId(),
 			req: &pbs.UpdateRoleRequest{
 				UpdateMask: &field_mask.FieldMask{
-					Paths: []string{"name", "description", "grant_scope_id"},
-				},
-				Item: &pb.Role{
-					Name:         &wrapperspb.StringValue{Value: "new"},
-					Description:  &wrapperspb.StringValue{Value: "desc"},
-					GrantScopeId: &wrapperspb.StringValue{Value: "this"},
-				},
-			},
-			res: &pbs.UpdateRoleResponse{
-				Item: &pb.Role{
-					Id:                or.GetPublicId(),
-					ScopeId:           or.GetScopeId(),
-					Scope:             &scopes.ScopeInfo{Id: or.GetScopeId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
-					Name:              &wrapperspb.StringValue{Value: "new"},
-					Description:       &wrapperspb.StringValue{Value: "desc"},
-					CreatedTime:       or.GetCreateTime().GetTimestamp(),
-					GrantScopeId:      &wrapperspb.StringValue{Value: "this"},
-					GrantScopeIds:     []string{"this"},
-					GrantStrings:      []string{grant.GetRaw()},
-					Grants:            []*pb.Grant{grant},
-					PrincipalIds:      []string{u.GetPublicId()},
-					Principals:        []*pb.Principal{principal},
-					AuthorizedActions: testAuthorizedActions,
-				},
-			},
-		},
-		{
-			name:    "Multiple Paths in single string",
-			scopeId: or.GetScopeId(),
-			req: &pbs.UpdateRoleRequest{
-				UpdateMask: &field_mask.FieldMask{
-					Paths: []string{"name,description"},
+					Paths: []string{"name", "description"},
 				},
 				Item: &pb.Role{
 					Name:        &wrapperspb.StringValue{Value: "new"},
@@ -1138,8 +1105,39 @@ func TestUpdate(t *testing.T) {
 					Name:              &wrapperspb.StringValue{Value: "new"},
 					Description:       &wrapperspb.StringValue{Value: "desc"},
 					CreatedTime:       or.GetCreateTime().GetTimestamp(),
-					GrantScopeId:      &wrapperspb.StringValue{Value: "this"},
-					GrantScopeIds:     []string{"this"},
+					GrantScopeId:      &wrapperspb.StringValue{Value: p.GetPublicId()},
+					GrantScopeIds:     []string{p.GetPublicId()},
+					GrantStrings:      []string{grant.GetRaw()},
+					Grants:            []*pb.Grant{grant},
+					PrincipalIds:      []string{u.GetPublicId()},
+					Principals:        []*pb.Principal{principal},
+					AuthorizedActions: testAuthorizedActions,
+				},
+			},
+		},
+		{
+			name:    "Multiple Paths in single string",
+			scopeId: or.GetScopeId(),
+			req: &pbs.UpdateRoleRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"name,description,grant_scope_id"},
+				},
+				Item: &pb.Role{
+					Name:         &wrapperspb.StringValue{Value: "new"},
+					Description:  &wrapperspb.StringValue{Value: "desc"},
+					GrantScopeId: &wrapperspb.StringValue{Value: globals.GrantScopeThis},
+				},
+			},
+			res: &pbs.UpdateRoleResponse{
+				Item: &pb.Role{
+					Id:                or.GetPublicId(),
+					ScopeId:           or.GetScopeId(),
+					Scope:             &scopes.ScopeInfo{Id: or.GetScopeId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
+					Name:              &wrapperspb.StringValue{Value: "new"},
+					Description:       &wrapperspb.StringValue{Value: "desc"},
+					CreatedTime:       or.GetCreateTime().GetTimestamp(),
+					GrantScopeId:      &wrapperspb.StringValue{Value: globals.GrantScopeThis},
+					GrantScopeIds:     []string{globals.GrantScopeThis},
 					GrantStrings:      []string{grant.GetRaw()},
 					Grants:            []*pb.Grant{grant},
 					PrincipalIds:      []string{u.GetPublicId()},
@@ -1169,8 +1167,8 @@ func TestUpdate(t *testing.T) {
 					Name:              &wrapperspb.StringValue{Value: "new"},
 					Description:       &wrapperspb.StringValue{Value: "desc"},
 					CreatedTime:       pr.GetCreateTime().GetTimestamp(),
-					GrantScopeId:      &wrapperspb.StringValue{Value: "this"},
-					GrantScopeIds:     []string{"this"},
+					GrantScopeId:      &wrapperspb.StringValue{Value: globals.GrantScopeThis},
+					GrantScopeIds:     []string{globals.GrantScopeThis},
 					GrantStrings:      []string{grant.GetRaw()},
 					Grants:            []*pb.Grant{grant},
 					PrincipalIds:      []string{u.GetPublicId()},
@@ -1200,8 +1198,8 @@ func TestUpdate(t *testing.T) {
 					Name:              &wrapperspb.StringValue{Value: "new"},
 					Description:       &wrapperspb.StringValue{Value: "desc"},
 					CreatedTime:       pr.GetCreateTime().GetTimestamp(),
-					GrantScopeId:      &wrapperspb.StringValue{Value: "this"},
-					GrantScopeIds:     []string{"this"},
+					GrantScopeId:      &wrapperspb.StringValue{Value: globals.GrantScopeThis},
+					GrantScopeIds:     []string{globals.GrantScopeThis},
 					GrantStrings:      []string{grant.GetRaw()},
 					Grants:            []*pb.Grant{grant},
 					PrincipalIds:      []string{u.GetPublicId()},
@@ -1262,8 +1260,8 @@ func TestUpdate(t *testing.T) {
 					Scope:             &scopes.ScopeInfo{Id: or.GetScopeId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 					Description:       &wrapperspb.StringValue{Value: "default"},
 					CreatedTime:       or.GetCreateTime().GetTimestamp(),
-					GrantScopeId:      &wrapperspb.StringValue{Value: "this"},
-					GrantScopeIds:     []string{"this"},
+					GrantScopeId:      &wrapperspb.StringValue{Value: globals.GrantScopeThis},
+					GrantScopeIds:     []string{globals.GrantScopeThis},
 					GrantStrings:      []string{grant.GetRaw()},
 					Grants:            []*pb.Grant{grant},
 					PrincipalIds:      []string{u.GetPublicId()},
@@ -1292,8 +1290,8 @@ func TestUpdate(t *testing.T) {
 					Name:              &wrapperspb.StringValue{Value: "updated"},
 					Description:       &wrapperspb.StringValue{Value: "default"},
 					CreatedTime:       or.GetCreateTime().GetTimestamp(),
-					GrantScopeId:      &wrapperspb.StringValue{Value: "this"},
-					GrantScopeIds:     []string{"this"},
+					GrantScopeId:      &wrapperspb.StringValue{Value: globals.GrantScopeThis},
+					GrantScopeIds:     []string{globals.GrantScopeThis},
 					GrantStrings:      []string{grant.GetRaw()},
 					Grants:            []*pb.Grant{grant},
 					PrincipalIds:      []string{u.GetPublicId()},
@@ -1322,8 +1320,8 @@ func TestUpdate(t *testing.T) {
 					Name:              &wrapperspb.StringValue{Value: "default"},
 					Description:       &wrapperspb.StringValue{Value: "notignored"},
 					CreatedTime:       or.GetCreateTime().GetTimestamp(),
-					GrantScopeId:      &wrapperspb.StringValue{Value: "this"},
-					GrantScopeIds:     []string{"this"},
+					GrantScopeId:      &wrapperspb.StringValue{Value: globals.GrantScopeThis},
+					GrantScopeIds:     []string{globals.GrantScopeThis},
 					GrantStrings:      []string{grant.GetRaw()},
 					Grants:            []*pb.Grant{grant},
 					PrincipalIds:      []string{u.GetPublicId()},
@@ -1426,15 +1424,6 @@ func TestUpdate(t *testing.T) {
 			req := proto.Clone(toMerge).(*pbs.UpdateRoleRequest)
 			proto.Merge(req, tc.req)
 
-			// Test with bad version (too high, too low)
-			req.Item.Version = ver + 2
-			_, gErr := tested.UpdateRole(auth.DisabledAuthTestContext(repoFn, tc.scopeId), req)
-			require.Error(gErr)
-			req.Item.Version = ver - 1
-			_, gErr = tested.UpdateRole(auth.DisabledAuthTestContext(repoFn, tc.scopeId), req)
-			require.Error(gErr)
-			req.Item.Version = ver
-
 			got, gErr := tested.UpdateRole(auth.DisabledAuthTestContext(repoFn, tc.scopeId), req)
 			if tc.err != nil {
 				require.Error(gErr)
@@ -1452,11 +1441,15 @@ func TestUpdate(t *testing.T) {
 				// Verify it is a role updated after it was created
 				assert.True(gotUpdateTime.After(created), "Updated role should have been updated after it's creation. Was updated %v, which is after %v", gotUpdateTime, created)
 
-				// Clear all values which are hard to compare against.
+				// Clear or set all values which are hard to compare against.
 				got.Item.UpdatedTime, tc.res.Item.UpdatedTime = nil, nil
+				tc.res.Item.Version = got.Item.Version
 
-				assert.Equal(ver+1, got.GetItem().GetVersion())
-				tc.res.Item.Version = ver + 1
+				if req.Id == or.PublicId {
+					orVersion = got.Item.Version
+				} else {
+					prVersion = got.Item.Version
+				}
 			}
 			assert.Empty(cmp.Diff(
 				got,

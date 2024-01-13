@@ -28,7 +28,7 @@ type options struct {
 	withName                    string
 	withDescription             string
 	withLimit                   int
-	withGrantScopeId            string
+	withGrantScopeId            *string
 	withGrantScopeIds           []string
 	withSkipVetForWrite         bool
 	withDisassociate            bool
@@ -49,7 +49,6 @@ func getDefaultOptions() options {
 		withName:            "",
 		withDescription:     "",
 		withLimit:           0,
-		withGrantScopeId:    "",
 		withSkipVetForWrite: false,
 	}
 }
@@ -88,7 +87,10 @@ func WithLimit(limit int) Option {
 // roles.
 func WithGrantScopeId(id string) Option {
 	return func(o *options) {
-		o.withGrantScopeId = id
+		if o.withGrantScopeId == nil {
+			o.withGrantScopeId = new(string)
+		}
+		*o.withGrantScopeId = id
 	}
 }
 

@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/roles"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
@@ -54,7 +55,7 @@ func TestRoles(t *testing.T) {
 					Version:      0,
 					GrantScopeId: &wrapperspb.StringValue{Value: "grant-scope-id"},
 					GrantScopeIds: []string{
-						"this",
+						globals.GrantScopeThis,
 						"grant-scope-id",
 					},
 					PrincipalIds: []string{
@@ -104,7 +105,7 @@ func TestRoles(t *testing.T) {
 					Version:      0,
 					GrantScopeId: &wrapperspb.StringValue{Value: "grant-scope-id"},
 					GrantScopeIds: []string{
-						"this",
+						globals.GrantScopeThis,
 						"grant-scope-id",
 					},
 					PrincipalIds: []string{

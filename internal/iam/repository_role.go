@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -41,9 +42,14 @@ func (r *Repository) CreateRole(ctx context.Context, role *Role, opt ...Option) 
 
 	opts := getOpts(opt...)
 
-	initialScope := opts.withGrantScopeId
-	if initialScope == "" {
-		initialScope = "this"
+	var initialScope string
+	switch {
+	case opts.withGrantScopeId == nil:
+		initialScope = globals.GrantScopeThis
+	case *opts.withGrantScopeId == "":
+		initialScope = globals.GrantScopeThis
+	default:
+		initialScope = *opts.withGrantScopeId
 	}
 
 	var resource Resource
@@ -99,35 +105,38 @@ func (r *Repository) UpdateRole(ctx context.Context, role *Role, version uint32,
 	if role.PublicId == "" {
 		return nil, nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing public id")
 	}
-	opts := getOpts(opt...)
-	var grantScopeIdToSet []string
+
 	for _, f := range fieldMaskPaths {
 		switch {
 		case strings.EqualFold("name", f):
 		case strings.EqualFold("description", f):
-		case strings.EqualFold("grantscopeid", f):
-			// If the value is empty, they're trying to clear it (e.g. a
-			// null field), which is represented by an empty slice in
-			// SetRoleGrantScopes
-			grantScopeIdToSet = make([]string, 0, 1)
-			if opts.withGrantScopeId != "" {
-				grantScopeIdToSet = append(grantScopeIdToSet, opts.withGrantScopeId)
-			}
 		default:
 			return nil, nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidFieldMask, op, fmt.Sprintf("invalid field mask: %s", f))
 		}
 	}
+
+	opts := getOpts(opt...)
+	var grantScopeIdToSet []string
+	if opts.withGrantScopeId != nil {
+		// If the value is empty, they're trying to clear it (e.g. a
+		// null field), which is represented by an empty slice in
+		// SetRoleGrantScopes
+		grantScopeIdToSet = make([]string, 0, 1)
+		if *opts.withGrantScopeId != "" {
+			grantScopeIdToSet = append(grantScopeIdToSet, *opts.withGrantScopeId)
+		}
+	}
+
 	var dbMask, nullFields []string
 	dbMask, nullFields = dbw.BuildUpdatePaths(
 		map[string]any{
-			"name":         role.Name,
-			"description":  role.Description,
-			"GrantScopeId": opts.withGrantScopeId,
+			"name":        role.Name,
+			"description": role.Description,
 		},
 		fieldMaskPaths,
 		nil,
 	)
-	if len(dbMask) == 0 && len(nullFields) == 0 {
+	if len(dbMask) == 0 && len(nullFields) == 0 && grantScopeIdToSet == nil {
 		return nil, nil, nil, nil, db.NoRowsAffected, errors.E(ctx, errors.WithCode(errors.EmptyFieldMask), errors.WithOp(op))
 	}
 	var resource Resource

@@ -8,6 +8,7 @@ import (
 	"crypto/rand"
 	"testing"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth/store"
 	"github.com/hashicorp/boundary/internal/db"
 	dbassert "github.com/hashicorp/boundary/internal/db/assert"
@@ -189,7 +190,7 @@ func TestUser(t testing.TB, repo *Repository, scopeId string, opt ...Option) *Us
 func TestRole(t testing.TB, conn *db.DB, scopeId string, opt ...Option) *Role {
 	t.Helper()
 	opts := getOpts(opt...)
-	if opts.withGrantScopeId != "" && len(opts.withGrantScopeIds) > 0 {
+	if opts.withGrantScopeId != nil && *opts.withGrantScopeId != "" && len(opts.withGrantScopeIds) > 0 {
 		require.FailNow(t, "cannot specify both withGrantScopeId and withGrantScopeIds")
 	}
 
@@ -207,9 +208,14 @@ func TestRole(t testing.TB, conn *db.DB, scopeId string, opt ...Option) *Role {
 
 	grantScopeIds := opts.withGrantScopeIds
 	if len(grantScopeIds) == 0 {
-		scpId := opts.withGrantScopeId
-		if scpId == "" {
-			scpId = "this"
+		var scpId string
+		switch {
+		case opts.withGrantScopeId == nil:
+			scpId = globals.GrantScopeThis
+		case *opts.withGrantScopeId == "":
+			scpId = globals.GrantScopeThis
+		default:
+			scpId = *opts.withGrantScopeId
 		}
 		grantScopeIds = []string{scpId}
 	}

@@ -14,6 +14,10 @@ const (
 	RecoveryUserId         = "u_recovery"
 
 	MinimumSupportedPostgresVersion = "12"
+
+	GrantScopeThis        = "this"
+	GrantScopeChildren    = "children"
+	GrantScopeDescendants = "descendants"
 )
 
 type (

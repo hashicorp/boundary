@@ -773,9 +773,6 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 	if name := item.GetName(); name != nil {
 		opts = append(opts, iam.WithName(name.GetValue()))
 	}
-	if grantScopeId := item.GetGrantScopeId(); grantScopeId != nil {
-		opts = append(opts, iam.WithGrantScopeId(grantScopeId.GetValue()))
-	}
 	version := item.GetVersion()
 
 	u, err := iam.NewRole(ctx, scopeId, opts...)
@@ -783,9 +780,24 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 		return nil, nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build role for update: %v.", err)
 	}
 	u.PublicId = id
+
+	// This has to be separate from Translate since the field only exists on the
+	// API side now.
+	var hasGrantScopeIdMask bool
+	if grantScopeId := item.GetGrantScopeId(); grantScopeId != nil {
+		// Have to manually check the masks, which could be concatenated strings or slices
+		for _, v := range mask {
+			if strutil.StrListContains(strings.Split(v, ","), "grant_scope_id") {
+				opts = append(opts, iam.WithGrantScopeId(grantScopeId.GetValue()))
+				hasGrantScopeIdMask = true
+				break
+			}
+		}
+	}
+
 	dbMask := maskManager.Translate(mask)
-	if len(dbMask) == 0 {
-		return nil, nil, nil, nil, handlers.InvalidArgumentErrorf("No valid fields included in the update mask.", map[string]string{"update_mask": "No valid fields provided in the update mask."})
+	if len(dbMask) == 0 && !hasGrantScopeIdMask {
+		return nil, nil, nil, nil, handlers.InvalidArgumentErrorf("No valid fields provided in the update mask.", map[string]string{"update_mask": "No valid fields provided in the update mask."})
 	}
 	repo, err := s.repoFn()
 	if err != nil {
@@ -1177,7 +1189,7 @@ func validateCreateRequest(req *pbs.CreateRoleRequest) error {
 			case handlers.ValidId(handlers.Id(item.GetScopeId()), scope.Project.Prefix()):
 				switch item.GetGrantScopeId().GetValue() {
 				case item.GetScopeId(),
-					"this":
+					globals.GrantScopeThis:
 				default:
 					badFields["grant_scope_id"] = "When the role is in a project scope this value must be that project's scope ID or \"this\"."
 				}
@@ -1213,7 +1225,7 @@ func validateUpdateRequest(req *pbs.UpdateRoleRequest) error {
 			case handlers.ValidId(handlers.Id(item.GetScopeId()), scope.Project.Prefix()):
 				switch item.GetGrantScopeId().GetValue() {
 				case item.GetScopeId(),
-					"this":
+					globals.GrantScopeThis:
 				default:
 					badFields["grant_scope_id"] = "When the role is in a project scope this value must be that project's scope ID or \"this\"."
 				}
@@ -1462,10 +1474,10 @@ func validateRoleGrantScopesRequest(ctx context.Context, req grantScopeRequest) 
 			break
 		}
 		switch {
-		case v == "global",
-			v == "this",
-			v == "children",
-			v == "descendants":
+		case v == scope.Global.String(),
+			v == globals.GrantScopeThis,
+			v == globals.GrantScopeChildren,
+			v == globals.GrantScopeDescendants:
 		case globals.ResourceInfoFromPrefix(v).Type == resource.Scope:
 		default:
 			badFields["grant_scope_ids"] = fmt.Sprintf("Unknown value %q.", v)
@@ -1499,7 +1511,7 @@ func validateRoleGrantScopesHierarchy(ctx context.Context, repo *iam.Repository,
 		// In this case only "this" or the same project scope is allowed
 		for _, grantScope := range grantScopes {
 			switch grantScope.ScopeId {
-			case "this", role.ScopeId:
+			case globals.GrantScopeThis, role.ScopeId:
 			default:
 				return handlers.InvalidArgumentErrorf(
 					"Invalid grant scope.",
@@ -1511,10 +1523,10 @@ func validateRoleGrantScopesHierarchy(ctx context.Context, repo *iam.Repository,
 	case strings.HasPrefix(role.ScopeId, scope.Org.Prefix()):
 		for _, grantScope := range grantScopes {
 			switch {
-			case grantScope.ScopeId == "this",
-				grantScope.ScopeId == role.ScopeId,
-				grantScope.ScopeId == "children",
-				grantScope.ScopeId == "descendants":
+			case grantScope.ScopeId == role.ScopeId,
+				grantScope.ScopeId == globals.GrantScopeThis,
+				grantScope.ScopeId == globals.GrantScopeChildren,
+				grantScope.ScopeId == globals.GrantScopeDescendants:
 			case strings.HasPrefix(grantScope.ScopeId, scope.Project.Prefix()):
 			default:
 				return handlers.InvalidArgumentErrorf(

@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam/store"
 	"github.com/hashicorp/boundary/internal/types/resource"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -40,10 +41,10 @@ func NewRoleGrantScope(ctx context.Context, roleId string, grantScope string, _ 
 	}
 
 	switch {
-	case grantScope == "global",
-		grantScope == "this",
-		grantScope == "children",
-		grantScope == "descendants":
+	case grantScope == scope.Global.String(),
+		grantScope == globals.GrantScopeThis,
+		grantScope == globals.GrantScopeChildren,
+		grantScope == globals.GrantScopeDescendants:
 	case globals.ResourceInfoFromPrefix(grantScope).Type == resource.Scope:
 	default:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unknown grant scope id %q", grantScope))
@@ -82,10 +83,10 @@ func (g *RoleGrantScope) VetForWrite(ctx context.Context, _ db.Reader, _ db.OpTy
 	}
 
 	switch {
-	case g.ScopeId == "global",
-		g.ScopeId == "this",
-		g.ScopeId == "children",
-		g.ScopeId == "descendants":
+	case g.ScopeId == scope.Global.String(),
+		g.ScopeId == globals.GrantScopeThis,
+		g.ScopeId == globals.GrantScopeChildren,
+		g.ScopeId == globals.GrantScopeDescendants:
 	case globals.ResourceInfoFromPrefix(g.ScopeId).Type == resource.Scope:
 	default:
 		return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unknown grant scope id %q", g.ScopeId))

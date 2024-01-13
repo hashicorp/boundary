@@ -11,6 +11,7 @@ import (
 	mathrand "math/rand"
 	"testing"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth/ldap"
 	"github.com/hashicorp/boundary/internal/auth/ldap/store"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
@@ -46,8 +47,8 @@ func TestGrantsForUser(t *testing.T) {
 	)
 	t.Log("org1", org1.GetPublicId(), "proj1", proj1.GetPublicId(), "org2", org2.GetPublicId(), "proj2", proj2.GetPublicId())
 	org1Proj1Role := iam.TestRole(t, conn, org1.GetPublicId(), iam.WithGrantScopeId(proj1.PublicId))
-	org2Proj2Role := iam.TestRole(t, conn, org2.GetPublicId(), iam.WithGrantScopeIds([]string{"this", "children"}))
-	globalRole := iam.TestRole(t, conn, scope.Global.String(), iam.WithGrantScopeIds([]string{"descendants"}))
+	org2Proj2Role := iam.TestRole(t, conn, org2.GetPublicId(), iam.WithGrantScopeIds([]string{globals.GrantScopeThis, globals.GrantScopeChildren}))
+	globalRole := iam.TestRole(t, conn, scope.Global.String(), iam.WithGrantScopeIds([]string{globals.GrantScopeDescendants}))
 	iam.TestUserRole(t, conn, org1Proj1Role.PublicId, user.PublicId)
 	iam.TestUserRole(t, conn, org2Proj2Role.PublicId, user.PublicId)
 	iam.TestUserRole(t, conn, globalRole.PublicId, user.PublicId)
