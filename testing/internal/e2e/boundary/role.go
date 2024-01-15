@@ -8,10 +8,23 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/roles"
 	"github.com/hashicorp/boundary/testing/internal/e2e"
 	"github.com/stretchr/testify/require"
 )
+
+// CreateNewRoleApi creates a new role using the Go api.
+// Returns the id of the new role
+func CreateNewRoleApi(t testing.TB, ctx context.Context, client *api.Client, scopeId string) string {
+	rClient := roles.NewClient(client)
+	newRoleResult, err := rClient.Create(ctx, scopeId)
+	require.NoError(t, err)
+
+	newRoleId := newRoleResult.Item.Id
+	t.Logf("Created Role: %s", newRoleId)
+	return newRoleId
+}
 
 // CreateNewRoleCli creates a new role using the cli.
 // Returns the id of the new role.
