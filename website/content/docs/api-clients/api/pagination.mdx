@@ -13,10 +13,6 @@ Boundary uses an API pagination feature to support searching and filtering large
 When you perform a `list` operation on a resource, the API request returns the first 1000 results, by default.
 You can request the next page of results by repeating the `list` command and including a parameter with a token provided by Boundary.
 
-The results of the `list` operation are cached locally to help protect your system resources.
-Maintaining a local cache of results for a frequently used `list` operation can also help to reduce server cost.
-You can refresh the local results of your initial `list` operation as many times as you want for up to 30 days.
-
 ## Initial pagination
 
 When you run a `list` operation on a resource, the initial results are sorted in descending order by creation time and public ID (most recently created first).
@@ -64,12 +60,10 @@ Boundary returns the following response parameters:
 The value is `delta` until the last page is returned, at which point it will be `complete`.
 - `list_token` - An opaque token which is included in subsequent listing requests after the initial one, so that the client can continue to paginate the results.
 - `sort_by` - The column name that the returned items should be sorted on.
-Each list endpoint has one defined column which defines the sorting for all returned items.
 This attribute is included in the response, so that the sort order for each endpoint is explicit.
 - `sort_dir` - The direction in which the returned items are sorted.
 Responses can include `desc` for descending, or `asc` for ascending.
 - `items` - The list of items.
-The items represent replacements for any existing items with matching IDs in the client's cache.
 - `est_item_count` - An unsigned integer that indicates the total number of items that are available in the list of results.
 This number may be an estimate, since the number of items may change during the pagination process.
 
@@ -99,24 +93,6 @@ This number may be an estimate, since the number of items may change during the 
 
 List tokens contain general metadata associated with the ongoing pagination.
 If you compose an invalid token, you receive an invalid token error.
-
-When you make a `list` request without a `list_token`, Boundary builds a page of items that contains all the resources currently available, subject to the page size, with the following attributes:
-
-- Must contain a `response_type` equal to `delta` or `complete`
-- Must contain a `sort_by`
-- Must contain a `sort_dir`
-- May contain a `list_token`
-- May contain `items`
-- May contain `est_item_count`
-
-When you make a `list` request using a valid `list_token`, Boundary builds a page of items following from the page returned with the token:
-
-- Must contain a `response_type` equal to `delta` or `complete`
-- Must contain a `sort_by`
-- Must contain a `sort_dir`
-- Must contain a `list_token`
-- May contain `items`
-- May contain `est_item_count`
 
 If you make a `list` request using a token that has a `create_time` older than 30 days, Boundary treats it as an invalid token and returns an error.
 
