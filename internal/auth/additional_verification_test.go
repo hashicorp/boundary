@@ -12,6 +12,7 @@ import (
 
 	"github.com/hashicorp/boundary/api/authmethods"
 	"github.com/hashicorp/boundary/api/authtokens"
+	"github.com/hashicorp/boundary/api/roles"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
@@ -132,6 +133,20 @@ func TestRecursiveListingDifferentOutputFields(t *testing.T) {
 	token := tc.Token()
 	client.SetToken(token.Token)
 
+	// Delete the global default role so it doesn't interfere with the
+	// permissions we're testing here
+	rolesClient := roles.NewClient(tc.Client())
+	rolesResp, err := rolesClient.List(tc.Context(), scope.Global.String())
+	require.NoError(err)
+	require.NotNil(rolesResp)
+	assert.Len(rolesResp.GetItems(), 2)
+	for _, item := range rolesResp.GetItems() {
+		if strings.Contains(item.Name, "Default") {
+			_, err := rolesClient.Delete(tc.Context(), item.Id)
+			require.NoError(err)
+		}
+	}
+
 	// Set some global permissions so we can read the auth method there. Here we
 	// will expect the defaults.
 	globalRole := iam.TestRole(t, conn, scope.Global.String())
@@ -146,7 +161,7 @@ func TestRecursiveListingDifferentOutputFields(t *testing.T) {
 	orgRole := iam.TestRole(t, conn, org.GetPublicId())
 	iam.TestUserRole(t, conn, orgRole.PublicId, token.UserId)
 	// The first and second will actually not take effect for output
-	// grantsbecause it's a list and output fields are scoped by action. So we
+	// grants because it's a list and output fields are scoped by action. So we
 	// expect only name and scope_id for the auth methods in the scope, using
 	// two patterns below. However, since you need an action on the resource for
 	// list to return anything, those grants allow us to list the items, while

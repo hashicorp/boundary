@@ -27,6 +27,7 @@ type Option func(*Options)
 type Options struct {
 	withNoTokenScope               bool
 	withNoTokenValue               bool
+	withSkipDefaultRoleCreation    bool
 	withSkipDatabaseDestruction    bool
 	withSkipAuthMethodCreation     bool
 	withSkipOidcAuthMethodCreation bool
@@ -78,6 +79,14 @@ func WithSkipDatabaseDestruction() Option {
 func WithNoTokenValue() Option {
 	return func(o *Options) {
 		o.withNoTokenValue = true
+	}
+}
+
+// WithSkipDefaultRoleCreation tells the command not to instantiate the default
+// global role
+func WithSkipDefaultRoleCreation() Option {
+	return func(o *Options) {
+		o.withSkipDefaultRoleCreation = true
 	}
 }
 

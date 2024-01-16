@@ -114,11 +114,13 @@ func (b *Server) CreateDevDatabase(ctx context.Context, opt ...Option) error {
 		return err
 	}
 
-	if _, err := b.CreateInitialLoginRole(ctx); err != nil {
-		if c != nil {
-			err = errors.Join(err, c())
+	if !opts.withSkipDefaultRoleCreation {
+		if _, err := b.CreateInitialLoginRole(ctx); err != nil {
+			if c != nil {
+				err = errors.Join(err, c())
+			}
+			return err
 		}
-		return err
 	}
 
 	if opts.withSkipAuthMethodCreation {

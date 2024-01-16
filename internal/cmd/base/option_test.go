@@ -71,6 +71,13 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withNoTokenValue = true
 		assert.Equal(opts, testOpts)
 	})
+	t.Run("WithSkipDefaultRoleCreation", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := GetOpts(WithSkipDefaultRoleCreation())
+		testOpts := getDefaultOptions()
+		testOpts.withSkipDefaultRoleCreation = true
+		assert.Equal(opts, testOpts)
+	})
 	t.Run("WithSkipAuthMethodCreation", func(t *testing.T) {
 		assert := assert.New(t)
 		opts := GetOpts(WithSkipAuthMethodCreation())
