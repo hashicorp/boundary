@@ -102,3 +102,6 @@ If you make frequent updates to a resource, or if you are updating data while yo
 
 Workers are not included in refresh operations because the updates they send to the controller are too frequent to be captured in a refresh.
 To update a list of worker resources, you must regenerate the full list of results.
+
+When you refresh the list of results, you may notice duplicate items in the list.
+This is a fundamental tradeoff when you search across multiple database transactions.
