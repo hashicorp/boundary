@@ -576,6 +576,7 @@ var inputStructs = map[string][]*cmdInfo{
 			Pkg:                 "scopes",
 			StdActions:          []string{"create", "read", "update", "delete", "list"},
 			HasExtraCommandVars: true,
+			HasExtraHelpFunc:    true,
 			HasId:               true,
 			Container:           "Scope",
 			HasName:             true,

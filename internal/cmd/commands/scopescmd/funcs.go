@@ -75,6 +75,15 @@ func extraFlagsFuncImpl(c *Command, set *base.FlagSets, f *base.FlagSet) {
 }
 
 func extraFlagsHandlingFuncImpl(c *Command, _ *base.FlagSets, opts *[]scopes.Option) bool {
+	// Validate inputs
+	switch c.Func {
+	case "attach-storage-policy":
+		if len(c.flagStoragePolicyId) == 0 {
+			c.UI.Error("No storage policy ID supplied via -storage-policy-id")
+			return false
+		}
+	}
+
 	if c.flagSkipAdminRoleCreation {
 		*opts = append(*opts, scopes.WithSkipAdminRoleCreation(c.flagSkipAdminRoleCreation))
 	}
@@ -233,4 +242,35 @@ func printItemTable(item *scopes.Scope, resp *api.Response) string {
 	}
 
 	return base.WrapForHelpText(ret)
+}
+
+func (c *Command) extraHelpFunc(_ map[string]func() string) string {
+	var helpStr string
+	switch c.Func {
+	case "attach-storage-policy":
+		helpStr = base.WrapForHelpText([]string{
+			"Usage: boundary scopes attach-storage-policy [options] [args]",
+			"",
+			"  This command allows attaching a storage policy to scope resources. Example:",
+			"",
+			"    Attach storage policy to a scope:",
+			"",
+			`      $ boundary scopes attach-storage-policy -id o_1234567890 -storage-policy-id pst_1234567890`,
+			"",
+			"",
+		})
+	case "detach-storage-policy":
+		helpStr = base.WrapForHelpText([]string{
+			"Usage: boundary scope detach-storage-policy [options] [args]",
+			"",
+			"  This command allows detaching a storage policy from scope resources. Example:",
+			"",
+			"    Detach storage policy from scope:",
+			"",
+			`      $ boundary scopes detach-storage-policy -id o_1234567890`,
+			"",
+			"",
+		})
+	}
+	return helpStr + c.Flags().Help()
 }
