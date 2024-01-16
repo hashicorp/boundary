@@ -37,9 +37,8 @@ If the `response_type` is `delta`, it means there are more items available in th
 You can use the `list_token` as a parameter to continue viewing new pages of results until the `response_type` reads `complete`.
 
 Boundary also includes the top-level response `removed_ids` as part of the refresh operation.
-The `removed_ids` response contains the IDs of any resources that were deleted since the initial `list` operation.
-Deleted resources are included in the results of the list for 30 days after they are deleted.
-Resources that have been deleted include the suffix `_deleted`.
+The `removed_ids` response contains the IDs of any resources that were deleted since you began paginating the results of the previous `list` operation.
+Any resources that have been deleted are included on the first page of results.
 
 After 30 days, the `list_token` expires and you must make a new `list` request without the token to regenerate the full list of results.
 
