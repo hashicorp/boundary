@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestMigrationHook100002(t *testing.T) { // TODO: this will need to be updated when the migration has been numbered
+func TestMigrationHook8202(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	dialect := dbtest.Postgres
@@ -36,15 +36,15 @@ func TestMigrationHook100002(t *testing.T) { // TODO: this will need to be updat
 	require.NoError(t, err)
 	rw := db.New(conn)
 
-	oss.ApplyMigration(t, ctx, d, 100001) // TODO: this will need to be updated when the migration has been numbered
+	oss.ApplyMigration(t, ctx, d, 82001) // TODO: this will need to be updated when the migration has been numbered
 
 	// Insert test data into the database.
-	populateMigration100002(t, rw)
+	populateMigration82002(t, rw)
 
-	// now apply migration 100/002
-	oss.ApplyMigration(t, ctx, d, 100002) // TODO: this will need to be updated when the migration has been numbered
+	// now apply migration 82/002
+	oss.ApplyMigration(t, ctx, d, 82002) // TODO: this will need to be updated when the migration has been numbered
 
-	// session recording sr_________1 should now have target org id o_test__100002
+	// session recording sr_________1 should now have target org id o_test__82002
 	rows, err := rw.Query(ctx, "select target_org_id from recording_session where public_id = @public_id;", []any{sql.Named("public_id", "sr_________1")})
 	require.NoError(t, err)
 	count := 0
@@ -55,7 +55,7 @@ func TestMigrationHook100002(t *testing.T) { // TODO: this will need to be updat
 	}
 	rows.Close()
 	assert.Equal(t, 1, count)
-	assert.Equal(t, "o_test__100002", *targetOrgId)
+	assert.Equal(t, "o_test__82002", *targetOrgId)
 
 	// session recording sr_________2 should have null target org id
 	rows, err = rw.Query(ctx, "select target_org_id from recording_session where public_id = @public_id;", []any{sql.Named("public_id", "sr_________2")})
@@ -70,7 +70,7 @@ func TestMigrationHook100002(t *testing.T) { // TODO: this will need to be updat
 	assert.Nil(t, targetOrgId)
 }
 
-func populateMigration100002(t *testing.T, rw *db.Db) { // TODO: this will need to be updated when the migration has been numbered
+func populateMigration82002(t *testing.T, rw *db.Db) {
 	t.Helper()
 	require := require.New(t)
 	ctx := context.Background()
@@ -83,8 +83,8 @@ func populateMigration100002(t *testing.T, rw *db.Db) { // TODO: this will need 
 	insert into iam_scope
 	  (parent_id, type,  public_id,       name)
 	values
-	  ('global', 'org', 'o_test__100002', 'Testing Session Recording Target Org Ids'),
-	  ('global', 'org', 'o_test2_100002', 'Second test org for Session Recording Target Org Ids');`
+	  ('global', 'org', 'o_test__82002', 'Testing Session Recording Target Org Ids'),
+	  ('global', 'org', 'o_test2_82002', 'Second test org for Session Recording Target Org Ids');`
 	_, err = rw.Exec(ctx, query, nil)
 	require.NoError(err)
 
@@ -92,8 +92,8 @@ func populateMigration100002(t *testing.T, rw *db.Db) { // TODO: this will need 
 	insert into iam_scope
 	  (parent_id,         type,      public_id,        name)
 	values
-	  ('o_test__100002', 'project', 'p_test__100002', 'testing 100002 Project A'),
-	  ('o_test2_100002', 'project', 'p_test2_100002', 'testing 100002 Project B');`
+	  ('o_test__82002', 'project', 'p_test__82002', 'testing 82002 Project A'),
+	  ('o_test2_82002', 'project', 'p_test2_82002', 'testing 82002 Project B');`
 	_, err = rw.Exec(ctx, query, nil)
 	require.NoError(err)
 
@@ -126,8 +126,8 @@ func populateMigration100002(t *testing.T, rw *db.Db) { // TODO: this will need 
 	insert into iam_user
 	  (scope_id,       public_id,      name)
 	values
-	  ('o_test__100002', 'u______clare', 'Clare'),
-	  ('o_test2_100002', 'u______clara', 'Clara');`
+	  ('o_test__82002', 'u______clare', 'Clare'),
+	  ('o_test2_82002', 'u______clara', 'Clara');`
 	_, err = rw.Exec(ctx, query, nil)
 	require.NoError(err)
 
@@ -135,8 +135,8 @@ func populateMigration100002(t *testing.T, rw *db.Db) { // TODO: this will need 
 	insert into kms_root_key
 	  (scope_id,       private_id)
 	values
-	  ('o_test__100002', 'krk___colors'),
-	  ('o_test2_100002', 'krk__colors2');`
+	  ('o_test__82002', 'krk___colors'),
+	  ('o_test2_82002', 'krk__colors2');`
 	_, err = rw.Exec(ctx, query, nil)
 	require.NoError(err)
 
@@ -178,8 +178,8 @@ func populateMigration100002(t *testing.T, rw *db.Db) { // TODO: this will need 
 	insert into auth_password_method
 	  (scope_id,         public_id,      password_conf_id, name)
 	values
-	  ('o_test__100002', 'apm___colors', 'apmc__colors',   'Colors Auth Password'),
-	  ('o_test2_100002', 'apm__colors2', 'apmc_colors2',   'Colors 2 Auth Password');
+	  ('o_test__82002', 'apm___colors', 'apmc__colors',   'Colors Auth Password'),
+	  ('o_test2_82002', 'apm__colors2', 'apmc_colors2',   'Colors 2 Auth Password');
 
 	insert into auth_password_account
 	  (auth_method_id, public_id,      login_name)
@@ -203,8 +203,8 @@ func populateMigration100002(t *testing.T, rw *db.Db) { // TODO: this will need 
 	insert into target_ssh
 	  (project_id,       public_id,           name,              enable_session_recording, storage_bucket_id)
 	values
-	  ('p_test__100002', 'tssh_test__100002', 'Test SSH Target', true,                     'sb____global'),
-	  ('p_test2_100002', 'tssh_test2_100002', 'Test2 SSH Target', true,                    'sb____global');`
+	  ('p_test__82002', 'tssh_test__82002', 'Test SSH Target', true,                     'sb____global'),
+	  ('p_test2_82002', 'tssh_test2_82002', 'Test2 SSH Target', true,                    'sb____global');`
 	_, err = rw.Exec(ctx, query, nil)
 	require.NoError(err)
 
@@ -212,8 +212,8 @@ func populateMigration100002(t *testing.T, rw *db.Db) { // TODO: this will need 
 	insert into session
 	  (project_id,       target_id,           public_id,        user_id,        auth_token_id,  certificate,  endpoint)
 	values
-	  ('p_test__100002', 'tssh_test__100002', 's_test__100002', 'u______clare', 'tok____clare', 'abc'::bytea, 'ep1'),
-	  ('p_test2_100002', 'tssh_test2_100002', 's_test2_100002', 'u______clara', 'tok____clara', 'abc'::bytea, 'ep1');`
+	  ('p_test__82002', 'tssh_test__82002', 's_test__82002', 'u______clare', 'tok____clare', 'abc'::bytea, 'ep1'),
+	  ('p_test2_82002', 'tssh_test2_82002', 's_test2_82002', 'u______clara', 'tok____clara', 'abc'::bytea, 'ep1');`
 	_, err = rw.Exec(ctx, query, nil)
 	require.NoError(err)
 
@@ -221,14 +221,14 @@ func populateMigration100002(t *testing.T, rw *db.Db) { // TODO: this will need 
 	insert into recording_session
 	  (public_id,      storage_bucket_id, session_id)
 	values
-	  ('sr_________1',    'sb____global', 's_test__100002'),
-	  ('sr_________2',    'sb____global', 's_test2_100002');`
+	  ('sr_________1',    'sb____global', 's_test__82002'),
+	  ('sr_________2',    'sb____global', 's_test2_82002');`
 	_, err = rw.Exec(ctx, query, nil)
 	require.NoError(err)
 
 	// delete the second org so we can confirm missing orgs are still null after migration
 	query = `
-	delete from iam_scope where public_id = 'o_test2_100002';`
+	delete from iam_scope where public_id = 'o_test2_82002';`
 	_, err = rw.Exec(ctx, query, nil)
 	require.NoError(err)
 }
