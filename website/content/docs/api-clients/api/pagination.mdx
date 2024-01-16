@@ -19,14 +19,16 @@ When you run a `list` operation on a resource, the initial results are sorted in
 Boundary returns the maximum number of responses along with the top-level fields `response_type` and `list_token`.
 If the `response_type` is `delta`, it means there are more items available in the list.
 
+List tokens contain general metadata associated with the ongoing pagination.
 To request the next page of results, run the `list` operation again and include the `list_token` that Boundary provided in the last response.
 Boundary returns the next page of results with new `response_type` and `list_token` values.
 
 ![API pagination workflow](/img/api-pagination/pagination-workflow.png)
 
 You can continue viewing new pages of results using the `list_token` values until the `response_type` reads `complete`.
+If you compose an invalid token, you receive an invalid token error.
 
-## Requesting updated and deleted resources
+## Request updated and deleted resources
 
 When the `response_type` reads `complete`, you have viewed all the results that were available when you ran the initial `list` operation.
 You can now request any resources that were updated or deleted since you started paginating.
@@ -41,6 +43,7 @@ The `removed_ids` response contains the IDs of any resources that were deleted s
 Any resources that have been deleted are included on the first page of results.
 
 After 30 days, the `list_token` expires and you must make a new `list` request without the token to regenerate the full list of results.
+If you make a `list` request using a token that has a `create_time` older than 30 days, Boundary treats it as an invalid token and returns an error.
 
 ## Response structure
 
@@ -87,13 +90,6 @@ This number may be an estimate, since the number of items may change during the 
   ]
 }
 ```
-
-## List tokens
-
-List tokens contain general metadata associated with the ongoing pagination.
-If you compose an invalid token, you receive an invalid token error.
-
-If you make a `list` request using a token that has a `create_time` older than 30 days, Boundary treats it as an invalid token and returns an error.
 
 ## Constraints and limitations
 
