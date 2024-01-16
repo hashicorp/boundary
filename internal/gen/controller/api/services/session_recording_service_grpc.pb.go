@@ -48,6 +48,10 @@ type SessionRecordingServiceClient interface {
 	// A Channel recording ID is required to look up a Channel recording.
 	// The only supported mime type is "application/x-asciicast".
 	Download(ctx context.Context, in *DownloadRequest, opts ...grpc.CallOption) (SessionRecordingService_DownloadClient, error)
+	// ReApplyStoragePolicy calculates the resultant set of policy for a given session recording
+	// and updates the retain until and delete after values. The provided request
+	// must include the Session recording ID for the Session recording to be updated. If that ID
+	// is missing, malformed or reference a non existing resource, an error is returned.
 	ReApplyStoragePolicy(ctx context.Context, in *ReApplyStoragePolicyRequest, opts ...grpc.CallOption) (*ReApplyStoragePolicyResponse, error)
 	// DeleteSessionRecording removes a Session Recording from Boundary. If the Session Recording id
 	// is malformed or not provided an error is returned.
@@ -148,6 +152,10 @@ type SessionRecordingServiceServer interface {
 	// A Channel recording ID is required to look up a Channel recording.
 	// The only supported mime type is "application/x-asciicast".
 	Download(*DownloadRequest, SessionRecordingService_DownloadServer) error
+	// ReApplyStoragePolicy calculates the resultant set of policy for a given session recording
+	// and updates the retain until and delete after values. The provided request
+	// must include the Session recording ID for the Session recording to be updated. If that ID
+	// is missing, malformed or reference a non existing resource, an error is returned.
 	ReApplyStoragePolicy(context.Context, *ReApplyStoragePolicyRequest) (*ReApplyStoragePolicyResponse, error)
 	// DeleteSessionRecording removes a Session Recording from Boundary. If the Session Recording id
 	// is malformed or not provided an error is returned.

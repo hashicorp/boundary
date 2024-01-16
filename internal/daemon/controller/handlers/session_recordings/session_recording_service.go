@@ -25,6 +25,7 @@ var (
 		action.Read,
 		action.Download,
 		action.Delete,
+		action.ReApplyStoragePolicy,
 	)
 
 	// CollectionActions contains the set of actions that can be performed on

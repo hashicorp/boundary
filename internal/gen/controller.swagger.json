@@ -3361,7 +3361,7 @@
       }
     },
     "/v1/session-recordings/{id}:reapply-storage-policy": {
-      "get": {
+      "post": {
         "summary": "ReApplyStoragePolicy will recalculate the resultant set of policy and apply the result to the given session recording.",
         "operationId": "SessionRecordingService_ReApplyStoragePolicy",
         "responses": {

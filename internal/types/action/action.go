@@ -70,6 +70,7 @@ const (
 	Download                           Type = 56
 	AttachStoragePolicy                Type = 57
 	DetachStoragePolicy                Type = 58
+	ReApplyStoragePolicy               Type = 59
 
 	// When adding new actions, be sure to update:
 	//
@@ -136,6 +137,7 @@ var Map = map[string]Type{
 	Download.String():                           Download,
 	AttachStoragePolicy.String():                AttachStoragePolicy,
 	DetachStoragePolicy.String():                DetachStoragePolicy,
+	ReApplyStoragePolicy.String():               ReApplyStoragePolicy,
 }
 
 var DeprecatedMap = map[string]Type{
@@ -208,6 +210,7 @@ func (a Type) String() string {
 		"download",
 		"attach-storage-policy",
 		"detach-storage-policy",
+		"reapply-storage-policy",
 	}[a]
 }
 

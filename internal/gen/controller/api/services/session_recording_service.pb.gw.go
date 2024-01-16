@@ -331,7 +331,7 @@ func RegisterSessionRecordingServiceHandlerServer(ctx context.Context, mux *runt
 		return
 	})
 
-	mux.Handle("GET", pattern_SessionRecordingService_ReApplyStoragePolicy_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_SessionRecordingService_ReApplyStoragePolicy_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
@@ -488,7 +488,7 @@ func RegisterSessionRecordingServiceHandlerClient(ctx context.Context, mux *runt
 
 	})
 
-	mux.Handle("GET", pattern_SessionRecordingService_ReApplyStoragePolicy_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_SessionRecordingService_ReApplyStoragePolicy_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)

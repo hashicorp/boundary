@@ -2791,6 +2791,32 @@
           ]
         },
         "session-recording": {
+          "reapply-storage-policy": [
+            {
+              "action": "reapply-storage-policy",
+              "limit": 30000,
+              "per": "total",
+              "period": "30s",
+              "resource": "session-recording",
+              "unlimited": false
+            },
+            {
+              "action": "reapply-storage-policy",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "session-recording",
+              "unlimited": false
+            },
+            {
+              "action": "reapply-storage-policy",
+              "limit": 30000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "session-recording",
+              "unlimited": false
+            }
+          ],
           "download": [
             {
               "action": "download",
