@@ -12,7 +12,7 @@ import (
 	"github.com/hashicorp/boundary/api/scopes"
 	"github.com/hashicorp/boundary/api/sessionrecordings"
 	"github.com/hashicorp/boundary/internal/cmd/base"
-	"github.com/hashicorp/boundary/internal/policy/storage"
+	"github.com/hashicorp/boundary/internal/recording"
 )
 
 type extraCmdVars struct{}
@@ -119,7 +119,7 @@ func (c *Command) printListTable(items []*sessionrecordings.SessionRecording) st
 		if !item.RetainUntil.IsZero() {
 			var retention string
 			switch item.RetainUntil {
-			case storage.InfinityTS:
+			case recording.InfinityTS:
 				retention = "Keep Forever"
 			default:
 				retention = item.RetainUntil.Local().Format(time.RFC1123)
@@ -185,7 +185,7 @@ func printItemTable(item *sessionrecordings.SessionRecording, resp *api.Response
 	if !item.RetainUntil.IsZero() {
 		var retention string
 		switch item.RetainUntil {
-		case storage.InfinityTS:
+		case recording.InfinityTS:
 			retention = "Keep Forever"
 		default:
 			retention = item.RetainUntil.Local().Format(time.RFC1123)
