@@ -46,7 +46,7 @@ func (b *Server) CreateInitialLoginRole(ctx context.Context) (*iam.Role, error) 
 	pr, err := iam.NewRole(ctx,
 		scope.Global.String(),
 		iam.WithName("Login and Default Grants"),
-		iam.WithDescription(`Role created for login capability, account self-management, and other default grants for users of the global scope at its creation time`),
+		iam.WithDescription(`Role created for login capability, account self-management, and other default grants`),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("error creating in memory role for generated grants: %w", err)
@@ -63,8 +63,11 @@ func (b *Server) CreateInitialLoginRole(ctx context.Context) (*iam.Role, error) 
 	}); err != nil {
 		return nil, fmt.Errorf("error creating grant for default generated grants: %w", err)
 	}
-	if _, err := iamRepo.AddPrincipalRoles(ctx, role.PublicId, role.Version+1, []string{globals.AnonymousUserId}, nil); err != nil {
+	if _, err := iamRepo.AddPrincipalRoles(ctx, role.PublicId, role.Version+1, []string{globals.AnonymousUserId}); err != nil {
 		return nil, fmt.Errorf("error adding principal to role for default generated grants: %w", err)
+	}
+	if _, _, err := iamRepo.SetRoleGrantScopes(ctx, role.PublicId, role.Version+2, []string{"this", "descendants"}); err != nil {
+		return nil, fmt.Errorf("error adding scope grants to role for default generated grants: %w", err)
 	}
 
 	return role, nil
