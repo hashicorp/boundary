@@ -48,8 +48,11 @@ create table app_token_periodic_expiration_interval (
     constraint expiration_interval_in_max_seconds_must_be_greater_than_0
     check(expiration_interval_in_max_seconds > 0)
 );
-comment on table app_token is
-  'app_token_periodic_expiration_interval defines the expiration interval for an application auth token';
+comment on table app_token_periodic_expiration_interval is
+  'app_token_periodic_expiration_interval defines the expiration interval for ' 
+  'an app_token. '
+  'An app_token can have 0 or 1 periodic expiration intervals which is enforced '
+  'by the app_token_id_key_fkey constraint.';
 
 create or replace function app_token_periodic_expiration_immutable() returns trigger
   as $$
@@ -153,10 +156,12 @@ select
   t.created_by,
   t.scope_id,
   g.canonical_grant,
-  g.raw_grant
-from 
-  app_token t,
-  app_token_grant g
+  g.raw_grant,
+  p.expiration_interval_in_max_seconds
+from
+  app_token t
+  left outer join app_token_grant                        g on t.public_id = g.app_token_id
+  left outer join app_token_periodic_expiration_interval p on t.public_id = p.app_token_id 
 where 
   t.public_id = g.app_token_id;
 comment on view app_token_agg is

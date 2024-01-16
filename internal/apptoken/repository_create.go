@@ -69,6 +69,13 @@ func (r *Repository) CreateAppToken(ctx context.Context, scopeId string, expTime
 		appTokenGrants = append(appTokenGrants, g)
 	}
 
+	var appTokenPeriodicExpInterval *AppTokenPeriodicExpirationInterval
+	if appT.ExpirationIntervalInMaxSeconds > 0 {
+		if appTokenPeriodicExpInterval, err = NewAppTokenPeriodicExpirationInterval(ctx, appT.PublicId, appT.ExpirationIntervalInMaxSeconds); err != nil {
+			return nil, nil, errors.Wrap(ctx, err, op)
+		}
+	}
+
 	// TODO: We need to validate that the apptoken grants don't exceed the
 	// grants for the createdByUserId.  You can't give grants you don't have.
 	if err := ValidateAppTokenGrants(ctx, r.grantFinder, createdByUserId, grantsStr); err != nil {
@@ -106,6 +113,18 @@ func (r *Repository) CreateAppToken(ctx context.Context, scopeId string, expTime
 			return err
 		}
 		msgs = append(msgs, appTokenGrantOpLogMsgs...)
+
+		if appTokenPeriodicExpInterval != nil {
+			p := appTokenPeriodicExpInterval.clone()
+			var appTokenPeriodicExpIntervalOpLogMsg oplog.Message
+			if err := w.Create(ctx, p, db.NewOplogMsg(&appTokenPeriodicExpIntervalOpLogMsg)); err != nil {
+				return err
+			}
+			msgs = append(msgs, &appTokenPeriodicExpIntervalOpLogMsg)
+			retAppToken.ExpirationIntervalInMaxSeconds = p.GetExpirationIntervalInMaxSeconds()
+		}
+
+		// we're done writing, so we can write the oplog
 		if err := w.WriteOplogEntryWith(ctx, opLogWrapper, ticket, appTokenMetadata, msgs); err != nil {
 			return err
 		}

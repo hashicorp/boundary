@@ -2,7 +2,7 @@
 -- SPDX-License-Identifier: BUSL-1.1
 
 begin;
-select plan(12);
+select plan(13);
 select wtt_load('widgets','iam','kms');
 
 -- validate the app_token update trigger
@@ -34,6 +34,12 @@ prepare insert_app_token_periodic_expiration_interval as
   (app_token_id, expiration_interval_in_max_seconds)
   values('appt_____clare', 3600);
 select lives_ok('insert_app_token_periodic_expiration_interval', '%expiration_interval_in_max_seconds_must_be_greater_than_0%');
+
+prepare insert_app_token_periodic_expiration_interval_with_error as
+  insert into app_token_periodic_expiration_interval
+  (app_token_id, expiration_interval_in_max_seconds)
+  values('appt_____clare', 3600);
+select throws_like('insert_app_token_periodic_expiration_interval_with_error', '%app_token_periodic_expiration_interval_pkey%');
 
 select is(count(*), 1::bigint) from app_token_periodic_expiration_interval where app_token_id = 'appt_____clare';
 
