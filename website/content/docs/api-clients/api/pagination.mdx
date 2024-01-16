@@ -19,29 +19,29 @@ You can refresh the local results of your initial `list` operation as many times
 
 ## Initial pagination
 
-When you run a `list` operation on a resource, the initial results are sorted in descending order by creation time and public ID, by default.
+When you run a `list` operation on a resource, the initial results are sorted in descending order by creation time and public ID (most recently created first).
 Boundary returns the maximum number of responses along with the top-level fields `response_type` and `list_token`.
 If the `response_type` is `delta`, it means there are more items available in the list.
 
-To request the next page of results, run the `list` operation again and include the `list_token` that Boundary provided as a parameter.
+To request the next page of results, run the `list` operation again and include the `list_token` that Boundary provided in the last response.
 Boundary returns the next page of results with new `response_type` and `list_token` values.
 
 ![API pagination workflow](/img/api-pagination/pagination-workflow.png)
 
 You can continue viewing new pages of results using the `list_token` values until the `response_type` reads `complete`.
 
-## Refresh the local cache
+## Requesting updated and deleted resources
 
 When the `response_type` reads `complete`, you have viewed all the results that were available when you ran the initial `list` operation.
-You can now refresh the cached list of results to return any resources that were updated since you started viewing the list responses.
+You can now request any resources that were updated or deleted since you started paginating.
 
 To refresh the cached list results, make another `list` request using the `list_token` from the previous response.
 Boundary returns a `response_type` and `list_token` as part of the response, similarly to when you ran the initial operation.
 If the `response_type` is `delta`, it means there are more items available in the list.
 You can use the `list_token` as a parameter to continue viewing new pages of results until the `response_type` reads `complete`.
 
-Boundary also includes the top-level response `deleted_ids` as part of the refresh operation.
-The `deleted_ids` response contains the IDs of any resources that were deleted since the initial `list` operation.
+Boundary also includes the top-level response `removed_ids` as part of the refresh operation.
+The `removed_ids` response contains the IDs of any resources that were deleted since the initial `list` operation.
 Deleted resources are included in the results of the list for 30 days after they are deleted.
 Resources that have been deleted include the suffix `_deleted`.
 
@@ -78,7 +78,7 @@ This number may be an estimate, since the number of items may change during the 
 ```json
 {
   "response_type": "<delta|complete>",
-  "pagination_token": "<opaque-token>",
+  "list_token": "<opaque-token>",
   "sort_by": "created_time",
   "sort_dir": "desc",
   "est_item_count": 1000,
@@ -97,7 +97,7 @@ This number may be an estimate, since the number of items may change during the 
 
 ## List tokens
 
-List tokens contain general metadata associated with the ongoing pagination and either a pagination or refresh token, depending on the phase of the pagination.
+List tokens contain general metadata associated with the ongoing pagination.
 If you compose an invalid token, you receive an invalid token error.
 
 When you make a `list` request without a `list_token`, Boundary builds a page of items that contains all the resources currently available, subject to the page size, with the following attributes:
