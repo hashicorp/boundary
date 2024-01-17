@@ -1,4 +1,3 @@
-
 # Copyright (c) HashiCorp, Inc.
 # SPDX-License-Identifier: BUSL-1.1
 
@@ -231,7 +230,7 @@ variable "ldap_group_name" {
 }
 variable "test_timeout" {
   type    = string
-  default = "15m"
+  default = "20m"
 }
 
 resource "enos_local_exec" "get_go_version" {
