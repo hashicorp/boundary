@@ -4075,7 +4075,7 @@
           ]
         }
       },
-      "max_size": 316158,
+      "max_size": 322161,
       "msg": "controller api rate limiter"
     },
     "op": "controller.(rateLimiterConfig).writeSysEvent",

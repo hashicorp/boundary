@@ -424,6 +424,11 @@ type TestControllerOpts struct {
 	// eventer.
 	EnableEventing bool
 
+	// EventerConfig allows specifying a custom event config. You must not run
+	// the test in parallel (no calls to t.Parallel) since the this option
+	// relies on modifying the system wide default eventer.
+	EventerConfig *event.EventerConfig
+
 	// DisableAuthorizationFailures will still cause authz checks to be
 	// performed but they won't cause 403 Forbidden. Useful for API-level
 	// testing to avoid a lot of faff.
@@ -661,12 +666,15 @@ func TestControllerConfig(t testing.TB, ctx context.Context, tc *TestController,
 	opts.Config.Controller.Scheduler.JobRunIntervalDuration = opts.SchedulerRunJobInterval
 	opts.Config.Controller.ApiRateLimiterMaxQuotas = ratelimit.DefaultLimiterMaxQuotas()
 
-	if opts.EnableEventing {
-		opts.Config.Eventing = &event.EventerConfig{
-			AuditEnabled:        true,
-			ObservationsEnabled: true,
-			SysEventsEnabled:    true,
-			ErrorEventsDisabled: true,
+	if opts.EnableEventing || opts.EventerConfig != nil {
+		opts.Config.Eventing = opts.EventerConfig
+		if opts.Config.Eventing == nil {
+			opts.Config.Eventing = &event.EventerConfig{
+				AuditEnabled:        true,
+				ObservationsEnabled: true,
+				SysEventsEnabled:    true,
+				ErrorEventsDisabled: true,
+			}
 		}
 	}
 	serverName, err := os.Hostname()

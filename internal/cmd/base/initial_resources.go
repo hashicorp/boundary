@@ -204,20 +204,23 @@ func (b *Server) CreateInitialPasswordAuthMethod(ctx context.Context) (*password
 		pr, err := iam.NewRole(ctx,
 			scope.Global.String(),
 			iam.WithName("Administration"),
-			iam.WithDescription(fmt.Sprintf(`Provides admin grants within the "%s" scope to the initial user`, scope.Global.String())),
+			iam.WithDescription("Provides admin grants within all scopes to the initial admin user"),
 		)
 		if err != nil {
 			return nil, fmt.Errorf("error creating in memory role for generated grants: %w", err)
 		}
-		defPermsRole, _, _, _, err := iamRepo.CreateRole(ctx, pr)
+		adminRole, _, _, _, err := iamRepo.CreateRole(ctx, pr)
 		if err != nil {
 			return nil, fmt.Errorf("error creating role for default generated grants: %w", err)
 		}
-		if _, err := iamRepo.AddRoleGrants(ctx, defPermsRole.PublicId, defPermsRole.Version, []string{"id=*;type=*;actions=*"}); err != nil {
+		if _, err := iamRepo.AddRoleGrants(ctx, adminRole.PublicId, adminRole.Version, []string{"id=*;type=*;actions=*"}); err != nil {
 			return nil, fmt.Errorf("error creating grant for default generated grants: %w", err)
 		}
-		if _, err := iamRepo.AddPrincipalRoles(ctx, defPermsRole.PublicId, defPermsRole.Version+1, []string{u.GetPublicId()}, nil); err != nil {
+		if _, err := iamRepo.AddPrincipalRoles(ctx, adminRole.PublicId, adminRole.Version+1, []string{u.GetPublicId()}, nil); err != nil {
 			return nil, fmt.Errorf("error adding principal to role for default generated grants: %w", err)
+		}
+		if _, _, err := iamRepo.SetRoleGrantScopes(ctx, adminRole.PublicId, adminRole.Version+2, []string{"this", "descendants"}); err != nil {
+			return nil, fmt.Errorf("error adding scope grants to role for default generated grants: %w", err)
 		}
 		return u, nil
 	}
