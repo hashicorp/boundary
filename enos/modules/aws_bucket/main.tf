@@ -18,10 +18,12 @@ data "aws_iam_policy_document" "default" {
       "s3:GetObject",
       "s3:DeleteObject",
       "s3:GetObjectAttributes",
+      "s3:ListBucket",
     ]
 
     resources = [
       "${aws_s3_bucket.default.arn}/*",
+      "${aws_s3_bucket.default.arn}",
     ]
   }
 }
