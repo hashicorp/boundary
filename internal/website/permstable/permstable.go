@@ -782,6 +782,20 @@ var sessionRecording = &Resource{
 						"id=<id>;actions=download",
 					},
 				},
+				{
+					Name:        "reapply-storage-policy",
+					Description: "Reapply the storage policy to a session recording",
+					Examples: []string{
+						"id=<id>;actions=reapply-storage-policy",
+					},
+				},
+				{
+					Name:        "delete",
+					Description: "Delete a session recording",
+					Examples: []string{
+						"id=<id>;actions=delete",
+					},
+				},
 			},
 		},
 	},

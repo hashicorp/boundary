@@ -36,6 +36,9 @@ const (
 
 	// Will return an error for the PutObject method
 	PutObject
+
+	// Will return an error for the DeleteObjects method
+	DeleteObjects
 )
 
 const (

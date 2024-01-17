@@ -153,20 +153,21 @@ func Test_Repository_Scope_Update(t *testing.T) {
 		require.NoError(err)
 		assert.Empty(foundScope.GetDescription()) // should  be "" after update in db
 		assert.True(proto.Equal(foundScope, s))
+		assert.Empty(s.StoragePolicyId)
 
 		err = db.TestVerifyOplog(t, rw, s.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
 		require.NoError(err)
 
 		s.Name = "foo" + id
 		s.Description = "desc-id" // not in the field mask paths
-		s, updatedRows, err := repo.UpdateScope(ctx, s, 1, []string{"Name"})
+		s, updatedRows, err := repo.UpdateScope(ctx, s, s.Version, []string{"Name"})
 		require.NoError(err)
 		assert.Equal(1, updatedRows)
 		require.NotNil(s)
 		assert.Equal("foo"+id, s.GetName())
+		assert.Empty(s.StoragePolicyId)
 		// TODO: This isn't empty because of ICU-490 -- when that is resolved, fix this
 		// assert.Empty(s.GetDescription())
-
 		foundScope, err = repo.LookupScope(ctx, s.PublicId)
 		require.NoError(err)
 		assert.Equal(foundScope.GetPublicId(), s.GetPublicId())
@@ -177,7 +178,7 @@ func Test_Repository_Scope_Update(t *testing.T) {
 
 		s.Name = "test2"
 		s.Description = "desc-id-2"
-		s, updatedRows, err = repo.UpdateScope(ctx, s, 2, []string{"Name", "Description"})
+		s, updatedRows, err = repo.UpdateScope(ctx, s, s.Version, []string{"Name", "Description"})
 		require.NoError(err)
 		assert.Equal(1, updatedRows)
 		require.NotNil(s)
@@ -222,6 +223,7 @@ func Test_Repository_Scope_Lookup(t *testing.T) {
 		foundScope, err := repo.LookupScope(context.Background(), s.PublicId)
 		require.NoError(err)
 		assert.True(proto.Equal(foundScope, s))
+		assert.Empty(s.StoragePolicyId)
 
 		invalidId := testId(t)
 		notFoundById, err := repo.LookupScope(context.Background(), invalidId)
@@ -516,7 +518,10 @@ func Test_Repository_ListScopes(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			db.TestDeleteWhere(t, conn, func() any { i := AllocScope(); ; return &i }(), "type = 'org'")
+			db.TestDeleteWhere(t, conn, func() any {
+				i := AllocScope()
+				return &i
+			}(), "type = 'org'")
 
 			testOrgs := []*Scope{}
 			for i := 0; i < tt.createCnt; i++ {

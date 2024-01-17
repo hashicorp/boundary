@@ -1,10 +1,12 @@
 module github.com/hashicorp/boundary/plugins/boundary/mains/aws
 
-go 1.20
+go 1.21
+
+toolchain go1.21.5
 
 require (
-	github.com/hashicorp/boundary-plugin-aws v0.2.1
-	github.com/hashicorp/boundary/sdk v0.0.39
+	github.com/hashicorp/boundary-plugin-aws v0.3.0
+	github.com/hashicorp/boundary/sdk v0.0.41-0.20231117205527-08045ddb050e
 )
 
 require (
@@ -30,7 +32,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sts v1.21.2 // indirect
 	github.com/aws/smithy-go v1.14.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/fatih/color v1.14.1 // indirect
+	github.com/fatih/color v1.15.0 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/google/uuid v1.3.1 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
@@ -48,7 +50,7 @@ require (
 	github.com/hashicorp/yamux v0.1.1 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
-	github.com/mattn/go-isatty v0.0.17 // indirect
+	github.com/mattn/go-isatty v0.0.19 // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
 	github.com/mitchellh/go-testing-interface v1.14.1 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect

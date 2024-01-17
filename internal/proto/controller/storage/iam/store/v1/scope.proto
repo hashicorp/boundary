@@ -59,3 +59,13 @@ message Scope {
     that: "primary_auth_method_id"
   }];
 }
+
+message ScopePolicyStoragePolicy {
+  // scope_id of the ScopePolicyStoragePolicy
+  // @inject_tag: gorm:"primary_key"
+  string scope_id = 10;
+
+  // storage_policy_id of the ScopePolicyStoragePolicy
+  // @inject_tag: `gorm:"default:null"`
+  string storage_policy_id = 20;
+}

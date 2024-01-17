@@ -2656,6 +2656,58 @@
               "resource": "scope",
               "unlimited": false
             }
+          ],
+          "attach-storage-policy": [
+            {
+              "action": "attach-storage-policy",
+              "limit": 100,
+              "per": "total",
+              "period": "1m0s",
+              "resource": "scope",
+              "unlimited": false
+            },
+            {
+              "action": "attach-storage-policy",
+              "limit": 100,
+              "per": "ip-address",
+              "period": "1m0s",
+              "resource": "scope",
+              "unlimited": false
+            },
+            {
+              "action": "attach-storage-policy",
+              "limit": 100,
+              "per": "auth-token",
+              "period": "1m0s",
+              "resource": "scope",
+              "unlimited": false
+            }
+          ],
+          "detach-storage-policy": [
+            {
+              "action": "detach-storage-policy",
+              "limit": 100,
+              "per": "total",
+              "period": "1m0s",
+              "resource": "scope",
+              "unlimited": false
+            },
+            {
+              "action": "detach-storage-policy",
+              "limit": 100,
+              "per": "ip-address",
+              "period": "1m0s",
+              "resource": "scope",
+              "unlimited": false
+            },
+            {
+              "action": "detach-storage-policy",
+              "limit": 100,
+              "per": "auth-token",
+              "period": "1m0s",
+              "resource": "scope",
+              "unlimited": false
+            }
           ]
         },
         "session": {
@@ -2817,6 +2869,32 @@
           ]
         },
         "session-recording": {
+          "reapply-storage-policy": [
+            {
+              "action": "reapply-storage-policy",
+              "limit": 100,
+              "per": "total",
+              "period": "1m0s",
+              "resource": "session-recording",
+              "unlimited": false
+            },
+            {
+              "action": "reapply-storage-policy",
+              "limit": 100,
+              "per": "auth-token",
+              "period": "1m0s",
+              "resource": "session-recording",
+              "unlimited": false
+            },
+            {
+              "action": "reapply-storage-policy",
+              "limit": 100,
+              "per": "ip-address",
+              "period": "1m0s",
+              "resource": "session-recording",
+              "unlimited": false
+            }
+          ],
           "download": [
             {
               "action": "download",
@@ -2914,6 +2992,32 @@
             },
             {
               "action": "read",
+              "limit": 100,
+              "per": "ip-address",
+              "period": "1m0s",
+              "resource": "session-recording",
+              "unlimited": false
+            }
+          ],
+          "delete": [
+            {
+              "action": "delete",
+              "limit": 100,
+              "per": "auth-token",
+              "period": "1m0s",
+              "resource": "session-recording",
+              "unlimited": false
+            },
+            {
+              "action": "delete",
+              "limit": 100,
+              "per": "total",
+              "period": "1m0s",
+              "resource": "session-recording",
+              "unlimited": false
+            },
+            {
+              "action": "delete",
               "limit": 100,
               "per": "ip-address",
               "period": "1m0s",
@@ -3971,7 +4075,7 @@
           ]
         }
       },
-      "max_size": 302151,
+      "max_size": 316158,
       "msg": "controller api rate limiter"
     },
     "op": "controller.(rateLimiterConfig).writeSysEvent",

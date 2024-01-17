@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
+	"fmt"
 	"io"
 	"io/fs"
 	"os"
@@ -14,6 +15,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/storagebuckets"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
@@ -1220,6 +1222,199 @@ func TestLoopbackPutObject(t *testing.T) {
 			_, err = io.Copy(hash, bytes.NewReader(actualData))
 			require.NoError(err)
 			require.ElementsMatch(hash.Sum(nil), resp.ChecksumSha_256)
+		})
+	}
+}
+
+func TestLoopbackDeleteObjects(t *testing.T) {
+	require := tr.New(t)
+
+	now := time.Now()
+	var zero int64 = 0
+	mockStorageMapData := map[BucketName]Bucket{
+		"object_store": {
+			ObjectName("test-file-1"): &storagePluginStorageInfo{
+				lastModified:  &now,
+				contentLength: &zero,
+				DataChunks:    []Chunk{},
+			},
+			ObjectName("test-file-2"): &storagePluginStorageInfo{
+				lastModified:  &now,
+				contentLength: &zero,
+				DataChunks:    []Chunk{},
+			},
+			ObjectName("test-file-3"): &storagePluginStorageInfo{
+				lastModified:  &now,
+				contentLength: &zero,
+				DataChunks:    []Chunk{},
+			},
+			ObjectName("abc/file-1"): &storagePluginStorageInfo{
+				lastModified:  &now,
+				contentLength: &zero,
+				DataChunks:    []Chunk{},
+			},
+			ObjectName("abc/file-2"): &storagePluginStorageInfo{
+				lastModified:  &now,
+				contentLength: &zero,
+				DataChunks:    []Chunk{},
+			},
+			ObjectName("abc/file-3"): &storagePluginStorageInfo{
+				lastModified:  &now,
+				contentLength: &zero,
+				DataChunks:    []Chunk{},
+			},
+		},
+		"object_store_err": {},
+	}
+
+	plg, err := NewLoopbackPlugin(
+		WithMockBuckets(mockStorageMapData),
+		WithMockError(PluginMockError{
+			BucketName: "object_store_err",
+			ObjectKey:  "mock_object",
+			ErrMsg:     "invalid credentials",
+			ErrCode:    codes.PermissionDenied,
+		}),
+	)
+	require.NoError(err)
+	require.NotNil(plg)
+
+	client := NewWrappingPluginStorageClient(plg)
+
+	tests := []struct {
+		name        string
+		request     *plgpb.DeleteObjectsRequest
+		expected    *plgpb.DeleteObjectsResponse
+		expectedErr string
+		check       func() error
+	}{
+		{
+			name: "valid delete object no recursive",
+			request: &plgpb.DeleteObjectsRequest{
+				KeyPrefix: "test-file-1",
+				Bucket: &storagebuckets.StorageBucket{
+					BucketName: "object_store",
+					Attributes: &structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							"endpoint": structpb.NewStringValue("0.0.0.0"),
+						},
+					},
+				},
+				Recursive: false,
+			},
+			expected: &plgpb.DeleteObjectsResponse{
+				ObjectsDeleted: 1,
+			},
+			check: func() error {
+				filename := "test-file-1"
+				bucket, _ := mockStorageMapData["object_store"]
+				_, ok := bucket[ObjectName(filename)]
+				if ok {
+					return fmt.Errorf("failed to delete object %s", filename)
+				}
+				return nil
+			},
+		}, {
+			name: "valid delete objects recursive",
+			request: &plgpb.DeleteObjectsRequest{
+				KeyPrefix: "abc/",
+				Bucket: &storagebuckets.StorageBucket{
+					BucketName: "object_store",
+					Attributes: &structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							"endpoint": structpb.NewStringValue("0.0.0.0"),
+						},
+					},
+				},
+				Recursive: true,
+			},
+			expected: &plgpb.DeleteObjectsResponse{
+				ObjectsDeleted: 3,
+			},
+			check: func() error {
+				filenames := []string{
+					"abc/file-1",
+					"abc/file-2",
+					"abc/file-3",
+				}
+				bucket, _ := mockStorageMapData["object_store"]
+				for _, filename := range filenames {
+					_, ok := bucket[ObjectName(filename)]
+					if ok {
+						return fmt.Errorf("failed to delete object %s", filename)
+					}
+				}
+				return nil
+			},
+		}, {
+			name: "valid delete objects none",
+			request: &plgpb.DeleteObjectsRequest{
+				KeyPrefix: "abcd/",
+				Bucket: &storagebuckets.StorageBucket{
+					BucketName: "object_store",
+					Attributes: &structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							"endpoint": structpb.NewStringValue("0.0.0.0"),
+						},
+					},
+				},
+				Recursive: true,
+			},
+			expected: &plgpb.DeleteObjectsResponse{
+				ObjectsDeleted: 0,
+			},
+			check: func() error {
+				return nil
+			},
+		}, {
+			name: "delete objects object doesn't exist",
+			request: &plgpb.DeleteObjectsRequest{
+				KeyPrefix: "non-existent-object",
+				Bucket: &storagebuckets.StorageBucket{
+					BucketName: "object_store",
+					Attributes: &structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							"endpoint": structpb.NewStringValue("0.0.0.0"),
+						},
+					},
+				},
+				Recursive: false,
+			},
+			expected: &plgpb.DeleteObjectsResponse{
+				ObjectsDeleted: 1,
+			},
+			check: func() error {
+				return nil
+			},
+		}, {
+			name: "delete objects bucket doesn't exist",
+			request: &plgpb.DeleteObjectsRequest{
+				KeyPrefix: "abc/",
+				Bucket: &storagebuckets.StorageBucket{
+					BucketName: "non-existent-bucket",
+					Attributes: &structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							"endpoint": structpb.NewStringValue("0.0.0.0"),
+						},
+					},
+				},
+				Recursive: false,
+			},
+			expectedErr: "loopback.(LoopbackStorage).deleteObjects: bucket not found",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resp, err := client.DeleteObjects(context.Background(), tt.request)
+			if tt.expectedErr != "" {
+				require.Error(err)
+				require.Nil(resp)
+				require.ErrorContains(err, tt.expectedErr)
+				return
+			}
+
+			require.Equal(tt.expected, resp)
+			require.NoError(tt.check())
 		})
 	}
 }

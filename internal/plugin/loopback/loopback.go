@@ -4,6 +4,8 @@
 package loopback
 
 import (
+	"time"
+
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 )
 
@@ -39,21 +41,55 @@ type LoopbackPlugin struct {
 // NewLoopbackPlugin returns a new loopback plugin.
 // For storage service testings NewLoopbackPlugin Supports WithMockErrors
 // and WithMockBuckets as options. If no mock buckets are provided,
-// a bucket named `default` will be created.
+// a bucket named `default` will be created with several zero-length files
+// included.
 func NewLoopbackPlugin(opt ...TestOption) (*LoopbackPlugin, error) {
 	opts, err := getTestOpts(opt...)
 	if err != nil {
 		return nil, err
 	}
 
+	now := time.Now()
+	var zero int64 = 0
 	ret := &LoopbackPlugin{
 		TestPluginServer: new(TestPluginServer),
 		LoopbackHost: &LoopbackHost{
 			hostMap: make(map[string][]*loopbackPluginHostInfo),
 		},
 		LoopbackStorage: &LoopbackStorage{
-			chunksSize:        opts.withChunkSize,
-			buckets:           map[BucketName]Bucket{"default": {}},
+			chunksSize: opts.withChunkSize,
+			buckets: map[BucketName]Bucket{"default": {
+				ObjectName("test-file-1"): &storagePluginStorageInfo{
+					lastModified:  &now,
+					contentLength: &zero,
+					DataChunks:    []Chunk{},
+				},
+				ObjectName("test-file-2"): &storagePluginStorageInfo{
+					lastModified:  &now,
+					contentLength: &zero,
+					DataChunks:    []Chunk{},
+				},
+				ObjectName("test-file-3"): &storagePluginStorageInfo{
+					lastModified:  &now,
+					contentLength: &zero,
+					DataChunks:    []Chunk{},
+				},
+				ObjectName("abc/file-1"): &storagePluginStorageInfo{
+					lastModified:  &now,
+					contentLength: &zero,
+					DataChunks:    []Chunk{},
+				},
+				ObjectName("abc/file-2"): &storagePluginStorageInfo{
+					lastModified:  &now,
+					contentLength: &zero,
+					DataChunks:    []Chunk{},
+				},
+				ObjectName("abc/file-3"): &storagePluginStorageInfo{
+					lastModified:  &now,
+					contentLength: &zero,
+					DataChunks:    []Chunk{},
+				},
+			}},
 			errs:              make([]PluginMockError, 0),
 			putObjectResponse: make([]PluginMockPutObjectResponse, 0),
 		},
@@ -75,6 +111,7 @@ func NewLoopbackPlugin(opt ...TestOption) (*LoopbackPlugin, error) {
 	ret.HeadObjectFn = ret.headObject
 	ret.GetObjectFn = ret.getObject
 	ret.PutObjectFn = ret.putObject
+	ret.DeleteObjectsFn = ret.deleteObjects
 	if len(opts.withMockBuckets) > 0 {
 		ret.buckets = opts.withMockBuckets
 	}

@@ -33,6 +33,7 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/host_sets"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/hosts"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/managed_groups"
+	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/policies"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/roles"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/scopes"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/session_recordings"
@@ -196,7 +197,7 @@ func (c *Controller) registerGrpcServices(s *grpc.Server) error {
 		services.RegisterAuthTokenServiceServer(s, authtoks)
 	}
 	if _, ok := currentServices[services.ScopeService_ServiceDesc.ServiceName]; !ok {
-		os, err := scopes.NewService(c.baseContext, c.IamRepoFn, c.kms, c.conf.RawConfig.Controller.MaxPageSize)
+		os, err := scopes.NewServiceFn(c.baseContext, c.IamRepoFn, c.kms, c.conf.RawConfig.Controller.MaxPageSize)
 		if err != nil {
 			return fmt.Errorf("failed to create scope handler service: %w", err)
 		}
@@ -221,6 +222,18 @@ func (c *Controller) registerGrpcServices(s *grpc.Server) error {
 			return fmt.Errorf("failed to create storage bucket handler service: %w", err)
 		}
 		services.RegisterStorageBucketServiceServer(s, sbs)
+	}
+	if _, ok := currentServices[services.PolicyService_ServiceDesc.ServiceName]; !ok {
+		ps, err := policies.NewServiceFn(
+			c.baseContext,
+			c.IamRepoFn,
+			c.conf.RawConfig.Controller.MaxPageSize,
+			c.ControllerExtension,
+		)
+		if err != nil {
+			return fmt.Errorf("failed to create policy handler service: %w", err)
+		}
+		services.RegisterPolicyServiceServer(s, ps)
 	}
 	if _, ok := currentServices[services.SessionRecordingService_ServiceDesc.ServiceName]; !ok {
 		srs, err := session_recordings.NewServiceFn(
@@ -402,6 +415,9 @@ func registerGrpcGatewayEndpoints(ctx context.Context, gwMux *runtime.ServeMux, 
 	}
 	if err := services.RegisterSessionRecordingServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
 		return fmt.Errorf("failed to register session recording handler: %w", err)
+	}
+	if err := services.RegisterPolicyServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
+		return fmt.Errorf("failed to register policy handler: %w", err)
 	}
 
 	return nil

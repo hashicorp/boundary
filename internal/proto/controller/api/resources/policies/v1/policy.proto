@@ -1,0 +1,130 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
+syntax = "proto3";
+
+package controller.api.resources.policies.v1;
+
+import "controller/api/resources/scopes/v1/scope.proto";
+import "controller/custom_options/v1/options.proto";
+import "google/api/visibility.proto";
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+option go_package = "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/policies;policies";
+
+message Policy {
+  // Output only. The id of the storage policy.
+  string id = 10; // @gotags: `class:"public" eventstream:"observation"`
+
+  // The scope id of this policy. This must be defined for policy creation, but
+  // is otherwise output only.
+  string scope_id = 20 [json_name = "scope_id"]; // @gotags: `class:"public" eventstream:"observation"`
+
+  // Output only. Scope information for this resource.
+  resources.scopes.v1.ScopeInfo scope = 30;
+
+  // Optional name for identification purposes.
+  google.protobuf.StringValue name = 40 [
+    (custom_options.v1.generate_sdk_option) = true,
+    (custom_options.v1.mask_mapping) = {
+      this: "name"
+      that: "Name"
+    }
+  ]; // @gotags: `class:"public"`
+
+  // Optional user-set description for identification purposes.
+  google.protobuf.StringValue description = 50 [
+    (custom_options.v1.generate_sdk_option) = true,
+    (custom_options.v1.mask_mapping) = {
+      this: "description"
+      that: "Description"
+    }
+  ]; // @gotags: `class:"public"`
+
+  // Output only. The time this resource was created.
+  google.protobuf.Timestamp created_time = 60 [json_name = "created_time"]; // @gotags: `class:"public" eventstream:"observation"`
+
+  // Output only. The time this resource was last updated.
+  google.protobuf.Timestamp updated_time = 70 [json_name = "updated_time"]; // @gotags: `class:"public" eventstream:"observation"`
+
+  // The policy's type.
+  string type = 80; // @gotags: `class:"public" eventstream:"observation"`
+
+  // Version is used in mutation requests, after the initial creation, to ensure
+  // this resource has not changed. The mutation will fail if the version does
+  // not match the latest known good version.
+  uint32 version = 90; // @gotags: `class:"public"`
+
+  // The attributes that are applicable to each policy type.
+  oneof attrs {
+    google.protobuf.Struct attributes = 100 [
+      (custom_options.v1.generate_sdk_option) = true,
+      (custom_options.v1.subtype) = "default"
+    ];
+    StoragePolicyAttributes storage_policy_attributes = 101 [
+      (google.api.field_visibility).restriction = "INTERNAL",
+      (custom_options.v1.generate_sdk_option) = true,
+      (custom_options.v1.subtype) = "storage"
+    ];
+  }
+
+  // Output only. The available actions on this resource for this user.
+  repeated string authorized_actions = 300 [json_name = "authorized_actions"]; // @gotags: `class:"public"`
+}
+
+message StoragePolicyAttributes {
+  StoragePolicyRetainFor retain_for = 10 [
+    json_name = "retain_for",
+    (custom_options.v1.generate_sdk_option) = true
+  ];
+  StoragePolicyDeleteAfter delete_after = 20 [
+    json_name = "delete_after",
+    (custom_options.v1.generate_sdk_option) = true
+  ];
+}
+
+message StoragePolicyRetainFor {
+  // days is the number of days for which a session recording will be
+  // retained. Must be provided.
+  int32 days = 10 [
+    json_name = "days",
+    (custom_options.v1.mask_mapping) = {
+      this: "attributes.retain_for.days"
+      that: "RetainForDays"
+    }
+  ]; // @gotags: `class:"public"`
+
+  // overridable signals whether this storage policy's retention duration can be
+  // overridden.
+  google.protobuf.BoolValue overridable = 20 [
+    json_name = "overridable",
+    (custom_options.v1.mask_mapping) = {
+      this: "attributes.retain_for.overridable"
+      that: "RetainForDaysOverridable"
+    }
+  ]; // @gotags: `class:"public"`
+}
+
+message StoragePolicyDeleteAfter {
+  // days is the number of days after which a session recording will be
+  // automatically deleted.
+  int32 days = 10 [
+    json_name = "days",
+    (custom_options.v1.mask_mapping) = {
+      this: "attributes.delete_after.days"
+      that: "DeleteAfterDays"
+    }
+  ]; // @gotags: `class:"public"`
+
+  // overridable signals whether this storage policy's deletion policy can be
+  // overridden.
+  google.protobuf.BoolValue overridable = 20 [
+    json_name = "overridable",
+    (custom_options.v1.mask_mapping) = {
+      this: "attributes.delete_after.overridable"
+      that: "DeleteAfterDaysOverridable"
+    }
+  ]; // @gotags: `class:"public"`
+}

@@ -87,7 +87,7 @@ func (c *Command) Help() string {
 
 	default:
 
-		helpStr = helpMap["base"]()
+		helpStr = c.extraHelpFunc(helpMap)
 
 	}
 
@@ -214,6 +214,22 @@ func (c *Command) Run(args []string) int {
 	switch c.Func {
 
 	case "update":
+		switch c.FlagVersion {
+		case 0:
+			opts = append(opts, scopes.WithAutomaticVersioning(true))
+		default:
+			version = uint32(c.FlagVersion)
+		}
+
+	case "attach-storage-policy":
+		switch c.FlagVersion {
+		case 0:
+			opts = append(opts, scopes.WithAutomaticVersioning(true))
+		default:
+			version = uint32(c.FlagVersion)
+		}
+
+	case "detach-storage-policy":
 		switch c.FlagVersion {
 		case 0:
 			opts = append(opts, scopes.WithAutomaticVersioning(true))

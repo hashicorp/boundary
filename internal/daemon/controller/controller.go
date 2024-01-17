@@ -40,6 +40,7 @@ import (
 	"github.com/hashicorp/boundary/internal/plugin"
 	"github.com/hashicorp/boundary/internal/plugin/loopback"
 	"github.com/hashicorp/boundary/internal/ratelimit"
+	"github.com/hashicorp/boundary/internal/recording"
 	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/hashicorp/boundary/internal/scheduler/cleaner"
 	"github.com/hashicorp/boundary/internal/scheduler/job"
@@ -613,6 +614,9 @@ func (c *Controller) registerJobs() error {
 		return err
 	}
 	if err := purge.RegisterJobs(c.baseContext, c.scheduler, rw, rw); err != nil {
+		return err
+	}
+	if err := recording.RegisterJob(c.baseContext, c.scheduler, rw, rw, c.ControllerExtension, c.kms); err != nil {
 		return err
 	}
 

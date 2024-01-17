@@ -124,6 +124,9 @@ const (
 	ConnectionRecordingPrefix = "cr"
 	// ChannelRecordingPrefix is the prefix for channel recordings
 	ChannelRecordingPrefix = "chr"
+
+	// StoragePolicyPrefix for storage policies.
+	StoragePolicyPrefix = "pst"
 )
 
 type ResourceInfo struct {
@@ -310,6 +313,11 @@ var prefixToResourceType = map[string]ResourceInfo{
 
 	SessionRecordingPrefix: {
 		Type:    resource.SessionRecording,
+		Subtype: UnknownSubtype,
+	},
+
+	StoragePolicyPrefix: {
+		Type:    resource.Policy,
 		Subtype: UnknownSubtype,
 	},
 }

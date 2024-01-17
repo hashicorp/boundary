@@ -37,6 +37,10 @@ service StoragePluginService {
   // PutObject is a hook that reads a file stored on local disk and
   // stores it to an external object store.
   rpc PutObject(PutObjectRequest) returns (PutObjectResponse);
+
+  // DeleteObjects deletes one or many files in an external object store
+  // via a provided key prefix.
+  rpc DeleteObjects(DeleteObjectsRequest) returns (DeleteObjectsResponse);
 }
 
 message OnCreateStorageBucketRequest {
@@ -132,4 +136,34 @@ message PutObjectRequest {
 message PutObjectResponse {
   // 256-bit SHA-256 digest of the object.
   bytes checksum_sha_256 = 10;
+}
+
+message DeleteObjectsRequest {
+  // Required. The existing state of the storage bucket.
+  controller.api.resources.storagebuckets.v1.StorageBucket bucket = 10;
+
+  // Required. The prefix of object keys to be deleted.
+  //
+  // Deletes all objects whose keys start with this field. Note that object storage keys
+  // use fully qualified names, including the full directory path in the object key. This
+  // allows you to delete entire "folders" stored on remote by passing the directory path
+  // and setting recursive to true, or only a single object by passing the object's full
+  // key and setting recursive to false.
+  string key_prefix = 20;
+
+  // Required. Determines whether or not to delete all objects beginning with the prefix
+  // or only a single key that matches the prefix in its entirety.
+  //
+  // Note that this means when recursive = false, key_prefix is not treated as a prefix
+  // but as a fully qualified key.
+  bool recursive = 30;
+}
+
+message DeleteObjectsResponse {
+  // The number of objects successfully deleted.
+  //
+  // Note that when receiving a successful response, the plugin guarantees that all
+  // objects beginning with the prefix have been deleted. This response is purely
+  // informational and not meant to be used for validation.
+  uint32 objects_deleted = 10;
 }

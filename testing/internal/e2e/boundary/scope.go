@@ -31,7 +31,7 @@ func CreateNewOrgApi(t testing.TB, ctx context.Context, client *api.Client) stri
 // Returns the id of the new project.
 func CreateNewProjectApi(t testing.TB, ctx context.Context, client *api.Client, orgId string) string {
 	scopeClient := scopes.NewClient(client)
-	newProjResult, err := scopeClient.Create(ctx, orgId, scopes.WithName("e2e Project"))
+	newProjResult, err := scopeClient.Create(ctx, orgId)
 	require.NoError(t, err)
 
 	newProjectId := newProjResult.Item.Id

@@ -122,6 +122,11 @@ func Test_Resource(t *testing.T) {
 			want:       Credential,
 			parent:     CredentialStore,
 		},
+		{
+			typeString:   "policy",
+			want:         Policy,
+			topLevelType: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.typeString, func(t *testing.T) {

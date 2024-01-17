@@ -23,6 +23,7 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/commands/hostsetscmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/logout"
 	"github.com/hashicorp/boundary/internal/cmd/commands/managedgroupscmd"
+	"github.com/hashicorp/boundary/internal/cmd/commands/policiescmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/rolescmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/scopescmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/server"
@@ -779,6 +780,54 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Func:    "update",
 			}),
 
+		"policies": func() (cli.Command, error) {
+			return &policiescmd.Command{
+				Command: base.NewCommand(ui, opts...),
+			}, nil
+		},
+		"policies read": func() (cli.Command, error) {
+			return &policiescmd.Command{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "read",
+			}, nil
+		},
+		"policies delete": func() (cli.Command, error) {
+			return &policiescmd.Command{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "delete",
+			}, nil
+		},
+		"policies list": func() (cli.Command, error) {
+			return &policiescmd.Command{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "list",
+			}, nil
+		},
+		"policies create": func() (cli.Command, error) {
+			return &policiescmd.Command{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "create",
+			}, nil
+		},
+		"policies create storage": func() (cli.Command, error) {
+			return &policiescmd.StorageCommand{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "create",
+			}, nil
+		},
+		"policies update": func() (cli.Command, error) {
+			return &policiescmd.Command{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "update",
+			}, nil
+		},
+		"policies update storage": func() (cli.Command, error) {
+			return &policiescmd.StorageCommand{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "update",
+			}, nil
+		},
+
 		"read": func() (cli.Command, error) {
 			return &genericcmd.Command{
 				Command: base.NewCommand(ui, opts...),
@@ -908,6 +957,16 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 			&scopescmd.DestroyKeyVersionCommand{
 				Command: base.NewCommand(ui),
 			}),
+		"scopes attach-storage-policy": clientCacheWrapper(
+			&scopescmd.Command{
+				Command: base.NewCommand(ui),
+				Func:    "attach-storage-policy",
+			}),
+		"scopes detach-storage-policy": clientCacheWrapper(
+			&scopescmd.Command{
+				Command: base.NewCommand(ui),
+				Func:    "detach-storage-policy",
+			}),
 
 		"search": func() (cli.Command, error) {
 			return &unsupported.UnsupportedCommand{
@@ -954,6 +1013,15 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 			}),
 		"session-recordings download": clientCacheWrapper(
 			&sessionrecordingscmd.DownloadCommand{
+				Command: base.NewCommand(ui),
+			}),
+		"session-recordings delete": clientCacheWrapper(
+			&sessionrecordingscmd.Command{
+				Command: base.NewCommand(ui),
+				Func:    "delete",
+			}),
+		"session-recordings reapply-storage-policy": clientCacheWrapper(
+			&sessionrecordingscmd.ReApplyStoragePolicyCommand{
 				Command: base.NewCommand(ui),
 			}),
 

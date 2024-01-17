@@ -28,6 +28,7 @@ import (
 	_ "github.com/hashicorp/boundary/internal/daemon/controller/handlers/host_sets"
 	_ "github.com/hashicorp/boundary/internal/daemon/controller/handlers/hosts"
 	_ "github.com/hashicorp/boundary/internal/daemon/controller/handlers/managed_groups"
+	_ "github.com/hashicorp/boundary/internal/daemon/controller/handlers/policies"
 	_ "github.com/hashicorp/boundary/internal/daemon/controller/handlers/roles"
 	_ "github.com/hashicorp/boundary/internal/daemon/controller/handlers/scopes"
 	_ "github.com/hashicorp/boundary/internal/daemon/controller/handlers/session_recordings"
