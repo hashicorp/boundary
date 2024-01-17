@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package apptoken_test
 
 import (
@@ -13,6 +16,7 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/testing/protocmp"
@@ -59,14 +63,16 @@ func Test_CreateAppToken(t *testing.T) {
 			opts: []apptoken.Option{
 				apptoken.WithName(testCtx, "test-apptoken"),
 				apptoken.WithDescription(testCtx, "test-description"),
+				apptoken.WithExpirationInterval(testCtx, 60),
 			},
 			wantToken: &apptoken.AppToken{
 				AppToken: &store.AppToken{
-					CreatedBy:      testUserHistoryId,
-					ExpirationTime: timestamp.New(testExp.Truncate(time.Second)),
-					Name:           "test-apptoken",
-					Description:    "test-description",
-					ScopeId:        testOrg.GetPublicId(),
+					CreatedBy:                      testUserHistoryId,
+					ExpirationTime:                 timestamp.New(testExp.Truncate(time.Second)),
+					Name:                           "test-apptoken",
+					Description:                    "test-description",
+					ScopeId:                        testOrg.GetPublicId(),
+					ExpirationIntervalInMaxSeconds: 60,
 				},
 			},
 			wantGrants: []*apptoken.AppTokenGrant{
@@ -164,6 +170,8 @@ func Test_CreateAppToken(t *testing.T) {
 			gotToken, gotGrants, err := testRepo.CreateAppToken(testCtx, tc.scopeId, tc.expTime, tc.createdBy, tc.grants, tc.opts...)
 			if tc.wantErrContains != "" {
 				require.Errorf(err, "we expected an error")
+				require.Empty(gotToken)
+				require.Empty(gotGrants)
 				assert.Contains(err.Error(), tc.wantErrContains)
 				if tc.wantErrMatch != nil {
 					assert.Truef(errors.Match(tc.wantErrMatch, err), "want err code: %q got: %q", tc.wantErrMatch, err)
@@ -180,7 +188,32 @@ func Test_CreateAppToken(t *testing.T) {
 			assert.Empty(cmp.Diff(gotToken.AppToken, tc.wantToken.AppToken, protocmp.Transform()))
 			assert.Len(gotGrants, len(tc.wantGrants))
 
+			{
+				// check that the appToken is in the db
+				foundTk := apptoken.AllocAppToken()
+				err = testRw.LookupWhere(testCtx, foundTk, "public_id = ?", []interface{}{gotToken.GetPublicId()})
+				require.NoError(err)
+				// this is necessary because we're not using app_token_agg so the value is not set
+				foundTk.ExpirationIntervalInMaxSeconds = gotToken.ExpirationIntervalInMaxSeconds
+				assert.Empty(cmp.Diff(gotToken.AppToken, foundTk.AppToken, protocmp.Transform()))
+			}
 			// TODO: sort grants and cmp.Diff each one
+
+			{
+				// check that the expiration interval is in the db
+				if gotToken.ExpirationIntervalInMaxSeconds > 0 {
+					gotExpInterval := apptoken.AllocAppTokenPeriodicExpirationInterval()
+					err := testRw.LookupWhere(testCtx, gotExpInterval, "app_token_id = ?", []interface{}{gotToken.GetPublicId()})
+					require.NoError(err)
+					assert.Equal(gotToken.ExpirationIntervalInMaxSeconds, gotExpInterval.GetExpirationIntervalInMaxSeconds())
+				}
+			}
+
+			{
+				// verify that the oplog entry exists
+				err = db.TestVerifyOplog(t, testRw, gotToken.GetPublicId(), db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
+				require.NoErrorf(err, "unexpected error verifying oplog entry: %s", err)
+			}
 		})
 	}
 }
