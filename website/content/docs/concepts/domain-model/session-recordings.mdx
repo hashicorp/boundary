@@ -45,9 +45,24 @@ A session recording belongs to the scope of the [storage bucket][]
 it is stored in. The scope can be either the global scope or an [organization][]
 scope.
 
-## Referenced by
+## Resultant Set Of Policy Calculation
 
-- [Storage Bucket][]
+A storage policy codifies how long a session recording must be kept and when they should be deleted.
+The Resultant Set of Policy (RSoP) refers to the set of policy attributes that will be used on a resource.
+When policies are applied on multiple levels the results can conflict, for storage [olicies when evaluating the RSoP the system will evaluate each policy attribute individually starting at the global scope and moving down.
+This means that evaluating the storage policy assigned to the global scope then evaluating the storage policy assigned to the org scope.
+When evaluating the RSoP, the system will make use of the following principles, in order:
+
+1. Retention wins over deletion. The retention duration parameter guarantees that a session recording will be retained for at least that duration. Before the retention duration has transpired manual deletes will fail and Boundary will not attempt to automatically delete any session recordings.
+2. Longest retention wins. When evaluating multiple storage policies the longer retention duration parameter will apply to the session recording.
+3. The shortest deletion wins. When evaluating multiple storage policies the shorter delete after duration parameter will apply to the session recording.
+
+Each attribute of a storage policy also indicates whether the attribute can be overridden or not.
+If the attribute cannot be overridden Boundary will stop evaluating the RSoP for that attribute at lower scopes.
+
+Changing the assigned policy of a scope or changing an attribute of a storage policy can impact the RSoP.
+Such a change will only affect future session recordings created within that scope or with that storage policy.
+When a session recording is not in compliance with the current RSoP the session recording API will indicate that it is out of compliance with the current policy.
 
 ## Service API docs
 
