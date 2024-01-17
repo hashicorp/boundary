@@ -6600,6 +6600,20 @@
       },
       "title": "StorageBucket manages external object stores"
     },
+    "controller.api.resources.targets.v1.Alias": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Output only. The ID of the alias refercing this target.",
+          "readOnly": true
+        },
+        "value": {
+          "type": "string",
+          "description": "Ouput only. The value of the alias referencing this target."
+        }
+      }
+    },
     "controller.api.resources.targets.v1.CredentialSource": {
       "type": "object",
       "properties": {
@@ -6898,6 +6912,15 @@
         "address": {
           "type": "string",
           "description": "Optional string value that represents a network resource and is used when establishing a session."
+        },
+        "aliases": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/controller.api.resources.targets.v1.Alias"
+          },
+          "description": "Output only. The aliases tht point to this Target.",
+          "readOnly": true
         }
       },
       "title": "Target contains all fields related to a Target resource"

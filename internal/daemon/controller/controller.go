@@ -147,6 +147,7 @@ type Controller struct {
 	PluginRepoFn              common.PluginRepoFactory
 	TargetRepoFn              target.RepositoryFactory
 	WorkerAuthRepoStorageFn   common.WorkerAuthRepoStorageFactory
+	TargetAliasRepoFn  common.TargetAliasRepoFactory
 
 	scheduler *scheduler.Scheduler
 

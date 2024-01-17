@@ -860,6 +860,10 @@ var inputStructs = []*structInfo{
 		outFile: "targets/credential_source.gen.go",
 	},
 	{
+		inProto: &targets.Alias{},
+		outFile: "targets/alias.gen.go",
+	},
+	{
 		inProto: &targets.SessionSecret{},
 		outFile: "targets/session_secret.gen.go",
 		fieldOverrides: []fieldInfo{
