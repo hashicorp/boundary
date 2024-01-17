@@ -51,7 +51,7 @@ type Options struct {
 
 func getDefaultOptions() Options {
 	return Options{
-		withContainerImage: "postgres",
+		withContainerImage: "postgres:16",
 		withDialect:        "postgres",
 	}
 }
