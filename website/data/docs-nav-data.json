@@ -845,6 +845,10 @@
             "path": "commands/daemon"
           },
           {
+            "title": "add-token",
+            "path": "commands/daemon/add-token"
+          },
+          {
             "title": "start",
             "path": "commands/daemon/start"
           },
@@ -1149,6 +1153,10 @@
             "path": "commands/scopes/update"
           }
         ]
+      },
+      {
+        "title": "search",
+        "path": "commands/search"
       },
       {
         "title": "server",

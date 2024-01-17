@@ -1,0 +1,32 @@
+---
+layout: docs
+page_title: daemon add-token - Command
+description: |-
+  The "daemon add-token" command lets you add an auth token to a Boundary daemon that is running.
+---
+
+# daemon add-token
+
+Command: `boundary daemon add-token`
+
+The `boundary daemon add-token` command lets you add an auth token to a Boundary daemon that is running.
+
+## Example
+
+The following command adds the auth token `at_LvUqeYz80B`:
+
+```shell-session
+$ boundary daemon add-token -id at_LvUqeYz80B
+```
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary daemon add-token [options] [args]
+```
+
+</CodeBlockConfig>
+
+@include 'cmd-option-note.mdx'
