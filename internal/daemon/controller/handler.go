@@ -260,6 +260,7 @@ func (c *Controller) registerGrpcServices(s *grpc.Server) error {
 			c.StaticHostRepoFn,
 			c.VaultCredentialRepoFn,
 			c.StaticCredentialRepoFn,
+			c.TargetAliasRepoFn,
 			c.downstreamWorkers,
 			c.workerStatusGracePeriod,
 			c.conf.RawConfig.Controller.MaxPageSize,
