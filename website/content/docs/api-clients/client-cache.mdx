@@ -1,0 +1,27 @@
+---
+layout: docs
+page_title: Client cache
+description: |-
+  Learn how the client cache enables Boundary to quickly retrieve local information about sessions and resources.
+---
+
+# Client cache
+
+The Boundary client daemon runs on end users' computers and locally caches session and resource information from Boundary instances.
+The cache helps expedite searches.
+
+## Boundary `list` vs. `search`
+
+You can use the Boundary API or CLI to `list` resources like targets, sessions, hosts, and users.
+When you use the `list` command, Boundary searches the control plane to provide a current total of resources when it produces the list of results.
+Some Boundary resources can provide a signficant number of items in the response.
+
+Because large lists of results may overwhelm your system resources, the client daemon caches the results of the `list` operation.
+You can search the local cache instead of the control plane to help protect your system resources.
+The Boundary `search` command also produces a list of Boundary resources.
+When you use the `search` command, however, Boundary searches the local cache to create the list.
+
+## Start the client cache
+
+The Boundary client daemon starts automatically in the background when a user runs a CLI command that interacts with a Boundary instance.
+If you do not want the daemon to automatically start, you can include the `-skip-cache` flag or set the **BOUNDARY_SKIP_CACHE_DAEMON** environment variable when you run the `boundary search` command.
