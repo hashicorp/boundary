@@ -6,7 +6,6 @@ package cluster
 import (
 	"bytes"
 	"context"
-	"log"
 	"os"
 	"path"
 	"testing"
@@ -129,12 +128,10 @@ func TestUnixListener(t *testing.T) {
 
 	addrs := c1.ApiAddrs()
 	require.Len(addrs, 1)
-	log.Println("addrs", addrs)
 
 	require.NoError(client.SetAddr(addrs[0]))
 
 	sc := scopes.NewClient(client)
 	_, err = sc.List(context.Background(), "global")
-	log.Println("OUTPUT", buf.String())
 	require.NoError(err)
 }
