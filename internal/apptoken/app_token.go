@@ -18,7 +18,7 @@ import (
 const appTokenTableName = "app_token"
 
 // AppToken defines an app token for storage.  It is the root aggregate for
-// other entities: AppTokenGrant
+// other entities: AppTokenGrant, AppTokenPeriodicExpiration
 type AppToken struct {
 	*store.AppToken
 	tableName string
@@ -43,11 +43,12 @@ func NewAppToken(ctx context.Context, scopeId string, expirationTime time.Time, 
 	}
 	return &AppToken{
 		AppToken: &store.AppToken{
-			ScopeId:        scopeId,
-			ExpirationTime: &timestamp.Timestamp{Timestamp: timestamppb.New(expirationTime.Truncate(time.Second))},
-			CreatedBy:      createdByUserId,
-			Name:           opts.withName,
-			Description:    opts.withDescription,
+			ScopeId:                        scopeId,
+			ExpirationTime:                 &timestamp.Timestamp{Timestamp: timestamppb.New(expirationTime.Truncate(time.Second))},
+			CreatedBy:                      createdByUserId,
+			Name:                           opts.withName,
+			Description:                    opts.withDescription,
+			ExpirationIntervalInMaxSeconds: opts.withExpirationInterval,
 		},
 	}, nil
 }
