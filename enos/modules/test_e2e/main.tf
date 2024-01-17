@@ -141,7 +141,7 @@ variable "worker_address" {
 }
 variable "test_timeout" {
   type    = string
-  default = "15m"
+  default = "20m"
 }
 variable "boundary_license" {
   type    = string

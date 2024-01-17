@@ -134,4 +134,6 @@ func TestRotation(t *testing.T) {
 	ret, err = os.ReadDir(dir)
 	require.NoError(t, err)
 	require.GreaterOrEqual(t, len(ret), 4)
+
+	require.NoError(t, os.RemoveAll(dir))
 }
