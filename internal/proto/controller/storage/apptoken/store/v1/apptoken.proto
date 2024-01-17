@@ -36,6 +36,11 @@ message AppToken {
   // The scope_id of the owning scope. Must be set.
   // @inject_tag: `gorm:"not_null"`
   string scope_id = 70;
+
+  // expiration_interval_in_max_seconds (optional) is the periodic expiration
+  // interval of the app token
+  // @inject_tag: `gorm:"-"`
+  uint32 expiration_interval_in_max_seconds = 80;
 }
 
 message AppTokenPeriodicExpirationInterval {

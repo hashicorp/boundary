@@ -5,12 +5,15 @@ package apptoken
 
 import (
 	"context"
+
+	"github.com/hashicorp/boundary/internal/errors"
 )
 
 type options struct {
-	withName        string
-	withDescription string
-	withLimit       int
+	withName               string
+	withDescription        string
+	withLimit              int
+	withExpirationInterval uint32
 }
 
 // Option - how options are passed as args
@@ -52,6 +55,20 @@ func WithDescription(_ context.Context, desc string) Option {
 func WithLimit(_ context.Context, limit int) Option {
 	return func(o *options) error {
 		o.withLimit = limit
+		return nil
+	}
+}
+
+// WithExpirationInterval provides an option to specify an expiration interval
+// for an AppToken
+func WithExpirationInterval(ctx context.Context, maxSeconds uint32) Option {
+	const op = "apptoken.WithExpirationInterval"
+	return func(o *options) error {
+		switch {
+		case maxSeconds == 0:
+			return errors.New(ctx, errors.InvalidParameter, op, "invalid expiration interval (equal to zero)")
+		}
+		o.withExpirationInterval = maxSeconds
 		return nil
 	}
 }
