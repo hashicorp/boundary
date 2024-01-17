@@ -45,7 +45,9 @@ At this time, the only supported storage is AWS S3.
             "Action": [
                "s3:PutObject",
                "s3:GetObject",
-               "s3:GetObjectAttributes"
+               "s3:GetObjectAttributes",
+               "s3:DeleteObject",
+               "s3:ListBucket"
             ],
             "Effect": "Allow",
             "Resource": "arn:aws:s3:::session_recording_storage/foo/bar/zoo/*"
@@ -86,7 +88,9 @@ At this time, the only supported storage is AWS S3.
             "Action": [
                "s3:PutObject",
                "s3:GetObject",
-               "s3:GetObjectAttributes"
+               "s3:GetObjectAttributes",
+               "s3:DeleteObject",
+               "s3:ListBucket"
             ],
             "Resource": [
                "arn:aws:s3:::test-session-recording-bucket/*"
