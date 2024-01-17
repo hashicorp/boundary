@@ -34,6 +34,12 @@ func ClientIpFromRequest(ctx context.Context, listenerCfg *listenerutil.Listener
 		if err != nil {
 			return "", errors.Wrap(ctx, err, op)
 		}
+		if listenerCfg.Type == "unix" {
+			// Some platforms (Linux) use "@" in this case but some like Mac
+			// leave it empty which causes issues with the rate limiting logic,
+			// so standardize on "@" in this case.
+			return "@", nil
+		}
 		return ip, nil
 	case trustedForwardedFor == nil && remoteAddr != nil:
 		// not reachable given listenerutil.TrustedFromXForwardedFor
