@@ -41,4 +41,19 @@ func Test_getOpts(t *testing.T) {
 		testOpts.withLimit = 50
 		assert.Equal(opts, testOpts)
 	})
+	t.Run("WithExpirationInterval", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		opts, err := getOpts(WithExpirationInterval(testCtx, 10))
+		require.NoError(err)
+		testOpts := getDefaultOptions()
+		assert.NotEqual(opts, testOpts)
+		testOpts.withExpirationInterval = 10
+		assert.Equal(testOpts, opts)
+	})
+	t.Run("invalid-WithExpirationInterval", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		opts, err := getOpts(WithExpirationInterval(testCtx, 0))
+		require.Error(err)
+		assert.Empty(opts)
+	})
 }

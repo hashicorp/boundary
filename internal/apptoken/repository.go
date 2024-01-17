@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/perms"
+	"github.com/hashicorp/boundary/internal/util"
 )
 
 // grantFinder defines a single func interface which is implemented by iam.Repository.
@@ -35,13 +36,13 @@ type Repository struct {
 // which sets a default limit on results returned by repo operations.
 func NewRepository(ctx context.Context, r db.Reader, w db.Writer, kms kms.GetWrapperer, gf grantFinder, opt ...Option) (*Repository, error) {
 	const op = "apptoken.NewRepository"
-	if r == nil {
+	if util.IsNil(r) {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil reader")
 	}
-	if w == nil {
+	if util.IsNil(w) {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil writer")
 	}
-	if kms == nil {
+	if util.IsNil(kms) {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil kms")
 	}
 	opts, err := getOpts(opt...)
