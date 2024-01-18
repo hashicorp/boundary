@@ -1481,7 +1481,11 @@ func validateRoleGrantScopesRequest(ctx context.Context, req grantScopeRequest) 
 		badFields["version"] = "Required field."
 	}
 	if len(req.GetGrantScopeIds()) == 0 {
-		badFields["grant_scope_ids"] = "Must be non-empty."
+		// This is actually okay for Set because they could be setting to null,
+		// e.g. removing all grant scope ids
+		if _, ok := req.(*pbs.SetRoleGrantScopesRequest); !ok {
+			badFields["grant_scope_ids"] = "Must be non-empty."
+		}
 	}
 	for _, v := range req.GetGrantScopeIds() {
 		if len(v) == 0 {
@@ -1494,6 +1498,11 @@ func validateRoleGrantScopesRequest(ctx context.Context, req grantScopeRequest) 
 			v == globals.GrantScopeChildren,
 			v == globals.GrantScopeDescendants:
 		case globals.ResourceInfoFromPrefix(v).Type == resource.Scope:
+			if !handlers.ValidId(handlers.Id(v), globals.ProjectPrefix) &&
+				!handlers.ValidId(handlers.Id(v), globals.OrgPrefix) {
+				badFields["grant_scope_ids"] = fmt.Sprintf("Incorrectly formatted identifier %q.", v)
+				break
+			}
 		default:
 			badFields["grant_scope_ids"] = fmt.Sprintf("Unknown value %q.", v)
 			break

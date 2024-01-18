@@ -81,23 +81,32 @@ begin;
     -- above. Now, fetch the type of the role's scope, then check two situations
     -- that are either always or never allowed.
     select isc.type from iam_scope isc where isc.public_id = role_scope_id into role_scope_type;
+
     -- Always allowed, because any scope is a child of global, and we've handled
-    -- same-scope-id case above
+    -- same-scope-id case above; however we have to check the scope is actually
+    -- valid/known. Distinction check is used because if it's not known it's
+    -- null.
     if role_scope_type = 'global' then
+      if new.scope_id != 'children' and new.scope_id != 'descendants' then
+        select isc.public_id from iam_scope isc where isc.public_id = new.scope_id into role_scope_id;
+        if role_scope_id is distinct from new.scope_id then
+          raise exception 'invalid grant scope id';
+        end if;
+      end if;
       return new;
     end if;
+
     -- Never allowed, because projects don't have child scopes (and we've
     -- already allowed same-scope-id above)
     if role_scope_type = 'project' then
       raise exception 'invalid to set a grant scope ID to non-same scope_id when role scope type is project';
     end if;
-    -- Ensure that it really is org
+
+    -- Ensure that what remains really is org
     if role_scope_type != 'org' then
       raise exception 'unknown scope type';
     end if;
-
-    -- If it's "children" then allow it, this will be allowed for global too
-    -- above
+    -- If it's "children" then allow it
     if new.scope_id = 'children' then
       return new;
     end if;
@@ -112,6 +121,12 @@ begin;
     -- parent matches the role's scope ID. We know that the role is in an org
     -- scope, so the only acceptable possibility here is that the new scope ID
     -- is a project and its parent scope is this org's.
+
+    -- Ensure it exists
+    select isc.public_id from iam_scope isc where isc.public_id = new.scope_id into role_scope_id;
+    if role_scope_id is distinct from new.scope_id then
+      raise exception 'invalid grant scope id';
+    end if;
 
     -- Ensure it's a project
     select isc.type from iam_scope isc where isc.public_id = new.scope_id into new_scope_type;
