@@ -15,3 +15,6 @@ issues:
     - linters:
         - staticcheck
       text: "SA1019: pbs.AuthorizedWorkerList is deprecated:"
+    - linters:
+        - staticcheck
+      text: "SA1019: item.GetGrantScopeId is deprecated:"
