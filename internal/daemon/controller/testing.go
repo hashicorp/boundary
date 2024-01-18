@@ -370,9 +370,9 @@ type TestControllerOpts struct {
 	// DefaultPassword is the password used when creating the default accounts.
 	DefaultPassword string
 
-	// DisableDefaultRoleCreation can be set true to disable creating the global
+	// DisableInitialLoginRoleCreation can be set true to disable creating the global
 	// scope default role automatically.
-	DisableDefaultRoleCreation bool
+	DisableInitialLoginRoleCreation bool
 
 	// DisableAuthMethodCreation can be set true to disable creating an auth
 	// method automatically.
@@ -761,7 +761,7 @@ func TestControllerConfig(t testing.TB, ctx context.Context, tc *TestController,
 			if err := tc.b.CreateGlobalKmsKeys(ctx); err != nil {
 				t.Fatal(err)
 			}
-			if !opts.DisableDefaultRoleCreation {
+			if !opts.DisableInitialLoginRoleCreation {
 				if _, err := tc.b.CreateInitialLoginRole(ctx); err != nil {
 					t.Fatal(err)
 				}
@@ -799,7 +799,7 @@ func TestControllerConfig(t testing.TB, ctx context.Context, tc *TestController,
 		}
 	} else if !opts.DisableDatabaseCreation {
 		var createOpts []base.Option
-		if opts.DisableDefaultRoleCreation {
+		if opts.DisableInitialLoginRoleCreation {
 			createOpts = append(createOpts, base.WithSkipDefaultRoleCreation())
 		}
 		if opts.DisableAuthMethodCreation {
