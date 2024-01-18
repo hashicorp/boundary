@@ -434,7 +434,6 @@ func (r *Repository) GrantsForUser(ctx context.Context, userId string, _ ...Opti
 			return nil, errors.Wrap(ctx, err, op)
 		}
 	}
-	// log.Println("grants", pretty.Sprint(grants))
 
 	return grants, nil
 }
