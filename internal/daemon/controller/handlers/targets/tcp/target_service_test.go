@@ -143,7 +143,7 @@ func TestGet(t *testing.T) {
 	at := authtoken.TestAuthToken(t, conn, kms, o.GetPublicId())
 	r := iam.TestRole(t, conn, proj.GetPublicId())
 	_ = iam.TestUserRole(t, conn, r.GetPublicId(), at.GetIamUserId())
-	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "id=*;type=*;actions=*")
+	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "ids=*;type=*;actions=*")
 
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 2)
@@ -283,16 +283,16 @@ func TestList(t *testing.T) {
 	at := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
 	r := iam.TestRole(t, conn, proj.GetPublicId())
 	_ = iam.TestUserRole(t, conn, r.GetPublicId(), at.GetIamUserId())
-	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "id=*;type=*;actions=*")
+	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "ids=*;type=*;actions=*")
 
 	ar := iam.TestRole(t, conn, proj.GetPublicId())
 	_ = iam.TestUserRole(t, conn, ar.GetPublicId(), globals.AnonymousUserId)
-	_ = iam.TestRoleGrant(t, conn, ar.GetPublicId(), "id=*;type=target;actions=*")
+	_ = iam.TestRoleGrant(t, conn, ar.GetPublicId(), "ids=*;type=target;actions=*")
 
 	otherOrg, otherProj := iam.TestScopes(t, iamRepo)
 	r = iam.TestRole(t, conn, otherProj.GetPublicId())
 	_ = iam.TestUserRole(t, conn, r.GetPublicId(), at.GetIamUserId())
-	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "id=*;type=*;actions=*")
+	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "ids=*;type=*;actions=*")
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 	otherHc := static.TestCatalogs(t, conn, otherProj.GetPublicId(), 1)[0]
 	hss := static.TestSets(t, conn, hc.GetPublicId(), 2)
@@ -506,7 +506,7 @@ func TestListPagination(t *testing.T) {
 	at := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
 	r := iam.TestRole(t, conn, proj.GetPublicId())
 	_ = iam.TestUserRole(t, conn, r.GetPublicId(), at.GetIamUserId())
-	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "id=*;type=*;actions=*")
+	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "ids=*;type=*;actions=*")
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 	hss := static.TestSets(t, conn, hc.GetPublicId(), 2)
 	s, err := testService(t, context.Background(), conn, kms, wrapper)
@@ -809,7 +809,7 @@ func TestDelete(t *testing.T) {
 	at := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
 	r := iam.TestRole(t, conn, proj.GetPublicId())
 	_ = iam.TestUserRole(t, conn, r.GetPublicId(), at.GetIamUserId())
-	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "id=*;type=*;actions=*")
+	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "ids=*;type=*;actions=*")
 
 	tar := tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "test")
 
@@ -899,7 +899,7 @@ func TestDelete_twice(t *testing.T) {
 	at := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
 	r := iam.TestRole(t, conn, proj.GetPublicId())
 	_ = iam.TestUserRole(t, conn, r.GetPublicId(), at.GetIamUserId())
-	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "id=*;type=*;actions=*")
+	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "ids=*;type=*;actions=*")
 
 	tar := tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "test")
 
@@ -946,7 +946,7 @@ func TestCreate(t *testing.T) {
 	at := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
 	r := iam.TestRole(t, conn, proj.GetPublicId())
 	_ = iam.TestUserRole(t, conn, r.GetPublicId(), at.GetIamUserId())
-	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "id=*;type=*;actions=*")
+	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "ids=*;type=*;actions=*")
 
 	// Ensure we are using the OSS worker filter function
 	workerFilterFn := targets.AuthorizeSessionWorkerFilterFn
@@ -1188,7 +1188,7 @@ func TestUpdate(t *testing.T) {
 	at := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
 	r := iam.TestRole(t, conn, proj.GetPublicId())
 	_ = iam.TestUserRole(t, conn, r.GetPublicId(), at.GetIamUserId())
-	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "id=*;type=*;actions=*")
+	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "ids=*;type=*;actions=*")
 
 	repoFn := func(o ...target.Option) (*target.Repository, error) {
 		return target.NewRepository(ctx, rw, rw, kms)
@@ -1691,7 +1691,7 @@ func TestUpdate_BadVersion(t *testing.T) {
 	at := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
 	r := iam.TestRole(t, conn, proj.GetPublicId())
 	_ = iam.TestUserRole(t, conn, r.GetPublicId(), at.GetIamUserId())
-	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "id=*;type=*;actions=*")
+	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "ids=*;type=*;actions=*")
 
 	repoFn := func(o ...target.Option) (*target.Repository, error) {
 		return target.NewRepository(ctx, rw, rw, kms)
@@ -1755,7 +1755,7 @@ func TestAddTargetHostSources(t *testing.T) {
 	at := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
 	r := iam.TestRole(t, conn, proj.GetPublicId())
 	_ = iam.TestUserRole(t, conn, r.GetPublicId(), at.GetIamUserId())
-	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "id=*;type=*;actions=*")
+	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "ids=*;type=*;actions=*")
 
 	s, err := testService(t, context.Background(), conn, kms, wrapper)
 	require.NoError(t, err, "Error when getting new target service.")
@@ -1918,7 +1918,7 @@ func TestSetTargetHostSources(t *testing.T) {
 	at := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
 	r := iam.TestRole(t, conn, proj.GetPublicId())
 	_ = iam.TestUserRole(t, conn, r.GetPublicId(), at.GetIamUserId())
-	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "id=*;type=*;actions=*")
+	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "ids=*;type=*;actions=*")
 
 	s, err := testService(t, context.Background(), conn, kms, wrapper)
 	require.NoError(t, err, "Error when getting new host set service.")
@@ -2069,7 +2069,7 @@ func TestRemoveTargetHostSources(t *testing.T) {
 	at := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
 	r := iam.TestRole(t, conn, proj.GetPublicId())
 	_ = iam.TestUserRole(t, conn, r.GetPublicId(), at.GetIamUserId())
-	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "id=*;type=*;actions=*")
+	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "ids=*;type=*;actions=*")
 
 	s, err := testService(t, context.Background(), conn, kms, wrapper)
 	require.NoError(t, err, "Error when getting new host set service.")
@@ -2237,7 +2237,7 @@ func TestAddTargetCredentialSources(t *testing.T) {
 	at := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
 	r := iam.TestRole(t, conn, proj.GetPublicId())
 	_ = iam.TestUserRole(t, conn, r.GetPublicId(), at.GetIamUserId())
-	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "id=*;type=*;actions=*")
+	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "ids=*;type=*;actions=*")
 
 	s, err := testService(t, context.Background(), conn, kms, wrapper)
 	require.NoError(t, err, "Error when getting new target service.")
@@ -2417,7 +2417,7 @@ func TestSetTargetCredentialSources(t *testing.T) {
 	at := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
 	r := iam.TestRole(t, conn, proj.GetPublicId())
 	_ = iam.TestUserRole(t, conn, r.GetPublicId(), at.GetIamUserId())
-	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "id=*;type=*;actions=*")
+	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "ids=*;type=*;actions=*")
 
 	s, err := testService(t, ctx, conn, kms, wrapper)
 	require.NoError(t, err, "Error when getting new target service.")
@@ -2591,7 +2591,7 @@ func TestRemoveTargetCredentialSources(t *testing.T) {
 	at := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
 	r := iam.TestRole(t, conn, proj.GetPublicId())
 	_ = iam.TestUserRole(t, conn, r.GetPublicId(), at.GetIamUserId())
-	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "id=*;type=*;actions=*")
+	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "ids=*;type=*;actions=*")
 
 	s, err := testService(t, ctx, conn, kms, wrapper)
 	require.NoError(t, err, "Error when getting new target service.")
@@ -2904,7 +2904,7 @@ func TestAuthorizeSession(t *testing.T) {
 
 	r := iam.TestRole(t, conn, proj.GetPublicId())
 	_ = iam.TestUserRole(t, conn, r.GetPublicId(), at.GetIamUserId())
-	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "id=*;type=*;actions=*")
+	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "ids=*;type=*;actions=*")
 
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
@@ -3170,7 +3170,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 
 	r := iam.TestRole(t, conn, proj.GetPublicId())
 	_ = iam.TestUserRole(t, conn, r.GetPublicId(), at.GetIamUserId())
-	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "id=*;type=*;actions=*")
+	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "ids=*;type=*;actions=*")
 
 	statusGracePeriod := new(atomic.Int64)
 	statusGracePeriod.Store(int64(server.DefaultLiveness))
@@ -3774,7 +3774,7 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 		})
 	r := iam.TestRole(t, conn, proj.GetPublicId())
 	_ = iam.TestUserRole(t, conn, r.GetPublicId(), at.GetIamUserId())
-	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "id=*;type=*;actions=*")
+	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "ids=*;type=*;actions=*")
 
 	v := vault.NewTestVaultServer(t, vault.WithDockerNetwork(true))
 	v.MountDatabase(t)

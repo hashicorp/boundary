@@ -165,7 +165,7 @@ func TestGrantsForUserRandomized(t *testing.T) {
 		}
 		for i := 0; i < roleCount; i++ {
 			role := iam.TestRole(t, conn, scopeId, iam.WithName(fmt.Sprintf("testrole%d", i)))
-			iam.TestRoleGrant(t, conn, role.PublicId, "id=*;type=*;actions=*")
+			iam.TestRoleGrant(t, conn, role.PublicId, "ids=*;type=*;actions=*")
 			ret = append(ret, role)
 		}
 		return

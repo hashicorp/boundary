@@ -289,28 +289,28 @@ func rudActions(typ string, pin bool) []*Action {
 			Name:        "read",
 			Description: fmt.Sprintf("Read %s", typ),
 			Examples: []string{
-				"id=<id>;actions=read",
+				"ids=<id>;actions=read",
 			},
 		},
 		{
 			Name:        "update",
 			Description: fmt.Sprintf("Update %s", typ),
 			Examples: []string{
-				"id=<id>;actions=update",
+				"ids=<id>;actions=update",
 			},
 		},
 		{
 			Name:        "delete",
 			Description: fmt.Sprintf("Delete %s", typ),
 			Examples: []string{
-				"id=<id>;actions=delete",
+				"ids=<id>;actions=delete",
 			},
 		},
 	}
 	if pin {
-		ret[0].Examples = append(ret[0].Examples, "id=<pin>;type=<type>;actions=read")
-		ret[1].Examples = append(ret[1].Examples, "id=<pin>;type=<type>;actions=update")
-		ret[2].Examples = append(ret[2].Examples, "id=<pin>;type=<type>;actions=delete")
+		ret[0].Examples = append(ret[0].Examples, "ids=<pin>;type=<type>;actions=read")
+		ret[1].Examples = append(ret[1].Examples, "ids=<pin>;type=<type>;actions=update")
+		ret[2].Examples = append(ret[2].Examples, "ids=<pin>;type=<type>;actions=delete")
 	}
 
 	return ret
@@ -340,16 +340,16 @@ var account = &Resource{
 					Name:        "set-password",
 					Description: "Set a password on an account, without requiring the current password",
 					Examples: []string{
-						"id=<id>;actions=set-password",
-						"id=<pin>;type=<type>;actions=set-password",
+						"ids=<id>;actions=set-password",
+						"ids=<pin>;type=<type>;actions=set-password",
 					},
 				},
 				&Action{
 					Name:        "change-password",
 					Description: "Change a password on an account given the current password",
 					Examples: []string{
-						"id=<id>;actions=change-password",
-						"id=<pin>;type=<type>;actions=change-password",
+						"ids=<id>;actions=change-password",
+						"ids=<pin>;type=<type>;actions=change-password",
 					},
 				},
 			),
@@ -380,7 +380,7 @@ var authMethod = &Resource{
 					Name:        "authenticate",
 					Description: "Authenticate to an auth method",
 					Examples: []string{
-						"id=<id>;actions=authenticate",
+						"ids=<id>;actions=authenticate",
 					},
 				},
 			),
@@ -418,14 +418,14 @@ var authToken = &Resource{
 					Name:        "read",
 					Description: "Read an auth token",
 					Examples: []string{
-						"id=<id>;actions=read",
+						"ids=<id>;actions=read",
 					},
 				},
 				{
 					Name:        "delete",
 					Description: "Delete an auth token",
 					Examples: []string{
-						"id=<id>;actions=delete",
+						"ids=<id>;actions=delete",
 					},
 				},
 			},
@@ -456,21 +456,21 @@ var group = &Resource{
 					Name:        "add-members",
 					Description: "Add members to a group",
 					Examples: []string{
-						"id=<id>;actions=add-members",
+						"ids=<id>;actions=add-members",
 					},
 				},
 				&Action{
 					Name:        "set-members",
 					Description: "Set the full set of members on a group",
 					Examples: []string{
-						"id=<id>;actions=set-members",
+						"ids=<id>;actions=set-members",
 					},
 				},
 				&Action{
 					Name:        "remove-members",
 					Description: "Remove members from a group",
 					Examples: []string{
-						"id=<id>;actions=remove-members",
+						"ids=<id>;actions=remove-members",
 					},
 				},
 			),
@@ -547,24 +547,24 @@ var hostSet = &Resource{
 					Name:        "add-hosts",
 					Description: "Add hosts to a host-set",
 					Examples: []string{
-						"id=<id>;actions=add-hosts",
-						"id=<pin>;type=<type>;actions=add-hosts",
+						"ids=<id>;actions=add-hosts",
+						"ids=<pin>;type=<type>;actions=add-hosts",
 					},
 				},
 				&Action{
 					Name:        "set-hosts",
 					Description: "Set the full set of hosts on a host set",
 					Examples: []string{
-						"id=<id>;actions=set-hosts",
-						"id=<pin>;type=<type>;actions=set-hosts",
+						"ids=<id>;actions=set-hosts",
+						"ids=<pin>;type=<type>;actions=set-hosts",
 					},
 				},
 				&Action{
 					Name:        "remove-hosts",
 					Description: "Remove hosts from a host set",
 					Examples: []string{
-						"id=<id>;actions=remove-hosts",
-						"id=<pin>;type=<type>;actions=remove-hosts",
+						"ids=<id>;actions=remove-hosts",
+						"ids=<pin>;type=<type>;actions=remove-hosts",
 					},
 				},
 			),
@@ -618,42 +618,42 @@ var role = &Resource{
 					Name:        "add-principals",
 					Description: "Add principals to a role",
 					Examples: []string{
-						"id=<id>;actions=add-principals",
+						"ids=<id>;actions=add-principals",
 					},
 				},
 				&Action{
 					Name:        "set-principals",
 					Description: "Set the full set of principals on a role",
 					Examples: []string{
-						"id=<id>;actions=set-principals",
+						"ids=<id>;actions=set-principals",
 					},
 				},
 				&Action{
 					Name:        "remove-principals",
 					Description: "Remove principals from a role",
 					Examples: []string{
-						"id=<id>;actions=remove-principals",
+						"ids=<id>;actions=remove-principals",
 					},
 				},
 				&Action{
 					Name:        "add-grants",
 					Description: "Add grants to a role",
 					Examples: []string{
-						"id=<id>;actions=add-grants",
+						"ids=<id>;actions=add-grants",
 					},
 				},
 				&Action{
 					Name:        "set-grants",
 					Description: "Set the full set of grants on a role",
 					Examples: []string{
-						"id=<id>;actions=set-grants",
+						"ids=<id>;actions=set-grants",
 					},
 				},
 				&Action{
 					Name:        "remove-grants",
 					Description: "Remove grants from a role",
 					Examples: []string{
-						"id=<id>;actions=remove-grants",
+						"ids=<id>;actions=remove-grants",
 					},
 				},
 			),
@@ -713,28 +713,28 @@ var session = &Resource{
 					Name:        "read",
 					Description: "Read a session",
 					Examples: []string{
-						"id=<id>;actions=read",
+						"ids=<id>;actions=read",
 					},
 				},
 				{
 					Name:        "cancel",
 					Description: "Cancel a session",
 					Examples: []string{
-						"id=<id>;actions=cancel",
+						"ids=<id>;actions=cancel",
 					},
 				},
 				{
 					Name:        "read:self",
 					Description: "Read a session, which must be associated with the calling user",
 					Examples: []string{
-						"id=*;type=session;actions=read:self",
+						"ids=*;type=session;actions=read:self",
 					},
 				},
 				{
 					Name:        "cancel:self",
 					Description: "Cancel a session, which must be associated with the calling user",
 					Examples: []string{
-						"id=*;type=session;actions=cancel:self",
+						"ids=*;type=session;actions=cancel:self",
 					},
 				},
 			},
@@ -772,28 +772,28 @@ var sessionRecording = &Resource{
 					Name:        "read",
 					Description: "Read a session recording",
 					Examples: []string{
-						"id=<id>;actions=read",
+						"ids=<id>;actions=read",
 					},
 				},
 				{
 					Name:        "download",
 					Description: "Download a session recording",
 					Examples: []string{
-						"id=<id>;actions=download",
+						"ids=<id>;actions=download",
 					},
 				},
 				{
 					Name:        "reapply-storage-policy",
 					Description: "Reapply the storage policy to a session recording",
 					Examples: []string{
-						"id=<id>;actions=reapply-storage-policy",
+						"ids=<id>;actions=reapply-storage-policy",
 					},
 				},
 				{
 					Name:        "delete",
 					Description: "Delete a session recording",
 					Examples: []string{
-						"id=<id>;actions=delete",
+						"ids=<id>;actions=delete",
 					},
 				},
 			},
@@ -846,49 +846,49 @@ var target = &Resource{
 					Name:        "add-host-sources",
 					Description: "Add host sources to a target",
 					Examples: []string{
-						"id=<id>;actions=add-host-sources",
+						"ids=<id>;actions=add-host-sources",
 					},
 				},
 				&Action{
 					Name:        "set-host-sources",
 					Description: "Set the full set of host sources on a target",
 					Examples: []string{
-						"id=<id>;actions=set-host-sources",
+						"ids=<id>;actions=set-host-sources",
 					},
 				},
 				&Action{
 					Name:        "remove-host-sources",
 					Description: "Remove host sources from a target",
 					Examples: []string{
-						"id=<id>;actions=remove-host-sources",
+						"ids=<id>;actions=remove-host-sources",
 					},
 				},
 				&Action{
 					Name:        "add-credential-sources",
 					Description: "Add credential sources to a target",
 					Examples: []string{
-						"id=<id>;actions=add-credential-sources",
+						"ids=<id>;actions=add-credential-sources",
 					},
 				},
 				&Action{
 					Name:        "set-credential-sources",
 					Description: "Set the full set of credential sources on a target",
 					Examples: []string{
-						"id=<id>;actions=set-credential-sources",
+						"ids=<id>;actions=set-credential-sources",
 					},
 				},
 				&Action{
 					Name:        "remove-credential-sources",
 					Description: "Remove credential sources from a target",
 					Examples: []string{
-						"id=<id>;actions=remove-credential-sources",
+						"ids=<id>;actions=remove-credential-sources",
 					},
 				},
 				&Action{
 					Name:        "authorize-session",
 					Description: "Authorize a session via the target",
 					Examples: []string{
-						"id=<id>;actions=authorize-session",
+						"ids=<id>;actions=authorize-session",
 					},
 				},
 			),
@@ -919,21 +919,21 @@ var user = &Resource{
 					Name:        "add-accounts",
 					Description: "Add accounts to a user",
 					Examples: []string{
-						"id=<id>;actions=add-accounts",
+						"ids=<id>;actions=add-accounts",
 					},
 				},
 				&Action{
 					Name:        "set-accounts",
 					Description: "Set the full set of accounts on a user",
 					Examples: []string{
-						"id=<id>;actions=set-accounts",
+						"ids=<id>;actions=set-accounts",
 					},
 				},
 				&Action{
 					Name:        "remove-accounts",
 					Description: "Remove accounts from a user",
 					Examples: []string{
-						"id=<id>;actions=remove-accounts",
+						"ids=<id>;actions=remove-accounts",
 					},
 				},
 			),

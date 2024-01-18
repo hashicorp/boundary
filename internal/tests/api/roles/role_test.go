@@ -95,19 +95,19 @@ func TestCustom(t *testing.T) {
 			assert.Empty(updatedRole.Item.Principals)
 			version++
 
-			updatedRole, err = rc.AddGrants(tc.Context(), updatedRole.Item.Id, updatedRole.Item.Version, []string{"id=*;type=*;actions=read"})
+			updatedRole, err = rc.AddGrants(tc.Context(), updatedRole.Item.Id, updatedRole.Item.Version, []string{"ids=*;type=*;actions=read"})
 			require.NoError(err)
 			assert.EqualValues(updatedRole.Item.Version, version)
-			assert.Contains(updatedRole.Item.GrantStrings, "id=*;type=*;actions=read")
+			assert.Contains(updatedRole.Item.GrantStrings, "ids=*;type=*;actions=read")
 			version++
 
-			updatedRole, err = rc.SetGrants(tc.Context(), updatedRole.Item.Id, updatedRole.Item.Version, []string{"id=*;type=*;actions=*"})
+			updatedRole, err = rc.SetGrants(tc.Context(), updatedRole.Item.Id, updatedRole.Item.Version, []string{"ids=*;type=*;actions=*"})
 			require.NoError(err)
 			assert.EqualValues(updatedRole.Item.Version, version)
-			assert.Contains(updatedRole.Item.GrantStrings, "id=*;type=*;actions=*")
+			assert.Contains(updatedRole.Item.GrantStrings, "ids=*;type=*;actions=*")
 			version++
 
-			updatedRole, err = rc.RemoveGrants(tc.Context(), updatedRole.Item.Id, updatedRole.Item.Version, []string{"id=*;type=*;actions=*"})
+			updatedRole, err = rc.RemoveGrants(tc.Context(), updatedRole.Item.Id, updatedRole.Item.Version, []string{"ids=*;type=*;actions=*"})
 			require.NoError(err)
 			assert.EqualValues(updatedRole.Item.Version, version)
 			assert.Empty(updatedRole.Item.Grants)

@@ -476,7 +476,7 @@ func TestListPagination(t *testing.T) {
 	var allRoles []*pb.Role
 	for _, scope := range []*iam.Scope{oWithRoles, oNoRoles, pWithRoles, pNoRoles} {
 		allowedRole := iam.TestRole(t, conn, scope.GetPublicId())
-		iam.TestRoleGrant(t, conn, allowedRole.GetPublicId(), "id=*;type=*;actions=*")
+		iam.TestRoleGrant(t, conn, allowedRole.GetPublicId(), "ids=*;type=*;actions=*")
 		iam.TestUserRole(t, conn, allowedRole.GetPublicId(), u.GetPublicId())
 		allRoles = append(allRoles, roleToProto(allowedRole,
 			&scopes.ScopeInfo{
@@ -1015,7 +1015,7 @@ func TestCreate(t *testing.T) {
 
 func TestUpdate(t *testing.T) {
 	ctx := context.Background()
-	grantString := "id=*;type=*;actions=*"
+	grantString := "ids=*;type=*;actions=*"
 	g, err := perms.Parse(context.Background(), "global", grantString)
 	require.NoError(t, err)
 	_, actions := g.Actions()
@@ -2159,15 +2159,15 @@ func TestAddGrants(t *testing.T) {
 		},
 		{
 			name:     "Add grant on role with grant",
-			existing: []string{"id=u_foo;actions=read"},
+			existing: []string{"ids=u_foo;actions=read"},
 			add:      []string{"ids=*;type=*;actions=delete"},
-			result:   []string{"id=u_foo;actions=read", "ids=*;type=*;actions=delete"},
+			result:   []string{"ids=u_foo;actions=read", "ids=*;type=*;actions=delete"},
 		},
 		{
 			name:     "Add duplicate grant on role with grant",
-			existing: []string{"id=u_fooaA1;actions=read"},
+			existing: []string{"ids=u_fooaA1;actions=read"},
 			add:      []string{"ids=*;type=*;actions=delete", "ids=*;type=*;actions=delete"},
-			result:   []string{"id=u_fooaA1;actions=read", "ids=*;type=*;actions=delete"},
+			result:   []string{"ids=u_fooaA1;actions=read", "ids=*;type=*;actions=delete"},
 		},
 		{
 			name:     "Add grant matching existing grant",
@@ -2177,16 +2177,16 @@ func TestAddGrants(t *testing.T) {
 		},
 		{
 			name:            "Check add-host-sets deprecation",
-			existing:        []string{"id=u_foo;actions=read", "id=*;type=*;actions=delete"},
+			existing:        []string{"ids=u_foo;actions=read", "ids=*;type=*;actions=delete"},
 			add:             []string{"ids=*;type=target;actions=add-host-sets"},
 			wantErr:         true,
 			wantErrContains: "Use \\\"add-host-sources\\\" instead",
 		},
 		{
 			name:     "Check id field deprecation",
-			existing: []string{"id=u_fooaA1;actions=read"},
-			add:      []string{"id=*;type=*;actions=delete"},
-			result:   []string{"id=u_fooaA1;actions=read", "id=*;type=*;actions=delete"},
+			existing: []string{"ids=u_fooaA1;actions=read"},
+			add:      []string{"ids=*;type=*;actions=delete"},
+			result:   []string{"ids=u_fooaA1;actions=read", "ids=*;type=*;actions=delete"},
 			wantErr: func() bool {
 				return !version.SupportsFeature(version.Binary, version.SupportIdInGrants)
 			}(),
@@ -2307,40 +2307,40 @@ func TestSetGrants(t *testing.T) {
 		},
 		{
 			name:     "Set grant on role with grant",
-			existing: []string{"id=u_foo;actions=read"},
+			existing: []string{"ids=u_foo;actions=read"},
 			set:      []string{"ids=*;type=*;actions=delete"},
 			result:   []string{"ids=*;type=*;actions=delete"},
 		},
 		{
 			name:     "Set grant matching existing grant",
-			existing: []string{"id=u_foo;actions=read", "id=*;type=*;actions=delete"},
+			existing: []string{"ids=u_foo;actions=read", "ids=*;type=*;actions=delete"},
 			set:      []string{"ids=*;type=*;actions=delete"},
 			result:   []string{"ids=*;type=*;actions=delete"},
 		},
 		{
 			name:     "Set duplicate grant matching existing grant",
-			existing: []string{"id=u_foo;actions=read", "id=*;type=*;actions=delete"},
+			existing: []string{"ids=u_foo;actions=read", "ids=*;type=*;actions=delete"},
 			set:      []string{"ids=*;type=*;actions=delete", "ids=*;type=*;actions=delete"},
 			result:   []string{"ids=*;type=*;actions=delete"},
 		},
 		{
 			name:     "Set empty on role",
-			existing: []string{"id=hcst_foo;type=*;actions=read", "id=*;type=*;actions=delete"},
+			existing: []string{"ids=hcst_foo;type=*;actions=read", "ids=*;type=*;actions=delete"},
 			set:      nil,
 			result:   nil,
 		},
 		{
 			name:            "Check add-host-sets deprecation",
-			existing:        []string{"id=u_foo;actions=read", "id=*;type=*;actions=delete"},
+			existing:        []string{"ids=u_foo;actions=read", "ids=*;type=*;actions=delete"},
 			set:             []string{"ids=*;type=target;actions=add-host-sets"},
 			wantErr:         true,
 			wantErrContains: "Use \\\"add-host-sources\\\" instead",
 		},
 		{
 			name:     "Check id field deprecation",
-			existing: []string{"id=u_fooaA1;actions=read"},
-			set:      []string{"id=*;type=*;actions=delete"},
-			result:   []string{"id=*;type=*;actions=delete"},
+			existing: []string{"ids=u_fooaA1;actions=read"},
+			set:      []string{"ids=*;type=*;actions=delete"},
+			result:   []string{"ids=*;type=*;actions=delete"},
 			wantErr: func() bool {
 				return !version.SupportsFeature(version.Binary, version.SupportIdInGrants)
 			}(),
@@ -2446,31 +2446,31 @@ func TestRemoveGrants(t *testing.T) {
 	}{
 		{
 			name:     "Remove all",
-			existing: []string{"id=hcst_1;type=*;actions=read"},
-			remove:   []string{"id=hcst_1;type=*;actions=read"},
+			existing: []string{"ids=hcst_1;type=*;actions=read"},
+			remove:   []string{"ids=hcst_1;type=*;actions=read"},
 		},
 		{
 			name:     "Remove partial",
-			existing: []string{"id=hcst_1;type=*;actions=read", "id=hcst_2;type=*;actions=delete"},
-			remove:   []string{"id=hcst_1;type=*;actions=read"},
-			result:   []string{"id=hcst_2;type=*;actions=delete"},
+			existing: []string{"ids=hcst_1;type=*;actions=read", "ids=hcst_2;type=*;actions=delete"},
+			remove:   []string{"ids=hcst_1;type=*;actions=read"},
+			result:   []string{"ids=hcst_2;type=*;actions=delete"},
 		},
 		{
 			name:     "Remove duplicate",
-			existing: []string{"id=hcst_1;type=*;actions=read", "id=hcst_2;type=*;actions=delete"},
-			remove:   []string{"id=hcst_1;type=*;actions=read", "id=hcst_1;type=*;actions=read"},
-			result:   []string{"id=hcst_2;type=*;actions=delete"},
+			existing: []string{"ids=hcst_1;type=*;actions=read", "ids=hcst_2;type=*;actions=delete"},
+			remove:   []string{"ids=hcst_1;type=*;actions=read", "ids=hcst_1;type=*;actions=read"},
+			result:   []string{"ids=hcst_2;type=*;actions=delete"},
 		},
 		{
 			name:     "Remove non existant",
-			existing: []string{"id=hcst_2;type=*;actions=delete"},
-			remove:   []string{"id=hcst_1;type=*;actions=read"},
-			result:   []string{"id=hcst_2;type=*;actions=delete"},
+			existing: []string{"ids=hcst_2;type=*;actions=delete"},
+			remove:   []string{"ids=hcst_1;type=*;actions=read"},
+			result:   []string{"ids=hcst_2;type=*;actions=delete"},
 		},
 		{
 			name:     "Remove from empty role",
 			existing: []string{},
-			remove:   []string{"id=hcst_1;type=*;actions=read"},
+			remove:   []string{"ids=hcst_1;type=*;actions=read"},
 			result:   nil,
 		},
 	}
@@ -2518,7 +2518,7 @@ func TestRemoveGrants(t *testing.T) {
 			name: "Bad Version",
 			req: &pbs.RemoveRoleGrantsRequest{
 				Id:           role.GetPublicId(),
-				GrantStrings: []string{"id=hcst_2;type=*;actions=create"},
+				GrantStrings: []string{"ids=hcst_2;type=*;actions=create"},
 				Version:      role.GetVersion() + 2,
 			},
 			err: handlers.ApiErrorWithCode(codes.Internal),
@@ -2527,7 +2527,7 @@ func TestRemoveGrants(t *testing.T) {
 			name: "Bad Role Id",
 			req: &pbs.RemoveRoleGrantsRequest{
 				Id:           "bad id",
-				GrantStrings: []string{"id=*;type=*;actions=create"},
+				GrantStrings: []string{"ids=*;type=*;actions=create"},
 				Version:      role.GetVersion(),
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -2536,7 +2536,7 @@ func TestRemoveGrants(t *testing.T) {
 			name: "Empty Grant",
 			req: &pbs.RemoveRoleGrantsRequest{
 				Id:           role.GetPublicId(),
-				GrantStrings: []string{"id=*;type=*;actions=create", ""},
+				GrantStrings: []string{"ids=*;type=*;actions=create", ""},
 				Version:      role.GetVersion(),
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -2545,7 +2545,7 @@ func TestRemoveGrants(t *testing.T) {
 			name: "Unparseable Grant",
 			req: &pbs.RemoveRoleGrantsRequest{
 				Id:           role.GetPublicId(),
-				GrantStrings: []string{"id=*;type=*;actions=create", ";unparsable=2"},
+				GrantStrings: []string{"ids=*;type=*;actions=create", ";unparsable=2"},
 				Version:      role.GetVersion(),
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),

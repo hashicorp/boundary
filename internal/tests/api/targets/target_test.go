@@ -190,7 +190,7 @@ func TestList(t *testing.T) {
 	unprivToken := tc.UnprivilegedToken()
 	iam.TestUserRole(t, tc.DbConn(), defaultRoleId, unprivToken.UserId)
 	iam.TestRoleGrant(t, tc.DbConn(), defaultRoleId, "type=target;actions=create")
-	iam.TestRoleGrant(t, tc.DbConn(), defaultRoleId, "id=*;type=target;actions=no-op")
+	iam.TestRoleGrant(t, tc.DbConn(), defaultRoleId, "ids=*;type=target;actions=no-op")
 
 	client.SetToken(unprivToken.Token)
 	tarClient := targets.NewClient(client)

@@ -202,7 +202,7 @@ resource "boundary_scope" "role" {
   description = "My first role!"
   scope_id    = o_1234567890
   principals  = u_1234567890
-  grants      = ["id=*;type=*;action=read,list"]
+  grants      = ["ids=*;type=*;action=read,list"]
 }
 ```
 

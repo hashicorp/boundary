@@ -28,7 +28,7 @@ func TestLdapManagedGroupRoleGrants(t *testing.T) {
 		testGrpName2     = "testUserGrp"
 		testLdapUrl      = "ldap://test.ldap"
 		testLoginName    = "test-user"
-		testGrant        = "id=*;type=*;actions=*"
+		testGrant        = "ids=*;type=*;actions=*"
 		testClientId     = "alice-rp"
 		testClientSecret = "fido"
 		testIssuer       = "https://www.alice.com"

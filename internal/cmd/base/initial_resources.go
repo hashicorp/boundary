@@ -56,10 +56,10 @@ func (b *Server) CreateInitialLoginRole(ctx context.Context) (*iam.Role, error) 
 		return nil, fmt.Errorf("error creating role for default generated grants: %w", err)
 	}
 	if _, err := iamRepo.AddRoleGrants(ctx, role.PublicId, role.Version, []string{
-		"id=*;type=scope;actions=list,no-op",
-		"id=*;type=auth-method;actions=authenticate,list",
-		"id={{.Account.Id}};actions=read,change-password",
-		"id=*;type=auth-token;actions=list,read:self,delete:self",
+		"ids=*;type=scope;actions=list,no-op",
+		"ids=*;type=auth-method;actions=authenticate,list",
+		"ids={{.Account.Id}};actions=read,change-password",
+		"ids=*;type=auth-token;actions=list,read:self,delete:self",
 	}); err != nil {
 		return nil, fmt.Errorf("error creating grant for default generated grants: %w", err)
 	}
@@ -213,7 +213,7 @@ func (b *Server) CreateInitialPasswordAuthMethod(ctx context.Context) (*password
 		if err != nil {
 			return nil, fmt.Errorf("error creating role for default generated grants: %w", err)
 		}
-		if _, err := iamRepo.AddRoleGrants(ctx, adminRole.PublicId, adminRole.Version, []string{"id=*;type=*;actions=*"}); err != nil {
+		if _, err := iamRepo.AddRoleGrants(ctx, adminRole.PublicId, adminRole.Version, []string{"ids=*;type=*;actions=*"}); err != nil {
 			return nil, fmt.Errorf("error creating grant for default generated grants: %w", err)
 		}
 		if _, err := iamRepo.AddPrincipalRoles(ctx, adminRole.PublicId, adminRole.Version+1, []string{u.GetPublicId()}, nil); err != nil {
@@ -705,7 +705,7 @@ func unprivilegedDevUserRoleSetup(ctx context.Context, repo *iam.Repository, use
 	}
 	asRole.Version++
 
-	_, err = repo.AddRoleGrants(ctx, asRole.GetPublicId(), asRole.GetVersion(), []string{fmt.Sprintf("id=%s;actions=authorize-session", targetId)})
+	_, err = repo.AddRoleGrants(ctx, asRole.GetPublicId(), asRole.GetVersion(), []string{fmt.Sprintf("ids=%s;actions=authorize-session", targetId)})
 	if err != nil {
 		return fmt.Errorf("failed to add authorize-session grant for unprivileged user: %w", err)
 	}

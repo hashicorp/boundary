@@ -734,10 +734,10 @@ func TestListPagination(t *testing.T) {
 	u := iam.TestUser(t, iamRepo, oWithProjects.GetPublicId(), iam.WithAccountIds(acct.PublicId))
 
 	// privProjRole := iam.TestRole(t, conn, pwt.GetPublicId())
-	// iam.TestRoleGrant(t, conn, privProjRole.GetPublicId(), "id=*;type=*;actions=*")
+	// iam.TestRoleGrant(t, conn, privProjRole.GetPublicId(), "ids=*;type=*;actions=*")
 	// iam.TestUserRole(t, conn, privProjRole.GetPublicId(), u.GetPublicId())
 	privOrgRole := iam.TestRole(t, conn, oWithProjects.GetPublicId())
-	iam.TestRoleGrant(t, conn, privOrgRole.GetPublicId(), "id=*;type=*;actions=*")
+	iam.TestRoleGrant(t, conn, privOrgRole.GetPublicId(), "ids=*;type=*;actions=*")
 	iam.TestUserRole(t, conn, privOrgRole.GetPublicId(), u.GetPublicId())
 
 	at, _ := tokenRepo.CreateAuthToken(ctx, u, acct.GetPublicId())
@@ -2044,7 +2044,7 @@ func TestListKeys(t *testing.T) {
 
 	// Add new role for listing keys in org
 	listKeysRole := iam.TestRole(t, tc.DbConn(), org.PublicId)
-	_, err = tc.IamRepo().AddRoleGrants(context.Background(), listKeysRole.PublicId, 1, []string{"id=*;type=*;actions=list-keys"})
+	_, err = tc.IamRepo().AddRoleGrants(context.Background(), listKeysRole.PublicId, 1, []string{"ids=*;type=*;actions=list-keys"})
 	require.NoError(t, err)
 	_, err = tc.IamRepo().AddPrincipalRoles(context.Background(), listKeysRole.PublicId, 2, []string{aToken.UserId})
 	require.NoError(t, err)
@@ -2056,7 +2056,7 @@ func TestListKeys(t *testing.T) {
 
 	// Add new role for listing keys in project
 	listKeysRole = iam.TestRole(t, tc.DbConn(), proj.PublicId)
-	_, err = tc.IamRepo().AddRoleGrants(context.Background(), listKeysRole.PublicId, 1, []string{"id=*;type=*;actions=list-keys"})
+	_, err = tc.IamRepo().AddRoleGrants(context.Background(), listKeysRole.PublicId, 1, []string{"ids=*;type=*;actions=list-keys"})
 	require.NoError(t, err)
 	_, err = tc.IamRepo().AddPrincipalRoles(context.Background(), listKeysRole.PublicId, 2, []string{aToken.UserId})
 	require.NoError(t, err)
@@ -2532,12 +2532,12 @@ func TestRotateKeys(t *testing.T) {
 
 	// Add new role for listing+rotating keys in org
 	rotateKeysRole := iam.TestRole(t, tc.DbConn(), org.PublicId)
-	iam.TestRoleGrant(t, tc.DbConn(), rotateKeysRole.PublicId, "id=*;type=*;actions=rotate-keys,list-keys")
+	iam.TestRoleGrant(t, tc.DbConn(), rotateKeysRole.PublicId, "ids=*;type=*;actions=rotate-keys,list-keys")
 	_ = iam.TestUserRole(t, tc.DbConn(), rotateKeysRole.PublicId, aToken.UserId)
 
 	// Add new role for listing+rotating keys in project
 	rotateKeysRole = iam.TestRole(t, tc.DbConn(), proj.PublicId)
-	iam.TestRoleGrant(t, tc.DbConn(), rotateKeysRole.PublicId, "id=*;type=*;actions=rotate-keys,list-keys")
+	iam.TestRoleGrant(t, tc.DbConn(), rotateKeysRole.PublicId, "ids=*;type=*;actions=rotate-keys,list-keys")
 	_ = iam.TestUserRole(t, tc.DbConn(), rotateKeysRole.PublicId, aToken.UserId)
 
 	cases := []struct {
@@ -2699,7 +2699,7 @@ func TestListKeyVersionDestructionJobs(t *testing.T) {
 
 	// Add new role for listing key version destructions in org
 	listKeysRole := iam.TestRole(t, tc.DbConn(), org.PublicId)
-	_ = iam.TestRoleGrant(t, tc.DbConn(), listKeysRole.PublicId, "id=*;type=*;actions=list-key-version-destruction-jobs")
+	_ = iam.TestRoleGrant(t, tc.DbConn(), listKeysRole.PublicId, "ids=*;type=*;actions=list-key-version-destruction-jobs")
 	_ = iam.TestUserRole(t, tc.DbConn(), listKeysRole.PublicId, aToken.UserId)
 	// Create a oidc auth method to create an encrypted value in this scope
 	databaseWrapper, err := tc.Kms().GetWrapper(tc.Context(), org.PublicId, kms.KeyPurposeDatabase)
@@ -2713,7 +2713,7 @@ func TestListKeyVersionDestructionJobs(t *testing.T) {
 
 	// Add new role for listing key version destructions in project
 	listKeysRole = iam.TestRole(t, tc.DbConn(), proj.PublicId)
-	_ = iam.TestRoleGrant(t, tc.DbConn(), listKeysRole.PublicId, "id=*;type=*;actions=list-key-version-destruction-jobs")
+	_ = iam.TestRoleGrant(t, tc.DbConn(), listKeysRole.PublicId, "ids=*;type=*;actions=list-key-version-destruction-jobs")
 	_ = iam.TestUserRole(t, tc.DbConn(), listKeysRole.PublicId, aToken.UserId)
 	// Create a oidc auth method to create an encrypted value in this scope
 	databaseWrapper, err = tc.Kms().GetWrapper(tc.Context(), proj.PublicId, kms.KeyPurposeDatabase)
@@ -2926,7 +2926,7 @@ func TestDestroyKeyVersion(t *testing.T) {
 
 	// Add new role for destroying key versions in org
 	listKeysRole := iam.TestRole(t, tc.DbConn(), org.PublicId)
-	_ = iam.TestRoleGrant(t, tc.DbConn(), listKeysRole.PublicId, "id=*;type=*;actions=destroy-key-version")
+	_ = iam.TestRoleGrant(t, tc.DbConn(), listKeysRole.PublicId, "ids=*;type=*;actions=destroy-key-version")
 	_ = iam.TestUserRole(t, tc.DbConn(), listKeysRole.PublicId, aToken.UserId)
 	// Create a oidc auth method to create an encrypted value in this scope
 	databaseWrapper, err := tc.Kms().GetWrapper(tc.Context(), org.PublicId, kms.KeyPurposeDatabase)
@@ -2940,7 +2940,7 @@ func TestDestroyKeyVersion(t *testing.T) {
 
 	// Add new role for destroying key versions in project
 	listKeysRole = iam.TestRole(t, tc.DbConn(), proj.PublicId)
-	_ = iam.TestRoleGrant(t, tc.DbConn(), listKeysRole.PublicId, "id=*;type=*;actions=destroy-key-version")
+	_ = iam.TestRoleGrant(t, tc.DbConn(), listKeysRole.PublicId, "ids=*;type=*;actions=destroy-key-version")
 	_ = iam.TestUserRole(t, tc.DbConn(), listKeysRole.PublicId, aToken.UserId)
 	// Create a oidc auth method to create an encrypted value in this scope
 	databaseWrapper, err = tc.Kms().GetWrapper(tc.Context(), proj.PublicId, kms.KeyPurposeDatabase)

@@ -650,7 +650,7 @@ func (v verifier) performAuthCheck(ctx context.Context) (
 	}
 	parsedGrants = make([]perms.Grant, 0, len(grantTuples))
 	// Note: Below, we always skip validation so that we don't error on formats
-	// that we've since restricted, e.g. "id=foo;actions=create,read". These
+	// that we've since restricted, e.g. "ids=foo;actions=create,read". These
 	// will simply not have an effect.
 	for _, pair := range grantTuples {
 		permsOpts := []perms.Option{
