@@ -341,7 +341,7 @@ func TestRepository_DeleteRoleGrants(t *testing.T) {
 			grants := make([]*RoleGrant, 0, tt.args.createCnt)
 			grantStrings := make([]string, 0, tt.args.createCnt)
 			for i := 0; i < tt.args.createCnt; i++ {
-				g, err := NewRoleGrant(ctx, tt.args.role.PublicId, fmt.Sprintf("actions=*;id=s_%d", i), tt.args.opt...)
+				g, err := NewRoleGrant(ctx, tt.args.role.PublicId, fmt.Sprintf("actions=*;ids=s_%d", i), tt.args.opt...)
 				require.NoError(err)
 				grantStrings = append(grantStrings, g.RawGrant)
 				grants = append(grants, g)
