@@ -119,6 +119,8 @@ func (r *Repository) create(ctx context.Context, resource Resource, opt ...Optio
 }
 
 // update will update an iam resource in the db repository with an oplog entry
+//
+// Supported options: WithReaderWriter
 func (r *Repository) update(ctx context.Context, resource Resource, version uint32, fieldMaskPaths []string, setToNullPaths []string, opt ...Option) (Resource, int, error) {
 	const op = "iam.(Repository).update"
 	if version == 0 {
