@@ -59,6 +59,7 @@ begin;
   declare role_scope_id text;
   declare parent_scope_id text;
   declare role_scope_type text;
+  declare validated_scope_id text;
   begin
     -- It's always allowed to have a scope_id of "this"
     if new.scope_id = 'this' then
@@ -88,8 +89,8 @@ begin;
     -- null.
     if role_scope_type = 'global' then
       if new.scope_id != 'children' and new.scope_id != 'descendants' then
-        select isc.public_id from iam_scope isc where isc.public_id = new.scope_id into role_scope_id;
-        if role_scope_id is distinct from new.scope_id then
+        select isc.public_id from iam_scope isc where isc.public_id = new.scope_id into validated_scope_id;
+        if validated_scope_id is distinct from new.scope_id then
           raise exception 'invalid grant scope id';
         end if;
       end if;
@@ -123,8 +124,8 @@ begin;
     -- is a project and its parent scope is this org's.
 
     -- Ensure it exists
-    select isc.public_id from iam_scope isc where isc.public_id = new.scope_id into role_scope_id;
-    if role_scope_id is distinct from new.scope_id then
+    select isc.public_id from iam_scope isc where isc.public_id = new.scope_id into validated_scope_id;
+    if validated_scope_id is distinct from new.scope_id then
       raise exception 'invalid grant scope id';
     end if;
 
@@ -137,7 +138,7 @@ begin;
     -- Ensure that the parent of the project is the role's org scope
     select isc.parent_id from iam_scope isc where isc.public_id = new.scope_id into parent_scope_id;
     if parent_scope_id != role_scope_id then
-      raise exception 'grant scope id is not a child project of the role org scope';
+      raise exception 'grant scope id is not a child project of the role''s org scope';
     end if;
     
     return new;
