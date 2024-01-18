@@ -379,7 +379,6 @@ create trigger ensure_grant_scope_id_valid before insert or update on iam_role
 
 -- define the immutable fields for iam_role (started trigger name with "a_" so
 -- it will run first)
--- Updated in 83/01_iam_role_grant_scope to include grant_scope_id
 create trigger a_immutable_columns before update on iam_role
   for each row execute procedure immutable_columns('public_id', 'create_time', 'scope_id');
 
