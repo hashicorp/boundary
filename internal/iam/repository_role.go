@@ -151,12 +151,16 @@ func (r *Repository) UpdateRole(ctx context.Context, role *Role, version uint32,
 		func(read db.Reader, w db.Writer) error {
 			var err error
 			c := role.Clone().(*Role)
-			resource, rowsUpdated, err = r.update(ctx, c, version, dbMask, nullFields)
-			if err != nil {
-				return errors.Wrap(ctx, err, op)
+			resource = c // If we don't have dbMask or nullFields, we'll return this
+			if len(dbMask) > 0 || len(nullFields) > 0 {
+				resource, rowsUpdated, err = r.update(ctx, c, version, dbMask, nullFields, WithReaderWriter(read, w))
+				if err != nil {
+					return errors.Wrap(ctx, err, op)
+				}
+				version = resource.(*Role).Version
 			}
 			if grantScopeIdToSet != nil {
-				_, _, err = r.SetRoleGrantScopes(ctx, role.PublicId, resource.(*Role).Version, grantScopeIdToSet, WithReaderWriter(read, w))
+				_, _, err = r.SetRoleGrantScopes(ctx, role.PublicId, version, grantScopeIdToSet, WithReaderWriter(read, w))
 				if err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("while setting grant scopes"))
 				}

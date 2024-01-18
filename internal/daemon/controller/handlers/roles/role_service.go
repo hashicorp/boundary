@@ -781,6 +781,11 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 	}
 	u.PublicId = id
 
+	repo, err := s.repoFn()
+	if err != nil {
+		return nil, nil, nil, nil, err
+	}
+
 	// This has to be separate from Translate since the field only exists on the
 	// API side now.
 	var hasGrantScopeIdMask bool
@@ -793,21 +798,26 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 				break
 			}
 		}
+		if hasGrantScopeIdMask {
+			if err := validateRoleGrantScopesHierarchy(ctx, repo, id, []string{item.GetGrantScopeId().GetValue()}); err != nil {
+				return nil, nil, nil, nil, err
+			}
+		}
 	}
 
 	dbMask := maskManager.Translate(mask)
 	if len(dbMask) == 0 && !hasGrantScopeIdMask {
 		return nil, nil, nil, nil, handlers.InvalidArgumentErrorf("No valid fields provided in the update mask.", map[string]string{"update_mask": "No valid fields provided in the update mask."})
 	}
-	repo, err := s.repoFn()
-	if err != nil {
-		return nil, nil, nil, nil, err
-	}
+
 	out, pr, gr, grantScopes, rowsUpdated, err := repo.UpdateRole(ctx, u, version, dbMask, opts...)
 	if err != nil {
 		return nil, nil, nil, nil, errors.Wrap(ctx, err, op)
 	}
-	if rowsUpdated == 0 {
+	// This is slightly problematic but it's a very unlikely error case and when
+	// we remove the ability to update grant scope ID via here in 0.17 it will
+	// go away.
+	if rowsUpdated == 0 && !hasGrantScopeIdMask {
 		return nil, nil, nil, nil, handlers.NotFoundErrorf("Role %q doesn't exist or incorrect version provided.", id)
 	}
 	return out, pr, gr, grantScopes, nil
@@ -966,11 +976,13 @@ func (s Service) addGrantScopesInRepo(ctx context.Context, req grantScopeRequest
 		return nil, nil, nil, nil, err
 	}
 
-	if err := validateRoleGrantScopesHierarchy(ctx, repo, req.GetId()); err != nil {
+	deduped := strutil.RemoveDuplicates(req.GetGrantScopeIds(), false)
+
+	if err := validateRoleGrantScopesHierarchy(ctx, repo, req.GetId(), deduped); err != nil {
 		return nil, nil, nil, nil, err
 	}
 
-	_, err = repo.AddRoleGrantScopes(ctx, req.GetId(), req.GetVersion(), strutil.RemoveDuplicates(req.GetGrantScopeIds(), false))
+	_, err = repo.AddRoleGrantScopes(ctx, req.GetId(), req.GetVersion(), deduped)
 	if err != nil {
 		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
 		return nil, nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to add grant scopes to role: %v.", err)
@@ -992,11 +1004,13 @@ func (s Service) setGrantScopesInRepo(ctx context.Context, req grantScopeRequest
 		return nil, nil, nil, nil, err
 	}
 
-	if err := validateRoleGrantScopesHierarchy(ctx, repo, req.GetId()); err != nil {
+	deduped := strutil.RemoveDuplicates(req.GetGrantScopeIds(), false)
+
+	if err := validateRoleGrantScopesHierarchy(ctx, repo, req.GetId(), deduped); err != nil {
 		return nil, nil, nil, nil, err
 	}
 
-	_, _, err = repo.SetRoleGrantScopes(ctx, req.GetId(), req.GetVersion(), strutil.RemoveDuplicates(req.GetGrantScopeIds(), false))
+	_, _, err = repo.SetRoleGrantScopes(ctx, req.GetId(), req.GetVersion(), deduped)
 	if err != nil {
 		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
 		return nil, nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to set grant scopes on role: %v.", err)
@@ -1495,12 +1509,12 @@ func validateRoleGrantScopesRequest(ctx context.Context, req grantScopeRequest) 
 // better error messages when possible. We perform this check after
 // authentication to limit the possibility of an anonymous user causing DB load
 // due to this lookup, which is not a cheap one.
-func validateRoleGrantScopesHierarchy(ctx context.Context, repo *iam.Repository, roleId string) error {
+func validateRoleGrantScopesHierarchy(ctx context.Context, repo *iam.Repository, roleId string, grantScopes []string) error {
 	const op = "service.(Service).validateRoleGrantScopesHierarchy"
 	// We want to ensure that the values being passed in make sense to whatever
 	// extent we can right now, so we can provide nice errors back instead of DB
 	// errors.
-	role, _, _, grantScopes, err := repo.LookupRole(ctx, roleId)
+	role, _, _, _, err := repo.LookupRole(ctx, roleId)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
@@ -1510,7 +1524,7 @@ func validateRoleGrantScopesHierarchy(ctx context.Context, repo *iam.Repository,
 	case strings.HasPrefix(role.ScopeId, scope.Project.Prefix()):
 		// In this case only "this" or the same project scope is allowed
 		for _, grantScope := range grantScopes {
-			switch grantScope.ScopeId {
+			switch grantScope {
 			case globals.GrantScopeThis, role.ScopeId:
 			default:
 				return handlers.InvalidArgumentErrorf(
@@ -1523,16 +1537,15 @@ func validateRoleGrantScopesHierarchy(ctx context.Context, repo *iam.Repository,
 	case strings.HasPrefix(role.ScopeId, scope.Org.Prefix()):
 		for _, grantScope := range grantScopes {
 			switch {
-			case grantScope.ScopeId == role.ScopeId,
-				grantScope.ScopeId == globals.GrantScopeThis,
-				grantScope.ScopeId == globals.GrantScopeChildren,
-				grantScope.ScopeId == globals.GrantScopeDescendants:
-			case strings.HasPrefix(grantScope.ScopeId, scope.Project.Prefix()):
+			case grantScope == role.ScopeId,
+				grantScope == globals.GrantScopeThis,
+				grantScope == globals.GrantScopeChildren,
+				strings.HasPrefix(grantScope, scope.Project.Prefix()):
 			default:
 				return handlers.InvalidArgumentErrorf(
 					"Invalid grant scope.",
 					map[string]string{
-						"grant_scope_id": fmt.Sprintf("Grant scope ID %q is not valid to set on an organization role.", grantScope.ScopeId),
+						"grant_scope_id": fmt.Sprintf("Grant scope ID %q is not valid to set on an organization role.", grantScope),
 					})
 			}
 		}

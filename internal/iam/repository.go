@@ -145,6 +145,15 @@ func (r *Repository) update(ctx context.Context, resource Resource, version uint
 		dbOpts = append(dbOpts, db.WithSkipVetForWrite(true))
 	}
 
+	reader := r.reader
+	writer := r.writer
+	needFreshReaderWriter := true
+	if opts.withReader != nil && opts.withWriter != nil {
+		reader = opts.withReader
+		writer = opts.withWriter
+		needFreshReaderWriter = false
+	}
+
 	var scope *Scope
 	switch t := resource.(type) {
 	case *Scope:
@@ -163,29 +172,35 @@ func (r *Repository) update(ctx context.Context, resource Resource, version uint
 
 	var rowsUpdated int
 	var returnedResource any
-	_, err = r.writer.DoTx(
-		ctx,
-		db.StdRetryCnt,
-		db.ExpBackoff{},
-		func(_ db.Reader, w db.Writer) error {
-			returnedResource = resourceCloner.Clone()
-			rowsUpdated, err = w.Update(
-				ctx,
-				returnedResource,
-				fieldMaskPaths,
-				setToNullPaths,
-				dbOpts...,
-			)
-			if err != nil {
-				return errors.Wrap(ctx, err, op)
-			}
-			if rowsUpdated > 1 {
-				// return err, which will result in a rollback of the update
-				return errors.New(ctx, errors.MultipleRecords, op, "more than 1 resource would have been updated")
-			}
-			return nil
-		},
-	)
+	txFunc := func(rdr db.Reader, wtr db.Writer) error {
+		returnedResource = resourceCloner.Clone()
+		rowsUpdated, err = wtr.Update(
+			ctx,
+			returnedResource,
+			fieldMaskPaths,
+			setToNullPaths,
+			dbOpts...,
+		)
+		if err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+		if rowsUpdated > 1 {
+			// return err, which will result in a rollback of the update
+			return errors.New(ctx, errors.MultipleRecords, op, "more than 1 resource would have been updated")
+		}
+		return nil
+	}
+
+	if !needFreshReaderWriter {
+		err = txFunc(reader, writer)
+	} else {
+		_, err = r.writer.DoTx(
+			ctx,
+			db.StdRetryCnt,
+			db.ExpBackoff{},
+			txFunc,
+		)
+	}
 	if err != nil {
 		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 	}
