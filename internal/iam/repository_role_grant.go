@@ -422,8 +422,7 @@ func (r *Repository) GrantsForUser(ctx context.Context, userId string, _ ...Opti
 		query = fmt.Sprintf(grantsForUserQuery, authUser)
 	}
 
-	grants := make([]perms.GrantTuple, 0)
-
+	var grants []perms.GrantTuple
 	rows, err := r.reader.Query(ctx, query, []any{userId})
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
