@@ -7,7 +7,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	mathrand "math/rand"
 	"testing"
 
@@ -27,9 +26,8 @@ import (
 
 func TestGrantsForUser(t *testing.T) {
 	ctx := context.Background()
-	conn, dbUrl := db.TestSetup(t, "postgres")
+	conn, _ := db.TestSetup(t, "postgres")
 	wrap := db.TestWrapper(t)
-	log.Println(dbUrl)
 
 	iamRepo := iam.TestRepo(t, conn, wrap)
 	user := iam.TestUser(t, iamRepo, "global")
