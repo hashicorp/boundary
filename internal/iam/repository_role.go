@@ -65,14 +65,11 @@ func (r *Repository) CreateRole(ctx context.Context, role *Role, opt ...Option) 
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("while creating role"))
 			}
-			if initialScope != "" {
-				_, _, err = r.SetRoleGrantScopes(ctx, id, resource.(*Role).Version, []string{initialScope}, WithReaderWriter(reader, writer))
-				if err != nil {
-					return errors.Wrap(ctx, err, op, errors.WithMsg("while setting grant scopes"))
-				}
+			_, _, err = r.SetRoleGrantScopes(ctx, id, resource.(*Role).Version, []string{initialScope}, WithReaderWriter(reader, writer))
+			if err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg("while setting grant scopes"))
 			}
-			// Do a fresh lookup since version may have gone up by 1 or 2 based
-			// on grant scope id
+			// Do a fresh lookup to get all return values
 			resource, pr, rg, grantScopes, err = r.LookupRole(ctx, resource.(*Role).PublicId, WithReaderWriter(reader, writer))
 			if err != nil {
 				return errors.Wrap(ctx, err, op)
