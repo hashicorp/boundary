@@ -963,10 +963,10 @@ func TestListPagination(t *testing.T) {
 		u := iam.TestUser(t, iamRepo, o.GetPublicId(), iam.WithAccountIds(acct.PublicId))
 
 		privProjRole := iam.TestRole(t, conn, pwt.GetPublicId())
-		iam.TestRoleGrant(t, conn, privProjRole.GetPublicId(), "id=*;type=*;actions=*")
+		iam.TestRoleGrant(t, conn, privProjRole.GetPublicId(), "ids=*;type=*;actions=*")
 		iam.TestUserRole(t, conn, privProjRole.GetPublicId(), u.GetPublicId())
 		privOrgRole := iam.TestRole(t, conn, o.GetPublicId())
-		iam.TestRoleGrant(t, conn, privOrgRole.GetPublicId(), "id=*;type=*;actions=*")
+		iam.TestRoleGrant(t, conn, privOrgRole.GetPublicId(), "ids=*;type=*;actions=*")
 		iam.TestUserRole(t, conn, privOrgRole.GetPublicId(), u.GetPublicId())
 
 		accounts = append(accounts, &pb.Account{
@@ -1273,10 +1273,10 @@ func TestListPagination(t *testing.T) {
 		u := iam.TestUser(t, iamRepo, o.GetPublicId(), iam.WithAccountIds(acct.PublicId))
 
 		privProjRole := iam.TestRole(t, conn, pwt.GetPublicId())
-		iam.TestRoleGrant(t, conn, privProjRole.GetPublicId(), "id=*;type=*;actions=*")
+		iam.TestRoleGrant(t, conn, privProjRole.GetPublicId(), "ids=*;type=*;actions=*")
 		iam.TestUserRole(t, conn, privProjRole.GetPublicId(), u.GetPublicId())
 		privOrgRole := iam.TestRole(t, conn, o.GetPublicId())
-		iam.TestRoleGrant(t, conn, privOrgRole.GetPublicId(), "id=*;type=*;actions=*")
+		iam.TestRoleGrant(t, conn, privOrgRole.GetPublicId(), "ids=*;type=*;actions=*")
 		iam.TestUserRole(t, conn, privOrgRole.GetPublicId(), u.GetPublicId())
 
 		accounts = append(accounts, &pb.Account{
@@ -1588,10 +1588,10 @@ func TestListPagination(t *testing.T) {
 		u := iam.TestUser(t, iamRepo, o.GetPublicId(), iam.WithAccountIds(acct.PublicId))
 
 		privProjRole := iam.TestRole(t, conn, pwt.GetPublicId())
-		iam.TestRoleGrant(t, conn, privProjRole.GetPublicId(), "id=*;type=*;actions=*")
+		iam.TestRoleGrant(t, conn, privProjRole.GetPublicId(), "ids=*;type=*;actions=*")
 		iam.TestUserRole(t, conn, privProjRole.GetPublicId(), u.GetPublicId())
 		privOrgRole := iam.TestRole(t, conn, o.GetPublicId())
-		iam.TestRoleGrant(t, conn, privOrgRole.GetPublicId(), "id=*;type=*;actions=*")
+		iam.TestRoleGrant(t, conn, privOrgRole.GetPublicId(), "ids=*;type=*;actions=*")
 		iam.TestUserRole(t, conn, privOrgRole.GetPublicId(), u.GetPublicId())
 
 		accounts = append(accounts, &pb.Account{

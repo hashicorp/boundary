@@ -124,7 +124,7 @@ func Test_TestRoleGrant(t *testing.T) {
 	require.NotNil(grant)
 	require.Equal(projRole.PublicId, grant.RoleId)
 	require.Equal("type=*;actions=*;id=*", grant.RawGrant)
-	require.Equal("id=*;type=*;actions=*", grant.CanonicalGrant)
+	require.Equal("ids=*;type=*;actions=*", grant.CanonicalGrant)
 }
 
 func Test_TestUserRole(t *testing.T) {

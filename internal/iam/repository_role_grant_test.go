@@ -28,7 +28,7 @@ func TestRepository_AddRoleGrants(t *testing.T) {
 	createGrantsFn := func() []string {
 		results := []string{}
 		for i := 0; i < 5; i++ {
-			g := fmt.Sprintf("id=hc_%d;actions=*", i)
+			g := fmt.Sprintf("ids=hc_%d;actions=*", i)
 			results = append(results, g)
 		}
 		return results
@@ -197,7 +197,7 @@ func TestRepository_ListRoleGrants(t *testing.T) {
 			role := TestRole(t, conn, tt.createScopeId)
 			roleGrants := make([]string, 0, tt.createCnt)
 			for i := 0; i < tt.createCnt; i++ {
-				roleGrants = append(roleGrants, fmt.Sprintf("id=h_%d;actions=*", i))
+				roleGrants = append(roleGrants, fmt.Sprintf("ids=h_%d;actions=*", i))
 			}
 			testRoles, err := repo.AddRoleGrants(context.Background(), role.PublicId, role.Version, roleGrants, tt.args.opt...)
 			require.NoError(err)
@@ -305,7 +305,7 @@ func TestRepository_DeleteRoleGrants(t *testing.T) {
 			name: "invalid-grant-strings",
 			args: args{
 				role:                 TestRole(t, conn, org.PublicId),
-				grantStringsOverride: []string{"id=s_87;actions=*"},
+				grantStringsOverride: []string{"ids=s_87;actions=*"},
 				createCnt:            5,
 				deleteCnt:            3,
 			},
@@ -354,7 +354,7 @@ func TestRepository_DeleteRoleGrants(t *testing.T) {
 			deleteGrants := make([]string, 0, tt.args.deleteCnt)
 			for i := 0; i < tt.args.deleteCnt; i++ {
 				deleteCanonicalGrants = append(deleteCanonicalGrants, grants[i].CanonicalGrant)
-				deleteGrants = append(deleteGrants, fmt.Sprintf("id=s_%d;actions=*", i))
+				deleteGrants = append(deleteGrants, fmt.Sprintf("ids=s_%d;actions=*", i))
 			}
 			for i, override := range tt.args.grantStringsOverride {
 				deleteCanonicalGrants = deleteCanonicalGrants[1:]
@@ -423,7 +423,7 @@ func TestRepository_SetRoleGrants_Randomize(t *testing.T) {
 	totalCnt := 30
 	grants := make([]*roleGrantWrapper, 0, totalCnt)
 	for i := 0; i < totalCnt; i++ {
-		g, err := NewRoleGrant(ctx, role.PublicId, fmt.Sprintf("id=s_%d;actions=*", i))
+		g, err := NewRoleGrant(ctx, role.PublicId, fmt.Sprintf("ids=s_%d;actions=*", i))
 		require.NoError(err)
 		grants = append(grants, &roleGrantWrapper{
 			grantString: g.RawGrant,
@@ -501,7 +501,7 @@ func TestRepository_SetRoleGrants_Parameters(t *testing.T) {
 			args: args{
 				roleId:      "",
 				roleVersion: 1,
-				grants:      []string{"id=s_1;actions=*"},
+				grants:      []string{"ids=s_1;actions=*"},
 			},
 			want:             nil,
 			wantAffectedRows: 0,
@@ -512,7 +512,7 @@ func TestRepository_SetRoleGrants_Parameters(t *testing.T) {
 			args: args{
 				roleId:      "bad-roleid",
 				roleVersion: 1,
-				grants:      []string{"id=s_1;actions=*"},
+				grants:      []string{"ids=s_1;actions=*"},
 			},
 			want:             nil,
 			wantAffectedRows: 0,
@@ -534,7 +534,7 @@ func TestRepository_SetRoleGrants_Parameters(t *testing.T) {
 			args: args{
 				roleId:      role.PublicId,
 				roleVersion: 0,
-				grants:      []string{"id=s_1;actions=*"},
+				grants:      []string{"ids=s_1;actions=*"},
 			},
 			want:             nil,
 			wantAffectedRows: 0,
@@ -545,7 +545,7 @@ func TestRepository_SetRoleGrants_Parameters(t *testing.T) {
 			args: args{
 				roleId:      role.PublicId,
 				roleVersion: 1000,
-				grants:      []string{"id=s_1;actions=*"},
+				grants:      []string{"ids=s_1;actions=*"},
 			},
 			want:             nil,
 			wantAffectedRows: 0,

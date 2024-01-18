@@ -393,7 +393,7 @@ func TestRepository_UpdateRole(t *testing.T) {
 			if tt.wantDup {
 				r := TestRole(t, conn, org.PublicId)
 				_ = TestUserRole(t, conn, r.GetPublicId(), u.GetPublicId())
-				_ = TestRoleGrant(t, conn, r.GetPublicId(), "id=*;type=*;actions=*")
+				_ = TestRoleGrant(t, conn, r.GetPublicId(), "ids=*;type=*;actions=*")
 				r.Name = tt.args.name
 				_, _, _, _, err := repo.UpdateRole(context.Background(), r, r.Version, tt.args.fieldMaskPaths, tt.args.opt...)
 				assert.NoError(err)
@@ -416,7 +416,7 @@ func TestRepository_UpdateRole(t *testing.T) {
 				princRole.RoleScopeId = tt.newScopeId
 				princRole.ScopedPrincipalId = fmt.Sprintf("%s:%s", org.PublicId, ur.PrincipalId)
 			}
-			rGrant := TestRoleGrant(t, conn, r.GetPublicId(), "id=*;type=*;actions=*")
+			rGrant := TestRoleGrant(t, conn, r.GetPublicId(), "ids=*;type=*;actions=*")
 
 			updateRole := allocRole()
 			updateRole.PublicId = r.PublicId

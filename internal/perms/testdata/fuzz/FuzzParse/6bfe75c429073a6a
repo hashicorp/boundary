@@ -1,2 +1,2 @@
 go test fuzz v1
-string("id=,;output_fields=0")
+string("ids=,;output_fields=0")
