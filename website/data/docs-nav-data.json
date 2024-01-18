@@ -317,7 +317,7 @@
               "type": "outlined",
               "color": "neutral"
             },
-            "path": "concepts/domain-model/storage-policies"
+            "path": "concepts/domain-model/storage-policy"
           },
           {
             "title": "Targets",
