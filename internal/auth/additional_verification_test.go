@@ -49,6 +49,25 @@ func TestFetchActionSetForId(t *testing.T) {
 		return tc.AuthTokenRepo(), nil
 	}
 
+	// Delete the global default role so it doesn't interfere with the
+	// permissions we're testing here
+	rolesClient := roles.NewClient(tc.Client())
+	rolesResp, err := rolesClient.List(tc.Context(), scope.Global.String())
+	require.NoError(t, err)
+	require.NotNil(t, rolesResp)
+	assert.Len(t, rolesResp.GetItems(), 2)
+	var adminRoleId string
+	for _, item := range rolesResp.GetItems() {
+		if strings.Contains(item.Name, "Default") {
+			_, err := rolesClient.Delete(tc.Context(), item.Id)
+			require.NoError(t, err)
+		} else {
+			adminRoleId = item.Id
+		}
+	}
+	_, err = rolesClient.Delete(tc.Context(), adminRoleId)
+	require.NoError(t, err)
+
 	orgRole := iam.TestRole(t, conn, org.GetPublicId())
 	iam.TestUserRole(t, conn, orgRole.PublicId, token.UserId)
 	iam.TestRoleGrant(t, conn, orgRole.PublicId, "id=ttcp_foo;actions=read,update")
