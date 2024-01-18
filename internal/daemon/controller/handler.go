@@ -477,6 +477,7 @@ func wrapHandlerWithCommonFuncs(h http.Handler, c *Controller, props HandlerProp
 			event.WriteError(ctx, op, errors.New("unable to read event request info from context"))
 			return
 		}
+
 		// Serialize the request info to send it across the wire to the
 		// grpc-gateway via an http header
 		requestInfo.Ticket = c.apiGrpcGatewayTicket // allows the grpc-gateway to verify the request info came from it's in-memory companion http proxy
