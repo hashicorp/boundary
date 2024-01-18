@@ -121,7 +121,7 @@ begin;
           ('global', 'r_gg____shop', 'Shopper');
 
   insert into iam_role_grant_scope
-    (role_id,          scope_id)
+    (role_id,        scope_id_or_special)
   values
     ('r_pp_bc__mix', 'this'),
     ('r_pp_rc__mix', 'p____rcolors'),

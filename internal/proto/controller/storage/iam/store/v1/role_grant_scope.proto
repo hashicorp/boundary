@@ -18,9 +18,9 @@ message RoleGrantScope {
   // @inject_tag: `gorm:"primary_key"`
   string role_id = 2;
 
-  // scope_id is the string grant scope value as provided by the user; note that
-  // this does allow some special values
+  // scope_id_or_special is the string grant scope value as provided by the
+  // user, which may be one of a few special values as well``
   //
   // @inject_tag: `gorm:"primary_key"`
-  string scope_id = 3;
+  string scope_id_or_special = 3;
 }

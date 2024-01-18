@@ -1129,12 +1129,12 @@ func toProto(ctx context.Context, in *iam.Role, principals []*iam.PrincipalRole,
 	}
 	if outputFields.Has(globals.GrantScopeIdsField) {
 		for _, gs := range grantScopes {
-			out.GrantScopeIds = append(out.GrantScopeIds, gs.GetScopeId())
+			out.GrantScopeIds = append(out.GrantScopeIds, gs.GetScopeIdOrSpecial())
 		}
 		sort.Strings(out.GrantScopeIds)
 	}
 	if outputFields.Has(globals.GrantScopeIdField) && len(grantScopes) == 1 {
-		out.GrantScopeId = &wrapperspb.StringValue{Value: grantScopes[0].ScopeId}
+		out.GrantScopeId = &wrapperspb.StringValue{Value: grantScopes[0].ScopeIdOrSpecial}
 	}
 	if outputFields.Has(globals.PrincipalsField) {
 		for _, p := range principals {

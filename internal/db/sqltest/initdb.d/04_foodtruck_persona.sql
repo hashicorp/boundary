@@ -112,7 +112,7 @@ begin;
     ('p______tacos', 'r_pp___tacos', 'Tacos');
 
   insert into iam_role_grant_scope
-    (role_id, scope_id )
+    (role_id,        scope_id_or_special )
   values
     ('r_pp___tacos', 'p______tacos');
 

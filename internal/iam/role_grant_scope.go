@@ -51,8 +51,8 @@ func NewRoleGrantScope(ctx context.Context, roleId string, grantScope string, _ 
 	}
 	rgs := &RoleGrantScope{
 		RoleGrantScope: &store.RoleGrantScope{
-			RoleId:  roleId,
-			ScopeId: grantScope,
+			RoleId:           roleId,
+			ScopeIdOrSpecial: grantScope,
 		},
 	}
 	return rgs, nil
@@ -78,18 +78,18 @@ func (g *RoleGrantScope) VetForWrite(ctx context.Context, _ db.Reader, _ db.OpTy
 	if g.RoleId == "" {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing role id")
 	}
-	if g.ScopeId == "" {
+	if g.ScopeIdOrSpecial == "" {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
 	}
 
 	switch {
-	case g.ScopeId == scope.Global.String(),
-		g.ScopeId == globals.GrantScopeThis,
-		g.ScopeId == globals.GrantScopeChildren,
-		g.ScopeId == globals.GrantScopeDescendants:
-	case globals.ResourceInfoFromPrefix(g.ScopeId).Type == resource.Scope:
+	case g.ScopeIdOrSpecial == scope.Global.String(),
+		g.ScopeIdOrSpecial == globals.GrantScopeThis,
+		g.ScopeIdOrSpecial == globals.GrantScopeChildren,
+		g.ScopeIdOrSpecial == globals.GrantScopeDescendants:
+	case globals.ResourceInfoFromPrefix(g.ScopeIdOrSpecial).Type == resource.Scope:
 	default:
-		return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unknown grant scope id %q", g.ScopeId))
+		return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unknown grant scope id %q", g.ScopeIdOrSpecial))
 	}
 
 	return nil

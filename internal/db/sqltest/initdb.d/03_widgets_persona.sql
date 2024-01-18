@@ -65,7 +65,7 @@ begin;
       ('o_____widget', 'r_oo_____eng', 'Widget Engineer');
 
     insert into iam_role_grant_scope
-      (role_id,          scope_id)
+      (role_id,        scope_id_or_special)
     values
       ('r_pp_bw__bld', 'p____bwidget'),
       ('r_pp_sw__bld', 'this'),

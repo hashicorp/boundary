@@ -3,19 +3,25 @@
 
 begin;
 
-  -- Create the new join table
+  -- This table is a join table to map roles to the various scopes the role
+  -- grants apply to. role_id is a foreign key, but scope_id_or_special is not a
+  -- foreign key to scopes because we support specific special values which are
+  -- checked for in the constraint. We never query by scope_id_or_special so the
+  -- ordering of the primary key should be correct.
   create table iam_role_grant_scope (
     create_time wt_timestamp,
-    role_id wt_role_id -- pk
+    role_id wt_role_id not null -- pk
       references iam_role(public_id)
       on delete cascade
       on update cascade,
-    scope_id text -- pk
-      constraint scope_id_must_not_be_empty
-      check(
-        length(trim(scope_id)) > 0
+    scope_id_or_special text not null -- pk
+      constraint scope_id_or_special_is_valid
+      check (
+        length(trim(scope_id_or_special)) = 12
+          or
+        scope_id_or_special in ('global', 'this', 'children', 'descendants')
       ),
-    primary key(role_id, scope_id)
+    primary key(role_id, scope_id_or_special)
   );
 
   insert into oplog_ticket (name, version)
@@ -42,7 +48,7 @@ begin;
   create or replace function cascade_role_grant_scope_deletion() returns trigger
   as $$
   begin
-    delete from iam_role_grant_scope where scope_id = old.public_id;
+    delete from iam_role_grant_scope where scope_id_or_special = old.public_id;
     return old;
   end;
   $$ language plpgsql;
@@ -51,9 +57,9 @@ begin;
   create trigger cascade_deletion_iam_scope_to_iam_role_grant_scope after delete on iam_scope
     for each row execute procedure cascade_role_grant_scope_deletion();
 
-  -- role_grant_scope_id_valid ensures that a given grant scope ID is for a
+  -- role_grant_scope_id_or_special_valid ensures that a given grant scope ID is for a
   -- scope that exists or one of our known values
-  create or replace function role_grant_scope_id_valid() returns trigger
+  create or replace function role_grant_scope_id_or_special_valid() returns trigger
   as $$
   declare new_scope_type text;
   declare role_scope_id text;
@@ -61,14 +67,14 @@ begin;
   declare role_scope_type text;
   declare validated_scope_id text;
   begin
-    -- It's always allowed to have a scope_id of "this"
-    if new.scope_id = 'this' then
+    -- It's always allowed to have a scope_id_or_special of "this"
+    if new.scope_id_or_special = 'this' then
       return new;
     end if;
     -- Fetch the scope id for the role
     select ir.scope_id from iam_role ir where ir.public_id = new.role_id into role_scope_id;
-    -- It's always allowed to have the scope_id be the same as the role's
-    if new.scope_id = role_scope_id then
+    -- It's always allowed to have the scope_id_or_special be the same as the role's
+    if new.scope_id_or_special = role_scope_id then
       return new;
     end if;
 
@@ -88,9 +94,9 @@ begin;
     -- valid/known. Distinction check is used because if it's not known it's
     -- null.
     if role_scope_type = 'global' then
-      if new.scope_id != 'children' and new.scope_id != 'descendants' then
-        select isc.public_id from iam_scope isc where isc.public_id = new.scope_id into validated_scope_id;
-        if validated_scope_id is distinct from new.scope_id then
+      if new.scope_id_or_special != 'children' and new.scope_id_or_special != 'descendants' then
+        select isc.public_id from iam_scope isc where isc.public_id = new.scope_id_or_special into validated_scope_id;
+        if validated_scope_id is distinct from new.scope_id_or_special then
           raise exception 'invalid grant scope id';
         end if;
       end if;
@@ -100,7 +106,7 @@ begin;
     -- Never allowed, because projects don't have child scopes (and we've
     -- already allowed same-scope-id above)
     if role_scope_type = 'project' then
-      raise exception 'invalid to set a grant scope ID to non-same scope_id when role scope type is project';
+      raise exception 'invalid to set a grant scope ID to non-same scope_id_or_special when role scope type is project';
     end if;
 
     -- Ensure that what remains really is org
@@ -108,11 +114,11 @@ begin;
       raise exception 'unknown scope type';
     end if;
     -- If it's "children" then allow it
-    if new.scope_id = 'children' then
+    if new.scope_id_or_special = 'children' then
       return new;
     end if;
     -- Make "descendants" an error for orgs
-    if new.scope_id = 'descendants' then
+    if new.scope_id_or_special = 'descendants' then
       raise exception 'invalid to specify "descendants" as a grant scope when the role''s scope ID is not "global"';
     end if;
 
@@ -124,19 +130,19 @@ begin;
     -- is a project and its parent scope is this org's.
 
     -- Ensure it exists
-    select isc.public_id from iam_scope isc where isc.public_id = new.scope_id into validated_scope_id;
-    if validated_scope_id is distinct from new.scope_id then
+    select isc.public_id from iam_scope isc where isc.public_id = new.scope_id_or_special into validated_scope_id;
+    if validated_scope_id is distinct from new.scope_id_or_special then
       raise exception 'invalid grant scope id';
     end if;
 
     -- Ensure it's a project
-    select isc.type from iam_scope isc where isc.public_id = new.scope_id into new_scope_type;
+    select isc.type from iam_scope isc where isc.public_id = new.scope_id_or_special into new_scope_type;
     if new_scope_type != 'project' then
       raise exception 'expected grant scope id scope type to be project';
     end if;
 
     -- Ensure that the parent of the project is the role's org scope
-    select isc.parent_id from iam_scope isc where isc.public_id = new.scope_id into parent_scope_id;
+    select isc.parent_id from iam_scope isc where isc.public_id = new.scope_id_or_special into parent_scope_id;
     if parent_scope_id != role_scope_id then
       raise exception 'grant scope id is not a child project of the role''s org scope';
     end if;
@@ -144,11 +150,11 @@ begin;
     return new;
   end;
   $$ language plpgsql;
-  comment on function role_grant_scope_id_valid() is
+  comment on function role_grant_scope_id_or_special_valid() is
     'function used to ensure grant scope ids are valid';
 
-  create trigger ensure_role_grant_scope_id_valid before insert or update on iam_role_grant_scope
-    for each row execute procedure role_grant_scope_id_valid();
+  create trigger ensure_role_grant_scope_id_or_special_valid before insert or update on iam_role_grant_scope
+    for each row execute procedure role_grant_scope_id_or_special_valid();
   
   -- Add a function that is used in our GrantsForUser CTE to turn grants
   -- containing "this", "children", or "descendants" into the actual scope IDs
@@ -196,8 +202,8 @@ begin;
 
   -- First, copy current grant scope ID values from existing roles to the new
   -- table and set the grant scope ID value on each role to the scope ID
-  insert into iam_role_grant_scope(role_id, scope_id)
-    select public_id as role_id, grant_scope_id as scope_id from iam_role;
+  insert into iam_role_grant_scope(role_id, scope_id_or_special)
+    select public_id as role_id, grant_scope_id as scope_id_or_special from iam_role;
 
   -- Drop the now-unnecessary trigger and function from 0/06_iam
   drop trigger ensure_grant_scope_id_valid on iam_role;

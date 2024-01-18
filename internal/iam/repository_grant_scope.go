@@ -44,7 +44,7 @@ func (r *Repository) AddRoleGrantScopes(ctx context.Context, roleId string, role
 	}
 	found := map[string]*RoleGrantScope{}
 	for _, rgs := range roleGrantScopes {
-		found[rgs.ScopeId] = rgs
+		found[rgs.ScopeIdOrSpecial] = rgs
 	}
 
 	// Check incoming grant scopes to see if they exist so we don't try to add
@@ -260,7 +260,7 @@ func (r *Repository) SetRoleGrantScopes(ctx context.Context, roleId string, role
 	}
 	found := map[string]*RoleGrantScope{}
 	for _, rgs := range roleGrantScopes {
-		found[rgs.ScopeId] = rgs
+		found[rgs.ScopeIdOrSpecial] = rgs
 	}
 
 	// Check incoming grant scopes to see if they exist and if so act appropriately

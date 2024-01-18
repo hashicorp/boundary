@@ -170,7 +170,7 @@ const (
 	  select
 	        roles.role_id,
 	        roles.role_scope_id,
-	        iam_role_grant_scope.scope_id
+	        iam_role_grant_scope.scope_id_or_special
 	    from roles
 	   inner join iam_role_grant_scope
 	      on roles.role_id = iam_role_grant_scope.role_id
