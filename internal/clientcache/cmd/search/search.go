@@ -44,7 +44,7 @@ type SearchCommand struct {
 }
 
 func (c *SearchCommand) Synopsis() string {
-	return "Search resources in boundary"
+	return "Search Boundary resources using client side cache"
 }
 
 func (c *SearchCommand) Help() string {
