@@ -121,6 +121,12 @@ func (b *Server) CreateDevDatabase(ctx context.Context, opt ...Option) error {
 			}
 			return err
 		}
+		if _, err := b.CreateInitialAuthenticatedUserRole(ctx); err != nil {
+			if c != nil {
+				err = errors.Join(err, c())
+			}
+			return err
+		}
 	}
 
 	if opts.withSkipAuthMethodCreation {

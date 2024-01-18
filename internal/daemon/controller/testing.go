@@ -765,6 +765,9 @@ func TestControllerConfig(t testing.TB, ctx context.Context, tc *TestController,
 				if _, err := tc.b.CreateInitialLoginRole(ctx); err != nil {
 					t.Fatal(err)
 				}
+				if _, err := tc.b.CreateInitialAuthenticatedUserRole(ctx); err != nil {
+					t.Fatal(err)
+				}
 				if !opts.DisableAuthMethodCreation {
 					if _, _, err := tc.b.CreateInitialPasswordAuthMethod(ctx); err != nil {
 						t.Fatal(err)

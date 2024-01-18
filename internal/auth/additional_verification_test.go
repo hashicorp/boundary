@@ -55,10 +55,11 @@ func TestFetchActionSetForId(t *testing.T) {
 	rolesResp, err := rolesClient.List(tc.Context(), scope.Global.String())
 	require.NoError(t, err)
 	require.NotNil(t, rolesResp)
-	assert.Len(t, rolesResp.GetItems(), 2)
+	assert.Len(t, rolesResp.GetItems(), 3)
 	var adminRoleId string
 	for _, item := range rolesResp.GetItems() {
-		if strings.Contains(item.Name, "Default") {
+		if strings.Contains(item.Name, "Authenticated User") ||
+			strings.Contains(item.Name, "Login") {
 			_, err := rolesClient.Delete(tc.Context(), item.Id)
 			require.NoError(t, err)
 		} else {
@@ -158,9 +159,10 @@ func TestRecursiveListingDifferentOutputFields(t *testing.T) {
 	rolesResp, err := rolesClient.List(tc.Context(), scope.Global.String())
 	require.NoError(err)
 	require.NotNil(rolesResp)
-	assert.Len(rolesResp.GetItems(), 2)
+	assert.Len(rolesResp.GetItems(), 3)
 	for _, item := range rolesResp.GetItems() {
-		if strings.Contains(item.Name, "Default") {
+		if strings.Contains(item.Name, "Authenticated User") ||
+			strings.Contains(item.Name, "Login") {
 			_, err := rolesClient.Delete(tc.Context(), item.Id)
 			require.NoError(err)
 		}

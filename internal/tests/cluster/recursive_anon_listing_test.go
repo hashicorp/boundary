@@ -49,18 +49,20 @@ func TestListAnonymousRecursing(t *testing.T) {
 	rl, err := rolesClient.List(tc.Context(), scope.Global.String())
 	require.NoError(err)
 	require.NotNil(rl)
-	require.Len(rl.GetItems(), 2)
+	require.Len(rl.GetItems(), 3)
 
-	// Find the non-admin one and delete that first
-	adminIdx := 0
-	defaultIdx := 1
-	roles := rl.GetItems()
-	if strings.Contains(roles[0].Name, "Default") {
-		adminIdx, defaultIdx = 1, 0
+	// Find the non-admin roles and delete them first
+	var adminRoleId string
+	for _, item := range rl.GetItems() {
+		if strings.Contains(item.Name, "Authenticated User") ||
+			strings.Contains(item.Name, "Login") {
+			_, err := rolesClient.Delete(tc.Context(), item.Id)
+			require.NoError(err)
+		} else {
+			adminRoleId = item.Id
+		}
 	}
-	_, err = rolesClient.Delete(tc.Context(), roles[defaultIdx].Id)
-	require.NoError(err)
-	_, err = rolesClient.Delete(tc.Context(), roles[adminIdx].Id)
+	_, err = rolesClient.Delete(tc.Context(), adminRoleId)
 	require.NoError(err)
 
 	// Make sure we can't list in global

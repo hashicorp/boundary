@@ -45,8 +45,8 @@ func (b *Server) CreateInitialLoginRole(ctx context.Context) (*iam.Role, error) 
 
 	pr, err := iam.NewRole(ctx,
 		scope.Global.String(),
-		iam.WithName("Login and Default Grants"),
-		iam.WithDescription(`Role created for login capability, account self-management, and other default grants`),
+		iam.WithName("Login Grants"),
+		iam.WithDescription(`Role created for login capability for unauthenticated users`),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("error creating in memory role for generated grants: %w", err)
@@ -57,17 +57,66 @@ func (b *Server) CreateInitialLoginRole(ctx context.Context) (*iam.Role, error) 
 	}
 	if _, err := iamRepo.AddRoleGrants(ctx, role.PublicId, role.Version, []string{
 		"ids=*;type=scope;actions=list,no-op",
-		"ids=*;type=auth-method;actions=authenticate,list",
-		"ids={{.Account.Id}};actions=read,change-password",
-		"ids=*;type=auth-token;actions=list,read:self,delete:self",
+		"ids=*;type=auth-method;actions=list,read,authenticate",
+		"ids=*;type=auth-token;actions=read:self,delete:self",
 	}); err != nil {
-		return nil, fmt.Errorf("error creating grant for default generated grants: %w", err)
+		return nil, fmt.Errorf("error creating grant for initial login grants: %w", err)
 	}
 	if _, err := iamRepo.AddPrincipalRoles(ctx, role.PublicId, role.Version+1, []string{globals.AnonymousUserId}); err != nil {
-		return nil, fmt.Errorf("error adding principal to role for default generated grants: %w", err)
+		return nil, fmt.Errorf("error adding principal to role for initial login grants: %w", err)
 	}
 	if _, _, err := iamRepo.SetRoleGrantScopes(ctx, role.PublicId, role.Version+2, []string{"this", "descendants"}); err != nil {
-		return nil, fmt.Errorf("error adding scope grants to role for default generated grants: %w", err)
+		return nil, fmt.Errorf("error adding scope grants to role for initial login grants: %w", err)
+	}
+
+	return role, nil
+}
+
+func (b *Server) CreateInitialAuthenticatedUserRole(ctx context.Context) (*iam.Role, error) {
+	rw := db.New(b.Database)
+
+	kmsCache, err := kms.New(ctx, rw, rw)
+	if err != nil {
+		return nil, fmt.Errorf("error creating kms cache: %w", err)
+	}
+	if err := kmsCache.AddExternalWrappers(
+		b.Context,
+		kms.WithRootWrapper(b.RootKms),
+	); err != nil {
+		return nil, fmt.Errorf("error adding config keys to kms: %w", err)
+	}
+
+	iamRepo, err := iam.NewRepository(ctx, rw, rw, kmsCache, iam.WithRandomReader(b.SecureRandomReader))
+	if err != nil {
+		return nil, fmt.Errorf("unable to create repo for initial login role: %w", err)
+	}
+
+	pr, err := iam.NewRole(ctx,
+		scope.Global.String(),
+		iam.WithName("Authenticated User Grants"),
+		iam.WithDescription(`Role created for account self-management, and other initial authenticated user grants`),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("error creating in memory role for generated grants: %w", err)
+	}
+	role, _, _, _, err := iamRepo.CreateRole(ctx, pr)
+	if err != nil {
+		return nil, fmt.Errorf("error creating role for default generated grants: %w", err)
+	}
+	if _, err := iamRepo.AddRoleGrants(ctx, role.PublicId, role.Version, []string{
+		"ids=*;type=scope;actions=read",
+		"ids=*;type=auth-token;actions=list",
+		"ids={{.Account.Id}};actions=read,change-password",
+		"ids=*;type=target;actions=list,read",
+		"ids=*;type=session;actions=list,read:self,cancel:self",
+	}); err != nil {
+		return nil, fmt.Errorf("error creating grant for initial authenticated user grants: %w", err)
+	}
+	if _, err := iamRepo.AddPrincipalRoles(ctx, role.PublicId, role.Version+1, []string{globals.AnyAuthenticatedUserId}); err != nil {
+		return nil, fmt.Errorf("error adding principal to role for initial authenticated user grants: %w", err)
+	}
+	if _, _, err := iamRepo.SetRoleGrantScopes(ctx, role.PublicId, role.Version+2, []string{"this", "descendants"}); err != nil {
+		return nil, fmt.Errorf("error adding scope grants to role for initial authenticated user grants: %w", err)
 	}
 
 	return role, nil
