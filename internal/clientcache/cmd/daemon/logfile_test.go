@@ -16,6 +16,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/go-hclog"
@@ -151,5 +152,6 @@ func TestRotation(t *testing.T) {
 			// written to the directory.
 			break
 		}
+		time.Sleep(10 * time.Millisecond)
 	}
 }
