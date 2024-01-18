@@ -17,7 +17,7 @@ You can specify multiple grants per role.
 This example removes a grant which permits read permissions from a role with the ID `r_1234567890`:
 
 ```shell-session
-$ boundary roles remove-grants -id r_1234567890 -grant "id=*;type=*;actions=read"
+$ boundary roles remove-grants -id r_1234567890 -grant "ids=*;type=*;actions=read"
 ```
 
 ## Usage

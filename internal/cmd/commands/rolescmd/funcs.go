@@ -114,7 +114,7 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 			"",
 			`  Adds grants to a role given its ID. The "grant" flag can be specified multiple times. Example:`,
 			"",
-			`    $ boundary roles add-grants -id r_1234567890 -grant "id=*;type=*;actions=read"`,
+			`    $ boundary roles add-grants -id r_1234567890 -grant "ids=*;type=*;actions=read"`,
 			"",
 			"",
 		})
@@ -125,7 +125,7 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 			"",
 			`  Sets the complete set of grants on a role given its ID. The "grant" flag can be specified multiple times. Example:`,
 			"",
-			`    $ boundary roles set-grants -id r_1234567890 -grant "id=*;type=*;actions=read" -grant "id=*;type=*;actions=list"`,
+			`    $ boundary roles set-grants -id r_1234567890 -grant "ids=*;type=*;actions=read" -grant "ids=*;type=*;actions=list"`,
 			"",
 			"",
 		})
@@ -136,7 +136,7 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 			"",
 			`  Removes grants from a role given its ID. The "grant" flags can be specified multiple times. Example:`,
 			"",
-			`    $ boundary roles remove-grants -id r_1234567890 -grant "id=*;type=*;actions=read"`,
+			`    $ boundary roles remove-grants -id r_1234567890 -grant "ids=*;type=*;actions=read"`,
 			"",
 			"",
 		})

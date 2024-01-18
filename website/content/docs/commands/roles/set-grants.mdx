@@ -17,8 +17,8 @@ You can specify multiple grants per role.
 This example sets multiple grants which allow read and list permissions for a role with the ID `r_1234567890`:
 
 ```shell-session
-$ boundary roles set-grants -id r_1234567890 -grant "id=*;type=*;actions=read" -grant
-    "id=*;type=*;actions=list"
+$ boundary roles set-grants -id r_1234567890 -grant "ids=*;type=*;actions=read" -grant
+    "ids=*;type=*;actions=list"
 ```
 
 ## Usage
