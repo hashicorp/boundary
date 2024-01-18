@@ -689,6 +689,7 @@ func (s Service) RemoveRoleGrantScopes(ctx context.Context, req *pbs.RemoveRoleG
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
+
 	r, prs, rgs, grantScopes, err := s.removeGrantScopesInRepo(ctx, req)
 	if err != nil {
 		return nil, err
@@ -1535,6 +1536,7 @@ func validateRoleGrantScopesHierarchy(ctx context.Context, repo *iam.Repository,
 			}
 		}
 	case strings.HasPrefix(role.ScopeId, scope.Org.Prefix()):
+		// Orgs can have "this", its own scope, a project scope, or "children"
 		for _, grantScope := range grantScopes {
 			switch {
 			case grantScope == role.ScopeId,
