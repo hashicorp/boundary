@@ -33,6 +33,10 @@
         "description": "Read about auth methods in the Boundary domain model",
         "url": "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/auth-methods"
       }
+      "name": "controller.api.services.v1.AppTokenService"
+    },
+    {
+      "name": "controller.api.services.v1.AuthMethodService"
     },
     {
       "name": "Auth token service",
@@ -643,6 +647,32 @@
         ],
         "tags": [
           "Alias service"
+        ]
+      }
+    },
+    "/v1/app-tokens": {
+      "post": {
+        "operationId": "AppTokenService_CreateAppToken",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.CreateAppTokenResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.CreateAppTokenRequest"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.AppTokenService"
         ]
       }
     },
@@ -5895,6 +5925,124 @@
       },
       "title": "Alias contains all fields related to an alias resource"
     },
+    "controller.api.resources.apptokens.v1.AppToken": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Output only. The ID of the AppToken.",
+          "readOnly": true
+        },
+        "scope": {
+          "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
+          "description": "Output only. Scope information for the Account.",
+          "readOnly": true
+        },
+        "name": {
+          "type": "string",
+          "description": "Optional name for identification purposes."
+        },
+        "description": {
+          "type": "string",
+          "description": "Optional user-set description for identification purposes."
+        },
+        "created_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Output only. The time this resource was created.",
+          "readOnly": true
+        },
+        "expiration_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When does the app token expire.  This date cannot be longer than 3 yrs from the creation date."
+        },
+        "created_by_user_id": {
+          "type": "string",
+          "description": "Output only. The user ID of the user that created this resource.",
+          "readOnly": true
+        },
+        "grant_scope_id": {
+          "type": "string",
+          "description": "The Scope the grants will apply to. If the Role is at the global scope, this can be an org or project. If the Role is at an org scope, this can be a project within the org. It is invalid for this to be anything other than the Role's scope when the Role's scope is a project."
+        },
+        "grant_strings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The grants that this apptoken provides."
+        },
+        "grants": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/controller.api.resources.apptokens.v1.Grant"
+          },
+          "description": "Output only. The parsed grant information.",
+          "readOnly": true
+        },
+        "expiration_interval": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Optional expiration interval for the app token in max seconds."
+        },
+        "authorized_actions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Output only. The available actions on this resource for this user.",
+          "readOnly": true
+        }
+      }
+    },
+    "controller.api.resources.apptokens.v1.Grant": {
+      "type": "object",
+      "properties": {
+        "raw": {
+          "type": "string",
+          "description": "Output only. The original user-supplied string.",
+          "readOnly": true
+        },
+        "canonical": {
+          "type": "string",
+          "description": "Output only. The canonically-formatted string.",
+          "readOnly": true
+        },
+        "json": {
+          "$ref": "#/definitions/controller.api.resources.apptokens.v1.GrantJson",
+          "description": "Output only. The JSON representation of the grant.",
+          "readOnly": true
+        }
+      }
+    },
+    "controller.api.resources.apptokens.v1.GrantJson": {
+      "type": "object",
+      "properties": {
+        "ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Output only. The IDs, if set.",
+          "readOnly": true
+        },
+        "type": {
+          "type": "string",
+          "description": "Output only. The type, if set.",
+          "readOnly": true
+        },
+        "actions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Output only. The actions.",
+          "readOnly": true
+        }
+      }
+    },
     "controller.api.resources.authmethods.v1.AuthMethod": {
       "type": "object",
       "properties": {
@@ -8867,6 +9015,22 @@
         },
         "item": {
           "$ref": "#/definitions/controller.api.resources.aliases.v1.Alias"
+        }
+      }
+    },
+    "controller.api.services.v1.CreateAppTokenRequest": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.apptokens.v1.AppToken"
+        }
+      }
+    },
+    "controller.api.services.v1.CreateAppTokenResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.apptokens.v1.AppToken"
         }
       }
     },
