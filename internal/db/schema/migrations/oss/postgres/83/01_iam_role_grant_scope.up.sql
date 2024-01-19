@@ -156,48 +156,6 @@ begin;
   create trigger ensure_role_grant_scope_id_or_special_valid before insert or update on iam_role_grant_scope
     for each row execute procedure role_grant_scope_id_or_special_valid();
   
-  -- Add a function that is used in our GrantsForUser CTE to turn grants
-  -- containing "this", "children", or "descendants" into the actual scope IDs
-  -- that can be used to build the grants for the request.
-  create or replace function
-    explodeRoleGrantScopes(roleIds text[], roleScopeIds text[], grantScopeIds text[])
-  returns
-    table(role_id text, grant_scope_id text)
-  as $$
-    declare
-      idx int := 1;
-      roleId text;
-    begin
-      foreach roleId in array roleIds
-      loop
-        case
-          when grantScopeIds[idx] = 'descendants' then
-            return query
-              select
-                roleIds[idx]::text as role_id, public_id::text as grant_scope_id from iam_scope
-              where
-                iam_scope.public_id != 'global';
-          when grantScopeIds[idx] = 'children' then
-            return query
-              select
-                roleIds[idx]::text as role_id, public_id::text as grant_scope_id from iam_scope
-              where
-                iam_scope.parent_id = roleScopeIds[idx];
-          when grantScopeIds[idx] = 'this' then
-            return query
-              select
-                roleIds[idx]::text as role_id, roleScopeIds[idx]::text as grant_scope_id;
-          else
-            return query
-              select
-                roleIds[idx]::text as role_id, grantScopeIds[idx]::text as grant_scope_id;
-          end case;
-      idx := idx + 1;
-      end loop;
-      return;
-    end;
-  $$ language plpgsql;
-
   -- Now perform migrations:
 
   -- First, copy current grant scope ID values from existing roles to the new
