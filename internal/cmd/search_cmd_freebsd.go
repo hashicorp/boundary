@@ -16,7 +16,11 @@ func init() {
 	clientCacheWrapper = daemonWrap
 
 	extraCommandsFuncs = append(extraCommandsFuncs, func(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
-		delete(Commands, "daemon")
+		Commands["daemon"] = func() (cli.Command, error) {
+			return &daemon.DaemonCommand{
+				Command: base.NewCommand(ui),
+			}, nil
+		}
 		Commands["daemon start"] = func() (cli.Command, error) {
 			return &daemon.StartCommand{
 				Command: base.NewCommand(ui),
