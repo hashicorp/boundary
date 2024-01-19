@@ -16,18 +16,18 @@ import (
 
 // CreateAppToken will create an apptoken in the repository and return the written apptoken
 // Takes in grant string.  Options supported: WithName, WithDescription
-func (r *Repository) CreateAppToken(ctx context.Context, scopeId string, expTime time.Time, createdByUserId string, grantsStr []string, opt ...Option) (*AppToken, []*AppTokenGrant, error) {
+func (r *Repository) CreateAppToken(ctx context.Context, scopeId string, expTime time.Time, createdByUserId string, grantsStr []string, opt ...Option) (*AppToken, error) {
 	const op = "apptoken.(Repository).CreateAppToken"
 
 	switch {
 	case scopeId == "":
-		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
 	case createdByUserId == "":
-		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing created by user id")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing created by user id")
 	case expTime.IsZero():
-		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing expiration time")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing expiration time")
 	case len(grantsStr) == 0:
-		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing grants")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing grants")
 	}
 
 	grants := make([]*perms.Grant, 0, len(grantsStr))
@@ -38,7 +38,7 @@ func (r *Repository) CreateAppToken(ctx context.Context, scopeId string, expTime
 		const fakeScopeId = "o_abcd1234"
 		grant, err := perms.Parse(ctx, fakeScopeId, grantStr)
 		if err != nil {
-			return nil, nil, errors.Wrap(ctx, err, op)
+			return nil, errors.Wrap(ctx, err, op)
 		}
 		grants = append(grants, &grant)
 	}
@@ -46,25 +46,25 @@ func (r *Repository) CreateAppToken(ctx context.Context, scopeId string, expTime
 	// factory supports options: WithName and WithDescription
 	appT, err := NewAppToken(ctx, scopeId, expTime, createdByUserId, opt...)
 	if err != nil {
-		return nil, nil, errors.Wrap(ctx, err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	appTId, err := newAppTokenId(ctx)
 	if err != nil {
-		return nil, nil, errors.Wrap(ctx, err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 
 	appT.PublicId = appTId
 
 	opLogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
 	if err != nil {
-		return nil, nil, errors.Wrap(ctx, err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 
 	appTokenGrants := make([]*AppTokenGrant, 0, len(grantsStr))
 	for _, grant := range grants {
 		g, err := NewAppTokenGrant(ctx, appT.PublicId, grant.CanonicalString())
 		if err != nil {
-			return nil, nil, errors.Wrap(ctx, err, op)
+			return nil, errors.Wrap(ctx, err, op)
 		}
 		appTokenGrants = append(appTokenGrants, g)
 	}
@@ -72,24 +72,23 @@ func (r *Repository) CreateAppToken(ctx context.Context, scopeId string, expTime
 	var appTokenPeriodicExpInterval *AppTokenPeriodicExpirationInterval
 	if appT.ExpirationIntervalInMaxSeconds > 0 {
 		if appTokenPeriodicExpInterval, err = NewAppTokenPeriodicExpirationInterval(ctx, appT.PublicId, appT.ExpirationIntervalInMaxSeconds); err != nil {
-			return nil, nil, errors.Wrap(ctx, err, op)
+			return nil, errors.Wrap(ctx, err, op)
 		}
 	}
 
 	// TODO: We need to validate that the apptoken grants don't exceed the
 	// grants for the createdByUserId.  You can't give grants you don't have.
 	if err := ValidateAppTokenGrants(ctx, r.grantFinder, createdByUserId, grantsStr); err != nil {
-		return nil, nil, errors.Wrap(ctx, err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 
 	appTokenMetadata, err := appT.oplog(ctx, oplog.OpType_OP_TYPE_CREATE)
 	if err != nil {
-		return nil, nil, errors.Wrap(ctx, err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 
 	var retAppToken *AppToken
-	var retAppTokenGrants []*AppTokenGrant
-	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(r db.Reader, w db.Writer) error {
+	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(reader db.Reader, w db.Writer) error {
 		ticket, err := w.GetTicket(ctx, appT)
 		if err != nil {
 			return err
@@ -128,16 +127,14 @@ func (r *Repository) CreateAppToken(ctx context.Context, scopeId string, expTime
 		if err := w.WriteOplogEntryWith(ctx, opLogWrapper, ticket, appTokenMetadata, msgs); err != nil {
 			return err
 		}
-
-		retAppTokenGrants = make([]*AppTokenGrant, 0, len(tg))
-		for _, g := range tg {
-			retAppTokenGrants = append(retAppTokenGrants, g.(*AppTokenGrant))
+		if retAppToken, err = r.LookupAppToken(ctx, retAppToken.PublicId, withReader(ctx, reader)); err != nil {
+			return err
 		}
 		return nil
 	})
 	if err != nil {
-		return nil, nil, errors.Wrap(ctx, err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 
-	return retAppToken, retAppTokenGrants, nil
+	return retAppToken, nil
 }
