@@ -14,14 +14,50 @@ The cache helps expedite searches.
 
 You can use the Boundary API or CLI to `list` resources like targets, sessions, hosts, and users.
 When you use the `list` command, Boundary searches the control plane to provide a current total of resources when it produces the list of results.
-Some Boundary resources can provide a signficant number of items in the response.
+Some Boundary resources can provide a significant number of items in the response.
 
 Because large lists of results may overwhelm your system resources, the client daemon caches the results of the `list` operation.
 You can search the local cache instead of the control plane to help protect your system resources.
 The Boundary `search` command also produces a list of Boundary resources.
 When you use the `search` command, however, Boundary searches the local cache to create the list.
 
-## Start the client cache
+## Client cache management
 
 The Boundary client daemon starts automatically in the background when a user runs a CLI command that interacts with a Boundary instance.
 If you do not want the daemon to automatically start, you can include the `-skip-cache` flag or set the **BOUNDARY_SKIP_CACHE_DAEMON** environment variable when you run the `boundary search` command.
+
+### Startup and customization
+
+You can start the daemon manually using the `boundary daemon start` command.
+By default, the daemon starts in the foreground.
+You can start it in the background by including the `-background` flag.
+
+If you start the daemon manually, you can customize the caching behavior.
+Include any of the following options to customize the behavior:
+
+- `max-search-staleness` - The amount of time that can pass since the last refresh before the client cache causes a blocking refresh.
+The blocking refresh occurs when you perform the `boundary search` command.
+It requires Boundary to refresh the local cache using the control plane.
+- `max-search-refresh-timeout` - The amount of time the `boundary search` blocking refresh can take before it times out.
+- `refresh-interval` - A duration that specifies how frequently the client cache should query Boundary for changes to sessions and targets.
+Note that Boundary only searches sessions and targets that the user who ran the command has access to.
+
+For more information, refer to the [start](/boundary/docs/commands/daemon/start) command documentation.
+
+### Logging
+
+The client cache stores a log file in the **~/.boundary** directory.
+Boundary automatically rotates the log once it reaches 5 MB.
+It compresses and keeps the last 3 rotated logs before deleting a log.
+
+To log the specific searches that were performed against the cache, include the `-store-debug` flag when you manually start the client cache.
+
+For more information, refer to the [start](/boundary/docs/commands/daemon/start) command documentation.
+
+### Auth tokens
+
+If you want to view another user's client cache, you can use that user's auth token.
+
+To select a specific auth token with which to view the client cache, specify the auth token using the `boundary daemon add-token` command.
+
+For more information, refer to the [add-token](/boundary/docs/commands/daemon/add-token) command documentation.
