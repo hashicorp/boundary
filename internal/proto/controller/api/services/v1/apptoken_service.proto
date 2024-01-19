@@ -1,0 +1,28 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
+syntax = "proto3";
+
+package controller.api.services.v1;
+
+import "controller/api/resources/apptokens/v1/apptoken.proto";
+import "google/api/annotations.proto";
+
+option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/services;services";
+
+service AppTokenService {
+  rpc CreateAppToken(CreateAppTokenRequest) returns (CreateAppTokenResponse) {
+    option (google.api.http) = {
+      post: "/v1/app-tokens"
+      body: "*"
+    };
+  }
+}
+
+message CreateAppTokenRequest {
+  resources.apptokens.v1.AppToken item = 1;
+}
+
+message CreateAppTokenResponse {
+  resources.apptokens.v1.AppToken item = 1;
+}
