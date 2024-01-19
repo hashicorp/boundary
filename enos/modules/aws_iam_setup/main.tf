@@ -12,9 +12,9 @@ locals {
 }
 
 resource "aws_iam_user" "boundary" {
-  name                 = "boundary-e2e-${var.test_id}"
+  name                 = "demo-boundary-e2e-${var.test_id}"
   tags                 = { boundary-demo = local.user_email }
-  permissions_boundary = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/BoundaryDemoPermissionsBoundary"
+  permissions_boundary = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/DemoUser"
 }
 
 resource "aws_iam_user_policy" "boundary" {

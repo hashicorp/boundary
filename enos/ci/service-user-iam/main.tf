@@ -224,7 +224,8 @@ data "aws_iam_policy_document" "enos_policy_document" {
       "s3:DeleteBucket*",
       "s3:GetBucket*",
       "s3:HeadBucket",
-      "s3:PutBucket*"
+      "s3:PutBucket*",
+      "s3:ListBucket",
     ]
 
     resources = ["*"]
@@ -265,7 +266,7 @@ data "aws_iam_policy_document" "aws_nuke_policy_document" {
 }
 
 resource "aws_iam_policy" "demo_user" {
-  name        = "BoundaryDemoPermissionsBoundary"
+  name        = "DemoUser"
   path        = "/"
   description = "Used to allow temporary IAM user creation for end-to-end tests"
   policy      = data.aws_iam_policy_document.demo_user_policy_document.json
@@ -289,6 +290,7 @@ data "aws_iam_policy_document" "demo_user_policy_document" {
       "s3:GetObject",
       "s3:GetObjectAttributes",
       "s3:PutObject",
+      "s3:ListBucket",
     ]
 
     condition {
@@ -326,6 +328,7 @@ data "aws_iam_policy_document" "demo_user_policy_document" {
       "s3:GetObject",
       "s3:GetObjectAttributes",
       "s3:PutObject",
+      "s3:ListBucket",
     ]
   }
 }
