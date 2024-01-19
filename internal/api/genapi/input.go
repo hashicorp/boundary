@@ -8,6 +8,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/gen/controller/api"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/accounts"
+	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/apptokens"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/authmethods"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/authtokens"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/credentiallibraries"
@@ -222,6 +223,22 @@ var inputStructs = []*structInfo{
 		versionEnabled:      true,
 		createResponseTypes: []string{CreateResponseType, ReadResponseType, UpdateResponseType, DeleteResponseType, ListResponseType},
 		recursiveListing:    true,
+	},
+	// AppToken related resources
+	{
+		inProto:     &apptokens.AppToken{},
+		outFile:     "apptokens/apptoken.gen.go",
+		skipOptions: true,
+	},
+	{
+		inProto:     &apptokens.Grant{},
+		outFile:     "apptokens/grant.gen.go",
+		skipOptions: true,
+	},
+	{
+		inProto:     &apptokens.GrantJson{},
+		outFile:     "apptokens/grant_json.gen.go",
+		skipOptions: true,
 	},
 	// User related resources
 	{
