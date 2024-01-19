@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/internal/apptoken/store"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/perms"
@@ -20,14 +21,12 @@ func TestWithOptError(ctx context.Context) Option {
 	}
 }
 
-func TestAppToken(t *testing.T, conn *db.DB, scopeId, createdBy string, grantsStr ...string) (*AppToken, []*AppTokenGrant) {
+func TestAppToken(t *testing.T, conn *db.DB, scopeId, createdBy string, grantsStr ...string) *AppToken {
 	t.Helper()
 	ctx := context.Background()
 	require := require.New(t)
 	require.Greaterf(len(grantsStr), 0, "missing grants")
 	w := db.New(conn)
-
-	// appToken, err := NewAppToken(ctx, scopeId, time.Now().AddDate(1, 0, 0), createdBy)
 	appToken, err := NewAppToken(ctx, scopeId, time.Now().Add(10*time.Minute), createdBy)
 	require.NoError(err)
 
@@ -61,6 +60,11 @@ func TestAppToken(t *testing.T, conn *db.DB, scopeId, createdBy string, grantsSt
 		return nil
 	})
 	require.NoError(err)
-
-	return appToken, appTokenGrants
+	gs := make([]*store.AppTokenGrant, 0, len(appTokenGrants))
+	for _, g := range appTokenGrants {
+		g.CreateTime = appToken.CreateTime
+		gs = append(gs, g.AppTokenGrant)
+	}
+	appToken.Grants = gs
+	return appToken
 }

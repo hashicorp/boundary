@@ -30,9 +30,9 @@ func Test_TestAppToken(t *testing.T) {
 	testUserHistoryId, err := testRepo.ResolveUserHistoryId(testCtx, testUser.GetPublicId())
 	require.NoError(err)
 
-	at, atg := TestAppToken(t, testConn, testOrg.PublicId, testUserHistoryId, "id=*;type=*;actions=*")
+	at := TestAppToken(t, testConn, testOrg.PublicId, testUserHistoryId, "id=*;type=*;actions=*")
 	assert.NotEmpty(at.GetPublicId())
-	assert.Len(atg, 1)
+	assert.Len(at.Grants, 1)
 
 	found := AllocAppToken()
 	found.PublicId = at.GetPublicId()
@@ -41,7 +41,7 @@ func Test_TestAppToken(t *testing.T) {
 	assert.NotNil(found)
 
 	foundGrant := AllocAppTokenGrant()
-	err = testRw.LookupWhere(testCtx, foundGrant, "app_token_id=? AND canonical_grant=?", []any{atg[0].AppTokenId, atg[0].CanonicalGrant})
+	err = testRw.LookupWhere(testCtx, foundGrant, "app_token_id=? AND canonical_grant=?", []any{at.Grants[0].AppTokenId, at.Grants[0].CanonicalGrant})
 	require.NoError(err)
 	assert.NotNil(foundGrant)
 }
