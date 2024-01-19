@@ -13,6 +13,11 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### New and Improved
 
+* Policies (Enterprise and HCP Boundary only): This release introduces Policies, a
+  Boundary resource that represents a Governance Policy to enforce. The first 
+  implementation targets Storage Policies, which enables administrators to automate 
+  the process of retention and deletion of Session Recordings, ensuring that they're only 
+  retaining data that is explicitly required from a security/compliance perspective.
 * New generic commands `read`, `update`, and `delete` have been added. These
   allow operating on resources by directly specifying the ID of the resource as
   the next parameter (e.g. `boundary update ttcp_1234567890`). Subtypes do not
