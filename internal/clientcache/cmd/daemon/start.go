@@ -8,7 +8,6 @@ import (
 	stderrors "errors"
 	"fmt"
 	"io"
-	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -39,12 +38,6 @@ var (
 	_ cli.Command             = (*StartCommand)(nil)
 	_ cli.CommandAutocomplete = (*StartCommand)(nil)
 )
-
-type server interface {
-	setupLogging(context.Context, io.Writer) error
-	serve(context.Context, daemon.Commander, net.Listener) error
-	shutdown() error
-}
 
 type StartCommand struct {
 	*base.Command
@@ -188,7 +181,7 @@ func (c *StartCommand) Run(args []string) int {
 	// TODO: print something out for the spawner to consume in case they can easily
 	// report if the daemon started or not.
 
-	lf, err := logFile(ctx, dotDir, 5)
+	lf, logFileName, err := logFile(ctx, dotDir, 5)
 	if err != nil {
 		c.PrintCliError(err)
 		return base.CommandCliError
@@ -206,6 +199,7 @@ func (c *StartCommand) Run(args []string) int {
 		LogLevel:               c.flagLogLevel,
 		LogFormat:              c.flagLogFormat,
 		LogWriter:              io.MultiWriter(writers...),
+		LogFileName:            logFileName,
 		DotDirectory:           dotDir,
 	}
 
@@ -254,14 +248,14 @@ func DefaultDotDirectory(ctx context.Context) (string, error) {
 // a suffix that matches the time that the rotation happened. Up to 3 log files
 // are saved as backup. When a new log file is rotated and there is already 3
 // backups created, the oldest one is deleted.
-func logFile(ctx context.Context, dotDir string, maxSizeMb int) (io.WriteCloser, error) {
+func logFile(ctx context.Context, dotDir string, maxSizeMb int) (io.WriteCloser, string, error) {
 	const op = "daemon.logFile"
 	logFilePath := filepath.Join(dotDir, logFileName)
 	{
 		// Ensure the file is created with the desired permissions.
 		logFile, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY, 0o600)
 		if err != nil {
-			return nil, errors.Wrap(ctx, err, op)
+			return nil, "", errors.Wrap(ctx, err, op)
 		}
 		logFile.Close()
 	}
@@ -272,7 +266,7 @@ func logFile(ctx context.Context, dotDir string, maxSizeMb int) (io.WriteCloser,
 		MaxBackups: 3,
 		Compress:   true,
 	}
-	return logFile, nil
+	return logFile, logFilePath, nil
 }
 
 func (c *StartCommand) makeBackground(ctx context.Context, dotDir string) (bool, []io.Writer, pidCleanup, error) {
