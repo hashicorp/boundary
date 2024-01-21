@@ -147,6 +147,7 @@ func TestRepository_convertToSessions(t *testing.T) {
 		require.NoError(t, err)
 		sessionsList = append(sessionsList, &s)
 	}
+	require.NoError(t, rows.Err())
 
 	sessions, err := repo.convertToSessions(ctx, sessionsList)
 	require.NoError(t, err)
