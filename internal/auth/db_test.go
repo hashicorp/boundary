@@ -88,6 +88,7 @@ select count(*) from test_auth_method where public_id = @public_id
 		err := rw.ScanRows(ctx, rows, &count)
 		require.NoError(err)
 	}
+	assert.NoError(rows.Err())
 	assert.Equal(1, count.Count)
 
 	count.Count = 0
@@ -98,6 +99,7 @@ select count(*) from test_auth_method where public_id = @public_id
 		err := rw.ScanRows(ctx, rows, &count)
 		require.NoError(err)
 	}
+	assert.NoError(rows.Err())
 	assert.Equal(1, count.Count)
 }
 
@@ -170,6 +172,7 @@ values
 		err := rw.ScanRows(ctx, rows, &count)
 		require.NoError(err)
 	}
+	assert.NoError(rows.Err())
 	assert.Equal(1, count.Count)
 
 	count.Count = 0
@@ -180,5 +183,6 @@ values
 		err := rw.ScanRows(ctx, rows, &count)
 		require.NoError(err)
 	}
+	assert.NoError(rows.Err())
 	assert.Equal(1, count.Count)
 }
