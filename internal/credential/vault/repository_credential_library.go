@@ -563,6 +563,9 @@ func (r *Repository) queryLibraries(ctx context.Context, query string, args []an
 				return errors.Wrap(ctx, err, op)
 			}
 		}
+		if err := rows.Err(); err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
 		for _, result := range results {
 			lib, err := result.toLibrary(ctx)
 			if err != nil {
@@ -591,6 +594,9 @@ func (r *Repository) EstimatedLibraryCount(ctx context.Context) (int, error) {
 		if err := r.reader.ScanRows(ctx, rows, &count); err != nil {
 			return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total vault credential libraries"))
 		}
+	}
+	if err := rows.Err(); err != nil {
+		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total vault credential libraries"))
 	}
 	return count, nil
 }

@@ -1617,6 +1617,7 @@ group by store_id, status;
 						break
 					}
 				}
+				assert.NoError(rows.Err())
 				assert.Contains(storeIds, storeId)
 				require.NotNil(privateStore)
 				if assert.NotNil(privateStore.DeleteTime) {
@@ -1664,6 +1665,7 @@ group by store_id, status;
 						break
 					}
 				}
+				assert.NoError(rows.Err())
 				assert.Contains(storeIds, storeId)
 				require.NotNil(privateStore)
 				assert.Empty(cmp.Diff(deleteTime, privateStore.DeleteTime, protocmp.Transform()))

@@ -73,6 +73,7 @@ func lookupDbCred(t *testing.T, ctx context.Context, rw *db.Db, dc credential.Dy
 			&got.ExpirationTime,
 		))
 	}
+	assert.NoError(t, rows.Err())
 	// Should never get more than one that matches, but can get 0
 	assert.LessOrEqual(t, rowCount, 1)
 
