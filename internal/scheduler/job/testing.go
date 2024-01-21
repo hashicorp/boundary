@@ -56,6 +56,9 @@ func testRun(conn *db.DB, pluginId, name, cId string) (*Run, error) {
 	if !rows.Next() {
 		return nil, nil
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 
 	err = rw.ScanRows(ctx, rows, run)
 	if err != nil {
@@ -83,6 +86,9 @@ func testRunWithUpdateTime(conn *db.DB, pluginId, name, cId string, updateTime t
 	}
 	if !rows.Next() {
 		return nil, fmt.Errorf("expected to rows")
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 
 	err = rw.ScanRows(ctx, rows, run)
