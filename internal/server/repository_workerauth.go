@@ -486,6 +486,9 @@ func (r *WorkerAuthRepositoryStorage) loadNodeInformation(ctx context.Context, n
 		}
 		workerAuths = append(workerAuths, &s)
 	}
+	if err := rows.Err(); err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
 
 	workerAuthorizedSet, err := r.validateWorkerAuths(ctx, workerAuths)
 	if err != nil {
@@ -639,6 +642,9 @@ func (r *WorkerAuthRepositoryStorage) FilterToAuthorizedWorkerKeyIds(ctx context
 			return nil, errors.Wrap(ctx, err, op)
 		}
 		ret = append(ret, result.WorkerKeyIdentifier)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	return ret, nil
 }
