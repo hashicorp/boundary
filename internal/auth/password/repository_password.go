@@ -229,6 +229,9 @@ func (r *Repository) authenticate(ctx context.Context, scopeId, authMethodId, lo
 		}
 		accts = append(accts, aa)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
 
 	var acct authAccount
 	switch {
