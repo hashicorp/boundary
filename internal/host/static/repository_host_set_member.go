@@ -363,5 +363,8 @@ func (r *Repository) changes(ctx context.Context, setId string, hostIds []string
 		}
 		changes = append(changes, &chg)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("next row error"))
+	}
 	return changes, nil
 }

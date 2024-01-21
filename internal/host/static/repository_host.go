@@ -307,6 +307,9 @@ func (r *Repository) queryHosts(ctx context.Context, query string, args []any) (
 				return err
 			}
 		}
+		if err := rows.Err(); err != nil {
+			return err
+		}
 		hosts = make([]*Host, 0, len(foundHosts))
 		for _, ha := range foundHosts {
 			hosts = append(hosts, ha.toHost())
@@ -396,6 +399,9 @@ func (r *Repository) estimatedHostCount(ctx context.Context) (int, error) {
 		if err := r.reader.ScanRows(ctx, rows, &count); err != nil {
 			return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query static hosts"))
 		}
+	}
+	if err := rows.Err(); err != nil {
+		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query static hosts"))
 	}
 	return count, nil
 }
