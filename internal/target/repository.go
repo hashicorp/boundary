@@ -225,6 +225,9 @@ func (r *Repository) FetchAuthzProtectedEntitiesByScope(ctx context.Context, pro
 		}
 		targetsMap[tv.GetProjectId()] = append(targetsMap[tv.GetProjectId()], tv)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("next rows error"))
+	}
 
 	return targetsMap, nil
 }
@@ -315,6 +318,9 @@ func (r *Repository) queryTargets(ctx context.Context, query string, args []any,
 			if err := r.ScanRows(ctx, rows, &foundTargets); err != nil {
 				return err
 			}
+		}
+		if err := rows.Err(); err != nil {
+			return err
 		}
 		var targetIds []string
 		for _, t := range foundTargets {
@@ -426,6 +432,9 @@ func (r *Repository) estimatedCount(ctx context.Context) (int, error) {
 		if err := r.reader.ScanRows(ctx, rows, &count); err != nil {
 			return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total targets"))
 		}
+	}
+	if err := rows.Err(); err != nil {
+		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total targets"))
 	}
 	return count, nil
 }
