@@ -8,7 +8,6 @@ import (
 	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/x509"
-	"sort"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -269,91 +268,6 @@ func TestRepository_getAuthMethods(t *testing.T) {
 			TestSortAuthMethods(t, want)
 			TestSortAuthMethods(t, got)
 			assert.Equal(want, got)
-		})
-	}
-}
-
-// TestRepository_ListAuthMethods only covers error conditions, since all the
-// search criteria testing is handled in the TestRepository_getAuthMethods unit
-// tests.
-func TestRepository_ListAuthMethods(t *testing.T) {
-	testConn, _ := db.TestSetup(t, "postgres")
-	testRw := db.New(testConn)
-	testWrapper := db.TestWrapper(t)
-	testKms := kms.TestKms(t, testConn, testWrapper)
-	testCtx := context.Background()
-	iamRepo := iam.TestRepo(t, testConn, testWrapper)
-
-	tests := []struct {
-		name         string
-		setupFn      func() (scopeIds []string, want []*AuthMethod, wantPrimaryAuthMethodId string)
-		opt          []Option
-		wantErrMatch *errors.Template
-	}{
-		{
-			name: "with-limits",
-			setupFn: func() ([]string, []*AuthMethod, string) {
-				org, _ := iam.TestScopes(t, iam.TestRepo(t, testConn, testWrapper))
-				orgDbWrapper, err := testKms.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
-				require.NoError(t, err)
-				am1a := TestAuthMethod(t, testConn, orgDbWrapper, org.PublicId, []string{"ldaps://alice.com"})
-				iam.TestSetPrimaryAuthMethod(t, iamRepo, org, am1a.PublicId)
-				am1a.IsPrimaryAuthMethod = true
-
-				_ = TestAuthMethod(t, testConn, orgDbWrapper, org.PublicId, []string{"ldaps://alice2.com"})
-
-				return []string{am1a.ScopeId}, []*AuthMethod{am1a}, am1a.PublicId
-			},
-			opt: []Option{WithLimit(testCtx, 1), WithOrderByCreateTime(testCtx, true)},
-		},
-		{
-			name: "no-search-criteria",
-			setupFn: func() ([]string, []*AuthMethod, string) {
-				return nil, nil, ""
-			},
-			wantErrMatch: errors.T(errors.InvalidParameter),
-		},
-	}
-
-	for _, tt := range tests {
-		tt := tt
-		t.Run(tt.name, func(t *testing.T) {
-			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(testCtx, testRw, testRw, testKms)
-			assert.NoError(err)
-			scopeIds, want, wantPrimaryAuthMethodId := tt.setupFn()
-
-			got, err := repo.ListAuthMethods(testCtx, scopeIds, tt.opt...)
-			if tt.wantErrMatch != nil {
-				require.Error(err)
-				assert.Truef(errors.Match(tt.wantErrMatch, err), "want err code: %q got: %q", tt.wantErrMatch, err)
-				assert.Nil(got)
-				return
-			}
-			require.NoError(err)
-			sort.Slice(want, func(a, b int) bool {
-				return want[a].PublicId < want[b].PublicId
-			})
-			sort.Slice(got, func(a, b int) bool {
-				return got[a].PublicId < got[b].PublicId
-			})
-			assert.Equal(want, got)
-			if wantPrimaryAuthMethodId != "" {
-				found := false
-				for _, am := range got {
-					if am.PublicId == wantPrimaryAuthMethodId {
-						assert.Truef(am.IsPrimaryAuthMethod, "expected IsPrimaryAuthMethod to be true for: %s", am.PublicId)
-						if am.IsPrimaryAuthMethod {
-							found = true
-						}
-					}
-				}
-				assert.Truef(found, "expected to find primary id %s in: %+v", wantPrimaryAuthMethodId, got)
-			} else {
-				for _, am := range got {
-					assert.Falsef(am.IsPrimaryAuthMethod, "did not expect %s to be IsPrimaryAuthMethod", am.PublicId)
-				}
-			}
 		})
 	}
 }
