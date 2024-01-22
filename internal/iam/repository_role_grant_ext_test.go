@@ -24,7 +24,6 @@ import (
 )
 
 func TestGrantsForUser(t *testing.T) {
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrap := db.TestWrapper(t)
 
@@ -55,6 +54,7 @@ func TestGrantsForUser(t *testing.T) {
 	iam.TestRoleGrant(t, conn, globalRole.PublicId, "id=*;type=auth-method;actions=update")
 	iam.TestRoleGrant(t, conn, globalRole.PublicId, "id=*;type=credential-store;actions=list,no-op")
 	// time.Sleep(10000 * time.Second)
+	// ctx := context.Background()
 	// grantTuples, err := iamRepo.GrantsForUser(ctx, user.PublicId)
 	// require.NoError(t, err)
 	// t.Log(pretty.Sprint(grantTuples))
