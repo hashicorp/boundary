@@ -18,6 +18,8 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   implementation targets Storage Policies, which enables administrators to automate 
   the process of retention and deletion of Session Recordings, ensuring that they're only 
   retaining data that is explicitly required from a security/compliance perspective.
+    * ui: Add full UI support for Storage Policies managing the lifecycle of Session Recordings.
+      ([PR](https://github.com/hashicorp/boundary-ui/pull/2089))
 * New generic commands `read`, `update`, and `delete` have been added. These
   allow operating on resources by directly specifying the ID of the resource as
   the next parameter (e.g. `boundary update ttcp_1234567890`). Subtypes do not
@@ -35,9 +37,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
     relative to the last result received.
   * config: add new controller max_page_size field for controlling the default and max size
     of pages when paginating through results.
-* ui: Add full UI support for Storage Policies managing the lifecycle of Session Recordings.
-  ([PR](https://github.com/hashicorp/boundary-ui/pull/2089))
-
+    
 ## 0.14.3 (2023/12/12)
 
 ### New and Improved
