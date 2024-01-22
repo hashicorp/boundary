@@ -27,8 +27,9 @@ import (
 func TestWithEventer(t *testing.T) {
 	ctx := context.Background()
 	dir := t.TempDir()
-	l, err := logFile(ctx, dir, 1)
+	l, loc, err := logFile(ctx, dir, 1)
 	require.NoError(t, err)
+	assert.Equal(t, filepath.Join(dir, logFileName), loc)
 	t.Cleanup(func() {
 		assert.NoError(t, l.Close())
 	})
@@ -82,8 +83,9 @@ func TestWithEventer(t *testing.T) {
 func TestRotation(t *testing.T) {
 	ctx := context.Background()
 	dir := t.TempDir()
-	l, err := logFile(ctx, dir, 1)
+	l, loc, err := logFile(ctx, dir, 1)
 	require.NoError(t, err)
+	assert.Equal(t, filepath.Join(dir, logFileName), loc)
 	t.Cleanup(func() {
 		assert.NoError(t, l.Close())
 	})

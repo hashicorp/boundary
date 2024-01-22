@@ -79,6 +79,7 @@ type Config struct {
 	LogLevel               string
 	LogFormat              string
 	LogWriter              io.Writer
+	LogFileName            string
 	DotDirectory           string
 	// The amount of time since the last refresh that must have passed for a
 	// search query to trigger an inline refresh.
@@ -287,7 +288,7 @@ func (s *CacheServer) Serve(ctx context.Context, cmd Commander, opt ...Option) e
 	}
 	mux.Handle("/v1/search", versionEnforcement(searchFn))
 
-	statusFn, err := newStatusHandlerFunc(ctx, repo, l.Addr().String())
+	statusFn, err := newStatusHandlerFunc(ctx, repo, l.Addr().String(), s.conf.LogFileName)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
