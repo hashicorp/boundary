@@ -659,9 +659,9 @@ func (r *Repository) UpdateTarget(ctx context.Context, target Target, version ui
 		return nil, db.NoRowsAffected, errors.New(ctx, errors.EmptyFieldMask, op, "empty field mask")
 	}
 
-	// The Address field is not apart of the target schema in the database.
-	// It is apart of a different table called target_address, which is why
-	// the Address field must be filtered out of the dbMask & nullFields slices.
+	// The Address field is not a part of the target schema in the database. It
+	// is a part of a different table called target_address, which is why the
+	// Address field must be filtered out of the dbMask & nullFields slices.
 	var updateAddress, deleteAddress bool
 	var filteredDbMask, filteredNullFields []string
 	for _, f := range dbMask {

@@ -2916,7 +2916,6 @@ func TestAuthorizeSession(t *testing.T) {
 	shsWithPort := static.TestSets(t, conn, hcWithPort.GetPublicId(), 1)[0]
 	_ = static.TestSetMembers(t, conn, shsWithPort.GetPublicId(), []*static.Host{hWithPort})
 	hWithPortBareAddress := hWithPort.GetAddress()
-	hWithPort.Address = fmt.Sprintf("%s:54321", hWithPort.GetAddress())
 	hWithPort, _, err = staticRepo.UpdateHost(ctx, hcWithPort.GetProjectId(), hWithPort, hWithPort.GetVersion(), []string{"address"})
 	require.NoError(t, err)
 
@@ -3822,7 +3821,6 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 			HostSourceIds: []string{hs.GetPublicId()},
 		})
 		require.NoError(t, err)
-		h.Address = fmt.Sprintf("%s:54321", h.GetAddress())
 		repo, err := staticHostRepoFn()
 		require.NoError(t, err)
 		_, _, err = repo.UpdateHost(ctx, hc.GetProjectId(), h, h.GetVersion(), []string{"address"})
@@ -3931,7 +3929,6 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 			name:            "no worker",
 			setup:           []func(tcpTarget target.Target) uint32{hostExists, libraryExists},
 			useTargetId:     true,
-			wantErr:         true,
 			wantErrContains: "No workers are available to handle this session",
 		},
 		{
@@ -3943,7 +3940,6 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 			name:            "no target",
 			setup:           []func(tcpTarget target.Target) uint32{workerExists, hostExists, libraryExists},
 			useTargetId:     false,
-			wantErr:         true,
 			wantErrContains: "Resource not found",
 		},
 		{
@@ -3952,24 +3948,36 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 			useTargetId: true,
 		},
 		{
+			name: "host port",
+			setup: []func(tcpTarget target.Target) uint32{
+				workerExists, func(tcpTarget target.Target) uint32 {
+					tcpTarget.SetAddress("127.0.0.1:22")
+					repo, err := repoFn()
+					require.NoError(t, err)
+					tcpTarget, _, err = repo.UpdateTarget(ctx, tcpTarget, tcpTarget.GetVersion(), []string{"address"})
+					require.NoError(t, err)
+					return tcpTarget.GetVersion()
+				},
+			},
+			wantErrContains: "Address specified for use unexpectedly contains a port",
+			useTargetId:     true,
+		},
+		{
 			name:            "no hosts",
 			setup:           []func(tcpTarget target.Target) uint32{workerExists, hostSetNoHostExists, libraryExists},
 			useTargetId:     true,
-			wantErr:         true,
 			wantErrContains: "No host sources or address found for given target",
 		},
 		{
 			name:            "bad library configuration",
 			setup:           []func(tcpTarget target.Target) uint32{workerExists, hostExists, misConfiguredlibraryExists},
 			useTargetId:     true,
-			wantErr:         true,
 			wantErrContains: "external system issue: error #3014: Error making API request",
 		},
 		{
 			name:            "expired token library",
 			setup:           []func(tcpTarget target.Target) uint32{workerExists, hostExists, expiredTokenLibrary},
 			useTargetId:     true,
-			wantErr:         true,
 			wantErrContains: "vault.newClient: invalid configuration",
 		},
 	}
@@ -3990,7 +3998,7 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 			res, err := s.AuthorizeSession(ctx, &pbs.AuthorizeSessionRequest{
 				Id: id,
 			})
-			if tc.wantErr {
+			if tc.wantErrContains != "" {
 				require.Error(t, err)
 				require.Nil(t, res)
 				require.ErrorContains(t, err, tc.wantErrContains)
