@@ -680,5 +680,8 @@ func (r *Repository) estimatedScopeCount(ctx context.Context) (int, error) {
 			return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total scopes"))
 		}
 	}
+	if err := rows.Err(); err != nil {
+		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total scopes"))
+	}
 	return count, nil
 }

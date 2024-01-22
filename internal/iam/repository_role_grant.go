@@ -421,5 +421,8 @@ func (r *Repository) GrantsForUser(ctx context.Context, userId string, _ ...Opti
 		}
 		grants = append(grants, g)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
 	return grants, nil
 }

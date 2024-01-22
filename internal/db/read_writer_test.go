@@ -1642,6 +1642,7 @@ func TestDb_ScanRows(t *testing.T) {
 			require.NoError(err)
 			assert.Equal(user.PublicId, u.PublicId)
 		}
+		assert.NoError(rows.Err())
 	})
 }
 
@@ -1672,6 +1673,7 @@ func TestDb_Query(t *testing.T) {
 			require.NoError(err)
 			assert.Equal(user.PublicId, u.PublicId)
 		}
+		assert.NoError(rows.Err())
 	})
 }
 

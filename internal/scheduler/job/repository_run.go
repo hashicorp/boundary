@@ -53,6 +53,9 @@ func (r *Repository) RunJobs(ctx context.Context, serverId string, opt ...Option
 				}
 				runs = append(runs, run)
 			}
+			if err := rows.Err(); err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get next row for job run"))
+			}
 
 			return nil
 		},
@@ -94,6 +97,9 @@ func (r *Repository) UpdateProgress(ctx context.Context, runId string, completed
 				if err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to scan rows for job run"))
 				}
+			}
+			if err := rows.Err(); err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get next row for job run"))
 			}
 			if rowCnt == 0 {
 				// Failed to update run, either it does not exist or was in an invalid state
@@ -159,6 +165,9 @@ func (r *Repository) CompleteRun(ctx context.Context, runId string, nextRunIn ti
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to scan rows for job run"))
 				}
 			}
+			if err := rows.Err(); err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get next row for job run"))
+			}
 			if rowCnt == 0 {
 				// Failed to update run, either it does not exist or was in an invalid state
 				if err = r.LookupById(ctx, run); err != nil {
@@ -188,6 +197,9 @@ func (r *Repository) CompleteRun(ctx context.Context, runId string, nextRunIn ti
 				if err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to scan rows for job"))
 				}
+			}
+			if err := rows1.Err(); err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get next row for job"))
 			}
 
 			return nil
@@ -238,6 +250,9 @@ func (r *Repository) FailRun(ctx context.Context, runId string, completed, total
 				if err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to scan rows for job run"))
 				}
+			}
+			if err := rows.Err(); err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get next row for job run"))
 			}
 			if rowCnt == 0 {
 				// Failed to update run, either it does not exist or was in an invalid state
@@ -299,6 +314,9 @@ func (r *Repository) InterruptRuns(ctx context.Context, interruptThreshold time.
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to scan rows for job run"))
 				}
 				runs = append(runs, run)
+			}
+			if err := rows.Err(); err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get next row for job run"))
 			}
 
 			return nil

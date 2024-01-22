@@ -378,6 +378,9 @@ func (r *Repository) queryAuthTokens(ctx context.Context, query string, args []a
 			}
 			atvs = append(atvs, &atv)
 		}
+		if err := rows.Err(); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("rows next error"))
+		}
 
 		authTokens = make([]*AuthToken, 0, len(atvs))
 		for _, atv := range atvs {
@@ -428,6 +431,9 @@ func (r *Repository) estimatedCount(ctx context.Context) (int, error) {
 		if err := r.reader.ScanRows(ctx, rows, &count); err != nil {
 			return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total auth tokens"))
 		}
+	}
+	if err := rows.Err(); err != nil {
+		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total auth tokens"))
 	}
 	return count, nil
 }

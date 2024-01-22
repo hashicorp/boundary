@@ -368,5 +368,8 @@ func (r *Repository) estimatedManagedGroupCount(ctx context.Context) (int, error
 			return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query ldap managed group counts"))
 		}
 	}
+	if err := rows.Err(); err != nil {
+		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query ldap managed group counts"))
+	}
 	return count, nil
 }

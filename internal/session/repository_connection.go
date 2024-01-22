@@ -430,6 +430,9 @@ func (r *ConnectionRepository) closeOrphanedConnections(ctx context.Context, wor
 				}
 				orphanedConns = append(orphanedConns, connectionId)
 			}
+			if err := rows.Err(); err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg("error getting next row"))
+			}
 			return nil
 		},
 	)

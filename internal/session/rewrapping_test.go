@@ -93,6 +93,7 @@ func TestRewrap_sessionCredentialRewrapFn(t *testing.T) {
 			rowCount++
 			require.NoError(t, rows.Scan(&got.CtCredential, &got.KeyId, &got.CredentialSha256))
 		}
+		require.NoError(t, rows.Err())
 		assert.Equal(t, 1, rowCount)
 
 		kmsWrapper2, err := kmsCache.GetWrapper(context.Background(), prj.PublicId, kms.KeyPurposeDatabase, kms.WithKeyId(got.KeyId))

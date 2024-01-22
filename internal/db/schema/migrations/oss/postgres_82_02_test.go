@@ -53,7 +53,9 @@ func TestMigrationHook8202(t *testing.T) {
 		require.NoError(t, rows.Scan(&targetOrgId))
 		count++
 	}
+	require.NoError(t, rows.Err())
 	rows.Close()
+	require.NoError(t, rows.Err())
 	assert.Equal(t, 1, count)
 	assert.Equal(t, "o_test__82002", *targetOrgId)
 
@@ -66,6 +68,7 @@ func TestMigrationHook8202(t *testing.T) {
 		require.NoError(t, rows.Scan(&targetOrgId))
 		count++
 	}
+	require.NoError(t, rows.Err())
 	assert.Equal(t, 1, count)
 	assert.Nil(t, targetOrgId)
 }

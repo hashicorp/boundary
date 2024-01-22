@@ -349,6 +349,7 @@ func TestRepository_AddSupportFlag(t *testing.T) {
 				rowCount++
 				require.NoError(rows.Scan(&plgid))
 			}
+			require.NoError(rows.Err())
 
 			if tt.flagExists {
 				assert.Equal(1, rowCount)
@@ -384,6 +385,7 @@ func TestRepository_AddSupportFlag(t *testing.T) {
 			for rows.Next() {
 				rowCount++
 			}
+			require.NoError(rows.Err())
 			assert.Equal(1, rowCount)
 		})
 	}

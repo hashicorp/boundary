@@ -251,6 +251,7 @@ func loadKeks(t *testing.T, rw *db.Db) []kek {
 		require.NoError(t, rw.ScanRows(context.Background(), rows, &key))
 		keks = append(keks, key)
 	}
+	require.NoError(t, rows.Err())
 	return keks
 }
 
@@ -266,6 +267,7 @@ func loadKekVersions(t *testing.T, rw *db.Db) []kekVersion {
 		require.NoError(t, rw.ScanRows(context.Background(), rows, &v))
 		kekVersions = append(kekVersions, v)
 	}
+	require.NoError(t, rows.Err())
 	return kekVersions
 }
 
@@ -281,6 +283,7 @@ func loadNewDeks(t *testing.T, rw *db.Db) []dek {
 		require.NoError(t, rw.ScanRows(context.Background(), rows, &key))
 		deks = append(deks, key)
 	}
+	require.NoError(t, rows.Err())
 	return deks
 }
 
@@ -315,6 +318,7 @@ func loadCurrentDeks(t *testing.T, rw *db.Db) []dek {
 			require.NoError(t, rw.ScanRows(context.Background(), rows, &key))
 			deks = append(deks, key)
 		}
+		require.NoError(t, rows.Err())
 	}
 	return deks
 }
@@ -331,6 +335,7 @@ func loadNewDekVersions(t *testing.T, rw *db.Db) []dekVersion {
 		require.NoError(t, rw.ScanRows(context.Background(), rows, &v))
 		dekVersions = append(dekVersions, v)
 	}
+	require.NoError(t, rows.Err())
 	return dekVersions
 }
 
@@ -420,6 +425,7 @@ func loadCurrentDekVersions(t *testing.T, rw *db.Db) []dekVersion {
 			}
 			dekVersions = append(dekVersions, v)
 		}
+		require.NoError(t, rows.Err())
 	}
 	return dekVersions
 }

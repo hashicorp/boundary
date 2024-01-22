@@ -476,6 +476,9 @@ func (k *Kms) MonitorTableRewrappingRuns(ctx context.Context, tableName string, 
 			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to scan pending run for %q", tableName))
 		}
 	}
+	if err := rows.Err(); err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithMsg("failed to get next pending runs for %q", tableName))
+	}
 	if run.KeyId == "" {
 		// No queued runs, lets try again later
 		return nil
@@ -525,6 +528,9 @@ func (k *Kms) MonitorTableRewrappingRuns(ctx context.Context, tableName string, 
 			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to scan scope id for data key version"))
 		}
 	}
+	if err := rows.Err(); err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithMsg("failed to get next scope id for data key version"))
+	}
 
 	// Call the function to rewrap the data in the table. The progress will be automatically
 	// updated by the deferred function.
@@ -550,6 +556,9 @@ func (k *Kms) MonitorDataKeyVersionDestruction(ctx context.Context) error {
 		if err := k.reader.ScanRows(ctx, rows, &completedDataKeyVersionIds); err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
+	}
+	if err := rows.Err(); err != nil {
+		return errors.Wrap(ctx, err, op)
 	}
 	for _, dataKeyVersionId := range completedDataKeyVersionIds {
 		// Finally, revoke the key, deleting it from the database.
@@ -640,6 +649,9 @@ keyLoop:
 				if err := r.ScanRows(ctx, rows, &numRows); err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("failed to scan number of rows for %q", table.GetTableName()))
 				}
+			}
+			if err := rows.Err(); err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg("failed to get next number of rows for %q", table.GetTableName()))
 			}
 			if numRows == 0 {
 				// No rows to rewrap 🎉

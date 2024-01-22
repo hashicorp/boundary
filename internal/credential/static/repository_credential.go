@@ -826,6 +826,9 @@ func (r *Repository) queryCredentials(ctx context.Context, query string, args []
 				return errors.Wrap(ctx, err, op)
 			}
 		}
+		if err := rows.Err(); err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
 		for _, result := range results {
 			cred, err := result.toCredential(ctx)
 			if err != nil {
@@ -916,6 +919,9 @@ func (r *Repository) EstimatedCredentialCount(ctx context.Context) (int, error) 
 		if err := r.reader.ScanRows(ctx, rows, &count); err != nil {
 			return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total static credentials"))
 		}
+	}
+	if err := rows.Err(); err != nil {
+		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total static credentials"))
 	}
 	return count, nil
 }

@@ -127,6 +127,7 @@ func Test_ServerEnumChanges(t *testing.T) {
 		require.NoError(rows.Scan(&a))
 		actualEnm = append(actualEnm, a)
 	}
+	require.NoError(rows.Err())
 	require.Equal([]string{"controller", "worker"}, actualEnm)
 
 	// Try inserting a broken row

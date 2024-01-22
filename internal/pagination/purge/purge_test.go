@@ -64,6 +64,7 @@ func TestPurgeTables(t *testing.T) {
 		}
 		require.Equal(t, 1, count)
 	}
+	require.NoError(t, rows.Err())
 }
 
 func TestNewPurgeJob(t *testing.T) {

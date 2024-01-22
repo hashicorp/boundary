@@ -32,6 +32,9 @@ func (w *Writer) hasTable(ctx context.Context, tableName string) (bool, error) {
 	if ok := rows.Next(); ok {
 		rw.ScanRows(rows, &count)
 	}
+	if err := rows.Err(); err != nil {
+		return false, errors.Wrap(ctx, err, op)
+	}
 	return count > 0, nil
 }
 

@@ -556,6 +556,9 @@ func (rw *Db) Now(ctx context.Context) (time.Time, error) {
 			return time.Time{}, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query current timestamp"))
 		}
 	}
+	if err := rows.Err(); err != nil {
+		return time.Time{}, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query current timestamp"))
+	}
 	return now, nil
 }
 

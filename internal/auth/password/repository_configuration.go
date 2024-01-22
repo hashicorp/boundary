@@ -159,7 +159,9 @@ func (r *Repository) currentConfigForAccount(ctx context.Context, accountId stri
 		}
 		confs = append(confs, conf)
 	}
-
+	if err := rows.Err(); err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
 	var cc currentConfig
 	switch {
 	case len(confs) == 0:
