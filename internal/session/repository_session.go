@@ -309,7 +309,7 @@ func (r *Repository) listSessions(ctx context.Context, opt ...Option) ([]*Sessio
 		)
 	}
 
-	return r.querySessions(ctx, query, args, limit)
+	return r.querySessions(ctx, query, args)
 }
 
 // listSessionsRefresh lists sessions limited by the list
@@ -354,10 +354,10 @@ func (r *Repository) listSessionsRefresh(ctx context.Context, updatedAfter time.
 		)
 	}
 
-	return r.querySessions(ctx, query, args, limit)
+	return r.querySessions(ctx, query, args)
 }
 
-func (r *Repository) querySessions(ctx context.Context, query string, args []any, limit int) ([]*Session, time.Time, error) {
+func (r *Repository) querySessions(ctx context.Context, query string, args []any) ([]*Session, time.Time, error) {
 	const op = "session.(Repository).querySessions"
 
 	var sessions []*Session
