@@ -25,29 +25,30 @@ type Option func(*Options)
 
 // Options - how Options are represented.
 type Options struct {
-	withNoTokenScope               bool
-	withNoTokenValue               bool
-	withSkipDefaultRoleCreation    bool
-	withSkipDatabaseDestruction    bool
-	withSkipAuthMethodCreation     bool
-	withSkipOidcAuthMethodCreation bool
-	withSkipLdapAuthMethodCreation bool
-	withSkipScopesCreation         bool
-	withSkipHostResourcesCreation  bool
-	withSkipTargetCreation         bool
-	withContainerImage             string
-	withDialect                    string
-	withDatabaseTemplate           string
-	withEventerConfig              *event.EventerConfig
-	withEventFlags                 *EventFlags
-	withEventWrapper               wrapping.Wrapper
-	withAttributeFieldPrefix       string
-	withStatusCode                 int
-	withHostPlugin                 func() (string, plugin.HostPluginServiceClient)
-	withEventGating                bool
-	withImplicitId                 string
-	WithSkipScopeIdFlag            bool
-	WithInterceptedToken           *string
+	withNoTokenScope                        bool
+	withNoTokenValue                        bool
+	withSkipDefaultRoleCreation             bool
+	withSkipDatabaseDestruction             bool
+	withSkipAuthMethodCreation              bool
+	withSkipOidcAuthMethodCreation          bool
+	withSkipLdapAuthMethodCreation          bool
+	withSkipScopesCreation                  bool
+	withSkipHostResourcesCreation           bool
+	withSkipTargetCreation                  bool
+	withContainerImage                      string
+	withDialect                             string
+	withDatabaseTemplate                    string
+	withEventerConfig                       *event.EventerConfig
+	withEventFlags                          *EventFlags
+	withEventWrapper                        wrapping.Wrapper
+	withAttributeFieldPrefix                string
+	withStatusCode                          int
+	withHostPlugin                          func() (string, plugin.HostPluginServiceClient)
+	withEventGating                         bool
+	withImplicitId                          string
+	WithSkipScopeIdFlag                     bool
+	WithInterceptedToken                    *string
+	withAuthUserTargetAuthorizeSessionGrant bool
 }
 
 func getDefaultOptions() Options {
@@ -234,5 +235,14 @@ func WithSkipScopeIdFlag(with bool) Option {
 func WithInterceptedToken(s *string) Option {
 	return func(o *Options) {
 		o.WithInterceptedToken = s
+	}
+}
+
+// WithAuthUserTargetAuthorizeSessionGrant indicates that we should add an
+// authorize-session grant to the global authenticated user role. This is the
+// default for dev mode.
+func WithAuthUserTargetAuthorizeSessionGrant(with bool) Option {
+	return func(o *Options) {
+		o.withAuthUserTargetAuthorizeSessionGrant = with
 	}
 }

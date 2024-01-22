@@ -158,4 +158,13 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.WithInterceptedToken = &s
 		assert.Equal(opts, testOpts)
 	})
+
+	t.Run("WithAuthUserTargetAuthorizeSessionGrant", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := GetOpts(WithAuthUserTargetAuthorizeSessionGrant(true))
+		testOpts := getDefaultOptions()
+		assert.False(opts.withAuthUserTargetAuthorizeSessionGrant)
+		testOpts.withAuthUserTargetAuthorizeSessionGrant = true
+		assert.Equal(opts, testOpts)
+	})
 }
