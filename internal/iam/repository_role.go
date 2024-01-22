@@ -221,6 +221,9 @@ func (r *Repository) LookupRole(ctx context.Context, withPublicId string, opt ..
 
 	var err error
 	if opts.withReader != nil && opts.withWriter != nil {
+		if !opts.withWriter.IsTx(ctx) {
+			return nil, nil, nil, nil, errors.New(ctx, errors.Internal, op, "writer is not in transaction")
+		}
 		err = lookupFunc(opts.withReader, opts.withWriter)
 	} else {
 		_, err = r.writer.DoTx(

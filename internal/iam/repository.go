@@ -153,6 +153,9 @@ func (r *Repository) update(ctx context.Context, resource Resource, version uint
 	if opts.withReader != nil && opts.withWriter != nil {
 		reader = opts.withReader
 		writer = opts.withWriter
+		if !writer.IsTx(ctx) {
+			return nil, db.NoRowsAffected, errors.New(ctx, errors.Internal, op, "writer is not in transaction")
+		}
 		needFreshReaderWriter = false
 	}
 
