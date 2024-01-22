@@ -44,7 +44,7 @@ func TestWorkerSessionProxyMultipleConnections(t *testing.T) {
 		PublicClusterAddr:               pl.Addr().String(),
 		WorkerStatusGracePeriodDuration: helper.DefaultWorkerStatusGracePeriod,
 	})
-	defer c1.Shutdown()
+	t.Cleanup(c1.Shutdown)
 
 	helper.ExpectWorkers(t, c1)
 
@@ -56,7 +56,9 @@ func TestWorkerSessionProxyMultipleConnections(t *testing.T) {
 		dawdle.WithWbufSize(256),
 	)
 	require.NoError(err)
-	defer proxy.Close()
+	t.Cleanup(func() {
+		proxy.Close()
+	})
 	require.NotEmpty(t, proxy.ListenerAddr())
 
 	w1 := worker.NewTestWorker(t, &worker.TestWorkerOpts{
@@ -65,7 +67,7 @@ func TestWorkerSessionProxyMultipleConnections(t *testing.T) {
 		Logger:                              logger.Named("w1"),
 		SuccessfulStatusGracePeriodDuration: helper.DefaultWorkerStatusGracePeriod,
 	})
-	defer w1.Shutdown()
+	t.Cleanup(w1.Shutdown)
 
 	err = w1.Worker().WaitForNextSuccessfulStatusUpdate()
 	require.NoError(err)
@@ -89,7 +91,9 @@ func TestWorkerSessionProxyMultipleConnections(t *testing.T) {
 	// Create test server, update default port on target
 	ts := helper.NewTestTcpServer(t)
 	require.NotNil(t, ts)
-	defer ts.Close()
+	t.Cleanup(ts.Close)
+	t.Logf("test server listening on port %d", ts.Port())
+
 	tgt, err = tcl.Update(ctx, tgt.Item.Id, tgt.Item.Version, targets.WithTcpTargetDefaultPort(ts.Port()), targets.WithSessionConnectionLimit(-1))
 	require.NoError(err)
 	require.NotNil(tgt)

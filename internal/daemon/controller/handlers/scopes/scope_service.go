@@ -335,13 +335,8 @@ func (s *Service) GetScope(ctx context.Context, req *pbs.GetScopeRequest) (*pbs.
 	if outputFields.Has(globals.ScopeField) {
 		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
-	act := IdActions
-	// Can't delete global so elide it
-	if p.GetPublicId() == scope.Global.String() {
-		act = action.Difference(act, action.NewActionSet(action.Delete))
-	}
 	if outputFields.Has(globals.AuthorizedActionsField) {
-		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, p.GetPublicId(), act).Strings()))
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, p.GetPublicId(), idActionsById(p.GetPublicId())).Strings()))
 	}
 	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
 		collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, scopeCollectionTypeMapMap[p.Type], p.GetPublicId(), "")
@@ -386,7 +381,7 @@ func (s *Service) CreateScope(ctx context.Context, req *pbs.CreateScopeRequest) 
 		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
 	if outputFields.Has(globals.AuthorizedActionsField) {
-		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, p.GetPublicId(), IdActions).Strings()))
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, p.GetPublicId(), idActionsById(p.GetPublicId())).Strings()))
 	}
 	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
 		collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, scopeCollectionTypeMapMap[p.Type], p.GetPublicId(), "")
@@ -431,7 +426,7 @@ func (s *Service) UpdateScope(ctx context.Context, req *pbs.UpdateScopeRequest) 
 		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
 	if outputFields.Has(globals.AuthorizedActionsField) {
-		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, p.GetPublicId(), IdActions).Strings()))
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, p.GetPublicId(), idActionsById(p.GetPublicId())).Strings()))
 	}
 	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
 		collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, scopeCollectionTypeMapMap[p.Type], p.GetPublicId(), "")
@@ -1129,7 +1124,7 @@ func newOutputOpts(ctx context.Context, item *iam.Scope, authResults auth.Verify
 		ScopeId: item.GetParentId(),
 	}
 
-	authorizedActions := authResults.FetchActionSetForId(ctx, item.GetPublicId(), IdActions, auth.WithResource(&res)).Strings()
+	authorizedActions := authResults.FetchActionSetForId(ctx, item.GetPublicId(), idActionsById(item.GetPublicId()), auth.WithResource(&res)).Strings()
 	if len(authorizedActions) == 0 {
 		return nil, true, nil
 	}
@@ -1152,4 +1147,19 @@ func newOutputOpts(ctx context.Context, item *iam.Scope, authResults auth.Verify
 	}
 
 	return outputOpts, true, nil
+}
+
+func idActionsById(id string) action.ActionSet {
+	act := IdActions
+	switch {
+	case id == scope.Global.String():
+		// Can't delete global so elide it
+		act = action.Difference(act, action.NewActionSet(action.Delete))
+
+	case strings.HasPrefix(id, fmt.Sprintf("%s_", scope.Project.Prefix())):
+		// Can't attach/detach storage policy to projects
+		act = action.Difference(act, action.NewActionSet(action.AttachStoragePolicy, action.DetachStoragePolicy))
+	}
+
+	return act
 }

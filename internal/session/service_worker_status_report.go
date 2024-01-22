@@ -60,7 +60,7 @@ func WorkerStatusReport(ctx context.Context, repo *Repository, connRepo *Connect
 		merr = stderrors.Join(merr, errors.New(ctx, errors.Internal, op, fmt.Sprintf("Error closing orphaned connections for worker %s: %v", workerId, err)))
 	}
 	if len(closed) > 0 {
-		event.WriteSysEvent(ctx, op, "marked unclaimed connections as closed", "controller_id", workerId, "count", len(closed))
+		event.WriteSysEvent(ctx, op, "marked unclaimed connections as closed", "worker_id", workerId, "count", len(closed))
 	}
 
 	if merr != nil {

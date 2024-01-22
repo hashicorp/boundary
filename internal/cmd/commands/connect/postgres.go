@@ -69,7 +69,10 @@ func (p *postgresFlags) buildArgs(c *Command, port, ip, _ string, creds proxy.Cr
 
 	switch p.flagPostgresStyle {
 	case "psql":
-		args = append(args, "-p", port, "-h", ip)
+		if port != "" {
+			args = append(args, "-p", port)
+		}
+		args = append(args, "-h", ip)
 
 		if c.flagDbname != "" {
 			args = append(args, "-d", c.flagDbname)

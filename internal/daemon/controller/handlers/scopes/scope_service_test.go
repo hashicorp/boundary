@@ -46,7 +46,11 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-var testAuthorizedActions = []string{"no-op", "read", "update", "delete", "attach-storage-policy", "detach-storage-policy"}
+var (
+	testAuthorizedOrgActions    = []string{"no-op", "read", "update", "delete", "attach-storage-policy", "detach-storage-policy"}
+	testAuthorizedPrjActions    = []string{"no-op", "read", "update", "delete"}
+	testAuthorizedGlobalActions = []string{"no-op", "read", "update", "attach-storage-policy", "detach-storage-policy"}
+)
 
 func createDefaultScopesRepoAndKms(t *testing.T) (*iam.Scope, *iam.Scope, func() (*iam.Repository, error), *kms.Kms) {
 	t.Helper()
@@ -265,7 +269,7 @@ func TestGet(t *testing.T) {
 		UpdatedTime:                 org.UpdateTime.GetTimestamp(),
 		Version:                     2,
 		Type:                        scope.Org.String(),
-		AuthorizedActions:           testAuthorizedActions,
+		AuthorizedActions:           testAuthorizedOrgActions,
 		AuthorizedCollectionActions: orgAuthorizedCollectionActions,
 	}
 
@@ -279,7 +283,7 @@ func TestGet(t *testing.T) {
 		UpdatedTime:                 proj.UpdateTime.GetTimestamp(),
 		Version:                     2,
 		Type:                        scope.Project.String(),
-		AuthorizedActions:           testAuthorizedActions,
+		AuthorizedActions:           testAuthorizedPrjActions,
 		AuthorizedCollectionActions: projectAuthorizedCollectionActions,
 	}
 
@@ -386,12 +390,12 @@ func TestList(t *testing.T) {
 	oNoProjectsProto, err := scopes.ToProto(context.Background(), oNoProjects, handlers.WithOutputFields(outputFields))
 	require.NoError(t, err)
 	oNoProjectsProto.Scope = globalScope
-	oNoProjectsProto.AuthorizedActions = testAuthorizedActions
+	oNoProjectsProto.AuthorizedActions = testAuthorizedOrgActions
 	oNoProjectsProto.AuthorizedCollectionActions = orgAuthorizedCollectionActions
 	oWithProjectsProto, err := scopes.ToProto(context.Background(), oWithProjects, handlers.WithOutputFields(outputFields))
 	require.NoError(t, err)
 	oWithProjectsProto.Scope = globalScope
-	oWithProjectsProto.AuthorizedActions = testAuthorizedActions
+	oWithProjectsProto.AuthorizedActions = testAuthorizedOrgActions
 	oWithProjectsProto.AuthorizedCollectionActions = orgAuthorizedCollectionActions
 	initialOrgs = append(initialOrgs, oNoProjectsProto, oWithProjectsProto)
 
@@ -500,7 +504,7 @@ func TestList(t *testing.T) {
 			UpdatedTime:                 o.GetUpdateTime().GetTimestamp(),
 			Version:                     1,
 			Type:                        scope.Org.String(),
-			AuthorizedActions:           testAuthorizedActions,
+			AuthorizedActions:           testAuthorizedOrgActions,
 			AuthorizedCollectionActions: orgAuthorizedCollectionActions,
 		})
 	}
@@ -524,7 +528,7 @@ func TestList(t *testing.T) {
 			UpdatedTime:                 p.GetUpdateTime().GetTimestamp(),
 			Version:                     1,
 			Type:                        scope.Project.String(),
-			AuthorizedActions:           testAuthorizedActions,
+			AuthorizedActions:           testAuthorizedPrjActions,
 			AuthorizedCollectionActions: projectAuthorizedCollectionActions,
 		})
 	}
@@ -717,7 +721,7 @@ func TestListPagination(t *testing.T) {
 			UpdatedTime:                 p.GetUpdateTime().GetTimestamp(),
 			Version:                     1,
 			Type:                        scope.Project.String(),
-			AuthorizedActions:           testAuthorizedActions,
+			AuthorizedActions:           testAuthorizedPrjActions,
 			AuthorizedCollectionActions: paginationAuthorizedCollectionActions,
 		})
 	}
@@ -860,7 +864,7 @@ func TestListPagination(t *testing.T) {
 		UpdatedTime:                 p.GetUpdateTime().GetTimestamp(),
 		Version:                     1,
 		Type:                        scope.Project.String(),
-		AuthorizedActions:           testAuthorizedActions,
+		AuthorizedActions:           testAuthorizedPrjActions,
 		AuthorizedCollectionActions: paginationAuthorizedCollectionActions,
 	}
 	// Add to the front of the slice since it's the most recently updated
@@ -1115,7 +1119,7 @@ func TestCreate(t *testing.T) {
 					Description:                 &wrapperspb.StringValue{Value: "desc"},
 					Version:                     1,
 					Type:                        scope.Project.String(),
-					AuthorizedActions:           testAuthorizedActions,
+					AuthorizedActions:           testAuthorizedPrjActions,
 					AuthorizedCollectionActions: projectAuthorizedCollectionActions,
 				},
 			},
@@ -1139,7 +1143,7 @@ func TestCreate(t *testing.T) {
 					Description:                 &wrapperspb.StringValue{Value: "desc"},
 					Version:                     1,
 					Type:                        scope.Org.String(),
-					AuthorizedActions:           testAuthorizedActions,
+					AuthorizedActions:           testAuthorizedOrgActions,
 					AuthorizedCollectionActions: orgAuthorizedCollectionActions,
 				},
 			},
@@ -1162,7 +1166,7 @@ func TestCreate(t *testing.T) {
 					Description:                 &wrapperspb.StringValue{Value: "desc"},
 					Version:                     1,
 					Type:                        scope.Project.String(),
-					AuthorizedActions:           testAuthorizedActions,
+					AuthorizedActions:           testAuthorizedPrjActions,
 					AuthorizedCollectionActions: projectAuthorizedCollectionActions,
 				},
 			},
@@ -1185,7 +1189,7 @@ func TestCreate(t *testing.T) {
 					Description:                 &wrapperspb.StringValue{Value: "desc"},
 					Version:                     1,
 					Type:                        scope.Org.String(),
-					AuthorizedActions:           testAuthorizedActions,
+					AuthorizedActions:           testAuthorizedOrgActions,
 					AuthorizedCollectionActions: orgAuthorizedCollectionActions,
 				},
 			},
@@ -1210,7 +1214,7 @@ func TestCreate(t *testing.T) {
 					Name:                        &wrapperspb.StringValue{Value: "test org name with whitespace"},    // assert the whitespace is trimmed
 					Version:                     1,
 					Type:                        scope.Org.String(),
-					AuthorizedActions:           testAuthorizedActions,
+					AuthorizedActions:           testAuthorizedOrgActions,
 					AuthorizedCollectionActions: orgAuthorizedCollectionActions,
 				},
 			},
@@ -1496,7 +1500,7 @@ func TestUpdate(t *testing.T) {
 					Description:                 &wrapperspb.StringValue{Value: "desc"},
 					CreatedTime:                 proj.GetCreateTime().GetTimestamp(),
 					Type:                        scope.Project.String(),
-					AuthorizedActions:           testAuthorizedActions,
+					AuthorizedActions:           testAuthorizedPrjActions,
 					AuthorizedCollectionActions: projectAuthorizedCollectionActions,
 				},
 			},
@@ -1523,7 +1527,7 @@ func TestUpdate(t *testing.T) {
 					Description:                 &wrapperspb.StringValue{Value: "desc"},
 					CreatedTime:                 org.GetCreateTime().GetTimestamp(),
 					Type:                        scope.Org.String(),
-					AuthorizedActions:           testAuthorizedActions,
+					AuthorizedActions:           testAuthorizedOrgActions,
 					AuthorizedCollectionActions: orgAuthorizedCollectionActions,
 				},
 			},
@@ -1550,7 +1554,7 @@ func TestUpdate(t *testing.T) {
 					Description:                 &wrapperspb.StringValue{Value: "new desc"},
 					CreatedTime:                 org.GetCreateTime().GetTimestamp(),
 					Type:                        scope.Org.String(),
-					AuthorizedActions:           testAuthorizedActions,
+					AuthorizedActions:           testAuthorizedOrgActions,
 					AuthorizedCollectionActions: orgAuthorizedCollectionActions,
 				},
 			},
@@ -1576,7 +1580,7 @@ func TestUpdate(t *testing.T) {
 					Description:                 &wrapperspb.StringValue{Value: "desc"},
 					CreatedTime:                 global.GetCreateTime().GetTimestamp(),
 					Type:                        scope.Global.String(),
-					AuthorizedActions:           testAuthorizedActions,
+					AuthorizedActions:           testAuthorizedGlobalActions,
 					AuthorizedCollectionActions: globalAuthorizedCollectionActions,
 				},
 			},
@@ -1602,7 +1606,7 @@ func TestUpdate(t *testing.T) {
 					Description:                 &wrapperspb.StringValue{Value: "desc"},
 					CreatedTime:                 proj.GetCreateTime().GetTimestamp(),
 					Type:                        scope.Project.String(),
-					AuthorizedActions:           testAuthorizedActions,
+					AuthorizedActions:           testAuthorizedPrjActions,
 					AuthorizedCollectionActions: projectAuthorizedCollectionActions,
 				},
 			},
@@ -1786,7 +1790,7 @@ func TestUpdate(t *testing.T) {
 					Description:                 &wrapperspb.StringValue{Value: "defaultProj"},
 					CreatedTime:                 proj.GetCreateTime().GetTimestamp(),
 					Type:                        scope.Project.String(),
-					AuthorizedActions:           testAuthorizedActions,
+					AuthorizedActions:           testAuthorizedPrjActions,
 					AuthorizedCollectionActions: projectAuthorizedCollectionActions,
 				},
 			},
@@ -1810,7 +1814,7 @@ func TestUpdate(t *testing.T) {
 					Name:                        &wrappers.StringValue{Value: "defaultProj"},
 					CreatedTime:                 proj.GetCreateTime().GetTimestamp(),
 					Type:                        scope.Project.String(),
-					AuthorizedActions:           testAuthorizedActions,
+					AuthorizedActions:           testAuthorizedPrjActions,
 					AuthorizedCollectionActions: projectAuthorizedCollectionActions,
 				},
 			},
@@ -1836,7 +1840,7 @@ func TestUpdate(t *testing.T) {
 					Description:                 &wrapperspb.StringValue{Value: "defaultProj"},
 					CreatedTime:                 proj.GetCreateTime().GetTimestamp(),
 					Type:                        scope.Project.String(),
-					AuthorizedActions:           testAuthorizedActions,
+					AuthorizedActions:           testAuthorizedPrjActions,
 					AuthorizedCollectionActions: projectAuthorizedCollectionActions,
 				},
 			},
@@ -1862,7 +1866,7 @@ func TestUpdate(t *testing.T) {
 					Description:                 &wrapperspb.StringValue{Value: "notignored"},
 					CreatedTime:                 proj.GetCreateTime().GetTimestamp(),
 					Type:                        scope.Project.String(),
-					AuthorizedActions:           testAuthorizedActions,
+					AuthorizedActions:           testAuthorizedPrjActions,
 					AuthorizedCollectionActions: projectAuthorizedCollectionActions,
 				},
 			},

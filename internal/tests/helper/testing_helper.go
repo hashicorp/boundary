@@ -7,32 +7,21 @@ import (
 	"context"
 	"encoding/binary"
 	"errors"
-	"fmt"
 	"io"
 	"net"
-	"net/http"
 	"reflect"
 	"strconv"
 	"testing"
 	"time"
 
-	"github.com/cenkalti/backoff/v4"
+	apiproxy "github.com/hashicorp/boundary/api/proxy"
 	"github.com/hashicorp/boundary/api/targets"
-	"github.com/hashicorp/boundary/globals"
-	"github.com/hashicorp/boundary/internal/cmd/commands/connect"
 	"github.com/hashicorp/boundary/internal/daemon/controller"
 	"github.com/hashicorp/boundary/internal/daemon/controller/common"
 	"github.com/hashicorp/boundary/internal/daemon/worker"
 	"github.com/hashicorp/boundary/internal/session"
-	targetspb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
-	"github.com/hashicorp/boundary/sdk/pbs/proxy"
-	"github.com/hashicorp/boundary/sdk/wspb"
-	"github.com/hashicorp/go-cleanhttp"
-	"github.com/hashicorp/go-secure-stdlib/base62"
-	"github.com/mr-tron/base58"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/protobuf/proto"
 	"nhooyr.io/websocket"
 )
 
@@ -58,124 +47,67 @@ const (
 
 // TestSession represents an authorized session.
 type TestSession struct {
-	SessionId        string
-	WorkerAddr       string
-	Transport        *http.Transport
-	tofuToken        string
-	connectionsLeft  int32
-	SessionAuthzData *targetspb.SessionAuthorizationData
+	proxy     *apiproxy.ClientProxy
+	SessionId string
 }
 
-// NewTestSession authorizes a session and creates all of the data
-// necessary to initialize.
+// NewTestSession authorizes a session and starts a client proxy. Connections
+// through the proxy can be established via the `connect` function.
 func NewTestSession(
 	ctx context.Context,
 	t *testing.T,
 	tcl *targets.Client,
 	targetId string,
+	opt ...Option,
 ) *TestSession {
 	t.Helper()
-	require := require.New(t)
+
+	ctx, cancel := context.WithCancel(ctx)
+
+	require, assert := require.New(t), assert.New(t)
+
+	opts, err := getOpts(opt...)
+	require.NoError(err)
+
 	sar, err := tcl.AuthorizeSession(ctx, targetId)
 	require.NoError(err)
 	require.NotNil(sar)
 
-	s := &TestSession{
-		SessionId: sar.Item.SessionId,
-	}
-	authzString := sar.GetItem().(*targets.SessionAuthorization).AuthorizationToken
-	marshaled, err := base58.FastBase58Decoding(authzString)
-	require.NoError(err)
-	require.NotZero(marshaled)
-
-	s.SessionAuthzData = new(targetspb.SessionAuthorizationData)
-	err = proto.Unmarshal(marshaled, s.SessionAuthzData)
-	require.NoError(err)
-	require.NotZero(s.SessionAuthzData.GetWorkerInfo())
-
-	s.WorkerAddr = s.SessionAuthzData.GetWorkerInfo()[0].GetAddress()
-
-	tlsConf, err := connect.ClientTlsConfig(s.SessionAuthzData, "")
+	sessAuth, err := sar.GetSessionAuthorization()
 	require.NoError(err)
 
-	s.Transport = cleanhttp.DefaultTransport()
-	s.Transport.DisableKeepAlives = false
-	s.Transport.TLSClientConfig = tlsConf
-	s.Transport.IdleConnTimeout = 0
-
-	return s
-}
-
-// connect returns a connected websocket for the stored session,
-// connecting to the stored workerAddr with the configured transport.
-//
-// The returned (wrapped) net.Conn should be ready for communication.
-func (s *TestSession) connect(ctx context.Context, t *testing.T) net.Conn {
-	t.Helper()
-	require := require.New(t)
-
-	var conn *websocket.Conn
-	var resp *http.Response
-	var handshakeResult proxy.HandshakeResult
-	// A retry was added here to mitigate some flakiness.
-	// Occasionally, `wspb.Read` would throw an error due to "received header with unexpected
-	// rsv bits set: false:false:true". It was unclear what the cause of this was, so we
-	// resorted to retrying the connection.
-	err := backoff.RetryNotify(
-		func() error {
-			var err error
-			conn, resp, err = websocket.Dial(
-				ctx,
-				fmt.Sprintf("wss://%s/v1/proxy", s.WorkerAddr),
-				&websocket.DialOptions{
-					HTTPClient: &http.Client{
-						Transport: s.Transport,
-					},
-					Subprotocols: []string{globals.TcpProxyV1},
-				},
-			)
-			if err != nil {
-				return backoff.Permanent(err)
-			}
-			if resp.Header.Get("Sec-WebSocket-Protocol") != globals.TcpProxyV1 {
-				return backoff.Permanent(errors.New(
-					fmt.Sprintf("Unexpected header. Expected: %s, Actual: %s",
-						globals.TcpProxyV1,
-						resp.Header.Get("Sec-WebSocket-Protocol"),
-					)))
-			}
-
-			// Send and receive/check the handshake.
-			if s.tofuToken == "" {
-				s.tofuToken, err = base62.Random(20)
-				if err != nil {
-					return backoff.Permanent(errors.New("Error creating token"))
-				}
-			}
-			handshake := proxy.ClientHandshake{TofuToken: s.tofuToken}
-			t.Logf("Using token: %s", s.tofuToken)
-
-			err = wspb.Write(ctx, conn, &handshake)
-			if err != nil {
-				return backoff.Permanent(err)
-			}
-
-			return wspb.Read(ctx, conn, &handshakeResult)
-		},
-		backoff.WithMaxRetries(backoff.NewConstantBackOff(time.Second), 1),
-		func(err error, td time.Duration) {
-			t.Logf("Issue with reading websocket: %s. Retrying...", err)
-		},
+	proxy, err := apiproxy.New(
+		ctx,
+		sessAuth.AuthorizationToken,
+		apiproxy.WithWorkerHost(sessAuth.SessionId),
+		apiproxy.WithSkipSessionTeardown(opts.WithSkipSessionTeardown),
 	)
 	require.NoError(err)
 
-	// This is just a cursory check to make sure that the handshake is
-	// populated. We could check connections remaining too, but that
-	// could legitimately be a trivial (zero) value.
-	require.NotNil(handshakeResult.GetExpiration())
-	s.connectionsLeft = handshakeResult.GetConnectionsLeft()
+	cleanupDone := make(chan struct{}, 1)
+	go func() {
+		proxyErr := proxy.Start()
+		assert.NoError(proxyErr)
+		close(cleanupDone)
+	}()
+	t.Cleanup(func() {
+		cancel()
+		<-cleanupDone
+	})
 
-	return websocket.NetConn(ctx, conn, websocket.MessageBinary)
+	return &TestSession{
+		proxy:     proxy,
+		SessionId: sessAuth.SessionId,
+	}
+}
+
+// connect returns a connected dialed through the client proxy. The returned
+// net.Conn should be ready for communications.
+func (s *TestSession) connect(ctx context.Context, t *testing.T) net.Conn {
+	t.Helper()
+	conn, err := net.Dial("tcp", s.proxy.ListenerAddress(ctx))
+	require.NoError(t, err)
+	return conn
 }
 
 // ExpectConnectionStateOnController waits until all connections in a

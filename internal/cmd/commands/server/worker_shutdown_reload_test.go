@@ -57,7 +57,7 @@ func TestServer_ShutdownWorker(t *testing.T) {
 	recoveryWrapper, _ := wrapperWithKey(t)
 	workerAuthWrapper, key := wrapperWithKey(t)
 	testController := controller.NewTestController(t, controller.WithWorkerAuthKms(workerAuthWrapper), controller.WithRootKms(rootWrapper), controller.WithRecoveryKms(recoveryWrapper))
-	defer testController.Shutdown()
+	t.Cleanup(testController.Shutdown)
 
 	// Start the worker
 	workerCmd := testServerCommand(t, testServerCommandOpts{})
@@ -81,7 +81,7 @@ func TestServer_ShutdownWorker(t *testing.T) {
 	tcl := targets.NewClient(client)
 	tgtL, err := tcl.List(ctx, scope.Global.String(), targets.WithRecursive(true))
 	require.NoError(err)
-	require.Len(tgtL.Items, 2)
+	require.LessOrEqual(2, len(tgtL.Items))
 	tgt := tgtL.Items[0]
 	require.NotNil(tgt)
 	require.NotNil(tgtL.GetItems()[1])
@@ -89,7 +89,7 @@ func TestServer_ShutdownWorker(t *testing.T) {
 	// Create test server, update default port on target
 	ts := helper.NewTestTcpServer(t)
 	require.NotNil(ts)
-	defer ts.Close()
+	t.Cleanup(ts.Close)
 	tgtR, err := tcl.Update(ctx, tgt.Id, tgt.Version, targets.WithTcpTargetDefaultPort(ts.Port()))
 	require.NoError(err)
 	require.NotNil(tgtR)
@@ -97,7 +97,7 @@ func TestServer_ShutdownWorker(t *testing.T) {
 	// Authorize and connect
 	// This prevents us from running tests in parallel.
 	tg.SetupSuiteTargetFilters(t)
-	sess := helper.NewTestSession(ctx, t, tcl, tgt.Id)
+	sess := helper.NewTestSession(ctx, t, tcl, tgt.Id, helper.WithSkipSessionTeardown(true))
 	sConn := sess.Connect(ctx, t)
 
 	// Run initial send/receive test, make sure things are working

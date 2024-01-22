@@ -59,8 +59,8 @@ func (f *kubeFlags) defaultExec() string {
 func (f *kubeFlags) buildArgs(c *Command, port, ip, addr string) ([]string, error) {
 	var args []string
 	host := f.flagKubeHost
-	if host == "" && c.sessionAuthzData.GetEndpoint() != "" {
-		hostUrl := c.sessionAuthzData.GetEndpoint()
+	if host == "" && c.sessInfo.Endpoint != "" {
+		hostUrl := c.sessInfo.Endpoint
 		u, err := url.Parse(hostUrl)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing endpoint URL: %w", err)
