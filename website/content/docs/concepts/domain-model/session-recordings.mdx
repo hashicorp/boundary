@@ -65,6 +65,34 @@ Changing the policy assigned to a scope or changing an attribute of a storage po
 Such a change only affects future session recordings created in that scope or using that storage policy.
 If a session recording is not in compliance with the current RSoP, the session recording API indicates that it is out of compliance with the current policy.
 
+### Examples
+
+Case 1: 
+In this case, the retention value is derived from the org policy and the deletion value is derived from the global policy.
+
+|               | Global Policy | Org Policy    | Result Policy |
+| ------------------------------ | ------------- | ---------- | ------------- |
+| Retain For Days(Overridable)                                 | 10(True)                   | 20(True)             | 20                         |
+| Delete After Days(Overridable)                               | 30(True)                   | 40(True)             | 30                         |
+
+Case 2:
+In this case, the org policy values are ignored because the global policy values are not overridable.
+
+|               | Global Policy | Org Policy    | Result Policy |
+| ------------------------------ | ------------- | ---------- | ------------- |
+| Retain For Days(Overridable)                                 | 10(False)                  | 20(True)             | 10                         |
+| Delete After Days(Overridable)                               | 30(False)                  | 40(True)             | 30                         |
+
+Case 3:
+In this case, the longest retention value is 30 and the shortest deletion value is 20, howerever delete_after_days cannot be less than retain_for_days.
+Therefore, the deletion value is set to the retention value.
+
+|               | Global Policy | Org Policy    | Result Policy |
+| ------------------------------ | ------------- | ---------- | ------------- |
+| Retain For Days(Overridable)                                 | 30(True)                   | 20(True)             | 30                         |
+| Delete After Days(Overridable)                               | 50(True)                   | 20(True)             | 30                         |
+
+
 ## Service API docs
 
 The following services are relevant to this resource:
