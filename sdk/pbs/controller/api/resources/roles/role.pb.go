@@ -261,7 +261,12 @@ type Role struct {
 	// Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.
 	// The mutation will fail if the version does not match the latest known good version.
 	Version uint32 `protobuf:"varint,80,opt,name=version,proto3" json:"version,omitempty" class:"public"` // @gotags: `class:"public"`
-	// The Scope the grants will apply to. If the Role is at the global scope, this can be an org or project. If the Role is at an org scope, this can be a project within the org. It is invalid for this to be anything other than the Role's scope when the Role's scope is a project.
+	// The Scope the grants will apply to. If the Role is at the global scope,
+	// this can be an org or project. If the Role is at an org scope, this can be
+	// a project within the org. It is invalid for this to be anything other than
+	// the Role's scope when the Role's scope is a project.
+	//
+	// Deprecated: Use "grant_scope_ids" instead.
 	//
 	// Deprecated: Marked as deprecated in controller/api/resources/roles/v1/role.proto.
 	GrantScopeId *wrapperspb.StringValue `protobuf:"bytes,90,opt,name=grant_scope_id,proto3" json:"grant_scope_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
@@ -269,7 +274,9 @@ type Role struct {
 	// the role's own scope ID, or "this" for the same behavior; specific IDs of
 	// scopes that are children of the role's scope; the value "children" to match
 	// all direct child scopes of the role's scope; or the value "descendants" to
-	// match all descendant scopes (e.g. child scopes, children of child scopes).
+	// match all descendant scopes (e.g. child scopes, children of child scopes;
+	// only valid at "global" scope since it is the only one with children of
+	// children).
 	GrantScopeIds []string `protobuf:"bytes,91,rep,name=grant_scope_ids,proto3" json:"grant_scope_ids,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The IDs (only) of principals that are assigned to this role.
 	PrincipalIds []string `protobuf:"bytes,100,rep,name=principal_ids,proto3" json:"principal_ids,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`

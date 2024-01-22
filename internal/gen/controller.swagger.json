@@ -6088,14 +6088,14 @@
         },
         "grant_scope_id": {
           "type": "string",
-          "description": "The Scope the grants will apply to. If the Role is at the global scope, this can be an org or project. If the Role is at an org scope, this can be a project within the org. It is invalid for this to be anything other than the Role's scope when the Role's scope is a project."
+          "description": "The Scope the grants will apply to. If the Role is at the global scope,\nthis can be an org or project. If the Role is at an org scope, this can be\na project within the org. It is invalid for this to be anything other than\nthe Role's scope when the Role's scope is a project.\n\nDeprecated: Use \"grant_scope_ids\" instead."
         },
         "grant_scope_ids": {
           "type": "array",
           "items": {
             "type": "string"
           },
-          "description": "Output only. The IDs of Scopes the grants will apply to. This can include\nthe role's own scope ID, or \"this\" for the same behavior; specific IDs of\nscopes that are children of the role's scope; the value \"children\" to match\nall direct child scopes of the role's scope; or the value \"descendants\" to\nmatch all descendant scopes (e.g. child scopes, children of child scopes).",
+          "description": "Output only. The IDs of Scopes the grants will apply to. This can include\nthe role's own scope ID, or \"this\" for the same behavior; specific IDs of\nscopes that are children of the role's scope; the value \"children\" to match\nall direct child scopes of the role's scope; or the value \"descendants\" to\nmatch all descendant scopes (e.g. child scopes, children of child scopes;\nonly valid at \"global\" scope since it is the only one with children of\nchildren).",
           "readOnly": true
         },
         "principal_ids": {
