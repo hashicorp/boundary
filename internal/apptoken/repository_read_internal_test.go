@@ -160,7 +160,7 @@ func Test_queryAppTokens(t *testing.T) {
 		},
 	}
 	for _, tc := range tests {
-		tc = tc
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			require.NotNil(tc.setup)
