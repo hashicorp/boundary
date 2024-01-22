@@ -316,7 +316,7 @@ func (r *Repository) listAuthTokens(ctx context.Context, withScopeIds []string, 
 		)
 	}
 
-	return r.queryAuthTokens(ctx, query, args, limit)
+	return r.queryAuthTokens(ctx, query, args)
 }
 
 // listAuthTokensRefresh lists auth tokens in the given scopes and supports the
@@ -353,10 +353,10 @@ func (r *Repository) listAuthTokensRefresh(ctx context.Context, updatedAfter tim
 		)
 	}
 
-	return r.queryAuthTokens(ctx, query, args, limit)
+	return r.queryAuthTokens(ctx, query, args)
 }
 
-func (r *Repository) queryAuthTokens(ctx context.Context, query string, args []any, limit int) ([]*AuthToken, time.Time, error) {
+func (r *Repository) queryAuthTokens(ctx context.Context, query string, args []any) ([]*AuthToken, time.Time, error) {
 	const op = "authtoken.(Repository).queryAuthTokens"
 
 	var transactionTimestamp time.Time
