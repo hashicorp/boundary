@@ -2916,7 +2916,6 @@ func TestAuthorizeSession(t *testing.T) {
 	shsWithPort := static.TestSets(t, conn, hcWithPort.GetPublicId(), 1)[0]
 	_ = static.TestSetMembers(t, conn, shsWithPort.GetPublicId(), []*static.Host{hWithPort})
 	hWithPortBareAddress := hWithPort.GetAddress()
-	hWithPort.Address = fmt.Sprintf("%s:54321", hWithPort.GetAddress())
 	hWithPort, _, err = staticRepo.UpdateHost(ctx, hcWithPort.GetProjectId(), hWithPort, hWithPort.GetVersion(), []string{"address"})
 	require.NoError(t, err)
 
@@ -3822,7 +3821,6 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 			HostSourceIds: []string{hs.GetPublicId()},
 		})
 		require.NoError(t, err)
-		h.Address = fmt.Sprintf("%s:54321", h.GetAddress())
 		repo, err := staticHostRepoFn()
 		require.NoError(t, err)
 		_, _, err = repo.UpdateHost(ctx, hc.GetProjectId(), h, h.GetVersion(), []string{"address"})

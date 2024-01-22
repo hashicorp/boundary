@@ -10,6 +10,11 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   removed. Since 0.13.0, unless the `use_deprecated_kms_auth_method` value was
   set on the worker config, the new `kms` mechanism was already being used; this
   is simply no longer an available option.
+* Per the notes in Boundary 0.12.0 and 0.14.0, it is now an error if an address
+  on a host or target contains a port. As of this release, this restriction also
+  affects existing addresses (not just creation/updating via the API) so any
+  existing addresses containing a port will not be able to be used as part of a
+  target's session authorization call.
 
 ### New and Improved
 
