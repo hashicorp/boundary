@@ -44,7 +44,7 @@ It requires Boundary to refresh the local cache using the control plane.
 - `refresh-interval` - A duration that specifies how frequently the client cache should query Boundary for changes to sessions and targets.
 Note that Boundary only searches sessions and targets that the user who ran the command has access to.
 
-For more information, refer to the [`start`](/boundary/docs/commands/daemon/start) command documentation.
+For more information, refer to the [`daemon tart`](/boundary/docs/commands/daemon/start) command documentation.
 
 ### Logging
 
@@ -54,14 +54,14 @@ It compresses and keeps the last 3 rotated logs before deleting a log.
 
 To log the specific searches that were performed against the cache, include the `-store-debug` flag when you manually start the client cache.
 
-For more information, refer to the [`start`](/boundary/docs/commands/daemon/start) command documentation.
+For more information, refer to the [`daemon start`](/boundary/docs/commands/daemon/start) command documentation.
 
 ### Status
 
 You can check the status of the cache using the `boundary daemon status` command.
 The command returns information about the cache including the uptime, user count, user information, and which Boundary resources the cache is tracking.
 
-For more information, refer to the [`status`](/boundary/docs/commands/daemon/status) command documentation.
+For more information, refer to the [`daemon status`](/boundary/docs/commands/daemon/status) command documentation.
 
 
 ### Auth tokens
@@ -71,4 +71,4 @@ If you want to view another user's client cache, you can use that user's auth to
 To select a specific auth token with which to view the client cache, specify the auth token using the `boundary daemon add-token` command.
 You can only view the resources that are available to that user, when you are logged in using an auth token.
 
-For more information, refer to the [`add-token`](/boundary/docs/commands/daemon/add-token) command documentation.
+For more information, refer to the [`daemon add-token`](/boundary/docs/commands/daemon/add-token) command documentation.
