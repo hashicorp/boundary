@@ -35,6 +35,8 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
     relative to the last result received.
   * config: add new controller max_page_size field for controlling the default and max size
     of pages when paginating through results.
+* ui: Add full UI support for Storage Policies manageing the lifecycle of Session Recordings.
+  ([PR](https://github.com/hashicorp/boundary-ui/pull/2089))
 
 ## 0.14.3 (2023/12/12)
 
