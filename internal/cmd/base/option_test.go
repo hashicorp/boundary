@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/event"
+	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -161,10 +162,17 @@ func Test_GetOpts(t *testing.T) {
 
 	t.Run("WithAuthUserTargetAuthorizeSessionGrant", func(t *testing.T) {
 		assert := assert.New(t)
-		opts := GetOpts(WithAuthUserTargetAuthorizeSessionGrant(true))
-		testOpts := getDefaultOptions()
+		opts := getDefaultOptions()
 		assert.False(opts.withAuthUserTargetAuthorizeSessionGrant)
-		testOpts.withAuthUserTargetAuthorizeSessionGrant = true
-		assert.Equal(opts, testOpts)
+		opts = GetOpts(WithAuthUserTargetAuthorizeSessionGrant(true))
+		assert.True(opts.withAuthUserTargetAuthorizeSessionGrant)
+	})
+
+	t.Run("WithIamOptions", func(t *testing.T) {
+		assert := assert.New(t)
+		testOpts := getDefaultOptions()
+		assert.Len(testOpts.withIamOptions, 0)
+		opts := GetOpts(WithIamOptions(iam.WithSkipAdminRoleCreation(true)))
+		assert.Len(opts.withIamOptions, 1)
 	})
 }

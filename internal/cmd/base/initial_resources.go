@@ -317,7 +317,7 @@ func (b *Server) CreateInitialPasswordAuthMethod(ctx context.Context) (*password
 	return am, u, nil
 }
 
-func (b *Server) CreateInitialScopes(ctx context.Context) (*iam.Scope, *iam.Scope, error) {
+func (b *Server) CreateInitialScopes(ctx context.Context, opt ...Option) (*iam.Scope, *iam.Scope, error) {
 	rw := db.New(b.Database)
 
 	kmsCache, err := kms.New(ctx, rw, rw)
@@ -331,6 +331,8 @@ func (b *Server) CreateInitialScopes(ctx context.Context) (*iam.Scope, *iam.Scop
 		return nil, nil, fmt.Errorf("error adding config keys to kms: %w", err)
 	}
 
+	opts := GetOpts(opt...)
+
 	iamRepo, err := iam.NewRepository(ctx, rw, rw, kmsCache)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating scopes repository: %w", err)
@@ -343,17 +345,20 @@ func (b *Server) CreateInitialScopes(ctx context.Context) (*iam.Scope, *iam.Scop
 			return nil, nil, fmt.Errorf("error generating initial org id: %w", err)
 		}
 	}
-	opts := []iam.Option{
+	iamOpts := []iam.Option{
 		iam.WithName("Generated org scope"),
 		iam.WithDescription("Provides an initial org scope in Boundary"),
 		iam.WithRandomReader(b.SecureRandomReader),
 		iam.WithPublicId(b.DevOrgId),
 	}
-	orgScope, err := iam.NewOrg(ctx, opts...)
+	if len(opts.withIamOptions) > 0 {
+		iamOpts = append(iamOpts, opts.withIamOptions...)
+	}
+	orgScope, err := iam.NewOrg(ctx, iamOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating new in memory org scope: %w", err)
 	}
-	orgScope, err = iamRepo.CreateScope(ctx, orgScope, b.DevUserId, opts...)
+	orgScope, err = iamRepo.CreateScope(ctx, orgScope, b.DevUserId, iamOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error saving org scope to the db: %w", err)
 	}
@@ -366,17 +371,20 @@ func (b *Server) CreateInitialScopes(ctx context.Context) (*iam.Scope, *iam.Scop
 			return nil, nil, fmt.Errorf("error generating initial project id: %w", err)
 		}
 	}
-	opts = []iam.Option{
+	iamOpts = []iam.Option{
 		iam.WithName("Generated project scope"),
 		iam.WithDescription("Provides an initial project scope in Boundary"),
 		iam.WithRandomReader(b.SecureRandomReader),
 		iam.WithPublicId(b.DevProjectId),
 	}
-	projScope, err := iam.NewProject(ctx, b.DevOrgId, opts...)
+	if len(opts.withIamOptions) > 0 {
+		iamOpts = append(iamOpts, opts.withIamOptions...)
+	}
+	projScope, err := iam.NewProject(ctx, b.DevOrgId, iamOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating new in memory project scope: %w", err)
 	}
-	projScope, err = iamRepo.CreateScope(ctx, projScope, b.DevUserId, opts...)
+	projScope, err = iamRepo.CreateScope(ctx, projScope, b.DevUserId, iamOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error saving project scope to the db: %w", err)
 	}

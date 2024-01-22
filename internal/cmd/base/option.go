@@ -5,6 +5,7 @@ package base
 
 import (
 	"github.com/hashicorp/boundary/internal/event"
+	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/sdk/pbs/plugin"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 )
@@ -49,6 +50,7 @@ type Options struct {
 	WithSkipScopeIdFlag                     bool
 	WithInterceptedToken                    *string
 	withAuthUserTargetAuthorizeSessionGrant bool
+	withIamOptions                          []iam.Option
 }
 
 func getDefaultOptions() Options {
@@ -244,5 +246,13 @@ func WithInterceptedToken(s *string) Option {
 func WithAuthUserTargetAuthorizeSessionGrant(with bool) Option {
 	return func(o *Options) {
 		o.withAuthUserTargetAuthorizeSessionGrant = with
+	}
+}
+
+// WithIamOptions provides options to pass through to the IAM package when
+// creating initial resources
+func WithIamOptions(with ...iam.Option) Option {
+	return func(o *Options) {
+		o.withIamOptions = with
 	}
 }
