@@ -60,7 +60,7 @@ func (s *sshFlags) buildArgs(c *Command, port, ip, _ string, creds apiproxy.Cred
 	retCreds = creds
 
 	var tryConsume bool
-	switch string(target.SubtypeFromId(c.sessionAuthzData.GetTargetId())) {
+	switch string(target.SubtypeFromId(c.sessInfo.TargetId)) {
 	case "tcp":
 		tryConsume = true
 	}
@@ -68,21 +68,23 @@ func (s *sshFlags) buildArgs(c *Command, port, ip, _ string, creds apiproxy.Cred
 	switch strings.ToLower(s.flagSshStyle) {
 	case "ssh":
 		// Might want -t for ssh or -tt but seems fine without it for now...
-		args = append(args, "-p", port)
+		if port != "" {
+			args = append(args, "-p", port)
+		}
 
-		switch c.sessionAuthzData.GetType() {
+		switch c.sessInfo.Type {
 		case "tcp":
 			// SSH detects a host key change when the localhost proxy port changes
 			// This uses the host ID instead of 'localhost:port'.
-			if len(c.sessionAuthzData.GetHostId()) > 0 {
-				args = append(args, "-o", fmt.Sprintf("HostKeyAlias=%s", c.sessionAuthzData.GetHostId()))
+			if len(c.sessInfo.HostId) > 0 {
+				args = append(args, "-o", fmt.Sprintf("HostKeyAlias=%s", c.sessInfo.HostId))
 			} else {
 				// In cases where the Target has no host sources and has an
 				// address directly attached to it, we have no Host Id. Use
 				// Target Id instead. Only one address can ever be present on a
 				// target, and no other host sources may be present at the same
 				// time, so this is a reasonable alternative.
-				args = append(args, "-o", fmt.Sprintf("HostKeyAlias=%s", c.sessionAuthzData.GetTargetId()))
+				args = append(args, "-o", fmt.Sprintf("HostKeyAlias=%s", c.sessInfo.TargetId))
 			}
 		case "ssh":
 			args = append(args, "-o", "NoHostAuthenticationForLocalhost=yes")
@@ -110,14 +112,18 @@ func (s *sshFlags) buildArgs(c *Command, port, ip, _ string, creds apiproxy.Cred
 		// when the using env-vars.
 		envs = append(envs, fmt.Sprintf("SSHPASS=%s", password))
 		args = append(args, "-e", "ssh")
-		args = append(args, "-p", port)
+		if port != "" {
+			args = append(args, "-p", port)
+		}
 
 		// sshpass cannot handle host key checking, disable localhost key verification
 		// to avoid error: 'SSHPASS detected host authentication prompt. Exiting.'
 		args = append(args, "-o", "NoHostAuthenticationForLocalhost=yes")
 
 	case "putty":
-		args = append(args, "-P", port)
+		if port != "" {
+			args = append(args, "-P", port)
+		}
 	}
 
 	// Check if we got credentials to attempt to use for ssh or putty,

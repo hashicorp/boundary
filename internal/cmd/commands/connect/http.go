@@ -77,8 +77,8 @@ func (h *httpFlags) defaultExec() string {
 func (h *httpFlags) buildArgs(c *Command, port, ip, addr string) ([]string, error) {
 	var args []string
 	host := h.flagHttpHost
-	if host == "" && c.sessionAuthzData.GetEndpoint() != "" {
-		hostUrl := c.sessionAuthzData.GetEndpoint()
+	if host == "" && c.sessInfo.Endpoint != "" {
+		hostUrl := c.sessInfo.Endpoint
 		u, err := url.Parse(hostUrl)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing endpoint URL: %w", err)
@@ -94,8 +94,14 @@ func (h *httpFlags) buildArgs(c *Command, port, ip, addr string) ([]string, erro
 		if host != "" {
 			host = strings.TrimSuffix(host, "/")
 			args = append(args, "-H", fmt.Sprintf("Host: %s", host))
-			args = append(args, "--resolve", fmt.Sprintf("%s:%s:%s", host, port, ip))
-			uri = fmt.Sprintf("%s://%s:%s", h.flagHttpScheme, host, port)
+			switch port == "" {
+			case false:
+				args = append(args, "--resolve", fmt.Sprintf("%s:%s:%s", host, port, ip))
+				uri = fmt.Sprintf("%s://%s:%s", h.flagHttpScheme, host, port)
+			default:
+				args = append(args, "--resolve", fmt.Sprintf("%s:%s", host, ip))
+				uri = fmt.Sprintf("%s://%s", h.flagHttpScheme, host)
+			}
 		} else {
 			uri = fmt.Sprintf("%s://%s", h.flagHttpScheme, addr)
 		}

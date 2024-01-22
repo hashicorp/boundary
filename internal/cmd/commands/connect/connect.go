@@ -5,38 +5,27 @@ package connect
 
 import (
 	"context"
-	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
+	"math"
 	"net"
-	"net/http"
+	"net/netip"
 	"os"
 	"strconv"
 	"strings"
-	"sync"
 	"syscall"
 	"time"
 
 	"github.com/hashicorp/boundary/api"
 	apiproxy "github.com/hashicorp/boundary/api/proxy"
 	"github.com/hashicorp/boundary/api/targets"
-	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/base"
-	targetspb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
-	"github.com/hashicorp/boundary/sdk/pbs/proxy"
-	"github.com/hashicorp/boundary/sdk/wspb"
-	"github.com/hashicorp/go-cleanhttp"
-	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/mitchellh/cli"
-	"github.com/mr-tron/base58"
 	"github.com/posener/complete"
 	"go.uber.org/atomic"
 	exec "golang.org/x/sys/execabs"
-	"google.golang.org/protobuf/proto"
-	"nhooyr.io/websocket"
 )
 
 const sessionCancelTimeout = 10 * time.Second
@@ -48,6 +37,10 @@ type SessionInfo struct {
 	Expiration      time.Time                    `json:"expiration"`
 	ConnectionLimit int32                        `json:"connection_limit"`
 	SessionId       string                       `json:"session_id"`
+	Endpoint        string                       `json:"-"`
+	Type            string                       `json:"-"`
+	TargetId        string                       `json:"-"`
+	HostId          string                       `json:"-"`
 	Credentials     []*targets.SessionCredential `json:"credentials,omitempty"`
 }
 
@@ -94,16 +87,8 @@ type Command struct {
 
 	Func string
 
-	sessionAuthz     *targets.SessionAuthorization
-	sessionAuthzData *targetspb.SessionAuthorizationData
+	sessInfo SessionInfo
 
-	connWg             *sync.WaitGroup
-	listenerCloseOnce  sync.Once
-	listener           *net.TCPListener
-	listenerAddr       *net.TCPAddr
-	connsLeftCh        chan int32
-	connectionsLeft    *atomic.Int32
-	expiration         time.Time
 	execCmdReturnValue *atomic.Int32
 	proxyCtx           context.Context
 	proxyCancel        context.CancelFunc
@@ -277,6 +262,14 @@ func (c *Command) Run(args []string) (retCode int) {
 		return base.CommandUserError
 	}
 
+	if c.flagListenPort < 0 || c.flagListenPort > math.MaxUint16 {
+		c.PrintCliError(errors.New("Invalid listen port supplied"))
+		return base.CommandCliError
+	}
+
+	c.proxyCtx, c.proxyCancel = context.WithCancel(c.Context)
+	defer c.proxyCancel()
+
 	switch {
 	case c.flagAuthzToken != "":
 		switch {
@@ -316,29 +309,11 @@ func (c *Command) Run(args []string) (retCode int) {
 		}
 	}
 
-	tofuToken, err := base62.Random(20)
-	if err != nil {
-		c.PrintCliError(fmt.Errorf("Could not derive random bytes for tofu token: %w", err))
-		return base.CommandCliError
-	}
-
-	c.connectionsLeft = atomic.NewInt32(0)
-	c.connsLeftCh = make(chan int32)
-
-	if c.flagListenAddr == "" {
-		c.flagListenAddr = "127.0.0.1"
-	}
-	listenAddr := net.ParseIP(c.flagListenAddr)
-	if listenAddr == nil {
-		c.PrintCliError(fmt.Errorf("Could not successfully parse listen address of %s", c.flagListenAddr))
-		return base.CommandUserError
-	}
-
 	authzString := c.flagAuthzToken
 	switch {
 	case authzString != "":
 		if authzString == "-" {
-			authBytes, err := ioutil.ReadAll(os.Stdin)
+			authBytes, err := io.ReadAll(os.Stdin)
 			if err != nil {
 				c.PrintCliError(fmt.Errorf("No authorization string was provided and encountered the following error attempting to read it from stdin: %w", err))
 				return base.CommandUserError
@@ -358,10 +333,25 @@ func (c *Command) Run(args []string) (retCode int) {
 		if authzString[0] == '{' {
 			// Attempt to decode the JSON output of an authorize-session call
 			// and pull the token out of there
-			c.sessionAuthz = new(targets.SessionAuthorization)
-			if err := json.Unmarshal([]byte(authzString), c.sessionAuthz); err == nil {
-				authzString = c.sessionAuthz.AuthorizationToken
+			sa := new(targets.SessionAuthorization)
+			if err := json.Unmarshal([]byte(authzString), sa); err == nil {
+				authzString = sa.AuthorizationToken
 			}
+		}
+
+		sad, err := targets.SessionAuthorization{AuthorizationToken: authzString}.GetSessionAuthorizationData()
+		if err != nil {
+			c.PrintCliError(fmt.Errorf("Error decoding session authorization data: %w", err))
+			return base.CommandUserError
+		}
+		c.sessInfo = SessionInfo{
+			Protocol:        sad.Type,
+			ConnectionLimit: sad.ConnectionLimit,
+			SessionId:       sad.SessionId,
+			Endpoint:        sad.Endpoint,
+			Type:            sad.Type,
+			TargetId:        sad.TargetId,
+			HostId:          sad.HostId,
 		}
 
 	default:
@@ -402,186 +392,66 @@ func (c *Command) Run(args []string) (retCode int) {
 			c.PrintCliError(fmt.Errorf("Error trying to authorize a session against target: %w", err))
 			return base.CommandCliError
 		}
-		c.sessionAuthz = sar.GetItem().(*targets.SessionAuthorization)
-		authzString = c.sessionAuthz.AuthorizationToken
-	}
 
-	marshaled, err := base58.FastBase58Decoding(authzString)
-	if err != nil {
-		c.PrintCliError(fmt.Errorf("Unable to base58-decode authorization data: %w", err))
-		return base.CommandUserError
-	}
-	if len(marshaled) == 0 {
-		c.PrintCliError(errors.New("Zero length authorization information after decoding"))
-		return base.CommandUserError
-	}
-
-	c.sessionAuthzData = new(targetspb.SessionAuthorizationData)
-	if err := proto.Unmarshal(marshaled, c.sessionAuthzData); err != nil {
-		c.PrintCliError(fmt.Errorf("Unable to proto-decode authorization data: %w", err))
-		return base.CommandUserError
-	}
-
-	if len(c.sessionAuthzData.GetWorkerInfo()) == 0 {
-		c.PrintCliError(errors.New("No workers found in authorization string"))
-		return base.CommandUserError
-	}
-
-	if c.flagListenPort == 0 {
-		c.flagListenPort = int(c.sessionAuthzData.DefaultClientPort)
-	}
-
-	c.connectionsLeft.Store(c.sessionAuthzData.ConnectionLimit)
-	workerAddr := c.sessionAuthzData.GetWorkerInfo()[0].GetAddress()
-	workerHost, _, err := net.SplitHostPort(workerAddr)
-	if err != nil {
-		if strings.Contains(err.Error(), "missing port") {
-			workerHost = workerAddr
-		} else {
-			c.PrintCliError(fmt.Errorf("Error splitting worker adddress host/port: %w", err))
-			return base.CommandUserError
+		sa := sar.GetItem().(*targets.SessionAuthorization)
+		c.sessInfo = SessionInfo{
+			Protocol:        sa.Type,
+			ConnectionLimit: sa.ConnectionLimit,
+			SessionId:       sa.SessionId,
+			Endpoint:        sa.Endpoint,
+			Type:            sa.Type,
+			TargetId:        sa.TargetId,
+			HostId:          sa.HostId,
+			Credentials:     sa.Credentials,
 		}
+		authzString = sa.AuthorizationToken
 	}
 
-	tlsConf, err := ClientTlsConfig(c.sessionAuthzData, workerHost)
+	var listenAddr netip.AddrPort
+	var addr netip.Addr
+	if c.flagListenAddr == "" {
+		c.flagListenAddr = "127.0.0.1"
+	}
+	addr, err := netip.ParseAddr(c.flagListenAddr)
 	if err != nil {
-		c.PrintCliError(fmt.Errorf("Error creating TLS configuration: %w", err))
+		c.PrintCliError(fmt.Errorf("Error parsing listen address: %w", err))
 		return base.CommandCliError
 	}
-	c.expiration = tlsConf.Certificates[0].Leaf.NotAfter
+	listenAddr = netip.AddrPortFrom(addr, uint16(c.flagListenPort))
 
-	// We don't _rely_ on client-side timeout verification but this prevents us
-	// seeming to be ready for a connection that will immediately fail when we
-	// try to actually make it
-	c.proxyCtx, c.proxyCancel = context.WithDeadline(c.Context, c.expiration)
-	defer c.proxyCancel()
-
-	transport := cleanhttp.DefaultTransport()
-	transport.DisableKeepAlives = false
-	// This isn't/shouldn't used anyways really because the connection is
-	// hijacked, just setting for completeness
-	transport.IdleConnTimeout = 0
-	transport.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
-		dialer := &tls.Dialer{Config: tlsConf}
-		return dialer.DialContext(ctx, network, addr)
+	connsLeftCh := make(chan int32)
+	apiProxyOpts := []apiproxy.Option{apiproxy.WithConnectionsLeftCh(connsLeftCh)}
+	if listenAddr.IsValid() {
+		apiProxyOpts = append(apiProxyOpts, apiproxy.WithListenAddrPort(listenAddr))
 	}
-
-	c.listener, err = net.ListenTCP("tcp", &net.TCPAddr{
-		IP:   listenAddr,
-		Port: c.flagListenPort,
-	})
+	clientProxy, err := apiproxy.New(
+		c.proxyCtx,
+		authzString,
+		apiProxyOpts...,
+	)
 	if err != nil {
-		c.PrintCliError(fmt.Errorf("Error starting listening port: %w", err))
+		c.PrintCliError(fmt.Errorf("Could not create client proxy: %w", err))
 		return base.CommandCliError
 	}
+	c.sessInfo.Expiration = clientProxy.SessionExpiration()
 
-	listenerCloseFunc := func() {
-		// Forces the for loop to exist instead of spinning on errors
-		c.connectionsLeft.Store(0)
-		if err := c.listener.Close(); err != nil {
-			c.PrintCliError(fmt.Errorf("Error closing listener on shutdown: %w", err))
-			retCode = 2
-		}
-	}
+	clientProxyCloseCh := make(chan struct{})
+	connCountCloseCh := make(chan struct{})
 
-	// Ensure it runs on any other return condition
-	defer func() {
-		c.listenerCloseOnce.Do(listenerCloseFunc)
-	}()
-
-	c.listenerAddr = c.listener.Addr().(*net.TCPAddr)
-
-	if c.Func == "connect" {
-		// "connect" indicates there is no subcommand to the connect function.
-		// The only way a user will be able to connect to the session is by
-		// connecting directly to the port and address we report to them here.
-
-		var creds []*targets.SessionCredential
-		if c.sessionAuthz != nil && len(c.sessionAuthz.Credentials) > 0 {
-			creds = c.sessionAuthz.Credentials
-		}
-
-		sessInfo := SessionInfo{
-			Protocol:        c.sessionAuthzData.GetType(),
-			Address:         c.listenerAddr.IP.String(),
-			Port:            c.listenerAddr.Port,
-			Expiration:      c.expiration,
-			ConnectionLimit: c.sessionAuthzData.GetConnectionLimit(),
-			SessionId:       c.sessionAuthzData.GetSessionId(),
-			Credentials:     creds,
-		}
-		switch base.Format(c.UI) {
-		case "table":
-			c.UI.Output(generateSessionInfoTableOutput(sessInfo))
-		case "json":
-			out, err := json.Marshal(&sessInfo)
-			if err != nil {
-				c.PrintCliError(fmt.Errorf("error marshaling session information: %w", err))
-				return base.CommandCliError
-			}
-			c.UI.Output(string(out))
-		}
-	}
-
-	c.connWg = new(sync.WaitGroup)
-
-	c.connWg.Add(1)
+	proxyError := new(atomic.Error)
 	go func() {
-		defer c.connWg.Done()
-		for {
-			listeningConn, err := c.listener.AcceptTCP()
-			if err != nil {
-				select {
-				case <-c.proxyCtx.Done():
-					return
-				case <-c.Context.Done():
-					return
-				default:
-					// When this hits zero we trigger listener close so this
-					// isn't actually an error condition
-					if c.connectionsLeft.Load() == 0 {
-						return
-					}
-					c.PrintCliError(fmt.Errorf("Error accepting connection: %w", err))
-					continue
-				}
-			}
-			c.connWg.Add(1)
-			go func() {
-				defer listeningConn.Close()
-				defer c.connWg.Done()
-				wsConn, err := c.getWsConn(
-					c.proxyCtx,
-					workerAddr,
-					transport)
-				if err != nil {
-					c.PrintCliError(err)
-				} else {
-					if err := c.runTcpProxyV1(wsConn, listeningConn, tofuToken); err != nil {
-						c.PrintCliError(err)
-					}
-				}
-			}()
-		}
+		defer close(clientProxyCloseCh)
+		proxyError.Store(clientProxy.Start())
 	}()
-
-	timer := time.NewTimer(time.Until(c.expiration))
-	c.connWg.Add(1)
 	go func() {
-		defer c.connWg.Done()
-		defer c.listenerCloseOnce.Do(listenerCloseFunc)
-
+		defer close(connCountCloseCh)
 		for {
 			select {
 			case <-c.proxyCtx.Done():
-				timer.Stop()
+				// When the proxy exits it will cancel this even if we haven't
+				// done it manually
 				return
-			case <-c.Context.Done():
-				timer.Stop()
-				return
-			case <-timer.C:
-				return
-			case connsLeft := <-c.connsLeftCh:
+			case connsLeft := <-connsLeftCh:
 				c.updateConnsLeft(connsLeft)
 				if connsLeft == 0 {
 					return
@@ -590,52 +460,71 @@ func (c *Command) Run(args []string) (retCode int) {
 		}
 	}()
 
-	if c.flagExec != "" {
-		c.connWg.Add(1)
-		c.execCmdReturnValue = atomic.NewInt32(0)
-		go c.handleExec(passthroughArgs)
+	if c.Func == "connect" {
+		// "connect" indicates there is no subcommand to the connect function.
+		// The only way a user will be able to connect to the session is by
+		// connecting directly to the port and address we report to them here.
+
+		proxyAddr := clientProxy.ListenerAddress(context.Background())
+		var clientProxyHost, clientProxyPort string
+		clientProxyHost, clientProxyPort, err = net.SplitHostPort(proxyAddr)
+		if err != nil {
+			if strings.Contains(err.Error(), "missing port") {
+				clientProxyHost = proxyAddr
+			} else {
+				c.PrintCliError(fmt.Errorf("error splitting listener addr: %w", err))
+				return base.CommandCliError
+			}
+		}
+		c.sessInfo.Address = clientProxyHost
+
+		if clientProxyPort != "" {
+			c.sessInfo.Port, err = strconv.Atoi(clientProxyPort)
+			if err != nil {
+				c.PrintCliError(fmt.Errorf("error parsing listener port: %w", err))
+				return base.CommandCliError
+			}
+		}
+		switch base.Format(c.UI) {
+		case "table":
+			c.UI.Output(generateSessionInfoTableOutput(c.sessInfo))
+		case "json":
+			out, err := json.Marshal(&c.sessInfo)
+			if err != nil {
+				c.PrintCliError(fmt.Errorf("error marshaling session information: %w", err))
+				return base.CommandCliError
+			}
+			c.UI.Output(string(out))
+		}
 	}
 
-	c.connWg.Wait()
+	if c.flagExec != "" {
+		c.execCmdReturnValue = atomic.NewInt32(0)
+		c.handleExec(clientProxy, passthroughArgs)
+	}
+
+	<-connCountCloseCh
+	<-clientProxyCloseCh
 
 	if c.execCmdReturnValue != nil {
 		retCode = int(c.execCmdReturnValue.Load())
 	}
 
 	termInfo := TerminationInfo{Reason: "Unknown"}
-	sendSessionCancel := false
 	select {
 	case <-c.Context.Done():
 		termInfo.Reason = "Received shutdown signal"
-		sendSessionCancel = true
 	default:
 		if c.execCmdReturnValue != nil {
 			// Don't print out in this case, so ensure we clear it
 			termInfo.Reason = ""
-			sendSessionCancel = true
-		} else if !timer.Stop() {
+		} else if time.Now().After(clientProxy.SessionExpiration()) {
 			termInfo.Reason = "Session has expired"
-		} else {
-			if c.connectionsLeft.Load() == 0 {
-				termInfo.Reason = "No connections left in session"
-			}
+		} else if clientProxy.ConnectionsLeft() == 0 {
+			termInfo.Reason = "No connections left in session"
+		} else if err := proxyError.Load(); err != nil {
+			termInfo.Reason = "Error from proxy client: " + err.Error()
 		}
-	}
-
-	// Only send it if we should, and also if we're not after expiration, with a
-	// bit of buffer in case clocks are not quite the same between worker and
-	// this machine.
-	if sendSessionCancel && time.Now().Before(c.expiration.Add(-5*time.Minute)) {
-		ctx, cancel := context.WithTimeout(context.Background(), sessionCancelTimeout)
-		wsConn, err := c.getWsConn(ctx, workerAddr, transport)
-		if err != nil {
-			c.PrintCliError(fmt.Errorf("Error fetching connection to send session teardown request to worker: %w", err))
-		} else {
-			if err := c.sendSessionTeardown(ctx, wsConn, tofuToken); err != nil {
-				c.PrintCliError(fmt.Errorf("Error sending session teardown request to worker: %w", err))
-			}
-		}
-		cancel()
 	}
 
 	for _, f := range c.cleanupFuncs {
@@ -682,121 +571,7 @@ func (c *Command) printCredentials(creds []*targets.SessionCredential) error {
 	return nil
 }
 
-func (c *Command) getWsConn(
-	ctx context.Context,
-	workerAddr string,
-	transport *http.Transport,
-) (*websocket.Conn, error) {
-	conn, resp, err := websocket.Dial(
-		ctx,
-		fmt.Sprintf("ws://%s/v1/proxy", workerAddr),
-		&websocket.DialOptions{
-			HTTPClient: &http.Client{
-				Transport: transport,
-			},
-			Subprotocols: []string{globals.TcpProxyV1},
-		},
-	)
-	if err != nil {
-		switch {
-		case strings.Contains(err.Error(), "tls: internal error"):
-			return nil, errors.New("Session credentials were not accepted, or session is unauthorized")
-		case strings.Contains(err.Error(), "connect: connection refused"):
-			return nil, fmt.Errorf("Unable to connect to worker at %s", workerAddr)
-		default:
-			return nil, fmt.Errorf("Error dialing the worker: %w", err)
-		}
-	}
-
-	if resp == nil {
-		return nil, errors.New("Response from worker is nil")
-	}
-	if resp.Header == nil {
-		return nil, errors.New("Response header is nil")
-	}
-	negProto := resp.Header.Get("Sec-WebSocket-Protocol")
-	if negProto != globals.TcpProxyV1 {
-		return nil, fmt.Errorf("Unexpected negotiated protocol: %s", negProto)
-	}
-	return conn, nil
-}
-
-func (c *Command) sendSessionTeardown(
-	ctx context.Context,
-	wsConn *websocket.Conn,
-	tofuToken string,
-) error {
-	handshake := proxy.ClientHandshake{
-		TofuToken: tofuToken,
-		Command:   proxy.HANDSHAKECOMMAND_HANDSHAKECOMMAND_SESSION_CANCEL,
-	}
-	if err := wspb.Write(ctx, wsConn, &handshake); err != nil {
-		return fmt.Errorf("error sending teardown handshake to worker: %w", err)
-	}
-
-	return nil
-}
-
-func (c *Command) runTcpProxyV1(
-	wsConn *websocket.Conn,
-	listeningConn *net.TCPConn,
-	tofuToken string,
-) error {
-	handshake := proxy.ClientHandshake{TofuToken: tofuToken}
-	if err := wspb.Write(c.proxyCtx, wsConn, &handshake); err != nil {
-		return fmt.Errorf("Error sending handshake to worker: %w", err)
-	}
-	var handshakeResult proxy.HandshakeResult
-	if err := wspb.Read(c.proxyCtx, wsConn, &handshakeResult); err != nil {
-		switch {
-		case strings.Contains(err.Error(), "unable to authorize connection"):
-			// There's no reason to think we'd be able to authorize any more
-			// connections after the first has failed
-			c.connsLeftCh <- 0
-			return errors.New("Unable to authorize connection")
-		}
-		switch {
-		case strings.Contains(err.Error(), "tofu token not allowed"):
-			// Nothing will be able to be done here, so cancel the context too
-			c.proxyCancel()
-			return errors.New("Session token has already been used")
-		default:
-			// If we can't handshake we can't do anything, so quit out
-			c.proxyCancel()
-			return fmt.Errorf("Error reading handshake result: %w", err)
-		}
-	}
-
-	if handshakeResult.GetConnectionsLeft() != -1 {
-		c.connsLeftCh <- handshakeResult.GetConnectionsLeft()
-	}
-
-	// Get a wrapped net.Conn so we can use io.Copy
-	netConn := websocket.NetConn(c.proxyCtx, wsConn, websocket.MessageBinary)
-
-	localWg := new(sync.WaitGroup)
-	localWg.Add(2)
-
-	go func() {
-		defer localWg.Done()
-		io.Copy(netConn, listeningConn)
-		netConn.Close()
-		listeningConn.Close()
-	}()
-	go func() {
-		defer localWg.Done()
-		io.Copy(listeningConn, netConn)
-		listeningConn.Close()
-		netConn.Close()
-	}()
-	localWg.Wait()
-
-	return nil
-}
-
 func (c *Command) updateConnsLeft(connsLeft int32) {
-	c.connectionsLeft.Store(connsLeft)
-
 	connInfo := ConnectionInfo{
 		ConnectionsLeft: connsLeft,
 	}
@@ -808,29 +583,38 @@ func (c *Command) updateConnsLeft(connsLeft int32) {
 		case "json":
 			out, err := json.Marshal(&connInfo)
 			if err != nil {
-				c.PrintCliError(fmt.Errorf("error marshaling connection information: %w", err))
+				c.PrintCliError(fmt.Errorf("Error marshaling connection information: %w", err))
 			}
 			c.UI.Output(string(out))
 		}
 	}
 }
 
-func (c *Command) handleExec(passthroughArgs []string) {
-	defer c.connWg.Done()
+func (c *Command) handleExec(clientProxy *apiproxy.ClientProxy, passthroughArgs []string) {
 	defer c.proxyCancel()
 
-	port := strconv.Itoa(c.listenerAddr.Port)
-	ip := c.listenerAddr.IP.String()
-	addr := c.listenerAddr.String()
+	addr := clientProxy.ListenerAddress(context.Background())
+	var host, port string
+	var err error
+	host, port, err = net.SplitHostPort(addr)
+	if err != nil {
+		if strings.Contains(err.Error(), "missing port") {
+			host = addr
+		} else {
+			c.PrintCliError(fmt.Errorf("Error splitting listener addr: %w", err))
+			c.execCmdReturnValue.Store(int32(3))
+			return
+		}
+	}
 
 	var args []string
 	var envs []string
 	var argsErr error
 
 	var creds apiproxy.Credentials
-	if c.sessionAuthz != nil {
+	if len(c.sessInfo.Credentials) > 0 {
 		var err error
-		creds, err = apiproxy.ParseCredentials(c.sessionAuthz.Credentials)
+		creds, err = apiproxy.ParseCredentials(c.sessInfo.Credentials)
 		if err != nil {
 			c.PrintCliError(fmt.Errorf("Error interpreting secret: %w", err))
 			c.execCmdReturnValue.Store(int32(3))
@@ -840,7 +624,7 @@ func (c *Command) handleExec(passthroughArgs []string) {
 
 	switch c.Func {
 	case "http":
-		httpArgs, err := c.httpFlags.buildArgs(c, port, ip, addr)
+		httpArgs, err := c.httpFlags.buildArgs(c, port, host, addr)
 		if err != nil {
 			c.PrintCliError(fmt.Errorf("Error parsing session args: %w", err))
 			c.execCmdReturnValue.Store(int32(3))
@@ -849,7 +633,7 @@ func (c *Command) handleExec(passthroughArgs []string) {
 		args = append(args, httpArgs...)
 
 	case "postgres":
-		pgArgs, pgEnvs, pgCreds, pgErr := c.postgresFlags.buildArgs(c, port, ip, addr, creds)
+		pgArgs, pgEnvs, pgCreds, pgErr := c.postgresFlags.buildArgs(c, port, host, addr, creds)
 		if pgErr != nil {
 			argsErr = pgErr
 			break
@@ -859,10 +643,10 @@ func (c *Command) handleExec(passthroughArgs []string) {
 		creds = pgCreds
 
 	case "rdp":
-		args = append(args, c.rdpFlags.buildArgs(c, port, ip, addr)...)
+		args = append(args, c.rdpFlags.buildArgs(c, port, host, addr)...)
 
 	case "ssh":
-		sshArgs, sshEnvs, sshCreds, sshErr := c.sshFlags.buildArgs(c, port, ip, addr, creds)
+		sshArgs, sshEnvs, sshCreds, sshErr := c.sshFlags.buildArgs(c, port, host, addr, creds)
 		if sshErr != nil {
 			argsErr = sshErr
 			break
@@ -872,7 +656,7 @@ func (c *Command) handleExec(passthroughArgs []string) {
 		creds = sshCreds
 
 	case "kube":
-		kubeArgs, err := c.kubeFlags.buildArgs(c, port, ip, addr)
+		kubeArgs, err := c.kubeFlags.buildArgs(c, port, host, addr)
 		if err != nil {
 			c.PrintCliError(fmt.Errorf("Error parsing session args: %w", err))
 			c.execCmdReturnValue.Store(int32(3))
@@ -909,7 +693,7 @@ func (c *Command) handleExec(passthroughArgs []string) {
 
 	for i := range args {
 		args[i] = stringReplacer(args[i], "port", port)
-		args[i] = stringReplacer(args[i], "ip", ip)
+		args[i] = stringReplacer(args[i], "ip", host)
 		args[i] = stringReplacer(args[i], "addr", addr)
 	}
 
@@ -920,7 +704,7 @@ func (c *Command) handleExec(passthroughArgs []string) {
 	// Add original and network related envs here
 	cmd.Env = append(os.Environ(),
 		fmt.Sprintf("BOUNDARY_PROXIED_PORT=%s", port),
-		fmt.Sprintf("BOUNDARY_PROXIED_IP=%s", ip),
+		fmt.Sprintf("BOUNDARY_PROXIED_IP=%s", host),
 		fmt.Sprintf("BOUNDARY_PROXIED_ADDR=%s", addr),
 	)
 	// Envs that came from subcommand handling
