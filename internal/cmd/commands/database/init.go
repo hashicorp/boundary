@@ -125,37 +125,37 @@ func (c *InitCommand) Flags() *base.FlagSets {
 	f.BoolVar(&base.BoolVar{
 		Name:   "skip-initial-login-role-creation",
 		Target: &c.flagSkipInitialLoginRoleCreation,
-		Usage:  "If not set, a role providing necessary grants for logging in will not be created as part of initialization. If set, the recovery KMS will be needed to perform any actions.",
+		Usage:  "If set, a role providing necessary grants for logging in will not be created as part of initialization. If set, the recovery KMS will be needed to perform any actions.",
 	})
 
 	f.BoolVar(&base.BoolVar{
 		Name:   "skip-initial-authenticated-user-role-creation",
 		Target: &c.flagSkipInitialAuthenticatedUserRoleCreation,
-		Usage:  "If not set, a role providing initial grants for any authenticated user will not be created as part of initialization.",
+		Usage:  "If set, a role providing initial grants for any authenticated user will not be created as part of initialization.",
 	})
 
 	f.BoolVar(&base.BoolVar{
 		Name:   "skip-auth-method-creation",
 		Target: &c.flagSkipAuthMethodCreation,
-		Usage:  "If not set, an auth method will not be created as part of initialization. If set, the recovery KMS will be needed to perform any actions.",
+		Usage:  "If set, an auth method will not be created as part of initialization. If set, the recovery KMS will be needed to perform any actions.",
 	})
 
 	f.BoolVar(&base.BoolVar{
 		Name:   "skip-scopes-creation",
 		Target: &c.flagSkipScopesCreation,
-		Usage:  "If not set, scopes will not be created as part of initialization.",
+		Usage:  "If set, scopes will not be created as part of initialization.",
 	})
 
 	f.BoolVar(&base.BoolVar{
 		Name:   "skip-host-resources-creation",
 		Target: &c.flagSkipHostResourcesCreation,
-		Usage:  "If not set, host resources (host catalog, host set, host) will not be created as part of initialization.",
+		Usage:  "If set, host resources (host catalog, host set, host) will not be created as part of initialization.",
 	})
 
 	f.BoolVar(&base.BoolVar{
 		Name:   "skip-target-creation",
 		Target: &c.flagSkipTargetCreation,
-		Usage:  "If not set, a target will not be created as part of initialization.",
+		Usage:  "If set, a target will not be created as part of initialization.",
 	})
 
 	f.StringVar(&base.StringVar{

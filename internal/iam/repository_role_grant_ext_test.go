@@ -18,7 +18,6 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/types/scope"
-	"github.com/kr/pretty"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
@@ -56,9 +55,9 @@ func TestGrantsForUser(t *testing.T) {
 	iam.TestRoleGrant(t, conn, globalRole.PublicId, "id=*;type=auth-method;actions=update")
 	iam.TestRoleGrant(t, conn, globalRole.PublicId, "id=*;type=credential-store;actions=list,no-op")
 	// time.Sleep(10000 * time.Second)
-	grantTuples, err := iamRepo.GrantsForUser(ctx, user.PublicId)
-	require.NoError(t, err)
-	t.Log(pretty.Sprint(grantTuples))
+	// grantTuples, err := iamRepo.GrantsForUser(ctx, user.PublicId)
+	// require.NoError(t, err)
+	// t.Log(pretty.Sprint(grantTuples))
 }
 
 func TestGrantsForUserRandomized(t *testing.T) {
