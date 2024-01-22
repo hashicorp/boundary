@@ -813,6 +813,9 @@ func associationChanges(ctx context.Context, reader db.Reader, userId string, ac
 		}
 		changes = append(changes, &chg)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, nil, errors.Wrap(ctx, err, op)
+	}
 	var associateIds, disassociateIds []string
 	for _, c := range changes {
 		if c.AccountId == "" {
@@ -985,6 +988,9 @@ func (r *Repository) estimatedUserCount(ctx context.Context) (int, error) {
 		if err := r.reader.ScanRows(ctx, rows, &count); err != nil {
 			return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total users"))
 		}
+	}
+	if err := rows.Err(); err != nil {
+		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total users"))
 	}
 	return count, nil
 }

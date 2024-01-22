@@ -184,6 +184,9 @@ func (r *Repository) upsertAccount(ctx context.Context, am *AuthMethod, IdTokenC
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to scan rows for account"))
 				}
 			}
+			if err := rows.Err(); err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get next rows for account"))
+			}
 			if rowCnt > 1 {
 				return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("expected 1 row but got: %d", rowCnt))
 			}

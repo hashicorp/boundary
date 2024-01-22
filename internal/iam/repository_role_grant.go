@@ -433,6 +433,8 @@ func (r *Repository) GrantsForUser(ctx context.Context, userId string, _ ...Opti
 			return nil, errors.Wrap(ctx, err, op)
 		}
 	}
-
+	if err := rows.Err(); err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
 	return grants, nil
 }

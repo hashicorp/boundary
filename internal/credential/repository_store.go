@@ -106,6 +106,9 @@ func (s *StoreRepository) EstimatedCount(ctx context.Context) (int, error) {
 			return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total credential stores"))
 		}
 	}
+	if err := rows.Err(); err != nil {
+		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total credential stores"))
+	}
 	return count, nil
 }
 
@@ -126,6 +129,9 @@ func (s *StoreRepository) ListDeletedIds(ctx context.Context, since time.Time) (
 				return errors.Wrap(ctx, err, op)
 			}
 			deletedStoreIDs = append(deletedStoreIDs, id)
+		}
+		if err := rows.Err(); err != nil {
+			return errors.Wrap(ctx, err, op)
 		}
 		transactionTimestamp, err = r.Now(ctx)
 		return err
@@ -151,6 +157,9 @@ func (s *StoreRepository) queryStores(ctx context.Context, query string, args []
 			if err := r.ScanRows(ctx, rows, &foundStores); err != nil {
 				return err
 			}
+		}
+		if err := rows.Err(); err != nil {
+			return err
 		}
 
 		for _, s := range foundStores {

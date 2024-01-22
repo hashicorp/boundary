@@ -285,6 +285,9 @@ func nextRenewal(ctx context.Context, j scheduler.Job) (time.Duration, error) {
 		}
 		return n.RenewalIn * time.Second, nil
 	}
+	if err := rows.Err(); err != nil {
+		return 0, errors.Wrap(ctx, err, op)
+	}
 
 	return defaultNextRunIn, nil
 }

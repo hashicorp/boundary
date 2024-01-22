@@ -392,5 +392,8 @@ func (r *Repository) estimatedRoleCount(ctx context.Context) (int, error) {
 			return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total roles"))
 		}
 	}
+	if err := rows.Err(); err != nil {
+		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total roles"))
+	}
 	return count, nil
 }

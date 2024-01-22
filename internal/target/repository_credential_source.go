@@ -517,6 +517,9 @@ func (r *Repository) changes(ctx context.Context, targetId string, ids []string,
 			}
 		}
 	}
+	if err := rows.Err(); err != nil {
+		return nil, nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("next rows error"))
+	}
 	return addCredLib, delCredLib, addStaticCred, delStaticCred, nil
 }
 

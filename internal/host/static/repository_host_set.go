@@ -410,5 +410,8 @@ func (r *Repository) estimatedSetCount(ctx context.Context) (int, error) {
 			return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query static host sets"))
 		}
 	}
+	if err := rows.Err(); err != nil {
+		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query static host sets"))
+	}
 	return count, nil
 }

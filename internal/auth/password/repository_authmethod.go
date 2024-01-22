@@ -112,20 +112,6 @@ func (r *Repository) LookupAuthMethod(ctx context.Context, publicId string, _ ..
 	return r.lookupAuthMethod(ctx, publicId)
 }
 
-// ListAuthMethods returns a slice of AuthMethods for the scopeId. WithLimit and
-// WithOrder options are the only option supported.
-func (r *Repository) ListAuthMethods(ctx context.Context, scopeIds []string, opt ...Option) ([]*AuthMethod, error) {
-	const op = "password.(Repository).ListAuthMethods"
-	if len(scopeIds) == 0 {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
-	}
-	authMethods, err := r.getAuthMethods(ctx, "", scopeIds, opt...)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-	return authMethods, nil
-}
-
 // DeleteAuthMethod deletes the auth method for the provided id from the repository returning a count of the
 // number of records deleted.  All options are ignored.
 func (r *Repository) DeleteAuthMethod(ctx context.Context, scopeId, publicId string, opt ...Option) (int, error) {

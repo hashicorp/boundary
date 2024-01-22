@@ -523,6 +523,9 @@ func groupMemberChanges(ctx context.Context, reader db.Reader, groupId string, u
 		}
 		changes = append(changes, &chg)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, nil, errors.Wrap(ctx, err, op)
+	}
 	addMembers := []any{}
 	deleteMembers := []any{}
 	for _, c := range changes {
@@ -682,6 +685,9 @@ func (r *Repository) estimatedGroupCount(ctx context.Context) (int, error) {
 		if err := r.reader.ScanRows(ctx, rows, &count); err != nil {
 			return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total groups"))
 		}
+	}
+	if err := rows.Err(); err != nil {
+		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total groups"))
 	}
 	return count, nil
 }

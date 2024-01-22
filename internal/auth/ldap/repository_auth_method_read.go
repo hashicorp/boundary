@@ -32,21 +32,6 @@ func (r *Repository) LookupAuthMethod(ctx context.Context, publicId string, opt 
 	return r.lookupAuthMethod(ctx, publicId, WithUnauthenticatedUser(ctx, opts.withUnauthenticatedUser))
 }
 
-// ListAuthMethods returns a slice of AuthMethods for the scopeId. The
-// WithUnauthenticatedUser, WithLimit and WithOrder options are supported and
-// all other options are ignored.
-func (r *Repository) ListAuthMethods(ctx context.Context, scopeIds []string, opt ...Option) ([]*AuthMethod, error) {
-	const op = "ldap.(Repository).ListAuthMethods"
-	if len(scopeIds) == 0 {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing scope IDs")
-	}
-	authMethods, err := r.getAuthMethods(ctx, "", scopeIds, opt...)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-	return authMethods, nil
-}
-
 // lookupAuthMethod will lookup a single auth method
 func (r *Repository) lookupAuthMethod(ctx context.Context, authMethodId string, opt ...Option) (*AuthMethod, error) {
 	const op = "ldap.(Repository).lookupAuthMethod"
