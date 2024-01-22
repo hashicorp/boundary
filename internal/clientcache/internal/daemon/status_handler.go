@@ -68,10 +68,11 @@ type UserStatus struct {
 type StatusResult struct {
 	Uptime        time.Duration `json:"uptime,omitempty"`
 	SocketAddress string        `json:"socket_address,omitempty"`
+	LogLocation   string        `json:"log_location,omitempty"`
 	Users         []UserStatus  `json:"users,omitempty"`
 }
 
-func newStatusHandlerFunc(ctx context.Context, repo *cache.Repository, socketAddr string) (http.HandlerFunc, error) {
+func newStatusHandlerFunc(ctx context.Context, repo *cache.Repository, socketAddr, logLocation string) (http.HandlerFunc, error) {
 	const op = "daemon.newStatusHandlerFunc"
 	switch {
 	case util.IsNil(repo):
@@ -102,7 +103,7 @@ func newStatusHandlerFunc(ctx context.Context, repo *cache.Repository, socketAdd
 			return
 		}
 
-		apiRes := toApiStatus(res, started, socketAddr)
+		apiRes := toApiStatus(res, started, socketAddr, logLocation)
 		j, err := json.Marshal(apiRes)
 		if err != nil {
 			writeError(w, err.Error(), http.StatusInternalServerError)
@@ -114,7 +115,7 @@ func newStatusHandlerFunc(ctx context.Context, repo *cache.Repository, socketAdd
 }
 
 // toApiStatus converts a domain status result to an api status result
-func toApiStatus(in *cache.Status, started time.Time, socketAddr string) *StatusResult {
+func toApiStatus(in *cache.Status, started time.Time, socketAddr, logLocation string) *StatusResult {
 	if in == nil {
 		return nil
 	}
@@ -122,6 +123,7 @@ func toApiStatus(in *cache.Status, started time.Time, socketAddr string) *Status
 	out := &StatusResult{
 		Uptime:        time.Since(started),
 		SocketAddress: socketAddr,
+		LogLocation:   logLocation,
 	}
 
 	for _, inU := range in.Users {
