@@ -36,7 +36,7 @@ type RoleGrantScope struct {
 	// @inject_tag: `gorm:"primary_key"`
 	RoleId string `protobuf:"bytes,2,opt,name=role_id,json=roleId,proto3" json:"role_id,omitempty" gorm:"primary_key"`
 	// scope_id_or_special is the string grant scope value as provided by the
-	// user, which may be one of a few special values as well“
+	// user, which may be one of a few special values as well
 	//
 	// @inject_tag: `gorm:"primary_key"`
 	ScopeIdOrSpecial string `protobuf:"bytes,3,opt,name=scope_id_or_special,json=scopeIdOrSpecial,proto3" json:"scope_id_or_special,omitempty" gorm:"primary_key"`
