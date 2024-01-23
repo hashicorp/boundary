@@ -61,40 +61,8 @@ begin;
   end;
   $$ language plpgsql;
 
-  create function alias_scope_is_parent_to_destination_scope() returns trigger
-    as $$
-  begin
-    if new.scope_id = 'global' then
-      return new;
-    end if;
-    if new.destination_id is null then
-      return new;
-    end if;
-
-    perform from
-      target t
-    where
-    t.public_id = new.destination_id
-    and
-    (
-      t.project_id = new.scope_id
-      or
-      new.scope_id = (select parent_id from iam_scope where public_id = t.project_id)
-    );
-    if not found then
-      raise exception 'alias scope must be the same or a parent to the destination scope';
-    end if;
-    return new;
-  end;
-  $$ language plpgsql;
-
   create trigger delete_host_id_if_destination_id_is_null before update on alias_target
     for each row execute procedure delete_host_id_if_destination_id_is_null();
-
-  -- this should be an after trigger, since the other constraints on the table
-  -- provide more useful information if the fk references are incorrect.
-  create trigger alias_scope_is_parent_to_destination_scope after insert or update on alias_target
-    for each row execute procedure alias_scope_is_parent_to_destination_scope();
 
   create trigger insert_alias_subtype before insert on alias_target
     for each row execute procedure insert_alias_subtype();
@@ -127,7 +95,7 @@ begin;
   'alias_target_deleted holds the ID and delete_time of every deleted target alias. '
   'It is automatically trimmed of records older than 30 days by a job.';
 
-  create trigger insert_alias_target_deleted after delete on alias_target
+  create trigger insert_deleted_id after delete on alias_target
     for each row execute procedure insert_deleted_id('alias_target_deleted');
 
   create index alias_target_deleted_delete_time_idx on alias_target_deleted (delete_time);

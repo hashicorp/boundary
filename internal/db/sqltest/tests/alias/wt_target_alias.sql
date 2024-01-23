@@ -46,24 +46,24 @@ begin;
     ('9-things.9-things');
   select lives_ok('valid_inserts');
 
-  prepare label_to_long as insert into target_alias_testing (v) values
+  prepare label_too_long as insert into target_alias_testing (v) values
   ('test-for-long-name-which-is-almost-over-the-limit-of-charactersX');
     select throws_like(
-        'label_to_long',
+        'label_too_long',
         '%"wt_target_alias_value_shape"'
     );
 
-  prepare label_to_long_2 as insert into target_alias_testing (v) values
+  prepare label_too_long_2 as insert into target_alias_testing (v) values
   ('a.test-for-long-name-which-is-almost-over-the-limit-of-charactersX');
     select throws_like(
-        'label_to_long_2',
+        'label_too_long_2',
         '%"wt_target_alias_value_shape"'
     );
 
-  prepare label_to_long_3 as insert into target_alias_testing (v) values
+  prepare label_too_long_3 as insert into target_alias_testing (v) values
   ('test-for-long-name-which-is-almost-over-the-limit-of-charactersX.a');
     select throws_like(
-        'label_to_long_3',
+        'label_too_long_3',
         '%"wt_target_alias_value_shape"'
     );
 
