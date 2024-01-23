@@ -3,7 +3,7 @@
 
 begin;
 
-  select plan(8);
+  select plan(12);
 
   -- helper statements for resetting test env 
   prepare delete_policy_storage_policy_resource as
@@ -42,6 +42,22 @@ begin;
     values
       ('pst__bcolors', 'global',       6,               5);
   select throws_ok('insert_policy_delete_after_less_than_retain', 23514, null, 'delete_after must be greater than or equal to retain_for');
+  select lives_ok('delete_policy_storage_policy_resource', 'policy_storage_policy cleanup');
+
+  prepare retain_for_days_max as
+    insert into  policy_storage_policy
+    (public_id,       scope_id,      retain_for_days, delete_after_days)
+    values
+    ('pst__bcolors', 'global',       40000,           0);
+  select throws_ok('retain_for_days_max', 23514);
+  select lives_ok('delete_policy_storage_policy_resource', 'policy_storage_policy cleanup');
+
+  prepare delete_after_days_max as
+    insert into  policy_storage_policy
+    (public_id,       scope_id,      retain_for_days, delete_after_days)
+    values
+    ('pst__bcolors', 'global',       0,               40000);
+  select throws_ok('delete_after_days_max', 23514);
   select lives_ok('delete_policy_storage_policy_resource', 'policy_storage_policy cleanup');
 
 rollback;
