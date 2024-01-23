@@ -326,16 +326,9 @@ func (r *Repository) SetRoleGrantScopes(ctx context.Context, roleId string, role
 		}
 		msgs = append(msgs, &roleOplogMsg)
 
-		// Write the new ones in
-		if len(addRoleGrantScopes) > 0 {
-			roleGrantScopeOplogMsgs := make([]*oplog.Message, 0, len(addRoleGrantScopes))
-			if err := wtr.CreateItems(ctx, addRoleGrantScopes, db.NewOplogMsgs(&roleGrantScopeOplogMsgs)); err != nil {
-				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to add grant scope during set"))
-			}
-			msgs = append(msgs, roleGrantScopeOplogMsgs...)
-		}
-
-		// Anything we didn't take out of found needs to be removed
+		// Anything we didn't take out of found needs to be removed. This needs
+		// to come before writing in new ones because otherwise we may hit some
+		// validation issues.
 		if len(deleteRoleGrantScopes) > 0 {
 			roleGrantScopeOplogMsgs := make([]*oplog.Message, 0, len(deleteRoleGrantScopes))
 			rowsDeleted, err := wtr.DeleteItems(ctx, deleteRoleGrantScopes, db.NewOplogMsgs(&roleGrantScopeOplogMsgs))
@@ -346,6 +339,15 @@ func (r *Repository) SetRoleGrantScopes(ctx context.Context, roleId string, role
 				return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("role grant scope deleted %d did not match request for %d", rowsDeleted, len(deleteRoleGrantScopes)))
 			}
 			totalRowsDeleted = rowsDeleted
+			msgs = append(msgs, roleGrantScopeOplogMsgs...)
+		}
+
+		// Write the new ones in
+		if len(addRoleGrantScopes) > 0 {
+			roleGrantScopeOplogMsgs := make([]*oplog.Message, 0, len(addRoleGrantScopes))
+			if err := wtr.CreateItems(ctx, addRoleGrantScopes, db.NewOplogMsgs(&roleGrantScopeOplogMsgs)); err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to add grant scope during set"))
+			}
 			msgs = append(msgs, roleGrantScopeOplogMsgs...)
 		}
 

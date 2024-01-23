@@ -66,15 +66,33 @@ begin;
   declare parent_scope_id text;
   declare role_scope_type text;
   declare validated_scope_id text;
+  declare existing_scope_id_or_special text;
   begin
-    -- It's always allowed to have a scope_id_or_special of "this"
+    -- We want to make a few checks based on the role's actual scope so select it
+    select ir.scope_id from iam_role ir where ir.public_id = new.role_id into role_scope_id;
+    -- It's always allowed to have a scope_id_or_special of "this" but don't
+    -- allow it as well as the role's explicit scope ID
     if new.scope_id_or_special = 'this' then
+      select rgs.scope_id_or_special
+        from iam_role_grant_scope rgs
+        where rgs.role_id = new.role_id and rgs.scope_id_or_special = role_scope_id
+        into existing_scope_id_or_special;
+      if existing_scope_id_or_special is not null then
+        raise exception 'invalid to specify both "this" and a role''s actual scope id as a grant scope';
+      end if;
       return new;
     end if;
     -- Fetch the scope id for the role
     select ir.scope_id from iam_role ir where ir.public_id = new.role_id into role_scope_id;
     -- It's always allowed to have the scope_id_or_special be the same as the role's
     if new.scope_id_or_special = role_scope_id then
+      select rgs.scope_id_or_special
+        from iam_role_grant_scope rgs
+        where rgs.role_id = new.role_id and rgs.scope_id_or_special = 'this'
+        into existing_scope_id_or_special;
+      if existing_scope_id_or_special is not null then
+        raise exception 'invalid to specify both "this" and a role''s actual scope id as a grant scope';
+      end if;
       return new;
     end if;
 

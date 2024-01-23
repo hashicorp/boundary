@@ -2574,6 +2574,7 @@ func TestAddGrantScopes(t *testing.T) {
 	require.NoError(t, err, "Error when getting new role service.")
 
 	o, p := iam.TestScopes(t, iamRepo)
+	o2, p2 := iam.TestScopes(t, iamRepo)
 
 	addCases := []struct {
 		name            string
@@ -2605,6 +2606,13 @@ func TestAddGrantScopes(t *testing.T) {
 			result:   []string{"this", "children"},
 		},
 		{
+			name:     "Add other org/proj scopes - global",
+			scopeId:  scope.Global.String(),
+			existing: []string{"this"},
+			add:      []string{o2.PublicId, p2.PublicId},
+			result:   []string{"this", o2.PublicId, p2.PublicId},
+		},
+		{
 			name:     "Add grant scope matching existing grant scopes - global",
 			scopeId:  scope.Global.String(),
 			existing: []string{"this"},
@@ -2616,6 +2624,20 @@ func TestAddGrantScopes(t *testing.T) {
 			scopeId:  scope.Global.String(),
 			existing: []string{"this"},
 			add:      []string{"p_foobar1234", "children"},
+			wantErr:  true,
+		},
+		{
+			name:     "Add this to scope grant scope - global",
+			scopeId:  scope.Global.String(),
+			existing: []string{scope.Global.String()},
+			add:      []string{"this"},
+			wantErr:  true,
+		},
+		{
+			name:     "Add scope to this grant scope - global",
+			scopeId:  scope.Global.String(),
+			existing: []string{"this"},
+			add:      []string{scope.Global.String()},
 			wantErr:  true,
 		},
 		{
@@ -2660,6 +2682,27 @@ func TestAddGrantScopes(t *testing.T) {
 			wantErr:  true,
 		},
 		{
+			name:     "Add this to scope grant scope - org",
+			scopeId:  o.PublicId,
+			existing: []string{o.PublicId},
+			add:      []string{"this"},
+			wantErr:  true,
+		},
+		{
+			name:     "Add scope to this grant scope - org",
+			scopeId:  o.PublicId,
+			existing: []string{"this"},
+			add:      []string{o.PublicId},
+			wantErr:  true,
+		},
+		{
+			name:     "Add other org/proj scopes - org",
+			scopeId:  o.PublicId,
+			existing: []string{"this"},
+			add:      []string{p2.PublicId},
+			wantErr:  true,
+		},
+		{
 			name:    "Add grant scopes on empty role - proj with id",
 			scopeId: p.PublicId,
 			add:     []string{p.PublicId},
@@ -2696,6 +2739,27 @@ func TestAddGrantScopes(t *testing.T) {
 			scopeId:  p.PublicId,
 			existing: []string{"this"},
 			add:      []string{"children"},
+			wantErr:  true,
+		},
+		{
+			name:     "Add this to scope grant scope - proj",
+			scopeId:  p.PublicId,
+			existing: []string{p.PublicId},
+			add:      []string{"this"},
+			wantErr:  true,
+		},
+		{
+			name:     "Add scope to this grant scope - proj",
+			scopeId:  p.PublicId,
+			existing: []string{"this"},
+			add:      []string{p.PublicId},
+			wantErr:  true,
+		},
+		{
+			name:     "Add other org/proj scopes - proj",
+			scopeId:  p.PublicId,
+			existing: []string{},
+			add:      []string{p2.PublicId},
 			wantErr:  true,
 		},
 	}
@@ -2792,6 +2856,7 @@ func TestSetGrantScopes(t *testing.T) {
 	require.NoError(t, err, "Error when getting new role service.")
 
 	o, p := iam.TestScopes(t, iamRepo)
+	o2, p2 := iam.TestScopes(t, iamRepo)
 
 	setCases := []struct {
 		name            string
@@ -2830,10 +2895,45 @@ func TestSetGrantScopes(t *testing.T) {
 			result:   []string{"this", "children"},
 		},
 		{
+			name:     "Set this to scope grant scope - global",
+			scopeId:  scope.Global.String(),
+			existing: []string{scope.Global.String()},
+			set:      []string{"this", "children"},
+			result:   []string{"this", "children"},
+		},
+		{
+			name:     "Set scope to this grant scope - global",
+			scopeId:  scope.Global.String(),
+			existing: []string{"this"},
+			set:      []string{scope.Global.String(), "children"},
+			result:   []string{scope.Global.String(), "children"},
+		},
+		{
+			name:     "Set other org/proj scopes - global",
+			scopeId:  scope.Global.String(),
+			existing: []string{"this"},
+			set:      []string{"this", o2.PublicId, p2.PublicId},
+			result:   []string{"this", o2.PublicId, p2.PublicId},
+		},
+		{
 			name:     "Set invalid grant scope - global",
 			scopeId:  scope.Global.String(),
 			existing: []string{"this"},
 			set:      []string{"p_foobar1234", "children"},
+			wantErr:  true,
+		},
+		{
+			name:     "Set both on grant scope - global",
+			scopeId:  scope.Global.String(),
+			existing: []string{},
+			set:      []string{scope.Global.String(), "children", "this"},
+			wantErr:  true,
+		},
+		{
+			name:     "Set both grant scope - global",
+			scopeId:  scope.Global.String(),
+			existing: []string{},
+			set:      []string{"this", scope.Global.String(), "children"},
 			wantErr:  true,
 		},
 		{
@@ -2864,6 +2964,20 @@ func TestSetGrantScopes(t *testing.T) {
 			result:   []string{"this", "children"},
 		},
 		{
+			name:     "Set this to scope grant scope - org",
+			scopeId:  o.PublicId,
+			existing: []string{o.PublicId},
+			set:      []string{"this", "children"},
+			result:   []string{"this", "children"},
+		},
+		{
+			name:     "Set scope to this grant scope - org",
+			scopeId:  o.PublicId,
+			existing: []string{"this"},
+			set:      []string{o.PublicId, "children"},
+			result:   []string{o.PublicId, "children"},
+		},
+		{
 			name:     "Set invalid grant scope - org",
 			scopeId:  o.PublicId,
 			existing: []string{"this"},
@@ -2875,6 +2989,20 @@ func TestSetGrantScopes(t *testing.T) {
 			scopeId:  o.PublicId,
 			existing: []string{"this"},
 			set:      []string{"descendants", "children"},
+			wantErr:  true,
+		},
+		{
+			name:     "Set both on grant scope - org",
+			scopeId:  o.PublicId,
+			existing: []string{},
+			set:      []string{o.PublicId, "children", "this"},
+			wantErr:  true,
+		},
+		{
+			name:     "Set both grant scope - org",
+			scopeId:  o.PublicId,
+			existing: []string{},
+			set:      []string{"this", o.PublicId, "children"},
 			wantErr:  true,
 		},
 		{
@@ -2896,6 +3024,27 @@ func TestSetGrantScopes(t *testing.T) {
 			result:  []string{"this"},
 		},
 		{
+			name:     "Set this to scope grant scope - proj",
+			scopeId:  p.PublicId,
+			existing: []string{p.PublicId},
+			set:      []string{"this"},
+			result:   []string{"this"},
+		},
+		{
+			name:     "Set scope to this grant scope - proj",
+			scopeId:  p.PublicId,
+			existing: []string{"this"},
+			set:      []string{p.PublicId},
+			result:   []string{p.PublicId},
+		},
+		{
+			name:     "Set other org/proj scopes - org",
+			scopeId:  o.PublicId,
+			existing: []string{"this"},
+			set:      []string{"this", p2.PublicId},
+			wantErr:  true,
+		},
+		{
 			name:     "Set invalid grant scope - proj",
 			scopeId:  p.PublicId,
 			existing: []string{"this"},
@@ -2914,6 +3063,27 @@ func TestSetGrantScopes(t *testing.T) {
 			scopeId:  p.PublicId,
 			existing: []string{"this"},
 			set:      []string{"children"},
+			wantErr:  true,
+		},
+		{
+			name:     "Set both on grant scope - proj",
+			scopeId:  p.PublicId,
+			existing: []string{},
+			set:      []string{p.PublicId, "this"},
+			wantErr:  true,
+		},
+		{
+			name:     "Set both grant scope - proj",
+			scopeId:  p.PublicId,
+			existing: []string{},
+			set:      []string{"this", p.PublicId},
+			wantErr:  true,
+		},
+		{
+			name:     "Set other org/proj scopes - proj",
+			scopeId:  p.PublicId,
+			existing: []string{},
+			set:      []string{p2.PublicId},
 			wantErr:  true,
 		},
 	}
