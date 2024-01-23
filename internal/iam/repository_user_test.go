@@ -703,7 +703,7 @@ func TestRepository_ListUsers_Multiple_Scopes(t *testing.T) {
 	})
 
 	const numPerScope = 10
-	var total int = 3 // anon, auth, recovery
+	total := 3 // anon, auth, recovery
 	for i := 0; i < numPerScope; i++ {
 		iam.TestUser(t, repo, "global")
 		total++

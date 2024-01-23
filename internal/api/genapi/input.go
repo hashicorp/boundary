@@ -316,6 +316,10 @@ var inputStructs = []*structInfo{
 				SliceType: "[]string",
 				VarName:   "grantStrings",
 			},
+			"GrantScopes": {
+				SliceType: "[]string",
+				VarName:   "grantScopeIds",
+			},
 		},
 		pluralResourceName:  "roles",
 		versionEnabled:      true,

@@ -107,9 +107,14 @@ begin;
 
   -- Roles
   insert into iam_role
-    (scope_id, grant_scope_id, public_id, name)
+    (scope_id, public_id, name)
   values
-    ('p______tacos', 'p______tacos', 'r_pp___tacos', 'Tacos');
+    ('p______tacos', 'r_pp___tacos', 'Tacos');
+
+  insert into iam_role_grant_scope
+    (role_id,        scope_id_or_special )
+  values
+    ('r_pp___tacos', 'p______tacos');
 
   insert into iam_role_grant
     (role_id,        canonical_grant,                              raw_grant)

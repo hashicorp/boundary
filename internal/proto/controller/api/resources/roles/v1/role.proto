@@ -88,15 +88,26 @@ message Role {
   // The mutation will fail if the version does not match the latest known good version.
   uint32 version = 80; // @gotags: `class:"public"`
 
-  // The Scope the grants will apply to. If the Role is at the global scope, this can be an org or project. If the Role is at an org scope, this can be a project within the org. It is invalid for this to be anything other than the Role's scope when the Role's scope is a project.
+  // The Scope the grants will apply to. If the Role is at the global scope,
+  // this can be an org or project. If the Role is at an org scope, this can be
+  // a project within the org. It is invalid for this to be anything other than
+  // the Role's scope when the Role's scope is a project.
+  //
+  // Deprecated: Use "grant_scope_ids" instead.
   google.protobuf.StringValue grant_scope_id = 90 [
     json_name = "grant_scope_id",
-    (custom_options.v1.generate_sdk_option) = true,
-    (custom_options.v1.mask_mapping) = {
-      this: "grant_scope_id"
-      that: "GrantScopeId"
-    }
+    deprecated = true,
+    (custom_options.v1.generate_sdk_option) = true
   ]; // @gotags: `class:"public" eventstream:"observation"`
+
+  // Output only. The IDs of Scopes the grants will apply to. This can include
+  // the role's own scope ID, or "this" for the same behavior; specific IDs of
+  // scopes that are children of the role's scope; the value "children" to match
+  // all direct child scopes of the role's scope; or the value "descendants" to
+  // match all descendant scopes (e.g. child scopes, children of child scopes;
+  // only valid at "global" scope since it is the only one with children of
+  // children).
+  repeated string grant_scope_ids = 91 [json_name = "grant_scope_ids"]; // @gotags: `class:"public"`
 
   // Output only. The IDs (only) of principals that are assigned to this role.
   repeated string principal_ids = 100 [json_name = "principal_ids"]; // @gotags: `class:"public" eventstream:"observation"`

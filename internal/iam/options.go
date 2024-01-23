@@ -6,6 +6,7 @@ package iam
 import (
 	"io"
 
+	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/pagination"
 )
 
@@ -13,7 +14,9 @@ import (
 func getOpts(opt ...Option) options {
 	opts := getDefaultOptions()
 	for _, o := range opt {
-		o(&opts)
+		if o != nil {
+			o(&opts)
+		}
 	}
 	return opts
 }
@@ -27,7 +30,8 @@ type options struct {
 	withName                    string
 	withDescription             string
 	withLimit                   int
-	withGrantScopeId            string
+	withGrantScopeId            *string
+	withGrantScopeIds           []string
 	withSkipVetForWrite         bool
 	withDisassociate            bool
 	withSkipAdminRoleCreation   bool
@@ -36,6 +40,8 @@ type options struct {
 	withRandomReader            io.Reader
 	withAccountIds              []string
 	withPrimaryAuthMethodId     string
+	withReader                  db.Reader
+	withWriter                  db.Writer
 	withStartPageAfterItem      pagination.Item
 }
 
@@ -45,7 +51,6 @@ func getDefaultOptions() options {
 		withName:            "",
 		withDescription:     "",
 		withLimit:           0,
-		withGrantScopeId:    "",
 		withSkipVetForWrite: false,
 	}
 }
@@ -84,7 +89,20 @@ func WithLimit(limit int) Option {
 // roles.
 func WithGrantScopeId(id string) Option {
 	return func(o *options) {
-		o.withGrantScopeId = id
+		if o.withGrantScopeId == nil {
+			o.withGrantScopeId = new(string)
+		}
+		*o.withGrantScopeId = id
+	}
+}
+
+// WithGrantScopeIds provides an option to specify the scope ID for grants in
+// roles. In most tests this is likely the option to use, however, for tests
+// that call repo functions instead of test functions the other option is still
+// correct to specify a grant scope at creation time.
+func WithGrantScopeIds(ids []string) Option {
+	return func(o *options) {
+		o.withGrantScopeIds = ids
 	}
 }
 
@@ -147,6 +165,18 @@ func WithAccountIds(id ...string) Option {
 func WithPrimaryAuthMethodId(id string) Option {
 	return func(o *options) {
 		o.withPrimaryAuthMethodId = id
+	}
+}
+
+// WithReaderWriter allows the caller to pass an inflight transaction to be used
+// for all database operations. If WithReaderWriter(...) is used, then the
+// caller is responsible for managing the transaction. The purpose of the
+// WithReaderWriter(...) option is to allow the caller to create the scope and
+// all of its keys in the same transaction.
+func WithReaderWriter(r db.Reader, w db.Writer) Option {
+	return func(o *options) {
+		o.withReader = r
+		o.withWriter = w
 	}
 }
 

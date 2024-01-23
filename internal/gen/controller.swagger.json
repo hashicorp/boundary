@@ -2570,6 +2570,54 @@
         ]
       }
     },
+    "/v1/roles/{id}:add-grant-scopes": {
+      "post": {
+        "summary": "Adds grant scopes to a Role",
+        "operationId": "RoleService_AddRoleGrantScopes",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "description": "",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "version": {
+                  "type": "integer",
+                  "format": "int64",
+                  "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+                },
+                "grant_scope_ids": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "title": ""
+                }
+              }
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.RoleService"
+        ]
+      }
+    },
     "/v1/roles/{id}:add-grants": {
       "post": {
         "summary": "Adds grants to a Role",
@@ -2666,6 +2714,54 @@
         ]
       }
     },
+    "/v1/roles/{id}:remove-grant-scopes": {
+      "post": {
+        "summary": "Removes grant scopes from a Role.",
+        "operationId": "RoleService_RemoveRoleGrantScopes",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "description": "",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "version": {
+                  "type": "integer",
+                  "format": "int64",
+                  "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+                },
+                "grant_scope_ids": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "title": ""
+                }
+              }
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.RoleService"
+        ]
+      }
+    },
     "/v1/roles/{id}:remove-grants": {
       "post": {
         "summary": "Removes grants from a Role.",
@@ -2747,6 +2843,54 @@
                   "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
                 },
                 "principal_ids": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "title": ""
+                }
+              }
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.RoleService"
+        ]
+      }
+    },
+    "/v1/roles/{id}:set-grant-scopes": {
+      "post": {
+        "summary": "Set grant scopes for a Role, removing any grant scopes that are not specified in the request.",
+        "operationId": "RoleService_SetRoleGrantScopes",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "description": "",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "version": {
+                  "type": "integer",
+                  "format": "int64",
+                  "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+                },
+                "grant_scope_ids": {
                   "type": "array",
                   "items": {
                     "type": "string"
@@ -5944,7 +6088,15 @@
         },
         "grant_scope_id": {
           "type": "string",
-          "description": "The Scope the grants will apply to. If the Role is at the global scope, this can be an org or project. If the Role is at an org scope, this can be a project within the org. It is invalid for this to be anything other than the Role's scope when the Role's scope is a project."
+          "description": "The Scope the grants will apply to. If the Role is at the global scope,\nthis can be an org or project. If the Role is at an org scope, this can be\na project within the org. It is invalid for this to be anything other than\nthe Role's scope when the Role's scope is a project.\n\nDeprecated: Use \"grant_scope_ids\" instead."
+        },
+        "grant_scope_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Output only. The IDs of Scopes the grants will apply to. This can include\nthe role's own scope ID, or \"this\" for the same behavior; specific IDs of\nscopes that are children of the role's scope; the value \"children\" to match\nall direct child scopes of the role's scope; or the value \"descendants\" to\nmatch all descendant scopes (e.g. child scopes, children of child scopes;\nonly valid at \"global\" scope since it is the only one with children of\nchildren).",
+          "readOnly": true
         },
         "principal_ids": {
           "type": "array",
@@ -7583,6 +7735,14 @@
         }
       }
     },
+    "controller.api.services.v1.AddRoleGrantScopesResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+        }
+      }
+    },
     "controller.api.services.v1.AddRoleGrantsResponse": {
       "type": "object",
       "properties": {
@@ -8995,6 +9155,14 @@
         }
       }
     },
+    "controller.api.services.v1.RemoveRoleGrantScopesResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+        }
+      }
+    },
     "controller.api.services.v1.RemoveRoleGrantsResponse": {
       "type": "object",
       "properties": {
@@ -9080,6 +9248,14 @@
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.accounts.v1.Account"
+        }
+      }
+    },
+    "controller.api.services.v1.SetRoleGrantScopesResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
         }
       }
     },

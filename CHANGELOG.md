@@ -15,9 +15,18 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   affects existing addresses (not just creation/updating via the API) so any
   existing addresses containing a port will not be able to be used as part of a
   target's session authorization call.
+* The `grant_scope_id` field on roles is now deprecated in favor of the multiple
+  grant scope support.
 
 ### New and Improved
 
+* Multiple grant scopes in roles: Roles now support multiple grant scopes, along
+  with the special values `this`, `children` (global/org only) to apply to all
+  direct children of a scope, and `descendants` (global only) to apply to all
+  descendants of a scope. These use the new actions `add-grant-scopes`,
+  `set-grant-scopes`, and `remove-grant-scopes` on roles. For now the
+  `grant_scope_id` field on roles will continue to be able to be set, which will
+  set a single grant scope, but this capability is now deprecated.
 * Policies (Enterprise and HCP Boundary only): This release introduces Policies, a
   Boundary resource that represents a Governance Policy to enforce. The first 
   implementation targets Storage Policies, which enables administrators to automate 

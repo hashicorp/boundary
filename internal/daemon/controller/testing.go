@@ -370,8 +370,8 @@ type TestControllerOpts struct {
 	// DefaultPassword is the password used when creating the default accounts.
 	DefaultPassword string
 
-	// DisableInitialLoginRoleCreation can be set true to disable creating the
-	// global scope login role automatically.
+	// DisableInitialLoginRoleCreation can be set true to disable creating the global
+	// scope default role automatically.
 	DisableInitialLoginRoleCreation bool
 
 	// DisableAuthMethodCreation can be set true to disable creating an auth
@@ -423,6 +423,11 @@ type TestControllerOpts struct {
 	// since the this option relies on modifying the system wide default
 	// eventer.
 	EnableEventing bool
+
+	// EventerConfig allows specifying a custom event config. You must not run
+	// the test in parallel (no calls to t.Parallel) since the this option
+	// relies on modifying the system wide default eventer.
+	EventerConfig *event.EventerConfig
 
 	// DisableAuthorizationFailures will still cause authz checks to be
 	// performed but they won't cause 403 Forbidden. Useful for API-level
@@ -661,12 +666,15 @@ func TestControllerConfig(t testing.TB, ctx context.Context, tc *TestController,
 	opts.Config.Controller.Scheduler.JobRunIntervalDuration = opts.SchedulerRunJobInterval
 	opts.Config.Controller.ApiRateLimiterMaxQuotas = ratelimit.DefaultLimiterMaxQuotas()
 
-	if opts.EnableEventing {
-		opts.Config.Eventing = &event.EventerConfig{
-			AuditEnabled:        true,
-			ObservationsEnabled: true,
-			SysEventsEnabled:    true,
-			ErrorEventsDisabled: true,
+	if opts.EnableEventing || opts.EventerConfig != nil {
+		opts.Config.Eventing = opts.EventerConfig
+		if opts.Config.Eventing == nil {
+			opts.Config.Eventing = &event.EventerConfig{
+				AuditEnabled:        true,
+				ObservationsEnabled: true,
+				SysEventsEnabled:    true,
+				ErrorEventsDisabled: true,
+			}
 		}
 	}
 	serverName, err := os.Hostname()
@@ -757,6 +765,9 @@ func TestControllerConfig(t testing.TB, ctx context.Context, tc *TestController,
 				if _, err := tc.b.CreateInitialLoginRole(ctx); err != nil {
 					t.Fatal(err)
 				}
+				if _, err := tc.b.CreateInitialAuthenticatedUserRole(ctx); err != nil {
+					t.Fatal(err)
+				}
 				if !opts.DisableAuthMethodCreation {
 					if _, _, err := tc.b.CreateInitialPasswordAuthMethod(ctx); err != nil {
 						t.Fatal(err)
@@ -791,6 +802,9 @@ func TestControllerConfig(t testing.TB, ctx context.Context, tc *TestController,
 		}
 	} else if !opts.DisableDatabaseCreation {
 		var createOpts []base.Option
+		if opts.DisableInitialLoginRoleCreation {
+			createOpts = append(createOpts, base.WithSkipDefaultRoleCreation())
+		}
 		if opts.DisableAuthMethodCreation {
 			createOpts = append(createOpts, base.WithSkipAuthMethodCreation())
 		}

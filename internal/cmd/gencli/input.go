@@ -567,7 +567,7 @@ var inputStructs = map[string][]*cmdInfo{
 			Container:           "Scope",
 			HasName:             true,
 			HasDescription:      true,
-			VersionedActions:    []string{"update", "add-grants", "remove-grants", "set-grants", "add-principals", "remove-principals", "set-principals"},
+			VersionedActions:    []string{"update", "add-grants", "remove-grants", "set-grants", "add-principals", "remove-principals", "set-principals", "add-grant-scopes", "remove-grant-scopes", "set-grant-scopes"},
 		},
 	},
 	"scopes": {

@@ -107,7 +107,7 @@ type RoleInfo struct {
 	Name   string `json:"name"`
 }
 
-func generateInitialRoleTableOutput(in *RoleInfo) string {
+func generateInitialLoginRoleTableOutput(in *RoleInfo) string {
 	nonAttributeMap := map[string]any{
 		"Role ID": in.RoleId,
 		"Name":    in.Name,
@@ -123,6 +123,28 @@ func generateInitialRoleTableOutput(in *RoleInfo) string {
 	ret := []string{
 		"",
 		"Initial login role information:",
+		base.WrapMap(2, maxLength+2, nonAttributeMap),
+	}
+
+	return base.WrapForHelpText(ret)
+}
+
+func generateInitialAuthenticatedUserRoleOutput(in *RoleInfo) string {
+	nonAttributeMap := map[string]any{
+		"Role ID": in.RoleId,
+		"Name":    in.Name,
+	}
+
+	maxLength := 0
+	for k := range nonAttributeMap {
+		if len(k) > maxLength {
+			maxLength = len(k)
+		}
+	}
+
+	ret := []string{
+		"",
+		"Initial authenticated user role information:",
 		base.WrapMap(2, maxLength+2, nonAttributeMap),
 	}
 

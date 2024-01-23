@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 syntax = "proto3";
 
@@ -9,7 +9,7 @@ import "controller/storage/timestamp/v1/timestamp.proto";
 
 option go_package = "github.com/hashicorp/boundary/internal/iam/store;store";
 
-message RoleGrant {
+message RoleGrantScope {
   // create_time from the RDBMS
   // @inject_tag: `gorm:"default:current_timestamp"`
   timestamp.v1.Timestamp create_time = 1;
@@ -18,12 +18,9 @@ message RoleGrant {
   // @inject_tag: `gorm:"primary_key"`
   string role_id = 2;
 
-  // raw_grant is the string grant value as provided by the user
-  // @inject_tag: `gorm:"default:null"`
-  string raw_grant = 3;
-
-  // canonical_grant is the canonical string representation of the grant value.
-  // We use this as the unique constraint.
+  // scope_id_or_special is the string grant scope value as provided by the
+  // user, which may be one of a few special values as well
+  //
   // @inject_tag: `gorm:"primary_key"`
-  string canonical_grant = 4;
+  string scope_id_or_special = 3;
 }

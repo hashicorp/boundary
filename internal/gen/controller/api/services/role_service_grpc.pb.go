@@ -22,17 +22,20 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	RoleService_GetRole_FullMethodName              = "/controller.api.services.v1.RoleService/GetRole"
-	RoleService_ListRoles_FullMethodName            = "/controller.api.services.v1.RoleService/ListRoles"
-	RoleService_CreateRole_FullMethodName           = "/controller.api.services.v1.RoleService/CreateRole"
-	RoleService_UpdateRole_FullMethodName           = "/controller.api.services.v1.RoleService/UpdateRole"
-	RoleService_DeleteRole_FullMethodName           = "/controller.api.services.v1.RoleService/DeleteRole"
-	RoleService_AddRolePrincipals_FullMethodName    = "/controller.api.services.v1.RoleService/AddRolePrincipals"
-	RoleService_SetRolePrincipals_FullMethodName    = "/controller.api.services.v1.RoleService/SetRolePrincipals"
-	RoleService_RemoveRolePrincipals_FullMethodName = "/controller.api.services.v1.RoleService/RemoveRolePrincipals"
-	RoleService_AddRoleGrants_FullMethodName        = "/controller.api.services.v1.RoleService/AddRoleGrants"
-	RoleService_SetRoleGrants_FullMethodName        = "/controller.api.services.v1.RoleService/SetRoleGrants"
-	RoleService_RemoveRoleGrants_FullMethodName     = "/controller.api.services.v1.RoleService/RemoveRoleGrants"
+	RoleService_GetRole_FullMethodName               = "/controller.api.services.v1.RoleService/GetRole"
+	RoleService_ListRoles_FullMethodName             = "/controller.api.services.v1.RoleService/ListRoles"
+	RoleService_CreateRole_FullMethodName            = "/controller.api.services.v1.RoleService/CreateRole"
+	RoleService_UpdateRole_FullMethodName            = "/controller.api.services.v1.RoleService/UpdateRole"
+	RoleService_DeleteRole_FullMethodName            = "/controller.api.services.v1.RoleService/DeleteRole"
+	RoleService_AddRolePrincipals_FullMethodName     = "/controller.api.services.v1.RoleService/AddRolePrincipals"
+	RoleService_SetRolePrincipals_FullMethodName     = "/controller.api.services.v1.RoleService/SetRolePrincipals"
+	RoleService_RemoveRolePrincipals_FullMethodName  = "/controller.api.services.v1.RoleService/RemoveRolePrincipals"
+	RoleService_AddRoleGrants_FullMethodName         = "/controller.api.services.v1.RoleService/AddRoleGrants"
+	RoleService_SetRoleGrants_FullMethodName         = "/controller.api.services.v1.RoleService/SetRoleGrants"
+	RoleService_RemoveRoleGrants_FullMethodName      = "/controller.api.services.v1.RoleService/RemoveRoleGrants"
+	RoleService_AddRoleGrantScopes_FullMethodName    = "/controller.api.services.v1.RoleService/AddRoleGrantScopes"
+	RoleService_SetRoleGrantScopes_FullMethodName    = "/controller.api.services.v1.RoleService/SetRoleGrantScopes"
+	RoleService_RemoveRoleGrantScopes_FullMethodName = "/controller.api.services.v1.RoleService/RemoveRoleGrantScopes"
 )
 
 // RoleServiceClient is the client API for RoleService service.
@@ -100,6 +103,22 @@ type RoleServiceClient interface {
 	// grants will be removed. If missing, malformed, or references a non-existing
 	// resource, an error is returned.
 	RemoveRoleGrants(ctx context.Context, in *RemoveRoleGrantsRequest, opts ...grpc.CallOption) (*RemoveRoleGrantsResponse, error)
+	// AddRoleGrantScopes adds grants scopes to a Role. The provided request must
+	// include the Role id which the grant scopes will be added to. An error is
+	// returned if the provided id is malformed or references a non-existing
+	// resource.
+	AddRoleGrantScopes(ctx context.Context, in *AddRoleGrantScopesRequest, opts ...grpc.CallOption) (*AddRoleGrantScopesResponse, error)
+	// SetRoleGrants sets the Role's grant scopes. Any existing grant scopes on
+	// the Role are deleted if they are not included in this request. The provided
+	// request must include the Role ID on which the grants will be set. If
+	// missing, malformed, or referencing a non-existing resource, an error is
+	// returned.
+	SetRoleGrantScopes(ctx context.Context, in *SetRoleGrantScopesRequest, opts ...grpc.CallOption) (*SetRoleGrantScopesResponse, error)
+	// RemoveRoleGrantScopes removes the grant scopes from the specified Role. The
+	// provided request must include the Role IDs from which the grants will be
+	// removed. If missing, malformed, or references a non-existing resource, an
+	// error is returned.
+	RemoveRoleGrantScopes(ctx context.Context, in *RemoveRoleGrantScopesRequest, opts ...grpc.CallOption) (*RemoveRoleGrantScopesResponse, error)
 }
 
 type roleServiceClient struct {
@@ -209,6 +228,33 @@ func (c *roleServiceClient) RemoveRoleGrants(ctx context.Context, in *RemoveRole
 	return out, nil
 }
 
+func (c *roleServiceClient) AddRoleGrantScopes(ctx context.Context, in *AddRoleGrantScopesRequest, opts ...grpc.CallOption) (*AddRoleGrantScopesResponse, error) {
+	out := new(AddRoleGrantScopesResponse)
+	err := c.cc.Invoke(ctx, RoleService_AddRoleGrantScopes_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *roleServiceClient) SetRoleGrantScopes(ctx context.Context, in *SetRoleGrantScopesRequest, opts ...grpc.CallOption) (*SetRoleGrantScopesResponse, error) {
+	out := new(SetRoleGrantScopesResponse)
+	err := c.cc.Invoke(ctx, RoleService_SetRoleGrantScopes_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *roleServiceClient) RemoveRoleGrantScopes(ctx context.Context, in *RemoveRoleGrantScopesRequest, opts ...grpc.CallOption) (*RemoveRoleGrantScopesResponse, error) {
+	out := new(RemoveRoleGrantScopesResponse)
+	err := c.cc.Invoke(ctx, RoleService_RemoveRoleGrantScopes_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // RoleServiceServer is the server API for RoleService service.
 // All implementations must embed UnimplementedRoleServiceServer
 // for forward compatibility
@@ -274,6 +320,22 @@ type RoleServiceServer interface {
 	// grants will be removed. If missing, malformed, or references a non-existing
 	// resource, an error is returned.
 	RemoveRoleGrants(context.Context, *RemoveRoleGrantsRequest) (*RemoveRoleGrantsResponse, error)
+	// AddRoleGrantScopes adds grants scopes to a Role. The provided request must
+	// include the Role id which the grant scopes will be added to. An error is
+	// returned if the provided id is malformed or references a non-existing
+	// resource.
+	AddRoleGrantScopes(context.Context, *AddRoleGrantScopesRequest) (*AddRoleGrantScopesResponse, error)
+	// SetRoleGrants sets the Role's grant scopes. Any existing grant scopes on
+	// the Role are deleted if they are not included in this request. The provided
+	// request must include the Role ID on which the grants will be set. If
+	// missing, malformed, or referencing a non-existing resource, an error is
+	// returned.
+	SetRoleGrantScopes(context.Context, *SetRoleGrantScopesRequest) (*SetRoleGrantScopesResponse, error)
+	// RemoveRoleGrantScopes removes the grant scopes from the specified Role. The
+	// provided request must include the Role IDs from which the grants will be
+	// removed. If missing, malformed, or references a non-existing resource, an
+	// error is returned.
+	RemoveRoleGrantScopes(context.Context, *RemoveRoleGrantScopesRequest) (*RemoveRoleGrantScopesResponse, error)
 	mustEmbedUnimplementedRoleServiceServer()
 }
 
@@ -313,6 +375,15 @@ func (UnimplementedRoleServiceServer) SetRoleGrants(context.Context, *SetRoleGra
 }
 func (UnimplementedRoleServiceServer) RemoveRoleGrants(context.Context, *RemoveRoleGrantsRequest) (*RemoveRoleGrantsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RemoveRoleGrants not implemented")
+}
+func (UnimplementedRoleServiceServer) AddRoleGrantScopes(context.Context, *AddRoleGrantScopesRequest) (*AddRoleGrantScopesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AddRoleGrantScopes not implemented")
+}
+func (UnimplementedRoleServiceServer) SetRoleGrantScopes(context.Context, *SetRoleGrantScopesRequest) (*SetRoleGrantScopesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SetRoleGrantScopes not implemented")
+}
+func (UnimplementedRoleServiceServer) RemoveRoleGrantScopes(context.Context, *RemoveRoleGrantScopesRequest) (*RemoveRoleGrantScopesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RemoveRoleGrantScopes not implemented")
 }
 func (UnimplementedRoleServiceServer) mustEmbedUnimplementedRoleServiceServer() {}
 
@@ -525,6 +596,60 @@ func _RoleService_RemoveRoleGrants_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
+func _RoleService_AddRoleGrantScopes_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AddRoleGrantScopesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RoleServiceServer).AddRoleGrantScopes(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: RoleService_AddRoleGrantScopes_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RoleServiceServer).AddRoleGrantScopes(ctx, req.(*AddRoleGrantScopesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _RoleService_SetRoleGrantScopes_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetRoleGrantScopesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RoleServiceServer).SetRoleGrantScopes(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: RoleService_SetRoleGrantScopes_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RoleServiceServer).SetRoleGrantScopes(ctx, req.(*SetRoleGrantScopesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _RoleService_RemoveRoleGrantScopes_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RemoveRoleGrantScopesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RoleServiceServer).RemoveRoleGrantScopes(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: RoleService_RemoveRoleGrantScopes_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RoleServiceServer).RemoveRoleGrantScopes(ctx, req.(*RemoveRoleGrantScopesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // RoleService_ServiceDesc is the grpc.ServiceDesc for RoleService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -575,6 +700,18 @@ var RoleService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RemoveRoleGrants",
 			Handler:    _RoleService_RemoveRoleGrants_Handler,
+		},
+		{
+			MethodName: "AddRoleGrantScopes",
+			Handler:    _RoleService_AddRoleGrantScopes_Handler,
+		},
+		{
+			MethodName: "SetRoleGrantScopes",
+			Handler:    _RoleService_SetRoleGrantScopes_Handler,
+		},
+		{
+			MethodName: "RemoveRoleGrantScopes",
+			Handler:    _RoleService_RemoveRoleGrantScopes_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

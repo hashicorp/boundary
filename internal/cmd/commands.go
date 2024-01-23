@@ -895,6 +895,21 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Command: base.NewCommand(ui, opts...),
 				Func:    "remove-grants",
 			}),
+		"roles add-grant-scopes": clientCacheWrapper(
+			&rolescmd.Command{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "add-grant-scopes",
+			}),
+		"roles set-grant-scopes": clientCacheWrapper(
+			&rolescmd.Command{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "set-grant-scopes",
+			}),
+		"roles remove-grant-scopes": clientCacheWrapper(
+			&rolescmd.Command{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "remove-grant-scopes",
+			}),
 
 		"scopes": func() (cli.Command, error) {
 			return &scopescmd.Command{

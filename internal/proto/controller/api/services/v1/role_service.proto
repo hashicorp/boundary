@@ -152,6 +152,46 @@ service RoleService {
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Removes grants from a Role."};
   }
+
+  // AddRoleGrantScopes adds grants scopes to a Role. The provided request must
+  // include the Role id which the grant scopes will be added to. An error is
+  // returned if the provided id is malformed or references a non-existing
+  // resource.
+  rpc AddRoleGrantScopes(AddRoleGrantScopesRequest) returns (AddRoleGrantScopesResponse) {
+    option (google.api.http) = {
+      post: "/v1/roles/{id}:add-grant-scopes"
+      body: "*"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Adds grant scopes to a Role"};
+  }
+
+  // SetRoleGrants sets the Role's grant scopes. Any existing grant scopes on
+  // the Role are deleted if they are not included in this request. The provided
+  // request must include the Role ID on which the grants will be set. If
+  // missing, malformed, or referencing a non-existing resource, an error is
+  // returned.
+  rpc SetRoleGrantScopes(SetRoleGrantScopesRequest) returns (SetRoleGrantScopesResponse) {
+    option (google.api.http) = {
+      post: "/v1/roles/{id}:set-grant-scopes"
+      body: "*"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Set grant scopes for a Role, removing any grant scopes that are not specified in the request."};
+  }
+
+  // RemoveRoleGrantScopes removes the grant scopes from the specified Role. The
+  // provided request must include the Role IDs from which the grants will be
+  // removed. If missing, malformed, or references a non-existing resource, an
+  // error is returned.
+  rpc RemoveRoleGrantScopes(RemoveRoleGrantScopesRequest) returns (RemoveRoleGrantScopesResponse) {
+    option (google.api.http) = {
+      post: "/v1/roles/{id}:remove-grant-scopes"
+      body: "*"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Removes grant scopes from a Role."};
+  }
 }
 
 message GetRoleRequest {
@@ -303,5 +343,41 @@ message RemoveRoleGrantsRequest {
 }
 
 message RemoveRoleGrantsResponse {
+  resources.roles.v1.Role item = 1;
+}
+
+message AddRoleGrantScopesRequest {
+  string id = 1; // @gotags: `class:"public"`
+  // Version is used to ensure this resource has not changed.
+  // The mutation will fail if the version does not match the latest known good version.
+  uint32 version = 2; // @gotags: `class:"public"`
+  repeated string grant_scope_ids = 3 [json_name = "grant_scope_ids"]; // @gotags: `class:"public"`
+}
+
+message AddRoleGrantScopesResponse {
+  resources.roles.v1.Role item = 1;
+}
+
+message SetRoleGrantScopesRequest {
+  string id = 1; // @gotags: `class:"public"`
+  // Version is used to ensure this resource has not changed.
+  // The mutation will fail if the version does not match the latest known good version.
+  uint32 version = 2; // @gotags: `class:"public"`
+  repeated string grant_scope_ids = 3 [json_name = "grant_scope_ids"]; // @gotags: `class:"public"`
+}
+
+message SetRoleGrantScopesResponse {
+  resources.roles.v1.Role item = 1;
+}
+
+message RemoveRoleGrantScopesRequest {
+  string id = 1; // @gotags: `class:"public"`
+  // Version is used to ensure this resource has not changed.
+  // The mutation will fail if the version does not match the latest known good version.
+  uint32 version = 2; // @gotags: `class:"public"`
+  repeated string grant_scope_ids = 3 [json_name = "grant_scope_ids"]; // @gotags: `class:"public"`
+}
+
+message RemoveRoleGrantScopesResponse {
   resources.roles.v1.Role item = 1;
 }
