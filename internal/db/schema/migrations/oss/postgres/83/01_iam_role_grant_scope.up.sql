@@ -111,15 +111,32 @@ begin;
 
     -- Always allowed, because any scope is a child of global, and we've handled
     -- same-scope-id case above; however we have to check the scope is actually
-    -- valid/known. Distinction check is used because if it's not known it's
-    -- null.
+    -- valid/known. Distinction check is used in the final case because if it's
+    -- not known it's null.
     if role_scope_type = 'global' then
-      if new.scope_id_or_special != 'children' and new.scope_id_or_special != 'descendants' then
-        select isc.public_id from iam_scope isc where isc.public_id = new.scope_id_or_special into validated_scope_id;
-        if validated_scope_id is distinct from new.scope_id_or_special then
-          raise exception 'invalid grant scope id';
-        end if;
-      end if;
+      case
+        when new.scope_id_or_special = 'children' then
+          select rgs.scope_id_or_special
+            from iam_role_grant_scope rgs
+            where rgs.role_id = new.role_id and rgs.scope_id_or_special = 'descendants'
+            into existing_scope_id_or_special;
+          if existing_scope_id_or_special is not null then
+            raise exception 'invalid to specify both "children" and "descendants"as a grant scope';
+          end if;
+        when new.scope_id_or_special = 'descendants' then
+          select rgs.scope_id_or_special
+            from iam_role_grant_scope rgs
+            where rgs.role_id = new.role_id and rgs.scope_id_or_special = 'children'
+            into existing_scope_id_or_special;
+          if existing_scope_id_or_special is not null then
+            raise exception 'invalid to specify both "children" and "descendants"as a grant scope';
+          end if;
+        else
+          select isc.public_id from iam_scope isc where isc.public_id = new.scope_id_or_special into validated_scope_id;
+          if validated_scope_id is distinct from new.scope_id_or_special then
+            raise exception 'invalid grant scope id';
+          end if;
+      end case;
       return new;
     end if;
 
