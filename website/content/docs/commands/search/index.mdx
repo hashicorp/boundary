@@ -18,7 +18,7 @@ For more information, refer to [Boundary `list` vs `search`](/boundary/docs/api-
 The following example searches for all targets that are available in the local cache for the user.
 
 ```shell-session
-$ boundary search -resource targets
+$ boundary search -resource targets -query 'type="tcp" and name%"Generated"'
 ```
 
 **Example output:**
@@ -86,14 +86,14 @@ $ boundary search [options]
 - `-resource` `(string: "")` - The type of resource you want to search the cache for.
 This is a required field.
 You can search for the following:
-   - `-sessions` - Searches for any sessions associated with the user.
-   - `-targets` - Searches for any targets associated with the user.
+   - `sessions` - Searches for any sessions associated with the user.
+   - `targets` - Searches for any targets associated with the user.
 
 - `-query` `(optional)` - If set, specifies the [MQL](https://github.com/hashicorp/mql/blob/main/GRAMMAR.md) query you want to use to search for the indexed fields on the resource you specified.
 If you do not provide a `-query` value, the search lists all resources of the specified type that have been cached.
-The available fields for each resource include:
+The available fields that can be used in the search query for each resource include:
 
-   - targets: ID, name, description, type, address, scope_id
-   - sessions: ID, type, endpoint, status, scope_id, target_id, user_id
+   - targets: id, name, description, type, address, scope_id
+   - sessions: id, type, endpoint, status, scope_id, target_id, user_id
 
 @include 'cmd-option-note.mdx'
