@@ -37,10 +37,8 @@ By default, the daemon starts in the foreground.
 The blocking refresh occurs when you perform the `boundary search` command.
 It requires Boundary to refresh the local cache using the control plane.
 - `max-search-refresh-timeout` - The amount of time the `boundary search` blocking refresh can take before it times out.
+In the event of a timeout, Boundary uses the stale data that is currently in the cache.
 - `refresh-interval` - A duration that specifies how frequently the client cache should query Boundary for changes to sessions and targets.
 Note that Boundary only searches sessions and targets that the user who ran the command has access to.
-- `store-debug` - Indicates that you want to output the specific queries performed to a log file.
-By default, the log file is stored in the **~/.boundary** directory.
-Boundary automatically rotates the log once it reaches 5 MB and keeps the last three rotated logs.
 
 @include 'cmd-option-note.mdx'

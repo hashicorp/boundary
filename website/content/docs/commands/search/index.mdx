@@ -15,7 +15,7 @@ For more information, refer to [Boundary `list` vs `search`](/boundary/docs/api-
 
 ## Examples
 
-The following example searches for all targets that are available in the local cache for the user.
+The following example searches the local cache for all TCP targets that have the word "Generated" in the name.
 
 ```shell-session
 $ boundary search -resource targets -query 'type="tcp" and name%"Generated"'
