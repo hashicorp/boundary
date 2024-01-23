@@ -225,6 +225,34 @@ func TestSearch(t *testing.T) {
 		assert.Len(t, r.Targets, 1)
 	})
 
+	t.Run("full target response from filter", func(t *testing.T) {
+		resp, r, apiErr, err := search(ctx, srv.BaseDotDir(), filterBy{
+			authTokenId: at.Id,
+			flagFilter:  `"/item/id" matches "ttcp"`,
+			resource:    "targets",
+		})
+		require.NoError(t, err)
+		assert.NoError(t, err)
+		assert.Nil(t, apiErr)
+		assert.NotNil(t, resp)
+		assert.NotNil(t, r)
+		assert.Len(t, r.Targets, 2)
+	})
+	t.Run("partial target response from filter", func(t *testing.T) {
+		resp, r, apiErr, err := search(ctx, srv.BaseDotDir(), filterBy{
+			authTokenId: at.Id,
+			flagFilter:  `"/item/id" matches "ttcp_1234567890"`,
+			resource:    "targets",
+		})
+		require.NoError(t, err)
+		assert.NoError(t, err)
+		assert.Nil(t, apiErr)
+		assert.NotNil(t, resp)
+		assert.NotNil(t, r)
+		assert.Len(t, r.Sessions, 0)
+		assert.Len(t, r.Targets, 1)
+	})
+
 	t.Run("session response from list", func(t *testing.T) {
 		resp, r, apiErr, err := search(ctx, srv.BaseDotDir(), filterBy{
 			authTokenId: at.Id,
@@ -255,6 +283,32 @@ func TestSearch(t *testing.T) {
 		resp, r, apiErr, err := search(ctx, srv.BaseDotDir(), filterBy{
 			authTokenId: at.Id,
 			flagQuery:   "id % 'sess_1234567890'",
+			resource:    "sessions",
+		})
+		require.NoError(t, err)
+		assert.NoError(t, err)
+		assert.Nil(t, apiErr)
+		assert.NotNil(t, resp)
+		assert.NotNil(t, r)
+		assert.Len(t, r.Sessions, 1)
+	})
+	t.Run("full session response from filter", func(t *testing.T) {
+		resp, r, apiErr, err := search(ctx, srv.BaseDotDir(), filterBy{
+			authTokenId: at.Id,
+			flagFilter:  `"/item/id" matches "sess"`,
+			resource:    "sessions",
+		})
+		require.NoError(t, err)
+		assert.NoError(t, err)
+		assert.Nil(t, apiErr)
+		assert.NotNil(t, resp)
+		assert.NotNil(t, r)
+		assert.Len(t, r.Sessions, 2)
+	})
+	t.Run("partial session response from filter", func(t *testing.T) {
+		resp, r, apiErr, err := search(ctx, srv.BaseDotDir(), filterBy{
+			authTokenId: at.Id,
+			flagFilter:  `"/item/id" matches "sess_1234567890"`,
 			resource:    "sessions",
 		})
 		require.NoError(t, err)

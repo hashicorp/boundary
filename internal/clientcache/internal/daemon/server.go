@@ -239,8 +239,8 @@ func (s *CacheServer) Serve(ctx context.Context, cmd Commander, opt ...Option) e
 	s.infoKeys = append(s.infoKeys, "Max Search Refresh Timeout")
 	s.info["Refresh Interval"] = DefaultRefreshInterval.String()
 	s.infoKeys = append(s.infoKeys, "Refresh Interval")
-	s.info["Full Fetch Interval"] = DefaultRecheckSupportInterval.String()
-	s.infoKeys = append(s.infoKeys, "Full Fetch Interval")
+	s.info["Recheck Support Interval"] = DefaultRecheckSupportInterval.String()
+	s.infoKeys = append(s.infoKeys, "Recheck Support Interval")
 
 	ticOptions := []Option{}
 	if s.conf.RefreshInterval > 0 {

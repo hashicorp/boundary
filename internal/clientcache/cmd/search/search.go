@@ -71,6 +71,11 @@ func (c *SearchCommand) Flags() *base.FlagSets {
 		Usage:  `If set, specifies the resource search query`,
 	})
 	f.StringVar(&base.StringVar{
+		Name:   "filter",
+		Target: &c.FlagFilter,
+		Usage:  "The filter operates against each item in the response. Using single quotes is recommended as filters contain double quotes. The format is the same as the filters used when performing a list. See https://www.boundaryproject.io/docs/concepts/filtering/resource-listing for details on filters when listing.",
+	})
+	f.StringVar(&base.StringVar{
 		Name:       "resource",
 		Target:     &c.flagResource,
 		Usage:      `Specifies the resource type to search over`,
@@ -155,6 +160,7 @@ func (c *SearchCommand) Search(ctx context.Context) (*api.Response, *daemon.Sear
 	}
 
 	tf := filterBy{
+		flagFilter:   c.FlagFilter,
 		flagQuery:    c.flagQuery,
 		resource:     c.flagResource,
 		authTokenId:  strings.Join(tSlice[:2], "_"),
@@ -187,6 +193,7 @@ func search(ctx context.Context, daemonPath string, fb filterBy, opt ...client.O
 	q.Add("auth_token_id", fb.authTokenId)
 	q.Add("resource", fb.resource)
 	q.Add("query", fb.flagQuery)
+	q.Add("filter", fb.flagFilter)
 	if fb.forceRefresh {
 		q.Add("force_refresh", "true")
 	}
@@ -337,6 +344,7 @@ func printSessionListTable(items []*sessions.Session) string {
 }
 
 type filterBy struct {
+	flagFilter   string
 	flagQuery    string
 	authTokenId  string
 	resource     string
