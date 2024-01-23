@@ -144,6 +144,9 @@ func printStatusTable(status *daemon.StatusResult) string {
 	if len(status.LogLocation) > 0 {
 		nonAttributeMap["Log Location"] = status.LogLocation
 	}
+	if len(status.Version) > 0 {
+		nonAttributeMap["Version"] = status.Version
+	}
 	if status.Uptime > 0 {
 		nonAttributeMap["Uptime"] = status.Uptime.Round(time.Second)
 	}

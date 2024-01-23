@@ -286,28 +286,28 @@ func (s *CacheServer) Serve(ctx context.Context, cmd Commander, opt ...Option) e
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
-	mux.Handle("/v1/search", versionEnforcement(searchFn))
+	mux.Handle("/v1/search", versionInterceptor(searchFn))
 
 	statusFn, err := newStatusHandlerFunc(ctx, repo, l.Addr().String(), s.conf.LogFileName)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
-	mux.Handle("/v1/status", versionEnforcement(statusFn))
+	mux.Handle("/v1/status", versionInterceptor(statusFn))
 
 	tokenFn, err := newTokenHandlerFunc(ctx, repo, tic)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
-	mux.Handle("/v1/tokens", versionEnforcement(tokenFn))
+	mux.Handle("/v1/tokens", versionInterceptor(tokenFn))
 
 	stopFn, err := newStopHandlerFunc(ctx, s.conf.ContextCancel)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
-	mux.Handle("/v1/stop", versionEnforcement(stopFn))
+	mux.Handle("/v1/stop", versionInterceptor(stopFn))
 
 	// Return custom 404 message when requests don't map to any known path.
-	mux.Handle("/", new404Func(ctx))
+	mux.Handle("/", versionInterceptor(new404Func(ctx)))
 
 	logger, err := event.SysEventer().StandardLogger(ctx, "daemon.serve: ", event.ErrorType)
 	if err != nil {
