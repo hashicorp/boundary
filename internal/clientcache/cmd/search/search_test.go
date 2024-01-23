@@ -308,7 +308,7 @@ func TestSearch(t *testing.T) {
 	t.Run("partial session response from filter", func(t *testing.T) {
 		resp, r, apiErr, err := search(ctx, srv.BaseDotDir(), filterBy{
 			authTokenId: at.Id,
-			flagFilter:   `"/item/id" matches "sess_1234567890"`,
+			flagFilter:  `"/item/id" matches "sess_1234567890"`,
 			resource:    "sessions",
 		})
 		require.NoError(t, err)
