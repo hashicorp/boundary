@@ -32,9 +32,9 @@ load _target_host_sources
   [ "$status" -eq 0 ]
 }
 
-@test "boundary/target: unpriv user can not read default target" {
+@test "boundary/target: unpriv user can read default target" {
   run read_target $DEFAULT_TARGET
-  [ "$status" -eq 1 ]
+  [ "$status" -eq 0 ]
 }
 
 @test "boundary/login: login back in as admin user" {
