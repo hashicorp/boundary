@@ -30,7 +30,7 @@ func (r *Repository) AddRoleGrantScopes(ctx context.Context, roleId string, role
 
 	role := allocRole()
 	role.PublicId = roleId
-	role.Version = roleVersion
+
 	scope, err := role.GetScope(ctx, r.reader)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to get role %s scope", roleId)))
@@ -84,9 +84,9 @@ func (r *Repository) AddRoleGrantScopes(ctx context.Context, roleId string, role
 			// We need to update the role version as that's the aggregate
 			updatedRole := allocRole()
 			updatedRole.PublicId = role.GetPublicId()
-			updatedRole.Version = uint32(role.Version + 1)
+			updatedRole.Version = uint32(roleVersion + 1)
 			var roleOplogMsg oplog.Message
-			rowsUpdated, err := w.Update(ctx, &updatedRole, []string{"Version"}, nil, db.NewOplogMsg(&roleOplogMsg), db.WithVersion(&role.Version))
+			rowsUpdated, err := w.Update(ctx, &updatedRole, []string{"Version"}, nil, db.NewOplogMsg(&roleOplogMsg), db.WithVersion(&roleVersion))
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to update role version"))
 			}
@@ -140,7 +140,7 @@ func (r *Repository) DeleteRoleGrantScopes(ctx context.Context, roleId string, r
 
 	role := allocRole()
 	role.PublicId = roleId
-	role.Version = roleVersion
+
 	scope, err := role.GetScope(ctx, r.reader)
 	if err != nil {
 		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to get role %s scope", roleId)))
@@ -167,9 +167,9 @@ func (r *Repository) DeleteRoleGrantScopes(ctx context.Context, roleId string, r
 			// We need to update the role version as that's the aggregate
 			updatedRole := allocRole()
 			updatedRole.PublicId = role.GetPublicId()
-			updatedRole.Version = uint32(role.Version + 1)
+			updatedRole.Version = uint32(roleVersion + 1)
 			var roleOplogMsg oplog.Message
-			rowsUpdated, err := w.Update(ctx, &updatedRole, []string{"Version"}, nil, db.NewOplogMsg(&roleOplogMsg), db.WithVersion(&role.Version))
+			rowsUpdated, err := w.Update(ctx, &updatedRole, []string{"Version"}, nil, db.NewOplogMsg(&roleOplogMsg), db.WithVersion(&roleVersion))
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to update role version"))
 			}

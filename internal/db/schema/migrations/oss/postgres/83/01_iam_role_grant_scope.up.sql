@@ -33,7 +33,7 @@ begin;
 
   -- iam_immutable_role_grant_scope() ensures that grant scopes assigned to
   -- roles are immutable. 
-  create or replace function iam_immutable_role_grant_scope() returns trigger
+  create function iam_immutable_role_grant_scope() returns trigger
   as $$
   begin
     raise exception 'role grant scopes are immutable';
@@ -45,7 +45,7 @@ begin;
   
   -- cascade_role_grant_scope_deletion() ensures that grant scopes entries are
   -- deleted when scopes are deleted
-  create or replace function cascade_role_grant_scope_deletion() returns trigger
+  create function cascade_role_grant_scope_deletion() returns trigger
   as $$
   begin
     delete from iam_role_grant_scope where scope_id_or_special = old.public_id;
@@ -59,7 +59,7 @@ begin;
 
   -- role_grant_scope_id_or_special_valid ensures that a given grant scope ID is for a
   -- scope that exists or one of our known values
-  create or replace function role_grant_scope_id_or_special_valid() returns trigger
+  create function role_grant_scope_id_or_special_valid() returns trigger
   as $$
   declare new_scope_type text;
   declare role_scope_id text;

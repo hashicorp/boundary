@@ -186,7 +186,9 @@ func TestUser(t testing.TB, repo *Repository, scopeId string, opt ...Option) *Us
 	return user
 }
 
-// TestRole creates a role suitable for testing.
+// TestRole creates a role suitable for testing. It will use a default grant
+// scope ID unless WithGrantScopeId is used. To prevent a grant scope from being
+// created, pass in a grant scope ID option with the value "testing-none".
 func TestRole(t testing.TB, conn *db.DB, scopeId string, opt ...Option) *Role {
 	t.Helper()
 	opts := getOpts(opt...)
@@ -220,6 +222,9 @@ func TestRole(t testing.TB, conn *db.DB, scopeId string, opt ...Option) *Role {
 		grantScopeIds = []string{scpId}
 	}
 	for _, gsi := range grantScopeIds {
+		if gsi == "testing-none" {
+			continue
+		}
 		gs, err := NewRoleGrantScope(ctx, id, gsi)
 		require.NoError(err)
 		require.NoError(rw.Create(ctx, gs))
@@ -239,6 +244,17 @@ func TestRoleGrant(t testing.TB, conn *db.DB, roleId, grant string, opt ...Optio
 	err = rw.Create(context.Background(), g)
 	require.NoError(err)
 	return g
+}
+
+func TestRoleGrantScope(t testing.TB, conn *db.DB, roleId, grantScopeId string, opt ...Option) *RoleGrantScope {
+	t.Helper()
+	require := require.New(t)
+	rw := db.New(conn)
+
+	gs, err := NewRoleGrantScope(context.Background(), roleId, grantScopeId, opt...)
+	require.NoError(err)
+	require.NoError(rw.Create(context.Background(), gs))
+	return gs
 }
 
 // TestGroup creates a group suitable for testing.
