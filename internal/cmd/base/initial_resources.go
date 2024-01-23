@@ -57,7 +57,7 @@ func (b *Server) CreateInitialLoginRole(ctx context.Context) (*iam.Role, error) 
 	}
 	if _, err := iamRepo.AddRoleGrants(ctx, role.PublicId, role.Version, []string{
 		"ids=*;type=scope;actions=list,no-op",
-		"ids=*;type=auth-method;actions=list,read,authenticate",
+		"ids=*;type=auth-method;actions=list,authenticate",
 		"ids=*;type=auth-token;actions=read:self,delete:self",
 	}); err != nil {
 		return nil, fmt.Errorf("error creating grant for initial login grants: %w", err)
