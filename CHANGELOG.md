@@ -37,7 +37,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
     relative to the last result received.
   * config: add new controller max_page_size field for controlling the default and max size
     of pages when paginating through results.
-    
+
 ## 0.14.3 (2023/12/12)
 
 ### New and Improved
