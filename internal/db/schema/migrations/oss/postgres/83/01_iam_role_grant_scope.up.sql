@@ -23,11 +23,13 @@ begin;
       ),
     primary key(role_id, scope_id_or_special)
   );
+  comment on table iam_role_grant_scope is
+    'table to map roles to the scopes they grant access to';
 
   insert into oplog_ticket (name, version)
     values
     ('iam_role_grant_scope', 1);
-  
+
   create trigger default_create_time_column before insert on iam_role_grant_scope
     for each row execute procedure default_create_time();
 
