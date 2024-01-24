@@ -34,7 +34,7 @@ var (
 )
 
 // NewGroup creates a new in memory group with a scope (project/org)
-// and allowed options include: withDescripion, WithName.
+// and allowed options include: withDescription, WithName.
 func NewGroup(ctx context.Context, scopeId string, opt ...Option) (*Group, error) {
 	const op = "iam.NewGroup"
 	if scopeId == "" {

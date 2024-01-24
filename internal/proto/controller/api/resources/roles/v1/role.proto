@@ -107,7 +107,7 @@ message Role {
   // match all descendant scopes (e.g. child scopes, children of child scopes;
   // only valid at "global" scope since it is the only one with children of
   // children).
-  repeated string grant_scope_ids = 91 [json_name = "grant_scope_ids"]; // @gotags: `class:"public"`
+  repeated string grant_scope_ids = 91 [json_name = "grant_scope_ids"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. The IDs (only) of principals that are assigned to this role.
   repeated string principal_ids = 100 [json_name = "principal_ids"]; // @gotags: `class:"public" eventstream:"observation"`

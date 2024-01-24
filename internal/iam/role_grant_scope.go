@@ -30,17 +30,16 @@ var (
 	_ db.VetForWriter = (*RoleGrantScope)(nil)
 )
 
-// NewRoleGrantScope creates a new in memory role grant scope
+// NewRoleGrantScope creates a new in memory role grant scope. No options are
+// supported.
 func NewRoleGrantScope(ctx context.Context, roleId string, grantScope string, _ ...Option) (*RoleGrantScope, error) {
 	const op = "iam.NewRoleGrantScope"
-	if roleId == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing role id")
-	}
-	if grantScope == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing grant scope")
-	}
 
 	switch {
+	case roleId == "":
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing role id")
+	case grantScope == "":
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing grant scope")
 	case grantScope == scope.Global.String(),
 		grantScope == globals.GrantScopeThis,
 		grantScope == globals.GrantScopeChildren,
@@ -49,12 +48,14 @@ func NewRoleGrantScope(ctx context.Context, roleId string, grantScope string, _ 
 	default:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unknown grant scope id %q", grantScope))
 	}
+
 	rgs := &RoleGrantScope{
 		RoleGrantScope: &store.RoleGrantScope{
 			RoleId:           roleId,
 			ScopeIdOrSpecial: grantScope,
 		},
 	}
+
 	return rgs, nil
 }
 

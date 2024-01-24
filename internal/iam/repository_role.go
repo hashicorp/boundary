@@ -21,18 +21,18 @@ import (
 // role.  No options are currently supported.
 func (r *Repository) CreateRole(ctx context.Context, role *Role, opt ...Option) (*Role, []*PrincipalRole, []*RoleGrant, []*RoleGrantScope, error) {
 	const op = "iam.(Repository).CreateRole"
-	if role == nil {
+
+	switch {
+	case role == nil:
 		return nil, nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing role")
-	}
-	if role.Role == nil {
+	case role.Role == nil:
 		return nil, nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing role store")
-	}
-	if role.PublicId != "" {
+	case role.PublicId != "":
 		return nil, nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "public id not empty")
-	}
-	if role.ScopeId == "" {
+	case role.ScopeId == "":
 		return nil, nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
 	}
+
 	id, err := newRoleId(ctx)
 	if err != nil {
 		return nil, nil, nil, nil, errors.Wrap(ctx, err, op)

@@ -18,13 +18,13 @@ import (
 // for the WithVersion option and will return an error.
 func (r *Repository) AddRoleGrantScopes(ctx context.Context, roleId string, roleVersion uint32, grantScopes []string, _ ...Option) ([]*RoleGrantScope, error) {
 	const op = "iam.(Repository).AddRoleGrantScopes"
-	if roleId == "" {
+
+	switch {
+	case roleId == "":
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing role id")
-	}
-	if len(grantScopes) == 0 {
+	case len(grantScopes) == 0:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing grant scopes")
-	}
-	if roleVersion == 0 {
+	case roleVersion == 0:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing version")
 	}
 
@@ -128,13 +128,13 @@ func (r *Repository) AddRoleGrantScopes(ctx context.Context, roleId string, role
 // for the WithVersion option and will return an error.
 func (r *Repository) DeleteRoleGrantScopes(ctx context.Context, roleId string, roleVersion uint32, grantScopes []string, _ ...Option) (int, error) {
 	const op = "iam.(Repository).DeleteRoleGrantScopes"
-	if roleId == "" {
+
+	switch {
+	case roleId == "":
 		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing role id")
-	}
-	if len(grantScopes) == 0 {
+	case len(grantScopes) == 0:
 		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing grant scopes")
-	}
-	if roleVersion == 0 {
+	case roleVersion == 0:
 		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing version")
 	}
 
@@ -224,15 +224,14 @@ func (r *Repository) DeleteRoleGrantScopes(ctx context.Context, roleId string, r
 // value for the WithVersion option and will return an error.
 func (r *Repository) SetRoleGrantScopes(ctx context.Context, roleId string, roleVersion uint32, grantScopes []string, opt ...Option) ([]*RoleGrantScope, int, error) {
 	const op = "iam.(Repository).SetRoleGrantScopes"
-	if roleId == "" {
-		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing role id")
-	}
-	if roleVersion == 0 {
-		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing version")
-	}
 
-	// Explicitly set to zero clears, but treat nil as a mistake
-	if grantScopes == nil {
+	switch {
+	case roleId == "":
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing role id")
+	case roleVersion == 0:
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing version")
+	case grantScopes == nil:
+		// Explicitly set to zero clears, but treat nil as a mistake
 		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing grants")
 	}
 
