@@ -277,7 +277,7 @@ type Role struct {
 	// match all descendant scopes (e.g. child scopes, children of child scopes;
 	// only valid at "global" scope since it is the only one with children of
 	// children).
-	GrantScopeIds []string `protobuf:"bytes,91,rep,name=grant_scope_ids,proto3" json:"grant_scope_ids,omitempty" class:"public"` // @gotags: `class:"public"`
+	GrantScopeIds []string `protobuf:"bytes,91,rep,name=grant_scope_ids,proto3" json:"grant_scope_ids,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. The IDs (only) of principals that are assigned to this role.
 	PrincipalIds []string `protobuf:"bytes,100,rep,name=principal_ids,proto3" json:"principal_ids,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. The principals that are assigned to this role.

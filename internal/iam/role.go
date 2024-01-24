@@ -34,7 +34,7 @@ var (
 )
 
 // NewRole creates a new in memory role with a scope (project/org)
-// allowed options include: withDescripion, WithName.
+// allowed options include: withDescription, WithName.
 func NewRole(ctx context.Context, scopeId string, opt ...Option) (*Role, error) {
 	const op = "iam.NewRole"
 	if scopeId == "" {
@@ -81,7 +81,7 @@ func (role *Role) validScopeTypes() []scope.Type {
 	return []scope.Type{scope.Global, scope.Org, scope.Project}
 }
 
-// Getscope returns the scope for the Role.
+// GetScope returns the scope for the Role.
 func (role *Role) GetScope(ctx context.Context, r db.Reader) (*Scope, error) {
 	return LookupScope(ctx, r, role)
 }
