@@ -285,7 +285,7 @@ func extraFlagsHandlingFuncImpl(c *Command, _ *base.FlagSets, opts *[]roles.Opti
 			case parsed.Id() == "":
 				// Nothing
 			case version.SupportsFeature(version.Binary, version.SupportIdInGrants):
-				c.UI.Warn(fmt.Sprintf("Grant %q uses the %q field, which is deprecated and will not be allowed in version 0.15.0+. Please use %q instead.", grant, "id", "ids"))
+				c.UI.Warn(fmt.Sprintf("Grant %q uses the %q field, which is deprecated and will not be allowed in version 0.16.0+. Please use %q instead.", grant, "id", "ids"))
 			default:
 				c.UI.Error(fmt.Sprintf("Grant %q uses the %q field which is no longer supported. Please use %q instead.", grant, "id", "ids"))
 				return false

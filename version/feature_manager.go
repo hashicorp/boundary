@@ -75,10 +75,10 @@ func init() {
 		Constraints: mustNewConstraints(">= 0.13.0"),
 	}
 
-	// Warn until 0.15 about using the now-deprecated id field in grants; after
+	// Warn until 0.16 about using the now-deprecated id field in grants; after
 	// that disallow it
 	featureMap[SupportIdInGrants] = MetadataConstraint{
-		Constraints: mustNewConstraints("< 0.15.0"),
+		Constraints: mustNewConstraints("< 0.16.0"),
 	}
 
 	// PluginDelete supports calling DeleteObjects on the Storage Plugin
