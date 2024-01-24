@@ -110,6 +110,7 @@ func TestLogHandler(t *testing.T) {
 		require.NoError(t, err)
 		gotEvent := &cloudevents.Event{}
 		err = json.Unmarshal(b, gotEvent)
+		require.NoError(t, err)
 
 		gotData := gotEvent.Data.(map[string]any)
 		assert.NotEmpty(t, gotData["error"])
