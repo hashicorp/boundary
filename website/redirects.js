@@ -143,4 +143,12 @@ module.exports = [
     destination: '/boundary/docs/concepts/connection-workflows/workflow-ssh-proxycommand',
     permanent: true,
   },
+  {
+    source: '/boundary/docs/api-clients/cli',
+    destination: '/boundary/docs/commands/',
+  },
+  {
+    source: '/boundary/docs/concepts/service-discovery',
+    destination: '/boundary/docs/concepts/host-discovery',
+  }
 ]
