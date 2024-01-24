@@ -38,7 +38,7 @@ func allocAlias() *Alias {
 
 // NewAlias generates a new in-memory alias.
 func NewAlias(ctx context.Context, scopeId, v string, opt ...Option) (*Alias, error) {
-	const op = "alias.NewAlias"
+	const op = "target.NewAlias"
 	opts, err := getOpts(opt...)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)

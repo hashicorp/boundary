@@ -63,6 +63,17 @@ func TestRepository_CreateAlias(t *testing.T) {
 			errContains: "no scope",
 		},
 		{
+			name: "specified-public-id",
+			in: &Alias{
+				Alias: &store.Alias{
+					PublicId: "alt_1234567890",
+					ScopeId:  "global",
+					Value:    "specified-public-id",
+				},
+			},
+			errContains: "public id not empty",
+		},
+		{
 			name: "valid-with-value",
 			in: &Alias{
 				Alias: &store.Alias{

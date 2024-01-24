@@ -58,7 +58,7 @@ type Alias struct {
 	// @inject_tag: `gorm:"default:null"`
 	DestinationId string `protobuf:"bytes,9,opt,name=destination_id,json=destinationId,proto3" json:"destination_id,omitempty" gorm:"default:null"`
 	// host_id is optional and can only be set if destination_id is also set.
-	// The value of this field is used when performing an authhorize-session
+	// The value of this field is used when performing an authorize-session
 	// action using this alias and specifies the host id to which the session
 	// is authorized on the target if possible. The host id this points does not
 	// need to be associated with the target yet nor even exist. If that is the

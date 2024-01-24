@@ -102,6 +102,8 @@ func (r *Repository) UpdateAlias(ctx context.Context, a *Alias, version uint32, 
 		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no public id")
 	case len(fieldMask) == 0:
 		return nil, db.NoRowsAffected, errors.New(ctx, errors.EmptyFieldMask, op, "empty field mask")
+	case version == 0:
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no version")
 	}
 
 	var dbMask, nullFields []string

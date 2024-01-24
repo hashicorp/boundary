@@ -23,7 +23,7 @@ const (
 
 // newAliasId creates a new id for a target alias.
 func newAliasId(ctx context.Context) (string, error) {
-	const op = "alias.newAliasId"
+	const op = "target.newAliasId"
 	id, err := db.NewPublicId(ctx, globals.TargetAliasPrefix)
 	if err != nil {
 		return "", errors.Wrap(ctx, err, op)
