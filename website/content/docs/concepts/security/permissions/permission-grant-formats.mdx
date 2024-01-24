@@ -22,7 +22,7 @@ _only_ `output_fields`.
 This is the simplest form: for a given specific resource, allow these actions.
 Example:
 
-`id=hsst_1234567890;actions=read,update`
+`ids=hsst_1234567890;actions=read,update`
 
 This grants `read` and `update` actions to that single resource. It is invalid
 to specify `create` or `list` as actions in this format, as this format
@@ -63,7 +63,7 @@ the pinned format shown below.
 This form "pins" actions to a non-top-level type within a specific ID. It's
 easiest to explain with an example:
 
-`id=hcst_1234567890;type=host-set;actions=create,read,update`
+`ids=hcst_1234567890;type=host-set;actions=create,read,update`
 
 In this example, the user is able to create, read, or update host sets within
 the scope, but _only the host sets belonging to host catalog hcst_1234567890_.
@@ -79,13 +79,13 @@ Various wildcard possibilities are allowed:
 When just the ID is `*`, it matches all IDs of the given type. This can be used
 with both top-level resource types and not. Example:
 
-`id=*;type=host-set;actions=create,read,update,set-hosts`
+`ids=*;type=host-set;actions=create,read,update,set-hosts`
 
 ### Wildcard type
 
 For non-top-level resources with pinned IDs, the `type` can be a wildcard:
 
-`id=hcst_1234567890;type=*;actions=create,read,update`
+`ids=hcst_1234567890;type=*;actions=create,read,update`
 
 This would allow `create`, `read`, and `update` actions for all types of
 subordinate resources (in this case host sets and hosts) underneath the host
@@ -97,13 +97,13 @@ If ID and type are both a wildcard, the grant is essentially a catch-all that
 will match any resource of any type within the scope and allow the given
 actions.
 
-`id=*;type=*;actions=read,list`
+`ids=*;type=*;actions=read,list`
 
 ### Wildcard ID, type, and actions
 
 Finally, ID, type, and actions can all be wildcards:
 
-`id=*;type=*;actions=*`
+`ids=*;type=*;actions=*`
 
 Such a grant is essentially a full administrator grant for a scope.
 
@@ -114,7 +114,7 @@ substitute the given value into the ID field of the grant string:
 
 - `{{.Account.Id}}`: The substituted value is the account ID associated with the
   token used to perform the action. As an example,
-  `id={{.Account.Id}};actions=read,change-password"` is one of Boundary's
+  `ids={{.Account.Id}};actions=read,change-password"` is one of Boundary's
   default grants to allow users that have authenticated with the Password auth
   method to change their own password.
   - **NOTE**: Prior to Boundary 0.11.1, `{{account.id}}` must be used instead.
