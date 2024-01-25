@@ -855,6 +855,10 @@
         ]
       },
       {
+        "title": "delete",
+        "path": "commands/delete"
+      },
+      {
         "title": "dev",
         "path": "commands/dev"
       },
@@ -1030,6 +1034,10 @@
             "path": "commands/managed-groups/update"
           }
         ]
+      },
+      {
+        "title": "read",
+        "path": "commands/read"
       },
       {
         "title": "roles",
@@ -1270,6 +1278,10 @@
             "path": "commands/targets/update"
           }
         ]
+      },
+      {
+        "title": "update",
+        "path": "commands/update"
       },
       {
         "title": "users",
