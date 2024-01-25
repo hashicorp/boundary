@@ -182,4 +182,16 @@ begin;
   comment on view session_recording_aggregate is
     'session_recording_aggregate contains the session recording resource with its storage bucket scope info and historical user info.';
 
+  -- Update the indexes used for listing recordings to include the delete time and delete after,
+  -- since they're now used in the query.
+  drop index recording_session_create_time_public_id_idx;
+  drop index recording_session_update_time_public_id_idx;
+
+  create index recording_session_create_time_public_id_delete_time_delete_idx
+      on recording_session (create_time desc, public_id desc, delete_time, delete_after);
+  create index recording_session_update_time_public_id_delete_time_delete_idx
+      on recording_session (update_time desc, public_id desc, delete_time, delete_after);
+
+  analyze recording_session;
+
 commit;
