@@ -12,6 +12,7 @@ There are 6 key components to Boundary's identity and access management system: 
 
 ### Scopes
 [Scopes](/boundary/docs/concepts/domain-model/scopes) can be considered as containers for resources and permissions. Each scope also has a permissions boundary that is isolated from other scopes on the same level. There are three types of scopes:
+
 - **Global** - The highest-level scope of Boundary where administrators configure and manage Boundary for the entire company.
 - **Org (Organization)** - Org scopes are contained in the global scope and are typically used to represent business units, organizations, or departments.
 Org scopes can also be used to contain multiple production-level auth methods in separate scopes.
@@ -75,14 +76,14 @@ Projects.
 2. Each role needs to have the user/group added as a principal
 3. Each role needs to have the grants of
 
-   - `id=*;type=*;actions=*`
+   - `ids=*;type=*;actions=*`
 
 ### Boundary viewer
 1. **Each** of the 7 scopes requires a role (ex. “viewer”)
 2. Each role needs to have the user/group added as a principal
 3. Each role needs to have the grants of
 
-   - `id=*;type=*;actions=read,list`
+   - `ids=*;type=*;actions=read,list`
 
 ### Org_A admin
 1. The following scopes **each** require a role (ex. “admin”)
@@ -92,22 +93,22 @@ Projects.
 2. Each role needs to have the user/group added as a principal
 3. Each role needs to have the grants of
 
-   - `id=*;type=*;actions=*`
+   - `ids=*;type=*;actions=*`
 
 ### Project_1 admin
 1. Project_1 requires a role (ex. “admin”)
 2. The role needs to have the user/group added as a principal
 3. The role needs to have the grants of
 
-   - `id=*;type=*;actions=*`
+   - `ids=*;type=*;actions=*`
 
 ### Project_1 target access
 1. Project_1 requires a role (ex. “target_access”)
 2. The role needs to have the user/group added as a principal
 3. The role needs to have the grants of
 
-   - `id=*;type=target;actions=list,read,authorize-session`
-   - `id=*;type=session;actions=read:self,cancel:self,list`
+   - `ids=*;type=target;actions=list,read,authorize-session`
+   - `ids=*;type=session;actions=read:self,cancel:self,list`
 
 <Tip>
 You can use the same roles across “Boundary Admin”, “Org_A Admin”, and “Project_1 Admin” since the scopes and grants are the same. The only difference is

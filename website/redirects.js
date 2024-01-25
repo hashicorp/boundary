@@ -129,6 +129,12 @@ module.exports = [
     permanent: true,
   },
   {
+    source:
+      '/boundary/docs/concepts/security/permissions/permission-grant-formats',
+    destination: '/boundary/docs/concepts/security/permissions/',
+    permanent: true,
+  },
+  {
     source: '/boundary/docs/concepts/service-discovery',
     destination: '/boundary/docs/concepts/host-discovery',
     permanent: true,

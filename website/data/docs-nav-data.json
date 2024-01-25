@@ -210,12 +210,12 @@
                 "path": "concepts/security/permissions"
               },
               {
-                "title": "Assignable permissions",
-                "path": "concepts/security/permissions/assignable-permissions"
+                "title": "Grant strings",
+                "path": "concepts/security/permissions/grants"
               },
               {
-                "title": "Permission grant formats",
-                "path": "concepts/security/permissions/permission-grant-formats"
+                "title": "Assignable permissions",
+                "path": "concepts/security/permissions/advanced"
               },
               {
                 "title": "Resource table",

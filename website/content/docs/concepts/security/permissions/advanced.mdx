@@ -1,0 +1,157 @@
+---
+layout: docs
+page_title: Assignable permissions
+description: |-
+  This topic details more advanced Boundary permissions concepts.
+---
+
+# Assignable permissions
+
+There are various ways to apply assignable permissions in Boundary.
+You can use advanced actions, output fields, wildcards, or templates.
+
+## Advanced actions
+From a permissions standpoint, all actions take place against directly implemented
+or abstract types. There may be actions that are only implemented by some concrete
+types, for example, not all auth-method implementations support a change-password
+action. But the permissions model still defines these capabilities at the abstract
+type level. This helps keep the overall system relatively simple and predictable.
+
+### Subactions
+
+Boundary supports some subactions. These actions have a format
+`top_level_action:subaction`, such as `read:self`. Being granted the top level
+action infers being granted all subactions. Thus, if a grant conveys `read`, it
+also matches the API actions `read` and `read:self`. However, if a grant conveys
+`read:self`, it matches the API action `read:self` but does not match `read`.
+
+### The `no-op` action and listing visibility
+
+There is an action that you can grant but is not used for any real action in Boundary. It is called `no-op`.
+The purpose of the `no-op` action is for listing visibility.
+Boundary only shows resources in the output of a `list` action for which a user has at least one granted action.
+
+Thus, without `no-op`, in order for a resource to be visible in a `list` action, you would have to grant a different action such as `read` to a user. Granting a different option can result in exposing more information than desired, especially in the case of listing scopes and authentication methods so that users can perform initial authentication to Boundary.
+
+By granting the `no-op` action to users, they can see the resources in the
+output of a list command without needing other capability grants as well.
+
+## Output fields
+
+Grant strings can contain an `output_fields` field. The field allows fine-grained
+control over visibility of data returned to users.
+In many cases, you do not need to set `output_fields` directly.
+
+The `output_fields` references the field names
+of the JSON object response, composes just like other parts of the RBAC model,
+and are action-specific. That is, a grant like:
+
+`ids=*;type=auth-methods;actions=list,no-op;output_fields=scope_id,name,description`
+
+will, if all by itself, result in those three identified output fields applying
+to `list` and `no-op` actions for all auth methods in the scope. When
+you perform a `list`, each item returned has only those three fields
+populated. Any other actions like `read` or `update` are unaffected and use the defaults.
+
+A grant like:
+
+`ids=*;type=auth-methods;output_fields=id`
+
+will, if all by itself, result in _any_ action against auth methods in the scope
+having only `ids` returned.
+
+However, if both of the above grants are included, the final set of output fields is `ids,scope_id,name,description` for `list` (and `no-op`) actions, and `ids` for all other actions, since grants are composable.
+
+If, after you compose the grants for a given request, none of the grants
+applicable to the resource/action contain `output_fields` definitions, Boundary uses the
+defaults. These defaults are implemented using internal values for
+`output_fields` and vary based on whether the user is the anonymous user:
+
+- If the user is the anonymous user, a useful but restricted set of fields is
+  returned. This includes `ids`, `scope_id`, `scope`, `name`, `description`, and a
+  few more.
+
+- If the user is any authenticated user, the full set of fields is returned.
+
+To think about it a different way, an empty `output_fields` value, after grant
+composition, is equivalent to using Boundary's default.
+However, when grants start specifying output fields, they are composed from an empty set and thus nothing is contained unless you explicitly specify something. An actual empty set is not currently supported, as we don't perform validation on the values given.
+However, this means setting `output_fields=none` is functionally equivalent.
+
+### Anonymous user restrictions
+
+Starting in Boundary 0.9.0, there are severe limits placed on the actions
+allowed to be assigned to the anonymous user `u_anon`. The limitations are meant to prevent
+situations where an operator accidentally or mistakenly adds the anonymous user
+to a role that provides more privileges than might be intended for
+unauthenticated users.
+
+The set of actions permitted for anonymous users is currently restricted to listing scopes and auth methods
+and authenticating to auth methods, plus `no-op` actions for listing
+visibility.
+
+When an anonymous user is denied access, there is no special error message that is returned.
+It is still possible to assign grants to
+a role on which the anonymous user is a principal that can never match the
+anonymous user.
+
+## Wildcards
+
+Boundary supports various wildcard possibilities.
+
+### Wildcard IDs
+
+When you use only a wildcard for the IDs, `*`, it matches all IDs of the given type. You can use this format
+with both top-level resource types or none. For example:
+
+`ids=*;type=host-set;actions=create,read,update,set-hosts`
+
+### Wildcard type
+
+You can use a wildcard for the `type` for any non-top-level resources with pinned IDs:
+
+`ids=hcst_1234567890;type=*;actions=create,read,update`
+
+This grant format allows `create`, `read`, and `update` actions for all types of
+subordinate resources underneath the host
+catalog with ID `hcst_1234567890`, in this case host sets and hosts.
+
+### Wildcard IDs and type
+
+If IDs and type are both wildcards, the grant is essentially a catch-all that
+matches any resource of any type within the scope and allows the given
+actions.
+
+`ids=*;type=*;actions=read,list`
+
+### Wildcard IDs, type, and actions
+
+Finally, IDs, type, and actions can all be wildcards:
+
+`ids=*;type=*;actions=*`
+
+Such a grant is essentially a full administrator grant for a scope.
+
+## Templates
+
+A few template possibilities exist, which
+substitute the given value into the ID field of the grant string at grant evaluation time:
+
+- `{{.Account.Id}}`: The substituted value is the account ID associated with the
+  token used to perform the action. As an example,
+  `ids={{.Account.Id}};actions=read,change-password"` is one of Boundary's
+  default grants to allow users that have authenticated with the password auth
+  method to change their own password.
+
+    You must use `{{account.id}}` for versions prior to Boundary 0.11.1.
+    Boundary 0.11.1+ changes this value for consistency with other places within
+    Boundary that are gaining templating support, but supports both formats for
+    backwards compatibility.
+
+- `{{.User.Id}}`: The substituted value is the user ID associated with the token
+  used to perform the action.
+
+    You must use `{{user.id}}` for versions prior to Boundary 0.11.1.
+    Boundary 0.11.1+ changes this value for consistency with other places within
+    Boundary that are gaining templating support, but supports both formats for
+    backwards compatibility.
