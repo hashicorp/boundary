@@ -51,8 +51,8 @@ type Alias struct {
 	// @inject_tag: `gorm:"default:null"`
 	Version uint32 `protobuf:"varint,7,opt,name=version,proto3" json:"version,omitempty" gorm:"default:null"`
 	// value is required and is the value of the value.
-	// @inject_tag: `gorm:"default:null"`
-	Value string `protobuf:"bytes,8,opt,name=value,proto3" json:"value,omitempty" gorm:"default:null"`
+	// @inject_tag: `gorm:"not_null"`
+	Value string `protobuf:"bytes,8,opt,name=value,proto3" json:"value,omitempty" gorm:"not_null"`
 	// destination_id is optional and is the ID of the target this alias points
 	// to.
 	// @inject_tag: `gorm:"default:null"`

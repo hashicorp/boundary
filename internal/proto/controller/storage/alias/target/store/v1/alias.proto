@@ -39,7 +39,7 @@ message Alias {
   uint32 version = 7;
 
   // value is required and is the value of the value.
-  // @inject_tag: `gorm:"default:null"`
+  // @inject_tag: `gorm:"not_null"`
   string value = 8;
 
   // destination_id is optional and is the ID of the target this alias points
