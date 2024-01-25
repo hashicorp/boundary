@@ -44,6 +44,7 @@ $ boundary policies create storage [options] [args]
 - `-description=<string>` - The description to set for the policy.
 - `-name=<string>` -The name to set on the policy.
 The name is optional, but if you set it, it must be unique within the scope ID.
+If you do not provide a name, Boundary uses the storage policy ID as the default name.
 - `-scope-id=<string>` - Scope in which to create the policy.
 The default scope is global.
 You can also specify a scope using the **BOUNDARY_SCOPE_ID** environment variable.

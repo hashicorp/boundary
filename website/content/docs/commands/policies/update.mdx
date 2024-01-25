@@ -45,6 +45,7 @@ $ boundary policies update storage [options] [args]
 - `-id=<string>` - The ID of the policy you want to update.
 - `-name=<string>` -The name to set on the policy.
 The name is optional, but if you set it, it must be unique within the scope ID.
+If you do not provide a name, Boundary uses the storage policy ID as the default name.
 - `-version=<int>` - The version of the policy to update.
 If you do not specify a version, the command performs a check-and-set automatically.
 
