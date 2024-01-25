@@ -160,7 +160,7 @@ func (c *Command) printListTable(items []*scopes.Scope) string {
 		}
 		if item.StoragePolicyId != "" {
 			output = append(output,
-				fmt.Sprintf("    StoragePolicyId:      %s", item.StoragePolicyId),
+				fmt.Sprintf("    StoragePolicyId:     %s", item.StoragePolicyId),
 			)
 		}
 		if len(item.AuthorizedActions) > 0 {
