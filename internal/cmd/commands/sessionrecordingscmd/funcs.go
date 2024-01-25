@@ -120,7 +120,7 @@ func (c *Command) printListTable(items []*sessionrecordings.SessionRecording) st
 			var retention string
 			switch item.RetainUntil {
 			case recording.InfinityTS:
-				retention = "Keep Forever"
+				retention = "Forever"
 			default:
 				retention = item.RetainUntil.Local().Format(time.RFC1123)
 			}
@@ -186,7 +186,7 @@ func printItemTable(item *sessionrecordings.SessionRecording, resp *api.Response
 		var retention string
 		switch item.RetainUntil {
 		case recording.InfinityTS:
-			retention = "Keep Forever"
+			retention = "Forever"
 		default:
 			retention = item.RetainUntil.Local().Format(time.RFC1123)
 		}
