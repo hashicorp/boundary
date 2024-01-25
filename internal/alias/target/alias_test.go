@@ -18,6 +18,35 @@ import (
 	"google.golang.org/protobuf/testing/protocmp"
 )
 
+func TestNewAlias(t *testing.T) {
+	t.Run("valid", func(t *testing.T) {
+		a, err := NewAlias(context.Background(), "global", "valid.alias")
+		require.NoError(t, err)
+		assert.NotNil(t, a)
+		assert.Equal(t, a.ScopeId, "global")
+		assert.Equal(t, a.Value, "valid.alias")
+	})
+
+	t.Run("missing value", func(t *testing.T) {
+		_, err := NewAlias(context.Background(), "global", "")
+		assert.ErrorContains(t, err, "alias value must be specified")
+	})
+
+	t.Run("missing scope", func(t *testing.T) {
+		_, err := NewAlias(context.Background(), "", "missing.scope")
+		assert.ErrorContains(t, err, "scope id must be specified")
+	})
+
+	t.Run("with destination", func(t *testing.T) {
+		a, err := NewAlias(context.Background(), "global", "with.destination", WithDestinationId("ttcp_1234567890"))
+		require.NoError(t, err)
+		assert.NotNil(t, a)
+		assert.Equal(t, a.ScopeId, "global")
+		assert.Equal(t, a.Value, "with.destination")
+		assert.Equal(t, a.DestinationId, "ttcp_1234567890")
+	})
+}
+
 func TestCreate(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
@@ -426,7 +455,28 @@ func TestDelete(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	ctx := context.Background()
-	a := TestAlias(t, rw, "alias.to.delete")
-	_, err := rw.Delete(ctx, a)
-	assert.NoError(t, err)
+
+	t.Run("delete existing", func(t *testing.T) {
+		a := TestAlias(t, rw, "alias.to.delete")
+		n, err := rw.Delete(ctx, a)
+		assert.NoError(t, err)
+		assert.Equal(t, 1, n)
+	})
+
+	t.Run("delete existing with destination", func(t *testing.T) {
+		_, p := iam.TestScopes(t, iam.TestRepo(t, conn, db.TestWrapper(t)))
+		tar := tcp.TestTarget(ctx, t, conn, p.GetPublicId(), "test")
+		a := TestAlias(t, rw, "alias.with.destination", WithDestinationId(tar.GetPublicId()))
+		n, err := rw.Delete(ctx, a)
+		assert.NoError(t, err)
+		assert.Equal(t, 1, n)
+	})
+
+	t.Run("delete non-existent", func(t *testing.T) {
+		a := allocAlias()
+		a.PublicId = "alias_does_not_exist"
+		n, err := rw.Delete(ctx, a)
+		assert.NoError(t, err)
+		assert.Equal(t, 0, n)
+	})
 }
