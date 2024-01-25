@@ -99,7 +99,7 @@ The resulting behavior is as follows: `output_fields` references the field names
 of the JSON object response, composes just like other parts of the RBAC model,
 and are action-specific. That is, a grant like:
 
-`id=*;type=auth-methods;actions=list,no-op;output_fields=scope_id,name,description`
+`ids=*;type=auth-methods;actions=list,no-op;output_fields=scope_id,name,description`
 
 will, if all by itself, result in those three identified output fields applying
 to `list` (and `no-op`) actions for all auth methods in the scope. Thus when
@@ -109,7 +109,7 @@ use defaults.
 
 A grant like:
 
-`id=*;type=auth-methods;output_fields=id`
+`ids=*;type=auth-methods;output_fields=id`
 
 will, if all by itself, result in _any_ action against auth methods in the scope
 having only `id` returned.

@@ -2184,9 +2184,9 @@ func TestAddGrants(t *testing.T) {
 		},
 		{
 			name:     "Check id field deprecation",
-			existing: []string{"ids=u_fooaA1;actions=read"},
-			add:      []string{"ids=*;type=*;actions=delete"},
-			result:   []string{"ids=u_fooaA1;actions=read", "ids=*;type=*;actions=delete"},
+			existing: []string{"id=u_fooaA1;actions=read"},
+			add:      []string{"id=*;type=*;actions=delete"},
+			result:   []string{"id=u_fooaA1;actions=read", "id=*;type=*;actions=delete"},
 			wantErr: func() bool {
 				return !version.SupportsFeature(version.Binary, version.SupportIdInGrants)
 			}(),
@@ -2338,9 +2338,9 @@ func TestSetGrants(t *testing.T) {
 		},
 		{
 			name:     "Check id field deprecation",
-			existing: []string{"ids=u_fooaA1;actions=read"},
-			set:      []string{"ids=*;type=*;actions=delete"},
-			result:   []string{"ids=*;type=*;actions=delete"},
+			existing: []string{"id=u_fooaA1;actions=read"},
+			set:      []string{"id=*;type=*;actions=delete"},
+			result:   []string{"id=*;type=*;actions=delete"},
 			wantErr: func() bool {
 				return !version.SupportsFeature(version.Binary, version.SupportIdInGrants)
 			}(),
