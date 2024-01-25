@@ -10,11 +10,11 @@ begin;
         references iam_scope (public_id)
         on delete cascade
         on update cascade
-      constraint alias_target_must_be_in_global_scope
+      constraint alias_must_be_in_global_scope
         check(
           scope_id = 'global'
         ),
-    value citext not null
+    value wt_alias not null
       constraint alias_value_uq
         unique,
     constraint alias_scope_id_value_public_id_uq
@@ -39,6 +39,9 @@ begin;
     return new;
   end;
   $$ language plpgsql;
+  comment on function insert_alias_subtype() is
+    'insert_alias_subtype() inserts a record into the base alias table when a corresponding record is inserted into the subtype table';
+
 
   -- delete_alias_subtype() is an after delete trigger
   -- function for subtypes of alias
@@ -51,6 +54,8 @@ begin;
     return null;
   end;
   $$ language plpgsql;
+  comment on function delete_alias_subtype() is
+    'delete_alias_subtype() deletes the base alias record when the corresponding record is deleted from the subtype table';
 
   create function update_alias_subtype() returns trigger
   as $$
@@ -60,10 +65,6 @@ begin;
   end;
   $$ language plpgsql;
   comment on function update_alias_subtype() is
-    'update_alias_subtype() will update base alias type value column with new values from sub type';
-
-  insert into oplog_ticket (name, version)
-  values
-    ('alias', 1);
+    'update_alias_subtype() updates the base table value column with the new value from the subtype table';
 
 commit;

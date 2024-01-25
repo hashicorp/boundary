@@ -7,5 +7,5 @@ begin;
   -- case-insensitive uniqueness constraints which is useful to us for
   -- aliases.
   create extension "citext";
-  
+
 commit;
