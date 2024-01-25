@@ -7,13 +7,14 @@ import (
 	"context"
 
 	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/alias"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/types/resource"
 )
 
 func init() {
-	globals.RegisterPrefixToResourceInfo(globals.TargetAliasPrefix, resource.Alias, "alias", Subtype)
+	globals.RegisterPrefixToResourceInfo(globals.TargetAliasPrefix, resource.Alias, alias.Domain, Subtype)
 }
 
 // PublicId prefixes for the resources in the static package.

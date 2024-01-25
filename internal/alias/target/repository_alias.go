@@ -6,15 +6,17 @@ package target
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/go-dbw"
 )
 
-// CreateAlias inserts a into the repository and returns a new
+// CreateAlias inserts Alias a into the repository and returns a new
 // Alias containing the alias's PublicId. a is not changed. a must
 // contain a valid ScopeId. a must not contain a PublicId. The PublicId is
 // generated and assigned by this method. opt is ignored.
@@ -106,32 +108,31 @@ func (r *Repository) UpdateAlias(ctx context.Context, a *Alias, version uint32, 
 		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no version")
 	}
 
-	var dbMask, nullFields []string
 	for _, f := range fieldMask {
 		switch {
-		case strings.EqualFold("value", f) && a.Value == "":
-			return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "value cannot be empty")
-		case strings.EqualFold("value", f) && a.Value != "":
-			dbMask = append(dbMask, "value")
-		case strings.EqualFold("name", f) && a.Name == "":
-			nullFields = append(nullFields, "name")
-		case strings.EqualFold("name", f) && a.Name != "":
-			dbMask = append(dbMask, "name")
-		case strings.EqualFold("description", f) && a.Description == "":
-			nullFields = append(nullFields, "description")
-		case strings.EqualFold("description", f) && a.Description != "":
-			dbMask = append(dbMask, "description")
-		case strings.EqualFold("DestinationId", f) && a.DestinationId == "":
-			nullFields = append(nullFields, "DestinationId")
-		case strings.EqualFold("DestinationId", f) && a.DestinationId != "":
-			dbMask = append(dbMask, "DestinationId")
-		case strings.EqualFold("HostId", f) && a.HostId == "":
-			nullFields = append(nullFields, "HostId")
-		case strings.EqualFold("HostId", f) && a.HostId != "":
-			dbMask = append(dbMask, "HostId")
+		case strings.EqualFold(valueField, f):
+		case strings.EqualFold(nameField, f):
+		case strings.EqualFold(descriptionField, f):
+		case strings.EqualFold(destinationIdField, f):
+		case strings.EqualFold(hostIdField, f):
 		default:
 			return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidFieldMask, op, fmt.Sprintf("invalid field mask: %s", f))
 		}
+	}
+
+	dbMask, nullFields := dbw.BuildUpdatePaths(
+		map[string]any{
+			nameField:          a.Name,
+			descriptionField:   a.Description,
+			valueField:         a.Value,
+			destinationIdField: a.DestinationId,
+			hostIdField:        a.HostId,
+		},
+		fieldMask,
+		nil,
+	)
+	if slices.Contains(nullFields, valueField) {
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "value cannot be empty")
 	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, a.ScopeId, kms.KeyPurposeOplog)
@@ -223,7 +224,7 @@ func (r *Repository) DeleteAlias(ctx context.Context, id string, opt ...Option) 
 		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %s", id)))
 	}
 	if a.ScopeId == "" {
-		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no project id")
+		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no scope id")
 	}
 	oplogWrapper, err := r.kms.GetWrapper(ctx, a.ScopeId, kms.KeyPurposeOplog)
 	if err != nil {

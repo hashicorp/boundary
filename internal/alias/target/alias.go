@@ -14,7 +14,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-// A Alias contains a storage alias. It is owned by a scope.
+// An Alias contains a storage alias. It is owned by a scope.
 type Alias struct {
 	*store.Alias
 	tableName string `gorm:"-"`
@@ -36,9 +36,15 @@ func allocAlias() *Alias {
 	return fresh
 }
 
-// NewAlias generates a new in-memory alias.
-func NewAlias(ctx context.Context, scopeId, v string, opt ...Option) (*Alias, error) {
+// NewAlias generates a new in-memory alias. Scope and Value must be non-empty.
+func NewAlias(ctx context.Context, scopeId, value string, opt ...Option) (*Alias, error) {
 	const op = "target.NewAlias"
+	switch {
+	case scopeId == "":
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "scope id must be specified")
+	case value == "":
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "alias value must be specified")
+	}
 	opts, err := getOpts(opt...)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
@@ -48,7 +54,7 @@ func NewAlias(ctx context.Context, scopeId, v string, opt ...Option) (*Alias, er
 			Name:          opts.withName,
 			Description:   opts.withDescription,
 			ScopeId:       scopeId,
-			Value:         v,
+			Value:         value,
 			DestinationId: opts.withDestinationId,
 			HostId:        opts.withHostId,
 		},
