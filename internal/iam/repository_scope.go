@@ -7,6 +7,7 @@ import (
 	"context"
 	"crypto/rand"
 	"database/sql"
+	stderr "errors"
 	"fmt"
 	"strings"
 	"time"
@@ -208,7 +209,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 
 				adminRole = adminRoleRaw.(*Role)
 
-				msgs := make([]*oplog.Message, 0, 3)
+				msgs := make([]*oplog.Message, 0, 4)
 				roleTicket, err := w.GetTicket(ctx, adminRole)
 				if err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
@@ -226,7 +227,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 
 				msgs = append(msgs, &roleOplogMsg)
 
-				roleGrant, err := NewRoleGrant(ctx, adminRolePublicId, "id=*;type=*;actions=*")
+				roleGrant, err := NewRoleGrant(ctx, adminRolePublicId, "ids=*;type=*;actions=*")
 				if err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory role grant"))
 				}
@@ -235,6 +236,16 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to add grants"))
 				}
 				msgs = append(msgs, roleGrantOplogMsgs...)
+
+				roleGrantScope, err := NewRoleGrantScope(ctx, adminRolePublicId, globals.GrantScopeThis)
+				if err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory role grant scope"))
+				}
+				roleGrantScopeOplogMsgs := make([]*oplog.Message, 0, 1)
+				if err := w.CreateItems(ctx, []any{roleGrantScope}, db.NewOplogMsgs(&roleGrantScopeOplogMsgs)); err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to add grant scope"))
+				}
+				msgs = append(msgs, roleGrantScopeOplogMsgs...)
 
 				rolePrincipal, err := NewUserRole(ctx, adminRolePublicId, userId)
 				if err != nil {
@@ -271,7 +282,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 
 				defaultRole = defaultRoleRaw.(*Role)
 
-				msgs := make([]*oplog.Message, 0, 6)
+				msgs := make([]*oplog.Message, 0, 7)
 				roleTicket, err := w.GetTicket(ctx, defaultRole)
 				if err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
@@ -294,7 +305,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 
 					switch s.Type {
 					case scope.Project.String():
-						roleGrant, err := NewRoleGrant(ctx, defaultRolePublicId, "id=*;type=session;actions=list,read:self,cancel:self")
+						roleGrant, err := NewRoleGrant(ctx, defaultRolePublicId, "ids=*;type=session;actions=list,read:self,cancel:self")
 						if err != nil {
 							return errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory role grant"))
 						}
@@ -307,25 +318,25 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 						grants = append(grants, roleGrant)
 
 					default:
-						roleGrant, err := NewRoleGrant(ctx, defaultRolePublicId, "id=*;type=scope;actions=list,no-op")
+						roleGrant, err := NewRoleGrant(ctx, defaultRolePublicId, "ids=*;type=scope;actions=list,no-op")
 						if err != nil {
 							return errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory role grant"))
 						}
 						grants = append(grants, roleGrant)
 
-						roleGrant, err = NewRoleGrant(ctx, defaultRolePublicId, "id=*;type=auth-method;actions=authenticate,list")
+						roleGrant, err = NewRoleGrant(ctx, defaultRolePublicId, "ids=*;type=auth-method;actions=authenticate,list")
 						if err != nil {
 							return errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory role grant"))
 						}
 						grants = append(grants, roleGrant)
 
-						roleGrant, err = NewRoleGrant(ctx, defaultRolePublicId, "id={{.Account.Id}};actions=read,change-password")
+						roleGrant, err = NewRoleGrant(ctx, defaultRolePublicId, "ids={{.Account.Id}};actions=read,change-password")
 						if err != nil {
 							return errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory role grant"))
 						}
 						grants = append(grants, roleGrant)
 
-						roleGrant, err = NewRoleGrant(ctx, defaultRolePublicId, "id=*;type=auth-token;actions=list,read:self,delete:self")
+						roleGrant, err = NewRoleGrant(ctx, defaultRolePublicId, "ids=*;type=auth-token;actions=list,read:self,delete:self")
 						if err != nil {
 							return errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory role grant"))
 						}
@@ -358,6 +369,16 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 					}
 					msgs = append(msgs, roleUserOplogMsgs...)
 				}
+
+				roleGrantScope, err := NewRoleGrantScope(ctx, defaultRolePublicId, globals.GrantScopeThis)
+				if err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory role grant scope"))
+				}
+				roleGrantScopeOplogMsgs := make([]*oplog.Message, 0, 1)
+				if err := w.CreateItems(ctx, []any{roleGrantScope}, db.NewOplogMsgs(&roleGrantScopeOplogMsgs)); err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to add grant scope"))
+				}
+				msgs = append(msgs, roleGrantScopeOplogMsgs...)
 
 				metadata := oplog.Metadata{
 					"op-type":            []string{oplog.OpType_OP_TYPE_CREATE.String()},
@@ -421,6 +442,14 @@ func (r *Repository) UpdateScope(ctx context.Context, scope *Scope, version uint
 		}
 		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("for public id %s", scope.PublicId)))
 	}
+	var childComponentErrs error
+	item := resource.(*Scope)
+	if err := setScopeStoragePolicyId(ctx, r.reader, item); err != nil && !errors.IsNotFoundError(err) {
+		childComponentErrs = stderr.Join(err)
+	}
+	if childComponentErrs != nil {
+		return nil, rowsUpdated, errors.Wrap(ctx, childComponentErrs, op, errors.WithMsg(fmt.Sprintf("failed to fetch one or more child components for %s", item.PublicId)))
+	}
 	return resource.(*Scope), rowsUpdated, nil
 }
 
@@ -438,6 +467,13 @@ func (r *Repository) LookupScope(ctx context.Context, withPublicId string, _ ...
 			return nil, nil
 		}
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %s", withPublicId)))
+	}
+	var childComponentErrs error
+	if err := setScopeStoragePolicyId(ctx, r.reader, &scope); err != nil && !errors.IsNotFoundError(err) {
+		childComponentErrs = stderr.Join(err)
+	}
+	if childComponentErrs != nil {
+		return nil, errors.Wrap(ctx, childComponentErrs, op, errors.WithMsg(fmt.Sprintf("failed to fetch one or more child components for %s", scope.PublicId)))
 	}
 	return &scope, nil
 }
@@ -492,7 +528,22 @@ func (r *Repository) listScopes(ctx context.Context, withParentIds []string, opt
 		)
 	}
 	dbOpts := []db.Option{db.WithLimit(limit), db.WithOrder("create_time desc, public_id desc")}
-	return r.queryScopes(ctx, whereClause, args, dbOpts...)
+	scopes, t, err := r.queryScopes(ctx, whereClause, args, dbOpts...)
+	if err != nil {
+		return scopes, t, err
+	}
+
+	var childComponentErrs error
+	for _, scope := range scopes {
+		if err := setScopeStoragePolicyId(ctx, r.reader, scope); err != nil && !errors.IsNotFoundError(err) {
+			childComponentErrs = stderr.Join(err)
+		}
+	}
+	if childComponentErrs != nil {
+		return scopes, t, errors.Wrap(ctx, childComponentErrs, op, errors.WithMsg("failed to fetch one or more child components"))
+	}
+
+	return scopes, t, nil
 }
 
 // listScopesRefresh lists scopes in the given scopes and supports the
@@ -534,7 +585,22 @@ func (r *Repository) listScopesRefresh(ctx context.Context, updatedAfter time.Ti
 	}
 
 	dbOpts := []db.Option{db.WithLimit(limit), db.WithOrder("update_time desc, public_id desc")}
-	return r.queryScopes(ctx, whereClause, args, dbOpts...)
+	scopes, t, err := r.queryScopes(ctx, whereClause, args, dbOpts...)
+	if err != nil {
+		return scopes, t, err
+	}
+
+	var childComponentErrs error
+	for _, scope := range scopes {
+		if err := setScopeStoragePolicyId(ctx, r.reader, scope); err != nil && !errors.IsNotFoundError(err) {
+			childComponentErrs = stderr.Join(err)
+		}
+	}
+	if childComponentErrs != nil {
+		return scopes, t, errors.Wrap(ctx, childComponentErrs, op, errors.WithMsg("failed to fetch one or more child components"))
+	}
+
+	return scopes, t, nil
 }
 
 func (r *Repository) queryScopes(ctx context.Context, whereClause string, args []any, opt ...db.Option) ([]*Scope, time.Time, error) {
@@ -584,6 +650,15 @@ func (r *Repository) ListScopesRecursively(ctx context.Context, rootScopeId stri
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op+":ListQuery")
 	}
+	var childComponentErrs error
+	for _, scope := range scopes {
+		if err := setScopeStoragePolicyId(ctx, r.reader, scope); err != nil && !errors.IsNotFoundError(err) {
+			childComponentErrs = stderr.Join(err)
+		}
+	}
+	if childComponentErrs != nil {
+		return nil, errors.Wrap(ctx, childComponentErrs, op, errors.WithMsg("failed to fetch one or more child components"))
+	}
 	return scopes, nil
 }
 
@@ -624,6 +699,9 @@ func (r *Repository) estimatedScopeCount(ctx context.Context) (int, error) {
 		if err := r.reader.ScanRows(ctx, rows, &count); err != nil {
 			return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total scopes"))
 		}
+	}
+	if err := rows.Err(); err != nil {
+		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total scopes"))
 	}
 	return count, nil
 }

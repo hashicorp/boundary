@@ -333,7 +333,7 @@ func TestGrantsHash(t *testing.T) {
 
 	// Change grants of the user
 	newRole := iam.TestRole(t, conn, o.GetPublicId())
-	_ = iam.TestRoleGrant(t, conn, newRole.GetPublicId(), "id=*;type=*;actions=list-keys")
+	_ = iam.TestRoleGrant(t, conn, newRole.GetPublicId(), "ids=*;type=*;actions=list-keys")
 	_ = iam.TestUserRole(t, conn, newRole.GetPublicId(), user.GetPublicId())
 
 	// Recreate auth result with new grants, should have a new hash

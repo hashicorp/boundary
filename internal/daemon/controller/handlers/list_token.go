@@ -176,6 +176,8 @@ func ListTokenResourceToResource(rt pbs.ResourceType) resource.Type {
 		return resource.User
 	case pbs.ResourceType_RESOURCE_TYPE_WORKER:
 		return resource.Worker
+	case pbs.ResourceType_RESOURCE_TYPE_POLICY:
+		return resource.Policy
 	default:
 		return resource.Unknown
 	}

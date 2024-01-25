@@ -68,6 +68,12 @@ const (
 	ListScopeKeyVersionDestructionJobs Type = 54
 	DestroyScopeKeyVersion             Type = 55
 	Download                           Type = 56
+	AttachStoragePolicy                Type = 57
+	DetachStoragePolicy                Type = 58
+	ReApplyStoragePolicy               Type = 59
+	AddGrantScopes                     Type = 60
+	SetGrantScopes                     Type = 61
+	RemoveGrantScopes                  Type = 62
 
 	// When adding new actions, be sure to update:
 	//
@@ -132,6 +138,12 @@ var Map = map[string]Type{
 	ListScopeKeyVersionDestructionJobs.String(): ListScopeKeyVersionDestructionJobs,
 	DestroyScopeKeyVersion.String():             DestroyScopeKeyVersion,
 	Download.String():                           Download,
+	AttachStoragePolicy.String():                AttachStoragePolicy,
+	DetachStoragePolicy.String():                DetachStoragePolicy,
+	ReApplyStoragePolicy.String():               ReApplyStoragePolicy,
+	AddGrantScopes.String():                     AddGrantScopes,
+	SetGrantScopes.String():                     SetGrantScopes,
+	RemoveGrantScopes.String():                  RemoveGrantScopes,
 }
 
 var DeprecatedMap = map[string]Type{
@@ -202,6 +214,12 @@ func (a Type) String() string {
 		"list-key-version-destruction-jobs",
 		"destroy-key-version",
 		"download",
+		"attach-storage-policy",
+		"detach-storage-policy",
+		"reapply-storage-policy",
+		"add-grant-scopes",
+		"set-grant-scopes",
+		"remove-grant-scopes",
 	}[a]
 }
 

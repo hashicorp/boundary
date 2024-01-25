@@ -135,6 +135,9 @@ func (amr *AuthMethodRepository) EstimatedCount(ctx context.Context) (int, error
 			return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total auth methods"))
 		}
 	}
+	if err := rows.Err(); err != nil {
+		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total auth methods"))
+	}
 	return count, nil
 }
 
@@ -153,6 +156,9 @@ func (amr *AuthMethodRepository) ListDeletedIds(ctx context.Context, since time.
 			if err := r.ScanRows(ctx, rows, &deletedAuthMethodIDs); err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
+		}
+		if err := rows.Err(); err != nil {
+			return errors.Wrap(ctx, err, op)
 		}
 		transactionTimestamp, err = r.Now(ctx)
 		return err
@@ -179,7 +185,9 @@ func (amr *AuthMethodRepository) queryAuthMethods(ctx context.Context, query str
 				return err
 			}
 		}
-
+		if err := rows.Err(); err != nil {
+			return err
+		}
 		for _, am := range foundAuthMethods {
 			authmethod, err := am.toAuthMethod(ctx)
 			if err != nil {

@@ -79,7 +79,7 @@ type Command struct {
 	flagTargetDefaultPort                int
 	flagTargetSessionMaxSeconds          int
 	flagTargetSessionConnectionLimit     int
-	flagControllerAPIListenAddr          string
+	flagControllerApiListenAddr          string
 	flagControllerClusterListenAddr      string
 	flagControllerPublicClusterAddr      string
 	flagControllerOnly                   bool
@@ -102,6 +102,8 @@ type Command struct {
 	flagCreateLoopbackPlugin             bool
 	flagPluginExecutionDir               string
 	flagSkipPlugins                      bool
+	flagSkipOidcAuthMethodCreation       bool
+	flagSkipLdapAuthMethodCreation       bool
 	flagWorkerDnsServer                  string
 	flagWorkerAuthMethod                 string
 	flagWorkerAuthStorageDir             string
@@ -202,7 +204,7 @@ func (c *Command) Flags() *base.FlagSets {
 
 	f.StringVar(&base.StringVar{
 		Name:   "api-listen-address",
-		Target: &c.flagControllerAPIListenAddr,
+		Target: &c.flagControllerApiListenAddr,
 		EnvVar: "BOUNDARY_DEV_CONTROLLER_API_LISTEN_ADDRESS",
 		Usage:  "Address to bind to for controller \"api\" purpose. If this begins with a forward slash, it will be assumed to be a Unix domain socket path.",
 	})
@@ -380,6 +382,16 @@ func (c *Command) Flags() *base.FlagSets {
 		Target: &c.flagSkipPlugins,
 		Usage:  "Skip loading compiled-in plugins. This does not prevent loopback plugins from being loaded if enabled.",
 		Hidden: true,
+	})
+	f.BoolVar(&base.BoolVar{
+		Name:   "skip-oidc-auth-method-creation",
+		Target: &c.flagSkipOidcAuthMethodCreation,
+		Usage:  "Skip creating a test OIDC auth method. This is useful if e.g. running a Unix API listener.",
+	})
+	f.BoolVar(&base.BoolVar{
+		Name:   "skip-ldap-auth-method-creation",
+		Target: &c.flagSkipLdapAuthMethodCreation,
+		Usage:  "Skip creating a test LDAP auth method. This is useful if e.g. running a Unix API listener.",
 	})
 	f.StringVar(&base.StringVar{
 		Name:   "worker-dns-server",
@@ -594,8 +606,8 @@ func (c *Command) Run(args []string) int {
 		}
 		switch l.Purpose[0] {
 		case "api":
-			if c.flagControllerAPIListenAddr != "" {
-				l.Address = c.flagControllerAPIListenAddr
+			if c.flagControllerApiListenAddr != "" {
+				l.Address = c.flagControllerApiListenAddr
 			}
 			if strings.HasPrefix(l.Address, "/") {
 				l.Type = "unix"
@@ -750,6 +762,12 @@ func (c *Command) Run(args []string) int {
 	}
 
 	var opts []base.Option
+	if c.flagSkipOidcAuthMethodCreation {
+		opts = append(opts, base.WithSkipOidcAuthMethodCreation())
+	}
+	if c.flagSkipLdapAuthMethodCreation {
+		opts = append(opts, base.WithSkipLdapAuthMethodCreation())
+	}
 	if c.flagCreateLoopbackPlugin {
 		c.DevLoopbackPluginId = "pl_1234567890"
 		c.EnabledPlugins = append(c.EnabledPlugins, base.EnabledPluginLoopback)

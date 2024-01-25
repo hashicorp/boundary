@@ -207,13 +207,13 @@ func TestList_Self(t *testing.T) {
 
 	// Create a "privileged" role that gives admin on the scope
 	privProjRole := iam.TestRole(t, conn, pWithSessions.GetPublicId())
-	iam.TestRoleGrant(t, conn, privProjRole.GetPublicId(), "id=*;type=*;actions=*")
+	iam.TestRoleGrant(t, conn, privProjRole.GetPublicId(), "ids=*;type=*;actions=*")
 	iam.TestUserRole(t, conn, privProjRole.GetPublicId(), otherPrivAuthToken.GetIamUserId())
 
 	// Create an "unprivileged" role that only grants self variants and add the
 	// unprivileged user and other privileged users
 	unPrivProjRole := iam.TestRole(t, conn, pWithSessions.GetPublicId())
-	iam.TestRoleGrant(t, conn, unPrivProjRole.GetPublicId(), "id=*;type=session;actions=read:self,list,cancel:self")
+	iam.TestRoleGrant(t, conn, unPrivProjRole.GetPublicId(), "ids=*;type=session;actions=read:self,list,cancel:self")
 	iam.TestUserRole(t, conn, unPrivProjRole.GetPublicId(), unprivAuthToken.GetIamUserId())
 	iam.TestUserRole(t, conn, unPrivProjRole.GetPublicId(), otherPrivAuthToken.GetIamUserId())
 

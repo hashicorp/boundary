@@ -157,6 +157,9 @@ func nextSync(ctx context.Context, j scheduler.Job) (time.Duration, error) {
 	if !rows.Next() {
 		return setSyncJobRunInterval, nil
 	}
+	if err := rows.Err(); err != nil {
+		return 0, errors.Wrap(ctx, err, op)
+	}
 
 	type NextResync struct {
 		SyncNow             bool

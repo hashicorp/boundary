@@ -22,6 +22,7 @@ const (
 	RequireVersionInWorkerInfo
 	SshSessionRecording
 	SupportIdInGrants
+	PluginDelete
 )
 
 var featureMap map[Feature]MetadataConstraint
@@ -78,6 +79,11 @@ func init() {
 	// that disallow it
 	featureMap[SupportIdInGrants] = MetadataConstraint{
 		Constraints: mustNewConstraints("< 0.15.0"),
+	}
+
+	// PluginDelete supports calling DeleteObjects on the Storage Plugin
+	featureMap[PluginDelete] = MetadataConstraint{
+		Constraints: mustNewConstraints(">= 0.15.0"),
 	}
 }
 

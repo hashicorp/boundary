@@ -32,6 +32,7 @@ const (
 	PrincipalIdsField                           = "principal_ids"
 	PrincipalsField                             = "principals"
 	GrantScopeIdField                           = "grant_scope_id"
+	GrantScopeIdsField                          = "grant_scope_ids"
 	GrantsField                                 = "grants"
 	GrantStringsField                           = "grant_strings"
 	PrimaryAuthMethodIdField                    = "primary_auth_method_id"
@@ -115,4 +116,7 @@ const (
 	ConnectionRecordingsField                   = "connection_recordings"
 	CreateTimeValues                            = "create_time_values"
 	DefaultPortField                            = "default_port"
+	StoragePolicyIdField                        = "storage_policy_id"
+	RetainUntilField                            = "retain_until"
+	DeleteAfterField                            = "delete_after"
 )

@@ -63,7 +63,7 @@ func Test_newRateLimiterConfig(t *testing.T) {
 			ratelimit.DefaultLimiterMaxQuotas(),
 			false,
 			&rateLimiterConfig{
-				maxSize:  296148,
+				maxSize:  322161,
 				configs:  nil,
 				disabled: false,
 				limits:   defaultLimits,
@@ -642,7 +642,7 @@ func Test_rateLimiterConfig_writeSysEvent(t *testing.T) {
 
 								wantResourceLimits := v.(map[string]interface{})
 								gotResourceLimits := gotv.(map[string]interface{})
-								require.Equal(t, len(gotResourceLimits), len(wantResourceLimits))
+								require.Equal(t, len(wantResourceLimits), len(gotResourceLimits))
 
 								for k, v := range wantResourceLimits {
 									gotv, ok := gotResourceLimits[k]

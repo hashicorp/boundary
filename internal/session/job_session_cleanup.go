@@ -189,6 +189,9 @@ func (j *sessionConnectionCleanupJob) closeConnectionsForDeadWorkers(ctx context
 
 				results = append(results, result)
 			}
+			if err := rows.Err(); err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
 
 			return nil
 		},

@@ -510,6 +510,7 @@ func TestDomain_DefaultUsersExist(t *testing.T) {
 		for rows.Next() {
 			count++
 		}
+		assert.NoError(t, rows.Err())
 		assert.Equal(t, 1, count)
 	}
 }

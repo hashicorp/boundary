@@ -11,8 +11,8 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/common"
-	"github.com/hashicorp/boundary/internal/db/schema"
 	"github.com/hashicorp/boundary/internal/db/schema/migration"
+	"github.com/hashicorp/boundary/internal/db/schema/migrations/oss"
 	"github.com/hashicorp/boundary/internal/db/schema/migrations/oss/internal/hook46001"
 	"github.com/hashicorp/boundary/testing/dbtest"
 	"github.com/stretchr/testify/require"
@@ -41,7 +41,7 @@ func TestMigrationHook46001(t *testing.T) {
 	// The reason why we are starting at 43001 is because one of the security vulnerabilities was a
 	// bad trigger on table target_host_set that was suppose to validate scope_id integrity between
 	// the target & host set. In migration 44002, this trigger is fixed.
-	applyMigration(t, ctx, d, 43001)
+	oss.ApplyMigration(t, ctx, d, 43001)
 
 	// Insert test data into the database.
 	populateScopes(t, rw)
@@ -63,7 +63,7 @@ func TestMigrationHook46001(t *testing.T) {
 	// Apply migrations 4400x, 4500x
 	migrationIds := []int{44001, 44002, 44003, 44004, 45001, 45002, 45003}
 	for _, migrationId := range migrationIds {
-		applyMigration(t, ctx, d, migrationId)
+		oss.ApplyMigration(t, ctx, d, migrationId)
 	}
 
 	tx, err := d.BeginTx(ctx, nil)
@@ -371,6 +371,7 @@ func validateRepairFunc(t *testing.T, rw *db.Db, repairReport migration.Repairs)
 			resourceId: resourceId,
 		})
 	}
+	require.NoError(rows.Err())
 	require.Equal([]targetAssociation{
 		{
 			targetId:   "ttcp_PRJA___65001",
@@ -385,28 +386,4 @@ func validateRepairFunc(t *testing.T, rw *db.Db, repairReport migration.Repairs)
 			resourceId: "credup_PRJA___65001",
 		},
 	}, associations)
-}
-
-func applyMigration(t *testing.T, ctx context.Context, d *sql.DB, migrationId int) {
-	dialect := dbtest.Postgres
-	m, err := schema.NewManager(ctx, schema.Dialect(dialect), d, schema.WithEditions(
-		schema.TestCreatePartialEditions(schema.Dialect(dialect), schema.PartialEditions{"oss": migrationId}),
-	))
-	require.NoError(t, err)
-	_, err = m.ApplyMigrations(ctx)
-	require.NoError(t, err)
-	state, err := m.CurrentState(ctx)
-	require.NoError(t, err)
-	want := &schema.State{
-		Initialized: true,
-		Editions: []schema.EditionState{
-			{
-				Name:                  "oss",
-				BinarySchemaVersion:   migrationId,
-				DatabaseSchemaVersion: migrationId,
-				DatabaseSchemaState:   schema.Equal,
-			},
-		},
-	}
-	require.Equal(t, want, state)
 }

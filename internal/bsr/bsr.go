@@ -49,6 +49,11 @@ type Session struct {
 	Summary     SessionSummary
 }
 
+// GetBsrFileName formats a session recording id into the BSR filename format
+func GetBsrFileName(sessionRecordingId string) string {
+	return fmt.Sprintf(bsrFileNameTemplate, sessionRecordingId)
+}
+
 // NewSession creates a Session container for a given session id.
 func NewSession(ctx context.Context, meta *SessionRecordingMeta, sessionMeta *SessionMeta, f storage.FS, keys *kms.Keys, options ...Option) (*Session, error) {
 	const op = "bsr.NewSession"
@@ -82,7 +87,7 @@ func NewSession(ctx context.Context, meta *SessionRecordingMeta, sessionMeta *Se
 
 	opts := getOpts(options...)
 
-	c, err := f.New(ctx, fmt.Sprintf(bsrFileNameTemplate, meta.Id))
+	c, err := f.New(ctx, GetBsrFileName(meta.Id))
 	if err != nil {
 		return nil, err
 	}
@@ -189,7 +194,7 @@ func OpenSession(ctx context.Context, sessionRecordingId string, f storage.FS, k
 		return nil, fmt.Errorf("%s: missing key unwrap function: %w", op, ErrInvalidParameter)
 	}
 
-	c, err := f.Open(ctx, fmt.Sprintf(bsrFileNameTemplate, sessionRecordingId))
+	c, err := f.Open(ctx, GetBsrFileName(sessionRecordingId))
 	if err != nil {
 		return nil, err
 	}

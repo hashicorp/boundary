@@ -15,7 +15,7 @@ message RoleGrant {
   timestamp.v1.Timestamp create_time = 1;
 
   // role_id is the ID of the role this is a part of
-  // @inject_tag: gorm:"primary_key"
+  // @inject_tag: `gorm:"primary_key"`
   string role_id = 2;
 
   // raw_grant is the string grant value as provided by the user
@@ -24,6 +24,6 @@ message RoleGrant {
 
   // canonical_grant is the canonical string representation of the grant value.
   // We use this as the unique constraint.
-  // @inject_tag: gorm:"primary_key"
+  // @inject_tag: `gorm:"primary_key"`
   string canonical_grant = 4;
 }

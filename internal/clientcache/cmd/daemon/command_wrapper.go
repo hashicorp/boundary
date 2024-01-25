@@ -102,7 +102,7 @@ func (w *CommandWrapper) addTokenToCache(ctx context.Context, token string) bool
 		return false
 	}
 	keyringType, tokName, err := w.BaseCommand().DiscoverKeyringTokenInfo()
-	if err != nil {
+	if err != nil && token == "" {
 		return false
 	}
 	if token != "" {

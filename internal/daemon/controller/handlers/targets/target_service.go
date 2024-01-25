@@ -935,22 +935,16 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	}
 
 	// Ensure we don't have a port from the address, which would be unexpected
-	// FIXME: We've decided to hold off on making this an error until 0.14. In
-	// the meantime, ignore any port coming from the host address.
-	hostWithoutPort, _, err := net.SplitHostPort(h)
+	_, _, err = net.SplitHostPort(h)
 	switch {
 	case err != nil && strings.Contains(err.Error(), globals.MissingPortErrStr):
 		// This is what we expect
 	case err != nil:
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error when parsing the chosen endpoint host address"))
 	case err == nil:
-		h = hostWithoutPort
-		// Use below logic for 0.14:
-		/*
-			return nil, handlers.ApiErrorWithCodeAndMessage(
-				codes.FailedPrecondition,
-				"Address specified for use unexpectedly contains a port.")
-		*/
+		return nil, handlers.ApiErrorWithCodeAndMessage(
+			codes.FailedPrecondition,
+			"Address specified for use unexpectedly contains a port.")
 	}
 
 	// Generate the endpoint URL

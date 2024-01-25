@@ -1,0 +1,7 @@
+FROM postgres:15-alpine
+
+ADD init-db.sh /docker-entrypoint-initdb.d/00-init-db.sh
+ADD restore-benchmark-dumps.sh /docker-entrypoint-initdb.d/01-restore-benchmark-dumps.sh
+ADD postgresql.conf /etc/postgresql/postgresql.conf
+
+CMD ["postgres", "-c", "config_file=/etc/postgresql/postgresql.conf"]

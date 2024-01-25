@@ -14,9 +14,9 @@ begin;
   select wtt_load('widgets', 'iam', 'kms', 'auth', 'hosts', 'targets', 'sessions');
 
   insert into recording_session
-    (public_id,      storage_bucket_id, session_id)
+    (public_id,      storage_bucket_id, session_id,     target_org_id)
   values
-    ('sr_123456789', 'sb____global',    's2_____clare');
+    ('sr_123456789', 'sb____global',    's2_____clare', 'o_____colors');
   insert into session_connection
     (public_id,      session_id)
   values

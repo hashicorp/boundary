@@ -316,7 +316,7 @@ func (r *Repository) listAuthTokens(ctx context.Context, withScopeIds []string, 
 		)
 	}
 
-	return r.queryAuthTokens(ctx, query, args, limit)
+	return r.queryAuthTokens(ctx, query, args)
 }
 
 // listAuthTokensRefresh lists auth tokens in the given scopes and supports the
@@ -353,10 +353,10 @@ func (r *Repository) listAuthTokensRefresh(ctx context.Context, updatedAfter tim
 		)
 	}
 
-	return r.queryAuthTokens(ctx, query, args, limit)
+	return r.queryAuthTokens(ctx, query, args)
 }
 
-func (r *Repository) queryAuthTokens(ctx context.Context, query string, args []any, limit int) ([]*AuthToken, time.Time, error) {
+func (r *Repository) queryAuthTokens(ctx context.Context, query string, args []any) ([]*AuthToken, time.Time, error) {
 	const op = "authtoken.(Repository).queryAuthTokens"
 
 	var transactionTimestamp time.Time
@@ -377,6 +377,9 @@ func (r *Repository) queryAuthTokens(ctx context.Context, query string, args []a
 				return errors.Wrap(ctx, err, op, errors.WithMsg("scan row failed"))
 			}
 			atvs = append(atvs, &atv)
+		}
+		if err := rows.Err(); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("rows next error"))
 		}
 
 		authTokens = make([]*AuthToken, 0, len(atvs))
@@ -428,6 +431,9 @@ func (r *Repository) estimatedCount(ctx context.Context) (int, error) {
 		if err := r.reader.ScanRows(ctx, rows, &count); err != nil {
 			return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total auth tokens"))
 		}
+	}
+	if err := rows.Err(); err != nil {
+		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total auth tokens"))
 	}
 	return count, nil
 }

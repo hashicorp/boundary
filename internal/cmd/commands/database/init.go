@@ -37,16 +37,17 @@ type InitCommand struct {
 	// deferred function on the Run method.
 	configWrapperCleanupFunc func() error
 
-	flagConfig                       []string
-	flagConfigKms                    string
-	flagLogLevel                     string
-	flagLogFormat                    string
-	flagMigrationUrl                 string
-	flagSkipInitialLoginRoleCreation bool
-	flagSkipAuthMethodCreation       bool
-	flagSkipScopesCreation           bool
-	flagSkipHostResourcesCreation    bool
-	flagSkipTargetCreation           bool
+	flagConfig                                   []string
+	flagConfigKms                                string
+	flagLogLevel                                 string
+	flagLogFormat                                string
+	flagMigrationUrl                             string
+	flagSkipInitialLoginRoleCreation             bool
+	flagSkipInitialAuthenticatedUserRoleCreation bool
+	flagSkipAuthMethodCreation                   bool
+	flagSkipScopesCreation                       bool
+	flagSkipHostResourcesCreation                bool
+	flagSkipTargetCreation                       bool
 }
 
 func (c *InitCommand) Synopsis() string {
@@ -124,31 +125,37 @@ func (c *InitCommand) Flags() *base.FlagSets {
 	f.BoolVar(&base.BoolVar{
 		Name:   "skip-initial-login-role-creation",
 		Target: &c.flagSkipInitialLoginRoleCreation,
-		Usage:  "If not set, a default role allowing necessary grants for logging in will not be created as part of initialization. If set, the recovery KMS will be needed to perform any actions.",
+		Usage:  "If set, a role providing necessary grants for logging in will not be created as part of initialization. If set, the recovery KMS will be needed to perform any actions.",
+	})
+
+	f.BoolVar(&base.BoolVar{
+		Name:   "skip-initial-authenticated-user-role-creation",
+		Target: &c.flagSkipInitialAuthenticatedUserRoleCreation,
+		Usage:  "If set, a role providing initial grants for any authenticated user will not be created as part of initialization.",
 	})
 
 	f.BoolVar(&base.BoolVar{
 		Name:   "skip-auth-method-creation",
 		Target: &c.flagSkipAuthMethodCreation,
-		Usage:  "If not set, an auth method will not be created as part of initialization. If set, the recovery KMS will be needed to perform any actions.",
+		Usage:  "If set, an auth method will not be created as part of initialization. If set, the recovery KMS will be needed to perform any actions.",
 	})
 
 	f.BoolVar(&base.BoolVar{
 		Name:   "skip-scopes-creation",
 		Target: &c.flagSkipScopesCreation,
-		Usage:  "If not set, scopes will not be created as part of initialization.",
+		Usage:  "If set, scopes will not be created as part of initialization.",
 	})
 
 	f.BoolVar(&base.BoolVar{
 		Name:   "skip-host-resources-creation",
 		Target: &c.flagSkipHostResourcesCreation,
-		Usage:  "If not set, host resources (host catalog, host set, host) will not be created as part of initialization.",
+		Usage:  "If set, host resources (host catalog, host set, host) will not be created as part of initialization.",
 	})
 
 	f.BoolVar(&base.BoolVar{
 		Name:   "skip-target-creation",
 		Target: &c.flagSkipTargetCreation,
-		Usage:  "If not set, a target will not be created as part of initialization.",
+		Usage:  "If set, a target will not be created as part of initialization.",
 	})
 
 	f.StringVar(&base.StringVar{
@@ -330,9 +337,30 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 	}
 	switch base.Format(c.UI) {
 	case "table":
-		c.UI.Output(generateInitialRoleTableOutput(roleInfo))
+		c.UI.Output(generateInitialLoginRoleTableOutput(roleInfo))
 	case "json":
 		jsonMap["login_role"] = roleInfo
+	}
+
+	if c.flagSkipInitialAuthenticatedUserRoleCreation {
+		return base.CommandSuccess
+	}
+
+	role, err = c.CreateInitialAuthenticatedUserRole(c.Context)
+	if err != nil {
+		c.UI.Error(fmt.Errorf("Error creating initial global-scoped authenticated user role: %w", err).Error())
+		return base.CommandCliError
+	}
+
+	roleInfo = &RoleInfo{
+		RoleId: role.PublicId,
+		Name:   role.Name,
+	}
+	switch base.Format(c.UI) {
+	case "table":
+		c.UI.Output(generateInitialAuthenticatedUserRoleOutput(roleInfo))
+	case "json":
+		jsonMap["authenticated_user_role"] = roleInfo
 	}
 
 	if c.flagSkipAuthMethodCreation {

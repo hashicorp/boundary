@@ -135,7 +135,7 @@ func TestRepository_AddPrincipalRoles(t *testing.T) {
 			var userIds, groupIds []string
 
 			for _, roleId := range []string{orgRole.PublicId, projRole.PublicId} {
-				origRole, _, _, err := repo.LookupRole(context.Background(), roleId)
+				origRole, _, _, _, err := repo.LookupRole(context.Background(), roleId)
 				require.NoError(err)
 
 				if tt.args.wantUserIds {
@@ -187,7 +187,7 @@ func TestRepository_AddPrincipalRoles(t *testing.T) {
 					assert.Equal(gotPrincipal[principalId].GetType(), r.GetType())
 				}
 
-				r, _, _, err := repo.LookupRole(context.Background(), roleId)
+				r, _, _, _, err := repo.LookupRole(context.Background(), roleId)
 				require.NoError(err)
 				assert.Equal(tt.args.roleVersion+1, r.Version)
 				assert.Equal(origRole.Version, r.Version-1)
@@ -646,7 +646,7 @@ func TestRepository_SetPrincipalRoles(t *testing.T) {
 			if tt.args.addToOrigGrps {
 				tt.args.groupIds = append(tt.args.groupIds, origGrps...)
 			}
-			origRole, _, _, err := repo.LookupRole(context.Background(), tt.args.role.PublicId)
+			origRole, _, _, _, err := repo.LookupRole(context.Background(), tt.args.role.PublicId)
 			require.NoError(err)
 
 			principalIds := append(tt.args.userIds, tt.args.groupIds...)
@@ -671,7 +671,7 @@ func TestRepository_SetPrincipalRoles(t *testing.T) {
 			sort.Strings(gotIds)
 			assert.Equal(wantIds, gotIds)
 
-			r, _, _, err := repo.LookupRole(context.Background(), tt.args.role.PublicId)
+			r, _, _, _, err := repo.LookupRole(context.Background(), tt.args.role.PublicId)
 			require.NoError(err)
 			if tt.name != "no change" {
 				assert.Equalf(tt.args.roleVersion+1, r.Version, "%s unexpected version: %d/%d", tt.name, tt.args.roleVersion+1, r.Version)

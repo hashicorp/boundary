@@ -269,6 +269,30 @@ func (c *Command) Run(args []string) int {
 			version = uint32(c.FlagVersion)
 		}
 
+	case "add-grant-scopes":
+		switch c.FlagVersion {
+		case 0:
+			opts = append(opts, roles.WithAutomaticVersioning(true))
+		default:
+			version = uint32(c.FlagVersion)
+		}
+
+	case "remove-grant-scopes":
+		switch c.FlagVersion {
+		case 0:
+			opts = append(opts, roles.WithAutomaticVersioning(true))
+		default:
+			version = uint32(c.FlagVersion)
+		}
+
+	case "set-grant-scopes":
+		switch c.FlagVersion {
+		case 0:
+			opts = append(opts, roles.WithAutomaticVersioning(true))
+		default:
+			version = uint32(c.FlagVersion)
+		}
+
 	}
 
 	if ok := extraFlagsHandlingFunc(c, f, &opts); !ok {

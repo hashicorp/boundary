@@ -41,6 +41,16 @@ func startDbInDockerSupported(dialect string, opt ...Option) (cleanup func() err
 		}
 	}
 
+	runOpts := &dockertest.RunOptions{
+		Tag: tag,
+		Env: []string{"POSTGRES_PASSWORD=password", "POSTGRES_DB=boundary"},
+		Cmd: []string{
+			// JIT seems to cause noticeable overhead without providing noticeable benefit.
+			// See: ICU-12283
+			"-c", "jit=off",
+		},
+	}
+
 	switch dialect {
 	case "postgres", "pgx":
 		switch {
@@ -48,13 +58,15 @@ func startDbInDockerSupported(dialect string, opt ...Option) (cleanup func() err
 			url = os.Getenv("BOUNDARY_TESTING_PG_URL")
 			return func() error { return nil }, url, "", nil
 		case repository != "":
-			resource, err = pool.Run(repository, tag, []string{"POSTGRES_PASSWORD=password", "POSTGRES_DB=boundary"})
+			runOpts.Repository = repository
+			resource, err = pool.RunWithOptions(runOpts)
 			url = "postgres://postgres:password@localhost:%s?sslmode=disable"
 			if err == nil {
 				url = fmt.Sprintf("postgres://postgres:password@%s/boundary?sslmode=disable", resource.GetHostPort("5432/tcp"))
 			}
 		default:
-			resource, err = pool.Run(dialect, tag, []string{"POSTGRES_PASSWORD=password", "POSTGRES_DB=boundary"})
+			runOpts.Repository = dialect
+			resource, err = pool.RunWithOptions(runOpts)
 			url = "postgres://postgres:password@localhost:%s?sslmode=disable"
 			if err == nil {
 				url = fmt.Sprintf("postgres://postgres:password@%s/boundary?sslmode=disable", resource.GetHostPort("5432/tcp"))

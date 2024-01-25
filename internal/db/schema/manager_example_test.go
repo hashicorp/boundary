@@ -87,6 +87,9 @@ func ExampleManager_hooks() {
 								}
 								invalid = append(invalid, fmt.Sprintf("%d:%s", id, name))
 							}
+							if err := rows.Err(); err != nil {
+								return nil, err
+							}
 
 							if len(invalid) > 0 {
 								return append([]string{"invalid foos:"}, invalid...), nil
@@ -115,6 +118,9 @@ func ExampleManager_hooks() {
 									return nil, err
 								}
 								invalid = append(invalid, fmt.Sprintf("%d:%s", id, name))
+							}
+							if err := rows.Err(); err != nil {
+								return nil, err
 							}
 
 							if len(invalid) > 0 {

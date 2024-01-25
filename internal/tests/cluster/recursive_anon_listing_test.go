@@ -27,6 +27,14 @@ func TestListAnonymousRecursing(t *testing.T) {
 	rolesClient := rolesapi.NewClient(client)
 	orgScopeId := "o_1234567890"
 
+	// Create a custom role in org scope
+	customRole, err := rolesClient.Create(tc.Context(), orgScopeId)
+	require.NoError(err)
+	customRole, err = rolesClient.AddPrincipals(tc.Context(), customRole.Item.Id, customRole.Item.Version, []string{"u_anon"})
+	require.NoError(err)
+	_, err = rolesClient.AddGrants(tc.Context(), customRole.Item.Id, customRole.Item.Version, []string{"id=*;type=auth-method;actions=list,authenticate"})
+	require.NoError(err)
+
 	// Create an auth method in org scope for the test
 	am, err := amClient.Create(tc.Context(), "password", orgScopeId)
 	require.NoError(err)
@@ -49,18 +57,19 @@ func TestListAnonymousRecursing(t *testing.T) {
 	rl, err := rolesClient.List(tc.Context(), scope.Global.String())
 	require.NoError(err)
 	require.NotNil(rl)
-	require.Len(rl.GetItems(), 2)
+	require.Len(rl.GetItems(), 3)
 
 	// Find the non-admin one and delete that first
-	adminIdx := 0
-	defaultIdx := 1
-	roles := rl.GetItems()
-	if strings.Contains(roles[0].Name, "Default") {
-		adminIdx, defaultIdx = 1, 0
+	adminRoleId := ""
+	for _, role := range rl.GetItems() {
+		if strings.Contains(role.Name, "Admin") {
+			adminRoleId = role.Id
+		} else {
+			_, err = rolesClient.Delete(tc.Context(), role.Id)
+			require.NoError(err)
+		}
 	}
-	_, err = rolesClient.Delete(tc.Context(), roles[defaultIdx].Id)
-	require.NoError(err)
-	_, err = rolesClient.Delete(tc.Context(), roles[adminIdx].Id)
+	_, err = rolesClient.Delete(tc.Context(), adminRoleId)
 	require.NoError(err)
 
 	// Make sure we can't list in global

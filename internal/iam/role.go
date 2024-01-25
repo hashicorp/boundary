@@ -34,7 +34,7 @@ var (
 )
 
 // NewRole creates a new in memory role with a scope (project/org)
-// allowed options include: withDescripion, WithName, withGrantScopeId.
+// allowed options include: withDescription, WithName.
 func NewRole(ctx context.Context, scopeId string, opt ...Option) (*Role, error) {
 	const op = "iam.NewRole"
 	if scopeId == "" {
@@ -43,10 +43,9 @@ func NewRole(ctx context.Context, scopeId string, opt ...Option) (*Role, error) 
 	opts := getOpts(opt...)
 	r := &Role{
 		Role: &store.Role{
-			ScopeId:      scopeId,
-			Name:         opts.withName,
-			Description:  opts.withDescription,
-			GrantScopeId: opts.withGrantScopeId,
+			ScopeId:     scopeId,
+			Name:        opts.withName,
+			Description: opts.withDescription,
 		},
 	}
 	return r, nil
@@ -59,8 +58,8 @@ func allocRole() Role {
 }
 
 // Clone creates a clone of the Role.
-func (r *Role) Clone() any {
-	cp := proto.Clone(r.Role)
+func (role *Role) Clone() any {
+	cp := proto.Clone(role.Role)
 	return &Role{
 		Role: cp.(*store.Role),
 	}
@@ -78,11 +77,11 @@ func (role *Role) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType
 	return nil
 }
 
-func (u *Role) validScopeTypes() []scope.Type {
+func (role *Role) validScopeTypes() []scope.Type {
 	return []scope.Type{scope.Global, scope.Org, scope.Project}
 }
 
-// Getscope returns the scope for the Role.
+// GetScope returns the scope for the Role.
 func (role *Role) GetScope(ctx context.Context, r db.Reader) (*Scope, error) {
 	return LookupScope(ctx, r, role)
 }
@@ -103,9 +102,9 @@ func (*Role) Actions() map[string]action.Type {
 }
 
 // TableName returns the tablename to override the default gorm table name.
-func (r *Role) TableName() string {
-	if r.tableName != "" {
-		return r.tableName
+func (role *Role) TableName() string {
+	if role.tableName != "" {
+		return role.tableName
 	}
 	return defaultRoleTableName
 }
@@ -113,8 +112,8 @@ func (r *Role) TableName() string {
 // SetTableName sets the tablename and satisfies the ReplayableMessage
 // interface. If the caller attempts to set the name to "" the name will be
 // reset to the default name.
-func (r *Role) SetTableName(n string) {
-	r.tableName = n
+func (role *Role) SetTableName(n string) {
+	role.tableName = n
 }
 
 type deletedRole struct {

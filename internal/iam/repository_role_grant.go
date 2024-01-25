@@ -389,6 +389,20 @@ func (r *Repository) ListRoleGrants(ctx context.Context, roleId string, opt ...O
 	return roleGrants, nil
 }
 
+// ListRoleGrantScopes returns the grant scopes for the roleId and supports the WithLimit
+// option.
+func (r *Repository) ListRoleGrantScopes(ctx context.Context, roleId string, opt ...Option) ([]*RoleGrantScope, error) {
+	const op = "iam.(Repository).ListRoleGrantScopes"
+	if roleId == "" {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing role id")
+	}
+	var roleGrantScopes []*RoleGrantScope
+	if err := r.list(ctx, &roleGrantScopes, "role_id = ?", []any{roleId}, opt...); err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to lookup role grant scopes"))
+	}
+	return roleGrantScopes, nil
+}
+
 func (r *Repository) GrantsForUser(ctx context.Context, userId string, _ ...Option) ([]perms.GrantTuple, error) {
 	const op = "iam.(Repository).GrantsForUser"
 	if userId == "" {
@@ -403,9 +417,9 @@ func (r *Repository) GrantsForUser(ctx context.Context, userId string, _ ...Opti
 	var query string
 	switch userId {
 	case globals.AnonymousUserId:
-		query = fmt.Sprintf(grantsQuery, anonUser)
+		query = fmt.Sprintf(grantsForUserQuery, anonUser)
 	default:
-		query = fmt.Sprintf(grantsQuery, authUser)
+		query = fmt.Sprintf(grantsForUserQuery, authUser)
 	}
 
 	var grants []perms.GrantTuple
@@ -415,11 +429,12 @@ func (r *Repository) GrantsForUser(ctx context.Context, userId string, _ ...Opti
 	}
 	defer rows.Close()
 	for rows.Next() {
-		var g perms.GrantTuple
-		if err := r.reader.ScanRows(ctx, rows, &g); err != nil {
+		if err := r.reader.ScanRows(ctx, rows, &grants); err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
-		grants = append(grants, g)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	return grants, nil
 }

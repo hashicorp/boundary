@@ -64,24 +64,24 @@ begin;
   -- Try to insert row with null session id
   prepare insert_invalid_recording_session as
     insert into recording_session
-      (public_id,      storage_bucket_id, session_id, state)
+      (public_id,      storage_bucket_id, session_id, state,     target_org_id)
     values
-      ('sr_________1', 'sb____global',    null,       'started');
+      ('sr_________1', 'sb____global',    null,       'started', 'o_____colors');
   select throws_ok('insert_invalid_recording_session', null, null, 'insert invalid recording_session succeeded');
 
   -- Try to insert row with non-started state
   prepare insert_with_invalid_state as
     insert into recording_session
-      (public_id,      storage_bucket_id, session_id,     state)
+      (public_id,      storage_bucket_id, session_id,     state,       target_org_id)
     values
-      ('sr_________1', 'sb_________g',    's1_____clare', 'available');
+      ('sr_________1', 'sb_________g',    's1_____clare', 'available', 'o_____colors');
   select throws_ok('insert_with_invalid_state', null, null, 'insert invalid recording_session state succeeded');
 
   prepare insert_recording_session as
     insert into recording_session
-      (public_id,      storage_bucket_id, session_id,     state)
+      (public_id,      storage_bucket_id, session_id,     state,     target_org_id)
     values
-      ('sr_________1', 'sb____global',    's2_____clare', 'started');
+      ('sr_________1', 'sb____global',    's2_____clare', 'started', 'o_____colors');
   select lives_ok('insert_recording_session');
 
   select results_eq(
@@ -90,9 +90,9 @@ begin;
 
   prepare insert_recording_session_target_address as
     insert into recording_session
-      (public_id,      storage_bucket_id, session_id)
+      (public_id,      storage_bucket_id, session_id,     target_org_id)
     values
-      ('sr_________2', 'sb____global',    's2______cora');
+      ('sr_________2', 'sb____global',    's2______cora', 'o_____colors');
   select lives_ok('insert_recording_session_target_address');
 
   select results_eq(
@@ -101,9 +101,9 @@ begin;
 
   prepare insert_recording_session_plugin_host as
     insert into recording_session
-    (public_id,      storage_bucket_id, session_id)
+      (public_id,      storage_bucket_id, session_id,     target_org_id)
     values
-      ('sr_________3', 'sb____global',    's2_____carly');
+      ('sr_________3', 'sb____global',    's2_____carly', 'o_____colors');
   select lives_ok('insert_recording_session_plugin_host');
 
   -- Try to set end_time before start_time

@@ -27,6 +27,7 @@ type Role struct {
 	UpdatedTime       time.Time         `json:"updated_time,omitempty"`
 	Version           uint32            `json:"version,omitempty"`
 	GrantScopeId      string            `json:"grant_scope_id,omitempty"`
+	GrantScopeIds     []string          `json:"grant_scope_ids,omitempty"`
 	PrincipalIds      []string          `json:"principal_ids,omitempty"`
 	Principals        []*Principal      `json:"principals,omitempty"`
 	GrantStrings      []string          `json:"grant_strings,omitempty"`
@@ -448,6 +449,76 @@ func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) (*Role
 	return target, nil
 }
 
+func (c *Client) AddGrantScopes(ctx context.Context, id string, version uint32, grantScopeIds []string, opt ...Option) (*RoleUpdateResult, error) {
+	if id == "" {
+		return nil, fmt.Errorf("empty id value passed into AddGrantScopes request")
+	}
+
+	if len(grantScopeIds) == 0 {
+		return nil, errors.New("empty grantScopeIds passed into AddGrantScopes request")
+	}
+
+	if c.client == nil {
+		return nil, errors.New("nil client")
+	}
+
+	opts, apiOpts := getOpts(opt...)
+
+	if version == 0 {
+		if !opts.withAutomaticVersioning {
+			return nil, errors.New("zero version number passed into AddGrantScopes request")
+		}
+		existingTarget, existingErr := c.Read(ctx, id, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
+		if existingErr != nil {
+			if api.AsServerError(existingErr) != nil {
+				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
+			}
+			return nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
+		}
+		if existingTarget == nil {
+			return nil, errors.New("nil resource response found when performing initial check-and-set read")
+		}
+		if existingTarget.Item == nil {
+			return nil, errors.New("nil resource found when performing initial check-and-set read")
+		}
+		version = existingTarget.Item.Version
+	}
+
+	opts.postMap["version"] = version
+
+	opts.postMap["grant_scope_ids"] = grantScopeIds
+
+	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:add-grant-scopes", url.PathEscape(id)), opts.postMap, apiOpts...)
+	if err != nil {
+		return nil, fmt.Errorf("error creating AddGrantScopes request: %w", err)
+	}
+
+	if len(opts.queryMap) > 0 {
+		q := url.Values{}
+		for k, v := range opts.queryMap {
+			q.Add(k, v)
+		}
+		req.URL.RawQuery = q.Encode()
+	}
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("error performing client request during AddGrantScopes call: %w", err)
+	}
+
+	target := new(RoleUpdateResult)
+	target.Item = new(Role)
+	apiErr, err := resp.Decode(target.Item)
+	if err != nil {
+		return nil, fmt.Errorf("error decoding AddGrantScopes response: %w", err)
+	}
+	if apiErr != nil {
+		return nil, apiErr
+	}
+	target.response = resp
+	return target, nil
+}
+
 func (c *Client) AddGrants(ctx context.Context, id string, version uint32, grantStrings []string, opt ...Option) (*RoleUpdateResult, error) {
 	if id == "" {
 		return nil, fmt.Errorf("empty id value passed into AddGrants request")
@@ -588,6 +659,72 @@ func (c *Client) AddPrincipals(ctx context.Context, id string, version uint32, p
 	return target, nil
 }
 
+func (c *Client) SetGrantScopes(ctx context.Context, id string, version uint32, grantScopeIds []string, opt ...Option) (*RoleUpdateResult, error) {
+	if id == "" {
+		return nil, fmt.Errorf("empty id value passed into SetGrantScopes request")
+	}
+
+	if c.client == nil {
+		return nil, errors.New("nil client")
+	}
+
+	opts, apiOpts := getOpts(opt...)
+
+	if version == 0 {
+		if !opts.withAutomaticVersioning {
+			return nil, errors.New("zero version number passed into SetGrantScopes request")
+		}
+		existingTarget, existingErr := c.Read(ctx, id, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
+		if existingErr != nil {
+			if api.AsServerError(existingErr) != nil {
+				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
+			}
+			return nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
+		}
+		if existingTarget == nil {
+			return nil, errors.New("nil resource response found when performing initial check-and-set read")
+		}
+		if existingTarget.Item == nil {
+			return nil, errors.New("nil resource found when performing initial check-and-set read")
+		}
+		version = existingTarget.Item.Version
+	}
+
+	opts.postMap["version"] = version
+
+	opts.postMap["grant_scope_ids"] = grantScopeIds
+
+	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:set-grant-scopes", url.PathEscape(id)), opts.postMap, apiOpts...)
+	if err != nil {
+		return nil, fmt.Errorf("error creating SetGrantScopes request: %w", err)
+	}
+
+	if len(opts.queryMap) > 0 {
+		q := url.Values{}
+		for k, v := range opts.queryMap {
+			q.Add(k, v)
+		}
+		req.URL.RawQuery = q.Encode()
+	}
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("error performing client request during SetGrantScopes call: %w", err)
+	}
+
+	target := new(RoleUpdateResult)
+	target.Item = new(Role)
+	apiErr, err := resp.Decode(target.Item)
+	if err != nil {
+		return nil, fmt.Errorf("error decoding SetGrantScopes response: %w", err)
+	}
+	if apiErr != nil {
+		return nil, apiErr
+	}
+	target.response = resp
+	return target, nil
+}
+
 func (c *Client) SetGrants(ctx context.Context, id string, version uint32, grantStrings []string, opt ...Option) (*RoleUpdateResult, error) {
 	if id == "" {
 		return nil, fmt.Errorf("empty id value passed into SetGrants request")
@@ -712,6 +849,76 @@ func (c *Client) SetPrincipals(ctx context.Context, id string, version uint32, p
 	apiErr, err := resp.Decode(target.Item)
 	if err != nil {
 		return nil, fmt.Errorf("error decoding SetPrincipals response: %w", err)
+	}
+	if apiErr != nil {
+		return nil, apiErr
+	}
+	target.response = resp
+	return target, nil
+}
+
+func (c *Client) RemoveGrantScopes(ctx context.Context, id string, version uint32, grantScopeIds []string, opt ...Option) (*RoleUpdateResult, error) {
+	if id == "" {
+		return nil, fmt.Errorf("empty id value passed into RemoveGrantScopes request")
+	}
+
+	if len(grantScopeIds) == 0 {
+		return nil, errors.New("empty grantScopeIds passed into RemoveGrantScopes request")
+	}
+
+	if c.client == nil {
+		return nil, errors.New("nil client")
+	}
+
+	opts, apiOpts := getOpts(opt...)
+
+	if version == 0 {
+		if !opts.withAutomaticVersioning {
+			return nil, errors.New("zero version number passed into RemoveGrantScopes request")
+		}
+		existingTarget, existingErr := c.Read(ctx, id, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
+		if existingErr != nil {
+			if api.AsServerError(existingErr) != nil {
+				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
+			}
+			return nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
+		}
+		if existingTarget == nil {
+			return nil, errors.New("nil resource response found when performing initial check-and-set read")
+		}
+		if existingTarget.Item == nil {
+			return nil, errors.New("nil resource found when performing initial check-and-set read")
+		}
+		version = existingTarget.Item.Version
+	}
+
+	opts.postMap["version"] = version
+
+	opts.postMap["grant_scope_ids"] = grantScopeIds
+
+	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:remove-grant-scopes", url.PathEscape(id)), opts.postMap, apiOpts...)
+	if err != nil {
+		return nil, fmt.Errorf("error creating RemoveGrantScopes request: %w", err)
+	}
+
+	if len(opts.queryMap) > 0 {
+		q := url.Values{}
+		for k, v := range opts.queryMap {
+			q.Add(k, v)
+		}
+		req.URL.RawQuery = q.Encode()
+	}
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("error performing client request during RemoveGrantScopes call: %w", err)
+	}
+
+	target := new(RoleUpdateResult)
+	target.Item = new(Role)
+	apiErr, err := resp.Decode(target.Item)
+	if err != nil {
+		return nil, fmt.Errorf("error decoding RemoveGrantScopes response: %w", err)
 	}
 	if apiErr != nil {
 		return nil, apiErr

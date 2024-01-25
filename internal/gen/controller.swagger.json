@@ -42,6 +42,9 @@
       "name": "controller.api.services.v1.ManagedGroupService"
     },
     {
+      "name": "controller.api.services.v1.PolicyService"
+    },
+    {
       "name": "controller.api.services.v1.RoleService"
     },
     {
@@ -2243,6 +2246,168 @@
         ]
       }
     },
+    "/v1/policies": {
+      "get": {
+        "summary": "Lists all policies.",
+        "operationId": "PolicyService_ListPolicies",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.ListPoliciesResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "scope_id",
+            "description": "",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "recursive",
+            "description": "",
+            "in": "query",
+            "required": false,
+            "type": "boolean"
+          },
+          {
+            "name": "filter",
+            "description": "",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "list_token",
+            "description": "An opaque token used to continue an existing iteration or\nrequest updated items. If not specified, pagination\nwill start from the beginning.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "page_size",
+            "description": "The maximum size of a page in this iteration.\nIf unset, the default page size configured will be used.\nIf the page_size is greater than the default page configured,\nan error will be returned.",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int64"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.PolicyService"
+        ]
+      },
+      "post": {
+        "summary": "Creates a single policy.",
+        "operationId": "PolicyService_CreatePolicy",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.policies.v1.Policy"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "item",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.policies.v1.Policy"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.PolicyService"
+        ]
+      }
+    },
+    "/v1/policies/{id}": {
+      "get": {
+        "summary": "Gets a single policy with the given id.",
+        "operationId": "PolicyService_GetPolicy",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.policies.v1.Policy"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "description": "",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.PolicyService"
+        ]
+      },
+      "delete": {
+        "summary": "Deletes an existing policy.",
+        "operationId": "PolicyService_DeletePolicy",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.DeletePolicyResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "description": "",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.PolicyService"
+        ]
+      },
+      "patch": {
+        "summary": "Updates an existing policy.",
+        "operationId": "PolicyService_UpdatePolicy",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.policies.v1.Policy"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "description": "",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "item",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.policies.v1.Policy"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.PolicyService"
+        ]
+      }
+    },
     "/v1/roles": {
       "get": {
         "summary": "Lists all Roles.",
@@ -2405,6 +2570,54 @@
         ]
       }
     },
+    "/v1/roles/{id}:add-grant-scopes": {
+      "post": {
+        "summary": "Adds grant scopes to a Role",
+        "operationId": "RoleService_AddRoleGrantScopes",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "description": "",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "version": {
+                  "type": "integer",
+                  "format": "int64",
+                  "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+                },
+                "grant_scope_ids": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "title": ""
+                }
+              }
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.RoleService"
+        ]
+      }
+    },
     "/v1/roles/{id}:add-grants": {
       "post": {
         "summary": "Adds grants to a Role",
@@ -2501,6 +2714,54 @@
         ]
       }
     },
+    "/v1/roles/{id}:remove-grant-scopes": {
+      "post": {
+        "summary": "Removes grant scopes from a Role.",
+        "operationId": "RoleService_RemoveRoleGrantScopes",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "description": "",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "version": {
+                  "type": "integer",
+                  "format": "int64",
+                  "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+                },
+                "grant_scope_ids": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "title": ""
+                }
+              }
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.RoleService"
+        ]
+      }
+    },
     "/v1/roles/{id}:remove-grants": {
       "post": {
         "summary": "Removes grants from a Role.",
@@ -2582,6 +2843,54 @@
                   "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
                 },
                 "principal_ids": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "title": ""
+                }
+              }
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.RoleService"
+        ]
+      }
+    },
+    "/v1/roles/{id}:set-grant-scopes": {
+      "post": {
+        "summary": "Set grant scopes for a Role, removing any grant scopes that are not specified in the request.",
+        "operationId": "RoleService_SetRoleGrantScopes",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "description": "",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "version": {
+                  "type": "integer",
+                  "format": "int64",
+                  "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+                },
+                "grant_scope_ids": {
                   "type": "array",
                   "items": {
                     "type": "string"
@@ -2869,6 +3178,92 @@
         ]
       }
     },
+    "/v1/scopes/{id}:attach-storage-policy": {
+      "post": {
+        "summary": "Attaches the specified Storage Policy to the Scope.",
+        "operationId": "ScopeService_AttachStoragePolicy",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.scopes.v1.Scope"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "description": "",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "storage_policy_id": {
+                  "type": "string",
+                  "title": ""
+                },
+                "version": {
+                  "type": "integer",
+                  "format": "int64",
+                  "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+                }
+              }
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.ScopeService"
+        ]
+      }
+    },
+    "/v1/scopes/{id}:detach-storage-policy": {
+      "post": {
+        "summary": "Detaches the specified Storage Policy from the Scope.",
+        "operationId": "ScopeService_DetachStoragePolicy",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.scopes.v1.Scope"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "description": "",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "version": {
+                  "type": "integer",
+                  "format": "int64",
+                  "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+                }
+              }
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.ScopeService"
+        ]
+      }
+    },
     "/v1/scopes/{id}:list-keys": {
       "get": {
         "summary": "List all keys in a Scope.",
@@ -3047,6 +3442,30 @@
         "tags": [
           "controller.api.services.v1.SessionRecordingService"
         ]
+      },
+      "delete": {
+        "summary": "Deletes a Session Recording",
+        "operationId": "SessionRecordingService_DeleteSessionRecording",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.DeleteSessionRecordingResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "description": "",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.SessionRecordingService"
+        ]
       }
     },
     "/v1/session-recordings/{id}:download": {
@@ -3077,6 +3496,32 @@
             "description": "The format of the response. The only supported mime type is \"application/x-asciicast\".\nDefaults to \"application/x-asciicast\" if not set.",
             "in": "query",
             "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.SessionRecordingService"
+        ]
+      }
+    },
+    "/v1/session-recordings/{id}:reapply-storage-policy": {
+      "post": {
+        "summary": "ReApplyStoragePolicy will recalculate the resultant set of policy and apply the result to the given session recording.",
+        "operationId": "SessionRecordingService_ReApplyStoragePolicy",
+        "responses": {
+          "200": {
+            "description": "The requested recording.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.sessionrecordings.v1.SessionRecording"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "description": "The Session Recording ID",
+            "in": "path",
+            "required": true,
             "type": "string"
           }
         ],
@@ -5469,6 +5914,65 @@
         }
       }
     },
+    "controller.api.resources.policies.v1.Policy": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Output only. The id of the storage policy.",
+          "readOnly": true
+        },
+        "scope_id": {
+          "type": "string",
+          "description": "The scope id of this policy. This must be defined for policy creation, but\nis otherwise output only."
+        },
+        "scope": {
+          "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
+          "description": "Output only. Scope information for this resource.",
+          "readOnly": true
+        },
+        "name": {
+          "type": "string",
+          "description": "Optional name for identification purposes."
+        },
+        "description": {
+          "type": "string",
+          "description": "Optional user-set description for identification purposes."
+        },
+        "created_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Output only. The time this resource was created.",
+          "readOnly": true
+        },
+        "updated_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Output only. The time this resource was last updated.",
+          "readOnly": true
+        },
+        "type": {
+          "type": "string",
+          "description": "The policy's type."
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Version is used in mutation requests, after the initial creation, to ensure\nthis resource has not changed. The mutation will fail if the version does\nnot match the latest known good version."
+        },
+        "attributes": {
+          "type": "object"
+        },
+        "authorized_actions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Output only. The available actions on this resource for this user.",
+          "readOnly": true
+        }
+      }
+    },
     "controller.api.resources.roles.v1.Grant": {
       "type": "object",
       "properties": {
@@ -5584,7 +6088,15 @@
         },
         "grant_scope_id": {
           "type": "string",
-          "description": "The Scope the grants will apply to. If the Role is at the global scope, this can be an org or project. If the Role is at an org scope, this can be a project within the org. It is invalid for this to be anything other than the Role's scope when the Role's scope is a project."
+          "description": "The Scope the grants will apply to. If the Role is at the global scope,\nthis can be an org or project. If the Role is at an org scope, this can be\na project within the org. It is invalid for this to be anything other than\nthe Role's scope when the Role's scope is a project.\n\nDeprecated: Use \"grant_scope_ids\" instead."
+        },
+        "grant_scope_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Output only. The IDs of Scopes the grants will apply to. This can include\nthe role's own scope ID, or \"this\" for the same behavior; specific IDs of\nscopes that are children of the role's scope; the value \"children\" to match\nall direct child scopes of the role's scope; or the value \"descendants\" to\nmatch all descendant scopes (e.g. child scopes, children of child scopes;\nonly valid at \"global\" scope since it is the only one with children of\nchildren).",
+          "readOnly": true
         },
         "principal_ids": {
           "type": "array",
@@ -5787,6 +6299,11 @@
             }
           },
           "description": "Output only. The authorized actions for the scope's collections.",
+          "readOnly": true
+        },
+        "storage_policy_id": {
+          "type": "string",
+          "description": "Output only. The attached storage policy id.",
           "readOnly": true
         }
       },
@@ -6209,6 +6726,16 @@
             "type": "string"
           },
           "description": "The available actions on this resource for this user."
+        },
+        "retain_until": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time until a session recording is required to be stored."
+        },
+        "delete_after": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time a session recording is scheduled to be automatically deleted."
         }
       },
       "description": "SessionRecording contains information about the recording of a Session."
@@ -7208,6 +7735,14 @@
         }
       }
     },
+    "controller.api.services.v1.AddRoleGrantScopesResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+        }
+      }
+    },
     "controller.api.services.v1.AddRoleGrantsResponse": {
       "type": "object",
       "properties": {
@@ -7253,6 +7788,14 @@
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.workers.v1.Worker"
+        }
+      }
+    },
+    "controller.api.services.v1.AttachStoragePolicyResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.scopes.v1.Scope"
         }
       }
     },
@@ -7437,6 +7980,18 @@
         }
       }
     },
+    "controller.api.services.v1.CreatePolicyResponse": {
+      "type": "object",
+      "properties": {
+        "uri": {
+          "type": "string",
+          "title": ""
+        },
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.policies.v1.Policy"
+        }
+      }
+    },
     "controller.api.services.v1.CreateRoleResponse": {
       "type": "object",
       "properties": {
@@ -7541,10 +8096,16 @@
     "controller.api.services.v1.DeleteManagedGroupResponse": {
       "type": "object"
     },
+    "controller.api.services.v1.DeletePolicyResponse": {
+      "type": "object"
+    },
     "controller.api.services.v1.DeleteRoleResponse": {
       "type": "object"
     },
     "controller.api.services.v1.DeleteScopeResponse": {
+      "type": "object"
+    },
+    "controller.api.services.v1.DeleteSessionRecordingResponse": {
       "type": "object"
     },
     "controller.api.services.v1.DeleteStorageBucketResponse": {
@@ -7578,6 +8139,14 @@
         "state": {
           "type": "string",
           "description": "Destruction state. One of \"pending\" or \"completed\".\nUse GET /v1/scopes/{scope_id}:list-key-version-destruction-jobs\nto monitor pending destruction jobs."
+        }
+      }
+    },
+    "controller.api.services.v1.DetachStoragePolicyResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.scopes.v1.Scope"
         }
       }
     },
@@ -7666,6 +8235,14 @@
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.managedgroups.v1.ManagedGroup"
+        }
+      }
+    },
+    "controller.api.services.v1.GetPolicyResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.policies.v1.Policy"
         }
       }
     },
@@ -8202,6 +8779,46 @@
         }
       }
     },
+    "controller.api.services.v1.ListPoliciesResponse": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/controller.api.resources.policies.v1.Policy"
+          }
+        },
+        "response_type": {
+          "type": "string",
+          "description": "The type of response, either \"delta\" or \"complete\".\nDelta signifies that this is part of a paginated result\nor an update to a previously completed pagination.\nComplete signifies that it is the last page."
+        },
+        "list_token": {
+          "type": "string",
+          "description": "An opaque token used to continue an existing pagination or\nrequest updated items. Use this token in the next list request\nto request the next page."
+        },
+        "sort_by": {
+          "type": "string",
+          "description": "The name of the field which the items are sorted by."
+        },
+        "sort_dir": {
+          "type": "string",
+          "description": "The direction of the sort, either \"asc\" or \"desc\"."
+        },
+        "removed_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "A list of item IDs that have been removed since they were returned\nas part of a pagination. They should be dropped from any client cache.\nThis may contain items that are not known to the cache, if they were\ncreated and deleted between listings."
+        },
+        "est_item_count": {
+          "type": "integer",
+          "format": "int64",
+          "description": "An estimate at the total items available. This may change during pagination."
+        }
+      }
+    },
     "controller.api.services.v1.ListRolesResponse": {
       "type": "object",
       "properties": {
@@ -8497,6 +9114,15 @@
         }
       }
     },
+    "controller.api.services.v1.ReApplyStoragePolicyResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.sessionrecordings.v1.SessionRecording",
+          "description": "The requested recording."
+        }
+      }
+    },
     "controller.api.services.v1.ReadCertificateAuthorityResponse": {
       "type": "object",
       "properties": {
@@ -8526,6 +9152,14 @@
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.hostsets.v1.HostSet"
+        }
+      }
+    },
+    "controller.api.services.v1.RemoveRoleGrantScopesResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
         }
       }
     },
@@ -8614,6 +9248,14 @@
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.accounts.v1.Account"
+        }
+      }
+    },
+    "controller.api.services.v1.SetRoleGrantScopesResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
         }
       }
     },
@@ -8742,6 +9384,14 @@
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.managedgroups.v1.ManagedGroup"
+        }
+      }
+    },
+    "controller.api.services.v1.UpdatePolicyResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.policies.v1.Policy"
         }
       }
     },

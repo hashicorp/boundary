@@ -229,6 +229,7 @@ values
 			require.NoError(t, rw.ScanRows(context.Background(), rows, &addr))
 			results = append(results, addr)
 		}
+		assert.NoError(t, rows.Err())
 		assert.ElementsMatch(t, results, addresses)
 	}
 }

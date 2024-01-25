@@ -38,6 +38,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/genproto/protobuf/field_mask"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -45,7 +46,11 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-var testAuthorizedActions = []string{"no-op", "read", "update", "delete"}
+var (
+	testAuthorizedOrgActions    = []string{"no-op", "read", "update", "delete", "attach-storage-policy", "detach-storage-policy"}
+	testAuthorizedPrjActions    = []string{"no-op", "read", "update", "delete"}
+	testAuthorizedGlobalActions = []string{"no-op", "read", "update", "attach-storage-policy", "detach-storage-policy"}
+)
 
 func createDefaultScopesRepoAndKms(t *testing.T) (*iam.Scope, *iam.Scope, func() (*iam.Repository, error), *kms.Kms) {
 	t.Helper()
@@ -88,6 +93,12 @@ var globalAuthorizedCollectionActions = map[string]*structpb.ListValue{
 		},
 	},
 	"groups": {
+		Values: []*structpb.Value{
+			structpb.NewStringValue("create"),
+			structpb.NewStringValue("list"),
+		},
+	},
+	"policies": {
 		Values: []*structpb.Value{
 			structpb.NewStringValue("create"),
 			structpb.NewStringValue("list"),
@@ -150,6 +161,12 @@ var orgAuthorizedCollectionActions = map[string]*structpb.ListValue{
 		},
 	},
 	"groups": {
+		Values: []*structpb.Value{
+			structpb.NewStringValue("create"),
+			structpb.NewStringValue("list"),
+		},
+	},
+	"policies": {
 		Values: []*structpb.Value{
 			structpb.NewStringValue("create"),
 			structpb.NewStringValue("list"),
@@ -252,7 +269,7 @@ func TestGet(t *testing.T) {
 		UpdatedTime:                 org.UpdateTime.GetTimestamp(),
 		Version:                     2,
 		Type:                        scope.Org.String(),
-		AuthorizedActions:           testAuthorizedActions,
+		AuthorizedActions:           testAuthorizedOrgActions,
 		AuthorizedCollectionActions: orgAuthorizedCollectionActions,
 	}
 
@@ -266,7 +283,7 @@ func TestGet(t *testing.T) {
 		UpdatedTime:                 proj.UpdateTime.GetTimestamp(),
 		Version:                     2,
 		Type:                        scope.Project.String(),
-		AuthorizedActions:           testAuthorizedActions,
+		AuthorizedActions:           testAuthorizedPrjActions,
 		AuthorizedCollectionActions: projectAuthorizedCollectionActions,
 	}
 
@@ -325,7 +342,7 @@ func TestGet(t *testing.T) {
 			req := proto.Clone(toMerge).(*pbs.GetScopeRequest)
 			proto.Merge(req, tc.req)
 
-			s, err := scopes.NewService(context.Background(), repoFn, kms, 1000)
+			s, err := scopes.NewServiceFn(context.Background(), repoFn, kms, 1000)
 			require.NoError(err, "Couldn't create new project service.")
 
 			got, gErr := s.GetScope(auth.DisabledAuthTestContext(repoFn, tc.scopeId), req)
@@ -373,12 +390,12 @@ func TestList(t *testing.T) {
 	oNoProjectsProto, err := scopes.ToProto(context.Background(), oNoProjects, handlers.WithOutputFields(outputFields))
 	require.NoError(t, err)
 	oNoProjectsProto.Scope = globalScope
-	oNoProjectsProto.AuthorizedActions = testAuthorizedActions
+	oNoProjectsProto.AuthorizedActions = testAuthorizedOrgActions
 	oNoProjectsProto.AuthorizedCollectionActions = orgAuthorizedCollectionActions
 	oWithProjectsProto, err := scopes.ToProto(context.Background(), oWithProjects, handlers.WithOutputFields(outputFields))
 	require.NoError(t, err)
 	oWithProjectsProto.Scope = globalScope
-	oWithProjectsProto.AuthorizedActions = testAuthorizedActions
+	oWithProjectsProto.AuthorizedActions = testAuthorizedOrgActions
 	oWithProjectsProto.AuthorizedCollectionActions = orgAuthorizedCollectionActions
 	initialOrgs = append(initialOrgs, oNoProjectsProto, oWithProjectsProto)
 
@@ -436,7 +453,7 @@ func TestList(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			s, err := scopes.NewService(context.Background(), repoFn, kms, 1000)
+			s, err := scopes.NewServiceFn(context.Background(), repoFn, kms, 1000)
 			require.NoError(err, "Couldn't create new role service.")
 
 			// Test with non-anonymous listing first
@@ -487,7 +504,7 @@ func TestList(t *testing.T) {
 			UpdatedTime:                 o.GetUpdateTime().GetTimestamp(),
 			Version:                     1,
 			Type:                        scope.Org.String(),
-			AuthorizedActions:           testAuthorizedActions,
+			AuthorizedActions:           testAuthorizedOrgActions,
 			AuthorizedCollectionActions: orgAuthorizedCollectionActions,
 		})
 	}
@@ -511,7 +528,7 @@ func TestList(t *testing.T) {
 			UpdatedTime:                 p.GetUpdateTime().GetTimestamp(),
 			Version:                     1,
 			Type:                        scope.Project.String(),
-			AuthorizedActions:           testAuthorizedActions,
+			AuthorizedActions:           testAuthorizedPrjActions,
 			AuthorizedCollectionActions: projectAuthorizedCollectionActions,
 		})
 	}
@@ -597,7 +614,7 @@ func TestList(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			s, err := scopes.NewService(context.Background(), repoFn, kms, 1000)
+			s, err := scopes.NewServiceFn(context.Background(), repoFn, kms, 1000)
 			require.NoError(err, "Couldn't create new scope service.")
 
 			// Test with non-anonymous listing first
@@ -704,7 +721,7 @@ func TestListPagination(t *testing.T) {
 			UpdatedTime:                 p.GetUpdateTime().GetTimestamp(),
 			Version:                     1,
 			Type:                        scope.Project.String(),
-			AuthorizedActions:           testAuthorizedActions,
+			AuthorizedActions:           testAuthorizedPrjActions,
 			AuthorizedCollectionActions: paginationAuthorizedCollectionActions,
 		})
 	}
@@ -721,10 +738,10 @@ func TestListPagination(t *testing.T) {
 	u := iam.TestUser(t, iamRepo, oWithProjects.GetPublicId(), iam.WithAccountIds(acct.PublicId))
 
 	// privProjRole := iam.TestRole(t, conn, pwt.GetPublicId())
-	// iam.TestRoleGrant(t, conn, privProjRole.GetPublicId(), "id=*;type=*;actions=*")
+	// iam.TestRoleGrant(t, conn, privProjRole.GetPublicId(), "ids=*;type=*;actions=*")
 	// iam.TestUserRole(t, conn, privProjRole.GetPublicId(), u.GetPublicId())
 	privOrgRole := iam.TestRole(t, conn, oWithProjects.GetPublicId())
-	iam.TestRoleGrant(t, conn, privOrgRole.GetPublicId(), "id=*;type=*;actions=*")
+	iam.TestRoleGrant(t, conn, privOrgRole.GetPublicId(), "ids=*;type=*;actions=*")
 	iam.TestUserRole(t, conn, privOrgRole.GetPublicId(), u.GetPublicId())
 
 	at, _ := tokenRepo.CreateAuthToken(ctx, u, acct.GetPublicId())
@@ -744,7 +761,7 @@ func TestListPagination(t *testing.T) {
 		PageSize:  2,
 	}
 
-	s, err := scopes.NewService(ctx, repoFn, kms, 1000)
+	s, err := scopes.NewServiceFn(ctx, repoFn, kms, 1000)
 	require.NoError(t, err)
 
 	got, err := s.ListScopes(ctx, req)
@@ -847,7 +864,7 @@ func TestListPagination(t *testing.T) {
 		UpdatedTime:                 p.GetUpdateTime().GetTimestamp(),
 		Version:                     1,
 		Type:                        scope.Project.String(),
-		AuthorizedActions:           testAuthorizedActions,
+		AuthorizedActions:           testAuthorizedPrjActions,
 		AuthorizedCollectionActions: paginationAuthorizedCollectionActions,
 	}
 	// Add to the front of the slice since it's the most recently updated
@@ -962,7 +979,7 @@ func TestListPagination(t *testing.T) {
 func TestDelete(t *testing.T) {
 	org, proj, repoFn, kms := createDefaultScopesRepoAndKms(t)
 
-	s, err := scopes.NewService(context.Background(), repoFn, kms, 1000)
+	s, err := scopes.NewServiceFn(context.Background(), repoFn, kms, 1000)
 	require.NoError(t, err, "Error when getting new project service.")
 
 	cases := []struct {
@@ -1036,7 +1053,7 @@ func TestDelete_twice(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 	org, proj, repoFn, kms := createDefaultScopesRepoAndKms(t)
 
-	s, err := scopes.NewService(context.Background(), repoFn, kms, 1000)
+	s, err := scopes.NewServiceFn(context.Background(), repoFn, kms, 1000)
 	require.NoError(err, "Error when getting new scopes service")
 	ctx := auth.DisabledAuthTestContext(repoFn, org.GetPublicId())
 	req := &pbs.DeleteScopeRequest{
@@ -1102,7 +1119,7 @@ func TestCreate(t *testing.T) {
 					Description:                 &wrapperspb.StringValue{Value: "desc"},
 					Version:                     1,
 					Type:                        scope.Project.String(),
-					AuthorizedActions:           testAuthorizedActions,
+					AuthorizedActions:           testAuthorizedPrjActions,
 					AuthorizedCollectionActions: projectAuthorizedCollectionActions,
 				},
 			},
@@ -1126,7 +1143,7 @@ func TestCreate(t *testing.T) {
 					Description:                 &wrapperspb.StringValue{Value: "desc"},
 					Version:                     1,
 					Type:                        scope.Org.String(),
-					AuthorizedActions:           testAuthorizedActions,
+					AuthorizedActions:           testAuthorizedOrgActions,
 					AuthorizedCollectionActions: orgAuthorizedCollectionActions,
 				},
 			},
@@ -1149,7 +1166,7 @@ func TestCreate(t *testing.T) {
 					Description:                 &wrapperspb.StringValue{Value: "desc"},
 					Version:                     1,
 					Type:                        scope.Project.String(),
-					AuthorizedActions:           testAuthorizedActions,
+					AuthorizedActions:           testAuthorizedPrjActions,
 					AuthorizedCollectionActions: projectAuthorizedCollectionActions,
 				},
 			},
@@ -1172,7 +1189,7 @@ func TestCreate(t *testing.T) {
 					Description:                 &wrapperspb.StringValue{Value: "desc"},
 					Version:                     1,
 					Type:                        scope.Org.String(),
-					AuthorizedActions:           testAuthorizedActions,
+					AuthorizedActions:           testAuthorizedOrgActions,
 					AuthorizedCollectionActions: orgAuthorizedCollectionActions,
 				},
 			},
@@ -1197,7 +1214,7 @@ func TestCreate(t *testing.T) {
 					Name:                        &wrapperspb.StringValue{Value: "test org name with whitespace"},    // assert the whitespace is trimmed
 					Version:                     1,
 					Type:                        scope.Org.String(),
-					AuthorizedActions:           testAuthorizedActions,
+					AuthorizedActions:           testAuthorizedOrgActions,
 					AuthorizedCollectionActions: orgAuthorizedCollectionActions,
 				},
 			},
@@ -1294,7 +1311,7 @@ func TestCreate(t *testing.T) {
 				req := proto.Clone(toMerge).(*pbs.CreateScopeRequest)
 				proto.Merge(req, tc.req)
 
-				s, err := scopes.NewService(context.Background(), repoFn, kms, 1000)
+				s, err := scopes.NewServiceFn(context.Background(), repoFn, kms, 1000)
 				require.NoError(err, "Error when getting new project service.")
 
 				if name != "" {
@@ -1401,7 +1418,7 @@ func TestCreate(t *testing.T) {
 
 func TestUpdate(t *testing.T) {
 	org, proj, repoFn, kms := createDefaultScopesRepoAndKms(t)
-	tested, err := scopes.NewService(context.Background(), repoFn, kms, 1000)
+	tested, err := scopes.NewServiceFn(context.Background(), repoFn, kms, 1000)
 	require.NoError(t, err, "Error when getting new project service.")
 
 	iamRepo, err := repoFn()
@@ -1483,7 +1500,7 @@ func TestUpdate(t *testing.T) {
 					Description:                 &wrapperspb.StringValue{Value: "desc"},
 					CreatedTime:                 proj.GetCreateTime().GetTimestamp(),
 					Type:                        scope.Project.String(),
-					AuthorizedActions:           testAuthorizedActions,
+					AuthorizedActions:           testAuthorizedPrjActions,
 					AuthorizedCollectionActions: projectAuthorizedCollectionActions,
 				},
 			},
@@ -1510,7 +1527,7 @@ func TestUpdate(t *testing.T) {
 					Description:                 &wrapperspb.StringValue{Value: "desc"},
 					CreatedTime:                 org.GetCreateTime().GetTimestamp(),
 					Type:                        scope.Org.String(),
-					AuthorizedActions:           testAuthorizedActions,
+					AuthorizedActions:           testAuthorizedOrgActions,
 					AuthorizedCollectionActions: orgAuthorizedCollectionActions,
 				},
 			},
@@ -1537,7 +1554,7 @@ func TestUpdate(t *testing.T) {
 					Description:                 &wrapperspb.StringValue{Value: "new desc"},
 					CreatedTime:                 org.GetCreateTime().GetTimestamp(),
 					Type:                        scope.Org.String(),
-					AuthorizedActions:           testAuthorizedActions,
+					AuthorizedActions:           testAuthorizedOrgActions,
 					AuthorizedCollectionActions: orgAuthorizedCollectionActions,
 				},
 			},
@@ -1563,7 +1580,7 @@ func TestUpdate(t *testing.T) {
 					Description:                 &wrapperspb.StringValue{Value: "desc"},
 					CreatedTime:                 global.GetCreateTime().GetTimestamp(),
 					Type:                        scope.Global.String(),
-					AuthorizedActions:           testAuthorizedActions,
+					AuthorizedActions:           testAuthorizedGlobalActions,
 					AuthorizedCollectionActions: globalAuthorizedCollectionActions,
 				},
 			},
@@ -1589,7 +1606,7 @@ func TestUpdate(t *testing.T) {
 					Description:                 &wrapperspb.StringValue{Value: "desc"},
 					CreatedTime:                 proj.GetCreateTime().GetTimestamp(),
 					Type:                        scope.Project.String(),
-					AuthorizedActions:           testAuthorizedActions,
+					AuthorizedActions:           testAuthorizedPrjActions,
 					AuthorizedCollectionActions: projectAuthorizedCollectionActions,
 				},
 			},
@@ -1773,7 +1790,7 @@ func TestUpdate(t *testing.T) {
 					Description:                 &wrapperspb.StringValue{Value: "defaultProj"},
 					CreatedTime:                 proj.GetCreateTime().GetTimestamp(),
 					Type:                        scope.Project.String(),
-					AuthorizedActions:           testAuthorizedActions,
+					AuthorizedActions:           testAuthorizedPrjActions,
 					AuthorizedCollectionActions: projectAuthorizedCollectionActions,
 				},
 			},
@@ -1797,7 +1814,7 @@ func TestUpdate(t *testing.T) {
 					Name:                        &wrappers.StringValue{Value: "defaultProj"},
 					CreatedTime:                 proj.GetCreateTime().GetTimestamp(),
 					Type:                        scope.Project.String(),
-					AuthorizedActions:           testAuthorizedActions,
+					AuthorizedActions:           testAuthorizedPrjActions,
 					AuthorizedCollectionActions: projectAuthorizedCollectionActions,
 				},
 			},
@@ -1823,7 +1840,7 @@ func TestUpdate(t *testing.T) {
 					Description:                 &wrapperspb.StringValue{Value: "defaultProj"},
 					CreatedTime:                 proj.GetCreateTime().GetTimestamp(),
 					Type:                        scope.Project.String(),
-					AuthorizedActions:           testAuthorizedActions,
+					AuthorizedActions:           testAuthorizedPrjActions,
 					AuthorizedCollectionActions: projectAuthorizedCollectionActions,
 				},
 			},
@@ -1849,7 +1866,7 @@ func TestUpdate(t *testing.T) {
 					Description:                 &wrapperspb.StringValue{Value: "notignored"},
 					CreatedTime:                 proj.GetCreateTime().GetTimestamp(),
 					Type:                        scope.Project.String(),
-					AuthorizedActions:           testAuthorizedActions,
+					AuthorizedActions:           testAuthorizedPrjActions,
 					AuthorizedCollectionActions: projectAuthorizedCollectionActions,
 				},
 			},
@@ -2031,7 +2048,7 @@ func TestListKeys(t *testing.T) {
 
 	// Add new role for listing keys in org
 	listKeysRole := iam.TestRole(t, tc.DbConn(), org.PublicId)
-	_, err = tc.IamRepo().AddRoleGrants(context.Background(), listKeysRole.PublicId, 1, []string{"id=*;type=*;actions=list-keys"})
+	_, err = tc.IamRepo().AddRoleGrants(context.Background(), listKeysRole.PublicId, 1, []string{"ids=*;type=*;actions=list-keys"})
 	require.NoError(t, err)
 	_, err = tc.IamRepo().AddPrincipalRoles(context.Background(), listKeysRole.PublicId, 2, []string{aToken.UserId})
 	require.NoError(t, err)
@@ -2043,7 +2060,7 @@ func TestListKeys(t *testing.T) {
 
 	// Add new role for listing keys in project
 	listKeysRole = iam.TestRole(t, tc.DbConn(), proj.PublicId)
-	_, err = tc.IamRepo().AddRoleGrants(context.Background(), listKeysRole.PublicId, 1, []string{"id=*;type=*;actions=list-keys"})
+	_, err = tc.IamRepo().AddRoleGrants(context.Background(), listKeysRole.PublicId, 1, []string{"ids=*;type=*;actions=list-keys"})
 	require.NoError(t, err)
 	_, err = tc.IamRepo().AddPrincipalRoles(context.Background(), listKeysRole.PublicId, 2, []string{aToken.UserId})
 	require.NoError(t, err)
@@ -2446,7 +2463,7 @@ func TestListKeys(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			s, err := scopes.NewService(context.Background(), iamRepoFn, tc.Kms(), 1000)
+			s, err := scopes.NewServiceFn(context.Background(), iamRepoFn, tc.Kms(), 1000)
 			require.NoError(err, "Couldn't create new project service.")
 
 			got, gErr := s.ListKeys(tt.authCtx, tt.req)
@@ -2519,12 +2536,12 @@ func TestRotateKeys(t *testing.T) {
 
 	// Add new role for listing+rotating keys in org
 	rotateKeysRole := iam.TestRole(t, tc.DbConn(), org.PublicId)
-	iam.TestRoleGrant(t, tc.DbConn(), rotateKeysRole.PublicId, "id=*;type=*;actions=rotate-keys,list-keys")
+	iam.TestRoleGrant(t, tc.DbConn(), rotateKeysRole.PublicId, "ids=*;type=*;actions=rotate-keys,list-keys")
 	_ = iam.TestUserRole(t, tc.DbConn(), rotateKeysRole.PublicId, aToken.UserId)
 
 	// Add new role for listing+rotating keys in project
 	rotateKeysRole = iam.TestRole(t, tc.DbConn(), proj.PublicId)
-	iam.TestRoleGrant(t, tc.DbConn(), rotateKeysRole.PublicId, "id=*;type=*;actions=rotate-keys,list-keys")
+	iam.TestRoleGrant(t, tc.DbConn(), rotateKeysRole.PublicId, "ids=*;type=*;actions=rotate-keys,list-keys")
 	_ = iam.TestUserRole(t, tc.DbConn(), rotateKeysRole.PublicId, aToken.UserId)
 
 	cases := []struct {
@@ -2571,7 +2588,7 @@ func TestRotateKeys(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			s, err := scopes.NewService(context.Background(), iamRepoFn, tc.Kms(), 1000)
+			s, err := scopes.NewServiceFn(context.Background(), iamRepoFn, tc.Kms(), 1000)
 			require.NoError(err, "Couldn't create new project service.")
 
 			prevKeyVersions := map[uint32]int{}
@@ -2686,7 +2703,7 @@ func TestListKeyVersionDestructionJobs(t *testing.T) {
 
 	// Add new role for listing key version destructions in org
 	listKeysRole := iam.TestRole(t, tc.DbConn(), org.PublicId)
-	_ = iam.TestRoleGrant(t, tc.DbConn(), listKeysRole.PublicId, "id=*;type=*;actions=list-key-version-destruction-jobs")
+	_ = iam.TestRoleGrant(t, tc.DbConn(), listKeysRole.PublicId, "ids=*;type=*;actions=list-key-version-destruction-jobs")
 	_ = iam.TestUserRole(t, tc.DbConn(), listKeysRole.PublicId, aToken.UserId)
 	// Create a oidc auth method to create an encrypted value in this scope
 	databaseWrapper, err := tc.Kms().GetWrapper(tc.Context(), org.PublicId, kms.KeyPurposeDatabase)
@@ -2700,7 +2717,7 @@ func TestListKeyVersionDestructionJobs(t *testing.T) {
 
 	// Add new role for listing key version destructions in project
 	listKeysRole = iam.TestRole(t, tc.DbConn(), proj.PublicId)
-	_ = iam.TestRoleGrant(t, tc.DbConn(), listKeysRole.PublicId, "id=*;type=*;actions=list-key-version-destruction-jobs")
+	_ = iam.TestRoleGrant(t, tc.DbConn(), listKeysRole.PublicId, "ids=*;type=*;actions=list-key-version-destruction-jobs")
 	_ = iam.TestUserRole(t, tc.DbConn(), listKeysRole.PublicId, aToken.UserId)
 	// Create a oidc auth method to create an encrypted value in this scope
 	databaseWrapper, err = tc.Kms().GetWrapper(tc.Context(), proj.PublicId, kms.KeyPurposeDatabase)
@@ -2832,7 +2849,7 @@ func TestListKeyVersionDestructionJobs(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			s, err := scopes.NewService(context.Background(), iamRepoFn, tc.Kms(), 1000)
+			s, err := scopes.NewServiceFn(context.Background(), iamRepoFn, tc.Kms(), 1000)
 			require.NoError(err, "Couldn't create new project service.")
 
 			got, gErr := s.ListKeyVersionDestructionJobs(tt.authCtx, tt.req)
@@ -2913,7 +2930,7 @@ func TestDestroyKeyVersion(t *testing.T) {
 
 	// Add new role for destroying key versions in org
 	listKeysRole := iam.TestRole(t, tc.DbConn(), org.PublicId)
-	_ = iam.TestRoleGrant(t, tc.DbConn(), listKeysRole.PublicId, "id=*;type=*;actions=destroy-key-version")
+	_ = iam.TestRoleGrant(t, tc.DbConn(), listKeysRole.PublicId, "ids=*;type=*;actions=destroy-key-version")
 	_ = iam.TestUserRole(t, tc.DbConn(), listKeysRole.PublicId, aToken.UserId)
 	// Create a oidc auth method to create an encrypted value in this scope
 	databaseWrapper, err := tc.Kms().GetWrapper(tc.Context(), org.PublicId, kms.KeyPurposeDatabase)
@@ -2927,7 +2944,7 @@ func TestDestroyKeyVersion(t *testing.T) {
 
 	// Add new role for destroying key versions in project
 	listKeysRole = iam.TestRole(t, tc.DbConn(), proj.PublicId)
-	_ = iam.TestRoleGrant(t, tc.DbConn(), listKeysRole.PublicId, "id=*;type=*;actions=destroy-key-version")
+	_ = iam.TestRoleGrant(t, tc.DbConn(), listKeysRole.PublicId, "ids=*;type=*;actions=destroy-key-version")
 	_ = iam.TestUserRole(t, tc.DbConn(), listKeysRole.PublicId, aToken.UserId)
 	// Create a oidc auth method to create an encrypted value in this scope
 	databaseWrapper, err = tc.Kms().GetWrapper(tc.Context(), proj.PublicId, kms.KeyPurposeDatabase)
@@ -3094,7 +3111,7 @@ func TestDestroyKeyVersion(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			s, err := scopes.NewService(context.Background(), iamRepoFn, tc.Kms(), 1000)
+			s, err := scopes.NewServiceFn(context.Background(), iamRepoFn, tc.Kms(), 1000)
 			require.NoError(err, "Couldn't create new project service.")
 
 			got, gErr := s.DestroyKeyVersion(tt.authCtx, tt.req)
@@ -3118,4 +3135,28 @@ func TestDestroyKeyVersion(t *testing.T) {
 			), "DestroyKeyVersion(%q) got response\n%q, wanted\n%q", tt.req, got, tt.res)
 		})
 	}
+}
+
+func TestAttachStoragePolicy(t *testing.T) {
+	t.Run("unimplemented", func(t *testing.T) {
+		service := &scopes.Service{}
+		_, err := service.AttachStoragePolicy(context.Background(), &pbs.AttachStoragePolicyRequest{})
+		require.Error(t, err)
+		gotStatus, ok := status.FromError(err)
+		require.True(t, ok)
+		assert.Equal(t, gotStatus.Code(), codes.Unimplemented)
+		assert.Equal(t, gotStatus.Message(), "Policies are an Enterprise-only feature")
+	})
+}
+
+func TestDetachStoragePolicy(t *testing.T) {
+	t.Run("unimplemented", func(t *testing.T) {
+		service := &scopes.Service{}
+		_, err := service.DetachStoragePolicy(context.Background(), &pbs.DetachStoragePolicyRequest{})
+		require.Error(t, err)
+		gotStatus, ok := status.FromError(err)
+		require.True(t, ok)
+		assert.Equal(t, gotStatus.Code(), codes.Unimplemented)
+		assert.Equal(t, gotStatus.Message(), "Policies are an Enterprise-only feature")
+	})
 }

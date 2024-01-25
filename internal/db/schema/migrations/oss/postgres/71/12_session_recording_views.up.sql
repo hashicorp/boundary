@@ -22,6 +22,7 @@ comment on view recording_channel_ssh_aggregate is
   'recording_channel_ssh_aggregate contains the ssh channel recording info along with other info needed for displaying it on the api.';
 
 
+-- replaced in 82/02_recording_session.up.sql
 create view session_recording_aggregate as
 select
   rs.public_id,

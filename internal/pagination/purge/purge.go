@@ -49,5 +49,8 @@ func RegisterJobs(ctx context.Context, s *scheduler.Scheduler, r db.Reader, w db
 			return errors.Wrap(ctx, err, op)
 		}
 	}
+	if err := rows.Err(); err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get next row for deletion tables"))
+	}
 	return nil
 }

@@ -107,6 +107,9 @@ func (s *CatalogRepository) EstimatedCount(ctx context.Context) (int, error) {
 			return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total host catalogs"))
 		}
 	}
+	if err := rows.Err(); err != nil {
+		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total host catalogs"))
+	}
 	return count, nil
 }
 
@@ -127,6 +130,9 @@ func (s *CatalogRepository) ListDeletedIds(ctx context.Context, since time.Time)
 				return errors.Wrap(ctx, err, op)
 			}
 			deletedCatalogIDs = append(deletedCatalogIDs, id)
+		}
+		if err := rows.Err(); err != nil {
+			return errors.Wrap(ctx, err, op)
 		}
 		transactionTimestamp, err = r.Now(ctx)
 		return err
@@ -153,6 +159,9 @@ func (s *CatalogRepository) queryCatalogs(ctx context.Context, query string, arg
 			if err := r.ScanRows(ctx, rows, &foundCatalogs); err != nil {
 				return err
 			}
+		}
+		if err := rows.Err(); err != nil {
+			return err
 		}
 		var plgIds []string
 		for _, c := range foundCatalogs {

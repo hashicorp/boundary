@@ -88,7 +88,7 @@ To configure your provider to use the recovery KMS workflow, provide the KMS blo
 
 ```hcl
 provider "boundary" {
-  addr             = 'https://boundary.mycorp.com:9200'
+  addr             = "https://boundary.mycorp.com:9200"
   recovery_kms_hcl = <<EOT
 kms "aead" {
 	purpose   = "recovery"
@@ -338,9 +338,9 @@ $ boundary roles add-principals -id <global_anon_listing_id> \
 resource "boundary_role" "global_anon_listing" {
   scope_id = "global"
   grant_strings = [
-    "id=*;type=auth-method;actions=list,authenticate",
-    "id=*;type=scope;actions=list,no-op",
-    "id={{.Account.Id}};actions=read,change-password"
+    "ids=*;type=auth-method;actions=list,authenticate",
+    "ids=*;type=scope;actions=list,no-op",
+    "ids={{.Account.Id}};actions=read,change-password"
   ]
   principal_ids = ["u_anon"]
 }
@@ -382,9 +382,9 @@ $ boundary roles add-principals -id <org_anon_listing_id> \
 resource "boundary_role" "org_anon_listing" {
   scope_id = boundary_scope.org.id
   grant_strings = [
-    "id=*;type=auth-method;actions=list,authenticate",
+    "ids=*;type=auth-method;actions=list,authenticate",
     "type=scope;actions=list",
-    "id={{.Account.Id}};actions=read,change-password"
+    "ids={{.Account.Id}};actions=read,change-password"
   ]
   principal_ids = ["u_anon"]
 }
@@ -426,7 +426,7 @@ resource "boundary_role" "org_admin" {
   scope_id       = "global"
   grant_scope_id = boundary_scope.org.id
   grant_strings = [
-    "id=*;type=*;actions=*"
+    "ids=*;type=*;actions=*"
   ]
   principal_ids = [boundary_user.myuser.id]
 }
@@ -468,7 +468,7 @@ resource "boundary_role" "project_admin" {
   scope_id       = boundary_scope.org.id
   grant_scope_id = boundary_scope.project.id
   grant_strings = [
-    "id=*;type=*;actions=*"
+    "ids=*;type=*;actions=*"
   ]
   principal_ids = [boundary_user.myuser.id]
 }

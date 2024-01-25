@@ -167,5 +167,6 @@ order by ccu.table_name,pgc.conname `
 		rw.ScanRows(rows, &r)
 		results = append(results, r)
 	}
+	require.NoError(err)
 	return results
 }

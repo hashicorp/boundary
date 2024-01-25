@@ -12,9 +12,11 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/go-hclog"
@@ -25,8 +27,9 @@ import (
 func TestWithEventer(t *testing.T) {
 	ctx := context.Background()
 	dir := t.TempDir()
-	l, err := logFile(ctx, dir, 1)
+	l, loc, err := logFile(ctx, dir, 1)
 	require.NoError(t, err)
+	assert.Equal(t, filepath.Join(dir, logFileName), loc)
 	t.Cleanup(func() {
 		assert.NoError(t, l.Close())
 	})
@@ -80,8 +83,9 @@ func TestWithEventer(t *testing.T) {
 func TestRotation(t *testing.T) {
 	ctx := context.Background()
 	dir := t.TempDir()
-	l, err := logFile(ctx, dir, 1)
+	l, loc, err := logFile(ctx, dir, 1)
 	require.NoError(t, err)
+	assert.Equal(t, filepath.Join(dir, logFileName), loc)
 	t.Cleanup(func() {
 		assert.NoError(t, l.Close())
 	})
@@ -131,7 +135,25 @@ func TestRotation(t *testing.T) {
 		_, err := l.Write(toWrite)
 		require.NoError(t, err)
 	}
-	ret, err = os.ReadDir(dir)
-	require.NoError(t, err)
-	require.GreaterOrEqual(t, len(ret), 4)
+
+	// Rotation causes the log files to be compressed after they are rotated.
+	// If the test ends before all the files have been compressed and the old
+	// .log files removed then cleanup fails with an error.
+	for {
+		ret, err = os.ReadDir(dir)
+		require.NoError(t, err)
+		require.GreaterOrEqual(t, len(ret), 4)
+
+		filtered := slices.DeleteFunc(ret, func(f fs.DirEntry) bool {
+			return strings.HasSuffix(f.Name(), "cache.log") ||
+				strings.HasSuffix(f.Name(), ".gz")
+		})
+		if len(filtered) == 0 {
+			// Indicates all the rotated log files have finished being
+			// compressed and can now be removed without new files being
+			// written to the directory.
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
 }

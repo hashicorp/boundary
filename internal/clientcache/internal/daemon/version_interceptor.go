@@ -4,7 +4,6 @@
 package daemon
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/hashicorp/boundary/internal/util"
@@ -13,23 +12,24 @@ import (
 
 const (
 	VersionHeaderKey = "boundary_version"
+	BackgroundKey    = "background"
 )
 
-// versionEnforcement is an interceptor which, if the boundary version is included
-// in a request, enforces that it matches the version of the daemon currently
-// running. If no version is provided, the inteceptor passes the request through.
-func versionEnforcement(h http.Handler) http.Handler {
+// serverMetadataInterceptor is an interceptor which attaches the daemon's version
+// number to all responses that it intercepts
+func serverMetadataInterceptor(h http.Handler, inBackground bool) http.Handler {
 	if util.IsNil(h) {
 		return nil
 	}
 
+	background := "false"
+	if inBackground {
+		background = "true"
+	}
 	needVer := version.Get().VersionNumber()
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		gotVer := r.Header.Get(VersionHeaderKey)
-		if gotVer != "" && needVer != gotVer {
-			writeError(w, fmt.Sprintf("Version mismatch between requester (%q) and daemon (%q). You may need to restart your daemon.", gotVer, needVer), http.StatusBadRequest)
-			return
-		}
+		w.Header().Add(BackgroundKey, background)
+		w.Header().Add(VersionHeaderKey, needVer)
 		h.ServeHTTP(w, r)
 	})
 }

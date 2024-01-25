@@ -574,10 +574,10 @@ func TestListPagination(t *testing.T) {
 	at := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
 	pr := iam.TestRole(t, conn, proj.GetPublicId())
 	_ = iam.TestUserRole(t, conn, pr.GetPublicId(), at.GetIamUserId())
-	_ = iam.TestRoleGrant(t, conn, pr.GetPublicId(), "id=*;type=*;actions=*")
+	_ = iam.TestRoleGrant(t, conn, pr.GetPublicId(), "ids=*;type=*;actions=*")
 	gr := iam.TestRole(t, conn, "global")
 	_ = iam.TestUserRole(t, conn, gr.GetPublicId(), at.GetIamUserId())
-	_ = iam.TestRoleGrant(t, conn, gr.GetPublicId(), "id=*;type=*;actions=*")
+	_ = iam.TestRoleGrant(t, conn, gr.GetPublicId(), "ids=*;type=*;actions=*")
 	s, err := host_catalogs.NewService(ctx, staticRepoFn, pluginHostRepoFn, pluginRepoFn, iamRepoFn, catalogServiceFn, 1000)
 	require.NoError(t, err)
 

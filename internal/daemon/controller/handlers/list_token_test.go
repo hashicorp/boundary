@@ -444,6 +444,11 @@ func TestListTokenResourceToResource(t *testing.T) {
 			rt:   pbs.ResourceType_RESOURCE_TYPE_WORKER,
 			want: resource.Worker,
 		},
+		{
+			name: "policy",
+			rt:   pbs.ResourceType_RESOURCE_TYPE_POLICY,
+			want: resource.Policy,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

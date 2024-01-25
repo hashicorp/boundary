@@ -507,11 +507,11 @@ func TestListPagination(t *testing.T) {
 	u := iam.TestUser(t, iamRepo, "global", iam.WithAccountIds(acct.PublicId))
 	// add roles to be able to see all users
 	allowedRole := iam.TestRole(t, conn, "global")
-	iam.TestRoleGrant(t, conn, allowedRole.GetPublicId(), "id=*;type=*;actions=*")
+	iam.TestRoleGrant(t, conn, allowedRole.GetPublicId(), "ids=*;type=*;actions=*")
 	iam.TestUserRole(t, conn, allowedRole.GetPublicId(), u.GetPublicId())
 	for _, scope := range []*iam.Scope{oWithGroups, oNoGroups, pWithGroups, pNoGroups} {
 		allowedRole := iam.TestRole(t, conn, scope.GetPublicId())
-		iam.TestRoleGrant(t, conn, allowedRole.GetPublicId(), "id=*;type=*;actions=*")
+		iam.TestRoleGrant(t, conn, allowedRole.GetPublicId(), "ids=*;type=*;actions=*")
 		iam.TestUserRole(t, conn, allowedRole.GetPublicId(), u.GetPublicId())
 	}
 

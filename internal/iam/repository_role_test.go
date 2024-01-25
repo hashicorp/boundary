@@ -151,11 +151,11 @@ func TestRepository_CreateRole(t *testing.T) {
 			if tt.wantDup {
 				dup, err := NewRole(ctx, org.PublicId, tt.args.opt...)
 				assert.NoError(err)
-				dup, err = repo.CreateRole(context.Background(), dup, tt.args.opt...)
+				dup, _, _, _, err = repo.CreateRole(context.Background(), dup, tt.args.opt...)
 				assert.NoError(err)
 				assert.NotNil(dup)
 			}
-			grp, err := repo.CreateRole(context.Background(), tt.args.role, tt.args.opt...)
+			grp, _, _, _, err := repo.CreateRole(context.Background(), tt.args.role, tt.args.opt...)
 			if tt.wantErr {
 				assert.Error(err)
 				assert.Nil(grp)
@@ -167,7 +167,7 @@ func TestRepository_CreateRole(t *testing.T) {
 			assert.NotNil(grp.CreateTime)
 			assert.NotNil(grp.UpdateTime)
 
-			foundGrp, _, _, err := repo.LookupRole(context.Background(), grp.PublicId)
+			foundGrp, _, _, _, err := repo.LookupRole(context.Background(), grp.PublicId)
 			assert.NoError(err)
 			assert.True(proto.Equal(foundGrp, grp))
 
@@ -393,9 +393,9 @@ func TestRepository_UpdateRole(t *testing.T) {
 			if tt.wantDup {
 				r := TestRole(t, conn, org.PublicId)
 				_ = TestUserRole(t, conn, r.GetPublicId(), u.GetPublicId())
-				_ = TestRoleGrant(t, conn, r.GetPublicId(), "id=*;type=*;actions=*")
+				_ = TestRoleGrant(t, conn, r.GetPublicId(), "ids=*;type=*;actions=*")
 				r.Name = tt.args.name
-				_, _, _, _, err := repo.UpdateRole(context.Background(), r, r.Version, tt.args.fieldMaskPaths, tt.args.opt...)
+				_, _, _, _, _, err := repo.UpdateRole(context.Background(), r, r.Version, tt.args.fieldMaskPaths, tt.args.opt...)
 				assert.NoError(err)
 			}
 
@@ -416,7 +416,7 @@ func TestRepository_UpdateRole(t *testing.T) {
 				princRole.RoleScopeId = tt.newScopeId
 				princRole.ScopedPrincipalId = fmt.Sprintf("%s:%s", org.PublicId, ur.PrincipalId)
 			}
-			rGrant := TestRoleGrant(t, conn, r.GetPublicId(), "id=*;type=*;actions=*")
+			rGrant := TestRoleGrant(t, conn, r.GetPublicId(), "ids=*;type=*;actions=*")
 
 			updateRole := allocRole()
 			updateRole.PublicId = r.PublicId
@@ -427,7 +427,7 @@ func TestRepository_UpdateRole(t *testing.T) {
 			updateRole.Name = tt.args.name
 			updateRole.Description = tt.args.description
 
-			roleAfterUpdate, principals, grants, updatedRows, err := repo.UpdateRole(context.Background(), &updateRole, r.Version, tt.args.fieldMaskPaths, tt.args.opt...)
+			roleAfterUpdate, principals, grants, _, updatedRows, err := repo.UpdateRole(context.Background(), &updateRole, r.Version, tt.args.fieldMaskPaths, tt.args.opt...)
 			if tt.wantErr {
 				assert.Error(err)
 				assert.True(errors.Match(errors.T(tt.wantIsError), err))
@@ -450,7 +450,7 @@ func TestRepository_UpdateRole(t *testing.T) {
 			default:
 				assert.NotEqual(r.UpdateTime, roleAfterUpdate.UpdateTime)
 			}
-			foundRole, _, _, err := repo.LookupRole(context.Background(), r.PublicId)
+			foundRole, _, _, _, err := repo.LookupRole(context.Background(), r.PublicId)
 			assert.NoError(err)
 			assert.True(proto.Equal(roleAfterUpdate, foundRole))
 			underlyingDB, err := conn.SqlDB(ctx)
@@ -544,7 +544,7 @@ func TestRepository_DeleteRole(t *testing.T) {
 			}
 			assert.NoError(err)
 			assert.Equal(tt.wantRowsDeleted, deletedRows)
-			foundRole, _, _, err := repo.LookupRole(ctx, tt.args.role.PublicId)
+			foundRole, _, _, _, err := repo.LookupRole(ctx, tt.args.role.PublicId)
 			assert.NoError(err)
 			assert.Nil(foundRole)
 

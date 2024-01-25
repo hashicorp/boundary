@@ -114,11 +114,19 @@ func (b *Server) CreateDevDatabase(ctx context.Context, opt ...Option) error {
 		return err
 	}
 
-	if _, err := b.CreateInitialLoginRole(ctx); err != nil {
-		if c != nil {
-			err = errors.Join(err, c())
+	if !opts.withSkipDefaultRoleCreation {
+		if _, err := b.CreateInitialLoginRole(ctx); err != nil {
+			if c != nil {
+				err = errors.Join(err, c())
+			}
+			return err
 		}
-		return err
+		if _, err := b.CreateInitialAuthenticatedUserRole(ctx, WithAuthUserTargetAuthorizeSessionGrant(true)); err != nil {
+			if c != nil {
+				err = errors.Join(err, c())
+			}
+			return err
+		}
 	}
 
 	if opts.withSkipAuthMethodCreation {
@@ -151,7 +159,10 @@ func (b *Server) CreateDevDatabase(ctx context.Context, opt ...Option) error {
 		return nil
 	}
 
-	if _, _, err := b.CreateInitialScopes(ctx); err != nil {
+	if _, _, err := b.CreateInitialScopes(ctx, WithIamOptions(
+		iam.WithSkipAdminRoleCreation(true),
+		iam.WithSkipDefaultRoleCreation(true),
+	)); err != nil {
 		return err
 	}
 

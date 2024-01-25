@@ -48,27 +48,27 @@ func Test_ACLAllowed(t *testing.T) {
 			scope: "o_a",
 			grants: []string{
 				"ids=ampw_bar,ampw_baz;actions=read,update",
-				"id=ampw_bop;actions=read:self,update",
+				"ids=ampw_bop;actions=read:self,update",
 				"type=host-catalog;actions=create",
 				"type=target;actions=list",
-				"id=*;type=host-set;actions=list,create",
+				"ids=*;type=host-set;actions=list,create",
 			},
 		},
 		{
 			scope: "o_b",
 			grants: []string{
-				"id=*;type=host-set;actions=list,create",
+				"ids=*;type=host-set;actions=list,create",
 				"ids=hcst_mypin;type=host;actions=*;output_fields=name,description",
-				"id=*;type=*;actions=authenticate",
-				"id=*;type=*;output_fields=id",
+				"ids=*;type=*;actions=authenticate",
+				"ids=*;type=*;output_fields=id",
 			},
 		},
 		{
 			scope: "o_d",
 			grants: []string{
-				"id=*;type=*;actions=create,update",
-				"id=*;type=session;actions=*",
-				"id=*;type=account;actions=update;output_fields=id,version",
+				"ids=*;type=*;actions=create,update",
+				"ids=*;type=session;actions=*",
+				"ids=*;type=account;actions=update;output_fields=id,version",
 			},
 		},
 	}
@@ -76,8 +76,8 @@ func Test_ACLAllowed(t *testing.T) {
 		{
 			scope: "o_c",
 			grants: []string{
-				"id={{user.id }};actions=read,update",
-				"id={{ account.id}};actions=change-password",
+				"ids={{user.id }};actions=read,update",
+				"ids={{ account.id}};actions=change-password",
 			},
 		},
 	}
@@ -432,7 +432,7 @@ func TestACL_ListPermissions(t *testing.T) {
 			aclGrants: []scopeGrant{
 				{
 					scope:  "o_1",
-					grants: []string{"id=*;type=session;actions=list,read"},
+					grants: []string{"ids=*;type=session;actions=list,read"},
 				},
 			},
 			scopes: map[string]*scopes.ScopeInfo{
@@ -448,7 +448,7 @@ func TestACL_ListPermissions(t *testing.T) {
 			aclGrants: []scopeGrant{
 				{
 					scope:  "o_1",
-					grants: []string{"id=*;type=target;actions=list,read"}, // List & Read for all Targets
+					grants: []string{"ids=*;type=target;actions=list,read"}, // List & Read for all Targets
 				},
 			},
 			scopes:         map[string]*scopes.ScopeInfo{"o_1": nil},
@@ -461,7 +461,7 @@ func TestACL_ListPermissions(t *testing.T) {
 			aclGrants: []scopeGrant{
 				{
 					scope:  "o_1",
-					grants: []string{"id=*;type=session;actions=delete"},
+					grants: []string{"ids=*;type=session;actions=delete"},
 				},
 			},
 			scopes:         map[string]*scopes.ScopeInfo{"o_1": nil},
@@ -488,7 +488,7 @@ func TestACL_ListPermissions(t *testing.T) {
 			aclGrants: []scopeGrant{
 				{
 					scope:  "o_1",
-					grants: []string{"id=*;type=session;actions=list,read"},
+					grants: []string{"ids=*;type=session;actions=list,read"},
 				},
 			},
 			scopes:       map[string]*scopes.ScopeInfo{"o_1": nil},
@@ -510,7 +510,7 @@ func TestACL_ListPermissions(t *testing.T) {
 			aclGrants: []scopeGrant{
 				{
 					scope:  "o_1",
-					grants: []string{"id=*;type=session;actions=list,read:self"},
+					grants: []string{"ids=*;type=session;actions=list,read:self"},
 				},
 			},
 			scopes:       map[string]*scopes.ScopeInfo{"o_1": nil},
@@ -533,7 +533,7 @@ func TestACL_ListPermissions(t *testing.T) {
 				{
 					scope: "o_1",
 					grants: []string{
-						"id=s_1;type=session;actions=list,read",
+						"ids=s_1;type=session;actions=list,read",
 						"ids=s_2,s_3;type=session;actions=list,read",
 					},
 				},
@@ -557,7 +557,7 @@ func TestACL_ListPermissions(t *testing.T) {
 			aclGrants: []scopeGrant{
 				{
 					scope:  "o_1",
-					grants: []string{"id=*;type=*;actions=list,read:self"},
+					grants: []string{"ids=*;type=*;actions=list,read:self"},
 				},
 			},
 			scopes:       map[string]*scopes.ScopeInfo{"o_1": nil},
@@ -579,7 +579,7 @@ func TestACL_ListPermissions(t *testing.T) {
 			aclGrants: []scopeGrant{
 				{
 					scope:  "o_1",
-					grants: []string{"id=*;type=session;actions=list,no-op"},
+					grants: []string{"ids=*;type=session;actions=list,no-op"},
 				},
 			},
 			scopes:       map[string]*scopes.ScopeInfo{"o_1": nil},
@@ -601,7 +601,7 @@ func TestACL_ListPermissions(t *testing.T) {
 			aclGrants: []scopeGrant{
 				{
 					scope:  "o_1",
-					grants: []string{"id=*;type=session;actions=list,no-op"},
+					grants: []string{"ids=*;type=session;actions=list,no-op"},
 				},
 			},
 			scopes:         map[string]*scopes.ScopeInfo{"o_1": nil},
@@ -615,7 +615,7 @@ func TestACL_ListPermissions(t *testing.T) {
 				{
 					scope: "o_1",
 					grants: []string{
-						"id=s_1;type=session;actions=list,no-op",
+						"ids=s_1;type=session;actions=list,no-op",
 						"ids=s_2,s_3;type=session;actions=list,no-op",
 					},
 				},
@@ -639,7 +639,7 @@ func TestACL_ListPermissions(t *testing.T) {
 			aclGrants: []scopeGrant{
 				{
 					scope:  "o_1",
-					grants: []string{"id=*;type=*;actions=list,read:self"},
+					grants: []string{"ids=*;type=*;actions=list,read:self"},
 				},
 			},
 			scopes:       map[string]*scopes.ScopeInfo{"o_1": nil},
@@ -662,8 +662,8 @@ func TestACL_ListPermissions(t *testing.T) {
 				{
 					scope: "o_1",
 					grants: []string{
-						"id=*;type=*;actions=*",
-						"id=*;type=session;actions=cancel:self,list,read:self",
+						"ids=*;type=*;actions=*",
+						"ids=*;type=session;actions=cancel:self,list,read:self",
 					},
 				},
 			},
@@ -686,7 +686,7 @@ func TestACL_ListPermissions(t *testing.T) {
 			aclGrants: []scopeGrant{
 				{
 					scope:  "o_1",
-					grants: []string{"id=*;type=*;actions=*"},
+					grants: []string{"ids=*;type=*;actions=*"},
 				},
 			},
 			scopes:       map[string]*scopes.ScopeInfo{"o_1": nil},
@@ -708,7 +708,7 @@ func TestACL_ListPermissions(t *testing.T) {
 			aclGrants: []scopeGrant{
 				{
 					scope:  "o_1",
-					grants: []string{"id=*;type=*;actions=*"},
+					grants: []string{"ids=*;type=*;actions=*"},
 				},
 			},
 			scopes:       map[string]*scopes.ScopeInfo{"o_1": nil},
@@ -731,13 +731,13 @@ func TestACL_ListPermissions(t *testing.T) {
 				{
 					scope: "o_1",
 					grants: []string{
-						"id=s_1;type=session;actions=list,read",
+						"ids=s_1;type=session;actions=list,read",
 						"ids=s_2,s_3;type=session;actions=list,read",
 					},
 				},
 				{
 					scope:  "o_2",
-					grants: []string{"id=*;type=session;actions=list,read:self"},
+					grants: []string{"ids=*;type=session;actions=list,read:self"},
 				},
 			},
 			scopes:       map[string]*scopes.ScopeInfo{"o_1": nil, "o_2": nil},
@@ -822,7 +822,7 @@ func TestACL_ListPermissions(t *testing.T) {
 					scope: "p_1",
 					grants: []string{
 						"type=target;actions=list",
-						"id=ttcp_1234567890;actions=read",
+						"ids=ttcp_1234567890;actions=read",
 					},
 				},
 			},
@@ -891,7 +891,7 @@ func Test_AnonRestrictions(t *testing.T) {
 	tests := []input{
 		{
 			name:  "id-specific",
-			grant: "id=foobar;actions=%s",
+			grant: "ids=foobar;actions=%s",
 		},
 		{
 			name:  "ids-specific",
@@ -899,7 +899,7 @@ func Test_AnonRestrictions(t *testing.T) {
 		},
 		{
 			name:              "wildcard-id",
-			grant:             "id=*;type=%s;actions=%s",
+			grant:             "ids=*;type=%s;actions=%s",
 			templatedType:     true,
 			shouldHaveSuccess: true,
 		},
@@ -911,7 +911,7 @@ func Test_AnonRestrictions(t *testing.T) {
 		},
 		{
 			name:  "wildcard-id-and-type",
-			grant: "id=*;type=*;actions=%s",
+			grant: "ids=*;type=*;actions=%s",
 		},
 		{
 			name:  "wildcard-ids-and-type",
@@ -928,11 +928,11 @@ func Test_AnonRestrictions(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			require, assert := require.New(t), assert.New(t)
-			for i := resource.Type(1); i <= resource.StorageBucket; i++ {
+			for i := resource.Type(1); i <= resource.Policy; i++ {
 				if i == resource.Controller || i == resource.Worker {
 					continue
 				}
-				for j := action.Type(1); j <= action.Download; j++ {
+				for j := action.Type(1); j <= action.RemoveGrantScopes; j++ {
 					id := "foobar"
 					prefixes := globals.ResourcePrefixesFromType(resource.Type(i))
 					if len(prefixes) > 0 {

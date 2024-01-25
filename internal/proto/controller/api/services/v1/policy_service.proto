@@ -1,0 +1,143 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
+syntax = "proto3";
+
+package controller.api.services.v1;
+
+import "controller/api/resources/policies/v1/policy.proto";
+import "controller/custom_options/v1/options.proto";
+import "google/api/annotations.proto";
+import "google/protobuf/field_mask.proto";
+import "protoc-gen-openapiv2/options/annotations.proto";
+
+option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/services;services";
+option (custom_options.v1.domain) = "policy";
+
+service PolicyService {
+  // GetPolicy returns a policy with the given id, if it exists. The request
+  // must include a policy id. An error is returned if the id is missing,
+  // malformed, or if a policy with the provided id doesn't exist.
+  rpc GetPolicy(GetPolicyRequest) returns (GetPolicyResponse) {
+    option (google.api.http) = {
+      get: "/v1/policies/{id}"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Gets a single policy with the given id."};
+  }
+
+  // ListPolicies returns a list of stored policies in Boundary which exist
+  // inside the scope referenced in the request. The request must include the
+  // scope id for the policies being retrieved. An error is returned if the
+  // scope id is missing, malformed, or references a non existing scope.
+  rpc ListPolicies(ListPoliciesRequest) returns (ListPoliciesResponse) {
+    option (google.api.http) = {get: "/v1/policies"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Lists all policies."};
+  }
+
+  // CreatePolicy creates and stores a new policy in Boundary. The provided
+  // request must include the scope id in which the policy will be created. An
+  // error is returned if the scope id is missing, malformed or references a non
+  // existing scope.
+  rpc CreatePolicy(CreatePolicyRequest) returns (CreatePolicyResponse) {
+    option (google.api.http) = {
+      post: "/v1/policies"
+      body: "item"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Creates a single policy."};
+  }
+
+  // UpdatePolicy updates an existing policy in Boundary. The provided policy
+  // must not have any read-only fields set. The update mask must be included in
+  // the request and contain at least one mutable field. To unset a field's
+  // value (if unsettable), include it in the update mask and don't set it in
+  // the policy object.
+  rpc UpdatePolicy(UpdatePolicyRequest) returns (UpdatePolicyResponse) {
+    option (google.api.http) = {
+      patch: "/v1/policies/{id}"
+      body: "item"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Updates an existing policy."};
+  }
+
+  // DeletePolicy deletes a policy from Boundary. An error is returned if the
+  // policy id is malformed or not provided.
+  rpc DeletePolicy(DeletePolicyRequest) returns (DeletePolicyResponse) {
+    option (google.api.http) = {delete: "/v1/policies/{id}"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Deletes an existing policy."};
+  }
+}
+
+message GetPolicyRequest {
+  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
+}
+
+message GetPolicyResponse {
+  api.resources.policies.v1.Policy item = 1;
+}
+
+message ListPoliciesRequest {
+  string scope_id = 1; // @gotags: `class:"public" eventstream:"observation"`
+  bool recursive = 2 [json_name = "recursive"]; // @gotags: `class:"public" eventstream:"observation"`
+  string filter = 3 [json_name = "filter"]; // @gotags: `class:"public"`
+  // An opaque token used to continue an existing iteration or
+  // request updated items. If not specified, pagination
+  // will start from the beginning.
+  string list_token = 4 [json_name = "list_token"]; // @gotags: `class:"public"`
+  // The maximum size of a page in this iteration.
+  // If unset, the default page size configured will be used.
+  // If the page_size is greater than the default page configured,
+  // an error will be returned.
+  uint32 page_size = 5 [json_name = "page_size"]; // @gotags: `class:"public"`
+}
+
+message ListPoliciesResponse {
+  repeated api.resources.policies.v1.Policy items = 1;
+  // The type of response, either "delta" or "complete".
+  // Delta signifies that this is part of a paginated result
+  // or an update to a previously completed pagination.
+  // Complete signifies that it is the last page.
+  string response_type = 2 [json_name = "response_type"]; // @gotags: `class:"public"`
+  // An opaque token used to continue an existing pagination or
+  // request updated items. Use this token in the next list request
+  // to request the next page.
+  string list_token = 3 [json_name = "list_token"]; // @gotags: `class:"public"`
+  // The name of the field which the items are sorted by.
+  string sort_by = 4 [json_name = "sort_by"]; // @gotags: `class:"public"`
+  // The direction of the sort, either "asc" or "desc".
+  string sort_dir = 5 [json_name = "sort_dir"]; // @gotags: `class:"public"`
+  // A list of item IDs that have been removed since they were returned
+  // as part of a pagination. They should be dropped from any client cache.
+  // This may contain items that are not known to the cache, if they were
+  // created and deleted between listings.
+  repeated string removed_ids = 6 [json_name = "removed_ids"]; // @gotags: `class:"public"`
+  // An estimate at the total items available. This may change during pagination.
+  uint32 est_item_count = 7 [json_name = "est_item_count"]; // @gotags: `class:"public"`
+}
+
+message CreatePolicyRequest {
+  api.resources.policies.v1.Policy item = 1;
+}
+
+message CreatePolicyResponse {
+  string uri = 1; // @gotags: `class:"public" eventstream:"observation"`
+  api.resources.policies.v1.Policy item = 2;
+}
+
+message UpdatePolicyRequest {
+  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
+  api.resources.policies.v1.Policy item = 2;
+  google.protobuf.FieldMask update_mask = 3 [json_name = "update_mask"];
+}
+
+message UpdatePolicyResponse {
+  api.resources.policies.v1.Policy item = 1;
+}
+
+message DeletePolicyRequest {
+  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
+}
+
+message DeletePolicyResponse {}

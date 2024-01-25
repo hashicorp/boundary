@@ -52,7 +52,7 @@ func TestList(t *testing.T) {
 	role, err = rolesClient.AddPrincipals(tc.Context(), role.Item.Id, 0, []string{globals.AnonymousUserId}, roles.WithAutomaticVersioning(true))
 	require.NoError(err)
 	require.NotNil(role)
-	role, err = rolesClient.AddGrants(tc.Context(), role.Item.Id, 0, []string{"id=*;type=auth-method;actions=authenticate"}, roles.WithAutomaticVersioning(true))
+	role, err = rolesClient.AddGrants(tc.Context(), role.Item.Id, 0, []string{"ids=*;type=auth-method;actions=authenticate"}, roles.WithAutomaticVersioning(true))
 	require.NoError(err)
 	require.NotNil(role)
 

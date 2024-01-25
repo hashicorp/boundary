@@ -438,6 +438,9 @@ func (r *Repository) getIssueCredLibraries(ctx context.Context, requests []crede
 			libs = append(libs, cp)
 		}
 	}
+	if err := rows.Err(); err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("next row failed"))
+	}
 
 	var decryptedLibs []issuingCredentialLibrary
 	for _, pl := range libs {

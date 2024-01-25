@@ -46,7 +46,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var testAuthorizedActions = []string{"no-op", "read", "update", "delete", "add-principals", "set-principals", "remove-principals", "add-grants", "set-grants", "remove-grants"}
+var testAuthorizedActions = []string{"no-op", "read", "update", "delete", "add-principals", "set-principals", "remove-principals", "add-grants", "set-grants", "remove-grants", "add-grant-scopes", "set-grant-scopes", "remove-grant-scopes"}
 
 func createDefaultRolesAndRepo(t *testing.T) (*iam.Role, *iam.Role, func() (*iam.Repository, error)) {
 	t.Helper()
@@ -100,7 +100,8 @@ func TestGet(t *testing.T) {
 		Scope:             &scopes.ScopeInfo{Id: or.GetScopeId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 		Name:              &wrapperspb.StringValue{Value: or.GetName()},
 		Description:       &wrapperspb.StringValue{Value: or.GetDescription()},
-		GrantScopeId:      &wrapperspb.StringValue{Value: pr.GetGrantScopeId()},
+		GrantScopeId:      &wrapperspb.StringValue{Value: pr.GetScopeId()},
+		GrantScopeIds:     []string{pr.GetScopeId()},
 		CreatedTime:       or.CreateTime.GetTimestamp(),
 		UpdatedTime:       or.UpdateTime.GetTimestamp(),
 		Version:           or.GetVersion(),
@@ -113,7 +114,8 @@ func TestGet(t *testing.T) {
 		Scope:             &scopes.ScopeInfo{Id: pr.GetScopeId(), Type: scope.Project.String(), ParentScopeId: or.GetScopeId()},
 		Name:              &wrapperspb.StringValue{Value: pr.GetName()},
 		Description:       &wrapperspb.StringValue{Value: pr.GetDescription()},
-		GrantScopeId:      &wrapperspb.StringValue{Value: pr.GetGrantScopeId()},
+		GrantScopeId:      &wrapperspb.StringValue{Value: globals.GrantScopeThis},
+		GrantScopeIds:     []string{globals.GrantScopeThis},
 		CreatedTime:       pr.CreateTime.GetTimestamp(),
 		UpdatedTime:       pr.UpdateTime.GetTimestamp(),
 		Version:           pr.GetVersion(),
@@ -225,7 +227,6 @@ func TestList(t *testing.T) {
 			Scope:             &scopes.ScopeInfo{Id: or.GetScopeId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 			CreatedTime:       or.GetCreateTime().GetTimestamp(),
 			UpdatedTime:       or.GetUpdateTime().GetTimestamp(),
-			GrantScopeId:      &wrapperspb.StringValue{Value: or.GetGrantScopeId()},
 			Version:           or.GetVersion(),
 			AuthorizedActions: testAuthorizedActions,
 		})
@@ -237,7 +238,6 @@ func TestList(t *testing.T) {
 			Scope:             &scopes.ScopeInfo{Id: pr.GetScopeId(), Type: scope.Project.String(), ParentScopeId: oNoRoles.GetPublicId()},
 			CreatedTime:       pr.GetCreateTime().GetTimestamp(),
 			UpdatedTime:       pr.GetUpdateTime().GetTimestamp(),
-			GrantScopeId:      &wrapperspb.StringValue{Value: pr.GetGrantScopeId()},
 			Version:           pr.GetVersion(),
 			AuthorizedActions: testAuthorizedActions,
 		})
@@ -429,7 +429,6 @@ func roleToProto(r *iam.Role, scope *scopes.ScopeInfo, authorizedActions []strin
 		Scope:             scope,
 		CreatedTime:       r.GetCreateTime().GetTimestamp(),
 		UpdatedTime:       r.GetUpdateTime().GetTimestamp(),
-		GrantScopeId:      &wrapperspb.StringValue{Value: r.GetGrantScopeId()},
 		Version:           r.GetVersion(),
 		AuthorizedActions: testAuthorizedActions,
 	}
@@ -477,7 +476,7 @@ func TestListPagination(t *testing.T) {
 	var allRoles []*pb.Role
 	for _, scope := range []*iam.Scope{oWithRoles, oNoRoles, pWithRoles, pNoRoles} {
 		allowedRole := iam.TestRole(t, conn, scope.GetPublicId())
-		iam.TestRoleGrant(t, conn, allowedRole.GetPublicId(), "id=*;type=*;actions=*")
+		iam.TestRoleGrant(t, conn, allowedRole.GetPublicId(), "ids=*;type=*;actions=*")
 		iam.TestUserRole(t, conn, allowedRole.GetPublicId(), u.GetPublicId())
 		allRoles = append(allRoles, roleToProto(allowedRole,
 			&scopes.ScopeInfo{
@@ -882,7 +881,8 @@ func TestCreate(t *testing.T) {
 					Name:              &wrapperspb.StringValue{Value: "name"},
 					Description:       &wrapperspb.StringValue{Value: "desc"},
 					GrantScopeId:      &wrapperspb.StringValue{Value: defaultProjRole.ScopeId},
-					Version:           1,
+					GrantScopeIds:     []string{defaultProjRole.ScopeId},
+					Version:           2,
 					AuthorizedActions: testAuthorizedActions,
 				},
 			},
@@ -903,7 +903,8 @@ func TestCreate(t *testing.T) {
 					Name:              &wrapperspb.StringValue{Value: "name"},
 					Description:       &wrapperspb.StringValue{Value: "desc"},
 					GrantScopeId:      &wrapperspb.StringValue{Value: defaultProjRole.ScopeId},
-					Version:           1,
+					GrantScopeIds:     []string{defaultProjRole.ScopeId},
+					Version:           2,
 					AuthorizedActions: testAuthorizedActions,
 				},
 			},
@@ -924,8 +925,9 @@ func TestCreate(t *testing.T) {
 					Scope:             &scopes.ScopeInfo{Id: defaultProjRole.GetScopeId(), Type: scope.Project.String(), ParentScopeId: defaultOrgRole.GetScopeId()},
 					Name:              &wrapperspb.StringValue{Value: "name"},
 					Description:       &wrapperspb.StringValue{Value: "desc"},
-					GrantScopeId:      &wrapperspb.StringValue{Value: defaultProjRole.ScopeId},
-					Version:           1,
+					GrantScopeId:      &wrapperspb.StringValue{Value: globals.GrantScopeThis},
+					GrantScopeIds:     []string{globals.GrantScopeThis},
+					Version:           2,
 					AuthorizedActions: testAuthorizedActions,
 				},
 			},
@@ -1013,7 +1015,7 @@ func TestCreate(t *testing.T) {
 
 func TestUpdate(t *testing.T) {
 	ctx := context.Background()
-	grantString := "id=*;type=*;actions=*"
+	grantString := "ids=*;type=*;actions=*"
 	g, err := perms.Parse(context.Background(), "global", grantString)
 	require.NoError(t, err)
 	_, actions := g.Actions()
@@ -1037,7 +1039,7 @@ func TestUpdate(t *testing.T) {
 	o, p := iam.TestScopes(t, iamRepo)
 	u := iam.TestUser(t, iamRepo, o.GetPublicId())
 
-	or := iam.TestRole(t, conn, o.GetPublicId(), iam.WithDescription("default"), iam.WithName("default"), iam.WithGrantScopeId(p.GetPublicId()))
+	or := iam.TestRole(t, conn, o.GetPublicId(), iam.WithDescription("default"), iam.WithName("default"), iam.WithGrantScopeIds([]string{p.GetPublicId()}))
 	_ = iam.TestRoleGrant(t, conn, or.GetPublicId(), grantString)
 	_ = iam.TestUserRole(t, conn, or.GetPublicId(), u.GetPublicId())
 
@@ -1051,8 +1053,8 @@ func TestUpdate(t *testing.T) {
 		ScopeId: u.GetScopeId(),
 	}
 
-	var orVersion uint32 = 1
-	var prVersion uint32 = 1
+	orVersion := or.Version
+	prVersion := pr.Version
 
 	tested, err := roles.NewService(ctx, repoFn, 0)
 	require.NoError(t, err, "Error when getting new role service.")
@@ -1061,15 +1063,13 @@ func TestUpdate(t *testing.T) {
 		repo, err := repoFn()
 		require.NoError(t, err, "Couldn't get a new repo")
 		if proj {
-			prVersion++
-			pr, _, _, _, err = repo.UpdateRole(context.Background(), pr, prVersion, []string{"Name", "Description"})
+			pr, _, _, _, _, err = repo.UpdateRole(context.Background(), pr, prVersion, []string{"Name", "Description"})
 			require.NoError(t, err, "Failed to reset the role")
-			prVersion++
+			prVersion = pr.Version
 		} else {
-			orVersion++
-			or, _, _, _, err = repo.UpdateRole(context.Background(), or, orVersion, []string{"Name", "Description"})
+			or, _, _, _, _, err = repo.UpdateRole(context.Background(), or, orVersion, []string{"Name", "Description"})
 			require.NoError(t, err, "Failed to reset the role")
-			orVersion++
+			orVersion = or.Version
 		}
 	}
 
@@ -1090,37 +1090,7 @@ func TestUpdate(t *testing.T) {
 			scopeId: or.GetScopeId(),
 			req: &pbs.UpdateRoleRequest{
 				UpdateMask: &field_mask.FieldMask{
-					Paths: []string{"name", "description", "grant_scope_id"},
-				},
-				Item: &pb.Role{
-					Name:         &wrapperspb.StringValue{Value: "new"},
-					Description:  &wrapperspb.StringValue{Value: "desc"},
-					GrantScopeId: &wrapperspb.StringValue{Value: or.GetScopeId()},
-				},
-			},
-			res: &pbs.UpdateRoleResponse{
-				Item: &pb.Role{
-					Id:                or.GetPublicId(),
-					ScopeId:           or.GetScopeId(),
-					Scope:             &scopes.ScopeInfo{Id: or.GetScopeId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
-					Name:              &wrapperspb.StringValue{Value: "new"},
-					Description:       &wrapperspb.StringValue{Value: "desc"},
-					CreatedTime:       or.GetCreateTime().GetTimestamp(),
-					GrantScopeId:      &wrapperspb.StringValue{Value: or.GetScopeId()},
-					GrantStrings:      []string{grant.GetRaw()},
-					Grants:            []*pb.Grant{grant},
-					PrincipalIds:      []string{u.GetPublicId()},
-					Principals:        []*pb.Principal{principal},
-					AuthorizedActions: testAuthorizedActions,
-				},
-			},
-		},
-		{
-			name:    "Multiple Paths in single string",
-			scopeId: or.GetScopeId(),
-			req: &pbs.UpdateRoleRequest{
-				UpdateMask: &field_mask.FieldMask{
-					Paths: []string{"name,description"},
+					Paths: []string{"name", "description"},
 				},
 				Item: &pb.Role{
 					Name:        &wrapperspb.StringValue{Value: "new"},
@@ -1135,7 +1105,39 @@ func TestUpdate(t *testing.T) {
 					Name:              &wrapperspb.StringValue{Value: "new"},
 					Description:       &wrapperspb.StringValue{Value: "desc"},
 					CreatedTime:       or.GetCreateTime().GetTimestamp(),
-					GrantScopeId:      &wrapperspb.StringValue{Value: or.GetScopeId()},
+					GrantScopeId:      &wrapperspb.StringValue{Value: p.GetPublicId()},
+					GrantScopeIds:     []string{p.GetPublicId()},
+					GrantStrings:      []string{grant.GetRaw()},
+					Grants:            []*pb.Grant{grant},
+					PrincipalIds:      []string{u.GetPublicId()},
+					Principals:        []*pb.Principal{principal},
+					AuthorizedActions: testAuthorizedActions,
+				},
+			},
+		},
+		{
+			name:    "Multiple Paths in single string",
+			scopeId: or.GetScopeId(),
+			req: &pbs.UpdateRoleRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"name,description,grant_scope_id"},
+				},
+				Item: &pb.Role{
+					Name:         &wrapperspb.StringValue{Value: "new"},
+					Description:  &wrapperspb.StringValue{Value: "desc"},
+					GrantScopeId: &wrapperspb.StringValue{Value: globals.GrantScopeThis},
+				},
+			},
+			res: &pbs.UpdateRoleResponse{
+				Item: &pb.Role{
+					Id:                or.GetPublicId(),
+					ScopeId:           or.GetScopeId(),
+					Scope:             &scopes.ScopeInfo{Id: or.GetScopeId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
+					Name:              &wrapperspb.StringValue{Value: "new"},
+					Description:       &wrapperspb.StringValue{Value: "desc"},
+					CreatedTime:       or.GetCreateTime().GetTimestamp(),
+					GrantScopeId:      &wrapperspb.StringValue{Value: globals.GrantScopeThis},
+					GrantScopeIds:     []string{globals.GrantScopeThis},
 					GrantStrings:      []string{grant.GetRaw()},
 					Grants:            []*pb.Grant{grant},
 					PrincipalIds:      []string{u.GetPublicId()},
@@ -1165,7 +1167,8 @@ func TestUpdate(t *testing.T) {
 					Name:              &wrapperspb.StringValue{Value: "new"},
 					Description:       &wrapperspb.StringValue{Value: "desc"},
 					CreatedTime:       pr.GetCreateTime().GetTimestamp(),
-					GrantScopeId:      &wrapperspb.StringValue{Value: pr.GetScopeId()},
+					GrantScopeId:      &wrapperspb.StringValue{Value: globals.GrantScopeThis},
+					GrantScopeIds:     []string{globals.GrantScopeThis},
 					GrantStrings:      []string{grant.GetRaw()},
 					Grants:            []*pb.Grant{grant},
 					PrincipalIds:      []string{u.GetPublicId()},
@@ -1195,7 +1198,8 @@ func TestUpdate(t *testing.T) {
 					Name:              &wrapperspb.StringValue{Value: "new"},
 					Description:       &wrapperspb.StringValue{Value: "desc"},
 					CreatedTime:       pr.GetCreateTime().GetTimestamp(),
-					GrantScopeId:      &wrapperspb.StringValue{Value: pr.GetScopeId()},
+					GrantScopeId:      &wrapperspb.StringValue{Value: globals.GrantScopeThis},
+					GrantScopeIds:     []string{globals.GrantScopeThis},
 					GrantStrings:      []string{grant.GetRaw()},
 					Grants:            []*pb.Grant{grant},
 					PrincipalIds:      []string{u.GetPublicId()},
@@ -1256,7 +1260,8 @@ func TestUpdate(t *testing.T) {
 					Scope:             &scopes.ScopeInfo{Id: or.GetScopeId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 					Description:       &wrapperspb.StringValue{Value: "default"},
 					CreatedTime:       or.GetCreateTime().GetTimestamp(),
-					GrantScopeId:      &wrapperspb.StringValue{Value: or.GetScopeId()},
+					GrantScopeId:      &wrapperspb.StringValue{Value: globals.GrantScopeThis},
+					GrantScopeIds:     []string{globals.GrantScopeThis},
 					GrantStrings:      []string{grant.GetRaw()},
 					Grants:            []*pb.Grant{grant},
 					PrincipalIds:      []string{u.GetPublicId()},
@@ -1285,7 +1290,8 @@ func TestUpdate(t *testing.T) {
 					Name:              &wrapperspb.StringValue{Value: "updated"},
 					Description:       &wrapperspb.StringValue{Value: "default"},
 					CreatedTime:       or.GetCreateTime().GetTimestamp(),
-					GrantScopeId:      &wrapperspb.StringValue{Value: or.GetScopeId()},
+					GrantScopeId:      &wrapperspb.StringValue{Value: globals.GrantScopeThis},
+					GrantScopeIds:     []string{globals.GrantScopeThis},
 					GrantStrings:      []string{grant.GetRaw()},
 					Grants:            []*pb.Grant{grant},
 					PrincipalIds:      []string{u.GetPublicId()},
@@ -1314,7 +1320,8 @@ func TestUpdate(t *testing.T) {
 					Name:              &wrapperspb.StringValue{Value: "default"},
 					Description:       &wrapperspb.StringValue{Value: "notignored"},
 					CreatedTime:       or.GetCreateTime().GetTimestamp(),
-					GrantScopeId:      &wrapperspb.StringValue{Value: or.GetScopeId()},
+					GrantScopeId:      &wrapperspb.StringValue{Value: globals.GrantScopeThis},
+					GrantScopeIds:     []string{globals.GrantScopeThis},
 					GrantStrings:      []string{grant.GetRaw()},
 					Grants:            []*pb.Grant{grant},
 					PrincipalIds:      []string{u.GetPublicId()},
@@ -1417,15 +1424,6 @@ func TestUpdate(t *testing.T) {
 			req := proto.Clone(toMerge).(*pbs.UpdateRoleRequest)
 			proto.Merge(req, tc.req)
 
-			// Test with bad version (too high, too low)
-			req.Item.Version = ver + 2
-			_, gErr := tested.UpdateRole(auth.DisabledAuthTestContext(repoFn, tc.scopeId), req)
-			require.Error(gErr)
-			req.Item.Version = ver - 1
-			_, gErr = tested.UpdateRole(auth.DisabledAuthTestContext(repoFn, tc.scopeId), req)
-			require.Error(gErr)
-			req.Item.Version = ver
-
 			got, gErr := tested.UpdateRole(auth.DisabledAuthTestContext(repoFn, tc.scopeId), req)
 			if tc.err != nil {
 				require.Error(gErr)
@@ -1443,11 +1441,15 @@ func TestUpdate(t *testing.T) {
 				// Verify it is a role updated after it was created
 				assert.True(gotUpdateTime.After(created), "Updated role should have been updated after it's creation. Was updated %v, which is after %v", gotUpdateTime, created)
 
-				// Clear all values which are hard to compare against.
+				// Clear or set all values which are hard to compare against.
 				got.Item.UpdatedTime, tc.res.Item.UpdatedTime = nil, nil
+				tc.res.Item.Version = got.Item.Version
 
-				assert.Equal(ver+1, got.GetItem().GetVersion())
-				tc.res.Item.Version = ver + 1
+				if req.Id == or.PublicId {
+					orVersion = got.Item.Version
+				} else {
+					prVersion = got.Item.Version
+				}
 			}
 			assert.Empty(cmp.Diff(
 				got,
@@ -2157,15 +2159,15 @@ func TestAddGrants(t *testing.T) {
 		},
 		{
 			name:     "Add grant on role with grant",
-			existing: []string{"id=u_foo;actions=read"},
+			existing: []string{"ids=u_foo;actions=read"},
 			add:      []string{"ids=*;type=*;actions=delete"},
-			result:   []string{"id=u_foo;actions=read", "ids=*;type=*;actions=delete"},
+			result:   []string{"ids=u_foo;actions=read", "ids=*;type=*;actions=delete"},
 		},
 		{
 			name:     "Add duplicate grant on role with grant",
-			existing: []string{"id=u_fooaA1;actions=read"},
+			existing: []string{"ids=u_fooaA1;actions=read"},
 			add:      []string{"ids=*;type=*;actions=delete", "ids=*;type=*;actions=delete"},
-			result:   []string{"id=u_fooaA1;actions=read", "ids=*;type=*;actions=delete"},
+			result:   []string{"ids=u_fooaA1;actions=read", "ids=*;type=*;actions=delete"},
 		},
 		{
 			name:     "Add grant matching existing grant",
@@ -2175,16 +2177,16 @@ func TestAddGrants(t *testing.T) {
 		},
 		{
 			name:            "Check add-host-sets deprecation",
-			existing:        []string{"id=u_foo;actions=read", "id=*;type=*;actions=delete"},
+			existing:        []string{"ids=u_foo;actions=read", "ids=*;type=*;actions=delete"},
 			add:             []string{"ids=*;type=target;actions=add-host-sets"},
 			wantErr:         true,
 			wantErrContains: "Use \\\"add-host-sources\\\" instead",
 		},
 		{
 			name:     "Check id field deprecation",
-			existing: []string{"id=u_fooaA1;actions=read"},
-			add:      []string{"id=*;type=*;actions=delete"},
-			result:   []string{"id=u_fooaA1;actions=read", "id=*;type=*;actions=delete"},
+			existing: []string{"ids=u_fooaA1;actions=read"},
+			add:      []string{"ids=*;type=*;actions=delete"},
+			result:   []string{"ids=u_fooaA1;actions=read", "ids=*;type=*;actions=delete"},
 			wantErr: func() bool {
 				return !version.SupportsFeature(version.Binary, version.SupportIdInGrants)
 			}(),
@@ -2305,40 +2307,40 @@ func TestSetGrants(t *testing.T) {
 		},
 		{
 			name:     "Set grant on role with grant",
-			existing: []string{"id=u_foo;actions=read"},
+			existing: []string{"ids=u_foo;actions=read"},
 			set:      []string{"ids=*;type=*;actions=delete"},
 			result:   []string{"ids=*;type=*;actions=delete"},
 		},
 		{
 			name:     "Set grant matching existing grant",
-			existing: []string{"id=u_foo;actions=read", "id=*;type=*;actions=delete"},
+			existing: []string{"ids=u_foo;actions=read", "ids=*;type=*;actions=delete"},
 			set:      []string{"ids=*;type=*;actions=delete"},
 			result:   []string{"ids=*;type=*;actions=delete"},
 		},
 		{
 			name:     "Set duplicate grant matching existing grant",
-			existing: []string{"id=u_foo;actions=read", "id=*;type=*;actions=delete"},
+			existing: []string{"ids=u_foo;actions=read", "ids=*;type=*;actions=delete"},
 			set:      []string{"ids=*;type=*;actions=delete", "ids=*;type=*;actions=delete"},
 			result:   []string{"ids=*;type=*;actions=delete"},
 		},
 		{
 			name:     "Set empty on role",
-			existing: []string{"id=hcst_foo;type=*;actions=read", "id=*;type=*;actions=delete"},
+			existing: []string{"ids=hcst_foo;type=*;actions=read", "ids=*;type=*;actions=delete"},
 			set:      nil,
 			result:   nil,
 		},
 		{
 			name:            "Check add-host-sets deprecation",
-			existing:        []string{"id=u_foo;actions=read", "id=*;type=*;actions=delete"},
+			existing:        []string{"ids=u_foo;actions=read", "ids=*;type=*;actions=delete"},
 			set:             []string{"ids=*;type=target;actions=add-host-sets"},
 			wantErr:         true,
 			wantErrContains: "Use \\\"add-host-sources\\\" instead",
 		},
 		{
 			name:     "Check id field deprecation",
-			existing: []string{"id=u_fooaA1;actions=read"},
-			set:      []string{"id=*;type=*;actions=delete"},
-			result:   []string{"id=*;type=*;actions=delete"},
+			existing: []string{"ids=u_fooaA1;actions=read"},
+			set:      []string{"ids=*;type=*;actions=delete"},
+			result:   []string{"ids=*;type=*;actions=delete"},
 			wantErr: func() bool {
 				return !version.SupportsFeature(version.Binary, version.SupportIdInGrants)
 			}(),
@@ -2444,31 +2446,31 @@ func TestRemoveGrants(t *testing.T) {
 	}{
 		{
 			name:     "Remove all",
-			existing: []string{"id=hcst_1;type=*;actions=read"},
-			remove:   []string{"id=hcst_1;type=*;actions=read"},
+			existing: []string{"ids=hcst_1;type=*;actions=read"},
+			remove:   []string{"ids=hcst_1;type=*;actions=read"},
 		},
 		{
 			name:     "Remove partial",
-			existing: []string{"id=hcst_1;type=*;actions=read", "id=hcst_2;type=*;actions=delete"},
-			remove:   []string{"id=hcst_1;type=*;actions=read"},
-			result:   []string{"id=hcst_2;type=*;actions=delete"},
+			existing: []string{"ids=hcst_1;type=*;actions=read", "ids=hcst_2;type=*;actions=delete"},
+			remove:   []string{"ids=hcst_1;type=*;actions=read"},
+			result:   []string{"ids=hcst_2;type=*;actions=delete"},
 		},
 		{
 			name:     "Remove duplicate",
-			existing: []string{"id=hcst_1;type=*;actions=read", "id=hcst_2;type=*;actions=delete"},
-			remove:   []string{"id=hcst_1;type=*;actions=read", "id=hcst_1;type=*;actions=read"},
-			result:   []string{"id=hcst_2;type=*;actions=delete"},
+			existing: []string{"ids=hcst_1;type=*;actions=read", "ids=hcst_2;type=*;actions=delete"},
+			remove:   []string{"ids=hcst_1;type=*;actions=read", "ids=hcst_1;type=*;actions=read"},
+			result:   []string{"ids=hcst_2;type=*;actions=delete"},
 		},
 		{
 			name:     "Remove non existant",
-			existing: []string{"id=hcst_2;type=*;actions=delete"},
-			remove:   []string{"id=hcst_1;type=*;actions=read"},
-			result:   []string{"id=hcst_2;type=*;actions=delete"},
+			existing: []string{"ids=hcst_2;type=*;actions=delete"},
+			remove:   []string{"ids=hcst_1;type=*;actions=read"},
+			result:   []string{"ids=hcst_2;type=*;actions=delete"},
 		},
 		{
 			name:     "Remove from empty role",
 			existing: []string{},
-			remove:   []string{"id=hcst_1;type=*;actions=read"},
+			remove:   []string{"ids=hcst_1;type=*;actions=read"},
 			result:   nil,
 		},
 	}
@@ -2516,7 +2518,7 @@ func TestRemoveGrants(t *testing.T) {
 			name: "Bad Version",
 			req: &pbs.RemoveRoleGrantsRequest{
 				Id:           role.GetPublicId(),
-				GrantStrings: []string{"id=hcst_2;type=*;actions=create"},
+				GrantStrings: []string{"ids=hcst_2;type=*;actions=create"},
 				Version:      role.GetVersion() + 2,
 			},
 			err: handlers.ApiErrorWithCode(codes.Internal),
@@ -2525,7 +2527,7 @@ func TestRemoveGrants(t *testing.T) {
 			name: "Bad Role Id",
 			req: &pbs.RemoveRoleGrantsRequest{
 				Id:           "bad id",
-				GrantStrings: []string{"id=*;type=*;actions=create"},
+				GrantStrings: []string{"ids=*;type=*;actions=create"},
 				Version:      role.GetVersion(),
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -2534,7 +2536,7 @@ func TestRemoveGrants(t *testing.T) {
 			name: "Empty Grant",
 			req: &pbs.RemoveRoleGrantsRequest{
 				Id:           role.GetPublicId(),
-				GrantStrings: []string{"id=*;type=*;actions=create", ""},
+				GrantStrings: []string{"ids=*;type=*;actions=create", ""},
 				Version:      role.GetVersion(),
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -2543,7 +2545,7 @@ func TestRemoveGrants(t *testing.T) {
 			name: "Unparseable Grant",
 			req: &pbs.RemoveRoleGrantsRequest{
 				Id:           role.GetPublicId(),
-				GrantStrings: []string{"id=*;type=*;actions=create", ";unparsable=2"},
+				GrantStrings: []string{"ids=*;type=*;actions=create", ";unparsable=2"},
 				Version:      role.GetVersion(),
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -2556,6 +2558,836 @@ func TestRemoveGrants(t *testing.T) {
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "RemoveRoleGrants(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+			}
+		})
+	}
+}
+
+func TestAddGrantScopes(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	wrap := db.TestWrapper(t)
+	iamRepo := iam.TestRepo(t, conn, wrap)
+	repoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+	s, err := roles.NewService(context.Background(), repoFn, 1000)
+	require.NoError(t, err, "Error when getting new role service.")
+
+	o, p := iam.TestScopes(t, iamRepo)
+	o2, p2 := iam.TestScopes(t, iamRepo)
+
+	addCases := []struct {
+		name            string
+		scopeId         string
+		existing        []string
+		add             []string
+		result          []string
+		wantErr         bool
+		wantErrContains string
+	}{
+		{
+			name:    "Add grant scopes on empty role - global",
+			scopeId: scope.Global.String(),
+			add:     []string{"this", "descendants"},
+			result:  []string{"this", "descendants"},
+		},
+		{
+			name:     "Add grant scopes on role with grant scopes - global",
+			scopeId:  scope.Global.String(),
+			existing: []string{"global", o.PublicId},
+			add:      []string{"children", p.PublicId},
+			result:   []string{"global", o.PublicId, p.PublicId, "children"},
+		},
+		{
+			name:     "Add duplicate grant on role with grant scopes - global",
+			scopeId:  scope.Global.String(),
+			existing: []string{"this"},
+			add:      []string{"children", "children"},
+			result:   []string{"this", "children"},
+		},
+		{
+			name:     "Add other org/proj scopes - global",
+			scopeId:  scope.Global.String(),
+			existing: []string{"this"},
+			add:      []string{o2.PublicId, p2.PublicId},
+			result:   []string{"this", o2.PublicId, p2.PublicId},
+		},
+		{
+			name:     "Add grant scope matching existing grant scopes - global",
+			scopeId:  scope.Global.String(),
+			existing: []string{"this"},
+			add:      []string{"this", "children"},
+			wantErr:  true,
+		},
+		{
+			name:     "Add invalid grant scope - global",
+			scopeId:  scope.Global.String(),
+			existing: []string{"this"},
+			add:      []string{"p_foobar1234", "children"},
+			wantErr:  true,
+		},
+		{
+			name:     "Add this to scope grant scope - global",
+			scopeId:  scope.Global.String(),
+			existing: []string{scope.Global.String()},
+			add:      []string{"this"},
+			wantErr:  true,
+		},
+		{
+			name:     "Add scope to this grant scope - global",
+			scopeId:  scope.Global.String(),
+			existing: []string{"this"},
+			add:      []string{scope.Global.String()},
+			wantErr:  true,
+		},
+		{
+			name:     "Add children when descendants exists - global",
+			scopeId:  scope.Global.String(),
+			existing: []string{"descendants"},
+			add:      []string{"children"},
+			wantErr:  true,
+		},
+		{
+			name:     "Add descendants when children exists - global",
+			scopeId:  scope.Global.String(),
+			existing: []string{"children"},
+			add:      []string{"descendants"},
+			wantErr:  true,
+		},
+		{
+			name:    "Add grant scopes on empty role - org",
+			scopeId: o.PublicId,
+			add:     []string{"this", "children"},
+			result:  []string{"this", "children"},
+		},
+		{
+			name:     "Add grant scopes on role with grant scopes - org",
+			scopeId:  o.PublicId,
+			existing: []string{o.PublicId, p.PublicId},
+			add:      []string{"children"},
+			result:   []string{o.PublicId, p.PublicId, "children"},
+		},
+		{
+			name:     "Add duplicate grant on role with grant scopes - org",
+			scopeId:  o.PublicId,
+			existing: []string{"this"},
+			add:      []string{"children", "children"},
+			result:   []string{"this", "children"},
+		},
+		{
+			name:     "Add grant scope matching existing grant scopes - org",
+			scopeId:  o.PublicId,
+			existing: []string{"this"},
+			add:      []string{"this", "children"},
+			wantErr:  true,
+		},
+		{
+			name:     "Add invalid grant scope - org",
+			scopeId:  o.PublicId,
+			existing: []string{"this"},
+			add:      []string{"p_foobar1234", "children"},
+			wantErr:  true,
+		},
+		{
+			name:     "Add invalid grant scope - org - descendants",
+			scopeId:  o.PublicId,
+			existing: []string{"this"},
+			add:      []string{"descendants", "children"},
+			wantErr:  true,
+		},
+		{
+			name:     "Add this to scope grant scope - org",
+			scopeId:  o.PublicId,
+			existing: []string{o.PublicId},
+			add:      []string{"this"},
+			wantErr:  true,
+		},
+		{
+			name:     "Add scope to this grant scope - org",
+			scopeId:  o.PublicId,
+			existing: []string{"this"},
+			add:      []string{o.PublicId},
+			wantErr:  true,
+		},
+		{
+			name:     "Add other org/proj scopes - org",
+			scopeId:  o.PublicId,
+			existing: []string{"this"},
+			add:      []string{p2.PublicId},
+			wantErr:  true,
+		},
+		{
+			name:    "Add grant scopes on empty role - proj with id",
+			scopeId: p.PublicId,
+			add:     []string{p.PublicId},
+			result:  []string{p.PublicId},
+		},
+		{
+			name:    "Add grant scopes on empty role - proj with this",
+			scopeId: p.PublicId,
+			add:     []string{"this"},
+			result:  []string{"this"},
+		},
+		{
+			name:    "Add duplicate scopes on empty role - proj",
+			scopeId: p.PublicId,
+			add:     []string{"this", "this"},
+			result:  []string{"this"},
+		},
+		{
+			name:     "Add invalid grant scope - proj",
+			scopeId:  p.PublicId,
+			existing: []string{"this"},
+			add:      []string{"p_foobar1234"},
+			wantErr:  true,
+		},
+		{
+			name:     "Add invalid grant scope - proj - descendants",
+			scopeId:  p.PublicId,
+			existing: []string{"this"},
+			add:      []string{"descendants"},
+			wantErr:  true,
+		},
+		{
+			name:     "Add invalid grant scope - proj - children",
+			scopeId:  p.PublicId,
+			existing: []string{"this"},
+			add:      []string{"children"},
+			wantErr:  true,
+		},
+		{
+			name:     "Add this to scope grant scope - proj",
+			scopeId:  p.PublicId,
+			existing: []string{p.PublicId},
+			add:      []string{"this"},
+			wantErr:  true,
+		},
+		{
+			name:     "Add scope to this grant scope - proj",
+			scopeId:  p.PublicId,
+			existing: []string{"this"},
+			add:      []string{p.PublicId},
+			wantErr:  true,
+		},
+		{
+			name:     "Add other org/proj scopes - proj",
+			scopeId:  p.PublicId,
+			existing: []string{},
+			add:      []string{p2.PublicId},
+			wantErr:  true,
+		},
+	}
+
+	for _, tc := range addCases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			role := iam.TestRole(t, conn, tc.scopeId, iam.WithGrantScopeIds([]string{"testing-none"}))
+			for _, e := range tc.existing {
+				_ = iam.TestRoleGrantScope(t, conn, role.GetPublicId(), e)
+			}
+			req := &pbs.AddRoleGrantScopesRequest{
+				Id:      role.GetPublicId(),
+				Version: role.GetVersion(),
+			}
+			req.GrantScopeIds = tc.add
+			got, err := s.AddRoleGrantScopes(auth.DisabledAuthTestContext(repoFn, tc.scopeId), req)
+			if tc.wantErr {
+				assert.Error(err)
+				if tc.wantErrContains != "" {
+					assert.Contains(err.Error(), tc.wantErrContains)
+				}
+				return
+			}
+			require.NoError(err)
+			require.ElementsMatch(tc.result, got.GetItem().GetGrantScopeIds())
+		})
+	}
+
+	_, p = iam.TestScopes(t, iamRepo)
+	role := iam.TestRole(t, conn, p.GetPublicId(), iam.WithGrantScopeIds([]string{"testing-none"}))
+	failCases := []struct {
+		name string
+		req  *pbs.AddRoleGrantScopesRequest
+		err  error
+	}{
+		{
+			name: "Bad Version",
+			req: &pbs.AddRoleGrantScopesRequest{
+				Id:            role.GetPublicId(),
+				GrantScopeIds: []string{"this"},
+				Version:       role.GetVersion() + 2,
+			},
+			err: handlers.ApiErrorWithCode(codes.Internal),
+		},
+		{
+			name: "Bad Role Id",
+			req: &pbs.AddRoleGrantScopesRequest{
+				Id:            "bad id",
+				GrantScopeIds: []string{"this"},
+				Version:       role.GetVersion(),
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Invalid scope ID",
+			req: &pbs.AddRoleGrantScopesRequest{
+				Id:            role.GetPublicId(),
+				GrantScopeIds: []string{"p_foobar1234"},
+				Version:       role.GetVersion(),
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Empty Grant Scope ID",
+			req: &pbs.AddRoleGrantScopesRequest{
+				Id:            role.GetPublicId(),
+				GrantScopeIds: []string{"this", ""},
+				Version:       role.GetVersion(),
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+	}
+	for _, tc := range failCases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			_, gErr := s.AddRoleGrantScopes(auth.DisabledAuthTestContext(repoFn, p.GetPublicId()), tc.req)
+			if tc.err != nil {
+				require.Error(gErr)
+				assert.True(errors.Is(gErr, tc.err), "AddRoleGrantScopes(%+v) got error %#v, wanted %#v", tc.req, gErr, tc.err)
+			}
+		})
+	}
+}
+
+func TestSetGrantScopes(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	wrap := db.TestWrapper(t)
+	iamRepo := iam.TestRepo(t, conn, wrap)
+	repoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+	s, err := roles.NewService(context.Background(), repoFn, 1000)
+	require.NoError(t, err, "Error when getting new role service.")
+
+	o, p := iam.TestScopes(t, iamRepo)
+	o2, p2 := iam.TestScopes(t, iamRepo)
+
+	setCases := []struct {
+		name            string
+		scopeId         string
+		existing        []string
+		set             []string
+		result          []string
+		wantErr         bool
+		wantErrContains string
+	}{
+		{
+			name:    "Set grant scopes on empty role - global",
+			scopeId: scope.Global.String(),
+			set:     []string{"this", "descendants"},
+			result:  []string{"this", "descendants"},
+		},
+		{
+			name:     "Set grant scopes on role with grant scopes - global",
+			scopeId:  scope.Global.String(),
+			existing: []string{"global", o.PublicId},
+			set:      []string{"children", p.PublicId},
+			result:   []string{"children", p.PublicId},
+		},
+		{
+			name:     "Set duplicate grant on role with grant scopes - global",
+			scopeId:  scope.Global.String(),
+			existing: []string{"this"},
+			set:      []string{"children", "children"},
+			result:   []string{"children"},
+		},
+		{
+			name:     "Set grant scope matching existing grant scopes - global",
+			scopeId:  scope.Global.String(),
+			existing: []string{"this"},
+			set:      []string{"this", "children"},
+			result:   []string{"this", "children"},
+		},
+		{
+			name:     "Set this to scope grant scope - global",
+			scopeId:  scope.Global.String(),
+			existing: []string{scope.Global.String()},
+			set:      []string{"this", "children"},
+			result:   []string{"this", "children"},
+		},
+		{
+			name:     "Set scope to this grant scope - global",
+			scopeId:  scope.Global.String(),
+			existing: []string{"this"},
+			set:      []string{scope.Global.String(), "children"},
+			result:   []string{scope.Global.String(), "children"},
+		},
+		{
+			name:     "Set other org/proj scopes - global",
+			scopeId:  scope.Global.String(),
+			existing: []string{"this"},
+			set:      []string{"this", o2.PublicId, p2.PublicId},
+			result:   []string{"this", o2.PublicId, p2.PublicId},
+		},
+		{
+			name:     "Set invalid grant scope - global",
+			scopeId:  scope.Global.String(),
+			existing: []string{"this"},
+			set:      []string{"p_foobar1234", "children"},
+			wantErr:  true,
+		},
+		{
+			name:     "Set both on grant scope - global",
+			scopeId:  scope.Global.String(),
+			existing: []string{},
+			set:      []string{scope.Global.String(), "children", "this"},
+			wantErr:  true,
+		},
+		{
+			name:     "Set both grant scope - global",
+			scopeId:  scope.Global.String(),
+			existing: []string{},
+			set:      []string{"this", scope.Global.String(), "children"},
+			wantErr:  true,
+		},
+		{
+			name:     "Set children and descendants - global",
+			scopeId:  scope.Global.String(),
+			existing: []string{},
+			set:      []string{"children", "descendants"},
+			wantErr:  true,
+		},
+		{
+			name:     "Set descendants and children- global",
+			scopeId:  scope.Global.String(),
+			existing: []string{},
+			set:      []string{"descendants", "children"},
+			wantErr:  true,
+		},
+		{
+			name:    "Set grant scopes on empty role - org",
+			scopeId: o.PublicId,
+			set:     []string{"this", "children"},
+			result:  []string{"this", "children"},
+		},
+		{
+			name:     "Set grant scopes on role with grant scopes - org",
+			scopeId:  o.PublicId,
+			existing: []string{o.PublicId, p.PublicId},
+			set:      []string{"children"},
+			result:   []string{"children"},
+		},
+		{
+			name:     "Set duplicate grant on role with grant scopes - org",
+			scopeId:  o.PublicId,
+			existing: []string{"this"},
+			set:      []string{p.PublicId, "children", "children"},
+			result:   []string{p.PublicId, "children"},
+		},
+		{
+			name:     "Set grant scope matching existing grant scopes - org",
+			scopeId:  o.PublicId,
+			existing: []string{"this"},
+			set:      []string{"this", "children"},
+			result:   []string{"this", "children"},
+		},
+		{
+			name:     "Set this to scope grant scope - org",
+			scopeId:  o.PublicId,
+			existing: []string{o.PublicId},
+			set:      []string{"this", "children"},
+			result:   []string{"this", "children"},
+		},
+		{
+			name:     "Set scope to this grant scope - org",
+			scopeId:  o.PublicId,
+			existing: []string{"this"},
+			set:      []string{o.PublicId, "children"},
+			result:   []string{o.PublicId, "children"},
+		},
+		{
+			name:     "Set invalid grant scope - org",
+			scopeId:  o.PublicId,
+			existing: []string{"this"},
+			set:      []string{"p_foobar1234", "children"},
+			wantErr:  true,
+		},
+		{
+			name:     "Set invalid grant scope - org - descendants",
+			scopeId:  o.PublicId,
+			existing: []string{"this"},
+			set:      []string{"descendants", "children"},
+			wantErr:  true,
+		},
+		{
+			name:     "Set both on grant scope - org",
+			scopeId:  o.PublicId,
+			existing: []string{},
+			set:      []string{o.PublicId, "children", "this"},
+			wantErr:  true,
+		},
+		{
+			name:     "Set both grant scope - org",
+			scopeId:  o.PublicId,
+			existing: []string{},
+			set:      []string{"this", o.PublicId, "children"},
+			wantErr:  true,
+		},
+		{
+			name:    "Set grant scopes on empty role - proj with id",
+			scopeId: p.PublicId,
+			set:     []string{p.PublicId},
+			result:  []string{p.PublicId},
+		},
+		{
+			name:    "Set grant scopes on empty role - proj with this",
+			scopeId: p.PublicId,
+			set:     []string{"this"},
+			result:  []string{"this"},
+		},
+		{
+			name:    "Set duplicate scopes on empty role - proj",
+			scopeId: p.PublicId,
+			set:     []string{"this", "this"},
+			result:  []string{"this"},
+		},
+		{
+			name:     "Set this to scope grant scope - proj",
+			scopeId:  p.PublicId,
+			existing: []string{p.PublicId},
+			set:      []string{"this"},
+			result:   []string{"this"},
+		},
+		{
+			name:     "Set scope to this grant scope - proj",
+			scopeId:  p.PublicId,
+			existing: []string{"this"},
+			set:      []string{p.PublicId},
+			result:   []string{p.PublicId},
+		},
+		{
+			name:     "Set other org/proj scopes - org",
+			scopeId:  o.PublicId,
+			existing: []string{"this"},
+			set:      []string{"this", p2.PublicId},
+			wantErr:  true,
+		},
+		{
+			name:     "Set invalid grant scope - proj",
+			scopeId:  p.PublicId,
+			existing: []string{"this"},
+			set:      []string{"p_foobar1234"},
+			wantErr:  true,
+		},
+		{
+			name:     "Set invalid grant scope - proj - descendants",
+			scopeId:  p.PublicId,
+			existing: []string{"this"},
+			set:      []string{"descendants"},
+			wantErr:  true,
+		},
+		{
+			name:     "Set invalid grant scope - proj - children",
+			scopeId:  p.PublicId,
+			existing: []string{"this"},
+			set:      []string{"children"},
+			wantErr:  true,
+		},
+		{
+			name:     "Set both on grant scope - proj",
+			scopeId:  p.PublicId,
+			existing: []string{},
+			set:      []string{p.PublicId, "this"},
+			wantErr:  true,
+		},
+		{
+			name:     "Set both grant scope - proj",
+			scopeId:  p.PublicId,
+			existing: []string{},
+			set:      []string{"this", p.PublicId},
+			wantErr:  true,
+		},
+		{
+			name:     "Set other org/proj scopes - proj",
+			scopeId:  p.PublicId,
+			existing: []string{},
+			set:      []string{p2.PublicId},
+			wantErr:  true,
+		},
+	}
+
+	for _, tc := range setCases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			role := iam.TestRole(t, conn, tc.scopeId, iam.WithGrantScopeIds([]string{"testing-none"}))
+			for _, e := range tc.existing {
+				_ = iam.TestRoleGrantScope(t, conn, role.GetPublicId(), e)
+			}
+			req := &pbs.SetRoleGrantScopesRequest{
+				Id:      role.GetPublicId(),
+				Version: role.GetVersion(),
+			}
+			req.GrantScopeIds = tc.set
+			got, err := s.SetRoleGrantScopes(auth.DisabledAuthTestContext(repoFn, tc.scopeId), req)
+			if tc.wantErr {
+				assert.Error(err)
+				if tc.wantErrContains != "" {
+					assert.Contains(err.Error(), tc.wantErrContains)
+				}
+				return
+			}
+			require.NoError(err)
+			require.ElementsMatch(tc.result, got.GetItem().GetGrantScopeIds())
+		})
+	}
+
+	role := iam.TestRole(t, conn, p.GetPublicId(), iam.WithGrantScopeIds([]string{"testing-none"}))
+	failCases := []struct {
+		name string
+		req  *pbs.SetRoleGrantScopesRequest
+		err  error
+	}{
+		{
+			name: "Bad Version",
+			req: &pbs.SetRoleGrantScopesRequest{
+				Id:            role.GetPublicId(),
+				GrantScopeIds: []string{"this"},
+				Version:       role.GetVersion() + 2,
+			},
+			err: handlers.ApiErrorWithCode(codes.Internal),
+		},
+		{
+			name: "Bad Role Id",
+			req: &pbs.SetRoleGrantScopesRequest{
+				Id:            "bad id",
+				GrantScopeIds: []string{"this"},
+				Version:       role.GetVersion(),
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Invalid scope ID",
+			req: &pbs.SetRoleGrantScopesRequest{
+				Id:            role.GetPublicId(),
+				GrantScopeIds: []string{"p_foobar1234"},
+				Version:       role.GetVersion(),
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Empty Grant Scope ID",
+			req: &pbs.SetRoleGrantScopesRequest{
+				Id:            role.GetPublicId(),
+				GrantScopeIds: []string{"this", ""},
+				Version:       role.GetVersion(),
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+	}
+	for _, tc := range failCases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			_, gErr := s.SetRoleGrantScopes(auth.DisabledAuthTestContext(repoFn, p.GetPublicId()), tc.req)
+			if tc.err != nil {
+				require.Error(gErr)
+				assert.True(errors.Is(gErr, tc.err), "SetRoleGrantScopes(%+v) got error %#v, wanted %#v", tc.req, gErr, tc.err)
+			}
+		})
+	}
+}
+
+func TestRemoveGrantScopes(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	wrap := db.TestWrapper(t)
+	iamRepo := iam.TestRepo(t, conn, wrap)
+	repoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+	s, err := roles.NewService(context.Background(), repoFn, 1000)
+	require.NoError(t, err, "Error when getting new role service.")
+
+	o, p := iam.TestScopes(t, iamRepo)
+
+	removeCases := []struct {
+		name     string
+		scopeId  string
+		existing []string
+		remove   []string
+		result   []string
+		wantErr  bool
+	}{
+		{
+			name:     "Remove all - global",
+			scopeId:  scope.Global.String(),
+			existing: []string{"this", "descendants"},
+			remove:   []string{"this", "descendants"},
+		},
+		{
+			name:     "Remove partial - global",
+			scopeId:  scope.Global.String(),
+			existing: []string{"this", o.PublicId, "descendants", p.PublicId},
+			remove:   []string{o.PublicId, p.PublicId},
+			result:   []string{"this", "descendants"},
+		},
+		{
+			name:     "Remove duplicate - global",
+			scopeId:  scope.Global.String(),
+			existing: []string{"this", "children", o.PublicId},
+			remove:   []string{"children", o.PublicId, "children"},
+			result:   []string{"this"},
+		},
+		{
+			name:     "Remove non existant - global",
+			scopeId:  scope.Global.String(),
+			existing: []string{"this", "descendants"},
+			remove:   []string{"p_foobar1234"},
+			result:   []string{"this", "descendants"},
+		},
+		{
+			name:     "Remove from empty role - global",
+			scopeId:  scope.Global.String(),
+			existing: []string{},
+			remove:   []string{"this"},
+			result:   nil,
+		},
+		{
+			name:     "Remove all - org",
+			scopeId:  o.PublicId,
+			existing: []string{"this", "children"},
+			remove:   []string{"this", "children"},
+		},
+		{
+			name:     "Remove partial - org",
+			scopeId:  o.PublicId,
+			existing: []string{"children", o.PublicId, p.PublicId},
+			remove:   []string{"children"},
+			result:   []string{o.PublicId, p.PublicId},
+		},
+		{
+			name:     "Remove duplicate - org",
+			scopeId:  o.PublicId,
+			existing: []string{"this", p.PublicId, "children"},
+			remove:   []string{"children", p.PublicId, "children"},
+			result:   []string{"this"},
+		},
+		{
+			name:     "Remove non existant - org",
+			scopeId:  o.PublicId,
+			existing: []string{"this", "children"},
+			remove:   []string{"p_foobar1234"},
+			result:   []string{"this", "children"},
+		},
+		{
+			name:     "Remove from empty role - org",
+			scopeId:  o.PublicId,
+			existing: []string{},
+			remove:   []string{"this"},
+			result:   nil,
+		},
+		{
+			name:     "Remove all - proj",
+			scopeId:  p.PublicId,
+			existing: []string{p.PublicId},
+			remove:   []string{p.PublicId},
+		},
+		{
+			name:     "Remove duplicate - proj",
+			scopeId:  p.PublicId,
+			existing: []string{"this"},
+			remove:   []string{"this", "this"},
+			result:   []string{},
+		},
+		{
+			name:     "Remove non existant - proj",
+			scopeId:  p.PublicId,
+			existing: []string{"this"},
+			remove:   []string{"p_foobar1234"},
+			result:   []string{"this"},
+		},
+		{
+			name:     "Remove from empty role - proj",
+			scopeId:  p.PublicId,
+			existing: []string{},
+			remove:   []string{"this"},
+			result:   nil,
+		},
+	}
+
+	for _, tc := range removeCases {
+		t.Run(tc.name+"_", func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			role := iam.TestRole(t, conn, tc.scopeId, iam.WithGrantScopeIds([]string{"testing-none"}))
+			for _, e := range tc.existing {
+				_ = iam.TestRoleGrantScope(t, conn, role.GetPublicId(), e)
+			}
+			req := &pbs.RemoveRoleGrantScopesRequest{
+				Id:      role.GetPublicId(),
+				Version: role.GetVersion(),
+			}
+			req.GrantScopeIds = tc.remove
+			got, err := s.RemoveRoleGrantScopes(auth.DisabledAuthTestContext(repoFn, tc.scopeId), req)
+			if tc.wantErr {
+				assert.Error(err)
+				return
+			}
+			s, ok := status.FromError(err)
+			assert.True(ok)
+			require.NoError(err, "Got error %v", s)
+			require.ElementsMatch(tc.result, got.GetItem().GetGrantScopeIds())
+		})
+	}
+
+	role := iam.TestRole(t, conn, p.GetPublicId(), iam.WithGrantScopeIds([]string{"testing-none"}))
+	failCases := []struct {
+		name string
+		req  *pbs.RemoveRoleGrantScopesRequest
+
+		err error
+	}{
+		{
+			name: "Bad Version",
+			req: &pbs.RemoveRoleGrantScopesRequest{
+				Id:            role.GetPublicId(),
+				GrantScopeIds: []string{"this"},
+				Version:       role.GetVersion() + 2,
+			},
+			err: handlers.ApiErrorWithCode(codes.Internal),
+		},
+		{
+			name: "Bad Role Id",
+			req: &pbs.RemoveRoleGrantScopesRequest{
+				Id:            "bad id",
+				GrantScopeIds: []string{"this"},
+				Version:       role.GetVersion(),
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Empty Grant Scope ID",
+			req: &pbs.RemoveRoleGrantScopesRequest{
+				Id:            role.GetPublicId(),
+				GrantScopeIds: []string{"this", ""},
+				Version:       role.GetVersion(),
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Invalid Grant Scope ID",
+			req: &pbs.RemoveRoleGrantScopesRequest{
+				Id:            role.GetPublicId(),
+				GrantScopeIds: []string{"r_foobar1234"},
+				Version:       role.GetVersion(),
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+	}
+	for _, tc := range failCases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			_, gErr := s.RemoveRoleGrantScopes(auth.DisabledAuthTestContext(repoFn, p.GetPublicId()), tc.req)
+			if tc.err != nil {
+				require.Error(gErr)
+				assert.True(errors.Is(gErr, tc.err), "RemoveRoleGrantScopes(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
 			}
 		})
 	}

@@ -71,6 +71,13 @@ func (c *Command) Flags() *base.FlagSets {
 }
 
 func (c *Command) Run(args []string) int {
+	f := c.Flags()
+
+	if err := f.Parse(args); err != nil {
+		c.PrintCliError(err)
+		return base.CommandUserError
+	}
+
 	client, err := c.Client(base.WithNoTokenScope(), base.WithNoTokenValue())
 	if c.WrapperCleanupFunc != nil {
 		defer func() {
@@ -82,13 +89,6 @@ func (c *Command) Run(args []string) int {
 	if err != nil {
 		c.PrintCliError(fmt.Errorf("Error creating API client: %w", err))
 		return base.CommandCliError
-	}
-
-	f := c.Flags()
-
-	if err := f.Parse(args); err != nil {
-		c.PrintCliError(err)
-		return base.CommandUserError
 	}
 
 	// Lookup the primary auth method ID in the global scope

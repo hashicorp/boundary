@@ -225,6 +225,9 @@ func (r *Repository) FetchAuthzProtectedEntitiesByScope(ctx context.Context, pro
 		}
 		targetsMap[tv.GetProjectId()] = append(targetsMap[tv.GetProjectId()], tv)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("next rows error"))
+	}
 
 	return targetsMap, nil
 }
@@ -315,6 +318,9 @@ func (r *Repository) queryTargets(ctx context.Context, query string, args []any,
 			if err := r.ScanRows(ctx, rows, &foundTargets); err != nil {
 				return err
 			}
+		}
+		if err := rows.Err(); err != nil {
+			return err
 		}
 		var targetIds []string
 		for _, t := range foundTargets {
@@ -426,6 +432,9 @@ func (r *Repository) estimatedCount(ctx context.Context) (int, error) {
 		if err := r.reader.ScanRows(ctx, rows, &count); err != nil {
 			return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total targets"))
 		}
+	}
+	if err := rows.Err(); err != nil {
+		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total targets"))
 	}
 	return count, nil
 }
@@ -659,9 +668,9 @@ func (r *Repository) UpdateTarget(ctx context.Context, target Target, version ui
 		return nil, db.NoRowsAffected, errors.New(ctx, errors.EmptyFieldMask, op, "empty field mask")
 	}
 
-	// The Address field is not apart of the target schema in the database.
-	// It is apart of a different table called target_address, which is why
-	// the Address field must be filtered out of the dbMask & nullFields slices.
+	// The Address field is not a part of the target schema in the database. It
+	// is a part of a different table called target_address, which is why the
+	// Address field must be filtered out of the dbMask & nullFields slices.
 	var updateAddress, deleteAddress bool
 	var filteredDbMask, filteredNullFields []string
 	for _, f := range dbMask {

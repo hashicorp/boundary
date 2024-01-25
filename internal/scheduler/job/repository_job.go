@@ -61,6 +61,9 @@ func (r *Repository) UpsertJob(ctx context.Context, name, description string, op
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to scan rows for job"), errors.WithoutEvent())
 				}
 			}
+			if err := rows.Err(); err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get next row for job"), errors.WithoutEvent())
+			}
 			if rowCnt == 0 {
 				return errors.New(ctx, errors.NotSpecificIntegrity, op, "failed to create new job", errors.WithoutEvent())
 			}
@@ -109,6 +112,9 @@ func (r *Repository) UpdateJobNextRunInAtLeast(ctx context.Context, name string,
 					_ = rows.Close()
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to scan rows"))
 				}
+			}
+			if err := rows.Err(); err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get next row for job"))
 			}
 			if rowCnt == 0 {
 				return errors.New(ctx, errors.RecordNotFound, op, fmt.Sprintf("job %q does not exist", name))

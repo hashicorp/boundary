@@ -5,6 +5,7 @@ package base
 
 import (
 	"github.com/hashicorp/boundary/internal/event"
+	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/sdk/pbs/plugin"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 )
@@ -25,28 +26,31 @@ type Option func(*Options)
 
 // Options - how Options are represented.
 type Options struct {
-	withNoTokenScope               bool
-	withNoTokenValue               bool
-	withSkipDatabaseDestruction    bool
-	withSkipAuthMethodCreation     bool
-	withSkipOidcAuthMethodCreation bool
-	withSkipLdapAuthMethodCreation bool
-	withSkipScopesCreation         bool
-	withSkipHostResourcesCreation  bool
-	withSkipTargetCreation         bool
-	withContainerImage             string
-	withDialect                    string
-	withDatabaseTemplate           string
-	withEventerConfig              *event.EventerConfig
-	withEventFlags                 *EventFlags
-	withEventWrapper               wrapping.Wrapper
-	withAttributeFieldPrefix       string
-	withStatusCode                 int
-	withHostPlugin                 func() (string, plugin.HostPluginServiceClient)
-	withEventGating                bool
-	withImplicitId                 string
-	WithSkipScopeIdFlag            bool
-	WithInterceptedToken           *string
+	withNoTokenScope                        bool
+	withNoTokenValue                        bool
+	withSkipDefaultRoleCreation             bool
+	withSkipDatabaseDestruction             bool
+	withSkipAuthMethodCreation              bool
+	withSkipOidcAuthMethodCreation          bool
+	withSkipLdapAuthMethodCreation          bool
+	withSkipScopesCreation                  bool
+	withSkipHostResourcesCreation           bool
+	withSkipTargetCreation                  bool
+	withContainerImage                      string
+	withDialect                             string
+	withDatabaseTemplate                    string
+	withEventerConfig                       *event.EventerConfig
+	withEventFlags                          *EventFlags
+	withEventWrapper                        wrapping.Wrapper
+	withAttributeFieldPrefix                string
+	withStatusCode                          int
+	withHostPlugin                          func() (string, plugin.HostPluginServiceClient)
+	withEventGating                         bool
+	withImplicitId                          string
+	WithSkipScopeIdFlag                     bool
+	WithInterceptedToken                    *string
+	withAuthUserTargetAuthorizeSessionGrant bool
+	withIamOptions                          []iam.Option
 }
 
 func getDefaultOptions() Options {
@@ -78,6 +82,14 @@ func WithSkipDatabaseDestruction() Option {
 func WithNoTokenValue() Option {
 	return func(o *Options) {
 		o.withNoTokenValue = true
+	}
+}
+
+// WithSkipDefaultRoleCreation tells the command not to instantiate the default
+// global role
+func WithSkipDefaultRoleCreation() Option {
+	return func(o *Options) {
+		o.withSkipDefaultRoleCreation = true
 	}
 }
 
@@ -225,5 +237,22 @@ func WithSkipScopeIdFlag(with bool) Option {
 func WithInterceptedToken(s *string) Option {
 	return func(o *Options) {
 		o.WithInterceptedToken = s
+	}
+}
+
+// WithAuthUserTargetAuthorizeSessionGrant indicates that we should add an
+// authorize-session grant to the global authenticated user role. This is the
+// default for dev mode.
+func WithAuthUserTargetAuthorizeSessionGrant(with bool) Option {
+	return func(o *Options) {
+		o.withAuthUserTargetAuthorizeSessionGrant = with
+	}
+}
+
+// WithIamOptions provides options to pass through to the IAM package when
+// creating initial resources
+func WithIamOptions(with ...iam.Option) Option {
+	return func(o *Options) {
+		o.withIamOptions = with
 	}
 }

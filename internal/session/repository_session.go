@@ -159,6 +159,9 @@ func (r *Repository) CreateSession(ctx context.Context, sessionWrapper wrapping.
 					w.ScanRows(ctx, rows, &returnedCred)
 					returnedSession.DynamicCredentials = append(returnedSession.DynamicCredentials, &returnedCred)
 				}
+				if err := rows.Err(); err != nil {
+					return errors.Wrap(ctx, err, op)
+				}
 			}
 
 			var foundStates []*State
@@ -309,7 +312,7 @@ func (r *Repository) listSessions(ctx context.Context, opt ...Option) ([]*Sessio
 		)
 	}
 
-	return r.querySessions(ctx, query, args, limit)
+	return r.querySessions(ctx, query, args)
 }
 
 // listSessionsRefresh lists sessions limited by the list
@@ -354,10 +357,10 @@ func (r *Repository) listSessionsRefresh(ctx context.Context, updatedAfter time.
 		)
 	}
 
-	return r.querySessions(ctx, query, args, limit)
+	return r.querySessions(ctx, query, args)
 }
 
-func (r *Repository) querySessions(ctx context.Context, query string, args []any, limit int) ([]*Session, time.Time, error) {
+func (r *Repository) querySessions(ctx context.Context, query string, args []any) ([]*Session, time.Time, error) {
 	const op = "session.(Repository).querySessions"
 
 	var sessions []*Session
@@ -375,6 +378,9 @@ func (r *Repository) querySessions(ctx context.Context, query string, args []any
 				return errors.Wrap(ctx, err, op, errors.WithMsg("scan row failed"))
 			}
 			sessionsList = append(sessionsList, &s)
+		}
+		if err := rows.Err(); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to get next row for session"))
 		}
 		sessions, err = r.convertToSessions(ctx, sessionsList)
 		if err != nil {
@@ -425,6 +431,9 @@ func (r *Repository) estimatedCount(ctx context.Context) (int, error) {
 		if err := r.reader.ScanRows(ctx, rows, &count); err != nil {
 			return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total sessions"))
 		}
+	}
+	if err := rows.Err(); err != nil {
+		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total sessions"))
 	}
 	return count, nil
 }
@@ -575,6 +584,9 @@ func (r *Repository) sessionAuthzSummary(ctx context.Context, sessionId string) 
 		if err := r.reader.ScanRows(ctx, rows, info); err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("scan row failed"))
 		}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("failed to get next row for session"))
 	}
 	return info, nil
 }

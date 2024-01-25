@@ -391,7 +391,7 @@ func (r *ConnectionRepository) DeleteConnection(ctx context.Context, publicId st
 	return rowsDeleted, nil
 }
 
-// closeOrphanedConnections looks for connections that are still active, but where not reported by the worker.
+// closeOrphanedConnections looks for connections that are still active, but were not reported by the worker.
 func (r *ConnectionRepository) closeOrphanedConnections(ctx context.Context, workerId string, reportedConnections []string) ([]string, error) {
 	const op = "session.(ConnectionRepository).closeOrphanedConnections"
 
@@ -429,6 +429,9 @@ func (r *ConnectionRepository) closeOrphanedConnections(ctx context.Context, wor
 					return errors.Wrap(ctx, err, op, errors.WithMsg("scan row failed"))
 				}
 				orphanedConns = append(orphanedConns, connectionId)
+			}
+			if err := rows.Err(); err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg("error getting next row"))
 			}
 			return nil
 		},

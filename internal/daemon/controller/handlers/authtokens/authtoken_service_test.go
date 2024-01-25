@@ -554,7 +554,7 @@ func TestListPagination(t *testing.T) {
 	u := iam.TestUser(t, iamRepo, orgWithTokens.GetPublicId(), iam.WithAccountIds(acct.PublicId))
 
 	privProjRole := iam.TestRole(t, conn, pwt.GetPublicId())
-	iam.TestRoleGrant(t, conn, privProjRole.GetPublicId(), "id=*;type=*;actions=*")
+	iam.TestRoleGrant(t, conn, privProjRole.GetPublicId(), "ids=*;type=*;actions=*")
 	iam.TestUserRole(t, conn, privProjRole.GetPublicId(), u.GetPublicId())
 
 	var allTokens []*pb.AuthToken

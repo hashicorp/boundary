@@ -29,6 +29,7 @@ type Scope struct {
 	PrimaryAuthMethodId         string              `json:"primary_auth_method_id,omitempty"`
 	AuthorizedActions           []string            `json:"authorized_actions,omitempty"`
 	AuthorizedCollectionActions map[string][]string `json:"authorized_collection_actions,omitempty"`
+	StoragePolicyId             string              `json:"storage_policy_id,omitempty"`
 
 	response *api.Response
 }

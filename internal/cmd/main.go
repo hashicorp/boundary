@@ -298,7 +298,7 @@ func groupedHelpFunc(f cli.HelpFunc) cli.HelpFunc {
 		typeSpecificCommands := make([]string, 0, len(commands)-cap(genericCommands)-cap(clientCommands))
 		for k := range commands {
 			switch k {
-			case "authenticate", "config", "connect", "dev", "logout", "server":
+			case "authenticate", "config", "connect", "daemon", "dev", "logout", "search", "server":
 				clientCommands = append(clientCommands, k)
 			case "read", "update", "delete":
 				genericCommands = append(genericCommands, k)

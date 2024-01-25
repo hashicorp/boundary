@@ -117,6 +117,9 @@ func (r *Repository) queryHosts(ctx context.Context, query string, args []any) (
 				return err
 			}
 		}
+		if err := rows.Err(); err != nil {
+			return err
+		}
 		if len(foundHosts) != 0 {
 			plg = plugin.NewPlugin()
 			plg.PublicId = foundHosts[0].PluginId
@@ -222,6 +225,9 @@ func (r *Repository) estimatedHostCount(ctx context.Context) (int, error) {
 		if err := r.reader.ScanRows(ctx, rows, &count); err != nil {
 			return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query plugin hosts"))
 		}
+	}
+	if err := rows.Err(); err != nil {
+		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query plugin hosts"))
 	}
 	return count, nil
 }

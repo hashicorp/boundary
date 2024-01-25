@@ -36,6 +36,8 @@ type SessionRecording struct {
 	ConnectionRecordings []*ConnectionRecording `json:"connection_recordings,omitempty"`
 	CreateTimeValues     *ValuesAtTime          `json:"create_time_values,omitempty"`
 	AuthorizedActions    []string               `json:"authorized_actions,omitempty"`
+	RetainUntil          time.Time              `json:"retain_until,omitempty"`
+	DeleteAfter          time.Time              `json:"delete_after,omitempty"`
 
 	response *api.Response
 }
@@ -50,6 +52,19 @@ func (n SessionRecordingReadResult) GetItem() *SessionRecording {
 }
 
 func (n SessionRecordingReadResult) GetResponse() *api.Response {
+	return n.response
+}
+
+type SessionRecordingDeleteResult struct {
+	response *api.Response
+}
+
+// GetItem will always be nil for SessionRecordingDeleteResult
+func (n SessionRecordingDeleteResult) GetItem() interface{} {
+	return nil
+}
+
+func (n SessionRecordingDeleteResult) GetResponse() *api.Response {
 	return n.response
 }
 
@@ -142,6 +157,48 @@ func (c *Client) Read(ctx context.Context, id string, opt ...Option) (*SessionRe
 		return nil, apiErr
 	}
 	target.response = resp
+	return target, nil
+}
+
+func (c *Client) Delete(ctx context.Context, id string, opt ...Option) (*SessionRecordingDeleteResult, error) {
+	if id == "" {
+		return nil, fmt.Errorf("empty id value passed into Delete request")
+	}
+	if c.client == nil {
+		return nil, fmt.Errorf("nil client")
+	}
+
+	opts, apiOpts := getOpts(opt...)
+
+	req, err := c.client.NewRequest(ctx, "DELETE", fmt.Sprintf("session-recordings/%s", url.PathEscape(id)), nil, apiOpts...)
+	if err != nil {
+		return nil, fmt.Errorf("error creating Delete request: %w", err)
+	}
+
+	if len(opts.queryMap) > 0 {
+		q := url.Values{}
+		for k, v := range opts.queryMap {
+			q.Add(k, v)
+		}
+		req.URL.RawQuery = q.Encode()
+	}
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("error performing client request during Delete call: %w", err)
+	}
+
+	apiErr, err := resp.Decode(nil)
+	if err != nil {
+		return nil, fmt.Errorf("error decoding Delete response: %w", err)
+	}
+	if apiErr != nil {
+		return nil, apiErr
+	}
+
+	target := &SessionRecordingDeleteResult{
+		response: resp,
+	}
 	return target, nil
 }
 

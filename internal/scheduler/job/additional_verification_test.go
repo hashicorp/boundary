@@ -119,6 +119,7 @@ func TestPlugin(t *testing.T) {
 		for rows.Next() {
 			numRows++
 		}
+		require.NoError(rows.Err())
 		_ = rows.Close()
 		require.Equal(1, numRows)
 
@@ -139,6 +140,7 @@ func TestPlugin(t *testing.T) {
 		for rows.Next() {
 			numRows++
 		}
+		require.NoError(rows.Err())
 		_ = rows.Close()
 		require.Equal(1, numRows)
 
@@ -165,6 +167,7 @@ func TestPlugin(t *testing.T) {
 		for rows.Next() {
 			numRows++
 		}
+		require.NoError(rows.Err())
 		_ = rows.Close()
 		require.Equal(2, numRows)
 	})

@@ -504,4 +504,10 @@ message SessionRecording {
 
   // The available actions on this resource for this user.
   repeated string authorized_actions = 19 [json_name = "authorized_actions"]; // @gotags: class:"public"
+
+  // The time until a session recording is required to be stored.
+  google.protobuf.Timestamp retain_until = 20 [json_name = "retain_until"]; // @gotags: class:"public"
+
+  // The time a session recording is scheduled to be automatically deleted.
+  google.protobuf.Timestamp delete_after = 21 [json_name = "delete_after"]; // @gotags: class:"public"
 }

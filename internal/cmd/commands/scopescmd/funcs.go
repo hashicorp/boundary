@@ -17,18 +17,22 @@ const (
 	flagPrimaryAuthMethodIdName     = "primary-auth-method-id"
 	flagSkipAdminRoleCreationName   = "skip-admin-role-creation"
 	flagSkipDefaultRoleCreationName = "skip-default-role-creation"
+	flagStoragePolicyIdName         = "storage-policy-id"
 )
 
 func init() {
 	extraActionsFlagsMapFunc = extraActionsFlagsMapFuncImpl
 	extraFlagsFunc = extraFlagsFuncImpl
 	extraFlagsHandlingFunc = extraFlagsHandlingFuncImpl
+	executeExtraActions = executeExtraActionsImpl
 }
 
 func extraActionsFlagsMapFuncImpl() map[string][]string {
 	return map[string][]string{
-		"create": {flagSkipAdminRoleCreationName, flagSkipDefaultRoleCreationName},
-		"update": {flagPrimaryAuthMethodIdName},
+		"create":                {flagSkipAdminRoleCreationName, flagSkipDefaultRoleCreationName},
+		"update":                {flagPrimaryAuthMethodIdName},
+		"attach-storage-policy": {"id", "version", flagStoragePolicyIdName},
+		"detach-storage-policy": {"id", "version"},
 	}
 }
 
@@ -36,6 +40,7 @@ type extraCmdVars struct {
 	flagSkipAdminRoleCreation   bool
 	flagSkipDefaultRoleCreation bool
 	flagPrimaryAuthMethodId     string
+	flagStoragePolicyId         string
 }
 
 func extraFlagsFuncImpl(c *Command, set *base.FlagSets, f *base.FlagSet) {
@@ -59,11 +64,26 @@ func extraFlagsFuncImpl(c *Command, set *base.FlagSets, f *base.FlagSet) {
 				Target: &c.flagPrimaryAuthMethodId,
 				Usage:  "If set, the primary auth method id for the scope.  A primary auth method is allowed to create users on first login and is also used as a source for account full name and email for a scope's users",
 			})
+		case flagStoragePolicyIdName:
+			f.StringVar(&base.StringVar{
+				Name:   flagStoragePolicyIdName,
+				Target: &c.flagStoragePolicyId,
+				Usage:  "The public ID of the Storage Policy to attach to this scope. Can only attach to the global scope and an Org scope.",
+			})
 		}
 	}
 }
 
 func extraFlagsHandlingFuncImpl(c *Command, _ *base.FlagSets, opts *[]scopes.Option) bool {
+	// Validate inputs
+	switch c.Func {
+	case "attach-storage-policy":
+		if len(c.flagStoragePolicyId) == 0 {
+			c.UI.Error("No storage policy ID supplied via -storage-policy-id")
+			return false
+		}
+	}
+
 	if c.flagSkipAdminRoleCreation {
 		*opts = append(*opts, scopes.WithSkipAdminRoleCreation(c.flagSkipAdminRoleCreation))
 	}
@@ -75,6 +95,24 @@ func extraFlagsHandlingFuncImpl(c *Command, _ *base.FlagSets, opts *[]scopes.Opt
 	}
 
 	return true
+}
+
+func executeExtraActionsImpl(c *Command, origResp *api.Response, origItem *scopes.Scope, origItems []*scopes.Scope, origError error, scopeClient *scopes.Client, version uint32, opts []scopes.Option) (*api.Response, *scopes.Scope, []*scopes.Scope, error) {
+	switch c.Func {
+	case "attach-storage-policy":
+		result, err := scopeClient.AttachStoragePolicy(c.Context, c.FlagId, version, c.flagStoragePolicyId, opts...)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		return result.GetResponse(), result.GetItem(), nil, err
+	case "detach-storage-policy":
+		result, err := scopeClient.DetachStoragePolicy(c.Context, c.FlagId, version, opts...)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		return result.GetResponse(), result.GetItem(), nil, err
+	}
+	return origResp, origItem, origItems, origError
 }
 
 func (c *Command) printListTable(items []*scopes.Scope) string {
@@ -120,6 +158,11 @@ func (c *Command) printListTable(items []*scopes.Scope) string {
 				fmt.Sprintf("    PrimaryAuthMethodId: %s", item.PrimaryAuthMethodId),
 			)
 		}
+		if item.StoragePolicyId != "" {
+			output = append(output,
+				fmt.Sprintf("    StoragePolicyId:      %s", item.StoragePolicyId),
+			)
+		}
 		if len(item.AuthorizedActions) > 0 {
 			output = append(output,
 				"    Authorized Actions:",
@@ -153,6 +196,9 @@ func printItemTable(item *scopes.Scope, resp *api.Response) string {
 	}
 	if item.PrimaryAuthMethodId != "" {
 		nonAttributeMap["Primary Auth Method ID"] = item.PrimaryAuthMethodId
+	}
+	if item.StoragePolicyId != "" {
+		nonAttributeMap["Storage Policy ID"] = item.StoragePolicyId
 	}
 
 	maxLength := base.MaxAttributesLength(nonAttributeMap, nil, nil)
@@ -196,4 +242,35 @@ func printItemTable(item *scopes.Scope, resp *api.Response) string {
 	}
 
 	return base.WrapForHelpText(ret)
+}
+
+func (c *Command) extraHelpFunc(_ map[string]func() string) string {
+	var helpStr string
+	switch c.Func {
+	case "attach-storage-policy":
+		helpStr = base.WrapForHelpText([]string{
+			"Usage: boundary scopes attach-storage-policy [options] [args]",
+			"",
+			"  This command allows attaching a storage policy to scope resources. Example:",
+			"",
+			"    Attach storage policy to a scope:",
+			"",
+			`      $ boundary scopes attach-storage-policy -id o_1234567890 -storage-policy-id pst_1234567890`,
+			"",
+			"",
+		})
+	case "detach-storage-policy":
+		helpStr = base.WrapForHelpText([]string{
+			"Usage: boundary scope detach-storage-policy [options] [args]",
+			"",
+			"  This command allows detaching a storage policy from scope resources. Example:",
+			"",
+			"    Detach storage policy from scope:",
+			"",
+			`      $ boundary scopes detach-storage-policy -id o_1234567890`,
+			"",
+			"",
+		})
+	}
+	return helpStr + c.Flags().Help()
 }

@@ -109,6 +109,37 @@ service ScopeService {
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Destroy the specified key version in a Scope. This may start an asynchronous job that re-encrypts all data encrypted by the specified key version. Use GET /v1/scopes/{scope_id}:list-key-version-destruction-jobs to monitor pending destruction jobs."};
   }
+
+  // AttachStoragePolicy sets the Scope's Storage Policy. Any existing Storage
+  // Policy on the Scope will be overwritten. The provided request must include
+  // the Scope ID and the Storage Policy ID on which the Storage Policy will be
+  // set. A Storage Policy created under the global scope may be attached to any
+  // global or org scope. A Storage Policy created under a org scope may be attached
+  // to the same org scope. If any ID is missing, malformed, or references a
+  // non-existing resource, an error is returned.
+  rpc AttachStoragePolicy(AttachStoragePolicyRequest) returns (AttachStoragePolicyResponse) {
+    option (google.api.http) = {
+      post: "/v1/scopes/{id}:attach-storage-policy"
+      body: "*"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Attaches the specified Storage Policy to the Scope."};
+  }
+
+  // DetachStoragePolicy removes the Storage Policy from the specified Scope.
+  // The provided request must include the Scope ID for the Scope from which
+  // the Storage Policy will be removed. If the ID is missing, malformed, or
+  // references a non-existing scope, an error is returned. An error is returned
+  // if a Storage Policy is attempted to be removed from the Scope when the Scope
+  // does not have the Storage Policy attached to it.
+  rpc DetachStoragePolicy(DetachStoragePolicyRequest) returns (DetachStoragePolicyResponse) {
+    option (google.api.http) = {
+      post: "/v1/scopes/{id}:detach-storage-policy"
+      body: "*"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Detaches the specified Storage Policy from the Scope."};
+  }
 }
 
 message GetScopeRequest {
@@ -219,4 +250,27 @@ message DestroyKeyVersionResponse {
   // Use GET /v1/scopes/{scope_id}:list-key-version-destruction-jobs
   // to monitor pending destruction jobs.
   string state = 1; // @gotags: `class:"public"`
+}
+
+message AttachStoragePolicyRequest {
+  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
+  string storage_policy_id = 2; // @gotags: `class:"public"`
+  // Version is used to ensure this resource has not changed.
+  // The mutation will fail if the version does not match the latest known good version.
+  uint32 version = 3; // @gotags: `class:"public"`
+}
+
+message AttachStoragePolicyResponse {
+  api.resources.scopes.v1.Scope item = 1;
+}
+
+message DetachStoragePolicyRequest {
+  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
+  // Version is used to ensure this resource has not changed.
+  // The mutation will fail if the version does not match the latest known good version.
+  uint32 version = 2; // @gotags: `class:"public"`
+}
+
+message DetachStoragePolicyResponse {
+  api.resources.scopes.v1.Scope item = 1;
 }

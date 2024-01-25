@@ -10,9 +10,35 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   removed. Since 0.13.0, unless the `use_deprecated_kms_auth_method` value was
   set on the worker config, the new `kms` mechanism was already being used; this
   is simply no longer an available option.
+* Per the notes in Boundary 0.12.0 and 0.14.0, it is now an error if an address
+  on a host or target contains a port. As of this release, this restriction also
+  affects existing addresses (not just creation/updating via the API) so any
+  existing addresses containing a port will not be able to be used as part of a
+  target's session authorization call.
+* The `grant_scope_id` field on roles is now deprecated in favor of the multiple
+  grant scope support.
+* The deprecation notice for the `id` field in grant changing to `ids` in 0.13.1
+  specified that it would be removed in 0.15.0. Instead, this will be removed in
+  0.16.0. Existing grants already submitted into the system will still work, but
+  the API will no longer accept adding or setting grants containing the `id`
+  field in 0.16.0.
 
 ### New and Improved
 
+* Multiple grant scopes in roles: Roles now support multiple grant scopes, along
+  with the special values `this`, `children` (global/org only) to apply to all
+  direct children of a scope, and `descendants` (global only) to apply to all
+  descendants of a scope. These use the new actions `add-grant-scopes`,
+  `set-grant-scopes`, and `remove-grant-scopes` on roles. For now the
+  `grant_scope_id` field on roles will continue to be able to be set, which will
+  set a single grant scope, but this capability is now deprecated.
+* Policies (Enterprise and HCP Boundary only): This release introduces Policies, a
+  Boundary resource that represents a Governance Policy to enforce. The first 
+  implementation targets Storage Policies, which enables administrators to automate 
+  the process of retention and deletion of Session Recordings, ensuring that they're only 
+  retaining data that is explicitly required from a security/compliance perspective.
+  * ui: Add full UI support for Storage Policies managing the lifecycle of Session Recordings.
+  ([PR](https://github.com/hashicorp/boundary-ui/pull/2089))
 * New generic commands `read`, `update`, and `delete` have been added. These
   allow operating on resources by directly specifying the ID of the resource as
   the next parameter (e.g. `boundary update ttcp_1234567890`). Subtypes do not

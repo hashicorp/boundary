@@ -41,6 +41,25 @@ service SessionRecordingService {
     option (google.api.http) = {get: "/v1/session-recordings/{id}:download"};
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Download returns the contents of the specified resource in the specified mime type. Supports both Session ID and Session recording ID for looking up a Session recording. Supports both Connection ID and Connection recording ID to look up a Connection recording. A Channel recording ID is required to look up a Channel recording. The only supported mime type is \"application/x-asciicast\"."};
   }
+
+  // ReApplyStoragePolicy calculates the resultant set of policy for a given session recording
+  // and updates the retain until and delete after values. The provided request
+  // must include the Session recording ID for the Session recording to be updated. If that ID
+  // is missing, malformed or reference a non existing resource, an error is returned.
+  rpc ReApplyStoragePolicy(ReApplyStoragePolicyRequest) returns (ReApplyStoragePolicyResponse) {
+    option (google.api.http) = {
+      post: "/v1/session-recordings/{id}:reapply-storage-policy"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "ReApplyStoragePolicy will recalculate the resultant set of policy and apply the result to the given session recording."};
+  }
+
+  // DeleteSessionRecording removes a Session Recording from Boundary. If the Session Recording id
+  // is malformed or not provided an error is returned.
+  rpc DeleteSessionRecording(DeleteSessionRecordingRequest) returns (DeleteSessionRecordingResponse) {
+    option (google.api.http) = {delete: "/v1/session-recordings/{id}"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Deletes a Session Recording"};
+  }
 }
 
 message GetSessionRecordingRequest {
@@ -107,3 +126,19 @@ message DownloadRequest {
   // Defaults to "application/x-asciicast" if not set.
   string mime_type = 2 [json_name = "mime_type"]; // @gotags: class:"public"
 }
+
+message ReApplyStoragePolicyRequest {
+  // The Session Recording ID
+  string id = 1; // @gotags: class:"public"
+}
+
+message ReApplyStoragePolicyResponse {
+  // The requested recording.
+  resources.sessionrecordings.v1.SessionRecording item = 1;
+}
+
+message DeleteSessionRecordingRequest {
+  string id = 1; // @gotags: `class:"public"`
+}
+
+message DeleteSessionRecordingResponse {}

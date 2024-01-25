@@ -4,6 +4,7 @@
 package cluster
 
 import (
+	"bytes"
 	"context"
 	"os"
 	"path"
@@ -15,6 +16,7 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/daemon/controller"
 	"github.com/hashicorp/boundary/internal/daemon/worker"
+	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/internal/tests/helper"
 	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/require"
@@ -22,6 +24,7 @@ import (
 
 func TestUnixListener(t *testing.T) {
 	require := require.New(t)
+	buf := new(bytes.Buffer)
 	logger := hclog.New(&hclog.LoggerOptions{
 		Level: hclog.Trace,
 	})
@@ -52,6 +55,23 @@ func TestUnixListener(t *testing.T) {
 		Config:                        conf,
 		Logger:                        logger.Named("c1"),
 		DisableOidcAuthMethodCreation: true,
+		EventerConfig: &event.EventerConfig{
+			ObservationsEnabled: true,
+			SysEventsEnabled:    true,
+			Sinks: []*event.SinkConfig{
+				{
+					Name: "output",
+					Type: event.WriterSink,
+					EventTypes: []event.Type{
+						event.EveryType,
+					},
+					WriterConfig: &event.WriterSinkTypeConfig{
+						Writer: buf,
+					},
+					Format: event.TextHclogSinkFormat,
+				},
+			},
+		},
 	})
 	defer c1.Shutdown()
 
@@ -80,6 +100,23 @@ func TestUnixListener(t *testing.T) {
 		Config:                        conf,
 		Logger:                        logger.Named("c1"),
 		DisableOidcAuthMethodCreation: true,
+		EventerConfig: &event.EventerConfig{
+			ObservationsEnabled: true,
+			SysEventsEnabled:    true,
+			Sinks: []*event.SinkConfig{
+				{
+					Name: "output",
+					Type: event.WriterSink,
+					EventTypes: []event.Type{
+						event.EveryType,
+					},
+					WriterConfig: &event.WriterSinkTypeConfig{
+						Writer: buf,
+					},
+					Format: event.TextHclogSinkFormat,
+				},
+			},
+		},
 	})
 	defer c1.Shutdown()
 

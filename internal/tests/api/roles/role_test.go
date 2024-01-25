@@ -69,7 +69,7 @@ func TestCustom(t *testing.T) {
 			require.NotNil(g)
 
 			rc := roles.NewClient(client)
-			var version uint32 = 1
+			var version uint32 = 2
 
 			r, err := rc.Create(tc.Context(), tt.scopeId, roles.WithName("foo"))
 			require.NoError(err)
@@ -95,19 +95,19 @@ func TestCustom(t *testing.T) {
 			assert.Empty(updatedRole.Item.Principals)
 			version++
 
-			updatedRole, err = rc.AddGrants(tc.Context(), updatedRole.Item.Id, updatedRole.Item.Version, []string{"id=*;type=*;actions=read"})
+			updatedRole, err = rc.AddGrants(tc.Context(), updatedRole.Item.Id, updatedRole.Item.Version, []string{"ids=*;type=*;actions=read"})
 			require.NoError(err)
 			assert.EqualValues(updatedRole.Item.Version, version)
-			assert.Contains(updatedRole.Item.GrantStrings, "id=*;type=*;actions=read")
+			assert.Contains(updatedRole.Item.GrantStrings, "ids=*;type=*;actions=read")
 			version++
 
-			updatedRole, err = rc.SetGrants(tc.Context(), updatedRole.Item.Id, updatedRole.Item.Version, []string{"id=*;type=*;actions=*"})
+			updatedRole, err = rc.SetGrants(tc.Context(), updatedRole.Item.Id, updatedRole.Item.Version, []string{"ids=*;type=*;actions=*"})
 			require.NoError(err)
 			assert.EqualValues(updatedRole.Item.Version, version)
-			assert.Contains(updatedRole.Item.GrantStrings, "id=*;type=*;actions=*")
+			assert.Contains(updatedRole.Item.GrantStrings, "ids=*;type=*;actions=*")
 			version++
 
-			updatedRole, err = rc.RemoveGrants(tc.Context(), updatedRole.Item.Id, updatedRole.Item.Version, []string{"id=*;type=*;actions=*"})
+			updatedRole, err = rc.RemoveGrants(tc.Context(), updatedRole.Item.Id, updatedRole.Item.Version, []string{"ids=*;type=*;actions=*"})
 			require.NoError(err)
 			assert.EqualValues(updatedRole.Item.Version, version)
 			assert.Empty(updatedRole.Item.Grants)
@@ -241,16 +241,16 @@ func TestCrud(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			roleClient := roles.NewClient(client)
 			g, err := roleClient.Create(tc.Context(), tt.scopeId, roles.WithName("foo"))
-			checkRole("create", g.Item, err, "foo", 1)
+			checkRole("create", g.Item, err, "foo", 2)
 
 			g, err = roleClient.Read(tc.Context(), g.Item.Id)
-			checkRole("read", g.Item, err, "foo", 1)
+			checkRole("read", g.Item, err, "foo", 2)
 
 			g, err = roleClient.Update(tc.Context(), g.Item.Id, g.Item.Version, roles.WithName("bar"))
-			checkRole("update", g.Item, err, "bar", 2)
+			checkRole("update", g.Item, err, "bar", 3)
 
 			g, err = roleClient.Update(tc.Context(), g.Item.Id, g.Item.Version, roles.DefaultName())
-			checkRole("update", g.Item, err, "", 3)
+			checkRole("update", g.Item, err, "", 4)
 
 			_, err = roleClient.Delete(tc.Context(), g.Item.Id)
 			require.NoError(err)

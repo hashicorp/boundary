@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/event"
+	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -69,6 +70,13 @@ func Test_GetOpts(t *testing.T) {
 		opts := GetOpts(WithNoTokenValue())
 		testOpts := getDefaultOptions()
 		testOpts.withNoTokenValue = true
+		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithSkipDefaultRoleCreation", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := GetOpts(WithSkipDefaultRoleCreation())
+		testOpts := getDefaultOptions()
+		testOpts.withSkipDefaultRoleCreation = true
 		assert.Equal(opts, testOpts)
 	})
 	t.Run("WithSkipAuthMethodCreation", func(t *testing.T) {
@@ -150,5 +158,21 @@ func Test_GetOpts(t *testing.T) {
 		testOpts := getDefaultOptions()
 		testOpts.WithInterceptedToken = &s
 		assert.Equal(opts, testOpts)
+	})
+
+	t.Run("WithAuthUserTargetAuthorizeSessionGrant", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := getDefaultOptions()
+		assert.False(opts.withAuthUserTargetAuthorizeSessionGrant)
+		opts = GetOpts(WithAuthUserTargetAuthorizeSessionGrant(true))
+		assert.True(opts.withAuthUserTargetAuthorizeSessionGrant)
+	})
+
+	t.Run("WithIamOptions", func(t *testing.T) {
+		assert := assert.New(t)
+		testOpts := getDefaultOptions()
+		assert.Len(testOpts.withIamOptions, 0)
+		opts := GetOpts(WithIamOptions(iam.WithSkipAdminRoleCreation(true)))
+		assert.Len(opts.withIamOptions, 1)
 	})
 }
