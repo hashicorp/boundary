@@ -81,6 +81,7 @@ type Config struct {
 	LogWriter              io.Writer
 	LogFileName            string
 	DotDirectory           string
+	RunningInBackground    bool
 	// The amount of time since the last refresh that must have passed for a
 	// search query to trigger an inline refresh.
 	MaxSearchStaleness time.Duration
@@ -286,28 +287,34 @@ func (s *CacheServer) Serve(ctx context.Context, cmd Commander, opt ...Option) e
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
-	mux.Handle("/v1/search", versionEnforcement(searchFn))
+	mux.Handle("/v1/search", serverMetadataInterceptor(searchFn, s.conf.RunningInBackground))
 
 	statusFn, err := newStatusHandlerFunc(ctx, repo, l.Addr().String(), s.conf.LogFileName)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
-	mux.Handle("/v1/status", versionEnforcement(statusFn))
+	mux.Handle("/v1/status", serverMetadataInterceptor(statusFn, s.conf.RunningInBackground))
+
+	logHandlerFn, err := newLogHandlerFunc(ctx)
+	if err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
+	mux.Handle("/v1/log", serverMetadataInterceptor(logHandlerFn, s.conf.RunningInBackground))
 
 	tokenFn, err := newTokenHandlerFunc(ctx, repo, tic)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
-	mux.Handle("/v1/tokens", versionEnforcement(tokenFn))
+	mux.Handle("/v1/tokens", serverMetadataInterceptor(tokenFn, s.conf.RunningInBackground))
 
 	stopFn, err := newStopHandlerFunc(ctx, s.conf.ContextCancel)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
-	mux.Handle("/v1/stop", versionEnforcement(stopFn))
+	mux.Handle("/v1/stop", serverMetadataInterceptor(stopFn, s.conf.RunningInBackground))
 
 	// Return custom 404 message when requests don't map to any known path.
-	mux.Handle("/", new404Func(ctx))
+	mux.Handle("/", serverMetadataInterceptor(new404Func(ctx), s.conf.RunningInBackground))
 
 	logger, err := event.SysEventer().StandardLogger(ctx, "daemon.serve: ", event.ErrorType)
 	if err != nil {

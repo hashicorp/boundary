@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/boundary/internal/clientcache/internal/cache"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/util"
+	"github.com/hashicorp/boundary/version"
 )
 
 // RefreshTokenStatus is the status of a resource token
@@ -69,6 +70,7 @@ type StatusResult struct {
 	Uptime        time.Duration `json:"uptime,omitempty"`
 	SocketAddress string        `json:"socket_address,omitempty"`
 	LogLocation   string        `json:"log_location,omitempty"`
+	Version       string        `json:"version,omitempty"`
 	Users         []UserStatus  `json:"users,omitempty"`
 }
 
@@ -123,6 +125,7 @@ func toApiStatus(in *cache.Status, started time.Time, socketAddr, logLocation st
 	out := &StatusResult{
 		Uptime:        time.Since(started),
 		SocketAddress: socketAddr,
+		Version:       version.Get().FullVersionNumber(true),
 		LogLocation:   logLocation,
 	}
 

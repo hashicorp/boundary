@@ -201,6 +201,7 @@ func (c *StartCommand) Run(args []string) int {
 		LogWriter:              io.MultiWriter(writers...),
 		LogFileName:            logFileName,
 		DotDirectory:           dotDir,
+		RunningInBackground:    os.Getenv(backgroundEnvName) == backgroundEnvVal,
 	}
 
 	srv, err := daemon.New(ctx, cfg)
