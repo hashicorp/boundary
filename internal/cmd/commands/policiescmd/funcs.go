@@ -19,7 +19,7 @@ var keySubstMap = map[string]string{
 	"overridable":  "Overridable",
 }
 
-func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
+func (c *Command) extraHelpFunc(_ map[string]func() string) string {
 	var helpStr string
 	switch c.Func {
 	case "":
@@ -121,7 +121,7 @@ func (c *Command) printListTable(items []*policies.Policy) string {
 	return base.WrapForHelpText(output)
 }
 
-func printItemTable(item *policies.Policy, resp *api.Response) string {
+func printItemTable(item *policies.Policy, _ *api.Response) string {
 	nonAttributeMap := map[string]any{}
 	if item.Id != "" {
 		nonAttributeMap["ID"] = item.Id
