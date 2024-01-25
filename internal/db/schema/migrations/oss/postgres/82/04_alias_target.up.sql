@@ -8,11 +8,17 @@ begin;
     name wt_name,
     description wt_description,
     scope_id wt_scope_id not null
-      constraint iam_scope_global_fkey
-        references iam_scope_global (scope_id)
+      constraint iam_scope_fkey
+        references iam_scope (public_id)
         on delete cascade
         on update cascade,
     value wt_target_alias not null,
+    -- destination_id is used here instead of target_id because many subtyped
+    -- aliases may be coming in the future. Since Boundary's method for
+    -- updating these fields use update masks derived from the API resource and
+    -- there is a single API resource for each subtype with a field that is 
+    -- generic enough to be used by all subtypes, this column name also needs to
+    -- be generic enough across subtypes.
     destination_id wt_public_id
       constraint target_fkey
         references target (public_id)

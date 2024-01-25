@@ -5,7 +5,7 @@
 --  validates the wt_controller_id domain
 
 begin;
-  select plan(17);
+  select plan(16);
 
   select has_domain('wt_target_alias');
   
@@ -16,14 +16,8 @@ begin;
   prepare empty_insert as insert into target_alias_testing (v) values ('');
   select throws_like(
     'empty_insert',
-    '%"wt_target_alias_too_short"',
+    '%"wt_alias_too_short"',
     'We should error for empty values'
-  );
-  
-  prepare null_insert as insert into target_alias_testing (v) values (null);
-  select throws_like(
-    'null_insert',
-    'domain wt_target_alias does not allow null values'
   );
 
   prepare valid_inserts as insert into target_alias_testing (v) values 

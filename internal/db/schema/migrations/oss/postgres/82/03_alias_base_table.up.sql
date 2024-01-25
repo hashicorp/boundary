@@ -6,10 +6,14 @@ begin;
   create table alias (
     public_id wt_public_id primary key,
     scope_id wt_scope_id not null
-      constraint iam_scope_global_fkey
-        references iam_scope_global (scope_id)
+      constraint iam_scope_fkey
+        references iam_scope (public_id)
         on delete cascade
-        on update cascade,
+        on update cascade
+      constraint alias_target_must_be_in_global_scope
+        check(
+          scope_id = 'global'
+        ),
     value citext not null
       constraint alias_value_uq
         unique,

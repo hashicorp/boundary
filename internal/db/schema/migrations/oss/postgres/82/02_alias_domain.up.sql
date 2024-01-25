@@ -3,14 +3,19 @@
 
 begin;
 
-  -- wt_target_alias defines a type for target alias values
-  create domain wt_target_alias as citext not null
-      constraint wt_target_alias_too_short
+  -- wt_alias defines a type for alias values
+  create domain wt_alias as citext
+      constraint wt_alias_too_short
           check (length(trim(value)) > 0)
+      constraint wt_alias_no_suround_spaces
+          check (trim(value) = value);
+    comment on domain wt_alias is
+    'standard value column for an alias';
+
+  -- wt_target_alias defines a type for target alias values
+  create domain wt_target_alias as wt_alias
       constraint wt_target_alias_too_long
           check (length(trim(value)) < 254)
-      constraint wt_target_alias_no_suround_spaces
-          check (trim(value) = value)
       -- dns names consists of at least one label joined together by a "."
       -- each label can consist of a-z 0-9 and "-" case insensitive
       -- a label cannot start or end with a "-"
