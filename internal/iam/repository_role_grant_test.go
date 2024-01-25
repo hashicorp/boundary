@@ -10,9 +10,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/internal/perms"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -567,4 +570,397 @@ func TestRepository_SetRoleGrants_Parameters(t *testing.T) {
 			assert.Equal(tt.want, got)
 		})
 	}
+}
+
+func TestGrantsForUser(t *testing.T) {
+	require, assert := require.New(t), assert.New(t)
+	ctx := context.Background()
+
+	conn, _ := db.TestSetup(t, "postgres")
+	wrap := db.TestWrapper(t)
+
+	repo := TestRepo(t, conn, wrap)
+	user := TestUser(t, repo, "global")
+
+	// Create a series of scopes with roles in each. We'll create two of each
+	// kind to ensure we're not just picking up the first role in each.
+
+	// The first org/project do not have any direct grants to the user. They
+	// contain roles but the user is not a principal.
+	noGrantOrg1, noGrantProj1 := TestScopes(
+		t,
+		repo,
+		WithSkipAdminRoleCreation(true),
+		WithSkipDefaultRoleCreation(true),
+	)
+	noGrantOrg1Role := TestRole(t, conn, noGrantOrg1.PublicId)
+	TestRoleGrant(t, conn, noGrantOrg1Role.PublicId, "id=o_noGrantOrg1;actions=*")
+	noGrantProj1Role := TestRole(t, conn, noGrantProj1.PublicId)
+	TestRoleGrant(t, conn, noGrantProj1Role.PublicId, "id=p_noGrantProj1;actions=*")
+	noGrantOrg2, noGrantProj2 := TestScopes(
+		t,
+		repo,
+		WithSkipAdminRoleCreation(true),
+		WithSkipDefaultRoleCreation(true),
+	)
+	noGrantOrg2Role := TestRole(t, conn, noGrantOrg2.PublicId)
+	TestRoleGrant(t, conn, noGrantOrg2Role.PublicId, "id=o_noGrantOrg2;actions=*")
+	noGrantProj2Role := TestRole(t, conn, noGrantProj2.PublicId)
+	TestRoleGrant(t, conn, noGrantProj2Role.PublicId, "id=p_noGrantProj2;actions=*")
+
+	// The second org/project set contains direct grants, but without
+	// inheritance. We create two roles in each project.
+	directGrantOrg1, directGrantProj1a := TestScopes(
+		t,
+		repo,
+		WithSkipAdminRoleCreation(true),
+		WithSkipDefaultRoleCreation(true),
+	)
+	directGrantProj1b := TestProject(
+		t,
+		repo,
+		directGrantOrg1.PublicId,
+		WithSkipAdminRoleCreation(true),
+		WithSkipDefaultRoleCreation(true),
+	)
+	directGrantOrg1Role := TestRole(t, conn, directGrantOrg1.PublicId,
+		WithGrantScopeIds([]string{
+			globals.GrantScopeThis,
+			directGrantProj1a.PublicId,
+			directGrantProj1b.PublicId,
+		}))
+	TestUserRole(t, conn, directGrantOrg1Role.PublicId, user.PublicId)
+	directGrantOrg1RoleGrant := "id=o_directGrantOrg1;actions=*"
+	TestRoleGrant(t, conn, directGrantOrg1Role.PublicId, directGrantOrg1RoleGrant)
+	directGrantProj1aRole := TestRole(t, conn, directGrantProj1a.PublicId)
+	TestUserRole(t, conn, directGrantProj1aRole.PublicId, user.PublicId)
+	directGrantProj1aRoleGrant := "id=p_directGrantProj1a;actions=*"
+	TestRoleGrant(t, conn, directGrantProj1aRole.PublicId, directGrantProj1aRoleGrant)
+	directGrantProj1bRole := TestRole(t, conn, directGrantProj1b.PublicId)
+	TestUserRole(t, conn, directGrantProj1bRole.PublicId, user.PublicId)
+	directGrantProj1bRoleGrant := "id=p_directGrantProj1b;actions=*"
+	TestRoleGrant(t, conn, directGrantProj1bRole.PublicId, directGrantProj1bRoleGrant)
+	directGrantOrg2, directGrantProj2a := TestScopes(
+		t,
+		repo,
+		WithSkipAdminRoleCreation(true),
+		WithSkipDefaultRoleCreation(true),
+	)
+	directGrantProj2b := TestProject(
+		t,
+		repo,
+		directGrantOrg2.PublicId,
+		WithSkipAdminRoleCreation(true),
+		WithSkipDefaultRoleCreation(true),
+	)
+	directGrantOrg2Role := TestRole(t, conn, directGrantOrg2.PublicId,
+		WithGrantScopeIds([]string{
+			globals.GrantScopeThis,
+			directGrantProj2a.PublicId,
+			directGrantProj2b.PublicId,
+		}))
+	TestUserRole(t, conn, directGrantOrg2Role.PublicId, user.PublicId)
+	directGrantOrg2RoleGrant := "id=o_directGrantOrg2;actions=*"
+	TestRoleGrant(t, conn, directGrantOrg2Role.PublicId, directGrantOrg2RoleGrant)
+	directGrantProj2aRole := TestRole(t, conn, directGrantProj2a.PublicId)
+	TestUserRole(t, conn, directGrantProj2aRole.PublicId, user.PublicId)
+	directGrantProj2aRoleGrant := "id=p_directGrantProj2a;actions=*"
+	TestRoleGrant(t, conn, directGrantProj2aRole.PublicId, directGrantProj2aRoleGrant)
+	directGrantProj2bRole := TestRole(t, conn, directGrantProj2b.PublicId)
+	TestUserRole(t, conn, directGrantProj2bRole.PublicId, user.PublicId)
+	directGrantProj2bRoleGrant := "id=p_directGrantProj2b;actions=*"
+	TestRoleGrant(t, conn, directGrantProj2bRole.PublicId, directGrantProj2bRoleGrant)
+
+	// For the third set we create a couple of orgs/projects and then use
+	// "children". We expect to see no grant on the org but for both projects.
+	childGrantOrg1, childGrantProj1a := TestScopes(
+		t,
+		repo,
+		WithSkipAdminRoleCreation(true),
+		WithSkipDefaultRoleCreation(true),
+	)
+	childGrantProj1b := TestProject(
+		t,
+		repo,
+		childGrantOrg1.PublicId,
+		WithSkipAdminRoleCreation(true),
+		WithSkipDefaultRoleCreation(true),
+	)
+	childGrantOrg1Role := TestRole(t, conn, childGrantOrg1.PublicId,
+		WithGrantScopeIds([]string{
+			globals.GrantScopeChildren,
+		}))
+	TestUserRole(t, conn, childGrantOrg1Role.PublicId, user.PublicId)
+	childGrantOrg1RoleGrant := "id=o_childGrantOrg1;actions=*"
+	TestRoleGrant(t, conn, childGrantOrg1Role.PublicId, childGrantOrg1RoleGrant)
+	childGrantOrg2, childGrantProj2a := TestScopes(
+		t,
+		repo,
+		WithSkipAdminRoleCreation(true),
+		WithSkipDefaultRoleCreation(true),
+	)
+	childGrantProj2b := TestProject(
+		t,
+		repo,
+		childGrantOrg2.PublicId,
+		WithSkipAdminRoleCreation(true),
+		WithSkipDefaultRoleCreation(true),
+	)
+	childGrantOrg2Role := TestRole(t, conn, childGrantOrg2.PublicId,
+		WithGrantScopeIds([]string{
+			globals.GrantScopeChildren,
+		}))
+	TestUserRole(t, conn, childGrantOrg2Role.PublicId, user.PublicId)
+	childGrantOrg2RoleGrant := "id=o_childGrantOrg2;actions=*"
+	TestRoleGrant(t, conn, childGrantOrg2Role.PublicId, childGrantOrg2RoleGrant)
+
+	// Finally, let's create some roles at global scope with children and
+	// descendants grants
+	childGrantGlobalRole := TestRole(t, conn, scope.Global.String(),
+		WithGrantScopeIds([]string{
+			globals.GrantScopeChildren,
+		}))
+	TestUserRole(t, conn, childGrantGlobalRole.PublicId, globals.AnyAuthenticatedUserId)
+	childGrantGlobalRoleGrant := "id=*;type=host;actions=*"
+	TestRoleGrant(t, conn, childGrantGlobalRole.PublicId, childGrantGlobalRoleGrant)
+	descendantGrantGlobalRole := TestRole(t, conn, scope.Global.String(),
+		WithGrantScopeIds([]string{
+			globals.GrantScopeDescendants,
+		}))
+	TestUserRole(t, conn, descendantGrantGlobalRole.PublicId, globals.AnyAuthenticatedUserId)
+	descendantGrantGlobalRoleGrant := "id=*;type=credential;actions=*"
+	TestRoleGrant(t, conn, descendantGrantGlobalRole.PublicId, descendantGrantGlobalRoleGrant)
+
+	/*
+		// Useful if needing to debug
+		t.Log(
+			"\nnoGrantOrg1", noGrantOrg1.PublicId, noGrantOrg1Role.PublicId,
+			"\nnoGrantProj1", noGrantProj1.PublicId, noGrantProj1Role.PublicId,
+			"\nnoGrantOrg2", noGrantOrg2.PublicId, noGrantOrg2Role.PublicId,
+			"\nnoGrantProj2", noGrantProj2.PublicId, noGrantProj2Role.PublicId,
+			"\ndirectGrantOrg1", directGrantOrg1.PublicId, directGrantOrg1Role.PublicId,
+			"\ndirectGrantProj1a", directGrantProj1a.PublicId, directGrantProj1aRole.PublicId,
+			"\ndirectGrantProj1b", directGrantProj1b.PublicId, directGrantProj1bRole.PublicId,
+			"\ndirectGrantOrg2", directGrantOrg2.PublicId, directGrantOrg2Role.PublicId,
+			"\ndirectGrantProj2a", directGrantProj2a.PublicId, directGrantProj2aRole.PublicId,
+			"\ndirectGrantProj2b", directGrantProj2b.PublicId, directGrantProj2bRole.PublicId,
+			"\nchildGrantOrg1", childGrantOrg1.PublicId, childGrantOrg1Role.PublicId,
+			"\nchildGrantProj1a", childGrantProj1a.PublicId,
+			"\nchildGrantProj1b", childGrantProj1b.PublicId,
+			"\nchildGrantOrg2", childGrantOrg2.PublicId, childGrantOrg2Role.PublicId,
+			"\nchildGrantProj2a", childGrantProj2a.PublicId,
+			"\nchildGrantProj2b", childGrantProj2b.PublicId,
+			"\nchildGrantGlobalRole", childGrantGlobalRole.PublicId,
+			"\ndescendantGrantGlobalRole", descendantGrantGlobalRole.PublicId,
+		)
+	*/
+
+	// We expect to see:
+	//
+	// * No grants from noOrg/noProj
+	// * Grants from direct orgs/projs:
+	//   * directGrantOrg1/directGrantOrg2 on org and respective projects (6 grants total)
+	//   * directGrantProj on respective projects (4 grants total)
+	expGrantTuples := []perms.GrantTuple{
+		// No grants from noOrg/noProj
+
+		// Grants from direct org1 to org1/proj1a/proj1b:
+		{
+			RoleId:  directGrantOrg1Role.PublicId,
+			ScopeId: directGrantOrg1.PublicId,
+			Grant:   directGrantOrg1RoleGrant,
+		},
+		{
+			RoleId:  directGrantOrg1Role.PublicId,
+			ScopeId: directGrantProj1a.PublicId,
+			Grant:   directGrantOrg1RoleGrant,
+		},
+		{
+			RoleId:  directGrantOrg1Role.PublicId,
+			ScopeId: directGrantProj1b.PublicId,
+			Grant:   directGrantOrg1RoleGrant,
+		},
+		// Grants from direct org 1 proj 1a:
+		{
+			RoleId:  directGrantProj1aRole.PublicId,
+			ScopeId: directGrantProj1a.PublicId,
+			Grant:   directGrantProj1aRoleGrant,
+		},
+		// Grant from direct org 1 proj 1 b:
+		{
+			RoleId:  directGrantProj1bRole.PublicId,
+			ScopeId: directGrantProj1b.PublicId,
+			Grant:   directGrantProj1bRoleGrant,
+		},
+
+		// Grants from direct org1 to org2/proj2a/proj2b:
+		{
+			RoleId:  directGrantOrg2Role.PublicId,
+			ScopeId: directGrantOrg2.PublicId,
+			Grant:   directGrantOrg2RoleGrant,
+		},
+		{
+			RoleId:  directGrantOrg2Role.PublicId,
+			ScopeId: directGrantProj2a.PublicId,
+			Grant:   directGrantOrg2RoleGrant,
+		},
+		{
+			RoleId:  directGrantOrg2Role.PublicId,
+			ScopeId: directGrantProj2b.PublicId,
+			Grant:   directGrantOrg2RoleGrant,
+		},
+		// Grants from direct org 2 proj 2a:
+		{
+			RoleId:  directGrantProj2aRole.PublicId,
+			ScopeId: directGrantProj2a.PublicId,
+			Grant:   directGrantProj2aRoleGrant,
+		},
+		// Grant from direct org 2 proj 2 b:
+		{
+			RoleId:  directGrantProj2bRole.PublicId,
+			ScopeId: directGrantProj2b.PublicId,
+			Grant:   directGrantProj2bRoleGrant,
+		},
+
+		// Child grants from child org1 to proj1a/proj1b:
+		{
+			RoleId:  childGrantOrg1Role.PublicId,
+			ScopeId: childGrantProj1a.PublicId,
+			Grant:   childGrantOrg1RoleGrant,
+		},
+		{
+			RoleId:  childGrantOrg1Role.PublicId,
+			ScopeId: childGrantProj1b.PublicId,
+			Grant:   childGrantOrg1RoleGrant,
+		},
+		// Child grants from child org2 to proj2a/proj2b:
+		{
+			RoleId:  childGrantOrg2Role.PublicId,
+			ScopeId: childGrantProj2a.PublicId,
+			Grant:   childGrantOrg2RoleGrant,
+		},
+		{
+			RoleId:  childGrantOrg2Role.PublicId,
+			ScopeId: childGrantProj2b.PublicId,
+			Grant:   childGrantOrg2RoleGrant,
+		},
+
+		// Grants from global to every org:
+		{
+			RoleId:  childGrantGlobalRole.PublicId,
+			ScopeId: noGrantOrg1.PublicId,
+			Grant:   childGrantGlobalRoleGrant,
+		},
+		{
+			RoleId:  childGrantGlobalRole.PublicId,
+			ScopeId: noGrantOrg2.PublicId,
+			Grant:   childGrantGlobalRoleGrant,
+		},
+		{
+			RoleId:  childGrantGlobalRole.PublicId,
+			ScopeId: directGrantOrg1.PublicId,
+			Grant:   childGrantGlobalRoleGrant,
+		},
+		{
+			RoleId:  childGrantGlobalRole.PublicId,
+			ScopeId: directGrantOrg2.PublicId,
+			Grant:   childGrantGlobalRoleGrant,
+		},
+		{
+			RoleId:  childGrantGlobalRole.PublicId,
+			ScopeId: childGrantOrg1.PublicId,
+			Grant:   childGrantGlobalRoleGrant,
+		},
+		{
+			RoleId:  childGrantGlobalRole.PublicId,
+			ScopeId: childGrantOrg2.PublicId,
+			Grant:   childGrantGlobalRoleGrant,
+		},
+
+		// Grants from global to every org and project:
+		{
+			RoleId:  descendantGrantGlobalRole.PublicId,
+			ScopeId: noGrantOrg1.PublicId,
+			Grant:   descendantGrantGlobalRoleGrant,
+		},
+		{
+			RoleId:  descendantGrantGlobalRole.PublicId,
+			ScopeId: noGrantProj1.PublicId,
+			Grant:   descendantGrantGlobalRoleGrant,
+		},
+		{
+			RoleId:  descendantGrantGlobalRole.PublicId,
+			ScopeId: noGrantOrg2.PublicId,
+			Grant:   descendantGrantGlobalRoleGrant,
+		},
+		{
+			RoleId:  descendantGrantGlobalRole.PublicId,
+			ScopeId: noGrantProj2.PublicId,
+			Grant:   descendantGrantGlobalRoleGrant,
+		},
+		{
+			RoleId:  descendantGrantGlobalRole.PublicId,
+			ScopeId: directGrantOrg1.PublicId,
+			Grant:   descendantGrantGlobalRoleGrant,
+		},
+		{
+			RoleId:  descendantGrantGlobalRole.PublicId,
+			ScopeId: directGrantProj1a.PublicId,
+			Grant:   descendantGrantGlobalRoleGrant,
+		},
+		{
+			RoleId:  descendantGrantGlobalRole.PublicId,
+			ScopeId: directGrantProj1b.PublicId,
+			Grant:   descendantGrantGlobalRoleGrant,
+		},
+		{
+			RoleId:  descendantGrantGlobalRole.PublicId,
+			ScopeId: directGrantOrg2.PublicId,
+			Grant:   descendantGrantGlobalRoleGrant,
+		},
+		{
+			RoleId:  descendantGrantGlobalRole.PublicId,
+			ScopeId: directGrantProj2a.PublicId,
+			Grant:   descendantGrantGlobalRoleGrant,
+		},
+		{
+			RoleId:  descendantGrantGlobalRole.PublicId,
+			ScopeId: directGrantProj2b.PublicId,
+			Grant:   descendantGrantGlobalRoleGrant,
+		},
+		{
+			RoleId:  descendantGrantGlobalRole.PublicId,
+			ScopeId: childGrantOrg1.PublicId,
+			Grant:   descendantGrantGlobalRoleGrant,
+		},
+		{
+			RoleId:  descendantGrantGlobalRole.PublicId,
+			ScopeId: childGrantProj1a.PublicId,
+			Grant:   descendantGrantGlobalRoleGrant,
+		},
+		{
+			RoleId:  descendantGrantGlobalRole.PublicId,
+			ScopeId: childGrantProj1b.PublicId,
+			Grant:   descendantGrantGlobalRoleGrant,
+		},
+		{
+			RoleId:  descendantGrantGlobalRole.PublicId,
+			ScopeId: childGrantOrg2.PublicId,
+			Grant:   descendantGrantGlobalRoleGrant,
+		},
+		{
+			RoleId:  descendantGrantGlobalRole.PublicId,
+			ScopeId: childGrantProj2a.PublicId,
+			Grant:   descendantGrantGlobalRoleGrant,
+		},
+		{
+			RoleId:  descendantGrantGlobalRole.PublicId,
+			ScopeId: childGrantProj2b.PublicId,
+			Grant:   descendantGrantGlobalRoleGrant,
+		},
+	}
+
+	grantTuples, err := repo.GrantsForUser(ctx, user.PublicId)
+	require.NoError(err)
+	assert.ElementsMatch(grantTuples, expGrantTuples)
 }
