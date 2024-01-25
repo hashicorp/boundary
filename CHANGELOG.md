@@ -17,11 +17,10 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   target's session authorization call.
 * The `grant_scope_id` field on roles is now deprecated in favor of the multiple
   grant scope support.
-* The deprecation notice for the `id` field in grant changing to `ids` in 0.13.1
-  specified that it would be removed in 0.15.0. Instead, this will be removed in
-  0.16.0. Existing grants already submitted into the system will still work, but
-  the API will no longer accept adding or setting grants containing the `id`
-  field in 0.16.0.
+* Per the note in Boundary 0.13.1, the `id` field in grants has changed to `ids`
+  which allows multiple ids to be included; existing grants submitted to
+  Boundary will continue to work, but grants using "id" can no longer be added
+  to or set on a role.
 
 ### New and Improved
 

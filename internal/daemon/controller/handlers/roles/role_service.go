@@ -27,7 +27,6 @@ import (
 	"github.com/hashicorp/boundary/internal/types/scope"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/roles"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
-	"github.com/hashicorp/boundary/version"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -1385,8 +1384,6 @@ func validateAddRoleGrantsRequest(ctx context.Context, req *pbs.AddRoleGrantsReq
 		switch {
 		case grant.Id() == "":
 			// Nothing
-		case version.SupportsFeature(version.Binary, version.SupportIdInGrants):
-			// This will warn on the CLI
 		default:
 			badFields["grant_strings"] = fmt.Sprintf("Grant %q uses the %q field which is no longer supported. Please use %q instead.", v, "id", "ids")
 		}
@@ -1424,8 +1421,6 @@ func validateSetRoleGrantsRequest(ctx context.Context, req *pbs.SetRoleGrantsReq
 		switch {
 		case grant.Id() == "":
 			// Nothing
-		case version.SupportsFeature(version.Binary, version.SupportIdInGrants):
-			// This will warn on the CLI
 		default:
 			badFields["grant_strings"] = fmt.Sprintf("Grant %q uses the %q field which is no longer supported. Please use %q instead.", v, "id", "ids")
 		}
