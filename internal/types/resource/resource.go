@@ -81,6 +81,8 @@ func (r Type) PluralString() string {
 	switch r {
 	case CredentialLibrary:
 		return "credential-libraries"
+	case Alias:
+		return "aliases"
 	default:
 		return r.String() + "s"
 	}

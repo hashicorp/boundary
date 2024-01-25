@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller/common"
 	"github.com/hashicorp/boundary/internal/daemon/controller/common/scopeids"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
+	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/aliases"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/authmethods"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/authtokens"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/credentialstores"
@@ -72,6 +73,7 @@ var (
 	// TODO: get this from action registry
 	scopeCollectionTypeMapMap = map[string]map[resource.Type]action.ActionSet{
 		scope.Global.String(): {
+			resource.Alias:            aliases.CollectionActions,
 			resource.AuthMethod:       authmethods.CollectionActions,
 			resource.StorageBucket:    storage_buckets.CollectionActions,
 			resource.AuthToken:        authtokens.CollectionActions,
