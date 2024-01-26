@@ -28,13 +28,13 @@ jobs:
         run: |
           backport-assistant backport -automerge
         env:
-          BACKPORT_LABEL_REGEXP: "backport/website-test"
+          BACKPORT_LABEL_REGEXP: "backport/(?P<target>.+)"
           BACKPORT_TARGET_TEMPLATE: "heat/bug.fix/backport-assistant-target"
           GITHUB_TOKEN: ${{ secrets.ELEVATED_GITHUB_TOKEN }}
       # - name: Backport changes to targeted release branch
       #   run: |
       #     backport-assistant backport -automerge
       #   env:
-      #     BACKPORT_LABEL_REGEXP: "backport/(?P<target>\\d+\\.\\d+\\.\\w+)"
+      #     BACKPORT_LABEL_REGEXP: "backport/(?P<target>.+)"
       #     BACKPORT_TARGET_TEMPLATE: "release/{{.target}}"
       #     GITHUB_TOKEN: ${{ secrets.ELEVATED_GITHUB_TOKEN }}
