@@ -57,7 +57,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
     of pages when paginating through results.
 * New command `search` has been added allowing quick searching of targets or
   sessions. It utilizes a client side cache also added in this release. The
-  client side cache starts itself automatically in the background when sucessfuly
+  client side cache starts itself automatically in the background when successfully
   executing any command that communicates with a Boundary controller. To disable
   the client cache from starting automatically set the
   `BOUNDARY_SKIP_CACHE_DAEMON` environment variable or pass the
