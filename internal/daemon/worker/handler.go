@@ -6,6 +6,7 @@ package worker
 
 import (
 	"context"
+	"crypto/subtle"
 	stderrors "errors"
 	"fmt"
 	"io"
@@ -170,7 +171,7 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionMa
 		}
 
 		if sess.GetTofuToken() != "" {
-			if sess.GetTofuToken() != handshake.GetTofuToken() {
+			if subtle.ConstantTimeCompare([]byte(sess.GetTofuToken()), []byte(handshake.GetTofuToken())) != 1 {
 				event.WriteError(ctx, op, stderrors.New("WARNING: mismatched tofu token"), event.WithInfo("session_id", sessionId))
 				if err = conn.Close(websocket.StatusPolicyViolation, "tofu token not allowed"); err != nil {
 					event.WriteError(ctx, op, err, event.WithInfoMsg("error closing client connection"))
