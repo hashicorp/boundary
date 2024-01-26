@@ -55,6 +55,16 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
     relative to the last result received.
   * config: add new controller max_page_size field for controlling the default and max size
     of pages when paginating through results.
+* New command `search` has been added allowing quick searching of targets or
+  sessions. It utilizes a client side cache also added in this release. The
+  client side cache starts itself automatically in the background when successfully
+  executing any command that communicates with a Boundary controller. To disable
+  the client cache from starting automatically set the
+  `BOUNDARY_SKIP_CACHE_DAEMON` environment variable or pass the
+  `-skip-cache-daemon` flag when running a command that may start it.
+  Commands `daemon start`, `daemon stop`, `daemon status`, and `daemon add-token`
+  were added to help manage the cache. The cache does not currently work with
+  Boundary instances that require the use of client side certs.
 
 ## 0.14.3 (2023/12/12)
 

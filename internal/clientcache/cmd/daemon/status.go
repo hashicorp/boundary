@@ -52,7 +52,15 @@ Usage: boundary daemon status [options]
 }
 
 func (c *StatusCommand) Flags() *base.FlagSets {
-	set := c.FlagSet(base.FlagSetClient | base.FlagSetOutputFormat)
+	set := c.FlagSet(base.FlagSetOutputFormat)
+	f := set.NewFlagSet("Client Options")
+
+	f.BoolVar(&base.BoolVar{
+		Name:   "output-curl-string",
+		Target: &c.FlagOutputCurlString,
+		Usage:  "Instead of executing the request, print an equivalent cURL command string and exit.",
+	})
+
 	return set
 }
 
