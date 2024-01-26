@@ -6,7 +6,9 @@ package apptoken
 import (
 	"context"
 
+	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/util"
 )
 
 type options struct {
@@ -14,6 +16,7 @@ type options struct {
 	withDescription        string
 	withLimit              int
 	withExpirationInterval uint32
+	withReader             db.Reader
 }
 
 // Option - how options are passed as args
@@ -69,6 +72,20 @@ func WithExpirationInterval(ctx context.Context, maxSeconds uint32) Option {
 			return errors.New(ctx, errors.InvalidParameter, op, "invalid expiration interval (equal to zero)")
 		}
 		o.withExpirationInterval = maxSeconds
+		return nil
+	}
+}
+
+// withReader provides an option for specifying a reader to use for the
+// operation.
+func withReader(ctx context.Context, reader db.Reader) Option {
+	const op = "apptoken.withReader"
+	return func(o *options) error {
+		switch {
+		case util.IsNil(reader):
+			return errors.New(ctx, errors.InvalidParameter, op, "missing reader")
+		}
+		o.withReader = reader
 		return nil
 	}
 }

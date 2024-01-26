@@ -73,11 +73,12 @@ func Test_CreateAppToken(t *testing.T) {
 					Description:                    "test-description",
 					ScopeId:                        testOrg.GetPublicId(),
 					ExpirationIntervalInMaxSeconds: 60,
-				},
-			},
-			wantGrants: []*apptoken.AppTokenGrant{
-				{
-					AppTokenGrant: &store.AppTokenGrant{},
+					Grants: []*store.AppTokenGrant{
+						{
+							CanonicalGrant: "id=*;type=*;actions=read",
+							RawGrant:       "id=*;type=*;actions=read",
+						},
+					},
 				},
 			},
 		},
@@ -167,11 +168,10 @@ func Test_CreateAppToken(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			gotToken, gotGrants, err := testRepo.CreateAppToken(testCtx, tc.scopeId, tc.expTime, tc.createdBy, tc.grants, tc.opts...)
+			gotToken, err := testRepo.CreateAppToken(testCtx, tc.scopeId, tc.expTime, tc.createdBy, tc.grants, tc.opts...)
 			if tc.wantErrContains != "" {
 				require.Errorf(err, "we expected an error")
 				require.Empty(gotToken)
-				require.Empty(gotGrants)
 				assert.Contains(err.Error(), tc.wantErrContains)
 				if tc.wantErrMatch != nil {
 					assert.Truef(errors.Match(tc.wantErrMatch, err), "want err code: %q got: %q", tc.wantErrMatch, err)
@@ -184,21 +184,20 @@ func Test_CreateAppToken(t *testing.T) {
 			// set fields which are set by the db
 			tc.wantToken.CreateTime = gotToken.GetCreateTime()
 			tc.wantToken.PublicId = gotToken.GetPublicId()
-
+			for _, g := range tc.wantToken.Grants {
+				g.AppTokenId = gotToken.PublicId
+				g.CreateTime = gotToken.CreateTime
+			}
 			assert.Empty(cmp.Diff(gotToken.AppToken, tc.wantToken.AppToken, protocmp.Transform()))
-			assert.Len(gotGrants, len(tc.wantGrants))
 
 			{
 				// check that the appToken is in the db
-				foundTk := apptoken.AllocAppToken()
-				err = testRw.LookupWhere(testCtx, foundTk, "public_id = ?", []interface{}{gotToken.GetPublicId()})
+				foundTk, err := testRepo.LookupAppToken(testCtx, gotToken.PublicId)
 				require.NoError(err)
 				// this is necessary because we're not using app_token_agg so the value is not set
 				foundTk.ExpirationIntervalInMaxSeconds = gotToken.ExpirationIntervalInMaxSeconds
 				assert.Empty(cmp.Diff(gotToken.AppToken, foundTk.AppToken, protocmp.Transform()))
 			}
-			// TODO: sort grants and cmp.Diff each one
-
 			{
 				// check that the expiration interval is in the db
 				if gotToken.ExpirationIntervalInMaxSeconds > 0 {
@@ -246,9 +245,8 @@ func Test_CreateAppToken_KMSGetWrapperError(t *testing.T) {
 	}
 
 	assert, require := assert.New(t), require.New(t)
-	gotToken, gotGrants, err := testRepo.CreateAppToken(testCtx, testOrg.PublicId, testExp, testUserHistoryId, grants, opts...)
+	gotToken, err := testRepo.CreateAppToken(testCtx, testOrg.PublicId, testExp, testUserHistoryId, grants, opts...)
 	require.Error(err)
 	assert.ErrorContains(err, "get-db-wrapper-err")
 	require.Empty(gotToken)
-	require.Empty(gotGrants)
 }

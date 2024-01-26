@@ -155,15 +155,19 @@ select
   t.description,
   t.created_by,
   t.scope_id,
-  g.canonical_grant,
-  g.raw_grant,
-  p.expiration_interval_in_max_seconds
+
+  -- max is acceptable aggregation because there can only be one expiration
+  -- interval for the apptoken
+  max(p.expiration_interval_in_max_seconds) as expiration_interval_in_max_seconds,
+  -- the string_agg(..) column will be null if there are no associated value
+  -- objects
+  string_agg(distinct g.canonical_grant, '|') as canonical_grants,
+  string_agg(distinct g.raw_grant, '|') as raw_grants
 from
   app_token t
   left outer join app_token_grant                        g on t.public_id = g.app_token_id
-  left outer join app_token_periodic_expiration_interval p on t.public_id = p.app_token_id 
-where 
-  t.public_id = g.app_token_id;
+  left outer join app_token_periodic_expiration_interval p on t.public_id = p.app_token_id
+group by t.public_id; 
 comment on view app_token_agg is
  'app_token_agg is an aggregate of the app token with its grants';
 

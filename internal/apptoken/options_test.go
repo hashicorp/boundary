@@ -7,6 +7,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/hashicorp/boundary/internal/db"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -56,4 +57,31 @@ func Test_getOpts(t *testing.T) {
 		require.Error(err)
 		assert.Empty(opts)
 	})
+	t.Run("WithReaderWriter", func(t *testing.T) {
+		t.Parallel()
+		testCtx := context.Background()
+		t.Run("success", func(t *testing.T) {
+			t.Parallel()
+			opts := getDefaultOptions()
+			assert.Empty(t, opts.withReader)
+			r := &fakeReader{}
+			opts, err := getOpts(withReader(testCtx, r))
+			require.NoError(t, err)
+			assert.Equal(t, r, opts.withReader)
+		})
+		t.Run("nil reader", func(t *testing.T) {
+			t.Parallel()
+			_, err := getOpts(withReader(testCtx, nil))
+			require.Error(t, err)
+		})
+		t.Run("nil interface reader", func(t *testing.T) {
+			t.Parallel()
+			_, err := getOpts(withReader(testCtx, (*fakeReader)(nil)))
+			require.Error(t, err)
+		})
+	})
+}
+
+type fakeReader struct {
+	db.Reader
 }
