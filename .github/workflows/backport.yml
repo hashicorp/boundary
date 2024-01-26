@@ -14,10 +14,13 @@ on:
       - reopened
       - synchronize
       - ready_for_review
+      - merged
+
+permissions:
+  contents: read
 
 jobs:
   backport:
-    if: github.event.pull_request.ready_for_review
     runs-on: ubuntu-latest
     container: hashicorpdev/backport-assistant:0.3.4
     steps:
