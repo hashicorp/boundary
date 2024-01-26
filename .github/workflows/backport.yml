@@ -14,10 +14,10 @@ on:
       - reopened
       - synchronize
       - ready_for_review
-      - merged
+      - converted_to_draft
 
-permissions:
-  contents: read
+# permissions:
+#   contents: read
 
 jobs:
   backport:
