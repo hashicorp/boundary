@@ -21,6 +21,7 @@ import (
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db/common"
 	"github.com/hashicorp/go-rootcerts"
+	"github.com/hashicorp/go-secure-stdlib/base62"
 	vault "github.com/hashicorp/vault/api"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/ory/dockertest/v3"
@@ -169,7 +170,9 @@ func gotNewServer(t testing.TB, opt ...TestOption) *TestVaultServer {
 	// Engine: 20.10.6
 
 	if opts.dockerNetwork {
-		network, err := pool.CreateNetwork(t.Name())
+		id, err := base62.Random(4)
+		require.NoError(err)
+		network, err := pool.CreateNetwork(fmt.Sprintf("%s-%s", t.Name(), id))
 		require.NoError(err)
 		server.network = network
 		dockerOptions.Networks = []*dockertest.Network{network}
