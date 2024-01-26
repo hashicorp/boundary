@@ -41,6 +41,11 @@ message AppToken {
   // interval of the app token
   // @inject_tag: `gorm:"-"`
   uint32 expiration_interval_in_max_seconds = 80;
+
+  // canonical_grants is the canonical string representation of the grant value.
+  // We use this as the unique constraint.
+  // @inject_tag: `gorm:"-"`
+  repeated AppTokenGrant grants = 90;
 }
 
 message AppTokenPeriodicExpirationInterval {
