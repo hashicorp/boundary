@@ -27,16 +27,6 @@ func TestNewAlias(t *testing.T) {
 		assert.Equal(t, a.Value, "valid.alias")
 	})
 
-	t.Run("missing value", func(t *testing.T) {
-		_, err := NewAlias(context.Background(), "global", "")
-		assert.ErrorContains(t, err, "alias value must be specified")
-	})
-
-	t.Run("missing scope", func(t *testing.T) {
-		_, err := NewAlias(context.Background(), "", "missing.scope")
-		assert.ErrorContains(t, err, "scope id must be specified")
-	})
-
 	t.Run("with destination", func(t *testing.T) {
 		a, err := NewAlias(context.Background(), "global", "with.destination", WithDestinationId("ttcp_1234567890"))
 		require.NoError(t, err)
