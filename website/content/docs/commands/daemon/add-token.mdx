@@ -11,7 +11,7 @@ Command: `boundary daemon add-token`
 
 The `boundary daemon add-token` command lets you add an auth token from your keyring to a Boundary daemon that is running.
 
-By default, the Boundary CLI uses the platform's default keyring and token name to store and receive auth tokens.
+By default, the Boundary CLI tries to use a keyring to store and receive auth tokens.
 Whenever you use an auth token to interact with Boundary, the auth token is stored and the client cache syncs data to it.
 If you authenticate to multiple Boundary instances, the client cache stores multiple auth tokens and syncs data from each instance to the corresponding token.
 
@@ -22,7 +22,7 @@ By adding auth tokens to your client cache, you can select which specific Bounda
 The following command adds the auth token `at_LvUqeYz80B` to the client cache from your keyring:
 
 ```shell-session
-$ boundary daemon add-token at_LvUqeYz80B
+$ boundary daemon add-token
 ```
 
 The following command specifies that you only want to search the Boundary instance associated with the auth token `at_LvUqeYz80B`:
@@ -36,13 +36,13 @@ $ boundary daemon add-token -token-name at_LvUqeYz80B
 <CodeBlockConfig hideClipboard>
 
 ```shell-session
-$ boundary daemon add-token [options] [args]
+$ boundary daemon add-token [options]
 ```
 
 </CodeBlockConfig>
 
 ### Command options
 
-- `token-name` - Specifies the name of the token you want to use for search.
+- `token-name` - Specifies the name of the token you want to sync data for.
 
 @include 'cmd-option-note.mdx'

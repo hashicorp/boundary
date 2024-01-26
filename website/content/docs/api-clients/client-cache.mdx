@@ -62,7 +62,7 @@ For more information, refer to the [`daemon status`](/boundary/docs/commands/dae
 ### Auth tokens
 
 By default, the Boundary CLI uses the platform's default keyring and token name to store and receive auth tokens.
-Whenever you use an auth token to interact with Boundary, the auth token is stored and the client cache syncs data to it.
+Whenever you use an auth token to interact with Boundary, the client cache stores the auth token retrieves its data.
 If you authenticate to multiple Boundary instances, the client cache stores multiple auth tokens and syncs data from each instance to the corresponding token.
 
 To view the client cache for a specific Boundary instance, you can specify the appropriate auth token using the `boundary daemon add-token` command.
