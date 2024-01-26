@@ -594,9 +594,9 @@ func TestGrantsForUser(t *testing.T) {
 		WithSkipDefaultRoleCreation(true),
 	)
 	noGrantOrg1Role := TestRole(t, conn, noGrantOrg1.PublicId)
-	TestRoleGrant(t, conn, noGrantOrg1Role.PublicId, "id=o_noGrantOrg1;actions=*")
+	TestRoleGrant(t, conn, noGrantOrg1Role.PublicId, "ids=o_noGrantOrg1;actions=*")
 	noGrantProj1Role := TestRole(t, conn, noGrantProj1.PublicId)
-	TestRoleGrant(t, conn, noGrantProj1Role.PublicId, "id=p_noGrantProj1;actions=*")
+	TestRoleGrant(t, conn, noGrantProj1Role.PublicId, "ids=p_noGrantProj1;actions=*")
 	noGrantOrg2, noGrantProj2 := TestScopes(
 		t,
 		repo,
@@ -604,9 +604,9 @@ func TestGrantsForUser(t *testing.T) {
 		WithSkipDefaultRoleCreation(true),
 	)
 	noGrantOrg2Role := TestRole(t, conn, noGrantOrg2.PublicId)
-	TestRoleGrant(t, conn, noGrantOrg2Role.PublicId, "id=o_noGrantOrg2;actions=*")
+	TestRoleGrant(t, conn, noGrantOrg2Role.PublicId, "ids=o_noGrantOrg2;actions=*")
 	noGrantProj2Role := TestRole(t, conn, noGrantProj2.PublicId)
-	TestRoleGrant(t, conn, noGrantProj2Role.PublicId, "id=p_noGrantProj2;actions=*")
+	TestRoleGrant(t, conn, noGrantProj2Role.PublicId, "ids=p_noGrantProj2;actions=*")
 
 	// The second org/project set contains direct grants, but without
 	// inheritance. We create two roles in each project.
@@ -630,15 +630,15 @@ func TestGrantsForUser(t *testing.T) {
 			directGrantProj1b.PublicId,
 		}))
 	TestUserRole(t, conn, directGrantOrg1Role.PublicId, user.PublicId)
-	directGrantOrg1RoleGrant := "id=o_directGrantOrg1;actions=*"
+	directGrantOrg1RoleGrant := "ids=o_directGrantOrg1;actions=*"
 	TestRoleGrant(t, conn, directGrantOrg1Role.PublicId, directGrantOrg1RoleGrant)
 	directGrantProj1aRole := TestRole(t, conn, directGrantProj1a.PublicId)
 	TestUserRole(t, conn, directGrantProj1aRole.PublicId, user.PublicId)
-	directGrantProj1aRoleGrant := "id=p_directGrantProj1a;actions=*"
+	directGrantProj1aRoleGrant := "ids=p_directGrantProj1a;actions=*"
 	TestRoleGrant(t, conn, directGrantProj1aRole.PublicId, directGrantProj1aRoleGrant)
 	directGrantProj1bRole := TestRole(t, conn, directGrantProj1b.PublicId)
 	TestUserRole(t, conn, directGrantProj1bRole.PublicId, user.PublicId)
-	directGrantProj1bRoleGrant := "id=p_directGrantProj1b;actions=*"
+	directGrantProj1bRoleGrant := "ids=p_directGrantProj1b;actions=*"
 	TestRoleGrant(t, conn, directGrantProj1bRole.PublicId, directGrantProj1bRoleGrant)
 	directGrantOrg2, directGrantProj2a := TestScopes(
 		t,
@@ -660,15 +660,15 @@ func TestGrantsForUser(t *testing.T) {
 			directGrantProj2b.PublicId,
 		}))
 	TestUserRole(t, conn, directGrantOrg2Role.PublicId, user.PublicId)
-	directGrantOrg2RoleGrant := "id=o_directGrantOrg2;actions=*"
+	directGrantOrg2RoleGrant := "ids=o_directGrantOrg2;actions=*"
 	TestRoleGrant(t, conn, directGrantOrg2Role.PublicId, directGrantOrg2RoleGrant)
 	directGrantProj2aRole := TestRole(t, conn, directGrantProj2a.PublicId)
 	TestUserRole(t, conn, directGrantProj2aRole.PublicId, user.PublicId)
-	directGrantProj2aRoleGrant := "id=p_directGrantProj2a;actions=*"
+	directGrantProj2aRoleGrant := "ids=p_directGrantProj2a;actions=*"
 	TestRoleGrant(t, conn, directGrantProj2aRole.PublicId, directGrantProj2aRoleGrant)
 	directGrantProj2bRole := TestRole(t, conn, directGrantProj2b.PublicId)
 	TestUserRole(t, conn, directGrantProj2bRole.PublicId, user.PublicId)
-	directGrantProj2bRoleGrant := "id=p_directGrantProj2b;actions=*"
+	directGrantProj2bRoleGrant := "ids=p_directGrantProj2b;actions=*"
 	TestRoleGrant(t, conn, directGrantProj2bRole.PublicId, directGrantProj2bRoleGrant)
 
 	// For the third set we create a couple of orgs/projects and then use
@@ -691,7 +691,7 @@ func TestGrantsForUser(t *testing.T) {
 			globals.GrantScopeChildren,
 		}))
 	TestUserRole(t, conn, childGrantOrg1Role.PublicId, user.PublicId)
-	childGrantOrg1RoleGrant := "id=o_childGrantOrg1;actions=*"
+	childGrantOrg1RoleGrant := "ids=o_childGrantOrg1;actions=*"
 	TestRoleGrant(t, conn, childGrantOrg1Role.PublicId, childGrantOrg1RoleGrant)
 	childGrantOrg2, childGrantProj2a := TestScopes(
 		t,
@@ -711,7 +711,7 @@ func TestGrantsForUser(t *testing.T) {
 			globals.GrantScopeChildren,
 		}))
 	TestUserRole(t, conn, childGrantOrg2Role.PublicId, user.PublicId)
-	childGrantOrg2RoleGrant := "id=o_childGrantOrg2;actions=*"
+	childGrantOrg2RoleGrant := "ids=o_childGrantOrg2;actions=*"
 	TestRoleGrant(t, conn, childGrantOrg2Role.PublicId, childGrantOrg2RoleGrant)
 
 	// Finally, let's create some roles at global scope with children and
@@ -721,14 +721,14 @@ func TestGrantsForUser(t *testing.T) {
 			globals.GrantScopeChildren,
 		}))
 	TestUserRole(t, conn, childGrantGlobalRole.PublicId, globals.AnyAuthenticatedUserId)
-	childGrantGlobalRoleGrant := "id=*;type=host;actions=*"
+	childGrantGlobalRoleGrant := "ids=*;type=host;actions=*"
 	TestRoleGrant(t, conn, childGrantGlobalRole.PublicId, childGrantGlobalRoleGrant)
 	descendantGrantGlobalRole := TestRole(t, conn, scope.Global.String(),
 		WithGrantScopeIds([]string{
 			globals.GrantScopeDescendants,
 		}))
 	TestUserRole(t, conn, descendantGrantGlobalRole.PublicId, globals.AnyAuthenticatedUserId)
-	descendantGrantGlobalRoleGrant := "id=*;type=credential;actions=*"
+	descendantGrantGlobalRoleGrant := "ids=*;type=credential;actions=*"
 	TestRoleGrant(t, conn, descendantGrantGlobalRole.PublicId, descendantGrantGlobalRoleGrant)
 
 	/*
