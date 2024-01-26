@@ -9,7 +9,7 @@ on:
 
 jobs:
   backport:
-    if: github.event.pull_request.merged
+    if: github.event.pull_request.ready_for_review
     runs-on: ubuntu-latest
     container: hashicorpdev/backport-assistant:0.3.4
     steps:
@@ -17,7 +17,7 @@ jobs:
         run: |
           backport-assistant backport -automerge
         env:
-          BACKPORT_LABEL_REGEXP: "backport/website/test"
+          BACKPORT_LABEL_REGEXP: "backport/website-test"
           BACKPORT_TARGET_TEMPLATE: "heat/bug.fix/backport-assistant-target"
           GITHUB_TOKEN: ${{ secrets.ELEVATED_GITHUB_TOKEN }}
       # - name: Backport changes to targeted release branch
