@@ -186,7 +186,11 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 	v.ctx = ctx
 
 	ea := &event.Auth{}
-	defer event.WriteAudit(ctx, op, event.WithAuth(ea))
+	defer func() {
+		if err := event.WriteAudit(ctx, op, event.WithAuth(ea)); err != nil {
+			event.WriteError(ctx, op, err)
+		}
+	}()
 
 	opts := getOpts(opt...)
 
