@@ -132,8 +132,15 @@ func (w *Worker) startAuthRotationTicking(cancelCtx context.Context) {
 					event.WriteError(cancelCtx, op, fmt.Errorf("error deriving pkix string from leaf certificate public key in current worker auth bundle: %w", err))
 					continue
 				}
+
+				certId, err := nodeenrollment.KeyIdFromPkix(bundle.CertificateDer)
+				if err != nil {
+					event.WriteError(cancelCtx, op, fmt.Errorf("error deriving cert id from certificate in current worker auth bundle: %w", err))
+					continue
+				}
 				args = append(args,
-					fmt.Sprintf("leaf_cert_%s_id", str), certKeyId,
+					fmt.Sprintf("leaf_cert_%s_cert_id", str), certId,
+					fmt.Sprintf("leaf_cert_%s_key_id", str), certKeyId,
 					fmt.Sprintf("leaf_cert_%s_not_before", str), cert.NotBefore.Format(time.RFC3339),
 					fmt.Sprintf("leaf_cert_%s_not_after", str), cert.NotAfter.Format(time.RFC3339),
 				)
@@ -153,7 +160,7 @@ func (w *Worker) startAuthRotationTicking(cancelCtx context.Context) {
 					continue
 				}
 				args = append(args,
-					fmt.Sprintf("ca_cert_%s_id", str), caCertKeyId,
+					fmt.Sprintf("ca_cert_%s_key_id", str), caCertKeyId,
 					fmt.Sprintf("ca_cert_%s_not_before", str), caCert.NotBefore.Format(time.RFC3339),
 					fmt.Sprintf("ca_cert_%s_not_after", str), caCert.NotAfter.Format(time.RFC3339),
 				)
@@ -322,8 +329,14 @@ func rotateWorkerAuth(ctx context.Context, w *Worker, currentNodeCreds *types.No
 			event.WriteError(ctx, op, fmt.Errorf("error deriving pkix string from leaf certificate public key in current worker auth bundle: %w", err))
 			continue
 		}
+		certId, err := nodeenrollment.KeyIdFromPkix(bundle.CertificateDer)
+		if err != nil {
+			event.WriteError(ctx, op, fmt.Errorf("error deriving cert id from certificate in current worker auth bundle: %w", err))
+			continue
+		}
 		args = append(args,
-			fmt.Sprintf("leaf_cert_%s_id", str), certKeyId,
+			fmt.Sprintf("leaf_cert_%s_cert_id", str), certId,
+			fmt.Sprintf("leaf_cert_%s_key_id", str), certKeyId,
 			fmt.Sprintf("leaf_cert_%s_not_before", str), cert.NotBefore.Format(time.RFC3339),
 			fmt.Sprintf("leaf_cert_%s_not_after", str), cert.NotAfter.Format(time.RFC3339),
 		)
@@ -343,7 +356,7 @@ func rotateWorkerAuth(ctx context.Context, w *Worker, currentNodeCreds *types.No
 			continue
 		}
 		args = append(args,
-			fmt.Sprintf("ca_cert_%s_id", str), caCertKeyId,
+			fmt.Sprintf("ca_cert_%s_key_id", str), caCertKeyId,
 			fmt.Sprintf("ca_cert_%s_not_before", str), caCert.NotBefore.Format(time.RFC3339),
 			fmt.Sprintf("ca_cert_%s_not_after", str), caCert.NotAfter.Format(time.RFC3339),
 		)
