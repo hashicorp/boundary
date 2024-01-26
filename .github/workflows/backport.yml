@@ -8,7 +8,11 @@ name: Backport Assistant Runner
 #       - labeled
 on:
   pull_request:
-    branches: "heat/bug.fix/backport-assistant-runner"
+    branches:
+      [
+        "heat/bug.fix/backport-assistant-runner",
+        "heat/bug.fix/backport-assistant-runner-2",
+      ]
     types:
       - opened
       - reopened
