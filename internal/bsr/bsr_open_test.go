@@ -5,6 +5,7 @@ package bsr
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"testing"
 
@@ -13,7 +14,6 @@ import (
 	"github.com/hashicorp/boundary/internal/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/square/go-jose.v2/json"
 )
 
 func TestPopulateMeta(t *testing.T) {

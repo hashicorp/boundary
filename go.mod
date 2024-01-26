@@ -106,7 +106,6 @@ require (
 	golang.org/x/exp v0.0.0-20231006140011-7918f672742d
 	golang.org/x/net v0.17.0
 	google.golang.org/genproto/googleapis/api v0.0.0-20231030173426-d783a09b4405
-	gopkg.in/square/go-jose.v2 v2.6.0
 )
 
 require (

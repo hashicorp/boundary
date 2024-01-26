@@ -7,6 +7,7 @@ import (
 	"context"
 	"crypto/ed25519"
 	"crypto/rand"
+	"crypto/subtle"
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
@@ -779,6 +780,9 @@ func (w *Worker) getSessionTls(sessionManager session.Manager) func(hello *tls.C
 			// doesn't hurt to check
 			if len(cs.PeerCertificates) == 0 {
 				return errors.New(ctx, errors.InvalidParameter, op, "no peer certificates provided")
+			}
+			if subtle.ConstantTimeCompare(cs.PeerCertificates[0].Raw, sess.GetCertificate().Raw) != 1 {
+				return errors.New(ctx, errors.InvalidParameter, op, "expected peer certificate to match session certificate")
 			}
 			_, err := cs.PeerCertificates[0].Verify(verifyOpts)
 			return err
