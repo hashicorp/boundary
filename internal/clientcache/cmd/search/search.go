@@ -62,13 +62,13 @@ Usage: boundary search [options]
 }
 
 func (c *SearchCommand) Flags() *base.FlagSets {
-	set := c.FlagSet(base.FlagSetClient | base.FlagSetOutputFormat)
+	set := c.FlagSet(base.FlagSetOutputFormat)
 
 	f := set.NewFlagSet("Command Options")
 	f.StringVar(&base.StringVar{
 		Name:   "query",
 		Target: &c.flagQuery,
-		Usage:  `If set, specifies the resource search query`,
+		Usage:  `If set, specifies the resource search query. See https://www.boundaryproject.io/docs/commands/search for more information.`,
 	})
 	f.StringVar(&base.StringVar{
 		Name:   "filter",
