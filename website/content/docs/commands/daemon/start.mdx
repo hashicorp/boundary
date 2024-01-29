@@ -32,12 +32,17 @@ $ boundary daemon start [options] [args]
 ### Command options
 
 - `background` - Starts the Boundary daemon in the background.
+The default value is `false`.
 By default, the daemon starts in the foreground.
-- `max-search-staleness` - The amount of time that can pass since the last refresh before the client cache causes a blocking refresh.
+- `log-format=<string>` - Specifies the log format, mostly as a fallback for events.
+Supported values are `standard` and `json`.
+- `max-search-refresh-timeout=<duration>` - If a search request triggers a best effort refresh, this value specifies how long the refresh should run before time out.
+In the event of a timeout, Boundary uses the stale data that is currently in the cache.
+The default value is 7 seconds.
+- `max-search-staleness=<duration>` - The amount of time that can pass since the last refresh before the client cache causes a blocking refresh.
 The blocking refresh occurs when you perform the `boundary search` command.
 It requires Boundary to refresh the local cache using the control plane.
-- `max-search-refresh-timeout` - The amount of time the `boundary search` blocking refresh can take before it times out.
-In the event of a timeout, Boundary uses the stale data that is currently in the cache.
+The default value is 30 seconds.
 - `refresh-interval` - A duration that specifies how frequently the client cache should query Boundary for changes to sessions and targets.
 Note that Boundary only searches sessions and targets that the user who ran the command has access to.
 
