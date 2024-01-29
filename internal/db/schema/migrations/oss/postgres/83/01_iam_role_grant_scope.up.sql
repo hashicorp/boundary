@@ -80,7 +80,7 @@ begin;
         where rgs.role_id = new.role_id and rgs.scope_id_or_special = role_scope_id
         into existing_scope_id_or_special;
       if existing_scope_id_or_special is not null then
-        raise exception 'invalid to specify both "this" and a role''s actual scope id as a grant scope';
+        raise exception 'invalid to specify both a role''s actual scope id and "this" as a grant scope';
       end if;
       return new;
     end if;
