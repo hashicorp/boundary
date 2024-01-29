@@ -192,18 +192,19 @@ func (c *StartCommand) Run(args []string) int {
 	writers = append(writers, lf)
 
 	cfg := &daemon.Config{
-		ContextCancel:          cancel,
-		RefreshInterval:        c.flagRefreshInterval,
-		RecheckSupportInterval: c.flagRecheckSupportInterval,
-		MaxSearchStaleness:     c.flagMaxSearchStaleness,
-		DatabaseUrl:            c.flagDatabaseUrl,
-		StoreDebug:             c.flagStoreDebug,
-		LogLevel:               c.flagLogLevel,
-		LogFormat:              c.flagLogFormat,
-		LogWriter:              io.MultiWriter(writers...),
-		LogFileName:            logFileName,
-		DotDirectory:           dotDir,
-		RunningInBackground:    os.Getenv(backgroundEnvName) == backgroundEnvVal,
+		ContextCancel:           cancel,
+		RefreshInterval:         c.flagRefreshInterval,
+		RecheckSupportInterval:  c.flagRecheckSupportInterval,
+		MaxSearchStaleness:      c.flagMaxSearchStaleness,
+		MaxSearchRefreshTimeout: c.flagMaxSearchRefreshTimeout,
+		DatabaseUrl:             c.flagDatabaseUrl,
+		StoreDebug:              c.flagStoreDebug,
+		LogLevel:                c.flagLogLevel,
+		LogFormat:               c.flagLogFormat,
+		LogWriter:               io.MultiWriter(writers...),
+		LogFileName:             logFileName,
+		DotDirectory:            dotDir,
+		RunningInBackground:     os.Getenv(backgroundEnvName) == backgroundEnvVal,
 	}
 
 	srv, err := daemon.New(ctx, cfg)
