@@ -1322,12 +1322,12 @@ func (s Service) getFromRepo(ctx context.Context, id string) (target.Target, []t
 	return u, hs, cl, nil
 }
 
-// resolveAlias replaces the value of in with the destination id of the alias if
-// present. If the alias does not have a destination id or there is no alias
-// with a value matching in, an error is returned.
-func (s Service) resolveAlias(ctx context.Context, in string) (*talias.Alias, error) {
+// resolveAlias returns the alias resource with the specified value.
+// If the alias does not have a destination id or there is no alias with a
+// matching value, an error is returned.
+func (s Service) resolveAlias(ctx context.Context, value string) (*talias.Alias, error) {
 	const op = "targets.(Service).resolveAlias"
-	if in == "" {
+	if value == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "input string is empty")
 	}
 
@@ -1335,15 +1335,15 @@ func (s Service) resolveAlias(ctx context.Context, in string) (*talias.Alias, er
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	a, err := r.LookupAliasByValue(ctx, in)
+	a, err := r.LookupAliasByValue(ctx, value)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	if a == nil {
-		return nil, handlers.ApiErrorWithCodeAndMessage(codes.NotFound, "alias with value %q not found", in)
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.NotFound, "alias with value %q not found", value)
 	}
 	if a.DestinationId == "" {
-		return nil, handlers.ApiErrorWithCodeAndMessage(codes.NotFound, "target not found for alias value %q", in)
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.NotFound, "target not found for alias value %q", value)
 	}
 	return a, nil
 }

@@ -34,7 +34,7 @@ type Alias struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// Output only. The ID of the alias refercing this target.
+	// Output only. The ID of the alias referencing this target.
 	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Ouput only. The value of the alias referencing this target.
 	Value string `protobuf:"bytes,20,opt,name=value,proto3" json:"value,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
@@ -424,7 +424,7 @@ type Target struct {
 	AuthorizedActions []string `protobuf:"bytes,300,rep,name=authorized_actions,proto3" json:"authorized_actions,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Optional string value that represents a network resource and is used when establishing a session.
 	Address *wrapperspb.StringValue `protobuf:"bytes,540,opt,name=address,proto3" json:"address,omitempty" class:"public"` // @gotags: `class:"public"`
-	// Output only. The aliases tht point to this Target.
+	// Output only. The aliases that point to this Target.
 	Aliases []*Alias `protobuf:"bytes,550,rep,name=aliases,proto3" json:"aliases,omitempty" class:"public"` // @gotags: `class:"public"`
 }
 
