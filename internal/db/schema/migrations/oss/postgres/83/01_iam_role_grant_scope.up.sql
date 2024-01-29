@@ -121,7 +121,7 @@ begin;
             where rgs.role_id = new.role_id and rgs.scope_id_or_special = 'descendants'
             into existing_scope_id_or_special;
           if existing_scope_id_or_special is not null then
-            raise exception 'invalid to specify both "children" and "descendants"as a grant scope';
+            raise exception 'invalid to specify both "descendants" and "children" as a grant scope';
           end if;
         when new.scope_id_or_special = 'descendants' then
           select rgs.scope_id_or_special
@@ -129,7 +129,7 @@ begin;
             where rgs.role_id = new.role_id and rgs.scope_id_or_special = 'children'
             into existing_scope_id_or_special;
           if existing_scope_id_or_special is not null then
-            raise exception 'invalid to specify both "children" and "descendants"as a grant scope';
+            raise exception 'invalid to specify both "children" and "descendants" as a grant scope';
           end if;
         else
           select isc.public_id from iam_scope isc where isc.public_id = new.scope_id_or_special into validated_scope_id;
