@@ -17,14 +17,11 @@ import (
 
 // CreateNewAccountApi creates a new account using the Go api.
 // Returns the id of the new account as well as the password that was generated
-func CreateNewAccountApi(t testing.TB, ctx context.Context, client *api.Client, loginName string) (accountId string, password string) {
-	c, err := LoadConfig()
-	require.NoError(t, err)
-
+func CreateNewAccountApi(t testing.TB, ctx context.Context, client *api.Client, authMethodId string, loginName string) (accountId string, password string) {
 	aClient := accounts.NewClient(client)
-	password, err = base62.Random(16)
+	password, err := base62.Random(16)
 	require.NoError(t, err)
-	newAccountResult, err := aClient.Create(ctx, c.AuthMethodId,
+	newAccountResult, err := aClient.Create(ctx, authMethodId,
 		accounts.WithPasswordAccountLoginName(loginName),
 		accounts.WithPasswordAccountPassword(password),
 	)

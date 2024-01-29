@@ -157,6 +157,8 @@ func TestApiCreateGroup(t *testing.T) {
 	e2e.MaybeSkipTest(t)
 	c, err := loadTestConfig()
 	require.NoError(t, err)
+	bc, err := boundary.LoadConfig()
+	require.NoError(t, err)
 
 	client, err := boundary.NewApiClient()
 	require.NoError(t, err)
@@ -177,7 +179,7 @@ func TestApiCreateGroup(t *testing.T) {
 	boundary.AddHostSourceToTargetApi(t, ctx, client, newTargetId, newHostSetId)
 
 	acctName := "e2e-account"
-	newAcctId, _ := boundary.CreateNewAccountApi(t, ctx, client, acctName)
+	newAcctId, _ := boundary.CreateNewAccountApi(t, ctx, client, bc.AuthMethodId, acctName)
 	t.Cleanup(func() {
 		aClient := accounts.NewClient(client)
 		_, err := aClient.Delete(ctx, newAcctId)
