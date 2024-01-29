@@ -7132,7 +7132,7 @@
       "properties": {
         "id": {
           "type": "string",
-          "description": "Output only. The ID of the alias refercing this target.",
+          "description": "Output only. The ID of the alias referencing this target.",
           "readOnly": true
         },
         "value": {
@@ -7452,7 +7452,7 @@
             "type": "object",
             "$ref": "#/definitions/controller.api.resources.targets.v1.Alias"
           },
-          "description": "Output only. The aliases tht point to this Target.",
+          "description": "Output only. The aliases that point to this Target.",
           "readOnly": true
         }
       },
