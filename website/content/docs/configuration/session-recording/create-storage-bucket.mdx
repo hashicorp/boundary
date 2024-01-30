@@ -50,6 +50,7 @@ At this time, the only supported storage is AWS S3.
                "s3:ListBucket"
             ],
             "Effect": "Allow",
+            "Resource": "arn:aws:s3:::session_recording_storage*",
             "Resource": "arn:aws:s3:::session_recording_storage/foo/bar/zoo/*"
          },
          {
