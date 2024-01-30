@@ -1045,6 +1045,40 @@
         ]
       },
       {
+        "title": "policies",
+        "badge": {
+          "text": "HCP/ENT",
+          "type": "outlined",
+          "color": "neutral"
+        },
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "commands/policies"
+          },
+          {
+            "title": "create",
+            "path": "commands/policies/create"
+          },
+          {
+            "title": "delete",
+            "path": "commands/policies/delete"
+          },
+          {
+            "title": "list",
+            "path": "commands/policies/list"
+          },
+          {
+            "title": "read",
+            "path": "commands/policies/read"
+          },
+          {
+            "title": "update",
+            "path": "commands/policies/update"
+          }
+        ]
+      },
+      {
         "title": "roles",
         "routes": [
           {
