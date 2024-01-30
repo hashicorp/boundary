@@ -55,8 +55,6 @@ Depending on your platform, available values include:
   You can also specify the keyring type using the **BOUNDARY_KEYRING_TYPE** environment variable.
 - `output-curl-string` - Specifies that Boundary should print an equivalent cURL command string and exit, instead of executing the request.
 The default value is `false`.
-- `recovery-config=<string>` - If specified, Boundary parses the given config file for a "kms" block with the purpose "recovery" and uses the recovery mechanism to authorize the call.
-You can also specify a recovery config value using the **BOUNDARY_RECOVERY_CONFIG** environment variable.
 - `token` = A URL that points to a file on disk (file://) from which Boundary reads a token or an environment variable (env://) from which the token will be read.
 If you set this parameter, it overrides the `token-name` parameter.
 - `token-name` - If specified, Boundary uses the value in this parameter as the name when it stores the token in the system credential store.

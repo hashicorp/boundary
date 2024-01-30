@@ -96,4 +96,11 @@ The available fields that can be used in the search query for each resource incl
    - targets: id, name, description, type, address, scope_id
    - sessions: id, type, endpoint, status, scope_id, target_id, user_id
 
+- `token` = A URL that points to a file on disk (file://) from which Boundary reads a token or an environment variable (env://) from which the token will be read.
+If you set this parameter, it overrides the `token-name` parameter.
+- `token-name` - If specified, Boundary uses the value in this parameter as the name when it stores the token in the system credential store.
+You can use this value to switch user identities for different commands.
+You can also specify a token name using the **BOUNDARY_TOKEN_NAME** environment variable.
+
+
 @include 'cmd-option-note.mdx'
