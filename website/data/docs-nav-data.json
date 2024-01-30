@@ -461,6 +461,10 @@
           {
             "title": "Configure storage policies",
             "path": "configuration/session-recording/configure-storage-policy"
+          },
+          {
+            "title": "Update storage policies",
+            "path": "configuration/session-recording/update-storage-policy"
           }
         ]
       },
