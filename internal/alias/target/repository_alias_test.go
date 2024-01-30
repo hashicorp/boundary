@@ -1,11 +1,12 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: BUSL-1.1
 
-package target
+package target_test
 
 import (
 	"context"
 	"crypto/rand"
+	"github.com/hashicorp/boundary/internal/alias/target"
 	"strings"
 	"testing"
 
@@ -34,9 +35,9 @@ func TestRepository_CreateAlias(t *testing.T) {
 
 	tests := []struct {
 		name        string
-		in          *Alias
-		opts        []Option
-		want        *Alias
+		in          *target.Alias
+		opts        []target.Option
+		want        *target.Alias
 		errContains string
 	}{
 		{
@@ -45,26 +46,26 @@ func TestRepository_CreateAlias(t *testing.T) {
 		},
 		{
 			name:        "nil-embedded-alias",
-			in:          &Alias{},
+			in:          &target.Alias{},
 			errContains: "nil embedded Alias",
 		},
 		{
 			name: "no-value",
-			in: &Alias{Alias: &store.Alias{
+			in: &target.Alias{Alias: &store.Alias{
 				ScopeId: "global",
 			}},
 			errContains: "no value",
 		},
 		{
 			name: "no-scope",
-			in: &Alias{Alias: &store.Alias{
+			in: &target.Alias{Alias: &store.Alias{
 				Value: "global",
 			}},
 			errContains: "no scope",
 		},
 		{
 			name: "specified-public-id",
-			in: &Alias{
+			in: &target.Alias{
 				Alias: &store.Alias{
 					PublicId: "alt_1234567890",
 					ScopeId:  "global",
@@ -75,13 +76,13 @@ func TestRepository_CreateAlias(t *testing.T) {
 		},
 		{
 			name: "valid-with-value",
-			in: &Alias{
+			in: &target.Alias{
 				Alias: &store.Alias{
 					ScopeId: "global",
 					Value:   "valid-with-value",
 				},
 			},
-			want: &Alias{
+			want: &target.Alias{
 				Alias: &store.Alias{
 					ScopeId: "global",
 					Value:   "valid-with-value",
@@ -90,14 +91,14 @@ func TestRepository_CreateAlias(t *testing.T) {
 		},
 		{
 			name: "valid-with-name",
-			in: &Alias{
+			in: &target.Alias{
 				Alias: &store.Alias{
 					ScopeId: "global",
 					Value:   "valid-with-name",
 					Name:    "test-name-repo",
 				},
 			},
-			want: &Alias{
+			want: &target.Alias{
 				Alias: &store.Alias{
 					ScopeId: "global",
 					Value:   "valid-with-name",
@@ -107,14 +108,14 @@ func TestRepository_CreateAlias(t *testing.T) {
 		},
 		{
 			name: "valid-with-description",
-			in: &Alias{
+			in: &target.Alias{
 				Alias: &store.Alias{
 					ScopeId:     "global",
 					Value:       "valid-with-description",
 					Description: ("test-description-repo"),
 				},
 			},
-			want: &Alias{
+			want: &target.Alias{
 				Alias: &store.Alias{
 					ScopeId:     "global",
 					Value:       "valid-with-description",
@@ -124,14 +125,14 @@ func TestRepository_CreateAlias(t *testing.T) {
 		},
 		{
 			name: "valid-with-destination-id",
-			in: &Alias{
+			in: &target.Alias{
 				Alias: &store.Alias{
 					ScopeId:       "global",
 					Value:         "valid.with.destination.id",
 					DestinationId: tar.GetPublicId(),
 				},
 			},
-			want: &Alias{
+			want: &target.Alias{
 				Alias: &store.Alias{
 					ScopeId:       "global",
 					Value:         "valid.with.destination.id",
@@ -141,7 +142,7 @@ func TestRepository_CreateAlias(t *testing.T) {
 		},
 		{
 			name: "unknown-destination-id",
-			in: &Alias{
+			in: &target.Alias{
 				Alias: &store.Alias{
 					ScopeId:       "global",
 					Value:         "unknown.destination.id",
@@ -156,7 +157,7 @@ func TestRepository_CreateAlias(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
-			repo, err := NewRepository(ctx, rw, rw, kmsCache)
+			repo, err := target.NewRepository(ctx, rw, rw, kmsCache)
 			assert.NoError(err)
 			assert.NotNil(repo)
 			got, err := repo.CreateAlias(ctx, tt.in, tt.opts...)
@@ -179,10 +180,10 @@ func TestRepository_CreateAlias(t *testing.T) {
 	t.Run("invalid-duplicate-aliases-case-insensitive", func(t *testing.T) {
 		assert := assert.New(t)
 		kms := kms.TestKms(t, conn, wrapper)
-		repo, err := NewRepository(ctx, rw, rw, kms)
+		repo, err := target.NewRepository(ctx, rw, rw, kms)
 		assert.NoError(err)
 		assert.NotNil(repo)
-		in := &Alias{
+		in := &target.Alias{
 			Alias: &store.Alias{
 				ScopeId: "global",
 				Value:   "test-value-repo",
@@ -207,10 +208,10 @@ func TestRepository_CreateAlias(t *testing.T) {
 	t.Run("invalid-duplicate-name", func(t *testing.T) {
 		assert := assert.New(t)
 		kms := kms.TestKms(t, conn, wrapper)
-		repo, err := NewRepository(ctx, rw, rw, kms)
+		repo, err := target.NewRepository(ctx, rw, rw, kms)
 		assert.NoError(err)
 		assert.NotNil(repo)
-		in := &Alias{
+		in := &target.Alias{
 			Alias: &store.Alias{
 				ScopeId: "global",
 				Value:   "test-value-name-1",
@@ -254,73 +255,73 @@ func TestRepository_UpdateAlias(t *testing.T) {
 
 	_, _ = tar1, tar2
 
-	repo, err := NewRepository(ctx, rw, rw, kmsCache)
+	repo, err := target.NewRepository(ctx, rw, rw, kmsCache)
 	assert.NoError(t, err)
 	assert.NotNil(t, repo)
 
-	changeValue := func(s string) func(*Alias) *Alias {
-		return func(c *Alias) *Alias {
+	changeValue := func(s string) func(*target.Alias) *target.Alias {
+		return func(c *target.Alias) *target.Alias {
 			c.Value = s
 			return c
 		}
 	}
 
-	changeName := func(s string) func(*Alias) *Alias {
-		return func(c *Alias) *Alias {
+	changeName := func(s string) func(*target.Alias) *target.Alias {
+		return func(c *target.Alias) *target.Alias {
 			c.Name = s
 			return c
 		}
 	}
 
-	changeDestinationId := func(s string) func(*Alias) *Alias {
-		return func(c *Alias) *Alias {
+	changeDestinationId := func(s string) func(*target.Alias) *target.Alias {
+		return func(c *target.Alias) *target.Alias {
 			c.DestinationId = s
 			return c
 		}
 	}
 
-	changeHostId := func(s string) func(*Alias) *Alias {
-		return func(c *Alias) *Alias {
+	changeHostId := func(s string) func(*target.Alias) *target.Alias {
+		return func(c *target.Alias) *target.Alias {
 			c.HostId = s
 			return c
 		}
 	}
 
-	changeDescription := func(s string) func(*Alias) *Alias {
-		return func(c *Alias) *Alias {
+	changeDescription := func(s string) func(*target.Alias) *target.Alias {
+		return func(c *target.Alias) *target.Alias {
 			c.Description = s
 			return c
 		}
 	}
 
-	makeNil := func() func(*Alias) *Alias {
-		return func(c *Alias) *Alias {
+	makeNil := func() func(*target.Alias) *target.Alias {
+		return func(c *target.Alias) *target.Alias {
 			return nil
 		}
 	}
 
-	makeEmbeddedNil := func() func(*Alias) *Alias {
-		return func(c *Alias) *Alias {
-			return &Alias{}
+	makeEmbeddedNil := func() func(*target.Alias) *target.Alias {
+		return func(c *target.Alias) *target.Alias {
+			return &target.Alias{}
 		}
 	}
 
-	deletePublicId := func() func(*Alias) *Alias {
-		return func(c *Alias) *Alias {
+	deletePublicId := func() func(*target.Alias) *target.Alias {
+		return func(c *target.Alias) *target.Alias {
 			c.PublicId = ""
 			return c
 		}
 	}
 
-	nonExistentPublicId := func() func(*Alias) *Alias {
-		return func(c *Alias) *Alias {
+	nonExistentPublicId := func() func(*target.Alias) *target.Alias {
+		return func(c *target.Alias) *target.Alias {
 			c.PublicId = "alt_OOOOOOOOOO"
 			return c
 		}
 	}
 
-	combine := func(fns ...func(c *Alias) *Alias) func(*Alias) *Alias {
-		return func(c *Alias) *Alias {
+	combine := func(fns ...func(c *target.Alias) *target.Alias) func(*target.Alias) *target.Alias {
+		return func(c *target.Alias) *target.Alias {
 			for _, fn := range fns {
 				c = fn(c)
 			}
@@ -330,16 +331,16 @@ func TestRepository_UpdateAlias(t *testing.T) {
 
 	tests := []struct {
 		name      string
-		orig      *Alias
-		chgFn     func(*Alias) *Alias
+		orig      *target.Alias
+		chgFn     func(*target.Alias) *target.Alias
 		masks     []string
-		want      *Alias
+		want      *target.Alias
 		wantCount int
 		wantIsErr errors.Code
 	}{
 		{
 			name: "nil-alias",
-			orig: &Alias{
+			orig: &target.Alias{
 				Alias: &store.Alias{
 					Value: "nil-alias",
 				},
@@ -350,7 +351,7 @@ func TestRepository_UpdateAlias(t *testing.T) {
 		},
 		{
 			name: "nil-embedded-alias",
-			orig: &Alias{
+			orig: &target.Alias{
 				Alias: &store.Alias{
 					Value: "nil-embedded-alias",
 				},
@@ -361,7 +362,7 @@ func TestRepository_UpdateAlias(t *testing.T) {
 		},
 		{
 			name: "no-public-id",
-			orig: &Alias{
+			orig: &target.Alias{
 				Alias: &store.Alias{
 					Value: "no-public-id",
 				},
@@ -372,7 +373,7 @@ func TestRepository_UpdateAlias(t *testing.T) {
 		},
 		{
 			name: "updating-non-existent-alias",
-			orig: &Alias{
+			orig: &target.Alias{
 				Alias: &store.Alias{
 					Value: "updating-non-existent-alias",
 				},
@@ -383,7 +384,7 @@ func TestRepository_UpdateAlias(t *testing.T) {
 		},
 		{
 			name: "empty-field-mask",
-			orig: &Alias{
+			orig: &target.Alias{
 				Alias: &store.Alias{
 					Value: "empty-field-mask",
 				},
@@ -393,7 +394,7 @@ func TestRepository_UpdateAlias(t *testing.T) {
 		},
 		{
 			name: "read-only-fields-in-field-mask",
-			orig: &Alias{
+			orig: &target.Alias{
 				Alias: &store.Alias{
 					Value: "read-only-fields-in-field-mask",
 				},
@@ -404,7 +405,7 @@ func TestRepository_UpdateAlias(t *testing.T) {
 		},
 		{
 			name: "unknown-field-in-field-mask",
-			orig: &Alias{
+			orig: &target.Alias{
 				Alias: &store.Alias{
 					Value: "unknown-field-in-field-mask",
 				},
@@ -415,14 +416,14 @@ func TestRepository_UpdateAlias(t *testing.T) {
 		},
 		{
 			name: "change-value",
-			orig: &Alias{
+			orig: &target.Alias{
 				Alias: &store.Alias{
 					Value: "change-value",
 				},
 			},
 			chgFn: changeValue("change-value-updated"),
 			masks: []string{"Value"},
-			want: &Alias{
+			want: &target.Alias{
 				Alias: &store.Alias{
 					Value: "change-value-updated",
 				},
@@ -431,7 +432,7 @@ func TestRepository_UpdateAlias(t *testing.T) {
 		},
 		{
 			name: "change-name",
-			orig: &Alias{
+			orig: &target.Alias{
 				Alias: &store.Alias{
 					Value: "change-name",
 					Name:  "change-name",
@@ -439,7 +440,7 @@ func TestRepository_UpdateAlias(t *testing.T) {
 			},
 			chgFn: changeName("change-name-updated"),
 			masks: []string{"Name"},
-			want: &Alias{
+			want: &target.Alias{
 				Alias: &store.Alias{
 					Value: "change-name",
 					Name:  "change-name-updated",
@@ -449,7 +450,7 @@ func TestRepository_UpdateAlias(t *testing.T) {
 		},
 		{
 			name: "clear-name",
-			orig: &Alias{
+			orig: &target.Alias{
 				Alias: &store.Alias{
 					Value: "clear-name",
 					Name:  "clear-name",
@@ -457,7 +458,7 @@ func TestRepository_UpdateAlias(t *testing.T) {
 			},
 			chgFn: changeName(""),
 			masks: []string{"Name"},
-			want: &Alias{
+			want: &target.Alias{
 				Alias: &store.Alias{
 					Value: "clear-name",
 				},
@@ -466,7 +467,7 @@ func TestRepository_UpdateAlias(t *testing.T) {
 		},
 		{
 			name: "change-destination-id",
-			orig: &Alias{
+			orig: &target.Alias{
 				Alias: &store.Alias{
 					Value:         "change-destination-id",
 					DestinationId: tar1.GetPublicId(),
@@ -474,7 +475,7 @@ func TestRepository_UpdateAlias(t *testing.T) {
 			},
 			chgFn: changeDestinationId(tar2.GetPublicId()),
 			masks: []string{"DestinationId"},
-			want: &Alias{
+			want: &target.Alias{
 				Alias: &store.Alias{
 					Value:         "change-destination-id",
 					DestinationId: tar2.GetPublicId(),
@@ -484,7 +485,7 @@ func TestRepository_UpdateAlias(t *testing.T) {
 		},
 		{
 			name: "change-destination-id-to-unknown",
-			orig: &Alias{
+			orig: &target.Alias{
 				Alias: &store.Alias{
 					Value:         "change-destination-id-to-unknown",
 					DestinationId: tar1.GetPublicId(),
@@ -496,7 +497,7 @@ func TestRepository_UpdateAlias(t *testing.T) {
 		},
 		{
 			name: "delete-destination-id",
-			orig: &Alias{
+			orig: &target.Alias{
 				Alias: &store.Alias{
 					Value:         "delete-destination-id",
 					DestinationId: tar1.GetPublicId(),
@@ -504,7 +505,7 @@ func TestRepository_UpdateAlias(t *testing.T) {
 			},
 			chgFn: changeDestinationId(tar2.GetPublicId()),
 			masks: []string{"DestinationId"},
-			want: &Alias{
+			want: &target.Alias{
 				Alias: &store.Alias{
 					Value: "delete-destination-id",
 				},
@@ -513,7 +514,7 @@ func TestRepository_UpdateAlias(t *testing.T) {
 		},
 		{
 			name: "delete-destination-also-deletes-host-id",
-			orig: &Alias{
+			orig: &target.Alias{
 				Alias: &store.Alias{
 					Value:         "delete-destination-also-deletes-host-id",
 					DestinationId: tar1.GetPublicId(),
@@ -522,7 +523,7 @@ func TestRepository_UpdateAlias(t *testing.T) {
 			},
 			chgFn: changeDestinationId(""),
 			masks: []string{"DestinationId"},
-			want: &Alias{
+			want: &target.Alias{
 				Alias: &store.Alias{
 					Value: "delete-destination-also-deletes-host-id",
 				},
@@ -531,7 +532,7 @@ func TestRepository_UpdateAlias(t *testing.T) {
 		},
 		{
 			name: "change-host-id",
-			orig: &Alias{
+			orig: &target.Alias{
 				Alias: &store.Alias{
 					Value:         "change-host-id",
 					DestinationId: tar1.GetPublicId(),
@@ -540,7 +541,7 @@ func TestRepository_UpdateAlias(t *testing.T) {
 			},
 			chgFn: changeHostId("hst_0987654321"),
 			masks: []string{"HostId"},
-			want: &Alias{
+			want: &target.Alias{
 				Alias: &store.Alias{
 					Value:         "change-host-id",
 					DestinationId: tar1.GetPublicId(),
@@ -551,7 +552,7 @@ func TestRepository_UpdateAlias(t *testing.T) {
 		},
 		{
 			name: "delete-host-id",
-			orig: &Alias{
+			orig: &target.Alias{
 				Alias: &store.Alias{
 					Value:         "delete-host-id",
 					DestinationId: tar1.GetPublicId(),
@@ -560,7 +561,7 @@ func TestRepository_UpdateAlias(t *testing.T) {
 			},
 			chgFn: changeHostId(""),
 			masks: []string{"HostId"},
-			want: &Alias{
+			want: &target.Alias{
 				Alias: &store.Alias{
 					Value:         "delete-host-id",
 					DestinationId: tar1.GetPublicId(),
@@ -570,7 +571,7 @@ func TestRepository_UpdateAlias(t *testing.T) {
 		},
 		{
 			name: "change-description",
-			orig: &Alias{
+			orig: &target.Alias{
 				Alias: &store.Alias{
 					Value:       "change-description",
 					Description: "test-description-repo",
@@ -578,7 +579,7 @@ func TestRepository_UpdateAlias(t *testing.T) {
 			},
 			chgFn: changeDescription("test-update-description-repo"),
 			masks: []string{"Description"},
-			want: &Alias{
+			want: &target.Alias{
 				Alias: &store.Alias{
 					Value:       "change-description",
 					Description: "test-update-description-repo",
@@ -588,7 +589,7 @@ func TestRepository_UpdateAlias(t *testing.T) {
 		},
 		{
 			name: "change-value-and-description",
-			orig: &Alias{
+			orig: &target.Alias{
 				Alias: &store.Alias{
 					Value:       "change-value-and-description",
 					Description: "test-description-repo",
@@ -596,7 +597,7 @@ func TestRepository_UpdateAlias(t *testing.T) {
 			},
 			chgFn: combine(changeDescription("test-update-description-repo"), changeValue("change-value-and-description-updated")),
 			masks: []string{"Value", "Description"},
-			want: &Alias{
+			want: &target.Alias{
 				Alias: &store.Alias{
 					Value:       "change-value-and-description-updated",
 					Description: "test-update-description-repo",
@@ -606,7 +607,7 @@ func TestRepository_UpdateAlias(t *testing.T) {
 		},
 		{
 			name: "delete-value",
-			orig: &Alias{
+			orig: &target.Alias{
 				Alias: &store.Alias{
 					Value: "delete-value",
 				},
@@ -617,7 +618,7 @@ func TestRepository_UpdateAlias(t *testing.T) {
 		},
 		{
 			name: "delete-description",
-			orig: &Alias{
+			orig: &target.Alias{
 				Alias: &store.Alias{
 					Value:       "delete-description",
 					Description: "test-description-repo",
@@ -625,7 +626,7 @@ func TestRepository_UpdateAlias(t *testing.T) {
 			},
 			masks: []string{"Description"},
 			chgFn: combine(changeDescription(""), changeValue("delete-description-updated")),
-			want: &Alias{
+			want: &target.Alias{
 				Alias: &store.Alias{
 					Value: "delete-description",
 				},
@@ -634,7 +635,7 @@ func TestRepository_UpdateAlias(t *testing.T) {
 		},
 		{
 			name: "do-not-delete-value",
-			orig: &Alias{
+			orig: &target.Alias{
 				Alias: &store.Alias{
 					Value:       "do-not-delete-value",
 					Description: "test-description-repo",
@@ -642,7 +643,7 @@ func TestRepository_UpdateAlias(t *testing.T) {
 			},
 			masks: []string{"Description"},
 			chgFn: combine(changeDescription("test-update-description-repo"), changeValue("")),
-			want: &Alias{
+			want: &target.Alias{
 				Alias: &store.Alias{
 					Value:       "do-not-delete-value",
 					Description: "test-update-description-repo",
@@ -652,7 +653,7 @@ func TestRepository_UpdateAlias(t *testing.T) {
 		},
 		{
 			name: "do-not-delete-description",
-			orig: &Alias{
+			orig: &target.Alias{
 				Alias: &store.Alias{
 					Value:       "do-not-delete-description",
 					Description: "test-description-repo",
@@ -660,7 +661,7 @@ func TestRepository_UpdateAlias(t *testing.T) {
 			},
 			masks: []string{"Value"},
 			chgFn: combine(changeDescription(""), changeValue("do-not-delete-description-updated")),
-			want: &Alias{
+			want: &target.Alias{
 				Alias: &store.Alias{
 					Value:       "do-not-delete-description-updated",
 					Description: "test-description-repo",
@@ -713,7 +714,7 @@ func TestRepository_UpdateAlias(t *testing.T) {
 
 	t.Run("invalid-duplicate-values", func(t *testing.T) {
 		value := "test-dup-value"
-		c1 := TestAlias(t, db.New(conn), "test")
+		c1 := target.TestAlias(t, db.New(conn), "test")
 		c1.Value = value
 		got1, gotCount1, err := repo.UpdateAlias(context.Background(), c1, 1, []string{"value"})
 		assert.NoError(t, err)
@@ -721,7 +722,7 @@ func TestRepository_UpdateAlias(t *testing.T) {
 		assert.Equal(t, value, got1.Value)
 		assert.Equal(t, 1, gotCount1, "row count")
 
-		c2 := TestAlias(t, db.New(conn), "test2")
+		c2 := target.TestAlias(t, db.New(conn), "test2")
 		c2.Value = value
 		got2, gotCount2, err := repo.UpdateAlias(context.Background(), c2, 1, []string{"value"})
 		assert.Truef(t, errors.Match(errors.T(errors.NotUnique), err), "want err code: %v got err: %v", errors.NotUnique, err)
@@ -731,7 +732,7 @@ func TestRepository_UpdateAlias(t *testing.T) {
 
 	t.Run("invalid-duplicate-name", func(t *testing.T) {
 		name := "test-dup-name"
-		c1 := TestAlias(t, db.New(conn), "duplicate.name.test")
+		c1 := target.TestAlias(t, db.New(conn), "duplicate.name.test")
 		c1.Name = name
 		got1, gotCount1, err := repo.UpdateAlias(context.Background(), c1, 1, []string{"name"})
 		assert.NoError(t, err)
@@ -739,7 +740,7 @@ func TestRepository_UpdateAlias(t *testing.T) {
 		assert.Equal(t, name, got1.Name)
 		assert.Equal(t, 1, gotCount1, "row count")
 
-		c2 := TestAlias(t, db.New(conn), "duplicate.name.test2")
+		c2 := target.TestAlias(t, db.New(conn), "duplicate.name.test2")
 		c2.Name = name
 		got2, gotCount2, err := repo.UpdateAlias(context.Background(), c2, 1, []string{"name"})
 		assert.Truef(t, errors.Match(errors.T(errors.NotUnique), err), "want err code: %v got err: %v", errors.NotUnique, err)
@@ -753,15 +754,15 @@ func TestRepository_LookupAlias(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	al := TestAlias(t, rw, "one")
-	badId, err := newAliasId(ctx)
+	al := target.TestAlias(t, rw, "one")
+	badId, err := target.NewAliasId(ctx)
 	assert.NoError(t, err)
 	assert.NotNil(t, badId)
 
 	tests := []struct {
 		name    string
 		id      string
-		want    *Alias
+		want    *target.Alias
 		wantErr errors.Code
 	}{
 		{
@@ -787,7 +788,7 @@ func TestRepository_LookupAlias(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
 			kms := kms.TestKms(t, conn, wrapper)
-			repo, err := NewRepository(ctx, rw, rw, kms)
+			repo, err := target.NewRepository(ctx, rw, rw, kms)
 			assert.NoError(err)
 			assert.NotNil(repo)
 
@@ -818,12 +819,12 @@ func TestRepository_DeleteAlias(t *testing.T) {
 	kmsCache := kms.TestKms(t, conn, wrapper)
 	require.NoError(t, kmsCache.CreateKeys(context.Background(), scope.Global.String(), kms.WithRandomReader(rand.Reader)))
 
-	repo, err := NewRepository(ctx, rw, rw, kmsCache)
+	repo, err := target.NewRepository(ctx, rw, rw, kmsCache)
 	assert.NoError(t, err)
 	require.NotNil(t, repo)
 
-	al := TestAlias(t, rw, "deleted.alias")
-	badId, err := newAliasId(ctx)
+	al := target.TestAlias(t, rw, "deleted.alias")
+	badId, err := target.NewAliasId(ctx)
 	assert.NoError(t, err)
 	assert.NotNil(t, badId)
 
