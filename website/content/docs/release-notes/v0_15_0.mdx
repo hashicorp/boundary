@@ -133,6 +133,21 @@ description: |-
     </td>
   </tr>
 
+<tr>
+    <td style={{verticalAlign: 'middle'}}>
+    0.15.0
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Permission grant string change
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    The ability to add new grants via the <code>id</code> parameter has been removed. Grants now accept more than one ID per grant string or JSON entry using the <code>ids</code> parameter. This change was noted in the <a href="https://github.com/hashicorp/boundary/blob/main/CHANGELOG.md#0131-20230710">v0.13.1 Changelog</a>, and goes into effect with this release. You must update any code or Terraform configuration that uses the <code>id</code> parameter.
+    <br /><br />
+    Learn more:&nbsp;
+    <a href="/boundary/docs/commands/roles/add-grants">Add grants</a>
+    </td>
+  </tr>
+
   </tbody>
 </table>
 
