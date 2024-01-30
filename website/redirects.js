@@ -154,4 +154,12 @@ module.exports = [
     destination: '/boundary/docs/concepts/host-discovery',
     permanent: true,
   },
+  {
+    source: '/boundary/docs/configuration/worker/kms-worker',
+    destination: '/boundary/docs/configuration/worker/worker-configuration',
+  },
+  {
+    source: '/boundary/docs/configuration/worker/pki-worker',
+    destination: '/boundary/docs/configuration/worker/worker-configuration'
+  },
 ]
