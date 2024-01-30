@@ -87,8 +87,6 @@ worker {
   name = "example-worker"
   description = "An example worker"
   public_addr = "5.1.23.198"
-  # Uncomment if using 0.13 worker against pre-0.13 controller
-  # use_deprecated_kms_auth_method = true
 }
 ```
 
@@ -159,8 +157,6 @@ worker {
     type   = ["prod", "webservers"]
     region = ["us-east-1"]
   }
-
-  # use_deprecated_kms_auth_method = true
 }
 
 # must be same key as used on controller config
