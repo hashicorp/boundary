@@ -29,7 +29,7 @@ description: |-
     <td style={{verticalAlign: 'middle'}}>
      Storage policies codify how long session recordings must be kept, and when they should be deleted. You can configure retention periods based on your compliance needs.
       <br /><br />
-      Learn more:&nbsp;
+      Learn more:&nbsp;<a href="/boundary/docs/concepts/domain-model/storage-policy">Storage policies</a> and <a href="/boundary/docs/configuration/session-recording/configure-storage-policy">Configure storage bucket policies</a>
     </td>
   </tr>
 
@@ -40,7 +40,7 @@ description: |-
     <td style={{verticalAlign: 'middle'}}>
       A new command was added, <code>boundary search</code>. It allows you to search a local cache for information about session and target resources. The local cache helps prevent your system resources from being overwhelmed.
       <br /><br />
-      Learn more:&nbsp;
+      Learn more:&nbsp;<a href="/boundary/docs/commands/search/index"><code>boundary search</code></a> and <a href="/boundary/docs/api-clients/client-cache#boundary-list-vs-search"> Boundary <code>list</code> vs. <code>search</code></a>.
     </td>
   </tr>
 
@@ -51,7 +51,7 @@ description: |-
     <td style={{verticalAlign: 'middle'}}>
       The Boundary client daemon now runs on end users' computers and locally caches session and target resource information from Boundary instances. The cache helps expedite searches.
       <br /><br />
-      Learn more:&nbsp;
+      Learn more:&nbsp;<a href="/boundary/docs/commands/daemon/index"><code>boundary daemon</code></a> and <a href="/boundary/docs/api-clients/client-cache">Client cache</a>
     </td>
   </tr>
 
@@ -62,7 +62,7 @@ description: |-
     <td style={{verticalAlign: 'middle'}}>
       All <code>list</code> endpoints now support pagination, except for worker resources. You can request a list of updated and deleted resources relative to the last result you received via the API. There are new controller flags <code>page_size</code> and <code>max_page_size</code> to set the default and max size of pages.
       <br /><br />
-      Learn more:&nbsp;
+      Learn more:&nbsp;<a href="/boundary/docs/api-clients/api/pagination">API list pagination</a>
     </td>
   </tr>
 
@@ -73,7 +73,7 @@ description: |-
     <td style={{verticalAlign: 'middle'}}>
       In this release, new generic commands were added for <code>read</code>, <code>update</code>, and <code>delete</code>. You can use these generic commands to operate directly on a resource by specifying the resource ID as the next parameter. You do not need to specify a sub-type. For example, the command <code>boundary update ttcp_1234567890</code> automatically updates a target with that ID.
       <br /><br />
-      Learn more:&nbsp;
+      Learn more:&nbsp;<a href="/boundary/docs/commands/delete"><code>delete</code></a>, <a href="/boundary/docs/commands/read"><code>read</code></a>, and <a href="/boundary/docs/commands/update"><code>update</code></a>
     </td>
   </tr>
 
@@ -83,8 +83,6 @@ description: |-
     </td>
     <td style={{verticalAlign: 'middle'}}>
       Roles now support multiple grant scopes, along with the special values <code>this</code>, <code>children</code> (global/org scopes only) to apply to all direct children of a scope, and <code>descendants</code> (global only) to apply to all descendants of a scope. You can apply the new values by using the commands <code>add-grant-scopes</code>, <code>set-grant-scopes</code>, and <code>remove-grant-scopes</code> on roles. You can continue to use the existing <code>grant_scope_id</code> field for now, but it has been deprecated.
-      <br /><br />
-      Learn more:&nbsp;
     </td>
   </tr>
 
