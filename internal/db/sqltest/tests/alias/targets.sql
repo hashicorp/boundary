@@ -38,7 +38,7 @@ select is(count(*), 0::bigint) from alias_target where public_id = 'alt__t____cb
 select is(count(*), 1::bigint) from alias_target where public_id = 'alt__t____cb' and destination_id is null and host_id is null;
 
 -- validate a host id cant be set if the destination id is not set
-prepare insert_destination_id_not_set_when_host_id_is_set AS
+prepare insert_destination_id_not_set_when_host_id_is_set as
     insert into alias_target (public_id, scope_id, value, host_id)
     values ('unset_destination_id', 'global', 'unset.destination.id', 'h_________cb');
 select throws_like(
