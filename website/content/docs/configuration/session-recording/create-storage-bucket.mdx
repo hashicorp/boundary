@@ -134,7 +134,7 @@ The worker that you configure for storage must:
 - Have access to the AWS S3 storage bucket
 - Have an accessible directory defined by `recording_storage_path` for storing session recordings while they are in progress. On session closure, Boundary moves the local session recording to remote storage and deletes the local copy.
    - For HCP Boundary, refer to the [Self-managed worker configuration](/hcp/docs/boundary/self-managed-workers/session-recording) documentation.
-   - For Boundary Enterprise, refer to the refer to the [PKI worker configuration](/boundary/docs/configuration/worker/pki-worker#session-recording) documentation.
+   - For Boundary Enterprise, refer to the refer to the [worker configuration](/boundary/docs/configuration/worker/worker-configuration#session-recording) documentation.
 - Have at least 1 MB of available disk space.
 - Run Darwin, Windows, or Linux. The following binaries are not supported for session recording: NetBSD, OpenBSD, Solaris.
 
