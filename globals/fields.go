@@ -82,6 +82,7 @@ const (
 	MetricNamespace                             = "boundary"
 	LastStatusTimeField                         = "last_status_time"
 	AddressField                                = "address"
+	AliasField                                  = "alias"
 	CanonicalAddressField                       = "canonical_address"
 	TagsField                                   = "tags"
 	CanonicalTagsField                          = "canonical_tags"

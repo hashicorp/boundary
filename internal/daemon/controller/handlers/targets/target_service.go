@@ -1720,6 +1720,7 @@ func toProto(ctx context.Context, in target.Target, opt ...handlers.Option) (*pb
 	outputFields := *opts.WithOutputFields
 	hostSources := in.GetHostSources()
 	credSources := in.GetCredentialSources()
+	aliases := in.GetAliases()
 
 	out := pb.Target{}
 	if outputFields.Has(globals.IdField) {
@@ -1782,6 +1783,14 @@ func toProto(ctx context.Context, in target.Target, opt ...handlers.Option) (*pb
 	}
 	if outputFields.Has(globals.AddressField) {
 		out.Address = wrapperspb.String(in.GetAddress())
+	}
+	if outputFields.Has(globals.AliasField) {
+		for _, a := range aliases {
+			out.Aliases = append(out.Aliases, &pb.Alias{
+				Id:    a.PublicId,
+				Value: a.Value,
+			})
+		}
 	}
 
 	var brokeredSources, injectedAppSources []*pb.CredentialSource
