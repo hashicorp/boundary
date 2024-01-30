@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/boundary/globals"
+	target2 "github.com/hashicorp/boundary/internal/alias/target"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -36,6 +37,7 @@ type Target struct {
 	tableName         string                    `gorm:"-"`
 	HostSource        []target.HostSource       `gorm:"-"`
 	CredentialSources []target.CredentialSource `gorm:"-"`
+	Aliases           []*target2.Alias          `gorm:"-"`
 }
 
 // Ensure Target implements interfaces
@@ -86,6 +88,7 @@ func (t *Target) Clone() target.Target {
 		Address:           t.Address,
 		HostSource:        t.HostSource,
 		CredentialSources: t.CredentialSources,
+		Aliases:           t.Aliases,
 	}
 }
 
@@ -139,6 +142,10 @@ func (t *Target) GetType() globals.Subtype {
 
 func (t *Target) GetAddress() string {
 	return t.Address
+}
+
+func (t *Target) GetAliases() []*target2.Alias {
+	return t.Aliases
 }
 
 func (t *Target) GetHostSources() []target.HostSource {
@@ -226,6 +233,10 @@ func (t *Target) SetIngressWorkerFilter(filter string) {
 
 func (t *Target) SetAddress(address string) {
 	t.Address = address
+}
+
+func (t *Target) SetAliases(aliases []*target2.Alias) {
+	t.Aliases = aliases
 }
 
 func (t *Target) SetHostSources(sources []target.HostSource) {

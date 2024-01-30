@@ -9,6 +9,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/alias/target"
 	"github.com/hashicorp/boundary/internal/boundary"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -36,6 +37,7 @@ type Target interface {
 	GetEgressWorkerFilter() string
 	GetIngressWorkerFilter() string
 	GetAddress() string
+	GetAliases() []*target.Alias
 	GetHostSources() []HostSource
 	GetCredentialSources() []CredentialSource
 	GetStorageBucketId() string
@@ -56,6 +58,7 @@ type Target interface {
 	SetEgressWorkerFilter(string)
 	SetIngressWorkerFilter(string)
 	SetAddress(string)
+	SetAliases([]*target.Alias)
 	SetHostSources([]HostSource)
 	SetCredentialSources([]CredentialSource)
 	SetStorageBucketId(string)
@@ -82,6 +85,7 @@ type targetView struct {
 	tableName         string             `gorm:"-"`
 	HostSource        []HostSource       `gorm:"-"`
 	CredentialSources []CredentialSource `gorm:"-"`
+	Aliases           []*target.Alias    `gorm:"-"`
 }
 
 // allocTargetView will allocate a target view
