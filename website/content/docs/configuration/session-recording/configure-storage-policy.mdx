@@ -651,6 +651,12 @@ $ curl --header "Content-Type: application/json" \
 
 </Note>
 
+### Manual deletion
+
+Deleting a session recording will set the `delete_after` field of a session recording to the current database time. Deleting a session recording will fail if the retention duration has not been met.
+
+If `delete_after` or `delete_time` is after the current time, the session recording will no longer be included in list responses; it also cannot be read, downloaded or played back.
+
 ## Next steps
 
 After the storage policy is configured in Boundary, new recordings within the applied scope adhere to the defined policy. To retroactively apply the configured policy to existing recordings, refer to [update storage bucket policies](/boundary/docs/configuration/session-recording/update-storage-policy).
