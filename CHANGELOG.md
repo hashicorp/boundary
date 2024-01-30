@@ -4,6 +4,9 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+
+## 0.15.0 (2024/01/30)
+
 ### Deprecations/Changes
 
 * Per the note in Boundary 0.13.0, the previous `kms` worker method has been
@@ -21,6 +24,10 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   which allows multiple ids to be included; existing grants submitted to
   Boundary will continue to work, but grants using "id" can no longer be added
   to or set on a role.
+* All list endpoints except workers now return the first 1000 items instead
+  of all items if no parameters are provided. The number of items returned can
+  be configured through the new controller configuration value `max_page_size`.
+  The Admin UI, CLI and api package automatically paginate results.
 
 ### New and Improved
 
@@ -50,10 +57,11 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   the use of templated parameters
   ([PR](https://github.com/hashicorp/boundary/pull/4215))
 * List endpoint pagination: All list endpoints except workers now support pagination.
-  * api: All list endpoints except workers have added support for pagination. The new
-    WithListToken option can be used to request a list of updated and deleted resources
+  * api: All list endpoints except workers have added support for pagination.
+    The api package automatically paginates until the end of the results. The new
+    `WithListToken`` option can be used to request a list of updated and deleted resources
     relative to the last result received.
-  * config: add new controller max_page_size field for controlling the default and max size
+  * config: add new controller field `max_page_size` for controlling the default and max size
     of pages when paginating through results.
 * New command `search` has been added allowing quick searching of targets or
   sessions. It utilizes a client side cache also added in this release. The
