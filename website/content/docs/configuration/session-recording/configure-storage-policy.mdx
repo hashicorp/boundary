@@ -54,7 +54,7 @@ Complete the following steps to create a storage policy in Boundary for session 
    - **Description**: (Optional) An optional description of the Boundary storage policy for identification purposes.
    - **Retention Policy**: (Required) Specifies how long a recording must be stored, in days. 
    Policy values include:
-     - `Forever`: if enabled, Deletion Policy is disabled.
+     - `Forever`: If enabled, the **Deletion Policy** field is disabled.
      - `Custom`: Specify a custom retention policy in days.
      - `Do not protect, allow deletion at any time`
      - `SOC 2 (7 years)`
@@ -64,7 +64,7 @@ Complete the following steps to create a storage policy in Boundary for session 
    - `Do not delete`: Do not delete recordings, even after the retention policy is met.
    - `Custom`: Specify the number of days after the retention policy before recordings are deleted.
 
-   As an example, the following would create a SOC 2 compliant policy:
+   As an example, the following settings would create a SOC 2 compliant policy:
 
    - **Name**: `soc2-policy`
    - **Description**: `SOC 2 compliant storage policy for session recordings`
@@ -96,7 +96,7 @@ Complete the following steps to create a storage policy in Boundary for session 
 
    - `name`: (Optional) An optional human readable name.
    - `description`: (Optional) An optional human readable description.
-   - `scope-id`: (Optional) The ID of the scope (Global or an Org) that will own the policy. Defaults to `global`.
+   - `scope-id`: (Optional) The ID of the scope (global or an org) that owns the policy. Defaults to `global`.
    - `retain-for-days`: (Optional) The number of days a session recording must be kept. A value of `-1` indicates an infinite retention.
    - `retain-for-overridable`: (Optional) Indicates that a lower scope can override the `retain_for_days` attribute value. Defaults to `true`.
    - `delete-after-days`: (Optional) The number of days after which a session recording should be deleted.
@@ -169,13 +169,13 @@ In this example, recordings stored within the global scope must be retained for 
 
 <Warning>
 
-  Boundary does not support an undo action. Storage policies are meant to enforce compliance to a specific law or regulation. Updating the Storage policy of a session recording can have immediate and possibly unexpected results such as the immediate deletion of session recordings. 
+  Boundary does not support an undo action. Storage policies are meant to enforce compliance to a specific law or regulation. Updating the storage policy of a session recording can have immediate and possibly unexpected results such as the immediate deletion of session recordings. 
 
 </Warning>
 
 ## Attach storage policies to a scope
 
-Storage policies must be applied to a scope (`global` or a specific org) to take effect. Once attached, all recordings within the child scopes inherit the storage policy, unless overridden by a policy applied to the child scope.
+You must apply storage policies to a scope (`global` or a specific org) to take effect. Once attached, all recordings within the child scopes inherit the storage policy, unless overridden by a policy applied to the child scope.
 
 The following example applies the policy created above to an org named `prod-databases` with the org ID `o_aDkVBCDTvY`.
 
@@ -330,7 +330,7 @@ Check that the storage policy was successfully attached to the `prod-databases` 
 1. Log in to Boundary.
 1. Select **Orgs** in the navigation panel and select the `prod-databases` org.
 1. Select **Org Settings** in the navigation panel for the `prod-databases` org.
-1. Verify that the 'soc2-policy' is listed under **Storage Policy**.
+1. Verify that the `soc2-policy` is listed under **Storage Policy**.
 
 </Tab>
 <Tab heading="CLI" group="cli">
@@ -474,7 +474,7 @@ New session recordings under the `prod-databases` scope should now show a `retai
 1. Log in to Boundary.
 1. Select **Session Recordings** in the navigation panel. 
 1. Select **View** for a new recording that was made after the storage policy was attached to the `prod-databases` scope.
-1. Under **Session details**, verify that the *Retain until* and *Delete after* dates match the durations defined in the 'soc2-policy'.
+1. Under **Session details**, verify that the *Retain until* and *Delete after* dates match the durations defined in the `soc2-policy`.
 
 </Tab>
 <Tab heading="CLI" group="cli">
@@ -631,7 +631,7 @@ $ curl --header "Content-Type: application/json" \
 
 </CodeBlockConfig>
 
-Verify that the `retain_until` and `delete_after` dates match the durations defined in the 'soc2-policy'.
+Verify that the `retain_until` and `delete_after` dates match the durations defined in the `soc2-policy`.
 
 Alternatively, the recording details can also be queried directly by ID:
 
