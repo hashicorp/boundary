@@ -123,7 +123,10 @@ func toApiStatus(in *cache.Status, started time.Time, socketAddr, logLocation st
 	}
 
 	out := &StatusResult{
-		Uptime:        time.Since(started),
+		// Round(0) strips the monotoic clock from results which can drift
+		// by a wide degree from the wall clock in the case where the system
+		// sleeps.
+		Uptime:        time.Since(started.Round(0)),
 		SocketAddress: socketAddr,
 		Version:       version.Get().FullVersionNumber(true),
 		LogLocation:   logLocation,
