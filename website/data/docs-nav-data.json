@@ -457,6 +457,10 @@
           {
             "title": "Enable session recording",
             "path": "configuration/session-recording/enable-session-recording"
+          },
+          {
+            "title": "Configure storage policies",
+            "path": "configuration/session-recording/configure-storage-policy"
           }
         ]
       },
@@ -1037,40 +1041,6 @@
           {
             "title": "update",
             "path": "commands/managed-groups/update"
-          }
-        ]
-      },
-      {
-        "title": "policies",
-        "badge": {
-          "text": "HCP/ENT",
-          "type": "outlined",
-          "color": "neutral"
-        },
-        "routes": [
-          {
-            "title": "Overview",
-            "path": "commands/policies"
-          },
-          {
-            "title": "create",
-            "path": "commands/policies/create"
-          },
-          {
-            "title": "delete",
-            "path": "commands/policies/delete"
-          },
-          {
-            "title": "list",
-            "path": "commands/policies/list"
-          },
-          {
-            "title": "read",
-            "path": "commands/policies/read"
-          },
-          {
-            "title": "update",
-            "path": "commands/policies/update"
           }
         ]
       },
