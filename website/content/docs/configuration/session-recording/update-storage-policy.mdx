@@ -13,7 +13,7 @@ A [storage policy][] codifies [storage bucket][] lifecycle management for [sessi
 
 A storage policy exists in either the global scope or an org scope. Storage policies that are created in the global scope can be associated with any org scope.
 
-When a storage policy is updated, new session recordings within a scope where the policy is applied will conform to the updated policy. Existing recordings will maintain the previous policy unless the new policy is retroactively applied.
+When you update a storage policy, new session recordings within a scope where the policy is applied will conform to the updated policy. Existing recordings will maintain the previous policy unless the new policy is retroactively applied.
 
 This page describes the process for applying updated storage policies to existing recordings within a scope.
 
@@ -37,7 +37,7 @@ The policies mentioned here demonstrate how to apply an updated storage policy t
 
 A storage policy defines how long the recording within a scope should retain its session recordings. 
 
-Over time, storage policies may be updated to reflect new organizational requirements, compliance changes, or cost management strategies. While updated policies automatically apply to new session recordings within the scopes associated with that policy, existing recordings maintain the previous policies unless the new policy is directly applied to those recordings.
+Over time, you may update storage policies to reflect new organizational requirements, compliance changes, or cost management strategies. While updated policies automatically apply to new session recordings within the scopes associated with that policy, existing recordings maintain the previous policies unless you apply the new policy directly to those recordings.
 
 In the [configure storage bucket policies](/boundary/docs/configuration/session-recording/configure-storage-policy) page, the following policy was created to implement compliance with SOC-2 retention requirement of 7 years:
 
@@ -189,7 +189,7 @@ Many organizations compliance standards will require that previous versions of s
 
 </Note>
 
-In the event that an updated policy should be retroactively applied to existing session recordings, a storage policy should be reapplied.
+In the event that an updated policy should be retroactively applied to existing session recordings, you must reapply the storage policy.
 
 <Tabs>
 <Tab heading="UI" group="ui">
