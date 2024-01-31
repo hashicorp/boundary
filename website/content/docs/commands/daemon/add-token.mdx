@@ -1,0 +1,64 @@
+---
+layout: docs
+page_title: daemon add-token - Command
+description: |-
+  The "daemon add-token" command lets you add an auth token to a Boundary daemon that is running.
+---
+
+# daemon add-token
+
+Command: `boundary daemon add-token`
+
+The `boundary daemon add-token` command lets you add an auth token from your keyring to a Boundary daemon that is running.
+
+By default, the Boundary CLI tries to use a keyring to store and receive auth tokens.
+Whenever you use an auth token to interact with Boundary, the client cache stores the auth token and syncs the data associated with it.
+If you authenticate to multiple Boundary instances, the client cache stores multiple auth tokens and syncs the data associated with each token.
+
+By adding auth tokens to your client cache, you can select which specific Boundary instance you want to search.
+
+## Examples
+
+The following command adds an auth token to the client cache from your keyring:
+
+```shell-session
+$ boundary daemon add-token
+```
+
+The following command specifies the name of the keyring `development` from which you want to add the token:
+
+```shell-session
+$ boundary daemon add-token -token-name development
+```
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary daemon add-token [options]
+```
+
+</CodeBlockConfig>
+
+### Command options
+
+- `keyring-type=<string>` - Specifies the type of keyring to use.
+The default value is `auto` which uses the Windows credential manager, OS X keychain, or cross-platform password store, depending on your platform.
+Use the value `none` to disable keyring functionality.
+Depending on your platform, available values include:
+   - `wincred`
+   - `keychain`
+   - `pass`
+   - `secret-service`
+
+  You can also specify the keyring type using the **BOUNDARY_KEYRING_TYPE** environment variable.
+- `output-curl-string` - Specifies that Boundary should print an equivalent cURL command string and exit, instead of executing the request.
+The default value is `false`.
+- `token` = A URL that points to a file on disk (file://) from which Boundary reads a token or an environment variable (env://) from which the token will be read.
+If you set this parameter, it overrides the `token-name` parameter.
+- `token-name` - If specified, Boundary uses the value in this parameter as the name when it stores the token in the system credential store.
+You can use this value to switch user identities for different commands.
+You can also specify a token name using the **BOUNDARY_TOKEN_NAME** environment variable.
+
+@include 'cmd-option-note.mdx'
