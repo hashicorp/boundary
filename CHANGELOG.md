@@ -4,6 +4,10 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+### Added dependency
+* postgres citext dependency added to enable aliases to be globally unique
+  in a case insensitive way.
+
 ### New and Improved
 
 * New generic commands `read`, `update`, and `delete` have been added. These
