@@ -92,7 +92,7 @@ message Alias {
 
 // Attributes associated only with Aliases with type "target".
 message TargetAliasAttributes {
-  AuthorizeSessionArguments authorize_session_arguments = 1 [json_name = "authorize_session_arguments"];
+  AuthorizeSessionArguments authorize_session_arguments = 1 [json_name = "authorize_session_arguments"]; // @gotags: `class:"public"`
 }
 
 message AuthorizeSessionArguments {
@@ -109,5 +109,5 @@ message AuthorizeSessionArguments {
       this: "attributes.authorize_session_arguments.host_id"
       that: "HostId"
     }
-  ]; // @gotags: `class:"sensitive"`
+  ]; // @gotags: `class:"public"`
 }

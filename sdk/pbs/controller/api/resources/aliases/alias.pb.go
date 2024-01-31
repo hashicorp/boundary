@@ -219,7 +219,7 @@ type TargetAliasAttributes struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	AuthorizeSessionArguments *AuthorizeSessionArguments `protobuf:"bytes,1,opt,name=authorize_session_arguments,proto3" json:"authorize_session_arguments,omitempty"`
+	AuthorizeSessionArguments *AuthorizeSessionArguments `protobuf:"bytes,1,opt,name=authorize_session_arguments,proto3" json:"authorize_session_arguments,omitempty" class:"public"` // @gotags: `class:"public"`
 }
 
 func (x *TargetAliasAttributes) Reset() {
@@ -272,7 +272,7 @@ type AuthorizeSessionArguments struct {
 	// in this value through the -host-id flag. If the host-id flag is also
 	// specified when calling authorize-session an error will be returned unless
 	// the provided host-id matches this value.
-	HostId string `protobuf:"bytes,100,opt,name=host_id,json=login_name,proto3" json:"host_id,omitempty" class:"sensitive"` // @gotags: `class:"sensitive"`
+	HostId string `protobuf:"bytes,100,opt,name=host_id,json=login_name,proto3" json:"host_id,omitempty" class:"public"` // @gotags: `class:"public"`
 }
 
 func (x *AuthorizeSessionArguments) Reset() {

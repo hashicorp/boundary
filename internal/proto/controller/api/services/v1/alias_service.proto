@@ -133,7 +133,7 @@ message ListAliasesResponse {
 }
 
 message CreateAliasRequest {
-  resources.aliases.v1.Alias item = 2;
+  resources.aliases.v1.Alias item = 1;
 }
 
 message CreateAliasResponse {
