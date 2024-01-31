@@ -375,12 +375,8 @@
             "path": "configuration/worker"
           },
           {
-            "title": "PKI workers",
-            "path": "configuration/worker/pki-worker"
-          },
-          {
-            "title": "KMS workers",
-            "path": "configuration/worker/kms-worker"
+            "title": "Configuration",
+            "path": "configuration/worker/worker-configuration"
           }
         ]
       },

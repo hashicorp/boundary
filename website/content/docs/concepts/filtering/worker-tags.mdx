@@ -152,15 +152,15 @@ This is the worker a client connects to when initiating a connection to a target
 
 <EnterpriseAlert product="boundary">This feature requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary or Boundary Enterprise</a></EnterpriseAlert>
 
-Tags are used to control which [PKI workers] can manage Vault requests by specifying
+Tags are used to control which [workers] can manage Vault requests by specifying
 a `worker_filter`attribute when configuring [credential stores].
 
-This allows the use of private Vault instances with Boundary. PKI workers
+This allows the use of private Vault instances with Boundary. Workers
 deployed in the same network as a private Vault instance can access and relay
 Vault requests to Boundary controllers.
 
- ~> **Note:** A PKI worker that matches the worker filter must exist before defining the Vault credential store, as it
+ ~> **Note:** A worker that matches the worker filter must exist before defining the Vault credential store, as it
  will perform the Vault calls needed to set up the credential store with Boundary.
 
-[PKI workers]: /boundary/docs/configuration/worker/pki-worker
+[workers]: /boundary/docs/configuration/worker/worker-configuration
 [credential stores]: /boundary/docs/concepts/domain-model/credential-stores#vault-credential-store-attributes

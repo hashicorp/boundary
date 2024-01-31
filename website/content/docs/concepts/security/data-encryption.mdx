@@ -15,10 +15,10 @@ Boundary supports and how they are used within the system.
 
 ## The `worker-auth-storage` KMS key
 
-The `worker-auth-storage` KMS key is used by a [PKI
-Worker](/boundary/docs/configuration/worker/pki-worker) for storage of authentication
-keys. It is optional for PKI workers; if not specified the authentication keys
-will not be encrypted on disk. This is not used by KMS workers.
+The `worker-auth-storage` KMS key can be used by [Workers registered using worker-led or controller-led 
+methods](/boundary/docs/configuration/worker/worker-configuration) for storage of authentication
+keys. It is optional for workers; if not specified the authentication keys
+will not be encrypted on disk. This can not used by workers registered using an external KMS.
 
 ## The `root` KMS key and per-scope KEK/DEKs <sup>Community Edition only</sup>
 
@@ -125,8 +125,8 @@ rotate and rewrap the KEKs to complete the migration to the new root key.
 The `worker-auth` KMS key is a key shared by the Controller and Worker in order
 to authenticate a Worker to the Controller. Specifics of this mechanism can be
 found on the [Connections/TLS page](/boundary/docs/concepts/security/connections-tls). If
-a worker is used with [PKI
-authentication](/boundary/docs/configuration/worker/pki-worker) this is unnecessary.
+a worker is registered with [worker-led or controller-led
+methods](/boundary/docs/configuration/worker/worker-configuration) this is unnecessary.
 
 ## The `recovery` KMS key <sup>Community Edition only</sup>
 
