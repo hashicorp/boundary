@@ -141,7 +141,7 @@ func TestCliAuthMethodPassword(t *testing.T) {
 	require.NoError(t, output.Err, string(output.Stderr))
 }
 
-// TestCliPaginateAuthMethods asserts that the CLI autamatically paginates to retrieve
+// TestCliPaginateAuthMethods asserts that the CLI automatically paginates to retrieve
 // all auth methods in a single invocation.
 func TestCliPaginateAuthMethods(t *testing.T) {
 	e2e.MaybeSkipTest(t)
@@ -161,11 +161,8 @@ func TestCliPaginateAuthMethods(t *testing.T) {
 	})
 
 	// Create enough auth methods to overflow a single page.
-	// Three auth methods are created by default, so we
-	// need to remove them from the total auth method count.
-	numPrecreatedAuthMethods := 3
 	var authMethodIds []string
-	for i := 0; i < c.MaxPageSize+1-numPrecreatedAuthMethods; i++ {
+	for i := 0; i < c.MaxPageSize+1; i++ {
 		authMethodId := boundary.CreateNewAuthMethodApi(t, ctx, client, newOrgId)
 		authMethodIds = append(authMethodIds, authMethodId)
 	}
@@ -174,6 +171,7 @@ func TestCliPaginateAuthMethods(t *testing.T) {
 	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"auth-methods", "list",
+			"-scope-id", newOrgId,
 			"-recursive",
 			"-format=json",
 		),
@@ -184,8 +182,7 @@ func TestCliPaginateAuthMethods(t *testing.T) {
 	require.NoError(t, err)
 
 	var returnedIds []string
-	// Ignore the precreated auth methods, which will appear at the end
-	for _, authMethod := range initialAuthMethods.Items[:len(initialAuthMethods.Items)-numPrecreatedAuthMethods] {
+	for _, authMethod := range initialAuthMethods.Items {
 		returnedIds = append(returnedIds, authMethod.Id)
 	}
 	require.Len(t, initialAuthMethods.Items, c.MaxPageSize+1)
@@ -208,6 +205,7 @@ func TestCliPaginateAuthMethods(t *testing.T) {
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"auth-methods", "list",
+			"-scope-id", newOrgId,
 			"-recursive",
 			"-format=json",
 		),
