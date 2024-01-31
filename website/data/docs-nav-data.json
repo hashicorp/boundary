@@ -1119,6 +1119,10 @@
             "path": "commands/roles"
           },
           {
+            "title": "add-grant-scopes",
+            "path": "commands/roles/add-grant-scopes"
+          },
+          {
             "title": "add-grants",
             "path": "commands/roles/add-grants"
           },
@@ -1143,12 +1147,20 @@
             "path": "commands/roles/read"
           },
           {
+            "title": "remove-grant-scopes",
+            "path": "commands/roles/remove-grant-scopes"
+          },
+          {
             "title": "remove-grants",
             "path": "commands/roles/remove-grants"
           },
           {
             "title": "remove-principals",
             "path": "commands/roles/remove-principals"
+          },
+          {
+            "title": "set-grant-scopes",
+            "path": "commands/roles/set-grant-scopes"
           },
           {
             "title": "set-grants",
