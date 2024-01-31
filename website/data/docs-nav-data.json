@@ -838,6 +838,31 @@
         ]
       },
       {
+        "title": "daemon",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "commands/daemon"
+          },
+          {
+            "title": "add-token",
+            "path": "commands/daemon/add-token"
+          },
+          {
+            "title": "start",
+            "path": "commands/daemon/start"
+          },
+          {
+            "title": "status",
+            "path": "commands/daemon/status"
+          },
+          {
+            "title": "stop",
+            "path": "commands/daemon/stop"
+          }
+        ]
+      },
+      {
         "title": "database",
         "routes": [
           {
@@ -1130,6 +1155,10 @@
         ]
       },
       {
+        "title": "search",
+        "path": "commands/search"
+      },
+      {
         "title": "server",
         "path": "commands/server"
       },
@@ -1395,6 +1424,10 @@
       {
         "title": "Desktop",
         "href": "https://learn.hashicorp.com/tutorials/boundary/hcp-getting-started-desktop-app"
+      },
+      {
+        "title": "Client cache",
+        "path": "api-clients/client-cache"
       }
     ]
   },
