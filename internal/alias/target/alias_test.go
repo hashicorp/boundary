@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/alias/target"
 	"github.com/hashicorp/boundary/internal/alias/target/store"
 	"github.com/hashicorp/boundary/internal/db"
@@ -153,7 +154,7 @@ func TestCreate(t *testing.T) {
 			a, err := target.NewAlias(ctx, c.scope, c.value, c.opts...)
 			require.NoError(t, err)
 			assert.NotNil(t, a)
-			a.PublicId, err = target.NewAliasId(ctx)
+			a.PublicId, err = db.NewPublicId(ctx, globals.TargetAliasPrefix)
 			require.NoError(t, err)
 
 			start := time.Now().UTC()
@@ -185,7 +186,7 @@ func TestCreate(t *testing.T) {
 		})
 
 		var err error
-		a.PublicId, err = target.NewAliasId(ctx)
+		a.PublicId, err = db.NewPublicId(ctx, globals.TargetAliasPrefix)
 		require.NoError(t, err)
 		a.Value = "DUPLICATE.ALIAS"
 		err = rw.Create(ctx, a)
@@ -467,7 +468,9 @@ func TestDelete(t *testing.T) {
 	})
 
 	t.Run("delete non-existent", func(t *testing.T) {
-		a := target.AllocAlias()
+		a := &target.Alias{
+			Alias: &store.Alias{},
+		}
 		a.PublicId = "alias_does_not_exist"
 		n, err := rw.Delete(ctx, a)
 		assert.NoError(t, err)

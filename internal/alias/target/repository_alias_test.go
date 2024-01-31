@@ -6,10 +6,11 @@ package target_test
 import (
 	"context"
 	"crypto/rand"
-	"github.com/hashicorp/boundary/internal/alias/target"
 	"strings"
 	"testing"
 
+	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/alias/target"
 	"github.com/hashicorp/boundary/internal/alias/target/store"
 	"github.com/hashicorp/boundary/internal/db"
 	dbassert "github.com/hashicorp/boundary/internal/db/assert"
@@ -755,7 +756,7 @@ func TestRepository_LookupAlias(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	al := target.TestAlias(t, rw, "one")
-	badId, err := target.NewAliasId(ctx)
+	badId, err := db.NewPublicId(ctx, globals.TargetAliasPrefix)
 	assert.NoError(t, err)
 	assert.NotNil(t, badId)
 
@@ -824,7 +825,7 @@ func TestRepository_DeleteAlias(t *testing.T) {
 	require.NotNil(t, repo)
 
 	al := target.TestAlias(t, rw, "deleted.alias")
-	badId, err := target.NewAliasId(ctx)
+	badId, err := db.NewPublicId(ctx, globals.TargetAliasPrefix)
 	assert.NoError(t, err)
 	assert.NotNil(t, badId)
 
