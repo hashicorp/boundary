@@ -41,10 +41,6 @@ method's identity provider to provide up-to-date information.
 [permissions](/boundary/docs/concepts/security/permissions) which are granted to any principal (user or group) from any scope. Roles
 can be contained by any scope, and the permissions can be applied to the same scope or any child scope.
 
-<Tip>
-Roles can only be applied to a single scope at a time in Boundary, meaning each scope requires its own role.
-</Tip>
-
 ## Access management
 
 ### Configure users - username/password
@@ -59,8 +55,7 @@ as the auth method. The accounts and users are only created once the user authen
 The same applies to OIDC/LDAP [managed groups](/boundary/tutorials/identity-management/oidc-idp-groups).
 
 ### Grant permissions
-When setting up access controls for a user, it is important to first consider which scope(s) the user needs access to. **Each scope requires its own set of roles**,
-giving users permission to perform actions through grants strings.
+When setting up access controls for a user, it is important to first consider which scope(s) the user needs access to. Roles give users permission to perform actions through grants strings.
 It is recommended to add the user to a group, and then add the group to the role(s), instead of adding the user directly to the role(s). This way, you can manage multiple users at the same time, and it is easier to
 change the permissions of the user by adding/removing them from groups. You can manage OIDC/LDAP users and managed groups the same way, directly in the provider.
 
