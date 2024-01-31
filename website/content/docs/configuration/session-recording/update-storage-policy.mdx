@@ -80,6 +80,8 @@ The following is an example of updating the `soc2-policy` policy.
 1. Log in to Boundary.
 1. List the available storage policies and copy the `soc2-policy` ID.
 
+   <CodeBlockConfig highlight="1,3">
+
    ```shell-session
    $ boundary policies list
    Policy information:
@@ -94,6 +96,8 @@ The following is an example of updating the `soc2-policy` policy.
          delete
          no-op
    ```
+
+   </CodeBlockConfig>
 
 1. Use the following command to update the `soc2-policy` storage policy to reflect the new deletion requirements:
 
@@ -229,7 +233,7 @@ In the event that an updated policy should be retroactively applied to existing 
 
 1. Re-apply the storage policy to the session recording by providing its ID:
 
-   <CodeBlockConfig highlight="1-2,6">
+   <CodeBlockConfig highlight="1,6">
 
    ```shell-session
    $ boundary session-recordings reapply-storage-policy -id sr_nt5dFeBYdh

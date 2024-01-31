@@ -62,7 +62,7 @@ Complete the following steps to create a storage policy in Boundary for session 
    - **Deletion Policy**: (Required) Specifies when to delete a recording, in days.
    Policy values include:
    - `Do not delete`: Do not delete recordings, even after the retention policy is met.
-   - `Custom`: Specify the number of days after the retention policy before recordings are deleted.
+   - `Custom`: Specifies the number of days after creation when a session recording should be deleted.
 
    As an example, the following settings would create a SOC 2 compliant policy:
 
@@ -99,7 +99,7 @@ Complete the following steps to create a storage policy in Boundary for session 
    - `scope-id`: (Optional) The ID of the scope (global or an org) that owns the policy. Defaults to `global`.
    - `retain-for-days`: (Optional) The number of days a session recording must be kept. A value of `-1` indicates an infinite retention.
    - `retain-for-overridable`: (Optional) Indicates that a lower scope can override the `retain_for_days` attribute value. Defaults to `true`.
-   - `delete-after-days`: (Optional) The number of days after which a session recording should be deleted.
+   - `delete-after-days`: (Optional) The number of days after creation when a session recording should be deleted.
    - `delete-after-overridable`: (Optional) Indicates that a lower scope can override the  `delete_after_days` attribute value. Defaults to `true`.
 
 </Tab>
@@ -195,6 +195,8 @@ The following example applies the policy created above to an org named `prod-dat
 1. Log in to Boundary.
 1. Obtain the storage policy ID:
 
+   <CodeBlockConfig highlight="1,3">
+
    ```shell-session
    $ boundary policies list
    Policy information: 
@@ -210,11 +212,13 @@ The following example applies the policy created above to an org named `prod-dat
          no-op
    ```
 
+   </CodeBlockConfig>
+
 1. Use the following command to apply the storage policy to the `prod-databases` org:
 
    ```shell-session
    $ boundary scopes attach-storage-policy \
-       -id <ORG_ID> \
+       -id o_aDkVBCDTvY \
        -storage-policy-id pst_WZ3SQSSYJY
    ```
 
@@ -241,7 +245,7 @@ $ curl --header "Content-Type: application/json" \
     --header "Authorization: Bearer $(boundary config get-token)" \
     --request POST \
     --data '{"storage_policy_id":"pst_WZ3SQSSYJY","version":2}'' \
-    $BOUNDARY_ADDR/v1/scopes/<ORG_ID>:attach-storage-policy' | jq
+    $BOUNDARY_ADDR/v1/scopes/o_aDkVBCDTvY:attach-storage-policy' | jq
 ```
 
 **Example output:**
@@ -338,10 +342,10 @@ Check that the storage policy was successfully attached to the `prod-databases` 
 1. Log in to Boundary.
 1. Read the details of the `prod-databases` org:
 
-   <CodeBlockConfig highlight="1-6">
+   <CodeBlockConfig highlight="1,5-6">
 
    ```shell-session
-   $ boundary scopes read -id <ORG_ID>
+   $ boundary scopes read -id o_aDkVBCDTvY
    Scope information:
      Created Time:        Thu, 25 Jan 2024 21:22:45 MST
      ID:                  o_aDkVBCDTvY
@@ -376,8 +380,6 @@ Check that the storage policy was successfully attached to the `prod-databases` 
 
 The following API call is an example of reading the details of the `prod-databases` scope by ID (`o_aDkVBCDTvY` in this example).
 
-First, obtain the storage policy ID.
-
 ```shell-session
 $ curl --header "Content-Type: application/json" \
     --header "Authorization: Bearer $(boundary config get-token)" \
@@ -387,7 +389,7 @@ $ curl --header "Content-Type: application/json" \
 
 **Example output:**
 
-<CodeBlockConfig hideClipboard highlight="1-9,61">
+<CodeBlockConfig hideClipboard highlight="2-3,63">
 
 ```plaintext
 {
@@ -479,10 +481,11 @@ New session recordings under the `prod-databases` scope should now show a `retai
 </Tab>
 <Tab heading="CLI" group="cli">
 
+1. Create a new session recording on a target within the `prod-databases` org.
 1. Log in to Boundary.
 1. List the available session recordings:
 
-   <CodeBlockConfig>
+   <CodeBlockConfig highlight="1,4">
 
    ```shell-session
    $ boundary session-recordings list
@@ -508,11 +511,11 @@ New session recordings under the `prod-databases` scope should now show a `retai
 
    </CodeBlockConfig>
 
-   Copy the recording **ID**.
+   Copy the recording **ID** (such as `sr_nt5dFeBYdh`).
 
 1. Read the recording details by ID.
 
-   <CodeBlockConfig highlight="1-3,6-7,11">
+   <CodeBlockConfig highlight="1,3,6-7,11">
 
    ```shell-session
    $ boundary session-recordings read -id sr_nt5dFeBYdh
@@ -545,93 +548,94 @@ New session recordings under the `prod-databases` scope should now show a `retai
 </Tab>
 <Tab heading="API call using cURL" group="api">
 
-The following API call is an example of reading the details of a session recording with the `soc2-policy` storage policy applied to the `prod-databases` scope.
+1. Create a new session recording on a target within the `prod-databases` org.
+1. The following API call is an example of reading the details of a session recording with the `soc2-policy` storage policy applied to the `prod-databases` scope.
 
-List the available session recordings. This example recursively lists all recordings within the global scope.
+   List the available session recordings. This example recursively lists all recordings    within the global scope.
+   
+   ```shell-session
+   $ curl --header "Content-Type: application/json" \
+       --header "Authorization: Bearer $(boundary config get-token)" \
+       --request GET \
+       $BOUNDARY_ADDR/v1/session-recordings?recursive=true&scope_id=global | jq
+   ```
+   
+   **Example output:**
+   
+   <CodeBlockConfig hideClipboard highlight="4,57-58">
+   
+   ```plaintext
+   {
+     "items": [
+       {
+         "id": "sr_nt5dFeBYdh",
+         "scope": {
+           "id": "global",
+           "type": "global",
+           "name": "global",
+           "description": "Global Scope"
+         },
+         "storage_bucket_id": "sb_DC8SPb9uc2",
+         "created_time": "2024-01-30T06:25:31.873628Z",
+         "updated_time": "2024-01-30T07:26:01.182513Z",
+         "start_time": "2024-01-30T06:25:32.412373Z",
+         "end_time": "2024-01-30T06:25:53.431183Z",
+         "duration": "21.018810s",
+         "type": "ssh",
+         "state": "available",
+         "endpoint": "ssh://xx.xxx.xxx.xxx:22",
+         "create_time_values": {
+           "user": {
+             "id": "u_lLWuYy70Wo",
+             "name": "admin_user",
+             "description": "Global admin user",
+             "scope": {
+               "id": "global",
+               "type": "global",
+               "name": "global",
+               "description": "Global Scope"
+             }
+           },
+           "target": {
+             "id": "tssh_cjTsFSU10p",
+             "name": "recording-target",
+             "scope": {
+               "id": "p_ocJPxzrz2p",
+               "type": "project",
+               "name": "recording-project",
+               "parent_scope_id": "o_aDkVBCDTvY"
+             },
+             "session_max_seconds": 28800,
+             "session_connection_limit": -1,
+             "egress_worker_filter": "\"recording-worker\" in \"/tags/type\"",
+             "type": "ssh",
+             "attributes": {
+               "default_port": 22
+             }
+           }
+         },
+         "authorized_actions": [
+           "reapply-storage-policy",
+           "no-op",
+           "read",
+           "download",
+           "delete"
+         ],
+         "retain_until": "2031-01-30T06:25:53.431183Z",
+         "delete_after": "2031-05-10T06:25:53.431183Z"
+       }
+     ],
+     "response_type": "complete",
+     "list_token":    "GnJNt3mPNy6Cp62MUBCnZPdrQF7cvh4udEoW4CjL5k2ufvesMfKAheSJyNHmKf3zwL5aVKHT4P6q",
+     "sort_by": "created_time",
+     "sort_dir": "desc",
+     "est_item_count": 1
+   }
+   ```
 
-```shell-session
-$ curl --header "Content-Type: application/json" \
-    --header "Authorization: Bearer $(boundary config get-token)" \
-    --request GET \
-    $BOUNDARY_ADDR/v1/session-recordings?recursive=true&scope_id=global | jq
-```
+   </CodeBlockConfig>
 
-**Example output:**
-
-<CodeBlockConfig hideClipboard highlight="1-4,47-48">
-
-```plaintext
-{
-  "items": [
-    {
-      "id": "sr_nt5dFeBYdh",
-      "scope": {
-        "id": "global",
-        "type": "global",
-        "name": "global",
-        "description": "Global Scope"
-      },
-      "storage_bucket_id": "sb_DC8SPb9uc2",
-      "created_time": "2024-01-30T06:25:31.873628Z",
-      "updated_time": "2024-01-30T07:26:01.182513Z",
-      "start_time": "2024-01-30T06:25:32.412373Z",
-      "end_time": "2024-01-30T06:25:53.431183Z",
-      "duration": "21.018810s",
-      "type": "ssh",
-      "state": "available",
-      "endpoint": "ssh://xx.xxx.xxx.xxx:22",
-      "create_time_values": {
-        "user": {
-          "id": "u_lLWuYy70Wo",
-          "name": "admin_user",
-          "description": "Global admin user",
-          "scope": {
-            "id": "global",
-            "type": "global",
-            "name": "global",
-            "description": "Global Scope"
-          }
-        },
-        "target": {
-          "id": "tssh_cjTsFSU10p",
-          "name": "recording-target",
-          "scope": {
-            "id": "p_ocJPxzrz2p",
-            "type": "project",
-            "name": "recording-project",
-            "parent_scope_id": "o_aDkVBCDTvY"
-          },
-          "session_max_seconds": 28800,
-          "session_connection_limit": -1,
-          "egress_worker_filter": "\"recording-worker\" in \"/tags/type\"",
-          "type": "ssh",
-          "attributes": {
-            "default_port": 22
-          }
-        }
-      },
-      "authorized_actions": [
-        "reapply-storage-policy",
-        "no-op",
-        "read",
-        "download",
-        "delete"
-      ],
-      "retain_until": "2031-01-30T06:25:53.431183Z",
-      "delete_after": "2031-05-10T06:25:53.431183Z"
-    }
-  ],
-  "response_type": "complete",
-  "list_token": "GnJNt3mPNy6Cp62MUBCnZPdrQF7cvh4udEoW4CjL5k2ufvesMfKAheSJyNHmKf3zwL5aVKHT4P6q",
-  "sort_by": "created_time",
-  "sort_dir": "desc",
-  "est_item_count": 1
-}
-```
-
-</CodeBlockConfig>
-
-Verify that the `retain_until` and `delete_after` dates match the durations defined in the `soc2-policy`.
+1. Verify that the `retain_until` and `delete_after` dates match the durations defined in the `soc2-policy`.
 
 Alternatively, the recording details can also be queried directly by ID:
 
