@@ -161,6 +161,21 @@ description: |-
     </td>
   </tr>
 
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    0.15.0
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Storage bucket policy updates
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    If you have session recording configured, you must update your IAM policy in AWS before you upgrade to release 0.15.0 to ensure your session recordings continue to get uploaded to S3. The IAM policy now requires the <code>DeleteObjects</code> and <code>ListBucket</code> permissions.
+    <br /><br />
+    Learn more:&nbsp;
+    <a href="/boundary/docs/configuration/session-recording/create-storage-bucket">Create storage buckets</a>
+    </td>
+  </tr>
+
 
   </tbody>
 </table>
