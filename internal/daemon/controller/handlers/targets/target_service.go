@@ -351,7 +351,7 @@ func (s Service) ListTargets(ctx context.Context, req *pbs.ListTargetsRequest) (
 func (s Service) GetTarget(ctx context.Context, req *pbs.GetTargetRequest) (*pbs.GetTargetResponse, error) {
 	const op = "targets.(Service).GetTarget"
 
-	if !strings.Contains(req.GetId(), "_") {
+	if maybeAlias(req.GetId()) {
 		if a, err := s.resolveAlias(ctx, req.GetId()); err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		} else {
@@ -439,7 +439,7 @@ func (s Service) CreateTarget(ctx context.Context, req *pbs.CreateTargetRequest)
 func (s Service) UpdateTarget(ctx context.Context, req *pbs.UpdateTargetRequest) (*pbs.UpdateTargetResponse, error) {
 	const op = "targets.(Service).UpdateTarget"
 
-	if !strings.Contains(req.GetId(), "_") {
+	if maybeAlias(req.GetId()) {
 		if a, err := s.resolveAlias(ctx, req.GetId()); err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		} else {
@@ -487,7 +487,7 @@ func (s Service) UpdateTarget(ctx context.Context, req *pbs.UpdateTargetRequest)
 func (s Service) DeleteTarget(ctx context.Context, req *pbs.DeleteTargetRequest) (*pbs.DeleteTargetResponse, error) {
 	const op = "targets.(Service).DeleteTarget"
 
-	if !strings.Contains(req.GetId(), "_") {
+	if maybeAlias(req.GetId()) {
 		if a, err := s.resolveAlias(ctx, req.GetId()); err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		} else {
@@ -513,7 +513,7 @@ func (s Service) DeleteTarget(ctx context.Context, req *pbs.DeleteTargetRequest)
 func (s Service) AddTargetHostSources(ctx context.Context, req *pbs.AddTargetHostSourcesRequest) (*pbs.AddTargetHostSourcesResponse, error) {
 	const op = "targets.(Service).AddTargetHostSources"
 
-	if !strings.Contains(req.GetId(), "_") {
+	if maybeAlias(req.GetId()) {
 		if a, err := s.resolveAlias(ctx, req.GetId()); err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		} else {
@@ -563,7 +563,7 @@ func (s Service) AddTargetHostSources(ctx context.Context, req *pbs.AddTargetHos
 func (s Service) SetTargetHostSources(ctx context.Context, req *pbs.SetTargetHostSourcesRequest) (*pbs.SetTargetHostSourcesResponse, error) {
 	const op = "targets.(Service).SetTargetHostSources"
 
-	if !strings.Contains(req.GetId(), "_") {
+	if maybeAlias(req.GetId()) {
 		if a, err := s.resolveAlias(ctx, req.GetId()); err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		} else {
@@ -611,7 +611,7 @@ func (s Service) SetTargetHostSources(ctx context.Context, req *pbs.SetTargetHos
 func (s Service) RemoveTargetHostSources(ctx context.Context, req *pbs.RemoveTargetHostSourcesRequest) (*pbs.RemoveTargetHostSourcesResponse, error) {
 	const op = "targets.(Service).RemoveTargetHostSources"
 
-	if !strings.Contains(req.GetId(), "_") {
+	if maybeAlias(req.GetId()) {
 		if a, err := s.resolveAlias(ctx, req.GetId()); err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		} else {
@@ -659,7 +659,7 @@ func (s Service) RemoveTargetHostSources(ctx context.Context, req *pbs.RemoveTar
 func (s Service) AddTargetCredentialSources(ctx context.Context, req *pbs.AddTargetCredentialSourcesRequest) (*pbs.AddTargetCredentialSourcesResponse, error) {
 	const op = "targets.(Service).AddTargetCredentialSources"
 
-	if !strings.Contains(req.GetId(), "_") {
+	if maybeAlias(req.GetId()) {
 		if a, err := s.resolveAlias(ctx, req.GetId()); err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		} else {
@@ -708,7 +708,7 @@ func (s Service) AddTargetCredentialSources(ctx context.Context, req *pbs.AddTar
 func (s Service) SetTargetCredentialSources(ctx context.Context, req *pbs.SetTargetCredentialSourcesRequest) (*pbs.SetTargetCredentialSourcesResponse, error) {
 	const op = "targets.(Service).SetTargetCredentialSources"
 
-	if !strings.Contains(req.GetId(), "_") {
+	if maybeAlias(req.GetId()) {
 		if a, err := s.resolveAlias(ctx, req.GetId()); err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		} else {
@@ -757,7 +757,7 @@ func (s Service) SetTargetCredentialSources(ctx context.Context, req *pbs.SetTar
 func (s Service) RemoveTargetCredentialSources(ctx context.Context, req *pbs.RemoveTargetCredentialSourcesRequest) (*pbs.RemoveTargetCredentialSourcesResponse, error) {
 	const op = "targets.(Service).RemoveTargetCredentialSources"
 
-	if !strings.Contains(req.GetId(), "_") {
+	if maybeAlias(req.GetId()) {
 		if a, err := s.resolveAlias(ctx, req.GetId()); err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		} else {
@@ -851,15 +851,19 @@ func DefaultPostSessionAuthorizationCallback(context.Context, intglobals.Control
 func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSessionRequest) (_ *pbs.AuthorizeSessionResponse, retErr error) {
 	const op = "targets.(Service).AuthorizeSession"
 
-	if !strings.Contains(req.GetId(), "_") {
+	if maybeAlias(req.GetId()) && len(req.GetScopeId()) == 0 && len(req.GetScopeName()) == 0 {
+		// AuthorizeSession allows passing the target name in the place of an id but
+		// requires that the scope id or scope name is also provided in the request.
+		// If the scope id or the scope name is provided, we will not attempt to
+		// resolve the alias.
 		if a, err := s.resolveAlias(ctx, req.GetId()); err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		} else {
 			req.Id = a.DestinationId
 			if a.HostId != "" {
-				if req.HostId != "" {
+				if req.GetHostId() != "" && req.GetHostId() != a.HostId {
 					return nil, handlers.InvalidArgumentErrorf("Errors in provided fields.", map[string]string{
-						"host_id": "The host id is specified in the request and by the alias. Only one may be specified.",
+						"host_id": "The host id specified in the request does not match the one provided by the alias. Consider omiting the host id in the request.",
 					})
 				}
 				req.HostId = a.HostId
@@ -1314,6 +1318,11 @@ func (s Service) getFromRepo(ctx context.Context, id string) (target.Target, []t
 		return nil, nil, nil, handlers.NotFoundErrorf("Target %q doesn't exist.", id)
 	}
 	return u, hs, cl, nil
+}
+
+func maybeAlias(s string) bool {
+	return !strings.Contains(s, "_") &&
+		len(s) > 0
 }
 
 // resolveAlias returns the alias resource with the specified value.
