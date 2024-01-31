@@ -101,26 +101,27 @@ func (c *Command) Run(args []string) int {
 
 	c.FlagAuthMethodId = pri
 
+	var result int
 	switch {
 	case strings.HasPrefix(c.FlagAuthMethodId, globals.PasswordAuthMethodPrefix):
 		cmd := PasswordCommand{Command: c.Command}
 		cmd.Opts = append(c.Opts, base.WithSkipScopeIdFlag(true))
-		cmd.Run([]string{})
+		result = cmd.Run([]string{})
 
 	case strings.HasPrefix(c.FlagAuthMethodId, globals.OidcAuthMethodPrefix):
 		cmd := OidcCommand{Command: c.Command}
 		cmd.Opts = append(c.Opts, base.WithSkipScopeIdFlag(true))
-		cmd.Run([]string{})
+		result = cmd.Run([]string{})
 
 	case strings.HasPrefix(c.FlagAuthMethodId, globals.LdapAuthMethodPrefix):
 		cmd := LdapCommand{Command: c.Command}
 		cmd.Opts = append(c.Opts, base.WithSkipScopeIdFlag(true))
-		cmd.Run([]string{})
+		result = cmd.Run([]string{})
 
 	default:
 		c.PrintCliError(fmt.Errorf("The primary auth method was of an unsupported type. The given ID was %s; only 'ampw' (password), 'amoidc' (OIDC) and 'amldap' (LDAP) auth method prefixes are supported.", c.FlagAuthMethodId))
 		return cli.RunResultHelp
 	}
 
-	return 0
+	return result
 }
