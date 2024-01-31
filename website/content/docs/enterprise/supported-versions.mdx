@@ -22,7 +22,7 @@ Release updates for Boundary Enterprise can be found at https://releases.hashico
 
 ## Control plane and worker compatability
 
-Although major releases are supported as outlined within the support periods section above, within a Boundary Enterprise deployment API backwards compatibility is only supported between the control plane and workers from the prior “major release”. Using workers on newer versions than the control plane they are registered with is not supported.
+Although major releases are supported as outlined within the support periods section above, within a Boundary Enterprise deployment API backwards compatibility is only supported between the control plane and workers from the prior “major release”. Using a worker with version that is newer than the control plane they connect to is not supported.
 All workers within an environment must be on the same version.
 
 For example, Boundary workers version 0.13.0 are compatible with Boundary control plane running Boundary 0.14.0.
