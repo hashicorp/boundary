@@ -33,6 +33,7 @@ TESTS ?= tests/setup/*.sql \
 		 tests/domain/*.sql \
 		 tests/history/*.sql \
 		 tests/recording/*.sql \
+		 tests/alias/*.sql \
 		 tests/auth/*/*.sql \
 		 tests/purge/*.sql \
 		 tests/pagination/*.sql \
