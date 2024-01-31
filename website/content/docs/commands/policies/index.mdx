@@ -1,0 +1,51 @@
+---
+layout: docs
+page_title: policies - Command
+description: |-
+  The "policies" command lets you perform operations on Boundary policy resources.
+---
+
+# policies
+
+<EnterpriseAlert product="boundary">This feature requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary or Boundary Enterprise</a></EnterpriseAlert>
+
+Command: `boundary policies`
+
+The `policies` command lets you perform operations on Boundary policies.
+
+Storage policies codify how long session recordings must be kept and when they should be deleted.
+For more information, refer to the [storage policies](/boundary/docs/concepts/domain-model/storage-policy) documentation.
+
+## Example
+
+The following command reads a policy with the id `pst_1234567890`:
+
+```shell-session
+$ boundary policies read -id chr_1234567890
+```
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+Usage: boundary policies <subcommand> [options] [args]
+  # ...
+Subcommands:
+    create      Create a policy
+    delete      Delete a policy
+    list        List a policy
+    read        Read a policy
+    update      Update a policy
+```
+
+</CodeBlockConfig>
+
+For more information, examples, and usage, click on the name
+of the subcommand in the sidebar or one of the links below:
+
+- [create](/boundary/docs/commands/policies/create)
+- [delete](/boundary/docs/commands/policies/delete)
+- [list](/boundary/docs/commands/policies/list)
+- [read](/boundary/docs/commands/policies/read)
+- [update](/boundary/docs/commands/policies/update)

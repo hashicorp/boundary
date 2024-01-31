@@ -14,10 +14,10 @@ A Boundary resource known as a [storage bucket](/boundary/docs/concepts/domain-m
 The storage bucket represents a bucket in an external store.
 Before you can enable session recording, you must create one or more storage buckets in Boundary and associate them with the external store.
 
-A storage bucket can only belong to the Global scope or an Org scope.
-A storage bucket that is associated with the Global scope can be associated with any target.
-However, a storage bucket in an Org scope can only be associated with targets in a project from the same Org scope.
-Any storage buckets associated with an Org scope are deleted when the Org itself is deleted.
+A storage bucket can only belong to the global scope or an org scope.
+A storage bucket that is associated with the global scope can be associated with any target.
+However, a storage bucket in an Org scope can only be associated with targets in a project from the same org scope.
+Any storage buckets associated with an Org scope are deleted when the org itself is deleted.
 
 For more information about using session recording to audit user sessions, refer to [Auditing](/boundary/docs/concepts/auditing).
 
@@ -45,9 +45,12 @@ At this time, the only supported storage is AWS S3.
             "Action": [
                "s3:PutObject",
                "s3:GetObject",
-               "s3:GetObjectAttributes"
+               "s3:GetObjectAttributes",
+               "s3:DeleteObject",
+               "s3:ListBucket"
             ],
             "Effect": "Allow",
+            "Resource": "arn:aws:s3:::session_recording_storage*",
             "Resource": "arn:aws:s3:::session_recording_storage/foo/bar/zoo/*"
          },
          {
@@ -86,7 +89,9 @@ At this time, the only supported storage is AWS S3.
             "Action": [
                "s3:PutObject",
                "s3:GetObject",
-               "s3:GetObjectAttributes"
+               "s3:GetObjectAttributes",
+               "s3:DeleteObject",
+               "s3:ListBucket"
             ],
             "Resource": [
                "arn:aws:s3:::test-session-recording-bucket/*"
