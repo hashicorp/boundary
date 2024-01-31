@@ -1573,6 +1573,10 @@
         "path": "release-notes"
       },
       {
+        "title": "v0.15.0",
+        "path": "release-notes/v0_15_0"
+      },
+      {
         "title": "v0.14.0",
         "path": "release-notes/v0_14_0"
       },
