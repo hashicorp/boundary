@@ -45,7 +45,7 @@ func Open(ctx context.Context, opt ...Option) (*db.DB, error) {
 	switch {
 	case opts.withDbType == dbw.Sqlite:
 		if err := createTables(ctx, conn); err != nil {
-			errors.Wrap(ctx, err, op)
+			return nil, errors.Wrap(ctx, err, op)
 		}
 	default:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("%q is not a supported cache store type", opts.withDbType))

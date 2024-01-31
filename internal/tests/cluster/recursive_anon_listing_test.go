@@ -32,7 +32,7 @@ func TestListAnonymousRecursing(t *testing.T) {
 	require.NoError(err)
 	customRole, err = rolesClient.AddPrincipals(tc.Context(), customRole.Item.Id, customRole.Item.Version, []string{"u_anon"})
 	require.NoError(err)
-	_, err = rolesClient.AddGrants(tc.Context(), customRole.Item.Id, customRole.Item.Version, []string{"id=*;type=auth-method;actions=list,authenticate"})
+	_, err = rolesClient.AddGrants(tc.Context(), customRole.Item.Id, customRole.Item.Version, []string{"ids=*;type=auth-method;actions=list,authenticate"})
 	require.NoError(err)
 
 	// Create an auth method in org scope for the test

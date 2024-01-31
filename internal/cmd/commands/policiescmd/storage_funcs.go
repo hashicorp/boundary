@@ -27,7 +27,7 @@ type extraStorageCmdVars struct {
 	flagDeleteAfter map[string]string
 }
 
-func (c *StorageCommand) extraStorageHelpFunc(helpMap map[string]func() string) string {
+func (c *StorageCommand) extraStorageHelpFunc(_ map[string]func() string) string {
 	var helpStr string
 	switch c.Func {
 	case "create":
@@ -61,7 +61,7 @@ func extraStorageActionsFlagsMapFuncImpl() map[string][]string {
 	}
 }
 
-func extraStorageFlagsFuncImpl(c *StorageCommand, set *base.FlagSets, f *base.FlagSet) {
+func extraStorageFlagsFuncImpl(c *StorageCommand, set *base.FlagSets, _ *base.FlagSet) {
 	fs := set.NewFlagSet("Storage Policy Options")
 
 	for _, name := range flagsStorageMap[c.Func] {

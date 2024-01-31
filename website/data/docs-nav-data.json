@@ -218,7 +218,7 @@
                 "path": "concepts/security/permissions/permission-grant-formats"
               },
               {
-                "title": "Resource table",
+                "title": "Resource tables",
                 "path": "concepts/security/permissions/resource-table"
               }
             ]
@@ -311,6 +311,15 @@
             "path": "concepts/domain-model/storage-buckets"
           },
           {
+            "title": "Storage policies",
+            "badge": {
+              "text": "HCP/ENT",
+              "type": "outlined",
+              "color": "neutral"
+            },
+            "path": "concepts/domain-model/storage-policy"
+          },
+          {
             "title": "Targets",
             "path": "concepts/domain-model/targets"
           },
@@ -366,12 +375,8 @@
             "path": "configuration/worker"
           },
           {
-            "title": "PKI workers",
-            "path": "configuration/worker/pki-worker"
-          },
-          {
-            "title": "KMS workers",
-            "path": "configuration/worker/kms-worker"
+            "title": "Configuration",
+            "path": "configuration/worker/worker-configuration"
           }
         ]
       },
@@ -448,6 +453,14 @@
           {
             "title": "Enable session recording",
             "path": "configuration/session-recording/enable-session-recording"
+          },
+          {
+            "title": "Configure storage policies",
+            "path": "configuration/session-recording/configure-storage-policy"
+          },
+          {
+            "title": "Update storage policies",
+            "path": "configuration/session-recording/update-storage-policy"
           }
         ]
       },
@@ -838,6 +851,31 @@
         ]
       },
       {
+        "title": "daemon",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "commands/daemon"
+          },
+          {
+            "title": "add-token",
+            "path": "commands/daemon/add-token"
+          },
+          {
+            "title": "start",
+            "path": "commands/daemon/start"
+          },
+          {
+            "title": "status",
+            "path": "commands/daemon/status"
+          },
+          {
+            "title": "stop",
+            "path": "commands/daemon/stop"
+          }
+        ]
+      },
+      {
         "title": "database",
         "routes": [
           {
@@ -1036,6 +1074,40 @@
         ]
       },
       {
+        "title": "policies",
+        "badge": {
+          "text": "HCP/ENT",
+          "type": "outlined",
+          "color": "neutral"
+        },
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "commands/policies"
+          },
+          {
+            "title": "create",
+            "path": "commands/policies/create"
+          },
+          {
+            "title": "delete",
+            "path": "commands/policies/delete"
+          },
+          {
+            "title": "list",
+            "path": "commands/policies/list"
+          },
+          {
+            "title": "read",
+            "path": "commands/policies/read"
+          },
+          {
+            "title": "update",
+            "path": "commands/policies/update"
+          }
+        ]
+      },
+      {
         "title": "read",
         "path": "commands/read"
       },
@@ -1136,6 +1208,10 @@
             "path": "commands/scopes/update"
           }
         ]
+      },
+      {
+        "title": "search",
+        "path": "commands/search"
       },
       {
         "title": "server",
@@ -1380,7 +1456,20 @@
       },
       {
         "title": "API",
-        "path": "api-clients/api"
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "api-clients/api"
+          },
+          {
+            "title": "Rate limiting",
+            "path": "api-clients/api/rate-limiting"
+          },
+          {
+            "title": "List pagination",
+            "path": "api-clients/api/pagination"
+          }
+        ]
       },
       {
         "title": "Go SDK",
@@ -1394,6 +1483,10 @@
       {
         "title": "Desktop",
         "href": "https://learn.hashicorp.com/tutorials/boundary/hcp-getting-started-desktop-app"
+      },
+      {
+        "title": "Client cache",
+        "path": "api-clients/client-cache"
       }
     ]
   },
@@ -1486,6 +1579,10 @@
       {
         "title": "Overview",
         "path": "release-notes"
+      },
+      {
+        "title": "v0.15.0",
+        "path": "release-notes/v0_15_0"
       },
       {
         "title": "v0.14.0",

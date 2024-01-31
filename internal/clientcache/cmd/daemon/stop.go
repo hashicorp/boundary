@@ -35,7 +35,7 @@ Usage: boundary daemon stop
 }
 
 func (c *StopCommand) Flags() *base.FlagSets {
-	set := c.FlagSet(base.FlagSetHTTP | base.FlagSetClient)
+	set := c.FlagSet(base.FlagSetNone)
 	return set
 }
 

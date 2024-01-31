@@ -55,7 +55,7 @@ There are 3 steps to adding new users to Boundary using the password auth method
 
 ### Configure users - OIDC/LDAP
 With the [OIDC](/boundary/tutorials/identity-management/oidc-auth) and LDAP auth methods, Boundary uses data from the identity provider to automatically generate accounts and users in the same scope
-as the auth method. The accounts and users are only created once the user authenticates to Boundary for the first time. 
+as the auth method. The accounts and users are only created once the user authenticates to Boundary for the first time.
 The same applies to OIDC/LDAP [managed groups](/boundary/tutorials/identity-management/oidc-idp-groups).
 
 ### Grant permissions
@@ -75,14 +75,14 @@ Projects.
 2. Each role needs to have the user/group added as a principal
 3. Each role needs to have the grants of
 
-   - `id=*;type=*;actions=*`
+   - `ids=*;type=*;actions=*`
 
 ### Boundary viewer
 1. **Each** of the 7 scopes requires a role (ex. “viewer”)
 2. Each role needs to have the user/group added as a principal
 3. Each role needs to have the grants of
 
-   - `id=*;type=*;actions=read,list`
+   - `ids=*;type=*;actions=read,list`
 
 ### Org_A admin
 1. The following scopes **each** require a role (ex. “admin”)
@@ -92,22 +92,22 @@ Projects.
 2. Each role needs to have the user/group added as a principal
 3. Each role needs to have the grants of
 
-   - `id=*;type=*;actions=*`
+   - `ids=*;type=*;actions=*`
 
 ### Project_1 admin
 1. Project_1 requires a role (ex. “admin”)
 2. The role needs to have the user/group added as a principal
 3. The role needs to have the grants of
 
-   - `id=*;type=*;actions=*`
+   - `ids=*;type=*;actions=*`
 
 ### Project_1 target access
 1. Project_1 requires a role (ex. “target_access”)
 2. The role needs to have the user/group added as a principal
 3. The role needs to have the grants of
 
-   - `id=*;type=target;actions=list,read,authorize-session`
-   - `id=*;type=session;actions=read:self,cancel:self,list`
+   - `ids=*;type=target;actions=list,read,authorize-session`
+   - `ids=*;type=session;actions=read:self,cancel:self,list`
 
 <Tip>
 You can use the same roles across “Boundary Admin”, “Org_A Admin”, and “Project_1 Admin” since the scopes and grants are the same. The only difference is

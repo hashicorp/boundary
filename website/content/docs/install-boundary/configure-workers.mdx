@@ -46,9 +46,8 @@ In the example above, the proper IAM roles and permissions for the given `AWS_AC
 
 ## Prepare the worker KMS keys
 
-The worker-auth storage KMS key is used by a PKI worker for the encrypted storage of authentication keys.
-This is not recommended for PKI workers.
-If it is not specified, the authentication keys are not encrypted on disk.
+The worker-auth storage KMS key is used by a Worker for the encrypted storage of authentication keys.
+This is recommended Workers using controller-led or worker-led methods. If it is not specified, the authentication keys are not encrypted on disk.
 Optionally, if you deploy KMS authentication-driven Boundary workers, an additional KMS key must be generated to authenticate the Boundary worker with the controller.
 
 HashiCorp strongly recommends using the Key Management Ssytem (KMS) of the cloud provider where you deploy your Boundary workers.
@@ -59,8 +58,8 @@ Refer to your cloud provider's documentation, for more information.
 
 After you create the requisite key or keys in the cloud provider of your choice, you can begin configuring the workers.
 
-The following configuration examples all employ the PKI method of authentication with a worker-led authorization flow.
-For more information on configuring KMS authentication for Boundary workers, refer to the [KMS worker configuration documenation](/boundary/docs/configuration/worker/kms-worker).
+The following configuration examples all employ the worker-led authorization flow.
+For more information on configuring KMS authentication for Boundary workers, refer to the [KMS authentication configuration documenation](/boundary/docs/configuration/worker/worker-configuration).
 
 If you use Boundary Enterprise, you can configure multiple workers to act in three different roles: ingress, intermediary, and egress.
 For Community Edition, workers only serve one role, acting as both the point of ingress and egress.
@@ -446,9 +445,9 @@ Run the following commands to start the service:
 1. `sudo systemctl enable boundary`
 1. `sudo systemctl start boundary`
 
-## Adopt the PKI workers (optional)
+## Adopt the Workers (optional)
 
-If you use the PKI workers as outlined above, you must adopt the Boundary PKI workers.
+If you use the Workers as outlined above, you must adopt the Boundary Workers.
 Complete the following steps to adopt the workers:
 
 <Tabs>
@@ -460,18 +459,17 @@ Complete the following steps to adopt the worker using the UI:
 1. Log in to Boundary as the admin user.
 
 1. Select **Workers** in the navigation pane.
-Note that only KMS workers are listed.
 
 1. Click **New**.
 
-1. (Optional) You can use the new PKI workers page to construct the contents of the `pki-worker.hcl` file, if you did not [create the configuration file](/boundary/docs/install-boundary/configure-workers#create-the-worker-configurations) as part of the installation process above.
+1. (Optional) You can use the workers page to construct the contents of the `worker.hcl` file, if you did not [create the configuration file](/boundary/docs/install-boundary/configure-workers#create-the-worker-configurations) as part of the installation process above.
 Provide the following details, and Boundary constructs the worker configuration file for you:
    - Boundary Cluster ID
    - Worker Public Address
    - Config file path
    - Worker Tags
 
-1. Scroll to the bottom of the **New PKI Worker** page, and paste the **Worker Auth Registration Request** key.
+1. Scroll to the bottom of the **New Worker** page, and paste the **Worker Auth Registration Request** key.
 Boundary provides you with the **Worker Auth Registration Request** key in the CLI output when you start the worker.
 You can also locate this value in the `auth_request_token` file.
 
@@ -533,7 +531,7 @@ name, and admin password when prompted.
     You can also locate this value in the `auth_request_token` file.
 
     The token is used to issue a create worker request that will authorize the worker to Boundary and make it available.
-    Currently worker creation is only supported for PKI workers with an authorization token.
+    Currently worker creation is only supported for Workers with an authorization token(worker-led and controller-led).
 
 </Tab>
 </Tabs>

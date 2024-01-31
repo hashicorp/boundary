@@ -90,7 +90,7 @@ func (c *ReApplyStoragePolicyCommand) Run(args []string) int {
 	result, err := sClient.ReApplyStoragePolicy(c.Context, c.FlagId)
 	if err != nil {
 		if apiErr := api.AsServerError(err); apiErr != nil {
-			c.PrintApiError(apiErr, "Error from controller when reapplying strorage policy to session recording")
+			c.PrintApiError(apiErr, "Error from controller when reapplying storage policy to session recording")
 			return base.CommandApiError
 		}
 		c.PrintCliError(fmt.Errorf("Reappling storage policy error: %w", err))

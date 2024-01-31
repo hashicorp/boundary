@@ -72,7 +72,7 @@ Usage: boundary daemon start [options]
 }
 
 func (c *StartCommand) Flags() *base.FlagSets {
-	set := c.FlagSet(base.FlagSetHTTP | base.FlagSetClient)
+	set := c.FlagSet(base.FlagSetNone)
 
 	f := set.NewFlagSet("Command Options")
 	f.StringVar(&base.StringVar{
@@ -82,6 +82,7 @@ func (c *StartCommand) Flags() *base.FlagSets {
 		Completion: complete.PredictSet("trace", "debug", "info", "warn", "err"),
 		Usage: "Log verbosity level, mostly as a fallback for events. Supported values (in order of more detail to less) are " +
 			"\"trace\", \"debug\", \"info\", \"warn\", and \"err\".",
+		Hidden: true,
 	})
 	f.StringVar(&base.StringVar{
 		Name:       "log-format",
@@ -93,6 +94,7 @@ func (c *StartCommand) Flags() *base.FlagSets {
 		Name:   "database-url",
 		Target: &c.flagDatabaseUrl,
 		Usage:  `If set, specifies the URL used to connect to the sqlite database (store) for caching. This can refer to a file on disk (file://) from which a URL will be read; an env var (env://) from which the URL will be read; or a direct database URL.`,
+		Hidden: true,
 	})
 	f.DurationVar(&base.DurationVar{
 		Name:    "refresh-interval",
@@ -190,18 +192,19 @@ func (c *StartCommand) Run(args []string) int {
 	writers = append(writers, lf)
 
 	cfg := &daemon.Config{
-		ContextCancel:          cancel,
-		RefreshInterval:        c.flagRefreshInterval,
-		RecheckSupportInterval: c.flagRecheckSupportInterval,
-		MaxSearchStaleness:     c.flagMaxSearchStaleness,
-		DatabaseUrl:            c.flagDatabaseUrl,
-		StoreDebug:             c.flagStoreDebug,
-		LogLevel:               c.flagLogLevel,
-		LogFormat:              c.flagLogFormat,
-		LogWriter:              io.MultiWriter(writers...),
-		LogFileName:            logFileName,
-		DotDirectory:           dotDir,
-		RunningInBackground:    os.Getenv(backgroundEnvName) == backgroundEnvVal,
+		ContextCancel:           cancel,
+		RefreshInterval:         c.flagRefreshInterval,
+		RecheckSupportInterval:  c.flagRecheckSupportInterval,
+		MaxSearchStaleness:      c.flagMaxSearchStaleness,
+		MaxSearchRefreshTimeout: c.flagMaxSearchRefreshTimeout,
+		DatabaseUrl:             c.flagDatabaseUrl,
+		StoreDebug:              c.flagStoreDebug,
+		LogLevel:                c.flagLogLevel,
+		LogFormat:               c.flagLogFormat,
+		LogWriter:               io.MultiWriter(writers...),
+		LogFileName:             logFileName,
+		DotDirectory:            dotDir,
+		RunningInBackground:     os.Getenv(backgroundEnvName) == backgroundEnvVal,
 	}
 
 	srv, err := daemon.New(ctx, cfg)

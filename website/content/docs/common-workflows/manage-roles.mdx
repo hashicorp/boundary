@@ -139,7 +139,7 @@ In this example we give a role read and list permissions to all resources.
 <Tab heading="CLI">
 
 ```bash
-boundary roles add-grants -id $role_id -grant 'id=*;type=*;actions=no-op,list'
+boundary roles add-grants -id $role_id -grant 'ids=*;type=*;actions=no-op,list'
 
 Role information:
   Created Time:        Fri, 09 Oct 2020 14:45:47 PDT

@@ -90,7 +90,7 @@ type Command struct {
 	flags     *FlagSets
 	flagsOnce sync.Once
 
-	flagAddr    string
+	FlagAddr    string
 	flagVerbose bool
 
 	flagTLSCACert     string
@@ -220,8 +220,8 @@ func (c *Command) Client(opt ...Option) (*api.Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	if c.flagAddr != "" {
-		if err := c.client.SetAddr(c.flagAddr); err != nil {
+	if c.FlagAddr != "" {
+		if err := c.client.SetAddr(c.FlagAddr); err != nil {
 			return nil, fmt.Errorf("error setting address on client: %w", err)
 		}
 	}
@@ -364,7 +364,7 @@ func (c *Command) FlagSet(bit FlagSetBit) *FlagSets {
 
 			f.StringVar(&StringVar{
 				Name:       FlagNameAddr,
-				Target:     &c.flagAddr,
+				Target:     &c.FlagAddr,
 				EnvVar:     api.EnvBoundaryAddr,
 				Completion: complete.PredictAnything,
 				Usage:      "Addr of the Boundary controller, as a complete URL (e.g. https://boundary.example.com:9200).",

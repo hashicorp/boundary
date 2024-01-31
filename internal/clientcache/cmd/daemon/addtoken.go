@@ -46,7 +46,46 @@ Usage: boundary daemon add-token [options]
 }
 
 func (c *AddTokenCommand) Flags() *base.FlagSets {
-	set := c.FlagSet(base.FlagSetClient | base.FlagSetOutputFormat)
+	set := c.FlagSet(base.FlagSetOutputFormat)
+	f := set.NewFlagSet("Connection Options")
+
+	f.StringVar(&base.StringVar{
+		Name:       base.FlagNameAddr,
+		Target:     &c.FlagAddr,
+		EnvVar:     api.EnvBoundaryAddr,
+		Completion: complete.PredictAnything,
+		Usage:      "Addr of the Boundary controller, as a complete URL (e.g. https://boundary.example.com:9200).",
+	})
+
+	f = set.NewFlagSet("Client Options")
+
+	f.StringVar(&base.StringVar{
+		Name:   "token-name",
+		Target: &c.FlagTokenName,
+		EnvVar: base.EnvTokenName,
+		Usage:  `If specified, the given value will be used as the name when storing the token in the system credential store. This can allow switching user identities for different commands.`,
+	})
+
+	f.StringVar(&base.StringVar{
+		Name:    "keyring-type",
+		Target:  &c.FlagKeyringType,
+		Default: "auto",
+		EnvVar:  base.EnvKeyringType,
+		Usage:   `The type of keyring to use. Defaults to "auto" which will use the Windows credential manager, OSX keychain, or cross-platform password store depending on platform. Set to "none" to disable keyring functionality. Available types, depending on platform, are: "wincred", "keychain", "pass", and "secret-service".`,
+	})
+
+	f.StringVar(&base.StringVar{
+		Name:   "token",
+		Target: &c.FlagToken,
+		Usage:  `A URL pointing to a file on disk (file://) from which a token will be read or an env var (env://) from which the token will be read. Overrides the "token-name" parameter.`,
+	})
+
+	f.BoolVar(&base.BoolVar{
+		Name:   "output-curl-string",
+		Target: &c.FlagOutputCurlString,
+		Usage:  "Instead of executing the request, print an equivalent cURL command string and exit.",
+	})
+
 	return set
 }
 

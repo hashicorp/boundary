@@ -172,7 +172,7 @@ func defaultBoundaryTokenReader(ctx context.Context, cp ClientProvider) (cache.B
 		}
 		atId := strings.Join(atIdParts[:cache.AuthTokenIdSegmentCount], "_")
 
-		c, err := cp.Client()
+		c, err := cp.Client(base.WithNoTokenValue())
 		if err != nil {
 			return nil, err
 		}

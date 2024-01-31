@@ -140,15 +140,26 @@ module.exports = [
   },
   {
     source: '/boundary/docs/common-workflows/workflow-ssh-proxycommand',
-    destination: '/boundary/docs/concepts/connection-workflows/workflow-ssh-proxycommand',
+    destination:
+      '/boundary/docs/concepts/connection-workflows/workflow-ssh-proxycommand',
     permanent: true,
   },
   {
     source: '/boundary/docs/api-clients/cli',
     destination: '/boundary/docs/commands/',
+    permanent: true,
   },
   {
     source: '/boundary/docs/concepts/service-discovery',
     destination: '/boundary/docs/concepts/host-discovery',
-  }
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/configuration/worker/kms-worker',
+    destination: '/boundary/docs/configuration/worker/worker-configuration',
+  },
+  {
+    source: '/boundary/docs/configuration/worker/pki-worker',
+    destination: '/boundary/docs/configuration/worker/worker-configuration'
+  },
 ]
