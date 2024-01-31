@@ -4347,7 +4347,7 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 			Id:     al.GetValue(),
 			HostId: "hst_1234567890",
 		})
-		require.ErrorContains(t, err, "The host id is specified in the request and by the alias. Only one may be specified.")
+		require.ErrorContains(t, err, "The host id specified in the request does not match the one provided by the alias. Consider omiting the host id in the request.")
 		require.Nil(t, res)
 	})
 }

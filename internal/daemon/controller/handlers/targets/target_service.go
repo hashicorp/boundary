@@ -1320,6 +1320,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (target.Target, []t
 	return u, hs, cl, nil
 }
 
+// maybeAlias returns true if the input string is a candidate for being an alias.
 func maybeAlias(s string) bool {
 	return !strings.Contains(s, "_") &&
 		len(s) > 0
