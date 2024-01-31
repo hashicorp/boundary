@@ -14,10 +14,10 @@ You can specify multiple grant scopes per role.
 
 ## Example
 
-This example removes a grant from a role with the ID `o_1234567890` in the current scope and any children scopes:
+This example removes a grant from a role with the ID `r_1234567890` in the current scope and any children scopes:
 
 ```shell-session
-$ boundary roles remove-grant-scopes -id o_1234567890 -grant-scope-id "this" -grant-scope-id "children"
+$ boundary roles remove-grant-scopes -id r_1234567890 -grant-scope-id "this" -grant-scope-id "children"
 ```
 
 
