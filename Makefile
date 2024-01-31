@@ -198,6 +198,7 @@ protobuild:
 	@protoc-go-inject-tag -input=./internal/storage/plugin/store/storage.pb.go
 	@protoc-go-inject-tag -input=./internal/policy/storage/store/policy.pb.go
 	@protoc-go-inject-tag -input=./internal/policy/store/policy.pb.go
+	@protoc-go-inject-tag -input=./internal/alias/target/store/alias.pb.go
 
 	# inject classification tags (see: https://github.com/hashicorp/go-eventlogger/tree/main/filters/encrypt)
 	@protoc-go-inject-tag -input=./internal/gen/controller/api/services/auth_method_service.pb.go

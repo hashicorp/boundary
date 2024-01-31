@@ -119,7 +119,7 @@ func Test_ValidateType(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	var g Grant
-	for i := resource.Unknown; i <= resource.Policy; i++ {
+	for i := resource.Unknown; i <= resource.Alias; i++ {
 		g.typ = i
 		if i == resource.Controller {
 			assert.Error(t, g.validateType(ctx))
