@@ -506,6 +506,16 @@ begin;
     ('p____gcolors', 'tssh______cg', 'cvl_______g1',        'brokered'),
     ('p____gcolors', 'tssh______cg', 'cvl__ssh__g1',        'injected_application');
 
+  insert into alias_target
+    (scope_id, public_id,      value,              destination_id)
+  values
+    ('global', 'alt__t____cb', 'blue.tcp.target',  't_________cb'),
+    ('global', 'alt__t____cr', 'red.tcp.target',   't_________cr'),
+    ('global', 'alt__t____cg', 'green.tcp.target', 't_________cg'),
+    ('global', 'alt__tssh_cb', 'blue.ssh.target',  'tssh______cb'),
+    ('global', 'alt__tssh_cr', 'red.ssh.target',   'tssh______cr'),
+    ('global', 'alt__tssh_cg', 'green.ssh.target', 'tssh______cg');
+
   insert into session
     (project_id,     target_id,      public_id,      user_id,        auth_token_id,  certificate,  endpoint)
              values

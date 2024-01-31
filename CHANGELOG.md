@@ -17,6 +17,11 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   the session teardown.
   ([PR](https://github.com/hashicorp/boundary/pull/4389))
 
+### Added dependency
+
+* postgres citext dependency added to enable aliases to be globally unique
+  in a case insensitive way.
+
 ## 0.15.0 (2024/01/30)
 
 ### Deprecations/Changes
