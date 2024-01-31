@@ -36,7 +36,10 @@ $ boundary roles add-grants [options] [args]
 You can specify grants in compact string format or JSON.
 If you use JSON, be sure to escape it properly.
 You can optionally specify multiple grants.
-- `-id=<string>` - The ID of the role you want to add grants to.
+- `-ids=<string>` - The IDs of the roles you want to add grants to.
+You can specify one or more IDs.
+If you specify multiple IDs using text, use commas to separate the IDs.
+If you specify multiple IDs using JSON, use an array.
 - `-version=<int>` The version of the role to add grants to.
 If you do not specify a version, the command performs a check-and-set automatically.
 
