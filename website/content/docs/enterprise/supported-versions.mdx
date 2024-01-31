@@ -20,13 +20,22 @@ A major release is identified by a change in the first (X) or second (Y) digit i
 As a best practice, HashiCorp expects customers to stay current within two (2) releases from the latest major release in order to receive optimal support.
 Release updates for Boundary Enterprise can be found at https://releases.hashicorp.com.
 
-## Control plane and worker availability
+## Control plane and worker compatability
 
-Although major releases are supported as outlined within the support periods section above, within a Boundary Enterprise deployment API backwards compatibility is only supported between the control plane and workers from the prior “major release”.
+Although major releases are supported as outlined within the support periods section above, within a Boundary Enterprise deployment API backwards compatibility is only supported between the control plane and workers from the prior “major release”. Using a worker with version that is newer than the control plane they connect to is not supported.
 All workers within an environment must be on the same version.
 
 For example, Boundary workers version 0.13.0 are compatible with Boundary control plane running Boundary 0.14.0.
 However, they will not have compatibility once the control plane is updated to version 0.15.0 or above.
+Customers are recommended to run the latest versions of Boundary in order to leverage the newest features and bug fixes.
+
+## Control plane and client/cli compatability
+
+The supported version compatability between Boundary's control plane and Boundary clients/cli is the same as control plane and worker compatability. Within a Boundary Enterprise deployment API backwards compatibility is only supported between the control plane and clients from the prior “major release”. Using clients on newer versions than the control plane they are registered with is not supported.
+
+For example, Boundary clients version 0.14.0 are compatible with Boundary control plane running Boundary 0.15.0.
+However, they will not have compatibility once the control plane is updated to version 0.16.0 or above.
+Boundary clients version 0.16.0 are not compatible with Boundary control plane running Boundary 0.15.0 or lower.
 Customers are recommended to run the latest versions of Boundary in order to leverage the newest features and bug fixes.
 
 ## PostgreSQL support policy
