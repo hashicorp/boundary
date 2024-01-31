@@ -81,6 +81,12 @@ func createDefaultScopesRepoAndKms(t *testing.T) (*iam.Scope, *iam.Scope, func()
 }
 
 var globalAuthorizedCollectionActions = map[string]*structpb.ListValue{
+	"aliases": {
+		Values: []*structpb.Value{
+			structpb.NewStringValue("create"),
+			structpb.NewStringValue("list"),
+		},
+	},
 	"auth-methods": {
 		Values: []*structpb.Value{
 			structpb.NewStringValue("create"),

@@ -6,6 +6,164 @@
   "data": {
     "data": {
       "limits": {
+        "alias":  {
+          "create": [
+            {
+              "action": "create",
+              "limit": 30000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "alias",
+              "unlimited": false
+            },
+            {
+              "action": "create",
+              "limit": 30000,
+              "per": "total",
+              "period": "30s",
+              "resource": "alias",
+              "unlimited": false
+            },
+            {
+              "action": "create",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "alias",
+              "unlimited": false
+            }
+          ],
+          "delete": [
+            {
+              "action": "delete",
+              "limit": 30000,
+              "per": "total",
+              "period": "30s",
+              "resource": "alias",
+              "unlimited": false
+            },
+            {
+              "action": "delete",
+              "limit": 30000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "alias",
+              "unlimited": false
+            },
+            {
+              "action": "delete",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "alias",
+              "unlimited": false
+            }
+          ],
+          "list": [
+            {
+              "action": "list",
+              "limit": 150,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "alias",
+              "unlimited": false
+            },
+            {
+              "action": "list",
+              "limit": 1500,
+              "per": "total",
+              "period": "30s",
+              "resource": "alias",
+              "unlimited": false
+            },
+            {
+              "action": "list",
+              "limit": 1500,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "alias",
+              "unlimited": false
+            }
+          ],
+          "no-op": [
+            {
+              "action": "no-op",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "alias",
+              "unlimited": false
+            },
+            {
+              "action": "no-op",
+              "limit": 30000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "alias",
+              "unlimited": false
+            },
+            {
+              "action": "no-op",
+              "limit": 30000,
+              "per": "total",
+              "period": "30s",
+              "resource": "alias",
+              "unlimited": false
+            }
+          ],
+          "read": [
+            {
+              "action": "read",
+              "limit": 30000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "alias",
+              "unlimited": false
+            },
+            {
+              "action": "read",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "alias",
+              "unlimited": false
+            },
+            {
+              "action": "read",
+              "limit": 30000,
+              "per": "total",
+              "period": "30s",
+              "resource": "alias",
+              "unlimited": false
+            }
+          ],
+          "update": [
+            {
+              "action": "update",
+              "limit": 3000,
+              "per": "auth-token",
+              "period": "30s",
+              "resource": "alias",
+              "unlimited": false
+            },
+            {
+              "action": "update",
+              "limit": 30000,
+              "per": "total",
+              "period": "30s",
+              "resource": "alias",
+              "unlimited": false
+            },
+            {
+              "action": "update",
+              "limit": 30000,
+              "per": "ip-address",
+              "period": "30s",
+              "resource": "alias",
+              "unlimited": false
+            }
+          ]
+        },
         "account": {
           "change-password": [
             {
@@ -4075,7 +4233,7 @@
           ]
         }
       },
-      "max_size": 322161,
+      "max_size": 334167,
       "msg": "controller api rate limiter"
     },
     "op": "controller.(rateLimiterConfig).writeSysEvent",
