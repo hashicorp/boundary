@@ -10,27 +10,22 @@ description: |-
 The `worker` stanza configures Boundary worker-specific parameters.
 
 All workers within Boundary use certificates and encryption keys to identify
-themselves and protect data in transit. However, there are multiple different
-ways to register them so that registration of workers can fit into any workflow.
-Registration methods are referred to as `pki` and `kms` registration methods and
-the differences in how they are configured are in the sub-pages linked at the
+themselves and protect data in transit. However, there are three different
+ways to register them so that registration of workers can fit into any workflow; controller-led, worker-led, and via external KMS. 
+
+The differences in how they are configured are in the sub-pages linked at the
 bottom of this page.
 
-Workers registered via the `pki` method ("PKI Workers") must be registered in
+Workers registered via the worker-led or controller-led methods must be registered in
 the system via an API call, and require storage on disk to store the current set
-of credentials. Workers registering via the `kms` method ("KMS Workers")
-auto-register after successful authentication, making them an easy mechanism to
-use for automatic scaling, and meaning they are not required to store
+of credentials. Workers registering via an external KMS auto-register after successful authentication, making them an easy mechanism to 
+use for automatic scaling. This also means they are not required to store
 credentials locally; each time they connect the KMS is used to reauthenticate
 them.
 
-~> Prior to version 0.13 of Boundary, workers had different properties and
-capabilities depending on the registration method. If you are using pre-0.13
-workers, with pre-0.13 upstreams please be sure to switch the documentation
-version to `0.12.x` for correct information. If you are using 0.13 workers with
-KMS-based authentication with pre-0.13 controllers, you _must_ set the
-`use_deprecated_kms_auth_method` value in the worker configuration. See the KMS
-page for more information.
+~> Prior to version 0.15 of Boundary, there were two different types of workers, PKI & KMS workers. 
+If you are using pre-0.15 workers, with pre-0.15 upstreams please be sure to switch the documentation
+version to `0.13.x` - `0.14.x` for correct information.
 
 ## Common worker parameters
 Regardless of registration mechanism, the following fields are supported.
@@ -80,9 +75,9 @@ worker {
   HCP Boundary workers require the [`hcp_boundary_cluster_id`](/boundary/docs/configuration/worker/#hcp_boundary_cluster_id) parameter instead of `initial upstreams`.
   If you configure an HCP worker with `initial_upstreams`, the worker configuration fails.
 
-- `hcp_boundary_cluster_id` - A string that you must use to configure PKI workers
+- `hcp_boundary_cluster_id` - A string required to configure workers using worker-led or controller-led registration
   to connect to your HCP Boundary cluster rather than specifying
-  `initial_upstreams`. This parameter is currently only valid for workers using the PKI
+  `initial_upstreams`. This parameter is currently only valid for workers using the worker-led or controller-led
   registration method and for workers directly connected to HCP Boundary.
 
 - `recording_storage_path` - A path to the local storage for recorded sessions.
@@ -166,7 +161,7 @@ listener "tcp" {
 }
 
 worker {
-  # Path for worker storage, assuming PKI registration. Must be unique across workers
+  # Path for worker storage, assuming worker-led or controller-led registration. Must be unique across workers
   auth_storage_path="/boundary/demo-worker-1"
 
   # Local storage path required if session recording is enabled
@@ -201,12 +196,11 @@ kms "aead" {
 
 ## Tutorials
 
-Refer to the [Self-Managed Worker Registration with HCP Boundary](/boundary/tutorials/hcp-administration/hcp-manage-workers) tutorial to learn how to register and manage PKI workers.
+Refer to the [Self-Managed Worker Registration with HCP Boundary](/boundary/tutorials/hcp-administration/hcp-manage-workers) tutorial to learn how to register and manage Workers.
 
 Refer to the [Manage Multi-Hop Sessions with HCP Boundary](/boundary/tutorials/hcp-administration/hcp-manage-multi-hop) tutorial to learn how to configure a multi-hop session.
 
-[kms workers]: /boundary/docs/configuration/worker/kms-worker
-[pki workers]: /boundary/docs/configuration/worker/pki-worker
+[Worker Configuration Methods]: /boundary/docs/configuration/worker/worker-configuration
 [target]: /boundary/docs/concepts/domain-model/targets
 [target worker filters]: /boundary/docs/concepts/filtering/worker-tags#target-worker-filtering
 [session recording]: /boundary/docs/configuration/session-recording
