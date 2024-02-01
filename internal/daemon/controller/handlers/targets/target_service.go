@@ -1728,6 +1728,7 @@ func toProto(ctx context.Context, in target.Target, opt ...handlers.Option) (*pb
 	outputFields := *opts.WithOutputFields
 	hostSources := in.GetHostSources()
 	credSources := in.GetCredentialSources()
+	aliases := in.GetAliases()
 
 	out := pb.Target{}
 	if outputFields.Has(globals.IdField) {
@@ -1785,6 +1786,14 @@ func toProto(ctx context.Context, in target.Target, opt ...handlers.Option) (*pb
 			out.HostSources = append(out.HostSources, &pb.HostSource{
 				Id:            hs.Id(),
 				HostCatalogId: hs.HostCatalogId(),
+			})
+		}
+	}
+	if outputFields.Has(globals.AliasesField) {
+		for _, a := range aliases {
+			out.Aliases = append(out.Aliases, &pb.Alias{
+				Id:    a.PublicId,
+				Value: a.Value,
 			})
 		}
 	}
