@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	target2 "github.com/hashicorp/boundary/internal/alias/target"
 	"github.com/hashicorp/boundary/internal/boundary"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
@@ -133,6 +134,7 @@ func (r *Repository) LookupTarget(ctx context.Context, publicIdOrName string, op
 	var address string
 	var hostSources []HostSource
 	var credSources []CredentialSource
+	var aliases []*target2.Alias
 	_, err := r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
@@ -154,6 +156,9 @@ func (r *Repository) LookupTarget(ctx context.Context, publicIdOrName string, op
 				return errors.Wrap(ctx, err, op)
 			}
 			if credSources, err = fetchCredentialSources(ctx, read, target.PublicId); err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+			if aliases, err = fetchTargetAliases(ctx, read, target.PublicId); err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
 			targetAddress, err := fetchAddress(ctx, read, target.PublicId)
@@ -178,6 +183,7 @@ func (r *Repository) LookupTarget(ctx context.Context, publicIdOrName string, op
 	}
 	subtype.SetHostSources(hostSources)
 	subtype.SetCredentialSources(credSources)
+	subtype.SetAliases(aliases)
 
 	return subtype, nil
 }

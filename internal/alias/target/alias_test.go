@@ -1,7 +1,7 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: BUSL-1.1
 
-package target
+package target_test
 
 import (
 	"context"
@@ -9,18 +9,21 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/alias/target"
 	"github.com/hashicorp/boundary/internal/alias/target/store"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/target/tcp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
 )
 
 func TestNewAlias(t *testing.T) {
 	t.Run("valid", func(t *testing.T) {
-		a, err := NewAlias(context.Background(), "global", "valid.alias")
+		a, err := target.NewAlias(context.Background(), "global", "valid.alias")
 		require.NoError(t, err)
 		assert.NotNil(t, a)
 		assert.Equal(t, a.ScopeId, "global")
@@ -28,7 +31,7 @@ func TestNewAlias(t *testing.T) {
 	})
 
 	t.Run("with destination", func(t *testing.T) {
-		a, err := NewAlias(context.Background(), "global", "with.destination", WithDestinationId("ttcp_1234567890"))
+		a, err := target.NewAlias(context.Background(), "global", "with.destination", target.WithDestinationId("ttcp_1234567890"))
 		require.NoError(t, err)
 		assert.NotNil(t, a)
 		assert.Equal(t, a.ScopeId, "global")
@@ -51,16 +54,16 @@ func TestCreate(t *testing.T) {
 		name        string
 		scope       string
 		value       string
-		opts        []Option
-		validate    func(*testing.T, *Alias)
+		opts        []target.Option
+		validate    func(*testing.T, *target.Alias)
 		errContains string
 	}{
 		{
 			name:  "valid",
 			scope: "global",
 			value: "valid.alias",
-			opts:  []Option{WithDestinationId(tar.GetPublicId())},
-			validate: func(t *testing.T, a *Alias) {
+			opts:  []target.Option{target.WithDestinationId(tar.GetPublicId())},
+			validate: func(t *testing.T, a *target.Alias) {
 				t.Helper()
 				assert.Equal(t, a.DestinationId, tar.GetPublicId())
 			},
@@ -69,8 +72,8 @@ func TestCreate(t *testing.T) {
 			name:  "valid with host",
 			scope: "global",
 			value: "host.valid.alias",
-			opts:  []Option{WithDestinationId(tar.GetPublicId()), WithHostId("hst_1234567890")},
-			validate: func(t *testing.T, a *Alias) {
+			opts:  []target.Option{target.WithDestinationId(tar.GetPublicId()), target.WithHostId("hst_1234567890")},
+			validate: func(t *testing.T, a *target.Alias) {
 				t.Helper()
 				assert.Equal(t, a.DestinationId, tar.GetPublicId())
 				assert.Equal(t, a.HostId, "hst_1234567890")
@@ -80,7 +83,7 @@ func TestCreate(t *testing.T) {
 			name:  "valid no destination",
 			scope: "global",
 			value: "nodestination.alias",
-			validate: func(t *testing.T, a *Alias) {
+			validate: func(t *testing.T, a *target.Alias) {
 				t.Helper()
 				assert.Empty(t, a.DestinationId)
 			},
@@ -89,8 +92,8 @@ func TestCreate(t *testing.T) {
 			name:  "valid with name",
 			scope: "global",
 			value: "valid-with-name.alias",
-			opts:  []Option{WithName("valid-with-name")},
-			validate: func(t *testing.T, a *Alias) {
+			opts:  []target.Option{target.WithName("valid-with-name")},
+			validate: func(t *testing.T, a *target.Alias) {
 				t.Helper()
 				assert.Equal(t, "valid-with-name", a.Name)
 			},
@@ -99,8 +102,8 @@ func TestCreate(t *testing.T) {
 			name:  "valid with description",
 			scope: "global",
 			value: "valid-with-description.alias",
-			opts:  []Option{WithName("valid-with-description"), WithDescription("a description")},
-			validate: func(t *testing.T, a *Alias) {
+			opts:  []target.Option{target.WithName("valid-with-description"), target.WithDescription("a description")},
+			validate: func(t *testing.T, a *target.Alias) {
 				t.Helper()
 				assert.Equal(t, "valid-with-description", a.Name)
 				assert.Equal(t, "a description", a.Description)
@@ -110,7 +113,7 @@ func TestCreate(t *testing.T) {
 			name:        "host with no destination",
 			scope:       "global",
 			value:       "host.with.no.destination",
-			opts:        []Option{WithHostId("hst_1234567890")},
+			opts:        []target.Option{target.WithHostId("hst_1234567890")},
 			errContains: `destination_id_set_when_host_id_is_set constraint failed`,
 		},
 		{
@@ -135,7 +138,7 @@ func TestCreate(t *testing.T) {
 			name:        "invalid dest",
 			scope:       "global",
 			value:       "invalid.dest",
-			opts:        []Option{WithDestinationId("ttcp_unknown")},
+			opts:        []target.Option{target.WithDestinationId("ttcp_unknown")},
 			errContains: `foreign key constraint "target_fkey"`,
 		},
 		{
@@ -148,10 +151,10 @@ func TestCreate(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			a, err := NewAlias(ctx, c.scope, c.value, c.opts...)
+			a, err := target.NewAlias(ctx, c.scope, c.value, c.opts...)
 			require.NoError(t, err)
 			assert.NotNil(t, a)
-			a.PublicId, err = newAliasId(ctx)
+			a.PublicId, err = db.NewPublicId(ctx, globals.TargetAliasPrefix)
 			require.NoError(t, err)
 
 			start := time.Now().UTC()
@@ -176,14 +179,14 @@ func TestCreate(t *testing.T) {
 	}
 
 	t.Run("case insensitive duplicate alias", func(t *testing.T) {
-		a := TestAlias(t, rw, "duplicate.alias")
+		a := target.TestAlias(t, rw, "duplicate.alias")
 		t.Cleanup(func() {
 			_, err := rw.Delete(ctx, a)
 			require.NoError(t, err)
 		})
 
 		var err error
-		a.PublicId, err = newAliasId(ctx)
+		a.PublicId, err = db.NewPublicId(ctx, globals.TargetAliasPrefix)
 		require.NoError(t, err)
 		a.Value = "DUPLICATE.ALIAS"
 		err = rw.Create(ctx, a)
@@ -205,20 +208,20 @@ func TestUpdate(t *testing.T) {
 
 	cases := []struct {
 		name            string
-		startingOptions []Option
-		in              *Alias
+		startingOptions []target.Option
+		in              *target.Alias
 		fieldMask       []string
 		nullMask        []string
-		want            *Alias
+		want            *target.Alias
 		errContains     string
 	}{
 		{
 			name: "update alias value",
-			in: &Alias{
+			in: &target.Alias{
 				Alias: &store.Alias{Value: "updated.alias"},
 			},
 			fieldMask: []string{"Value"},
-			want: &Alias{
+			want: &target.Alias{
 				Alias: &store.Alias{
 					ScopeId: "global",
 					Value:   "updated.alias",
@@ -227,7 +230,7 @@ func TestUpdate(t *testing.T) {
 		},
 		{
 			name: "remove alias value",
-			in: &Alias{
+			in: &target.Alias{
 				Alias: &store.Alias{},
 			},
 			fieldMask:   []string{"Value"},
@@ -235,12 +238,12 @@ func TestUpdate(t *testing.T) {
 		},
 		{
 			name:            "update destination id",
-			startingOptions: []Option{WithDestinationId(tar1.GetPublicId())},
-			in: &Alias{
+			startingOptions: []target.Option{target.WithDestinationId(tar1.GetPublicId())},
+			in: &target.Alias{
 				Alias: &store.Alias{DestinationId: tar2.GetPublicId()},
 			},
 			fieldMask: []string{"DestinationId"},
-			want: &Alias{
+			want: &target.Alias{
 				Alias: &store.Alias{
 					ScopeId:       "global",
 					Value:         "test.alias",
@@ -250,17 +253,17 @@ func TestUpdate(t *testing.T) {
 		},
 		{
 			name: "update destination id with host id",
-			startingOptions: []Option{
-				WithDestinationId(tar1.GetPublicId()),
-				WithHostId("hst_1234567890"),
+			startingOptions: []target.Option{
+				target.WithDestinationId(tar1.GetPublicId()),
+				target.WithHostId("hst_1234567890"),
 			},
-			in: &Alias{
+			in: &target.Alias{
 				Alias: &store.Alias{
 					DestinationId: tar2.GetPublicId(),
 				},
 			},
 			fieldMask: []string{"DestinationId"},
-			want: &Alias{
+			want: &target.Alias{
 				Alias: &store.Alias{
 					ScopeId:       "global",
 					Value:         "test.alias",
@@ -271,12 +274,12 @@ func TestUpdate(t *testing.T) {
 		},
 		{
 			name:            "remove destination id",
-			startingOptions: []Option{WithDestinationId(tar1.GetPublicId())},
-			in: &Alias{
+			startingOptions: []target.Option{target.WithDestinationId(tar1.GetPublicId())},
+			in: &target.Alias{
 				Alias: &store.Alias{},
 			},
 			nullMask: []string{"DestinationId"},
-			want: &Alias{
+			want: &target.Alias{
 				Alias: &store.Alias{
 					ScopeId: "global",
 					Value:   "test.alias",
@@ -285,15 +288,15 @@ func TestUpdate(t *testing.T) {
 		},
 		{
 			name: "remove destination id with host id",
-			startingOptions: []Option{
-				WithDestinationId(tar1.GetPublicId()),
-				WithHostId("hst_1234567890"),
+			startingOptions: []target.Option{
+				target.WithDestinationId(tar1.GetPublicId()),
+				target.WithHostId("hst_1234567890"),
 			},
-			in: &Alias{
+			in: &target.Alias{
 				Alias: &store.Alias{},
 			},
 			nullMask: []string{"DestinationId"},
-			want: &Alias{
+			want: &target.Alias{
 				Alias: &store.Alias{
 					ScopeId: "global",
 					Value:   "test.alias",
@@ -302,17 +305,17 @@ func TestUpdate(t *testing.T) {
 		},
 		{
 			name: "update host id",
-			startingOptions: []Option{
-				WithDestinationId(tar1.GetPublicId()),
-				WithHostId("hst_1234567890"),
+			startingOptions: []target.Option{
+				target.WithDestinationId(tar1.GetPublicId()),
+				target.WithHostId("hst_1234567890"),
 			},
-			in: &Alias{
+			in: &target.Alias{
 				Alias: &store.Alias{
 					HostId: "hst_0987654321",
 				},
 			},
 			fieldMask: []string{"HostId"},
-			want: &Alias{
+			want: &target.Alias{
 				Alias: &store.Alias{
 					ScopeId:       "global",
 					Value:         "test.alias",
@@ -323,15 +326,15 @@ func TestUpdate(t *testing.T) {
 		},
 		{
 			name: "remove host id",
-			startingOptions: []Option{
-				WithDestinationId(tar1.GetPublicId()),
-				WithHostId("hst_1234567890"),
+			startingOptions: []target.Option{
+				target.WithDestinationId(tar1.GetPublicId()),
+				target.WithHostId("hst_1234567890"),
 			},
-			in: &Alias{
+			in: &target.Alias{
 				Alias: &store.Alias{},
 			},
 			nullMask: []string{"HostId"},
-			want: &Alias{
+			want: &target.Alias{
 				Alias: &store.Alias{
 					ScopeId:       "global",
 					Value:         "test.alias",
@@ -341,16 +344,16 @@ func TestUpdate(t *testing.T) {
 		},
 		{
 			name: "update name",
-			startingOptions: []Option{
-				WithName("updateName"),
+			startingOptions: []target.Option{
+				target.WithName("updateName"),
 			},
-			in: &Alias{
+			in: &target.Alias{
 				Alias: &store.Alias{
 					Name: "updateName-updated",
 				},
 			},
 			fieldMask: []string{"Name"},
-			want: &Alias{
+			want: &target.Alias{
 				Alias: &store.Alias{
 					ScopeId: "global",
 					Name:    "updateName-updated",
@@ -360,14 +363,14 @@ func TestUpdate(t *testing.T) {
 		},
 		{
 			name: "remove name",
-			startingOptions: []Option{
-				WithName("updateName"),
+			startingOptions: []target.Option{
+				target.WithName("updateName"),
 			},
-			in: &Alias{
+			in: &target.Alias{
 				Alias: &store.Alias{},
 			},
 			nullMask: []string{"Name"},
-			want: &Alias{
+			want: &target.Alias{
 				Alias: &store.Alias{
 					ScopeId: "global",
 					Value:   "test.alias",
@@ -376,16 +379,16 @@ func TestUpdate(t *testing.T) {
 		},
 		{
 			name: "update description",
-			startingOptions: []Option{
-				WithDescription("description"),
+			startingOptions: []target.Option{
+				target.WithDescription("description"),
 			},
-			in: &Alias{
+			in: &target.Alias{
 				Alias: &store.Alias{
 					Description: "description-updated",
 				},
 			},
 			fieldMask: []string{"Description"},
-			want: &Alias{
+			want: &target.Alias{
 				Alias: &store.Alias{
 					ScopeId:     "global",
 					Description: "description-updated",
@@ -395,14 +398,14 @@ func TestUpdate(t *testing.T) {
 		},
 		{
 			name: "remove description",
-			startingOptions: []Option{
-				WithDescription("description"),
+			startingOptions: []target.Option{
+				target.WithDescription("description"),
 			},
-			in: &Alias{
+			in: &target.Alias{
 				Alias: &store.Alias{},
 			},
 			nullMask: []string{"Description"},
-			want: &Alias{
+			want: &target.Alias{
 				Alias: &store.Alias{
 					ScopeId: "global",
 					Value:   "test.alias",
@@ -413,13 +416,15 @@ func TestUpdate(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			a := TestAlias(t, rw, "test.alias", c.startingOptions...)
+			a := target.TestAlias(t, rw, "test.alias", c.startingOptions...)
 			t.Cleanup(func() {
 				_, err := rw.Delete(ctx, a)
 				require.NoError(t, err)
 			})
-
-			in := c.in.clone()
+			cp := proto.Clone(c.in.Alias)
+			in := &target.Alias{
+				Alias: cp.(*store.Alias),
+			}
 			in.PublicId = a.PublicId
 			in.Version = a.Version
 
@@ -447,7 +452,7 @@ func TestDelete(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("delete existing", func(t *testing.T) {
-		a := TestAlias(t, rw, "alias.to.delete")
+		a := target.TestAlias(t, rw, "alias.to.delete")
 		n, err := rw.Delete(ctx, a)
 		assert.NoError(t, err)
 		assert.Equal(t, 1, n)
@@ -456,14 +461,16 @@ func TestDelete(t *testing.T) {
 	t.Run("delete existing with destination", func(t *testing.T) {
 		_, p := iam.TestScopes(t, iam.TestRepo(t, conn, db.TestWrapper(t)))
 		tar := tcp.TestTarget(ctx, t, conn, p.GetPublicId(), "test")
-		a := TestAlias(t, rw, "alias.with.destination", WithDestinationId(tar.GetPublicId()))
+		a := target.TestAlias(t, rw, "alias.with.destination", target.WithDestinationId(tar.GetPublicId()))
 		n, err := rw.Delete(ctx, a)
 		assert.NoError(t, err)
 		assert.Equal(t, 1, n)
 	})
 
 	t.Run("delete non-existent", func(t *testing.T) {
-		a := allocAlias()
+		a := &target.Alias{
+			Alias: &store.Alias{},
+		}
 		a.PublicId = "alias_does_not_exist"
 		n, err := rw.Delete(ctx, a)
 		assert.NoError(t, err)
