@@ -1,126 +1,168 @@
 api:
-  - api/**/*
+  - changed-files:
+    - any-glob-to-any-file: "api/**/*"
 
 api/authmethods:
-  - api/authmethods/**/*
+  - changed-files:
+    - any-glob-to-any-file: "api/authmethods/**/*"
 
 api/authtokens:
-  - api/authtokens/**/*
+  - changed-files:
+    - any-glob-to-any-file: "api/authtokens/**/*"
 
 api/groups:
-  - api/groups/**/*
+  - changed-files:
+    - any-glob-to-any-file: "api/groups/**/*"
 
 api/hostcatalogs:
-  - api/hostcatalogs/**/*
+  - changed-files:
+    - any-glob-to-any-file: "api/hostcatalogs/**/*"
 
 api/hosts:
-  - api/hosts/**/*
+  - changed-files:
+    - any-glob-to-any-file: "api/hosts/**/*"
 
 api/hostsets:
-  - api/hostsets/**/*
+  - changed-files:
+    - any-glob-to-any-file: "api/hostsets/**/*"
 
 api/roles:
-  - api/roles/**/*
+  - changed-files:
+    - any-glob-to-any-file: "api/roles/**/*"
 
 api/scopes:
-  - api/scopes/**/*
+  - changed-files:
+    - any-glob-to-any-file: "api/scopes/**/*"
 
 api/sessions:
-  - api/sessions/**/*
+  - changed-files:
+    - any-glob-to-any-file: "api/sessions/**/*"
 
 api/targets:
-  - api/targets/**/*
+  - changed-files:
+    - any-glob-to-any-file: "api/targets/**/*"
 
 api/users:
-  - api/users/**/*
+  - changed-files:
+    - any-glob-to-any-file: "api/users/**/*"
 
 core:
-  - internal/**/*
+  - changed-files:
+    - any-glob-to-any-file: "internal/**/*"
 
 core/auth:
-  - internal/auth/**/*
+  - changed-files:
+    - any-glob-to-any-file: "internal/auth/**/*"
 
 core/authtoken:
-  - internal/authtoken/**/
+  - changed-files:
+    - any-glob-to-any-file: "internal/authtoken/**/"
 
 core/cmd:
-  - internal/cmd/**/8
+  - changed-files:
+    - any-glob-to-any-file: "internal/cmd/**/8"
 
 core/daemon:
-  - internal/daemon/**/*
+  - changed-files:
+    - any-glob-to-any-file: "internal/daemon/**/*"
 
 core/db:
-  - internal/db/**/*
+  - changed-files:
+    - any-glob-to-any-file: "internal/db/**/*"
 
 core/gen:
-  - internal/gen/**/*
+  - changed-files:
+    - any-glob-to-any-file: "internal/gen/**/*"
 
 core/host:
-  - internal/host/**/*
+  - changed-files:
+    - any-glob-to-any-file: "internal/host/**/*"
 
 core/iam:
-  - internal/iam/**/*
+  - changed-files:
+    - any-glob-to-any-file: "internal/iam/**/*"
 
 core/kms:
-  - internal/kms/**/*
+  - changed-files:
+    - any-glob-to-any-file: "internal/kms/**/*"
 
 core/lib:
-  - internal/libs/**/*
+  - changed-files:
+    - any-glob-to-any-file: "internal/libs/**/*"
 
 core/oplog:
-  - internal/oplog/**/*
+  - changed-files:
+    - any-glob-to-any-file: "internal/oplog/**/*"
 
 core/perms:
-  - internal/perms/**/*
+  - changed-files:
+    - any-glob-to-any-file: "internal/perms/**/*"
 
 core/proto:
-  - internal/proto/**/*
+  - changed-files:
+    - any-glob-to-any-file: "internal/proto/**/*"
 
 core/proxy:
-  - internal/proxy/**/*
+  - changed-files:
+    - any-glob-to-any-file: "internal/proxy/**/*"
 
 core/server:
-  - internal/server/**/*
+  - changed-files:
+    - any-glob-to-any-file: "internal/server/**/*"
 
 core/session:
-  - internal/session/**/*
+  - changed-files:
+    - any-glob-to-any-file: "internal/session/**/*"
 
 core/sql:
-  - internal/**/*.sql
-  - internal/**/*query*.go
+  - changed-files:
+    - any-glob-to-any-file: "internal/**/*.sql"
+  - changed-files:
+    - any-glob-to-any-file: "internal/**/*query*.go"
 
 core/target:
-  - internal/target/**/*
+  - changed-files:
+    - any-glob-to-any-file: "internal/target/**/*"
 
 core/types:
-  - internal/types/**/*
+  - changed-files:
+    - any-glob-to-any-file: "internal/types/**/*"
 
 core/ui:
-  - internal/ui/**/*
+  - changed-files:
+    - any-glob-to-any-file: "internal/ui/**/*"
 
 website:
-  - website/**/*
+  - changed-files:
+    - any-glob-to-any-file: "website/**/*"
 
 docs/concepts:
-  - website/content/docs/concepts/**/*
+  - changed-files:
+    - any-glob-to-any-file: "website/content/docs/concepts/**/*"
 
 docs/getting-started:
-  - website/content/docs/getting-started/**/*
+  - changed-files:
+    - any-glob-to-any-file: "website/content/docs/getting-started/**/*"
 
 docs/installing:
-  - website/content/docs/installing/**/*
+  - changed-files:
+    - any-glob-to-any-file: "website/content/docs/installing/**/*"
 
 docs/configuration:
-  - website/content/docs/configuration/**/*
+  - changed-files:
+    - any-glob-to-any-file: "website/content/docs/configuration/**/*"
 
 docs/releases:
-  - website/content/docs/releases/**/*
+  - changed-files:
+    - any-glob-to-any-file: "website/content/docs/releases/**/*"
 
 docs/workflows:
-  - website/content/docs/common-workflows/**/*
+  - changed-files:
+    - any-glob-to-any-file: "website/content/docs/common-workflows/**/*"
 
 docs/roadmap:
-  - website/content/docs/roadmap/**/*
+  - changed-files:
+    - any-glob-to-any-file: "website/content/docs/roadmap/**/*"
 
 
 
