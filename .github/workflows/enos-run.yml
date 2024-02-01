@@ -261,10 +261,15 @@ jobs:
             for f in *.log; do mv --  "$f" "${f%.log}_${scenario%% *}.log"; done
           fi
           popd
+      - name: Split matrix filter name
+        id: split
+        run: |
+          SCENARIO=$(echo "${{ matrix.filter }}" | cut -d' ' -f1)
+          echo fragment="${SCENARIO}" >> "$GITHUB_OUTPUT"
       - name: Upload e2e tests output
         uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
         with:
-          name: test-e2e-output
+          name: test-${{ steps.split.outputs.fragment }}
           path: enos/*.log
           retention-days: 5
       - name: Get logs from postgres container
