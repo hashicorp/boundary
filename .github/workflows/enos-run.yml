@@ -38,7 +38,7 @@ jobs:
         with:
           fetch-depth: '0'
       - name: Set up Go
-        uses: actions/setup-go@93397bea11091df50f3d7e59dc26a7711a8bcfbe # v4.1.0
+        uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491 # v5.0.0
         with:
           go-version: ${{ inputs.go-version }}
           cache: false
@@ -53,7 +53,7 @@ jobs:
           echo "go-mod=$(go env GOMODCACHE)" >> "$GITHUB_OUTPUT"
           echo "go-bin=$(go env GOPATH)/bin" >> "$GITHUB_OUTPUT"
       - name: Set up Go modules cache
-        uses: actions/cache@704facf57e6136b1bc63b828d79edcd491f0ee84 # v3.3.2
+        uses: actions/cache@13aacd865c20de90d75de3b17ebe84f7a17d57d2 # v4.0.0
         with:
           path: |
             ${{ steps.go-cache-paths.outputs.go-build }}
@@ -106,12 +106,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
       - name: Set up Go
-        uses: actions/setup-go@93397bea11091df50f3d7e59dc26a7711a8bcfbe # v4.1.0
+        uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491 # v5.0.0
         with:
           go-version: ${{ inputs.go-version }}
           cache: false
       - name: Set up Go modules cache
-        uses: actions/cache@704facf57e6136b1bc63b828d79edcd491f0ee84 # v3.3.2
+        uses: actions/cache@13aacd865c20de90d75de3b17ebe84f7a17d57d2 # v4.0.0
         with:
           path: |
             ${{ needs.setup.outputs.cache-go-build }}
@@ -129,7 +129,7 @@ jobs:
           terraform_wrapper: false
       - name: Import GPG key for Boundary pass keystore
         id: import_gpg
-        uses: crazy-max/ghaction-import-gpg@82a020f1f7f605c65dd2449b392a52c3fcfef7ef # v6.0.0
+        uses: crazy-max/ghaction-import-gpg@01dd5d3ca463c7f10f7f4f7b4f177225ac661ee4 # v6.1.0
         with:
           gpg_private_key: ${{ secrets.ENOS_GPG_PRIVATE_KEY }}
           passphrase: ${{ secrets.ENOS_GPG_PASSPHRASE }}
@@ -161,7 +161,7 @@ jobs:
           echo "debug_data_artifact_name=enos-debug-data_$(echo ${{ matrix.filter }} | sed -e 's/ /_/g' | sed -e 's/:/=/g')" >> "$GITHUB_OUTPUT"
       - name: Set up dependency cache
         id: dep-cache
-        uses: actions/cache@704facf57e6136b1bc63b828d79edcd491f0ee84 # v3.3.2
+        uses: actions/cache@13aacd865c20de90d75de3b17ebe84f7a17d57d2 # v4.0.0
         with:
           path: /tmp/test-deps
           key: enos-test-deps-password-store-1.7.4-vault-1.12.2
@@ -219,7 +219,7 @@ jobs:
         run: |
           mv ${{ steps.download-docker.outputs.download-path }}/*.tar enos/support/boundary_docker_image.tar
       - name: Set up Node.js
-        uses: actions/setup-node@8f152de45cc393bb48ce5d89d36b731f54556e65 # v4.0.0
+        uses: actions/setup-node@b39b52d1213e96004bfcb1c61a8a6fa8ab84f3e8 # v4.0.1
         if: contains(matrix.filter, 'e2e_ui')
         with:
           node-version: '16.x'
