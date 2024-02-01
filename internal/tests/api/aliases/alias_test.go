@@ -36,7 +36,7 @@ func TestList(t *testing.T) {
 	expected := lr.Items
 	assert.Len(expected, 0)
 
-	cr, err := aliasClient.Create(tc.Context(), scopeId, aliases.WithValue("alias0"))
+	cr, err := aliasClient.Create(tc.Context(), "target", "alias0", scopeId)
 	require.NoError(err)
 	require.NotNil(cr)
 	expected = append(expected, cr.Item)
@@ -46,7 +46,7 @@ func TestList(t *testing.T) {
 	assert.ElementsMatch(comparableSlice(expected[:1]), comparableSlice(ulResult.Items))
 
 	for i := 1; i < 10; i++ {
-		newAcctResult, err := aliasClient.Create(tc.Context(), scopeId, aliases.WithValue(fmt.Sprintf("alias%d", i)))
+		newAcctResult, err := aliasClient.Create(tc.Context(), "target", fmt.Sprintf("alias%d", i), scopeId)
 		require.NoError(err)
 		expected = append(expected, newAcctResult.Item)
 	}
@@ -101,7 +101,7 @@ func TestCrud(t *testing.T) {
 		assert.EqualValues(wantedVersion, u.Version)
 	}
 
-	u, err := aliasClient.Create(tc.Context(), scopeId, aliases.WithValue("alias.value"))
+	u, err := aliasClient.Create(tc.Context(), "target", "alias.value", scopeId)
 	checkAlias("create", u.Item, err, "alias.value", 1)
 
 	u, err = aliasClient.Read(tc.Context(), u.Item.Id)
@@ -126,14 +126,23 @@ func TestErrors(t *testing.T) {
 	client.SetToken(token.Token)
 	aliasClient := aliases.NewClient(client)
 
-	u, err := aliasClient.Create(tc.Context(), scopeId, aliases.WithValue("first"))
+	u, err := aliasClient.Create(tc.Context(), "target", "first", scopeId)
 	require.NoError(err)
 	assert.NotNil(u)
+
+	// Creating an alias of an unknown type
+	_, err = aliasClient.Create(tc.Context(), "unknown", "first", scopeId)
+	require.Error(err)
+	apiErr := api.AsServerError(err)
+	require.NotNil(apiErr)
+	assert.EqualValues(http.StatusBadRequest, apiErr.Response().StatusCode())
+	require.Len(apiErr.Details.RequestFields, 1)
+	assert.Equal(apiErr.Details.RequestFields[0].Name, "type")
 
 	// A malformed id is processed as the id and not a different path to the api.
 	_, err = aliasClient.Read(tc.Context(), fmt.Sprintf("%s/../", u.Item.Id))
 	require.Error(err)
-	apiErr := api.AsServerError(err)
+	apiErr = api.AsServerError(err)
 	require.NotNil(apiErr)
 	assert.EqualValues(http.StatusBadRequest, apiErr.Response().StatusCode())
 	require.Len(apiErr.Details.RequestFields, 1)
@@ -147,7 +156,7 @@ func TestErrors(t *testing.T) {
 	assert.EqualValues(http.StatusNotFound, apiErr.Response().StatusCode())
 
 	// Create another resource with the same name.
-	_, err = aliasClient.Create(tc.Context(), scopeId, aliases.WithValue("first"))
+	_, err = aliasClient.Create(tc.Context(), "target", "first", scopeId)
 	require.Error(err)
 	apiErr = api.AsServerError(err)
 	require.NotNil(apiErr)
