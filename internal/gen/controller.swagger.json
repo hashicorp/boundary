@@ -12,6 +12,9 @@
       "name": "controller.api.services.v1.AccountService"
     },
     {
+      "name": "controller.api.services.v1.AliasService"
+    },
+    {
       "name": "controller.api.services.v1.AuthMethodService"
     },
     {
@@ -297,6 +300,168 @@
         ],
         "tags": [
           "controller.api.services.v1.AccountService"
+        ]
+      }
+    },
+    "/v1/aliases": {
+      "get": {
+        "summary": "Lists all Aliases in a specific Scope.",
+        "operationId": "AliasService_ListAliases",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.ListAliasesResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "scope_id",
+            "description": "",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "recursive",
+            "description": "",
+            "in": "query",
+            "required": false,
+            "type": "boolean"
+          },
+          {
+            "name": "filter",
+            "description": "",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "list_token",
+            "description": "An opaque token used to continue an existing iteration or\nrequest updated items. If not specified, pagination\nwill start from the beginning.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "page_size",
+            "description": "The maximum size of a page in this iteration.\nIf unset, the default page size configured will be used.\nIf the page_size is greater than the default page configured,\nan error will be returned.",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int64"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.AliasService"
+        ]
+      },
+      "post": {
+        "summary": "Creates a single Alias in the provided scope.",
+        "operationId": "AliasService_CreateAlias",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.aliases.v1.Alias"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "item",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.aliases.v1.Alias"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.AliasService"
+        ]
+      }
+    },
+    "/v1/aliases/{id}": {
+      "get": {
+        "summary": "Gets a single Alias.",
+        "operationId": "AliasService_GetAlias",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.aliases.v1.Alias"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "description": "",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.AliasService"
+        ]
+      },
+      "delete": {
+        "summary": "Deletes an Alias.",
+        "operationId": "AliasService_DeleteAlias",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.DeleteAliasResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "description": "",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.AliasService"
+        ]
+      },
+      "patch": {
+        "summary": "Updates an Alias.",
+        "operationId": "AliasService_UpdateAlias",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.aliases.v1.Alias"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "description": "",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "item",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.aliases.v1.Alias"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.AliasService"
         ]
       }
     },
@@ -4605,6 +4770,71 @@
       },
       "title": "Account contains all fields related to an Account resource"
     },
+    "controller.api.resources.aliases.v1.Alias": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Output only. The ID of the Alias.",
+          "readOnly": true
+        },
+        "scope_id": {
+          "type": "string",
+          "description": "The ID of the scope of which this Alias is a part."
+        },
+        "scope": {
+          "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
+          "description": "Output only. Scope information for this Alias.",
+          "readOnly": true
+        },
+        "name": {
+          "type": "string",
+          "description": "Optional user-set name for identification purposes."
+        },
+        "description": {
+          "type": "string",
+          "description": "Optional user-set descripton for identification purposes."
+        },
+        "created_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Output only. The time this resource was created.",
+          "readOnly": true
+        },
+        "updated_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Output only. The time this resource was last updated.",
+          "readOnly": true
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+        },
+        "value": {
+          "type": "string",
+          "description": "Required value of the alias. This is the value referenced by the user that\nis resolved to the destination id."
+        },
+        "destination_id": {
+          "type": "string",
+          "description": "destination_id is the id of the resource that this Alias points to."
+        },
+        "attributes": {
+          "type": "object",
+          "description": "The attributes that are applicable for the specific Alias type."
+        },
+        "authorized_actions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Output only. The available actions on this resource for this user.",
+          "readOnly": true
+        }
+      },
+      "title": "Alias contains all fields related to an Alias resource"
+    },
     "controller.api.resources.authmethods.v1.AuthMethod": {
       "type": "object",
       "properties": {
@@ -7420,6 +7650,18 @@
         }
       }
     },
+    "controller.api.services.v1.CreateAliasResponse": {
+      "type": "object",
+      "properties": {
+        "uri": {
+          "type": "string",
+          "title": ""
+        },
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.aliases.v1.Alias"
+        }
+      }
+    },
     "controller.api.services.v1.CreateAuthMethodResponse": {
       "type": "object",
       "properties": {
@@ -7626,6 +7868,9 @@
     "controller.api.services.v1.DeleteAccountResponse": {
       "type": "object"
     },
+    "controller.api.services.v1.DeleteAliasResponse": {
+      "type": "object"
+    },
     "controller.api.services.v1.DeleteAuthMethodResponse": {
       "type": "object"
     },
@@ -7715,6 +7960,14 @@
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.accounts.v1.Account"
+        }
+      }
+    },
+    "controller.api.services.v1.GetAliasResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.aliases.v1.Alias"
         }
       }
     },
@@ -7981,6 +8234,46 @@
           "items": {
             "type": "object",
             "$ref": "#/definitions/controller.api.resources.accounts.v1.Account"
+          }
+        },
+        "response_type": {
+          "type": "string",
+          "description": "The type of response, either \"delta\" or \"complete\".\nDelta signifies that this is part of a paginated result\nor an update to a previously completed pagination.\nComplete signifies that it is the last page."
+        },
+        "list_token": {
+          "type": "string",
+          "description": "An opaque token used to continue an existing pagination or\nrequest updated items. Use this token in the next list request\nto request the next page."
+        },
+        "sort_by": {
+          "type": "string",
+          "description": "The name of the field which the items are sorted by."
+        },
+        "sort_dir": {
+          "type": "string",
+          "description": "The direction of the sort, either \"asc\" or \"desc\"."
+        },
+        "removed_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "A list of item IDs that have been removed since they were returned\nas part of a pagination. They should be dropped from any client cache.\nThis may contain items that are not known to the cache, if they were\ncreated and deleted between listings."
+        },
+        "est_item_count": {
+          "type": "integer",
+          "format": "int64",
+          "description": "An estimate at the total items available. This may change during pagination."
+        }
+      }
+    },
+    "controller.api.services.v1.ListAliasesResponse": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/controller.api.resources.aliases.v1.Alias"
           }
         },
         "response_type": {
@@ -9306,6 +9599,14 @@
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.accounts.v1.Account"
+        }
+      }
+    },
+    "controller.api.services.v1.UpdateAliasResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.aliases.v1.Alias"
         }
       }
     },

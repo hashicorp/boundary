@@ -8,6 +8,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/gen/controller/api"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/accounts"
+	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/aliases"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/authmethods"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/authtokens"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/credentiallibraries"
@@ -723,6 +724,30 @@ var inputStructs = []*structInfo{
 		parentTypeName:      "credential-store",
 		versionEnabled:      true,
 		createResponseTypes: []string{CreateResponseType, ReadResponseType, UpdateResponseType, DeleteResponseType, ListResponseType},
+	},
+
+	// Alias related resources
+	{
+		inProto: &aliases.Alias{},
+		outFile: "aliases/alias.gen.go",
+		templates: []*template.Template{
+			clientTemplate,
+			commonCreateTemplate,
+			readTemplate,
+			updateTemplate,
+			deleteTemplate,
+			listTemplate,
+		},
+		fieldOverrides: []fieldInfo{
+			{
+				Name:        "Value",
+				SkipDefault: true,
+			},
+		},
+		pluralResourceName:  "aliases",
+		versionEnabled:      true,
+		createResponseTypes: []string{CreateResponseType, ReadResponseType, UpdateResponseType, DeleteResponseType, ListResponseType},
+		recursiveListing:    true,
 	},
 
 	// Storage related resources

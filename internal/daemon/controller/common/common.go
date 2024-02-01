@@ -4,6 +4,7 @@
 package common
 
 import (
+	"github.com/hashicorp/boundary/internal/alias/target"
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/ldap"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
@@ -39,6 +40,7 @@ type (
 	ConnectionRepoFactory          func() (*session.ConnectionRepository, error)
 	WorkerAuthRepoStorageFactory   func() (*server.WorkerAuthRepositoryStorage, error)
 	PluginStorageBucketRepoFactory func() (*pluginstorage.Repository, error)
+	TargetAliasRepoFactory         func() (*target.Repository, error)
 )
 
 // Downstreamers provides at least a minimum interface that must be met by a
