@@ -89,6 +89,7 @@ resource "enos_file" "controller_config" {
     ops_port                = var.listener_ops_port
     cluster_port            = var.listener_cluster_port
     region                  = var.aws_region
+    max_page_size           = var.max_page_size
   })
   for_each = toset([for idx in range(var.controller_count) : tostring(idx)])
 

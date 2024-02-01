@@ -254,6 +254,7 @@ scenario "e2e_aws" {
       aws_host_set_ips2        = step.create_targets_with_tag2.target_ips
       target_address           = step.create_isolated_target.target_ips[0]
       worker_tag_egress        = local.egress_tag
+      max_page_size            = step.create_boundary_cluster.max_page_size
     }
   }
 

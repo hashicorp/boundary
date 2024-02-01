@@ -134,6 +134,7 @@ scenario "e2e_aws_base" {
       target_address           = step.create_target.target_ips[0]
       target_user              = "ubuntu"
       target_port              = "22"
+      max_page_size            = step.create_boundary_cluster.max_page_size
     }
   }
 
