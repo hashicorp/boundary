@@ -14,6 +14,14 @@ import "google/protobuf/wrappers.proto";
 
 option go_package = "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets;targets";
 
+message Alias {
+  // Output only. The ID of the alias referencing this target.
+  string id = 10; // @gotags: `class:"public" eventstream:"observation"`
+
+  // Ouput only. The value of the alias referencing this target.
+  string value = 20; // @gotags: `class:"public" eventstream:"observation"`
+}
+
 message HostSource {
   // Output only. The ID of the Host Set.
   string id = 10; // @gotags: `class:"public" eventstream:"observation"`
@@ -210,6 +218,9 @@ message Target {
       that: "address"
     }
   ]; // @gotags: `class:"public"`
+
+  // Output only. The aliases that point to this Target.
+  repeated Alias aliases = 550 [json_name = "aliases"]; // @gotags: `class:"public"`
 
   // Deprecated fields
   reserved "application_credential_library_ids", "application_credential_libraries";
