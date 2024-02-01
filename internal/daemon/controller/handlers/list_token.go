@@ -140,6 +140,8 @@ func ListTokenResourceToResource(rt pbs.ResourceType) resource.Type {
 	switch rt {
 	case pbs.ResourceType_RESOURCE_TYPE_ACCOUNT:
 		return resource.Account
+	case pbs.ResourceType_RESOURCE_TYPE_ALIAS:
+		return resource.Alias
 	case pbs.ResourceType_RESOURCE_TYPE_AUTH_METHOD:
 		return resource.AuthMethod
 	case pbs.ResourceType_RESOURCE_TYPE_AUTH_TOKEN:

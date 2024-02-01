@@ -11,6 +11,7 @@ import (
 	"sync"
 	"sync/atomic"
 
+	target2 "github.com/hashicorp/boundary/internal/alias/target"
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/ldap"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
@@ -150,6 +151,7 @@ type Controller struct {
 	TargetRepoFn              target.RepositoryFactory
 	WorkerAuthRepoStorageFn   common.WorkerAuthRepoStorageFactory
 	BillingRepoFn             common.BillingRepoFactory
+	TargetAliasRepoFn         common.TargetAliasRepoFactory
 
 	scheduler *scheduler.Scheduler
 
@@ -452,6 +454,9 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	}
 	c.BillingRepoFn = func() (*billing.Repository, error) {
 		return billing.NewRepository(ctx, dbase)
+	}
+	c.TargetAliasRepoFn = func() (*target2.Repository, error) {
+		return target2.NewRepository(ctx, dbase, dbase, c.kms)
 	}
 
 	// Check that credentials are available at startup, to avoid some harmless
