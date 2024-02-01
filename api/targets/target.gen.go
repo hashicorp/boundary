@@ -41,6 +41,7 @@ type Target struct {
 	Attributes                             map[string]interface{} `json:"attributes,omitempty"`
 	AuthorizedActions                      []string               `json:"authorized_actions,omitempty"`
 	Address                                string                 `json:"address,omitempty"`
+	Aliases                                []*Alias               `json:"aliases,omitempty"`
 
 	response *api.Response
 }

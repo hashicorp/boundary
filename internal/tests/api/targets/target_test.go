@@ -20,9 +20,11 @@ import (
 	"github.com/hashicorp/boundary/api/roles"
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/globals"
+	aliastar "github.com/hashicorp/boundary/internal/alias/target"
 	"github.com/hashicorp/boundary/internal/credential/vault"
 	"github.com/hashicorp/boundary/internal/daemon/controller"
 	"github.com/hashicorp/boundary/internal/daemon/worker"
+	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -57,20 +59,44 @@ func TestHostSetASD(t *testing.T) {
 	require.NotNil(tar)
 	assert.Empty(tar.Item.HostSourceIds)
 
-	tar, err = tarClient.AddHostSources(tc.Context(), tar.Item.Id, tar.Item.Version, []string{hSet.Item.Id})
+	aliasedTar, err := tarClient.Create(tc.Context(), "tcp", proj.GetPublicId(), targets.WithName("aliased"), targets.WithTcpTargetDefaultPort(2))
 	require.NoError(err)
-	require.NotNil(tar)
-	assert.ElementsMatch(tar.Item.HostSourceIds, []string{hSet.Item.Id})
+	require.NotNil(aliasedTar)
+	assert.Empty(aliasedTar.Item.HostSourceIds)
 
-	tar, err = tarClient.SetHostSources(tc.Context(), tar.Item.Id, tar.Item.Version, []string{hSet2.Item.Id})
-	require.NoError(err)
-	require.NotNil(tar)
-	assert.ElementsMatch(tar.Item.HostSourceIds, []string{hSet2.Item.Id})
+	rw := db.New(tc.DbConn())
+	al := aliastar.TestAlias(t, rw, "alias.value", aliastar.WithDestinationId(aliasedTar.Item.Id))
 
-	tar, err = tarClient.RemoveHostSources(tc.Context(), tar.Item.Id, tar.Item.Version, []string{hSet2.Item.Id})
-	require.NoError(err)
-	require.NotNil(tar)
-	assert.Empty(tar.Item.HostSourceIds)
+	cases := []struct {
+		name string
+		id   string
+	}{
+		{
+			name: "target id",
+			id:   tar.Item.Id,
+		},
+		{
+			name: "aliases",
+			id:   al.GetValue(),
+		},
+	}
+
+	for _, c := range cases {
+		tar, err := tarClient.AddHostSources(tc.Context(), c.id, 1, []string{hSet.Item.Id})
+		require.NoError(err)
+		require.NotNil(tar)
+		assert.ElementsMatch(tar.Item.HostSourceIds, []string{hSet.Item.Id})
+
+		tar, err = tarClient.SetHostSources(tc.Context(), c.id, tar.Item.Version, []string{hSet2.Item.Id})
+		require.NoError(err)
+		require.NotNil(tar)
+		assert.ElementsMatch(tar.Item.HostSourceIds, []string{hSet2.Item.Id})
+
+		tar, err = tarClient.RemoveHostSources(tc.Context(), c.id, tar.Item.Version, []string{hSet2.Item.Id})
+		require.NoError(err)
+		require.NotNil(tar)
+		assert.Empty(tar.Item.HostSourceIds)
+	}
 }
 
 func TestCredentialSourcesASD(t *testing.T) {
@@ -115,54 +141,78 @@ func TestCredentialSourcesASD(t *testing.T) {
 	require.NotNil(tar)
 	assert.Empty(tar.Item.BrokeredCredentialSourceIds)
 
-	// Add first Vault library
-	tar, err = tarClient.AddCredentialSources(tc.Context(), tar.Item.Id, tar.Item.Version,
-		targets.WithBrokeredCredentialSourceIds([]string{lib1.Item.Id}))
+	aliasedTar, err := tarClient.Create(tc.Context(), "tcp", proj.GetPublicId(), targets.WithName("aliased"), targets.WithTcpTargetDefaultPort(2))
 	require.NoError(err)
-	require.NotNil(tar)
-	assert.ElementsMatch(tar.Item.BrokeredCredentialSourceIds, []string{lib1.Item.Id})
-	assert.ElementsMatch(tar.Item.BrokeredCredentialSources, []*targets.CredentialSource{
-		{
-			Id:                lib1.Item.Id,
-			CredentialStoreId: csVault.Item.Id,
-		},
-	})
+	require.NotNil(aliasedTar)
+	assert.Empty(aliasedTar.Item.BrokeredCredentialSourceIds)
 
-	// Set second Vault library and a static credential
-	tar, err = tarClient.SetCredentialSources(tc.Context(), tar.Item.Id, tar.Item.Version,
-		targets.WithBrokeredCredentialSourceIds([]string{lib2.Item.Id, cred.Item.Id}))
-	require.NoError(err)
-	require.NotNil(tar)
-	assert.ElementsMatch(tar.Item.BrokeredCredentialSourceIds, []string{lib2.Item.Id, cred.Item.Id})
-	assert.ElementsMatch(tar.Item.BrokeredCredentialSources, []*targets.CredentialSource{
-		{
-			Id:                lib2.Item.Id,
-			CredentialStoreId: csVault.Item.Id,
-		},
-		{
-			Id:                cred.Item.Id,
-			CredentialStoreId: csStatic.Item.Id,
-		},
-	})
-	// Remove second Vault library
-	tar, err = tarClient.RemoveCredentialSources(tc.Context(), tar.Item.Id, tar.Item.Version,
-		targets.WithBrokeredCredentialSourceIds([]string{lib2.Item.Id}))
-	require.NoError(err)
-	require.NotNil(tar)
-	assert.ElementsMatch(tar.Item.BrokeredCredentialSourceIds, []string{cred.Item.Id})
-	assert.ElementsMatch(tar.Item.BrokeredCredentialSources, []*targets.CredentialSource{
-		{
-			Id:                cred.Item.Id,
-			CredentialStoreId: csStatic.Item.Id,
-		},
-	})
+	rw := db.New(tc.DbConn())
+	al := aliastar.TestAlias(t, rw, "alias.value", aliastar.WithDestinationId(aliasedTar.Item.Id))
 
-	// Set empty credential sources
-	tar, err = tarClient.SetCredentialSources(tc.Context(), tar.Item.Id, tar.Item.Version,
-		targets.WithBrokeredCredentialSourceIds([]string{}))
-	require.NoError(err)
-	require.NotNil(tar)
-	assert.Empty(tar.Item.BrokeredCredentialSourceIds)
+	cases := []struct {
+		name string
+		id   string
+	}{
+		{
+			name: "target id",
+			id:   tar.Item.Id,
+		},
+		{
+			name: "aliases",
+			id:   al.GetValue(),
+		},
+	}
+
+	for _, c := range cases {
+		// Add first Vault library
+		tar, err := tarClient.AddCredentialSources(tc.Context(), c.id, 1,
+			targets.WithBrokeredCredentialSourceIds([]string{lib1.Item.Id}))
+		require.NoError(err)
+		require.NotNil(tar)
+		assert.ElementsMatch(tar.Item.BrokeredCredentialSourceIds, []string{lib1.Item.Id})
+		assert.ElementsMatch(tar.Item.BrokeredCredentialSources, []*targets.CredentialSource{
+			{
+				Id:                lib1.Item.Id,
+				CredentialStoreId: csVault.Item.Id,
+			},
+		})
+
+		// Set second Vault library and a static credential
+		tar, err = tarClient.SetCredentialSources(tc.Context(), c.id, tar.Item.Version,
+			targets.WithBrokeredCredentialSourceIds([]string{lib2.Item.Id, cred.Item.Id}))
+		require.NoError(err)
+		require.NotNil(tar)
+		assert.ElementsMatch(tar.Item.BrokeredCredentialSourceIds, []string{lib2.Item.Id, cred.Item.Id})
+		assert.ElementsMatch(tar.Item.BrokeredCredentialSources, []*targets.CredentialSource{
+			{
+				Id:                lib2.Item.Id,
+				CredentialStoreId: csVault.Item.Id,
+			},
+			{
+				Id:                cred.Item.Id,
+				CredentialStoreId: csStatic.Item.Id,
+			},
+		})
+		// Remove second Vault library
+		tar, err = tarClient.RemoveCredentialSources(tc.Context(), c.id, tar.Item.Version,
+			targets.WithBrokeredCredentialSourceIds([]string{lib2.Item.Id}))
+		require.NoError(err)
+		require.NotNil(tar)
+		assert.ElementsMatch(tar.Item.BrokeredCredentialSourceIds, []string{cred.Item.Id})
+		assert.ElementsMatch(tar.Item.BrokeredCredentialSources, []*targets.CredentialSource{
+			{
+				Id:                cred.Item.Id,
+				CredentialStoreId: csStatic.Item.Id,
+			},
+		})
+
+		// Set empty credential sources
+		tar, err = tarClient.SetCredentialSources(tc.Context(), c.id, tar.Item.Version,
+			targets.WithBrokeredCredentialSourceIds([]string{}))
+		require.NoError(err)
+		require.NotNil(tar)
+		assert.Empty(tar.Item.BrokeredCredentialSourceIds)
+	}
 }
 
 func TestList(t *testing.T) {
@@ -467,23 +517,46 @@ func TestUpdateTarget_DeleteAddress(t *testing.T) {
 	require.NotNil(createResp)
 	assert.Equal(addr, createResp.GetItem().Address)
 
-	// Update to delete address (set to null)
-	updateResp, err := tClient.Update(tc.Context(), createResp.Item.Id, createResp.Item.Version, targets.DefaultAddress())
+	aliasedTar, err := tClient.Create(tc.Context(), "tcp", proj.GetPublicId(), targets.WithName("aliased"), targets.WithTcpTargetDefaultPort(2))
 	require.NoError(err)
-	require.NotNil(updateResp)
-	assert.Empty(updateResp.GetItem().Address)
+	require.NotNil(aliasedTar)
 
-	// Do it again with same version, should error
-	_, err = tClient.Update(tc.Context(), createResp.Item.Id, createResp.Item.Version, targets.DefaultAddress())
-	require.Error(err)
+	rw := db.New(tc.DbConn())
+	al := aliastar.TestAlias(t, rw, "alias.value", aliastar.WithDestinationId(aliasedTar.Item.Id))
 
-	// Do it again with the correct version, ensure this is not an error.
-	secondUpdateResp, err := tClient.Update(tc.Context(), createResp.Item.Id, updateResp.Item.Version, targets.DefaultAddress())
-	require.NoError(err)
-	require.NotNil(secondUpdateResp)
-	assert.Empty(secondUpdateResp.GetItem().Address)
+	cases := []struct {
+		name string
+		id   string
+	}{
+		{
+			name: "target id",
+			id:   createResp.Item.Id,
+		},
+		{
+			name: "aliases",
+			id:   al.GetValue(),
+		},
+	}
 
-	assert.NotEqual(updateResp.Item.Version, secondUpdateResp.Item.Version)
+	for _, c := range cases {
+		// Update to delete address (set to null)
+		updateResp, err := tClient.Update(tc.Context(), c.id, 1, targets.DefaultAddress())
+		require.NoError(err)
+		require.NotNil(updateResp)
+		assert.Empty(updateResp.GetItem().Address)
+
+		// Do it again with same version, should error
+		_, err = tClient.Update(tc.Context(), c.id, 1, targets.DefaultAddress())
+		require.Error(err)
+
+		// Do it again with the correct version, ensure this is not an error.
+		secondUpdateResp, err := tClient.Update(tc.Context(), c.id, updateResp.Item.Version, targets.DefaultAddress())
+		require.NoError(err)
+		require.NotNil(secondUpdateResp)
+		assert.Empty(secondUpdateResp.GetItem().Address)
+
+		assert.NotEqual(updateResp.Item.Version, secondUpdateResp.Item.Version)
+	}
 }
 
 func comparableSlice(in []*targets.Target) []targets.Target {
@@ -528,20 +601,44 @@ func TestCrud(t *testing.T) {
 	tar, err := tarClient.Create(tc.Context(), "tcp", proj.GetPublicId(), targets.WithName("foo"), targets.WithTcpTargetDefaultPort(2))
 	checkResource(t, "create", tar.Item, err, "foo", 1)
 
-	tar, err = tarClient.Read(tc.Context(), tar.Item.Id)
-	checkResource(t, "read", tar.Item, err, "foo", 1)
+	aliasedTar, err := tarClient.Create(tc.Context(), "tcp", proj.GetPublicId(), targets.WithName("aliased"), targets.WithTcpTargetDefaultPort(2))
+	checkResource(t, "create", aliasedTar.Item, err, "aliased", 1)
 
-	tar, err = tarClient.Update(tc.Context(), tar.Item.Id, tar.Item.Version, targets.WithName("bar"))
-	checkResource(t, "update", tar.Item, err, "bar", 2)
+	rw := db.New(tc.DbConn())
+	al := aliastar.TestAlias(t, rw, "alias.value", aliastar.WithDestinationId(aliasedTar.Item.Id))
 
-	_, err = tarClient.Delete(tc.Context(), tar.Item.Id)
-	assert.NoError(err)
+	cases := []struct {
+		name        string
+		id          string
+		initialName string
+	}{
+		{
+			name:        "target id",
+			id:          tar.Item.Id,
+			initialName: "foo",
+		},
+		{
+			name:        "aliases",
+			id:          al.GetValue(),
+			initialName: "aliased",
+		},
+	}
+	for _, c := range cases {
+		tar, err := tarClient.Read(tc.Context(), c.id)
+		checkResource(t, "read", tar.Item, err, c.initialName, 1)
 
-	_, err = tarClient.Delete(tc.Context(), tar.Item.Id)
-	assert.Error(err)
-	apiErr := api.AsServerError(err)
-	assert.NotNil(apiErr)
-	assert.EqualValues(http.StatusNotFound, apiErr.Response().StatusCode())
+		tar, err = tarClient.Update(tc.Context(), c.id, tar.Item.Version, targets.WithName("bar"))
+		checkResource(t, "update", tar.Item, err, "bar", 2)
+
+		_, err = tarClient.Delete(tc.Context(), c.id)
+		assert.NoError(err)
+
+		_, err = tarClient.Delete(tc.Context(), c.id)
+		assert.Error(err)
+		apiErr := api.AsServerError(err)
+		assert.NotNil(apiErr)
+		assert.EqualValues(http.StatusNotFound, apiErr.Response().StatusCode())
+	}
 }
 
 func TestSet_Errors(t *testing.T) {
@@ -592,7 +689,16 @@ func TestSet_Errors(t *testing.T) {
 	require.Error(err)
 	apiErr = api.AsServerError(err)
 	assert.NotNil(apiErr)
-	assert.EqualValues(http.StatusBadRequest, apiErr.Response().StatusCode())
+	assert.EqualValues(http.StatusNotFound, apiErr.Response().StatusCode())
+
+	// reading by alias with no destination id should fail
+	rw := db.New(tc.DbConn())
+	al := aliastar.TestAlias(t, rw, "alias.value")
+	_, err = tarClient.Read(tc.Context(), al.GetValue())
+	require.Error(err)
+	apiErr = api.AsServerError(err)
+	assert.NotNil(apiErr)
+	assert.EqualValues(http.StatusNotFound, apiErr.Response().StatusCode())
 }
 
 func TestCreateTarget_WhitespaceInAddress(t *testing.T) {

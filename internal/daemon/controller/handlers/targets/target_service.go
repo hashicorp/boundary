@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/globals"
+	talias "github.com/hashicorp/boundary/internal/alias/target"
 	"github.com/hashicorp/boundary/internal/credential"
 	wl "github.com/hashicorp/boundary/internal/daemon/common"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
@@ -118,6 +119,7 @@ type Service struct {
 	pbs.UnsafeTargetServiceServer
 
 	repoFn                  target.RepositoryFactory
+	aliasRepoFn             common.TargetAliasRepoFactory
 	iamRepoFn               common.IamRepoFactory
 	serversRepoFn           common.ServersRepoFactory
 	sessionRepoFn           session.RepositoryFactory
@@ -146,38 +148,34 @@ func NewService(
 	staticHostRepoFn common.StaticRepoFactory,
 	vaultCredRepoFn common.VaultCredentialRepoFactory,
 	staticCredRepoFn common.StaticCredentialRepoFactory,
+	aliasRepoFn common.TargetAliasRepoFactory,
 	downstreams common.Downstreamers,
 	workerStatusGracePeriod *atomic.Int64,
 	maxPageSize uint,
 	controllerExt intglobals.ControllerExtension,
 ) (Service, error) {
 	const op = "targets.NewService"
-	if kmsCache == nil {
+	switch {
+	case kmsCache == nil:
 		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing kms repo")
-	}
-	if repoFn == nil {
+	case repoFn == nil:
 		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing target repository")
-	}
-	if iamRepoFn == nil {
+	case iamRepoFn == nil:
 		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing iam repository")
-	}
-	if serversRepoFn == nil {
+	case serversRepoFn == nil:
 		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing server repository")
-	}
-	if sessionRepoFn == nil {
+	case sessionRepoFn == nil:
 		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing session repository")
-	}
-	if pluginHostRepoFn == nil {
+	case pluginHostRepoFn == nil:
 		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing plugin host repository")
-	}
-	if staticHostRepoFn == nil {
+	case staticHostRepoFn == nil:
 		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing static host repository")
-	}
-	if vaultCredRepoFn == nil {
+	case vaultCredRepoFn == nil:
 		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing vault credential repository")
-	}
-	if staticCredRepoFn == nil {
+	case staticCredRepoFn == nil:
 		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing static credential repository")
+	case aliasRepoFn == nil:
+		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing target alias repository")
 	}
 	if maxPageSize == 0 {
 		maxPageSize = uint(globals.DefaultMaxPageSize)
@@ -191,6 +189,7 @@ func NewService(
 		staticHostRepoFn:        staticHostRepoFn,
 		vaultCredRepoFn:         vaultCredRepoFn,
 		staticCredRepoFn:        staticCredRepoFn,
+		aliasRepoFn:             aliasRepoFn,
 		downstreams:             downstreams,
 		kmsCache:                kmsCache,
 		workerStatusGracePeriod: workerStatusGracePeriod,
@@ -352,6 +351,14 @@ func (s Service) ListTargets(ctx context.Context, req *pbs.ListTargetsRequest) (
 func (s Service) GetTarget(ctx context.Context, req *pbs.GetTargetRequest) (*pbs.GetTargetResponse, error) {
 	const op = "targets.(Service).GetTarget"
 
+	if maybeAlias(req.GetId()) {
+		if a, err := s.resolveAlias(ctx, req.GetId()); err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		} else {
+			req.Id = a.DestinationId
+		}
+	}
+
 	if err := validateGetRequest(req); err != nil {
 		return nil, err
 	}
@@ -432,6 +439,14 @@ func (s Service) CreateTarget(ctx context.Context, req *pbs.CreateTargetRequest)
 func (s Service) UpdateTarget(ctx context.Context, req *pbs.UpdateTargetRequest) (*pbs.UpdateTargetResponse, error) {
 	const op = "targets.(Service).UpdateTarget"
 
+	if maybeAlias(req.GetId()) {
+		if a, err := s.resolveAlias(ctx, req.GetId()); err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		} else {
+			req.Id = a.DestinationId
+		}
+	}
+
 	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
 	}
@@ -470,6 +485,16 @@ func (s Service) UpdateTarget(ctx context.Context, req *pbs.UpdateTargetRequest)
 
 // DeleteTarget implements the interface pbs.TargetServiceServer.
 func (s Service) DeleteTarget(ctx context.Context, req *pbs.DeleteTargetRequest) (*pbs.DeleteTargetResponse, error) {
+	const op = "targets.(Service).DeleteTarget"
+
+	if maybeAlias(req.GetId()) {
+		if a, err := s.resolveAlias(ctx, req.GetId()); err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		} else {
+			req.Id = a.DestinationId
+		}
+	}
+
 	if err := validateDeleteRequest(req); err != nil {
 		return nil, err
 	}
@@ -487,6 +512,14 @@ func (s Service) DeleteTarget(ctx context.Context, req *pbs.DeleteTargetRequest)
 // AddTargetHostSources implements the interface pbs.TargetServiceServer.
 func (s Service) AddTargetHostSources(ctx context.Context, req *pbs.AddTargetHostSourcesRequest) (*pbs.AddTargetHostSourcesResponse, error) {
 	const op = "targets.(Service).AddTargetHostSources"
+
+	if maybeAlias(req.GetId()) {
+		if a, err := s.resolveAlias(ctx, req.GetId()); err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		} else {
+			req.Id = a.DestinationId
+		}
+	}
 
 	if err := validateAddHostSourcesRequest(req); err != nil {
 		return nil, err
@@ -530,6 +563,14 @@ func (s Service) AddTargetHostSources(ctx context.Context, req *pbs.AddTargetHos
 func (s Service) SetTargetHostSources(ctx context.Context, req *pbs.SetTargetHostSourcesRequest) (*pbs.SetTargetHostSourcesResponse, error) {
 	const op = "targets.(Service).SetTargetHostSources"
 
+	if maybeAlias(req.GetId()) {
+		if a, err := s.resolveAlias(ctx, req.GetId()); err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		} else {
+			req.Id = a.DestinationId
+		}
+	}
+
 	if err := validateSetHostSourcesRequest(req); err != nil {
 		return nil, err
 	}
@@ -570,6 +611,14 @@ func (s Service) SetTargetHostSources(ctx context.Context, req *pbs.SetTargetHos
 func (s Service) RemoveTargetHostSources(ctx context.Context, req *pbs.RemoveTargetHostSourcesRequest) (*pbs.RemoveTargetHostSourcesResponse, error) {
 	const op = "targets.(Service).RemoveTargetHostSources"
 
+	if maybeAlias(req.GetId()) {
+		if a, err := s.resolveAlias(ctx, req.GetId()); err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		} else {
+			req.Id = a.DestinationId
+		}
+	}
+
 	if err := validateRemoveHostSourcesRequest(req); err != nil {
 		return nil, err
 	}
@@ -609,6 +658,14 @@ func (s Service) RemoveTargetHostSources(ctx context.Context, req *pbs.RemoveTar
 // AddTargetCredentialSources implements the interface pbs.TargetServiceServer.
 func (s Service) AddTargetCredentialSources(ctx context.Context, req *pbs.AddTargetCredentialSourcesRequest) (*pbs.AddTargetCredentialSourcesResponse, error) {
 	const op = "targets.(Service).AddTargetCredentialSources"
+
+	if maybeAlias(req.GetId()) {
+		if a, err := s.resolveAlias(ctx, req.GetId()); err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		} else {
+			req.Id = a.DestinationId
+		}
+	}
 
 	if err := validateAddCredentialSourcesRequest(req); err != nil {
 		return nil, err
@@ -651,6 +708,14 @@ func (s Service) AddTargetCredentialSources(ctx context.Context, req *pbs.AddTar
 func (s Service) SetTargetCredentialSources(ctx context.Context, req *pbs.SetTargetCredentialSourcesRequest) (*pbs.SetTargetCredentialSourcesResponse, error) {
 	const op = "targets.(Service).SetTargetCredentialSources"
 
+	if maybeAlias(req.GetId()) {
+		if a, err := s.resolveAlias(ctx, req.GetId()); err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		} else {
+			req.Id = a.DestinationId
+		}
+	}
+
 	if err := validateSetCredentialSourcesRequest(req); err != nil {
 		return nil, err
 	}
@@ -691,6 +756,14 @@ func (s Service) SetTargetCredentialSources(ctx context.Context, req *pbs.SetTar
 // RemoveTargetCredentialSources implements the interface pbs.TargetServiceServer.
 func (s Service) RemoveTargetCredentialSources(ctx context.Context, req *pbs.RemoveTargetCredentialSourcesRequest) (*pbs.RemoveTargetCredentialSourcesResponse, error) {
 	const op = "targets.(Service).RemoveTargetCredentialSources"
+
+	if maybeAlias(req.GetId()) {
+		if a, err := s.resolveAlias(ctx, req.GetId()); err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		} else {
+			req.Id = a.DestinationId
+		}
+	}
 
 	if err := validateRemoveCredentialSourcesRequest(req); err != nil {
 		return nil, err
@@ -777,6 +850,27 @@ func DefaultPostSessionAuthorizationCallback(context.Context, intglobals.Control
 
 func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSessionRequest) (_ *pbs.AuthorizeSessionResponse, retErr error) {
 	const op = "targets.(Service).AuthorizeSession"
+
+	if maybeAlias(req.GetId()) && len(req.GetScopeId()) == 0 && len(req.GetScopeName()) == 0 {
+		// AuthorizeSession allows passing the target name in the place of an id but
+		// requires that the scope id or scope name is also provided in the request.
+		// If the scope id or the scope name is provided, we will not attempt to
+		// resolve the alias.
+		if a, err := s.resolveAlias(ctx, req.GetId()); err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		} else {
+			req.Id = a.DestinationId
+			if a.HostId != "" {
+				if req.GetHostId() != "" && req.GetHostId() != a.HostId {
+					return nil, handlers.InvalidArgumentErrorf("Errors in provided fields.", map[string]string{
+						"host_id": "The host id specified in the request does not match the one provided by the alias. Consider omiting the host id in the request.",
+					})
+				}
+				req.HostId = a.HostId
+			}
+		}
+	}
+
 	if err := validateAuthorizeSessionRequest(req); err != nil {
 		return nil, err
 	}
@@ -1224,6 +1318,38 @@ func (s Service) getFromRepo(ctx context.Context, id string) (target.Target, []t
 		return nil, nil, nil, handlers.NotFoundErrorf("Target %q doesn't exist.", id)
 	}
 	return u, hs, cl, nil
+}
+
+// maybeAlias returns true if the input string is a candidate for being an alias.
+func maybeAlias(s string) bool {
+	return !strings.Contains(s, "_") &&
+		len(s) > 0
+}
+
+// resolveAlias returns the alias resource with the specified value.
+// If the alias does not have a destination id or there is no alias with a
+// matching value, an error is returned.
+func (s Service) resolveAlias(ctx context.Context, value string) (*talias.Alias, error) {
+	const op = "targets.(Service).resolveAlias"
+	if value == "" {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "input string is empty")
+	}
+
+	r, err := s.aliasRepoFn()
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	a, err := r.LookupAliasByValue(ctx, value)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	if a == nil {
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.NotFound, "alias with value %q not found", value)
+	}
+	if a.DestinationId == "" {
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.NotFound, "target not found for alias value %q", value)
+	}
+	return a, nil
 }
 
 func (s Service) createInRepo(ctx context.Context, item *pb.Target) (target.Target, []target.HostSource, []target.CredentialSource, error) {
