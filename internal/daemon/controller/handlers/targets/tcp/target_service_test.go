@@ -159,6 +159,11 @@ func TestGet(t *testing.T) {
 	al := talias.TestAlias(t, rw, "test.alias", talias.WithDestinationId(tar.GetPublicId()))
 	alNoDest := talias.TestAlias(t, rw, "no.destination.test.alias")
 
+	pAlias := &pb.Alias{
+		Id:    al.GetPublicId(),
+		Value: al.GetValue(),
+	}
+
 	pTar := &pb.Target{
 		Id:                     tar.GetPublicId(),
 		ScopeId:                proj.GetPublicId(),
@@ -173,6 +178,7 @@ func TestGet(t *testing.T) {
 		SessionConnectionLimit: wrapperspb.Int32(-1),
 		AuthorizedActions:      testAuthorizedActions,
 		Address:                &wrapperspb.StringValue{},
+		Aliases:                []*pb.Alias{pAlias},
 	}
 	for _, ihs := range hs {
 		pTar.HostSources = append(pTar.HostSources, &pb.HostSource{Id: ihs.GetPublicId(), HostCatalogId: ihs.GetCatalogId()})
