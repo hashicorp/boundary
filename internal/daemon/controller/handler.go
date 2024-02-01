@@ -22,6 +22,7 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/common"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/accounts"
+	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/aliases"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/authmethods"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/authtokens"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/billing"
@@ -333,6 +334,18 @@ func (c *Controller) registerGrpcServices(s *grpc.Server) error {
 		}
 		services.RegisterWorkerServiceServer(s, ws)
 	}
+	if _, ok := currentServices[services.AliasService_ServiceDesc.ServiceName]; !ok {
+		as, err := aliases.NewService(
+			c.baseContext,
+			c.TargetAliasRepoFn,
+			c.IamRepoFn,
+			c.conf.RawConfig.Controller.MaxPageSize,
+		)
+		if err != nil {
+			return fmt.Errorf("failed to create alias handler service: %w", err)
+		}
+		services.RegisterAliasServiceServer(s, as)
+	}
 	if _, ok := currentServices[services.CredentialService_ServiceDesc.ServiceName]; !ok {
 		c, err := credentials.NewService(
 			c.baseContext,
@@ -419,10 +432,10 @@ func registerGrpcGatewayEndpoints(ctx context.Context, gwMux *runtime.ServeMux, 
 		return fmt.Errorf("failed to register session recording service handler: %w", err)
 	}
 	if err := services.RegisterStorageBucketServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
-		return fmt.Errorf("failed to register storage bucket handler: %w", err)
+		return fmt.Errorf("failed to register storage bucket service handler: %w", err)
 	}
-	if err := services.RegisterSessionRecordingServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
-		return fmt.Errorf("failed to register session recording handler: %w", err)
+	if err := services.RegisterAliasServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
+		return fmt.Errorf("failed to register alias service handler: %w", err)
 	}
 	if err := services.RegisterPolicyServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
 		return fmt.Errorf("failed to register policy handler: %w", err)
