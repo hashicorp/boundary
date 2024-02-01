@@ -157,9 +157,11 @@ module.exports = [
   {
     source: '/boundary/docs/configuration/worker/kms-worker',
     destination: '/boundary/docs/configuration/worker/worker-configuration',
+    permanent: true,
   },
   {
     source: '/boundary/docs/configuration/worker/pki-worker',
-    destination: '/boundary/docs/configuration/worker/worker-configuration'
+    destination: '/boundary/docs/configuration/worker/worker-configuration',
+    permanent: true,
   },
 ]
