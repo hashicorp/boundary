@@ -245,6 +245,7 @@ func ConnectToTarget(t testing.TB, pool *dockertest.Pool, network *dockertest.Ne
 			"boundary", "connect",
 			"-token", "env://E2E_AUTH_TOKEN",
 			"-target-id", targetId,
+			"-keyring-type", "none",
 			"-exec", "ls", // Execute something so that the command exits
 			// Note: Would have used `connect ssh` here, but ssh does not exist in the image. Also,
 			// this method only cares about creating a session entry in the database, so the ssh is unnecessary
