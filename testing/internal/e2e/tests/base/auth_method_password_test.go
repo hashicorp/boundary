@@ -172,7 +172,6 @@ func TestCliPaginateAuthMethods(t *testing.T) {
 		e2e.WithArgs(
 			"auth-methods", "list",
 			"-scope-id", newOrgId,
-			"-recursive",
 			"-format=json",
 		),
 	)
@@ -206,7 +205,6 @@ func TestCliPaginateAuthMethods(t *testing.T) {
 		e2e.WithArgs(
 			"auth-methods", "list",
 			"-scope-id", newOrgId,
-			"-recursive",
 			"-format=json",
 		),
 	)
@@ -258,7 +256,7 @@ func TestApiPaginateAuthMethods(t *testing.T) {
 	}
 
 	// List auth methods
-	initialAuthMethods, err := amClient.List(ctx, newOrgId, authmethods.WithRecursive(true))
+	initialAuthMethods, err := amClient.List(ctx, newOrgId)
 	require.NoError(t, err)
 
 	var returnedIds []string
@@ -283,7 +281,7 @@ func TestApiPaginateAuthMethods(t *testing.T) {
 	require.NoError(t, err)
 
 	// List auth methods again, should have new one but not old one
-	newAuthMethods, err := amClient.List(ctx, newOrgId, authmethods.WithListToken(initialAuthMethods.ListToken), authmethods.WithRecursive(true))
+	newAuthMethods, err := amClient.List(ctx, newOrgId, authmethods.WithListToken(initialAuthMethods.ListToken))
 	require.NoError(t, err)
 
 	// Note that this will likely contain all the auth methods,
