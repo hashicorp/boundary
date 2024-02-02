@@ -115,16 +115,26 @@ func newTokenHandlerFunc(ctx context.Context, repo *cache.Repository, refresher 
 				AuthTokenId: perReq.AuthTokenId,
 			}
 			if err = repo.AddKeyringToken(ctx, perReq.BoundaryAddr, kt); err != nil {
+				errCode := http.StatusInternalServerError
+				if errors.Match(errors.T(errors.Forbidden), err) {
+					errCode = http.StatusForbidden
+				}
+
 				err := fmt.Errorf("Failed to add a keyring stored token with id %q: %w", perReq.AuthTokenId, err)
 				event.WriteError(ctx, op, err)
-				writeError(w, err.Error(), http.StatusInternalServerError)
+				writeError(w, err.Error(), errCode)
 				return
 			}
 		case perReq.AuthToken != "":
 			if err = repo.AddRawToken(ctx, perReq.BoundaryAddr, perReq.AuthToken); err != nil {
+				errCode := http.StatusInternalServerError
+				if errors.Match(errors.T(errors.Forbidden), err) {
+					errCode = http.StatusForbidden
+				}
+
 				err := fmt.Errorf("Failed to add a raw token with id %q: %w", perReq.AuthTokenId, err)
 				event.WriteError(ctx, op, err)
-				writeError(w, fmt.Sprintf("Failed to add a raw token: %v", err), http.StatusInternalServerError)
+				writeError(w, err.Error(), errCode)
 				return
 			}
 		}

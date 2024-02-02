@@ -182,7 +182,10 @@ func defaultBoundaryTokenReader(ctx context.Context, cp ClientProvider) (cache.B
 
 		at, err := atClient.Read(ctx, atId)
 		if err != nil {
-			return nil, errors.Wrap(ctx, err, op)
+			if api.ErrPermissionDenied.Is(err) {
+				return nil, errors.Wrap(ctx, err, op, errors.WithMsg("Failed to get auth token from Boundary"), errors.WithCode(errors.Forbidden), errors.WithoutEvent())
+			}
+			return nil, errors.Wrap(ctx, err, op, errors.WithoutEvent())
 		}
 		return at.GetItem(), nil
 	}, nil
