@@ -150,6 +150,32 @@ var inputStructs = map[string][]*cmdInfo{
 			VersionedActions:    []string{"update"},
 		},
 	},
+	"aliases": {
+		{
+			ResourceType:     resource.Alias.String(),
+			Pkg:              "aliases",
+			StdActions:       []string{"read", "delete", "list"},
+			HasExtraHelpFunc: true,
+			Container:        "Scope",
+			HasId:            true,
+		},
+		{
+			ResourceType:          resource.Alias.String(),
+			Pkg:                   "aliases",
+			StdActions:            []string{"create", "update"},
+			SubActionPrefix:       "target",
+			HasExtraCommandVars:   true,
+			SkipNormalHelp:        true,
+			HasExtraHelpFunc:      true,
+			HasId:                 true,
+			HasName:               true,
+			HasDescription:        true,
+			Container:             "Scope",
+			VersionedActions:      []string{"update"},
+			NeedsSubtypeInCreate:  true,
+			SkipClientCallActions: []string{"create"},
+		},
+	},
 	"authmethods": {
 		{
 			ResourceType:     resource.AuthMethod.String(),

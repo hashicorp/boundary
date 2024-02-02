@@ -6,6 +6,7 @@ package cmd
 import (
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/commands/accountscmd"
+	"github.com/hashicorp/boundary/internal/cmd/commands/aliasescmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/authenticate"
 	"github.com/hashicorp/boundary/internal/cmd/commands/authmethodscmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/authtokenscmd"
@@ -153,6 +154,47 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 			}),
 		"accounts update ldap": clientCacheWrapper(
 			&accountscmd.LdapCommand{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "update",
+			}),
+
+		"aliases": func() (cli.Command, error) {
+			return &aliasescmd.Command{
+				Command: base.NewCommand(ui, opts...),
+			}, nil
+		},
+		"aliases read": clientCacheWrapper(
+			&aliasescmd.Command{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "read",
+			}),
+		"aliases delete": clientCacheWrapper(
+			&aliasescmd.Command{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "delete",
+			}),
+		"aliases list": clientCacheWrapper(
+			&aliasescmd.Command{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "list",
+			}),
+		"aliases create": clientCacheWrapper(
+			&aliasescmd.Command{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "create",
+			}),
+		"aliases update": clientCacheWrapper(
+			&aliasescmd.Command{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "update",
+			}),
+		"aliases create target": clientCacheWrapper(
+			&aliasescmd.TargetCommand{
+				Command: base.NewCommand(ui, opts...),
+				Func:    "create",
+			}),
+		"aliases update target": clientCacheWrapper(
+			&aliasescmd.TargetCommand{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "update",
 			}),
