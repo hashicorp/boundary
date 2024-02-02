@@ -7,7 +7,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"strings"
 
@@ -111,12 +110,12 @@ func (c *AddTokenCommand) Run(args []string) int {
 		return base.CommandCliError
 	}
 
-	keyringType, tokenName, _ := c.DiscoverKeyringTokenInfo()
 	// We ignore the error here since not having a keyring on the platform
 	// returns an error but can be treated as the keyring type being set to
 	// none.
+	keyringType, tokenName, _ := c.DiscoverKeyringTokenInfo()
 
-	resp, apiErr, err := c.Add(ctx, client, keyringType, tokenName)
+	resp, apiErr, err := c.Add(ctx, c.UI, client, keyringType, tokenName)
 	if err != nil {
 		c.PrintCliError(err)
 		return base.CommandCliError
@@ -136,16 +135,12 @@ func (c *AddTokenCommand) Run(args []string) int {
 	return base.CommandSuccess
 }
 
-// silentUi should not be used in situations where the UI is expected to be
-// prompt the user for input.
-func silentUi() *cli.BasicUi {
-	return &cli.BasicUi{
-		Writer:      io.Discard,
-		ErrorWriter: io.Discard,
-	}
-}
-
-func (c *AddTokenCommand) Add(ctx context.Context, apiClient *api.Client, keyringType, tokenName string) (*api.Response, *api.Error, error) {
+// Add builds the UpsertTokenRequest using the client's address and token,
+// and trying to leverage the keyring. It then sends the request to the daemon.
+// The passed in cli.Ui is used to print out any errors when looking up the
+// auth token from the keyring. This allows background operations calling this
+// method to pass in a silent UI to suppress any output.
+func (c *AddTokenCommand) Add(ctx context.Context, ui cli.Ui, apiClient *api.Client, keyringType, tokenName string) (*api.Response, *api.Error, error) {
 	pa := daemon.UpsertTokenRequest{
 		BoundaryAddr: apiClient.Addr(),
 	}
@@ -159,7 +154,9 @@ func (c *AddTokenCommand) Add(ctx context.Context, apiClient *api.Client, keyrin
 	} else {
 		return nil, nil, errors.New("The client provided auth token is not in the proper format.")
 	}
+	var opts []client.Option
 	if c.FlagOutputCurlString {
+		opts = append(opts, client.WithOutputCurlString())
 		pa.AuthToken = "/*token*/"
 	} else {
 		pa.AuthToken = token
@@ -177,7 +174,7 @@ func (c *AddTokenCommand) Add(ctx context.Context, apiClient *api.Client, keyrin
 
 		// Try to read the token from the keyring in a best effort way. Ignore
 		// any errors since the keyring may night be present on the system.
-		at := base.ReadTokenFromKeyring(silentUi(), keyringType, tokenName)
+		at := base.ReadTokenFromKeyring(ui, keyringType, tokenName)
 		if at != nil && (token == "" || pa.AuthTokenId == at.Id) {
 			pa.Keyring = &daemon.KeyringToken{
 				KeyringType: keyringType,
@@ -187,10 +184,6 @@ func (c *AddTokenCommand) Add(ctx context.Context, apiClient *api.Client, keyrin
 			// through the keyring instead of passing it through the request.
 			pa.AuthToken = ""
 		}
-	}
-	var opts []client.Option
-	if c.FlagOutputCurlString {
-		opts = append(opts, client.WithOutputCurlString())
 	}
 
 	dotPath, err := DefaultDotDirectory(ctx)
