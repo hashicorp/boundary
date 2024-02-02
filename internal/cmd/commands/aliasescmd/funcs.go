@@ -97,6 +97,9 @@ func printItemTable(item *aliases.Alias, resp *api.Response) string {
 	if item.Version != 0 {
 		nonAttributeMap["Version"] = item.Version
 	}
+	if item.Type != "" {
+		nonAttributeMap["Type"] = item.Type
+	}
 	if !item.CreatedTime.IsZero() {
 		nonAttributeMap["Created Time"] = item.CreatedTime.Local().Format(time.RFC1123)
 	}
@@ -137,6 +140,18 @@ func printItemTable(item *aliases.Alias, resp *api.Response) string {
 			"",
 			"  Authorized Actions:",
 			base.WrapSlice(4, item.AuthorizedActions),
+		)
+	}
+
+	if len(item.Attributes) > 0 {
+		authSessArgs := item.Attributes["authorize_session_arguments"].(map[string]any)
+		authSessArgs["another"] = "value"
+		ret = append(ret,
+			"",
+			"  Attributes:",
+			// TODO: This looks kind of ugly but it is used across boundary.
+			// Revisit the formatting of attributes that have nested maps.
+			base.WrapMap(4, maxLength+2, item.Attributes),
 		)
 	}
 

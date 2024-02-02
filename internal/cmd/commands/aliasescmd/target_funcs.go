@@ -58,7 +58,6 @@ func (c *TargetCommand) extraTargetHelpFunc(helpMap map[string]func() string) st
 }
 
 func extraTargetFlagsFuncImpl(c *TargetCommand, set *base.FlagSets, f *base.FlagSet) {
-	f = set.NewFlagSet("Target Alias Options")
 
 	for _, name := range flagsTargetMap[c.Func] {
 		switch name {
@@ -74,6 +73,12 @@ func extraTargetFlagsFuncImpl(c *TargetCommand, set *base.FlagSets, f *base.Flag
 				Target: &c.flagDestinationId,
 				Usage:  "The target id that the alias points to.",
 			})
+		}
+	}
+
+	f = set.NewFlagSet("Target Alias Options")
+	for _, name := range flagsTargetMap[c.Func] {
+		switch name {
 		case "authorize-session-host-id":
 			f.StringVar(&base.StringVar{
 				Name:   "authorize-session-host-id",
