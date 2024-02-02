@@ -350,9 +350,7 @@ func (c *Command) Client(opt ...Option) (*api.Client, error) {
 func (c *Command) ExtractAliasFromArgs(inArgs []string) []string {
 	if len(inArgs) > 0 && inArgs[0][0] != '-' {
 		c.AliasField = inArgs[0]
-		outArgs := make([]string, len(inArgs)-1)
-		outArgs = inArgs[1:]
-		return outArgs
+		return inArgs[1:]
 	}
 
 	return inArgs
