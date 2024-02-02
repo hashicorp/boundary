@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/api"
+	"github.com/hashicorp/boundary/api/roles"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/daemon/controller"
 	"github.com/stretchr/testify/assert"
@@ -28,6 +29,21 @@ func TestDefaultBoundaryTokenReader(t *testing.T) {
 	})
 
 	tc := controller.NewTestController(t, nil)
+	client := tc.Client()
+	client.SetToken(tc.Token().Token)
+	rclient := roles.NewClient(client)
+	rl, err := rclient.List(ctx, "global", roles.WithRecursive(true))
+	require.NoError(t, err)
+
+	// delete everything except for the admin role
+	for _, r := range rl.Items {
+		if r.Name == "Administration" {
+			continue
+		}
+		_, err := rclient.Delete(ctx, r.Id)
+		require.NoError(t, err)
+	}
+
 	cp := fakeClientProvider{tc}
 
 	cases := []struct {
@@ -41,6 +57,12 @@ func TestDefaultBoundaryTokenReader(t *testing.T) {
 			address:     tc.ApiAddrs()[0],
 			token:       tc.Token().Token,
 			errContains: "",
+		},
+		{
+			name:        "token cant read itself",
+			address:     tc.ApiAddrs()[0],
+			token:       tc.UnprivilegedToken().Token,
+			errContains: "PermissionDenied",
 		},
 		{
 			name:        "empty address",
