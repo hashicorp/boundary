@@ -47,6 +47,7 @@ func HelpMap(resType string) map[string]func() string {
 		resource.SessionRecording.String(): "sr",
 		resource.StorageBucket.String():    "sb",
 		resource.Policy.String():           "p",
+		resource.Alias.String():            "alt",
 	}
 	return map[string]func() string{
 		"base": func() string {
