@@ -38,6 +38,10 @@ variable "auth_password" {
   type        = string
   default     = ""
 }
+variable "max_page_size" {
+  description = "Max allowed page size for pagination requests"
+  type        = number
+}
 variable "local_boundary_dir" {
   description = "Local Path to boundary executable"
   type        = string
@@ -184,6 +188,7 @@ resource "enos_local_exec" "run_e2e_test" {
     E2E_WORKER_TAG_INGRESS        = var.worker_tag_ingress
     E2E_WORKER_TAG_EGRESS         = var.worker_tag_egress
     E2E_WORKER_ADDRESS            = var.worker_address
+    E2E_MAX_PAGE_SIZE             = var.max_page_size
   }
 
   inline = var.debug_no_run ? [""] : [

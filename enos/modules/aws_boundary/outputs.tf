@@ -152,6 +152,10 @@ output "project_scope_name" {
   value       = try(enos_boundary_init.controller[0].project_scope_name, null)
 }
 
+output "max_page_size" {
+  value = var.max_page_size
+}
+
 output "target_id" {
   description = "Generated target id from boundary init"
   value       = try(enos_boundary_init.controller[0].target_id, null)

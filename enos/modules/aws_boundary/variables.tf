@@ -316,6 +316,12 @@ variable "healthcheck_path" {
   default     = "/health"
 }
 
+variable "max_page_size" {
+  description = "Max allowed page size for pagination requests"
+  type        = number
+  default     = 10
+}
+
 variable "alb_sg_additional_ips" {
   description = "Additional IPs to be allowed (ingress) on an ALB Security Group"
   type        = list(string)

@@ -20,6 +20,8 @@ listener "tcp" {
   purpose = "api"
   tls_disable = true
 
+  max_page_size = ${max_page_size}
+
   # Uncomment to enable CORS for the Admin UI. Be sure to set the allowed origin(s)
   # to appropriate values.
   #cors_enabled = true
