@@ -88,6 +88,11 @@ type cmdInfo struct {
 	SkipClientCallActions []string
 
 	SkipFiltering bool
+
+	// TODO add doc here
+	UsesAlias          bool
+	AliasFieldFlag     string
+	AliasFieldFlagName string
 }
 
 var inputStructs = map[string][]*cmdInfo{
@@ -663,6 +668,9 @@ var inputStructs = map[string][]*cmdInfo{
 			HasDescription:      true,
 			Container:           "Scope",
 			VersionedActions:    []string{"add-host-sources", "remove-host-sources", "set-host-sources", "add-credential-sources", "remove-credential-sources", "set-credential-sources"},
+			UsesAlias:           true,
+			AliasFieldFlag:      "FlagId",
+			AliasFieldFlagName:  "id",
 		},
 		{
 			ResourceType:         resource.Target.String(),
@@ -678,6 +686,9 @@ var inputStructs = map[string][]*cmdInfo{
 			HasDescription:       true,
 			VersionedActions:     []string{"update"},
 			NeedsSubtypeInCreate: true,
+			UsesAlias:            true,
+			AliasFieldFlag:       "FlagId",
+			AliasFieldFlagName:   "id",
 		},
 		{
 			ResourceType:         resource.Target.String(),
@@ -693,6 +704,9 @@ var inputStructs = map[string][]*cmdInfo{
 			HasDescription:       true,
 			VersionedActions:     []string{"update"},
 			NeedsSubtypeInCreate: true,
+			UsesAlias:            true,
+			AliasFieldFlag:       "FlagId",
+			AliasFieldFlagName:   "id",
 		},
 	},
 	"users": {

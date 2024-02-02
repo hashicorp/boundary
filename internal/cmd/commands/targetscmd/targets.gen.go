@@ -142,6 +142,16 @@ func (c *Command) Run(args []string) int {
 
 	f := c.Flags()
 
+	args = c.ExtractAliasFromArgs(args)
+
+	if c.FlagAlias != "" {
+		if c.FlagId != "" {
+			c.PrintCliError(errors.New("Cannot specify both an alias and id; choose one or the other"))
+			return base.CommandUserError
+		}
+		c.FlagId = c.FlagAlias
+	}
+
 	if err := f.Parse(args); err != nil {
 		c.PrintCliError(err)
 		return base.CommandUserError
