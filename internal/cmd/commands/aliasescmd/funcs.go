@@ -39,7 +39,7 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 			"",
 			`    $ boundary aliases create target -value prod-ops.example -name prodops -description "Target alias for ProdOps"`,
 			"",
-			"",
+			"  Please see the typed subcommand help for detailed usage information.",
 		})
 	case "update":
 		helpStr = base.WrapForHelpText([]string{
@@ -49,7 +49,7 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 			"",
 			`    $ boundary aliases update target -id alt_1234567890 -name devops`,
 			"",
-			"",
+			"  Please see the typed subcommand help for detailed usage information.",
 		})
 
 	default:
