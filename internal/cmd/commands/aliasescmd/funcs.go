@@ -18,6 +18,43 @@ type extraCmdVars struct {
 
 func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 	var helpStr string
+	switch c.Func {
+	case "":
+		return base.WrapForHelpText([]string{
+			"Usage: boundary aliases [sub command] [options] [args]",
+			"",
+			"  This command allows operations on Boundary alias resources. Example:",
+			"",
+			"    Read an alias:",
+			"",
+			`      $ boundary aliases read -id alt_1234567890`,
+			"",
+			"  Please see the aliases subcommand help for detailed usage information.",
+		})
+	case "create":
+		helpStr = base.WrapForHelpText([]string{
+			"Usage: boundary aliases create target [options] [args]",
+			"",
+			"  Create an alias. Example:",
+			"",
+			`    $ boundary aliases create target -value prod-ops.example -name prodops -description "Target alias for ProdOps"`,
+			"",
+			"",
+		})
+	case "update":
+		helpStr = base.WrapForHelpText([]string{
+			"Usage: boundary aliases update target [options] [args]",
+			"",
+			"  Update an alias. Example:",
+			"",
+			`    $ boundary aliases update target -id alt_1234567890 -name devops`,
+			"",
+			"",
+		})
+
+	default:
+		helpStr = ""
+	}
 	return helpStr + c.Flags().Help()
 }
 
