@@ -294,7 +294,7 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 			c.PrintCliError(errors.New("Cannot specify both an alias and {{ .AliasFieldFlagName }}; choose one or the other"))
 			return base.CommandUserError
 		}
-		c.{{ .AliasFieldFlag }} = c.FlagAlias
+		c.{{ .AliasFieldFlag }} = c.AliasField
    }
    {{ end }}
 

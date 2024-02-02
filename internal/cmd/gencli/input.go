@@ -89,9 +89,15 @@ type cmdInfo struct {
 
 	SkipFiltering bool
 
-	// TODO add doc here
-	UsesAlias          bool
-	AliasFieldFlag     string
+	// UsesAlias controls whether to attempt to extract aliases from the CLI args
+	UsesAlias bool
+
+	// AliasFieldFlag controls which command flag to substitute a found alias for
+	AliasFieldFlag string
+
+	// AliasFlagFieldName is used in the CLI template to populate an error message.
+	// It controls what to print as the field replaced by an alias
+	// if both an alias and the AliasFieldFlag are provided.
 	AliasFieldFlagName string
 }
 

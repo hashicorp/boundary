@@ -273,12 +273,12 @@ func (c *Command) Run(args []string) (retCode int) {
 	defer c.proxyCancel()
 
 	switch {
-	case c.FlagAlias != "":
+	case c.AliasField != "":
 		if c.flagTargetId != "" {
 			c.PrintCliError(errors.New("Cannot specify both a Target alias and Target ID; choose one or the other"))
 			return base.CommandUserError
 		}
-		c.flagTargetId = c.FlagAlias
+		c.flagTargetId = c.AliasField
 	case c.flagAuthzToken != "":
 		switch {
 		case c.flagTargetId != "":

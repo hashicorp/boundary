@@ -149,7 +149,7 @@ func (c *Command) Run(args []string) int {
 			c.PrintCliError(errors.New("Cannot specify both an alias and id; choose one or the other"))
 			return base.CommandUserError
 		}
-		c.FlagId = c.FlagAlias
+		c.FlagId = c.AliasField
 	}
 
 	if err := f.Parse(args); err != nil {

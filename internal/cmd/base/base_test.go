@@ -32,56 +32,32 @@ func Test_extractAliasFromArgs(t *testing.T) {
 			wantArgs: []string{"-flag=value"},
 		},
 		{
-			name:      "alias-after-flag",
-			args:      []string{"-flag", "value", "alias.value"},
-			wantArgs:  []string{"-flag", "value"},
-			wantAlias: "alias.value",
-		},
-		{
-			name:      "alias-after-flags",
-			args:      []string{"-flag", "value", "-flag2", "value2", "alias.value"},
-			wantArgs:  []string{"-flag", "value", "-flag2", "value2"},
-			wantAlias: "alias.value",
-		},
-		{
-			name:      "alias-before-flag",
+			name:      "alias-and-flag",
 			args:      []string{"alias.value", "-flag", "value"},
 			wantArgs:  []string{"-flag", "value"},
 			wantAlias: "alias.value",
 		},
 		{
-			name:      "alias-before-flags",
+			name:      "alias-and-flags",
 			args:      []string{"alias.value", "-flag", "value", "-flag2", "value2"},
 			wantArgs:  []string{"-flag", "value", "-flag2", "value2"},
 			wantAlias: "alias.value",
 		},
 		{
-			name:      "alias-between-flags",
-			args:      []string{"-flag", "value", "alias.value", "-flag2", "value2"},
-			wantArgs:  []string{"-flag", "value", "-flag2", "value2"},
-			wantAlias: "alias.value",
-		},
-		{
-			name:      "alias-after-equal-flag",
-			args:      []string{"-flag=value", "alias.value"},
-			wantArgs:  []string{"-flag=value"},
-			wantAlias: "alias.value",
-		},
-		{
-			name:      "alias-before-equal-flag",
+			name:      "alias-and-equal-flag",
 			args:      []string{"alias.value", "-flag=value"},
 			wantArgs:  []string{"-flag=value"},
 			wantAlias: "alias.value",
 		},
 		{
-			name:      "alias-between-equal-flags",
-			args:      []string{"-flag=value", "alias.value", "-flag2=value2"},
+			name:      "alias-and-equal-flags",
+			args:      []string{"alias.value", "-flag=value", "-flag2=value2"},
 			wantArgs:  []string{"-flag=value", "-flag2=value2"},
 			wantAlias: "alias.value",
 		},
 		{
 			name:      "alias-mixed-flags",
-			args:      []string{"-flag", "value", "alias.value", "-flag=value"},
+			args:      []string{"alias.value", "-flag", "value", "-flag=value"},
 			wantArgs:  []string{"-flag", "value", "-flag=value"},
 			wantAlias: "alias.value",
 		},
@@ -91,7 +67,7 @@ func Test_extractAliasFromArgs(t *testing.T) {
 			assert := assert.New(t)
 			cmd := NewCommand(ui)
 
-			args := cmd.extractAliasFromArgs(tt.args)
+			args := cmd.ExtractAliasFromArgs(tt.args)
 			assert.Equal(args, tt.wantArgs)
 
 			if tt.wantAlias != "" {

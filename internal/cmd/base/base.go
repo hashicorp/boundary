@@ -137,7 +137,7 @@ type Command struct {
 	FlagObject string
 	FlagKv     []CombinedSliceFlagValue
 
-	FlagAlias string
+	AliasField string
 
 	client *api.Client
 
@@ -346,33 +346,16 @@ func (c *Command) Client(opt ...Option) (*api.Client, error) {
 	return c.client, nil
 }
 
-// Iterate through a command's args to extract a passed alias, if present
+// If the first arg isn't a flag, extract it as the alias
 func (c *Command) ExtractAliasFromArgs(inArgs []string) []string {
-	if len(inArgs) == 0 {
-		return inArgs
+	if len(inArgs) > 0 && inArgs[0][0] != '-' {
+		c.AliasField = inArgs[0]
+		outArgs := make([]string, len(inArgs)-1)
+		outArgs = inArgs[1:]
+		return outArgs
 	}
 
-	outArgs := make([]string, 0, len(inArgs))
-
-	expectingFlagValue := false
-	for i, v := range inArgs {
-		if v[0] != '-' && !expectingFlagValue {
-			c.FlagAlias = v
-			outArgs = append(outArgs, inArgs[i+1:]...)
-			break
-		}
-		if v[0] == '-' {
-			// If this flag arg doesn't have a = (ex: -flag=value), then the next arg should be the flag value
-			if !strings.Contains(v, "=") {
-				expectingFlagValue = true
-			}
-		} else if expectingFlagValue {
-			expectingFlagValue = false
-		}
-		outArgs = append(outArgs, v)
-	}
-
-	return outArgs
+	return inArgs
 }
 
 type FlagSetBit uint
