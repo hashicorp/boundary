@@ -6,6 +6,7 @@ package aliases
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/alias/target"
@@ -48,6 +49,8 @@ var (
 		action.List,
 	)
 )
+
+const aliasTypeTarget = "target"
 
 func init() {
 	var err error
@@ -522,6 +525,9 @@ func toProto(ctx context.Context, in *target.Alias, opt ...handlers.Option) (*pb
 	if outputFields.Has(globals.ScopeIdField) {
 		out.ScopeId = in.GetScopeId()
 	}
+	if outputFields.Has(globals.TypeField) {
+		out.Type = aliasTypeTarget
+	}
 	if outputFields.Has(globals.NameField) && in.GetName() != "" {
 		out.Name = wrapperspb.String(in.GetName())
 	}
@@ -576,8 +582,14 @@ func validateCreateRequest(req *pbs.CreateAliasRequest) error {
 		if scope.Global.String() != req.GetItem().GetScopeId() {
 			badFields["scope_id"] = "This field is missing or improperly formatted."
 		}
+		if req.GetItem().GetValue() == "" {
+			badFields[globals.ValueField] = "This field is required."
+		}
+		if !strings.EqualFold(req.GetItem().GetType(), aliasTypeTarget) {
+			badFields[globals.TypeField] = "This field is required. Current supported values are 'target'."
+		}
 		if req.GetItem().GetTargetAliasAttributes().GetAuthorizeSessionArguments().GetHostId() != "" && req.GetItem().GetDestinationId().GetValue() == "" {
-			badFields["destination_id"] = "This field is required when 'attributes.authorize_sesion_arguments.host_id' is specified."
+			badFields[globals.DestinationIdField] = "This field is required when 'attributes.authorize_sesion_arguments.host_id' is specified."
 		}
 		return badFields
 	})

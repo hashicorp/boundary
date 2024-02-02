@@ -765,11 +765,49 @@ var inputStructs = []*structInfo{
 
 	// Alias related resources
 	{
+		inProto:        &aliases.TargetAliasAttributes{},
+		outFile:        "aliases/target_alias_attributes.gen.go",
+		subtypeName:    "target",
+		parentTypeName: "Alias",
+		templates: []*template.Template{
+			mapstructureConversionTemplate,
+		},
+	},
+	{
+		inProto:     &aliases.AuthorizeSessionArguments{},
+		outFile:     "aliases/authorize_session_arguments.gen.go",
+		skipOptions: true,
+	},
+	{
 		inProto: &aliases.Alias{},
 		outFile: "aliases/alias.gen.go",
 		templates: []*template.Template{
 			clientTemplate,
-			commonCreateTemplate,
+			template.Must(template.New("").Funcs(
+				template.FuncMap{
+					"snakeCase": snakeCase,
+					"funcName": func() string {
+						return "Create"
+					},
+					"apiAction": func() string {
+						return ""
+					},
+					"extraRequiredParams": func() []requiredParam {
+						return []requiredParam{
+							{
+								Name:     "resourceType",
+								Typ:      "string",
+								PostType: "type",
+							},
+							{
+								Name:     "alias",
+								Typ:      "string",
+								PostType: "value",
+							},
+						}
+					},
+				},
+			).Parse(createTemplateStr)),
 			readTemplate,
 			updateTemplate,
 			deleteTemplate,
