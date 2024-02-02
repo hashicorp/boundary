@@ -289,7 +289,7 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
    {{ if .UsesAlias }}
 		args = c.ExtractAliasFromArgs(args)
 
-	if c.FlagAlias != ""{
+	if c.AliasField != ""{
 		if c.{{ .AliasFieldFlag }} != "" {
 			c.PrintCliError(errors.New("Cannot specify both an alias and {{ .AliasFieldFlagName }}; choose one or the other"))
 			return base.CommandUserError

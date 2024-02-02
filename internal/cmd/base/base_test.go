@@ -71,7 +71,7 @@ func Test_extractAliasFromArgs(t *testing.T) {
 			assert.Equal(args, tt.wantArgs)
 
 			if tt.wantAlias != "" {
-				assert.Equal(cmd.FlagAlias, tt.wantAlias)
+				assert.Equal(cmd.AliasField, tt.wantAlias)
 			}
 		})
 	}

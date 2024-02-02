@@ -122,7 +122,7 @@ func (c *SshCommand) Run(args []string) int {
 
 	args = c.ExtractAliasFromArgs(args)
 
-	if c.FlagAlias != "" {
+	if c.AliasField != "" {
 		if c.FlagId != "" {
 			c.PrintCliError(errors.New("Cannot specify both an alias and id; choose one or the other"))
 			return base.CommandUserError
