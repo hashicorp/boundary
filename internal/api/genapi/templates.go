@@ -467,8 +467,8 @@ func (c *Client) {{ funcName }} (ctx context.Context, {{ range extraRequiredPara
 
 	if c.client == nil {
 		return nil, fmt.Errorf("nil client")
-	}
-	{{ range extraRequiredParams }} if {{ .Name }} == "" {
+	}{{ range extraRequiredParams }}
+	if {{ .Name }} == "" {
 		return nil, fmt.Errorf("empty {{ .Name }} value passed into {{ funcName }} request")
 	} else {
 		opts.postMap["{{ .PostType }}"] = {{ .Name }}

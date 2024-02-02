@@ -68,6 +68,7 @@ func TestGet(t *testing.T) {
 
 	globalScopeInfo := &scopes.ScopeInfo{Id: scope.Global.String(), Type: scope.Global.String(), Name: "global", Description: "Global Scope"}
 	wantAlias := &pb.Alias{
+		Type:          "target",
 		Id:            og.GetPublicId(),
 		ScopeId:       "global",
 		Scope:         globalScopeInfo,
@@ -166,6 +167,7 @@ func TestList(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		gg := target.TestAlias(t, rw, fmt.Sprintf("test%d.alias", i))
 		wantGlobalAliass = append(wantGlobalAliass, &pb.Alias{
+			Type:              "target",
 			Id:                gg.GetPublicId(),
 			ScopeId:           gg.GetScopeId(),
 			Scope:             &scopes.ScopeInfo{Id: scope.Global.String(), Type: scope.Global.String(), Name: "global", Description: "Global Scope"},
@@ -261,6 +263,7 @@ func TestList(t *testing.T) {
 
 func aliasToProto(u *target.Alias, si *scopes.ScopeInfo, authorizedActions []string) *pb.Alias {
 	pu := &pb.Alias{
+		Type:              "target",
 		Id:                u.GetPublicId(),
 		Value:             u.GetValue(),
 		ScopeId:           u.GetScopeId(),
@@ -737,12 +740,14 @@ func TestCreate(t *testing.T) {
 		{
 			name: "Create a valid Alias",
 			req: &pbs.CreateAliasRequest{Item: &pb.Alias{
+				Type:    "target",
 				ScopeId: scope.Global.String(),
 				Value:   "valid.alias",
 			}},
 			res: &pbs.CreateAliasResponse{
 				Uri: fmt.Sprintf("aliases/%s_", globals.TargetAliasPrefix),
 				Item: &pb.Alias{
+					Type:              "target",
 					ScopeId:           scope.Global.String(),
 					Scope:             globalScopeInfo,
 					Value:             "valid.alias",
@@ -754,6 +759,7 @@ func TestCreate(t *testing.T) {
 		{
 			name: "Alias to existing target",
 			req: &pbs.CreateAliasRequest{Item: &pb.Alias{
+				Type:          "target",
 				ScopeId:       scope.Global.String(),
 				Value:         "target-assigned.valid.alias",
 				DestinationId: wrapperspb.String(tar.GetPublicId()),
@@ -761,6 +767,7 @@ func TestCreate(t *testing.T) {
 			res: &pbs.CreateAliasResponse{
 				Uri: fmt.Sprintf("aliases/%s_", globals.TargetAliasPrefix),
 				Item: &pb.Alias{
+					Type:              "target",
 					ScopeId:           scope.Global.String(),
 					Scope:             globalScopeInfo,
 					Value:             "target-assigned.valid.alias",
@@ -771,8 +778,18 @@ func TestCreate(t *testing.T) {
 			},
 		},
 		{
+			name: "Omitting the alias type",
+			req: &pbs.CreateAliasRequest{Item: &pb.Alias{
+				ScopeId:       scope.Global.String(),
+				Value:         "target-assigned.valid.alias",
+				DestinationId: wrapperspb.String(tar.GetPublicId()),
+			}},
+			errContains: `This field is required`,
+		},
+		{
 			name: "host id with no destination target",
 			req: &pbs.CreateAliasRequest{Item: &pb.Alias{
+				Type:    "target",
 				ScopeId: scope.Global.String(),
 				Value:   "host-id.no-destination.alias",
 				Attrs: &pb.Alias_TargetAliasAttributes{
@@ -788,6 +805,7 @@ func TestCreate(t *testing.T) {
 		{
 			name: "Alias to non existing target",
 			req: &pbs.CreateAliasRequest{Item: &pb.Alias{
+				Type:          "target",
 				ScopeId:       scope.Global.String(),
 				Value:         "unknowntarget.alias",
 				DestinationId: wrapperspb.String("ttcp_1234567890"),
@@ -797,6 +815,7 @@ func TestCreate(t *testing.T) {
 		{
 			name: "Duplicate Alias Value",
 			req: &pbs.CreateAliasRequest{Item: &pb.Alias{
+				Type:    "target",
 				ScopeId: scope.Global.String(),
 				Value:   al.GetValue(),
 			}},
@@ -805,6 +824,7 @@ func TestCreate(t *testing.T) {
 		{
 			name: "Duplicate Alias Name",
 			req: &pbs.CreateAliasRequest{Item: &pb.Alias{
+				Type:    "target",
 				ScopeId: scope.Global.String(),
 				Value:   "duplicate.alias.name",
 				Name:    wrapperspb.String(al.GetName()),
@@ -814,6 +834,7 @@ func TestCreate(t *testing.T) {
 		{
 			name: "must be in global scope",
 			req: &pbs.CreateAliasRequest{Item: &pb.Alias{
+				Type:    "target",
 				ScopeId: p.GetPublicId(),
 				Value:   "must.be.in.global.scope",
 			}},
@@ -822,6 +843,7 @@ func TestCreate(t *testing.T) {
 		{
 			name: "Can't specify Id",
 			req: &pbs.CreateAliasRequest{Item: &pb.Alias{
+				Type:    "target",
 				ScopeId: scope.Global.String(),
 				Id:      globals.TargetAliasPrefix + "_notallowed",
 			}},
@@ -831,6 +853,7 @@ func TestCreate(t *testing.T) {
 		{
 			name: "Can't specify Created Time",
 			req: &pbs.CreateAliasRequest{Item: &pb.Alias{
+				Type:        "target",
 				ScopeId:     scope.Global.String(),
 				CreatedTime: timestamppb.Now(),
 			}},
@@ -840,6 +863,7 @@ func TestCreate(t *testing.T) {
 		{
 			name: "Can't specify Update Time",
 			req: &pbs.CreateAliasRequest{Item: &pb.Alias{
+				Type:        "target",
 				ScopeId:     scope.Global.String(),
 				UpdatedTime: timestamppb.Now(),
 			}},
@@ -942,6 +966,7 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateAliasResponse{
 				Item: &pb.Alias{
+					Type:              "target",
 					Id:                og.GetPublicId(),
 					ScopeId:           og.GetScopeId(),
 					Scope:             globalScopeInfo,
@@ -968,6 +993,7 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateAliasResponse{
 				Item: &pb.Alias{
+					Type:              "target",
 					Id:                og.GetPublicId(),
 					ScopeId:           og.GetScopeId(),
 					Scope:             globalScopeInfo,
@@ -1024,6 +1050,7 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateAliasResponse{
 				Item: &pb.Alias{
+					Type:              "target",
 					Id:                og.GetPublicId(),
 					ScopeId:           og.GetScopeId(),
 					Scope:             globalScopeInfo,
@@ -1049,6 +1076,7 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateAliasResponse{
 				Item: &pb.Alias{
+					Type:              "target",
 					Id:                og.GetPublicId(),
 					Name:              wrapperspb.String("updated"),
 					ScopeId:           og.GetScopeId(),
@@ -1075,6 +1103,7 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateAliasResponse{
 				Item: &pb.Alias{
+					Type:              "target",
 					Id:                og.GetPublicId(),
 					ScopeId:           og.GetScopeId(),
 					Scope:             globalScopeInfo,
@@ -1114,6 +1143,7 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateAliasResponse{
 				Item: &pb.Alias{
+					Type:              "target",
 					Id:                og.GetPublicId(),
 					ScopeId:           og.GetScopeId(),
 					Scope:             globalScopeInfo,
@@ -1139,6 +1169,7 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateAliasResponse{
 				Item: &pb.Alias{
+					Type:              "target",
 					Id:                og.GetPublicId(),
 					ScopeId:           og.GetScopeId(),
 					Scope:             globalScopeInfo,
@@ -1163,6 +1194,7 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateAliasResponse{
 				Item: &pb.Alias{
+					Type:              "target",
 					Id:                og.GetPublicId(),
 					ScopeId:           og.GetScopeId(),
 					Scope:             globalScopeInfo,

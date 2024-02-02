@@ -4820,6 +4820,10 @@
           "type": "string",
           "description": "destination_id is the id of the resource that this Alias points to."
         },
+        "type": {
+          "type": "string",
+          "description": "type is the type of the alias."
+        },
         "attributes": {
           "type": "object",
           "description": "The attributes that are applicable for the specific Alias type."
