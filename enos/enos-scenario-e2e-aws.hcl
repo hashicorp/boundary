@@ -131,36 +131,6 @@ scenario "e2e_aws" {
     }
   }
 
-  step "create_tag2" {
-    module = module.random_stringifier
-  }
-
-  step "create_tag2_inputs" {
-    module     = module.generate_aws_host_tag_vars
-    depends_on = [step.create_tag2]
-
-    variables {
-      tag_name  = step.create_tag2.string
-      tag_value = "test"
-    }
-  }
-
-  step "create_targets_with_tag2" {
-    module     = module.aws_target
-    depends_on = [step.create_base_infra]
-
-    variables {
-      ami_id               = step.create_base_infra.ami_ids["ubuntu"]["amd64"]
-      aws_ssh_keypair_name = var.aws_ssh_keypair_name
-      enos_user            = var.enos_user
-      instance_type        = var.target_instance_type
-      vpc_id               = step.create_base_infra.vpc_id
-      target_count         = 1
-      additional_tags      = step.create_tag2_inputs.tag_map
-      subnet_ids           = step.create_boundary_cluster.subnet_ids
-    }
-  }
-
   step "create_test_id" {
     module = module.random_stringifier
     variables {
@@ -205,6 +175,20 @@ scenario "e2e_aws" {
     }
   }
 
+  step "create_tag2" {
+    module = module.random_stringifier
+  }
+
+  step "create_tag2_inputs" {
+    module     = module.generate_aws_host_tag_vars
+    depends_on = [step.create_tag2]
+
+    variables {
+      tag_name  = step.create_tag2.string
+      tag_value = "test"
+    }
+  }
+
   step "create_isolated_target" {
     module = module.aws_target
     depends_on = [
@@ -221,6 +205,7 @@ scenario "e2e_aws" {
       target_count         = 1
       subnet_ids           = step.create_isolated_worker.subnet_ids
       ingress_cidr         = ["10.13.9.0/24"]
+      additional_tags      = step.create_tag2_inputs.tag_map
     }
   }
 
@@ -229,7 +214,6 @@ scenario "e2e_aws" {
     depends_on = [
       step.create_boundary_cluster,
       step.create_targets_with_tag1,
-      step.create_targets_with_tag2,
       step.iam_setup,
       step.create_isolated_worker,
       step.create_isolated_target
@@ -251,7 +235,7 @@ scenario "e2e_aws" {
       aws_host_set_filter1     = step.create_tag1_inputs.tag_string
       aws_host_set_ips1        = step.create_targets_with_tag1.target_ips
       aws_host_set_filter2     = step.create_tag2_inputs.tag_string
-      aws_host_set_ips2        = step.create_targets_with_tag2.target_ips
+      aws_host_set_ips2        = step.create_isolated_target.target_ips
       target_address           = step.create_isolated_target.target_ips[0]
       worker_tag_egress        = local.egress_tag
       max_page_size            = step.create_boundary_cluster.max_page_size
