@@ -73,13 +73,16 @@ message Alias {
     }
   ]; // @gotags: `class:"public" eventstream:"observation"`
 
+  // type is the type of the alias.
+  string type = 110; // @gotags: `class:"public" eventstream:"observation"`
+
   oneof attrs {
     // The attributes that are applicable for the specific Alias type.
-    google.protobuf.Struct attributes = 110 [
+    google.protobuf.Struct attributes = 120 [
       (custom_options.v1.generate_sdk_option) = true,
       (custom_options.v1.subtype) = "default"
     ];
-    TargetAliasAttributes target_alias_attributes = 101 [
+    TargetAliasAttributes target_alias_attributes = 121 [
       (google.api.field_visibility).restriction = "INTERNAL",
       (custom_options.v1.generate_sdk_option) = true,
       (custom_options.v1.subtype) = "target"
