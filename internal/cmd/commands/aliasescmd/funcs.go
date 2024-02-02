@@ -144,8 +144,6 @@ func printItemTable(item *aliases.Alias, resp *api.Response) string {
 	}
 
 	if len(item.Attributes) > 0 {
-		authSessArgs := item.Attributes["authorize_session_arguments"].(map[string]any)
-		authSessArgs["another"] = "value"
 		ret = append(ret,
 			"",
 			"  Attributes:",

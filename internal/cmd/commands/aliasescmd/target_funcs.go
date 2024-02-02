@@ -58,7 +58,6 @@ func (c *TargetCommand) extraTargetHelpFunc(helpMap map[string]func() string) st
 }
 
 func extraTargetFlagsFuncImpl(c *TargetCommand, set *base.FlagSets, f *base.FlagSet) {
-
 	for _, name := range flagsTargetMap[c.Func] {
 		switch name {
 		case "value":
