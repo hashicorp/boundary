@@ -346,14 +346,13 @@ func (c *Command) Client(opt ...Option) (*api.Client, error) {
 	return c.client, nil
 }
 
-// If the first arg isn't a flag, extract it as the alias
-func (c *Command) ExtractAliasFromArgs(inArgs []string) []string {
+// If the first arg isn't a flag, extract it as the alias and return the remaining args
+func ExtractAliasFromArgs(inArgs []string) (string, []string) {
 	if len(inArgs) > 0 && inArgs[0][0] != '-' {
-		c.AliasField = inArgs[0]
-		return inArgs[1:]
+		return inArgs[0], inArgs[1:]
 	}
 
-	return inArgs
+	return "", inArgs
 }
 
 type FlagSetBit uint

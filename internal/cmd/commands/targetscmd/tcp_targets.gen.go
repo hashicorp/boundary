@@ -120,7 +120,7 @@ func (c *TcpCommand) Run(args []string) int {
 
 	f := c.Flags()
 
-	args = c.ExtractAliasFromArgs(args)
+	c.AliasField, args = base.ExtractAliasFromArgs(args)
 
 	if c.AliasField != "" {
 		if c.FlagId != "" {

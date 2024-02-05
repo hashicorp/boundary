@@ -10,8 +10,6 @@ import (
 )
 
 func Test_extractAliasFromArgs(t *testing.T) {
-	ui := &BoundaryUI{}
-
 	tests := []struct {
 		name      string
 		args      []string
@@ -65,13 +63,12 @@ func Test_extractAliasFromArgs(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
-			cmd := NewCommand(ui)
 
-			args := cmd.ExtractAliasFromArgs(tt.args)
+			alias, args := ExtractAliasFromArgs(tt.args)
 			assert.Equal(args, tt.wantArgs)
 
 			if tt.wantAlias != "" {
-				assert.Equal(cmd.AliasField, tt.wantAlias)
+				assert.Equal(alias, tt.wantAlias)
 			}
 		})
 	}

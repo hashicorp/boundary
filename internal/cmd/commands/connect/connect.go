@@ -257,7 +257,7 @@ func (c *Command) Run(args []string) (retCode int) {
 
 	f := c.Flags()
 
-	args = c.ExtractAliasFromArgs(args)
+	c.AliasField, args = base.ExtractAliasFromArgs(args)
 
 	if err := f.Parse(args); err != nil {
 		c.PrintCliError(err)
@@ -274,8 +274,8 @@ func (c *Command) Run(args []string) (retCode int) {
 
 	switch {
 	case c.AliasField != "":
-		if c.flagTargetId != "" {
-			c.PrintCliError(errors.New("Cannot specify both a Target alias and Target ID; choose one or the other"))
+		if c.flagTargetId != "" && (c.flagTargetName != "" || c.FlagScopeId != "" || c.FlagScopeName != "") {
+			c.PrintCliError(errors.New("Cannot specify a Target alias and also other lookup parameters"))
 			return base.CommandUserError
 		}
 		c.flagTargetId = c.AliasField
