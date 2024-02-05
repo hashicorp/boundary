@@ -147,7 +147,7 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 			"",
 			`  Adds grant scopes to a role given its ID. The "grant-scope-id" flag can be specified multiple times. Example:`,
 			"",
-			`    $ boundary roles add-grant-scopes -id o_1234567890 -grant-scope-id "this" -grant-scope-id "children"`,
+			`    $ boundary roles add-grant-scopes -id r_1234567890 -grant-scope-id "this" -grant-scope-id "children"`,
 			"",
 			"",
 		})
@@ -158,7 +158,7 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 			"",
 			`  Sets the complete set of grant scopes on a role given its ID. The "grant-scope-id" flag can be specified multiple times. Example:`,
 			"",
-			`    $ boundary roles set-grant-scopes -id o_1234567890 -grant-scope-id "this" -grant-scope-id "children"`,
+			`    $ boundary roles set-grant-scopes -id r_1234567890 -grant-scope-id "this" -grant-scope-id "children"`,
 			"",
 			"",
 		})
@@ -169,7 +169,7 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 			"",
 			`  Removes grant scopes from a role given its ID. The "grant-scope-id" flags can be specified multiple times. Example:`,
 			"",
-			`    $ boundary roles remove-grant-scopes -id o_1234567890 -grant-scope-id "this" -grant-scope-id "children"`,
+			`    $ boundary roles remove-grant-scopes -id r_1234567890 -grant-scope-id "this" -grant-scope-id "children"`,
 			"",
 			"",
 		})
