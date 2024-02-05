@@ -27,6 +27,11 @@ env:
 
 jobs:
   setup:
+    outputs:
+      cache-go-build: ${{ steps.go-cache-paths.outputs.go-build }}
+      cache-go-mod: ${{ steps.go-cache-paths.outputs.go-mod }}
+      cache-go-bin: ${{ steps.go-cache-paths.outputs.go-bin }}
+      go-cache-key: ${{ steps.go-cache-key.outputs.key }}
     runs-on: ${{ fromJSON(vars.RUNNER) }}
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
@@ -37,6 +42,30 @@ jobs:
         with:
           go-version: ${{ inputs.go-version }}
           cache: false
+      - name: Determine go cache key
+        id: go-cache-key
+        run: |
+          echo "key=${{ runner.os }}-go-${{ hashFiles('**/go.sum', './Makefile', './tools/tools.go') }}" >> "$GITHUB_OUTPUT"
+      - name: Determine Go cache paths
+        id: go-cache-paths
+        run: |
+          echo "go-build=$(go env GOCACHE)" >> "$GITHUB_OUTPUT"
+          echo "go-mod=$(go env GOMODCACHE)" >> "$GITHUB_OUTPUT"
+          echo "go-bin=$(go env GOPATH)/bin" >> "$GITHUB_OUTPUT"
+      - name: Set up Go modules cache
+        uses: actions/cache@13aacd865c20de90d75de3b17ebe84f7a17d57d2 # v4.0.0
+        with:
+          path: |
+            ${{ steps.go-cache-paths.outputs.go-build }}
+            ${{ steps.go-cache-paths.outputs.go-mod }}
+            ${{ steps.go-cache-paths.outputs.go-bin }}
+          key: ${{ steps.go-cache-key.outputs.key }}
+          restore-keys: |
+            ${{ runner.os }}-go
+      - name: Install Tools
+        run: |
+          go mod download
+          make tools
   enos:
     name: Integration
     needs:
@@ -81,6 +110,17 @@ jobs:
         with:
           go-version: ${{ inputs.go-version }}
           cache: false
+      - name: Set up Go modules cache
+        uses: actions/cache@13aacd865c20de90d75de3b17ebe84f7a17d57d2 # v4.0.0
+        with:
+          path: |
+            ${{ needs.setup.outputs.cache-go-build }}
+            ${{ needs.setup.outputs.cache-go-mod }}
+            ${{ needs.setup.outputs.cache-go-bin }}
+          key: ${{ needs.setup.outputs.go-cache-key }}
+          restore-keys: |
+            ${{ runner.os }}-go
+          fail-on-cache-miss: true
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@a1502cd9e758c50496cc9ac5308c4843bcd56d36    # TSCCR: loading action configs: failed to query HEAD reference: failed to get advertised references: authorization failed
         with:

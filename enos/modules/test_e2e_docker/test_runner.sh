@@ -49,6 +49,8 @@ docker run \
     -e "E2E_MAX_PAGE_SIZE=$E2E_MAX_PAGE_SIZE" \
     --mount type=bind,src=$BOUNDARY_DIR,dst=/src/boundary/ \
     --mount type=bind,src=$MODULE_DIR/../..,dst=/testlogs \
+    --mount type=bind,src=$(go env GOCACHE),dst=/root/.cache/go-build \
+    --mount type=bind,src=$(go env GOMODCACHE),dst=/go/pkg/mod \
     -v "$MODULE_DIR/test.sh:/scripts/test.sh" \
     -v "$E2E_SSH_KEY_PATH:/keys/target.pem" \
     -v "$BOUNDARY_CLI_DIR:/boundary.zip" \
