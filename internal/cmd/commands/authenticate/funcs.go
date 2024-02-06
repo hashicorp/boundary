@@ -25,6 +25,9 @@ func saveAndOrPrintToken(c *base.Command, result *authmethods.AuthenticateResult
 		return base.CommandCliError
 	}
 	opts := base.GetOpts(opt...)
+	if opts.WithInterceptedToken != nil {
+		*opts.WithInterceptedToken = token.Token
+	}
 
 	switch base.Format(c.UI) {
 	case "table":
@@ -98,18 +101,10 @@ func saveAndOrPrintToken(c *base.Command, result *authmethods.AuthenticateResult
 	switch {
 	case gotErr:
 		c.UI.Warn(fmt.Sprintf("The token was not successfully saved to a system keyring. The token is:\n\n%s\n\nIt must be manually passed in via the BOUNDARY_TOKEN env var or -token flag. Storing the token can also be disabled via -keyring-type=none.", token.Token))
-
-		if opts.WithInterceptedToken != nil {
-			*opts.WithInterceptedToken = token.Token
-		}
 	case c.FlagKeyringType == "none":
 		c.UI.Warn("\nStoring the token in a keyring was disabled. The token is:")
 		c.UI.Output(token.Token)
 		c.UI.Warn("Please be sure to store it safely!")
-
-		if opts.WithInterceptedToken != nil {
-			*opts.WithInterceptedToken = token.Token
-		}
 	}
 
 	return base.CommandSuccess
