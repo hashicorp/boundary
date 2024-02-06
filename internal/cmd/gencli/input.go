@@ -88,6 +88,9 @@ type cmdInfo struct {
 	SkipClientCallActions []string
 
 	SkipFiltering bool
+
+	// Plural resource value. Default is the resource name with an s at the end
+	PluralResourceString string
 }
 
 var inputStructs = map[string][]*cmdInfo{
@@ -254,12 +257,13 @@ var inputStructs = map[string][]*cmdInfo{
 	},
 	"credentiallibraries": {
 		{
-			ResourceType:     resource.CredentialLibrary.String(),
-			Pkg:              "credentiallibraries",
-			StdActions:       []string{"read", "delete", "list"},
-			HasExtraHelpFunc: true,
-			Container:        "CredentialStore",
-			HasId:            true,
+			ResourceType:         resource.CredentialLibrary.String(),
+			Pkg:                  "credentiallibraries",
+			StdActions:           []string{"read", "delete", "list"},
+			HasExtraHelpFunc:     true,
+			Container:            "CredentialStore",
+			HasId:                true,
+			PluralResourceString: "credential libraries",
 		},
 		{
 			ResourceType:         resource.CredentialLibrary.String(),
@@ -532,13 +536,14 @@ var inputStructs = map[string][]*cmdInfo{
 	},
 	"policies": {
 		{
-			ResourceType:     resource.Policy.String(),
-			Pkg:              "policies",
-			StdActions:       []string{"read", "delete", "list"},
-			HasExtraHelpFunc: true,
-			HasName:          true,
-			HasDescription:   true,
-			Container:        "Scope",
+			ResourceType:         resource.Policy.String(),
+			Pkg:                  "policies",
+			StdActions:           []string{"read", "delete", "list"},
+			HasExtraHelpFunc:     true,
+			HasName:              true,
+			HasDescription:       true,
+			Container:            "Scope",
+			PluralResourceString: "policies",
 		},
 		{
 			ResourceType:         resource.Policy.String(),

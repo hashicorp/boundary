@@ -143,7 +143,12 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Synopsis() string {
 		return extra
 	}
 
-	synopsisStr := "{{ lowerSpaceCase .ResourceType }}"
+    {{ if .PluralResourceString }}
+		synopsisStr := "{{ .PluralResourceString }}"
+	{{ else }}
+		synopsisStr := "{{ lowerSpaceCase .ResourceType }}"
+	{{ end }}
+	
 	{{ if .SubActionPrefix }}
 	synopsisStr = fmt.Sprintf("%s %s", "{{ kebabCase .SubActionPrefix }}-type", synopsisStr)
 	{{ end }}
