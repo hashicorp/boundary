@@ -72,8 +72,8 @@ sink "stderr" = {
     event_types = ["*"]
     format = "cloudevents-text"
     allow_filters = [
-        '"/data/request_info/path" contains ":authenticate"'
-        '"/data/op" contains ".createClientConn"'
+        "\"/data/request_info/path\" contains \":authenticate\"",
+        "\"/data/op\" contains \".createClientConn\"",
     ]
     # note: deny_filters are also supported.
 }
