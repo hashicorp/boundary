@@ -6,6 +6,7 @@ package handlers
 import (
 	"context"
 	"fmt"
+	"io"
 	"sync"
 
 	"github.com/hashicorp/boundary/internal/errors"
@@ -153,7 +154,7 @@ func SendUpstreamMessage(ctx context.Context, clientProducer UpstreamMessageServ
 		if opts.withKeyProducer == nil {
 			return nil, errors.New(ctx, errors.InvalidParameter, op, "missing node information required for encrypting unwrap keys message")
 		}
-		req, err = ctMsg(ctx, opts.withKeyProducer, msgType, msg)
+		req, err = ctMsg(ctx, opts.withKeyProducer, msgType, msg, opts.withRandomReader)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
@@ -202,9 +203,9 @@ func ptMsg(ctx context.Context, msgType pbs.MsgType, msg proto.Message) (*pbs.Up
 	}, nil
 }
 
-func ctMsg(ctx context.Context, keySource nodeenrollment.X25519KeyProducer, msgType pbs.MsgType, msg proto.Message) (*pbs.UpstreamMessageRequest, error) {
+func ctMsg(ctx context.Context, keySource nodeenrollment.X25519KeyProducer, msgType pbs.MsgType, msg proto.Message, randomReader io.Reader) (*pbs.UpstreamMessageRequest, error) {
 	const op = "handlers.encryptMsg"
-	ct, err := nodeenrollment.EncryptMessage(ctx, msg, keySource)
+	ct, err := nodeenrollment.EncryptMessage(ctx, msg, keySource, nodeenrollment.WithRandomReader(randomReader))
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error encrypting upstream message"))
 	}

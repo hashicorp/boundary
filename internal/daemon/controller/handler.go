@@ -328,8 +328,14 @@ func (c *Controller) registerGrpcServices(s *grpc.Server) error {
 		services.RegisterCredentialLibraryServiceServer(s, cl)
 	}
 	if _, ok := currentServices[services.WorkerService_ServiceDesc.ServiceName]; !ok {
-		ws, err := workers.NewService(c.baseContext, c.ServersRepoFn, c.IamRepoFn, c.WorkerAuthRepoStorageFn,
-			c.downstreamWorkers)
+		ws, err := workers.NewService(
+			c.baseContext,
+			c.ServersRepoFn,
+			c.IamRepoFn,
+			c.WorkerAuthRepoStorageFn,
+			c.downstreamWorkers,
+			c.conf.SecureRandomReader,
+		)
 		if err != nil {
 			return fmt.Errorf("failed to create worker handler service: %w", err)
 		}

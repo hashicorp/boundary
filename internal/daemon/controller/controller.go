@@ -425,7 +425,7 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		return host.NewCatalogRepository(ctx, dbase, dbase)
 	}
 	c.ServersRepoFn = func() (*server.Repository, error) {
-		return server.NewRepository(ctx, dbase, dbase, c.kms)
+		return server.NewRepository(ctx, dbase, dbase, c.kms, server.WithRandomReader(c.conf.SecureRandomReader))
 	}
 	c.OidcRepoFn = func() (*oidc.Repository, error) {
 		return oidc.NewRepository(ctx, dbase, dbase, c.kms)
@@ -611,6 +611,7 @@ func (c *Controller) registerJobs() error {
 		serverJobOpts = append(serverJobOpts,
 			serversjob.WithCertificateLifetime(c.conf.TestOverrideWorkerAuthCaCertificateLifetime),
 			serversjob.WithRotationFrequency(c.conf.TestOverrideWorkerAuthCaCertificateLifetime/2),
+			serversjob.WithRandomReader(c.conf.SecureRandomReader),
 		)
 	}
 	if err := serversjob.RegisterJobs(c.baseContext, c.scheduler, rw, rw, c.kms, serverJobOpts...); err != nil {

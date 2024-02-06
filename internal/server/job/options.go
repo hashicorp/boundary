@@ -4,6 +4,8 @@
 package servers
 
 import (
+	"crypto/rand"
+	"io"
 	"time"
 )
 
@@ -25,11 +27,13 @@ type Option func(*options)
 type options struct {
 	withRotationFrequency   time.Duration
 	withCertificateLifetime time.Duration
+	withRandomReader        io.Reader
 }
 
 func getDefaultOptions() options {
 	return options{
 		withRotationFrequency: defaultRotationFrequency,
+		withRandomReader:      rand.Reader,
 	}
 }
 
@@ -47,5 +51,12 @@ func WithRotationFrequency(with time.Duration) Option {
 func WithCertificateLifetime(with time.Duration) Option {
 	return func(o *options) {
 		o.withCertificateLifetime = with
+	}
+}
+
+// WithRandomReader provides a way to specify a random reader
+func WithRandomReader(with io.Reader) Option {
+	return func(o *options) {
+		o.withRandomReader = with
 	}
 }
