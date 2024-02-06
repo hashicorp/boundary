@@ -14,6 +14,7 @@ import (
 
 	"github.com/hashicorp/boundary/api/authtokens"
 	nkeyring "github.com/jefferai/keyring"
+	"github.com/mitchellh/cli"
 	zkeyring "github.com/zalando/go-keyring"
 )
 
@@ -108,7 +109,7 @@ func (c *Command) DiscoverKeyringTokenInfo() (string, string, error) {
 	return keyringType, tokenName, nil
 }
 
-func (c *Command) ReadTokenFromKeyring(keyringType, tokenName string) *authtokens.AuthToken {
+func ReadTokenFromKeyring(ui cli.Ui, keyringType, tokenName string) *authtokens.AuthToken {
 	var token string
 	var err error
 
@@ -120,10 +121,10 @@ func (c *Command) ReadTokenFromKeyring(keyringType, tokenName string) *authtoken
 		token, err = zkeyring.Get(StoredTokenName, tokenName)
 		if err != nil {
 			if err == zkeyring.ErrNotFound {
-				c.UI.Error("No saved credential found, continuing without")
+				ui.Error("No saved credential found, continuing without")
 			} else {
-				c.UI.Error(fmt.Sprintf("Error reading auth token from keyring: %s", err))
-				c.UI.Warn("Token must be provided via BOUNDARY_TOKEN env var or -token flag. Reading the token can also be disabled via -keyring-type=none.")
+				ui.Error(fmt.Sprintf("Error reading auth token from keyring: %s", err))
+				ui.Warn("Token must be provided via BOUNDARY_TOKEN env var or -token flag. Reading the token can also be disabled via -keyring-type=none.")
 			}
 			token = ""
 		}
@@ -137,15 +138,15 @@ func (c *Command) ReadTokenFromKeyring(keyringType, tokenName string) *authtoken
 
 		kr, err := nkeyring.Open(krConfig)
 		if err != nil {
-			c.UI.Error(fmt.Sprintf("Error opening keyring: %s", err))
-			c.UI.Warn("Token must be provided via BOUNDARY_TOKEN env var or -token flag. Reading the token can also be disabled via -keyring-type=none.")
+			ui.Error(fmt.Sprintf("Error opening keyring: %s", err))
+			ui.Warn("Token must be provided via BOUNDARY_TOKEN env var or -token flag. Reading the token can also be disabled via -keyring-type=none.")
 			break
 		}
 
 		item, err := kr.Get(tokenName)
 		if err != nil {
-			c.UI.Error(fmt.Sprintf("Error fetching token from keyring: %s", err))
-			c.UI.Warn("Token must be provided via BOUNDARY_TOKEN env var or -token flag. Reading the token can also be disabled via -keyring-type=none.")
+			ui.Error(fmt.Sprintf("Error fetching token from keyring: %s", err))
+			ui.Warn("Token must be provided via BOUNDARY_TOKEN env var or -token flag. Reading the token can also be disabled via -keyring-type=none.")
 			break
 		}
 
@@ -156,19 +157,23 @@ func (c *Command) ReadTokenFromKeyring(keyringType, tokenName string) *authtoken
 		tokenBytes, err := base64.RawStdEncoding.DecodeString(token)
 		switch {
 		case err != nil:
-			c.UI.Error(fmt.Errorf("Error base64-unmarshaling stored token from system credential store: %w", err).Error())
+			ui.Error(fmt.Errorf("Error base64-unmarshaling stored token from system credential store: %w", err).Error())
 		case len(tokenBytes) == 0:
-			c.UI.Error("Zero length token after decoding stored token from system credential store")
+			ui.Error("Zero length token after decoding stored token from system credential store")
 		default:
 			var authToken authtokens.AuthToken
 			if err := json.Unmarshal(tokenBytes, &authToken); err != nil {
-				c.UI.Error(fmt.Sprintf("Error unmarshaling stored token information after reading from system credential store: %s", err))
+				ui.Error(fmt.Sprintf("Error unmarshaling stored token information after reading from system credential store: %s", err))
 			} else {
 				return &authToken
 			}
 		}
 	}
 	return nil
+}
+
+func (c *Command) ReadTokenFromKeyring(keyringType, tokenName string) *authtokens.AuthToken {
+	return ReadTokenFromKeyring(c.UI, keyringType, tokenName)
 }
 
 func TokenIdFromToken(token string) (string, error) {

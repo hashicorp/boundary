@@ -110,13 +110,12 @@ func (c *AddTokenCommand) Run(args []string) int {
 		return base.CommandCliError
 	}
 
-	keyringType, tokenName, err := c.DiscoverKeyringTokenInfo()
-	if err != nil {
-		c.PrintCliError(err)
-		return base.CommandCliError
-	}
+	// We ignore the error here since not having a keyring on the platform
+	// returns an error but can be treated as the keyring type being set to
+	// none.
+	keyringType, tokenName, _ := c.DiscoverKeyringTokenInfo()
 
-	resp, apiErr, err := c.Add(ctx, client, keyringType, tokenName)
+	resp, apiErr, err := c.Add(ctx, c.UI, client, keyringType, tokenName)
 	if err != nil {
 		c.PrintCliError(err)
 		return base.CommandCliError
@@ -136,37 +135,55 @@ func (c *AddTokenCommand) Run(args []string) int {
 	return base.CommandSuccess
 }
 
-func (c *AddTokenCommand) Add(ctx context.Context, apiClient *api.Client, keyringType, tokenName string) (*api.Response, *api.Error, error) {
+// Add builds the UpsertTokenRequest using the client's address and token,
+// and trying to leverage the keyring. It then sends the request to the daemon.
+// The passed in cli.Ui is used to print out any errors when looking up the
+// auth token from the keyring. This allows background operations calling this
+// method to pass in a silent UI to suppress any output.
+func (c *AddTokenCommand) Add(ctx context.Context, ui cli.Ui, apiClient *api.Client, keyringType, tokenName string) (*api.Response, *api.Error, error) {
 	pa := daemon.UpsertTokenRequest{
 		BoundaryAddr: apiClient.Addr(),
 	}
-	switch keyringType {
-	case "", base.NoneKeyring:
-		token := apiClient.Token()
-		if parts := strings.SplitN(token, "_", 4); len(parts) == 3 {
-			pa.AuthTokenId = strings.Join(parts[:2], "_")
-		} else {
-			return nil, nil, errors.New("The found auth token is not in the proper format.")
-		}
-		if c.FlagOutputCurlString {
-			pa.AuthToken = "/*token*/"
-		} else {
-			pa.AuthToken = token
-		}
-	default:
-		at := c.ReadTokenFromKeyring(keyringType, tokenName)
-		if at == nil {
-			return nil, nil, errors.New("No auth token could be read from the keyring to send to daemon.")
-		}
-		pa.Keyring = &daemon.KeyringToken{
-			KeyringType: keyringType,
-			TokenName:   tokenName,
-		}
-		pa.AuthTokenId = at.Id
+	token := apiClient.Token()
+	if token == "" {
+		return nil, nil, errors.New("The client auth token is empty.")
+	}
+
+	if parts := strings.SplitN(token, "_", 4); len(parts) == 3 {
+		pa.AuthTokenId = strings.Join(parts[:2], "_")
+	} else {
+		return nil, nil, errors.New("The client provided auth token is not in the proper format.")
 	}
 	var opts []client.Option
 	if c.FlagOutputCurlString {
 		opts = append(opts, client.WithOutputCurlString())
+		pa.AuthToken = "/*token*/"
+	} else {
+		pa.AuthToken = token
+	}
+
+	switch keyringType {
+	case "", base.NoneKeyring:
+		// we don't need to do anything else in this situation since the keyring
+		// doesn't play a part in the request.
+	default:
+		// Just because the keyring type is set doesn't mean the token to add
+		// is contained in it. For example, if the token was intercepted
+		// from an authentication request with '-format json' then token is
+		// not stored in the keyring, even if a keyring is provided.
+
+		// Try to read the token from the keyring in a best effort way. Ignore
+		// any errors since the keyring may not be present on the system.
+		at := base.ReadTokenFromKeyring(ui, keyringType, tokenName)
+		if at != nil && (token == "" || pa.AuthTokenId == at.Id) {
+			pa.Keyring = &daemon.KeyringToken{
+				KeyringType: keyringType,
+				TokenName:   tokenName,
+			}
+			// since the auth token is stored in the keyring, we can share it
+			// through the keyring instead of passing it through the request.
+			pa.AuthToken = ""
+		}
 	}
 
 	dotPath, err := DefaultDotDirectory(ctx)

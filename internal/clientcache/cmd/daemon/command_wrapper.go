@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -93,6 +94,15 @@ func (w *CommandWrapper) startDaemon(ctx context.Context) bool {
 	return err == nil || strings.Contains(stdErr.String(), "already running")
 }
 
+// silentUi should not be used in situations where the UI is expected to be
+// prompt the user for input.
+func silentUi() *cli.BasicUi {
+	return &cli.BasicUi{
+		Writer:      io.Discard,
+		ErrorWriter: io.Discard,
+	}
+}
+
 // addTokenToCache runs AddTokenCommand with the token used in, or retrieved by
 // the wrapped command.
 func (w *CommandWrapper) addTokenToCache(ctx context.Context, token string) bool {
@@ -118,7 +128,9 @@ func (w *CommandWrapper) addTokenToCache(ctx context.Context, token string) bool
 		return false
 	}
 
-	_, apiErr, err := com.Add(ctx, client, keyringType, tokName)
+	// We do not want to print errors out from our background interactions with
+	// the daemon so use the silentUi to toss out anything that shouldn't be used
+	_, apiErr, err := com.Add(ctx, silentUi(), client, keyringType, tokName)
 	return err == nil && apiErr == nil
 }
 
