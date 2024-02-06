@@ -783,6 +783,31 @@ func TestListPagination(t *testing.T) {
 			protocmp.IgnoreFields(&pbs.ListTargetsResponse{}, "list_token"),
 		),
 	)
+
+	// Create unauthenticated user
+	unauthAt := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
+	unauthR := iam.TestRole(t, conn, proj.GetPublicId())
+	_ = iam.TestUserRole(t, conn, unauthR.GetPublicId(), unauthAt.GetIamUserId())
+
+	// Make a request with the unauthenticated user,
+	// ensure the response contains the pagination parameters.
+	requestInfo = authpb.RequestInfo{
+		TokenFormat: uint32(auth.AuthTokenTypeBearer),
+		PublicId:    unauthAt.GetPublicId(),
+		Token:       unauthAt.GetToken(),
+	}
+	requestContext = context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
+	ctx = auth.NewVerifierContext(requestContext, iamRepoFn, tokenRepoFn, serversRepoFn, kms, &requestInfo)
+
+	got, err = s.ListTargets(ctx, &pbs.ListTargetsRequest{
+		ScopeId:   "global",
+		Recursive: true,
+	})
+	require.NoError(t, err)
+	assert.Empty(t, got.Items)
+	assert.Equal(t, "created_time", got.SortBy)
+	assert.Equal(t, "desc", got.SortDir)
+	assert.Equal(t, "complete", got.ResponseType)
 }
 
 func TestDelete(t *testing.T) {
