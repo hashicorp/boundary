@@ -168,12 +168,12 @@ func (c *AddTokenCommand) Add(ctx context.Context, ui cli.Ui, apiClient *api.Cli
 		// doesn't play a part in the request.
 	default:
 		// Just because the keyring type is set doesn't mean the token to add
-		// is contained in it. For example, If the token was intercepted
-		// from an authentication request with '-format json' the token is
+		// is contained in it. For example, if the token was intercepted
+		// from an authentication request with '-format json' then token is
 		// not stored in the keyring, even if a keyring is provided.
 
 		// Try to read the token from the keyring in a best effort way. Ignore
-		// any errors since the keyring may night be present on the system.
+		// any errors since the keyring may not be present on the system.
 		at := base.ReadTokenFromKeyring(ui, keyringType, tokenName)
 		if at != nil && (token == "" || pa.AuthTokenId == at.Id) {
 			pa.Keyring = &daemon.KeyringToken{
