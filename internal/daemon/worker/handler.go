@@ -147,7 +147,7 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionMa
 			}
 			return
 		}
-		if len(handshake.GetTofuToken()) < 20 {
+		if len(handshake.GetTofuToken()) != 20 {
 			event.WriteError(ctx, op, stderrors.New("invalid tofu token"))
 			if err = conn.Close(websocket.StatusUnsupportedData, "invalid tofu token"); err != nil {
 				event.WriteError(ctx, op, err, event.WithInfoMsg("error closing client connection"))
