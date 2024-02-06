@@ -17,6 +17,15 @@ If you authenticate to multiple Boundary instances, the client cache stores mult
 
 By adding auth tokens to your client cache, you can select which specific Boundary instance you want to search.
 
+<Note>
+
+The `search` operation only displays the resources that you have read permissions to view.
+If you are logged in as a user who does not have the permissions to view a resource, it does not display in the list of results.
+
+For more information, refer to [Identity and access management (IAM)](/boundary/docs/concepts/iam).
+
+</Note>
+
 ## Examples
 
 The following command adds an auth token to the client cache from your keyring:
