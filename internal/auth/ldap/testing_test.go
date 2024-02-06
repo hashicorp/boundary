@@ -5,6 +5,7 @@ package ldap
 
 import (
 	"context"
+	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/x509"
 	"testing"
@@ -14,7 +15,6 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/crypto/ed25519"
 )
 
 func Test_testAuthMethod(t *testing.T) {

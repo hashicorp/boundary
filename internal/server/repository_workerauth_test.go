@@ -5,6 +5,7 @@ package server
 
 import (
 	"context"
+	"crypto/ecdh"
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
@@ -30,7 +31,6 @@ import (
 	"github.com/mr-tron/base58"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/crypto/curve25519"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
 )
@@ -177,8 +177,9 @@ func TestStoreWorkerAuth(t *testing.T) {
 	require.NoError(err)
 	keyId, err := nodeenrollment.KeyIdFromPkix(nodeCreds.CertificatePublicKeyPkix)
 	require.NoError(err)
-	nodePubKey, err := curve25519.X25519(nodeCreds.EncryptionPrivateKeyBytes, curve25519.Basepoint)
+	privKey, err := ecdh.X25519().NewPrivateKey(nodeCreds.EncryptionPrivateKeyBytes)
 	require.NoError(err)
+	nodePubKey := privKey.PublicKey().Bytes()
 
 	// Add in node information to storage so we have a key to use
 	nodeInfo := &types.NodeInformation{
@@ -336,8 +337,9 @@ func TestStoreNodeInformationTx(t *testing.T) {
 		nodeCreds, err := types.NewNodeCredentials(testCtx, storage)
 		require.NoError(t, err)
 
-		nodePubKey, err := curve25519.X25519(nodeCreds.EncryptionPrivateKeyBytes, curve25519.Basepoint)
+		privKey, err := ecdh.X25519().NewPrivateKey(nodeCreds.EncryptionPrivateKeyBytes)
 		require.NoError(t, err)
+		nodePubKey := privKey.PublicKey().Bytes()
 		// Add in node information to storage so we have a key to use
 		nodeInfo := &types.NodeInformation{
 			Id:                              testKeyId,
@@ -572,8 +574,9 @@ func TestStoreNodeInformationTx_Twice(t *testing.T) {
 		nodeCreds, err := types.NewNodeCredentials(testCtx, storage)
 		require.NoError(t, err)
 
-		nodePubKey, err := curve25519.X25519(nodeCreds.EncryptionPrivateKeyBytes, curve25519.Basepoint)
+		privKey, err := ecdh.X25519().NewPrivateKey(nodeCreds.EncryptionPrivateKeyBytes)
 		require.NoError(t, err)
+		nodePubKey := privKey.PublicKey().Bytes()
 		// Add in node information to storage so we have a key to use
 		nodeInfo := &types.NodeInformation{
 			Id:                              testKeyId,
@@ -594,8 +597,9 @@ func TestStoreNodeInformationTx_Twice(t *testing.T) {
 		nodeCreds, err := types.NewNodeCredentials(testCtx, storage)
 		require.NoError(t, err)
 
-		nodePubKey, err := curve25519.X25519(nodeCreds.EncryptionPrivateKeyBytes, curve25519.Basepoint)
+		privKey, err := ecdh.X25519().NewPrivateKey(nodeCreds.EncryptionPrivateKeyBytes)
 		require.NoError(t, err)
+		nodePubKey := privKey.PublicKey().Bytes()
 		// Add in node information to storage so we have a key to use
 		nodeInfo := &types.NodeInformation{
 			Id:                              "fake-secondary-key-id",
