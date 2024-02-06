@@ -343,6 +343,7 @@ func populateBoundaryDatabase(t testing.TB, ctx context.Context, c *config, te T
 			"-auth-method-id", te.DbInitInfo.AuthMethod.AuthMethodId,
 			"-login-name", te.DbInitInfo.AuthMethod.LoginName,
 			"-password", "env://E2E_TEST_BOUNDARY_PASSWORD",
+			"-keyring-type", "none",
 			"-format", "json",
 		},
 		dockertest.ExecOptions{
