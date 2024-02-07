@@ -56,7 +56,7 @@ func (c *LdapCommand) Synopsis() string {
 		return extra
 	}
 
-	synopsisStr := "managed group"
+	synopsisStr := "managed-group"
 
 	synopsisStr = fmt.Sprintf("%s %s", "ldap-type", synopsisStr)
 

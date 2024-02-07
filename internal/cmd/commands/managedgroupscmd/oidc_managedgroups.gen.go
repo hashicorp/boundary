@@ -56,7 +56,7 @@ func (c *OidcCommand) Synopsis() string {
 		return extra
 	}
 
-	synopsisStr := "managed group"
+	synopsisStr := "managed-group"
 
 	synopsisStr = fmt.Sprintf("%s %s", "oidc-type", synopsisStr)
 

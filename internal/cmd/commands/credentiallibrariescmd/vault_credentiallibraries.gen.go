@@ -56,7 +56,7 @@ func (c *VaultCommand) Synopsis() string {
 		return extra
 	}
 
-	synopsisStr := "credential library"
+	synopsisStr := "credential-library"
 
 	synopsisStr = fmt.Sprintf("%s %s", "vault-type", synopsisStr)
 

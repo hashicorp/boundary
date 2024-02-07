@@ -56,7 +56,7 @@ func (c *LdapCommand) Synopsis() string {
 		return extra
 	}
 
-	synopsisStr := "auth method"
+	synopsisStr := "auth-method"
 
 	synopsisStr = fmt.Sprintf("%s %s", "ldap-type", synopsisStr)
 

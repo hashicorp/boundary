@@ -56,7 +56,7 @@ func (c *PluginCommand) Synopsis() string {
 		return extra
 	}
 
-	synopsisStr := "host set"
+	synopsisStr := "host-set"
 
 	synopsisStr = fmt.Sprintf("%s %s", "plugin-type", synopsisStr)
 

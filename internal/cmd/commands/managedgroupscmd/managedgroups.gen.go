@@ -55,7 +55,7 @@ func (c *Command) Synopsis() string {
 		return extra
 	}
 
-	synopsisStr := "managed group"
+	synopsisStr := "managed-group"
 
 	return common.SynopsisFunc(c.Func, synopsisStr)
 }

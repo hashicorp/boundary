@@ -56,7 +56,7 @@ func (c *VaultSshCertificateCommand) Synopsis() string {
 		return extra
 	}
 
-	synopsisStr := "credential library"
+	synopsisStr := "credential-library"
 
 	synopsisStr = fmt.Sprintf("%s %s", "vault-ssh-certificate-type", synopsisStr)
 

@@ -55,7 +55,7 @@ func (c *Command) Synopsis() string {
 		return extra
 	}
 
-	synopsisStr := "credential library"
+	synopsisStr := "credential-library"
 
 	return common.SynopsisFunc(c.Func, synopsisStr)
 }

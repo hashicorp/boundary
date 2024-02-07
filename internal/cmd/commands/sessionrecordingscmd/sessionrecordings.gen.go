@@ -57,7 +57,7 @@ func (c *Command) Synopsis() string {
 		return extra
 	}
 
-	synopsisStr := "session recording"
+	synopsisStr := "session-recording"
 
 	return common.SynopsisFunc(c.Func, synopsisStr)
 }

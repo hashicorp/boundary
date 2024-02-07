@@ -54,7 +54,7 @@ func (c *StaticCommand) Synopsis() string {
 		return extra
 	}
 
-	synopsisStr := "host set"
+	synopsisStr := "host-set"
 
 	synopsisStr = fmt.Sprintf("%s %s", "static-type", synopsisStr)
 

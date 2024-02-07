@@ -57,7 +57,7 @@ func (c *Command) Synopsis() string {
 		return extra
 	}
 
-	synopsisStr := "storage bucket"
+	synopsisStr := "storage-bucket"
 
 	return common.SynopsisFunc(c.Func, synopsisStr)
 }

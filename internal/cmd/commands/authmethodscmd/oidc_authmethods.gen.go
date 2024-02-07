@@ -56,7 +56,7 @@ func (c *OidcCommand) Synopsis() string {
 		return extra
 	}
 
-	synopsisStr := "auth method"
+	synopsisStr := "auth-method"
 
 	synopsisStr = fmt.Sprintf("%s %s", "oidc-type", synopsisStr)
 

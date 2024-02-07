@@ -55,7 +55,7 @@ func (c *Command) Synopsis() string {
 		return extra
 	}
 
-	synopsisStr := "host catalog"
+	synopsisStr := "host-catalog"
 
 	return common.SynopsisFunc(c.Func, synopsisStr)
 }
