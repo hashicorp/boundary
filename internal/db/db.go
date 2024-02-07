@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/go-dbw"
+	"github.com/hashicorp/go-hclog"
 	_ "github.com/jackc/pgx/v5"
 
 	"gorm.io/driver/postgres"
@@ -172,6 +173,16 @@ func Open(ctx context.Context, dbType DbType, connectionUrl string, opt ...Optio
 	var wrappedOpts []dbw.Option
 	if opts.withGormFormatter != nil {
 		wrappedOpts = append(wrappedOpts, dbw.WithLogger(opts.withGormFormatter))
+		switch opts.withGormFormatter.GetLevel() {
+		case hclog.Trace, hclog.Debug, hclog.Info:
+			wrappedOpts = append(wrappedOpts, dbw.WithLogLevel(dbw.Info))
+		case hclog.Warn:
+			wrappedOpts = append(wrappedOpts, dbw.WithLogLevel(dbw.Warn))
+		case hclog.Error:
+			wrappedOpts = append(wrappedOpts, dbw.WithLogLevel(dbw.Error))
+		case hclog.Off:
+			wrappedOpts = append(wrappedOpts, dbw.WithLogLevel(dbw.Silent))
+		}
 	}
 	if opts.withMaxOpenConnections > 0 {
 		if opts.withMaxOpenConnections < 5 && dbType != Sqlite {

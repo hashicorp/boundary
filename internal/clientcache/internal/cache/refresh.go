@@ -14,10 +14,13 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/internal/util"
+	"github.com/hashicorp/go-hclog"
 )
 
 type RefreshService struct {
 	repo *Repository
+
+	logger hclog.Logger
 	// the amount of time that should have passed since the last refresh for a
 	// call to RefreshForSearch will cause a refresh request to be sent to a
 	// boundary controller.
@@ -26,16 +29,19 @@ type RefreshService struct {
 	maxSearchRefreshTimeout time.Duration
 }
 
-func NewRefreshService(ctx context.Context, r *Repository, maxSearchStaleness, maxSearchRefreshTimeout time.Duration) (*RefreshService, error) {
+func NewRefreshService(ctx context.Context, r *Repository, logger hclog.Logger, maxSearchStaleness, maxSearchRefreshTimeout time.Duration) (*RefreshService, error) {
 	const op = "cache.NewRefreshService"
 	switch {
 	case util.IsNil(r):
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "repository is nil")
+	case util.IsNil(logger):
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "logger is nil")
 	case maxSearchStaleness < 0:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "max search staleness is negative")
 	}
 	return &RefreshService{
 		repo:                    r,
+		logger:                  logger,
 		maxSearchStaleness:      maxSearchStaleness,
 		maxSearchRefreshTimeout: maxSearchRefreshTimeout,
 	}, nil
@@ -66,10 +72,11 @@ func (r *RefreshService) cleanAndPickAuthTokens(ctx context.Context, u *user) (m
 			at := r.repo.tokenKeyringFn(kt.KeyringType, kt.TokenName)
 			switch {
 			case at == nil, at.Id != kt.AuthTokenId, at.UserId != t.UserId:
+				event.WriteSysEvent(ctx, op, "Removed keyring token since the keyring contents have changed since being cached", "keyring", kt.KeyringType, "token name", kt.TokenName, "old auth token id", kt.AuthTokenId)
 				// delete the keyring token if the auth token in the keyring
 				// has changed since it was stored in the cache.
 				if err := r.repo.deleteKeyringToken(ctx, *kt); err != nil {
-					return nil, errors.Wrap(ctx, err, op)
+					return nil, errors.Wrap(ctx, err, op, errors.WithMsg("for user %q, auth token %q", u.Id, t.Id))
 				}
 			case at != nil:
 				_, err := r.repo.tokenReadFromBoundaryFn(ctx, u.Address, at.Token)
@@ -77,7 +84,7 @@ func (r *RefreshService) cleanAndPickAuthTokens(ctx context.Context, u *user) (m
 				switch {
 				case err != nil && (api.ErrUnauthorized.Is(err) || api.ErrNotFound.Is(err)):
 					if err := r.repo.deleteKeyringToken(ctx, *kt); err != nil {
-						return nil, errors.Wrap(ctx, err, op)
+						return nil, errors.Wrap(ctx, err, op, errors.WithMsg("for user %q, auth token %q", u.Id, t.Id))
 					}
 					event.WriteSysEvent(ctx, op, "Removed auth token from cache because it was not found to be valid in boundary", "auth token id", at.Id)
 					continue
@@ -119,7 +126,7 @@ func (r *RefreshService) cacheSupportedUsers(ctx context.Context, in []*user) ([
 	for _, u := range in {
 		cs, err := r.repo.cacheSupportState(ctx, u)
 		if err != nil {
-			return nil, errors.Wrap(ctx, err, op)
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("for user %q", u.Id))
 		}
 		if cs.supported != NotSupportedCacheSupport {
 			ret = append(ret, u)
@@ -196,6 +203,7 @@ func (r *RefreshService) RefreshForSearch(ctx context.Context, authTokenid strin
 			return errors.Wrap(ctx, err, op)
 		}
 		if opts.withIgnoreSearchStaleness || rtv != nil && time.Since(rtv.UpdateTime) > r.maxSearchStaleness {
+			r.logger.Debug("refreshing targets before performing search", "user", u.Id, "force refresh", opts.withIgnoreSearchStaleness, "sessions age", time.Since(rtv.UpdateTime))
 			if err := r.repo.refreshTargets(ctx, u, tokens, opt...); err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
@@ -206,6 +214,7 @@ func (r *RefreshService) RefreshForSearch(ctx context.Context, authTokenid strin
 			return errors.Wrap(ctx, err, op)
 		}
 		if opts.withIgnoreSearchStaleness || rtv != nil && time.Since(rtv.UpdateTime) > r.maxSearchStaleness {
+			r.logger.Debug("refreshing sessions before performing search", "user", u.Id, "force refresh", opts.withIgnoreSearchStaleness, "sessions age", time.Since(rtv.UpdateTime))
 			if err := r.repo.refreshSessions(ctx, u, tokens, opt...); err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
@@ -244,6 +253,7 @@ func (r *RefreshService) Refresh(ctx context.Context, opt ...Option) error {
 
 	var retErr error
 	for _, u := range us {
+		r.logger.Debug("refreshing user", "user", u.Id)
 		tokens, err := r.cleanAndPickAuthTokens(ctx, u)
 		if err != nil {
 			retErr = stderrors.Join(retErr, errors.Wrap(ctx, err, op))
@@ -295,6 +305,7 @@ func (r *RefreshService) RecheckCachingSupport(ctx context.Context, opt ...Optio
 		if _, ok := removedUserIds[u.Id]; ok {
 			continue
 		}
+		r.logger.Debug("rechecking caching support for user", "user", u.Id)
 
 		tokens, err := r.cleanAndPickAuthTokens(ctx, u)
 		if err != nil {

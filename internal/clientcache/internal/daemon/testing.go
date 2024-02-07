@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/boundary/api/sessions"
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/internal/clientcache/internal/cache"
+	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/require"
 )
 
@@ -101,7 +102,7 @@ func (s *TestServer) AddResources(t *testing.T, p *authtokens.AuthToken, tars []
 		}
 		return sess, nil, "addedsessions", nil
 	}
-	rs, err := cache.NewRefreshService(ctx, r, 0, 0)
+	rs, err := cache.NewRefreshService(ctx, r, hclog.NewNullLogger(), 0, 0)
 	require.NoError(t, err)
 	require.NoError(t, rs.Refresh(ctx, cache.WithTargetRetrievalFunc(tarFn), cache.WithSessionRetrievalFunc(sessFn)))
 }
@@ -130,7 +131,7 @@ func (s *TestServer) AddUnsupportedCachingData(t *testing.T, p *authtokens.AuthT
 		}
 		return []*sessions.Session{}, nil, "", cache.ErrRefreshNotSupported
 	}
-	rs, err := cache.NewRefreshService(ctx, r, 0, 0)
+	rs, err := cache.NewRefreshService(ctx, r, hclog.NewNullLogger(), 0, 0)
 	require.NoError(t, err)
 	err = rs.Refresh(ctx, cache.WithTargetRetrievalFunc(tarFn), cache.WithSessionRetrievalFunc(sessFn))
 	require.ErrorContains(t, err, "not supported for this controller")

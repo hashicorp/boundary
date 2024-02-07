@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/internal/clientcache/internal/cache"
+	"github.com/hashicorp/go-hclog"
 )
 
 type options struct {
@@ -18,6 +19,9 @@ type options struct {
 	testWithIntervalRandomizationFactor    float64
 	testWithIntervalRandomizationFactorSet bool
 	withBoundaryTokenReaderFunc            cache.BoundaryTokenReaderFn
+
+	withUrl    string
+	withLogger hclog.Logger
 }
 
 // Option - how options are passed as args
@@ -77,6 +81,22 @@ func testWithIntervalRandomizationFactor(_ context.Context, f float64) Option {
 		}
 		o.testWithIntervalRandomizationFactor = f
 		o.testWithIntervalRandomizationFactorSet = true
+		return nil
+	}
+}
+
+// WithUrl provides optional url
+func WithUrl(_ context.Context, url string) Option {
+	return func(o *options) error {
+		o.withUrl = url
+		return nil
+	}
+}
+
+// WithLogger provides an optional logger.
+func WithLogger(_ context.Context, logger hclog.Logger) Option {
+	return func(o *options) error {
+		o.withLogger = logger
 		return nil
 	}
 }
