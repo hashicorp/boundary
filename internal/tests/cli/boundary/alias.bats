@@ -63,7 +63,7 @@ export ALIAS_VALUE='test'
 }
 
 @test "boundary/alias: admin user can connect to target using an alias" {
-  run connect_nc $ALIAS_VALUE
+  run connect_alias $ALIAS_VALUE
   [ "$status" -eq 0 ]
 }
 
@@ -72,7 +72,7 @@ export ALIAS_VALUE='test'
   [ "$status" -eq 0 ]
 }
 
-@test "boundary/login: can login as unpriv user" {
+@test "boundary/alias: can login as unpriv user" {
   run login $DEFAULT_UNPRIVILEGED_LOGIN
   [ "$status" -eq 0 ]
 }
