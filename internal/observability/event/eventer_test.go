@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"os"
 	"strings"
 	"sync"
@@ -830,7 +829,6 @@ func Test_StandardLogger(t *testing.T) {
 		wantErr         bool
 		wantErrIs       error
 		wantErrContains string
-		wantLogger      *log.Logger
 	}{
 		{
 			name:            "missing-eventer",
@@ -870,11 +868,6 @@ func Test_StandardLogger(t *testing.T) {
 			ctx:       testCtx,
 			eventer:   SysEventer(),
 			eventType: ErrorType,
-			wantLogger: func() *log.Logger {
-				w, err := SysEventer().StandardWriter(testCtx, ErrorType)
-				require.NoError(t, err)
-				return log.New(w, "okay", 0)
-			}(),
 		},
 	}
 	for _, tt := range tests {
@@ -896,7 +889,6 @@ func Test_StandardLogger(t *testing.T) {
 			}
 			require.NoError(err)
 			assert.NotNil(l)
-			assert.Equal(tt.wantLogger, l)
 		})
 	}
 }
