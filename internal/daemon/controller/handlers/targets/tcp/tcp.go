@@ -92,6 +92,11 @@ func newAttribute(m any) targets.Attributes {
 	}
 	if tcpAttr, ok := m.(*pb.Target_TcpTargetAttributes); ok {
 		a.TcpTargetAttributes = tcpAttr.TcpTargetAttributes
+	} else if attr, ok := m.(*pb.Target_Attributes); ok {
+		_ = attr
+		// We could update this to translate the generic attributes to the TCP
+		// attributes, at least for the getAttributes case, if we wanted to
+		// isolate the change to the targets package.
 	}
 	return a
 }

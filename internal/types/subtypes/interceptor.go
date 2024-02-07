@@ -157,7 +157,7 @@ func transformResponseItemAttributes(ctx context.Context, item proto.Message) er
 	return convertAttributesToDefault(ctx, item, st)
 }
 
-func transformRequest(ctx context.Context, msg proto.Message) error {
+func TransformRequest(ctx context.Context, msg proto.Message) error {
 	fqn := msg.ProtoReflect().Descriptor().FullName()
 	if fn, ok := globalTransformationRegistry.requestTransformationFuncs[fqn]; ok {
 		return fn(ctx, msg)
@@ -282,7 +282,7 @@ func AttributeTransformerInterceptor(ctx context.Context) grpc.UnaryServerInterc
 	const op = "subtypes.AttributeTransformInterceptor"
 	return func(interceptorCtx context.Context, req any, _ *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 		if reqMsg, ok := req.(proto.Message); ok {
-			if err := transformRequest(ctx, reqMsg); err != nil {
+			if err := TransformRequest(ctx, reqMsg); err != nil {
 				fieldErrs := map[string]string{
 					"attributes": "Attribute fields do not match the expected format.",
 				}

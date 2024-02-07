@@ -447,6 +447,12 @@ func (s Service) UpdateTarget(ctx context.Context, req *pbs.UpdateTargetRequest)
 		}
 	}
 
+	// since we resolved the alias to an id, transform the request to get the
+	// correct subtype attributes
+	if err := subtypes.TransformRequest(ctx, req); err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+
 	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
 	}

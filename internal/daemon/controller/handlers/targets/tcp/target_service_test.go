@@ -1612,6 +1612,87 @@ func TestUpdate(t *testing.T) {
 			},
 		},
 		{
+			name: "Update attribute",
+			req: &pbs.UpdateTargetRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"attributes.default_port"},
+				},
+				Item: &pb.Target{
+					Attrs: &pb.Target_TcpTargetAttributes{
+						TcpTargetAttributes: &pb.TcpTargetAttributes{
+							DefaultPort: wrapperspb.UInt32(1111),
+						},
+					},
+				},
+			},
+			res: &pbs.UpdateTargetResponse{
+				Item: &pb.Target{
+					Id:          tar.GetPublicId(),
+					ScopeId:     tar.GetProjectId(),
+					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
+					Name:        wrapperspb.String("default"),
+					Description: wrapperspb.String("default"),
+					CreatedTime: tar.GetCreateTime().GetTimestamp(),
+					Attrs: &pb.Target_TcpTargetAttributes{
+						TcpTargetAttributes: &pb.TcpTargetAttributes{
+							DefaultPort:       wrapperspb.UInt32(1111),
+							DefaultClientPort: wrapperspb.UInt32(3),
+						},
+					},
+					Type:                   tcp.Subtype.String(),
+					HostSourceIds:          hostSourceIds,
+					HostSources:            hostSources,
+					SessionMaxSeconds:      wrapperspb.UInt32(tar.GetSessionMaxSeconds()),
+					SessionConnectionLimit: wrapperspb.Int32(tar.GetSessionConnectionLimit()),
+					AuthorizedActions:      testAuthorizedActions,
+					Address:                &wrapperspb.StringValue{},
+				},
+			},
+		},
+		{
+			name: "Update attribute by alias",
+			req: &pbs.UpdateTargetRequest{
+				Id: al.GetValue(),
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"attributes.default_client_port"},
+				},
+				Item: &pb.Target{
+					Attrs: &pb.Target_Attributes{
+						Attributes: func() *structpb.Struct {
+							st, err := structpb.NewStruct(map[string]interface{}{
+								"default_client_port": 1111,
+							})
+							require.NoError(t, err)
+							return st
+						}(),
+					},
+				},
+			},
+			res: &pbs.UpdateTargetResponse{
+				Item: &pb.Target{
+					Id:          tar.GetPublicId(),
+					ScopeId:     tar.GetProjectId(),
+					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
+					Name:        wrapperspb.String("default"),
+					Description: wrapperspb.String("default"),
+					CreatedTime: tar.GetCreateTime().GetTimestamp(),
+					Attrs: &pb.Target_TcpTargetAttributes{
+						TcpTargetAttributes: &pb.TcpTargetAttributes{
+							DefaultPort:       wrapperspb.UInt32(2),
+							DefaultClientPort: wrapperspb.UInt32(1111),
+						},
+					},
+					Type:                   tcp.Subtype.String(),
+					HostSourceIds:          hostSourceIds,
+					HostSources:            hostSources,
+					SessionMaxSeconds:      wrapperspb.UInt32(tar.GetSessionMaxSeconds()),
+					SessionConnectionLimit: wrapperspb.Int32(tar.GetSessionConnectionLimit()),
+					AuthorizedActions:      testAuthorizedActions,
+					Address:                &wrapperspb.StringValue{},
+				},
+			},
+		},
+		{
 			name: "Update a Non Existing Target",
 			req: &pbs.UpdateTargetRequest{
 				Id: globals.TcpTargetPrefix + "_DoesntExis",

@@ -305,7 +305,7 @@ func TestTransformRequestAttributes(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			err := transformRequest(context.Background(), tc.req)
+			err := TransformRequest(context.Background(), tc.req)
 			require.NoError(t, err)
 			assert.Empty(t, cmp.Diff(tc.req, tc.expected, protocmp.Transform()))
 		})
@@ -635,7 +635,7 @@ func TestCustomTransformRequest(t *testing.T) {
 		},
 	}
 
-	err := transformRequest(context.Background(), request)
+	err := TransformRequest(context.Background(), request)
 	require.NoError(t, err)
 	assert.Empty(t, cmp.Diff(request, expected, protocmp.Transform()))
 }
