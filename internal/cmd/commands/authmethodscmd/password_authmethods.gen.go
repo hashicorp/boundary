@@ -56,7 +56,7 @@ func (c *PasswordCommand) Synopsis() string {
 		return extra
 	}
 
-	synopsisStr := "auth method"
+	synopsisStr := "auth-method"
 
 	synopsisStr = fmt.Sprintf("%s %s", "password-type", synopsisStr)
 

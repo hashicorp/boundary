@@ -55,7 +55,7 @@ func (c *Command) Synopsis() string {
 		return extra
 	}
 
-	synopsisStr := "auth token"
+	synopsisStr := "auth-token"
 
 	return common.SynopsisFunc(c.Func, synopsisStr)
 }

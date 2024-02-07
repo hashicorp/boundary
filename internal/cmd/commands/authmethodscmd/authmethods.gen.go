@@ -55,7 +55,7 @@ func (c *Command) Synopsis() string {
 		return extra
 	}
 
-	synopsisStr := "auth method"
+	synopsisStr := "auth-method"
 
 	return common.SynopsisFunc(c.Func, synopsisStr)
 }

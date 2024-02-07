@@ -55,7 +55,7 @@ func (c *Command) Synopsis() string {
 		return extra
 	}
 
-	synopsisStr := "policies"
+	synopsisStr := "policy"
 
 	return common.SynopsisFunc(c.Func, synopsisStr)
 }

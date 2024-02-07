@@ -54,7 +54,7 @@ func (c *StaticCommand) Synopsis() string {
 		return extra
 	}
 
-	synopsisStr := "credential store"
+	synopsisStr := "credential-store"
 
 	synopsisStr = fmt.Sprintf("%s %s", "static-type", synopsisStr)
 

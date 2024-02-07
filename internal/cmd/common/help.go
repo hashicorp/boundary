@@ -15,9 +15,10 @@ import (
 
 func SynopsisFunc(inFunc, resType string) string {
 	if inFunc == "" {
-		return wordwrap.WrapString(fmt.Sprintf("Manage Boundary %ss", resType), base.TermWidth)
+		pluralType := strings.ReplaceAll(resource.Map[resType].PluralString(), "-", " ")
+		return wordwrap.WrapString(fmt.Sprintf("Manage Boundary %s", pluralType), base.TermWidth)
 	}
-	articleType := resType
+	articleType := strings.ReplaceAll(resType, "-", " ")
 	switch resType[0] {
 	case 'a', 'e', 'i', 'o':
 		articleType = fmt.Sprintf("an %s", articleType)
