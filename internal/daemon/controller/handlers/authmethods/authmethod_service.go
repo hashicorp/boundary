@@ -189,10 +189,6 @@ func (s Service) ListAuthMethods(ctx context.Context, req *pbs.ListAuthMethodsRe
 	if err != nil {
 		return nil, err
 	}
-	// If no scopes match, return an empty response
-	if len(scopeIds) == 0 {
-		return &pbs.ListAuthMethodsResponse{}, nil
-	}
 
 	var filterItemFn func(ctx context.Context, item auth.AuthMethod) (bool, error)
 	switch {
