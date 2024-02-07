@@ -83,6 +83,8 @@ description: |-
     </td>
     <td style={{verticalAlign: 'middle'}}>
       Roles now support multiple grant scopes, along with the special values <code>this</code>, <code>children</code> (global/org scopes only) to apply to all direct children of a scope, and <code>descendants</code> (global only) to apply to all descendants of a scope. You can apply the new values by using the commands <code>add-grant-scopes</code>, <code>set-grant-scopes</code>, and <code>remove-grant-scopes</code> on roles. You can continue to use the existing <code>grant_scope_id</code> field for now, but it has been deprecated.
+      <br /><br />
+      Learn more:&nbsp;<a href="/boundary/docs/commands/roles/add-grant-scopes"><code>add-grant-scopes</code></a>, <a href="/boundary/docs/commands/roles/remove-grant-scopes"><code>remove-grant-scopes</code></a>, and <a href="/boundary/docs/commands/roles/set-grant-scopes"><code>set-grant-scopes</code></a>
     </td>
   </tr>
 
@@ -229,10 +231,12 @@ description: |-
 
   <tr>
     <td style={{verticalAlign: 'middle'}}>
-      <code>grant_scope_id</code> field for roles
+      <code>grant-scope-id</code> field for roles
     </td>
     <td style={{verticalAlign: 'middle'}}>
-     The <code>grant_scope_id</code> field is now deprecated in favor of multiple grant scope support.
+     The <code>grant-scope-id</code> field is now deprecated in favor of multiple grant scope support.
+      <br /><br />
+      Learn more:&nbsp;<a href="/boundary/docs/commands/roles/add-grant-scopes"><code>add-grant-scopes</code></a>, <a href="/boundary/docs/commands/roles/remove-grant-scopes"><code>remove-grant-scopes</code></a>, and <a href="/boundary/docs/commands/roles/set-grant-scopes"><code>set-grant-scopes</code></a>
     </td>
   </tr>
 
