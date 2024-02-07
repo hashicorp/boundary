@@ -444,13 +444,13 @@ func (s Service) UpdateTarget(ctx context.Context, req *pbs.UpdateTargetRequest)
 			return nil, errors.Wrap(ctx, err, op)
 		} else {
 			req.Id = a.DestinationId
+			// The first time we tried to Transform the request to a specific
+			// attribute subtypes we didn't have the id prefix. Now that we do
+			// try again.
+			if err := subtypes.TransformRequest(ctx, req); err != nil {
+				return nil, errors.Wrap(ctx, err, op)
+			}
 		}
-	}
-
-	// since we resolved the alias to an id, transform the request to get the
-	// correct subtype attributes
-	if err := subtypes.TransformRequest(ctx, req); err != nil {
-		return nil, errors.Wrap(ctx, err, op)
 	}
 
 	if err := validateUpdateRequest(req); err != nil {

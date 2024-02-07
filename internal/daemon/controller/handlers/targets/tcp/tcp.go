@@ -96,7 +96,8 @@ func newAttribute(m any) targets.Attributes {
 		_ = attr
 		// We could update this to translate the generic attributes to the TCP
 		// attributes, at least for the getAttributes case, if we wanted to
-		// isolate the change to the targets package.
+		// isolate the change to the targets package, but then we would need to
+		// do this for every new subtype of targets.
 	}
 	return a
 }
