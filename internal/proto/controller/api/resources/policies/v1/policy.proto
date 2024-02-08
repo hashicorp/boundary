@@ -75,14 +75,8 @@ message Policy {
 }
 
 message StoragePolicyAttributes {
-  StoragePolicyRetainFor retain_for = 10 [
-    json_name = "retain_for",
-    (custom_options.v1.generate_sdk_option) = true
-  ];
-  StoragePolicyDeleteAfter delete_after = 20 [
-    json_name = "delete_after",
-    (custom_options.v1.generate_sdk_option) = true
-  ];
+  StoragePolicyRetainFor retain_for = 10 [json_name = "retain_for"];
+  StoragePolicyDeleteAfter delete_after = 20 [json_name = "delete_after"];
 }
 
 message StoragePolicyRetainFor {
