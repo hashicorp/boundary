@@ -7,7 +7,6 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"fmt"
 	"os"
 	"os/exec"
 	"testing"
@@ -48,7 +47,10 @@ func getOpts(opt ...Option) options {
 	return opts
 }
 
-const EnvToCheckSkip = "E2E_TESTS"
+const (
+	EnvToCheckSkip     = "E2E_TESTS"
+	EnvToCheckSlowSkip = "E2E_SLOW_TESTS"
+)
 
 // RunCommand executes external commands on the system. Returns the results
 // of running the provided command.
@@ -130,9 +132,20 @@ func WithEnv(name string, value string) Option {
 // MaybeSkipTest is a check used at the start of the test to determine if the test should run
 func MaybeSkipTest(t testing.TB) {
 	if _, ok := os.LookupEnv(EnvToCheckSkip); !ok {
-		t.Skip(fmt.Sprintf(
+		t.Skipf(
 			"Skipping test because environment variable '%s' is not set. This is needed for e2e tests.",
 			EnvToCheckSkip,
-		))
+		)
+	}
+}
+
+// MaybeSkipSlowTest is a check used at the start of the test to determine if the test should run
+func MaybeSkipSlowTest(t testing.TB) {
+	MaybeSkipTest(t)
+	if _, ok := os.LookupEnv(EnvToCheckSlowSkip); !ok {
+		t.Skipf(
+			"Skipping test because environment variable '%s' is not set. This is needed for slow e2e tests.",
+			EnvToCheckSlowSkip,
+		)
 	}
 }
