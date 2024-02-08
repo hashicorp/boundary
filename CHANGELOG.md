@@ -8,7 +8,9 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 * Target aliases have been added: You can now create an alias for a target.
   In most situations where you would use a target id, you can now instead use
-  the alias value.
+  the alias value. Crate an alias with 
+  `boundary aliases create target -value example.boundary -destination-id ttcp_1234567890`
+  and connect to a target using an alias using `boundary connect example.boundary`
 
 ### Added dependency
 
