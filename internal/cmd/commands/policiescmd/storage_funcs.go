@@ -95,73 +95,54 @@ func extraStorageFlagsFuncImpl(c *StorageCommand, set *base.FlagSets, _ *base.Fl
 }
 
 func extraStorageFlagsHandlingFuncImpl(c *StorageCommand, _ *base.FlagSets, opts *[]policies.Option) bool {
-	rf := map[string]any{}
-	da := map[string]any{}
-
-	var withRetainFor, withDeleteAfter bool
 	switch c.flagRetainForDays {
 	case "":
 	case "null":
-		rf["days"] = nil
-		withRetainFor = true
+		*opts = append(*opts, policies.DefaultStoragePolicyRetainForDays())
 	default:
-		days, err := strconv.ParseInt(c.flagRetainForDays, 10, 64)
+		days, err := strconv.ParseInt(c.flagRetainForDays, 10, 32)
 		if err != nil {
 			c.UI.Error(fmt.Sprintf("Error parsing %q: %s", c.flagRetainForDays, err))
 			return false
 		}
-		rf["days"] = days
-		withRetainFor = true
+		*opts = append(*opts, policies.WithStoragePolicyRetainForDays(int32(days)))
 	}
 	switch c.flagRetainForOverridable {
 	case "":
 	case "null":
-		rf["overridable"] = nil
-		withRetainFor = true
+		*opts = append(*opts, policies.DefaultStoragePolicyRetainForOverridable())
 	default:
 		overridable, err := strconv.ParseBool(c.flagRetainForOverridable)
 		if err != nil {
 			c.UI.Error(fmt.Sprintf("Error parsing %q: %s", c.flagRetainForOverridable, err))
 			return false
 		}
-		rf["overridable"] = overridable
-		withRetainFor = true
+		*opts = append(*opts, policies.WithStoragePolicyRetainForOverridable(overridable))
 	}
 
 	switch c.flagDeleteAfterDays {
 	case "":
 	case "null":
-		da["days"] = nil
-		withDeleteAfter = true
+		*opts = append(*opts, policies.DefaultStoragePolicyDeleteAfterDays())
 	default:
-		days, err := strconv.ParseInt(c.flagDeleteAfterDays, 10, 64)
+		days, err := strconv.ParseInt(c.flagDeleteAfterDays, 10, 32)
 		if err != nil {
 			c.UI.Error(fmt.Sprintf("Error parsing %q: %s", c.flagDeleteAfterDays, err))
 			return false
 		}
-		da["days"] = days
-		withDeleteAfter = true
+		*opts = append(*opts, policies.WithStoragePolicyDeleteAfterDays(int32(days)))
 	}
 	switch c.flagDeleteAfterOverridable {
 	case "":
 	case "null":
-		da["overridable"] = nil
-		withDeleteAfter = true
+		*opts = append(*opts, policies.DefaultStoragePolicyDeleteAfterOverridable())
 	default:
 		overridable, err := strconv.ParseBool(c.flagDeleteAfterOverridable)
 		if err != nil {
 			c.UI.Error(fmt.Sprintf("Error parsing %q: %s", c.flagDeleteAfterOverridable, err))
 			return false
 		}
-		da["overridable"] = overridable
-		withDeleteAfter = true
-	}
-
-	if withRetainFor {
-		*opts = append(*opts, policies.WithStoragePolicyRetainFor(rf))
-	}
-	if withDeleteAfter {
-		*opts = append(*opts, policies.WithStoragePolicyDeleteAfter(da))
+		*opts = append(*opts, policies.WithStoragePolicyDeleteAfterOverridable(overridable))
 	}
 
 	return true

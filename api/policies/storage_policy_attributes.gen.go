@@ -11,8 +11,8 @@ import (
 )
 
 type StoragePolicyAttributes struct {
-	RetainFor   map[string]any `json:"retain_for,omitempty"`
-	DeleteAfter map[string]any `json:"delete_after,omitempty"`
+	RetainFor   *StoragePolicyRetainFor   `json:"retain_for,omitempty"`
+	DeleteAfter *StoragePolicyDeleteAfter `json:"delete_after,omitempty"`
 }
 
 func AttributesMapToStoragePolicyAttributes(in map[string]interface{}) (*StoragePolicyAttributes, error) {
