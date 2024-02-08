@@ -45,6 +45,11 @@ func registerAliasableFields(d protoreflect.MessageDescriptor) {
 	}
 }
 
+// ResolutionInterceptor returns a grpc.UnaryServerInterceptor that resolves
+// alias values in the request to their corresponding destination ids. If no
+// alias is found or the alias has no destination id, an error is returned.
+// For an field in the request to be considered for alias resolution, it must
+// be annotated with the Aliasable proto option.
 func ResolutionInterceptor(
 	ctx context.Context,
 	aliasRepoFn func() (*Repository, error),
@@ -66,6 +71,9 @@ func ResolutionInterceptor(
 			return nil, err
 		}
 		interceptorCtx, err = transformRequest(interceptorCtx, reqMsg, r)
+		if err != nil {
+			return nil, err
+		}
 		return handler(interceptorCtx, req)
 	}
 }
