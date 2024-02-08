@@ -131,6 +131,8 @@ func (w *Sha256SumWriter) Write(b []byte) (int, error) {
 // WriteString will write the string to hash.
 func (w *Sha256SumWriter) WriteString(s string) (int, error) {
 	const op = "checksum.(Sha256SumWriter).WriteString"
+	w.l.Lock()
+	defer w.l.Unlock()
 	n, err := w.hash.Write([]byte(s))
 	if err != nil {
 		return n, fmt.Errorf("%s: %w", op, err)
@@ -168,6 +170,8 @@ func (w *Sha256SumWriter) WriteAndClose(b []byte) (int, error) {
 // and if so, then Close() is called; otherwise this is a noop
 func (w *Sha256SumWriter) Close() error {
 	const op = "checksum.(Sha256SumWriter).Close"
+	w.l.Lock()
+	defer w.l.Unlock()
 	var i interface{} = w.underlying
 	if v, ok := i.(io.Closer); ok {
 		if err := v.Close(); err != nil {
