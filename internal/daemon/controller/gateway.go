@@ -12,6 +12,7 @@ import (
 	grpc_recovery "github.com/grpc-ecosystem/go-grpc-middleware/recovery"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/alias"
 	"github.com/hashicorp/boundary/internal/daemon/controller/common"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/db"
@@ -75,6 +76,7 @@ func newGrpcServer(
 	passwordAuthRepoFn common.PasswordAuthRepoFactory,
 	oidcAuthRepoFn common.OidcAuthRepoFactory,
 	ldapAuthRepoFn common.LdapAuthRepoFactory,
+	aliasRepoFn common.AliasRepoFactory,
 	kms *kms.Kms,
 	eventer *event.Eventer,
 ) (*grpc.Server, string, error) {
@@ -115,6 +117,7 @@ func newGrpcServer(
 			grpc_middleware.ChainUnaryServer(
 				unaryCtxInterceptor,                           // populated requestInfo from headers into the request ctx
 				errorInterceptor(ctx),                         // convert domain and api errors into headers for the http proxy
+				alias.ResolutionInterceptor(ctx, aliasRepoFn), // Resolve ids when an alias is provided
 				subtypes.AttributeTransformerInterceptor(ctx), // convert to/from generic attributes from/to subtype specific attributes
 				eventsRequestInterceptor(ctx),                 // before we get started, send the required events with the request
 				statusCodeInterceptor(ctx),                    // convert grpc codes into http status codes for the http proxy (can modify the resp)

@@ -29,6 +29,12 @@ extend google.protobuf.FieldOptions {
   // subtype_source_id is used to indicate that a field provided an id that can be used
   // to determine the subtype of a message.
   bool subtype_source_id = 85556;
+
+  // aliasable_field is used to indicate that a field is aliasable. Fields with
+  // this option attached will have their values checked for a possible alias
+  // value at request time and will be replaced with the destination id
+  // associated with the alias if found.
+  bool aliasable = 85557;
 }
 
 extend google.protobuf.FileOptions {

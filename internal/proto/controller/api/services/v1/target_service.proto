@@ -187,7 +187,7 @@ service TargetService {
 }
 
 message GetTargetRequest {
-  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
+  string id = 1 [(custom_options.v1.aliasable) = true]; // @gotags: `class:"public" eventstream:"observation"`
 }
 
 message GetTargetResponse {
@@ -243,7 +243,7 @@ message CreateTargetResponse {
 }
 
 message UpdateTargetRequest {
-  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
+  string id = 1 [(custom_options.v1.aliasable) = true]; // @gotags: `class:"public" eventstream:"observation"`
   resources.targets.v1.Target item = 2;
   google.protobuf.FieldMask update_mask = 3 [json_name = "update_mask"];
 }
@@ -253,13 +253,13 @@ message UpdateTargetResponse {
 }
 
 message DeleteTargetRequest {
-  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
+  string id = 1 [(custom_options.v1.aliasable) = true]; // @gotags: `class:"public" eventstream:"observation"`
 }
 
 message DeleteTargetResponse {}
 
 message AddTargetHostSourcesRequest {
-  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
+  string id = 1 [(custom_options.v1.aliasable) = true]; // @gotags: `class:"public" eventstream:"observation"`
   // Version is used to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
   uint32 version = 2; // @gotags: `class:"public"`
@@ -271,7 +271,7 @@ message AddTargetHostSourcesResponse {
 }
 
 message SetTargetHostSourcesRequest {
-  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
+  string id = 1 [(custom_options.v1.aliasable) = true]; // @gotags: `class:"public" eventstream:"observation"`
   // Version is used to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
   uint32 version = 2; // @gotags: `class:"public"`
@@ -283,7 +283,7 @@ message SetTargetHostSourcesResponse {
 }
 
 message RemoveTargetHostSourcesRequest {
-  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
+  string id = 1 [(custom_options.v1.aliasable) = true]; // @gotags: `class:"public" eventstream:"observation"`
   // Version is used to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
   uint32 version = 2; // @gotags: `class:"public"`
@@ -295,7 +295,7 @@ message RemoveTargetHostSourcesResponse {
 }
 
 message AddTargetCredentialSourcesRequest {
-  string id = 1; // @gotags: `class:"public"`
+  string id = 1 [(custom_options.v1.aliasable) = true]; // @gotags: `class:"public"`
   // Version is used to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
   uint32 version = 2; // @gotags: `class:"public"`
@@ -322,7 +322,7 @@ message AddTargetCredentialSourcesResponse {
 // Sets the values for credential sources. Any credential_source_id field that
 // is not set in the request will result in those fields being cleared.
 message SetTargetCredentialSourcesRequest {
-  string id = 1; // @gotags: `class:"public"`
+  string id = 1 [(custom_options.v1.aliasable) = true]; // @gotags: `class:"public"`
   // Version is used to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
   uint32 version = 2; // @gotags: `class:"public"`
@@ -347,7 +347,7 @@ message SetTargetCredentialSourcesResponse {
 }
 
 message RemoveTargetCredentialSourcesRequest {
-  string id = 1; // @gotags: `class:"public"`
+  string id = 1 [(custom_options.v1.aliasable) = true]; // @gotags: `class:"public"`
   // Version is used to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
   uint32 version = 2; // @gotags: `class:"public"`
@@ -373,7 +373,7 @@ message RemoveTargetCredentialSourcesResponse {
 
 message AuthorizeSessionRequest {
   // The ID of the target. Required unless some combination of scope_id/scope_name and name are set.
-  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
+  string id = 1 [(custom_options.v1.aliasable) = true]; // @gotags: `class:"public" eventstream:"observation"`
 
   // The name of the target. When using this, scope_id or scope_name must be set.
   string name = 3; // @gotags: `class:"public"`
