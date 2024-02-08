@@ -6,6 +6,9 @@ disable_mlock = true
 controller {
   name = "boundary-controller-${id}"
   description = "Enos Boundary controller ${id}"
+
+  max_page_size = ${max_page_size}
+
   database {
     url = "postgresql://${dbuser}:${dbpass}@${dbhost}:${dbport}/${dbname}"
     max_open_connections = ${db_max_open_connections}
@@ -19,8 +22,6 @@ listener "tcp" {
   # The purpose of this listener block
   purpose = "api"
   tls_disable = true
-
-  max_page_size = ${max_page_size}
 
   # Uncomment to enable CORS for the Admin UI. Be sure to set the allowed origin(s)
   # to appropriate values.
