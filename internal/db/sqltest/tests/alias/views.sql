@@ -5,7 +5,7 @@ begin;
 select plan(1);
 select wtt_load('widgets', 'iam', 'kms', 'auth');
 
-select has_view('alias_view', 'view for reading generic alias data does not exist');
+select has_view('alias_all_subtypes', 'view for reading generic alias data does not exist');
 
 select * from finish();
 rollback;

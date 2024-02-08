@@ -3,9 +3,9 @@
 
 begin;
 
-  -- alias_view defines a view that retrieves the common columns from the
+  -- alias_all_subtypes defines a view that retrieves the common columns from the
   -- subtype alias tables.
-  create view alias_view as
+  create view alias_all_subtypes as
     select
       public_id,
       value,

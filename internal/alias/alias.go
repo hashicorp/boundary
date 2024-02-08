@@ -36,7 +36,7 @@ func (al *Alias) TableName() string {
 	if al.tableName != "" {
 		return al.tableName
 	}
-	return "alias_view"
+	return "alias_all_subtypes"
 }
 
 func (al *Alias) SetTableName(tableName string) {
