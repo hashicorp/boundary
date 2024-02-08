@@ -34,7 +34,7 @@ extend google.protobuf.FieldOptions {
   // this option attached will have their values checked for a possible alias
   // value at request time and will be replaced with the destination id
   // associated with the alias if found.
-  bool aliasable = 85557;
+  AliasInfo aliasable = 85557;
 }
 
 extend google.protobuf.FileOptions {
@@ -45,4 +45,21 @@ extend google.protobuf.FileOptions {
 message MaskMapping {
   string this = 1;
   string that = 2;
+}
+
+message AliasInfo {
+  oneof aliasable {
+    bool always = 1;
+
+    // aliasable_with_fields is used to indicate that the field this FieldOption
+    // is on, while normally aliasable, should not be aliased if any fields on this
+    // same message are populated.
+    AliasableUnlessSet unless_set = 2;
+  }
+}
+
+message AliasableUnlessSet {
+  // fields is a list of fields that, if any of them are set with a non zero
+  // value then the field this FieldOption is on should not be treated as an alias.
+  repeated string fields = 1;
 }

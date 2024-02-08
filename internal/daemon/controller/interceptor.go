@@ -11,6 +11,7 @@ import (
 	"runtime/debug"
 
 	grpc_recovery "github.com/grpc-ecosystem/go-grpc-middleware/recovery"
+	"github.com/hashicorp/boundary/internal/alias"
 	commonSrv "github.com/hashicorp/boundary/internal/daemon/common"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/common"
@@ -325,6 +326,39 @@ func errorInterceptor(
 			}
 		}
 		return h, handlerErr
+	}
+}
+
+// aliasResolutionInterceptor returns a grpc.UnaryServerInterceptor that resolves
+// alias values in the request to their corresponding destination ids. If no
+// alias is found or the alias has no destination id, an error is returned.
+// For an field in the request to be considered for alias resolution, it must
+// be annotated with the Aliasable proto option.
+func aliasResolutionInterceptor(
+	ctx context.Context,
+	aliasRepoFn func() (*alias.Repository, error),
+) grpc.UnaryServerInterceptor {
+	const op = "alias.ResolutionInterceptor"
+
+	return func(interceptorCtx context.Context,
+		req any,
+		_ *grpc.UnaryServerInfo,
+		handler grpc.UnaryHandler) (any, error,
+	) {
+		reqMsg, ok := req.(proto.Message)
+		if !ok {
+			return nil, handlers.InvalidArgumentErrorf("The request was not a proto.Message.", nil)
+		}
+
+		r, err := aliasRepoFn()
+		if err != nil {
+			return nil, err
+		}
+		interceptorCtx, err = alias.ResolveAliasFields(interceptorCtx, reqMsg, r)
+		if err != nil {
+			return nil, err
+		}
+		return handler(interceptorCtx, req)
 	}
 }
 

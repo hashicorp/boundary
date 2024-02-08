@@ -5,14 +5,12 @@ package alias
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"sync"
 
-	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
-	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/protooptions"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"
@@ -27,6 +25,11 @@ func init() {
 	})
 }
 
+type registrationInfo struct {
+	unaliableWithFields []string
+}
+
+// globalAliasableRegistry is a map of proto field's full names to struct{} to
 var globalAliasableRegistry sync.Map
 
 func registerAliasableFields(d protoreflect.MessageDescriptor) {
@@ -38,43 +41,11 @@ func registerAliasableFields(d protoreflect.MessageDescriptor) {
 		if !ok {
 			continue
 		}
-		isAliasable := proto.GetExtension(opts, protooptions.E_Aliasable).(bool)
-		if isAliasable {
-			globalAliasableRegistry.Store(name, struct{}{})
+		aliasableInfo := proto.GetExtension(opts, protooptions.E_Aliasable).(*protooptions.AliasInfo)
+		if aliasableInfo != nil {
+			ri := &registrationInfo{unaliableWithFields: aliasableInfo.GetUnlessSet().GetFields()}
+			globalAliasableRegistry.Store(name, ri)
 		}
-	}
-}
-
-// ResolutionInterceptor returns a grpc.UnaryServerInterceptor that resolves
-// alias values in the request to their corresponding destination ids. If no
-// alias is found or the alias has no destination id, an error is returned.
-// For an field in the request to be considered for alias resolution, it must
-// be annotated with the Aliasable proto option.
-func ResolutionInterceptor(
-	ctx context.Context,
-	aliasRepoFn func() (*Repository, error),
-) grpc.UnaryServerInterceptor {
-	const op = "alias.ResolutionInterceptor"
-
-	return func(interceptorCtx context.Context,
-		req any,
-		_ *grpc.UnaryServerInfo,
-		handler grpc.UnaryHandler) (any, error,
-	) {
-		reqMsg, ok := req.(proto.Message)
-		if !ok {
-			return nil, handlers.InvalidArgumentErrorf("The request was not a proto.Message.", nil)
-		}
-
-		r, err := aliasRepoFn()
-		if err != nil {
-			return nil, err
-		}
-		interceptorCtx, err = transformRequest(interceptorCtx, reqMsg, r)
-		if err != nil {
-			return nil, err
-		}
-		return handler(interceptorCtx, req)
 	}
 }
 
@@ -83,31 +54,37 @@ type aliasLookup interface {
 	lookupAliasByValue(ctx context.Context, value string) (*Alias, error)
 }
 
-// transformRequest transforms the request by replacing alias values with their
+// ResolveAliasFields transforms the request by replacing alias values with their
 // corresponding destination ids. If no alias is found or the alias has no
 // destination id, an error is returned.
-func transformRequest(ctx context.Context, req proto.Message, lookup aliasLookup) (context.Context, error) {
+func ResolveAliasFields(ctx context.Context, req proto.Message, lookup aliasLookup) (context.Context, error) {
+	const op = "alias.TransformRequest"
 	r := req.ProtoReflect()
 	fields := r.Descriptor().Fields()
+
+nextField:
 	for i := 0; i < fields.Len(); i++ {
 		f := fields.Get(i)
 		if f.Kind() != protoreflect.StringKind {
 			continue
 		}
-		if _, ok := globalAliasableRegistry.Load(f.FullName()); !ok {
+		aiVal, ok := globalAliasableRegistry.Load(f.FullName())
+		if !ok {
 			continue
 		}
+		ai, ok := aiVal.(*registrationInfo)
+		if !ok {
+			return ctx, errors.New(ctx, errors.Internal, op, fmt.Sprintf("unable to cast aliasable info for field %q", f.FullName()))
+		}
+
 		v := r.Get(f).String()
 		if !maybeAlias(v) {
 			continue
 		}
 
-		// Special case the authorize session request, as it can be ambiguous
-		// if the value is an alias or a target name with a scope id/name
-		if f.FullName() == (&pbs.AuthorizeSessionRequest{}).ProtoReflect().Descriptor().Fields().ByName("id").FullName() {
-			// If the scope is also provided, then we know the value is a target name
-			if r.Has(fields.ByName("scope_id")) || r.Has(fields.ByName("scope_name")) {
-				continue
+		for _, fieldName := range ai.unaliableWithFields {
+			if r.Has(fields.ByName(protoreflect.Name(fieldName))) {
+				continue nextField
 			}
 		}
 
@@ -116,10 +93,10 @@ func transformRequest(ctx context.Context, req proto.Message, lookup aliasLookup
 			return ctx, err
 		}
 		if a == nil {
-			return ctx, handlers.ApiErrorWithCodeAndMessage(codes.NotFound, "resource alias not found with value %q", v)
+			return ctx, errors.New(ctx, errors.NotFound, op, fmt.Sprintf("resource alias not found with value %q", v))
 		}
 		if a.DestinationId == "" {
-			return ctx, handlers.ApiErrorWithCodeAndMessage(codes.NotFound, "resource not found for alias value %q", v)
+			return ctx, errors.New(ctx, errors.NotFound, op, fmt.Sprintf("resource not found for alias value %q", v))
 		}
 		r.Set(f, protoreflect.ValueOfString(a.DestinationId))
 		ctx = setCtxAliasInfo(ctx, a)

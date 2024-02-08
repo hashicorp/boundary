@@ -49,12 +49,12 @@ func TestRegisterAliasableFields(t *testing.T) {
 	}
 }
 
-func TestTransformRequest(t *testing.T) {
+func TestResolveAliasFields(t *testing.T) {
 	t.Run("no alias", func(t *testing.T) {
 		ctx := context.Background()
 		m := aliasMapping{m: make(map[string]*Alias)}
 		req := &pbs.GetTargetRequest{Id: "foo"}
-		ctx, err := transformRequest(ctx, req, m)
+		ctx, err := ResolveAliasFields(ctx, req, m)
 		assert.ErrorContains(t, err, "resource alias not found with value")
 		assert.Nil(t, GetInfoFromContext(ctx))
 	})
@@ -64,7 +64,7 @@ func TestTransformRequest(t *testing.T) {
 		m := aliasMapping{m: make(map[string]*Alias)}
 		m.m["foo"] = &Alias{PublicId: "alt_1234", Value: "foo", DestinationId: "ttcp_mapped"}
 		req := &pbs.GetTargetRequest{Id: "foo"}
-		ctx, err := transformRequest(ctx, req, m)
+		ctx, err := ResolveAliasFields(ctx, req, m)
 		assert.NoError(t, err)
 		assert.Equal(t, "ttcp_mapped", req.Id)
 		assert.NotNil(t, GetInfoFromContext(ctx))
@@ -75,7 +75,7 @@ func TestTransformRequest(t *testing.T) {
 		m := aliasMapping{m: make(map[string]*Alias)}
 		m.m["foo"] = &Alias{PublicId: "alt_1234", Value: "foo", DestinationId: "ttcp_mapped"}
 		req := &pbs.GetTargetRequest{Id: "ttcp_existing"}
-		ctx, err := transformRequest(ctx, req, m)
+		ctx, err := ResolveAliasFields(ctx, req, m)
 		assert.NoError(t, err)
 		assert.Equal(t, "ttcp_existing", req.Id)
 		assert.Nil(t, GetInfoFromContext(ctx))
@@ -86,7 +86,7 @@ func TestTransformRequest(t *testing.T) {
 		m := aliasMapping{m: make(map[string]*Alias)}
 		m.m["foo"] = &Alias{PublicId: "alt_1234", Value: "foo"}
 		req := &pbs.GetTargetRequest{Id: "foo"}
-		ctx, err := transformRequest(ctx, req, m)
+		ctx, err := ResolveAliasFields(ctx, req, m)
 		assert.ErrorContains(t, err, "resource not found for alias value")
 		assert.Nil(t, GetInfoFromContext(ctx))
 	})
@@ -99,7 +99,7 @@ func TestTransformRequest(t *testing.T) {
 		m := aliasMapping{m: make(map[string]*Alias)}
 		m.m["foo"] = &Alias{PublicId: "alt_1234", Value: "foo", DestinationId: "ttcp_mapped"}
 		req := &pbs.AuthorizeSessionRequest{Id: "foo", ScopeId: "scope_id"}
-		ctx, err := transformRequest(ctx, req, m)
+		ctx, err := ResolveAliasFields(ctx, req, m)
 		assert.NoError(t, err)
 		assert.Equal(t, "foo", req.Id)
 		assert.Nil(t, GetInfoFromContext(ctx))
@@ -110,7 +110,7 @@ func TestTransformRequest(t *testing.T) {
 		m := aliasMapping{m: make(map[string]*Alias)}
 		m.m["foo"] = &Alias{PublicId: "alt_1234", Value: "foo", DestinationId: "ttcp_mapped"}
 		req := &pbs.AuthorizeSessionRequest{Id: "foo", ScopeName: "scope_name"}
-		ctx, err := transformRequest(ctx, req, m)
+		ctx, err := ResolveAliasFields(ctx, req, m)
 		assert.NoError(t, err)
 		assert.Equal(t, "foo", req.Id)
 		assert.Nil(t, GetInfoFromContext(ctx))
@@ -121,7 +121,7 @@ func TestTransformRequest(t *testing.T) {
 		m := aliasMapping{m: make(map[string]*Alias)}
 		m.m["foo"] = &Alias{PublicId: "alt_1234", Value: "foo", DestinationId: "ttcp_mapped"}
 		req := &pbs.AuthorizeSessionRequest{Id: "foo"}
-		ctx, err := transformRequest(ctx, req, m)
+		ctx, err := ResolveAliasFields(ctx, req, m)
 		assert.NoError(t, err)
 		assert.Equal(t, "ttcp_mapped", req.Id)
 		assert.NotNil(t, GetInfoFromContext(ctx))
