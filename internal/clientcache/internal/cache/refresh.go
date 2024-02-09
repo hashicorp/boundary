@@ -159,21 +159,21 @@ func (r *RefreshService) RefreshForSearch(ctx context.Context, authTokenid strin
 	}
 	at, err := r.repo.LookupToken(ctx, authTokenid)
 	if err != nil {
-		return errors.Wrap(ctx, err, op)
+		return errors.Wrap(ctx, err, op, errors.WithoutEvent())
 	}
 	if at == nil {
-		return errors.New(ctx, errors.NotFound, op, "auth token not found")
+		return errors.New(ctx, errors.NotFound, op, "auth token not found", errors.WithoutEvent())
 	}
 	u, err := r.repo.lookupUser(ctx, at.UserId)
 	if err != nil {
-		return errors.Wrap(ctx, err, op)
+		return errors.Wrap(ctx, err, op, errors.WithoutEvent())
 	}
 	if u == nil {
-		return errors.New(ctx, errors.NotFound, op, "user not found")
+		return errors.New(ctx, errors.NotFound, op, "user not found", errors.WithoutEvent())
 	}
 	us, err := r.cacheSupportedUsers(ctx, []*user{u})
 	if err != nil {
-		return errors.Wrap(ctx, err, op)
+		return errors.Wrap(ctx, err, op, errors.WithoutEvent())
 	}
 
 	switch len(us) {
@@ -183,29 +183,29 @@ func (r *RefreshService) RefreshForSearch(ctx context.Context, authTokenid strin
 	case 1:
 		u = us[0]
 	default:
-		return errors.New(ctx, errors.Internal, op, "unexpected number of refreshable users")
+		return errors.New(ctx, errors.Internal, op, "unexpected number of refreshable users", errors.WithoutEvent())
 	}
 
 	tokens, err := r.cleanAndPickAuthTokens(ctx, u)
 	if err != nil {
-		return errors.Wrap(ctx, err, op)
+		return errors.Wrap(ctx, err, op, errors.WithoutEvent())
 	}
 
 	opts, err := getOpts(opt...)
 	if err != nil {
-		return errors.Wrap(ctx, err, op)
+		return errors.Wrap(ctx, err, op, errors.WithoutEvent())
 	}
 
 	switch resourceType {
 	case Targets:
 		rtv, err := r.repo.lookupRefreshToken(ctx, u, targetResourceType)
 		if err != nil {
-			return errors.Wrap(ctx, err, op)
+			return errors.Wrap(ctx, err, op, errors.WithoutEvent())
 		}
 		if opts.withIgnoreSearchStaleness || rtv != nil && time.Since(rtv.UpdateTime) > r.maxSearchStaleness {
 			r.logger.Debug("refreshing targets before performing search", "user", u.Id, "force refresh", opts.withIgnoreSearchStaleness, "sessions age", time.Since(rtv.UpdateTime))
 			if err := r.repo.refreshTargets(ctx, u, tokens, opt...); err != nil {
-				return errors.Wrap(ctx, err, op)
+				return errors.Wrap(ctx, err, op, errors.WithoutEvent())
 			}
 		}
 	case Sessions:
@@ -216,11 +216,11 @@ func (r *RefreshService) RefreshForSearch(ctx context.Context, authTokenid strin
 		if opts.withIgnoreSearchStaleness || rtv != nil && time.Since(rtv.UpdateTime) > r.maxSearchStaleness {
 			r.logger.Debug("refreshing sessions before performing search", "user", u.Id, "force refresh", opts.withIgnoreSearchStaleness, "sessions age", time.Since(rtv.UpdateTime))
 			if err := r.repo.refreshSessions(ctx, u, tokens, opt...); err != nil {
-				return errors.Wrap(ctx, err, op)
+				return errors.Wrap(ctx, err, op, errors.WithoutEvent())
 			}
 		}
 	default:
-		return errors.New(ctx, errors.InvalidParameter, op, "unrecognized resource type")
+		return errors.New(ctx, errors.InvalidParameter, op, "unrecognized resource type", errors.WithoutEvent())
 	}
 
 	return nil
@@ -235,20 +235,20 @@ func (r *RefreshService) RefreshForSearch(ctx context.Context, authTokenid strin
 func (r *RefreshService) Refresh(ctx context.Context, opt ...Option) error {
 	const op = "cache.(RefreshService).Refresh"
 	if err := r.repo.cleanExpiredOrOrphanedAuthTokens(ctx); err != nil {
-		return errors.Wrap(ctx, err, op)
+		return errors.Wrap(ctx, err, op, errors.WithoutEvent())
 	}
 	if err := r.repo.syncKeyringlessTokensWithDb(ctx); err != nil {
-		return errors.Wrap(ctx, err, op)
+		return errors.Wrap(ctx, err, op, errors.WithoutEvent())
 	}
 
 	us, err := r.repo.listUsers(ctx)
 	if err != nil {
-		return errors.Wrap(ctx, err, op)
+		return errors.Wrap(ctx, err, op, errors.WithoutEvent())
 	}
 
 	us, err = r.cacheSupportedUsers(ctx, us)
 	if err != nil {
-		return errors.Wrap(ctx, err, op)
+		return errors.Wrap(ctx, err, op, errors.WithoutEvent())
 	}
 
 	var retErr error
@@ -256,7 +256,7 @@ func (r *RefreshService) Refresh(ctx context.Context, opt ...Option) error {
 		r.logger.Debug("refreshing user", "user", u.Id)
 		tokens, err := r.cleanAndPickAuthTokens(ctx, u)
 		if err != nil {
-			retErr = stderrors.Join(retErr, errors.Wrap(ctx, err, op))
+			retErr = stderrors.Join(retErr, errors.Wrap(ctx, err, op, errors.WithoutEvent()))
 			continue
 		}
 
@@ -280,20 +280,20 @@ func (r *RefreshService) Refresh(ctx context.Context, opt ...Option) error {
 func (r *RefreshService) RecheckCachingSupport(ctx context.Context, opt ...Option) error {
 	const op = "cache.(RefreshService).RecheckCachingSupport"
 	if err := r.repo.cleanExpiredOrOrphanedAuthTokens(ctx); err != nil {
-		return errors.Wrap(ctx, err, op)
+		return errors.Wrap(ctx, err, op, errors.WithoutEvent())
 	}
 	if err := r.repo.syncKeyringlessTokensWithDb(ctx); err != nil {
-		return errors.Wrap(ctx, err, op)
+		return errors.Wrap(ctx, err, op, errors.WithoutEvent())
 	}
 
 	us, err := r.repo.listUsers(ctx)
 	if err != nil {
-		return errors.Wrap(ctx, err, op)
+		return errors.Wrap(ctx, err, op, errors.WithoutEvent())
 	}
 
 	removeUsers, err := r.cacheSupportedUsers(ctx, us)
 	if err != nil {
-		return errors.Wrap(ctx, err, op)
+		return errors.Wrap(ctx, err, op, errors.WithoutEvent())
 	}
 	removedUserIds := make(map[string]struct{}, len(removeUsers))
 	for _, ru := range removeUsers {
