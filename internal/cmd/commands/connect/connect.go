@@ -45,7 +45,8 @@ type SessionInfo struct {
 }
 
 type ConnectionInfo struct {
-	ConnectionsLeft int32 `json:"connections_left"`
+	ConnectionsLeft  int32 `json:"connections_left"`
+	ConnectionsCount int32 `json:"connections_count"`
 }
 
 type TerminationInfo struct {
@@ -452,11 +453,12 @@ func (c *Command) Run(args []string) (retCode int) {
 				// done it manually
 				return
 			case connsLeft := <-connsLeftCh:
-				c.updateConnsLeft(connsLeft)
+				connectionsCount := clientProxy.ConnectionsCount()
+				c.updateConnsLeft(connsLeft, connectionsCount)
 
 				// If there are no available connections left and there are no connections
 				// we can exit
-				if connsLeft == 0 && clientProxy.ConnectionsCount() == 0 {
+				if connsLeft == 0 && connectionsCount == 0 {
 					return
 				}
 			}
@@ -574,9 +576,10 @@ func (c *Command) printCredentials(creds []*targets.SessionCredential) error {
 	return nil
 }
 
-func (c *Command) updateConnsLeft(connsLeft int32) {
+func (c *Command) updateConnsLeft(connsLeft int32, connsCount int32) {
 	connInfo := ConnectionInfo{
-		ConnectionsLeft: connsLeft,
+		ConnectionsLeft:  connsLeft,
+		ConnectionsCount: connsCount,
 	}
 
 	if c.flagExec == "" {
