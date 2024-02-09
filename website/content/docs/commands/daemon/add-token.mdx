@@ -19,7 +19,8 @@ By adding auth tokens to your client cache, you can select which specific Bounda
 
 <Note>
 
-The `search` operation only displays the resources that you have read permissions to view.
+The `search` operation only displays the resources that you have permissions to view.
+You must have the `read` or `read:self` grant on the auth token to successfully add it.
 If you are logged in as a user who does not have the permissions to view a resource, it does not display in the list of results.
 
 For more information, refer to [Identity and access management (IAM)](/boundary/docs/concepts/iam).
