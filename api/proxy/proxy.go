@@ -288,7 +288,7 @@ func (p *ClientProxy) Start() (retErr error) {
 				return
 			case connsLeft := <-p.connsLeftCh:
 				p.connectionsLeft.Store(connsLeft)
-				if p.callerConnectionsLeftCh != nil {
+				if p.callerConnectionsLeftCh != nil && p.sessionAuthzData.ConnectionLimit != -1 {
 					p.callerConnectionsLeftCh <- connsLeft
 				}
 
