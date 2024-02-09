@@ -307,7 +307,7 @@ func (p *ClientProxy) Start() (retErr error) {
 				if p.callerConnectionsCountCh != nil {
 					p.callerConnectionsCountCh <- connsCount
 				}
-				// If there are no connections and no connections left,
+				// If there are no connections and no available connections,
 				// we can exit
 				if p.ConnectionsLeft() == 0 && connsCount == 0 {
 					return

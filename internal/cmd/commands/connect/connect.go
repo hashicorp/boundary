@@ -457,7 +457,7 @@ func (c *Command) Run(args []string) (retCode int) {
 				c.updateConnsLeft(connsLeft, clientProxy.ConnectionsCount())
 			case connsCount := <-connsCountCh:
 				c.updateConnsLeft(clientProxy.ConnectionsLeft(), connsCount)
-				// If there are no counts left and there are no connections
+				// If there are no available connections left and there are no connections
 				// we can exit
 				if clientProxy.ConnectionsLeft() == 0 && connsCount == 0 {
 					return
