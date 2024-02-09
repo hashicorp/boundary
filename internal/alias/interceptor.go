@@ -119,7 +119,10 @@ func setCtxAliasInfo(ctx context.Context, a *Alias) context.Context {
 	return context.WithValue(ctx, aliasCtxKey, a)
 }
 
-func GetInfoFromContext(ctx context.Context) *Alias {
+// FromContext returns the Alias from the context, if it exists. It will only
+// exist if the original request contained an alias in a field marked as
+// aliasable in the proto definition, and the alias was successfully resolved.
+func FromContext(ctx context.Context) *Alias {
 	v, ok := ctx.Value(aliasCtxKey).(*Alias)
 	if !ok {
 		return nil

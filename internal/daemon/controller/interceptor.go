@@ -336,10 +336,9 @@ func errorInterceptor(
 // be annotated with the Aliasable proto option.
 func aliasResolutionInterceptor(
 	ctx context.Context,
-	aliasRepoFn func() (*alias.Repository, error),
+	aliasRepoFn common.AliasRepoFactory,
 ) grpc.UnaryServerInterceptor {
 	const op = "alias.ResolutionInterceptor"
-
 	return func(interceptorCtx context.Context,
 		req any,
 		_ *grpc.UnaryServerInfo,

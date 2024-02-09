@@ -780,7 +780,7 @@ func DefaultPostSessionAuthorizationCallback(context.Context, intglobals.Control
 func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSessionRequest) (_ *pbs.AuthorizeSessionResponse, retErr error) {
 	const op = "targets.(Service).AuthorizeSession"
 
-	if ctxAlias := alias.GetInfoFromContext(ctx); ctxAlias != nil {
+	if ctxAlias := alias.FromContext(ctx); ctxAlias != nil {
 		a, err := s.resolveAlias(ctx, ctxAlias.PublicId)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)

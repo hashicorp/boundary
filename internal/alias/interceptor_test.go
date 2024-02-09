@@ -56,7 +56,7 @@ func TestResolveAliasFields(t *testing.T) {
 		req := &pbs.GetTargetRequest{Id: "foo"}
 		ctx, err := ResolveAliasFields(ctx, req, m)
 		assert.ErrorContains(t, err, "resource alias not found with value")
-		assert.Nil(t, GetInfoFromContext(ctx))
+		assert.Nil(t, FromContext(ctx))
 	})
 
 	t.Run("alias", func(t *testing.T) {
@@ -67,7 +67,7 @@ func TestResolveAliasFields(t *testing.T) {
 		ctx, err := ResolveAliasFields(ctx, req, m)
 		assert.NoError(t, err)
 		assert.Equal(t, "ttcp_mapped", req.Id)
-		assert.NotNil(t, GetInfoFromContext(ctx))
+		assert.NotNil(t, FromContext(ctx))
 	})
 
 	t.Run("public id", func(t *testing.T) {
@@ -78,7 +78,7 @@ func TestResolveAliasFields(t *testing.T) {
 		ctx, err := ResolveAliasFields(ctx, req, m)
 		assert.NoError(t, err)
 		assert.Equal(t, "ttcp_existing", req.Id)
-		assert.Nil(t, GetInfoFromContext(ctx))
+		assert.Nil(t, FromContext(ctx))
 	})
 
 	t.Run("alias has no destination id", func(t *testing.T) {
@@ -88,7 +88,7 @@ func TestResolveAliasFields(t *testing.T) {
 		req := &pbs.GetTargetRequest{Id: "foo"}
 		ctx, err := ResolveAliasFields(ctx, req, m)
 		assert.ErrorContains(t, err, "resource not found for alias value")
-		assert.Nil(t, GetInfoFromContext(ctx))
+		assert.Nil(t, FromContext(ctx))
 	})
 
 	// Authorize sessions allow target names to be passed in through the id field
@@ -102,7 +102,7 @@ func TestResolveAliasFields(t *testing.T) {
 		ctx, err := ResolveAliasFields(ctx, req, m)
 		assert.NoError(t, err)
 		assert.Equal(t, "foo", req.Id)
-		assert.Nil(t, GetInfoFromContext(ctx))
+		assert.Nil(t, FromContext(ctx))
 	})
 
 	t.Run("authorize session target name with scope name", func(t *testing.T) {
@@ -113,7 +113,7 @@ func TestResolveAliasFields(t *testing.T) {
 		ctx, err := ResolveAliasFields(ctx, req, m)
 		assert.NoError(t, err)
 		assert.Equal(t, "foo", req.Id)
-		assert.Nil(t, GetInfoFromContext(ctx))
+		assert.Nil(t, FromContext(ctx))
 	})
 
 	t.Run("authorize session alias", func(t *testing.T) {
@@ -124,7 +124,7 @@ func TestResolveAliasFields(t *testing.T) {
 		ctx, err := ResolveAliasFields(ctx, req, m)
 		assert.NoError(t, err)
 		assert.Equal(t, "ttcp_mapped", req.Id)
-		assert.NotNil(t, GetInfoFromContext(ctx))
+		assert.NotNil(t, FromContext(ctx))
 	})
 }
 
