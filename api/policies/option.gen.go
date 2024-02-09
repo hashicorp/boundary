@@ -115,30 +115,6 @@ func DefaultAttributes() Option {
 	}
 }
 
-func WithStoragePolicyDeleteAfter(inDeleteAfter map[string]any) Option {
-	return func(o *options) {
-		raw, ok := o.postMap["attributes"]
-		if !ok {
-			raw = interface{}(map[string]interface{}{})
-		}
-		val := raw.(map[string]interface{})
-		val["delete_after"] = inDeleteAfter
-		o.postMap["attributes"] = val
-	}
-}
-
-func DefaultStoragePolicyDeleteAfter() Option {
-	return func(o *options) {
-		raw, ok := o.postMap["attributes"]
-		if !ok {
-			raw = interface{}(map[string]interface{}{})
-		}
-		val := raw.(map[string]interface{})
-		val["delete_after"] = nil
-		o.postMap["attributes"] = val
-	}
-}
-
 func WithDescription(inDescription string) Option {
 	return func(o *options) {
 		o.postMap["description"] = inDescription
@@ -160,29 +136,5 @@ func WithName(inName string) Option {
 func DefaultName() Option {
 	return func(o *options) {
 		o.postMap["name"] = nil
-	}
-}
-
-func WithStoragePolicyRetainFor(inRetainFor map[string]any) Option {
-	return func(o *options) {
-		raw, ok := o.postMap["attributes"]
-		if !ok {
-			raw = interface{}(map[string]interface{}{})
-		}
-		val := raw.(map[string]interface{})
-		val["retain_for"] = inRetainFor
-		o.postMap["attributes"] = val
-	}
-}
-
-func DefaultStoragePolicyRetainFor() Option {
-	return func(o *options) {
-		raw, ok := o.postMap["attributes"]
-		if !ok {
-			raw = interface{}(map[string]interface{}{})
-		}
-		val := raw.(map[string]interface{})
-		val["retain_for"] = nil
-		o.postMap["attributes"] = val
 	}
 }
