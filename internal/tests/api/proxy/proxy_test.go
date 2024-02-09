@@ -86,10 +86,9 @@ func TestConnectionsLeft(t *testing.T) {
 	pxyCtx, pxyCancel := context.WithCancel(c1.Context())
 	defer pxyCancel()
 	connsLeftCh := make(chan int32)
-	connsCountCh := make(chan int32)
 	wg := new(sync.WaitGroup)
 
-	pxy, err := proxy.New(pxyCtx, sessAuthz.AuthorizationToken, proxy.WithConnectionsLeftCh(connsLeftCh), proxy.WithConnectionsCountCh(connsCountCh))
+	pxy, err := proxy.New(pxyCtx, sessAuthz.AuthorizationToken, proxy.WithConnectionsLeftCh(connsLeftCh))
 	require.NoError(err)
 	wg.Add(1)
 	go func() {
@@ -123,11 +122,6 @@ func TestConnectionsLeft(t *testing.T) {
 		}
 		require.NoError(err)
 
-		connsCount := <-connsCountCh
-		connectionCount++
-		require.Equal(connectionCount, connsCount)
-		require.Equal(connectionCount, pxy.ConnectionsCount())
-
 		written, err := conn.Write(echo)
 		require.NoError(err)
 		require.Equal(written, len(echo))
@@ -137,6 +131,8 @@ func TestConnectionsLeft(t *testing.T) {
 		connsLeft := <-connsLeftCh
 		require.Equal(i-1, connsLeft)
 		require.Equal(i-1, pxy.ConnectionsLeft())
+		connectionCount++
+		require.Equal(connectionCount, pxy.ConnectionsCount())
 
 	}
 
