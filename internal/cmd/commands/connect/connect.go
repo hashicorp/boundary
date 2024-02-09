@@ -45,7 +45,8 @@ type SessionInfo struct {
 }
 
 type ConnectionInfo struct {
-	ConnectionsLeft int32 `json:"connections_left"`
+	ConnectionsLeft  int32 `json:"connections_left"`
+	ConnectionsCount int32 `json:"connections_count"`
 }
 
 type TerminationInfo struct {
@@ -420,7 +421,8 @@ func (c *Command) Run(args []string) (retCode int) {
 	listenAddr = netip.AddrPortFrom(addr, uint16(c.flagListenPort))
 
 	connsLeftCh := make(chan int32)
-	apiProxyOpts := []apiproxy.Option{apiproxy.WithConnectionsLeftCh(connsLeftCh)}
+	connsCountCh := make(chan int32)
+	apiProxyOpts := []apiproxy.Option{apiproxy.WithConnectionsLeftCh(connsLeftCh), apiproxy.WithConnectionsCountCh(connsCountCh)}
 	if listenAddr.IsValid() {
 		apiProxyOpts = append(apiProxyOpts, apiproxy.WithListenAddrPort(listenAddr))
 	}
@@ -452,8 +454,12 @@ func (c *Command) Run(args []string) (retCode int) {
 				// done it manually
 				return
 			case connsLeft := <-connsLeftCh:
-				c.updateConnsLeft(connsLeft)
-				if connsLeft == 0 {
+				c.updateConnsLeft(connsLeft, clientProxy.ConnectionsCount())
+			case connsCount := <-connsCountCh:
+				c.updateConnsLeft(clientProxy.ConnectionsLeft(), connsCount)
+				// If there are no counts left and there are no connections
+				// we can exit
+				if clientProxy.ConnectionsLeft() == 0 && connsCount == 0 {
 					return
 				}
 			}
@@ -571,9 +577,10 @@ func (c *Command) printCredentials(creds []*targets.SessionCredential) error {
 	return nil
 }
 
-func (c *Command) updateConnsLeft(connsLeft int32) {
+func (c *Command) updateConnsLeft(connsLeft int32, connsCount int32) {
 	connInfo := ConnectionInfo{
-		ConnectionsLeft: connsLeft,
+		ConnectionsLeft:  connsLeft,
+		ConnectionsCount: connsCount,
 	}
 
 	if c.flagExec == "" {

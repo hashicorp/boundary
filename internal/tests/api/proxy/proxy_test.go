@@ -86,9 +86,10 @@ func TestConnectionsLeft(t *testing.T) {
 	pxyCtx, pxyCancel := context.WithCancel(c1.Context())
 	defer pxyCancel()
 	connsLeftCh := make(chan int32)
+	connsCountCh := make(chan int32)
 	wg := new(sync.WaitGroup)
 
-	pxy, err := proxy.New(pxyCtx, sessAuthz.AuthorizationToken, proxy.WithConnectionsLeftCh(connsLeftCh))
+	pxy, err := proxy.New(pxyCtx, sessAuthz.AuthorizationToken, proxy.WithConnectionsLeftCh(connsLeftCh), proxy.WithConnectionsCountCh(connsCountCh))
 	require.NoError(err)
 	wg.Add(1)
 	go func() {
@@ -109,6 +110,7 @@ func TestConnectionsLeft(t *testing.T) {
 	// While we have sessions left, expect no error and to read and write
 	// through the proxy, and to read the conns left from the channel. Once we
 	// have hit the connection limit, we expect an error on dial.
+	connectionCount := int32(0)
 	for i := sessionConnsLimit; i >= 0; i-- {
 		// Give time for the listener to be closed. The information about conns
 		// left comes from upstream responses and we can circle around too fast
@@ -120,6 +122,12 @@ func TestConnectionsLeft(t *testing.T) {
 			break
 		}
 		require.NoError(err)
+
+		connsCount := <-connsCountCh
+		connectionCount++
+		require.Equal(connectionCount, connsCount)
+		require.Equal(connectionCount, pxy.ConnectionsCount())
+
 		written, err := conn.Write(echo)
 		require.NoError(err)
 		require.Equal(written, len(echo))
@@ -129,9 +137,13 @@ func TestConnectionsLeft(t *testing.T) {
 		connsLeft := <-connsLeftCh
 		require.Equal(i-1, connsLeft)
 		require.Equal(i-1, pxy.ConnectionsLeft())
+
 	}
 
 	pxyCancel()
 	// Wait to ensure cleanup and that the second-start logic works
 	wg.Wait()
+
+	require.Equal(int32(0), pxy.ConnectionsLeft())
+	require.Equal(int32(0), pxy.ConnectionsCount())
 }

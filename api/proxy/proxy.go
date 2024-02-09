@@ -32,25 +32,28 @@ import (
 const sessionCancelTimeout = 30 * time.Second
 
 type ClientProxy struct {
-	tofuToken               string
-	cachedListenerAddress   *ua.String
-	connectionsLeft         *atomic.Int32
-	connsLeftCh             chan int32
-	callerConnectionsLeftCh chan int32
-	sessionAuthzData        *targets.SessionAuthorizationData
-	createTime              time.Time
-	expiration              time.Time
-	ctx                     context.Context
-	cancel                  context.CancelFunc
-	transport               *http.Transport
-	workerAddr              string
-	listenAddrPort          netip.AddrPort
-	listener                *atomic.Value
-	listenerCloseOnce       *sync.Once
-	clientTlsConf           *tls.Config
-	connWg                  *sync.WaitGroup
-	started                 *atomic.Bool
-	skipSessionTeardown     bool
+	tofuToken                string
+	cachedListenerAddress    *ua.String
+	connectionsLeft          *atomic.Int32
+	connectionsCount         *atomic.Int32
+	connsLeftCh              chan int32
+	connsCountCh             chan int32
+	callerConnectionsLeftCh  chan int32
+	callerConnectionsCountCh chan int32
+	sessionAuthzData         *targets.SessionAuthorizationData
+	createTime               time.Time
+	expiration               time.Time
+	ctx                      context.Context
+	cancel                   context.CancelFunc
+	transport                *http.Transport
+	workerAddr               string
+	listenAddrPort           netip.AddrPort
+	listener                 *atomic.Value
+	listenerCloseOnce        *sync.Once
+	clientTlsConf            *tls.Config
+	connWg                   *sync.WaitGroup
+	started                  *atomic.Bool
+	skipSessionTeardown      bool
 }
 
 // New creates a new client proxy. The given context should be cancelable; once
@@ -87,16 +90,19 @@ func New(ctx context.Context, authzToken string, opt ...Option) (*ClientProxy, e
 	}
 
 	p := &ClientProxy{
-		cachedListenerAddress:   ua.NewString(""),
-		connsLeftCh:             make(chan int32),
-		connectionsLeft:         new(atomic.Int32),
-		listener:                new(atomic.Value),
-		listenerCloseOnce:       new(sync.Once),
-		connWg:                  new(sync.WaitGroup),
-		listenAddrPort:          opts.WithListenAddrPort,
-		callerConnectionsLeftCh: opts.WithConnectionsLeftCh,
-		started:                 new(atomic.Bool),
-		skipSessionTeardown:     opts.WithSkipSessionTeardown,
+		cachedListenerAddress:    ua.NewString(""),
+		connsLeftCh:              make(chan int32),
+		connsCountCh:             make(chan int32),
+		connectionsLeft:          new(atomic.Int32),
+		connectionsCount:         new(atomic.Int32),
+		listener:                 new(atomic.Value),
+		listenerCloseOnce:        new(sync.Once),
+		connWg:                   new(sync.WaitGroup),
+		listenAddrPort:           opts.WithListenAddrPort,
+		callerConnectionsLeftCh:  opts.WithConnectionsLeftCh,
+		callerConnectionsCountCh: opts.WithConnectionsCountCh,
+		started:                  new(atomic.Bool),
+		skipSessionTeardown:      opts.WithSkipSessionTeardown,
 	}
 
 	if opts.WithListener != nil {
@@ -126,6 +132,7 @@ func New(ctx context.Context, authzToken string, opt ...Option) (*ClientProxy, e
 		}
 	}
 	p.connectionsLeft.Store(p.sessionAuthzData.ConnectionLimit)
+	p.connectionsCount.Store(0)
 	p.workerAddr = p.sessionAuthzData.WorkerInfo[0].Address
 
 	tlsConf, err := p.clientTlsConfig(opt...)
@@ -192,8 +199,10 @@ func (p *ClientProxy) Start() (retErr error) {
 			// Forces the for loop to exit instead of spinning on errors
 			p.cancel()
 			p.connectionsLeft.Store(0)
-			if err := p.listener.Load().(net.Listener).Close(); err != nil && err != net.ErrClosed {
-				retErr = errors.Join(retErr, fmt.Errorf("error closing proxy listener: %w", err))
+			if err := p.listener.Load().(net.Listener).Close(); err != nil {
+				if !errors.Is(err, net.ErrClosed) {
+					retErr = errors.Join(retErr, fmt.Errorf("error closing proxy listener: %w", err))
+				}
 			}
 		})
 	}
@@ -231,9 +240,14 @@ func (p *ClientProxy) Start() (retErr error) {
 					return
 				}
 			}
+
 			p.connWg.Add(1)
+			p.connsCountCh <- p.connectionsCount.Add(1)
 			go func() {
 				defer listeningConn.Close()
+				defer func() {
+					p.connsCountCh <- p.connectionsCount.Add(-1)
+				}()
 				defer p.connWg.Done()
 				wsConn, err := p.getWsConn(p.ctx)
 				if err != nil {
@@ -280,9 +294,22 @@ func (p *ClientProxy) Start() (retErr error) {
 				if p.callerConnectionsLeftCh != nil {
 					p.callerConnectionsLeftCh <- connsLeft
 				}
+				// If there are no connections left, close the listener
+				// to stop new connections from being accepted
 				if connsLeft == 0 {
-					// Close the listener as we can't authorize any more
-					// connections
+					if err := p.listener.Load().(net.Listener).Close(); err != nil {
+						if !errors.Is(err, net.ErrClosed) {
+							retErr = errors.Join(retErr, fmt.Errorf("error closing proxy listener: %w", err))
+						}
+					}
+				}
+			case connsCount := <-p.connsCountCh:
+				if p.callerConnectionsCountCh != nil {
+					p.callerConnectionsCountCh <- connsCount
+				}
+				// If there are no connections and no connections left,
+				// we can exit
+				if p.ConnectionsLeft() == 0 && connsCount == 0 {
 					return
 				}
 			}
@@ -387,4 +414,12 @@ func (p *ClientProxy) SessionExpiration() time.Time {
 // feedback from users may necessitate changes.
 func (p *ClientProxy) ConnectionsLeft() int32 {
 	return p.connectionsLeft.Load()
+}
+
+// ConnectionsCount returns the number of connections in the session.
+//
+// EXPERIMENTAL: While this API is not expected to change, it is new and
+// feedback from users may necessitate changes.
+func (p *ClientProxy) ConnectionsCount() int32 {
+	return p.connectionsCount.Load()
 }
