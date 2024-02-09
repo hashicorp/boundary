@@ -226,6 +226,33 @@ description: |-
     </td>
   </tr>
 
+   <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    0.8.0 - 0.14.0
+    <br /><br />
+    (Fixed in 0.14.4 and 0.13.6 <sup>ENT</sup>)
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    HCSEC-2024-02
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Boundary and Boundary Enterprise since version 0.8.0 are vulnerable to session hijacking through TLS certificate tampering.
+    <br /><br />
+    An attacker who has privileges to enumerate active or pending sessions, obtain a private key pertaining to a session, and obtain a valid trust on first use or TOFU token may exploit the vulnerability.
+    It allows the attacker to create a TLS certificate that hijacks an active session to gain access to the underlying service or application.
+    The vulnerability, CVE-2024-1052, is fixed in Boundary version 0.15.0 and patched in Boundary Enterprise versions 0.13.6 and 0.14.4.
+    <br /><br />
+    Boundary Enterprise users should upgrade to Boundary Enterprise 0.14.4.
+    Community users should evaluate the risk associated with this issue and consider upgrading to Boundary 0.15.0 or later.
+    <br /><br />
+    Learn more:&nbsp;
+    <br /><br />
+    HCSEC-2024-02: <a href="https://discuss.hashicorp.com/t/hcsec-2024-02-boundary-vulnerable-to-session-hijacking-through-tls-certificate-tampering/62458">Boundary vulnerable to session hijacking through TLS certificate tampering</a>
+    <br /><br />
+    <a href="/boundary/tutorials/self-managed-deployment/upgrade-version">Upgrade to the latest version of Boundary</a>
+    </td>
+  </tr>
+
   </tbody>
 </table>
 
