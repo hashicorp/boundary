@@ -190,7 +190,6 @@ func (p *ClientProxy) Start() (retErr error) {
 	listenerCloseFunc := func() {
 		p.listenerCloseOnce.Do(func() {
 			// Forces the for loop to exit instead of spinning on errors
-			p.cancel()
 			p.connectionsLeft.Store(0)
 			if err := p.listener.Load().(net.Listener).Close(); err != nil && err != net.ErrClosed {
 				retErr = errors.Join(retErr, fmt.Errorf("error closing proxy listener: %w", err))
@@ -228,6 +227,7 @@ func (p *ClientProxy) Start() (retErr error) {
 					// connection that comes our way, so cancel the proxy
 					fin <- fmt.Errorf("error from accept: %w", err)
 					listenerCloseFunc()
+					p.cancel()
 					return
 				}
 			}
@@ -241,6 +241,7 @@ func (p *ClientProxy) Start() (retErr error) {
 					// No reason to think we can successfully handle the next
 					// connection that comes our way, so cancel the proxy
 					listenerCloseFunc()
+					p.cancel()
 					return
 				}
 				if err := p.runTcpProxyV1(wsConn, listeningConn); err != nil {
@@ -248,6 +249,7 @@ func (p *ClientProxy) Start() (retErr error) {
 					// No reason to think we can successfully handle the next
 					// connection that comes our way, so cancel the proxy
 					listenerCloseFunc()
+					p.cancel()
 					return
 				}
 			}()
@@ -290,6 +292,7 @@ func (p *ClientProxy) Start() (retErr error) {
 	}()
 
 	p.connWg.Wait()
+	defer p.cancel()
 
 	{
 		// the go funcs are done, so we can safely close the chan and range over any errors

@@ -4,6 +4,18 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+### Bug Fixes
+
+* cli: Update proxy listener to not close when the number of connections left 
+  for the session is zero. The listener will refuse new connections when the 
+  number of connections left is zero but existing connections will be active. 
+  This fixes a CLI client issue where sessions with max connection count 
+  configured were closed when the number of connections left hit 0.
+  ([Issue](https://github.com/hashicorp/boundary/issues/4364),
+  ([PR](https://github.com/hashicorp/boundary/pull/4389)))
+* Fix issue where the websocket connection was throwing closing errors during
+  the session teardown.
+  ([PR](https://github.com/hashicorp/boundary/pull/4389))
 
 ## 0.15.0 (2024/01/30)
 
