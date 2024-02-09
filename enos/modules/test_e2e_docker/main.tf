@@ -22,10 +22,10 @@ variable "network_name" {
   description = "Name of Docker Network"
   type        = string
 }
-variable "container_name" {
-  description = "Name of Docker Container"
+variable "controller_container_name" {
+  description = "Name of Docker Container running the Boundary controller"
   type        = string
-  default     = "test_runner"
+  default     = ""
 }
 variable "go_version" {
   description = "Version of Golang used by the application under test"
@@ -298,6 +298,7 @@ resource "enos_local_exec" "run_e2e_test" {
     E2E_LDAP_USER_PASSWORD        = var.ldap_user_password
     E2E_LDAP_GROUP_NAME           = var.ldap_group_name
     E2E_MAX_PAGE_SIZE             = var.max_page_size
+    E2E_CONTROLLER_CONTAINER_NAME = var.controller_container_name
     BOUNDARY_DIR                  = abspath(var.local_boundary_src_dir)
     BOUNDARY_CLI_DIR              = abspath(var.local_boundary_dir)
     MODULE_DIR                    = abspath(path.module)

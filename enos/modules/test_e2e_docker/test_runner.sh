@@ -47,6 +47,7 @@ docker run \
     -e "E2E_LDAP_USER_PASSWORD=$E2E_LDAP_USER_PASSWORD" \
     -e "E2E_LDAP_GROUP_NAME=$E2E_LDAP_GROUP_NAME" \
     -e "E2E_MAX_PAGE_SIZE=$E2E_MAX_PAGE_SIZE" \
+    -e "E2E_CONTROLLER_CONTAINER_NAME=$E2E_CONTROLLER_CONTAINER_NAME" \
     --mount type=bind,src=$BOUNDARY_DIR,dst=/src/boundary/ \
     --mount type=bind,src=$MODULE_DIR/../..,dst=/testlogs \
     --mount type=bind,src=$(go env GOCACHE),dst=/root/.cache/go-build \
