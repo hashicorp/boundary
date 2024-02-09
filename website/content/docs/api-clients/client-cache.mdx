@@ -23,6 +23,15 @@ When you use the `search` command, however, Boundary searches the local cache to
 
 For more information, refer to the [`search`](/boundary/docs/commands/search) command documentation.
 
+<Note>
+
+The `search` operation only displays the resources that you have read permissions to view.
+If you are logged in as a user who does not have the permissions to view a resource, it does not display in the list of results.
+
+For more information, refer to [Identity and access management (IAM)](/boundary/docs/concepts/iam).
+
+</Note>
+
 ## Client cache management
 
 The Boundary client daemon starts automatically in the background when a user runs a CLI command that interacts with a Boundary instance.
