@@ -66,6 +66,7 @@ func (p *ClientProxy) sendSessionTeardown(ctx context.Context) error {
 	if err := wspb.Write(ctx, wsConn, &handshake); err != nil {
 		return fmt.Errorf("error sending teardown handshake to worker: %w", err)
 	}
+	wsConn.Close(websocket.StatusNormalClosure, "session teardown finished")
 
 	return nil
 }
