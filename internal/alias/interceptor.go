@@ -29,7 +29,7 @@ type registrationInfo struct {
 	unaliableWithFields []string
 }
 
-// globalAliasableRegistry is a map of proto field's full names to struct{} to
+// globalAliasableRegistry is a map of proto field's FullName to registrationInfo.
 var globalAliasableRegistry sync.Map
 
 func registerAliasableFields(d protoreflect.MessageDescriptor) {
