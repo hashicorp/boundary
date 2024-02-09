@@ -35,7 +35,6 @@ type ClientProxy struct {
 	tofuToken               string
 	cachedListenerAddress   *ua.String
 	connectionsLeft         *atomic.Int32
-	connectionsCount        *atomic.Int32
 	connsLeftCh             chan int32
 	callerConnectionsLeftCh chan int32
 	sessionAuthzData        *targets.SessionAuthorizationData
@@ -91,7 +90,6 @@ func New(ctx context.Context, authzToken string, opt ...Option) (*ClientProxy, e
 		cachedListenerAddress:   ua.NewString(""),
 		connsLeftCh:             make(chan int32),
 		connectionsLeft:         new(atomic.Int32),
-		connectionsCount:        new(atomic.Int32),
 		listener:                new(atomic.Value),
 		listenerCloseOnce:       new(sync.Once),
 		connWg:                  new(sync.WaitGroup),
@@ -128,7 +126,6 @@ func New(ctx context.Context, authzToken string, opt ...Option) (*ClientProxy, e
 		}
 	}
 	p.connectionsLeft.Store(p.sessionAuthzData.ConnectionLimit)
-	p.connectionsCount.Store(0)
 	p.workerAddr = p.sessionAuthzData.WorkerInfo[0].Address
 
 	tlsConf, err := p.clientTlsConfig(opt...)
@@ -193,12 +190,9 @@ func (p *ClientProxy) Start() (retErr error) {
 	listenerCloseFunc := func() {
 		p.listenerCloseOnce.Do(func() {
 			// Forces the for loop to exit instead of spinning on errors
-			p.cancel()
 			p.connectionsLeft.Store(0)
-			if err := p.listener.Load().(net.Listener).Close(); err != nil {
-				if !errors.Is(err, net.ErrClosed) {
-					retErr = errors.Join(retErr, fmt.Errorf("error closing proxy listener: %w", err))
-				}
+			if err := p.listener.Load().(net.Listener).Close(); err != nil && err != net.ErrClosed {
+				retErr = errors.Join(retErr, fmt.Errorf("error closing proxy listener: %w", err))
 			}
 		})
 	}
@@ -233,18 +227,13 @@ func (p *ClientProxy) Start() (retErr error) {
 					// connection that comes our way, so cancel the proxy
 					fin <- fmt.Errorf("error from accept: %w", err)
 					listenerCloseFunc()
+					p.cancel()
 					return
 				}
 			}
-
 			p.connWg.Add(1)
-			p.connectionsCount.Add(1)
 			go func() {
 				defer listeningConn.Close()
-				defer func() {
-					p.connectionsCount.Add(-1)
-					p.connsLeftCh <- p.connectionsLeft.Load()
-				}()
 				defer p.connWg.Done()
 				wsConn, err := p.getWsConn(p.ctx)
 				if err != nil {
@@ -252,6 +241,7 @@ func (p *ClientProxy) Start() (retErr error) {
 					// No reason to think we can successfully handle the next
 					// connection that comes our way, so cancel the proxy
 					listenerCloseFunc()
+					p.cancel()
 					return
 				}
 				if err := p.runTcpProxyV1(wsConn, listeningConn); err != nil {
@@ -259,6 +249,7 @@ func (p *ClientProxy) Start() (retErr error) {
 					// No reason to think we can successfully handle the next
 					// connection that comes our way, so cancel the proxy
 					listenerCloseFunc()
+					p.cancel()
 					return
 				}
 			}()
@@ -288,21 +279,12 @@ func (p *ClientProxy) Start() (retErr error) {
 				return
 			case connsLeft := <-p.connsLeftCh:
 				p.connectionsLeft.Store(connsLeft)
-				if p.callerConnectionsLeftCh != nil && p.sessionAuthzData.ConnectionLimit != -1 {
+				if p.callerConnectionsLeftCh != nil {
 					p.callerConnectionsLeftCh <- connsLeft
 				}
-
-				// If there are no connections left, close the listener
-				// to stop new connections from being accepted
 				if connsLeft == 0 {
-					if err := p.listener.Load().(net.Listener).Close(); err != nil {
-						if !errors.Is(err, net.ErrClosed) {
-							retErr = errors.Join(retErr, fmt.Errorf("error closing proxy listener: %w", err))
-						}
-					}
-				}
-
-				if connsLeft == 0 && p.ConnectionsCount() == 0 {
+					// Close the listener as we can't authorize any more
+					// connections
 					return
 				}
 			}
@@ -310,6 +292,7 @@ func (p *ClientProxy) Start() (retErr error) {
 	}()
 
 	p.connWg.Wait()
+	defer p.cancel()
 
 	{
 		// the go funcs are done, so we can safely close the chan and range over any errors
@@ -407,12 +390,4 @@ func (p *ClientProxy) SessionExpiration() time.Time {
 // feedback from users may necessitate changes.
 func (p *ClientProxy) ConnectionsLeft() int32 {
 	return p.connectionsLeft.Load()
-}
-
-// ConnectionsCount returns the number of connections in the session.
-//
-// EXPERIMENTAL: While this API is not expected to change, it is new and
-// feedback from users may necessitate changes.
-func (p *ClientProxy) ConnectionsCount() int32 {
-	return p.connectionsCount.Load()
 }
