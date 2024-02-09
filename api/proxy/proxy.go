@@ -32,28 +32,26 @@ import (
 const sessionCancelTimeout = 30 * time.Second
 
 type ClientProxy struct {
-	tofuToken                string
-	cachedListenerAddress    *ua.String
-	connectionsLeft          *atomic.Int32
-	connectionsCount         *atomic.Int32
-	connsLeftCh              chan int32
-	connsCountCh             chan int32
-	callerConnectionsLeftCh  chan int32
-	callerConnectionsCountCh chan int32
-	sessionAuthzData         *targets.SessionAuthorizationData
-	createTime               time.Time
-	expiration               time.Time
-	ctx                      context.Context
-	cancel                   context.CancelFunc
-	transport                *http.Transport
-	workerAddr               string
-	listenAddrPort           netip.AddrPort
-	listener                 *atomic.Value
-	listenerCloseOnce        *sync.Once
-	clientTlsConf            *tls.Config
-	connWg                   *sync.WaitGroup
-	started                  *atomic.Bool
-	skipSessionTeardown      bool
+	tofuToken               string
+	cachedListenerAddress   *ua.String
+	connectionsLeft         *atomic.Int32
+	connectionsCount        *atomic.Int32
+	connsLeftCh             chan int32
+	callerConnectionsLeftCh chan int32
+	sessionAuthzData        *targets.SessionAuthorizationData
+	createTime              time.Time
+	expiration              time.Time
+	ctx                     context.Context
+	cancel                  context.CancelFunc
+	transport               *http.Transport
+	workerAddr              string
+	listenAddrPort          netip.AddrPort
+	listener                *atomic.Value
+	listenerCloseOnce       *sync.Once
+	clientTlsConf           *tls.Config
+	connWg                  *sync.WaitGroup
+	started                 *atomic.Bool
+	skipSessionTeardown     bool
 }
 
 // New creates a new client proxy. The given context should be cancelable; once
@@ -90,19 +88,17 @@ func New(ctx context.Context, authzToken string, opt ...Option) (*ClientProxy, e
 	}
 
 	p := &ClientProxy{
-		cachedListenerAddress:    ua.NewString(""),
-		connsLeftCh:              make(chan int32),
-		connsCountCh:             make(chan int32),
-		connectionsLeft:          new(atomic.Int32),
-		connectionsCount:         new(atomic.Int32),
-		listener:                 new(atomic.Value),
-		listenerCloseOnce:        new(sync.Once),
-		connWg:                   new(sync.WaitGroup),
-		listenAddrPort:           opts.WithListenAddrPort,
-		callerConnectionsLeftCh:  opts.WithConnectionsLeftCh,
-		callerConnectionsCountCh: opts.WithConnectionsCountCh,
-		started:                  new(atomic.Bool),
-		skipSessionTeardown:      opts.WithSkipSessionTeardown,
+		cachedListenerAddress:   ua.NewString(""),
+		connsLeftCh:             make(chan int32),
+		connectionsLeft:         new(atomic.Int32),
+		connectionsCount:        new(atomic.Int32),
+		listener:                new(atomic.Value),
+		listenerCloseOnce:       new(sync.Once),
+		connWg:                  new(sync.WaitGroup),
+		listenAddrPort:          opts.WithListenAddrPort,
+		callerConnectionsLeftCh: opts.WithConnectionsLeftCh,
+		started:                 new(atomic.Bool),
+		skipSessionTeardown:     opts.WithSkipSessionTeardown,
 	}
 
 	if opts.WithListener != nil {
@@ -242,11 +238,12 @@ func (p *ClientProxy) Start() (retErr error) {
 			}
 
 			p.connWg.Add(1)
-			p.connsCountCh <- p.connectionsCount.Add(1)
+			p.connectionsCount.Add(1)
 			go func() {
 				defer listeningConn.Close()
 				defer func() {
-					p.connsCountCh <- p.connectionsCount.Add(-1)
+					p.connectionsCount.Add(-1)
+					p.connsLeftCh <- p.connectionsLeft.Load()
 				}()
 				defer p.connWg.Done()
 				wsConn, err := p.getWsConn(p.ctx)
@@ -294,6 +291,7 @@ func (p *ClientProxy) Start() (retErr error) {
 				if p.callerConnectionsLeftCh != nil {
 					p.callerConnectionsLeftCh <- connsLeft
 				}
+
 				// If there are no connections left, close the listener
 				// to stop new connections from being accepted
 				if connsLeft == 0 {
@@ -303,13 +301,8 @@ func (p *ClientProxy) Start() (retErr error) {
 						}
 					}
 				}
-			case connsCount := <-p.connsCountCh:
-				if p.callerConnectionsCountCh != nil {
-					p.callerConnectionsCountCh <- connsCount
-				}
-				// If there are no connections and no available connections,
-				// we can exit
-				if p.ConnectionsLeft() == 0 && connsCount == 0 {
+
+				if connsLeft == 0 && p.ConnectionsCount() == 0 {
 					return
 				}
 			}

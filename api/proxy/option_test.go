@@ -86,16 +86,4 @@ func Test_GetOpts(t *testing.T) {
 		require.NoError(t, err)
 		assert.True(opts.WithSkipSessionTeardown)
 	})
-	t.Run("with-connections-count-ch", func(t *testing.T) {
-		assert := assert.New(t)
-		opts, err := getOpts()
-		require.NoError(t, err)
-		assert.Nil(opts.WithConnectionsCountCh)
-		_, err = getOpts(WithConnectionsCountCh(nil))
-		require.Error(t, err)
-		l := make(chan int32)
-		opts, err = getOpts(WithConnectionsCountCh(l))
-		require.NoError(t, err)
-		assert.Equal(l, opts.WithConnectionsCountCh)
-	})
 }
