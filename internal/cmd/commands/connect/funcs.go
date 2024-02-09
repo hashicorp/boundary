@@ -114,7 +114,8 @@ func generateConnectionInfoTableOutput(in ConnectionInfo) string {
 	var ret []string
 
 	nonAttributeMap := map[string]any{
-		"Connections Left": in.ConnectionsLeft,
+		"Connections Left":  in.ConnectionsLeft,
+		"Connections Count": in.ConnectionsCount,
 	}
 
 	maxLength := 0

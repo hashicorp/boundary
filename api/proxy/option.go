@@ -32,6 +32,7 @@ type Options struct {
 	WithListener                 net.Listener
 	WithListenAddrPort           netip.AddrPort
 	WithConnectionsLeftCh        chan int32
+	WithConnectionsCountCh       chan int32
 	WithWorkerHost               string
 	WithSessionAuthorizationData *targets.SessionAuthorizationData
 	WithSkipSessionTeardown      bool
@@ -115,6 +116,18 @@ func WithSessionAuthorizationData(with *targets.SessionAuthorizationData) Option
 func WithSkipSessionTeardown(with bool) Option {
 	return func(o *Options) error {
 		o.WithSkipSessionTeardown = with
+		return nil
+	}
+}
+
+// WithConnectionsCountCh allows providing a channel to receive updates about the count of connections.
+// It is the caller's responsibility to ensure that this is drained and does not block.
+func WithConnectionsCountCh(with chan int32) Option {
+	return func(o *Options) error {
+		if with == nil {
+			return errors.New("channel passed to WithConnectionsCountCh is nil")
+		}
+		o.WithConnectionsCountCh = with
 		return nil
 	}
 }
