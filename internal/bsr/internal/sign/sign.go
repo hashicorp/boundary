@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"sync"
 
 	"github.com/hashicorp/boundary/internal/bsr/internal/is"
 	"github.com/hashicorp/boundary/internal/bsr/kms"
@@ -29,6 +30,8 @@ type Writer struct {
 	buf *bytes.Buffer
 	w   io.Writer
 	tee io.Writer
+
+	l sync.Mutex
 }
 
 // NewWriter returns a Writer that wraps an io.Writer.
@@ -52,6 +55,8 @@ func NewWriter(_ context.Context, w io.Writer, keys *kms.Keys) (*Writer, error) 
 }
 
 func (w *Writer) Write(b []byte) (int, error) {
+	w.l.Lock()
+	defer w.l.Unlock()
 	return w.tee.Write(b)
 }
 
@@ -63,6 +68,8 @@ func (w *Writer) WriteString(s string) (int, error) {
 // Close implements the io.Closer method.
 func (w *Writer) Close() error {
 	const op = "sign.(Writer).Close"
+	w.l.Lock()
+	defer w.l.Unlock()
 	var i interface{} = w.w
 	v, ok := i.(io.WriteCloser)
 	if ok {
@@ -75,6 +82,8 @@ func (w *Writer) Close() error {
 
 // Sign returns the signature of the data written to the writer.
 func (w *Writer) Sign(ctx context.Context) (*wrapping.SigInfo, error) {
+	w.l.Lock()
+	defer w.l.Unlock()
 	sig, err := w.keys.SignWithPrivKey(ctx, w.buf.Bytes())
 	if err != nil {
 		return nil, err
