@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"os"
 	"sort"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -77,7 +76,6 @@ type Config struct {
 	RefreshInterval        time.Duration
 	RecheckSupportInterval time.Duration
 	DatabaseUrl            string
-	StoreDebug             bool
 	LogLevel               string
 	LogFormat              string
 	LogWriter              io.Writer
@@ -223,12 +221,9 @@ func (s *CacheServer) Serve(ctx context.Context, cmd Commander, opt ...Option) e
 
 	s.info["Listening address"] = l.Addr().String()
 	s.infoKeys = append(s.infoKeys, "Listening address")
-	s.info["Store debug"] = strconv.FormatBool(s.conf.StoreDebug)
-	s.infoKeys = append(s.infoKeys, "Store debug")
 
 	if s.store, err = openStore(ctx,
 		WithUrl(ctx, s.conf.DatabaseUrl),
-		WithDebug(ctx, s.conf.StoreDebug),
 		WithLogger(ctx, s.logger)); err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
@@ -502,7 +497,7 @@ func openStore(ctx context.Context, opt ...Option) (*db.DB, error) {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 
-	dbOpts := []cachedb.Option{cachedb.WithDebug(opts.withDebug)}
+	var dbOpts []cachedb.Option
 	switch {
 	case opts.withUrl != "":
 		url, err := parseutil.ParsePath(opts.withUrl)

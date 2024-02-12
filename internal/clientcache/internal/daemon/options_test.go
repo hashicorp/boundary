@@ -24,13 +24,6 @@ func Test_GetOpts(t *testing.T) {
 		testOpts := options{}
 		assert.Equal(t, opts, testOpts)
 	})
-	t.Run("WithDebug", func(t *testing.T) {
-		opts, err := getOpts(WithDebug(ctx, true))
-		require.NoError(t, err)
-		testOpts := getDefaultOptions()
-		testOpts.withDebug = true
-		assert.Equal(t, opts, testOpts)
-	})
 	t.Run("withRefreshInterval", func(t *testing.T) {
 		opts, err := getOpts(withRefreshInterval(ctx, time.Second))
 		require.NoError(t, err)

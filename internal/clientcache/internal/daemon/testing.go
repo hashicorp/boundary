@@ -28,16 +28,12 @@ type TestServer struct {
 func NewTestServer(t *testing.T, cmd Commander, opt ...Option) *TestServer {
 	t.Helper()
 	ctx, cancel := context.WithCancel(context.Background())
-
-	opts, err := getOpts(opt...)
-	require.NoError(t, err)
 	dotDir := t.TempDir()
 
 	cfg := &Config{
 		ContextCancel:          cancel,
 		RefreshInterval:        DefaultRefreshInterval,
 		RecheckSupportInterval: DefaultRecheckSupportInterval,
-		StoreDebug:             opts.withDebug,
 		LogWriter:              io.Discard,
 		DotDirectory:           dotDir,
 	}

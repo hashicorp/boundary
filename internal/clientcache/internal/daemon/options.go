@@ -13,7 +13,6 @@ import (
 )
 
 type options struct {
-	withDebug                              bool
 	withRefreshInterval                    time.Duration
 	withRecheckSupportInterval             time.Duration
 	testWithIntervalRandomizationFactor    float64
@@ -40,14 +39,6 @@ func getOpts(opt ...Option) (options, error) {
 		}
 	}
 	return opts, nil
-}
-
-// WithDebug provides an optional debug flag.
-func WithDebug(_ context.Context, debug bool) Option {
-	return func(o *options) error {
-		o.withDebug = debug
-		return nil
-	}
 }
 
 // withRefreshInterval provides an optional refresh interval.
