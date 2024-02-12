@@ -293,7 +293,7 @@ func TestUpsertTokenRequest_String(t *testing.T) {
 				AuthToken:    "at_wrong_SomethingElseHere",
 				AuthTokenId:  "at_prefix",
 			},
-			want: "BoundaryAddr: \"test\", AuthTokenId: \"at_prefix\", AuthToken: \"/* redacted */\"",
+			want: "BoundaryAddr: \"test\", AuthTokenId: \"at_prefix\", AuthToken: \"/*redacted*/\"",
 		},
 		{
 			name: "auth token partially redacted",
@@ -302,7 +302,7 @@ func TestUpsertTokenRequest_String(t *testing.T) {
 				AuthToken:    "at_prefix_SomethingElseHere",
 				AuthTokenId:  "at_prefix",
 			},
-			want: "BoundaryAddr: \"test\", AuthTokenId: \"at_prefix\", AuthToken: \"at_prefix_/* redacted */\"",
+			want: "BoundaryAddr: \"test\", AuthTokenId: \"at_prefix\", AuthToken: \"at_prefix_/*redacted*/\"",
 		},
 		{
 			name: "auth token partially redacted",
@@ -315,7 +315,7 @@ func TestUpsertTokenRequest_String(t *testing.T) {
 				AuthToken:   "at_prefix_SomethingElseHere",
 				AuthTokenId: "at_prefix",
 			},
-			want: "BoundaryAddr: \"test\", AuthTokenId: \"at_prefix\", Keyring: {KeyringType:type TokenName:token}, AuthToken: \"at_prefix_/* redacted */\"",
+			want: "BoundaryAddr: \"test\", AuthTokenId: \"at_prefix\", Keyring: {KeyringType:type TokenName:token}, AuthToken: \"at_prefix_/*redacted*/\"",
 		},
 	}
 

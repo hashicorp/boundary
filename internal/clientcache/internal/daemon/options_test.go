@@ -10,6 +10,7 @@ import (
 
 	"github.com/hashicorp/boundary/api/authtokens"
 	"github.com/hashicorp/boundary/internal/clientcache/internal/cache"
+	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -22,6 +23,21 @@ func Test_GetOpts(t *testing.T) {
 		opts, err := getOpts()
 		require.NoError(t, err)
 		testOpts := options{}
+		assert.Equal(t, opts, testOpts)
+	})
+	t.Run("WithUrl", func(t *testing.T) {
+		opts, err := getOpts(WithUrl(ctx, "http://localhost:9200"))
+		require.NoError(t, err)
+		testOpts := getDefaultOptions()
+		testOpts.withUrl = "http://localhost:9200"
+		assert.Equal(t, opts, testOpts)
+	})
+	t.Run("WithLogger", func(t *testing.T) {
+		testLogger := hclog.NewNullLogger()
+		opts, err := getOpts(WithLogger(ctx, testLogger))
+		require.NoError(t, err)
+		testOpts := getDefaultOptions()
+		testOpts.withLogger = testLogger
 		assert.Equal(t, opts, testOpts)
 	})
 	t.Run("withRefreshInterval", func(t *testing.T) {

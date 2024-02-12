@@ -19,6 +19,8 @@ import (
 	"github.com/hashicorp/go-hclog"
 )
 
+const redactedString = "/*redacted*/"
+
 type refresher interface {
 	refresh()
 }
@@ -56,7 +58,7 @@ func (u *UpsertTokenRequest) String() string {
 	if len(u.AuthToken) > 0 {
 		// Don't print out the auth token string, but do indicate if it has the
 		// same prefix as the provided auth token id.
-		redactedAuthTokenStr := "/* redacted */"
+		redactedAuthTokenStr := redactedString
 		if strings.HasPrefix(u.AuthToken, u.AuthTokenId) {
 			redactedAuthTokenStr = fmt.Sprintf("%s_%s", u.AuthTokenId, redactedAuthTokenStr)
 		}
