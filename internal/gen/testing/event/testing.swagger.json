@@ -41,25 +41,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "type": "object",
-              "properties": {
-                "token_type": {
-                  "type": "string",
-                  "title": "This can be \"cookie\" or \"token\". If not provided, \"token\" will be used. \"cookie\" activates a split-cookie method where the token is split partially between http-only and regular cookies in order\nto keep it safe from rogue JS in the browser. Deprecated, use \"type\" instead.\n@inject_tag: `class:\"public\"`"
-                },
-                "type": {
-                  "type": "string",
-                  "title": "This can be \"cookie\" or \"token\". If not provided, \"token\" will be used. \"cookie\" activates a split-cookie method where the token is split partially between http-only and regular cookies in order\nto keep it safe from rogue JS in the browser.\n@inject_tag: `class:\"public\"`"
-                },
-                "attributes": {
-                  "type": "object",
-                  "description": "Attributes are passed to the Auth Method; the valid keys and values depend on the type of Auth Method as well as the command."
-                },
-                "command": {
-                  "type": "string",
-                  "title": "The command to perform.\n@inject_tag: `class:\"public\"`"
-                }
-              }
+              "$ref": "#/definitions/testing.event.v1.TestAuthMethodService.TestAuthenticateBody"
             }
           }
         ],
@@ -77,6 +59,27 @@
       ],
       "default": "NULL_VALUE",
       "description": "`NullValue` is a singleton enumeration to represent the null value for the\n`Value` type union.\n\n The JSON representation for `NullValue` is JSON `null`.\n\n - NULL_VALUE: Null value."
+    },
+    "testing.event.v1.TestAuthMethodService.TestAuthenticateBody": {
+      "type": "object",
+      "properties": {
+        "token_type": {
+          "type": "string",
+          "title": "This can be \"cookie\" or \"token\". If not provided, \"token\" will be used. \"cookie\" activates a split-cookie method where the token is split partially between http-only and regular cookies in order\nto keep it safe from rogue JS in the browser. Deprecated, use \"type\" instead.\n@inject_tag: `class:\"public\"`"
+        },
+        "type": {
+          "type": "string",
+          "title": "This can be \"cookie\" or \"token\". If not provided, \"token\" will be used. \"cookie\" activates a split-cookie method where the token is split partially between http-only and regular cookies in order\nto keep it safe from rogue JS in the browser.\n@inject_tag: `class:\"public\"`"
+        },
+        "attributes": {
+          "type": "object",
+          "description": "Attributes are passed to the Auth Method; the valid keys and values depend on the type of Auth Method as well as the command."
+        },
+        "command": {
+          "type": "string",
+          "title": "The command to perform.\n@inject_tag: `class:\"public\"`"
+        }
+      }
     },
     "testing.event.v1.TestAuthenticateResponse": {
       "type": "object",
