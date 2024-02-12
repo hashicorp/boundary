@@ -322,9 +322,6 @@ func (c *StartCommand) makeBackground(ctx context.Context, dotDir string) (bool,
 	if c.flagDatabaseUrl != "" {
 		args = append(args, "-database-url", c.flagDatabaseUrl)
 	}
-	if c.flagStoreDebug {
-		args = append(args, "-store-debug")
-	}
 	cmd := exec.Command(absPath, args...)
 	cmd.Env = env
 	if err = cmd.Start(); err != nil {
