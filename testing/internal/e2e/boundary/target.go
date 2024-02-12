@@ -87,6 +87,9 @@ func CreateNewTargetCli(t testing.TB, ctx context.Context, projectId string, def
 	if opts.WithEgressWorkerFilter != "" {
 		args = append(args, "-egress-worker-filter", opts.WithEgressWorkerFilter)
 	}
+	if opts.WithSessionConnectionLimit != 0 {
+		args = append(args, "-session-connection-limit", fmt.Sprintf("%d", opts.WithSessionConnectionLimit))
+	}
 
 	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs("targets", "create"),
