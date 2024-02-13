@@ -286,6 +286,19 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 
 	f := c.Flags()
 
+   {{ if .UsesAlias }}
+    	var alias string
+		alias, args = base.ExtractAliasFromArgs(args)
+
+	if alias != ""{
+		if c.{{ .AliasFieldFlag }} != "" {
+			c.PrintCliError(errors.New("Cannot specify both an alias and {{ .FlagNameOverwrittenByAlias }}; choose one or the other"))
+			return base.CommandUserError
+		}
+		c.{{ .AliasFieldFlag }} = alias
+   }
+   {{ end }}
+
 	if err := f.Parse(args); err != nil {
 		c.PrintCliError(err)
 		return base.CommandUserError
