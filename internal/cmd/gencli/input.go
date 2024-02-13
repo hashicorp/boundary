@@ -91,6 +91,17 @@ type cmdInfo struct {
 	SkipClientCallActions []string
 
 	SkipFiltering bool
+
+	// UsesAlias controls whether to attempt to extract aliases from the CLI args
+	UsesAlias bool
+
+	// AliasFieldFlag controls which command flag to substitute a found alias for
+	AliasFieldFlag string
+
+	// FlagNameOverwrittenByAlias is used in the CLI template to populate an error message.
+	// It controls what to print as the field replaced by an alias
+	// if both an alias and the FlagNameOverwrittenByAlias are provided.
+	FlagNameOverwrittenByAlias string
 }
 
 var inputStructs = map[string][]*cmdInfo{
@@ -665,46 +676,55 @@ var inputStructs = map[string][]*cmdInfo{
 	},
 	"targets": {
 		{
-			ResourceType:        resource.Target.String(),
-			Pkg:                 "targets",
-			StdActions:          []string{"read", "delete", "list"},
-			HasExtraCommandVars: true,
-			HasExtraHelpFunc:    true,
-			HasExampleCliOutput: true,
-			HasName:             true,
-			HasDescription:      true,
-			Container:           "Scope",
-			VersionedActions:    []string{"add-host-sources", "remove-host-sources", "set-host-sources", "add-credential-sources", "remove-credential-sources", "set-credential-sources"},
+			ResourceType:               resource.Target.String(),
+			Pkg:                        "targets",
+			StdActions:                 []string{"read", "delete", "list"},
+			HasExtraCommandVars:        true,
+			HasExtraHelpFunc:           true,
+			HasExampleCliOutput:        true,
+			HasName:                    true,
+			HasDescription:             true,
+			Container:                  "Scope",
+			VersionedActions:           []string{"add-host-sources", "remove-host-sources", "set-host-sources", "add-credential-sources", "remove-credential-sources", "set-credential-sources"},
+			UsesAlias:                  true,
+			AliasFieldFlag:             "FlagId",
+			FlagNameOverwrittenByAlias: "id",
 		},
 		{
-			ResourceType:         resource.Target.String(),
-			Pkg:                  "targets",
-			StdActions:           []string{"create", "update"},
-			SubActionPrefix:      "tcp",
-			HasExtraCommandVars:  true,
-			SkipNormalHelp:       true,
-			HasExtraHelpFunc:     true,
-			HasId:                true,
-			HasName:              true,
-			Container:            "Scope",
-			HasDescription:       true,
-			VersionedActions:     []string{"update"},
-			NeedsSubtypeInCreate: true,
+			ResourceType:               resource.Target.String(),
+			Pkg:                        "targets",
+			StdActions:                 []string{"create", "update"},
+			SubActionPrefix:            "tcp",
+			HasExtraCommandVars:        true,
+			SkipNormalHelp:             true,
+			HasExtraHelpFunc:           true,
+			HasId:                      true,
+			HasName:                    true,
+			Container:                  "Scope",
+			HasDescription:             true,
+			VersionedActions:           []string{"update"},
+			NeedsSubtypeInCreate:       true,
+			UsesAlias:                  true,
+			AliasFieldFlag:             "FlagId",
+			FlagNameOverwrittenByAlias: "id",
 		},
 		{
-			ResourceType:         resource.Target.String(),
-			Pkg:                  "targets",
-			StdActions:           []string{"create", "update"},
-			SubActionPrefix:      "ssh",
-			HasExtraCommandVars:  true,
-			SkipNormalHelp:       true,
-			HasExtraHelpFunc:     true,
-			HasId:                true,
-			HasName:              true,
-			Container:            "Scope",
-			HasDescription:       true,
-			VersionedActions:     []string{"update"},
-			NeedsSubtypeInCreate: true,
+			ResourceType:               resource.Target.String(),
+			Pkg:                        "targets",
+			StdActions:                 []string{"create", "update"},
+			SubActionPrefix:            "ssh",
+			HasExtraCommandVars:        true,
+			SkipNormalHelp:             true,
+			HasExtraHelpFunc:           true,
+			HasId:                      true,
+			HasName:                    true,
+			Container:                  "Scope",
+			HasDescription:             true,
+			VersionedActions:           []string{"update"},
+			NeedsSubtypeInCreate:       true,
+			UsesAlias:                  true,
+			AliasFieldFlag:             "FlagId",
+			FlagNameOverwrittenByAlias: "id",
 		},
 	},
 	"users": {
