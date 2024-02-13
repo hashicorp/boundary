@@ -257,6 +257,9 @@ func (c *Command) Run(args []string) (retCode int) {
 
 	f := c.Flags()
 
+	var alias string
+	alias, args = base.ExtractAliasFromArgs(args)
+
 	if err := f.Parse(args); err != nil {
 		c.PrintCliError(err)
 		return base.CommandUserError
@@ -271,6 +274,12 @@ func (c *Command) Run(args []string) (retCode int) {
 	defer c.proxyCancel()
 
 	switch {
+	case alias != "":
+		if c.flagTargetId != "" && (c.flagTargetName != "" || c.FlagScopeId != "" || c.FlagScopeName != "") {
+			c.PrintCliError(errors.New("Cannot specify a Target alias and also other lookup parameters"))
+			return base.CommandUserError
+		}
+		c.flagTargetId = alias
 	case c.flagAuthzToken != "":
 		switch {
 		case c.flagTargetId != "":
