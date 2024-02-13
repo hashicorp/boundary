@@ -26,7 +26,7 @@ func init() {
 }
 
 type registrationInfo struct {
-	unaliableWithFields []string
+	unaliasableWithFields []string
 }
 
 // globalAliasableRegistry is a map of proto field's FullName to registrationInfo.
@@ -43,7 +43,7 @@ func registerAliasableFields(d protoreflect.MessageDescriptor) {
 		}
 		aliasableInfo := proto.GetExtension(opts, protooptions.E_Aliasable).(*protooptions.AliasInfo)
 		if aliasableInfo != nil {
-			ri := &registrationInfo{unaliableWithFields: aliasableInfo.GetUnlessSet().GetFields()}
+			ri := &registrationInfo{unaliasableWithFields: aliasableInfo.GetUnlessSet().GetFields()}
 			globalAliasableRegistry.Store(name, ri)
 		}
 	}
@@ -54,11 +54,16 @@ type aliasLookup interface {
 	lookupAliasByValue(ctx context.Context, value string) (*Alias, error)
 }
 
-// ResolveAliasFields transforms the request by replacing alias values with their
-// corresponding destination ids. If no alias is found or the alias has no
-// destination id, an error is returned.
-func ResolveAliasFields(ctx context.Context, req proto.Message, lookup aliasLookup) (context.Context, error) {
-	const op = "alias.TransformRequest"
+// ResolveRequestIds transforms the request by replacing aliasable field values
+// with their corresponding destination ids. A field is aliasable depending on
+// if and how the custom proto option "custom_options.v1.aliasable" is set on
+// it. When the option is set on a field, it can be marked as always aliasable,
+// in which case the field will always be checked for an alias value on the field
+// or it can be marked as aliasable unless other specified fields on the same
+// message is set.
+// If no alias is found or the alias has no destination id, an error is returned.
+func ResolveRequestIds(ctx context.Context, req proto.Message, lookup aliasLookup) (context.Context, error) {
+	const op = "alias.ResolveRequestIds"
 	r := req.ProtoReflect()
 	fields := r.Descriptor().Fields()
 
@@ -82,7 +87,7 @@ nextField:
 			continue
 		}
 
-		for _, fieldName := range ai.unaliableWithFields {
+		for _, fieldName := range ai.unaliasableWithFields {
 			if r.Has(fields.ByName(protoreflect.Name(fieldName))) {
 				continue nextField
 			}

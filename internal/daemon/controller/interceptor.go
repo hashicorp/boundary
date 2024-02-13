@@ -353,7 +353,7 @@ func aliasResolutionInterceptor(
 		if err != nil {
 			return nil, err
 		}
-		interceptorCtx, err = alias.ResolveAliasFields(interceptorCtx, reqMsg, r)
+		interceptorCtx, err = alias.ResolveRequestIds(interceptorCtx, reqMsg, r)
 		if err != nil {
 			return nil, err
 		}
