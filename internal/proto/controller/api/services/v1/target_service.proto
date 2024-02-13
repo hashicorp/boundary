@@ -375,6 +375,8 @@ message AuthorizeSessionRequest {
   // The ID of the target. Required unless some combination of scope_id/scope_name and name are set.
   string id = 1 [(custom_options.v1.aliasable) = {
     unless_set: {
+      // scope id and scope name being set indicates that the value in this field
+      // is actually a target name and not an alias.
       fields: [
         'scope_id',
         'scope_name'
