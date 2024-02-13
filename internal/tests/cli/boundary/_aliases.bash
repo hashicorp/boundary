@@ -24,6 +24,15 @@ function list_alias(){
   boundary aliases list -format json
 }
 
+function update_target_alias_value(){
+    local aid=$1
+    local value=$2
+    boundary aliases update target \
+      -id $aid \
+      -value $value \
+      -format json
+}
+
 function update_target_alias_host_id(){
     local aid=$1
     local hostid=$2

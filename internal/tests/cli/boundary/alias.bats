@@ -7,6 +7,7 @@ load _helpers
 load _targets
 
 export ALIAS_VALUE='test'
+export UPDATE_ALIAS_VALUE='test.change'
 
 @test "boundary/login: can login as admin user" {
   run login $DEFAULT_LOGIN
@@ -50,8 +51,14 @@ export ALIAS_VALUE='test'
   [ ! -z "$hostid" ]
 }
 
-@test "boundary/alias: admin user can delete alias" {
+@test "boundary/alias: admin user can update alias value" {
   local id=$(alias_id_from_target_alias $ALIAS_VALUE)
+  run update_target_alias_value $id $UPDATE_ALIAS_VALUE
+  [ "$status" -eq 0 ]
+}
+
+@test "boundary/alias: admin user can delete alias" {
+  local id=$(alias_id_from_target_alias $UPDATE_ALIAS_VALUE)
   run delete_alias $id
   [ "$status" -eq 0 ]
 }
