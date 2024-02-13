@@ -25,10 +25,10 @@ func TestRewrap_argon2ConfigRewrapFn(t *testing.T) {
 		conn, mock := db.TestSetupWithMock(t)
 		wrapper := db.TestWrapper(t)
 		mock.ExpectQuery(
-			`SELECT \* FROM "kms_schema_version" WHERE 1=1 ORDER BY "kms_schema_version"\."version" LIMIT 1`,
+			`SELECT \* FROM "kms_schema_version" WHERE 1=1 ORDER BY "kms_schema_version"\."version" LIMIT \$1`,
 		).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
 		mock.ExpectQuery(
-			`SELECT \* FROM "kms_oplog_schema_version" WHERE 1=1 ORDER BY "kms_oplog_schema_version"."version" LIMIT 1`,
+			`SELECT \* FROM "kms_oplog_schema_version" WHERE 1=1 ORDER BY "kms_oplog_schema_version"."version" LIMIT \$1`,
 		).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
 		kmsCache := kms.TestKms(t, conn, wrapper)
 		rw := db.New(conn)
