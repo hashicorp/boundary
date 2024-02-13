@@ -68,18 +68,18 @@ var CloseSwappedDbDuration = 5 * time.Minute
 // Swap replaces *DB's underlying database object with the one from `newDB`.
 // It returns a function that calls Close() on the outgoing database object.
 // Note: Swap does not verify the incoming *DB object is correctly set-up.
-func (db *DB) Swap(ctx context.Context, newDB *DB) (closeDbFn, error) {
+func (d *DB) Swap(ctx context.Context, newDB *DB) (closeDbFn, error) {
 	const op = "db.(DB).Swap"
 	if newDB == nil || newDB.wrapped == nil || newDB.wrapped.Load() == nil {
 		return nil, fmt.Errorf("no new db object present")
 	}
-	if db == nil || db.wrapped == nil || db.wrapped.Load() == nil {
+	if d == nil || d.wrapped == nil || d.wrapped.Load() == nil {
 		// TBD: We could be helpful here and set the new DB instead of err?
 		return nil, fmt.Errorf("no current db is present to swap, aborting")
 	}
 
 	// Grab the old db to allow for cleanup after swap.
-	oldDbw := db.wrapped.Swap(newDB.wrapped.Load())
+	oldDbw := d.wrapped.Swap(newDB.wrapped.Load())
 	closeOldDbFn := func(ctx context.Context) {
 		go func() {
 			maxTime := time.Now().Add(CloseSwappedDbDuration)
@@ -118,8 +118,8 @@ func (db *DB) Swap(ctx context.Context, newDB *DB) (closeDbFn, error) {
 }
 
 // Debug will enable/disable debug info for the connection
-func (db *DB) Debug(on bool) {
-	db.wrapped.Load().Debug(on)
+func (d *DB) Debug(on bool) {
+	d.wrapped.Load().Debug(on)
 }
 
 // SqlDB returns the underlying sql.DB

@@ -89,7 +89,7 @@ func newRootCertificate(ctx context.Context, serialNumber uint64, certificate []
 ) (*RootCertificate, error) {
 	const op = "server.newRootCertificate"
 
-	if &serialNumber == nil {
+	if serialNumber == 0 {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "no serialNumber")
 	}
 	if certificate == nil || len(certificate) == 0 {
@@ -146,7 +146,7 @@ func (r *RootCertificate) clone() *RootCertificate {
 // Validate the RootCertificate. On success, return nil
 func (r *RootCertificate) ValidateNewRootCertificate(ctx context.Context) error {
 	const op = "server.(RootCertificate).ValidateNewRootCertificate"
-	if &r.SerialNumber == nil {
+	if r.SerialNumber == 0 {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing SerialNumber")
 	}
 	if r.Certificate == nil {

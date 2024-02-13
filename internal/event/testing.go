@@ -6,7 +6,7 @@ package event
 import (
 	"context"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"os"
 	"sync"
 	"testing"
@@ -59,7 +59,7 @@ func TestWithoutEventing(t testing.TB) *Eventer {
 	testLock := &sync.Mutex{}
 	testLogger := hclog.New(&hclog.LoggerOptions{
 		Mutex:  testLock,
-		Output: ioutil.Discard,
+		Output: io.Discard,
 	})
 	testEventer, err := NewEventer(testLogger, testLock, "TestWithoutEventing", testConfig, withNoDefaultSink(t))
 	require.NoError(err)
@@ -95,10 +95,10 @@ type TestConfig struct {
 func TestEventerConfig(t testing.TB, testName string, opt ...Option) TestConfig {
 	t.Helper()
 	require := require.New(t)
-	tmpAllFile, err := ioutil.TempFile("./", "tmp-all-events-"+testName)
+	tmpAllFile, err := os.CreateTemp("./", "tmp-all-events-"+testName)
 	require.NoError(err)
 
-	tmpErrFile, err := ioutil.TempFile("./", "tmp-errors-"+testName)
+	tmpErrFile, err := os.CreateTemp("./", "tmp-errors-"+testName)
 	require.NoError(err)
 
 	t.Cleanup(func() {
@@ -153,7 +153,7 @@ func TestEventerConfig(t testing.TB, testName string, opt ...Option) TestConfig 
 		})
 	}
 	if opts.withAuditSink {
-		tmpFile, err := ioutil.TempFile("./", "tmp-audit-"+testName)
+		tmpFile, err := os.CreateTemp("./", "tmp-audit-"+testName)
 		require.NoError(err)
 		t.Cleanup(func() {
 			os.Remove(tmpFile.Name())
@@ -172,7 +172,7 @@ func TestEventerConfig(t testing.TB, testName string, opt ...Option) TestConfig 
 		c.AuditEvents = tmpFile
 	}
 	if opts.withObservationSink {
-		tmpFile, err := ioutil.TempFile("./", "tmp-observation-"+testName)
+		tmpFile, err := os.CreateTemp("./", "tmp-observation-"+testName)
 		require.NoError(err)
 		t.Cleanup(func() {
 			os.Remove(tmpFile.Name())
@@ -190,7 +190,7 @@ func TestEventerConfig(t testing.TB, testName string, opt ...Option) TestConfig 
 		c.ObservationEvents = tmpFile
 	}
 	if opts.withSysSink {
-		tmpFile, err := ioutil.TempFile("./", "tmp-sysevents-"+testName)
+		tmpFile, err := os.CreateTemp("./", "tmp-sysevents-"+testName)
 		require.NoError(err)
 		t.Cleanup(func() {
 			os.Remove(tmpFile.Name())

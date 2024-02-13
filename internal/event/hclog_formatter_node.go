@@ -110,15 +110,15 @@ func (f *hclogFormatterFilter) Rotate(w wrapping.Wrapper, _ ...Option) error {
 }
 
 // Reopen is a no op
-func (_ *hclogFormatterFilter) Reopen() error { return nil }
+func (*hclogFormatterFilter) Reopen() error { return nil }
 
 // Type describes the type of the node as a Formatter.
-func (_ *hclogFormatterFilter) Type() eventlogger.NodeType {
+func (*hclogFormatterFilter) Type() eventlogger.NodeType {
 	return eventlogger.NodeTypeFormatterFilter
 }
 
 // Name returns a representation of the HclogFormatter's name
-func (_ *hclogFormatterFilter) Name() string {
+func (*hclogFormatterFilter) Name() string {
 	return hclogNodeName
 }
 

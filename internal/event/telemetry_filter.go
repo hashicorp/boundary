@@ -121,7 +121,6 @@ func recurseStructureWithProtoFilter(value reflect.Value, filterFunc protoFilter
 					sKind := sVal.Kind()
 					if sKind == reflect.Ptr || sKind == reflect.Interface {
 						sVal = sVal.Elem()
-						sKind = sVal.Kind()
 					}
 					if err := recurseStructureWithProtoFilter(sVal, filterFunc, isObservable); err != nil {
 						return err

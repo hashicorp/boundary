@@ -14,11 +14,11 @@ type Backoff interface {
 }
 
 type ConstBackoff struct {
-	DurationMs time.Duration
+	Amount time.Duration
 }
 
 func (b ConstBackoff) Duration(attempt uint) time.Duration {
-	return time.Millisecond * time.Duration(b.DurationMs)
+	return time.Millisecond * time.Duration(b.Amount)
 }
 
 type ExpBackoff struct{}

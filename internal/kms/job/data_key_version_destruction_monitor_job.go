@@ -29,7 +29,7 @@ func newDataKeyVersionDestructionMonitorJob(ctx context.Context, kmsRepo *kms.Km
 
 // Status reports the job’s current status. We never change these values as
 // this job never finishes.
-func (d *dataKeyVersionDestructionMonitorJob) Status() scheduler.JobStatus {
+func (r dataKeyVersionDestructionMonitorJob) Status() scheduler.JobStatus {
 	return scheduler.JobStatus{}
 }
 
@@ -53,11 +53,11 @@ func (r *dataKeyVersionDestructionMonitorJob) NextRunIn(_ context.Context) (time
 }
 
 // Name is the unique name of the job.
-func (r *dataKeyVersionDestructionMonitorJob) Name() string {
+func (r dataKeyVersionDestructionMonitorJob) Name() string {
 	return "data-key-version-destruction-monitor-job"
 }
 
 // Description is the human readable description of the job.
-func (d *dataKeyVersionDestructionMonitorJob) Description() string {
+func (r dataKeyVersionDestructionMonitorJob) Description() string {
 	return "Destroy a key version once all data has been rewrapped"
 }

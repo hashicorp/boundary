@@ -26,7 +26,6 @@ import (
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
-	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/workers"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/workers"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/hashicorp/nodeenrollment"
@@ -1269,7 +1268,7 @@ func TestCreateWorkerLed(t *testing.T) {
 			service: testSrv,
 			scopeId: scope.Global.String(),
 			req: &pbs.CreateWorkerLedRequest{
-				Item: &workers.Worker{
+				Item: &pb.Worker{
 					ScopeId:                  "invalid-scope",
 					WorkerGeneratedAuthToken: &wrapperspb.StringValue{Value: fetchReqFn()},
 				},
@@ -1283,7 +1282,7 @@ func TestCreateWorkerLed(t *testing.T) {
 			service: testSrv,
 			scopeId: scope.Global.String(),
 			req: &pbs.CreateWorkerLedRequest{
-				Item: &workers.Worker{
+				Item: &pb.Worker{
 					ScopeId: scope.Global.String(),
 				},
 			},
@@ -1296,7 +1295,7 @@ func TestCreateWorkerLed(t *testing.T) {
 			service: testSrv,
 			scopeId: scope.Global.String(),
 			req: &pbs.CreateWorkerLedRequest{
-				Item: &workers.Worker{
+				Item: &pb.Worker{
 					ScopeId:                  scope.Global.String(),
 					WorkerGeneratedAuthToken: &wrapperspb.StringValue{Value: fetchReqFn()},
 					Id:                       "invalid-id",
@@ -1311,7 +1310,7 @@ func TestCreateWorkerLed(t *testing.T) {
 			service: testSrv,
 			scopeId: scope.Global.String(),
 			req: &pbs.CreateWorkerLedRequest{
-				Item: &workers.Worker{
+				Item: &pb.Worker{
 					ScopeId:                  scope.Global.String(),
 					WorkerGeneratedAuthToken: &wrapperspb.StringValue{Value: fetchReqFn()},
 					Address:                  "invalid-address",
@@ -1326,7 +1325,7 @@ func TestCreateWorkerLed(t *testing.T) {
 			service: testSrv,
 			scopeId: scope.Global.String(),
 			req: &pbs.CreateWorkerLedRequest{
-				Item: &workers.Worker{
+				Item: &pb.Worker{
 					ScopeId:                  scope.Global.String(),
 					WorkerGeneratedAuthToken: &wrapperspb.StringValue{Value: fetchReqFn()},
 					ConfigTags: map[string]*structpb.ListValue{
@@ -1345,7 +1344,7 @@ func TestCreateWorkerLed(t *testing.T) {
 			service: testSrv,
 			scopeId: scope.Global.String(),
 			req: &pbs.CreateWorkerLedRequest{
-				Item: &workers.Worker{
+				Item: &pb.Worker{
 					ScopeId:                  scope.Global.String(),
 					WorkerGeneratedAuthToken: &wrapperspb.StringValue{Value: fetchReqFn()},
 					CanonicalTags: map[string]*structpb.ListValue{
@@ -1364,7 +1363,7 @@ func TestCreateWorkerLed(t *testing.T) {
 			service: testSrv,
 			scopeId: scope.Global.String(),
 			req: &pbs.CreateWorkerLedRequest{
-				Item: &workers.Worker{
+				Item: &pb.Worker{
 					ScopeId:                  scope.Global.String(),
 					WorkerGeneratedAuthToken: &wrapperspb.StringValue{Value: fetchReqFn()},
 					LastStatusTime:           timestamppb.Now(),
@@ -1379,7 +1378,7 @@ func TestCreateWorkerLed(t *testing.T) {
 			service: testSrv,
 			scopeId: scope.Global.String(),
 			req: &pbs.CreateWorkerLedRequest{
-				Item: &workers.Worker{
+				Item: &pb.Worker{
 					ScopeId:                  scope.Global.String(),
 					WorkerGeneratedAuthToken: &wrapperspb.StringValue{Value: fetchReqFn()},
 					AuthorizedActions:        []string{"invalid-authorized-actions"},
@@ -1394,7 +1393,7 @@ func TestCreateWorkerLed(t *testing.T) {
 			service: testSrv,
 			scopeId: scope.Global.String(),
 			req: &pbs.CreateWorkerLedRequest{
-				Item: &workers.Worker{
+				Item: &pb.Worker{
 					ScopeId:                  scope.Global.String(),
 					WorkerGeneratedAuthToken: &wrapperspb.StringValue{Value: fetchReqFn()},
 					CreatedTime:              timestamppb.Now(),
@@ -1409,7 +1408,7 @@ func TestCreateWorkerLed(t *testing.T) {
 			service: testSrv,
 			scopeId: scope.Global.String(),
 			req: &pbs.CreateWorkerLedRequest{
-				Item: &workers.Worker{
+				Item: &pb.Worker{
 					ScopeId:                  scope.Global.String(),
 					WorkerGeneratedAuthToken: &wrapperspb.StringValue{Value: fetchReqFn()},
 					UpdatedTime:              timestamppb.Now(),
@@ -1424,7 +1423,7 @@ func TestCreateWorkerLed(t *testing.T) {
 			service: testSrv,
 			scopeId: scope.Global.String(),
 			req: &pbs.CreateWorkerLedRequest{
-				Item: &workers.Worker{
+				Item: &pb.Worker{
 					ScopeId:                  scope.Global.String(),
 					WorkerGeneratedAuthToken: &wrapperspb.StringValue{Value: fetchReqFn()},
 					Version:                  1,
@@ -1439,7 +1438,7 @@ func TestCreateWorkerLed(t *testing.T) {
 			service: testSrv,
 			scopeId: "splat-auth-scope",
 			req: &pbs.CreateWorkerLedRequest{
-				Item: &workers.Worker{
+				Item: &pb.Worker{
 					ScopeId:                  scope.Global.String(),
 					WorkerGeneratedAuthToken: &wrapperspb.StringValue{Value: fetchReqFn()},
 				},
@@ -1452,7 +1451,7 @@ func TestCreateWorkerLed(t *testing.T) {
 			service: testSrv,
 			scopeId: scope.Global.String(),
 			req: &pbs.CreateWorkerLedRequest{
-				Item: &workers.Worker{
+				Item: &pb.Worker{
 					ScopeId:                  scope.Global.String(),
 					WorkerGeneratedAuthToken: &wrapperspb.StringValue{Value: "invalid;semicolon"},
 				},
@@ -1465,7 +1464,7 @@ func TestCreateWorkerLed(t *testing.T) {
 			service: testSrv,
 			scopeId: scope.Global.String(),
 			req: &pbs.CreateWorkerLedRequest{
-				Item: &workers.Worker{
+				Item: &pb.Worker{
 					ScopeId:                  scope.Global.String(),
 					WorkerGeneratedAuthToken: &wrapperspb.StringValue{Value: "notNodeCreds"},
 				},
@@ -1485,7 +1484,7 @@ func TestCreateWorkerLed(t *testing.T) {
 			}(),
 			scopeId: scope.Global.String(),
 			req: &pbs.CreateWorkerLedRequest{
-				Item: &workers.Worker{
+				Item: &pb.Worker{
 					ScopeId:                  scope.Global.String(),
 					Name:                     &wrapperspb.StringValue{Value: "success"},
 					Description:              &wrapperspb.StringValue{Value: "success-description"},
@@ -1518,7 +1517,7 @@ func TestCreateWorkerLed(t *testing.T) {
 			}(),
 			scopeId: scope.Global.String(),
 			req: &pbs.CreateWorkerLedRequest{
-				Item: &workers.Worker{
+				Item: &pb.Worker{
 					ScopeId:                  scope.Global.String(),
 					Name:                     &wrapperspb.StringValue{Value: "success"},
 					Description:              &wrapperspb.StringValue{Value: "success-description"},
@@ -1533,7 +1532,7 @@ func TestCreateWorkerLed(t *testing.T) {
 			service: testSrv,
 			scopeId: scope.Global.String(),
 			req: &pbs.CreateWorkerLedRequest{
-				Item: &workers.Worker{
+				Item: &pb.Worker{
 					ScopeId:                  scope.Global.String(),
 					Name:                     &wrapperspb.StringValue{Value: "success"},
 					Description:              &wrapperspb.StringValue{Value: "success-description"},
@@ -1541,7 +1540,7 @@ func TestCreateWorkerLed(t *testing.T) {
 				},
 			},
 			res: &pbs.CreateWorkerLedResponse{
-				Item: &workers.Worker{
+				Item: &pb.Worker{
 					ScopeId:               scope.Global.String(),
 					Name:                  &wrapperspb.StringValue{Value: "success"},
 					Description:           &wrapperspb.StringValue{Value: "success-description"},
@@ -1652,7 +1651,7 @@ func TestCreateControllerLed(t *testing.T) {
 			service: testSrv,
 			scopeId: scope.Global.String(),
 			req: &pbs.CreateControllerLedRequest{
-				Item: &workers.Worker{
+				Item: &pb.Worker{
 					ScopeId: "invalid-scope",
 				},
 			},
@@ -1665,7 +1664,7 @@ func TestCreateControllerLed(t *testing.T) {
 			service: testSrv,
 			scopeId: scope.Global.String(),
 			req: &pbs.CreateControllerLedRequest{
-				Item: &workers.Worker{
+				Item: &pb.Worker{
 					ScopeId:                  scope.Global.String(),
 					WorkerGeneratedAuthToken: &wrapperspb.StringValue{Value: fetchReqFn()},
 				},
@@ -1679,7 +1678,7 @@ func TestCreateControllerLed(t *testing.T) {
 			service: testSrv,
 			scopeId: scope.Global.String(),
 			req: &pbs.CreateControllerLedRequest{
-				Item: &workers.Worker{
+				Item: &pb.Worker{
 					ScopeId: scope.Global.String(),
 					Id:      "invalid-id",
 				},
@@ -1693,7 +1692,7 @@ func TestCreateControllerLed(t *testing.T) {
 			service: testSrv,
 			scopeId: scope.Global.String(),
 			req: &pbs.CreateControllerLedRequest{
-				Item: &workers.Worker{
+				Item: &pb.Worker{
 					ScopeId: scope.Global.String(),
 					Address: "invalid-address",
 				},
@@ -1707,7 +1706,7 @@ func TestCreateControllerLed(t *testing.T) {
 			service: testSrv,
 			scopeId: scope.Global.String(),
 			req: &pbs.CreateControllerLedRequest{
-				Item: &workers.Worker{
+				Item: &pb.Worker{
 					ScopeId: scope.Global.String(),
 					ConfigTags: map[string]*structpb.ListValue{
 						"invalid": {Values: []*structpb.Value{
@@ -1725,7 +1724,7 @@ func TestCreateControllerLed(t *testing.T) {
 			service: testSrv,
 			scopeId: scope.Global.String(),
 			req: &pbs.CreateControllerLedRequest{
-				Item: &workers.Worker{
+				Item: &pb.Worker{
 					ScopeId: scope.Global.String(),
 					CanonicalTags: map[string]*structpb.ListValue{
 						"invalid": {Values: []*structpb.Value{
@@ -1743,7 +1742,7 @@ func TestCreateControllerLed(t *testing.T) {
 			service: testSrv,
 			scopeId: scope.Global.String(),
 			req: &pbs.CreateControllerLedRequest{
-				Item: &workers.Worker{
+				Item: &pb.Worker{
 					ScopeId:        scope.Global.String(),
 					LastStatusTime: timestamppb.Now(),
 				},
@@ -1757,7 +1756,7 @@ func TestCreateControllerLed(t *testing.T) {
 			service: testSrv,
 			scopeId: scope.Global.String(),
 			req: &pbs.CreateControllerLedRequest{
-				Item: &workers.Worker{
+				Item: &pb.Worker{
 					ScopeId:           scope.Global.String(),
 					AuthorizedActions: []string{"invalid-authorized-actions"},
 				},
@@ -1771,7 +1770,7 @@ func TestCreateControllerLed(t *testing.T) {
 			service: testSrv,
 			scopeId: scope.Global.String(),
 			req: &pbs.CreateControllerLedRequest{
-				Item: &workers.Worker{
+				Item: &pb.Worker{
 					ScopeId:     scope.Global.String(),
 					CreatedTime: timestamppb.Now(),
 				},
@@ -1785,7 +1784,7 @@ func TestCreateControllerLed(t *testing.T) {
 			service: testSrv,
 			scopeId: scope.Global.String(),
 			req: &pbs.CreateControllerLedRequest{
-				Item: &workers.Worker{
+				Item: &pb.Worker{
 					ScopeId:     scope.Global.String(),
 					UpdatedTime: timestamppb.Now(),
 				},
@@ -1799,7 +1798,7 @@ func TestCreateControllerLed(t *testing.T) {
 			service: testSrv,
 			scopeId: scope.Global.String(),
 			req: &pbs.CreateControllerLedRequest{
-				Item: &workers.Worker{
+				Item: &pb.Worker{
 					ScopeId: scope.Global.String(),
 					Version: 1,
 				},
@@ -1813,7 +1812,7 @@ func TestCreateControllerLed(t *testing.T) {
 			service: testSrv,
 			scopeId: "splat-auth-scope",
 			req: &pbs.CreateControllerLedRequest{
-				Item: &workers.Worker{
+				Item: &pb.Worker{
 					ScopeId: scope.Global.String(),
 				},
 			},
@@ -1832,7 +1831,7 @@ func TestCreateControllerLed(t *testing.T) {
 			}(),
 			scopeId: scope.Global.String(),
 			req: &pbs.CreateControllerLedRequest{
-				Item: &workers.Worker{
+				Item: &pb.Worker{
 					ScopeId:     scope.Global.String(),
 					Name:        &wrapperspb.StringValue{Value: "success"},
 					Description: &wrapperspb.StringValue{Value: "success-description"},
@@ -1864,7 +1863,7 @@ func TestCreateControllerLed(t *testing.T) {
 			}(),
 			scopeId: scope.Global.String(),
 			req: &pbs.CreateControllerLedRequest{
-				Item: &workers.Worker{
+				Item: &pb.Worker{
 					ScopeId:     scope.Global.String(),
 					Name:        &wrapperspb.StringValue{Value: "success"},
 					Description: &wrapperspb.StringValue{Value: "success-description"},
@@ -1878,14 +1877,14 @@ func TestCreateControllerLed(t *testing.T) {
 			service: testSrv,
 			scopeId: scope.Global.String(),
 			req: &pbs.CreateControllerLedRequest{
-				Item: &workers.Worker{
+				Item: &pb.Worker{
 					ScopeId:     scope.Global.String(),
 					Name:        &wrapperspb.StringValue{Value: "success"},
 					Description: &wrapperspb.StringValue{Value: "success-description"},
 				},
 			},
 			res: &pbs.CreateControllerLedResponse{
-				Item: &workers.Worker{
+				Item: &pb.Worker{
 					ScopeId:               scope.Global.String(),
 					Name:                  &wrapperspb.StringValue{Value: "success"},
 					Description:           &wrapperspb.StringValue{Value: "success-description"},

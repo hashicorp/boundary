@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 var (
@@ -104,10 +105,7 @@ func (r *Repository) CreateAuthToken(ctx context.Context, withIamUser *iam.User,
 
 	// We truncate the expiration time to the nearest second to make testing in different platforms with
 	// different time resolutions easier.
-	expiration, err := ptypes.TimestampProto(time.Now().Add(r.timeToLiveDuration).Truncate(time.Second))
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithCode(errors.InvalidTimeStamp))
-	}
+	expiration := timestamppb.New(time.Now().Add(r.timeToLiveDuration).Truncate(time.Second))
 	at.ExpirationTime = &timestamp.Timestamp{Timestamp: expiration}
 
 	var newAuthToken *AuthToken

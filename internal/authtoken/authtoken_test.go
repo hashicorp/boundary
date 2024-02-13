@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/ptypes"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken/store"
 	"github.com/hashicorp/boundary/internal/db"
@@ -18,6 +17,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // This file contains tests for methods defined in authtoken.go as well as tests which exercise the db
@@ -43,8 +43,7 @@ func TestAuthToken_DbUpdate(t *testing.T) {
 		nullMask  []string
 		authTok   *store.AuthToken
 	}
-	future, err := ptypes.TimestampProto(time.Now().Add(time.Hour))
-	require.NoError(t, err)
+	future := timestamppb.New(time.Now().Add(time.Hour))
 
 	tests := []struct {
 		name    string

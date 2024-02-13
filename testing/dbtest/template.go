@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
-	"time"
 
 	// postgres dialect
 
@@ -25,8 +24,6 @@ var (
 )
 
 func init() {
-	rand.Seed(time.Now().UnixNano())
-
 	p := os.Getenv("TEST_DB_PORT")
 	if p != "" {
 		testDBPort = p

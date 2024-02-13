@@ -355,10 +355,12 @@ func TestStopClusterGrpcServerAndListener(t *testing.T) {
 				go grpcServer.Serve(l)
 
 				// Make sure it's up
-				_, err = grpc.Dial(l.Addr().String(),
-					grpc.WithInsecure(),
+				grpcCtx, grpcCtxCancel := context.WithTimeout(context.Background(), 5*time.Second)
+				t.Cleanup(grpcCtxCancel)
+				_, err = grpc.DialContext(grpcCtx,
+					l.Addr().String(),
+					grpc.WithTransportCredentials(insecure.NewCredentials()),
 					grpc.WithBlock(),
-					grpc.WithTimeout(5*time.Second),
 				)
 				require.NoError(t, err)
 
@@ -557,11 +559,13 @@ func TestStopApiGrpcServerAndListener(t *testing.T) {
 				go grpcServer.Serve(l)
 
 				// Make sure it's up
-				_, err := grpc.Dial("",
-					grpc.WithInsecure(),
+				grpcCtx, grpcCtxCancel := context.WithTimeout(context.Background(), 10*time.Second)
+				t.Cleanup(grpcCtxCancel)
+				_, err := grpc.DialContext(grpcCtx,
+					"",
+					grpc.WithTransportCredentials(insecure.NewCredentials()),
 					grpc.WithBlock(),
-					grpc.WithTimeout(10*time.Second),
-					grpc.WithDialer(func(s string, d time.Duration) (net.Conn, error) {
+					grpc.WithContextDialer(func(ctx context.Context, s string) (net.Conn, error) {
 						return l.Dial()
 					}),
 				)

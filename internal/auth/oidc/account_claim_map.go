@@ -62,14 +62,14 @@ func NewAccountClaimMap(ctx context.Context, authMethodId, fromClaim string, toC
 }
 
 // validate the AccountClaimMap.  On success, it will return nil.
-func (cs *AccountClaimMap) validate(ctx context.Context, caller errors.Op) error {
-	if cs.OidcMethodId == "" {
+func (s *AccountClaimMap) validate(ctx context.Context, caller errors.Op) error {
+	if s.OidcMethodId == "" {
 		return errors.New(ctx, errors.InvalidParameter, caller, "missing oidc auth method id")
 	}
-	if cs.FromClaim == "" {
+	if s.FromClaim == "" {
 		return errors.New(ctx, errors.InvalidParameter, caller, "missing from claim")
 	}
-	if _, err := ConvertToAccountToClaim(ctx, cs.ToClaim); err != nil {
+	if _, err := ConvertToAccountToClaim(ctx, s.ToClaim); err != nil {
 		return errors.Wrap(ctx, err, caller)
 	}
 	return nil
@@ -83,8 +83,8 @@ func AllocAccountClaimMap() AccountClaimMap {
 }
 
 // Clone a AccountClaimMap
-func (cs *AccountClaimMap) Clone() *AccountClaimMap {
-	cp := proto.Clone(cs.AccountClaimMap)
+func (s *AccountClaimMap) Clone() *AccountClaimMap {
+	cp := proto.Clone(s.AccountClaimMap)
 	return &AccountClaimMap{
 		AccountClaimMap: cp.(*store.AccountClaimMap),
 	}

@@ -357,7 +357,7 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager sess
 	w.cleanupConnections(cancelCtx, false, sessionManager)
 
 	// If we have post hooks for after the first status check, run them now
-	if w.everAuthenticated.CAS(authenticationStatusFirstAuthentication, authenticationStatusFirstStatusRpcSuccessful) {
+	if w.everAuthenticated.CompareAndSwap(authenticationStatusFirstAuthentication, authenticationStatusFirstStatusRpcSuccessful) {
 		if downstreamWorkersFactory != nil {
 			w.downstreamWorkers, err = downstreamWorkersFactory(cancelCtx, w.LastStatusSuccess().WorkerId, versionInfo.FullVersionNumber(false))
 			if err != nil {

@@ -197,6 +197,9 @@ func convertToDbwOpts(ctx context.Context, opts *OperationOptions) ([]dbw.Option
 					for _, a := range pbVal.ExprValue.GetArgs() {
 						args = append(args, a.AsInterface())
 					}
+					if len(args) > 0 {
+						expr.Vars = args
+					}
 					newColVal.Value = expr
 				case *ColumnValue_Column:
 					newColVal.Value = dbw.Column{

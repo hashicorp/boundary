@@ -683,11 +683,11 @@ func (l *oidcLogger) Infof(format string, args ...any) {
 }
 
 // FailNow will panic (as required by the interface it's implementing)
-func (_ *oidcLogger) FailNow() {
+func (*oidcLogger) FailNow() {
 	panic("sys eventer failed, see logs for output (if any)")
 }
 
-func (_ *oidcLogger) caller() event.Op {
+func (*oidcLogger) caller() event.Op {
 	var caller event.Op
 	pc, _, _, ok := runtime.Caller(2)
 	details := runtime.FuncForPC(pc)

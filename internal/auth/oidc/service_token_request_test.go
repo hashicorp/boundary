@@ -9,7 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/hashicorp/boundary/internal/auth/oidc/request"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/db"
@@ -21,6 +20,7 @@ import (
 	"github.com/mr-tron/base58"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -188,6 +188,7 @@ func Test_TokenRequest(t *testing.T) {
 				blobInfo, err := testRequestWrapper.Encrypt(ctx, []byte("not-valid-request-token"), wrapping.WithAad([]byte(fmt.Sprintf("%s%s", testAuthMethod.PublicId, testAuthMethod.ScopeId))))
 				require.NoError(t, err)
 				marshaledBlob, err := proto.Marshal(blobInfo)
+				require.NoError(t, err)
 				keyId, err := testRequestWrapper.KeyId(ctx)
 				require.NoError(t, err)
 				w := request.Wrapper{
@@ -220,6 +221,7 @@ func Test_TokenRequest(t *testing.T) {
 				blobInfo, err := testRequestWrapper.Encrypt(ctx, marshaledReqTk, wrapping.WithAad([]byte(fmt.Sprintf("%s%s", testAuthMethod.PublicId, testAuthMethod.ScopeId))))
 				require.NoError(t, err)
 				marshaledBlob, err := proto.Marshal(blobInfo)
+				require.NoError(t, err)
 				keyId, err := testRequestWrapper.KeyId(ctx)
 				require.NoError(t, err)
 				w := request.Wrapper{
@@ -251,6 +253,7 @@ func Test_TokenRequest(t *testing.T) {
 				blobInfo, err := testRequestWrapper.Encrypt(ctx, marshaledReqTk, wrapping.WithAad([]byte(fmt.Sprintf("%s%s", testAuthMethod.PublicId, testAuthMethod.ScopeId))))
 				require.NoError(t, err)
 				marshaledBlob, err := proto.Marshal(blobInfo)
+				require.NoError(t, err)
 				keyId, err := testRequestWrapper.KeyId(ctx)
 				require.NoError(t, err)
 				w := request.Wrapper{
@@ -283,6 +286,7 @@ func Test_TokenRequest(t *testing.T) {
 				blobInfo, err := testRequestWrapper.Encrypt(ctx, marshaledReqTk, wrapping.WithAad([]byte(fmt.Sprintf("%s%s", testAuthMethod.PublicId, testAuthMethod.ScopeId))))
 				require.NoError(t, err)
 				marshaledBlob, err := proto.Marshal(blobInfo)
+				require.NoError(t, err)
 				keyId, err := testRequestWrapper.KeyId(ctx)
 				require.NoError(t, err)
 				w := request.Wrapper{

@@ -172,8 +172,8 @@ func (pc pathCapabilities) get(path string) (capabilities, bool) {
 // union creates and returns a new pathCapabilities instance, z. union sets
 // z[p] = x[p] | y[p] for all p, where p is a path from the set of paths
 // from x and y.
-func (x pathCapabilities) union(y pathCapabilities) (z pathCapabilities) {
-	if len(x) == 0 && len(y) == 0 {
+func (pc pathCapabilities) union(y pathCapabilities) (z pathCapabilities) {
+	if len(pc) == 0 && len(y) == 0 {
 		return
 	}
 	max := func(a, b int) int {
@@ -182,12 +182,12 @@ func (x pathCapabilities) union(y pathCapabilities) (z pathCapabilities) {
 		}
 		return b
 	}
-	z = make(pathCapabilities, max(len(x), len(y)))
-	for p := range x {
-		z[p] = x[p] | y[p]
+	z = make(pathCapabilities, max(len(pc), len(y)))
+	for p := range pc {
+		z[p] = pc[p] | y[p]
 	}
 	for p := range y {
-		z[p] = x[p] | y[p]
+		z[p] = pc[p] | y[p]
 	}
 	return
 }

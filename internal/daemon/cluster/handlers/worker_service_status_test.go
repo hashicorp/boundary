@@ -789,6 +789,7 @@ func TestStatusDeadConnection(t *testing.T) {
 	}
 
 	got, err := s.Status(ctx, req)
+	require.NoError(t, err)
 	assert.Empty(t,
 		cmp.Diff(
 			want,

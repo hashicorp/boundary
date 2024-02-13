@@ -102,11 +102,12 @@ func newWorkerAuth(ctx context.Context, workerKeyIdentifier, workerId string, op
 		},
 	}
 
-	if &opts.withWorkerKeys != nil {
+	if len(opts.withWorkerKeys.workerSigningPubKey) != 0 &&
+		len(opts.withWorkerKeys.workerEncryptionPubKey) != 0 {
 		l.WorkerSigningPubKey = opts.withWorkerKeys.workerSigningPubKey
 		l.WorkerEncryptionPubKey = opts.withWorkerKeys.workerEncryptionPubKey
 	}
-	if &opts.withControllerEncryptionPrivateKey != nil {
+	if len(opts.withControllerEncryptionPrivateKey) != 0 {
 		l.ControllerEncryptionPrivKey = opts.withControllerEncryptionPrivateKey
 	}
 	if opts.withNonce != nil {

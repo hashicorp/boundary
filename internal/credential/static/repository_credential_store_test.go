@@ -152,6 +152,7 @@ func TestRepository_CreateCredentialStore(t *testing.T) {
 
 		// Creating credential in different project should not conflict
 		in3, err := NewCredentialStore(prj2.GetPublicId(), WithName("my-name"), WithDescription("desc"))
+		require.NoError(err)
 		got3, err := repo.CreateCredentialStore(ctx, in3)
 		require.NoError(err)
 		assert.Equal(in.Name, got3.Name)

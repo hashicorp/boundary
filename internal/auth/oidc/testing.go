@@ -492,7 +492,7 @@ func (s *testControllerSrv) ServeHTTP(w http.ResponseWriter, req *http.Request) 
 		case error != "":
 			errorRedirectTo := fmt.Sprintf("%s/%s?error=%s", s.Addr(), AuthenticationErrorsEndpoint, error)
 			s.t.Log("auth error: ", errorRedirectTo)
-			http.RedirectHandler(errorRedirectTo, 301)
+			http.RedirectHandler(errorRedirectTo, http.StatusMovedPermanently)
 		default:
 			redirectTo, err := Callback(context.Background(),
 				s.oidcRepoFn,
@@ -505,7 +505,7 @@ func (s *testControllerSrv) ServeHTTP(w http.ResponseWriter, req *http.Request) 
 			if err != nil {
 				errorRedirectTo := fmt.Sprintf("%s/%s?error=%s", s.Addr(), AuthenticationErrorsEndpoint, url.QueryEscape(err.Error()))
 				s.t.Log("callback error: ", errorRedirectTo)
-				http.RedirectHandler(errorRedirectTo, 302)
+				http.RedirectHandler(errorRedirectTo, http.StatusFound)
 				return
 			}
 			s.t.Log("callback success: ", redirectTo)

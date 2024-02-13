@@ -136,7 +136,7 @@ func (s *Scheduler) UpdateJobNextRunInAtLeast(ctx context.Context, name string, 
 // need to be instantiated in order to begin scheduling again.
 func (s *Scheduler) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	const op = "scheduler.(Scheduler).Start"
-	if !s.started.CAS(s.started.Load(), true) {
+	if !s.started.CompareAndSwap(s.started.Load(), true) {
 		event.WriteSysEvent(ctx, op, "scheduler already started, skipping")
 		return nil
 	}

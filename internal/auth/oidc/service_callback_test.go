@@ -7,7 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -382,7 +382,7 @@ func Test_Callback(t *testing.T) {
 
 			sinkFileName := c.ObservationEvents.Name()
 			defer func() { _ = os.WriteFile(sinkFileName, nil, 0o666) }()
-			b, err := ioutil.ReadFile(sinkFileName)
+			b, err := os.ReadFile(sinkFileName)
 			require.NoError(err)
 			got := &cloudevents.Event{}
 			err = json.Unmarshal(b, got)
@@ -632,7 +632,7 @@ func Test_StartAuth_to_Callback(t *testing.T) {
 		resp, err := client.Get(authUrl.String())
 		require.NoError(err)
 		defer resp.Body.Close()
-		contents, err := ioutil.ReadAll(resp.Body)
+		contents, err := io.ReadAll(resp.Body)
 		require.NoError(err)
 		require.Containsf(string(contents), "Congratulations", "expected \"Congratulations\" on successful oidc authentication and got: %s", string(contents))
 
@@ -847,7 +847,7 @@ func Test_ManagedGroupFiltering(t *testing.T) {
 			require.NoError(err)
 			sinkFileName := c.ObservationEvents.Name()
 			defer func() { _ = os.WriteFile(sinkFileName, nil, 0o666) }()
-			b, err := ioutil.ReadFile(sinkFileName)
+			b, err := os.ReadFile(sinkFileName)
 			require.NoError(err)
 			got := &cloudevents.Event{}
 			err = json.Unmarshal(b, got)

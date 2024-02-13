@@ -674,7 +674,7 @@ func TestRepository_WorkerTagsConsequent(t *testing.T) {
 	assert.Contains(worker.apiTags, &Tag{Key: "key2", Value: "value2"})
 
 	// Add another valid tag to worker
-	added, err = repo.AddWorkerTags(context.Background(), worker.PublicId, worker.Version, []*Tag{
+	_, err = repo.AddWorkerTags(context.Background(), worker.PublicId, worker.Version, []*Tag{
 		{Key: "key!", Value: "value!"},
 	})
 	assert.NoError(err)
@@ -706,7 +706,7 @@ func TestRepository_WorkerTagsConsequent(t *testing.T) {
 	assert.Equal(4, len(worker.configTags))
 
 	// Go full circle
-	added, err = repo.AddWorkerTags(context.Background(), worker.PublicId, worker.Version, manyTags)
+	_, err = repo.AddWorkerTags(context.Background(), worker.PublicId, worker.Version, manyTags)
 	assert.NoError(err)
 	worker, err = repo.LookupWorker(context.Background(), worker.PublicId)
 	require.NoError(err)

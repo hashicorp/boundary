@@ -6,8 +6,8 @@ package config_test
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"net/http"
+	"os"
 	"testing"
 	"time"
 
@@ -1857,7 +1857,7 @@ func TestLoad(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			var paths []string
-			files, err := ioutil.ReadDir(fmt.Sprintf("testdata/%s", t.Name()))
+			files, err := os.ReadDir(fmt.Sprintf("testdata/%s", t.Name()))
 			require.NoError(t, err)
 			for _, file := range files {
 				if !file.IsDir() {

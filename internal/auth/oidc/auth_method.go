@@ -146,24 +146,24 @@ func NewAuthMethod(ctx context.Context, scopeId string, clientId string, clientS
 // Also, you can't enforce that MaxAge can't equal zero, since the zero value ==
 // NULL in the database and that's what you want if it's unset.  A db constraint
 // will enforce that MaxAge is either -1, NULL or greater than zero.
-func (a *AuthMethod) validate(ctx context.Context, caller errors.Op) error {
-	if a.ScopeId == "" {
+func (am *AuthMethod) validate(ctx context.Context, caller errors.Op) error {
+	if am.ScopeId == "" {
 		return errors.New(ctx, errors.InvalidParameter, caller, "missing scope id")
 	}
-	if !validState(a.OperationalState) {
-		return errors.New(ctx, errors.InvalidParameter, caller, fmt.Sprintf("invalid state: %s", a.OperationalState))
+	if !validState(am.OperationalState) {
+		return errors.New(ctx, errors.InvalidParameter, caller, fmt.Sprintf("invalid state: %s", am.OperationalState))
 	}
-	if a.Issuer != "" {
-		if _, err := url.Parse(a.Issuer); err != nil {
+	if am.Issuer != "" {
+		if _, err := url.Parse(am.Issuer); err != nil {
 			return errors.New(ctx, errors.InvalidParameter, caller, "not a valid issuer", errors.WithWrap(err))
 		}
 	}
-	if a.ApiUrl != "" {
-		if _, err := url.Parse(a.ApiUrl); err != nil {
+	if am.ApiUrl != "" {
+		if _, err := url.Parse(am.ApiUrl); err != nil {
 			return errors.New(ctx, errors.InvalidParameter, caller, "not a valid api url", errors.WithWrap(err))
 		}
 	}
-	if a.MaxAge < -1 {
+	if am.MaxAge < -1 {
 		return errors.New(ctx, errors.InvalidParameter, caller, "max age cannot be less than -1")
 	}
 	return nil
@@ -177,76 +177,76 @@ func AllocAuthMethod() AuthMethod {
 }
 
 // Clone an AuthMethod.
-func (a *AuthMethod) Clone() *AuthMethod {
-	cp := proto.Clone(a.AuthMethod)
+func (am *AuthMethod) Clone() *AuthMethod {
+	cp := proto.Clone(am.AuthMethod)
 	return &AuthMethod{
 		AuthMethod: cp.(*store.AuthMethod),
 	}
 }
 
 // TableName returns the table name.
-func (a *AuthMethod) TableName() string {
-	if a.tableName != "" {
-		return a.tableName
+func (am AuthMethod) TableName() string {
+	if am.tableName != "" {
+		return am.tableName
 	}
 	return defaultAuthMethodTableName
 }
 
 // SetTableName sets the table name.
-func (a *AuthMethod) SetTableName(n string) {
-	a.tableName = n
+func (am *AuthMethod) SetTableName(n string) {
+	am.tableName = n
 }
 
 // GetResourceType returns the resource type of the AuthMethod
-func (a *AuthMethod) GetResourceType() resource.Type {
+func (am AuthMethod) GetResourceType() resource.Type {
 	return resource.AuthMethod
 }
 
 // oplog will create oplog metadata for the AuthMethod.
-func (a *AuthMethod) oplog(op oplog.OpType) oplog.Metadata {
+func (am *AuthMethod) oplog(op oplog.OpType) oplog.Metadata {
 	metadata := oplog.Metadata{
-		"resource-public-id": []string{a.GetPublicId()},
+		"resource-public-id": []string{am.GetPublicId()},
 		"resource-type":      []string{"oidc auth method"},
 		"op-type":            []string{op.String()},
-		"scope-id":           []string{a.ScopeId},
+		"scope-id":           []string{am.ScopeId},
 	}
 	return metadata
 }
 
 // encrypt the auth method before writing it to the db
-func (a *AuthMethod) encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
+func (am *AuthMethod) encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 	const op = "oidc.(AuthMethod).encrypt"
 	if cipher == nil {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing cipher")
 	}
-	if err := structwrapping.WrapStruct(ctx, cipher, a.AuthMethod, nil); err != nil {
+	if err := structwrapping.WrapStruct(ctx, cipher, am.AuthMethod, nil); err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt))
 	}
 	keyId, err := cipher.KeyId(ctx)
 	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt), errors.WithMsg("failed to read cipher key id"))
 	}
-	a.KeyId = keyId
-	if err := a.hmacClientSecret(ctx, cipher); err != nil {
+	am.KeyId = keyId
+	if err := am.hmacClientSecret(ctx, cipher); err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
 	return nil
 }
 
 // decrypt the auth method after reading it from the db
-func (a *AuthMethod) decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
+func (am *AuthMethod) decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 	const op = "oidc.(AuthMethod).decrypt"
 	if cipher == nil {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing cipher")
 	}
-	if err := structwrapping.UnwrapStruct(ctx, cipher, a.AuthMethod, nil); err != nil {
+	if err := structwrapping.UnwrapStruct(ctx, cipher, am.AuthMethod, nil); err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Decrypt))
 	}
 	return nil
 }
 
 // hmacClientSecret before writing it to the db
-func (a *AuthMethod) hmacClientSecret(ctx context.Context, cipher wrapping.Wrapper) error {
+func (am *AuthMethod) hmacClientSecret(ctx context.Context, cipher wrapping.Wrapper) error {
 	const op = "oidc.(AuthMethod).hmacClientSecret"
 	if cipher == nil {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing cipher")
@@ -254,11 +254,11 @@ func (a *AuthMethod) hmacClientSecret(ctx context.Context, cipher wrapping.Wrapp
 	// this operation currently uses the legacy WithEd25519 option for hmac'ing.
 	// we should likely deprecate this and introduce a new "crypto version" of
 	// this attribute.
-	hm, err := crypto.HmacSha256(ctx, []byte(a.ClientSecret), cipher, []byte(a.PublicId), nil, crypto.WithBase64Encoding(), crypto.WithEd25519())
+	hm, err := crypto.HmacSha256(ctx, []byte(am.ClientSecret), cipher, []byte(am.PublicId), nil, crypto.WithBase64Encoding(), crypto.WithEd25519())
 	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Code(errors.Encryption)))
 	}
-	a.ClientSecretHmac = hm
+	am.ClientSecretHmac = hm
 	return nil
 }
 

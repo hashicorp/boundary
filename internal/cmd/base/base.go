@@ -528,41 +528,41 @@ func NewFlagSets(ui cli.Ui) *FlagSets {
 }
 
 // NewFlagSet creates a new flag set from the given flag sets.
-func (f *FlagSets) NewFlagSet(name string) *FlagSet {
+func (fs *FlagSets) NewFlagSet(name string) *FlagSet {
 	flagSet := NewFlagSet(name)
-	flagSet.mainSet = f.mainSet
-	flagSet.completions = f.completions
-	f.flagSets = append(f.flagSets, flagSet)
+	flagSet.mainSet = fs.mainSet
+	flagSet.completions = fs.completions
+	fs.flagSets = append(fs.flagSets, flagSet)
 	return flagSet
 }
 
 // Completions returns the completions for this flag set.
-func (f *FlagSets) Completions() complete.Flags {
-	if f == nil {
+func (fs *FlagSets) Completions() complete.Flags {
+	if fs == nil {
 		return nil
 	}
-	return f.completions
+	return fs.completions
 }
 
 // Parse parses the given flags, returning any errors.
-func (f *FlagSets) Parse(args []string) error {
-	return f.mainSet.Parse(args)
+func (fs *FlagSets) Parse(args []string) error {
+	return fs.mainSet.Parse(args)
 }
 
 // Parsed reports whether the command-line flags have been parsed.
-func (f *FlagSets) Parsed() bool {
-	return f.mainSet.Parsed()
+func (fs *FlagSets) Parsed() bool {
+	return fs.mainSet.Parsed()
 }
 
 // Args returns the remaining args after parsing.
-func (f *FlagSets) Args() []string {
-	return f.mainSet.Args()
+func (fs *FlagSets) Args() []string {
+	return fs.mainSet.Args()
 }
 
 // Visit visits the flags in lexicographical order, calling fn for each. It
 // visits only those flags that have been set.
-func (f *FlagSets) Visit(fn func(*flag.Flag)) {
-	f.mainSet.Visit(fn)
+func (fs *FlagSets) Visit(fn func(*flag.Flag)) {
+	fs.mainSet.Visit(fn)
 }
 
 // Help builds custom help for this command, grouping by flag set.

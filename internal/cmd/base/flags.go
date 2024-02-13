@@ -830,10 +830,10 @@ func sliceMapToKV(m map[string][]string) string {
 	return strings.Join(list, ", ")
 }
 
-func (c *stringSliceMapValue) Get() any        { return *c.target }
-func (c *stringSliceMapValue) String() string  { return sliceMapToKV(*c.target) }
-func (c *stringSliceMapValue) Example() string { return "key1=val-a, key2=val-b,val-c" }
-func (c *stringSliceMapValue) Hidden() bool    { return c.hidden }
+func (s *stringSliceMapValue) Get() any        { return *s.target }
+func (s *stringSliceMapValue) String() string  { return sliceMapToKV(*s.target) }
+func (s *stringSliceMapValue) Example() string { return "key1=val-a, key2=val-b,val-c" }
+func (s *stringSliceMapValue) Hidden() bool    { return s.hidden }
 
 // -- VarFlag
 type VarFlag struct {

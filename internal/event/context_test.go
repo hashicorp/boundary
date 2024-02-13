@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	stderrors "errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"sync"
 	"testing"
@@ -492,7 +491,7 @@ func Test_WriteObservation(t *testing.T) {
 			}
 			if tt.observationSinkFileName != "" {
 				defer func() { _ = os.WriteFile(tt.observationSinkFileName, nil, 0o666) }()
-				b, err := ioutil.ReadFile(tt.observationSinkFileName)
+				b, err := os.ReadFile(tt.observationSinkFileName)
 				assert.NoError(err)
 
 				gotObservation := &cloudevents.Event{}
@@ -526,7 +525,7 @@ func Test_WriteObservation(t *testing.T) {
 		}
 		require.NoError(event.WriteObservation(testCtx, "not-enabled", event.WithHeader(hdr), event.WithFlush()))
 
-		b, err := ioutil.ReadFile(c.AllEvents.Name())
+		b, err := os.ReadFile(c.AllEvents.Name())
 		assert.NoError(err)
 		assert.Len(b, 0)
 	})
@@ -586,7 +585,7 @@ func Test_Filtering(t *testing.T) {
 
 			require.NoError(event.WriteObservation(testCtx, "not-enabled", event.WithHeader(tt.hdr...), event.WithFlush()))
 
-			b, err := ioutil.ReadFile(c.AllEvents.Name())
+			b, err := os.ReadFile(c.AllEvents.Name())
 			assert.NoError(err)
 			switch tt.found {
 			case true:
@@ -924,7 +923,7 @@ func Test_WriteAudit(t *testing.T) {
 			if tt.auditSinkFileName != "" {
 				defer func() { _ = os.WriteFile(tt.auditSinkFileName, nil, 0o666) }()
 
-				b, err := ioutil.ReadFile(tt.auditSinkFileName)
+				b, err := os.ReadFile(tt.auditSinkFileName)
 				require.NoError(err)
 				gotAudit := &cloudevents.Event{}
 				err = json.Unmarshal(b, gotAudit)
@@ -978,7 +977,7 @@ func Test_WriteAudit(t *testing.T) {
 		require.NoError(err)
 
 		require.NoError(event.WriteAudit(testCtx, "not-enabled", event.WithRequest(testReq), event.WithFlush()))
-		b, err := ioutil.ReadFile(c.AllEvents.Name())
+		b, err := os.ReadFile(c.AllEvents.Name())
 		assert.NoError(err)
 		assert.Len(b, 0)
 	})
@@ -1117,7 +1116,7 @@ func Test_WriteError(t *testing.T) {
 			event.WriteError(tt.ctx, event.Op(op), tt.e, tt.opt...)
 			if tt.errSinkFileName != "" {
 				defer func() { _ = os.WriteFile(tt.errSinkFileName, nil, 0o666) }()
-				b, err := ioutil.ReadFile(tt.errSinkFileName)
+				b, err := os.ReadFile(tt.errSinkFileName)
 				require.NoError(err)
 
 				if tt.noOutput {
@@ -1236,7 +1235,7 @@ func Test_WriteSysEvent(t *testing.T) {
 			event.WriteSysEvent(tt.ctx, event.Op(op), tt.msg, tt.data...)
 			if tt.sinkFileName != "" {
 				defer func() { _ = os.WriteFile(tt.sinkFileName, nil, 0o666) }()
-				b, err := ioutil.ReadFile(tt.sinkFileName)
+				b, err := os.ReadFile(tt.sinkFileName)
 				require.NoError(err)
 
 				if tt.noOutput {

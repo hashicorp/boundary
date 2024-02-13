@@ -42,14 +42,14 @@ func NewClaimsScope(ctx context.Context, authMethodId, claimsScope string) (*Cla
 }
 
 // validate the ClaimsScope.  On success, it will return nil.
-func (cs *ClaimsScope) validate(ctx context.Context, caller errors.Op) error {
-	if cs.OidcMethodId == "" {
+func (s *ClaimsScope) validate(ctx context.Context, caller errors.Op) error {
+	if s.OidcMethodId == "" {
 		return errors.New(ctx, errors.InvalidParameter, caller, "missing oidc auth method id")
 	}
-	if cs.Scope == "" {
+	if s.Scope == "" {
 		return errors.New(ctx, errors.InvalidParameter, caller, "missing claims scope")
 	}
-	if cs.Scope == DefaultClaimsScope {
+	if s.Scope == DefaultClaimsScope {
 		return errors.New(ctx, errors.InvalidParameter, caller, "openid is the default scope and cannot be added as optional")
 	}
 	return nil
@@ -63,8 +63,8 @@ func AllocClaimsScope() ClaimsScope {
 }
 
 // Clone a ClaimsScope
-func (cs *ClaimsScope) Clone() *ClaimsScope {
-	cp := proto.Clone(cs.ClaimsScope)
+func (s *ClaimsScope) Clone() *ClaimsScope {
+	cp := proto.Clone(s.ClaimsScope)
 	return &ClaimsScope{
 		ClaimsScope: cp.(*store.ClaimsScope),
 	}

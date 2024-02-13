@@ -48,6 +48,8 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/mitchellh/cli"
 	"github.com/prometheus/client_golang/prometheus"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 	"google.golang.org/grpc/grpclog"
 )
 
@@ -411,7 +413,7 @@ func (b *Server) PrintInfo(ui cli.Ui) {
 		ui.Output(fmt.Sprintf(
 			"%s%s: %s",
 			strings.Repeat(" ", padding-len(k)),
-			strings.Title(k),
+			cases.Title(language.AmericanEnglish).String(k),
 			b.Info[k]))
 	}
 	ui.Output("")
