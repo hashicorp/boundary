@@ -4,6 +4,7 @@
 package common
 
 import (
+	"github.com/hashicorp/boundary/internal/alias"
 	"github.com/hashicorp/boundary/internal/alias/target"
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/ldap"
@@ -40,6 +41,7 @@ type (
 	ConnectionRepoFactory          func() (*session.ConnectionRepository, error)
 	WorkerAuthRepoStorageFactory   func() (*server.WorkerAuthRepositoryStorage, error)
 	PluginStorageBucketRepoFactory func() (*pluginstorage.Repository, error)
+	AliasRepoFactory               func() (*alias.Repository, error)
 	TargetAliasRepoFactory         func() (*target.Repository, error)
 )
 
