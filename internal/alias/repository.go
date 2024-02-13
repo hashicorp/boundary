@@ -1,7 +1,7 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: BUSL-1.1
 
-package target
+package alias
 
 import (
 	"context"
@@ -11,23 +11,19 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 )
 
-// A Repository stores and retrieves the persistent types in the alias target
+// A Repository stores and retrieves the persistent types in the alias
 // package. It is not safe to use a repository concurrently.
 type Repository struct {
 	reader db.Reader
 	writer db.Writer
 	kms    *kms.Kms
-	// defaultLimit provides a default for limiting the number of results
-	// returned from the repo
-	defaultLimit int
 }
 
 // NewRepository creates a new Repository. The returned repository should
 // only be used for one transaction and it is not safe for concurrent go
-// routines to access it. WithLimit option is used as a repo wide default
-// limit applied to all ListX methods.
-func NewRepository(ctx context.Context, r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repository, error) {
-	const op = "target.NewRepository"
+// routines to access it.
+func NewRepository(ctx context.Context, r db.Reader, w db.Writer, kms *kms.Kms) (*Repository, error) {
+	const op = "alias.NewRepository"
 	switch {
 	case r == nil:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "db.Reader")
@@ -37,19 +33,9 @@ func NewRepository(ctx context.Context, r db.Reader, w db.Writer, kms *kms.Kms, 
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "kms")
 	}
 
-	opts, err := getOpts(opt...)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-	if opts.withLimit == 0 {
-		// zero signals the boundary defaults should be used.
-		opts.withLimit = db.DefaultLimit
-	}
-
 	return &Repository{
-		reader:       r,
-		writer:       w,
-		kms:          kms,
-		defaultLimit: opts.withLimit,
+		reader: r,
+		writer: w,
+		kms:    kms,
 	}, nil
 }
