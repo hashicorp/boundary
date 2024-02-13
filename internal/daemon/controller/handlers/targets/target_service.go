@@ -1716,16 +1716,17 @@ func validateGetRequest(req *pbs.GetTargetRequest) error {
 }
 
 func validateCreateRequest(req *pbs.CreateTargetRequest) error {
-	return handlers.ValidateCreateRequest(req.GetItem(), func() map[string]string {
+	item := req.GetItem()
+	return handlers.ValidateCreateRequest(item, func() map[string]string {
 		badFields := map[string]string{}
-		if !handlers.ValidId(handlers.Id(req.GetItem().GetScopeId()), scope.Project.Prefix()) {
+		if !handlers.ValidId(handlers.Id(item.GetScopeId()), scope.Project.Prefix()) {
 			badFields[globals.ScopeIdField] = "This field is required to have a properly formatted project scope id."
 		}
-		if req.GetItem().GetName() == nil || req.GetItem().GetName().GetValue() == "" {
+		if item.GetName() == nil || item.GetName().GetValue() == "" {
 			badFields[globals.NameField] = "This field is required."
 		}
-		if req.GetItem().GetSessionConnectionLimit() != nil {
-			val := req.GetItem().GetSessionConnectionLimit().GetValue()
+		if item.GetSessionConnectionLimit() != nil {
+			val := item.GetSessionConnectionLimit().GetValue()
 			switch {
 			case val == -1:
 			case val > 0:
@@ -1733,29 +1734,29 @@ func validateCreateRequest(req *pbs.CreateTargetRequest) error {
 				badFields[globals.SessionConnectionLimitField] = "This must be -1 (unlimited) or greater than zero."
 			}
 		}
-		if req.GetItem().GetSessionMaxSeconds() != nil && req.GetItem().GetSessionMaxSeconds().GetValue() == 0 {
+		if item.GetSessionMaxSeconds() != nil && item.GetSessionMaxSeconds().GetValue() == 0 {
 			badFields[globals.SessionMaxSecondsField] = "This must be greater than zero."
 		}
-		if req.GetItem().GetType() == "" {
+		if item.GetType() == "" {
 			badFields[globals.TypeField] = "This is a required field."
-		} else if target.SubtypeFromType(req.GetItem().GetType()) == "" {
+		} else if target.SubtypeFromType(item.GetType()) == "" {
 			badFields[globals.TypeField] = "Unknown type provided."
 		}
-		if workerFilter := req.GetItem().GetWorkerFilter(); workerFilter != nil {
+		if workerFilter := item.GetWorkerFilter(); workerFilter != nil {
 			badFields[globals.WorkerFilterField] = WorkerFilterDeprecationMessage
 		}
-		if egressFilter := req.GetItem().GetEgressWorkerFilter(); egressFilter != nil {
+		if egressFilter := item.GetEgressWorkerFilter(); egressFilter != nil {
 			if _, err := bexpr.CreateEvaluator(egressFilter.GetValue()); err != nil {
 				badFields[globals.EgressWorkerFilterField] = "Unable to successfully parse egress filter expression."
 			}
 		}
-		if ingressFilter := req.GetItem().GetIngressWorkerFilter(); ingressFilter != nil {
+		if ingressFilter := item.GetIngressWorkerFilter(); ingressFilter != nil {
 			err := ValidateIngressWorkerFilterFn(ingressFilter.GetValue())
 			if err != nil {
 				badFields[globals.IngressWorkerFilterField] = err.Error()
 			}
 		}
-		if address := req.GetItem().GetAddress(); address != nil {
+		if address := item.GetAddress(); address != nil {
 			if len(address.GetValue()) < static.MinHostAddressLength ||
 				len(address.GetValue()) > static.MaxHostAddressLength {
 				badFields[globals.AddressField] = fmt.Sprintf("Address length must be between %d and %d characters.", static.MinHostAddressLength, static.MaxHostAddressLength)
@@ -1769,12 +1770,12 @@ func validateCreateRequest(req *pbs.CreateTargetRequest) error {
 				badFields[globals.AddressField] = fmt.Sprintf("Error parsing address: %v.", err)
 			}
 		}
-		subtype := target.SubtypeFromType(req.GetItem().GetType())
+		subtype := target.SubtypeFromType(item.GetType())
 		_, err := subtypeRegistry.get(subtype)
 		if err != nil {
 			badFields[globals.TypeField] = "Unknown type provided."
 		} else {
-			a, err := subtypeRegistry.newAttribute(subtype, req.GetItem().GetAttrs())
+			a, err := subtypeRegistry.newAttribute(subtype, item.GetAttrs())
 			if err != nil {
 				badFields[globals.AttributesField] = "Attribute fields do not match the expected format."
 			} else {
@@ -1788,14 +1789,15 @@ func validateCreateRequest(req *pbs.CreateTargetRequest) error {
 }
 
 func validateUpdateRequest(req *pbs.UpdateTargetRequest) error {
+	item := req.GetItem()
 	return handlers.ValidateUpdateRequest(req, req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
 		paths := req.GetUpdateMask().GetPaths()
-		if handlers.MaskContains(paths, globals.NameField) && req.GetItem().GetName().GetValue() == "" {
+		if handlers.MaskContains(paths, globals.NameField) && item.GetName().GetValue() == "" {
 			badFields[globals.NameField] = "This field cannot be set to empty."
 		}
-		if req.GetItem().GetSessionConnectionLimit() != nil {
-			val := req.GetItem().GetSessionConnectionLimit().GetValue()
+		if item.GetSessionConnectionLimit() != nil {
+			val := item.GetSessionConnectionLimit().GetValue()
 			switch {
 			case val == -1:
 			case val > 0:
@@ -1803,18 +1805,18 @@ func validateUpdateRequest(req *pbs.UpdateTargetRequest) error {
 				badFields[globals.SessionConnectionLimitField] = "This must be -1 (unlimited) or greater than zero."
 			}
 		}
-		if req.GetItem().GetSessionMaxSeconds() != nil && req.GetItem().GetSessionMaxSeconds().GetValue() == 0 {
+		if item.GetSessionMaxSeconds() != nil && item.GetSessionMaxSeconds().GetValue() == 0 {
 			badFields[globals.SessionMaxSecondsField] = "This must be greater than zero."
 		}
 		// worker_filter is mutually exclusive from ingress and egress filter
 		workerFilterFound := false
-		if workerFilter := req.GetItem().GetWorkerFilter(); workerFilter != nil {
+		if workerFilter := item.GetWorkerFilter(); workerFilter != nil {
 			if _, err := bexpr.CreateEvaluator(workerFilter.GetValue()); err != nil {
 				badFields[globals.WorkerFilterField] = "Unable to successfully parse filter expression."
 			}
 			workerFilterFound = true
 		}
-		if egressFilter := req.GetItem().GetEgressWorkerFilter(); egressFilter != nil {
+		if egressFilter := item.GetEgressWorkerFilter(); egressFilter != nil {
 			if workerFilterFound {
 				badFields[globals.EgressWorkerFilterField] = fmt.Sprintf("Cannot set %s and %s; they are mutually exclusive fields.", globals.WorkerFilterField, globals.EgressWorkerFilterField)
 			}
@@ -1822,7 +1824,7 @@ func validateUpdateRequest(req *pbs.UpdateTargetRequest) error {
 				badFields[globals.EgressWorkerFilterField] = "Unable to successfully parse egress filter expression."
 			}
 		}
-		if ingressFilter := req.GetItem().GetIngressWorkerFilter(); ingressFilter != nil {
+		if ingressFilter := item.GetIngressWorkerFilter(); ingressFilter != nil {
 			if workerFilterFound {
 				badFields[globals.IngressWorkerFilterField] = fmt.Sprintf("Cannot set %s and %s; they are mutually exclusive fields.", globals.WorkerFilterField, globals.IngressWorkerFilterField)
 			}
@@ -1831,7 +1833,7 @@ func validateUpdateRequest(req *pbs.UpdateTargetRequest) error {
 				badFields[globals.IngressWorkerFilterField] = err.Error()
 			}
 		}
-		if address := req.GetItem().GetAddress(); address != nil {
+		if address := item.GetAddress(); address != nil {
 			if len(address.GetValue()) < static.MinHostAddressLength ||
 				len(address.GetValue()) > static.MaxHostAddressLength {
 				badFields[globals.AddressField] = fmt.Sprintf("Address length must be between %d and %d characters.", static.MinHostAddressLength, static.MaxHostAddressLength)
@@ -1850,11 +1852,11 @@ func validateUpdateRequest(req *pbs.UpdateTargetRequest) error {
 		if err != nil {
 			badFields[globals.TypeField] = "Unknown type provided."
 		} else {
-			if req.GetItem().GetType() != "" && target.SubtypeFromType(req.GetItem().GetType()) != subtype {
+			if item.GetType() != "" && target.SubtypeFromType(item.GetType()) != subtype {
 				badFields[globals.TypeField] = "Cannot modify the resource type."
 			}
 
-			a, err := subtypeRegistry.newAttribute(subtype, req.GetItem().GetAttrs())
+			a, err := subtypeRegistry.newAttribute(subtype, item.GetAttrs())
 			if err != nil {
 				badFields[globals.AttributesField] = "Attribute fields do not match the expected format."
 			} else {

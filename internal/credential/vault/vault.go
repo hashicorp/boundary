@@ -244,25 +244,12 @@ func (c *client) capabilities(ctx context.Context, paths []string) (pathCapabili
 	if len(paths) == 0 {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "empty paths")
 	}
-	body := map[string]string{
+	body := map[string]any{
 		"paths": strings.Join(paths, ","),
 	}
-	reqPath := "/v1/sys/capabilities-self"
+	reqPath := "sys/capabilities-self"
 
-	r := c.cl.NewRequest("POST", reqPath)
-	if err := r.SetJSONBody(body); err != nil {
-		return nil, err
-	}
-
-	ctx, cancelFunc := context.WithCancel(context.Background())
-	defer cancelFunc()
-	resp, err := c.cl.RawRequestWithContext(ctx, r)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	secret, err := vault.ParseSecret(resp.Body)
+	secret, err := c.cl.Logical().WriteWithContext(ctx, reqPath, body)
 	if err != nil {
 		return nil, err
 	}

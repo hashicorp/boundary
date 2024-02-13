@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/golang/protobuf/ptypes"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -213,14 +212,8 @@ func (r *Repository) ValidateToken(ctx context.Context, id, token string, opt ..
 	}
 
 	// If the token is too old or stale invalidate it and return nothing.
-	exp, err := ptypes.Timestamp(retAT.GetExpirationTime().GetTimestamp())
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("expiration time"), errors.WithCode(errors.InvalidTimeStamp))
-	}
-	lastAccessed, err := ptypes.Timestamp(retAT.GetApproximateLastAccessTime().GetTimestamp())
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("last accessed time"), errors.WithCode(errors.InvalidTimeStamp))
-	}
+	exp := retAT.GetExpirationTime().AsTime()
+	lastAccessed := retAT.GetApproximateLastAccessTime().AsTime()
 
 	now := time.Now()
 	sinceLastAccessed := now.Sub(lastAccessed) + timeSkew

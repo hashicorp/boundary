@@ -59,22 +59,22 @@ func allocIpAddress() IpAddress {
 }
 
 // Clone an IpAddress
-func (c *IpAddress) Clone() *IpAddress {
-	cp := proto.Clone(c.IpAddress)
+func (ia *IpAddress) Clone() *IpAddress {
+	cp := proto.Clone(ia.IpAddress)
 	return &IpAddress{
 		IpAddress: cp.(*store.IpAddress),
 	}
 }
 
 // TableName returns the table name.
-func (c *IpAddress) TableName() string {
-	if c.tableName != "" {
-		return c.tableName
+func (ia *IpAddress) TableName() string {
+	if ia.tableName != "" {
+		return ia.tableName
 	}
 	return defaultIpAddressTableName
 }
 
 // SetTableName sets the table name.
-func (c *IpAddress) SetTableName(n string) {
-	c.tableName = n
+func (ia *IpAddress) SetTableName(n string) {
+	ia.tableName = n
 }

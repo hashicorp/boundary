@@ -9,7 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/ptypes"
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth/password"
@@ -19,6 +18,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/testing/protocmp"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/hashicorp/boundary/internal/authtoken/store"
 	"github.com/hashicorp/boundary/internal/db"
@@ -462,10 +462,8 @@ func TestRepository_ValidateToken(t *testing.T) {
 			require.NotNil(tt.want, "Got %v but wanted nil", got)
 
 			// NOTE: See comment in LookupAuthToken about this logic
-			wantGoTimeExpr, err := ptypes.Timestamp(tt.want.AuthToken.GetExpirationTime().Timestamp)
-			require.NoError(err)
-			gotGoTimeExpr, err := ptypes.Timestamp(got.AuthToken.GetExpirationTime().Timestamp)
-			require.NoError(err)
+			wantGoTimeExpr := tt.want.AuthToken.GetExpirationTime().AsTime()
+			gotGoTimeExpr := got.AuthToken.GetExpirationTime().AsTime()
 			assert.WithinDuration(wantGoTimeExpr, gotGoTimeExpr, time.Millisecond)
 			tt.want.AuthToken.ExpirationTime = got.AuthToken.ExpirationTime
 			assert.Empty(cmp.Diff(tt.want.AuthToken, got.AuthToken, protocmp.Transform()))
@@ -906,8 +904,7 @@ func Test_CloseExpiredPendingTokens(t *testing.T) {
 			id, err := NewAuthTokenId(ctx)
 			require.NoError(t, err)
 			at.PublicId = id
-			exp, err := ptypes.TimestampProto(time.Now().Add(expIn).Truncate(time.Second))
-			require.NoError(t, err)
+			exp := timestamppb.New(time.Now().Add(expIn).Truncate(time.Second))
 			at.ExpirationTime = &timestamp.Timestamp{Timestamp: exp}
 			at.Status = string(status)
 			at.AuthAccountId = accts[i].PublicId

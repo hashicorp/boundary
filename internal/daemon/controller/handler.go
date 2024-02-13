@@ -9,7 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/textproto"
 	"os"
@@ -702,7 +702,7 @@ func wrapHandlerWithCallbackInterceptor(h http.Handler, c *Controller) http.Hand
 				}
 			}
 			bytesReader := bytes.NewReader(attrBytes)
-			req.Body = ioutil.NopCloser(bytesReader)
+			req.Body = io.NopCloser(bytesReader)
 			req.ContentLength = int64(bytesReader.Len())
 			req.Header.Set(textproto.CanonicalMIMEHeaderKey("content-type"), "application/json")
 			req.Method = http.MethodPost

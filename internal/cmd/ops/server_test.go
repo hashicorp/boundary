@@ -12,7 +12,6 @@ import (
 	"encoding/pem"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math/big"
 	"net"
 	"net/http"
@@ -21,7 +20,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/jsonpb"
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/daemon/controller"
@@ -38,6 +36,7 @@ import (
 	"github.com/mitchellh/cli"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -721,7 +720,9 @@ func TestCreateOpsHandler(t *testing.T) {
 				require.NoError(t, err)                         // We can do the GET request
 				require.Equal(t, http.StatusOK, rsp.StatusCode) // And the endpoint exists
 				pbResp := &pbs.GetHealthResponse{}
-				require.NoError(t, jsonpb.Unmarshal(rsp.Body, pbResp))
+				body, err = io.ReadAll(rsp.Body)
+				require.NoError(t, err)
+				require.NoError(t, protojson.Unmarshal(body, pbResp))
 				want := &pbs.GetHealthResponse{WorkerProcessInfo: &pbhealth.HealthInfo{
 					State:              server.ActiveOperationalState.String(),
 					ActiveSessionCount: wrapperspb.UInt32(0),
@@ -752,7 +753,9 @@ func TestCreateOpsHandler(t *testing.T) {
 				require.NoError(t, err)                         // We can do the GET request
 				require.Equal(t, http.StatusOK, rsp.StatusCode) // And the endpoint exists
 				pbResp := &pbs.GetHealthResponse{}
-				require.NoError(t, jsonpb.Unmarshal(rsp.Body, pbResp))
+				body, err = io.ReadAll(rsp.Body)
+				require.NoError(t, err)
+				require.NoError(t, protojson.Unmarshal(body, pbResp))
 				want := &pbs.GetHealthResponse{WorkerProcessInfo: &pbhealth.HealthInfo{
 					State:              server.ActiveOperationalState.String(),
 					ActiveSessionCount: wrapperspb.UInt32(0),
@@ -932,7 +935,7 @@ func testTlsHttpClient(t *testing.T, certPath string) *http.Client {
 	f, err := os.Open(certPath)
 	require.NoError(t, err)
 
-	certBytes, err := ioutil.ReadAll(f)
+	certBytes, err := io.ReadAll(f)
 	require.NoError(t, err)
 	require.NoError(t, f.Close())
 

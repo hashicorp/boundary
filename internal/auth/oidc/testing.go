@@ -12,7 +12,7 @@ import (
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"math/big"
 	"net"
@@ -431,7 +431,7 @@ func startTestControllerSrv(t testing.TB, oidcRepoFn OidcRepoFactory, iamRepoFn 
 		atRepoFn:   atRepoFn,
 	}
 	s.httpServer = httptest.NewServer(s)
-	s.httpServer.Config.ErrorLog = log.New(ioutil.Discard, "", 0)
+	s.httpServer.Config.ErrorLog = log.New(io.Discard, "", 0)
 	s.t.Cleanup(s.Stop)
 	return s
 }

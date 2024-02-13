@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/hashicorp/boundary/internal/auth/oidc/request"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -17,6 +16,7 @@ import (
 	"github.com/hashicorp/cap/oidc"
 	"github.com/hashicorp/go-bexpr"
 	"github.com/mitchellh/pointerstructure"
+	"google.golang.org/protobuf/proto"
 )
 
 // Callback is an oidc domain service function for processing a successful OIDC

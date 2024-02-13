@@ -285,7 +285,7 @@ func (b *Server) SetupLogging(flagLogLevel, flagLogFormat, configLogLevel, confi
 
 	// create GRPC logger
 	namedGRPCLogFaker := b.Logger.Named("grpclogfaker")
-	grpclog.SetLogger(&GRPCLogFaker{
+	grpclog.SetLoggerV2(&GRPCLogFaker{
 		Logger: namedGRPCLogFaker,
 		Log:    os.Getenv("BOUNDARY_GRPC_LOGGING") != "",
 	})

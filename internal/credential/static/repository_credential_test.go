@@ -190,6 +190,7 @@ func TestRepository_CreateUsernamePasswordCredential(t *testing.T) {
 
 		// Creating credential in different project should not conflict
 		in3, err := NewUsernamePasswordCredential(prj2Cs.GetPublicId(), "user", "pass", WithName("my-name"), WithDescription("different"))
+		require.NoError(err)
 		got3, err := repo.CreateUsernamePasswordCredential(ctx, prj2.GetPublicId(), in3)
 		require.NoError(err)
 		assert.Equal(in3.Name, got3.Name)
