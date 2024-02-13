@@ -88,7 +88,6 @@ export ALIAS_VALUE='target.alias'
   [ "$status" -eq 0 ]
 }
 
-# Currently not working- there is a bug with how attributes get set with an alias
 @test "boundary/alias/target: admin user set can set a client port using an alias" {
   run update_tcp_target $ALIAS_VALUE -default-client-port 1234
   echo "$output"
