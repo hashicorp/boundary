@@ -10,10 +10,13 @@ import (
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/aliases"
+	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/daemon/controller"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	_ "github.com/hashicorp/boundary/internal/daemon/controller/handlers/targets/tcp"
 )
 
 func TestList(t *testing.T) {
@@ -88,6 +91,12 @@ func TestCrud(t *testing.T) {
 	client := tc.Client()
 	token := tc.Token()
 	client.SetToken(token.Token)
+
+	tarResp, err := targets.NewClient(client).Create(tc.Context(), "tcp", "p_1234567890", targets.WithName("target"), targets.WithTcpTargetDefaultPort(22))
+	require.NoError(err)
+	require.NotNil(tarResp)
+	tar := tarResp.Item
+
 	aliasClient := aliases.NewClient(client)
 
 	checkAlias := func(step string, u *aliases.Alias, err error, wantedName string, wantedVersion uint32) {
@@ -101,14 +110,37 @@ func TestCrud(t *testing.T) {
 		assert.EqualValues(wantedVersion, u.Version)
 	}
 
-	u, err := aliasClient.Create(tc.Context(), "target", "alias.value", scopeId)
+	u, err := aliasClient.Create(tc.Context(), "target", "alias.value", scopeId,
+		aliases.WithDestinationId(tar.Id),
+		aliases.WithTargetAliasAuthorizeSessionArgumentsHostId("hst_1234567890"))
+	assert.NoError(err)
+	require.NotNil(u)
 	checkAlias("create", u.Item, err, "alias.value", 1)
+
+	attrs, err := aliases.AttributesMapToTargetAliasAttributes(u.Item.Attributes)
+	assert.NoError(err)
+	require.NotNil(attrs)
+	require.NotNil(attrs.AuthorizeSessionArguments)
+	assert.Equal("hst_1234567890", attrs.AuthorizeSessionArguments.HostId)
 
 	u, err = aliasClient.Read(tc.Context(), u.Item.Id)
 	checkAlias("read", u.Item, err, "alias.value", 1)
 
-	u, err = aliasClient.Update(tc.Context(), u.Item.Id, u.Item.Version, aliases.WithValue("bar"))
+	u, err = aliasClient.Update(tc.Context(), u.Item.Id, u.Item.Version, aliases.WithValue("bar"), aliases.WithTargetAliasAuthorizeSessionArgumentsHostId("hst_0987654321"))
+	assert.NoError(err)
+	require.NotNil(u)
 	checkAlias("update", u.Item, err, "bar", 2)
+	attrs, err = aliases.AttributesMapToTargetAliasAttributes(u.Item.Attributes)
+	assert.NoError(err)
+	require.NotNil(attrs)
+	require.NotNil(attrs.AuthorizeSessionArguments)
+	assert.Equal("hst_0987654321", attrs.AuthorizeSessionArguments.HostId)
+
+	u, err = aliasClient.Update(tc.Context(), u.Item.Id, u.Item.Version, aliases.WithValue("bar"), aliases.DefaultTargetAliasAuthorizeSessionArgumentsHostId())
+	assert.NoError(err)
+	require.NotNil(u)
+	checkAlias("update", u.Item, err, "bar", 3)
+	assert.Nil(u.Item.Attributes)
 
 	_, err = aliasClient.Delete(tc.Context(), u.Item.Id)
 	require.NoError(err)
