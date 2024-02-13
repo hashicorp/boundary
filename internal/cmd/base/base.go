@@ -137,8 +137,6 @@ type Command struct {
 	FlagObject string
 	FlagKv     []CombinedSliceFlagValue
 
-	AliasField string
-
 	client *api.Client
 
 	// This will be intialized, if needed, in Config() when instantiating a

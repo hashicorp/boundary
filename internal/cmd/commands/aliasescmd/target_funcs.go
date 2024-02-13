@@ -110,6 +110,7 @@ func extraTargetFlagHandlingFuncImpl(c *TargetCommand, _ *base.FlagSets, opts *[
 
 	switch c.flagValue {
 	case "":
+	case "null":
 	default:
 		*opts = append(*opts, aliases.WithValue(c.flagValue))
 	}

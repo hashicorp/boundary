@@ -142,14 +142,15 @@ func (c *Command) Run(args []string) int {
 
 	f := c.Flags()
 
-	c.AliasField, args = base.ExtractAliasFromArgs(args)
+	var alias string
+	alias, args = base.ExtractAliasFromArgs(args)
 
-	if c.AliasField != "" {
+	if alias != "" {
 		if c.FlagId != "" {
 			c.PrintCliError(errors.New("Cannot specify both an alias and id; choose one or the other"))
 			return base.CommandUserError
 		}
-		c.FlagId = c.AliasField
+		c.FlagId = alias
 	}
 
 	if err := f.Parse(args); err != nil {
