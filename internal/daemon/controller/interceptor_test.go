@@ -12,6 +12,9 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
+	"github.com/hashicorp/boundary/internal/alias"
+	talias "github.com/hashicorp/boundary/internal/alias/target"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/common"
@@ -20,12 +23,14 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/event"
 	pb_api "github.com/hashicorp/boundary/internal/gen/controller/api"
+	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	authpb "github.com/hashicorp/boundary/internal/gen/controller/auth"
 	pberrors "github.com/hashicorp/boundary/internal/gen/errors"
 	"github.com/hashicorp/boundary/internal/gen/testing/interceptor"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/server"
+	"github.com/hashicorp/boundary/internal/target/tcp"
 	"github.com/hashicorp/go-hclog"
 	"github.com/mr-tron/base58"
 	"github.com/stretchr/testify/assert"
@@ -34,6 +39,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/testing/protocmp"
 )
 
 func Test_unaryCtxInterceptor(t *testing.T) {
@@ -654,6 +660,100 @@ func (m *streamMock) Send(req *httpbody.HttpBody) error {
 
 func (m *streamMock) RecvToClient() (*httpbody.HttpBody, error) {
 	panic("recv not implemented")
+}
+
+func Test_aliasResolutionInterceptor(t *testing.T) {
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, wrapper)
+
+	aliasRepoFn := func() (*alias.Repository, error) {
+		return alias.NewRepository(context.Background(), rw, rw, kmsCache)
+	}
+
+	_, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	tar := tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "test-target")
+	al := talias.TestAlias(t, rw, "test-alias.example", talias.WithDestinationId(tar.GetPublicId()))
+	alWithoutDest := talias.TestAlias(t, rw, "no-destination.alias")
+
+	interceptor := aliasResolutionInterceptor(ctx, aliasRepoFn)
+	require.NotNil(t, interceptor)
+
+	returnCtxHandler := func(ctx context.Context, req any) (any, error) {
+		return ctx, nil
+	}
+	info := &grpc.UnaryServerInfo{
+		FullMethod: "FakeMethod",
+	}
+
+	cases := []struct {
+		name            string
+		req             proto.Message
+		wantModifiedReq proto.Message
+		wantAlias       *alias.Alias
+		errorContains   string
+	}{
+		{
+			name:            "non aliasable request",
+			req:             &pbs.GetAccountRequest{Id: "test"},
+			wantModifiedReq: &pbs.GetAccountRequest{Id: "test"},
+		},
+		{
+			name:            "non aliasable request with valid alias",
+			req:             &pbs.GetAccountRequest{Id: al.GetValue()},
+			wantModifiedReq: &pbs.GetAccountRequest{Id: al.GetValue()},
+		},
+		{
+			name:            "aliasable request with id",
+			req:             &pbs.GetTargetRequest{Id: tar.GetPublicId()},
+			wantModifiedReq: &pbs.GetTargetRequest{Id: tar.GetPublicId()},
+		},
+		{
+			name:            "aliasable request with alias",
+			req:             &pbs.GetTargetRequest{Id: al.GetValue()},
+			wantModifiedReq: &pbs.GetTargetRequest{Id: tar.GetPublicId()},
+			wantAlias: &alias.Alias{
+				PublicId:      al.GetPublicId(),
+				Value:         al.GetValue(),
+				DestinationId: tar.GetPublicId(),
+			},
+		},
+		{
+			name:            "aliasable request with unknown alias",
+			req:             &pbs.GetTargetRequest{Id: "not.a.registered.alias"},
+			wantModifiedReq: &pbs.GetTargetRequest{Id: "not.a.registered.alias"},
+			errorContains:   "resource alias not found with value",
+		},
+		{
+			name:            "aliasable request with destinationless alias",
+			req:             &pbs.GetTargetRequest{Id: alWithoutDest.GetValue()},
+			wantModifiedReq: &pbs.GetTargetRequest{Id: alWithoutDest.GetValue()},
+			errorContains:   "resource not found for alias value",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+
+			req := proto.Clone(tc.req)
+			retCtx, err := interceptor(ctx, req, info, returnCtxHandler)
+			assert.Empty(t, cmp.Diff(tc.wantModifiedReq, req, protocmp.Transform()))
+			if tc.errorContains != "" {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tc.errorContains)
+				return
+			}
+			ctxAlias := alias.FromContext(retCtx.(context.Context))
+			if tc.wantAlias == nil {
+				require.Nil(t, ctxAlias)
+				return
+			}
+			require.NotNil(t, ctxAlias)
+			assert.EqualValues(t, tc.wantAlias, ctxAlias)
+		})
+	}
 }
 
 func Test_errorInterceptor(t *testing.T) {
