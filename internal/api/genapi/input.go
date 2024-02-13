@@ -760,24 +760,20 @@ var inputStructs = []*structInfo{
 
 	// Policy-related resources.
 	{
+		inProto: &policies.StoragePolicyDeleteAfter{},
+		outFile: "policies/storage_policy_delete_after.gen.go",
+	},
+	{
+		inProto: &policies.StoragePolicyRetainFor{},
+		outFile: "policies/storage_policy_retain_for.gen.go",
+	},
+	{
 		inProto:        &policies.StoragePolicyAttributes{},
 		outFile:        "policies/storage_policy_attributes.gen.go",
 		parentTypeName: "Policy",
 		subtypeName:    "StoragePolicy",
 		subtype:        "storage",
-		fieldOverrides: []fieldInfo{
-			{
-				Name:      "RetainFor",
-				ProtoName: "retain_for",
-				FieldType: "map[string]any",
-			},
-			{
-				Name:      "DeleteAfter",
-				ProtoName: "delete_after",
-				FieldType: "map[string]any",
-			},
-		},
-		templates: []*template.Template{mapstructureConversionTemplate},
+		templates:      []*template.Template{mapstructureConversionTemplate},
 	},
 	{
 		inProto: &policies.Policy{},
