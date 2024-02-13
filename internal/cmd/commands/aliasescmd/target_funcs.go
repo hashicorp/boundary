@@ -100,14 +100,6 @@ func extraTargetFlagsFuncImpl(c *TargetCommand, set *base.FlagSets, f *base.Flag
 }
 
 func extraTargetFlagHandlingFuncImpl(c *TargetCommand, _ *base.FlagSets, opts *[]aliases.Option) bool {
-	var attributes map[string]any
-	addAttribute := func(name string, value any) {
-		if attributes == nil {
-			attributes = make(map[string]any)
-		}
-		attributes[name] = value
-	}
-
 	switch c.flagValue {
 	case "":
 	case "null":
@@ -126,14 +118,9 @@ func extraTargetFlagHandlingFuncImpl(c *TargetCommand, _ *base.FlagSets, opts *[
 	switch c.flagAuthorizeSessionHostId {
 	case "":
 	case "null":
-		addAttribute("authorize_session_arguments", nil)
+		*opts = append(*opts, aliases.DefaultTargetAliasAuthorizeSessionArgumentsHostId())
 	default:
-		asa := aliases.AuthorizeSessionArguments{HostId: c.flagAuthorizeSessionHostId}
-		addAttribute("authorize_session_arguments", asa)
-	}
-
-	if attributes != nil {
-		*opts = append(*opts, aliases.WithAttributes(attributes))
+		*opts = append(*opts, aliases.WithTargetAliasAuthorizeSessionArgumentsHostId(c.flagAuthorizeSessionHostId))
 	}
 
 	return true
