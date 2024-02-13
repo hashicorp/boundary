@@ -11,6 +11,7 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/hashicorp/boundary/internal/alias"
 	target2 "github.com/hashicorp/boundary/internal/alias/target"
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/ldap"
@@ -151,6 +152,7 @@ type Controller struct {
 	TargetRepoFn              target.RepositoryFactory
 	WorkerAuthRepoStorageFn   common.WorkerAuthRepoStorageFactory
 	BillingRepoFn             common.BillingRepoFactory
+	AliasRepoFn               common.AliasRepoFactory
 	TargetAliasRepoFn         common.TargetAliasRepoFactory
 
 	scheduler *scheduler.Scheduler
@@ -454,6 +456,9 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	}
 	c.BillingRepoFn = func() (*billing.Repository, error) {
 		return billing.NewRepository(ctx, dbase)
+	}
+	c.AliasRepoFn = func() (*alias.Repository, error) {
+		return alias.NewRepository(ctx, dbase, dbase, c.kms)
 	}
 	c.TargetAliasRepoFn = func() (*target2.Repository, error) {
 		return target2.NewRepository(ctx, dbase, dbase, c.kms)

@@ -157,7 +157,6 @@ func TestGet(t *testing.T) {
 	tarAddr := tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "test address", target.WithAddress("8.8.8.8"))
 
 	al := talias.TestAlias(t, rw, "test.alias", talias.WithDestinationId(tar.GetPublicId()))
-	alNoDest := talias.TestAlias(t, rw, "no.destination.test.alias")
 
 	pAlias := &pb.Alias{
 		Id:    al.GetPublicId(),
@@ -211,11 +210,6 @@ func TestGet(t *testing.T) {
 			res:  &pbs.GetTargetResponse{Item: pTar},
 		},
 		{
-			name: "Get an Existing Target by Alias",
-			req:  &pbs.GetTargetRequest{Id: al.GetValue()},
-			res:  &pbs.GetTargetResponse{Item: pTar},
-		},
-		{
 			name: "Get an Existing Target w/ address",
 			req:  &pbs.GetTargetRequest{Id: tarAddr.GetPublicId()},
 			res:  &pbs.GetTargetResponse{Item: pTarAddr},
@@ -224,16 +218,6 @@ func TestGet(t *testing.T) {
 			name: "Get a non existing Target",
 			req:  &pbs.GetTargetRequest{Id: globals.TcpTargetPrefix + "_DoesntExis"},
 			res:  nil,
-			err:  handlers.ApiErrorWithCode(codes.NotFound),
-		},
-		{
-			name: "Alias With No Destination",
-			req:  &pbs.GetTargetRequest{Id: alNoDest.GetValue()},
-			err:  handlers.ApiErrorWithCode(codes.NotFound),
-		},
-		{
-			name: "Unknown Alias",
-			req:  &pbs.GetTargetRequest{Id: "alias.doesnt.exist"},
 			err:  handlers.ApiErrorWithCode(codes.NotFound),
 		},
 		{
@@ -868,10 +852,6 @@ func TestDelete(t *testing.T) {
 
 	tar := tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "test")
 
-	tarWithAlias := tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "targetWithAlias")
-	al := talias.TestAlias(t, rw, "test.alias", talias.WithDestinationId(tarWithAlias.GetPublicId()))
-	alNoDest := talias.TestAlias(t, rw, "no.destination.test.alias")
-
 	s, err := testService(t, ctx, conn, kms, wrapper)
 	require.NoError(t, err, "Couldn't create a new target service.")
 
@@ -888,29 +868,6 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteTargetRequest{
 				Id: tar.GetPublicId(),
 			},
-		},
-		{
-			name:    "Delete an Existing Target By Alias",
-			scopeId: proj.GetPublicId(),
-			req: &pbs.DeleteTargetRequest{
-				Id: al.GetValue(),
-			},
-		},
-		{
-			name:    "Delete By Destinationless Alias",
-			scopeId: proj.GetPublicId(),
-			req: &pbs.DeleteTargetRequest{
-				Id: alNoDest.GetValue(),
-			},
-			err: handlers.ApiErrorWithCode(codes.NotFound),
-		},
-		{
-			name:    "Delete By Non Existing Alias",
-			scopeId: proj.GetPublicId(),
-			req: &pbs.DeleteTargetRequest{
-				Id: "alias.doesnt.exist",
-			},
-			err: handlers.ApiErrorWithCode(codes.NotFound),
 		},
 		{
 			name:    "Delete Not Existing Target",
@@ -1299,9 +1256,6 @@ func TestUpdate(t *testing.T) {
 	tar, err = repo.AddTargetHostSources(context.Background(), tar.GetPublicId(), tar.GetVersion(), []string{hs[0].GetPublicId(), hs[1].GetPublicId()})
 	require.NoError(t, err)
 
-	al := talias.TestAlias(t, rw, "test.alias", talias.WithDestinationId(tar.GetPublicId()))
-	alWithNoDest := talias.TestAlias(t, rw, "no.destination.test.alias")
-
 	resetTarget := func() {
 		itar, err := repo.LookupTarget(context.Background(), tar.GetPublicId())
 		require.NoError(t, err)
@@ -1459,67 +1413,6 @@ func TestUpdate(t *testing.T) {
 				},
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
-		},
-		{
-			name: "Update Name By Alias",
-			req: &pbs.UpdateTargetRequest{
-				Id: al.GetValue(),
-				UpdateMask: &field_mask.FieldMask{
-					Paths: []string{"name"},
-				},
-				Item: &pb.Target{
-					Name: wrapperspb.String("updated"),
-				},
-			},
-			res: &pbs.UpdateTargetResponse{
-				Item: &pb.Target{
-					Id:          tar.GetPublicId(),
-					ScopeId:     tar.GetProjectId(),
-					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
-					Name:        wrapperspb.String("updated"),
-					Description: wrapperspb.String("default"),
-					CreatedTime: tar.GetCreateTime().GetTimestamp(),
-					Type:        tcp.Subtype.String(),
-					Attrs: &pb.Target_TcpTargetAttributes{
-						TcpTargetAttributes: &pb.TcpTargetAttributes{
-							DefaultPort:       wrapperspb.UInt32(2),
-							DefaultClientPort: wrapperspb.UInt32(3),
-						},
-					},
-					HostSourceIds:          hostSourceIds,
-					HostSources:            hostSources,
-					SessionMaxSeconds:      wrapperspb.UInt32(tar.GetSessionMaxSeconds()),
-					SessionConnectionLimit: wrapperspb.Int32(tar.GetSessionConnectionLimit()),
-					AuthorizedActions:      testAuthorizedActions,
-					Address:                &wrapperspb.StringValue{},
-				},
-			},
-		},
-		{
-			name: "Update Name By Destinationless Alias",
-			req: &pbs.UpdateTargetRequest{
-				Id: alWithNoDest.GetValue(),
-				UpdateMask: &field_mask.FieldMask{
-					Paths: []string{"name"},
-				},
-				Item: &pb.Target{
-					Name: wrapperspb.String("updated"),
-				},
-			},
-			err: handlers.ApiErrorWithCode(codes.NotFound),
-		},
-		{
-			name: "Update Name By Unknown Alias",
-			req: &pbs.UpdateTargetRequest{
-				Id: "alias.doesnt.exist",
-				UpdateMask: &field_mask.FieldMask{
-					Paths: []string{"name"},
-				},
-				Item: &pb.Target{
-					Name: wrapperspb.String("updated"),
-				},
-			},
-			err: handlers.ApiErrorWithCode(codes.NotFound),
 		},
 		{
 			name: "Unset Name",
@@ -1917,47 +1810,37 @@ func TestAddTargetHostSources(t *testing.T) {
 
 	addCases := []struct {
 		name              string
-		requestId         string
+		tar               target.Target
 		addHostSources    []string
 		resultHostSources []string
 	}{
 		{
 			name:              "Add set on empty target",
-			requestId:         tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "empty").GetPublicId(),
-			addHostSources:    []string{hs[1].GetPublicId()},
-			resultHostSources: []string{hs[1].GetPublicId()},
-		},
-		{
-			name: "Add set on empty target by alias",
-			requestId: func() string {
-				tar := tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "by alias").GetPublicId()
-				al := talias.TestAlias(t, rw, "test.alias", talias.WithDestinationId(tar))
-				return al.GetValue()
-			}(),
+			tar:               tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "empty"),
 			addHostSources:    []string{hs[1].GetPublicId()},
 			resultHostSources: []string{hs[1].GetPublicId()},
 		},
 		{
 			name:              "Add set on populated target",
-			requestId:         tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "populated", target.WithHostSources([]string{hs[0].GetPublicId()})).GetPublicId(),
+			tar:               tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "populated", target.WithHostSources([]string{hs[0].GetPublicId()})),
 			addHostSources:    []string{hs[1].GetPublicId()},
 			resultHostSources: []string{hs[0].GetPublicId(), hs[1].GetPublicId()},
 		},
 		{
 			name:              "Add duplicated sets on populated target",
-			requestId:         tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "duplicated", target.WithHostSources([]string{hs[0].GetPublicId()})).GetPublicId(),
+			tar:               tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "duplicated", target.WithHostSources([]string{hs[0].GetPublicId()})),
 			addHostSources:    []string{hs[1].GetPublicId(), hs[1].GetPublicId()},
 			resultHostSources: []string{hs[0].GetPublicId(), hs[1].GetPublicId()},
 		},
 		{
 			name:              "Add plugin set on empty target",
-			requestId:         tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "plugin empty").GetPublicId(),
+			tar:               tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "plugin empty"),
 			addHostSources:    []string{pluginHs.GetPublicId()},
 			resultHostSources: []string{pluginHs.GetPublicId()},
 		},
 		{
 			name:              "Add plugin set on populated target",
-			requestId:         tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "plugin populated", target.WithHostSources([]string{hs[0].GetPublicId()})).GetPublicId(),
+			tar:               tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "plugin populated", target.WithHostSources([]string{hs[0].GetPublicId()})),
 			addHostSources:    []string{pluginHs.GetPublicId()},
 			resultHostSources: []string{hs[0].GetPublicId(), pluginHs.GetPublicId()},
 		},
@@ -1966,8 +1849,8 @@ func TestAddTargetHostSources(t *testing.T) {
 	for _, tc := range addCases {
 		t.Run(tc.name, func(t *testing.T) {
 			req := &pbs.AddTargetHostSourcesRequest{
-				Id:            tc.requestId,
-				Version:       1,
+				Id:            tc.tar.GetPublicId(),
+				Version:       tc.tar.GetVersion(),
 				HostSourceIds: tc.addHostSources,
 			}
 
@@ -1988,7 +1871,6 @@ func TestAddTargetHostSources(t *testing.T) {
 	}
 
 	tar := tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "test")
-	alWithNoDest := talias.TestAlias(t, rw, "no.destination.test.alias")
 
 	failCases := []struct {
 		name string
@@ -1998,29 +1880,11 @@ func TestAddTargetHostSources(t *testing.T) {
 		{
 			name: "Bad Target Id",
 			req: &pbs.AddTargetHostSourcesRequest{
-				Id:            "b ad_id",
+				Id:            "bad id",
 				Version:       tar.GetVersion(),
 				HostSourceIds: []string{hs[0].GetPublicId()},
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
-		},
-		{
-			name: "Alias With No Destination",
-			req: &pbs.AddTargetHostSourcesRequest{
-				Id:            alWithNoDest.GetValue(),
-				Version:       tar.GetVersion(),
-				HostSourceIds: []string{hs[0].GetPublicId()},
-			},
-			err: handlers.ApiErrorWithCode(codes.NotFound),
-		},
-		{
-			name: "Unknown Alias",
-			req: &pbs.AddTargetHostSourcesRequest{
-				Id:            "alias.doesnt.exist",
-				Version:       tar.GetVersion(),
-				HostSourceIds: []string{hs[0].GetPublicId()},
-			},
-			err: handlers.ApiErrorWithCode(codes.NotFound),
 		},
 		{
 			name: "Bad version",
@@ -2109,47 +1973,37 @@ func TestSetTargetHostSources(t *testing.T) {
 
 	setCases := []struct {
 		name              string
-		requestId         string
+		tar               target.Target
 		setHostSources    []string
 		resultHostSources []string
 	}{
 		{
 			name:              "Set on empty target",
-			requestId:         tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "empty").GetPublicId(),
-			setHostSources:    []string{hs[1].GetPublicId()},
-			resultHostSources: []string{hs[1].GetPublicId()},
-		},
-		{
-			name: "Set on empty target",
-			requestId: func() string {
-				tar := tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "by alias").GetPublicId()
-				al := talias.TestAlias(t, rw, "test.alias", talias.WithDestinationId(tar))
-				return al.GetValue()
-			}(),
+			tar:               tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "empty"),
 			setHostSources:    []string{hs[1].GetPublicId()},
 			resultHostSources: []string{hs[1].GetPublicId()},
 		},
 		{
 			name:              "Set on populated target",
-			requestId:         tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "populated", target.WithHostSources([]string{hs[0].GetPublicId()})).GetPublicId(),
+			tar:               tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "populated", target.WithHostSources([]string{hs[0].GetPublicId()})),
 			setHostSources:    []string{hs[1].GetPublicId()},
 			resultHostSources: []string{hs[1].GetPublicId()},
 		},
 		{
 			name:              "Set plugin set on populated target",
-			requestId:         tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "plugin populated", target.WithHostSources([]string{hs[0].GetPublicId()})).GetPublicId(),
+			tar:               tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "plugin populated", target.WithHostSources([]string{hs[0].GetPublicId()})),
 			setHostSources:    []string{pluginHs.GetPublicId()},
 			resultHostSources: []string{pluginHs.GetPublicId()},
 		},
 		{
 			name:              "Set duplicate host set on populated target",
-			requestId:         tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "duplicate", target.WithHostSources([]string{hs[0].GetPublicId()})).GetPublicId(),
+			tar:               tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "duplicate", target.WithHostSources([]string{hs[0].GetPublicId()})),
 			setHostSources:    []string{hs[1].GetPublicId(), hs[1].GetPublicId()},
 			resultHostSources: []string{hs[1].GetPublicId()},
 		},
 		{
 			name:              "Set empty on populated target",
-			requestId:         tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "another populated", target.WithHostSources([]string{hs[0].GetPublicId()})).GetPublicId(),
+			tar:               tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "another populated", target.WithHostSources([]string{hs[0].GetPublicId()})),
 			setHostSources:    []string{},
 			resultHostSources: nil,
 		},
@@ -2157,8 +2011,8 @@ func TestSetTargetHostSources(t *testing.T) {
 	for _, tc := range setCases {
 		t.Run(tc.name, func(t *testing.T) {
 			req := &pbs.SetTargetHostSourcesRequest{
-				Id:            tc.requestId,
-				Version:       1,
+				Id:            tc.tar.GetPublicId(),
+				Version:       tc.tar.GetVersion(),
 				HostSourceIds: tc.setHostSources,
 			}
 
@@ -2176,7 +2030,6 @@ func TestSetTargetHostSources(t *testing.T) {
 	}
 
 	tar := tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "test name")
-	aliasWithoutDest := talias.TestAlias(t, rw, "no.destination.test.alias")
 
 	failCases := []struct {
 		name string
@@ -2186,29 +2039,11 @@ func TestSetTargetHostSources(t *testing.T) {
 		{
 			name: "Bad target Id",
 			req: &pbs.SetTargetHostSourcesRequest{
-				Id:            "b_ad id",
+				Id:            "bad id",
 				Version:       tar.GetVersion(),
 				HostSourceIds: []string{hs[0].GetPublicId()},
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
-		},
-		{
-			name: "alias without destination",
-			req: &pbs.SetTargetHostSourcesRequest{
-				Id:            aliasWithoutDest.GetValue(),
-				Version:       tar.GetVersion(),
-				HostSourceIds: []string{hs[0].GetPublicId()},
-			},
-			err: handlers.ApiErrorWithCode(codes.NotFound),
-		},
-		{
-			name: "non existing alias",
-			req: &pbs.SetTargetHostSourcesRequest{
-				Id:            "alias.doesnt.exist",
-				Version:       tar.GetVersion(),
-				HostSourceIds: []string{hs[0].GetPublicId()},
-			},
-			err: handlers.ApiErrorWithCode(codes.NotFound),
 		},
 		{
 			name: "Bad version",
@@ -2289,48 +2124,38 @@ func TestRemoveTargetHostSources(t *testing.T) {
 
 	removeCases := []struct {
 		name              string
-		requestId         string
+		tar               target.Target
 		removeHostSources []string
 		resultHostSources []string
 		wantErr           bool
 	}{
 		{
 			name:              "Remove from empty",
-			requestId:         tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "empty").GetPublicId(),
+			tar:               tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "empty"),
 			removeHostSources: []string{hs[1].GetPublicId()},
 			wantErr:           true,
 		},
 		{
 			name:              "Remove 1 of 2 sets",
-			requestId:         tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "remove partial", target.WithHostSources([]string{hs[0].GetPublicId(), hs[1].GetPublicId()})).GetPublicId(),
-			removeHostSources: []string{hs[1].GetPublicId()},
-			resultHostSources: []string{hs[0].GetPublicId()},
-		},
-		{
-			name: "Remove using alias",
-			requestId: func() string {
-				tar := tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "remove using alias", target.WithHostSources([]string{hs[0].GetPublicId(), hs[1].GetPublicId()})).GetPublicId()
-				al := talias.TestAlias(t, rw, "test.alias", talias.WithDestinationId(tar))
-				return al.GetValue()
-			}(),
+			tar:               tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "remove partial", target.WithHostSources([]string{hs[0].GetPublicId(), hs[1].GetPublicId()})),
 			removeHostSources: []string{hs[1].GetPublicId()},
 			resultHostSources: []string{hs[0].GetPublicId()},
 		},
 		{
 			name:              "Remove 1 plugin set of 2 sets",
-			requestId:         tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "remove plugin partial", target.WithHostSources([]string{hs[0].GetPublicId(), pluginHs.GetPublicId()})).GetPublicId(),
+			tar:               tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "remove plugin partial", target.WithHostSources([]string{hs[0].GetPublicId(), pluginHs.GetPublicId()})),
 			removeHostSources: []string{pluginHs.GetPublicId()},
 			resultHostSources: []string{hs[0].GetPublicId()},
 		},
 		{
 			name:              "Remove 1 duplicate set of 2 sets",
-			requestId:         tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "remove duplicate", target.WithHostSources([]string{hs[0].GetPublicId(), hs[1].GetPublicId()})).GetPublicId(),
+			tar:               tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "remove duplicate", target.WithHostSources([]string{hs[0].GetPublicId(), hs[1].GetPublicId()})),
 			removeHostSources: []string{hs[1].GetPublicId(), hs[1].GetPublicId()},
 			resultHostSources: []string{hs[0].GetPublicId()},
 		},
 		{
 			name:              "Remove all hosts from set",
-			requestId:         tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "remove all", target.WithHostSources([]string{hs[0].GetPublicId(), hs[1].GetPublicId()})).GetPublicId(),
+			tar:               tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "remove all", target.WithHostSources([]string{hs[0].GetPublicId(), hs[1].GetPublicId()})),
 			removeHostSources: []string{hs[0].GetPublicId(), hs[1].GetPublicId()},
 			resultHostSources: []string{},
 		},
@@ -2339,8 +2164,8 @@ func TestRemoveTargetHostSources(t *testing.T) {
 	for _, tc := range removeCases {
 		t.Run(tc.name, func(t *testing.T) {
 			req := &pbs.RemoveTargetHostSourcesRequest{
-				Id:            tc.requestId,
-				Version:       1,
+				Id:            tc.tar.GetPublicId(),
+				Version:       tc.tar.GetVersion(),
 				HostSourceIds: tc.removeHostSources,
 			}
 
@@ -2365,7 +2190,6 @@ func TestRemoveTargetHostSources(t *testing.T) {
 	}
 
 	tar := tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "testing")
-	aliasWithoutDest := talias.TestAlias(t, rw, "no.destination.test.alias")
 
 	failCases := []struct {
 		name string
@@ -2384,29 +2208,11 @@ func TestRemoveTargetHostSources(t *testing.T) {
 		{
 			name: "Bad target Id",
 			req: &pbs.RemoveTargetHostSourcesRequest{
-				Id:            "b_ad id",
+				Id:            "bad id",
 				Version:       tar.GetVersion(),
 				HostSourceIds: []string{hs[0].GetPublicId()},
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
-		},
-		{
-			name: "alias without destination",
-			req: &pbs.RemoveTargetHostSourcesRequest{
-				Id:            aliasWithoutDest.GetValue(),
-				Version:       tar.GetVersion(),
-				HostSourceIds: []string{hs[0].GetPublicId()},
-			},
-			err: handlers.ApiErrorWithCode(codes.NotFound),
-		},
-		{
-			name: "non existing alias",
-			req: &pbs.RemoveTargetHostSourcesRequest{
-				Id:            "alias.doesnt.exist",
-				Version:       tar.GetVersion(),
-				HostSourceIds: []string{hs[0].GetPublicId()},
-			},
-			err: handlers.ApiErrorWithCode(codes.NotFound),
 		},
 		{
 			name: "empty sets",
@@ -2483,65 +2289,55 @@ func TestAddTargetCredentialSources(t *testing.T) {
 
 	addCases := []struct {
 		name            string
-		requestId       string
+		tar             target.Target
 		addSources      []string
 		resultSourceIds []string
 	}{
 		{
 			name:            "Add library on empty target",
-			requestId:       tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "empty for lib sources").GetPublicId(),
-			addSources:      []string{cls[1].GetPublicId()},
-			resultSourceIds: []string{cls[1].GetPublicId()},
-		},
-		{
-			name: "Add library by alias",
-			requestId: func() string {
-				tar := tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "add by alias").GetPublicId()
-				al := talias.TestAlias(t, rw, "test.alias", talias.WithDestinationId(tar))
-				return al.GetValue()
-			}(),
+			tar:             tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "empty for lib sources"),
 			addSources:      []string{cls[1].GetPublicId()},
 			resultSourceIds: []string{cls[1].GetPublicId()},
 		},
 		{
 			name:            "Add static cred on empty target",
-			requestId:       tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "empty for static sources").GetPublicId(),
+			tar:             tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "empty for static sources"),
 			addSources:      []string{creds[1].GetPublicId()},
 			resultSourceIds: []string{creds[1].GetPublicId()},
 		},
 		{
 			name:            "Add library on library populated target",
-			requestId:       tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "populated for lib-lib sources", target.WithCredentialLibraries([]*target.CredentialLibrary{target.TestNewCredentialLibrary("", cls[0].GetPublicId(), credential.BrokeredPurpose)})).GetPublicId(),
+			tar:             tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "populated for lib-lib sources", target.WithCredentialLibraries([]*target.CredentialLibrary{target.TestNewCredentialLibrary("", cls[0].GetPublicId(), credential.BrokeredPurpose)})),
 			addSources:      []string{cls[1].GetPublicId()},
 			resultSourceIds: []string{cls[0].GetPublicId(), cls[1].GetPublicId()},
 		},
 		{
 			name:            "Add library on static cred populated target",
-			requestId:       tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "populated for lib-static sources", target.WithStaticCredentials([]*target.StaticCredential{target.TestNewStaticCredential("", creds[0].GetPublicId(), credential.BrokeredPurpose)})).GetPublicId(),
+			tar:             tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "populated for lib-static sources", target.WithStaticCredentials([]*target.StaticCredential{target.TestNewStaticCredential("", creds[0].GetPublicId(), credential.BrokeredPurpose)})),
 			addSources:      []string{cls[1].GetPublicId()},
 			resultSourceIds: []string{creds[0].GetPublicId(), cls[1].GetPublicId()},
 		},
 		{
 			name:            "Add static cred on library populated target",
-			requestId:       tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "populated for static-lib sources", target.WithCredentialLibraries([]*target.CredentialLibrary{target.TestNewCredentialLibrary("", cls[0].GetPublicId(), credential.BrokeredPurpose)})).GetPublicId(),
+			tar:             tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "populated for static-lib sources", target.WithCredentialLibraries([]*target.CredentialLibrary{target.TestNewCredentialLibrary("", cls[0].GetPublicId(), credential.BrokeredPurpose)})),
 			addSources:      []string{creds[1].GetPublicId()},
 			resultSourceIds: []string{cls[0].GetPublicId(), creds[1].GetPublicId()},
 		},
 		{
 			name:            "Add static cred on static cred populated target",
-			requestId:       tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "populated for static-static sources", target.WithStaticCredentials([]*target.StaticCredential{target.TestNewStaticCredential("", creds[0].GetPublicId(), credential.BrokeredPurpose)})).GetPublicId(),
+			tar:             tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "populated for static-static sources", target.WithStaticCredentials([]*target.StaticCredential{target.TestNewStaticCredential("", creds[0].GetPublicId(), credential.BrokeredPurpose)})),
 			addSources:      []string{creds[1].GetPublicId()},
 			resultSourceIds: []string{creds[0].GetPublicId(), creds[1].GetPublicId()},
 		},
 		{
 			name:            "Add duplicated sources on library populated target",
-			requestId:       tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "duplicated for lib sources", target.WithCredentialLibraries([]*target.CredentialLibrary{target.TestNewCredentialLibrary("", cls[0].GetPublicId(), credential.BrokeredPurpose)})).GetPublicId(),
+			tar:             tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "duplicated for lib sources", target.WithCredentialLibraries([]*target.CredentialLibrary{target.TestNewCredentialLibrary("", cls[0].GetPublicId(), credential.BrokeredPurpose)})),
 			addSources:      []string{cls[1].GetPublicId(), cls[1].GetPublicId(), creds[1].GetPublicId(), creds[1].GetPublicId()},
 			resultSourceIds: []string{cls[0].GetPublicId(), cls[1].GetPublicId(), creds[1].GetPublicId()},
 		},
 		{
 			name:            "Add duplicated sources on static cred populated target",
-			requestId:       tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "duplicated for static sources", target.WithStaticCredentials([]*target.StaticCredential{target.TestNewStaticCredential("", creds[0].GetPublicId(), credential.BrokeredPurpose)})).GetPublicId(),
+			tar:             tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "duplicated for static sources", target.WithStaticCredentials([]*target.StaticCredential{target.TestNewStaticCredential("", creds[0].GetPublicId(), credential.BrokeredPurpose)})),
 			addSources:      []string{cls[1].GetPublicId(), cls[1].GetPublicId(), creds[1].GetPublicId(), creds[1].GetPublicId()},
 			resultSourceIds: []string{creds[0].GetPublicId(), cls[1].GetPublicId(), creds[1].GetPublicId()},
 		},
@@ -2550,8 +2346,8 @@ func TestAddTargetCredentialSources(t *testing.T) {
 	for _, tc := range addCases {
 		t.Run(tc.name, func(t *testing.T) {
 			req := &pbs.AddTargetCredentialSourcesRequest{
-				Id:                          tc.requestId,
-				Version:                     1,
+				Id:                          tc.tar.GetPublicId(),
+				Version:                     tc.tar.GetVersion(),
 				BrokeredCredentialSourceIds: tc.addSources,
 			}
 
@@ -2571,7 +2367,6 @@ func TestAddTargetCredentialSources(t *testing.T) {
 	}
 
 	tar := tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "test")
-	alWithNoDest := talias.TestAlias(t, rw, "no.destination.test.alias")
 
 	failCases := []struct {
 		name string
@@ -2581,35 +2376,13 @@ func TestAddTargetCredentialSources(t *testing.T) {
 		{
 			name: "Bad target id",
 			req: &pbs.AddTargetCredentialSourcesRequest{
-				Id:      "b_ad id",
+				Id:      "bad id",
 				Version: tar.GetVersion(),
 				BrokeredCredentialSourceIds: []string{
 					cls[0].GetPublicId(),
 				},
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
-		},
-		{
-			name: "Alias with no destination",
-			req: &pbs.AddTargetCredentialSourcesRequest{
-				Id:      alWithNoDest.GetValue(),
-				Version: tar.GetVersion(),
-				BrokeredCredentialSourceIds: []string{
-					cls[0].GetPublicId(),
-				},
-			},
-			err: handlers.ApiErrorWithCode(codes.NotFound),
-		},
-		{
-			name: "Alias doesnt exist",
-			req: &pbs.AddTargetCredentialSourcesRequest{
-				Id:      "doesnt.exist",
-				Version: tar.GetVersion(),
-				BrokeredCredentialSourceIds: []string{
-					cls[0].GetPublicId(),
-				},
-			},
-			err: handlers.ApiErrorWithCode(codes.NotFound),
 		},
 		{
 			name: "Bad version",
@@ -2696,73 +2469,63 @@ func TestSetTargetCredentialSources(t *testing.T) {
 
 	setCases := []struct {
 		name                      string
-		requestId                 string
+		tar                       target.Target
 		setCredentialSources      []string
 		resultCredentialSourceIds []string
 	}{
 		{
 			name:                      "Set library on empty target",
-			requestId:                 tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "empty library").GetPublicId(),
-			setCredentialSources:      []string{cls[1].GetPublicId()},
-			resultCredentialSourceIds: []string{cls[1].GetPublicId()},
-		},
-		{
-			name: "Set library using alias",
-			requestId: func() string {
-				tar := tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "using alias").GetPublicId()
-				al := talias.TestAlias(t, rw, "test.alias", talias.WithDestinationId(tar))
-				return al.GetValue()
-			}(),
+			tar:                       tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "empty library"),
 			setCredentialSources:      []string{cls[1].GetPublicId()},
 			resultCredentialSourceIds: []string{cls[1].GetPublicId()},
 		},
 		{
 			name:                      "Set static on empty target",
-			requestId:                 tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "empty static").GetPublicId(),
+			tar:                       tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "empty static"),
 			setCredentialSources:      []string{creds[1].GetPublicId()},
 			resultCredentialSourceIds: []string{creds[1].GetPublicId()},
 		},
 		{
 			name:                      "Set library on library populated target",
-			requestId:                 tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "populated library-library", target.WithCredentialLibraries([]*target.CredentialLibrary{target.TestNewCredentialLibrary("", cls[0].GetPublicId(), credential.BrokeredPurpose)})).GetPublicId(),
+			tar:                       tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "populated library-library", target.WithCredentialLibraries([]*target.CredentialLibrary{target.TestNewCredentialLibrary("", cls[0].GetPublicId(), credential.BrokeredPurpose)})),
 			setCredentialSources:      []string{cls[1].GetPublicId()},
 			resultCredentialSourceIds: []string{cls[1].GetPublicId()},
 		},
 		{
 			name:                      "Set static on library populated target",
-			requestId:                 tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "populated static-library", target.WithCredentialLibraries([]*target.CredentialLibrary{target.TestNewCredentialLibrary("", cls[0].GetPublicId(), credential.BrokeredPurpose)})).GetPublicId(),
+			tar:                       tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "populated static-library", target.WithCredentialLibraries([]*target.CredentialLibrary{target.TestNewCredentialLibrary("", cls[0].GetPublicId(), credential.BrokeredPurpose)})),
 			setCredentialSources:      []string{creds[1].GetPublicId()},
 			resultCredentialSourceIds: []string{creds[1].GetPublicId()},
 		},
 		{
 			name:                      "Set library on static populated target",
-			requestId:                 tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "populated library-static", target.WithStaticCredentials([]*target.StaticCredential{target.TestNewStaticCredential("", creds[0].GetPublicId(), credential.BrokeredPurpose)})).GetPublicId(),
+			tar:                       tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "populated library-static", target.WithStaticCredentials([]*target.StaticCredential{target.TestNewStaticCredential("", creds[0].GetPublicId(), credential.BrokeredPurpose)})),
 			setCredentialSources:      []string{cls[1].GetPublicId()},
 			resultCredentialSourceIds: []string{cls[1].GetPublicId()},
 		},
 		{
 			name:                      "Set static on static populated target",
-			requestId:                 tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "populated static-static", target.WithStaticCredentials([]*target.StaticCredential{target.TestNewStaticCredential("", creds[0].GetPublicId(), credential.BrokeredPurpose)})).GetPublicId(),
+			tar:                       tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "populated static-static", target.WithStaticCredentials([]*target.StaticCredential{target.TestNewStaticCredential("", creds[0].GetPublicId(), credential.BrokeredPurpose)})),
 			setCredentialSources:      []string{creds[1].GetPublicId()},
 			resultCredentialSourceIds: []string{creds[1].GetPublicId()},
 		},
 		{
 			name:                      "Set duplicate library on populated target",
-			requestId:                 tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "duplicate library", target.WithCredentialLibraries([]*target.CredentialLibrary{target.TestNewCredentialLibrary("", cls[0].GetPublicId(), credential.BrokeredPurpose)})).GetPublicId(),
+			tar:                       tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "duplicate library", target.WithCredentialLibraries([]*target.CredentialLibrary{target.TestNewCredentialLibrary("", cls[0].GetPublicId(), credential.BrokeredPurpose)})),
 			setCredentialSources:      []string{cls[1].GetPublicId(), cls[1].GetPublicId()},
 			resultCredentialSourceIds: []string{cls[1].GetPublicId()},
 		},
 		{
 			name:                      "Set duplicate static on populated target",
-			requestId:                 tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "duplicate static", target.WithStaticCredentials([]*target.StaticCredential{target.TestNewStaticCredential("", creds[0].GetPublicId(), credential.BrokeredPurpose)})).GetPublicId(),
+			tar:                       tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "duplicate static", target.WithStaticCredentials([]*target.StaticCredential{target.TestNewStaticCredential("", creds[0].GetPublicId(), credential.BrokeredPurpose)})),
 			setCredentialSources:      []string{creds[1].GetPublicId(), creds[1].GetPublicId()},
 			resultCredentialSourceIds: []string{creds[1].GetPublicId()},
 		},
 		{
 			name: "Set empty on populated target",
-			requestId: tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "another populated",
+			tar: tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "another populated",
 				target.WithCredentialLibraries([]*target.CredentialLibrary{target.TestNewCredentialLibrary("", cls[0].GetPublicId(), credential.BrokeredPurpose)}),
-				target.WithStaticCredentials([]*target.StaticCredential{target.TestNewStaticCredential("", creds[0].GetPublicId(), credential.BrokeredPurpose)})).GetPublicId(),
+				target.WithStaticCredentials([]*target.StaticCredential{target.TestNewStaticCredential("", creds[0].GetPublicId(), credential.BrokeredPurpose)})),
 			setCredentialSources:      []string{},
 			resultCredentialSourceIds: nil,
 		},
@@ -2770,8 +2533,8 @@ func TestSetTargetCredentialSources(t *testing.T) {
 	for _, tc := range setCases {
 		t.Run(tc.name, func(t *testing.T) {
 			req := &pbs.SetTargetCredentialSourcesRequest{
-				Id:                          tc.requestId,
-				Version:                     1,
+				Id:                          tc.tar.GetPublicId(),
+				Version:                     tc.tar.GetVersion(),
 				BrokeredCredentialSourceIds: tc.setCredentialSources,
 			}
 
@@ -2790,7 +2553,6 @@ func TestSetTargetCredentialSources(t *testing.T) {
 	}
 
 	tar := tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "test name")
-	alWithNoDest := talias.TestAlias(t, rw, "no.destination.test.alias")
 
 	failCases := []struct {
 		name string
@@ -2800,29 +2562,11 @@ func TestSetTargetCredentialSources(t *testing.T) {
 		{
 			name: "Bad target Id",
 			req: &pbs.SetTargetCredentialSourcesRequest{
-				Id:                          "b_ad id",
+				Id:                          "bad id",
 				Version:                     tar.GetVersion(),
 				BrokeredCredentialSourceIds: []string{cls[0].GetPublicId()},
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
-		},
-		{
-			name: "alias with no destination",
-			req: &pbs.SetTargetCredentialSourcesRequest{
-				Id:                          alWithNoDest.GetValue(),
-				Version:                     tar.GetVersion(),
-				BrokeredCredentialSourceIds: []string{cls[0].GetPublicId()},
-			},
-			err: handlers.ApiErrorWithCode(codes.NotFound),
-		},
-		{
-			name: "alias doesnt exist",
-			req: &pbs.SetTargetCredentialSourcesRequest{
-				Id:                          "doesnt.exist",
-				Version:                     tar.GetVersion(),
-				BrokeredCredentialSourceIds: []string{cls[0].GetPublicId()},
-			},
-			err: handlers.ApiErrorWithCode(codes.NotFound),
 		},
 		{
 			name: "Bad version",
@@ -2899,20 +2643,20 @@ func TestRemoveTargetCredentialSources(t *testing.T) {
 
 	removeCases := []struct {
 		name                      string
-		tar                       string
+		tar                       target.Target
 		removeCredentialSources   []string
 		resultCredentialSourceIds []string
 		wantErr                   bool
 	}{
 		{
 			name:                    "Remove library from empty",
-			tar:                     tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "empty lib").GetPublicId(),
+			tar:                     tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "empty lib"),
 			removeCredentialSources: []string{cls[1].GetPublicId()},
 			wantErr:                 true,
 		},
 		{
 			name:                    "Remove static from empty",
-			tar:                     tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "empty static").GetPublicId(),
+			tar:                     tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "empty static"),
 			removeCredentialSources: []string{creds[1].GetPublicId()},
 			wantErr:                 true,
 		},
@@ -2922,21 +2666,7 @@ func TestRemoveTargetCredentialSources(t *testing.T) {
 				target.WithCredentialLibraries([]*target.CredentialLibrary{
 					target.TestNewCredentialLibrary("", cls[0].GetPublicId(), credential.BrokeredPurpose),
 					target.TestNewCredentialLibrary("", cls[1].GetPublicId(), credential.BrokeredPurpose),
-				})).GetPublicId(),
-			removeCredentialSources:   []string{cls[1].GetPublicId()},
-			resultCredentialSourceIds: []string{cls[0].GetPublicId()},
-		},
-		{
-			name: "Remove 1 by alias",
-			tar: func() string {
-				tar := tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "using alias",
-					target.WithCredentialLibraries([]*target.CredentialLibrary{
-						target.TestNewCredentialLibrary("", cls[0].GetPublicId(), credential.BrokeredPurpose),
-						target.TestNewCredentialLibrary("", cls[1].GetPublicId(), credential.BrokeredPurpose),
-					})).GetPublicId()
-				al := talias.TestAlias(t, rw, "test.alias", talias.WithDestinationId(tar))
-				return al.GetValue()
-			}(),
+				})),
 			removeCredentialSources:   []string{cls[1].GetPublicId()},
 			resultCredentialSourceIds: []string{cls[0].GetPublicId()},
 		},
@@ -2946,7 +2676,7 @@ func TestRemoveTargetCredentialSources(t *testing.T) {
 				target.WithStaticCredentials([]*target.StaticCredential{
 					target.TestNewStaticCredential("", creds[0].GetPublicId(), credential.BrokeredPurpose),
 					target.TestNewStaticCredential("", creds[1].GetPublicId(), credential.BrokeredPurpose),
-				})).GetPublicId(),
+				})),
 			removeCredentialSources:   []string{creds[1].GetPublicId()},
 			resultCredentialSourceIds: []string{creds[0].GetPublicId()},
 		},
@@ -2956,7 +2686,7 @@ func TestRemoveTargetCredentialSources(t *testing.T) {
 				target.WithCredentialLibraries([]*target.CredentialLibrary{
 					target.TestNewCredentialLibrary("", cls[0].GetPublicId(), credential.BrokeredPurpose),
 					target.TestNewCredentialLibrary("", cls[1].GetPublicId(), credential.BrokeredPurpose),
-				})).GetPublicId(),
+				})),
 			removeCredentialSources: []string{
 				cls[1].GetPublicId(), cls[1].GetPublicId(),
 			},
@@ -2968,7 +2698,7 @@ func TestRemoveTargetCredentialSources(t *testing.T) {
 				target.WithStaticCredentials([]*target.StaticCredential{
 					target.TestNewStaticCredential("", creds[0].GetPublicId(), credential.BrokeredPurpose),
 					target.TestNewStaticCredential("", creds[1].GetPublicId(), credential.BrokeredPurpose),
-				})).GetPublicId(),
+				})),
 			removeCredentialSources: []string{
 				creds[1].GetPublicId(), creds[1].GetPublicId(),
 			},
@@ -2984,7 +2714,7 @@ func TestRemoveTargetCredentialSources(t *testing.T) {
 				target.WithStaticCredentials([]*target.StaticCredential{
 					target.TestNewStaticCredential("", creds[0].GetPublicId(), credential.BrokeredPurpose),
 					target.TestNewStaticCredential("", creds[1].GetPublicId(), credential.BrokeredPurpose),
-				})).GetPublicId(),
+				})),
 			removeCredentialSources: []string{
 				cls[1].GetPublicId(), creds[0].GetPublicId(),
 			},
@@ -3002,7 +2732,7 @@ func TestRemoveTargetCredentialSources(t *testing.T) {
 				target.WithStaticCredentials([]*target.StaticCredential{
 					target.TestNewStaticCredential("", creds[0].GetPublicId(), credential.BrokeredPurpose),
 					target.TestNewStaticCredential("", creds[1].GetPublicId(), credential.BrokeredPurpose),
-				})).GetPublicId(),
+				})),
 			removeCredentialSources: []string{
 				cls[0].GetPublicId(), cls[1].GetPublicId(),
 				creds[0].GetPublicId(), creds[1].GetPublicId(),
@@ -3014,8 +2744,8 @@ func TestRemoveTargetCredentialSources(t *testing.T) {
 	for _, tc := range removeCases {
 		t.Run(tc.name, func(t *testing.T) {
 			req := &pbs.RemoveTargetCredentialSourcesRequest{
-				Id:                          tc.tar,
-				Version:                     1,
+				Id:                          tc.tar.GetPublicId(),
+				Version:                     tc.tar.GetVersion(),
 				BrokeredCredentialSourceIds: tc.removeCredentialSources,
 			}
 
@@ -3039,7 +2769,6 @@ func TestRemoveTargetCredentialSources(t *testing.T) {
 	}
 
 	tar := tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "testing")
-	alWithNoDest := talias.TestAlias(t, rw, "no.destination.test.alias")
 
 	failCases := []struct {
 		name string
@@ -3060,35 +2789,13 @@ func TestRemoveTargetCredentialSources(t *testing.T) {
 		{
 			name: "Bad target Id",
 			req: &pbs.RemoveTargetCredentialSourcesRequest{
-				Id:      "b_ad id",
+				Id:      "bad id",
 				Version: tar.GetVersion(),
 				BrokeredCredentialSourceIds: []string{
 					cls[0].GetPublicId(),
 				},
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
-		},
-		{
-			name: "alias with no destination",
-			req: &pbs.RemoveTargetCredentialSourcesRequest{
-				Id:      alWithNoDest.GetValue(),
-				Version: tar.GetVersion(),
-				BrokeredCredentialSourceIds: []string{
-					cls[0].GetPublicId(),
-				},
-			},
-			err: handlers.ApiErrorWithCode(codes.NotFound),
-		},
-		{
-			name: "Alias doesnt exist",
-			req: &pbs.RemoveTargetCredentialSourcesRequest{
-				Id:      "doesnt.exist",
-				Version: tar.GetVersion(),
-				BrokeredCredentialSourceIds: []string{
-					cls[0].GetPublicId(),
-				},
-			},
-			err: handlers.ApiErrorWithCode(codes.NotFound),
 		},
 		{
 			name: "Empty sources",
@@ -3291,7 +2998,6 @@ func TestAuthorizeSession(t *testing.T) {
 	const defaultPort = 2
 	cases := []struct {
 		name           string
-		aliasValue     string
 		hostSourceId   string
 		credSourceId   string
 		wantedHostId   string
@@ -3299,14 +3005,6 @@ func TestAuthorizeSession(t *testing.T) {
 	}{
 		{
 			name:           "static host",
-			hostSourceId:   shs.GetPublicId(),
-			credSourceId:   clsResp.GetItem().GetId(),
-			wantedHostId:   h.GetPublicId(),
-			wantedEndpoint: fmt.Sprintf("%s:%d", h.GetAddress(), defaultPort),
-		},
-		{
-			name:           "static host using alias",
-			aliasValue:     "static.host.alias",
 			hostSourceId:   shs.GetPublicId(),
 			credSourceId:   clsResp.GetItem().GetId(),
 			wantedHostId:   h.GetPublicId(),
@@ -3335,12 +3033,6 @@ func TestAuthorizeSession(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			tar := tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), tc.name, target.WithDefaultPort(defaultPort))
-			requestId := tar.GetPublicId()
-			if tc.aliasValue != "" {
-				al := talias.TestAlias(t, rw, tc.aliasValue, talias.WithDestinationId(tar.GetPublicId()))
-				requestId = al.GetValue()
-			}
-
 			apiTar, err := s.AddTargetHostSources(ctx, &pbs.AddTargetHostSourcesRequest{
 				Id:            tar.GetPublicId(),
 				Version:       tar.GetVersion(),
@@ -3359,11 +3051,11 @@ func TestAuthorizeSession(t *testing.T) {
 			server.TestKmsWorker(t, conn, wrapper)
 
 			asRes1, err := s.AuthorizeSession(ctx, &pbs.AuthorizeSessionRequest{
-				Id: requestId,
+				Id: tar.GetPublicId(),
 			})
 			require.NoError(t, err)
 			asRes2, err := s.AuthorizeSession(ctx, &pbs.AuthorizeSessionRequest{
-				Id: requestId,
+				Id: tar.GetPublicId(),
 			})
 			require.NoError(t, err)
 			assert.NotEmpty(t, cmp.Diff(
@@ -3377,7 +3069,7 @@ func TestAuthorizeSession(t *testing.T) {
 				"the credentials aren't unique per request authorized session")
 
 			_, err = s.AuthorizeSession(ctx, &pbs.AuthorizeSessionRequest{
-				Id:     requestId,
+				Id:     tar.GetPublicId(),
 				HostId: asRes2.GetItem().GetHostId(),
 			})
 			require.NoError(t, err, "session must authorize with explicit host ID")
@@ -4364,23 +4056,6 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 			require.NotNil(t, res)
 		})
 	}
-
-	t.Run("host defined in request and alias", func(t *testing.T) {
-		tar := tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "host defined in multiple places", target.WithDefaultPort(22))
-
-		for _, fn := range []func(tcpTarget target.Target) uint32{workerExists, hostExists, libraryExists} {
-			ver := fn(tar)
-			tar.SetVersion(ver)
-		}
-		al := talias.TestAlias(t, rw, "host.included.alias", talias.WithDestinationId(tar.GetPublicId()), talias.WithHostId("hst_something"))
-
-		res, err := s.AuthorizeSession(ctx, &pbs.AuthorizeSessionRequest{
-			Id:     al.GetValue(),
-			HostId: "hst_1234567890",
-		})
-		require.ErrorContains(t, err, "The host id specified in the request does not match the one provided by the alias. Consider omiting the host id in the request.")
-		require.Nil(t, res)
-	})
 }
 
 func decodeJsonSecret(t *testing.T, in string) map[string]any {
