@@ -204,9 +204,19 @@ func (c *TargetCommand) Run(args []string) int {
 	var resp *api.Response
 	var item *aliases.Alias
 
+	var createResult *aliases.AliasCreateResult
+
 	var updateResult *aliases.AliasUpdateResult
 
 	switch c.Func {
+
+	case "create":
+		createResult, err = aliasesClient.Create(c.Context, "target", c.FlagScopeId, opts...)
+		if exitCode := c.checkFuncError(err); exitCode > 0 {
+			return exitCode
+		}
+		resp = createResult.GetResponse()
+		item = createResult.GetItem()
 
 	case "update":
 		updateResult, err = aliasesClient.Update(c.Context, c.FlagId, version, opts...)

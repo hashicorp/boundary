@@ -762,11 +762,6 @@ var inputStructs = []*structInfo{
 								Typ:      "string",
 								PostType: "type",
 							},
-							{
-								Name:     "alias",
-								Typ:      "string",
-								PostType: "value",
-							},
 						}
 					},
 				},
@@ -775,12 +770,6 @@ var inputStructs = []*structInfo{
 			updateTemplate,
 			deleteTemplate,
 			listTemplate,
-		},
-		fieldOverrides: []fieldInfo{
-			{
-				Name:        "Value",
-				SkipDefault: true,
-			},
 		},
 		pluralResourceName:  "aliases",
 		versionEnabled:      true,
