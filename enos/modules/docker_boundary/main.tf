@@ -183,3 +183,7 @@ output "worker_tag" {
 output "max_page_size" {
   value = var.max_page_size
 }
+
+output "container_name" {
+  value = var.container_name
+}
