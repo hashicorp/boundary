@@ -47,7 +47,7 @@ func WaitForSessionCli(t testing.TB, ctx context.Context, projectId string, opt 
 
 			t.Logf("Found %d session(s)", sessionCount)
 			if sessionCount != opts.WithExpectedSessionsCount {
-				return backoff.Permanent(fmt.Errorf("only %d session(s) expected", opts.WithExpectedSessionsCount))
+				return backoff.Permanent(fmt.Errorf("Unexpected number of sessions. Expected: %d, Actual: %d", opts.WithExpectedSessionsCount, sessionCount))
 			}
 
 			// Get the most recent session
