@@ -79,20 +79,60 @@ func (g *GRPCLogFaker) Fatalln(args ...any) {
 	os.Exit(1)
 }
 
-func (g *GRPCLogFaker) Print(args ...any) {
+func (g *GRPCLogFaker) Info(args ...any) {
 	if g.Log && g.Logger.IsDebug() {
 		g.Logger.Debug(fmt.Sprint(args...))
 	}
 }
 
-func (g *GRPCLogFaker) Printf(format string, args ...any) {
+func (g *GRPCLogFaker) Infof(format string, args ...any) {
 	if g.Log && g.Logger.IsDebug() {
 		g.Logger.Debug(fmt.Sprintf(format, args...))
 	}
 }
 
-func (g *GRPCLogFaker) Println(args ...any) {
+func (g *GRPCLogFaker) Infoln(args ...any) {
 	if g.Log && g.Logger.IsDebug() {
 		g.Logger.Debug(fmt.Sprintln(args...))
 	}
+}
+
+func (g *GRPCLogFaker) Warning(args ...any) {
+	if g.Log && g.Logger.IsDebug() {
+		g.Logger.Debug(fmt.Sprint(args...))
+	}
+}
+
+func (g *GRPCLogFaker) Warningf(format string, args ...any) {
+	if g.Log && g.Logger.IsDebug() {
+		g.Logger.Debug(fmt.Sprintf(format, args...))
+	}
+}
+
+func (g *GRPCLogFaker) Warningln(args ...any) {
+	if g.Log && g.Logger.IsDebug() {
+		g.Logger.Debug(fmt.Sprintln(args...))
+	}
+}
+
+func (g *GRPCLogFaker) Error(args ...any) {
+	if g.Log && g.Logger.IsDebug() {
+		g.Logger.Debug(fmt.Sprint(args...))
+	}
+}
+
+func (g *GRPCLogFaker) Errorf(format string, args ...any) {
+	if g.Log && g.Logger.IsDebug() {
+		g.Logger.Debug(fmt.Sprintf(format, args...))
+	}
+}
+
+func (g *GRPCLogFaker) Errorln(args ...any) {
+	if g.Log && g.Logger.IsDebug() {
+		g.Logger.Debug(fmt.Sprintln(args...))
+	}
+}
+
+func (g *GRPCLogFaker) V(l int) bool {
+	return true
 }

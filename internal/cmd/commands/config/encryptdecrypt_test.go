@@ -7,7 +7,6 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
@@ -96,7 +95,7 @@ func TestEncryptDecrypt(t *testing.T) {
 			// there are many tests on the underlying codebase for that. If it's not
 			// encrypting, compare it to the cleartext to verify because we can.
 			if c.f == "decrypt" {
-				expected, err := ioutil.ReadFile(c.exp)
+				expected, err := os.ReadFile(c.exp)
 				assert.NoError(t, err)
 
 				assert.Equal(t, strings.TrimSpace(string(expected)), strings.TrimSpace(string(got)))

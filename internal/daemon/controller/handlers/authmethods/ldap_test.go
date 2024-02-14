@@ -7,7 +7,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strings"
 	"sync"
@@ -1126,7 +1125,7 @@ func TestAuthenticate_Ldap(t *testing.T) {
 			assert.Equal(tc.wantType, resp.GetType())
 			sinkFileName := c.ObservationEvents.Name()
 			defer func() { _ = os.WriteFile(sinkFileName, nil, 0o666) }()
-			b, err := ioutil.ReadFile(sinkFileName)
+			b, err := os.ReadFile(sinkFileName)
 			require.NoError(err)
 			gotRes := &cloudevents.Event{}
 			err = json.Unmarshal(b, gotRes)

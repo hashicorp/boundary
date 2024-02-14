@@ -7,7 +7,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"sync"
 	"testing"
@@ -329,7 +328,7 @@ func TestAuthenticate(t *testing.T) {
 			assert.NotEmpty(got)
 			sinkFileName := c.ObservationEvents.Name()
 			defer func() { _ = os.WriteFile(sinkFileName, nil, 0o666) }()
-			b, err := ioutil.ReadFile(sinkFileName)
+			b, err := os.ReadFile(sinkFileName)
 			require.NoError(err)
 			gotRes := &cloudevents.Event{}
 			err = json.Unmarshal(b, gotRes)
