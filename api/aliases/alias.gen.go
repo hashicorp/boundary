@@ -115,7 +115,7 @@ func (c *Client) ApiClient() *api.Client {
 	return c.client
 }
 
-func (c *Client) Create(ctx context.Context, resourceType string, alias string, scopeId string, opt ...Option) (*AliasCreateResult, error) {
+func (c *Client) Create(ctx context.Context, resourceType string, scopeId string, opt ...Option) (*AliasCreateResult, error) {
 	if scopeId == "" {
 		return nil, fmt.Errorf("empty scopeId value passed into Create request")
 	}
@@ -129,11 +129,6 @@ func (c *Client) Create(ctx context.Context, resourceType string, alias string, 
 		return nil, fmt.Errorf("empty resourceType value passed into Create request")
 	} else {
 		opts.postMap["type"] = resourceType
-	}
-	if alias == "" {
-		return nil, fmt.Errorf("empty alias value passed into Create request")
-	} else {
-		opts.postMap["value"] = alias
 	}
 
 	opts.postMap["scope_id"] = scopeId

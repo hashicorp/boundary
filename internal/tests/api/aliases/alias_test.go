@@ -39,7 +39,7 @@ func TestList(t *testing.T) {
 	expected := lr.Items
 	assert.Len(expected, 0)
 
-	cr, err := aliasClient.Create(tc.Context(), "target", "alias0", scopeId)
+	cr, err := aliasClient.Create(tc.Context(), "target", scopeId, aliases.WithValue("alias0"))
 	require.NoError(err)
 	require.NotNil(cr)
 	expected = append(expected, cr.Item)
@@ -49,7 +49,7 @@ func TestList(t *testing.T) {
 	assert.ElementsMatch(comparableSlice(expected[:1]), comparableSlice(ulResult.Items))
 
 	for i := 1; i < 10; i++ {
-		newAcctResult, err := aliasClient.Create(tc.Context(), "target", fmt.Sprintf("alias%d", i), scopeId)
+		newAcctResult, err := aliasClient.Create(tc.Context(), "target", scopeId, aliases.WithValue(fmt.Sprintf("alias%d", i)))
 		require.NoError(err)
 		expected = append(expected, newAcctResult.Item)
 	}
@@ -110,7 +110,8 @@ func TestCrud(t *testing.T) {
 		assert.EqualValues(wantedVersion, u.Version)
 	}
 
-	u, err := aliasClient.Create(tc.Context(), "target", "alias.value", scopeId,
+	u, err := aliasClient.Create(tc.Context(), "target", scopeId,
+		aliases.WithValue("alias.value"),
 		aliases.WithDestinationId(tar.Id),
 		aliases.WithTargetAliasAuthorizeSessionArgumentsHostId("hst_1234567890"))
 	assert.NoError(err)
@@ -158,12 +159,12 @@ func TestErrors(t *testing.T) {
 	client.SetToken(token.Token)
 	aliasClient := aliases.NewClient(client)
 
-	u, err := aliasClient.Create(tc.Context(), "target", "first", scopeId)
+	u, err := aliasClient.Create(tc.Context(), "target", scopeId, aliases.WithValue("first"))
 	require.NoError(err)
 	assert.NotNil(u)
 
 	// Creating an alias of an unknown type
-	_, err = aliasClient.Create(tc.Context(), "unknown", "first", scopeId)
+	_, err = aliasClient.Create(tc.Context(), "unknown", scopeId, aliases.WithValue("first"))
 	require.Error(err)
 	apiErr := api.AsServerError(err)
 	require.NotNil(apiErr)
@@ -187,8 +188,15 @@ func TestErrors(t *testing.T) {
 	require.NotNil(apiErr)
 	assert.EqualValues(http.StatusNotFound, apiErr.Response().StatusCode())
 
+	// Removing the value completely should fail.
+	_, err = aliasClient.Update(tc.Context(), u.Item.Id, u.Item.Version, aliases.DefaultValue())
+	require.Error(err)
+	apiErr = api.AsServerError(err)
+	require.NotNil(apiErr)
+	assert.EqualValues(http.StatusBadRequest, apiErr.Response().StatusCode())
+
 	// Create another resource with the same name.
-	_, err = aliasClient.Create(tc.Context(), "target", "first", scopeId)
+	_, err = aliasClient.Create(tc.Context(), "target", scopeId)
 	require.Error(err)
 	apiErr = api.AsServerError(err)
 	require.NotNil(apiErr)
