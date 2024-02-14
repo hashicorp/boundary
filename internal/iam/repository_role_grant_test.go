@@ -440,9 +440,9 @@ func TestRepository_SetRoleGrants_Randomize(t *testing.T) {
 	for i := 1; i <= totalCnt; i++ {
 		grantsToSet = make([]string, 0, totalCnt)
 		expected = make(map[string]bool, totalCnt)
-		rand.Seed(time.Now().UnixNano())
+		prng := rand.New(rand.NewSource(time.Now().UnixNano()))
 		for _, rgw := range grants {
-			rgw.enabled = rand.Int()%2 == 0
+			rgw.enabled = prng.Int()%2 == 0
 			if rgw.enabled {
 				grantsToSet = append(grantsToSet, rgw.grantString)
 				expected[rgw.grantString] = true

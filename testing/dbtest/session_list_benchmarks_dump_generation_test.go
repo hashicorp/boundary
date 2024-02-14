@@ -226,7 +226,7 @@ func cycleSessionStates(t testing.TB, ctx context.Context, sess *session.Session
 	}
 	// Cancel 50% of the sessions
 	if rand.Intn(2) == 0 {
-		sess, err = sessRepo.CancelSession(ctx, sess.PublicId, sess.Version)
+		_, err = sessRepo.CancelSession(ctx, sess.PublicId, sess.Version)
 		require.NoError(t, err)
 		_, err = session.CloseConnections(ctx, sessRepo, connRepo, closeWiths)
 		require.NoError(t, err)

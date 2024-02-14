@@ -226,11 +226,11 @@ func (a Type) String() string {
 // IsActionOrParent tests whether the given action is either the same as the
 // suspect or is a parent of the suspect. This is used in some parts of ACL
 // checking.
-func (act Type) IsActionOrParent(suspect Type) bool {
-	if act == suspect {
+func (a Type) IsActionOrParent(suspect Type) bool {
+	if a == suspect {
 		return true
 	}
-	return strings.HasPrefix(suspect.String(), fmt.Sprintf("%s:", act.String()))
+	return strings.HasPrefix(suspect.String(), fmt.Sprintf("%s:", a.String()))
 }
 
 // ActionSet is a set of action.Type.

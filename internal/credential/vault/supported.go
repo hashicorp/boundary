@@ -9,7 +9,6 @@ package vault
 import (
 	"crypto/tls"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path"
@@ -128,11 +127,11 @@ func gotNewServer(t testing.TB, opt ...TestOption) *TestVaultServer {
 		dataSrcDir := t.TempDir()
 		require.NoError(os.Chmod(dataSrcDir, 0o777))
 		caCertFn := filepath.Join(dataSrcDir, "ca-certificate.pem")
-		require.NoError(ioutil.WriteFile(caCertFn, serverCert.CA.Cert, 0o777))
+		require.NoError(os.WriteFile(caCertFn, serverCert.CA.Cert, 0o777))
 		certFn := filepath.Join(dataSrcDir, "certificate.pem")
-		require.NoError(ioutil.WriteFile(certFn, serverCert.Cert.Cert, 0o777))
+		require.NoError(os.WriteFile(certFn, serverCert.Cert.Cert, 0o777))
 		keyFn := filepath.Join(dataSrcDir, "key.pem")
-		require.NoError(ioutil.WriteFile(keyFn, serverCert.Cert.Key, 0o777))
+		require.NoError(os.WriteFile(keyFn, serverCert.Cert.Key, 0o777))
 		dockerOptions.Mounts = append(dockerOptions.Mounts, fmt.Sprintf("%s:/vault/config/certificates", dataSrcDir))
 
 		if opts.vaultTLS == TestClientTLS {
@@ -141,7 +140,7 @@ func gotNewServer(t testing.TB, opt ...TestOption) *TestVaultServer {
 			server.ClientCert = clientCert.Cert.Cert
 			server.ClientKey = clientCert.Cert.Key
 			clientCaCertFn := filepath.Join(dataSrcDir, "client-ca-certificate.pem")
-			require.NoError(ioutil.WriteFile(clientCaCertFn, clientCert.CA.Cert, 0o777))
+			require.NoError(os.WriteFile(clientCaCertFn, clientCert.CA.Cert, 0o777))
 
 			vaultClientCert, err := tls.X509KeyPair(server.ClientCert, server.ClientKey)
 			require.NoError(err)

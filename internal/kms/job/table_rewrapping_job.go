@@ -35,7 +35,7 @@ func newTableRewrappingJob(ctx context.Context, kmsRepo *kms.Kms, tableName stri
 
 // Status reports the job’s current status. We never change these values as
 // this job never finishes.
-func (d *tableRewrappingJob) Status() scheduler.JobStatus {
+func (r tableRewrappingJob) Status() scheduler.JobStatus {
 	return scheduler.JobStatus{}
 }
 
@@ -54,16 +54,16 @@ func (r *tableRewrappingJob) Run(ctx context.Context) error {
 // NextRunIn returns the duration until the next job run should be scheduled.
 // We report as ready 1 second after a successful run. This doesn't mean that
 // this job will run every second, only about as often as the configured scheduler interval.
-func (r *tableRewrappingJob) NextRunIn(_ context.Context) (time.Duration, error) {
+func (r tableRewrappingJob) NextRunIn(_ context.Context) (time.Duration, error) {
 	return time.Second, nil
 }
 
 // Name is the unique name of the job.
-func (r *tableRewrappingJob) Name() string {
+func (r tableRewrappingJob) Name() string {
 	return fmt.Sprintf("%s-rewrapping-job", r.tableName)
 }
 
 // Description is the human readable description of the job.
-func (d *tableRewrappingJob) Description() string {
+func (r tableRewrappingJob) Description() string {
 	return "Re-encrypt all data encrypted in a table using a specific key"
 }

@@ -7,7 +7,6 @@ import (
 	"context"
 	stderrors "errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strconv"
 	"strings"
@@ -953,7 +952,7 @@ func TestDb_LookupNotFoundEvent(t *testing.T) {
 
 		defer func() { _ = os.WriteFile(c.AllEvents.Name(), nil, 0o666) }()
 
-		b, err := ioutil.ReadFile(c.AllEvents.Name())
+		b, err := os.ReadFile(c.AllEvents.Name())
 		require.NoError(err)
 		// No events should have been written with the above error
 		assert.Len(b, 0)
@@ -975,7 +974,7 @@ func TestDb_LookupNotFoundEvent(t *testing.T) {
 
 		defer func() { _ = os.WriteFile(c.AllEvents.Name(), nil, 0o666) }()
 
-		b, err := ioutil.ReadFile(c.AllEvents.Name())
+		b, err := os.ReadFile(c.AllEvents.Name())
 		require.NoError(err)
 		// No events should have been written with the above error
 		assert.Len(b, 0)

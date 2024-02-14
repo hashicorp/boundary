@@ -25,7 +25,8 @@ const (
 	terminationInterval                 = 1 * time.Minute
 )
 
-// This is exported so it can be tweaked in tests
+// NonceCleanupInterval is the interval to wait between nonce cleanups. This is
+// exported so it can be tweaked in tests
 var NonceCleanupInterval = 2 * time.Minute
 
 func (c *Controller) startStatusTicking(cancelCtx context.Context) {
@@ -116,10 +117,9 @@ func (c *Controller) startTerminateCompletedSessionsTicking(cancelCtx context.Co
 			if err != nil {
 				event.WriteError(cancelCtx, op, err, event.WithInfoMsg("error fetching repository for terminating completed sessions"))
 			} else {
-				terminationCount, err := repo.TerminateCompletedSessions(cancelCtx)
+				_, err := repo.TerminateCompletedSessions(cancelCtx)
 				if err != nil {
 					event.WriteError(cancelCtx, op, err, event.WithInfoMsg("error performing termination of completed sessions"))
-				} else if terminationCount > 0 {
 				}
 			}
 			timer.Reset(getRandomInterval())

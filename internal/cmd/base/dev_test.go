@@ -6,7 +6,6 @@ package base
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"sync"
 	"testing"
@@ -52,7 +51,7 @@ func Test_oidcLogger_Errorf(t *testing.T) {
 			l.Errorf(tt.fmt, tt.args...)
 			sinkFileName := c.AllEvents.Name()
 			defer func() { _ = os.WriteFile(sinkFileName, nil, 0o666) }()
-			b, err := ioutil.ReadFile(sinkFileName)
+			b, err := os.ReadFile(sinkFileName)
 			require.NoError(err)
 			gotEvent := &cloudevents.Event{}
 			err = json.Unmarshal(b, gotEvent)
@@ -98,7 +97,7 @@ func Test_oidcLogger_Infof(t *testing.T) {
 			l.Infof(tt.fmt, tt.args...)
 			sinkFileName := c.AllEvents.Name()
 			defer func() { _ = os.WriteFile(sinkFileName, nil, 0o666) }()
-			b, err := ioutil.ReadFile(sinkFileName)
+			b, err := os.ReadFile(sinkFileName)
 			require.NoError(err)
 			gotEvent := &cloudevents.Event{}
 			err = json.Unmarshal(b, gotEvent)

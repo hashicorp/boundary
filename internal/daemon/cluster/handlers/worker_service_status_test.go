@@ -789,6 +789,7 @@ func TestStatusDeadConnection(t *testing.T) {
 	}
 
 	got, err := s.Status(ctx, req)
+	require.NoError(t, err)
 	assert.Empty(t,
 		cmp.Diff(
 			want,
@@ -1205,8 +1206,10 @@ func TestStatusAuthorizedWorkers(t *testing.T) {
 				assert.Equal(tc.wantErrMsg, err.Error())
 				return
 			}
-			sort.Strings(got.GetAuthorizedWorkers().GetWorkerKeyIdentifiers())
-			sort.Strings(tc.want.GetAuthorizedWorkers().GetWorkerKeyIdentifiers())
+			gotAuthorizedWorkers := got.GetAuthorizedWorkers()
+			sort.Strings(gotAuthorizedWorkers.GetWorkerKeyIdentifiers())
+			wantAuthorizedWorkers := tc.want.GetAuthorizedWorkers()
+			sort.Strings(wantAuthorizedWorkers.GetWorkerKeyIdentifiers())
 			sort.Strings(got.GetAuthorizedDownstreamWorkers().GetWorkerPublicIds())
 			sort.Strings(tc.want.GetAuthorizedDownstreamWorkers().GetWorkerPublicIds())
 			sort.Strings(got.GetAuthorizedDownstreamWorkers().GetUnmappedWorkerKeyIdentifiers())

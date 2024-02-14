@@ -24,7 +24,6 @@ import (
 	"github.com/hashicorp/boundary/internal/util"
 	"github.com/hashicorp/go-dbw"
 	"github.com/hashicorp/nodeenrollment"
-	nodee "github.com/hashicorp/nodeenrollment"
 	"github.com/hashicorp/nodeenrollment/types"
 	"github.com/mitchellh/mapstructure"
 	"google.golang.org/protobuf/proto"
@@ -32,7 +31,7 @@ import (
 
 // Ensure we implement the Storage interfaces
 var (
-	_ nodee.Storage = (*WorkerAuthRepositoryStorage)(nil)
+	_ nodeenrollment.Storage = (*WorkerAuthRepositoryStorage)(nil)
 )
 
 type rootCertificatesVersion struct {
@@ -68,7 +67,7 @@ func NewRepositoryStorage(ctx context.Context, r db.Reader, w db.Writer, kms *km
 }
 
 // Store implements the Storage interface
-func (r *WorkerAuthRepositoryStorage) Store(ctx context.Context, msg nodee.MessageWithId) error {
+func (r *WorkerAuthRepositoryStorage) Store(ctx context.Context, msg nodeenrollment.MessageWithId) error {
 	const op = "server.(WorkerAuthRepositoryStorage).Store"
 	if err := types.ValidateMessage(msg); err != nil {
 		return errors.Wrap(ctx, err, op)
@@ -426,7 +425,7 @@ func (r *WorkerAuthRepositoryStorage) storeRootCertificates(ctx context.Context,
 // Load implements the Storage interface.
 // Load loads values into the given message. The message must be populated
 // with the ID value. If not found, the returned error should be ErrNotFound.
-func (r *WorkerAuthRepositoryStorage) Load(ctx context.Context, msg nodee.MessageWithId) error {
+func (r *WorkerAuthRepositoryStorage) Load(ctx context.Context, msg nodeenrollment.MessageWithId) error {
 	const op = "server.(WorkerAuthRepositoryStorage).Load"
 	if err := types.ValidateMessage(msg); err != nil {
 		return errors.Wrap(ctx, err, op)
@@ -493,13 +492,13 @@ func (r *WorkerAuthRepositoryStorage) loadNodeInformation(ctx context.Context, n
 	workerAuthorizedSet, err := r.validateWorkerAuths(ctx, workerAuths)
 	if err != nil {
 		if errors.IsNotFoundError(err) {
-			return nodee.ErrNotFound
+			return nodeenrollment.ErrNotFound
 		}
 		return errors.Wrap(ctx, err, op)
 	}
 
 	if workerAuthorizedSet == nil || workerAuthorizedSet.Current == nil {
-		return nodee.ErrNotFound
+		return nodeenrollment.ErrNotFound
 	}
 
 	if workerAuthorizedSet.Previous != nil {
@@ -566,7 +565,7 @@ func (r *WorkerAuthRepositoryStorage) loadServerLedActivationToken(ctx context.C
 	err := r.reader.LookupWhere(ctx, activationTokenEntry, "token_id = ?", []any{token.Id})
 	if err != nil {
 		if errors.Is(err, dbw.ErrRecordNotFound) {
-			return nodee.ErrNotFound
+			return nodeenrollment.ErrNotFound
 		}
 		return errors.Wrap(ctx, err, op)
 	}
@@ -663,7 +662,7 @@ func (r *WorkerAuthRepositoryStorage) loadRootCertificates(ctx context.Context, 
 	}
 	err := r.reader.LookupById(ctx, certAuthority)
 	if err != nil {
-		return nodee.ErrNotFound
+		return nodeenrollment.ErrNotFound
 	}
 
 	// Add version to state field of cert
@@ -687,7 +686,7 @@ func (r *WorkerAuthRepositoryStorage) loadRootCertificates(ctx context.Context, 
 		}
 
 		if rootCertificate.Certificate == nil {
-			return nodee.ErrNotFound
+			return nodeenrollment.ErrNotFound
 		}
 
 		// decrypt private key
@@ -719,7 +718,7 @@ func (r *WorkerAuthRepositoryStorage) loadRootCertificates(ctx context.Context, 
 
 // Remove implements the Storage interface.
 // Remove removes the given message. Only the ID field of the message is considered.
-func (r *WorkerAuthRepositoryStorage) Remove(ctx context.Context, msg nodee.MessageWithId) error {
+func (r *WorkerAuthRepositoryStorage) Remove(ctx context.Context, msg nodeenrollment.MessageWithId) error {
 	const op = "server.(WorkerAuthRepositoryStorage).Remove"
 	if err := types.ValidateMessage(msg); err != nil {
 		return errors.New(ctx, errors.InvalidParameter, op, "given message cannot be removed as it has no ID")

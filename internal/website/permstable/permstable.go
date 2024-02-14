@@ -948,9 +948,7 @@ var worker = &Resource{
 				"ID":   "<id>",
 				"Type": "worker",
 			},
-			Actions: append(
-				rudActions("a worker", false),
-			),
+			Actions: rudActions("a worker", false),
 		},
 	},
 }

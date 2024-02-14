@@ -9,7 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/ptypes"
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth/password"
@@ -19,6 +18,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/testing/protocmp"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/hashicorp/boundary/internal/authtoken/store"
 	"github.com/hashicorp/boundary/internal/db"
@@ -365,10 +365,8 @@ func TestRepository_LookupAuthToken(t *testing.T) {
 			// is because the resolution of the timestamp in the db does not
 			// match the resolution in Go code. But might be worth checking
 			// into.
-			wantGoTimeExpr, err := ptypes.Timestamp(tt.want.AuthToken.GetExpirationTime().Timestamp)
-			require.NoError(err)
-			gotGoTimeExpr, err := ptypes.Timestamp(got.AuthToken.GetExpirationTime().Timestamp)
-			require.NoError(err)
+			wantGoTimeExpr := tt.want.AuthToken.GetExpirationTime().Timestamp.AsTime()
+			gotGoTimeExpr := got.AuthToken.GetExpirationTime().Timestamp.AsTime()
 			assert.WithinDuration(wantGoTimeExpr, gotGoTimeExpr, time.Millisecond)
 			tt.want.AuthToken.ExpirationTime = got.AuthToken.ExpirationTime
 			assert.Empty(cmp.Diff(tt.want.AuthToken, got.AuthToken, protocmp.Transform()))
@@ -397,8 +395,7 @@ func TestRepository_ValidateToken(t *testing.T) {
 	at.Token = ""
 	at.CtToken = nil
 	at.KeyId = ""
-	atTime, err := ptypes.Timestamp(at.GetApproximateLastAccessTime().GetTimestamp())
-	require.NoError(t, err)
+	atTime := at.GetApproximateLastAccessTime()
 	require.NotNil(t, atTime)
 
 	badId, err := NewAuthTokenId(ctx)
@@ -465,18 +462,16 @@ func TestRepository_ValidateToken(t *testing.T) {
 			require.NotNil(tt.want, "Got %v but wanted nil", got)
 
 			// NOTE: See comment in LookupAuthToken about this logic
-			wantGoTimeExpr, err := ptypes.Timestamp(tt.want.AuthToken.GetExpirationTime().Timestamp)
-			require.NoError(err)
-			gotGoTimeExpr, err := ptypes.Timestamp(got.AuthToken.GetExpirationTime().Timestamp)
-			require.NoError(err)
+			wantGoTimeExpr := tt.want.AuthToken.GetExpirationTime().AsTime()
+			gotGoTimeExpr := got.AuthToken.GetExpirationTime().AsTime()
 			assert.WithinDuration(wantGoTimeExpr, gotGoTimeExpr, time.Millisecond)
 			tt.want.AuthToken.ExpirationTime = got.AuthToken.ExpirationTime
 			assert.Empty(cmp.Diff(tt.want.AuthToken, got.AuthToken, protocmp.Transform()))
 
 			// preTime1 should be the value prior to the ValidateToken was called so it should equal creation time
-			preTime1, err := ptypes.Timestamp(got.GetApproximateLastAccessTime().GetTimestamp())
+			preTime1 := got.GetApproximateLastAccessTime()
 			require.NoError(err)
-			assert.True(preTime1.Equal(atTime), "Create time %q doesn't match the time from the first call to MaybeUpdateLastAccesssed: %q.", atTime, preTime1)
+			assert.True(preTime1.AsTime().Equal(atTime.AsTime()), "Create time %q doesn't match the time from the first call to MaybeUpdateLastAccesssed: %q.", atTime, preTime1)
 
 			// Enable the duration which limits how frequently a token's approximate last accessed time can be updated
 			// so the next call doesn't cause the last accessed time to be updated.
@@ -484,18 +479,16 @@ func TestRepository_ValidateToken(t *testing.T) {
 
 			got2, err := repo.ValidateToken(ctx, tt.id, tt.token)
 			assert.NoError(err)
-			preTime2, err := ptypes.Timestamp(got2.GetApproximateLastAccessTime().GetTimestamp())
-			require.NoError(err)
-			assert.True(preTime2.After(preTime1), "First updated time %q was not after the creation time %q", preTime2, preTime1)
+			preTime2 := got2.GetApproximateLastAccessTime().GetTimestamp()
+			assert.True(preTime2.AsTime().After(preTime1.AsTime()), "First updated time %q was not after the creation time %q", preTime2, preTime1)
 
 			// We should find no oplog since tokens are not replicated, so they don't need oplog entries.
 			assert.Error(db.TestVerifyOplog(t, rw, got.GetPublicId(), db.WithOperation(oplog.OpType_OP_TYPE_UPDATE)))
 
 			got3, err := repo.ValidateToken(ctx, tt.id, tt.token)
 			require.NoError(err)
-			preTime3, err := ptypes.Timestamp(got3.GetApproximateLastAccessTime().GetTimestamp())
-			require.NoError(err)
-			assert.True(preTime3.Equal(preTime2), "The 3rd timestamp %q was not equal to the second time %q", preTime3, preTime2)
+			preTime3 := got3.GetApproximateLastAccessTime()
+			assert.True(preTime3.AsTime().Equal(preTime2.AsTime()), "The 3rd timestamp %q was not equal to the second time %q", preTime3, preTime2)
 		})
 	}
 }
@@ -880,11 +873,9 @@ func Test_IssuePendingToken(t *testing.T) {
 			}
 			require.NoError(err)
 			assert.NotEmpty(tk)
-			accessTime, err := ptypes.Timestamp(tk.GetApproximateLastAccessTime().GetTimestamp())
-			require.NoError(err)
-			createTime, err := ptypes.Timestamp(tk.GetCreateTime().GetTimestamp())
-			require.NoError(err)
-			assert.True(accessTime.After(createTime), "last access time %q was not after the creation time %q", accessTime, createTime)
+			accessTime := tk.GetApproximateLastAccessTime()
+			createTime := tk.GetCreateTime().GetTimestamp()
+			assert.True(accessTime.AsTime().After(createTime.AsTime()), "last access time %q was not after the creation time %q", accessTime, createTime)
 		})
 	}
 }
@@ -913,8 +904,7 @@ func Test_CloseExpiredPendingTokens(t *testing.T) {
 			id, err := NewAuthTokenId(ctx)
 			require.NoError(t, err)
 			at.PublicId = id
-			exp, err := ptypes.TimestampProto(time.Now().Add(expIn).Truncate(time.Second))
-			require.NoError(t, err)
+			exp := timestamppb.New(time.Now().Add(expIn).Truncate(time.Second))
 			at.ExpirationTime = &timestamp.Timestamp{Timestamp: exp}
 			at.Status = string(status)
 			at.AuthAccountId = accts[i].PublicId

@@ -9,12 +9,12 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/golang/protobuf/ptypes"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 var (
@@ -104,10 +104,7 @@ func (r *Repository) CreateAuthToken(ctx context.Context, withIamUser *iam.User,
 
 	// We truncate the expiration time to the nearest second to make testing in different platforms with
 	// different time resolutions easier.
-	expiration, err := ptypes.TimestampProto(time.Now().Add(r.timeToLiveDuration).Truncate(time.Second))
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithCode(errors.InvalidTimeStamp))
-	}
+	expiration := timestamppb.New(time.Now().Add(r.timeToLiveDuration).Truncate(time.Second))
 	at.ExpirationTime = &timestamp.Timestamp{Timestamp: expiration}
 
 	var newAuthToken *AuthToken
@@ -215,14 +212,8 @@ func (r *Repository) ValidateToken(ctx context.Context, id, token string, opt ..
 	}
 
 	// If the token is too old or stale invalidate it and return nothing.
-	exp, err := ptypes.Timestamp(retAT.GetExpirationTime().GetTimestamp())
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("expiration time"), errors.WithCode(errors.InvalidTimeStamp))
-	}
-	lastAccessed, err := ptypes.Timestamp(retAT.GetApproximateLastAccessTime().GetTimestamp())
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("last accessed time"), errors.WithCode(errors.InvalidTimeStamp))
-	}
+	exp := retAT.GetExpirationTime().AsTime()
+	lastAccessed := retAT.GetApproximateLastAccessTime().AsTime()
 
 	now := time.Now()
 	sinceLastAccessed := now.Sub(lastAccessed) + timeSkew

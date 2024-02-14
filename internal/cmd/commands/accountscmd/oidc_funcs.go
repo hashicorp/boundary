@@ -58,8 +58,8 @@ func (c *OidcCommand) extraOidcHelpFunc(helpMap map[string]func() string) string
 	return helpStr + c.Flags().Help()
 }
 
-func extraOidcFlagsFuncImpl(c *OidcCommand, set *base.FlagSets, f *base.FlagSet) {
-	f = set.NewFlagSet("Oidc Account Options")
+func extraOidcFlagsFuncImpl(c *OidcCommand, set *base.FlagSets, _ *base.FlagSet) {
+	f := set.NewFlagSet("Oidc Account Options")
 
 	for _, name := range flagsOidcMap[c.Func] {
 		switch name {

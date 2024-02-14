@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/ptypes"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/oplog/oplog_test"
 	"github.com/hashicorp/boundary/internal/oplog/store"
@@ -16,6 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func Test_ImmutableFields(t *testing.T) {
@@ -58,8 +58,7 @@ func Test_ImmutableFields(t *testing.T) {
 		&Message{Message: &u2, TypeName: "user", OpType: OpType_OP_TYPE_CREATE})
 	require.NoError(t, err)
 
-	future, err := ptypes.TimestampProto(time.Now().Add(time.Hour))
-	require.NoError(t, err)
+	future := timestamppb.New(time.Now().Add(time.Hour))
 
 	tests := []struct {
 		name      string

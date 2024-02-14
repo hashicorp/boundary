@@ -8,7 +8,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -286,7 +285,7 @@ func Test_WrapWithEventsHandler(t *testing.T) {
 			{ // test that the got observation is what we wanted.
 				require.NotNil(c.ObservationEvents)
 				defer func() { _ = os.WriteFile(c.ObservationEvents.Name(), nil, 0o666) }()
-				b, err := ioutil.ReadFile(c.ObservationEvents.Name())
+				b, err := os.ReadFile(c.ObservationEvents.Name())
 				assert.NoError(err)
 
 				if tt.noEventJson {
@@ -320,7 +319,7 @@ func Test_WrapWithEventsHandler(t *testing.T) {
 			{ // test that the got audit is what we wanted.
 				require.NotNil(c.AuditEvents)
 				defer func() { _ = os.WriteFile(c.AuditEvents.Name(), nil, 0o666) }()
-				b, err := ioutil.ReadFile(c.AuditEvents.Name())
+				b, err := os.ReadFile(c.AuditEvents.Name())
 				assert.NoError(err)
 
 				got := &cloudevents.Event{}

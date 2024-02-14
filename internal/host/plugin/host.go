@@ -78,21 +78,21 @@ func (h *Host) GetAddress() string {
 }
 
 // TableName returns the table name for the host set.
-func (s *Host) TableName() string {
-	if s.tableName != "" {
-		return s.tableName
+func (h Host) TableName() string {
+	if h.tableName != "" {
+		return h.tableName
 	}
 	return "host_plugin_host"
 }
 
 // SetTableName sets the table name. If the caller attempts to
 // set the name to "" the name will be reset to the default name.
-func (s *Host) SetTableName(n string) {
-	s.tableName = n
+func (h *Host) SetTableName(n string) {
+	h.tableName = n
 }
 
 // GetResourceType returns the resource type of the Host
-func (s *Host) GetResourceType() resource.Type {
+func (h Host) GetResourceType() resource.Type {
 	return resource.Host
 }
 

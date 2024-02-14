@@ -68,7 +68,7 @@ func (r *OrphanedHostCleanupJob) Status() scheduler.JobStatus {
 // will be returned.
 func (r *OrphanedHostCleanupJob) Run(ctx context.Context) error {
 	const op = "plugin.(OrphanedHostCleanupJob).Run"
-	if !r.running.CAS(r.running.Load(), true) {
+	if !r.running.CompareAndSwap(r.running.Load(), true) {
 		return errors.New(ctx, errors.JobAlreadyRunning, op, "job already running")
 	}
 	defer r.running.Store(false)

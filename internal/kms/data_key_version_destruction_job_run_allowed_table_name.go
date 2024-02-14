@@ -26,8 +26,8 @@ func allocDataKeyVersionDestructionJobRunAllowedTableName() DataKeyVersionDestru
 }
 
 // Clone an DataKeyVersionDestructionJob
-func (c *DataKeyVersionDestructionJobRunAllowedTableName) Clone() *DataKeyVersionDestructionJobRunAllowedTableName {
-	cp := proto.Clone(c.DataKeyVersionDestructionJobRunAllowedTableName)
+func (k *DataKeyVersionDestructionJobRunAllowedTableName) Clone() *DataKeyVersionDestructionJobRunAllowedTableName {
+	cp := proto.Clone(k.DataKeyVersionDestructionJobRunAllowedTableName)
 	return &DataKeyVersionDestructionJobRunAllowedTableName{
 		DataKeyVersionDestructionJobRunAllowedTableName: cp.(*store.DataKeyVersionDestructionJobRunAllowedTableName),
 	}

@@ -69,22 +69,22 @@ func AllocPreferredEndpoint() *PreferredEndpoint {
 }
 
 // Clone a PreferredEndpoint
-func (c *PreferredEndpoint) Clone() *PreferredEndpoint {
-	cp := proto.Clone(c.PreferredEndpoint)
+func (pe *PreferredEndpoint) Clone() *PreferredEndpoint {
+	cp := proto.Clone(pe.PreferredEndpoint)
 	return &PreferredEndpoint{
 		PreferredEndpoint: cp.(*store.PreferredEndpoint),
 	}
 }
 
 // TableName returns the table name.
-func (c *PreferredEndpoint) TableName() string {
-	if c.tableName != "" {
-		return c.tableName
+func (pe *PreferredEndpoint) TableName() string {
+	if pe.tableName != "" {
+		return pe.tableName
 	}
 	return defaultPreferredEndpointTableName
 }
 
 // SetTableName sets the table name.
-func (c *PreferredEndpoint) SetTableName(n string) {
-	c.tableName = n
+func (pe *PreferredEndpoint) SetTableName(n string) {
+	pe.tableName = n
 }

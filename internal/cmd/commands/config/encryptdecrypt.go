@@ -7,7 +7,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net/textproto"
 	"os"
 	"strings"
@@ -195,7 +194,7 @@ func (c *EncryptDecryptCommand) Run(args []string) (ret int) {
 		}()
 	}
 
-	d, err := ioutil.ReadFile(c.flagConfig)
+	d, err := os.ReadFile(c.flagConfig)
 	if err != nil {
 		c.UI.Error(fmt.Errorf("Error reading config file: %w", err).Error())
 		return base.CommandUserError

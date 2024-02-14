@@ -1428,7 +1428,7 @@ func TestUpdate(t *testing.T) {
 
 	var orgVersion uint32 = 2
 	var projVersion uint32 = 2
-	var globalVersion uint32 = global.Version
+	globalVersion := global.Version
 
 	resetOrg := func() {
 		orgVersion++

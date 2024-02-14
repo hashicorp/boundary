@@ -54,22 +54,22 @@ func allocDnsName() DnsName {
 }
 
 // Clone an DnsName
-func (c *DnsName) Clone() *DnsName {
-	cp := proto.Clone(c.DnsName)
+func (dn *DnsName) Clone() *DnsName {
+	cp := proto.Clone(dn.DnsName)
 	return &DnsName{
 		DnsName: cp.(*store.DnsName),
 	}
 }
 
 // TableName returns the table name.
-func (c *DnsName) TableName() string {
-	if c.tableName != "" {
-		return c.tableName
+func (dn *DnsName) TableName() string {
+	if dn.tableName != "" {
+		return dn.tableName
 	}
 	return defaultDnsNameTableName
 }
 
 // SetTableName sets the table name.
-func (c *DnsName) SetTableName(n string) {
-	c.tableName = n
+func (dn *DnsName) SetTableName(n string) {
+	dn.tableName = n
 }

@@ -42,8 +42,8 @@ func (c *WorkerLedCommand) extraWorkerLedHelpFunc(helpMap map[string]func() stri
 	return helpStr + c.Flags().Help()
 }
 
-func extraWorkerLedFlagsFuncImpl(c *WorkerLedCommand, set *base.FlagSets, f *base.FlagSet) {
-	f = set.NewFlagSet("Worker Creation Options")
+func extraWorkerLedFlagsFuncImpl(c *WorkerLedCommand, set *base.FlagSets, _ *base.FlagSet) {
+	f := set.NewFlagSet("Worker Creation Options")
 
 	for _, name := range flagsWorkerLedMap[c.Func] {
 		switch name {

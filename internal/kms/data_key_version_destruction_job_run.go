@@ -26,8 +26,8 @@ func allocDataKeyVersionDestructionJobRun() DataKeyVersionDestructionJobRun {
 }
 
 // Clone a DataKeyVersionDestructionJobRun
-func (c *DataKeyVersionDestructionJobRun) Clone() *DataKeyVersionDestructionJobRun {
-	cp := proto.Clone(c.DataKeyVersionDestructionJobRun)
+func (k *DataKeyVersionDestructionJobRun) Clone() *DataKeyVersionDestructionJobRun {
+	cp := proto.Clone(k.DataKeyVersionDestructionJobRun)
 	return &DataKeyVersionDestructionJobRun{
 		DataKeyVersionDestructionJobRun: cp.(*store.DataKeyVersionDestructionJobRun),
 	}

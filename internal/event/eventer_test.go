@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"strings"
 	"sync"
@@ -1122,7 +1121,7 @@ func Test_logAdapter_Write(t *testing.T) {
 
 			sinkFileName := c.AllEvents.Name()
 			defer func() { _ = os.WriteFile(sinkFileName, nil, 0o666) }()
-			b, err := ioutil.ReadFile(sinkFileName)
+			b, err := os.ReadFile(sinkFileName)
 			require.NoError(err)
 			gotEvent := &cloudevents.Event{}
 			err = json.Unmarshal(b, gotEvent)

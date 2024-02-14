@@ -24,6 +24,6 @@ func Now() *Timestamp {
 }
 
 // AsTime converts x to a time.Time.
-func (x *Timestamp) AsTime() time.Time {
-	return x.GetTimestamp().AsTime()
+func (ts *Timestamp) AsTime() time.Time {
+	return ts.GetTimestamp().AsTime()
 }

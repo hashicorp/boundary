@@ -745,11 +745,11 @@ func (r *Repository) DeleteSet(ctx context.Context, projectId string, publicId s
 	if err != nil {
 		return 0, errors.Wrap(ctx, err, op)
 	}
-	_, err = plgClient.OnDeleteSet(ctx, &plgpb.OnDeleteSetRequest{Catalog: plgHc, Persisted: p, Set: plgHs})
-	if err != nil {
-		// Even if the plugin returns an error, we ignore it and proceed
-		// with deleting the set.
-	}
+	// Even if the plugin returns an error, we ignore it and proceed with
+	// deleting the set, hence we don't check the error here. This is because we
+	// may get errors from the plugin that we can't do anything about (say, it's
+	// already deleted) and we still want to delete the set from the database.
+	_, _ = plgClient.OnDeleteSet(ctx, &plgpb.OnDeleteSetRequest{Catalog: plgHc, Persisted: p, Set: plgHs})
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, projectId, kms.KeyPurposeOplog)
 	if err != nil {

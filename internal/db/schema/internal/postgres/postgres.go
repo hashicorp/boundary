@@ -34,7 +34,6 @@ import (
 	stderrors "errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 
 	"github.com/hashicorp/boundary/internal/db/schema/internal/log"
 	"github.com/hashicorp/boundary/internal/db/schema/migration"
@@ -213,7 +212,7 @@ func (p *Postgres) Run(ctx context.Context, migration io.Reader, version int, ed
 		return errors.New(ctx, errors.MigrationIntegrity, op, "no pending transaction")
 	}
 
-	migr, err := ioutil.ReadAll(migration)
+	migr, err := io.ReadAll(migration)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}

@@ -14,6 +14,8 @@ import (
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 )
 
+// CloseCallTimeout is a timeout value
+//
 // FIXME: This is really ugly -- but not as ugly as plumbing this value into the
 // interface. We should figure out something better. For now, it will at least
 // keep sync with any changes to the value once it's initialized as the worker

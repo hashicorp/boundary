@@ -21,7 +21,6 @@ import (
 	"github.com/hashicorp/boundary/internal/types/scope"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/nodeenrollment"
-	nodee "github.com/hashicorp/nodeenrollment"
 	"github.com/hashicorp/nodeenrollment/registration"
 	"github.com/hashicorp/nodeenrollment/rotation"
 	"github.com/hashicorp/nodeenrollment/storage/file"
@@ -201,7 +200,7 @@ func TestStoreWorkerAuth(t *testing.T) {
 		Id: keyId,
 	}
 	err = storage.Load(ctx, nodeLookup)
-	assert.Equal(err, nodee.ErrNotFound)
+	assert.Equal(err, nodeenrollment.ErrNotFound)
 
 	// The AuthorizeNode request will result in a WorkerAuth record being stored
 	_, err = registration.AuthorizeNode(ctx, storage, fetchReq, nodeenrollment.WithState(state))

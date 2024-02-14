@@ -129,14 +129,14 @@ func (a *Account) GetLoginName() string {
 }
 
 // oplog will create oplog metadata for the Account.
-func (c *Account) oplog(op oplog.OpType, authMethodScopeId string) oplog.Metadata {
+func (a *Account) oplog(op oplog.OpType, authMethodScopeId string) oplog.Metadata {
 	metadata := oplog.Metadata{
-		"resource-public-id": []string{c.GetPublicId()},
+		"resource-public-id": []string{a.GetPublicId()},
 		"resource-type":      []string{"oidc account"},
 		"op-type":            []string{op.String()},
 	}
-	if c.AuthMethodId != "" {
-		metadata["auth-method-id"] = []string{c.AuthMethodId}
+	if a.AuthMethodId != "" {
+		metadata["auth-method-id"] = []string{a.AuthMethodId}
 	}
 	if authMethodScopeId != "" {
 		metadata["scope-id"] = []string{authMethodScopeId}

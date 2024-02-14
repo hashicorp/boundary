@@ -132,7 +132,7 @@ func (r *TokenRenewalJob) Status() scheduler.JobStatus {
 // already running an error with code JobAlreadyRunning will be returned.
 func (r *TokenRenewalJob) Run(ctx context.Context) error {
 	const op = "vault.(TokenRenewalJob).Run"
-	if !r.running.CAS(r.running.Load(), true) {
+	if !r.running.CompareAndSwap(r.running.Load(), true) {
 		return errors.New(ctx, errors.JobAlreadyRunning, op, "job already running")
 	}
 	defer r.running.Store(false)
@@ -270,7 +270,7 @@ func nextRenewal(ctx context.Context, j scheduler.Job) (time.Duration, error) {
 	}
 	defer rows.Close()
 
-	for rows.Next() {
+	if rows.Next() {
 		type NextRenewal struct {
 			RenewalIn time.Duration
 		}
@@ -358,7 +358,7 @@ func (r *TokenRevocationJob) Status() scheduler.JobStatus {
 // already running an error with code JobAlreadyRunning will be returned.
 func (r *TokenRevocationJob) Run(ctx context.Context) error {
 	const op = "vault.(TokenRevocationJob).Run"
-	if !r.running.CAS(r.running.Load(), true) {
+	if !r.running.CompareAndSwap(r.running.Load(), true) {
 		return errors.New(ctx, errors.JobAlreadyRunning, op, "job already running")
 	}
 	defer r.running.Store(false)
@@ -523,7 +523,7 @@ func (r *CredentialRenewalJob) Status() scheduler.JobStatus {
 // already running an error with code JobAlreadyRunning will be returned.
 func (r *CredentialRenewalJob) Run(ctx context.Context) error {
 	const op = "vault.(CredentialRenewalJob).Run"
-	if !r.running.CAS(r.running.Load(), true) {
+	if !r.running.CompareAndSwap(r.running.Load(), true) {
 		return errors.New(ctx, errors.JobAlreadyRunning, op, "job already running")
 	}
 	defer r.running.Store(false)
@@ -686,7 +686,7 @@ func (r *CredentialRevocationJob) Status() scheduler.JobStatus {
 // already running an error with code JobAlreadyRunning will be returned.
 func (r *CredentialRevocationJob) Run(ctx context.Context) error {
 	const op = "vault.(CredentialRevocationJob).Run"
-	if !r.running.CAS(r.running.Load(), true) {
+	if !r.running.CompareAndSwap(r.running.Load(), true) {
 		return errors.New(ctx, errors.JobAlreadyRunning, op, "job already running")
 	}
 	defer r.running.Store(false)
@@ -827,7 +827,7 @@ func (r *CredentialStoreCleanupJob) Status() scheduler.JobStatus {
 // JobAlreadyRunning will be returned.
 func (r *CredentialStoreCleanupJob) Run(ctx context.Context) error {
 	const op = "vault.(CredentialStoreCleanupJob).Run"
-	if !r.running.CAS(r.running.Load(), true) {
+	if !r.running.CompareAndSwap(r.running.Load(), true) {
 		return errors.New(ctx, errors.JobAlreadyRunning, op, "job already running")
 	}
 	defer r.running.Store(false)
@@ -927,7 +927,7 @@ func (r *CredentialCleanupJob) Status() scheduler.JobStatus {
 // JobAlreadyRunning will be returned.
 func (r *CredentialCleanupJob) Run(ctx context.Context) error {
 	const op = "vault.(CredentialCleanupJob).Run"
-	if !r.running.CAS(r.running.Load(), true) {
+	if !r.running.CompareAndSwap(r.running.Load(), true) {
 		return errors.New(ctx, errors.JobAlreadyRunning, op, "job already running")
 	}
 	defer r.running.Store(false)

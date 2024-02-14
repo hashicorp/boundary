@@ -112,10 +112,10 @@ func TestOpenBSRMethods(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, sesh)
 
-	sesh.EncodeSummary(ctx, &BaseChannelSummary{
+	require.NoError(t, sesh.EncodeSummary(ctx, &BaseChannelSummary{
 		Id:                    "TEST_CHANNEL_ID",
 		ConnectionRecordingId: "TEST_CONNECTION_RECORDING_ID",
-	})
+	}))
 
 	connectionId := "connection"
 	connMeta := &ConnectionRecordingMeta{Id: connectionId}
@@ -123,10 +123,10 @@ func TestOpenBSRMethods(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, conn)
 
-	conn.EncodeSummary(ctx, &BaseConnectionSummary{
+	require.NoError(t, conn.EncodeSummary(ctx, &BaseConnectionSummary{
 		Id:           "TEST_CONNECTION_ID",
 		ChannelCount: 1,
-	})
+	}))
 
 	channelId := "channel"
 	chanMeta := &ChannelRecordingMeta{
@@ -137,10 +137,10 @@ func TestOpenBSRMethods(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, ch)
 
-	ch.EncodeSummary(ctx, &BaseSessionSummary{
+	require.NoError(t, ch.EncodeSummary(ctx, &BaseSessionSummary{
 		Id:              "TEST_SESSION_ID",
 		ConnectionCount: 1,
-	})
+	}))
 
 	ch.Close(ctx)
 	conn.Close(ctx)
@@ -424,9 +424,9 @@ func TestOpenBSRMethods_WithoutSummaryAllocFunc(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, ch)
 
-			sesh.EncodeSummary(ctx, tc.sessionAllocFunc)
-			conn.EncodeSummary(ctx, tc.connectionAllocFunc)
-			ch.EncodeSummary(ctx, tc.channelAllocFunc)
+			require.NoError(t, sesh.EncodeSummary(ctx, tc.sessionAllocFunc))
+			require.NoError(t, conn.EncodeSummary(ctx, tc.connectionAllocFunc))
+			require.NoError(t, ch.EncodeSummary(ctx, tc.channelAllocFunc))
 
 			ch.Close(ctx)
 			conn.Close(ctx)
@@ -509,20 +509,20 @@ func TestCloseBSRMethods(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, sesh)
 
-	sesh.EncodeSummary(ctx, &BaseChannelSummary{
+	require.NoError(t, sesh.EncodeSummary(ctx, &BaseChannelSummary{
 		Id:                    "TEST_CHANNEL_ID",
 		ConnectionRecordingId: "TEST_CONNECTION_RECORDING_ID",
-	})
+	}))
 
 	connMeta := &ConnectionRecordingMeta{Id: connectionId}
 	conn, err := sesh.NewConnection(ctx, connMeta)
 	require.NoError(t, err)
 	require.NotNil(t, conn)
 
-	conn.EncodeSummary(ctx, &BaseConnectionSummary{
+	require.NoError(t, conn.EncodeSummary(ctx, &BaseConnectionSummary{
 		Id:           "TEST_CONNECTION_ID",
 		ChannelCount: 1,
-	})
+	}))
 
 	chanMeta := &ChannelRecordingMeta{
 		Id:   channelId,
@@ -532,10 +532,10 @@ func TestCloseBSRMethods(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, ch)
 
-	ch.EncodeSummary(ctx, &BaseSessionSummary{
+	require.NoError(t, ch.EncodeSummary(ctx, &BaseSessionSummary{
 		Id:              "TEST_SESSION_ID",
 		ConnectionCount: 1,
-	})
+	}))
 
 	ch.Close(ctx)
 	conn.Close(ctx)

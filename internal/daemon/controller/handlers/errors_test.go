@@ -7,7 +7,7 @@ import (
 	"context"
 	stderrors "errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -251,7 +251,7 @@ func TestApiErrorHandler(t *testing.T) {
 			resp := w.Result()
 			assert.EqualValues(tc.expected.Status, resp.StatusCode)
 
-			got, err := ioutil.ReadAll(resp.Body)
+			got, err := io.ReadAll(resp.Body)
 			require.NoError(err)
 
 			gotErr := &pb.Error{}
