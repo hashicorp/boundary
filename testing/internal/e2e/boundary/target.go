@@ -90,6 +90,9 @@ func CreateNewTargetCli(t testing.TB, ctx context.Context, projectId string, def
 	if opts.WithSessionConnectionLimit != 0 {
 		args = append(args, "-session-connection-limit", fmt.Sprintf("%d", opts.WithSessionConnectionLimit))
 	}
+	if opts.WithSessionMaxSeconds != 0 {
+		args = append(args, "-session-max-seconds", fmt.Sprintf("%d", opts.WithSessionMaxSeconds))
+	}
 
 	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs("targets", "create"),
