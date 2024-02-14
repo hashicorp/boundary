@@ -31,6 +31,8 @@ type Writer struct {
 	w   io.Writer
 	tee io.Writer
 
+	// This lock protects the buf and w variables defined in this Writer struct as a
+	// consequence of these variables both being written to at the same time using tee
 	l sync.Mutex
 }
 
