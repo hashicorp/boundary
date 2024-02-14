@@ -218,11 +218,12 @@ const (
 	unknownResourceType resourceType = "unknown"
 	targetResourceType  resourceType = "target"
 	sessionResourceType resourceType = "session"
+	aliasResourceType   resourceType = "alias"
 )
 
 func (r resourceType) valid() bool {
 	switch r {
-	case targetResourceType, sessionResourceType:
+	case aliasResourceType, targetResourceType, sessionResourceType:
 		return true
 	}
 	return false

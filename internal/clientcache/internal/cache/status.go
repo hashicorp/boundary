@@ -125,7 +125,7 @@ func (s *StatusService) Status(ctx context.Context) (*Status, error) {
 			us.AuthTokens = append(us.AuthTokens, *ts)
 		}
 
-		for _, rt := range []resourceType{targetResourceType, sessionResourceType} {
+		for _, rt := range []resourceType{aliasResourceType, targetResourceType, sessionResourceType} {
 			ts, err := s.resourceStatus(ctx, u, rt)
 			if err != nil {
 				return nil, errors.Wrap(ctx, err, op)

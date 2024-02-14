@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/hashicorp/boundary/api/aliases"
 	"github.com/hashicorp/boundary/api/sessions"
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -19,13 +20,14 @@ type SearchableResource string
 
 const (
 	Unknown  SearchableResource = "unknown"
+	Aliases  SearchableResource = "aliases"
 	Targets  SearchableResource = "targets"
 	Sessions SearchableResource = "sessions"
 )
 
 func (r SearchableResource) Valid() bool {
 	switch r {
-	case Targets, Sessions:
+	case Aliases, Targets, Sessions:
 		return true
 	}
 	return false
@@ -33,6 +35,8 @@ func (r SearchableResource) Valid() bool {
 
 func ToSearchableResource(s string) SearchableResource {
 	switch {
+	case strings.EqualFold(s, string(Aliases)):
+		return Aliases
 	case strings.EqualFold(s, string(Targets)):
 		return Targets
 	case strings.EqualFold(s, string(Sessions)):
@@ -55,6 +59,7 @@ type SearchParams struct {
 
 // SearchResult returns the results from searching the cache.
 type SearchResult struct {
+	Aliases  []*aliases.Alias
 	Targets  []*targets.Target
 	Sessions []*sessions.Session
 }
@@ -75,6 +80,13 @@ func NewSearchService(ctx context.Context, repo *Repository) (*SearchService, er
 	return &SearchService{
 		repo: repo,
 		searchableResources: map[SearchableResource]resourceSearcher{
+			Aliases: &resourceSearchFns[*aliases.Alias]{
+				list:  repo.ListAliases,
+				query: repo.QueryAliases,
+				searchResult: func(a []*aliases.Alias) *SearchResult {
+					return &SearchResult{Aliases: a}
+				},
+			},
 			Targets: &resourceSearchFns[*targets.Target]{
 				list:  repo.ListTargets,
 				query: repo.QueryTargets,

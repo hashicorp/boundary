@@ -11,6 +11,7 @@ import (
 	"strconv"
 
 	"github.com/hashicorp/boundary/api"
+	"github.com/hashicorp/boundary/api/aliases"
 	"github.com/hashicorp/boundary/api/sessions"
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/internal/clientcache/internal/cache"
@@ -21,6 +22,7 @@ import (
 
 // SearchResult is the struct returned to search requests.
 type SearchResult struct {
+	Aliases  []*aliases.Alias    `json:"aliases,omitempty"`
 	Targets  []*targets.Target   `json:"targets,omitempty"`
 	Sessions []*sessions.Session `json:"sessions,omitempty"`
 }
@@ -132,6 +134,7 @@ func newSearchHandlerFunc(ctx context.Context, repo *cache.Repository, refreshSe
 // toApiResult converts a domain search result to an api search result
 func toApiResult(sr *cache.SearchResult) *SearchResult {
 	return &SearchResult{
+		Aliases:  sr.Aliases,
 		Targets:  sr.Targets,
 		Sessions: sr.Sessions,
 	}

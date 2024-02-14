@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/api"
+	"github.com/hashicorp/boundary/api/aliases"
 	"github.com/hashicorp/boundary/api/authtokens"
 	"github.com/hashicorp/boundary/api/sessions"
 	"github.com/hashicorp/boundary/api/targets"
@@ -166,7 +167,10 @@ func TestSearch(t *testing.T) {
 		assert.Contains(t, apiErr.Message, "doesn't support search")
 	})
 
-	srv.AddResources(t, at, []*targets.Target{
+	srv.AddResources(t, at, []*aliases.Alias{
+		{Id: "alt_1234567890", Value: "value1", DestinationId: "ttcp_1234567890"},
+		{Id: "alt_0987654321", Name: "value2", DestinationId: "ttcp_0987654321"},
+	}, []*targets.Target{
 		{Id: "ttcp_1234567890", Name: "name1", Description: "description1"},
 		{Id: "ttcp_0987654321", Name: "name2", Description: "description2"},
 	}, []*sessions.Session{

@@ -190,6 +190,16 @@ func (r *RefreshService) RefreshForSearch(ctx context.Context, authTokenid strin
 	}
 
 	switch resourceType {
+	case Aliases:
+		rtv, err := r.repo.lookupRefreshToken(ctx, u, aliasResourceType)
+		if err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+		if opts.withIgnoreSearchStaleness || rtv != nil && time.Since(rtv.UpdateTime) > r.maxSearchStaleness {
+			if err := r.repo.refreshAliases(ctx, u, tokens, opt...); err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+		}
 	case Targets:
 		rtv, err := r.repo.lookupRefreshToken(ctx, u, targetResourceType)
 		if err != nil {
@@ -250,6 +260,9 @@ func (r *RefreshService) Refresh(ctx context.Context, opt ...Option) error {
 			continue
 		}
 
+		if err := r.repo.refreshAliases(ctx, u, tokens, opt...); err != nil {
+			retErr = stderrors.Join(retErr, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("for user id %s", u.Id))))
+		}
 		if err := r.repo.refreshTargets(ctx, u, tokens, opt...); err != nil {
 			retErr = stderrors.Join(retErr, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("for user id %s", u.Id))))
 		}
@@ -310,6 +323,13 @@ func (r *RefreshService) RecheckCachingSupport(ctx context.Context, opt ...Optio
 			retErr = stderrors.Join(retErr, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("for user id %s", u.Id))))
 		}
 		if err := r.repo.checkCachingSessions(ctx, u, tokens, opt...); err != nil {
+			if err == ErrRefreshNotSupported {
+				// This is expected so no need to propogate the error up
+				continue
+			}
+			retErr = stderrors.Join(retErr, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("for user id %s", u.Id))))
+		}
+		if err := r.repo.checkCachingAliases(ctx, u, tokens, opt...); err != nil {
 			if err == ErrRefreshNotSupported {
 				// This is expected so no need to propogate the error up
 				continue

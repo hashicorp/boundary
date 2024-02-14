@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/api/aliases"
 	"github.com/hashicorp/boundary/api/sessions"
 	"github.com/hashicorp/boundary/api/targets"
 	cachedb "github.com/hashicorp/boundary/internal/clientcache/internal/db"
@@ -203,6 +204,12 @@ func TestSearch(t *testing.T) {
 		require.NoError(t, rw.Create(ctx, u))
 		require.NoError(t, rw.Create(ctx, at))
 
+		aliases := []any{
+			&Alias{FkUserId: u.Id, Id: "alt_1", Value: "one", Type: "target", Item: `{"id": "alt_1", "value": "one", "type": "target"}`},
+			&Alias{FkUserId: u.Id, Id: "alt_2", Value: "two", Type: "target", Item: `{"id": "alt_2", "value": "two", "type": "target"}`},
+		}
+		require.NoError(t, rw.CreateItems(ctx, aliases))
+
 		targets := []any{
 			&Target{FkUserId: u.Id, Id: "t_1", Name: "one", Type: "tcp", Item: `{"id": "t_1", "name": "one", "type": "tcp"}`},
 			&Target{FkUserId: u.Id, Id: "t_2", Name: "two", Type: "tcp", Item: `{"id": "t_2", "name": "two", "type": "tcp"}`},
@@ -224,6 +231,77 @@ func TestSearch(t *testing.T) {
 	ss, err := NewSearchService(ctx, r)
 	require.NoError(t, err)
 	require.NotNil(t, ss)
+
+	t.Run("List aliases", func(t *testing.T) {
+		got, err := ss.Search(ctx, SearchParams{
+			Resource:    "aliases",
+			AuthTokenId: at.Id,
+		})
+		assert.NoError(t, err)
+		assert.EqualValues(t, &SearchResult{Aliases: []*aliases.Alias{
+			{Id: "alt_1", Value: "one", Type: "target"},
+			{Id: "alt_2", Value: "two", Type: "target"},
+		}}, got)
+	})
+
+	t.Run("query aliases", func(t *testing.T) {
+		got, err := ss.Search(ctx, SearchParams{
+			Resource:    "aliases",
+			AuthTokenId: at.Id,
+			Query:       `value="one"`,
+		})
+		assert.NoError(t, err)
+		assert.EqualValues(t, &SearchResult{Aliases: []*aliases.Alias{
+			{Id: "alt_1", Value: "one", Type: "target"},
+		}}, got)
+	})
+
+	t.Run("query aliases on type", func(t *testing.T) {
+		got, err := ss.Search(ctx, SearchParams{
+			Resource:    "aliases",
+			AuthTokenId: at.Id,
+			Query:       `type="target"`,
+		})
+		assert.NoError(t, err)
+		assert.EqualValues(t, &SearchResult{Aliases: []*aliases.Alias{
+			{Id: "alt_1", Value: "one", Type: "target"},
+			{Id: "alt_2", Value: "two", Type: "target"},
+		}}, got)
+	})
+
+	t.Run("query aliases bad column", func(t *testing.T) {
+		got, err := ss.Search(ctx, SearchParams{
+			Resource:    "aliases",
+			AuthTokenId: at.Id,
+			Query:       `item % "one"`,
+		})
+		assert.Error(t, err)
+		assert.ErrorContains(t, err, `invalid column "item"`)
+		assert.Nil(t, got)
+	})
+
+	t.Run("query aliases bad column owner user id", func(t *testing.T) {
+		got, err := ss.Search(ctx, SearchParams{
+			Resource:    "aliases",
+			AuthTokenId: at.Id,
+			Query:       `fk_user_id % "u"`,
+		})
+		assert.Error(t, err)
+		assert.ErrorContains(t, err, `invalid column "fk_user_id"`)
+		assert.Nil(t, got)
+	})
+
+	t.Run("Filter aliases", func(t *testing.T) {
+		got, err := ss.Search(ctx, SearchParams{
+			Resource:    "aliases",
+			AuthTokenId: at.Id,
+			Filter:      `"/item/value" matches "one"`,
+		})
+		assert.NoError(t, err)
+		assert.EqualValues(t, &SearchResult{Aliases: []*aliases.Alias{
+			{Id: "alt_1", Value: "one", Type: "target"},
+		}}, got)
+	})
 
 	t.Run("List targets", func(t *testing.T) {
 		got, err := ss.Search(ctx, SearchParams{
