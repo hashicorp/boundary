@@ -50,7 +50,9 @@ func (r *Repository) AddTargetHostSources(ctx context.Context, targetId string, 
 	}
 
 	target := alloc()
-	target.SetPublicId(ctx, t.PublicId)
+	if err := target.SetPublicId(ctx, t.PublicId); err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get set public id"))
+	}
 	target.SetVersion(targetVersion + 1)
 	metadata = target.Oplog(oplog.OpType_OP_TYPE_UPDATE)
 	metadata["op-type"] = append(metadata["op-type"], oplog.OpType_OP_TYPE_CREATE.String())
@@ -160,7 +162,9 @@ func (r *Repository) DeleteTargetHostSources(ctx context.Context, targetId strin
 	}
 
 	target := alloc()
-	target.SetPublicId(ctx, t.PublicId)
+	if err := target.SetPublicId(ctx, t.PublicId); err != nil {
+		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get set public id"))
+	}
 	target.SetVersion(targetVersion + 1)
 	metadata = target.Oplog(oplog.OpType_OP_TYPE_UPDATE)
 	metadata["op-type"] = append(metadata["op-type"], oplog.OpType_OP_TYPE_DELETE.String())
@@ -283,7 +287,9 @@ func (r *Repository) SetTargetHostSources(ctx context.Context, targetId string, 
 	}
 
 	target := alloc()
-	target.SetPublicId(ctx, t.PublicId)
+	if err := target.SetPublicId(ctx, t.PublicId); err != nil {
+		return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get set public id"))
+	}
 	target.SetVersion(targetVersion + 1)
 	metadata = target.Oplog(oplog.OpType_OP_TYPE_UPDATE)
 

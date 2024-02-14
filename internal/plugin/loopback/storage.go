@@ -101,7 +101,7 @@ type (
 
 type Bucket map[ObjectName]*storagePluginStorageInfo
 
-// storagePluginStorageInfo is an in-memory represenation of an object
+// storagePluginStorageInfo is an in-memory representation of an object
 // that would be normally stored in an external object store.
 type storagePluginStorageInfo struct {
 	DataChunks []Chunk `mapstructure:"dataChunks"`

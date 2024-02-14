@@ -18,7 +18,7 @@ import (
 )
 
 // TestCliTcpTargetConnectTargetWithSshRemoteCommand uses the boundary cli to
-// connect to a target using `connect ssh -remote-commmand`
+// connect to a target using `connect ssh -remote-command`
 func TestCliTcpTargetConnectTargetWithSshRemoteCommand(t *testing.T) {
 	e2e.MaybeSkipTest(t)
 	c, err := loadTestConfig()

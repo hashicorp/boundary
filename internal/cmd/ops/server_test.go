@@ -143,7 +143,8 @@ func TestNewServerIntegration(t *testing.T) {
 				},
 			},
 			assertions: func(t *testing.T, addrs []string) {
-				_, err := http.Get("http://" + addrs[0])
+				resp, err := http.Get("http://" + addrs[0])
+				resp.Body.Close()
 				require.NoError(t, err)
 			},
 		},
@@ -164,10 +165,12 @@ func TestNewServerIntegration(t *testing.T) {
 				},
 			},
 			assertions: func(t *testing.T, addrs []string) {
-				_, err := http.Get("http://" + addrs[0])
+				resp, err := http.Get("http://" + addrs[0])
+				resp.Body.Close()
 				require.NoError(t, err)
 
-				_, err = http.Get("http://" + addrs[1])
+				resp, err = http.Get("http://" + addrs[1])
+				resp.Body.Close()
 				require.NoError(t, err)
 			},
 		},

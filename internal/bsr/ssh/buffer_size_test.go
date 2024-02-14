@@ -28,15 +28,15 @@ import (
 // type is accurate.
 func TestValidateBufferSize(t *testing.T) {
 	protocol := bsr.Protocol("TEST")
-	bsr.RegisterSummaryAllocFunc(protocol, bsr.SessionContainer, func(ctx context.Context) bsr.Summary {
+	require.NoError(t, bsr.RegisterSummaryAllocFunc(protocol, bsr.SessionContainer, func(ctx context.Context) bsr.Summary {
 		return &bsr.BaseSessionSummary{Id: "sr_123456789", ConnectionCount: 1}
-	})
-	bsr.RegisterSummaryAllocFunc(protocol, bsr.ConnectionContainer, func(ctx context.Context) bsr.Summary {
+	}))
+	require.NoError(t, bsr.RegisterSummaryAllocFunc(protocol, bsr.ConnectionContainer, func(ctx context.Context) bsr.Summary {
 		return &bsr.BaseConnectionSummary{Id: "cr_123456789", ChannelCount: 1}
-	})
-	bsr.RegisterSummaryAllocFunc(protocol, bsr.ChannelContainer, func(ctx context.Context) bsr.Summary {
+	}))
+	require.NoError(t, bsr.RegisterSummaryAllocFunc(protocol, bsr.ChannelContainer, func(ctx context.Context) bsr.Summary {
 		return &bsr.BaseChannelSummary{Id: "chr_123456789", ConnectionRecordingId: "cr_123456789"}
-	})
+	}))
 
 	ctx := context.Background()
 	ts := time.Date(1995, time.March, 3, 12, 12, 12, 999999999, time.UTC)

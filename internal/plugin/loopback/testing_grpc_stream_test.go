@@ -242,7 +242,7 @@ func Test_GetObjectStream_Server(t *testing.T) {
 		require.Contains(err.Error(), "stream is closed")
 	})
 
-	t.Run("recieve empty message", func(t *testing.T) {
+	t.Run("receive empty message", func(t *testing.T) {
 		stream := newGetObjectStream()
 		defer stream.Close()
 		require.NotNil(stream)
@@ -399,7 +399,7 @@ func Test_GetObjectStream(t *testing.T) {
 	t.Run("client receives error when server sends error", func(t *testing.T) {
 		stream := newGetObjectStream()
 
-		// Validate the client recieves an error when the server sends an error
+		// Validate the client receives an error when the server sends an error
 		// Validate the channel messages is closed
 		go func() {
 			err := stream.server.SendMsg(fmt.Errorf("mock error"))

@@ -187,7 +187,8 @@ func TestApiCreateUser(t *testing.T) {
 		require.NoError(t, err)
 	})
 	uClient := users.NewClient(client)
-	uClient.SetAccounts(ctx, newUserId, 0, []string{newAcctId})
+	_, err = uClient.SetAccounts(ctx, newUserId, 0, []string{newAcctId})
+	require.NoError(t, err)
 
 	rClient := roles.NewClient(client)
 	newRoleResult, err := rClient.Create(ctx, newProjectId)

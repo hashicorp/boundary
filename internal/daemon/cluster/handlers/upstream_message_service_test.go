@@ -105,7 +105,7 @@ func Test_controllerUpstreamMessageServiceServer_UpstreamMessage(t *testing.T) {
 	// Get an initial set of authorized node credentials
 	initStorage, err := nodeefile.New(testCtx)
 	require.NoError(t, err)
-	t.Cleanup(func() { initStorage.Cleanup(testCtx) })
+	t.Cleanup(func() { assert.NoError(t, initStorage.Cleanup(testCtx)) })
 	_, err = rotation.RotateRootCertificates(testCtx, initStorage)
 	require.NoError(t, err)
 	initNodeCreds, err := types.NewNodeCredentials(testCtx, initStorage)

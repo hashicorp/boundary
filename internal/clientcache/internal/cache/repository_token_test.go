@@ -758,12 +758,13 @@ func TestCleanExpiredOrOrphanedAuthTokens_Errors(t *testing.T) {
 	assert.Error(t, err)
 	assert.ErrorContains(t, err, "writer isn't part of an inflight transaction")
 
-	rw.DoTx(ctx, 1, db.ExpBackoff{}, func(_ db.Reader, writer db.Writer) error {
+	_, err = rw.DoTx(ctx, 1, db.ExpBackoff{}, func(_ db.Reader, writer db.Writer) error {
 		err := cleanExpiredOrOrphanedAuthTokens(ctx, writer, nil)
 		assert.Error(t, err)
 		assert.ErrorContains(t, err, "keyringless auth token map is nil")
 		return nil
 	})
+	require.NoError(t, err)
 }
 
 func TestUpsertUserAndAuthToken(t *testing.T) {
@@ -779,7 +780,7 @@ func TestUpsertUserAndAuthToken(t *testing.T) {
 		UserId: "u_123",
 	}
 
-	rw.DoTx(ctx, 1, db.ExpBackoff{}, func(txReader db.Reader, txWriter db.Writer) error {
+	_, err = rw.DoTx(ctx, 1, db.ExpBackoff{}, func(txReader db.Reader, txWriter db.Writer) error {
 		errorCases := []struct {
 			name          string
 			reader        db.Reader
@@ -861,4 +862,5 @@ func TestUpsertUserAndAuthToken(t *testing.T) {
 		}
 		return nil
 	})
+	require.NoError(t, err)
 }

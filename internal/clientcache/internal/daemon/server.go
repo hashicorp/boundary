@@ -86,7 +86,7 @@ type Config struct {
 	// search query to trigger an inline refresh.
 	MaxSearchStaleness time.Duration
 	// The maximum amount of time a refresh should block a search request from
-	// completeing before it times out.
+	// completing before it times out.
 	MaxSearchRefreshTimeout time.Duration
 }
 

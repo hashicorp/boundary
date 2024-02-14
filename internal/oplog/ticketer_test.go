@@ -66,7 +66,9 @@ func Test_Redeem(t *testing.T) {
 
 		tx, err := dbw.New(db).Begin(testCtx)
 		require.NoError(err)
-		defer tx.Commit(testCtx)
+		defer func() {
+			assert.NoError(t, tx.Commit(testCtx))
+		}()
 		ticketer, err := NewTicketer(testCtx, tx.DB(), WithAggregateNames(true))
 		require.NoError(err)
 
@@ -81,7 +83,9 @@ func Test_Redeem(t *testing.T) {
 
 		tx, err := dbw.New(db).Begin(testCtx)
 		require.NoError(err)
-		defer tx.Commit(testCtx)
+		defer func() {
+			assert.NoError(tx.Commit(testCtx))
+		}()
 
 		ticketer, err := NewTicketer(testCtx, tx.DB(), WithAggregateNames(true))
 		require.NoError(err)
@@ -110,7 +114,7 @@ func Test_Redeem(t *testing.T) {
 
 		err = ticketer.Redeem(testCtx, ticket)
 		require.NoError(err)
-		tx.Commit(testCtx)
+		assert.NoError(tx.Commit(testCtx))
 
 		err = secondTicketer.Redeem(testCtx, secondTicket)
 		assert.Contains(err.Error(), "ticket already redeemed: integrity violation: error #106")

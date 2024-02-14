@@ -532,11 +532,11 @@ func TestService_ListManagedGroups(t *testing.T) {
 		mg2 := ldap.TestManagedGroup(t, conn, authMethod, testGrpNames)
 		mg3 := ldap.TestManagedGroup(t, conn, authMethod, testGrpNames)
 		t.Cleanup(func() {
-			repo.DeleteManagedGroup(ctx, org.GetPublicId(), mg1.GetPublicId())
+			_, err = repo.DeleteManagedGroup(ctx, org.GetPublicId(), mg1.GetPublicId())
 			require.NoError(t, err)
-			repo.DeleteManagedGroup(ctx, org.GetPublicId(), mg2.GetPublicId())
+			_, err = repo.DeleteManagedGroup(ctx, org.GetPublicId(), mg2.GetPublicId())
 			require.NoError(t, err)
-			repo.DeleteManagedGroup(ctx, org.GetPublicId(), mg3.GetPublicId())
+			_, err = repo.DeleteManagedGroup(ctx, org.GetPublicId(), mg3.GetPublicId())
 			require.NoError(t, err)
 			// Run analyze to update count estimate
 			_, err = sqlDb.ExecContext(ctx, "analyze")

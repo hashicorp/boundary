@@ -156,7 +156,9 @@ func (r *Repository) CreateSession(ctx context.Context, sessionWrapper wrapping.
 				defer rows.Close()
 				for rows.Next() {
 					var returnedCred DynamicCredential
-					w.ScanRows(ctx, rows, &returnedCred)
+					if err := w.ScanRows(ctx, rows, &returnedCred); err != nil {
+						return errors.Wrap(ctx, err, op)
+					}
 					returnedSession.DynamicCredentials = append(returnedSession.DynamicCredentials, &returnedCred)
 				}
 				if err := rows.Err(); err != nil {

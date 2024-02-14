@@ -157,7 +157,7 @@ func TestGet(t *testing.T) {
 			res:     &pbs.GetGroupResponse{Item: wantOrgGroup},
 		},
 		{
-			name: "Get a non existant Group",
+			name: "Get a non existent Group",
 			req:  &pbs.GetGroupRequest{Id: globals.GroupPrefix + "_DoesntExis"},
 			res:  nil,
 			err:  handlers.ApiErrorWithCode(codes.NotFound),
@@ -181,7 +181,7 @@ func TestGet(t *testing.T) {
 			res:     &pbs.GetGroupResponse{Item: wantProjGroup},
 		},
 		{
-			name:    "Project Scoped Get a non existant Group",
+			name:    "Project Scoped Get a non existent Group",
 			scopeId: pg.GetScopeId(),
 			req:     &pbs.GetGroupRequest{Id: globals.GroupPrefix + "_DoesntExis"},
 			res:     nil,

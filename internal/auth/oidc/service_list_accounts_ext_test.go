@@ -453,9 +453,9 @@ func TestService_ListAccounts(t *testing.T) {
 		account1 := oidc.TestAccount(t, conn, authMethod, "new-success")
 		account2 := oidc.TestAccount(t, conn, authMethod, "new-success2")
 		t.Cleanup(func() {
-			repo.DeleteAccount(ctx, org.GetPublicId(), account1.GetPublicId())
+			_, err = repo.DeleteAccount(ctx, org.GetPublicId(), account1.GetPublicId())
 			require.NoError(t, err)
-			repo.DeleteAccount(ctx, org.GetPublicId(), account2.GetPublicId())
+			_, err = repo.DeleteAccount(ctx, org.GetPublicId(), account2.GetPublicId())
 			require.NoError(t, err)
 			// Run analyze to update count estimate
 			_, err = sqlDb.ExecContext(ctx, "analyze")
@@ -535,11 +535,11 @@ func TestService_ListAccounts(t *testing.T) {
 		account2 := oidc.TestAccount(t, conn, authMethod, "new-success2")
 		account3 := oidc.TestAccount(t, conn, authMethod, "new-success3")
 		t.Cleanup(func() {
-			repo.DeleteAccount(ctx, org.GetPublicId(), account1.GetPublicId())
+			_, err = repo.DeleteAccount(ctx, org.GetPublicId(), account1.GetPublicId())
 			require.NoError(t, err)
-			repo.DeleteAccount(ctx, org.GetPublicId(), account2.GetPublicId())
+			_, err = repo.DeleteAccount(ctx, org.GetPublicId(), account2.GetPublicId())
 			require.NoError(t, err)
-			repo.DeleteAccount(ctx, org.GetPublicId(), account3.GetPublicId())
+			_, err = repo.DeleteAccount(ctx, org.GetPublicId(), account3.GetPublicId())
 			require.NoError(t, err)
 			// Run analyze to update count estimate
 			_, err = sqlDb.ExecContext(ctx, "analyze")

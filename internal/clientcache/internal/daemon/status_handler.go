@@ -49,7 +49,7 @@ type BoundaryStatus struct {
 	Address string `json:"address,omitempty"`
 	// Whether the controller responses are supported by the cache
 	CacheSupport string `json:"cache_support,omitempty"`
-	// How long ago the Boundary instance was checked for cache compatability
+	// How long ago the Boundary instance was checked for cache compatibility
 	LastSupportCheck time.Duration `json:"last_support_check,omitempty"`
 }
 

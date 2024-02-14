@@ -388,7 +388,7 @@ func (tk *Token) Validate(
 		case st.LastItemId == "":
 			return errors.New(ctx, errors.InvalidListToken, op, "list tokens's pagination component missing last item ID")
 		case st.LastItemCreateTime.After(tk.CreateTime):
-			// A resource created in the same instant that we did the intial listing
+			// A resource created in the same instant that we did the initial listing
 			// would have a timestamp equal to the create time. If it's after the
 			// create time, something weird is going on.
 			return errors.New(ctx, errors.InvalidListToken, op, "list token's pagination component's last item was created after the token")
