@@ -117,7 +117,7 @@ func TestRepository_lookupError(t *testing.T) {
 		assert.Nil(t, got)
 	})
 	t.Run("found", func(t *testing.T) {
-		r.saveError(ctx, u, sessionResourceType, testErr)
+		require.NoError(t, r.saveError(ctx, u, sessionResourceType, testErr))
 		got, err := r.lookupError(ctx, u, sessionResourceType)
 		assert.NoError(t, err)
 		assert.NotNil(t, got)

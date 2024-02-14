@@ -71,7 +71,7 @@ func TestUserIsLoggedOutWhenAuthTokenIsDeletedCli(t *testing.T) {
 		),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
-	t.Logf("Sucessfully deleted user auth-token: %s", userAuthTokenID)
+	t.Logf("Successfully deleted user auth-token: %s", userAuthTokenID)
 
 	// As the user, try to execute the command requiring to be logged in again
 	output = e2e.RunCommand(ctx, "boundary",

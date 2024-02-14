@@ -559,7 +559,7 @@ func NewTestMultihopWorkers(t testing.TB,
 }
 
 // NewAuthorizedPkiTestWorker creates a new test worker with the provided upstreams
-// and creates it in the provided repo as an authroized worker. It returns
+// and creates it in the provided repo as an authorized worker. It returns
 // The TestWorker and it's boundary id.
 func NewAuthorizedPkiTestWorker(t *testing.T, repo *server.Repository, name string, upstreams []string) (*TestWorker, string) {
 	t.Helper()

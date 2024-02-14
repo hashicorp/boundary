@@ -137,7 +137,7 @@ func TestGet(t *testing.T) {
 			res:     &pbs.GetRoleResponse{Item: wantOrgRole},
 		},
 		{
-			name: "Get a non existant Role",
+			name: "Get a non existent Role",
 			req:  &pbs.GetRoleRequest{Id: globals.RolePrefix + "_DoesntExis"},
 			res:  nil,
 			err:  handlers.ApiErrorWithCode(codes.NotFound),

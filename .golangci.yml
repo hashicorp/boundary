@@ -3,6 +3,9 @@ linters:
   enable:
     - staticcheck
     - stylecheck
+    - errcheck
+    - misspell
+    - bodyclose
 
 issues:
   exclude-rules:

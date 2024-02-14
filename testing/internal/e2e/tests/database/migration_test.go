@@ -92,7 +92,9 @@ func setupEnvironment(t testing.TB, ctx context.Context, c *config, boundaryRepo
 	// Start Vault
 	v, vaultToken := infra.StartVault(t, pool, network, "hashicorp/vault", "latest")
 	t.Cleanup(func() {
-		pool.Purge(v.Resource)
+		if err := pool.Purge(v.Resource); err != nil {
+			t.Logf("error purging pool: %v", err)
+		}
 	})
 	os.Setenv("VAULT_ADDR", v.UriLocalhost)
 	os.Setenv("VAULT_TOKEN", vaultToken)
@@ -138,7 +140,9 @@ func setupEnvironment(t testing.TB, ctx context.Context, c *config, boundaryRepo
 		c.TargetSshKeyPath,
 	)
 	t.Cleanup(func() {
-		pool.Purge(target.Resource)
+		if err := pool.Purge(target.Resource); err != nil {
+			t.Logf("error purging pool: %v", err)
+		}
 	})
 
 	// Initialize the database and extract resulting information
@@ -151,7 +155,9 @@ func setupEnvironment(t testing.TB, ctx context.Context, c *config, boundaryRepo
 		db.UriNetwork,
 	)
 	t.Cleanup(func() {
-		pool.Purge(dbInit.Resource)
+		if err := pool.Purge(dbInit.Resource); err != nil {
+			t.Logf("error purging pool: %v", err)
+		}
 	})
 	dbInitInfo := infra.GetDbInitInfoFromContainer(t, pool, dbInit)
 
@@ -371,7 +377,9 @@ func populateBoundaryDatabase(t testing.TB, ctx context.Context, c *config, te T
 		newTargetId,
 	)
 	t.Cleanup(func() {
-		te.Pool.Purge(connectTarget.Resource)
+		if err := te.Pool.Purge(connectTarget.Resource); err != nil {
+			t.Logf("error purging pool: %v", err)
+		}
 	})
 	_, err = te.Pool.Client.WaitContainer(connectTarget.Resource.Container.ID)
 	require.NoError(t, err)

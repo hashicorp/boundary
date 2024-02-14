@@ -86,7 +86,7 @@ func Test_ManagedGroupMemberships(t *testing.T) {
 
 	tests := []struct {
 		name string
-		// If true, we will auto populate necesary values into the function
+		// If true, we will auto populate necessary values into the function
 		validPrereqs bool
 
 		// Else these can be used for testing

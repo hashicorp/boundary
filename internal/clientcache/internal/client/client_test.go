@@ -82,6 +82,7 @@ func TestClient(t *testing.T) {
 		r, err := c.Get(ctx, "/unknown/path", nil)
 		assert.NoError(t, err)
 		assert.NotNil(t, r)
+		r.HttpResponse().Body.Close()
 		assert.Equal(t, http.StatusNotFound, r.HttpResponse().StatusCode)
 	})
 

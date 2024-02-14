@@ -47,7 +47,10 @@ func testChunks(s string, d bsr.Direction, p bsr.Protocol) []bsr.Chunk {
 }
 
 func writeToChannels(ctx context.Context, w storage.Writer, chunks ...bsr.Chunk) error {
-	w.Write(bsr.Magic.Bytes())
+	_, err := w.Write(bsr.Magic.Bytes())
+	if err != nil {
+		return err
+	}
 	enc, err := bsr.NewChunkEncoder(ctx, w, bsr.NoCompression, bsr.NoEncryption)
 	if err != nil {
 		return err

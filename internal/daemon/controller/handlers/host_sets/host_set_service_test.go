@@ -1879,9 +1879,9 @@ func TestUpdate_Static(t *testing.T) {
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
-			name: "Only non-existant paths in Mask",
+			name: "Only non-existent paths in Mask",
 			req: &pbs.UpdateHostSetRequest{
-				UpdateMask: &field_mask.FieldMask{Paths: []string{"nonexistant_field"}},
+				UpdateMask: &field_mask.FieldMask{Paths: []string{"nonexistent_field"}},
 				Item: &pb.HostSet{
 					Name:        &wrappers.StringValue{Value: "updated name"},
 					Description: &wrappers.StringValue{Value: "updated desc"},
@@ -2334,8 +2334,8 @@ func TestUpdate_Plugin(t *testing.T) {
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
-			name:  "Only non-existant paths in Mask",
-			masks: []string{"nonexistant_field"},
+			name:  "Only non-existent paths in Mask",
+			masks: []string{"nonexistent_field"},
 			changes: []updateFn{
 				clearReadOnlyFields(),
 				updateName(wrapperspb.String("new")),

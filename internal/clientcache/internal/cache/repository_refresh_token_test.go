@@ -46,10 +46,11 @@ func TestListRefreshToken(t *testing.T) {
 		require.NoError(t, r.rw.Create(ctx, known))
 
 		token := RefreshTokenValue("something")
-		r.rw.DoTx(ctx, 1, db.ExpBackoff{}, func(r db.Reader, w db.Writer) error {
+		_, err = r.rw.DoTx(ctx, 1, db.ExpBackoff{}, func(r db.Reader, w db.Writer) error {
 			require.NoError(t, upsertRefreshToken(ctx, w, known, targetResourceType, token))
 			return nil
 		})
+		require.NoError(t, err)
 
 		got, err := r.listRefreshTokens(ctx, known)
 		assert.NoError(t, err)
@@ -60,10 +61,11 @@ func TestListRefreshToken(t *testing.T) {
 		require.NoError(t, r.rw.Create(ctx, known))
 
 		token := sentinelNoRefreshToken
-		r.rw.DoTx(ctx, 1, db.ExpBackoff{}, func(r db.Reader, w db.Writer) error {
+		_, err = r.rw.DoTx(ctx, 1, db.ExpBackoff{}, func(r db.Reader, w db.Writer) error {
 			require.NoError(t, upsertRefreshToken(ctx, w, known, targetResourceType, token))
 			return nil
 		})
+		require.NoError(t, err)
 
 		got, err := r.listRefreshTokens(ctx, known)
 		assert.NoError(t, err)
@@ -74,11 +76,12 @@ func TestListRefreshToken(t *testing.T) {
 		require.NoError(t, r.rw.Create(ctx, known))
 
 		token := RefreshTokenValue("something")
-		r.rw.DoTx(ctx, 1, db.ExpBackoff{}, func(r db.Reader, w db.Writer) error {
+		_, err := r.rw.DoTx(ctx, 1, db.ExpBackoff{}, func(r db.Reader, w db.Writer) error {
 			require.NoError(t, upsertRefreshToken(ctx, w, known, targetResourceType, token))
 			require.NoError(t, upsertRefreshToken(ctx, w, known, sessionResourceType, token))
 			return nil
 		})
+		require.NoError(t, err)
 
 		got, err := r.listRefreshTokens(ctx, known)
 		assert.NoError(t, err)
@@ -116,10 +119,11 @@ func TestCacheSupportState(t *testing.T) {
 
 		now := time.Now().Truncate(time.Millisecond)
 		token := sentinelNoRefreshToken
-		r.rw.DoTx(ctx, 1, db.ExpBackoff{}, func(r db.Reader, w db.Writer) error {
+		_, err = r.rw.DoTx(ctx, 1, db.ExpBackoff{}, func(r db.Reader, w db.Writer) error {
 			require.NoError(t, upsertRefreshToken(ctx, w, known, targetResourceType, token))
 			return nil
 		})
+		require.NoError(t, err)
 
 		got, err := r.listRefreshTokens(ctx, known)
 		assert.NoError(t, err)

@@ -718,7 +718,7 @@ func Test_ValidateRefreshToken(t *testing.T) {
 			wantErrCode:   errors.InvalidListToken,
 		},
 		{
-			name: "emtpy last item id",
+			name: "empty last item id",
 			token: &listtoken.Token{
 				CreateTime:   fiveDaysAgo,
 				ResourceType: resource.Target,

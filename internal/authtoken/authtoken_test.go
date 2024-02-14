@@ -21,7 +21,7 @@ import (
 )
 
 // This file contains tests for methods defined in authtoken.go as well as tests which exercise the db
-// functionality directly without going through the respository.  Repository centric tests should be
+// functionality directly without going through the repository.  Repository centric tests should be
 // placed in repository_test.go
 
 func TestAuthToken_DbUpdate(t *testing.T) {

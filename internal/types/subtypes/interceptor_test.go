@@ -597,7 +597,7 @@ func TestTransformResponseAttributes(t *testing.T) {
 }
 
 func TestCustomTransformRequest(t *testing.T) {
-	RegisterRequestTransformationFunc(
+	require.NoError(t, RegisterRequestTransformationFunc(
 		&attribute.TestCustomTransformation{},
 		func(_ context.Context, m proto.Message) error {
 			msg, ok := m.(*attribute.TestCustomTransformation)
@@ -612,7 +612,7 @@ func TestCustomTransformRequest(t *testing.T) {
 			}
 			return nil
 		},
-	)
+	))
 	request := &attribute.TestCustomTransformation{
 		SomeRandomId: "some_random_id",
 		SecondaryId:  "secondary_id",
@@ -641,7 +641,7 @@ func TestCustomTransformRequest(t *testing.T) {
 }
 
 func TestCustomTransformResponse(t *testing.T) {
-	RegisterResponseTransformationFunc(
+	require.NoError(t, RegisterResponseTransformationFunc(
 		&attribute.TestCustomTransformation{},
 		func(_ context.Context, m proto.Message) error {
 			msg, ok := m.(*attribute.TestCustomTransformation)
@@ -655,7 +655,7 @@ func TestCustomTransformResponse(t *testing.T) {
 			}
 			return nil
 		},
-	)
+	))
 	response := &attribute.TestCustomTransformation{
 		SomeRandomId: "some_random_id",
 		SecondaryId:  "secondary_id",

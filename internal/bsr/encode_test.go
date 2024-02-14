@@ -36,7 +36,7 @@ func (t *testChunk) MarshalData(_ context.Context) ([]byte, error) {
 func gziped(d string) string {
 	var buf bytes.Buffer
 	w := gzip.NewWriter(&buf)
-	w.Write([]byte(d))
+	_, _ = w.Write([]byte(d))
 	w.Close()
 	return buf.String()
 }

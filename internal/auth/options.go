@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/boundary/internal/pagination"
 )
 
-// The option type is how options are passed as arugments
+// The option type is how options are passed as arguments
 type Option func(*Options) error
 
 // Options is a struct that contains all the possible auth options

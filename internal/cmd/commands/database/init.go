@@ -528,7 +528,7 @@ func (c *InitCommand) verifyOplogIsEmpty(ctx context.Context) error {
 	const op = "database.(InitCommand).verifyOplogIsEmpty"
 	underlyingDB, err := c.Database.SqlDB(ctx)
 	if err != nil {
-		return errors.New(ctx, errors.Internal, op, "unable to retreive db", errors.WithWrap(err))
+		return errors.New(ctx, errors.Internal, op, "unable to retrieve db", errors.WithWrap(err))
 	}
 	r := underlyingDB.QueryRowContext(c.Context, "select not exists(select 1 from oplog_entry limit 1)")
 	if r.Err() != nil {

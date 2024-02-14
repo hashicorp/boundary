@@ -53,11 +53,11 @@ func TestAccount_Create(t *testing.T) {
 			args: args{
 				authMethodId: testAuthMethod.PublicId,
 				subject:      "alice",
-				opts:         []Option{WithIssuer(TestConvertToUrls(t, "https://alice.com")[0]), WithEmail("alice@alice.com"), WithFullName("Alice Eve Smith"), WithName("alice's restuarant"), WithDescription("A good place to eat")},
+				opts:         []Option{WithIssuer(TestConvertToUrls(t, "https://alice.com")[0]), WithEmail("alice@alice.com"), WithFullName("Alice Eve Smith"), WithName("alice's restaurant"), WithDescription("A good place to eat")},
 			},
 			create: true,
 			want: func() *Account {
-				want, err := NewAccount(ctx, testAuthMethod.PublicId, "alice", WithIssuer(TestConvertToUrls(t, "https://alice.com")[0]), WithEmail("alice@alice.com"), WithFullName("Alice Eve Smith"), WithName("alice's restuarant"), WithDescription("A good place to eat"))
+				want, err := NewAccount(ctx, testAuthMethod.PublicId, "alice", WithIssuer(TestConvertToUrls(t, "https://alice.com")[0]), WithEmail("alice@alice.com"), WithFullName("Alice Eve Smith"), WithName("alice's restaurant"), WithDescription("A good place to eat"))
 				require.NoError(t, err)
 				return want
 			}(),
@@ -67,11 +67,11 @@ func TestAccount_Create(t *testing.T) {
 			args: args{
 				authMethodId: testAuthMethod.PublicId,
 				subject:      "alice",
-				opts:         []Option{WithIssuer(TestConvertToUrls(t, "https://alice.com")[0]), WithEmail("alice@alice.com"), WithFullName("Alice Eve Smith"), WithName("alice's restuarant"), WithDescription("A good place to eat")},
+				opts:         []Option{WithIssuer(TestConvertToUrls(t, "https://alice.com")[0]), WithEmail("alice@alice.com"), WithFullName("Alice Eve Smith"), WithName("alice's restaurant"), WithDescription("A good place to eat")},
 			},
 			create: true,
 			want: func() *Account {
-				want, err := NewAccount(ctx, testAuthMethod.PublicId, "alice", WithIssuer(TestConvertToUrls(t, "https://alice.com")[0]), WithEmail("alice@alice.com"), WithFullName("Alice Eve Smith"), WithName("alice's restuarant"), WithDescription("A good place to eat"))
+				want, err := NewAccount(ctx, testAuthMethod.PublicId, "alice", WithIssuer(TestConvertToUrls(t, "https://alice.com")[0]), WithEmail("alice@alice.com"), WithFullName("Alice Eve Smith"), WithName("alice's restaurant"), WithDescription("A good place to eat"))
 				require.NoError(t, err)
 				return want
 			}(),

@@ -168,7 +168,7 @@ func TestSupported(t *testing.T) {
 		assert.False(t, got)
 	})
 
-	t.Run("unkonwn", func(t *testing.T) {
+	t.Run("unknown", func(t *testing.T) {
 		at := &AuthToken{
 			Id:     "unknown",
 			UserId: "unknown",

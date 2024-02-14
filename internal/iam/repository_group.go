@@ -440,7 +440,7 @@ func (r *Repository) SetGroupMembers(ctx context.Context, groupId string, groupV
 			var groupOplogMsg oplog.Message
 			rowsUpdated, err := w.Update(ctx, &updatedGroup, []string{"Version"}, nil, db.NewOplogMsg(&groupOplogMsg), db.WithVersion(&groupVersion))
 			if err != nil {
-				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to update group verison"))
+				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to update group version"))
 			}
 			if rowsUpdated != 1 {
 				return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("updated group and %d rows updated", rowsUpdated))

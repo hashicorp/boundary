@@ -491,12 +491,13 @@ func TestCloseWorkerlessConnections(t *testing.T) {
 	deletedWorker := server.TestKmsWorker(t, conn, wrapper)
 	dActiveConn := createConnection(deletedWorker.GetPublicId())
 	dClosedConn := createConnection(deletedWorker.GetPublicId())
-	connRepo.closeConnections(ctx, []CloseWith{{
+	_, err = connRepo.closeConnections(ctx, []CloseWith{{
 		ConnectionId: dClosedConn.PublicId,
 		BytesUp:      1,
 		BytesDown:    2,
 		ClosedReason: ConnectionClosedByUser,
 	}})
+	require.NoError(err)
 	_, err = rw.Delete(ctx, deletedWorker)
 	require.NoError(err)
 
@@ -504,12 +505,13 @@ func TestCloseWorkerlessConnections(t *testing.T) {
 	activeWorker := server.TestKmsWorker(t, conn, wrapper)
 	activeConn := createConnection(activeWorker.GetPublicId())
 	closedConn := createConnection(activeWorker.GetPublicId())
-	connRepo.closeConnections(ctx, []CloseWith{{
+	_, err = connRepo.closeConnections(ctx, []CloseWith{{
 		ConnectionId: closedConn.PublicId,
 		BytesUp:      1,
 		BytesDown:    2,
 		ClosedReason: ConnectionClosedByUser,
 	}})
+	require.NoError(err)
 
 	_, st, err := connRepo.LookupConnection(ctx, dActiveConn.GetPublicId())
 	require.NoError(err)
