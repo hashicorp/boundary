@@ -156,3 +156,9 @@ func WithValue(inValue string) Option {
 		o.postMap["value"] = inValue
 	}
 }
+
+func DefaultValue() Option {
+	return func(o *options) {
+		o.postMap["value"] = nil
+	}
+}
