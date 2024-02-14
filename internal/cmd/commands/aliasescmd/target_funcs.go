@@ -4,7 +4,6 @@
 package aliasescmd
 
 import (
-	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/aliases"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 )
@@ -13,7 +12,6 @@ func init() {
 	extraTargetActionsFlagsMapFunc = extraTargetActionsFlagsMapFuncImpl
 	extraTargetFlagsFunc = extraTargetFlagsFuncImpl
 	extraTargetFlagsHandlingFunc = extraTargetFlagHandlingFuncImpl
-	executeExtraTargetActions = executeExtraTargetActionsImpl
 }
 
 type extraTargetCmdVars struct {
@@ -103,6 +101,7 @@ func extraTargetFlagHandlingFuncImpl(c *TargetCommand, _ *base.FlagSets, opts *[
 	switch c.flagValue {
 	case "":
 	case "null":
+		*opts = append(*opts, aliases.DefaultValue())
 	default:
 		*opts = append(*opts, aliases.WithValue(c.flagValue))
 	}
@@ -124,19 +123,4 @@ func extraTargetFlagHandlingFuncImpl(c *TargetCommand, _ *base.FlagSets, opts *[
 	}
 
 	return true
-}
-
-func executeExtraTargetActionsImpl(c *TargetCommand, inResp *api.Response, inItem *aliases.Alias, inErr error, aliasesClient *aliases.Client, version uint32, opts []aliases.Option) (*api.Response, *aliases.Alias, error) {
-	switch c.Func {
-	case "create":
-		// we specify our own create action here because we have more required
-		// fields in the sdk than is specified in the templates for all the other
-		// resources.
-		createResult, err := aliasesClient.Create(c.Context, "target", c.flagValue, c.FlagScopeId, opts...)
-		if err != nil {
-			return nil, nil, err
-		}
-		return createResult.GetResponse(), createResult.GetItem(), nil
-	}
-	return inResp, inItem, inErr
 }
