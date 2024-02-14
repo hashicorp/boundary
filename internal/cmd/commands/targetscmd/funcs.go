@@ -593,6 +593,20 @@ func printItemTable(item *targets.Target, resp *api.Response) string {
 		}
 	}
 
+	var aliasMaps []map[string]any
+	if len(item.Aliases) > 0 {
+		for _, al := range item.Aliases {
+			m := map[string]any{
+				"ID":    al.Id,
+				"Value": al.Value,
+			}
+			aliasMaps = append(aliasMaps, m)
+		}
+		if l := len("Value"); l > maxLength {
+			maxLength = l
+		}
+	}
+
 	ret := []string{
 		"",
 		"Target information:",
@@ -618,6 +632,18 @@ func printItemTable(item *targets.Target, resp *api.Response) string {
 	ret = append(ret,
 		"",
 	)
+
+	if len(aliasMaps) > 0 {
+		ret = append(ret,
+			"  Aliases:",
+		)
+		for _, m := range aliasMaps {
+			ret = append(ret,
+				base.WrapMap(4, maxLength, m),
+				"",
+			)
+		}
+	}
 
 	if len(hostSourceMaps) > 0 {
 		ret = append(ret,
