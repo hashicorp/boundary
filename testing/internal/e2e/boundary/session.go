@@ -116,7 +116,7 @@ func getSessionOpts(opt ...SessionOption) sessionOptions {
 // SessionOption represents how Options are passed as arguments
 type SessionOption func(*sessionOptions)
 
-// scopeOptions is a struct representing available options for scopes
+// sessionOptions is a struct representing available options for sessions
 type sessionOptions struct {
 	WithExpectedSessionsCount int
 }
