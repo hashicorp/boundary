@@ -17,9 +17,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// WaitForSessionCli waits for a session to appear in the session list and returns the session
-// information
-func WaitForSessionCli(t testing.TB, ctx context.Context, projectId string) *sessions.Session {
+// WaitForSessionCli waits for sessions to appear in the session list and returns the most recent session
+// information. If the WithExpectedSessionsCount option is provided, expects to find specified amount of sessions
+// or only 1 otherwise.
+func WaitForSessionCli(t testing.TB, ctx context.Context, projectId string, opt ...SessionOption) *sessions.Session {
+	opts := getSessionOpts(opt...)
 	t.Log("Waiting for session to appear...")
 	var session *sessions.Session
 	err := backoff.RetryNotify(
@@ -44,10 +46,11 @@ func WaitForSessionCli(t testing.TB, ctx context.Context, projectId string) *ses
 			}
 
 			t.Logf("Found %d session(s)", sessionCount)
-			if sessionCount != 1 {
-				return backoff.Permanent(errors.New("Only one session was expected to be found"))
+			if sessionCount != opts.WithExpectedSessionsCount {
+				return backoff.Permanent(fmt.Errorf("Unexpected number of sessions. Expected: %d, Actual: %d", opts.WithExpectedSessionsCount, sessionCount))
 			}
 
+			// Get the most recent session
 			session = sessionListResult.Items[0]
 			t.Logf("Created Session: %s", session.Id)
 			return nil
@@ -97,4 +100,30 @@ func WaitForSessionStatusCli(t testing.TB, ctx context.Context, sessionId string
 		},
 	)
 	require.NoError(t, err)
+}
+
+// getSessionOpts iterates the inbound SessionOption and returns a struct
+func getSessionOpts(opt ...SessionOption) sessionOptions {
+	opts := sessionOptions{
+		WithExpectedSessionsCount: 1,
+	}
+	for _, o := range opt {
+		o(&opts)
+	}
+	return opts
+}
+
+// SessionOption represents how Options are passed as arguments
+type SessionOption func(*sessionOptions)
+
+// sessionOptions is a struct representing available options for sessions
+type sessionOptions struct {
+	WithExpectedSessionsCount int
+}
+
+// WithExpectedSessionsCount provides an option to expect specified amount of sessions
+func WithExpectedSessionsCount(count int) SessionOption {
+	return func(o *sessionOptions) {
+		o.WithExpectedSessionsCount = count
+	}
 }
