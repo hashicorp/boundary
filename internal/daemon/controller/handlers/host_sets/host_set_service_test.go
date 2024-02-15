@@ -856,6 +856,27 @@ func TestListPagination(t *testing.T) {
 				protocmp.IgnoreFields(&pbs.ListHostSetsResponse{}, "list_token"),
 			),
 		)
+
+		// Create unauthenticated user
+		unauthAt := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
+		unauthR := iam.TestRole(t, conn, proj.GetPublicId())
+		_ = iam.TestUserRole(t, conn, unauthR.GetPublicId(), unauthAt.GetIamUserId())
+
+		// Make a request with the unauthenticated user,
+		// ensure the response contains the pagination parameters.
+		requestInfo := authpb.RequestInfo{
+			TokenFormat: uint32(auth.AuthTokenTypeBearer),
+			PublicId:    unauthAt.GetPublicId(),
+			Token:       unauthAt.GetToken(),
+		}
+		requestContext := context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
+		ctx := auth.NewVerifierContext(requestContext, iamRepoFn, tokenRepoFn, serversRepoFn, kms, &requestInfo)
+
+		_, err = s.ListHostSets(ctx, &pbs.ListHostSetsRequest{
+			HostCatalogId: shc.GetPublicId(),
+		})
+		require.Error(t, err)
+		assert.ErrorIs(t, handlers.ForbiddenError(), err)
 	})
 
 	t.Run("plugin-host-sets", func(t *testing.T) {
@@ -1086,6 +1107,27 @@ func TestListPagination(t *testing.T) {
 				protocmp.IgnoreFields(&pbs.ListHostSetsResponse{}, "list_token"),
 			),
 		)
+
+		// Create unauthenticated user
+		unauthAt := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
+		unauthR := iam.TestRole(t, conn, proj.GetPublicId())
+		_ = iam.TestUserRole(t, conn, unauthR.GetPublicId(), unauthAt.GetIamUserId())
+
+		// Make a request with the unauthenticated user,
+		// ensure the response contains the pagination parameters.
+		requestInfo := authpb.RequestInfo{
+			TokenFormat: uint32(auth.AuthTokenTypeBearer),
+			PublicId:    unauthAt.GetPublicId(),
+			Token:       unauthAt.GetToken(),
+		}
+		requestContext := context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
+		ctx := auth.NewVerifierContext(requestContext, iamRepoFn, tokenRepoFn, serversRepoFn, kms, &requestInfo)
+
+		_, err = s.ListHostSets(ctx, &pbs.ListHostSetsRequest{
+			HostCatalogId: phc.GetPublicId(),
+		})
+		require.Error(t, err)
+		assert.ErrorIs(t, handlers.ForbiddenError(), err)
 	})
 }
 
