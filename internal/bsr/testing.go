@@ -3,6 +3,53 @@
 
 package bsr
 
+import (
+	"context"
+	"sync"
+	"testing"
+
+	"github.com/stretchr/testify/require"
+)
+
+var registerTestProtocol *sync.Once
+
+func init() {
+	registerTestProtocol = new(sync.Once)
+}
+
+// TestRegisterSummaryAllocFunc registers "TEST" as a protocol for all container types
+// The channel summary will include the following:
+//
+//	BaseChannelSummary{Id: "TEST_CHANNEL_ID", ConnectionRecordingId: "TEST_CONNECTION_RECORDING_ID"}
+//
+// The connection summary will include the following:
+//
+//	BaseConnectionSummary{Id: "TEST_CONNECTION_ID", ChannelCount: 1}
+//
+// The session summary will include the following:
+//
+//	BaseSessionSummary{Id: "TEST_SESSION_ID", ConnectionCount: 1}
+func TestRegisterSummaryAllocFunc(t *testing.T) Protocol {
+	protocol := Protocol("TEST")
+	registerTestProtocol.Do(func() {
+		require.NoError(t,
+			RegisterSummaryAllocFunc(protocol, ChannelContainer, func(ctx context.Context) Summary {
+				return &BaseChannelSummary{Id: "TEST_CHANNEL_ID", ConnectionRecordingId: "TEST_CONNECTION_RECORDING_ID"}
+			}))
+
+		require.NoError(t,
+			RegisterSummaryAllocFunc(protocol, SessionContainer, func(ctx context.Context) Summary {
+				return &BaseSessionSummary{Id: "TEST_SESSION_ID", ConnectionCount: 1}
+			}))
+
+		require.NoError(t,
+			RegisterSummaryAllocFunc(protocol, ConnectionContainer, func(ctx context.Context) Summary {
+				return &BaseConnectionSummary{Id: "TEST_CONNECTION_ID", ChannelCount: 1}
+			}))
+	})
+	return protocol
+}
+
 func TestSessionRecordingMeta(s string, p Protocol) *SessionRecordingMeta {
 	return &SessionRecordingMeta{
 		Id:       s,
