@@ -46,7 +46,7 @@ func defaultAliasFunc(ctx context.Context, addr, authTok string, refreshTok Refr
 	return l.Items, l.RemovedIds, RefreshTokenValue(l.ListToken), nil
 }
 
-// refreshAliases uses attempts to refresh the aliases for the provided user
+// refreshAliases attempts to refresh the aliases for the provided user
 // using the provided tokens. If available, it uses the refresh tokens in
 // storage to retrieve and apply only the delta.
 func (r *Repository) refreshAliases(ctx context.Context, u *user, tokens map[AuthToken]string, opt ...Option) error {

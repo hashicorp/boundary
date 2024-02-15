@@ -82,8 +82,9 @@ func (s *TestServer) AddKeyringToken(t *testing.T, address, keyring, tokenName, 
 	}))
 }
 
-// AddResources adds targets to the cache for the provided address, token name,
-// and keyring type. They token info must already be known to the server.
+// AddResources adds targets, sessions, and aliases to the cache for the
+// provided address, token name, and keyring type. They token info must already
+// be known to the server.
 func (s *TestServer) AddResources(t *testing.T, p *authtokens.AuthToken, alts []*aliases.Alias, tars []*targets.Target, sess []*sessions.Session, atReadFn cache.BoundaryTokenReaderFn) {
 	t.Helper()
 	ctx := context.Background()

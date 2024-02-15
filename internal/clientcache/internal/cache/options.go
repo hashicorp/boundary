@@ -62,7 +62,7 @@ func withUserId(id string) Option {
 	}
 }
 
-// WithAliasRetrievalFunc provides an option for specifying a aliasRetrievalFunc
+// WithAliasRetrievalFunc provides an option for specifying an aliasRetrievalFunc
 func WithAliasRetrievalFunc(fn AliasRetrievalFunc) Option {
 	return func(o *options) error {
 		o.withAliasRetrievalFunc = fn
