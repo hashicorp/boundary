@@ -1645,7 +1645,7 @@ func TestListPagination(t *testing.T) {
 	require.NoError(t, err)
 
 	orgNoAms, _ := iam.TestScopes(t, iamRepo)
-	org, proj := iam.TestScopes(t, iamRepo)
+	org, proj := iam.TestScopes(t, iamRepo, iam.WithSkipDefaultRoleCreation(true))
 	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.GetPublicId(), kms.KeyPurposeDatabase)
 	require.NoError(t, err)
 
@@ -2020,4 +2020,29 @@ func TestListPagination(t *testing.T) {
 			cmpOptions...,
 		),
 	)
+
+	// Create unauthenticated user
+	unauthAt := authtoken.TestAuthToken(t, conn, kmsCache, org.GetPublicId())
+	unauthR := iam.TestRole(t, conn, proj.GetPublicId())
+	_ = iam.TestUserRole(t, conn, unauthR.GetPublicId(), unauthAt.GetIamUserId())
+
+	// Make a request with the unauthenticated user,
+	// ensure the response contains the pagination parameters.
+	requestInfo = authpb.RequestInfo{
+		TokenFormat: uint32(requestauth.AuthTokenTypeBearer),
+		PublicId:    unauthAt.GetPublicId(),
+		Token:       unauthAt.GetToken(),
+	}
+	requestContext = context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
+	ctx = requestauth.NewVerifierContext(requestContext, iamRepoFn, tokenRepoFn, serversRepoFn, kmsCache, &requestInfo)
+
+	got, err = s.ListAuthMethods(ctx, &pbs.ListAuthMethodsRequest{
+		ScopeId:   "global",
+		Recursive: true,
+	})
+	require.NoError(t, err)
+	assert.Empty(t, got.Items)
+	assert.Equal(t, "created_time", got.SortBy)
+	assert.Equal(t, "desc", got.SortDir)
+	assert.Equal(t, "complete", got.ResponseType)
 }
