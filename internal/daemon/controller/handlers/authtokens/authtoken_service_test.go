@@ -790,6 +790,31 @@ func TestListPagination(t *testing.T) {
 			protocmp.IgnoreFields(&pbs.ListAuthTokensResponse{}, "list_token"),
 		),
 	)
+
+	// Create unauthenticated user
+	unauthAt := authtoken.TestAuthToken(t, conn, kms, orgWithTokens.GetPublicId())
+	unauthR := iam.TestRole(t, conn, pwt.GetPublicId())
+	_ = iam.TestUserRole(t, conn, unauthR.GetPublicId(), unauthAt.GetIamUserId())
+
+	// Make a request with the unauthenticated user,
+	// ensure the response contains the pagination parameters.
+	requestInfo = authpb.RequestInfo{
+		TokenFormat: uint32(auth.AuthTokenTypeBearer),
+		PublicId:    unauthAt.GetPublicId(),
+		Token:       unauthAt.GetToken(),
+	}
+	requestContext = context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
+	ctx = auth.NewVerifierContext(requestContext, iamRepoFn, tokenRepoFn, serversRepoFn, kms, &requestInfo)
+
+	got, err = a.ListAuthTokens(ctx, &pbs.ListAuthTokensRequest{
+		ScopeId:   "global",
+		Recursive: true,
+	})
+	require.NoError(t, err)
+	assert.Len(t, got.Items, 1) // There will always be at least one token, the token used to authenticate
+	assert.Equal(t, "created_time", got.SortBy)
+	assert.Equal(t, "desc", got.SortDir)
+	assert.Equal(t, "complete", got.ResponseType)
 }
 
 func TestDeleteSelf(t *testing.T) {
