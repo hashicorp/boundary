@@ -114,10 +114,6 @@ func (s Service) ListGroups(ctx context.Context, req *pbs.ListGroupsRequest) (*p
 	if err != nil {
 		return nil, err
 	}
-	// If no scopes match, return an empty response
-	if len(scopeIds) == 0 {
-		return &pbs.ListGroupsResponse{}, nil
-	}
 
 	pageSize := int(s.maxPageSize)
 	// Use the requested page size only if it is smaller than
