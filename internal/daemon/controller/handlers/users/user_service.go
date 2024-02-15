@@ -113,10 +113,6 @@ func (s Service) ListUsers(ctx context.Context, req *pbs.ListUsersRequest) (*pbs
 	if err != nil {
 		return nil, err
 	}
-	// If no scopes match, return an empty response
-	if len(scopeIds) == 0 {
-		return &pbs.ListUsersResponse{}, nil
-	}
 
 	pageSize := int(s.maxPageSize)
 	// Use the requested page size only if it is smaller than
