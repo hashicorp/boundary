@@ -1584,7 +1584,7 @@ func TestUpdate_Static(t *testing.T) {
 			name: "Only non-existent paths in Mask",
 			req: &pbs.UpdateHostRequest{
 				Id:         h.GetPublicId(),
-				UpdateMask: &field_mask.FieldMask{Paths: []string{"nonexistant_field"}},
+				UpdateMask: &field_mask.FieldMask{Paths: []string{"nonexistent_field"}},
 				Item: &pb.Host{
 					Name:        &wrappers.StringValue{Value: "updated name"},
 					Description: &wrappers.StringValue{Value: "updated desc"},

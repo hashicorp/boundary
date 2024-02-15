@@ -161,7 +161,7 @@ func TestGet(t *testing.T) {
 			res:     &pbs.GetRoleResponse{Item: wantProjRole},
 		},
 		{
-			name:    "Project Scoped Get a non existant Role",
+			name:    "Project Scoped Get a non existent Role",
 			scopeId: pr.GetScopeId(),
 			req:     &pbs.GetRoleRequest{Id: globals.RolePrefix + "_DoesntExis"},
 			res:     nil,
@@ -1232,10 +1232,10 @@ func TestUpdate(t *testing.T) {
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
-			name:    "Only non-existant paths in Mask",
+			name:    "Only non-existent paths in Mask",
 			scopeId: or.GetScopeId(),
 			req: &pbs.UpdateRoleRequest{
-				UpdateMask: &field_mask.FieldMask{Paths: []string{"nonexistant_field"}},
+				UpdateMask: &field_mask.FieldMask{Paths: []string{"nonexistent_field"}},
 				Item: &pb.Role{
 					Name:        &wrapperspb.StringValue{Value: "updated name"},
 					Description: &wrapperspb.StringValue{Value: "updated desc"},
@@ -2469,7 +2469,7 @@ func TestRemoveGrants(t *testing.T) {
 			result:   []string{"ids=hcst_2;type=*;actions=delete"},
 		},
 		{
-			name:     "Remove non existant",
+			name:     "Remove non existent",
 			existing: []string{"ids=hcst_2;type=*;actions=delete"},
 			remove:   []string{"ids=hcst_1;type=*;actions=read"},
 			result:   []string{"ids=hcst_2;type=*;actions=delete"},
@@ -3244,7 +3244,7 @@ func TestRemoveGrantScopes(t *testing.T) {
 			result:   []string{"this"},
 		},
 		{
-			name:     "Remove non existant - global",
+			name:     "Remove non existent - global",
 			scopeId:  scope.Global.String(),
 			existing: []string{"this", "descendants"},
 			remove:   []string{"p_foobar1234"},
@@ -3278,7 +3278,7 @@ func TestRemoveGrantScopes(t *testing.T) {
 			result:   []string{"this"},
 		},
 		{
-			name:     "Remove non existant - org",
+			name:     "Remove non existent - org",
 			scopeId:  o.PublicId,
 			existing: []string{"this", "children"},
 			remove:   []string{"p_foobar1234"},
@@ -3305,7 +3305,7 @@ func TestRemoveGrantScopes(t *testing.T) {
 			result:   []string{},
 		},
 		{
-			name:     "Remove non existant - proj",
+			name:     "Remove non existent - proj",
 			scopeId:  p.PublicId,
 			existing: []string{"this"},
 			remove:   []string{"p_foobar1234"},

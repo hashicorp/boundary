@@ -34,7 +34,9 @@ const defaultLength = 20
 // Generate random bytes for byte fields
 func populateBytes(length int) []byte {
 	fieldBytes := make([]byte, length)
-	rand.Read(fieldBytes)
+	if _, err := rand.Read(fieldBytes); err != nil {
+		panic(err)
+	}
 	return fieldBytes
 }
 

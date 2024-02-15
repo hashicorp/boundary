@@ -192,7 +192,7 @@ func TestLookupSession(t *testing.T) {
 			wantErrMsg: "rpc error: code = InvalidArgument desc = Did not receive worker id when looking up session",
 		},
 		{
-			name: "nonexistant worker id",
+			name: "nonexistent worker id",
 			req: &pbs.LookupSessionRequest{
 				SessionId: sessWithWorkerFilter.PublicId,
 				WorkerId:  "w_nonexistingworker",

@@ -117,7 +117,9 @@ func setupEnvironment(t testing.TB, ctx context.Context, c *config, boundaryRepo
 	// Start a Boundary database and wait until it's ready
 	db := infra.StartBoundaryDatabase(t, pool, network, "library/postgres", "latest")
 	t.Cleanup(func() {
-		pool.Purge(db.Resource)
+		if err := pool.Purge(db.Resource); err != nil {
+			t.Logf("error purging pool: %v", err)
+		}
 	})
 	t.Log("Waiting for database to load...")
 	err = pool.Retry(func() error {
