@@ -76,7 +76,9 @@ func TestCliTcpTargetConnectTargetWithSessionMaxSecondsTearDown(t *testing.T) {
 
 		// Ensure that the session did not run for longer than the time limit
 		// (plus a small buffer)
-		require.Less(t, time.Since(start).Seconds(), float64(sessionMaxSeconds+1))
+		end := time.Since(start).Seconds()
+		require.Less(t, end, float64(sessionMaxSeconds+1))
+		require.Greater(t, end, float64(sessionMaxSeconds-1))
 	case <-time.After(time.Second * time.Duration(sessionMaxSeconds+5)):
 		t.Fatal("Timed out waiting for session command to exit")
 	}
@@ -132,6 +134,7 @@ func TestCliTcpTargetConnectTargetWithSessionMaxSecondsRejectNew(t *testing.T) {
 
 	// Start connections. Expect an error once the time limit is reached
 	t.Log("Creating connections...")
+	var end time.Time
 	for {
 		t.Log(time.Now())
 		output := e2e.RunCommand(ctx, "ssh",
@@ -148,12 +151,17 @@ func TestCliTcpTargetConnectTargetWithSessionMaxSecondsRejectNew(t *testing.T) {
 		)
 
 		if output.Err != nil {
+			end = time.Now()
 			break
 		}
 
 		// Ensure that time limit has not been reached yet
-		// (plus a small buffer)
 		require.Less(t, time.Since(start).Seconds(), float64(sessionMaxSeconds+1))
 		time.Sleep(time.Second)
 	}
+
+	// Ensure that the session did not run for longer than the time limit
+	diff := end.Sub(start).Seconds()
+	require.Less(t, diff, float64(sessionMaxSeconds+1))
+	require.Greater(t, diff, float64(sessionMaxSeconds-1))
 }
