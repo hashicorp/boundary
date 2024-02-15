@@ -1238,6 +1238,27 @@ func TestListPagination(t *testing.T) {
 				protocmp.IgnoreFields(&pbs.ListAccountsResponse{}, "list_token"),
 			),
 		)
+
+		// Create unauthenticated user
+		unauthAt := authtoken.TestAuthToken(t, conn, kmsCache, o.GetPublicId())
+		unauthR := iam.TestRole(t, conn, pwt.GetPublicId())
+		_ = iam.TestUserRole(t, conn, unauthR.GetPublicId(), unauthAt.GetIamUserId())
+
+		// Make a request with the unauthenticated user,
+		// ensure the response is 403 forbidden.
+		requestInfo = authpb.RequestInfo{
+			TokenFormat: uint32(requestauth.AuthTokenTypeBearer),
+			PublicId:    unauthAt.GetPublicId(),
+			Token:       unauthAt.GetToken(),
+		}
+		requestContext = context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
+		ctx = requestauth.NewVerifierContext(requestContext, iamRepoFn, tokenRepoFn, serversRepoFn, kmsCache, &requestInfo)
+
+		_, err = s.ListAccounts(ctx, &pbs.ListAccountsRequest{
+			AuthMethodId: authMethod.GetPublicId(),
+		})
+		require.Error(t, err)
+		assert.Equal(t, handlers.ForbiddenError(), err)
 	})
 
 	t.Run("oidc", func(t *testing.T) {
@@ -1555,6 +1576,27 @@ func TestListPagination(t *testing.T) {
 				protocmp.IgnoreFields(&pbs.ListAccountsResponse{}, "list_token"),
 			),
 		)
+
+		// Create unauthenticated user
+		unauthAt := authtoken.TestAuthToken(t, conn, kmsCache, o.GetPublicId())
+		unauthR := iam.TestRole(t, conn, pwt.GetPublicId())
+		_ = iam.TestUserRole(t, conn, unauthR.GetPublicId(), unauthAt.GetIamUserId())
+
+		// Make a request with the unauthenticated user,
+		// ensure the response is 403 forbidden.
+		requestInfo = authpb.RequestInfo{
+			TokenFormat: uint32(requestauth.AuthTokenTypeBearer),
+			PublicId:    unauthAt.GetPublicId(),
+			Token:       unauthAt.GetToken(),
+		}
+		requestContext = context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
+		ctx = requestauth.NewVerifierContext(requestContext, iamRepoFn, tokenRepoFn, serversRepoFn, kmsCache, &requestInfo)
+
+		_, err = s.ListAccounts(ctx, &pbs.ListAccountsRequest{
+			AuthMethodId: authMethod.GetPublicId(),
+		})
+		require.Error(t, err)
+		assert.Equal(t, handlers.ForbiddenError(), err)
 	})
 
 	t.Run("ldap", func(t *testing.T) {
@@ -1869,6 +1911,27 @@ func TestListPagination(t *testing.T) {
 				protocmp.IgnoreFields(&pbs.ListAccountsResponse{}, "list_token"),
 			),
 		)
+
+		// Create unauthenticated user
+		unauthAt := authtoken.TestAuthToken(t, conn, kmsCache, o.GetPublicId())
+		unauthR := iam.TestRole(t, conn, pwt.GetPublicId())
+		_ = iam.TestUserRole(t, conn, unauthR.GetPublicId(), unauthAt.GetIamUserId())
+
+		// Make a request with the unauthenticated user,
+		// ensure the response is 403 forbidden.
+		requestInfo = authpb.RequestInfo{
+			TokenFormat: uint32(requestauth.AuthTokenTypeBearer),
+			PublicId:    unauthAt.GetPublicId(),
+			Token:       unauthAt.GetToken(),
+		}
+		requestContext = context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
+		ctx = requestauth.NewVerifierContext(requestContext, iamRepoFn, tokenRepoFn, serversRepoFn, kmsCache, &requestInfo)
+
+		_, err = s.ListAccounts(ctx, &pbs.ListAccountsRequest{
+			AuthMethodId: authMethod.GetPublicId(),
+		})
+		require.Error(t, err)
+		assert.Equal(t, handlers.ForbiddenError(), err)
 	})
 }
 
