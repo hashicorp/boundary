@@ -419,7 +419,7 @@ func TestListPagination(t *testing.T) {
 	require.NoError(t, err)
 
 	oNoUsers, _ := iam.TestScopes(t, iamRepo)
-	oWithUsers, _ := iam.TestScopes(t, iamRepo)
+	oWithUsers, p := iam.TestScopes(t, iamRepo)
 
 	var allUsers []*pb.User
 	// Get the 3 system users (u_recovery, u_anon, u_auth)
@@ -727,6 +727,28 @@ func TestListPagination(t *testing.T) {
 			protocmp.IgnoreFields(&pbs.ListUsersResponse{}, "list_token"),
 		),
 	)
+
+	// Create unauthenticated user
+	unauthAt := authtoken.TestAuthToken(t, conn, kms, oWithUsers.GetPublicId())
+	unauthR := iam.TestRole(t, conn, p.GetPublicId())
+	_ = iam.TestUserRole(t, conn, unauthR.GetPublicId(), unauthAt.GetIamUserId())
+
+	// Make a request with the unauthenticated user,
+	// ensure the response contains the pagination parameters.
+	requestInfo = authpb.RequestInfo{
+		TokenFormat: uint32(auth.AuthTokenTypeBearer),
+		PublicId:    unauthAt.GetPublicId(),
+		Token:       unauthAt.GetToken(),
+	}
+	requestContext = context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
+	ctx = auth.NewVerifierContext(requestContext, iamRepoFn, tokenRepoFn, serversRepoFn, kms, &requestInfo)
+
+	_, err = a.ListUsers(ctx, &pbs.ListUsersRequest{
+		ScopeId:   "global",
+		Recursive: true,
+	})
+	require.Error(t, err)
+	assert.ErrorIs(t, handlers.ForbiddenError(), err)
 }
 
 func TestDelete(t *testing.T) {
