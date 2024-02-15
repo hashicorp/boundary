@@ -50,7 +50,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
-	"google.golang.org/grpc/grpclog"
 )
 
 const (
@@ -285,10 +284,8 @@ func (b *Server) SetupLogging(flagLogLevel, flagLogFormat, configLogLevel, confi
 
 	// create GRPC logger
 	namedGRPCLogFaker := b.Logger.Named("grpclogfaker")
-	grpclog.SetLoggerV2(&GRPCLogFaker{
-		Logger: namedGRPCLogFaker,
-		Log:    os.Getenv("BOUNDARY_GRPC_LOGGING") != "",
-	})
+	grpcLogFaker.SetLogOnOff(os.Getenv("BOUNDARY_GRPC_LOGGING") != "")
+	grpcLogFaker.SetLogger(namedGRPCLogFaker)
 
 	b.Info["log level"] = logLevel.String()
 	b.InfoKeys = append(b.InfoKeys, "log level")

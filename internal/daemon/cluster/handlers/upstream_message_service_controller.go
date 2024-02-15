@@ -19,7 +19,11 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-var upstreamMessageHandler sync.Map
+var upstreamMessageHandler *sync.Map
+
+func init() {
+	upstreamMessageHandler = new(sync.Map)
+}
 
 // UpstreamMessageHandler defines a handler for an UpstreamMessageRequest(s).
 //

@@ -65,7 +65,7 @@ func Test_RegisterUpstreamMessageHandler(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			var cp sync.Map
+			cp := new(sync.Map)
 			upstreamMessageHandler.Range(func(k, v interface{}) bool {
 				cp.Store(k, v)
 				return true
@@ -468,7 +468,7 @@ func Test_RegisterUpstreamMessageTypeSpecifier(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			var cp sync.Map
+			cp := new(sync.Map)
 			upstreamMessageTypeSpecifier.Range(func(k, v interface{}) bool {
 				cp.Store(k, v)
 				return true

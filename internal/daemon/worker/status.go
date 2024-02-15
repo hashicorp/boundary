@@ -181,7 +181,7 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager sess
 	})
 
 	// Send status information
-	client := pbs.NewServerCoordinationServiceClient(w.GrpcClientConn)
+	client := pbs.NewServerCoordinationServiceClient(w.GrpcClientConn.Load())
 	var tags []*pb.TagPair
 	// If we're not going to request a tag update, no reason to have these
 	// marshaled on every status call.
@@ -242,7 +242,7 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager sess
 
 			// In the case that the control plane has gone down and come up with different IPs,
 			// append initial upstreams/ cluster addr to the resolver to try
-			if w.GrpcClientConn.GetState() == connectivity.TransientFailure {
+			if w.GrpcClientConn.Load().GetState() == connectivity.TransientFailure {
 				lastStatus := w.lastStatusSuccess.Load().(*LastStatusInformation)
 				if lastStatus != nil && lastStatus.LastCalculatedUpstreams != nil {
 					addrs := lastStatus.LastCalculatedUpstreams

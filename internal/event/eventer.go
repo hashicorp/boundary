@@ -118,7 +118,8 @@ var (
 )
 
 func defaultLogger() hclog.Logger {
-	opts := hclog.DefaultOptions
+	opts := new(hclog.LoggerOptions)
+	*opts = *hclog.DefaultOptions
 	opts.JSONFormat = true
 	return hclog.New(opts)
 }

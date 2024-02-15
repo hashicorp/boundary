@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net"
 	"sync"
+	"sync/atomic"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -20,54 +21,29 @@ func TestCountingConn(t *testing.T) {
 		underlyingConn *testNetConn
 	}{
 		{
-			name:       "noErrors",
-			writeBytes: []byte("hello"),
-			underlyingConn: &testNetConn{
-				bytesToRead: 100,
-				readErr:     false,
-				writeErr:    false,
-				closeErr:    false,
-			},
+			name:           "noErrors",
+			writeBytes:     []byte("hello"),
+			underlyingConn: newTestNetConn(100, false, false, false),
 		},
 		{
-			name:       "readErr",
-			writeBytes: []byte("hello"),
-			underlyingConn: &testNetConn{
-				bytesToRead: 100,
-				readErr:     true,
-				writeErr:    false,
-				closeErr:    false,
-			},
+			name:           "readErr",
+			writeBytes:     []byte("hello"),
+			underlyingConn: newTestNetConn(100, true, false, false),
 		},
 		{
-			name:       "writeErr",
-			writeBytes: []byte("hello"),
-			underlyingConn: &testNetConn{
-				bytesToRead: 100,
-				readErr:     false,
-				writeErr:    true,
-				closeErr:    false,
-			},
+			name:           "writeErr",
+			writeBytes:     []byte("hello"),
+			underlyingConn: newTestNetConn(100, false, true, false),
 		},
 		{
-			name:       "closeErr",
-			writeBytes: []byte("hello"),
-			underlyingConn: &testNetConn{
-				bytesToRead: 100,
-				readErr:     false,
-				writeErr:    false,
-				closeErr:    true,
-			},
+			name:           "closeErr",
+			writeBytes:     []byte("hello"),
+			underlyingConn: newTestNetConn(100, false, false, true),
 		},
 		{
-			name:       "allErr",
-			writeBytes: []byte("hello"),
-			underlyingConn: &testNetConn{
-				bytesToRead: 100,
-				readErr:     true,
-				writeErr:    true,
-				closeErr:    true,
-			},
+			name:           "allErr",
+			writeBytes:     []byte("hello"),
+			underlyingConn: newTestNetConn(100, true, true, true),
 		},
 	}
 
@@ -77,7 +53,7 @@ func TestCountingConn(t *testing.T) {
 
 			readBytes := make([]byte, tt.underlyingConn.bytesToRead)
 			read, err := conn.Read(readBytes)
-			require.True(t, tt.underlyingConn.readCalled)
+			require.True(t, tt.underlyingConn.readCalled.Load())
 			if tt.underlyingConn.readErr {
 				require.Error(t, err)
 				require.Equal(t, 1, read)
@@ -90,7 +66,7 @@ func TestCountingConn(t *testing.T) {
 			}
 
 			written, err := conn.Write(tt.writeBytes)
-			require.True(t, tt.underlyingConn.writeCalled)
+			require.True(t, tt.underlyingConn.writeCalled.Load())
 			if tt.underlyingConn.writeErr {
 				require.Error(t, err)
 				require.Equal(t, 1, written)
@@ -102,7 +78,7 @@ func TestCountingConn(t *testing.T) {
 			}
 
 			err = conn.Close()
-			require.True(t, tt.underlyingConn.closeCalled)
+			require.True(t, tt.underlyingConn.closeCalled.Load())
 			if tt.underlyingConn.closeErr {
 				require.Error(t, err)
 			} else {
@@ -121,7 +97,7 @@ func TestCountingConnConcurrentCalls(t *testing.T) {
 	concurrentReads := 1000
 	concurrentWrites := 1000
 
-	conn := &countingConn{Conn: &testNetConn{bytesToRead: bytesToRead}}
+	conn := &countingConn{Conn: newTestNetConn(bytesToRead, false, false, false)}
 
 	wg := sync.WaitGroup{}
 	wg.Add(concurrentReads)
@@ -164,13 +140,25 @@ type testNetConn struct {
 	closeErr    bool
 
 	// Test results
-	readCalled  bool
-	writeCalled bool
-	closeCalled bool
+	readCalled  *atomic.Bool
+	writeCalled *atomic.Bool
+	closeCalled *atomic.Bool
+}
+
+func newTestNetConn(bytesToRead int, readErr, writeErr, closeErr bool) *testNetConn {
+	return &testNetConn{
+		bytesToRead: bytesToRead,
+		readErr:     readErr,
+		writeErr:    writeErr,
+		closeErr:    closeErr,
+		readCalled:  new(atomic.Bool),
+		writeCalled: new(atomic.Bool),
+		closeCalled: new(atomic.Bool),
+	}
 }
 
 func (t *testNetConn) Read(in []byte) (int, error) {
-	t.readCalled = true
+	t.readCalled.Store(true)
 	if t.readErr {
 		return 1, fmt.Errorf("oops, read error")
 	}
@@ -183,7 +171,7 @@ func (t *testNetConn) Read(in []byte) (int, error) {
 }
 
 func (t *testNetConn) Write(in []byte) (int, error) {
-	t.writeCalled = true
+	t.writeCalled.Store(true)
 	if t.writeErr {
 		return 1, fmt.Errorf("oops, write error")
 	}
@@ -192,7 +180,7 @@ func (t *testNetConn) Write(in []byte) (int, error) {
 }
 
 func (t *testNetConn) Close() error {
-	t.closeCalled = true
+	t.closeCalled.Store(true)
 	if t.closeErr {
 		return fmt.Errorf("oops, close error")
 	}

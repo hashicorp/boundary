@@ -82,7 +82,11 @@ type UpstreamMessageTypeSpecifier interface {
 	AllocResponse() proto.Message
 }
 
-var upstreamMessageTypeSpecifier sync.Map
+var upstreamMessageTypeSpecifier *sync.Map
+
+func init() {
+	upstreamMessageTypeSpecifier = new(sync.Map)
+}
 
 // registerUpstreamMessageTypeSpecifier will register an
 // UpstreamMessageTypeSpecifier for the specified msg name.

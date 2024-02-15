@@ -24,7 +24,7 @@ func TestRegisterHandler(t *testing.T) {
 	t.Cleanup(func() {
 		handlers = oldHandler
 	})
-	handlers = sync.Map{}
+	handlers = new(sync.Map)
 
 	err := RegisterHandler("protocol", fn)
 	require.NoError(err)
@@ -47,7 +47,7 @@ func TestAlwaysTcpGetHandler(t *testing.T) {
 	t.Cleanup(func() {
 		handlers = oldHandler
 	})
-	handlers = sync.Map{}
+	handlers = new(sync.Map)
 	_, err := tcpOnly("wid", nil)
 	assert.ErrorIs(err, ErrUnknownProtocol)
 

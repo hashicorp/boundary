@@ -37,7 +37,6 @@ type refreshTicker struct {
 	refreshInterval        time.Duration
 	recheckSupportInterval time.Duration
 	randomizationFactor    float64
-	rand                   *rand.Rand
 	refreshChan            chan struct{}
 	refresher              refreshService
 }
@@ -80,7 +79,6 @@ func newRefreshTicker(ctx context.Context, refresh refreshService, opt ...Option
 		refreshInterval:        refreshInterval,
 		recheckSupportInterval: recheckSupportInterval,
 		randomizationFactor:    randomizationFactor,
-		rand:                   rand.New(rand.NewSource(time.Now().UnixNano())),
 		refresher:              refresh,
 
 		// We make this channel size 1 so if something happens midway through the refresh
@@ -151,12 +149,12 @@ func (rt *refreshTicker) nextIntervalWithRandomness(d time.Duration) time.Durati
 		return d
 	}
 
-	randFactor := rt.rand.Float64()
+	randFactor := rand.Float64()
 	randFactor = randFactor * rt.randomizationFactor
 
 	randDur := randFactor * float64(d)
 	// Half a chance to be faster, not slower
-	if rt.rand.Float32() > 0.5 {
+	if rand.Float32() > 0.5 {
 		randDur = -1 * randDur
 	}
 	return d + time.Duration(randDur)

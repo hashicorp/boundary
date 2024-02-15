@@ -170,8 +170,8 @@ func TestRotationTicking(t *testing.T) {
 		// Stop and start the client connections to ensure the new credentials
 		// are valid; if not, we won't establish a new connection and rotation
 		// will fail
-		require.NotNil(w.Worker().GrpcClientConn)
-		require.NoError(w.Worker().GrpcClientConn.Close())
+		require.NotNil(w.Worker().GrpcClientConn.Load())
+		require.NoError(w.Worker().GrpcClientConn.Load().Close())
 		require.NoError(w.Worker().StartControllerConnections())
 		rotationCount++
 	}

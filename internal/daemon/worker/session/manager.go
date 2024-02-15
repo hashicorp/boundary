@@ -61,7 +61,7 @@ type Manager interface {
 
 type manager struct {
 	controllerSessionConn pbs.SessionServiceClient
-	sessionMap            sync.Map
+	sessionMap            *sync.Map
 }
 
 var _ Manager = (*manager)(nil)
@@ -74,6 +74,7 @@ func NewManager(client pbs.SessionServiceClient) (*manager, error) {
 	}
 	return &manager{
 		controllerSessionConn: client,
+		sessionMap:            new(sync.Map),
 	}, nil
 }
 

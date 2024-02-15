@@ -83,7 +83,6 @@ listener "tcp" {
 `
 
 func TestServer_ReloadListener(t *testing.T) {
-	t.Parallel()
 	require := require.New(t)
 	wg := &sync.WaitGroup{}
 
