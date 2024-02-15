@@ -2060,7 +2060,7 @@ func TestUpdateOidc(t *testing.T) {
 		{
 			name: "Only non-existent paths in Mask",
 			req: &pbs.UpdateManagedGroupRequest{
-				UpdateMask: &field_mask.FieldMask{Paths: []string{"nonexistant_field"}},
+				UpdateMask: &field_mask.FieldMask{Paths: []string{"nonexistent_field"}},
 				Item: &pb.ManagedGroup{
 					Name:        &wrapperspb.StringValue{Value: "updated name"},
 					Description: &wrapperspb.StringValue{Value: "updated desc"},
@@ -2452,7 +2452,7 @@ func TestUpdateLdap(t *testing.T) {
 		{
 			name: "Only non-existent paths in Mask",
 			req: &pbs.UpdateManagedGroupRequest{
-				UpdateMask: &field_mask.FieldMask{Paths: []string{"nonexistant_field"}},
+				UpdateMask: &field_mask.FieldMask{Paths: []string{"nonexistent_field"}},
 				Item: &pb.ManagedGroup{
 					Name:        &wrapperspb.StringValue{Value: "updated name"},
 					Description: &wrapperspb.StringValue{Value: "updated desc"},

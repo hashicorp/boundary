@@ -136,7 +136,9 @@ func createTestServers(t *testing.T) ([]*serverTestInfo, error) {
 		lInfo := &serverTestInfo{srv: srv, address: listener.Addr().String()}
 		servers = append(servers, lInfo)
 		go func(i int) {
-			servers[i].srv.Serve(listener)
+			if err := servers[i].srv.Serve(listener); err != nil {
+				t.Logf("error serving: %v", err)
+			}
 		}(i)
 	}
 

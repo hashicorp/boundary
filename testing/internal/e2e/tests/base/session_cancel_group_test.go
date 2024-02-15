@@ -192,7 +192,7 @@ func TestApiCreateGroup(t *testing.T) {
 		require.NoError(t, err)
 	})
 	uClient := users.NewClient(client)
-	_, err = uClient.SetAccounts(ctx, newUserId, 0, []string{newAcctId})
+	_, err = uClient.SetAccounts(ctx, newUserId, 0, []string{newAcctId}, users.WithAutomaticVersioning(true))
 	require.NoError(t, err)
 
 	gClient := groups.NewClient(client)

@@ -202,7 +202,7 @@ func Test_UpdateLdap(t *testing.T) {
 		{
 			name: "non-existent-paths-in-mask",
 			req: &pbs.UpdateAuthMethodRequest{
-				UpdateMask: &field_mask.FieldMask{Paths: []string{"nonexistant_field"}},
+				UpdateMask: &field_mask.FieldMask{Paths: []string{"nonexistent_field"}},
 				Item: &pb.AuthMethod{
 					Name:        &wrapperspb.StringValue{Value: "updated name"},
 					Description: &wrapperspb.StringValue{Value: "updated desc"},

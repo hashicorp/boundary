@@ -456,9 +456,9 @@ func TestService_ListManagedGroups(t *testing.T) {
 		mg1 := oidc.TestManagedGroup(t, conn, authMethod, oidc.TestFakeManagedGroupFilter)
 		mg2 := oidc.TestManagedGroup(t, conn, authMethod, oidc.TestFakeManagedGroupFilter)
 		t.Cleanup(func() {
-			repo.DeleteManagedGroup(ctx, org.GetPublicId(), mg1.GetPublicId())
+			_, err := repo.DeleteManagedGroup(ctx, org.GetPublicId(), mg1.GetPublicId())
 			require.NoError(t, err)
-			repo.DeleteManagedGroup(ctx, org.GetPublicId(), mg2.GetPublicId())
+			_, err = repo.DeleteManagedGroup(ctx, org.GetPublicId(), mg2.GetPublicId())
 			require.NoError(t, err)
 			// Run analyze to update count estimate
 			_, err = sqlDb.ExecContext(ctx, "analyze")

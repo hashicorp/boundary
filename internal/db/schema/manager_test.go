@@ -620,7 +620,7 @@ func TestApplyMigrations_BadSQL(t *testing.T) {
 				LatestVersion: 1,
 				Migrations: migration.Migrations{
 					2: migration.Migration{
-						Statements: []byte(`select 1 from nonexistanttable;`),
+						Statements: []byte(`select 1 from nonexistenttable;`),
 						Edition:    "oss",
 						Version:    2,
 					},

@@ -176,7 +176,9 @@ func defaultBoundaryTokenReader(ctx context.Context, cp ClientProvider) (cache.B
 		if err != nil {
 			return nil, err
 		}
-		c.SetAddr(addr)
+		if err := c.SetAddr(addr); err != nil {
+			return nil, err
+		}
 		c.SetToken(tok)
 		atClient := authtokens.NewClient(c)
 

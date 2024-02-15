@@ -291,7 +291,11 @@ func TestNewServerIntegration(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, s)
 			s.Start()
-			t.Cleanup(func() { s.Shutdown() })
+			t.Cleanup(func() {
+				if err := s.Shutdown(); err != nil {
+					t.Logf("error shutting down: %v", err)
+				}
+			})
 
 			addrs := make([]string, 0, len(s.bundles))
 			for _, b := range s.bundles {
