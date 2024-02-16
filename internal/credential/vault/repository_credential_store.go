@@ -96,7 +96,7 @@ func (r *Repository) CreateCredentialStore(ctx context.Context, cs *CredentialSt
 	missing := available.missing(requiredCapabilities)
 	if len(missing) > 0 {
 		return nil,
-			errors.New(ctx, errors.VaultTokenMissingCapabilities, op, fmt.Sprintf("missing capabilites: %v", missing))
+			errors.New(ctx, errors.VaultTokenMissingCapabilities, op, fmt.Sprintf("missing capabilities: %v", missing))
 	}
 
 	renewedToken, err := client.renewToken(ctx)
@@ -494,7 +494,7 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 		if len(missing) > 0 {
 			return nil,
 				db.NoRowsAffected,
-				errors.New(ctx, errors.VaultTokenMissingCapabilities, op, fmt.Sprintf("missing capabilites: %v", missing))
+				errors.New(ctx, errors.VaultTokenMissingCapabilities, op, fmt.Sprintf("missing capabilities: %v", missing))
 		}
 	}
 	if updateToken {

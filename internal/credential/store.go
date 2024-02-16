@@ -40,7 +40,7 @@ type StoreListQueryResult struct {
 	CaCert []byte
 	// Optional TLS server name of the credential store.
 	TlsServerName string
-	// Optionally specifices whether to skip TLS verification of the credential store.
+	// Optionally specifies whether to skip TLS verification of the credential store.
 	TlsSkipVerify bool
 	// Optional worker filter of the credential store.
 	WorkerFilter string

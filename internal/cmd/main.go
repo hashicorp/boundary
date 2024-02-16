@@ -272,10 +272,10 @@ func RunCustom(args []string, runOpts *RunOptions) (exitCode int) {
 				return exitCode
 			}
 			if !strings.Contains(api.LastOutputStringError.Error(), api.ErrOutputStringRequest) {
-				runOpts.Stdout.Write([]byte(fmt.Sprintf("Error creating request string: %s\n", api.LastOutputStringError.Error())))
+				_, _ = runOpts.Stdout.Write([]byte(fmt.Sprintf("Error creating request string: %s\n", api.LastOutputStringError.Error())))
 				return 1
 			}
-			runOpts.Stdout.Write([]byte(fmt.Sprintf("%s\n", api.LastOutputStringError.CurlString())))
+			_, _ = runOpts.Stdout.Write([]byte(fmt.Sprintf("%s\n", api.LastOutputStringError.CurlString())))
 			return 0
 		}
 	} else if err != nil {

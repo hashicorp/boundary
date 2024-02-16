@@ -79,25 +79,9 @@ func TestPopulateMeta(t *testing.T) {
 
 func TestOpenBSRMethods(t *testing.T) {
 	ctx := context.Background()
-
-	protocol := Protocol("TEST")
+	protocol := TestRegisterSummaryAllocFunc(t)
 
 	keys, err := kms.CreateKeys(ctx, kms.TestWrapper(t), "session")
-	require.NoError(t, err)
-
-	err = RegisterSummaryAllocFunc(protocol, ChannelContainer, func(ctx context.Context) Summary {
-		return &BaseChannelSummary{Id: "TEST_CHANNEL_ID", ConnectionRecordingId: "TEST_CONNECTION_RECORDING_ID"}
-	})
-	require.NoError(t, err)
-
-	err = RegisterSummaryAllocFunc(protocol, SessionContainer, func(ctx context.Context) Summary {
-		return &BaseSessionSummary{Id: "TEST_SESSION_ID", ConnectionCount: 1}
-	})
-	require.NoError(t, err)
-
-	err = RegisterSummaryAllocFunc(protocol, ConnectionContainer, func(ctx context.Context) Summary {
-		return &BaseConnectionSummary{Id: "TEST_CONNECTION_ID", ChannelCount: 1}
-	})
 	require.NoError(t, err)
 
 	f := &fstest.MemFS{}
@@ -473,28 +457,13 @@ func TestOpenBSRMethods_WithoutSummaryAllocFunc(t *testing.T) {
 func TestCloseBSRMethods(t *testing.T) {
 	ctx := context.Background()
 
-	protocol := Protocol("TEST_CLOSED_FILE")
+	protocol := TestRegisterSummaryAllocFunc(t)
 	sessionRecordingId := "sr_012344567890"
 	sessionId := "s_012344567890"
 	connectionId := "connection"
 	channelId := "channel"
 
 	keys, err := kms.CreateKeys(ctx, kms.TestWrapper(t), "session")
-	require.NoError(t, err)
-
-	err = RegisterSummaryAllocFunc(protocol, ChannelContainer, func(ctx context.Context) Summary {
-		return &BaseChannelSummary{Id: channelId, ConnectionRecordingId: connectionId}
-	})
-	require.NoError(t, err)
-
-	err = RegisterSummaryAllocFunc(protocol, SessionContainer, func(ctx context.Context) Summary {
-		return &BaseSessionSummary{Id: sessionId, ConnectionCount: 1}
-	})
-	require.NoError(t, err)
-
-	err = RegisterSummaryAllocFunc(protocol, ConnectionContainer, func(ctx context.Context) Summary {
-		return &BaseConnectionSummary{Id: connectionId, ChannelCount: 1}
-	})
 	require.NoError(t, err)
 
 	f := fstest.NewMemFS(fstest.WithOriginalFile())

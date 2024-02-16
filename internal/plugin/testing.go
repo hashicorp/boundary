@@ -105,12 +105,12 @@ func TestPlugin(t testing.TB, conn *db.DB, name string, opt ...TestOption) *Plug
 
 	if opts.withHostFlag {
 		// add the host supported flag
-		repo.AddSupportFlag(context.Background(), p, PluginTypeHost)
+		require.NoError(t, repo.AddSupportFlag(context.Background(), p, PluginTypeHost))
 	}
 
 	if opts.withStorageFlag {
 		// add the storage supported flag
-		repo.AddSupportFlag(context.Background(), p, PluginTypeStorage)
+		require.NoError(t, repo.AddSupportFlag(context.Background(), p, PluginTypeStorage))
 	}
 
 	return p

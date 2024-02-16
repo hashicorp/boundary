@@ -79,7 +79,7 @@ func (r *Repository) cacheSupportState(ctx context.Context, u *user) (*cacheSupp
 }
 
 // lookupRefreshToken returns the last known valid refresh token or an empty
-// string if one is unkonwn. No error is returned if no valid refresh token is
+// string if one is unknown. No error is returned if no valid refresh token is
 // found.
 func (r *Repository) lookupRefreshToken(ctx context.Context, u *user, resourceType resourceType) (*refreshToken, error) {
 	const op = "cache.(Repsoitory).lookupRefreshToken"
@@ -198,7 +198,10 @@ func upsertRefreshToken(ctx context.Context, writer db.Writer, u *user, rt resou
 
 	switch tok {
 	case "":
-		writer.Delete(ctx, refTok)
+		_, err := writer.Delete(ctx, refTok)
+		if err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
 	default:
 		onConflict := &db.OnConflict{
 			Target: db.Columns{"user_id", "resource_type"},

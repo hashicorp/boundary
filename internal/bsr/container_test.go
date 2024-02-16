@@ -118,20 +118,8 @@ func TestGetFailedItems(t *testing.T) {
 }
 
 func TestSessionValidateChecksums(t *testing.T) {
-	t.Parallel()
 	ctx := context.Background()
-
-	protocol := Protocol("TEST")
-	RegisterSummaryAllocFunc(protocol, SessionContainer, func(ctx context.Context) Summary {
-		return &BaseSessionSummary{Id: "s_123456789", ConnectionCount: 1}
-	})
-	RegisterSummaryAllocFunc(protocol, ConnectionContainer, func(ctx context.Context) Summary {
-		return &BaseConnectionSummary{Id: "cr_123456789", ChannelCount: 1}
-	})
-	RegisterSummaryAllocFunc(protocol, ChannelContainer, func(ctx context.Context) Summary {
-		return &BaseChannelSummary{Id: "chr_123456789", ConnectionRecordingId: "cr_123456789"}
-	})
-
+	protocol := TestRegisterSummaryAllocFunc(t)
 	cases := []struct {
 		name              string
 		c                 *container

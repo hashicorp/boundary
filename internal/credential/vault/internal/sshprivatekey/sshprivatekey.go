@@ -99,7 +99,7 @@ func defaultExtract(sd data, usernameAttr, privateKeyAttr, passphraseAttr string
 // kv2Extract looks for the the usernameAttr and privateKeyAttr in the embedded
 // 'data' field within the data map.
 //
-// Additionaly it validates the data is in the expected KV-v2 format:
+// Additionally it validates the data is in the expected KV-v2 format:
 //
 //	{
 //		"data": {},

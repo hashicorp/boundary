@@ -86,7 +86,7 @@ type Config struct {
 	// search query to trigger an inline refresh.
 	MaxSearchStaleness time.Duration
 	// The maximum amount of time a refresh should block a search request from
-	// completeing before it times out.
+	// completing before it times out.
 	MaxSearchRefreshTimeout time.Duration
 }
 
@@ -176,7 +176,9 @@ func defaultBoundaryTokenReader(ctx context.Context, cp ClientProvider) (cache.B
 		if err != nil {
 			return nil, err
 		}
-		c.SetAddr(addr)
+		if err := c.SetAddr(addr); err != nil {
+			return nil, err
+		}
 		c.SetToken(tok)
 		atClient := authtokens.NewClient(c)
 

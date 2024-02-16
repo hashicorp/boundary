@@ -45,7 +45,7 @@ func TestCliAuthenticatePrimary(t *testing.T) {
 
 	// Get last line from output (authentication response)
 	var buf bytes.Buffer
-	io.Copy(&buf, f)
+	_, _ = io.Copy(&buf, f)
 	parts := strings.Split(strings.TrimSpace(buf.String()), "\r\n")
 	response := parts[len(parts)-1]
 

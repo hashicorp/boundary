@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/nodeenrollment/rotation"
 	nodeefile "github.com/hashicorp/nodeenrollment/storage/file"
 	"github.com/hashicorp/nodeenrollment/types"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -35,7 +36,9 @@ func TestUpstreamService(t *testing.T) (UpstreamMessageServiceClientProducer, *t
 	// sending upstream requests
 	initStorage, err := nodeefile.New(testCtx)
 	require.NoError(t, err)
-	t.Cleanup(func() { initStorage.Cleanup(testCtx) })
+	t.Cleanup(func() {
+		assert.NoError(t, initStorage.Cleanup(testCtx))
+	})
 	_, err = rotation.RotateRootCertificates(testCtx, initStorage)
 	require.NoError(t, err)
 	initNodeCreds, err := types.NewNodeCredentials(testCtx, initStorage)

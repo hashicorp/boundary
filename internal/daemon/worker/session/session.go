@@ -214,7 +214,7 @@ func (s *sess) GetLocalConnections() map[string]ConnInfo {
 	return res
 }
 
-// Return local tofu token, if availble; otherwise return the tofu token from the resp
+// Return local tofu token, if available; otherwise return the tofu token from the resp
 func (s *sess) GetTofuToken() string {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
@@ -352,7 +352,9 @@ func (s *sess) RequestConnectConnection(ctx context.Context, info *pbs.ConnectCo
 	if err != nil {
 		return err
 	}
-	s.ApplyLocalConnectionStatus(info.GetConnectionId(), st)
+	if err := s.ApplyLocalConnectionStatus(info.GetConnectionId(), st); err != nil {
+		return fmt.Errorf("error applying local connection status: %w", err)
+	}
 	return nil
 }
 

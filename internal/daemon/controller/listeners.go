@@ -46,6 +46,8 @@ func closeListener(_ context.Context, l net.Listener, _ any) error {
 }
 
 func (c *Controller) startListeners() error {
+	const op = "controller.startListeners"
+
 	servers := make([]func(), 0, len(c.conf.Listeners))
 
 	grpcServer, gwTicket, err := newGrpcServer(c.baseContext, c.IamRepoFn, c.AuthTokenRepoFn, c.ServersRepoFn, c.PasswordAuthRepoFn, c.OidcRepoFn, c.LdapRepoFn, c.kms, c.conf.Eventer)
@@ -62,7 +64,13 @@ func (c *Controller) startListeners() error {
 
 	c.apiGrpcServerListener = newGrpcServerListener()
 	servers = append(servers, func() {
-		go c.apiGrpcServer.Serve(c.apiGrpcServerListener)
+		go func() {
+			if err := c.apiGrpcServer.Serve(c.apiGrpcServerListener); err != nil {
+				// Use a background context as we might be shutting down and the
+				// base context might be canceled.
+				event.WriteError(context.Background(), op, fmt.Errorf("api grpc server returned with non-nil err: %w", err))
+			}
+		}()
 	})
 
 	for i := range c.apiListeners {

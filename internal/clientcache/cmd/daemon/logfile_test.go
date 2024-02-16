@@ -98,8 +98,9 @@ func TestRotation(t *testing.T) {
 	// write 1 mb and see it all contained in a single log file
 	toWrite := make([]byte, 1024)
 	for i := 0; i < 1024; i++ {
-		rand.Read(toWrite)
-		_, err := l.Write(toWrite)
+		_, err := rand.Read(toWrite)
+		require.NoError(t, err)
+		_, err = l.Write(toWrite)
 		require.NoError(t, err)
 	}
 	ret, err := os.ReadDir(dir)
@@ -121,8 +122,9 @@ func TestRotation(t *testing.T) {
 
 	// write another 1 mb and see a third log file is created
 	for i := 0; i < 1024; i++ {
-		rand.Read(toWrite)
-		_, err := l.Write(toWrite)
+		_, err := rand.Read(toWrite)
+		require.NoError(t, err)
+		_, err = l.Write(toWrite)
 		require.NoError(t, err)
 	}
 	ret, err = os.ReadDir(dir)
@@ -131,8 +133,9 @@ func TestRotation(t *testing.T) {
 
 	// and a 4th (3 backups plus the cache.log file)
 	for i := 0; i < 1024; i++ {
-		rand.Read(toWrite)
-		_, err := l.Write(toWrite)
+		_, err := rand.Read(toWrite)
+		require.NoError(t, err)
+		_, err = l.Write(toWrite)
 		require.NoError(t, err)
 	}
 

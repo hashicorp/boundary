@@ -157,7 +157,7 @@ func TestGet(t *testing.T) {
 			res:     &pbs.GetGroupResponse{Item: wantOrgGroup},
 		},
 		{
-			name: "Get a non existant Group",
+			name: "Get a non existent Group",
 			req:  &pbs.GetGroupRequest{Id: globals.GroupPrefix + "_DoesntExis"},
 			res:  nil,
 			err:  handlers.ApiErrorWithCode(codes.NotFound),
@@ -181,7 +181,7 @@ func TestGet(t *testing.T) {
 			res:     &pbs.GetGroupResponse{Item: wantProjGroup},
 		},
 		{
-			name:    "Project Scoped Get a non existant Group",
+			name:    "Project Scoped Get a non existent Group",
 			scopeId: pg.GetScopeId(),
 			req:     &pbs.GetGroupRequest{Id: globals.GroupPrefix + "_DoesntExis"},
 			res:     nil,
@@ -1254,10 +1254,10 @@ func TestUpdate(t *testing.T) {
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
-			name:    "Only non-existant paths in Mask",
+			name:    "Only non-existent paths in Mask",
 			scopeId: og.GetScopeId(),
 			req: &pbs.UpdateGroupRequest{
-				UpdateMask: &field_mask.FieldMask{Paths: []string{"nonexistant_field"}},
+				UpdateMask: &field_mask.FieldMask{Paths: []string{"nonexistent_field"}},
 				Item: &pb.Group{
 					Name:        &wrapperspb.StringValue{Value: "updated name"},
 					Description: &wrapperspb.StringValue{Value: "updated desc"},

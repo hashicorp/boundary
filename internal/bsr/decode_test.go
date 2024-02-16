@@ -18,15 +18,19 @@ import (
 )
 
 func init() {
-	bsr.RegisterChunkType("TEST", "TEST", func(_ context.Context, bc *bsr.BaseChunk, data []byte) (bsr.Chunk, error) {
+	if err := bsr.RegisterChunkType("TEST", "TEST", func(_ context.Context, bc *bsr.BaseChunk, data []byte) (bsr.Chunk, error) {
 		return &testChunk{
 			BaseChunk: bc,
 			Data:      data,
 		}, nil
-	})
-	bsr.RegisterChunkType("TEST", "ERRR", func(_ context.Context, bc *bsr.BaseChunk, data []byte) (bsr.Chunk, error) {
+	}); err != nil {
+		panic(err)
+	}
+	if err := bsr.RegisterChunkType("TEST", "ERRR", func(_ context.Context, bc *bsr.BaseChunk, data []byte) (bsr.Chunk, error) {
 		return nil, errors.New("error in decode function")
-	})
+	}); err != nil {
+		panic(err)
+	}
 }
 
 func TestChunkDecoder(t *testing.T) {

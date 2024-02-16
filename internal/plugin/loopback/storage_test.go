@@ -555,7 +555,7 @@ func TestLoopbackHeadObject(t *testing.T) {
 			expectedErr: codes.InvalidArgument,
 		},
 		{
-			name: "emtpy object key",
+			name: "empty object key",
 			request: &plgpb.HeadObjectRequest{
 				Bucket: &storagebuckets.StorageBucket{
 					BucketName: "aws_s3_mock",
@@ -731,7 +731,7 @@ func TestLoopbackGetObject(t *testing.T) {
 			expectedErr: codes.InvalidArgument,
 		},
 		{
-			name: "emtpy object key",
+			name: "empty object key",
 			request: &plgpb.GetObjectRequest{
 				Bucket: &storagebuckets.StorageBucket{
 					BucketName: "aws_s3_mock",
@@ -1078,7 +1078,7 @@ func TestLoopbackPutObject(t *testing.T) {
 			expectedErr: codes.PermissionDenied,
 		},
 		{
-			name: "emtpy-object-data",
+			name: "empty-object-data",
 			request: &plgpb.PutObjectRequest{
 				Bucket: &storagebuckets.StorageBucket{
 					BucketName: "object_store",

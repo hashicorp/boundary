@@ -804,5 +804,8 @@ func pingEndpoint(ctx context.Context, client HTTPClient, endpointType, method, 
 	if err != nil {
 		return 0, errors.New(ctx, errors.Unknown, op, fmt.Sprintf("request to %s endpoint failed", endpointType), errors.WithWrap(err))
 	}
+	if resp.Body != nil {
+		resp.Body.Close()
+	}
 	return resp.StatusCode, nil
 }

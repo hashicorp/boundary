@@ -708,7 +708,7 @@ func TestRefresh(t *testing.T) {
 		assert.ElementsMatch(t, retSess[2:], cachedSessions)
 	})
 
-	t.Run("error propogates up", func(t *testing.T) {
+	t.Run("error propagates up", func(t *testing.T) {
 		s, err := db.Open(ctx)
 		require.NoError(t, err)
 		r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(boundaryAuthTokens))
@@ -758,9 +758,9 @@ func TestRefresh(t *testing.T) {
 		require.NoError(t, err)
 		assert.Len(t, us, 1)
 
-		rs.Refresh(ctx,
+		require.NoError(t, rs.Refresh(ctx,
 			WithSessionRetrievalFunc(testStaticResourceRetrievalFunc[*sessions.Session](t, nil, nil)),
-			WithTargetRetrievalFunc(testStaticResourceRetrievalFunc[*targets.Target](t, nil, nil)))
+			WithTargetRetrievalFunc(testStaticResourceRetrievalFunc[*targets.Target](t, nil, nil))))
 
 		ps, err = r.listTokens(ctx, u)
 		require.NoError(t, err)
@@ -858,7 +858,7 @@ func TestRecheckCachingSupport(t *testing.T) {
 		assert.Empty(t, got)
 	})
 
-	t.Run("error propogates up", func(t *testing.T) {
+	t.Run("error propagates up", func(t *testing.T) {
 		s, err := db.Open(ctx)
 		require.NoError(t, err)
 		r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(boundaryAuthTokens))

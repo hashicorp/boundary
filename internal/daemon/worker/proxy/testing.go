@@ -48,6 +48,7 @@ func TestWsConn(t testing.TB, ctx context.Context) (clientConn, proxyConn *webso
 	time.Sleep(time.Duration(1.5 * float64(time.Second)))
 	clientConn, _, err = websocket.Dial(ctx, fmt.Sprintf("ws://%s", l.Addr().String()), nil)
 	require.NoError(err)
+	t.Cleanup(func() { _ = clientConn.Close(websocket.StatusGoingAway, "done") })
 	wg.Wait()
 	return
 }

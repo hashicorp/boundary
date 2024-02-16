@@ -49,7 +49,7 @@ type BoundaryStatus struct {
 	Address string `json:"address,omitempty"`
 	// Whether the controller responses are supported by the cache
 	CacheSupport string `json:"cache_support,omitempty"`
-	// How long ago the Boundary instance was checked for cache compatability
+	// How long ago the Boundary instance was checked for cache compatibility
 	LastSupportCheck time.Duration `json:"last_support_check,omitempty"`
 }
 
@@ -112,7 +112,10 @@ func newStatusHandlerFunc(ctx context.Context, repo *cache.Repository, socketAdd
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
-		w.Write(j)
+		if _, err := w.Write(j); err != nil {
+			writeError(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}, nil
 }
 

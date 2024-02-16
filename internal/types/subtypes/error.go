@@ -4,7 +4,7 @@
 package subtypes
 
 // UnknownSubtypeIDError is an error type that describes an invalid
-// resource sub-type identifer. For example, this authentication sub-type
+// resource sub-type identifier. For example, this authentication sub-type
 // ID "ampwd_1234567890" is an error because the prefix "ampwd" is invalid.
 type UnknownSubtypeIDError struct {
 	// ID is the resource identifier

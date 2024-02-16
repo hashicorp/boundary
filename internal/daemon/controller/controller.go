@@ -551,7 +551,7 @@ func (c *Controller) Start() error {
 				-1,
 			)
 			if err != nil {
-				errors.Wrap(c.baseContext, err, op)
+				event.WriteError(c.baseContext, op, fmt.Errorf("connection management ticker exited with error: %w", err))
 			}
 		}()
 	}

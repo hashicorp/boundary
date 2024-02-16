@@ -46,11 +46,14 @@ func TestStatus(t *testing.T) {
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	org, prj := iam.TestScopes(t, iamRepo)
 
-	serverRepo, _ := server.NewRepository(ctx, rw, rw, kms)
-	serverRepo.UpsertController(ctx, &store.Controller{
+	serverRepo, err := server.NewRepository(ctx, rw, rw, kms)
+	require.NoError(t, err)
+	_, err = serverRepo.UpsertController(ctx, &store.Controller{
 		PrivateId: "test_controller1",
 		Address:   "127.0.0.1",
 	})
+	require.NoError(t, err)
+
 	serversRepoFn := func() (*server.Repository, error) {
 		return serverRepo, nil
 	}
@@ -482,11 +485,14 @@ func TestStatusSessionClosed(t *testing.T) {
 	kms := kms.TestKms(t, conn, wrapper)
 	org, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 
-	serverRepo, _ := server.NewRepository(ctx, rw, rw, kms)
-	serverRepo.UpsertController(ctx, &store.Controller{
+	serverRepo, err := server.NewRepository(ctx, rw, rw, kms)
+	require.NoError(t, err)
+	_, err = serverRepo.UpsertController(ctx, &store.Controller{
 		PrivateId: "test_controller1",
 		Address:   "127.0.0.1",
 	})
+	require.NoError(t, err)
+
 	serversRepoFn := func() (*server.Repository, error) {
 		return serverRepo, nil
 	}
@@ -672,10 +678,11 @@ func TestStatusDeadConnection(t *testing.T) {
 	org, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 
 	serverRepo, _ := server.NewRepository(ctx, rw, rw, kms)
-	serverRepo.UpsertController(ctx, &store.Controller{
+	_, err := serverRepo.UpsertController(ctx, &store.Controller{
 		PrivateId: "test_controller1",
 		Address:   "127.0.0.1",
 	})
+	require.NoError(t, err)
 
 	worker1 := server.TestKmsWorker(t, conn, wrapper)
 
@@ -826,11 +833,13 @@ func TestStatusWorkerWithKeyId(t *testing.T) {
 	kms := kms.TestKms(t, conn, wrapper)
 	org, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 
-	serverRepo, _ := server.NewRepository(ctx, rw, rw, kms)
-	serverRepo.UpsertController(ctx, &store.Controller{
+	serverRepo, err := server.NewRepository(ctx, rw, rw, kms)
+	require.NoError(t, err)
+	_, err = serverRepo.UpsertController(ctx, &store.Controller{
 		PrivateId: "test_controller1",
 		Address:   "127.0.0.1",
 	})
+	require.NoError(t, err)
 	serversRepoFn := func() (*server.Repository, error) {
 		return serverRepo, nil
 	}

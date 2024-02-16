@@ -80,7 +80,7 @@ func TestTarget_Create(t *testing.T) {
 			if tt.create {
 				id, err := db.NewPublicId(ctx, globals.TcpTargetPrefix)
 				require.NoError(err)
-				got.SetPublicId(ctx, id)
+				require.NoError(got.SetPublicId(ctx, id))
 				err = db.New(conn).Create(ctx, got)
 				if tt.wantCreateErr {
 					assert.Error(err)
@@ -121,7 +121,7 @@ func TestTarget_Delete(t *testing.T) {
 
 				id, err := db.NewPublicId(ctx, globals.TcpTargetPrefix)
 				require.NoError(t, err)
-				tar.SetPublicId(ctx, id)
+				require.NoError(t, tar.SetPublicId(ctx, id))
 				tar.SetName(tcp.TestTargetName(t, proj.PublicId))
 				return tar
 			}(),
@@ -133,7 +133,7 @@ func TestTarget_Delete(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			deleteTarget := tcp.NewTestTarget(ctx, "")
-			deleteTarget.SetPublicId(ctx, tt.target.GetPublicId())
+			require.NoError(deleteTarget.SetPublicId(ctx, tt.target.GetPublicId()))
 			deletedRows, err := rw.Delete(context.Background(), deleteTarget)
 			if tt.wantErr {
 				require.Error(err)
@@ -146,7 +146,7 @@ func TestTarget_Delete(t *testing.T) {
 			}
 			assert.Equal(tt.wantRowsDeleted, deletedRows)
 			foundTarget := tcp.NewTestTarget(ctx, "")
-			foundTarget.SetPublicId(ctx, tt.target.GetPublicId())
+			require.NoError(foundTarget.SetPublicId(ctx, tt.target.GetPublicId()))
 			err = rw.LookupById(context.Background(), foundTarget)
 			require.Error(err)
 			assert.True(errors.IsNotFoundError(err))
@@ -267,7 +267,7 @@ func TestTarget_Update(t *testing.T) {
 			tar := tcp.TestTarget(ctx, t, conn, proj.PublicId, id, target.WithDescription(id))
 
 			updateTarget := tcp.NewTestTarget(ctx, tt.args.ProjectId)
-			updateTarget.SetPublicId(ctx, tar.GetPublicId())
+			require.NoError(updateTarget.SetPublicId(ctx, tar.GetPublicId()))
 			updateTarget.SetName(tt.args.name)
 			updateTarget.SetDescription(tt.args.description)
 
@@ -285,7 +285,7 @@ func TestTarget_Update(t *testing.T) {
 			assert.Equal(tt.wantRowsUpdate, updatedRows)
 			assert.NotEqual(tar.GetUpdateTime(), updateTarget.GetUpdateTime())
 			foundTarget := tcp.NewTestTarget(ctx, tt.args.ProjectId)
-			foundTarget.SetPublicId(ctx, tar.GetPublicId())
+			require.NoError(foundTarget.SetPublicId(ctx, tar.GetPublicId()))
 			err = rw.LookupByPublicId(ctx, foundTarget)
 			require.NoError(err)
 			assert.True(proto.Equal(updateTarget.(*tcp.Target).Target, foundTarget.(*tcp.Target).Target))
@@ -313,7 +313,7 @@ func TestTarget_Update(t *testing.T) {
 		assert.Equal(1, updatedRows)
 
 		foundTarget, _ := target.New(ctx, tcp.Subtype, proj2.PublicId)
-		foundTarget.SetPublicId(ctx, projTarget.GetPublicId())
+		require.NoError(foundTarget.SetPublicId(ctx, projTarget.GetPublicId()))
 		err = rw.LookupByPublicId(ctx, foundTarget)
 		require.NoError(err)
 		assert.Equal(id, projTarget.GetName())

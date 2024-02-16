@@ -69,7 +69,8 @@ func TestCliTcpTargetConnectTargetAndScp(t *testing.T) {
 	fileSource := fmt.Sprintf("%s/%s_src.txt", testDir, t.Name())
 	f, err := os.Create(fileSource)
 	require.NoError(t, err)
-	io.CopyN(f, rand.Reader, 256000)
+	_, err = io.CopyN(f, rand.Reader, 256000)
+	require.NoError(t, err)
 
 	fi, err := f.Stat()
 	require.NoError(t, err)

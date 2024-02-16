@@ -11,7 +11,6 @@ import (
 	"regexp"
 
 	"github.com/hashicorp/boundary/globals"
-	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
@@ -168,7 +167,7 @@ func Handler(ctx context.Context, f LimiterFunc, next http.Handler) http.Handler
 			// and handled above. And even that would be unexpected, given how
 			// the limiter is initialized and the checks done by
 			// extractResourceAction.
-			errors.Wrap(ctx, err, op)
+			event.WriteError(ctx, op, fmt.Errorf("failed to set policy header: %w", err))
 		}
 
 		if !allowed {

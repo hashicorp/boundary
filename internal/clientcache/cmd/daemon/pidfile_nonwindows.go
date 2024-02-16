@@ -45,7 +45,7 @@ func writePidFile(ctx context.Context, pidFile string) (pidCleanup, error) {
 	if err := l.Lock(); err != nil {
 		return closeAndDeleteFileFn, errors.Wrap(ctx, err, op)
 	}
-	// Now that we have aquired the lock and verified we own the pid file
+	// Now that we have acquired the lock and verified we own the pid file
 	// we can remove it always when cleaning up.
 	unlockAndCleanFn := func() error {
 		return l.Remove()

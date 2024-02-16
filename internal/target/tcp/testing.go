@@ -25,9 +25,8 @@ func TestTarget(ctx context.Context, t testing.TB, conn *db.DB, projectId, name 
 	require.NoError(err)
 	id, err := db.NewPublicId(ctx, TargetPrefix)
 	require.NoError(err)
-	tar.SetPublicId(ctx, id)
-	err = rw.Create(ctx, tar)
-	require.NoError(err)
+	require.NoError(tar.SetPublicId(ctx, id))
+	require.NoError(rw.Create(ctx, tar))
 
 	if opts.WithAddress != "" {
 		address, err := target.NewAddress(ctx, tar.GetPublicId(), opts.WithAddress)

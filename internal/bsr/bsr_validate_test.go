@@ -23,23 +23,8 @@ func TestBSR_Validate_ValidateBSR(t *testing.T) {
 	connectionId := "test_connection"
 	channelId := "test_channel"
 	sessionId := "s_01234567881"
-	protocol := Protocol("TEST_VALIDATE_BSR_PROTOCOL")
 	fs := &fstest.MemFS{}
-
-	err := RegisterSummaryAllocFunc(protocol, ChannelContainer, func(ctx context.Context) Summary {
-		return &BaseChannelSummary{Id: "chr_123456789", ConnectionRecordingId: connectionId}
-	})
-	require.NoError(t, err)
-
-	err = RegisterSummaryAllocFunc(protocol, SessionContainer, func(ctx context.Context) Summary {
-		return &BaseSessionSummary{Id: "s_123456789", ConnectionCount: 1}
-	})
-	require.NoError(t, err)
-
-	err = RegisterSummaryAllocFunc(protocol, ConnectionContainer, func(ctx context.Context) Summary {
-		return &BaseConnectionSummary{Id: "cr_123456789", ChannelCount: 1}
-	})
-	require.NoError(t, err)
+	protocol := TestRegisterSummaryAllocFunc(t)
 
 	// Setup keys
 	keys, err := kms.CreateKeys(ctx, kms.TestWrapper(t), sessionId)
@@ -406,25 +391,9 @@ func TestBSR_Validate_ValidateBSR(t *testing.T) {
 func TestBSR_Validate_ValidateContainer(t *testing.T) {
 	ctx := context.Background()
 
-	protocol := Protocol("TEST_VALIDATE_CONTAINER_PROTOCOL")
-	connectionId := "test_connection"
 	channelId := "chr_123456789"
 	sessionId := "s_01234567881"
-
-	err := RegisterSummaryAllocFunc(protocol, ChannelContainer, func(ctx context.Context) Summary {
-		return &BaseChannelSummary{Id: channelId, ConnectionRecordingId: connectionId}
-	})
-	require.NoError(t, err)
-
-	err = RegisterSummaryAllocFunc(protocol, SessionContainer, func(ctx context.Context) Summary {
-		return &BaseSessionSummary{Id: sessionId, ConnectionCount: 1}
-	})
-	require.NoError(t, err)
-
-	err = RegisterSummaryAllocFunc(protocol, ConnectionContainer, func(ctx context.Context) Summary {
-		return &BaseConnectionSummary{Id: connectionId, ChannelCount: 1}
-	})
-	require.NoError(t, err)
+	protocol := TestRegisterSummaryAllocFunc(t)
 
 	cases := []struct {
 		name                        string

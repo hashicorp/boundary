@@ -23,7 +23,9 @@ func Test_WriterCreate(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		tx, err := dbw.New(db).Begin(testCtx)
 		require.NoError(err)
-		defer tx.Rollback(testCtx)
+		defer func() {
+			assert.NoError(tx.Rollback(testCtx))
+		}()
 		w := Writer{tx.DB()}
 		user := oplog_test.TestUser{
 			Name: "foo-" + testId(t),
@@ -45,7 +47,9 @@ func Test_WriterCreate(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		tx, err := dbw.New(db).Begin(testCtx)
 		require.NoError(err)
-		defer tx.Rollback(testCtx)
+		defer func() {
+			assert.NoError(tx.Rollback(testCtx))
+		}()
 		w := Writer{tx.DB()}
 		err = dbw.New(w.DB).Create(testCtx, nil)
 		require.Error(err)
@@ -61,7 +65,9 @@ func Test_WriterDelete(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		tx, err := dbw.New(db).Begin(testCtx)
 		require.NoError(err)
-		defer tx.Rollback(testCtx)
+		defer func() {
+			assert.NoError(tx.Rollback(testCtx))
+		}()
 		w := Writer{tx.DB()}
 
 		id := testId(t)

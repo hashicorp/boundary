@@ -66,10 +66,14 @@ func TestCliTcpTargetConnectPostgres(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	f.Write([]byte("\\pset pager off\n")) // disables pagination in output
-	f.Write([]byte("\\dt\n"))             // list all tables
-	f.Write([]byte("\\q\n"))              // exit psql session
-	f.Write([]byte{4})                    // EOT (End of Transmission - marks end of file stream)
+	_, err = f.Write([]byte("\\pset pager off\n")) // disables pagination in output
+	require.NoError(t, err)
+	_, err = f.Write([]byte("\\dt\n")) // list all tables
+	require.NoError(t, err)
+	_, err = f.Write([]byte("\\q\n")) // exit psql session
+	require.NoError(t, err)
+	_, err = f.Write([]byte{4}) // EOT (End of Transmission - marks end of file stream)
+	require.NoError(t, err)
 
 	var buf bytes.Buffer
 	io.Copy(&buf, f)
