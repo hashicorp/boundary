@@ -1830,4 +1830,25 @@ func TestListPagination(t *testing.T) {
 			protocmp.IgnoreFields(&pbs.ListCredentialsResponse{}, "list_token"),
 		),
 	)
+
+	// Create unauthenticated user
+	unauthAt := authtoken.TestAuthToken(t, conn, kmsRepo, o.GetPublicId())
+	unauthR := iam.TestRole(t, conn, prj.GetPublicId())
+	_ = iam.TestUserRole(t, conn, unauthR.GetPublicId(), unauthAt.GetIamUserId())
+
+	// Make a request with the unauthenticated user,
+	// ensure the response is 403 forbidden.
+	requestInfo = authpb.RequestInfo{
+		TokenFormat: uint32(auth.AuthTokenTypeBearer),
+		PublicId:    unauthAt.GetPublicId(),
+		Token:       unauthAt.GetToken(),
+	}
+	requestContext = context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
+	ctx = auth.NewVerifierContext(requestContext, iamRepoFn, tokenRepoFn, serversRepoFn, kmsRepo, &requestInfo)
+
+	_, err = s.ListCredentials(ctx, &pbs.ListCredentialsRequest{
+		CredentialStoreId: credStore.PublicId,
+	})
+	require.Error(err)
+	assert.Equal(handlers.ForbiddenError(), err)
 }

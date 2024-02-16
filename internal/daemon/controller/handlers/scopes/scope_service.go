@@ -185,10 +185,6 @@ func (s *Service) ListScopes(ctx context.Context, req *pbs.ListScopesRequest) (*
 	if err != nil {
 		return nil, err
 	}
-	// If no scopes match, return an empty response
-	if len(scopeIds) == 0 {
-		return &pbs.ListScopesResponse{}, nil
-	}
 
 	pageSize := int(s.maxPageSize)
 	// Use the requested page size only if it is smaller than

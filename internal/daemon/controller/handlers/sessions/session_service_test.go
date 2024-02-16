@@ -746,10 +746,13 @@ func TestListPagination(t *testing.T) {
 		return server.NewRepository(ctx, rw, rw, kms)
 	}
 
-	o, pWithSessions := iam.TestScopes(t, iamRepo)
+	o, pWithSessions := iam.TestScopes(t, iamRepo, iam.WithSkipDefaultRoleCreation(true))
 
 	at := authtoken.TestAuthToken(t, conn, kms, o.GetPublicId())
 	uId := at.GetIamUserId()
+	pr := iam.TestRole(t, conn, pWithSessions.GetPublicId())
+	_ = iam.TestUserRole(t, conn, pr.GetPublicId(), at.GetIamUserId())
+	_ = iam.TestRoleGrant(t, conn, pr.GetPublicId(), "ids=*;type=session;actions=read:self,list,cancel:self")
 
 	hc := static.TestCatalogs(t, conn, pWithSessions.GetPublicId(), 1)[0]
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
@@ -1063,6 +1066,28 @@ func TestListPagination(t *testing.T) {
 			protocmp.IgnoreFields(&pbs.ListSessionsResponse{}, "list_token"),
 		),
 	)
+
+	// Create unauthenticated user
+	unauthAt := authtoken.TestAuthToken(t, conn, kms, o.GetPublicId())
+	unauthR := iam.TestRole(t, conn, pWithSessions.GetPublicId())
+	_ = iam.TestUserRole(t, conn, unauthR.GetPublicId(), unauthAt.GetIamUserId())
+
+	// Make a request with the unauthenticated user,
+	// ensure the response contains the pagination parameters.
+	requestInfo = authpb.RequestInfo{
+		TokenFormat: uint32(auth.AuthTokenTypeBearer),
+		PublicId:    unauthAt.GetPublicId(),
+		Token:       unauthAt.GetToken(),
+	}
+	requestContext = context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
+	ctx = auth.NewVerifierContext(requestContext, iamRepoFn, tokenRepoFn, serversRepoFn, kms, &requestInfo)
+
+	_, err = s.ListSessions(ctx, &pbs.ListSessionsRequest{
+		ScopeId:   "global",
+		Recursive: true,
+	})
+	require.Error(t, err)
+	assert.ErrorIs(t, handlers.ForbiddenError(), err)
 }
 
 func convertStates(in []*session.State) (string, []*pb.SessionState) {

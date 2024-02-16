@@ -174,10 +174,6 @@ func (s Service) ListHostCatalogs(ctx context.Context, req *pbs.ListHostCatalogs
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	// If no scopes match, return an empty response
-	if len(scopeIds) == 0 {
-		return &pbs.ListHostCatalogsResponse{}, nil
-	}
 	pageSize := int(s.maxPageSize)
 	// Use the requested page size only if it is smaller than
 	// the configured max.
