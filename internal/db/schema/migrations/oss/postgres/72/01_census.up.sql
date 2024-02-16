@@ -12,6 +12,7 @@ begin;
 
   -- This index ensures that there will only ever be one row in the table.
   -- See: https://www.postgresql.org/docs/current/indexes-expressional.html
+  -- Dropped in 82/09_census_add_metric.up.sql
   create unique index census_last_uploaded_one_row
     on census_last_uploaded((last_uploaded_at is not null));
 
