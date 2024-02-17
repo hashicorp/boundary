@@ -175,7 +175,7 @@ func TestService_ListManagedGroups(t *testing.T) {
 			filterFunc := func(_ context.Context, mg auth.ManagedGroup) (bool, error) {
 				return true, nil
 			}
-			_, err = ldap.ListManagedGroupsPage(ctx, []byte("some hash"), 1, filterFunc, nil, repo, authMethod.GetPublicId())
+			_, err := ldap.ListManagedGroupsPage(ctx, []byte("some hash"), 1, filterFunc, nil, repo, authMethod.GetPublicId())
 			require.ErrorContains(t, err, "missing token")
 		})
 		t.Run("wrong token type", func(t *testing.T) {
@@ -263,7 +263,7 @@ func TestService_ListManagedGroups(t *testing.T) {
 			filterFunc := func(_ context.Context, mg auth.ManagedGroup) (bool, error) {
 				return true, nil
 			}
-			_, err = ldap.ListManagedGroupsRefresh(ctx, []byte("some hash"), 1, filterFunc, nil, repo, authMethod.GetPublicId())
+			_, err := ldap.ListManagedGroupsRefresh(ctx, []byte("some hash"), 1, filterFunc, nil, repo, authMethod.GetPublicId())
 			require.ErrorContains(t, err, "missing token")
 		})
 		t.Run("nil repo", func(t *testing.T) {
@@ -341,7 +341,7 @@ func TestService_ListManagedGroups(t *testing.T) {
 			filterFunc := func(_ context.Context, mg auth.ManagedGroup) (bool, error) {
 				return true, nil
 			}
-			_, err = ldap.ListManagedGroupsRefreshPage(ctx, []byte("some hash"), 1, filterFunc, nil, repo, authMethod.GetPublicId())
+			_, err := ldap.ListManagedGroupsRefreshPage(ctx, []byte("some hash"), 1, filterFunc, nil, repo, authMethod.GetPublicId())
 			require.ErrorContains(t, err, "missing token")
 		})
 		t.Run("wrong token type", func(t *testing.T) {

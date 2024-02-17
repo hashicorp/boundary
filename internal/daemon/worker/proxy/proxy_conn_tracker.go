@@ -9,11 +9,7 @@ import (
 )
 
 // ProxyState contains the current state of proxies in this process.
-var ProxyState proxyState
-
-func init() {
-	ProxyState.proxyCount = new(atomic.Int64)
-}
+var ProxyState proxyState = proxyState{proxyCount: new(atomic.Int64)}
 
 type proxyState struct {
 	proxyCount *atomic.Int64

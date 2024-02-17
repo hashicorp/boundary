@@ -415,7 +415,7 @@ func Test_GetObjectStream(t *testing.T) {
 		}, time.Second*10, time.Millisecond*50)
 
 		require.Eventually(func() bool {
-			return stream.streamClosed && stream.IsStreamClosed()
+			return stream.IsStreamClosed()
 		}, time.Second*10, time.Millisecond*50)
 	})
 }

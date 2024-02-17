@@ -839,7 +839,7 @@ func TestService_ListUsers(t *testing.T) {
 			filterFunc := func(_ context.Context, r *iam.User) (bool, error) {
 				return true, nil
 			}
-			_, err = iam.ListUsersRefresh(ctx, []byte("some hash"), 1, filterFunc, nil, repo, []string{org.GetPublicId()})
+			_, err := iam.ListUsersRefresh(ctx, []byte("some hash"), 1, filterFunc, nil, repo, []string{org.GetPublicId()})
 			require.ErrorContains(t, err, "missing token")
 		})
 		t.Run("wrong token type", func(t *testing.T) {
@@ -1368,7 +1368,7 @@ func TestService_ListGroups(t *testing.T) {
 			filterFunc := func(_ context.Context, r *iam.Group) (bool, error) {
 				return true, nil
 			}
-			_, err = iam.ListGroupsPage(ctx, []byte("some hash"), 1, filterFunc, nil, repo, relevantScopes)
+			_, err := iam.ListGroupsPage(ctx, []byte("some hash"), 1, filterFunc, nil, repo, relevantScopes)
 			require.ErrorContains(t, err, "missing token")
 		})
 		t.Run("wrong token type", func(t *testing.T) {
@@ -1456,7 +1456,7 @@ func TestService_ListGroups(t *testing.T) {
 			filterFunc := func(_ context.Context, r *iam.Group) (bool, error) {
 				return true, nil
 			}
-			_, err = iam.ListGroupsRefresh(ctx, []byte("some hash"), 1, filterFunc, nil, repo, relevantScopes)
+			_, err := iam.ListGroupsRefresh(ctx, []byte("some hash"), 1, filterFunc, nil, repo, relevantScopes)
 			require.ErrorContains(t, err, "missing token")
 		})
 		t.Run("wrong token type", func(t *testing.T) {

@@ -65,13 +65,12 @@ type grpcLogFakerLogHolder struct {
 	logger hclog.Logger
 }
 
-var grpcLogFaker *GRPCLogFaker
+var grpcLogFaker *GRPCLogFaker = &GRPCLogFaker{
+	loggingEnabled: new(atomic.Bool),
+	logger:         new(atomic.Pointer[grpcLogFakerLogHolder]),
+}
 
 func init() {
-	grpcLogFaker = &GRPCLogFaker{
-		loggingEnabled: new(atomic.Bool),
-		logger:         new(atomic.Pointer[grpcLogFakerLogHolder]),
-	}
 	grpclog.SetLoggerV2(grpcLogFaker)
 }
 

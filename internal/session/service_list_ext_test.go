@@ -155,7 +155,7 @@ func TestService_List(t *testing.T) {
 			filterFunc := func(_ context.Context, s *session.Session) (bool, error) {
 				return true, nil
 			}
-			_, err = session.ListPage(ctx, []byte("some hash"), 1, filterFunc, nil, repo, true)
+			_, err := session.ListPage(ctx, []byte("some hash"), 1, filterFunc, nil, repo, true)
 			require.ErrorContains(t, err, "missing token")
 		})
 		t.Run("wrong token type", func(t *testing.T) {

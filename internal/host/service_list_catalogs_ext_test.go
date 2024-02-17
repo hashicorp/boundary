@@ -209,7 +209,7 @@ func TestCatalogService_List(t *testing.T) {
 			filterFunc := func(_ context.Context, c host.Catalog, plgs map[string]*plugin.Plugin) (bool, error) {
 				return true, nil
 			}
-			_, _, err = host.ListCatalogsPage(ctx, []byte("some hash"), 1, filterFunc, nil, repo, []string{prj.PublicId})
+			_, _, err := host.ListCatalogsPage(ctx, []byte("some hash"), 1, filterFunc, nil, repo, []string{prj.PublicId})
 			require.ErrorContains(t, err, "missing token")
 		})
 		t.Run("wrong token type", func(t *testing.T) {
@@ -297,7 +297,7 @@ func TestCatalogService_List(t *testing.T) {
 			filterFunc := func(_ context.Context, c host.Catalog, plgs map[string]*plugin.Plugin) (bool, error) {
 				return true, nil
 			}
-			_, _, err = host.ListCatalogsRefresh(ctx, []byte("some hash"), 1, filterFunc, nil, repo, []string{prj.PublicId})
+			_, _, err := host.ListCatalogsRefresh(ctx, []byte("some hash"), 1, filterFunc, nil, repo, []string{prj.PublicId})
 			require.ErrorContains(t, err, "missing token")
 		})
 		t.Run("missing repo", func(t *testing.T) {

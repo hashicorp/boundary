@@ -181,7 +181,7 @@ func TestService_ListManagedGroups(t *testing.T) {
 			filterFunc := func(_ context.Context, mg auth.ManagedGroup) (bool, error) {
 				return true, nil
 			}
-			_, err = oidc.ListManagedGroupsPage(ctx, []byte("some hash"), 1, filterFunc, nil, repo, authMethod.GetPublicId())
+			_, err := oidc.ListManagedGroupsPage(ctx, []byte("some hash"), 1, filterFunc, nil, repo, authMethod.GetPublicId())
 			require.ErrorContains(t, err, "missing token")
 		})
 		t.Run("wrong token type", func(t *testing.T) {
@@ -347,7 +347,7 @@ func TestService_ListManagedGroups(t *testing.T) {
 			filterFunc := func(_ context.Context, mg auth.ManagedGroup) (bool, error) {
 				return true, nil
 			}
-			_, err = oidc.ListManagedGroupsRefreshPage(ctx, []byte("some hash"), 1, filterFunc, nil, repo, authMethod.GetPublicId())
+			_, err := oidc.ListManagedGroupsRefreshPage(ctx, []byte("some hash"), 1, filterFunc, nil, repo, authMethod.GetPublicId())
 			require.ErrorContains(t, err, "missing token")
 		})
 		t.Run("wrong token type", func(t *testing.T) {
