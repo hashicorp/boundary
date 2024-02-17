@@ -17,7 +17,7 @@ var (
 	TcpHandlerName = "tcp"
 
 	// handlers is the map of registered handlers
-	handlers *sync.Map
+	handlers *sync.Map = new(sync.Map)
 
 	// ErrUnknownProtocol specifies the provided protocol has no registered handler
 	ErrUnknownProtocol = errors.New("proxy: handler not found for protocol")
@@ -30,10 +30,6 @@ var (
 	// not registered nil, ErrUnknownProtocol is returned.
 	GetHandler = tcpOnly
 )
-
-func init() {
-	handlers = new(sync.Map)
-}
 
 // RecordingManager allows a handler for a protocol that supports recording.
 type RecordingManager any

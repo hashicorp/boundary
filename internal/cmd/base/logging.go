@@ -69,19 +69,19 @@ var grpcLogFaker *GRPCLogFaker
 
 func init() {
 	grpcLogFaker = &GRPCLogFaker{
-		log:    new(atomic.Bool),
-		logger: new(atomic.Pointer[grpcLogFakerLogHolder]),
+		loggingEnabled: new(atomic.Bool),
+		logger:         new(atomic.Pointer[grpcLogFakerLogHolder]),
 	}
 	grpclog.SetLoggerV2(grpcLogFaker)
 }
 
 type GRPCLogFaker struct {
-	logger *atomic.Pointer[grpcLogFakerLogHolder]
-	log    *atomic.Bool
+	logger         *atomic.Pointer[grpcLogFakerLogHolder]
+	loggingEnabled *atomic.Bool
 }
 
 func (g *GRPCLogFaker) SetLogOnOff(on bool) {
-	g.log.Store(on)
+	g.loggingEnabled.Store(on)
 }
 
 func (g *GRPCLogFaker) SetLogger(logger hclog.Logger) {
@@ -110,7 +110,7 @@ func (g *GRPCLogFaker) Fatalln(args ...any) {
 }
 
 func (g *GRPCLogFaker) Info(args ...any) {
-	if g.log.Load() {
+	if g.loggingEnabled.Load() {
 		if l := g.logger.Load(); l != nil {
 			if l.logger.IsDebug() {
 				l.logger.Debug(fmt.Sprint(args...))
@@ -120,7 +120,7 @@ func (g *GRPCLogFaker) Info(args ...any) {
 }
 
 func (g *GRPCLogFaker) Infof(format string, args ...any) {
-	if g.log.Load() {
+	if g.loggingEnabled.Load() {
 		if l := g.logger.Load(); l != nil {
 			if l.logger.IsDebug() {
 				l.logger.Debug(fmt.Sprintf(format, args...))
@@ -130,7 +130,7 @@ func (g *GRPCLogFaker) Infof(format string, args ...any) {
 }
 
 func (g *GRPCLogFaker) Infoln(args ...any) {
-	if g.log.Load() {
+	if g.loggingEnabled.Load() {
 		if l := g.logger.Load(); l != nil {
 			if l.logger.IsDebug() {
 				l.logger.Debug(fmt.Sprintln(args...))
@@ -140,7 +140,7 @@ func (g *GRPCLogFaker) Infoln(args ...any) {
 }
 
 func (g *GRPCLogFaker) Warning(args ...any) {
-	if g.log.Load() {
+	if g.loggingEnabled.Load() {
 		if l := g.logger.Load(); l != nil {
 			if l.logger.IsDebug() {
 				l.logger.Debug(fmt.Sprint(args...))
@@ -150,7 +150,7 @@ func (g *GRPCLogFaker) Warning(args ...any) {
 }
 
 func (g *GRPCLogFaker) Warningf(format string, args ...any) {
-	if g.log.Load() {
+	if g.loggingEnabled.Load() {
 		if l := g.logger.Load(); l != nil {
 			if l.logger.IsDebug() {
 				l.logger.Debug(fmt.Sprintf(format, args...))
@@ -160,7 +160,7 @@ func (g *GRPCLogFaker) Warningf(format string, args ...any) {
 }
 
 func (g *GRPCLogFaker) Warningln(args ...any) {
-	if g.log.Load() {
+	if g.loggingEnabled.Load() {
 		if l := g.logger.Load(); l != nil {
 			if l.logger.IsDebug() {
 				l.logger.Debug(fmt.Sprintln(args...))
@@ -170,7 +170,7 @@ func (g *GRPCLogFaker) Warningln(args ...any) {
 }
 
 func (g *GRPCLogFaker) Error(args ...any) {
-	if g.log.Load() {
+	if g.loggingEnabled.Load() {
 		if l := g.logger.Load(); l != nil {
 			if l.logger.IsDebug() {
 				l.logger.Debug(fmt.Sprint(args...))
@@ -180,7 +180,7 @@ func (g *GRPCLogFaker) Error(args ...any) {
 }
 
 func (g *GRPCLogFaker) Errorf(format string, args ...any) {
-	if g.log.Load() {
+	if g.loggingEnabled.Load() {
 		if l := g.logger.Load(); l != nil {
 			if l.logger.IsDebug() {
 				l.logger.Debug(fmt.Sprintf(format, args...))
@@ -190,7 +190,7 @@ func (g *GRPCLogFaker) Errorf(format string, args ...any) {
 }
 
 func (g *GRPCLogFaker) Errorln(args ...any) {
-	if g.log.Load() {
+	if g.loggingEnabled.Load() {
 		if l := g.logger.Load(); l != nil {
 			if l.logger.IsDebug() {
 				l.logger.Debug(fmt.Sprintln(args...))
