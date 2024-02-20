@@ -6,17 +6,15 @@ package base_test
 import (
 	"context"
 	"fmt"
-	"os/exec"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/testing/internal/e2e"
 	"github.com/hashicorp/boundary/testing/internal/e2e/boundary"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/sync/errgroup"
 )
 
-// TestCliTcpTargetConnectExecLongLastingScript verifies that SSH requests sent to target
+// TestCliTcpTargetConnectExecLongLastingScript verifies that SSH requests sent to TCP target
 // can execute long-lasting scripts successfully.
 // It sends two SSH requests:
 // - to execute the script saved on the target
@@ -86,10 +84,9 @@ func TestCliTcpTargetConnectExecLongLastingScript(t *testing.T) {
 	require.NoError(t, output.Err, string(output.Stderr))
 
 	// Send SSH requests to the target to execute long-lasting scripts
-	var eg errgroup.Group
-	eg.Go(func() error {
-		t.Log("Executing the long-lasting script saved on the target...")
-		cmd := exec.CommandContext(ctx, "/usr/bin/ssh",
+	t.Log("Executing the long-lasting script saved on the target...")
+	output = e2e.RunCommand(ctx, "ssh",
+		e2e.WithArgs(
 			"-v",
 			"-l", c.TargetSshUser,
 			"-i", c.TargetSshKeyPath,
@@ -97,13 +94,13 @@ func TestCliTcpTargetConnectExecLongLastingScript(t *testing.T) {
 			"-o", "StrictHostKeyChecking=no",
 			"-p", proxyPort,
 			"localhost",
-			"./long_lasting_test_script.sh")
-		return cmd.Run()
-	})
+			"./long_lasting_test_script.sh"),
+	)
+	require.NoError(t, output.Err, string(output.Stderr))
 
-	eg.Go(func() error {
-		t.Log("Executing a long-lasting script sent with the ssh request...")
-		cmd := exec.CommandContext(ctx, "/usr/bin/ssh",
+	t.Log("Executing a long-lasting script sent with the ssh request...")
+	output = e2e.RunCommand(ctx, "ssh",
+		e2e.WithArgs(
 			"-v",
 			"-l", c.TargetSshUser,
 			"-i", c.TargetSshKeyPath,
@@ -111,9 +108,7 @@ func TestCliTcpTargetConnectExecLongLastingScript(t *testing.T) {
 			"-o", "StrictHostKeyChecking=no",
 			"-p", proxyPort,
 			"localhost",
-			"sleep 10")
-		return cmd.Run()
-	})
-
-	require.NoError(t, eg.Wait())
+			"sleep 5"),
+	)
+	require.NoError(t, output.Err, string(output.Stderr))
 }
