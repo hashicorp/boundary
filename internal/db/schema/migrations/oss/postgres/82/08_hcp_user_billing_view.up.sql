@@ -64,4 +64,58 @@ begin;
     'the count of active users for the all months.'
     'The current month is a sum from the beginning of the current month '
     'until the start of the current hour (exclusive).';
+
+  create function hcp_billing_monthly_active_users_last_2_months()
+    returns table(start_time timestamp with time zone, end_time timestamp with time zone, active_user_count bigint)
+  as $$
+    select *
+      from hcp_billing_monthly_active_users_last_2_months;
+  $$ language sql
+     immutable
+     parallel safe -- all of the functions called are parallel safe
+     strict        -- means the function returns null on null input
+     set timezone to 'utc';
+  comment on function hcp_billing_monthly_active_users_last_2_months is
+    'hcp_billing_monthly_active_users_last_2_months is a function that contains '
+    'the count of active users for the current month and the previous month. '
+    'The current month is a sum from the beginning of the current month '
+    'until the start of the current hour (exclusive).'
+    'All timestamps returned are in UTC.';
+
+  create function hcp_billing_monthly_active_users_all(p_start_time timestamptz default null,
+                                                       p_end_time   timestamptz default null)
+    returns setof hcp_billing_monthly_active_users_all
+  as $$
+  begin
+    case
+    when p_start_time is not null and p_end_time is not null then
+      return query select *
+                     from hcp_billing_monthly_active_users_all
+                    where start_time >= p_start_time
+                      and end_time   <  p_end_time;
+    when p_start_time is not null then
+      return query select *
+                     from hcp_billing_monthly_active_users_all
+                    where start_time >= p_start_time;
+    when p_end_time is not null then
+      return query select *
+                     from hcp_billing_monthly_active_users_all
+                    where end_time < p_end_time;
+    else
+      return query select *
+                     from hcp_billing_monthly_active_users_all;
+    end case;
+    return;
+  end;
+  $$ language plpgsql
+     immutable
+     parallel safe -- all of the functions called are parallel safe
+     set timezone to 'utc';
+  comment on function hcp_billing_monthly_active_users_all is
+    'hcp_billing_monthly_active_users_all is a function that contains '
+    'the count of active users for the all months.'
+    'The current month is a sum from the beginning of the current month '
+    'until the start of the current hour (exclusive).'
+    'It can be provided with a start time and end time to restrict the results.'
+    'All timestamps returned are in UTC.';
 commit;
