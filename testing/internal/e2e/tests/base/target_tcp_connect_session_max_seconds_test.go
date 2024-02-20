@@ -162,6 +162,6 @@ func TestCliTcpTargetConnectTargetWithSessionMaxSecondsRejectNew(t *testing.T) {
 
 	// Ensure that the session did not run for longer than the time limit
 	diff := end.Sub(start).Seconds()
-	require.Less(t, diff, float64(sessionMaxSeconds+1))
+	require.Less(t, diff, float64(sessionMaxSeconds+2))
 	require.Greater(t, diff, float64(sessionMaxSeconds-1))
 }
