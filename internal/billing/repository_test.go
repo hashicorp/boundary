@@ -35,39 +35,26 @@ func TestRepository_New(t *testing.T) {
 			name: "valid",
 			args: args{
 				r: rw,
-				w: rw,
 			},
 			want: &Repository{
 				reader: rw,
-				writer: rw,
 			},
 		},
 		{
 			name: "nil-reader",
 			args: args{
 				r: nil,
-				w: rw,
 			},
 			want:       nil,
 			wantIsErr:  errors.InvalidParameter,
 			wantErrMsg: "billing.NewRepository: nil db reader: parameter violation: error #100",
-		},
-		{
-			name: "nil-writer",
-			args: args{
-				r: rw,
-				w: nil,
-			},
-			want:       nil,
-			wantIsErr:  errors.InvalidParameter,
-			wantErrMsg: "billing.NewRepository: nil db writer: parameter violation: error #100",
 		},
 	}
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
-			got, err := NewRepository(context.Background(), tt.args.r, tt.args.w)
+			got, err := NewRepository(context.Background(), tt.args.r)
 			if tt.wantIsErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "Unexpected error %s", err)
 				assert.Equal(tt.wantErrMsg, err.Error())

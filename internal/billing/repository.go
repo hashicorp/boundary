@@ -24,23 +24,19 @@ import (
 //     cumulative count up to the present date.
 type Repository struct {
 	reader db.Reader
-	writer db.Writer
 }
 
 // NewRepository creates a new Repository. The returned repository is not safe for concurrent go
 // routines to access it.
-func NewRepository(ctx context.Context, r db.Reader, w db.Writer) (*Repository, error) {
+func NewRepository(ctx context.Context, r db.Reader) (*Repository, error) {
 	const op = "billing.NewRepository"
 	switch {
 	case r == nil:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil db reader")
-	case w == nil:
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil db writer")
 	}
 
 	return &Repository{
 		reader: r,
-		writer: w,
 	}, nil
 }
 
@@ -81,40 +77,30 @@ func (r *Repository) MonthlyActiveUsers(ctx context.Context, opt ...Option) ([]A
 	}
 
 	var activeUsers []ActiveUsers
-	if _, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(r db.Reader, w db.Writer) error {
-		_, err := w.Exec(ctx, `set timezone to 'utc'`, nil)
-		if err != nil {
-			return err
+	rows, err := r.reader.Query(ctx, query, args)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	for rows.Next() {
+		var startTime time.Time
+		var endTime time.Time
+		var count uint64
+		if err := rows.Scan(&startTime, &endTime, &count); err != nil {
+			return nil, err
 		}
 
-		rows, err := r.Query(ctx, query, args)
-		if err != nil {
-			return err
+		// set start and end times to be in UTC
+		auUTC := ActiveUsers{
+			ActiveUsersCount: count,
+			StartTime:        startTime.UTC(),
+			EndTime:          endTime.UTC(),
 		}
-		defer rows.Close()
-		if err := rows.Err(); err != nil {
-			return err
-		}
-		for rows.Next() {
-			var start_time time.Time
-			var end_time time.Time
-			var count uint64
-			if err := rows.Scan(&start_time, &end_time, &count); err != nil {
-				return err
-			}
+		activeUsers = append(activeUsers, auUTC)
 
-			// set start and end times to be in UTC
-			auUTC := ActiveUsers{
-				ActiveUsersCount: count,
-				StartTime:        start_time.UTC(),
-				EndTime:          end_time.UTC(),
-			}
-			activeUsers = append(activeUsers, auUTC)
-
-		}
-		return nil
-	}); err != nil {
-		return nil, errors.Wrap(ctx, err, op)
 	}
 
 	return activeUsers, nil

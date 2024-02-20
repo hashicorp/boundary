@@ -451,7 +451,7 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		return server.NewRepositoryStorage(ctx, dbase, dbase, c.kms)
 	}
 	c.BillingRepoFn = func() (*billing.Repository, error) {
-		return billing.NewRepository(ctx, dbase, dbase)
+		return billing.NewRepository(ctx, dbase)
 	}
 
 	// Check that credentials are available at startup, to avoid some harmless
