@@ -9,6 +9,7 @@ import (
 	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
+	"sync"
 	"testing"
 	"time"
 
@@ -19,6 +20,7 @@ import (
 	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/server"
+	"github.com/hashicorp/boundary/internal/util"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/configutil/v2"
 	"github.com/hashicorp/go-secure-stdlib/listenerutil"
@@ -152,7 +154,6 @@ func TestWorkerNew(t *testing.T) {
 					Listeners: []*base.ServerListener{
 						{Config: &listenerutil.ListenerConfig{Purpose: []string{"proxy"}}},
 					},
-					Eventer: &event.Eventer{},
 				},
 				RawConfig: &config.Config{
 					Worker: &config.Worker{
@@ -177,6 +178,11 @@ func TestWorkerNew(t *testing.T) {
 			tt.in.Logger = hclog.Default()
 			if tt.in.RawConfig == nil {
 				tt.in.RawConfig = &config.Config{SharedConfig: &configutil.SharedConfig{DisableMlock: true}}
+			}
+			if util.IsNil(tt.in.Eventer) {
+				require.NoError(t, event.InitSysEventer(hclog.Default(), &sync.Mutex{}, "worker_test", event.WithEventerConfig(&event.EventerConfig{})))
+				defer event.TestResetSystEventer(t)
+				tt.in.Eventer = event.SysEventer()
 			}
 
 			w, err := New(context.Background(), tt.in)
@@ -325,6 +331,9 @@ func TestSetupWorkerAuthStorage(t *testing.T) {
 }
 
 func Test_Worker_getSessionTls(t *testing.T) {
+	require.NoError(t, event.InitSysEventer(hclog.Default(), &sync.Mutex{}, "worker_test", event.WithEventerConfig(&event.EventerConfig{})))
+	defer event.TestResetSystEventer(t)
+
 	conf := &Config{
 		Server: &base.Server{
 			Listeners: []*base.ServerListener{
@@ -332,7 +341,8 @@ func Test_Worker_getSessionTls(t *testing.T) {
 				{Config: &listenerutil.ListenerConfig{Purpose: []string{"proxy"}}},
 				{Config: &listenerutil.ListenerConfig{Purpose: []string{"cluster"}}},
 			},
-			Logger: hclog.Default(),
+			Eventer: event.SysEventer(),
+			Logger:  hclog.Default(),
 		},
 	}
 	conf.RawConfig = &config.Config{SharedConfig: &configutil.SharedConfig{DisableMlock: true}}

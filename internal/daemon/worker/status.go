@@ -197,6 +197,12 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager sess
 		event.WriteError(cancelCtx, op, errors.New("worker name and keyId are both empty; at least one is needed to identify a worker"),
 			event.WithInfoMsg("error making status request to controller"))
 	}
+	// If the local storage state is unknown, and we have recording storage set, get the state from the recording storage
+	// and set it on the worker. This is done once to ensure that the worker has the correct state for the first status
+	// call.
+	if w.localStorageState.Load() == server.UnknownLocalStorageState && w.RecordingStorage != nil {
+		w.localStorageState.Store(w.RecordingStorage.GetLocalStorageState(cancelCtx))
+	}
 	versionInfo := version.Get()
 	connectionState := w.downstreamConnManager.Connected()
 	result, err := client.Status(statusCtx, &pbs.StatusRequest{

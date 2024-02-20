@@ -109,6 +109,8 @@ var recordingStorageFactory func(
 
 var recorderManagerFactory func(*Worker) (recorderManager, error)
 
+var eventListenerFactory func(*Worker) (event.EventListener, error)
+
 var initializeReverseGrpcClientCollectors = noopInitializePromCollectors
 
 func noopInitializePromCollectors(r prometheus.Registerer) {}
@@ -142,11 +144,15 @@ type Worker struct {
 
 	recorderManager recorderManager
 
-	everAuthenticated       *ua.Uint32
-	lastStatusSuccess       *atomic.Value
-	workerStartTime         time.Time
-	operationalState        *atomic.Value
-	localStorageState       *atomic.Value
+	everAuthenticated *ua.Uint32
+	lastStatusSuccess *atomic.Value
+	workerStartTime   time.Time
+	operationalState  *atomic.Value
+	// localStorageState is the current state of the local storage.
+	// The local storage state is updated based on the local storage events.
+	localStorageState *atomic.Value
+
+	storageEventListener    event.EventListener
 	upstreamConnectionState *atomic.Value
 
 	controllerMultihopConn *atomic.Value
@@ -328,6 +334,14 @@ func New(ctx context.Context, conf *Config) (*Worker, error) {
 	}
 	// FIXME: This is really ugly, but works.
 	session.CloseCallTimeout.Store(w.successfulStatusGracePeriod.Load())
+
+	if eventListenerFactory != nil {
+		var err error
+		w.storageEventListener, err = eventListenerFactory(w)
+		if err != nil {
+			return nil, fmt.Errorf("error calling eventListenerFactory: %w", err)
+		}
+	}
 
 	if recorderManagerFactory != nil {
 		var err error
@@ -547,6 +561,16 @@ func (w *Worker) Start() error {
 		return errors.Wrap(w.baseContext, err, op, errors.WithMsg("error starting worker listeners"))
 	}
 
+	if w.storageEventListener != nil {
+		if err := w.storageEventListener.Start(w.baseContext); err != nil {
+			return errors.Wrap(w.baseContext, err, op, errors.WithMsg("error starting worker event listener"))
+		}
+
+		if w.RecordingStorage != nil {
+			w.localStorageState.Store(w.RecordingStorage.GetLocalStorageState(w.baseContext))
+		}
+	}
+
 	w.operationalState.Store(server.ActiveOperationalState)
 
 	// Rather than deal with some of the potential error conditions for Add on
@@ -688,9 +712,15 @@ func (w *Worker) Shutdown() error {
 		ar.SetAddresses(nil)
 	}
 
+	err := w.storageEventListener.Shutdown(w.baseContext)
+	if err != nil {
+		return fmt.Errorf("error shutting down worker event listener: %w", err)
+	}
+
 	w.started.Store(false)
 	w.tickerWg.Wait()
 	recManWg.Wait()
+
 	if w.conf.Eventer != nil {
 		if err := w.conf.Eventer.FlushNodes(context.Background()); err != nil {
 			return fmt.Errorf("error flushing worker eventer nodes: %w", err)

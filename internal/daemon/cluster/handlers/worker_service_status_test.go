@@ -1366,10 +1366,11 @@ func TestWorkerLocalStorageStateStatus(t *testing.T) {
 	kms := kms.TestKms(t, conn, wrapper)
 
 	serverRepo, _ := server.NewRepository(ctx, rw, rw, kms)
-	serverRepo.UpsertController(ctx, &store.Controller{
+	_, err := serverRepo.UpsertController(ctx, &store.Controller{
 		PrivateId: "test_controller1",
 		Address:   "127.0.0.1",
 	})
+	require.NoError(t, err)
 	serversRepoFn := func() (*server.Repository, error) {
 		return serverRepo, nil
 	}

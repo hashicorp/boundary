@@ -9,6 +9,7 @@ import (
 	"io/fs"
 
 	"github.com/hashicorp/boundary/internal/boundary"
+	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/storagebuckets"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 )
@@ -33,6 +34,8 @@ type RecordingStorage interface {
 	// CreateTemp creates a temporary file that is cleaned up when closed. All temp files
 	// are also removed when storage is initialized.
 	CreateTemp(ctx context.Context, p string) (TempFile, error)
+	// GetLocalStorageState returns the current local storage state of the storage instance.
+	GetLocalStorageState(ctx context.Context) server.LocalStorageState
 }
 
 // Bucket is a resource that represents a bucket in an external object store
@@ -78,29 +81,3 @@ type Writer interface {
 	io.Writer
 	WriteAndClose([]byte) (int, error)
 }
-
-// LocalStorageState is represents the state of local storage.
-type LocalStorageState string
-
-const (
-	// AvailableLocalStorageState indicates local storage is
-	// (minimumAvailableDiskSpace * 1.25) above the minimum disk space threshold.
-	// This could indicates recovery from a low, critical, or out of disk space
-	// local storage state.
-	AvailableLocalStorageState LocalStorageState = "available"
-	// LowStorageLocalStorageState indicates local storage is below the minimum
-	// disk space threshold.
-	LowStorageLocalStorageState LocalStorageState = "low storage"
-	// CriticallyLowStorageLocalStorageState indicates local storage is below the
-	// half the minimum disk space threshold.
-	CriticallyLowStorageLocalStorageState LocalStorageState = "critically low storage"
-	// OutOfStorageLocalStorageState indicates local storage is below 1MB.
-	OutOfStorageLocalStorageState LocalStorageState = "out of storage"
-	// NotConfiguredLocalStorageState indicates the local storage path is not
-	// configured. Intervention from an admin might be necessary to help resolve
-	// the issue.
-	NotConfiguredLocalStorageState LocalStorageState = "not configured"
-	// UnknownLocalStorageState is the default state for local storage. It indicates
-	// the local storage state is unknown.
-	UnknownLocalStorageState LocalStorageState = "unknown"
-)

@@ -66,6 +66,7 @@ const (
 	WorkerNotFoundForRequest = 133 // WorkerNotFoundForRequest represents an error when no appropriate worker is found which meets the conditions required to handle a request
 	Closed                   = 134 // Closed represents an error when an operation cannot be completed because the thing being operated on is closed
 	ChecksumMismatch         = 135 // ChecksumMismatch represents an error when a checksum is mismatched
+	Paused                   = 136 // Paused represents an error when an operation cannot be completed because the thing being operated on is paused
 
 	InvalidListToken Code = 136 // InvalidListToken represents an error where the provided list token is invalid
 
