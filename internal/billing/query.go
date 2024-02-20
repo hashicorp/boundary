@@ -6,17 +6,14 @@ package billing
 const (
 	activeUsersLastTwoMonthsQuery = `
 select *
-  from hcp_billing_monthly_active_users_last_2_months
+  from hcp_billing_monthly_active_users_last_2_months();
 `
 	activeUsersWithStartTimeQuery = `
 select *
-  from hcp_billing_monthly_active_users_all
- where start_time >= @start_time
+  from hcp_billing_monthly_active_users_all(@start_time);
 `
 	activeUsersWithStartTimeAndEndTimeQuery = `
 select *
-  from hcp_billing_monthly_active_users_all
- where start_time >= @start_time
-   and end_time   <  @end_time
+  from hcp_billing_monthly_active_users_all(@start_time, @end_time);
 `
 )

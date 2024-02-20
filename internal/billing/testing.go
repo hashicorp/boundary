@@ -88,7 +88,7 @@ func TestRepo(t testing.TB, conn *db.DB) *Repository {
 	require := require.New(t)
 	rw := db.New(conn)
 
-	repo, err := NewRepository(ctx, rw, rw)
+	repo, err := NewRepository(ctx, rw)
 	require.NoError(err)
 	return repo
 }
