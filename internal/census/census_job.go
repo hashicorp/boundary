@@ -21,6 +21,7 @@ type censusJob struct {
 	r                db.Reader
 	w                db.Writer
 	lurEnabled       bool
+	emitEvents       bool
 	sessionsAgent    any
 	activeUsersAgent any
 	eventCtx         context.Context
@@ -39,6 +40,7 @@ func newCensusJob(ctx context.Context, lurEnabled bool, r db.Reader, w db.Writer
 		r:                r,
 		w:                w,
 		lurEnabled:       lurEnabled,
+		emitEvents:       false,
 		sessionsAgent:    nil,
 		activeUsersAgent: nil,
 		eventCtx:         ctx,
