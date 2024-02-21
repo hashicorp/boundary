@@ -190,6 +190,11 @@ func (b *Server) CreateDevDatabase(ctx context.Context, opt ...Option) error {
 	if _, err := b.CreateInitialTargetWithHostSources(ctx); err != nil {
 		return err
 	}
+	if !b.SkipAliasTargetCreation {
+		if err := b.CreateInitialTargetsWithAlias(ctx); err != nil {
+			return err
+		}
+	}
 
 	// now that we have passed all the error cases, reset c to be a noop so the
 	// defer doesn't do anything.
