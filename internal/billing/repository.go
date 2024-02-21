@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 )
 
@@ -65,7 +66,7 @@ func (r *Repository) MonthlyActiveUsers(ctx context.Context, opt ...Option) ([]A
 		}
 		query = activeUsersWithStartTimeQuery
 		args = append(args,
-			sql.Named("start_time", opts.withStartTime))
+			sql.Named("start_time", timestamp.New(*opts.withStartTime)))
 	}
 	if opts.withEndTime != nil {
 		if *opts.withEndTime != time.Date(opts.withEndTime.Year(), opts.withEndTime.Month(), 1, 0, 0, 0, 0, time.UTC) {
@@ -73,7 +74,7 @@ func (r *Repository) MonthlyActiveUsers(ctx context.Context, opt ...Option) ([]A
 		}
 		query = activeUsersWithStartTimeAndEndTimeQuery
 		args = append(args,
-			sql.Named("end_time", opts.withEndTime))
+			sql.Named("end_time", timestamp.New(*opts.withEndTime)))
 	}
 
 	var activeUsers []ActiveUsers
