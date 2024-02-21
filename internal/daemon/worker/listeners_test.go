@@ -89,7 +89,7 @@ func TestStartListeners(t *testing.T) {
 			}
 			w.controllerUpstreamMsgConn.Store(&dummyClientProducer)
 
-			manager, err := session.NewManager(pbs.NewSessionServiceClient(w.GrpcClientConn))
+			manager, err := session.NewManager(pbs.NewSessionServiceClient(w.GrpcClientConn.Load()))
 			require.NoError(t, err)
 			err = w.startListeners(manager)
 			if tt.expErr {

@@ -189,7 +189,7 @@ func (w *Worker) createClientConn(addr string) error {
 		return fmt.Errorf("error dialing controller for worker auth: %w", err)
 	}
 
-	w.GrpcClientConn = cc
+	w.GrpcClientConn.Store(cc)
 	w.controllerMultihopConn.Store(multihop.NewMultihopServiceClient(cc))
 
 	var producer handlers.UpstreamMessageServiceClientProducer

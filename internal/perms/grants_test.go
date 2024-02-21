@@ -132,8 +132,6 @@ func Test_ValidateType(t *testing.T) {
 func Test_MarshalingAndCloning(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
-
 	type input struct {
 		name            string
 		input           Grant
@@ -278,7 +276,7 @@ func Test_MarshalingAndCloning(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			output, err := test.input.MarshalJSON(ctx)
+			output, err := test.input.MarshalJSON()
 			require.NoError(t, err)
 			assert.Equal(t, test.jsonOutput, string(output))
 			assert.Equal(t, test.canonicalString, test.input.CanonicalString())
@@ -1342,7 +1340,7 @@ func FuzzParse(f *testing.F) {
 		if g.CanonicalString() != g2.CanonicalString() {
 			t.Errorf("grant roundtrip failed, input %q, output %q", g.CanonicalString(), g2.CanonicalString())
 		}
-		jsonBytes, err := g.MarshalJSON(ctx)
+		jsonBytes, err := g.MarshalJSON()
 		if err != nil {
 			t.Error("Failed to marshal JSON:", err)
 		}

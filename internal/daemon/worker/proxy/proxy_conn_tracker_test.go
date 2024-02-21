@@ -6,6 +6,7 @@ package proxy
 import (
 	"net/http"
 	"net/http/httptest"
+	"sync/atomic"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -14,7 +15,7 @@ import (
 
 func TestProxyStateHelpers(t *testing.T) {
 	old := ProxyState
-	ProxyState = proxyState{}
+	ProxyState = proxyState{proxyCount: new(atomic.Int64)}
 	t.Cleanup(func() {
 		ProxyState = old
 	})

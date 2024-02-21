@@ -273,7 +273,7 @@ func TestWorkerSetCloseTimeForResponse(t *testing.T) {
 	cases := []struct {
 		name             string
 		sessionCloseInfo map[string][]*pbs.CloseConnectionResponseData
-		sessionInfoMap   func() sync.Map
+		sessionInfoMap   func() *sync.Map
 		expected         []string
 		expectedClosed   map[string]struct{}
 		expectedErr      []error
@@ -288,8 +288,8 @@ func TestWorkerSetCloseTimeForResponse(t *testing.T) {
 					{ConnectionId: "bar", Status: pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CLOSED},
 				},
 			},
-			sessionInfoMap: func() sync.Map {
-				var m sync.Map
+			sessionInfoMap: func() *sync.Map {
+				m := new(sync.Map)
 				m.Store("one", &sess{
 					resp: &pbs.LookupSessionResponse{Authorization: &targets.SessionAuthorizationData{
 						SessionId: "one",
@@ -333,8 +333,8 @@ func TestWorkerSetCloseTimeForResponse(t *testing.T) {
 					{ConnectionId: "bar", Status: pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CONNECTED},
 				},
 			},
-			sessionInfoMap: func() sync.Map {
-				var m sync.Map
+			sessionInfoMap: func() *sync.Map {
+				m := new(sync.Map)
 				m.Store("one", &sess{
 					resp: &pbs.LookupSessionResponse{Authorization: &targets.SessionAuthorizationData{
 						SessionId: "one",
@@ -369,8 +369,8 @@ func TestWorkerSetCloseTimeForResponse(t *testing.T) {
 					{ConnectionId: "bar", Status: pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CLOSED},
 				},
 			},
-			sessionInfoMap: func() sync.Map {
-				var m sync.Map
+			sessionInfoMap: func() *sync.Map {
+				m := new(sync.Map)
 				m.Store("one", &sess{
 					resp: &pbs.LookupSessionResponse{Authorization: &targets.SessionAuthorizationData{
 						SessionId: "one",
@@ -400,8 +400,8 @@ func TestWorkerSetCloseTimeForResponse(t *testing.T) {
 					{ConnectionId: "bar", Status: pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CLOSED},
 				},
 			},
-			sessionInfoMap: func() sync.Map {
-				var m sync.Map
+			sessionInfoMap: func() *sync.Map {
+				m := new(sync.Map)
 				m.Store("one", &sess{
 					resp: &pbs.LookupSessionResponse{Authorization: &targets.SessionAuthorizationData{
 						SessionId: "one",
@@ -431,8 +431,8 @@ func TestWorkerSetCloseTimeForResponse(t *testing.T) {
 		{
 			name:             "empty",
 			sessionCloseInfo: make(map[string][]*pbs.CloseConnectionResponseData),
-			sessionInfoMap: func() sync.Map {
-				var m sync.Map
+			sessionInfoMap: func() *sync.Map {
+				m := new(sync.Map)
 				m.Store("one", &sess{
 					resp: &pbs.LookupSessionResponse{Authorization: &targets.SessionAuthorizationData{
 						SessionId: "one",
@@ -453,7 +453,7 @@ func TestWorkerSetCloseTimeForResponse(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			require := require.New(t)
-			manager := &manager{}
+			manager := &manager{sessionMap: new(sync.Map)}
 			manager.sessionMap = tc.sessionInfoMap()
 			actual, actualErr := setCloseTimeForResponse(manager, tc.sessionCloseInfo)
 

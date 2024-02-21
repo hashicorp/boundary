@@ -87,12 +87,12 @@ func TestRegisterHandlerFn(t *testing.T, msgType pbs.MsgType, h UpstreamMessageH
 	return func(t *testing.T) {
 		t.Helper()
 		testCtx := context.Background()
-		var cpHandlerRegistry sync.Map
+		cpHandlerRegistry := new(sync.Map)
 		upstreamMessageHandler.Range(func(k, v interface{}) bool {
 			cpHandlerRegistry.Store(k, v)
 			return true
 		})
-		var cpTypeSpecifierRegister sync.Map
+		cpTypeSpecifierRegister := new(sync.Map)
 		upstreamMessageTypeSpecifier.Range(func(k, v interface{}) bool {
 			cpTypeSpecifierRegister.Store(k, v)
 			return true

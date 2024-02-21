@@ -178,7 +178,7 @@ func (g Grant) CanonicalString() string {
 }
 
 // MarshalJSON provides a custom marshaller for grants
-func (g Grant) MarshalJSON(ctx context.Context) ([]byte, error) {
+func (g Grant) MarshalJSON() ([]byte, error) {
 	const op = "perms.(Grant).MarshalJSON"
 	res := make(map[string]any, 4)
 	if g.id != "" {
@@ -203,7 +203,7 @@ func (g Grant) MarshalJSON(ctx context.Context) ([]byte, error) {
 	}
 	b, err := json.Marshal(res)
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithCode(errors.Encode))
+		return nil, fmt.Errorf("%s: error marshaling grant: %w", op, err)
 	}
 	return b, nil
 }

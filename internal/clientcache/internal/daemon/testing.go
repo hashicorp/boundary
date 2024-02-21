@@ -71,7 +71,7 @@ func (s *TestServer) Serve(t *testing.T, opt ...Option) error {
 func (s *TestServer) AddKeyringToken(t *testing.T, address, keyring, tokenName, tokenId string, atReadFn cache.BoundaryTokenReaderFn) {
 	t.Helper()
 	ctx := context.Background()
-	r, err := cache.NewRepository(ctx, s.CacheServer.store, &sync.Map{}, s.cmd.ReadTokenFromKeyring, atReadFn)
+	r, err := cache.NewRepository(ctx, s.CacheServer.store.Load(), &sync.Map{}, s.cmd.ReadTokenFromKeyring, atReadFn)
 	require.NoError(t, err)
 
 	require.NoError(t, r.AddKeyringToken(ctx, address, cache.KeyringToken{
@@ -86,7 +86,7 @@ func (s *TestServer) AddKeyringToken(t *testing.T, address, keyring, tokenName, 
 func (s *TestServer) AddResources(t *testing.T, p *authtokens.AuthToken, tars []*targets.Target, sess []*sessions.Session, atReadFn cache.BoundaryTokenReaderFn) {
 	t.Helper()
 	ctx := context.Background()
-	r, err := cache.NewRepository(ctx, s.CacheServer.store, &sync.Map{}, s.cmd.ReadTokenFromKeyring, atReadFn)
+	r, err := cache.NewRepository(ctx, s.CacheServer.store.Load(), &sync.Map{}, s.cmd.ReadTokenFromKeyring, atReadFn)
 	require.NoError(t, err)
 
 	tarFn := func(ctx context.Context, _, tok string, _ cache.RefreshTokenValue) ([]*targets.Target, []string, cache.RefreshTokenValue, error) {
@@ -113,7 +113,7 @@ func (s *TestServer) AddResources(t *testing.T, p *authtokens.AuthToken, tars []
 func (s *TestServer) AddUnsupportedCachingData(t *testing.T, p *authtokens.AuthToken, atReadFn cache.BoundaryTokenReaderFn) {
 	t.Helper()
 	ctx := context.Background()
-	r, err := cache.NewRepository(ctx, s.CacheServer.store, &sync.Map{}, s.cmd.ReadTokenFromKeyring, atReadFn)
+	r, err := cache.NewRepository(ctx, s.CacheServer.store.Load(), &sync.Map{}, s.cmd.ReadTokenFromKeyring, atReadFn)
 	require.NoError(t, err)
 
 	tarFn := func(ctx context.Context, _, tok string, _ cache.RefreshTokenValue) ([]*targets.Target, []string, cache.RefreshTokenValue, error) {

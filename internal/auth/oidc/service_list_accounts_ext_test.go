@@ -266,7 +266,7 @@ func TestService_ListAccounts(t *testing.T) {
 			filterFunc := func(_ context.Context, a auth.Account) (bool, error) {
 				return true, nil
 			}
-			_, err = oidc.ListAccountsRefresh(ctx, []byte("some hash"), 1, filterFunc, nil, repo, authMethod.GetPublicId())
+			_, err := oidc.ListAccountsRefresh(ctx, []byte("some hash"), 1, filterFunc, nil, repo, authMethod.GetPublicId())
 			require.ErrorContains(t, err, "missing token")
 		})
 		t.Run("nil repo", func(t *testing.T) {

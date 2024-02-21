@@ -17,7 +17,7 @@ var (
 	TcpHandlerName = "tcp"
 
 	// handlers is the map of registered handlers
-	handlers sync.Map
+	handlers *sync.Map = new(sync.Map)
 
 	// ErrUnknownProtocol specifies the provided protocol has no registered handler
 	ErrUnknownProtocol = errors.New("proxy: handler not found for protocol")

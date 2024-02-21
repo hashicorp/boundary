@@ -11,11 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var registerTestProtocol *sync.Once
-
-func init() {
-	registerTestProtocol = new(sync.Once)
-}
+var registerTestProtocol *sync.Once = new(sync.Once)
 
 // TestRegisterSummaryAllocFunc registers "TEST" as a protocol for all container types
 // The channel summary will include the following:

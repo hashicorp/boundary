@@ -116,10 +116,11 @@ type Worker struct {
 
 	tickerWg sync.WaitGroup
 
-	// grpc.ClientConns are thread safe.
-	// See https://github.com/grpc/grpc-go/blob/master/Documentation/concurrency.md#clients
-	// This is exported for tests.
-	GrpcClientConn *grpc.ClientConn
+	// grpc.ClientConns are thread safe. See
+	// https://github.com/grpc/grpc-go/blob/master/Documentation/concurrency.md#clients
+	// However this is an atomic because we sometimes swap this pointer out
+	// (mostly in tests) - which isn't thread safe. This is exported for tests.
+	GrpcClientConn atomic.Pointer[grpc.ClientConn]
 
 	// receives address updates and contains the grpc resolver.
 	addressReceivers []addressReceiver
@@ -511,7 +512,7 @@ func (w *Worker) Start() error {
 		return errors.Wrap(w.baseContext, err, op, errors.WithMsg("error making controller connections"))
 	}
 
-	w.sessionManager, err = session.NewManager(pbs.NewSessionServiceClient(w.GrpcClientConn))
+	w.sessionManager, err = session.NewManager(pbs.NewSessionServiceClient(w.GrpcClientConn.Load()))
 	if err != nil {
 		return errors.Wrap(w.baseContext, err, op, errors.WithMsg("error creating session manager"))
 	}

@@ -1,0 +1,180 @@
+name: test-race
+
+on:
+  push:
+    paths-ignore:
+      - 'website/**'
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  DOCKER_MIRROR: docker.mirror.hashicorp.services
+
+jobs:
+  setup:
+    outputs:
+      go-version: ${{ steps.get-go-version.outputs.go-version }}
+      cache-go-build: ${{ steps.go-cache-paths.outputs.go-build }}
+      cache-go-mod: ${{ steps.go-cache-paths.outputs.go-mod }}
+      cache-go-bin: ${{ steps.go-cache-paths.outputs.go-bin }}
+      go-cache-key: ${{ steps.go-cache-key.outputs.key }}
+      plugin-cache-path: ${{ steps.plugin-cache-paths.outputs.path }}
+      plugin-cache-key: ${{ steps.plugin-cache-key.outputs.key }}
+    runs-on: ${{ fromJSON(vars.RUNNER) }}
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        with:
+          fetch-depth: '0'
+      - name: Determine Go version
+        id: get-go-version
+        # We use .go-version as our source of truth for current Go
+        # version, because "goenv" can react to it automatically.
+        run: |
+          echo "Building with Go $(cat .go-version)"
+          echo "go-version=$(cat .go-version)" >> "$GITHUB_OUTPUT"
+      - name: Set up Go
+        uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491 # v5.0.0
+        with:
+          go-version: "${{ steps.get-go-version.outputs.go-version }}"
+          cache: false
+      - name: Determine go cache key
+        id: go-cache-key
+        run: |
+          echo "key=${{ runner.os }}-go-${{ hashFiles('**/go.sum', './Makefile', './tools/tools.go') }}" >> "$GITHUB_OUTPUT"
+      - name: Determine Go cache paths
+        id: go-cache-paths
+        run: |
+          echo "go-build=$(go env GOCACHE)" >> "$GITHUB_OUTPUT"
+          echo "go-mod=$(go env GOMODCACHE)" >> "$GITHUB_OUTPUT"
+          echo "go-bin=$(go env GOPATH)/bin" >> "$GITHUB_OUTPUT"
+      - name: Set up Go modules cache
+        uses: actions/cache@13aacd865c20de90d75de3b17ebe84f7a17d57d2 # v4.0.0
+        with:
+          path: |
+            ${{ steps.go-cache-paths.outputs.go-build }}
+            ${{ steps.go-cache-paths.outputs.go-mod }}
+            ${{ steps.go-cache-paths.outputs.go-bin }}
+          key: ${{ steps.go-cache-key.outputs.key }}
+          restore-keys: |
+            ${{ runner.os }}-go
+      - name: Install Tools
+        run: |
+          go mod download
+          make tools
+      - name: Determine plugin cache key
+        id: plugin-cache-key
+        run: |
+          echo "key=${{ runner.os }}-plugins-${{ hashFiles('plugins/**/*.go', 'plugins/**/go.sum', './Makefile', './scripts/plugins.sh') }}" >> "$GITHUB_OUTPUT"
+      - name: Determin plugin cache path
+        id: plugin-cache-paths
+        run: |
+          echo "path=plugins/**/assets/*.gz" >> "$GITHUB_OUTPUT"
+      - name: Set up plugin cache
+        id: plugin-cache
+        uses: actions/cache@13aacd865c20de90d75de3b17ebe84f7a17d57d2 # v4.0.0
+        with:
+          path: |
+            ${{ steps.plugin-cache-paths.outputs.path }}
+          key: ${{ steps.plugin-cache-key.outputs.key }}
+          restore-keys: |
+            ${{ runner.os }}-plugin
+      - name: Build Plugins
+        if: steps.plugin-cache.outputs.cache-hit != 'true'
+        run: |
+          make build-plugins
+  test-modules:
+    needs:
+      - setup
+    runs-on: ${{ fromJSON(vars.RUNNER) }}
+    strategy:
+      matrix:
+        module: ["api", "sdk"]
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - name: Set up go
+        uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491 # v5.0.0
+        with:
+          go-version: "${{ needs.setup.outputs.go-version }}"
+          cache: false
+      - name: Set up Go modules cache
+        uses: actions/cache@13aacd865c20de90d75de3b17ebe84f7a17d57d2 # v4.0.0
+        with:
+          path: |
+            ${{ needs.setup.outputs.cache-go-build }}
+            ${{ needs.setup.outputs.cache-go-mod }}
+            ${{ needs.setup.outputs.cache-go-bin }}
+          key: ${{ needs.setup.outputs.go-cache-key }}
+          restore-keys: |
+            ${{ runner.os }}-go
+          fail-on-cache-miss: true
+      - name: Test ${{ matrix.module }} Module
+        run: |
+          make test-${{ matrix.module }}
+
+  test:
+    needs:
+      - setup
+    runs-on: ${{ fromJSON(vars.RUNNER_LARGE) }}
+    steps:
+      - name: ulimit
+        run: |
+          echo "Soft limits"
+          ulimit -Sa
+          echo "Hard limits"
+          ulimit -Ha
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - name: Set up go
+        uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491 # v5.0.0
+        with:
+          go-version: "${{ needs.setup.outputs.go-version }}"
+          cache: false
+      - name: Set up Go modules cache
+        uses: actions/cache@13aacd865c20de90d75de3b17ebe84f7a17d57d2 # v4.0.0
+        with:
+          path: |
+            ${{ needs.setup.outputs.cache-go-build }}
+            ${{ needs.setup.outputs.cache-go-mod }}
+            ${{ needs.setup.outputs.cache-go-bin }}
+          key: ${{ needs.setup.outputs.go-cache-key }}
+          restore-keys: |
+            ${{ runner.os }}-go
+          fail-on-cache-miss: true
+      - name: Set up plugin cache
+        id: plugin-cache
+        uses: actions/cache@13aacd865c20de90d75de3b17ebe84f7a17d57d2 # v4.0.0
+        with:
+          path: |
+            ${{ needs.setup.outputs.plugin-cache-path }}
+          key: ${{ needs.setup.outputs.plugin-cache-key }}
+          restore-keys: |
+            ${{ runner.os }}-plugin
+      - name: GH fix for localhost resolution
+        if: github.repository == 'hashicorp/boundary'
+        run: |
+          cat /etc/hosts && echo "-----------"
+          sudo sed -i 's/::1 *localhost ip6-localhost ip6-loopback/::1 ip6 -localhost ip6-loopback/g' /etc/hosts
+          cat /etc/hosts
+      - name: Initialize Test Database
+        run: |
+          which pg_isready || sudo apt-get update && sudo apt-get install -y postgresql-client
+          make DOCKER_ARGS='-d' PG_OPTS='-c shared_buffers=256MB -c max_connections=200000' -C testing/dbtest/docker database-up
+          until pg_isready -h 127.0.0.1; do docker container inspect boundary-sql-tests &> /dev/null || exit 255; sleep 1; done
+
+      - name: Test
+        uses: nick-fields/retry@14672906e672a08bd6eeb15720e9ed3ce869cdd4 # v2.9.0
+        env:
+          TEST_PACKAGE: "./..."
+          TEST_TIMEOUT: 120m
+          TESTARGS: -race -v
+        with:
+          max_attempts: 1
+          timeout_minutes: 120
+          retry_on: error
+          command: make test
+      - name: Cleanup
+        if: always()
+        run: |
+          make -C testing/dbtest/docker clean

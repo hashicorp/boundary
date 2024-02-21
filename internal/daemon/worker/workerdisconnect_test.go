@@ -82,7 +82,7 @@ func TestDeleteConnectedWorkers(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			prevState := tc.testWorker.Worker().GrpcClientConn.GetState()
+			prevState := tc.testWorker.Worker().GrpcClientConn.Load().GetState()
 			require.NotEqual(t, connectivity.TransientFailure, prevState)
 			require.NotEqual(t, connectivity.Shutdown, prevState)
 			_, err = serverRepo.DeleteWorker(ctx, tc.workerId)
@@ -90,12 +90,12 @@ func TestDeleteConnectedWorkers(t *testing.T) {
 			stateChangeCtx, cancel := context.WithTimeout(ctx, 4*time.Second)
 			defer cancel()
 			for {
-				tc.testWorker.Worker().GrpcClientConn.ResetConnectBackoff()
-				if !tc.testWorker.Worker().GrpcClientConn.WaitForStateChange(stateChangeCtx, prevState) {
+				tc.testWorker.Worker().GrpcClientConn.Load().ResetConnectBackoff()
+				if !tc.testWorker.Worker().GrpcClientConn.Load().WaitForStateChange(stateChangeCtx, prevState) {
 					assert.Fail(t, "State didn't change before context timed out")
 					break
 				}
-				newState := tc.testWorker.Worker().GrpcClientConn.GetState()
+				newState := tc.testWorker.Worker().GrpcClientConn.Load().GetState()
 				t.Logf("Changed from previous state: %s to new state: %s", prevState, newState)
 				if newState == connectivity.Shutdown || newState == connectivity.TransientFailure {
 					break

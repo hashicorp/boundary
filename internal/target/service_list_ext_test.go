@@ -160,7 +160,7 @@ func TestService_List(t *testing.T) {
 			filterFunc := func(_ context.Context, t target.Target) (bool, error) {
 				return true, nil
 			}
-			_, err = target.ListPage(ctx, []byte("some hash"), 1, filterFunc, nil, repo)
+			_, err := target.ListPage(ctx, []byte("some hash"), 1, filterFunc, nil, repo)
 			require.ErrorContains(t, err, "missing token")
 		})
 		t.Run("wrong token type", func(t *testing.T) {
@@ -238,7 +238,7 @@ func TestService_List(t *testing.T) {
 			filterFunc := func(_ context.Context, t target.Target) (bool, error) {
 				return true, nil
 			}
-			_, err = target.ListRefresh(ctx, []byte("some hash"), 1, filterFunc, nil, repo)
+			_, err := target.ListRefresh(ctx, []byte("some hash"), 1, filterFunc, nil, repo)
 			require.ErrorContains(t, err, "missing token")
 		})
 		t.Run("wrong token type", func(t *testing.T) {

@@ -19,8 +19,8 @@ require (
 	github.com/hashicorp/boundary/api v0.0.45
 	github.com/hashicorp/boundary/sdk v0.0.42
 	github.com/hashicorp/cap v0.5.0
-	github.com/hashicorp/dawdle v0.4.0
-	github.com/hashicorp/eventlogger v0.2.8
+	github.com/hashicorp/dawdle v0.5.0
+	github.com/hashicorp/eventlogger v0.2.9
 	github.com/hashicorp/eventlogger/filters/encrypt v0.1.8-0.20231208142215-efdb51ec090d
 	github.com/hashicorp/go-bexpr v0.1.13
 	github.com/hashicorp/go-cleanhttp v0.5.2

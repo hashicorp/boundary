@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/hashicorp/boundary/api"
@@ -62,7 +63,7 @@ type CacheServer struct {
 	info     map[string]string
 
 	storeUrl string
-	store    *db.DB
+	store    atomic.Pointer[db.DB]
 
 	tickerWg *sync.WaitGroup
 	httpSrv  *http.Server
@@ -224,9 +225,13 @@ func (s *CacheServer) Serve(ctx context.Context, cmd Commander, opt ...Option) e
 	s.info["Store debug"] = strconv.FormatBool(s.conf.StoreDebug)
 	s.infoKeys = append(s.infoKeys, "Store debug")
 
-	if s.store, s.storeUrl, err = openStore(ctx, s.conf.DatabaseUrl, s.conf.StoreDebug); err != nil {
+	var store *db.DB
+	store, s.storeUrl, err = openStore(ctx, s.conf.DatabaseUrl, s.conf.StoreDebug)
+	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
+	s.store.Store(store)
+
 	if s.storeUrl != "" {
 		s.info["Database URL"] = s.storeUrl
 		s.infoKeys = append(s.infoKeys, "Database URL")
@@ -260,7 +265,7 @@ func (s *CacheServer) Serve(ctx context.Context, cmd Commander, opt ...Option) e
 
 	s.printInfo(ctx)
 
-	repo, err := cache.NewRepository(ctx, s.store, &sync.Map{}, cmd.ReadTokenFromKeyring, opts.withBoundaryTokenReaderFunc)
+	repo, err := cache.NewRepository(ctx, s.store.Load(), &sync.Map{}, cmd.ReadTokenFromKeyring, opts.withBoundaryTokenReaderFunc)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}

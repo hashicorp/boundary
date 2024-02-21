@@ -155,7 +155,7 @@ func TestService_List(t *testing.T) {
 			filterFunc := func(_ context.Context, at *authtoken.AuthToken) (bool, error) {
 				return true, nil
 			}
-			_, err = authtoken.ListPage(ctx, []byte("some hash"), 1, filterFunc, nil, repo, []string{org.GetPublicId()})
+			_, err := authtoken.ListPage(ctx, []byte("some hash"), 1, filterFunc, nil, repo, []string{org.GetPublicId()})
 			require.ErrorContains(t, err, "missing token")
 		})
 		t.Run("wrong token type", func(t *testing.T) {
@@ -243,7 +243,7 @@ func TestService_List(t *testing.T) {
 			filterFunc := func(_ context.Context, at *authtoken.AuthToken) (bool, error) {
 				return true, nil
 			}
-			_, err = authtoken.ListRefresh(ctx, []byte("some hash"), 1, filterFunc, nil, repo, []string{org.GetPublicId()})
+			_, err := authtoken.ListRefresh(ctx, []byte("some hash"), 1, filterFunc, nil, repo, []string{org.GetPublicId()})
 			require.ErrorContains(t, err, "missing token")
 		})
 		t.Run("wrong token type", func(t *testing.T) {

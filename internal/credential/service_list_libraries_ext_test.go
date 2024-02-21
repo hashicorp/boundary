@@ -331,7 +331,7 @@ func TestLibraryService_List(t *testing.T) {
 			filterFunc := func(_ context.Context, l credential.Library) (bool, error) {
 				return true, nil
 			}
-			_, err = credential.ListLibrariesRefreshPage(ctx, []byte("some hash"), 1, filterFunc, nil, repo, credStore.GetPublicId())
+			_, err := credential.ListLibrariesRefreshPage(ctx, []byte("some hash"), 1, filterFunc, nil, repo, credStore.GetPublicId())
 			require.ErrorContains(t, err, "missing token")
 		})
 		t.Run("wrong token type", func(t *testing.T) {

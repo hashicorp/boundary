@@ -6,6 +6,7 @@ package worker
 import (
 	"context"
 	"fmt"
+	"net"
 	"strconv"
 	"sync/atomic"
 	"testing"
@@ -119,8 +120,9 @@ func waitForConnectionStateCondition(upstreamConnectionState *atomic.Value, expe
 }
 
 type serverTestInfo struct {
-	srv     *grpc.Server
-	address string
+	srv      *grpc.Server
+	address  string
+	listener net.Listener
 }
 
 func createTestServers(t *testing.T) ([]*serverTestInfo, error) {
@@ -133,10 +135,12 @@ func createTestServers(t *testing.T) ([]*serverTestInfo, error) {
 			return nil, err
 		}
 		srv := grpc.NewServer()
-		lInfo := &serverTestInfo{srv: srv, address: listener.Addr().String()}
+		lInfo := &serverTestInfo{srv: srv, listener: listener, address: listener.Addr().String()}
 		servers = append(servers, lInfo)
-		go func(i int) {
-			if err := servers[i].srv.Serve(listener); err != nil {
+	}
+	for i := range servers {
+		go func(num int) {
+			if err := servers[num].srv.Serve(servers[num].listener); err != nil {
 				t.Logf("error serving: %v", err)
 			}
 		}(i)
