@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/boundary/internal/auth/ldap"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
+	"github.com/hashicorp/boundary/internal/billing"
 	"github.com/hashicorp/boundary/internal/credential"
 	credstatic "github.com/hashicorp/boundary/internal/credential/static"
 	"github.com/hashicorp/boundary/internal/credential/vault"
@@ -39,6 +40,7 @@ type (
 	ConnectionRepoFactory          func() (*session.ConnectionRepository, error)
 	WorkerAuthRepoStorageFactory   func() (*server.WorkerAuthRepositoryStorage, error)
 	PluginStorageBucketRepoFactory func() (*pluginstorage.Repository, error)
+	BillingRepoFactory             func() (*billing.Repository, error)
 )
 
 // Downstreamers provides at least a minimum interface that must be met by a

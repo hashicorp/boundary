@@ -19,6 +19,7 @@ import (
 	_ "github.com/hashicorp/boundary/internal/daemon/controller/handlers/accounts"
 	_ "github.com/hashicorp/boundary/internal/daemon/controller/handlers/authmethods"
 	_ "github.com/hashicorp/boundary/internal/daemon/controller/handlers/authtokens"
+	_ "github.com/hashicorp/boundary/internal/daemon/controller/handlers/billing"
 	_ "github.com/hashicorp/boundary/internal/daemon/controller/handlers/credentiallibraries"
 	_ "github.com/hashicorp/boundary/internal/daemon/controller/handlers/credentials"
 	_ "github.com/hashicorp/boundary/internal/daemon/controller/handlers/credentialstores"

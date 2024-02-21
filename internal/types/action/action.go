@@ -74,6 +74,7 @@ const (
 	AddGrantScopes                     Type = 60
 	SetGrantScopes                     Type = 61
 	RemoveGrantScopes                  Type = 62
+	MonthlyActiveUsers                 Type = 57
 
 	// When adding new actions, be sure to update:
 	//
@@ -144,6 +145,7 @@ var Map = map[string]Type{
 	AddGrantScopes.String():                     AddGrantScopes,
 	SetGrantScopes.String():                     SetGrantScopes,
 	RemoveGrantScopes.String():                  RemoveGrantScopes,
+	MonthlyActiveUsers.String():                 MonthlyActiveUsers,
 }
 
 var DeprecatedMap = map[string]Type{
@@ -220,6 +222,7 @@ func (a Type) String() string {
 		"add-grant-scopes",
 		"set-grant-scopes",
 		"remove-grant-scopes",
+		"monthly-active-users",
 	}[a]
 }
 
