@@ -15,7 +15,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hashicorp/boundary/api/credentiallibraries"
 	"github.com/hashicorp/boundary/api/workers"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/testing/internal/e2e"
@@ -287,41 +286,24 @@ func populateBoundaryDatabase(t testing.TB, ctx context.Context, c *config, te T
 	newVaultCredentialStoreId := boundary.CreateNewCredentialStoreVaultCli(t, ctx, newProjectId, te.Vault.UriNetwork, credStoreToken)
 
 	// Create a credential library for the private key in vault
-	output = e2e.RunCommand(ctx, "boundary",
-		e2e.WithArgs(
-			"credential-libraries", "create", "vault-generic",
-			"-credential-store-id", newVaultCredentialStoreId,
-			"-vault-path", c.VaultSecretPath+"/data/"+privateKeySecretName,
-			"-name", "e2e Automated Test Vault Credential Library",
-			"-credential-type", "ssh_private_key",
-			"-description", "e2e",
-			"-format", "json",
-		),
+	_, err = boundary.CreateVaultGenericCredentialLibraryCli(
+		t,
+		ctx,
+		newVaultCredentialStoreId,
+		fmt.Sprintf("%s/data/%s", c.VaultSecretPath, privateKeySecretName),
+		"ssh_private_key",
 	)
-	require.NoError(t, output.Err, string(output.Stderr))
-	var newCredentialLibraryResult credentiallibraries.CredentialLibraryCreateResult
-	err = json.Unmarshal(output.Stdout, &newCredentialLibraryResult)
 	require.NoError(t, err)
-	newCredentialLibraryId := newCredentialLibraryResult.Item.Id
-	t.Logf("Created Credential Library: %s", newCredentialLibraryId)
 
 	// Create a credential library for the password in vault
-	output = e2e.RunCommand(ctx, "boundary",
-		e2e.WithArgs(
-			"credential-libraries", "create", "vault-generic",
-			"-credential-store-id", newVaultCredentialStoreId,
-			"-vault-path", c.VaultSecretPath+"/data/"+passwordSecretName,
-			"-name", "e2e Automated Test Vault Credential Library - Password",
-			"-credential-type", "username_password",
-			"-description", "e2e",
-			"-format", "json",
-		),
+	_, err = boundary.CreateVaultGenericCredentialLibraryCli(
+		t,
+		ctx,
+		newVaultCredentialStoreId,
+		fmt.Sprintf("%s/data/%s", c.VaultSecretPath, passwordSecretName),
+		"username_password",
 	)
-	require.NoError(t, output.Err, string(output.Stderr))
-	err = json.Unmarshal(output.Stdout, &newCredentialLibraryResult)
 	require.NoError(t, err)
-	newPasswordCredentialLibraryId := newCredentialLibraryResult.Item.Id
-	t.Logf("Created Credential Library: %s", newPasswordCredentialLibraryId)
 
 	// Create a worker
 	output = e2e.RunCommand(ctx, "boundary",
