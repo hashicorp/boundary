@@ -24,6 +24,7 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/accounts"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/authmethods"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/authtokens"
+	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/billing"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/credentiallibraries"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/credentials"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/credentialstores"
@@ -349,6 +350,13 @@ func (c *Controller) registerGrpcServices(s *grpc.Server) error {
 		opsservices.RegisterHealthServiceServer(s, hs)
 		c.HealthService = hs
 	}
+	if _, ok := currentServices[services.BillingService_ServiceDesc.ServiceName]; !ok {
+		bs, err := billing.NewService(c.baseContext, c.BillingRepoFn)
+		if err != nil {
+			return fmt.Errorf("failed to create billing handler service: %w", err)
+		}
+		services.RegisterBillingServiceServer(s, bs)
+	}
 
 	return nil
 }
@@ -418,6 +426,9 @@ func registerGrpcGatewayEndpoints(ctx context.Context, gwMux *runtime.ServeMux, 
 	}
 	if err := services.RegisterPolicyServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
 		return fmt.Errorf("failed to register policy handler: %w", err)
+	}
+	if err := services.RegisterBillingServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
+		return fmt.Errorf("failed to register billing service handler: %w", err)
 	}
 
 	return nil

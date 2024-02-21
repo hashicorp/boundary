@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
+	"github.com/hashicorp/boundary/internal/billing"
 	"github.com/hashicorp/boundary/internal/census"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
@@ -148,6 +149,7 @@ type Controller struct {
 	PluginRepoFn              common.PluginRepoFactory
 	TargetRepoFn              target.RepositoryFactory
 	WorkerAuthRepoStorageFn   common.WorkerAuthRepoStorageFactory
+	BillingRepoFn             common.BillingRepoFactory
 
 	scheduler *scheduler.Scheduler
 
@@ -447,6 +449,9 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	}
 	c.WorkerAuthRepoStorageFn = func() (*server.WorkerAuthRepositoryStorage, error) {
 		return server.NewRepositoryStorage(ctx, dbase, dbase, c.kms)
+	}
+	c.BillingRepoFn = func() (*billing.Repository, error) {
+		return billing.NewRepository(ctx, dbase, dbase)
 	}
 
 	// Check that credentials are available at startup, to avoid some harmless

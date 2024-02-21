@@ -18,6 +18,9 @@
       "name": "controller.api.services.v1.AuthTokenService"
     },
     {
+      "name": "controller.api.services.v1.BillingService"
+    },
+    {
       "name": "controller.api.services.v1.CredentialLibraryService"
     },
     {
@@ -632,6 +635,39 @@
         ],
         "tags": [
           "controller.api.services.v1.AuthTokenService"
+        ]
+      }
+    },
+    "/v1/billing:monthly-active-users": {
+      "get": {
+        "summary": "Returns monthly active users.",
+        "operationId": "BillingService_MonthlyActiveUsers",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.MonthlyActiveUsersResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "start_time",
+            "description": "An optional start time of the billing period to query, in the format of YYYY-MM.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "end_time",
+            "description": "An optional end time of the billing period to query, in the format of YYYY-MM.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.BillingService"
         ]
       }
     },
@@ -4754,6 +4790,29 @@
       },
       "title": "AuthToken contains all fields related to an Auth Token resource"
     },
+    "controller.api.resources.billing.v1.ActiveUsers": {
+      "type": "object",
+      "properties": {
+        "count": {
+          "type": "string",
+          "format": "uint64",
+          "description": "Output only. The number of active users between the start time and end time.",
+          "readOnly": true
+        },
+        "start_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Output only. The start time of the active users count, inclusive.",
+          "readOnly": true
+        },
+        "end_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Output only. The end time of the active users count, exclusive.",
+          "readOnly": true
+        }
+      }
+    },
     "controller.api.resources.credentiallibraries.v1.CredentialLibrary": {
       "type": "object",
       "properties": {
@@ -8782,6 +8841,18 @@
         "item": {
           "$ref": "#/definitions/controller.api.resources.sessionrecordings.v1.SessionRecording",
           "description": "The requested recording."
+        }
+      }
+    },
+    "controller.api.services.v1.MonthlyActiveUsersResponse": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/controller.api.resources.billing.v1.ActiveUsers"
+          }
         }
       }
     },

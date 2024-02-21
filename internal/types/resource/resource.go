@@ -35,6 +35,7 @@ const (
 	Credential
 	StorageBucket
 	Policy
+	Billing
 	// NOTE: When adding a new type, be sure to update:
 	//
 	// * The Grant.validateType function and test
@@ -74,6 +75,7 @@ func (r Type) String() string {
 		"credential",
 		"storage-bucket",
 		"policy",
+		"billing",
 	}[r]
 }
 
@@ -124,6 +126,7 @@ var Map = map[string]Type{
 	Credential.String():        Credential,
 	StorageBucket.String():     StorageBucket,
 	Policy.String():            Policy,
+	Billing.String():           Billing,
 }
 
 // Parent returns the parent type for a given type; if there is no parent, it
