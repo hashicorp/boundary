@@ -803,6 +803,23 @@ func TestCreate(t *testing.T) {
 			errContains: `This field is required when 'attributes.authorize_sesion_arguments.host_id' is specified.`,
 		},
 		{
+			name: "improperly formatted host id",
+			req: &pbs.CreateAliasRequest{Item: &pb.Alias{
+				Type:          "target",
+				ScopeId:       scope.Global.String(),
+				Value:         "bad-host-id.alias",
+				DestinationId: wrapperspb.String(tar.GetPublicId()),
+				Attrs: &pb.Alias_TargetAliasAttributes{
+					TargetAliasAttributes: &pb.TargetAliasAttributes{
+						AuthorizeSessionArguments: &pb.AuthorizeSessionArguments{
+							HostId: "badid_1234567890",
+						},
+					},
+				},
+			}},
+			errContains: `Incorrectly formatted identifier.`,
+		},
+		{
 			name: "Alias to non existing target",
 			req: &pbs.CreateAliasRequest{Item: &pb.Alias{
 				Type:          "target",
@@ -1230,6 +1247,27 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.Alias{
 					Id:          globals.TargetAliasPrefix + "_somethinge",
 					Description: wrapperspb.String("new desc"),
+				},
+			},
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Cant use invalid host id",
+			req: &pbs.UpdateAliasRequest{
+				Id: og.GetPublicId(),
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"host_id"},
+				},
+				Item: &pb.Alias{
+					Description: wrapperspb.String("new desc"),
+					Attrs: &pb.Alias_TargetAliasAttributes{
+						&pb.TargetAliasAttributes{
+							AuthorizeSessionArguments: &pb.AuthorizeSessionArguments{
+								HostId: "badid_1234567890",
+							},
+						},
+					},
 				},
 			},
 			res: nil,
