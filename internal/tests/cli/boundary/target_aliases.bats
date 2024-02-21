@@ -8,6 +8,7 @@ load _targets
 load _targets_alias
 
 export ALIAS_VALUE='target.alias'
+export ALIAS_TGT_NAME='test-alias-target'
 
 @test "boundary/login: can login as admin user" {
   run login $DEFAULT_LOGIN
@@ -51,14 +52,14 @@ export ALIAS_VALUE='target.alias'
 }
 
 @test "boundary/target: admin user can create target" {
-  run create_tcp_target $DEFAULT_P_ID 22 $TGT_NAME
+  run create_tcp_target $DEFAULT_P_ID 22 $ALIAS_TGT_NAME
   echo $output
   [ "$status" -eq 0 ]
 }
 
 @test "boundary/target: admin user can update alias to use created target" {
   local aid=$(alias_id_from_target_alias $ALIAS_VALUE)
-  local tid=$(target_id_from_name $DEFAULT_P_ID $TGT_NAME)
+  local tid=$(target_id_from_name $DEFAULT_P_ID $ALIAS_TGT_NAME)
   run update_target_alias_destination_id $aid $tid
   echo $output
   [ "$status" -eq 0 ]
@@ -99,5 +100,11 @@ export ALIAS_VALUE='target.alias'
 
   echo "$got"
   run field_eq "$got" ".item.attributes.default_client_port" "1234"
+  [ "$status" -eq 0 ]
+}
+
+@test "boundary/target: default user can delete target" {
+  run delete_target_by_alias $ALIAS_VALUE
+  run has_status_code "$output" "204"
   [ "$status" -eq 0 ]
 }
