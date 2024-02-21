@@ -33,6 +33,18 @@ func Test_TimestampValue(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, v, utcDate(10000, 1, 1))
 	})
+	t.Run("negativeInfinity", func(t *testing.T) {
+		ts := New(NegativeInfinityTS)
+		v, err := ts.Value()
+		require.NoError(t, err)
+		assert.Equal(t, v, "-infinity")
+	})
+	t.Run("positiveInfinity", func(t *testing.T) {
+		ts := New(PositiveInfinityTS)
+		v, err := ts.Value()
+		require.NoError(t, err)
+		assert.Equal(t, v, "infinity")
+	})
 }
 
 func Test_TimestampScan(t *testing.T) {
@@ -64,6 +76,20 @@ func Test_TimestampScan(t *testing.T) {
 		ts := Timestamp{}
 		err := ts.Scan(v)
 		require.Nil(err)
+	})
+	t.Run("negativeInfinity", func(t *testing.T) {
+		v := "-infinity"
+		ts := Timestamp{}
+		err := ts.Scan(v)
+		require.NoError(err)
+		assert.Equal(ts.AsTime(), NegativeInfinityTS)
+	})
+	t.Run("positiveInfinity", func(t *testing.T) {
+		v := "infinity"
+		ts := Timestamp{}
+		err := ts.Scan(v)
+		require.NoError(err)
+		assert.Equal(ts.AsTime(), PositiveInfinityTS)
 	})
 }
 
