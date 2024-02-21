@@ -149,7 +149,7 @@ create:
 
 You can go into Boundary's web UI or use its API to change these
 default values, for instance if you want to connect to a different host or need
-to modify the port on which to to connect.
+to modify the port on which to connect.
 
 ### Making the Connection
 
