@@ -12,3 +12,10 @@ function connect_alias() {
   # Note: When this command returns, the session immediately goes into a "canceling" state
   echo "foo" | boundary connect $alias -exec nc -- {{boundary.ip}} {{boundary.port}}
 }
+
+function connect_alias_with_hostid() {
+  local alias=$1
+  local hostid=$2
+  # Note: When this command returns, the session immediately goes into a "canceling" state
+  echo "foo" | boundary connect $alias -host-id $hostid -exec nc -- {{boundary.ip}} {{boundary.port}}
+}
