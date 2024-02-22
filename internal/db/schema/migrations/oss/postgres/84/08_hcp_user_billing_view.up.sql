@@ -92,7 +92,7 @@ begin;
       return query select *
                      from hcp_billing_monthly_active_users_all
                     where start_time >= p_start_time
-                      and end_time   <  p_end_time;
+                      and end_time   <= p_end_time;
     when p_start_time is not null then
       return query select *
                      from hcp_billing_monthly_active_users_all
@@ -100,7 +100,7 @@ begin;
     when p_end_time is not null then
       return query select *
                      from hcp_billing_monthly_active_users_all
-                    where end_time < p_end_time;
+                    where end_time <= p_end_time;
     else
       return query select *
                      from hcp_billing_monthly_active_users_all;

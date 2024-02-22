@@ -144,7 +144,7 @@ begin;
   select results_eq(
             $$
             select * from hcp_billing_monthly_active_users_all(date_trunc('month', now() - interval '5 month', 'utc'),
-                                                               date_trunc('month', now() - interval '2 month', 'utc'));
+                                                               date_trunc('month', now() - interval '3 month', 'utc'));
             $$,
             $$
             values (date_trunc('month', now() - interval  '4 month', 'utc'), date_trunc('month', now() - interval  '3 month', 'utc'), 6::bigint),
@@ -154,7 +154,7 @@ begin;
   select results_eq(
             $$
             select * from hcp_billing_monthly_active_users_all(null,
-                                                               date_trunc('month', now() - interval '2 month', 'utc'));
+                                                               date_trunc('month', now() - interval '3 month', 'utc'));
             $$,
             $$
             values (date_trunc('month', now() - interval  '4 month', 'utc'), date_trunc('month', now() - interval  '3 month', 'utc'), 6::bigint),
