@@ -18,6 +18,7 @@ import (
 	"github.com/hashicorp/boundary/internal/clientcache/internal/cache"
 	cachedb "github.com/hashicorp/boundary/internal/clientcache/internal/db"
 	"github.com/hashicorp/boundary/internal/cmd/base"
+	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -94,7 +95,7 @@ func TestKeyringToken(t *testing.T) {
 	require.NoError(t, err)
 
 	tr := &testRefresher{}
-	ph, err := newTokenHandlerFunc(ctx, r, tr)
+	ph, err := newTokenHandlerFunc(ctx, r, tr, hclog.NewNullLogger())
 	require.NoError(t, err)
 
 	t.Run("missing keyring", func(t *testing.T) {
@@ -223,7 +224,7 @@ func TestKeyringlessToken(t *testing.T) {
 	require.NoError(t, err)
 
 	tr := &testRefresher{}
-	ph, err := newTokenHandlerFunc(ctx, r, tr)
+	ph, err := newTokenHandlerFunc(ctx, r, tr, hclog.NewNullLogger())
 	require.NoError(t, err)
 
 	t.Run("missing boundary address", func(t *testing.T) {
@@ -277,4 +278,50 @@ func TestKeyringlessToken(t *testing.T) {
 		assert.NotNil(t, p)
 		assert.Equal(t, at.Id, p.Id)
 	})
+}
+
+func TestUpsertTokenRequest_String(t *testing.T) {
+	cases := []struct {
+		name string
+		req  *UpsertTokenRequest
+		want string
+	}{
+		{
+			name: "auth token fully redacted",
+			req: &UpsertTokenRequest{
+				BoundaryAddr: "test",
+				AuthToken:    "at_wrong_SomethingElseHere",
+				AuthTokenId:  "at_prefix",
+			},
+			want: "BoundaryAddr: \"test\", AuthTokenId: \"at_prefix\", AuthToken: \"/*redacted*/\"",
+		},
+		{
+			name: "auth token partially redacted",
+			req: &UpsertTokenRequest{
+				BoundaryAddr: "test",
+				AuthToken:    "at_prefix_SomethingElseHere",
+				AuthTokenId:  "at_prefix",
+			},
+			want: "BoundaryAddr: \"test\", AuthTokenId: \"at_prefix\", AuthToken: \"at_prefix_/*redacted*/\"",
+		},
+		{
+			name: "auth token partially redacted",
+			req: &UpsertTokenRequest{
+				BoundaryAddr: "test",
+				Keyring: &KeyringToken{
+					TokenName:   "token",
+					KeyringType: "type",
+				},
+				AuthToken:   "at_prefix_SomethingElseHere",
+				AuthTokenId: "at_prefix",
+			},
+			want: "BoundaryAddr: \"test\", AuthTokenId: \"at_prefix\", Keyring: {KeyringType:type TokenName:token}, AuthToken: \"at_prefix_/*redacted*/\"",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.want, tc.req.String())
+		})
+	}
 }

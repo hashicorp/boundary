@@ -82,7 +82,6 @@ func (c *StartCommand) Flags() *base.FlagSets {
 		Completion: complete.PredictSet("trace", "debug", "info", "warn", "err"),
 		Usage: "Log verbosity level, mostly as a fallback for events. Supported values (in order of more detail to less) are " +
 			"\"trace\", \"debug\", \"info\", \"warn\", and \"err\".",
-		Hidden: true,
 	})
 	f.StringVar(&base.StringVar{
 		Name:       "log-format",
@@ -125,8 +124,9 @@ func (c *StartCommand) Flags() *base.FlagSets {
 		Name:    "store-debug",
 		Target:  &c.flagStoreDebug,
 		Default: false,
-		Usage:   `Turn on sqlite query debugging`,
+		Usage:   `Turn on sqlite query debugging. This is deprecated. Users should use -log-level=debug instead.`,
 		Aliases: []string{"d"},
+		Hidden:  true,
 	})
 	f.BoolVar(&base.BoolVar{
 		Name:    "background",
@@ -191,6 +191,10 @@ func (c *StartCommand) Run(args []string) int {
 	defer lf.Close()
 	writers = append(writers, lf)
 
+	if c.flagStoreDebug {
+		c.UI.Warn("The -store-debug flag is now ignored. Use -log-level=debug instead for debugging purposes.")
+	}
+
 	cfg := &daemon.Config{
 		ContextCancel:           cancel,
 		RefreshInterval:         c.flagRefreshInterval,
@@ -198,7 +202,6 @@ func (c *StartCommand) Run(args []string) int {
 		MaxSearchStaleness:      c.flagMaxSearchStaleness,
 		MaxSearchRefreshTimeout: c.flagMaxSearchRefreshTimeout,
 		DatabaseUrl:             c.flagDatabaseUrl,
-		StoreDebug:              c.flagStoreDebug,
 		LogLevel:                c.flagLogLevel,
 		LogFormat:               c.flagLogFormat,
 		LogWriter:               io.MultiWriter(writers...),
@@ -318,9 +321,6 @@ func (c *StartCommand) makeBackground(ctx context.Context, dotDir string) (bool,
 	}
 	if c.flagDatabaseUrl != "" {
 		args = append(args, "-database-url", c.flagDatabaseUrl)
-	}
-	if c.flagStoreDebug {
-		args = append(args, "-store-debug")
 	}
 	cmd := exec.Command(absPath, args...)
 	cmd.Env = env

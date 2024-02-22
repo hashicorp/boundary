@@ -9,15 +9,18 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/internal/clientcache/internal/cache"
+	"github.com/hashicorp/go-hclog"
 )
 
 type options struct {
-	withDebug                              bool
 	withRefreshInterval                    time.Duration
 	withRecheckSupportInterval             time.Duration
 	testWithIntervalRandomizationFactor    float64
 	testWithIntervalRandomizationFactorSet bool
 	withBoundaryTokenReaderFunc            cache.BoundaryTokenReaderFn
+
+	withUrl    string
+	withLogger hclog.Logger
 }
 
 // Option - how options are passed as args
@@ -36,14 +39,6 @@ func getOpts(opt ...Option) (options, error) {
 		}
 	}
 	return opts, nil
-}
-
-// WithDebug provides an optional debug flag.
-func WithDebug(_ context.Context, debug bool) Option {
-	return func(o *options) error {
-		o.withDebug = debug
-		return nil
-	}
 }
 
 // withRefreshInterval provides an optional refresh interval.
@@ -77,6 +72,22 @@ func testWithIntervalRandomizationFactor(_ context.Context, f float64) Option {
 		}
 		o.testWithIntervalRandomizationFactor = f
 		o.testWithIntervalRandomizationFactorSet = true
+		return nil
+	}
+}
+
+// WithUrl provides optional url
+func WithUrl(_ context.Context, url string) Option {
+	return func(o *options) error {
+		o.withUrl = url
+		return nil
+	}
+}
+
+// WithLogger provides an optional logger.
+func WithLogger(_ context.Context, logger hclog.Logger) Option {
+	return func(o *options) error {
+		o.withLogger = logger
 		return nil
 	}
 }
