@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"os"
 	"sort"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -58,6 +57,8 @@ type ClientProvider interface {
 type CacheServer struct {
 	conf *Config
 
+	logger hclog.Logger
+
 	infoKeys []string
 	info     map[string]string
 
@@ -75,7 +76,6 @@ type Config struct {
 	RefreshInterval        time.Duration
 	RecheckSupportInterval time.Duration
 	DatabaseUrl            string
-	StoreDebug             bool
 	LogLevel               string
 	LogFormat              string
 	LogWriter              io.Writer
@@ -122,9 +122,11 @@ func New(ctx context.Context, conf *Config) (*CacheServer, error) {
 		tickerWg:     new(sync.WaitGroup),
 		shutdownOnce: new(sync.Once),
 	}
-	if err := s.setupLogging(ctx, conf.LogWriter); err != nil {
+	logger, err := s.setupLogging(ctx, conf.LogWriter)
+	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
+	s.logger = logger
 	return s, nil
 }
 
@@ -219,14 +221,14 @@ func (s *CacheServer) Serve(ctx context.Context, cmd Commander, opt ...Option) e
 
 	s.info["Listening address"] = l.Addr().String()
 	s.infoKeys = append(s.infoKeys, "Listening address")
-	s.info["Store debug"] = strconv.FormatBool(s.conf.StoreDebug)
-	s.infoKeys = append(s.infoKeys, "Store debug")
 
-	if s.store, s.storeUrl, err = openStore(ctx, s.conf.DatabaseUrl, s.conf.StoreDebug); err != nil {
+	if s.store, err = openStore(ctx,
+		WithUrl(ctx, s.conf.DatabaseUrl),
+		WithLogger(ctx, s.logger)); err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
-	if s.storeUrl != "" {
-		s.info["Database URL"] = s.storeUrl
+	if s.conf.DatabaseUrl != "" {
+		s.info["Database URL"] = s.conf.DatabaseUrl
 		s.infoKeys = append(s.infoKeys, "Database URL")
 	}
 	maxSearchRefreshTimeout := DefaultSearchRefreshTimeout
@@ -263,7 +265,7 @@ func (s *CacheServer) Serve(ctx context.Context, cmd Commander, opt ...Option) e
 		return errors.Wrap(ctx, err, op)
 	}
 
-	refreshService, err := cache.NewRefreshService(ctx, repo, maxSearchStaleness, maxSearchRefreshTimeout)
+	refreshService, err := cache.NewRefreshService(ctx, repo, s.logger, maxSearchStaleness, maxSearchRefreshTimeout)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
@@ -286,7 +288,7 @@ func (s *CacheServer) Serve(ctx context.Context, cmd Commander, opt ...Option) e
 	}()
 
 	mux := http.NewServeMux()
-	searchFn, err := newSearchHandlerFunc(ctx, repo, refreshService)
+	searchFn, err := newSearchHandlerFunc(ctx, repo, refreshService, s.logger)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
@@ -304,7 +306,7 @@ func (s *CacheServer) Serve(ctx context.Context, cmd Commander, opt ...Option) e
 	}
 	mux.Handle("/v1/log", serverMetadataInterceptor(logHandlerFn, s.conf.RunningInBackground))
 
-	tokenFn, err := newTokenHandlerFunc(ctx, repo, tic)
+	tokenFn, err := newTokenHandlerFunc(ctx, repo, tic, s.logger)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
@@ -382,11 +384,11 @@ func (s *CacheServer) printInfo(ctx context.Context) {
 	event.WriteSysEvent(ctx, op, strings.Join(output, "\n"))
 }
 
-func (s *CacheServer) setupLogging(ctx context.Context, w io.Writer) error {
+func (s *CacheServer) setupLogging(ctx context.Context, w io.Writer) (hclog.Logger, error) {
 	const op = "daemon.(Command).setupLogging"
 	switch {
 	case util.IsNil(w):
-		return errors.New(ctx, errors.InvalidParameter, op, "log writer is nil")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "log writer is nil")
 	}
 
 	logFormat := logging.StandardFormat
@@ -394,7 +396,7 @@ func (s *CacheServer) setupLogging(ctx context.Context, w io.Writer) error {
 		var err error
 		logFormat, err = logging.ParseLogFormat(s.conf.LogFormat)
 		if err != nil {
-			return fmt.Errorf("%s: %w", op, err)
+			return nil, fmt.Errorf("%s: %w", op, err)
 		}
 	}
 
@@ -418,7 +420,7 @@ func (s *CacheServer) setupLogging(ctx context.Context, w io.Writer) error {
 	case "err", "error":
 		level = hclog.Error
 	default:
-		return fmt.Errorf("%s: unknown log level: %s", op, logLevel)
+		return nil, fmt.Errorf("%s: unknown log level: %s", op, logLevel)
 	}
 	var logLock sync.Mutex
 	logger := hclog.New(&hclog.LoggerOptions{
@@ -428,7 +430,7 @@ func (s *CacheServer) setupLogging(ctx context.Context, w io.Writer) error {
 		Mutex:      &logLock,
 	})
 	if err := event.InitFallbackLogger(logger); err != nil {
-		return fmt.Errorf("%s: %w", op, err)
+		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
 	s.info["log level"] = level.String()
@@ -438,10 +440,10 @@ func (s *CacheServer) setupLogging(ctx context.Context, w io.Writer) error {
 
 	var err error
 	if err = setupEventing(ctx, logger, &logLock, logFormat, w); err != nil {
-		return errors.Wrap(ctx, err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 
-	return nil
+	return logger, nil
 }
 
 func setupEventing(ctx context.Context, logger hclog.Logger, serializationLock *sync.Mutex, logFormat logging.LogFormat, w io.Writer) error {
@@ -488,21 +490,28 @@ func setupEventing(ctx context.Context, logger hclog.Logger, serializationLock *
 	return nil
 }
 
-func openStore(ctx context.Context, url string, flagDebugStore bool) (*db.DB, string, error) {
+func openStore(ctx context.Context, opt ...Option) (*db.DB, error) {
 	const op = "daemon.openStore"
-	var err error
-	opts := []cachedb.Option{cachedb.WithDebug(flagDebugStore)}
-	switch {
-	case url != "":
-		url, err = parseutil.ParsePath(url)
-		if err != nil && !errors.Is(err, parseutil.ErrNotAUrl) {
-			return nil, "", errors.Wrap(ctx, err, op)
-		}
-		opts = append(opts, cachedb.WithUrl(url))
-	}
-	store, err := cachedb.Open(ctx, opts...)
+	opts, err := getOpts(opt...)
 	if err != nil {
-		return nil, "", errors.Wrap(ctx, err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
-	return store, url, nil
+
+	var dbOpts []cachedb.Option
+	switch {
+	case opts.withUrl != "":
+		url, err := parseutil.ParsePath(opts.withUrl)
+		if err != nil && !errors.Is(err, parseutil.ErrNotAUrl) {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		dbOpts = append(dbOpts, cachedb.WithUrl(url))
+	}
+	if !util.IsNil(opts.withLogger) {
+		dbOpts = append(dbOpts, cachedb.WithGormFormatter(opts.withLogger))
+	}
+	store, err := cachedb.Open(ctx, dbOpts...)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	return store, nil
 }

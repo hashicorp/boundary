@@ -17,6 +17,7 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/internal/util"
+	"github.com/hashicorp/go-hclog"
 )
 
 // SearchResult is the struct returned to search requests.
@@ -33,11 +34,13 @@ const (
 	authTokenIdKey  = "auth_token_id"
 )
 
-func newSearchHandlerFunc(ctx context.Context, repo *cache.Repository, refreshService *cache.RefreshService) (http.HandlerFunc, error) {
+func newSearchHandlerFunc(ctx context.Context, repo *cache.Repository, refreshService *cache.RefreshService, logger hclog.Logger) (http.HandlerFunc, error) {
 	const op = "daemon.newSearchHandlerFunc"
 	switch {
 	case util.IsNil(repo):
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "repository is missing")
+	case util.IsNil(logger):
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "logger is missing")
 	case util.IsNil(refreshService):
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "refresh service is missing")
 	}
@@ -48,36 +51,46 @@ func newSearchHandlerFunc(ctx context.Context, repo *cache.Repository, refreshSe
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
+		reqCtx := r.Context()
 		resource := r.URL.Query().Get(resourceKey)
 		authTokenId := r.URL.Query().Get(authTokenIdKey)
 
 		searchableResource := cache.ToSearchableResource(resource)
 		switch {
 		case resource == "":
+			event.WriteError(ctx, op, errors.New(ctx, errors.InvalidParameter, op, "resource is a required field but was empty"))
 			writeError(w, "resource is a required field but was empty", http.StatusBadRequest)
 			return
 		case !searchableResource.Valid():
+			event.WriteError(ctx, op, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("provided resource %q is not a valid searchable resource", resource)))
 			writeError(w, "provided resource is not a valid searchable resource", http.StatusBadRequest)
 			return
 		case authTokenId == "":
+			event.WriteError(ctx, op, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("%s is a required field but was empty", authTokenIdKey)))
 			writeError(w, fmt.Sprintf("%s is a required field but was empty", authTokenIdKey), http.StatusBadRequest)
 			return
 		}
 
-		t, err := repo.LookupToken(ctx, authTokenId, cache.WithUpdateLastAccessedTime(true))
+		t, err := repo.LookupToken(reqCtx, authTokenId, cache.WithUpdateLastAccessedTime(true))
 		if err != nil || t == nil {
+			if err != nil {
+				event.WriteError(ctx, op, err, event.WithInfoMsg("when looking up the auth token", "auth_token_id", authTokenId))
+			}
+			if t == nil {
+				event.WriteError(ctx, op, errors.New(ctx, errors.NotFound, op, fmt.Sprintf("auth token with id %q not found in cache", authTokenId)))
+			}
 			writeError(w, "Forbidden", http.StatusForbidden)
 			return
 		}
 
-		supported, err := s.Supported(ctx, t)
+		supported, err := s.Supported(reqCtx, t)
 		if err != nil {
 			event.WriteError(ctx, op, err, event.WithInfoMsg("when checking if search is supported for the provided auth token", "auth_token_id", authTokenId))
 			writeError(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		if !supported {
+			event.WriteError(ctx, op, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("search not supported for the provided auth token %q", authTokenId)))
 			writeUnsupportedError(w)
 			return
 		}
@@ -90,7 +103,7 @@ func newSearchHandlerFunc(ctx context.Context, repo *cache.Repository, refreshSe
 		// Refresh the resources for the provided user, if possible. This is best
 		// effort, so if there is any problem refreshing, we just log the error
 		// and move on to handling the search request.
-		if err := refreshService.RefreshForSearch(ctx, authTokenId, searchableResource, opts...); err != nil {
+		if err := refreshService.RefreshForSearch(reqCtx, authTokenId, searchableResource, opts...); err != nil {
 			// we don't stop the search, we just log that the inline refresh failed
 			event.WriteError(ctx, op, err, event.WithInfoMsg("when refreshing the resources inline for search", "auth_token_id", authTokenId, "resource", searchableResource))
 		}
@@ -98,13 +111,14 @@ func newSearchHandlerFunc(ctx context.Context, repo *cache.Repository, refreshSe
 		query := r.URL.Query().Get(queryKey)
 		filter := r.URL.Query().Get(filterKey)
 
-		res, err := s.Search(ctx, cache.SearchParams{
+		res, err := s.Search(reqCtx, cache.SearchParams{
 			AuthTokenId: authTokenId,
 			Resource:    searchableResource,
 			Query:       query,
 			Filter:      filter,
 		})
 		if err != nil {
+			event.WriteError(ctx, op, err, event.WithInfoMsg("when performing search", "auth_token_id", authTokenId, "resource", searchableResource, "query", query, "filter", filter))
 			switch {
 			case errors.Match(errors.T(errors.InvalidParameter), err):
 				writeError(w, err.Error(), http.StatusBadRequest)
@@ -121,6 +135,7 @@ func newSearchHandlerFunc(ctx context.Context, repo *cache.Repository, refreshSe
 		apiRes := toApiResult(res)
 		j, err := json.Marshal(apiRes)
 		if err != nil {
+			event.WriteError(ctx, op, err, event.WithInfoMsg("when marshaling search result to JSON", "auth_token_id", authTokenId, "resource", searchableResource, "query", query, "filter", filter))
 			writeError(w, err.Error(), http.StatusInternalServerError)
 			return
 		}

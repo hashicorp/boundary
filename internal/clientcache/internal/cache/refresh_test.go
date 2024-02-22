@@ -17,6 +17,7 @@ import (
 	"github.com/hashicorp/boundary/api/sessions"
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/internal/clientcache/internal/db"
+	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/exp/maps"
@@ -139,7 +140,7 @@ func TestCleanAndPickTokens(t *testing.T) {
 		mapBasedAuthTokenKeyringLookup(atMap),
 		fakeBoundaryLookupFn)
 	require.NoError(t, err)
-	rs, err := NewRefreshService(ctx, r, 0, 0)
+	rs, err := NewRefreshService(ctx, r, hclog.NewNullLogger(), 0, 0)
 	require.NoError(t, err)
 
 	t.Run("unknown user", func(t *testing.T) {
@@ -355,7 +356,7 @@ func TestRefreshForSearch(t *testing.T) {
 		require.NoError(t, err)
 		r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(boundaryAuthTokens))
 		require.NoError(t, err)
-		rs, err := NewRefreshService(ctx, r, time.Millisecond, 0)
+		rs, err := NewRefreshService(ctx, r, hclog.NewNullLogger(), time.Millisecond, 0)
 		require.NoError(t, err)
 		require.NoError(t, r.AddKeyringToken(ctx, boundaryAddr, KeyringToken{KeyringType: "k", TokenName: "t", AuthTokenId: at.Id}))
 
@@ -406,7 +407,7 @@ func TestRefreshForSearch(t *testing.T) {
 		r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(boundaryAuthTokens))
 		require.NoError(t, err)
 		// Everything can stay stale for an hour
-		rs, err := NewRefreshService(ctx, r, time.Hour, 0)
+		rs, err := NewRefreshService(ctx, r, hclog.NewNullLogger(), time.Hour, 0)
 		require.NoError(t, err)
 		require.NoError(t, r.AddKeyringToken(ctx, boundaryAddr, KeyringToken{KeyringType: "k", TokenName: "t", AuthTokenId: at.Id}))
 
@@ -460,7 +461,7 @@ func TestRefreshForSearch(t *testing.T) {
 		require.NoError(t, err)
 		r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(boundaryAuthTokens))
 		require.NoError(t, err)
-		rs, err := NewRefreshService(ctx, r, 0, 0)
+		rs, err := NewRefreshService(ctx, r, hclog.NewNullLogger(), 0, 0)
 		require.NoError(t, err)
 		require.NoError(t, r.AddKeyringToken(ctx, boundaryAddr, KeyringToken{KeyringType: "k", TokenName: "t", AuthTokenId: at.Id}))
 
@@ -513,7 +514,7 @@ func TestRefreshForSearch(t *testing.T) {
 		require.NoError(t, err)
 		r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(boundaryAuthTokens))
 		require.NoError(t, err)
-		rs, err := NewRefreshService(ctx, r, 0, 0)
+		rs, err := NewRefreshService(ctx, r, hclog.NewNullLogger(), 0, 0)
 		require.NoError(t, err)
 		require.NoError(t, r.AddKeyringToken(ctx, boundaryAddr, KeyringToken{KeyringType: "k", TokenName: "t", AuthTokenId: at.Id}))
 
@@ -561,7 +562,7 @@ func TestRefreshForSearch(t *testing.T) {
 		r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(boundaryAuthTokens))
 		require.NoError(t, err)
 		// Everything stays fresh for 1 hour
-		rs, err := NewRefreshService(ctx, r, time.Hour, 0)
+		rs, err := NewRefreshService(ctx, r, hclog.NewNullLogger(), time.Hour, 0)
 		require.NoError(t, err)
 		require.NoError(t, r.AddKeyringToken(ctx, boundaryAddr, KeyringToken{KeyringType: "k", TokenName: "t", AuthTokenId: at.Id}))
 
@@ -632,7 +633,7 @@ func TestRefresh(t *testing.T) {
 		require.NoError(t, err)
 		r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(boundaryAuthTokens))
 		require.NoError(t, err)
-		rs, err := NewRefreshService(ctx, r, 0, 0)
+		rs, err := NewRefreshService(ctx, r, hclog.NewNullLogger(), 0, 0)
 		require.NoError(t, err)
 		require.NoError(t, r.AddKeyringToken(ctx, boundaryAddr, KeyringToken{KeyringType: "k", TokenName: "t", AuthTokenId: at.Id}))
 
@@ -673,7 +674,7 @@ func TestRefresh(t *testing.T) {
 		require.NoError(t, err)
 		r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(boundaryAuthTokens))
 		require.NoError(t, err)
-		rs, err := NewRefreshService(ctx, r, 0, 0)
+		rs, err := NewRefreshService(ctx, r, hclog.NewNullLogger(), 0, 0)
 		require.NoError(t, err)
 		require.NoError(t, r.AddKeyringToken(ctx, boundaryAddr, KeyringToken{KeyringType: "k", TokenName: "t", AuthTokenId: at.Id}))
 
@@ -713,7 +714,7 @@ func TestRefresh(t *testing.T) {
 		require.NoError(t, err)
 		r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(boundaryAuthTokens))
 		require.NoError(t, err)
-		rs, err := NewRefreshService(ctx, r, 0, 0)
+		rs, err := NewRefreshService(ctx, r, hclog.NewNullLogger(), 0, 0)
 		require.NoError(t, err)
 		require.NoError(t, r.AddKeyringToken(ctx, boundaryAddr, KeyringToken{KeyringType: "k", TokenName: "t", AuthTokenId: at.Id}))
 
@@ -741,7 +742,7 @@ func TestRefresh(t *testing.T) {
 		require.NoError(t, err)
 		r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(boundaryAuthTokens))
 		require.NoError(t, err)
-		rs, err := NewRefreshService(ctx, r, 0, 0)
+		rs, err := NewRefreshService(ctx, r, hclog.NewNullLogger(), 0, 0)
 		require.NoError(t, err)
 		require.NoError(t, r.AddKeyringToken(ctx, boundaryAddr, KeyringToken{KeyringType: "k", TokenName: "t", AuthTokenId: at.Id}))
 
@@ -795,7 +796,7 @@ func TestRecheckCachingSupport(t *testing.T) {
 		require.NoError(t, err)
 		r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(boundaryAuthTokens))
 		require.NoError(t, err)
-		rs, err := NewRefreshService(ctx, r, 0, 0)
+		rs, err := NewRefreshService(ctx, r, hclog.NewNullLogger(), 0, 0)
 		require.NoError(t, err)
 		require.NoError(t, r.AddKeyringToken(ctx, boundaryAddr, KeyringToken{KeyringType: "k", TokenName: "t", AuthTokenId: at.Id}))
 
@@ -829,7 +830,7 @@ func TestRecheckCachingSupport(t *testing.T) {
 		require.NoError(t, err)
 		r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(boundaryAuthTokens))
 		require.NoError(t, err)
-		rs, err := NewRefreshService(ctx, r, 0, 0)
+		rs, err := NewRefreshService(ctx, r, hclog.NewNullLogger(), 0, 0)
 		require.NoError(t, err)
 		require.NoError(t, r.AddKeyringToken(ctx, boundaryAddr, KeyringToken{KeyringType: "k", TokenName: "t", AuthTokenId: at.Id}))
 
@@ -863,7 +864,7 @@ func TestRecheckCachingSupport(t *testing.T) {
 		require.NoError(t, err)
 		r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(boundaryAuthTokens))
 		require.NoError(t, err)
-		rs, err := NewRefreshService(ctx, r, 0, 0)
+		rs, err := NewRefreshService(ctx, r, hclog.NewNullLogger(), 0, 0)
 		require.NoError(t, err)
 		require.NoError(t, r.AddKeyringToken(ctx, boundaryAddr, KeyringToken{KeyringType: "k", TokenName: "t", AuthTokenId: at.Id}))
 
@@ -897,7 +898,7 @@ func TestRecheckCachingSupport(t *testing.T) {
 		require.NoError(t, err)
 		r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(boundaryAuthTokens))
 		require.NoError(t, err)
-		rs, err := NewRefreshService(ctx, r, 0, 0)
+		rs, err := NewRefreshService(ctx, r, hclog.NewNullLogger(), 0, 0)
 		require.NoError(t, err)
 		require.NoError(t, r.AddKeyringToken(ctx, boundaryAddr, KeyringToken{KeyringType: "k", TokenName: "t", AuthTokenId: at.Id}))
 

@@ -16,7 +16,10 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/internal/util"
+	"github.com/hashicorp/go-hclog"
 )
+
+const redactedString = "/*redacted*/"
 
 type refresher interface {
 	refresh()
@@ -44,16 +47,38 @@ type UpsertTokenRequest struct {
 	Keyring *KeyringToken `json:"keyring,omitempty"`
 }
 
-func newTokenHandlerFunc(ctx context.Context, repo *cache.Repository, refresher refresher) (http.HandlerFunc, error) {
-	const op = "daemon.newPersonaHandlerFunc"
+func (u *UpsertTokenRequest) String() string {
+	if u == nil {
+		return "nil"
+	}
+	out := fmt.Sprintf("BoundaryAddr: %q, AuthTokenId: %q", u.BoundaryAddr, u.AuthTokenId)
+	if u.Keyring != nil {
+		out = fmt.Sprintf("%s, Keyring: %+v", out, *u.Keyring)
+	}
+	if len(u.AuthToken) > 0 {
+		// Don't print out the auth token string, but do indicate if it has the
+		// same prefix as the provided auth token id.
+		redactedAuthTokenStr := redactedString
+		if strings.HasPrefix(u.AuthToken, u.AuthTokenId) {
+			redactedAuthTokenStr = fmt.Sprintf("%s_%s", u.AuthTokenId, redactedAuthTokenStr)
+		}
+		out = fmt.Sprintf("%s, AuthToken: %q", out, redactedAuthTokenStr)
+	}
+	return out
+}
+
+func newTokenHandlerFunc(ctx context.Context, repo *cache.Repository, refresher refresher, logger hclog.Logger) (http.HandlerFunc, error) {
+	const op = "daemon.newTokenHandlerFunc"
 	switch {
 	case util.IsNil(repo):
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "repository is nil")
+	case util.IsNil(logger):
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "logger is nil")
 	case util.IsNil(refresher):
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "refresher is nil")
 	}
 	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
+		reqCtx := r.Context()
 
 		if r.Method != http.MethodPost {
 			writeError(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -70,39 +95,48 @@ func newTokenHandlerFunc(ctx context.Context, repo *cache.Repository, refresher 
 			writeError(w, "unable to parse request body", http.StatusBadRequest)
 			return
 		}
+		logger.Debug("received add-token request", "request", perReq.String())
 
 		switch {
 		case perReq.BoundaryAddr == "":
+			event.WriteError(ctx, op, errors.New(ctx, errors.InvalidParameter, op, "boundary_addr is a required field but was empty"), event.WithInfo("request", perReq.String()))
 			writeError(w, "boundary_addr is a required field but was empty", http.StatusBadRequest)
 			return
 		case perReq.AuthTokenId == "":
+			event.WriteError(ctx, op, errors.New(ctx, errors.InvalidParameter, op, "auth_token_id is a required field but was empty"), event.WithInfo("request", perReq.String()))
 			writeError(w, "auth_token_id is a required field but was empty", http.StatusBadRequest)
 			return
 		case perReq.Keyring == nil && perReq.AuthToken == "":
+			event.WriteError(ctx, op, errors.New(ctx, errors.InvalidParameter, op, "either keyring info or the auth_token must be provided but were empty"), event.WithInfo("request", perReq.String()))
 			writeError(w, "Either keyring info or the auth_token must be provided but were empty", http.StatusBadRequest)
 			return
 		case perReq.Keyring != nil:
 			switch {
 			case perReq.Keyring.TokenName == "":
+				event.WriteError(ctx, op, errors.New(ctx, errors.InvalidParameter, op, "keyring.token_name is a required field but was empty"), event.WithInfo("request", perReq.String()))
 				writeError(w, "keyring.token_name is a required field but was empty", http.StatusBadRequest)
 				return
 			case perReq.Keyring.KeyringType == "":
+				event.WriteError(reqCtx, op, errors.New(reqCtx, errors.InvalidParameter, op, "keyring.keyring_type is a required field but was empty"), event.WithInfo("request", perReq.String()))
 				writeError(w, "keyring.keyring_type is a required field but was empty", http.StatusBadRequest)
 				return
 			case perReq.Keyring.KeyringType == base.NoneKeyring:
+				event.WriteError(reqCtx, op, errors.New(reqCtx, errors.InvalidParameter, op, "keyring.keyring_type is set to none which is not supported"), event.WithInfo("request", perReq.String()))
 				writeError(w, fmt.Sprintf("keyring.keyring_type is set to %s which is not supported", perReq.Keyring.KeyringType), http.StatusBadRequest)
 				return
 			}
 		case perReq.AuthToken != "":
 			switch {
 			case !strings.HasPrefix(perReq.AuthToken, perReq.AuthTokenId):
+				event.WriteError(reqCtx, op, errors.New(reqCtx, errors.InvalidParameter, op, "auth_token_id doesn't match the auth_token's prefix"), event.WithInfo("request", perReq.String()))
 				writeError(w, "auth_token_id doesn't match the auth_token's prefix", http.StatusBadRequest)
 				return
 			}
 		}
 
-		oldTok, err := repo.LookupToken(ctx, perReq.AuthTokenId)
+		oldTok, err := repo.LookupToken(reqCtx, perReq.AuthTokenId)
 		if err != nil {
+			event.WriteError(reqCtx, op, err, event.WithInfoMsg("error when trying to look up existing cached auth token", "request", perReq.String()))
 			writeError(w, "error performing auth token lookup", http.StatusInternalServerError)
 			return
 		}
@@ -114,33 +148,34 @@ func newTokenHandlerFunc(ctx context.Context, repo *cache.Repository, refresher 
 				TokenName:   perReq.Keyring.TokenName,
 				AuthTokenId: perReq.AuthTokenId,
 			}
-			if err = repo.AddKeyringToken(ctx, perReq.BoundaryAddr, kt); err != nil {
+			if err = repo.AddKeyringToken(reqCtx, perReq.BoundaryAddr, kt); err != nil {
 				errCode := http.StatusInternalServerError
 				if errors.Match(errors.T(errors.Forbidden), err) {
 					errCode = http.StatusForbidden
 				}
 
 				err := fmt.Errorf("Failed to add a keyring stored token with id %q: %w", perReq.AuthTokenId, err)
-				event.WriteError(ctx, op, err)
+				event.WriteError(reqCtx, op, err, event.WithInfo("request", perReq.String()))
 				writeError(w, err.Error(), errCode)
 				return
 			}
 		case perReq.AuthToken != "":
-			if err = repo.AddRawToken(ctx, perReq.BoundaryAddr, perReq.AuthToken); err != nil {
+			if err = repo.AddRawToken(reqCtx, perReq.BoundaryAddr, perReq.AuthToken); err != nil {
 				errCode := http.StatusInternalServerError
 				if errors.Match(errors.T(errors.Forbidden), err) {
 					errCode = http.StatusForbidden
 				}
 
 				err := fmt.Errorf("Failed to add a raw token with id %q: %w", perReq.AuthTokenId, err)
-				event.WriteError(ctx, op, err)
+				event.WriteError(reqCtx, op, err, event.WithInfo("request", perReq.String()))
 				writeError(w, err.Error(), errCode)
 				return
 			}
 		}
 
-		newTok, err := repo.LookupToken(ctx, perReq.AuthTokenId)
+		newTok, err := repo.LookupToken(reqCtx, perReq.AuthTokenId)
 		if err != nil {
+			event.WriteError(reqCtx, op, err, event.WithInfoMsg("error when trying to look up newly added cached auth token", "request", perReq.String()))
 			writeError(w, "error performing follow up auth token lookup", http.StatusInternalServerError)
 			return
 		}
@@ -148,6 +183,7 @@ func newTokenHandlerFunc(ctx context.Context, repo *cache.Repository, refresher 
 		w.WriteHeader(http.StatusNoContent)
 
 		if oldTok == nil && newTok != nil {
+			logger.Debug("New auth token added to the cache. Initiating a cache refresh.", "request", perReq.String())
 			refresher.refresh()
 		}
 	}, nil

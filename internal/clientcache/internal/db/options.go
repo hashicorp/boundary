@@ -5,12 +5,14 @@ package db
 
 import (
 	"github.com/hashicorp/go-dbw"
+	"github.com/hashicorp/go-hclog"
 )
 
 type options struct {
-	withDebug  bool
-	withUrl    string
-	withDbType dbw.DbType
+	withDebug         bool
+	withUrl           string
+	withDbType        dbw.DbType
+	withGormFormatter hclog.Logger
 }
 
 // Option - how options are passed as args
@@ -31,6 +33,13 @@ func getOpts(opt ...Option) (options, error) {
 		}
 	}
 	return opts, nil
+}
+
+func WithGormFormatter(logger hclog.Logger) Option {
+	return func(o *options) error {
+		o.withGormFormatter = logger
+		return nil
+	}
 }
 
 // WithUrls provides optional url
