@@ -612,9 +612,10 @@ func (b *Server) CreateInitialTargetWithHostSources(ctx context.Context) (target
 	return tt, nil
 }
 
-// Create targets that can be connected to using an alias. The two targets created are:
+// Create targets that can be connected to using an alias. The three targets created are:
 //   - "example.alias": the Boundary dev postgres instance. Uses brokered credentials
 //   - "www.hashicorp.com": a web target
+//   - "ssh.alias": A localhost ssh target
 func (b *Server) CreateInitialTargetsWithAlias(ctx context.Context) error {
 	rw := db.New(b.Database)
 
@@ -654,6 +655,45 @@ func (b *Server) CreateInitialTargetsWithAlias(ctx context.Context) error {
 		return fmt.Errorf("failed to create web target: %w", err)
 	}
 
+	err = b.createSshAliasTarget(ctx, targetRepo, aliasRepo)
+	if err != nil {
+		return fmt.Errorf("failed to create ssh target: %w", err)
+	}
+
+	return nil
+}
+
+func (b *Server) createSshAliasTarget(ctx context.Context, targetRepo *target.Repository, aliasRepo *aliastar.Repository) error {
+	targetId, err := db.NewPublicId(ctx, globals.TcpTargetPrefix)
+	if err != nil {
+		return fmt.Errorf("failed to generate initial aliasing target id: %w", err)
+	}
+
+	opts := []target.Option{
+		target.WithName("Generated localhost ssh target with an alias"),
+		target.WithDescription("Provides an initial localhost target to SSH to using an alias in Boundary"),
+		target.WithDefaultPort(22),
+		target.WithSessionMaxSeconds(uint32(b.DevTargetSessionMaxSeconds)),
+		target.WithSessionConnectionLimit(int32(b.DevTargetSessionConnectionLimit)),
+		target.WithPublicId(targetId),
+		target.WithAddress("127.0.0.1"),
+	}
+	_, err = b.createTarget(ctx, targetRepo, opts...)
+	if err != nil {
+		return err
+	}
+
+	a, err := aliastar.NewAlias(ctx, "global", "ssh.alias", aliastar.WithDestinationId(targetId))
+	if err != nil {
+		return fmt.Errorf("failed to create alias object %w", err)
+	}
+	_, err = aliasRepo.CreateAlias(ctx, a)
+	if err != nil {
+		return fmt.Errorf("failed to save alias to the db %w", err)
+	}
+
+	b.InfoKeys = append(b.InfoKeys, "generated ssh target with alias id")
+	b.Info["generated ssh target with alias id"] = targetId
 	return nil
 }
 
