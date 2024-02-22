@@ -778,6 +778,76 @@ func TestCreate(t *testing.T) {
 			},
 		},
 		{
+			name: "Alias to existing target with static host id",
+			req: &pbs.CreateAliasRequest{Item: &pb.Alias{
+				Type:    "target",
+				ScopeId: scope.Global.String(),
+				Value:   "target-assigned.valid.alias.two",
+				Attrs: &pb.Alias_TargetAliasAttributes{
+					TargetAliasAttributes: &pb.TargetAliasAttributes{
+						AuthorizeSessionArguments: &pb.AuthorizeSessionArguments{
+							HostId: "hst_1234567890",
+						},
+					},
+				},
+				DestinationId: wrapperspb.String(tar.GetPublicId()),
+			}},
+			res: &pbs.CreateAliasResponse{
+				Uri: fmt.Sprintf("aliases/%s_", globals.TargetAliasPrefix),
+				Item: &pb.Alias{
+					Type:    "target",
+					ScopeId: scope.Global.String(),
+					Scope:   globalScopeInfo,
+					Value:   "target-assigned.valid.alias.two",
+					Attrs: &pb.Alias_TargetAliasAttributes{
+						TargetAliasAttributes: &pb.TargetAliasAttributes{
+							AuthorizeSessionArguments: &pb.AuthorizeSessionArguments{
+								HostId: "hst_1234567890",
+							},
+						},
+					},
+					DestinationId:     wrapperspb.String(tar.GetPublicId()),
+					Version:           1,
+					AuthorizedActions: testAuthorizedActions,
+				},
+			},
+		},
+		{
+			name: "Alias to existing target with dynamic host id",
+			req: &pbs.CreateAliasRequest{Item: &pb.Alias{
+				Type:    "target",
+				ScopeId: scope.Global.String(),
+				Value:   "target-assigned.valid.alias.three",
+				Attrs: &pb.Alias_TargetAliasAttributes{
+					TargetAliasAttributes: &pb.TargetAliasAttributes{
+						AuthorizeSessionArguments: &pb.AuthorizeSessionArguments{
+							HostId: "hplg_1234567890",
+						},
+					},
+				},
+				DestinationId: wrapperspb.String(tar.GetPublicId()),
+			}},
+			res: &pbs.CreateAliasResponse{
+				Uri: fmt.Sprintf("aliases/%s_", globals.TargetAliasPrefix),
+				Item: &pb.Alias{
+					Type:    "target",
+					ScopeId: scope.Global.String(),
+					Scope:   globalScopeInfo,
+					Value:   "target-assigned.valid.alias.three",
+					Attrs: &pb.Alias_TargetAliasAttributes{
+						TargetAliasAttributes: &pb.TargetAliasAttributes{
+							AuthorizeSessionArguments: &pb.AuthorizeSessionArguments{
+								HostId: "hplg_1234567890",
+							},
+						},
+					},
+					DestinationId:     wrapperspb.String(tar.GetPublicId()),
+					Version:           1,
+					AuthorizedActions: testAuthorizedActions,
+				},
+			},
+		},
+		{
 			name: "Omitting the alias type",
 			req: &pbs.CreateAliasRequest{Item: &pb.Alias{
 				ScopeId:       scope.Global.String(),
@@ -1272,6 +1342,86 @@ func TestUpdate(t *testing.T) {
 			},
 			res: nil,
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Update with static host id",
+			req: &pbs.UpdateAliasRequest{
+				Id: og.GetPublicId(),
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"attributes.authorize_session_arguments.host_id"},
+				},
+				Item: &pb.Alias{
+					Description: wrapperspb.String("new desc"),
+					Attrs: &pb.Alias_TargetAliasAttributes{
+						&pb.TargetAliasAttributes{
+							AuthorizeSessionArguments: &pb.AuthorizeSessionArguments{
+								HostId: "hst_1234567890",
+							},
+						},
+					},
+				},
+			},
+			res: &pbs.UpdateAliasResponse{
+				Item: &pb.Alias{
+					Type:              "target",
+					Id:                og.GetPublicId(),
+					Name:              wrapperspb.String("default"),
+					ScopeId:           og.GetScopeId(),
+					Scope:             globalScopeInfo,
+					Value:             "default",
+					DestinationId:     wrapperspb.String(tar.GetPublicId()),
+					Description:       wrapperspb.String("default"),
+					CreatedTime:       og.GetCreateTime().GetTimestamp(),
+					AuthorizedActions: testAuthorizedActions,
+					Attrs: &pb.Alias_TargetAliasAttributes{
+						&pb.TargetAliasAttributes{
+							AuthorizeSessionArguments: &pb.AuthorizeSessionArguments{
+								HostId: "hst_1234567890",
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "Update with dynamic host id",
+			req: &pbs.UpdateAliasRequest{
+				Id: og.GetPublicId(),
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"attributes.authorize_session_arguments.host_id"},
+				},
+				Item: &pb.Alias{
+					Description: wrapperspb.String("new desc"),
+					Attrs: &pb.Alias_TargetAliasAttributes{
+						&pb.TargetAliasAttributes{
+							AuthorizeSessionArguments: &pb.AuthorizeSessionArguments{
+								HostId: "hplg_1234567890",
+							},
+						},
+					},
+				},
+			},
+			res: &pbs.UpdateAliasResponse{
+				Item: &pb.Alias{
+					Type:              "target",
+					Id:                og.GetPublicId(),
+					Name:              wrapperspb.String("default"),
+					ScopeId:           og.GetScopeId(),
+					Scope:             globalScopeInfo,
+					Value:             "default",
+					DestinationId:     wrapperspb.String(tar.GetPublicId()),
+					Description:       wrapperspb.String("default"),
+					CreatedTime:       og.GetCreateTime().GetTimestamp(),
+					AuthorizedActions: testAuthorizedActions,
+					Attrs: &pb.Alias_TargetAliasAttributes{
+						&pb.TargetAliasAttributes{
+							AuthorizeSessionArguments: &pb.AuthorizeSessionArguments{
+								HostId: "hplg_1234567890",
+							},
+						},
+					},
+				},
+			},
 		},
 		{
 			name: "Cant specify Created Time",
