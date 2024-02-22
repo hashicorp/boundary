@@ -104,6 +104,11 @@ func Test_MonthlyActiveUsers(t *testing.T) {
 				Items: []*pb.ActiveUsers{
 					{
 						Count:     6,
+						StartTime: timestamppb.New(time.Date(today.Year(), today.Month()-2, 1, 0, 0, 0, 0, time.UTC)),
+						EndTime:   timestamppb.New(time.Date(today.Year(), today.Month()-1, 1, 0, 0, 0, 0, time.UTC)),
+					},
+					{
+						Count:     6,
 						StartTime: timestamppb.New(time.Date(today.Year(), today.Month()-3, 1, 0, 0, 0, 0, time.UTC)),
 						EndTime:   timestamppb.New(time.Date(today.Year(), today.Month()-2, 1, 0, 0, 0, 0, time.UTC)),
 					},

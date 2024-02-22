@@ -122,14 +122,18 @@ func TestRepository_MonthlyActiveUsers(t *testing.T) {
 		repo := TestRepo(t, conn)
 		activeUsers, err := repo.MonthlyActiveUsers(ctx, WithStartTime(&threeMonthsAgo), WithEndTime(&oneMonthAgo))
 		assert.NoError(t, err)
-		// since the end time is exclusive, we should only get one record of active users
-		// for the month of three months ago
-		expectedStartTime := time.Date(today.AddDate(0, -3, 0).Year(), today.AddDate(0, -3, 0).Month(), 1, 0, 0, 0, 0, time.UTC)
-		expectedEndTime := time.Date(today.AddDate(0, -2, 0).Year(), today.AddDate(0, -2, 0).Month(), 1, 0, 0, 0, 0, time.UTC)
-		require.Len(t, activeUsers, 1)
+		require.Len(t, activeUsers, 2)
+		expectedStartTime := time.Date(today.AddDate(0, -2, 0).Year(), today.AddDate(0, -2, 0).Month(), 1, 0, 0, 0, 0, time.UTC)
+		expectedEndTime := time.Date(today.AddDate(0, -1, 0).Year(), today.AddDate(0, -1, 0).Month(), 1, 0, 0, 0, 0, time.UTC)
 		require.Equal(t, uint64(6), activeUsers[0].ActiveUsersCount)
 		assert.Equal(t, expectedStartTime, activeUsers[0].StartTime)
 		assert.Equal(t, expectedEndTime, activeUsers[0].EndTime)
+
+		expectedStartTime = time.Date(today.AddDate(0, -3, 0).Year(), today.AddDate(0, -3, 0).Month(), 1, 0, 0, 0, 0, time.UTC)
+		expectedEndTime = time.Date(today.AddDate(0, -2, 0).Year(), today.AddDate(0, -2, 0).Month(), 1, 0, 0, 0, 0, time.UTC)
+		require.Equal(t, uint64(6), activeUsers[1].ActiveUsersCount)
+		assert.Equal(t, expectedStartTime, activeUsers[1].StartTime)
+		assert.Equal(t, expectedEndTime, activeUsers[1].EndTime)
 	})
 
 	t.Run("invalid-end-time-without-start-time", func(t *testing.T) {
