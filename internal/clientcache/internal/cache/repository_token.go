@@ -112,15 +112,15 @@ func (r *Repository) AddRawToken(ctx context.Context, bAddr string, rawToken str
 	const op = "cache.(Repository).AddRawToken"
 	switch {
 	case rawToken == "":
-		return errors.New(ctx, errors.InvalidParameter, op, "boundary auth token is empty")
+		return errors.New(ctx, errors.InvalidParameter, op, "boundary auth token is empty", errors.WithoutEvent())
 	case bAddr == "":
-		return errors.New(ctx, errors.InvalidParameter, op, "boundary address is empty")
+		return errors.New(ctx, errors.InvalidParameter, op, "boundary address is empty", errors.WithoutEvent())
 	}
 
 	// rawToken should look something like at_1234567890_someencryptedpayload
 	atIdParts := strings.SplitN(rawToken, "_", 4)
 	if len(atIdParts) != 3 {
-		return errors.New(ctx, errors.InvalidParameter, op, "boundary auth token is is malformed")
+		return errors.New(ctx, errors.InvalidParameter, op, "boundary auth token is is malformed", errors.WithoutEvent())
 	}
 	atId := strings.Join(atIdParts[:AuthTokenIdSegmentCount], "_")
 
@@ -132,7 +132,7 @@ func (r *Repository) AddRawToken(ctx context.Context, bAddr string, rawToken str
 			var ok bool
 			inMemAuthToken, ok = atV.(*authtokens.AuthToken)
 			if !ok {
-				return errors.New(ctx, errors.Internal, op, "unable to cast in memory auth token to *authtoken.AuthToken")
+				return errors.New(ctx, errors.Internal, op, "unable to cast in memory auth token to *authtoken.AuthToken", errors.WithoutEvent())
 			}
 		}
 		t := &AuthToken{
@@ -148,10 +148,10 @@ func (r *Repository) AddRawToken(ctx context.Context, bAddr string, rawToken str
 			// cache information about this auth token.
 			at, err = r.tokenReadFromBoundaryFn(ctx, bAddr, rawToken)
 			if err != nil {
-				return errors.Wrap(ctx, err, op)
+				return errors.Wrap(ctx, err, op, errors.WithoutEvent())
 			}
 		case t.UserId != inMemAuthToken.UserId:
-			return errors.New(ctx, errors.InvalidParameter, op, "user id doesn't match what is specified in the stored auth token")
+			return errors.New(ctx, errors.InvalidParameter, op, "user id doesn't match what is specified in the stored auth token", errors.WithoutEvent())
 		case inMem:
 			at = inMemAuthToken
 		}
@@ -165,7 +165,7 @@ func (r *Repository) AddRawToken(ctx context.Context, bAddr string, rawToken str
 
 	_, err := r.rw.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(reader db.Reader, writer db.Writer) error {
 		if err := upsertUserAndAuthToken(ctx, reader, writer, bAddr, at); err != nil {
-			return errors.Wrap(ctx, err, op)
+			return errors.Wrap(ctx, err, op, errors.WithoutEvent())
 		}
 		r.idToKeyringlessAuthToken.Store(at.Id, at)
 		return nil
@@ -186,21 +186,21 @@ func (r *Repository) AddKeyringToken(ctx context.Context, bAddr string, token Ke
 	const op = "cache.(Repository).AddKeyringToken"
 	switch {
 	case token.TokenName == "":
-		return errors.New(ctx, errors.InvalidParameter, op, "token name is empty")
+		return errors.New(ctx, errors.InvalidParameter, op, "token name is empty", errors.WithoutEvent())
 	case token.KeyringType == "":
-		return errors.New(ctx, errors.InvalidParameter, op, "keyring type is empty")
+		return errors.New(ctx, errors.InvalidParameter, op, "keyring type is empty", errors.WithoutEvent())
 	case token.AuthTokenId == "":
-		return errors.New(ctx, errors.InvalidParameter, op, "boundary auth token id is empty")
+		return errors.New(ctx, errors.InvalidParameter, op, "boundary auth token id is empty", errors.WithoutEvent())
 	case bAddr == "":
-		return errors.New(ctx, errors.InvalidParameter, op, "boundary address is empty")
+		return errors.New(ctx, errors.InvalidParameter, op, "boundary address is empty", errors.WithoutEvent())
 	}
 	kt := token.clone()
 	keyringStoredAt := r.tokenKeyringFn(kt.KeyringType, kt.TokenName)
 	if keyringStoredAt == nil {
-		return errors.New(ctx, errors.InvalidParameter, op, "unable to find token in the keyring specified")
+		return errors.New(ctx, errors.InvalidParameter, op, "unable to find token in the keyring specified", errors.WithoutEvent())
 	}
 	if kt.AuthTokenId != keyringStoredAt.Id {
-		return errors.New(ctx, errors.InvalidParameter, op, "provided auth token id doesn't match the one stored")
+		return errors.New(ctx, errors.InvalidParameter, op, "provided auth token id doesn't match the one stored", errors.WithoutEvent())
 	}
 
 	var at *authtokens.AuthToken
@@ -218,21 +218,21 @@ func (r *Repository) AddKeyringToken(ctx context.Context, bAddr string, token Ke
 				return errors.Wrap(ctx, err, op)
 			}
 		case cachedAt.UserId != keyringStoredAt.UserId:
-			return errors.New(ctx, errors.InvalidParameter, op, "user id doesn't match what is specified in the stored auth token")
+			return errors.New(ctx, errors.InvalidParameter, op, "user id doesn't match what is specified in the stored auth token", errors.WithoutEvent())
 		default:
 			at = keyringStoredAt
 		}
 	}
 	_, err := r.rw.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(reader db.Reader, writer db.Writer) error {
 		if err := upsertUserAndAuthToken(ctx, reader, writer, bAddr, at); err != nil {
-			return errors.Wrap(ctx, err, op)
+			return errors.Wrap(ctx, err, op, errors.WithoutEvent())
 		}
 		onConflict := &db.OnConflict{
 			Target: db.Columns{"keyring_type", "token_name"},
 			Action: db.SetColumns([]string{"auth_token_id"}),
 		}
 		if err := writer.Create(ctx, kt, db.WithOnConflict(onConflict)); err != nil {
-			return errors.Wrap(ctx, err, op)
+			return errors.Wrap(ctx, err, op, errors.WithoutEvent())
 		}
 		return nil
 	})
@@ -252,7 +252,7 @@ func (r *Repository) LookupToken(ctx context.Context, authTokenId string, opt ..
 	const op = "cache.(Repository).LookupToken"
 	switch {
 	case authTokenId == "":
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "auth token id is empty")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "auth token id is empty", errors.WithoutEvent())
 	}
 
 	at := &AuthToken{
@@ -262,12 +262,12 @@ func (r *Repository) LookupToken(ctx context.Context, authTokenId string, opt ..
 		if errors.IsNotFoundError(err) {
 			return nil, nil
 		}
-		return nil, errors.Wrap(ctx, err, op)
+		return nil, errors.Wrap(ctx, err, op, errors.WithoutEvent())
 	}
 
 	opts, err := getOpts(opt...)
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+		return nil, errors.Wrap(ctx, err, op, errors.WithoutEvent())
 	}
 
 	if opts.withUpdateLastAccessedTime {
@@ -276,7 +276,7 @@ func (r *Repository) LookupToken(ctx context.Context, authTokenId string, opt ..
 			LastAccessedTime: time.Now(),
 		}
 		if _, err := r.rw.Update(ctx, updatedT, []string{"LastAccessedTime"}, nil); err != nil {
-			return nil, errors.Wrap(ctx, err, op)
+			return nil, errors.Wrap(ctx, err, op, errors.WithoutEvent())
 		}
 	}
 	return at, nil
@@ -300,19 +300,19 @@ func (r *Repository) deleteKeyringToken(ctx context.Context, kt KeyringToken) er
 		//   query here.
 		n, err := writer.Exec(ctx, "delete from keyring_token where (keyring_type, token_name) = (?, ?)", []any{kt.KeyringType, kt.TokenName})
 		if err != nil {
-			return errors.Wrap(ctx, err, op)
+			return errors.Wrap(ctx, err, op, errors.WithoutEvent())
 		}
 
 		switch n {
 		case 1:
 			if err := cleanExpiredOrOrphanedAuthTokens(ctx, writer, r.idToKeyringlessAuthToken); err != nil {
-				return errors.Wrap(ctx, err, op)
+				return errors.Wrap(ctx, err, op, errors.WithoutEvent())
 			}
 			return nil
 		case 0:
-			return errors.New(ctx, errors.RecordNotFound, op, "token not found when attempting deletion")
+			return errors.New(ctx, errors.RecordNotFound, op, "token not found when attempting deletion", errors.WithoutEvent())
 		default:
-			return errors.New(ctx, errors.MultipleRecords, op, "multiple tokens deleted when one was requested")
+			return errors.New(ctx, errors.MultipleRecords, op, "multiple tokens deleted when one was requested", errors.WithoutEvent())
 		}
 	})
 	if err != nil {
@@ -327,7 +327,7 @@ func (r *Repository) cleanExpiredOrOrphanedAuthTokens(ctx context.Context) error
 	const op = "cache.Repository.cleanExpiredOrOrphanedAuthTokens"
 	_, err := r.rw.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(reader db.Reader, writer db.Writer) error {
 		if err := cleanExpiredOrOrphanedAuthTokens(ctx, writer, r.idToKeyringlessAuthToken); err != nil {
-			return errors.Wrap(ctx, err, op)
+			return errors.Wrap(ctx, err, op, errors.WithoutEvent())
 		}
 		return nil
 	})

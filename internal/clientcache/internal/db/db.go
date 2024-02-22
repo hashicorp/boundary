@@ -10,6 +10,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/util"
 	"github.com/hashicorp/go-dbw"
 )
 
@@ -34,9 +35,15 @@ func Open(ctx context.Context, opt ...Option) (*db.DB, error) {
 	default:
 		url = DefaultStoreUrl
 	}
+
+	dbOpts := []db.Option{db.WithMaxOpenConnections(1)}
+	if !util.IsNil(opts.withGormFormatter) {
+		dbOpts = append(dbOpts, db.WithGormFormatter(opts.withGormFormatter))
+	}
+
 	// sqlite db must be set to 1 max open connection so requests can be serialized
 	// otherwise reading while a tx is ongoing results in sql logic errors.
-	conn, err := db.Open(ctx, db.Sqlite, url, db.WithMaxOpenConnections(1))
+	conn, err := db.Open(ctx, db.Sqlite, url, dbOpts...)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}

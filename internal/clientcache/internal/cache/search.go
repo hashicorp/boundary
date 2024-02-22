@@ -99,20 +99,20 @@ func (s *SearchService) Supported(ctx context.Context, t *AuthToken) (bool, erro
 	const op = "cache.(SearchService).Supported"
 	switch {
 	case util.IsNil(t):
-		return false, errors.New(ctx, errors.InvalidParameter, op, "auth token is nil")
+		return false, errors.New(ctx, errors.InvalidParameter, op, "auth token is nil", errors.WithoutEvent())
 	case t.UserId == "":
-		return false, errors.New(ctx, errors.InvalidParameter, op, "auth token's user id is empty")
+		return false, errors.New(ctx, errors.InvalidParameter, op, "auth token's user id is empty", errors.WithoutEvent())
 	}
 	u, err := s.repo.lookupUser(ctx, t.UserId)
 	if err != nil {
-		return false, errors.Wrap(ctx, err, op)
+		return false, errors.Wrap(ctx, err, op, errors.WithoutEvent())
 	}
 	if u == nil {
-		return false, errors.New(ctx, errors.NotFound, op, "user not found for auth token")
+		return false, errors.New(ctx, errors.NotFound, op, "user not found for auth token", errors.WithoutEvent())
 	}
 	cs, err := s.repo.cacheSupportState(ctx, u)
 	if err != nil {
-		return false, errors.Wrap(ctx, err, op)
+		return false, errors.Wrap(ctx, err, op, errors.WithoutEvent())
 	}
 	return cs.supported != NotSupportedCacheSupport, nil
 }
