@@ -17,7 +17,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestCliAlias uses the boundary cli to create an alias
+// TestCliAlias uses the boundary cli to create an alias and connect to a target
+// using that alias
 func TestCliAlias(t *testing.T) {
 	e2e.MaybeSkipTest(t)
 	c, err := loadTestConfig()
@@ -42,13 +43,13 @@ func TestCliAlias(t *testing.T) {
 		target.WithAddress(c.TargetAddress),
 	)
 
-	// Create an alias
-	alias := "example.alias.boundary"
+	// Create an aliasTargetAddress
+	aliasTargetAddress := "example.alias.boundary"
 	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"aliases", "create", "target",
 			"-scope-id", "global",
-			"-value", alias,
+			"-value", aliasTargetAddress,
 			"-destination-id", newTargetId,
 			"-format", "json",
 		),
@@ -58,17 +59,17 @@ func TestCliAlias(t *testing.T) {
 	var newAliasResult aliases.AliasCreateResult
 	err = json.Unmarshal(output.Stdout, &newAliasResult)
 	require.NoError(t, err)
-	newAliasId := newAliasResult.Item.Id
+	aliasTargetAddressId := newAliasResult.Item.Id
 
 	t.Cleanup(func() {
-		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("aliases", "delete", "-id", newAliasId))
+		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("aliases", "delete", "-id", aliasTargetAddressId))
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
 
 	// Connect to target using alias
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
-			"connect", alias,
+			"connect", aliasTargetAddress,
 			"-exec", "/usr/bin/ssh", "--",
 			"-l", c.TargetSshUser,
 			"-i", c.TargetSshKeyPath,
@@ -88,7 +89,7 @@ func TestCliAlias(t *testing.T) {
 	// Connect Ssh to target using alias
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
-			"connect", "ssh", alias, "--",
+			"connect", "ssh", aliasTargetAddress, "--",
 			"-l", c.TargetSshUser,
 			"-i", c.TargetSshKeyPath,
 			"-o", "UserKnownHostsFile=/dev/null",
@@ -97,12 +98,11 @@ func TestCliAlias(t *testing.T) {
 		),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
-	t.Log("Successfully connected to target")
 
 	// Authorize session using alias
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
-			"targets", "authorize-session", alias,
+			"targets", "authorize-session", aliasTargetAddress,
 			"-format", "json",
 		),
 	)
@@ -119,7 +119,7 @@ func TestCliAlias(t *testing.T) {
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"aliases", "update", "target",
-			"-id", newAliasId,
+			"-id", aliasTargetAddressId,
 			"-authorize-session-host-id", newHostId,
 			"-format", "json",
 		),
@@ -127,8 +127,48 @@ func TestCliAlias(t *testing.T) {
 	require.NoError(t, output.Err, string(output.Stderr))
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
-			"targets", "authorize-session", alias,
+			"targets", "authorize-session", aliasTargetAddress,
 			"-format", "json",
+		),
+	)
+	require.NoError(t, output.Err, string(output.Stderr))
+
+	// Create another alias that uses a target with a host set
+	targetWithHost := boundary.CreateNewTargetCli(
+		t,
+		ctx,
+		newProjectId,
+		c.TargetPort,
+		target.WithName("targetWithHost"),
+	)
+	boundary.AddHostSourceToTargetCli(t, ctx, targetWithHost, newHostSetId)
+	aliasTargetHost := "aliasTargetHost"
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"aliases", "create", "target",
+			"-scope-id", "global",
+			"-value", aliasTargetHost,
+			"-destination-id", targetWithHost,
+			"-format", "json",
+		),
+	)
+	require.NoError(t, output.Err, string(output.Stderr))
+
+	err = json.Unmarshal(output.Stdout, &newAliasResult)
+	require.NoError(t, err)
+	aliasTargetHostId := newAliasResult.Item.Id
+	t.Cleanup(func() {
+		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("aliases", "delete", "-id", aliasTargetHostId))
+		require.NoError(t, output.Err, string(output.Stderr))
+	})
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"connect", "ssh", aliasTargetHost, "--",
+			"-l", c.TargetSshUser,
+			"-i", c.TargetSshKeyPath,
+			"-o", "UserKnownHostsFile=/dev/null",
+			"-o", "StrictHostKeyChecking=no",
+			"-o", "IdentitiesOnly=yes", // forces the use of the provided key
 		),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
