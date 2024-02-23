@@ -17,6 +17,9 @@ type cmdInfo struct {
 	// Standard actions (with standard parameters) used by this resource
 	StdActions []string
 
+	// HasCustomList indicates if there is a custom list action
+	HasCustomList bool
+
 	// HasExtraCommandVars controls whether to generate an embedded struct with
 	// extra command variables
 	HasExtraCommandVars bool
@@ -209,6 +212,15 @@ var inputStructs = map[string][]*cmdInfo{
 			StdActions:       []string{"read", "delete", "list"},
 			HasExtraHelpFunc: true,
 			Container:        "Scope",
+		},
+	},
+	"billing": {
+		{
+			ResourceType:        resource.Billing.String(),
+			Pkg:                 "billing",
+			HasCustomList:       true,
+			HasExtraCommandVars: true,
+			HasExtraHelpFunc:    true,
 		},
 	},
 	"credentialstores": {

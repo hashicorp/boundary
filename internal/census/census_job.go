@@ -18,11 +18,13 @@ var (
 )
 
 type censusJob struct {
-	r          db.Reader
-	w          db.Writer
-	lurEnabled bool
-	agent      any
-	eventCtx   context.Context
+	r                db.Reader
+	w                db.Writer
+	lurEnabled       bool
+	emitEvents       bool
+	sessionsAgent    any
+	activeUsersAgent any
+	eventCtx         context.Context
 }
 
 func newCensusJob(ctx context.Context, lurEnabled bool, r db.Reader, w db.Writer) (*censusJob, error) {
@@ -35,11 +37,13 @@ func newCensusJob(ctx context.Context, lurEnabled bool, r db.Reader, w db.Writer
 	}
 
 	return &censusJob{
-		r:          r,
-		w:          w,
-		lurEnabled: lurEnabled,
-		agent:      nil,
-		eventCtx:   ctx,
+		r:                r,
+		w:                w,
+		lurEnabled:       lurEnabled,
+		emitEvents:       false,
+		sessionsAgent:    nil,
+		activeUsersAgent: nil,
+		eventCtx:         ctx,
 	}, nil
 }
 

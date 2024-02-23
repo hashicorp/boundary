@@ -9,8 +9,8 @@ begin;
 
   select wtt_load('widgets', 'iam', 'kms', 'auth', 'hosts', 'targets');
 
-  -- ensure no existing dimensions
-  select is(count(*), 0::bigint) from wh_user_dimension where user_organization_id = 'o_____widget';
+  -- existing dimensions from auth tokens
+  select is(count(*), 8::bigint) from wh_user_dimension where user_organization_id = 'o_____widget';
 
   -- insert first session, should result in a new user dimension
   insert into session
@@ -22,7 +22,7 @@ begin;
   values
     ('s1____walter', 's___1wb-sths', 'h_____wb__01');
 
-  select is(count(*), 1::bigint) from wh_user_dimension where user_organization_id = 'o_____widget';
+  select is(count(*), 8::bigint) from wh_user_dimension where user_organization_id = 'o_____widget';
 
   -- another session with:
   --  * same user
@@ -38,7 +38,7 @@ begin;
   values
     ('s4____walter', 's___1wb-sths', 'h_____wb__01');
 
-  select is(count(*),                      2::bigint)                from wh_user_dimension where user_organization_id = 'o_____widget';
+  select is(count(*),                      8::bigint)                from wh_user_dimension where user_organization_id = 'o_____widget';
   select is(count(*),                      1::bigint)                from wh_user_dimension where user_id              = 'u_____walter' and auth_account_id = 'apa1__walter';
 
   select is(user_id,                       'u_____walter')           from wh_user_dimension where user_id              = 'u_____walter' and auth_account_id = 'apa1__walter';

@@ -1,0 +1,36 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
+syntax = "proto3";
+
+package controller.api.services.v1;
+
+import "controller/api/resources/billing/v1/billing.proto";
+import "google/api/annotations.proto";
+import "protoc-gen-openapiv2/options/annotations.proto";
+
+option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/services;services";
+
+service BillingService {
+  // MonthlyActiveUsers returns the monthly active users for the given time period.
+  // If no time period is provided, the current and previous months are returned.
+  // If the provided request contains a start time but no end time, it will return
+  // up to the current month. If the provided request contains an end time and no start time,
+  // or if the end time is prior to the start time, an error will be returned.
+  rpc MonthlyActiveUsers(MonthlyActiveUsersRequest) returns (MonthlyActiveUsersResponse) {
+    option (google.api.http) = {get: "/v1/billing:monthly-active-users"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Returns monthly active users."};
+  }
+}
+
+message MonthlyActiveUsersRequest {
+  // An optional start time of the billing period to query, in the format of YYYY-MM.
+  string start_time = 1 [json_name = "start_time"]; // @gotags: class:"public"
+
+  // An optional end time of the billing period to query, in the format of YYYY-MM.
+  string end_time = 2 [json_name = "end_time"]; // @gotags: class:"public"
+}
+
+message MonthlyActiveUsersResponse {
+  repeated resources.billing.v1.ActiveUsers items = 1;
+}

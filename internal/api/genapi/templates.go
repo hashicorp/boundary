@@ -94,6 +94,9 @@ func fillTemplates() {
 					if len(override.JsonTags) != 0 {
 						field.JsonTags = override.JsonTags
 					}
+					if override.AllowEmpty {
+						field.AllowEmpty = true
+					}
 					in.generatedStructure.fields[i] = field
 				}
 			}
@@ -715,7 +718,7 @@ import (
 )
 
 type {{ .Name }} struct { {{ range .Fields }}
-{{ .Name }}  {{ .FieldType }} `, "`json:\"{{ .ProtoName }}{{ if ( ne ( len ( .JsonTags ) ) 0 ) }},{{ stringsjoin .JsonTags \",\" }}{{ end }},omitempty\"`", `{{ end }}
+{{ .Name }}  {{ .FieldType }} `, "`json:\"{{ .ProtoName }}{{ if ( ne ( len ( .JsonTags ) ) 0 ) }},{{ stringsjoin .JsonTags \",\" }}{{ end }}{{ if ( not .AllowEmpty ) }},omitempty{{ end }}\"`", `{{ end }}
 {{ if ( not ( eq ( len ( .CreateResponseTypes ) ) 0 ) )}}
 	response *api.Response
 {{ else if ( eq .Name "Error" ) }}

@@ -133,7 +133,7 @@ begin;
       (key_id, table_name, total_count)
     values
       ('kdkv___widget', 'auth_token', 100);
-  
+
   end;
   $$ language plpgsql;
 
@@ -172,13 +172,13 @@ begin;
     update auth_account set iam_user_id = 'u_____wilson' where public_id = 'apa___wilson';
 
     insert into auth_token
-      (key_id, auth_account_id, public_id, token)
+      (key_id,          auth_account_id, public_id,      token,                 expiration_time,            status)
     values
-      ('kdkv___widget', 'apa___walter', 'tok___walter', 'tok___walter'::bytea),
-      ('kdkv___widget', 'apa1__walter', 'tok1__walter', 'tok1__walter'::bytea),
-      ('kdkv___widget', 'apa___warren', 'tok___warren', 'tok___warren'::bytea),
-      ('kdkv___widget', 'apa___waylon', 'tok___waylon', 'tok___waylon'::bytea),
-      ('kdkv___widget', 'apa___wilson', 'tok___wilson', 'tok___wilson'::bytea);
+      ('kdkv___widget', 'apa___walter',  'tok___walter', 'tok___walter'::bytea, now() + interval '15 days', 'token issued'),
+      ('kdkv___widget', 'apa1__walter',  'tok1__walter', 'tok1__walter'::bytea, now() + interval '15 days', 'token issued'),
+      ('kdkv___widget', 'apa___warren',  'tok___warren', 'tok___warren'::bytea, now() + interval '15 days', 'token issued'),
+      ('kdkv___widget', 'apa___waylon',  'tok___waylon', 'tok___waylon'::bytea, now() + interval '15 days', 'token issued'),
+      ('kdkv___widget', 'apa___wilson',  'tok___wilson', 'tok___wilson'::bytea, now() + interval '15 days', 'auth token pending');
 
     insert into auth_oidc_method
       (scope_id,       public_id,      client_id,      name,          state,            key_id,          issuer)
@@ -206,7 +206,7 @@ begin;
       ('o_____widget', 'alm___widget', 'Widget LDAP', 'active-private');
     insert into auth_ldap_url
       (ldap_method_id, url,             connection_priority)
-    values 
+    values
       ('alm___widget', 'ldaps://ldap1', 1);
 
     insert into auth_ldap_account

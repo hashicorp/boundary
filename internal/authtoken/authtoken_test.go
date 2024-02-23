@@ -130,13 +130,17 @@ func TestAuthToken_DbCreate(t *testing.T) {
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rootWrapper := db.TestWrapper(t)
+	iamRepo := iam.TestRepo(t, conn, rootWrapper)
 	kms := kms.TestKms(t, conn, rootWrapper)
-	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, rootWrapper))
+	org, _ := iam.TestScopes(t, iamRepo)
 	wrapper, err := kms.GetWrapper(context.Background(), org.GetPublicId(), 1)
 	require.NoError(t, err)
+	user := iam.TestUser(t, iamRepo, org.GetPublicId())
 	am := password.TestAuthMethods(t, conn, org.GetPublicId(), 1)[0]
 	acct := password.TestAccount(t, conn, am.GetPublicId(), "name1")
 	createdAuthToken := TestAuthToken(t, conn, kms, org.GetPublicId())
+	_, err = iamRepo.AddUserAccounts(ctx, user.GetPublicId(), user.GetVersion(), []string{acct.GetPublicId()})
+	require.NoError(t, err)
 
 	testAuthTokenId := func() string {
 		id, err := NewAuthTokenId(ctx)

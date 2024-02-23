@@ -34,6 +34,7 @@ func HelpMap(resType string) map[string]func() string {
 		resource.AuthToken.String():        "at",
 		resource.AuthMethod.String():       "am",
 		resource.Account.String():          "a",
+		resource.Billing.String():          "b",
 		resource.Role.String():             "r",
 		resource.Group.String():            "g",
 		resource.User.String():             "u",

@@ -35,6 +35,7 @@ const (
 	Credential
 	StorageBucket
 	Policy
+	Billing
 	// NOTE: When adding a new type, be sure to update:
 	//
 	// * The Grant.validateType function and test
@@ -74,6 +75,7 @@ func (r Type) String() string {
 		"credential",
 		"storage-bucket",
 		"policy",
+		"billing",
 	}[r]
 }
 
@@ -83,6 +85,8 @@ func (r Type) PluralString() string {
 		return "credential-libraries"
 	case Policy:
 		return "policies"
+	case Billing: // never pluralized
+		return "billing"
 	default:
 		return r.String() + "s"
 	}
@@ -94,6 +98,8 @@ func FromPlural(s string) (Type, bool) {
 		return CredentialLibrary, true
 	case "policies":
 		return Policy, true
+	case "billing":
+		return Billing, true
 	default:
 		t, ok := Map[strings.TrimSuffix(s, "s")]
 		return t, ok
@@ -124,6 +130,7 @@ var Map = map[string]Type{
 	Credential.String():        Credential,
 	StorageBucket.String():     StorageBucket,
 	Policy.String():            Policy,
+	Billing.String():           Billing,
 }
 
 // Parent returns the parent type for a given type; if there is no parent, it

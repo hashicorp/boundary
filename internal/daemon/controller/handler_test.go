@@ -137,6 +137,7 @@ func TestHandleImplementedPaths(t *testing.T) {
 			"v1/targets/someid",
 			"v1/users",
 			"v1/users/someid",
+			"v1/billing:monthly-active-users",
 		},
 		"POST": {
 			// Creation end points

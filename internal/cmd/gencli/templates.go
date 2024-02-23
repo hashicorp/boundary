@@ -478,9 +478,11 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 	}
 
 	var resp *api.Response
+	{{ if $input.StdActions -}}
 	var item *{{ $input.Pkg }}.{{ camelCase $input.ResourceType }}
 	{{ if hasAction .StdActions "list" }}
 	var items []*{{ $input.Pkg }}.{{ camelCase $input.ResourceType }}
+	{{ end }}
 	{{ end }}
 	{{ range $i, $action := $input.StdActions }}
 	{{ if ( not ( hasAction $input.SkipClientCallActions $action) ) }}
@@ -488,6 +490,7 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 	{{ end }}
 	{{ end }}
 
+	{{ if $input.StdActions }}
 	switch c.Func {
 	{{ range $i, $action := $input.StdActions }}
 	{{ if eq $action "create" }}
@@ -538,8 +541,9 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 	{{ end }}
 	{{ end }}
 	}
+	{{ end }}
 
-	resp, item, {{ if hasAction .StdActions "list" }}items, {{ end }}err = executeExtra{{ camelCase .SubActionPrefix }}Actions(c, resp, item,  {{ if hasAction .StdActions "list" }}items, {{ end }}err, {{ .Pkg }}Client, version, opts)
+	resp, {{ if $input.StdActions }}item, {{ if hasAction .StdActions "list" }}items, {{ end }}{{ end }}err = executeExtra{{ camelCase .SubActionPrefix }}Actions(c, resp, {{ if $input.StdActions }}item, {{ if hasAction .StdActions "list" }}items, {{ end }}{{ end }}err, {{ .Pkg }}Client, version, opts)
 	if exitCode := c.checkFuncError(err); exitCode > 0 {
 		return exitCode
 	}
@@ -553,6 +557,7 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 		return base.CommandSuccess
 	}
 
+	{{ if $input.StdActions }}
 	switch c.Func {
 	{{ range $i, $action := .StdActions }}
 	{{ if eq $action "delete" }}
@@ -595,6 +600,7 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 			return base.CommandCliError
 		}
 	}
+	{{ end }}
 
 	return base.CommandSuccess
 }
@@ -619,8 +625,8 @@ var (
 	extra{{ camelCase .SubActionPrefix }}SynopsisFunc = func(*{{ camelCase .SubActionPrefix }}Command) string { return "" }
 	extra{{ camelCase .SubActionPrefix }}FlagsFunc = func(*{{ camelCase .SubActionPrefix }}Command, *base.FlagSets, *base.FlagSet) {}
 	extra{{ camelCase .SubActionPrefix }}FlagsHandlingFunc = func(*{{ camelCase .SubActionPrefix }}Command, *base.FlagSets, *[]{{ .Pkg }}.Option) bool { return true }
-	executeExtra{{ camelCase .SubActionPrefix }}Actions = func(_ *{{ camelCase .SubActionPrefix }}Command, inResp *api.Response, inItem *{{ $input.Pkg }}.{{ camelCase $input.ResourceType }}, {{ if hasAction .StdActions "list" }}inItems []*{{ $input.Pkg }}.{{ camelCase $input.ResourceType }}, {{ end }}inErr error, _ *{{ .Pkg }}.Client, _ uint32, _ []{{ .Pkg }}.Option) (*api.Response, *{{ $input.Pkg }}.{{ camelCase $input.ResourceType }}, {{ if hasAction .StdActions "list" }}[]*{{ $input.Pkg }}.{{ camelCase $input.ResourceType }}, {{ end }}error) {
-		return inResp, inItem, {{ if hasAction .StdActions "list" }}inItems, {{ end }}inErr
+	executeExtra{{ camelCase .SubActionPrefix }}Actions = func(_ *{{ camelCase .SubActionPrefix }}Command, inResp *api.Response, {{ if $input.StdActions }}inItem *{{ $input.Pkg }}.{{ camelCase $input.ResourceType }}, {{ if hasAction .StdActions "list" }}inItems []*{{ $input.Pkg }}.{{ camelCase $input.ResourceType }}, {{ end }}{{ end }}inErr error, _ *{{ .Pkg }}.Client, _ uint32, _ []{{ .Pkg }}.Option) (*api.Response, {{ if $input.StdActions }}*{{ $input.Pkg }}.{{ camelCase $input.ResourceType }}, {{ if hasAction .StdActions "list" }}[]*{{ $input.Pkg }}.{{ camelCase $input.ResourceType }}, {{ end }}{{ end }}error) {
+		return inResp, {{ if $input.StdActions }}inItem, {{ if hasAction .StdActions "list" }}inItems, {{ end }}{{ end }}inErr
 	}
 	printCustom{{ camelCase .SubActionPrefix }}ActionOutput = func(*{{ camelCase .SubActionPrefix }}Command) (bool, error) { return false, nil }
 )
