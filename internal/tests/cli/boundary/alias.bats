@@ -50,7 +50,7 @@ export NEW_HOST="host_for_alias_test"
 }
 
 @test "boundary/alias: admin user can connect using passing in a host id" {
-  run connect_alias_with_hostid $ALIAS_VALUE $DEFAULT_HOST
+  run connect_alias_with_host_id $ALIAS_VALUE $DEFAULT_HOST
   [ "$status" -eq 0 ]
 }
 
@@ -66,7 +66,7 @@ export NEW_HOST="host_for_alias_test"
 }
 
 @test "boundary/alias: admin user can connect using an alias configured with host id passing in same host id" {
-  run connect_alias_with_hostid $ALIAS_VALUE $DEFAULT_HOST
+  run connect_alias_with_host_id $ALIAS_VALUE $DEFAULT_HOST
   [ "$status" -eq 0 ]
 }
 
@@ -85,7 +85,7 @@ export NEW_HOST="host_for_alias_test"
 
 @test "boundary/alias: admin user cannot connect using an alias configured with host id passing in different host id" {
   local new_host_id=$(host_id NEW_HOST $DEFAULT_HOST_CATALOG)
-  run connect_alias_with_hostid $ALIAS_VALUE $new_host_id
+  run connect_alias_with_host_id $ALIAS_VALUE $new_host_id
   [ "$status" -eq 1 ]
 }
 
