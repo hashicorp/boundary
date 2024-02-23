@@ -139,7 +139,8 @@ func TestAuthToken_DbCreate(t *testing.T) {
 	am := password.TestAuthMethods(t, conn, org.GetPublicId(), 1)[0]
 	acct := password.TestAccount(t, conn, am.GetPublicId(), "name1")
 	createdAuthToken := TestAuthToken(t, conn, kms, org.GetPublicId())
-	iamRepo.AddUserAccounts(ctx, user.GetPublicId(), user.GetVersion(), []string{acct.GetPublicId()})
+	_, err = iamRepo.AddUserAccounts(ctx, user.GetPublicId(), user.GetVersion(), []string{acct.GetPublicId()})
+	require.NoError(t, err)
 
 	testAuthTokenId := func() string {
 		id, err := NewAuthTokenId(ctx)

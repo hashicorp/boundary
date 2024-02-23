@@ -905,7 +905,7 @@ func Test_CloseExpiredPendingTokens(t *testing.T) {
 			user, _, err = iamRepo.LookupUser(ctx, user.GetPublicId())
 			require.NoError(t, err)
 
-			iamRepo.AddUserAccounts(ctx, user.GetPublicId(), user.GetVersion(), []string{accts[i].GetPublicId()})
+			_, _ = iamRepo.AddUserAccounts(ctx, user.GetPublicId(), user.GetVersion(), []string{accts[i].GetPublicId()})
 
 			at := allocAuthToken()
 			id, err := NewAuthTokenId(ctx)
