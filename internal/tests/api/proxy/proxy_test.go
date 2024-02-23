@@ -5,6 +5,7 @@ package proxy
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"net/netip"
 	"sync"
@@ -50,6 +51,7 @@ func TestConnectionsLeft(t *testing.T) {
 		InitialUpstreams:                    c1.ClusterAddrs(),
 		Logger:                              logger.Named("w1"),
 		SuccessfulStatusGracePeriodDuration: helper.DefaultWorkerStatusGracePeriod,
+		Name:                                "w1",
 	})
 	defer w1.Shutdown()
 	err = w1.Worker().WaitForNextSuccessfulStatusUpdate()
@@ -71,7 +73,15 @@ func TestConnectionsLeft(t *testing.T) {
 	require.NotNil(t, ts)
 	defer ts.Close()
 	var sessionConnsLimit int32 = 4
-	tgt, err = tcl.Update(c1.Context(), tgt.Item.Id, tgt.Item.Version, targets.WithTcpTargetDefaultPort(ts.Port()), targets.WithSessionConnectionLimit(sessionConnsLimit))
+	tgt, err = tcl.Update(c1.Context(), tgt.Item.Id, tgt.Item.Version,
+		targets.WithTcpTargetDefaultPort(ts.Port()),
+		targets.WithSessionConnectionLimit(sessionConnsLimit),
+		// Specify an ingress worker which allows the authorize session check
+		// to skip route calculation since ingress/egress/proto aware will
+		// all be the same worker and how it connects to the controller is
+		// irrelevant.
+		targets.WithIngressWorkerFilter(fmt.Sprintf(`"/name" matches "%s"`, w1.Name())),
+	)
 	require.NoError(err)
 	require.NotNil(tgt)
 
