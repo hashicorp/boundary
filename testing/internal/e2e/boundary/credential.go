@@ -6,12 +6,15 @@ package boundary
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"testing"
 
 	"github.com/hashicorp/boundary/api"
+	"github.com/hashicorp/boundary/api/credentiallibraries"
 	"github.com/hashicorp/boundary/api/credentials"
 	"github.com/hashicorp/boundary/api/credentialstores"
 	"github.com/hashicorp/boundary/testing/internal/e2e"
+	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/stretchr/testify/require"
 )
 
@@ -86,6 +89,40 @@ func CreateNewCredentialStoreStaticCli(t testing.TB, ctx context.Context, projec
 	t.Logf("Created Credential Store: %s", newCredentialStoreId)
 
 	return newCredentialStoreId
+}
+
+// CreateVaultGenericCredentialLibraryCli creates a vault-generic credential
+// library using the cli
+// Returns the id of the credential library or an error
+func CreateVaultGenericCredentialLibraryCli(t testing.TB, ctx context.Context, credentialStoreId string, vaultPath string, credentialType string) (string, error) {
+	name, err := base62.Random(16)
+	if err != nil {
+		return "", err
+	}
+
+	output := e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"credential-libraries", "create", "vault-generic",
+			"-credential-store-id", credentialStoreId,
+			"-vault-path", vaultPath,
+			"-credential-type", credentialType,
+			"-name", fmt.Sprintf("e2e Credential Library %s", name),
+			"-description", "e2e",
+			"-format", "json",
+		),
+	)
+	if output.Err != nil {
+		return "", fmt.Errorf("%s", output.Stderr)
+	}
+
+	var newCredentialLibraryResult credentiallibraries.CredentialLibraryCreateResult
+	err = json.Unmarshal(output.Stdout, &newCredentialLibraryResult)
+	if err != nil {
+		return "", err
+	}
+	credentialLibraryId := newCredentialLibraryResult.Item.Id
+	t.Logf("Created Credential Library: %s", credentialLibraryId)
+	return credentialLibraryId, nil
 }
 
 // CreateNewStaticCredentialPrivateKeyCli uses the cli to create a new private key credential in the
