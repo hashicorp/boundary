@@ -104,6 +104,7 @@ type Command struct {
 	flagSkipPlugins                      bool
 	flagSkipOidcAuthMethodCreation       bool
 	flagSkipLdapAuthMethodCreation       bool
+	flagSkipAliasTargetCreation          bool
 	flagWorkerDnsServer                  string
 	flagWorkerAuthMethod                 string
 	flagWorkerAuthStorageDir             string
@@ -393,6 +394,12 @@ func (c *Command) Flags() *base.FlagSets {
 		Target: &c.flagSkipLdapAuthMethodCreation,
 		Usage:  "Skip creating a test LDAP auth method. This is useful if e.g. running a Unix API listener.",
 	})
+	f.BoolVar(&base.BoolVar{
+		Name:   "skip-alias-target-creation",
+		Target: &c.flagSkipAliasTargetCreation,
+		Usage:  "Skip creating test targets using an alias.",
+		Hidden: true,
+	})
 	f.StringVar(&base.StringVar{
 		Name:   "worker-dns-server",
 		Target: &c.flagWorkerDnsServer,
@@ -597,6 +604,7 @@ func (c *Command) Run(args []string) int {
 	c.Config.DevUiPassthroughDir = c.flagUiPassthroughDir
 
 	c.SkipPlugins = c.flagSkipPlugins
+	c.SkipAliasTargetCreation = c.flagSkipAliasTargetCreation
 	c.WorkerDnsServer = c.flagWorkerDnsServer
 
 	for _, l := range c.Config.Listeners {

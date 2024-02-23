@@ -634,6 +634,9 @@ func TestControllerConfig(t testing.TB, ctx context.Context, tc *TestController,
 	tc.b.DevUnprivilegedOidcAccountId = DefaultTestUnprivilegedOidcAccountId
 	tc.b.DevLoopbackPluginId = DefaultTestPluginId
 
+	// Alias targets are only used as a dev example
+	tc.b.SkipAliasTargetCreation = true
+
 	tc.b.EnabledPlugins = append(tc.b.EnabledPlugins, base.EnabledPluginLoopback)
 
 	// Start a logger
