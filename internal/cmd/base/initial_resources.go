@@ -664,26 +664,21 @@ func (b *Server) CreateInitialTargetsWithAlias(ctx context.Context) error {
 }
 
 func (b *Server) createSshAliasTarget(ctx context.Context, targetRepo *target.Repository, aliasRepo *aliastar.Repository) error {
-	targetId, err := db.NewPublicId(ctx, globals.TcpTargetPrefix)
-	if err != nil {
-		return fmt.Errorf("failed to generate initial aliasing target id: %w", err)
-	}
-
 	opts := []target.Option{
 		target.WithName("Generated localhost ssh target with an alias"),
 		target.WithDescription("Provides an initial localhost target to SSH to using an alias in Boundary"),
 		target.WithDefaultPort(22),
 		target.WithSessionMaxSeconds(uint32(b.DevTargetSessionMaxSeconds)),
 		target.WithSessionConnectionLimit(int32(b.DevTargetSessionConnectionLimit)),
-		target.WithPublicId(targetId),
 		target.WithAddress("127.0.0.1"),
 	}
-	_, err = b.createTarget(ctx, targetRepo, opts...)
+	t, err := b.createTarget(ctx, targetRepo, opts...)
 	if err != nil {
 		return err
 	}
 
-	a, err := aliastar.NewAlias(ctx, "global", "ssh.alias", aliastar.WithDestinationId(targetId))
+	sshAlias := "ssh.boundary.dev"
+	a, err := aliastar.NewAlias(ctx, "global", sshAlias, aliastar.WithDestinationId(t.GetPublicId()))
 	if err != nil {
 		return fmt.Errorf("failed to create alias object %w", err)
 	}
@@ -692,8 +687,8 @@ func (b *Server) createSshAliasTarget(ctx context.Context, targetRepo *target.Re
 		return fmt.Errorf("failed to save alias to the db %w", err)
 	}
 
-	b.InfoKeys = append(b.InfoKeys, "generated ssh target with alias id")
-	b.Info["generated ssh target with alias id"] = targetId
+	b.InfoKeys = append(b.InfoKeys, "generated ssh target with alias")
+	b.Info["generated ssh target with alias"] = sshAlias
 	return nil
 }
 
@@ -702,11 +697,6 @@ func (b *Server) createPostgresAliasTarget(ctx context.Context,
 	aliasRepo *aliastar.Repository,
 	credsRepo *credstatic.Repository,
 ) error {
-	targetId, err := db.NewPublicId(ctx, globals.TcpTargetPrefix)
-	if err != nil {
-		return fmt.Errorf("failed to generate initial aliasing target id: %w", err)
-	}
-
 	u, err := url.Parse(b.DatabaseUrl)
 	if err != nil {
 		return fmt.Errorf("failed to parse DB url: %w", err)
@@ -729,7 +719,6 @@ func (b *Server) createPostgresAliasTarget(ctx context.Context,
 		target.WithAddress(host),
 		target.WithSessionMaxSeconds(uint32(b.DevTargetSessionMaxSeconds)),
 		target.WithSessionConnectionLimit(int32(b.DevTargetSessionConnectionLimit)),
-		target.WithPublicId(targetId),
 	}
 	t, err := b.createTarget(ctx, targetRepo, opts...)
 	if err != nil {
@@ -766,7 +755,8 @@ func (b *Server) createPostgresAliasTarget(ctx context.Context,
 		return fmt.Errorf("failed to associate cred to target: %w", err)
 	}
 
-	a, err := aliastar.NewAlias(ctx, "global", "example.alias", aliastar.WithDestinationId(targetId))
+	postgresAlias := "postgres.boundary.dev"
+	a, err := aliastar.NewAlias(ctx, "global", postgresAlias, aliastar.WithDestinationId(t.GetPublicId()))
 	if err != nil {
 		return fmt.Errorf("failed to create alias object %w", err)
 	}
@@ -775,8 +765,8 @@ func (b *Server) createPostgresAliasTarget(ctx context.Context,
 		return fmt.Errorf("failed to save alias to the db %w", err)
 	}
 
-	b.InfoKeys = append(b.InfoKeys, "generated target with alias id")
-	b.Info["generated target with alias id"] = targetId
+	b.InfoKeys = append(b.InfoKeys, "generated postgres target with alias")
+	b.Info["generated postgres target with alias"] = postgresAlias
 
 	return nil
 }
@@ -785,25 +775,21 @@ func (b *Server) createWebTarget(ctx context.Context,
 	targetRepo *target.Repository,
 	aliasRepo *aliastar.Repository,
 ) error {
-	webTargetId, err := db.NewPublicId(ctx, globals.TcpTargetPrefix)
-	if err != nil {
-		return fmt.Errorf("failed to generate initial aliasing target id: %w", err)
-	}
 	opts := []target.Option{
 		target.WithName("www.hashicorp.com"),
 		target.WithDescription("Provides an initial web target using an address in Boundary"),
 		target.WithDefaultPort(443),
 		target.WithSessionMaxSeconds(5),
 		target.WithSessionConnectionLimit(int32(b.DevTargetSessionConnectionLimit)),
-		target.WithPublicId(webTargetId),
 		target.WithAddress("www.hashicorp.com"),
 	}
-	_, err = b.createTarget(ctx, targetRepo, opts...)
+	t, err := b.createTarget(ctx, targetRepo, opts...)
 	if err != nil {
 		return err
 	}
 
-	a, err := aliastar.NewAlias(ctx, "global", "www.hashicorp.com", aliastar.WithDestinationId(webTargetId))
+	webAlias := "web.boundary.dev"
+	a, err := aliastar.NewAlias(ctx, "global", webAlias, aliastar.WithDestinationId(t.GetPublicId()))
 	if err != nil {
 		return fmt.Errorf("failed to create alias object %w", err)
 	}
@@ -812,8 +798,8 @@ func (b *Server) createWebTarget(ctx context.Context,
 		return fmt.Errorf("failed to save alias to the db %w", err)
 	}
 
-	b.InfoKeys = append(b.InfoKeys, "generated web target with alias id")
-	b.Info["generated web target with alias id"] = webTargetId
+	b.InfoKeys = append(b.InfoKeys, "generated web target with alias")
+	b.Info["generated web target with alias"] = webAlias
 
 	return nil
 }
