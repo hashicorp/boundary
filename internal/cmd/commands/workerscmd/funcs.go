@@ -193,11 +193,6 @@ func (c *Command) printListTable(items []*workers.Worker) string {
 				fmt.Sprintf("    Scope ID:                %s", item.ScopeId),
 			)
 		}
-		if item.Type != "" {
-			output = append(output,
-				fmt.Sprintf("    Type:                    %s", item.Type),
-			)
-		}
 		if item.Version > 0 {
 			output = append(output,
 				fmt.Sprintf("    Version:                 %d", item.Version),
