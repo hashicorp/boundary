@@ -91,10 +91,14 @@ func CreateNewCredentialStoreStaticCli(t testing.TB, ctx context.Context, projec
 	return newCredentialStoreId
 }
 
-// CreateVaultGenericCredentialLibraryCli creates a vault-generic credential library using the cli
+// CreateVaultGenericCredentialLibraryCli creates a vault-generic credential
+// library using the cli
+// Returns the id of the credential library or an error
 func CreateVaultGenericCredentialLibraryCli(t testing.TB, ctx context.Context, credentialStoreId string, vaultPath string, credentialType string) (string, error) {
 	name, err := base62.Random(16)
-	require.NoError(t, err)
+	if err != nil {
+		return "", err
+	}
 
 	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
