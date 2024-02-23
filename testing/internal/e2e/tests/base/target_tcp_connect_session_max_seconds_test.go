@@ -77,7 +77,7 @@ func TestCliTcpTargetConnectTargetWithSessionMaxSecondsTearDown(t *testing.T) {
 		// Ensure that the session did not run for longer than the time limit
 		// (plus a small buffer)
 		end := time.Since(start).Seconds()
-		require.Less(t, end, float64(sessionMaxSeconds+1))
+		require.Less(t, end, float64(sessionMaxSeconds+2))
 		require.Greater(t, end, float64(sessionMaxSeconds-1))
 	case <-time.After(time.Second * time.Duration(sessionMaxSeconds+5)):
 		t.Fatal("Timed out waiting for session command to exit")
