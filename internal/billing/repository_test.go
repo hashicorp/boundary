@@ -84,8 +84,8 @@ func TestRepository_MonthlyActiveUsers(t *testing.T) {
 		assert.NoError(t, err)
 		require.Len(t, activeUsers, 2)
 		// check counts for the last two months
-		require.Equal(t, uint64(0), activeUsers[0].ActiveUsersCount)
-		require.Equal(t, uint64(6), activeUsers[1].ActiveUsersCount)
+		require.Equal(t, uint32(0), activeUsers[0].ActiveUsersCount)
+		require.Equal(t, uint32(6), activeUsers[1].ActiveUsersCount)
 		// assert start and end times are correct
 		// the current month (contains the hour)
 		assert.Equal(t, time.Date(today.Year(), today.Month(), 1, 0, 0, 0, 0, time.UTC), activeUsers[0].StartTime)
@@ -103,7 +103,7 @@ func TestRepository_MonthlyActiveUsers(t *testing.T) {
 		for i := 0; i < 4; i++ {
 			// check counts for the last four months
 			if i == 0 {
-				assert.Equal(t, uint64(0), activeUsers[i].ActiveUsersCount)
+				assert.Equal(t, uint32(0), activeUsers[i].ActiveUsersCount)
 				// the current month (contains the hour)
 				assert.Equal(t, time.Date(today.Year(), today.Month(), 1, 0, 0, 0, 0, time.UTC), activeUsers[i].StartTime)
 				assert.Equal(t, time.Date(today.Year(), today.Month(), today.Day(), today.Hour(), 0, 0, 0, time.UTC), activeUsers[i].EndTime)
@@ -111,7 +111,7 @@ func TestRepository_MonthlyActiveUsers(t *testing.T) {
 				// create a sliding window of dates to assert start and end times are correct
 				expectedStartTime := time.Date(today.AddDate(0, -i, 0).Year(), today.AddDate(0, -i, 0).Month(), 1, 0, 0, 0, 0, time.UTC)
 				expectedEndTime := time.Date(today.AddDate(0, -i+1, 0).Year(), today.AddDate(0, -i+1, 0).Month(), 1, 0, 0, 0, 0, time.UTC)
-				assert.Equal(t, uint64(6), activeUsers[i].ActiveUsersCount)
+				assert.Equal(t, uint32(6), activeUsers[i].ActiveUsersCount)
 				assert.Equal(t, expectedStartTime, activeUsers[i].StartTime)
 				assert.Equal(t, expectedEndTime, activeUsers[i].EndTime)
 			}
@@ -125,13 +125,13 @@ func TestRepository_MonthlyActiveUsers(t *testing.T) {
 		require.Len(t, activeUsers, 2)
 		expectedStartTime := time.Date(today.AddDate(0, -2, 0).Year(), today.AddDate(0, -2, 0).Month(), 1, 0, 0, 0, 0, time.UTC)
 		expectedEndTime := time.Date(today.AddDate(0, -1, 0).Year(), today.AddDate(0, -1, 0).Month(), 1, 0, 0, 0, 0, time.UTC)
-		require.Equal(t, uint64(6), activeUsers[0].ActiveUsersCount)
+		require.Equal(t, uint32(6), activeUsers[0].ActiveUsersCount)
 		assert.Equal(t, expectedStartTime, activeUsers[0].StartTime)
 		assert.Equal(t, expectedEndTime, activeUsers[0].EndTime)
 
 		expectedStartTime = time.Date(today.AddDate(0, -3, 0).Year(), today.AddDate(0, -3, 0).Month(), 1, 0, 0, 0, 0, time.UTC)
 		expectedEndTime = time.Date(today.AddDate(0, -2, 0).Year(), today.AddDate(0, -2, 0).Month(), 1, 0, 0, 0, 0, time.UTC)
-		require.Equal(t, uint64(6), activeUsers[1].ActiveUsersCount)
+		require.Equal(t, uint32(6), activeUsers[1].ActiveUsersCount)
 		assert.Equal(t, expectedStartTime, activeUsers[1].StartTime)
 		assert.Equal(t, expectedEndTime, activeUsers[1].EndTime)
 	})

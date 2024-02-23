@@ -74,7 +74,7 @@ const (
 	AddGrantScopes                     Type = 60
 	SetGrantScopes                     Type = 61
 	RemoveGrantScopes                  Type = 62
-	MonthlyActiveUsers                 Type = 57
+	MonthlyActiveUsers                 Type = 63
 
 	// When adding new actions, be sure to update:
 	//

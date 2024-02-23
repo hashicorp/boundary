@@ -11,7 +11,7 @@ option go_package = "github.com/hashicorp/boundary/sdk/pbs/controller/api/resour
 
 message ActiveUsers {
   // Output only. The number of active users between the start time and end time.
-  uint64 count = 1; // @gotags: `class:"public"`
+  uint32 count = 1; // @gotags: `class:"public"`
 
   // Output only. The start time of the active users count, inclusive.
   google.protobuf.Timestamp start_time = 2 [json_name = "start_time"]; // @gotags: class:"public"
