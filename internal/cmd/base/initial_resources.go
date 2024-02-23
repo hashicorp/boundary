@@ -6,10 +6,16 @@ package base
 import (
 	"context"
 	"fmt"
+	"net"
+	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/hashicorp/boundary/globals"
+	aliastar "github.com/hashicorp/boundary/internal/alias/target"
 	"github.com/hashicorp/boundary/internal/auth/password"
+	credstatic "github.com/hashicorp/boundary/internal/credential/static"
+	credstore "github.com/hashicorp/boundary/internal/credential/static/store"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/host/static"
@@ -530,6 +536,17 @@ func (b *Server) CreateInitialTargetWithAddress(ctx context.Context) (target.Tar
 		target.WithPublicId(b.DevTargetId),
 		target.WithAddress(b.DevTargetAddress),
 	}
+	tt, err := b.createTarget(ctx, targetRepo, opts...)
+	if err != nil {
+		return nil, err
+	}
+	b.InfoKeys = append(b.InfoKeys, "generated target with address id")
+	b.Info["generated target with address id"] = b.DevTargetId
+
+	return tt, nil
+}
+
+func (b *Server) createTarget(ctx context.Context, targetRepo *target.Repository, opts ...target.Option) (target.Target, error) {
 	t, err := target.New(ctx, tcp.Subtype, b.DevProjectId, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create target object: %w", err)
@@ -538,8 +555,6 @@ func (b *Server) CreateInitialTargetWithAddress(ctx context.Context) (target.Tar
 	if err != nil {
 		return nil, fmt.Errorf("failed to save target to the db: %w", err)
 	}
-	b.InfoKeys = append(b.InfoKeys, "generated target with address id")
-	b.Info["generated target with address id"] = b.DevTargetId
 
 	return tt, nil
 }
@@ -583,13 +598,9 @@ func (b *Server) CreateInitialTargetWithHostSources(ctx context.Context) (target
 		target.WithSessionConnectionLimit(int32(b.DevTargetSessionConnectionLimit)),
 		target.WithPublicId(b.DevSecondaryTargetId),
 	}
-	t, err := target.New(ctx, tcp.Subtype, b.DevProjectId, opts...)
+	tt, err := b.createTarget(ctx, targetRepo, opts...)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create target object: %w", err)
-	}
-	tt, err := targetRepo.CreateTarget(ctx, t, opts...)
-	if err != nil {
-		return nil, fmt.Errorf("failed to save target to the db: %w", err)
+		return nil, err
 	}
 	tt, err = targetRepo.AddTargetHostSources(ctx, tt.GetPublicId(), tt.GetVersion(), []string{b.DevHostSetId})
 	if err != nil {
@@ -599,6 +610,198 @@ func (b *Server) CreateInitialTargetWithHostSources(ctx context.Context) (target
 	b.Info["generated target with host source id"] = b.DevSecondaryTargetId
 
 	return tt, nil
+}
+
+// Create targets that can be connected to using an alias. The three targets created are:
+//   - "example.alias": the Boundary dev postgres instance. Uses brokered credentials
+//   - "www.hashicorp.com": a web target
+//   - "ssh.alias": A localhost ssh target
+func (b *Server) CreateInitialTargetsWithAlias(ctx context.Context) error {
+	rw := db.New(b.Database)
+
+	kmsCache, err := kms.New(ctx, rw, rw)
+	if err != nil {
+		return fmt.Errorf("failed to create kms cache: %w", err)
+	}
+	if err := kmsCache.AddExternalWrappers(
+		b.Context,
+		kms.WithRootWrapper(b.RootKms),
+	); err != nil {
+		return fmt.Errorf("failed to add config keys to kms: %w", err)
+	}
+
+	targetRepo, err := target.NewRepository(ctx, rw, rw, kmsCache)
+	if err != nil {
+		return fmt.Errorf("failed to create target repository: %w", err)
+	}
+
+	credsRepo, err := credstatic.NewRepository(ctx, rw, rw, kmsCache)
+	if err != nil {
+		return fmt.Errorf("failed to create creds repository: %w", err)
+	}
+
+	aliasRepo, err := aliastar.NewRepository(ctx, rw, rw, kmsCache)
+	if err != nil {
+		return fmt.Errorf("failed to create alias repository: %w", err)
+	}
+
+	err = b.createPostgresAliasTarget(ctx, targetRepo, aliasRepo, credsRepo)
+	if err != nil {
+		return fmt.Errorf("failed to create postgres alias target: %w", err)
+	}
+
+	err = b.createWebTarget(ctx, targetRepo, aliasRepo)
+	if err != nil {
+		return fmt.Errorf("failed to create web target: %w", err)
+	}
+
+	err = b.createSshAliasTarget(ctx, targetRepo, aliasRepo)
+	if err != nil {
+		return fmt.Errorf("failed to create ssh target: %w", err)
+	}
+
+	return nil
+}
+
+func (b *Server) createSshAliasTarget(ctx context.Context, targetRepo *target.Repository, aliasRepo *aliastar.Repository) error {
+	opts := []target.Option{
+		target.WithName("Generated localhost ssh target with an alias"),
+		target.WithDescription("Provides an initial localhost target to SSH to using an alias in Boundary"),
+		target.WithDefaultPort(22),
+		target.WithSessionMaxSeconds(uint32(b.DevTargetSessionMaxSeconds)),
+		target.WithSessionConnectionLimit(int32(b.DevTargetSessionConnectionLimit)),
+		target.WithAddress("127.0.0.1"),
+	}
+	t, err := b.createTarget(ctx, targetRepo, opts...)
+	if err != nil {
+		return err
+	}
+
+	sshAlias := "ssh.boundary.dev"
+	a, err := aliastar.NewAlias(ctx, "global", sshAlias, aliastar.WithDestinationId(t.GetPublicId()))
+	if err != nil {
+		return fmt.Errorf("failed to create alias object %w", err)
+	}
+	_, err = aliasRepo.CreateAlias(ctx, a)
+	if err != nil {
+		return fmt.Errorf("failed to save alias to the db %w", err)
+	}
+
+	b.InfoKeys = append(b.InfoKeys, "generated ssh target with alias")
+	b.Info["generated ssh target with alias"] = sshAlias
+	return nil
+}
+
+func (b *Server) createPostgresAliasTarget(ctx context.Context,
+	targetRepo *target.Repository,
+	aliasRepo *aliastar.Repository,
+	credsRepo *credstatic.Repository,
+) error {
+	u, err := url.Parse(b.DatabaseUrl)
+	if err != nil {
+		return fmt.Errorf("failed to parse DB url: %w", err)
+	}
+	host, portStr, err := net.SplitHostPort(u.Host)
+	if err != nil {
+		return fmt.Errorf("failed to split host port from DB url: %w", err)
+	}
+	port, err := strconv.ParseUint(portStr, 10, 32)
+	if err != nil {
+		return fmt.Errorf("failed to parse postgres port from DB url: %w", err)
+	}
+
+	dbname := strings.Trim(u.Path, "/")
+
+	opts := []target.Option{
+		target.WithName("Generated local postgres target with alias"),
+		target.WithDescription(fmt.Sprintf("Provides a local postgres target using aliasing in Boundary. Connect using the flag `-dbname %s`", dbname)),
+		target.WithDefaultPort(uint32(port)),
+		target.WithAddress(host),
+		target.WithSessionMaxSeconds(uint32(b.DevTargetSessionMaxSeconds)),
+		target.WithSessionConnectionLimit(int32(b.DevTargetSessionConnectionLimit)),
+	}
+	t, err := b.createTarget(ctx, targetRepo, opts...)
+	if err != nil {
+		return err
+	}
+
+	cs, err := credsRepo.CreateCredentialStore(ctx,
+		&credstatic.CredentialStore{
+			CredentialStore: &credstore.CredentialStore{
+				ProjectId: b.DevProjectId,
+			},
+		},
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create cred store: %w", err)
+	}
+	cred, err := credstatic.NewUsernamePasswordCredential(cs.PublicId, "postgres", "password")
+	if err != nil {
+		return fmt.Errorf("failed to create cred: %w", err)
+	}
+	upCred, err := credsRepo.CreateUsernamePasswordCredential(ctx, b.DevProjectId, cred)
+	if err != nil {
+		return fmt.Errorf("failed to store cred: %w", err)
+	}
+	_, err = targetRepo.AddTargetCredentialSources(
+		ctx,
+		t.GetPublicId(),
+		t.GetVersion(),
+		target.CredentialSources{
+			BrokeredCredentialIds: []string{upCred.PublicId},
+		},
+	)
+	if err != nil {
+		return fmt.Errorf("failed to associate cred to target: %w", err)
+	}
+
+	postgresAlias := "postgres.boundary.dev"
+	a, err := aliastar.NewAlias(ctx, "global", postgresAlias, aliastar.WithDestinationId(t.GetPublicId()))
+	if err != nil {
+		return fmt.Errorf("failed to create alias object %w", err)
+	}
+	_, err = aliasRepo.CreateAlias(ctx, a)
+	if err != nil {
+		return fmt.Errorf("failed to save alias to the db %w", err)
+	}
+
+	b.InfoKeys = append(b.InfoKeys, "generated postgres target with alias")
+	b.Info["generated postgres target with alias"] = postgresAlias
+
+	return nil
+}
+
+func (b *Server) createWebTarget(ctx context.Context,
+	targetRepo *target.Repository,
+	aliasRepo *aliastar.Repository,
+) error {
+	opts := []target.Option{
+		target.WithName("www.hashicorp.com"),
+		target.WithDescription("Provides an initial web target using an address in Boundary"),
+		target.WithDefaultPort(443),
+		target.WithSessionMaxSeconds(5),
+		target.WithSessionConnectionLimit(int32(b.DevTargetSessionConnectionLimit)),
+		target.WithAddress("www.hashicorp.com"),
+	}
+	t, err := b.createTarget(ctx, targetRepo, opts...)
+	if err != nil {
+		return err
+	}
+
+	webAlias := "web.boundary.dev"
+	a, err := aliastar.NewAlias(ctx, "global", webAlias, aliastar.WithDestinationId(t.GetPublicId()))
+	if err != nil {
+		return fmt.Errorf("failed to create alias object %w", err)
+	}
+	_, err = aliasRepo.CreateAlias(ctx, a)
+	if err != nil {
+		return fmt.Errorf("failed to save alias to the db %w", err)
+	}
+
+	b.InfoKeys = append(b.InfoKeys, "generated web target with alias")
+	b.Info["generated web target with alias"] = webAlias
+
+	return nil
 }
 
 // RegisterPlugin creates a plugin in the database if not present, and flags
