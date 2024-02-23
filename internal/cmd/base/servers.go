@@ -133,8 +133,9 @@ type Server struct {
 	DevOidcSetup oidcSetup
 	DevLdapSetup ldapSetup
 
-	SkipPlugins     bool // Useful when running on platforms that we can't easily compile plugins on, like Windows
-	WorkerDnsServer string
+	SkipPlugins             bool // Useful when running on platforms that we can't easily compile plugins on, like Windows
+	SkipAliasTargetCreation bool
+	WorkerDnsServer         string
 
 	DatabaseUrl                     string
 	DatabaseMaxOpenConnections      int
