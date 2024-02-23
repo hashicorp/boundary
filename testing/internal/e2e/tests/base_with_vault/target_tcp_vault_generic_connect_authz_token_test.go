@@ -10,7 +10,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/hashicorp/boundary/api/credentiallibraries"
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/testing/internal/e2e"
 	"github.com/hashicorp/boundary/testing/internal/e2e/boundary"
@@ -100,22 +99,14 @@ func TestCliTcpTargetVaultGenericConnectTargetWithAuthzToken(t *testing.T) {
 	newCredentialStoreId := boundary.CreateNewCredentialStoreVaultCli(t, ctx, newProjectId, c.VaultAddr, credStoreToken)
 
 	// Create a credential library
-	output = e2e.RunCommand(ctx, "boundary",
-		e2e.WithArgs(
-			"credential-libraries", "create", "vault-generic",
-			"-credential-store-id", newCredentialStoreId,
-			"-vault-path", fmt.Sprintf("%s/data/%s", c.VaultSecretPath, privateKeySecretName),
-			"-name", "e2e Automated Test Vault Credential Library",
-			"-credential-type", "ssh_private_key",
-			"-format", "json",
-		),
+	newCredentialLibraryId, err := boundary.CreateVaultGenericCredentialLibraryCli(
+		t,
+		ctx,
+		newCredentialStoreId,
+		fmt.Sprintf("%s/data/%s", c.VaultSecretPath, privateKeySecretName),
+		"ssh_private_key",
 	)
-	require.NoError(t, output.Err, string(output.Stderr))
-	var newCredentialLibraryResult credentiallibraries.CredentialLibraryCreateResult
-	err = json.Unmarshal(output.Stdout, &newCredentialLibraryResult)
 	require.NoError(t, err)
-	newCredentialLibraryId := newCredentialLibraryResult.Item.Id
-	t.Logf("Created Credential Library: %s", newCredentialLibraryId)
 
 	boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, newTargetId, newCredentialLibraryId)
 
