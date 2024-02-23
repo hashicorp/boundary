@@ -89,7 +89,7 @@ func (r *Repository) MonthlyActiveUsers(ctx context.Context, opt ...Option) ([]A
 	for rows.Next() {
 		var startTime time.Time
 		var endTime time.Time
-		var count uint64
+		var count uint32
 		if err := rows.Scan(&startTime, &endTime, &count); err != nil {
 			return nil, err
 		}
@@ -101,7 +101,6 @@ func (r *Repository) MonthlyActiveUsers(ctx context.Context, opt ...Option) ([]A
 			EndTime:          endTime.UTC(),
 		}
 		activeUsers = append(activeUsers, auUTC)
-
 	}
 
 	return activeUsers, nil

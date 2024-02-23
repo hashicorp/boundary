@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/commands/authenticate"
 	"github.com/hashicorp/boundary/internal/cmd/commands/authmethodscmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/authtokenscmd"
+	"github.com/hashicorp/boundary/internal/cmd/commands/billingcmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/config"
 	"github.com/hashicorp/boundary/internal/cmd/commands/connect"
 	"github.com/hashicorp/boundary/internal/cmd/commands/credentiallibrariescmd"
@@ -241,6 +242,17 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 			&authtokenscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "list",
+			}),
+
+		"billing": func() (cli.Command, error) {
+			return &billingcmd.Command{
+				Command: base.NewCommand(ui, opts...),
+			}, nil
+		},
+		"billing monthly-active-users": clientCacheWrapper(
+			&billingcmd.Command{
+				Command: base.NewCommand(ui),
+				Func:    "monthly-active-users",
 			}),
 
 		"config": func() (cli.Command, error) {

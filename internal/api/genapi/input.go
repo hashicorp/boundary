@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/accounts"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/authmethods"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/authtokens"
+	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/billing"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/credentiallibraries"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/credentials"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/credentialstores"
@@ -65,6 +66,7 @@ type fieldInfo struct {
 	Query             bool
 	SkipDefault       bool
 	JsonTags          []string // Appended to a field's `json` tag (comma separated)
+	AllowEmpty        bool
 }
 
 type structInfo struct {
@@ -138,6 +140,8 @@ type structInfo struct {
 	// fieldFilter is a set of field names that will not result in generated API
 	// fields
 	fieldFilter []string
+
+	allowEmpty bool
 }
 
 var inputStructs = []*structInfo{
@@ -223,6 +227,39 @@ var inputStructs = []*structInfo{
 		versionEnabled:      true,
 		createResponseTypes: []string{CreateResponseType, ReadResponseType, UpdateResponseType, DeleteResponseType, ListResponseType},
 		recursiveListing:    true,
+	},
+	{
+		inProto: &billing.ActiveUsers{},
+		outFile: "billing/active_users.gen.go",
+		templates: []*template.Template{
+			clientTemplate,
+		},
+		fieldOverrides: []fieldInfo{
+			{
+				Name:       "Count",
+				ProtoName:  "count",
+				FieldType:  "uint32",
+				AllowEmpty: true,
+			},
+		},
+		extraFields: []fieldInfo{
+			{
+				Name:        "StartTime",
+				ProtoName:   "start_time",
+				FieldType:   "string",
+				SkipDefault: true,
+				Query:       true,
+			},
+			{
+				Name:        "EndTime",
+				ProtoName:   "end_time",
+				FieldType:   "string",
+				SkipDefault: true,
+				Query:       true,
+			},
+		},
+		pluralResourceName: "billing",
+		versionEnabled:     true,
 	},
 	// User related resources
 	{

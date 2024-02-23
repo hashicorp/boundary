@@ -4794,8 +4794,8 @@
       "type": "object",
       "properties": {
         "count": {
-          "type": "string",
-          "format": "uint64",
+          "type": "integer",
+          "format": "int64",
           "description": "Output only. The number of active users between the start time and end time.",
           "readOnly": true
         },
@@ -8835,15 +8835,6 @@
         }
       }
     },
-    "controller.api.services.v1.ReApplyStoragePolicyResponse": {
-      "type": "object",
-      "properties": {
-        "item": {
-          "$ref": "#/definitions/controller.api.resources.sessionrecordings.v1.SessionRecording",
-          "description": "The requested recording."
-        }
-      }
-    },
     "controller.api.services.v1.MonthlyActiveUsersResponse": {
       "type": "object",
       "properties": {
@@ -8853,6 +8844,15 @@
             "type": "object",
             "$ref": "#/definitions/controller.api.resources.billing.v1.ActiveUsers"
           }
+        }
+      }
+    },
+    "controller.api.services.v1.ReApplyStoragePolicyResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.sessionrecordings.v1.SessionRecording",
+          "description": "The requested recording."
         }
       }
     },

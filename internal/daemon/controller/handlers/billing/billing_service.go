@@ -10,11 +10,14 @@ import (
 	"github.com/hashicorp/boundary/internal/billing"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/common"
+	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/errors"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/billing"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -75,16 +78,19 @@ func (s Service) MonthlyActiveUsers(ctx context.Context, req *pbs.MonthlyActiveU
 	if req.GetStartTime() != "" {
 		st, err := time.Parse("2006-01", req.GetStartTime())
 		if err != nil {
-			return nil, errors.New(ctx, errors.InvalidTimeStamp, op, "start time is in an invalid format")
+			return nil, handlers.ApiErrorWithCodeAndMessage(codes.InvalidArgument, "start time is in an invalid format")
 		}
 		startTime = &st
 	}
 	if req.GetEndTime() != "" {
 		et, err := time.Parse("2006-01", req.GetEndTime())
 		if err != nil {
-			return nil, errors.New(ctx, errors.InvalidTimeStamp, op, "end time is in an invalid format")
+			return nil, handlers.ApiErrorWithCodeAndMessage(codes.InvalidArgument, "end time is in an invalid format")
 		}
 		endTime = &et
+	}
+	if startTime != nil && endTime != nil && !endTime.After(*startTime) {
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.InvalidArgument, "start time is not before end time")
 	}
 
 	months, err := repo.MonthlyActiveUsers(
@@ -93,7 +99,7 @@ func (s Service) MonthlyActiveUsers(ctx context.Context, req *pbs.MonthlyActiveU
 		billing.WithEndTime(endTime),
 	)
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.InvalidArgument, err.Error())
 	}
 
 	var activeUsers []*pb.ActiveUsers
@@ -110,6 +116,10 @@ func (s Service) MonthlyActiveUsers(ctx context.Context, req *pbs.MonthlyActiveU
 }
 
 func (s Service) authResult(ctx context.Context, a action.Type) auth.VerifyResults {
-	opts := []auth.Option{auth.WithType(resource.Billing), auth.WithAction(a)}
+	opts := []auth.Option{
+		auth.WithType(resource.Billing),
+		auth.WithAction(a),
+		auth.WithScopeId(scope.Global.String()),
+	}
 	return auth.Verify(ctx, opts...)
 }

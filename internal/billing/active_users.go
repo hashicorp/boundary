@@ -11,5 +11,5 @@ import "time"
 type ActiveUsers struct {
 	StartTime        time.Time
 	EndTime          time.Time
-	ActiveUsersCount uint64
+	ActiveUsersCount uint32
 }

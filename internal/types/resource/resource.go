@@ -85,6 +85,8 @@ func (r Type) PluralString() string {
 		return "credential-libraries"
 	case Policy:
 		return "policies"
+	case Billing: // never pluralized
+		return "billing"
 	default:
 		return r.String() + "s"
 	}
@@ -96,6 +98,8 @@ func FromPlural(s string) (Type, bool) {
 		return CredentialLibrary, true
 	case "policies":
 		return Policy, true
+	case "billing":
+		return Billing, true
 	default:
 		t, ok := Map[strings.TrimSuffix(s, "s")]
 		return t, ok
