@@ -171,7 +171,8 @@ func TestHttpRateLimit(t *testing.T) {
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
 	boundary.SetAccountToUserCli(t, ctx, newUserId, newAccountId)
-	newRoleId := boundary.CreateNewRoleCli(t, ctx, newProjectId)
+	newRoleId, err := boundary.CreateRoleCli(t, ctx, newProjectId)
+	require.NoError(t, err)
 	boundary.AddGrantToRoleCli(t, ctx, newRoleId, "ids=*;type=*;actions=*")
 	boundary.AddPrincipalToRoleCli(t, ctx, newRoleId, newUserId)
 
@@ -306,7 +307,8 @@ func TestCliRateLimit(t *testing.T) {
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
 	boundary.SetAccountToUserCli(t, ctx, newUserId, newAccountId)
-	newRoleId := boundary.CreateNewRoleCli(t, ctx, newProjectId)
+	newRoleId, err := boundary.CreateRoleCli(t, ctx, newProjectId)
+	require.NoError(t, err)
 	boundary.AddGrantToRoleCli(t, ctx, newRoleId, "ids=*;type=*;actions=*")
 	boundary.AddPrincipalToRoleCli(t, ctx, newRoleId, newUserId)
 

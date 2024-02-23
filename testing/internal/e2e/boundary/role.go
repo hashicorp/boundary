@@ -28,28 +28,6 @@ func CreateNewRoleApi(t testing.TB, ctx context.Context, client *api.Client, sco
 	return newRoleId
 }
 
-// CreateNewRoleCli creates a new role using the cli.
-// Returns the id of the new role.
-func CreateNewRoleCli(t testing.TB, ctx context.Context, scopeId string) string {
-	output := e2e.RunCommand(ctx, "boundary",
-		e2e.WithArgs(
-			"roles", "create",
-			"-scope-id", scopeId,
-			"-name", "e2e Role",
-			"-description", "e2e",
-			"-format", "json",
-		),
-	)
-	require.NoError(t, output.Err, string(output.Stderr))
-	var newRoleResult roles.RoleCreateResult
-	err := json.Unmarshal(output.Stdout, &newRoleResult)
-	require.NoError(t, err)
-
-	newRoleId := newRoleResult.Item.Id
-	t.Logf("Created Role: %s", newRoleId)
-	return newRoleId
-}
-
 // CreateRoleCli creates a new role using the Boundary CLI.
 // Returns the id of the new role or error
 func CreateRoleCli(t testing.TB, ctx context.Context, scopeId string) (string, error) {
