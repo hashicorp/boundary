@@ -55,13 +55,14 @@ type Command struct {
 	controller    *controller.Controller
 	worker        *worker.Worker
 
-	flagConfig          []string
-	flagConfigKms       string
-	flagLogLevel        string
-	flagLogFormat       string
-	flagCombineLogs     bool
-	flagSkipPlugins     bool
-	flagWorkerDnsServer string
+	flagConfig                  []string
+	flagConfigKms               string
+	flagLogLevel                string
+	flagLogFormat               string
+	flagCombineLogs             bool
+	flagSkipPlugins             bool
+	flagSkipAliasTargetCreation bool
+	flagWorkerDnsServer         string
 
 	reloadedCh                           chan struct{}  // for tests
 	startedCh                            chan struct{}  // for tests
@@ -271,6 +272,7 @@ func (c *Command) Run(args []string) int {
 	}
 
 	c.SkipPlugins = c.flagSkipPlugins
+	c.SkipAliasTargetCreation = c.flagSkipAliasTargetCreation
 	c.WorkerDnsServer = c.flagWorkerDnsServer
 
 	// Perform controller-specific listener checks here before setup
