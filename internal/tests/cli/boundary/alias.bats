@@ -49,7 +49,7 @@ export NEW_HOST="host_for_alias_test"
   [ "$status" -eq 0 ]
 }
 
-@test "boundary/alias: admin user can connect using passing in a host id" {
+@test "boundary/alias: admin user can connect passing in a host id" {
   run connect_alias_with_host_id $ALIAS_VALUE $DEFAULT_HOST
   [ "$status" -eq 0 ]
 }
