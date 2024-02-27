@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/api/aliases"
 	"github.com/hashicorp/boundary/api/authtokens"
 	"github.com/hashicorp/boundary/api/sessions"
 	"github.com/hashicorp/boundary/api/targets"
@@ -122,6 +123,10 @@ func TestStatus(t *testing.T) {
 					},
 					Resources: []ResourceStatus{
 						{
+							Name:  string(aliasResourceType),
+							Count: 0,
+						},
+						{
 							Name:  string(targetResourceType),
 							Count: 0,
 						},
@@ -146,6 +151,10 @@ func TestStatus(t *testing.T) {
 					},
 					Resources: []ResourceStatus{
 						{
+							Name:  string(aliasResourceType),
+							Count: 0,
+						},
+						{
 							Name:  string(targetResourceType),
 							Count: 0,
 						},
@@ -165,7 +174,7 @@ func TestStatus(t *testing.T) {
 		got, err := ss.Status(ctx)
 		assert.NoError(t, err)
 
-		lastErr := got.Users[0].Resources[0].LastError
+		lastErr := got.Users[0].Resources[1].LastError
 		assert.NotNil(t, lastErr)
 		assert.Equal(t, "test error", lastErr.Error)
 		assert.NotZero(t, lastErr.LastReturned)
@@ -197,6 +206,15 @@ func TestStatus(t *testing.T) {
 			WithSessionRetrievalFunc(testStaticResourceRetrievalFunc(t, [][]*sessions.Session{sess}, [][]string{nil})))
 		require.NoError(t, err)
 
+		als := []*aliases.Alias{
+			alias("1"),
+			alias("2"),
+			alias("3"),
+		}
+		err = r.refreshAliases(ctx, u1, map[AuthToken]string{{Id: "id"}: "something"},
+			WithAliasRetrievalFunc(testStaticResourceRetrievalFunc(t, [][]*aliases.Alias{als}, [][]string{nil})))
+		require.NoError(t, err)
+
 		got, err := ss.Status(ctx)
 		assert.NoError(t, err)
 
@@ -212,19 +230,19 @@ func TestStatus(t *testing.T) {
 
 		assert.Equal(t, Map(got.Users[0].Resources, func(i ResourceStatus) string {
 			return i.Name
-		}), []string{string(targetResourceType), string(sessionResourceType)})
+		}), []string{string(aliasResourceType), string(targetResourceType), string(sessionResourceType)})
 
 		assert.Equal(t, Map(got.Users[0].Resources, func(i ResourceStatus) int {
 			return i.Count
-		}), []int{4, 3})
+		}), []int{3, 4, 3})
 
 		assert.Equal(t, Map(got.Users[0].Resources, func(i ResourceStatus) bool {
 			return i.LastError == nil
-		}), []bool{false, true}, "expected an error for target resource and none for session resource")
+		}), []bool{true, false, true}, "expected an error for target resource and none for other resources")
 
 		assert.Equal(t, Map(got.Users[0].Resources, func(i ResourceStatus) bool {
 			return i.RefreshToken == nil
-		}), []bool{false, false})
+		}), []bool{false, false, false})
 
 		// User 2 status
 		assert.Equal(t, Map(got.Users[1].AuthTokens, func(i AuthTokenStatus) string {
@@ -233,19 +251,19 @@ func TestStatus(t *testing.T) {
 
 		assert.Equal(t, Map(got.Users[1].Resources, func(i ResourceStatus) string {
 			return i.Name
-		}), []string{string(targetResourceType), string(sessionResourceType)})
+		}), []string{string(aliasResourceType), string(targetResourceType), string(sessionResourceType)})
 
 		assert.Equal(t, Map(got.Users[1].Resources, func(i ResourceStatus) int {
 			return i.Count
-		}), []int{2, 0})
+		}), []int{0, 2, 0})
 
 		assert.Equal(t, Map(got.Users[1].Resources, func(i ResourceStatus) bool {
 			return i.LastError == nil
-		}), []bool{true, true})
+		}), []bool{true, true, true})
 
 		assert.Equal(t, Map(got.Users[1].Resources, func(i ResourceStatus) bool {
 			return i.RefreshToken == nil
-		}), []bool{false, true}, "targets expected to have a refresh token and sessions aren't")
+		}), []bool{true, false, true}, "targets expected to have a refresh token and others aren't")
 	})
 }
 
@@ -289,8 +307,16 @@ func TestStatus_unsupported(t *testing.T) {
 		AuthTokenId: at1.Id,
 	}))
 
+	err = r.refreshAliases(ctx, u1, map[AuthToken]string{{Id: "id"}: "something"},
+		WithAliasRetrievalFunc(testNoRefreshRetrievalFunc[*aliases.Alias](t)))
+	require.ErrorIs(t, err, ErrRefreshNotSupported)
+
 	err = r.refreshTargets(ctx, u1, map[AuthToken]string{{Id: "id"}: "something"},
 		WithTargetRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t)))
+	require.ErrorIs(t, err, ErrRefreshNotSupported)
+
+	err = r.refreshSessions(ctx, u1, map[AuthToken]string{{Id: "id"}: "something"},
+		WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t)))
 	require.ErrorIs(t, err, ErrRefreshNotSupported)
 
 	got, err := ss.Status(ctx)
@@ -315,6 +341,10 @@ func TestStatus_unsupported(t *testing.T) {
 				},
 			},
 			Resources: []ResourceStatus{
+				{
+					Name:  string(aliasResourceType),
+					Count: 0,
+				},
 				{
 					Name:  string(targetResourceType),
 					Count: 0,

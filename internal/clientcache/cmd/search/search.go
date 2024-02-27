@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/api"
+	"github.com/hashicorp/boundary/api/aliases"
 	"github.com/hashicorp/boundary/api/sessions"
 	"github.com/hashicorp/boundary/api/targets"
 	daemoncmd "github.com/hashicorp/boundary/internal/clientcache/cmd/daemon"
@@ -29,6 +30,7 @@ var (
 	_ cli.CommandAutocomplete = (*SearchCommand)(nil)
 
 	supportedResourceTypes = []string{
+		"aliases",
 		"targets",
 		"sessions",
 	}
@@ -163,6 +165,8 @@ func (c *SearchCommand) Run(args []string) int {
 		}
 	default:
 		switch {
+		case len(result.Aliases) > 0:
+			c.UI.Output(printAliasListTable(result.Aliases))
 		case len(result.Targets) > 0:
 			c.UI.Output(printTargetListTable(result.Targets))
 		case len(result.Sessions) > 0:
@@ -239,6 +243,74 @@ func search(ctx context.Context, daemonPath string, fb filterBy, opt ...client.O
 		return resp, nil, apiErr, nil
 	}
 	return resp, res, nil, nil
+}
+
+func printAliasListTable(items []*aliases.Alias) string {
+	if len(items) == 0 {
+		return "No aliases found"
+	}
+	var output []string
+	output = []string{
+		"",
+		"Alias information:",
+	}
+	for i, item := range items {
+		if i > 0 {
+			output = append(output, "")
+		}
+		if item.Id != "" {
+			output = append(output,
+				fmt.Sprintf("  ID:                    %s", item.Id),
+			)
+		} else {
+			output = append(output,
+				fmt.Sprintf("  ID:                    %s", "(not available)"),
+			)
+		}
+		if item.ScopeId != "" {
+			output = append(output,
+				fmt.Sprintf("    Scope ID:            %s", item.ScopeId),
+			)
+		}
+		if item.Version > 0 {
+			output = append(output,
+				fmt.Sprintf("    Version:             %d", item.Version),
+			)
+		}
+		if item.Type != "" {
+			output = append(output,
+				fmt.Sprintf("    Type:                %s", item.Type),
+			)
+		}
+		if item.Name != "" {
+			output = append(output,
+				fmt.Sprintf("    Name:                %s", item.Name),
+			)
+		}
+		if item.Description != "" {
+			output = append(output,
+				fmt.Sprintf("    Description:         %s", item.Description),
+			)
+		}
+		if item.DestinationId != "" {
+			output = append(output,
+				fmt.Sprintf("    DestinationId:       %s", item.DestinationId),
+			)
+		}
+		if item.Value != "" {
+			output = append(output,
+				fmt.Sprintf("    Value:               %s", item.Value),
+			)
+		}
+		if len(item.AuthorizedActions) > 0 {
+			output = append(output,
+				"    Authorized Actions:",
+				base.WrapSlice(6, item.AuthorizedActions),
+			)
+		}
+	}
+
+	return base.WrapForHelpText(output)
 }
 
 func printTargetListTable(items []*targets.Target) string {

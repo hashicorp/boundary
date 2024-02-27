@@ -9,6 +9,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/hashicorp/boundary/api/aliases"
 	"github.com/hashicorp/boundary/api/authtokens"
 	"github.com/hashicorp/boundary/api/sessions"
 	"github.com/hashicorp/boundary/api/targets"
@@ -78,14 +79,21 @@ func (s *TestServer) AddKeyringToken(t *testing.T, address, keyring, tokenName, 
 	}))
 }
 
-// AddResources adds targets to the cache for the provided address, token name,
-// and keyring type. They token info must already be known to the server.
-func (s *TestServer) AddResources(t *testing.T, p *authtokens.AuthToken, tars []*targets.Target, sess []*sessions.Session, atReadFn cache.BoundaryTokenReaderFn) {
+// AddResources adds targets, sessions, and aliases to the cache for the
+// provided address, token name, and keyring type. They token info must already
+// be known to the server.
+func (s *TestServer) AddResources(t *testing.T, p *authtokens.AuthToken, alts []*aliases.Alias, tars []*targets.Target, sess []*sessions.Session, atReadFn cache.BoundaryTokenReaderFn) {
 	t.Helper()
 	ctx := context.Background()
 	r, err := cache.NewRepository(ctx, s.CacheServer.store.Load(), &sync.Map{}, s.cmd.ReadTokenFromKeyring, atReadFn)
 	require.NoError(t, err)
 
+	altFn := func(ctx context.Context, _, tok string, _ cache.RefreshTokenValue) ([]*aliases.Alias, []string, cache.RefreshTokenValue, error) {
+		if tok != p.Token {
+			return nil, nil, "", nil
+		}
+		return alts, nil, "addedaliases", nil
+	}
 	tarFn := func(ctx context.Context, _, tok string, _ cache.RefreshTokenValue) ([]*targets.Target, []string, cache.RefreshTokenValue, error) {
 		if tok != p.Token {
 			return nil, nil, "", nil
@@ -100,7 +108,7 @@ func (s *TestServer) AddResources(t *testing.T, p *authtokens.AuthToken, tars []
 	}
 	rs, err := cache.NewRefreshService(ctx, r, hclog.NewNullLogger(), 0, 0)
 	require.NoError(t, err)
-	require.NoError(t, rs.Refresh(ctx, cache.WithTargetRetrievalFunc(tarFn), cache.WithSessionRetrievalFunc(sessFn)))
+	require.NoError(t, rs.Refresh(ctx, cache.WithAliasRetrievalFunc(altFn), cache.WithTargetRetrievalFunc(tarFn), cache.WithSessionRetrievalFunc(sessFn)))
 }
 
 // AddUnsupportedCachingData provides data in a way that simulates it coming from
