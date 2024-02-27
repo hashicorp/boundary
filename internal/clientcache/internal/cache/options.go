@@ -12,6 +12,7 @@ type options struct {
 	withDbType                 dbw.DbType
 	withAuthTokenId            string
 	withUserId                 string
+	withAliasRetrievalFunc     AliasRetrievalFunc
 	withTargetRetrievalFunc    TargetRetrievalFunc
 	withSessionRetrievalFunc   SessionRetrievalFunc
 	withIgnoreSearchStaleness  bool
@@ -57,6 +58,14 @@ func withAuthTokenId(id string) Option {
 func withUserId(id string) Option {
 	return func(o *options) error {
 		o.withUserId = id
+		return nil
+	}
+}
+
+// WithAliasRetrievalFunc provides an option for specifying an aliasRetrievalFunc
+func WithAliasRetrievalFunc(fn AliasRetrievalFunc) Option {
+	return func(o *options) error {
+		o.withAliasRetrievalFunc = fn
 		return nil
 	}
 }
