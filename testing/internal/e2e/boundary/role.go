@@ -58,6 +58,29 @@ func CreateRoleCli(t testing.TB, ctx context.Context, scopeId string) (string, e
 	return newRoleId, nil
 }
 
+// ListRolesCli lists roles from the specified scope using the Boundary CLI.
+// Returns a slice of roles or error
+func ListRolesCli(t testing.TB, ctx context.Context, scopeId string) ([]*roles.Role, error) {
+	output := e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"roles", "list",
+			"-scope-id", scopeId,
+			"-format", "json",
+		),
+	)
+	if output.Err != nil {
+		return nil, fmt.Errorf("error listing roles in %s scope: %w: %s", scopeId, output.Err, output.Stderr)
+	}
+
+	var roleListResult roles.RoleListResult
+	if err := json.Unmarshal(output.Stdout, &roleListResult); err != nil {
+		return nil, fmt.Errorf("error unmarshalling role list result: %w", err)
+	}
+
+	t.Logf("Listed Roles in scope %s", scopeId)
+	return roleListResult.Items, nil
+}
+
 // AddGrantToRoleCli adds a grant/permission to a role using the cli
 func AddGrantToRoleCli(t testing.TB, ctx context.Context, roleId string, grant string) {
 	output := e2e.RunCommand(ctx, "boundary",
@@ -80,7 +103,7 @@ func AddPrincipalToRoleCli(t testing.TB, ctx context.Context, roleId string, pri
 		),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
-	t.Logf("Principle %s added to role: %s", principal, roleId)
+	t.Logf("Principal %s added to role: %s", principal, roleId)
 }
 
 // SetGrantScopesToRoleCli uses Boundary CLI to override grant scopes for the role with the provided ones.
