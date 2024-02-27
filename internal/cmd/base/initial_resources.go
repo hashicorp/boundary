@@ -777,7 +777,7 @@ func (b *Server) createWebTarget(ctx context.Context,
 ) error {
 	opts := []target.Option{
 		target.WithName("www.hashicorp.com"),
-		target.WithDescription("Provides an initial web target using an address in Boundary"),
+		target.WithDescription("Provides an initial web target using an address in Boundary. Note: Only HTTPS is supported, as this target uses port 443. Alias names for web targets should match the URL for the target."),
 		target.WithDefaultPort(443),
 		target.WithSessionMaxSeconds(5),
 		target.WithSessionConnectionLimit(int32(b.DevTargetSessionConnectionLimit)),
@@ -788,7 +788,7 @@ func (b *Server) createWebTarget(ctx context.Context,
 		return err
 	}
 
-	webAlias := "web.boundary.dev"
+	webAlias := "www.hashicorp.com"
 	a, err := aliastar.NewAlias(ctx, "global", webAlias, aliastar.WithDestinationId(t.GetPublicId()))
 	if err != nil {
 		return fmt.Errorf("failed to create alias object %w", err)
