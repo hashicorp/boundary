@@ -17,12 +17,13 @@ create table if not exists user (
 create table if not exists resource_type_enm(
   string text not null primary key
     constraint only_predefined_resource_types_allowed
-    check(string in ('unknown', 'target', 'session'))
+    check(string in ('unknown', 'alias', 'target', 'session'))
 );
 
 insert into resource_type_enm (string)
 values
   ('unknown'),
+  ('alias'),
   ('target'),
   ('session');
 
@@ -149,6 +150,28 @@ create table if not exists session (
   -- be different from the fk_user_id which is the id of the boundary user
   -- which synced this record into the cache.
   user_id text,
+  -- item is the json representation of this resource from the perspective of
+  -- of the user whose id is set in fk_user_id
+  item text,
+  primary key (fk_user_id, id)
+);
+
+-- alias contains cached boundary alias resource for a specific user and
+-- with specific fields extracted to facilitate searching over those fields
+create table if not exists alias (
+  -- the boundary user id of the user who has was able to read/list this resource
+  fk_user_id text not null
+    references user(id)
+    on delete cascade,
+  -- the resource id from boundary of this session
+  id text not null
+    check (length(id) > 0),
+  -- the following fields are used for searching and are set to the values
+  -- from the boundary resource
+  type text,
+  scope_id text,
+  destination_id text,
+  value text,
   -- item is the json representation of this resource from the perspective of
   -- of the user whose id is set in fk_user_id
   item text,

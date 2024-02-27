@@ -7,6 +7,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/hashicorp/boundary/api/aliases"
 	"github.com/hashicorp/boundary/api/sessions"
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/go-dbw"
@@ -68,6 +69,19 @@ func Test_GetOpts(t *testing.T) {
 
 		assert.NotNil(t, opts.withSessionRetrievalFunc)
 		opts.withSessionRetrievalFunc = nil
+
+		testOpts := getDefaultOptions()
+		assert.Equal(t, opts, testOpts)
+	})
+	t.Run("WithAliasRetrievalFunc", func(t *testing.T) {
+		var f AliasRetrievalFunc = func(ctx context.Context, addr, authTok string, refreshTok RefreshTokenValue) ([]*aliases.Alias, []string, RefreshTokenValue, error) {
+			return nil, nil, "", nil
+		}
+		opts, err := getOpts(WithAliasRetrievalFunc(f))
+		require.NoError(t, err)
+
+		assert.NotNil(t, opts.withAliasRetrievalFunc)
+		opts.withAliasRetrievalFunc = nil
 
 		testOpts := getDefaultOptions()
 		assert.Equal(t, opts, testOpts)

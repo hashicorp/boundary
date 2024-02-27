@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/api"
+	"github.com/hashicorp/boundary/api/aliases"
 	"github.com/hashicorp/boundary/api/authtokens"
 	"github.com/hashicorp/boundary/api/sessions"
 	"github.com/hashicorp/boundary/api/targets"
@@ -367,6 +368,7 @@ func TestRefreshForSearch(t *testing.T) {
 			target("4"),
 		}
 		opts := []Option{
+			WithAliasRetrievalFunc(testStaticResourceRetrievalFunc[*aliases.Alias](t, nil, nil)),
 			WithSessionRetrievalFunc(testStaticResourceRetrievalFunc[*sessions.Session](t, nil, nil)),
 			WithTargetRetrievalFunc(testStaticResourceRetrievalFunc[*targets.Target](t,
 				[][]*targets.Target{
@@ -418,6 +420,7 @@ func TestRefreshForSearch(t *testing.T) {
 			target("4"),
 		}
 		opts := []Option{
+			WithAliasRetrievalFunc(testStaticResourceRetrievalFunc[*aliases.Alias](t, nil, nil)),
 			WithSessionRetrievalFunc(testStaticResourceRetrievalFunc[*sessions.Session](t, nil, nil)),
 			WithTargetRetrievalFunc(testStaticResourceRetrievalFunc[*targets.Target](t,
 				[][]*targets.Target{
@@ -472,6 +475,7 @@ func TestRefreshForSearch(t *testing.T) {
 
 		// Get the first set of resources, but no refresh tokens
 		err = rs.Refresh(ctx,
+			WithAliasRetrievalFunc(testStaticResourceRetrievalFunc[*aliases.Alias](t, nil, nil)),
 			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t)),
 			WithTargetRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t)))
 		assert.ErrorContains(t, err, ErrRefreshNotSupported.Error())
@@ -484,11 +488,13 @@ func TestRefreshForSearch(t *testing.T) {
 		// wont be refreshed any more, and we wont see the error when refreshing
 		// any more.
 		err = rs.Refresh(ctx,
+			WithAliasRetrievalFunc(testNoRefreshRetrievalFunc[*aliases.Alias](t)),
 			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t)),
 			WithTargetRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t)))
 		assert.Nil(t, err)
 
 		err = rs.RecheckCachingSupport(ctx,
+			WithAliasRetrievalFunc(testNoRefreshRetrievalFunc[*aliases.Alias](t)),
 			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t)),
 			WithTargetRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t)))
 		assert.Nil(t, err)
@@ -500,6 +506,7 @@ func TestRefreshForSearch(t *testing.T) {
 		// Now simulate the controller updating to support refresh tokens and
 		// the resources starting to be cached.
 		err = rs.RecheckCachingSupport(ctx,
+			WithAliasRetrievalFunc(testStaticResourceRetrievalFunc[*aliases.Alias](t, nil, nil)),
 			WithSessionRetrievalFunc(testStaticResourceRetrievalFunc[*sessions.Session](t, nil, nil)),
 			WithTargetRetrievalFunc(testStaticResourceRetrievalFunc[*targets.Target](t, [][]*targets.Target{retTargets}, [][]string{{}})))
 		assert.Nil(t, err, err)
@@ -525,6 +532,7 @@ func TestRefreshForSearch(t *testing.T) {
 			session("4"),
 		}
 		opts := []Option{
+			WithAliasRetrievalFunc(testStaticResourceRetrievalFunc[*aliases.Alias](t, nil, nil)),
 			WithTargetRetrievalFunc(testStaticResourceRetrievalFunc[*targets.Target](t, nil, nil)),
 			WithSessionRetrievalFunc(testStaticResourceRetrievalFunc[*sessions.Session](t,
 				[][]*sessions.Session{
@@ -573,6 +581,7 @@ func TestRefreshForSearch(t *testing.T) {
 			session("4"),
 		}
 		opts := []Option{
+			WithAliasRetrievalFunc(testStaticResourceRetrievalFunc[*aliases.Alias](t, nil, nil)),
 			WithTargetRetrievalFunc(testStaticResourceRetrievalFunc[*targets.Target](t, nil, nil)),
 			WithSessionRetrievalFunc(testStaticResourceRetrievalFunc[*sessions.Session](t,
 				[][]*sessions.Session{
@@ -609,6 +618,109 @@ func TestRefreshForSearch(t *testing.T) {
 		assert.NoError(t, err)
 		assert.ElementsMatch(t, retSess[2:], cachedSessions)
 	})
+
+	t.Run("aliases refreshed for searching", func(t *testing.T) {
+		s, err := db.Open(ctx)
+		require.NoError(t, err)
+		r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(boundaryAuthTokens))
+		require.NoError(t, err)
+		rs, err := NewRefreshService(ctx, r, hclog.Default(), 0, 0)
+		require.NoError(t, err)
+		require.NoError(t, r.AddKeyringToken(ctx, boundaryAddr, KeyringToken{KeyringType: "k", TokenName: "t", AuthTokenId: at.Id}))
+
+		retAl := []*aliases.Alias{
+			alias("1"),
+			alias("2"),
+			alias("3"),
+			alias("4"),
+		}
+		opts := []Option{
+			WithSessionRetrievalFunc(testStaticResourceRetrievalFunc[*sessions.Session](t, nil, nil)),
+			WithTargetRetrievalFunc(testStaticResourceRetrievalFunc[*targets.Target](t, nil, nil)),
+			WithAliasRetrievalFunc(testStaticResourceRetrievalFunc[*aliases.Alias](t,
+				[][]*aliases.Alias{
+					retAl[:3],
+					retAl[3:],
+				},
+				[][]string{
+					nil,
+					{retAl[0].Id, retAl[1].Id},
+				},
+			)),
+		}
+
+		// First call doesn't sync anything because no aliases were already synced yet
+		assert.NoError(t, rs.RefreshForSearch(ctx, at.Id, Aliases, opts...))
+		cachedAliases, err := r.ListAliases(ctx, at.Id)
+		assert.NoError(t, err)
+		assert.Empty(t, cachedAliases)
+
+		assert.NoError(t, rs.Refresh(ctx, opts...))
+		cachedAliases, err = r.ListAliases(ctx, at.Id)
+		assert.NoError(t, err)
+		assert.ElementsMatch(t, retAl[:3], cachedAliases)
+
+		// Second call removes the first 2 resources from the cache and adds the last
+		assert.NoError(t, rs.RefreshForSearch(ctx, at.Id, Aliases, opts...))
+		cachedAliases, err = r.ListAliases(ctx, at.Id)
+		assert.NoError(t, err)
+		assert.ElementsMatch(t, retAl[2:], cachedAliases)
+	})
+
+	t.Run("aliases forced refreshed for searching", func(t *testing.T) {
+		s, err := db.Open(ctx)
+		require.NoError(t, err)
+		r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(boundaryAuthTokens))
+		require.NoError(t, err)
+		// Everything stays fresh for 1 hour
+		rs, err := NewRefreshService(ctx, r, hclog.Default(), time.Hour, 0)
+		require.NoError(t, err)
+		require.NoError(t, r.AddKeyringToken(ctx, boundaryAddr, KeyringToken{KeyringType: "k", TokenName: "t", AuthTokenId: at.Id}))
+
+		retAls := []*aliases.Alias{
+			alias("1"),
+			alias("2"),
+			alias("3"),
+			alias("4"),
+		}
+		opts := []Option{
+			WithSessionRetrievalFunc(testStaticResourceRetrievalFunc[*sessions.Session](t, nil, nil)),
+			WithTargetRetrievalFunc(testStaticResourceRetrievalFunc[*targets.Target](t, nil, nil)),
+			WithAliasRetrievalFunc(testStaticResourceRetrievalFunc[*aliases.Alias](t,
+				[][]*aliases.Alias{
+					retAls[:3],
+					retAls[3:],
+				},
+				[][]string{
+					nil,
+					{retAls[0].Id, retAls[1].Id},
+				},
+			)),
+		}
+
+		// First call doesn't sync anything because no aliases were already synced yet
+		assert.NoError(t, rs.RefreshForSearch(ctx, at.Id, Aliases, opts...))
+		cachedAliases, err := r.ListAliases(ctx, at.Id)
+		assert.NoError(t, err)
+		assert.Empty(t, cachedAliases)
+
+		assert.NoError(t, rs.Refresh(ctx, opts...))
+		cachedAliases, err = r.ListAliases(ctx, at.Id)
+		assert.NoError(t, err)
+		assert.ElementsMatch(t, retAls[:3], cachedAliases)
+
+		// Refresh for search doesn't refresh anything because it isn't stale
+		assert.NoError(t, rs.RefreshForSearch(ctx, at.Id, Aliases, opts...))
+		cachedAliases, err = r.ListAliases(ctx, at.Id)
+		assert.NoError(t, err)
+		assert.ElementsMatch(t, retAls[:3], cachedAliases)
+
+		// Now force the refresh and see things get updated
+		assert.NoError(t, rs.RefreshForSearch(ctx, at.Id, Aliases, append(opts, WithIgnoreSearchStaleness(true))...))
+		cachedAliases, err = r.ListAliases(ctx, at.Id)
+		assert.NoError(t, err)
+		assert.ElementsMatch(t, retAls[2:], cachedAliases)
+	})
 }
 
 func TestRefresh(t *testing.T) {
@@ -644,6 +756,7 @@ func TestRefresh(t *testing.T) {
 			target("4"),
 		}
 		opts := []Option{
+			WithAliasRetrievalFunc(testStaticResourceRetrievalFunc[*aliases.Alias](t, nil, nil)),
 			WithSessionRetrievalFunc(testStaticResourceRetrievalFunc[*sessions.Session](t, nil, nil)),
 			WithTargetRetrievalFunc(testStaticResourceRetrievalFunc[*targets.Target](t,
 				[][]*targets.Target{
@@ -685,6 +798,7 @@ func TestRefresh(t *testing.T) {
 			session("4"),
 		}
 		opts := []Option{
+			WithAliasRetrievalFunc(testStaticResourceRetrievalFunc[*aliases.Alias](t, nil, nil)),
 			WithTargetRetrievalFunc(testStaticResourceRetrievalFunc[*targets.Target](t, nil, nil)),
 			WithSessionRetrievalFunc(testStaticResourceRetrievalFunc[*sessions.Session](t,
 				[][]*sessions.Session{
@@ -709,6 +823,47 @@ func TestRefresh(t *testing.T) {
 		assert.ElementsMatch(t, retSess[2:], cachedSessions)
 	})
 
+	t.Run("set aliases", func(t *testing.T) {
+		s, err := db.Open(ctx)
+		require.NoError(t, err)
+		r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(boundaryAuthTokens))
+		require.NoError(t, err)
+		rs, err := NewRefreshService(ctx, r, hclog.Default(), 0, 0)
+		require.NoError(t, err)
+		require.NoError(t, r.AddKeyringToken(ctx, boundaryAddr, KeyringToken{KeyringType: "k", TokenName: "t", AuthTokenId: at.Id}))
+
+		retAls := []*aliases.Alias{
+			alias("1"),
+			alias("2"),
+			alias("3"),
+			alias("4"),
+		}
+		opts := []Option{
+			WithSessionRetrievalFunc(testStaticResourceRetrievalFunc[*sessions.Session](t, nil, nil)),
+			WithTargetRetrievalFunc(testStaticResourceRetrievalFunc[*targets.Target](t, nil, nil)),
+			WithAliasRetrievalFunc(testStaticResourceRetrievalFunc[*aliases.Alias](t,
+				[][]*aliases.Alias{
+					retAls[:3],
+					retAls[3:],
+				},
+				[][]string{
+					nil,
+					{retAls[0].Id, retAls[1].Id},
+				},
+			)),
+		}
+		assert.NoError(t, rs.Refresh(ctx, opts...))
+		cachedAliases, err := r.ListAliases(ctx, at.Id)
+		assert.NoError(t, err)
+		assert.ElementsMatch(t, retAls[:3], cachedAliases)
+
+		// Second call removes the first 2 resources from the cache and adds the last
+		assert.NoError(t, rs.Refresh(ctx, opts...))
+		cachedAliases, err = r.ListAliases(ctx, at.Id)
+		assert.NoError(t, err)
+		assert.ElementsMatch(t, retAls[2:], cachedAliases)
+	})
+
 	t.Run("error propagates up", func(t *testing.T) {
 		s, err := db.Open(ctx)
 		require.NoError(t, err)
@@ -720,6 +875,7 @@ func TestRefresh(t *testing.T) {
 
 		innerErr := errors.New("test error")
 		err = rs.Refresh(ctx,
+			WithAliasRetrievalFunc(testStaticResourceRetrievalFunc[*aliases.Alias](t, nil, nil)),
 			WithSessionRetrievalFunc(testStaticResourceRetrievalFunc[*sessions.Session](t, nil, nil)),
 			WithTargetRetrievalFunc(func(ctx context.Context, addr, token string, refreshTok RefreshTokenValue) ([]*targets.Target, []string, RefreshTokenValue, error) {
 				require.Equal(t, boundaryAddr, addr)
@@ -728,6 +884,7 @@ func TestRefresh(t *testing.T) {
 			}))
 		assert.ErrorContains(t, err, innerErr.Error())
 		err = rs.Refresh(ctx,
+			WithAliasRetrievalFunc(testStaticResourceRetrievalFunc[*aliases.Alias](t, nil, nil)),
 			WithTargetRetrievalFunc(testStaticResourceRetrievalFunc[*targets.Target](t, nil, nil)),
 			WithSessionRetrievalFunc(func(ctx context.Context, addr, token string, refreshTok RefreshTokenValue) ([]*sessions.Session, []string, RefreshTokenValue, error) {
 				require.Equal(t, boundaryAddr, addr)
@@ -760,6 +917,7 @@ func TestRefresh(t *testing.T) {
 		assert.Len(t, us, 1)
 
 		require.NoError(t, rs.Refresh(ctx,
+			WithAliasRetrievalFunc(testStaticResourceRetrievalFunc[*aliases.Alias](t, nil, nil)),
 			WithSessionRetrievalFunc(testStaticResourceRetrievalFunc[*sessions.Session](t, nil, nil)),
 			WithTargetRetrievalFunc(testStaticResourceRetrievalFunc[*targets.Target](t, nil, nil))))
 
@@ -803,6 +961,7 @@ func TestRecheckCachingSupport(t *testing.T) {
 		// Since this user doesn't have any resources, the user's data will still
 		// only get updated with a call to Refresh.
 		assert.NoError(t, rs.RecheckCachingSupport(ctx,
+			WithAliasRetrievalFunc(testNoRefreshRetrievalFunc[*aliases.Alias](t)),
 			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t)),
 			WithTargetRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t))))
 
@@ -811,6 +970,7 @@ func TestRecheckCachingSupport(t *testing.T) {
 		assert.Empty(t, got)
 
 		err = rs.Refresh(ctx,
+			WithAliasRetrievalFunc(testNoRefreshRetrievalFunc[*aliases.Alias](t)),
 			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t)),
 			WithTargetRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t)))
 		assert.ErrorIs(t, err, ErrRefreshNotSupported)
@@ -821,6 +981,7 @@ func TestRecheckCachingSupport(t *testing.T) {
 
 		// now a full fetch will work since the user has resources and no refresh token
 		assert.NoError(t, rs.RecheckCachingSupport(ctx,
+			WithAliasRetrievalFunc(testNoRefreshRetrievalFunc[*aliases.Alias](t)),
 			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t)),
 			WithTargetRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t))))
 	})
@@ -835,6 +996,7 @@ func TestRecheckCachingSupport(t *testing.T) {
 		require.NoError(t, r.AddKeyringToken(ctx, boundaryAddr, KeyringToken{KeyringType: "k", TokenName: "t", AuthTokenId: at.Id}))
 
 		assert.NoError(t, rs.RecheckCachingSupport(ctx,
+			WithAliasRetrievalFunc(testNoRefreshRetrievalFunc[*aliases.Alias](t)),
 			WithTargetRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t)),
 			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t))))
 
@@ -843,6 +1005,7 @@ func TestRecheckCachingSupport(t *testing.T) {
 		assert.Empty(t, got)
 
 		err = rs.Refresh(ctx,
+			WithAliasRetrievalFunc(testNoRefreshRetrievalFunc[*aliases.Alias](t)),
 			WithTargetRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t)),
 			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t)))
 		assert.ErrorIs(t, err, ErrRefreshNotSupported)
@@ -852,9 +1015,47 @@ func TestRecheckCachingSupport(t *testing.T) {
 		assert.Empty(t, got)
 
 		assert.NoError(t, rs.RecheckCachingSupport(ctx,
+			WithAliasRetrievalFunc(testNoRefreshRetrievalFunc[*aliases.Alias](t)),
 			WithTargetRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t)),
 			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t))))
 		got, err = r.ListSessions(ctx, at.Id)
+		assert.NoError(t, err)
+		assert.Empty(t, got)
+	})
+
+	t.Run("aliases", func(t *testing.T) {
+		s, err := db.Open(ctx)
+		require.NoError(t, err)
+		r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(boundaryAuthTokens))
+		require.NoError(t, err)
+		rs, err := NewRefreshService(ctx, r, hclog.Default(), 0, 0)
+		require.NoError(t, err)
+		require.NoError(t, r.AddKeyringToken(ctx, boundaryAddr, KeyringToken{KeyringType: "k", TokenName: "t", AuthTokenId: at.Id}))
+
+		assert.NoError(t, rs.RecheckCachingSupport(ctx,
+			WithAliasRetrievalFunc(testNoRefreshRetrievalFunc[*aliases.Alias](t)),
+			WithTargetRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t)),
+			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t))))
+
+		got, err := r.ListAliases(ctx, at.Id)
+		assert.NoError(t, err)
+		assert.Empty(t, got)
+
+		err = rs.Refresh(ctx,
+			WithAliasRetrievalFunc(testNoRefreshRetrievalFunc[*aliases.Alias](t)),
+			WithTargetRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t)),
+			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t)))
+		assert.ErrorIs(t, err, ErrRefreshNotSupported)
+
+		got, err = r.ListAliases(ctx, at.Id)
+		assert.NoError(t, err)
+		assert.Empty(t, got)
+
+		assert.NoError(t, rs.RecheckCachingSupport(ctx,
+			WithAliasRetrievalFunc(testNoRefreshRetrievalFunc[*aliases.Alias](t)),
+			WithTargetRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t)),
+			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t))))
+		got, err = r.ListAliases(ctx, at.Id)
 		assert.NoError(t, err)
 		assert.Empty(t, got)
 	})
@@ -869,12 +1070,14 @@ func TestRecheckCachingSupport(t *testing.T) {
 		require.NoError(t, r.AddKeyringToken(ctx, boundaryAddr, KeyringToken{KeyringType: "k", TokenName: "t", AuthTokenId: at.Id}))
 
 		err = rs.Refresh(ctx,
+			WithAliasRetrievalFunc(testNoRefreshRetrievalFunc[*aliases.Alias](t)),
 			WithTargetRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t)),
 			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t)))
 		assert.ErrorIs(t, err, ErrRefreshNotSupported)
 
 		innerErr := errors.New("test error")
 		err = rs.RecheckCachingSupport(ctx,
+			WithAliasRetrievalFunc(testNoRefreshRetrievalFunc[*aliases.Alias](t)),
 			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t)),
 			WithTargetRetrievalFunc(func(ctx context.Context, addr, token string, refreshTok RefreshTokenValue) ([]*targets.Target, []string, RefreshTokenValue, error) {
 				require.Equal(t, boundaryAddr, addr)
@@ -884,6 +1087,7 @@ func TestRecheckCachingSupport(t *testing.T) {
 		assert.ErrorContains(t, err, innerErr.Error())
 
 		err = rs.RecheckCachingSupport(ctx,
+			WithAliasRetrievalFunc(testNoRefreshRetrievalFunc[*aliases.Alias](t)),
 			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t)),
 			WithTargetRetrievalFunc(func(ctx context.Context, addr, token string, refreshTok RefreshTokenValue) ([]*targets.Target, []string, RefreshTokenValue, error) {
 				require.Equal(t, boundaryAddr, addr)
@@ -903,6 +1107,7 @@ func TestRecheckCachingSupport(t *testing.T) {
 		require.NoError(t, r.AddKeyringToken(ctx, boundaryAddr, KeyringToken{KeyringType: "k", TokenName: "t", AuthTokenId: at.Id}))
 
 		err = rs.Refresh(ctx,
+			WithAliasRetrievalFunc(testNoRefreshRetrievalFunc[*aliases.Alias](t)),
 			WithTargetRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t)),
 			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t)))
 		assert.ErrorIs(t, err, ErrRefreshNotSupported)
@@ -921,6 +1126,7 @@ func TestRecheckCachingSupport(t *testing.T) {
 		assert.Len(t, us, 1)
 
 		err = rs.RecheckCachingSupport(ctx,
+			WithAliasRetrievalFunc(testNoRefreshRetrievalFunc[*aliases.Alias](t)),
 			WithSessionRetrievalFunc(testNoRefreshRetrievalFunc[*sessions.Session](t)),
 			WithTargetRetrievalFunc(testNoRefreshRetrievalFunc[*targets.Target](t)))
 		assert.NoError(t, err)
@@ -952,5 +1158,13 @@ func session(suffix string) *sessions.Session {
 	return &sessions.Session{
 		Id:   fmt.Sprintf("session_%s", suffix),
 		Type: "tcp",
+	}
+}
+
+func alias(suffix string) *aliases.Alias {
+	return &aliases.Alias{
+		Id:    fmt.Sprintf("alt_%s", suffix),
+		Type:  "target",
+		Value: fmt.Sprintf("value%s", suffix),
 	}
 }
