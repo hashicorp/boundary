@@ -95,6 +95,10 @@
         "path": "install-boundary/system-requirements"
       },
       {
+        "title": "Dependencies",
+        "path": "install-boundary/dependencies"
+      },
+      {
         "title": "Fault tolerance recommendations",
         "path": "install-boundary/fault-tolerance"
       },
