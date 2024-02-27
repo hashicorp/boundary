@@ -834,7 +834,7 @@ import (
 // to be used directly, but instead option arguments are built from the
 // functions in this package. WithX options set a value to that given in the
 // argument; DefaultX options indicate that the value should be set to its
-// default. When an API call is made options are processed in ther order they
+// default. When an API call is made options are processed in the order they
 // appear in the function call, so for a given argument X, a succession of WithX
 // or DefaultX calls will result in the last call taking effect.
 type Option func(*options)
