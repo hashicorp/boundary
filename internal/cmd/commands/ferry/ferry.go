@@ -57,7 +57,7 @@ func (c *FerryCommand) Run(args []string) int {
 	return cli.RunResultHelp
 }
 
-// ferryAddress returns the address that the ferry daemon is listening on
+// ferryUrl constructs the full URL for a ferry request given a port and path.
 func ferryUrl(port uint, path string) string {
 	return fmt.Sprintf("http://127.0.0.1:%d/%s", port, path)
 }
