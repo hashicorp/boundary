@@ -9,7 +9,7 @@ description: |-
 
 Workers authenticate to Boundary using an activation token. They require an
 accessible directory defined by `auth_storage_path` for credential storage and
-rotation. Transport level communication between the worker & Controller is secured through PKI. 
+rotation. Transport level communication between the worker & Controller is secured through PKI.
 
 Example (not safe for production!):
 
@@ -23,7 +23,7 @@ worker {
 
 ## Authorization methods
 
-There are three mechanisms that can be used to initially register a worker to the cluster, Controller-Led, Worker-Led, and registration through an external KMS. 
+There are three mechanisms that can be used to initially register a worker to the cluster, Controller-Led, Worker-Led, and registration through an external KMS.
 
 ### Controller-led authorization flow
 
@@ -65,9 +65,9 @@ on the CLI this would be via `boundary workers create worker-led
 
 ### KMS-led authorization & authentication flow
 
-In this flow, the worker authenticates upstream, either to a controller or worker, using a shared KMS provided by the customer. This mechanism auto-registers the worker in addition to authenticating it, and does not require on-disk storage for credentials since each time it connects, it re-authenticates using the trusted KMS. 
+In this flow, the worker authenticates upstream, either to a controller or worker, using a shared KMS provided by the customer. This mechanism auto-registers the worker in addition to authenticating it, and does not require on-disk storage for credentials since each time it connects, it re-authenticates using the trusted KMS.
 
-Optionally with the Multi-Hop workers feature, trusted Workers can authenticate downstream nodes using a separate KMS. 
+Optionally with the Multi-Hop workers feature, trusted Workers can authenticate downstream nodes using a separate KMS.
 
 Workers using KMS-led authorization require a `name` field. This specifies a unique name of this worker
 within the Boundary cluster and _must be unique across workers_. The `name`
@@ -103,7 +103,7 @@ kms "aead" {
 
 The upstream controller or worker must have a `kms` block that references the
 same key and purpose. If both a controller and worker are running as the same
-server process, only one stanza is needed. 
+server process, only one stanza is needed.
 
 For Multi-Hop workers, It is also possible to specify a `kms` block with the `downstream-worker-auth` purpose. If specified, this will be a separate KMS that can be used for authenticating new downstream nodes. Blocks with this purpose can be specified multiple times. This allows a single upstream node to authenticate with one key to its own upstream (via the `worker-auth` purpose) and then serve as an authenticating upstream to nodes
 across various networks, each with their own separate KMS system or key:
@@ -209,5 +209,8 @@ worker {
 }
 ```
 
-~> **Note:** `name` and `description` fields are not valid config fields for 
-Workers using activation tokens(Worker-led & Controller-led authorization), and can only be set through the API. These config fields are only valid for [Workers using the KMS authorization method](/boundary/docs/configuration/worker/worker). 
+<Note>
+
+The `name` and `description` fields are not valid configuration fields for workers that use worker-led or controller-led authorization. You can only set these fields through the API and they are only valid for workers that use the [KMS authorization method](/boundary/docs/configuration/worker/worker-configuration#kms-led-authorization-authentication-flow).
+
+</Note>
