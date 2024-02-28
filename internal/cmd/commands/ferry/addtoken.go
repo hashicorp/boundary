@@ -4,13 +4,18 @@
 package ferry
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/internal/cmd/base"
+	"github.com/hashicorp/go-retryablehttp"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
 )
@@ -149,6 +154,7 @@ type UpsertTokenRequest struct {
 // auth token from the keyring. This allows background operations calling this
 // method to pass in a silent UI to suppress any output.
 func (c *AddTokenCommand) Add(ctx context.Context, ui cli.Ui, apiClient *api.Client) (*api.Response, *api.Error, error) {
+	const op = "ferry.(AddTokenCommand).Add"
 	pa := UpsertTokenRequest{
 		BoundaryUrl: apiClient.Addr(),
 	}
@@ -166,22 +172,33 @@ func (c *AddTokenCommand) Add(ctx context.Context, ui cli.Ui, apiClient *api.Cli
 		pa.Token = token
 	}
 
-	ferryClient, err := api.NewClient(&api.Config{
-		Addr:             ferryAddress(c.FlagFerryDaemonPort),
-		OutputCurlString: c.FlagOutputCurlString,
-	})
+	client := retryablehttp.NewClient()
+	client.RetryWaitMin = 100 * time.Millisecond
+	client.RetryWaitMax = 1500 * time.Millisecond
+
+	req, err := retryablehttp.NewRequestWithContext(ctx, "POST", ferryUrl(c.FlagFerryDaemonPort, "v1/tokens"),
+		retryablehttp.ReaderFunc(func() (io.Reader, error) {
+			b, err := json.Marshal(&pa)
+			if err != nil {
+				return nil, fmt.Errorf("error marshaling body: %w", err)
+			}
+			return bytes.NewReader(b), nil
+		}))
 	if err != nil {
 		return nil, nil, err
+	}
+	req.Header.Set("content-type", "application/json")
+
+	if c.FlagOutputCurlString {
+		api.LastOutputStringError = &api.OutputStringError{Request: req}
+		return nil, nil, api.LastOutputStringError
 	}
 
-	req, err := ferryClient.NewRequest(ctx, "POST", "/token", pa)
-	if err != nil {
-		return nil, nil, err
-	}
-	resp, err := ferryClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, nil, fmt.Errorf("Error when sending request to the ferry daemon: %w.", err)
 	}
-	apiErr, err := resp.Decode(nil)
-	return resp, apiErr, err
+	apiResp := api.NewResponse(resp)
+	apiErr, err := apiResp.Decode(nil)
+	return apiResp, apiErr, err
 }
