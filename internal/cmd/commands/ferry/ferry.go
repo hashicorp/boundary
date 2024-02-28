@@ -4,6 +4,7 @@
 package ferry
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
@@ -54,4 +55,9 @@ func (c *FerryCommand) AutocompleteFlags() complete.Flags {
 
 func (c *FerryCommand) Run(args []string) int {
 	return cli.RunResultHelp
+}
+
+// ferryAddress returns the address that the ferry daemon is listening on
+func ferryAddress(port uint) string {
+	return fmt.Sprintf("http://127.0.0.1:%d", port)
 }
