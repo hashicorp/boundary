@@ -485,6 +485,14 @@ func (c *Command) FlagSet(bit FlagSetBit) *FlagSets {
 				Usage:   "Skips starting the caching daemon or sending the current used/retrieved token to the caching daemon.",
 			})
 
+			f.BoolVar(&BoolVar{
+				Name:    "skip-ferry-daemon",
+				Target:  &c.FlagSkipFerry,
+				Default: false,
+				EnvVar:  envSkipFerry,
+				Usage:   "Skips sending the auth token used for this command to the ferry daemon if it is running.",
+			})
+
 			f.UintVar(&UintVar{
 				Name:    "ferry-port",
 				Target:  &c.FlagFerryDaemonPort,
