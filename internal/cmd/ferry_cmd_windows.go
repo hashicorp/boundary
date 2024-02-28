@@ -18,6 +18,11 @@ func init() {
 				Command: base.NewCommand(ui),
 			}, nil
 		}
+		Commands["ferry add-token"] = func() (cli.Command, error) {
+			return &ferry.AddTokenCommand{
+				Command: base.NewCommand(ui),
+			}, nil
+		}
 		Commands["ferry status"] = func() (cli.Command, error) {
 			return &ferry.StatusCommand{
 				Command: base.NewCommand(ui),

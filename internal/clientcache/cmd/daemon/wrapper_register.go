@@ -16,57 +16,31 @@ import (
 
 	"github.com/hashicorp/boundary/internal/clientcache/internal/daemon"
 	"github.com/hashicorp/boundary/internal/cmd/base"
+	"github.com/hashicorp/boundary/internal/cmd/wrapper"
 	"github.com/mitchellh/cli"
 )
 
-// Keep this interface aligned with the interface at internal/cmd/commands.go
-type cacheEnabledCommand interface {
-	cli.Command
-	BaseCommand() *base.Command
-}
-
-// CommandWrapper starts the boundary daemon after the command was Run and attempts
-// to send the current persona to any running daemon.
-type CommandWrapper struct {
-	cacheEnabledCommand
-}
-
-// Wrap returns a cli.CommandFactory that returns a command wrapped in the CommandWrapper.
-func Wrap(c cacheEnabledCommand) cli.CommandFactory {
-	return func() (cli.Command, error) {
-		return &CommandWrapper{
-			cacheEnabledCommand: c,
-		}, nil
+func init() {
+	if err := wrapper.RegisterSuccessfulCommandCallback("clientcache", hook); err != nil {
+		panic(err)
 	}
 }
 
-// Run runs the wrapped command and then attempts to start the boundary daemon and send
-// the current persona
-func (w *CommandWrapper) Run(args []string) int {
-	// potentially intercept the token in case it isn't stored in the keyring
-	var token string
-	w.cacheEnabledCommand.BaseCommand().Opts = append(w.cacheEnabledCommand.BaseCommand().Opts, base.WithInterceptedToken(&token))
-	r := w.cacheEnabledCommand.Run(args)
-	if w.BaseCommand().FlagSkipCacheDaemon {
-		return r
+// hook is the callback that is registered with the wrapper package to be called.
+// The daemon is not started and the token is not added to the cache if the flag
+// SkipCacheDaemon is set.
+func hook(ctx context.Context, baseCmd *base.Command, token string) {
+	if baseCmd.FlagSkipCacheDaemon {
+		return
 	}
-
-	if r != base.CommandSuccess {
-		// if we were not successful in running our command, do not continue to
-		// start the daemon and add the token.
-		return r
+	if startDaemon(ctx, baseCmd) {
+		addTokenToCache(ctx, baseCmd, token)
 	}
-
-	ctx := context.Background()
-	if w.startDaemon(ctx) {
-		w.addTokenToCache(ctx, token)
-	}
-	return r
 }
 
 // startDaemon attempts to start a daemon and returns true if we have attempted to start
 // the daemon and either it was successful or it was already running.
-func (w *CommandWrapper) startDaemon(ctx context.Context) bool {
+func startDaemon(ctx context.Context, baseCmd *base.Command) bool {
 	// Ignore errors related to checking if the process is already running since
 	// this can fall back to running the process.
 	if dotPath, err := DefaultDotDirectory(ctx); err == nil {
@@ -79,7 +53,7 @@ func (w *CommandWrapper) startDaemon(ctx context.Context) bool {
 
 	cmdName, err := os.Executable()
 	if err != nil {
-		w.BaseCommand().UI.Error(fmt.Sprintf("unable to find boundary binary for daemon startup: %s", err.Error()))
+		baseCmd.UI.Error(fmt.Sprintf("unable to find boundary binary for daemon startup: %s", err.Error()))
 		return false
 	}
 
@@ -105,13 +79,13 @@ func silentUi() *cli.BasicUi {
 
 // addTokenToCache runs AddTokenCommand with the token used in, or retrieved by
 // the wrapped command.
-func (w *CommandWrapper) addTokenToCache(ctx context.Context, token string) bool {
-	com := AddTokenCommand{Command: base.NewCommand(w.BaseCommand().UI)}
-	client, err := w.BaseCommand().Client()
+func addTokenToCache(ctx context.Context, baseCmd *base.Command, token string) bool {
+	com := AddTokenCommand{Command: base.NewCommand(baseCmd.UI)}
+	client, err := baseCmd.Client()
 	if err != nil {
 		return false
 	}
-	keyringType, tokName, err := w.BaseCommand().DiscoverKeyringTokenInfo()
+	keyringType, tokName, err := baseCmd.DiscoverKeyringTokenInfo()
 	if err != nil && token == "" {
 		return false
 	}
@@ -138,7 +112,7 @@ func (w *CommandWrapper) addTokenToCache(ctx context.Context, token string) bool
 // provided context is done. It returns an error if the unix socket is not found
 // before the context is done.
 func waitForDaemon(ctx context.Context) error {
-	const op = "daemon.waitForDaemon"
+	const op = "wrapper.waitForDaemon"
 	dotPath, err := DefaultDotDirectory(ctx)
 	if err != nil {
 		return err

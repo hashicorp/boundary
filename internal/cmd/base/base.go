@@ -68,6 +68,7 @@ const (
 	EnvKeyringType     = "BOUNDARY_KEYRING_TYPE"
 	envRecoveryConfig  = "BOUNDARY_RECOVERY_CONFIG"
 	envSkipCacheDaemon = "BOUNDARY_SKIP_CACHE_DAEMON"
+	envSkipFerry       = "BOUNDARY_SKIP_FERRY"
 	EnvFerryDaemonPort = "BOUNDARY_FERRY_LISTENING_PORT"
 
 	StoredTokenName = "HashiCorp Boundary Auth Token"
@@ -107,6 +108,7 @@ type Command struct {
 	FlagRecoveryConfig   string
 	FlagOutputCurlString bool
 	FlagSkipCacheDaemon  bool
+	FlagSkipFerry        bool
 
 	FlagFerryDaemonPort uint
 
