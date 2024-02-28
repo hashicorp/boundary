@@ -103,8 +103,8 @@ func (c *StatusCommand) Run(args []string) int {
 }
 
 type GetStatusResponse struct {
-	BoundaryURL     string    `json:"boundary_url"`
-	AuthTokenID     string    `json:"auth_token_id"`
+	BoundaryAddr    string    `json:"boundary_addr"`
+	AuthTokenId     string    `json:"auth_token_id"`
 	AuthTokenExpiry time.Time `json:"auth_token_expiry"`
 	Version         string    `json:"version"`
 	Errors          []string  `json:"errors"`
@@ -147,8 +147,8 @@ func (c *StatusCommand) Status(ctx context.Context) (*api.Response, *GetStatusRe
 
 func printStatusTable(status *GetStatusResponse) string {
 	nonAttributeMap := map[string]any{
-		"Address":               status.BoundaryURL,
-		"Auth Token Id":         status.AuthTokenID,
+		"Address":               status.BoundaryAddr,
+		"Auth Token Id":         status.AuthTokenId,
 		"Auth Token Expiration": time.Until(status.AuthTokenExpiry).Round(time.Second).String(),
 		"Version":               status.Version,
 	}
