@@ -30,7 +30,7 @@ Usage: boundary ferry [sub command] [options]
 
   This command allows interacting with the Boundary ferry daemon.
 
-  Start a daemon:
+  Get the status of the daemon:
 
       $ boundary ferry status
 
