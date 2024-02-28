@@ -23,6 +23,17 @@ import (
 	_ "github.com/hashicorp/boundary/internal/daemon/controller/handlers/targets/tcp"
 )
 
+var updateTargetForProxy = func(t *testing.T, ctx context.Context, c *targets.Client, tgt *targets.TargetReadResult, port uint32, connLimit int32, workerName string) *targets.TargetReadResult {
+	t.Helper()
+	ret, err := c.Update(ctx, tgt.Item.Id, tgt.Item.Version,
+		targets.WithTcpTargetDefaultPort(port),
+		targets.WithSessionConnectionLimit(connLimit),
+	)
+	require.NoError(t, err)
+	require.NotNil(t, ret)
+	return ret
+}
+
 // TestConnectionsLeft tests general proxy functionality, as well as the
 // mechanism to notify the caller of the number of connections left on the
 // caller's channel and in the ConnectionsLeft function.
@@ -50,6 +61,7 @@ func TestConnectionsLeft(t *testing.T) {
 		InitialUpstreams:                    c1.ClusterAddrs(),
 		Logger:                              logger.Named("w1"),
 		SuccessfulStatusGracePeriodDuration: helper.DefaultWorkerStatusGracePeriod,
+		Name:                                "w1",
 	})
 	defer w1.Shutdown()
 	err = w1.Worker().WaitForNextSuccessfulStatusUpdate()
@@ -71,9 +83,8 @@ func TestConnectionsLeft(t *testing.T) {
 	require.NotNil(t, ts)
 	defer ts.Close()
 	var sessionConnsLimit int32 = 4
-	tgt, err = tcl.Update(c1.Context(), tgt.Item.Id, tgt.Item.Version, targets.WithTcpTargetDefaultPort(ts.Port()), targets.WithSessionConnectionLimit(sessionConnsLimit))
-	require.NoError(err)
-	require.NotNil(tgt)
+
+	tgt = updateTargetForProxy(t, c1.Context(), tcl, tgt, ts.Port(), sessionConnsLimit, w1.Name())
 
 	// Authorize session to get authorization data
 	sess, err := tcl.AuthorizeSession(c1.Context(), tgt.Item.Id)
