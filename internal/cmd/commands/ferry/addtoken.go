@@ -143,7 +143,7 @@ func (c *AddTokenCommand) Run(args []string) int {
 // userTokenToAdd is the request body to this handler.
 type UpsertTokenRequest struct {
 	// BoundaryAddr is a required field for all requests
-	BoundaryUrl string `json:"boundary_url,omitempty"`
+	BoundaryAddr string `json:"boundary_addr,omitempty"`
 	// The raw auth token for this user.
 	Token string `json:"token,omitempty"`
 }
@@ -156,7 +156,7 @@ type UpsertTokenRequest struct {
 func (c *AddTokenCommand) Add(ctx context.Context, ui cli.Ui, apiClient *api.Client) (*api.Response, *api.Error, error) {
 	const op = "ferry.(AddTokenCommand).Add"
 	pa := UpsertTokenRequest{
-		BoundaryUrl: apiClient.Addr(),
+		BoundaryAddr: apiClient.Addr(),
 	}
 	token := apiClient.Token()
 	if token == "" {

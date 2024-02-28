@@ -22,7 +22,7 @@ func hook(ctx context.Context, baseCmd *base.Command, token string) {
 	if baseCmd.FlagSkipFerry {
 		return
 	}
-	addTokenToCache(ctx, baseCmd, token)
+	addTokenToFerry(ctx, baseCmd, token)
 }
 
 // silentUi should not be used in situations where the UI is expected to be
@@ -34,9 +34,9 @@ func silentUi() *cli.BasicUi {
 	}
 }
 
-// addTokenToCache runs AddTokenCommand with the token used in, or retrieved by
+// addTokenToFerry runs AddTokenCommand with the token used in, or retrieved by
 // the wrapped command.
-func addTokenToCache(ctx context.Context, baseCmd *base.Command, token string) bool {
+func addTokenToFerry(ctx context.Context, baseCmd *base.Command, token string) bool {
 	com := AddTokenCommand{Command: base.NewCommand(baseCmd.UI)}
 	com.FlagFerryDaemonPort = baseCmd.FlagFerryDaemonPort
 
