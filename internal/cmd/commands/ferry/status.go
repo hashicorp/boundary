@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/go-retryablehttp"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
 )
@@ -112,36 +113,39 @@ type GetStatusResponse struct {
 
 func (c *StatusCommand) Status(ctx context.Context) (*api.Response, *GetStatusResponse, *api.Error, error) {
 	const op = "ferry.(StatusCommand).Status"
-	client, err := api.NewClient(&api.Config{
-		Addr:             ferryAddress(c.FlagFerryDaemonPort),
-		OutputCurlString: c.FlagOutputCurlString,
-	})
+	client := retryablehttp.NewClient()
+	client.RetryWaitMin = 100 * time.Millisecond
+	client.RetryWaitMax = 1500 * time.Millisecond
+
+	req, err := retryablehttp.NewRequestWithContext(ctx, "GET", ferryUrl(c.FlagFerryDaemonPort, "v1/status"), nil)
 	if err != nil {
 		return nil, nil, nil, err
+	}
+	req.Header.Set("content-type", "application/json")
+
+	if c.FlagOutputCurlString {
+		api.LastOutputStringError = &api.OutputStringError{Request: req}
+		return nil, nil, nil, api.LastOutputStringError
 	}
 
-	req, err := client.NewRequest(ctx, "GET", "/status", nil)
-	if err != nil {
-		return nil, nil, nil, err
-	}
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("client do failed"))
 	}
+	apiResp := api.NewResponse(resp)
 
 	res := &GetStatusResponse{}
-	apiErr, err := resp.Decode(&res)
+	apiErr, err := apiResp.Decode(&res)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("Error when sending request to the ferry daemon: %w.", err)
 	}
 	if apiErr != nil {
-		return resp, nil, apiErr, nil
+		return apiResp, nil, apiErr, nil
 	}
-	return resp, res, nil, nil
+	return apiResp, res, nil, nil
 }
 
 func printStatusTable(status *GetStatusResponse) string {
-
 	nonAttributeMap := map[string]any{
 		"Address":               status.BoundaryURL,
 		"Auth Token Id":         status.AuthTokenID,
@@ -158,12 +162,12 @@ func printStatusTable(status *GetStatusResponse) string {
 	}
 
 	if len(status.Errors) > 0 {
-		ret = append(ret, "  Errors:")
+		ret = append(ret, "  Recent errors:")
 		ret = append(ret, base.WrapSlice(4, status.Errors))
 	}
 
 	if len(status.Warnings) > 0 {
-		ret = append(ret, "  Warnings:")
+		ret = append(ret, "  Recent warnings:")
 		ret = append(ret, base.WrapSlice(4, status.Warnings))
 	}
 	return base.WrapForHelpText(ret)
