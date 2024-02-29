@@ -792,7 +792,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 		if a.HostId != "" {
 			if req.GetHostId() != "" && req.GetHostId() != a.HostId {
 				return nil, handlers.InvalidArgumentErrorf("Errors in provided fields.", map[string]string{
-					"host_id": "The host id specified in the request does not match the one provided by the alias. Consider omiting the host id in the request.",
+					"host_id": "The host id specified in the request does not match the one provided by the alias. Consider omitting the host id in the request.",
 				})
 			}
 			req.HostId = a.HostId
