@@ -355,6 +355,11 @@ func TestListTokenResourceToResource(t *testing.T) {
 			want: resource.Account,
 		},
 		{
+			name: "alias",
+			rt:   pbs.ResourceType_RESOURCE_TYPE_ALIAS,
+			want: resource.Alias,
+		},
+		{
 			name: "auth_method",
 			rt:   pbs.ResourceType_RESOURCE_TYPE_AUTH_METHOD,
 			want: resource.AuthMethod,
