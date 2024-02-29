@@ -7,7 +7,7 @@ description: |-
 
 # Boundary 0.15.0 release notes
 
-**GA date:** January 30, 2023
+**GA date:** January 30, 2024
 
 @include 'release-notes/intro.mdx'
 
@@ -181,14 +181,18 @@ description: |-
   <tr>
     <td style={{verticalAlign: 'middle'}}>
     0.15.0
+    <br /><br />
+    (Fixed in 0.15.1)
     </td>
     <td style={{verticalAlign: 'middle'}}>
     Maximum number of connections allowed is incorrect
     </td>
     <td style={{verticalAlign: 'middle'}}>
-    A known issue causes Boundary to permit one less than the allowed number of connections that you configured for a given target. For example, if you configured the session connection limit for a target at 2, Boundary only permits 1 connection to the target. If the value is 1, Boundary does not allow any connections to the target.
+    A known issue causes Boundary to permit one less than the allowed number of connections that you configured for a given target. For example, if you configured the session connection limit for a target at 2, Boundary only permits 1 connection to the target. If the value is 1, Boundary does not allow any connections to the target. A value of -1 still means that connections to the target are unlimited.
     <br /><br />
-    This is a known issue that will be fixed in an upcoming release. A value of -1 still means that connections to the target are unlimited.
+    This issue is fixed in version 0.15.1.
+    <br /><br />
+    <a href="/boundary/tutorials/self-managed-deployment/upgrade-version">Upgrade to the latest version of Boundary</a>
     <br /><br />
     Learn more:&nbsp;
     Refer to the CLI docs for information about using <a href="/boundary/docs/commands/targets/create"><code>targets create</code></a> or <a href="/boundary/docs/commands/targets/update"><code>targets update</code></a> to configure a maximum number of connections.
