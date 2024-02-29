@@ -163,10 +163,10 @@ func TestList(t *testing.T) {
 		return repo, nil
 	}
 
-	var wantGlobalAliass []*pb.Alias
+	var wantGlobalAliases []*pb.Alias
 	for i := 0; i < 10; i++ {
 		gg := target.TestAlias(t, rw, fmt.Sprintf("test%d.alias", i))
-		wantGlobalAliass = append(wantGlobalAliass, &pb.Alias{
+		wantGlobalAliases = append(wantGlobalAliases, &pb.Alias{
 			Type:              "target",
 			Id:                gg.GetPublicId(),
 			ScopeId:           gg.GetScopeId(),
@@ -179,7 +179,7 @@ func TestList(t *testing.T) {
 		})
 	}
 
-	slices.Reverse(wantGlobalAliass)
+	slices.Reverse(wantGlobalAliases)
 
 	cases := []struct {
 		name string
@@ -188,29 +188,29 @@ func TestList(t *testing.T) {
 		err  error
 	}{
 		{
-			name: "List Global Aliass",
+			name: "List Global Aliases",
 			req:  &pbs.ListAliasesRequest{ScopeId: "global"},
 			res: &pbs.ListAliasesResponse{
-				Items:        wantGlobalAliass,
-				EstItemCount: uint32(len(wantGlobalAliass)),
+				Items:        wantGlobalAliases,
+				EstItemCount: uint32(len(wantGlobalAliases)),
 				ResponseType: "complete",
 				SortBy:       "created_time",
 				SortDir:      "desc",
 			},
 		},
 		{
-			name: "List global aliass recursively",
+			name: "List global aliases recursively",
 			req:  &pbs.ListAliasesRequest{ScopeId: "global", Recursive: true},
 			res: &pbs.ListAliasesResponse{
-				Items:        wantGlobalAliass,
-				EstItemCount: uint32(len(wantGlobalAliass)),
+				Items:        wantGlobalAliases,
+				EstItemCount: uint32(len(wantGlobalAliases)),
 				ResponseType: "complete",
 				SortBy:       "created_time",
 				SortDir:      "desc",
 			},
 		},
 		{
-			name: "Filter to no aliass",
+			name: "Filter to no aliases",
 			req:  &pbs.ListAliasesRequest{ScopeId: "global", Recursive: true, Filter: `"/item/id"=="doesntmatch"`},
 			res: &pbs.ListAliasesResponse{
 				ResponseType: "complete",
@@ -246,7 +246,7 @@ func TestList(t *testing.T) {
 				cmpopts.SortSlices(func(a, b string) bool {
 					return a < b
 				}),
-			), "ListAliass(%q) got response %q, wanted %q", tc.req.GetScopeId(), got, tc.res)
+			), "ListAliases(%q) got response %q, wanted %q", tc.req.GetScopeId(), got, tc.res)
 
 			// Test the anon case
 			got, gErr = s.ListAliases(auth.DisabledAuthTestContext(iamRepoFn, tc.req.GetScopeId(), auth.WithUserId(globals.AnonymousUserId)), tc.req)
@@ -393,7 +393,7 @@ func TestListPagination(t *testing.T) {
 				SortBy:       "created_time",
 				SortDir:      "desc",
 				RemovedIds:   nil,
-				// In addition to the added aliass, there are the aliass added
+				// In addition to the added aliases, there are the aliases added
 				// by the test setup when specifying the permissions of the
 				// requester
 				EstItemCount: itemCount,
@@ -457,7 +457,7 @@ func TestListPagination(t *testing.T) {
 		),
 	)
 
-	// Update 2 aliass and see them in the refresh
+	// Update 2 aliases and see them in the refresh
 	g1 := globalAliases[len(globalAliases)-1]
 	g1.Description = wrapperspb.String("updated1")
 	resp1, err := a.UpdateAlias(ctx, &pbs.UpdateAliasRequest{
@@ -1016,7 +1016,7 @@ func TestUpdate(t *testing.T) {
 
 	var ogVersion uint32 = 1
 
-	resetAliass := func(version uint32) {
+	resetAlias := func(version uint32) {
 		repo, err := repoFn()
 		require.NoError(t, err, "Couldn't get a new repo")
 		og, _, err = repo.UpdateAlias(ctx, og, version, []string{"Name", "Description", "DestinationId", "Value"})
@@ -1475,7 +1475,7 @@ func TestUpdate(t *testing.T) {
 				return
 			}
 			require.NoError(gErr)
-			defer resetAliass(got.GetItem().GetVersion())
+			defer resetAlias(got.GetItem().GetVersion())
 
 			assert.NotNilf(tc.res, "Expected UpdateAlias response to be nil, but was %v", got)
 			gotUpdateTime := got.GetItem().GetUpdatedTime().AsTime()
