@@ -573,6 +573,13 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 			}, nil
 		},
 
+		"ferry": func() (cli.Command, error) {
+			return &unsupported.UnsupportedCommand{
+				Command:     base.NewCommand(ui, opts...),
+				CommandName: "ferry",
+			}, nil
+		},
+
 		"groups": func() (cli.Command, error) {
 			return &groupscmd.Command{
 				Command: base.NewCommand(ui, opts...),
