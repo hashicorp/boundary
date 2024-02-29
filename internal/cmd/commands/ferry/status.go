@@ -87,7 +87,7 @@ func (c *StatusCommand) Run(args []string) int {
 		return base.CommandCliError
 	}
 	if apiErr != nil {
-		c.PrintApiError(apiErr, "Error from ferry daemon when getting the status")
+		c.PrintApiError(apiErr, "Error from ferry daemon when getting its status")
 		return base.CommandApiError
 	}
 
