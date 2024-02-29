@@ -5,11 +5,9 @@ package ferry
 
 import (
 	"context"
-	"io"
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/wrapper"
-	"github.com/mitchellh/cli"
 )
 
 func init() {
@@ -30,20 +28,13 @@ func hook(ctx context.Context, baseCmd *base.Command, token string) {
 	if token != "" {
 		client.SetToken(token)
 	}
-
-	// We do not want to print errors out from our background interactions with
-	// the daemon so use the silentUi to toss out anything that shouldn't be used
-	_, apiErr, err := AddToken(ctx, silentUi(), client, baseCmd.FlagFerryDaemonPort)
 	// TODO: Figure out the appropriate reporting of these errors when this is
 	// only run in the background of other commands.
-	_, _ = apiErr, err
-}
-
-// silentUi should not be used in situations where the UI is expected to be
-// prompt the user for input.
-func silentUi() *cli.BasicUi {
-	return &cli.BasicUi{
-		Writer:      io.Discard,
-		ErrorWriter: io.Discard,
+	_, apiErr, err := addToken(ctx, client, baseCmd.FlagFerryDaemonPort)
+	if err != nil {
+		baseCmd.PrintCliError(err)
+	}
+	if apiErr != nil {
+		baseCmd.PrintApiError(apiErr, "sending token to ferry daemon in the background")
 	}
 }

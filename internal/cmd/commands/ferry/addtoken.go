@@ -15,7 +15,6 @@ import (
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/go-retryablehttp"
-	"github.com/mitchellh/cli"
 )
 
 // userTokenToAdd is the request body to this handler.
@@ -26,13 +25,12 @@ type UpsertTokenRequest struct {
 	Token string `json:"token,omitempty"`
 }
 
-// AddToken builds the UpsertTokenRequest using the client's address and token.
+// addToken builds the UpsertTokenRequest using the client's address and token.
 // It then sends the request to the ferry daemon.
 // The passed in cli.Ui is used to print out any errors when looking up the
 // auth token from the keyring. This allows background operations calling this
 // method to pass in a silent UI to suppress any output.
-func AddToken(ctx context.Context, ui cli.Ui, apiClient *api.Client, port uint) (*api.Response, *api.Error, error) {
-	const op = "ferry.AddToken"
+func addToken(ctx context.Context, apiClient *api.Client, port uint) (*api.Response, *api.Error, error) {
 	pa := UpsertTokenRequest{
 		BoundaryAddr: apiClient.Addr(),
 	}
@@ -43,6 +41,7 @@ func AddToken(ctx context.Context, ui cli.Ui, apiClient *api.Client, port uint) 
 	if parts := strings.Split(token, "_"); len(parts) != 3 {
 		return nil, nil, errors.New("The client provided auth token is not in the proper format.")
 	}
+	pa.Token = token
 
 	client := retryablehttp.NewClient()
 	client.Logger = nil
@@ -61,7 +60,6 @@ func AddToken(ctx context.Context, ui cli.Ui, apiClient *api.Client, port uint) 
 		return nil, nil, err
 	}
 	req.Header.Set("content-type", "application/json")
-
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, nil, fmt.Errorf("Error when sending request to the ferry daemon: %w.", err)
