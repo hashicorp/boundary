@@ -103,7 +103,7 @@ func TestGet(t *testing.T) {
 			res:     &pbs.GetAliasResponse{Item: wantAlias},
 		},
 		{
-			name: "Get a non existant Alias",
+			name: "Get a non existent Alias",
 			req:  &pbs.GetAliasRequest{Id: globals.TargetAliasPrefix + "_DoesntExis"},
 			res:  nil,
 			err:  handlers.ApiErrorWithCode(codes.NotFound),
@@ -1114,7 +1114,7 @@ func TestUpdate(t *testing.T) {
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
-			name:    "Only non-existant paths in Mask",
+			name:    "Only non-existent paths in Mask",
 			scopeId: og.GetScopeId(),
 			req: &pbs.UpdateAliasRequest{
 				UpdateMask: &field_mask.FieldMask{Paths: []string{"nonexistant_field"}},
