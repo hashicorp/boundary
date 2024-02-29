@@ -114,6 +114,7 @@ type GetStatusResponse struct {
 func (c *StatusCommand) Status(ctx context.Context) (*api.Response, *GetStatusResponse, *api.Error, error) {
 	const op = "ferry.(StatusCommand).Status"
 	client := retryablehttp.NewClient()
+	client.Logger = nil
 	client.RetryWaitMin = 100 * time.Millisecond
 	client.RetryWaitMax = 1500 * time.Millisecond
 
