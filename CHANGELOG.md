@@ -4,6 +4,8 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+## 0.15.1 (2024/02/28)
+
 ### Bug Fixes
 
 * cli: Update proxy listener to not close when the number of connections left 
@@ -16,6 +18,14 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * Fix issue where the websocket connection was throwing closing errors during
   the session teardown.
   ([PR](https://github.com/hashicorp/boundary/pull/4389))
+
+### New and Improved
+
+* feat: support added for tracking and reporting monthly active users for
+  the purpose of billing. It adds a new API endpoint,
+  `/v1/billing:monthly-active-users` and new cli command,
+  `boundary billing monthly-active-users` that can be used to view the monthly
+  active user counts.
 
 ## 0.15.0 (2024/01/30)
 
