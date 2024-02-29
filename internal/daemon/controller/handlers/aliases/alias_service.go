@@ -233,7 +233,7 @@ func (s Service) ListAliases(ctx context.Context, req *pbs.ListAliasesRequest) (
 	return resp, nil
 }
 
-// GetAliass implements the interface pbs.AliasServiceServer.
+// GetAlias implements the interface pbs.AliasServiceServer.
 func (s Service) GetAlias(ctx context.Context, req *pbs.GetAliasRequest) (*pbs.GetAliasResponse, error) {
 	const op = "aliases.(Service).GetAlias"
 
