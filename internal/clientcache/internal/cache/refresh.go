@@ -342,7 +342,7 @@ func (r *RefreshService) RecheckCachingSupport(ctx context.Context, opt ...Optio
 		}
 		if err := r.repo.checkCachingAliases(ctx, u, tokens, opt...); err != nil {
 			if err == ErrRefreshNotSupported {
-				// This is expected so no need to propogate the error up
+				// This is expected so no need to propagate the error up
 				continue
 			}
 			retErr = stderrors.Join(retErr, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("for user id %s", u.Id))))
