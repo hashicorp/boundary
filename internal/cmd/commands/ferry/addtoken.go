@@ -173,6 +173,7 @@ func (c *AddTokenCommand) Add(ctx context.Context, ui cli.Ui, apiClient *api.Cli
 	}
 
 	client := retryablehttp.NewClient()
+	client.Logger = nil
 	client.RetryWaitMin = 100 * time.Millisecond
 	client.RetryWaitMax = 1500 * time.Millisecond
 
