@@ -34,6 +34,8 @@ func hook(ctx context.Context, baseCmd *base.Command, token string) {
 	// We do not want to print errors out from our background interactions with
 	// the daemon so use the silentUi to toss out anything that shouldn't be used
 	_, apiErr, err := AddToken(ctx, silentUi(), client, baseCmd.FlagFerryDaemonPort)
+	// TODO: Figure out the appropriate reporting of these errors when this is
+	// only run in the background of other commands.
 	_, _ = apiErr, err
 }
 
