@@ -22,7 +22,19 @@ func hook(ctx context.Context, baseCmd *base.Command, token string) {
 	if baseCmd.FlagSkipFerry {
 		return
 	}
-	addTokenToFerry(ctx, baseCmd, token)
+	client, err := baseCmd.Client()
+	if err != nil {
+		// print this error out to stderr?
+		return
+	}
+	if token != "" {
+		client.SetToken(token)
+	}
+
+	// We do not want to print errors out from our background interactions with
+	// the daemon so use the silentUi to toss out anything that shouldn't be used
+	_, apiErr, err := AddToken(ctx, silentUi(), client, baseCmd.FlagFerryDaemonPort)
+	_, _ = apiErr, err
 }
 
 // silentUi should not be used in situations where the UI is expected to be
@@ -32,24 +44,4 @@ func silentUi() *cli.BasicUi {
 		Writer:      io.Discard,
 		ErrorWriter: io.Discard,
 	}
-}
-
-// addTokenToFerry runs AddTokenCommand with the token used in, or retrieved by
-// the wrapped command.
-func addTokenToFerry(ctx context.Context, baseCmd *base.Command, token string) bool {
-	com := AddTokenCommand{Command: base.NewCommand(baseCmd.UI)}
-	com.FlagFerryDaemonPort = baseCmd.FlagFerryDaemonPort
-
-	client, err := baseCmd.Client()
-	if err != nil {
-		return false
-	}
-	if token != "" {
-		client.SetToken(token)
-	}
-
-	// We do not want to print errors out from our background interactions with
-	// the daemon so use the silentUi to toss out anything that shouldn't be used
-	_, apiErr, err := com.Add(ctx, silentUi(), client)
-	return err == nil && apiErr == nil
 }
