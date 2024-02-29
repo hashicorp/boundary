@@ -15,7 +15,7 @@ import (
 var ErrCallbackAlreadyRegistered = errors.New("registered callback already exists")
 
 // PostSuccessfulCommandCallback is a function that should be run after the
-// wrapped command completes succesfully. token will contain the value for any
+// wrapped command completes successfully. token will contain the value for any
 // new token obtained during the running of the command
 type PostSuccessfulCommandCallback func(ctx context.Context, badeCmd *base.Command, token string)
 

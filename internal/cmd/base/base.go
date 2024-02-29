@@ -68,7 +68,7 @@ const (
 	EnvKeyringType     = "BOUNDARY_KEYRING_TYPE"
 	envRecoveryConfig  = "BOUNDARY_RECOVERY_CONFIG"
 	envSkipCacheDaemon = "BOUNDARY_SKIP_CACHE_DAEMON"
-	envSkipFerry       = "BOUNDARY_SKIP_FERRY"
+	envSkipFerry       = "BOUNDARY_SKIP_FERRY_DAEMON"
 	EnvFerryDaemonPort = "BOUNDARY_FERRY_LISTENING_PORT"
 
 	StoredTokenName = "HashiCorp Boundary Auth Token"
