@@ -162,7 +162,7 @@ func (c *AddTokenCommand) Add(ctx context.Context, ui cli.Ui, apiClient *api.Cli
 	if token == "" {
 		return nil, nil, errors.New("The client auth token is empty.")
 	}
-	if parts := strings.SplitN(token, "_", 4); len(parts) != 3 {
+	if parts := strings.Split(token, "_"); len(parts) != 3 {
 		return nil, nil, errors.New("The client provided auth token is not in the proper format.")
 	}
 
