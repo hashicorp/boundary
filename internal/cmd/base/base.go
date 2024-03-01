@@ -68,6 +68,7 @@ const (
 	EnvKeyringType     = "BOUNDARY_KEYRING_TYPE"
 	envRecoveryConfig  = "BOUNDARY_RECOVERY_CONFIG"
 	envSkipCacheDaemon = "BOUNDARY_SKIP_CACHE_DAEMON"
+	envSkipFerry       = "BOUNDARY_SKIP_FERRY_DAEMON"
 	EnvFerryDaemonPort = "BOUNDARY_FERRY_LISTENING_PORT"
 
 	StoredTokenName = "HashiCorp Boundary Auth Token"
@@ -107,6 +108,7 @@ type Command struct {
 	FlagRecoveryConfig   string
 	FlagOutputCurlString bool
 	FlagSkipCacheDaemon  bool
+	FlagSkipFerry        bool
 
 	FlagFerryDaemonPort uint
 
@@ -481,6 +483,14 @@ func (c *Command) FlagSet(bit FlagSetBit) *FlagSets {
 				Default: false,
 				EnvVar:  envSkipCacheDaemon,
 				Usage:   "Skips starting the caching daemon or sending the current used/retrieved token to the caching daemon.",
+			})
+
+			f.BoolVar(&BoolVar{
+				Name:    "skip-ferry-daemon",
+				Target:  &c.FlagSkipFerry,
+				Default: false,
+				EnvVar:  envSkipFerry,
+				Usage:   "Skips sending the auth token used for this command to the ferry daemon if it is running.",
 			})
 
 			f.UintVar(&UintVar{
