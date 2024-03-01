@@ -155,7 +155,8 @@ func TestCliLdap(t *testing.T) {
 	require.Contains(t, managedGroupReadResult.Item.MemberIds, newAccountId)
 
 	// Add managed group as a principal to a role with permissions to read auth methods
-	newRoleId := boundary.CreateNewRoleCli(t, ctx, newOrgId)
+	newRoleId, err := boundary.CreateRoleCli(t, ctx, newOrgId)
+	require.NoError(t, err)
 	boundary.AddPrincipalToRoleCli(t, ctx, newRoleId, managedGroupId)
 	boundary.AddGrantToRoleCli(t, ctx, newRoleId, "ids=*;type=auth-method;actions=read")
 

@@ -233,7 +233,8 @@ func populateBoundaryDatabase(t testing.TB, ctx context.Context, c *config, te T
 	boundary.SetAccountToUserCli(t, ctx, newUserId, newAccountId)
 	newGroupId := boundary.CreateNewGroupCli(t, ctx, "global")
 	boundary.AddUserToGroup(t, ctx, newUserId, newGroupId)
-	newRoleId := boundary.CreateNewRoleCli(t, ctx, newProjectId)
+	newRoleId, err := boundary.CreateRoleCli(t, ctx, newProjectId)
+	require.NoError(t, err)
 	boundary.AddGrantToRoleCli(t, ctx, newRoleId, "ids=*;type=target;actions=authorize-session")
 	boundary.AddPrincipalToRoleCli(t, ctx, newRoleId, newGroupId)
 
@@ -269,7 +270,7 @@ func populateBoundaryDatabase(t testing.TB, ctx context.Context, c *config, te T
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
 	var tokenCreateResult vault.CreateTokenResponse
-	err := json.Unmarshal(output.Stdout, &tokenCreateResult)
+	err = json.Unmarshal(output.Stdout, &tokenCreateResult)
 	require.NoError(t, err)
 	credStoreToken := tokenCreateResult.Auth.Client_Token
 	t.Log("Created Vault Cred Store Token")
