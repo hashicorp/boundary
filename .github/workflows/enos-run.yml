@@ -140,7 +140,7 @@ jobs:
           echo "trusted-key ${{ secrets.ENOS_GPG_UID }}" >> ~/.gnupg/gpg.conf
           cat ~/.gnupg/gpg.conf
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@010d0da01d0b5a38af31e9c3470dbfdabdecca3a # v4.0.1
+        uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502 # v4.0.2
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID_CI }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_CI }}
@@ -219,7 +219,7 @@ jobs:
         run: |
           mv ${{ steps.download-docker.outputs.download-path }}/*.tar enos/support/boundary_docker_image.tar
       - name: Set up Node.js
-        uses: actions/setup-node@8f152de45cc393bb48ce5d89d36b731f54556e65 # v4.0.0
+        uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8 # v4.0.2
         if: contains(matrix.filter, 'e2e_ui')
         with:
           node-version: '16.x'
@@ -262,7 +262,7 @@ jobs:
           fi
           popd
       - name: Upload e2e tests output
-        uses: actions/upload-artifact@a8a3f3ad30e3422c9c7b888a15615d19a852ae32 # v3.1.3
+        uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
         with:
           name: test-e2e-output
           path: enos/*.log
@@ -275,7 +275,7 @@ jobs:
           docker logs database
       - name: Upload e2e UI tests debug info
         if: contains(matrix.filter, 'e2e_ui') && steps.run.outcome == 'failure'
-        uses: actions/upload-artifact@a8a3f3ad30e3422c9c7b888a15615d19a852ae32 # v3.1.3
+        uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
         with:
           name: test-e2e-ui-debug
           path: enos/support/src/boundary-ui/ui/admin/tests/e2e/artifacts/test-failures
@@ -288,7 +288,7 @@ jobs:
           enos scenario launch --timeout 60m0s --chdir ./enos ${{ matrix.filter }}
       - name: Upload Debug Data
         if: ${{ always() && steps.run_retry.outcome == 'failure' }}
-        uses: actions/upload-artifact@a8a3f3ad30e3422c9c7b888a15615d19a852ae32 # v3.1.3
+        uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
         with:
           # The name of the artifact is the same as the matrix scenario name with the spaces replaced with underscores and colons replaced by equals.
           name: ${{ steps.prepare_scenario.outputs.debug_data_artifact_name }}
@@ -323,7 +323,7 @@ jobs:
           env
           find ./enos -name "scenario.tf" -exec cat {} \;
       - name: Send Slack message if Run and Retry fails (or if something else went wrong)
-        uses: slackapi/slack-github-action@e28cf165c92ffef168d23c5c9000cffc8a25e117 # v1.24.0
+        uses: slackapi/slack-github-action@6c661ce58804a1a20f6dc5fbee7f0381b469e001 # v1.25.0
         # steps.run.outcome reports as failure when there is an error in `Run Enos scenario`
         # failure() captures errors before `Run Enos scenario`
         # failure() does not capture errors in `Run Enos scenario` due to continue-on-error
@@ -337,7 +337,7 @@ jobs:
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOUNDARY_TEST_BOT_TOKEN }}
       - name: Send Slack message if Run but Retry passes
-        uses: slackapi/slack-github-action@e28cf165c92ffef168d23c5c9000cffc8a25e117 # v1.24.0
+        uses: slackapi/slack-github-action@6c661ce58804a1a20f6dc5fbee7f0381b469e001 # v1.25.0
         if: ${{ steps.run.outcome == 'failure' && steps.run_retry.outcome != 'failure' }}
         with:
           channel-id: ${{ secrets.SLACK_BOUNDARY_TEST_BOT_CHANNEL_ID }}
