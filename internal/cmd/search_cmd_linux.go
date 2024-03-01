@@ -11,8 +11,6 @@ import (
 )
 
 func init() {
-	clientCacheWrapper = daemonWrap
-
 	extraCommandsFuncs = append(extraCommandsFuncs, func(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 		Commands["daemon"] = func() (cli.Command, error) {
 			return &daemon.DaemonCommand{
@@ -45,10 +43,4 @@ func init() {
 			}, nil
 		}
 	})
-}
-
-// daemonWrap wraps the provided cacheEnabledCommand with a daemon writer which
-// conditionally starts the client side daemon after the command completes
-func daemonWrap(c cacheEnabledCommand) cli.CommandFactory {
-	return daemon.Wrap(c)
 }

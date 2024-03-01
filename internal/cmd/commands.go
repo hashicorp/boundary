@@ -37,6 +37,7 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/commands/userscmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/version"
 	"github.com/hashicorp/boundary/internal/cmd/commands/workerscmd"
+	"github.com/hashicorp/boundary/internal/cmd/wrapper"
 
 	"github.com/mitchellh/cli"
 )
@@ -70,19 +71,19 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 			}, nil
 		},
 
-		"authenticate": clientCacheWrapper(
+		"authenticate": wrapper.Wrap(
 			&authenticate.Command{
 				Command: base.NewCommand(ui, opts...),
 			}),
-		"authenticate password": clientCacheWrapper(
+		"authenticate password": wrapper.Wrap(
 			&authenticate.PasswordCommand{
 				Command: base.NewCommand(ui, opts...),
 			}),
-		"authenticate oidc": clientCacheWrapper(
+		"authenticate oidc": wrapper.Wrap(
 			&authenticate.OidcCommand{
 				Command: base.NewCommand(ui, opts...),
 			}),
-		"authenticate ldap": clientCacheWrapper(
+		"authenticate ldap": wrapper.Wrap(
 			&authenticate.LdapCommand{
 				Command: base.NewCommand(ui, opts...),
 			}),
@@ -92,67 +93,67 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
-		"accounts read": clientCacheWrapper(
+		"accounts read": wrapper.Wrap(
 			&accountscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "read",
 			}),
-		"accounts delete": clientCacheWrapper(
+		"accounts delete": wrapper.Wrap(
 			&accountscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "delete",
 			}),
-		"accounts list": clientCacheWrapper(
+		"accounts list": wrapper.Wrap(
 			&accountscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "list",
 			}),
-		"accounts set-password": clientCacheWrapper(
+		"accounts set-password": wrapper.Wrap(
 			&accountscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "set-password",
 			}),
-		"accounts change-password": clientCacheWrapper(
+		"accounts change-password": wrapper.Wrap(
 			&accountscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "change-password",
 			}),
-		"accounts create": clientCacheWrapper(
+		"accounts create": wrapper.Wrap(
 			&accountscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "create",
 			}),
-		"accounts create password": clientCacheWrapper(
+		"accounts create password": wrapper.Wrap(
 			&accountscmd.PasswordCommand{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "create",
 			}),
-		"accounts create oidc": clientCacheWrapper(
+		"accounts create oidc": wrapper.Wrap(
 			&accountscmd.OidcCommand{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "create",
 			}),
-		"accounts create ldap": clientCacheWrapper(
+		"accounts create ldap": wrapper.Wrap(
 			&accountscmd.LdapCommand{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "create",
 			}),
-		"accounts update": clientCacheWrapper(
+		"accounts update": wrapper.Wrap(
 			&accountscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "update",
 			}),
-		"accounts update password": clientCacheWrapper(
+		"accounts update password": wrapper.Wrap(
 			&accountscmd.PasswordCommand{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "update",
 			}),
-		"accounts update oidc": clientCacheWrapper(
+		"accounts update oidc": wrapper.Wrap(
 			&accountscmd.OidcCommand{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "update",
 			}),
-		"accounts update ldap": clientCacheWrapper(
+		"accounts update ldap": wrapper.Wrap(
 			&accountscmd.LdapCommand{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "update",
@@ -163,37 +164,37 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
-		"aliases read": clientCacheWrapper(
+		"aliases read": wrapper.Wrap(
 			&aliasescmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "read",
 			}),
-		"aliases delete": clientCacheWrapper(
+		"aliases delete": wrapper.Wrap(
 			&aliasescmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "delete",
 			}),
-		"aliases list": clientCacheWrapper(
+		"aliases list": wrapper.Wrap(
 			&aliasescmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "list",
 			}),
-		"aliases create": clientCacheWrapper(
+		"aliases create": wrapper.Wrap(
 			&aliasescmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "create",
 			}),
-		"aliases update": clientCacheWrapper(
+		"aliases update": wrapper.Wrap(
 			&aliasescmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "update",
 			}),
-		"aliases create target": clientCacheWrapper(
+		"aliases create target": wrapper.Wrap(
 			&aliasescmd.TargetCommand{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "create",
 			}),
-		"aliases update target": clientCacheWrapper(
+		"aliases update target": wrapper.Wrap(
 			&aliasescmd.TargetCommand{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "update",
@@ -204,62 +205,62 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
-		"auth-methods read": clientCacheWrapper(
+		"auth-methods read": wrapper.Wrap(
 			&authmethodscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "read",
 			}),
-		"auth-methods delete": clientCacheWrapper(
+		"auth-methods delete": wrapper.Wrap(
 			&authmethodscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "delete",
 			}),
-		"auth-methods list": clientCacheWrapper(
+		"auth-methods list": wrapper.Wrap(
 			&authmethodscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "list",
 			}),
-		"auth-methods create": clientCacheWrapper(
+		"auth-methods create": wrapper.Wrap(
 			&authmethodscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "create",
 			}),
-		"auth-methods create password": clientCacheWrapper(
+		"auth-methods create password": wrapper.Wrap(
 			&authmethodscmd.PasswordCommand{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "create",
 			}),
-		"auth-methods create oidc": clientCacheWrapper(
+		"auth-methods create oidc": wrapper.Wrap(
 			&authmethodscmd.OidcCommand{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "create",
 			}),
-		"auth-methods create ldap": clientCacheWrapper(
+		"auth-methods create ldap": wrapper.Wrap(
 			&authmethodscmd.LdapCommand{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "create",
 			}),
-		"auth-methods update": clientCacheWrapper(
+		"auth-methods update": wrapper.Wrap(
 			&authmethodscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "update",
 			}),
-		"auth-methods update password": clientCacheWrapper(
+		"auth-methods update password": wrapper.Wrap(
 			&authmethodscmd.PasswordCommand{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "update",
 			}),
-		"auth-methods update oidc": clientCacheWrapper(
+		"auth-methods update oidc": wrapper.Wrap(
 			&authmethodscmd.OidcCommand{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "update",
 			}),
-		"auth-methods update ldap": clientCacheWrapper(
+		"auth-methods update ldap": wrapper.Wrap(
 			&authmethodscmd.LdapCommand{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "update",
 			}),
-		"auth-methods change-state oidc": clientCacheWrapper(
+		"auth-methods change-state oidc": wrapper.Wrap(
 			&authmethodscmd.OidcCommand{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "change-state",
@@ -270,17 +271,17 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
-		"auth-tokens read": clientCacheWrapper(
+		"auth-tokens read": wrapper.Wrap(
 			&authtokenscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "read",
 			}),
-		"auth-tokens delete": clientCacheWrapper(
+		"auth-tokens delete": wrapper.Wrap(
 			&authtokenscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "delete",
 			}),
-		"auth-tokens list": clientCacheWrapper(
+		"auth-tokens list": wrapper.Wrap(
 			&authtokenscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "list",
@@ -291,7 +292,7 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
-		"billing monthly-active-users": clientCacheWrapper(
+		"billing monthly-active-users": wrapper.Wrap(
 			&billingcmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "monthly-active-users",
@@ -339,32 +340,32 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 			}, nil
 		},
 
-		"connect": clientCacheWrapper(
+		"connect": wrapper.Wrap(
 			&connect.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "connect",
 			}),
-		"connect http": clientCacheWrapper(
+		"connect http": wrapper.Wrap(
 			&connect.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "http",
 			}),
-		"connect kube": clientCacheWrapper(
+		"connect kube": wrapper.Wrap(
 			&connect.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "kube",
 			}),
-		"connect postgres": clientCacheWrapper(
+		"connect postgres": wrapper.Wrap(
 			&connect.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "postgres",
 			}),
-		"connect rdp": clientCacheWrapper(
+		"connect rdp": wrapper.Wrap(
 			&connect.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "rdp",
 			}),
-		"connect ssh": clientCacheWrapper(
+		"connect ssh": wrapper.Wrap(
 			&connect.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "ssh",
@@ -391,57 +392,57 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
-		"credential-libraries read": clientCacheWrapper(
+		"credential-libraries read": wrapper.Wrap(
 			&credentiallibrariescmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "read",
 			}),
-		"credential-libraries delete": clientCacheWrapper(
+		"credential-libraries delete": wrapper.Wrap(
 			&credentiallibrariescmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "delete",
 			}),
-		"credential-libraries list": clientCacheWrapper(
+		"credential-libraries list": wrapper.Wrap(
 			&credentiallibrariescmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "list",
 			}),
-		"credential-libraries create": clientCacheWrapper(
+		"credential-libraries create": wrapper.Wrap(
 			&credentiallibrariescmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "create",
 			}),
-		"credential-libraries create vault": clientCacheWrapper(
+		"credential-libraries create vault": wrapper.Wrap(
 			&credentiallibrariescmd.VaultCommand{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "create",
 			}),
-		"credential-libraries create vault-generic": clientCacheWrapper(
+		"credential-libraries create vault-generic": wrapper.Wrap(
 			&credentiallibrariescmd.VaultGenericCommand{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "create",
 			}),
-		"credential-libraries create vault-ssh-certificate": clientCacheWrapper(
+		"credential-libraries create vault-ssh-certificate": wrapper.Wrap(
 			&credentiallibrariescmd.VaultSshCertificateCommand{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "create",
 			}),
-		"credential-libraries update": clientCacheWrapper(
+		"credential-libraries update": wrapper.Wrap(
 			&credentiallibrariescmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "update",
 			}),
-		"credential-libraries update vault": clientCacheWrapper(
+		"credential-libraries update vault": wrapper.Wrap(
 			&credentiallibrariescmd.VaultGenericCommand{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "update",
 			}),
-		"credential-libraries update vault-generic": clientCacheWrapper(
+		"credential-libraries update vault-generic": wrapper.Wrap(
 			&credentiallibrariescmd.VaultGenericCommand{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "update",
 			}),
-		"credential-libraries update vault-ssh-certificate": clientCacheWrapper(
+		"credential-libraries update vault-ssh-certificate": wrapper.Wrap(
 			&credentiallibrariescmd.VaultSshCertificateCommand{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "update",
@@ -452,47 +453,47 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
-		"credential-stores read": clientCacheWrapper(
+		"credential-stores read": wrapper.Wrap(
 			&credentialstorescmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "read",
 			}),
-		"credential-stores delete": clientCacheWrapper(
+		"credential-stores delete": wrapper.Wrap(
 			&credentialstorescmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "delete",
 			}),
-		"credential-stores list": clientCacheWrapper(
+		"credential-stores list": wrapper.Wrap(
 			&credentialstorescmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "list",
 			}),
-		"credential-stores create": clientCacheWrapper(
+		"credential-stores create": wrapper.Wrap(
 			&credentialstorescmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "create",
 			}),
-		"credential-stores create vault": clientCacheWrapper(
+		"credential-stores create vault": wrapper.Wrap(
 			&credentialstorescmd.VaultCommand{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "create",
 			}),
-		"credential-stores create static": clientCacheWrapper(
+		"credential-stores create static": wrapper.Wrap(
 			&credentialstorescmd.StaticCommand{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "create",
 			}),
-		"credential-stores update": clientCacheWrapper(
+		"credential-stores update": wrapper.Wrap(
 			&credentialstorescmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "update",
 			}),
-		"credential-stores update vault": clientCacheWrapper(
+		"credential-stores update vault": wrapper.Wrap(
 			&credentialstorescmd.VaultCommand{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "update",
 			}),
-		"credential-stores update static": clientCacheWrapper(
+		"credential-stores update static": wrapper.Wrap(
 			&credentialstorescmd.StaticCommand{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "update",
@@ -503,57 +504,57 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
-		"credentials read": clientCacheWrapper(
+		"credentials read": wrapper.Wrap(
 			&credentialscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "read",
 			}),
-		"credentials delete": clientCacheWrapper(
+		"credentials delete": wrapper.Wrap(
 			&credentialscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "delete",
 			}),
-		"credentials list": clientCacheWrapper(
+		"credentials list": wrapper.Wrap(
 			&credentialscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "list",
 			}),
-		"credentials create": clientCacheWrapper(
+		"credentials create": wrapper.Wrap(
 			&credentialscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "create",
 			}),
-		"credentials create username-password": clientCacheWrapper(
+		"credentials create username-password": wrapper.Wrap(
 			&credentialscmd.UsernamePasswordCommand{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "create",
 			}),
-		"credentials create ssh-private-key": clientCacheWrapper(
+		"credentials create ssh-private-key": wrapper.Wrap(
 			&credentialscmd.SshPrivateKeyCommand{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "create",
 			}),
-		"credentials create json": clientCacheWrapper(
+		"credentials create json": wrapper.Wrap(
 			&credentialscmd.JsonCommand{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "create",
 			}),
-		"credentials update": clientCacheWrapper(
+		"credentials update": wrapper.Wrap(
 			&credentialscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "update",
 			}),
-		"credentials update username-password": clientCacheWrapper(
+		"credentials update username-password": wrapper.Wrap(
 			&credentialscmd.UsernamePasswordCommand{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "update",
 			}),
-		"credentials update ssh-private-key": clientCacheWrapper(
+		"credentials update ssh-private-key": wrapper.Wrap(
 			&credentialscmd.SshPrivateKeyCommand{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "update",
 			}),
-		"credentials update json": clientCacheWrapper(
+		"credentials update json": wrapper.Wrap(
 			&credentialscmd.JsonCommand{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "update",
@@ -585,42 +586,42 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
-		"groups create": clientCacheWrapper(
+		"groups create": wrapper.Wrap(
 			&groupscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "create",
 			}),
-		"groups update": clientCacheWrapper(
+		"groups update": wrapper.Wrap(
 			&groupscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "update",
 			}),
-		"groups read": clientCacheWrapper(
+		"groups read": wrapper.Wrap(
 			&groupscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "read",
 			}),
-		"groups delete": clientCacheWrapper(
+		"groups delete": wrapper.Wrap(
 			&groupscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "delete",
 			}),
-		"groups list": clientCacheWrapper(
+		"groups list": wrapper.Wrap(
 			&groupscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "list",
 			}),
-		"groups add-members": clientCacheWrapper(
+		"groups add-members": wrapper.Wrap(
 			&groupscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "add-members",
 			}),
-		"groups set-members": clientCacheWrapper(
+		"groups set-members": wrapper.Wrap(
 			&groupscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "set-members",
 			}),
-		"groups remove-members": clientCacheWrapper(
+		"groups remove-members": wrapper.Wrap(
 			&groupscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "remove-members",
@@ -631,47 +632,47 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
-		"host-catalogs read": clientCacheWrapper(
+		"host-catalogs read": wrapper.Wrap(
 			&hostcatalogscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "read",
 			}),
-		"host-catalogs delete": clientCacheWrapper(
+		"host-catalogs delete": wrapper.Wrap(
 			&hostcatalogscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "delete",
 			}),
-		"host-catalogs list": clientCacheWrapper(
+		"host-catalogs list": wrapper.Wrap(
 			&hostcatalogscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "list",
 			}),
-		"host-catalogs create": clientCacheWrapper(
+		"host-catalogs create": wrapper.Wrap(
 			&hostcatalogscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "create",
 			}),
-		"host-catalogs create static": clientCacheWrapper(
+		"host-catalogs create static": wrapper.Wrap(
 			&hostcatalogscmd.StaticCommand{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "create",
 			}),
-		"host-catalogs create plugin": clientCacheWrapper(
+		"host-catalogs create plugin": wrapper.Wrap(
 			&hostcatalogscmd.PluginCommand{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "create",
 			}),
-		"host-catalogs update": clientCacheWrapper(
+		"host-catalogs update": wrapper.Wrap(
 			&hostcatalogscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "update",
 			}),
-		"host-catalogs update static": clientCacheWrapper(
+		"host-catalogs update static": wrapper.Wrap(
 			&hostcatalogscmd.StaticCommand{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "update",
 			}),
-		"host-catalogs update plugin": clientCacheWrapper(
+		"host-catalogs update plugin": wrapper.Wrap(
 			&hostcatalogscmd.PluginCommand{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "update",
@@ -682,62 +683,62 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
-		"host-sets read": clientCacheWrapper(
+		"host-sets read": wrapper.Wrap(
 			&hostsetscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "read",
 			}),
-		"host-sets delete": clientCacheWrapper(
+		"host-sets delete": wrapper.Wrap(
 			&hostsetscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "delete",
 			}),
-		"host-sets list": clientCacheWrapper(
+		"host-sets list": wrapper.Wrap(
 			&hostsetscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "list",
 			}),
-		"host-sets create": clientCacheWrapper(
+		"host-sets create": wrapper.Wrap(
 			&hostsetscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "create",
 			}),
-		"host-sets create static": clientCacheWrapper(
+		"host-sets create static": wrapper.Wrap(
 			&hostsetscmd.StaticCommand{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "create",
 			}),
-		"host-sets create plugin": clientCacheWrapper(
+		"host-sets create plugin": wrapper.Wrap(
 			&hostsetscmd.PluginCommand{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "create",
 			}),
-		"host-sets update": clientCacheWrapper(
+		"host-sets update": wrapper.Wrap(
 			&hostsetscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "update",
 			}),
-		"host-sets update static": clientCacheWrapper(
+		"host-sets update static": wrapper.Wrap(
 			&hostsetscmd.StaticCommand{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "update",
 			}),
-		"host-sets update plugin": clientCacheWrapper(
+		"host-sets update plugin": wrapper.Wrap(
 			&hostsetscmd.PluginCommand{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "update",
 			}),
-		"host-sets add-hosts": clientCacheWrapper(
+		"host-sets add-hosts": wrapper.Wrap(
 			&hostsetscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "add-hosts",
 			}),
-		"host-sets remove-hosts": clientCacheWrapper(
+		"host-sets remove-hosts": wrapper.Wrap(
 			&hostsetscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "remove-hosts",
 			}),
-		"host-sets set-hosts": clientCacheWrapper(
+		"host-sets set-hosts": wrapper.Wrap(
 			&hostsetscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "set-hosts",
@@ -748,37 +749,37 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
-		"hosts read": clientCacheWrapper(
+		"hosts read": wrapper.Wrap(
 			&hostscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "read",
 			}),
-		"hosts delete": clientCacheWrapper(
+		"hosts delete": wrapper.Wrap(
 			&hostscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "delete",
 			}),
-		"hosts list": clientCacheWrapper(
+		"hosts list": wrapper.Wrap(
 			&hostscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "list",
 			}),
-		"hosts create": clientCacheWrapper(
+		"hosts create": wrapper.Wrap(
 			&hostscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "create",
 			}),
-		"hosts create static": clientCacheWrapper(
+		"hosts create static": wrapper.Wrap(
 			&hostscmd.StaticCommand{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "create",
 			}),
-		"hosts update": clientCacheWrapper(
+		"hosts update": wrapper.Wrap(
 			&hostscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "update",
 			}),
-		"hosts update static": clientCacheWrapper(
+		"hosts update static": wrapper.Wrap(
 			&hostscmd.StaticCommand{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "update",
@@ -795,47 +796,47 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
-		"managed-groups read": clientCacheWrapper(
+		"managed-groups read": wrapper.Wrap(
 			&managedgroupscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "read",
 			}),
-		"managed-groups delete": clientCacheWrapper(
+		"managed-groups delete": wrapper.Wrap(
 			&managedgroupscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "delete",
 			}),
-		"managed-groups list": clientCacheWrapper(
+		"managed-groups list": wrapper.Wrap(
 			&managedgroupscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "list",
 			}),
-		"managed-groups create": clientCacheWrapper(
+		"managed-groups create": wrapper.Wrap(
 			&managedgroupscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "create",
 			}),
-		"managed-groups create oidc": clientCacheWrapper(
+		"managed-groups create oidc": wrapper.Wrap(
 			&managedgroupscmd.OidcCommand{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "create",
 			}),
-		"managed-groups create ldap": clientCacheWrapper(
+		"managed-groups create ldap": wrapper.Wrap(
 			&managedgroupscmd.LdapCommand{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "create",
 			}),
-		"managed-groups update": clientCacheWrapper(
+		"managed-groups update": wrapper.Wrap(
 			&managedgroupscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "update",
 			}),
-		"managed-groups update oidc": clientCacheWrapper(
+		"managed-groups update oidc": wrapper.Wrap(
 			&managedgroupscmd.OidcCommand{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "update",
 			}),
-		"managed-groups update ldap": clientCacheWrapper(
+		"managed-groups update ldap": wrapper.Wrap(
 			&managedgroupscmd.LdapCommand{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "update",
@@ -901,72 +902,72 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
-		"roles create": clientCacheWrapper(
+		"roles create": wrapper.Wrap(
 			&rolescmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "create",
 			}),
-		"roles update": clientCacheWrapper(
+		"roles update": wrapper.Wrap(
 			&rolescmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "update",
 			}),
-		"roles read": clientCacheWrapper(
+		"roles read": wrapper.Wrap(
 			&rolescmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "read",
 			}),
-		"roles delete": clientCacheWrapper(
+		"roles delete": wrapper.Wrap(
 			&rolescmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "delete",
 			}),
-		"roles list": clientCacheWrapper(
+		"roles list": wrapper.Wrap(
 			&rolescmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "list",
 			}),
-		"roles add-principals": clientCacheWrapper(
+		"roles add-principals": wrapper.Wrap(
 			&rolescmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "add-principals",
 			}),
-		"roles set-principals": clientCacheWrapper(
+		"roles set-principals": wrapper.Wrap(
 			&rolescmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "set-principals",
 			}),
-		"roles remove-principals": clientCacheWrapper(
+		"roles remove-principals": wrapper.Wrap(
 			&rolescmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "remove-principals",
 			}),
-		"roles add-grants": clientCacheWrapper(
+		"roles add-grants": wrapper.Wrap(
 			&rolescmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "add-grants",
 			}),
-		"roles set-grants": clientCacheWrapper(
+		"roles set-grants": wrapper.Wrap(
 			&rolescmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "set-grants",
 			}),
-		"roles remove-grants": clientCacheWrapper(
+		"roles remove-grants": wrapper.Wrap(
 			&rolescmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "remove-grants",
 			}),
-		"roles add-grant-scopes": clientCacheWrapper(
+		"roles add-grant-scopes": wrapper.Wrap(
 			&rolescmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "add-grant-scopes",
 			}),
-		"roles set-grant-scopes": clientCacheWrapper(
+		"roles set-grant-scopes": wrapper.Wrap(
 			&rolescmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "set-grant-scopes",
 			}),
-		"roles remove-grant-scopes": clientCacheWrapper(
+		"roles remove-grant-scopes": wrapper.Wrap(
 			&rolescmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "remove-grant-scopes",
@@ -977,53 +978,53 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
-		"scopes create": clientCacheWrapper(
+		"scopes create": wrapper.Wrap(
 			&scopescmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "create",
 			}),
-		"scopes read": clientCacheWrapper(
+		"scopes read": wrapper.Wrap(
 			&scopescmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "read",
 			}),
-		"scopes update": clientCacheWrapper(
+		"scopes update": wrapper.Wrap(
 			&scopescmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "update",
 			}),
-		"scopes delete": clientCacheWrapper(
+		"scopes delete": wrapper.Wrap(
 			&scopescmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "delete",
 			}),
-		"scopes list": clientCacheWrapper(
+		"scopes list": wrapper.Wrap(
 			&scopescmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "list",
 			}),
-		"scopes list-keys": clientCacheWrapper(
+		"scopes list-keys": wrapper.Wrap(
 			&scopescmd.ListKeysCommand{
 				Command: base.NewCommand(ui, opts...),
 			}),
-		"scopes rotate-keys": clientCacheWrapper(
+		"scopes rotate-keys": wrapper.Wrap(
 			&scopescmd.RotateKeysCommand{
 				Command: base.NewCommand(ui, opts...),
 			}),
-		"scopes list-key-version-destruction-jobs": clientCacheWrapper(
+		"scopes list-key-version-destruction-jobs": wrapper.Wrap(
 			&scopescmd.ListKeyVersionDestructionJobsCommand{
 				Command: base.NewCommand(ui, opts...),
 			}),
-		"scopes destroy-key-version": clientCacheWrapper(
+		"scopes destroy-key-version": wrapper.Wrap(
 			&scopescmd.DestroyKeyVersionCommand{
 				Command: base.NewCommand(ui, opts...),
 			}),
-		"scopes attach-storage-policy": clientCacheWrapper(
+		"scopes attach-storage-policy": wrapper.Wrap(
 			&scopescmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "attach-storage-policy",
 			}),
-		"scopes detach-storage-policy": clientCacheWrapper(
+		"scopes detach-storage-policy": wrapper.Wrap(
 			&scopescmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "detach-storage-policy",
@@ -1041,17 +1042,17 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
-		"sessions read": clientCacheWrapper(
+		"sessions read": wrapper.Wrap(
 			&sessionscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "read",
 			}),
-		"sessions list": clientCacheWrapper(
+		"sessions list": wrapper.Wrap(
 			&sessionscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "list",
 			}),
-		"sessions cancel": clientCacheWrapper(
+		"sessions cancel": wrapper.Wrap(
 			&sessionscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "cancel",
@@ -1062,26 +1063,26 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
-		"session-recordings read": clientCacheWrapper(
+		"session-recordings read": wrapper.Wrap(
 			&sessionrecordingscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "read",
 			}),
-		"session-recordings list": clientCacheWrapper(
+		"session-recordings list": wrapper.Wrap(
 			&sessionrecordingscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "list",
 			}),
-		"session-recordings download": clientCacheWrapper(
+		"session-recordings download": wrapper.Wrap(
 			&sessionrecordingscmd.DownloadCommand{
 				Command: base.NewCommand(ui, opts...),
 			}),
-		"session-recordings delete": clientCacheWrapper(
+		"session-recordings delete": wrapper.Wrap(
 			&sessionrecordingscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "delete",
 			}),
-		"session-recordings reapply-storage-policy": clientCacheWrapper(
+		"session-recordings reapply-storage-policy": wrapper.Wrap(
 			&sessionrecordingscmd.ReApplyStoragePolicyCommand{
 				Command: base.NewCommand(ui, opts...),
 			}),
@@ -1091,27 +1092,27 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
-		"storage-buckets read": clientCacheWrapper(
+		"storage-buckets read": wrapper.Wrap(
 			&storagebucketscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "read",
 			}),
-		"storage-buckets delete": clientCacheWrapper(
+		"storage-buckets delete": wrapper.Wrap(
 			&storagebucketscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "delete",
 			}),
-		"storage-buckets list": clientCacheWrapper(
+		"storage-buckets list": wrapper.Wrap(
 			&storagebucketscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "list",
 			}),
-		"storage-buckets create": clientCacheWrapper(
+		"storage-buckets create": wrapper.Wrap(
 			&storagebucketscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "create",
 			}),
-		"storage-buckets update": clientCacheWrapper(
+		"storage-buckets update": wrapper.Wrap(
 			&storagebucketscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "update",
@@ -1122,82 +1123,82 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
-		"targets authorize-session": clientCacheWrapper(
+		"targets authorize-session": wrapper.Wrap(
 			&targetscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "authorize-session",
 			}),
-		"targets read": clientCacheWrapper(
+		"targets read": wrapper.Wrap(
 			&targetscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "read",
 			}),
-		"targets delete": clientCacheWrapper(
+		"targets delete": wrapper.Wrap(
 			&targetscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "delete",
 			}),
-		"targets list": clientCacheWrapper(
+		"targets list": wrapper.Wrap(
 			&targetscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "list",
 			}),
-		"targets create": clientCacheWrapper(
+		"targets create": wrapper.Wrap(
 			&targetscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "create",
 			}),
-		"targets create tcp": clientCacheWrapper(
+		"targets create tcp": wrapper.Wrap(
 			&targetscmd.TcpCommand{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "create",
 			}),
-		"targets create ssh": clientCacheWrapper(
+		"targets create ssh": wrapper.Wrap(
 			&targetscmd.SshCommand{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "create",
 			}),
-		"targets update": clientCacheWrapper(
+		"targets update": wrapper.Wrap(
 			&targetscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "update",
 			}),
-		"targets update tcp": clientCacheWrapper(
+		"targets update tcp": wrapper.Wrap(
 			&targetscmd.TcpCommand{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "update",
 			}),
-		"targets update ssh": clientCacheWrapper(
+		"targets update ssh": wrapper.Wrap(
 			&targetscmd.SshCommand{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "update",
 			}),
-		"targets add-host-sources": clientCacheWrapper(
+		"targets add-host-sources": wrapper.Wrap(
 			&targetscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "add-host-sources",
 			}),
-		"targets remove-host-sources": clientCacheWrapper(
+		"targets remove-host-sources": wrapper.Wrap(
 			&targetscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "remove-host-sources",
 			}),
-		"targets set-host-sources": clientCacheWrapper(
+		"targets set-host-sources": wrapper.Wrap(
 			&targetscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "set-host-sources",
 			}),
-		"targets add-credential-sources": clientCacheWrapper(
+		"targets add-credential-sources": wrapper.Wrap(
 			&targetscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "add-credential-sources",
 			}),
-		"targets remove-credential-sources": clientCacheWrapper(
+		"targets remove-credential-sources": wrapper.Wrap(
 			&targetscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "remove-credential-sources",
 			}),
-		"targets set-credential-sources": clientCacheWrapper(
+		"targets set-credential-sources": wrapper.Wrap(
 			&targetscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "set-credential-sources",
@@ -1215,42 +1216,42 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
-		"users create": clientCacheWrapper(
+		"users create": wrapper.Wrap(
 			&userscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "create",
 			}),
-		"users read": clientCacheWrapper(
+		"users read": wrapper.Wrap(
 			&userscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "read",
 			}),
-		"users update": clientCacheWrapper(
+		"users update": wrapper.Wrap(
 			&userscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "update",
 			}),
-		"users delete": clientCacheWrapper(
+		"users delete": wrapper.Wrap(
 			&userscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "delete",
 			}),
-		"users list": clientCacheWrapper(
+		"users list": wrapper.Wrap(
 			&userscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "list",
 			}),
-		"users add-accounts": clientCacheWrapper(
+		"users add-accounts": wrapper.Wrap(
 			&userscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "add-accounts",
 			}),
-		"users set-accounts": clientCacheWrapper(
+		"users set-accounts": wrapper.Wrap(
 			&userscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "set-accounts",
 			}),
-		"users remove-accounts": clientCacheWrapper(
+		"users remove-accounts": wrapper.Wrap(
 			&userscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "remove-accounts",
@@ -1261,66 +1262,66 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
-		"workers create": clientCacheWrapper(
+		"workers create": wrapper.Wrap(
 			&workerscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "create",
 			}),
-		"workers create worker-led": clientCacheWrapper(
+		"workers create worker-led": wrapper.Wrap(
 			&workerscmd.WorkerLedCommand{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "create",
 			}),
-		"workers create controller-led": clientCacheWrapper(
+		"workers create controller-led": wrapper.Wrap(
 			&workerscmd.ControllerLedCommand{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "create",
 			}),
-		"workers read": clientCacheWrapper(
+		"workers read": wrapper.Wrap(
 			&workerscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "read",
 			}),
-		"workers update": clientCacheWrapper(
+		"workers update": wrapper.Wrap(
 			&workerscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "update",
 			}),
-		"workers delete": clientCacheWrapper(
+		"workers delete": wrapper.Wrap(
 			&workerscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "delete",
 			}),
-		"workers list": clientCacheWrapper(
+		"workers list": wrapper.Wrap(
 			&workerscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "list",
 			}),
-		"workers add-worker-tags": clientCacheWrapper(
+		"workers add-worker-tags": wrapper.Wrap(
 			&workerscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "add-worker-tags",
 			}),
-		"workers set-worker-tags": clientCacheWrapper(
+		"workers set-worker-tags": wrapper.Wrap(
 			&workerscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "set-worker-tags",
 			}),
-		"workers remove-worker-tags": clientCacheWrapper(
+		"workers remove-worker-tags": wrapper.Wrap(
 			&workerscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "remove-worker-tags",
 			}),
-		"workers certificate-authority": clientCacheWrapper(
+		"workers certificate-authority": wrapper.Wrap(
 			&workerscmd.WorkerCACommand{
 				Command: base.NewCommand(ui, opts...),
 			}),
-		"workers certificate-authority read": clientCacheWrapper(
+		"workers certificate-authority read": wrapper.Wrap(
 			&workerscmd.WorkerCACommand{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "read",
 			}),
-		"workers certificate-authority reinitialize": clientCacheWrapper(
+		"workers certificate-authority reinitialize": wrapper.Wrap(
 			&workerscmd.WorkerCACommand{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "reinitialize",
@@ -1335,17 +1336,3 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 }
 
 var extraCommandsFuncs []func(ui, serverCmdUi cli.Ui, runOpts *RunOptions)
-
-// Keep this interface aligned with the interface at internal/clientcache/cmd/daemon/command_wrapper.go
-type cacheEnabledCommand interface {
-	cli.Command
-	BaseCommand() *base.Command
-}
-
-// clientCacheWrapper wraps all short lived, non server, command factories.
-// The default func is a noop.
-var clientCacheWrapper = func(c cacheEnabledCommand) cli.CommandFactory {
-	return func() (cli.Command, error) {
-		return c, nil
-	}
-}
