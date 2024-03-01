@@ -36,7 +36,7 @@ jobs:
           path: /tmp/bats-cli-ui-deps
           key: enos-bats-cli-ui-deps-jq-1.6-password-store-1.7.4-vault-1.12.2
       - name: Set up Node for Bats install
-        uses: actions/setup-node@b39b52d1213e96004bfcb1c61a8a6fa8ab84f3e8 # v4.0.1
+        uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8 # v4.0.2
         with:
           node-version: 16
       - name: Install Bats via NPM
@@ -73,7 +73,7 @@ jobs:
         run: |
           unzip /tmp/bats-cli-ui-deps/vault.zip -d /usr/local/bin
       - name: Download Linux AMD64 Boundary bundle
-        uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a # v3.0.2
+        uses: actions/download-artifact@87c55149d96e628cc2ef7e6fc2aab372015aec85 # v4.1.3
         with:
           name: ${{ inputs.artifact-name }}
           path: /tmp
@@ -112,7 +112,7 @@ jobs:
           make -C internal/tests/cli test-vault-down
       - name: Send Slack message
         if: ${{ failure() }}
-        uses: slackapi/slack-github-action@e28cf165c92ffef168d23c5c9000cffc8a25e117 # v1.24.0
+        uses: slackapi/slack-github-action@6c661ce58804a1a20f6dc5fbee7f0381b469e001 # v1.25.0
         with:
           channel-id: ${{ secrets.SLACK_BOUNDARY_TEST_BOT_CHANNEL_ID }}
           payload: |
