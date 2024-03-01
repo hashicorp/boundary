@@ -22,14 +22,12 @@ func hook(ctx context.Context, baseCmd *base.Command, token string) {
 	}
 	client, err := baseCmd.Client()
 	if err != nil {
-		// print this error out to stderr?
+		baseCmd.PrintCliError(err)
 		return
 	}
 	if token != "" {
 		client.SetToken(token)
 	}
-	// TODO: Figure out the appropriate reporting of these errors when this is
-	// only run in the background of other commands.
 	_, apiErr, err := addToken(ctx, client, baseCmd.FlagFerryDaemonPort)
 	if err != nil {
 		baseCmd.PrintCliError(err)

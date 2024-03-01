@@ -112,7 +112,6 @@ func addTokenToCache(ctx context.Context, baseCmd *base.Command, token string) b
 // provided context is done. It returns an error if the unix socket is not found
 // before the context is done.
 func waitForDaemon(ctx context.Context) error {
-	const op = "wrapper.waitForDaemon"
 	dotPath, err := DefaultDotDirectory(ctx)
 	if err != nil {
 		return err
