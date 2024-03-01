@@ -63,7 +63,8 @@ func TestCliSessionEndWhenUserIsDeleted(t *testing.T) {
 		}
 	})
 	boundary.SetAccountToUserCli(t, ctx, newUserId, newAccountId)
-	newRoleId := boundary.CreateNewRoleCli(t, ctx, newProjectId)
+	newRoleId, err := boundary.CreateRoleCli(t, ctx, newProjectId)
+	require.NoError(t, err)
 	boundary.AddGrantToRoleCli(t, ctx, newRoleId, "ids=*;type=target;actions=authorize-session")
 	boundary.AddPrincipalToRoleCli(t, ctx, newRoleId, newUserId)
 
