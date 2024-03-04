@@ -32,11 +32,6 @@ variable "container_name" {
   type        = string
   default     = "vault"
 }
-variable "vault_token" {
-  description = "Vault Root Token"
-  type        = string
-  default     = "boundarytok"
-}
 variable "vault_port" {
   description = "External Port to use"
   type        = string
@@ -49,14 +44,17 @@ resource "docker_image" "vault" {
 }
 
 resource "docker_container" "vault" {
-  image = docker_image.vault.image_id
-  name  = var.container_name
-  env = [
-    "VAULT_DEV_ROOT_TOKEN_ID=${var.vault_token}"
-  ]
+  image   = docker_image.vault.image_id
+  name    = var.container_name
+  command = ["vault", "server", "-config", "/vault/config.d/config.json"]
   ports {
     internal = 8200
     external = var.vault_port
+  }
+  mounts {
+    type   = "bind"
+    source = "${abspath(path.module)}/config"
+    target = "/vault/config.d"
   }
   capabilities {
     add = ["IPC_LOCK"]
@@ -69,6 +67,7 @@ resource "docker_container" "vault" {
   }
 }
 
+
 resource "enos_local_exec" "check_address" {
   depends_on = [
     docker_container.vault
@@ -77,14 +76,51 @@ resource "enos_local_exec" "check_address" {
   inline = ["timeout 10s bash -c 'until curl http://0.0.0.0:${var.vault_port}; do sleep 2; done'"]
 }
 
-resource "enos_local_exec" "check_health" {
+resource "enos_local_exec" "init_vault" {
   depends_on = [
     enos_local_exec.check_address
   ]
 
   environment = {
-    VAULT_ADDR  = "http://0.0.0.0:${var.vault_port}"
-    VAULT_TOKEN = var.vault_token
+    VAULT_ADDR        = "http://0.0.0.0:${var.vault_port}"
+    VAULT_SKIP_VERIFY = true
+  }
+
+  inline = ["vault operator init -format json"]
+}
+
+locals {
+  vault_init  = jsondecode(enos_local_exec.init_vault.stdout)
+  unseal_keys = local.vault_init["unseal_keys_b64"]
+  root_token  = local.vault_init["root_token"]
+}
+
+resource "enos_local_exec" "unseal_vault" {
+  depends_on = [
+    enos_local_exec.init_vault
+  ]
+
+  environment = {
+    VAULT_ADDR        = "http://0.0.0.0:${var.vault_port}"
+    VAULT_SKIP_VERIFY = true
+  }
+
+  # By default, vault requires 3 keys to unseal
+  count = 3
+  inline = [
+    "vault operator unseal ${local.unseal_keys[count.index]}"
+  ]
+}
+
+resource "enos_local_exec" "check_health" {
+  depends_on = [
+    enos_local_exec.init_vault
+  ]
+
+  environment = {
+    VAULT_ADDR        = "http://0.0.0.0:${var.vault_port}"
+    VAULT_TOKEN       = local.root_token
+    VAULT_SKIP_VERIFY = true
   }
 
   inline = ["timeout 10s bash -c 'until vault status; do sleep 2; done'"]
@@ -99,7 +135,7 @@ output "address_internal" {
 }
 
 output "token" {
-  value = var.vault_token
+  value = local.root_token
 }
 
 output "port" {
