@@ -120,6 +120,10 @@ output "port" {
   value = "2222"
 }
 
-output "ca_key" {
+output "ca_key_private" {
   value = base64encode(tls_private_key.ca_key.private_key_openssh)
+}
+
+output "ca_key_public" {
+  value = base64encode(local.ca_public_key)
 }
