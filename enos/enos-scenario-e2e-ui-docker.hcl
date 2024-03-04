@@ -100,7 +100,7 @@ scenario "e2e_ui_docker" {
   }
 
   step "create_host" {
-    module = module.docker_openssh_server
+    module = module.docker_openssh_server_ca_key
     depends_on = [
       step.create_docker_network
     ]
@@ -166,6 +166,8 @@ scenario "e2e_ui_docker" {
       target_address            = step.create_host.address
       target_port               = step.create_host.port
       target_user               = "ubuntu"
+      target_ca_key             = step.create_host.ca_key_private
+      target_ca_key_public      = step.create_host.ca_key_public
       vault_addr                = step.create_vault.address
       vault_addr_internal       = step.create_vault.address_internal
       vault_root_token          = step.create_vault.token
