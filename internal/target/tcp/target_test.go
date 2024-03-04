@@ -339,10 +339,10 @@ func TestTarget_Clone(t *testing.T) {
 		_, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 		_, proj2 := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 		target1 := tcp.TestTarget(ctx, t, conn, proj.PublicId, tcp.TestTargetName(t, proj.PublicId))
-		target2 := tcp.TestTarget(ctx, t, conn, proj2.PublicId, tcp.TestTargetName(t, proj2.PublicId))
+		talias := tcp.TestTarget(ctx, t, conn, proj2.PublicId, tcp.TestTargetName(t, proj2.PublicId))
 
 		cp := target1.Clone()
-		assert.True(!proto.Equal(cp.(*tcp.Target).Target, target2.(*tcp.Target).Target))
+		assert.True(!proto.Equal(cp.(*tcp.Target).Target, talias.(*tcp.Target).Target))
 	})
 }
 

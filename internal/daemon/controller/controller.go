@@ -12,7 +12,7 @@ import (
 	"sync/atomic"
 
 	"github.com/hashicorp/boundary/internal/alias"
-	target2 "github.com/hashicorp/boundary/internal/alias/target"
+	talias "github.com/hashicorp/boundary/internal/alias/target"
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/ldap"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
@@ -460,8 +460,8 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	c.AliasRepoFn = func() (*alias.Repository, error) {
 		return alias.NewRepository(ctx, dbase, dbase, c.kms)
 	}
-	c.TargetAliasRepoFn = func() (*target2.Repository, error) {
-		return target2.NewRepository(ctx, dbase, dbase, c.kms)
+	c.TargetAliasRepoFn = func() (*talias.Repository, error) {
+		return talias.NewRepository(ctx, dbase, dbase, c.kms)
 	}
 
 	// Check that credentials are available at startup, to avoid some harmless
