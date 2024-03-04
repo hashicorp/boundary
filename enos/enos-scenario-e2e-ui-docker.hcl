@@ -166,7 +166,7 @@ scenario "e2e_ui_docker" {
       target_address            = step.create_host.address
       target_port               = step.create_host.port
       target_user               = "ubuntu"
-      target_ca_key             = step.create_host.ca_key
+      target_ca_key             = step.create_host.ca_key_private
       target_ca_key_public      = step.create_host.ca_key_public
       vault_addr                = step.create_vault.address
       vault_addr_internal       = step.create_vault.address_internal
