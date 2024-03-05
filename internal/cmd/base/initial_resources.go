@@ -613,9 +613,9 @@ func (b *Server) CreateInitialTargetWithHostSources(ctx context.Context) (target
 }
 
 // Create targets that can be connected to using an alias. The three targets created are:
-//   - "example.alias": the Boundary dev postgres instance. Uses brokered credentials
+//   - "postgres.boundary.dev": the Boundary dev postgres instance. Uses brokered credentials
 //   - "www.hashicorp.com": a web target
-//   - "ssh.alias": A localhost ssh target
+//   - "ssh.boundary.dev": A localhost ssh target
 func (b *Server) CreateInitialTargetsWithAlias(ctx context.Context) error {
 	rw := db.New(b.Database)
 
