@@ -7,7 +7,7 @@ import (
 	"context"
 	"testing"
 
-	target2 "github.com/hashicorp/boundary/internal/alias/target"
+	talias "github.com/hashicorp/boundary/internal/alias/target"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
@@ -40,7 +40,7 @@ func TestRepository_FetchAliases(t *testing.T) {
 	t.Run("target-one-alias", func(t *testing.T) {
 		aname := "test-alias"
 		tar := tcp.TestTarget(ctx, t, conn, staticProj.PublicId, "test-target-2")
-		al := target2.TestAlias(t, rw, aname, target2.WithDestinationId(tar.GetPublicId()))
+		al := talias.TestAlias(t, rw, aname, talias.WithDestinationId(tar.GetPublicId()))
 
 		tar, err := repo.LookupTarget(context.Background(), tar.GetPublicId())
 		require.NoError(t, err)
@@ -51,15 +51,15 @@ func TestRepository_FetchAliases(t *testing.T) {
 	})
 	t.Run("target-multiple-alias", func(t *testing.T) {
 		tar := tcp.TestTarget(ctx, t, conn, staticProj.PublicId, "test-target3")
-		aliases := make(map[string]*target2.Alias)
+		aliases := make(map[string]*talias.Alias)
 		aname1 := "test.alias.one"
 		aname2 := "test.alias.two"
 		aname3 := "test.alias.three"
-		al := target2.TestAlias(t, rw, aname1, target2.WithDestinationId(tar.GetPublicId()))
+		al := talias.TestAlias(t, rw, aname1, talias.WithDestinationId(tar.GetPublicId()))
 		aliases[aname1] = al
-		al2 := target2.TestAlias(t, rw, aname2, target2.WithDestinationId(tar.GetPublicId()))
+		al2 := talias.TestAlias(t, rw, aname2, talias.WithDestinationId(tar.GetPublicId()))
 		aliases[aname2] = al2
-		al3 := target2.TestAlias(t, rw, aname3, target2.WithDestinationId(tar.GetPublicId()))
+		al3 := talias.TestAlias(t, rw, aname3, talias.WithDestinationId(tar.GetPublicId()))
 		aliases[aname3] = al3
 
 		tar, err := repo.LookupTarget(context.Background(), tar.GetPublicId())

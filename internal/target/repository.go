@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	target2 "github.com/hashicorp/boundary/internal/alias/target"
+	talias "github.com/hashicorp/boundary/internal/alias/target"
 	"github.com/hashicorp/boundary/internal/boundary"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
@@ -134,7 +134,7 @@ func (r *Repository) LookupTarget(ctx context.Context, publicIdOrName string, op
 	var address string
 	var hostSources []HostSource
 	var credSources []CredentialSource
-	var aliases []*target2.Alias
+	var aliases []*talias.Alias
 	_, err := r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
