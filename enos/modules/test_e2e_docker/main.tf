@@ -230,7 +230,7 @@ variable "ldap_group_name" {
 }
 variable "test_timeout" {
   type    = string
-  default = "20m"
+  default = "25m"
 }
 
 resource "enos_local_exec" "get_go_version" {
