@@ -39,7 +39,7 @@ func TestErrors(t *testing.T) {
 	require.NotNil(parsed)
 	assert.Equal(ts, parsed.raw)
 	assert.NotNil(parsed.tmpl)
-	assert.Len(parsed.funcMap, 1)
+	assert.Len(parsed.funcMap, 2)
 
 	// Test out errors on the parsed value
 
@@ -102,6 +102,8 @@ func TestGenerate(t *testing.T) {
 {{ .Account.Subject }}
 {{ .Account.Email }}
 {{ truncateFrom .Account.Email "@" }}
+{{ coalesce "" .Account.LoginName .Account.Name }}
+{{ coalesce "" "" .Account.Name .Account.LoginName }}
 `)
 
 	parsed, err := New(ctx, raw)
@@ -128,6 +130,8 @@ accountLoginName
 accountSubject
 account@email.com
 account
+accountLoginName
+accountName
 `)
 
 	assert.Equal(exp, out)

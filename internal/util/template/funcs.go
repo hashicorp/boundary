@@ -12,3 +12,14 @@ func truncateFrom(str, sep string) string {
 	before, _, _ := strings.Cut(str, sep)
 	return before
 }
+
+// coalesce will return the first non-empty string in the list of strings, and
+// an empty string if all parameters are empty.
+func coalesce(vals ...string) string {
+	for _, val := range vals {
+		if val != "" {
+			return val
+		}
+	}
+	return ""
+}

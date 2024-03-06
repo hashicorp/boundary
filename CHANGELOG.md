@@ -11,6 +11,12 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   the alias value. Crate an alias with 
   `boundary aliases create target -value example.boundary -destination-id ttcp_1234567890`
   and connect to a target using an alias using `boundary connect example.boundary`
+* templating: A new templating function `coalesce` can be used to match a
+  template against multiple possible values, returning the first non-empty
+  value. As an example, this can be used in a credential library to allow a
+  username value that might be comprised of a name or login name depending on
+  the auth method, e.g. `{{ coalesce .Account.Name .Account.LoginName}}`
+  ([PR](https://github.com/hashicorp/boundary/pull/4492)))
 
 ### Added dependency
 
