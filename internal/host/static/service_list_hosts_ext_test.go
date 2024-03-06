@@ -158,7 +158,7 @@ func TestService_ListHosts(t *testing.T) {
 			filterFunc := func(_ context.Context, h host.Host) (bool, error) {
 				return true, nil
 			}
-			_, err = static.ListHostsPage(ctx, []byte("some hash"), 1, filterFunc, nil, repo, catalog.GetPublicId())
+			_, err := static.ListHostsPage(ctx, []byte("some hash"), 1, filterFunc, nil, repo, catalog.GetPublicId())
 			require.ErrorContains(t, err, "missing token")
 		})
 		t.Run("wrong token type", func(t *testing.T) {
@@ -246,7 +246,7 @@ func TestService_ListHosts(t *testing.T) {
 			filterFunc := func(_ context.Context, h host.Host) (bool, error) {
 				return true, nil
 			}
-			_, err = static.ListHostsRefresh(ctx, []byte("some hash"), 1, filterFunc, nil, repo, catalog.GetPublicId())
+			_, err := static.ListHostsRefresh(ctx, []byte("some hash"), 1, filterFunc, nil, repo, catalog.GetPublicId())
 			require.ErrorContains(t, err, "missing token")
 		})
 		t.Run("nil repo", func(t *testing.T) {
@@ -324,7 +324,7 @@ func TestService_ListHosts(t *testing.T) {
 			filterFunc := func(_ context.Context, h host.Host) (bool, error) {
 				return true, nil
 			}
-			_, err = static.ListHostsRefreshPage(ctx, []byte("some hash"), 1, filterFunc, nil, repo, catalog.GetPublicId())
+			_, err := static.ListHostsRefreshPage(ctx, []byte("some hash"), 1, filterFunc, nil, repo, catalog.GetPublicId())
 			require.ErrorContains(t, err, "missing token")
 		})
 		t.Run("wrong token type", func(t *testing.T) {

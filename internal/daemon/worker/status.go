@@ -359,12 +359,13 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager sess
 	// If we have post hooks for after the first status check, run them now
 	if w.everAuthenticated.CompareAndSwap(authenticationStatusFirstAuthentication, authenticationStatusFirstStatusRpcSuccessful) {
 		if downstreamWorkersFactory != nil {
-			w.downstreamWorkers, err = downstreamWorkersFactory(cancelCtx, w.LastStatusSuccess().WorkerId, versionInfo.FullVersionNumber(false))
+			downstreamWorkers, err := downstreamWorkersFactory(cancelCtx, w.LastStatusSuccess().WorkerId, versionInfo.FullVersionNumber(false))
 			if err != nil {
 				event.WriteError(cancelCtx, op, err)
 				w.conf.ServerSideShutdownCh <- struct{}{}
 				return
 			}
+			w.downstreamWorkers.Store(&downstreamersContainer{downstreamers: downstreamWorkers})
 		}
 		for _, fn := range firstStatusCheckPostHooks {
 			if err := fn(cancelCtx, w); err != nil {

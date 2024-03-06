@@ -68,6 +68,13 @@ type reverseConnReceiver interface {
 	StartProcessingPendingConnections(context.Context, func() string) error
 }
 
+// downstreamersContainer is a struct that exists purely so we can perform
+// atomic swap operations on the interface, to avoid/fix data races in tests
+// (and any other potential location).
+type downstreamersContainer struct {
+	downstreamers
+}
+
 // downstreamers provides at least a minimum interface that must be met by a
 // Worker.downstreamWorkers field which is far better than allowing any (empty
 // interface)
@@ -162,7 +169,7 @@ type Worker struct {
 	RecordingStorage storage.RecordingStorage
 
 	// downstream workers and routes to those workers
-	downstreamWorkers  downstreamers
+	downstreamWorkers  *atomic.Pointer[downstreamersContainer]
 	downstreamReceiver reverseConnReceiver
 
 	// Timing variables. These are atomics for SIGHUP support, and are int64
@@ -211,6 +218,7 @@ func New(ctx context.Context, conf *Config) (*Worker, error) {
 		successfulStatusGracePeriod: new(atomic.Int64),
 		statusCallTimeoutDuration:   new(atomic.Int64),
 		upstreamConnectionState:     new(atomic.Value),
+		downstreamWorkers:           new(atomic.Pointer[downstreamersContainer]),
 	}
 
 	w.operationalState.Store(server.UnknownOperationalState)
@@ -301,7 +309,7 @@ func New(ctx context.Context, conf *Config) (*Worker, error) {
 		w.statusCallTimeoutDuration.Store(int64(conf.RawConfig.Worker.StatusCallTimeoutDuration))
 	}
 	// FIXME: This is really ugly, but works.
-	session.CloseCallTimeout = w.statusCallTimeoutDuration
+	session.CloseCallTimeout.Store(w.successfulStatusGracePeriod.Load())
 
 	if recorderManagerFactory != nil {
 		var err error

@@ -538,7 +538,7 @@ func TestCloseBSRMethods(t *testing.T) {
 	// Get session container
 	sessionContainer := f.Containers[fmt.Sprintf(bsrFileNameTemplate, sessionRecordingId)]
 	require.NotNil(t, sessionContainer)
-	assert.True(t, sessionContainer.Closed)
+	assert.True(t, sessionContainer.IsClosed())
 
 	// Ensure all session files are closed
 	for _, file := range sessionContainer.Files {
@@ -548,7 +548,7 @@ func TestCloseBSRMethods(t *testing.T) {
 	// Get connection container
 	connectionContainer := sessionContainer.Sub[fmt.Sprintf(connectionFileNameTemplate, connectionId)]
 	require.NotNil(t, connectionContainer)
-	assert.True(t, connectionContainer.Closed)
+	assert.True(t, connectionContainer.IsClosed())
 
 	// Ensure all connection files are closed
 	for _, file := range connectionContainer.Files {
@@ -558,7 +558,7 @@ func TestCloseBSRMethods(t *testing.T) {
 	// Get channel container
 	channelContainer := connectionContainer.Sub[fmt.Sprintf(channelFileNameTemplate, channelId)]
 	require.NotNil(t, channelContainer)
-	assert.True(t, channelContainer.Closed)
+	assert.True(t, channelContainer.IsClosed())
 
 	// Ensure all channel files are closed
 	for _, file := range channelContainer.Files {

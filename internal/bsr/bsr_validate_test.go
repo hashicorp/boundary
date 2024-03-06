@@ -355,7 +355,7 @@ func TestBSR_Validate_ValidateBSR(t *testing.T) {
 			// Ensure session container is closed
 			sessionContainer := fs.Containers[fmt.Sprintf(bsrFileNameTemplate, validation.SessionRecordingId)]
 			require.NotNil(t, sessionContainer)
-			assert.True(t, sessionContainer.Closed)
+			assert.True(t, sessionContainer.IsClosed())
 
 			// Validate Multiple Connections
 			for _, connection := range validation.SessionRecordingValidation.SubContainers {
@@ -368,7 +368,7 @@ func TestBSR_Validate_ValidateBSR(t *testing.T) {
 				// Ensure connection container is closed
 				connectionContainer := sessionContainer.Sub[fmt.Sprintf(connectionFileNameTemplate, connection.Name)]
 				require.NotNil(t, connectionContainer)
-				assert.True(t, connectionContainer.Closed)
+				assert.True(t, connectionContainer.IsClosed())
 
 				// Validate Multiple Channels
 				for _, channel := range connection.SubContainers {
@@ -381,7 +381,7 @@ func TestBSR_Validate_ValidateBSR(t *testing.T) {
 					// Ensure channel container is closed
 					channelContainer := connectionContainer.Sub[fmt.Sprintf(channelFileNameTemplate, channel.Name)]
 					require.NotNil(t, channelContainer)
-					assert.True(t, channelContainer.Closed)
+					assert.True(t, channelContainer.IsClosed())
 				}
 			}
 		})

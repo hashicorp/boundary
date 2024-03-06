@@ -91,7 +91,7 @@ func (m *MemFS) Open(_ context.Context, n string) (storage.Container, error) {
 	if !ok {
 		return nil, fmt.Errorf("container %s not found: %w", n, ErrDoesNotExist)
 	}
-	c.Closed = false
+	c.closed = false
 	return c, nil
 }
 
@@ -103,7 +103,7 @@ type MemContainer struct {
 	Files        map[string]*MemFile
 	originalFile bool
 
-	Closed bool
+	closed bool
 
 	accessMode storage.AccessMode
 	mode       sfs.FileMode
@@ -115,13 +115,13 @@ type MemContainer struct {
 func (m *MemContainer) Close() error {
 	m.Lock()
 	defer m.Unlock()
-	m.Closed = true
+	m.closed = true
 	return nil
 }
 
 // Create makes a new storage.File in the container.
 func (m *MemContainer) Create(ctx context.Context, n string) (storage.File, error) {
-	if m.Closed {
+	if m.closed {
 		return nil, fmt.Errorf("create on closed container: %w", ErrClosed)
 	}
 	return m.OpenFile(ctx, n, storage.WithCreateFile(), storage.WithFileAccessMode(storage.ReadWrite))
@@ -138,7 +138,7 @@ func (m *MemContainer) OpenFile(_ context.Context, n string, option ...storage.O
 	m.Lock()
 	defer m.Unlock()
 
-	if m.Closed {
+	if m.closed {
 		return nil, fmt.Errorf("create on closed container: %w", ErrClosed)
 	}
 	opts := storage.GetOpts(option...)
@@ -204,7 +204,7 @@ func (m *MemContainer) OpenFile(_ context.Context, n string, option ...storage.O
 func (m *MemContainer) SubContainer(_ context.Context, n string, option ...storage.Option) (storage.Container, error) {
 	m.Lock()
 	defer m.Unlock()
-	if m.Closed {
+	if m.closed {
 		return nil, fmt.Errorf("subcontainer on closed container: %w", ErrClosed)
 	}
 	opts := storage.GetOpts(option...)
@@ -231,9 +231,15 @@ func (m *MemContainer) SubContainer(_ context.Context, n string, option ...stora
 		}
 	}
 	c.accessMode = opts.WithFileAccessMode
-	c.Closed = false
+	c.closed = false
 	m.Sub[n] = c
 	return c, nil
+}
+
+func (m *MemContainer) IsClosed() bool {
+	m.RLock()
+	defer m.RUnlock()
+	return m.closed
 }
 
 // memFileInfo implements storage.FileInfo
