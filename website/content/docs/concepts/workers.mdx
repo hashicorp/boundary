@@ -52,13 +52,13 @@ with tag “A,” to connect to targets in “Network A.”
 
 ![Boundary architecture example showing workers with tags](/img/worker-tags.png)
 
-## Status and Health
-Boundary workers report their status to controllers on a regular basis. The last time a worker reported status can be seen in the
-admin UI as "Last Seen" and in the CLI as the "Last Status Time". If a worker hasn't reported status recently, this can be an
+## Status and health
+Boundary workers report their status to controllers on a regular basis. You can view the last time a worker reported its status in the
+admin UI as **Last Seen** and in the CLI as the **Last Status Time**. If a worker hasn't reported status recently, it can be an
 indication of an unhealthy worker.
 
-To determine the health of a worker, the worker health endpoint can be queried. This endpoint will return the worker state, active
-session count, and connection state of the worker. For more information, refer to the [health endpoints documentation](/boundary/docs/operations/health).
+You can query the worker health endpoint to determine the health of a worker. The endpoint returns the worker state, active
+session count, and connection state of the worker. For more information, refer to the [health endpoints](/boundary/docs/operations/health) documentation.
 
 ## Multi-hop sessions
 
