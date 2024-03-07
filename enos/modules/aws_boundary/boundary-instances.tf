@@ -158,11 +158,14 @@ resource "enos_file" "worker_config" {
   depends_on  = [enos_bundle_install.worker]
   destination = "/etc/boundary/boundary.hcl"
   content = templatefile("${path.module}/${var.worker_config_file_path}", {
-    id             = each.value
-    kms_key_id     = data.aws_kms_key.kms_key.id,
-    controller_ips = jsonencode(aws_instance.controller.*.private_ip),
-    public_addr    = aws_instance.worker.0.public_ip
-    region         = var.aws_region
+    id                     = each.value
+    kms_key_id             = data.aws_kms_key.kms_key.id,
+    controller_ips         = jsonencode(aws_instance.controller.*.private_ip),
+    public_addr            = aws_instance.worker.0.public_ip
+    region                 = var.aws_region
+    type                   = jsonencode(var.worker_type_tags)
+    recording_storage_path = var.recording_storage_path
+
   })
   for_each = toset([for idx in range(var.worker_count) : tostring(idx)])
 
@@ -177,10 +180,12 @@ resource "enos_boundary_start" "worker_start" {
   depends_on = [enos_boundary_start.controller_start, enos_file.worker_config]
   for_each   = toset([for idx in range(var.worker_count) : tostring(idx)])
 
-  bin_name    = var.boundary_binary_name
-  bin_path    = var.boundary_install_dir
-  config_path = "/etc/boundary"
-  license     = var.boundary_license
+  bin_name               = var.boundary_binary_name
+  bin_path               = var.boundary_install_dir
+  config_path            = "/etc/boundary"
+  license                = var.boundary_license
+  recording_storage_path = var.recording_storage_path != "" ? var.recording_storage_path : null
+
   transport = {
     ssh = {
       host = aws_instance.worker[tonumber(each.value)].public_ip
