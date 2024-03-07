@@ -90,7 +90,10 @@ func Test_GetObjectStream_Client(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			stream.messages <- &getObjectStreamResponse{
+			stream.m.Lock()
+			messages := stream.messages
+			stream.m.Unlock()
+			messages <- &getObjectStreamResponse{
 				msg: &plgpb.GetObjectResponse{},
 			}
 		}()
@@ -116,7 +119,10 @@ func Test_GetObjectStream_Client(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			stream.messages <- &getObjectStreamResponse{
+			stream.m.Lock()
+			messages := stream.messages
+			stream.m.Unlock()
+			messages <- &getObjectStreamResponse{
 				err: fmt.Errorf("mock error"),
 			}
 		}()

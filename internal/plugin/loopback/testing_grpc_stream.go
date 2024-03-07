@@ -143,6 +143,9 @@ type getObjectServer struct {
 	// isStreamClosed is used to check if the stream is closed.
 	// This is needed because the channel can be closed by the client or the server.
 	isStreamClosed func() bool
+
+	// This is shared with the stream to prevent sending on closed channels
+	m *sync.Mutex
 }
 
 // Send will send a message to the client.
@@ -156,6 +159,8 @@ func (s *getObjectServer) Send(resp *plgpb.GetObjectResponse) error {
 		return fmt.Errorf("stream is closed")
 	}
 
+	s.m.Lock()
+	defer s.m.Unlock()
 	select {
 	case s.sendToClient <- &getObjectStreamResponse{msg: resp}:
 	case <-s.ctx.Done():
@@ -201,6 +206,8 @@ func (s *getObjectServer) SendMsg(m interface{}) error {
 		if s.isStreamClosed() {
 			return fmt.Errorf("stream is closed")
 		}
+		s.m.Lock()
+		defer s.m.Unlock()
 		select {
 		case s.sendToClient <- &getObjectStreamResponse{msg: msg}:
 		case <-s.ctx.Done():
@@ -211,6 +218,8 @@ func (s *getObjectServer) SendMsg(m interface{}) error {
 			return fmt.Errorf("stream is closed")
 		}
 		defer s.closeStream()
+		s.m.Lock()
+		defer s.m.Unlock()
 		select {
 		case s.sendToClient <- &getObjectStreamResponse{err: msg}:
 		case <-s.ctx.Done():
@@ -250,6 +259,7 @@ func newGetObjectStream() *getObjectStream {
 		sendToClient:   stream.messages,
 		closeStream:    stream.Close,
 		isStreamClosed: stream.IsStreamClosed,
+		m:              stream.m,
 	}
 	return stream
 }

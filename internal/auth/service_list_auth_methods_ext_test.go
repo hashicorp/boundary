@@ -237,7 +237,7 @@ func TestStoreService_List(t *testing.T) {
 			filterFunc := func(_ context.Context, am auth.AuthMethod) (bool, error) {
 				return true, nil
 			}
-			_, err = auth.ListAuthMethodsPage(ctx, []byte("some hash"), 1, filterFunc, nil, repo, []string{org.PublicId}, false)
+			_, err := auth.ListAuthMethodsPage(ctx, []byte("some hash"), 1, filterFunc, nil, repo, []string{org.PublicId}, false)
 			require.ErrorContains(t, err, "missing token")
 		})
 		t.Run("wrong token type", func(t *testing.T) {
@@ -325,7 +325,7 @@ func TestStoreService_List(t *testing.T) {
 			filterFunc := func(_ context.Context, am auth.AuthMethod) (bool, error) {
 				return true, nil
 			}
-			_, err = auth.ListAuthMethodsRefresh(ctx, []byte("some hash"), 1, filterFunc, nil, repo, []string{org.PublicId}, false)
+			_, err := auth.ListAuthMethodsRefresh(ctx, []byte("some hash"), 1, filterFunc, nil, repo, []string{org.PublicId}, false)
 			require.ErrorContains(t, err, "missing token")
 		})
 		t.Run("missing repo", func(t *testing.T) {
@@ -403,7 +403,7 @@ func TestStoreService_List(t *testing.T) {
 			filterFunc := func(_ context.Context, am auth.AuthMethod) (bool, error) {
 				return true, nil
 			}
-			_, err = auth.ListAuthMethodsRefreshPage(ctx, []byte("some hash"), 1, filterFunc, nil, repo, []string{org.PublicId}, false)
+			_, err := auth.ListAuthMethodsRefreshPage(ctx, []byte("some hash"), 1, filterFunc, nil, repo, []string{org.PublicId}, false)
 			require.ErrorContains(t, err, "missing token")
 		})
 		t.Run("wrong token type", func(t *testing.T) {
