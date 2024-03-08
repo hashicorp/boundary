@@ -203,6 +203,11 @@ func (r *RefreshService) RefreshForSearch(ctx context.Context, authTokenid strin
 			return errors.Wrap(ctx, err, op)
 		}
 		if opts.withIgnoreSearchStaleness || rtv != nil && time.Since(rtv.UpdateTime) > r.maxSearchStaleness {
+			args := []any{"user", u.Id, "force refresh", opts.withIgnoreSearchStaleness}
+			if rtv != nil {
+				args = append(args, "alias staleness", time.Since(rtv.UpdateTime))
+			}
+			r.logger.Debug("refreshing aliases before performing search", args...)
 			if err := r.repo.refreshAliases(ctx, u, tokens, opt...); err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
@@ -213,7 +218,11 @@ func (r *RefreshService) RefreshForSearch(ctx context.Context, authTokenid strin
 			return errors.Wrap(ctx, err, op, errors.WithoutEvent())
 		}
 		if opts.withIgnoreSearchStaleness || rtv != nil && time.Since(rtv.UpdateTime) > r.maxSearchStaleness {
-			r.logger.Debug("refreshing targets before performing search", "user", u.Id, "force refresh", opts.withIgnoreSearchStaleness, "sessions age", time.Since(rtv.UpdateTime))
+			args := []any{"user", u.Id, "force refresh", opts.withIgnoreSearchStaleness}
+			if rtv != nil {
+				args = append(args, "target staleness", time.Since(rtv.UpdateTime))
+			}
+			r.logger.Debug("refreshing targets before performing search", args...)
 			if err := r.repo.refreshTargets(ctx, u, tokens, opt...); err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithoutEvent())
 			}
@@ -224,7 +233,11 @@ func (r *RefreshService) RefreshForSearch(ctx context.Context, authTokenid strin
 			return errors.Wrap(ctx, err, op)
 		}
 		if opts.withIgnoreSearchStaleness || rtv != nil && time.Since(rtv.UpdateTime) > r.maxSearchStaleness {
-			r.logger.Debug("refreshing sessions before performing search", "user", u.Id, "force refresh", opts.withIgnoreSearchStaleness, "sessions age", time.Since(rtv.UpdateTime))
+			args := []any{"user", u.Id, "force refresh", opts.withIgnoreSearchStaleness}
+			if rtv != nil {
+				args = append(args, "session staleness", time.Since(rtv.UpdateTime))
+			}
+			r.logger.Debug("refreshing sessions before performing search", args...)
 			if err := r.repo.refreshSessions(ctx, u, tokens, opt...); err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithoutEvent())
 			}
