@@ -38,7 +38,7 @@ func (r *Repository) CreateAlias(ctx context.Context, a *Alias, opt ...Option) (
 	case a.PublicId != "":
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "public id not empty")
 	}
-	a = a.clone()
+	a = a.Clone()
 
 	id, err := newAliasId(ctx)
 	if err != nil {
@@ -59,7 +59,7 @@ func (r *Repository) CreateAlias(ctx context.Context, a *Alias, opt ...Option) (
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) error {
-			newAlias = a.clone()
+			newAlias = a.Clone()
 			err := w.Create(
 				ctx,
 				newAlias,
@@ -140,7 +140,7 @@ func (r *Repository) UpdateAlias(ctx context.Context, a *Alias, version uint32, 
 		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 
-	a = a.clone()
+	a = a.Clone()
 
 	metadata := newAliasMetadata(a, oplog.OpType_OP_TYPE_UPDATE)
 
@@ -151,7 +151,7 @@ func (r *Repository) UpdateAlias(ctx context.Context, a *Alias, version uint32, 
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) error {
-			returnedAlias = a.clone()
+			returnedAlias = a.Clone()
 			var err error
 			rowsUpdated, err = w.Update(
 				ctx,
@@ -257,7 +257,7 @@ func (r *Repository) DeleteAlias(ctx context.Context, id string, opt ...Option) 
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) error {
-			deleteAlias = a.clone()
+			deleteAlias = a.Clone()
 			var err error
 			rowsDeleted, err = w.Delete(
 				ctx,

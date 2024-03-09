@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/globals"
+	talias "github.com/hashicorp/boundary/internal/alias/target"
 	intglobals "github.com/hashicorp/boundary/internal/globals"
 	"github.com/hashicorp/boundary/internal/pagination"
 	"github.com/hashicorp/boundary/internal/perms"
@@ -54,6 +55,7 @@ type options struct {
 	WithEnableSessionRecording bool
 	WithNetResolver            intglobals.NetIpResolver
 	WithStartPageAfterItem     pagination.Item
+	withAliases                []*talias.Alias
 }
 
 func getDefaultOptions() options {
@@ -273,5 +275,12 @@ func WithNetResolver(resolver intglobals.NetIpResolver) Option {
 func WithStartPageAfterItem(item pagination.Item) Option {
 	return func(o *options) {
 		o.WithStartPageAfterItem = item
+	}
+}
+
+// WithAliases provides an option to provide aliases.
+func WithAliases(in []*talias.Alias) Option {
+	return func(o *options) {
+		o.withAliases = in
 	}
 }

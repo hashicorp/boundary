@@ -20,7 +20,7 @@ type Alias struct {
 	tableName string `gorm:"-"`
 }
 
-func (al *Alias) clone() *Alias {
+func (al *Alias) Clone() *Alias {
 	cp := proto.Clone(al.Alias)
 	return &Alias{
 		Alias: cp.(*store.Alias),
