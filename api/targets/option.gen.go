@@ -115,6 +115,12 @@ func DefaultAddress() Option {
 	}
 }
 
+func WithAliases(inAliases []Alias) Option {
+	return func(o *options) {
+		o.postMap["with_aliases"] = inAliases
+	}
+}
+
 func WithAttributes(inAttributes map[string]interface{}) Option {
 	return func(o *options) {
 		o.postMap["attributes"] = inAttributes

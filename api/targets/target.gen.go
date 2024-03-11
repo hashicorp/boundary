@@ -42,6 +42,7 @@ type Target struct {
 	AuthorizedActions                      []string               `json:"authorized_actions,omitempty"`
 	Address                                string                 `json:"address,omitempty"`
 	Aliases                                []*Alias               `json:"aliases,omitempty"`
+	WithAliases                            []*Alias               `json:"with_aliases,omitempty"`
 
 	response *api.Response
 }

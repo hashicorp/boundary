@@ -5,6 +5,8 @@
 package targets
 
 type Alias struct {
-	Id    string `json:"id,omitempty"`
-	Value string `json:"value,omitempty"`
+	Id         string                 `json:"id,omitempty"`
+	Value      string                 `json:"value,omitempty"`
+	ScopeId    string                 `json:"scope_id,omitempty"`
+	Attributes *TargetAliasAttributes `json:"attributes,omitempty"`
 }

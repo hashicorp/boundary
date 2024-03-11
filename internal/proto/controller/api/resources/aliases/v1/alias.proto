@@ -106,7 +106,7 @@ message AuthorizeSessionArguments {
   // specified when calling authorize-session an error will be returned unless
   // the provided host-id matches this value.
   string host_id = 100 [
-    json_name = "login_name",
+    json_name = "host_id",
     (custom_options.v1.generate_sdk_option) = true,
     (custom_options.v1.mask_mapping) = {
       this: "attributes.authorize_session_arguments.host_id"

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/api"
+	"github.com/hashicorp/boundary/api/aliases"
 	"github.com/hashicorp/boundary/api/credentiallibraries"
 	"github.com/hashicorp/boundary/api/credentials"
 	"github.com/hashicorp/boundary/api/credentialstores"
@@ -574,6 +575,48 @@ func comparableSlice(in []*targets.Target) []targets.Target {
 	return filtered
 }
 
+func TestCreateWithAliases(t *testing.T) {
+	assert, require := assert.New(t), require.New(t)
+	tc := controller.NewTestController(t, nil)
+	defer tc.Shutdown()
+
+	client := tc.Client()
+	token := tc.Token()
+	client.SetToken(token.Token)
+	_, proj := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(token.UserId))
+
+	tarClient := targets.NewClient(client)
+
+	hostId := "hst_1234567890"
+
+	tar, err := tarClient.Create(tc.Context(), "tcp", proj.GetPublicId(), targets.WithName("foo"), targets.WithTcpTargetDefaultPort(2), targets.WithAliases([]targets.Alias{
+		{
+			Value:   "alias1",
+			ScopeId: "global",
+			Attributes: &targets.TargetAliasAttributes{
+				AuthorizeSessionArguments: &targets.AuthorizeSessionArguments{
+					HostId: hostId,
+				},
+			},
+		},
+		{
+			Value:   "alias2",
+			ScopeId: "global",
+		},
+	}))
+	require.NoError(err)
+	assert.NotNil(tar)
+	assert.Len(tar.GetItem().Aliases, 2)
+	assert.NotEmpty(tar.GetItem().Aliases[0].Id)
+	assert.NotEmpty(tar.GetItem().Aliases[1].Id)
+	assert.NotEqual(tar.GetItem().Aliases[0].Value, tar.GetItem().Aliases[1].Value)
+
+	aliasClient := aliases.NewClient(client)
+	a1, err := aliasClient.Read(tc.Context(), tar.GetItem().Aliases[0].Id)
+	require.NoError(err)
+	assert.Equal("alias1", a1.Item.Value)
+}
+
 func TestCrud(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 	tc := controller.NewTestController(t, nil)
@@ -665,6 +708,13 @@ func TestSet_Errors(t *testing.T) {
 	assert.EqualValues(http.StatusBadRequest, apiErr.Response().StatusCode())
 	require.Len(apiErr.Details.RequestFields, 1)
 	assert.Equal(apiErr.Details.RequestFields[0].Name, "id")
+
+	// Updating using WithAliases should fail.
+	_, err = tarClient.Update(tc.Context(), tar.Item.Id, tar.Item.Version, targets.WithAliases([]targets.Alias{{Value: "alias1", ScopeId: "global"}}))
+	require.Error(err)
+	apiErr = api.AsServerError(err)
+	assert.NotNil(apiErr)
+	assert.EqualValues(http.StatusBadRequest, apiErr.Response().StatusCode())
 
 	// Updating the wrong version should fail.
 	_, err = tarClient.Update(tc.Context(), tar.Item.Id, 73, targets.WithName("anything"))

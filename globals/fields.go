@@ -122,4 +122,5 @@ const (
 	DeleteAfterField                            = "delete_after"
 	DestinationIdField                          = "destination_id"
 	ValueField                                  = "value"
+	WithAliasesField                            = "with_aliases"
 )
