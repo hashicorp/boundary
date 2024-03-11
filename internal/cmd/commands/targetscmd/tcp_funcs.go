@@ -21,8 +21,16 @@ func init() {
 
 func extraTcpActionsFlagsMapFuncImpl() map[string][]string {
 	return map[string][]string{
-		"create": {"address", "default-port", "default-client-port", "session-max-seconds", "session-connection-limit", "egress-worker-filter", "ingress-worker-filter"},
-		"update": {"address", "default-port", "default-client-port", "session-max-seconds", "session-connection-limit", "worker-filter", "egress-worker-filter", "ingress-worker-filter"},
+		"create": {
+			"address", "default-port", "default-client-port", "session-max-seconds",
+			"session-connection-limit", "egress-worker-filter", "ingress-worker-filter",
+			"with-alias-value", "with-alias-scope-id", "with-alias-authorize-session-host-id",
+		},
+		"update": {
+			"address", "default-port", "default-client-port", "session-max-seconds",
+			"session-connection-limit", "worker-filter", "egress-worker-filter",
+			"ingress-worker-filter",
+		},
 	}
 }
 
@@ -35,6 +43,9 @@ type extraTcpCmdVars struct {
 	flagEgressWorkerFilter     string
 	flagIngressWorkerFilter    string
 	flagAddress                string
+	flagWithAliasValue         string
+	flagWithAliasScopeId       string
+	flagWithAliasHostId        string
 }
 
 func (c *TcpCommand) extraTcpHelpFunc(helpMap map[string]func() string) string {
@@ -117,6 +128,25 @@ func extraTcpFlagsFuncImpl(c *TcpCommand, set *base.FlagSets, f *base.FlagSet) {
 				Name:   "ingress-worker-filter",
 				Target: &c.flagIngressWorkerFilter,
 				Usage:  "A boolean expression to filter which ingress workers can handle sessions for this target.",
+			})
+		case "with-alias-value":
+			fs.StringVar(&base.StringVar{
+				Name:   "with-alias-value",
+				Target: &c.flagWithAliasValue,
+				Usage:  "The value for an alias to be created for and at the same time as this target.",
+			})
+		case "with-alias-scope-id":
+			fs.StringVar(&base.StringVar{
+				Name:    "with-alias-scope-id",
+				Target:  &c.flagWithAliasScopeId,
+				Default: "global",
+				Usage:   "The scope id for an alias to be created for and at the same time as this target.",
+			})
+		case "with-alias-authorize-session-host-id":
+			fs.StringVar(&base.StringVar{
+				Name:   "with-alias-authorize-session-host-id",
+				Target: &c.flagWithAliasHostId,
+				Usage:  "The authorize session host id flag used by an alias to be created for and at the same time as this target.",
 			})
 		}
 	}
@@ -223,6 +253,55 @@ func extraTcpFlagsHandlingFuncImpl(c *TcpCommand, _ *base.FlagSets, opts *[]targ
 		*opts = append(*opts, targets.DefaultAddress())
 	default:
 		*opts = append(*opts, targets.WithAddress(c.flagAddress))
+	}
+
+	var aliasValue string
+	switch c.flagWithAliasValue {
+	case "":
+	case "null":
+		c.UI.Error("The with-alias-value flag cannot be set to null")
+		return false
+	default:
+		aliasValue = c.flagWithAliasValue
+	}
+
+	var aliasScopeId string
+	switch c.flagWithAliasScopeId {
+	case "":
+	case "null":
+		c.UI.Error("The with-alias-scope-id flag cannot be set to null")
+		return false
+	default:
+		aliasScopeId = c.flagWithAliasScopeId
+	}
+
+	var aliasHostId string
+	switch c.flagWithAliasHostId {
+	case "":
+	case "null":
+		c.UI.Error("The with-alias-authorize-session-host-id flag cannot be set to null")
+		return false
+	default:
+		aliasHostId = c.flagWithAliasHostId
+	}
+
+	switch {
+	case aliasValue != "" && aliasScopeId == "":
+		c.UI.Error("The with-alias-value flag must be used with the with-alias-scope-id flag")
+		return false
+	case aliasValue != "" && aliasScopeId != "":
+		a := targets.Alias{
+			Value:   aliasValue,
+			ScopeId: aliasScopeId,
+		}
+		if aliasHostId != "" {
+			a.Attributes = &targets.TargetAliasAttributes{
+				AuthorizeSessionArguments: &targets.AuthorizeSessionArguments{
+					HostId: aliasHostId,
+				},
+			}
+		}
+		*opts = append(*opts, targets.WithAliases([]targets.Alias{a}))
 	}
 
 	return true
