@@ -15,6 +15,7 @@ These guidelines are designed to make our SQL more readable, maintainable, and g
 - No more than two blank lines between statements.
 - No empty lines in the middle of a single statement.
 - Do not SHOUTCASE or "Sentence case" SQL keywords (e.g., use `select`, not `SELECT` or `Select`).
+- Use "river" formatting for [DML](#data-manipulation-statements).
 
 ### Data Definition Statements
 
@@ -125,3 +126,91 @@ For `comment on` statements:
 - Do not put any blank lines between the `comment on` statement and the database
   object declaration block that comment is for.
 - Put the text of the `comment on` a new indented line.
+
+### Data Manipulation Statements
+
+Data manipulation statements should align SQL keywords in a column to form a
+[river](https://en.wikipedia.org/wiki/River_(typography))
+between the keywords and the rest of the statement.
+This makes it easier to scan the statement.
+It can also help identify keywords in cases where syntax
+highlighting might not be available,
+such as when statements are written in go string literals.
+
+```sql
+   select b.public_id,
+          b.basket_name,
+          b.basket_type,
+          s.store_name,
+          s.store_descrption
+     from imaginary_basket as b
+left join imaginary_store  as s
+       on b.store_id = s.public_id
+    where basket_type = $1;
+```
+
+```sql
+update imaginary_basket
+   set basket_name = basket_name || '(' || basket_type || ')'
+ where basket_type = $1;
+```
+
+```sql
+delete
+  from imaginary_basket
+ where basket_type = $1;
+```
+
+For insert statements, align the spacing of the column names and values.
+
+```sql
+insert into imaginary_basket
+            (public_id,     store_id,      basket_type,    basket_name)
+     values ('b_123456789', 's_123456789', 'fruit_basket', 'my fruit basket'),
+            ('b_234567891', 's_123456789', 'toy_basket',   'my toy basket');
+```
+
+For more complex queries,
+there can be multiple rivers,
+like when a query includes sub-queries,
+or when using a common table expression (CTE):
+
+```sql
+with baskets as (
+  select public_id
+    from basket
+   where (create_time, public_id) < ($1, $2)
+order by create_time desc,
+         public_id   desc
+   limit 1000
+),
+imaginary_baskets as (
+  select *
+    from imaginary_basket
+   where public_id in (select public_id
+                         from baskets)
+),
+real_baskets as (
+  select *
+    from real_basket
+   where public_id in (select public_id
+                         from baskets)
+),
+final as (
+   select public_id,
+          basket_name,
+          basket_type,
+          'imaginary' as type
+     from imaginary_baskets
+    union
+   select public_id,
+          basket_name,
+          basket_type,
+          'real' as type
+     from real_baskets
+)
+  select *
+    from final
+order by create_time desc,
+         public_id   desc;
+```
