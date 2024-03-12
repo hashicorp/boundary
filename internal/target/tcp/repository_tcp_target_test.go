@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/globals"
+	talias "github.com/hashicorp/boundary/internal/alias/target"
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/credential/vault"
 	"github.com/hashicorp/boundary/internal/db"
@@ -251,6 +252,59 @@ func TestRepository_CreateTarget(t *testing.T) {
 			// add an appropriate assert.
 		})
 	}
+
+	t.Run("create with aliases", func(t *testing.T) {
+		newAlias1, err := talias.NewAlias(context.Background(), "global", "alias1", talias.WithHostId("hst_1234567890"))
+		require.NoError(t, err)
+		newAlias2, err := talias.NewAlias(context.Background(), "global", "alias2", talias.WithHostId("hst_0987654321"))
+		require.NoError(t, err)
+
+		tar, err := target.New(ctx, tcp.Subtype, proj.PublicId,
+			target.WithName("create-with-alias"),
+			target.WithDescription("create-with-alias"),
+			target.WithDefaultPort(uint32(22)))
+		require.NoError(t, err)
+		tar, err = repo.CreateTarget(context.Background(), tar, target.WithAliases([]*talias.Alias{newAlias1, newAlias2}))
+		require.NoError(t, err)
+		assert.NotNil(t, tar)
+		assert.Len(t, tar.GetAliases(), 2)
+		assert.NotEmpty(t, tar.GetAliases()[0].GetPublicId())
+		assert.NotEmpty(t, tar.GetAliases()[1].GetPublicId())
+		assert.NotZero(t, tar.GetAliases()[0].GetCreateTime())
+		assert.NotZero(t, tar.GetAliases()[1].GetCreateTime())
+		assert.Contains(t, []string{newAlias1.GetValue(), newAlias2.GetValue()}, tar.GetAliases()[0].GetValue())
+		assert.Contains(t, []string{newAlias1.GetValue(), newAlias2.GetValue()}, tar.GetAliases()[1].GetValue())
+		assert.Contains(t, []string{newAlias1.GetHostId(), newAlias2.GetHostId()}, tar.GetAliases()[0].GetHostId())
+		assert.Contains(t, []string{newAlias1.GetHostId(), newAlias2.GetHostId()}, tar.GetAliases()[1].GetHostId())
+	})
+
+	t.Run("create an invalid aliases", func(t *testing.T) {
+		invalidAlias, err := talias.NewAlias(context.Background(), "global", "invalid_alias")
+		require.NoError(t, err)
+
+		tar, err := target.New(ctx, tcp.Subtype, proj.PublicId,
+			target.WithName("create-with-invalid-alias"),
+			target.WithDescription("create-with-invalid-alias"),
+			target.WithDefaultPort(uint32(22)))
+		require.NoError(t, err)
+		tar, err = repo.CreateTarget(context.Background(), tar, target.WithAliases([]*talias.Alias{invalidAlias}))
+		require.Error(t, err)
+		require.Nil(t, tar)
+	})
+
+	t.Run("create with duplicate aliases", func(t *testing.T) {
+		dupAlias, err := talias.NewAlias(context.Background(), "global", "dup-alias")
+		require.NoError(t, err)
+
+		tar, err := target.New(ctx, tcp.Subtype, proj.PublicId,
+			target.WithName("create-with-duplicate-alias"),
+			target.WithDescription("create-with-duplicate-alias"),
+			target.WithDefaultPort(uint32(22)))
+		require.NoError(t, err)
+		tar, err = repo.CreateTarget(context.Background(), tar, target.WithAliases([]*talias.Alias{dupAlias, dupAlias}))
+		require.Error(t, err)
+		require.Nil(t, tar)
+	})
 }
 
 func TestRepository_UpdateTcpTarget(t *testing.T) {

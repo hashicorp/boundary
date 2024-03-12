@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hashicorp/boundary/globals"
 	talias "github.com/hashicorp/boundary/internal/alias/target"
 	"github.com/hashicorp/boundary/internal/boundary"
 	"github.com/hashicorp/boundary/internal/db"
@@ -503,7 +504,7 @@ func (r *Repository) DeleteTarget(ctx context.Context, publicId string, _ ...Opt
 
 // CreateTarget inserts into the repository and returns the new Target with
 // its list of host sets and credential libraries.
-// WithPublicId is the only supported option.
+// WithPublicId and WithAliases are supported options.
 func (r *Repository) CreateTarget(ctx context.Context, target Target, opt ...Option) (Target, error) {
 	const op = "target.(Repository).CreateTarget"
 	opts := GetOpts(opt...)
@@ -562,7 +563,8 @@ func (r *Repository) CreateTarget(ctx context.Context, target Target, opt ...Opt
 	}
 
 	metadata := t.Oplog(oplog.OpType_OP_TYPE_CREATE)
-	var returnedTarget any
+	var createdAliases []*talias.Alias
+	var returnedTarget Target
 	_, err = r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
@@ -588,6 +590,24 @@ func (r *Repository) CreateTarget(ctx context.Context, target Target, opt ...Opt
 				msgs = append(msgs, &targetAddressOplogMsg)
 			}
 
+			createdAliases = make([]*talias.Alias, 0, len(opts.withAliases))
+			for _, a := range opts.withAliases {
+				a = a.Clone()
+				aliasId, err := db.NewPublicId(ctx, globals.TargetAliasPrefix)
+				if err != nil {
+					return errors.Wrap(ctx, err, op)
+				}
+				a.PublicId = aliasId
+
+				a.DestinationId = t.GetPublicId()
+				var targetAliasOplogMsg oplog.Message
+				if err := w.Create(ctx, a, db.NewOplogMsg(&targetAliasOplogMsg)); err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to create target alias"))
+				}
+				createdAliases = append(createdAliases, a)
+				msgs = append(msgs, &targetAliasOplogMsg)
+			}
+
 			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, targetTicket, metadata, msgs); err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to write oplog"))
 			}
@@ -598,7 +618,8 @@ func (r *Repository) CreateTarget(ctx context.Context, target Target, opt ...Opt
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %s target id", t.GetPublicId())))
 	}
-	return returnedTarget.(Target), nil
+	returnedTarget.SetAliases(createdAliases)
+	return returnedTarget, nil
 }
 
 // UpdateTarget will update a target in the repository and return the written

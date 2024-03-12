@@ -4,16 +4,19 @@
 package target
 
 import (
+	"context"
 	"testing"
 	"time"
 
 	"github.com/hashicorp/boundary/globals"
+	talias "github.com/hashicorp/boundary/internal/alias/target"
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/pagination"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/target/store"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type fakeItem struct {
@@ -256,5 +259,13 @@ func Test_GetOpts(t *testing.T) {
 		opts := GetOpts(WithStartPageAfterItem(&fakeItem{nil, "s_1", updateTime}))
 		assert.Equal(opts.WithStartPageAfterItem.GetPublicId(), "s_1")
 		assert.Equal(opts.WithStartPageAfterItem.GetUpdateTime(), timestamp.New(updateTime))
+	})
+	t.Run("WithAliases", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		al, err := talias.NewAlias(context.Background(), "global", "test")
+		require.NoError(err)
+		input := []*talias.Alias{al}
+		opts := GetOpts(WithAliases(input))
+		assert.Equal(input, opts.withAliases)
 	})
 }
