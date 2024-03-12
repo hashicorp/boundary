@@ -983,9 +983,10 @@ func TestCreate(t *testing.T) {
 
 	org, proj := iam.TestScopes(t, iamRepo)
 	at := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
-	r := iam.TestRole(t, conn, proj.GetPublicId())
+	r := iam.TestRole(t, conn, "global")
 	_ = iam.TestUserRole(t, conn, r.GetPublicId(), at.GetIamUserId())
 	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "ids=*;type=*;actions=*")
+	_ = iam.TestRoleGrantScope(t, conn, r.GetPublicId(), globals.GrantScopeDescendants)
 
 	// Ensure we are using the OSS worker filter function
 	workerFilterFn := targets.AuthorizeSessionWorkerFilterFn
@@ -1341,6 +1342,93 @@ func TestCreate(t *testing.T) {
 	}
 	// Reset worker filter func
 	targets.AuthorizeSessionWorkerFilterFn = workerFilterFn
+}
+
+func TestCreate_AliasAuthCheck(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+
+	rw := db.New(conn)
+
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+	tokenRepoFn := func() (*authtoken.Repository, error) {
+		return authtoken.NewRepository(ctx, rw, rw, kms)
+	}
+	serversRepoFn := func() (*server.Repository, error) {
+		return server.NewRepository(ctx, rw, rw, kms)
+	}
+
+	org, proj := iam.TestScopes(t, iamRepo)
+	at := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
+	// Both users can create targets
+	allProjectR := iam.TestRole(t, conn, proj.GetPublicId())
+	_ = iam.TestUserRole(t, conn, allProjectR.GetPublicId(), at.GetIamUserId())
+	_ = iam.TestRoleGrant(t, conn, allProjectR.GetPublicId(), "ids=*;type=*;actions=*")
+
+	req := &pb.Target{
+		ScopeId: proj.GetPublicId(),
+		Name:    wrapperspb.String("name"),
+		Type:    tcp.Subtype.String(),
+		Attrs: &pb.Target_TcpTargetAttributes{
+			TcpTargetAttributes: &pb.TcpTargetAttributes{
+				DefaultPort: wrapperspb.UInt32(2),
+			},
+		},
+		WithAliases: []*pb.Alias{
+			{
+				Value:   "alias-allowed",
+				ScopeId: "global",
+			},
+		},
+	}
+
+	// Ensure we are using the OSS worker filter function
+	workerFilterFn := targets.AuthorizeSessionWorkerFilterFn
+	targets.AuthorizeSessionWorkerFilterFn = targets.AuthorizeSessionWithWorkerFilter
+	t.Cleanup(func() {
+		targets.AuthorizeSessionWorkerFilterFn = workerFilterFn
+	})
+
+	s, err := testService(t, context.Background(), conn, kms, wrapper)
+	require.NoError(t, err, "Failed to create a new host set service.")
+
+	t.Run("disallowed user creating target", func(t *testing.T) {
+		requestInfo := authpb.RequestInfo{
+			TokenFormat: uint32(auth.AuthTokenTypeBearer),
+			PublicId:    at.GetPublicId(),
+			Token:       at.GetToken(),
+		}
+		requestContext := context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
+		ctx := auth.NewVerifierContext(requestContext, iamRepoFn, tokenRepoFn, serversRepoFn, kms, &requestInfo)
+		resp, err := s.CreateTarget(ctx, &pbs.CreateTargetRequest{Item: req})
+		require.Error(t, err)
+		require.Nil(t, resp)
+		assert.ErrorContains(t, err, "PermissionDenied")
+	})
+
+	t.Run("allowed user creating a target", func(t *testing.T) {
+		// only aliasAllowedAt can create aliases
+		aliasR := iam.TestRole(t, conn, "global")
+		_ = iam.TestUserRole(t, conn, aliasR.GetPublicId(), at.GetIamUserId())
+		_ = iam.TestRoleGrant(t, conn, aliasR.GetPublicId(), "ids=*;type=alias;actions=*")
+
+		requestInfo := authpb.RequestInfo{
+			TokenFormat: uint32(auth.AuthTokenTypeBearer),
+			PublicId:    at.GetPublicId(),
+			Token:       at.GetToken(),
+		}
+		requestContext := context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
+		ctx := auth.NewVerifierContext(requestContext, iamRepoFn, tokenRepoFn, serversRepoFn, kms, &requestInfo)
+		resp, err := s.CreateTarget(ctx, &pbs.CreateTargetRequest{Item: req})
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+	})
 }
 
 func TestUpdate(t *testing.T) {
