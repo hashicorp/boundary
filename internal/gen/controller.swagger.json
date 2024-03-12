@@ -6924,6 +6924,23 @@
         "value": {
           "type": "string",
           "description": "Ouput only. The value of the alias referencing this target."
+        },
+        "scope_id": {
+          "type": "string",
+          "title": ";"
+        },
+        "attributes": {
+          "$ref": "#/definitions/controller.api.resources.targets.v1.TargetAliasAttributes"
+        }
+      },
+      "description": "Alias is the alias information related to the aliases associated with the target."
+    },
+    "controller.api.resources.targets.v1.AuthorizeSessionArguments": {
+      "type": "object",
+      "properties": {
+        "host_id": {
+          "type": "string",
+          "description": "host_id is the id of the host that the session will be authorized for.\nWhen specified authorizing a session using this alias will have the same\neffect of authorizing a session to the alias' destination_id and passing\nin this value through the -host-id flag. If the host-id flag is also\nspecified when calling authorize-session an error will be returned unless\nthe provided host-id matches this value."
         }
       }
     },
@@ -7240,9 +7257,26 @@
           },
           "description": "Output only. The aliases that point to this Target.",
           "readOnly": true
+        },
+        "with_aliases": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/controller.api.resources.targets.v1.Alias"
+          },
+          "description": "Input only. with_aliases specify the aliases that should be created when\nthe target is created.  This field is only usable at target creation time."
         }
       },
       "title": "Target contains all fields related to a Target resource"
+    },
+    "controller.api.resources.targets.v1.TargetAliasAttributes": {
+      "type": "object",
+      "properties": {
+        "authorize_session_arguments": {
+          "$ref": "#/definitions/controller.api.resources.targets.v1.AuthorizeSessionArguments",
+          "title": ""
+        }
+      }
     },
     "controller.api.resources.users.v1.Account": {
       "type": "object",

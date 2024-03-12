@@ -1011,6 +1011,14 @@ var inputStructs = []*structInfo{
 		outFile: "targets/alias.gen.go",
 	},
 	{
+		inProto: &targets.TargetAliasAttributes{},
+		outFile: "targets/target_alias_attributes.gen.go",
+	},
+	{
+		inProto: &targets.AuthorizeSessionArguments{},
+		outFile: "targets/authorize_session_arguments.gen.go",
+	},
+	{
 		inProto: &targets.SessionSecret{},
 		outFile: "targets/session_secret.gen.go",
 		fieldOverrides: []fieldInfo{
@@ -1129,6 +1137,13 @@ var inputStructs = []*structInfo{
 				Name:      "InjectedApplicationCredentialSourceIds",
 				ProtoName: "injected_application_credential_source_ids",
 				FieldType: "[]string",
+			},
+			// with_aliases is used when creating a target with alaises.
+			{
+				Name:        "Aliases",
+				ProtoName:   "with_aliases",
+				FieldType:   "[]Alias",
+				SkipDefault: true,
 			},
 		},
 		versionEnabled:      true,

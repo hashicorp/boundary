@@ -403,6 +403,13 @@ func (s Service) CreateTarget(ctx context.Context, req *pbs.CreateTargetRequest)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
+	for _, a := range req.GetItem().WithAliases {
+		authResults := s.aliasCreateAuthResult(ctx, a.GetScopeId())
+		if authResults.Error != nil {
+			return nil, authResults.Error
+		}
+	}
+
 	t, ts, cl, err := s.createInRepo(ctx, req.GetItem())
 	if err != nil {
 		return nil, err
@@ -1305,7 +1312,21 @@ func (s Service) createInRepo(ctx context.Context, item *pb.Target) (target.Targ
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	out, err := repo.CreateTarget(ctx, u)
+
+	createOptions := []target.Option{}
+	if len(item.GetWithAliases()) > 0 {
+		writeAliases := make([]*talias.Alias, 0, len(item.GetWithAliases()))
+		for _, a := range item.GetWithAliases() {
+			na, err := talias.NewAlias(ctx, a.GetScopeId(), a.GetValue(), talias.WithHostId(a.GetAttributes().GetAuthorizeSessionArguments().GetHostId()))
+			if err != nil {
+				return nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("converting from proto to storage alias"))
+			}
+			writeAliases = append(writeAliases, na)
+		}
+		createOptions = append(createOptions, target.WithAliases(writeAliases))
+	}
+
+	out, err := repo.CreateTarget(ctx, u, createOptions...)
 	if err != nil {
 		return nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create target"))
 	}
@@ -1579,6 +1600,30 @@ func (s Service) removeCredentialSourcesInRepo(ctx context.Context, targetId str
 	return out, hs, credSources, nil
 }
 
+// aliasCreateAuthResult verifies authorization for creating an alias
+func (s Service) aliasCreateAuthResult(ctx context.Context, parentId string) auth.VerifyResults {
+	res := auth.VerifyResults{}
+	a := action.Create
+	opts := []auth.Option{auth.WithType(resource.Alias), auth.WithAction(a)}
+	iamRepo, err := s.iamRepoFn()
+	if err != nil {
+		res.Error = err
+		return res
+	}
+	scp, err := iamRepo.LookupScope(ctx, parentId)
+	if err != nil {
+		res.Error = err
+		return res
+	}
+	if scp == nil {
+		res.Error = handlers.NotFoundError()
+		return res
+	}
+	opts = append(opts, auth.WithScopeId(parentId))
+	ret := auth.Verify(ctx, opts...)
+	return ret
+}
+
 func (s Service) authResult(ctx context.Context, id string, a action.Type, lookupOpt ...target.Option) auth.VerifyResults {
 	res := auth.VerifyResults{}
 
@@ -1704,6 +1749,9 @@ func toProto(ctx context.Context, in target.Target, opt ...handlers.Option) (*pb
 	}
 	if outputFields.Has(globals.AliasesField) {
 		for _, a := range aliases {
+			// Even though pb.Alias has more than just these 2 fields, we only
+			// want to return these 2 fields to the client. Any more information
+			// may be sharing more than the client should know.
 			out.Aliases = append(out.Aliases, &pb.Alias{
 				Id:    a.PublicId,
 				Value: a.Value,
@@ -1776,6 +1824,15 @@ func validateCreateRequest(req *pbs.CreateTargetRequest) error {
 		}
 		if item.GetName() == nil || item.GetName().GetValue() == "" {
 			badFields[globals.NameField] = "This field is required."
+		}
+		for _, a := range item.GetWithAliases() {
+			pa := proto.Clone(a).(*pb.Alias)
+			pa.Value = ""
+			pa.ScopeId = ""
+			pa.Attributes = nil
+			if !proto.Equal(pa, &pb.Alias{}) {
+				badFields[globals.WithAliasesField] = "Included aliases can only specify a value, a scope id, and attributes."
+			}
 		}
 		if item.GetSessionConnectionLimit() != nil {
 			val := item.GetSessionConnectionLimit().GetValue()
@@ -1859,6 +1916,9 @@ func validateUpdateRequest(req *pbs.UpdateTargetRequest) error {
 		}
 		if item.GetSessionMaxSeconds() != nil && item.GetSessionMaxSeconds().GetValue() == 0 {
 			badFields[globals.SessionMaxSecondsField] = "This must be greater than zero."
+		}
+		if len(item.GetWithAliases()) > 0 {
+			badFields[globals.WithAliasesField] = "This field can only be set at target creation time."
 		}
 		// worker_filter is mutually exclusive from ingress and egress filter
 		workerFilterFound := false
