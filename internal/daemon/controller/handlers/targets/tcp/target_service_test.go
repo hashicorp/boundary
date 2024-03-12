@@ -1126,6 +1126,26 @@ func TestCreate(t *testing.T) {
 			errStr: "unable to create target alias",
 		},
 		{
+			name: "Create a target with invalid scope",
+			req: &pbs.CreateTargetRequest{Item: &pb.Target{
+				ScopeId: proj.GetPublicId(),
+				Name:    wrapperspb.String("target_with_invalid_alias"),
+				Type:    tcp.Subtype.String(),
+				Attrs: &pb.Target_TcpTargetAttributes{
+					TcpTargetAttributes: &pb.TcpTargetAttributes{
+						DefaultPort: wrapperspb.UInt32(2),
+					},
+				},
+				WithAliases: []*pb.Alias{
+					{
+						Value:   "alias.invalid.scope",
+						ScopeId: proj.GetPublicId(),
+					},
+				},
+			}},
+			errStr: "unable to create target alias",
+		},
+		{
 			name: "Create a target with duplicate aliasses",
 			req: &pbs.CreateTargetRequest{Item: &pb.Target{
 				ScopeId: proj.GetPublicId(),

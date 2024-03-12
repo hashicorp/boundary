@@ -403,6 +403,13 @@ func (s Service) CreateTarget(ctx context.Context, req *pbs.CreateTargetRequest)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
+	for _, a := range req.GetItem().WithAliases {
+		authResults := s.aliasCreateAuthResult(ctx, a.GetScopeId())
+		if authResults.Error != nil {
+			return nil, authResults.Error
+		}
+	}
+
 	t, ts, cl, err := s.createInRepo(ctx, req.GetItem())
 	if err != nil {
 		return nil, err
@@ -1591,6 +1598,30 @@ func (s Service) removeCredentialSourcesInRepo(ctx context.Context, targetId str
 		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup target after removing credential sources from it.")
 	}
 	return out, hs, credSources, nil
+}
+
+// aliasCreateAuthResult verifies authorization for creating an alias
+func (s Service) aliasCreateAuthResult(ctx context.Context, parentId string) auth.VerifyResults {
+	res := auth.VerifyResults{}
+	a := action.Create
+	opts := []auth.Option{auth.WithType(resource.Alias), auth.WithAction(a)}
+	iamRepo, err := s.iamRepoFn()
+	if err != nil {
+		res.Error = err
+		return res
+	}
+	scp, err := iamRepo.LookupScope(ctx, parentId)
+	if err != nil {
+		res.Error = err
+		return res
+	}
+	if scp == nil {
+		res.Error = handlers.NotFoundError()
+		return res
+	}
+	opts = append(opts, auth.WithScopeId(parentId))
+	ret := auth.Verify(ctx, opts...)
+	return ret
 }
 
 func (s Service) authResult(ctx context.Context, id string, a action.Type, lookupOpt ...target.Option) auth.VerifyResults {

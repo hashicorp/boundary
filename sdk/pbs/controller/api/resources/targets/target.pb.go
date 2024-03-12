@@ -157,7 +157,7 @@ type AuthorizeSessionArguments struct {
 
 	// host_id is the id of the host that the session will be authorized for.
 	// When specified authorizing a session using this alias will have the same
-	// effect of authorizing a session to the aliase's destination_id and passing
+	// effect of authorizing a session to the alias' destination_id and passing
 	// in this value through the -host-id flag. If the host-id flag is also
 	// specified when calling authorize-session an error will be returned unless
 	// the provided host-id matches this value.
@@ -544,7 +544,7 @@ type Target struct {
 	// Output only. The aliases that point to this Target.
 	Aliases []*Alias `protobuf:"bytes,550,rep,name=aliases,proto3" json:"aliases,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Input only. with_aliases specify the aliases that should be created when
-	// the target is created.  If this field is only usable at target creation time.
+	// the target is created.  This field is only usable at target creation time.
 	WithAliases []*Alias `protobuf:"bytes,560,rep,name=with_aliases,proto3" json:"with_aliases,omitempty" class:"public"` // @gotags: `class:"public"`
 }
 
