@@ -98,10 +98,10 @@ nextField:
 			return ctx, err
 		}
 		if a == nil {
-			return ctx, errors.New(ctx, errors.NotFound, op, fmt.Sprintf("resource alias not found with value %q", v))
+			return ctx, errors.New(ctx, errors.NotFound, op, fmt.Sprintf("resource alias not found with value %q", v), errors.WithoutEvent())
 		}
 		if a.DestinationId == "" {
-			return ctx, errors.New(ctx, errors.NotFound, op, fmt.Sprintf("resource not found for alias value %q", v))
+			return ctx, errors.New(ctx, errors.NotFound, op, fmt.Sprintf("resource not found for alias value %q", v), errors.WithoutEvent())
 		}
 		r.Set(f, protoreflect.ValueOfString(a.DestinationId))
 		ctx = setCtxAliasInfo(ctx, a)
