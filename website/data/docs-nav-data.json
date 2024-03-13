@@ -1503,6 +1503,20 @@
     ]
   },
   {
+    "title": "Integrations",
+    "routes": [
+      {
+        "title": "Overview",
+        "path": "integrations"
+      },
+      {
+        "title": "Vault",
+        "path": "integrations/vault"
+      }
+    ]
+  },
+
+  {
     "title": "Develop Boundary",
     "routes": [
       {
