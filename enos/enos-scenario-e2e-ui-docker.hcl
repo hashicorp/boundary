@@ -123,14 +123,33 @@ scenario "e2e_ui_docker" {
       step.create_boundary
     ]
     variables {
+      image_name       = matrix.builder == "crt" ? var.boundary_docker_image_name : step.build_boundary_docker_image.image_name
+      boundary_license = var.boundary_edition != "oss" ? step.read_license.license : ""
+      config_file      = "worker-config.hcl"
+      container_name   = "worker"
+      initial_upstream = step.create_boundary.upstream_address
+      network_name     = [local.network_cluster]
+      tags             = [local.egress_tag]
+      port             = "9402"
+    }
+  }
+
+  step "create_worker_token" {
+    module = module.docker_worker
+    depends_on = [
+      step.create_docker_network,
+      step.build_boundary_docker_image,
+      step.create_boundary
+    ]
+    variables {
       image_name              = matrix.builder == "crt" ? var.boundary_docker_image_name : step.build_boundary_docker_image.image_name
       boundary_license        = var.boundary_edition != "oss" ? step.read_license.license : ""
       config_file             = "worker-config-worker-led.hcl"
-      container_name          = "worker"
+      container_name          = "worker_token"
       initial_upstream        = step.create_boundary.upstream_address
       network_name            = [local.network_cluster]
-      tags                    = [local.egress_tag]
-      port                    = "9402"
+      tags                    = ["token"]
+      port                    = "9502"
       worker_led_registration = true
     }
   }
@@ -179,7 +198,8 @@ scenario "e2e_ui_docker" {
       ldap_user_name            = step.create_ldap_server.user_name
       ldap_user_password        = step.create_ldap_server.user_password
       ldap_group_name           = step.create_ldap_server.group_name
-      worker_token              = step.create_worker.worker_led_token
+      worker_token              = step.create_worker_token.worker_led_token
+      worker_tag_egress         = local.egress_tag
     }
   }
 }
