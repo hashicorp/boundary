@@ -75,6 +75,10 @@ scenario "e2e_ui_aws" {
     }
   }
 
+  locals {
+    egress_tag = "egress"
+  }
+
   step "create_boundary_cluster" {
     module = module.aws_boundary
     depends_on = [
@@ -98,6 +102,7 @@ scenario "e2e_ui_aws" {
       vpc_tag_module           = step.create_base_infra.vpc_tag_module
       worker_count             = var.worker_count
       worker_instance_type     = var.worker_instance_type
+      worker_type_tags         = [local.egress_tag]
     }
   }
 
@@ -200,6 +205,7 @@ scenario "e2e_ui_aws" {
       aws_secret_access_key     = step.iam_setup.secret_access_key
       aws_host_set_filter       = step.create_tag_inputs.tag_string
       aws_host_set_ips          = step.create_targets_with_tag.target_ips
+      worker_tag_egress         = local.egress_tag
     }
   }
 
