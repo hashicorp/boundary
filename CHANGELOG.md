@@ -2,6 +2,14 @@
 
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
+## 0.15.3 (2024/03/13)
+
+### Bug Fixes
+
+* Fix a nil pointer error in the client cache daemon when a refresh was forced
+  performing a boundary search.
+  ([PR](https://github.com/hashicorp/boundary/pull/4503))
+
 ## 0.15.1 (2024/02/28)
 
 ### Bug Fixes
