@@ -153,7 +153,7 @@ func testVaultCred(t *testing.T,
 }
 
 func TestNewTokenRenewalJob(t *testing.T) {
-	t.Parallel()
+	// t.Parallel() - this was causing test failures, investigate before un-commenting
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -237,7 +237,7 @@ func TestNewTokenRenewalJob(t *testing.T) {
 }
 
 func TestTokenRenewalJob_RunLimits(t *testing.T) {
-	t.Parallel()
+	// t.Parallel() - this was causing test failures, investigate before un-commenting
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
@@ -323,7 +323,7 @@ func TestTokenRenewalJob_RunLimits(t *testing.T) {
 }
 
 func TestTokenRenewalJob_Run(t *testing.T) {
-	t.Parallel()
+	// t.Parallel() - this was causing test failures, investigate before un-commenting
 	ctx := context.Background()
 	assert, require := assert.New(t), require.New(t)
 
@@ -433,7 +433,7 @@ func TestTokenRenewalJob_Run(t *testing.T) {
 }
 
 func TestTokenRenewalJob_RunExpired(t *testing.T) {
-	t.Parallel()
+	// t.Parallel() - this was causing test failures, investigate before un-commenting
 	ctx := context.Background()
 	assert, require := assert.New(t), require.New(t)
 
@@ -499,7 +499,7 @@ func TestTokenRenewalJob_RunExpired(t *testing.T) {
 }
 
 func TestTokenRenewalJob_NextRunIn(t *testing.T) {
-	t.Parallel()
+	// t.Parallel() - this was causing test failures, investigate before un-commenting
 
 	ctx := context.Background()
 
@@ -627,7 +627,7 @@ func TestTokenRenewalJob_NextRunIn(t *testing.T) {
 }
 
 func TestNewTokenRevocationJob(t *testing.T) {
-	t.Parallel()
+	// t.Parallel() - this was causing test failures, investigate before un-commenting
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -711,7 +711,7 @@ func TestNewTokenRevocationJob(t *testing.T) {
 }
 
 func TestTokenRevocationJob_RunLimits(t *testing.T) {
-	t.Parallel()
+	// t.Parallel() - this was causing test failures, investigate before un-commenting
 
 	ctx := context.Background()
 
@@ -801,7 +801,7 @@ func TestTokenRevocationJob_RunLimits(t *testing.T) {
 }
 
 func TestTokenRevocationJob_Run(t *testing.T) {
-	t.Parallel()
+	// t.Parallel() - this was causing test failures, investigate before un-commenting
 	ctx := context.Background()
 	assert, require := assert.New(t), require.New(t)
 
@@ -940,7 +940,7 @@ func TestTokenRevocationJob_Run(t *testing.T) {
 }
 
 func TestNewCredentialRenewalJob(t *testing.T) {
-	t.Parallel()
+	// t.Parallel() - this was causing test failures, investigate before un-commenting
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -1024,7 +1024,7 @@ func TestNewCredentialRenewalJob(t *testing.T) {
 }
 
 func TestCredentialRenewalJob_RunLimits(t *testing.T) {
-	t.Parallel()
+	// t.Parallel() - this was causing test failures, investigate before un-commenting
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
@@ -1140,7 +1140,7 @@ func TestCredentialRenewalJob_RunLimits(t *testing.T) {
 }
 
 func TestCredentialRenewalJob_Run(t *testing.T) {
-	t.Parallel()
+	// t.Parallel() - this was causing test failures, investigate before un-commenting
 	ctx := context.Background()
 	assert, require := assert.New(t), require.New(t)
 
@@ -1251,7 +1251,7 @@ func TestCredentialRenewalJob_Run(t *testing.T) {
 }
 
 func TestCredentialRenewalJob_RunExpired(t *testing.T) {
-	t.Parallel()
+	// t.Parallel() - this was causing test failures, investigate before un-commenting
 	ctx := context.Background()
 	assert, require := assert.New(t), require.New(t)
 
@@ -1331,7 +1331,7 @@ func TestCredentialRenewalJob_RunExpired(t *testing.T) {
 }
 
 func TestCredentialRenewalJob_NextRunIn(t *testing.T) {
-	t.Parallel()
+	// t.Parallel() - this was causing test failures, investigate before un-commenting
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
@@ -1489,7 +1489,7 @@ func TestCredentialRenewalJob_NextRunIn(t *testing.T) {
 }
 
 func TestNewCredentialRevocationJob(t *testing.T) {
-	t.Parallel()
+	// t.Parallel() - this was causing test failures, investigate before un-commenting
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -1573,7 +1573,7 @@ func TestNewCredentialRevocationJob(t *testing.T) {
 }
 
 func TestCredentialRevocationJob_RunLimits(t *testing.T) {
-	t.Parallel()
+	// t.Parallel() - this was causing test failures, investigate before un-commenting
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
@@ -1689,7 +1689,7 @@ func TestCredentialRevocationJob_RunLimits(t *testing.T) {
 }
 
 func TestCredentialRevocationJob_Run(t *testing.T) {
-	t.Parallel()
+	// t.Parallel() - this was causing test failures, investigate before un-commenting
 	ctx := context.Background()
 	assert, require := assert.New(t), require.New(t)
 
@@ -1784,7 +1784,7 @@ func TestCredentialRevocationJob_Run(t *testing.T) {
 }
 
 func TestCredentialRevocationJob_RunDeleted(t *testing.T) {
-	t.Parallel()
+	// t.Parallel() - this was causing test failures, investigate before un-commenting
 	ctx := context.Background()
 	assert, require := assert.New(t), require.New(t)
 
@@ -1894,7 +1894,7 @@ func TestCredentialRevocationJob_RunDeleted(t *testing.T) {
 }
 
 func TestNewCredentialStoreCleanupJob(t *testing.T) {
-	t.Parallel()
+	// t.Parallel() - this was causing test failures, investigate before un-commenting
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -1978,7 +1978,7 @@ func TestNewCredentialStoreCleanupJob(t *testing.T) {
 }
 
 func TestCredentialStoreCleanupJob_Run(t *testing.T) {
-	t.Parallel()
+	// t.Parallel() - this was causing test failures, investigate before un-commenting
 	ctx := context.Background()
 	assert, require := assert.New(t), require.New(t)
 
@@ -2131,7 +2131,7 @@ func TestCredentialStoreCleanupJob_Run(t *testing.T) {
 }
 
 func TestNewCredentialCleanupJob(t *testing.T) {
-	t.Parallel()
+	// t.Parallel() - this was causing test failures, investigate before un-commenting
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 
@@ -2178,7 +2178,7 @@ func TestNewCredentialCleanupJob(t *testing.T) {
 }
 
 func TestCredentialCleanupJob_Run(t *testing.T) {
-	t.Parallel()
+	// t.Parallel() - this was causing test failures, investigate before un-commenting
 	ctx := context.Background()
 	assert, require := assert.New(t), require.New(t)
 
