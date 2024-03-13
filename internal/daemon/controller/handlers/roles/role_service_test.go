@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"sort"
 	"strings"
 	"testing"
 
@@ -2140,6 +2141,11 @@ func checkEqualGrants(t *testing.T, expected []string, got *pb.Role) {
 	require, assert := require.New(t), assert.New(t)
 	require.Equal(len(expected), len(got.GrantStrings))
 	require.Equal(len(expected), len(got.Grants))
+	gotGrants := got.Grants
+	sort.Slice(gotGrants, func(i, j int) bool {
+		return gotGrants[i].GetRaw() < gotGrants[j].GetRaw()
+	})
+	sort.Strings(expected)
 	for i, v := range expected {
 		parsed, err := perms.Parse(context.Background(), "o_abc123", v)
 		require.NoError(err)
