@@ -1,0 +1,60 @@
+---
+layout: docs
+page_title: Vault integration
+description: |-
+ Ways to integrate Vault and Boundary
+---
+
+# Vault integration
+The integration between Boundary and Vault aims to improve two main areas of concern for organizations:
+
+- Security posture in relation to remote access
+- Workflow efficiency
+
+Boundary and Vault achieve these two goals by removing the requirement for the end-user to have to know about what the credentials are or have anything to do with using them to gain access to a resource.
+
+From a security perspective, we can use dynamic, ephemeral credentials that are only valid for the lifetime of the session, unless a specific time to live (TTL) has been attached to the Vault token that would result in a session having a finite amount of time.
+
+The security benefits extend past an organization's internal team and cater to third-parties or contractors that may need to access resources. It is preferable to not expose credentials to temporary staff, while still ensuring that access to resources is secure and granted in a timely manner.
+
+Ensuring access is granted in a timely manner then leads to that improvement in workflow efficiency. This is the result of end-users not having to be concerned with credentials, therefore removing a large bottleneck, in relation to gaining credentials through access requests and the time associated with such a task.
+
+# Credentials
+Vault can work with Boundary to be a credential [store](https://developer.hashicorp.com/boundary/docs/concepts/domain-model/credential-stores) and [library](https://developer.hashicorp.com/boundary/docs/concepts/domain-model/credential-libraries), which allows for credentials to be stored in Vault and used by Boundary. There are two configuration options:
+
+- Generic secrets
+- SSH certificates
+
+Generic secrets reference a Vault key-value path where static secrets are stored, for example, username and password. You can use generic secrets to broker credentials to the end-user when they connect to a target.
+
+SSH certificates have the advantage of using Vault as the certificate authority (CA) and being able to use the [HashiCorp Vault SSH Secrets Engine](https://developer.hashicorp.com/vault/docs/secrets/ssh). You can inject SSH certificates directly into the Boundary session.
+
+It is worth detailing that you must bring your own Vault deployment to Boundary.
+
+## Brokered credentials
+
+Brokered credentials were added in Boundary 0.4. They let you use Boundary as a credential broker for infrastructure targets, by binding credentials with user sessions, and surfacing those credentials during session initialization, with the help of Vault.
+
+An example workflow and use case for this feature is database access. Certain teams within an organization, such as finance, need to access sensitive data that resides in a database. Irrespective of the frequency that the database needs to be accessed, having long-lived credentials that could be purposely or accidentally leaked, can pose a huge risk to a company.
+
+If Boundary and Vault are added into this workflow, it mitigates this potential security risk. You can enable the Vault database secrets engine, with the relevant database plugin configured, to then be able to issue dynamic and short-lived database credentials to end-users. Organizations can set a limit on the amount of times these credentials are valid and once they have timed-out, access is automatically revoked.
+
+![Brokered Credentials](/img/brokered-creds-ui.png)
+
+When you connect to the database using Boundary, Boundary displays the newly generated credentials to the end user so that they can connect to the target.
+
+## Injected credentials
+
+Currently SSH certificate injection is the only type of injection possible with the integration between Boundary and Vault. 
+
+Vault is configured to act as the certificate authority (CA), to ensure that the users’ authenticity is determined by a certificate signed by a trusted CA. When key pairs are generated dynamically, they are signed by Vault to then be used to access the resources. There are two options for the key pair generation, depending on the type of Vault endpoint that you use within the Boundary credential library for SSH certification.
+
+`/issue` - Vault generates and signs the key pair for you.
+
+`/sign` - The Boundary controllers generate the key pair and then send it to Vault to sign.
+
+<Note>
+If Boundary uses Vault for secrets management, then one credential store equates to one Vault token. The number of Boundary targets that source credentials from the stores, the number of users connecting to the targets, the number of sessions that get created or how many credential libraries the credential store contains, all have no impact on the client count in Vault.
+</Note>
+
+When you connect to a target, which uses Vault for dynamic SSH certificates, a new certificate is generated for every target connection. As long as the target trusts the CA, then access is granted without you having any visibility into the credentials involved.
