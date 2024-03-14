@@ -3,6 +3,20 @@
 
 load _authorized_actions
 
+function create_tcp_target_with_alias() {
+  local sid=$1
+  local port=$2
+  local name=$3
+  local alias=$4
+  boundary targets create tcp \
+    -address localhost \
+    -default-port $port \
+    -name $name \
+    -scope-id $sid \
+    -with-alias-value $alias \
+    -format json
+}
+
 function read_target_by_alias() {
   boundary targets read $1 -format json
 }

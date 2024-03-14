@@ -103,8 +103,37 @@ export ALIAS_TGT_NAME='test-alias-target'
   [ "$status" -eq 0 ]
 }
 
-@test "boundary/target: default user can delete target" {
+@test "boundary/target: default user can delete target using alias" {
   run delete_target_by_alias $ALIAS_VALUE
+  run has_status_code "$output" "204"
+  [ "$status" -eq 0 ]
+}
+
+@test "boundary/alias: default user can delete the alias" {
+  local aid=$(alias_id_from_target_alias $ALIAS_VALUE)
+  run delete_alias $aid
+  run has_status_code "$output" "204"
+  [ "$status" -eq 0 ]
+}
+
+@test "boundary/target: default user can create target using alias" {
+  run create_tcp_target_with_alias $DEFAULT_P_ID 22 $ALIAS_TGT_NAME $ALIAS_VALUE
+  [ "$status" -eq 0 ]
+}
+
+@test "boundary/target: default user can read target using alias" {
+  run read_target_by_alias $ALIAS_VALUE
+  [ "$status" -eq 0 ]
+}
+
+@test "boundary/target: default user can delete target using  created at the same time alias" {
+  run delete_target_by_alias $ALIAS_VALUE
+  [ "$status" -eq 0 ]
+}
+
+@test "boundary/alias: default user can delete the created at the same time alias" {
+  local aid=$(alias_id_from_target_alias $ALIAS_VALUE)
+  run delete_alias $aid
   run has_status_code "$output" "204"
   [ "$status" -eq 0 ]
 }
