@@ -68,7 +68,7 @@ worker {
 `
 
 func TestServer_ReloadWorkerTags(t *testing.T) {
-	t.Parallel()
+	// t.Parallel() - This test fails intermittently so disabled for now to see if that helps
 	require := require.New(t)
 
 	rootWrapper, _ := wrapperWithKey(t)
