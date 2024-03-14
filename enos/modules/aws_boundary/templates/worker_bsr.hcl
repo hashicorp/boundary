@@ -21,6 +21,8 @@ worker {
     type   = ${type}
     region = ["${region}"]
   }
+
+  recording_storage_path = "${recording_storage_path}"
 }
 
 # must be same key as used on controller config

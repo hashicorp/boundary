@@ -28,6 +28,12 @@ variable "worker_instance_type" {
   default     = "t2.micro"
 }
 
+variable "worker_type_tags" {
+  description = "Tag to set on worker for use in worker filters"
+  type        = list(string)
+  default     = ["collocated", "prod", "webservers"]
+}
+
 variable "worker_ebs_iops" {
   description = "EBS IOPS for the root volume"
   type        = number
@@ -351,4 +357,10 @@ variable "vpc_tag_module" {
   description = "Name of the Module Tag tied to the VPC"
   type        = string
   default     = "aws_vpc"
+}
+
+variable "recording_storage_path" {
+  description = "Path on instance to store recordings"
+  type        = string
+  default     = ""
 }
