@@ -7,7 +7,7 @@ replace github.com/hashicorp/boundary/api => ./api
 replace github.com/hashicorp/boundary/sdk => ./sdk
 
 require (
-	github.com/fatih/color v1.15.0
+	github.com/fatih/color v1.16.0
 	github.com/fatih/structs v1.1.0
 	github.com/favadi/protoc-go-inject-tag v1.4.0
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
@@ -24,8 +24,8 @@ require (
 	github.com/hashicorp/eventlogger/filters/encrypt v0.1.8-0.20231025104552-802587e608f0
 	github.com/hashicorp/go-bexpr v0.1.13
 	github.com/hashicorp/go-cleanhttp v0.5.2
-	github.com/hashicorp/go-hclog v1.5.0
-	github.com/hashicorp/go-kms-wrapping/v2 v2.0.14
+	github.com/hashicorp/go-hclog v1.6.2
+	github.com/hashicorp/go-kms-wrapping/v2 v2.0.17-0.20240313190905-91d44aa8e360
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/go-retryablehttp v0.7.4
 	github.com/hashicorp/go-rootcerts v1.0.2
@@ -45,8 +45,8 @@ require (
 	github.com/hashicorp/hcl v1.0.0
 	github.com/hashicorp/vault/api v1.10.0
 	github.com/iancoleman/strcase v0.3.0
-	github.com/jackc/pgconn v1.14.1
-	github.com/jackc/pgx/v4 v4.18.1 // indirect
+	github.com/jackc/pgconn v1.14.3
+	github.com/jackc/pgx/v4 v4.18.3 // indirect
 	github.com/jefferai/keyring v1.1.7-0.20220316160357-58a74bb55891
 	github.com/kr/pretty v0.3.1
 	github.com/kr/text v0.2.0
@@ -64,28 +64,28 @@ require (
 	github.com/posener/complete v1.2.3
 	github.com/prometheus/client_golang v1.17.0
 	github.com/ryanuber/go-glob v1.0.0
-	github.com/stretchr/testify v1.8.4
+	github.com/stretchr/testify v1.9.0
 	github.com/zalando/go-keyring v0.2.3
 	go.uber.org/atomic v1.11.0
-	golang.org/x/crypto v0.18.0
+	golang.org/x/crypto v0.21.0
 	golang.org/x/sync v0.6.0
-	golang.org/x/sys v0.16.0
-	golang.org/x/term v0.16.0
+	golang.org/x/sys v0.18.0
+	golang.org/x/term v0.18.0
 	golang.org/x/tools v0.17.0
 	google.golang.org/genproto v0.0.0-20231030173426-d783a09b4405
 	google.golang.org/grpc v1.59.0
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.3.0
 	google.golang.org/protobuf v1.33.0
-	gorm.io/driver/postgres v1.5.4
-	gorm.io/gorm v1.25.5 // indirect
+	gorm.io/driver/postgres v1.5.7
+	gorm.io/gorm v1.25.7 // indirect
 	mvdan.cc/gofumpt v0.5.0
 	nhooyr.io/websocket v1.8.10
 )
 
-require github.com/hashicorp/go-dbw v0.1.1
+require github.com/hashicorp/go-dbw v0.1.3-0.20240312210008-7ed943176e5b
 
 require (
-	github.com/DATA-DOG/go-sqlmock v1.5.0
+	github.com/DATA-DOG/go-sqlmock v1.5.2
 	github.com/cenkalti/backoff/v4 v4.2.1
 	github.com/creack/pty v1.1.20
 	github.com/glebarez/sqlite v1.9.0
@@ -96,7 +96,7 @@ require (
 	github.com/hashicorp/go-rate v0.0.0-20231204194614-cc8d401f70ab
 	github.com/hashicorp/go-version v1.6.0
 	github.com/hashicorp/nodeenrollment v0.2.9
-	github.com/jackc/pgx/v5 v5.4.3
+	github.com/jackc/pgx/v5 v5.5.5
 	github.com/jimlambrt/gldap v0.1.9
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/miekg/dns v1.1.56
@@ -104,7 +104,7 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/sevlyar/go-daemon v0.1.6
 	golang.org/x/exp v0.0.0-20240119083558-1b970713d09a
-	golang.org/x/net v0.20.0
+	golang.org/x/net v0.21.0
 	google.golang.org/genproto/googleapis/api v0.0.0-20231030173426-d783a09b4405
 )
 
@@ -122,8 +122,9 @@ require (
 	github.com/docker/distribution v2.8.2+incompatible // indirect
 	github.com/frankban/quicktest v1.14.5 // indirect
 	github.com/glebarez/go-sqlite v1.21.2 // indirect
+	github.com/jackc/puddle/v2 v2.2.1 // indirect
 	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0 // indirect
-	gorm.io/driver/sqlite v1.5.4 // indirect
+	gorm.io/driver/sqlite v1.5.5 // indirect
 )
 
 require (
@@ -175,9 +176,9 @@ require (
 	github.com/jackc/chunkreader/v2 v2.0.1 // indirect
 	github.com/jackc/pgio v1.0.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
-	github.com/jackc/pgproto3/v2 v2.3.2 // indirect
-	github.com/jackc/pgservicefile v0.0.0-20221227161230-091c0ba34f0a // indirect
-	github.com/jackc/pgtype v1.14.0 // indirect
+	github.com/jackc/pgproto3/v2 v2.3.3 // indirect
+	github.com/jackc/pgservicefile v0.0.0-20231201235250-de7065d80cb9 // indirect
+	github.com/jackc/pgtype v1.14.2 // indirect
 	github.com/jefferai/go-libsecret v0.0.0-20210525195240-b53481abef97 // indirect
 	github.com/jefferai/isbadcipher v0.0.0-20190226160619-51d2077c035f // indirect
 	github.com/jinzhu/gorm v1.9.16 // indirect
@@ -210,7 +211,7 @@ require (
 	github.com/xeipuuv/gojsonpointer v0.0.0-20190905194746-02993c407bfb // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
 	github.com/xeipuuv/gojsonschema v1.2.0 // indirect
-	github.com/xo/dburl v0.16.0 // indirect
+	github.com/xo/dburl v0.21.1 // indirect
 	golang.org/x/mod v0.14.0 // indirect
 	golang.org/x/oauth2 v0.13.0 // indirect
 	golang.org/x/text v0.14.0
