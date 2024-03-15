@@ -18,7 +18,7 @@ require (
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.18.0
 	github.com/hashicorp/boundary/api v0.0.43
 	github.com/hashicorp/boundary/sdk v0.0.40
-	github.com/hashicorp/cap v0.4.0
+	github.com/hashicorp/cap v0.5.1-0.20240315182732-faa330bfb8df
 	github.com/hashicorp/dawdle v0.4.0
 	github.com/hashicorp/eventlogger v0.2.6-0.20231025104552-802587e608f0
 	github.com/hashicorp/eventlogger/filters/encrypt v0.1.8-0.20231025104552-802587e608f0
@@ -157,7 +157,7 @@ require (
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/dvsekhvalnov/jose2go v1.6.0 // indirect
 	github.com/go-asn1-ber/asn1-ber v1.5.5 // indirect
-	github.com/go-jose/go-jose/v3 v3.0.1 // indirect
+	github.com/go-jose/go-jose/v3 v3.0.3 // indirect
 	github.com/go-ldap/ldap/v3 v3.4.6 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/glog v1.1.2 // indirect
