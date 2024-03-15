@@ -23,6 +23,15 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * postgres citext dependency added to enable aliases to be globally unique
   in a case insensitive way.
 
+## 0.15.3
+
+### Bug Fixes
+
+* workers: Workers connecting over high latency connections, or to controllers
+  with high latency between the controller and the database, could time out and
+  throw errors that may not have been recoverable if it was during initial
+  registration ([PR](https://github.com/hashicorp/boundary/pull/4535))
+
 ## 0.15.1 (2024/02/28)
 
 ### Bug Fixes
