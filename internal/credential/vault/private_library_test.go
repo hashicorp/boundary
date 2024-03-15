@@ -1346,6 +1346,17 @@ func TestRepository_sshCertIssuingCredentialLibrary_retrieveCredential(t *testin
 			retOpts:    []credential.Option{credential.WithTemplateData(template.Data{Account: template.Account{Email: util.Pointer("rise-of-the-template@foobar.com")}})},
 		},
 		{
+			name:     "vault issue ec(256) cert with coalesce username",
+			username: `{{coalesce .Account.LoginName .Account.Name .Account.Email}}`,
+			expected: map[string]any{
+				"username":         "name-that-name",
+				"valid_principals": []string{"name-that-name"},
+			},
+			vaulthPath: "ssh/issue/boundary",
+			opts:       []Option{WithKeyType(KeyTypeEcdsa), WithKeyBits(256)},
+			retOpts:    []credential.Option{credential.WithTemplateData(template.Data{Account: template.Account{Name: util.Pointer("name-that-name"), LoginName: util.Pointer(""), Email: util.Pointer("rise-of-the-template@foobar.com")}})},
+		},
+		{
 			name:     "vault issue ec(384) cert with disallowed extension",
 			username: "username-10-because-789",
 			expected: map[string]any{

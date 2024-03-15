@@ -33,6 +33,7 @@ func New(ctx context.Context, raw string) (*Parsed, error) {
 		raw: raw,
 		funcMap: map[string]any{
 			"truncateFrom": truncateFrom,
+			"coalesce":     coalesce,
 		},
 	}
 

@@ -10,6 +10,15 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   performing a boundary search.
   ([PR](https://github.com/hashicorp/boundary/pull/4503))
 
+### New and Improved
+
+* templating: A new templating function `coalesce` can be used to match a
+  template against multiple possible values, returning the first non-empty
+  value. As an example, this can be used in a credential library to allow a
+  username value that might be comprised of a name or login name depending on
+  the auth method, e.g. `{{ coalesce .Account.Name .Account.LoginName}}`
+  ([PR](https://github.com/hashicorp/boundary/pull/4492)))
+
 ## 0.15.2 (2024/03/11)
 
 ### Bug Fixes
