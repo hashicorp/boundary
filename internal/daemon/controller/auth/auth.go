@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"hash"
 	"hash/fnv"
-	"log"
 	"net/http"
 	"slices"
 	"strings"
@@ -600,10 +599,8 @@ func (v verifier) performAuthCheck(ctx context.Context) (
 			return
 		}
 		userData.Account.Name = util.Pointer(acct.GetName())
-		log.Println("account name", *userData.Account.Name)
 		userData.Account.Email = util.Pointer(acct.GetEmail())
 		userData.Account.LoginName = util.Pointer(acct.GetLoginName())
-		log.Println("account login name", *userData.Account.LoginName)
 		userData.Account.Subject = util.Pointer(acct.GetSubject())
 	}
 
