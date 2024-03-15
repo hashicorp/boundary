@@ -265,6 +265,8 @@ func New(ctx context.Context, conf *Config) (*Worker, error) {
 
 		for _, enabledPlugin := range w.conf.Server.EnabledPlugins {
 			switch {
+			case enabledPlugin == base.EnabledPluginMinio && !w.conf.SkipPlugins:
+				fallthrough
 			case enabledPlugin == base.EnabledPluginAws && !w.conf.SkipPlugins:
 				pluginType := strings.ToLower(enabledPlugin.String())
 				client, cleanup, err := external_plugins.CreateStoragePlugin(

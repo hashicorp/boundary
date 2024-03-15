@@ -496,8 +496,10 @@ func (c *Command) Run(args []string) int {
 		}
 	}
 
-	c.EnabledPlugins = append(c.EnabledPlugins, base.EnabledPluginAws)
+	// append storage-enabled plugins
+	c.EnabledPlugins = append(c.EnabledPlugins, base.EnabledPluginAws, base.EnabledPluginMinio)
 	if c.Config.Controller != nil {
+		// append host-only plugins
 		c.EnabledPlugins = append(c.EnabledPlugins, base.EnabledPluginHostAzure)
 		if err := c.StartController(c.Context); err != nil {
 			c.UI.Error(err.Error())
