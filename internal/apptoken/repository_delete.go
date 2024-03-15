@@ -46,13 +46,15 @@ func (r *Repository) DeleteAppToken(ctx context.Context, publicId string, _ ...O
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to generate oplog metadata"))
 			}
 			rowsDeleted, err = w.Delete(ctx, cp, db.WithOplog(oplogWrapper, md))
-			if err != nil {
+
+			switch {
+			case err != nil:
 				return err
-			}
-			if rowsDeleted > 1 {
+			case rowsDeleted > 1:
 				return errors.New(ctx, errors.MultipleRecords, op, "more than 1 app token would have been deleted")
+			default:
+				return nil
 			}
-			return nil
 		},
 	)
 	if err != nil {
