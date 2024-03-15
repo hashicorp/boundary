@@ -220,6 +220,11 @@ func createDefaultGRPCDialOptions(res resolver.Builder, upstreamDialerFn func(co
 	  }
 	  `, defaultTimeout)
 
+	// minConnectTimeout replaces the unexported gRPC default value of 20
+	// seconds with the WithConnectParams option below; otherwise it sets the
+	// value to zero instead of unset, which causes it to be very small.
+	const minConnectTimeout = 20 * time.Second
+
 	dialOpts := []grpc.DialOption{
 		grpc.WithResolvers(res),
 		grpc.WithUnaryInterceptor(metric.InstrumentClusterClient()),
@@ -238,6 +243,7 @@ func createDefaultGRPCDialOptions(res resolver.Builder, upstreamDialerFn func(co
 				Jitter:     0.2,
 				MaxDelay:   3 * time.Second,
 			},
+			MinConnectTimeout: minConnectTimeout,
 		}),
 	}
 
