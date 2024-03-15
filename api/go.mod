@@ -21,7 +21,7 @@ require (
 	go.uber.org/atomic v1.11.0
 	golang.org/x/time v0.3.0
 	google.golang.org/grpc v1.59.0
-	google.golang.org/protobuf v1.31.0
+	google.golang.org/protobuf v1.33.0
 	nhooyr.io/websocket v1.8.10
 )
 
