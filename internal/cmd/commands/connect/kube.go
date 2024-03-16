@@ -69,7 +69,7 @@ func (f *kubeFlags) buildArgs(c *Command, port, ip, addr string) ([]string, erro
 	}
 	// Dynamically extract the port
 	extractedPort := extractPort(addr)
-	fmt.Printf("Dynamically allocated port: %s\n", extractedPort)
+	fmt.Printf("Dynamically Allocated Port: %s\n", extractedPort)
 
 	switch f.flagKubeStyle {
 	case "kubectl":
