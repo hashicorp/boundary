@@ -67,6 +67,10 @@ func (f *kubeFlags) buildArgs(c *Command, port, ip, addr string) ([]string, erro
 		}
 		host = u.Hostname()
 	}
+	// Dynamically extract the port
+	extractedPort := extractPort(addr)
+	fmt.Printf("Dynamically allocated port: %s\n", extractedPort)
+
 	switch f.flagKubeStyle {
 	case "kubectl":
 		if host != "" && f.flagKubeScheme == "https" {
@@ -76,4 +80,13 @@ func (f *kubeFlags) buildArgs(c *Command, port, ip, addr string) ([]string, erro
 		args = append(args, "--server", fmt.Sprintf("%s://%s", f.flagKubeScheme, addr))
 	}
 	return args, nil
+}
+
+// extractPort is a Helper function to extract port from kube addr
+func extractPort(addr string) string {
+	parts := strings.Split(addr, ":")
+	if len(parts) > 1 {
+		return parts[1]
+	}
+	return ""
 }
