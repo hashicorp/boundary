@@ -28,6 +28,9 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   with high latency between the controller and the database, could time out and
   throw errors that may not have been recoverable if it was during initial
   registration ([PR](https://github.com/hashicorp/boundary/pull/4535))
+* Resolved an issue introduced in 0.14 where, after successfully deleting an AWS S3
+  Storage Bucket with credential rotation enabled, Boundary could not delete the
+  associated IAM Access Key resource
 
 ### New and Improved
 
