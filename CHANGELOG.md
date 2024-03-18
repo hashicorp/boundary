@@ -11,17 +11,11 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   the alias value. Crate an alias with 
   `boundary aliases create target -value example.boundary -destination-id ttcp_1234567890`
   and connect to a target using an alias using `boundary connect example.boundary`
-* templating: A new templating function `coalesce` can be used to match a
-  template against multiple possible values, returning the first non-empty
-  value. As an example, this can be used in a credential library to allow a
-  username value that might be comprised of a name or login name depending on
-  the auth method, e.g. `{{ coalesce .Account.Name .Account.LoginName}}`
-  ([PR](https://github.com/hashicorp/boundary/pull/4492)))
 
 ### Added dependency
 
-* postgres citext dependency added to enable aliases to be globally unique
-  in a case insensitive way.
+* postgres `citext` dependency added to enable aliases to be globally unique in
+  a case insensitive way.
 
 ## 0.15.3
 
@@ -34,6 +28,15 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   with high latency between the controller and the database, could time out and
   throw errors that may not have been recoverable if it was during initial
   registration ([PR](https://github.com/hashicorp/boundary/pull/4535))
+
+### New and Improved
+
+* templating: A new templating function `coalesce` can be used to match a
+  template against multiple possible values, returning the first non-empty
+  value. As an example, this can be used in a credential library to allow a
+  username value that might be comprised of a name or login name depending on
+  the auth method, e.g. `{{ coalesce .Account.Name .Account.LoginName}}`
+  ([PR](https://github.com/hashicorp/boundary/pull/4492)))
 
 ## 0.15.2 (2024/03/11)
 
