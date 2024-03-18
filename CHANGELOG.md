@@ -27,10 +27,22 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### Bug Fixes
 
+* Fix a nil pointer error in the client cache daemon when a refresh was forced
+  performing a boundary search.
+  ([PR](https://github.com/hashicorp/boundary/pull/4503))
 * workers: Workers connecting over high latency connections, or to controllers
   with high latency between the controller and the database, could time out and
   throw errors that may not have been recoverable if it was during initial
   registration ([PR](https://github.com/hashicorp/boundary/pull/4535))
+
+## 0.15.2 (2024/03/11)
+
+### Bug Fixes
+
+* Go version bump 1.21.8 to address (CVE-2024-24783, CVE-2023-45290,
+  CVE-2023-45289, CVE-2024-24785, CVE-2024-24784)
+
+* Protobuf Go update to address [CVE-2024-24786](https://github.com/advisories/GHSA-8r3f-844c-mc37)
 
 ## 0.15.1 (2024/02/28)
 
