@@ -9,6 +9,9 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * Fix a nil pointer error in the client cache daemon when a refresh was forced
   performing a boundary search.
   ([PR](https://github.com/hashicorp/boundary/pull/4503))
+* Resolved an issue introduced in 0.14 where, after successfully deleting an AWS S3
+  Storage Bucket with credential rotation enabled, Boundary could not delete the
+  associated IAM Access Key resource
 
 ### New and Improved
 
