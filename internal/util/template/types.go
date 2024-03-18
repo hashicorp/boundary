@@ -19,10 +19,11 @@ type Data struct {
 // request to be from a different auth method, in which case it may not match
 // what's in the Account struct.
 type User struct {
-	Id       *string
-	Name     *string
-	FullName *string
-	Email    *string
+	Id        *string
+	Name      *string
+	LoginName *string
+	FullName  *string
+	Email     *string
 }
 
 // Account contains account information. Not all fields will always be
