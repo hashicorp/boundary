@@ -133,6 +133,27 @@ description: |-
     </td>
   </tr>
 
+ <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    0.14.0+
+    <br /><br />
+    (Fixed in 0.15.3)
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Cannot delete IAM access key resource
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    When you delete an AWS S3 storage bucket that had credential rotation enabled, Boundary cannot delete the associated IAM access key resource.
+    <br /><br />
+    This issue is fixed in version 0.15.3.
+     <br /><br />
+    <a href="/boundary/tutorials/self-managed-deployment/upgrade-version">Upgrade to the latest version of Boundary</a>
+    <br /><br />
+    Learn more:&nbsp;
+    <a href="/boundary/docs/configuration/session-recording/create-storage-bucket">Create a storage bucket</a>
+    </td>
+  </tr>
+
 <tr>
     <td style={{verticalAlign: 'middle'}}>
     0.15.0
@@ -226,6 +247,24 @@ description: |-
     CVE-2023-45289: <a href="https://www.cve.org/CVERecord?id=CVE-2023-45289">Incorrect forwarding of sensitive headers and cookies on HTTP redirect in net/http</a>
     <br /><br />
     CVE-2023-45290: <a href="https://www.cve.org/CVERecord?id=CVE-2023-45290">Memory exhaustion in multipart form parsing in net/textproto and net/http</a>
+    <br /><br />
+    <a href="/boundary/tutorials/self-managed-deployment/upgrade-version">Upgrade to the latest version of Boundary</a>
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    0.15.0
+    <br /><br />
+    (Fixed in 0.15.3)
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Boundary Desktop does not update
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    If you used Homebrew to install Boundary Desktop on macOS, the Desktop client displays a prompt to update automatically, but it never actually updates.
+    <br /><br />
+    This issue is fixed in version 0.15.3.
     <br /><br />
     <a href="/boundary/tutorials/self-managed-deployment/upgrade-version">Upgrade to the latest version of Boundary</a>
     </td>
