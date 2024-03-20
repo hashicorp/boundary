@@ -53,8 +53,22 @@ Vault is configured to act as the certificate authority (CA), to ensure that the
 
 `/sign` - The Boundary controllers generate the key pair and then send it to Vault to sign.
 
+When you connect to a target, which uses Vault for dynamic SSH certificates, a new certificate is generated for every target connection. As long as the target trusts the CA, then access is granted without you having any visibility into the credentials involved.
+
+# Vault clients
+
+## Boundary and Vault for secrets management
+
+Within Boundary, you can configure one or more credential stores. This could be a dedicated credential store per Boundary project, and/or multiple credential stores within the same Boundary project. The Credential store can either be configured as Static, which is Boundary's native store, or by integrating with HashiCorp Vault. The purpose of the credential store that is integrated with Vault is to fetch secrets from Vault on behalf of Boundary users.
+
+For organizations, there may be valid reasons for multiple credential stores within Boundary. As credential stores can only be created at the project level there may be different projects within an organization scope that have different requirements from their credential stores. An example may be within an organization scope you have two project scopes; Database and Compute. These two projects need to be isolated and therefore would have a dedicated credential store per project.
+
+With the integration with Vault, Boundary has to be assigned a periodic, renewable, orphan token from Vault. Each credential store that is created within Boundary that leverages Vault equates to one Vault token being created. The number of Boundary targets that source credentials from the stores, the number of users connecting to the targets, the number of sessions that get created, or how many credential libraries the credential store contains, all have no impact on the client count in Vault.
+
 <Note>
-If Boundary uses Vault for secrets management, then one credential store equates to one Vault token. The number of Boundary targets that source credentials from the stores, the number of users connecting to the targets, the number of sessions that get created or how many credential libraries the credential store contains, all have no impact on the client count in Vault.
+If there is more than one credential library, which is part of the same credential store, there is the potential for that single Vault token to have access to all of the Vault paths defined in the credential libraries. Operating the model of least-privileged is recommended.
 </Note>
 
-When you connect to a target, which uses Vault for dynamic SSH certificates, a new certificate is generated for every target connection. As long as the target trusts the CA, then access is granted without you having any visibility into the credentials involved.
+## Boundary and Vault as an IdP
+
+Boundary supports OIDC, LDAP and username/password as authentication methods. Boundary can leverage Vault as an OIDC bridge provider. This allows Vault to delegate authentication to an external OIDC provider, such as Google, Okta, Entra as some examples, which then map the authenticated user's claims to Vault policies and identities. This allows users to authenticate to Boundary with any of Vault's supported authentication methods, even ones that Boundary does not natively support. When Boundary leverages Vault as an OIDC provider, each user leveraging the authentication method then counts as a Vault client.
