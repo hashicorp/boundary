@@ -173,7 +173,7 @@ user, target, host, worker, and credentials used to access the target. The inten
 relevant to the recorded session so that the BSR provides a complete snapshot of a session even in the absence of the Boundary
 control plane.
 - `session-recording.meta` is a plaintext file that contains metadata about the session, including the session id, protocol,
-and connection id.
+and a connection ids. For each connection id listed, there should be a corresponding connection directory in the session directory.
 - `session-recording-summary.json` is a JSON file that contains a summary of the session recording, including the session id, connection count,
 start time, end time, and any errors encountered during recording of the session.
 
@@ -276,7 +276,7 @@ connection: cr_3bB78W53Y9.connection
 - `SHA256SUM.sig`  is a plaintext file that contains rows of file names paired with a checksum for file contents.
 - `SHA256SUM.sig` is a signature of the plaintext `SHA256SUM` file created with the private key.
 - `connection-recording.meta` is a plaintext file that contains metadata about the connection, including the connection id,
-requests seen, channels opened under the connection, and any errors seen.
+requests seen, channel ids, and any errors seen. For each channel id listed, there should be a corresponding channel directory in the connection directory.
 - `connection-recording-summary.json` is a JSON file that contains a summary of the connection, including the connection id,
 start time, end time, bytes up, bytes down, and any errors encountered during recording the connection.
 - `requests-inbound.data` is a binary file containing all inbound SSH request messages transmitted for the connection.
