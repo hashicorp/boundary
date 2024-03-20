@@ -56,4 +56,8 @@ Follow these steps to validate a session recording:
 1. Unwrap `wrappedBsrKey` using the external KMS you configured to retrieve the BSR key.
 2. Unwrap `wrappedPrivKey` using the external KMS you configured to retrieve the private key.
 3. Use the BSR key or the private key to verify the `bsrKey.pub` key using `go-kms-wrapping` HmacSha256(...).
-4. When the key is verified, use the `bsrKey.pub` key to verify the BSR SHA256SUM file using `go-kms-wrapping` ed25519.Sign(...).
+4. When the key is verified, use the `bsrKey.pub` key to verify the BSR SHA256SUM.sig file using `go-kms-wrapping` ed25519.Sign(...).
+5. After verifying the SHA256SUM.sig file, use the `sha256` commandline tool to verify BSR checksums using `sha256sum -c SHA256SUM`.
+6. Examine the *.meta files in the directory. For session-recording.meta, every connection logged in the meta file should
+correspond to a connection folder in the directory. For a connection-recording.meta, every channel logged in the meta file should
+correspond to a channel folder in the directory.
