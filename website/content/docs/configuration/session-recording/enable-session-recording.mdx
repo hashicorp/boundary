@@ -84,6 +84,26 @@ The following setting is required for session recording:
 1. Select **Save**.
 
 </Tab>
+
+
+<Tab heading="Terraform">
+
+```hcl
+resource "boundary_target" "address_foo" {
+  name         = "address_foo"
+  description  = "Foo target with an address"
+  type         = "tcp"
+  default_port = "22"
+  scope_id     = boundary_scope.project.id
+  address      = "127.0.0.1"
+
+  # Add the next two lines to an existing target to enable session recording, modify the value of storage_bucket_id as appropriate
+  enable_session_recording = true
+  storage_bucket_id        = boundary_storage_bucket.aws_example.id
+}
+```
+
+</Tab>
 </Tabs>
 
 The target is now enabled for session recording.
