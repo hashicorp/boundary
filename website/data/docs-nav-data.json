@@ -122,6 +122,10 @@
       {
         "title": "Configure high availability",
         "path": "install-boundary/high-availability"
+      },
+      {
+        "title": "Using Terraform",
+        "path": "install-boundary/using-terraform"
       }
     ]
   },
