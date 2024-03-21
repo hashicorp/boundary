@@ -140,7 +140,8 @@ type ListAuthMethodsRequest struct {
 	Filter string `protobuf:"bytes,30,opt,name=filter,proto3" json:"filter,omitempty" class:"public"` // @gotags: `class:"public"`
 	// An opaque token used to continue an existing iteration or
 	// request updated items. If not specified, pagination
-	// will start from the beginning.
+	// will start from the beginning. To learn more about list pagination
+	// in Boundary, refer to [list pagination](https://developer.hashicorp.com/boundary/docs/api-clients/api/pagination).
 	ListToken string `protobuf:"bytes,40,opt,name=list_token,proto3" json:"list_token,omitempty" class:"public"` // @gotags: `class:"public"`
 	// The maximum size of a page in this iteration.
 	// If unset, the default page size configured will be used.
