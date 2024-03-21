@@ -109,21 +109,11 @@
               "$ref": "#/definitions/controller.api.services.v1.ListAccountsResponse"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -171,21 +161,11 @@
               "$ref": "#/definitions/controller.api.resources.accounts.v1.Account"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -214,21 +194,11 @@
               "$ref": "#/definitions/controller.api.resources.accounts.v1.Account"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -254,21 +224,11 @@
               "$ref": "#/definitions/controller.api.services.v1.DeleteAccountResponse"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -294,21 +254,11 @@
               "$ref": "#/definitions/controller.api.resources.accounts.v1.Account"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -344,21 +294,11 @@
               "$ref": "#/definitions/controller.api.resources.accounts.v1.Account"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -394,21 +334,11 @@
               "$ref": "#/definitions/controller.api.resources.accounts.v1.Account"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -444,21 +374,11 @@
               "$ref": "#/definitions/controller.api.services.v1.ListAliasesResponse"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -513,21 +433,11 @@
               "$ref": "#/definitions/controller.api.resources.aliases.v1.Alias"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -556,21 +466,11 @@
               "$ref": "#/definitions/controller.api.resources.aliases.v1.Alias"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -596,21 +496,11 @@
               "$ref": "#/definitions/controller.api.services.v1.DeleteAliasResponse"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -636,21 +526,11 @@
               "$ref": "#/definitions/controller.api.resources.aliases.v1.Alias"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -686,21 +566,11 @@
               "$ref": "#/definitions/controller.api.services.v1.ListAuthMethodsResponse"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -755,21 +625,11 @@
               "$ref": "#/definitions/controller.api.resources.authmethods.v1.AuthMethod"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -798,21 +658,11 @@
               "$ref": "#/definitions/controller.api.services.v1.AuthenticateResponse"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -848,21 +698,11 @@
               "$ref": "#/definitions/controller.api.resources.authmethods.v1.AuthMethod"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -888,21 +728,11 @@
               "$ref": "#/definitions/controller.api.services.v1.DeleteAuthMethodResponse"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -928,21 +758,11 @@
               "$ref": "#/definitions/controller.api.resources.authmethods.v1.AuthMethod"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -978,21 +798,11 @@
               "$ref": "#/definitions/controller.api.resources.authmethods.v1.AuthMethod"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -1028,21 +838,11 @@
               "$ref": "#/definitions/controller.api.services.v1.ListAuthTokensResponse"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -1099,21 +899,11 @@
               "$ref": "#/definitions/controller.api.resources.authtokens.v1.AuthToken"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -1139,21 +929,11 @@
               "$ref": "#/definitions/controller.api.services.v1.DeleteAuthTokenResponse"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -1181,21 +961,11 @@
               "$ref": "#/definitions/controller.api.services.v1.MonthlyActiveUsersResponse"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -1230,21 +1000,11 @@
               "$ref": "#/definitions/controller.api.services.v1.ListCredentialLibrariesResponse"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -1292,21 +1052,11 @@
               "$ref": "#/definitions/controller.api.resources.credentiallibraries.v1.CredentialLibrary"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -1335,21 +1085,11 @@
               "$ref": "#/definitions/controller.api.resources.credentiallibraries.v1.CredentialLibrary"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -1375,21 +1115,11 @@
               "$ref": "#/definitions/controller.api.services.v1.DeleteCredentialLibraryResponse"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -1415,21 +1145,11 @@
               "$ref": "#/definitions/controller.api.resources.credentiallibraries.v1.CredentialLibrary"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -1465,21 +1185,11 @@
               "$ref": "#/definitions/controller.api.services.v1.ListCredentialStoresResponse"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -1534,21 +1244,11 @@
               "$ref": "#/definitions/controller.api.resources.credentialstores.v1.CredentialStore"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -1577,21 +1277,11 @@
               "$ref": "#/definitions/controller.api.resources.credentialstores.v1.CredentialStore"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -1617,21 +1307,11 @@
               "$ref": "#/definitions/controller.api.services.v1.DeleteCredentialStoreResponse"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -1657,21 +1337,11 @@
               "$ref": "#/definitions/controller.api.resources.credentialstores.v1.CredentialStore"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -1707,21 +1377,11 @@
               "$ref": "#/definitions/controller.api.services.v1.ListCredentialsResponse"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -1769,21 +1429,11 @@
               "$ref": "#/definitions/controller.api.resources.credentials.v1.Credential"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -1812,21 +1462,11 @@
               "$ref": "#/definitions/controller.api.resources.credentials.v1.Credential"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -1852,21 +1492,11 @@
               "$ref": "#/definitions/controller.api.services.v1.DeleteCredentialResponse"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -1892,21 +1522,11 @@
               "$ref": "#/definitions/controller.api.resources.credentials.v1.Credential"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -1942,21 +1562,11 @@
               "$ref": "#/definitions/controller.api.services.v1.ListGroupsResponse"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -2011,21 +1621,11 @@
               "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -2054,21 +1654,11 @@
               "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -2094,21 +1684,11 @@
               "$ref": "#/definitions/controller.api.services.v1.DeleteGroupResponse"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -2134,21 +1714,11 @@
               "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -2184,21 +1754,11 @@
               "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -2234,21 +1794,11 @@
               "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -2284,21 +1834,11 @@
               "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -2334,21 +1874,11 @@
               "$ref": "#/definitions/controller.api.services.v1.ListHostCatalogsResponse"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -2403,21 +1933,11 @@
               "$ref": "#/definitions/controller.api.resources.hostcatalogs.v1.HostCatalog"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -2453,21 +1973,11 @@
               "$ref": "#/definitions/controller.api.resources.hostcatalogs.v1.HostCatalog"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -2493,21 +2003,11 @@
               "$ref": "#/definitions/controller.api.services.v1.DeleteHostCatalogResponse"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -2533,21 +2033,11 @@
               "$ref": "#/definitions/controller.api.resources.hostcatalogs.v1.HostCatalog"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -2583,21 +2073,11 @@
               "$ref": "#/definitions/controller.api.services.v1.ListHostSetsResponse"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -2645,21 +2125,11 @@
               "$ref": "#/definitions/controller.api.resources.hostsets.v1.HostSet"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -2688,21 +2158,11 @@
               "$ref": "#/definitions/controller.api.resources.hostsets.v1.HostSet"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -2728,21 +2188,11 @@
               "$ref": "#/definitions/controller.api.services.v1.DeleteHostSetResponse"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -2768,21 +2218,11 @@
               "$ref": "#/definitions/controller.api.resources.hostsets.v1.HostSet"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -2818,21 +2258,11 @@
               "$ref": "#/definitions/controller.api.resources.hostsets.v1.HostSet"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -2868,21 +2298,11 @@
               "$ref": "#/definitions/controller.api.resources.hostsets.v1.HostSet"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -2918,21 +2338,11 @@
               "$ref": "#/definitions/controller.api.resources.hostsets.v1.HostSet"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -2968,21 +2378,11 @@
               "$ref": "#/definitions/controller.api.services.v1.ListHostsResponse"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -3030,21 +2430,11 @@
               "$ref": "#/definitions/controller.api.resources.hosts.v1.Host"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -3073,21 +2463,11 @@
               "$ref": "#/definitions/controller.api.resources.hosts.v1.Host"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -3113,21 +2493,11 @@
               "$ref": "#/definitions/controller.api.services.v1.DeleteHostResponse"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -3153,21 +2523,11 @@
               "$ref": "#/definitions/controller.api.resources.hosts.v1.Host"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -3203,21 +2563,11 @@
               "$ref": "#/definitions/controller.api.services.v1.ListManagedGroupsResponse"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -3265,21 +2615,11 @@
               "$ref": "#/definitions/controller.api.resources.managedgroups.v1.ManagedGroup"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -3308,21 +2648,11 @@
               "$ref": "#/definitions/controller.api.resources.managedgroups.v1.ManagedGroup"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -3348,21 +2678,11 @@
               "$ref": "#/definitions/controller.api.services.v1.DeleteManagedGroupResponse"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -3388,21 +2708,11 @@
               "$ref": "#/definitions/controller.api.resources.managedgroups.v1.ManagedGroup"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -3438,21 +2748,11 @@
               "$ref": "#/definitions/controller.api.services.v1.ListPoliciesResponse"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -3507,21 +2807,11 @@
               "$ref": "#/definitions/controller.api.resources.policies.v1.Policy"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -3550,21 +2840,11 @@
               "$ref": "#/definitions/controller.api.resources.policies.v1.Policy"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -3590,21 +2870,11 @@
               "$ref": "#/definitions/controller.api.services.v1.DeletePolicyResponse"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -3630,21 +2900,11 @@
               "$ref": "#/definitions/controller.api.resources.policies.v1.Policy"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -3680,21 +2940,11 @@
               "$ref": "#/definitions/controller.api.services.v1.ListRolesResponse"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -3749,21 +2999,11 @@
               "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -3792,21 +3032,11 @@
               "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -3832,21 +3062,11 @@
               "$ref": "#/definitions/controller.api.services.v1.DeleteRoleResponse"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -3872,21 +3092,11 @@
               "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -3922,21 +3132,11 @@
               "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -3972,21 +3172,11 @@
               "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -4022,21 +3212,11 @@
               "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -4072,21 +3252,11 @@
               "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -4122,21 +3292,11 @@
               "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -4172,21 +3332,11 @@
               "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -4222,21 +3372,11 @@
               "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -4272,21 +3412,11 @@
               "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -4322,21 +3452,11 @@
               "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -4372,21 +3492,11 @@
               "$ref": "#/definitions/controller.api.services.v1.ListScopesResponse"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -4441,21 +3551,11 @@
               "$ref": "#/definitions/controller.api.resources.scopes.v1.Scope"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -4498,21 +3598,11 @@
               "$ref": "#/definitions/controller.api.resources.scopes.v1.Scope"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -4538,21 +3628,11 @@
               "$ref": "#/definitions/controller.api.services.v1.DeleteScopeResponse"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -4578,21 +3658,11 @@
               "$ref": "#/definitions/controller.api.resources.scopes.v1.Scope"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -4628,21 +3698,11 @@
               "$ref": "#/definitions/controller.api.resources.scopes.v1.Scope"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -4678,21 +3738,11 @@
               "$ref": "#/definitions/controller.api.resources.scopes.v1.Scope"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -4728,21 +3778,11 @@
               "$ref": "#/definitions/controller.api.services.v1.ListKeysResponse"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -4770,21 +3810,11 @@
               "$ref": "#/definitions/controller.api.services.v1.ListKeyVersionDestructionJobsResponse"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -4812,21 +3842,11 @@
               "$ref": "#/definitions/controller.api.services.v1.DestroyKeyVersionResponse"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -4855,21 +3875,11 @@
               "$ref": "#/definitions/controller.api.services.v1.RotateKeysResponse"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -4898,21 +3908,11 @@
               "$ref": "#/definitions/controller.api.services.v1.ListSessionRecordingsResponse"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -4962,21 +3962,11 @@
               "$ref": "#/definitions/controller.api.resources.sessionrecordings.v1.SessionRecording"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -5002,21 +3992,11 @@
               "$ref": "#/definitions/controller.api.services.v1.DeleteSessionRecordingResponse"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -5047,21 +4027,11 @@
               "title": "Free form byte stream"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -5096,21 +4066,11 @@
               "$ref": "#/definitions/controller.api.resources.sessionrecordings.v1.SessionRecording"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -5138,21 +4098,11 @@
               "$ref": "#/definitions/controller.api.services.v1.ListSessionsResponse"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -5216,21 +4166,11 @@
               "$ref": "#/definitions/controller.api.resources.sessions.v1.Session"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -5258,21 +4198,11 @@
               "$ref": "#/definitions/controller.api.resources.sessions.v1.Session"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -5308,21 +4238,11 @@
               "$ref": "#/definitions/controller.api.services.v1.ListStorageBucketsResponse"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -5377,21 +4297,11 @@
               "$ref": "#/definitions/controller.api.resources.storagebuckets.v1.StorageBucket"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -5427,21 +4337,11 @@
               "$ref": "#/definitions/controller.api.resources.storagebuckets.v1.StorageBucket"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -5467,21 +4367,11 @@
               "$ref": "#/definitions/controller.api.services.v1.DeleteStorageBucketResponse"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -5507,21 +4397,11 @@
               "$ref": "#/definitions/controller.api.resources.storagebuckets.v1.StorageBucket"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -5557,21 +4437,11 @@
               "$ref": "#/definitions/controller.api.services.v1.ListTargetsResponse"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -5626,21 +4496,11 @@
               "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -5669,21 +4529,11 @@
               "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -5709,21 +4559,11 @@
               "$ref": "#/definitions/controller.api.services.v1.DeleteTargetResponse"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -5749,21 +4589,11 @@
               "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -5799,21 +4629,11 @@
               "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -5849,21 +4669,11 @@
               "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -5899,21 +4709,11 @@
               "$ref": "#/definitions/controller.api.resources.targets.v1.SessionAuthorization"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -5950,21 +4750,11 @@
               "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -6000,21 +4790,11 @@
               "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -6050,21 +4830,11 @@
               "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -6100,21 +4870,11 @@
               "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -6150,21 +4910,11 @@
               "$ref": "#/definitions/controller.api.services.v1.ListUsersResponse"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -6219,21 +4969,11 @@
               "$ref": "#/definitions/controller.api.resources.users.v1.User"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -6262,21 +5002,11 @@
               "$ref": "#/definitions/controller.api.resources.users.v1.User"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -6302,21 +5032,11 @@
               "$ref": "#/definitions/controller.api.services.v1.DeleteUserResponse"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -6342,21 +5062,11 @@
               "$ref": "#/definitions/controller.api.resources.users.v1.User"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -6392,21 +5102,11 @@
               "$ref": "#/definitions/controller.api.resources.users.v1.User"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -6442,21 +5142,11 @@
               "$ref": "#/definitions/controller.api.resources.users.v1.User"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -6492,21 +5182,11 @@
               "$ref": "#/definitions/controller.api.resources.users.v1.User"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -6542,21 +5222,11 @@
               "$ref": "#/definitions/controller.api.services.v1.ListWorkersResponse"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -6598,21 +5268,11 @@
               "$ref": "#/definitions/controller.api.resources.workers.v1.Worker"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -6638,21 +5298,11 @@
               "$ref": "#/definitions/controller.api.services.v1.DeleteWorkerResponse"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -6678,21 +5328,11 @@
               "$ref": "#/definitions/controller.api.resources.workers.v1.Worker"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -6728,21 +5368,11 @@
               "$ref": "#/definitions/controller.api.resources.workers.v1.Worker"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -6778,21 +5408,11 @@
               "$ref": "#/definitions/controller.api.resources.workers.v1.Worker"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -6828,21 +5448,11 @@
               "$ref": "#/definitions/controller.api.resources.workers.v1.Worker"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -6878,21 +5488,11 @@
               "$ref": "#/definitions/controller.api.resources.workers.v1.Worker"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -6921,21 +5521,11 @@
               "$ref": "#/definitions/controller.api.resources.workers.v1.Worker"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -6964,21 +5554,11 @@
               "$ref": "#/definitions/controller.api.resources.workers.v1.CertificateAuthority"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -7006,21 +5586,11 @@
               "$ref": "#/definitions/controller.api.resources.workers.v1.CertificateAuthority"
             }
           },
-          "401": {
-            "description": "Returned when the request contained invalid data.",
-            "schema": {}
-          },
-          "403": {
-            "description": "Returned when the user does not have permission to access the resource.",
-            "schema": {}
-          },
-          "404": {
-            "description": "Returned when the resource does not exist.",
-            "schema": {}
-          },
-          "500": {
-            "description": "Server error",
-            "schema": {}
+          "default": {
+            "description": "Returned when there was an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -12294,6 +10864,77 @@
           "title": ""
         }
       }
+    },
+    "controller.api.v1.Error": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "description": "The kind of error this is."
+        },
+        "op": {
+          "type": "string",
+          "description": "An string indicating what operation was being run when the error was returned."
+        },
+        "message": {
+          "type": "string",
+          "description": "A human-readable explanation specific to this occurrence of the error."
+        },
+        "details": {
+          "$ref": "#/definitions/controller.api.v1.ErrorDetails",
+          "description": "Additional metadata regarding the error. Depending on the error, different fields will be populated."
+        }
+      },
+      "description": "Error is returned by the JSON API when an error occurs."
+    },
+    "controller.api.v1.ErrorDetails": {
+      "type": "object",
+      "properties": {
+        "request_fields": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/controller.api.v1.FieldError"
+          },
+          "description": "Request-field-specific error details."
+        },
+        "wrapped_errors": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/controller.api.v1.WrappedError"
+          },
+          "description": "The errors that were wrapped in the backend for this returned error."
+        }
+      },
+      "description": "Additional details regarding a specific error."
+    },
+    "controller.api.v1.FieldError": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the field."
+        },
+        "description": {
+          "type": "string",
+          "description": "The description of the error."
+        }
+      },
+      "description": "FieldErrors contains error information on a per field basis."
+    },
+    "controller.api.v1.WrappedError": {
+      "type": "object",
+      "properties": {
+        "op": {
+          "type": "string",
+          "description": "An string indicating what operation was being run when the wrapped error was created."
+        },
+        "message": {
+          "type": "string"
+        }
+      },
+      "description": "Error information relevant to an error that was wrapped by the backend."
     },
     "google.api.HttpBody": {
       "type": "object",
