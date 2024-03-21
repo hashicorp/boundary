@@ -562,7 +562,7 @@ This pattern is a simple ssh connection using an injected username and password.
 ```hcl
 resource "boundary_target" "ssh_foo" {
   name         = "ssh_foo"
-  description  = "Ssh target"
+  description  = "SSH target"
   scope_id     = boundary_scope.project.id
 
   # How the target connects
@@ -590,7 +590,7 @@ Here is the same pattern but using brokered credentials.
 ```hcl
 resource "boundary_target" "ssh_foo" {
   name         = "ssh_foo"
-  description  = "Ssh target"
+  description  = "SSH target"
   scope_id     = boundary_scope.project.id
 
   # How the target connects
@@ -616,9 +616,9 @@ resource "boundary_target" "ssh_foo" {
 
 To create a target that connects to Windows servers using RDP, the pattern is very similar:
 ```hcl
-resource "boundary_target" "ssh_foo" {
-  name         = "ssh_foo"
-  description  = "Ssh target"
+resource "boundary_target" "rdp_foo" {
+  name         = "rdp_foo"
+  description  = "RDP target"
   scope_id     = boundary_scope.project.id
 
   # How the target connects.
