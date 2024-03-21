@@ -122,15 +122,13 @@ message Account {
   // Indicates IDs of the managed groups that currently contain this account
   repeated string managed_group_ids = 110 [
     json_name = "managed_group_ids",
-    (google.api.field_behavior) = OUTPUT_ONLY,
-    (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "Indicates IDs of the managed groups that currently contain this account"}
+    (google.api.field_behavior) = OUTPUT_ONLY
   ]; // @gotags: `class:"public" eventstream:"observation"`
 
   // The available actions on this resource for this user.
   repeated string authorized_actions = 300 [
     json_name = "authorized_actions",
-    (google.api.field_behavior) = OUTPUT_ONLY,
-    (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The available actions on this resource for this user."}
+    (google.api.field_behavior) = OUTPUT_ONLY
   ]; // @gotags: `class:"public"`
 }
 
