@@ -9,13 +9,14 @@ description: |-
 HashiCorp recommends using Terraform to deploy and maintain your Boundary environment.  
 This document outlines MVP (Minimum Viable Product) patterns for the deployment and maintenance of Boundary using Terraform.  Patterns shown 
 include:
-- [Basic Terraform Provider Configuration](docs/install-boundary/using-terraform#basic-terraform-provider-configuration)
-- [Scopes](/docs/install-boundary/using-terraform#scopes)
-- [Users and auth methods](/docs/install-boundary/using-terraform#users-and-auth-methods)
-- [Groups and Role-Based-Access-Control (RBAC)](/docs/install-boundary/using-terraform#groups-and-rbac)
-- [Hosts and host management](docs/install-boundary/using-terraform#hosts-and-host-management)
-- [Credential Stores](docs/install-boundary/using-terraform#credential-stores)
-- [Targets](/docs/install-boundary/using-terraform#targets)
+- [Basic Terraform Provider Configuration](docs/install-boundary/terraform-patterns#basic-terraform-provider-configuration)
+- [Scopes](/docs/install-boundary/terraform-patterns#scopes)
+- [Users and auth methods](/docs/install-boundary/terraform-patterns#users-and-auth-methods)
+- [Groups and Role-Based-Access-Control (RBAC)](/docs/install-boundary/terraform-patterns#groups-and-rbac)
+- [Hosts and host management](docs/install-boundary/terraform-patterns#hosts-and-host-management)
+- [Credential Stores](docs/install-boundary/terraform-patterns#credential-stores)
+- [Session Recording](/docs/install-boundary/terraform-patterns#session-recording)
+- [Targets](/docs/install-boundary/terraform-patterns#targets)
 
 ## Assumptions
 - Familiarity with [Terraform](https://developer.hashicorp.com/terraform/docs)
@@ -498,6 +499,61 @@ Please refer to the Terraform provider documentation for more information.
 
     - [Vault](/docs/resources/credential_store_vault)
 
+## Session Recording
+[Session recording](/docs/concepts/domain-model/session-recordings.mdx) requires that you create a storage policy for your current scope and then 
+allocate an AWS S3 bucket to store the recordings.  We will not demonstrate creating the 
+actual S3 bucket or the associated IAM policies. See [this document](/docs/configuration/session-recording/create-storage-bucket.mdx) for information on how to configure AWS.
+
+This pattern demonstrates creating a Boundary storage policy for a project scope.
+
+```hcl
+# First we create the storage policy.  Note that this policy is effective for the scope that it 
+# is attached to. 
+resource "boundary_policy_storage" "example" {
+  
+  # This is the scope we created above.  The policy will apply to all recordings in this scope.
+  scope_id = boundary_scope.project.id
+
+  name = "soc2-policy"
+  description = "SOC 2 compliant storage policy for session recordings"
+
+  # These are your retention parameters.  
+  retain_for_days = 2557
+  retain_for_overridable = false
+
+  delete_after_days = 2657
+  delete_after_overridable = true
+}
+```
+
+
+Finally, this pattern creates the Boundary storage bucket and attaches it to the S3 bucket.
+```hcl
+resource "boundary_storage_bucket" "aws_bucket" {
+  name        = "My aws storage bucket with dynamic credentials"
+  description = "My first storage bucket!"
+  scope_id    = boundary_scop.project.id 
+  plugin_name = "aws"
+
+  # This is the name of the AWS S3 bucket that will store the recordings
+  bucket_name = "mybucket1"
+
+  # the role_arn value should be the same arn used as the instance profile that is attached to 
+  # your Boundary Worker ec2 instance
+  # https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_use_switch-role-ec2_instance-profiles.html
+  attributes_json = jsonencode({
+    "region"                      = "us-east-1"
+    "role_arn"                    = "arn:aws:iam::123456789012:role/S3Access"
+    "disable_credential_rotation" = true
+  })
+}
+```
+At this point you have configured the pre-requisites for session recording. The last task is to
+actually enable recording on a target which is demonstrated in the Targets section below. 
+
+Please refer to the Terraform provider documentation for more information.
+[Storage Buckets](https://registry.terraform.io/providers/hashicorp/boundary/latest/docs/resources/storage_bucket)
+[Storage Policies](https://registry.terraform.io/providers/hashicorp/boundary/latest/docs/resources/policy_storage)
 ## Targets
 Now that you have your hosts in a host catalog and have a credential store, you 
 can create [targets](/docs/concepts/domain-model/targets).
@@ -522,6 +578,10 @@ resource "boundary_target" "ssh_foo" {
   injected_application_credential_source_ids = [
     boundary_credential_library_vault.example.id
   ]
+
+  # Add the next two lines to an existing target to enable session recording.
+  enable_session_recording = true
+  storage_bucket_id        = boundary_storage_bucket.aws_bucket.id
 }
 
 ```
@@ -547,6 +607,10 @@ resource "boundary_target" "ssh_foo" {
   brokered_application_credential_source_ids = [
     boundary_credential_library.example.id
   ]
+
+   # Add the next two lines to an existing target to enable session recording.
+  enable_session_recording = true
+  storage_bucket_id        = boundary_storage_bucket.aws_bucket.id
 }
 ```
 
