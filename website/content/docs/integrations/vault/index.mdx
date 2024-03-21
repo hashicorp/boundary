@@ -53,7 +53,7 @@ Vault is configured to act as the certificate authority (CA), to ensure that the
 
 `/sign` - The Boundary controllers generate the key pair and then send it to Vault to sign.
 
-When you connect to a target, which uses Vault for dynamic SSH certificates, a new certificate is generated for every target connection. As long as the target trusts the CA, then access is granted without you having any visibility into the credentials involved.
+When you connect to a target that uses Vault for dynamic SSH certificates, a new certificate is generated for every target connection. As long as the target trusts the CA, then access is granted without you having any visibility into the credentials involved.
 
 # Vault clients
 
