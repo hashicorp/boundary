@@ -113,6 +113,31 @@ The following is an example of updating the `soc2-policy` policy.
    ```
 
 </Tab>
+
+<Tab heading="Terraform" group="terraform">
+
+Due to the declarative nature of Terraform, you update an existing policy, simply by updating your existing Terraform block of code. To perform the requested changes, update your existing block of code as shown below, and run `terraform apply`.
+
+```hcl
+
+resource "boundary_policy_storage" "example" {
+
+        scope_id = data.boundary_scope.org.id
+
+        name = "soc2-policy"
+        description = "SOC 2 compliant storage policy for session recordings, v2"
+
+        retain_for_days = 2557
+        retain_for_overridable = false
+
+        delete_after_days = 2757
+        delete_after_overridable = false
+}
+
+```
+
+</Tab>
+
 <Tab heading="API call using cURL" group="api">
 
 The following API call is an example of updating a storage policy in Boundary:
@@ -263,6 +288,13 @@ In the event that an updated policy should be retroactively applied to existing 
    Verify that the `Delete After` attribute reflects the updated storage policy.
 
 </Tab>
+
+<Tab heading="Terraform" group="terraform">
+
+Once the policy changes have been applied with Terraform, you can re-apply the policy as needed by following the CLI instructions in this section.
+
+</Tab>
+
 <Tab heading="API call using cURL" group="api">
 
 The following API call is an example of re-applying a storage policy to a session recording by providing the recording's ID:
