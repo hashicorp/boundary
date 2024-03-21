@@ -124,8 +124,8 @@
         "path": "install-boundary/high-availability"
       },
       {
-        "title": "Using Terraform",
-        "path": "install-boundary/using-terraform"
+        "title": "Terraform Patterns",
+        "path": "install-boundary/terraform-patterns"
       }
     ]
   },
