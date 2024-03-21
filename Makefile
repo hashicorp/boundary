@@ -256,6 +256,8 @@ protobuild:
 	@buf generate --template buf.testing.gen.yaml --path internal/proto/testing/event/v1/
 
 	@go run ./scripts/remove-gotags-comments/ -path ./internal/gen/controller.swagger.json
+	# Avoid use of -i to be compatible between GNU and BSD sed
+	@sed -e 's/placeholder-version/$(shell cat ./version/VERSION)/g' ./internal/gen/controller.swagger.json > controller.swagger.json.tmp && mv controller.swagger.json.tmp ./internal/gen/controller.swagger.json
 
 	@rm -R ${TMP_DIR}
 
