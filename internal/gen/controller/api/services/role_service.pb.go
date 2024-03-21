@@ -136,7 +136,7 @@ type ListRolesRequest struct {
 	// The maximum size of a page in this iteration.
 	// If unset, the default page size configured will be used.
 	// If the page_size is greater than the default page configured,
-	// an error will be returned.
+	// the page size will be truncated to this number..
 	PageSize uint32 `protobuf:"varint,50,opt,name=page_size,proto3" json:"page_size,omitempty" class:"public"` // @gotags: `class:"public"`
 }
 

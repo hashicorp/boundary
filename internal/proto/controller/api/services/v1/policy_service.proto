@@ -15,6 +15,16 @@ option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/s
 option (custom_options.v1.domain) = "policy";
 
 service PolicyService {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_tag) = {
+    name: "Policy service"
+    description:
+      "The policy service provides endpoints for managing policies in Boundary. "
+      "Policies are used for defining rules for the lifecycle of session recordings."
+    external_docs: {
+      url: "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/storage-policy";
+      description: "Read about policies in the Boundary domain model";
+    }
+  };
   // GetPolicy returns a policy with the given id, if it exists. The request
   // must include a policy id. An error is returned if the id is missing,
   // malformed, or if a policy with the provided id doesn't exist.
@@ -89,7 +99,7 @@ message ListPoliciesRequest {
   // The maximum size of a page in this iteration.
   // If unset, the default page size configured will be used.
   // If the page_size is greater than the default page configured,
-  // an error will be returned.
+  // the page size will be truncated to this number..
   uint32 page_size = 5 [json_name = "page_size"]; // @gotags: `class:"public"`
 }
 

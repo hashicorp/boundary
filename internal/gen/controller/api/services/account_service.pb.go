@@ -33,6 +33,7 @@ type GetAccountRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
+	// The id of the account that should be retrieved.
 	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 }
 
@@ -127,16 +128,20 @@ type ListAccountsRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
+	// The id of the auth method whose accounts should be listed.
 	AuthMethodId string `protobuf:"bytes,1,opt,name=auth_method_id,proto3" json:"auth_method_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
-	Filter       string `protobuf:"bytes,30,opt,name=filter,proto3" json:"filter,omitempty" class:"sensitive"`                // @gotags: `class:"sensitive"`
+	// Filter can be specified to only return items that match the filter.
+	// See [filter expressions](https://developer.hashicorp.com/boundary/docs/concepts/filtering) for more information.
+	Filter string `protobuf:"bytes,30,opt,name=filter,proto3" json:"filter,omitempty" class:"sensitive"` // @gotags: `class:"sensitive"`
 	// An opaque token used to continue an existing iteration or
 	// request updated items. If not specified, pagination
-	// will start from the beginning.
+	// will start from the beginning. To learn more about list pagination
+	// in Boundary, refer to [list pagination](https://developer.hashicorp.com/boundary/docs/api-clients/api/pagination).
 	ListToken string `protobuf:"bytes,40,opt,name=list_token,proto3" json:"list_token,omitempty" class:"public"` // @gotags: `class:"public"`
 	// The maximum size of a page in this iteration.
 	// If unset, the default page size configured will be used.
 	// If the page_size is greater than the default page configured,
-	// an error will be returned.
+	// the page size will be truncated to this number.
 	PageSize uint32 `protobuf:"varint,50,opt,name=page_size,proto3" json:"page_size,omitempty" class:"public"` // @gotags: `class:"public"`
 }
 
@@ -205,6 +210,7 @@ type ListAccountsResponse struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
+	// The list of accounts.
 	Items []*accounts.Account `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
 	// The type of response, either "delta" or "complete".
 	// Delta signifies that this is part of a paginated result
@@ -416,7 +422,9 @@ type UpdateAccountRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id         string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	// The id of the account that should be updated.
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	// A subset of the account containing the fields to update
 	Item       *accounts.Account      `protobuf:"bytes,2,opt,name=item,proto3" json:"item,omitempty"`
 	UpdateMask *fieldmaskpb.FieldMask `protobuf:"bytes,3,opt,name=update_mask,proto3" json:"update_mask,omitempty"`
 }
@@ -526,6 +534,7 @@ type DeleteAccountRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
+	// The id of the account to delete.
 	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 }
 
@@ -611,10 +620,12 @@ type SetPasswordRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
+	// The id of the account for which the password should be set.
 	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Version is used to ensure this resource has not changed.
 	// The mutation will fail if the version does not match the latest known good version.
-	Version  uint32 `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty" class:"public"`  // @gotags: `class:"public"`
+	Version uint32 `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty" class:"public"` // @gotags: `class:"public"`
+	// The password that should be set.
 	Password string `protobuf:"bytes,3,opt,name=password,proto3" json:"password,omitempty" class:"secret"` // @gotags: `class:"secret"`
 }
 
@@ -723,12 +734,15 @@ type ChangePasswordRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
+	// The id of the account for which the password should be changed.
 	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Version is used to ensure this resource has not changed.
 	// The mutation will fail if the version does not match the latest known good version.
-	Version         uint32 `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty" class:"public"`                  // @gotags: `class:"public"`
+	Version uint32 `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty" class:"public"` // @gotags: `class:"public"`
+	// The current password for the account.
 	CurrentPassword string `protobuf:"bytes,3,opt,name=current_password,proto3" json:"current_password,omitempty" class:"secret"` // @gotags: `class:"secret"`
-	NewPassword     string `protobuf:"bytes,4,opt,name=new_password,proto3" json:"new_password,omitempty" class:"secret"`         // @gotags: `class:"secret"`
+	// The new password that should be set.
+	NewPassword string `protobuf:"bytes,4,opt,name=new_password,proto3" json:"new_password,omitempty" class:"secret"` // @gotags: `class:"secret"`
 }
 
 func (x *ChangePasswordRequest) Reset() {
