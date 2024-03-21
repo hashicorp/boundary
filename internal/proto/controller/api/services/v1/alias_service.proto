@@ -15,6 +15,20 @@ option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/s
 option (custom_options.v1.domain) = "auth";
 
 service AliasService {
+
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_tag) = {
+    name: "Alias service"
+    description:
+      "The alias service exposes endpoints for interacting with aliases in Boundary. "
+      "An alias acts as a reference or an alternate name for an existing entity within the Boundary access control system. " 
+      "It essentially provides a way to simplify access control by offering a more user-friendly or descriptive identifier for an entity."
+    external_docs: {
+      //TODO: Update the URL
+      url: "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/aliases";
+      description: "Read about alias in the Boundary domain model";
+    }
+  };
+
   // GetAlias returns a stored Alias if present. The provided request must
   // include the id for the Alias be retrieved. If missing, malformed or
   // referencing a non existing Alias an error is returned.
