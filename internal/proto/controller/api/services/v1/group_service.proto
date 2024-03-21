@@ -13,7 +13,6 @@ import "protoc-gen-openapiv2/options/annotations.proto";
 option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/services;services";
 
 service GroupService {
-
   option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_tag) = {
     name: "Group service"
     description:
