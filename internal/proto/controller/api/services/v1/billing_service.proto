@@ -12,6 +12,13 @@ import "protoc-gen-openapiv2/options/annotations.proto";
 option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/services;services";
 
 service BillingService {
+
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_tag) = {
+    name: "Billing service"
+    description:
+      "The Billing service provides the usage data. It includes the active users in a given time period." 
+  };
+
   // MonthlyActiveUsers returns the monthly active users for the given time period.
   // If no time period is provided, the current and previous months are returned.
   // If the provided request contains a start time but no end time, it will return
