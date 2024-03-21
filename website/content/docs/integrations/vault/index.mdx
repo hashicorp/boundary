@@ -69,6 +69,6 @@ When it is integrated with Vault, Boundary has to be assigned a periodic, renewa
 If there is more than one credential library that is part of the same credential store, there is the potential for that single Vault token to have access to all of the Vault paths defined in the credential libraries. HashiCorp recommends that you operate the model of least privilege.
 </Note>
 
-## Boundary and Vault as an IdP
+## Vault as an identity provider
 
 Boundary supports OIDC, LDAP, and username/password as authentication methods. Boundary can leverage Vault as an OIDC bridge provider. This allows Vault to delegate authentication to an external OIDC provider, such as Google, Okta, Entra as some examples, which then map the authenticated user's claims to Vault policies and identities. This allows users to authenticate to Boundary with any of Vault's supported authentication methods, even ones that Boundary does not natively support. When Boundary leverages Vault as an OIDC provider, each user leveraging the authentication method then counts as a Vault client.
