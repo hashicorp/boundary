@@ -20,7 +20,7 @@ service GroupService {
       "The group service provides endpoints for managing groups in Boundary. "
     external_docs: {
       url: "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/groups";
-      description: "Read about the group in the Boundary domain model";
+      description: "Read about groups in the Boundary domain model";
     }
   };
 

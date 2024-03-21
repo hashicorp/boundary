@@ -18,11 +18,11 @@ service HostService {
   option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_tag) = {
     name: "Host service"
     description:
-      "A host is a resource that represents a computing element with a network address reachable from Boundary. "
+      "A host is a resource that represents a computing element with a network address reachable from a Boundary worker. "
       "The host service provides endpoints for managing hosts in Boundary."
     external_docs: {
       url: "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/hosts";
-      description: "Read about the host in the Boundary domain model";
+      description: "Read about hosts in the Boundary domain model";
     }
   };
 

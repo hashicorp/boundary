@@ -22,7 +22,7 @@ service HostSetService {
       "The host set service provides endpoints for managing host sets in Boundary."
     external_docs: {
       url: "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/host-sets";
-      description: "Read about the host set in the Boundary domain model";
+      description: "Read about host sets in the Boundary domain model";
     }
   };
 

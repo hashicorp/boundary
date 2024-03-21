@@ -20,7 +20,7 @@ service UserService {
       "The user service provides endpoints for managing users in Boundary."
     external_docs: {
       url: "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/users";
-      description: "Read about the target in the Boundary domain model";
+      description: "Read about users in the Boundary domain model";
     }
   };
 
