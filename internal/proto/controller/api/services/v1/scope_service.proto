@@ -16,11 +16,12 @@ service ScopeService {
   option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_tag) = {
     name: "Scope service"
     description:
-      "A scope acts as a permission boundary modeled using a container concept. It creates a hierarchical structure for organizing resources and managing access control within Boundary. "
+      "A scope acts as a permission boundary modeled using a container concept. "
+      "It creates a hierarchical structure for organizing resources and managing access control within Boundary. "
       "The scope service provides endpoints for managing scopes in Boundary."
     external_docs: {
       url: "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/scopes";
-      description: "Read about the scope in the Boundary domain model";
+      description: "Read about scopes in the Boundary domain model";
     }
   };
 

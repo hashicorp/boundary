@@ -22,7 +22,7 @@ service HostCatalogService {
       "The host catalog service provides endpoints for managing host catalogs in Boundary."
     external_docs: {
       url: "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/host-catalogs";
-      description: "Read about the host catalog in the Boundary domain model";
+      description: "Read about host catalogs in the Boundary domain model";
     }
   };
 
