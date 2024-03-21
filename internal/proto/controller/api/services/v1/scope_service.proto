@@ -11,11 +11,6 @@ import "google/protobuf/field_mask.proto";
 import "protoc-gen-openapiv2/options/annotations.proto";
 
 option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/services;services";
-option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
-  info: {title: "Boundary Controller HTTP API"}
-  schemes: HTTPS
-  schemes: HTTP
-};
 
 service ScopeService {
   // GetScope returns a stored Scope if present.  The provided request
