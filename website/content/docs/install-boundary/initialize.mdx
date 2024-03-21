@@ -1,25 +1,24 @@
 ---
 layout: docs
-page_title: Running Boundary in non-dev environments
+page_title: Initialize Boundary
 description: |-
-  How to install boundary in non-dev environments.
+  Creating your first login account
 ---
 
-# Install Boundary without generated resources
+# Initialize Boundary
 
-What are generated resources? When you run `boundary dev` or `boundary database init`, Boundary automatically
-generates a number of resources to make getting started easier. Default scopes, auth methods, user, account, and
-targets are just some of the resources Boundary will generate unless you tell it not to.
+Before you initialize Boundary, you should have [initialized a database](/boundary/docs/install-boundary/configure-controllers#initialize-the-database).
 
-In a production or long-running environment, these resources are not necessary, but without them, managing
-Boundary from scratch isn't straight forward. How do you create your first user and login to administer a Boundary
-deployment that has no authentication methods, users, accounts, etc.? This section describes how to get your freshly
-deployed Boundary installation off the ground for non-dev environments.
+This document describes how to access Boundary for the first time and create the necessary resources to log in as a
+user in Boundary.
 
-## Recovery KMS workflow
+## Log in with Recovery KMS
 
-Initializing Boundary without generated resources starts with your Boundary configuration file. Specifically,
-the controller configuration specifies three KMS blocks:
+In order to access a new Boundary instance for the first time, you will need to use the recovery KMS defined in the
+controller configuration file. Here is an example snippet of a configuration file that uses hard-coded AEAD keys.
+
+~> **Note:** In a production environment, it is recommended to use a cloud provider's KMS such as [AWS KMS](/boundary/docs/configuration/kms/awskms)
+to manage the keys Boundary uses to encrypt sensitive information.
 
 ```hcl
 <truncated>
@@ -46,14 +45,9 @@ kms "aead" {
 <truncated>
 ```
 
-In this example, we're using hardcoded AEAD keys, but in a real world non-dev deployment, you
-should use your cloud provider's KMS such as [AWS KMS](/boundary/docs/configuration/kms/awskms) to manage the keys Boundary
-uses to encrypt sensitive information.
-
-The KMS block we're focused on is the `recovery` block. This block specifies the key used to "recover" Boundary
-but you can also use it to authenticate to Boundary and manage it as a "global" super user. This allows
-you to authenticate from the CLI or from Terraform in order to manage Boundary without any generated
-resources.
+The KMS with the `recovery` purpose is used to "recovery" Boundary, allowing you to authenticate to Boundary and managed
+it as a super user. It also allows you to authenticate from the CLI or from Terraform in order to manage BOundary
+without any generated resources.
 
 To authenticate to Boundary using the recovery KMS workflow:
 
@@ -63,7 +57,7 @@ To authenticate to Boundary using the recovery KMS workflow:
 
 To use the recovery workflow on the CLI, you must pass the `-recovery-config <path_to_kms_recovery_config>` flag or set the environment
 variable for `BOUNDARY_RECOVERY_CONFIG` for every command ran. Authentication takes place for every command
-ran when using the recovery workflow, there is no `boundary authenticate` step:
+ran when using the recovery workflow. `boundary authenticate` does not apply when using the recovery KMS.
 
 ```bash
 $ cat << EOF > /tmp/recovery.hcl
@@ -75,6 +69,7 @@ kms "aead" {
 }
 EOF
 
+# Example command
 $ boundary users create <truncated> -recovery-config /tmp/recovery.hcl
 ...
 ```
@@ -103,44 +98,16 @@ EOT
 </Tab>
 </Tabs>
 
-
-## Initialize the database
-
-Before you can start Boundary, the database must be initialized. It's useful to look at the help output for the init command:
-
-```
-$ boundary database init -h
-...
-```
-
-From this command, you can see the flags available to skip the creation of auto-generated resources.
-
-To initialize the Boundary database without generated resources:
-
-```
-$ boundary database init \
-   -skip-auth-method-creation \
-   -skip-host-resources-creation \
-   -skip-scopes-creation \
-   -skip-target-creation \
-   -config /etc/boundary.hcl
-```
-
-When you start Boundary, you will effectively have a blank sheet to work against. The initial migrations in the database have been run (note that this includes creating special users like `u_anon` and the `global` scope) and the internal keyrings have been initialized. From here, it's required that
-you use the KMS recovery workflow described above to create at a minimum an auth method, a user, an account, and a
-role with sufficient grants. Otherwise, you need to continue to use the recovery workflow for management. It's important
-to realize that this is effectively a global super user type of workflow and comes with security concerns.
-
 ## Create your first login account
 
-This section covers how to configure your first auth method, user, account, and role to login to Boundary without
-the recovery KMS workflow. In this example, we're going to make an admin user for the global and project level
+This section covers how to configure your first auth method, user, account, and role to log in to Boundary without
+the recovery KMS workflow. In this example, we are going to make an admin user for the global and project level
 scopes we create. This will allow our user to configure targets within those scopes and manage them.
 
 ### Create org and project scopes
 
-In this example, we're going to create an org and project scope and skip creating an administrator and admin role
-for each scope. We're going to specify a role for managing these scopes by selected users in a later step.
+First, create an org and project scope and skip creating an administrator and admin role for each scope. We are going to
+specify a role for managing these scopes by selected users in a later step.
 
 <Tabs>
 <Tab heading="CLI">
@@ -294,8 +261,8 @@ resource "boundary_user" "myuser" {
 
 ### Create roles to manage scopes
 
-The following describes the four baseline roles you'll need to create to manage resources within the org and project
-scopes created above. These roles are similar to the roles created for you if generation had not been skipped during `boundary database init` when executed with the `-skip-initial-login-role-creation` flag, Declaring roles explicitly
+The following describes the four baseline roles you will need to create in order to manage resources within the org and project
+scopes that were created. These roles are similar to the roles automatically created for you if generation had not been skipped during `boundary database init` when executed with the `-skip-initial-login-role-creation` flag, Declaring roles explicitly
 allows you to manage them independently and fully within Terraform or via the CLI. In doing so, you can precisely define their access.
 
 The following example creates 4 roles:
@@ -480,7 +447,7 @@ resource "boundary_role" "project_admin" {
 
 ### Log in as your new user
 
-```shell-session
+```bash
 boundary authenticate password \
   -auth-method-id <auth_method_id>
 ```

@@ -53,12 +53,12 @@
         "path": "getting-started"
       },
       {
-        "title": "Self-managed Boundary quick start",
-        "href": "https://developer.hashicorp.com/boundary/tutorials/oss-getting-started/"
-      },
-      {
         "title": "HCP Boundary quick start",
         "href": "https://developer.hashicorp.com/boundary/tutorials/hcp-getting-started/"
+      },
+      {
+        "title": "Self-managed Boundary quick start",
+        "href": "https://developer.hashicorp.com/boundary/tutorials/oss-getting-started/"
       },
       {
         "title": "Dev mode quick start",
@@ -87,16 +87,25 @@
         "path": "install-boundary"
       },
       {
-        "title": "Recommended architecture",
-        "path": "install-boundary/recommended-architecture"
-      },
-      {
         "title": "System requirements",
         "path": "install-boundary/system-requirements"
       },
       {
-        "title": "Fault tolerance recommendations",
-        "path": "install-boundary/fault-tolerance"
+        "title": "Architecture",
+        "routes": [
+          {
+            "title": "Recommended architecture",
+            "path": "install-boundary/architecture/recommended-architecture"
+          },
+          {
+            "title": "Fault tolerance recommendations",
+            "path": "install-boundary/architecture/fault-tolerance"
+          },
+          {
+            "title": "Configure high availability",
+            "path": "install-boundary/architecture/high-availability"
+          }
+        ]
       },
       {
         "title": "Install Boundary",
@@ -111,17 +120,13 @@
         "path": "install-boundary/configure-workers"
       },
       {
-        "title": "Non-dev environments",
-        "path": "install-boundary/no-gen-resources"
+        "title": "Initialize Boundary",
+        "path": "install-boundary/initialize"
       },
       {
         "title": "Systemd install",
         "hidden": true,
         "path": "install-boundary/systemd"
-      },
-      {
-        "title": "Configure high availability",
-        "path": "install-boundary/high-availability"
       }
     ]
   },
@@ -1515,7 +1520,6 @@
       }
     ]
   },
-
   {
     "title": "Develop Boundary",
     "routes": [

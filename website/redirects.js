@@ -109,6 +109,11 @@ module.exports = [
     permanent: true,
   },
   {
+    source: '/boundary/docs/install-boundary/no-gen-resources',
+    destination: '/boundary/docs/install-boundary/initialize',
+    permanent: true,
+  },
+  {
     source: '/boundary/docs/oss/installing/postgres',
     destination: '/boundary/docs/install-boundary/system-requirements',
     permanent: true,

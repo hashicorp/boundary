@@ -289,12 +289,16 @@ Refer to the documentation for additional [top-level configuration options](/bou
 Before you can start Boundary, you must initialize the database from one Boundary controller.
 This operation is only required once; it will execute the required database migrations for the Boundary cluster to operate.
 
-The following command with the included flags creates initial resources in Boundary as an example.
-For finer control over these resources, remvoe the flags.
+```bash
+boundary database init -config /etc/boundary.d/controller.hcl
+```
 
-Run the following command to initialize the database:
+Boundary will automatically generate a number of resources to make getting started easier. Default scopes, auth methods,
+user, account, and targets are just some of the resources Boundary will generate unless you tell it not to. These
+resources, however, are not required. You can choose to skip the creation of these initial resources by adding some
+flags.
 
-```hcl
+```bash
 boundary database init \
    -skip-auth-method-creation \
    -skip-host-resources-creation \
@@ -303,9 +307,9 @@ boundary database init \
    -config /etc/boundary.d/controller.hcl
 ```
 
-You can use the help output for the `init` command to view the flags available to skip the creation of any auto-generated resources:
+For additional options, view the help documentation.
 
-```hcl
+```bash
 boundary database init -h
 ```
 
@@ -322,5 +326,5 @@ Run the following commands to start the service:
 Upon logging in to Boundary for the first time, HashiCorp recommends creating an admin user for the global and project level scopes to manage Boundary.
 This allows you to configure targets within those scopes and manage them.
 
-We recommend that you use the [KMS recovery workflow](/boundary/docs/install-boundary/no-gen-resources#recovery-kms-workflow) to log in to Boundary for the first time.
-Refer to [Creating your first login account](/boundary/docs/install-boundary/no-gen-resources/#creating-your-first-login-account) to learn about setting up your first auth method, user, account, and role to log in to Boundary going forward without the recovery KMS workflow.
+We recommend that you use the [KMS recovery workflow](/boundary/docs/install-boundary/initialize#log-in-with-recovery-kms) to log in to Boundary for the first time.
+Refer to [Creating your first login account](/boundary/docs/install-boundary/initialize/#creating-your-first-login-account) to learn about setting up your first auth method, user, account, and role to log in to Boundary going forward without the recovery KMS workflow.
