@@ -15,6 +15,17 @@ option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/s
 option (custom_options.v1.domain) = "target";
 
 service TargetService {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_tag) = {
+    name: "Target service"
+    description:
+      "A target represents an endpoint or resource that users can access through Boundary sessions. "
+      "The target service provides endpoints for managing targets in Boundary."
+    external_docs: {
+      url: "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/targets";
+      description: "Read about the target in the Boundary domain model";
+    }
+  };
+
   // GetTarget returns a stored Target if present.  The provided request
   // must include the Target ID for the Target being retrieved. If
   // that ID is missing, malformed or reference a non existing

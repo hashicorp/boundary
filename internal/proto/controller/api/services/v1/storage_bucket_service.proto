@@ -15,6 +15,17 @@ option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/s
 option (custom_options.v1.domain) = "storage";
 
 service StorageBucketService {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_tag) = {
+    name: "Storage bucket service"
+    description:
+      "A storage bucket is an external storage location used to store recordings of user access sessions. "
+      "The storage bucket service provides endpoints for managing storage buckets in Boundary."
+    external_docs: {
+      url: "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/storage-buckets";
+      description: "Read about the storage bucket in the Boundary domain model";
+    }
+  };
+
   // GetStorageBucket returns a stored Storage Bucket if present.  The provided
   // request must include the ID for the Storage Bucket being retrieved.
   // If missing, malformed, or referencing a non-existing resource an error is

@@ -13,6 +13,18 @@ import "protoc-gen-openapiv2/options/annotations.proto";
 option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/services;services";
 
 service SessionRecordingService {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_tag) = {
+    name: "Session recording service"
+    description:
+      "A session recording is a feature that enables administrators to record and playback user access sessions to target resources. "
+      "It provides an audit trail of user activity and monitor access. "
+      "The session recording service provides endpoints for managing session recordings in Boundary."
+    external_docs: {
+      url: "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/session-recordings";
+      description: "Read about the session recording in the Boundary domain model";
+    }
+  };
+
   // GetSessionRecording returns a stored Session recording if present. The provided request
   // must include the Session recording ID for the Session recording being retrieved,
   // or the ID of the Session that was recorded. If that ID is missing, malformed or reference a

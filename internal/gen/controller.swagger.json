@@ -107,7 +107,12 @@
       }
     },
     {
-      "name": "controller.api.services.v1.ManagedGroupService"
+      "name": "Managed group service",
+      "description": "A managed group is a resource that represents a collection of accounts. The managed group service provides endpoints for creating, reading, updating, and deleting managed groups in Boundary.",
+      "externalDocs": {
+        "description": "Read about the managed group in the Boundary domain model",
+        "url": "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/managed-groups"
+      }
     },
     {
       "name": "Policy service",
@@ -118,28 +123,64 @@
       }
     },
     {
-      "name": "controller.api.services.v1.RoleService"
+      "name": "Role service",
+      "description": "A role represents a collection of permissions that define what actions a user or service account can perform within the system. The role service provides endpoints for managing roles in Boundary.",
+      "externalDocs": {
+        "description": "Read about the role in the Boundary domain model",
+        "url": "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/roles"
+      }
     },
     {
-      "name": "controller.api.services.v1.ScopeService"
+      "name": "Scope service",
+      "description": "A scope acts as a permission boundary modeled using a container concept. It creates a hierarchical structure for organizing resources and managing access control within Boundary. The scope service provides endpoints for managing scopes in Boundary.",
+      "externalDocs": {
+        "description": "Read about the scope in the Boundary domain model",
+        "url": "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/scopes"
+      }
     },
     {
-      "name": "controller.api.services.v1.SessionRecordingService"
+      "name": "Session recording service",
+      "description": "A session recording is a feature that enables administrators to record and playback user access sessions to target resources. It provides an audit trail of user activity and monitor access. The session recording service provides endpoints for managing session recordings in Boundary.",
+      "externalDocs": {
+        "description": "Read about the session recording in the Boundary domain model",
+        "url": "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/session-recordings"
+      }
     },
     {
-      "name": "controller.api.services.v1.SessionService"
+      "name": "Session service",
+      "description": "A session represents a temporary, authorized access connection between a user and a target resource. The session service provides endpoints for managing sessions in Boundary.",
+      "externalDocs": {
+        "description": "Read about the session in the Boundary domain model",
+        "url": "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/sessions"
+      }
     },
     {
-      "name": "controller.api.services.v1.StorageBucketService"
+      "name": "Storage bucket service",
+      "description": "A storage bucket is an external storage location used to store recordings of user access sessions. The storage bucket service provides endpoints for managing storage buckets in Boundary.",
+      "externalDocs": {
+        "description": "Read about the storage bucket in the Boundary domain model",
+        "url": "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/storage-buckets"
+      }
     },
     {
-      "name": "controller.api.services.v1.TargetService"
+      "name": "Target service",
+      "description": "A target represents an endpoint or resource that users can access through Boundary sessions. The target service provides endpoints for managing targets in Boundary.",
+      "externalDocs": {
+        "description": "Read about the target in the Boundary domain model",
+        "url": "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/targets"
+      }
     },
     {
-      "name": "controller.api.services.v1.UserService"
+      "name": "User service",
+      "description": "A user can be a human individual or a service account to access resources. The user service provides endpoints for managing users in Boundary.",
+      "externalDocs": {
+        "description": "Read about the target in the Boundary domain model",
+        "url": "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/users"
+      }
     },
     {
-      "name": "controller.api.services.v1.WorkerService"
+      "name": "Worker service",
+      "description": "A worker is a service that acts as a network proxy for Boundary sessions. It essentially functions as a bridge between users and the target resources they need to access. The worker service provides endpoints for managing workers in Boundary."
     }
   ],
   "host": "your-boundary-hostname.com",
@@ -2659,7 +2700,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.ManagedGroupService"
+          "Managed group service"
         ]
       },
       "post": {
@@ -2690,7 +2731,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.ManagedGroupService"
+          "Managed group service"
         ]
       }
     },
@@ -2722,7 +2763,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.ManagedGroupService"
+          "Managed group service"
         ]
       },
       "delete": {
@@ -2752,7 +2793,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.ManagedGroupService"
+          "Managed group service"
         ]
       },
       "patch": {
@@ -2790,7 +2831,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.ManagedGroupService"
+          "Managed group service"
         ]
       }
     },
@@ -3043,7 +3084,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.RoleService"
+          "Role service"
         ]
       },
       "post": {
@@ -3074,7 +3115,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.RoleService"
+          "Role service"
         ]
       }
     },
@@ -3106,7 +3147,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.RoleService"
+          "Role service"
         ]
       },
       "delete": {
@@ -3136,7 +3177,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.RoleService"
+          "Role service"
         ]
       },
       "patch": {
@@ -3174,7 +3215,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.RoleService"
+          "Role service"
         ]
       }
     },
@@ -3214,7 +3255,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.RoleService"
+          "Role service"
         ]
       }
     },
@@ -3254,7 +3295,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.RoleService"
+          "Role service"
         ]
       }
     },
@@ -3294,7 +3335,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.RoleService"
+          "Role service"
         ]
       }
     },
@@ -3334,7 +3375,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.RoleService"
+          "Role service"
         ]
       }
     },
@@ -3374,7 +3415,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.RoleService"
+          "Role service"
         ]
       }
     },
@@ -3414,7 +3455,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.RoleService"
+          "Role service"
         ]
       }
     },
@@ -3454,7 +3495,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.RoleService"
+          "Role service"
         ]
       }
     },
@@ -3494,7 +3535,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.RoleService"
+          "Role service"
         ]
       }
     },
@@ -3534,7 +3575,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.RoleService"
+          "Role service"
         ]
       }
     },
@@ -3595,7 +3636,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.ScopeService"
+          "Scope service"
         ]
       },
       "post": {
@@ -3640,7 +3681,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.ScopeService"
+          "Scope service"
         ]
       }
     },
@@ -3672,7 +3713,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.ScopeService"
+          "Scope service"
         ]
       },
       "delete": {
@@ -3702,7 +3743,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.ScopeService"
+          "Scope service"
         ]
       },
       "patch": {
@@ -3740,7 +3781,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.ScopeService"
+          "Scope service"
         ]
       }
     },
@@ -3780,7 +3821,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.ScopeService"
+          "Scope service"
         ]
       }
     },
@@ -3820,7 +3861,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.ScopeService"
+          "Scope service"
         ]
       }
     },
@@ -3852,7 +3893,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.ScopeService"
+          "Scope service"
         ]
       }
     },
@@ -3884,7 +3925,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.ScopeService"
+          "Scope service"
         ]
       }
     },
@@ -3917,7 +3958,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.ScopeService"
+          "Scope service"
         ]
       }
     },
@@ -3950,7 +3991,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.ScopeService"
+          "Scope service"
         ]
       }
     },
@@ -4004,7 +4045,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.SessionRecordingService"
+          "Session recording service"
         ]
       }
     },
@@ -4036,7 +4077,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.SessionRecordingService"
+          "Session recording service"
         ]
       },
       "delete": {
@@ -4066,7 +4107,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.SessionRecordingService"
+          "Session recording service"
         ]
       }
     },
@@ -4108,7 +4149,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.SessionRecordingService"
+          "Session recording service"
         ]
       }
     },
@@ -4140,7 +4181,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.SessionRecordingService"
+          "Session recording service"
         ]
       }
     },
@@ -4208,7 +4249,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.SessionService"
+          "Session service"
         ]
       }
     },
@@ -4240,7 +4281,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.SessionService"
+          "Session service"
         ]
       }
     },
@@ -4280,7 +4321,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.SessionService"
+          "Session service"
         ]
       }
     },
@@ -4341,7 +4382,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.StorageBucketService"
+          "Storage bucket service"
         ]
       },
       "post": {
@@ -4379,7 +4420,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.StorageBucketService"
+          "Storage bucket service"
         ]
       }
     },
@@ -4411,7 +4452,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.StorageBucketService"
+          "Storage bucket service"
         ]
       },
       "delete": {
@@ -4441,7 +4482,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.StorageBucketService"
+          "Storage bucket service"
         ]
       },
       "patch": {
@@ -4479,7 +4520,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.StorageBucketService"
+          "Storage bucket service"
         ]
       }
     },
@@ -4540,7 +4581,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.TargetService"
+          "Target service"
         ]
       },
       "post": {
@@ -4571,7 +4612,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.TargetService"
+          "Target service"
         ]
       }
     },
@@ -4603,7 +4644,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.TargetService"
+          "Target service"
         ]
       },
       "delete": {
@@ -4633,7 +4674,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.TargetService"
+          "Target service"
         ]
       },
       "patch": {
@@ -4671,7 +4712,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.TargetService"
+          "Target service"
         ]
       }
     },
@@ -4711,7 +4752,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.TargetService"
+          "Target service"
         ]
       }
     },
@@ -4751,7 +4792,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.TargetService"
+          "Target service"
         ]
       }
     },
@@ -4792,7 +4833,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.TargetService"
+          "Target service"
         ]
       }
     },
@@ -4832,7 +4873,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.TargetService"
+          "Target service"
         ]
       }
     },
@@ -4872,7 +4913,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.TargetService"
+          "Target service"
         ]
       }
     },
@@ -4912,7 +4953,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.TargetService"
+          "Target service"
         ]
       }
     },
@@ -4952,7 +4993,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.TargetService"
+          "Target service"
         ]
       }
     },
@@ -5013,7 +5054,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.UserService"
+          "User service"
         ]
       },
       "post": {
@@ -5044,7 +5085,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.UserService"
+          "User service"
         ]
       }
     },
@@ -5076,7 +5117,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.UserService"
+          "User service"
         ]
       },
       "delete": {
@@ -5106,7 +5147,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.UserService"
+          "User service"
         ]
       },
       "patch": {
@@ -5144,7 +5185,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.UserService"
+          "User service"
         ]
       }
     },
@@ -5184,7 +5225,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.UserService"
+          "User service"
         ]
       }
     },
@@ -5224,7 +5265,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.UserService"
+          "User service"
         ]
       }
     },
@@ -5264,7 +5305,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.UserService"
+          "User service"
         ]
       }
     },
@@ -5310,7 +5351,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.WorkerService"
+          "Worker service"
         ]
       }
     },
@@ -5342,7 +5383,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.WorkerService"
+          "Worker service"
         ]
       },
       "delete": {
@@ -5372,7 +5413,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.WorkerService"
+          "Worker service"
         ]
       },
       "patch": {
@@ -5410,7 +5451,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.WorkerService"
+          "Worker service"
         ]
       }
     },
@@ -5450,7 +5491,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.WorkerService"
+          "Worker service"
         ]
       }
     },
@@ -5490,7 +5531,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.WorkerService"
+          "Worker service"
         ]
       }
     },
@@ -5530,7 +5571,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.WorkerService"
+          "Worker service"
         ]
       }
     },
@@ -5563,7 +5604,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.WorkerService"
+          "Worker service"
         ]
       }
     },
@@ -5596,7 +5637,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.WorkerService"
+          "Worker service"
         ]
       }
     },
@@ -5628,7 +5669,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.WorkerService"
+          "Worker service"
         ]
       }
     },
@@ -5660,7 +5701,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.WorkerService"
+          "Worker service"
         ]
       }
     }
