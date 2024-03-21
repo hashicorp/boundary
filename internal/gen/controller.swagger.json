@@ -567,7 +567,7 @@
     },
     "/v1/auth-methods": {
       "get": {
-        "summary": "Lists all Auth Methods.",
+        "summary": "Lists all auth methods.",
         "operationId": "AuthMethodService_ListAuthMethods",
         "responses": {
           "200": {
@@ -586,21 +586,21 @@
         "parameters": [
           {
             "name": "scope_id",
-            "description": "",
+            "description": "The scope id in which to list auth methods.",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "recursive",
-            "description": "",
+            "description": "Whether to recursively list auth methods in child scopes of the provided scope.",
             "in": "query",
             "required": false,
             "type": "boolean"
           },
           {
             "name": "filter",
-            "description": "",
+            "description": "Filter can be specified to only return items that match the filter.\nSee [filter expressions](https://developer.hashicorp.com/boundary/docs/concepts/filtering) for more information.",
             "in": "query",
             "required": false,
             "type": "string"
@@ -626,7 +626,7 @@
         ]
       },
       "post": {
-        "summary": "Creates a single Auth Method.",
+        "summary": "Creates a single auth method.",
         "operationId": "AuthMethodService_CreateAuthMethod",
         "responses": {
           "200": {
@@ -678,7 +678,7 @@
         "parameters": [
           {
             "name": "auth_method_id",
-            "description": "The ID of the Auth Method in the system that should be used for authentication.",
+            "description": "The ID of the auth method in the system that should be used for authentication.",
             "in": "path",
             "required": true,
             "type": "string"
@@ -699,7 +699,7 @@
     },
     "/v1/auth-methods/{id}": {
       "get": {
-        "summary": "Gets a single Auth Method.",
+        "summary": "Gets a single auth method.",
         "operationId": "AuthMethodService_GetAuthMethod",
         "responses": {
           "200": {
@@ -718,7 +718,7 @@
         "parameters": [
           {
             "name": "id",
-            "description": "",
+            "description": "Id of the auth method being requested.",
             "in": "path",
             "required": true,
             "type": "string"
@@ -759,7 +759,7 @@
         ]
       },
       "patch": {
-        "summary": "Updates an Auth Method.",
+        "summary": "Updates an auth method.",
         "operationId": "AuthMethodService_UpdateAuthMethod",
         "responses": {
           "200": {
@@ -8581,7 +8581,7 @@
         },
         "attributes": {
           "type": "object",
-          "description": "Attributes are passed to the Auth Method; the valid keys and values depend on the type of Auth Method as well as the command."
+          "description": "Attributes are passed to the auth method; the valid keys and values depend on the type of auth method as well as the command."
         },
         "command": {
           "type": "string",
@@ -8612,7 +8612,7 @@
         },
         "attributes": {
           "type": "object",
-          "description": "Valid keys and values depend on the type of Auth Method as well as the command."
+          "description": "Valid keys and values depend on the type of auth method as well as the command."
         },
         "command": {
           "type": "string",

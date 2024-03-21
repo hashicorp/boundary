@@ -35,33 +35,33 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type AuthMethodServiceClient interface {
-	// GetAuthMethod returns a stored Auth Method if present.  The provided request
-	// must include the Auth Method id. If missing, malformed or referencing a
+	// GetAuthMethod returns a stored auth method if present.  The provided request
+	// must include the auth method id. If missing, malformed or referencing a
 	// non existing resource an error is returned.
 	GetAuthMethod(ctx context.Context, in *GetAuthMethodRequest, opts ...grpc.CallOption) (*GetAuthMethodResponse, error)
-	// ListAuthMethods returns a list of stored Auth Methods which are in the
+	// ListAuthMethods returns a list of stored auth methods which are in the
 	// provided scope. The request must include the scope id and if missing,
 	// malformed, or referencing a non existing scope, an error is returned.
 	ListAuthMethods(ctx context.Context, in *ListAuthMethodsRequest, opts ...grpc.CallOption) (*ListAuthMethodsResponse, error)
-	// CreateAuthMethod creates and stores an Auth Method in boundary.  The
-	// provided request must include the scope in which the Auth Method will be
+	// CreateAuthMethod creates and stores an auth method in Boundary.  The
+	// provided request must include the scope in which the auth method will be
 	// created. If the scope id is missing, malformed or referencing a
 	// non existing resource an error is returned.  If a name is provided that is
-	// in use in another Auth Method in the same scope, an error is returned.
+	// in use in another auth method in the same scope, an error is returned.
 	CreateAuthMethod(ctx context.Context, in *CreateAuthMethodRequest, opts ...grpc.CallOption) (*CreateAuthMethodResponse, error)
-	// UpdateAuthMethod updates an existing Auth Method in boundary.  The provided
-	// Auth Method must not have any read only fields set.  The update mask must be
+	// UpdateAuthMethod updates an existing auth method in Boundary.  The provided
+	// auth method must not have any read only fields set.  The update mask must be
 	// included in the request and contain at least 1 mutable field.  To unset
 	// a field's value, include the field in the update mask and don't set it
-	// in the provided user. An error is returned if the Auth Method id is missing
+	// in the provided user. An error is returned if the auth method id is missing
 	// or reference a non existing resource.  An error is also returned if the
 	// request attempts to update the name to one that is already in use by
-	// another Auth Method in the parent scope.
+	// another auth method in the parent scope.
 	UpdateAuthMethod(ctx context.Context, in *UpdateAuthMethodRequest, opts ...grpc.CallOption) (*UpdateAuthMethodResponse, error)
-	// DeleteAuthMethod removes an Auth Method from Boundary. If the Auth Method id
+	// DeleteAuthMethod removes an auth method from Boundary. If the auth method id
 	// is malformed or not provided an error is returned.
 	DeleteAuthMethod(ctx context.Context, in *DeleteAuthMethodRequest, opts ...grpc.CallOption) (*DeleteAuthMethodResponse, error)
-	// ChangeState changes the state of an Auth Method from Boundary.
+	// ChangeState changes the state of an auth method from Boundary.
 	ChangeState(ctx context.Context, in *ChangeStateRequest, opts ...grpc.CallOption) (*ChangeStateResponse, error)
 	// Authenticate validates credentials provided and returns an Auth Token.
 	Authenticate(ctx context.Context, in *AuthenticateRequest, opts ...grpc.CallOption) (*AuthenticateResponse, error)
@@ -142,33 +142,33 @@ func (c *authMethodServiceClient) Authenticate(ctx context.Context, in *Authenti
 // All implementations must embed UnimplementedAuthMethodServiceServer
 // for forward compatibility
 type AuthMethodServiceServer interface {
-	// GetAuthMethod returns a stored Auth Method if present.  The provided request
-	// must include the Auth Method id. If missing, malformed or referencing a
+	// GetAuthMethod returns a stored auth method if present.  The provided request
+	// must include the auth method id. If missing, malformed or referencing a
 	// non existing resource an error is returned.
 	GetAuthMethod(context.Context, *GetAuthMethodRequest) (*GetAuthMethodResponse, error)
-	// ListAuthMethods returns a list of stored Auth Methods which are in the
+	// ListAuthMethods returns a list of stored auth methods which are in the
 	// provided scope. The request must include the scope id and if missing,
 	// malformed, or referencing a non existing scope, an error is returned.
 	ListAuthMethods(context.Context, *ListAuthMethodsRequest) (*ListAuthMethodsResponse, error)
-	// CreateAuthMethod creates and stores an Auth Method in boundary.  The
-	// provided request must include the scope in which the Auth Method will be
+	// CreateAuthMethod creates and stores an auth method in Boundary.  The
+	// provided request must include the scope in which the auth method will be
 	// created. If the scope id is missing, malformed or referencing a
 	// non existing resource an error is returned.  If a name is provided that is
-	// in use in another Auth Method in the same scope, an error is returned.
+	// in use in another auth method in the same scope, an error is returned.
 	CreateAuthMethod(context.Context, *CreateAuthMethodRequest) (*CreateAuthMethodResponse, error)
-	// UpdateAuthMethod updates an existing Auth Method in boundary.  The provided
-	// Auth Method must not have any read only fields set.  The update mask must be
+	// UpdateAuthMethod updates an existing auth method in Boundary.  The provided
+	// auth method must not have any read only fields set.  The update mask must be
 	// included in the request and contain at least 1 mutable field.  To unset
 	// a field's value, include the field in the update mask and don't set it
-	// in the provided user. An error is returned if the Auth Method id is missing
+	// in the provided user. An error is returned if the auth method id is missing
 	// or reference a non existing resource.  An error is also returned if the
 	// request attempts to update the name to one that is already in use by
-	// another Auth Method in the parent scope.
+	// another auth method in the parent scope.
 	UpdateAuthMethod(context.Context, *UpdateAuthMethodRequest) (*UpdateAuthMethodResponse, error)
-	// DeleteAuthMethod removes an Auth Method from Boundary. If the Auth Method id
+	// DeleteAuthMethod removes an auth method from Boundary. If the auth method id
 	// is malformed or not provided an error is returned.
 	DeleteAuthMethod(context.Context, *DeleteAuthMethodRequest) (*DeleteAuthMethodResponse, error)
-	// ChangeState changes the state of an Auth Method from Boundary.
+	// ChangeState changes the state of an auth method from Boundary.
 	ChangeState(context.Context, *ChangeStateRequest) (*ChangeStateResponse, error)
 	// Authenticate validates credentials provided and returns an Auth Token.
 	Authenticate(context.Context, *AuthenticateRequest) (*AuthenticateResponse, error)
