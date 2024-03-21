@@ -13,6 +13,17 @@ import "protoc-gen-openapiv2/options/annotations.proto";
 option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/services;services";
 
 service ScopeService {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_tag) = {
+    name: "Scope service"
+    description:
+      "A scope acts as a permission boundary modeled using a container concept. It creates a hierarchical structure for organizing resources and managing access control within Boundary. "
+      "The scope service provides endpoints for managing scopes in Boundary."
+    external_docs: {
+      url: "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/scopes";
+      description: "Read about the scope in the Boundary domain model";
+    }
+  };
+
   // GetScope returns a stored Scope if present.  The provided request
   // must include the scope ID for the scope being retrieved. If
   // that ID is missing, malformed or references a non existing
