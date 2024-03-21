@@ -5624,12 +5624,12 @@
       "properties": {
         "id": {
           "type": "string",
-          "description": "Output only. The ID of the Account.",
+          "description": "The ID of the Account.",
           "readOnly": true
         },
         "scope": {
           "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
-          "description": "Output only. Scope information for the Account.",
+          "description": "Scope information for the Account.",
           "readOnly": true
         },
         "name": {
@@ -5643,13 +5643,13 @@
         "created_time": {
           "type": "string",
           "format": "date-time",
-          "description": "Output only. The time this resource was created.",
+          "description": "The time this resource was created.",
           "readOnly": true
         },
         "updated_time": {
           "type": "string",
           "format": "date-time",
-          "description": "Output only. The time this resource was last updated.",
+          "description": "The time this resource was last updated.",
           "readOnly": true
         },
         "version": {
@@ -5667,15 +5667,19 @@
         },
         "attributes": {
           "type": "object",
-          "description": "The attributes that are applicable for the specific Account type."
+          "example": {
+            "login_name": "admin",
+            "password": "password"
+          },
+          "description": "The attributes that are applicable for the specific Account type. The schema of this field depends on the type of the auth method that the account is being created in. For password auth methods, the required parameters are:\n```json\n{\n  \"login_name\": \"login_name\",\n  \"password\": \"password\"\n}\n```\nFor OIDC auth methods, the required parameters are:\n```json\n{\n  \"issuer\": \"issuer\",\n  \"subject\": \"subject\"\n}\n```\nFor LDAP auth methods, the required parameters are:\n```json\n{\n  \"login_name\": \"login_name\"\n}\n```\n"
         },
         "managed_group_ids": {
           "type": "array",
           "items": {
             "type": "string"
           },
-          "description": "",
-          "title": "Output only. managed_group_ids indicates IDs of the managed groups that currently contain this account",
+          "description": "Indicates IDs of the managed groups that currently contain this account",
+          "title": "Indicates IDs of the managed groups that currently contain this account",
           "readOnly": true
         },
         "authorized_actions": {
@@ -5683,11 +5687,15 @@
           "items": {
             "type": "string"
           },
-          "description": "Output only. The available actions on this resource for this user.",
+          "description": "The available actions on this resource for this user.",
           "readOnly": true
         }
       },
-      "title": "Account contains all fields related to an Account resource"
+      "title": "Account contains all fields related to an Account resource",
+      "required": [
+        "auth_method_id",
+        "attributes"
+      ]
     },
     "controller.api.resources.aliases.v1.Alias": {
       "type": "object",
@@ -6905,7 +6913,7 @@
       "properties": {
         "id": {
           "type": "string",
-          "description": "Output only. The ID of the Scope.",
+          "description": "The ID of the Scope.",
           "readOnly": true
         },
         "scope_id": {
@@ -6914,7 +6922,7 @@
         },
         "scope": {
           "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
-          "description": "Output only. Scope information for this resource.",
+          "description": "Scope information for this resource.",
           "readOnly": true
         },
         "name": {
@@ -6928,13 +6936,13 @@
         "created_time": {
           "type": "string",
           "format": "date-time",
-          "description": "Output only. The time this resource was created.",
+          "description": "The time this resource was created.",
           "readOnly": true
         },
         "updated_time": {
           "type": "string",
           "format": "date-time",
-          "description": "Output only. The time this resource was last updated.",
+          "description": "The time this resource was last updated.",
           "readOnly": true
         },
         "version": {
@@ -6956,7 +6964,7 @@
           "items": {
             "type": "string"
           },
-          "description": "Output only. The available actions on this resource for this user.",
+          "description": "The available actions on this resource for this user.",
           "readOnly": true
         },
         "authorized_collection_actions": {
@@ -6967,12 +6975,12 @@
               "type": "object"
             }
           },
-          "description": "Output only. The authorized actions for the scope's collections.",
+          "description": "The authorized actions for the scope's collections.",
           "readOnly": true
         },
         "storage_policy_id": {
           "type": "string",
-          "description": "Output only. The attached storage policy id.",
+          "description": "The attached storage policy id.",
           "readOnly": true
         }
       },
@@ -6983,27 +6991,27 @@
       "properties": {
         "id": {
           "type": "string",
-          "description": "Output only. The ID of the Scope.",
+          "description": "The ID of the Scope.",
           "readOnly": true
         },
         "type": {
           "type": "string",
-          "description": "Output only. The type of the Scope.",
+          "description": "The type of the Scope.",
           "readOnly": true
         },
         "name": {
           "type": "string",
-          "description": "Output only. The name of the Scope, if any.",
+          "description": "The name of the Scope, if any.",
           "readOnly": true
         },
         "description": {
           "type": "string",
-          "description": "Output only. The description of the Scope, if any.",
+          "description": "The description of the Scope, if any.",
           "readOnly": true
         },
         "parent_scope_id": {
           "type": "string",
-          "description": "Output only. The ID of the parent Scope, if any. This field will be empty if this is the \"global\" scope.",
+          "description": "The ID of the parent Scope, if any. This field will be empty if this is the \"global\" scope.",
           "readOnly": true
         }
       }

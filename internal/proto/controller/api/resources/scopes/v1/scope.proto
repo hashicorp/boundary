@@ -6,6 +6,7 @@ syntax = "proto3";
 package controller.api.resources.scopes.v1;
 
 import "controller/custom_options/v1/options.proto";
+import "google/api/field_behavior.proto";
 import "google/protobuf/struct.proto";
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/wrappers.proto";
@@ -13,32 +14,35 @@ import "google/protobuf/wrappers.proto";
 option go_package = "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes;scopes";
 
 message ScopeInfo {
-  // Output only. The ID of the Scope.
-  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
+  // The ID of the Scope.
+  string id = 1 [(google.api.field_behavior) = OUTPUT_ONLY]; // @gotags: `class:"public" eventstream:"observation"`
 
-  // Output only. The type of the Scope.
-  string type = 2; // @gotags: `class:"public" eventstream:"observation"`
+  // The type of the Scope.
+  string type = 2 [(google.api.field_behavior) = OUTPUT_ONLY]; // @gotags: `class:"public" eventstream:"observation"`
 
-  // Output only. The name of the Scope, if any.
-  string name = 3; // @gotags: `class:"public"`
+  // The name of the Scope, if any.
+  string name = 3 [(google.api.field_behavior) = OUTPUT_ONLY]; // @gotags: `class:"public"`
 
-  // Output only. The description of the Scope, if any.
-  string description = 4; // @gotags: `class:"public"`
+  // The description of the Scope, if any.
+  string description = 4 [(google.api.field_behavior) = OUTPUT_ONLY]; // @gotags: `class:"public"`
 
-  // Output only. The ID of the parent Scope, if any. This field will be empty if this is the "global" scope.
-  string parent_scope_id = 5 [json_name = "parent_scope_id"]; // @gotags: `class:"public" eventstream:"observation"`
+  // The ID of the parent Scope, if any. This field will be empty if this is the "global" scope.
+  string parent_scope_id = 5 [
+    json_name = "parent_scope_id",
+    (google.api.field_behavior) = OUTPUT_ONLY
+  ]; // @gotags: `class:"public" eventstream:"observation"`
 }
 
 // Scope contains all fields related to a Scope resource
 message Scope {
-  // Output only. The ID of the Scope.
-  string id = 10; // @gotags: `class:"public" eventstream:"observation"`
+  // The ID of the Scope.
+  string id = 10 [(google.api.field_behavior) = OUTPUT_ONLY]; // @gotags: `class:"public" eventstream:"observation"`
 
   // The ID of the Scope this resource is in. If this is the "global" Scope this field will be empty.
   string scope_id = 20 [json_name = "scope_id"]; // @gotags: `class:"public" eventstream:"observation"`
 
-  // Output only. Scope information for this resource.
-  ScopeInfo scope = 30;
+  // Scope information for this resource.
+  ScopeInfo scope = 30 [(google.api.field_behavior) = OUTPUT_ONLY];
 
   // Optional name for identification purposes.
   google.protobuf.StringValue name = 40 [
@@ -58,11 +62,17 @@ message Scope {
     }
   ]; // @gotags: `class:"public"`
 
-  // Output only. The time this resource was created.
-  google.protobuf.Timestamp created_time = 60 [json_name = "created_time"]; // @gotags: `class:"public" eventstream:"observation"`
+  // The time this resource was created.
+  google.protobuf.Timestamp created_time = 60 [
+    json_name = "created_time",
+    (google.api.field_behavior) = OUTPUT_ONLY
+  ]; // @gotags: `class:"public" eventstream:"observation"`
 
-  // Output only. The time this resource was last updated.
-  google.protobuf.Timestamp updated_time = 70 [json_name = "updated_time"]; // @gotags: `class:"public" eventstream:"observation"`
+  // The time this resource was last updated.
+  google.protobuf.Timestamp updated_time = 70 [
+    json_name = "updated_time",
+    (google.api.field_behavior) = OUTPUT_ONLY
+  ]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
@@ -82,14 +92,23 @@ message Scope {
     }
   ]; // @gotags: `class:"public" eventstream:"observation"`
 
-  // Output only. The available actions on this resource for this user.
-  repeated string authorized_actions = 300 [json_name = "authorized_actions"]; // @gotags: `class:"public"`
+  // The available actions on this resource for this user.
+  repeated string authorized_actions = 300 [
+    json_name = "authorized_actions",
+    (google.api.field_behavior) = OUTPUT_ONLY
+  ]; // @gotags: `class:"public"`
 
-  // Output only. The authorized actions for the scope's collections.
-  map<string, google.protobuf.ListValue> authorized_collection_actions = 310 [json_name = "authorized_collection_actions"];
+  // The authorized actions for the scope's collections.
+  map<string, google.protobuf.ListValue> authorized_collection_actions = 310 [
+    json_name = "authorized_collection_actions",
+    (google.api.field_behavior) = OUTPUT_ONLY
+  ];
 
-  // Output only. The attached storage policy id.
-  string storage_policy_id = 320 [json_name = "storage_policy_id"]; // @gotags: `class:"public"`
+  // The attached storage policy id.
+  string storage_policy_id = 320 [
+    json_name = "storage_policy_id",
+    (google.api.field_behavior) = OUTPUT_ONLY
+  ]; // @gotags: `class:"public"`
 }
 
 // KeyVersion describes a specific version of a key and holds the actual key material
