@@ -15,7 +15,6 @@ option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/s
 option (custom_options.v1.domain) = "host";
 
 service HostService {
-
   option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_tag) = {
     name: "Host service"
     description:
