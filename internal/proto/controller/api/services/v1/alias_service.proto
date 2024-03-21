@@ -20,12 +20,7 @@ service AliasService {
     description:
       "The alias service exposes endpoints for interacting with aliases in Boundary. "
       "An alias acts as a reference or an alternate name for an existing entity within the Boundary access control system. "
-      "It essentially provides a way to simplify access control by offering a more user-friendly or descriptive identifier for an entity."
-    external_docs: {
-      //TODO: Update the URL
-      url: "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/aliases";
-      description: "Read about alias in the Boundary domain model";
-    }
+      "It provides a way to simplify access control by offering a more user-friendly or descriptive identifier for an entity."
   };
 
   // GetAlias returns a stored Alias if present. The provided request must
@@ -89,6 +84,7 @@ service AliasService {
 }
 
 message GetAliasRequest {
+  // The id of the Alias to retrieve.
   string id = 1; // @gotags: `class:"public" eventstream:"observation"`
 }
 
@@ -97,15 +93,20 @@ message GetAliasResponse {
 }
 
 message ListAliasesRequest {
+  // The id of the scope in which to list aliases
   string scope_id = 1 [json_name = "scope_id"]; // @gotags: `class:"public" eventstream:"observation"`
 
+  // Whether to recursively list aliases in child scopes of the provided scope.
   bool recursive = 2; // @gotags: `class:"public"`
 
+  // Filter can be specified to only return items that match the filter.
+  // See [filter expressions](https://developer.hashicorp.com/boundary/docs/concepts/filtering) for more information.
   string filter = 30 [json_name = "filter"]; // @gotags: `class:"sensitive"`
 
   // An opaque token used to continue an existing iteration or
   // request updated items. If not specified, pagination
-  // will start from the beginning.
+  // will start from the beginning. To learn more about list pagination
+  // in Boundary, refer to [list pagination](https://developer.hashicorp.com/boundary/docs/api-clients/api/pagination).
   string list_token = 40 [json_name = "list_token"]; // @gotags: `class:"public"`
 
   // The maximum size of a page in this iteration.
@@ -116,6 +117,7 @@ message ListAliasesRequest {
 }
 
 message ListAliasesResponse {
+  // The list of aliases.
   repeated resources.aliases.v1.Alias items = 1;
 
   // The type of response, either "delta" or "complete".
@@ -155,7 +157,9 @@ message CreateAliasResponse {
 }
 
 message UpdateAliasRequest {
+  // The id of the Alias to update.
   string id = 1; // @gotags: `class:"public" eventstream:"observation"`
+  // A subset of the alias containing the fields to update.
   resources.aliases.v1.Alias item = 2;
   google.protobuf.FieldMask update_mask = 3 [json_name = "update_mask"];
 }
@@ -165,6 +169,7 @@ message UpdateAliasResponse {
 }
 
 message DeleteAliasRequest {
+  // The id of the alias to delete.
   string id = 1; // @gotags: `class:"public" eventstream:"observation"`
 }
 
