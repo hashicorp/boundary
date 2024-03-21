@@ -12,6 +12,17 @@ import "protoc-gen-openapiv2/options/annotations.proto";
 option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/services;services";
 
 service SessionService {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_tag) = {
+    name: "Session service"
+    description:
+      "A session represents a temporary, authorized access connection between a user and a target resource. "
+      "The session service provides endpoints for managing sessions in Boundary."
+    external_docs: {
+      url: "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/sessions";
+      description: "Read about the session in the Boundary domain model";
+    }
+  };
+
   // GetSession returns a stored Session if present.  The provided request
   // must include the Session ID for the Session being retrieved. If
   // any that ID is missing, malformed or reference a non existing
