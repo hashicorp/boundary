@@ -19,7 +19,7 @@ service SessionService {
       "The session service provides endpoints for managing sessions in Boundary."
     external_docs: {
       url: "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/sessions";
-      description: "Read about the session in the Boundary domain model";
+      description: "Read about sessions in the Boundary domain model";
     }
   };
 

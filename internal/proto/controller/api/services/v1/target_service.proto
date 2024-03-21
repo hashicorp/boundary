@@ -22,7 +22,7 @@ service TargetService {
       "The target service provides endpoints for managing targets in Boundary."
     external_docs: {
       url: "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/targets";
-      description: "Read about the target in the Boundary domain model";
+      description: "Read about targets in the Boundary domain model";
     }
   };
 

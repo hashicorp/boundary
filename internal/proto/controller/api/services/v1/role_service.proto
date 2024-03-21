@@ -20,7 +20,7 @@ service RoleService {
       "The role service provides endpoints for managing roles in Boundary."
     external_docs: {
       url: "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/roles";
-      description: "Read about the role in the Boundary domain model";
+      description: "Read about roles in the Boundary domain model";
     }
   };
 

@@ -22,7 +22,7 @@ service StorageBucketService {
       "The storage bucket service provides endpoints for managing storage buckets in Boundary."
     external_docs: {
       url: "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/storage-buckets";
-      description: "Read about the storage bucket in the Boundary domain model";
+      description: "Read about storage buckets in the Boundary domain model";
     }
   };
 

@@ -17,7 +17,8 @@ service WorkerService {
   option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_tag) = {
     name: "Worker service"
     description:
-      "A worker is a service that acts as a network proxy for Boundary sessions. It essentially functions as a bridge between users and the target resources they need to access. "
+      "A worker is a service that acts as a network proxy for Boundary sessions. "
+      "It functions as a bridge between users and the target resources they need to access. "
       "The worker service provides endpoints for managing workers in Boundary."
   };
 

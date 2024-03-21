@@ -22,7 +22,7 @@ service ManagedGroupService {
       "The managed group service provides endpoints for creating, reading, updating, and deleting managed groups in Boundary."
     external_docs: {
       url: "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/managed-groups";
-      description: "Read about the managed group in the Boundary domain model";
+      description: "Read about managed groups in the Boundary domain model";
     }
   };
 

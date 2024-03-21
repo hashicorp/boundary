@@ -30,17 +30,13 @@
       "name": "Auth method service",
       "description": "The Auth method service exposes endpoints for interacting with auth methods in Boundary. An auth method defines how users can authenticate themselves within the system. It acts as a bridge between Boundary and various external identity providers or authentication mechanisms.",
       "externalDocs": {
-        "description": "Read about auth method in the Boundary domain model",
+        "description": "Read about auth methods in the Boundary domain model",
         "url": "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/auth-methods"
       }
     },
     {
       "name": "Auth token service",
-      "description": "The Auth token service provides the ability to manage and retrieve Auth tokens. An Auth token serves as a temporary credential issued to a user after successful authentication. It grants the user access to Boundary's resources and capabilities for a limited duration.",
-      "externalDocs": {
-        "description": "Read about auth token in the Boundary domain model",
-        "url": "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/auth-token"
-      }
+      "description": "The auth token service provides the ability to manage and retrieve auth tokens. An auth token serves as a temporary credential issued to a user after successful authentication. It grants the user access to Boundary's resources and capabilities for a limited duration."
     },
     {
       "name": "Billing service",
@@ -48,9 +44,9 @@
     },
     {
       "name": "Credential library service",
-      "description": "The credential library service acts as a centralized repository for managing credentials used during access sessions. It offers a secure and efficient way to store, rotate, and manage various types of credentials required for infrastructure access. The Credential library service provides endpoints for interacting with credential libraries.",
+      "description": "The credential library service acts as a centralized repository for managing credentials used during sessions. It offers a secure and efficient way to store, rotate, and manage various types of credentials required for infrastructure access. The credential library service provides endpoints for interacting with credential libraries.",
       "externalDocs": {
-        "description": "Read about the credential library in the Boundary domain model",
+        "description": "Read about credential libraries in the Boundary domain model",
         "url": "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/credential-libraries"
       }
     },
@@ -58,7 +54,7 @@
       "name": "Credential service",
       "description": "A credential is a data structure containing one or more secrets that binds an identity to a set of permissions or capabilities on a host for a session. The credential service provides endpoints for managing credentials in Boundary. ",
       "externalDocs": {
-        "description": "Read about the credential in the Boundary domain model",
+        "description": "Read about credentials in the Boundary domain model",
         "url": "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/credentials"
       }
     },
@@ -66,7 +62,7 @@
       "name": "Credential store service",
       "description": "A credential store is a resource that can retrieve, store, and potentially generate credentials of differing types and differing access levels. The credential store service provides endpoints for managing credential stores in Boundary. ",
       "externalDocs": {
-        "description": "Read about the credential store in the Boundary domain model",
+        "description": "Read about credential stores in the Boundary domain model",
         "url": "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/credential-stores"
       }
     },
@@ -74,7 +70,7 @@
       "name": "Group service",
       "description": "A group is a resource that represents a collection of users which can be treated equally for the purposes of access control. The group service provides endpoints for managing groups in Boundary. ",
       "externalDocs": {
-        "description": "Read about the group in the Boundary domain model",
+        "description": "Read about groups in the Boundary domain model",
         "url": "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/groups"
       }
     },
@@ -82,15 +78,15 @@
       "name": "Host catalog service",
       "description": "A host catalog serves as a central repository for managing and organizing the target hosts or resources that Boundary can access and control. The host catalog service provides endpoints for managing host catalogs in Boundary.",
       "externalDocs": {
-        "description": "Read about the host catalog in the Boundary domain model",
+        "description": "Read about host catalogs in the Boundary domain model",
         "url": "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/host-catalogs"
       }
     },
     {
       "name": "Host service",
-      "description": "A host is a resource that represents a computing element with a network address reachable from Boundary. The host service provides endpoints for managing hosts in Boundary.",
+      "description": "A host is a resource that represents a computing element with a network address reachable from a Boundary worker. The host service provides endpoints for managing hosts in Boundary.",
       "externalDocs": {
-        "description": "Read about the host in the Boundary domain model",
+        "description": "Read about hosts in the Boundary domain model",
         "url": "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/hosts"
       }
     },
@@ -98,7 +94,7 @@
       "name": "Host set service",
       "description": "A host set is a resource that represents a collection of hosts which are considered equivalent for the purposes of access control. The host set service provides endpoints for managing host sets in Boundary.",
       "externalDocs": {
-        "description": "Read about the host set in the Boundary domain model",
+        "description": "Read about host sets in the Boundary domain model",
         "url": "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/host-sets"
       }
     },
@@ -106,7 +102,7 @@
       "name": "Managed group service",
       "description": "A managed group is a resource that represents a collection of accounts. The managed group service provides endpoints for creating, reading, updating, and deleting managed groups in Boundary.",
       "externalDocs": {
-        "description": "Read about the managed group in the Boundary domain model",
+        "description": "Read about managed groups in the Boundary domain model",
         "url": "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/managed-groups"
       }
     },
@@ -122,7 +118,7 @@
       "name": "Role service",
       "description": "A role represents a collection of permissions that define what actions a user or service account can perform within the system. The role service provides endpoints for managing roles in Boundary.",
       "externalDocs": {
-        "description": "Read about the role in the Boundary domain model",
+        "description": "Read about roles in the Boundary domain model",
         "url": "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/roles"
       }
     },
@@ -130,7 +126,7 @@
       "name": "Scope service",
       "description": "A scope acts as a permission boundary modeled using a container concept. It creates a hierarchical structure for organizing resources and managing access control within Boundary. The scope service provides endpoints for managing scopes in Boundary.",
       "externalDocs": {
-        "description": "Read about the scope in the Boundary domain model",
+        "description": "Read about scopes in the Boundary domain model",
         "url": "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/scopes"
       }
     },
@@ -138,7 +134,7 @@
       "name": "Session recording service",
       "description": "A session recording is a feature that enables administrators to record and playback user access sessions to target resources. It provides an audit trail of user activity and monitor access. The session recording service provides endpoints for managing session recordings in Boundary.",
       "externalDocs": {
-        "description": "Read about the session recording in the Boundary domain model",
+        "description": "Read about session recordings in the Boundary domain model",
         "url": "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/session-recordings"
       }
     },
@@ -146,7 +142,7 @@
       "name": "Session service",
       "description": "A session represents a temporary, authorized access connection between a user and a target resource. The session service provides endpoints for managing sessions in Boundary.",
       "externalDocs": {
-        "description": "Read about the session in the Boundary domain model",
+        "description": "Read about sessions in the Boundary domain model",
         "url": "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/sessions"
       }
     },
@@ -154,7 +150,7 @@
       "name": "Storage bucket service",
       "description": "A storage bucket is an external storage location used to store recordings of user access sessions. The storage bucket service provides endpoints for managing storage buckets in Boundary.",
       "externalDocs": {
-        "description": "Read about the storage bucket in the Boundary domain model",
+        "description": "Read about storage buckets in the Boundary domain model",
         "url": "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/storage-buckets"
       }
     },
@@ -162,7 +158,7 @@
       "name": "Target service",
       "description": "A target represents an endpoint or resource that users can access through Boundary sessions. The target service provides endpoints for managing targets in Boundary.",
       "externalDocs": {
-        "description": "Read about the target in the Boundary domain model",
+        "description": "Read about targets in the Boundary domain model",
         "url": "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/targets"
       }
     },
@@ -170,13 +166,13 @@
       "name": "User service",
       "description": "A user can be a human individual or a service account to access resources. The user service provides endpoints for managing users in Boundary.",
       "externalDocs": {
-        "description": "Read about the target in the Boundary domain model",
+        "description": "Read about users in the Boundary domain model",
         "url": "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/users"
       }
     },
     {
       "name": "Worker service",
-      "description": "A worker is a service that acts as a network proxy for Boundary sessions. It essentially functions as a bridge between users and the target resources they need to access. The worker service provides endpoints for managing workers in Boundary."
+      "description": "A worker is a service that acts as a network proxy for Boundary sessions. It functions as a bridge between users and the target resources they need to access. The worker service provides endpoints for managing workers in Boundary."
     }
   ],
   "host": "your-boundary-hostname.com",

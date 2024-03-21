@@ -21,7 +21,7 @@ service SessionRecordingService {
       "The session recording service provides endpoints for managing session recordings in Boundary."
     external_docs: {
       url: "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/session-recordings";
-      description: "Read about the session recording in the Boundary domain model";
+      description: "Read about session recordings in the Boundary domain model";
     }
   };
 
