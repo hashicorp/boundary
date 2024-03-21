@@ -63,7 +63,7 @@ its upstream worker, and create a reverse proxy to establish a session.
 ## Multi-hop worker requirements
 
 To configure multi-hop sessions, you must deploy [Boundary self-managed workers](/hcp/docs/boundary/self-managed-workers) into various networks.
-When you deploy multi-hop workers, it is important to configure [worker tags](/docs/concepts/filtering/worker-tags#workers) that establish ingress and egress workers.
+When you deploy multi-hop workers, it is important to configure [worker tags](/boundary/docs/concepts/filtering/worker-tags#workers) that establish ingress and egress workers.
 
 From a networking perspective, multi-hop workers have the following requirements:
 
@@ -86,7 +86,7 @@ The ingress worker requires outbound access to each controller cluster listener 
 
 ### Target worker filters
 
-You must configure [target worker filters](/docs/concepts/filtering/worker-tags#target-workers) for workers to allow for fine-grained control over which workers handle ingress and egress for session traffic to a target.
+You must configure [target worker filters](/boundary/docs/concepts/filtering/worker-tags#target-workers) for workers to allow for fine-grained control over which workers handle ingress and egress for session traffic to a target.
 Ingress worker filters determine which workers are used to intiate a session.
 Egress worker filters determine which workers are used to access targets at the end of the multi-hop chain.
 
