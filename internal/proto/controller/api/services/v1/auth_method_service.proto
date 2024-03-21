@@ -126,7 +126,8 @@ message ListAuthMethodsRequest {
   string filter = 30 [json_name = "filter"]; // @gotags: `class:"public"`
   // An opaque token used to continue an existing iteration or
   // request updated items. If not specified, pagination
-  // will start from the beginning.
+  // will start from the beginning. To learn more about list pagination
+  // in Boundary, refer to [list pagination](https://developer.hashicorp.com/boundary/docs/api-clients/api/pagination).
   string list_token = 40 [json_name = "list_token"]; // @gotags: `class:"public"`
   // The maximum size of a page in this iteration.
   // If unset, the default page size configured will be used.

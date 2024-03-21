@@ -24,11 +24,7 @@
     },
     {
       "name": "Alias service",
-      "description": "The alias service exposes endpoints for interacting with aliases in Boundary. An alias acts as a reference or an alternate name for an existing entity within the Boundary access control system. It essentially provides a way to simplify access control by offering a more user-friendly or descriptive identifier for an entity.",
-      "externalDocs": {
-        "description": "Read about alias in the Boundary domain model",
-        "url": "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/aliases"
-      }
+      "description": "The alias service exposes endpoints for interacting with aliases in Boundary. An alias acts as a reference or an alternate name for an existing entity within the Boundary access control system. It provides a way to simplify access control by offering a more user-friendly or descriptive identifier for an entity."
     },
     {
       "name": "Auth method service",
@@ -197,7 +193,7 @@
   "paths": {
     "/v1/accounts": {
       "get": {
-        "summary": "Lists all Accounts in a specific Auth Method.",
+        "summary": "Lists all accounts in a specific auth method.",
         "operationId": "AccountService_ListAccounts",
         "responses": {
           "200": {
@@ -249,7 +245,7 @@
         ]
       },
       "post": {
-        "summary": "Creates a single Account in the provided Auth Method.",
+        "summary": "Creates a single account in the provided auth method.",
         "operationId": "AccountService_CreateAccount",
         "responses": {
           "200": {
@@ -282,7 +278,7 @@
     },
     "/v1/accounts/{id}": {
       "get": {
-        "summary": "Gets a single Account based on the input id",
+        "summary": "Gets a single account based on the input id",
         "operationId": "AccountService_GetAccount",
         "responses": {
           "200": {
@@ -312,7 +308,7 @@
         ]
       },
       "delete": {
-        "summary": "Deletes an Account.",
+        "summary": "Deletes an account.",
         "operationId": "AccountService_DeleteAccount",
         "responses": {
           "200": {
@@ -342,7 +338,7 @@
         ]
       },
       "patch": {
-        "summary": "Updates an Account.",
+        "summary": "Updates an account.",
         "operationId": "AccountService_UpdateAccount",
         "responses": {
           "200": {
@@ -368,7 +364,7 @@
           },
           {
             "name": "item",
-            "description": "A subset of the account containing the fields to update",
+            "description": "A subset of the account containing the fields to update.",
             "in": "body",
             "required": true,
             "schema": {
@@ -383,7 +379,7 @@
     },
     "/v1/accounts/{id}:change-password": {
       "post": {
-        "summary": "Sets the password for the provided Account.",
+        "summary": "Sets the password for the provided account.",
         "operationId": "AccountService_ChangePassword",
         "responses": {
           "200": {
@@ -423,7 +419,7 @@
     },
     "/v1/accounts/{id}:set-password": {
       "post": {
-        "summary": "Sets the password for the provided Account.",
+        "summary": "Sets the password for the provided account.",
         "operationId": "AccountService_SetPassword",
         "responses": {
           "200": {
@@ -482,28 +478,28 @@
         "parameters": [
           {
             "name": "scope_id",
-            "description": "",
+            "description": "The id of the scope in which to list aliases",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "recursive",
-            "description": "",
+            "description": "Whether to recursively list aliases in child scopes of the provided scope.",
             "in": "query",
             "required": false,
             "type": "boolean"
           },
           {
             "name": "filter",
-            "description": "",
+            "description": "Filter can be specified to only return items that match the filter.\nSee [filter expressions](https://developer.hashicorp.com/boundary/docs/concepts/filtering) for more information.",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "list_token",
-            "description": "An opaque token used to continue an existing iteration or\nrequest updated items. If not specified, pagination\nwill start from the beginning.",
+            "description": "An opaque token used to continue an existing iteration or\nrequest updated items. If not specified, pagination\nwill start from the beginning. To learn more about list pagination\nin Boundary, refer to [list pagination](https://developer.hashicorp.com/boundary/docs/api-clients/api/pagination).",
             "in": "query",
             "required": false,
             "type": "string"
@@ -574,7 +570,7 @@
         "parameters": [
           {
             "name": "id",
-            "description": "",
+            "description": "The id of the Alias to retrieve.",
             "in": "path",
             "required": true,
             "type": "string"
@@ -604,7 +600,7 @@
         "parameters": [
           {
             "name": "id",
-            "description": "",
+            "description": "The id of the alias to delete.",
             "in": "path",
             "required": true,
             "type": "string"
@@ -634,13 +630,14 @@
         "parameters": [
           {
             "name": "id",
-            "description": "",
+            "description": "The id of the Alias to update.",
             "in": "path",
             "required": true,
             "type": "string"
           },
           {
             "name": "item",
+            "description": "A subset of the alias containing the fields to update.",
             "in": "body",
             "required": true,
             "schema": {
@@ -695,7 +692,7 @@
           },
           {
             "name": "list_token",
-            "description": "An opaque token used to continue an existing iteration or\nrequest updated items. If not specified, pagination\nwill start from the beginning.",
+            "description": "An opaque token used to continue an existing iteration or\nrequest updated items. If not specified, pagination\nwill start from the beginning. To learn more about list pagination\nin Boundary, refer to [list pagination](https://developer.hashicorp.com/boundary/docs/api-clients/api/pagination).",
             "in": "query",
             "required": false,
             "type": "string"
@@ -5712,12 +5709,12 @@
       "properties": {
         "id": {
           "type": "string",
-          "description": "The ID of the Account.",
+          "description": "The ID of the account.",
           "readOnly": true
         },
         "scope": {
           "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
-          "description": "Scope information for the Account.",
+          "description": "Scope information for the account.",
           "readOnly": true
         },
         "name": {
@@ -5743,22 +5740,22 @@
         "version": {
           "type": "integer",
           "format": "int64",
-          "description": "Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version.\nNot created when creating an account."
+          "description": "Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version.\nNot required when creating an account."
         },
         "type": {
           "type": "string",
-          "description": "The type of this Account. If not set, this is inferred from the type of the auth method."
+          "description": "The type of this account. If not set, this is inferred from the type of the auth method."
         },
         "auth_method_id": {
           "type": "string",
-          "description": "The ID of the Auth Method that is associated with this Account."
+          "description": "The ID of the auth method that is associated with this account."
         },
         "attributes": {
           "type": "object",
           "example": {
             "login_name": "login_name"
           },
-          "description": "The attributes that are applicable for the specific Account type. The schema of this field depends on the type of the auth method that the account is being created in.\nFor password auth methods, the required parameters are:\n```json\n{\n  \"login_name\": \"login_name\",\n}\n```\nFor OIDC auth methods, the required parameters are:\n```json\n{\n  \"issuer\": \"issuer\",\n  \"subject\": \"subject\"\n}\n```\nFor LDAP auth methods, the required parameters are:\n```json\n{\n  \"login_name\": \"login_name\"\n}\n```\n"
+          "description": "The attributes that are applicable for the specific account type. The schema of this field depends on the type of the auth method that the account is being created in.\nFor password auth methods, the parameters are:\n```json\n{\n  \"login_name\": \"login_name\",\n  \"password\": \"password\"\n}\n```\nFor OIDC auth methods, the parameters are:\n```json\n{\n  \"issuer\": \"issuer\",\n  \"subject\": \"subject\",\n  \"full_name\": \"full_name\",\n  \"email\": \"email\",\n  \"token_claims\": {},\n  \"userinfo_claims\": {}\n}\n```\nFor LDAP auth methods, the parameters are:\n```json\n{\n  \"login_name\": \"login_name\",\n  \"full_name\": \"full_name\",\n  \"email\": \"email\",\n  \"dn\": \"dn\",\n  \"member_of_groups\": [\"member_of_groups\"]\n}\n```\n"
         },
         "managed_group_ids": {
           "type": "array",
@@ -5778,7 +5775,7 @@
           "readOnly": true
         }
       },
-      "title": "Account contains all fields related to an Account resource",
+      "title": "Account contains all fields related to an account resource",
       "required": [
         "auth_method_id",
         "attributes"
@@ -5789,7 +5786,7 @@
       "properties": {
         "id": {
           "type": "string",
-          "description": "Output only. The ID of the Alias.",
+          "description": "The ID of the Alias.",
           "readOnly": true
         },
         "scope_id": {
@@ -5798,7 +5795,7 @@
         },
         "scope": {
           "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
-          "description": "Output only. Scope information for this Alias.",
+          "description": "Scope information for this Alias.",
           "readOnly": true
         },
         "name": {
@@ -5812,19 +5809,19 @@
         "created_time": {
           "type": "string",
           "format": "date-time",
-          "description": "Output only. The time this resource was created.",
+          "description": "The time this resource was created.",
           "readOnly": true
         },
         "updated_time": {
           "type": "string",
           "format": "date-time",
-          "description": "Output only. The time this resource was last updated.",
+          "description": "The time this resource was last updated.",
           "readOnly": true
         },
         "version": {
           "type": "integer",
           "format": "int64",
-          "description": "Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+          "description": "Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version.\nNot required when creating an alias."
         },
         "value": {
           "type": "string",
@@ -5840,18 +5837,28 @@
         },
         "attributes": {
           "type": "object",
-          "description": "The attributes that are applicable for the specific Alias type."
+          "example": {
+            "authorize_session_arguments": {
+              "host_id": "host_id"
+            }
+          },
+          "description": "The attributes that are applicable for the specific alias type. The schema of this field depends on the type of resource that the alias is being created in.\nFor target aliases, the parameters are:\n```json\n{\n  \"authorize_session_arguments\": {\"host_id\":\"host_id\"}\n}\n```\n"
         },
         "authorized_actions": {
           "type": "array",
           "items": {
             "type": "string"
           },
-          "description": "Output only. The available actions on this resource for this user.",
+          "description": "The available actions on this resource for this user.",
           "readOnly": true
         }
       },
-      "title": "Alias contains all fields related to an Alias resource"
+      "title": "Alias contains all fields related to an Alias resource",
+      "required": [
+        "scope_id",
+        "value",
+        "type"
+      ]
     },
     "controller.api.resources.authmethods.v1.AuthMethod": {
       "type": "object",
@@ -9384,7 +9391,8 @@
           "items": {
             "type": "object",
             "$ref": "#/definitions/controller.api.resources.aliases.v1.Alias"
-          }
+          },
+          "description": "The list of aliases."
         },
         "response_type": {
           "type": "string",

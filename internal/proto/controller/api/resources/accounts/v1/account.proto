@@ -16,12 +16,12 @@ import "protoc-gen-openapiv2/options/annotations.proto";
 
 option go_package = "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/accounts;accounts";
 
-// Account contains all fields related to an Account resource
+// Account contains all fields related to an account resource
 message Account {
-  // The ID of the Account.
+  // The ID of the account.
   string id = 10 [(google.api.field_behavior) = OUTPUT_ONLY]; // @gotags: `class:"public" eventstream:"observation"`
 
-  // Scope information for the Account.
+  // Scope information for the account.
   resources.scopes.v1.ScopeInfo scope = 20 [(google.api.field_behavior) = OUTPUT_ONLY];
 
   // Optional name for identification purposes.
@@ -56,13 +56,13 @@ message Account {
 
   // Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
-  // Not created when creating an account.
+  // Not required when creating an account.
   uint32 version = 70; // @gotags: `class:"public"`
 
-  // The type of this Account. If not set, this is inferred from the type of the auth method.
+  // The type of this account. If not set, this is inferred from the type of the auth method.
   string type = 80; // @gotags: `class:"public" eventstream:"observation"`
 
-  // The ID of the Auth Method that is associated with this Account.
+  // The ID of the auth method that is associated with this account.
   string auth_method_id = 90 [
     json_name = "auth_method_id",
     (custom_options.v1.subtype_source_id) = true,
@@ -70,7 +70,7 @@ message Account {
   ]; // @gotags: `class:"public" eventstream:"observation"`
 
   oneof attrs {
-    // The attributes that are applicable for the specific Account type.
+    // The attributes that are applicable for the specific account type.
     google.protobuf.Struct attributes = 100 [
       (custom_options.v1.generate_sdk_option) = true,
       (custom_options.v1.subtype) = "default",
@@ -78,26 +78,35 @@ message Account {
       (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
         example: "{\"login_name\": \"login_name\"}",
         description:
-          "The attributes that are applicable for the specific Account type. "
+          "The attributes that are applicable for the specific account type. "
           "The schema of this field depends on the type of the auth method "
           "that the account is being created in.\n"
-          "For password auth methods, the required parameters are:\n"
+          "For password auth methods, the parameters are:\n"
           "```json\n"
           "{\n"
           "  \"login_name\": \"login_name\",\n"
+          "  \"password\": \"password\"\n"
           "}\n"
           "```\n"
-          "For OIDC auth methods, the required parameters are:\n"
+          "For OIDC auth methods, the parameters are:\n"
           "```json\n"
           "{\n"
           "  \"issuer\": \"issuer\",\n"
-          "  \"subject\": \"subject\"\n"
+          "  \"subject\": \"subject\",\n"
+          "  \"full_name\": \"full_name\",\n"
+          "  \"email\": \"email\",\n"
+          "  \"token_claims\": {},\n"
+          "  \"userinfo_claims\": {}\n"
           "}\n"
           "```\n"
-          "For LDAP auth methods, the required parameters are:\n"
+          "For LDAP auth methods, the parameters are:\n"
           "```json\n"
           "{\n"
-          "  \"login_name\": \"login_name\"\n"
+          "  \"login_name\": \"login_name\",\n"
+          "  \"full_name\": \"full_name\",\n"
+          "  \"email\": \"email\",\n"
+          "  \"dn\": \"dn\",\n"
+          "  \"member_of_groups\": [\"member_of_groups\"]\n"
           "}\n"
           "```\n"
       }
@@ -132,9 +141,9 @@ message Account {
   ]; // @gotags: `class:"public"`
 }
 
-// Attributes associated only with Accounts with type "password".
+// Attributes associated only with accounts with type "password".
 message PasswordAccountAttributes {
-  // The login name of this Account. This is unique per Auth Method.
+  // The login name of this account. This is unique per auth method.
   string login_name = 10 [
     json_name = "login_name",
     (custom_options.v1.generate_sdk_option) = true,
@@ -145,14 +154,14 @@ message PasswordAccountAttributes {
     (google.api.field_behavior) = REQUIRED
   ]; // @gotags: `class:"sensitive"`
 
-  // The password for this Account.
+  // The password for this account.
   google.protobuf.StringValue password = 20 [
     (custom_options.v1.generate_sdk_option) = true,
     (google.api.field_behavior) = REQUIRED
   ]; // @gotags: `class:"secret"`
 }
 
-// Attributes associated only with Accounts with type "oidc".
+// Attributes associated only with accounts with type "oidc".
 message OidcAccountAttributes {
   // issuer is a case sensitive URL that maps to the OIDC iss claim.
   // This value is immutable after creation time.
@@ -186,11 +195,11 @@ message OidcAccountAttributes {
   google.protobuf.Struct userinfo_claims = 130 [(google.api.field_behavior) = OUTPUT_ONLY];
 }
 
-// Attributes associated only with Accounts with type "ldap".
+// Attributes associated only with accounts with type "ldap".
 message LdapAccountAttributes {
-  // login_name of the authenticated user.  This is the login_name (or username)
+  // login_name of the authenticated user. This is the login_name (or username)
   // entered by the user when authenticating (typically the uid or cn
-  // attribute).  Account login names must be lower case.
+  // attribute). Account login names must be lower case.
   string login_name = 100 [
     json_name = "login_name",
     (custom_options.v1.generate_sdk_option) = true,
@@ -202,7 +211,7 @@ message LdapAccountAttributes {
   ]; // @gotags: `class:"sensitive"`
 
   // A string that maps to the name attribute for the
-  // authenticated user.  This attribute is updated every time a user
+  // authenticated user. This attribute is updated every time a user
   // successfully authenticates.
   string full_name = 110 [
     json_name = "full_name",
@@ -210,12 +219,12 @@ message LdapAccountAttributes {
   ]; // @gotags: `class:"sensitive"`
 
   // A string that maps to the email address attribute for
-  // the authenticated user.  This attribute is updated every time a user
+  // the authenticated user. This attribute is updated every time a user
   // successfully authenticates.
   string email = 120 [(google.api.field_behavior) = OUTPUT_ONLY]; // @gotags: `class:"sensitive"`
 
-  // The distinguished name authenticated user's entry.  Will
-  // be null until the user's first successful authentication.  This attribute
+  // The distinguished name authenticated user's entry. Will
+  // be null until the user's first successful authentication. This attribute
   // is updated every time a user successfully authenticates.
   string dn = 130 [(google.api.field_behavior) = OUTPUT_ONLY]; // @gotags: `class:"public"`
 
