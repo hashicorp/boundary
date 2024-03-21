@@ -45,20 +45,13 @@ option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
   consumes: "application/json"
   produces: "application/json"
   responses: {
-    key: "401";
-    value: {description: "Returned when the request contained invalid data."}
-  }
-  responses: {
-    key: "403";
-    value: {description: "Returned when the user does not have permission to access the resource."}
-  }
-  responses: {
-    key: "404";
-    value: {description: "Returned when the resource does not exist."}
-  }
-  responses: {
-    key: "500";
-    value: {description: "Server error"}
+    key: "default";
+    value: {
+      description: "Returned when there was an error processing the request."
+      schema: {
+        json_schema: {ref: ".controller.api.v1.Error"}
+      }
+    }
   }
   security_definitions: {
     security: {
