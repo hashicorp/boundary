@@ -15,6 +15,18 @@ option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/s
 option (custom_options.v1.domain) = "host";
 
 service HostService {
+
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_tag) = {
+    name: "Host service"
+    description:
+      "A host is a resource that represents a computing element with a network address reachable from Boundary. "
+      "The host service provides endpoints for managing hosts in Boundary."
+    external_docs: {
+      url: "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/hosts";
+      description: "Read about the host in the Boundary domain model";
+    }
+  };
+
   // GetHost returns a stored Host if present.  The provided request
   // must include the host ID for the resource being retrieved. If the ID is
   // missing, malformed or referencing anon existing resource an error is

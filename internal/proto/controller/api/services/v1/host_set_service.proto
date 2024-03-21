@@ -15,6 +15,18 @@ option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/s
 option (custom_options.v1.domain) = "host";
 
 service HostSetService {
+
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_tag) = {
+    name: "Host set service"
+    description:
+      "A host set is a resource that represents a collection of hosts which are considered equivalent for the purposes of access control. "
+      "The host set service provides endpoints for managing host sets in Boundary."
+    external_docs: {
+      url: "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/host-sets";
+      description: "Read about the host set in the Boundary domain model";
+    }
+  };
+
   // GetHostSet returns a stored Host Set if present.  The provided request
   // must include the Host Set ID for the resource being retrieved. If missing,
   // malformed or reference a non existing resource an error is returned.

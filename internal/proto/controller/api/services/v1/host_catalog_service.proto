@@ -15,6 +15,18 @@ option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/s
 option (custom_options.v1.domain) = "host";
 
 service HostCatalogService {
+
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_tag) = {
+    name: "Host catalog service"
+    description:
+      "A host catalog serves as a central repository for managing and organizing the target hosts or resources that Boundary can access and control. "
+      "The host catalog service provides endpoints for managing host catalogs in Boundary."
+    external_docs: {
+      url: "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/host-catalogs";
+      description: "Read about the host catalog in the Boundary domain model";
+    }
+  };
+
   // GetHostCatalog returns a stored Host Catalog if present.  The provided
   // request must include the Catalog IDs for the Host Catalog being retrieved.
   // If missing, malformed, or referencing a non-existing resource an error is

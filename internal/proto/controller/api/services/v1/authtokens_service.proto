@@ -16,9 +16,9 @@ service AuthTokenService {
   option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_tag) = {
     name: "Auth token service"
     description:
-      "An Auth token serves as a temporary credential issued to a user after successful authentication." 
+      "The Auth token service provides the ability to manage and retrieve Auth tokens. "
+      "An Auth token serves as a temporary credential issued to a user after successful authentication. " 
       "It grants the user access to Boundary's resources and capabilities for a limited duration."
-      "The Auth token service provides the ability to manage and retrieve Auth tokens."
     external_docs: {
       //TODO: Update the URL
       url: "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/auth-token";

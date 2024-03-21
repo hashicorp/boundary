@@ -13,6 +13,18 @@ import "protoc-gen-openapiv2/options/annotations.proto";
 option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/services;services";
 
 service GroupService {
+
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_tag) = {
+    name: "Group service"
+    description:
+      "A group is a resource that represents a collection of users which can be treated equally for the purposes of access control. "
+      "The group service provides endpoints for managing groups in Boundary. "
+    external_docs: {
+      url: "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/groups";
+      description: "Read about the group in the Boundary domain model";
+    }
+  };
+
   // GetGroup returns a stored Group if present. The provided request must
   // include the Group id and if it is missing, malformed or referencing a
   // non existing resource an error is returned.
