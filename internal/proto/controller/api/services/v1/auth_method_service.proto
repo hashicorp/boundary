@@ -18,12 +18,11 @@ option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/s
 option (custom_options.v1.domain) = "auth";
 
 service AuthMethodService {
-
   option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_tag) = {
     name: "Auth method service"
     description:
-    "An auth method defines how users can authenticate themselves within the system." 
-    "It acts as a bridge between Boundary and various external identity providers or authentication mechanisms.""
+      "An auth method defines how users can authenticate themselves within the system."
+      "It acts as a bridge between Boundary and various external identity providers or authentication mechanisms."
     external_docs: {
       //TODO: Update the URL
       url: "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/auth-methods";
