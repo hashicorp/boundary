@@ -59,7 +59,7 @@ When you connect to a target that uses Vault for dynamic SSH certificates, a new
 
 ## Boundary and Vault for secrets management
 
-Within Boundary, you can configure one or more credential stores. This could be a dedicated credential store per Boundary project, and/or multiple credential stores within the same Boundary project. The Credential store can either be configured as Static, which is Boundary's native store, or by integrating with HashiCorp Vault. The purpose of the credential store that is integrated with Vault is to fetch secrets from Vault on behalf of Boundary users.
+Within Boundary, you can configure one or more credential stores. This could be a dedicated credential store per Boundary project, and/or multiple credential stores within the same Boundary project. You can either configure the credential store as static, which is Boundary's native store, or by integrating it with HashiCorp Vault. The purpose of the credential store that is integrated with Vault is to fetch secrets from Vault on behalf of Boundary users.
 
 For organizations, there may be valid reasons for multiple credential stores within Boundary. As credential stores can only be created at the project level there may be different projects within an organization scope that have different requirements from their credential stores. An example may be within an organization scope you have two project scopes; Database and Compute. These two projects need to be isolated and therefore would have a dedicated credential store per project.
 
