@@ -19,6 +19,25 @@ By allowing outbound access from an egress worker in the private network to an u
 
 ## Introduction
 
+Multi-hop capabilities, including multi-hop sessions and Vault private access,
+is when a session or Vault credential request goes through more than one worker.
+To enable this, you must connect two or more workers to each other in some
+configuration. There are no limits on the number of workers allowed in a
+multi-hop session configuration.
+
+In the diagram below, Worker 1 is considered an upstream worker to Worker 2.
+Worker 3 is a downstream worker to Worker 2.
+As such, Worker 2 is an intermediate worker in the multi-hop chain.
+If there was a target behind Worker 3, and end users connected to Worker 1, then Worker 1 would be the ingress worker and worker 3 would be the egress worker.
+
+![multi-hop workers](/img/multi-hop-workers.png)
+
+You can deploy multi-hop workers in scenarios where inbound network traffic is
+not allowed. A worker in a private network can send outbound communication to
+its upstream worker, and create a reverse proxy to establish a session.
+
+## Multi-hop worker concepts
+
 Multi-hop sessions introduces five concepts for how workers function.
 You can categorize them from the point of view of a client and a worker.
 
@@ -40,25 +59,6 @@ Boundary client connections egress the proxy chain at this worker to reach the t
 
 Note that ingress, intermediary, and egress are general ways to describe how the respective worker interfaces with resources.
 A worker can act as more than one of these at a time.
-
-## Multi-hop worker capabilities
-
-Multi-hop capabilities, including multi-hop sessions and Vault private access,
-is when a session or Vault credential request goes through more than one worker.
-To enable this, you must connect two or more workers to each other in some
-configuration. There are no limits on the number of workers allowed in a
-multi-hop session configuration.
-
-In the diagram below, Worker 1 is considered an upstream worker to Worker 2.
-Worker 3 is a downstream worker to Worker 2.
-As such, Worker 2 is an intermediate worker in the multi-hop chain.
-If there was a target behind Worker 3, and end users connected to Worker 1, then Worker 1 would be the ingress worker and worker 3 would be the egress worker.
-
-![multi-hop workers](/img/multi-hop-workers.png)
-
-You can deploy multi-hop workers in scenarios where inbound network traffic is
-not allowed. A worker in a private network can send outbound communication to
-its upstream worker, and create a reverse proxy to establish a session.
 
 ## Multi-hop worker requirements
 
