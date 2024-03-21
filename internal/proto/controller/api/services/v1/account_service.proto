@@ -168,6 +168,7 @@ service AccountService {
 }
 
 message GetAccountRequest {
+  // The id of the account that should be retrieved.
   string id = 1; // @gotags: `class:"public" eventstream:"observation"`
 }
 
@@ -176,20 +177,25 @@ message GetAccountResponse {
 }
 
 message ListAccountsRequest {
+  // The id of the auth method whose accounts should be listed.
   string auth_method_id = 1 [json_name = "auth_method_id"]; // @gotags: `class:"public" eventstream:"observation"`
+  // Filter can be specified to only return items that match the filter.
+  // See [filter expressions](https://developer.hashicorp.com/boundary/docs/concepts/filtering) for more information.
   string filter = 30 [json_name = "filter"]; // @gotags: `class:"sensitive"`
   // An opaque token used to continue an existing iteration or
   // request updated items. If not specified, pagination
-  // will start from the beginning.
+  // will start from the beginning. To learn more about list pagination
+  // in Boundary, refer to [list pagination](https://developer.hashicorp.com/boundary/docs/api-clients/api/pagination).
   string list_token = 40 [json_name = "list_token"]; // @gotags: `class:"public"`
   // The maximum size of a page in this iteration.
   // If unset, the default page size configured will be used.
   // If the page_size is greater than the default page configured,
-  // an error will be returned.
+  // the page size will be truncated to this number.
   uint32 page_size = 50 [json_name = "page_size"]; // @gotags: `class:"public"`
 }
 
 message ListAccountsResponse {
+  // The list of accounts.
   repeated resources.accounts.v1.Account items = 1;
   // The type of response, either "delta" or "complete".
   // Delta signifies that this is part of a paginated result
@@ -223,7 +229,9 @@ message CreateAccountResponse {
 }
 
 message UpdateAccountRequest {
+  // The id of the account that should be updated.
   string id = 1; // @gotags: `class:"public" eventstream:"observation"`
+  // A subset of the account containing the fields to update
   resources.accounts.v1.Account item = 2;
   google.protobuf.FieldMask update_mask = 3 [json_name = "update_mask"];
 }
@@ -233,16 +241,19 @@ message UpdateAccountResponse {
 }
 
 message DeleteAccountRequest {
+  // The id of the account to delete.
   string id = 1; // @gotags: `class:"public" eventstream:"observation"`
 }
 
 message DeleteAccountResponse {}
 
 message SetPasswordRequest {
+  // The id of the account for which the password should be set.
   string id = 1; // @gotags: `class:"public" eventstream:"observation"`
   // Version is used to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
   uint32 version = 2; // @gotags: `class:"public"`
+  // The password that should be set.
   string password = 3; // @gotags: `class:"secret"`
 }
 
@@ -251,11 +262,14 @@ message SetPasswordResponse {
 }
 
 message ChangePasswordRequest {
+  // The id of the account for which the password should be changed.
   string id = 1; // @gotags: `class:"public" eventstream:"observation"`
   // Version is used to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
   uint32 version = 2; // @gotags: `class:"public"`
+  // The current password for the account.
   string current_password = 3 [json_name = "current_password"]; // @gotags: `class:"secret"`
+  // The new password that should be set.
   string new_password = 4 [json_name = "new_password"]; // @gotags: `class:"secret"`
 }
 

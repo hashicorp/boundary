@@ -30,7 +30,8 @@ type WrappedError struct {
 	unknownFields protoimpl.UnknownFields
 
 	// An string indicating what operation was being run when the wrapped error was created.
-	Op      string `protobuf:"bytes,1,opt,name=op,proto3" json:"op,omitempty"`
+	Op string `protobuf:"bytes,1,opt,name=op,proto3" json:"op,omitempty"`
+	// The wrapped error message.
 	Message string `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
 }
 

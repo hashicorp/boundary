@@ -93,7 +93,7 @@ message ListManagedGroupsRequest {
   // The maximum size of a page in this iteration.
   // If unset, the default page size configured will be used.
   // If the page_size is greater than the default page configured,
-  // an error will be returned.
+  // the page size will be truncated to this number..
   uint32 page_size = 50 [json_name = "page_size"]; // @gotags: `class:"public"`
 }
 
