@@ -12,6 +12,20 @@ import "protoc-gen-openapiv2/options/annotations.proto";
 option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/services;services";
 
 service AuthTokenService {
+
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_tag) = {
+    name: "Auth token service"
+    description:
+      "An Auth token serves as a temporary credential issued to a user after successful authentication." 
+      "It grants the user access to Boundary's resources and capabilities for a limited duration."
+      "The Auth token service provides the ability to manage and retrieve Auth tokens."
+    external_docs: {
+      //TODO: Update the URL
+      url: "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/auth-token";
+      description: "Read about auth token in the Boundary domain model";
+    }
+  };
+
   // GetAuthToken returns a stored Auth Token if present.  The provided request
   // must include the Auth Token id and if it is missing, malformed or
   // referencing a non existing resource an error is returned.
