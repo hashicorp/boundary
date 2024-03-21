@@ -66,7 +66,7 @@ Organizations may have valid reasons for multiple credential stores within Bound
 When it is integrated with Vault, Boundary has to be assigned a periodic, renewable, orphan token from Vault. Each credential store that is created within Boundary that leverages Vault equates to one Vault token being created. The number of Boundary targets that source credentials from the stores, the number of users connecting to the targets, the number of sessions that get created, or how many credential libraries the credential store contains, all have no impact on the client count in Vault.
 
 <Note>
-If there is more than one credential library, which is part of the same credential store, there is the potential for that single Vault token to have access to all of the Vault paths defined in the credential libraries. Operating the model of least-privileged is recommended.
+If there is more than one credential library that is part of the same credential store, there is the potential for that single Vault token to have access to all of the Vault paths defined in the credential libraries. HashiCorp recommends that you operate the model of least privilege.
 </Note>
 
 ## Boundary and Vault as an IdP
