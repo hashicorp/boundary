@@ -44,7 +44,7 @@ examples are provided to help with storage estimates:
 When you estimate worker storage requirements, consider the number of concurrent sessions that will be recorded on that worker.
 Boundary writes the BSR to the worker's local storage while the session is active, and then moves it to the remote storage bucket when the session is closed.
 
-When determining AWS storage requirements, consider your [storage policy](/boundary/docs/concepts/domain-model/storage-policy)
+When you estimate AWS storage requirements, consider your [storage policy](/boundary/docs/concepts/domain-model/storage-policy)
 and how long a BSR will be retained in the storage bucket.
 
 ### AWS requirements
