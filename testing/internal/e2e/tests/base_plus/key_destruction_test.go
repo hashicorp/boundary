@@ -234,7 +234,7 @@ func TestCliKeyDestruction(t *testing.T) {
 		}
 	}
 
-	t.Logf("Successfully destroyed a root key and data key")
+	t.Log("Successfully destroyed a root key and data key")
 }
 
 // TestApiKeyDestruction uses the boundary Go api to test key destruction.
@@ -359,5 +359,5 @@ func TestApiKeyDestruction(t *testing.T) {
 		}
 	}
 
-	t.Logf("Successfully destroyed a root key and data key")
+	t.Log("Successfully destroyed a root key and data key")
 }

@@ -63,7 +63,7 @@ func TestCliWorker(t *testing.T) {
 	require.Error(t, output.Err, string(output.Stderr))
 	assert.Equal(t, 255, output.ExitCode)
 	require.Contains(t, string(output.Stderr), "timed out")
-	t.Logf("Successfully detected connection failure")
+	t.Log("Successfully detected connection failure")
 
 	// Set correct worker filter, expect connection success
 	t.Logf("Setting correct worker filter...")
@@ -94,5 +94,5 @@ func TestCliWorker(t *testing.T) {
 		),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
-	t.Logf("Successfully connected to target")
+	t.Log("Successfully connected to target")
 }
