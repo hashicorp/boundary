@@ -76,7 +76,7 @@ func TestCliTcpTargetConnectPostgres(t *testing.T) {
 	require.NoError(t, err)
 
 	var buf bytes.Buffer
-	io.Copy(&buf, f)
+	_, _ = io.Copy(&buf, f)
 	require.Contains(t, buf.String(), "List of relations", "Session did not return expected output")
 	require.Contains(t, buf.String(), c.PostgresDbName, "Session did not return expected output")
 	t.Log("Successfully connected to target")
