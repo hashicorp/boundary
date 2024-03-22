@@ -42,7 +42,7 @@ examples are provided to help with storage estimates:
 - Sending 50MB of data results in a BSR around 50.1MB in size. The storage requirements for 1,000 such sessions would be 50.1 GB.
 
 When you estimate worker storage requirements, consider the number of concurrent sessions that will be recorded on that worker.
-A BSR is written to the worker's local storage while the session is active, and then moved to the remote storage bucket when the session is closed.
+Boundary writes the BSR to the worker's local storage while the session is active, and then moves it to the remote storage bucket when the session is closed.
 
 When determining AWS storage requirements, consider your [storage policy](/boundary/docs/concepts/domain-model/storage-policy)
 and how long a BSR will be retained in the storage bucket.
