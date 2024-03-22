@@ -5,6 +5,7 @@ go 1.21
 toolchain go1.21.5
 
 require (
+	github.com/grpc-ecosystem/grpc-gateway/v2 v2.19.1
 	github.com/hashicorp/eventlogger v0.2.6-0.20231025104552-802587e608f0
 	github.com/hashicorp/eventlogger/filters/encrypt v0.1.8-0.20231025104552-802587e608f0
 	github.com/hashicorp/go-hclog v1.5.0
@@ -12,8 +13,8 @@ require (
 	github.com/hashicorp/go-secure-stdlib/pluginutil/v2 v2.0.6
 	github.com/hashicorp/go-secure-stdlib/strutil v0.1.2
 	github.com/stretchr/testify v1.8.4
-	google.golang.org/genproto/googleapis/api v0.0.0-20231030173426-d783a09b4405
-	google.golang.org/grpc v1.59.0
+	google.golang.org/genproto/googleapis/api v0.0.0-20240125205218-1f4bbc51befe
+	google.golang.org/grpc v1.61.0
 	google.golang.org/protobuf v1.33.0
 	nhooyr.io/websocket v1.8.10
 )
@@ -23,12 +24,12 @@ require (
 	github.com/Masterminds/sprig/v3 v3.2.3 // indirect
 	github.com/hashicorp/go-kms-wrapping/plugin/v2 v2.0.5 // indirect
 	github.com/hashicorp/go-secure-stdlib/base62 v0.1.2 // indirect
-	github.com/kr/pretty v0.3.1 // indirect
+	github.com/rogpeppe/go-internal v1.9.0 // indirect
 	github.com/shopspring/decimal v1.3.1 // indirect
 	github.com/spf13/cast v1.5.0 // indirect
 	go.uber.org/goleak v1.1.12 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20231016165738-49dd2c1f3d0b // indirect
-	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
+	google.golang.org/genproto v0.0.0-20240116215550-a9fa1716bcac // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20240125205218-1f4bbc51befe // indirect
 )
 
 require (
@@ -38,7 +39,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/fatih/color v1.15.0 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
-	github.com/google/uuid v1.3.1 // indirect
+	github.com/google/uuid v1.4.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-kms-wrapping/v2 v2.0.14
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
@@ -66,9 +67,9 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/posener/complete v1.2.3 // indirect
 	github.com/ryanuber/go-glob v1.0.0 // indirect
-	golang.org/x/crypto v0.14.0 // indirect
-	golang.org/x/net v0.17.0 // indirect
-	golang.org/x/sys v0.13.0 // indirect
-	golang.org/x/text v0.13.0 // indirect
+	golang.org/x/crypto v0.18.0 // indirect
+	golang.org/x/net v0.20.0 // indirect
+	golang.org/x/sys v0.16.0 // indirect
+	golang.org/x/text v0.14.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
