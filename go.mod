@@ -45,8 +45,8 @@ require (
 	github.com/hashicorp/hcl v1.0.1-vault-5
 	github.com/hashicorp/vault/api v1.12.0
 	github.com/iancoleman/strcase v0.3.0
-	github.com/jackc/pgconn v1.14.1
-	github.com/jackc/pgx/v4 v4.18.1 // indirect
+	github.com/jackc/pgconn v1.14.3
+	github.com/jackc/pgx/v4 v4.18.2 // indirect
 	github.com/jefferai/keyring v1.1.7-0.20220316160357-58a74bb55891
 	github.com/kr/pretty v0.3.1
 	github.com/kr/text v0.2.0
@@ -186,7 +186,7 @@ require (
 	github.com/jackc/chunkreader/v2 v2.0.1 // indirect
 	github.com/jackc/pgio v1.0.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
-	github.com/jackc/pgproto3/v2 v2.3.2 // indirect
+	github.com/jackc/pgproto3/v2 v2.3.3 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20231201235250-de7065d80cb9 // indirect
 	github.com/jackc/pgtype v1.14.2 // indirect
 	github.com/jefferai/go-libsecret v0.0.0-20210525195240-b53481abef97 // indirect
