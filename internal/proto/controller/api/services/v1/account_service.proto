@@ -22,10 +22,12 @@ option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
     title: "Boundary controller HTTP API"
     description:
       "Welcome to the Boundary controller HTTP API documentation. "
-      "This page contains the complete specification for all the API endpoints exposed by the Boundary controller.\n\n"
-      "To get started, look for the service you want to interact with in the sidebar to the left. "
+      “This page provides a reference guide for using the Boundary controller API, a JSON-based HTTP API for both input and output. At its core, it is a [standards-compliant JSON API](https://developer.hashicorp.com/boundary/docs/api-clients/api) used for status codes, path layout, methods and system resource management.\n\n”
+      “Boundary also uses the [API pagination feature](https://developer.hashicorp.com/boundary/docs/api-clients/api/pagination) to support searching and filtering large lists of results without overwhelming your system resources. ”
+      “Before reading this page, it is useful to understand Boundary's [domain model](https://developer.hashicorp.com/boundary/docs/concepts/domain-model) and to be aware of the terminology used here. ”
+      “To get started, search for the service you want to interact with in the sidebar to the left. ”
       "Each resource in Boundary, such as accounts and credential stores, have their own service. "
-      "Each service contains all the API endpoints supported for the resource."
+      "Each service contains all the API endpoints supported for the resource. "
     contact: {
       name: "HashiCorp Boundary"
       url: "https://www.boundaryproject.io/"
