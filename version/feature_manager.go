@@ -23,6 +23,7 @@ const (
 	SshSessionRecording
 	SupportIdInGrants
 	PluginDelete
+	LocalStorageState
 )
 
 var featureMap map[Feature]MetadataConstraint
@@ -84,6 +85,11 @@ func init() {
 	// PluginDelete supports calling DeleteObjects on the Storage Plugin
 	featureMap[PluginDelete] = MetadataConstraint{
 		Constraints: mustNewConstraints(">= 0.15.0"),
+	}
+
+	// Worker supports reporting local storage state
+	featureMap[LocalStorageState] = MetadataConstraint{
+		Constraints: mustNewConstraints(">= 0.16.0"),
 	}
 }
 

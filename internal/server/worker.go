@@ -85,7 +85,8 @@ func ValidLocalStorageState(s string) bool {
 func (t LocalStorageState) String() string {
 	switch t {
 	case AvailableLocalStorageState, LowStorageLocalStorageState,
-		OutOfStorageLocalStorageState, NotConfiguredLocalStorageState:
+		OutOfStorageLocalStorageState, NotConfiguredLocalStorageState,
+		CriticallyLowStorageLocalStorageState:
 		return string(t)
 	}
 	return string(UnknownLocalStorageState)

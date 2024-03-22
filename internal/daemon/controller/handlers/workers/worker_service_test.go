@@ -354,6 +354,7 @@ func TestList(t *testing.T) {
 			LastStatusTime:                     w.GetLastStatusTime().GetTimestamp(),
 			ReleaseVersion:                     w.ReleaseVersion,
 			DirectlyConnectedDownstreamWorkers: connectedDownstreams,
+			LocalStorageState:                  server.UnknownLocalStorageState.String(),
 		})
 	}
 
@@ -375,6 +376,7 @@ func TestList(t *testing.T) {
 			LastStatusTime:                     w.GetLastStatusTime().GetTimestamp(),
 			ReleaseVersion:                     w.ReleaseVersion,
 			DirectlyConnectedDownstreamWorkers: connectedDownstreams,
+			LocalStorageState:                  server.UnknownLocalStorageState.String(),
 		})
 	}
 
@@ -650,6 +652,7 @@ func TestUpdate(t *testing.T) {
 						AuthorizedActions:                  testAuthorizedActions,
 						Type:                               PkiWorkerType,
 						DirectlyConnectedDownstreamWorkers: connectedDownstreams,
+						LocalStorageState:                  server.UnknownLocalStorageState.String(),
 					},
 				}
 			},
@@ -679,6 +682,7 @@ func TestUpdate(t *testing.T) {
 						AuthorizedActions:                  testAuthorizedActions,
 						Type:                               PkiWorkerType,
 						DirectlyConnectedDownstreamWorkers: connectedDownstreams,
+						LocalStorageState:                  server.UnknownLocalStorageState.String(),
 					},
 				}
 			},
@@ -750,6 +754,7 @@ func TestUpdate(t *testing.T) {
 						AuthorizedActions:                  testAuthorizedActions,
 						Type:                               PkiWorkerType,
 						DirectlyConnectedDownstreamWorkers: connectedDownstreams,
+						LocalStorageState:                  server.UnknownLocalStorageState.String(),
 					},
 				}
 			},
@@ -776,6 +781,7 @@ func TestUpdate(t *testing.T) {
 						AuthorizedActions:                  testAuthorizedActions,
 						Type:                               PkiWorkerType,
 						DirectlyConnectedDownstreamWorkers: connectedDownstreams,
+						LocalStorageState:                  server.UnknownLocalStorageState.String(),
 					},
 				}
 				// In the previous test, the name will now be blank if it's the
@@ -810,6 +816,7 @@ func TestUpdate(t *testing.T) {
 						AuthorizedActions:                  testAuthorizedActions,
 						Type:                               PkiWorkerType,
 						DirectlyConnectedDownstreamWorkers: connectedDownstreams,
+						LocalStorageState:                  server.UnknownLocalStorageState.String(),
 					},
 				}
 				// The name will not be updated if it's the pki-kms worker
@@ -844,6 +851,7 @@ func TestUpdate(t *testing.T) {
 						AuthorizedActions:                  testAuthorizedActions,
 						Type:                               PkiWorkerType,
 						DirectlyConnectedDownstreamWorkers: connectedDownstreams,
+						LocalStorageState:                  server.UnknownLocalStorageState.String(),
 					},
 				}
 				// The name will not have been updated previously if it's the pki-kms worker
@@ -1584,6 +1592,7 @@ func TestCreateWorkerLed(t *testing.T) {
 					tc.res.Item.UpdatedTime = got.GetItem().GetUpdatedTime()
 					tc.res.Item.Scope = got.GetItem().Scope
 					tc.res.Item.AuthorizedActions = got.GetItem().GetAuthorizedActions()
+					tc.res.Item.LocalStorageState = got.GetItem().GetLocalStorageState()
 				}
 			}
 			assert.Equal(tc.res, got)
@@ -1931,6 +1940,7 @@ func TestCreateControllerLed(t *testing.T) {
 					tc.res.Item.Scope = got.GetItem().Scope
 					tc.res.Item.AuthorizedActions = got.GetItem().GetAuthorizedActions()
 					tc.res.Item.ControllerGeneratedActivationToken = got.GetItem().GetControllerGeneratedActivationToken()
+					tc.res.Item.LocalStorageState = got.GetItem().GetLocalStorageState()
 				}
 			}
 			assert.Equal(tc.res, got)
