@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/boundary/api/targets"
@@ -76,5 +77,21 @@ func TestCliTcpTargetConnectTargetWithSsh(t *testing.T) {
 		),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
+	t.Log("Successfully connected to target")
+
+	// Connect to target using ssh option with remote command
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"connect", "ssh",
+			"-target-id", newTargetId,
+			"-remote-command", "hostname -i",
+			"--",
+			"-o", "UserKnownHostsFile=/dev/null",
+			"-o", "StrictHostKeyChecking=no",
+			"-o", "IdentitiesOnly=yes", // forces the use of the provided key
+		),
+	)
+	require.NoError(t, output.Err, string(output.Stderr))
+	require.Equal(t, c.TargetAddress, strings.TrimSpace(string(output.Stdout)))
 	t.Log("Successfully connected to target")
 }
