@@ -20,6 +20,7 @@ import (
 	"github.com/hashicorp/boundary/internal/clientcache"
 	"github.com/hashicorp/boundary/testing/internal/e2e"
 	"github.com/hashicorp/boundary/testing/internal/e2e/boundary"
+	"github.com/hashicorp/boundary/version"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/exp/slices"
 )
@@ -78,6 +79,14 @@ func TestCliSearch(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, statusResult.StatusCode, 200)
 	require.GreaterOrEqual(t, statusResult.Item.Uptime, 0*time.Second)
+
+	// Confirm daemon version matches CLI version
+	output = e2e.RunCommand(ctx, "boundary", e2e.WithArgs("version", "-format", "json"))
+	require.NoError(t, output.Err, string(output.Stderr))
+	var versionResult version.Info
+	err = json.Unmarshal(output.Stdout, &versionResult)
+	require.NoError(t, err)
+	require.Contains(t, statusResult.Item.Version, versionResult.Revision)
 
 	// Set up a new org and project
 	boundary.AuthenticateAdminCli(t, ctx)
@@ -223,4 +232,20 @@ func TestCliSearch(t *testing.T) {
 	err = json.Unmarshal(output.Stdout, &searchResult)
 	require.NoError(t, err)
 	require.Len(t, searchResult.Item.Targets, 1)
+
+	// Do another search for sessions with the force-refresh option set to true
+	// and no resources available.
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"search",
+			"-resource", "sessions",
+			"-force-refresh", "true",
+			"-format", "json",
+		),
+	)
+	require.NoError(t, output.Err, string(output.Stderr))
+	searchResult = clientcache.SearchResult{}
+	err = json.Unmarshal(output.Stdout, &searchResult)
+	require.NoError(t, err)
+	require.Len(t, searchResult.Item.Sessions, 0)
 }
