@@ -15,17 +15,20 @@ Please note: We take Boundary's security and our users' trust very seriously. If
 
 -->
 
-**Describe the bug**
+### Describe the bug
 A clear and concise description of what the bug is.
 
-**To Reproduce**
+### To Reproduce
 Steps to reproduce the behavior:
 1. Run `boundary authenticate  ...`
 2. Run `boundary connect ...`
 3. See error
 
-**Expected behavior**
+### Expected behavior
 A clear and concise description of what you expected to happen.
 
-**Additional context**
+### Additional context
 Add any other context about the problem here.
+
+1) Version of the Boundary controller
+2) User interface (CLI, admin UI, Desktop client, TF)
