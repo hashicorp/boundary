@@ -18,14 +18,14 @@ require (
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.19.1
 	github.com/hashicorp/boundary/api v0.0.45
 	github.com/hashicorp/boundary/sdk v0.0.42
-	github.com/hashicorp/cap v0.5.0
+	github.com/hashicorp/cap v0.5.1-0.20240315182732-faa330bfb8df
 	github.com/hashicorp/dawdle v0.5.0
 	github.com/hashicorp/eventlogger v0.2.9
 	github.com/hashicorp/eventlogger/filters/encrypt v0.1.8-0.20231208142215-efdb51ec090d
 	github.com/hashicorp/go-bexpr v0.1.13
 	github.com/hashicorp/go-cleanhttp v0.5.2
 	github.com/hashicorp/go-hclog v1.6.2
-	github.com/hashicorp/go-kms-wrapping/v2 v2.0.16
+	github.com/hashicorp/go-kms-wrapping/v2 v2.0.17-0.20240313190905-91d44aa8e360
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/go-retryablehttp v0.7.5
 	github.com/hashicorp/go-rootcerts v1.0.2
@@ -45,8 +45,8 @@ require (
 	github.com/hashicorp/hcl v1.0.1-vault-5
 	github.com/hashicorp/vault/api v1.12.0
 	github.com/iancoleman/strcase v0.3.0
-	github.com/jackc/pgconn v1.14.1
-	github.com/jackc/pgx/v4 v4.18.1 // indirect
+	github.com/jackc/pgconn v1.14.3
+	github.com/jackc/pgx/v4 v4.18.3 // indirect
 	github.com/jefferai/keyring v1.1.7-0.20220316160357-58a74bb55891
 	github.com/kr/pretty v0.3.1
 	github.com/kr/text v0.2.0
@@ -64,7 +64,7 @@ require (
 	github.com/posener/complete v1.2.3
 	github.com/prometheus/client_golang v1.18.0
 	github.com/ryanuber/go-glob v1.0.0
-	github.com/stretchr/testify v1.8.4
+	github.com/stretchr/testify v1.9.0
 	github.com/zalando/go-keyring v0.2.3
 	go.uber.org/atomic v1.11.0
 	golang.org/x/crypto v0.21.0
@@ -76,13 +76,13 @@ require (
 	google.golang.org/grpc v1.61.0
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.3.0
 	google.golang.org/protobuf v1.33.0
-	gorm.io/driver/postgres v1.5.6
+	gorm.io/driver/postgres v1.5.7
 	gorm.io/gorm v1.25.7 // indirect
 	mvdan.cc/gofumpt v0.5.0
 	nhooyr.io/websocket v1.8.10
 )
 
-require github.com/hashicorp/go-dbw v0.1.2
+require github.com/hashicorp/go-dbw v0.1.3-0.20240312210008-7ed943176e5b
 
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.2
@@ -96,7 +96,7 @@ require (
 	github.com/hashicorp/go-rate v0.0.0-20231204194614-cc8d401f70ab
 	github.com/hashicorp/go-version v1.6.0
 	github.com/hashicorp/nodeenrollment v0.2.10
-	github.com/jackc/pgx/v5 v5.5.3
+	github.com/jackc/pgx/v5 v5.5.5
 	github.com/jimlambrt/gldap v0.1.10
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/miekg/dns v1.1.58
@@ -186,7 +186,7 @@ require (
 	github.com/jackc/chunkreader/v2 v2.0.1 // indirect
 	github.com/jackc/pgio v1.0.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
-	github.com/jackc/pgproto3/v2 v2.3.2 // indirect
+	github.com/jackc/pgproto3/v2 v2.3.3 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20231201235250-de7065d80cb9 // indirect
 	github.com/jackc/pgtype v1.14.2 // indirect
 	github.com/jefferai/go-libsecret v0.0.0-20210525195240-b53481abef97 // indirect
