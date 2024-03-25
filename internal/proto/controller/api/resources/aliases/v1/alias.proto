@@ -22,10 +22,7 @@ message Alias {
   string id = 10 [(google.api.field_behavior) = OUTPUT_ONLY]; // @gotags: `class:"public" eventstream:"observation"`
 
   // The ID of the scope of which this Alias is a part.
-  string scope_id = 20 [
-    json_name = "scope_id",
-    (google.api.field_behavior) = REQUIRED
-  ]; // @gotags: `class:"public" eventstream:"observation"`
+  string scope_id = 20 [json_name = "scope_id"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Scope information for this Alias.
   resources.scopes.v1.ScopeInfo scope = 30 [(google.api.field_behavior) = OUTPUT_ONLY];
@@ -65,15 +62,14 @@ message Alias {
   // Not required when creating an alias.
   uint32 version = 80; // @gotags: `class:"public"`
 
-  // Required value of the alias. This is the value referenced by the user that
+  // Value of the alias. This is the value referenced by the user that
   // is resolved to the destination id.
   string value = 90 [
     (custom_options.v1.generate_sdk_option) = true,
     (custom_options.v1.mask_mapping) = {
       this: "value"
       that: "Value"
-    },
-    (google.api.field_behavior) = REQUIRED
+    }
   ]; // @gotags: `class:"public"`
 
   // destination_id is the id of the resource that this Alias points to.
@@ -87,7 +83,7 @@ message Alias {
   ]; // @gotags: `class:"public" eventstream:"observation"`
 
   // type is the type of the alias.
-  string type = 110 [(google.api.field_behavior) = REQUIRED]; // @gotags: `class:"public" eventstream:"observation"`
+  string type = 110; // @gotags: `class:"public" eventstream:"observation"`
 
   oneof attrs {
     // The attributes that are applicable for the specific Alias type.

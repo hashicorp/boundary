@@ -19,7 +19,7 @@ service AliasService {
     name: "Alias service"
     description:
       "The alias service exposes endpoints for interacting with aliases in Boundary. "
-      "An alias acts as a reference or an alternate name for an existing entity within the Boundary access control system. "
+      "An alias acts as a reference or an alternate id for an existing entity within the Boundary access control system. "
       "It provides a way to simplify access control by offering a more user-friendly or descriptive identifier for an entity."
   };
 

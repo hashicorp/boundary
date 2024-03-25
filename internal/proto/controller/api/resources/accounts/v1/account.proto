@@ -65,8 +65,7 @@ message Account {
   // The ID of the auth method that is associated with this account.
   string auth_method_id = 90 [
     json_name = "auth_method_id",
-    (custom_options.v1.subtype_source_id) = true,
-    (google.api.field_behavior) = REQUIRED
+    (custom_options.v1.subtype_source_id) = true
   ]; // @gotags: `class:"public" eventstream:"observation"`
 
   oneof attrs {
@@ -74,7 +73,6 @@ message Account {
     google.protobuf.Struct attributes = 100 [
       (custom_options.v1.generate_sdk_option) = true,
       (custom_options.v1.subtype) = "default",
-      (google.api.field_behavior) = REQUIRED,
       (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
         example: "{\"login_name\": \"login_name\"}",
         description:
@@ -150,15 +148,11 @@ message PasswordAccountAttributes {
     (custom_options.v1.mask_mapping) = {
       this: "attributes.login_name"
       that: "LoginName"
-    },
-    (google.api.field_behavior) = REQUIRED
+    }
   ]; // @gotags: `class:"sensitive"`
 
   // The password for this account.
-  google.protobuf.StringValue password = 20 [
-    (custom_options.v1.generate_sdk_option) = true,
-    (google.api.field_behavior) = REQUIRED
-  ]; // @gotags: `class:"secret"`
+  google.protobuf.StringValue password = 20 [(custom_options.v1.generate_sdk_option) = true]; // @gotags: `class:"secret"`
 }
 
 // Attributes associated only with accounts with type "oidc".
@@ -167,16 +161,14 @@ message OidcAccountAttributes {
   // This value is immutable after creation time.
   string issuer = 80 [
     json_name = "issuer",
-    (custom_options.v1.generate_sdk_option) = true,
-    (google.api.field_behavior) = REQUIRED
+    (custom_options.v1.generate_sdk_option) = true
   ]; // @gotags: `class:"public"`
 
   // subject is a case sensitive string that maps to the OIDC sub claim.
   // This value is immutable after creation time.
   string subject = 90 [
     json_name = "subject",
-    (custom_options.v1.generate_sdk_option) = true,
-    (google.api.field_behavior) = REQUIRED
+    (custom_options.v1.generate_sdk_option) = true
   ]; // @gotags: `class:"public"`
 
   // A string that maps to the OIDC name claim.
@@ -206,8 +198,7 @@ message LdapAccountAttributes {
     (custom_options.v1.mask_mapping) = {
       this: "attributes.login_name"
       that: "LoginName"
-    },
-    (google.api.field_behavior) = REQUIRED
+    }
   ]; // @gotags: `class:"sensitive"`
 
   // A string that maps to the name attribute for the
