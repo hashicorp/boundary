@@ -199,7 +199,7 @@ jobs:
           ssh -V
       - name: Download Boundary Linux AMD64 bundle
         id: download
-        uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a # v3.0.2
+        uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427 # v4.1.4
         with:
           name: ${{ inputs.artifact-name }}
           path: ./enos/support/downloads
@@ -209,7 +209,7 @@ jobs:
           mv ${{steps.download.outputs.download-path}}/*.zip enos/support/boundary.zip
       - name: Download Boundary Linux AMD64 docker image
         if: contains(matrix.filter, 'e2e_docker')
-        uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a # v3.0.2
+        uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427 # v4.1.4
         id: download-docker
         with:
           name: ${{ inputs.docker-image-file }}
