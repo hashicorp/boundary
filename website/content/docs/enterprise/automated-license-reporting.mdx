@@ -118,19 +118,38 @@ If your configuration file and environment variable differ, the environment vari
 ## Example payloads
 
 HashiCorp collects the following utilization data as JSON payloads:
-`exporter_version` - The version of the licensing exporter
+`exporter_version` - The version of the licensing exporter.
+
+Product payload description:
+
+Sessions is queried from the Boundary store, counts over the last X days.
 
 ```json
 "metrics": {
   "boundary.sessions": {
     "key": "boundary.sessions",
-    "kind": "counter",
-    "mode": "write",
-    "value": 33
+    "value": 0,
+    "mode": "write"
   }
 }
 ```
-
 Product payload description:
 
-- Sessions - Sessions is queried from the Boundary store, counts over the last X days
+Monthly active users tracks the number of unique, active users in a month.
+It is a cumulative value for the entire month.
+The start time is included in the value, the end time is excluded.
+
+```json
+"metrics": {
+  "boundary.monthly_active_users": {
+    "key": "boundary.monthly_active_users",
+    "value": 8,
+    "mode": "write",
+  }
+},
+"metadata": {
+  "complete": "true",
+  "end_time": "2023-04-01T00:00:00Z",
+  "start_time": "2023-03-01T00.00:00Z"
+}
+```
