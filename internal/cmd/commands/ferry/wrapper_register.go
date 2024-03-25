@@ -10,6 +10,10 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/wrapper"
 )
 
+// Until we are ready to release the ferry feature, we won't output any errors
+// when we fail to communicate to the ferry daemon.
+const allowErrorOutput = false
+
 func init() {
 	if err := wrapper.RegisterSuccessfulCommandCallback("ferry", hook); err != nil {
 		panic(err)
@@ -21,7 +25,7 @@ func hook(ctx context.Context, baseCmd *base.Command, token string) {
 		return
 	}
 	client, err := baseCmd.Client()
-	if err != nil {
+	if err != nil && allowErrorOutput {
 		baseCmd.PrintCliError(err)
 		return
 	}
@@ -29,10 +33,10 @@ func hook(ctx context.Context, baseCmd *base.Command, token string) {
 		client.SetToken(token)
 	}
 	_, apiErr, err := addToken(ctx, client, baseCmd.FlagFerryDaemonPort)
-	if err != nil {
+	if err != nil && allowErrorOutput {
 		baseCmd.PrintCliError(err)
 	}
-	if apiErr != nil {
+	if apiErr != nil && allowErrorOutput {
 		baseCmd.PrintApiError(apiErr, "sending token to ferry daemon in the background")
 	}
 }
