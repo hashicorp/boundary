@@ -24,7 +24,7 @@
     },
     {
       "name": "Alias service",
-      "description": "The alias service exposes endpoints for interacting with aliases in Boundary. An alias acts as a reference or an alternate name for an existing entity within the Boundary access control system. It provides a way to simplify access control by offering a more user-friendly or descriptive identifier for an entity."
+      "description": "The alias service exposes endpoints for interacting with aliases in Boundary. An alias acts as a reference or an alternate id for an existing entity within the Boundary access control system. It provides a way to simplify access control by offering a more user-friendly or descriptive identifier for an entity."
     },
     {
       "name": "Auth method service",
@@ -5771,11 +5771,7 @@
           "readOnly": true
         }
       },
-      "title": "Account contains all fields related to an account resource",
-      "required": [
-        "auth_method_id",
-        "attributes"
-      ]
+      "title": "Account contains all fields related to an account resource"
     },
     "controller.api.resources.aliases.v1.Alias": {
       "type": "object",
@@ -5821,7 +5817,7 @@
         },
         "value": {
           "type": "string",
-          "description": "Required value of the alias. This is the value referenced by the user that\nis resolved to the destination id."
+          "description": "Value of the alias. This is the value referenced by the user that\nis resolved to the destination id."
         },
         "destination_id": {
           "type": "string",
@@ -5849,12 +5845,7 @@
           "readOnly": true
         }
       },
-      "title": "Alias contains all fields related to an Alias resource",
-      "required": [
-        "scope_id",
-        "value",
-        "type"
-      ]
+      "title": "Alias contains all fields related to an Alias resource"
     },
     "controller.api.resources.authmethods.v1.AuthMethod": {
       "type": "object",
