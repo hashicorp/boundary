@@ -10,8 +10,8 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/wrapper"
 )
 
-// Until we are ready to release the ferry feature, we won't output any errors
-// when we fail to communicate to the ferry daemon.
+// TODO (ICU-13140): Remove this and re-enable error output for background
+// ferry daemon token sending.
 const allowErrorOutput = false
 
 func init() {

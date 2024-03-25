@@ -48,8 +48,9 @@ func addToken(ctx context.Context, apiClient *api.Client, port uint) (*api.Respo
 	client.RetryWaitMin = 100 * time.Millisecond
 	client.RetryWaitMax = 1500 * time.Millisecond
 
-	// TODO: Until we release ferry feature, do not retry attempts to connect to
-	// the ferry daemon since it adds a noticeably long delay to the command.
+	// TODO (ICU-13140): Until we release ferry feature, do not retry attempts
+	// to connect to the ferry daemon since it adds a noticeably long delay to
+	// the command.
 	client.RetryMax = 0
 
 	req, err := retryablehttp.NewRequestWithContext(ctx, "POST", ferryUrl(port, "v1/tokens"),
