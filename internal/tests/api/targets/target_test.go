@@ -675,13 +675,23 @@ func TestCrud(t *testing.T) {
 
 		_, err = tarClient.Delete(tc.Context(), c.id)
 		assert.NoError(err)
+	}
 
-		_, err = tarClient.Delete(tc.Context(), c.id)
+	t.Run("deleting unknown target is not found", func(t *testing.T) {
+		_, err = tarClient.Delete(tc.Context(), tar.Item.Id)
 		assert.Error(err)
 		apiErr := api.AsServerError(err)
 		assert.NotNil(apiErr)
 		assert.EqualValues(http.StatusNotFound, apiErr.Response().StatusCode())
-	}
+	})
+
+	t.Run("deleting unknown alias is forbidden", func(t *testing.T) {
+		_, err = tarClient.Delete(tc.Context(), al.GetValue())
+		assert.Error(err)
+		apiErr := api.AsServerError(err)
+		assert.NotNil(apiErr)
+		assert.EqualValues(http.StatusForbidden, apiErr.Response().StatusCode())
+	})
 }
 
 func TestSet_Errors(t *testing.T) {
@@ -739,7 +749,7 @@ func TestSet_Errors(t *testing.T) {
 	require.Error(err)
 	apiErr = api.AsServerError(err)
 	assert.NotNil(apiErr)
-	assert.EqualValues(http.StatusNotFound, apiErr.Response().StatusCode())
+	assert.EqualValues(http.StatusForbidden, apiErr.Response().StatusCode())
 
 	// reading by alias with no destination id should fail
 	rw := db.New(tc.DbConn())
@@ -748,7 +758,7 @@ func TestSet_Errors(t *testing.T) {
 	require.Error(err)
 	apiErr = api.AsServerError(err)
 	assert.NotNil(apiErr)
-	assert.EqualValues(http.StatusNotFound, apiErr.Response().StatusCode())
+	assert.EqualValues(http.StatusForbidden, apiErr.Response().StatusCode())
 }
 
 func TestCreateTarget_WhitespaceInAddress(t *testing.T) {
