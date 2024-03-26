@@ -362,7 +362,7 @@ func aliasResolutionInterceptor(
 			// is no way to distinguish between a missing alias and an existing
 			// alias that points to a destination the requester is not allowed
 			// to perform an action on.
-			return nil, handlers.ForbiddenError()
+			return nil, handlers.UnauthenticatedError()
 		}
 		return handler(interceptorCtx, req)
 	}
