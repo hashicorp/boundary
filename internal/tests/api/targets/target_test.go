@@ -675,13 +675,23 @@ func TestCrud(t *testing.T) {
 
 		_, err = tarClient.Delete(tc.Context(), c.id)
 		assert.NoError(err)
+	}
 
-		_, err = tarClient.Delete(tc.Context(), c.id)
+	t.Run("deleting unknown target is not found", func(t *testing.T) {
+		_, err = tarClient.Delete(tc.Context(), tar.Item.Id)
 		assert.Error(err)
 		apiErr := api.AsServerError(err)
 		assert.NotNil(apiErr)
 		assert.EqualValues(http.StatusNotFound, apiErr.Response().StatusCode())
-	}
+	})
+
+	t.Run("deleting unknown alias is unauthorized", func(t *testing.T) {
+		_, err = tarClient.Delete(tc.Context(), al.GetValue())
+		assert.Error(err)
+		apiErr := api.AsServerError(err)
+		assert.NotNil(apiErr)
+		assert.EqualValues(http.StatusUnauthorized, apiErr.Response().StatusCode())
+	})
 }
 
 func TestSet_Errors(t *testing.T) {
@@ -699,6 +709,7 @@ func TestSet_Errors(t *testing.T) {
 	tar, err := tarClient.Create(tc.Context(), "tcp", proj.GetPublicId(), targets.WithName("foo"), targets.WithTcpTargetDefaultPort(2))
 	require.NoError(err)
 	assert.NotNil(tar)
+	validTargetId := tar.GetItem().Id
 
 	// A malformed id is processed as the id and not a different path to the api.
 	_, err = tarClient.Read(tc.Context(), fmt.Sprintf("%s/../", tar.Item.Id))
@@ -739,7 +750,7 @@ func TestSet_Errors(t *testing.T) {
 	require.Error(err)
 	apiErr = api.AsServerError(err)
 	assert.NotNil(apiErr)
-	assert.EqualValues(http.StatusNotFound, apiErr.Response().StatusCode())
+	assert.EqualValues(http.StatusUnauthorized, apiErr.Response().StatusCode())
 
 	// reading by alias with no destination id should fail
 	rw := db.New(tc.DbConn())
@@ -748,7 +759,18 @@ func TestSet_Errors(t *testing.T) {
 	require.Error(err)
 	apiErr = api.AsServerError(err)
 	assert.NotNil(apiErr)
-	assert.EqualValues(http.StatusNotFound, apiErr.Response().StatusCode())
+	assert.EqualValues(http.StatusUnauthorized, apiErr.Response().StatusCode())
+	noAliasApiErrReponse := apiErr.Response()
+
+	client.SetToken("at_1234567890_madeupinvalidtoken")
+	tarClient = targets.NewClient(client)
+	_, err = tarClient.Read(tc.Context(), validTargetId)
+	apiErr = api.AsServerError(err)
+	assert.NotNil(apiErr)
+	assert.EqualValues(http.StatusUnauthorized, apiErr.Response().StatusCode())
+	// We should not be able to tell the difference between an unauthorized request
+	// and a request that tries to resolve an alias that points to nothing.
+	assert.EqualValues(noAliasApiErrReponse.Body, apiErr.Response().Body)
 }
 
 func TestCreateTarget_WhitespaceInAddress(t *testing.T) {
