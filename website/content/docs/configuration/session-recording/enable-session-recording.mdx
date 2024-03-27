@@ -7,7 +7,7 @@ description: |-
 
 # Enable session recording on a target
 
-<EnterpriseAlert product="boundary">This feature requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary or Boundary Enterprise</a></EnterpriseAlert>
+<EnterpriseAlert product="boundary">This feature requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary Plus or Boundary Enterprise</a></EnterpriseAlert>
 
 You must enable session recording for any targets that you want to record sessions on.
 When you [create a storage bucket](/boundary/docs/configuration/session-recording/create-storage-bucket), Boundary provides you with an ID.
@@ -27,7 +27,7 @@ Refer to [SSH target attributes](/boundary/docs/concepts/domain-model/targets#ss
 Complete the following steps to enable session recording on a target.
 
 <Tabs>
-<Tab heading="CLI">
+<Tab heading="CLI" group="cli">
 
 1. Log in to Boundary.
 1. Do one of the following:
@@ -55,7 +55,7 @@ Complete the following steps to enable session recording on a target.
 
 </Tab>
 
-<Tab heading="UI">
+<Tab heading="UI" group="ui">
 
 1. Log in to Boundary.
 1. Select **Orgs** in the navigation pane.
@@ -82,6 +82,26 @@ The following setting is required for session recording:
    You can also [create a new storage bucket](/boundary/docs/configuration/session-recording/create-storage-bucket).
 
 1. Select **Save**.
+
+</Tab>
+
+
+<Tab heading="Terraform" group="terraform">
+
+```hcl
+resource "boundary_target" "address_foo" {
+  name         = "address_foo"
+  description  = "Foo target with an address"
+  type         = "tcp"
+  default_port = "22"
+  scope_id     = boundary_scope.project.id
+  address      = "127.0.0.1"
+
+  # Add the next two lines to an existing target to enable session recording, modify the value of storage_bucket_id as appropriate
+  enable_session_recording = true
+  storage_bucket_id        = boundary_storage_bucket.aws_example.id
+}
+```
 
 </Tab>
 </Tabs>
