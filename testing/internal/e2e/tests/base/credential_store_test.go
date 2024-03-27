@@ -148,7 +148,7 @@ func TestCliStaticCredentialStore(t *testing.T) {
 		},
 	)
 	require.NoError(t, err)
-	t.Logf("Successfully deleted credential store")
+	t.Log("Successfully deleted credential store")
 }
 
 func createPrivateKeyPemFile(fileName string) error {
