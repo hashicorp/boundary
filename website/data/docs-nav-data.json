@@ -1511,7 +1511,16 @@
       },
       {
         "title": "Vault",
-        "path": "integrations/vault"
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "integrations/vault"
+          },
+          {
+            "title": "Procedure for Vault Backed Credentials",
+            "path": "integrations/vault/vault-credentials-procedure"
+          }
+        ]
       }
     ]
   },
