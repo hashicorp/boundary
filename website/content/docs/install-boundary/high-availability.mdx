@@ -22,7 +22,7 @@ The following ports should be available:
 
 The general architecture for the server infrastructure requires 3 controllers and 3 workers. Note that it is possible to run a controller and worker within the same process, but the guide here assumes separate deployments. The documentation here uses virtual machines running on Amazon EC2 as the example environment, but this use case can be extrapolated to almost any cloud platform to suit operator needs:
 
-![](/img/production.png)
+![](/img/boundary-network.png)
 
 As shown above, Boundary is broken up into its controller and worker server components across 3 [EC2 instances](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/instance), in
 3 separate [subnets](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/subnet), in three separate availability zones, with the controller API and UI being publically exposed by an [application load balancer (ALB)](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lb). The worker and controller VM's are in independent [auto-scaling groups](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/autoscaling_group), allowing them to maintain their exact capacity.
