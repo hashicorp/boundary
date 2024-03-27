@@ -135,7 +135,7 @@ func TestHttpRateLimit(t *testing.T) {
 	time.Sleep(time.Duration(retryAfter) * time.Second)
 
 	// Do another request. Verify that request is successful
-	t.Logf("Retrying...")
+	t.Log("Retrying...")
 	requestURL = fmt.Sprintf("%s/v1/hosts/%s", bc.Address, newHostId)
 	req, err = http.NewRequest(http.MethodGet, requestURL, nil)
 	require.NoError(t, err)
@@ -394,7 +394,7 @@ func TestCliRateLimit(t *testing.T) {
 		require.NoError(t, output.Err, string(output.Stderr))
 		require.Equal(t, 0, output.ExitCode)
 	}
-	t.Logf("Successfully auto-retried CLI request")
+	t.Log("Successfully auto-retried CLI request")
 }
 
 func getRateLimitStat(rateLimitHeader, stat string) (int, error) {
