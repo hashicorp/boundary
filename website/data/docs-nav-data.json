@@ -122,6 +122,10 @@
       {
         "title": "Configure high availability",
         "path": "install-boundary/high-availability"
+      },
+      {
+        "title": "Terraform Patterns",
+        "path": "install-boundary/terraform-patterns"
       }
     ]
   },
