@@ -59,6 +59,7 @@ func registerWorkerMultihopService(ctx context.Context, w *Worker, server *grpc.
 		w.WorkerAuthStorage,
 		false,
 		w.controllerMultihopConn,
+		nodeenrollment.WithRandomReader(w.conf.SecureRandomReader),
 	)
 	if err != nil {
 		return fmt.Errorf("%s: error creating multihop service handler: %w", op, err)

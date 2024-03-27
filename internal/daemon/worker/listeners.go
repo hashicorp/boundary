@@ -148,7 +148,7 @@ func (w *Worker) configureForWorker(ln *base.ServerListener, logger *log.Logger,
 			if err != nil {
 				return nil, temperror.New(fmt.Errorf("error deriving node credentials key id in multi-hop fetch function: %w", err))
 			}
-			req.RewrappedWrappingRegistrationFlowInfo, err = nodee.EncryptMessage(ctx, regInfo, nodeCreds)
+			req.RewrappedWrappingRegistrationFlowInfo, err = nodee.EncryptMessage(ctx, regInfo, nodeCreds, opt...)
 			if err != nil {
 				return nil, temperror.New(fmt.Errorf("error rewrapping registration information in multi-hop fetch function: %w", err))
 			}
@@ -211,6 +211,7 @@ func (w *Worker) configureForWorker(ln *base.ServerListener, logger *log.Logger,
 				nodee.WithStorageWrapper(w.conf.WorkerAuthStorageKms),
 				nodee.WithRegistrationWrapper(wrapperToUse),
 				nodee.WithLogger(eventLogger),
+				nodee.WithRandomReader(w.conf.SecureRandomReader),
 			},
 		})
 	if err != nil {

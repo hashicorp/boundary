@@ -279,6 +279,7 @@ func rotateWorkerAuth(ctx context.Context, w *Worker, currentNodeCreds *types.No
 		ctx,
 		w.WorkerAuthStorage,
 		fetchResp,
+		randReaderOpt,
 		nodeenrollment.WithStorageWrapper(w.conf.WorkerAuthStorageKms),
 	)
 	if err != nil {

@@ -637,7 +637,13 @@ func (r *Repository) CreateWorker(ctx context.Context, worker *Worker, opt ...Op
 				if err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to create worker auth repository"))
 				}
-				nodeInfo, err := registration.AuthorizeNode(ctx, workerAuthRepo, opts.WithFetchNodeCredentialsRequest, nodeenrollment.WithSkipStorage(true))
+				nodeInfo, err := registration.AuthorizeNode(
+					ctx,
+					workerAuthRepo,
+					opts.WithFetchNodeCredentialsRequest,
+					nodeenrollment.WithSkipStorage(true),
+					nodeenrollment.WithRandomReader(r.randomReader),
+				)
 				if err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to authorize node"))
 				}
@@ -647,9 +653,14 @@ func (r *Repository) CreateWorker(ctx context.Context, worker *Worker, opt ...Op
 				}
 
 			case opts.WithCreateControllerLedActivationToken:
-				tokenId, activationToken, err := registration.CreateServerLedActivationToken(ctx, nil, &types.ServerLedRegistrationRequest{},
+				tokenId, activationToken, err := registration.CreateServerLedActivationToken(
+					ctx,
+					nil,
+					&types.ServerLedRegistrationRequest{},
 					nodeenrollment.WithSkipStorage(true),
-					nodeenrollment.WithState(state))
+					nodeenrollment.WithState(state),
+					nodeenrollment.WithRandomReader(r.randomReader),
+				)
 				if err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to create controller-led activation token"))
 				}

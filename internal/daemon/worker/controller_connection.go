@@ -117,6 +117,7 @@ func (w *Worker) upstreamDialerFunc(extraAlpnProtos ...string) func(context.Cont
 			nodeenrollment.WithRegistrationWrapper(w.conf.WorkerAuthKms),
 			nodeenrollment.WithWrappingRegistrationFlowApplicationSpecificParams(st),
 			nodeenrollment.WithExtraAlpnProtos(extraAlpnProtos),
+			nodeenrollment.WithRandomReader(w.conf.SecureRandomReader),
 			// If the activation token hasn't been populated, this won't do
 			// anything, and it won't do anything if it's already been used
 			nodeenrollment.WithActivationToken(w.conf.RawConfig.Worker.ControllerGeneratedActivationToken),

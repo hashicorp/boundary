@@ -169,6 +169,7 @@ func (c *Controller) configureForCluster(ln *base.ServerListener) (func(), error
 			Options: []nodee.Option{
 				nodee.WithLogger(eventLogger),
 				nodee.WithRegistrationWrapper(wrapperToUse),
+				nodee.WithRandomReader(c.conf.SecureRandomReader),
 			},
 		})
 	if err != nil {

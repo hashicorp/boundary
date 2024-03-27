@@ -6,6 +6,7 @@ package handlers
 import (
 	"context"
 	"fmt"
+	"io"
 	"sync"
 
 	"github.com/hashicorp/boundary/internal/errors"
@@ -79,7 +80,8 @@ func getUpstreamMessageHandler(ctx context.Context, msgType pbs.MsgType) (Upstre
 // UpstreamMessageServiceServer for OSS controllers
 type controllerUpstreamMessageServiceServer struct {
 	pbs.UnimplementedUpstreamMessageServiceServer
-	storage nodeenrollment.Storage
+	storage    nodeenrollment.Storage
+	randReader io.Reader
 }
 
 var _ pbs.UpstreamMessageServiceServer = (*controllerUpstreamMessageServiceServer)(nil)
@@ -90,6 +92,7 @@ var _ pbs.UpstreamMessageServiceServer = (*controllerUpstreamMessageServiceServe
 func NewControllerUpstreamMessageServiceServer(
 	ctx context.Context,
 	storage nodeenrollment.Storage,
+	randReader io.Reader,
 ) (pbs.UpstreamMessageServiceServer, error) {
 	const op = "handlers.NewControllerUpstreamMessageServiceServer"
 	switch {
@@ -98,7 +101,8 @@ func NewControllerUpstreamMessageServiceServer(
 	}
 
 	return &controllerUpstreamMessageServiceServer{
-		storage: storage,
+		storage:    storage,
+		randReader: randReader,
 	}, nil
 }
 
@@ -186,7 +190,7 @@ func (s *controllerUpstreamMessageServiceServer) UpstreamMessage(ctx context.Con
 			},
 		}, nil
 	default:
-		ct, err := nodeenrollment.EncryptMessage(ctx, respMsg, nodeInfo)
+		ct, err := nodeenrollment.EncryptMessage(ctx, respMsg, nodeInfo, nodeenrollment.WithRandomReader(s.randReader))
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "%s: error encrypting response: %v", op, err)
 		}

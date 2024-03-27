@@ -5,6 +5,7 @@ package servers
 
 import (
 	"context"
+	"io"
 	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -26,6 +27,8 @@ type rotateRootsJob struct {
 	rotateFrequency time.Duration
 
 	certificateLifetime time.Duration
+
+	randReader io.Reader
 }
 
 // newRotateRootsJob instantiates the rotate roots job.
@@ -52,6 +55,7 @@ func newRotateRootsJob(ctx context.Context, r db.Reader, w db.Writer, kms *kms.K
 		totalRotates:        0,
 		rotateFrequency:     opts.withRotationFrequency,
 		certificateLifetime: opts.withCertificateLifetime,
+		randReader:          opts.withRandomReader,
 	}, nil
 }
 
@@ -81,7 +85,7 @@ func (r *rotateRootsJob) Status() scheduler.JobStatus {
 func (r *rotateRootsJob) Run(ctx context.Context) error {
 	const op = "server.(rotateRootsJob).Run"
 
-	_, err := server.RotateRoots(ctx, r.workerAuthRepo, nodeenrollment.WithCertificateLifetime(r.certificateLifetime))
+	_, err := server.RotateRoots(ctx, r.workerAuthRepo, nodeenrollment.WithCertificateLifetime(r.certificateLifetime), nodeenrollment.WithRandomReader(r.randReader))
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}

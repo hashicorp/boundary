@@ -104,6 +104,7 @@ func registerControllerMultihopService(ctx context.Context, c *Controller, serve
 		workerAuthStorage,
 		true,
 		nil,
+		nodeenrollment.WithRandomReader(c.conf.SecureRandomReader),
 	)
 	if err != nil {
 		return fmt.Errorf("%s: error creating multihop service handler: %w", op, err)
@@ -132,7 +133,7 @@ func registerControllerUpstreamMessageService(ctx context.Context, c *Controller
 		return fmt.Errorf("%s: worker auth repository storage func is unset", op)
 	}
 
-	upstreamMsgService, err := handlers.NewControllerUpstreamMessageServiceServer(ctx, workerAuthStorage)
+	upstreamMsgService, err := handlers.NewControllerUpstreamMessageServiceServer(ctx, workerAuthStorage, c.conf.SecureRandomReader)
 	if err != nil {
 		return fmt.Errorf("%s: error creating upstream message service handler: %w", op, err)
 	}

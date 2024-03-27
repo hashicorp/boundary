@@ -5,6 +5,8 @@ package server
 
 import (
 	"context"
+	"crypto/rand"
+	"io"
 	"reflect"
 	"runtime"
 	"testing"
@@ -242,5 +244,11 @@ func Test_GetOpts(t *testing.T) {
 		opts.withNewIdFunc = nil
 		testOpts.withNewIdFunc = nil
 		assert.Equal(t, opts, testOpts)
+	})
+	t.Run("WithRandomReader", func(t *testing.T) {
+		opts := GetOpts(WithRandomReader(io.LimitReader(nil, 0)))
+		testOpts := getDefaultOptions()
+		assert.Equal(t, rand.Reader, testOpts.withRandomReader)
+		assert.NotEqual(t, rand.Reader, opts.withRandomReader)
 	})
 }

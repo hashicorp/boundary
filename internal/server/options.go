@@ -5,6 +5,8 @@ package server
 
 import (
 	"context"
+	"crypto/rand"
+	"io"
 	"time"
 
 	"github.com/hashicorp/boundary/version"
@@ -53,12 +55,14 @@ type options struct {
 	withFeature                            version.Feature
 	withDirectlyConnected                  bool
 	withWorkerPool                         []string
+	withRandomReader                       io.Reader
 }
 
 func getDefaultOptions() options {
 	return options{
 		withNewIdFunc:        newWorkerId,
 		withOperationalState: ActiveOperationalState.String(),
+		withRandomReader:     rand.Reader,
 	}
 }
 
@@ -265,5 +269,12 @@ func WithDirectlyConnected(conn bool) Option {
 func WithWorkerPool(workerIds []string) Option {
 	return func(o *options) {
 		o.withWorkerPool = workerIds
+	}
+}
+
+// WithRandomReader provides a random reader.
+func WithRandomReader(with io.Reader) Option {
+	return func(o *options) {
+		o.withRandomReader = with
 	}
 }
