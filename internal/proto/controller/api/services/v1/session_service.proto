@@ -12,6 +12,17 @@ import "protoc-gen-openapiv2/options/annotations.proto";
 option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/services;services";
 
 service SessionService {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_tag) = {
+    name: "Session service"
+    description:
+      "A session represents a temporary, authorized access connection between a user and a target resource. "
+      "The session service provides endpoints for managing sessions in Boundary."
+    external_docs: {
+      url: "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/sessions";
+      description: "Read about sessions in the Boundary domain model";
+    }
+  };
+
   // GetSession returns a stored Session if present.  The provided request
   // must include the Session ID for the Session being retrieved. If
   // any that ID is missing, malformed or reference a non existing
@@ -68,7 +79,7 @@ message ListSessionsRequest {
   // The maximum size of a page in this iteration.
   // If unset, the default page size configured will be used.
   // If the page_size is greater than the default page configured,
-  // an error will be returned.
+  // the page size will be truncated to this number..
   uint32 page_size = 60 [json_name = "page_size"]; // @gotags: `class:"public"`
 }
 

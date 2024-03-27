@@ -12,6 +12,14 @@ import "protoc-gen-openapiv2/options/annotations.proto";
 option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/services;services";
 
 service AuthTokenService {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_tag) = {
+    name: "Auth token service"
+    description:
+      "The auth token service provides the ability to manage and retrieve auth tokens. "
+      "An auth token serves as a temporary credential issued to a user after successful authentication. "
+      "It grants the user access to Boundary's resources and capabilities for a limited duration."
+  };
+
   // GetAuthToken returns a stored Auth Token if present.  The provided request
   // must include the Auth Token id and if it is missing, malformed or
   // referencing a non existing resource an error is returned.
@@ -59,7 +67,7 @@ message ListAuthTokensRequest {
   // The maximum size of a page in this iteration.
   // If unset, the default page size configured will be used.
   // If the page_size is greater than the default page configured,
-  // an error will be returned.
+  // the page size will be truncated to this number.
   uint32 page_size = 50 [json_name = "page_size"]; // @gotags: `class:"public"`
 }
 

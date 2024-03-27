@@ -15,6 +15,17 @@ option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/s
 option (custom_options.v1.domain) = "host";
 
 service HostCatalogService {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_tag) = {
+    name: "Host catalog service"
+    description:
+      "A host catalog serves as a central repository for managing and organizing the target hosts or resources that Boundary can access and control. "
+      "The host catalog service provides endpoints for managing host catalogs in Boundary."
+    external_docs: {
+      url: "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/host-catalogs";
+      description: "Read about host catalogs in the Boundary domain model";
+    }
+  };
+
   // GetHostCatalog returns a stored Host Catalog if present.  The provided
   // request must include the Catalog IDs for the Host Catalog being retrieved.
   // If missing, malformed, or referencing a non-existing resource an error is
@@ -92,7 +103,7 @@ message ListHostCatalogsRequest {
   // The maximum size of a page in this iteration.
   // If unset, the default page size configured will be used.
   // If the page_size is greater than the default page configured,
-  // an error will be returned.
+  // the page size will be truncated to this number.
   uint32 page_size = 50 [json_name = "page_size"]; // @gotags: `class:"public"`
 }
 

@@ -148,8 +148,8 @@ protobuild:
 	# Move the generated files from the tmp file subdirectories into the current repo.
 	cp -R ${TMP_DIR}/${REPO_PATH}/* ${THIS_DIR}
 
-	@buf generate --template buf.openapiv2.gen.yaml --path internal/proto/controller/api/services/v1/
-	 cd internal/bsr/ && buf generate proto/
+	@buf generate --template buf.openapiv2.gen.yaml --path internal/proto/controller/api/services/v1/ --path internal/proto/controller/api/v1/
+	cd internal/bsr/ && buf generate proto/
 
 	@protoc-go-inject-tag -input=./internal/oplog/store/oplog.pb.go
 	@protoc-go-inject-tag -input=./internal/oplog/oplog_test/oplog_test.pb.go
@@ -256,6 +256,8 @@ protobuild:
 	@buf generate --template buf.testing.gen.yaml --path internal/proto/testing/event/v1/
 
 	@go run ./scripts/remove-gotags-comments/ -path ./internal/gen/controller.swagger.json
+	# Avoid use of -i to be compatible between GNU and BSD sed
+	@sed -e 's/placeholder-version/$(shell cat ./version/VERSION)/g' ./internal/gen/controller.swagger.json > controller.swagger.json.tmp && mv controller.swagger.json.tmp ./internal/gen/controller.swagger.json
 
 	@rm -R ${TMP_DIR}
 

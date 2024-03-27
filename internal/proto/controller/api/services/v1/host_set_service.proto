@@ -15,6 +15,17 @@ option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/s
 option (custom_options.v1.domain) = "host";
 
 service HostSetService {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_tag) = {
+    name: "Host set service"
+    description:
+      "A host set is a resource that represents a collection of hosts which are considered equivalent for the purposes of access control. "
+      "The host set service provides endpoints for managing host sets in Boundary."
+    external_docs: {
+      url: "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/host-sets";
+      description: "Read about host sets in the Boundary domain model";
+    }
+  };
+
   // GetHostSet returns a stored Host Set if present.  The provided request
   // must include the Host Set ID for the resource being retrieved. If missing,
   // malformed or reference a non existing resource an error is returned.
@@ -137,7 +148,7 @@ message ListHostSetsRequest {
   // The maximum size of a page in this iteration.
   // If unset, the default page size configured will be used.
   // If the page_size is greater than the default page configured,
-  // an error will be returned.
+  // the page size will be truncated to this number..
   uint32 page_size = 50 [json_name = "page_size"]; // @gotags: `class:"public"`
 }
 

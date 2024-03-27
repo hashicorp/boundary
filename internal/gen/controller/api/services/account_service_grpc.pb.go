@@ -35,39 +35,39 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type AccountServiceClient interface {
-	// GetAccount returns a stored Account if present. The provided request must
-	// include the id for the Account be retrieved. If missing, malformed or
-	// referencing a non existing Account an error is returned.
+	// GetAccount returns a stored account if present. The provided request must
+	// include the id for the account be retrieved. If missing, malformed or
+	// referencing a non existing account an error is returned.
 	GetAccount(ctx context.Context, in *GetAccountRequest, opts ...grpc.CallOption) (*GetAccountResponse, error)
-	// ListAccounts returns a list of stored Accounts which exist inside the
-	// provided Auth Method. The request must include the Auth Method id which
-	// contains the Accounts being listed. If missing or malformed an error
+	// ListAccounts returns a list of stored accounts which exist inside the
+	// provided auth method. The request must include the auth method id which
+	// contains the accounts being listed. If missing or malformed an error
 	// is returned.
 	ListAccounts(ctx context.Context, in *ListAccountsRequest, opts ...grpc.CallOption) (*ListAccountsResponse, error)
-	// CreateAccount creates and stores an Account in boundary. The provided
-	// request must include the Auth Method ID in which the Account will be
-	// created. If the Auth Method ID is missing, malformed, or references a non
+	// CreateAccount creates and stores an account in boundary. The provided
+	// request must include the auth method ID in which the account will be
+	// created. If the auth method ID is missing, malformed, or references a non
 	// existing resource an error is returned. If a name or login_name is
-	// provided that is in use in another Account in the same Auth Method an
+	// provided that is in use in another account in the same auth method an
 	// error is returned.
 	CreateAccount(ctx context.Context, in *CreateAccountRequest, opts ...grpc.CallOption) (*CreateAccountResponse, error)
-	// UpdateAccount updates an existing Account in boundary. The provided Account
+	// UpdateAccount updates an existing account in boundary. The provided account
 	// must not have any read only fields set. The update mask must be included in
 	// the request and contain at least 1 mutable field. To unset a field's value,
 	// include the field in the update mask and don't set it in the provided
-	// Account. An error is returned if the Account id is missing or references a
+	// account. An error is returned if the account id is missing or references a
 	// non-existing resource. An error is also returned if the request attempts
 	// to update the name or login_name to one that is already in use in the
-	// containing Auth Method.
+	// containing auth method.
 	UpdateAccount(ctx context.Context, in *UpdateAccountRequest, opts ...grpc.CallOption) (*UpdateAccountResponse, error)
-	// DeleteAccount removes an Account from Boundary. If the provided Account Id
+	// DeleteAccount removes an account from Boundary. If the provided account Id
 	// is malformed or not provided an error is returned.
 	DeleteAccount(ctx context.Context, in *DeleteAccountRequest, opts ...grpc.CallOption) (*DeleteAccountResponse, error)
-	// SetPassword sets the Account's password to the one provided in the
+	// SetPassword sets the account's password to the one provided in the
 	// request. This method is intended for administration purpose and as such
 	// does not require the old password.
 	SetPassword(ctx context.Context, in *SetPasswordRequest, opts ...grpc.CallOption) (*SetPasswordResponse, error)
-	// ChangePassword changes the Account's password to the one provided in the
+	// ChangePassword changes the account's password to the one provided in the
 	// request. This method is intended for end users and requires the existing
 	// password to be provided for authentication purposes.
 	ChangePassword(ctx context.Context, in *ChangePasswordRequest, opts ...grpc.CallOption) (*ChangePasswordResponse, error)
@@ -148,39 +148,39 @@ func (c *accountServiceClient) ChangePassword(ctx context.Context, in *ChangePas
 // All implementations must embed UnimplementedAccountServiceServer
 // for forward compatibility
 type AccountServiceServer interface {
-	// GetAccount returns a stored Account if present. The provided request must
-	// include the id for the Account be retrieved. If missing, malformed or
-	// referencing a non existing Account an error is returned.
+	// GetAccount returns a stored account if present. The provided request must
+	// include the id for the account be retrieved. If missing, malformed or
+	// referencing a non existing account an error is returned.
 	GetAccount(context.Context, *GetAccountRequest) (*GetAccountResponse, error)
-	// ListAccounts returns a list of stored Accounts which exist inside the
-	// provided Auth Method. The request must include the Auth Method id which
-	// contains the Accounts being listed. If missing or malformed an error
+	// ListAccounts returns a list of stored accounts which exist inside the
+	// provided auth method. The request must include the auth method id which
+	// contains the accounts being listed. If missing or malformed an error
 	// is returned.
 	ListAccounts(context.Context, *ListAccountsRequest) (*ListAccountsResponse, error)
-	// CreateAccount creates and stores an Account in boundary. The provided
-	// request must include the Auth Method ID in which the Account will be
-	// created. If the Auth Method ID is missing, malformed, or references a non
+	// CreateAccount creates and stores an account in boundary. The provided
+	// request must include the auth method ID in which the account will be
+	// created. If the auth method ID is missing, malformed, or references a non
 	// existing resource an error is returned. If a name or login_name is
-	// provided that is in use in another Account in the same Auth Method an
+	// provided that is in use in another account in the same auth method an
 	// error is returned.
 	CreateAccount(context.Context, *CreateAccountRequest) (*CreateAccountResponse, error)
-	// UpdateAccount updates an existing Account in boundary. The provided Account
+	// UpdateAccount updates an existing account in boundary. The provided account
 	// must not have any read only fields set. The update mask must be included in
 	// the request and contain at least 1 mutable field. To unset a field's value,
 	// include the field in the update mask and don't set it in the provided
-	// Account. An error is returned if the Account id is missing or references a
+	// account. An error is returned if the account id is missing or references a
 	// non-existing resource. An error is also returned if the request attempts
 	// to update the name or login_name to one that is already in use in the
-	// containing Auth Method.
+	// containing auth method.
 	UpdateAccount(context.Context, *UpdateAccountRequest) (*UpdateAccountResponse, error)
-	// DeleteAccount removes an Account from Boundary. If the provided Account Id
+	// DeleteAccount removes an account from Boundary. If the provided account Id
 	// is malformed or not provided an error is returned.
 	DeleteAccount(context.Context, *DeleteAccountRequest) (*DeleteAccountResponse, error)
-	// SetPassword sets the Account's password to the one provided in the
+	// SetPassword sets the account's password to the one provided in the
 	// request. This method is intended for administration purpose and as such
 	// does not require the old password.
 	SetPassword(context.Context, *SetPasswordRequest) (*SetPasswordResponse, error)
-	// ChangePassword changes the Account's password to the one provided in the
+	// ChangePassword changes the account's password to the one provided in the
 	// request. This method is intended for end users and requires the existing
 	// password to be provided for authentication purposes.
 	ChangePassword(context.Context, *ChangePasswordRequest) (*ChangePasswordResponse, error)

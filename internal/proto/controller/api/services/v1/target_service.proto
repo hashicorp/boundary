@@ -15,6 +15,17 @@ option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/s
 option (custom_options.v1.domain) = "target";
 
 service TargetService {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_tag) = {
+    name: "Target service"
+    description:
+      "A target represents an endpoint or resource that users can access through Boundary sessions. "
+      "The target service provides endpoints for managing targets in Boundary."
+    external_docs: {
+      url: "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/targets";
+      description: "Read about targets in the Boundary domain model";
+    }
+  };
+
   // GetTarget returns a stored Target if present.  The provided request
   // must include the Target ID for the Target being retrieved. If
   // that ID is missing, malformed or reference a non existing
@@ -205,7 +216,7 @@ message ListTargetsRequest {
   // The maximum size of a page in this iteration.
   // If unset, the default page size configured will be used.
   // If the page_size is greater than the default page configured,
-  // an error will be returned.
+  // the page size will be truncated to this number..
   uint32 page_size = 50 [json_name = "page_size"]; // @gotags: `class:"public"`
 }
 

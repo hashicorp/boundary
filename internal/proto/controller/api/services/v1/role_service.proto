@@ -13,6 +13,17 @@ import "protoc-gen-openapiv2/options/annotations.proto";
 option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/services;services";
 
 service RoleService {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_tag) = {
+    name: "Role service"
+    description:
+      "A role represents a collection of permissions that define what actions a user or service account can perform within the system. "
+      "The role service provides endpoints for managing roles in Boundary."
+    external_docs: {
+      url: "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/roles";
+      description: "Read about roles in the Boundary domain model";
+    }
+  };
+
   // GetRole returns a stored Role if present. The provided request must include
   // the Role ID for the Role being retrieved. If the ID is missing, malformed
   // or reference a non-existing resource an error is returned.
@@ -215,7 +226,7 @@ message ListRolesRequest {
   // The maximum size of a page in this iteration.
   // If unset, the default page size configured will be used.
   // If the page_size is greater than the default page configured,
-  // an error will be returned.
+  // the page size will be truncated to this number..
   uint32 page_size = 50 [json_name = "page_size"]; // @gotags: `class:"public"`
 }
 
