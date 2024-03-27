@@ -335,10 +335,9 @@ func errorInterceptor(
 // For an field in the request to be considered for alias resolution, it must
 // be annotated with the Aliasable proto option.
 func aliasResolutionInterceptor(
-	ctx context.Context,
+	_ context.Context,
 	aliasRepoFn common.AliasRepoFactory,
 ) grpc.UnaryServerInterceptor {
-	const op = "alias.ResolutionInterceptor"
 	return func(interceptorCtx context.Context,
 		req any,
 		_ *grpc.UnaryServerInfo,
@@ -362,6 +361,8 @@ func aliasResolutionInterceptor(
 			// is no way to distinguish between a missing alias and an existing
 			// alias that points to a destination the requester is not allowed
 			// to perform an action on.
+			// handlers.UnauthenticatedError() turns into an http 401 status
+			// code "Unauthorized".
 			return nil, handlers.UnauthenticatedError()
 		}
 		return handler(interceptorCtx, req)
