@@ -18,6 +18,7 @@ import (
 	"github.com/hashicorp/eventlogger/filters/encrypt"
 	"github.com/hashicorp/eventlogger/formatter_filters/cloudevents"
 	"github.com/hashicorp/go-hclog"
+	"github.com/hashicorp/go-multierror"
 	"github.com/mitchellh/copystructure"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -1094,6 +1095,14 @@ func Test_WriteError(t *testing.T) {
 			name:            "stderrors",
 			ctx:             testCtx,
 			e:               stderrors.New("test std errors"),
+			opt:             []event.Option{event.WithInfo("test", "info")},
+			info:            info,
+			errSinkFileName: c.ErrorEvents.Name(),
+		},
+		{
+			name:            "multierror",
+			ctx:             testCtx,
+			e:               multierror.Append(stderrors.New("multierror")),
 			opt:             []event.Option{event.WithInfo("test", "info")},
 			info:            info,
 			errSinkFileName: c.ErrorEvents.Name(),

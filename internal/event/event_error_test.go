@@ -4,9 +4,15 @@
 package event
 
 import (
+	"bytes"
+	"encoding/json"
+	"errors"
+	stderrors "errors"
 	"fmt"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/go-multierror"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -41,10 +47,9 @@ func Test_newError(t *testing.T) {
 			fromOp: Op("valid-no-opts"),
 			e:      fmt.Errorf("%s: valid no opts: %w", "valid-no-opts", ErrInvalidParameter),
 			want: &err{
-				ErrorFields: fmt.Errorf("%s: valid no opts: %w", "valid-no-opts", ErrInvalidParameter),
-				Error:       "valid-no-opts: valid no opts: invalid parameter",
-				Version:     errorVersion,
-				Op:          Op("valid-no-opts"),
+				Error:   "valid-no-opts: valid no opts: invalid parameter",
+				Version: errorVersion,
+				Op:      Op("valid-no-opts"),
 			},
 		},
 		{
@@ -57,7 +62,6 @@ func Test_newError(t *testing.T) {
 				WithInfo("msg", "hello"),
 			},
 			want: &err{
-				ErrorFields: fmt.Errorf("%s: valid all opts: %w", "valid-all-opts", ErrInvalidParameter),
 				Error:       "valid-all-opts: valid all opts: invalid parameter",
 				Version:     errorVersion,
 				Op:          Op("valid-all-opts"),
@@ -78,7 +82,6 @@ func Test_newError(t *testing.T) {
 				WithInfo("msg", "hello"),
 			},
 			want: &err{
-				ErrorFields: fmt.Errorf("1 error occurred:\n\t* multierror: multierror all opts: invalid parameter\n\n"),
 				Error:       "1 error occurred:\n\t* multierror: multierror all opts: invalid parameter\n\n",
 				Version:     errorVersion,
 				Op:          Op("multierror"),
@@ -87,21 +90,67 @@ func Test_newError(t *testing.T) {
 				Info:        map[string]any{"msg": "hello"},
 			},
 		},
+		{
+			name:   "multierror-conversion-from-errors.Join",
+			fromOp: Op("test"),
+			e: func() error {
+				return errors.Join(multierror.Append(fmt.Errorf("%s: multierror all opts: %w", "multierror", ErrInvalidParameter)))
+			}(),
+			opts: []Option{
+				WithId("1"),
+				WithRequestInfo(TestRequestInfo(t)),
+				WithInfo("msg", "hello"),
+			},
+			want: &err{
+				Error:       "1 error occurred:\n\t* multierror: multierror all opts: invalid parameter\n\n",
+				Version:     errorVersion,
+				Op:          Op("test"),
+				Id:          "1",
+				RequestInfo: TestRequestInfo(t),
+				Info:        map[string]any{"msg": "hello"},
+			},
+		},
+		{
+			name:   "multierror.Group",
+			fromOp: Op("test"),
+			e: func() error {
+				var mg multierror.Group
+				mg.Go(func() error {
+					return multierror.Append(errors.New("error"))
+				})
+
+				stopErrors := mg.Wait()
+				return stderrors.Join(stopErrors)
+			}(),
+			opts: []Option{
+				WithId("1"),
+				WithRequestInfo(TestRequestInfo(t)),
+				WithInfo("msg", "hello"),
+			},
+			want: &err{
+				Error:       "1 error occurred:\n\t* error\n\n",
+				Version:     errorVersion,
+				Op:          Op("test"),
+				Id:          "1",
+				RequestInfo: TestRequestInfo(t),
+				Info:        map[string]any{"msg": "hello"},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := newError(tt.fromOp, tt.e, tt.opts...)
+			got, gotErr := newError(tt.fromOp, tt.e, tt.opts...)
 			if tt.wantErrIs != nil {
-				require.Error(err)
+				require.Error(gotErr)
 				assert.Nil(got)
-				assert.ErrorIs(err, tt.wantErrIs)
+				assert.ErrorIs(gotErr, tt.wantErrIs)
 				if tt.wantErrContains != "" {
-					assert.Contains(err.Error(), tt.wantErrContains)
+					assert.Contains(gotErr.Error(), tt.wantErrContains)
 				}
 				return
 			}
-			require.NoError(err)
+			require.NoError(gotErr)
 			require.NotNil(got)
 			opts := getOpts(tt.opts...)
 			if opts.withId == "" {
@@ -110,7 +159,21 @@ func Test_newError(t *testing.T) {
 			if opts.withRequestInfo != nil {
 				tt.want.RequestInfo = got.RequestInfo
 			}
-			assert.Equal(tt.want, got)
+			require.NotEmpty(got.ErrorFields)
+			// make sure it can be encoded
+			buf := &bytes.Buffer{}
+			enc := json.NewEncoder(buf)
+			gotErr = enc.Encode(got)
+			assert.NoError(gotErr)
+			t.Log(buf.String())
+
+			buf.Reset()
+			enc.SetIndent("", "  ")
+			gotErr = enc.Encode(got)
+			assert.NoError(gotErr)
+			t.Log(buf.String())
+
+			assert.Empty(cmp.Diff(tt.want, got, cmpopts.IgnoreFields(err{}, "ErrorFields")))
 		})
 	}
 }
