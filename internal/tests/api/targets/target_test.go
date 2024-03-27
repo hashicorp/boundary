@@ -769,7 +769,7 @@ func TestSet_Errors(t *testing.T) {
 	assert.NotNil(apiErr)
 	assert.EqualValues(http.StatusUnauthorized, apiErr.Response().StatusCode())
 	// We should not be able to tell the difference between an unauthorized request
-	// and an request that tries to resolve an alias that points to nothing.
+	// and a request that tries to resolve an alias that points to nothing.
 	assert.EqualValues(noAliasApiErrReponse.Body, apiErr.Response().Body)
 }
 
