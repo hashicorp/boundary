@@ -7563,6 +7563,12 @@
           },
           "description": "Output only. The available actions on this resource for the requester.",
           "readOnly": true
+        },
+        "local_storage_state": {
+          "type": "string",
+          "description": "",
+          "title": "Output only. The local_storage_state indicates the state of the local disk space of the worker.\nPossible values are:\n- available: The worker local storage state is at an acceptable state\n- low storage: The worker is below the minimum threshold for local storage\n- critically low storage: The worker local storage state is below the critical minimum threshold for local storage\n- out of storage: The worker is out of local disk space\n- not configured: The worker does not have a local storage path configured\n- unknown: The default local storage state of a worker. Used when the local storage state of a worker is not yet known",
+          "readOnly": true
         }
       },
       "title": "Worker contains all fields related to a Worker resource"

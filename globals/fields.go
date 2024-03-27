@@ -123,4 +123,5 @@ const (
 	DestinationIdField                          = "destination_id"
 	ValueField                                  = "value"
 	WithAliasesField                            = "with_aliases"
+	LocalStorageStateField                      = "local_storage_state"
 )

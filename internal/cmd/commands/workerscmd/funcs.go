@@ -275,6 +275,9 @@ func printItemTable(item *workers.Worker, resp *api.Response) string {
 	if item.ControllerGeneratedActivationToken != "" {
 		nonAttributeMap["Controller-Generated Activation Token"] = item.ControllerGeneratedActivationToken
 	}
+	if item.LocalStorageState != "" {
+		nonAttributeMap["Local Storage State"] = item.LocalStorageState
+	}
 
 	resultMap := resp.Map
 	if count, ok := resultMap[globals.ActiveConnectionCountField]; ok {

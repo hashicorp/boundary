@@ -138,6 +138,7 @@ func TestGet(t *testing.T) {
 		},
 		Type:                               KmsWorkerType,
 		DirectlyConnectedDownstreamWorkers: connectedDownstreams,
+		LocalStorageState:                  server.UnknownLocalStorageState.String(),
 	}
 
 	var pkiWorkerKeyId string
@@ -149,6 +150,7 @@ func TestGet(t *testing.T) {
 	pkiWorker, err = repo.UpsertWorkerStatus(context.Background(),
 		server.NewWorker(pkiWorker.GetScopeId(),
 			server.WithAddress("test pki worker address"),
+			server.WithLocalStorageState(server.AvailableLocalStorageState.String()),
 			server.WithWorkerTags(&server.Tag{
 				Key:   "config",
 				Value: "test",
@@ -180,6 +182,7 @@ func TestGet(t *testing.T) {
 		},
 		Type:                               PkiWorkerType,
 		DirectlyConnectedDownstreamWorkers: connectedDownstreams,
+		LocalStorageState:                  server.AvailableLocalStorageState.String(),
 	}
 
 	var managedPkiWorkerKeyId string
@@ -200,6 +203,7 @@ func TestGet(t *testing.T) {
 	managedPkiWorker, err = repo.UpsertWorkerStatus(context.Background(),
 		server.NewWorker(managedPkiWorker.GetScopeId(),
 			server.WithAddress("test managed pki worker address"),
+			server.WithLocalStorageState(server.AvailableLocalStorageState.String()),
 			server.WithWorkerTags(&server.Tag{
 				Key:   wl.ManagedWorkerTag,
 				Value: "true",
@@ -236,6 +240,7 @@ func TestGet(t *testing.T) {
 		},
 		Type:                               PkiWorkerType,
 		DirectlyConnectedDownstreamWorkers: connectedDownstreams,
+		LocalStorageState:                  server.AvailableLocalStorageState.String(),
 	}
 
 	cases := []struct {
