@@ -127,7 +127,8 @@ func TestApiPaginateSessions(t *testing.T) {
 	// Create enough sessions to overflow a single page
 	for i := 0; i < c.MaxPageSize+1; i++ {
 		// boundary.ConnectCli(t, ctx, newTargetId)
-		tClient.AuthorizeSession(ctx, newTargetId)
+		_, err := tClient.AuthorizeSession(ctx, newTargetId)
+		require.NoError(t, err)
 	}
 
 	// List sessions

@@ -49,7 +49,7 @@ func TestDatabaseMigration(t *testing.T) {
 
 	boundaryRepo := "hashicorp/boundary"
 	boundaryTag := "latest"
-	te := setupEnvironment(t, ctx, c, boundaryRepo, boundaryTag)
+	te := setupEnvironment(t, c, boundaryRepo, boundaryTag)
 	populateBoundaryDatabase(t, ctx, c, te, boundaryRepo, boundaryTag)
 
 	// Migrate database
@@ -74,7 +74,7 @@ func TestDatabaseMigration(t *testing.T) {
 	t.Logf("Migration Output: %s", output.Stderr)
 }
 
-func setupEnvironment(t testing.TB, ctx context.Context, c *config, boundaryRepo, boundaryTag string) TestEnvironment {
+func setupEnvironment(t testing.TB, c *config, boundaryRepo, boundaryTag string) TestEnvironment {
 	pool, err := dockertest.NewPool("")
 	require.NoError(t, err)
 	err = pool.Client.Ping()
