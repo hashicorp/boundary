@@ -435,6 +435,23 @@
         ]
       },
       {
+        "title": "Credential management",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "configuration/credential-management/overview"
+          },
+          {
+            "title": "Manage static credentials with Boundary",
+            "path": "configuration/credential-management/static-cred-boundary"
+          },
+          {
+            "title": "Manage static credentials with Boundary + Vault",
+            "path": "configuration/credential-management/static-cred-vault"
+          }
+        ]
+      },
+      {
         "title": "Session recordings",
         "badge": {
           "text": "HCP/ENT",
