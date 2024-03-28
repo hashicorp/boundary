@@ -187,7 +187,8 @@ func TestApiPaginateCredentialLibraries(t *testing.T) {
 		_, err := sClient.Delete(ctx, orgId)
 		require.NoError(t, err)
 	})
-	newProjectId := boundary.CreateNewProjectApi(t, ctx, client, orgId)
+	projectId, err := boundary.CreateProjectApi(t, ctx, client, orgId)
+	require.NoError(t, err)
 
 	// Configure vault
 	boundaryPolicyName, kvPolicyFilePath := vault.Setup(t, "testdata/boundary-controller-policy.hcl")
@@ -240,7 +241,7 @@ func TestApiPaginateCredentialLibraries(t *testing.T) {
 	t.Log("Created Vault Cred Store Token")
 
 	// Create a credential store
-	newStoreId := boundary.CreateNewCredentialStoreVaultApi(t, ctx, client, newProjectId, c.VaultAddr, credStoreToken)
+	newStoreId := boundary.CreateNewCredentialStoreVaultApi(t, ctx, client, projectId, c.VaultAddr, credStoreToken)
 
 	// Create enough credential libraries to overflow a single page.
 	var libraryIds []string

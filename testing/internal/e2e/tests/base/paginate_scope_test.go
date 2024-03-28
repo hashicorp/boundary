@@ -39,7 +39,9 @@ func TestCliPaginateScopes(t *testing.T) {
 	require.NoError(t, err)
 	var scopeIds []string
 	for i := 0; i < c.MaxPageSize+1; i++ {
-		scopeIds = append(scopeIds, boundary.CreateNewProjectApi(t, ctx, client, newOrgId))
+		projectId, err := boundary.CreateProjectApi(t, ctx, client, newOrgId)
+		require.NoError(t, err)
+		scopeIds = append(scopeIds, projectId)
 	}
 
 	// List scopes
@@ -68,7 +70,8 @@ func TestCliPaginateScopes(t *testing.T) {
 	assert.Empty(t, initialScopes.ListToken)
 
 	// Create a new scope and destroy one of the other scopes
-	newScopeId := boundary.CreateNewProjectApi(t, ctx, client, newOrgId)
+	newScopeId, err := boundary.CreateProjectApi(t, ctx, client, newOrgId)
+	require.NoError(t, err)
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"scopes", "delete",
@@ -127,7 +130,9 @@ func TestApiPaginateScopes(t *testing.T) {
 	// Create enough scopes to overflow a single page.
 	var scopeIds []string
 	for i := 0; i < c.MaxPageSize+1; i++ {
-		scopeIds = append(scopeIds, boundary.CreateNewProjectApi(t, ctx, client, orgId))
+		projectId, err := boundary.CreateProjectApi(t, ctx, client, orgId)
+		require.NoError(t, err)
+		scopeIds = append(scopeIds, projectId)
 	}
 
 	// List scopes

@@ -128,8 +128,9 @@ func TestApiPaginateHosts(t *testing.T) {
 		_, err := sClient.Delete(ctx, orgId)
 		require.NoError(t, err)
 	})
-	newProjectId := boundary.CreateNewProjectApi(t, ctx, client, orgId)
-	newHostCatalogId := boundary.CreateNewHostCatalogApi(t, ctx, client, newProjectId)
+	projectId, err := boundary.CreateProjectApi(t, ctx, client, orgId)
+	require.NoError(t, err)
+	newHostCatalogId := boundary.CreateNewHostCatalogApi(t, ctx, client, projectId)
 
 	// Create enough hosts to overflow a single page.
 	var hostIds []string

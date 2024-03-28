@@ -161,11 +161,12 @@ func TestApiCreateAwsDynamicHostCatalog(t *testing.T) {
 		_, err := scopeClient.Delete(ctx, orgId)
 		require.NoError(t, err)
 	})
-	newProjectId := boundary.CreateNewProjectApi(t, ctx, client, orgId)
+	projectId, err := boundary.CreateProjectApi(t, ctx, client, orgId)
+	require.NoError(t, err)
 
 	// Create a dynamic host catalog
 	hcClient := hostcatalogs.NewClient(client)
-	newHostCatalogResult, err := hcClient.Create(ctx, "plugin", newProjectId,
+	newHostCatalogResult, err := hcClient.Create(ctx, "plugin", projectId,
 		hostcatalogs.WithName("e2e Automated Test Host Catalog"),
 		hostcatalogs.WithPluginName("aws"),
 		hostcatalogs.WithAttributes(map[string]any{

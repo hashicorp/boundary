@@ -127,15 +127,16 @@ func TestApiPaginateCredentialStores(t *testing.T) {
 		_, err := sClient.Delete(ctx, orgId)
 		require.NoError(t, err)
 	})
-	newProjectId := boundary.CreateNewProjectApi(t, ctx, client, orgId)
+	projectId, err := boundary.CreateProjectApi(t, ctx, client, orgId)
+	require.NoError(t, err)
 
 	// Create enough stores to overflow a single page.
 	var storeIds []string
 	for i := 0; i < c.MaxPageSize+1; i++ {
-		storeIds = append(storeIds, boundary.CreateNewCredentialStoreStaticApi(t, ctx, client, newProjectId))
+		storeIds = append(storeIds, boundary.CreateNewCredentialStoreStaticApi(t, ctx, client, projectId))
 	}
 
-	initialStores, err := cClient.List(ctx, newProjectId)
+	initialStores, err := cClient.List(ctx, projectId)
 	require.NoError(t, err)
 
 	var returnedIds []string
@@ -155,12 +156,12 @@ func TestApiPaginateCredentialStores(t *testing.T) {
 	assert.Len(t, mapSliceItems, c.MaxPageSize+1)
 
 	// Create a new store and destroy one of the other stores
-	newStoreId := boundary.CreateNewCredentialStoreStaticApi(t, ctx, client, newProjectId)
+	newStoreId := boundary.CreateNewCredentialStoreStaticApi(t, ctx, client, projectId)
 	_, err = cClient.Delete(ctx, initialStores.Items[0].Id)
 	require.NoError(t, err)
 
 	// List again, should have the new and deleted store
-	newStores, err := cClient.List(ctx, newProjectId, credentialstores.WithListToken(initialStores.ListToken))
+	newStores, err := cClient.List(ctx, projectId, credentialstores.WithListToken(initialStores.ListToken))
 	require.NoError(t, err)
 
 	// Note that this will likely contain all the stores,

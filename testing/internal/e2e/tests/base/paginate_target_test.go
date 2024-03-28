@@ -139,14 +139,15 @@ func TestApiPaginateTargets(t *testing.T) {
 		_, err := sClient.Delete(ctx, orgId)
 		require.NoError(t, err)
 	})
-	newProjectId := boundary.CreateNewProjectApi(t, ctx, client, orgId)
+	projectId, err := boundary.CreateProjectApi(t, ctx, client, orgId)
+	require.NoError(t, err)
 
 	// Create enough targets to overflow a single page.
 	targetPort, err := strconv.ParseInt(c.TargetPort, 10, 32)
 	require.NoError(t, err)
 	var targetIds []string
 	for i := 0; i < c.MaxPageSize+1; i++ {
-		resp, err := tClient.Create(ctx, "tcp", newProjectId,
+		resp, err := tClient.Create(ctx, "tcp", projectId,
 			targets.WithName("test-target-"+strconv.Itoa(i)),
 			targets.WithTcpTargetDefaultPort(uint32(targetPort)),
 			targets.WithAddress(c.TargetAddress),
@@ -156,7 +157,7 @@ func TestApiPaginateTargets(t *testing.T) {
 	}
 
 	// List targets recursively
-	initialTargets, err := tClient.List(ctx, newProjectId)
+	initialTargets, err := tClient.List(ctx, projectId)
 	require.NoError(t, err)
 	var returnedIds []string
 	for _, item := range initialTargets.Items {
@@ -175,7 +176,7 @@ func TestApiPaginateTargets(t *testing.T) {
 	assert.Len(t, mapSliceItems, c.MaxPageSize+1)
 
 	// Create a new target and destroy one of the other targets
-	newTargetResult, err := tClient.Create(ctx, "tcp", newProjectId,
+	newTargetResult, err := tClient.Create(ctx, "tcp", projectId,
 		targets.WithName("test-target-"+strconv.Itoa(c.MaxPageSize+1)),
 		targets.WithTcpTargetDefaultPort(uint32(targetPort)),
 		targets.WithAddress(c.TargetAddress),
@@ -185,7 +186,7 @@ func TestApiPaginateTargets(t *testing.T) {
 	require.NoError(t, err)
 
 	// List again, should have the new and deleted target
-	newTargets, err := tClient.List(ctx, newProjectId, targets.WithListToken(initialTargets.ListToken))
+	newTargets, err := tClient.List(ctx, projectId, targets.WithListToken(initialTargets.ListToken))
 	require.NoError(t, err)
 
 	// Note that this will likely contain all the targets,

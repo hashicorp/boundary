@@ -140,8 +140,9 @@ func TestApiPaginateCredentials(t *testing.T) {
 		_, err := sClient.Delete(ctx, orgId)
 		require.NoError(t, err)
 	})
-	newProjectId := boundary.CreateNewProjectApi(t, ctx, client, orgId)
-	newStoreId := boundary.CreateNewCredentialStoreStaticApi(t, ctx, client, newProjectId)
+	projectId, err := boundary.CreateProjectApi(t, ctx, client, orgId)
+	require.NoError(t, err)
+	newStoreId := boundary.CreateNewCredentialStoreStaticApi(t, ctx, client, projectId)
 
 	// Create enough credentials to overflow a single page.
 	var credentialIds []string

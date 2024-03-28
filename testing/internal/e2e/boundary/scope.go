@@ -35,17 +35,24 @@ func CreateOrgApi(t testing.TB, ctx context.Context, client *api.Client) (string
 	return orgId, nil
 }
 
-// CreateNewProjectApi creates a new project in boundary using the Go api. The project will be created
+// CreateProjectApi creates a new project in boundary using the Go api. The project will be created
 // under the provided org id.
 // Returns the id of the new project.
-func CreateNewProjectApi(t testing.TB, ctx context.Context, client *api.Client, orgId string) string {
-	scopeClient := scopes.NewClient(client)
-	newProjResult, err := scopeClient.Create(ctx, orgId)
-	require.NoError(t, err)
+func CreateProjectApi(t testing.TB, ctx context.Context, client *api.Client, orgId string) (string, error) {
+	name, err := base62.Random(16)
+	if err != nil {
+		return "", err
+	}
 
-	newProjectId := newProjResult.Item.Id
-	t.Logf("Created Project Id: %s", newProjectId)
-	return newProjectId
+	scopeClient := scopes.NewClient(client)
+	createProjResult, err := scopeClient.Create(ctx, orgId, scopes.WithName(fmt.Sprintf("e2e Project %s", name)))
+	if err != nil {
+		return "", err
+	}
+
+	projectId := createProjResult.Item.Id
+	t.Logf("Created Project Id: %s", projectId)
+	return projectId, nil
 }
 
 // CreateNewOrgCli creates a new organization in boundary using the cli.

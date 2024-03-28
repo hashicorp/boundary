@@ -115,13 +115,14 @@ func TestApiPaginateSessions(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	newProjectId := boundary.CreateNewProjectApi(t, ctx, client, orgId)
-	newHostCatalogId := boundary.CreateNewHostCatalogApi(t, ctx, client, newProjectId)
+	projectId, err := boundary.CreateProjectApi(t, ctx, client, orgId)
+	require.NoError(t, err)
+	newHostCatalogId := boundary.CreateNewHostCatalogApi(t, ctx, client, projectId)
 	newHostSetId := boundary.CreateNewHostSetApi(t, ctx, client, newHostCatalogId)
 	newHostId := boundary.CreateNewHostApi(t, ctx, client, newHostCatalogId, c.TargetAddress)
 	boundary.AddHostToHostSetApi(t, ctx, client, newHostSetId, newHostId)
 	require.NoError(t, err)
-	newTargetId := boundary.CreateNewTargetApi(t, ctx, client, newProjectId, c.TargetPort)
+	newTargetId := boundary.CreateNewTargetApi(t, ctx, client, projectId, c.TargetPort)
 	boundary.AddHostSourceToTargetApi(t, ctx, client, newTargetId, newHostSetId)
 
 	// Connect to targets to create a session
@@ -133,7 +134,7 @@ func TestApiPaginateSessions(t *testing.T) {
 	}
 
 	// List sessions
-	initialSessions, err := sClient.List(ctx, newProjectId)
+	initialSessions, err := sClient.List(ctx, projectId)
 	require.NoError(t, err)
 
 	require.Len(t, initialSessions.Items, c.MaxPageSize+1)
@@ -150,7 +151,7 @@ func TestApiPaginateSessions(t *testing.T) {
 	boundary.ConnectCli(t, ctx, newTargetId)
 
 	// List again, should have the new session
-	newSessions, err := sClient.List(ctx, newProjectId, sessions.WithListToken(initialSessions.ListToken))
+	newSessions, err := sClient.List(ctx, projectId, sessions.WithListToken(initialSessions.ListToken))
 	require.NoError(t, err)
 
 	// Note that this will likely contain all the sessions,

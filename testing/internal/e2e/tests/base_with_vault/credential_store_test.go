@@ -187,12 +187,13 @@ func TestApiVaultCredentialStore(t *testing.T) {
 		_, err := scopeClient.Delete(ctx, orgId)
 		require.NoError(t, err)
 	})
-	newProjectId := boundary.CreateNewProjectApi(t, ctx, client, orgId)
-	newHostCatalogId := boundary.CreateNewHostCatalogApi(t, ctx, client, newProjectId)
+	projectId, err := boundary.CreateProjectApi(t, ctx, client, orgId)
+	require.NoError(t, err)
+	newHostCatalogId := boundary.CreateNewHostCatalogApi(t, ctx, client, projectId)
 	newHostSetId := boundary.CreateNewHostSetApi(t, ctx, client, newHostCatalogId)
 	newHostId := boundary.CreateNewHostApi(t, ctx, client, newHostCatalogId, c.TargetAddress)
 	boundary.AddHostToHostSetApi(t, ctx, client, newHostSetId, newHostId)
-	newTargetId := boundary.CreateNewTargetApi(t, ctx, client, newProjectId, c.TargetPort)
+	newTargetId := boundary.CreateNewTargetApi(t, ctx, client, projectId, c.TargetPort)
 	boundary.AddHostSourceToTargetApi(t, ctx, client, newTargetId, newHostSetId)
 
 	// Configure vault
@@ -236,7 +237,7 @@ func TestApiVaultCredentialStore(t *testing.T) {
 
 	// Create a credential store
 	csClient := credentialstores.NewClient(client)
-	newCredentialStoreResult, err := csClient.Create(ctx, "vault", newProjectId,
+	newCredentialStoreResult, err := csClient.Create(ctx, "vault", projectId,
 		credentialstores.WithVaultCredentialStoreAddress(c.VaultAddr),
 		credentialstores.WithVaultCredentialStoreToken(credStoreToken),
 	)
