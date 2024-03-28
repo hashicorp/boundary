@@ -1,0 +1,208 @@
+---
+layout: docs
+page_title: Manage static credential with Boundary
+description: |-
+  How to configure static credentials with static credential store 
+---
+
+
+# Manage static credentials with Boundary
+
+## Create a static credential store
+
+The following sections will provide steps to configure static credentials using Boundary’s built-in static credential store. There will also be steps to associate targets with credentials for two different end-user workflows: credential brokering and credential injection.
+
+
+### Requirements
+
+- Ensure that you have an [Org scope and a project scope](/boundary/docs/commands/scopes/create) created in your Boundary instance. 
+
+<Tabs>
+<Tab heading="UI">
+
+1. Log in to Boundary
+2. Select Orgs on the navigation pane.
+3. Select your desired org.
+4. Select your desired project for which your static credential store should belong.
+5. Click Credential Stores on the navigation pane.
+6. Click New Credential Store.
+7. Provide a name for your credential store and select type Static.
+8. Click Save. You now have a static credential store where you can store static credentials.
+9. If you have a static credential, you can add it into the static credential store. Static credential types can be a username & password, username & private key, or JSON blob.
+  a. In your static credential store, click on the Credentials tab.
+  b. Click Manage and select New Credential from the pull down menu.
+  c. Complete the following fields to add static credentials into your static credential store:
+    - Name (optional) - The name is optional, but if you enter a name, it must be unique.
+    - Description (optional) - An optional description of the credential for identification purposes
+    - Type - The type of static credential you are adding. Select between username & password, username & keypair, or a JSON blob.
+    - Credential data - Depending on the credential Type selected, enter the credential data.
+10. Click Save.
+
+</Tab>
+
+<Tab heading="CLI">
+
+1. Set environment variables for your Boundary project ID. 
+  ```
+  $ export PROJECT_ID=<your_project_ID>
+  ```
+    
+2. Log into Boundary
+  ```
+  $ boundary authenticate
+    Please enter the login name (it will be hidden):
+    Please enter the password (it will be hidden):
+  ```
+
+3. Create a credential store providing the desired name and your project’s ID.
+  ``` 
+  $ boundary credential-stores create static \
+     -scope-id $PROJECT_ID \
+     -name "my-static-credential-store"
+  ```
+
+4. Copy the ID of the new static credential store and export it as the CRED_STORE_ID environment variable.
+  ```
+	$ export CRED_STORE_ID=<actual-cred-store-id>
+  ```
+
+5. If you have a static credential, you can add it into the static credential store. Static credential types can be a username & password, username & keypair, or JSON blob.
+The command arguments will vary depending on the type of static credential you are adding into the credential store. 
+
+  **For type username and password:**
+  ```
+  $ boundary credentials create username-password \
+      -name <your_preferred_credential_name> \
+      -credential-store-id $CRED_STORE_ID \
+      -username <username> \
+      -password env://<MY_PASSWORD_ENV_VAR>
+  ```
+  > **_NOTE:_**  Passwords need to be placed into an environment variable or file, and passed to the ```-password``` option using the ```env://``` or ```file://``` syntax to prevent credentials from being logged within the terminal.
+  
+  **For type username and private key:**
+  ```
+  $ boundary credentials create ssh-private-key \
+      -credential-store-id $CRED_STORE_ID \
+      -username <username> \
+      -private-key file://<my_ssh_priv_key_file>
+  ``` 
+> **_NOTE:_**  SSH private keys need to be placed into an environment variable or file, and passed to the ```-private-key``` option using the ```env://``` or ```file://``` syntax to prevent credentials from being logged within the terminal.
+
+  **For type JSON blob:**
+  ```
+  $ boundary credentials create json \
+      -credential-store-id $CRED_STORE_ID \
+      -object file://<my_json_file>
+  ```
+
+> **_NOTE:_** The JSON map value needs to be placed into a file, and passed to the ```-object``` option using the ```file://``` syntax to prevent credentials from being logged within the terminal.
+
+
+</Tab>
+
+</Tabs>
+
+
+## Determine end user workflows
+
+End users can experience three workflows when connecting to a target. In the first workflow, when an end user connects to a target, Boundary will initiate the session but the end user must know the credentials to authenticate into the session. This workflow is available for testing purposes and is not recommended because it places the burden on the users to securely store and manage credentials.
+
+The second workflow uses a feature called credential brokering, where credentials are retrieved from a credentials store and returned back to the end user. The end user would then enter the credentials into the session when prompted by the target. This workflow is more secure than the first workflow since credentials are centrally managed through Boundary. For more information, see [credential brokering](/boundary/docs/concepts/credential-management#credential-brokering) concepts page. 
+
+
+
+The third workflow uses a featured all credential injection, where credentials are retrieved from a credential store and injected directly into the session on behalf of the end user. This workflow is the most secure because credentials are not exposed to the end user, reducing the chances of a leaked credential. This workflow is also more streamlined as the user goes through a passwordless experience.  For more information, see [credential injection](/boundary/docs/concepts/credential-management#credential-injection) concepts page. 
+
+### Configure targets with credential brokering
+
+The following section provides steps to configure your targets with credential brokering.
+
+#### Requirements
+- You must have an existing target available. 
+- You must have a static credential store. Refer to the [Create static credential stores](/boundary/docs/configuration/credential-management/static-cred-boundary#create-a-static-credential-store) section for procedures.
+- You must have a static credential saved in your static credential store. The credential must correspond to the target to which you wish to authenticate.
+
+
+<Tabs>
+<Tab heading="UI"> 
+
+1. Log in to Boundary
+2. Select **Orgs** on the navigation pane.
+3. Select your desired org.
+4. Select the project where your target resides.
+5. Click **Targets** on the navigation pane.
+6. Click on your target for which you wish to configure credential brokering.
+7. Click on the **Brokered Credential** tab.
+8. Click **Managed** and select **Add Brokered Credential** in the pull down menu.
+9. Select the appropriate credential that corresponds to your target and click **Add Brokered Credentials**.
+
+</Tab>
+
+<Tab heading="CLI">
+
+1. Log into Boundary.
+  ```
+  $ boundary authenticate
+    Please enter the login name (it will be hidden):
+    Please enter the password (it will be hidden):
+  ```
+2.  Add brokered credentials to target. 
+  ```
+  $ boundary targets add-credential-sources \
+      -id <target_ID_of_your_desired_target> \
+      -brokered-credential-source <ID_of_your_credential>
+  ``` 
+
+> **_NOTE:_** The ```brokered-credential-source``` refers to the ID of the credential that is stored in your static credential store.
+
+</Tab>
+</Tabs>
+
+
+###  Configure targets with credential injection (HCP/Enterprise)
+
+The following section provides steps to configure your targets with credential injection in order to provide end users with a passwordless experience when connecting to a target.
+
+#### Requirements
+- You must have an existing target available. 
+- You must have a static credential store. Refer to the [Create static credential stores](/boundary/docs/configuration/credential-management/static-cred-boundary#create-a-static-credential-store) section for procedures.
+- You must have a static credential saved in your static credential store. The credential must correspond to the target to which you wish to authenticate.
+
+
+
+
+<Tabs>
+<Tab heading="UI"> 
+
+1. Log in to Boundary.
+2. Select **Orgs** on the navigation pane.
+3. Select your desired org.
+4. Select the project where your target resides.
+5. Click **Targets** on the navigation pane.
+6. Click on your target for which you wish to configure credential injection.
+7. Click on the **Injected Application Credential** tab.
+8. Click **Managed** and select **Add Injected Application Credential** in the pull down menu.
+9. Select the appropriate credential that corresponds to your target and click **Add Injected Application Credential**.
+
+</Tab>
+
+<Tab heading="CLI">
+
+1. Log into Boundary.
+  ```
+  $ boundary authenticate
+    Please enter the login name (it will be hidden):
+    Please enter the password (it will be hidden):
+  ```
+
+2.  Add credentials injection to target. 
+  ```
+  $ boundary targets add-credential-sources \
+      -id <target_ID_of_your_desired_target> \
+      -injected-application-credential-source <ID_of_your_credential>
+  ``` 
+
+> **_NOTE:_** The ```-injected-application-credential-source``` refers to the ID of the credential that is stored in your static credential store.
+
+  </Tab>
+  </Tabs>
