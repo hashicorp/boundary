@@ -131,14 +131,15 @@ func TestApiPaginateAccounts(t *testing.T) {
 	sClient := scopes.NewClient(client)
 	amClient := authmethods.NewClient(client)
 	acClient := accounts.NewClient(client)
-	newOrgId := boundary.CreateNewOrgApi(t, ctx, client)
+	orgId, err := boundary.CreateOrgApi(t, ctx, client)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		ctx := context.Background()
 		client.SetToken(adminToken)
-		_, err = sClient.Delete(ctx, newOrgId)
+		_, err = sClient.Delete(ctx, orgId)
 		require.NoError(t, err)
 	})
-	amId := boundary.CreateNewAuthMethodApi(t, ctx, client, newOrgId)
+	amId := boundary.CreateNewAuthMethodApi(t, ctx, client, orgId)
 	t.Cleanup(func() {
 		ctx := context.Background()
 		client.SetToken(adminToken)

@@ -129,14 +129,15 @@ func TestApiPaginateManagedGroups(t *testing.T) {
 	sClient := scopes.NewClient(client)
 	amClient := authmethods.NewClient(client)
 	mgClient := managedgroups.NewClient(client)
-	newOrgId := boundary.CreateNewOrgApi(t, ctx, client)
+	orgId, err := boundary.CreateOrgApi(t, ctx, client)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		ctx := context.Background()
 		client.SetToken(adminToken)
-		_, err = sClient.Delete(ctx, newOrgId)
+		_, err = sClient.Delete(ctx, orgId)
 		require.NoError(t, err)
 	})
-	amId := boundary.CreateNewOidcAuthMethodApi(t, ctx, client, newOrgId)
+	amId := boundary.CreateNewOidcAuthMethodApi(t, ctx, client, orgId)
 	t.Cleanup(func() {
 		ctx := context.Background()
 		client.SetToken(adminToken)

@@ -119,21 +119,22 @@ func TestApiPaginateUsers(t *testing.T) {
 	ctx := context.Background()
 	sClient := scopes.NewClient(client)
 	uClient := users.NewClient(client)
-	newOrgId := boundary.CreateNewOrgApi(t, ctx, client)
+	orgId, err := boundary.CreateOrgApi(t, ctx, client)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		ctx := context.Background()
-		_, err := sClient.Delete(ctx, newOrgId)
+		_, err := sClient.Delete(ctx, orgId)
 		require.NoError(t, err)
 	})
 
 	// Create enough users to overflow a single page.
 	var userIds []string
 	for i := 0; i < c.MaxPageSize+1; i++ {
-		userIds = append(userIds, boundary.CreateNewUserApi(t, ctx, client, newOrgId))
+		userIds = append(userIds, boundary.CreateNewUserApi(t, ctx, client, orgId))
 	}
 
 	// List users
-	initialUsers, err := uClient.List(ctx, newOrgId)
+	initialUsers, err := uClient.List(ctx, orgId)
 	require.NoError(t, err)
 
 	var returnedIds []string
@@ -153,12 +154,12 @@ func TestApiPaginateUsers(t *testing.T) {
 	assert.Len(t, mapSliceItems, c.MaxPageSize+1)
 
 	// Create a new user and destroy one of the other users
-	newUserId := boundary.CreateNewUserApi(t, ctx, client, newOrgId)
+	newUserId := boundary.CreateNewUserApi(t, ctx, client, orgId)
 	_, err = uClient.Delete(ctx, initialUsers.Items[0].Id)
 	require.NoError(t, err)
 
 	// List again, should have the new and deleted user
-	newUsers, err := uClient.List(ctx, newOrgId, users.WithListToken(initialUsers.ListToken))
+	newUsers, err := uClient.List(ctx, orgId, users.WithListToken(initialUsers.ListToken))
 	require.NoError(t, err)
 
 	// Note that this will likely contain all the users,

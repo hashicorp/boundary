@@ -180,13 +180,14 @@ func TestApiPaginateCredentialLibraries(t *testing.T) {
 	ctx := context.Background()
 	sClient := scopes.NewClient(client)
 	cClient := credentiallibraries.NewClient(client)
-	newOrgId := boundary.CreateNewOrgApi(t, ctx, client)
+	orgId, err := boundary.CreateOrgApi(t, ctx, client)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		ctx := context.Background()
-		_, err := sClient.Delete(ctx, newOrgId)
+		_, err := sClient.Delete(ctx, orgId)
 		require.NoError(t, err)
 	})
-	newProjectId := boundary.CreateNewProjectApi(t, ctx, client, newOrgId)
+	newProjectId := boundary.CreateNewProjectApi(t, ctx, client, orgId)
 
 	// Configure vault
 	boundaryPolicyName, kvPolicyFilePath := vault.Setup(t, "testdata/boundary-controller-policy.hcl")

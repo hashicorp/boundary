@@ -124,10 +124,11 @@ func TestApiPaginateRoles(t *testing.T) {
 	ctx := context.Background()
 	sClient := scopes.NewClient(client)
 	uClient := roles.NewClient(client)
-	newOrgId := boundary.CreateNewOrgApi(t, ctx, client)
+	orgId, err := boundary.CreateOrgApi(t, ctx, client)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		ctx := context.Background()
-		_, err := sClient.Delete(ctx, newOrgId)
+		_, err := sClient.Delete(ctx, orgId)
 		require.NoError(t, err)
 	})
 
@@ -138,11 +139,11 @@ func TestApiPaginateRoles(t *testing.T) {
 	numPrecreatedRoles := 2
 	var roleIds []string
 	for i := 0; i < c.MaxPageSize+1-numPrecreatedRoles; i++ {
-		roleIds = append(roleIds, boundary.CreateNewRoleApi(t, ctx, client, newOrgId))
+		roleIds = append(roleIds, boundary.CreateNewRoleApi(t, ctx, client, orgId))
 	}
 
 	// List roles
-	initialRoles, err := uClient.List(ctx, newOrgId)
+	initialRoles, err := uClient.List(ctx, orgId)
 	require.NoError(t, err)
 
 	var returnedIds []string
@@ -163,12 +164,12 @@ func TestApiPaginateRoles(t *testing.T) {
 	assert.Len(t, mapSliceItems, c.MaxPageSize+1)
 
 	// Create a new role and destroy one of the other roles
-	newRoleId := boundary.CreateNewRoleApi(t, ctx, client, newOrgId)
+	newRoleId := boundary.CreateNewRoleApi(t, ctx, client, orgId)
 	_, err = uClient.Delete(ctx, initialRoles.Items[0].Id)
 	require.NoError(t, err)
 
 	// List again, should have the new and deleted role
-	newRoles, err := uClient.List(ctx, newOrgId, roles.WithListToken(initialRoles.ListToken))
+	newRoles, err := uClient.List(ctx, orgId, roles.WithListToken(initialRoles.ListToken))
 	require.NoError(t, err)
 
 	// Note that this will likely contain all the roles,

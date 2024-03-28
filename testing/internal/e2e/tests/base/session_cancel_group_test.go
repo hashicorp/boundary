@@ -165,13 +165,14 @@ func TestApiCreateGroup(t *testing.T) {
 	require.NoError(t, err)
 	ctx := context.Background()
 
-	newOrgId := boundary.CreateNewOrgApi(t, ctx, client)
+	orgId, err := boundary.CreateOrgApi(t, ctx, client)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		scopeClient := scopes.NewClient(client)
-		_, err := scopeClient.Delete(ctx, newOrgId)
+		_, err := scopeClient.Delete(ctx, orgId)
 		require.NoError(t, err)
 	})
-	newProjectId := boundary.CreateNewProjectApi(t, ctx, client, newOrgId)
+	newProjectId := boundary.CreateNewProjectApi(t, ctx, client, orgId)
 	newHostCatalogId := boundary.CreateNewHostCatalogApi(t, ctx, client, newProjectId)
 	newHostSetId := boundary.CreateNewHostSetApi(t, ctx, client, newHostCatalogId)
 	newHostId := boundary.CreateNewHostApi(t, ctx, client, newHostCatalogId, c.TargetAddress)

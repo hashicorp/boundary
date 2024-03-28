@@ -241,22 +241,23 @@ func TestApiPaginateAuthMethods(t *testing.T) {
 	ctx := context.Background()
 	sClient := scopes.NewClient(client)
 	amClient := authmethods.NewClient(client)
-	newOrgId := boundary.CreateNewOrgApi(t, ctx, client)
+	orgId, err := boundary.CreateOrgApi(t, ctx, client)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		ctx := context.Background()
 		client.SetToken(adminToken)
-		_, err = sClient.Delete(ctx, newOrgId)
+		_, err = sClient.Delete(ctx, orgId)
 		require.NoError(t, err)
 	})
 
 	// Create enough auth methods to overflow a single page.
 	var authMethodIds []string
 	for i := 0; i < c.MaxPageSize+1; i++ {
-		authMethodIds = append(authMethodIds, boundary.CreateNewAuthMethodApi(t, ctx, client, newOrgId))
+		authMethodIds = append(authMethodIds, boundary.CreateNewAuthMethodApi(t, ctx, client, orgId))
 	}
 
 	// List auth methods
-	initialAuthMethods, err := amClient.List(ctx, newOrgId)
+	initialAuthMethods, err := amClient.List(ctx, orgId)
 	require.NoError(t, err)
 
 	var returnedIds []string
@@ -276,12 +277,12 @@ func TestApiPaginateAuthMethods(t *testing.T) {
 	assert.Len(t, mapSliceItems, c.MaxPageSize+1)
 
 	// Create a new auth method and destroy one of the other auth methods
-	newAuthMethodId := boundary.CreateNewAuthMethodApi(t, ctx, client, newOrgId)
+	newAuthMethodId := boundary.CreateNewAuthMethodApi(t, ctx, client, orgId)
 	_, err = amClient.Delete(ctx, initialAuthMethods.Items[0].Id)
 	require.NoError(t, err)
 
 	// List auth methods again, should have new one but not old one
-	newAuthMethods, err := amClient.List(ctx, newOrgId, authmethods.WithListToken(initialAuthMethods.ListToken))
+	newAuthMethods, err := amClient.List(ctx, orgId, authmethods.WithListToken(initialAuthMethods.ListToken))
 	require.NoError(t, err)
 
 	// Note that this will likely contain all the auth methods,

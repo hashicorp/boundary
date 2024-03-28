@@ -116,21 +116,22 @@ func TestApiPaginateScopes(t *testing.T) {
 	require.NoError(t, err)
 	ctx := context.Background()
 	sClient := scopes.NewClient(client)
-	newOrgId := boundary.CreateNewOrgApi(t, ctx, client)
+	orgId, err := boundary.CreateOrgApi(t, ctx, client)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		ctx := context.Background()
-		_, err := sClient.Delete(ctx, newOrgId)
+		_, err := sClient.Delete(ctx, orgId)
 		require.NoError(t, err)
 	})
 
 	// Create enough scopes to overflow a single page.
 	var scopeIds []string
 	for i := 0; i < c.MaxPageSize+1; i++ {
-		scopeIds = append(scopeIds, boundary.CreateNewProjectApi(t, ctx, client, newOrgId))
+		scopeIds = append(scopeIds, boundary.CreateNewProjectApi(t, ctx, client, orgId))
 	}
 
 	// List scopes
-	initialScopes, err := sClient.List(ctx, newOrgId)
+	initialScopes, err := sClient.List(ctx, orgId)
 	require.NoError(t, err)
 
 	var returnedIds []string

@@ -119,20 +119,21 @@ func TestApiPaginateGroups(t *testing.T) {
 	ctx := context.Background()
 	sClient := scopes.NewClient(client)
 	uClient := groups.NewClient(client)
-	newOrgId := boundary.CreateNewOrgApi(t, ctx, client)
+	orgId, err := boundary.CreateOrgApi(t, ctx, client)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		ctx := context.Background()
-		_, err := sClient.Delete(ctx, newOrgId)
+		_, err := sClient.Delete(ctx, orgId)
 		require.NoError(t, err)
 	})
 
 	var groupIds []string
 	for i := 0; i < c.MaxPageSize+1; i++ {
-		groupIds = append(groupIds, boundary.CreateNewGroupApi(t, ctx, client, newOrgId))
+		groupIds = append(groupIds, boundary.CreateNewGroupApi(t, ctx, client, orgId))
 	}
 
 	// List groups
-	initialGroups, err := uClient.List(ctx, newOrgId)
+	initialGroups, err := uClient.List(ctx, orgId)
 	require.NoError(t, err)
 
 	var returnedIds []string
@@ -153,12 +154,12 @@ func TestApiPaginateGroups(t *testing.T) {
 	assert.Len(t, mapSliceItems, c.MaxPageSize+1)
 
 	// Create a new group and destroy one of the other groups
-	newGroupId := boundary.CreateNewGroupApi(t, ctx, client, newOrgId)
+	newGroupId := boundary.CreateNewGroupApi(t, ctx, client, orgId)
 	_, err = uClient.Delete(ctx, initialGroups.Items[0].Id)
 	require.NoError(t, err)
 
 	// List again, should have the new and deleted group
-	newGroups, err := uClient.List(ctx, newOrgId, groups.WithListToken(initialGroups.ListToken))
+	newGroups, err := uClient.List(ctx, orgId, groups.WithListToken(initialGroups.ListToken))
 	require.NoError(t, err)
 
 	// Note that this will likely contain all the groups,

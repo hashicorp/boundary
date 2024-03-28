@@ -6,24 +6,33 @@ package boundary
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"testing"
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/scopes"
 	"github.com/hashicorp/boundary/testing/internal/e2e"
+	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/stretchr/testify/require"
 )
 
-// CreateNewOrgApi creates a new organization in boundary using the Go api.
+// CreateOrgApi creates a new organization in boundary using the Go api.
 // Returns the id of the new org.
-func CreateNewOrgApi(t testing.TB, ctx context.Context, client *api.Client) string {
-	scopeClient := scopes.NewClient(client)
-	newOrgResult, err := scopeClient.Create(ctx, "global", scopes.WithName("e2e Org"))
-	require.NoError(t, err)
+func CreateOrgApi(t testing.TB, ctx context.Context, client *api.Client) (string, error) {
+	name, err := base62.Random(16)
+	if err != nil {
+		return "", err
+	}
 
-	newOrgId := newOrgResult.Item.Id
-	t.Logf("Created Org Id: %s", newOrgId)
-	return newOrgId
+	scopeClient := scopes.NewClient(client)
+	createOrgResult, err := scopeClient.Create(ctx, "global", scopes.WithName(fmt.Sprintf("e2e Org %s", name)))
+	if err != nil {
+		return "", err
+	}
+
+	orgId := createOrgResult.Item.Id
+	t.Logf("Created Org Id: %s", orgId)
+	return orgId, nil
 }
 
 // CreateNewProjectApi creates a new project in boundary using the Go api. The project will be created

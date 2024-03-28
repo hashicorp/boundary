@@ -139,15 +139,16 @@ func TestApiPaginateAuthTokens(t *testing.T) {
 	sClient := scopes.NewClient(client)
 	amClient := authmethods.NewClient(client)
 	atClient := authtokens.NewClient(client)
-	newOrgId := boundary.CreateNewOrgApi(t, ctx, client)
+	orgId, err := boundary.CreateOrgApi(t, ctx, client)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		ctx := context.Background()
 		client.SetToken(adminToken)
-		_, err = sClient.Delete(ctx, newOrgId)
+		_, err = sClient.Delete(ctx, orgId)
 		require.NoError(t, err)
 	})
-	userId := boundary.CreateNewUserApi(t, ctx, client, newOrgId)
-	amId := boundary.CreateNewAuthMethodApi(t, ctx, client, newOrgId)
+	userId := boundary.CreateNewUserApi(t, ctx, client, orgId)
+	amId := boundary.CreateNewAuthMethodApi(t, ctx, client, orgId)
 	t.Cleanup(func() {
 		ctx := context.Background()
 		client.SetToken(adminToken)
@@ -180,7 +181,7 @@ func TestApiPaginateAuthTokens(t *testing.T) {
 	}
 
 	// List auth tokens
-	initialAuthTokens, err := atClient.List(ctx, newOrgId, authtokens.WithRecursive(true))
+	initialAuthTokens, err := atClient.List(ctx, orgId, authtokens.WithRecursive(true))
 	require.NoError(t, err)
 
 	var returnedIds []string
@@ -206,7 +207,7 @@ func TestApiPaginateAuthTokens(t *testing.T) {
 	require.NoError(t, err)
 
 	// List again, should have the new and deleted auth token
-	newAuthTokens, err := atClient.List(ctx, newOrgId, authtokens.WithListToken(initialAuthTokens.ListToken), authtokens.WithRecursive(true))
+	newAuthTokens, err := atClient.List(ctx, orgId, authtokens.WithListToken(initialAuthTokens.ListToken), authtokens.WithRecursive(true))
 	require.NoError(t, err)
 
 	// Note that this will likely contain all the auth tokens,
