@@ -32,14 +32,15 @@ func TestCliPaginateAccounts(t *testing.T) {
 	boundary.AuthenticateAdminCli(t, ctx)
 	client, err := boundary.NewApiClient()
 	require.NoError(t, err)
-	newOrgId := boundary.CreateNewOrgCli(t, ctx)
+	orgId, err := boundary.CreateOrgCli(t, ctx)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		ctx := context.Background()
 		boundary.AuthenticateAdminCli(t, ctx)
-		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", newOrgId))
+		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", orgId))
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
-	amId := boundary.CreateNewAuthMethodApi(t, ctx, client, newOrgId)
+	amId := boundary.CreateNewAuthMethodApi(t, ctx, client, orgId)
 	t.Cleanup(func() {
 		ctx := context.Background()
 		boundary.AuthenticateAdminCli(t, ctx)

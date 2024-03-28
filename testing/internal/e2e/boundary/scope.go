@@ -13,7 +13,6 @@ import (
 	"github.com/hashicorp/boundary/api/scopes"
 	"github.com/hashicorp/boundary/testing/internal/e2e"
 	"github.com/hashicorp/go-secure-stdlib/base62"
-	"github.com/stretchr/testify/require"
 )
 
 // CreateOrgApi creates a new organization in boundary using the Go api.
@@ -55,27 +54,36 @@ func CreateProjectApi(t testing.TB, ctx context.Context, client *api.Client, org
 	return projectId, nil
 }
 
-// CreateNewOrgCli creates a new organization in boundary using the cli.
+// CreateOrgCli creates a new organization in boundary using the cli.
 // Returns the id of the new org.
-func CreateNewOrgCli(t testing.TB, ctx context.Context) string {
+func CreateOrgCli(t testing.TB, ctx context.Context) (string, error) {
+	name, err := base62.Random(16)
+	if err != nil {
+		return "", err
+	}
+
 	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"scopes", "create",
-			"-name", "e2e Org",
+			"-name", fmt.Sprintf("e2e Org %s", name),
 			"-description", "e2e",
 			"-scope-id", "global",
 			"-format", "json",
 		),
 	)
-	require.NoError(t, output.Err, string(output.Stderr))
+	if output.Err != nil {
+		return "", fmt.Errorf("%w: %s", output.Err, string(output.Stderr))
+	}
 
-	var newOrgResult scopes.ScopeCreateResult
-	err := json.Unmarshal(output.Stdout, &newOrgResult)
-	require.NoError(t, err)
+	var createOrgResult scopes.ScopeCreateResult
+	err = json.Unmarshal(output.Stdout, &createOrgResult)
+	if err != nil {
+		return "", err
+	}
 
-	newOrgId := newOrgResult.Item.Id
-	t.Logf("Created Org Id: %s", newOrgId)
-	return newOrgId
+	orgId := createOrgResult.Item.Id
+	t.Logf("Created Org Id: %s", orgId)
+	return orgId, nil
 }
 
 // CreateNewProjectCli creates a new project in boundary using the cli. The project will be created

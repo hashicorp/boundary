@@ -28,11 +28,12 @@ func TestCliPaginateUsers(t *testing.T) {
 
 	ctx := context.Background()
 	boundary.AuthenticateAdminCli(t, ctx)
-	newOrgId := boundary.CreateNewOrgCli(t, ctx)
+	orgId, err := boundary.CreateOrgCli(t, ctx)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		ctx := context.Background()
 		boundary.AuthenticateAdminCli(t, ctx)
-		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", newOrgId))
+		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", orgId))
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
 
@@ -41,14 +42,14 @@ func TestCliPaginateUsers(t *testing.T) {
 	require.NoError(t, err)
 	var userIds []string
 	for i := 0; i < c.MaxPageSize+1; i++ {
-		userIds = append(userIds, boundary.CreateNewUserApi(t, ctx, client, newOrgId))
+		userIds = append(userIds, boundary.CreateNewUserApi(t, ctx, client, orgId))
 	}
 
 	// List users
 	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"users", "list",
-			"-scope-id", newOrgId,
+			"-scope-id", orgId,
 			"-format=json",
 		),
 	)
@@ -70,7 +71,7 @@ func TestCliPaginateUsers(t *testing.T) {
 	assert.Empty(t, initialUsers.ListToken)
 
 	// Create a new user and destroy one of the other users
-	newUserId := boundary.CreateNewUserApi(t, ctx, client, newOrgId)
+	newUserId := boundary.CreateNewUserApi(t, ctx, client, orgId)
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"users", "delete",
@@ -83,7 +84,7 @@ func TestCliPaginateUsers(t *testing.T) {
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"users", "list",
-			"-scope-id", newOrgId,
+			"-scope-id", orgId,
 			"-format=json",
 		),
 	)

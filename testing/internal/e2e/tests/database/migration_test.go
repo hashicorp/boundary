@@ -211,8 +211,9 @@ func populateBoundaryDatabase(t testing.TB, ctx context.Context, c *config, te T
 	// While the CLI version used won't necessarily match the controller version, it should be (and is
 	// supposed to be) backwards compatible
 	boundary.AuthenticateCli(t, ctx, te.DbInitInfo.AuthMethod.AuthMethodId, te.DbInitInfo.AuthMethod.LoginName, te.DbInitInfo.AuthMethod.Password)
-	newOrgId := boundary.CreateNewOrgCli(t, ctx)
-	newProjectId := boundary.CreateNewProjectCli(t, ctx, newOrgId)
+	orgId, err := boundary.CreateOrgCli(t, ctx)
+	require.NoError(t, err)
+	newProjectId := boundary.CreateNewProjectCli(t, ctx, orgId)
 	newHostCatalogId := boundary.CreateNewHostCatalogCli(t, ctx, newProjectId)
 	newHostSetId := boundary.CreateNewHostSetCli(t, ctx, newHostCatalogId)
 	newHostId := boundary.CreateNewHostCli(t, ctx, newHostCatalogId, te.Target.UriNetwork)

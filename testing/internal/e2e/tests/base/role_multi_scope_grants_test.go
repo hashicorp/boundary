@@ -22,7 +22,8 @@ func TestCliApplyGrantsForMultipleScopes(t *testing.T) {
 	boundary.AuthenticateAdminCli(t, ctx)
 
 	// Create Org and Project
-	orgId := boundary.CreateNewOrgCli(t, ctx)
+	orgId, err := boundary.CreateOrgCli(t, ctx)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		ctx := context.Background()
 		boundary.AuthenticateAdminCli(t, ctx)

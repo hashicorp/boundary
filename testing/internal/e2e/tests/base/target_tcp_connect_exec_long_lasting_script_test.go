@@ -28,17 +28,18 @@ func TestCliTcpTargetConnectExecLongLastingScript(t *testing.T) {
 	boundary.AuthenticateAdminCli(t, ctx)
 
 	// Create test organization
-	newOrgId := boundary.CreateNewOrgCli(t, ctx)
+	orgId, err := boundary.CreateOrgCli(t, ctx)
+	require.NoError(t, err)
 
 	// Delete organization after the test is completed
 	t.Cleanup(func() {
 		ctx := context.Background()
 		boundary.AuthenticateAdminCli(t, ctx)
-		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", newOrgId))
+		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", orgId))
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
 	// Create test project
-	newProjectId := boundary.CreateNewProjectCli(t, ctx, newOrgId)
+	newProjectId := boundary.CreateNewProjectCli(t, ctx, orgId)
 
 	// Create static credentials
 	newCredentialStoreId := boundary.CreateNewCredentialStoreStaticCli(t, ctx, newProjectId)

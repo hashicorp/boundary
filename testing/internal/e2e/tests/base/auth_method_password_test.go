@@ -28,11 +28,12 @@ func TestCliAuthMethodPassword(t *testing.T) {
 
 	ctx := context.Background()
 	boundary.AuthenticateAdminCli(t, ctx)
-	newOrgId := boundary.CreateNewOrgCli(t, ctx)
+	orgId, err := boundary.CreateOrgCli(t, ctx)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		ctx := context.Background()
 		boundary.AuthenticateAdminCli(t, ctx)
-		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", newOrgId))
+		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", orgId))
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
 
@@ -40,14 +41,14 @@ func TestCliAuthMethodPassword(t *testing.T) {
 	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"auth-methods", "create", "password",
-			"-scope-id", newOrgId,
+			"-scope-id", orgId,
 			"-name", "e2e Auth Method",
 			"-format", "json",
 		),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
 	var newAuthMethodResult authmethods.AuthMethodCreateResult
-	err := json.Unmarshal(output.Stdout, &newAuthMethodResult)
+	err = json.Unmarshal(output.Stdout, &newAuthMethodResult)
 	require.NoError(t, err)
 	newAuthMethodId := newAuthMethodResult.Item.Id
 	// Need to manually clean up auth method until ICU-7833 is addressed
@@ -67,7 +68,7 @@ func TestCliAuthMethodPassword(t *testing.T) {
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"scopes", "update",
-			"-id", newOrgId,
+			"-id", orgId,
 			"-primary-auth-method-id", newAuthMethodId,
 			"-format", "json",
 		),
@@ -82,7 +83,7 @@ func TestCliAuthMethodPassword(t *testing.T) {
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"authenticate", "password",
-			"-scope-id", newOrgId,
+			"-scope-id", orgId,
 			"-login-name", testAccountName,
 			"-password", "env://E2E_TEST_BOUNDARY_PASSWORD",
 			"-format", "json",
@@ -96,7 +97,7 @@ func TestCliAuthMethodPassword(t *testing.T) {
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"users", "list",
-			"-scope-id", newOrgId,
+			"-scope-id", orgId,
 			"-format", "json",
 		),
 	)
@@ -122,7 +123,7 @@ func TestCliAuthMethodPassword(t *testing.T) {
 	require.Contains(t, usersReadResult.Item.AccountIds, newAccountId)
 
 	// Create a new account and manually attach it to a new user
-	newUserId := boundary.CreateNewUserCli(t, ctx, newOrgId)
+	newUserId := boundary.CreateNewUserCli(t, ctx, orgId)
 	testAccountName = "test-account2"
 	newAccountId, acctPassword = boundary.CreateNewAccountCli(t, ctx, newAuthMethodId, testAccountName)
 	boundary.SetAccountToUserCli(t, ctx, newUserId, newAccountId)
@@ -131,7 +132,7 @@ func TestCliAuthMethodPassword(t *testing.T) {
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"authenticate", "password",
-			"-scope-id", newOrgId,
+			"-scope-id", orgId,
 			"-login-name", testAccountName,
 			"-password", "env://E2E_TEST_BOUNDARY_PASSWORD",
 			"-format", "json",
@@ -152,18 +153,19 @@ func TestCliPaginateAuthMethods(t *testing.T) {
 	boundary.AuthenticateAdminCli(t, ctx)
 	client, err := boundary.NewApiClient()
 	require.NoError(t, err)
-	newOrgId := boundary.CreateNewOrgCli(t, ctx)
+	orgId, err := boundary.CreateOrgCli(t, ctx)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		ctx := context.Background()
 		boundary.AuthenticateAdminCli(t, ctx)
-		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", newOrgId))
+		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", orgId))
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
 
 	// Create enough auth methods to overflow a single page.
 	var authMethodIds []string
 	for i := 0; i < c.MaxPageSize+1; i++ {
-		authMethodId := boundary.CreateNewAuthMethodApi(t, ctx, client, newOrgId)
+		authMethodId := boundary.CreateNewAuthMethodApi(t, ctx, client, orgId)
 		authMethodIds = append(authMethodIds, authMethodId)
 	}
 
@@ -171,7 +173,7 @@ func TestCliPaginateAuthMethods(t *testing.T) {
 	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"auth-methods", "list",
-			"-scope-id", newOrgId,
+			"-scope-id", orgId,
 			"-format=json",
 		),
 	)
@@ -191,7 +193,7 @@ func TestCliPaginateAuthMethods(t *testing.T) {
 	assert.Empty(t, initialAuthMethods.ListToken)
 
 	// Create a new auth method and destroy one of the other auth methods
-	newAuthMethodId := boundary.CreateNewAuthMethodApi(t, ctx, client, newOrgId)
+	newAuthMethodId := boundary.CreateNewAuthMethodApi(t, ctx, client, orgId)
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"auth-methods", "delete",
@@ -204,7 +206,7 @@ func TestCliPaginateAuthMethods(t *testing.T) {
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"auth-methods", "list",
-			"-scope-id", newOrgId,
+			"-scope-id", orgId,
 			"-format=json",
 		),
 	)

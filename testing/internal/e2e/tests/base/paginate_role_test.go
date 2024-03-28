@@ -28,11 +28,12 @@ func TestCliPaginateRoles(t *testing.T) {
 
 	ctx := context.Background()
 	boundary.AuthenticateAdminCli(t, ctx)
-	newOrgId := boundary.CreateNewOrgCli(t, ctx)
+	orgId, err := boundary.CreateOrgCli(t, ctx)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		ctx := context.Background()
 		boundary.AuthenticateAdminCli(t, ctx)
-		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", newOrgId))
+		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", orgId))
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
 
@@ -45,14 +46,14 @@ func TestCliPaginateRoles(t *testing.T) {
 	numPrecreatedRoles := 2
 	var roleIds []string
 	for i := 0; i < c.MaxPageSize+1-numPrecreatedRoles; i++ {
-		roleIds = append(roleIds, boundary.CreateNewRoleApi(t, ctx, client, newOrgId))
+		roleIds = append(roleIds, boundary.CreateNewRoleApi(t, ctx, client, orgId))
 	}
 
 	// List roles
 	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"roles", "list",
-			"-scope-id", newOrgId,
+			"-scope-id", orgId,
 			"-format=json",
 		),
 	)
@@ -75,7 +76,7 @@ func TestCliPaginateRoles(t *testing.T) {
 	assert.Empty(t, initialRoles.ListToken)
 
 	// Create a new role and destroy one of the other roles
-	newRoleId := boundary.CreateNewRoleApi(t, ctx, client, newOrgId)
+	newRoleId := boundary.CreateNewRoleApi(t, ctx, client, orgId)
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"roles", "delete",
@@ -88,7 +89,7 @@ func TestCliPaginateRoles(t *testing.T) {
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"roles", "list",
-			"-scope-id", newOrgId,
+			"-scope-id", orgId,
 			"-format=json",
 		),
 	)

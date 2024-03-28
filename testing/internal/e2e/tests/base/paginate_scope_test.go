@@ -26,11 +26,12 @@ func TestCliPaginateScopes(t *testing.T) {
 
 	ctx := context.Background()
 	boundary.AuthenticateAdminCli(t, ctx)
-	newOrgId := boundary.CreateNewOrgCli(t, ctx)
+	orgId, err := boundary.CreateOrgCli(t, ctx)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		ctx := context.Background()
 		boundary.AuthenticateAdminCli(t, ctx)
-		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", newOrgId))
+		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", orgId))
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
 
@@ -39,7 +40,7 @@ func TestCliPaginateScopes(t *testing.T) {
 	require.NoError(t, err)
 	var scopeIds []string
 	for i := 0; i < c.MaxPageSize+1; i++ {
-		projectId, err := boundary.CreateProjectApi(t, ctx, client, newOrgId)
+		projectId, err := boundary.CreateProjectApi(t, ctx, client, orgId)
 		require.NoError(t, err)
 		scopeIds = append(scopeIds, projectId)
 	}
@@ -48,7 +49,7 @@ func TestCliPaginateScopes(t *testing.T) {
 	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"scopes", "list",
-			"-scope-id", newOrgId,
+			"-scope-id", orgId,
 			"-format=json",
 		),
 	)
@@ -70,7 +71,7 @@ func TestCliPaginateScopes(t *testing.T) {
 	assert.Empty(t, initialScopes.ListToken)
 
 	// Create a new scope and destroy one of the other scopes
-	newScopeId, err := boundary.CreateProjectApi(t, ctx, client, newOrgId)
+	newScopeId, err := boundary.CreateProjectApi(t, ctx, client, orgId)
 	require.NoError(t, err)
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
@@ -84,7 +85,7 @@ func TestCliPaginateScopes(t *testing.T) {
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"scopes", "list",
-			"-scope-id", newOrgId,
+			"-scope-id", orgId,
 			"-format=json",
 		),
 	)
