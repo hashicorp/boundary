@@ -37,7 +37,8 @@ func TestCliPaginateCredentialLibraries(t *testing.T) {
 		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", orgId))
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
-	newProjectId := boundary.CreateNewProjectCli(t, ctx, orgId)
+	projectId, err := boundary.CreateProjectCli(t, ctx, orgId)
+	require.NoError(t, err)
 
 	// Configure vault
 	boundaryPolicyName, kvPolicyFilePath := vault.Setup(t, "testdata/boundary-controller-policy.hcl")
@@ -90,7 +91,7 @@ func TestCliPaginateCredentialLibraries(t *testing.T) {
 	t.Log("Created Vault Cred Store Token")
 
 	// Create a credential store
-	newStoreId := boundary.CreateNewCredentialStoreVaultCli(t, ctx, newProjectId, c.VaultAddr, credStoreToken)
+	newStoreId := boundary.CreateNewCredentialStoreVaultCli(t, ctx, projectId, c.VaultAddr, credStoreToken)
 
 	// Create enough credential libraries to overflow a single page.
 	client, err := boundary.NewApiClient()

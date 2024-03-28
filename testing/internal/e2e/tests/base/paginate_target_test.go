@@ -38,7 +38,8 @@ func TestCliPaginateTargets(t *testing.T) {
 		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", orgId))
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
-	newProjectId := boundary.CreateNewProjectCli(t, ctx, orgId)
+	projectId, err := boundary.CreateProjectCli(t, ctx, orgId)
+	require.NoError(t, err)
 
 	// Create enough targets to overflow a single page.
 	// Use the API to make creation faster.
@@ -49,7 +50,7 @@ func TestCliPaginateTargets(t *testing.T) {
 	require.NoError(t, err)
 	var targetIds []string
 	for i := 0; i < c.MaxPageSize+1; i++ {
-		resp, err := tClient.Create(ctx, "tcp", newProjectId,
+		resp, err := tClient.Create(ctx, "tcp", projectId,
 			targets.WithName("test-target-"+strconv.Itoa(i)),
 			targets.WithTcpTargetDefaultPort(uint32(targetPort)),
 			targets.WithAddress(c.TargetAddress),
@@ -62,7 +63,7 @@ func TestCliPaginateTargets(t *testing.T) {
 	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"targets", "list",
-			"-scope-id", newProjectId,
+			"-scope-id", projectId,
 			"-format=json",
 		),
 	)
@@ -84,7 +85,7 @@ func TestCliPaginateTargets(t *testing.T) {
 	assert.Empty(t, initialTargets.ListToken)
 
 	// Create a new target and destroy one of the other targets
-	newTargetId := boundary.CreateNewTargetCli(t, ctx, newProjectId, c.TargetPort, target.WithAddress(c.TargetAddress))
+	newTargetId := boundary.CreateNewTargetCli(t, ctx, projectId, c.TargetPort, target.WithAddress(c.TargetAddress))
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"targets", "delete",
@@ -97,7 +98,7 @@ func TestCliPaginateTargets(t *testing.T) {
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"targets", "list",
-			"-scope-id", newProjectId,
+			"-scope-id", projectId,
 			"-format=json",
 		),
 	)

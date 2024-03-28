@@ -33,12 +33,13 @@ func TestCliTcpTargetConnectTargetBasic(t *testing.T) {
 		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", orgId))
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
-	newProjectId := boundary.CreateNewProjectCli(t, ctx, orgId)
-	newHostCatalogId := boundary.CreateNewHostCatalogCli(t, ctx, newProjectId)
+	projectId, err := boundary.CreateProjectCli(t, ctx, orgId)
+	require.NoError(t, err)
+	newHostCatalogId := boundary.CreateNewHostCatalogCli(t, ctx, projectId)
 	newHostSetId := boundary.CreateNewHostSetCli(t, ctx, newHostCatalogId)
 	newHostId := boundary.CreateNewHostCli(t, ctx, newHostCatalogId, c.TargetAddress)
 	boundary.AddHostToHostSetCli(t, ctx, newHostSetId, newHostId)
-	newTargetId := boundary.CreateNewTargetCli(t, ctx, newProjectId, c.TargetPort)
+	newTargetId := boundary.CreateNewTargetCli(t, ctx, projectId, c.TargetPort)
 	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, newHostSetId)
 
 	// Connect to target and print host's IP address
@@ -86,12 +87,13 @@ func TestCliTcpTargetConnectTargetViaTargetAndScopeNames(t *testing.T) {
 	})
 	testProjectName := `E2E/Project-With\Name`
 	testTargetName := `E2E/Test-Target-With\Name`
-	newProjectId := boundary.CreateNewProjectCli(t, ctx, orgId, boundary.WithName(testProjectName))
-	newHostCatalogId := boundary.CreateNewHostCatalogCli(t, ctx, newProjectId)
+	projectId, err := boundary.CreateProjectCli(t, ctx, orgId, boundary.WithName(testProjectName))
+	require.NoError(t, err)
+	newHostCatalogId := boundary.CreateNewHostCatalogCli(t, ctx, projectId)
 	newHostSetId := boundary.CreateNewHostSetCli(t, ctx, newHostCatalogId)
 	newHostId := boundary.CreateNewHostCli(t, ctx, newHostCatalogId, c.TargetAddress)
 	boundary.AddHostToHostSetCli(t, ctx, newHostSetId, newHostId)
-	newTargetId := boundary.CreateNewTargetCli(t, ctx, newProjectId, c.TargetPort, target.WithName(testTargetName))
+	newTargetId := boundary.CreateNewTargetCli(t, ctx, projectId, c.TargetPort, target.WithName(testTargetName))
 	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, newHostSetId)
 
 	// Connect to target via target and scope names, and print host's IP address
@@ -123,7 +125,7 @@ func TestCliTcpTargetConnectTargetViaTargetAndScopeNames(t *testing.T) {
 		e2e.WithArgs(
 			"connect",
 			"-target-name", testTargetName,
-			"-target-scope-id", newProjectId,
+			"-target-scope-id", projectId,
 			"-exec", "/usr/bin/ssh", "--",
 			"-l", c.TargetSshUser,
 			"-i", c.TargetSshKeyPath,

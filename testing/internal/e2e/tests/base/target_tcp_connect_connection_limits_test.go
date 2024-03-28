@@ -35,12 +35,13 @@ func TestCliTcpTargetConnectTargetWithConnectionLimits(t *testing.T) {
 		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", orgId))
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
-	newProjectId := boundary.CreateNewProjectCli(t, ctx, orgId)
+	projectId, err := boundary.CreateProjectCli(t, ctx, orgId)
+	require.NoError(t, err)
 	sessionConnectionLimit := 2
 	newTargetId := boundary.CreateNewTargetCli(
 		t,
 		ctx,
-		newProjectId,
+		projectId,
 		c.TargetPort,
 		target.WithAddress(c.TargetAddress),
 		target.WithSessionConnectionLimit(int32(sessionConnectionLimit)),
@@ -63,7 +64,7 @@ func TestCliTcpTargetConnectTargetWithConnectionLimits(t *testing.T) {
 	}()
 	t.Cleanup(cancel)
 
-	boundary.WaitForSessionCli(t, ctx, newProjectId)
+	boundary.WaitForSessionCli(t, ctx, projectId)
 
 	// Start connections. Expect an error once the limit is reached
 	for i := 0; i <= sessionConnectionLimit; i++ {

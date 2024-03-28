@@ -42,8 +42,9 @@ func TestHttpRateLimit(t *testing.T) {
 		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", orgId))
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
-	newProjectId := boundary.CreateNewProjectCli(t, ctx, orgId)
-	newHostCatalogId := boundary.CreateNewHostCatalogCli(t, ctx, newProjectId)
+	projectId, err := boundary.CreateProjectCli(t, ctx, orgId)
+	require.NoError(t, err)
+	newHostCatalogId := boundary.CreateNewHostCatalogCli(t, ctx, projectId)
 	newHostId := boundary.CreateNewHostCli(t, ctx, newHostCatalogId, c.TargetAddress)
 
 	// Authenticate over HTTP
@@ -172,7 +173,7 @@ func TestHttpRateLimit(t *testing.T) {
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
 	boundary.SetAccountToUserCli(t, ctx, newUserId, newAccountId)
-	newRoleId, err := boundary.CreateRoleCli(t, ctx, newProjectId)
+	newRoleId, err := boundary.CreateRoleCli(t, ctx, projectId)
 	require.NoError(t, err)
 	boundary.AddGrantToRoleCli(t, ctx, newRoleId, "ids=*;type=*;actions=*")
 	boundary.AddPrincipalToRoleCli(t, ctx, newRoleId, newUserId)
@@ -286,8 +287,9 @@ func TestCliRateLimit(t *testing.T) {
 		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", orgId))
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
-	newProjectId := boundary.CreateNewProjectCli(t, ctx, orgId)
-	newHostCatalogId := boundary.CreateNewHostCatalogCli(t, ctx, newProjectId)
+	projectId, err := boundary.CreateProjectCli(t, ctx, orgId)
+	require.NoError(t, err)
+	newHostCatalogId := boundary.CreateNewHostCatalogCli(t, ctx, projectId)
 	newHostId := boundary.CreateNewHostCli(t, ctx, newHostCatalogId, c.TargetAddress)
 
 	// Create a user
@@ -309,7 +311,7 @@ func TestCliRateLimit(t *testing.T) {
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
 	boundary.SetAccountToUserCli(t, ctx, newUserId, newAccountId)
-	newRoleId, err := boundary.CreateRoleCli(t, ctx, newProjectId)
+	newRoleId, err := boundary.CreateRoleCli(t, ctx, projectId)
 	require.NoError(t, err)
 	boundary.AddGrantToRoleCli(t, ctx, newRoleId, "ids=*;type=*;actions=*")
 	boundary.AddPrincipalToRoleCli(t, ctx, newRoleId, newUserId)

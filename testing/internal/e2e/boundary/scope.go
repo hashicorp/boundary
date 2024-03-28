@@ -86,10 +86,10 @@ func CreateOrgCli(t testing.TB, ctx context.Context) (string, error) {
 	return orgId, nil
 }
 
-// CreateNewProjectCli creates a new project in boundary using the cli. The project will be created
+// CreateProjectCli creates a new project in boundary using the cli. The project will be created
 // under the provided org id.
 // Returns the id of the new project.
-func CreateNewProjectCli(t testing.TB, ctx context.Context, orgId string, opt ...ScopeOption) string {
+func CreateProjectCli(t testing.TB, ctx context.Context, orgId string, opt ...ScopeOption) (string, error) {
 	opts := getScopeOpts(opt...)
 	var args []string
 
@@ -103,21 +103,29 @@ func CreateNewProjectCli(t testing.TB, ctx context.Context, orgId string, opt ..
 	if opts.WithName != "" {
 		args = append(args, "-name", opts.WithName)
 	} else {
-		args = append(args, "-name", "e2e Project")
+		name, err := base62.Random(16)
+		if err != nil {
+			return "", err
+		}
+		args = append(args, "-name", fmt.Sprintf("e2e Project %s", name))
 	}
 
 	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(args...),
 	)
-	require.NoError(t, output.Err, string(output.Stderr))
+	if output.Err != nil {
+		return "", fmt.Errorf("%w: %s", output.Err, string(output.Stderr))
+	}
 
-	var newProjResult scopes.ScopeCreateResult
-	err := json.Unmarshal(output.Stdout, &newProjResult)
-	require.NoError(t, err)
+	var createProjResult scopes.ScopeCreateResult
+	err := json.Unmarshal(output.Stdout, &createProjResult)
+	if err != nil {
+		return "", err
+	}
 
-	newProjectId := newProjResult.Item.Id
-	t.Logf("Created Project Id: %s", newProjectId)
-	return newProjectId
+	projectId := createProjResult.Item.Id
+	t.Logf("Created Project Id: %s", projectId)
+	return projectId, nil
 }
 
 // getScopeOpts iterates the inbound ScopeOptions and returns a struct

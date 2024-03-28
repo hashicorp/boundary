@@ -35,12 +35,13 @@ func TestCliTcpTargetConnectTargetWithTargetClientPort(t *testing.T) {
 
 	var expPort uint32 = 8356
 
-	newProjectId := boundary.CreateNewProjectCli(t, ctx, orgId)
-	newHostCatalogId := boundary.CreateNewHostCatalogCli(t, ctx, newProjectId)
+	projectId, err := boundary.CreateProjectCli(t, ctx, orgId)
+	require.NoError(t, err)
+	newHostCatalogId := boundary.CreateNewHostCatalogCli(t, ctx, projectId)
 	newHostSetId := boundary.CreateNewHostSetCli(t, ctx, newHostCatalogId)
 	newHostId := boundary.CreateNewHostCli(t, ctx, newHostCatalogId, c.TargetAddress)
 	boundary.AddHostToHostSetCli(t, ctx, newHostSetId, newHostId)
-	newTargetId := boundary.CreateNewTargetCli(t, ctx, newProjectId, c.TargetPort, target.WithDefaultClientPort(expPort))
+	newTargetId := boundary.CreateNewTargetCli(t, ctx, projectId, c.TargetPort, target.WithDefaultClientPort(expPort))
 	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, newHostSetId)
 
 	// Connect to target and print host's IP address

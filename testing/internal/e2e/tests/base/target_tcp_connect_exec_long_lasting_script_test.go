@@ -39,14 +39,15 @@ func TestCliTcpTargetConnectExecLongLastingScript(t *testing.T) {
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
 	// Create test project
-	newProjectId := boundary.CreateNewProjectCli(t, ctx, orgId)
+	projectId, err := boundary.CreateProjectCli(t, ctx, orgId)
+	require.NoError(t, err)
 
 	// Create static credentials
-	newCredentialStoreId := boundary.CreateNewCredentialStoreStaticCli(t, ctx, newProjectId)
+	newCredentialStoreId := boundary.CreateNewCredentialStoreStaticCli(t, ctx, projectId)
 	newCredentialsId := boundary.CreateNewStaticCredentialPrivateKeyCli(t, ctx, newCredentialStoreId, c.TargetSshUser, c.TargetSshKeyPath)
 
 	// Create TCP target
-	newTargetId := boundary.CreateNewTargetCli(t, ctx, newProjectId, c.TargetPort,
+	newTargetId := boundary.CreateNewTargetCli(t, ctx, projectId, c.TargetPort,
 		target.WithType("tcp"),
 		target.WithAddress(c.TargetAddress),
 	)
@@ -68,7 +69,7 @@ func TestCliTcpTargetConnectExecLongLastingScript(t *testing.T) {
 		)
 	}()
 	t.Cleanup(cancel)
-	boundary.WaitForSessionCli(t, ctx, newProjectId)
+	boundary.WaitForSessionCli(t, ctx, projectId)
 
 	t.Log("Copying script to host...")
 	output := e2e.RunCommand(ctx, "scp",

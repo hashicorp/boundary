@@ -36,11 +36,12 @@ func TestCliTcpTargetConnectTargetAndScp(t *testing.T) {
 		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", orgId))
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
-	newProjectId := boundary.CreateNewProjectCli(t, ctx, orgId)
+	projectId, err := boundary.CreateProjectCli(t, ctx, orgId)
+	require.NoError(t, err)
 	newTargetId := boundary.CreateNewTargetCli(
 		t,
 		ctx,
-		newProjectId,
+		projectId,
 		c.TargetPort,
 		target.WithAddress(c.TargetAddress),
 	)
@@ -62,7 +63,7 @@ func TestCliTcpTargetConnectTargetAndScp(t *testing.T) {
 	}()
 	t.Cleanup(cancel)
 
-	boundary.WaitForSessionCli(t, ctx, newProjectId)
+	boundary.WaitForSessionCli(t, ctx, projectId)
 
 	// Create file to scp
 	testDir := t.TempDir()

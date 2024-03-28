@@ -41,7 +41,8 @@ func TestCliTcpTargetWorkerConnectTarget(t *testing.T) {
 		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", orgId))
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
-	newProjectId := boundary.CreateNewProjectCli(t, ctx, orgId)
+	projectId, err := boundary.CreateProjectCli(t, ctx, orgId)
+	require.NoError(t, err)
 
 	// Configure vault
 	boundaryPolicyName, kvPolicyFilePath := vault.Setup(t, "testdata/boundary-controller-policy.hcl")
@@ -95,7 +96,7 @@ func TestCliTcpTargetWorkerConnectTarget(t *testing.T) {
 	t.Log("Created Vault Cred Store Token")
 
 	// Create a credential store
-	newCredentialStoreId := boundary.CreateNewCredentialStoreVaultCli(t, ctx, newProjectId, c.VaultAddr, credStoreToken)
+	newCredentialStoreId := boundary.CreateNewCredentialStoreVaultCli(t, ctx, projectId, c.VaultAddr, credStoreToken)
 
 	// Create a credential library
 	newCredentialLibraryId, err := boundary.CreateVaultGenericCredentialLibraryCli(
@@ -122,7 +123,7 @@ func TestCliTcpTargetWorkerConnectTarget(t *testing.T) {
 	newTargetId := boundary.CreateNewTargetCli(
 		t,
 		ctx,
-		newProjectId,
+		projectId,
 		c.TargetPort,
 		target.WithAddress("openssh-server"),
 		target.WithEgressWorkerFilter(fmt.Sprintf(`"%s" in "/tags/type"`, c.WorkerTagEgress)),
@@ -180,7 +181,7 @@ func TestCliTcpTargetWorkerConnectTarget(t *testing.T) {
 		e2e.WithArgs(
 			"targets", "create", "tcp",
 			"-name", "Target with Ingress Filter",
-			"-scope-id", newProjectId,
+			"-scope-id", projectId,
 			"-default-port", c.TargetPort,
 			"-ingress-worker-filter", `"tag" in "/tags/type"`,
 		),
@@ -191,7 +192,7 @@ func TestCliTcpTargetWorkerConnectTarget(t *testing.T) {
 		e2e.WithArgs(
 			"targets", "create", "tcp",
 			"-name", "Target with Ingress Filter",
-			"-scope-id", newProjectId,
+			"-scope-id", projectId,
 			"-default-port", c.TargetPort,
 			"-ingress-worker-filter", `"tag" in "/tags/type"`,
 			"-egress-worker-filter", fmt.Sprintf(`"%s" in "/tags/type"`, c.WorkerTagEgress),

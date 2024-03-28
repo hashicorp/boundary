@@ -36,13 +36,14 @@ func TestCliPaginateSessions(t *testing.T) {
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
 
-	newProjectId := boundary.CreateNewProjectCli(t, ctx, orgId)
-	newHostCatalogId := boundary.CreateNewHostCatalogCli(t, ctx, newProjectId)
+	projectId, err := boundary.CreateProjectCli(t, ctx, orgId)
+	require.NoError(t, err)
+	newHostCatalogId := boundary.CreateNewHostCatalogCli(t, ctx, projectId)
 	newHostSetId := boundary.CreateNewHostSetCli(t, ctx, newHostCatalogId)
 	newHostId := boundary.CreateNewHostCli(t, ctx, newHostCatalogId, c.TargetAddress)
 	boundary.AddHostToHostSetCli(t, ctx, newHostSetId, newHostId)
 	require.NoError(t, err)
-	newTargetId := boundary.CreateNewTargetCli(t, ctx, newProjectId, c.TargetPort)
+	newTargetId := boundary.CreateNewTargetCli(t, ctx, projectId, c.TargetPort)
 	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, newHostSetId)
 
 	// Connect to targets to create a session
@@ -55,7 +56,7 @@ func TestCliPaginateSessions(t *testing.T) {
 	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"sessions", "list",
-			"-scope-id", newProjectId,
+			"-scope-id", projectId,
 			"-format=json",
 		),
 	)
@@ -78,7 +79,7 @@ func TestCliPaginateSessions(t *testing.T) {
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"sessions", "list",
-			"-scope-id", newProjectId,
+			"-scope-id", projectId,
 			"-format=json",
 		),
 	)
