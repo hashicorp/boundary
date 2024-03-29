@@ -113,9 +113,10 @@ func TestCliAlias(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create another alias that uses a target with a host set
-	newHostCatalogId := boundary.CreateNewHostCatalogCli(t, ctx, projectId)
-	newHostSetId := boundary.CreateNewHostSetCli(t, ctx, newHostCatalogId)
-	newHostId := boundary.CreateNewHostCli(t, ctx, newHostCatalogId, c.TargetAddress)
+	hostCatalogId, err := boundary.CreateHostCatalogCli(t, ctx, projectId)
+	require.NoError(t, err)
+	newHostSetId := boundary.CreateNewHostSetCli(t, ctx, hostCatalogId)
+	newHostId := boundary.CreateNewHostCli(t, ctx, hostCatalogId, c.TargetAddress)
 	boundary.AddHostToHostSetCli(t, ctx, newHostSetId, newHostId)
 	targetWithHost := boundary.CreateNewTargetCli(
 		t,

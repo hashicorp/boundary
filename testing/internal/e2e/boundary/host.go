@@ -92,26 +92,36 @@ func AddHostToHostSetApi(t testing.TB, ctx context.Context, client *api.Client, 
 	return err
 }
 
-// CreateNewHostCatalogCli uses the cli to create a new host catalog.
+// CreateHostCatalogCli uses the cli to create a new host catalog.
 // Returns the id of the new host catalog.
-func CreateNewHostCatalogCli(t testing.TB, ctx context.Context, projectId string) string {
+func CreateHostCatalogCli(t testing.TB, ctx context.Context, projectId string) (string, error) {
+	name, err := base62.Random(16)
+	if err != nil {
+		return "", err
+	}
+
 	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"host-catalogs", "create", "static",
 			"-scope-id", projectId,
-			"-name", "e2e Host Catalog",
+			"-name", fmt.Sprintf("e2e Host Catalog %s", name),
 			"-description", "e2e",
 			"-format", "json",
 		),
 	)
-	require.NoError(t, output.Err, string(output.Stderr))
-	var newHostCatalogResult hostcatalogs.HostCatalogCreateResult
-	err := json.Unmarshal(output.Stdout, &newHostCatalogResult)
-	require.NoError(t, err)
-	newHostCatalogId := newHostCatalogResult.Item.Id
+	if output.Err != nil {
+		return "", fmt.Errorf("%w: %s", output.Err, string(output.Stderr))
+	}
 
-	t.Logf("Created Host Catalog: %s", newHostCatalogId)
-	return newHostCatalogId
+	var createHostCatalogResult hostcatalogs.HostCatalogCreateResult
+	err = json.Unmarshal(output.Stdout, &createHostCatalogResult)
+	if err != nil {
+		return "", err
+	}
+
+	hostCatalogId := createHostCatalogResult.Item.Id
+	t.Logf("Created Host Catalog: %s", hostCatalogId)
+	return hostCatalogId, nil
 }
 
 // CreateNewHostSetCli uses the cli to create a new host set.
