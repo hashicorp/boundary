@@ -252,13 +252,14 @@ func populateBoundaryDatabase(t testing.TB, ctx context.Context, c *config, te T
 	require.NoError(t, err)
 	err = boundary.SetAccountToUserCli(t, ctx, userId, newAccountId)
 	require.NoError(t, err)
-	newGroupId := boundary.CreateNewGroupCli(t, ctx, "global")
-	boundary.AddUserToGroup(t, ctx, userId, newGroupId)
+	groupId, err := boundary.CreateGroupCli(t, ctx, "global")
+	require.NoError(t, err)
+	boundary.AddUserToGroup(t, ctx, userId, groupId)
 	roleId, err := boundary.CreateRoleCli(t, ctx, projectId)
 	require.NoError(t, err)
 	err = boundary.AddGrantToRoleCli(t, ctx, roleId, "ids=*;type=target;actions=authorize-session")
 	require.NoError(t, err)
-	err = boundary.AddPrincipalToRoleCli(t, ctx, roleId, newGroupId)
+	err = boundary.AddPrincipalToRoleCli(t, ctx, roleId, groupId)
 	require.NoError(t, err)
 
 	// Create static credentials
