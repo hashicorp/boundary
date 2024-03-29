@@ -45,7 +45,9 @@ func TestCliPaginateHostSets(t *testing.T) {
 	require.NoError(t, err)
 	var hostSetIds []string
 	for i := 0; i < c.MaxPageSize+1; i++ {
-		hostSetIds = append(hostSetIds, boundary.CreateNewHostSetApi(t, ctx, client, newHostCatalogId))
+		hostSetId, err := boundary.CreateHostSetApi(t, ctx, client, newHostCatalogId)
+		require.NoError(t, err)
+		hostSetIds = append(hostSetIds, hostSetId)
 	}
 
 	// List host sets
@@ -74,7 +76,8 @@ func TestCliPaginateHostSets(t *testing.T) {
 	assert.Empty(t, initialHostSets.ListToken)
 
 	// Create a new host set and destroy one of the other host sets
-	newHostSetId := boundary.CreateNewHostSetApi(t, ctx, client, newHostCatalogId)
+	hostSetId, err := boundary.CreateHostSetApi(t, ctx, client, newHostCatalogId)
+	require.NoError(t, err)
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"host-sets", "delete",
@@ -101,7 +104,7 @@ func TestCliPaginateHostSets(t *testing.T) {
 	// The first item should be the most recently created, which
 	// should be our new host set
 	firstItem := newHostSets.Items[0]
-	assert.Equal(t, newHostSetId, firstItem.Id)
+	assert.Equal(t, hostSetId, firstItem.Id)
 	assert.Empty(t, newHostSets.ResponseType)
 	assert.Empty(t, newHostSets.RemovedIds)
 	assert.Empty(t, newHostSets.ListToken)
@@ -138,7 +141,9 @@ func TestApiPaginateHostSets(t *testing.T) {
 	// Create enough host sets to overflow a single page.
 	var hostSetIds []string
 	for i := 0; i < c.MaxPageSize+1; i++ {
-		hostSetIds = append(hostSetIds, boundary.CreateNewHostSetApi(t, ctx, client, hostCatalogId))
+		hostSetId, err := boundary.CreateHostSetApi(t, ctx, client, hostCatalogId)
+		require.NoError(t, err)
+		hostSetIds = append(hostSetIds, hostSetId)
 	}
 
 	// List host sets
@@ -162,7 +167,8 @@ func TestApiPaginateHostSets(t *testing.T) {
 	assert.Len(t, mapSliceItems, c.MaxPageSize+1)
 
 	// Create a new host set and destroy one of the other host sets
-	newHostSetId := boundary.CreateNewHostSetApi(t, ctx, client, hostCatalogId)
+	hostSetId, err := boundary.CreateHostSetApi(t, ctx, client, hostCatalogId)
+	require.NoError(t, err)
 	_, err = hsClient.Delete(ctx, initialHostSets.Items[0].Id)
 	require.NoError(t, err)
 
@@ -178,7 +184,7 @@ func TestApiPaginateHostSets(t *testing.T) {
 	// The first item should be the most recently created, which
 	// should be our new host set
 	firstItem := newHostSets.Items[0]
-	assert.Equal(t, newHostSetId, firstItem.Id)
+	assert.Equal(t, hostSetId, firstItem.Id)
 	assert.Equal(t, "complete", newHostSets.ResponseType)
 	// Note that the removed IDs may contain entries from other tests,
 	// so just check that there is at least 1 entry and that our entry

@@ -193,11 +193,12 @@ func TestApiVaultCredentialStore(t *testing.T) {
 	require.NoError(t, err)
 	hostCatalogId, err := boundary.CreateHostCatalogApi(t, ctx, client, projectId)
 	require.NoError(t, err)
-	newHostSetId := boundary.CreateNewHostSetApi(t, ctx, client, hostCatalogId)
+	hostSetId, err := boundary.CreateHostSetApi(t, ctx, client, hostCatalogId)
+	require.NoError(t, err)
 	newHostId := boundary.CreateNewHostApi(t, ctx, client, hostCatalogId, c.TargetAddress)
-	boundary.AddHostToHostSetApi(t, ctx, client, newHostSetId, newHostId)
+	boundary.AddHostToHostSetApi(t, ctx, client, hostSetId, newHostId)
 	newTargetId := boundary.CreateNewTargetApi(t, ctx, client, projectId, c.TargetPort)
-	boundary.AddHostSourceToTargetApi(t, ctx, client, newTargetId, newHostSetId)
+	boundary.AddHostSourceToTargetApi(t, ctx, client, newTargetId, hostSetId)
 
 	// Configure vault
 	boundaryPolicyName, kvPolicyFilePath := vault.Setup(t, "testdata/boundary-controller-policy.hcl")
