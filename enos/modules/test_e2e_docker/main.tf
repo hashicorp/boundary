@@ -114,48 +114,28 @@ variable "vault_port" {
   type        = string
   default     = "8200"
 }
-variable "aws_access_key_id" {
+variable "access_key_id" {
   description = "Access Key Id for AWS IAM user used in dynamic host catalogs"
   type        = string
   default     = ""
 }
-variable "aws_secret_access_key" {
+variable "secret_access_key" {
   description = "Secret Access Key for AWS IAM user used in dynamic host catalogs"
   type        = string
   default     = ""
 }
-variable "aws_host_set_filter1" {
-  description = "Filter tag for host set used in dynamic host catalogs"
-  type        = string
-  default     = ""
-}
-variable "aws_host_set_count1" {
-  description = "Number of hosts in aws_host_set_filter1"
-  type        = number
-  default     = 0
-}
-variable "aws_host_set_ips1" {
-  description = "List of IP addresses in aws_host_set_filter1"
-  type        = list(string)
-  default     = [""]
-}
-variable "aws_host_set_filter2" {
-  description = "Filter tag for host set used in dynamic host catalogs"
-  type        = string
-  default     = ""
-}
-variable "aws_host_set_ips2" {
-  description = "List of IP addresses in aws_host_set_filter2"
-  type        = list(string)
-  default     = [""]
-}
-variable "aws_region" {
+variable "region" {
   description = "AWS region where the resources will be created"
   type        = string
   default     = ""
 }
-variable "aws_bucket_name" {
-  description = "AWS S3 bucket name"
+variable "bucket_name" {
+  description = "Storage bucket name"
+  type        = string
+  default     = ""
+}
+variable "bucket_endpoint_url" {
+  description = "Endpoint URL for the storage bucket"
   type        = string
   default     = ""
 }
@@ -245,8 +225,6 @@ locals {
   aws_ssh_private_key_path = abspath(var.aws_ssh_private_key_path)
   vault_addr               = var.vault_addr != "" ? "http://${var.vault_addr}:${var.vault_port}" : ""
   vault_addr_internal      = var.vault_addr_internal != "" ? "http://${var.vault_addr_internal}:8200" : local.vault_addr
-  aws_host_set_ips1        = jsonencode(var.aws_host_set_ips1)
-  aws_host_set_ips2        = jsonencode(var.aws_host_set_ips2)
   package_name             = reverse(split("/", var.test_package))[0]
 }
 
@@ -276,14 +254,11 @@ resource "enos_local_exec" "run_e2e_test" {
     VAULT_ADDR_INTERNAL           = local.vault_addr_internal
     VAULT_TOKEN                   = var.vault_root_token
     E2E_VAULT_ADDR                = local.vault_addr_internal
-    E2E_AWS_ACCESS_KEY_ID         = var.aws_access_key_id
-    E2E_AWS_SECRET_ACCESS_KEY     = var.aws_secret_access_key
-    E2E_AWS_HOST_SET_FILTER       = var.aws_host_set_filter1
-    E2E_AWS_HOST_SET_IPS          = local.aws_host_set_ips1
-    E2E_AWS_HOST_SET_FILTER2      = var.aws_host_set_filter2
-    E2E_AWS_HOST_SET_IPS2         = local.aws_host_set_ips2
-    E2E_AWS_REGION                = var.aws_region
-    E2E_AWS_BUCKET_NAME           = var.aws_bucket_name
+    E2E_BUCKET_NAME               = var.bucket_name
+    E2E_BUCKET_ENDPOINT_URL       = var.bucket_endpoint_url
+    E2E_BUCKET_ACCESS_KEY_ID      = var.access_key_id
+    E2E_BUCKET_SECRET_ACCESS_KEY  = var.secret_access_key
+    E2E_REGION                    = var.region
     E2E_POSTGRES_USER             = var.postgres_user
     E2E_POSTGRES_PASSWORD         = var.postgres_password
     E2E_POSTGRES_DB_NAME          = var.postgres_database_name
