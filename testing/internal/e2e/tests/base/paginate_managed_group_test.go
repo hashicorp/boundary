@@ -50,7 +50,9 @@ func TestCliPaginateManagedGroups(t *testing.T) {
 	// Create enough managedgroups to overflow a single page.
 	var managedgroupIds []string
 	for i := 0; i < c.MaxPageSize+1; i++ {
-		managedgroupIds = append(managedgroupIds, boundary.CreateNewManagedGroupApi(t, ctx, client, amId))
+		managedGroupId, err := boundary.CreateManagedGroupApi(t, ctx, client, amId)
+		require.NoError(t, err)
+		managedgroupIds = append(managedgroupIds, managedGroupId)
 	}
 
 	// List managedgroups
@@ -79,7 +81,8 @@ func TestCliPaginateManagedGroups(t *testing.T) {
 	assert.Empty(t, initialManagedGroups.ListToken)
 
 	// Create a new managedgroup and destroy one of the other managed groups
-	newManagedGroupId := boundary.CreateNewManagedGroupApi(t, ctx, client, amId)
+	managedGroupId, err := boundary.CreateManagedGroupApi(t, ctx, client, amId)
+	require.NoError(t, err)
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"managed-groups", "delete",
@@ -106,7 +109,7 @@ func TestCliPaginateManagedGroups(t *testing.T) {
 	// The first item should be the most recently created, which
 	// should be our new managedgroup
 	firstItem := newManagedGroups.Items[0]
-	assert.Equal(t, newManagedGroupId, firstItem.Id)
+	assert.Equal(t, managedGroupId, firstItem.Id)
 	assert.Empty(t, newManagedGroups.ResponseType)
 	assert.Empty(t, newManagedGroups.RemovedIds)
 	assert.Empty(t, newManagedGroups.ListToken)
@@ -149,7 +152,9 @@ func TestApiPaginateManagedGroups(t *testing.T) {
 	// Create enough managedgroups to overflow a single page.
 	var managedgroupIds []string
 	for i := 0; i < c.MaxPageSize+1; i++ {
-		managedgroupIds = append(managedgroupIds, boundary.CreateNewManagedGroupApi(t, ctx, client, amId))
+		managedGroupId, err := boundary.CreateManagedGroupApi(t, ctx, client, amId)
+		require.NoError(t, err)
+		managedgroupIds = append(managedgroupIds, managedGroupId)
 	}
 
 	// List managedgroups
@@ -173,7 +178,8 @@ func TestApiPaginateManagedGroups(t *testing.T) {
 	assert.Len(t, mapSliceItems, c.MaxPageSize+1)
 
 	// Create a new managedgroup and destroy one of the other managed groups
-	newManagedGroupId := boundary.CreateNewManagedGroupApi(t, ctx, client, amId)
+	managedGroupId, err := boundary.CreateManagedGroupApi(t, ctx, client, amId)
+	require.NoError(t, err)
 	_, err = mgClient.Delete(ctx, initialManagedGroups.Items[0].Id)
 	require.NoError(t, err)
 
@@ -189,7 +195,7 @@ func TestApiPaginateManagedGroups(t *testing.T) {
 	// The first item should be the most recently created, which
 	// should be our new managedgroup
 	firstItem := newManagedGroups.Items[0]
-	assert.Equal(t, newManagedGroupId, firstItem.Id)
+	assert.Equal(t, managedGroupId, firstItem.Id)
 	assert.Equal(t, "complete", newManagedGroups.ResponseType)
 	// Note that the removed IDs may contain entries from other tests,
 	// so just check that there is at least 1 entry and that our entry
