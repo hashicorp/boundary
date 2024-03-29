@@ -67,27 +67,38 @@ func CreateCredentialStoreVaultApi(t testing.TB, ctx context.Context, client *ap
 	return credentialStoreId, nil
 }
 
-// CreateNewCredentialStoreVaultCli uses the cli to create a Vault credential store
+// CreateCredentialStoreVaultCli uses the cli to create a Vault credential store
 // Returns the id of the new credential store
-func CreateNewCredentialStoreVaultCli(t testing.TB, ctx context.Context, projectId string, vaultAddr string, vaultToken string) string {
+func CreateCredentialStoreVaultCli(t testing.TB, ctx context.Context, projectId string, vaultAddr string, vaultToken string) (string, error) {
+	name, err := base62.Random(16)
+	if err != nil {
+		return "", err
+	}
+
 	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"credential-stores", "create", "vault",
 			"-scope-id", projectId,
 			"-vault-address", vaultAddr,
 			"-vault-token", vaultToken,
+			"-name", fmt.Sprintf("e2e Credential Store %s", name),
 			"-description", "e2e",
 			"-format", "json",
 		),
 	)
-	require.NoError(t, output.Err, string(output.Stderr))
-	var newCredentialStoreResult credentialstores.CredentialStoreCreateResult
-	err := json.Unmarshal(output.Stdout, &newCredentialStoreResult)
-	require.NoError(t, err)
-	newVaultCredentialStoreId := newCredentialStoreResult.Item.Id
-	t.Logf("Created Credential Store: %s", newVaultCredentialStoreId)
+	if output.Err != nil {
+		return "", fmt.Errorf("%w: %s", output.Err, string(output.Stderr))
+	}
 
-	return newVaultCredentialStoreId
+	var createCredentialStoreResult credentialstores.CredentialStoreCreateResult
+	err = json.Unmarshal(output.Stdout, &createCredentialStoreResult)
+	if err != nil {
+		return "", err
+	}
+
+	credentialStoreId := createCredentialStoreResult.Item.Id
+	t.Logf("Created Credential Store: %s", credentialStoreId)
+	return credentialStoreId, nil
 }
 
 // CreateNewCredentialStoreStaticCli uses the cli to create a new static credential store.

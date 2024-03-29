@@ -91,7 +91,8 @@ func TestCliPaginateCredentialLibraries(t *testing.T) {
 	t.Log("Created Vault Cred Store Token")
 
 	// Create a credential store
-	newStoreId := boundary.CreateNewCredentialStoreVaultCli(t, ctx, projectId, c.VaultAddr, credStoreToken)
+	storeId, err := boundary.CreateCredentialStoreVaultCli(t, ctx, projectId, c.VaultAddr, credStoreToken)
+	require.NoError(t, err)
 
 	// Create enough credential libraries to overflow a single page.
 	client, err := boundary.NewApiClient()
@@ -100,7 +101,7 @@ func TestCliPaginateCredentialLibraries(t *testing.T) {
 	var libraryIds []string
 	for i := 0; i < c.MaxPageSize+1; i++ {
 		resp, err := cClient.Create(
-			ctx, "vault-generic", newStoreId,
+			ctx, "vault-generic", storeId,
 			credentiallibraries.WithVaultCredentialLibraryPath(c.VaultSecretPath+"/data/"+privateKeySecretName),
 			credentiallibraries.WithCredentialType("ssh_private_key"),
 		)
@@ -111,7 +112,7 @@ func TestCliPaginateCredentialLibraries(t *testing.T) {
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"credential-libraries", "list",
-			"-credential-store-id", newStoreId,
+			"-credential-store-id", storeId,
 			"-format=json",
 		),
 	)
@@ -133,7 +134,7 @@ func TestCliPaginateCredentialLibraries(t *testing.T) {
 	assert.Empty(t, initialCredentialLibraries.ListToken)
 
 	resp, err := cClient.Create(
-		ctx, "vault-generic", newStoreId,
+		ctx, "vault-generic", storeId,
 		credentiallibraries.WithVaultCredentialLibraryPath(c.VaultSecretPath+"/data/"+privateKeySecretName),
 		credentiallibraries.WithCredentialType("ssh_private_key"),
 	)
@@ -146,7 +147,7 @@ func TestCliPaginateCredentialLibraries(t *testing.T) {
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"credential-libraries", "list",
-			"-credential-store-id", newStoreId,
+			"-credential-store-id", storeId,
 			"-format=json",
 		),
 	)

@@ -106,13 +106,14 @@ func TestCliVaultCredentialStore(t *testing.T) {
 	t.Log("Created Vault Cred Store Token")
 
 	// Create a credential store
-	newCredentialStoreId := boundary.CreateNewCredentialStoreVaultCli(t, ctx, projectId, c.VaultAddr, credStoreToken)
+	storeId, err := boundary.CreateCredentialStoreVaultCli(t, ctx, projectId, c.VaultAddr, credStoreToken)
+	require.NoError(t, err)
 
 	// Create a credential library for the private key
 	newPrivateKeyCredentialLibraryId, err := boundary.CreateVaultGenericCredentialLibraryCli(
 		t,
 		ctx,
-		newCredentialStoreId,
+		storeId,
 		fmt.Sprintf("%s/data/%s", c.VaultSecretPath, privateKeySecretName),
 		"ssh_private_key",
 	)
@@ -122,7 +123,7 @@ func TestCliVaultCredentialStore(t *testing.T) {
 	newPasswordCredentialLibraryId, err := boundary.CreateVaultGenericCredentialLibraryCli(
 		t,
 		ctx,
-		newCredentialStoreId,
+		storeId,
 		fmt.Sprintf("%s/data/%s", c.VaultSecretPath, passwordSecretName),
 		"username_password",
 	)

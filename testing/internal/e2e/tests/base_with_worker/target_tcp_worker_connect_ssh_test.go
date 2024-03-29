@@ -96,13 +96,14 @@ func TestCliTcpTargetWorkerConnectTarget(t *testing.T) {
 	t.Log("Created Vault Cred Store Token")
 
 	// Create a credential store
-	newCredentialStoreId := boundary.CreateNewCredentialStoreVaultCli(t, ctx, projectId, c.VaultAddr, credStoreToken)
+	storeId, err := boundary.CreateCredentialStoreVaultCli(t, ctx, projectId, c.VaultAddr, credStoreToken)
+	require.NoError(t, err)
 
 	// Create a credential library
 	newCredentialLibraryId, err := boundary.CreateVaultGenericCredentialLibraryCli(
 		t,
 		ctx,
-		newCredentialStoreId,
+		storeId,
 		fmt.Sprintf("%s/data/%s", c.VaultSecretPath, privateKeySecretName),
 		"ssh_private_key",
 	)
@@ -112,7 +113,7 @@ func TestCliTcpTargetWorkerConnectTarget(t *testing.T) {
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"credential-stores", "update", "vault",
-			"-id", newCredentialStoreId,
+			"-id", storeId,
 			"worker-filter", fmt.Sprintf(`"%s" in "/tags/type"`, c.WorkerTagEgress),
 		),
 	)

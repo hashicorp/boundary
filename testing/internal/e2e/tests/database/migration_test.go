@@ -302,13 +302,14 @@ func populateBoundaryDatabase(t testing.TB, ctx context.Context, c *config, te T
 	t.Log("Created Vault Cred Store Token")
 
 	// Create a credential store for vault
-	newVaultCredentialStoreId := boundary.CreateNewCredentialStoreVaultCli(t, ctx, projectId, te.Vault.UriNetwork, credStoreToken)
+	vaultStoreId, err := boundary.CreateCredentialStoreVaultCli(t, ctx, projectId, te.Vault.UriNetwork, credStoreToken)
+	require.NoError(t, err)
 
 	// Create a credential library for the private key in vault
 	_, err = boundary.CreateVaultGenericCredentialLibraryCli(
 		t,
 		ctx,
-		newVaultCredentialStoreId,
+		vaultStoreId,
 		fmt.Sprintf("%s/data/%s", c.VaultSecretPath, privateKeySecretName),
 		"ssh_private_key",
 	)
@@ -318,7 +319,7 @@ func populateBoundaryDatabase(t testing.TB, ctx context.Context, c *config, te T
 	_, err = boundary.CreateVaultGenericCredentialLibraryCli(
 		t,
 		ctx,
-		newVaultCredentialStoreId,
+		vaultStoreId,
 		fmt.Sprintf("%s/data/%s", c.VaultSecretPath, passwordSecretName),
 		"username_password",
 	)
