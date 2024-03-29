@@ -38,10 +38,11 @@ func TestCliCreateAwsDynamicHostCatalogWithEmptyHostSet(t *testing.T) {
 	})
 	projectId, err := boundary.CreateProjectCli(t, ctx, orgId)
 	require.NoError(t, err)
-	newHostCatalogId := boundary.CreateNewAwsHostCatalogCli(t, ctx, projectId, c.AwsAccessKeyId, c.AwsSecretAccessKey)
+	hostCatalogId, err := boundary.CreateAwsHostCatalogCli(t, ctx, projectId, c.AwsAccessKeyId, c.AwsSecretAccessKey)
+	require.NoError(t, err)
 
 	// Set up a host set
-	newHostSetId := boundary.CreateNewAwsHostSetCli(t, ctx, newHostCatalogId, "tag:empty_test=true")
+	newHostSetId := boundary.CreateNewAwsHostSetCli(t, ctx, hostCatalogId, "tag:empty_test=true")
 
 	// Check that there are no hosts in the host set
 	t.Logf("Looking for items in the host set...")
@@ -79,7 +80,7 @@ func TestCliCreateAwsDynamicHostCatalogWithEmptyHostSet(t *testing.T) {
 		}
 
 		output := e2e.RunCommand(ctx, "boundary",
-			e2e.WithArgs("hosts", "list", "-host-catalog-id", newHostCatalogId, "-format", "json"),
+			e2e.WithArgs("hosts", "list", "-host-catalog-id", hostCatalogId, "-format", "json"),
 		)
 		require.NoError(t, output.Err, string(output.Stderr))
 		var hostCatalogListResult hostcatalogs.HostCatalogListResult

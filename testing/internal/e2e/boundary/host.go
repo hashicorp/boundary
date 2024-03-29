@@ -201,9 +201,14 @@ func AddHostToHostSetCli(t testing.TB, ctx context.Context, hostSetId string, ho
 	return nil
 }
 
-// CreateNewAwsHostCatalogCli uses the cli to create a new AWS dynamic host catalog.
+// CreateAwsHostCatalogCli uses the cli to create a new AWS dynamic host catalog.
 // Returns the id of the new host catalog.
-func CreateNewAwsHostCatalogCli(t testing.TB, ctx context.Context, projectId string, accessKeyId string, secretAccessKey string) string {
+func CreateAwsHostCatalogCli(t testing.TB, ctx context.Context, projectId string, accessKeyId string, secretAccessKey string) (string, error) {
+	name, err := base62.Random(16)
+	if err != nil {
+		return "", err
+	}
+
 	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"host-catalogs", "create", "plugin",
@@ -213,20 +218,26 @@ func CreateNewAwsHostCatalogCli(t testing.TB, ctx context.Context, projectId str
 			"-attr", "region=us-east-1",
 			"-secret", "access_key_id=env://E2E_AWS_ACCESS_KEY_ID",
 			"-secret", "secret_access_key=env://E2E_AWS_SECRET_ACCESS_KEY",
+			"-name", fmt.Sprintf("e2e Host Catalog %s", name),
 			"-description", "e2e",
 			"-format", "json",
 		),
 		e2e.WithEnv("E2E_AWS_ACCESS_KEY_ID", accessKeyId),
 		e2e.WithEnv("E2E_AWS_SECRET_ACCESS_KEY", secretAccessKey),
 	)
-	require.NoError(t, output.Err, string(output.Stderr))
-	var newHostCatalogResult hostcatalogs.HostCatalogCreateResult
-	err := json.Unmarshal(output.Stdout, &newHostCatalogResult)
-	require.NoError(t, err)
-	newHostCatalogId := newHostCatalogResult.Item.Id
-	t.Logf("Created Host Catalog: %s", newHostCatalogId)
+	if output.Err != nil {
+		return "", fmt.Errorf("%w: %s", output.Err, string(output.Stderr))
+	}
 
-	return newHostCatalogId
+	var createHostCatalogResult hostcatalogs.HostCatalogCreateResult
+	err = json.Unmarshal(output.Stdout, &createHostCatalogResult)
+	if err != nil {
+		return "", err
+	}
+
+	hostCatalogId := createHostCatalogResult.Item.Id
+	t.Logf("Created Host Catalog: %s", hostCatalogId)
+	return hostCatalogId, nil
 }
 
 // CreateNewAwsHostSetCli uses the cli to create a new host set from an AWS dynamic host catalog.
