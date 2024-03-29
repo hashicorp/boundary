@@ -127,7 +127,8 @@ func TestCliAuthMethodPassword(t *testing.T) {
 	require.NoError(t, err)
 	testAccountName = "test-account2"
 	newAccountId, acctPassword = boundary.CreateNewAccountCli(t, ctx, newAuthMethodId, testAccountName)
-	boundary.SetAccountToUserCli(t, ctx, newUserId, newAccountId)
+	err = boundary.SetAccountToUserCli(t, ctx, newUserId, newAccountId)
+	require.NoError(t, err)
 
 	// Log in with the new account
 	output = e2e.RunCommand(ctx, "boundary",

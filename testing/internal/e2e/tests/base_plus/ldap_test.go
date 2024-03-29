@@ -82,7 +82,8 @@ func TestCliLdap(t *testing.T) {
 	// Create a user and attach the LDAP account
 	userId, err := boundary.CreateUserCli(t, ctx, orgId)
 	require.NoError(t, err)
-	boundary.SetAccountToUserCli(t, ctx, userId, newAccountId)
+	err = boundary.SetAccountToUserCli(t, ctx, userId, newAccountId)
+	require.NoError(t, err)
 
 	// Try to log in with the wrong password
 	output = e2e.RunCommand(ctx, "boundary",

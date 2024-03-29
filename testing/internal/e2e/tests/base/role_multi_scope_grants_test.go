@@ -54,7 +54,8 @@ func TestCliApplyGrantsForMultipleScopes(t *testing.T) {
 		)
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
-	boundary.SetAccountToUserCli(t, ctx, userId, accountId)
+	err = boundary.SetAccountToUserCli(t, ctx, userId, accountId)
+	require.NoError(t, err)
 
 	// Authenticate test user and try to:
 	// - list Roles in global scope: expect error

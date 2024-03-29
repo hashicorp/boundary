@@ -50,7 +50,8 @@ func TestCliPaginateAuthTokens(t *testing.T) {
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
 	accId, password := boundary.CreateNewAccountCli(t, ctx, amId, "testuser")
-	boundary.SetAccountToUserCli(t, ctx, userId, accId)
+	err = boundary.SetAccountToUserCli(t, ctx, userId, accId)
+	require.NoError(t, err)
 
 	boundary.AuthenticateCli(t, ctx, amId, "testuser", password)
 
@@ -159,7 +160,8 @@ func TestApiPaginateAuthTokens(t *testing.T) {
 		require.NoError(t, err)
 	})
 	accId, password := boundary.CreateNewAccountCli(t, ctx, amId, "testuser")
-	boundary.SetAccountToUserCli(t, ctx, userId, accId)
+	err = boundary.SetAccountToUserCli(t, ctx, userId, accId)
+	require.NoError(t, err)
 
 	// Authenticate as the user
 	authenticationResult, err := amClient.Authenticate(ctx, amId, "login",

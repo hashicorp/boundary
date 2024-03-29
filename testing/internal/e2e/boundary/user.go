@@ -13,7 +13,6 @@ import (
 	"github.com/hashicorp/boundary/api/users"
 	"github.com/hashicorp/boundary/testing/internal/e2e"
 	"github.com/hashicorp/go-secure-stdlib/base62"
-	"github.com/stretchr/testify/require"
 )
 
 // CreateUserApi creates a new user using the Go api.
@@ -68,7 +67,7 @@ func CreateUserCli(t testing.TB, ctx context.Context, scopeId string) (string, e
 }
 
 // SetAccountToUserCli sets an account to a the specified user using the cli.
-func SetAccountToUserCli(t testing.TB, ctx context.Context, userId string, accountId string) {
+func SetAccountToUserCli(t testing.TB, ctx context.Context, userId string, accountId string) error {
 	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"users", "set-accounts",
@@ -76,5 +75,9 @@ func SetAccountToUserCli(t testing.TB, ctx context.Context, userId string, accou
 			"-account", accountId,
 		),
 	)
-	require.NoError(t, output.Err, string(output.Stderr))
+	if output.Err != nil {
+		return fmt.Errorf("%w: %s", output.Err, string(output.Stderr))
+	}
+
+	return nil
 }

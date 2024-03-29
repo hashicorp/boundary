@@ -45,7 +45,8 @@ func TestUserIsLoggedOutWhenAuthTokenIsDeletedCli(t *testing.T) {
 		)
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
-	boundary.SetAccountToUserCli(t, ctx, userId, newAccountId)
+	err = boundary.SetAccountToUserCli(t, ctx, userId, newAccountId)
+	require.NoError(t, err)
 
 	// Authenticate user and assign a name to its auth token
 	boundary.AuthenticateCli(t, context.Background(), bc.AuthMethodId, testAccountName, acctPassword,
