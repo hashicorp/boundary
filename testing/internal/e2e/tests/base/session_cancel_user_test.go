@@ -175,8 +175,9 @@ func TestApiCreateUser(t *testing.T) {
 	require.NoError(t, err)
 	hostSetId, err := boundary.CreateHostSetApi(t, ctx, client, hostCatalogId)
 	require.NoError(t, err)
-	newHostId := boundary.CreateNewHostApi(t, ctx, client, hostCatalogId, c.TargetAddress)
-	boundary.AddHostToHostSetApi(t, ctx, client, hostSetId, newHostId)
+	hostId, err := boundary.CreateHostApi(t, ctx, client, hostCatalogId, c.TargetAddress)
+	require.NoError(t, err)
+	boundary.AddHostToHostSetApi(t, ctx, client, hostSetId, hostId)
 	newTargetId := boundary.CreateNewTargetApi(t, ctx, client, projectId, c.TargetPort)
 	boundary.AddHostSourceToTargetApi(t, ctx, client, newTargetId, hostSetId)
 

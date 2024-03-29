@@ -63,18 +63,26 @@ func CreateHostSetApi(t testing.TB, ctx context.Context, client *api.Client, hos
 	return hostSetId, nil
 }
 
-// CreateNewHostApi uses the Go api to create a new host.
+// CreateHostApi uses the Go api to create a new host.
 // Returns the id of the new host.
-func CreateNewHostApi(t testing.TB, ctx context.Context, client *api.Client, hostCatalogId string, address string) string {
-	hClient := hosts.NewClient(client)
-	newHostResult, err := hClient.Create(ctx, hostCatalogId,
-		hosts.WithStaticHostAddress(address),
-	)
-	require.NoError(t, err)
-	newHostId := newHostResult.Item.Id
-	t.Logf("Created Host: %s", newHostId)
+func CreateHostApi(t testing.TB, ctx context.Context, client *api.Client, hostCatalogId string, address string) (string, error) {
+	name, err := base62.Random(16)
+	if err != nil {
+		return "", err
+	}
 
-	return newHostId
+	hClient := hosts.NewClient(client)
+	createHostResult, err := hClient.Create(ctx, hostCatalogId,
+		hosts.WithStaticHostAddress(address),
+		hosts.WithName(fmt.Sprintf("e2e Host %s", name)),
+	)
+	if err != nil {
+		return "", err
+	}
+
+	hostId := createHostResult.Item.Id
+	t.Logf("Created Host: %s", hostId)
+	return hostId, nil
 }
 
 // AddHostToHostSetApi uses the Go api to add a host to a host set
