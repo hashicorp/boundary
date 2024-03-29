@@ -154,15 +154,16 @@ func CreateVaultGenericCredentialLibraryCli(t testing.TB, ctx context.Context, c
 		),
 	)
 	if output.Err != nil {
-		return "", fmt.Errorf("%s", output.Stderr)
+		return "", fmt.Errorf("%w: %s", output.Err, string(output.Stderr))
 	}
 
-	var newCredentialLibraryResult credentiallibraries.CredentialLibraryCreateResult
-	err = json.Unmarshal(output.Stdout, &newCredentialLibraryResult)
+	var createCredentialLibraryResult credentiallibraries.CredentialLibraryCreateResult
+	err = json.Unmarshal(output.Stdout, &createCredentialLibraryResult)
 	if err != nil {
 		return "", err
 	}
-	credentialLibraryId := newCredentialLibraryResult.Item.Id
+
+	credentialLibraryId := createCredentialLibraryResult.Item.Id
 	t.Logf("Created Credential Library: %s", credentialLibraryId)
 	return credentialLibraryId, nil
 }

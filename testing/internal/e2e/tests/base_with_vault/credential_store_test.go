@@ -110,7 +110,7 @@ func TestCliVaultCredentialStore(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create a credential library for the private key
-	newPrivateKeyCredentialLibraryId, err := boundary.CreateVaultGenericCredentialLibraryCli(
+	privateKeyCredentialLibraryId, err := boundary.CreateVaultGenericCredentialLibraryCli(
 		t,
 		ctx,
 		storeId,
@@ -120,7 +120,7 @@ func TestCliVaultCredentialStore(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create a credential library for the password
-	newPasswordCredentialLibraryId, err := boundary.CreateVaultGenericCredentialLibraryCli(
+	passwordCredentialLibraryId, err := boundary.CreateVaultGenericCredentialLibraryCli(
 		t,
 		ctx,
 		storeId,
@@ -140,9 +140,9 @@ func TestCliVaultCredentialStore(t *testing.T) {
 	require.True(t, newSessionAuthorizationResult.Item.Credentials == nil)
 
 	// Add credentials to target
-	err = boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, targetId, newPrivateKeyCredentialLibraryId)
+	err = boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, targetId, privateKeyCredentialLibraryId)
 	require.NoError(t, err)
-	err = boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, targetId, newPasswordCredentialLibraryId)
+	err = boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, targetId, passwordCredentialLibraryId)
 	require.NoError(t, err)
 
 	// Get credentials for target

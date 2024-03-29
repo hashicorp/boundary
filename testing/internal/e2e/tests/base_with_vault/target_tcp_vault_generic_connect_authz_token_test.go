@@ -108,7 +108,7 @@ func TestCliTcpTargetVaultGenericConnectTargetWithAuthzToken(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create a credential library
-	newCredentialLibraryId, err := boundary.CreateVaultGenericCredentialLibraryCli(
+	libraryId, err := boundary.CreateVaultGenericCredentialLibraryCli(
 		t,
 		ctx,
 		storeId,
@@ -117,7 +117,7 @@ func TestCliTcpTargetVaultGenericConnectTargetWithAuthzToken(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	err = boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, targetId, newCredentialLibraryId)
+	err = boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, targetId, libraryId)
 	require.NoError(t, err)
 
 	// Get credentials for target
