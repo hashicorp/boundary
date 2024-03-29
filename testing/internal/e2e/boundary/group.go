@@ -13,7 +13,6 @@ import (
 	"github.com/hashicorp/boundary/api/groups"
 	"github.com/hashicorp/boundary/testing/internal/e2e"
 	"github.com/hashicorp/go-secure-stdlib/base62"
-	"github.com/stretchr/testify/require"
 )
 
 // CreateGroupApi uses the API to create a new group.
@@ -68,7 +67,7 @@ func CreateGroupCli(t testing.TB, ctx context.Context, scopeId string) (string, 
 }
 
 // AddUserToGroup uses the cli to add a user to a group
-func AddUserToGroup(t testing.TB, ctx context.Context, userId string, groupId string) {
+func AddUserToGroup(t testing.TB, ctx context.Context, userId string, groupId string) error {
 	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"groups", "add-members",
@@ -76,5 +75,9 @@ func AddUserToGroup(t testing.TB, ctx context.Context, userId string, groupId st
 			"-member", userId,
 		),
 	)
-	require.NoError(t, output.Err, string(output.Stderr))
+	if output.Err != nil {
+		return fmt.Errorf("%w: %s", output.Err, string(output.Stderr))
+	}
+
+	return nil
 }

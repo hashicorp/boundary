@@ -106,7 +106,8 @@ func TestCliSessionCancelGroup(t *testing.T) {
 	boundary.AuthenticateAdminCli(t, ctx)
 	groupId, err := boundary.CreateGroupCli(t, ctx, "global")
 	require.NoError(t, err)
-	boundary.AddUserToGroup(t, ctx, userId, groupId)
+	err = boundary.AddUserToGroup(t, ctx, userId, groupId)
+	require.NoError(t, err)
 
 	// Create a role for a group
 	roleId, err := boundary.CreateRoleCli(t, ctx, projectId)
