@@ -35,7 +35,8 @@ func TestCliApplyGrantsForMultipleScopes(t *testing.T) {
 
 	// Create Account
 	acctName := "e2e-account"
-	accountId, acctPassword := boundary.CreateNewAccountCli(t, ctx, bc.AuthMethodId, acctName)
+	accountId, acctPassword, err := boundary.CreateAccountCli(t, ctx, bc.AuthMethodId, acctName)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		boundary.AuthenticateAdminCli(t, ctx)
 		output := e2e.RunCommand(ctx, "boundary",

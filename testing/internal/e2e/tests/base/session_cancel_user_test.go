@@ -56,11 +56,12 @@ func TestCliSessionCancelUser(t *testing.T) {
 	err = boundary.AddHostSourceToTargetCli(t, ctx, targetId, hostSetId)
 	require.NoError(t, err)
 	acctName := "e2e-account"
-	newAccountId, acctPassword := boundary.CreateNewAccountCli(t, ctx, bc.AuthMethodId, acctName)
+	accountId, acctPassword, err := boundary.CreateAccountCli(t, ctx, bc.AuthMethodId, acctName)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		boundary.AuthenticateAdminCli(t, context.Background())
 		output := e2e.RunCommand(ctx, "boundary",
-			e2e.WithArgs("accounts", "delete", "-id", newAccountId),
+			e2e.WithArgs("accounts", "delete", "-id", accountId),
 		)
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
@@ -73,7 +74,7 @@ func TestCliSessionCancelUser(t *testing.T) {
 		)
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
-	err = boundary.SetAccountToUserCli(t, ctx, userId, newAccountId)
+	err = boundary.SetAccountToUserCli(t, ctx, userId, accountId)
 	require.NoError(t, err)
 
 	// Try to connect to the target as a user without permissions

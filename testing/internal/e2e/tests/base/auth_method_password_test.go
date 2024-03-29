@@ -62,7 +62,8 @@ func TestCliAuthMethodPassword(t *testing.T) {
 
 	// Create account in auth method
 	testAccountName := "test-account"
-	newAccountId, acctPassword := boundary.CreateNewAccountCli(t, ctx, newAuthMethodId, testAccountName)
+	accountId, acctPassword, err := boundary.CreateAccountCli(t, ctx, newAuthMethodId, testAccountName)
+	require.NoError(t, err)
 
 	// Set new auth method as primary auth method for the new org
 	output = e2e.RunCommand(ctx, "boundary",
@@ -105,7 +106,7 @@ func TestCliAuthMethodPassword(t *testing.T) {
 	var usersListResult users.UserListResult
 	err = json.Unmarshal(output.Stdout, &usersListResult)
 	require.NoError(t, err)
-	require.Equal(t, newAccountId, usersListResult.Items[0].PrimaryAccountId)
+	require.Equal(t, accountId, usersListResult.Items[0].PrimaryAccountId)
 
 	userId := usersListResult.Items[0].Id
 	output = e2e.RunCommand(ctx, "boundary",
@@ -119,15 +120,16 @@ func TestCliAuthMethodPassword(t *testing.T) {
 	var usersReadResult users.UserReadResult
 	err = json.Unmarshal(output.Stdout, &usersReadResult)
 	require.NoError(t, err)
-	require.Equal(t, newAccountId, usersReadResult.Item.PrimaryAccountId)
-	require.Contains(t, usersReadResult.Item.AccountIds, newAccountId)
+	require.Equal(t, accountId, usersReadResult.Item.PrimaryAccountId)
+	require.Contains(t, usersReadResult.Item.AccountIds, accountId)
 
 	// Create a new account and manually attach it to a new user
 	newUserId, err := boundary.CreateUserCli(t, ctx, orgId)
 	require.NoError(t, err)
 	testAccountName = "test-account2"
-	newAccountId, acctPassword = boundary.CreateNewAccountCli(t, ctx, newAuthMethodId, testAccountName)
-	err = boundary.SetAccountToUserCli(t, ctx, newUserId, newAccountId)
+	accountId, acctPassword, err = boundary.CreateAccountCli(t, ctx, newAuthMethodId, testAccountName)
+	require.NoError(t, err)
+	err = boundary.SetAccountToUserCli(t, ctx, newUserId, accountId)
 	require.NoError(t, err)
 
 	// Log in with the new account

@@ -158,11 +158,12 @@ func TestHttpRateLimit(t *testing.T) {
 
 	// Create a user
 	acctName := "e2e-account"
-	newAccountId, acctPassword := boundary.CreateNewAccountCli(t, ctx, bc.AuthMethodId, acctName)
+	accountId, acctPassword, err := boundary.CreateAccountCli(t, ctx, bc.AuthMethodId, acctName)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		boundary.AuthenticateAdminCli(t, context.Background())
 		output := e2e.RunCommand(ctx, "boundary",
-			e2e.WithArgs("accounts", "delete", "-id", newAccountId),
+			e2e.WithArgs("accounts", "delete", "-id", accountId),
 		)
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
@@ -175,7 +176,7 @@ func TestHttpRateLimit(t *testing.T) {
 		)
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
-	err = boundary.SetAccountToUserCli(t, ctx, userId, newAccountId)
+	err = boundary.SetAccountToUserCli(t, ctx, userId, accountId)
 	require.NoError(t, err)
 	roleId, err := boundary.CreateRoleCli(t, ctx, projectId)
 	require.NoError(t, err)
@@ -302,11 +303,12 @@ func TestCliRateLimit(t *testing.T) {
 
 	// Create a user
 	acctName := "e2e-account"
-	newAccountId, acctPassword := boundary.CreateNewAccountCli(t, ctx, bc.AuthMethodId, acctName)
+	accountId, acctPassword, err := boundary.CreateAccountCli(t, ctx, bc.AuthMethodId, acctName)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		boundary.AuthenticateAdminCli(t, context.Background())
 		output := e2e.RunCommand(ctx, "boundary",
-			e2e.WithArgs("accounts", "delete", "-id", newAccountId),
+			e2e.WithArgs("accounts", "delete", "-id", accountId),
 		)
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
@@ -319,7 +321,7 @@ func TestCliRateLimit(t *testing.T) {
 		)
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
-	err = boundary.SetAccountToUserCli(t, ctx, userId, newAccountId)
+	err = boundary.SetAccountToUserCli(t, ctx, userId, accountId)
 	require.NoError(t, err)
 	roleId, err := boundary.CreateRoleCli(t, ctx, projectId)
 	require.NoError(t, err)

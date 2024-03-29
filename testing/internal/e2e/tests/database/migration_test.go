@@ -247,10 +247,11 @@ func populateBoundaryDatabase(t testing.TB, ctx context.Context, c *config, te T
 	boundary.WaitForHostsInHostSetCli(t, ctx, awsHostSetId)
 
 	// Create a user/group and add role to group
-	newAccountId, _ := boundary.CreateNewAccountCli(t, ctx, te.DbInitInfo.AuthMethod.AuthMethodId, "test-account")
+	accountId, _, err := boundary.CreateAccountCli(t, ctx, te.DbInitInfo.AuthMethod.AuthMethodId, "test-account")
+	require.NoError(t, err)
 	userId, err := boundary.CreateUserCli(t, ctx, "global")
 	require.NoError(t, err)
-	err = boundary.SetAccountToUserCli(t, ctx, userId, newAccountId)
+	err = boundary.SetAccountToUserCli(t, ctx, userId, accountId)
 	require.NoError(t, err)
 	groupId, err := boundary.CreateGroupCli(t, ctx, "global")
 	require.NoError(t, err)

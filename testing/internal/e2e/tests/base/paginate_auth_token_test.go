@@ -50,7 +50,8 @@ func TestCliPaginateAuthTokens(t *testing.T) {
 		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("auth-methods", "delete", "-id", amId))
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
-	accId, password := boundary.CreateNewAccountCli(t, ctx, amId, "testuser")
+	accId, password, err := boundary.CreateAccountCli(t, ctx, amId, "testuser")
+	require.NoError(t, err)
 	err = boundary.SetAccountToUserCli(t, ctx, userId, accId)
 	require.NoError(t, err)
 
@@ -161,7 +162,8 @@ func TestApiPaginateAuthTokens(t *testing.T) {
 		_, err := amClient.Delete(ctx, amId)
 		require.NoError(t, err)
 	})
-	accId, password := boundary.CreateNewAccountCli(t, ctx, amId, "testuser")
+	accId, password, err := boundary.CreateAccountCli(t, ctx, amId, "testuser")
+	require.NoError(t, err)
 	err = boundary.SetAccountToUserCli(t, ctx, userId, accId)
 	require.NoError(t, err)
 
