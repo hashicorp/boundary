@@ -16,16 +16,23 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// CreateNewRoleApi creates a new role using the Go api.
+// CreateRoleApi creates a new role using the Go api.
 // Returns the id of the new role
-func CreateNewRoleApi(t testing.TB, ctx context.Context, client *api.Client, scopeId string) string {
-	rClient := roles.NewClient(client)
-	newRoleResult, err := rClient.Create(ctx, scopeId)
-	require.NoError(t, err)
+func CreateRoleApi(t testing.TB, ctx context.Context, client *api.Client, scopeId string) (string, error) {
+	name, err := base62.Random(16)
+	if err != nil {
+		return "", err
+	}
 
-	newRoleId := newRoleResult.Item.Id
-	t.Logf("Created Role: %s", newRoleId)
-	return newRoleId
+	rClient := roles.NewClient(client)
+	createRoleResult, err := rClient.Create(ctx, scopeId, roles.WithName(fmt.Sprintf("e2e Role %s", name)))
+	if err != nil {
+		return "", err
+	}
+
+	roleId := createRoleResult.Item.Id
+	t.Logf("Created Role: %s", roleId)
+	return roleId, nil
 }
 
 // CreateRoleCli creates a new role using the Boundary CLI.
