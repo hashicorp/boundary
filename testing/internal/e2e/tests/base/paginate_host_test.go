@@ -132,16 +132,17 @@ func TestApiPaginateHosts(t *testing.T) {
 	})
 	projectId, err := boundary.CreateProjectApi(t, ctx, client, orgId)
 	require.NoError(t, err)
-	newHostCatalogId := boundary.CreateNewHostCatalogApi(t, ctx, client, projectId)
+	hostCatalogId, err := boundary.CreateHostCatalogApi(t, ctx, client, projectId)
+	require.NoError(t, err)
 
 	// Create enough hosts to overflow a single page.
 	var hostIds []string
 	for i := 0; i < c.MaxPageSize+1; i++ {
-		hostIds = append(hostIds, boundary.CreateNewHostApi(t, ctx, client, newHostCatalogId, c.TargetAddress))
+		hostIds = append(hostIds, boundary.CreateNewHostApi(t, ctx, client, hostCatalogId, c.TargetAddress))
 	}
 
 	// List hosts
-	initialHosts, err := hClient.List(ctx, newHostCatalogId)
+	initialHosts, err := hClient.List(ctx, hostCatalogId)
 	require.NoError(t, err)
 
 	var returnedIds []string
@@ -161,12 +162,12 @@ func TestApiPaginateHosts(t *testing.T) {
 	assert.Len(t, mapSliceItems, c.MaxPageSize+1)
 
 	// Create a new host and destroy one of the other hosts
-	newHostId := boundary.CreateNewHostApi(t, ctx, client, newHostCatalogId, c.TargetAddress)
+	newHostId := boundary.CreateNewHostApi(t, ctx, client, hostCatalogId, c.TargetAddress)
 	_, err = hClient.Delete(ctx, initialHosts.Items[0].Id)
 	require.NoError(t, err)
 
 	// List again, should have the new and deleted host
-	newHosts, err := hClient.List(ctx, newHostCatalogId, hosts.WithListToken(initialHosts.ListToken))
+	newHosts, err := hClient.List(ctx, hostCatalogId, hosts.WithListToken(initialHosts.ListToken))
 	require.NoError(t, err)
 
 	// Note that this will likely contain all the hosts,

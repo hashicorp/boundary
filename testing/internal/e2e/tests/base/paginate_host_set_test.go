@@ -132,16 +132,17 @@ func TestApiPaginateHostSets(t *testing.T) {
 	})
 	projectId, err := boundary.CreateProjectApi(t, ctx, client, orgId)
 	require.NoError(t, err)
-	newHostCatalogId := boundary.CreateNewHostCatalogApi(t, ctx, client, projectId)
+	hostCatalogId, err := boundary.CreateHostCatalogApi(t, ctx, client, projectId)
+	require.NoError(t, err)
 
 	// Create enough host sets to overflow a single page.
 	var hostSetIds []string
 	for i := 0; i < c.MaxPageSize+1; i++ {
-		hostSetIds = append(hostSetIds, boundary.CreateNewHostSetApi(t, ctx, client, newHostCatalogId))
+		hostSetIds = append(hostSetIds, boundary.CreateNewHostSetApi(t, ctx, client, hostCatalogId))
 	}
 
 	// List host sets
-	initialHostSets, err := hsClient.List(ctx, newHostCatalogId)
+	initialHostSets, err := hsClient.List(ctx, hostCatalogId)
 	require.NoError(t, err)
 
 	var returnedIds []string
@@ -161,12 +162,12 @@ func TestApiPaginateHostSets(t *testing.T) {
 	assert.Len(t, mapSliceItems, c.MaxPageSize+1)
 
 	// Create a new host set and destroy one of the other host sets
-	newHostSetId := boundary.CreateNewHostSetApi(t, ctx, client, newHostCatalogId)
+	newHostSetId := boundary.CreateNewHostSetApi(t, ctx, client, hostCatalogId)
 	_, err = hsClient.Delete(ctx, initialHostSets.Items[0].Id)
 	require.NoError(t, err)
 
 	// List again, should have the new and deleted host set
-	newHostSets, err := hsClient.List(ctx, newHostCatalogId, hostsets.WithListToken(initialHostSets.ListToken))
+	newHostSets, err := hsClient.List(ctx, hostCatalogId, hostsets.WithListToken(initialHostSets.ListToken))
 	require.NoError(t, err)
 
 	// Note that this will likely contain all the host sets,

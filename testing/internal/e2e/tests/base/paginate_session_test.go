@@ -119,9 +119,10 @@ func TestApiPaginateSessions(t *testing.T) {
 
 	projectId, err := boundary.CreateProjectApi(t, ctx, client, orgId)
 	require.NoError(t, err)
-	newHostCatalogId := boundary.CreateNewHostCatalogApi(t, ctx, client, projectId)
-	newHostSetId := boundary.CreateNewHostSetApi(t, ctx, client, newHostCatalogId)
-	newHostId := boundary.CreateNewHostApi(t, ctx, client, newHostCatalogId, c.TargetAddress)
+	hostCatalogId, err := boundary.CreateHostCatalogApi(t, ctx, client, projectId)
+	require.NoError(t, err)
+	newHostSetId := boundary.CreateNewHostSetApi(t, ctx, client, hostCatalogId)
+	newHostId := boundary.CreateNewHostApi(t, ctx, client, hostCatalogId, c.TargetAddress)
 	boundary.AddHostToHostSetApi(t, ctx, client, newHostSetId, newHostId)
 	require.NoError(t, err)
 	newTargetId := boundary.CreateNewTargetApi(t, ctx, client, projectId, c.TargetPort)

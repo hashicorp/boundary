@@ -17,19 +17,31 @@ import (
 	"github.com/hashicorp/boundary/api/hosts"
 	"github.com/hashicorp/boundary/api/hostsets"
 	"github.com/hashicorp/boundary/testing/internal/e2e"
+	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/stretchr/testify/require"
 )
 
-// CreateNewHostCatalogApi uses the Go api to create a new host catalog.
+// CreateHostCatalogApi uses the Go api to create a new host catalog.
 // Returns the id of the new host catalog.
-func CreateNewHostCatalogApi(t testing.TB, ctx context.Context, client *api.Client, projectId string) string {
-	hcClient := hostcatalogs.NewClient(client)
-	newHostCatalogResult, err := hcClient.Create(ctx, "static", projectId)
-	require.NoError(t, err)
-	newHostCatalogId := newHostCatalogResult.Item.Id
-	t.Logf("Created Host Catalog: %s", newHostCatalogId)
+func CreateHostCatalogApi(t testing.TB, ctx context.Context, client *api.Client, projectId string) (string, error) {
+	name, err := base62.Random(16)
+	if err != nil {
+		return "", err
+	}
 
-	return newHostCatalogId
+	hcClient := hostcatalogs.NewClient(client)
+	createHostCatalogResult, err := hcClient.Create(
+		ctx,
+		"static",
+		projectId,
+		hostcatalogs.WithName(fmt.Sprintf("e2e Host Catalog %s", name)))
+	if err != nil {
+		return "", err
+	}
+
+	hostCatalogId := createHostCatalogResult.Item.Id
+	t.Logf("Created Host Catalog: %s", hostCatalogId)
+	return hostCatalogId, nil
 }
 
 // CreateNewHostSetApi uses the Go api to create a new host set.
