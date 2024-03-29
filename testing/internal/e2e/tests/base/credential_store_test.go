@@ -54,8 +54,9 @@ func TestCliStaticCredentialStore(t *testing.T) {
 	require.NoError(t, err)
 	hostSetId, err := boundary.CreateHostSetCli(t, ctx, hostCatalogId)
 	require.NoError(t, err)
-	newHostId := boundary.CreateNewHostCli(t, ctx, hostCatalogId, c.TargetAddress)
-	boundary.AddHostToHostSetCli(t, ctx, hostSetId, newHostId)
+	hostId, err := boundary.CreateHostCli(t, ctx, hostCatalogId, c.TargetAddress)
+	require.NoError(t, err)
+	boundary.AddHostToHostSetCli(t, ctx, hostSetId, hostId)
 	newTargetId := boundary.CreateNewTargetCli(t, ctx, projectId, c.TargetPort)
 	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, hostSetId)
 

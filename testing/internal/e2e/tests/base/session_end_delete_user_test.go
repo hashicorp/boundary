@@ -42,8 +42,9 @@ func TestCliSessionEndWhenUserIsDeleted(t *testing.T) {
 	require.NoError(t, err)
 	hostSetId, err := boundary.CreateHostSetCli(t, ctx, hostCatalogId)
 	require.NoError(t, err)
-	newHostId := boundary.CreateNewHostCli(t, ctx, hostCatalogId, c.TargetAddress)
-	boundary.AddHostToHostSetCli(t, ctx, hostSetId, newHostId)
+	hostId, err := boundary.CreateHostCli(t, ctx, hostCatalogId, c.TargetAddress)
+	require.NoError(t, err)
+	boundary.AddHostToHostSetCli(t, ctx, hostSetId, hostId)
 	newTargetId := boundary.CreateNewTargetCli(t, ctx, projectId, c.TargetPort)
 	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, hostSetId)
 	acctName := "e2e-account"
@@ -100,7 +101,7 @@ func TestCliSessionEndWhenUserIsDeleted(t *testing.T) {
 	s := boundary.WaitForSessionCli(t, ctx, projectId)
 	boundary.WaitForSessionStatusCli(t, ctx, s.Id, session.StatusActive.String())
 	assert.Equal(t, newTargetId, s.TargetId)
-	assert.Equal(t, newHostId, s.HostId)
+	assert.Equal(t, hostId, s.HostId)
 
 	// Delete User
 	t.Log("Deleting user...")

@@ -39,8 +39,9 @@ func TestCliBytesUpDownEmpty(t *testing.T) {
 	require.NoError(t, err)
 	hostSetId, err := boundary.CreateHostSetCli(t, ctx, hostCatalogId)
 	require.NoError(t, err)
-	newHostId := boundary.CreateNewHostCli(t, ctx, hostCatalogId, c.TargetAddress)
-	boundary.AddHostToHostSetCli(t, ctx, hostSetId, newHostId)
+	hostId, err := boundary.CreateHostCli(t, ctx, hostCatalogId, c.TargetAddress)
+	require.NoError(t, err)
+	boundary.AddHostToHostSetCli(t, ctx, hostSetId, hostId)
 	newTargetId := boundary.CreateNewTargetCli(t, ctx, projectId, c.TargetPort)
 	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, hostSetId)
 
@@ -68,7 +69,7 @@ func TestCliBytesUpDownEmpty(t *testing.T) {
 
 	session := boundary.WaitForSessionCli(t, ctx, projectId)
 	assert.Equal(t, newTargetId, session.TargetId)
-	assert.Equal(t, newHostId, session.HostId)
+	assert.Equal(t, hostId, session.HostId)
 
 	// Confirm that bytesUp and bytesDown do not change
 	bytesUp := 0

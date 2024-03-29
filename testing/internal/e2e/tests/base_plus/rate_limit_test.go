@@ -46,7 +46,8 @@ func TestHttpRateLimit(t *testing.T) {
 	require.NoError(t, err)
 	hostCatalogId, err := boundary.CreateHostCatalogCli(t, ctx, projectId)
 	require.NoError(t, err)
-	newHostId := boundary.CreateNewHostCli(t, ctx, hostCatalogId, c.TargetAddress)
+	hostId, err := boundary.CreateHostCli(t, ctx, hostCatalogId, c.TargetAddress)
+	require.NoError(t, err)
 
 	// Authenticate over HTTP
 	res, err := boundary.AuthenticateHttp(t, ctx, bc.Address, bc.AuthMethodId, bc.AdminLoginName, bc.AdminLoginPassword)
@@ -62,7 +63,7 @@ func TestHttpRateLimit(t *testing.T) {
 
 	// Make initial API request
 	t.Log("Sending API requests until quota is hit...")
-	requestURL := fmt.Sprintf("%s/v1/hosts/%s", bc.Address, newHostId)
+	requestURL := fmt.Sprintf("%s/v1/hosts/%s", bc.Address, hostId)
 	req, err := http.NewRequest(http.MethodGet, requestURL, nil)
 	require.NoError(t, err)
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", tokenAdmin))
@@ -74,7 +75,7 @@ func TestHttpRateLimit(t *testing.T) {
 	require.NoError(t, err)
 	res.Body.Close()
 	require.NotEmpty(t, body)
-	require.Contains(t, string(body), newHostId)
+	require.Contains(t, string(body), hostId)
 
 	// Check that the limit from the policy matches the actual limit
 	rateLimitPolicyHeader := res.Header.Get("Ratelimit-Policy")
@@ -95,7 +96,7 @@ func TestHttpRateLimit(t *testing.T) {
 	quota, err := getRateLimitStat(rateLimitHeader, "remaining")
 	require.NoError(t, err)
 	for quota > 0 {
-		requestURL = fmt.Sprintf("%s/v1/hosts/%s", bc.Address, newHostId)
+		requestURL = fmt.Sprintf("%s/v1/hosts/%s", bc.Address, hostId)
 		req, err = http.NewRequest(http.MethodGet, requestURL, nil)
 		require.NoError(t, err)
 		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", tokenAdmin))
@@ -116,7 +117,7 @@ func TestHttpRateLimit(t *testing.T) {
 	// Do another request after the quota is exhausted
 	// Verify that the request is not successful (HTTP 429: Too Many Requests)
 	t.Log("Checking that next API request is rate limited...")
-	requestURL = fmt.Sprintf("%s/v1/hosts/%s", bc.Address, newHostId)
+	requestURL = fmt.Sprintf("%s/v1/hosts/%s", bc.Address, hostId)
 	req, err = http.NewRequest(http.MethodGet, requestURL, nil)
 	require.NoError(t, err)
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", tokenAdmin))
@@ -139,7 +140,7 @@ func TestHttpRateLimit(t *testing.T) {
 
 	// Do another request. Verify that request is successful
 	t.Log("Retrying...")
-	requestURL = fmt.Sprintf("%s/v1/hosts/%s", bc.Address, newHostId)
+	requestURL = fmt.Sprintf("%s/v1/hosts/%s", bc.Address, hostId)
 	req, err = http.NewRequest(http.MethodGet, requestURL, nil)
 	require.NoError(t, err)
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", tokenAdmin))
@@ -151,7 +152,7 @@ func TestHttpRateLimit(t *testing.T) {
 	require.NoError(t, err)
 	res.Body.Close()
 	require.NotEmpty(t, body)
-	require.Contains(t, string(body), newHostId)
+	require.Contains(t, string(body), hostId)
 
 	t.Log("Successfully sent request after waiting")
 
@@ -192,7 +193,7 @@ func TestHttpRateLimit(t *testing.T) {
 
 	// Make request until quota is hit again using the first user
 	t.Log("Sending API requests until quota is hit...")
-	requestURL = fmt.Sprintf("%s/v1/hosts/%s", bc.Address, newHostId)
+	requestURL = fmt.Sprintf("%s/v1/hosts/%s", bc.Address, hostId)
 	req, err = http.NewRequest(http.MethodGet, requestURL, nil)
 	require.NoError(t, err)
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", tokenAdmin))
@@ -205,7 +206,7 @@ func TestHttpRateLimit(t *testing.T) {
 	quota, err = getRateLimitStat(rateLimitHeader, "remaining")
 	require.NoError(t, err)
 	for quota > 0 {
-		requestURL = fmt.Sprintf("%s/v1/hosts/%s", bc.Address, newHostId)
+		requestURL = fmt.Sprintf("%s/v1/hosts/%s", bc.Address, hostId)
 		req, err = http.NewRequest(http.MethodGet, requestURL, nil)
 		require.NoError(t, err)
 		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", tokenAdmin))
@@ -226,7 +227,7 @@ func TestHttpRateLimit(t *testing.T) {
 	// Confirm that a request from the second user results in a HTTP 503 due to
 	// exceeding the quota limit
 	t.Log("Checking that next API request is rejected...")
-	requestURL = fmt.Sprintf("%s/v1/hosts/%s", bc.Address, newHostId)
+	requestURL = fmt.Sprintf("%s/v1/hosts/%s", bc.Address, hostId)
 	req, err = http.NewRequest(http.MethodGet, requestURL, nil)
 	require.NoError(t, err)
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", tokenUser))
@@ -251,7 +252,7 @@ func TestHttpRateLimit(t *testing.T) {
 
 	// Do another request. Verify that request is successful
 	t.Log("Retrying...")
-	requestURL = fmt.Sprintf("%s/v1/hosts/%s", bc.Address, newHostId)
+	requestURL = fmt.Sprintf("%s/v1/hosts/%s", bc.Address, hostId)
 	req, err = http.NewRequest(http.MethodGet, requestURL, nil)
 	require.NoError(t, err)
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", tokenUser))
@@ -292,7 +293,8 @@ func TestCliRateLimit(t *testing.T) {
 	require.NoError(t, err)
 	hostCatalogId, err := boundary.CreateHostCatalogCli(t, ctx, projectId)
 	require.NoError(t, err)
-	newHostId := boundary.CreateNewHostCli(t, ctx, hostCatalogId, c.TargetAddress)
+	hostId, err := boundary.CreateHostCli(t, ctx, hostCatalogId, c.TargetAddress)
+	require.NoError(t, err)
 
 	// Create a user
 	acctName := "e2e-account"
@@ -332,7 +334,7 @@ func TestCliRateLimit(t *testing.T) {
 
 	// Make initial API request
 	t.Log("Getting rate limit info...")
-	requestURL := fmt.Sprintf("%s/v1/hosts/%s", bc.Address, newHostId)
+	requestURL := fmt.Sprintf("%s/v1/hosts/%s", bc.Address, hostId)
 	req, err := http.NewRequest(http.MethodGet, requestURL, nil)
 	require.NoError(t, err)
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", tokenAdmin))
@@ -351,7 +353,7 @@ func TestCliRateLimit(t *testing.T) {
 	t.Log("Sending multiple CLI requests to hit rate limit...")
 	var output *e2e.CommandResult
 	for i := 0; i <= policyLimit; i++ {
-		output = e2e.RunCommand(ctx, "boundary", e2e.WithArgs("hosts", "read", "-id", newHostId))
+		output = e2e.RunCommand(ctx, "boundary", e2e.WithArgs("hosts", "read", "-id", hostId))
 		t.Log(output.Duration)
 		if output.Err != nil {
 			break
@@ -368,7 +370,7 @@ func TestCliRateLimit(t *testing.T) {
 	t.Log("Logging in as another user...")
 	boundary.AuthenticateCli(t, ctx, bc.AuthMethodId, acctName, acctPassword)
 	for i := 0; i <= policyLimit; i++ {
-		output = e2e.RunCommand(ctx, "boundary", e2e.WithArgs("hosts", "read", "-id", newHostId))
+		output = e2e.RunCommand(ctx, "boundary", e2e.WithArgs("hosts", "read", "-id", hostId))
 		t.Log(output.Duration)
 		if output.Err != nil {
 			break
@@ -395,7 +397,7 @@ func TestCliRateLimit(t *testing.T) {
 	// command will take longer to return)
 	t.Log("Sending multiple CLI requests to hit rate limit...")
 	for i := 0; i <= policyLimit; i++ {
-		output = e2e.RunCommand(ctx, "boundary", e2e.WithArgs("hosts", "read", "-id", newHostId))
+		output = e2e.RunCommand(ctx, "boundary", e2e.WithArgs("hosts", "read", "-id", hostId))
 		t.Log(output.Duration)
 		require.NoError(t, output.Err, string(output.Stderr))
 		require.Equal(t, 0, output.ExitCode)
