@@ -46,13 +46,14 @@ func TestCliPaginateSessions(t *testing.T) {
 	require.NoError(t, err)
 	err = boundary.AddHostToHostSetCli(t, ctx, hostSetId, hostId)
 	require.NoError(t, err)
-	newTargetId := boundary.CreateNewTargetCli(t, ctx, projectId, c.TargetPort)
-	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, hostSetId)
+	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort)
+	require.NoError(t, err)
+	boundary.AddHostSourceToTargetCli(t, ctx, targetId, hostSetId)
 
 	// Connect to targets to create a session
 	// Create enough sessions to overflow a single page
 	for i := 0; i < c.MaxPageSize+1; i++ {
-		boundary.ConnectCli(t, ctx, newTargetId)
+		boundary.ConnectCli(t, ctx, targetId)
 	}
 
 	// List sessions recursively
@@ -76,7 +77,7 @@ func TestCliPaginateSessions(t *testing.T) {
 	assert.Empty(t, initialSessions.ListToken)
 
 	// Create a new session
-	boundary.ConnectCli(t, ctx, newTargetId)
+	boundary.ConnectCli(t, ctx, targetId)
 
 	// List again, should have the new session
 	output = e2e.RunCommand(ctx, "boundary",

@@ -47,8 +47,9 @@ func TestCliTcpTargetVaultGenericConnectTargetWithSsh(t *testing.T) {
 	require.NoError(t, err)
 	err = boundary.AddHostToHostSetCli(t, ctx, hostSetId, hostId)
 	require.NoError(t, err)
-	newTargetId := boundary.CreateNewTargetCli(t, ctx, projectId, c.TargetPort)
-	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, hostSetId)
+	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort)
+	require.NoError(t, err)
+	boundary.AddHostSourceToTargetCli(t, ctx, targetId, hostSetId)
 
 	// Configure vault
 	boundaryPolicyName, kvPolicyFilePath := vault.Setup(t, "testdata/boundary-controller-policy.hcl")
@@ -115,11 +116,11 @@ func TestCliTcpTargetVaultGenericConnectTargetWithSsh(t *testing.T) {
 	require.NoError(t, err)
 
 	// Add brokered credentials to target
-	boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, newTargetId, newCredentialLibraryId)
+	boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, targetId, newCredentialLibraryId)
 
 	// Get credentials for target
 	output = e2e.RunCommand(ctx, "boundary",
-		e2e.WithArgs("targets", "authorize-session", "-id", newTargetId, "-format", "json"),
+		e2e.WithArgs("targets", "authorize-session", "-id", targetId, "-format", "json"),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
 	var newSessionAuthorizationResult targets.SessionAuthorizationResult
@@ -142,7 +143,7 @@ func TestCliTcpTargetVaultGenericConnectTargetWithSsh(t *testing.T) {
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"connect", "ssh",
-			"-target-id", newTargetId, "--",
+			"-target-id", targetId, "--",
 			"-o", "UserKnownHostsFile=/dev/null",
 			"-o", "StrictHostKeyChecking=no",
 			"-o", "IdentitiesOnly=yes", // forces the use of the provided key

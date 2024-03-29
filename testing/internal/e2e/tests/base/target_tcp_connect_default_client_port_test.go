@@ -45,14 +45,15 @@ func TestCliTcpTargetConnectTargetWithTargetClientPort(t *testing.T) {
 	require.NoError(t, err)
 	err = boundary.AddHostToHostSetCli(t, ctx, hostSetId, hostId)
 	require.NoError(t, err)
-	newTargetId := boundary.CreateNewTargetCli(t, ctx, projectId, c.TargetPort, target.WithDefaultClientPort(expPort))
-	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, hostSetId)
+	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort, target.WithDefaultClientPort(expPort))
+	require.NoError(t, err)
+	boundary.AddHostSourceToTargetCli(t, ctx, targetId, hostSetId)
 
 	// Connect to target and print host's IP address
 	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"connect",
-			"-target-id", newTargetId,
+			"-target-id", targetId,
 			"-exec", "/bin/echo", "--",
 			"{{boundary.port}}",
 		),

@@ -223,11 +223,12 @@ func populateBoundaryDatabase(t testing.TB, ctx context.Context, c *config, te T
 	require.NoError(t, err)
 	err = boundary.AddHostToHostSetCli(t, ctx, hostSetId, hostId)
 	require.NoError(t, err)
-	newTargetId := boundary.CreateNewTargetCli(t, ctx, projectId, "2222") // openssh-server uses port 2222
-	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, hostSetId)
+	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, "2222") // openssh-server uses port 2222
+	require.NoError(t, err)
+	boundary.AddHostSourceToTargetCli(t, ctx, targetId, hostSetId)
 
 	// Create a target with an address attached
-	_ = boundary.CreateNewTargetCli(
+	_, err = boundary.CreateTargetCli(
 		t,
 		ctx,
 		projectId,
@@ -235,6 +236,7 @@ func populateBoundaryDatabase(t testing.TB, ctx context.Context, c *config, te T
 		target.WithName("e2e target with address"),
 		target.WithAddress(te.Target.UriNetwork),
 	)
+	require.NoError(t, err)
 
 	// Create AWS dynamic host catalog
 	awsHostCatalogId, err := boundary.CreateAwsHostCatalogCli(t, ctx, projectId, c.AwsAccessKeyId, c.AwsSecretAccessKey)
@@ -259,7 +261,7 @@ func populateBoundaryDatabase(t testing.TB, ctx context.Context, c *config, te T
 	boundary.CreateNewStaticCredentialPasswordCli(t, ctx, newCredentialStoreId, c.TargetSshUser, "password")
 	boundary.CreateNewStaticCredentialJsonCli(t, ctx, newCredentialStoreId, "testdata/credential.json")
 	newCredentialsId := boundary.CreateNewStaticCredentialPrivateKeyCli(t, ctx, newCredentialStoreId, c.TargetSshUser, c.TargetSshKeyPath)
-	boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, newTargetId, newCredentialsId)
+	boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, targetId, newCredentialsId)
 
 	// Create vault credentials
 	boundaryPolicyName, kvPolicyFilePath := vault.Setup(t, "testdata/boundary-controller-policy.hcl")
@@ -367,7 +369,7 @@ func populateBoundaryDatabase(t testing.TB, ctx context.Context, c *config, te T
 		boundaryTag,
 		te.Boundary.UriNetwork,
 		auth_token,
-		newTargetId,
+		targetId,
 	)
 	t.Cleanup(func() {
 		if err := te.Pool.Purge(connectTarget.Resource); err != nil {

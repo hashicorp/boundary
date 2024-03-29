@@ -85,7 +85,8 @@ func TestCliPaginateTargets(t *testing.T) {
 	assert.Empty(t, initialTargets.ListToken)
 
 	// Create a new target and destroy one of the other targets
-	newTargetId := boundary.CreateNewTargetCli(t, ctx, projectId, c.TargetPort, target.WithAddress(c.TargetAddress))
+	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort, target.WithAddress(c.TargetAddress))
+	require.NoError(t, err)
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"targets", "delete",
@@ -112,7 +113,7 @@ func TestCliPaginateTargets(t *testing.T) {
 	// The first item should be the most recently created, which
 	// should be our new target
 	firstItem := newTargets.Items[0]
-	assert.Equal(t, newTargetId, firstItem.Id)
+	assert.Equal(t, targetId, firstItem.Id)
 	assert.Empty(t, newTargets.ResponseType)
 	assert.Empty(t, newTargets.RemovedIds)
 	assert.Empty(t, newTargets.ListToken)

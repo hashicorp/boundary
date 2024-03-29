@@ -54,9 +54,14 @@ func AddHostSourceToTargetApi(t testing.TB, ctx context.Context, client *api.Cli
 	return err
 }
 
-// CreateNewTargetCli uses the cli to create a new target in boundary
+// CreateTargetCli uses the cli to create a new target in boundary
 // Returns the id of the new target.
-func CreateNewTargetCli(t testing.TB, ctx context.Context, projectId string, defaultPort string, opt ...target.Option) string {
+func CreateTargetCli(t testing.TB, ctx context.Context, projectId string, defaultPort string, opt ...target.Option) (string, error) {
+	name, err := base62.Random(16)
+	if err != nil {
+		return "", err
+	}
+
 	opts := target.GetOpts(opt...)
 	var args []string
 
@@ -77,7 +82,7 @@ func CreateNewTargetCli(t testing.TB, ctx context.Context, projectId string, def
 	if opts.WithName != "" {
 		args = append(args, "-name", opts.WithName)
 	} else {
-		args = append(args, "-name", "e2e Target")
+		args = append(args, "-name", fmt.Sprintf("e2e Target %s", name))
 	}
 	if opts.WithAddress != "" {
 		args = append(args, "-address", opts.WithAddress)
@@ -108,15 +113,19 @@ func CreateNewTargetCli(t testing.TB, ctx context.Context, projectId string, def
 		e2e.WithArgs("targets", "create"),
 		e2e.WithArgs(args...),
 	)
-	require.NoError(t, output.Err, string(output.Stderr))
+	if output.Err != nil {
+		return "", fmt.Errorf("%w: %s", output.Err, string(output.Stderr))
+	}
 
-	var newTargetResult targets.TargetCreateResult
-	err := json.Unmarshal(output.Stdout, &newTargetResult)
-	require.NoError(t, err)
+	var createTargetResult targets.TargetCreateResult
+	err = json.Unmarshal(output.Stdout, &createTargetResult)
+	if err != nil {
+		return "", err
+	}
 
-	newTargetId := newTargetResult.Item.Id
-	t.Logf("Created Target: %s", newTargetId)
-	return newTargetId
+	targetId := createTargetResult.Item.Id
+	t.Logf("Created Target: %s", targetId)
+	return targetId, nil
 }
 
 // AddHostSourceToTargetCli uses the cli to add a host source (host set or host)

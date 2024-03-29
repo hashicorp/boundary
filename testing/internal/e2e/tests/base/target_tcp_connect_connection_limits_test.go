@@ -38,7 +38,7 @@ func TestCliTcpTargetConnectTargetWithConnectionLimits(t *testing.T) {
 	projectId, err := boundary.CreateProjectCli(t, ctx, orgId)
 	require.NoError(t, err)
 	sessionConnectionLimit := 2
-	newTargetId := boundary.CreateNewTargetCli(
+	targetId, err := boundary.CreateTargetCli(
 		t,
 		ctx,
 		projectId,
@@ -46,6 +46,7 @@ func TestCliTcpTargetConnectTargetWithConnectionLimits(t *testing.T) {
 		target.WithAddress(c.TargetAddress),
 		target.WithSessionConnectionLimit(int32(sessionConnectionLimit)),
 	)
+	require.NoError(t, err)
 
 	// Start a session
 	ctxCancel, cancel := context.WithCancel(context.Background())
@@ -56,7 +57,7 @@ func TestCliTcpTargetConnectTargetWithConnectionLimits(t *testing.T) {
 		sessionChannel <- e2e.RunCommand(ctxCancel, "boundary",
 			e2e.WithArgs(
 				"connect",
-				"-target-id", newTargetId,
+				"-target-id", targetId,
 				"-listen-port", port,
 				"-format", "json",
 			),

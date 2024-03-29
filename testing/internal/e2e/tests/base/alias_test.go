@@ -39,20 +39,21 @@ func TestCliAlias(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create an alias for a target
-	newTargetId := boundary.CreateNewTargetCli(
+	targetId, err := boundary.CreateTargetCli(
 		t,
 		ctx,
 		projectId,
 		c.TargetPort,
 		target.WithAddress(c.TargetAddress),
 	)
+	require.NoError(t, err)
 	aliasTargetAddress := "example.alias.boundary"
 	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"aliases", "create", "target",
 			"-scope-id", "global",
 			"-value", aliasTargetAddress,
-			"-destination-id", newTargetId,
+			"-destination-id", targetId,
 			"-format", "json",
 		),
 	)
@@ -121,13 +122,14 @@ func TestCliAlias(t *testing.T) {
 	require.NoError(t, err)
 	err = boundary.AddHostToHostSetCli(t, ctx, hostSetId, hostId)
 	require.NoError(t, err)
-	targetWithHost := boundary.CreateNewTargetCli(
+	targetWithHost, err := boundary.CreateTargetCli(
 		t,
 		ctx,
 		projectId,
 		c.TargetPort,
 		target.WithName("targetWithHost"),
 	)
+	require.NoError(t, err)
 	boundary.AddHostSourceToTargetCli(t, ctx, targetWithHost, hostSetId)
 	aliasTargetHost := "aliasTargetHost"
 	output = e2e.RunCommand(ctx, "boundary",

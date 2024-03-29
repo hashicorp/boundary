@@ -36,7 +36,7 @@ func TestCliTcpTargetConnectTargetWithSessionMaxSecondsTearDown(t *testing.T) {
 	projectId, err := boundary.CreateProjectCli(t, ctx, orgId)
 	require.NoError(t, err)
 	sessionMaxSeconds := 7
-	newTargetId := boundary.CreateNewTargetCli(
+	targetId, err := boundary.CreateTargetCli(
 		t,
 		ctx,
 		projectId,
@@ -44,6 +44,7 @@ func TestCliTcpTargetConnectTargetWithSessionMaxSecondsTearDown(t *testing.T) {
 		target.WithAddress(c.TargetAddress),
 		target.WithSessionMaxSeconds(uint32(sessionMaxSeconds)),
 	)
+	require.NoError(t, err)
 
 	// Start a long-running session
 	var start time.Time
@@ -54,7 +55,7 @@ func TestCliTcpTargetConnectTargetWithSessionMaxSecondsTearDown(t *testing.T) {
 		sessionChannel <- e2e.RunCommand(ctxCancel, "boundary",
 			e2e.WithArgs(
 				"connect",
-				"-target-id", newTargetId,
+				"-target-id", targetId,
 				"-exec", "/usr/bin/ssh", "--",
 				"-l", c.TargetSshUser,
 				"-i", c.TargetSshKeyPath,
@@ -107,7 +108,7 @@ func TestCliTcpTargetConnectTargetWithSessionMaxSecondsRejectNew(t *testing.T) {
 	projectId, err := boundary.CreateProjectCli(t, ctx, orgId)
 	require.NoError(t, err)
 	sessionMaxSeconds := 7
-	newTargetId := boundary.CreateNewTargetCli(
+	targetId, err := boundary.CreateTargetCli(
 		t,
 		ctx,
 		projectId,
@@ -115,6 +116,7 @@ func TestCliTcpTargetConnectTargetWithSessionMaxSecondsRejectNew(t *testing.T) {
 		target.WithAddress(c.TargetAddress),
 		target.WithSessionMaxSeconds(uint32(sessionMaxSeconds)),
 	)
+	require.NoError(t, err)
 
 	// Start a session
 	var start time.Time
@@ -127,7 +129,7 @@ func TestCliTcpTargetConnectTargetWithSessionMaxSecondsRejectNew(t *testing.T) {
 		sessionChannel <- e2e.RunCommand(ctxCancel, "boundary",
 			e2e.WithArgs(
 				"connect",
-				"-target-id", newTargetId,
+				"-target-id", targetId,
 				"-listen-port", port,
 				"-format", "json",
 			),

@@ -112,14 +112,15 @@ func TestCliCreateAwsDynamicHostCatalogWithHostSet(t *testing.T) {
 	assert.Equal(t, expectedHostCatalogCount, actualHostCatalogCount, "Numbers of hosts in host catalog did not match expected amount")
 
 	// Create target
-	newTargetId := boundary.CreateNewTargetCli(t, ctx, projectId, c.TargetPort)
-	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, hostSetId1)
+	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort)
+	require.NoError(t, err)
+	boundary.AddHostSourceToTargetCli(t, ctx, targetId, hostSetId1)
 
 	// Connect to target
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"connect",
-			"-target-id", newTargetId,
+			"-target-id", targetId,
 			"-exec", "/usr/bin/ssh", "--",
 			"-l", c.TargetSshUser,
 			"-i", c.TargetSshKeyPath,

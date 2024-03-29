@@ -37,13 +37,14 @@ func TestCliTcpTargetConnectPostgres(t *testing.T) {
 	})
 	projectId, err := boundary.CreateProjectCli(t, ctx, orgId)
 	require.NoError(t, err)
-	newTargetId := boundary.CreateNewTargetCli(
+	targetId, err := boundary.CreateTargetCli(
 		t,
 		ctx,
 		projectId,
 		c.TargetPort,
 		target.WithAddress(c.TargetAddress),
 	)
+	require.NoError(t, err)
 	newCredentialStoreId := boundary.CreateNewCredentialStoreStaticCli(t, ctx, projectId)
 	newCredentialsId := boundary.CreateNewStaticCredentialPasswordCli(
 		t,
@@ -52,13 +53,13 @@ func TestCliTcpTargetConnectPostgres(t *testing.T) {
 		c.PostgresUser,
 		c.PostgresPassword,
 	)
-	boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, newTargetId, newCredentialsId)
+	boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, targetId, newCredentialsId)
 
 	var cmd *exec.Cmd
 	cmd = exec.CommandContext(ctx,
 		"boundary",
 		"connect", "postgres",
-		"-target-id", newTargetId,
+		"-target-id", targetId,
 		"-dbname", c.PostgresDbName,
 	)
 	f, err := pty.Start(cmd)

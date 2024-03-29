@@ -44,15 +44,16 @@ func TestCliTcpTargetConnectTargetWithSsh(t *testing.T) {
 	require.NoError(t, err)
 	err = boundary.AddHostToHostSetCli(t, ctx, hostSetId, hostId)
 	require.NoError(t, err)
-	newTargetId := boundary.CreateNewTargetCli(t, ctx, projectId, c.TargetPort)
-	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, hostSetId)
+	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort)
+	require.NoError(t, err)
+	boundary.AddHostSourceToTargetCli(t, ctx, targetId, hostSetId)
 	newCredentialStoreId := boundary.CreateNewCredentialStoreStaticCli(t, ctx, projectId)
 	newCredentialsId := boundary.CreateNewStaticCredentialPrivateKeyCli(t, ctx, newCredentialStoreId, c.TargetSshUser, c.TargetSshKeyPath)
-	boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, newTargetId, newCredentialsId)
+	boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, targetId, newCredentialsId)
 
 	// Get credentials for target
 	output := e2e.RunCommand(ctx, "boundary",
-		e2e.WithArgs("targets", "authorize-session", "-id", newTargetId, "-format", "json"),
+		e2e.WithArgs("targets", "authorize-session", "-id", targetId, "-format", "json"),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
 	var newSessionAuthorizationResult targets.SessionAuthorizationResult
@@ -76,7 +77,7 @@ func TestCliTcpTargetConnectTargetWithSsh(t *testing.T) {
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"connect", "ssh",
-			"-target-id", newTargetId, "--",
+			"-target-id", targetId, "--",
 			"-o", "UserKnownHostsFile=/dev/null",
 			"-o", "StrictHostKeyChecking=no",
 			"-o", "IdentitiesOnly=yes", // forces the use of the provided key
@@ -89,7 +90,7 @@ func TestCliTcpTargetConnectTargetWithSsh(t *testing.T) {
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"connect", "ssh",
-			"-target-id", newTargetId,
+			"-target-id", targetId,
 			"-remote-command", "hostname -i",
 			"--",
 			"-o", "UserKnownHostsFile=/dev/null",

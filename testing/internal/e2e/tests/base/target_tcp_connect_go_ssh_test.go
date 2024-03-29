@@ -35,7 +35,8 @@ func TestCliTcpTargetConnectGoSsh(t *testing.T) {
 	})
 	projectId, err := boundary.CreateProjectCli(t, ctx, orgId)
 	require.NoError(t, err)
-	newTargetId := boundary.CreateNewTargetCli(t, ctx, projectId, c.TargetPort, target.WithAddress(c.TargetAddress))
+	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort, target.WithAddress(c.TargetAddress))
+	require.NoError(t, err)
 
 	// Start a session
 	ctxCancel, cancel := context.WithCancel(context.Background())
@@ -46,7 +47,7 @@ func TestCliTcpTargetConnectGoSsh(t *testing.T) {
 		cmdChan <- e2e.RunCommand(ctxCancel, "boundary",
 			e2e.WithArgs(
 				"connect",
-				"-target-id", newTargetId,
+				"-target-id", targetId,
 				"-listen-port", port,
 				"-format", "json",
 			),

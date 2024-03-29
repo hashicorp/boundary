@@ -43,8 +43,9 @@ func TestCliBytesUpDownEmpty(t *testing.T) {
 	require.NoError(t, err)
 	err = boundary.AddHostToHostSetCli(t, ctx, hostSetId, hostId)
 	require.NoError(t, err)
-	newTargetId := boundary.CreateNewTargetCli(t, ctx, projectId, c.TargetPort)
-	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, hostSetId)
+	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort)
+	require.NoError(t, err)
+	boundary.AddHostSourceToTargetCli(t, ctx, targetId, hostSetId)
 
 	// Create a session where no additional commands are run
 	ctxCancel, cancel := context.WithCancel(context.Background())
@@ -54,7 +55,7 @@ func TestCliBytesUpDownEmpty(t *testing.T) {
 		errChan <- e2e.RunCommand(ctxCancel, "boundary",
 			e2e.WithArgs(
 				"connect",
-				"-target-id", newTargetId,
+				"-target-id", targetId,
 				"-exec", "/usr/bin/ssh", "--",
 				"-l", c.TargetSshUser,
 				"-i", c.TargetSshKeyPath,
@@ -69,7 +70,7 @@ func TestCliBytesUpDownEmpty(t *testing.T) {
 	t.Cleanup(cancel)
 
 	session := boundary.WaitForSessionCli(t, ctx, projectId)
-	assert.Equal(t, newTargetId, session.TargetId)
+	assert.Equal(t, targetId, session.TargetId)
 	assert.Equal(t, hostId, session.HostId)
 
 	// Confirm that bytesUp and bytesDown do not change

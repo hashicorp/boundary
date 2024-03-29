@@ -35,13 +35,14 @@ func TestCliCreateUpdateTargetAddress(t *testing.T) {
 	})
 	projectId, err := boundary.CreateProjectCli(t, ctx, orgId)
 	require.NoError(t, err)
-	newTargetId := boundary.CreateNewTargetCli(t, ctx, projectId, c.TargetPort, target.WithAddress(c.TargetAddress))
+	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort, target.WithAddress(c.TargetAddress))
+	require.NoError(t, err)
 
 	// Connect to target and print host's IP address
 	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"connect",
-			"-target-id", newTargetId,
+			"-target-id", targetId,
 			"-exec", "/usr/bin/ssh", "--",
 			"-l", c.TargetSshUser,
 			"-i", c.TargetSshKeyPath,
@@ -64,7 +65,7 @@ func TestCliCreateUpdateTargetAddress(t *testing.T) {
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"targets", "update", "tcp",
-			"-id", newTargetId,
+			"-id", targetId,
 			"-address", "null",
 			"-format", "json",
 		),
@@ -76,7 +77,7 @@ func TestCliCreateUpdateTargetAddress(t *testing.T) {
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"connect",
-			"-target-id", newTargetId,
+			"-target-id", targetId,
 			"-format", "json",
 			"-exec", "/usr/bin/ssh", "--",
 			"-l", c.TargetSshUser,
@@ -99,7 +100,7 @@ func TestCliCreateUpdateTargetAddress(t *testing.T) {
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"targets", "update", "tcp",
-			"-id", newTargetId,
+			"-id", targetId,
 			"-address", c.TargetAddress,
 			"-format", "json",
 		),
@@ -110,7 +111,7 @@ func TestCliCreateUpdateTargetAddress(t *testing.T) {
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"connect",
-			"-target-id", newTargetId,
+			"-target-id", targetId,
 			"-exec", "/usr/bin/ssh", "--",
 			"-l", c.TargetSshUser,
 			"-i", c.TargetSshKeyPath,
@@ -160,13 +161,14 @@ func TestCliTargetAddressToHostSource(t *testing.T) {
 	require.NoError(t, err)
 	err = boundary.AddHostToHostSetCli(t, ctx, hostSetId, hostId)
 	require.NoError(t, err)
-	newTargetId := boundary.CreateNewTargetCli(t, ctx, projectId, c.TargetPort, target.WithAddress(c.TargetAddress))
+	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort, target.WithAddress(c.TargetAddress))
+	require.NoError(t, err)
 
 	// Connect to target and print host's IP address
 	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"connect",
-			"-target-id", newTargetId,
+			"-target-id", targetId,
 			"-exec", "/usr/bin/ssh", "--",
 			"-l", c.TargetSshUser,
 			"-i", c.TargetSshKeyPath,
@@ -189,7 +191,7 @@ func TestCliTargetAddressToHostSource(t *testing.T) {
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"targets", "add-host-sources",
-			"-id", newTargetId,
+			"-id", targetId,
 			"-host-source", hostSetId,
 			"-format", "json",
 		),
@@ -204,7 +206,7 @@ func TestCliTargetAddressToHostSource(t *testing.T) {
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"targets", "set-host-sources",
-			"-id", newTargetId,
+			"-id", targetId,
 			"-host-source", hostSetId,
 			"-format", "json",
 		),
@@ -218,21 +220,21 @@ func TestCliTargetAddressToHostSource(t *testing.T) {
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"targets", "update", "tcp",
-			"-id", newTargetId,
+			"-id", targetId,
 			"-address", "null",
 			"-format", "json",
 		),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
 
-	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, hostSetId)
-	boundary.SetHostSourceToTargetCli(t, ctx, newTargetId, hostSetId)
+	boundary.AddHostSourceToTargetCli(t, ctx, targetId, hostSetId)
+	boundary.SetHostSourceToTargetCli(t, ctx, targetId, hostSetId)
 
 	// Connect to target and print host's IP address, now using the host source.
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"connect",
-			"-target-id", newTargetId,
+			"-target-id", targetId,
 			"-exec", "/usr/bin/ssh", "--",
 			"-l", c.TargetSshUser,
 			"-i", c.TargetSshKeyPath,
@@ -283,14 +285,15 @@ func TestCliTargetHostSourceToAddress(t *testing.T) {
 	require.NoError(t, err)
 	err = boundary.AddHostToHostSetCli(t, ctx, hostSetId, hostId)
 	require.NoError(t, err)
-	newTargetId := boundary.CreateNewTargetCli(t, ctx, projectId, c.TargetPort)
-	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, hostSetId)
+	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort)
+	require.NoError(t, err)
+	boundary.AddHostSourceToTargetCli(t, ctx, targetId, hostSetId)
 
 	// Connect to target and print host's IP address
 	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"connect",
-			"-target-id", newTargetId,
+			"-target-id", targetId,
 			"-exec", "/usr/bin/ssh", "--",
 			"-l", c.TargetSshUser,
 			"-i", c.TargetSshKeyPath,
@@ -314,7 +317,7 @@ func TestCliTargetHostSourceToAddress(t *testing.T) {
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"targets", "update", "tcp",
-			"-id", newTargetId,
+			"-id", targetId,
 			"-address", c.TargetAddress,
 			"-format", "json",
 		),
@@ -325,13 +328,13 @@ func TestCliTargetHostSourceToAddress(t *testing.T) {
 	require.NoError(t, json.Unmarshal(output.Stderr, &response))
 	require.Equal(t, http.StatusBadRequest, response.Status, "Expected error when setting address to target with a host source")
 
-	boundary.RemoveHostSourceFromTargetCli(t, ctx, newTargetId, hostSetId)
+	boundary.RemoveHostSourceFromTargetCli(t, ctx, targetId, hostSetId)
 
 	// Attempt to add an address to the target again - should work
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"targets", "update", "tcp",
-			"-id", newTargetId,
+			"-id", targetId,
 			"-address", c.TargetAddress,
 			"-format", "json",
 		),
@@ -342,7 +345,7 @@ func TestCliTargetHostSourceToAddress(t *testing.T) {
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"connect",
-			"-target-id", newTargetId,
+			"-target-id", targetId,
 			"-exec", "/usr/bin/ssh", "--",
 			"-l", c.TargetSshUser,
 			"-i", c.TargetSshKeyPath,

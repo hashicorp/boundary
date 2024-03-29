@@ -43,8 +43,9 @@ func TestCliTcpTargetConnectTargetWithLocalhost(t *testing.T) {
 	require.NoError(t, err)
 	err = boundary.AddHostToHostSetCli(t, ctx, hostSetId, hostId)
 	require.NoError(t, err)
-	newTargetId := boundary.CreateNewTargetCli(t, ctx, projectId, c.TargetPort)
-	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, hostSetId)
+	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort)
+	require.NoError(t, err)
+	boundary.AddHostSourceToTargetCli(t, ctx, targetId, hostSetId)
 
 	// Start a session
 	ctxCancel, cancel := context.WithCancel(context.Background())
@@ -55,7 +56,7 @@ func TestCliTcpTargetConnectTargetWithLocalhost(t *testing.T) {
 		cmdChan <- e2e.RunCommand(ctxCancel, "boundary",
 			e2e.WithArgs(
 				"connect",
-				"-target-id", newTargetId,
+				"-target-id", targetId,
 				"-listen-port", port,
 				"-format", "json",
 			),

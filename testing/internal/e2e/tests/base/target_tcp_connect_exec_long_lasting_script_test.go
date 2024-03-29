@@ -47,11 +47,12 @@ func TestCliTcpTargetConnectExecLongLastingScript(t *testing.T) {
 	newCredentialsId := boundary.CreateNewStaticCredentialPrivateKeyCli(t, ctx, newCredentialStoreId, c.TargetSshUser, c.TargetSshKeyPath)
 
 	// Create TCP target
-	newTargetId := boundary.CreateNewTargetCli(t, ctx, projectId, c.TargetPort,
+	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort,
 		target.WithType("tcp"),
 		target.WithAddress(c.TargetAddress),
 	)
-	boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, newTargetId, newCredentialsId)
+	require.NoError(t, err)
+	boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, targetId, newCredentialsId)
 
 	// Start a session
 	ctxCancel, cancel := context.WithCancel(context.Background())
@@ -62,7 +63,7 @@ func TestCliTcpTargetConnectExecLongLastingScript(t *testing.T) {
 		cmdChan <- e2e.RunCommand(ctxCancel, "boundary",
 			e2e.WithArgs(
 				"connect",
-				"-target-id", newTargetId,
+				"-target-id", targetId,
 				"-listen-port", proxyPort,
 				"-format", "json",
 			),

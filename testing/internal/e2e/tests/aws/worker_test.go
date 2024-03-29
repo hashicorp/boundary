@@ -32,14 +32,15 @@ func TestCliWorker(t *testing.T) {
 	})
 	projectId, err := boundary.CreateProjectCli(t, ctx, orgId)
 	require.NoError(t, err)
-	newTargetId := boundary.CreateNewTargetCli(t, ctx, projectId, c.TargetPort, target.WithAddress(c.TargetAddress))
+	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort, target.WithAddress(c.TargetAddress))
+	require.NoError(t, err)
 
 	// Set incorrect worker filter, expect connection failure
 	t.Logf("Setting incorrect worker filter...")
 	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"targets", "update", "tcp",
-			"-id", newTargetId,
+			"-id", targetId,
 			"-egress-worker-filter", `"prod" in "/tags/type"`,
 			"-format", "json",
 		),
@@ -49,7 +50,7 @@ func TestCliWorker(t *testing.T) {
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"connect",
-			"-target-id", newTargetId,
+			"-target-id", targetId,
 			"-exec", "/usr/bin/ssh", "--",
 			"-l", c.TargetSshUser,
 			"-i", c.TargetSshKeyPath,
@@ -72,7 +73,7 @@ func TestCliWorker(t *testing.T) {
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"targets", "update", "tcp",
-			"-id", newTargetId,
+			"-id", targetId,
 			"-egress-worker-filter", fmt.Sprintf(`"%s" in "/tags/type"`, c.WorkerTagEgress),
 			"-format", "json",
 		),
@@ -82,7 +83,7 @@ func TestCliWorker(t *testing.T) {
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"connect",
-			"-target-id", newTargetId,
+			"-target-id", targetId,
 			"-exec", "/usr/bin/ssh", "--",
 			"-l", c.TargetSshUser,
 			"-i", c.TargetSshKeyPath,

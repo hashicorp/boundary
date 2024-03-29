@@ -58,8 +58,9 @@ func TestCliStaticCredentialStore(t *testing.T) {
 	require.NoError(t, err)
 	err = boundary.AddHostToHostSetCli(t, ctx, hostSetId, hostId)
 	require.NoError(t, err)
-	newTargetId := boundary.CreateNewTargetCli(t, ctx, projectId, c.TargetPort)
-	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, hostSetId)
+	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort)
+	require.NoError(t, err)
+	boundary.AddHostSourceToTargetCli(t, ctx, targetId, hostSetId)
 
 	err = createPrivateKeyPemFile(testPemFile)
 	require.NoError(t, err)
@@ -76,7 +77,7 @@ func TestCliStaticCredentialStore(t *testing.T) {
 
 	// Get credentials for target (expect empty)
 	output := e2e.RunCommand(ctx, "boundary",
-		e2e.WithArgs("targets", "authorize-session", "-id", newTargetId, "-format", "json"),
+		e2e.WithArgs("targets", "authorize-session", "-id", targetId, "-format", "json"),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
 	var newSessionAuthorizationResult targets.SessionAuthorizationResult
@@ -85,13 +86,13 @@ func TestCliStaticCredentialStore(t *testing.T) {
 	require.True(t, newSessionAuthorizationResult.Item.Credentials == nil)
 
 	// Add credentials to target
-	boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, newTargetId, privateKeyCredentialsId)
-	boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, newTargetId, jsonCredentialsId)
-	boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, newTargetId, pwCredentialsId)
+	boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, targetId, privateKeyCredentialsId)
+	boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, targetId, jsonCredentialsId)
+	boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, targetId, pwCredentialsId)
 
 	// Get credentials for target
 	output = e2e.RunCommand(ctx, "boundary",
-		e2e.WithArgs("targets", "authorize-session", "-id", newTargetId, "-format", "json"),
+		e2e.WithArgs("targets", "authorize-session", "-id", targetId, "-format", "json"),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
 	err = json.Unmarshal(output.Stdout, &newSessionAuthorizationResult)

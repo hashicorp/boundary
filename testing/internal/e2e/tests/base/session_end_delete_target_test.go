@@ -44,8 +44,9 @@ func TestCliSessionEndWhenTargetIsDeleted(t *testing.T) {
 	require.NoError(t, err)
 	err = boundary.AddHostToHostSetCli(t, ctx, hostSetId, hostId)
 	require.NoError(t, err)
-	newTargetId := boundary.CreateNewTargetCli(t, ctx, projectId, c.TargetPort)
-	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, hostSetId)
+	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort)
+	require.NoError(t, err)
+	boundary.AddHostSourceToTargetCli(t, ctx, targetId, hostSetId)
 	acctName := "e2e-account"
 	newAccountId, acctPassword := boundary.CreateNewAccountCli(t, ctx, bc.AuthMethodId, acctName)
 	t.Cleanup(func() {
@@ -79,7 +80,7 @@ func TestCliSessionEndWhenTargetIsDeleted(t *testing.T) {
 			e2e.WithArgs(
 				"connect",
 				"-token", "env://E2E_AUTH_TOKEN",
-				"-target-id", newTargetId,
+				"-target-id", targetId,
 				"-exec", "/usr/bin/ssh", "--",
 				"-l", c.TargetSshUser,
 				"-i", c.TargetSshKeyPath,
@@ -96,12 +97,12 @@ func TestCliSessionEndWhenTargetIsDeleted(t *testing.T) {
 	t.Cleanup(cancel)
 	s := boundary.WaitForSessionCli(t, ctx, projectId)
 	boundary.WaitForSessionStatusCli(t, ctx, s.Id, session.StatusActive.String())
-	assert.Equal(t, newTargetId, s.TargetId)
+	assert.Equal(t, targetId, s.TargetId)
 	assert.Equal(t, hostId, s.HostId)
 
 	// Delete Target
 	t.Log("Deleting target...")
-	output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("targets", "delete", "-id", newTargetId))
+	output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("targets", "delete", "-id", targetId))
 	require.NoError(t, output.Err, string(output.Stderr))
 
 	// Check if session has terminated
