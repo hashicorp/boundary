@@ -248,10 +248,11 @@ func populateBoundaryDatabase(t testing.TB, ctx context.Context, c *config, te T
 
 	// Create a user/group and add role to group
 	newAccountId, _ := boundary.CreateNewAccountCli(t, ctx, te.DbInitInfo.AuthMethod.AuthMethodId, "test-account")
-	newUserId := boundary.CreateNewUserCli(t, ctx, "global")
-	boundary.SetAccountToUserCli(t, ctx, newUserId, newAccountId)
+	userId, err := boundary.CreateUserCli(t, ctx, "global")
+	require.NoError(t, err)
+	boundary.SetAccountToUserCli(t, ctx, userId, newAccountId)
 	newGroupId := boundary.CreateNewGroupCli(t, ctx, "global")
-	boundary.AddUserToGroup(t, ctx, newUserId, newGroupId)
+	boundary.AddUserToGroup(t, ctx, userId, newGroupId)
 	newRoleId, err := boundary.CreateRoleCli(t, ctx, projectId)
 	require.NoError(t, err)
 	boundary.AddGrantToRoleCli(t, ctx, newRoleId, "ids=*;type=target;actions=authorize-session")

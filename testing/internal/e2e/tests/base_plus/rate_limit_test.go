@@ -166,19 +166,20 @@ func TestHttpRateLimit(t *testing.T) {
 		)
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
-	newUserId := boundary.CreateNewUserCli(t, ctx, "global")
+	userId, err := boundary.CreateUserCli(t, ctx, "global")
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		boundary.AuthenticateAdminCli(t, context.Background())
 		output := e2e.RunCommand(ctx, "boundary",
-			e2e.WithArgs("users", "delete", "-id", newUserId),
+			e2e.WithArgs("users", "delete", "-id", userId),
 		)
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
-	boundary.SetAccountToUserCli(t, ctx, newUserId, newAccountId)
+	boundary.SetAccountToUserCli(t, ctx, userId, newAccountId)
 	newRoleId, err := boundary.CreateRoleCli(t, ctx, projectId)
 	require.NoError(t, err)
 	boundary.AddGrantToRoleCli(t, ctx, newRoleId, "ids=*;type=*;actions=*")
-	boundary.AddPrincipalToRoleCli(t, ctx, newRoleId, newUserId)
+	boundary.AddPrincipalToRoleCli(t, ctx, newRoleId, userId)
 
 	// Get auth token for second user
 	res, err = boundary.AuthenticateHttp(t, ctx, bc.Address, bc.AuthMethodId, acctName, acctPassword)
@@ -306,19 +307,20 @@ func TestCliRateLimit(t *testing.T) {
 		)
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
-	newUserId := boundary.CreateNewUserCli(t, ctx, "global")
+	userId, err := boundary.CreateUserCli(t, ctx, "global")
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		boundary.AuthenticateAdminCli(t, context.Background())
 		output := e2e.RunCommand(ctx, "boundary",
-			e2e.WithArgs("users", "delete", "-id", newUserId),
+			e2e.WithArgs("users", "delete", "-id", userId),
 		)
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
-	boundary.SetAccountToUserCli(t, ctx, newUserId, newAccountId)
+	boundary.SetAccountToUserCli(t, ctx, userId, newAccountId)
 	newRoleId, err := boundary.CreateRoleCli(t, ctx, projectId)
 	require.NoError(t, err)
 	boundary.AddGrantToRoleCli(t, ctx, newRoleId, "ids=*;type=*;actions=*")
-	boundary.AddPrincipalToRoleCli(t, ctx, newRoleId, newUserId)
+	boundary.AddPrincipalToRoleCli(t, ctx, newRoleId, userId)
 
 	// Authenticate over HTTP
 	res, err := boundary.AuthenticateHttp(t, ctx, bc.Address, bc.AuthMethodId, bc.AdminLoginName, bc.AdminLoginPassword)

@@ -36,15 +36,16 @@ func TestUserIsLoggedOutWhenAuthTokenIsDeletedCli(t *testing.T) {
 		)
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
-	newUserId := boundary.CreateNewUserCli(t, ctx, "global")
+	userId, err := boundary.CreateUserCli(t, ctx, "global")
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		boundary.AuthenticateAdminCli(t, context.Background())
 		output := e2e.RunCommand(ctx, "boundary",
-			e2e.WithArgs("users", "delete", "-id", newUserId),
+			e2e.WithArgs("users", "delete", "-id", userId),
 		)
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
-	boundary.SetAccountToUserCli(t, ctx, newUserId, newAccountId)
+	boundary.SetAccountToUserCli(t, ctx, userId, newAccountId)
 
 	// Authenticate user and assign a name to its auth token
 	boundary.AuthenticateCli(t, context.Background(), bc.AuthMethodId, testAccountName, acctPassword,

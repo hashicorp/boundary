@@ -45,7 +45,8 @@ func TestCliApplyGrantsForMultipleScopes(t *testing.T) {
 	})
 
 	// Create User and set Account to it
-	userId := boundary.CreateNewUserCli(t, ctx, "global")
+	userId, err := boundary.CreateUserCli(t, ctx, "global")
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		boundary.AuthenticateAdminCli(t, ctx)
 		output := e2e.RunCommand(ctx, "boundary",

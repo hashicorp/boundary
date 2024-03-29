@@ -123,7 +123,8 @@ func TestCliAuthMethodPassword(t *testing.T) {
 	require.Contains(t, usersReadResult.Item.AccountIds, newAccountId)
 
 	// Create a new account and manually attach it to a new user
-	newUserId := boundary.CreateNewUserCli(t, ctx, orgId)
+	newUserId, err := boundary.CreateUserCli(t, ctx, orgId)
+	require.NoError(t, err)
 	testAccountName = "test-account2"
 	newAccountId, acctPassword = boundary.CreateNewAccountCli(t, ctx, newAuthMethodId, testAccountName)
 	boundary.SetAccountToUserCli(t, ctx, newUserId, newAccountId)

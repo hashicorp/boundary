@@ -65,15 +65,16 @@ func TestCliSessionCancelGroup(t *testing.T) {
 		)
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
-	newUserId := boundary.CreateNewUserCli(t, ctx, "global")
+	userId, err := boundary.CreateUserCli(t, ctx, "global")
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		boundary.AuthenticateAdminCli(t, context.Background())
 		output := e2e.RunCommand(ctx, "boundary",
-			e2e.WithArgs("users", "delete", "-id", newUserId),
+			e2e.WithArgs("users", "delete", "-id", userId),
 		)
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
-	boundary.SetAccountToUserCli(t, ctx, newUserId, newAccountId)
+	boundary.SetAccountToUserCli(t, ctx, userId, newAccountId)
 
 	// Try to connect to the target as a user without permissions
 	boundary.AuthenticateCli(t, ctx, bc.AuthMethodId, acctName, acctPassword)
@@ -103,7 +104,7 @@ func TestCliSessionCancelGroup(t *testing.T) {
 	// Create a group
 	boundary.AuthenticateAdminCli(t, ctx)
 	newGroupId := boundary.CreateNewGroupCli(t, ctx, "global")
-	boundary.AddUserToGroup(t, ctx, newUserId, newGroupId)
+	boundary.AddUserToGroup(t, ctx, userId, newGroupId)
 
 	// Create a role for a group
 	newRoleId, err := boundary.CreateRoleCli(t, ctx, projectId)

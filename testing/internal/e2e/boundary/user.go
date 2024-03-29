@@ -35,27 +35,36 @@ func CreateUserApi(t testing.TB, ctx context.Context, client *api.Client, scopeI
 	return userId, nil
 }
 
-// CreateNewUserCli creates a new user using the cli.
+// CreateUserCli creates a new user using the cli.
 // Returns the id of the new user
-func CreateNewUserCli(t testing.TB, ctx context.Context, scopeId string) string {
+func CreateUserCli(t testing.TB, ctx context.Context, scopeId string) (string, error) {
+	name, err := base62.Random(16)
+	if err != nil {
+		return "", err
+	}
+
 	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"users", "create",
 			"-scope-id", scopeId,
-			"-name", "e2e User",
+			"-name", fmt.Sprintf("e2e User %s", name),
 			"-description", "e2e",
 			"-format", "json",
 		),
 	)
-	require.NoError(t, output.Err, string(output.Stderr))
+	if output.Err != nil {
+		return "", fmt.Errorf("%w: %s", output.Err, string(output.Stderr))
+	}
 
-	var newUserResult users.UserCreateResult
-	err := json.Unmarshal(output.Stdout, &newUserResult)
-	require.NoError(t, err)
+	var createUserResult users.UserCreateResult
+	err = json.Unmarshal(output.Stdout, &createUserResult)
+	if err != nil {
+		return "", err
+	}
 
-	newUserId := newUserResult.Item.Id
-	t.Logf("Created User: %s", newUserId)
-	return newUserId
+	userId := createUserResult.Item.Id
+	t.Logf("Created User: %s", userId)
+	return userId, nil
 }
 
 // SetAccountToUserCli sets an account to a the specified user using the cli.
