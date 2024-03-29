@@ -268,8 +268,9 @@ func populateBoundaryDatabase(t testing.TB, ctx context.Context, c *config, te T
 	require.NoError(t, err)
 	boundary.CreateNewStaticCredentialPasswordCli(t, ctx, storeId, c.TargetSshUser, "password")
 	boundary.CreateNewStaticCredentialJsonCli(t, ctx, storeId, "testdata/credential.json")
-	newCredentialsId := boundary.CreateNewStaticCredentialPrivateKeyCli(t, ctx, storeId, c.TargetSshUser, c.TargetSshKeyPath)
-	err = boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, targetId, newCredentialsId)
+	credentialsId, err := boundary.CreateStaticCredentialPrivateKeyCli(t, ctx, storeId, c.TargetSshUser, c.TargetSshKeyPath)
+	require.NoError(t, err)
+	err = boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, targetId, credentialsId)
 	require.NoError(t, err)
 
 	// Create vault credentials

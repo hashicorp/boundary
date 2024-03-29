@@ -73,7 +73,8 @@ func TestCliStaticCredentialStore(t *testing.T) {
 	// Create static credentials
 	storeId, err := boundary.CreateCredentialStoreStaticCli(t, ctx, projectId)
 	require.NoError(t, err)
-	privateKeyCredentialsId := boundary.CreateNewStaticCredentialPrivateKeyCli(t, ctx, storeId, c.TargetSshUser, testPemFile)
+	privateKeyCredentialsId, err := boundary.CreateStaticCredentialPrivateKeyCli(t, ctx, storeId, c.TargetSshUser, testPemFile)
+	require.NoError(t, err)
 	pwCredentialsId := boundary.CreateNewStaticCredentialPasswordCli(t, ctx, storeId, c.TargetSshUser, testPassword)
 	jsonCredentialsId := boundary.CreateNewStaticCredentialJsonCli(t, ctx, storeId, testCredentialsFile)
 

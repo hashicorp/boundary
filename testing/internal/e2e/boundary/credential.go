@@ -168,28 +168,39 @@ func CreateVaultGenericCredentialLibraryCli(t testing.TB, ctx context.Context, c
 	return credentialLibraryId, nil
 }
 
-// CreateNewStaticCredentialPrivateKeyCli uses the cli to create a new private key credential in the
+// CreateStaticCredentialPrivateKeyCli uses the cli to create a new private key credential in the
 // provided static credential store.
 // Returns the id of the new credential
-func CreateNewStaticCredentialPrivateKeyCli(t testing.TB, ctx context.Context, credentialStoreId string, user string, filePath string) string {
+func CreateStaticCredentialPrivateKeyCli(t testing.TB, ctx context.Context, credentialStoreId string, user string, filePath string) (string, error) {
+	name, err := base62.Random(16)
+	if err != nil {
+		return "", err
+	}
+
 	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"credentials", "create", "ssh-private-key",
 			"-credential-store-id", credentialStoreId,
 			"-username", user,
 			"-private-key", "file://"+filePath,
+			"-name", fmt.Sprintf("e2e Credential %s", name),
 			"-description", "e2e",
 			"-format", "json",
 		),
 	)
-	require.NoError(t, output.Err, string(output.Stderr))
-	var newCredentialsResult credentials.CredentialCreateResult
-	err := json.Unmarshal(output.Stdout, &newCredentialsResult)
-	require.NoError(t, err)
-	newCredentialsId := newCredentialsResult.Item.Id
-	t.Logf("Created SSH Private Key Credentials: %s", newCredentialsId)
+	if output.Err != nil {
+		return "", fmt.Errorf("%w: %s", output.Err, string(output.Stderr))
+	}
 
-	return newCredentialsId
+	var createCredentialResult credentials.CredentialCreateResult
+	err = json.Unmarshal(output.Stdout, &createCredentialResult)
+	if err != nil {
+		return "", err
+	}
+
+	credentialId := createCredentialResult.Item.Id
+	t.Logf("Created SSH Private Key Credentials: %s", credentialId)
+	return credentialId, nil
 }
 
 // CreateNewStaticCredentialPasswordCli uses the cli to create a new password credential in the
