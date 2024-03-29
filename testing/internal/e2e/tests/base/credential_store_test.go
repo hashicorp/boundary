@@ -75,7 +75,8 @@ func TestCliStaticCredentialStore(t *testing.T) {
 	require.NoError(t, err)
 	privateKeyCredentialsId, err := boundary.CreateStaticCredentialPrivateKeyCli(t, ctx, storeId, c.TargetSshUser, testPemFile)
 	require.NoError(t, err)
-	pwCredentialsId := boundary.CreateNewStaticCredentialPasswordCli(t, ctx, storeId, c.TargetSshUser, testPassword)
+	pwCredentialId, err := boundary.CreateStaticCredentialPasswordCli(t, ctx, storeId, c.TargetSshUser, testPassword)
+	require.NoError(t, err)
 	jsonCredentialsId := boundary.CreateNewStaticCredentialJsonCli(t, ctx, storeId, testCredentialsFile)
 
 	// Get credentials for target (expect empty)
@@ -93,7 +94,7 @@ func TestCliStaticCredentialStore(t *testing.T) {
 	require.NoError(t, err)
 	err = boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, targetId, jsonCredentialsId)
 	require.NoError(t, err)
-	err = boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, targetId, pwCredentialsId)
+	err = boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, targetId, pwCredentialId)
 	require.NoError(t, err)
 
 	// Get credentials for target

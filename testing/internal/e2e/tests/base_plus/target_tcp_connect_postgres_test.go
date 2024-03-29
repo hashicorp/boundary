@@ -47,14 +47,15 @@ func TestCliTcpTargetConnectPostgres(t *testing.T) {
 	require.NoError(t, err)
 	storeId, err := boundary.CreateCredentialStoreStaticCli(t, ctx, projectId)
 	require.NoError(t, err)
-	newCredentialsId := boundary.CreateNewStaticCredentialPasswordCli(
+	credentialId, err := boundary.CreateStaticCredentialPasswordCli(
 		t,
 		ctx,
 		storeId,
 		c.PostgresUser,
 		c.PostgresPassword,
 	)
-	err = boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, targetId, newCredentialsId)
+	require.NoError(t, err)
+	err = boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, targetId, credentialId)
 	require.NoError(t, err)
 
 	var cmd *exec.Cmd

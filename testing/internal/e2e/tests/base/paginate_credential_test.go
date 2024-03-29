@@ -87,7 +87,8 @@ func TestCliPaginateCredentials(t *testing.T) {
 	assert.Empty(t, initialCredentials.ListToken)
 
 	// Create a new credential and destroy one of the other credentials
-	newCredentialId := boundary.CreateNewStaticCredentialPasswordCli(t, ctx, storeId, "user", "password")
+	credentialId, err := boundary.CreateStaticCredentialPasswordCli(t, ctx, storeId, "user", "password")
+	require.NoError(t, err)
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"credentials", "delete",
@@ -114,7 +115,7 @@ func TestCliPaginateCredentials(t *testing.T) {
 	// The first item should be the most recently created, which
 	// should be our new credential
 	firstItem := newCredentials.Items[0]
-	assert.Equal(t, newCredentialId, firstItem.Id)
+	assert.Equal(t, credentialId, firstItem.Id)
 	assert.Empty(t, newCredentials.ResponseType)
 	assert.Empty(t, newCredentials.RemovedIds)
 	assert.Empty(t, newCredentials.ListToken)
