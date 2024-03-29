@@ -60,7 +60,8 @@ func TestCliStaticCredentialStore(t *testing.T) {
 	require.NoError(t, err)
 	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort)
 	require.NoError(t, err)
-	boundary.AddHostSourceToTargetCli(t, ctx, targetId, hostSetId)
+	err = boundary.AddHostSourceToTargetCli(t, ctx, targetId, hostSetId)
+	require.NoError(t, err)
 
 	err = createPrivateKeyPemFile(testPemFile)
 	require.NoError(t, err)

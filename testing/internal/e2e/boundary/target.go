@@ -132,11 +132,15 @@ func CreateTargetCli(t testing.TB, ctx context.Context, projectId string, defaul
 // to a target.
 // Boundary's `add-host-sources` functionality appends a new host source to the
 // existing set of host sources in the target.
-func AddHostSourceToTargetCli(t testing.TB, ctx context.Context, targetId, hostSourceId string) {
+func AddHostSourceToTargetCli(t testing.TB, ctx context.Context, targetId, hostSourceId string) error {
 	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs("targets", "add-host-sources", "-id", targetId, "-host-source", hostSourceId),
 	)
-	require.NoError(t, output.Err, string(output.Stderr))
+	if output.Err != nil {
+		return fmt.Errorf("%w: %s", output.Err, string(output.Stderr))
+	}
+
+	return nil
 }
 
 // SetHostSourceToTargetCli uses the cli to set a host source (host set or host)

@@ -98,7 +98,8 @@ func TestCliCreateAwsDynamicHostCatalogWithEmptyHostSet(t *testing.T) {
 	// Create target
 	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort)
 	require.NoError(t, err)
-	boundary.AddHostSourceToTargetCli(t, ctx, targetId, hostSetId)
+	err = boundary.AddHostSourceToTargetCli(t, ctx, targetId, hostSetId)
+	require.NoError(t, err)
 
 	// Attempt to connect to target
 	output := e2e.RunCommand(ctx, "boundary",

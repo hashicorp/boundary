@@ -46,7 +46,8 @@ func TestCliSessionEndWhenHostSetIsDeleted(t *testing.T) {
 	require.NoError(t, err)
 	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort)
 	require.NoError(t, err)
-	boundary.AddHostSourceToTargetCli(t, ctx, targetId, hostSetId)
+	err = boundary.AddHostSourceToTargetCli(t, ctx, targetId, hostSetId)
+	require.NoError(t, err)
 	acctName := "e2e-account"
 	newAccountId, acctPassword := boundary.CreateNewAccountCli(t, ctx, bc.AuthMethodId, acctName)
 	t.Cleanup(func() {

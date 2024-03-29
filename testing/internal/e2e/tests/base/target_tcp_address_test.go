@@ -227,7 +227,8 @@ func TestCliTargetAddressToHostSource(t *testing.T) {
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
 
-	boundary.AddHostSourceToTargetCli(t, ctx, targetId, hostSetId)
+	err = boundary.AddHostSourceToTargetCli(t, ctx, targetId, hostSetId)
+	require.NoError(t, err)
 	boundary.SetHostSourceToTargetCli(t, ctx, targetId, hostSetId)
 
 	// Connect to target and print host's IP address, now using the host source.
@@ -287,7 +288,8 @@ func TestCliTargetHostSourceToAddress(t *testing.T) {
 	require.NoError(t, err)
 	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort)
 	require.NoError(t, err)
-	boundary.AddHostSourceToTargetCli(t, ctx, targetId, hostSetId)
+	err = boundary.AddHostSourceToTargetCli(t, ctx, targetId, hostSetId)
+	require.NoError(t, err)
 
 	// Connect to target and print host's IP address
 	output := e2e.RunCommand(ctx, "boundary",

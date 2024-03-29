@@ -46,7 +46,8 @@ func TestCliBytesUpDownTransferData(t *testing.T) {
 	require.NoError(t, err)
 	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort)
 	require.NoError(t, err)
-	boundary.AddHostSourceToTargetCli(t, ctx, targetId, hostSetId)
+	err = boundary.AddHostSourceToTargetCli(t, ctx, targetId, hostSetId)
+	require.NoError(t, err)
 
 	// Create a session where no additional commands are run
 	ctxCancel, cancel := context.WithCancel(context.Background())

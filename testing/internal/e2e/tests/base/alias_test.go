@@ -130,7 +130,8 @@ func TestCliAlias(t *testing.T) {
 		target.WithName("targetWithHost"),
 	)
 	require.NoError(t, err)
-	boundary.AddHostSourceToTargetCli(t, ctx, targetWithHost, hostSetId)
+	err = boundary.AddHostSourceToTargetCli(t, ctx, targetWithHost, hostSetId)
+	require.NoError(t, err)
 	aliasTargetHost := "aliasTargetHost"
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(

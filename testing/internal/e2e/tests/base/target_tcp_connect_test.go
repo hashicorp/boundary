@@ -45,7 +45,8 @@ func TestCliTcpTargetConnectTargetBasic(t *testing.T) {
 	require.NoError(t, err)
 	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort)
 	require.NoError(t, err)
-	boundary.AddHostSourceToTargetCli(t, ctx, targetId, hostSetId)
+	err = boundary.AddHostSourceToTargetCli(t, ctx, targetId, hostSetId)
+	require.NoError(t, err)
 
 	// Connect to target and print host's IP address
 	output := e2e.RunCommand(ctx, "boundary",
@@ -104,7 +105,8 @@ func TestCliTcpTargetConnectTargetViaTargetAndScopeNames(t *testing.T) {
 	require.NoError(t, err)
 	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort, target.WithName(testTargetName))
 	require.NoError(t, err)
-	boundary.AddHostSourceToTargetCli(t, ctx, targetId, hostSetId)
+	err = boundary.AddHostSourceToTargetCli(t, ctx, targetId, hostSetId)
+	require.NoError(t, err)
 
 	// Connect to target via target and scope names, and print host's IP address
 	output := e2e.RunCommand(ctx, "boundary",
