@@ -214,13 +214,14 @@ func TestApiStaticCredentialStore(t *testing.T) {
 	require.NoError(t, err)
 	err = boundary.AddHostSourceToTargetApi(t, ctx, client, targetId, hostSetId)
 	require.NoError(t, err)
-	newCredentialStoreId := boundary.CreateNewCredentialStoreStaticApi(t, ctx, client, projectId)
+	storeId, err := boundary.CreateCredentialStoreStaticApi(t, ctx, client, projectId)
+	require.NoError(t, err)
 
 	// Create credentials
 	cClient := credentials.NewClient(client)
 	k, err := os.ReadFile(c.TargetSshKeyPath)
 	require.NoError(t, err)
-	newCredentialsResult, err := cClient.Create(ctx, "ssh_private_key", newCredentialStoreId,
+	newCredentialsResult, err := cClient.Create(ctx, "ssh_private_key", storeId,
 		credentials.WithSshPrivateKeyCredentialUsername(c.TargetSshUser),
 		credentials.WithSshPrivateKeyCredentialPrivateKey(string(k)),
 	)

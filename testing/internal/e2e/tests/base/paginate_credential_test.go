@@ -144,7 +144,8 @@ func TestApiPaginateCredentials(t *testing.T) {
 	})
 	projectId, err := boundary.CreateProjectApi(t, ctx, client, orgId)
 	require.NoError(t, err)
-	newStoreId := boundary.CreateNewCredentialStoreStaticApi(t, ctx, client, projectId)
+	storeId, err := boundary.CreateCredentialStoreStaticApi(t, ctx, client, projectId)
+	require.NoError(t, err)
 
 	// Create enough credentials to overflow a single page.
 	var credentialIds []string
@@ -152,7 +153,7 @@ func TestApiPaginateCredentials(t *testing.T) {
 		resp, err := cClient.Create(
 			ctx,
 			"username_password",
-			newStoreId,
+			storeId,
 			credentials.WithUsernamePasswordCredentialUsername("user"),
 			credentials.WithUsernamePasswordCredentialPassword("password"),
 		)
@@ -164,7 +165,7 @@ func TestApiPaginateCredentials(t *testing.T) {
 	}
 
 	// List Credentials
-	initialCredentials, err := cClient.List(ctx, newStoreId)
+	initialCredentials, err := cClient.List(ctx, storeId)
 	require.NoError(t, err)
 
 	var returnedIds []string
@@ -184,12 +185,12 @@ func TestApiPaginateCredentials(t *testing.T) {
 	assert.Len(t, mapSliceItems, c.MaxPageSize+1)
 
 	// Create a new credential and destroy one of the other Credentials
-	newCredentialId := boundary.CreateNewStaticCredentialPasswordApi(t, ctx, client, newStoreId, "user", "password")
+	newCredentialId := boundary.CreateNewStaticCredentialPasswordApi(t, ctx, client, storeId, "user", "password")
 	_, err = cClient.Delete(ctx, initialCredentials.Items[0].Id)
 	require.NoError(t, err)
 
 	// List again, should have the new and deleted credential
-	newCredentials, err := cClient.List(ctx, newStoreId, credentials.WithListToken(initialCredentials.ListToken))
+	newCredentials, err := cClient.List(ctx, storeId, credentials.WithListToken(initialCredentials.ListToken))
 	require.NoError(t, err)
 
 	// Note that this will likely contain all the credentials,

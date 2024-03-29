@@ -18,16 +18,28 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// CreateNewCredentialStoreStaticApi uses the Go api to create a new static credential store.
+// CreateCredentialStoreStaticApi uses the Go api to create a new static credential store.
 // Returns the id of the new credential store
-func CreateNewCredentialStoreStaticApi(t testing.TB, ctx context.Context, client *api.Client, projectId string) string {
-	csClient := credentialstores.NewClient(client)
-	newCredentialStoreResult, err := csClient.Create(ctx, "static", projectId)
-	require.NoError(t, err)
-	newCredentialStoreId := newCredentialStoreResult.Item.Id
-	t.Logf("Created Credential Store: %s", newCredentialStoreId)
+func CreateCredentialStoreStaticApi(t testing.TB, ctx context.Context, client *api.Client, projectId string) (string, error) {
+	name, err := base62.Random(16)
+	if err != nil {
+		return "", err
+	}
 
-	return newCredentialStoreId
+	csClient := credentialstores.NewClient(client)
+	newCredentialStoreResult, err := csClient.Create(
+		ctx,
+		"static",
+		projectId,
+		credentialstores.WithName(fmt.Sprintf("e2e Credential Store %s", name)),
+	)
+	if err != nil {
+		return "", err
+	}
+
+	credentialStoreId := newCredentialStoreResult.Item.Id
+	t.Logf("Created Credential Store: %s", credentialStoreId)
+	return credentialStoreId, nil
 }
 
 // CreateNewCredentialStoreVaultApi uses the API to create a Vault credential store
