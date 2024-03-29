@@ -190,11 +190,15 @@ func CreateHostCli(t testing.TB, ctx context.Context, hostCatalogId string, addr
 }
 
 // AddHostToHostSetCli uses the cli to add a host to a host set
-func AddHostToHostSetCli(t testing.TB, ctx context.Context, hostSetId string, hostId string) {
+func AddHostToHostSetCli(t testing.TB, ctx context.Context, hostSetId string, hostId string) error {
 	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs("host-sets", "add-hosts", "-id", hostSetId, "-host", hostId),
 	)
-	require.NoError(t, output.Err, string(output.Stderr))
+	if output.Err != nil {
+		return fmt.Errorf("%w: %s", output.Err, string(output.Stderr))
+	}
+
+	return nil
 }
 
 // CreateNewAwsHostCatalogCli uses the cli to create a new AWS dynamic host catalog.

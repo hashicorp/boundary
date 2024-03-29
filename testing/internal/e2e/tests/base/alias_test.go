@@ -119,7 +119,8 @@ func TestCliAlias(t *testing.T) {
 	require.NoError(t, err)
 	hostId, err := boundary.CreateHostCli(t, ctx, hostCatalogId, c.TargetAddress)
 	require.NoError(t, err)
-	boundary.AddHostToHostSetCli(t, ctx, hostSetId, hostId)
+	err = boundary.AddHostToHostSetCli(t, ctx, hostSetId, hostId)
+	require.NoError(t, err)
 	targetWithHost := boundary.CreateNewTargetCli(
 		t,
 		ctx,

@@ -221,7 +221,8 @@ func populateBoundaryDatabase(t testing.TB, ctx context.Context, c *config, te T
 	require.NoError(t, err)
 	hostId, err := boundary.CreateHostCli(t, ctx, hostCatalogId, te.Target.UriNetwork)
 	require.NoError(t, err)
-	boundary.AddHostToHostSetCli(t, ctx, hostSetId, hostId)
+	err = boundary.AddHostToHostSetCli(t, ctx, hostSetId, hostId)
+	require.NoError(t, err)
 	newTargetId := boundary.CreateNewTargetCli(t, ctx, projectId, "2222") // openssh-server uses port 2222
 	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, hostSetId)
 

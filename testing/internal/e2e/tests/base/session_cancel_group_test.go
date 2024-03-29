@@ -50,7 +50,8 @@ func TestCliSessionCancelGroup(t *testing.T) {
 	require.NoError(t, err)
 	hostId, err := boundary.CreateHostCli(t, ctx, hostCatalogId, c.TargetAddress)
 	require.NoError(t, err)
-	boundary.AddHostToHostSetCli(t, ctx, hostSetId, hostId)
+	err = boundary.AddHostToHostSetCli(t, ctx, hostSetId, hostId)
+	require.NoError(t, err)
 	newTargetId := boundary.CreateNewTargetCli(t, ctx, projectId, c.TargetPort)
 	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, hostSetId)
 	acctName := "e2e-account"
