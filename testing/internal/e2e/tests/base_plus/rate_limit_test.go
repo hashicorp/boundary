@@ -181,7 +181,8 @@ func TestHttpRateLimit(t *testing.T) {
 	require.NoError(t, err)
 	err = boundary.AddGrantToRoleCli(t, ctx, roleId, "ids=*;type=*;actions=*")
 	require.NoError(t, err)
-	boundary.AddPrincipalToRoleCli(t, ctx, roleId, userId)
+	err = boundary.AddPrincipalToRoleCli(t, ctx, roleId, userId)
+	require.NoError(t, err)
 
 	// Get auth token for second user
 	res, err = boundary.AuthenticateHttp(t, ctx, bc.Address, bc.AuthMethodId, acctName, acctPassword)
@@ -324,7 +325,8 @@ func TestCliRateLimit(t *testing.T) {
 	require.NoError(t, err)
 	err = boundary.AddGrantToRoleCli(t, ctx, roleId, "ids=*;type=*;actions=*")
 	require.NoError(t, err)
-	boundary.AddPrincipalToRoleCli(t, ctx, roleId, userId)
+	err = boundary.AddPrincipalToRoleCli(t, ctx, roleId, userId)
+	require.NoError(t, err)
 
 	// Authenticate over HTTP
 	res, err := boundary.AuthenticateHttp(t, ctx, bc.Address, bc.AuthMethodId, bc.AdminLoginName, bc.AdminLoginPassword)

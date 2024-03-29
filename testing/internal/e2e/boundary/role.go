@@ -13,7 +13,6 @@ import (
 	"github.com/hashicorp/boundary/api/roles"
 	"github.com/hashicorp/boundary/testing/internal/e2e"
 	"github.com/hashicorp/go-secure-stdlib/base62"
-	"github.com/stretchr/testify/require"
 )
 
 // CreateRoleApi creates a new role using the Go api.
@@ -106,7 +105,7 @@ func AddGrantToRoleCli(t testing.TB, ctx context.Context, roleId string, grant s
 }
 
 // AddPrincipalToRoleCli adds a user/group to a role using the cli
-func AddPrincipalToRoleCli(t testing.TB, ctx context.Context, roleId string, principal string) {
+func AddPrincipalToRoleCli(t testing.TB, ctx context.Context, roleId string, principal string) error {
 	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"roles", "add-principals",
@@ -114,8 +113,12 @@ func AddPrincipalToRoleCli(t testing.TB, ctx context.Context, roleId string, pri
 			"-principal", principal,
 		),
 	)
-	require.NoError(t, output.Err, string(output.Stderr))
+	if output.Err != nil {
+		return fmt.Errorf("%w: %s", output.Err, string(output.Stderr))
+	}
+
 	t.Logf("Principal %s added to role: %s", principal, roleId)
+	return nil
 }
 
 // SetGrantScopesToRoleCli uses Boundary CLI to override grant scopes for the role with the provided ones.

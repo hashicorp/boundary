@@ -85,7 +85,8 @@ func TestCliApplyGrantsForMultipleScopes(t *testing.T) {
 	})
 	err = boundary.AddGrantToRoleCli(t, ctx, roleId, "ids=*;type=role;actions=list")
 	require.NoError(t, err)
-	boundary.AddPrincipalToRoleCli(t, ctx, roleId, userId)
+	err = boundary.AddPrincipalToRoleCli(t, ctx, roleId, userId)
+	require.NoError(t, err)
 
 	// Authenticate User and try to:
 	// - list Roles in global scope: expect success

@@ -160,7 +160,8 @@ func TestCliLdap(t *testing.T) {
 	// Add managed group as a principal to a role with permissions to read auth methods
 	roleId, err := boundary.CreateRoleCli(t, ctx, orgId)
 	require.NoError(t, err)
-	boundary.AddPrincipalToRoleCli(t, ctx, roleId, managedGroupId)
+	err = boundary.AddPrincipalToRoleCli(t, ctx, roleId, managedGroupId)
+	require.NoError(t, err)
 	err = boundary.AddGrantToRoleCli(t, ctx, roleId, "ids=*;type=auth-method;actions=read")
 	require.NoError(t, err)
 
