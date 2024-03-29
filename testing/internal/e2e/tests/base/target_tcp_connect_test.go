@@ -37,11 +37,12 @@ func TestCliTcpTargetConnectTargetBasic(t *testing.T) {
 	require.NoError(t, err)
 	hostCatalogId, err := boundary.CreateHostCatalogCli(t, ctx, projectId)
 	require.NoError(t, err)
-	newHostSetId := boundary.CreateNewHostSetCli(t, ctx, hostCatalogId)
+	hostSetId, err := boundary.CreateHostSetCli(t, ctx, hostCatalogId)
+	require.NoError(t, err)
 	newHostId := boundary.CreateNewHostCli(t, ctx, hostCatalogId, c.TargetAddress)
-	boundary.AddHostToHostSetCli(t, ctx, newHostSetId, newHostId)
+	boundary.AddHostToHostSetCli(t, ctx, hostSetId, newHostId)
 	newTargetId := boundary.CreateNewTargetCli(t, ctx, projectId, c.TargetPort)
-	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, newHostSetId)
+	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, hostSetId)
 
 	// Connect to target and print host's IP address
 	output := e2e.RunCommand(ctx, "boundary",
@@ -92,11 +93,12 @@ func TestCliTcpTargetConnectTargetViaTargetAndScopeNames(t *testing.T) {
 	require.NoError(t, err)
 	hostCatalogId, err := boundary.CreateHostCatalogCli(t, ctx, projectId)
 	require.NoError(t, err)
-	newHostSetId := boundary.CreateNewHostSetCli(t, ctx, hostCatalogId)
+	hostSetId, err := boundary.CreateHostSetCli(t, ctx, hostCatalogId)
+	require.NoError(t, err)
 	newHostId := boundary.CreateNewHostCli(t, ctx, hostCatalogId, c.TargetAddress)
-	boundary.AddHostToHostSetCli(t, ctx, newHostSetId, newHostId)
+	boundary.AddHostToHostSetCli(t, ctx, hostSetId, newHostId)
 	newTargetId := boundary.CreateNewTargetCli(t, ctx, projectId, c.TargetPort, target.WithName(testTargetName))
-	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, newHostSetId)
+	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, hostSetId)
 
 	// Connect to target via target and scope names, and print host's IP address
 	output := e2e.RunCommand(ctx, "boundary",

@@ -40,12 +40,13 @@ func TestCliPaginateSessions(t *testing.T) {
 	require.NoError(t, err)
 	hostCatalogId, err := boundary.CreateHostCatalogCli(t, ctx, projectId)
 	require.NoError(t, err)
-	newHostSetId := boundary.CreateNewHostSetCli(t, ctx, hostCatalogId)
+	hostSetId, err := boundary.CreateHostSetCli(t, ctx, hostCatalogId)
+	require.NoError(t, err)
 	newHostId := boundary.CreateNewHostCli(t, ctx, hostCatalogId, c.TargetAddress)
-	boundary.AddHostToHostSetCli(t, ctx, newHostSetId, newHostId)
+	boundary.AddHostToHostSetCli(t, ctx, hostSetId, newHostId)
 	require.NoError(t, err)
 	newTargetId := boundary.CreateNewTargetCli(t, ctx, projectId, c.TargetPort)
-	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, newHostSetId)
+	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, hostSetId)
 
 	// Connect to targets to create a session
 	// Create enough sessions to overflow a single page

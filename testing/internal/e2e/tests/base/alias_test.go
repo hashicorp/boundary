@@ -115,9 +115,10 @@ func TestCliAlias(t *testing.T) {
 	// Create another alias that uses a target with a host set
 	hostCatalogId, err := boundary.CreateHostCatalogCli(t, ctx, projectId)
 	require.NoError(t, err)
-	newHostSetId := boundary.CreateNewHostSetCli(t, ctx, hostCatalogId)
+	hostSetId, err := boundary.CreateHostSetCli(t, ctx, hostCatalogId)
+	require.NoError(t, err)
 	newHostId := boundary.CreateNewHostCli(t, ctx, hostCatalogId, c.TargetAddress)
-	boundary.AddHostToHostSetCli(t, ctx, newHostSetId, newHostId)
+	boundary.AddHostToHostSetCli(t, ctx, hostSetId, newHostId)
 	targetWithHost := boundary.CreateNewTargetCli(
 		t,
 		ctx,
@@ -125,7 +126,7 @@ func TestCliAlias(t *testing.T) {
 		c.TargetPort,
 		target.WithName("targetWithHost"),
 	)
-	boundary.AddHostSourceToTargetCli(t, ctx, targetWithHost, newHostSetId)
+	boundary.AddHostSourceToTargetCli(t, ctx, targetWithHost, hostSetId)
 	aliasTargetHost := "aliasTargetHost"
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(

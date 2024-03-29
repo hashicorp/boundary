@@ -38,11 +38,12 @@ func TestCliBytesUpDownTransferData(t *testing.T) {
 	require.NoError(t, err)
 	hostCatalogId, err := boundary.CreateHostCatalogCli(t, ctx, projectId)
 	require.NoError(t, err)
-	newHostSetId := boundary.CreateNewHostSetCli(t, ctx, hostCatalogId)
+	hostSetId, err := boundary.CreateHostSetCli(t, ctx, hostCatalogId)
+	require.NoError(t, err)
 	newHostId := boundary.CreateNewHostCli(t, ctx, hostCatalogId, c.TargetAddress)
-	boundary.AddHostToHostSetCli(t, ctx, newHostSetId, newHostId)
+	boundary.AddHostToHostSetCli(t, ctx, hostSetId, newHostId)
 	newTargetId := boundary.CreateNewTargetCli(t, ctx, projectId, c.TargetPort)
-	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, newHostSetId)
+	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, hostSetId)
 
 	// Create a session where no additional commands are run
 	ctxCancel, cancel := context.WithCancel(context.Background())

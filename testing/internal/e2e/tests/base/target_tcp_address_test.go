@@ -154,9 +154,10 @@ func TestCliTargetAddressToHostSource(t *testing.T) {
 	require.NoError(t, err)
 	hostCatalogId, err := boundary.CreateHostCatalogCli(t, ctx, projectId)
 	require.NoError(t, err)
-	newHostSetId := boundary.CreateNewHostSetCli(t, ctx, hostCatalogId)
+	hostSetId, err := boundary.CreateHostSetCli(t, ctx, hostCatalogId)
+	require.NoError(t, err)
 	newHostId := boundary.CreateNewHostCli(t, ctx, hostCatalogId, c.TargetAddress)
-	boundary.AddHostToHostSetCli(t, ctx, newHostSetId, newHostId)
+	boundary.AddHostToHostSetCli(t, ctx, hostSetId, newHostId)
 	newTargetId := boundary.CreateNewTargetCli(t, ctx, projectId, c.TargetPort, target.WithAddress(c.TargetAddress))
 
 	// Connect to target and print host's IP address
@@ -187,7 +188,7 @@ func TestCliTargetAddressToHostSource(t *testing.T) {
 		e2e.WithArgs(
 			"targets", "add-host-sources",
 			"-id", newTargetId,
-			"-host-source", newHostSetId,
+			"-host-source", hostSetId,
 			"-format", "json",
 		),
 	)
@@ -202,7 +203,7 @@ func TestCliTargetAddressToHostSource(t *testing.T) {
 		e2e.WithArgs(
 			"targets", "set-host-sources",
 			"-id", newTargetId,
-			"-host-source", newHostSetId,
+			"-host-source", hostSetId,
 			"-format", "json",
 		),
 	)
@@ -222,8 +223,8 @@ func TestCliTargetAddressToHostSource(t *testing.T) {
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
 
-	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, newHostSetId)
-	boundary.SetHostSourceToTargetCli(t, ctx, newTargetId, newHostSetId)
+	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, hostSetId)
+	boundary.SetHostSourceToTargetCli(t, ctx, newTargetId, hostSetId)
 
 	// Connect to target and print host's IP address, now using the host source.
 	output = e2e.RunCommand(ctx, "boundary",
@@ -274,11 +275,12 @@ func TestCliTargetHostSourceToAddress(t *testing.T) {
 	require.NoError(t, err)
 	hostCatalogId, err := boundary.CreateHostCatalogCli(t, ctx, projectId)
 	require.NoError(t, err)
-	newHostSetId := boundary.CreateNewHostSetCli(t, ctx, hostCatalogId)
+	hostSetId, err := boundary.CreateHostSetCli(t, ctx, hostCatalogId)
+	require.NoError(t, err)
 	newHostId := boundary.CreateNewHostCli(t, ctx, hostCatalogId, c.TargetAddress)
-	boundary.AddHostToHostSetCli(t, ctx, newHostSetId, newHostId)
+	boundary.AddHostToHostSetCli(t, ctx, hostSetId, newHostId)
 	newTargetId := boundary.CreateNewTargetCli(t, ctx, projectId, c.TargetPort)
-	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, newHostSetId)
+	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, hostSetId)
 
 	// Connect to target and print host's IP address
 	output := e2e.RunCommand(ctx, "boundary",
@@ -319,7 +321,7 @@ func TestCliTargetHostSourceToAddress(t *testing.T) {
 	require.NoError(t, json.Unmarshal(output.Stderr, &response))
 	require.Equal(t, http.StatusBadRequest, response.Status, "Expected error when setting address to target with a host source")
 
-	boundary.RemoveHostSourceFromTargetCli(t, ctx, newTargetId, newHostSetId)
+	boundary.RemoveHostSourceFromTargetCli(t, ctx, newTargetId, hostSetId)
 
 	// Attempt to add an address to the target again - should work
 	output = e2e.RunCommand(ctx, "boundary",

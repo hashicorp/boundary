@@ -124,26 +124,36 @@ func CreateHostCatalogCli(t testing.TB, ctx context.Context, projectId string) (
 	return hostCatalogId, nil
 }
 
-// CreateNewHostSetCli uses the cli to create a new host set.
+// CreateHostSetCli uses the cli to create a new host set.
 // Returns the id of the new host set.
-func CreateNewHostSetCli(t testing.TB, ctx context.Context, hostCatalogId string) string {
+func CreateHostSetCli(t testing.TB, ctx context.Context, hostCatalogId string) (string, error) {
+	name, err := base62.Random(16)
+	if err != nil {
+		return "", err
+	}
+
 	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"host-sets", "create", "static",
 			"-host-catalog-id", hostCatalogId,
-			"-name", "e2e Host Set",
+			"-name", fmt.Sprintf("e2e Host Set %s", name),
 			"-description", "e2e",
 			"-format", "json",
 		),
 	)
-	require.NoError(t, output.Err, string(output.Stderr))
-	var newHostSetResult hostsets.HostSetCreateResult
-	err := json.Unmarshal(output.Stdout, &newHostSetResult)
-	require.NoError(t, err)
-	newHostSetId := newHostSetResult.Item.Id
-	t.Logf("Created Host Set: %s", newHostSetId)
+	if output.Err != nil {
+		return "", fmt.Errorf("%w: %s", output.Err, string(output.Stderr))
+	}
 
-	return newHostSetId
+	var createHostSetResult hostsets.HostSetCreateResult
+	err = json.Unmarshal(output.Stdout, &createHostSetResult)
+	if err != nil {
+		return "", err
+	}
+
+	hostSetId := createHostSetResult.Item.Id
+	t.Logf("Created Host Set: %s", hostSetId)
+	return hostSetId, nil
 }
 
 // CreateNewHostCli uses the cli to create a new host.
