@@ -331,7 +331,8 @@ func TestCliTargetHostSourceToAddress(t *testing.T) {
 	require.NoError(t, json.Unmarshal(output.Stderr, &response))
 	require.Equal(t, http.StatusBadRequest, response.Status, "Expected error when setting address to target with a host source")
 
-	boundary.RemoveHostSourceFromTargetCli(t, ctx, targetId, hostSetId)
+	err = boundary.RemoveHostSourceFromTargetCli(t, ctx, targetId, hostSetId)
+	require.NoError(t, err)
 
 	// Attempt to add an address to the target again - should work
 	output = e2e.RunCommand(ctx, "boundary",

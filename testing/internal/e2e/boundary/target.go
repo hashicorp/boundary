@@ -159,7 +159,7 @@ func SetHostSourceToTargetCli(t testing.TB, ctx context.Context, targetId, hostS
 }
 
 // RemoveHostSourceFromTargetCli uses the cli to remove a host source (host set or host) to a target
-func RemoveHostSourceFromTargetCli(t testing.TB, ctx context.Context, targetId, hostSourceId string) {
+func RemoveHostSourceFromTargetCli(t testing.TB, ctx context.Context, targetId, hostSourceId string) error {
 	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"targets", "remove-host-sources",
@@ -167,7 +167,11 @@ func RemoveHostSourceFromTargetCli(t testing.TB, ctx context.Context, targetId, 
 			"-host-source", hostSourceId,
 		),
 	)
-	require.NoError(t, output.Err, string(output.Stderr))
+	if output.Err != nil {
+		return fmt.Errorf("%w: %s", output.Err, string(output.Stderr))
+	}
+
+	return nil
 }
 
 // AddBrokeredCredentialSourceToTargetCli uses the cli to add a credential source (credential library or
