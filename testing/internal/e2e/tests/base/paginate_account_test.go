@@ -52,7 +52,8 @@ func TestCliPaginateAccounts(t *testing.T) {
 	// Create enough accounts to overflow a single page.
 	var accountIds []string
 	for i := 0; i < c.MaxPageSize+1; i++ {
-		accId, _ := boundary.CreateNewAccountApi(t, ctx, client, amId, "testuser-"+strconv.Itoa(i))
+		accId, _, err := boundary.CreateAccountApi(t, ctx, client, amId, "testuser-"+strconv.Itoa(i))
+		require.NoError(t, err)
 		accountIds = append(accountIds, accId)
 	}
 
@@ -82,7 +83,8 @@ func TestCliPaginateAccounts(t *testing.T) {
 	assert.Empty(t, initialAccounts.ListToken)
 
 	// Create a new account and destroy one of the other accounts
-	newAccountId, _ := boundary.CreateNewAccountApi(t, ctx, client, amId, "newuser")
+	accountId, _, err := boundary.CreateAccountApi(t, ctx, client, amId, "newuser")
+	require.NoError(t, err)
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"accounts", "delete",
@@ -109,7 +111,7 @@ func TestCliPaginateAccounts(t *testing.T) {
 	// The first item should be the most recently created, which
 	// should be our new account
 	firstItem := newAccounts.Items[0]
-	assert.Equal(t, newAccountId, firstItem.Id)
+	assert.Equal(t, accountId, firstItem.Id)
 	assert.Empty(t, newAccounts.ResponseType)
 	assert.Empty(t, newAccounts.RemovedIds)
 	assert.Empty(t, newAccounts.ListToken)
@@ -153,7 +155,8 @@ func TestApiPaginateAccounts(t *testing.T) {
 	// Create enough accounts to overflow a single page.
 	var accountIds []string
 	for i := 0; i < c.MaxPageSize+1; i++ {
-		accId, _ := boundary.CreateNewAccountApi(t, ctx, client, amId, "testuser-"+strconv.Itoa(i))
+		accId, _, err := boundary.CreateAccountApi(t, ctx, client, amId, "testuser-"+strconv.Itoa(i))
+		require.NoError(t, err)
 		accountIds = append(accountIds, accId)
 	}
 
@@ -178,7 +181,8 @@ func TestApiPaginateAccounts(t *testing.T) {
 	assert.Len(t, mapSliceItems, c.MaxPageSize+1)
 
 	// Create a new account and destroy one of the other accounts
-	newAccountId, _ := boundary.CreateNewAccountApi(t, ctx, client, amId, "newuser")
+	accountId, _, err := boundary.CreateAccountApi(t, ctx, client, amId, "newuser")
+	require.NoError(t, err)
 	_, err = acClient.Delete(ctx, initialAccounts.Items[0].Id)
 	require.NoError(t, err)
 
@@ -194,7 +198,7 @@ func TestApiPaginateAccounts(t *testing.T) {
 	// The first item should be the most recently created, which
 	// should be our new account
 	firstItem := newAccounts.Items[0]
-	assert.Equal(t, newAccountId, firstItem.Id)
+	assert.Equal(t, accountId, firstItem.Id)
 	assert.Equal(t, "complete", newAccounts.ResponseType)
 	// Note that the removed IDs may contain entries from other tests,
 	// so just check that there is at least 1 entry and that our entry

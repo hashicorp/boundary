@@ -202,10 +202,11 @@ func TestApiCreateGroup(t *testing.T) {
 	require.NoError(t, err)
 
 	acctName := "e2e-account"
-	newAcctId, _ := boundary.CreateNewAccountApi(t, ctx, client, bc.AuthMethodId, acctName)
+	accountId, _, err := boundary.CreateAccountApi(t, ctx, client, bc.AuthMethodId, acctName)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		aClient := accounts.NewClient(client)
-		_, err := aClient.Delete(ctx, newAcctId)
+		_, err := aClient.Delete(ctx, accountId)
 		require.NoError(t, err)
 	})
 	userId, err := boundary.CreateUserApi(t, ctx, client, "global")
@@ -216,7 +217,7 @@ func TestApiCreateGroup(t *testing.T) {
 		require.NoError(t, err)
 	})
 	uClient := users.NewClient(client)
-	_, err = uClient.SetAccounts(ctx, userId, 0, []string{newAcctId}, users.WithAutomaticVersioning(true))
+	_, err = uClient.SetAccounts(ctx, userId, 0, []string{accountId}, users.WithAutomaticVersioning(true))
 	require.NoError(t, err)
 
 	gClient := groups.NewClient(client)

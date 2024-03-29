@@ -6,6 +6,7 @@ package boundary
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"testing"
 
 	"github.com/hashicorp/boundary/api"
@@ -15,21 +16,31 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// CreateNewAccountApi creates a new account using the Go api.
+// CreateAccountApi creates a new account using the Go api.
 // Returns the id of the new account as well as the password that was generated
-func CreateNewAccountApi(t testing.TB, ctx context.Context, client *api.Client, authMethodId string, loginName string) (accountId string, password string) {
+func CreateAccountApi(t testing.TB, ctx context.Context, client *api.Client, authMethodId string, loginName string) (string, string, error) {
+	name, err := base62.Random(16)
+	if err != nil {
+		return "", "", err
+	}
+
 	aClient := accounts.NewClient(client)
 	password, err := base62.Random(16)
-	require.NoError(t, err)
-	newAccountResult, err := aClient.Create(ctx, authMethodId,
+	if err != nil {
+		return "", "", err
+	}
+	createAccountResult, err := aClient.Create(ctx, authMethodId,
 		accounts.WithPasswordAccountLoginName(loginName),
 		accounts.WithPasswordAccountPassword(password),
+		accounts.WithName(fmt.Sprintf("e2e Account %s", name)),
 	)
-	require.NoError(t, err)
+	if err != nil {
+		return "", "", err
+	}
 
-	accountId = newAccountResult.Item.Id
+	accountId := createAccountResult.Item.Id
 	t.Logf("Create Account: %s", accountId)
-	return
+	return accountId, password, nil
 }
 
 // CreateNewAccountCli creates a new account using the cli.
