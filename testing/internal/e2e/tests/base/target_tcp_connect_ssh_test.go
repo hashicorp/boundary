@@ -48,8 +48,9 @@ func TestCliTcpTargetConnectTargetWithSsh(t *testing.T) {
 	require.NoError(t, err)
 	err = boundary.AddHostSourceToTargetCli(t, ctx, targetId, hostSetId)
 	require.NoError(t, err)
-	newCredentialStoreId := boundary.CreateNewCredentialStoreStaticCli(t, ctx, projectId)
-	newCredentialsId := boundary.CreateNewStaticCredentialPrivateKeyCli(t, ctx, newCredentialStoreId, c.TargetSshUser, c.TargetSshKeyPath)
+	storeId, err := boundary.CreateCredentialStoreStaticCli(t, ctx, projectId)
+	require.NoError(t, err)
+	newCredentialsId := boundary.CreateNewStaticCredentialPrivateKeyCli(t, ctx, storeId, c.TargetSshUser, c.TargetSshKeyPath)
 	err = boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, targetId, newCredentialsId)
 	require.NoError(t, err)
 

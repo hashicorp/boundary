@@ -38,7 +38,8 @@ func TestCliPaginateCredentials(t *testing.T) {
 	})
 	projectId, err := boundary.CreateProjectCli(t, ctx, orgId)
 	require.NoError(t, err)
-	newStoreId := boundary.CreateNewCredentialStoreStaticCli(t, ctx, projectId)
+	storeId, err := boundary.CreateCredentialStoreStaticCli(t, ctx, projectId)
+	require.NoError(t, err)
 
 	// Create enough credentials to overflow a single page.
 	client, err := boundary.NewApiClient()
@@ -49,7 +50,7 @@ func TestCliPaginateCredentials(t *testing.T) {
 		resp, err := cClient.Create(
 			ctx,
 			"username_password",
-			newStoreId,
+			storeId,
 			credentials.WithUsernamePasswordCredentialUsername("user"),
 			credentials.WithUsernamePasswordCredentialPassword("password"),
 		)
@@ -64,7 +65,7 @@ func TestCliPaginateCredentials(t *testing.T) {
 	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"credentials", "list",
-			"-credential-store-id", newStoreId,
+			"-credential-store-id", storeId,
 			"-format=json",
 		),
 	)
@@ -86,7 +87,7 @@ func TestCliPaginateCredentials(t *testing.T) {
 	assert.Empty(t, initialCredentials.ListToken)
 
 	// Create a new credential and destroy one of the other credentials
-	newCredentialId := boundary.CreateNewStaticCredentialPasswordCli(t, ctx, newStoreId, "user", "password")
+	newCredentialId := boundary.CreateNewStaticCredentialPasswordCli(t, ctx, storeId, "user", "password")
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"credentials", "delete",
@@ -99,7 +100,7 @@ func TestCliPaginateCredentials(t *testing.T) {
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"credentials", "list",
-			"-credential-store-id", newStoreId,
+			"-credential-store-id", storeId,
 			"-format=json",
 		),
 	)

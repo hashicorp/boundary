@@ -43,8 +43,9 @@ func TestCliTcpTargetConnectExecLongLastingScript(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create static credentials
-	newCredentialStoreId := boundary.CreateNewCredentialStoreStaticCli(t, ctx, projectId)
-	newCredentialsId := boundary.CreateNewStaticCredentialPrivateKeyCli(t, ctx, newCredentialStoreId, c.TargetSshUser, c.TargetSshKeyPath)
+	storeId, err := boundary.CreateCredentialStoreStaticCli(t, ctx, projectId)
+	require.NoError(t, err)
+	newCredentialsId := boundary.CreateNewStaticCredentialPrivateKeyCli(t, ctx, storeId, c.TargetSshUser, c.TargetSshKeyPath)
 
 	// Create TCP target
 	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort,

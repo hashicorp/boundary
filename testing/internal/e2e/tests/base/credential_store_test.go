@@ -71,10 +71,11 @@ func TestCliStaticCredentialStore(t *testing.T) {
 	})
 
 	// Create static credentials
-	newCredentialStoreId := boundary.CreateNewCredentialStoreStaticCli(t, ctx, projectId)
-	privateKeyCredentialsId := boundary.CreateNewStaticCredentialPrivateKeyCli(t, ctx, newCredentialStoreId, c.TargetSshUser, testPemFile)
-	pwCredentialsId := boundary.CreateNewStaticCredentialPasswordCli(t, ctx, newCredentialStoreId, c.TargetSshUser, testPassword)
-	jsonCredentialsId := boundary.CreateNewStaticCredentialJsonCli(t, ctx, newCredentialStoreId, testCredentialsFile)
+	storeId, err := boundary.CreateCredentialStoreStaticCli(t, ctx, projectId)
+	require.NoError(t, err)
+	privateKeyCredentialsId := boundary.CreateNewStaticCredentialPrivateKeyCli(t, ctx, storeId, c.TargetSshUser, testPemFile)
+	pwCredentialsId := boundary.CreateNewStaticCredentialPasswordCli(t, ctx, storeId, c.TargetSshUser, testPassword)
+	jsonCredentialsId := boundary.CreateNewStaticCredentialJsonCli(t, ctx, storeId, testCredentialsFile)
 
 	// Get credentials for target (expect empty)
 	output := e2e.RunCommand(ctx, "boundary",
@@ -128,14 +129,14 @@ func TestCliStaticCredentialStore(t *testing.T) {
 
 	// Delete credential store
 	output = e2e.RunCommand(ctx, "boundary",
-		e2e.WithArgs("credential-stores", "delete", "-id", newCredentialStoreId),
+		e2e.WithArgs("credential-stores", "delete", "-id", storeId),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
 	t.Log("Waiting for credential store to be deleted...")
 	err = backoff.RetryNotify(
 		func() error {
 			output := e2e.RunCommand(ctx, "boundary",
-				e2e.WithArgs("credential-stores", "read", "-id", newCredentialStoreId, "-format", "json"),
+				e2e.WithArgs("credential-stores", "read", "-id", storeId, "-format", "json"),
 			)
 			if output.Err == nil {
 				return fmt.Errorf("Deleted credential can still be read: '%s'", output.Stdout)
