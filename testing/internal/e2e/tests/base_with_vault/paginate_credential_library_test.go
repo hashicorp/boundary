@@ -243,13 +243,14 @@ func TestApiPaginateCredentialLibraries(t *testing.T) {
 	t.Log("Created Vault Cred Store Token")
 
 	// Create a credential store
-	newStoreId := boundary.CreateNewCredentialStoreVaultApi(t, ctx, client, projectId, c.VaultAddr, credStoreToken)
+	storeId, err := boundary.CreateCredentialStoreVaultApi(t, ctx, client, projectId, c.VaultAddr, credStoreToken)
+	require.NoError(t, err)
 
 	// Create enough credential libraries to overflow a single page.
 	var libraryIds []string
 	for i := 0; i < c.MaxPageSize+1; i++ {
 		resp, err := cClient.Create(
-			ctx, "vault-generic", newStoreId,
+			ctx, "vault-generic", storeId,
 			credentiallibraries.WithVaultCredentialLibraryPath(c.VaultSecretPath+"/data/"+privateKeySecretName),
 			credentiallibraries.WithCredentialType("ssh_private_key"),
 		)
@@ -257,7 +258,7 @@ func TestApiPaginateCredentialLibraries(t *testing.T) {
 		libraryIds = append(libraryIds, resp.Item.Id)
 	}
 
-	initialCredentialLibraries, err := cClient.List(ctx, newStoreId)
+	initialCredentialLibraries, err := cClient.List(ctx, storeId)
 	require.NoError(t, err)
 
 	var returnedIds []string
@@ -278,7 +279,7 @@ func TestApiPaginateCredentialLibraries(t *testing.T) {
 
 	// Create a new library and destroy one of the others
 	resp, err := cClient.Create(
-		ctx, "vault-generic", newStoreId,
+		ctx, "vault-generic", storeId,
 		credentiallibraries.WithVaultCredentialLibraryPath(c.VaultSecretPath+"/data/"+privateKeySecretName),
 		credentiallibraries.WithCredentialType("ssh_private_key"),
 	)
@@ -288,7 +289,7 @@ func TestApiPaginateCredentialLibraries(t *testing.T) {
 	require.NoError(t, err)
 
 	// List again, should have the new and deleted library
-	newCredentialLibraries, err := cClient.List(ctx, newStoreId, credentiallibraries.WithListToken(initialCredentialLibraries.ListToken))
+	newCredentialLibraries, err := cClient.List(ctx, storeId, credentiallibraries.WithListToken(initialCredentialLibraries.ListToken))
 	require.NoError(t, err)
 
 	// Note that this will likely contain all the credential libraries,
