@@ -167,7 +167,8 @@ func TestCliPaginateAuthMethods(t *testing.T) {
 	// Create enough auth methods to overflow a single page.
 	var authMethodIds []string
 	for i := 0; i < c.MaxPageSize+1; i++ {
-		authMethodId := boundary.CreateNewAuthMethodApi(t, ctx, client, orgId)
+		authMethodId, err := boundary.CreateAuthMethodApi(t, ctx, client, orgId)
+		require.NoError(t, err)
 		authMethodIds = append(authMethodIds, authMethodId)
 	}
 
@@ -195,7 +196,8 @@ func TestCliPaginateAuthMethods(t *testing.T) {
 	assert.Empty(t, initialAuthMethods.ListToken)
 
 	// Create a new auth method and destroy one of the other auth methods
-	newAuthMethodId := boundary.CreateNewAuthMethodApi(t, ctx, client, orgId)
+	authMethodId, err := boundary.CreateAuthMethodApi(t, ctx, client, orgId)
+	require.NoError(t, err)
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"auth-methods", "delete",
@@ -222,7 +224,7 @@ func TestCliPaginateAuthMethods(t *testing.T) {
 	// The first item should be the most recently created,
 	// which should be the new auth method
 	firstItem := newAuthMethods.Items[0]
-	assert.Equal(t, newAuthMethodId, firstItem.Id)
+	assert.Equal(t, authMethodId, firstItem.Id)
 	assert.Empty(t, initialAuthMethods.ResponseType)
 	assert.Empty(t, initialAuthMethods.RemovedIds)
 	assert.Empty(t, initialAuthMethods.ListToken)
@@ -257,7 +259,9 @@ func TestApiPaginateAuthMethods(t *testing.T) {
 	// Create enough auth methods to overflow a single page.
 	var authMethodIds []string
 	for i := 0; i < c.MaxPageSize+1; i++ {
-		authMethodIds = append(authMethodIds, boundary.CreateNewAuthMethodApi(t, ctx, client, orgId))
+		authMethodId, err := boundary.CreateAuthMethodApi(t, ctx, client, orgId)
+		require.NoError(t, err)
+		authMethodIds = append(authMethodIds, authMethodId)
 	}
 
 	// List auth methods
@@ -281,7 +285,8 @@ func TestApiPaginateAuthMethods(t *testing.T) {
 	assert.Len(t, mapSliceItems, c.MaxPageSize+1)
 
 	// Create a new auth method and destroy one of the other auth methods
-	newAuthMethodId := boundary.CreateNewAuthMethodApi(t, ctx, client, orgId)
+	authMethodId, err := boundary.CreateAuthMethodApi(t, ctx, client, orgId)
+	require.NoError(t, err)
 	_, err = amClient.Delete(ctx, initialAuthMethods.Items[0].Id)
 	require.NoError(t, err)
 
@@ -297,7 +302,7 @@ func TestApiPaginateAuthMethods(t *testing.T) {
 	// The first item should be the most recently created, which
 	// should be our new auth method
 	firstItem := newAuthMethods.Items[0]
-	assert.Equal(t, newAuthMethodId, firstItem.Id)
+	assert.Equal(t, authMethodId, firstItem.Id)
 	assert.Equal(t, "complete", newAuthMethods.ResponseType)
 	// Note that the removed IDs may contain entries from other tests,
 	// so just check that there is at least 1 entry and that our entry

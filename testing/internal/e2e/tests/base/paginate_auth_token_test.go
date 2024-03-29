@@ -42,7 +42,8 @@ func TestCliPaginateAuthTokens(t *testing.T) {
 	})
 	userId, err := boundary.CreateUserApi(t, ctx, client, orgId)
 	require.NoError(t, err)
-	amId := boundary.CreateNewAuthMethodApi(t, ctx, client, orgId)
+	amId, err := boundary.CreateAuthMethodApi(t, ctx, client, orgId)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		ctx := context.Background()
 		boundary.AuthenticateAdminCli(t, ctx)
@@ -152,7 +153,8 @@ func TestApiPaginateAuthTokens(t *testing.T) {
 	})
 	userId, err := boundary.CreateUserApi(t, ctx, client, orgId)
 	require.NoError(t, err)
-	amId := boundary.CreateNewAuthMethodApi(t, ctx, client, orgId)
+	amId, err := boundary.CreateAuthMethodApi(t, ctx, client, orgId)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		ctx := context.Background()
 		client.SetToken(adminToken)
