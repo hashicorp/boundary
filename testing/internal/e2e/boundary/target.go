@@ -45,13 +45,13 @@ func CreateTargetApi(t testing.TB, ctx context.Context, client *api.Client, proj
 }
 
 // AddHostSourceToTargetApi uses the Go api to add a host source (host set or host) to a target
-func AddHostSourceToTargetApi(t testing.TB, ctx context.Context, client *api.Client, targetId string, hostSourceId string) {
+func AddHostSourceToTargetApi(t testing.TB, ctx context.Context, client *api.Client, targetId string, hostSourceId string) error {
 	tClient := targets.NewClient(client)
 	_, err := tClient.AddHostSources(ctx, targetId, 0,
 		[]string{hostSourceId},
 		targets.WithAutomaticVersioning(true),
 	)
-	require.NoError(t, err)
+	return err
 }
 
 // CreateNewTargetCli uses the cli to create a new target in boundary

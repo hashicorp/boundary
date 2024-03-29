@@ -132,7 +132,8 @@ func TestApiPaginateSessions(t *testing.T) {
 	require.NoError(t, err)
 	targetId, err := boundary.CreateTargetApi(t, ctx, client, projectId, c.TargetPort)
 	require.NoError(t, err)
-	boundary.AddHostSourceToTargetApi(t, ctx, client, targetId, hostSetId)
+	err = boundary.AddHostSourceToTargetApi(t, ctx, client, targetId, hostSetId)
+	require.NoError(t, err)
 
 	// Connect to targets to create a session
 	// Create enough sessions to overflow a single page

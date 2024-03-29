@@ -207,7 +207,8 @@ func TestApiStaticCredentialStore(t *testing.T) {
 	require.NoError(t, err)
 	targetId, err := boundary.CreateTargetApi(t, ctx, client, projectId, c.TargetPort)
 	require.NoError(t, err)
-	boundary.AddHostSourceToTargetApi(t, ctx, client, targetId, hostSetId)
+	err = boundary.AddHostSourceToTargetApi(t, ctx, client, targetId, hostSetId)
+	require.NoError(t, err)
 	newCredentialStoreId := boundary.CreateNewCredentialStoreStaticApi(t, ctx, client, projectId)
 
 	// Create credentials

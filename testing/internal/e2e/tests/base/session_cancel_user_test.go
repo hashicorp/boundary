@@ -185,7 +185,8 @@ func TestApiCreateUser(t *testing.T) {
 	require.NoError(t, err)
 	targetId, err := boundary.CreateTargetApi(t, ctx, client, projectId, c.TargetPort)
 	require.NoError(t, err)
-	boundary.AddHostSourceToTargetApi(t, ctx, client, targetId, hostSetId)
+	err = boundary.AddHostSourceToTargetApi(t, ctx, client, targetId, hostSetId)
+	require.NoError(t, err)
 
 	acctName := "e2e-account"
 	newAcctId, _ := boundary.CreateNewAccountApi(t, ctx, client, bc.AuthMethodId, acctName)
