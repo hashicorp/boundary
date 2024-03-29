@@ -42,7 +42,9 @@ func TestCliPaginateUsers(t *testing.T) {
 	require.NoError(t, err)
 	var userIds []string
 	for i := 0; i < c.MaxPageSize+1; i++ {
-		userIds = append(userIds, boundary.CreateNewUserApi(t, ctx, client, orgId))
+		userId, err := boundary.CreateUserApi(t, ctx, client, orgId)
+		require.NoError(t, err)
+		userIds = append(userIds, userId)
 	}
 
 	// List users
@@ -71,7 +73,8 @@ func TestCliPaginateUsers(t *testing.T) {
 	assert.Empty(t, initialUsers.ListToken)
 
 	// Create a new user and destroy one of the other users
-	newUserId := boundary.CreateNewUserApi(t, ctx, client, orgId)
+	userId, err := boundary.CreateUserApi(t, ctx, client, orgId)
+	require.NoError(t, err)
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"users", "delete",
@@ -98,7 +101,7 @@ func TestCliPaginateUsers(t *testing.T) {
 	// The first item should be the most recently created, which
 	// should be our new user
 	firstItem := newUsers.Items[0]
-	assert.Equal(t, newUserId, firstItem.Id)
+	assert.Equal(t, userId, firstItem.Id)
 	assert.Empty(t, newUsers.ResponseType)
 	assert.Empty(t, newUsers.RemovedIds)
 	assert.Empty(t, newUsers.ListToken)
@@ -131,7 +134,9 @@ func TestApiPaginateUsers(t *testing.T) {
 	// Create enough users to overflow a single page.
 	var userIds []string
 	for i := 0; i < c.MaxPageSize+1; i++ {
-		userIds = append(userIds, boundary.CreateNewUserApi(t, ctx, client, orgId))
+		userId, err := boundary.CreateUserApi(t, ctx, client, orgId)
+		require.NoError(t, err)
+		userIds = append(userIds, userId)
 	}
 
 	// List users
@@ -155,7 +160,8 @@ func TestApiPaginateUsers(t *testing.T) {
 	assert.Len(t, mapSliceItems, c.MaxPageSize+1)
 
 	// Create a new user and destroy one of the other users
-	newUserId := boundary.CreateNewUserApi(t, ctx, client, orgId)
+	userId, err := boundary.CreateUserApi(t, ctx, client, orgId)
+	require.NoError(t, err)
 	_, err = uClient.Delete(ctx, initialUsers.Items[0].Id)
 	require.NoError(t, err)
 
@@ -171,7 +177,7 @@ func TestApiPaginateUsers(t *testing.T) {
 	// The first item should be the most recently created, which
 	// should be our new user
 	firstItem := newUsers.Items[0]
-	assert.Equal(t, newUserId, firstItem.Id)
+	assert.Equal(t, userId, firstItem.Id)
 	assert.Equal(t, "complete", newUsers.ResponseType)
 	// Note that the removed IDs may contain entries from other tests,
 	// so just check that there is at least 1 entry and that our entry

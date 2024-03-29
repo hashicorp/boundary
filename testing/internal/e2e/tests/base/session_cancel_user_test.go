@@ -197,14 +197,15 @@ func TestApiCreateUser(t *testing.T) {
 		_, err := aClient.Delete(ctx, newAcctId)
 		require.NoError(t, err)
 	})
-	newUserId := boundary.CreateNewUserApi(t, ctx, client, "global")
+	userId, err := boundary.CreateUserApi(t, ctx, client, "global")
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		uClient := users.NewClient(client)
-		_, err := uClient.Delete(ctx, newUserId)
+		_, err := uClient.Delete(ctx, userId)
 		require.NoError(t, err)
 	})
 	uClient := users.NewClient(client)
-	_, err = uClient.SetAccounts(ctx, newUserId, 0, []string{newAcctId}, users.WithAutomaticVersioning(true))
+	_, err = uClient.SetAccounts(ctx, userId, 0, []string{newAcctId}, users.WithAutomaticVersioning(true))
 	require.NoError(t, err)
 
 	rClient := roles.NewClient(client)
@@ -218,7 +219,7 @@ func TestApiCreateUser(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	_, err = rClient.AddPrincipals(ctx, newRoleId, 0, []string{newUserId},
+	_, err = rClient.AddPrincipals(ctx, newRoleId, 0, []string{userId},
 		roles.WithAutomaticVersioning(true),
 	)
 	require.NoError(t, err)

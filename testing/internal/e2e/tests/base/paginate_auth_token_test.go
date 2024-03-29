@@ -40,7 +40,8 @@ func TestCliPaginateAuthTokens(t *testing.T) {
 		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", orgId))
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
-	userId := boundary.CreateNewUserApi(t, ctx, client, orgId)
+	userId, err := boundary.CreateUserApi(t, ctx, client, orgId)
+	require.NoError(t, err)
 	amId := boundary.CreateNewAuthMethodApi(t, ctx, client, orgId)
 	t.Cleanup(func() {
 		ctx := context.Background()
@@ -148,7 +149,8 @@ func TestApiPaginateAuthTokens(t *testing.T) {
 		_, err = sClient.Delete(ctx, orgId)
 		require.NoError(t, err)
 	})
-	userId := boundary.CreateNewUserApi(t, ctx, client, orgId)
+	userId, err := boundary.CreateUserApi(t, ctx, client, orgId)
+	require.NoError(t, err)
 	amId := boundary.CreateNewAuthMethodApi(t, ctx, client, orgId)
 	t.Cleanup(func() {
 		ctx := context.Background()

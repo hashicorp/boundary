@@ -202,14 +202,15 @@ func TestApiCreateGroup(t *testing.T) {
 		_, err := aClient.Delete(ctx, newAcctId)
 		require.NoError(t, err)
 	})
-	newUserId := boundary.CreateNewUserApi(t, ctx, client, "global")
+	userId, err := boundary.CreateUserApi(t, ctx, client, "global")
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		uClient := users.NewClient(client)
-		_, err := uClient.Delete(ctx, newUserId)
+		_, err := uClient.Delete(ctx, userId)
 		require.NoError(t, err)
 	})
 	uClient := users.NewClient(client)
-	_, err = uClient.SetAccounts(ctx, newUserId, 0, []string{newAcctId}, users.WithAutomaticVersioning(true))
+	_, err = uClient.SetAccounts(ctx, userId, 0, []string{newAcctId}, users.WithAutomaticVersioning(true))
 	require.NoError(t, err)
 
 	gClient := groups.NewClient(client)
@@ -218,7 +219,7 @@ func TestApiCreateGroup(t *testing.T) {
 	newGroupId := newGroupResult.Item.Id
 	t.Logf("Created Group: %s", newGroupId)
 
-	_, err = gClient.AddMembers(ctx, newGroupId, 0, []string{newUserId}, groups.WithAutomaticVersioning(true))
+	_, err = gClient.AddMembers(ctx, newGroupId, 0, []string{userId}, groups.WithAutomaticVersioning(true))
 	require.NoError(t, err)
 
 	rClient := roles.NewClient(client)
