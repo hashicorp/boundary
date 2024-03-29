@@ -6,24 +6,33 @@ package boundary
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"testing"
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/groups"
 	"github.com/hashicorp/boundary/testing/internal/e2e"
+	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/stretchr/testify/require"
 )
 
-// CreateNewGroupApi uses the API to create a new group.
+// CreateGroupApi uses the API to create a new group.
 // Returns the id of the new group.
-func CreateNewGroupApi(t testing.TB, ctx context.Context, client *api.Client, scopeId string) string {
-	gClient := groups.NewClient(client)
-	newGroup, err := gClient.Create(ctx, scopeId)
-	require.NoError(t, err)
+func CreateGroupApi(t testing.TB, ctx context.Context, client *api.Client, scopeId string) (string, error) {
+	name, err := base62.Random(16)
+	if err != nil {
+		return "", err
+	}
 
-	newGroupId := newGroup.Item.Id
-	t.Logf("Created Group: %s", newGroupId)
-	return newGroupId
+	gClient := groups.NewClient(client)
+	newGroup, err := gClient.Create(ctx, scopeId, groups.WithName(fmt.Sprintf("e2e Group %s", name)))
+	if err != nil {
+		return "", err
+	}
+
+	groupId := newGroup.Item.Id
+	t.Logf("Created Group: %s", groupId)
+	return groupId, nil
 }
 
 // CreateNewGroupCli uses the cli to create a new group.

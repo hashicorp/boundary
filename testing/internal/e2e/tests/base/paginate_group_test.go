@@ -42,7 +42,9 @@ func TestCliPaginateGroups(t *testing.T) {
 	require.NoError(t, err)
 	var groupIds []string
 	for i := 0; i < c.MaxPageSize+1; i++ {
-		groupIds = append(groupIds, boundary.CreateNewGroupApi(t, ctx, client, orgId))
+		groupId, err := boundary.CreateGroupApi(t, ctx, client, orgId)
+		require.NoError(t, err)
+		groupIds = append(groupIds, groupId)
 	}
 
 	// List groups
@@ -71,7 +73,8 @@ func TestCliPaginateGroups(t *testing.T) {
 	assert.Empty(t, initialGroups.ListToken)
 
 	// Create a new group and destroy one of the other groups
-	newGroupId := boundary.CreateNewGroupApi(t, ctx, client, orgId)
+	groupId, err := boundary.CreateGroupApi(t, ctx, client, orgId)
+	require.NoError(t, err)
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"groups", "delete",
@@ -98,7 +101,7 @@ func TestCliPaginateGroups(t *testing.T) {
 	// The first item should be the most recently created, which
 	// should be our new group
 	firstItem := newGroups.Items[0]
-	assert.Equal(t, newGroupId, firstItem.Id)
+	assert.Equal(t, groupId, firstItem.Id)
 	assert.Empty(t, newGroups.ResponseType)
 	assert.Empty(t, newGroups.RemovedIds)
 	assert.Empty(t, newGroups.ListToken)
@@ -130,7 +133,9 @@ func TestApiPaginateGroups(t *testing.T) {
 
 	var groupIds []string
 	for i := 0; i < c.MaxPageSize+1; i++ {
-		groupIds = append(groupIds, boundary.CreateNewGroupApi(t, ctx, client, orgId))
+		groupId, err := boundary.CreateGroupApi(t, ctx, client, orgId)
+		require.NoError(t, err)
+		groupIds = append(groupIds, groupId)
 	}
 
 	// List groups
@@ -155,7 +160,8 @@ func TestApiPaginateGroups(t *testing.T) {
 	assert.Len(t, mapSliceItems, c.MaxPageSize+1)
 
 	// Create a new group and destroy one of the other groups
-	newGroupId := boundary.CreateNewGroupApi(t, ctx, client, orgId)
+	groupId, err := boundary.CreateGroupApi(t, ctx, client, orgId)
+	require.NoError(t, err)
 	_, err = uClient.Delete(ctx, initialGroups.Items[0].Id)
 	require.NoError(t, err)
 
@@ -171,7 +177,7 @@ func TestApiPaginateGroups(t *testing.T) {
 	// The first item should be the most recently created, which
 	// should be our new group
 	firstItem := newGroups.Items[0]
-	assert.Equal(t, newGroupId, firstItem.Id)
+	assert.Equal(t, groupId, firstItem.Id)
 	assert.Equal(t, "complete", newGroups.ResponseType)
 	// Note that the removed IDs may contain entries from other tests,
 	// so just check that there is at least 1 entry and that our entry
