@@ -131,7 +131,8 @@ func TestCliTcpTargetWorkerConnectTarget(t *testing.T) {
 	require.NoError(t, err)
 
 	// Add brokered credentials to target
-	boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, targetId, newCredentialLibraryId)
+	err = boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, targetId, newCredentialLibraryId)
+	require.NoError(t, err)
 
 	// Connect to target and print host's IP address using retrieved credentials
 	output = e2e.RunCommand(ctx, "boundary",

@@ -176,7 +176,7 @@ func RemoveHostSourceFromTargetCli(t testing.TB, ctx context.Context, targetId, 
 
 // AddBrokeredCredentialSourceToTargetCli uses the cli to add a credential source (credential library or
 // credential) to a target
-func AddBrokeredCredentialSourceToTargetCli(t testing.TB, ctx context.Context, targetId string, credentialSourceId string) {
+func AddBrokeredCredentialSourceToTargetCli(t testing.TB, ctx context.Context, targetId string, credentialSourceId string) error {
 	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"targets", "add-credential-sources",
@@ -184,7 +184,11 @@ func AddBrokeredCredentialSourceToTargetCli(t testing.TB, ctx context.Context, t
 			"-brokered-credential-source", credentialSourceId,
 		),
 	)
-	require.NoError(t, output.Err, string(output.Stderr))
+	if output.Err != nil {
+		return fmt.Errorf("%w: %s", output.Err, string(output.Stderr))
+	}
+
+	return nil
 }
 
 // RemoveBrokeredCredentialSourceFromTargetCli uses the cli to remove a credential source (credential library or

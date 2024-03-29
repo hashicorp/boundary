@@ -117,7 +117,8 @@ func TestCliTcpTargetVaultGenericConnectTargetWithSsh(t *testing.T) {
 	require.NoError(t, err)
 
 	// Add brokered credentials to target
-	boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, targetId, newCredentialLibraryId)
+	err = boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, targetId, newCredentialLibraryId)
+	require.NoError(t, err)
 
 	// Get credentials for target
 	output = e2e.RunCommand(ctx, "boundary",

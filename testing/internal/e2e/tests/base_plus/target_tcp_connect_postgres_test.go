@@ -53,7 +53,8 @@ func TestCliTcpTargetConnectPostgres(t *testing.T) {
 		c.PostgresUser,
 		c.PostgresPassword,
 	)
-	boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, targetId, newCredentialsId)
+	err = boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, targetId, newCredentialsId)
+	require.NoError(t, err)
 
 	var cmd *exec.Cmd
 	cmd = exec.CommandContext(ctx,

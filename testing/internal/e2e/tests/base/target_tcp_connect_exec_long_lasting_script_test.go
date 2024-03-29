@@ -52,7 +52,8 @@ func TestCliTcpTargetConnectExecLongLastingScript(t *testing.T) {
 		target.WithAddress(c.TargetAddress),
 	)
 	require.NoError(t, err)
-	boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, targetId, newCredentialsId)
+	err = boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, targetId, newCredentialsId)
+	require.NoError(t, err)
 
 	// Start a session
 	ctxCancel, cancel := context.WithCancel(context.Background())
