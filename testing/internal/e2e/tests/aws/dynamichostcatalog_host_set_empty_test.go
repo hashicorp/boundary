@@ -42,7 +42,8 @@ func TestCliCreateAwsDynamicHostCatalogWithEmptyHostSet(t *testing.T) {
 	require.NoError(t, err)
 
 	// Set up a host set
-	newHostSetId := boundary.CreateNewAwsHostSetCli(t, ctx, hostCatalogId, "tag:empty_test=true")
+	hostSetId, err := boundary.CreateAwsHostSetCli(t, ctx, hostCatalogId, "tag:empty_test=true")
+	require.NoError(t, err)
 
 	// Check that there are no hosts in the host set
 	t.Logf("Looking for items in the host set...")
@@ -55,7 +56,7 @@ func TestCliCreateAwsDynamicHostCatalogWithEmptyHostSet(t *testing.T) {
 		output := e2e.RunCommand(ctx, "boundary",
 			e2e.WithArgs(
 				"host-sets", "read",
-				"-id", newHostSetId,
+				"-id", hostSetId,
 				"-format", "json",
 			),
 		)
@@ -96,7 +97,7 @@ func TestCliCreateAwsDynamicHostCatalogWithEmptyHostSet(t *testing.T) {
 
 	// Create target
 	newTargetId := boundary.CreateNewTargetCli(t, ctx, projectId, c.TargetPort)
-	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, newHostSetId)
+	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, hostSetId)
 
 	// Attempt to connect to target
 	output := e2e.RunCommand(ctx, "boundary",

@@ -240,26 +240,37 @@ func CreateAwsHostCatalogCli(t testing.TB, ctx context.Context, projectId string
 	return hostCatalogId, nil
 }
 
-// CreateNewAwsHostSetCli uses the cli to create a new host set from an AWS dynamic host catalog.
+// CreateAwsHostSetCli uses the cli to create a new host set from an AWS dynamic host catalog.
 // Returns the id of the new host set.
-func CreateNewAwsHostSetCli(t testing.TB, ctx context.Context, hostCatalogId string, filter string) string {
+func CreateAwsHostSetCli(t testing.TB, ctx context.Context, hostCatalogId string, filter string) (string, error) {
+	name, err := base62.Random(16)
+	if err != nil {
+		return "", err
+	}
+
 	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"host-sets", "create", "plugin",
 			"-host-catalog-id", hostCatalogId,
 			"-attr", "filters="+filter,
+			"-name", fmt.Sprintf("e2e Host Set %s", name),
 			"-description", "e2e",
 			"-format", "json",
 		),
 	)
-	require.NoError(t, output.Err, string(output.Stderr))
-	var newHostSetResult hostsets.HostSetCreateResult
-	err := json.Unmarshal(output.Stdout, &newHostSetResult)
-	require.NoError(t, err)
+	if output.Err != nil {
+		return "", fmt.Errorf("%w: %s", output.Err, string(output.Stderr))
+	}
 
-	newHostSetId := newHostSetResult.Item.Id
-	t.Logf("Created Host Set: %s", newHostSetId)
-	return newHostSetId
+	var createHostSetResult hostsets.HostSetCreateResult
+	err = json.Unmarshal(output.Stdout, &createHostSetResult)
+	if err != nil {
+		return "", err
+	}
+
+	hostSetId := createHostSetResult.Item.Id
+	t.Logf("Created Host Set: %s", hostSetId)
+	return hostSetId, nil
 }
 
 // WaitForHostsInHostSetCli uses the cli to check if there are any hosts in a host set. It will check a

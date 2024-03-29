@@ -47,32 +47,34 @@ func TestCliCreateAwsDynamicHostCatalogWithHostSet(t *testing.T) {
 	require.NoError(t, err)
 
 	// Set up a host set
-	newHostSetId1 := boundary.CreateNewAwsHostSetCli(t, ctx, hostCatalogId, c.AwsHostSetFilter1)
+	hostSetId1, err := boundary.CreateAwsHostSetCli(t, ctx, hostCatalogId, c.AwsHostSetFilter1)
+	require.NoError(t, err)
 	var targetIps1 []string
 	err = json.Unmarshal([]byte(c.AwsHostSetIps1), &targetIps1)
 	expectedHostSetCount1 := len(targetIps1)
 	require.NoError(t, err)
-	boundary.WaitForNumberOfHostsInHostSetCli(t, ctx, newHostSetId1, expectedHostSetCount1)
+	boundary.WaitForNumberOfHostsInHostSetCli(t, ctx, hostSetId1, expectedHostSetCount1)
 
 	// Set up another host set
-	newHostSetId2 := boundary.CreateNewAwsHostSetCli(t, ctx, hostCatalogId, c.AwsHostSetFilter2)
+	hostSetId2, err := boundary.CreateAwsHostSetCli(t, ctx, hostCatalogId, c.AwsHostSetFilter2)
+	require.NoError(t, err)
 	var targetIps2 []string
 	err = json.Unmarshal([]byte(c.AwsHostSetIps2), &targetIps2)
 	require.NoError(t, err)
 	expectedHostSetCount2 := len(targetIps2)
-	boundary.WaitForNumberOfHostsInHostSetCli(t, ctx, newHostSetId2, expectedHostSetCount2)
+	boundary.WaitForNumberOfHostsInHostSetCli(t, ctx, hostSetId2, expectedHostSetCount2)
 
 	// Update host set with a different filter
 	t.Log("Updating host set 2 with host set 1's filter...")
 	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"host-sets", "update", "plugin",
-			"-id", newHostSetId2,
+			"-id", hostSetId2,
 			"-attr", fmt.Sprintf("filters=%s", c.AwsHostSetFilter1),
 		),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
-	boundary.WaitForNumberOfHostsInHostSetCli(t, ctx, newHostSetId2, expectedHostSetCount1)
+	boundary.WaitForNumberOfHostsInHostSetCli(t, ctx, hostSetId2, expectedHostSetCount1)
 
 	// Get list of all hosts from host catalog
 	t.Logf("Looking for items in the host catalog...")
@@ -111,7 +113,7 @@ func TestCliCreateAwsDynamicHostCatalogWithHostSet(t *testing.T) {
 
 	// Create target
 	newTargetId := boundary.CreateNewTargetCli(t, ctx, projectId, c.TargetPort)
-	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, newHostSetId1)
+	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, hostSetId1)
 
 	// Connect to target
 	output = e2e.RunCommand(ctx, "boundary",
