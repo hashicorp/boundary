@@ -147,11 +147,15 @@ func AddHostSourceToTargetCli(t testing.TB, ctx context.Context, targetId, hostS
 // to a target.
 // Boundary's `set-host-sources` functionality replaces all existing host sets
 // on a target with the provided one.
-func SetHostSourceToTargetCli(t testing.TB, ctx context.Context, targetId, hostSourceId string) {
+func SetHostSourceToTargetCli(t testing.TB, ctx context.Context, targetId, hostSourceId string) error {
 	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs("targets", "set-host-sources", "-id", targetId, "-host-source", hostSourceId),
 	)
-	require.NoError(t, output.Err, string(output.Stderr))
+	if output.Err != nil {
+		return fmt.Errorf("%w: %s", output.Err, string(output.Stderr))
+	}
+
+	return nil
 }
 
 // RemoveHostSourceFromTargetCli uses the cli to remove a host source (host set or host) to a target
