@@ -14,24 +14,34 @@ import (
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/testing/internal/e2e"
-	"github.com/stretchr/testify/require"
+	"github.com/hashicorp/go-secure-stdlib/base62"
 )
 
-// CreateNewTargetApi uses the Go api to create a new target in boundary
+// CreateTargetApi uses the Go api to create a new target in boundary
 // Returns the id of the new target.
-func CreateNewTargetApi(t testing.TB, ctx context.Context, client *api.Client, projectId string, defaultPort string) string {
+func CreateTargetApi(t testing.TB, ctx context.Context, client *api.Client, projectId string, defaultPort string) (string, error) {
+	name, err := base62.Random(16)
+	if err != nil {
+		return "", err
+	}
+
 	tClient := targets.NewClient(client)
 	targetPort, err := strconv.ParseInt(defaultPort, 10, 32)
-	require.NoError(t, err)
+	if err != nil {
+		return "", err
+	}
+
 	newTargetResult, err := tClient.Create(ctx, "tcp", projectId,
-		targets.WithName("e2e Target"),
+		targets.WithName(fmt.Sprintf("e2e Target %s", name)),
 		targets.WithTcpTargetDefaultPort(uint32(targetPort)),
 	)
-	require.NoError(t, err)
-	newTargetId := newTargetResult.Item.Id
-	t.Logf("Created Target: %s", newTargetId)
+	if err != nil {
+		return "", err
+	}
 
-	return newTargetId
+	targetId := newTargetResult.Item.Id
+	t.Logf("Created Target: %s", targetId)
+	return targetId, nil
 }
 
 // AddHostSourceToTargetApi uses the Go api to add a host source (host set or host) to a target

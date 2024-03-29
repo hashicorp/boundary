@@ -203,8 +203,9 @@ func TestApiVaultCredentialStore(t *testing.T) {
 	require.NoError(t, err)
 	err = boundary.AddHostToHostSetApi(t, ctx, client, hostSetId, hostId)
 	require.NoError(t, err)
-	newTargetId := boundary.CreateNewTargetApi(t, ctx, client, projectId, c.TargetPort)
-	boundary.AddHostSourceToTargetApi(t, ctx, client, newTargetId, hostSetId)
+	targetId, err := boundary.CreateTargetApi(t, ctx, client, projectId, c.TargetPort)
+	require.NoError(t, err)
+	boundary.AddHostSourceToTargetApi(t, ctx, client, targetId, hostSetId)
 
 	// Configure vault
 	boundaryPolicyName, kvPolicyFilePath := vault.Setup(t, "testdata/boundary-controller-policy.hcl")
@@ -276,21 +277,21 @@ func TestApiVaultCredentialStore(t *testing.T) {
 
 	// Add private key brokered credentials to target
 	tClient := targets.NewClient(client)
-	_, err = tClient.AddCredentialSources(ctx, newTargetId, 0,
+	_, err = tClient.AddCredentialSources(ctx, targetId, 0,
 		targets.WithBrokeredCredentialSourceIds([]string{newPrivateKeyCredentialLibraryId}),
 		targets.WithAutomaticVersioning(true),
 	)
 	require.NoError(t, err)
 
 	// Add password brokered credentials to target
-	_, err = tClient.AddCredentialSources(ctx, newTargetId, 0,
+	_, err = tClient.AddCredentialSources(ctx, targetId, 0,
 		targets.WithBrokeredCredentialSourceIds([]string{newPasswordCredentialLibraryId}),
 		targets.WithAutomaticVersioning(true),
 	)
 	require.NoError(t, err)
 
 	// Get credentials for target
-	newSessionAuthorizationResult, err := tClient.AuthorizeSession(ctx, newTargetId)
+	newSessionAuthorizationResult, err := tClient.AuthorizeSession(ctx, targetId)
 	require.NoError(t, err)
 	newSessionAuthorization := newSessionAuthorizationResult.Item
 	require.Len(t, newSessionAuthorization.Credentials, 2)

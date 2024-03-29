@@ -188,8 +188,9 @@ func TestApiCreateGroup(t *testing.T) {
 	require.NoError(t, err)
 	err = boundary.AddHostToHostSetApi(t, ctx, client, hostSetId, hostId)
 	require.NoError(t, err)
-	newTargetId := boundary.CreateNewTargetApi(t, ctx, client, projectId, c.TargetPort)
-	boundary.AddHostSourceToTargetApi(t, ctx, client, newTargetId, hostSetId)
+	targetId, err := boundary.CreateTargetApi(t, ctx, client, projectId, c.TargetPort)
+	require.NoError(t, err)
+	boundary.AddHostSourceToTargetApi(t, ctx, client, targetId, hostSetId)
 
 	acctName := "e2e-account"
 	newAcctId, _ := boundary.CreateNewAccountApi(t, ctx, client, bc.AuthMethodId, acctName)

@@ -205,8 +205,9 @@ func TestApiStaticCredentialStore(t *testing.T) {
 	require.NoError(t, err)
 	err = boundary.AddHostToHostSetApi(t, ctx, client, hostSetId, hostId)
 	require.NoError(t, err)
-	newTargetId := boundary.CreateNewTargetApi(t, ctx, client, projectId, c.TargetPort)
-	boundary.AddHostSourceToTargetApi(t, ctx, client, newTargetId, hostSetId)
+	targetId, err := boundary.CreateTargetApi(t, ctx, client, projectId, c.TargetPort)
+	require.NoError(t, err)
+	boundary.AddHostSourceToTargetApi(t, ctx, client, targetId, hostSetId)
 	newCredentialStoreId := boundary.CreateNewCredentialStoreStaticApi(t, ctx, client, projectId)
 
 	// Create credentials
@@ -223,14 +224,14 @@ func TestApiStaticCredentialStore(t *testing.T) {
 
 	// Add credentials to target
 	tClient := targets.NewClient(client)
-	_, err = tClient.AddCredentialSources(ctx, newTargetId, 0,
+	_, err = tClient.AddCredentialSources(ctx, targetId, 0,
 		targets.WithAutomaticVersioning(true),
 		targets.WithBrokeredCredentialSourceIds([]string{newCredentialsId}),
 	)
 	require.NoError(t, err)
 
 	// Authorize Session
-	newSessionAuthorizationResult, err := tClient.AuthorizeSession(ctx, newTargetId)
+	newSessionAuthorizationResult, err := tClient.AuthorizeSession(ctx, targetId)
 	require.NoError(t, err)
 	newSessionAuthorization := newSessionAuthorizationResult.Item
 	retrievedUser, ok := newSessionAuthorization.Credentials[0].Credential["username"].(string)

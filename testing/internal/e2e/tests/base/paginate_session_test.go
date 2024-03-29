@@ -130,14 +130,15 @@ func TestApiPaginateSessions(t *testing.T) {
 	require.NoError(t, err)
 	err = boundary.AddHostToHostSetApi(t, ctx, client, hostSetId, hostId)
 	require.NoError(t, err)
-	newTargetId := boundary.CreateNewTargetApi(t, ctx, client, projectId, c.TargetPort)
-	boundary.AddHostSourceToTargetApi(t, ctx, client, newTargetId, hostSetId)
+	targetId, err := boundary.CreateTargetApi(t, ctx, client, projectId, c.TargetPort)
+	require.NoError(t, err)
+	boundary.AddHostSourceToTargetApi(t, ctx, client, targetId, hostSetId)
 
 	// Connect to targets to create a session
 	// Create enough sessions to overflow a single page
 	for i := 0; i < c.MaxPageSize+1; i++ {
 		// boundary.ConnectCli(t, ctx, newTargetId)
-		_, err := tClient.AuthorizeSession(ctx, newTargetId)
+		_, err := tClient.AuthorizeSession(ctx, targetId)
 		require.NoError(t, err)
 	}
 
@@ -156,7 +157,7 @@ func TestApiPaginateSessions(t *testing.T) {
 	assert.Len(t, mapSliceItems, c.MaxPageSize+1)
 
 	// Create a new session
-	boundary.ConnectCli(t, ctx, newTargetId)
+	boundary.ConnectCli(t, ctx, targetId)
 
 	// List again, should have the new session
 	newSessions, err := sClient.List(ctx, projectId, sessions.WithListToken(initialSessions.ListToken))
