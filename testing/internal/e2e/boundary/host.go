@@ -86,10 +86,10 @@ func CreateHostApi(t testing.TB, ctx context.Context, client *api.Client, hostCa
 }
 
 // AddHostToHostSetApi uses the Go api to add a host to a host set
-func AddHostToHostSetApi(t testing.TB, ctx context.Context, client *api.Client, hostSetId string, hostId string) {
+func AddHostToHostSetApi(t testing.TB, ctx context.Context, client *api.Client, hostSetId string, hostId string) error {
 	hsClient := hostsets.NewClient(client)
 	_, err := hsClient.AddHosts(ctx, hostSetId, 0, []string{hostId}, hostsets.WithAutomaticVersioning(true))
-	require.NoError(t, err)
+	return err
 }
 
 // CreateNewHostCatalogCli uses the cli to create a new host catalog.

@@ -197,7 +197,8 @@ func TestApiVaultCredentialStore(t *testing.T) {
 	require.NoError(t, err)
 	hostId, err := boundary.CreateHostApi(t, ctx, client, hostCatalogId, c.TargetAddress)
 	require.NoError(t, err)
-	boundary.AddHostToHostSetApi(t, ctx, client, hostSetId, hostId)
+	err = boundary.AddHostToHostSetApi(t, ctx, client, hostSetId, hostId)
+	require.NoError(t, err)
 	newTargetId := boundary.CreateNewTargetApi(t, ctx, client, projectId, c.TargetPort)
 	boundary.AddHostSourceToTargetApi(t, ctx, client, newTargetId, hostSetId)
 
