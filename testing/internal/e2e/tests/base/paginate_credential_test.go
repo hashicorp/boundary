@@ -187,7 +187,8 @@ func TestApiPaginateCredentials(t *testing.T) {
 	assert.Len(t, mapSliceItems, c.MaxPageSize+1)
 
 	// Create a new credential and destroy one of the other Credentials
-	newCredentialId := boundary.CreateNewStaticCredentialPasswordApi(t, ctx, client, storeId, "user", "password")
+	credentialId, err := boundary.CreateStaticCredentialPasswordApi(t, ctx, client, storeId, "user", "password")
+	require.NoError(t, err)
 	_, err = cClient.Delete(ctx, initialCredentials.Items[0].Id)
 	require.NoError(t, err)
 
@@ -203,7 +204,7 @@ func TestApiPaginateCredentials(t *testing.T) {
 	// The first item should be the most recently created, which
 	// should be our new credential
 	firstItem := newCredentials.Items[0]
-	assert.Equal(t, newCredentialId, firstItem.Id)
+	assert.Equal(t, credentialId, firstItem.Id)
 	assert.Equal(t, "complete", newCredentials.ResponseType)
 	// Note that the removed IDs may contain entries from other tests,
 	// so just check that there is at least 1 entry and that our entry

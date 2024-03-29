@@ -15,7 +15,6 @@ import (
 	"github.com/hashicorp/boundary/api/credentialstores"
 	"github.com/hashicorp/boundary/testing/internal/e2e"
 	"github.com/hashicorp/go-secure-stdlib/base62"
-	"github.com/stretchr/testify/require"
 )
 
 // CreateCredentialStoreStaticApi uses the Go api to create a new static credential store.
@@ -273,18 +272,26 @@ func CreateStaticCredentialJsonCli(t testing.TB, ctx context.Context, credential
 	return credentialId, nil
 }
 
-// CreateNewStaticCredentialPasswordApi uses the API to create a new password credential in the
+// CreateStaticCredentialPasswordApi uses the API to create a new password credential in the
 // provided static credential store.
 // Returns the id of the new credential
-func CreateNewStaticCredentialPasswordApi(t testing.TB, ctx context.Context, client *api.Client, credentialStoreId string, user string, password string) string {
+func CreateStaticCredentialPasswordApi(t testing.TB, ctx context.Context, client *api.Client, credentialStoreId string, user string, password string) (string, error) {
+	name, err := base62.Random(16)
+	if err != nil {
+		return "", err
+	}
+
 	c := credentials.NewClient(client)
-	newCredentialsResult, err := c.Create(ctx, "username_password", credentialStoreId,
+	createCredentialsResult, err := c.Create(ctx, "username_password", credentialStoreId,
 		credentials.WithUsernamePasswordCredentialUsername(user),
 		credentials.WithUsernamePasswordCredentialPassword(password),
+		credentials.WithName(fmt.Sprintf("e2e Credential %s", name)),
 	)
-	require.NoError(t, err)
-	newCredentialsId := newCredentialsResult.Item.Id
-	t.Logf("Created Username/Password Credentials: %s", newCredentialsId)
+	if err != nil {
+		return "", err
+	}
 
-	return newCredentialsId
+	credentialId := createCredentialsResult.Item.Id
+	t.Logf("Created Username/Password Credentials: %s", credentialId)
+	return credentialId, nil
 }
