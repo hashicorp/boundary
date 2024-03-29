@@ -108,10 +108,10 @@ func TestCliSessionCancelGroup(t *testing.T) {
 	boundary.AddUserToGroup(t, ctx, userId, newGroupId)
 
 	// Create a role for a group
-	newRoleId, err := boundary.CreateRoleCli(t, ctx, projectId)
+	roleId, err := boundary.CreateRoleCli(t, ctx, projectId)
 	require.NoError(t, err)
-	boundary.AddGrantToRoleCli(t, ctx, newRoleId, "ids=*;type=target;actions=authorize-session")
-	boundary.AddPrincipalToRoleCli(t, ctx, newRoleId, newGroupId)
+	boundary.AddGrantToRoleCli(t, ctx, roleId, "ids=*;type=target;actions=authorize-session")
+	boundary.AddPrincipalToRoleCli(t, ctx, roleId, newGroupId)
 
 	// Connect to target to create a session
 	ctxCancel, cancel := context.WithCancel(context.Background())

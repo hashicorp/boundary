@@ -68,10 +68,10 @@ func TestCliSessionEndWhenHostIsDeleted(t *testing.T) {
 	})
 	err = boundary.SetAccountToUserCli(t, ctx, userId, newAccountId)
 	require.NoError(t, err)
-	newRoleId, err := boundary.CreateRoleCli(t, ctx, projectId)
+	roleId, err := boundary.CreateRoleCli(t, ctx, projectId)
 	require.NoError(t, err)
-	boundary.AddGrantToRoleCli(t, ctx, newRoleId, "ids=*;type=target;actions=authorize-session")
-	boundary.AddPrincipalToRoleCli(t, ctx, newRoleId, userId)
+	boundary.AddGrantToRoleCli(t, ctx, roleId, "ids=*;type=target;actions=authorize-session")
+	boundary.AddPrincipalToRoleCli(t, ctx, roleId, userId)
 
 	// Connect to target to create a session
 	ctxCancel, cancel := context.WithCancel(context.Background())

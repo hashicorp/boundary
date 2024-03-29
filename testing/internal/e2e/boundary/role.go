@@ -40,8 +40,9 @@ func CreateRoleApi(t testing.TB, ctx context.Context, client *api.Client, scopeI
 func CreateRoleCli(t testing.TB, ctx context.Context, scopeId string) (string, error) {
 	name, err := base62.Random(16)
 	if err != nil {
-		return "", fmt.Errorf("error generating role name: %w", err)
+		return "", err
 	}
+
 	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"roles", "create",
@@ -52,17 +53,17 @@ func CreateRoleCli(t testing.TB, ctx context.Context, scopeId string) (string, e
 		),
 	)
 	if output.Err != nil {
-		return "", fmt.Errorf("error creating role: %w: %s", output.Err, string(output.Stderr))
+		return "", fmt.Errorf("%w: %s", output.Err, string(output.Stderr))
 	}
 
-	var newRoleResult roles.RoleCreateResult
-	if err := json.Unmarshal(output.Stdout, &newRoleResult); err != nil {
+	var createRoleResult roles.RoleCreateResult
+	if err := json.Unmarshal(output.Stdout, &createRoleResult); err != nil {
 		return "", fmt.Errorf("error unmarshalling role creation result: %w", err)
 	}
 
-	newRoleId := newRoleResult.Item.Id
-	t.Logf("Created Role: %s in scope %s", newRoleId, scopeId)
-	return newRoleId, nil
+	roleId := createRoleResult.Item.Id
+	t.Logf("Created Role: %s in scope %s", roleId, scopeId)
+	return roleId, nil
 }
 
 // ListRolesCli lists roles from the specified scope using the Boundary CLI.

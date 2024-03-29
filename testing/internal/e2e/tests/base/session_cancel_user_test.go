@@ -103,10 +103,10 @@ func TestCliSessionCancelUser(t *testing.T) {
 
 	// Create a role for user
 	boundary.AuthenticateAdminCli(t, ctx)
-	newRoleId, err := boundary.CreateRoleCli(t, ctx, projectId)
+	roleId, err := boundary.CreateRoleCli(t, ctx, projectId)
 	require.NoError(t, err)
-	boundary.AddGrantToRoleCli(t, ctx, newRoleId, "ids=*;type=target;actions=authorize-session")
-	boundary.AddPrincipalToRoleCli(t, ctx, newRoleId, userId)
+	boundary.AddGrantToRoleCli(t, ctx, roleId, "ids=*;type=target;actions=authorize-session")
+	boundary.AddPrincipalToRoleCli(t, ctx, roleId, userId)
 
 	// Connect to target to create a session
 	ctxCancel, cancel := context.WithCancel(context.Background())

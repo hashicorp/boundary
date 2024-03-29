@@ -158,10 +158,10 @@ func TestCliLdap(t *testing.T) {
 	require.Contains(t, managedGroupReadResult.Item.MemberIds, newAccountId)
 
 	// Add managed group as a principal to a role with permissions to read auth methods
-	newRoleId, err := boundary.CreateRoleCli(t, ctx, orgId)
+	roleId, err := boundary.CreateRoleCli(t, ctx, orgId)
 	require.NoError(t, err)
-	boundary.AddPrincipalToRoleCli(t, ctx, newRoleId, managedGroupId)
-	boundary.AddGrantToRoleCli(t, ctx, newRoleId, "ids=*;type=auth-method;actions=read")
+	boundary.AddPrincipalToRoleCli(t, ctx, roleId, managedGroupId)
+	boundary.AddGrantToRoleCli(t, ctx, roleId, "ids=*;type=auth-method;actions=read")
 
 	// Log in as the LDAP user again
 	output = e2e.RunCommand(ctx, "boundary",
