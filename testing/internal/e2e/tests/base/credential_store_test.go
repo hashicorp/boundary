@@ -77,7 +77,8 @@ func TestCliStaticCredentialStore(t *testing.T) {
 	require.NoError(t, err)
 	pwCredentialId, err := boundary.CreateStaticCredentialPasswordCli(t, ctx, storeId, c.TargetSshUser, testPassword)
 	require.NoError(t, err)
-	jsonCredentialsId := boundary.CreateNewStaticCredentialJsonCli(t, ctx, storeId, testCredentialsFile)
+	jsonCredentialId, err := boundary.CreateStaticCredentialJsonCli(t, ctx, storeId, testCredentialsFile)
+	require.NoError(t, err)
 
 	// Get credentials for target (expect empty)
 	output := e2e.RunCommand(ctx, "boundary",
@@ -92,7 +93,7 @@ func TestCliStaticCredentialStore(t *testing.T) {
 	// Add credentials to target
 	err = boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, targetId, privateKeyCredentialsId)
 	require.NoError(t, err)
-	err = boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, targetId, jsonCredentialsId)
+	err = boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, targetId, jsonCredentialId)
 	require.NoError(t, err)
 	err = boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, targetId, pwCredentialId)
 	require.NoError(t, err)

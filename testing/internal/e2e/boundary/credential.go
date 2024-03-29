@@ -239,27 +239,38 @@ func CreateStaticCredentialPasswordCli(t testing.TB, ctx context.Context, creden
 	return credentialId, nil
 }
 
-// CreateNewStaticCredentialJsonCli uses the cli to create a new json credential in the provided
+// CreateStaticCredentialJsonCli uses the cli to create a new json credential in the provided
 // static credential store.
 // Returns the id of the new credential
-func CreateNewStaticCredentialJsonCli(t testing.TB, ctx context.Context, credentialStoreId string, jsonFilePath string) string {
+func CreateStaticCredentialJsonCli(t testing.TB, ctx context.Context, credentialStoreId string, jsonFilePath string) (string, error) {
+	name, err := base62.Random(16)
+	if err != nil {
+		return "", err
+	}
+
 	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"credentials", "create", "json",
 			"-credential-store-id", credentialStoreId,
 			"-object", "file://"+jsonFilePath,
+			"-name", fmt.Sprintf("e2e Credential %s", name),
 			"-description", "e2e",
 			"-format", "json",
 		),
 	)
-	require.NoError(t, output.Err, string(output.Stderr))
-	var newCredentialsResult credentials.CredentialCreateResult
-	err := json.Unmarshal(output.Stdout, &newCredentialsResult)
-	require.NoError(t, err)
-	newCredentialsId := newCredentialsResult.Item.Id
-	t.Logf("Created Username/Password Credentials: %s", newCredentialsId)
+	if output.Err != nil {
+		return "", fmt.Errorf("%w: %s", output.Err, string(output.Stderr))
+	}
 
-	return newCredentialsId
+	var createCredentialsResult credentials.CredentialCreateResult
+	err = json.Unmarshal(output.Stdout, &createCredentialsResult)
+	if err != nil {
+		return "", err
+	}
+
+	credentialId := createCredentialsResult.Item.Id
+	t.Logf("Created Username/Password Credentials: %s", credentialId)
+	return credentialId, nil
 }
 
 // CreateNewStaticCredentialPasswordApi uses the API to create a new password credential in the
