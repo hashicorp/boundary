@@ -90,7 +90,7 @@ func ListRolesCli(t testing.TB, ctx context.Context, scopeId string) ([]*roles.R
 }
 
 // AddGrantToRoleCli adds a grant/permission to a role using the cli
-func AddGrantToRoleCli(t testing.TB, ctx context.Context, roleId string, grant string) {
+func AddGrantToRoleCli(t testing.TB, ctx context.Context, roleId string, grant string) error {
 	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"roles", "add-grants",
@@ -98,7 +98,11 @@ func AddGrantToRoleCli(t testing.TB, ctx context.Context, roleId string, grant s
 			"-grant", grant,
 		),
 	)
-	require.NoError(t, output.Err, string(output.Stderr))
+	if output.Err != nil {
+		return fmt.Errorf("%w: %s", output.Err, string(output.Stderr))
+	}
+
+	return nil
 }
 
 // AddPrincipalToRoleCli adds a user/group to a role using the cli

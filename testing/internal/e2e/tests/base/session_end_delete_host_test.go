@@ -70,7 +70,8 @@ func TestCliSessionEndWhenHostIsDeleted(t *testing.T) {
 	require.NoError(t, err)
 	roleId, err := boundary.CreateRoleCli(t, ctx, projectId)
 	require.NoError(t, err)
-	boundary.AddGrantToRoleCli(t, ctx, roleId, "ids=*;type=target;actions=authorize-session")
+	err = boundary.AddGrantToRoleCli(t, ctx, roleId, "ids=*;type=target;actions=authorize-session")
+	require.NoError(t, err)
 	boundary.AddPrincipalToRoleCli(t, ctx, roleId, userId)
 
 	// Connect to target to create a session

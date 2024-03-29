@@ -161,7 +161,8 @@ func TestCliLdap(t *testing.T) {
 	roleId, err := boundary.CreateRoleCli(t, ctx, orgId)
 	require.NoError(t, err)
 	boundary.AddPrincipalToRoleCli(t, ctx, roleId, managedGroupId)
-	boundary.AddGrantToRoleCli(t, ctx, roleId, "ids=*;type=auth-method;actions=read")
+	err = boundary.AddGrantToRoleCli(t, ctx, roleId, "ids=*;type=auth-method;actions=read")
+	require.NoError(t, err)
 
 	// Log in as the LDAP user again
 	output = e2e.RunCommand(ctx, "boundary",
