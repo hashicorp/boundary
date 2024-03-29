@@ -39,7 +39,8 @@ func TestCliPaginateManagedGroups(t *testing.T) {
 		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", orgId))
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
-	amId := boundary.CreateNewOidcAuthMethodApi(t, ctx, client, orgId)
+	amId, err := boundary.CreateOidcAuthMethodApi(t, ctx, client, orgId)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		ctx := context.Background()
 		boundary.AuthenticateAdminCli(t, ctx)
@@ -141,7 +142,8 @@ func TestApiPaginateManagedGroups(t *testing.T) {
 		_, err = sClient.Delete(ctx, orgId)
 		require.NoError(t, err)
 	})
-	amId := boundary.CreateNewOidcAuthMethodApi(t, ctx, client, orgId)
+	amId, err := boundary.CreateOidcAuthMethodApi(t, ctx, client, orgId)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		ctx := context.Background()
 		client.SetToken(adminToken)
