@@ -493,7 +493,7 @@
             "path": "configuration/credential-management/static-cred-boundary"
           },
           {
-            "title": "Manage static credentials with Boundary + Vault",
+            "title": "Manage static credentials with Vault",
             "path": "configuration/credential-management/static-cred-vault"
           }
         ]
