@@ -18,7 +18,7 @@ The following sections will provide steps to configure static credentials using 
 - Ensure that you have an [Org scope and a project scope](/boundary/docs/commands/scopes/create) created in your Boundary instance. 
 
 <Tabs>
-<Tab heading="UI">
+<Tab heading="UI" group="ui">
 
 1. Log in to Boundary
 2. Select Orgs on the navigation pane.
@@ -40,7 +40,7 @@ The following sections will provide steps to configure static credentials using 
 
 </Tab>
 
-<Tab heading="CLI">
+<Tab heading="CLI" group="cli">
 
 1. Set environment variables for your Boundary project ID. 
   ```
@@ -124,7 +124,7 @@ The following section provides steps to configure your targets with credential b
 
 
 <Tabs>
-<Tab heading="UI"> 
+<Tab heading="UI" group="ui"> 
 
 1. Log in to Boundary
 2. Select **Orgs** on the navigation pane.
@@ -138,7 +138,7 @@ The following section provides steps to configure your targets with credential b
 
 </Tab>
 
-<Tab heading="CLI">
+<Tab heading="CLI" group="cli">
 
 1. Log into Boundary.
   ```
@@ -159,9 +159,10 @@ The following section provides steps to configure your targets with credential b
 </Tabs>
 
 
-###  Configure targets with credential injection (HCP/Enterprise)
+###  Configure targets with credential injection 
+<EnterpriseAlert product="boundary">This feature requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary or Boundary Enterprise</a></EnterpriseAlert>
 
-The following section provides steps to configure your targets with credential injection in order to provide end users with a passwordless experience when connecting to a target.
+The following section provides steps to configure your targets with credential injection which will provide end users with a passwordless experience when connecting to a target.
 
 #### Requirements
 - You must have an existing target available. 
@@ -172,7 +173,7 @@ The following section provides steps to configure your targets with credential i
 
 
 <Tabs>
-<Tab heading="UI"> 
+<Tab heading="UI" group="ui"> 
 
 1. Log in to Boundary.
 2. Select **Orgs** on the navigation pane.
@@ -186,7 +187,7 @@ The following section provides steps to configure your targets with credential i
 
 </Tab>
 
-<Tab heading="CLI">
+<Tab heading="CLI" group="cli">
 
 1. Log into Boundary.
   ```
