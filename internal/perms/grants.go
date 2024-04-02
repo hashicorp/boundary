@@ -5,8 +5,11 @@ package perms
 
 import (
 	"context"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"hash"
+	"hash/fnv"
 	"sort"
 	"strings"
 	"unicode"
@@ -43,6 +46,57 @@ type GrantTuple struct {
 	RoleId  string
 	ScopeId string
 	Grant   string
+}
+
+type GrantTuples []GrantTuple
+
+// GrantsHash returns a stable hash of all the grants in the GrantTuples.
+func (g GrantTuples) GrantHash(ctx context.Context) ([]byte, error) {
+	const op = "perms.(GrantTuples).GrantHash"
+	var values []string
+	for _, grant := range g {
+		values = append(values, grant.Grant, grant.RoleId, grant.ScopeId)
+	}
+	// Sort for deterministic output
+	slices.Sort(values)
+	hashVal, err := hashStrings(values...)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	return binary.LittleEndian.AppendUint64(make([]byte, 0, 4), hashVal), nil
+}
+
+func hashStrings(s ...string) (uint64, error) {
+	hasher := fnv.New64()
+	var h uint64
+	var err error
+	for _, current := range s {
+		hasher.Reset()
+		if _, err = hasher.Write([]byte(current)); err != nil {
+			return 0, err
+		}
+		if h, err = hashUpdateOrdered(hasher, h, hasher.Sum64()); err != nil {
+			return 0, err
+		}
+	}
+	return h, nil
+}
+
+// hashUpdateOrdered is taken directly from
+// https://github.com/mitchellh/hashstructure
+func hashUpdateOrdered(h hash.Hash64, a, b uint64) (uint64, error) {
+	// For ordered updates, use a real hash function
+	h.Reset()
+
+	e1 := binary.Write(h, binary.LittleEndian, a)
+	e2 := binary.Write(h, binary.LittleEndian, b)
+	if e1 != nil {
+		return 0, e1
+	}
+	if e2 != nil {
+		return 0, e2
+	}
+	return h.Sum64(), nil
 }
 
 // Scope provides an in-memory representation of iam.Scope without the

@@ -63,7 +63,7 @@ func Test_newRateLimiterConfig(t *testing.T) {
 			ratelimit.DefaultLimiterMaxQuotas(),
 			false,
 			&rateLimiterConfig{
-				maxSize:  336168,
+				maxSize:  338169,
 				configs:  nil,
 				disabled: false,
 				limits:   defaultLimits,
@@ -515,24 +515,24 @@ func Test_rateLimiterConfig_writeSysEvent(t *testing.T) {
 		disabled     bool
 	}{
 		{
-			"defaults",
-			func(n string) error {
+			name: "defaults",
+			setup: func(n string) error {
 				return event.InitSysEventer(testLogger, testLock, n, event.WithEventerConfig(&c.EventerConfig))
 			},
-			func() { event.TestResetSystEventer(t) },
-			c.AllEvents.Name(),
-			nil,
-			ratelimit.DefaultLimiterMaxQuotas(),
-			false,
+			cleanup:      func() { event.TestResetSystEventer(t) },
+			sinkFileName: c.AllEvents.Name(),
+			configs:      nil,
+			maxSize:      ratelimit.DefaultLimiterMaxQuotas(),
+			disabled:     false,
 		},
 		{
-			"override",
-			func(n string) error {
+			name: "override",
+			setup: func(n string) error {
 				return event.InitSysEventer(testLogger, testLock, n, event.WithEventerConfig(&c.EventerConfig))
 			},
-			func() { event.TestResetSystEventer(t) },
-			c.AllEvents.Name(),
-			ratelimit.Configs{
+			cleanup:      func() { event.TestResetSystEventer(t) },
+			sinkFileName: c.AllEvents.Name(),
+			configs: ratelimit.Configs{
 				{
 					Resources: []string{"*"},
 					Actions:   []string{"*"},
@@ -558,30 +558,30 @@ func Test_rateLimiterConfig_writeSysEvent(t *testing.T) {
 					Unlimited: false,
 				},
 			},
-			ratelimit.DefaultLimiterMaxQuotas(),
-			false,
+			maxSize:  ratelimit.DefaultLimiterMaxQuotas(),
+			disabled: false,
 		},
 		{
-			"max_size",
-			func(n string) error {
+			name: "max_size",
+			setup: func(n string) error {
 				return event.InitSysEventer(testLogger, testLock, n, event.WithEventerConfig(&c.EventerConfig))
 			},
-			func() { event.TestResetSystEventer(t) },
-			c.AllEvents.Name(),
-			nil,
-			3000,
-			false,
+			cleanup:      func() { event.TestResetSystEventer(t) },
+			sinkFileName: c.AllEvents.Name(),
+			configs:      nil,
+			maxSize:      3000,
+			disabled:     false,
 		},
 		{
-			"disabled",
-			func(n string) error {
+			name: "disabled",
+			setup: func(n string) error {
 				return event.InitSysEventer(testLogger, testLock, n, event.WithEventerConfig(&c.EventerConfig))
 			},
-			func() { event.TestResetSystEventer(t) },
-			c.AllEvents.Name(),
-			nil,
-			0,
-			true,
+			cleanup:      func() { event.TestResetSystEventer(t) },
+			sinkFileName: c.AllEvents.Name(),
+			configs:      nil,
+			maxSize:      0,
+			disabled:     true,
 		},
 	}
 

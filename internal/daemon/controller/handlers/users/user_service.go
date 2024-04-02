@@ -8,11 +8,14 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/boundary/globals"
+	talias "github.com/hashicorp/boundary/internal/alias/target"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/common"
 	"github.com/hashicorp/boundary/internal/daemon/controller/common/scopeids"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
+	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/targets"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/event"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/iam/store"
@@ -23,6 +26,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	aliaspb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/aliases"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/users"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
@@ -43,6 +47,7 @@ var (
 		action.AddAccounts,
 		action.SetAccounts,
 		action.RemoveAccounts,
+		action.ListResolvableAliases,
 	)
 
 	// CollectionActions contains the set of actions that can be performed on
@@ -71,21 +76,25 @@ type Service struct {
 	pbs.UnsafeUserServiceServer
 
 	repoFn      common.IamRepoFactory
+	aliasRepoFn common.TargetAliasRepoFactory
 	maxPageSize uint
 }
 
 var _ pbs.UserServiceServer = (*Service)(nil)
 
 // NewService returns a user service which handles user related requests to boundary.
-func NewService(ctx context.Context, repo common.IamRepoFactory, maxPageSize uint) (Service, error) {
+func NewService(ctx context.Context, repo common.IamRepoFactory, aliasRepoFn common.TargetAliasRepoFactory, maxPageSize uint) (Service, error) {
 	const op = "users.NewService"
-	if repo == nil {
+	switch {
+	case repo == nil:
 		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing iam repository")
+	case aliasRepoFn == nil:
+		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing alias repository")
 	}
 	if maxPageSize == 0 {
 		maxPageSize = uint(globals.DefaultMaxPageSize)
 	}
-	return Service{repoFn: repo, maxPageSize: maxPageSize}, nil
+	return Service{repoFn: repo, aliasRepoFn: aliasRepoFn, maxPageSize: maxPageSize}, nil
 }
 
 // ListUsers implements the interface pbs.UserServiceServer.
@@ -468,6 +477,169 @@ func (s Service) RemoveUserAccounts(ctx context.Context, req *pbs.RemoveUserAcco
 	return &pbs.RemoveUserAccountsResponse{Item: item}, nil
 }
 
+// ListResolvableAliases implements the interface pbs.AliasServiceServer.
+func (s Service) ListResolvableAliases(ctx context.Context, req *pbs.ListResolvableAliasesRequest) (*pbs.ListResolvableAliasesResponse, error) {
+	const op = "users.(Service).ListResolvableAliases"
+	if err := validateListResolvableAliasesRequest(req); err != nil {
+		return nil, err
+	}
+
+	authResults := s.authResult(ctx, req.GetId(), action.ListResolvableAliases)
+	if authResults.Error != nil {
+		return nil, authResults.Error
+	}
+
+	outputFields, ok := requests.OutputFields(ctx)
+	if !ok {
+		return nil, errors.New(ctx, errors.Internal, op, "no request context found")
+	}
+	acl := authResults.ACL()
+	grantsHash, err := authResults.GrantsHash(ctx)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+
+	if req.GetId() != authResults.UserId {
+		var err error
+		acl, grantsHash, err = s.aclAndGrantHashForUser(ctx, req.GetId())
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op, errors.WithoutEvent())
+		}
+	}
+
+	permissions := acl.ListResolvablePermissions(resource.Target,
+		action.Difference(targets.IdActions, action.NewActionSet(action.NoOp)))
+
+	if len(permissions) == 0 {
+		// if there are no permitted targets then there will be no aliases that
+		// can resolve to them.
+		return &pbs.ListResolvableAliasesResponse{
+			ResponseType: "complete",
+			SortBy:       "created_time",
+			SortDir:      "desc",
+		}, nil
+	}
+	event.WriteSysEvent(ctx, op, "permissions found")
+
+	pageSize := int(s.maxPageSize)
+	// Use the requested page size only if it is smaller than
+	// the configured max.
+	if req.GetPageSize() != 0 && uint(req.GetPageSize()) < s.maxPageSize {
+		pageSize = int(req.GetPageSize())
+	}
+
+	filterItemFn := func(ctx context.Context, item *talias.Alias) (bool, error) {
+		return true, nil
+	}
+
+	repo, err := s.aliasRepoFn()
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	var listResp *pagination.ListResponse[*talias.Alias]
+	var sortBy string
+	if req.GetListToken() == "" {
+		sortBy = "created_time"
+		listResp, err = talias.ListResolvableAliases(ctx, grantsHash, pageSize, filterItemFn, repo, permissions)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		listToken, err := handlers.ParseListToken(ctx, req.GetListToken(), resource.Alias, grantsHash)
+		if err != nil {
+			return nil, err
+		}
+		switch st := listToken.Subtype.(type) {
+		case *listtoken.PaginationToken:
+			sortBy = "created_time"
+			listResp, err = talias.ListResolvableAliasesPage(ctx, grantsHash, pageSize, filterItemFn, listToken, repo, permissions)
+			if err != nil {
+				return nil, err
+			}
+		case *listtoken.StartRefreshToken:
+			sortBy = "updated_time"
+			listResp, err = talias.ListResolvableAliasesRefresh(ctx, grantsHash, pageSize, filterItemFn, listToken, repo, permissions)
+			if err != nil {
+				return nil, err
+			}
+		case *listtoken.RefreshToken:
+			sortBy = "updated_time"
+			listResp, err = talias.ListResolvableAliasesRefreshPage(ctx, grantsHash, pageSize, filterItemFn, listToken, repo, permissions)
+			if err != nil {
+				return nil, err
+			}
+		default:
+			return nil, handlers.ApiErrorWithCodeAndMessage(codes.InvalidArgument, "unexpected list token subtype: %T", st)
+		}
+	}
+
+	finalItems := make([]*aliaspb.Alias, 0, len(listResp.Items))
+	for _, item := range listResp.Items {
+		item, err := toResolvableAliasProto(item, handlers.WithOutputFields(outputFields))
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		finalItems = append(finalItems, item)
+	}
+	respType := "delta"
+	if listResp.CompleteListing {
+		respType = "complete"
+	}
+	resp := &pbs.ListResolvableAliasesResponse{
+		Items:        finalItems,
+		EstItemCount: uint32(listResp.EstimatedItemCount),
+		RemovedIds:   listResp.DeletedIds,
+		ResponseType: respType,
+		SortBy:       sortBy,
+		SortDir:      "desc",
+	}
+	if listResp.ListToken != nil {
+		resp.ListToken, err = handlers.MarshalListToken(ctx, listResp.ListToken, pbs.ResourceType_RESOURCE_TYPE_ALIAS)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return resp, nil
+}
+
+// aclAndGrantHashForUser returns an ACL from the grants provided to the user and
+// the hash of those grants.
+func (s Service) aclAndGrantHashForUser(ctx context.Context, userId string) (perms.ACL, []byte, error) {
+	const op = "users.(Service).aclAndGrantHashForUser"
+	iamRepo, err := s.repoFn()
+	if err != nil {
+		return perms.ACL{}, nil, errors.Wrap(ctx, err, op, errors.WithoutEvent())
+	}
+	grantTuples, err := iamRepo.GrantsForUser(ctx, userId)
+	if err != nil {
+		return perms.ACL{}, nil, errors.Wrap(ctx, err, op, errors.WithoutEvent())
+	}
+	hash, err := grantTuples.GrantHash(ctx)
+	if err != nil {
+		return perms.ACL{}, nil, errors.Wrap(ctx, err, op, errors.WithoutEvent())
+	}
+	parsedGrants := make([]perms.Grant, 0, len(grantTuples))
+	// Note: Below, we always skip validation so that we don't error on formats
+	// that we've since restricted, e.g. "ids=foo;actions=create,read". These
+	// will simply not have an effect.
+	for _, pair := range grantTuples {
+		permsOpts := []perms.Option{
+			perms.WithUserId(userId),
+			perms.WithSkipFinalValidation(true),
+		}
+		parsed, err := perms.Parse(
+			ctx,
+			pair.ScopeId,
+			pair.Grant,
+			permsOpts...)
+		if err != nil {
+			return perms.ACL{}, nil, errors.Wrap(ctx, err, op)
+		}
+		parsedGrants = append(parsedGrants, parsed)
+	}
+	return perms.NewACL(parsedGrants...), hash, nil
+}
+
 func (s Service) getFromRepo(ctx context.Context, id string) (*iam.User, []string, error) {
 	repo, err := s.repoFn()
 	if err != nil {
@@ -723,6 +895,39 @@ func toProto(ctx context.Context, in *iam.User, accts []string, opt ...handlers.
 	return &out, nil
 }
 
+func toResolvableAliasProto(a *talias.Alias, opt ...handlers.Option) (*aliaspb.Alias, error) {
+	opts := handlers.GetOpts(opt...)
+	if opts.WithOutputFields == nil {
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "output fields not found when building user proto")
+	}
+	outputFields := *opts.WithOutputFields
+
+	pbItem := &aliaspb.Alias{}
+	if a == nil {
+		return pbItem, nil
+	}
+	if outputFields.Has(globals.IdField) {
+		pbItem.Id = a.GetPublicId()
+	}
+	if outputFields.Has(globals.CreatedTimeField) {
+		pbItem.CreatedTime = a.GetCreateTime().GetTimestamp()
+	}
+	if outputFields.Has(globals.UpdatedTimeField) {
+		pbItem.UpdatedTime = a.GetUpdateTime().GetTimestamp()
+	}
+	if outputFields.Has(globals.ValueField) {
+		pbItem.Value = a.GetValue()
+	}
+	if outputFields.Has(globals.DestinationIdField) && a.GetDestinationId() != "" {
+		pbItem.DestinationId = wrapperspb.String(a.GetDestinationId())
+	}
+	if outputFields.Has(globals.TypeField) {
+		pbItem.Type = "target"
+	}
+
+	return pbItem, nil
+}
+
 // A validateX method should exist for each method above.  These methods do not make calls to any backing service but enforce
 // requirements on the structure of the request.  They verify that:
 //   - The path passed in is correctly formatted
@@ -843,6 +1048,20 @@ func validateRemoveUserAccountsRequest(req *pbs.RemoveUserAccountsRequest) error
 			badFields["account_ids"] = "Values must be valid account ids."
 			break
 		}
+	}
+	if len(badFields) > 0 {
+		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
+	}
+	return nil
+}
+
+func validateListResolvableAliasesRequest(req *pbs.ListResolvableAliasesRequest) error {
+	badFields := map[string]string{}
+	if !handlers.ValidId(handlers.Id(req.GetId()), globals.UserPrefix) {
+		badFields[globals.IdField] = "Incorrectly formatted identifier."
+	}
+	if req.GetId() == globals.RecoveryUserId {
+		badFields["principal_ids"] = "Cannot list resolvable aliases for the recovery user."
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
