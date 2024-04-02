@@ -31,6 +31,5 @@ docker run \
         mc admin user add miniotest ${MINIO_USER_ID} ${MINIO_USER_PASSWORD};
         mc admin policy create miniotest testpolicy /test/policy.json;
         mc admin policy attach miniotest testpolicy --user ${MINIO_USER_ID};
-        echo "mc admin user svcacct add miniotest ${MINIO_USER_ID} --access-key ${MINIO_USER_ACCESS_KEY_ID} --secret-key ${MINIO_USER_SECRET_ACCESS_KEY}";
         mc admin user svcacct add miniotest ${MINIO_USER_ID} --access-key ${MINIO_USER_ACCESS_KEY_ID} --secret-key ${MINIO_USER_SECRET_ACCESS_KEY};
     '
