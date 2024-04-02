@@ -5,12 +5,13 @@ description: |-
   How to use worker tags to control which workers can handle a given resource.
 ---
 
-# Filter worker tags
+# Worker tags
 
 This page describes how to use worker tags and filters to control which workers
 are allowed to handle a given resource. This can be used to control traffic
 locality. As an example, this can be used to ensure that traffic going into a
-public cloud is only handled by workers running within that same cloud.
+public cloud is only handled by workers running within that same cloud. 
+Tags can also be used determine which worker should perform session recordings duties. 
 
 Starting in Boundary 0.1.5, a worker can be configured with a set of key/value
 tags in its configuration file. The keys and values can be any lower-cased
@@ -100,7 +101,7 @@ array with the tags intended for the particular key is required:
 ["prod", "webservers"]
 ```
 
-## Workers
+## Filter workers using tag
 
 As filters operate on JSON Pointer selectors, the values that are input into the
 filter come from the JSON representation of the values in the configuration file
@@ -111,7 +112,7 @@ nested under `tags` and include a `name` value:
   "name": "web-prod-us-east-1",
   "tags": {
     "region": ["us-east-1"],
-    "type": ["prod", "webservers"]
+    "type": ["production", "webservers"]
   }
 }
 ```
@@ -123,7 +124,9 @@ string. As a corollary, it is not possible to distinguish between a worker that
 is not included due to the expression itself and a worker that did not have
 correct tags.
 
-Following are some examples of using these values in filters:
+## Filter examples
+
+Following are some examples of using these values in filters that can be applied to targets, Vault credential stores, or storage buckets:
 
 - Name regex: `"/name" matches "web-prod-us-east-[12]"`, which would
   match workers whose names are `web-prod-us-east-1` or `web-prod-us-east-2`
@@ -135,10 +138,10 @@ Following are some examples of using these values in filters:
 ~> **Note:** Each tag can have multiple values, so the `in` operator must be used to match values.
 If you know that you have only one value, an equivalent would be `"/tags/key/0" == "value"`.
 
-## Target workers
+### Example worker filter for targets
 
 Once workers have tags, you can use these tags to control which
-workers are allowed to manage a given session by specifying optional worker filter attributes
+workers are allowed to manage a given session by specifying worker filter attributes
 when you configure [targets](/boundary/docs/concepts/domain-model/targets).
 
 The `egress_worker_filter` attribute controls which workers are used for egress to a target. This is the worker
@@ -148,7 +151,29 @@ The `ingress_worker_filter`<sup>HCP/ENT</sup> attribute controls which workers a
 This is the worker a client connects to when initiating a connection to a target.
 
 
-## Vault workers
+<Tabs>
+
+<Tab heading="UI" group="ui"> 
+
+Example of a filter configured on a target in the Admin UI:
+
+![](/img/target-worker-filter-light.png#light-theme-only)
+![](/img/target-worker-filter-dark.png#dark-theme-only)
+
+</Tab>
+
+<Tab heading="CLI" group="cli"> 
+
+Example of adding a filter to on a target with the CLI:
+```
+$ boundary targets update tcp -id tssh_1234567890 -ingress-worker-filter='"prod" in "/tags/type"'
+```
+
+</Tab>
+         
+</Tabs>   
+
+### Example worker filter for Vault credential store 
 
 <EnterpriseAlert product="boundary">This feature requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary or Boundary Enterprise</a></EnterpriseAlert>
 
@@ -164,3 +189,53 @@ Vault requests to Boundary controllers.
 
 [workers]: /boundary/docs/configuration/worker/worker-configuration
 [credential stores]: /boundary/docs/concepts/domain-model/credential-stores#vault-credential-store-attributes
+
+<Tabs>
+
+<Tab heading="UI" group="ui"> 
+
+Example of a worker filter configured on a Vault credential store in the Admin UI:
+
+![](/img/vault-worker-filter-light.png#light-theme-only)
+![](/img/vault-worker-filter-dark.png#dark-theme-only)
+
+</Tab>
+
+<Tab heading="CLI" group="cli"> 
+
+Example of adding a filter to on a Vault credential store with the CLI:
+```
+$ boundary credential-stores update vault -id csvlt_1234567890 -worker-filter='"vault" in "/tags/type"'
+```
+
+</Tab>
+
+</Tabs>
+
+### Example worker filter for storage buckets
+<EnterpriseAlert product="boundary">Store buckets are used for session recording, which requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary or Boundary Enterprise</a></EnterpriseAlert>
+
+
+
+Session recording functions are performed by Boundary workers. Workers also store recordings on Boundary storage buckets. When you create Boundary storage buckets, you can use tags to select the perferred workers for session recording responsibilities. 
+
+<Tabs>
+<Tab heading="UI" group="ui"> 
+
+Example of a worker filter configured on on a storage bucket in Admin UI:
+
+![](/img/session-rec-worker-filter-light.png#light-theme-only)
+![](/img/session-rec-worker-filter-dark.png#dark-theme-only)
+</Tab>
+
+<Tab heading="CLI" group="cli"> 
+
+Example of adding a filter to on a storage bucket with the CLI:
+```
+$ boundary storage-buckets update -id sb_1234567890 -worker-filter='"session-recording" in "/tags/type"' 
+```
+
+</Tab>
+
+</Tabs>
+
