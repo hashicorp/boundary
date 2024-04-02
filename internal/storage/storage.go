@@ -10,6 +10,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/boundary"
 	"github.com/hashicorp/boundary/internal/server"
+	"github.com/hashicorp/boundary/internal/storage/bucket"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/storagebuckets"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 )
@@ -23,10 +24,10 @@ const DefaultMinimumAvailableDiskSpace = 500 * 1024 * 1024
 // RecordingStorage can be used to create an FS usable for session recording.
 type RecordingStorage interface {
 	// NewSyncingFS returns an FS that will use local storage as a cache and sync files when they are closed.
-	NewSyncingFS(ctx context.Context, bucket *storagebuckets.StorageBucket, _ ...Option) (FS, error)
+	NewSyncingFS(ctx context.Context, bucket bucket.StorageBucketSingleton, _ ...Option) (FS, error)
 
 	// NewRemoteFS returns a ReadOnly FS that can be used to retrieve files from a storage bucket.
-	NewRemoteFS(ctx context.Context, bucket *storagebuckets.StorageBucket, _ ...Option) (FS, error)
+	NewRemoteFS(ctx context.Context, bucket bucket.StorageBucketSingleton, _ ...Option) (FS, error)
 
 	// PluginClients returns a map of storage plugin clients keyed on the plugin name.
 	PluginClients() map[string]plgpb.StoragePluginServiceClient
@@ -34,8 +35,18 @@ type RecordingStorage interface {
 	// CreateTemp creates a temporary file that is cleaned up when closed. All temp files
 	// are also removed when storage is initialized.
 	CreateTemp(ctx context.Context, p string) (TempFile, error)
+
 	// GetLocalStorageState returns the current local storage state of the storage instance.
 	GetLocalStorageState(ctx context.Context) server.LocalStorageState
+
+	// GetStorageBucketCredentialStates returns a map of the current storage bucket credential states.
+	// The key is the public id of the storage bucket and the value is the storage bucket credential state.
+	GetStorageBucketCredentialStates() map[string]*plgpb.StorageBucketCredentialState
+
+	// UpsertStorageBucket wiil compare the given storage bucket against the same storage bucket
+	// that is currently being managed and will return the storage bucket that has the latest version.
+	// If the given storage bucket has the latest version, then the managed storage bucket will be updated.
+	UpsertStorageBucket(ctx context.Context, newBucket *storagebuckets.StorageBucket) (bucket.StorageBucketSingleton, error)
 }
 
 // Bucket is a resource that represents a bucket in an external object store
