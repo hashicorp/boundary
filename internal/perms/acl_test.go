@@ -412,6 +412,367 @@ func Test_ACLAllowed(t *testing.T) {
 	}
 }
 
+func TestACL_ListResolvableAliasesPermissions(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+
+	tests := []struct {
+		name                        string
+		aclGrants                   []scopeGrant
+		resourceType                resource.Type
+		actionSet                   action.ActionSet
+		expPermissions              []Permission
+		skipGrantValidationChecking bool
+	}{
+		{
+			name: "Requested resource mismatch",
+			aclGrants: []scopeGrant{
+				{
+					scope:  "o_1",
+					grants: []string{"ids=*;type=target;actions=list,read"}, // List & Read for all Targets
+				},
+			},
+			resourceType:   resource.Session, // We're requesting sessions.
+			actionSet:      action.NewActionSet(action.Read),
+			expPermissions: []Permission{},
+		},
+		{
+			name: "Requested actions not available for the requested scope id",
+			aclGrants: []scopeGrant{
+				{
+					scope:  "o_1",
+					grants: []string{"ids=*;type=session;actions=delete"},
+				},
+			},
+			resourceType:   resource.Session,
+			actionSet:      action.NewActionSet(action.Read),
+			expPermissions: []Permission{},
+		},
+		{
+			name: "No specific id or wildcard provided for `id` field",
+			aclGrants: []scopeGrant{
+				{
+					scope:  "o_1",
+					grants: []string{"type=*;actions=list,read"},
+				},
+			},
+			resourceType:                resource.Session,
+			actionSet:                   action.NewActionSet(action.Read),
+			expPermissions:              []Permission{},
+			skipGrantValidationChecking: true,
+		},
+		{
+			name: "Allow all ids",
+			aclGrants: []scopeGrant{
+				{
+					scope:  "o_1",
+					grants: []string{"ids=*;type=session;actions=update,read"},
+				},
+			},
+			resourceType: resource.Session,
+			actionSet:    action.NewActionSet(action.Read),
+			expPermissions: []Permission{
+				{
+					ScopeId:     "o_1",
+					Resource:    resource.Session,
+					Action:      action.ListResolvableAliases,
+					ResourceIds: nil,
+					OnlySelf:    false,
+					All:         true,
+				},
+			},
+		},
+		{
+			name: "Allow all ids, :self actions",
+			aclGrants: []scopeGrant{
+				{
+					scope:  "o_1",
+					grants: []string{"ids=*;type=session;actions=list,read:self"},
+				},
+			},
+			resourceType: resource.Session,
+			actionSet:    action.NewActionSet(action.ReadSelf),
+			expPermissions: []Permission{
+				{
+					ScopeId:     "o_1",
+					Resource:    resource.Session,
+					Action:      action.ListResolvableAliases,
+					ResourceIds: nil,
+					OnlySelf:    true,
+					All:         true,
+				},
+			},
+		},
+		{
+			name: "Allow specific IDs",
+			aclGrants: []scopeGrant{
+				{
+					scope: "o_1",
+					grants: []string{
+						"ids=s_1;type=session;actions=list,read",
+						"ids=s_2,s_3;type=session;actions=list,read",
+					},
+				},
+			},
+			resourceType: resource.Session,
+			actionSet:    action.NewActionSet(action.Read),
+			expPermissions: []Permission{
+				{
+					ScopeId:     "o_1",
+					Resource:    resource.Session,
+					Action:      action.ListResolvableAliases,
+					ResourceIds: []string{"s_1", "s_2", "s_3"},
+					OnlySelf:    false,
+					All:         false,
+				},
+			},
+		},
+		{
+			name: "No specific type 1",
+			aclGrants: []scopeGrant{
+				{
+					scope:  "o_1",
+					grants: []string{"ids=*;type=*;actions=list,read:self"},
+				},
+			},
+			resourceType: resource.Session,
+			actionSet:    action.NewActionSet(action.ReadSelf),
+			expPermissions: []Permission{
+				{
+					ScopeId:     "o_1",
+					Resource:    resource.Session,
+					Action:      action.ListResolvableAliases,
+					ResourceIds: nil,
+					OnlySelf:    true,
+					All:         true,
+				},
+			},
+		},
+		{
+			name: "List + No-op action with id wildcard",
+			aclGrants: []scopeGrant{
+				{
+					scope:  "o_1",
+					grants: []string{"ids=*;type=session;actions=list,no-op"},
+				},
+			},
+			resourceType: resource.Session,
+			actionSet:    action.NewActionSet(action.NoOp),
+			expPermissions: []Permission{
+				{
+					ScopeId:     "o_1",
+					Resource:    resource.Session,
+					Action:      action.ListResolvableAliases,
+					ResourceIds: nil,
+					OnlySelf:    false,
+					All:         true,
+				},
+			},
+		},
+		{
+			name: "List + No-op action with id wildcard, read present",
+			aclGrants: []scopeGrant{
+				{
+					scope:  "o_1",
+					grants: []string{"ids=*;type=session;actions=list,no-op"},
+				},
+			},
+			resourceType:   resource.Session,
+			actionSet:      action.NewActionSet(action.Read),
+			expPermissions: []Permission{},
+		},
+		{
+			name: "List + No-op action with specific ids",
+			aclGrants: []scopeGrant{
+				{
+					scope: "o_1",
+					grants: []string{
+						"ids=s_1;type=session;actions=list,no-op",
+						"ids=s_2,s_3;type=session;actions=list,no-op",
+					},
+				},
+			},
+			resourceType: resource.Session,
+			actionSet:    action.NewActionSet(action.NoOp),
+			expPermissions: []Permission{
+				{
+					ScopeId:     "o_1",
+					Resource:    resource.Session,
+					Action:      action.ListResolvableAliases,
+					ResourceIds: []string{"s_1", "s_2", "s_3"},
+					OnlySelf:    false,
+					All:         false,
+				},
+			},
+		},
+		{
+			name: "No specific type 2",
+			aclGrants: []scopeGrant{
+				{
+					scope:  "o_1",
+					grants: []string{"ids=*;type=*;actions=list,read:self"},
+				},
+			},
+			resourceType: resource.Host,
+			actionSet:    action.NewActionSet(action.ReadSelf),
+			expPermissions: []Permission{
+				{
+					ScopeId:     "o_1",
+					Resource:    resource.Host,
+					Action:      action.ListResolvableAliases,
+					ResourceIds: nil,
+					OnlySelf:    true,
+					All:         true,
+				},
+			},
+		},
+		{
+			name: "Grant hierarchy is respected",
+			aclGrants: []scopeGrant{
+				{
+					scope: "o_1",
+					grants: []string{
+						"ids=*;type=*;actions=*",
+						"ids=*;type=session;actions=cancel:self,list,read:self",
+					},
+				},
+			},
+			resourceType: resource.Session,
+			actionSet:    action.NewActionSet(action.NoOp, action.Read, action.ReadSelf, action.Cancel, action.CancelSelf),
+			expPermissions: []Permission{
+				{
+					ScopeId:     "o_1",
+					Resource:    resource.Session,
+					Action:      action.ListResolvableAliases,
+					ResourceIds: nil,
+					OnlySelf:    false,
+					All:         true,
+				},
+			},
+		},
+		{
+			name: "Full access 1",
+			aclGrants: []scopeGrant{
+				{
+					scope:  "o_1",
+					grants: []string{"ids=*;type=*;actions=*"},
+				},
+			},
+			resourceType: resource.Session,
+			actionSet:    action.NewActionSet(action.Read, action.Create, action.Delete),
+			expPermissions: []Permission{
+				{
+					ScopeId:     "o_1",
+					Resource:    resource.Session,
+					Action:      action.ListResolvableAliases,
+					ResourceIds: nil,
+					OnlySelf:    false,
+					All:         true,
+				},
+			},
+		},
+		{
+			name: "Full access 2",
+			aclGrants: []scopeGrant{
+				{
+					scope:  "o_1",
+					grants: []string{"ids=*;type=*;actions=*"},
+				},
+			},
+			resourceType: resource.Host,
+			actionSet:    action.NewActionSet(action.Read, action.Create, action.Delete),
+			expPermissions: []Permission{
+				{
+					ScopeId:     "o_1",
+					Resource:    resource.Host,
+					Action:      action.ListResolvableAliases,
+					ResourceIds: nil,
+					OnlySelf:    false,
+					All:         true,
+				},
+			},
+		},
+		{
+			name: "Multiple scopes",
+			aclGrants: []scopeGrant{
+				{
+					scope: "o_1",
+					grants: []string{
+						"ids=s_1;type=session;actions=create,read",
+						"ids=s_2,s_3;type=session;actions=update,read",
+					},
+				},
+				{
+					scope:  "o_2",
+					grants: []string{"ids=*;type=session;actions=read:self"},
+				},
+			},
+			resourceType: resource.Session,
+			actionSet:    action.NewActionSet(action.Read, action.ReadSelf),
+			expPermissions: []Permission{
+				{
+					ScopeId:     "o_1",
+					Resource:    resource.Session,
+					Action:      action.ListResolvableAliases,
+					ResourceIds: []string{"s_1", "s_2", "s_3"},
+					OnlySelf:    false,
+					All:         false,
+				},
+				{
+					ScopeId:     "o_2",
+					Resource:    resource.Session,
+					Action:      action.ListResolvableAliases,
+					ResourceIds: nil,
+					OnlySelf:    true,
+					All:         true,
+				},
+			},
+		},
+		{
+			name:         "separate_type_id_resource_grants",
+			resourceType: resource.Target,
+			actionSet:    action.NewActionSet(action.Read, action.Cancel),
+			aclGrants: []scopeGrant{
+				{
+					scope: "p_1",
+					grants: []string{
+						"type=target;actions=list",
+						"ids=ttcp_1234567890;actions=read",
+					},
+				},
+			},
+			expPermissions: []Permission{
+				{
+					ScopeId:     "p_1",
+					Resource:    resource.Target,
+					Action:      action.ListResolvableAliases,
+					ResourceIds: []string{"ttcp_1234567890"},
+					All:         false,
+					OnlySelf:    false,
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var grants []Grant
+			for _, sg := range tt.aclGrants {
+				for _, g := range sg.grants {
+					grant, err := Parse(ctx, sg.scope, g, WithSkipFinalValidation(tt.skipGrantValidationChecking))
+					require.NoError(t, err)
+					grants = append(grants, grant)
+				}
+			}
+
+			acl := NewACL(grants...)
+			perms := acl.ListResolvablePermissions(tt.resourceType, tt.actionSet)
+			require.ElementsMatch(t, tt.expPermissions, perms)
+		})
+	}
+}
+
 func TestACL_ListPermissions(t *testing.T) {
 	t.Parallel()
 
@@ -932,7 +1293,7 @@ func Test_AnonRestrictions(t *testing.T) {
 				if i == resource.Controller || i == resource.Worker {
 					continue
 				}
-				for j := action.Type(1); j <= action.MonthlyActiveUsers; j++ {
+				for j := action.Type(1); j <= action.ListResolvableAliases; j++ {
 					id := "foobar"
 					prefixes := globals.ResourcePrefixesFromType(resource.Type(i))
 					if len(prefixes) > 0 {

@@ -5,6 +5,7 @@ syntax = "proto3";
 
 package controller.api.services.v1;
 
+import "controller/api/resources/aliases/v1/alias.proto";
 import "controller/api/resources/users/v1/user.proto";
 import "google/api/annotations.proto";
 import "google/protobuf/field_mask.proto";
@@ -126,6 +127,14 @@ service UserService {
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Removes the specified Accounts from being associated with the provided User."};
   }
+
+  // ListResolvableAliases returns a list of Aliases which point to a resource
+  // for which the provided user id has some permission.
+  // If missing or malformed an error is returned.
+  rpc ListResolvableAliases(ListResolvableAliasesRequest) returns (ListResolvableAliasesResponse) {
+    option (google.api.http) = {get: "/v1/users/{id}:list-resolvable-aliases"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Lists all Aliases which point to a resource for which the requester has some permission."};
+  }
 }
 
 message GetUserRequest {
@@ -240,4 +249,49 @@ message RemoveUserAccountsRequest {
 
 message RemoveUserAccountsResponse {
   resources.users.v1.User item = 1;
+}
+
+message ListResolvableAliasesRequest {
+  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
+
+  // An opaque token used to continue an existing iteration or
+  // request updated items. If not specified, pagination
+  // will start from the beginning.
+  string list_token = 2 [json_name = "list_token"]; // @gotags: `class:"public"`
+
+  // The maximum size of a page in this iteration.
+  // If unset, the default page size configured will be used.
+  // If the page_size is greater than the default page configured,
+  // an error will be returned.
+  uint32 page_size = 3 [json_name = "page_size"]; // @gotags: `class:"public"`
+}
+
+message ListResolvableAliasesResponse {
+  repeated resources.aliases.v1.Alias items = 1;
+
+  // The type of response, either "delta" or "complete".
+  // Delta signifies that this is part of a paginated result
+  // or an update to a previously completed pagination.
+  // Complete signifies that it is the last page.
+  string response_type = 2 [json_name = "response_type"]; // @gotags: `class:"public"`
+
+  // An opaque token used to continue an existing pagination or
+  // request updated items. Use this token in the next list request
+  // to request the next page.
+  string list_token = 3 [json_name = "list_token"]; // @gotags: `class:"public"`
+
+  // The name of the field which the items are sorted by.
+  string sort_by = 4 [json_name = "sort_by"]; // @gotags: `class:"public"`
+
+  // The direction of the sort, either "asc" or "desc".
+  string sort_dir = 5 [json_name = "sort_dir"]; // @gotags: `class:"public"`
+
+  // A list of item IDs that have been removed since they were returned
+  // as part of a pagination. This includes aliases which have their
+  // destination_id removed or set to a resource for which the requester doesn't
+  // have permissions.
+  repeated string removed_ids = 6 [json_name = "removed_ids"]; // @gotags: `class:"public"`
+
+  // An estimate at the total items available. This may change during pagination.
+  uint32 est_item_count = 7 [json_name = "est_item_count"]; // @gotags: `class:"public"`
 }

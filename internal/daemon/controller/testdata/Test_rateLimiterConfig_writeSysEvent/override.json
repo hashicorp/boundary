@@ -3629,6 +3629,32 @@
               "unlimited": false
             }
           ],
+          "list-resolvable-aliases": [
+            {
+              "action": "list-resolvable-aliases",
+              "limit": 100,
+              "per": "ip-address",
+              "period": "1m0s",
+              "resource": "user",
+              "unlimited": false
+            },
+            {
+              "action": "list-resolvable-aliases",
+              "limit": 100,
+              "per": "total",
+              "period": "1m0s",
+              "resource": "user",
+              "unlimited": false
+            },
+            {
+              "action": "list-resolvable-aliases",
+              "limit": 100,
+              "per": "auth-token",
+              "period": "1m0s",
+              "resource": "user",
+              "unlimited": false
+            }
+          ],
           "no-op": [
             {
               "action": "no-op",
@@ -4075,7 +4101,7 @@
           ]
         }
       },
-      "max_size": 336168,
+      "max_size": 338169,
       "msg": "controller api rate limiter"
     },
     "op": "controller.(rateLimiterConfig).writeSysEvent",

@@ -22,14 +22,15 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	UserService_GetUser_FullMethodName            = "/controller.api.services.v1.UserService/GetUser"
-	UserService_ListUsers_FullMethodName          = "/controller.api.services.v1.UserService/ListUsers"
-	UserService_CreateUser_FullMethodName         = "/controller.api.services.v1.UserService/CreateUser"
-	UserService_UpdateUser_FullMethodName         = "/controller.api.services.v1.UserService/UpdateUser"
-	UserService_DeleteUser_FullMethodName         = "/controller.api.services.v1.UserService/DeleteUser"
-	UserService_AddUserAccounts_FullMethodName    = "/controller.api.services.v1.UserService/AddUserAccounts"
-	UserService_SetUserAccounts_FullMethodName    = "/controller.api.services.v1.UserService/SetUserAccounts"
-	UserService_RemoveUserAccounts_FullMethodName = "/controller.api.services.v1.UserService/RemoveUserAccounts"
+	UserService_GetUser_FullMethodName               = "/controller.api.services.v1.UserService/GetUser"
+	UserService_ListUsers_FullMethodName             = "/controller.api.services.v1.UserService/ListUsers"
+	UserService_CreateUser_FullMethodName            = "/controller.api.services.v1.UserService/CreateUser"
+	UserService_UpdateUser_FullMethodName            = "/controller.api.services.v1.UserService/UpdateUser"
+	UserService_DeleteUser_FullMethodName            = "/controller.api.services.v1.UserService/DeleteUser"
+	UserService_AddUserAccounts_FullMethodName       = "/controller.api.services.v1.UserService/AddUserAccounts"
+	UserService_SetUserAccounts_FullMethodName       = "/controller.api.services.v1.UserService/SetUserAccounts"
+	UserService_RemoveUserAccounts_FullMethodName    = "/controller.api.services.v1.UserService/RemoveUserAccounts"
+	UserService_ListResolvableAliases_FullMethodName = "/controller.api.services.v1.UserService/ListResolvableAliases"
 )
 
 // UserServiceClient is the client API for UserService service.
@@ -84,6 +85,10 @@ type UserServiceClient interface {
 	// will be removed from. If the provided Account ids is not associated with the
 	// provided User, an error is returned.
 	RemoveUserAccounts(ctx context.Context, in *RemoveUserAccountsRequest, opts ...grpc.CallOption) (*RemoveUserAccountsResponse, error)
+	// ListResolvableAliases returns a list of Aliases which point to a resource
+	// for which the provided user id has some permission.
+	// If missing or malformed an error is returned.
+	ListResolvableAliases(ctx context.Context, in *ListResolvableAliasesRequest, opts ...grpc.CallOption) (*ListResolvableAliasesResponse, error)
 }
 
 type userServiceClient struct {
@@ -166,6 +171,15 @@ func (c *userServiceClient) RemoveUserAccounts(ctx context.Context, in *RemoveUs
 	return out, nil
 }
 
+func (c *userServiceClient) ListResolvableAliases(ctx context.Context, in *ListResolvableAliasesRequest, opts ...grpc.CallOption) (*ListResolvableAliasesResponse, error) {
+	out := new(ListResolvableAliasesResponse)
+	err := c.cc.Invoke(ctx, UserService_ListResolvableAliases_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // UserServiceServer is the server API for UserService service.
 // All implementations must embed UnimplementedUserServiceServer
 // for forward compatibility
@@ -218,6 +232,10 @@ type UserServiceServer interface {
 	// will be removed from. If the provided Account ids is not associated with the
 	// provided User, an error is returned.
 	RemoveUserAccounts(context.Context, *RemoveUserAccountsRequest) (*RemoveUserAccountsResponse, error)
+	// ListResolvableAliases returns a list of Aliases which point to a resource
+	// for which the provided user id has some permission.
+	// If missing or malformed an error is returned.
+	ListResolvableAliases(context.Context, *ListResolvableAliasesRequest) (*ListResolvableAliasesResponse, error)
 	mustEmbedUnimplementedUserServiceServer()
 }
 
@@ -248,6 +266,9 @@ func (UnimplementedUserServiceServer) SetUserAccounts(context.Context, *SetUserA
 }
 func (UnimplementedUserServiceServer) RemoveUserAccounts(context.Context, *RemoveUserAccountsRequest) (*RemoveUserAccountsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RemoveUserAccounts not implemented")
+}
+func (UnimplementedUserServiceServer) ListResolvableAliases(context.Context, *ListResolvableAliasesRequest) (*ListResolvableAliasesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListResolvableAliases not implemented")
 }
 func (UnimplementedUserServiceServer) mustEmbedUnimplementedUserServiceServer() {}
 
@@ -406,6 +427,24 @@ func _UserService_RemoveUserAccounts_Handler(srv interface{}, ctx context.Contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserService_ListResolvableAliases_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListResolvableAliasesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).ListResolvableAliases(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_ListResolvableAliases_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).ListResolvableAliases(ctx, req.(*ListResolvableAliasesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // UserService_ServiceDesc is the grpc.ServiceDesc for UserService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -444,6 +483,10 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RemoveUserAccounts",
 			Handler:    _UserService_RemoveUserAccounts_Handler,
+		},
+		{
+			MethodName: "ListResolvableAliases",
+			Handler:    _UserService_ListResolvableAliases_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
