@@ -289,7 +289,7 @@ Refer to the documentation for additional [top-level configuration options](/bou
 Before you can start Boundary, you must initialize the database from one Boundary controller.
 This operation is only required once; it will execute the required database migrations for the Boundary cluster to operate.
 
-```bash
+```shell-session
 boundary database init -config /etc/boundary.d/controller.hcl
 ```
 
@@ -298,7 +298,7 @@ user, account, and targets are just some of the resources Boundary will generate
 resources, however, are not required. You can choose to skip the creation of these initial resources by adding some
 flags.
 
-```bash
+```shell-session
 boundary database init \
    -skip-auth-method-creation \
    -skip-host-resources-creation \
@@ -309,7 +309,7 @@ boundary database init \
 
 For additional options, view the help documentation.
 
-```bash
+```shell-session
 boundary database init -h
 ```
 

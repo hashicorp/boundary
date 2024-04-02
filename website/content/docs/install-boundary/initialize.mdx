@@ -59,7 +59,7 @@ To use the recovery workflow on the CLI, you must pass the `-recovery-config <pa
 variable for `BOUNDARY_RECOVERY_CONFIG` for every command ran. Authentication takes place for every command
 ran when using the recovery workflow. `boundary authenticate` does not apply when using the recovery KMS.
 
-```bash
+```shell-session
 $ cat << EOF > /tmp/recovery.hcl
 kms "aead" {
         purpose   = "recovery"
@@ -230,7 +230,7 @@ This user will also be the principal in the role we create in the following step
 <Tab heading="CLI">
 
 
-```bash
+```shell-session
 $ boundary users create -scope-id <org_scope_id> \
   -recovery-config /tmp/recovery.hcl \
   -name "myuser" \
@@ -280,7 +280,7 @@ The following example creates 4 roles:
 
 Assumes recovery key export from above steps is still set:
 
-```bash
+```shell-session
 # Create global anonymous listing role
 $ boundary roles create -name 'global_anon_listing' \
   -recovery-config /tmp/recovery.hcl \
@@ -325,7 +325,7 @@ resource "boundary_role" "global_anon_listing" {
 
 Assumes recovery key export from above steps is still set:
 
-```bash
+```shell-session
 $ boundary roles create -name 'org_anon_listing' \
   -recovery-config /tmp/recovery.hcl \
   -scope-id <org_scope_id>
@@ -369,7 +369,7 @@ resource "boundary_role" "org_anon_listing" {
 
 Assumes recovery key export from above steps is still set:
 
-```bash
+```shell-session
 $ boundary roles create -name 'org_admin' \
   -recovery-config /tmp/recovery.hcl \
   -scope-id 'global' \
@@ -411,7 +411,7 @@ resource "boundary_role" "org_admin" {
 
 Assumes recovery key export from above steps is still set:
 
-```bash
+```shell-session
 $ boundary roles create -name 'project_admin' \
   -recovery-config /tmp/recovery.hcl \
   -scope-id <org_scope_id> \
@@ -447,7 +447,7 @@ resource "boundary_role" "project_admin" {
 
 ### Log in as your new user
 
-```bash
+```shell-session
 boundary authenticate password \
   -auth-method-id <auth_method_id>
 ```
