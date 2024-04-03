@@ -10,15 +10,19 @@ description: |-
 Before you initialize Boundary, you should have [initialized a database](/boundary/docs/install-boundary/configure-controllers#initialize-the-database).
 
 This document describes how to access Boundary for the first time and create the necessary resources to log in as a
-user in Boundary.
+user.
 
-## Log in with Recovery KMS
+## Log in with recovery KMS
 
-In order to access a new Boundary instance for the first time, you will need to use the recovery KMS defined in the
-controller configuration file. Here is an example snippet of a configuration file that uses hard-coded AEAD keys.
+To access a new Boundary instance for the first time, you must use the recovery KMS defined in the
+controller configuration file. The following example represents a configuration file that uses hard-coded AEAD keys:
 
-~> **Note:** In a production environment, it is recommended to use a cloud provider's KMS such as [AWS KMS](/boundary/docs/configuration/kms/awskms)
+<Note>
+
+In a production environment, HashiCorp recommends that you use a cloud provider's KMS such as [AWS KMS](/boundary/docs/configuration/kms/awskms)
 to manage the keys Boundary uses to encrypt sensitive information.
+
+</Note>
 
 ```hcl
 <truncated>
@@ -45,8 +49,8 @@ kms "aead" {
 <truncated>
 ```
 
-The KMS with the `recovery` purpose is used to "recovery" Boundary, allowing you to authenticate to Boundary and managed
-it as a super user. It also allows you to authenticate from the CLI or from Terraform in order to manage BOundary
+The KMS with the `recovery` purpose is used to "recover" Boundary, allowing you to authenticate to Boundary and manage
+it as a super user. It also allows you to authenticate from the CLI or from Terraform to manage Boundary
 without any generated resources.
 
 To authenticate to Boundary using the recovery KMS workflow:
@@ -57,7 +61,7 @@ To authenticate to Boundary using the recovery KMS workflow:
 
 To use the recovery workflow on the CLI, you must pass the `-recovery-config <path_to_kms_recovery_config>` flag or set the environment
 variable for `BOUNDARY_RECOVERY_CONFIG` for every command ran. Authentication takes place for every command
-ran when using the recovery workflow. `boundary authenticate` does not apply when using the recovery KMS.
+ran when using the recovery workflow. The `boundary authenticate` command does not apply when you use the recovery KMS.
 
 ```shell-session
 $ cat << EOF > /tmp/recovery.hcl
@@ -261,8 +265,8 @@ resource "boundary_user" "myuser" {
 
 ### Create roles to manage scopes
 
-The following describes the four baseline roles you will need to create in order to manage resources within the org and project
-scopes that were created. These roles are similar to the roles automatically created for you if generation had not been skipped during `boundary database init` when executed with the `-skip-initial-login-role-creation` flag, Declaring roles explicitly
+The following section describes the four baseline roles you must create to manage resources within the org and project
+scopes that you created. These roles are similar to the roles Boundary automatically created for you if you did not skip generation using the `-skip-initial-login-role-creation` flag when you ran `boundary database init`. Declaring roles explicitly
 allows you to manage them independently and fully within Terraform or via the CLI. In doing so, you can precisely define their access.
 
 The following example creates 4 roles:
