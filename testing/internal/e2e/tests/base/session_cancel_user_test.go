@@ -33,45 +33,56 @@ func TestCliSessionCancelUser(t *testing.T) {
 
 	ctx := context.Background()
 	boundary.AuthenticateAdminCli(t, ctx)
-	newOrgId := boundary.CreateNewOrgCli(t, ctx)
+	orgId, err := boundary.CreateOrgCli(t, ctx)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		ctx := context.Background()
 		boundary.AuthenticateAdminCli(t, ctx)
-		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", newOrgId))
+		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", orgId))
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
-	newProjectId := boundary.CreateNewProjectCli(t, ctx, newOrgId)
-	newHostCatalogId := boundary.CreateNewHostCatalogCli(t, ctx, newProjectId)
-	newHostSetId := boundary.CreateNewHostSetCli(t, ctx, newHostCatalogId)
-	newHostId := boundary.CreateNewHostCli(t, ctx, newHostCatalogId, c.TargetAddress)
-	boundary.AddHostToHostSetCli(t, ctx, newHostSetId, newHostId)
-	newTargetId := boundary.CreateNewTargetCli(t, ctx, newProjectId, c.TargetPort)
-	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, newHostSetId)
+	projectId, err := boundary.CreateProjectCli(t, ctx, orgId)
+	require.NoError(t, err)
+	hostCatalogId, err := boundary.CreateHostCatalogCli(t, ctx, projectId)
+	require.NoError(t, err)
+	hostSetId, err := boundary.CreateHostSetCli(t, ctx, hostCatalogId)
+	require.NoError(t, err)
+	hostId, err := boundary.CreateHostCli(t, ctx, hostCatalogId, c.TargetAddress)
+	require.NoError(t, err)
+	err = boundary.AddHostToHostSetCli(t, ctx, hostSetId, hostId)
+	require.NoError(t, err)
+	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort)
+	require.NoError(t, err)
+	err = boundary.AddHostSourceToTargetCli(t, ctx, targetId, hostSetId)
+	require.NoError(t, err)
 	acctName := "e2e-account"
-	newAccountId, acctPassword := boundary.CreateNewAccountCli(t, ctx, bc.AuthMethodId, acctName)
+	accountId, acctPassword, err := boundary.CreateAccountCli(t, ctx, bc.AuthMethodId, acctName)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		boundary.AuthenticateAdminCli(t, context.Background())
 		output := e2e.RunCommand(ctx, "boundary",
-			e2e.WithArgs("accounts", "delete", "-id", newAccountId),
+			e2e.WithArgs("accounts", "delete", "-id", accountId),
 		)
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
-	newUserId := boundary.CreateNewUserCli(t, ctx, "global")
+	userId, err := boundary.CreateUserCli(t, ctx, "global")
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		boundary.AuthenticateAdminCli(t, context.Background())
 		output := e2e.RunCommand(ctx, "boundary",
-			e2e.WithArgs("users", "delete", "-id", newUserId),
+			e2e.WithArgs("users", "delete", "-id", userId),
 		)
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
-	boundary.SetAccountToUserCli(t, ctx, newUserId, newAccountId)
+	err = boundary.SetAccountToUserCli(t, ctx, userId, accountId)
+	require.NoError(t, err)
 
 	// Try to connect to the target as a user without permissions
 	boundary.AuthenticateCli(t, ctx, bc.AuthMethodId, acctName, acctPassword)
 	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"connect",
-			"-target-id", newTargetId,
+			"-target-id", targetId,
 			"-format", "json",
 			"-exec", "/usr/bin/ssh", "--",
 			"-l", c.TargetSshUser,
@@ -93,10 +104,12 @@ func TestCliSessionCancelUser(t *testing.T) {
 
 	// Create a role for user
 	boundary.AuthenticateAdminCli(t, ctx)
-	newRoleId, err := boundary.CreateRoleCli(t, ctx, newProjectId)
+	roleId, err := boundary.CreateRoleCli(t, ctx, projectId)
 	require.NoError(t, err)
-	boundary.AddGrantToRoleCli(t, ctx, newRoleId, "ids=*;type=target;actions=authorize-session")
-	boundary.AddPrincipalToRoleCli(t, ctx, newRoleId, newUserId)
+	err = boundary.AddGrantToRoleCli(t, ctx, roleId, "ids=*;type=target;actions=authorize-session")
+	require.NoError(t, err)
+	err = boundary.AddPrincipalToRoleCli(t, ctx, roleId, userId)
+	require.NoError(t, err)
 
 	// Connect to target to create a session
 	ctxCancel, cancel := context.WithCancel(context.Background())
@@ -108,7 +121,7 @@ func TestCliSessionCancelUser(t *testing.T) {
 			e2e.WithArgs(
 				"connect",
 				"-token", "env://E2E_AUTH_TOKEN",
-				"-target-id", newTargetId,
+				"-target-id", targetId,
 				"-exec", "/usr/bin/ssh", "--",
 				"-l", c.TargetSshUser,
 				"-i", c.TargetSshKeyPath,
@@ -123,10 +136,10 @@ func TestCliSessionCancelUser(t *testing.T) {
 		)
 	}()
 	t.Cleanup(cancel)
-	s := boundary.WaitForSessionCli(t, ctx, newProjectId)
+	s := boundary.WaitForSessionCli(t, ctx, projectId)
 	boundary.WaitForSessionStatusCli(t, ctx, s.Id, session.StatusActive.String())
-	assert.Equal(t, newTargetId, s.TargetId)
-	assert.Equal(t, newHostId, s.HostId)
+	assert.Equal(t, targetId, s.TargetId)
+	assert.Equal(t, hostId, s.HostId)
 
 	// Cancel session
 	t.Log("Canceling session...")
@@ -160,39 +173,49 @@ func TestApiCreateUser(t *testing.T) {
 	require.NoError(t, err)
 	ctx := context.Background()
 
-	newOrgId := boundary.CreateNewOrgApi(t, ctx, client)
+	orgId, err := boundary.CreateOrgApi(t, ctx, client)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		scopeClient := scopes.NewClient(client)
-		_, err := scopeClient.Delete(ctx, newOrgId)
+		_, err := scopeClient.Delete(ctx, orgId)
 		require.NoError(t, err)
 	})
-	newProjectId := boundary.CreateNewProjectApi(t, ctx, client, newOrgId)
-	newHostCatalogId := boundary.CreateNewHostCatalogApi(t, ctx, client, newProjectId)
-	newHostSetId := boundary.CreateNewHostSetApi(t, ctx, client, newHostCatalogId)
-	newHostId := boundary.CreateNewHostApi(t, ctx, client, newHostCatalogId, c.TargetAddress)
-	boundary.AddHostToHostSetApi(t, ctx, client, newHostSetId, newHostId)
-	newTargetId := boundary.CreateNewTargetApi(t, ctx, client, newProjectId, c.TargetPort)
-	boundary.AddHostSourceToTargetApi(t, ctx, client, newTargetId, newHostSetId)
+	projectId, err := boundary.CreateProjectApi(t, ctx, client, orgId)
+	require.NoError(t, err)
+	hostCatalogId, err := boundary.CreateHostCatalogApi(t, ctx, client, projectId)
+	require.NoError(t, err)
+	hostSetId, err := boundary.CreateHostSetApi(t, ctx, client, hostCatalogId)
+	require.NoError(t, err)
+	hostId, err := boundary.CreateHostApi(t, ctx, client, hostCatalogId, c.TargetAddress)
+	require.NoError(t, err)
+	err = boundary.AddHostToHostSetApi(t, ctx, client, hostSetId, hostId)
+	require.NoError(t, err)
+	targetId, err := boundary.CreateTargetApi(t, ctx, client, projectId, c.TargetPort)
+	require.NoError(t, err)
+	err = boundary.AddHostSourceToTargetApi(t, ctx, client, targetId, hostSetId)
+	require.NoError(t, err)
 
 	acctName := "e2e-account"
-	newAcctId, _ := boundary.CreateNewAccountApi(t, ctx, client, bc.AuthMethodId, acctName)
+	accountId, _, err := boundary.CreateAccountApi(t, ctx, client, bc.AuthMethodId, acctName)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		aClient := accounts.NewClient(client)
-		_, err := aClient.Delete(ctx, newAcctId)
+		_, err := aClient.Delete(ctx, accountId)
 		require.NoError(t, err)
 	})
-	newUserId := boundary.CreateNewUserApi(t, ctx, client, "global")
+	userId, err := boundary.CreateUserApi(t, ctx, client, "global")
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		uClient := users.NewClient(client)
-		_, err := uClient.Delete(ctx, newUserId)
+		_, err := uClient.Delete(ctx, userId)
 		require.NoError(t, err)
 	})
 	uClient := users.NewClient(client)
-	_, err = uClient.SetAccounts(ctx, newUserId, 0, []string{newAcctId}, users.WithAutomaticVersioning(true))
+	_, err = uClient.SetAccounts(ctx, userId, 0, []string{accountId}, users.WithAutomaticVersioning(true))
 	require.NoError(t, err)
 
 	rClient := roles.NewClient(client)
-	newRoleResult, err := rClient.Create(ctx, newProjectId)
+	newRoleResult, err := rClient.Create(ctx, projectId)
 	require.NoError(t, err)
 	newRoleId := newRoleResult.Item.Id
 	t.Logf("Created Role: %s", newRoleId)
@@ -202,7 +225,7 @@ func TestApiCreateUser(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	_, err = rClient.AddPrincipals(ctx, newRoleId, 0, []string{newUserId},
+	_, err = rClient.AddPrincipals(ctx, newRoleId, 0, []string{userId},
 		roles.WithAutomaticVersioning(true),
 	)
 	require.NoError(t, err)

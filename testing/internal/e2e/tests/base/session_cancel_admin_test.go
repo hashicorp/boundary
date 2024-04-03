@@ -23,20 +23,28 @@ func TestCliSessionCancelAdmin(t *testing.T) {
 
 	ctx := context.Background()
 	boundary.AuthenticateAdminCli(t, ctx)
-	newOrgId := boundary.CreateNewOrgCli(t, ctx)
+	orgId, err := boundary.CreateOrgCli(t, ctx)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		ctx := context.Background()
 		boundary.AuthenticateAdminCli(t, ctx)
-		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", newOrgId))
+		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", orgId))
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
-	newProjectId := boundary.CreateNewProjectCli(t, ctx, newOrgId)
-	newHostCatalogId := boundary.CreateNewHostCatalogCli(t, ctx, newProjectId)
-	newHostSetId := boundary.CreateNewHostSetCli(t, ctx, newHostCatalogId)
-	newHostId := boundary.CreateNewHostCli(t, ctx, newHostCatalogId, c.TargetAddress)
-	boundary.AddHostToHostSetCli(t, ctx, newHostSetId, newHostId)
-	newTargetId := boundary.CreateNewTargetCli(t, ctx, newProjectId, c.TargetPort)
-	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, newHostSetId)
+	projectId, err := boundary.CreateProjectCli(t, ctx, orgId)
+	require.NoError(t, err)
+	hostCatalogId, err := boundary.CreateHostCatalogCli(t, ctx, projectId)
+	require.NoError(t, err)
+	hostSetId, err := boundary.CreateHostSetCli(t, ctx, hostCatalogId)
+	require.NoError(t, err)
+	hostId, err := boundary.CreateHostCli(t, ctx, hostCatalogId, c.TargetAddress)
+	require.NoError(t, err)
+	err = boundary.AddHostToHostSetCli(t, ctx, hostSetId, hostId)
+	require.NoError(t, err)
+	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort)
+	require.NoError(t, err)
+	err = boundary.AddHostSourceToTargetCli(t, ctx, targetId, hostSetId)
+	require.NoError(t, err)
 
 	// Connect to target to create a session
 	ctxCancel, cancel := context.WithCancel(context.Background())
@@ -46,7 +54,7 @@ func TestCliSessionCancelAdmin(t *testing.T) {
 		errChan <- e2e.RunCommand(ctxCancel, "boundary",
 			e2e.WithArgs(
 				"connect",
-				"-target-id", newTargetId,
+				"-target-id", targetId,
 				"-exec", "/usr/bin/ssh", "--",
 				"-l", c.TargetSshUser,
 				"-i", c.TargetSshKeyPath,
@@ -60,10 +68,10 @@ func TestCliSessionCancelAdmin(t *testing.T) {
 		)
 	}()
 	t.Cleanup(cancel)
-	s := boundary.WaitForSessionCli(t, ctx, newProjectId)
+	s := boundary.WaitForSessionCli(t, ctx, projectId)
 	boundary.WaitForSessionStatusCli(t, ctx, s.Id, session.StatusActive.String())
-	assert.Equal(t, newTargetId, s.TargetId)
-	assert.Equal(t, newHostId, s.HostId)
+	assert.Equal(t, targetId, s.TargetId)
+	assert.Equal(t, hostId, s.HostId)
 
 	// Cancel session
 	t.Log("Canceling session...")

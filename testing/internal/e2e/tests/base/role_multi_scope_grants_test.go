@@ -22,18 +22,21 @@ func TestCliApplyGrantsForMultipleScopes(t *testing.T) {
 	boundary.AuthenticateAdminCli(t, ctx)
 
 	// Create Org and Project
-	orgId := boundary.CreateNewOrgCli(t, ctx)
+	orgId, err := boundary.CreateOrgCli(t, ctx)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		ctx := context.Background()
 		boundary.AuthenticateAdminCli(t, ctx)
 		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", orgId))
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
-	projectId := boundary.CreateNewProjectCli(t, ctx, orgId)
+	projectId, err := boundary.CreateProjectCli(t, ctx, orgId)
+	require.NoError(t, err)
 
 	// Create Account
 	acctName := "e2e-account"
-	accountId, acctPassword := boundary.CreateNewAccountCli(t, ctx, bc.AuthMethodId, acctName)
+	accountId, acctPassword, err := boundary.CreateAccountCli(t, ctx, bc.AuthMethodId, acctName)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		boundary.AuthenticateAdminCli(t, ctx)
 		output := e2e.RunCommand(ctx, "boundary",
@@ -43,7 +46,8 @@ func TestCliApplyGrantsForMultipleScopes(t *testing.T) {
 	})
 
 	// Create User and set Account to it
-	userId := boundary.CreateNewUserCli(t, ctx, "global")
+	userId, err := boundary.CreateUserCli(t, ctx, "global")
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		boundary.AuthenticateAdminCli(t, ctx)
 		output := e2e.RunCommand(ctx, "boundary",
@@ -51,7 +55,8 @@ func TestCliApplyGrantsForMultipleScopes(t *testing.T) {
 		)
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
-	boundary.SetAccountToUserCli(t, ctx, userId, accountId)
+	err = boundary.SetAccountToUserCli(t, ctx, userId, accountId)
+	require.NoError(t, err)
 
 	// Authenticate test user and try to:
 	// - list Roles in global scope: expect error
@@ -79,8 +84,10 @@ func TestCliApplyGrantsForMultipleScopes(t *testing.T) {
 		)
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
-	boundary.AddGrantToRoleCli(t, ctx, roleId, "ids=*;type=role;actions=list")
-	boundary.AddPrincipalToRoleCli(t, ctx, roleId, userId)
+	err = boundary.AddGrantToRoleCli(t, ctx, roleId, "ids=*;type=role;actions=list")
+	require.NoError(t, err)
+	err = boundary.AddPrincipalToRoleCli(t, ctx, roleId, userId)
+	require.NoError(t, err)
 
 	// Authenticate User and try to:
 	// - list Roles in global scope: expect success

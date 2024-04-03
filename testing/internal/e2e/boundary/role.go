@@ -13,19 +13,25 @@ import (
 	"github.com/hashicorp/boundary/api/roles"
 	"github.com/hashicorp/boundary/testing/internal/e2e"
 	"github.com/hashicorp/go-secure-stdlib/base62"
-	"github.com/stretchr/testify/require"
 )
 
-// CreateNewRoleApi creates a new role using the Go api.
+// CreateRoleApi creates a new role using the Go api.
 // Returns the id of the new role
-func CreateNewRoleApi(t testing.TB, ctx context.Context, client *api.Client, scopeId string) string {
-	rClient := roles.NewClient(client)
-	newRoleResult, err := rClient.Create(ctx, scopeId)
-	require.NoError(t, err)
+func CreateRoleApi(t testing.TB, ctx context.Context, client *api.Client, scopeId string) (string, error) {
+	name, err := base62.Random(16)
+	if err != nil {
+		return "", err
+	}
 
-	newRoleId := newRoleResult.Item.Id
-	t.Logf("Created Role: %s", newRoleId)
-	return newRoleId
+	rClient := roles.NewClient(client)
+	createRoleResult, err := rClient.Create(ctx, scopeId, roles.WithName(fmt.Sprintf("e2e Role %s", name)))
+	if err != nil {
+		return "", err
+	}
+
+	roleId := createRoleResult.Item.Id
+	t.Logf("Created Role: %s", roleId)
+	return roleId, nil
 }
 
 // CreateRoleCli creates a new role using the Boundary CLI.
@@ -33,8 +39,9 @@ func CreateNewRoleApi(t testing.TB, ctx context.Context, client *api.Client, sco
 func CreateRoleCli(t testing.TB, ctx context.Context, scopeId string) (string, error) {
 	name, err := base62.Random(16)
 	if err != nil {
-		return "", fmt.Errorf("error generating role name: %w", err)
+		return "", err
 	}
+
 	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"roles", "create",
@@ -45,17 +52,17 @@ func CreateRoleCli(t testing.TB, ctx context.Context, scopeId string) (string, e
 		),
 	)
 	if output.Err != nil {
-		return "", fmt.Errorf("error creating role: %w: %s", output.Err, string(output.Stderr))
+		return "", fmt.Errorf("%w: %s", output.Err, string(output.Stderr))
 	}
 
-	var newRoleResult roles.RoleCreateResult
-	if err := json.Unmarshal(output.Stdout, &newRoleResult); err != nil {
+	var createRoleResult roles.RoleCreateResult
+	if err := json.Unmarshal(output.Stdout, &createRoleResult); err != nil {
 		return "", fmt.Errorf("error unmarshalling role creation result: %w", err)
 	}
 
-	newRoleId := newRoleResult.Item.Id
-	t.Logf("Created Role: %s in scope %s", newRoleId, scopeId)
-	return newRoleId, nil
+	roleId := createRoleResult.Item.Id
+	t.Logf("Created Role: %s in scope %s", roleId, scopeId)
+	return roleId, nil
 }
 
 // ListRolesCli lists roles from the specified scope using the Boundary CLI.
@@ -82,7 +89,7 @@ func ListRolesCli(t testing.TB, ctx context.Context, scopeId string) ([]*roles.R
 }
 
 // AddGrantToRoleCli adds a grant/permission to a role using the cli
-func AddGrantToRoleCli(t testing.TB, ctx context.Context, roleId string, grant string) {
+func AddGrantToRoleCli(t testing.TB, ctx context.Context, roleId string, grant string) error {
 	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"roles", "add-grants",
@@ -90,11 +97,15 @@ func AddGrantToRoleCli(t testing.TB, ctx context.Context, roleId string, grant s
 			"-grant", grant,
 		),
 	)
-	require.NoError(t, output.Err, string(output.Stderr))
+	if output.Err != nil {
+		return fmt.Errorf("%w: %s", output.Err, string(output.Stderr))
+	}
+
+	return nil
 }
 
 // AddPrincipalToRoleCli adds a user/group to a role using the cli
-func AddPrincipalToRoleCli(t testing.TB, ctx context.Context, roleId string, principal string) {
+func AddPrincipalToRoleCli(t testing.TB, ctx context.Context, roleId string, principal string) error {
 	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"roles", "add-principals",
@@ -102,8 +113,12 @@ func AddPrincipalToRoleCli(t testing.TB, ctx context.Context, roleId string, pri
 			"-principal", principal,
 		),
 	)
-	require.NoError(t, output.Err, string(output.Stderr))
+	if output.Err != nil {
+		return fmt.Errorf("%w: %s", output.Err, string(output.Stderr))
+	}
+
 	t.Logf("Principal %s added to role: %s", principal, roleId)
+	return nil
 }
 
 // SetGrantScopesToRoleCli uses Boundary CLI to override grant scopes for the role with the provided ones.

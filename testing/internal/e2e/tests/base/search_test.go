@@ -90,14 +90,16 @@ func TestCliSearch(t *testing.T) {
 
 	// Set up a new org and project
 	boundary.AuthenticateAdminCli(t, ctx)
-	newOrgId := boundary.CreateNewOrgCli(t, ctx)
+	orgId, err := boundary.CreateOrgCli(t, ctx)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		ctx := context.Background()
 		boundary.AuthenticateAdminCli(t, ctx)
-		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", newOrgId))
+		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", orgId))
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
-	newProjectId := boundary.CreateNewProjectCli(t, ctx, newOrgId)
+	projectId, err := boundary.CreateProjectCli(t, ctx, orgId)
+	require.NoError(t, err)
 
 	// Get current number of targets
 	output = e2e.RunCommand(ctx, "boundary", e2e.WithArgs("daemon", "status", "-format", "json"))
@@ -125,7 +127,7 @@ func TestCliSearch(t *testing.T) {
 	var targetIds []string
 	targetPrefix := "test-target"
 	for i := 0; i < c.MaxPageSize+1; i++ {
-		resp, err := tClient.Create(ctx, "tcp", newProjectId,
+		resp, err := tClient.Create(ctx, "tcp", projectId,
 			targets.WithName(targetPrefix+strconv.Itoa(i)),
 			targets.WithTcpTargetDefaultPort(uint32(targetPort)),
 			targets.WithAddress(c.TargetAddress),
@@ -137,7 +139,7 @@ func TestCliSearch(t *testing.T) {
 	// List targets.
 	// This requests data from the controller/database.
 	t.Log("Listing targets...")
-	output = e2e.RunCommand(ctx, "boundary", e2e.WithArgs("targets", "list", "-scope-id", newProjectId, "-format", "json"))
+	output = e2e.RunCommand(ctx, "boundary", e2e.WithArgs("targets", "list", "-scope-id", projectId, "-format", "json"))
 	require.NoError(t, output.Err, string(output.Stderr))
 	var targetListResult targets.TargetListResult
 	err = json.Unmarshal(output.Stdout, &targetListResult)
@@ -205,7 +207,7 @@ func TestCliSearch(t *testing.T) {
 			"search",
 			"-resource", "targets",
 			"-format", "json",
-			"-query", fmt.Sprintf(`name %% "%s" and scope_id = "%s"`, targetPrefix, newProjectId),
+			"-query", fmt.Sprintf(`name %% "%s" and scope_id = "%s"`, targetPrefix, projectId),
 		),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
@@ -224,7 +226,7 @@ func TestCliSearch(t *testing.T) {
 			"search",
 			"-resource", "targets",
 			"-format", "json",
-			"-query", fmt.Sprintf(`name = "%s1" and scope_id = "%s"`, targetPrefix, newProjectId),
+			"-query", fmt.Sprintf(`name = "%s1" and scope_id = "%s"`, targetPrefix, projectId),
 		),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))

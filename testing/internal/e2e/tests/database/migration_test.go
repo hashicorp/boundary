@@ -211,47 +211,70 @@ func populateBoundaryDatabase(t testing.TB, ctx context.Context, c *config, te T
 	// While the CLI version used won't necessarily match the controller version, it should be (and is
 	// supposed to be) backwards compatible
 	boundary.AuthenticateCli(t, ctx, te.DbInitInfo.AuthMethod.AuthMethodId, te.DbInitInfo.AuthMethod.LoginName, te.DbInitInfo.AuthMethod.Password)
-	newOrgId := boundary.CreateNewOrgCli(t, ctx)
-	newProjectId := boundary.CreateNewProjectCli(t, ctx, newOrgId)
-	newHostCatalogId := boundary.CreateNewHostCatalogCli(t, ctx, newProjectId)
-	newHostSetId := boundary.CreateNewHostSetCli(t, ctx, newHostCatalogId)
-	newHostId := boundary.CreateNewHostCli(t, ctx, newHostCatalogId, te.Target.UriNetwork)
-	boundary.AddHostToHostSetCli(t, ctx, newHostSetId, newHostId)
-	newTargetId := boundary.CreateNewTargetCli(t, ctx, newProjectId, "2222") // openssh-server uses port 2222
-	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, newHostSetId)
+	orgId, err := boundary.CreateOrgCli(t, ctx)
+	require.NoError(t, err)
+	projectId, err := boundary.CreateProjectCli(t, ctx, orgId)
+	require.NoError(t, err)
+	hostCatalogId, err := boundary.CreateHostCatalogCli(t, ctx, projectId)
+	require.NoError(t, err)
+	hostSetId, err := boundary.CreateHostSetCli(t, ctx, hostCatalogId)
+	require.NoError(t, err)
+	hostId, err := boundary.CreateHostCli(t, ctx, hostCatalogId, te.Target.UriNetwork)
+	require.NoError(t, err)
+	err = boundary.AddHostToHostSetCli(t, ctx, hostSetId, hostId)
+	require.NoError(t, err)
+	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, "2222") // openssh-server uses port 2222
+	require.NoError(t, err)
+	err = boundary.AddHostSourceToTargetCli(t, ctx, targetId, hostSetId)
+	require.NoError(t, err)
 
 	// Create a target with an address attached
-	_ = boundary.CreateNewTargetCli(
+	_, err = boundary.CreateTargetCli(
 		t,
 		ctx,
-		newProjectId,
+		projectId,
 		"2222",
 		target.WithName("e2e target with address"),
 		target.WithAddress(te.Target.UriNetwork),
 	)
+	require.NoError(t, err)
 
 	// Create AWS dynamic host catalog
-	newAwsHostCatalogId := boundary.CreateNewAwsHostCatalogCli(t, ctx, newProjectId, c.AwsAccessKeyId, c.AwsSecretAccessKey)
-	newAwsHostSetId := boundary.CreateNewAwsHostSetCli(t, ctx, newAwsHostCatalogId, c.AwsHostSetFilter)
-	boundary.WaitForHostsInHostSetCli(t, ctx, newAwsHostSetId)
+	awsHostCatalogId, err := boundary.CreateAwsHostCatalogCli(t, ctx, projectId, c.AwsAccessKeyId, c.AwsSecretAccessKey)
+	require.NoError(t, err)
+	awsHostSetId, err := boundary.CreateAwsHostSetCli(t, ctx, awsHostCatalogId, c.AwsHostSetFilter)
+	require.NoError(t, err)
+	boundary.WaitForHostsInHostSetCli(t, ctx, awsHostSetId)
 
 	// Create a user/group and add role to group
-	newAccountId, _ := boundary.CreateNewAccountCli(t, ctx, te.DbInitInfo.AuthMethod.AuthMethodId, "test-account")
-	newUserId := boundary.CreateNewUserCli(t, ctx, "global")
-	boundary.SetAccountToUserCli(t, ctx, newUserId, newAccountId)
-	newGroupId := boundary.CreateNewGroupCli(t, ctx, "global")
-	boundary.AddUserToGroup(t, ctx, newUserId, newGroupId)
-	newRoleId, err := boundary.CreateRoleCli(t, ctx, newProjectId)
+	accountId, _, err := boundary.CreateAccountCli(t, ctx, te.DbInitInfo.AuthMethod.AuthMethodId, "test-account")
 	require.NoError(t, err)
-	boundary.AddGrantToRoleCli(t, ctx, newRoleId, "ids=*;type=target;actions=authorize-session")
-	boundary.AddPrincipalToRoleCli(t, ctx, newRoleId, newGroupId)
+	userId, err := boundary.CreateUserCli(t, ctx, "global")
+	require.NoError(t, err)
+	err = boundary.SetAccountToUserCli(t, ctx, userId, accountId)
+	require.NoError(t, err)
+	groupId, err := boundary.CreateGroupCli(t, ctx, "global")
+	require.NoError(t, err)
+	err = boundary.AddUserToGroup(t, ctx, userId, groupId)
+	require.NoError(t, err)
+	roleId, err := boundary.CreateRoleCli(t, ctx, projectId)
+	require.NoError(t, err)
+	err = boundary.AddGrantToRoleCli(t, ctx, roleId, "ids=*;type=target;actions=authorize-session")
+	require.NoError(t, err)
+	err = boundary.AddPrincipalToRoleCli(t, ctx, roleId, groupId)
+	require.NoError(t, err)
 
 	// Create static credentials
-	newCredentialStoreId := boundary.CreateNewCredentialStoreStaticCli(t, ctx, newProjectId)
-	boundary.CreateNewStaticCredentialPasswordCli(t, ctx, newCredentialStoreId, c.TargetSshUser, "password")
-	boundary.CreateNewStaticCredentialJsonCli(t, ctx, newCredentialStoreId, "testdata/credential.json")
-	newCredentialsId := boundary.CreateNewStaticCredentialPrivateKeyCli(t, ctx, newCredentialStoreId, c.TargetSshUser, c.TargetSshKeyPath)
-	boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, newTargetId, newCredentialsId)
+	storeId, err := boundary.CreateCredentialStoreStaticCli(t, ctx, projectId)
+	require.NoError(t, err)
+	_, err = boundary.CreateStaticCredentialPasswordCli(t, ctx, storeId, c.TargetSshUser, "password")
+	require.NoError(t, err)
+	_, err = boundary.CreateStaticCredentialJsonCli(t, ctx, storeId, "testdata/credential.json")
+	require.NoError(t, err)
+	credentialsId, err := boundary.CreateStaticCredentialPrivateKeyCli(t, ctx, storeId, c.TargetSshUser, c.TargetSshKeyPath)
+	require.NoError(t, err)
+	err = boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, targetId, credentialsId)
+	require.NoError(t, err)
 
 	// Create vault credentials
 	boundaryPolicyName, kvPolicyFilePath := vault.Setup(t, "testdata/boundary-controller-policy.hcl")
@@ -284,13 +307,14 @@ func populateBoundaryDatabase(t testing.TB, ctx context.Context, c *config, te T
 	t.Log("Created Vault Cred Store Token")
 
 	// Create a credential store for vault
-	newVaultCredentialStoreId := boundary.CreateNewCredentialStoreVaultCli(t, ctx, newProjectId, te.Vault.UriNetwork, credStoreToken)
+	vaultStoreId, err := boundary.CreateCredentialStoreVaultCli(t, ctx, projectId, te.Vault.UriNetwork, credStoreToken)
+	require.NoError(t, err)
 
 	// Create a credential library for the private key in vault
 	_, err = boundary.CreateVaultGenericCredentialLibraryCli(
 		t,
 		ctx,
-		newVaultCredentialStoreId,
+		vaultStoreId,
 		fmt.Sprintf("%s/data/%s", c.VaultSecretPath, privateKeySecretName),
 		"ssh_private_key",
 	)
@@ -300,7 +324,7 @@ func populateBoundaryDatabase(t testing.TB, ctx context.Context, c *config, te T
 	_, err = boundary.CreateVaultGenericCredentialLibraryCli(
 		t,
 		ctx,
-		newVaultCredentialStoreId,
+		vaultStoreId,
 		fmt.Sprintf("%s/data/%s", c.VaultSecretPath, passwordSecretName),
 		"username_password",
 	)
@@ -359,7 +383,7 @@ func populateBoundaryDatabase(t testing.TB, ctx context.Context, c *config, te T
 		boundaryTag,
 		te.Boundary.UriNetwork,
 		auth_token,
-		newTargetId,
+		targetId,
 	)
 	t.Cleanup(func() {
 		if err := te.Pool.Purge(connectTarget.Resource); err != nil {

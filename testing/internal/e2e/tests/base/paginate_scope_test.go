@@ -26,11 +26,12 @@ func TestCliPaginateScopes(t *testing.T) {
 
 	ctx := context.Background()
 	boundary.AuthenticateAdminCli(t, ctx)
-	newOrgId := boundary.CreateNewOrgCli(t, ctx)
+	orgId, err := boundary.CreateOrgCli(t, ctx)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		ctx := context.Background()
 		boundary.AuthenticateAdminCli(t, ctx)
-		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", newOrgId))
+		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", orgId))
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
 
@@ -39,14 +40,16 @@ func TestCliPaginateScopes(t *testing.T) {
 	require.NoError(t, err)
 	var scopeIds []string
 	for i := 0; i < c.MaxPageSize+1; i++ {
-		scopeIds = append(scopeIds, boundary.CreateNewProjectApi(t, ctx, client, newOrgId))
+		projectId, err := boundary.CreateProjectApi(t, ctx, client, orgId)
+		require.NoError(t, err)
+		scopeIds = append(scopeIds, projectId)
 	}
 
 	// List scopes
 	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"scopes", "list",
-			"-scope-id", newOrgId,
+			"-scope-id", orgId,
 			"-format=json",
 		),
 	)
@@ -68,7 +71,8 @@ func TestCliPaginateScopes(t *testing.T) {
 	assert.Empty(t, initialScopes.ListToken)
 
 	// Create a new scope and destroy one of the other scopes
-	newScopeId := boundary.CreateNewProjectApi(t, ctx, client, newOrgId)
+	newScopeId, err := boundary.CreateProjectApi(t, ctx, client, orgId)
+	require.NoError(t, err)
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"scopes", "delete",
@@ -81,7 +85,7 @@ func TestCliPaginateScopes(t *testing.T) {
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"scopes", "list",
-			"-scope-id", newOrgId,
+			"-scope-id", orgId,
 			"-format=json",
 		),
 	)
@@ -116,21 +120,24 @@ func TestApiPaginateScopes(t *testing.T) {
 	require.NoError(t, err)
 	ctx := context.Background()
 	sClient := scopes.NewClient(client)
-	newOrgId := boundary.CreateNewOrgApi(t, ctx, client)
+	orgId, err := boundary.CreateOrgApi(t, ctx, client)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		ctx := context.Background()
-		_, err := sClient.Delete(ctx, newOrgId)
+		_, err := sClient.Delete(ctx, orgId)
 		require.NoError(t, err)
 	})
 
 	// Create enough scopes to overflow a single page.
 	var scopeIds []string
 	for i := 0; i < c.MaxPageSize+1; i++ {
-		scopeIds = append(scopeIds, boundary.CreateNewProjectApi(t, ctx, client, newOrgId))
+		projectId, err := boundary.CreateProjectApi(t, ctx, client, orgId)
+		require.NoError(t, err)
+		scopeIds = append(scopeIds, projectId)
 	}
 
 	// List scopes
-	initialScopes, err := sClient.List(ctx, newOrgId)
+	initialScopes, err := sClient.List(ctx, orgId)
 	require.NoError(t, err)
 
 	var returnedIds []string
