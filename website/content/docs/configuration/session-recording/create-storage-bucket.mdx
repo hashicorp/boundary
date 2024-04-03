@@ -151,6 +151,10 @@ and how long a BSR will be retained in the storage bucket.
 [Session recording](/boundary/docs/configuration/session-recording) requires that you [configure at least one worker for local storage](/boundary/docs/configuration/session-recording/create-storage-bucket#boundary-workers-requirements).
 The worker that you configure for storage must:
 
+<Note>
+You cannot use an HCP managed worker for the local storage. HCP Boundary users must configure a self-managed worker to enable session recording.
+</Note>
+
 - Have access to the AWS S3 storage bucket
 - Have an accessible directory defined by `recording_storage_path` for storing session recordings while they are in progress. On session closure, Boundary moves the local session recording to remote storage and deletes the local copy.
    - For HCP Boundary, refer to the [Self-managed worker configuration](/hcp/docs/boundary/self-managed-workers/session-recording) documentation.
@@ -158,9 +162,26 @@ The worker that you configure for storage must:
 - Have available disk space defined by `recording_storage_minimum_available_capacity`. If you do not configure the minimum available storage capacity, Boundary uses the default value of 500MiB.  
 - Run Darwin, Windows, or Linux. The following binaries are not supported for session recording: NetBSD, OpenBSD, Solaris.
 
-<Note>
-You cannot use an HCP managed worker for the local storage. HCP Boundary users must configure a self-managed worker to enable session recording.
-</Note>
+#### Local storage
+
+Workers require sufficient local disk space in the `recording_storage_path` to store session recordings while they are in progress. Local disk space is also required for session recording playback.
+
+The `recording_storage_minimum_available_capacity` vaule defines the minimum available disk space that must be available on the worker for session recording and session recording playback.
+This threshold determines the local storage state of the worker.
+The possible storage states based on the `recording_storage_minimum_available_capacity` are:
+- `Available`: The worker is above the storage threshold and is available to proxy sessions that are enabled with session recording.
+
+- `Low storage`: The worker is below the storage threshold. Existing sessions can continue without interruption, but new sessions that are enabled with session recording cannot be proxied. The worker is not available to record new sessions or play back existing recordings.
+
+- `Critically low storage`: The worker is below half the storage threshold. Existing sessions that are enabled with session recording will be forcefully closed. The worker is not available to record new sessions or play back existing recordings.
+
+- `Out of storage`: The worker is out of local disk space. It is not available to record new sessions or play back existing recordings. The worker is in a unrecoverable state. An administrator must intervene to remedy the issue.
+   
+- `Not configured`: The worker does not have a `recording_storage_path` configured.
+    
+- `Unknown`: The default local storage state of a worker. This state indicates that the local storage state of a worker is not yet known. Older workers (< 0.16.0) will be in this state.
+
+If a worker is in an unhealthy local storage state, Boundary does not allow new session recordings or session recording playback until the worker is in an `available` local storage state.
 
 Refer to the following example configuration:
 
@@ -172,6 +193,8 @@ recording_storage_path="/local/storage/directory"
 recording_storage_minimum_available_capacity="500MB"
 }
 ```
+
+### Create a storage bucket
 
 Complete the following steps to create a storage bucket in Boundary for session recording:
 
