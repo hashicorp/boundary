@@ -830,9 +830,9 @@ func (r *Repository) CheckIfNotActive(ctx context.Context, reportedSessions []st
 		ctx,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
-		func(reader db.Reader, w db.Writer) error {
+		func(reader db.Reader, _ db.Writer) error {
 			var states []*State
-			err := r.reader.SearchWhere(ctx, &states, "end_time is null and session_id in (?)", []any{reportedSessions})
+			err := reader.SearchWhere(ctx, &states, "end_time is null and session_id in (?)", []any{reportedSessions})
 			if err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
