@@ -420,6 +420,9 @@ message SessionAuthorization {
 
   // Output only. The credentials for this session.
   repeated SessionCredential credentials = 110 [json_name = "credentials"];
+
+  // Output only. The ID of the Session Recording.
+  string session_recording_id = 115 [json_name = "session_recording_id"]; // @gotags: `class:"public" eventstream:"observation"`
 }
 
 // The layout of the struct for "credential" field in SessionCredential for a username_password credential type.
