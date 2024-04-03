@@ -152,7 +152,6 @@ This is the worker a client connects to when initiating a connection to a target
 
 
 <Tabs>
-
 <Tab heading="UI" group="ui"> 
 
 Example of a filter configured on a target in the Admin UI:
@@ -161,16 +160,25 @@ Example of a filter configured on a target in the Admin UI:
 ![](/img/target-worker-filter-dark.png#dark-theme-only)
 
 </Tab>
-
 <Tab heading="CLI" group="cli"> 
 
 Example of adding a filter to on a target with the CLI:
 ```
-$ boundary targets update tcp -id tssh_1234567890 -ingress-worker-filter='"prod" in "/tags/type"'
+$ boundary targets update tcp -id tssh_1234567890 -egress-worker-filter='"prod" in "/tags/type"'
 ```
 
 </Tab>
-         
+<Tab heading="Terraform" group="terraform">
+
+```hcl
+resource "boundary_target" "aws-webservers-prod" {
+  type                 = "ssh"
+  name                 = "aws-web-prod"
+  description          = "AWS EC2 Targets"
+  egress_worker_filter = "\"prod\" in \"/tags/type\""
+```
+
+</Tab>    
 </Tabs>   
 
 ### Example worker filter for Vault credential store 
@@ -191,7 +199,6 @@ Vault requests to Boundary controllers.
 [credential stores]: /boundary/docs/concepts/domain-model/credential-stores#vault-credential-store-attributes
 
 <Tabs>
-
 <Tab heading="UI" group="ui"> 
 
 Example of a worker filter configured on a Vault credential store in the Admin UI:
@@ -200,7 +207,6 @@ Example of a worker filter configured on a Vault credential store in the Admin U
 ![](/img/vault-worker-filter-dark.png#dark-theme-only)
 
 </Tab>
-
 <Tab heading="CLI" group="cli"> 
 
 Example of adding a filter to on a Vault credential store with the CLI:
@@ -209,7 +215,19 @@ $ boundary credential-stores update vault -id csvlt_1234567890 -worker-filter='"
 ```
 
 </Tab>
+<Tab heading="Terraform" group="terraform">
 
+```hcl
+resource "boundary_credential_store_vault" "vault_cred_store" {
+  name          = "Vault host credentials"
+  address       = "http://127.0.0.1:8200"       # change to Vault address
+  token         = "s.0ufRo6XEGU2jOqnIr7OlFYP5"  # change to valid Vault token
+  scope_id      = boundary_scope.project.id     # change to target scope
+  worker_filter = "\"vault\" in \"/tags/type\"" # change to valid Vault worker filter
+}
+```
+
+</Tab> 
 </Tabs>
 
 ### Example worker filter for storage buckets
@@ -226,8 +244,8 @@ Example of a worker filter configured on on a storage bucket in Admin UI:
 
 ![](/img/session-rec-worker-filter-light.png#light-theme-only)
 ![](/img/session-rec-worker-filter-dark.png#dark-theme-only)
-</Tab>
 
+</Tab>
 <Tab heading="CLI" group="cli"> 
 
 Example of adding a filter to on a storage bucket with the CLI:
@@ -236,6 +254,25 @@ $ boundary storage-buckets update -id sb_1234567890 -worker-filter='"session-rec
 ```
 
 </Tab>
+<Tab heading="Terraform" group="terraform">
 
+```hcl
+resource "boundary_storage_bucket" "aws_dynamic_credentials_example" {
+  name        = "session-recording-storage-bucket"
+  scope_id    = boundary_scope.org.id # change to valid scope ID
+  plugin_name = "aws"
+  bucket_name = "mybucket"            # change to valid AWS S3 storage bucket name
+  # the role_arn value should match the arn used as the instance profile attached to the ec2 instance
+  # https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_use_switch-role-ec2_instance-profiles.html
+  attributes_json = jsonencode({
+    "region"                      = "us-east-1"
+    "role_arn"                    = "arn:aws:iam::123456789012:role/S3Access" # change to valid role ARN
+    "disable_credential_rotation" = "true"
+  })
+  worker_filter = "\"session-recording\" in \"/tags/type\"" # change to valid worker filter tag
+}
+```
+
+</Tab> 
 </Tabs>
 
