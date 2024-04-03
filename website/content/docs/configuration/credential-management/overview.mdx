@@ -1,19 +1,26 @@
 ---
 layout: docs
-page_title: Static credential operations
+page_title: Configure credentials with Boundary
 description: |-
   How to configure and manage static credentials with Boundary and Vault
 ---
 
 # Credential Management Overview
 
-When users connect to a target machine, they typically need a set of credentials for authentication. Rather than requiring users to securely store and manage credentials for every target resource, Boundary centralizes this function in a more secure manner. 
+When users connect to a target machine, they typically need a set of credentials for authentication. Rather than requiring users to securely store and manage credentials for every target resource, Boundary centralizes credential management to enhance security. 
 
-Boundary supports credential management using credential stores, which are resources that store credentials for various targets. There are two types of credential stores, Boundary's built-in static credential store and Vault credential store. Static credential stores are built into Boundary and only store static credentials like username and password, or keypairs. Vault credential stores point to a HashiCorp Vault instance which provides additional capabilities like generating short-lived dynamic credentials.
+Boundary supports credential management using [credential stores](/docs/concepts/domain-model/credential-stores), which are resources that store credentials for various targets. 
 
-When users connect to their desired target, Boundary can retrieve credentials from the credential stores and present them back to the user. This workflow is referred to as credential brokering. Boundary can also inject credentials directly into the session on behalf of the user. This workflow is referred to as credential injection.
+There are two types of credential stores:
 
-The following pages will provide steps to configure static credentials using both the Boundary built-in static credential store and the Vault credential store. There will also be steps to configure targets for either credential brokering or credential injection workflows.
+1. Static credential store
+1. Vault credential store
+
+Static credential stores are built into Boundary and only store static credentials like username and password, or keypairs. Vault credential stores point to a HashiCorp Vault instance, which provides additional capabilities like generating short-lived dynamic credentials.
+
+Boundary can retrieve credentials from the credential stores and present them back to the user when connecting to their desired target. This workflow is referred to as **credential brokering**. Boundary can also inject credentials directly into the session on behalf of the user. This workflow is referred to as **credential injection**.
+
+The following pages provide steps to configure static credentials using both a static credential store and a Vault credential store. Targets can also be configured for either credential brokering or credential injection workflows.
 
 
 
