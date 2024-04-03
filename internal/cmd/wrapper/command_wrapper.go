@@ -42,10 +42,10 @@ type CommandWrapper struct {
 }
 
 // Wrap returns a cli.CommandFactory that returns a command wrapped in the CommandWrapper.
-func Wrap(c WrappableCommand) cli.CommandFactory {
+func Wrap(c func() WrappableCommand) cli.CommandFactory {
 	return func() (cli.Command, error) {
 		return &CommandWrapper{
-			WrappableCommand: c,
+			WrappableCommand: c(),
 		}, nil
 	}
 }
