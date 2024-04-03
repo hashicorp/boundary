@@ -87,22 +87,22 @@
         "path": "install-boundary"
       },
       {
-        "title": "System requirements",
-        "path": "install-boundary/system-requirements"
-      },
-      {
         "title": "Architecture",
         "routes": [
+          {
+            "title":"System requirements",
+            "path": "install-boundary/architecture/system-requirements"
+          },
           {
             "title": "Recommended architecture",
             "path": "install-boundary/architecture/recommended-architecture"
           },
           {
-            "title": "Fault tolerance recommendations",
+            "title": "Fault tolerance",
             "path": "install-boundary/architecture/fault-tolerance"
           },
           {
-            "title": "Configure high availability",
+            "title": "High availability",
             "path": "install-boundary/architecture/high-availability"
           }
         ]

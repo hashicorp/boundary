@@ -94,8 +94,18 @@ module.exports = [
     permanent: true,
   },
   {
+    source: '/boundary/docs/install-boundary/fault-tolerance',
+    destination: '/boundary/docs/install-boundary/architecture/fault-tolerance',
+    permanent: true,
+  },
+  {
     source: '/boundary/docs/oss/installing/high-availability',
-    destination: '/boundary/docs/install-boundary/high-availability',
+    destination: '/boundary/docs/install-boundary/architecture/high-availability',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/install-boundary/high-availability',
+    destination: '/boundary/docs/install-boundary/architecture/high-availability',
     permanent: true,
   },
   {
@@ -115,17 +125,27 @@ module.exports = [
   },
   {
     source: '/boundary/docs/oss/installing/postgres',
-    destination: '/boundary/docs/install-boundary/system-requirements',
+    destination: '/boundary/docs/install-boundary/architecture/system-requirements',
     permanent: true,
   },
   {
     source: '/boundary/docs/install-boundary/postgres',
-    destination: '/boundary/docs/install-boundary/system-requirements',
+    destination: '/boundary/docs/install-boundary/architecture/system-requirements',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/install-boundary/system-requirements',
+    destination: '/boundary/docs/install-boundary/architecture/system-requirements',
     permanent: true,
   },
   {
     source: '/boundary/docs/oss/installing/reference-architectures',
-    destination: '/boundary/docs/install-boundary/recommended-architecture',
+    destination: '/boundary/docs/install-boundary/architecture/recommended-architecture',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/install-boundary/recommended-architecture',
+    destination: 'boundary/docs/install-boundary/architecture/recommended-architecture',
     permanent: true,
   },
   {
