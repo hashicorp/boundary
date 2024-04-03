@@ -41,9 +41,9 @@ As HCL is JSON-compatible, this turns into an input JSON value of:
 }
 ```
 
-~> **Note:** This is the canonical format, as it maps closely to the filter
-structure. However, for compatibility with some other systems, it is also
-possible to specify the tags in a pure key=value style:
+This is the canonical format, as it maps closely to the filter structure.
+However, for compatibility with some other systems, it is also possible to
+specify the tags in a pure key=value style:
 
 ```hcl
 worker {
@@ -76,7 +76,7 @@ worker {
 }
 ```
 
-Note that the syntax within the environment variable / file changes
+Notice that the syntax within the environment variable / file changes
 slightly depending on how the configuration file is set:
 
 For setting the entire `tags` block, both the keys and values need
@@ -117,12 +117,12 @@ nested under `tags` and include a `name` value:
 }
 ```
 
-~> **Note:** If an expression fails due to a key not being found within the input data,
-the worker is not included in the final set, so ensure that all workers that
-should match a given filter are populated with tags referenced in the filter
-string. As a corollary, it is not possible to distinguish between a worker that
-is not included due to the expression itself and a worker that did not have
-correct tags.
+<Warning>
+
+  If an expression fails due to a key not being found within the input data,
+the worker is not included in the final set. You should ensure that all workers that should match a given filter are populated with tags referenced in the filter string. It is not possible to distinguish between a worker that is not included due to the expression itself and a worker that did not have correct tags.
+
+</Warning>
 
 ## Filter examples
 
@@ -135,8 +135,11 @@ Following are some examples of using these values in filters that can be applied
 
 - Grouping: `("us-east-1" in "/tags/region" and "/name" == "web-prod-us-east-1") or "webservers" in "/tags/type"`
 
-~> **Note:** Each tag can have multiple values, so the `in` operator must be used to match values.
-If you know that you have only one value, an equivalent would be `"/tags/key/0" == "value"`.
+<Tip>
+
+  Each tag can have multiple values, so the `in` operator must be used to match values. If you know that you have only one value, an equivalent would be `"/tags/key/0" == "value"`.
+
+</Tip>
 
 ### Example worker filter for targets
 
@@ -176,6 +179,7 @@ resource "boundary_target" "aws-webservers-prod" {
   name                 = "aws-web-prod"
   description          = "AWS EC2 Targets"
   egress_worker_filter = "\"prod\" in \"/tags/type\""
+}
 ```
 
 </Tab>    
@@ -192,8 +196,11 @@ This allows the use of private Vault instances with Boundary. Workers
 deployed in the same network as a private Vault instance can access and relay
 Vault requests to Boundary controllers.
 
- ~> **Note:** A worker that matches the worker filter must exist before defining the Vault credential store, as it
- will perform the Vault calls needed to set up the credential store with Boundary.
+<Tip>
+
+  A worker that matches the worker filter must exist before defining the Vault credential store, as it will perform the Vault calls needed to set up the credential store with Boundary.
+
+</Tip>
 
 [workers]: /boundary/docs/configuration/worker/worker-configuration
 [credential stores]: /boundary/docs/concepts/domain-model/credential-stores#vault-credential-store-attributes
@@ -262,6 +269,7 @@ resource "boundary_storage_bucket" "aws_dynamic_credentials_example" {
   scope_id    = boundary_scope.org.id # change to valid scope ID
   plugin_name = "aws"
   bucket_name = "mybucket"            # change to valid AWS S3 storage bucket name
+
   # the role_arn value should match the arn used as the instance profile attached to the ec2 instance
   # https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_use_switch-role-ec2_instance-profiles.html
   attributes_json = jsonencode({
