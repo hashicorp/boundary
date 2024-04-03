@@ -812,5 +812,5 @@ func (w *Worker) SendUpstreamMessage(ctx context.Context, m proto.Message) (prot
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	clientProducer := w.controllerUpstreamMsgConn.Load()
-	return handlers.SendUpstreamMessage(ctx, *clientProducer, initKeyId, m, handlers.WithKeyProducer(nodeCreds))
+	return handlers.SendUpstreamMessage(ctx, *clientProducer, initKeyId, m, handlers.WithKeyProducer(nodeCreds), handlers.WithRandomReader(w.conf.SecureRandomReader))
 }

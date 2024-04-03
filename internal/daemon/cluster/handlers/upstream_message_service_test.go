@@ -123,7 +123,7 @@ func Test_controllerUpstreamMessageServiceServer_UpstreamMessage(t *testing.T) {
 	nodeInfo, err := types.LoadNodeInformation(testCtx, initStorage, initKeyId)
 	require.NoError(t, err)
 	// define a test controller
-	testController, err := NewControllerUpstreamMessageServiceServer(testCtx, initStorage)
+	testController, err := NewControllerUpstreamMessageServiceServer(testCtx, initStorage, nil)
 	require.NoError(t, err)
 	require.NotNil(t, testController)
 

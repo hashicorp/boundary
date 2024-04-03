@@ -9,6 +9,7 @@ import (
 	"encoding/hex"
 	stderrors "errors"
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/hashicorp/boundary/globals"
@@ -29,6 +30,7 @@ import (
 	"github.com/hashicorp/boundary/internal/util"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/workers"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
+	"github.com/hashicorp/nodeenrollment"
 	"github.com/hashicorp/nodeenrollment/types"
 	"github.com/mr-tron/base58"
 	"google.golang.org/grpc/codes"
@@ -97,13 +99,20 @@ type Service struct {
 	workerAuthFn common.WorkerAuthRepoStorageFactory
 	iamRepoFn    common.IamRepoFactory
 	downstreams  common.Downstreamers
+
+	randReader io.Reader
 }
 
 var _ pbs.WorkerServiceServer = (*Service)(nil)
 
 // NewService returns a worker service which handles worker related requests to boundary.
-func NewService(ctx context.Context, repo common.ServersRepoFactory, iamRepoFn common.IamRepoFactory,
-	workerAuthFn common.WorkerAuthRepoStorageFactory, ds common.Downstreamers,
+func NewService(
+	ctx context.Context,
+	repo common.ServersRepoFactory,
+	iamRepoFn common.IamRepoFactory,
+	workerAuthFn common.WorkerAuthRepoStorageFactory,
+	ds common.Downstreamers,
+	randReader io.Reader,
 ) (Service, error) {
 	const op = "workers.NewService"
 	if repo == nil {
@@ -115,7 +124,7 @@ func NewService(ctx context.Context, repo common.ServersRepoFactory, iamRepoFn c
 	if workerAuthFn == nil {
 		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing worker auth repository")
 	}
-	return Service{repoFn: repo, iamRepoFn: iamRepoFn, workerAuthFn: workerAuthFn, downstreams: ds}, nil
+	return Service{repoFn: repo, iamRepoFn: iamRepoFn, workerAuthFn: workerAuthFn, downstreams: ds, randReader: randReader}, nil
 }
 
 // ListWorkers implements the interface pbs.WorkerServiceServer.
@@ -565,7 +574,7 @@ func (s Service) ReinitializeCertificateAuthority(ctx context.Context, req *pbs.
 		return nil, err
 	}
 
-	rootCerts, err := server.ReinitializeRoots(ctx, repo)
+	rootCerts, err := server.ReinitializeRoots(ctx, repo, nodeenrollment.WithRandomReader(s.randReader))
 	if err != nil {
 		return nil, err
 	}
