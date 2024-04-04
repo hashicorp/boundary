@@ -39,17 +39,22 @@ Brokered credentials were added in Boundary 0.4. They let you use Boundary as a 
 
 An example workflow and use case for this feature is database access. Certain teams within an organization, such as finance, need to access sensitive data that resides in a database. Irrespective of the frequency that the database needs to be accessed, having long-lived credentials that could be purposely or accidentally leaked, can pose a huge risk to a company.
 
-If Boundary and Vault are added into this workflow, it mitigates this potential security risk. You can enable the Vault database secrets engine, with the relevant database plugin configured, to then be able to issue dynamic and short-lived database credentials to end-users. Organizations can set a limit on the amount of times these credentials are valid and once they have timed-out, access is automatically revoked.
+Integrating Boundary and Vault mitigates this security risk. You can enable the Vault database secrets engine, with the relevant database plugin configured, to then be able to issue dynamic and short-lived database credentials to end-users. Organizations can set a limit on the amount of times these credentials are valid and once they have timed-out, access is automatically revoked.
 
 ![Brokered Credentials](/img/brokered-creds-ui.png)
 
 When you connect to the database using Boundary, Boundary displays the newly generated credentials to the end user so that they can connect to the target.
 
-### Injected credentials
+### Injected credentials <sup>HCP/ENT</sup>
 
-Currently SSH certificate injection is the only type of injection possible with the integration between Boundary and Vault. 
+Currently credential injection with Vault can be configured using static or dynamic credentials:
 
-Vault is configured to act as the certificate authority (CA), to ensure that the users’ authenticity is determined by a certificate signed by a trusted CA. When key pairs are generated dynamically, they are signed by Vault to then be used to access the resources. There are two options for the key pair generation, depending on the type of Vault endpoint that you use within the Boundary credential library for SSH certification.
+1. [KV secrets engine](/vault/docs/secrets/kv/kv-v2) (static credentials)
+1. [SSH secrects engine](/vault/docs/secrets/ssh) (dynamic credentials)
+
+The KV secrets engine can be used for static username/password secrets, or static keypair secrets.
+
+When using the SSH secrets engine, Vault is configured to act as the certificate authority (CA), to ensure that the users’ authenticity is determined by a certificate signed by a trusted CA. When key pairs are generated dynamically, they are signed by Vault to then be used to access the resources. There are two options for the key pair generation, depending on the type of Vault endpoint that you use within the Boundary credential library for SSH certification.
 
 `/issue` - Vault generates and signs the key pair for you.
 
@@ -66,7 +71,9 @@ Organizations may have valid reasons for multiple credential stores within Bound
 When it is integrated with Vault, Boundary has to be assigned a periodic, renewable, orphan token from Vault. Each credential store that is created within Boundary that leverages Vault equates to one Vault token being created. The number of Boundary targets that source credentials from the stores, the number of users connecting to the targets, the number of sessions that get created, or how many credential libraries the credential store contains, all have no impact on the client count in Vault.
 
 <Note>
+
 If there is more than one credential library that is part of the same credential store, there is the potential for that single Vault token to have access to all of the Vault paths defined in the credential libraries. HashiCorp recommends that you operate the model of least privilege.
+
 </Note>
 
 ## Vault as an identity provider
