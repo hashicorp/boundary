@@ -103,29 +103,25 @@ Complete the following steps to create a storage policy in Boundary for session 
    - `delete-after-overridable`: (Optional) Indicates that a lower scope can override the  `delete_after_days` attribute value. Defaults to `true`.
 
 </Tab>
-
 <Tab heading="Terraform" group="terraform">
 
+Apply the following Terraform policy:
+
 ```hcl
-
 resource "boundary_policy_storage" "example" {
+  name = "soc2-policy"
+  description = "SOC 2 compliant storage policy for session recordings"
+  scope_id = data.boundary_scope.org.id
 
-        scope_id = data.boundary_scope.org.id
+  retain_for_days = 2557
+  retain_for_overridable = false
 
-        name = "soc2-policy"
-        description = "SOC 2 compliant storage policy for session recordings"
-
-        retain_for_days = 2557
-        retain_for_overridable = false
-
-        delete_after_days = 2657
-        delete_after_overridable = true
+  delete_after_days = 2657
+  delete_after_overridable = true
 }
-
 ```
 
 </Tab>
-
 <Tab heading="API call using cURL" group="api">
 
 The following API call is an example of creating a storage policy in Boundary:
@@ -246,16 +242,15 @@ The following example applies the policy created above to an org named `prod-dat
    ```
 
 </Tab>
-
 <Tab heading="Terraform" group="terraform">
 
+Apply the following Terraform policy:
+
 ```hcl
-
 resource "boundary_scope_policy_attachment" "example" {
-        policy_id = boundary_policy_storage.example.id
-        scope_id = data.boundary_scope.org.id
+  policy_id = boundary_policy_storage.example.id
+  scope_id = data.boundary_scope.org.id
 }
-
 ```
 
 </Tab>

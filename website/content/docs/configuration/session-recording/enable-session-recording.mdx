@@ -34,8 +34,8 @@ Complete the following steps to enable session recording on a target.
 
    - To enable an existing SSH target for session recording, run the following commmand:
 
-      ```bash
-      boundary targets update ssh -scope-id p_1234567890 -id tssh_1234567890 -enable-session-recording true -storage-bucket-id sb_1234567890
+      ```shell-session
+      $ boundary targets update ssh -scope-id p_1234567890 -id tssh_1234567890 -enable-session-recording true -storage-bucket-id sb_1234567890
       ```
 
       Make sure to add the `-enable-session-recording true` flag to turn on session recording for the target.
@@ -43,8 +43,8 @@ Complete the following steps to enable session recording on a target.
 
    - To create a new target and enable it for session recording, run the following command:
 
-      ```bash
-      boundary targets create ssh -scope-id p_1234567890 -default -port 22 -name test1 -address 99.12.345.67 -enable-session-recording true -storage-bucket-id sb_1234567890
+      ```shell-session
+      $ boundary targets create ssh -scope-id p_1234567890 -default -port 22 -name test1 -address 99.12.345.67 -enable-session-recording true -storage-bucket-id sb_1234567890
       ```
 
       Make sure to add the `-enable-session-recording true` flag to turn on session recording for the target.
@@ -54,7 +54,6 @@ Complete the following steps to enable session recording on a target.
       You can now view the target from the **Targets** page in the Boundary console.
 
 </Tab>
-
 <Tab heading="UI" group="ui">
 
 1. Log in to Boundary.
@@ -84,9 +83,9 @@ The following setting is required for session recording:
 1. Select **Save**.
 
 </Tab>
-
-
 <Tab heading="Terraform" group="terraform">
+
+Apply the following Terraform policy:
 
 ```hcl
 resource "boundary_target" "address_foo" {
