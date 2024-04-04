@@ -260,22 +260,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "type": "object",
-              "properties": {
-                "version": {
-                  "type": "integer",
-                  "format": "int64",
-                  "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
-                },
-                "current_password": {
-                  "type": "string",
-                  "title": ""
-                },
-                "new_password": {
-                  "type": "string",
-                  "title": ""
-                }
-              }
+              "$ref": "#/definitions/controller.api.services.v1.AccountService.ChangePasswordBody"
             }
           }
         ],
@@ -309,18 +294,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "type": "object",
-              "properties": {
-                "version": {
-                  "type": "integer",
-                  "format": "int64",
-                  "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
-                },
-                "password": {
-                  "type": "string",
-                  "title": ""
-                }
-              }
+              "$ref": "#/definitions/controller.api.services.v1.AccountService.SetPasswordBody"
             }
           }
         ],
@@ -434,25 +408,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "type": "object",
-              "properties": {
-                "token_type": {
-                  "type": "string",
-                  "description": "This can be \"cookie\" or \"token\". If not provided, \"token\" will be used. \"cookie\" activates a split-cookie method where the token is split partially between http-only and regular cookies in order\nto keep it safe from rogue JS in the browser. Deprecated, use \"type\" instead."
-                },
-                "type": {
-                  "type": "string",
-                  "description": "This can be \"cookie\" or \"token\". If not provided, \"token\" will be used. \"cookie\" activates a split-cookie method where the token is split partially between http-only and regular cookies in order\nto keep it safe from rogue JS in the browser."
-                },
-                "attributes": {
-                  "type": "object",
-                  "description": "Attributes are passed to the Auth Method; the valid keys and values depend on the type of Auth Method as well as the command."
-                },
-                "command": {
-                  "type": "string",
-                  "description": "The command to perform."
-                }
-              }
+              "$ref": "#/definitions/controller.api.services.v1.AuthMethodService.AuthenticateBody"
             }
           }
         ],
@@ -568,18 +524,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "type": "object",
-              "properties": {
-                "version": {
-                  "type": "integer",
-                  "format": "int64",
-                  "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
-                },
-                "attributes": {
-                  "type": "object",
-                  "description": "The attributes specific to this auth method's state."
-                }
-              }
+              "$ref": "#/definitions/controller.api.services.v1.AuthMethodService.ChangeStateBody"
             }
           }
         ],
@@ -1385,21 +1330,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "type": "object",
-              "properties": {
-                "version": {
-                  "type": "integer",
-                  "format": "int64",
-                  "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
-                },
-                "member_ids": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  },
-                  "title": ""
-                }
-              }
+              "$ref": "#/definitions/controller.api.services.v1.GroupService.AddGroupMembersBody"
             }
           }
         ],
@@ -1433,21 +1364,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "type": "object",
-              "properties": {
-                "version": {
-                  "type": "integer",
-                  "format": "int64",
-                  "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
-                },
-                "member_ids": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  },
-                  "title": ""
-                }
-              }
+              "$ref": "#/definitions/controller.api.services.v1.GroupService.RemoveGroupMembersBody"
             }
           }
         ],
@@ -1481,21 +1398,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "type": "object",
-              "properties": {
-                "version": {
-                  "type": "integer",
-                  "format": "int64",
-                  "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
-                },
-                "member_ids": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  },
-                  "title": ""
-                }
-              }
+              "$ref": "#/definitions/controller.api.services.v1.GroupService.SetGroupMembersBody"
             }
           }
         ],
@@ -1853,21 +1756,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "type": "object",
-              "properties": {
-                "version": {
-                  "type": "integer",
-                  "format": "int64",
-                  "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
-                },
-                "host_ids": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  },
-                  "description": "A list of Host IDs which will be added to this Host Set. Each Host referenced here must be a child of the same Host Catalog of which this Host Set is a child."
-                }
-              }
+              "$ref": "#/definitions/controller.api.services.v1.HostSetService.AddHostSetHostsBody"
             }
           }
         ],
@@ -1901,21 +1790,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "type": "object",
-              "properties": {
-                "version": {
-                  "type": "integer",
-                  "format": "int64",
-                  "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
-                },
-                "host_ids": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  },
-                  "description": "A list of Host IDs which will be removed from this Host Set."
-                }
-              }
+              "$ref": "#/definitions/controller.api.services.v1.HostSetService.RemoveHostSetHostsBody"
             }
           }
         ],
@@ -1949,21 +1824,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "type": "object",
-              "properties": {
-                "version": {
-                  "type": "integer",
-                  "format": "int64",
-                  "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
-                },
-                "host_ids": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  },
-                  "description": "A list of Host IDs which will be set on this Host Set. Each Host referenced here must be a child of the same Host Catalog of which this Host Set is a child."
-                }
-              }
+              "$ref": "#/definitions/controller.api.services.v1.HostSetService.SetHostSetHostsBody"
             }
           }
         ],
@@ -2631,21 +2492,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "type": "object",
-              "properties": {
-                "version": {
-                  "type": "integer",
-                  "format": "int64",
-                  "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
-                },
-                "grant_scope_ids": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  },
-                  "title": ""
-                }
-              }
+              "$ref": "#/definitions/controller.api.services.v1.RoleService.AddRoleGrantScopesBody"
             }
           }
         ],
@@ -2679,21 +2526,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "type": "object",
-              "properties": {
-                "version": {
-                  "type": "integer",
-                  "format": "int64",
-                  "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
-                },
-                "grant_strings": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  },
-                  "title": ""
-                }
-              }
+              "$ref": "#/definitions/controller.api.services.v1.RoleService.AddRoleGrantsBody"
             }
           }
         ],
@@ -2727,21 +2560,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "type": "object",
-              "properties": {
-                "version": {
-                  "type": "integer",
-                  "format": "int64",
-                  "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
-                },
-                "principal_ids": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  },
-                  "title": ""
-                }
-              }
+              "$ref": "#/definitions/controller.api.services.v1.RoleService.AddRolePrincipalsBody"
             }
           }
         ],
@@ -2775,21 +2594,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "type": "object",
-              "properties": {
-                "version": {
-                  "type": "integer",
-                  "format": "int64",
-                  "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
-                },
-                "grant_scope_ids": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  },
-                  "title": ""
-                }
-              }
+              "$ref": "#/definitions/controller.api.services.v1.RoleService.RemoveRoleGrantScopesBody"
             }
           }
         ],
@@ -2823,21 +2628,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "type": "object",
-              "properties": {
-                "version": {
-                  "type": "integer",
-                  "format": "int64",
-                  "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
-                },
-                "grant_strings": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  },
-                  "title": ""
-                }
-              }
+              "$ref": "#/definitions/controller.api.services.v1.RoleService.RemoveRoleGrantsBody"
             }
           }
         ],
@@ -2871,21 +2662,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "type": "object",
-              "properties": {
-                "version": {
-                  "type": "integer",
-                  "format": "int64",
-                  "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
-                },
-                "principal_ids": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  },
-                  "title": ""
-                }
-              }
+              "$ref": "#/definitions/controller.api.services.v1.RoleService.RemoveRolePrincipalsBody"
             }
           }
         ],
@@ -2919,21 +2696,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "type": "object",
-              "properties": {
-                "version": {
-                  "type": "integer",
-                  "format": "int64",
-                  "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
-                },
-                "grant_scope_ids": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  },
-                  "title": ""
-                }
-              }
+              "$ref": "#/definitions/controller.api.services.v1.RoleService.SetRoleGrantScopesBody"
             }
           }
         ],
@@ -2967,21 +2730,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "type": "object",
-              "properties": {
-                "version": {
-                  "type": "integer",
-                  "format": "int64",
-                  "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
-                },
-                "grant_strings": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  },
-                  "title": ""
-                }
-              }
+              "$ref": "#/definitions/controller.api.services.v1.RoleService.SetRoleGrantsBody"
             }
           }
         ],
@@ -3015,21 +2764,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "type": "object",
-              "properties": {
-                "version": {
-                  "type": "integer",
-                  "format": "int64",
-                  "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
-                },
-                "principal_ids": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  },
-                  "title": ""
-                }
-              }
+              "$ref": "#/definitions/controller.api.services.v1.RoleService.SetRolePrincipalsBody"
             }
           }
         ],
@@ -3239,18 +2974,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "type": "object",
-              "properties": {
-                "storage_policy_id": {
-                  "type": "string",
-                  "title": ""
-                },
-                "version": {
-                  "type": "integer",
-                  "format": "int64",
-                  "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
-                }
-              }
+              "$ref": "#/definitions/controller.api.services.v1.ScopeService.AttachStoragePolicyBody"
             }
           }
         ],
@@ -3284,14 +3008,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "type": "object",
-              "properties": {
-                "version": {
-                  "type": "integer",
-                  "format": "int64",
-                  "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
-                }
-              }
+              "$ref": "#/definitions/controller.api.services.v1.ScopeService.DetachStoragePolicyBody"
             }
           }
         ],
@@ -3679,14 +3396,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "type": "object",
-              "properties": {
-                "version": {
-                  "type": "integer",
-                  "format": "int64",
-                  "title": ""
-                }
-              }
+              "$ref": "#/definitions/controller.api.services.v1.SessionService.CancelSessionBody"
             }
           }
         ],
@@ -4051,28 +3761,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "type": "object",
-              "properties": {
-                "version": {
-                  "type": "integer",
-                  "format": "int64",
-                  "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
-                },
-                "brokered_credential_source_ids": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  },
-                  "description": "Brokered credentials are returned to the user during session authorization."
-                },
-                "injected_application_credential_source_ids": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  },
-                  "description": "Injected application credentials are used by a Boundary worker to secure the\nconnection between the worker and the endpoint. Injected application credentials are\nnever returned to the user."
-                }
-              }
+              "$ref": "#/definitions/controller.api.services.v1.TargetService.AddTargetCredentialSourcesBody"
             }
           }
         ],
@@ -4106,21 +3795,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "type": "object",
-              "properties": {
-                "version": {
-                  "type": "integer",
-                  "format": "int64",
-                  "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
-                },
-                "host_source_ids": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  },
-                  "title": ""
-                }
-              }
+              "$ref": "#/definitions/controller.api.services.v1.TargetService.AddTargetHostSourcesBody"
             }
           }
         ],
@@ -4155,25 +3830,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "type": "object",
-              "properties": {
-                "name": {
-                  "type": "string",
-                  "description": "The name of the target. When using this, scope_id or scope_name must be set."
-                },
-                "scope_id": {
-                  "type": "string",
-                  "description": "The scope ID containing the target, if specifying the target by name."
-                },
-                "scope_name": {
-                  "type": "string",
-                  "description": "The scope name containing the target, if specifying the target by name."
-                },
-                "host_id": {
-                  "type": "string",
-                  "description": "An optional parameter allowing specification of the particular Host within the Target's configured Host Sets to connect to during this Session."
-                }
-              }
+              "$ref": "#/definitions/controller.api.services.v1.TargetService.AuthorizeSessionBody"
             }
           }
         ],
@@ -4207,28 +3864,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "type": "object",
-              "properties": {
-                "version": {
-                  "type": "integer",
-                  "format": "int64",
-                  "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
-                },
-                "brokered_credential_source_ids": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  },
-                  "description": "Brokered credentials are returned to the user during session authorization."
-                },
-                "injected_application_credential_source_ids": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  },
-                  "description": "Injected application credentials are used by a Boundary worker to secure the\nconnection between the worker and the endpoint. Injected application credentials are\nnever returned to the user."
-                }
-              }
+              "$ref": "#/definitions/controller.api.services.v1.TargetService.RemoveTargetCredentialSourcesBody"
             }
           }
         ],
@@ -4262,21 +3898,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "type": "object",
-              "properties": {
-                "version": {
-                  "type": "integer",
-                  "format": "int64",
-                  "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
-                },
-                "host_source_ids": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  },
-                  "title": ""
-                }
-              }
+              "$ref": "#/definitions/controller.api.services.v1.TargetService.RemoveTargetHostSourcesBody"
             }
           }
         ],
@@ -4310,29 +3932,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "type": "object",
-              "properties": {
-                "version": {
-                  "type": "integer",
-                  "format": "int64",
-                  "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
-                },
-                "brokered_credential_source_ids": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  },
-                  "description": "Brokered credentials are returned to the user during session authorization."
-                },
-                "injected_application_credential_source_ids": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  },
-                  "description": "Injected application credentials are used by a Boundary worker to secure the\nconnection between the worker and the endpoint. Injected application credentials are\nnever returned to the user."
-                }
-              },
-              "description": "Sets the values for credential sources. Any credential_source_id field that\nis not set in the request will result in those fields being cleared."
+              "$ref": "#/definitions/controller.api.services.v1.TargetService.SetTargetCredentialSourcesBody"
             }
           }
         ],
@@ -4366,21 +3966,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "type": "object",
-              "properties": {
-                "version": {
-                  "type": "integer",
-                  "format": "int64",
-                  "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
-                },
-                "host_source_ids": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  },
-                  "title": ""
-                }
-              }
+              "$ref": "#/definitions/controller.api.services.v1.TargetService.SetTargetHostSourcesBody"
             }
           }
         ],
@@ -4576,21 +4162,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "type": "object",
-              "properties": {
-                "version": {
-                  "type": "integer",
-                  "format": "int64",
-                  "description": "The version ensures the User hasn't changed since it was last retrieved and if it has the request will fail."
-                },
-                "account_ids": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  },
-                  "title": ""
-                }
-              }
+              "$ref": "#/definitions/controller.api.services.v1.UserService.AddUserAccountsBody"
             }
           }
         ],
@@ -4624,21 +4196,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "type": "object",
-              "properties": {
-                "version": {
-                  "type": "integer",
-                  "format": "int64",
-                  "description": "The version ensures the User hasn't changed since it was last retrieved and if it has the request will fail."
-                },
-                "account_ids": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  },
-                  "title": ""
-                }
-              }
+              "$ref": "#/definitions/controller.api.services.v1.UserService.RemoveUserAccountsBody"
             }
           }
         ],
@@ -4672,21 +4230,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "type": "object",
-              "properties": {
-                "version": {
-                  "type": "integer",
-                  "format": "int64",
-                  "description": "The version ensures the User hasn't changed since it was last retrieved and if it has the request will fail."
-                },
-                "account_ids": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  },
-                  "title": ""
-                }
-              }
+              "$ref": "#/definitions/controller.api.services.v1.UserService.SetUserAccountsBody"
             }
           }
         ],
@@ -4842,24 +4386,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "type": "object",
-              "properties": {
-                "version": {
-                  "type": "integer",
-                  "format": "int64",
-                  "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
-                },
-                "api_tags": {
-                  "type": "object",
-                  "additionalProperties": {
-                    "type": "array",
-                    "items": {
-                      "type": "object"
-                    }
-                  },
-                  "title": ""
-                }
-              }
+              "$ref": "#/definitions/controller.api.services.v1.WorkerService.AddWorkerTagsBody"
             }
           }
         ],
@@ -4893,24 +4420,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "type": "object",
-              "properties": {
-                "version": {
-                  "type": "integer",
-                  "format": "int64",
-                  "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
-                },
-                "api_tags": {
-                  "type": "object",
-                  "additionalProperties": {
-                    "type": "array",
-                    "items": {
-                      "type": "object"
-                    }
-                  },
-                  "title": ""
-                }
-              }
+              "$ref": "#/definitions/controller.api.services.v1.WorkerService.RemoveWorkerTagsBody"
             }
           }
         ],
@@ -4944,24 +4454,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "type": "object",
-              "properties": {
-                "version": {
-                  "type": "integer",
-                  "format": "int64",
-                  "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
-                },
-                "api_tags": {
-                  "type": "object",
-                  "additionalProperties": {
-                    "type": "array",
-                    "items": {
-                      "type": "object"
-                    }
-                  },
-                  "title": ""
-                }
-              }
+              "$ref": "#/definitions/controller.api.services.v1.WorkerService.SetWorkerTagsBody"
             }
           }
         ],
@@ -7778,6 +7271,38 @@
       },
       "title": "Worker contains all fields related to a Worker resource"
     },
+    "controller.api.services.v1.AccountService.ChangePasswordBody": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+        },
+        "current_password": {
+          "type": "string",
+          "title": ""
+        },
+        "new_password": {
+          "type": "string",
+          "title": ""
+        }
+      }
+    },
+    "controller.api.services.v1.AccountService.SetPasswordBody": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+        },
+        "password": {
+          "type": "string",
+          "title": ""
+        }
+      }
+    },
     "controller.api.services.v1.AddGroupMembersResponse": {
       "type": "object",
       "properties": {
@@ -7855,6 +7380,41 @@
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.scopes.v1.Scope"
+        }
+      }
+    },
+    "controller.api.services.v1.AuthMethodService.AuthenticateBody": {
+      "type": "object",
+      "properties": {
+        "token_type": {
+          "type": "string",
+          "description": "This can be \"cookie\" or \"token\". If not provided, \"token\" will be used. \"cookie\" activates a split-cookie method where the token is split partially between http-only and regular cookies in order\nto keep it safe from rogue JS in the browser. Deprecated, use \"type\" instead."
+        },
+        "type": {
+          "type": "string",
+          "description": "This can be \"cookie\" or \"token\". If not provided, \"token\" will be used. \"cookie\" activates a split-cookie method where the token is split partially between http-only and regular cookies in order\nto keep it safe from rogue JS in the browser."
+        },
+        "attributes": {
+          "type": "object",
+          "description": "Attributes are passed to the Auth Method; the valid keys and values depend on the type of Auth Method as well as the command."
+        },
+        "command": {
+          "type": "string",
+          "description": "The command to perform."
+        }
+      }
+    },
+    "controller.api.services.v1.AuthMethodService.ChangeStateBody": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+        },
+        "attributes": {
+          "type": "object",
+          "description": "The attributes specific to this auth method's state."
         }
       }
     },
@@ -8367,6 +7927,108 @@
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.workers.v1.Worker"
+        }
+      }
+    },
+    "controller.api.services.v1.GroupService.AddGroupMembersBody": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+        },
+        "member_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": ""
+        }
+      }
+    },
+    "controller.api.services.v1.GroupService.RemoveGroupMembersBody": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+        },
+        "member_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": ""
+        }
+      }
+    },
+    "controller.api.services.v1.GroupService.SetGroupMembersBody": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+        },
+        "member_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": ""
+        }
+      }
+    },
+    "controller.api.services.v1.HostSetService.AddHostSetHostsBody": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+        },
+        "host_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "A list of Host IDs which will be added to this Host Set. Each Host referenced here must be a child of the same Host Catalog of which this Host Set is a child."
+        }
+      }
+    },
+    "controller.api.services.v1.HostSetService.RemoveHostSetHostsBody": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+        },
+        "host_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "A list of Host IDs which will be removed from this Host Set."
+        }
+      }
+    },
+    "controller.api.services.v1.HostSetService.SetHostSetHostsBody": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+        },
+        "host_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "A list of Host IDs which will be set on this Host Set. Each Host referenced here must be a child of the same Host Catalog of which this Host Set is a child."
         }
       }
     },
@@ -9282,6 +8944,159 @@
         }
       }
     },
+    "controller.api.services.v1.RoleService.AddRoleGrantScopesBody": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+        },
+        "grant_scope_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": ""
+        }
+      }
+    },
+    "controller.api.services.v1.RoleService.AddRoleGrantsBody": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+        },
+        "grant_strings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": ""
+        }
+      }
+    },
+    "controller.api.services.v1.RoleService.AddRolePrincipalsBody": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+        },
+        "principal_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": ""
+        }
+      }
+    },
+    "controller.api.services.v1.RoleService.RemoveRoleGrantScopesBody": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+        },
+        "grant_scope_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": ""
+        }
+      }
+    },
+    "controller.api.services.v1.RoleService.RemoveRoleGrantsBody": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+        },
+        "grant_strings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": ""
+        }
+      }
+    },
+    "controller.api.services.v1.RoleService.RemoveRolePrincipalsBody": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+        },
+        "principal_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": ""
+        }
+      }
+    },
+    "controller.api.services.v1.RoleService.SetRoleGrantScopesBody": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+        },
+        "grant_scope_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": ""
+        }
+      }
+    },
+    "controller.api.services.v1.RoleService.SetRoleGrantsBody": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+        },
+        "grant_strings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": ""
+        }
+      }
+    },
+    "controller.api.services.v1.RoleService.SetRolePrincipalsBody": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+        },
+        "principal_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": ""
+        }
+      }
+    },
     "controller.api.services.v1.RotateKeysRequest": {
       "type": "object",
       "properties": {
@@ -9297,6 +9112,40 @@
     },
     "controller.api.services.v1.RotateKeysResponse": {
       "type": "object"
+    },
+    "controller.api.services.v1.ScopeService.AttachStoragePolicyBody": {
+      "type": "object",
+      "properties": {
+        "storage_policy_id": {
+          "type": "string",
+          "title": ""
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+        }
+      }
+    },
+    "controller.api.services.v1.ScopeService.DetachStoragePolicyBody": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+        }
+      }
+    },
+    "controller.api.services.v1.SessionService.CancelSessionBody": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "title": ""
+        }
+      }
     },
     "controller.api.services.v1.SetGroupMembersResponse": {
       "type": "object",
@@ -9375,6 +9224,151 @@
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.workers.v1.Worker"
+        }
+      }
+    },
+    "controller.api.services.v1.TargetService.AddTargetCredentialSourcesBody": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+        },
+        "brokered_credential_source_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Brokered credentials are returned to the user during session authorization."
+        },
+        "injected_application_credential_source_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Injected application credentials are used by a Boundary worker to secure the\nconnection between the worker and the endpoint. Injected application credentials are\nnever returned to the user."
+        }
+      }
+    },
+    "controller.api.services.v1.TargetService.AddTargetHostSourcesBody": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+        },
+        "host_source_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": ""
+        }
+      }
+    },
+    "controller.api.services.v1.TargetService.AuthorizeSessionBody": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the target. When using this, scope_id or scope_name must be set."
+        },
+        "scope_id": {
+          "type": "string",
+          "description": "The scope ID containing the target, if specifying the target by name."
+        },
+        "scope_name": {
+          "type": "string",
+          "description": "The scope name containing the target, if specifying the target by name."
+        },
+        "host_id": {
+          "type": "string",
+          "description": "An optional parameter allowing specification of the particular Host within the Target's configured Host Sets to connect to during this Session."
+        }
+      }
+    },
+    "controller.api.services.v1.TargetService.RemoveTargetCredentialSourcesBody": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+        },
+        "brokered_credential_source_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Brokered credentials are returned to the user during session authorization."
+        },
+        "injected_application_credential_source_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Injected application credentials are used by a Boundary worker to secure the\nconnection between the worker and the endpoint. Injected application credentials are\nnever returned to the user."
+        }
+      }
+    },
+    "controller.api.services.v1.TargetService.RemoveTargetHostSourcesBody": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+        },
+        "host_source_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": ""
+        }
+      }
+    },
+    "controller.api.services.v1.TargetService.SetTargetCredentialSourcesBody": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+        },
+        "brokered_credential_source_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Brokered credentials are returned to the user during session authorization."
+        },
+        "injected_application_credential_source_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Injected application credentials are used by a Boundary worker to secure the\nconnection between the worker and the endpoint. Injected application credentials are\nnever returned to the user."
+        }
+      },
+      "description": "Sets the values for credential sources. Any credential_source_id field that\nis not set in the request will result in those fields being cleared."
+    },
+    "controller.api.services.v1.TargetService.SetTargetHostSourcesBody": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+        },
+        "host_source_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": ""
         }
       }
     },
@@ -9511,6 +9505,117 @@
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.workers.v1.Worker"
+        }
+      }
+    },
+    "controller.api.services.v1.UserService.AddUserAccountsBody": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The version ensures the User hasn't changed since it was last retrieved and if it has the request will fail."
+        },
+        "account_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": ""
+        }
+      }
+    },
+    "controller.api.services.v1.UserService.RemoveUserAccountsBody": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The version ensures the User hasn't changed since it was last retrieved and if it has the request will fail."
+        },
+        "account_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": ""
+        }
+      }
+    },
+    "controller.api.services.v1.UserService.SetUserAccountsBody": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The version ensures the User hasn't changed since it was last retrieved and if it has the request will fail."
+        },
+        "account_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": ""
+        }
+      }
+    },
+    "controller.api.services.v1.WorkerService.AddWorkerTagsBody": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+        },
+        "api_tags": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "title": ""
+        }
+      }
+    },
+    "controller.api.services.v1.WorkerService.RemoveWorkerTagsBody": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+        },
+        "api_tags": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "title": ""
+        }
+      }
+    },
+    "controller.api.services.v1.WorkerService.SetWorkerTagsBody": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+        },
+        "api_tags": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "title": ""
         }
       }
     },
