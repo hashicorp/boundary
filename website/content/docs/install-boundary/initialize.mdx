@@ -119,7 +119,7 @@ specify a role for managing these scopes by selected users in a later step.
 <Tab heading="CLI">
 
 
-```bash
+```shell-session
 $ boundary scopes create -name 'org' -scope-id 'global' \
   -recovery-config /tmp/recovery.hcl \
   -skip-admin-role-creation \
@@ -168,7 +168,7 @@ Create an auth method in the organization scope.
 <Tab heading="CLI">
 
 
-```bash
+```shell-session
 $ boundary auth-methods create password \
   -recovery-config /tmp/recovery.hcl \
   -scope-id <org_scope_id> \
@@ -201,7 +201,7 @@ Create a login account for the auth method.
 <Tab heading="CLI">
 
 
-```bash
+```shell-session
 $ boundary accounts create password \
   -recovery-config /tmp/recovery.hcl \
   -login-name "myuser" \
