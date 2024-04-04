@@ -7073,6 +7073,11 @@
           },
           "description": "Output only. The credentials for this session.",
           "readOnly": true
+        },
+        "session_recording_id": {
+          "type": "string",
+          "description": "Output only. The ID of the Session Recording.",
+          "readOnly": true
         }
       },
       "description": "SessionAuthorization contains all fields related to authorization for a Session. It's in the Targets package because it's returned by a Target's authorize action."

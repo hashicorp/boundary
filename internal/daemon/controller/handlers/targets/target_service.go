@@ -99,11 +99,11 @@ var (
 		action.List,
 	)
 
-	validateCredentialSourcesFn      = func(context.Context, globals.Subtype, []target.CredentialSource) error { return nil }
-	ValidateIngressWorkerFilterFn    = IngressWorkerFilterUnsupported
-	AuthorizeSessionWorkerFilterFn   = AuthorizeSessionWithWorkerFilter
-	PostSessionAuthorizationCallback = DefaultPostSessionAuthorizationCallback
-	WorkerFilterDeprecationMessage   = fmt.Sprintf("This field is deprecated. Use %s instead.", globals.EgressWorkerFilterField)
+	validateCredentialSourcesFn    = func(context.Context, globals.Subtype, []target.CredentialSource) error { return nil }
+	ValidateIngressWorkerFilterFn  = IngressWorkerFilterUnsupported
+	AuthorizeSessionWorkerFilterFn = AuthorizeSessionWithWorkerFilter
+	SessionRecordingFn             = NoSessionRecording
+	WorkerFilterDeprecationMessage = fmt.Sprintf("This field is deprecated. Use %s instead.", globals.EgressWorkerFilterField)
 )
 
 func init() {
@@ -784,8 +784,8 @@ func AuthorizeSessionWithWorkerFilter(
 	return selectedWorkers, nil, nil
 }
 
-func DefaultPostSessionAuthorizationCallback(context.Context, intglobals.ControllerExtension, *kms.Kms, *target.Repository, target.Target, *session.Session, *server.Worker) error {
-	return nil
+func NoSessionRecording(context.Context, intglobals.ControllerExtension, *kms.Kms, target.Target, *session.Session, *server.Worker) (string, error) {
+	return "", nil
 }
 
 func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSessionRequest) (_ *pbs.AuthorizeSessionResponse, retErr error) {
@@ -1217,15 +1217,15 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 		Credentials:        creds,
 	}
 
-	if err := PostSessionAuthorizationCallback(
+	ret.SessionRecordingId, err = SessionRecordingFn(
 		ctx,
 		s.controllerExt,
 		s.kmsCache,
-		repo,
 		t,
 		sess,
 		protoWorker,
-	); err != nil {
+	)
+	if err != nil {
 		// Errors here will automatically delete the session and associated resources
 		// using deferred statements above.
 		return nil, errors.Wrap(ctx, err, op)
