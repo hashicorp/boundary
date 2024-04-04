@@ -178,7 +178,7 @@ func TestService_ListAccounts(t *testing.T) {
 			filterFunc := func(_ context.Context, a auth.Account) (bool, error) {
 				return true, nil
 			}
-			_, err = oidc.ListAccountsPage(ctx, []byte("some hash"), 1, filterFunc, nil, repo, authMethod.GetPublicId())
+			_, err := oidc.ListAccountsPage(ctx, []byte("some hash"), 1, filterFunc, nil, repo, authMethod.GetPublicId())
 			require.ErrorContains(t, err, "missing token")
 		})
 		t.Run("wrong token type", func(t *testing.T) {

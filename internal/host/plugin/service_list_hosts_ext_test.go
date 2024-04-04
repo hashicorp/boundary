@@ -258,7 +258,7 @@ func TestService_ListHosts(t *testing.T) {
 			filterFunc := func(_ context.Context, h host.Host, plg *plugin.Plugin) (bool, error) {
 				return true, nil
 			}
-			_, _, err = hostplugin.ListHostsRefresh(ctx, []byte("some hash"), 1, filterFunc, nil, repo, catalog.GetPublicId())
+			_, _, err := hostplugin.ListHostsRefresh(ctx, []byte("some hash"), 1, filterFunc, nil, repo, catalog.GetPublicId())
 			require.ErrorContains(t, err, "missing token")
 		})
 		t.Run("nil repo", func(t *testing.T) {

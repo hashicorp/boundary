@@ -246,7 +246,7 @@ func TestService_ListHostSets(t *testing.T) {
 			filterFunc := func(_ context.Context, s host.Set) (bool, error) {
 				return true, nil
 			}
-			_, err = static.ListHostSetsRefresh(ctx, []byte("some hash"), 1, filterFunc, nil, repo, catalog.GetPublicId())
+			_, err := static.ListHostSetsRefresh(ctx, []byte("some hash"), 1, filterFunc, nil, repo, catalog.GetPublicId())
 			require.ErrorContains(t, err, "missing token")
 		})
 		t.Run("nil repo", func(t *testing.T) {
