@@ -6,6 +6,7 @@ description: |-
 ---
 
 # Vault integration
+
 The integration between Boundary and Vault aims to improve two main areas of concern for organizations:
 
 - Security posture in relation to remote access
@@ -19,7 +20,8 @@ The security benefits extend past an organization's internal team and cater to t
 
 Ensuring access is granted in a timely manner then leads to that improvement in workflow efficiency. This is the result of end-users not having to be concerned with credentials, therefore removing a large bottleneck, in relation to gaining credentials through access requests and the time associated with such a task.
 
-# Credentials
+## Credential management
+
 Vault can work with Boundary to be a credential [store](https://developer.hashicorp.com/boundary/docs/concepts/domain-model/credential-stores) and [library](https://developer.hashicorp.com/boundary/docs/concepts/domain-model/credential-libraries), which allows for credentials to be stored in Vault and used by Boundary. There are two configuration options:
 
 - Generic secrets
@@ -31,7 +33,7 @@ SSH certificates have the advantage of using Vault as the certificate authority 
 
 It is worth detailing that you must bring your own Vault deployment to Boundary.
 
-## Brokered credentials
+### Brokered credentials
 
 Brokered credentials were added in Boundary 0.4. They let you use Boundary as a credential broker for infrastructure targets, by binding credentials with user sessions, and surfacing those credentials during session initialization, with the help of Vault.
 
@@ -43,7 +45,7 @@ If Boundary and Vault are added into this workflow, it mitigates this potential 
 
 When you connect to the database using Boundary, Boundary displays the newly generated credentials to the end user so that they can connect to the target.
 
-## Injected credentials
+### Injected credentials
 
 Currently SSH certificate injection is the only type of injection possible with the integration between Boundary and Vault. 
 
@@ -54,8 +56,6 @@ Vault is configured to act as the certificate authority (CA), to ensure that the
 `/sign` - The Boundary controllers generate the key pair and then send it to Vault to sign.
 
 When you connect to a target that uses Vault for dynamic SSH certificates, a new certificate is generated for every target connection. As long as the target trusts the CA, then access is granted without you having any visibility into the credentials involved.
-
-# Vault clients
 
 ## Secrets management
 
