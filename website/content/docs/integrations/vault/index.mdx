@@ -2,7 +2,7 @@
 layout: docs
 page_title: Vault integration
 description: |-
- Ways to integrate Vault and Boundary
+ Describes the benefits of integrating HashiCorp Boundary and Vault.
 ---
 
 # Vault integration
@@ -85,7 +85,7 @@ A static credential store is built into Boundary if you wish to manage secrets w
 
 Organizations may have valid reasons for using multiple credential stores within Boundary. Credential stores can only be created at the [project](/boundary/docs/concepts/domain-model/scopes#projects) scope, and each project can contain multiple credential stores. Projects within an org scope may have different requirements from their credential stores. For example, within an org scope you may have two projects: Database and Compute. These two projects may need to be isolated, and can have a dedicated credential store per project.
 
-When integrated with Vault, Boundary has to be assigned a periodic, renewable, [orphan token](/docs/concepts/domain-model/credential-stores#vault-token-requirements) from Vault. Each credential needs a separate Vault token. 
+When integrated with Vault, Boundary has to be assigned a periodic, renewable, [orphan token](/boundary/docs/concepts/domain-model/credential-stores#vault-token-requirements) from Vault. Each credential needs a separate Vault token. 
 
 The following have no impact on Vault's [client count](/vault/docs/concepts/client-count/counting):
 
