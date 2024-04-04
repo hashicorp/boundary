@@ -4221,7 +4221,7 @@
           },
           {
             "name": "include_terminated",
-            "description": "Experimental. By default only non-terminated (i.e. pending, active, canceling) are returned.\nSet this option to include terminated sessions as well.",
+            "description": "Deprecated. Should be removed in 0.18.0 since pagination removes the need\nfor the optimization that this provided.\nBy default only non-terminated (i.e. pending, active, canceling) are returned.\nSet this option to include terminated sessions as well.  If not set paginated\nresponses may not include terminated sessions either in the response or in\nthe removed_ids.",
             "in": "query",
             "required": false,
             "type": "boolean"
