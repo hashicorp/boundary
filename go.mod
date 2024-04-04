@@ -1,6 +1,6 @@
 module github.com/hashicorp/boundary
 
-go 1.22.0
+go 1.22.2
 
 replace github.com/hashicorp/boundary/api => ./api
 
@@ -104,7 +104,7 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/sevlyar/go-daemon v0.1.6
 	golang.org/x/exp v0.0.0-20240205201215-2c58cdc269a3
-	golang.org/x/net v0.21.0
+	golang.org/x/net v0.23.0
 	google.golang.org/genproto/googleapis/api v0.0.0-20240205150955-31a09d347014
 )
 
