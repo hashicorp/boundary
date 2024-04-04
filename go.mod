@@ -1,6 +1,6 @@
 module github.com/hashicorp/boundary
 
-go 1.21.1
+go 1.22.2
 
 replace github.com/hashicorp/boundary/api => ./api
 
@@ -67,10 +67,10 @@ require (
 	github.com/stretchr/testify v1.9.0
 	github.com/zalando/go-keyring v0.2.3
 	go.uber.org/atomic v1.11.0
-	golang.org/x/crypto v0.21.0
+	golang.org/x/crypto v0.22.0
 	golang.org/x/sync v0.6.0
-	golang.org/x/sys v0.18.0
-	golang.org/x/term v0.18.0
+	golang.org/x/sys v0.19.0
+	golang.org/x/term v0.19.0
 	golang.org/x/tools v0.17.0
 	google.golang.org/genproto v0.0.0-20231030173426-d783a09b4405
 	google.golang.org/grpc v1.59.0
@@ -104,7 +104,7 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/sevlyar/go-daemon v0.1.6
 	golang.org/x/exp v0.0.0-20240119083558-1b970713d09a
-	golang.org/x/net v0.21.0
+	golang.org/x/net v0.24.0
 	google.golang.org/genproto/googleapis/api v0.0.0-20231030173426-d783a09b4405
 )
 
