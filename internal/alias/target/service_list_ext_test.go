@@ -330,7 +330,7 @@ func TestService_ListAliases(t *testing.T) {
 			filterFunc := func(_ context.Context, r *target.Alias) (bool, error) {
 				return true, nil
 			}
-			_, err = target.ListAliasesRefreshPage(ctx, []byte("some hash"), 1, filterFunc, nil, repo, relevantScopes)
+			_, err := target.ListAliasesRefreshPage(ctx, []byte("some hash"), 1, filterFunc, nil, repo, relevantScopes)
 			require.ErrorContains(t, err, "missing token")
 		})
 		t.Run("wrong token type", func(t *testing.T) {
