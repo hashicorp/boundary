@@ -204,7 +204,7 @@ func TestStoreService_List(t *testing.T) {
 			filterFunc := func(_ context.Context, s credential.Store) (bool, error) {
 				return true, nil
 			}
-			_, err = credential.ListStoresPage(ctx, []byte("some hash"), 1, filterFunc, nil, repo, []string{prj.PublicId})
+			_, err := credential.ListStoresPage(ctx, []byte("some hash"), 1, filterFunc, nil, repo, []string{prj.PublicId})
 			require.ErrorContains(t, err, "missing token")
 		})
 		t.Run("wrong token type", func(t *testing.T) {
@@ -292,7 +292,7 @@ func TestStoreService_List(t *testing.T) {
 			filterFunc := func(_ context.Context, s credential.Store) (bool, error) {
 				return true, nil
 			}
-			_, err = credential.ListStoresRefresh(ctx, []byte("some hash"), 1, filterFunc, nil, repo, []string{prj.PublicId})
+			_, err := credential.ListStoresRefresh(ctx, []byte("some hash"), 1, filterFunc, nil, repo, []string{prj.PublicId})
 			require.ErrorContains(t, err, "missing token")
 		})
 		t.Run("missing repo", func(t *testing.T) {

@@ -27,11 +27,12 @@ func TestCliLdap(t *testing.T) {
 
 	ctx := context.Background()
 	boundary.AuthenticateAdminCli(t, ctx)
-	newOrgId := boundary.CreateNewOrgCli(t, ctx)
+	orgId, err := boundary.CreateOrgCli(t, ctx)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		ctx := context.Background()
 		boundary.AuthenticateAdminCli(t, ctx)
-		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", newOrgId))
+		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", orgId))
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
 
@@ -39,7 +40,7 @@ func TestCliLdap(t *testing.T) {
 	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"auth-methods", "create", "ldap",
-			"-scope-id", newOrgId,
+			"-scope-id", orgId,
 			"-name", "e2e LDAP",
 			"-urls", c.LdapAddress,
 			"-user-dn", c.LdapDomainDn,
@@ -79,8 +80,10 @@ func TestCliLdap(t *testing.T) {
 	t.Logf("Created Account: %s", newAccountId)
 
 	// Create a user and attach the LDAP account
-	newUserId := boundary.CreateNewUserCli(t, ctx, newOrgId)
-	boundary.SetAccountToUserCli(t, ctx, newUserId, newAccountId)
+	userId, err := boundary.CreateUserCli(t, ctx, orgId)
+	require.NoError(t, err)
+	err = boundary.SetAccountToUserCli(t, ctx, userId, newAccountId)
+	require.NoError(t, err)
 
 	// Try to log in with the wrong password
 	output = e2e.RunCommand(ctx, "boundary",
@@ -155,10 +158,12 @@ func TestCliLdap(t *testing.T) {
 	require.Contains(t, managedGroupReadResult.Item.MemberIds, newAccountId)
 
 	// Add managed group as a principal to a role with permissions to read auth methods
-	newRoleId, err := boundary.CreateRoleCli(t, ctx, newOrgId)
+	roleId, err := boundary.CreateRoleCli(t, ctx, orgId)
 	require.NoError(t, err)
-	boundary.AddPrincipalToRoleCli(t, ctx, newRoleId, managedGroupId)
-	boundary.AddGrantToRoleCli(t, ctx, newRoleId, "ids=*;type=auth-method;actions=read")
+	err = boundary.AddPrincipalToRoleCli(t, ctx, roleId, managedGroupId)
+	require.NoError(t, err)
+	err = boundary.AddGrantToRoleCli(t, ctx, roleId, "ids=*;type=auth-method;actions=read")
+	require.NoError(t, err)
 
 	// Log in as the LDAP user again
 	output = e2e.RunCommand(ctx, "boundary",

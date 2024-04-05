@@ -28,11 +28,12 @@ func TestCliPaginateRoles(t *testing.T) {
 
 	ctx := context.Background()
 	boundary.AuthenticateAdminCli(t, ctx)
-	newOrgId := boundary.CreateNewOrgCli(t, ctx)
+	orgId, err := boundary.CreateOrgCli(t, ctx)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		ctx := context.Background()
 		boundary.AuthenticateAdminCli(t, ctx)
-		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", newOrgId))
+		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", orgId))
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
 
@@ -45,14 +46,16 @@ func TestCliPaginateRoles(t *testing.T) {
 	numPrecreatedRoles := 2
 	var roleIds []string
 	for i := 0; i < c.MaxPageSize+1-numPrecreatedRoles; i++ {
-		roleIds = append(roleIds, boundary.CreateNewRoleApi(t, ctx, client, newOrgId))
+		roleId, err := boundary.CreateRoleApi(t, ctx, client, orgId)
+		require.NoError(t, err)
+		roleIds = append(roleIds, roleId)
 	}
 
 	// List roles
 	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"roles", "list",
-			"-scope-id", newOrgId,
+			"-scope-id", orgId,
 			"-format=json",
 		),
 	)
@@ -75,7 +78,8 @@ func TestCliPaginateRoles(t *testing.T) {
 	assert.Empty(t, initialRoles.ListToken)
 
 	// Create a new role and destroy one of the other roles
-	newRoleId := boundary.CreateNewRoleApi(t, ctx, client, newOrgId)
+	roleId, err := boundary.CreateRoleApi(t, ctx, client, orgId)
+	require.NoError(t, err)
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"roles", "delete",
@@ -88,7 +92,7 @@ func TestCliPaginateRoles(t *testing.T) {
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"roles", "list",
-			"-scope-id", newOrgId,
+			"-scope-id", orgId,
 			"-format=json",
 		),
 	)
@@ -102,7 +106,7 @@ func TestCliPaginateRoles(t *testing.T) {
 	// The first item should be the most recently created, which
 	// should be our new role
 	firstItem := newRoles.Items[0]
-	assert.Equal(t, newRoleId, firstItem.Id)
+	assert.Equal(t, roleId, firstItem.Id)
 	assert.Empty(t, newRoles.ResponseType)
 	assert.Empty(t, newRoles.RemovedIds)
 	assert.Empty(t, newRoles.ListToken)
@@ -124,10 +128,11 @@ func TestApiPaginateRoles(t *testing.T) {
 	ctx := context.Background()
 	sClient := scopes.NewClient(client)
 	uClient := roles.NewClient(client)
-	newOrgId := boundary.CreateNewOrgApi(t, ctx, client)
+	orgId, err := boundary.CreateOrgApi(t, ctx, client)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		ctx := context.Background()
-		_, err := sClient.Delete(ctx, newOrgId)
+		_, err := sClient.Delete(ctx, orgId)
 		require.NoError(t, err)
 	})
 
@@ -138,11 +143,13 @@ func TestApiPaginateRoles(t *testing.T) {
 	numPrecreatedRoles := 2
 	var roleIds []string
 	for i := 0; i < c.MaxPageSize+1-numPrecreatedRoles; i++ {
-		roleIds = append(roleIds, boundary.CreateNewRoleApi(t, ctx, client, newOrgId))
+		roleId, err := boundary.CreateRoleApi(t, ctx, client, orgId)
+		require.NoError(t, err)
+		roleIds = append(roleIds, roleId)
 	}
 
 	// List roles
-	initialRoles, err := uClient.List(ctx, newOrgId)
+	initialRoles, err := uClient.List(ctx, orgId)
 	require.NoError(t, err)
 
 	var returnedIds []string
@@ -163,12 +170,13 @@ func TestApiPaginateRoles(t *testing.T) {
 	assert.Len(t, mapSliceItems, c.MaxPageSize+1)
 
 	// Create a new role and destroy one of the other roles
-	newRoleId := boundary.CreateNewRoleApi(t, ctx, client, newOrgId)
+	roleId, err := boundary.CreateRoleApi(t, ctx, client, orgId)
+	require.NoError(t, err)
 	_, err = uClient.Delete(ctx, initialRoles.Items[0].Id)
 	require.NoError(t, err)
 
 	// List again, should have the new and deleted role
-	newRoles, err := uClient.List(ctx, newOrgId, roles.WithListToken(initialRoles.ListToken))
+	newRoles, err := uClient.List(ctx, orgId, roles.WithListToken(initialRoles.ListToken))
 	require.NoError(t, err)
 
 	// Note that this will likely contain all the roles,
@@ -179,7 +187,7 @@ func TestApiPaginateRoles(t *testing.T) {
 	// The first item should be the most recently created, which
 	// should be our new role
 	firstItem := newRoles.Items[0]
-	assert.Equal(t, newRoleId, firstItem.Id)
+	assert.Equal(t, roleId, firstItem.Id)
 	assert.Equal(t, "complete", newRoles.ResponseType)
 	// Note that the removed IDs may contain entries from other tests,
 	// so just check that there is at least 1 entry and that our entry

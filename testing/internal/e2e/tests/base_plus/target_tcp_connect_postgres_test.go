@@ -27,36 +27,42 @@ func TestCliTcpTargetConnectPostgres(t *testing.T) {
 
 	ctx := context.Background()
 	boundary.AuthenticateAdminCli(t, ctx)
-	newOrgId := boundary.CreateNewOrgCli(t, ctx)
+	orgId, err := boundary.CreateOrgCli(t, ctx)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		ctx := context.Background()
 		boundary.AuthenticateAdminCli(t, ctx)
-		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", newOrgId))
+		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", orgId))
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
-	newProjectId := boundary.CreateNewProjectCli(t, ctx, newOrgId)
-	newTargetId := boundary.CreateNewTargetCli(
+	projectId, err := boundary.CreateProjectCli(t, ctx, orgId)
+	require.NoError(t, err)
+	targetId, err := boundary.CreateTargetCli(
 		t,
 		ctx,
-		newProjectId,
+		projectId,
 		c.TargetPort,
 		target.WithAddress(c.TargetAddress),
 	)
-	newCredentialStoreId := boundary.CreateNewCredentialStoreStaticCli(t, ctx, newProjectId)
-	newCredentialsId := boundary.CreateNewStaticCredentialPasswordCli(
+	require.NoError(t, err)
+	storeId, err := boundary.CreateCredentialStoreStaticCli(t, ctx, projectId)
+	require.NoError(t, err)
+	credentialId, err := boundary.CreateStaticCredentialPasswordCli(
 		t,
 		ctx,
-		newCredentialStoreId,
+		storeId,
 		c.PostgresUser,
 		c.PostgresPassword,
 	)
-	boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, newTargetId, newCredentialsId)
+	require.NoError(t, err)
+	err = boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, targetId, credentialId)
+	require.NoError(t, err)
 
 	var cmd *exec.Cmd
 	cmd = exec.CommandContext(ctx,
 		"boundary",
 		"connect", "postgres",
-		"-target-id", newTargetId,
+		"-target-id", targetId,
 		"-dbname", c.PostgresDbName,
 	)
 	f, err := pty.Start(cmd)
@@ -76,7 +82,7 @@ func TestCliTcpTargetConnectPostgres(t *testing.T) {
 	require.NoError(t, err)
 
 	var buf bytes.Buffer
-	io.Copy(&buf, f)
+	_, _ = io.Copy(&buf, f)
 	require.Contains(t, buf.String(), "List of relations", "Session did not return expected output")
 	require.Contains(t, buf.String(), c.PostgresDbName, "Session did not return expected output")
 	t.Log("Successfully connected to target")

@@ -264,7 +264,7 @@ func (c *Command) Flags() *base.FlagSets {
 	f.BoolVar(&base.BoolVar{
 		Name:   "controller-only",
 		Target: &c.flagControllerOnly,
-		Usage:  "If set, only a dev controller will be started instead of both a dev controller and dev worker",
+		Usage:  "If set, only a dev controller will be started instead of both a dev controller and dev worker.",
 	})
 
 	f.StringVar(&base.StringVar{
@@ -486,7 +486,10 @@ func (c *Command) Run(args []string) int {
 
 	switch c.flagControllerOnly {
 	case true:
-		c.Config, err = config.DevController()
+		c.Config, err = config.DevController(
+			config.WithObservationsEnabled(true),
+			config.WithSysEventsEnabled(true),
+		)
 	default:
 		c.Config, err = config.DevCombined()
 	}

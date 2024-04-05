@@ -33,14 +33,16 @@ func TestCliTcpTargetWorkerConnectTarget(t *testing.T) {
 
 	ctx := context.Background()
 	boundary.AuthenticateAdminCli(t, ctx)
-	newOrgId := boundary.CreateNewOrgCli(t, ctx)
+	orgId, err := boundary.CreateOrgCli(t, ctx)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		ctx := context.Background()
 		boundary.AuthenticateAdminCli(t, ctx)
-		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", newOrgId))
+		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", orgId))
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
-	newProjectId := boundary.CreateNewProjectCli(t, ctx, newOrgId)
+	projectId, err := boundary.CreateProjectCli(t, ctx, orgId)
+	require.NoError(t, err)
 
 	// Configure vault
 	boundaryPolicyName, kvPolicyFilePath := vault.Setup(t, "testdata/boundary-controller-policy.hcl")
@@ -94,13 +96,14 @@ func TestCliTcpTargetWorkerConnectTarget(t *testing.T) {
 	t.Log("Created Vault Cred Store Token")
 
 	// Create a credential store
-	newCredentialStoreId := boundary.CreateNewCredentialStoreVaultCli(t, ctx, newProjectId, c.VaultAddr, credStoreToken)
+	storeId, err := boundary.CreateCredentialStoreVaultCli(t, ctx, projectId, c.VaultAddr, credStoreToken)
+	require.NoError(t, err)
 
 	// Create a credential library
-	newCredentialLibraryId, err := boundary.CreateVaultGenericCredentialLibraryCli(
+	libraryId, err := boundary.CreateVaultGenericCredentialLibraryCli(
 		t,
 		ctx,
-		newCredentialStoreId,
+		storeId,
 		fmt.Sprintf("%s/data/%s", c.VaultSecretPath, privateKeySecretName),
 		"ssh_private_key",
 	)
@@ -110,7 +113,7 @@ func TestCliTcpTargetWorkerConnectTarget(t *testing.T) {
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"credential-stores", "update", "vault",
-			"-id", newCredentialStoreId,
+			"-id", storeId,
 			"worker-filter", fmt.Sprintf(`"%s" in "/tags/type"`, c.WorkerTagEgress),
 		),
 	)
@@ -118,23 +121,25 @@ func TestCliTcpTargetWorkerConnectTarget(t *testing.T) {
 	require.Equal(t, 1, output.ExitCode)
 
 	// Create a target
-	newTargetId := boundary.CreateNewTargetCli(
+	targetId, err := boundary.CreateTargetCli(
 		t,
 		ctx,
-		newProjectId,
+		projectId,
 		c.TargetPort,
 		target.WithAddress("openssh-server"),
 		target.WithEgressWorkerFilter(fmt.Sprintf(`"%s" in "/tags/type"`, c.WorkerTagEgress)),
 	)
+	require.NoError(t, err)
 
 	// Add brokered credentials to target
-	boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, newTargetId, newCredentialLibraryId)
+	err = boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, targetId, libraryId)
+	require.NoError(t, err)
 
 	// Connect to target and print host's IP address using retrieved credentials
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"connect", "ssh",
-			"-target-id", newTargetId,
+			"-target-id", targetId,
 			"-remote-command", "hostname -i",
 			"--",
 			"-o", "UserKnownHostsFile=/dev/null",
@@ -153,7 +158,7 @@ func TestCliTcpTargetWorkerConnectTarget(t *testing.T) {
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"targets", "update", "tcp",
-			"-id", newTargetId,
+			"-id", targetId,
 			"-egress-worker-filter", fmt.Sprintf(`"%s" in "/tags/type"`, c.WorkerTagCollocated),
 		),
 	)
@@ -161,7 +166,7 @@ func TestCliTcpTargetWorkerConnectTarget(t *testing.T) {
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"connect", "ssh",
-			"-target-id", newTargetId,
+			"-target-id", targetId,
 			"-remote-command", "hostname -i",
 			"--",
 			"-o", "UserKnownHostsFile=/dev/null",
@@ -179,7 +184,7 @@ func TestCliTcpTargetWorkerConnectTarget(t *testing.T) {
 		e2e.WithArgs(
 			"targets", "create", "tcp",
 			"-name", "Target with Ingress Filter",
-			"-scope-id", newProjectId,
+			"-scope-id", projectId,
 			"-default-port", c.TargetPort,
 			"-ingress-worker-filter", `"tag" in "/tags/type"`,
 		),
@@ -190,7 +195,7 @@ func TestCliTcpTargetWorkerConnectTarget(t *testing.T) {
 		e2e.WithArgs(
 			"targets", "create", "tcp",
 			"-name", "Target with Ingress Filter",
-			"-scope-id", newProjectId,
+			"-scope-id", projectId,
 			"-default-port", c.TargetPort,
 			"-ingress-worker-filter", `"tag" in "/tags/type"`,
 			"-egress-worker-filter", fmt.Sprintf(`"%s" in "/tags/type"`, c.WorkerTagEgress),

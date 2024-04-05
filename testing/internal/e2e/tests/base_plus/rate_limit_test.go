@@ -34,16 +34,20 @@ func TestHttpRateLimit(t *testing.T) {
 
 	ctx := context.Background()
 	boundary.AuthenticateAdminCli(t, ctx)
-	newOrgId := boundary.CreateNewOrgCli(t, ctx)
+	orgId, err := boundary.CreateOrgCli(t, ctx)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		ctx := context.Background()
 		boundary.AuthenticateAdminCli(t, ctx)
-		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", newOrgId))
+		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", orgId))
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
-	newProjectId := boundary.CreateNewProjectCli(t, ctx, newOrgId)
-	newHostCatalogId := boundary.CreateNewHostCatalogCli(t, ctx, newProjectId)
-	newHostId := boundary.CreateNewHostCli(t, ctx, newHostCatalogId, c.TargetAddress)
+	projectId, err := boundary.CreateProjectCli(t, ctx, orgId)
+	require.NoError(t, err)
+	hostCatalogId, err := boundary.CreateHostCatalogCli(t, ctx, projectId)
+	require.NoError(t, err)
+	hostId, err := boundary.CreateHostCli(t, ctx, hostCatalogId, c.TargetAddress)
+	require.NoError(t, err)
 
 	// Authenticate over HTTP
 	res, err := boundary.AuthenticateHttp(t, ctx, bc.Address, bc.AuthMethodId, bc.AdminLoginName, bc.AdminLoginPassword)
@@ -59,7 +63,7 @@ func TestHttpRateLimit(t *testing.T) {
 
 	// Make initial API request
 	t.Log("Sending API requests until quota is hit...")
-	requestURL := fmt.Sprintf("%s/v1/hosts/%s", bc.Address, newHostId)
+	requestURL := fmt.Sprintf("%s/v1/hosts/%s", bc.Address, hostId)
 	req, err := http.NewRequest(http.MethodGet, requestURL, nil)
 	require.NoError(t, err)
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", tokenAdmin))
@@ -71,7 +75,7 @@ func TestHttpRateLimit(t *testing.T) {
 	require.NoError(t, err)
 	res.Body.Close()
 	require.NotEmpty(t, body)
-	require.Contains(t, string(body), newHostId)
+	require.Contains(t, string(body), hostId)
 
 	// Check that the limit from the policy matches the actual limit
 	rateLimitPolicyHeader := res.Header.Get("Ratelimit-Policy")
@@ -92,7 +96,7 @@ func TestHttpRateLimit(t *testing.T) {
 	quota, err := getRateLimitStat(rateLimitHeader, "remaining")
 	require.NoError(t, err)
 	for quota > 0 {
-		requestURL = fmt.Sprintf("%s/v1/hosts/%s", bc.Address, newHostId)
+		requestURL = fmt.Sprintf("%s/v1/hosts/%s", bc.Address, hostId)
 		req, err = http.NewRequest(http.MethodGet, requestURL, nil)
 		require.NoError(t, err)
 		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", tokenAdmin))
@@ -113,7 +117,7 @@ func TestHttpRateLimit(t *testing.T) {
 	// Do another request after the quota is exhausted
 	// Verify that the request is not successful (HTTP 429: Too Many Requests)
 	t.Log("Checking that next API request is rate limited...")
-	requestURL = fmt.Sprintf("%s/v1/hosts/%s", bc.Address, newHostId)
+	requestURL = fmt.Sprintf("%s/v1/hosts/%s", bc.Address, hostId)
 	req, err = http.NewRequest(http.MethodGet, requestURL, nil)
 	require.NoError(t, err)
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", tokenAdmin))
@@ -135,8 +139,8 @@ func TestHttpRateLimit(t *testing.T) {
 	time.Sleep(time.Duration(retryAfter) * time.Second)
 
 	// Do another request. Verify that request is successful
-	t.Logf("Retrying...")
-	requestURL = fmt.Sprintf("%s/v1/hosts/%s", bc.Address, newHostId)
+	t.Log("Retrying...")
+	requestURL = fmt.Sprintf("%s/v1/hosts/%s", bc.Address, hostId)
 	req, err = http.NewRequest(http.MethodGet, requestURL, nil)
 	require.NoError(t, err)
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", tokenAdmin))
@@ -148,33 +152,38 @@ func TestHttpRateLimit(t *testing.T) {
 	require.NoError(t, err)
 	res.Body.Close()
 	require.NotEmpty(t, body)
-	require.Contains(t, string(body), newHostId)
+	require.Contains(t, string(body), hostId)
 
 	t.Log("Successfully sent request after waiting")
 
 	// Create a user
 	acctName := "e2e-account"
-	newAccountId, acctPassword := boundary.CreateNewAccountCli(t, ctx, bc.AuthMethodId, acctName)
-	t.Cleanup(func() {
-		boundary.AuthenticateAdminCli(t, context.Background())
-		output := e2e.RunCommand(ctx, "boundary",
-			e2e.WithArgs("accounts", "delete", "-id", newAccountId),
-		)
-		require.NoError(t, output.Err, string(output.Stderr))
-	})
-	newUserId := boundary.CreateNewUserCli(t, ctx, "global")
-	t.Cleanup(func() {
-		boundary.AuthenticateAdminCli(t, context.Background())
-		output := e2e.RunCommand(ctx, "boundary",
-			e2e.WithArgs("users", "delete", "-id", newUserId),
-		)
-		require.NoError(t, output.Err, string(output.Stderr))
-	})
-	boundary.SetAccountToUserCli(t, ctx, newUserId, newAccountId)
-	newRoleId, err := boundary.CreateRoleCli(t, ctx, newProjectId)
+	accountId, acctPassword, err := boundary.CreateAccountCli(t, ctx, bc.AuthMethodId, acctName)
 	require.NoError(t, err)
-	boundary.AddGrantToRoleCli(t, ctx, newRoleId, "ids=*;type=*;actions=*")
-	boundary.AddPrincipalToRoleCli(t, ctx, newRoleId, newUserId)
+	t.Cleanup(func() {
+		boundary.AuthenticateAdminCli(t, context.Background())
+		output := e2e.RunCommand(ctx, "boundary",
+			e2e.WithArgs("accounts", "delete", "-id", accountId),
+		)
+		require.NoError(t, output.Err, string(output.Stderr))
+	})
+	userId, err := boundary.CreateUserCli(t, ctx, "global")
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		boundary.AuthenticateAdminCli(t, context.Background())
+		output := e2e.RunCommand(ctx, "boundary",
+			e2e.WithArgs("users", "delete", "-id", userId),
+		)
+		require.NoError(t, output.Err, string(output.Stderr))
+	})
+	err = boundary.SetAccountToUserCli(t, ctx, userId, accountId)
+	require.NoError(t, err)
+	roleId, err := boundary.CreateRoleCli(t, ctx, projectId)
+	require.NoError(t, err)
+	err = boundary.AddGrantToRoleCli(t, ctx, roleId, "ids=*;type=*;actions=*")
+	require.NoError(t, err)
+	err = boundary.AddPrincipalToRoleCli(t, ctx, roleId, userId)
+	require.NoError(t, err)
 
 	// Get auth token for second user
 	res, err = boundary.AuthenticateHttp(t, ctx, bc.Address, bc.AuthMethodId, acctName, acctPassword)
@@ -189,7 +198,7 @@ func TestHttpRateLimit(t *testing.T) {
 
 	// Make request until quota is hit again using the first user
 	t.Log("Sending API requests until quota is hit...")
-	requestURL = fmt.Sprintf("%s/v1/hosts/%s", bc.Address, newHostId)
+	requestURL = fmt.Sprintf("%s/v1/hosts/%s", bc.Address, hostId)
 	req, err = http.NewRequest(http.MethodGet, requestURL, nil)
 	require.NoError(t, err)
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", tokenAdmin))
@@ -202,7 +211,7 @@ func TestHttpRateLimit(t *testing.T) {
 	quota, err = getRateLimitStat(rateLimitHeader, "remaining")
 	require.NoError(t, err)
 	for quota > 0 {
-		requestURL = fmt.Sprintf("%s/v1/hosts/%s", bc.Address, newHostId)
+		requestURL = fmt.Sprintf("%s/v1/hosts/%s", bc.Address, hostId)
 		req, err = http.NewRequest(http.MethodGet, requestURL, nil)
 		require.NoError(t, err)
 		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", tokenAdmin))
@@ -223,7 +232,7 @@ func TestHttpRateLimit(t *testing.T) {
 	// Confirm that a request from the second user results in a HTTP 503 due to
 	// exceeding the quota limit
 	t.Log("Checking that next API request is rejected...")
-	requestURL = fmt.Sprintf("%s/v1/hosts/%s", bc.Address, newHostId)
+	requestURL = fmt.Sprintf("%s/v1/hosts/%s", bc.Address, hostId)
 	req, err = http.NewRequest(http.MethodGet, requestURL, nil)
 	require.NoError(t, err)
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", tokenUser))
@@ -248,7 +257,7 @@ func TestHttpRateLimit(t *testing.T) {
 
 	// Do another request. Verify that request is successful
 	t.Log("Retrying...")
-	requestURL = fmt.Sprintf("%s/v1/hosts/%s", bc.Address, newHostId)
+	requestURL = fmt.Sprintf("%s/v1/hosts/%s", bc.Address, hostId)
 	req, err = http.NewRequest(http.MethodGet, requestURL, nil)
 	require.NoError(t, err)
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", tokenUser))
@@ -277,40 +286,49 @@ func TestCliRateLimit(t *testing.T) {
 	ctx := context.Background()
 
 	boundary.AuthenticateAdminCli(t, ctx)
-	newOrgId := boundary.CreateNewOrgCli(t, ctx)
+	orgId, err := boundary.CreateOrgCli(t, ctx)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		ctx := context.Background()
 		boundary.AuthenticateAdminCli(t, ctx)
-		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", newOrgId))
+		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", orgId))
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
-	newProjectId := boundary.CreateNewProjectCli(t, ctx, newOrgId)
-	newHostCatalogId := boundary.CreateNewHostCatalogCli(t, ctx, newProjectId)
-	newHostId := boundary.CreateNewHostCli(t, ctx, newHostCatalogId, c.TargetAddress)
+	projectId, err := boundary.CreateProjectCli(t, ctx, orgId)
+	require.NoError(t, err)
+	hostCatalogId, err := boundary.CreateHostCatalogCli(t, ctx, projectId)
+	require.NoError(t, err)
+	hostId, err := boundary.CreateHostCli(t, ctx, hostCatalogId, c.TargetAddress)
+	require.NoError(t, err)
 
 	// Create a user
 	acctName := "e2e-account"
-	newAccountId, acctPassword := boundary.CreateNewAccountCli(t, ctx, bc.AuthMethodId, acctName)
-	t.Cleanup(func() {
-		boundary.AuthenticateAdminCli(t, context.Background())
-		output := e2e.RunCommand(ctx, "boundary",
-			e2e.WithArgs("accounts", "delete", "-id", newAccountId),
-		)
-		require.NoError(t, output.Err, string(output.Stderr))
-	})
-	newUserId := boundary.CreateNewUserCli(t, ctx, "global")
-	t.Cleanup(func() {
-		boundary.AuthenticateAdminCli(t, context.Background())
-		output := e2e.RunCommand(ctx, "boundary",
-			e2e.WithArgs("users", "delete", "-id", newUserId),
-		)
-		require.NoError(t, output.Err, string(output.Stderr))
-	})
-	boundary.SetAccountToUserCli(t, ctx, newUserId, newAccountId)
-	newRoleId, err := boundary.CreateRoleCli(t, ctx, newProjectId)
+	accountId, acctPassword, err := boundary.CreateAccountCli(t, ctx, bc.AuthMethodId, acctName)
 	require.NoError(t, err)
-	boundary.AddGrantToRoleCli(t, ctx, newRoleId, "ids=*;type=*;actions=*")
-	boundary.AddPrincipalToRoleCli(t, ctx, newRoleId, newUserId)
+	t.Cleanup(func() {
+		boundary.AuthenticateAdminCli(t, context.Background())
+		output := e2e.RunCommand(ctx, "boundary",
+			e2e.WithArgs("accounts", "delete", "-id", accountId),
+		)
+		require.NoError(t, output.Err, string(output.Stderr))
+	})
+	userId, err := boundary.CreateUserCli(t, ctx, "global")
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		boundary.AuthenticateAdminCli(t, context.Background())
+		output := e2e.RunCommand(ctx, "boundary",
+			e2e.WithArgs("users", "delete", "-id", userId),
+		)
+		require.NoError(t, output.Err, string(output.Stderr))
+	})
+	err = boundary.SetAccountToUserCli(t, ctx, userId, accountId)
+	require.NoError(t, err)
+	roleId, err := boundary.CreateRoleCli(t, ctx, projectId)
+	require.NoError(t, err)
+	err = boundary.AddGrantToRoleCli(t, ctx, roleId, "ids=*;type=*;actions=*")
+	require.NoError(t, err)
+	err = boundary.AddPrincipalToRoleCli(t, ctx, roleId, userId)
+	require.NoError(t, err)
 
 	// Authenticate over HTTP
 	res, err := boundary.AuthenticateHttp(t, ctx, bc.Address, bc.AuthMethodId, bc.AdminLoginName, bc.AdminLoginPassword)
@@ -326,7 +344,7 @@ func TestCliRateLimit(t *testing.T) {
 
 	// Make initial API request
 	t.Log("Getting rate limit info...")
-	requestURL := fmt.Sprintf("%s/v1/hosts/%s", bc.Address, newHostId)
+	requestURL := fmt.Sprintf("%s/v1/hosts/%s", bc.Address, hostId)
 	req, err := http.NewRequest(http.MethodGet, requestURL, nil)
 	require.NoError(t, err)
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", tokenAdmin))
@@ -345,7 +363,7 @@ func TestCliRateLimit(t *testing.T) {
 	t.Log("Sending multiple CLI requests to hit rate limit...")
 	var output *e2e.CommandResult
 	for i := 0; i <= policyLimit; i++ {
-		output = e2e.RunCommand(ctx, "boundary", e2e.WithArgs("hosts", "read", "-id", newHostId))
+		output = e2e.RunCommand(ctx, "boundary", e2e.WithArgs("hosts", "read", "-id", hostId))
 		t.Log(output.Duration)
 		if output.Err != nil {
 			break
@@ -362,7 +380,7 @@ func TestCliRateLimit(t *testing.T) {
 	t.Log("Logging in as another user...")
 	boundary.AuthenticateCli(t, ctx, bc.AuthMethodId, acctName, acctPassword)
 	for i := 0; i <= policyLimit; i++ {
-		output = e2e.RunCommand(ctx, "boundary", e2e.WithArgs("hosts", "read", "-id", newHostId))
+		output = e2e.RunCommand(ctx, "boundary", e2e.WithArgs("hosts", "read", "-id", hostId))
 		t.Log(output.Duration)
 		if output.Err != nil {
 			break
@@ -389,12 +407,12 @@ func TestCliRateLimit(t *testing.T) {
 	// command will take longer to return)
 	t.Log("Sending multiple CLI requests to hit rate limit...")
 	for i := 0; i <= policyLimit; i++ {
-		output = e2e.RunCommand(ctx, "boundary", e2e.WithArgs("hosts", "read", "-id", newHostId))
+		output = e2e.RunCommand(ctx, "boundary", e2e.WithArgs("hosts", "read", "-id", hostId))
 		t.Log(output.Duration)
 		require.NoError(t, output.Err, string(output.Stderr))
 		require.Equal(t, 0, output.ExitCode)
 	}
-	t.Logf("Successfully auto-retried CLI request")
+	t.Log("Successfully auto-retried CLI request")
 }
 
 func getRateLimitStat(rateLimitHeader, stat string) (int, error) {

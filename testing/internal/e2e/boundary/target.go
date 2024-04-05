@@ -14,39 +14,54 @@ import (
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/testing/internal/e2e"
-	"github.com/stretchr/testify/require"
+	"github.com/hashicorp/go-secure-stdlib/base62"
 )
 
-// CreateNewTargetApi uses the Go api to create a new target in boundary
+// CreateTargetApi uses the Go api to create a new target in boundary
 // Returns the id of the new target.
-func CreateNewTargetApi(t testing.TB, ctx context.Context, client *api.Client, projectId string, defaultPort string) string {
+func CreateTargetApi(t testing.TB, ctx context.Context, client *api.Client, projectId string, defaultPort string) (string, error) {
+	name, err := base62.Random(16)
+	if err != nil {
+		return "", err
+	}
+
 	tClient := targets.NewClient(client)
 	targetPort, err := strconv.ParseInt(defaultPort, 10, 32)
-	require.NoError(t, err)
+	if err != nil {
+		return "", err
+	}
+
 	newTargetResult, err := tClient.Create(ctx, "tcp", projectId,
-		targets.WithName("e2e Target"),
+		targets.WithName(fmt.Sprintf("e2e Target %s", name)),
 		targets.WithTcpTargetDefaultPort(uint32(targetPort)),
 	)
-	require.NoError(t, err)
-	newTargetId := newTargetResult.Item.Id
-	t.Logf("Created Target: %s", newTargetId)
+	if err != nil {
+		return "", err
+	}
 
-	return newTargetId
+	targetId := newTargetResult.Item.Id
+	t.Logf("Created Target: %s", targetId)
+	return targetId, nil
 }
 
 // AddHostSourceToTargetApi uses the Go api to add a host source (host set or host) to a target
-func AddHostSourceToTargetApi(t testing.TB, ctx context.Context, client *api.Client, targetId string, hostSourceId string) {
+func AddHostSourceToTargetApi(t testing.TB, ctx context.Context, client *api.Client, targetId string, hostSourceId string) error {
 	tClient := targets.NewClient(client)
 	_, err := tClient.AddHostSources(ctx, targetId, 0,
 		[]string{hostSourceId},
 		targets.WithAutomaticVersioning(true),
 	)
-	require.NoError(t, err)
+	return err
 }
 
-// CreateNewTargetCli uses the cli to create a new target in boundary
+// CreateTargetCli uses the cli to create a new target in boundary
 // Returns the id of the new target.
-func CreateNewTargetCli(t testing.TB, ctx context.Context, projectId string, defaultPort string, opt ...target.Option) string {
+func CreateTargetCli(t testing.TB, ctx context.Context, projectId string, defaultPort string, opt ...target.Option) (string, error) {
+	name, err := base62.Random(16)
+	if err != nil {
+		return "", err
+	}
+
 	opts := target.GetOpts(opt...)
 	var args []string
 
@@ -67,7 +82,7 @@ func CreateNewTargetCli(t testing.TB, ctx context.Context, projectId string, def
 	if opts.WithName != "" {
 		args = append(args, "-name", opts.WithName)
 	} else {
-		args = append(args, "-name", "e2e Target")
+		args = append(args, "-name", fmt.Sprintf("e2e Target %s", name))
 	}
 	if opts.WithAddress != "" {
 		args = append(args, "-address", opts.WithAddress)
@@ -98,41 +113,53 @@ func CreateNewTargetCli(t testing.TB, ctx context.Context, projectId string, def
 		e2e.WithArgs("targets", "create"),
 		e2e.WithArgs(args...),
 	)
-	require.NoError(t, output.Err, string(output.Stderr))
+	if output.Err != nil {
+		return "", fmt.Errorf("%w: %s", output.Err, string(output.Stderr))
+	}
 
-	var newTargetResult targets.TargetCreateResult
-	err := json.Unmarshal(output.Stdout, &newTargetResult)
-	require.NoError(t, err)
+	var createTargetResult targets.TargetCreateResult
+	err = json.Unmarshal(output.Stdout, &createTargetResult)
+	if err != nil {
+		return "", err
+	}
 
-	newTargetId := newTargetResult.Item.Id
-	t.Logf("Created Target: %s", newTargetId)
-	return newTargetId
+	targetId := createTargetResult.Item.Id
+	t.Logf("Created Target: %s", targetId)
+	return targetId, nil
 }
 
 // AddHostSourceToTargetCli uses the cli to add a host source (host set or host)
 // to a target.
 // Boundary's `add-host-sources` functionality appends a new host source to the
 // existing set of host sources in the target.
-func AddHostSourceToTargetCli(t testing.TB, ctx context.Context, targetId, hostSourceId string) {
+func AddHostSourceToTargetCli(t testing.TB, ctx context.Context, targetId, hostSourceId string) error {
 	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs("targets", "add-host-sources", "-id", targetId, "-host-source", hostSourceId),
 	)
-	require.NoError(t, output.Err, string(output.Stderr))
+	if output.Err != nil {
+		return fmt.Errorf("%w: %s", output.Err, string(output.Stderr))
+	}
+
+	return nil
 }
 
 // SetHostSourceToTargetCli uses the cli to set a host source (host set or host)
 // to a target.
 // Boundary's `set-host-sources` functionality replaces all existing host sets
 // on a target with the provided one.
-func SetHostSourceToTargetCli(t testing.TB, ctx context.Context, targetId, hostSourceId string) {
+func SetHostSourceToTargetCli(t testing.TB, ctx context.Context, targetId, hostSourceId string) error {
 	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs("targets", "set-host-sources", "-id", targetId, "-host-source", hostSourceId),
 	)
-	require.NoError(t, output.Err, string(output.Stderr))
+	if output.Err != nil {
+		return fmt.Errorf("%w: %s", output.Err, string(output.Stderr))
+	}
+
+	return nil
 }
 
 // RemoveHostSourceFromTargetCli uses the cli to remove a host source (host set or host) to a target
-func RemoveHostSourceFromTargetCli(t testing.TB, ctx context.Context, targetId, hostSourceId string) {
+func RemoveHostSourceFromTargetCli(t testing.TB, ctx context.Context, targetId, hostSourceId string) error {
 	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"targets", "remove-host-sources",
@@ -140,12 +167,16 @@ func RemoveHostSourceFromTargetCli(t testing.TB, ctx context.Context, targetId, 
 			"-host-source", hostSourceId,
 		),
 	)
-	require.NoError(t, output.Err, string(output.Stderr))
+	if output.Err != nil {
+		return fmt.Errorf("%w: %s", output.Err, string(output.Stderr))
+	}
+
+	return nil
 }
 
 // AddBrokeredCredentialSourceToTargetCli uses the cli to add a credential source (credential library or
 // credential) to a target
-func AddBrokeredCredentialSourceToTargetCli(t testing.TB, ctx context.Context, targetId string, credentialSourceId string) {
+func AddBrokeredCredentialSourceToTargetCli(t testing.TB, ctx context.Context, targetId string, credentialSourceId string) error {
 	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"targets", "add-credential-sources",
@@ -153,12 +184,16 @@ func AddBrokeredCredentialSourceToTargetCli(t testing.TB, ctx context.Context, t
 			"-brokered-credential-source", credentialSourceId,
 		),
 	)
-	require.NoError(t, output.Err, string(output.Stderr))
+	if output.Err != nil {
+		return fmt.Errorf("%w: %s", output.Err, string(output.Stderr))
+	}
+
+	return nil
 }
 
 // RemoveBrokeredCredentialSourceFromTargetCli uses the cli to remove a credential source (credential library or
 // credential) from a target
-func RemoveBrokeredCredentialSourceFromTargetCli(t testing.TB, ctx context.Context, targetId string, credentialSourceId string) {
+func RemoveBrokeredCredentialSourceFromTargetCli(t testing.TB, ctx context.Context, targetId string, credentialSourceId string) error {
 	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"targets", "remove-credential-sources",
@@ -166,5 +201,9 @@ func RemoveBrokeredCredentialSourceFromTargetCli(t testing.TB, ctx context.Conte
 			"-brokered-credential-source", credentialSourceId,
 		),
 	)
-	require.NoError(t, output.Err, string(output.Stderr))
+	if output.Err != nil {
+		return fmt.Errorf("%w: %s", output.Err, string(output.Stderr))
+	}
+
+	return nil
 }

@@ -28,28 +28,34 @@ func TestCliTcpTargetConnectExecLongLastingScript(t *testing.T) {
 	boundary.AuthenticateAdminCli(t, ctx)
 
 	// Create test organization
-	newOrgId := boundary.CreateNewOrgCli(t, ctx)
+	orgId, err := boundary.CreateOrgCli(t, ctx)
+	require.NoError(t, err)
 
 	// Delete organization after the test is completed
 	t.Cleanup(func() {
 		ctx := context.Background()
 		boundary.AuthenticateAdminCli(t, ctx)
-		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", newOrgId))
+		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", orgId))
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
 	// Create test project
-	newProjectId := boundary.CreateNewProjectCli(t, ctx, newOrgId)
+	projectId, err := boundary.CreateProjectCli(t, ctx, orgId)
+	require.NoError(t, err)
 
 	// Create static credentials
-	newCredentialStoreId := boundary.CreateNewCredentialStoreStaticCli(t, ctx, newProjectId)
-	newCredentialsId := boundary.CreateNewStaticCredentialPrivateKeyCli(t, ctx, newCredentialStoreId, c.TargetSshUser, c.TargetSshKeyPath)
+	storeId, err := boundary.CreateCredentialStoreStaticCli(t, ctx, projectId)
+	require.NoError(t, err)
+	credentialId, err := boundary.CreateStaticCredentialPrivateKeyCli(t, ctx, storeId, c.TargetSshUser, c.TargetSshKeyPath)
+	require.NoError(t, err)
 
 	// Create TCP target
-	newTargetId := boundary.CreateNewTargetCli(t, ctx, newProjectId, c.TargetPort,
+	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort,
 		target.WithType("tcp"),
 		target.WithAddress(c.TargetAddress),
 	)
-	boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, newTargetId, newCredentialsId)
+	require.NoError(t, err)
+	err = boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, targetId, credentialId)
+	require.NoError(t, err)
 
 	// Start a session
 	ctxCancel, cancel := context.WithCancel(context.Background())
@@ -60,14 +66,14 @@ func TestCliTcpTargetConnectExecLongLastingScript(t *testing.T) {
 		cmdChan <- e2e.RunCommand(ctxCancel, "boundary",
 			e2e.WithArgs(
 				"connect",
-				"-target-id", newTargetId,
+				"-target-id", targetId,
 				"-listen-port", proxyPort,
 				"-format", "json",
 			),
 		)
 	}()
 	t.Cleanup(cancel)
-	boundary.WaitForSessionCli(t, ctx, newProjectId)
+	boundary.WaitForSessionCli(t, ctx, projectId)
 
 	t.Log("Copying script to host...")
 	output := e2e.RunCommand(ctx, "scp",

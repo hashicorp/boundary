@@ -6,3 +6,7 @@
 
 /.release/                               @hashicorp/github-secure-boundary
 /.github/workflows/build.yml             @hashicorp/github-secure-boundary
+
+# education
+
+/website/content/                        @hashicorp/boundary-education-approvers

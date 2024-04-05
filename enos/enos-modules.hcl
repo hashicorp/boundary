@@ -174,3 +174,7 @@ module "docker_check_health" {
 module "docker_ldap" {
   source = "./modules/docker_ldap"
 }
+
+module "docker_minio" {
+  source = "./modules/docker_minio"
+}
