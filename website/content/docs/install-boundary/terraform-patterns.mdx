@@ -2,10 +2,11 @@
 layout: docs
 page_title: Terraform Patterns for Boundary
 description: |-
-  How to use Terraform to install and manage Boundary
+  Recommended patterns for using Terraform to install and manage Boundary.
 ---
 
 # Overview
+
 HashiCorp recommends using Terraform to deploy and maintain your Boundary environment.  
 This document outlines MVP (Minimum Viable Product) patterns for the deployment and maintenance of Boundary using Terraform.  Patterns shown 
 include:
@@ -19,10 +20,12 @@ include:
 - [Targets](/docs/install-boundary/terraform-patterns#targets)
 
 ## Assumptions
+
 - Familiarity with [Terraform](https://developer.hashicorp.com/terraform/docs)
 - Existing Boundary installation.  Refer to [Running Boundary in non-dev environments](/docs/install-boundary/no-gen-resources.mdx) for basic evironment creation
 
 ## Basic Terraform Provider Configuration
+
 In order to use Terraform to manage your Boundary environment you must first configure the provider.
 This code block provides an example of provider configuration using the userpass logon method.  
 You can use any of the available Boundary logon methods by specifying the appropriate **auth_method_id_**.
@@ -48,6 +51,7 @@ provider "boundary" {
 ```
 
 ## Scopes
+
 You can use these patterns to create [org-level](/docs/concepts/domain-model/scopes#organizations) and 
 [project-level](/docs/concepts/domain-model/scopes#projects) [scopes](/docs/concepts/domain-model/scopes). 
 
@@ -73,7 +77,9 @@ resource "boundary_scope" "project" {
 ```
 
 For more information on scope creation, please consult the [provider documentation](https://registry.terraform.io/providers/hashicorp/boundary/latest/docs/resources/scope)
+
 ## Users and auth methods
+
 Boundary supports Password, OIDC, and LDAP [authentication methods](/docs/concepts/domain-model/auth-methods).
 
 Here is an example of creating a password auth method.  Terraform will create the auth method in the
@@ -132,6 +138,7 @@ resource "boundary_user" "jeff" {
 ####################
 ### User Jill ######
 ####################
+
 resource "boundary_account_password" "jill" {
   auth_method_id = boundary_auth_method.password.id
   type           = "password"
@@ -156,6 +163,7 @@ that you can create.
 
 
 ## Groups and RBAC
+
 This pattern demonstrates how to aggregate users into groups.  
 
 Security best-practices state that you should use Role-Based Access Control (RBAC) when making 
@@ -190,9 +198,7 @@ resource "boundary_managed_group_ldap" "Engineering" {
 }
 ```
 
-
-
-We recommend using LDAP whenever possible as it abstracts the management of group membership
+HashiCorp recommends using LDAP whenever possible as it abstracts the management of group membership
 and simplifies Boundary administration. 
 
 After you have created a group, you need to assign one or more roles to that group to enable the
@@ -229,8 +235,8 @@ Please consult the following Terraform provider documents for more information
 - [Boundary LDAP Managed Group](https://registry.terraform.io/providers/hashicorp/boundary/latest/docs/resources/managed_group_ldap)
 - [Boundary Roles](https://registry.terraform.io/providers/hashicorp/boundary/latest/docs/resources/role)
 
-
 ## Hosts and host management
+
 The first pattern demonstrates how to create a static Boundary [host catalog](/docs/concepts/domain-model/host-catalogs) as 
 well as adding a known host to that catalog.  
 ```hcl
@@ -338,6 +344,7 @@ Please refer to the Terraform provider for more information.
 
 
 ## Credentials and Credential Stores
+
 Boundary supports multiple types of static credentials as well as vault-backed dynamic credentials.  Prior to 
 using or creating any credentials, you will create a [credential store](/docs/concepts/domain-model/credential-stores).  
 
@@ -500,6 +507,7 @@ Please refer to the Terraform provider documentation for more information.
     - [Vault](/docs/resources/credential_store_vault)
 
 ## Session Recording
+
 [Session recording](/docs/concepts/domain-model/session-recordings.mdx) requires that you create a storage policy for your current scope and then 
 allocate an AWS S3 bucket to store the recordings.  We will not demonstrate creating the 
 actual S3 bucket or the associated IAM policies. See [this document](/docs/configuration/session-recording/create-storage-bucket.mdx) for information on how to configure AWS.
