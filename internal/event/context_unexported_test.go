@@ -88,6 +88,7 @@ func Test_newSendCtx(t *testing.T) {
 			ctx, cancel := newSendCtx(tt.ctx)
 			require.NotNil(ctx)
 			assert.True(ctx.Err() != context.Canceled)
+			assert.True(ctx.Err() != context.DeadlineExceeded)
 			if tt.wantCancel {
 				require.NotNil(cancel)
 			} else {
