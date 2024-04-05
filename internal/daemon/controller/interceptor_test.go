@@ -693,7 +693,7 @@ func Test_aliasResolutionInterceptor(t *testing.T) {
 		req             proto.Message
 		wantModifiedReq proto.Message
 		wantAlias       *alias.Alias
-		errorContains   string
+		errorIs         error
 	}{
 		{
 			name:            "non aliasable request",
@@ -724,13 +724,13 @@ func Test_aliasResolutionInterceptor(t *testing.T) {
 			name:            "aliasable request with unknown alias",
 			req:             &pbs.GetTargetRequest{Id: "not.a.registered.alias"},
 			wantModifiedReq: &pbs.GetTargetRequest{Id: "not.a.registered.alias"},
-			errorContains:   "resource alias not found with value",
+			errorIs:         handlers.UnauthenticatedError(),
 		},
 		{
 			name:            "aliasable request with destinationless alias",
 			req:             &pbs.GetTargetRequest{Id: alWithoutDest.GetValue()},
 			wantModifiedReq: &pbs.GetTargetRequest{Id: alWithoutDest.GetValue()},
-			errorContains:   "resource not found for alias value",
+			errorIs:         handlers.UnauthenticatedError(),
 		},
 	}
 	for _, tc := range cases {
@@ -740,9 +740,9 @@ func Test_aliasResolutionInterceptor(t *testing.T) {
 			req := proto.Clone(tc.req)
 			retCtx, err := interceptor(ctx, req, info, returnCtxHandler)
 			assert.Empty(t, cmp.Diff(tc.wantModifiedReq, req, protocmp.Transform()))
-			if tc.errorContains != "" {
+			if tc.errorIs != nil {
 				require.Error(t, err)
-				require.Contains(t, err.Error(), tc.errorContains)
+				require.ErrorIs(t, err, tc.errorIs)
 				return
 			}
 			ctxAlias := alias.FromContext(retCtx.(context.Context))

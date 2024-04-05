@@ -28,11 +28,12 @@ func TestCliPaginateUsers(t *testing.T) {
 
 	ctx := context.Background()
 	boundary.AuthenticateAdminCli(t, ctx)
-	newOrgId := boundary.CreateNewOrgCli(t, ctx)
+	orgId, err := boundary.CreateOrgCli(t, ctx)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		ctx := context.Background()
 		boundary.AuthenticateAdminCli(t, ctx)
-		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", newOrgId))
+		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", orgId))
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
 
@@ -41,14 +42,16 @@ func TestCliPaginateUsers(t *testing.T) {
 	require.NoError(t, err)
 	var userIds []string
 	for i := 0; i < c.MaxPageSize+1; i++ {
-		userIds = append(userIds, boundary.CreateNewUserApi(t, ctx, client, newOrgId))
+		userId, err := boundary.CreateUserApi(t, ctx, client, orgId)
+		require.NoError(t, err)
+		userIds = append(userIds, userId)
 	}
 
 	// List users
 	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"users", "list",
-			"-scope-id", newOrgId,
+			"-scope-id", orgId,
 			"-format=json",
 		),
 	)
@@ -70,7 +73,8 @@ func TestCliPaginateUsers(t *testing.T) {
 	assert.Empty(t, initialUsers.ListToken)
 
 	// Create a new user and destroy one of the other users
-	newUserId := boundary.CreateNewUserApi(t, ctx, client, newOrgId)
+	userId, err := boundary.CreateUserApi(t, ctx, client, orgId)
+	require.NoError(t, err)
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"users", "delete",
@@ -83,7 +87,7 @@ func TestCliPaginateUsers(t *testing.T) {
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"users", "list",
-			"-scope-id", newOrgId,
+			"-scope-id", orgId,
 			"-format=json",
 		),
 	)
@@ -97,7 +101,7 @@ func TestCliPaginateUsers(t *testing.T) {
 	// The first item should be the most recently created, which
 	// should be our new user
 	firstItem := newUsers.Items[0]
-	assert.Equal(t, newUserId, firstItem.Id)
+	assert.Equal(t, userId, firstItem.Id)
 	assert.Empty(t, newUsers.ResponseType)
 	assert.Empty(t, newUsers.RemovedIds)
 	assert.Empty(t, newUsers.ListToken)
@@ -119,21 +123,24 @@ func TestApiPaginateUsers(t *testing.T) {
 	ctx := context.Background()
 	sClient := scopes.NewClient(client)
 	uClient := users.NewClient(client)
-	newOrgId := boundary.CreateNewOrgApi(t, ctx, client)
+	orgId, err := boundary.CreateOrgApi(t, ctx, client)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		ctx := context.Background()
-		_, err := sClient.Delete(ctx, newOrgId)
+		_, err := sClient.Delete(ctx, orgId)
 		require.NoError(t, err)
 	})
 
 	// Create enough users to overflow a single page.
 	var userIds []string
 	for i := 0; i < c.MaxPageSize+1; i++ {
-		userIds = append(userIds, boundary.CreateNewUserApi(t, ctx, client, newOrgId))
+		userId, err := boundary.CreateUserApi(t, ctx, client, orgId)
+		require.NoError(t, err)
+		userIds = append(userIds, userId)
 	}
 
 	// List users
-	initialUsers, err := uClient.List(ctx, newOrgId)
+	initialUsers, err := uClient.List(ctx, orgId)
 	require.NoError(t, err)
 
 	var returnedIds []string
@@ -153,12 +160,13 @@ func TestApiPaginateUsers(t *testing.T) {
 	assert.Len(t, mapSliceItems, c.MaxPageSize+1)
 
 	// Create a new user and destroy one of the other users
-	newUserId := boundary.CreateNewUserApi(t, ctx, client, newOrgId)
+	userId, err := boundary.CreateUserApi(t, ctx, client, orgId)
+	require.NoError(t, err)
 	_, err = uClient.Delete(ctx, initialUsers.Items[0].Id)
 	require.NoError(t, err)
 
 	// List again, should have the new and deleted user
-	newUsers, err := uClient.List(ctx, newOrgId, users.WithListToken(initialUsers.ListToken))
+	newUsers, err := uClient.List(ctx, orgId, users.WithListToken(initialUsers.ListToken))
 	require.NoError(t, err)
 
 	// Note that this will likely contain all the users,
@@ -169,7 +177,7 @@ func TestApiPaginateUsers(t *testing.T) {
 	// The first item should be the most recently created, which
 	// should be our new user
 	firstItem := newUsers.Items[0]
-	assert.Equal(t, newUserId, firstItem.Id)
+	assert.Equal(t, userId, firstItem.Id)
 	assert.Equal(t, "complete", newUsers.ResponseType)
 	// Note that the removed IDs may contain entries from other tests,
 	// so just check that there is at least 1 entry and that our entry

@@ -28,29 +28,34 @@ func TestCliPaginateHosts(t *testing.T) {
 
 	ctx := context.Background()
 	boundary.AuthenticateAdminCli(t, ctx)
-	newOrgId := boundary.CreateNewOrgCli(t, ctx)
+	orgId, err := boundary.CreateOrgCli(t, ctx)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		ctx := context.Background()
 		boundary.AuthenticateAdminCli(t, ctx)
-		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", newOrgId))
+		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", orgId))
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
-	newProjectId := boundary.CreateNewProjectCli(t, ctx, newOrgId)
-	newHostCatalogId := boundary.CreateNewHostCatalogCli(t, ctx, newProjectId)
+	projectId, err := boundary.CreateProjectCli(t, ctx, orgId)
+	require.NoError(t, err)
+	hostCatalogId, err := boundary.CreateHostCatalogCli(t, ctx, projectId)
+	require.NoError(t, err)
 
 	// Create enough hosts to overflow a single page.
 	client, err := boundary.NewApiClient()
 	require.NoError(t, err)
 	var hostIds []string
 	for i := 0; i < c.MaxPageSize+1; i++ {
-		hostIds = append(hostIds, boundary.CreateNewHostApi(t, ctx, client, newHostCatalogId, c.TargetAddress))
+		hostId, err := boundary.CreateHostApi(t, ctx, client, hostCatalogId, c.TargetAddress)
+		require.NoError(t, err)
+		hostIds = append(hostIds, hostId)
 	}
 
 	// List hosts
 	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"hosts", "list",
-			"-host-catalog-id", newHostCatalogId,
+			"-host-catalog-id", hostCatalogId,
 			"-format=json",
 		),
 	)
@@ -72,7 +77,8 @@ func TestCliPaginateHosts(t *testing.T) {
 	assert.Empty(t, initialHosts.ListToken)
 
 	// Create a new host and destroy one of the other hosts
-	newHostId := boundary.CreateNewHostApi(t, ctx, client, newHostCatalogId, c.TargetAddress)
+	hostId, err := boundary.CreateHostApi(t, ctx, client, hostCatalogId, c.TargetAddress)
+	require.NoError(t, err)
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"hosts", "delete",
@@ -85,7 +91,7 @@ func TestCliPaginateHosts(t *testing.T) {
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"hosts", "list",
-			"-host-catalog-id", newHostCatalogId,
+			"-host-catalog-id", hostCatalogId,
 			"-format=json",
 		),
 	)
@@ -99,7 +105,7 @@ func TestCliPaginateHosts(t *testing.T) {
 	// The first item should be the most recently created, which
 	// should be our new host
 	firstItem := newHosts.Items[0]
-	assert.Equal(t, newHostId, firstItem.Id)
+	assert.Equal(t, hostId, firstItem.Id)
 	assert.Empty(t, newHosts.ResponseType)
 	assert.Empty(t, newHosts.RemovedIds)
 	assert.Empty(t, newHosts.ListToken)
@@ -121,23 +127,28 @@ func TestApiPaginateHosts(t *testing.T) {
 	ctx := context.Background()
 	sClient := scopes.NewClient(client)
 	hClient := hosts.NewClient(client)
-	newOrgId := boundary.CreateNewOrgApi(t, ctx, client)
+	orgId, err := boundary.CreateOrgApi(t, ctx, client)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		ctx := context.Background()
-		_, err := sClient.Delete(ctx, newOrgId)
+		_, err := sClient.Delete(ctx, orgId)
 		require.NoError(t, err)
 	})
-	newProjectId := boundary.CreateNewProjectApi(t, ctx, client, newOrgId)
-	newHostCatalogId := boundary.CreateNewHostCatalogApi(t, ctx, client, newProjectId)
+	projectId, err := boundary.CreateProjectApi(t, ctx, client, orgId)
+	require.NoError(t, err)
+	hostCatalogId, err := boundary.CreateHostCatalogApi(t, ctx, client, projectId)
+	require.NoError(t, err)
 
 	// Create enough hosts to overflow a single page.
 	var hostIds []string
 	for i := 0; i < c.MaxPageSize+1; i++ {
-		hostIds = append(hostIds, boundary.CreateNewHostApi(t, ctx, client, newHostCatalogId, c.TargetAddress))
+		hostId, err := boundary.CreateHostApi(t, ctx, client, hostCatalogId, c.TargetAddress)
+		require.NoError(t, err)
+		hostIds = append(hostIds, hostId)
 	}
 
 	// List hosts
-	initialHosts, err := hClient.List(ctx, newHostCatalogId)
+	initialHosts, err := hClient.List(ctx, hostCatalogId)
 	require.NoError(t, err)
 
 	var returnedIds []string
@@ -157,12 +168,13 @@ func TestApiPaginateHosts(t *testing.T) {
 	assert.Len(t, mapSliceItems, c.MaxPageSize+1)
 
 	// Create a new host and destroy one of the other hosts
-	newHostId := boundary.CreateNewHostApi(t, ctx, client, newHostCatalogId, c.TargetAddress)
+	hostId, err := boundary.CreateHostApi(t, ctx, client, hostCatalogId, c.TargetAddress)
+	require.NoError(t, err)
 	_, err = hClient.Delete(ctx, initialHosts.Items[0].Id)
 	require.NoError(t, err)
 
 	// List again, should have the new and deleted host
-	newHosts, err := hClient.List(ctx, newHostCatalogId, hosts.WithListToken(initialHosts.ListToken))
+	newHosts, err := hClient.List(ctx, hostCatalogId, hosts.WithListToken(initialHosts.ListToken))
 	require.NoError(t, err)
 
 	// Note that this will likely contain all the hosts,
@@ -173,7 +185,7 @@ func TestApiPaginateHosts(t *testing.T) {
 	// The first item should be the most recently created, which
 	// should be our new host
 	firstItem := newHosts.Items[0]
-	assert.Equal(t, newHostId, firstItem.Id)
+	assert.Equal(t, hostId, firstItem.Id)
 	assert.Equal(t, "complete", newHosts.ResponseType)
 	// Note that the removed IDs may contain entries from other tests,
 	// so just check that there is at least 1 entry and that our entry

@@ -32,23 +32,28 @@ func TestCliPaginateAuthTokens(t *testing.T) {
 	boundary.AuthenticateAdminCli(t, ctx)
 	client, err := boundary.NewApiClient()
 	require.NoError(t, err)
-	newOrgId := boundary.CreateNewOrgCli(t, ctx)
+	orgId, err := boundary.CreateOrgCli(t, ctx)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		ctx := context.Background()
 		boundary.AuthenticateAdminCli(t, ctx)
-		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", newOrgId))
+		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", orgId))
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
-	userId := boundary.CreateNewUserApi(t, ctx, client, newOrgId)
-	amId := boundary.CreateNewAuthMethodApi(t, ctx, client, newOrgId)
+	userId, err := boundary.CreateUserApi(t, ctx, client, orgId)
+	require.NoError(t, err)
+	amId, err := boundary.CreateAuthMethodApi(t, ctx, client, orgId)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		ctx := context.Background()
 		boundary.AuthenticateAdminCli(t, ctx)
 		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("auth-methods", "delete", "-id", amId))
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
-	accId, password := boundary.CreateNewAccountCli(t, ctx, amId, "testuser")
-	boundary.SetAccountToUserCli(t, ctx, userId, accId)
+	accId, password, err := boundary.CreateAccountCli(t, ctx, amId, "testuser")
+	require.NoError(t, err)
+	err = boundary.SetAccountToUserCli(t, ctx, userId, accId)
+	require.NoError(t, err)
 
 	boundary.AuthenticateCli(t, ctx, amId, "testuser", password)
 
@@ -139,23 +144,28 @@ func TestApiPaginateAuthTokens(t *testing.T) {
 	sClient := scopes.NewClient(client)
 	amClient := authmethods.NewClient(client)
 	atClient := authtokens.NewClient(client)
-	newOrgId := boundary.CreateNewOrgApi(t, ctx, client)
+	orgId, err := boundary.CreateOrgApi(t, ctx, client)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		ctx := context.Background()
 		client.SetToken(adminToken)
-		_, err = sClient.Delete(ctx, newOrgId)
+		_, err = sClient.Delete(ctx, orgId)
 		require.NoError(t, err)
 	})
-	userId := boundary.CreateNewUserApi(t, ctx, client, newOrgId)
-	amId := boundary.CreateNewAuthMethodApi(t, ctx, client, newOrgId)
+	userId, err := boundary.CreateUserApi(t, ctx, client, orgId)
+	require.NoError(t, err)
+	amId, err := boundary.CreateAuthMethodApi(t, ctx, client, orgId)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		ctx := context.Background()
 		client.SetToken(adminToken)
 		_, err := amClient.Delete(ctx, amId)
 		require.NoError(t, err)
 	})
-	accId, password := boundary.CreateNewAccountCli(t, ctx, amId, "testuser")
-	boundary.SetAccountToUserCli(t, ctx, userId, accId)
+	accId, password, err := boundary.CreateAccountCli(t, ctx, amId, "testuser")
+	require.NoError(t, err)
+	err = boundary.SetAccountToUserCli(t, ctx, userId, accId)
+	require.NoError(t, err)
 
 	// Authenticate as the user
 	authenticationResult, err := amClient.Authenticate(ctx, amId, "login",
@@ -180,7 +190,7 @@ func TestApiPaginateAuthTokens(t *testing.T) {
 	}
 
 	// List auth tokens
-	initialAuthTokens, err := atClient.List(ctx, newOrgId, authtokens.WithRecursive(true))
+	initialAuthTokens, err := atClient.List(ctx, orgId, authtokens.WithRecursive(true))
 	require.NoError(t, err)
 
 	var returnedIds []string
@@ -206,7 +216,7 @@ func TestApiPaginateAuthTokens(t *testing.T) {
 	require.NoError(t, err)
 
 	// List again, should have the new and deleted auth token
-	newAuthTokens, err := atClient.List(ctx, newOrgId, authtokens.WithListToken(initialAuthTokens.ListToken), authtokens.WithRecursive(true))
+	newAuthTokens, err := atClient.List(ctx, orgId, authtokens.WithListToken(initialAuthTokens.ListToken), authtokens.WithRecursive(true))
 	require.NoError(t, err)
 
 	// Note that this will likely contain all the auth tokens,

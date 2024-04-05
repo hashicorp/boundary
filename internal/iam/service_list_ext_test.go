@@ -1957,7 +1957,7 @@ func TestService_ListScopes(t *testing.T) {
 			filterFunc := func(_ context.Context, r *iam.Scope) (bool, error) {
 				return true, nil
 			}
-			_, err = iam.ListScopesPage(ctx, []byte("some hash"), 1, filterFunc, nil, repo, []string{org.GetPublicId()})
+			_, err := iam.ListScopesPage(ctx, []byte("some hash"), 1, filterFunc, nil, repo, []string{org.GetPublicId()})
 			require.ErrorContains(t, err, "missing token")
 		})
 		t.Run("wrong token type", func(t *testing.T) {

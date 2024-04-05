@@ -22,22 +22,25 @@ func TestCliWorker(t *testing.T) {
 
 	ctx := context.Background()
 	boundary.AuthenticateAdminCli(t, ctx)
-	newOrgId := boundary.CreateNewOrgCli(t, ctx)
+	orgId, err := boundary.CreateOrgCli(t, ctx)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		ctx := context.Background()
 		boundary.AuthenticateAdminCli(t, ctx)
-		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", newOrgId))
+		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", orgId))
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
-	newProjectId := boundary.CreateNewProjectCli(t, ctx, newOrgId)
-	newTargetId := boundary.CreateNewTargetCli(t, ctx, newProjectId, c.TargetPort, target.WithAddress(c.TargetAddress))
+	projectId, err := boundary.CreateProjectCli(t, ctx, orgId)
+	require.NoError(t, err)
+	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort, target.WithAddress(c.TargetAddress))
+	require.NoError(t, err)
 
 	// Set incorrect worker filter, expect connection failure
 	t.Logf("Setting incorrect worker filter...")
 	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"targets", "update", "tcp",
-			"-id", newTargetId,
+			"-id", targetId,
 			"-egress-worker-filter", `"prod" in "/tags/type"`,
 			"-format", "json",
 		),
@@ -47,7 +50,7 @@ func TestCliWorker(t *testing.T) {
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"connect",
-			"-target-id", newTargetId,
+			"-target-id", targetId,
 			"-exec", "/usr/bin/ssh", "--",
 			"-l", c.TargetSshUser,
 			"-i", c.TargetSshKeyPath,
@@ -63,14 +66,14 @@ func TestCliWorker(t *testing.T) {
 	require.Error(t, output.Err, string(output.Stderr))
 	assert.Equal(t, 255, output.ExitCode)
 	require.Contains(t, string(output.Stderr), "timed out")
-	t.Logf("Successfully detected connection failure")
+	t.Log("Successfully detected connection failure")
 
 	// Set correct worker filter, expect connection success
 	t.Logf("Setting correct worker filter...")
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"targets", "update", "tcp",
-			"-id", newTargetId,
+			"-id", targetId,
 			"-egress-worker-filter", fmt.Sprintf(`"%s" in "/tags/type"`, c.WorkerTagEgress),
 			"-format", "json",
 		),
@@ -80,7 +83,7 @@ func TestCliWorker(t *testing.T) {
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"connect",
-			"-target-id", newTargetId,
+			"-target-id", targetId,
 			"-exec", "/usr/bin/ssh", "--",
 			"-l", c.TargetSshUser,
 			"-i", c.TargetSshKeyPath,
@@ -94,5 +97,5 @@ func TestCliWorker(t *testing.T) {
 		),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
-	t.Logf("Successfully connected to target")
+	t.Log("Successfully connected to target")
 }

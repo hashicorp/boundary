@@ -30,20 +30,28 @@ func TestCliVaultCredentialStore(t *testing.T) {
 
 	ctx := context.Background()
 	boundary.AuthenticateAdminCli(t, ctx)
-	newOrgId := boundary.CreateNewOrgCli(t, ctx)
+	orgId, err := boundary.CreateOrgCli(t, ctx)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		ctx := context.Background()
 		boundary.AuthenticateAdminCli(t, ctx)
-		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", newOrgId))
+		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", orgId))
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
-	newProjectId := boundary.CreateNewProjectCli(t, ctx, newOrgId)
-	newHostCatalogId := boundary.CreateNewHostCatalogCli(t, ctx, newProjectId)
-	newHostSetId := boundary.CreateNewHostSetCli(t, ctx, newHostCatalogId)
-	newHostId := boundary.CreateNewHostCli(t, ctx, newHostCatalogId, c.TargetAddress)
-	boundary.AddHostToHostSetCli(t, ctx, newHostSetId, newHostId)
-	newTargetId := boundary.CreateNewTargetCli(t, ctx, newProjectId, c.TargetPort)
-	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, newHostSetId)
+	projectId, err := boundary.CreateProjectCli(t, ctx, orgId)
+	require.NoError(t, err)
+	hostCatalogId, err := boundary.CreateHostCatalogCli(t, ctx, projectId)
+	require.NoError(t, err)
+	hostSetId, err := boundary.CreateHostSetCli(t, ctx, hostCatalogId)
+	require.NoError(t, err)
+	hostId, err := boundary.CreateHostCli(t, ctx, hostCatalogId, c.TargetAddress)
+	require.NoError(t, err)
+	err = boundary.AddHostToHostSetCli(t, ctx, hostSetId, hostId)
+	require.NoError(t, err)
+	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort)
+	require.NoError(t, err)
+	err = boundary.AddHostSourceToTargetCli(t, ctx, targetId, hostSetId)
+	require.NoError(t, err)
 
 	// Configure vault
 	boundaryPolicyName, kvPolicyFilePath := vault.Setup(t, "testdata/boundary-controller-policy.hcl")
@@ -98,23 +106,24 @@ func TestCliVaultCredentialStore(t *testing.T) {
 	t.Log("Created Vault Cred Store Token")
 
 	// Create a credential store
-	newCredentialStoreId := boundary.CreateNewCredentialStoreVaultCli(t, ctx, newProjectId, c.VaultAddr, credStoreToken)
+	storeId, err := boundary.CreateCredentialStoreVaultCli(t, ctx, projectId, c.VaultAddr, credStoreToken)
+	require.NoError(t, err)
 
 	// Create a credential library for the private key
-	newPrivateKeyCredentialLibraryId, err := boundary.CreateVaultGenericCredentialLibraryCli(
+	privateKeyCredentialLibraryId, err := boundary.CreateVaultGenericCredentialLibraryCli(
 		t,
 		ctx,
-		newCredentialStoreId,
+		storeId,
 		fmt.Sprintf("%s/data/%s", c.VaultSecretPath, privateKeySecretName),
 		"ssh_private_key",
 	)
 	require.NoError(t, err)
 
 	// Create a credential library for the password
-	newPasswordCredentialLibraryId, err := boundary.CreateVaultGenericCredentialLibraryCli(
+	passwordCredentialLibraryId, err := boundary.CreateVaultGenericCredentialLibraryCli(
 		t,
 		ctx,
-		newCredentialStoreId,
+		storeId,
 		fmt.Sprintf("%s/data/%s", c.VaultSecretPath, passwordSecretName),
 		"username_password",
 	)
@@ -122,7 +131,7 @@ func TestCliVaultCredentialStore(t *testing.T) {
 
 	// Get credentials for target (expect empty)
 	output = e2e.RunCommand(ctx, "boundary",
-		e2e.WithArgs("targets", "authorize-session", "-id", newTargetId, "-format", "json"),
+		e2e.WithArgs("targets", "authorize-session", "-id", targetId, "-format", "json"),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
 	var newSessionAuthorizationResult targets.SessionAuthorizationResult
@@ -131,12 +140,14 @@ func TestCliVaultCredentialStore(t *testing.T) {
 	require.True(t, newSessionAuthorizationResult.Item.Credentials == nil)
 
 	// Add credentials to target
-	boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, newTargetId, newPrivateKeyCredentialLibraryId)
-	boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, newTargetId, newPasswordCredentialLibraryId)
+	err = boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, targetId, privateKeyCredentialLibraryId)
+	require.NoError(t, err)
+	err = boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, targetId, passwordCredentialLibraryId)
+	require.NoError(t, err)
 
 	// Get credentials for target
 	output = e2e.RunCommand(ctx, "boundary",
-		e2e.WithArgs("targets", "authorize-session", "-id", newTargetId, "-format", "json"),
+		e2e.WithArgs("targets", "authorize-session", "-id", targetId, "-format", "json"),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
 	err = json.Unmarshal(output.Stdout, &newSessionAuthorizationResult)
@@ -180,19 +191,27 @@ func TestApiVaultCredentialStore(t *testing.T) {
 	require.NoError(t, err)
 	ctx := context.Background()
 
-	newOrgId := boundary.CreateNewOrgApi(t, ctx, client)
+	orgId, err := boundary.CreateOrgApi(t, ctx, client)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		scopeClient := scopes.NewClient(client)
-		_, err := scopeClient.Delete(ctx, newOrgId)
+		_, err := scopeClient.Delete(ctx, orgId)
 		require.NoError(t, err)
 	})
-	newProjectId := boundary.CreateNewProjectApi(t, ctx, client, newOrgId)
-	newHostCatalogId := boundary.CreateNewHostCatalogApi(t, ctx, client, newProjectId)
-	newHostSetId := boundary.CreateNewHostSetApi(t, ctx, client, newHostCatalogId)
-	newHostId := boundary.CreateNewHostApi(t, ctx, client, newHostCatalogId, c.TargetAddress)
-	boundary.AddHostToHostSetApi(t, ctx, client, newHostSetId, newHostId)
-	newTargetId := boundary.CreateNewTargetApi(t, ctx, client, newProjectId, c.TargetPort)
-	boundary.AddHostSourceToTargetApi(t, ctx, client, newTargetId, newHostSetId)
+	projectId, err := boundary.CreateProjectApi(t, ctx, client, orgId)
+	require.NoError(t, err)
+	hostCatalogId, err := boundary.CreateHostCatalogApi(t, ctx, client, projectId)
+	require.NoError(t, err)
+	hostSetId, err := boundary.CreateHostSetApi(t, ctx, client, hostCatalogId)
+	require.NoError(t, err)
+	hostId, err := boundary.CreateHostApi(t, ctx, client, hostCatalogId, c.TargetAddress)
+	require.NoError(t, err)
+	err = boundary.AddHostToHostSetApi(t, ctx, client, hostSetId, hostId)
+	require.NoError(t, err)
+	targetId, err := boundary.CreateTargetApi(t, ctx, client, projectId, c.TargetPort)
+	require.NoError(t, err)
+	err = boundary.AddHostSourceToTargetApi(t, ctx, client, targetId, hostSetId)
+	require.NoError(t, err)
 
 	// Configure vault
 	boundaryPolicyName, kvPolicyFilePath := vault.Setup(t, "testdata/boundary-controller-policy.hcl")
@@ -235,7 +254,7 @@ func TestApiVaultCredentialStore(t *testing.T) {
 
 	// Create a credential store
 	csClient := credentialstores.NewClient(client)
-	newCredentialStoreResult, err := csClient.Create(ctx, "vault", newProjectId,
+	newCredentialStoreResult, err := csClient.Create(ctx, "vault", projectId,
 		credentialstores.WithVaultCredentialStoreAddress(c.VaultAddr),
 		credentialstores.WithVaultCredentialStoreToken(credStoreToken),
 	)
@@ -264,21 +283,21 @@ func TestApiVaultCredentialStore(t *testing.T) {
 
 	// Add private key brokered credentials to target
 	tClient := targets.NewClient(client)
-	_, err = tClient.AddCredentialSources(ctx, newTargetId, 0,
+	_, err = tClient.AddCredentialSources(ctx, targetId, 0,
 		targets.WithBrokeredCredentialSourceIds([]string{newPrivateKeyCredentialLibraryId}),
 		targets.WithAutomaticVersioning(true),
 	)
 	require.NoError(t, err)
 
 	// Add password brokered credentials to target
-	_, err = tClient.AddCredentialSources(ctx, newTargetId, 0,
+	_, err = tClient.AddCredentialSources(ctx, targetId, 0,
 		targets.WithBrokeredCredentialSourceIds([]string{newPasswordCredentialLibraryId}),
 		targets.WithAutomaticVersioning(true),
 	)
 	require.NoError(t, err)
 
 	// Get credentials for target
-	newSessionAuthorizationResult, err := tClient.AuthorizeSession(ctx, newTargetId)
+	newSessionAuthorizationResult, err := tClient.AuthorizeSession(ctx, targetId)
 	require.NoError(t, err)
 	newSessionAuthorization := newSessionAuthorizationResult.Item
 	require.Len(t, newSessionAuthorization.Credentials, 2)

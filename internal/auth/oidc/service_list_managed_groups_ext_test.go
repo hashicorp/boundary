@@ -269,7 +269,7 @@ func TestService_ListManagedGroups(t *testing.T) {
 			filterFunc := func(_ context.Context, mg auth.ManagedGroup) (bool, error) {
 				return true, nil
 			}
-			_, err = oidc.ListManagedGroupsRefresh(ctx, []byte("some hash"), 1, filterFunc, nil, repo, authMethod.GetPublicId())
+			_, err := oidc.ListManagedGroupsRefresh(ctx, []byte("some hash"), 1, filterFunc, nil, repo, authMethod.GetPublicId())
 			require.ErrorContains(t, err, "missing token")
 		})
 		t.Run("nil repo", func(t *testing.T) {

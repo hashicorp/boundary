@@ -6,6 +6,7 @@ package boundary
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"testing"
 
 	"github.com/hashicorp/boundary/api"
@@ -15,26 +16,41 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// CreateNewAccountApi creates a new account using the Go api.
+// CreateAccountApi creates a new account using the Go api.
 // Returns the id of the new account as well as the password that was generated
-func CreateNewAccountApi(t testing.TB, ctx context.Context, client *api.Client, authMethodId string, loginName string) (accountId string, password string) {
+func CreateAccountApi(t testing.TB, ctx context.Context, client *api.Client, authMethodId string, loginName string) (string, string, error) {
+	name, err := base62.Random(16)
+	if err != nil {
+		return "", "", err
+	}
+
 	aClient := accounts.NewClient(client)
 	password, err := base62.Random(16)
-	require.NoError(t, err)
-	newAccountResult, err := aClient.Create(ctx, authMethodId,
+	if err != nil {
+		return "", "", err
+	}
+	createAccountResult, err := aClient.Create(ctx, authMethodId,
 		accounts.WithPasswordAccountLoginName(loginName),
 		accounts.WithPasswordAccountPassword(password),
+		accounts.WithName(fmt.Sprintf("e2e Account %s", name)),
 	)
-	require.NoError(t, err)
+	if err != nil {
+		return "", "", err
+	}
 
-	accountId = newAccountResult.Item.Id
+	accountId := createAccountResult.Item.Id
 	t.Logf("Create Account: %s", accountId)
-	return
+	return accountId, password, nil
 }
 
-// CreateNewAccountCli creates a new account using the cli.
+// CreateAccountCli creates a new account using the cli.
 // Returns the id of the new account as well as the password that was generated
-func CreateNewAccountCli(t testing.TB, ctx context.Context, authMethodId string, loginName string) (string, string) {
+func CreateAccountCli(t testing.TB, ctx context.Context, authMethodId string, loginName string) (string, string, error) {
+	name, err := base62.Random(16)
+	if err != nil {
+		return "", "", err
+	}
+
 	password, err := base62.Random(16)
 	require.NoError(t, err)
 	output := e2e.RunCommand(ctx, "boundary",
@@ -43,19 +59,23 @@ func CreateNewAccountCli(t testing.TB, ctx context.Context, authMethodId string,
 			"-auth-method-id", authMethodId,
 			"-login-name", loginName,
 			"-password", "env://E2E_TEST_ACCOUNT_PASSWORD",
-			"-name", "e2e Account "+loginName,
+			"-name", fmt.Sprintf("e2e Account %s", name),
 			"-description", "e2e",
 			"-format", "json",
 		),
 		e2e.WithEnv("E2E_TEST_ACCOUNT_PASSWORD", password),
 	)
-	require.NoError(t, output.Err, string(output.Stderr))
+	if output.Err != nil {
+		return "", "", fmt.Errorf("%w: %s", output.Err, string(output.Stderr))
+	}
 
-	var newAccountResult accounts.AccountCreateResult
-	err = json.Unmarshal(output.Stdout, &newAccountResult)
-	require.NoError(t, err)
+	var createAccountResult accounts.AccountCreateResult
+	err = json.Unmarshal(output.Stdout, &createAccountResult)
+	if err != nil {
+		return "", "", err
+	}
 
-	newAccountId := newAccountResult.Item.Id
-	t.Logf("Created Account: %s", newAccountId)
-	return newAccountId, password
+	accountId := createAccountResult.Item.Id
+	t.Logf("Created Account: %s", accountId)
+	return accountId, password, nil
 }

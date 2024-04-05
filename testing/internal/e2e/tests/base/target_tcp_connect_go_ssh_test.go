@@ -25,15 +25,18 @@ func TestCliTcpTargetConnectGoSsh(t *testing.T) {
 
 	ctx := context.Background()
 	boundary.AuthenticateAdminCli(t, ctx)
-	newOrgId := boundary.CreateNewOrgCli(t, ctx)
+	orgId, err := boundary.CreateOrgCli(t, ctx)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		ctx := context.Background()
 		boundary.AuthenticateAdminCli(t, ctx)
-		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", newOrgId))
+		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", orgId))
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
-	newProjectId := boundary.CreateNewProjectCli(t, ctx, newOrgId)
-	newTargetId := boundary.CreateNewTargetCli(t, ctx, newProjectId, c.TargetPort, target.WithAddress(c.TargetAddress))
+	projectId, err := boundary.CreateProjectCli(t, ctx, orgId)
+	require.NoError(t, err)
+	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort, target.WithAddress(c.TargetAddress))
+	require.NoError(t, err)
 
 	// Start a session
 	ctxCancel, cancel := context.WithCancel(context.Background())
@@ -44,7 +47,7 @@ func TestCliTcpTargetConnectGoSsh(t *testing.T) {
 		cmdChan <- e2e.RunCommand(ctxCancel, "boundary",
 			e2e.WithArgs(
 				"connect",
-				"-target-id", newTargetId,
+				"-target-id", targetId,
 				"-listen-port", port,
 				"-format", "json",
 			),
@@ -52,7 +55,7 @@ func TestCliTcpTargetConnectGoSsh(t *testing.T) {
 	}()
 	t.Cleanup(cancel)
 
-	boundary.WaitForSessionCli(t, ctx, newProjectId)
+	boundary.WaitForSessionCli(t, ctx, projectId)
 
 	// Connect to the target using the go experimental ssh library
 	privateKeyRaw, err := os.ReadFile(c.TargetSshKeyPath)

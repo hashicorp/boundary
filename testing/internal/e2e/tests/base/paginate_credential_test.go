@@ -28,15 +28,18 @@ func TestCliPaginateCredentials(t *testing.T) {
 
 	ctx := context.Background()
 	boundary.AuthenticateAdminCli(t, ctx)
-	newOrgId := boundary.CreateNewOrgCli(t, ctx)
+	orgId, err := boundary.CreateOrgCli(t, ctx)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		ctx := context.Background()
 		boundary.AuthenticateAdminCli(t, ctx)
-		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", newOrgId))
+		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", orgId))
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
-	newProjectId := boundary.CreateNewProjectCli(t, ctx, newOrgId)
-	newStoreId := boundary.CreateNewCredentialStoreStaticCli(t, ctx, newProjectId)
+	projectId, err := boundary.CreateProjectCli(t, ctx, orgId)
+	require.NoError(t, err)
+	storeId, err := boundary.CreateCredentialStoreStaticCli(t, ctx, projectId)
+	require.NoError(t, err)
 
 	// Create enough credentials to overflow a single page.
 	client, err := boundary.NewApiClient()
@@ -47,7 +50,7 @@ func TestCliPaginateCredentials(t *testing.T) {
 		resp, err := cClient.Create(
 			ctx,
 			"username_password",
-			newStoreId,
+			storeId,
 			credentials.WithUsernamePasswordCredentialUsername("user"),
 			credentials.WithUsernamePasswordCredentialPassword("password"),
 		)
@@ -62,7 +65,7 @@ func TestCliPaginateCredentials(t *testing.T) {
 	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"credentials", "list",
-			"-credential-store-id", newStoreId,
+			"-credential-store-id", storeId,
 			"-format=json",
 		),
 	)
@@ -84,7 +87,8 @@ func TestCliPaginateCredentials(t *testing.T) {
 	assert.Empty(t, initialCredentials.ListToken)
 
 	// Create a new credential and destroy one of the other credentials
-	newCredentialId := boundary.CreateNewStaticCredentialPasswordCli(t, ctx, newStoreId, "user", "password")
+	credentialId, err := boundary.CreateStaticCredentialPasswordCli(t, ctx, storeId, "user", "password")
+	require.NoError(t, err)
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"credentials", "delete",
@@ -97,7 +101,7 @@ func TestCliPaginateCredentials(t *testing.T) {
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"credentials", "list",
-			"-credential-store-id", newStoreId,
+			"-credential-store-id", storeId,
 			"-format=json",
 		),
 	)
@@ -111,7 +115,7 @@ func TestCliPaginateCredentials(t *testing.T) {
 	// The first item should be the most recently created, which
 	// should be our new credential
 	firstItem := newCredentials.Items[0]
-	assert.Equal(t, newCredentialId, firstItem.Id)
+	assert.Equal(t, credentialId, firstItem.Id)
 	assert.Empty(t, newCredentials.ResponseType)
 	assert.Empty(t, newCredentials.RemovedIds)
 	assert.Empty(t, newCredentials.ListToken)
@@ -133,14 +137,17 @@ func TestApiPaginateCredentials(t *testing.T) {
 	ctx := context.Background()
 	sClient := scopes.NewClient(client)
 	cClient := credentials.NewClient(client)
-	newOrgId := boundary.CreateNewOrgApi(t, ctx, client)
+	orgId, err := boundary.CreateOrgApi(t, ctx, client)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		ctx := context.Background()
-		_, err := sClient.Delete(ctx, newOrgId)
+		_, err := sClient.Delete(ctx, orgId)
 		require.NoError(t, err)
 	})
-	newProjectId := boundary.CreateNewProjectApi(t, ctx, client, newOrgId)
-	newStoreId := boundary.CreateNewCredentialStoreStaticApi(t, ctx, client, newProjectId)
+	projectId, err := boundary.CreateProjectApi(t, ctx, client, orgId)
+	require.NoError(t, err)
+	storeId, err := boundary.CreateCredentialStoreStaticApi(t, ctx, client, projectId)
+	require.NoError(t, err)
 
 	// Create enough credentials to overflow a single page.
 	var credentialIds []string
@@ -148,7 +155,7 @@ func TestApiPaginateCredentials(t *testing.T) {
 		resp, err := cClient.Create(
 			ctx,
 			"username_password",
-			newStoreId,
+			storeId,
 			credentials.WithUsernamePasswordCredentialUsername("user"),
 			credentials.WithUsernamePasswordCredentialPassword("password"),
 		)
@@ -160,7 +167,7 @@ func TestApiPaginateCredentials(t *testing.T) {
 	}
 
 	// List Credentials
-	initialCredentials, err := cClient.List(ctx, newStoreId)
+	initialCredentials, err := cClient.List(ctx, storeId)
 	require.NoError(t, err)
 
 	var returnedIds []string
@@ -180,12 +187,13 @@ func TestApiPaginateCredentials(t *testing.T) {
 	assert.Len(t, mapSliceItems, c.MaxPageSize+1)
 
 	// Create a new credential and destroy one of the other Credentials
-	newCredentialId := boundary.CreateNewStaticCredentialPasswordApi(t, ctx, client, newStoreId, "user", "password")
+	credentialId, err := boundary.CreateStaticCredentialPasswordApi(t, ctx, client, storeId, "user", "password")
+	require.NoError(t, err)
 	_, err = cClient.Delete(ctx, initialCredentials.Items[0].Id)
 	require.NoError(t, err)
 
 	// List again, should have the new and deleted credential
-	newCredentials, err := cClient.List(ctx, newStoreId, credentials.WithListToken(initialCredentials.ListToken))
+	newCredentials, err := cClient.List(ctx, storeId, credentials.WithListToken(initialCredentials.ListToken))
 	require.NoError(t, err)
 
 	// Note that this will likely contain all the credentials,
@@ -196,7 +204,7 @@ func TestApiPaginateCredentials(t *testing.T) {
 	// The first item should be the most recently created, which
 	// should be our new credential
 	firstItem := newCredentials.Items[0]
-	assert.Equal(t, newCredentialId, firstItem.Id)
+	assert.Equal(t, credentialId, firstItem.Id)
 	assert.Equal(t, "complete", newCredentials.ResponseType)
 	// Note that the removed IDs may contain entries from other tests,
 	// so just check that there is at least 1 entry and that our entry
