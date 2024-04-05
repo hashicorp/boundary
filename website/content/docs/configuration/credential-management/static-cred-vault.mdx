@@ -2,65 +2,69 @@
 layout: docs
 page_title: Manage static credentials with Vault
 description: |-
-  How to configure static credentials with a Vault credential store 
+  How to configure static credentials with a Vault credential store
 ---
 
 # Manage static credentials with Vault
 
-## Create a Vault credential store
-
 The following sections provide steps to configure static credentials using the Vault credential store. Two different end-user workflows are provided to associate targets with credentials: [credential brokering](#configure-targets-with-credential-brokering) and [credential injection](#configure-targets-with-credential-injection).
 
+## Create a Vault credential store
+
+You can manage credentials in Boundary using [credential stores](/boundary/docs/concepts/domain-model/credential-stores), which are resources that store credentials for various targets.
+Vault credential stores point to a HashiCorp Vault instance, which provides capabilities like generating short-lived dynamic credentials.
 
 ### Requirements
 
-1. You must have a Vault instance available with an address or URL that is reachable from your Boundary instance. This will be used to connect Boundary to Vault.
-1. You must have static credentials stored in Vault’s key/value secrets engine. Examples of static credential types include username & password or username & SSH private key.
-1. You must have a Vault token for Boundary to authenticate and access your static credentials. 
+- You must have a Vault instance available with an address or URL that is reachable from your Boundary instance. This will be used to connect Boundary to Vault.
+- You must have static credentials stored in Vault’s key/value secrets engine. Examples of static credential types include username and password or username and SSH private key.
+- You must have a Vault token for Boundary to authenticate and access your static credentials.
+
+Complete the following steps to create a Vault credential store:
 
 <Tabs>
-<Tab heading="UI" group="ui"> 
+<Tab heading="UI" group="ui">
 
 1. Log in to Boundary.
 1. Select **Orgs** on the navigation pane.
 1. Select your desired org.
-1. Select your desired project for which your static credential store should belong.
-1. Click **Credential Stores** on the navigation pane.
-1. Click **New Credential Store**.
-1. Provide a name for your credential store and select type Vault.
-1. Complete the fields related to your Vault instance.
+1. Select the project to which your static credential store should belong.
+1. Select **Credential Stores** on the navigation pane.
+1. Select **New Credential Store**.
+1. Provide a name for your credential store and select type **Vault**.
+1. Complete the fields related to your Vault instance:
     - **Address** - The address of your Vault instance.
-    - **Worker Filter** (optional) - If your Vault instance does not have a publicly accessible address and instead is proxied through a Boundary worker, enter the worker filter. This should be a boolean expression. See examples in the Worker tags documentation.       
-    - **Token** - Token provided by Vault that provides access to the static credentials within your Vault instance.  
+    - **Worker Filter** (optional) - If your Vault instance does not have a publicly accessible address and instead is proxied through a Boundary worker, enter the worker filter. This should be a boolean expression. Refer to the examples in the [Worker tags](/docs/concepts/filtering/worker-tags) documentation.
+    - **Token** - Token provided by Vault that provides access to the static credentials within your Vault instance.
     - **Namespace** (optional) - Vault namespace. Requires Vault Enterprise.
-    - **TLS Server Name** (optional) - Name to use as the SNI host if connecting to Vault via TLS.
+    - **TLS Server Name** (optional) - Name to use as the SNI host if you connect to Vault via TLS.
     - **Client Certificate** (optional) - A PEM-encoded client certificate to use for TLS authentication to the Vault server.
-    - **Client Certificate key** (optional) - A PEM-encoded private key matching the client certificate from client certificate.
+    - **Client Certificate key** (optional) - A PEM-encoded private key that matches the client certificate from client certificate.
     - **CA Certificate** (optional) - A PEM-encoded CA certificate to verify the Vault server's TLS certificate.
 
 1. Click **Save**. You now have a static credential store where you can store static credentials.
 1. In your newly created Vault credential store, click on the **Credential Libraries** tab.
-1. Click **Manage** and select **New Credential Library** in the pull down menu. 
-1. Complete the fields related to the static credentials stored in your Vault instance.
+1. Click **Manage**, and then select **New Credential Library** in the pull down menu.
+1. Complete the fields related to the static credentials stored in your Vault instance:
     - **Name** (optional) -  The name is optional, but if you enter a name, it must be unique within the parent credential store.
     - **Type** - Select **Generic Secrets**.
-    - **Vault Path** - Enter the path for the location of your static credentials stored in Vault. Boundary uses this field to locate the static credentials inside Vault. 
+    - **Vault Path** - Enter the path for the location of your static credentials stored in Vault. Boundary uses this field to locate the static credentials inside Vault.
     - **Credential Type** - Select the appropriate credential type that matches the static credential stored in Vault.
     - **HTTP Method** - Select **GET**.
 1. Click **Save**.
 
 </Tab>
-<Tab heading="CLI" group="cli"> 
+<Tab heading="CLI" group="cli">
 
 1. Log into Boundary.
 
   ```shell-session
   $ boundary authenticate
   Please enter the login name (it will be hidden):
-  Please enter the password (it will be hidden):  
+  Please enter the password (it will be hidden):
   ```
 
-1. Create a credential store providing a name and project ID.
+1. Create a credential store and provide a name and project ID.
 
   ```shell-session
   $ boundary credential-stores create vault \
@@ -68,9 +72,9 @@ The following sections provide steps to configure static credentials using the V
       -name "vault-cred-store-test"
   ```
 
-1. Create a credential library.
+1. Create a credential library using one of the following commands, based on the type of credential.
 
-  For type username & password:
+  For type username and password:
 
   ```shell-session
   $ boundary credential-libraries create vault-generic \
@@ -80,7 +84,7 @@ The following sections provide steps to configure static credentials using the V
       -vault-path "path/to/vault/credentials"
   ```
 
-  For type username & private key:
+  For type username and private key:
 
   ```shell-session
   $ boundary credential-libraries create vault-generic \
@@ -95,37 +99,38 @@ The following sections provide steps to configure static credentials using the V
 
 ## Determine end user workflows
 
-End users can experience three workflows when connecting to a target. In the first workflow, when an end user connects to a target, Boundary will initiate the session but the end user must know the credentials to authenticate into the session. This workflow is available for testing purposes and is not recommended because it places the burden on the users to securely store and manage credentials.
+End users can experience three workflows when they connect to a target. In the first workflow, when an end user connects to a target, Boundary initiates the session, but the end user must know the credentials to authenticate into the session. This workflow is available for testing purposes, but it is not recommended because it places the burden on the users to securely store and manage credentials.
 
-The second workflow uses a feature called credential brokering, where credentials are retrieved from a credentials store and returned back to the end user. The end user would then enter the credentials into the session when prompted by the target. This workflow is more secure than the first workflow since credentials are centrally managed through Boundary. For more information, see [credential brokering](/boundary/docs/concepts/credential-management#credential-brokering) concepts page. 
+The second workflow uses a feature called credential brokering, where credentials are retrieved from a credentials store and returned back to the end user. The end user then enters the credentials into the session when prompted by the target. This workflow is more secure than the first workflow since credentials are centrally managed through Boundary. For more information, see [credential brokering](/boundary/docs/concepts/credential-management#credential-brokering) concepts page.
 
-The third workflow uses a featured called credential injection, where credentials are retrieved from a credential store and injected directly into the session on behalf of the end user. This workflow is the most secure because credentials are not exposed to the end user, reducing the chances of a leaked credential. This workflow is also more streamlined as the user goes through a passwordless experience.  For more information, see [credential injection](/boundary/docs/concepts/credential-management#credential-injection) concepts page. 
+The third workflow uses a featured called credential injection, where credentials are retrieved from a credential store and injected directly into the session on behalf of the end user. This workflow is the most secure because credentials are not exposed to the end user, reducing the chances of a leaked credential. This workflow is also more streamlined as the user goes through a passwordless experience.  For more information, see [credential injection](/boundary/docs/concepts/credential-management#credential-injection) concepts page.
 
-### Configure targets with credential brokering 
+### Configure targets with credential brokering
 
 The following section provides steps to configure your targets with credential brokering.
+When you use credential brokering, Boundary centrally manages credentials and returns them to the user when they attempt to connect to a target.
 
 ### Requirements
 
-- You must have an existing target available. 
+- You must have an existing target available.
 - You must have a Vault credential store and credential library. Refer to [Create Vault credential stores](/boundary/docs/configuration/credential-management/static-cred-vault#create-a-vault-credential-store) page for procedures.
-- You must have a static credential saved in the Vault. The static credential must correspond to the target to which you wish to authenticate.
+- You must have a static credential saved in the Vault. The static credential must correspond to the target to which you want to authenticate.
 
 <Tabs>
-<Tab heading="UI" group="ui"> 
+<Tab heading="UI" group="ui">
 
 1. Log in to Boundary.
 1. Select **Orgs** on the navigation pane.
 1. Select your desired org.
 1. Select the project where your target resides.
 1. Click **Targets** on the navigation pane.
-1. Click on your target for which you wish to configure credential brokering.
+1. Click on the target you want to configure for credential brokering.
 1. Click on the **Brokered Credential** tab.
 1. Click **Managed** and select **Add Brokered Credential** in the pull down menu.
 1. Select the appropriate credential library that corresponds to your target and click **Add Brokered Credentials**.
 
 </Tab>
-<Tab heading="CLI" group="cli"> 
+<Tab heading="CLI" group="cli">
 
 1. Log into Boundary.
 
@@ -155,29 +160,30 @@ The following section provides steps to configure your targets with credential b
 
 <EnterpriseAlert product="boundary">This feature requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary or Boundary Enterprise</a></EnterpriseAlert>
 
-The following section provides steps to configure your targets with credential injection which will provide end users with a passwordless experience when connecting to a target.
+The following section provides steps to configure your targets with credential injection.
+Credential injection provides end users with a passwordless experience when they connect to targets.
 
 ### Requirements
 
 - You must have an existing target available.
 - You must have a Vault credential store and credential library. Refer to [Create Vault credential stores](/boundary/docs/configuration/credential-management/static-cred-vault#create-a-vault-credential-store) page for procedures.
-- You must have a static credential saved in the Vault. The static credential must correspond to the target to which you wish to authenticate.
+- You must have a static credential saved in the Vault credential store. The static credential must correspond to the target to which you want to authenticate.
 
 <Tabs>
-<Tab heading="UI" group="ui"> 
+<Tab heading="UI" group="ui">
 
 1. Log in to Boundary.
 1. Select **Orgs** on the navigation pane.
 1. Select your desired org.
 1. Select the project where your target resides.
 1. Click **Targets** on the navigation pane.
-1. Click on your target for which you wish to configure credential injection.
+1. Click on your target you want to configure for credential injection.
 1. Click on the **Injected Application Credential** tab.
 1. Click **Managed** and select **Add Injected Application Credential** in the pull down menu.
 1. Select the appropriate credential library that corresponds to your target and click **Add Injected Application Credentials**.
 
 </Tab>
-<Tab heading="CLI" group="cli"> 
+<Tab heading="CLI" group="cli">
 
 1. Log into Boundary.
 
@@ -203,4 +209,3 @@ The following section provides steps to configure your targets with credential i
 
 </Tab>
 </Tabs>
-
