@@ -712,9 +712,11 @@ func (w *Worker) Shutdown() error {
 		ar.SetAddresses(nil)
 	}
 
-	err := w.storageEventListener.Shutdown(w.baseContext)
-	if err != nil {
-		return fmt.Errorf("error shutting down worker event listener: %w", err)
+	if w.storageEventListener != nil {
+		err := w.storageEventListener.Shutdown(w.baseContext)
+		if err != nil {
+			return fmt.Errorf("error shutting down worker event listener: %w", err)
+		}
 	}
 
 	w.started.Store(false)
