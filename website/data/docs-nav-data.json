@@ -447,12 +447,25 @@
             "path": "configuration/credential-management/overview"
           },
           {
-            "title": "Manage static credentials with Boundary",
+            "title": "Create a static credential store",
             "path": "configuration/credential-management/static-cred-boundary"
           },
           {
-            "title": "Manage static credentials with Vault",
+            "title": "Create a Vault credential store",
             "path": "configuration/credential-management/static-cred-vault"
+          },
+          {
+            "title": "Configure targets with credential brokering",
+            "path": "configuration/credential-management/configure-credential-brokering"
+          },
+          {
+            "title": "Configure targets with credential injection",
+            "path": "configuration/credential-management/configure-credential-injection",
+            "badge": {
+              "text": "HCP/ENT",
+              "type": "outlined",
+              "color": "neutral"
+            }
           }
         ]
       },

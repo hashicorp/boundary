@@ -5,16 +5,16 @@ description: |-
   How to configure static credentials with a static credential store
 ---
 
-# Manage static credentials with Boundary
+# Create a static credential store
 
-The following sections provide steps to configure static credentials using Boundary’s built-in static credential store. Two different end-user workflows are provided to associate targets with credentials: [credential brokering](#configure-targets-with-credential-brokering) and [credential injection](#configure-targets-with-credential-injection).
+<!-- Manage static credentials with Boundary
 
-## Create a static credential store
+The following sections provide steps to configure static credentials using Boundary’s built-in static credential store. Two different end-user workflows are provided to associate targets with credentials: [credential brokering](#configure-targets-with-credential-brokering) and [credential injection](#configure-targets-with-credential-injection). -->
 
 You can manage credentials in Boundary using [credential stores](/boundary/docs/concepts/domain-model/credential-stores), which are resources that store credentials for various targets.
-Static credential stores are built into Boundary and only store static credentials like username and password, or keypairs.
+Static credential stores are built into Boundary and only store static credentials like username and password or keypairs.
 
-### Requirements
+## Requirements
 
 - Ensure that you have an [Org scope and a project scope](/boundary/docs/commands/scopes/create) created in your Boundary instance.
 
@@ -64,45 +64,45 @@ Complete the following steps to create a static credential store:
      -name "my-static-credential-store"
   ```
 
-1. (Optional) If you have a static credential, you can add it into the static credential store. Static credential types can be a username and password, username and keypair, or JSON blob.
+1. (Optional) If you have a static credential, you can add it into the static credential store using one of the following commands, based on the type of credential. Static credential types can be a username and password, username and keypair, or JSON blob.
 
-The command arguments vary depending on the type of static credential you want to add to the credential store.
+    - For username and password credentials:
 
-  For type username and password:
+      ```shell-session
+      $ boundary credentials create username-password \
+          -name "test-credentials" \
+          -credential-store-id csst_O8utI0b3XC \
+          -username <username> \
+          -password env://<MY_PASSWORD_ENV_VAR>
+      ```
 
-  ```shell-session
-  $ boundary credentials create username-password \
-      -name "test-credentials" \
-      -credential-store-id csst_O8utI0b3XC \
-      -username <username> \
-      -password env://<MY_PASSWORD_ENV_VAR>
-  ```
+      To prevent credentials from being logged in the terminal, you must place passwords in an environment variable or file, and pass them to the `-password` option using the `env://` or `file://` syntax.
 
-  To prevent credentials from being logged in the terminal, you must place passwords in an environment variable or file, and pass them to the `-password` option using the `env://` or `file://` syntax.
+    - For username and private key credentials:
 
-  For type username and private key:
+      ```shell-session
+      $ boundary credentials create ssh-private-key \
+          -credential-store-id csst_O8utI0b3XC \
+          -username <username> \
+          -private-key file://<my_ssh_key_file>
+      ```
 
-  ```shell-session
-  $ boundary credentials create ssh-private-key \
-      -credential-store-id csst_O8utI0b3XC \
-      -username <username> \
-      -private-key file://<my_ssh_key_file>
-  ```
+      To prevent credentials from being logged in the terminal, you must place SSH private keys in an environment variable or file, and pass them to the `-private-key` option using the `env://` or `file://` syntax.
 
-  To prevent credentials from being logged in the terminal, you must place SSH private keys in an environment variable or file, and pass them to the `-private-key` option using the `env://` or `file://` syntax.
+    - For JSON blob credentials:
 
-  For type JSON blob:
+      ```shell-session
+      $ boundary credentials create json \
+          -credential-store-id csst_O8utI0b3XC \
+          -object file://<my_json_file_path>
+      ```
 
-  ```shell-session
-  $ boundary credentials create json \
-      -credential-store-id csst_O8utI0b3XC \
-      -object file://<my_json_file_path>
-  ```
-
-  To prevent credentials from being logged in the terminal, you must place the JSON map value in a file, and pass it to the `-object` option using the `file://` syntax.
+      To prevent credentials from being logged in the terminal, you must place the JSON map value in a file, and pass it to the `-object` option using the `file://` syntax.
 
 </Tab>
 </Tabs>
+
+<!--
 
 ## Determine end user workflows
 
@@ -219,3 +219,14 @@ Complete the following steps to configure targets with credential injection:
 
 </Tab>
 </Tabs>
+
+-->
+
+## Next steps
+
+Once you have created a credential store, you can configure targets for credential brokering or credential injection.
+When you use credential brokering, Boundary centrally manages credentials and returns them to the user when they attempt to connect to a target.
+Credential injection requires HCP Boundary or Boundary Enterprise, and it provides end users with a passwordless experience when they connect to targets.
+
+- [Configure a target for credential brokering](/boundary/docs/configuration/credential-management/configure-credential-brokering)
+- [Configure a target for credential injection](/boundary/docs/configuration/credential-management/configure-credential-brokering)
