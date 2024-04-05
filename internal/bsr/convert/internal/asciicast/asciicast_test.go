@@ -144,7 +144,7 @@ func TestEventMarshal(t *testing.T) {
 		{
 			"backspace",
 			mustEvent(t, asciicast.Output, 0.1, []byte("\b\x1b[K")),
-			[]byte(`[0.1,"o","\u0008\u001b[K"]`),
+			[]byte(`[0.1,"o","\b\u001b[K"]`),
 			nil,
 		},
 		{
