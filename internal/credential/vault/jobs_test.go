@@ -2342,3 +2342,73 @@ func TestCredentialCleanupJob_Run(t *testing.T) {
 	require.NoError(rw.LookupById(ctx, lookupCred))
 	assert.Equal(string(RevokedCredential), lookupCred.Status)
 }
+
+func TestVaultJobsWorkerFilters(t *testing.T) {
+	assert, require := assert.New(t), require.New(t)
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	rw := db.New(conn)
+
+	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	cs := TestCredentialStore(t, conn, wrapper, prj.PublicId, "http://vault", "vault-token", "accessor", WithWorkerFilter("true == true"))
+	lib := TestCredentialLibraries(t, conn, wrapper, cs.PublicId, 1)[0]
+	token := cs.Token()
+
+	csNoFilter := TestCredentialStore(t, conn, wrapper, prj.PublicId, "http://vault", "vault-token-no-filter", "accessor")
+	libNoFilter := TestCredentialLibraries(t, conn, wrapper, csNoFilter.PublicId, 1)[0]
+	tokenNoFilter := csNoFilter.Token()
+
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	session := session.TestDefaultSession(t, conn, wrapper, iamRepo)
+
+	// Create credential with filter
+	got, err := newCredential(ctx, lib.GetPublicId(), "some/vault/credential", token.GetTokenHmac(), time.Minute)
+	require.NoError(err)
+	id, err := newCredentialId(ctx)
+	assert.NoError(err)
+	got.PublicId = id
+	query, queryValues := insertQuery(got, session.PublicId)
+	require.NoError(err)
+	rows, err := rw.Exec(ctx, query, queryValues)
+	assert.Equal(1, rows)
+	assert.NoError(err)
+
+	// Validate renew/revoke token query includes worker filter
+	ps := &renewRevokeStore{Store: allocClientStore()}
+	ps.Store.PublicId = cs.PublicId
+	err = rw.LookupById(ctx, ps)
+	require.NoError(err)
+	assert.Equal("true == true", ps.Store.WorkerFilter)
+
+	// Validate renew/revoke credential query includes worker filter
+	cred := &privateCredential{PublicId: id}
+	err = rw.LookupById(ctx, cred)
+	require.NoError(err)
+	assert.Equal("true == true", cred.WorkerFilter)
+
+	// Create credential without filter
+	got, err = newCredential(ctx, libNoFilter.GetPublicId(), "some/vault/credential", tokenNoFilter.GetTokenHmac(), time.Minute)
+	require.NoError(err)
+	idNoFilter, err := newCredentialId(ctx)
+	assert.NoError(err)
+	got.PublicId = idNoFilter
+	query, queryValues = insertQuery(got, session.PublicId)
+	require.NoError(err)
+	rows, err = rw.Exec(ctx, query, queryValues)
+	assert.Equal(1, rows)
+	assert.NoError(err)
+
+	// Validate renew/revoke token query does not include worker filter
+	ps = &renewRevokeStore{Store: allocClientStore()}
+	ps.Store.PublicId = csNoFilter.PublicId
+	err = rw.LookupById(ctx, ps)
+	require.NoError(err)
+	assert.Empty(ps.Store.WorkerFilter)
+
+	// Validate renew/revoke credential query does not include worker filter
+	cred = &privateCredential{PublicId: idNoFilter}
+	err = rw.LookupById(ctx, cred)
+	require.NoError(err)
+	assert.Empty(cred.WorkerFilter)
+}

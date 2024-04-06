@@ -41,6 +41,7 @@ begin;
          store.ca_cert                as ca_cert,
          store.tls_server_name        as tls_server_name,
          store.tls_skip_verify        as tls_skip_verify,
+         store.worker_filter          as worker_filter,
          cert.certificate             as client_cert,
          cert.certificate_key         as ct_client_key, -- encrypted
          cert.certificate_key_hmac    as client_cert_key_hmac,
