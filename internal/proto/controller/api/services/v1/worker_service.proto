@@ -19,7 +19,7 @@ service WorkerService {
     description:
       "A worker is a service that acts as a network proxy for Boundary sessions. "
       "It functions as a bridge between users and the target resources they need to access. "
-      "The worker service provides endpoints for managing workers in Boundary."
+      "The worker service provides endpoints that let you manage workers in Boundary."
   };
 
   // GetWorker returns a stored Worker if present.  The provided request

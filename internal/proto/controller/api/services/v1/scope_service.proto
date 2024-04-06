@@ -16,9 +16,9 @@ service ScopeService {
   option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_tag) = {
     name: "Scope service"
     description:
-      "A scope acts as a permission boundary modeled using a container concept. "
-      "It creates a hierarchical structure for organizing resources and managing access control within Boundary. "
-      "The scope service provides endpoints for managing scopes in Boundary."
+      "A scope acts as a permission Boundary modeled using the concept of a container. "
+      "It creates a hierarchical structure that lets you organize your resources and manage access control within Boundary. "
+      "The scope service provides endpoints to let you manage scopes in Boundary."
     external_docs: {
       url: "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/scopes";
       description: "Read about scopes in the Boundary domain model";
@@ -160,15 +160,17 @@ message GetScopeResponse {
 message ListScopesRequest {
   string scope_id = 1; // @gotags: `class:"public" eventstream:"observation"`
   bool recursive = 20 [json_name = "recursive"]; // @gotags: `class:"public" eventstream:"observation"`
+  // You can specify that the filter should only return items that match.
+  // Refer to [filter expressions](https://developer.hashicorp.com/boundary/docs/concepts/filtering) for more information.
   string filter = 30 [json_name = "filter"]; // @gotags: `class:"public"`
   // An opaque token used to continue an existing iteration or
   // request updated items. If paginating, use this token in the
   // next list request.
   string list_token = 40 [json_name = "list_token"]; // @gotags: `class:"public"`
   // The maximum size of a page in this iteration.
-  // If unset, the default page size configured will be used.
-  // If the page_size is greater than the max page size configured,
-  // the page size will be truncated to this number.
+  // If you do not set a page size, Boundary uses the configured default page size.
+  // If the page_size is greater than the default page size configured,
+  // Boundary truncates the page size to this number.
   uint32 page_size = 50 [json_name = "page_size"]; // @gotags: `class:"public"`
 }
 

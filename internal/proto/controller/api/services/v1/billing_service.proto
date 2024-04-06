@@ -14,7 +14,7 @@ option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/s
 service BillingService {
   option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_tag) = {
     name: "Billing service"
-    description: "The Billing service provides the usage data. It includes the active users in a given time period."
+    description: "The billing service provides the usage data. It includes the active users in a given time period."
   };
 
   // MonthlyActiveUsers returns the monthly active users for the given time period.

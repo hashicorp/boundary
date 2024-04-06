@@ -34,12 +34,12 @@ service AccountService {
       get: "/v1/accounts/{id}"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Gets a single account based on the input id"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Gets a single account based on the input ID"};
   }
 
   // ListAccounts returns a list of stored accounts which exist inside the
   // provided auth method. The request must include the auth method id which
-  // contains the accounts being listed. If missing or malformed an error
+  // contains the accounts being listed. If missing or malformed, an error
   // is returned.
   rpc ListAccounts(ListAccountsRequest) returns (ListAccountsResponse) {
     option (google.api.http) = {get: "/v1/accounts"};
@@ -111,7 +111,7 @@ service AccountService {
 }
 
 message GetAccountRequest {
-  // The id of the account that should be retrieved.
+  // The ID of the account that should be retrieved.
   string id = 1; // @gotags: `class:"public" eventstream:"observation"`
 }
 
@@ -120,20 +120,20 @@ message GetAccountResponse {
 }
 
 message ListAccountsRequest {
-  // The id of the auth method whose accounts should be listed.
+  // The ID of the auth method whose accounts should be listed.
   string auth_method_id = 1 [json_name = "auth_method_id"]; // @gotags: `class:"public" eventstream:"observation"`
-  // Filter can be specified to only return items that match the filter.
-  // See [filter expressions](https://developer.hashicorp.com/boundary/docs/concepts/filtering) for more information.
+  // You can specify that the filter should only return items that match.
+  // Refer to [filter expressions](https://developer.hashicorp.com/boundary/docs/concepts/filtering) for more information.
   string filter = 30 [json_name = "filter"]; // @gotags: `class:"sensitive"`
-  // An opaque token used to continue an existing iteration or
-  // request updated items. If not specified, pagination
-  // will start from the beginning. To learn more about list pagination
+  // An opaque token that Boundary uses to continue an existing iteration or
+  // request updated items. If you do not specify a token, pagination
+  // starts from the beginning. To learn more about list pagination
   // in Boundary, refer to [list pagination](https://developer.hashicorp.com/boundary/docs/api-clients/api/pagination).
   string list_token = 40 [json_name = "list_token"]; // @gotags: `class:"public"`
   // The maximum size of a page in this iteration.
-  // If unset, the default page size configured will be used.
-  // If the page_size is greater than the default page configured,
-  // the page size will be truncated to this number.
+  // If you do not set a page size, Boundary uses the configured default page size.
+  // If the page_size is greater than the default page size configured,
+  // Boundary truncates the page size to this number.
   uint32 page_size = 50 [json_name = "page_size"]; // @gotags: `class:"public"`
 }
 
@@ -172,9 +172,9 @@ message CreateAccountResponse {
 }
 
 message UpdateAccountRequest {
-  // The id of the account that should be updated.
+  // The ID of the account that should be updated.
   string id = 1; // @gotags: `class:"public" eventstream:"observation"`
-  // A subset of the account containing the fields to update.
+  // A subset of the account that contains the fields to update.
   resources.accounts.v1.Account item = 2;
   google.protobuf.FieldMask update_mask = 3 [json_name = "update_mask"];
 }
@@ -184,14 +184,14 @@ message UpdateAccountResponse {
 }
 
 message DeleteAccountRequest {
-  // The id of the account to delete.
+  // The ID of the account to delete.
   string id = 1; // @gotags: `class:"public" eventstream:"observation"`
 }
 
 message DeleteAccountResponse {}
 
 message SetPasswordRequest {
-  // The id of the account for which the password should be set.
+  // The ID of the account for which the password should be set.
   string id = 1; // @gotags: `class:"public" eventstream:"observation"`
   // Version is used to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
@@ -205,7 +205,7 @@ message SetPasswordResponse {
 }
 
 message ChangePasswordRequest {
-  // The id of the account for which the password should be changed.
+  // The ID of the account for which the password should be changed.
   string id = 1; // @gotags: `class:"public" eventstream:"observation"`
   // Version is used to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.

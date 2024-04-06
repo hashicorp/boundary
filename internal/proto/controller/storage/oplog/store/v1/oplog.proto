@@ -3,7 +3,7 @@
 
 syntax = "proto3";
 
-// define an oplog package within the boundary controller
+// define an oplog package within the Boundary controller
 package controller.storage.oplog.store.v1;
 
 import "controller/storage/timestamp/v1/timestamp.proto";

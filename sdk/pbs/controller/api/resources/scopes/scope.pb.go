@@ -33,15 +33,15 @@ type ScopeInfo struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// The ID of the Scope.
+	// The ID of the scope.
 	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
-	// The type of the Scope.
+	// The type of the scope.
 	Type string `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
-	// The name of the Scope, if any.
+	// The name of the scope, if any.
 	Name string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty" class:"public"` // @gotags: `class:"public"`
-	// The description of the Scope, if any.
+	// The description of the scope, if any.
 	Description string `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty" class:"public"` // @gotags: `class:"public"`
-	// The ID of the parent Scope, if any. This field will be empty if this is the "global" scope.
+	// The ID of the parent scope, if any. This field is empty if it is the "global" scope.
 	ParentScopeId string `protobuf:"bytes,5,opt,name=parent_scope_id,proto3" json:"parent_scope_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 }
 
@@ -112,15 +112,15 @@ func (x *ScopeInfo) GetParentScopeId() string {
 	return ""
 }
 
-// Scope contains all fields related to a Scope resource
+// Scope contains all fields related to a scope resource
 type Scope struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// The ID of the Scope.
+	// The ID of the scope.
 	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
-	// The ID of the Scope this resource is in. If this is the "global" Scope this field will be empty.
+	// The ID of the scope this resource is in. If this is the "global" scope this field will be empty.
 	ScopeId string `protobuf:"bytes,20,opt,name=scope_id,proto3" json:"scope_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Scope information for this resource.
 	Scope *ScopeInfo `protobuf:"bytes,30,opt,name=scope,proto3" json:"scope,omitempty"`

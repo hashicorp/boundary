@@ -41,7 +41,7 @@ type AccountServiceClient interface {
 	GetAccount(ctx context.Context, in *GetAccountRequest, opts ...grpc.CallOption) (*GetAccountResponse, error)
 	// ListAccounts returns a list of stored accounts which exist inside the
 	// provided auth method. The request must include the auth method id which
-	// contains the accounts being listed. If missing or malformed an error
+	// contains the accounts being listed. If missing or malformed, an error
 	// is returned.
 	ListAccounts(ctx context.Context, in *ListAccountsRequest, opts ...grpc.CallOption) (*ListAccountsResponse, error)
 	// CreateAccount creates and stores an account in boundary. The provided
@@ -154,7 +154,7 @@ type AccountServiceServer interface {
 	GetAccount(context.Context, *GetAccountRequest) (*GetAccountResponse, error)
 	// ListAccounts returns a list of stored accounts which exist inside the
 	// provided auth method. The request must include the auth method id which
-	// contains the accounts being listed. If missing or malformed an error
+	// contains the accounts being listed. If missing or malformed, an error
 	// is returned.
 	ListAccounts(context.Context, *ListAccountsRequest) (*ListAccountsResponse, error)
 	// CreateAccount creates and stores an account in boundary. The provided

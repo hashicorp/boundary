@@ -19,13 +19,13 @@ service AliasService {
     name: "Alias service"
     description:
       "The alias service exposes endpoints for interacting with aliases in Boundary. "
-      "An alias acts as a reference or an alternate id for an existing entity within the Boundary access control system. "
+      "An alias acts as a reference or an alternate ID for an existing entity within the Boundary access control system. "
       "It provides a way to simplify access control by offering a more user-friendly or descriptive identifier for an entity."
   };
 
-  // GetAlias returns a stored Alias if present. The provided request must
-  // include the id for the Alias be retrieved. If missing, malformed or
-  // referencing a non existing Alias an error is returned.
+  // GetAlias returns a stored alias if present. The provided request must
+  // include the id for the alias be retrieved. If missing, malformed or
+  // referencing a non existing alias an error is returned.
   rpc GetAlias(GetAliasRequest) returns (GetAliasResponse) {
     option (google.api.http) = {
       get: "/v1/aliases/{id}"
@@ -34,20 +34,20 @@ service AliasService {
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Gets a single Alias."};
   }
 
-  // ListAliases returns a list of stored Aliases which exist inside the
+  // ListAliases returns a list of stored aliases which exist inside the
   // provided Scope. The request must include the Scope id which
-  // contains the Aliases being listed. If missing or malformed an error
+  // contains the aliases being listed. If missing or malformed, an error
   // is returned.
   rpc ListAliases(ListAliasesRequest) returns (ListAliasesResponse) {
     option (google.api.http) = {get: "/v1/aliases"};
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Lists all Aliases in a specific Scope."};
   }
 
-  // CreateAlias creates and stores an Alias in boundary. The provided
-  // request must include the Scope ID in which the Alias will be
+  // CreateAlias creates and stores an alias in boundary. The provided
+  // request must include the Scope ID in which the alias will be
   // created. If the Scope ID is missing, malformed, or references a non
   // existing resource an error is returned. If a name or login_name is
-  // provided that is in use in another Alias in the same Scope an
+  // provided that is in use in another alias in the same Scope an
   // error is returned.
   rpc CreateAlias(CreateAliasRequest) returns (CreateAliasResponse) {
     option (google.api.http) = {
@@ -58,11 +58,11 @@ service AliasService {
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Creates a single Alias in the provided scope."};
   }
 
-  // UpdateAlias updates an existing Alias in boundary. The provided Alias
+  // UpdateAlias updates an existing alias in boundary. The provided alias
   // must not have any read only fields set. The update mask must be included in
   // the request and contain at least 1 mutable field. To unset a field's value,
   // include the field in the update mask and don't set it in the provided
-  // Alias. An error is returned if the Alias id is missing or references a
+  // alias. An error is returned if the alias id is missing or references a
   // non-existing resource. An error is also returned if the request attempts
   // to update the name or login_name to one that is already in use in the
   // containing Scope.
@@ -75,7 +75,7 @@ service AliasService {
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Updates an Alias."};
   }
 
-  // DeleteAlias removes an Alias from Boundary. If the provided Alias Id
+  // DeleteAlias removes an alias from Boundary. If the provided alias Id
   // is malformed or not provided an error is returned.
   rpc DeleteAlias(DeleteAliasRequest) returns (DeleteAliasResponse) {
     option (google.api.http) = {delete: "/v1/aliases/{id}"};
@@ -84,7 +84,7 @@ service AliasService {
 }
 
 message GetAliasRequest {
-  // The id of the Alias to retrieve.
+  // The ID of the alias to retrieve.
   string id = 1; // @gotags: `class:"public" eventstream:"observation"`
 }
 
@@ -93,26 +93,26 @@ message GetAliasResponse {
 }
 
 message ListAliasesRequest {
-  // The id of the scope in which to list aliases
+  // The ID of the scope in which to list aliases
   string scope_id = 1 [json_name = "scope_id"]; // @gotags: `class:"public" eventstream:"observation"`
 
-  // Whether to recursively list aliases in child scopes of the provided scope.
+  // Whether to recursively list aliases in the provided scope's child scopes.
   bool recursive = 2; // @gotags: `class:"public"`
 
-  // Filter can be specified to only return items that match the filter.
-  // See [filter expressions](https://developer.hashicorp.com/boundary/docs/concepts/filtering) for more information.
+  // You can specify that the filter should only return items that match.
+  // Refer to [filter expressions](https://developer.hashicorp.com/boundary/docs/concepts/filtering) for more information.
   string filter = 30 [json_name = "filter"]; // @gotags: `class:"sensitive"`
 
-  // An opaque token used to continue an existing iteration or
-  // request updated items. If not specified, pagination
-  // will start from the beginning. To learn more about list pagination
+  // An opaque token that Boundary uses to continue an existing iteration or
+  // request updated items. If you do not specify a token, pagination
+  // starts from the beginning. To learn more about list pagination
   // in Boundary, refer to [list pagination](https://developer.hashicorp.com/boundary/docs/api-clients/api/pagination).
   string list_token = 40 [json_name = "list_token"]; // @gotags: `class:"public"`
 
   // The maximum size of a page in this iteration.
-  // If unset, the default page size configured will be used.
-  // If the page_size is greater than the default page configured,
-  // the page size will be truncated to this number.
+  // If you do not set a page size, Boundary uses the configured default page size.
+  // If the page_size is greater than the default page size configured,
+  // Boundary truncates the page size to this number.
   uint32 page_size = 50 [json_name = "page_size"]; // @gotags: `class:"public"`
 }
 
@@ -157,9 +157,9 @@ message CreateAliasResponse {
 }
 
 message UpdateAliasRequest {
-  // The id of the Alias to update.
+  // The ID of the alias to update.
   string id = 1; // @gotags: `class:"public" eventstream:"observation"`
-  // A subset of the alias containing the fields to update.
+  // A subset of the alias that contains the fields to update.
   resources.aliases.v1.Alias item = 2;
   google.protobuf.FieldMask update_mask = 3 [json_name = "update_mask"];
 }
@@ -169,7 +169,7 @@ message UpdateAliasResponse {
 }
 
 message DeleteAliasRequest {
-  // The id of the alias to delete.
+  // The ID of the alias to delete.
   string id = 1; // @gotags: `class:"public" eventstream:"observation"`
 }
 

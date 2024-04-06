@@ -14,31 +14,31 @@ import "google/protobuf/wrappers.proto";
 option go_package = "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes;scopes";
 
 message ScopeInfo {
-  // The ID of the Scope.
+  // The ID of the scope.
   string id = 1 [(google.api.field_behavior) = OUTPUT_ONLY]; // @gotags: `class:"public" eventstream:"observation"`
 
-  // The type of the Scope.
+  // The type of the scope.
   string type = 2 [(google.api.field_behavior) = OUTPUT_ONLY]; // @gotags: `class:"public" eventstream:"observation"`
 
-  // The name of the Scope, if any.
+  // The name of the scope, if any.
   string name = 3 [(google.api.field_behavior) = OUTPUT_ONLY]; // @gotags: `class:"public"`
 
-  // The description of the Scope, if any.
+  // The description of the scope, if any.
   string description = 4 [(google.api.field_behavior) = OUTPUT_ONLY]; // @gotags: `class:"public"`
 
-  // The ID of the parent Scope, if any. This field will be empty if this is the "global" scope.
+  // The ID of the parent scope, if any. This field is empty if it is the "global" scope.
   string parent_scope_id = 5 [
     json_name = "parent_scope_id",
     (google.api.field_behavior) = OUTPUT_ONLY
   ]; // @gotags: `class:"public" eventstream:"observation"`
 }
 
-// Scope contains all fields related to a Scope resource
+// Scope contains all fields related to a scope resource
 message Scope {
-  // The ID of the Scope.
+  // The ID of the scope.
   string id = 10 [(google.api.field_behavior) = OUTPUT_ONLY]; // @gotags: `class:"public" eventstream:"observation"`
 
-  // The ID of the Scope this resource is in. If this is the "global" Scope this field will be empty.
+  // The ID of the scope this resource is in. If this is the "global" scope this field will be empty.
   string scope_id = 20 [json_name = "scope_id"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Scope information for this resource.

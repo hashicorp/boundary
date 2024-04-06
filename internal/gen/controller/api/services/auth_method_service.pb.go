@@ -133,20 +133,20 @@ type ListAuthMethodsRequest struct {
 
 	// The scope id in which to list auth methods.
 	ScopeId string `protobuf:"bytes,1,opt,name=scope_id,proto3" json:"scope_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
-	// Whether to recursively list auth methods in child scopes of the provided scope.
+	// Whether to recursively list auth methods in the provided scope's child scopes.
 	Recursive bool `protobuf:"varint,20,opt,name=recursive,proto3" json:"recursive,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
-	// Filter can be specified to only return items that match the filter.
-	// See [filter expressions](https://developer.hashicorp.com/boundary/docs/concepts/filtering) for more information.
+	// You can specify that the filter should only return items that match.
+	// Refer to [filter expressions](https://developer.hashicorp.com/boundary/docs/concepts/filtering) for more information.
 	Filter string `protobuf:"bytes,30,opt,name=filter,proto3" json:"filter,omitempty" class:"public"` // @gotags: `class:"public"`
-	// An opaque token used to continue an existing iteration or
-	// request updated items. If not specified, pagination
-	// will start from the beginning. To learn more about list pagination
+	// An opaque token that Boundary uses to continue an existing iteration or
+	// request updated items. If you do not specify a token, pagination
+	// starts from the beginning. To learn more about list pagination
 	// in Boundary, refer to [list pagination](https://developer.hashicorp.com/boundary/docs/api-clients/api/pagination).
 	ListToken string `protobuf:"bytes,40,opt,name=list_token,proto3" json:"list_token,omitempty" class:"public"` // @gotags: `class:"public"`
 	// The maximum size of a page in this iteration.
-	// If unset, the default page size configured will be used.
-	// If the page_size is greater than the max page size configured,
-	// the page size will be truncated to this number.
+	// If you do not set a page size, Boundary uses the configured default page size.
+	// If the page_size is greater than the default page size configured,
+	// Boundary truncates the page size to this number.
 	PageSize uint32 `protobuf:"varint,50,opt,name=page_size,proto3" json:"page_size,omitempty" class:"public"` // @gotags: `class:"public"`
 }
 
@@ -1148,7 +1148,7 @@ type isAuthenticateRequest_Attrs interface {
 }
 
 type AuthenticateRequest_Attributes struct {
-	// Attributes are passed to the auth method; the valid keys and values depend on the type of auth method as well as the command.
+	// Attributes are passed to the auth method. The valid keys and values depend on the type of auth method as well as the command.
 	Attributes *structpb.Struct `protobuf:"bytes,4,opt,name=attributes,proto3,oneof"`
 }
 
@@ -1697,7 +1697,7 @@ var file_controller_api_services_v1_auth_method_service_proto_rawDesc = []byte{
 	0x3a, 0x61, 0x75, 0x74, 0x68, 0x65, 0x6e, 0x74, 0x69, 0x63, 0x61, 0x74, 0x65, 0x1a, 0xba, 0x03,
 	0x92, 0x41, 0xb6, 0x03, 0x0a, 0x13, 0x41, 0x75, 0x74, 0x68, 0x20, 0x6d, 0x65, 0x74, 0x68, 0x6f,
 	0x64, 0x20, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x12, 0x93, 0x02, 0x54, 0x68, 0x65, 0x20,
-	0x41, 0x75, 0x74, 0x68, 0x20, 0x6d, 0x65, 0x74, 0x68, 0x6f, 0x64, 0x20, 0x73, 0x65, 0x72, 0x76,
+	0x61, 0x75, 0x74, 0x68, 0x20, 0x6d, 0x65, 0x74, 0x68, 0x6f, 0x64, 0x20, 0x73, 0x65, 0x72, 0x76,
 	0x69, 0x63, 0x65, 0x20, 0x65, 0x78, 0x70, 0x6f, 0x73, 0x65, 0x73, 0x20, 0x65, 0x6e, 0x64, 0x70,
 	0x6f, 0x69, 0x6e, 0x74, 0x73, 0x20, 0x66, 0x6f, 0x72, 0x20, 0x69, 0x6e, 0x74, 0x65, 0x72, 0x61,
 	0x63, 0x74, 0x69, 0x6e, 0x67, 0x20, 0x77, 0x69, 0x74, 0x68, 0x20, 0x61, 0x75, 0x74, 0x68, 0x20,

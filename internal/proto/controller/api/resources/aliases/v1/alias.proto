@@ -16,15 +16,15 @@ import "protoc-gen-openapiv2/options/annotations.proto";
 
 option go_package = "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/aliases;aliases";
 
-// Alias contains all fields related to an Alias resource
+// Alias contains all fields related to an alias resource
 message Alias {
-  // The ID of the Alias.
+  // The ID of the alias.
   string id = 10 [(google.api.field_behavior) = OUTPUT_ONLY]; // @gotags: `class:"public" eventstream:"observation"`
 
-  // The ID of the scope of which this Alias is a part.
+  // The ID of the scope of which this alias is a part.
   string scope_id = 20 [json_name = "scope_id"]; // @gotags: `class:"public" eventstream:"observation"`
 
-  // Scope information for this Alias.
+  // Scope information for this alias.
   resources.scopes.v1.ScopeInfo scope = 30 [(google.api.field_behavior) = OUTPUT_ONLY];
 
   // Optional user-set name for identification purposes.
@@ -58,8 +58,8 @@ message Alias {
   ]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.
-  // The mutation will fail if the version does not match the latest known good version.
-  // Not required when creating an alias.
+  // The mutation fails if the version does not match the latest known good version.
+  // Version is not required when you create an alias.
   uint32 version = 80; // @gotags: `class:"public"`
 
   // Value of the alias. This is the value referenced by the user that
@@ -72,7 +72,7 @@ message Alias {
     }
   ]; // @gotags: `class:"public"`
 
-  // destination_id is the id of the resource that this Alias points to.
+  // destination_id is the id of the resource that this alias points to.
   google.protobuf.StringValue destination_id = 100 [
     json_name = "destination_id",
     (custom_options.v1.generate_sdk_option) = true,
@@ -86,7 +86,7 @@ message Alias {
   string type = 110; // @gotags: `class:"public" eventstream:"observation"`
 
   oneof attrs {
-    // The attributes that are applicable for the specific Alias type.
+    // The attributes that are applicable for the specific alias type.
     google.protobuf.Struct attributes = 120 [
       (custom_options.v1.generate_sdk_option) = true,
       (custom_options.v1.subtype) = "default",
@@ -95,7 +95,7 @@ message Alias {
         description:
           "The attributes that are applicable for the specific alias type. "
           "The schema of this field depends on the type of resource "
-          "that the alias is being created in.\n"
+          "that you create the alias for.\n"
           "For target aliases, the parameters are:\n"
           "```json\n"
           "{\n"
@@ -118,7 +118,7 @@ message Alias {
   ]; // @gotags: `class:"public"`
 }
 
-// Attributes associated only with Aliases with type "target".
+// Attributes associated only with aliases with type "target".
 message TargetAliasAttributes {
   // The arguments to provide to authorize_session of the target.
   AuthorizeSessionArguments authorize_session_arguments = 1 [json_name = "authorize_session_arguments"]; // @gotags: `class:"public"`

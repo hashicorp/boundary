@@ -7,7 +7,7 @@
 // 	protoc        (unknown)
 // source: controller/storage/oplog/store/v1/oplog.proto
 
-// define an oplog package within the boundary controller
+// define an oplog package within the Boundary controller
 
 package store
 

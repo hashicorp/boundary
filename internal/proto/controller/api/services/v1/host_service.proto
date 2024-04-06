@@ -18,7 +18,8 @@ service HostService {
   option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_tag) = {
     name: "Host service"
     description:
-      "A host is a resource that represents a computing element with a network address reachable from a Boundary worker. "
+      "A host is a resource that represents a computing element with a network "
+      "address that is reachable from a Boundary worker. "
       "The host service provides endpoints for managing hosts in Boundary."
     external_docs: {
       url: "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/hosts";
@@ -96,10 +97,13 @@ message GetHostResponse {
 
 message ListHostsRequest {
   string host_catalog_id = 1 [json_name = "host_catalog_id"]; // @gotags: `class:"public" eventstream:"observation"`
+  // You can specify that the filter should only return items that match.
+  // Refer to [filter expressions](https://developer.hashicorp.com/boundary/docs/concepts/filtering) for more information.
   string filter = 30 [json_name = "filter"]; // @gotags: `class:"public"`
-  // An opaque token used to continue an existing iteration or
-  // request updated items. If not specified, pagination
-  // will start from the beginning.
+  // An opaque token that Boundary uses to continue an existing iteration or
+  // request updated items. If you do not specify a token, pagination
+  // starts from the beginning. To learn more about list pagination
+  // in Boundary, refer to [list pagination](https://developer.hashicorp.com/boundary/docs/api-clients/api/pagination).
   string list_token = 40 [json_name = "list_token"]; // @gotags: `class:"public"`
   // The maximum size of a page in this iteration.
   // If unset, the default page size configured will be used.

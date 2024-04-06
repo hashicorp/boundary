@@ -129,15 +129,18 @@ type ListCredentialStoresRequest struct {
 
 	ScopeId   string `protobuf:"bytes,1,opt,name=scope_id,proto3" json:"scope_id,omitempty" class:"public"`     // @gotags: `class:"public"`
 	Recursive bool   `protobuf:"varint,20,opt,name=recursive,proto3" json:"recursive,omitempty" class:"public"` // @gotags: `class:"public"`
-	Filter    string `protobuf:"bytes,30,opt,name=filter,proto3" json:"filter,omitempty" class:"public"`        // @gotags: `class:"public"`
-	// An opaque token used to continue an existing iteration or
-	// request updated items. If not specified, pagination
-	// will start from the beginning.
+	// You can specify that the filter should only return items that match.
+	// Refer to [filter expressions](https://developer.hashicorp.com/boundary/docs/concepts/filtering) for more information.
+	Filter string `protobuf:"bytes,30,opt,name=filter,proto3" json:"filter,omitempty" class:"public"` // @gotags: `class:"public"`
+	// An opaque token that Boundary uses to continue an existing iteration or
+	// request updated items. If you do not specify a token, pagination
+	// starts from the beginning. To learn more about list pagination
+	// in Boundary, refer to [list pagination](https://developer.hashicorp.com/boundary/docs/api-clients/api/pagination).
 	ListToken string `protobuf:"bytes,40,opt,name=list_token,proto3" json:"list_token,omitempty" class:"public"` // @gotags: `class:"public"`
 	// The maximum size of a page in this iteration.
-	// If unset, the default page size configured will be used.
-	// If the page_size is greater than the max page size configured,
-	// the page size will be truncated to this number.
+	// If you do not set a page size, Boundary uses the configured default page size.
+	// If the page_size is greater than the default page size configured,
+	// Boundary truncates the page size to this number.
 	PageSize uint32 `protobuf:"varint,50,opt,name=page_size,proto3" json:"page_size,omitempty" class:"public"` // @gotags: `class:"public"`
 }
 
