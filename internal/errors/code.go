@@ -128,6 +128,8 @@ const (
 	UnexpectedRowsAffected Code = 1107
 	// ImmutableColumn is used when an operation attempted to mutate an immutable column.
 	ImmutableColumn Code = 1108
+	// InvalidTextRepresentation represents a value does not have the correct text representation.
+	InvalidTextRepresentation Code = 1109
 
 	// Migration setup errors are codes 2000-2999
 	MigrationIntegrity Code = 2000 // MigrationIntegrity represents an error with the generated migration related code

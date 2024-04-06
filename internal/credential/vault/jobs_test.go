@@ -22,6 +22,7 @@ import (
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/target/tcp"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	"github.com/hashicorp/go-uuid"
 	vault "github.com/hashicorp/vault/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -2175,6 +2176,46 @@ func TestNewCredentialCleanupJob(t *testing.T) {
 			assert.Equal(tt.args.w, got.writer)
 		})
 	}
+}
+
+func TestVaultJobsCorrelationId(t *testing.T) {
+	assert, require := assert.New(t), require.New(t)
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	rw := db.New(conn)
+
+	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	cs := TestCredentialStore(t, conn, wrapper, prj.PublicId, "http://vault", "vault-token", "accessor")
+	lib := TestCredentialLibraries(t, conn, wrapper, cs.PublicId, 1)[0]
+	token := cs.Token()
+
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+
+	// Create session with known correlationId
+	corId, err := uuid.GenerateUUID()
+	require.NoError(err)
+
+	composedOf := session.TestSessionParams(t, conn, wrapper, iamRepo)
+	composedOf.CorrelationId = corId
+
+	sess := session.TestSession(t, conn, wrapper, composedOf)
+	got, err := newCredential(ctx, lib.GetPublicId(), "some/vault/credential", token.GetTokenHmac(), time.Minute)
+	require.NoError(err)
+	id, err := newCredentialId(ctx)
+	assert.NoError(err)
+	got.PublicId = id
+	query, queryValues := insertQuery(got, sess.PublicId)
+	require.NoError(err)
+	rows, err := rw.Exec(ctx, query, queryValues)
+	assert.Equal(1, rows)
+	assert.NoError(err)
+
+	cred := &privateCredential{PublicId: id}
+	err = rw.LookupById(ctx, cred)
+	require.NoError(err)
+	require.NotEmpty(cred.SessionCorrelationId)
+	assert.Equal(corId, cred.SessionCorrelationId)
 }
 
 func TestCredentialCleanupJob_Run(t *testing.T) {

@@ -198,6 +198,9 @@ func Convert(e error) *Err {
 			return E(ctx, WithoutEvent(), WithCode(ColumnNotFound), WithMsg(pgxError.Message)).(*Err)
 		case "P0001":
 			return E(ctx, WithoutEvent(), WithCode(Exception), WithMsg(pgxError.Message)).(*Err)
+		case "22P02":
+			return E(ctx, WithoutEvent(), WithCode(InvalidTextRepresentation), WithMsg(pgxError.Message)).(*Err)
+
 		}
 	}
 	// unfortunately, we can't help.

@@ -11,7 +11,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/go-rootcerts"
 	vault "github.com/hashicorp/vault/api"
 	"github.com/mitchellh/mapstructure"
@@ -114,6 +116,10 @@ func newClient(ctx context.Context, c *clientConfig) (*client, error) {
 
 	if c.Namespace != "" {
 		vClient.SetNamespace(c.Namespace)
+	}
+
+	if correlationId, ok := event.CorrelationIdFromContext(ctx); ok {
+		vClient.AddHeader(globals.CorrelationIdKey, correlationId)
 	}
 
 	return &client{

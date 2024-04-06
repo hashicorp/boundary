@@ -49,6 +49,7 @@ type options struct {
 	withGating           bool
 	withNoGateLocking    bool
 	withTelemetry        bool
+	withCorrelationId    string
 
 	// These options are related to the hclog adapter
 	withHclogLevel hclog.Level
@@ -129,6 +130,13 @@ func WithInfoMsg(msg string, args ...any) Option {
 func WithRequestInfo(i *RequestInfo) Option {
 	return func(o *options) {
 		o.withRequestInfo = i
+	}
+}
+
+// withCorrelationId allows an optional CorrelationId
+func withCorrelationId(id string) Option {
+	return func(o *options) {
+		o.withCorrelationId = id
 	}
 }
 

@@ -22,6 +22,7 @@ import (
 	"github.com/hashicorp/boundary/internal/target/tcp"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-secure-stdlib/base62"
+	"github.com/hashicorp/go-uuid"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -104,6 +105,11 @@ func TestSession(t testing.TB, conn *db.DB, rootWrapper wrapping.Wrapper, c Comp
 	if c.ExpirationTime == nil {
 		future := timestamppb.New(time.Now().Add(time.Hour))
 		c.ExpirationTime = &timestamp.Timestamp{Timestamp: future}
+	}
+	if c.CorrelationId == "" {
+		correlationId, err := uuid.GenerateUUID()
+		require.NoError(err)
+		c.CorrelationId = correlationId
 	}
 	rw := db.New(conn)
 	s, err := New(ctx, c, opt...)
@@ -191,6 +197,8 @@ func TestSessionTargetAddressParams(t testing.TB, conn *db.DB, wrapper wrapping.
 
 	expTime := timestamppb.Now()
 	expTime.Seconds += int64(tcpTarget.GetSessionMaxSeconds())
+	correlationId, err := uuid.GenerateUUID()
+	require.NoError(err)
 	return ComposedOf{
 		UserId:          user.PublicId,
 		TargetId:        tcpTarget.GetPublicId(),
@@ -199,6 +207,7 @@ func TestSessionTargetAddressParams(t testing.TB, conn *db.DB, wrapper wrapping.
 		Endpoint:        "tcp://127.0.0.1:22",
 		ExpirationTime:  &timestamp.Timestamp{Timestamp: expTime},
 		ConnectionLimit: tcpTarget.GetSessionConnectionLimit(),
+		CorrelationId:   correlationId,
 	}
 }
 
@@ -245,6 +254,8 @@ func TestSessionParams(t testing.TB, conn *db.DB, wrapper wrapping.Wrapper, iamR
 
 	expTime := timestamppb.Now()
 	expTime.Seconds += int64(tcpTarget.GetSessionMaxSeconds())
+	correlationId, err := uuid.GenerateUUID()
+	require.NoError(err)
 	return ComposedOf{
 		UserId:          user.PublicId,
 		HostId:          hosts[0].PublicId,
@@ -255,6 +266,7 @@ func TestSessionParams(t testing.TB, conn *db.DB, wrapper wrapping.Wrapper, iamR
 		Endpoint:        "tcp://127.0.0.1:22",
 		ExpirationTime:  &timestamp.Timestamp{Timestamp: expTime},
 		ConnectionLimit: tcpTarget.GetSessionConnectionLimit(),
+		CorrelationId:   correlationId,
 	}
 }
 

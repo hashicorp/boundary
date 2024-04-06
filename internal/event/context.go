@@ -25,6 +25,7 @@ const cancelledSendTimeout = 3 * time.Second
 const (
 	eventerKey key = iota
 	requestInfoKey
+	correlationIdKey
 )
 
 func init() {
@@ -79,6 +80,29 @@ func RequestInfoFromContext(ctx context.Context) (*RequestInfo, bool) {
 		return nil, false
 	}
 	reqInfo, ok := ctx.Value(requestInfoKey).(*RequestInfo)
+	return reqInfo, ok
+}
+
+// NewCorrelationIdContext will return a context containing a value for the
+// provided CorrelationId
+func NewCorrelationIdContext(ctx context.Context, correlationId string) (context.Context, error) {
+	const op = "event.NewCorrelationContext"
+	if ctx == nil {
+		return nil, fmt.Errorf("%s: missing context: %w", op, ErrInvalidParameter)
+	}
+	if correlationId == "" {
+		return nil, fmt.Errorf("%s: missing correlation id: %w", op, ErrInvalidParameter)
+	}
+	return context.WithValue(ctx, correlationIdKey, correlationId), nil
+}
+
+// CorrelationIdFromContext attempts to get the Correlation Id value from the context
+// provided
+func CorrelationIdFromContext(ctx context.Context) (string, bool) {
+	if ctx == nil {
+		return "", false
+	}
+	reqInfo, ok := ctx.Value(correlationIdKey).(string)
 	return reqInfo, ok
 }
 
@@ -217,6 +241,9 @@ func WriteAudit(ctx context.Context, caller Op, opt ...Option) error {
 		if opt, err = addCtxOptions(ctx, opt...); err != nil {
 			return fmt.Errorf("%s: %w", op, err)
 		}
+	}
+	if correlationId, ok := CorrelationIdFromContext(ctx); ok {
+		opt = append(opt, withCorrelationId(correlationId))
 	}
 	e, err := newAudit(caller, opt...)
 	if err != nil {

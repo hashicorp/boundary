@@ -25,6 +25,7 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/event"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	intglobals "github.com/hashicorp/boundary/internal/globals"
 	"github.com/hashicorp/boundary/internal/host"
@@ -817,6 +818,10 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
+	correlationId, ok := event.CorrelationIdFromContext(ctx)
+	if !ok {
+		return nil, stderrors.New("authorize session: missing correlation id")
+	}
 
 	if authResults.RoundTripValue == nil {
 		return nil, stderrors.New("authorize session: expected to get a target back from auth results")
@@ -1039,6 +1044,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 		IngressWorkerFilter: t.GetIngressWorkerFilter(),
 		DynamicCredentials:  dynCreds,
 		StaticCredentials:   staticCreds,
+		CorrelationId:       correlationId,
 	}
 	if protoWorker != nil {
 		sessionComposition.ProtocolWorkerId = protoWorker.GetPublicId()

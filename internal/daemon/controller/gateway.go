@@ -5,8 +5,11 @@ package controller
 
 import (
 	"context"
+	"fmt"
 	"math"
 	"net"
+	"net/http"
+	"strings"
 
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_recovery "github.com/grpc-ecosystem/go-grpc-middleware/recovery"
@@ -19,8 +22,10 @@ import (
 	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/types/subtypes"
+	"github.com/hashicorp/go-uuid"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/test/bufconn"
 )
 
@@ -52,6 +57,7 @@ func (noDelimiterStreamingMarshaler) Delimiter() []byte {
 
 func newGrpcGatewayMux() *runtime.ServeMux {
 	return runtime.NewServeMux(
+		runtime.WithMetadata(correlationIdAnnotator),
 		runtime.WithMarshalerOption(runtime.MIMEWildcard, &noDelimiterStreamingMarshaler{
 			&runtime.HTTPBodyMarshaler{
 				Marshaler: handlers.JSONMarshaler(),
@@ -60,6 +66,30 @@ func newGrpcGatewayMux() *runtime.ServeMux {
 		runtime.WithErrorHandler(handlers.ErrorHandler()),
 		runtime.WithForwardResponseOption(handlers.OutgoingResponseFilter),
 	)
+}
+
+func correlationIdAnnotator(_ context.Context, req *http.Request) metadata.MD {
+	var correlationId string
+	for k, v := range req.Header {
+		if strings.ToLower(k) == globals.CorrelationIdKey {
+			correlationId = v[0]
+			break
+		}
+	}
+	if correlationId == "" {
+		var err error
+		correlationId, err = uuid.GenerateUUID()
+
+		// GenerateUUID should not return an error. If it does, panic since there is no
+		// err return path here.
+		if err != nil {
+			panic(fmt.Sprintf("failed to generate correlation id: %v", err))
+		}
+	}
+
+	return metadata.New(map[string]string{
+		globals.CorrelationIdKey: correlationId,
+	})
 }
 
 // newGrpcServerListener will create an in-memory listener for the gRPC server.
@@ -116,6 +146,7 @@ func newGrpcServer(
 		grpc.UnaryInterceptor(
 			grpc_middleware.ChainUnaryServer(
 				unaryCtxInterceptor,                           // populated requestInfo from headers into the request ctx
+				correlationIdInterceptor(ctx),                 // populate correlationId from headers or generate random id
 				errorInterceptor(ctx),                         // convert domain and api errors into headers for the http proxy
 				aliasResolutionInterceptor(ctx, aliasRepoFn),  // Resolve ids when an alias is provided
 				subtypes.AttributeTransformerInterceptor(ctx), // convert to/from generic attributes from/to subtype specific attributes
