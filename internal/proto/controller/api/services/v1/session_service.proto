@@ -12,6 +12,17 @@ import "protoc-gen-openapiv2/options/annotations.proto";
 option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/services;services";
 
 service SessionService {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_tag) = {
+    name: "Session service"
+    description:
+      "A session represents a temporary, authorized access connection between a user and a target resource. "
+      "The session service provides endpoints that let you manage sessions in Boundary."
+    external_docs: {
+      url: "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/sessions";
+      description: "Read about sessions in the Boundary domain model";
+    }
+  };
+
   // GetSession returns a stored Session if present.  The provided request
   // must include the Session ID for the Session being retrieved. If
   // any that ID is missing, malformed or reference a non existing
@@ -57,18 +68,21 @@ message GetSessionResponse {
 message ListSessionsRequest {
   string scope_id = 1; // @gotags: `class:"public" eventstream:"observation"`
   bool recursive = 20 [json_name = "recursive"]; // @gotags: `class:"public" eventstream:"observation"`
+  // You can specify that the filter should only return items that match.
+  // Refer to [filter expressions](https://developer.hashicorp.com/boundary/docs/concepts/filtering) for more information.
   string filter = 30 [json_name = "filter"]; // @gotags: `class:"public"`
   // Experimental. By default only non-terminated (i.e. pending, active, canceling) are returned.
   // Set this option to include terminated sessions as well.
   bool include_terminated = 40 [json_name = "include_terminated"]; // @gotags: `class:"public" eventstream:"observation"`
-  // An opaque token used to continue an existing iteration or
-  // request updated items. If not specified, pagination
-  // will start from the beginning.
+  // An opaque token that Boundary uses to continue an existing iteration or
+  // request updated items. If you do not specify a token, pagination
+  // starts from the beginning. To learn more about list pagination
+  // in Boundary, refer to [list pagination](https://developer.hashicorp.com/boundary/docs/api-clients/api/pagination).
   string list_token = 50 [json_name = "list_token"]; // @gotags: `class:"public"`
   // The maximum size of a page in this iteration.
   // If unset, the default page size configured will be used.
   // If the page_size is greater than the default page configured,
-  // an error will be returned.
+  // the page size will be truncated to this number..
   uint32 page_size = 60 [json_name = "page_size"]; // @gotags: `class:"public"`
 }
 

@@ -9,8 +9,10 @@ option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api;a
 
 // Error information relevant to an error that was wrapped by the backend.
 message WrappedError {
-  // An string indicating what operation was being run when the wrapped error was created.
+  // A string indicating what operation was being run when the wrapped error occurred.
   string op = 1;
+
+  // The wrapped error message.
   string message = 2;
 }
 
@@ -36,10 +38,13 @@ message FieldError {
 message Error {
   // The kind of error this is.
   string kind = 1;
+
   // An string indicating what operation was being run when the error was returned.
   string op = 2;
+
   // A human-readable explanation specific to this occurrence of the error.
   string message = 3;
-  // Additional metadata regarding the error. Depending on the error, different fields will be populated.
+
+  // Additional metadata regarding the error. Depending on the error, different fields are populated.
   ErrorDetails details = 4;
 }

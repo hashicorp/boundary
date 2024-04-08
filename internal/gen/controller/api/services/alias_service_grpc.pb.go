@@ -33,32 +33,32 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type AliasServiceClient interface {
-	// GetAlias returns a stored Alias if present. The provided request must
-	// include the id for the Alias be retrieved. If missing, malformed or
-	// referencing a non existing Alias an error is returned.
+	// GetAlias returns a stored alias if present. The provided request must
+	// include the id for the alias be retrieved. If missing, malformed or
+	// referencing a non existing alias an error is returned.
 	GetAlias(ctx context.Context, in *GetAliasRequest, opts ...grpc.CallOption) (*GetAliasResponse, error)
-	// ListAliases returns a list of stored Aliases which exist inside the
+	// ListAliases returns a list of stored aliases which exist inside the
 	// provided Scope. The request must include the Scope id which
-	// contains the Aliases being listed. If missing or malformed an error
+	// contains the aliases being listed. If missing or malformed, an error
 	// is returned.
 	ListAliases(ctx context.Context, in *ListAliasesRequest, opts ...grpc.CallOption) (*ListAliasesResponse, error)
-	// CreateAlias creates and stores an Alias in boundary. The provided
-	// request must include the Scope ID in which the Alias will be
+	// CreateAlias creates and stores an alias in boundary. The provided
+	// request must include the Scope ID in which the alias will be
 	// created. If the Scope ID is missing, malformed, or references a non
 	// existing resource an error is returned. If a name or login_name is
-	// provided that is in use in another Alias in the same Scope an
+	// provided that is in use in another alias in the same Scope an
 	// error is returned.
 	CreateAlias(ctx context.Context, in *CreateAliasRequest, opts ...grpc.CallOption) (*CreateAliasResponse, error)
-	// UpdateAlias updates an existing Alias in boundary. The provided Alias
+	// UpdateAlias updates an existing alias in boundary. The provided alias
 	// must not have any read only fields set. The update mask must be included in
 	// the request and contain at least 1 mutable field. To unset a field's value,
 	// include the field in the update mask and don't set it in the provided
-	// Alias. An error is returned if the Alias id is missing or references a
+	// alias. An error is returned if the alias id is missing or references a
 	// non-existing resource. An error is also returned if the request attempts
 	// to update the name or login_name to one that is already in use in the
 	// containing Scope.
 	UpdateAlias(ctx context.Context, in *UpdateAliasRequest, opts ...grpc.CallOption) (*UpdateAliasResponse, error)
-	// DeleteAlias removes an Alias from Boundary. If the provided Alias Id
+	// DeleteAlias removes an alias from Boundary. If the provided alias Id
 	// is malformed or not provided an error is returned.
 	DeleteAlias(ctx context.Context, in *DeleteAliasRequest, opts ...grpc.CallOption) (*DeleteAliasResponse, error)
 }
@@ -120,32 +120,32 @@ func (c *aliasServiceClient) DeleteAlias(ctx context.Context, in *DeleteAliasReq
 // All implementations must embed UnimplementedAliasServiceServer
 // for forward compatibility
 type AliasServiceServer interface {
-	// GetAlias returns a stored Alias if present. The provided request must
-	// include the id for the Alias be retrieved. If missing, malformed or
-	// referencing a non existing Alias an error is returned.
+	// GetAlias returns a stored alias if present. The provided request must
+	// include the id for the alias be retrieved. If missing, malformed or
+	// referencing a non existing alias an error is returned.
 	GetAlias(context.Context, *GetAliasRequest) (*GetAliasResponse, error)
-	// ListAliases returns a list of stored Aliases which exist inside the
+	// ListAliases returns a list of stored aliases which exist inside the
 	// provided Scope. The request must include the Scope id which
-	// contains the Aliases being listed. If missing or malformed an error
+	// contains the aliases being listed. If missing or malformed, an error
 	// is returned.
 	ListAliases(context.Context, *ListAliasesRequest) (*ListAliasesResponse, error)
-	// CreateAlias creates and stores an Alias in boundary. The provided
-	// request must include the Scope ID in which the Alias will be
+	// CreateAlias creates and stores an alias in boundary. The provided
+	// request must include the Scope ID in which the alias will be
 	// created. If the Scope ID is missing, malformed, or references a non
 	// existing resource an error is returned. If a name or login_name is
-	// provided that is in use in another Alias in the same Scope an
+	// provided that is in use in another alias in the same Scope an
 	// error is returned.
 	CreateAlias(context.Context, *CreateAliasRequest) (*CreateAliasResponse, error)
-	// UpdateAlias updates an existing Alias in boundary. The provided Alias
+	// UpdateAlias updates an existing alias in boundary. The provided alias
 	// must not have any read only fields set. The update mask must be included in
 	// the request and contain at least 1 mutable field. To unset a field's value,
 	// include the field in the update mask and don't set it in the provided
-	// Alias. An error is returned if the Alias id is missing or references a
+	// alias. An error is returned if the alias id is missing or references a
 	// non-existing resource. An error is also returned if the request attempts
 	// to update the name or login_name to one that is already in use in the
 	// containing Scope.
 	UpdateAlias(context.Context, *UpdateAliasRequest) (*UpdateAliasResponse, error)
-	// DeleteAlias removes an Alias from Boundary. If the provided Alias Id
+	// DeleteAlias removes an alias from Boundary. If the provided alias Id
 	// is malformed or not provided an error is returned.
 	DeleteAlias(context.Context, *DeleteAliasRequest) (*DeleteAliasResponse, error)
 	mustEmbedUnimplementedAliasServiceServer()

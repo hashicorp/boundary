@@ -7,20 +7,22 @@ package controller.api.resources.accounts.v1;
 
 import "controller/api/resources/scopes/v1/scope.proto";
 import "controller/custom_options/v1/options.proto";
+import "google/api/field_behavior.proto";
 import "google/api/visibility.proto";
 import "google/protobuf/struct.proto";
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/wrappers.proto";
+import "protoc-gen-openapiv2/options/annotations.proto";
 
 option go_package = "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/accounts;accounts";
 
-// Account contains all fields related to an Account resource
+// Account contains all fields related to an account resource
 message Account {
-  // Output only. The ID of the Account.
-  string id = 10; // @gotags: `class:"public" eventstream:"observation"`
+  // The ID of the account.
+  string id = 10 [(google.api.field_behavior) = OUTPUT_ONLY]; // @gotags: `class:"public" eventstream:"observation"`
 
-  // Output only. Scope information for the Account.
-  resources.scopes.v1.ScopeInfo scope = 20;
+  // Scope information for the account.
+  resources.scopes.v1.ScopeInfo scope = 20 [(google.api.field_behavior) = OUTPUT_ONLY];
 
   // Optional name for identification purposes.
   google.protobuf.StringValue name = 30 [
@@ -40,30 +42,72 @@ message Account {
     }
   ]; // @gotags: `class:"public"`
 
-  // Output only. The time this resource was created.
-  google.protobuf.Timestamp created_time = 50 [json_name = "created_time"]; // @gotags: `class:"public" eventstream:"observation"`
+  // The time this resource was created.
+  google.protobuf.Timestamp created_time = 50 [
+    json_name = "created_time",
+    (google.api.field_behavior) = OUTPUT_ONLY
+  ]; // @gotags: `class:"public" eventstream:"observation"`
 
-  // Output only. The time this resource was last updated.
-  google.protobuf.Timestamp updated_time = 60 [json_name = "updated_time"]; // @gotags: `class:"public" eventstream:"observation"`
+  // The time this resource was last updated.
+  google.protobuf.Timestamp updated_time = 60 [
+    json_name = "updated_time",
+    (google.api.field_behavior) = OUTPUT_ONLY
+  ]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.
-  // The mutation will fail if the version does not match the latest known good version.
+  // The mutation fails if the version does not match the latest known good version.
+  // Version is not required when you create an account.
   uint32 version = 70; // @gotags: `class:"public"`
 
-  // The type of this Account.
+  // The type of this account. If you do not set an account type, Boundary infers it from the type of the auth method.
   string type = 80; // @gotags: `class:"public" eventstream:"observation"`
 
-  // The ID of the Auth Method that is associated with this Account.
+  // The ID of the auth method that is associated with this account.
   string auth_method_id = 90 [
     json_name = "auth_method_id",
     (custom_options.v1.subtype_source_id) = true
   ]; // @gotags: `class:"public" eventstream:"observation"`
 
   oneof attrs {
-    // The attributes that are applicable for the specific Account type.
+    // The attributes that are applicable for the specific account type.
     google.protobuf.Struct attributes = 100 [
       (custom_options.v1.generate_sdk_option) = true,
-      (custom_options.v1.subtype) = "default"
+      (custom_options.v1.subtype) = "default",
+      (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+        example: "{\"login_name\": \"login_name\"}",
+        description:
+          "The attributes that are applicable for the specific account type. "
+          "The schema of this field depends on the type of the auth method "
+          "that you create the account in.\n"
+          "For password auth methods, the parameters are:\n"
+          "```json\n"
+          "{\n"
+          "  \"login_name\": \"login_name\",\n"
+          "  \"password\": \"password\"\n"
+          "}\n"
+          "```\n"
+          "For OIDC auth methods, the parameters are:\n"
+          "```json\n"
+          "{\n"
+          "  \"issuer\": \"issuer\",\n"
+          "  \"subject\": \"subject\",\n"
+          "  \"full_name\": \"full_name\",\n"
+          "  \"email\": \"email\",\n"
+          "  \"token_claims\": {},\n"
+          "  \"userinfo_claims\": {}\n"
+          "}\n"
+          "```\n"
+          "For LDAP auth methods, the parameters are:\n"
+          "```json\n"
+          "{\n"
+          "  \"login_name\": \"login_name\",\n"
+          "  \"full_name\": \"full_name\",\n"
+          "  \"email\": \"email\",\n"
+          "  \"dn\": \"dn\",\n"
+          "  \"member_of_groups\": [\"member_of_groups\"]\n"
+          "}\n"
+          "```\n"
+      }
     ];
     PasswordAccountAttributes password_account_attributes = 101 [
       (google.api.field_visibility).restriction = "INTERNAL",
@@ -82,16 +126,22 @@ message Account {
     ];
   }
 
-  // Output only. managed_group_ids indicates IDs of the managed groups that currently contain this account
-  repeated string managed_group_ids = 110 [json_name = "managed_group_ids"]; // @gotags: `class:"public" eventstream:"observation"`
+  // Indicates the IDs of the managed groups that currently contain this account
+  repeated string managed_group_ids = 110 [
+    json_name = "managed_group_ids",
+    (google.api.field_behavior) = OUTPUT_ONLY
+  ]; // @gotags: `class:"public" eventstream:"observation"`
 
-  // Output only. The available actions on this resource for this user.
-  repeated string authorized_actions = 300 [json_name = "authorized_actions"]; // @gotags: `class:"public"`
+  // The available actions on this resource for this user.
+  repeated string authorized_actions = 300 [
+    json_name = "authorized_actions",
+    (google.api.field_behavior) = OUTPUT_ONLY
+  ]; // @gotags: `class:"public"`
 }
 
-// Attributes associated only with Accounts with type "password".
+// Attributes associated only with accounts with type "password".
 message PasswordAccountAttributes {
-  // The login name of this Account. This is unique per Auth Method.
+  // The login name of this account. This is unique per auth method.
   string login_name = 10 [
     json_name = "login_name",
     (custom_options.v1.generate_sdk_option) = true,
@@ -101,11 +151,11 @@ message PasswordAccountAttributes {
     }
   ]; // @gotags: `class:"sensitive"`
 
-  // The password for this Account.
+  // The password for this account.
   google.protobuf.StringValue password = 20 [(custom_options.v1.generate_sdk_option) = true]; // @gotags: `class:"secret"`
 }
 
-// Attributes associated only with Accounts with type "oidc".
+// Attributes associated only with accounts with type "oidc".
 message OidcAccountAttributes {
   // issuer is a case sensitive URL that maps to the OIDC iss claim.
   // This value is immutable after creation time.
@@ -121,24 +171,27 @@ message OidcAccountAttributes {
     (custom_options.v1.generate_sdk_option) = true
   ]; // @gotags: `class:"public"`
 
-  // Output only. full_name is a string that maps to the OIDC name claim.
-  string full_name = 100 [json_name = "full_name"]; // @gotags: `class:"public"`
+  // A string that maps to the OIDC name claim.
+  string full_name = 100 [
+    json_name = "full_name",
+    (google.api.field_behavior) = OUTPUT_ONLY
+  ]; // @gotags: `class:"public"`
 
-  // Output only. email is a string that maps to the OIDC email claim.
-  string email = 110; // @gotags: `class:"public"`
+  // A string that maps to the OIDC email claim.
+  string email = 110 [(google.api.field_behavior) = OUTPUT_ONLY]; // @gotags: `class:"public"`
 
-  // Output only. token_claims are the marshaled claims from the token.
-  google.protobuf.Struct token_claims = 120;
+  // The marshaled claims from the token.
+  google.protobuf.Struct token_claims = 120 [(google.api.field_behavior) = OUTPUT_ONLY];
 
-  // Output only. userinfo_claims are the marshaled claims from userinfo.
-  google.protobuf.Struct userinfo_claims = 130;
+  // The marshaled claims from userinfo.
+  google.protobuf.Struct userinfo_claims = 130 [(google.api.field_behavior) = OUTPUT_ONLY];
 }
 
-// Attributes associated only with Accounts with type "ldap".
+// Attributes associated only with accounts with type "ldap".
 message LdapAccountAttributes {
-  // login_name of the authenticated user.  This is the login_name (or username)
+  // login_name of the authenticated user. This is the login_name (or username)
   // entered by the user when authenticating (typically the uid or cn
-  // attribute).  Account login names must be lower case.
+  // attribute). Account login names must be lower case.
   string login_name = 100 [
     json_name = "login_name",
     (custom_options.v1.generate_sdk_option) = true,
@@ -148,24 +201,27 @@ message LdapAccountAttributes {
     }
   ]; // @gotags: `class:"sensitive"`
 
-  // Output only.  full_name is a string that maps to the name attribute for the
-  // authenticated user.  This attribute is updated every time a user
+  // A string that maps to the name attribute for the
+  // authenticated user. This attribute is updated every time a user
   // successfully authenticates.
-  string full_name = 110 [json_name = "full_name"]; // @gotags: `class:"sensitive"`
+  string full_name = 110 [
+    json_name = "full_name",
+    (google.api.field_behavior) = OUTPUT_ONLY
+  ]; // @gotags: `class:"sensitive"`
 
-  // Output only. email is a string that maps to the email address attribute for
-  // the authenticated user.  This attribute is updated every time a user
+  // A string that maps to the email address attribute for
+  // the authenticated user. This attribute is updated every time a user
   // successfully authenticates.
-  string email = 120; // @gotags: `class:"sensitive"`
+  string email = 120 [(google.api.field_behavior) = OUTPUT_ONLY]; // @gotags: `class:"sensitive"`
 
-  // Output only. dn is the distinguished name authenticated user's entry.  Will
-  // be null until the user's first successful authentication.  This attribute
+  // The distinguished name authenticated user's entry. Will
+  // be null until the user's first successful authentication. This attribute
   // is updated every time a user successfully authenticates.
-  string dn = 130; // @gotags: `class:"public"`
+  string dn = 130 [(google.api.field_behavior) = OUTPUT_ONLY]; // @gotags: `class:"public"`
 
-  // Output only. member_of_groups are the json marshalled groups the
+  // The json marshalled groups the
   // authenticated user is a member of. Will be null until the user's first
   // successful authentication. This attribute is updated every time a user
   // successfully authenticates.
-  repeated string member_of_groups = 140; // @gotags: `class:"public"`
+  repeated string member_of_groups = 140 [(google.api.field_behavior) = OUTPUT_ONLY]; // @gotags: `class:"public"`
 }

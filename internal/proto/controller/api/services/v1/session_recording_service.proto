@@ -13,6 +13,18 @@ import "protoc-gen-openapiv2/options/annotations.proto";
 option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/services;services";
 
 service SessionRecordingService {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_tag) = {
+    name: "Session recording service"
+    description:
+      "A session recording is a feature that enables administrators to record and play back user access sessions to target resources. "
+      "It provides an audit trail of user activity and lets administrators monitor access. "
+      "The session recording service provides endpoints that let you manage session recordings in Boundary."
+    external_docs: {
+      url: "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/session-recordings";
+      description: "Read about session recordings in the Boundary domain model";
+    }
+  };
+
   // GetSessionRecording returns a stored Session recording if present. The provided request
   // must include the Session recording ID for the Session recording being retrieved,
   // or the ID of the Session that was recorded. If that ID is missing, malformed or reference a
@@ -80,14 +92,15 @@ message ListSessionRecordingsRequest {
   // If set and scope_id is empty, shows session recordings in
   // all scopes the caller has access to.
   bool recursive = 2; // @gotags: class:"public"
-  // An opaque token used to continue an existing iteration or
-  // request updated items. If not specified, pagination
-  // will start from the beginning.
+  // An opaque token that Boundary uses to continue an existing iteration or
+  // request updated items. If you do not specify a token, pagination
+  // starts from the beginning. To learn more about list pagination
+  // in Boundary, refer to [list pagination](https://developer.hashicorp.com/boundary/docs/api-clients/api/pagination).
   string list_token = 3 [json_name = "list_token"]; // @gotags: `class:"public"`
   // The maximum size of a page in this iteration.
-  // If unset, the default page size configured will be used.
-  // If the page_size is greater than the max page size configured,
-  // the page size will be truncated to this number.
+  // If you do not set a page size, Boundary uses the configured default page size.
+  // If the page_size is greater than the default page size configured,
+  // Boundary truncates the page size to this number.
   uint32 page_size = 4 [json_name = "page_size"]; // @gotags: `class:"public"`
 }
 

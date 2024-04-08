@@ -38,7 +38,7 @@ type AuthToken struct {
 	// update_time from the RDBMS
 	// @inject_tag: `gorm:"default:current_timestamp"`
 	UpdateTime *timestamp.Timestamp `protobuf:"bytes,3,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty" gorm:"default:current_timestamp"`
-	// last_access_time indicates the last time the auth token was used on the boundary API.
+	// last_access_time indicates the last time the auth token was used on the Boundary API.
 	// @inject_tag: `gorm:"default:current_timestamp"`
 	ApproximateLastAccessTime *timestamp.Timestamp `protobuf:"bytes,4,opt,name=approximate_last_access_time,json=approximateLastAccessTime,proto3" json:"approximate_last_access_time,omitempty" gorm:"default:current_timestamp"`
 	// expiration_time indicates when this session will expire.

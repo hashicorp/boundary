@@ -1,77 +1,181 @@
 {
   "swagger": "2.0",
   "info": {
-    "title": "Boundary Controller HTTP API",
-    "version": "version not set"
+    "title": "Boundary controller HTTP API",
+    "description": "Welcome to the Boundary controller HTTP API documentation. This page provides a reference guide for using the Boundary controller API, a JSON-based HTTP API. The API implements commonly seen HTTP API patterns for status codes, paths, and errors. See the [API overview](https://developer.hashicorp.com/boundary/docs/api-clients/api) for more information.\n\nBefore you read this page, it is useful to understand Boundary's [domain model](https://developer.hashicorp.com/boundary/docs/concepts/domain-model) and to be aware of the terminology used here. To get started, search for the service you want to interact with in the sidebar to the left. Each resource in Boundary, such as accounts and credential stores, has its own service. Each service contains all the API endpoints for the resource.\n## Status codes\n- `2XX`: Boundary returns a code between `200` and `299` on success. Generally this is `200`, but implementations should be prepared to accept any `2XX` status code as indicating success. If a call returns a `2XX` code that is not `200`, it follows well-understood semantics for those status codes.\n- `400`: Boundary returns `400` when a command cannot be completed due to invalid user input, except for a properly-formatted identifier that does not map to an existing resource, which returns a `404` as discussed below.\n- `401`: Boundary returns `401` if no authentication token is provided or if the provided token is invalid. A valid token that simply does not have permission for a resource returns a `403` instead. A token that is invalid or missing, but where the anonymous user (`u_anon`) is able to successfully perform the action, will not return a `401` but instead will return the result of the action.\n- `403`: Boundary returns `403` if a provided token was valid but does not have the grants required to perform the requested action.\n- `404`: Boundary returns `404` if a resource cannot be found. Note that this happens _prior_ to authentication/authorization checking in nearly all cases as the resource information (such as its scope, available actions, etc.) is a required part of that check. As a result, an action against a resource that does not exist returns a `404` instead of a `401` or `403`. While this could be considered an information leak, since IDs are randomly generated and this only discloses whether an ID is valid, it's tolerable as it allows for far simpler and more robust client implementation.\n- `405`: Boundary returns a `405` to indicate that the method (HTTP verb or custom action) is not implemented for the given resource.\n- `429`: Boundary returns a `429` if any of the API rate limit quotas have been exhausted for the resource and action. It includes the `Retry-After` header so that the client knows how long to wait before making a new request.\n- `500`: Boundary returns `500` if an error occurred that is not (directly) tied to invalid user input. If a `500` is generated, information about the error is logged to Boundary's server log but is not generally provided to the client.\n- `503`: Boundary returns a `503` if it is unable to store a quota due to the API rate limit being exceeded. It includes the `Retry-After` header so that the client knows how long to wait before making a new request.\n## List pagination\nBoundary uses [API pagination](https://developer.hashicorp.com/boundary/docs/api-clients/api/pagination) to support searching and filtering large lists of results efficiently.",
+    "version": "0.16.0",
+    "contact": {
+      "name": "HashiCorp Boundary",
+      "url": "https://www.boundaryproject.io/"
+    },
+    "license": {
+      "name": "Business Source License 1.1",
+      "url": "https://github.com/hashicorp/boundary/blob/main/LICENSE"
+    }
   },
   "tags": [
     {
-      "name": "controller.api.services.v1.ScopeService"
+      "name": "Account service",
+      "description": "The account service exposes endpoints for interacting with accounts in Boundary. Accounts belong to an auth method and are associated with users.",
+      "externalDocs": {
+        "description": "Read about accounts in the Boundary domain model",
+        "url": "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/accounts"
+      }
     },
     {
-      "name": "controller.api.services.v1.AccountService"
+      "name": "Alias service",
+      "description": "The alias service exposes endpoints for interacting with aliases in Boundary. An alias acts as a reference or an alternate ID for an existing entity within the Boundary access control system. It provides a way to simplify access control by offering a more user-friendly or descriptive identifier for an entity."
     },
     {
-      "name": "controller.api.services.v1.AliasService"
+      "name": "Auth method service",
+      "description": "The auth method service exposes endpoints for interacting with auth methods in Boundary. An auth method defines how users can authenticate themselves within the system. It acts as a bridge between Boundary and various external identity providers or authentication mechanisms.",
+      "externalDocs": {
+        "description": "Read about auth methods in the Boundary domain model",
+        "url": "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/auth-methods"
+      }
     },
     {
-      "name": "controller.api.services.v1.AuthMethodService"
+      "name": "Auth token service",
+      "description": "The auth token service provides the ability to manage and retrieve auth tokens. An auth token serves as a temporary credential issued to a user after successful authentication. It grants the user access to Boundary's resources and capabilities for a limited duration."
     },
     {
-      "name": "controller.api.services.v1.AuthTokenService"
+      "name": "Billing service",
+      "description": "The billing service provides the usage data. It includes the active users in a given time period."
     },
     {
-      "name": "controller.api.services.v1.BillingService"
+      "name": "Credential library service",
+      "description": "The credential library service acts as a centralized repository for managing credentials used during sessions. It offers a secure and efficient way to store, rotate, and manage various the various types of credentials that are required for infrastructure access. The credential library service provides endpoints for interacting with credential libraries.",
+      "externalDocs": {
+        "description": "Read about credential libraries in the Boundary domain model",
+        "url": "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/credential-libraries"
+      }
     },
     {
-      "name": "controller.api.services.v1.CredentialLibraryService"
+      "name": "Credential service",
+      "description": "A credential is a data structure that contains one or more secrets that bind an identity to a set of permissions or capabilities on a host for a session. The credential service provides endpoints for managing credentials in Boundary. ",
+      "externalDocs": {
+        "description": "Read about credentials in the Boundary domain model",
+        "url": "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/credentials"
+      }
     },
     {
-      "name": "controller.api.services.v1.CredentialService"
+      "name": "Credential store service",
+      "description": "A credential store is a resource that can retrieve, store, and potentially generate credentials of differing types and differing access levels. The credential store service provides endpoints for managing credential stores in Boundary. ",
+      "externalDocs": {
+        "description": "Read about credential stores in the Boundary domain model",
+        "url": "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/credential-stores"
+      }
     },
     {
-      "name": "controller.api.services.v1.CredentialStoreService"
+      "name": "Group service",
+      "description": "A group is a resource that represents a collection of users that can be treated equally for the purposes of access control. The group service provides endpoints for managing groups in Boundary. ",
+      "externalDocs": {
+        "description": "Read about groups in the Boundary domain model",
+        "url": "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/groups"
+      }
     },
     {
-      "name": "controller.api.services.v1.GroupService"
+      "name": "Host catalog service",
+      "description": "A host catalog serves as a central repository for managing and organizing the target hosts or resources that Boundary can access and control. The host catalog service provides endpoints for managing host catalogs in Boundary.",
+      "externalDocs": {
+        "description": "Read about host catalogs in the Boundary domain model",
+        "url": "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/host-catalogs"
+      }
     },
     {
-      "name": "controller.api.services.v1.HostCatalogService"
+      "name": "Host service",
+      "description": "A host is a resource that represents a computing element with a network address that is reachable from a Boundary worker. The host service provides endpoints for managing hosts in Boundary.",
+      "externalDocs": {
+        "description": "Read about hosts in the Boundary domain model",
+        "url": "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/hosts"
+      }
     },
     {
-      "name": "controller.api.services.v1.HostService"
+      "name": "Host set service",
+      "description": "A host set is a resource that represents a collection of hosts that are considered equivalent for the purposes of access control. The host set service provides endpoints for managing host sets in Boundary.",
+      "externalDocs": {
+        "description": "Read about host sets in the Boundary domain model",
+        "url": "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/host-sets"
+      }
     },
     {
-      "name": "controller.api.services.v1.HostSetService"
+      "name": "Managed group service",
+      "description": "A managed group is a resource that represents a collection of accounts. The managed group service provides endpoints for creating, reading, updating, and deleting managed groups in Boundary.",
+      "externalDocs": {
+        "description": "Read about managed groups in the Boundary domain model",
+        "url": "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/managed-groups"
+      }
     },
     {
-      "name": "controller.api.services.v1.ManagedGroupService"
+      "name": "Policy service",
+      "description": "The policy service provides endpoints that let you manage policies in Boundary. Policies are used to define rules for the lifecycle of session recordings.",
+      "externalDocs": {
+        "description": "Read about policies in the Boundary domain model",
+        "url": "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/storage-policy"
+      }
     },
     {
-      "name": "controller.api.services.v1.PolicyService"
+      "name": "Role service",
+      "description": "A role represents a collection of permissions that define what actions a user or service account can perform within the system. The role service provides endpoints that let you manage roles in Boundary.",
+      "externalDocs": {
+        "description": "Read about roles in the Boundary domain model",
+        "url": "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/roles"
+      }
     },
     {
-      "name": "controller.api.services.v1.RoleService"
+      "name": "Scope service",
+      "description": "A scope acts as a permission Boundary modeled using the concept of a container. It creates a hierarchical structure that lets you organize your resources and manage access control within Boundary. The scope service provides endpoints to let you manage scopes in Boundary.",
+      "externalDocs": {
+        "description": "Read about scopes in the Boundary domain model",
+        "url": "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/scopes"
+      }
     },
     {
-      "name": "controller.api.services.v1.SessionRecordingService"
+      "name": "Session recording service",
+      "description": "A session recording is a feature that enables administrators to record and play back user access sessions to target resources. It provides an audit trail of user activity and lets administrators monitor access. The session recording service provides endpoints that let you manage session recordings in Boundary.",
+      "externalDocs": {
+        "description": "Read about session recordings in the Boundary domain model",
+        "url": "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/session-recordings"
+      }
     },
     {
-      "name": "controller.api.services.v1.SessionService"
+      "name": "Session service",
+      "description": "A session represents a temporary, authorized access connection between a user and a target resource. The session service provides endpoints that let you manage sessions in Boundary.",
+      "externalDocs": {
+        "description": "Read about sessions in the Boundary domain model",
+        "url": "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/sessions"
+      }
     },
     {
-      "name": "controller.api.services.v1.StorageBucketService"
+      "name": "Storage bucket service",
+      "description": "A storage bucket is an external storage location used to store recordings of user access sessions. The storage bucket service provides endpoints that let you manage storage buckets in Boundary.",
+      "externalDocs": {
+        "description": "Read about storage buckets in the Boundary domain model",
+        "url": "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/storage-buckets"
+      }
     },
     {
-      "name": "controller.api.services.v1.TargetService"
+      "name": "Target service",
+      "description": "A target represents an endpoint or resource that users can access through Boundary sessions. The target service provides endpoints that let you manage targets in Boundary.",
+      "externalDocs": {
+        "description": "Read about targets in the Boundary domain model",
+        "url": "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/targets"
+      }
     },
     {
-      "name": "controller.api.services.v1.UserService"
+      "name": "User service",
+      "description": "A user can be a human individual or a service account that accesses resources. The user service provides endpoints that let you manage users in Boundary.",
+      "externalDocs": {
+        "description": "Read about users in the Boundary domain model",
+        "url": "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/users"
+      }
     },
     {
-      "name": "controller.api.services.v1.WorkerService"
+      "name": "Worker service",
+      "description": "A worker is a service that acts as a network proxy for Boundary sessions. It functions as a bridge between users and the target resources they need to access. The worker service provides endpoints that let you manage workers in Boundary."
     }
   ],
+  "host": "your-boundary-hostname.com",
   "schemes": [
     "https",
     "http"
@@ -85,7 +189,7 @@
   "paths": {
     "/v1/accounts": {
       "get": {
-        "summary": "Lists all Accounts in a specific Auth Method.",
+        "summary": "Lists all accounts in a specific auth method.",
         "operationId": "AccountService_ListAccounts",
         "responses": {
           "200": {
@@ -93,33 +197,39 @@
             "schema": {
               "$ref": "#/definitions/controller.api.services.v1.ListAccountsResponse"
             }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
           {
             "name": "auth_method_id",
-            "description": "",
+            "description": "The ID of the auth method whose accounts should be listed.",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "filter",
-            "description": "",
+            "description": "You can specify that the filter should only return items that match.\nRefer to [filter expressions](https://developer.hashicorp.com/boundary/docs/concepts/filtering) for more information.",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "list_token",
-            "description": "An opaque token used to continue an existing iteration or\nrequest updated items. If not specified, pagination\nwill start from the beginning.",
+            "description": "An opaque token that Boundary uses to continue an existing iteration or\nrequest updated items. If you do not specify a token, pagination\nstarts from the beginning. To learn more about list pagination\nin Boundary, refer to [list pagination](https://developer.hashicorp.com/boundary/docs/api-clients/api/pagination).",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "page_size",
-            "description": "The maximum size of a page in this iteration.\nIf unset, the default page size configured will be used.\nIf the page_size is greater than the default page configured,\nan error will be returned.",
+            "description": "The maximum size of a page in this iteration.\nIf you do not set a page size, Boundary uses the configured default page size.\nIf the page_size is greater than the default page size configured,\nBoundary truncates the page size to this number.",
             "in": "query",
             "required": false,
             "type": "integer",
@@ -127,11 +237,11 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.AccountService"
+          "Account service"
         ]
       },
       "post": {
-        "summary": "Creates a single Account in the provided Auth Method.",
+        "summary": "Creates a single account in the provided auth method.",
         "operationId": "AccountService_CreateAccount",
         "responses": {
           "200": {
@@ -139,6 +249,12 @@
             "schema": {
               "$ref": "#/definitions/controller.api.resources.accounts.v1.Account"
             }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -152,13 +268,13 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.AccountService"
+          "Account service"
         ]
       }
     },
     "/v1/accounts/{id}": {
       "get": {
-        "summary": "Gets a single Account.",
+        "summary": "Gets a single account based on the input ID",
         "operationId": "AccountService_GetAccount",
         "responses": {
           "200": {
@@ -166,23 +282,29 @@
             "schema": {
               "$ref": "#/definitions/controller.api.resources.accounts.v1.Account"
             }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
           {
             "name": "id",
-            "description": "",
+            "description": "The ID of the account that should be retrieved.",
             "in": "path",
             "required": true,
             "type": "string"
           }
         ],
         "tags": [
-          "controller.api.services.v1.AccountService"
+          "Account service"
         ]
       },
       "delete": {
-        "summary": "Deletes an Account.",
+        "summary": "Deletes an account.",
         "operationId": "AccountService_DeleteAccount",
         "responses": {
           "200": {
@@ -190,23 +312,29 @@
             "schema": {
               "$ref": "#/definitions/controller.api.services.v1.DeleteAccountResponse"
             }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
           {
             "name": "id",
-            "description": "",
+            "description": "The ID of the account to delete.",
             "in": "path",
             "required": true,
             "type": "string"
           }
         ],
         "tags": [
-          "controller.api.services.v1.AccountService"
+          "Account service"
         ]
       },
       "patch": {
-        "summary": "Updates an Account.",
+        "summary": "Updates an account.",
         "operationId": "AccountService_UpdateAccount",
         "responses": {
           "200": {
@@ -214,18 +342,25 @@
             "schema": {
               "$ref": "#/definitions/controller.api.resources.accounts.v1.Account"
             }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
           {
             "name": "id",
-            "description": "",
+            "description": "The ID of the account that should be updated.",
             "in": "path",
             "required": true,
             "type": "string"
           },
           {
             "name": "item",
+            "description": "A subset of the account that contains the fields to update.",
             "in": "body",
             "required": true,
             "schema": {
@@ -234,13 +369,13 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.AccountService"
+          "Account service"
         ]
       }
     },
     "/v1/accounts/{id}:change-password": {
       "post": {
-        "summary": "Sets the password for the provided Account.",
+        "summary": "Sets the password for the provided account.",
         "operationId": "AccountService_ChangePassword",
         "responses": {
           "200": {
@@ -248,12 +383,18 @@
             "schema": {
               "$ref": "#/definitions/controller.api.resources.accounts.v1.Account"
             }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
           {
             "name": "id",
-            "description": "",
+            "description": "The ID of the account for which the password should be changed.",
             "in": "path",
             "required": true,
             "type": "string"
@@ -268,13 +409,13 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.AccountService"
+          "Account service"
         ]
       }
     },
     "/v1/accounts/{id}:set-password": {
       "post": {
-        "summary": "Sets the password for the provided Account.",
+        "summary": "Sets the password for the provided account.",
         "operationId": "AccountService_SetPassword",
         "responses": {
           "200": {
@@ -282,12 +423,18 @@
             "schema": {
               "$ref": "#/definitions/controller.api.resources.accounts.v1.Account"
             }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
           {
             "name": "id",
-            "description": "",
+            "description": "The ID of the account for which the password should be set.",
             "in": "path",
             "required": true,
             "type": "string"
@@ -302,7 +449,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.AccountService"
+          "Account service"
         ]
       }
     },
@@ -316,40 +463,46 @@
             "schema": {
               "$ref": "#/definitions/controller.api.services.v1.ListAliasesResponse"
             }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
           {
             "name": "scope_id",
-            "description": "",
+            "description": "The ID of the scope in which to list aliases",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "recursive",
-            "description": "",
+            "description": "Whether to recursively list aliases in the provided scope's child scopes.",
             "in": "query",
             "required": false,
             "type": "boolean"
           },
           {
             "name": "filter",
-            "description": "",
+            "description": "You can specify that the filter should only return items that match.\nRefer to [filter expressions](https://developer.hashicorp.com/boundary/docs/concepts/filtering) for more information.",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "list_token",
-            "description": "An opaque token used to continue an existing iteration or\nrequest updated items. If not specified, pagination\nwill start from the beginning.",
+            "description": "An opaque token that Boundary uses to continue an existing iteration or\nrequest updated items. If you do not specify a token, pagination\nstarts from the beginning. To learn more about list pagination\nin Boundary, refer to [list pagination](https://developer.hashicorp.com/boundary/docs/api-clients/api/pagination).",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "page_size",
-            "description": "The maximum size of a page in this iteration.\nIf unset, the default page size configured will be used.\nIf the page_size is greater than the default page configured,\nan error will be returned.",
+            "description": "The maximum size of a page in this iteration.\nIf you do not set a page size, Boundary uses the configured default page size.\nIf the page_size is greater than the default page size configured,\nBoundary truncates the page size to this number.",
             "in": "query",
             "required": false,
             "type": "integer",
@@ -357,7 +510,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.AliasService"
+          "Alias service"
         ]
       },
       "post": {
@@ -368,6 +521,12 @@
             "description": "",
             "schema": {
               "$ref": "#/definitions/controller.api.resources.aliases.v1.Alias"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -382,7 +541,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.AliasService"
+          "Alias service"
         ]
       }
     },
@@ -396,19 +555,25 @@
             "schema": {
               "$ref": "#/definitions/controller.api.resources.aliases.v1.Alias"
             }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
           {
             "name": "id",
-            "description": "",
+            "description": "The ID of the alias to retrieve.",
             "in": "path",
             "required": true,
             "type": "string"
           }
         ],
         "tags": [
-          "controller.api.services.v1.AliasService"
+          "Alias service"
         ]
       },
       "delete": {
@@ -420,19 +585,25 @@
             "schema": {
               "$ref": "#/definitions/controller.api.services.v1.DeleteAliasResponse"
             }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
           {
             "name": "id",
-            "description": "",
+            "description": "The ID of the alias to delete.",
             "in": "path",
             "required": true,
             "type": "string"
           }
         ],
         "tags": [
-          "controller.api.services.v1.AliasService"
+          "Alias service"
         ]
       },
       "patch": {
@@ -444,18 +615,25 @@
             "schema": {
               "$ref": "#/definitions/controller.api.resources.aliases.v1.Alias"
             }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
           {
             "name": "id",
-            "description": "",
+            "description": "The ID of the alias to update.",
             "in": "path",
             "required": true,
             "type": "string"
           },
           {
             "name": "item",
+            "description": "A subset of the alias that contains the fields to update.",
             "in": "body",
             "required": true,
             "schema": {
@@ -464,13 +642,13 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.AliasService"
+          "Alias service"
         ]
       }
     },
     "/v1/auth-methods": {
       "get": {
-        "summary": "Lists all Auth Methods.",
+        "summary": "Lists all auth methods.",
         "operationId": "AuthMethodService_ListAuthMethods",
         "responses": {
           "200": {
@@ -478,40 +656,46 @@
             "schema": {
               "$ref": "#/definitions/controller.api.services.v1.ListAuthMethodsResponse"
             }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
           {
             "name": "scope_id",
-            "description": "",
+            "description": "The scope id in which to list auth methods.",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "recursive",
-            "description": "",
+            "description": "Whether to recursively list auth methods in the provided scope's child scopes.",
             "in": "query",
             "required": false,
             "type": "boolean"
           },
           {
             "name": "filter",
-            "description": "",
+            "description": "You can specify that the filter should only return items that match.\nRefer to [filter expressions](https://developer.hashicorp.com/boundary/docs/concepts/filtering) for more information.",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "list_token",
-            "description": "An opaque token used to continue an existing iteration or\nrequest updated items. If not specified, pagination\nwill start from the beginning.",
+            "description": "An opaque token that Boundary uses to continue an existing iteration or\nrequest updated items. If you do not specify a token, pagination\nstarts from the beginning. To learn more about list pagination\nin Boundary, refer to [list pagination](https://developer.hashicorp.com/boundary/docs/api-clients/api/pagination).",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "page_size",
-            "description": "The maximum size of a page in this iteration.\nIf unset, the default page size configured will be used.\nIf the page_size is greater than the max page size configured,\nthe page size will be truncated to this number.",
+            "description": "The maximum size of a page in this iteration.\nIf you do not set a page size, Boundary uses the configured default page size.\nIf the page_size is greater than the default page size configured,\nBoundary truncates the page size to this number.",
             "in": "query",
             "required": false,
             "type": "integer",
@@ -519,17 +703,23 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.AuthMethodService"
+          "Auth method service"
         ]
       },
       "post": {
-        "summary": "Creates a single Auth Method.",
+        "summary": "Creates a single auth method.",
         "operationId": "AuthMethodService_CreateAuthMethod",
         "responses": {
           "200": {
             "description": "",
             "schema": {
               "$ref": "#/definitions/controller.api.resources.authmethods.v1.AuthMethod"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -544,7 +734,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.AuthMethodService"
+          "Auth method service"
         ]
       }
     },
@@ -558,12 +748,18 @@
             "schema": {
               "$ref": "#/definitions/controller.api.services.v1.AuthenticateResponse"
             }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
           {
             "name": "auth_method_id",
-            "description": "The ID of the Auth Method in the system that should be used for authentication.",
+            "description": "The ID of the auth method in the system that should be used for authentication.",
             "in": "path",
             "required": true,
             "type": "string"
@@ -578,13 +774,13 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.AuthMethodService"
+          "Auth method service"
         ]
       }
     },
     "/v1/auth-methods/{id}": {
       "get": {
-        "summary": "Gets a single Auth Method.",
+        "summary": "Gets a single auth method.",
         "operationId": "AuthMethodService_GetAuthMethod",
         "responses": {
           "200": {
@@ -592,19 +788,25 @@
             "schema": {
               "$ref": "#/definitions/controller.api.resources.authmethods.v1.AuthMethod"
             }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
           {
             "name": "id",
-            "description": "",
+            "description": "Id of the auth method being requested.",
             "in": "path",
             "required": true,
             "type": "string"
           }
         ],
         "tags": [
-          "controller.api.services.v1.AuthMethodService"
+          "Auth method service"
         ]
       },
       "delete": {
@@ -616,6 +818,12 @@
             "schema": {
               "$ref": "#/definitions/controller.api.services.v1.DeleteAuthMethodResponse"
             }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -628,17 +836,23 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.AuthMethodService"
+          "Auth method service"
         ]
       },
       "patch": {
-        "summary": "Updates an Auth Method.",
+        "summary": "Updates an auth method.",
         "operationId": "AuthMethodService_UpdateAuthMethod",
         "responses": {
           "200": {
             "description": "",
             "schema": {
               "$ref": "#/definitions/controller.api.resources.authmethods.v1.AuthMethod"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -660,7 +874,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.AuthMethodService"
+          "Auth method service"
         ]
       }
     },
@@ -673,6 +887,12 @@
             "description": "",
             "schema": {
               "$ref": "#/definitions/controller.api.resources.authmethods.v1.AuthMethod"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -694,7 +914,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.AuthMethodService"
+          "Auth method service"
         ]
       }
     },
@@ -707,6 +927,12 @@
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/controller.api.services.v1.ListAuthTokensResponse"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -727,21 +953,21 @@
           },
           {
             "name": "filter",
-            "description": "",
+            "description": "You can specify that the filter should only return items that match.\nRefer to [filter expressions](https://developer.hashicorp.com/boundary/docs/concepts/filtering) for more information.",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "list_token",
-            "description": "An opaque token used to continue an existing iteration or\nrequest updated items. If not specified, pagination\nwill start from the beginning.",
+            "description": "An opaque token that Boundary uses to continue an existing iteration or\nrequest updated items. If you do not specify a token, pagination\nstarts from the beginning. To learn more about list pagination\nin Boundary, refer to [list pagination](https://developer.hashicorp.com/boundary/docs/api-clients/api/pagination).",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "page_size",
-            "description": "The maximum size of a page in this iteration.\nIf unset, the default page size configured will be used.\nIf the page_size is greater than the default page configured,\nan error will be returned.",
+            "description": "The maximum size of a page in this iteration.\nIf you do not set a page size, Boundary uses the configured default page size.\nIf the page_size is greater than the default page size configured,\nBoundary truncates the page size to this number.",
             "in": "query",
             "required": false,
             "type": "integer",
@@ -749,7 +975,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.AuthTokenService"
+          "Auth token service"
         ]
       }
     },
@@ -763,29 +989,11 @@
             "schema": {
               "$ref": "#/definitions/controller.api.resources.authtokens.v1.AuthToken"
             }
-          }
-        },
-        "parameters": [
-          {
-            "name": "id",
-            "description": "",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "controller.api.services.v1.AuthTokenService"
-        ]
-      },
-      "delete": {
-        "summary": "Deletes an Auth Token.",
-        "operationId": "AuthTokenService_DeleteAuthToken",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.DeleteAuthTokenResponse"
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -799,7 +1007,37 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.AuthTokenService"
+          "Auth token service"
+        ]
+      },
+      "delete": {
+        "summary": "Deletes an Auth Token.",
+        "operationId": "AuthTokenService_DeleteAuthToken",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.DeleteAuthTokenResponse"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "description": "",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "Auth token service"
         ]
       }
     },
@@ -812,6 +1050,12 @@
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/controller.api.services.v1.MonthlyActiveUsersResponse"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -832,7 +1076,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.BillingService"
+          "Billing service"
         ]
       }
     },
@@ -846,6 +1090,12 @@
             "schema": {
               "$ref": "#/definitions/controller.api.services.v1.ListCredentialLibrariesResponse"
             }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -858,21 +1108,21 @@
           },
           {
             "name": "filter",
-            "description": "",
+            "description": "You can specify that the filter should only return items that match.\nRefer to [filter expressions](https://developer.hashicorp.com/boundary/docs/concepts/filtering) for more information.",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "list_token",
-            "description": "An opaque token used to continue an existing iteration or\nrequest updated items. If not specified, pagination\nwill start from the beginning.",
+            "description": "An opaque token that Boundary uses to continue an existing iteration or\nrequest updated items. If you do not specify a token, pagination\nstarts from the beginning. To learn more about list pagination\nin Boundary, refer to [list pagination](https://developer.hashicorp.com/boundary/docs/api-clients/api/pagination).",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "page_size",
-            "description": "The maximum size of a page in this iteration.\nIf unset, the default page size configured will be used.\nIf the page_size is greater than the max page size configured,\nthe page size will be truncated to this number.",
+            "description": "The maximum size of a page in this iteration.\nIf you do not set a page size, Boundary uses the configured default page size.\nIf the page_size is greater than the default page size configured,\nBoundary truncates the page size to this number.",
             "in": "query",
             "required": false,
             "type": "integer",
@@ -880,7 +1130,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.CredentialLibraryService"
+          "Credential library service"
         ]
       },
       "post": {
@@ -891,6 +1141,12 @@
             "description": "",
             "schema": {
               "$ref": "#/definitions/controller.api.resources.credentiallibraries.v1.CredentialLibrary"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -905,7 +1161,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.CredentialLibraryService"
+          "Credential library service"
         ]
       }
     },
@@ -919,29 +1175,11 @@
             "schema": {
               "$ref": "#/definitions/controller.api.resources.credentiallibraries.v1.CredentialLibrary"
             }
-          }
-        },
-        "parameters": [
-          {
-            "name": "id",
-            "description": "",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "controller.api.services.v1.CredentialLibraryService"
-        ]
-      },
-      "delete": {
-        "summary": "Deletes a Credential Library",
-        "operationId": "CredentialLibraryService_DeleteCredentialLibrary",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.DeleteCredentialLibraryResponse"
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -955,7 +1193,37 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.CredentialLibraryService"
+          "Credential library service"
+        ]
+      },
+      "delete": {
+        "summary": "Deletes a Credential Library",
+        "operationId": "CredentialLibraryService_DeleteCredentialLibrary",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.DeleteCredentialLibraryResponse"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "description": "",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "Credential library service"
         ]
       },
       "patch": {
@@ -966,6 +1234,12 @@
             "description": "",
             "schema": {
               "$ref": "#/definitions/controller.api.resources.credentiallibraries.v1.CredentialLibrary"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -987,7 +1261,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.CredentialLibraryService"
+          "Credential library service"
         ]
       }
     },
@@ -1001,6 +1275,12 @@
             "schema": {
               "$ref": "#/definitions/controller.api.services.v1.ListCredentialStoresResponse"
             }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -1020,21 +1300,21 @@
           },
           {
             "name": "filter",
-            "description": "",
+            "description": "You can specify that the filter should only return items that match.\nRefer to [filter expressions](https://developer.hashicorp.com/boundary/docs/concepts/filtering) for more information.",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "list_token",
-            "description": "An opaque token used to continue an existing iteration or\nrequest updated items. If not specified, pagination\nwill start from the beginning.",
+            "description": "An opaque token that Boundary uses to continue an existing iteration or\nrequest updated items. If you do not specify a token, pagination\nstarts from the beginning. To learn more about list pagination\nin Boundary, refer to [list pagination](https://developer.hashicorp.com/boundary/docs/api-clients/api/pagination).",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "page_size",
-            "description": "The maximum size of a page in this iteration.\nIf unset, the default page size configured will be used.\nIf the page_size is greater than the max page size configured,\nthe page size will be truncated to this number.",
+            "description": "The maximum size of a page in this iteration.\nIf you do not set a page size, Boundary uses the configured default page size.\nIf the page_size is greater than the default page size configured,\nBoundary truncates the page size to this number.",
             "in": "query",
             "required": false,
             "type": "integer",
@@ -1042,7 +1322,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.CredentialStoreService"
+          "Credential store service"
         ]
       },
       "post": {
@@ -1053,6 +1333,12 @@
             "description": "",
             "schema": {
               "$ref": "#/definitions/controller.api.resources.credentialstores.v1.CredentialStore"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -1067,7 +1353,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.CredentialStoreService"
+          "Credential store service"
         ]
       }
     },
@@ -1081,29 +1367,11 @@
             "schema": {
               "$ref": "#/definitions/controller.api.resources.credentialstores.v1.CredentialStore"
             }
-          }
-        },
-        "parameters": [
-          {
-            "name": "id",
-            "description": "",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "controller.api.services.v1.CredentialStoreService"
-        ]
-      },
-      "delete": {
-        "summary": "Deletes a CredentialStore",
-        "operationId": "CredentialStoreService_DeleteCredentialStore",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.DeleteCredentialStoreResponse"
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -1117,7 +1385,37 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.CredentialStoreService"
+          "Credential store service"
+        ]
+      },
+      "delete": {
+        "summary": "Deletes a CredentialStore",
+        "operationId": "CredentialStoreService_DeleteCredentialStore",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.DeleteCredentialStoreResponse"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "description": "",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "Credential store service"
         ]
       },
       "patch": {
@@ -1128,6 +1426,12 @@
             "description": "",
             "schema": {
               "$ref": "#/definitions/controller.api.resources.credentialstores.v1.CredentialStore"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -1149,7 +1453,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.CredentialStoreService"
+          "Credential store service"
         ]
       }
     },
@@ -1163,6 +1467,12 @@
             "schema": {
               "$ref": "#/definitions/controller.api.services.v1.ListCredentialsResponse"
             }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -1175,21 +1485,21 @@
           },
           {
             "name": "filter",
-            "description": "",
+            "description": "You can specify that the filter should only return items that match.\nRefer to [filter expressions](https://developer.hashicorp.com/boundary/docs/concepts/filtering) for more information.",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "list_token",
-            "description": "An opaque token used to continue an existing iteration or\nrequest updated items. If not specified, pagination\nwill start from the beginning.",
+            "description": "An opaque token that Boundary uses to continue an existing iteration or\nrequest updated items. If you do not specify a token, pagination\nstarts from the beginning. To learn more about list pagination\nin Boundary, refer to [list pagination](https://developer.hashicorp.com/boundary/docs/api-clients/api/pagination).",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "page_size",
-            "description": "The maximum size of a page in this iteration.\nIf unset, the default page size configured will be used.\nIf the page_size is greater than the max page size configured,\nthe page size will be truncated to this number.",
+            "description": "The maximum size of a page in this iteration.\nIf you do not set a page size, Boundary uses the configured default page size.\nIf the page_size is greater than the default page size configured,\nBoundary truncates the page size to this number.",
             "in": "query",
             "required": false,
             "type": "integer",
@@ -1197,7 +1507,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.CredentialService"
+          "Credential service"
         ]
       },
       "post": {
@@ -1208,6 +1518,12 @@
             "description": "",
             "schema": {
               "$ref": "#/definitions/controller.api.resources.credentials.v1.Credential"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -1222,7 +1538,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.CredentialService"
+          "Credential service"
         ]
       }
     },
@@ -1236,29 +1552,11 @@
             "schema": {
               "$ref": "#/definitions/controller.api.resources.credentials.v1.Credential"
             }
-          }
-        },
-        "parameters": [
-          {
-            "name": "id",
-            "description": "",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "controller.api.services.v1.CredentialService"
-        ]
-      },
-      "delete": {
-        "summary": "Deletes a Credential",
-        "operationId": "CredentialService_DeleteCredential",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.DeleteCredentialResponse"
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -1272,7 +1570,37 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.CredentialService"
+          "Credential service"
+        ]
+      },
+      "delete": {
+        "summary": "Deletes a Credential",
+        "operationId": "CredentialService_DeleteCredential",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.DeleteCredentialResponse"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "description": "",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "Credential service"
         ]
       },
       "patch": {
@@ -1283,6 +1611,12 @@
             "description": "",
             "schema": {
               "$ref": "#/definitions/controller.api.resources.credentials.v1.Credential"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -1304,7 +1638,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.CredentialService"
+          "Credential service"
         ]
       }
     },
@@ -1317,6 +1651,12 @@
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/controller.api.services.v1.ListGroupsResponse"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -1337,21 +1677,21 @@
           },
           {
             "name": "filter",
-            "description": "",
+            "description": "You can specify that the filter should only return items that match.\nRefer to [filter expressions](https://developer.hashicorp.com/boundary/docs/concepts/filtering) for more information.",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "list_token",
-            "description": "An opaque token used to continue an existing iteration or\nrequest updated items. If not specified, pagination\nwill start from the beginning.",
+            "description": "An opaque token that Boundary uses to continue an existing iteration or\nrequest updated items. If you do not specify a token, pagination\nstarts from the beginning. To learn more about list pagination\nin Boundary, refer to [list pagination](https://developer.hashicorp.com/boundary/docs/api-clients/api/pagination).",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "page_size",
-            "description": "The maximum size of a page in this iteration.\nIf unset, the default page size configured will be used.\nIf the page_size is greater than the default page configured,\nan error will be returned.",
+            "description": "The maximum size of a page in this iteration.\nIf unset, the default page size configured will be used.\nIf the page_size is greater than the default page configured,\nthe page size will be truncated to this number.",
             "in": "query",
             "required": false,
             "type": "integer",
@@ -1359,7 +1699,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.GroupService"
+          "Group service"
         ]
       },
       "post": {
@@ -1370,6 +1710,12 @@
             "description": "",
             "schema": {
               "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -1384,7 +1730,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.GroupService"
+          "Group service"
         ]
       }
     },
@@ -1398,29 +1744,11 @@
             "schema": {
               "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
             }
-          }
-        },
-        "parameters": [
-          {
-            "name": "id",
-            "description": "",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "controller.api.services.v1.GroupService"
-        ]
-      },
-      "delete": {
-        "summary": "Deletes a Group.",
-        "operationId": "GroupService_DeleteGroup",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.DeleteGroupResponse"
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -1434,7 +1762,37 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.GroupService"
+          "Group service"
+        ]
+      },
+      "delete": {
+        "summary": "Deletes a Group.",
+        "operationId": "GroupService_DeleteGroup",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.DeleteGroupResponse"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "description": "",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "Group service"
         ]
       },
       "patch": {
@@ -1445,6 +1803,12 @@
             "description": "",
             "schema": {
               "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -1466,7 +1830,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.GroupService"
+          "Group service"
         ]
       }
     },
@@ -1479,6 +1843,12 @@
             "description": "",
             "schema": {
               "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -1500,7 +1870,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.GroupService"
+          "Group service"
         ]
       }
     },
@@ -1513,6 +1883,12 @@
             "description": "",
             "schema": {
               "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -1534,7 +1910,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.GroupService"
+          "Group service"
         ]
       }
     },
@@ -1547,6 +1923,12 @@
             "description": "",
             "schema": {
               "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -1568,7 +1950,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.GroupService"
+          "Group service"
         ]
       }
     },
@@ -1581,6 +1963,12 @@
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/controller.api.services.v1.ListHostCatalogsResponse"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -1601,21 +1989,21 @@
           },
           {
             "name": "filter",
-            "description": "",
+            "description": "You can specify that the filter should only return items that match.\nRefer to [filter expressions](https://developer.hashicorp.com/boundary/docs/concepts/filtering) for more information.",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "list_token",
-            "description": "An opaque token used to continue an existing iteration or\nrequest updated items. If not specified, pagination\nwill start from the beginning.",
+            "description": "An opaque token that Boundary uses to continue an existing iteration or\nrequest updated items. If you do not specify a token, pagination\nstarts from the beginning. To learn more about list pagination\nin Boundary, refer to [list pagination](https://developer.hashicorp.com/boundary/docs/api-clients/api/pagination).",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "page_size",
-            "description": "The maximum size of a page in this iteration.\nIf unset, the default page size configured will be used.\nIf the page_size is greater than the default page configured,\nan error will be returned.",
+            "description": "The maximum size of a page in this iteration.\nIf unset, the default page size configured will be used.\nIf the page_size is greater than the default page configured,\nthe page size will be truncated to this number.",
             "in": "query",
             "required": false,
             "type": "integer",
@@ -1623,7 +2011,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.HostCatalogService"
+          "Host catalog service"
         ]
       },
       "post": {
@@ -1634,6 +2022,12 @@
             "description": "",
             "schema": {
               "$ref": "#/definitions/controller.api.resources.hostcatalogs.v1.HostCatalog"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -1655,7 +2049,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.HostCatalogService"
+          "Host catalog service"
         ]
       }
     },
@@ -1669,29 +2063,11 @@
             "schema": {
               "$ref": "#/definitions/controller.api.resources.hostcatalogs.v1.HostCatalog"
             }
-          }
-        },
-        "parameters": [
-          {
-            "name": "id",
-            "description": "",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "controller.api.services.v1.HostCatalogService"
-        ]
-      },
-      "delete": {
-        "summary": "Deletes a Host Catalog",
-        "operationId": "HostCatalogService_DeleteHostCatalog",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.DeleteHostCatalogResponse"
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -1705,7 +2081,37 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.HostCatalogService"
+          "Host catalog service"
+        ]
+      },
+      "delete": {
+        "summary": "Deletes a Host Catalog",
+        "operationId": "HostCatalogService_DeleteHostCatalog",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.DeleteHostCatalogResponse"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "description": "",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "Host catalog service"
         ]
       },
       "patch": {
@@ -1716,6 +2122,12 @@
             "description": "",
             "schema": {
               "$ref": "#/definitions/controller.api.resources.hostcatalogs.v1.HostCatalog"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -1737,7 +2149,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.HostCatalogService"
+          "Host catalog service"
         ]
       }
     },
@@ -1751,6 +2163,12 @@
             "schema": {
               "$ref": "#/definitions/controller.api.services.v1.ListHostSetsResponse"
             }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -1763,21 +2181,21 @@
           },
           {
             "name": "filter",
-            "description": "",
+            "description": "You can specify that the filter should only return items that match.\nRefer to [filter expressions](https://developer.hashicorp.com/boundary/docs/concepts/filtering) for more information.",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "list_token",
-            "description": "An opaque token used to continue an existing iteration or\nrequest updated items. If not specified, pagination\nwill start from the beginning.",
+            "description": "An opaque token that Boundary uses to continue an existing iteration or\nrequest updated items. If you do not specify a token, pagination\nstarts from the beginning. To learn more about list pagination\nin Boundary, refer to [list pagination](https://developer.hashicorp.com/boundary/docs/api-clients/api/pagination).",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "page_size",
-            "description": "The maximum size of a page in this iteration.\nIf unset, the default page size configured will be used.\nIf the page_size is greater than the default page configured,\nan error will be returned.",
+            "description": "The maximum size of a page in this iteration.\nIf unset, the default page size configured will be used.\nIf the page_size is greater than the default page configured,\nthe page size will be truncated to this number..",
             "in": "query",
             "required": false,
             "type": "integer",
@@ -1785,7 +2203,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.HostSetService"
+          "Host set service"
         ]
       },
       "post": {
@@ -1796,6 +2214,12 @@
             "description": "",
             "schema": {
               "$ref": "#/definitions/controller.api.resources.hostsets.v1.HostSet"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -1810,7 +2234,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.HostSetService"
+          "Host set service"
         ]
       }
     },
@@ -1824,29 +2248,11 @@
             "schema": {
               "$ref": "#/definitions/controller.api.resources.hostsets.v1.HostSet"
             }
-          }
-        },
-        "parameters": [
-          {
-            "name": "id",
-            "description": "",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "controller.api.services.v1.HostSetService"
-        ]
-      },
-      "delete": {
-        "summary": "Delete a Host Set.",
-        "operationId": "HostSetService_DeleteHostSet",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.DeleteHostSetResponse"
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -1860,7 +2266,37 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.HostSetService"
+          "Host set service"
+        ]
+      },
+      "delete": {
+        "summary": "Delete a Host Set.",
+        "operationId": "HostSetService_DeleteHostSet",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.DeleteHostSetResponse"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "description": "",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "Host set service"
         ]
       },
       "patch": {
@@ -1871,6 +2307,12 @@
             "description": "",
             "schema": {
               "$ref": "#/definitions/controller.api.resources.hostsets.v1.HostSet"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -1892,7 +2334,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.HostSetService"
+          "Host set service"
         ]
       }
     },
@@ -1905,6 +2347,12 @@
             "description": "",
             "schema": {
               "$ref": "#/definitions/controller.api.resources.hostsets.v1.HostSet"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -1926,7 +2374,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.HostSetService"
+          "Host set service"
         ]
       }
     },
@@ -1939,6 +2387,12 @@
             "description": "",
             "schema": {
               "$ref": "#/definitions/controller.api.resources.hostsets.v1.HostSet"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -1960,7 +2414,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.HostSetService"
+          "Host set service"
         ]
       }
     },
@@ -1973,6 +2427,12 @@
             "description": "",
             "schema": {
               "$ref": "#/definitions/controller.api.resources.hostsets.v1.HostSet"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -1994,7 +2454,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.HostSetService"
+          "Host set service"
         ]
       }
     },
@@ -2008,6 +2468,12 @@
             "schema": {
               "$ref": "#/definitions/controller.api.services.v1.ListHostsResponse"
             }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -2020,21 +2486,21 @@
           },
           {
             "name": "filter",
-            "description": "",
+            "description": "You can specify that the filter should only return items that match.\nRefer to [filter expressions](https://developer.hashicorp.com/boundary/docs/concepts/filtering) for more information.",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "list_token",
-            "description": "An opaque token used to continue an existing iteration or\nrequest updated items. If not specified, pagination\nwill start from the beginning.",
+            "description": "An opaque token that Boundary uses to continue an existing iteration or\nrequest updated items. If you do not specify a token, pagination\nstarts from the beginning. To learn more about list pagination\nin Boundary, refer to [list pagination](https://developer.hashicorp.com/boundary/docs/api-clients/api/pagination).",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "page_size",
-            "description": "The maximum size of a page in this iteration.\nIf unset, the default page size configured will be used.\nIf the page_size is greater than the default page configured,\nan error will be returned.",
+            "description": "The maximum size of a page in this iteration.\nIf unset, the default page size configured will be used.\nIf the page_size is greater than the default page configured,\nthe page size will be truncated to this number.",
             "in": "query",
             "required": false,
             "type": "integer",
@@ -2042,7 +2508,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.HostService"
+          "Host service"
         ]
       },
       "post": {
@@ -2053,6 +2519,12 @@
             "description": "",
             "schema": {
               "$ref": "#/definitions/controller.api.resources.hosts.v1.Host"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -2067,7 +2539,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.HostService"
+          "Host service"
         ]
       }
     },
@@ -2081,29 +2553,11 @@
             "schema": {
               "$ref": "#/definitions/controller.api.resources.hosts.v1.Host"
             }
-          }
-        },
-        "parameters": [
-          {
-            "name": "id",
-            "description": "",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "controller.api.services.v1.HostService"
-        ]
-      },
-      "delete": {
-        "summary": "Delete a Host.",
-        "operationId": "HostService_DeleteHost",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.DeleteHostResponse"
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -2117,7 +2571,37 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.HostService"
+          "Host service"
+        ]
+      },
+      "delete": {
+        "summary": "Delete a Host.",
+        "operationId": "HostService_DeleteHost",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.DeleteHostResponse"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "description": "",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "Host service"
         ]
       },
       "patch": {
@@ -2128,6 +2612,12 @@
             "description": "",
             "schema": {
               "$ref": "#/definitions/controller.api.resources.hosts.v1.Host"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -2149,7 +2639,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.HostService"
+          "Host service"
         ]
       }
     },
@@ -2163,6 +2653,12 @@
             "schema": {
               "$ref": "#/definitions/controller.api.services.v1.ListManagedGroupsResponse"
             }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -2175,21 +2671,21 @@
           },
           {
             "name": "filter",
-            "description": "",
+            "description": "You can specify that the filter should only return items that match.\nRefer to [filter expressions](https://developer.hashicorp.com/boundary/docs/concepts/filtering) for more information.",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "list_token",
-            "description": "An opaque token used to continue an existing iteration or\nrequest updated items. If not specified, pagination\nwill start from the beginning.",
+            "description": "An opaque token that Boundary uses to continue an existing iteration or\nrequest updated items. If you do not specify a token, pagination\nstarts from the beginning. To learn more about list pagination\nin Boundary, refer to [list pagination](https://developer.hashicorp.com/boundary/docs/api-clients/api/pagination).",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "page_size",
-            "description": "The maximum size of a page in this iteration.\nIf unset, the default page size configured will be used.\nIf the page_size is greater than the default page configured,\nan error will be returned.",
+            "description": "The maximum size of a page in this iteration.\nIf unset, the default page size configured will be used.\nIf the page_size is greater than the default page configured,\nthe page size will be truncated to this number..",
             "in": "query",
             "required": false,
             "type": "integer",
@@ -2197,7 +2693,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.ManagedGroupService"
+          "Managed group service"
         ]
       },
       "post": {
@@ -2208,6 +2704,12 @@
             "description": "",
             "schema": {
               "$ref": "#/definitions/controller.api.resources.managedgroups.v1.ManagedGroup"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -2222,7 +2724,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.ManagedGroupService"
+          "Managed group service"
         ]
       }
     },
@@ -2236,29 +2738,11 @@
             "schema": {
               "$ref": "#/definitions/controller.api.resources.managedgroups.v1.ManagedGroup"
             }
-          }
-        },
-        "parameters": [
-          {
-            "name": "id",
-            "description": "",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "controller.api.services.v1.ManagedGroupService"
-        ]
-      },
-      "delete": {
-        "summary": "Deletes a ManagedGroup.",
-        "operationId": "ManagedGroupService_DeleteManagedGroup",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.DeleteManagedGroupResponse"
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -2272,7 +2756,37 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.ManagedGroupService"
+          "Managed group service"
+        ]
+      },
+      "delete": {
+        "summary": "Deletes a ManagedGroup.",
+        "operationId": "ManagedGroupService_DeleteManagedGroup",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.DeleteManagedGroupResponse"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "description": "",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "Managed group service"
         ]
       },
       "patch": {
@@ -2283,6 +2797,12 @@
             "description": "",
             "schema": {
               "$ref": "#/definitions/controller.api.resources.managedgroups.v1.ManagedGroup"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -2304,7 +2824,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.ManagedGroupService"
+          "Managed group service"
         ]
       }
     },
@@ -2318,6 +2838,12 @@
             "schema": {
               "$ref": "#/definitions/controller.api.services.v1.ListPoliciesResponse"
             }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -2344,14 +2870,14 @@
           },
           {
             "name": "list_token",
-            "description": "An opaque token used to continue an existing iteration or\nrequest updated items. If not specified, pagination\nwill start from the beginning.",
+            "description": "An opaque token that Boundary uses to continue an existing iteration or\nrequest updated items. If you do not specify a token, pagination\nstarts from the beginning. To learn more about list pagination\nin Boundary, refer to [list pagination](https://developer.hashicorp.com/boundary/docs/api-clients/api/pagination).",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "page_size",
-            "description": "The maximum size of a page in this iteration.\nIf unset, the default page size configured will be used.\nIf the page_size is greater than the default page configured,\nan error will be returned.",
+            "description": "The maximum size of a page in this iteration.\nIf unset, the default page size configured will be used.\nIf the page_size is greater than the default page configured,\nthe page size will be truncated to this number..",
             "in": "query",
             "required": false,
             "type": "integer",
@@ -2359,7 +2885,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.PolicyService"
+          "Policy service"
         ]
       },
       "post": {
@@ -2370,6 +2896,12 @@
             "description": "",
             "schema": {
               "$ref": "#/definitions/controller.api.resources.policies.v1.Policy"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -2384,7 +2916,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.PolicyService"
+          "Policy service"
         ]
       }
     },
@@ -2398,29 +2930,11 @@
             "schema": {
               "$ref": "#/definitions/controller.api.resources.policies.v1.Policy"
             }
-          }
-        },
-        "parameters": [
-          {
-            "name": "id",
-            "description": "",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "controller.api.services.v1.PolicyService"
-        ]
-      },
-      "delete": {
-        "summary": "Deletes an existing policy.",
-        "operationId": "PolicyService_DeletePolicy",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.DeletePolicyResponse"
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -2434,7 +2948,37 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.PolicyService"
+          "Policy service"
+        ]
+      },
+      "delete": {
+        "summary": "Deletes an existing policy.",
+        "operationId": "PolicyService_DeletePolicy",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.DeletePolicyResponse"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "description": "",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "Policy service"
         ]
       },
       "patch": {
@@ -2445,6 +2989,12 @@
             "description": "",
             "schema": {
               "$ref": "#/definitions/controller.api.resources.policies.v1.Policy"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -2466,7 +3016,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.PolicyService"
+          "Policy service"
         ]
       }
     },
@@ -2479,6 +3029,12 @@
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/controller.api.services.v1.ListRolesResponse"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -2499,21 +3055,21 @@
           },
           {
             "name": "filter",
-            "description": "",
+            "description": "You can specify that the filter should only return items that match.\nRefer to [filter expressions](https://developer.hashicorp.com/boundary/docs/concepts/filtering) for more information.",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "list_token",
-            "description": "An opaque token used to continue an existing iteration or\nrequest updated items. If not specified, pagination\nwill start from the beginning.",
+            "description": "An opaque token that Boundary uses to continue an existing iteration or\nrequest updated items. If you do not specify a token, pagination\nstarts from the beginning. To learn more about list pagination\nin Boundary, refer to [list pagination](https://developer.hashicorp.com/boundary/docs/api-clients/api/pagination).",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "page_size",
-            "description": "The maximum size of a page in this iteration.\nIf unset, the default page size configured will be used.\nIf the page_size is greater than the default page configured,\nan error will be returned.",
+            "description": "The maximum size of a page in this iteration.\nIf unset, the default page size configured will be used.\nIf the page_size is greater than the default page configured,\nthe page size will be truncated to this number..",
             "in": "query",
             "required": false,
             "type": "integer",
@@ -2521,7 +3077,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.RoleService"
+          "Role service"
         ]
       },
       "post": {
@@ -2532,6 +3088,12 @@
             "description": "",
             "schema": {
               "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -2546,7 +3108,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.RoleService"
+          "Role service"
         ]
       }
     },
@@ -2560,29 +3122,11 @@
             "schema": {
               "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
             }
-          }
-        },
-        "parameters": [
-          {
-            "name": "id",
-            "description": "",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "controller.api.services.v1.RoleService"
-        ]
-      },
-      "delete": {
-        "summary": "Deletes a Role.",
-        "operationId": "RoleService_DeleteRole",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.DeleteRoleResponse"
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -2596,7 +3140,37 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.RoleService"
+          "Role service"
+        ]
+      },
+      "delete": {
+        "summary": "Deletes a Role.",
+        "operationId": "RoleService_DeleteRole",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.DeleteRoleResponse"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "description": "",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "Role service"
         ]
       },
       "patch": {
@@ -2607,6 +3181,12 @@
             "description": "",
             "schema": {
               "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -2628,7 +3208,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.RoleService"
+          "Role service"
         ]
       }
     },
@@ -2641,6 +3221,12 @@
             "description": "",
             "schema": {
               "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -2662,7 +3248,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.RoleService"
+          "Role service"
         ]
       }
     },
@@ -2675,6 +3261,12 @@
             "description": "",
             "schema": {
               "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -2696,7 +3288,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.RoleService"
+          "Role service"
         ]
       }
     },
@@ -2709,6 +3301,12 @@
             "description": "",
             "schema": {
               "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -2730,7 +3328,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.RoleService"
+          "Role service"
         ]
       }
     },
@@ -2743,6 +3341,12 @@
             "description": "",
             "schema": {
               "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -2764,7 +3368,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.RoleService"
+          "Role service"
         ]
       }
     },
@@ -2777,6 +3381,12 @@
             "description": "",
             "schema": {
               "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -2798,7 +3408,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.RoleService"
+          "Role service"
         ]
       }
     },
@@ -2811,6 +3421,12 @@
             "description": "",
             "schema": {
               "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -2832,7 +3448,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.RoleService"
+          "Role service"
         ]
       }
     },
@@ -2845,6 +3461,12 @@
             "description": "",
             "schema": {
               "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -2866,7 +3488,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.RoleService"
+          "Role service"
         ]
       }
     },
@@ -2879,6 +3501,12 @@
             "description": "",
             "schema": {
               "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -2900,7 +3528,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.RoleService"
+          "Role service"
         ]
       }
     },
@@ -2913,6 +3541,12 @@
             "description": "",
             "schema": {
               "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -2934,7 +3568,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.RoleService"
+          "Role service"
         ]
       }
     },
@@ -2947,6 +3581,12 @@
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/controller.api.services.v1.ListScopesResponse"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -2967,7 +3607,7 @@
           },
           {
             "name": "filter",
-            "description": "",
+            "description": "You can specify that the filter should only return items that match.\nRefer to [filter expressions](https://developer.hashicorp.com/boundary/docs/concepts/filtering) for more information.",
             "in": "query",
             "required": false,
             "type": "string"
@@ -2981,7 +3621,7 @@
           },
           {
             "name": "page_size",
-            "description": "The maximum size of a page in this iteration.\nIf unset, the default page size configured will be used.\nIf the page_size is greater than the max page size configured,\nthe page size will be truncated to this number.",
+            "description": "The maximum size of a page in this iteration.\nIf you do not set a page size, Boundary uses the configured default page size.\nIf the page_size is greater than the default page size configured,\nBoundary truncates the page size to this number.",
             "in": "query",
             "required": false,
             "type": "integer",
@@ -2989,7 +3629,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.ScopeService"
+          "Scope service"
         ]
       },
       "post": {
@@ -3000,6 +3640,12 @@
             "description": "",
             "schema": {
               "$ref": "#/definitions/controller.api.resources.scopes.v1.Scope"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -3028,7 +3674,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.ScopeService"
+          "Scope service"
         ]
       }
     },
@@ -3042,29 +3688,11 @@
             "schema": {
               "$ref": "#/definitions/controller.api.resources.scopes.v1.Scope"
             }
-          }
-        },
-        "parameters": [
-          {
-            "name": "id",
-            "description": "",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "controller.api.services.v1.ScopeService"
-        ]
-      },
-      "delete": {
-        "summary": "Deletes a Scope.",
-        "operationId": "ScopeService_DeleteScope",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.DeleteScopeResponse"
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -3078,7 +3706,37 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.ScopeService"
+          "Scope service"
+        ]
+      },
+      "delete": {
+        "summary": "Deletes a Scope.",
+        "operationId": "ScopeService_DeleteScope",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.DeleteScopeResponse"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "description": "",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "Scope service"
         ]
       },
       "patch": {
@@ -3089,6 +3747,12 @@
             "description": "",
             "schema": {
               "$ref": "#/definitions/controller.api.resources.scopes.v1.Scope"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -3110,7 +3774,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.ScopeService"
+          "Scope service"
         ]
       }
     },
@@ -3123,6 +3787,12 @@
             "description": "",
             "schema": {
               "$ref": "#/definitions/controller.api.resources.scopes.v1.Scope"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -3144,7 +3814,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.ScopeService"
+          "Scope service"
         ]
       }
     },
@@ -3157,6 +3827,12 @@
             "description": "",
             "schema": {
               "$ref": "#/definitions/controller.api.resources.scopes.v1.Scope"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -3178,7 +3854,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.ScopeService"
+          "Scope service"
         ]
       }
     },
@@ -3192,6 +3868,12 @@
             "schema": {
               "$ref": "#/definitions/controller.api.services.v1.ListKeysResponse"
             }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -3204,7 +3886,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.ScopeService"
+          "Scope service"
         ]
       }
     },
@@ -3218,6 +3900,12 @@
             "schema": {
               "$ref": "#/definitions/controller.api.services.v1.ListKeyVersionDestructionJobsResponse"
             }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -3230,7 +3918,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.ScopeService"
+          "Scope service"
         ]
       }
     },
@@ -3243,6 +3931,12 @@
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/controller.api.services.v1.DestroyKeyVersionResponse"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -3257,7 +3951,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.ScopeService"
+          "Scope service"
         ]
       }
     },
@@ -3270,6 +3964,12 @@
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/controller.api.services.v1.RotateKeysResponse"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -3284,7 +3984,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.ScopeService"
+          "Scope service"
         ]
       }
     },
@@ -3297,6 +3997,12 @@
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/controller.api.services.v1.ListSessionRecordingsResponse"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -3317,14 +4023,14 @@
           },
           {
             "name": "list_token",
-            "description": "An opaque token used to continue an existing iteration or\nrequest updated items. If not specified, pagination\nwill start from the beginning.",
+            "description": "An opaque token that Boundary uses to continue an existing iteration or\nrequest updated items. If you do not specify a token, pagination\nstarts from the beginning. To learn more about list pagination\nin Boundary, refer to [list pagination](https://developer.hashicorp.com/boundary/docs/api-clients/api/pagination).",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "page_size",
-            "description": "The maximum size of a page in this iteration.\nIf unset, the default page size configured will be used.\nIf the page_size is greater than the max page size configured,\nthe page size will be truncated to this number.",
+            "description": "The maximum size of a page in this iteration.\nIf you do not set a page size, Boundary uses the configured default page size.\nIf the page_size is greater than the default page size configured,\nBoundary truncates the page size to this number.",
             "in": "query",
             "required": false,
             "type": "integer",
@@ -3332,7 +4038,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.SessionRecordingService"
+          "Session recording service"
         ]
       }
     },
@@ -3346,6 +4052,12 @@
             "schema": {
               "$ref": "#/definitions/controller.api.resources.sessionrecordings.v1.SessionRecording"
             }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -3358,7 +4070,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.SessionRecordingService"
+          "Session recording service"
         ]
       },
       "delete": {
@@ -3369,6 +4081,12 @@
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/controller.api.services.v1.DeleteSessionRecordingResponse"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -3382,7 +4100,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.SessionRecordingService"
+          "Session recording service"
         ]
       }
     },
@@ -3398,6 +4116,12 @@
               "format": "binary",
               "properties": {},
               "title": "Free form byte stream"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -3418,7 +4142,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.SessionRecordingService"
+          "Session recording service"
         ]
       }
     },
@@ -3432,6 +4156,12 @@
             "schema": {
               "$ref": "#/definitions/controller.api.resources.sessionrecordings.v1.SessionRecording"
             }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -3444,7 +4174,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.SessionRecordingService"
+          "Session recording service"
         ]
       }
     },
@@ -3457,6 +4187,12 @@
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/controller.api.services.v1.ListSessionsResponse"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -3477,7 +4213,7 @@
           },
           {
             "name": "filter",
-            "description": "",
+            "description": "You can specify that the filter should only return items that match.\nRefer to [filter expressions](https://developer.hashicorp.com/boundary/docs/concepts/filtering) for more information.",
             "in": "query",
             "required": false,
             "type": "string"
@@ -3491,14 +4227,14 @@
           },
           {
             "name": "list_token",
-            "description": "An opaque token used to continue an existing iteration or\nrequest updated items. If not specified, pagination\nwill start from the beginning.",
+            "description": "An opaque token that Boundary uses to continue an existing iteration or\nrequest updated items. If you do not specify a token, pagination\nstarts from the beginning. To learn more about list pagination\nin Boundary, refer to [list pagination](https://developer.hashicorp.com/boundary/docs/api-clients/api/pagination).",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "page_size",
-            "description": "The maximum size of a page in this iteration.\nIf unset, the default page size configured will be used.\nIf the page_size is greater than the default page configured,\nan error will be returned.",
+            "description": "The maximum size of a page in this iteration.\nIf unset, the default page size configured will be used.\nIf the page_size is greater than the default page configured,\nthe page size will be truncated to this number..",
             "in": "query",
             "required": false,
             "type": "integer",
@@ -3506,7 +4242,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.SessionService"
+          "Session service"
         ]
       }
     },
@@ -3520,6 +4256,12 @@
             "schema": {
               "$ref": "#/definitions/controller.api.resources.sessions.v1.Session"
             }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -3532,7 +4274,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.SessionService"
+          "Session service"
         ]
       }
     },
@@ -3545,6 +4287,12 @@
             "description": "",
             "schema": {
               "$ref": "#/definitions/controller.api.resources.sessions.v1.Session"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -3566,7 +4314,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.SessionService"
+          "Session service"
         ]
       }
     },
@@ -3579,6 +4327,12 @@
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/controller.api.services.v1.ListStorageBucketsResponse"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -3599,21 +4353,21 @@
           },
           {
             "name": "filter",
-            "description": "",
+            "description": "You can specify that the filter should only return items that match.\nRefer to [filter expressions](https://developer.hashicorp.com/boundary/docs/concepts/filtering) for more information.",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "list_token",
-            "description": "An opaque token used to continue an existing iteration or\nrequest updated items. If not specified, pagination\nwill start from the beginning.",
+            "description": "An opaque token that Boundary uses to continue an existing iteration or\nrequest updated items. If you do not specify a token, pagination\nstarts from the beginning. To learn more about list pagination\nin Boundary, refer to [list pagination](https://developer.hashicorp.com/boundary/docs/api-clients/api/pagination).",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "page_size",
-            "description": "The maximum size of a page in this iteration.\nIf unset, the default page size configured will be used.\nIf the page_size is greater than the max page size configured,\nthe page size will be truncated to this number.",
+            "description": "The maximum size of a page in this iteration.\nIf you do not set a page size, Boundary uses the configured default page size.\nIf the page_size is greater than the default page size configured,\nBoundary truncates the page size to this number.",
             "in": "query",
             "required": false,
             "type": "integer",
@@ -3621,7 +4375,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.StorageBucketService"
+          "Storage bucket service"
         ]
       },
       "post": {
@@ -3632,6 +4386,12 @@
             "description": "",
             "schema": {
               "$ref": "#/definitions/controller.api.resources.storagebuckets.v1.StorageBucket"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -3653,7 +4413,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.StorageBucketService"
+          "Storage bucket service"
         ]
       }
     },
@@ -3667,29 +4427,11 @@
             "schema": {
               "$ref": "#/definitions/controller.api.resources.storagebuckets.v1.StorageBucket"
             }
-          }
-        },
-        "parameters": [
-          {
-            "name": "id",
-            "description": "",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "controller.api.services.v1.StorageBucketService"
-        ]
-      },
-      "delete": {
-        "summary": "Deletes a Storage Bucket",
-        "operationId": "StorageBucketService_DeleteStorageBucket",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.DeleteStorageBucketResponse"
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -3703,7 +4445,37 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.StorageBucketService"
+          "Storage bucket service"
+        ]
+      },
+      "delete": {
+        "summary": "Deletes a Storage Bucket",
+        "operationId": "StorageBucketService_DeleteStorageBucket",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.DeleteStorageBucketResponse"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "description": "",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "Storage bucket service"
         ]
       },
       "patch": {
@@ -3714,6 +4486,12 @@
             "description": "",
             "schema": {
               "$ref": "#/definitions/controller.api.resources.storagebuckets.v1.StorageBucket"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -3735,7 +4513,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.StorageBucketService"
+          "Storage bucket service"
         ]
       }
     },
@@ -3748,6 +4526,12 @@
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/controller.api.services.v1.ListTargetsResponse"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -3768,21 +4552,21 @@
           },
           {
             "name": "filter",
-            "description": "",
+            "description": "You can specify that the filter should only return items that match.\nRefer to [filter expressions](https://developer.hashicorp.com/boundary/docs/concepts/filtering) for more information.",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "list_token",
-            "description": "An opaque token used to continue an existing iteration or\nrequest updated items. If not specified, pagination\nwill start from the beginning.",
+            "description": "An opaque token that Boundary uses to continue an existing iteration or\nrequest updated items. If you do not specify a token, pagination\nstarts from the beginning. To learn more about list pagination\nin Boundary, refer to [list pagination](https://developer.hashicorp.com/boundary/docs/api-clients/api/pagination).",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "page_size",
-            "description": "The maximum size of a page in this iteration.\nIf unset, the default page size configured will be used.\nIf the page_size is greater than the default page configured,\nan error will be returned.",
+            "description": "The maximum size of a page in this iteration.\nIf unset, the default page size configured will be used.\nIf the page_size is greater than the default page configured,\nthe page size will be truncated to this number..",
             "in": "query",
             "required": false,
             "type": "integer",
@@ -3790,7 +4574,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.TargetService"
+          "Target service"
         ]
       },
       "post": {
@@ -3801,6 +4585,12 @@
             "description": "",
             "schema": {
               "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -3815,7 +4605,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.TargetService"
+          "Target service"
         ]
       }
     },
@@ -3829,29 +4619,11 @@
             "schema": {
               "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
             }
-          }
-        },
-        "parameters": [
-          {
-            "name": "id",
-            "description": "",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "controller.api.services.v1.TargetService"
-        ]
-      },
-      "delete": {
-        "summary": "Deletes a Target.",
-        "operationId": "TargetService_DeleteTarget",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.DeleteTargetResponse"
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -3865,7 +4637,37 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.TargetService"
+          "Target service"
+        ]
+      },
+      "delete": {
+        "summary": "Deletes a Target.",
+        "operationId": "TargetService_DeleteTarget",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.DeleteTargetResponse"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "description": "",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "Target service"
         ]
       },
       "patch": {
@@ -3876,6 +4678,12 @@
             "description": "",
             "schema": {
               "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -3897,7 +4705,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.TargetService"
+          "Target service"
         ]
       }
     },
@@ -3910,6 +4718,12 @@
             "description": "",
             "schema": {
               "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -3931,7 +4745,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.TargetService"
+          "Target service"
         ]
       }
     },
@@ -3944,6 +4758,12 @@
             "description": "",
             "schema": {
               "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -3965,7 +4785,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.TargetService"
+          "Target service"
         ]
       }
     },
@@ -3978,6 +4798,12 @@
             "description": "",
             "schema": {
               "$ref": "#/definitions/controller.api.resources.targets.v1.SessionAuthorization"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -4000,7 +4826,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.TargetService"
+          "Target service"
         ]
       }
     },
@@ -4013,6 +4839,12 @@
             "description": "",
             "schema": {
               "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -4034,7 +4866,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.TargetService"
+          "Target service"
         ]
       }
     },
@@ -4047,6 +4879,12 @@
             "description": "",
             "schema": {
               "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -4068,7 +4906,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.TargetService"
+          "Target service"
         ]
       }
     },
@@ -4081,6 +4919,12 @@
             "description": "",
             "schema": {
               "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -4102,7 +4946,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.TargetService"
+          "Target service"
         ]
       }
     },
@@ -4115,6 +4959,12 @@
             "description": "",
             "schema": {
               "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -4136,7 +4986,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.TargetService"
+          "Target service"
         ]
       }
     },
@@ -4149,6 +4999,12 @@
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/controller.api.services.v1.ListUsersResponse"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -4176,14 +5032,14 @@
           },
           {
             "name": "list_token",
-            "description": "An opaque token used to continue an existing iteration or\nrequest updated items. If not specified, pagination\nwill start from the beginning.",
+            "description": "An opaque token that Boundary uses to continue an existing iteration or\nrequest updated items. If you do not specify a token, pagination\nstarts from the beginning. To learn more about list pagination\nin Boundary, refer to [list pagination](https://developer.hashicorp.com/boundary/docs/api-clients/api/pagination).",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "page_size",
-            "description": "The maximum size of a page in this iteration.\nIf unset, the default page size configured will be used.\nIf the page_size is greater than the default page configured,\nan error will be returned.",
+            "description": "The maximum size of a page in this iteration.\nIf unset, the default page size configured will be used.\nIf the page_size is greater than the default page configured,\nthe page size will be truncated to this number..",
             "in": "query",
             "required": false,
             "type": "integer",
@@ -4191,7 +5047,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.UserService"
+          "User service"
         ]
       },
       "post": {
@@ -4202,6 +5058,12 @@
             "description": "",
             "schema": {
               "$ref": "#/definitions/controller.api.resources.users.v1.User"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -4216,7 +5078,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.UserService"
+          "User service"
         ]
       }
     },
@@ -4230,29 +5092,11 @@
             "schema": {
               "$ref": "#/definitions/controller.api.resources.users.v1.User"
             }
-          }
-        },
-        "parameters": [
-          {
-            "name": "id",
-            "description": "",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "controller.api.services.v1.UserService"
-        ]
-      },
-      "delete": {
-        "summary": "Deletes a User.",
-        "operationId": "UserService_DeleteUser",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.DeleteUserResponse"
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -4266,7 +5110,37 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.UserService"
+          "User service"
+        ]
+      },
+      "delete": {
+        "summary": "Deletes a User.",
+        "operationId": "UserService_DeleteUser",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.DeleteUserResponse"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "description": "",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "User service"
         ]
       },
       "patch": {
@@ -4277,6 +5151,12 @@
             "description": "",
             "schema": {
               "$ref": "#/definitions/controller.api.resources.users.v1.User"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -4298,7 +5178,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.UserService"
+          "User service"
         ]
       }
     },
@@ -4311,6 +5191,12 @@
             "description": "",
             "schema": {
               "$ref": "#/definitions/controller.api.resources.users.v1.User"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -4332,7 +5218,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.UserService"
+          "User service"
         ]
       }
     },
@@ -4345,6 +5231,12 @@
             "description": "",
             "schema": {
               "$ref": "#/definitions/controller.api.resources.users.v1.User"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -4366,7 +5258,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.UserService"
+          "User service"
         ]
       }
     },
@@ -4379,6 +5271,12 @@
             "description": "",
             "schema": {
               "$ref": "#/definitions/controller.api.resources.users.v1.User"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -4400,7 +5298,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.UserService"
+          "User service"
         ]
       }
     },
@@ -4413,6 +5311,12 @@
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/controller.api.services.v1.ListWorkersResponse"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -4440,7 +5344,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.WorkerService"
+          "Worker service"
         ]
       }
     },
@@ -4454,29 +5358,11 @@
             "schema": {
               "$ref": "#/definitions/controller.api.resources.workers.v1.Worker"
             }
-          }
-        },
-        "parameters": [
-          {
-            "name": "id",
-            "description": "",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "controller.api.services.v1.WorkerService"
-        ]
-      },
-      "delete": {
-        "summary": "Deletes a Worker.",
-        "operationId": "WorkerService_DeleteWorker",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.DeleteWorkerResponse"
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -4490,7 +5376,37 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.WorkerService"
+          "Worker service"
+        ]
+      },
+      "delete": {
+        "summary": "Deletes a Worker.",
+        "operationId": "WorkerService_DeleteWorker",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.DeleteWorkerResponse"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "description": "",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "Worker service"
         ]
       },
       "patch": {
@@ -4501,6 +5417,12 @@
             "description": "",
             "schema": {
               "$ref": "#/definitions/controller.api.resources.workers.v1.Worker"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -4522,7 +5444,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.WorkerService"
+          "Worker service"
         ]
       }
     },
@@ -4535,6 +5457,12 @@
             "description": "",
             "schema": {
               "$ref": "#/definitions/controller.api.resources.workers.v1.Worker"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -4556,7 +5484,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.WorkerService"
+          "Worker service"
         ]
       }
     },
@@ -4569,6 +5497,12 @@
             "description": "",
             "schema": {
               "$ref": "#/definitions/controller.api.resources.workers.v1.Worker"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -4590,7 +5524,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.WorkerService"
+          "Worker service"
         ]
       }
     },
@@ -4603,6 +5537,12 @@
             "description": "",
             "schema": {
               "$ref": "#/definitions/controller.api.resources.workers.v1.Worker"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -4624,7 +5564,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.WorkerService"
+          "Worker service"
         ]
       }
     },
@@ -4638,6 +5578,12 @@
             "schema": {
               "$ref": "#/definitions/controller.api.resources.workers.v1.Worker"
             }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -4651,7 +5597,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.WorkerService"
+          "Worker service"
         ]
       }
     },
@@ -4665,6 +5611,12 @@
             "schema": {
               "$ref": "#/definitions/controller.api.resources.workers.v1.Worker"
             }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
           }
         },
         "parameters": [
@@ -4678,7 +5630,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.WorkerService"
+          "Worker service"
         ]
       }
     },
@@ -4692,31 +5644,11 @@
             "schema": {
               "$ref": "#/definitions/controller.api.resources.workers.v1.CertificateAuthority"
             }
-          }
-        },
-        "parameters": [
-          {
-            "name": "scope_id",
-            "description": "",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "controller.api.services.v1.WorkerService"
-        ]
-      }
-    },
-    "/v1/workers:reinitialize-certificate-authority": {
-      "post": {
-        "summary": "Reinitializes root certificates used for worker authentication.",
-        "operationId": "WorkerService_ReinitializeCertificateAuthority",
-        "responses": {
-          "200": {
-            "description": "",
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
             "schema": {
-              "$ref": "#/definitions/controller.api.resources.workers.v1.CertificateAuthority"
+              "$ref": "#/definitions/controller.api.v1.Error"
             }
           }
         },
@@ -4730,7 +5662,39 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.WorkerService"
+          "Worker service"
+        ]
+      }
+    },
+    "/v1/workers:reinitialize-certificate-authority": {
+      "post": {
+        "summary": "Reinitializes root certificates used for worker authentication.",
+        "operationId": "WorkerService_ReinitializeCertificateAuthority",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.workers.v1.CertificateAuthority"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "scope_id",
+            "description": "",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "Worker service"
         ]
       }
     }
@@ -4741,12 +5705,12 @@
       "properties": {
         "id": {
           "type": "string",
-          "description": "Output only. The ID of the Account.",
+          "description": "The ID of the account.",
           "readOnly": true
         },
         "scope": {
           "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
-          "description": "Output only. Scope information for the Account.",
+          "description": "Scope information for the account.",
           "readOnly": true
         },
         "name": {
@@ -4760,31 +5724,34 @@
         "created_time": {
           "type": "string",
           "format": "date-time",
-          "description": "Output only. The time this resource was created.",
+          "description": "The time this resource was created.",
           "readOnly": true
         },
         "updated_time": {
           "type": "string",
           "format": "date-time",
-          "description": "Output only. The time this resource was last updated.",
+          "description": "The time this resource was last updated.",
           "readOnly": true
         },
         "version": {
           "type": "integer",
           "format": "int64",
-          "description": "Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+          "description": "Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.\nThe mutation fails if the version does not match the latest known good version.\nVersion is not required when you create an account."
         },
         "type": {
           "type": "string",
-          "description": "The type of this Account."
+          "description": "The type of this account. If you do not set an account type, Boundary infers it from the type of the auth method."
         },
         "auth_method_id": {
           "type": "string",
-          "description": "The ID of the Auth Method that is associated with this Account."
+          "description": "The ID of the auth method that is associated with this account."
         },
         "attributes": {
           "type": "object",
-          "description": "The attributes that are applicable for the specific Account type."
+          "example": {
+            "login_name": "login_name"
+          },
+          "description": "The attributes that are applicable for the specific account type. The schema of this field depends on the type of the auth method that you create the account in.\nFor password auth methods, the parameters are:\n```json\n{\n  \"login_name\": \"login_name\",\n  \"password\": \"password\"\n}\n```\nFor OIDC auth methods, the parameters are:\n```json\n{\n  \"issuer\": \"issuer\",\n  \"subject\": \"subject\",\n  \"full_name\": \"full_name\",\n  \"email\": \"email\",\n  \"token_claims\": {},\n  \"userinfo_claims\": {}\n}\n```\nFor LDAP auth methods, the parameters are:\n```json\n{\n  \"login_name\": \"login_name\",\n  \"full_name\": \"full_name\",\n  \"email\": \"email\",\n  \"dn\": \"dn\",\n  \"member_of_groups\": [\"member_of_groups\"]\n}\n```\n"
         },
         "managed_group_ids": {
           "type": "array",
@@ -4792,7 +5759,7 @@
             "type": "string"
           },
           "description": "",
-          "title": "Output only. managed_group_ids indicates IDs of the managed groups that currently contain this account",
+          "title": "Indicates the IDs of the managed groups that currently contain this account",
           "readOnly": true
         },
         "authorized_actions": {
@@ -4800,27 +5767,27 @@
           "items": {
             "type": "string"
           },
-          "description": "Output only. The available actions on this resource for this user.",
+          "description": "The available actions on this resource for this user.",
           "readOnly": true
         }
       },
-      "title": "Account contains all fields related to an Account resource"
+      "title": "Account contains all fields related to an account resource"
     },
     "controller.api.resources.aliases.v1.Alias": {
       "type": "object",
       "properties": {
         "id": {
           "type": "string",
-          "description": "Output only. The ID of the Alias.",
+          "description": "The ID of the alias.",
           "readOnly": true
         },
         "scope_id": {
           "type": "string",
-          "description": "The ID of the scope of which this Alias is a part."
+          "description": "The ID of the scope of which this alias is a part."
         },
         "scope": {
           "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
-          "description": "Output only. Scope information for this Alias.",
+          "description": "Scope information for this alias.",
           "readOnly": true
         },
         "name": {
@@ -4834,27 +5801,27 @@
         "created_time": {
           "type": "string",
           "format": "date-time",
-          "description": "Output only. The time this resource was created.",
+          "description": "The time this resource was created.",
           "readOnly": true
         },
         "updated_time": {
           "type": "string",
           "format": "date-time",
-          "description": "Output only. The time this resource was last updated.",
+          "description": "The time this resource was last updated.",
           "readOnly": true
         },
         "version": {
           "type": "integer",
           "format": "int64",
-          "description": "Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+          "description": "Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.\nThe mutation fails if the version does not match the latest known good version.\nVersion is not required when you create an alias."
         },
         "value": {
           "type": "string",
-          "description": "Required value of the alias. This is the value referenced by the user that\nis resolved to the destination id."
+          "description": "Value of the alias. This is the value referenced by the user that\nis resolved to the destination id."
         },
         "destination_id": {
           "type": "string",
-          "description": "destination_id is the id of the resource that this Alias points to."
+          "description": "destination_id is the id of the resource that this alias points to."
         },
         "type": {
           "type": "string",
@@ -4862,18 +5829,23 @@
         },
         "attributes": {
           "type": "object",
-          "description": "The attributes that are applicable for the specific Alias type."
+          "example": {
+            "authorize_session_arguments": {
+              "host_id": "host_id"
+            }
+          },
+          "description": "The attributes that are applicable for the specific alias type. The schema of this field depends on the type of resource that you create the alias for.\nFor target aliases, the parameters are:\n```json\n{\n  \"authorize_session_arguments\": {\"host_id\":\"host_id\"}\n}\n```\n"
         },
         "authorized_actions": {
           "type": "array",
           "items": {
             "type": "string"
           },
-          "description": "Output only. The available actions on this resource for this user.",
+          "description": "The available actions on this resource for this user.",
           "readOnly": true
         }
       },
-      "title": "Alias contains all fields related to an Alias resource"
+      "title": "Alias contains all fields related to an alias resource"
     },
     "controller.api.resources.authmethods.v1.AuthMethod": {
       "type": "object",
@@ -6022,16 +6994,16 @@
       "properties": {
         "id": {
           "type": "string",
-          "description": "Output only. The ID of the Scope.",
+          "description": "The ID of the scope.",
           "readOnly": true
         },
         "scope_id": {
           "type": "string",
-          "description": "The ID of the Scope this resource is in. If this is the \"global\" Scope this field will be empty."
+          "description": "The ID of the scope this resource is in. If this is the \"global\" scope this field will be empty."
         },
         "scope": {
           "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
-          "description": "Output only. Scope information for this resource.",
+          "description": "Scope information for this resource.",
           "readOnly": true
         },
         "name": {
@@ -6045,13 +7017,13 @@
         "created_time": {
           "type": "string",
           "format": "date-time",
-          "description": "Output only. The time this resource was created.",
+          "description": "The time this resource was created.",
           "readOnly": true
         },
         "updated_time": {
           "type": "string",
           "format": "date-time",
-          "description": "Output only. The time this resource was last updated.",
+          "description": "The time this resource was last updated.",
           "readOnly": true
         },
         "version": {
@@ -6073,7 +7045,7 @@
           "items": {
             "type": "string"
           },
-          "description": "Output only. The available actions on this resource for this user.",
+          "description": "The available actions on this resource for this user.",
           "readOnly": true
         },
         "authorized_collection_actions": {
@@ -6084,43 +7056,43 @@
               "type": "object"
             }
           },
-          "description": "Output only. The authorized actions for the scope's collections.",
+          "description": "The authorized actions for the scope's collections.",
           "readOnly": true
         },
         "storage_policy_id": {
           "type": "string",
-          "description": "Output only. The attached storage policy id.",
+          "description": "The attached storage policy id.",
           "readOnly": true
         }
       },
-      "title": "Scope contains all fields related to a Scope resource"
+      "title": "Scope contains all fields related to a scope resource"
     },
     "controller.api.resources.scopes.v1.ScopeInfo": {
       "type": "object",
       "properties": {
         "id": {
           "type": "string",
-          "description": "Output only. The ID of the Scope.",
+          "description": "The ID of the scope.",
           "readOnly": true
         },
         "type": {
           "type": "string",
-          "description": "Output only. The type of the Scope.",
+          "description": "The type of the scope.",
           "readOnly": true
         },
         "name": {
           "type": "string",
-          "description": "Output only. The name of the Scope, if any.",
+          "description": "The name of the scope, if any.",
           "readOnly": true
         },
         "description": {
           "type": "string",
-          "description": "Output only. The description of the Scope, if any.",
+          "description": "The description of the scope, if any.",
           "readOnly": true
         },
         "parent_scope_id": {
           "type": "string",
-          "description": "Output only. The ID of the parent Scope, if any. This field will be empty if this is the \"global\" scope.",
+          "description": "The ID of the parent scope, if any. This field is empty if it is the \"global\" scope.",
           "readOnly": true
         }
       }
@@ -7583,11 +8555,11 @@
         },
         "current_password": {
           "type": "string",
-          "title": ""
+          "description": "The current password for the account."
         },
         "new_password": {
           "type": "string",
-          "title": ""
+          "description": "The new password that should be set."
         }
       }
     },
@@ -7601,7 +8573,7 @@
         },
         "password": {
           "type": "string",
-          "title": ""
+          "description": "The password that should be set."
         }
       }
     },
@@ -7698,7 +8670,7 @@
         },
         "attributes": {
           "type": "object",
-          "description": "Attributes are passed to the Auth Method; the valid keys and values depend on the type of Auth Method as well as the command."
+          "description": "Attributes are passed to the auth method. The valid keys and values depend on the type of auth method as well as the command."
         },
         "command": {
           "type": "string",
@@ -7729,7 +8701,7 @@
         },
         "attributes": {
           "type": "object",
-          "description": "Valid keys and values depend on the type of Auth Method as well as the command."
+          "description": "Valid keys and values depend on the type of auth method as well as the command."
         },
         "command": {
           "type": "string",
@@ -8365,7 +9337,8 @@
           "items": {
             "type": "object",
             "$ref": "#/definitions/controller.api.resources.accounts.v1.Account"
-          }
+          },
+          "description": "The list of accounts."
         },
         "response_type": {
           "type": "string",
@@ -8405,7 +9378,8 @@
           "items": {
             "type": "object",
             "$ref": "#/definitions/controller.api.resources.aliases.v1.Alias"
-          }
+          },
+          "description": "The list of aliases."
         },
         "response_type": {
           "type": "string",
@@ -9992,6 +10966,78 @@
         }
       }
     },
+    "controller.api.v1.Error": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "description": "The kind of error this is."
+        },
+        "op": {
+          "type": "string",
+          "description": "An string indicating what operation was being run when the error was returned."
+        },
+        "message": {
+          "type": "string",
+          "description": "A human-readable explanation specific to this occurrence of the error."
+        },
+        "details": {
+          "$ref": "#/definitions/controller.api.v1.ErrorDetails",
+          "description": "Additional metadata regarding the error. Depending on the error, different fields are populated."
+        }
+      },
+      "description": "Error is returned by the JSON API when an error occurs."
+    },
+    "controller.api.v1.ErrorDetails": {
+      "type": "object",
+      "properties": {
+        "request_fields": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/controller.api.v1.FieldError"
+          },
+          "description": "Request-field-specific error details."
+        },
+        "wrapped_errors": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/controller.api.v1.WrappedError"
+          },
+          "description": "The errors that were wrapped in the backend for this returned error."
+        }
+      },
+      "description": "Additional details regarding a specific error."
+    },
+    "controller.api.v1.FieldError": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the field."
+        },
+        "description": {
+          "type": "string",
+          "description": "The description of the error."
+        }
+      },
+      "description": "FieldErrors contains error information on a per field basis."
+    },
+    "controller.api.v1.WrappedError": {
+      "type": "object",
+      "properties": {
+        "op": {
+          "type": "string",
+          "description": "A string indicating what operation was being run when the wrapped error occurred."
+        },
+        "message": {
+          "type": "string",
+          "description": "The wrapped error message."
+        }
+      },
+      "description": "Error information relevant to an error that was wrapped by the backend."
+    },
     "google.api.HttpBody": {
       "type": "object",
       "properties": {
@@ -10034,5 +11080,21 @@
       "default": "NULL_VALUE",
       "description": "`NullValue` is a singleton enumeration to represent the null value for the\n`Value` type union.\n\n The JSON representation for `NullValue` is JSON `null`.\n\n - NULL_VALUE: Null value."
     }
+  },
+  "securityDefinitions": {
+    "ApiKeyAuth": {
+      "type": "apiKey",
+      "name": "Authorization",
+      "in": "header"
+    }
+  },
+  "security": [
+    {
+      "ApiKeyAuth": []
+    }
+  ],
+  "externalDocs": {
+    "description": "Boundary documentation",
+    "url": "https://developer.hashicorp.com/boundary/docs"
   }
 }

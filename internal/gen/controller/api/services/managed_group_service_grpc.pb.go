@@ -39,7 +39,7 @@ type ManagedGroupServiceClient interface {
 	GetManagedGroup(ctx context.Context, in *GetManagedGroupRequest, opts ...grpc.CallOption) (*GetManagedGroupResponse, error)
 	// ListManagedGroups returns a list of stored ManagedGroups which exist inside the
 	// provided Auth Method. The request must include the Auth Method id which
-	// contains the ManagedGroups being listed. If missing or malformed an error
+	// contains the ManagedGroups being listed. If missing or malformed, an error
 	// is returned.
 	ListManagedGroups(ctx context.Context, in *ListManagedGroupsRequest, opts ...grpc.CallOption) (*ListManagedGroupsResponse, error)
 	// CreateManagedGroup creates and stores a ManagedGroup. The provided request
@@ -126,7 +126,7 @@ type ManagedGroupServiceServer interface {
 	GetManagedGroup(context.Context, *GetManagedGroupRequest) (*GetManagedGroupResponse, error)
 	// ListManagedGroups returns a list of stored ManagedGroups which exist inside the
 	// provided Auth Method. The request must include the Auth Method id which
-	// contains the ManagedGroups being listed. If missing or malformed an error
+	// contains the ManagedGroups being listed. If missing or malformed, an error
 	// is returned.
 	ListManagedGroups(context.Context, *ListManagedGroupsRequest) (*ListManagedGroupsResponse, error)
 	// CreateManagedGroup creates and stores a ManagedGroup. The provided request

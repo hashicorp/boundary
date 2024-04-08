@@ -94,7 +94,7 @@ type AuthMethod struct {
 	// for max age based on the oidc spec.
 	// @inject_tag: `gorm:"default:null"`
 	MaxAge int32 `protobuf:"varint,150,opt,name=max_age,json=maxAge,proto3" json:"max_age,omitempty" gorm:"default:null"`
-	// api_url is the URLs prefix at which the boundary api is reachable. This value
+	// api_url is the URLs prefix at which the Boundary api is reachable. This value
 	// is used by the auth method in the different steps of the auth flow.
 	// @inject_tag: `gorm:"default:null"`
 	ApiUrl string `protobuf:"bytes,160,opt,name=api_url,json=apiUrl,proto3" json:"api_url,omitempty" gorm:"default:null"`
