@@ -91,7 +91,6 @@ func ListResolvableAliasesRefresh(
 	ctx context.Context,
 	grantsHash []byte,
 	pageSize int,
-	filterItemFn pagination.ListFilterFunc[*Alias],
 	tok *listtoken.Token,
 	repo *Repository,
 	permissions []perms.Permission,
@@ -103,8 +102,6 @@ func ListResolvableAliasesRefresh(
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing grants hash")
 	case pageSize < 1:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "page size must be at least 1")
-	case filterItemFn == nil:
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing filter item callback")
 	case tok == nil:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing token")
 	case repo == nil:
@@ -136,5 +133,5 @@ func ListResolvableAliasesRefresh(
 		return repo.listRemovedResolvableAliasIds(ctx, since.Add(-globals.RefreshReadLookbackDuration), permissions)
 	}
 
-	return pagination.ListRefresh(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, repo.estimatedCount, listDeletedIdsFn, tok)
+	return pagination.ListRefresh(ctx, grantsHash, pageSize, alwaysTrueFilterFn, listItemsFn, repo.estimatedCount, listDeletedIdsFn, tok)
 }

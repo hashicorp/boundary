@@ -99,320 +99,204 @@ func TestService_ListResolvableAliases(t *testing.T) {
 		t.Parallel()
 		t.Run("missing grants hash", func(t *testing.T) {
 			t.Parallel()
-			filterFunc := func(_ context.Context, r *target.Alias) (bool, error) {
-				return true, nil
-			}
-			_, err := target.ListResolvableAliases(ctx, nil, 1, filterFunc, repo, byIdPerms)
+			_, err := target.ListResolvableAliases(ctx, nil, 1, repo, byIdPerms)
 			require.ErrorContains(t, err, "missing grants hash")
 		})
 		t.Run("zero page size", func(t *testing.T) {
 			t.Parallel()
-			filterFunc := func(_ context.Context, r *target.Alias) (bool, error) {
-				return true, nil
-			}
-			_, err := target.ListResolvableAliases(ctx, []byte("some hash"), 0, filterFunc, repo, byIdPerms)
+			_, err := target.ListResolvableAliases(ctx, []byte("some hash"), 0, repo, byIdPerms)
 			require.ErrorContains(t, err, "page size must be at least 1")
 		})
 		t.Run("negative page size", func(t *testing.T) {
-			t.Parallel()
-			filterFunc := func(_ context.Context, r *target.Alias) (bool, error) {
-				return true, nil
-			}
-			_, err := target.ListResolvableAliases(ctx, []byte("some hash"), -1, filterFunc, repo, byIdPerms)
+			t.Parallel()			
+			_, err := target.ListResolvableAliases(ctx, []byte("some hash"), -1, repo, byIdPerms)
 			require.ErrorContains(t, err, "page size must be at least 1")
 		})
-		t.Run("nil filter func", func(t *testing.T) {
-			t.Parallel()
-			_, err := target.ListResolvableAliases(ctx, []byte("some hash"), 1, nil, repo, byIdPerms)
-			require.ErrorContains(t, err, "missing filter item callback")
-		})
 		t.Run("nil repo", func(t *testing.T) {
-			t.Parallel()
-			filterFunc := func(_ context.Context, r *target.Alias) (bool, error) {
-				return true, nil
-			}
-			_, err := target.ListResolvableAliases(ctx, []byte("some hash"), 1, filterFunc, nil, byIdPerms)
+			t.Parallel()			
+			_, err := target.ListResolvableAliases(ctx, []byte("some hash"), 1, nil, byIdPerms)
 			require.ErrorContains(t, err, "missing repo")
 		})
 		t.Run("missing target permissions", func(t *testing.T) {
-			t.Parallel()
-			filterFunc := func(_ context.Context, r *target.Alias) (bool, error) {
-				return true, nil
-			}
-			_, err := target.ListResolvableAliases(ctx, []byte("some hash"), 1, filterFunc, repo, nil)
+			t.Parallel()			
+			_, err := target.ListResolvableAliases(ctx, []byte("some hash"), 1, repo, nil)
 			require.ErrorContains(t, err, "missing target permissions")
 		})
 	})
 	t.Run("ListPage validation", func(t *testing.T) {
 		t.Parallel()
 		t.Run("missing grants hash", func(t *testing.T) {
-			t.Parallel()
-			filterFunc := func(_ context.Context, r *target.Alias) (bool, error) {
-				return true, nil
-			}
+			t.Parallel()			
 			tok, err := listtoken.NewPagination(ctx, fiveDaysAgo, resource.Alias, []byte("some hash"), "some-id", fiveDaysAgo)
 			require.NoError(t, err)
-			_, err = target.ListResolvableAliasesPage(ctx, nil, 1, filterFunc, tok, repo, byIdPerms)
+			_, err = target.ListResolvableAliasesPage(ctx, nil, 1, tok, repo, byIdPerms)
 			require.ErrorContains(t, err, "missing grants hash")
 		})
 		t.Run("zero page size", func(t *testing.T) {
-			t.Parallel()
-			filterFunc := func(_ context.Context, r *target.Alias) (bool, error) {
-				return true, nil
-			}
+			t.Parallel()			
 			tok, err := listtoken.NewPagination(ctx, fiveDaysAgo, resource.Alias, []byte("some hash"), "some-id", fiveDaysAgo)
 			require.NoError(t, err)
-			_, err = target.ListResolvableAliasesPage(ctx, []byte("some hash"), 0, filterFunc, tok, repo, byIdPerms)
+			_, err = target.ListResolvableAliasesPage(ctx, []byte("some hash"), 0, tok, repo, byIdPerms)
 			require.ErrorContains(t, err, "page size must be at least 1")
 		})
 		t.Run("negative page size", func(t *testing.T) {
-			t.Parallel()
-			filterFunc := func(_ context.Context, r *target.Alias) (bool, error) {
-				return true, nil
-			}
+			t.Parallel()			
 			tok, err := listtoken.NewPagination(ctx, fiveDaysAgo, resource.Alias, []byte("some hash"), "some-id", fiveDaysAgo)
 			require.NoError(t, err)
-			_, err = target.ListResolvableAliasesPage(ctx, []byte("some hash"), -1, filterFunc, tok, repo, byIdPerms)
+			_, err = target.ListResolvableAliasesPage(ctx, []byte("some hash"), -1, tok, repo, byIdPerms)
 			require.ErrorContains(t, err, "page size must be at least 1")
 		})
-		t.Run("nil filter func", func(t *testing.T) {
-			t.Parallel()
-			tok, err := listtoken.NewPagination(ctx, fiveDaysAgo, resource.Alias, []byte("some hash"), "some-id", fiveDaysAgo)
-			require.NoError(t, err)
-			_, err = target.ListResolvableAliasesPage(ctx, []byte("some hash"), 1, nil, tok, repo, byIdPerms)
-			require.ErrorContains(t, err, "missing filter item callback")
-		})
 		t.Run("nil token", func(t *testing.T) {
-			t.Parallel()
-			filterFunc := func(_ context.Context, r *target.Alias) (bool, error) {
-				return true, nil
-			}
-			_, err := target.ListResolvableAliasesPage(ctx, []byte("some hash"), 1, filterFunc, nil, repo, byIdPerms)
+			t.Parallel()			
+			_, err := target.ListResolvableAliasesPage(ctx, []byte("some hash"), 1, nil, repo, byIdPerms)
 			require.ErrorContains(t, err, "missing token")
 		})
 		t.Run("wrong token type", func(t *testing.T) {
-			t.Parallel()
-			filterFunc := func(_ context.Context, r *target.Alias) (bool, error) {
-				return true, nil
-			}
+			t.Parallel()			
 			tok, err := listtoken.NewStartRefresh(ctx, fiveDaysAgo, resource.Alias, []byte("some hash"), fiveDaysAgo, fiveDaysAgo)
 			require.NoError(t, err)
-			_, err = target.ListResolvableAliasesPage(ctx, []byte("some hash"), 1, filterFunc, tok, repo, byIdPerms)
+			_, err = target.ListResolvableAliasesPage(ctx, []byte("some hash"), 1, tok, repo, byIdPerms)
 			require.ErrorContains(t, err, "token did not have a pagination token component")
 		})
 		t.Run("nil repo", func(t *testing.T) {
-			t.Parallel()
-			filterFunc := func(_ context.Context, r *target.Alias) (bool, error) {
-				return true, nil
-			}
+			t.Parallel()			
 			tok, err := listtoken.NewPagination(ctx, fiveDaysAgo, resource.Alias, []byte("some hash"), "some-id", fiveDaysAgo)
 			require.NoError(t, err)
-			_, err = target.ListResolvableAliasesPage(ctx, []byte("some hash"), 1, filterFunc, tok, nil, byIdPerms)
+			_, err = target.ListResolvableAliasesPage(ctx, []byte("some hash"), 1, tok, nil, byIdPerms)
 			require.ErrorContains(t, err, "missing repo")
 		})
 		t.Run("missing permissions", func(t *testing.T) {
-			t.Parallel()
-			filterFunc := func(_ context.Context, r *target.Alias) (bool, error) {
-				return true, nil
-			}
+			t.Parallel()			
 			tok, err := listtoken.NewPagination(ctx, fiveDaysAgo, resource.Alias, []byte("some hash"), "some-id", fiveDaysAgo)
 			require.NoError(t, err)
-			_, err = target.ListResolvableAliasesPage(ctx, []byte("some hash"), 1, filterFunc, tok, repo, nil)
+			_, err = target.ListResolvableAliasesPage(ctx, []byte("some hash"), 1, tok, repo, nil)
 			require.ErrorContains(t, err, "missing permissions")
 		})
 		t.Run("wrong token resource type", func(t *testing.T) {
-			t.Parallel()
-			filterFunc := func(_ context.Context, r *target.Alias) (bool, error) {
-				return true, nil
-			}
+			t.Parallel()			
 			tok, err := listtoken.NewPagination(ctx, fiveDaysAgo, resource.Target, []byte("some hash"), "some-id", fiveDaysAgo)
 			require.NoError(t, err)
-			_, err = target.ListResolvableAliasesPage(ctx, []byte("some hash"), 1, filterFunc, tok, repo, byIdPerms)
+			_, err = target.ListResolvableAliasesPage(ctx, []byte("some hash"), 1, tok, repo, byIdPerms)
 			require.ErrorContains(t, err, "token did not have a alias resource type")
 		})
 	})
 	t.Run("ListRefresh validation", func(t *testing.T) {
 		t.Parallel()
 		t.Run("missing grants hash", func(t *testing.T) {
-			t.Parallel()
-			filterFunc := func(_ context.Context, r *target.Alias) (bool, error) {
-				return true, nil
-			}
+			t.Parallel()			
 			tok, err := listtoken.NewStartRefresh(ctx, fiveDaysAgo, resource.Alias, []byte("some hash"), fiveDaysAgo, fiveDaysAgo)
 			require.NoError(t, err)
-			_, err = target.ListResolvableAliasesRefresh(ctx, nil, 1, filterFunc, tok, repo, byIdPerms)
+			_, err = target.ListResolvableAliasesRefresh(ctx, nil, 1, tok, repo, byIdPerms)
 			require.ErrorContains(t, err, "missing grants hash")
 		})
 		t.Run("zero page size", func(t *testing.T) {
-			t.Parallel()
-			filterFunc := func(_ context.Context, r *target.Alias) (bool, error) {
-				return true, nil
-			}
+			t.Parallel()			
 			tok, err := listtoken.NewStartRefresh(ctx, fiveDaysAgo, resource.Alias, []byte("some hash"), fiveDaysAgo, fiveDaysAgo)
 			require.NoError(t, err)
-			_, err = target.ListResolvableAliasesRefresh(ctx, []byte("some hash"), 0, filterFunc, tok, repo, byIdPerms)
+			_, err = target.ListResolvableAliasesRefresh(ctx, []byte("some hash"), 0, tok, repo, byIdPerms)
 			require.ErrorContains(t, err, "page size must be at least 1")
 		})
 		t.Run("negative page size", func(t *testing.T) {
-			t.Parallel()
-			filterFunc := func(_ context.Context, r *target.Alias) (bool, error) {
-				return true, nil
-			}
+			t.Parallel()			
 			tok, err := listtoken.NewStartRefresh(ctx, fiveDaysAgo, resource.Alias, []byte("some hash"), fiveDaysAgo, fiveDaysAgo)
 			require.NoError(t, err)
-			_, err = target.ListResolvableAliasesRefresh(ctx, []byte("some hash"), -1, filterFunc, tok, repo, byIdPerms)
+			_, err = target.ListResolvableAliasesRefresh(ctx, []byte("some hash"), -1, tok, repo, byIdPerms)
 			require.ErrorContains(t, err, "page size must be at least 1")
-		})
-		t.Run("nil filter func", func(t *testing.T) {
-			t.Parallel()
-			tok, err := listtoken.NewStartRefresh(ctx, fiveDaysAgo, resource.Alias, []byte("some hash"), fiveDaysAgo, fiveDaysAgo)
-			require.NoError(t, err)
-			_, err = target.ListResolvableAliasesRefresh(ctx, []byte("some hash"), 1, nil, tok, repo, byIdPerms)
-			require.ErrorContains(t, err, "missing filter item callback")
 		})
 		t.Run("nil token", func(t *testing.T) {
 			t.Parallel()
-			filterFunc := func(_ context.Context, r *target.Alias) (bool, error) {
-				return true, nil
-			}
-			_, err := target.ListResolvableAliasesRefresh(ctx, []byte("some hash"), 1, filterFunc, nil, repo, byIdPerms)
+			
+			_, err := target.ListResolvableAliasesRefresh(ctx, []byte("some hash"), 1, nil, repo, byIdPerms)
 			require.ErrorContains(t, err, "missing token")
 		})
 		t.Run("wrong token type", func(t *testing.T) {
-			t.Parallel()
-			filterFunc := func(_ context.Context, r *target.Alias) (bool, error) {
-				return true, nil
-			}
+			t.Parallel()			
 			tok, err := listtoken.NewPagination(ctx, fiveDaysAgo, resource.Alias, []byte("some hash"), "some-id", fiveDaysAgo)
 			require.NoError(t, err)
-			_, err = target.ListResolvableAliasesRefresh(ctx, []byte("some hash"), 1, filterFunc, tok, repo, byIdPerms)
+			_, err = target.ListResolvableAliasesRefresh(ctx, []byte("some hash"), 1, tok, repo, byIdPerms)
 			require.ErrorContains(t, err, "token did not have a start-refresh token component")
 		})
 		t.Run("nil repo", func(t *testing.T) {
-			t.Parallel()
-			filterFunc := func(_ context.Context, r *target.Alias) (bool, error) {
-				return true, nil
-			}
+			t.Parallel()			
 			tok, err := listtoken.NewStartRefresh(ctx, fiveDaysAgo, resource.Alias, []byte("some hash"), fiveDaysAgo, fiveDaysAgo)
 			require.NoError(t, err)
-			_, err = target.ListResolvableAliasesRefresh(ctx, []byte("some hash"), 1, filterFunc, tok, nil, byIdPerms)
+			_, err = target.ListResolvableAliasesRefresh(ctx, []byte("some hash"), 1, tok, nil, byIdPerms)
 			require.ErrorContains(t, err, "missing repo")
 		})
 		t.Run("missing permissions", func(t *testing.T) {
-			t.Parallel()
-			filterFunc := func(_ context.Context, r *target.Alias) (bool, error) {
-				return true, nil
-			}
+			t.Parallel()			
 			tok, err := listtoken.NewStartRefresh(ctx, fiveDaysAgo, resource.Alias, []byte("some hash"), fiveDaysAgo, fiveDaysAgo)
 			require.NoError(t, err)
-			_, err = target.ListResolvableAliasesRefresh(ctx, []byte("some hash"), 1, filterFunc, tok, repo, nil)
+			_, err = target.ListResolvableAliasesRefresh(ctx, []byte("some hash"), 1, tok, repo, nil)
 			require.ErrorContains(t, err, "missing target permissions")
 		})
 		t.Run("wrong token resource type", func(t *testing.T) {
-			t.Parallel()
-			filterFunc := func(_ context.Context, r *target.Alias) (bool, error) {
-				return true, nil
-			}
+			t.Parallel()			
 			tok, err := listtoken.NewStartRefresh(ctx, fiveDaysAgo, resource.Target, []byte("some hash"), fiveDaysAgo, fiveDaysAgo)
 			require.NoError(t, err)
-			_, err = target.ListResolvableAliasesRefresh(ctx, []byte("some hash"), 1, filterFunc, tok, repo, byIdPerms)
+			_, err = target.ListResolvableAliasesRefresh(ctx, []byte("some hash"), 1, tok, repo, byIdPerms)
 			require.ErrorContains(t, err, "token did not have a alias resource type")
 		})
 	})
 	t.Run("ListRefreshPage validation", func(t *testing.T) {
 		t.Parallel()
 		t.Run("missing grants hash", func(t *testing.T) {
-			t.Parallel()
-			filterFunc := func(_ context.Context, r *target.Alias) (bool, error) {
-				return true, nil
-			}
+			t.Parallel()			
 			tok, err := listtoken.NewRefresh(ctx, fiveDaysAgo, resource.Alias, []byte("some hash"), fiveDaysAgo, fiveDaysAgo, fiveDaysAgo, "some other id", fiveDaysAgo)
 			require.NoError(t, err)
-			_, err = target.ListResolvableAliasesRefreshPage(ctx, nil, 1, filterFunc, tok, repo, byIdPerms)
+			_, err = target.ListResolvableAliasesRefreshPage(ctx, nil, 1, tok, repo, byIdPerms)
 			require.ErrorContains(t, err, "missing grants hash")
 		})
 		t.Run("zero page size", func(t *testing.T) {
-			t.Parallel()
-			filterFunc := func(_ context.Context, r *target.Alias) (bool, error) {
-				return true, nil
-			}
+			t.Parallel()			
 			tok, err := listtoken.NewRefresh(ctx, fiveDaysAgo, resource.Alias, []byte("some hash"), fiveDaysAgo, fiveDaysAgo, fiveDaysAgo, "some other id", fiveDaysAgo)
 			require.NoError(t, err)
-			_, err = target.ListResolvableAliasesRefreshPage(ctx, []byte("some hash"), 0, filterFunc, tok, repo, byIdPerms)
+			_, err = target.ListResolvableAliasesRefreshPage(ctx, []byte("some hash"), 0, tok, repo, byIdPerms)
 			require.ErrorContains(t, err, "page size must be at least 1")
 		})
 		t.Run("negative page size", func(t *testing.T) {
-			t.Parallel()
-			filterFunc := func(_ context.Context, r *target.Alias) (bool, error) {
-				return true, nil
-			}
+			t.Parallel()			
 			tok, err := listtoken.NewRefresh(ctx, fiveDaysAgo, resource.Alias, []byte("some hash"), fiveDaysAgo, fiveDaysAgo, fiveDaysAgo, "some other id", fiveDaysAgo)
 			require.NoError(t, err)
-			_, err = target.ListResolvableAliasesRefreshPage(ctx, []byte("some hash"), -1, filterFunc, tok, repo, byIdPerms)
+			_, err = target.ListResolvableAliasesRefreshPage(ctx, []byte("some hash"), -1, tok, repo, byIdPerms)
 			require.ErrorContains(t, err, "page size must be at least 1")
 		})
-		t.Run("nil filter func", func(t *testing.T) {
-			t.Parallel()
-			tok, err := listtoken.NewRefresh(ctx, fiveDaysAgo, resource.Alias, []byte("some hash"), fiveDaysAgo, fiveDaysAgo, fiveDaysAgo, "some other id", fiveDaysAgo)
-			require.NoError(t, err)
-			_, err = target.ListResolvableAliasesRefreshPage(ctx, []byte("some hash"), 1, nil, tok, repo, byIdPerms)
-			require.ErrorContains(t, err, "missing filter item callback")
-		})
 		t.Run("nil token", func(t *testing.T) {
-			t.Parallel()
-			filterFunc := func(_ context.Context, r *target.Alias) (bool, error) {
-				return true, nil
-			}
-			_, err = target.ListResolvableAliasesRefreshPage(ctx, []byte("some hash"), 1, filterFunc, nil, repo, byIdPerms)
+			t.Parallel()			
+			_, err = target.ListResolvableAliasesRefreshPage(ctx, []byte("some hash"), 1, nil, repo, byIdPerms)
 			require.ErrorContains(t, err, "missing token")
 		})
 		t.Run("wrong token type", func(t *testing.T) {
-			t.Parallel()
-			filterFunc := func(_ context.Context, r *target.Alias) (bool, error) {
-				return true, nil
-			}
+			t.Parallel()			
 			tok, err := listtoken.NewPagination(ctx, fiveDaysAgo, resource.Alias, []byte("some hash"), "some-id", fiveDaysAgo)
 			require.NoError(t, err)
-			_, err = target.ListResolvableAliasesRefreshPage(ctx, []byte("some hash"), 1, filterFunc, tok, repo, byIdPerms)
+			_, err = target.ListResolvableAliasesRefreshPage(ctx, []byte("some hash"), 1, tok, repo, byIdPerms)
 			require.ErrorContains(t, err, "token did not have a refresh token component")
 		})
 		t.Run("nil repo", func(t *testing.T) {
-			t.Parallel()
-			filterFunc := func(_ context.Context, r *target.Alias) (bool, error) {
-				return true, nil
-			}
+			t.Parallel()			
 			tok, err := listtoken.NewRefresh(ctx, fiveDaysAgo, resource.Alias, []byte("some hash"), fiveDaysAgo, fiveDaysAgo, fiveDaysAgo, "some other id", fiveDaysAgo)
 			require.NoError(t, err)
-			_, err = target.ListResolvableAliasesRefreshPage(ctx, []byte("some hash"), 1, filterFunc, tok, nil, byIdPerms)
+			_, err = target.ListResolvableAliasesRefreshPage(ctx, []byte("some hash"), 1, tok, nil, byIdPerms)
 			require.ErrorContains(t, err, "missing repo")
 		})
 		t.Run("missing permissions", func(t *testing.T) {
-			t.Parallel()
-			filterFunc := func(_ context.Context, r *target.Alias) (bool, error) {
-				return true, nil
-			}
+			t.Parallel()			
 			tok, err := listtoken.NewRefresh(ctx, fiveDaysAgo, resource.Alias, []byte("some hash"), fiveDaysAgo, fiveDaysAgo, fiveDaysAgo, "some other id", fiveDaysAgo)
 			require.NoError(t, err)
-			_, err = target.ListResolvableAliasesRefreshPage(ctx, []byte("some hash"), 1, filterFunc, tok, repo, nil)
+			_, err = target.ListResolvableAliasesRefreshPage(ctx, []byte("some hash"), 1, tok, repo, nil)
 			require.ErrorContains(t, err, "missing target permissions")
 		})
 		t.Run("wrong token resource type", func(t *testing.T) {
-			t.Parallel()
-			filterFunc := func(_ context.Context, r *target.Alias) (bool, error) {
-				return true, nil
-			}
+			t.Parallel()			
 			tok, err := listtoken.NewRefresh(ctx, fiveDaysAgo, resource.Target, []byte("some hash"), fiveDaysAgo, fiveDaysAgo, fiveDaysAgo, "some other id", fiveDaysAgo)
 			require.NoError(t, err)
-			_, err = target.ListResolvableAliasesRefreshPage(ctx, []byte("some hash"), 1, filterFunc, tok, repo, byIdPerms)
+			_, err = target.ListResolvableAliasesRefreshPage(ctx, []byte("some hash"), 1, tok, repo, byIdPerms)
 			require.ErrorContains(t, err, "token did not have a alias resource type")
 		})
 	})
 
 	t.Run("simple pagination", func(t *testing.T) {
-		filterFunc := func(_ context.Context, r *target.Alias) (bool, error) {
-			return true, nil
-		}
-
 		cases := []struct {
 			name          string
 			perms         []perms.Permission
@@ -431,7 +315,7 @@ func TestService_ListResolvableAliases(t *testing.T) {
 		}
 		for _, tc := range cases {
 			t.Run(tc.name, func(t *testing.T) {
-				resp, err := target.ListResolvableAliases(ctx, []byte("some hash"), 1, filterFunc, repo, tc.perms)
+				resp, err := target.ListResolvableAliases(ctx, []byte("some hash"), 1, repo, tc.perms)
 				require.NoError(t, err)
 				require.NotNil(t, resp.ListToken)
 				require.Equal(t, resp.ListToken.GrantsHash, []byte("some hash"))
@@ -441,7 +325,7 @@ func TestService_ListResolvableAliases(t *testing.T) {
 				require.Len(t, resp.Items, 1)
 				require.Empty(t, cmp.Diff(resp.Items[0], tc.resourceSlice[0], cmpIgnoreUnexportedOpts), "resources did not match", tc.resourceSlice, "resp", resp.Items)
 
-				resp2, err := target.ListResolvableAliasesPage(ctx, []byte("some hash"), 1, filterFunc, resp.ListToken, repo, tc.perms)
+				resp2, err := target.ListResolvableAliasesPage(ctx, []byte("some hash"), 1, resp.ListToken, repo, tc.perms)
 				require.NoError(t, err)
 				require.Equal(t, resp2.ListToken.GrantsHash, []byte("some hash"))
 				require.False(t, resp2.CompleteListing)
@@ -450,7 +334,7 @@ func TestService_ListResolvableAliases(t *testing.T) {
 				require.Len(t, resp2.Items, 1)
 				require.Empty(t, cmp.Diff(resp2.Items[0], tc.resourceSlice[1], cmpIgnoreUnexportedOpts))
 
-				resp3, err := target.ListResolvableAliasesPage(ctx, []byte("some hash"), 1, filterFunc, resp2.ListToken, repo, tc.perms)
+				resp3, err := target.ListResolvableAliasesPage(ctx, []byte("some hash"), 1, resp2.ListToken, repo, tc.perms)
 				require.NoError(t, err)
 				require.Equal(t, resp3.ListToken.GrantsHash, []byte("some hash"))
 				require.False(t, resp3.CompleteListing)
@@ -459,7 +343,7 @@ func TestService_ListResolvableAliases(t *testing.T) {
 				require.Len(t, resp3.Items, 1)
 				require.Empty(t, cmp.Diff(resp3.Items[0], tc.resourceSlice[2], cmpIgnoreUnexportedOpts))
 
-				resp4, err := target.ListResolvableAliasesPage(ctx, []byte("some hash"), 1, filterFunc, resp3.ListToken, repo, tc.perms)
+				resp4, err := target.ListResolvableAliasesPage(ctx, []byte("some hash"), 1, resp3.ListToken, repo, tc.perms)
 				require.NoError(t, err)
 				require.Equal(t, resp4.ListToken.GrantsHash, []byte("some hash"))
 				require.False(t, resp4.CompleteListing)
@@ -468,7 +352,7 @@ func TestService_ListResolvableAliases(t *testing.T) {
 				require.Len(t, resp4.Items, 1)
 				require.Empty(t, cmp.Diff(resp4.Items[0], tc.resourceSlice[3], cmpIgnoreUnexportedOpts))
 
-				resp5, err := target.ListResolvableAliasesPage(ctx, []byte("some hash"), 1, filterFunc, resp4.ListToken, repo, tc.perms)
+				resp5, err := target.ListResolvableAliasesPage(ctx, []byte("some hash"), 1, resp4.ListToken, repo, tc.perms)
 				require.NoError(t, err)
 				require.Equal(t, resp5.ListToken.GrantsHash, []byte("some hash"))
 				require.True(t, resp5.CompleteListing)
@@ -479,7 +363,7 @@ func TestService_ListResolvableAliases(t *testing.T) {
 
 				// Finished initial pagination phase, request refresh
 				// Expect no results.
-				resp6, err := target.ListResolvableAliasesRefresh(ctx, []byte("some hash"), 1, filterFunc, resp5.ListToken, repo, tc.perms)
+				resp6, err := target.ListResolvableAliasesRefresh(ctx, []byte("some hash"), 1, resp5.ListToken, repo, tc.perms)
 				require.NoError(t, err)
 				require.Equal(t, resp6.ListToken.GrantsHash, []byte("some hash"))
 				require.True(t, resp6.CompleteListing)
@@ -504,7 +388,7 @@ func TestService_ListResolvableAliases(t *testing.T) {
 				require.NoError(t, err)
 
 				// Refresh again, should get newR2
-				resp7, err := target.ListResolvableAliasesRefresh(ctx, []byte("some hash"), 1, filterFunc, resp6.ListToken, repo, tc.perms)
+				resp7, err := target.ListResolvableAliasesRefresh(ctx, []byte("some hash"), 1, resp6.ListToken, repo, tc.perms)
 				require.NoError(t, err)
 				require.Equal(t, resp7.ListToken.GrantsHash, []byte("some hash"))
 				require.False(t, resp7.CompleteListing)
@@ -514,7 +398,7 @@ func TestService_ListResolvableAliases(t *testing.T) {
 				require.Empty(t, cmp.Diff(resp7.Items[0], newR2, cmpIgnoreUnexportedOpts))
 
 				// Refresh again, should get newR1
-				resp8, err := target.ListResolvableAliasesRefreshPage(ctx, []byte("some hash"), 1, filterFunc, resp7.ListToken, repo, tc.perms)
+				resp8, err := target.ListResolvableAliasesRefreshPage(ctx, []byte("some hash"), 1, resp7.ListToken, repo, tc.perms)
 				require.NoError(t, err)
 				require.Equal(t, resp8.ListToken.GrantsHash, []byte("some hash"))
 				require.True(t, resp8.CompleteListing)
@@ -524,7 +408,7 @@ func TestService_ListResolvableAliases(t *testing.T) {
 				require.Empty(t, cmp.Diff(resp8.Items[0], newR1, cmpIgnoreUnexportedOpts))
 
 				// Refresh again, should get no results
-				resp9, err := target.ListResolvableAliasesRefresh(ctx, []byte("some hash"), 1, filterFunc, resp8.ListToken, repo, tc.perms)
+				resp9, err := target.ListResolvableAliasesRefresh(ctx, []byte("some hash"), 1, resp8.ListToken, repo, tc.perms)
 				require.NoError(t, err)
 				require.Equal(t, resp9.ListToken.GrantsHash, []byte("some hash"))
 				require.True(t, resp9.CompleteListing)
@@ -535,91 +419,7 @@ func TestService_ListResolvableAliases(t *testing.T) {
 		}
 	})
 
-	t.Run("simple pagination with aggressive filtering", func(t *testing.T) {
-		filterFunc := func(_ context.Context, r *target.Alias) (bool, error) {
-			return r.GetPublicId() == byIdResources[1].GetPublicId() ||
-				r.GetPublicId() == byIdResources[len(byIdResources)-1].GetPublicId(), nil
-		}
-		resp, err := target.ListResolvableAliases(ctx, []byte("some hash"), 1, filterFunc, repo, byIdPerms)
-		require.NoError(t, err)
-		require.NotNil(t, resp.ListToken)
-		require.Equal(t, resp.ListToken.GrantsHash, []byte("some hash"))
-		require.False(t, resp.CompleteListing)
-		require.Equal(t, resp.EstimatedItemCount, 10)
-		require.Empty(t, resp.DeletedIds)
-		require.Len(t, resp.Items, 1)
-		require.Empty(t, cmp.Diff(resp.Items[0], byIdResources[1], cmpIgnoreUnexportedOpts))
-
-		resp2, err := target.ListResolvableAliasesPage(ctx, []byte("some hash"), 1, filterFunc, resp.ListToken, repo, byIdPerms)
-		require.NoError(t, err)
-		require.NotNil(t, resp2.ListToken)
-		require.Equal(t, resp2.ListToken.GrantsHash, []byte("some hash"))
-		require.True(t, resp2.CompleteListing)
-		require.Equal(t, resp2.EstimatedItemCount, 10)
-		require.Empty(t, resp2.DeletedIds)
-		require.Len(t, resp2.Items, 1)
-		require.Empty(t, cmp.Diff(resp2.Items[0], byIdResources[len(byIdResources)-1], cmpIgnoreUnexportedOpts))
-
-		// request a refresh, nothing should be returned
-		resp3, err := target.ListResolvableAliasesRefresh(ctx, []byte("some hash"), 1, filterFunc, resp.ListToken, repo, byIdPerms)
-		require.NoError(t, err)
-		require.Equal(t, resp3.ListToken.GrantsHash, []byte("some hash"))
-		require.True(t, resp3.CompleteListing)
-		require.Equal(t, resp3.EstimatedItemCount, 10)
-		require.Empty(t, resp3.DeletedIds)
-		require.Empty(t, resp3.Items)
-
-		// Create some new aliases
-		newR1 := target.TestAlias(t, rw, "new.alias.one", target.WithDestinationId(tar.GetPublicId()))
-		newR2 := target.TestAlias(t, rw, "new.alias.two", target.WithDestinationId(tar.GetPublicId()))
-		newR3 := target.TestAlias(t, rw, "new.alias.three", target.WithDestinationId(tar.GetPublicId()))
-		newR4 := target.TestAlias(t, rw, "new.alias.four", target.WithDestinationId(tar.GetPublicId()))
-		// Run analyze to update count estimate
-		_, err = sqlDB.ExecContext(ctx, "analyze")
-		require.NoError(t, err)
-		t.Cleanup(func() {
-			_, err = repo.DeleteAlias(ctx, newR1.GetPublicId())
-			require.NoError(t, err)
-			_, err = repo.DeleteAlias(ctx, newR2.GetPublicId())
-			require.NoError(t, err)
-			_, err = repo.DeleteAlias(ctx, newR3.GetPublicId())
-			require.NoError(t, err)
-			_, err = repo.DeleteAlias(ctx, newR4.GetPublicId())
-			require.NoError(t, err)
-			// Run analyze to update count estimate
-			_, err = sqlDB.ExecContext(ctx, "analyze")
-			require.NoError(t, err)
-		})
-
-		filterFunc = func(_ context.Context, r *target.Alias) (bool, error) {
-			return r.GetPublicId() == newR3.GetPublicId() ||
-				r.GetPublicId() == newR1.GetPublicId(), nil
-		}
-		// Refresh again, should get newR3
-		resp4, err := target.ListResolvableAliasesRefresh(ctx, []byte("some hash"), 1, filterFunc, resp3.ListToken, repo, byIdPerms)
-		require.NoError(t, err)
-		require.Equal(t, resp4.ListToken.GrantsHash, []byte("some hash"))
-		require.False(t, resp4.CompleteListing)
-		require.Equal(t, resp4.EstimatedItemCount, 14)
-		require.Empty(t, resp4.DeletedIds)
-		require.Len(t, resp4.Items, 1)
-		require.Empty(t, cmp.Diff(resp4.Items[0], newR3, cmpIgnoreUnexportedOpts))
-
-		// Refresh again, should get newR1
-		resp5, err := target.ListResolvableAliasesRefreshPage(ctx, []byte("some hash"), 1, filterFunc, resp4.ListToken, repo, byIdPerms)
-		require.NoError(t, err)
-		require.Equal(t, resp5.ListToken.GrantsHash, []byte("some hash"))
-		require.True(t, resp5.CompleteListing)
-		require.Equal(t, resp5.EstimatedItemCount, 14)
-		require.Empty(t, resp5.DeletedIds)
-		require.Len(t, resp5.Items, 1)
-		require.Empty(t, cmp.Diff(resp5.Items[0], newR1, cmpIgnoreUnexportedOpts))
-	})
-
 	t.Run("simple pagination with destination id changes", func(t *testing.T) {
-		filterFunc := func(_ context.Context, r *target.Alias) (bool, error) {
-			return true, nil
-		}
 		firstUpdatedA := byScopeResources[0]
 		// this no longer has the destination id that has permissions
 		firstUpdatedA.DestinationId = tar.GetPublicId()
@@ -637,7 +437,7 @@ func TestService_ListResolvableAliases(t *testing.T) {
 		_, err = sqlDB.ExecContext(ctx, "analyze")
 		require.NoError(t, err)
 
-		resp, err := target.ListResolvableAliases(ctx, []byte("some hash"), 1, filterFunc, repo, byScopePerms)
+		resp, err := target.ListResolvableAliases(ctx, []byte("some hash"), 1, repo, byScopePerms)
 		require.NoError(t, err)
 		require.NotNil(t, resp.ListToken)
 		require.Equal(t, resp.ListToken.GrantsHash, []byte("some hash"))
@@ -648,7 +448,7 @@ func TestService_ListResolvableAliases(t *testing.T) {
 		require.Empty(t, cmp.Diff(resp.Items[0], byScopeResources[0], cmpIgnoreUnexportedOpts))
 
 		// request remaining results
-		resp2, err := target.ListResolvableAliasesPage(ctx, []byte("some hash"), 3, filterFunc, resp.ListToken, repo, byScopePerms)
+		resp2, err := target.ListResolvableAliasesPage(ctx, []byte("some hash"), 3, resp.ListToken, repo, byScopePerms)
 		require.NoError(t, err)
 		require.Equal(t, resp2.ListToken.GrantsHash, []byte("some hash"))
 		require.True(t, resp2.CompleteListing)
@@ -675,7 +475,7 @@ func TestService_ListResolvableAliases(t *testing.T) {
 		require.NoError(t, err)
 
 		// request a refresh, nothing should be returned except the deleted id
-		resp3, err := target.ListResolvableAliasesRefresh(ctx, []byte("some hash"), 1, filterFunc, resp2.ListToken, repo, byScopePerms)
+		resp3, err := target.ListResolvableAliasesRefresh(ctx, []byte("some hash"), 1, resp2.ListToken, repo, byScopePerms)
 		require.NoError(t, err)
 		require.Equal(t, resp3.ListToken.GrantsHash, []byte("some hash"))
 		require.True(t, resp3.CompleteListing)
@@ -685,9 +485,6 @@ func TestService_ListResolvableAliases(t *testing.T) {
 	})
 
 	t.Run("simple pagination with deletion", func(t *testing.T) {
-		filterFunc := func(_ context.Context, r *target.Alias) (bool, error) {
-			return true, nil
-		}
 		deletedAliasId := byIdResources[0].GetPublicId()
 		_, err := repo.DeleteAlias(ctx, deletedAliasId)
 		require.NoError(t, err)
@@ -697,7 +494,7 @@ func TestService_ListResolvableAliases(t *testing.T) {
 		_, err = sqlDB.ExecContext(ctx, "analyze")
 		require.NoError(t, err)
 
-		resp, err := target.ListResolvableAliases(ctx, []byte("some hash"), 1, filterFunc, repo, byIdPerms)
+		resp, err := target.ListResolvableAliases(ctx, []byte("some hash"), 1, repo, byIdPerms)
 		require.NoError(t, err)
 		require.NotNil(t, resp.ListToken)
 		require.Equal(t, resp.ListToken.GrantsHash, []byte("some hash"))
@@ -708,7 +505,7 @@ func TestService_ListResolvableAliases(t *testing.T) {
 		require.Empty(t, cmp.Diff(resp.Items[0], byIdResources[0], cmpIgnoreUnexportedOpts))
 
 		// request remaining results
-		resp2, err := target.ListResolvableAliasesPage(ctx, []byte("some hash"), 8, filterFunc, resp.ListToken, repo, byIdPerms)
+		resp2, err := target.ListResolvableAliasesPage(ctx, []byte("some hash"), 8, resp.ListToken, repo, byIdPerms)
 		require.NoError(t, err)
 		require.Equal(t, resp2.ListToken.GrantsHash, []byte("some hash"))
 		require.True(t, resp2.CompleteListing)
@@ -727,7 +524,7 @@ func TestService_ListResolvableAliases(t *testing.T) {
 		require.NoError(t, err)
 
 		// request a refresh, nothing should be returned except the deleted id
-		resp3, err := target.ListResolvableAliasesRefresh(ctx, []byte("some hash"), 1, filterFunc, resp2.ListToken, repo, byIdPerms)
+		resp3, err := target.ListResolvableAliasesRefresh(ctx, []byte("some hash"), 1, resp2.ListToken, repo, byIdPerms)
 		require.NoError(t, err)
 		require.Equal(t, resp3.ListToken.GrantsHash, []byte("some hash"))
 		require.True(t, resp3.CompleteListing)
