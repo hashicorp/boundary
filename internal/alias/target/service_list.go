@@ -64,7 +64,6 @@ func ListResolvableAliases(
 	ctx context.Context,
 	grantsHash []byte,
 	pageSize int,
-	filterItemFn pagination.ListFilterFunc[*Alias],
 	repo *Repository,
 	permissions []perms.Permission,
 ) (*pagination.ListResponse[*Alias], error) {
@@ -75,8 +74,6 @@ func ListResolvableAliases(
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing grants hash")
 	case pageSize < 1:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "page size must be at least 1")
-	case filterItemFn == nil:
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing filter item callback")
 	case repo == nil:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing repo")
 	case len(permissions) == 0:
@@ -93,5 +90,9 @@ func ListResolvableAliases(
 		return repo.listResolvableAliases(ctx, permissions, opts...)
 	}
 
-	return pagination.List(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, repo.estimatedCount)
+	return pagination.List(ctx, grantsHash, pageSize, alwaysTrueFilterFn, listItemsFn, repo.estimatedCount)
+}
+
+func alwaysTrueFilterFn(context.Context, *Alias) (bool, error) {
+	return true, nil
 }

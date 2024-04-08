@@ -528,10 +528,6 @@ func (s Service) ListResolvableAliases(ctx context.Context, req *pbs.ListResolva
 		pageSize = int(req.GetPageSize())
 	}
 
-	filterItemFn := func(ctx context.Context, item *talias.Alias) (bool, error) {
-		return true, nil
-	}
-
 	repo, err := s.aliasRepoFn()
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
@@ -540,7 +536,7 @@ func (s Service) ListResolvableAliases(ctx context.Context, req *pbs.ListResolva
 	var sortBy string
 	if req.GetListToken() == "" {
 		sortBy = "created_time"
-		listResp, err = talias.ListResolvableAliases(ctx, grantsHash, pageSize, filterItemFn, repo, permissions)
+		listResp, err = talias.ListResolvableAliases(ctx, grantsHash, pageSize, repo, permissions)
 		if err != nil {
 			return nil, err
 		}
@@ -552,19 +548,19 @@ func (s Service) ListResolvableAliases(ctx context.Context, req *pbs.ListResolva
 		switch st := listToken.Subtype.(type) {
 		case *listtoken.PaginationToken:
 			sortBy = "created_time"
-			listResp, err = talias.ListResolvableAliasesPage(ctx, grantsHash, pageSize, filterItemFn, listToken, repo, permissions)
+			listResp, err = talias.ListResolvableAliasesPage(ctx, grantsHash, pageSize, listToken, repo, permissions)
 			if err != nil {
 				return nil, err
 			}
 		case *listtoken.StartRefreshToken:
 			sortBy = "updated_time"
-			listResp, err = talias.ListResolvableAliasesRefresh(ctx, grantsHash, pageSize, filterItemFn, listToken, repo, permissions)
+			listResp, err = talias.ListResolvableAliasesRefresh(ctx, grantsHash, pageSize, listToken, repo, permissions)
 			if err != nil {
 				return nil, err
 			}
 		case *listtoken.RefreshToken:
 			sortBy = "updated_time"
-			listResp, err = talias.ListResolvableAliasesRefreshPage(ctx, grantsHash, pageSize, filterItemFn, listToken, repo, permissions)
+			listResp, err = talias.ListResolvableAliasesRefreshPage(ctx, grantsHash, pageSize, listToken, repo, permissions)
 			if err != nil {
 				return nil, err
 			}
