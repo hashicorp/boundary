@@ -8,10 +8,10 @@ description: |-
 # Worker tags
 
 This page describes how to use worker tags and filters to control which workers
-are allowed to handle a given resource. This can be used to control traffic
-locality. As an example, this can be used to ensure that traffic going into a
-public cloud is only handled by workers running within that same cloud. 
-Tags can also be used determine which worker should perform session recordings duties. 
+are allowed to handle a given resource. You can use filters to control traffic
+locally. As an example, you can use filters to ensure that traffic going into a
+public cloud is only handled by workers running within that same cloud.
+Tags can also be used determine which worker should perform session recordings duties.
 
 Starting in Boundary 0.1.5, a worker can be configured with a set of key/value
 tags in its configuration file. The keys and values can be any lower-cased
@@ -101,7 +101,7 @@ array with the tags intended for the particular key is required:
 ["prod", "webservers"]
 ```
 
-## Filter workers using tag
+## Filter workers using tags
 
 As filters operate on JSON Pointer selectors, the values that are input into the
 filter come from the JSON representation of the values in the configuration file
@@ -137,7 +137,7 @@ Following are some examples of using these values in filters that can be applied
 
 <Tip>
 
-  Each tag can have multiple values, so the `in` operator must be used to match values. If you know that you have only one value, an equivalent would be `"/tags/key/0" == "value"`.
+  Each tag can have multiple values, so you must use the `in` operator to match values. If you know that you have only one value, an equivalent would be `"/tags/key/0" == "value"`.
 
 </Tip>
 
@@ -155,7 +155,7 @@ This is the worker a client connects to when initiating a connection to a target
 
 
 <Tabs>
-<Tab heading="UI" group="ui"> 
+<Tab heading="UI" group="ui">
 
 Example of a filter configured on a target in the Admin UI:
 
@@ -163,9 +163,9 @@ Example of a filter configured on a target in the Admin UI:
 ![](/img/target-worker-filter-dark.png#dark-theme-only)
 
 </Tab>
-<Tab heading="CLI" group="cli"> 
+<Tab heading="CLI" group="cli">
 
-Example of adding a filter to on a target with the CLI:
+Example of adding a filter to a target with the CLI:
 ```
 $ boundary targets update tcp -id tssh_1234567890 -egress-worker-filter='"prod" in "/tags/type"'
 ```
@@ -182,10 +182,10 @@ resource "boundary_target" "aws-webservers-prod" {
 }
 ```
 
-</Tab>    
-</Tabs>   
+</Tab>
+</Tabs>
 
-### Example worker filter for Vault credential store 
+### Example worker filter for Vault credential store
 
 <EnterpriseAlert product="boundary">This feature requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary or Boundary Enterprise</a></EnterpriseAlert>
 
@@ -198,7 +198,7 @@ Vault requests to Boundary controllers.
 
 <Tip>
 
-  A worker that matches the worker filter must exist before defining the Vault credential store, as it will perform the Vault calls needed to set up the credential store with Boundary.
+  A worker that matches the worker filter must exist before you define the Vault credential store, as it will perform the Vault calls needed to set up the credential store with Boundary.
 
 </Tip>
 
@@ -206,7 +206,7 @@ Vault requests to Boundary controllers.
 [credential stores]: /boundary/docs/concepts/domain-model/credential-stores#vault-credential-store-attributes
 
 <Tabs>
-<Tab heading="UI" group="ui"> 
+<Tab heading="UI" group="ui">
 
 Example of a worker filter configured on a Vault credential store in the Admin UI:
 
@@ -214,9 +214,9 @@ Example of a worker filter configured on a Vault credential store in the Admin U
 ![](/img/vault-worker-filter-dark.png#dark-theme-only)
 
 </Tab>
-<Tab heading="CLI" group="cli"> 
+<Tab heading="CLI" group="cli">
 
-Example of adding a filter to on a Vault credential store with the CLI:
+Example of adding a filter to a Vault credential store with the CLI:
 ```
 $ boundary credential-stores update vault -id csvlt_1234567890 -worker-filter='"vault" in "/tags/type"'
 ```
@@ -234,30 +234,28 @@ resource "boundary_credential_store_vault" "vault_cred_store" {
 }
 ```
 
-</Tab> 
+</Tab>
 </Tabs>
 
 ### Example worker filter for storage buckets
-<EnterpriseAlert product="boundary">Store buckets are used for session recording, which requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary or Boundary Enterprise</a></EnterpriseAlert>
+<EnterpriseAlert product="boundary">Storage buckets are used for session recording, which requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary or Boundary Enterprise</a></EnterpriseAlert>
 
-
-
-Session recording functions are performed by Boundary workers. Workers also store recordings on Boundary storage buckets. When you create Boundary storage buckets, you can use tags to select the perferred workers for session recording responsibilities. 
+Session recording functions are performed by Boundary workers. Workers also store recordings on Boundary storage buckets. When you create Boundary storage buckets, you can use tags to select the workers you prefer to use for session recording responsibilities.
 
 <Tabs>
-<Tab heading="UI" group="ui"> 
+<Tab heading="UI" group="ui">
 
-Example of a worker filter configured on on a storage bucket in Admin UI:
+Example of a worker filter configured on a storage bucket in Admin UI:
 
 ![](/img/session-rec-worker-filter-light.png#light-theme-only)
 ![](/img/session-rec-worker-filter-dark.png#dark-theme-only)
 
 </Tab>
-<Tab heading="CLI" group="cli"> 
+<Tab heading="CLI" group="cli">
 
-Example of adding a filter to on a storage bucket with the CLI:
+Example of adding a filter to a storage bucket with the CLI:
 ```
-$ boundary storage-buckets update -id sb_1234567890 -worker-filter='"session-recording" in "/tags/type"' 
+$ boundary storage-buckets update -id sb_1234567890 -worker-filter='"session-recording" in "/tags/type"'
 ```
 
 </Tab>
@@ -281,6 +279,5 @@ resource "boundary_storage_bucket" "aws_dynamic_credentials_example" {
 }
 ```
 
-</Tab> 
+</Tab>
 </Tabs>
-
