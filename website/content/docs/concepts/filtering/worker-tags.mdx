@@ -165,13 +165,16 @@ Example of a filter configured on a target in the Admin UI:
 </Tab>
 <Tab heading="CLI" group="cli">
 
-Example of adding a filter to a target with the CLI:
+Example of a filter configured on a target with the CLI:
+
 ```
 $ boundary targets update tcp -id tssh_1234567890 -egress-worker-filter='"prod" in "/tags/type"'
 ```
 
 </Tab>
 <Tab heading="Terraform" group="terraform">
+
+Example of a filter configured on a target with Terraform:
 
 ```hcl
 resource "boundary_target" "aws-webservers-prod" {
@@ -216,13 +219,16 @@ Example of a worker filter configured on a Vault credential store in the Admin U
 </Tab>
 <Tab heading="CLI" group="cli">
 
-Example of adding a filter to a Vault credential store with the CLI:
+Example of a worker filter configured on a Vault credential store with the CLI:
+
 ```
 $ boundary credential-stores update vault -id csvlt_1234567890 -worker-filter='"vault" in "/tags/type"'
 ```
 
 </Tab>
 <Tab heading="Terraform" group="terraform">
+
+Example of a worker filter configured on a Vault credential store with Terraform:
 
 ```hcl
 resource "boundary_credential_store_vault" "vault_cred_store" {
@@ -245,7 +251,7 @@ Session recording functions are performed by Boundary workers. Workers also stor
 <Tabs>
 <Tab heading="UI" group="ui">
 
-Example of a worker filter configured on a storage bucket in Admin UI:
+Example of a worker filter configured on a storage bucket in the Admin UI:
 
 ![](/img/session-rec-worker-filter-light.png#light-theme-only)
 ![](/img/session-rec-worker-filter-dark.png#dark-theme-only)
@@ -253,13 +259,16 @@ Example of a worker filter configured on a storage bucket in Admin UI:
 </Tab>
 <Tab heading="CLI" group="cli">
 
-Example of adding a filter to a storage bucket with the CLI:
+Example of a worker filter configured on a storage bucket with the CLI:
+
 ```
 $ boundary storage-buckets update -id sb_1234567890 -worker-filter='"session-recording" in "/tags/type"'
 ```
 
 </Tab>
 <Tab heading="Terraform" group="terraform">
+
+Example of a worker filter configured on a storage bucket with Terraform:
 
 ```hcl
 resource "boundary_storage_bucket" "aws_dynamic_credentials_example" {
