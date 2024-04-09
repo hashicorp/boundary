@@ -89,7 +89,9 @@ func Test_newClient(t *testing.T) {
 			require.NoError(err)
 			assert.NotNil(client)
 
-			corIdHeader := client.cl.Headers().Get(globals.CorrelationIdKey)
+			headers, err := client.headers(context.Background())
+			require.NoError(err)
+			corIdHeader := headers.Get(globals.CorrelationIdKey)
 			assert.Equal(tt.wantCorId, corIdHeader)
 		})
 	}
@@ -313,4 +315,28 @@ func TestClient_revokeLease(t *testing.T) {
 
 	// verify the database credentials no longer work
 	assert.Error(testDatabase.ValidateCredential(t, cred))
+}
+
+func Test_headers(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	v := NewTestVaultServer(t)
+
+	clientConfig := &clientConfig{
+		Addr:  v.Addr,
+		Token: TokenSecret(v.RootToken),
+	}
+
+	client, err := newClient(ctx, clientConfig)
+	require.NoError(t, err)
+	assert.NotNil(t, client)
+
+	// Add header to underlying vault client
+	client.cl.AddHeader("test-header", "test-header-value")
+
+	// Get headers from client
+	headers, err := client.headers(context.Background())
+	require.NoError(t, err)
+	got := headers.Get("test-header")
+	assert.Equal(t, "test-header-value", got)
 }

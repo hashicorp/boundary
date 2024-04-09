@@ -30,6 +30,7 @@ type vaultClient interface {
 	get(context.Context, string) (*vault.Secret, error)
 	post(context.Context, string, []byte) (*vault.Secret, error)
 	capabilities(context.Context, []string) (pathCapabilities, error)
+	headers(ctx context.Context) (http.Header, error)
 }
 
 var vaultClientFactoryFn = vaultClientFactory
@@ -269,4 +270,9 @@ func (c *client) capabilities(ctx context.Context, paths []string) (pathCapabili
 	}
 
 	return newPathCapabilities(res), nil
+}
+
+// headers returns the underlying Vault Client http headers
+func (c *client) headers(_ context.Context) (http.Header, error) {
+	return c.cl.Headers(), nil
 }
