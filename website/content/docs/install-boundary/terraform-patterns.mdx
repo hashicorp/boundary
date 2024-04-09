@@ -7,9 +7,9 @@ description: |-
 
 # Terraform patterns for Boundary
 
-HashiCorp recommends using Terraform to deploy and maintain your Boundary environment. 
+HashiCorp recommends using Terraform to deploy and maintain your Boundary environment.
 
-This document outlines MVP (Minimum Viable Product) patterns for deploying and maintaining Boundary using Terraform. 
+This document outlines MVP (Minimum Viable Product) patterns to deploy and maintain Boundary using Terraform.
 
 Examples and patterns are provided for configuring the following Boundary resources with Terraform:
 
@@ -22,7 +22,7 @@ Examples and patterns are provided for configuring the following Boundary resour
 - [Session recording](#session-recording)
 - [Targets](#targets)
 
-## Assumptions
+## Requirements
 
 This document assumes the reader has:
 
@@ -31,10 +31,10 @@ This document assumes the reader has:
 
 ## Terraform provider configuration
 
-In order to use Terraform to manage your Boundary environment you must first configure the Terraform Boundary provider.
+To use Terraform to manage your Boundary environment, you must first configure the Terraform Boundary provider.
 
-This code block provides an example of provider configuration using the userpass authentication method. You can use any of the available Boundary authentication methods by specifying the appropriate `auth_method_id`.
-Refer to the [Boundary provider documentation](https://registry.terraform.io/providers/hashicorp/boundary/latest/docs) for more information on the avaialable authentication methods.
+The following code block provides an example of provider configuration using the userpass authentication method. You can use any of the available Boundary authentication methods by specifying the appropriate `auth_method_id`.
+Refer to the [Boundary provider documentation](https://registry.terraform.io/providers/hashicorp/boundary/latest/docs) for more information on the available authentication methods.
 
 ```hcl
 terraform {
@@ -47,7 +47,7 @@ terraform {
 }
 
 # Configure the provider
-# This example assumes that you have stored your boundary cluster address and credentials in terraform variables
+# This example assumes that you have stored your Boundary cluster address and credentials in Terraform variables
 
 provider "boundary" {
   addr                   = var.boundary_addr
@@ -58,21 +58,21 @@ provider "boundary" {
 
 ## Scopes
 
-You can use these patterns to create [org-level](/boundary/docs/concepts/domain-model/scopes#organizations) and 
-[project-level](/boundary/docs/concepts/domain-model/scopes#projects) [scopes](/boundary/docs/concepts/domain-model/scopes). 
+You can use the following patterns to create [org-level](/boundary/docs/concepts/domain-model/scopes#organizations) and
+[project-level](/boundary/docs/concepts/domain-model/scopes#projects) [scopes](/boundary/docs/concepts/domain-model/scopes).
 
-The `scope_id` parameter determines what kind of scope is created according to these rules:
+The `scope_id` parameter determines what kind of scope to create according to these rules:
 
-- If `scope_id` is the global scope, an org-level scope will be created. 
-- If `scope_id` is an org-level scope, a project-level scope will be created.
-- If `scope_id` is a project-level scope, a nested project-level scope will be created.
+- If `scope_id` is the global scope, an org-level scope is created.
+- If `scope_id` is an org-level scope, a project-level scope is created.
+- If `scope_id` is a project-level scope, a nested project-level scope is created.
 
 ```hcl
 resource "boundary_scope" "project" {
   name                     = "Basic Boundary Demo"
   description              = "First Ever Boundary Demo"
-  
-  # This parameter is the parent scope.  It can be either the global scope, an 
+
+  # This parameter is the parent scope.  It can be either the global scope, an
   # org-level scope, or a project-level scope.
   scope_id                 = var.se_org_scope
 
@@ -89,7 +89,7 @@ For more information on scope creation, refer to the [provider documentation](ht
 
 Boundary supports password, OIDC, and LDAP [authentication methods](/boundary/docs/concepts/domain-model/auth-methods).
 
-Below is an example of creating a password auth method.  Terraform will create the auth method in the scope specified by `scope_id`.
+Below is an example of creating a password auth method.  Terraform creates the auth method in the scope that is specified by the `scope_id` option.
 
 ```hcl
 resource "boundary_auth_method" "password" {
@@ -116,9 +116,9 @@ resource "boundary_auth_method_ldap" "forumsys_ldap" {
 }
 ```
 
-After creating an auth method, you need to add accounts to it and create a user objects to represent the accounts. Users and accounts are different constructs. A [user](/boundary/docs/concepts/domain-model/users) is a "parent" object associated to one or more [accounts](/boundary/docs/concepts/domain-model/accounts) created using a supported auth method. 
+After you create an auth method, you need to add accounts to it and create users to represent the accounts. Users and accounts are different constructs. A [user](/boundary/docs/concepts/domain-model/users) is a "parent" object associated to one or more [accounts](/boundary/docs/concepts/domain-model/accounts) created using a supported auth method.
 
-This example creates 2 accounts, using the password auth method and associated users.
+This example creates 2 accounts using the password auth method and associated users.
 
 ```hcl
 # Create a user named "Jeff"
@@ -163,11 +163,11 @@ that you can create.
 
 ## Groups and RBAC
 
-This pattern demonstrates how to aggregate users into groups.  
+The following pattern demonstrates how to aggregate users into groups.
 
-Security best-practices recommend that you use Role-Based Access Control (RBAC) when making authorization decisions. RBAC is a methodology in which you create a [role](/boundary/docs/concepts/domain-model/roles) that defines the actions that a user is allowed to take and then assign one ore more users to that role.
+Security best-practices recommend that you use Role-Based Access Control (RBAC) when you make authorization decisions. RBAC is a methodology in which you create a [role](/boundary/docs/concepts/domain-model/roles) that defines the actions that a user is allowed to take, and then assign one or more users to that role.
 
-In Boundary, you can assign users directly to a role, but a better pattern is to put users with equivalent access into [groups](/boundary/docs/concepts/domain-model/groups). Groups are then assigned to roles that grant least-privileges to your Boundary environment.
+In Boundary, you can assign users directly to a role, but a better pattern is to put users with equivalent access into [groups](/boundary/docs/concepts/domain-model/groups). You can then assign groups to roles that grant least-privileges to your Boundary environment.
 
 This example adds users to the `Accounting` group.
 
@@ -181,9 +181,9 @@ resource "boundary_group" "Accounting" {
 }
 ```
 
-You are not required to populate groups manually, and can instead take advantage of the pre-existing groups provided by an identity provider. 
+You are not required to populate groups manually, and can instead take advantage of the pre-existing groups provided by an identity provider.
 
-This example creates a [managed group](/boundary/docs/concepts/domain-model/managed-groups) that will be automatically populated based on an LDAP group called `Engineering`. 
+This example creates a [managed group](/boundary/docs/concepts/domain-model/managed-groups) that is automatically populated based on an LDAP group called `Engineering`.
 
 ```hcl
 resource "boundary_managed_group_ldap" "Engineering" {
@@ -196,10 +196,10 @@ resource "boundary_managed_group_ldap" "Engineering" {
 
 HashiCorp recommends using managed groups whenever possible because it abstracts the management of group membership and simplifies Boundary administration.
 
-After you have created a group, you need to assign one or more roles to that group to enable the group members to do useful work in Boundary.  
+After you have created a group, you must assign one or more roles to that group to enable the group members to do useful work in Boundary.
 
 This pattern creates role called `readonly` that include a [grant](/boundary/docs/concepts/security/permissions#grant-strings)
-allowing the user read-only access to all Boundary resources. This example also associates the `Accounting` static group and the `Engineering` managed group with that role.
+that allows the user read-only access to all Boundary resources. This example also associates the `Accounting` static group and the `Engineering` managed group with that role.
 
 ```hcp
 resource "boundary_role" "readonly" {
@@ -223,7 +223,7 @@ Refer to the Terraform provider documentation to learn more about managing these
 
     - [LDAP accounts](https://registry.terraform.io/providers/hashicorp/boundary/latest/docs/resources/account_ldap)
 
-    - [OIDC accounts](https://registry.terraform.io/providers/hashicorp/boundary/latest/docs/resources/account_oidc) 
+    - [OIDC accounts](https://registry.terraform.io/providers/hashicorp/boundary/latest/docs/resources/account_oidc)
 
 - [Boundary users](https://registry.terraform.io/providers/hashicorp/boundary/latest/docs/resources/user)
 
@@ -237,11 +237,10 @@ Refer to the Terraform provider documentation to learn more about managing these
 
 Before you can access a system, you must create a [target](/boundary/docs/concepts/domain-model/targets). Targets require an address or host, and credentials to connect to that host.
 
-Targets can have addresses defined directly to simply access, but this pattern is not recommended at scale.
-
+You can define target addresses directly to simplify access, but HashiCorp does not recommend that pattern at scale.
 Instead, HashiCorp recommends adding [hosts](/boundary/docs/concepts/domain-model/hosts) to a [host set](/boundary/docs/concepts/domain-model/host-sets), and then attaching the host set to a target.
 
-The following example shows how to create a Boundary static [host catalog](/boundary/docs/concepts/domain-model/host-catalogs) and adds a known host to that catalog.
+The following example shows how to create a Boundary static [host catalog](/boundary/docs/concepts/domain-model/host-catalogs) and add a known host to that catalog.
 
 ```hcl
 # Create the host catalog
@@ -265,7 +264,7 @@ resource "boundary_host" "example" {
 
 Static host catalogs increase your administrative burden and should only be used when necessary.
 
-When using cloud providers like Amazon Web Services (AWS) and Microsoft Azure, a better pattern is to use a plugin-based host catalog automatically discovers hosts based on the filtering criteria for a given cloud. 
+When you use cloud providers like Amazon Web Services (AWS) and Microsoft Azure, a better pattern is to use a plugin-based host catalog that automatically discovers hosts based on the filtering criteria for a given cloud.
 
 This example creates a dynamic host catalog that auto-discovers AWS hosts in `us-east-1`.
 
@@ -352,7 +351,7 @@ Refer to the Terraform provider documentation for more information.
 
 ## Credentials and credential stores
 
-Boundary supports multiple types of static credentials and Vaultdynamic credentials. A [credential store](/boundary/docs/concepts/domain-model/credential-stores) is used to store credentials for hosts. Static credential stores can hold username/passwords, json tokens, SSH keypairs, and SSH certificates.
+Boundary supports multiple types of static credentials and Vault dynamic credentials. A [credential store](/boundary/docs/concepts/domain-model/credential-stores) stores credentials for hosts. Static credential stores can hold username/passwords, JSON tokens, SSH key pairs, and SSH certificates.
 
 ### Static credential stores
 
@@ -372,18 +371,18 @@ resource "boundary_credential_store_vault" "example" {
   description = "My first Vault credential store"
 
   # change to your Vault address
-  address     = "http://127.0.0.1:8200"   
+  address     = "http://127.0.0.1:8200"
 
-  # Use a token that has rights to access the secrets in Vault that 
+  # Use a token that has rights to access the secrets in Vault that
   # Boundary should use
-  token       = var.vault_token   
+  token       = var.vault_token
   scope_id    = boundary_scope.project.id
 }
 ```
 
-After creating a credential store, you can create one or more [credentials](/boundary/docs/concepts/domain-model/credentials) in that store. 
+After you create a credential store, you can create one or more [credentials](/boundary/docs/concepts/domain-model/credentials) in that store.
 
-This example creates static credentials that are managed by Boundary. The credentials are for a user named Carlos.
+This example creates static credentials that Boundary manages. The credentials are for a user named Carlos.
 
 ```hcl
 # Create a username/password combination
@@ -401,7 +400,7 @@ resource "boundary_credential_ssh_private_key" "carlos_ssh" {
   description            = "My first ssh private key credential"
   credential_store_id    = boundary_credential_store_static.example.id
   username               = "carlos"
-  
+
   # You can also load the private_key from a file using the Terraform file() function.
   private_key            = var.carlos_ssh_key
 
@@ -416,13 +415,13 @@ resource "boundary_credential_json" "example" {
   credential_store_id = boundary_credential_store_static.example.id
 
   # This points to the actual json file.  You can also load this from a variable.
-  object              = file("~/object.json") 
+  object              = file("~/object.json")
 }
 ```
 
 ### Vault credential stores
 
-For Vault credential stores, you can then create a [credential library](/boundary/docs/concepts/domain-model/credential-libraries) which distributes credentials of a specific access level from a Vault path. 
+For Vault credential stores, you can then create a [credential library](/boundary/docs/concepts/domain-model/credential-libraries) which distributes credentials of a specific access level from a Vault path.
 
 This example creates a credential library that reads secrets from a Vault path called `my/secret/foo`.
 
@@ -434,12 +433,12 @@ resource "boundary_credential_library_vault" "foo" {
   credential_store_id = boundary_credential_store_vault.example.id
 
   # Defines a valid Vault secret path
-  path                = "my/secret/foo" 
+  path                = "my/secret/foo"
   http_method         = "GET"
 }
 ```
 
-If you need to translate the key names from Vault into values expected by 
+If you need to translate the key names from Vault into values expected by
 Boundary, use this pattern:
 
 ```hcl
@@ -447,7 +446,7 @@ resource "boundary_credential_library_vault" "baz" {
   name                = "baz"
   description         = "vault username password credential with mapping overrides"
   credential_store_id = boundary_credential_store_vault.example.id
- 
+
   # Defines the vault path that contains the secret you need
   path                = "my/secret/baz"
   http_method         = "GET"
@@ -461,7 +460,7 @@ resource "boundary_credential_library_vault" "baz" {
 }
 ```
 
-To use SSH certificates as credentials, you will use the `boundary_credential_vault_ssh_certificate` resource as shown in this example:
+To use SSH certificates as credentials, you use the `boundary_credential_vault_ssh_certificate` resource as shown in this example:
 
 ```hcl
 resource "boundary_credential_library_vault_ssh_certificate" "example" {
@@ -473,11 +472,11 @@ resource "boundary_credential_library_vault_ssh_certificate" "example" {
   path                = "ssh/sign/foo"
 
   # Defines the username
-  username            = "foo"          
+  username            = "foo"
 }
 ```
 
-This example declares additional certificate attributes and extensions. Note that extensions are enabled by delaring their names and setting their values to empty strings.
+This example declares additional certificate attributes and extensions. Note that you can enable extensions by declaring their names and setting their values to empty strings.
 
 ```hcl
 resource "boundary_credential_library_vault_ssh_certificate" "example" {
@@ -513,7 +512,7 @@ Refer to the Terraform provider documentation and Boundary documentation for mor
     - [username/passwords](/boundary/docs/resources/credential_username_password)
 
 - Credential libraries
-    
+
     - [Vault](/boundary/docs/resources/credential_library_vault)
 
     - [Vault SSH certificates](/boundary/docs/resources/credential_library_vault_ssh_certificate)
@@ -524,22 +523,18 @@ Refer to the Terraform provider documentation and Boundary documentation for mor
 
     - [Vault](/boundary/docs/resources/credential_store_vault)
 
-## Session recording <sup>HCP/ENT</sup> <a name='session-recording'></a>
+## Session recording <a name='session-recording'></a>
 
-<Note>
+<EnterpriseAlert product="boundary">This feature requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary or Boundary Enterprise</a></EnterpriseAlert>
 
-  [Session recording](/boundary/docs/concepts/auditing#session-recording) is only supported for HCP Boundary and Boundary Enterprise.
-
-</Note>
-
-[Session recording](/boundary/docs/concepts/domain-model/session-recordings) requires that you create a storage policy for your current scope and then  allocate an AWS S3 bucket to store the recordings. This example does not demonstrate creating the S3 bucket or the associated IAM policies. Refer to the [create storage buckets](/boundary/docs/configuration/session-recording/create-storage-bucket) documentation to learn how to configure AWS.
+[Session recording](/boundary/docs/concepts/domain-model/session-recordings) requires that you create a storage policy for your current scope and then allocate an AWS S3 bucket to store the recordings. This example does not demonstrate creating the S3 bucket or the associated IAM policies. Refer to the [create storage buckets](/boundary/docs/configuration/session-recording/create-storage-bucket) documentation to learn how to configure AWS.
 
 This example creates a Boundary storage policy for a project scope.
 
 ```hcl
 # Create the storage policy. This policy is effective for the attached scope
 resource "boundary_policy_storage" "example" {
-  
+
   # This is the scope we created before. The policy applies to all recordings in this scope
   scope_id = boundary_scope.project.id
 
@@ -561,13 +556,13 @@ This example creates the Boundary storage bucket and attaches it to the S3 bucke
 resource "boundary_storage_bucket" "aws_bucket" {
   name        = "My aws storage bucket with dynamic credentials"
   description = "My first storage bucket"
-  scope_id    = boundary_scop.project.id 
+  scope_id    = boundary_scop.project.id
   plugin_name = "aws"
 
   # This must match the name of the AWS S3 bucket that stores the recordings
   bucket_name = "mybucket1"
 
-  # The role_arn value must be the same arn used as the instance profile 
+  # The role_arn value must be the same arn used as the instance profile
   # attached to your Boundary Worker ec2 instance
   # https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_use_switch-role-ec2_instance-profiles.html
   attributes_json = jsonencode({
@@ -578,25 +573,25 @@ resource "boundary_storage_bucket" "aws_bucket" {
 }
 ```
 
-You have finished configured the pre-requisites for session recording. The last task is to enable recording on a Boundary target.
+You have configured the prerequisites for session recording. The last task is to enable recording on a Boundary target.
 
 Refer to the Terraform provider documentation for more information.
 
-[Storage buckets](https://registry.terraform.io/providers/hashicorp/boundary/latest/docs/resources/storage_bucket)
-[Storage policies](https://registry.terraform.io/providers/hashicorp/boundary/latest/docs/resources/policy_storage)
+- [Storage buckets](https://registry.terraform.io/providers/hashicorp/boundary/latest/docs/resources/storage_bucket)
+- [Storage policies](https://registry.terraform.io/providers/hashicorp/boundary/latest/docs/resources/policy_storage)
 
 ## Targets
 
-Now that you have defined a host, a host catalog, and a credential store, you 
+Now that you have defined a host, a host catalog, and a credential store, you
 can create [targets](/boundary/docs/concepts/domain-model/targets).
 
 This example creates a target with an injected username and password.
 
-<Tip>
+<Note>
 
-  [Credential injection](/boundary/docs/concepts/credential-management#credential-injection) and SSH target types are only supported for HCP Boundary and Boundary Enterprise. [Credential brokering](/boundary/docs/concepts/credential-management#credential-brokering) can be configured instead using `brokered_credential_source_ids`.
+  [Credential injection](/boundary/docs/concepts/credential-management#credential-injection) and SSH target types are only supported for HCP Boundary and Boundary Enterprise. You can configure [credential brokering](/boundary/docs/concepts/credential-management#credential-brokering) instead using `brokered_credential_source_ids`.
 
-</Tip>
+</Note>
 
 ```hcl
 resource "boundary_target" "ssh_foo" {
@@ -679,5 +674,4 @@ resource "boundary_target" "rdp_foo" {
 }
 ```
 
-For more information, please refer to the Terraform provider documentation on [targets](/boundary/docs/resources/target).
-
+For more information, refer to the Terraform provider documentation on [targets](/boundary/docs/resources/target).

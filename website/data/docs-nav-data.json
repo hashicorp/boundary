@@ -129,7 +129,7 @@
         "path": "install-boundary/systemd"
       },
       {
-        "title": "Terraform Patterns",
+        "title": "Terraform patterns",
         "path": "install-boundary/terraform-patterns"
       }
     ]
