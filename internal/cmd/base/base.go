@@ -40,6 +40,9 @@ const (
 	EnabledPluginMinio
 )
 
+// MinioEnabled controls if the Minio storage plugin should be initiated or not
+var MinioEnabled bool
+
 func (e EnabledPlugin) String() string {
 	switch e {
 	case EnabledPluginLoopback:
