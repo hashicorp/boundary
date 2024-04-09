@@ -40,12 +40,12 @@ type AuthMethodServiceClient interface {
 	// non existing resource an error is returned.
 	GetAuthMethod(ctx context.Context, in *GetAuthMethodRequest, opts ...grpc.CallOption) (*GetAuthMethodResponse, error)
 	// ListAuthMethods returns a list of stored auth methods which are in the
-	// provided scope. The request must include the scope id and if missing,
+	// provided scope. The request must include the scope ID and if missing,
 	// malformed, or referencing a non existing scope, an error is returned.
 	ListAuthMethods(ctx context.Context, in *ListAuthMethodsRequest, opts ...grpc.CallOption) (*ListAuthMethodsResponse, error)
 	// CreateAuthMethod creates and stores an auth method in Boundary.  The
 	// provided request must include the scope in which the auth method will be
-	// created. If the scope id is missing, malformed or referencing a
+	// created. If the scope ID is missing, malformed or referencing a
 	// non existing resource an error is returned.  If a name is provided that is
 	// in use in another auth method in the same scope, an error is returned.
 	CreateAuthMethod(ctx context.Context, in *CreateAuthMethodRequest, opts ...grpc.CallOption) (*CreateAuthMethodResponse, error)
@@ -53,7 +53,7 @@ type AuthMethodServiceClient interface {
 	// auth method must not have any read only fields set.  The update mask must be
 	// included in the request and contain at least 1 mutable field.  To unset
 	// a field's value, include the field in the update mask and don't set it
-	// in the provided user. An error is returned if the auth method id is missing
+	// in the provided user. An error is returned if the auth method ID is missing
 	// or reference a non existing resource.  An error is also returned if the
 	// request attempts to update the name to one that is already in use by
 	// another auth method in the parent scope.
@@ -147,12 +147,12 @@ type AuthMethodServiceServer interface {
 	// non existing resource an error is returned.
 	GetAuthMethod(context.Context, *GetAuthMethodRequest) (*GetAuthMethodResponse, error)
 	// ListAuthMethods returns a list of stored auth methods which are in the
-	// provided scope. The request must include the scope id and if missing,
+	// provided scope. The request must include the scope ID and if missing,
 	// malformed, or referencing a non existing scope, an error is returned.
 	ListAuthMethods(context.Context, *ListAuthMethodsRequest) (*ListAuthMethodsResponse, error)
 	// CreateAuthMethod creates and stores an auth method in Boundary.  The
 	// provided request must include the scope in which the auth method will be
-	// created. If the scope id is missing, malformed or referencing a
+	// created. If the scope ID is missing, malformed or referencing a
 	// non existing resource an error is returned.  If a name is provided that is
 	// in use in another auth method in the same scope, an error is returned.
 	CreateAuthMethod(context.Context, *CreateAuthMethodRequest) (*CreateAuthMethodResponse, error)
@@ -160,7 +160,7 @@ type AuthMethodServiceServer interface {
 	// auth method must not have any read only fields set.  The update mask must be
 	// included in the request and contain at least 1 mutable field.  To unset
 	// a field's value, include the field in the update mask and don't set it
-	// in the provided user. An error is returned if the auth method id is missing
+	// in the provided user. An error is returned if the auth method ID is missing
 	// or reference a non existing resource.  An error is also returned if the
 	// request attempts to update the name to one that is already in use by
 	// another auth method in the parent scope.

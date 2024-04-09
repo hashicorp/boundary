@@ -667,7 +667,7 @@
         "parameters": [
           {
             "name": "scope_id",
-            "description": "The scope id in which to list auth methods.",
+            "description": "The scope ID in which to list auth methods.",
             "in": "query",
             "required": false,
             "type": "string"
@@ -799,7 +799,7 @@
         "parameters": [
           {
             "name": "id",
-            "description": "Id of the auth method being requested.",
+            "description": "ID of the auth method being requested.",
             "in": "path",
             "required": true,
             "type": "string"
@@ -829,7 +829,7 @@
         "parameters": [
           {
             "name": "id",
-            "description": "",
+            "description": "The ID of the auth method to delete.",
             "in": "path",
             "required": true,
             "type": "string"
@@ -859,13 +859,14 @@
         "parameters": [
           {
             "name": "id",
-            "description": "",
+            "description": "The ID of the auth method that should be updated",
             "in": "path",
             "required": true,
             "type": "string"
           },
           {
             "name": "item",
+            "description": "A subset of the auth method containing the fields to update.",
             "in": "body",
             "required": true,
             "schema": {
@@ -5852,16 +5853,16 @@
       "properties": {
         "id": {
           "type": "string",
-          "description": "Output only. The ID of the Auth Method.",
+          "description": "The ID of the auth method.",
           "readOnly": true
         },
         "scope_id": {
           "type": "string",
-          "description": "The ID of the Scope of which this Auth Method is a part."
+          "description": "The ID of the Scope of which this auth method is a part."
         },
         "scope": {
           "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
-          "description": "Output only. Scope information for this Auth method.",
+          "description": "Scope information for this Auth method.",
           "readOnly": true
         },
         "name": {
@@ -5875,31 +5876,35 @@
         "created_time": {
           "type": "string",
           "format": "date-time",
-          "description": "Output only. The time this resource was created.",
+          "description": "The time this resource was created.",
           "readOnly": true
         },
         "updated_time": {
           "type": "string",
           "format": "date-time",
-          "description": "Output only. The time this resource was last updated.",
+          "description": "The time this resource was last updated.",
           "readOnly": true
         },
         "version": {
           "type": "integer",
           "format": "int64",
-          "description": "Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+          "description": "Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version.\nVersion is not required when you create an auth method."
         },
         "type": {
           "type": "string",
-          "description": "The Auth Method type."
+          "description": "The auth method type."
         },
         "attributes": {
           "type": "object",
-          "description": "The attributes that are applicable for the specific Auth Method type."
+          "example": {
+            "min_login_name_length": 10,
+            "min_password_length": 16
+          },
+          "description": "The attributes that are applicable for the specific auth method type. The schema of this field depends on the type of the auth method that you create want to create.\nFor password auth methods, the parameters are:\n```json\n{\n  \"min_login_name_length\": \"min_login_name_length\",\n  \"min_password_length\": \"min_password_length\"\n}\n```\nFor OIDC auth methods, the parameters are:\n```json\n{\n  \"issuer\": \"issuer\",\n  \"client_id\": \"client_id\",\n  \"client_secret\": \"client_secret\",\n  \"max_age\": 3600,\n  \"signing_algorithms\": [],\n  \"api_url_prefix\": \"api_url_prefix\",\n  \"idp_ca_certs\": [],\n  \"allowed_audiences\": [],\n  \"claims_scopes\": [],\n  \"account_claim_maps\": [],\n  \"disable_discovered_config_validation\": false,\n  \"prompts\": []\n}\n```\nFor LDAP auth methods, the parameters are:\n```json\n{\n  \"start_tls\": false,\n  \"insecure_tls\": false,\n  \"discover_dn\": false,\n  \"anon_group_search\": false,\n  \"upn_domain\": \"upn_domain\",\n  \"urls\": [],\n  \"user_dn\": \"user_dn\",\n  \"user_attr\": \"user_attr\",\n  \"user_filter\": \"user_filter\",\n  \"enable_groups\": false,\n  \"group_dn\": \"group_dn\",\n  \"group_attr\": \"group_attr\",\n  \"group_filter\": \"group_filter\",\n  \"certificates\": [],\n  \"client_certificate\": \"client_certificate\",\n  \"client_certificate_key\": \"client_certificate_key\",\n  \"bind_dn\": \"bind_dn\",\n  \"bind_password\": \"bind_password\",\n  \"use_token_groups\": false,\n  \"account_attribute_maps\": [],\n  \"maximum_page_size\": 1000,\n  \"dereference_aliases\": \"never\"\n}\n```\n"
         },
         "is_primary": {
           "type": "boolean",
-          "description": "Output only. Whether this auth method is the primary auth method for it's scope.\nTo change this value update the primary_auth_method_id field on the scope.",
+          "description": "Whether this auth method is the primary auth method for it's scope.\nTo change this value update the primary_auth_method_id field on the scope.",
           "readOnly": true
         },
         "authorized_actions": {
@@ -5907,7 +5912,7 @@
           "items": {
             "type": "string"
           },
-          "description": "Output only. The available actions on this resource for this user.",
+          "description": "The available actions on this resource for this user.",
           "readOnly": true
         },
         "authorized_collection_actions": {
@@ -5918,11 +5923,11 @@
               "type": "object"
             }
           },
-          "description": "Output only. The authorized actions for the scope's collections.",
+          "description": "The authorized actions for the scope's collections.",
           "readOnly": true
         }
       },
-      "title": "AuthMethod contains all fields related to an Auth Method resource"
+      "title": "AuthMethod contains all fields related to an auth method resource"
     },
     "controller.api.resources.authtokens.v1.AuthToken": {
       "type": "object",
@@ -8670,11 +8675,15 @@
         },
         "attributes": {
           "type": "object",
-          "description": "Attributes are passed to the auth method. The valid keys and values depend on the type of auth method as well as the command."
+          "example": {
+            "login": "login",
+            "password": "password"
+          },
+          "description": "The attributes that are used to authenticate to the auth method. The schema of this field depends on the type of the auth method. For password auth methods, the parameters are:\n```json\n{\n  \"login\": \"login\",\n  \"password\": \"password\"\n}\n```\nFor LDAP auth methods, the parameters are:\n```json\n{\n  \"login_name\": \"login_name\",\n  \"password\": \"password\"\n}\n```\nFor OIDC auth methods, the parameters are:\n```json\n{\n  \"roundtrip_payload\": {}\n}\n```\nOIDC authentication requires multiple calls to this endpoint. After the initial call and successful authentication, the OIDC provider must redirect the user to the `callback` command:\n```json\n{\n  \"code\": \"code\",\n  \"state\": \"state\",\n  \"error\": \"error\",\n  \"error_description\": \"error_description\",\n  \"error_uri\": \"error_uri\"\n}\n```\nOnce this has succeded, the issued auth token can be retrieved by using the `token` command:\n```json\n{\n  \"token_id\": \"token_id_from_initial_response\"\n}\n```\n"
         },
         "command": {
           "type": "string",
-          "description": "The command to perform."
+          "description": "The command to perform. One of \"login\", \"callback\", or \"token\"."
         }
       }
     },
@@ -8688,7 +8697,11 @@
         },
         "attributes": {
           "type": "object",
-          "description": "The attributes specific to this auth method's state."
+          "example": {
+            "state": "active-public",
+            "disable_discovered_config_validation": false
+          },
+          "description": "The attributes that are applicable for the specific auth method type. The schema of this field depends on the type of the auth method. The only supported auth method type is OIDC.\nFor OIDC auth methods, the parameters are:\n```json\n{\n  \"state\": \"active-public\",\n  \"disable_discovered_config_validation\": false\n}\n```\n"
         }
       }
     },
@@ -8701,7 +8714,11 @@
         },
         "attributes": {
           "type": "object",
-          "description": "Valid keys and values depend on the type of auth method as well as the command."
+          "example": {
+            "login": "login",
+            "password": "password"
+          },
+          "description": "The response attributes that are used to authenticate to the auth method. The schema of this field depends on the type of the auth method. For password, OIDC and LDAP auth methods, the response is an auth token:\n```json\n{\n  \"id\": \"token_id\",\n  \"scope_id\": \"scope_id\",\n  \"token\": \"token_string\",\n  \"user_id\": \"user_id\",\n  \"auth_method_id\": \"auth_method_id\",\n  \"account_id\": \"account_id\",\n  \"created_time\": \"token_created_time\",\n  \"updated_time\": \"token_updated_time\",\n  \"approximate_last_used_time\": \"token_approximate_last_used_time\",\n  \"expiration_time\": \"token_expiration_time\"\n}\n```\nFor OIDC auth methods, the initial parameters are:\n```json\n{\n  \"auth_url\": \"OIDC_auth_url\",\n  \"token_id\": \"OIDC_token_id\"\n}\n```\nThe `auth_url` is the URL that authenticating user should open in the browser to authenticate with the OIDC provider. The `token_id` should be used in subsequent calls to the `authenticate` endpoint to retrieve the auth token.\n"
         },
         "command": {
           "type": "string",
