@@ -7,24 +7,26 @@ package controller.api.resources.authmethods.v1;
 
 import "controller/api/resources/scopes/v1/scope.proto";
 import "controller/custom_options/v1/options.proto";
+import "google/api/field_behavior.proto";
 import "google/api/visibility.proto";
 import "google/protobuf/struct.proto";
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/wrappers.proto";
+import "protoc-gen-openapiv2/options/annotations.proto";
 
 option go_package = "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/authmethods;authmethods";
 option (custom_options.v1.domain) = "auth";
 
-// AuthMethod contains all fields related to an Auth Method resource
+// AuthMethod contains all fields related to an auth method resource
 message AuthMethod {
-  // Output only. The ID of the Auth Method.
-  string id = 10; // @gotags: `class:"public" eventstream:"observation"`
+  // The ID of the auth method.
+  string id = 10 [(google.api.field_behavior) = OUTPUT_ONLY]; // @gotags: `class:"public" eventstream:"observation"`
 
-  // The ID of the Scope of which this Auth Method is a part.
+  // The ID of the Scope of which this auth method is a part.
   string scope_id = 20 [json_name = "scope_id"]; // @gotags: `class:"public" eventstream:"observation"`
 
-  // Output only. Scope information for this Auth method.
-  resources.scopes.v1.ScopeInfo scope = 30;
+  // Scope information for this Auth method.
+  resources.scopes.v1.ScopeInfo scope = 30 [(google.api.field_behavior) = OUTPUT_ONLY];
 
   // Optional name for identification purposes.
   google.protobuf.StringValue name = 40 [
@@ -44,24 +46,89 @@ message AuthMethod {
     }
   ]; // @gotags: `class:"public"`
 
-  // Output only. The time this resource was created.
-  google.protobuf.Timestamp created_time = 60 [json_name = "created_time"]; // @gotags: `class:"public" eventstream:"observation"`
+  // The time this resource was created.
+  google.protobuf.Timestamp created_time = 60 [
+    json_name = "created_time",
+    (google.api.field_behavior) = OUTPUT_ONLY
+  ]; // @gotags: `class:"public" eventstream:"observation"`
 
-  // Output only. The time this resource was last updated.
-  google.protobuf.Timestamp updated_time = 70 [json_name = "updated_time"]; // @gotags: `class:"public" eventstream:"observation"`
+  // The time this resource was last updated.
+  google.protobuf.Timestamp updated_time = 70 [
+    json_name = "updated_time",
+    (google.api.field_behavior) = OUTPUT_ONLY
+  ]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
+  // Version is not required when you create an auth method.
   uint32 version = 80; // @gotags: `class:"public"`
 
-  // The Auth Method type.
+  // The auth method type.
   string type = 90; // @gotags: `class:"public" eventstream:"observation"`
 
   oneof attrs {
-    // The attributes that are applicable for the specific Auth Method type.
+    // The attributes that are applicable for the specific auth method type.
     google.protobuf.Struct attributes = 100 [
       (custom_options.v1.generate_sdk_option) = true,
-      (custom_options.v1.subtype) = "default"
+      (custom_options.v1.subtype) = "default",
+      (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+        example: "{\"min_login_name_length\": 10, \"min_password_length\": 16}",
+        description:
+          "The attributes that are applicable for the specific auth method type. "
+          "The schema of this field depends on the type of the auth method "
+          "that you create want to create.\n"
+          "For password auth methods, the parameters are:\n"
+          "```json\n"
+          "{\n"
+          "  \"min_login_name_length\": \"min_login_name_length\",\n"
+          "  \"min_password_length\": \"min_password_length\"\n"
+          "}\n"
+          "```\n"
+          "For OIDC auth methods, the parameters are:\n"
+          "```json\n"
+          "{\n"
+          "  \"issuer\": \"issuer\",\n"
+          "  \"client_id\": \"client_id\",\n"
+          "  \"client_secret\": \"client_secret\",\n"
+          "  \"max_age\": 3600,\n"
+          "  \"signing_algorithms\": [],\n"
+          "  \"api_url_prefix\": \"api_url_prefix\",\n"
+          "  \"idp_ca_certs\": [],\n"
+          "  \"allowed_audiences\": [],\n"
+          "  \"claims_scopes\": [],\n"
+          "  \"account_claim_maps\": [],\n"
+          "  \"disable_discovered_config_validation\": false,\n"
+          "  \"prompts\": []\n"
+          "}\n"
+          "```\n"
+          "For LDAP auth methods, the parameters are:\n"
+          "```json\n"
+          "{\n"
+          "  \"start_tls\": false,\n"
+          "  \"insecure_tls\": false,\n"
+          "  \"discover_dn\": false,\n"
+          "  \"anon_group_search\": false,\n"
+          "  \"upn_domain\": \"upn_domain\",\n"
+          "  \"urls\": [],\n"
+          "  \"user_dn\": \"user_dn\",\n"
+          "  \"user_attr\": \"user_attr\",\n"
+          "  \"user_filter\": \"user_filter\",\n"
+          "  \"enable_groups\": false,\n"
+          "  \"group_dn\": \"group_dn\",\n"
+          "  \"group_attr\": \"group_attr\",\n"
+          "  \"group_filter\": \"group_filter\",\n"
+          "  \"certificates\": [],\n"
+          "  \"client_certificate\": \"client_certificate\",\n"
+          "  \"client_certificate_key\": \"client_certificate_key\",\n"
+          "  \"bind_dn\": \"bind_dn\",\n"
+          "  \"bind_password\": \"bind_password\",\n"
+          "  \"use_token_groups\": false,\n"
+          "  \"account_attribute_maps\": [],\n"
+          "  \"maximum_page_size\": 1000,\n"
+          "  \"dereference_aliases\": \"never\"\n"
+          "}\n"
+          "```\n"
+      }
     ];
     PasswordAuthMethodAttributes password_auth_method_attributes = 101 [
       (custom_options.v1.generate_sdk_option) = true,
@@ -80,20 +147,29 @@ message AuthMethod {
     ];
   }
 
-  // Output only. Whether this auth method is the primary auth method for it's scope.
+  // Whether this auth method is the primary auth method for it's scope.
   // To change this value update the primary_auth_method_id field on the scope.
-  bool is_primary = 110 [json_name = "is_primary"]; // @gotags: `class:"public" eventstream:"observation"`
+  bool is_primary = 110 [
+    json_name = "is_primary",
+    (google.api.field_behavior) = OUTPUT_ONLY
+  ]; // @gotags: `class:"public" eventstream:"observation"`
 
-  // Output only. The available actions on this resource for this user.
-  repeated string authorized_actions = 300 [json_name = "authorized_actions"]; // @gotags: `class:"public"`
+  // The available actions on this resource for this user.
+  repeated string authorized_actions = 300 [
+    json_name = "authorized_actions",
+    (google.api.field_behavior) = OUTPUT_ONLY
+  ]; // @gotags: `class:"public"`
 
-  // Output only. The authorized actions for the scope's collections.
-  map<string, google.protobuf.ListValue> authorized_collection_actions = 310 [json_name = "authorized_collection_actions"]; // classified as public via taggable implementation
+  // The authorized actions for the scope's collections.
+  map<string, google.protobuf.ListValue> authorized_collection_actions = 310 [
+    json_name = "authorized_collection_actions",
+    (google.api.field_behavior) = OUTPUT_ONLY
+  ]; // classified as public via taggable implementation
 }
 
 // The attributes of a password typed auth method.
 message PasswordAuthMethodAttributes {
-  // The minimum length allowed for user names for Accounts in this Auth Method.
+  // The minimum length allowed for user names for accounts in this auth method.
   uint32 min_login_name_length = 10 [
     json_name = "min_login_name_length",
     (custom_options.v1.generate_sdk_option) = true,
@@ -103,7 +179,7 @@ message PasswordAuthMethodAttributes {
     }
   ]; // @gotags: `class:"public"`
 
-  // The minimum length allowed for passwords for Accounts in this Auth Method.
+  // The minimum length allowed for passwords for accounts in this auth method.
   uint32 min_password_length = 20 [
     json_name = "min_password_length",
     (custom_options.v1.generate_sdk_option) = true,
@@ -116,9 +192,12 @@ message PasswordAuthMethodAttributes {
 
 // The attributes of an OIDC typed auth method.
 message OidcAuthMethodAttributes {
-  // Output only. The state of the auth method. Will be "inactive",
+  // The state of the auth method. Will be "inactive",
   // "active-private", or "active-public".
-  string state = 10 [json_name = "state"]; // @gotags: `class:"public"`
+  string state = 10 [
+    json_name = "state",
+    (google.api.field_behavior) = OUTPUT_ONLY
+  ]; // @gotags: `class:"public"`
 
   // The issuer URL. Boundary expects only the schema, host, and port and will
   // strip off ".well-known/openid-configuration" if present. This will be
@@ -143,19 +222,23 @@ message OidcAuthMethodAttributes {
     }
   ]; // @gotags: `class:"public"`
 
-  // Input only. The client's secret.
+  // The client's secret.
   google.protobuf.StringValue client_secret = 40 [
     json_name = "client_secret",
     (custom_options.v1.generate_sdk_option) = true,
     (custom_options.v1.mask_mapping) = {
       this: "attributes.client_secret"
       that: "ClientSecret"
-    }
+    },
+    (google.api.field_behavior) = INPUT_ONLY
   ]; // @gotags: `class:"secret"`
 
-  // Output only. The HMAC'd value of the clients secret to indicate whether
+  // The HMAC'd value of the clients secret to indicate whether
   // the client secret has changed.
-  string client_secret_hmac = 50 [json_name = "client_secret_hmac"]; // @gotags: `class:"public"`
+  string client_secret_hmac = 50 [
+    json_name = "client_secret_hmac",
+    (google.api.field_behavior) = OUTPUT_ONLY
+  ]; // @gotags: `class:"public"`
 
   // The OIDC "max_age" parameter sent to the Authorization Server indicating
   // a maximum acceptable time in seconds since the user's last authentication
@@ -192,9 +275,12 @@ message OidcAuthMethodAttributes {
     }
   ]; // @gotags: `class:"public"`
 
-  // Output only. The callback URL that should be configured on the
+  // The callback URL that should be configured on the
   // Authorization Server to use during the authentication flow.
-  string callback_url = 90 [json_name = "callback_url"]; // @gotags: `class:"public"`
+  string callback_url = 90 [
+    json_name = "callback_url",
+    (google.api.field_behavior) = OUTPUT_ONLY
+  ]; // @gotags: `class:"public"`
 
   // Optional PEM-encoded X.509 CA certificates that can be used as trust anchors
   // when connecting to an OIDC provider.
@@ -321,7 +407,7 @@ message OidcAuthMethodAuthenticateTokenResponse {
 
 // The attributes of an LDAP typed auth method.
 message LdapAuthMethodAttributes {
-  // Output only. The state of the auth method. Will be "inactive",
+  // The state of the auth method. Will be "inactive",
   // "active-private", or "active-public".
   string state = 10 [
     json_name = "state",
@@ -329,7 +415,8 @@ message LdapAuthMethodAttributes {
     (custom_options.v1.mask_mapping) = {
       this: "attributes.state"
       that: "OperationalState"
-    }
+    },
+    (google.api.field_behavior) = OUTPUT_ONLY
   ]; // @gotags: `class:"public"`
 
   // start_tls if true, issues a StartTLS command after establishing an
@@ -516,7 +603,7 @@ message LdapAuthMethodAttributes {
     }
   ]; // @gotags: `class:"public"`
 
-  // Input only. The client_certificate_key (optional) is the plain-text of the
+  // The client_certificate_key (optional) is the plain-text of the
   // certificate key data encoded as PEM.
   google.protobuf.StringValue client_certificate_key = 170 [
     json_name = "client_certificate_key",
@@ -524,12 +611,16 @@ message LdapAuthMethodAttributes {
     (custom_options.v1.mask_mapping) = {
       this: "attributes.client_certificate_key",
       that: "ClientCertificateKey"
-    }
+    },
+    (google.api.field_behavior) = INPUT_ONLY
   ]; // @gotags: `class:"secret"`
 
-  // Output only. The HMAC'd value of the client certificate key to indicate
+  // The HMAC'd value of the client certificate key to indicate
   // whether the certificate key has changed.
-  string client_certificate_key_hmac = 180 [json_name = "client_certificate_key_hmac"]; // @gotags: `class:"public"`
+  string client_certificate_key_hmac = 180 [
+    json_name = "client_certificate_key_hmac",
+    (google.api.field_behavior) = OUTPUT_ONLY
+  ]; // @gotags: `class:"public"`
 
   // bind_dn (optional) is the distinguished name of entry to bind when
   // performing user and group search. Example:
@@ -543,7 +634,7 @@ message LdapAuthMethodAttributes {
     }
   ]; // @gotags: `class:"public"`
 
-  // Input only. The bind_password (optional) is the password to use along with
+  // The bind_password (optional) is the password to use along with
   // binddn when performing user search.
   google.protobuf.StringValue bind_password = 200 [
     json_name = "bind_password",
@@ -551,12 +642,16 @@ message LdapAuthMethodAttributes {
     (custom_options.v1.mask_mapping) = {
       this: "attributes.bind_password",
       that: "BindPassword"
-    }
+    },
+    (google.api.field_behavior) = INPUT_ONLY
   ]; // @gotags: `class:"secret"`
 
-  // Output only. The HMAC'd value of the bind password to indicate
+  // The HMAC'd value of the bind password to indicate
   // whether the password has changed.
-  string bind_password_hmac = 210 [json_name = "bind_password_hmac"]; // @gotags: `class:"public"`
+  string bind_password_hmac = 210 [
+    json_name = "bind_password_hmac",
+    (google.api.field_behavior) = OUTPUT_ONLY
+  ]; // @gotags: `class:"public"`
 
   bool use_token_groups = 220 [
     json_name = "use_token_groups",
