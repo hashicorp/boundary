@@ -130,7 +130,45 @@
       },
       {
         "title": "Terraform patterns",
-        "path": "install-boundary/terraform-patterns"
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "install-boundary/terraform-patterns/terraform-patterns"
+          },
+          {
+            "title": "Scopes",
+            "path": "install-boundary/terraform-patterns/terraform-scopes"
+          },
+          {
+            "title": "Users and auth methods",
+            "path": "install-boundary/terraform-patterns/terraform-users-and-auth-methods"
+          },
+          {
+            "title": "Groups and RBAC",
+            "path": "install-boundary/terraform-patterns/terraform-groups-and-rbac"
+          },
+          {
+            "title": "Hosts and host management",
+            "path": "install-boundary/terraform-patterns/terraform-hosts-and-host-management"
+          },
+          {
+            "title": "Credentials and credential stores",
+            "path": "install-boundary/terraform-patterns/terraform-credentials-and-credential-stores"
+          },
+          {
+            "title": "Session recording",
+            "badge": {
+              "text": "HCP/ENT",
+              "type": "outlined",
+              "color": "neutral"
+            },
+            "path": "install-boundary/terraform-patterns/terraform-session-recording"
+          },
+          {
+            "title": "Targets",
+            "path": "install-boundary/terraform-patterns/terraform-targets"
+          }
+        ]
       }
     ]
   },
