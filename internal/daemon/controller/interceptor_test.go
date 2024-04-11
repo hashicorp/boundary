@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/alias"
 	talias "github.com/hashicorp/boundary/internal/alias/target"
 	"github.com/hashicorp/boundary/internal/authtoken"
@@ -32,6 +33,7 @@ import (
 	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/target/tcp"
 	"github.com/hashicorp/go-hclog"
+	"github.com/hashicorp/go-uuid"
 	"github.com/mr-tron/base58"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -986,5 +988,81 @@ func (g *testGreeter) SayHello(ctx context.Context, req *interceptor.SayHelloReq
 		return nil, errors.New(ctx, errors.Internal, op, "nil response error msg")
 	default:
 		return &interceptor.SayHelloResponse{Message: "hello"}, nil
+	}
+}
+
+func Test_correlationIdInterceptor(t *testing.T) {
+	interceptor := correlationIdInterceptor(context.Background())
+	require.NotNil(t, interceptor)
+
+	corId, err := uuid.GenerateUUID()
+	require.NoError(t, err)
+
+	returnCtxHandler := func(ctx context.Context, req any) (any, error) {
+		return ctx, nil
+	}
+
+	cases := []struct {
+		name       string
+		ctx        context.Context
+		wantCorId  string
+		wantErr    bool
+		wantErrStr string
+	}{
+		{
+			name:       "no metadata",
+			ctx:        context.Background(),
+			wantErr:    true,
+			wantErrStr: "controller.correlationIdInterceptor: no metadata",
+		},
+		{
+			name: "no correlation id",
+			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
+				"not-correlation-id": "this is not a correlation id",
+			})),
+			wantErr:    true,
+			wantErrStr: "controller.correlationIdInterceptor: missing correlation id metadata",
+		},
+		{
+			name: "too many correlation ids",
+			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
+				globals.CorrelationIdKey: corId,
+				"x-Correlation-id":       corId, // metadata.New does a toLower so this is an easy way to add multiple of same key
+			})),
+			wantErr:    true,
+			wantErrStr: "controller.correlationIdInterceptor: expected 1 value for x-correlation-id metadata and got 2",
+		},
+		{
+			name: "invalid correlation id",
+			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
+				globals.CorrelationIdKey: "this is wrong",
+			})),
+			wantErr:    true,
+			wantErrStr: "controller.correlationIdInterceptor: failed to validated correlation id",
+		},
+		{
+			name: "valid correlation id",
+			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
+				globals.CorrelationIdKey: corId,
+			})),
+			wantCorId: corId,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			req := &pbs.GetAccountRequest{Id: "test"}
+
+			retCtx, err := interceptor(tc.ctx, req, nil, returnCtxHandler)
+			if tc.wantErr {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tc.wantErrStr)
+				return
+			}
+			assert.NoError(t, err)
+
+			corId, ok := event.CorrelationIdFromContext(retCtx.(context.Context))
+			require.True(t, ok)
+			assert.Equal(t, tc.wantCorId, corId)
+		})
 	}
 }

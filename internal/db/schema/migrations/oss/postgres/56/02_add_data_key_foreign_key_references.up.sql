@@ -290,7 +290,8 @@ begin;
     'credential_vault_token_renewal_revocation is a view where each row contains a credential store and the credential store''s data needed to connect to Vault. '
     'The view returns a separate row for each active token in Vault (current, maintaining and revoke tokens); this view should only be used for token renewal and revocation. '
     'Each row may contain encrypted data. This view should not be used to retrieve data which will be returned external to boundary.';
-    
+
+  -- Replaced in 87/01_session.up.sql
   create view credential_vault_credential_private as
      select credential.public_id         as public_id,
             credential.library_id        as library_id,

@@ -203,6 +203,13 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withTelemetry = true
 		assert.Equal(opts, testOpts)
 	})
+	t.Run("withCorrelationId", func(t *testing.T) {
+		assert := assert.New(t)
+		testOpts := getDefaultOptions()
+		assert.Empty(testOpts.withCorrelationId)
+		opts := getOpts(withCorrelationId("12345"))
+		assert.Equal("12345", opts.withCorrelationId)
+	})
 }
 
 // testWrapper initializes an AEAD wrapping.Wrapper for testing.  Note: this

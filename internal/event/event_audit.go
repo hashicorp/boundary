@@ -22,15 +22,16 @@ const (
 
 // audit defines the data of audit events
 type audit struct {
-	Id          string       `json:"id"`                     // std audit/boundary field
-	Version     string       `json:"version"`                // std audit/boundary field
-	Type        string       `json:"type"`                   // std audit field
-	Timestamp   time.Time    `json:"timestamp"`              // std audit field
-	RequestInfo *RequestInfo `json:"request_info,omitempty"` // boundary field
-	Auth        *Auth        `json:"auth,omitempty"`         // std audit field
-	Request     *Request     `json:"request,omitempty"`      // std audit field
-	Response    *Response    `json:"response,omitempty"`     // std audit field
-	Flush       bool         `json:"-"`
+	Id            string       `json:"id"`                     // std audit/boundary field
+	Version       string       `json:"version"`                // std audit/boundary field
+	Type          string       `json:"type"`                   // std audit field
+	Timestamp     time.Time    `json:"timestamp"`              // std audit field
+	RequestInfo   *RequestInfo `json:"request_info,omitempty"` // boundary field
+	Auth          *Auth        `json:"auth,omitempty"`         // std audit field
+	Request       *Request     `json:"request,omitempty"`      // std audit field
+	Response      *Response    `json:"response,omitempty"`     // std audit field
+	Flush         bool         `json:"-"`
+	CorrelationId string       `json:"correlation_id,omitempty"`
 }
 
 func newAudit(fromOperation Op, opt ...Option) (*audit, error) {
@@ -55,15 +56,16 @@ func newAudit(fromOperation Op, opt ...Option) (*audit, error) {
 	}
 
 	a := &audit{
-		Id:          opts.withId,
-		Version:     auditVersion,
-		Type:        string(ApiRequest),
-		Timestamp:   dtm,
-		RequestInfo: opts.withRequestInfo,
-		Auth:        opts.withAuth,
-		Request:     opts.withRequest,
-		Response:    opts.withResponse,
-		Flush:       opts.withFlush,
+		Id:            opts.withId,
+		Version:       auditVersion,
+		Type:          string(ApiRequest),
+		Timestamp:     dtm,
+		RequestInfo:   opts.withRequestInfo,
+		Auth:          opts.withAuth,
+		Request:       opts.withRequest,
+		Response:      opts.withResponse,
+		Flush:         opts.withFlush,
+		CorrelationId: opts.withCorrelationId,
 	}
 	if err := a.validate(); err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
@@ -164,6 +166,9 @@ func (a *audit) ComposeFrom(events []*eventlogger.Event) (eventlogger.EventType,
 		}
 		if !gated.Timestamp.IsZero() {
 			payload.Timestamp = gated.Timestamp
+		}
+		if gated.CorrelationId != "" {
+			payload.CorrelationId = gated.CorrelationId
 		}
 	}
 	payload.Id = validId

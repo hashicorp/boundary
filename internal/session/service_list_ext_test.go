@@ -69,7 +69,7 @@ func TestService_List(t *testing.T) {
 	require.NoError(t, err)
 
 	cmpIgnoreUnexportedOpts := cmpopts.IgnoreUnexported(session.Session{}, session.State{}, timestamp.Timestamp{}, timestamppb.Timestamp{})
-	cmpIgnoreFieldsOpts := cmpopts.IgnoreFields(session.Session{}, "CtCertificatePrivateKey", "CertificatePrivateKey", "KeyId")
+	cmpIgnoreFieldsOpts := cmpopts.IgnoreFields(session.Session{}, "CtCertificatePrivateKey", "CertificatePrivateKey", "KeyId", "CorrelationId")
 
 	t.Run("List validation", func(t *testing.T) {
 		t.Parallel()

@@ -264,7 +264,7 @@ where scd.library_id = cl.public_id
   and o.public_id = p.parent_id
   and o.type = 'org';
 
--- Update session immutable columns
+-- Replaced in 87/01_session.up.sql
 drop trigger immutable_columns on session;
 create trigger immutable_columns before update on session
   for each row execute procedure immutable_columns('public_id', 'certificate', 'expiration_time', 'connection_limit',

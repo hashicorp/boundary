@@ -11,6 +11,7 @@ import (
 	"runtime/debug"
 
 	grpc_recovery "github.com/grpc-ecosystem/go-grpc-middleware/recovery"
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/alias"
 	commonSrv "github.com/hashicorp/boundary/internal/daemon/common"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
@@ -23,6 +24,7 @@ import (
 	pberrors "github.com/hashicorp/boundary/internal/gen/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/requests"
+	"github.com/hashicorp/go-uuid"
 	"github.com/mr-tron/base58"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -276,6 +278,42 @@ func sharedRequestInterceptorLogic(
 	}
 
 	return interceptorCtx, err // not convinced we want to wrap every error and turn them into domain errors...
+}
+
+func correlationIdInterceptor(
+	_ context.Context,
+) grpc.UnaryServerInterceptor {
+	const op = "controller.correlationIdInterceptor"
+	return func(interceptorCtx context.Context, req any,
+		_ *grpc.UnaryServerInfo, handler grpc.UnaryHandler,
+	) (any, error) {
+		md, ok := metadata.FromIncomingContext(interceptorCtx)
+		if !ok {
+			return nil, errors.New(interceptorCtx, errors.Internal, op, "no metadata")
+		}
+
+		values := md.Get(globals.CorrelationIdKey)
+		if len(values) == 0 {
+			return nil, errors.New(interceptorCtx, errors.Internal, op, "missing correlation id metadata")
+		}
+		if len(values) > 1 {
+			return nil, errors.New(interceptorCtx, errors.Internal, op, fmt.Sprintf("expected 1 value for %s metadata and got %d", globals.CorrelationIdKey, len(values)))
+		}
+		correlationId := values[0]
+
+		// Validate the correlationId
+		if _, err := uuid.ParseUUID(correlationId); err != nil {
+			return nil, errors.Wrap(interceptorCtx, err, op, errors.WithMsg("failed to validated correlation id"))
+		}
+
+		interceptorCtx, err := event.NewCorrelationIdContext(interceptorCtx, correlationId)
+		if err != nil {
+			return nil, errors.Wrap(interceptorCtx, err, op, errors.WithCode(errors.Internal), errors.WithMsg("unable to create context with correlation id"))
+		}
+
+		// call the handler...
+		return handler(interceptorCtx, req)
+	}
 }
 
 func errorInterceptor(

@@ -48,6 +48,7 @@ type privateCredential struct {
 	CtClientKey          []byte
 	ClientKeyHmac        []byte
 	ClientKeyId          string
+	SessionCorrelationId string
 }
 
 func (pc *privateCredential) decrypt(ctx context.Context, cipher wrapping.Wrapper) error {

@@ -18,6 +18,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/go-uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -67,6 +68,7 @@ func TestSession_Create(t *testing.T) {
 				ConnectionLimit:    composedOf.ConnectionLimit,
 				DynamicCredentials: composedOf.DynamicCredentials,
 				StaticCredentials:  composedOf.StaticCredentials,
+				CorrelationId:      composedOf.CorrelationId,
 			},
 			create: true,
 		},
@@ -94,6 +96,7 @@ func TestSession_Create(t *testing.T) {
 				ConnectionLimit:    composedOf.ConnectionLimit,
 				DynamicCredentials: composedOf.DynamicCredentials,
 				StaticCredentials:  composedOf.StaticCredentials,
+				CorrelationId:      composedOf.CorrelationId,
 			},
 			create: true,
 		},
@@ -165,6 +168,19 @@ func TestSession_Create(t *testing.T) {
 			wantIsErr: errors.InvalidParameter,
 		},
 		{
+			name: "empty-correlationId",
+			args: args{
+				composedOf: func() ComposedOf {
+					c := composedOf
+					c.CorrelationId = ""
+					return c
+				}(),
+				addresses: defaultAddresses,
+			},
+			wantErr:   true,
+			wantIsErr: errors.InvalidParameter,
+		},
+		{
 			name: "empty-addresses",
 			args: args{
 				composedOf: func() ComposedOf {
@@ -184,6 +200,7 @@ func TestSession_Create(t *testing.T) {
 				ConnectionLimit:    composedOf.ConnectionLimit,
 				DynamicCredentials: composedOf.DynamicCredentials,
 				StaticCredentials:  composedOf.StaticCredentials,
+				CorrelationId:      composedOf.CorrelationId,
 			},
 			wantAddrErr: true,
 			wantIsErr:   errors.InvalidParameter,
@@ -300,6 +317,16 @@ func TestSession_Clone(t *testing.T) {
 	t.Run("valid", func(t *testing.T) {
 		assert := assert.New(t)
 		s := TestDefaultSession(t, conn, wrapper, iamRepo)
+		cp := s.Clone()
+		assert.Equal(cp.(*Session), s)
+	})
+	t.Run("with-correlation-id", func(t *testing.T) {
+		assert := assert.New(t)
+		composedOf := TestSessionParams(t, conn, wrapper, iamRepo)
+		corId, err := uuid.GenerateUUID()
+		require.NoError(t, err)
+		composedOf.CorrelationId = corId
+		s := TestSession(t, conn, wrapper, composedOf)
 		cp := s.Clone()
 		assert.Equal(cp.(*Session), s)
 	})

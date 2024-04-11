@@ -32,6 +32,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	"github.com/hashicorp/go-uuid"
 	"github.com/jackc/pgconn"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -502,6 +503,31 @@ func TestRepository_CreateSession(t *testing.T) {
 			},
 		},
 		{
+			name: "valid-with-correlation-id",
+			args: args{
+				composedOf: func() ComposedOf {
+					c := TestSessionParams(t, conn, wrapper, iamRepo)
+					c.CorrelationId, err = uuid.GenerateUUID()
+					require.NoError(t, err)
+					return c
+				}(),
+				workerAddresses: workerAddresses,
+			},
+		},
+		{
+			name: "invalid-correlation-id",
+			args: args{
+				composedOf: func() ComposedOf {
+					c := TestSessionParams(t, conn, wrapper, iamRepo)
+					c.CorrelationId = "invalid-format"
+					return c
+				}(),
+				workerAddresses: workerAddresses,
+			},
+			wantErr:     true,
+			wantIsError: errors.InvalidTextRepresentation,
+		},
+		{
 			name: "invalid-protocol-worker",
 			args: args{
 				composedOf: func() ComposedOf {
@@ -642,6 +668,7 @@ func TestRepository_CreateSession(t *testing.T) {
 				DynamicCredentials: tt.args.composedOf.DynamicCredentials,
 				StaticCredentials:  tt.args.composedOf.StaticCredentials,
 				ProtocolWorkerId:   tt.args.composedOf.ProtocolWorkerId,
+				CorrelationId:      tt.args.composedOf.CorrelationId,
 			}
 			ses, err := repo.CreateSession(context.Background(), wrapper, s, tt.args.workerAddresses)
 
