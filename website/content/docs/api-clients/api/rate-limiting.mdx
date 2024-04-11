@@ -41,16 +41,15 @@ The default limits for all other actions are:
 
 You can override the default settings and configure other specific limitations using the `api_rate_limit` stanza in the controller configuration.
 
-## HTTP headers
+## Rate limiting HTTP headers
 
 Clients that make requests to the controller API can inspect HTTP response headers to understand the configured limits and current usage.
-Each response contains the following headers:
+Each response contains the `RateLimit` and `RateLimit-Policy` headers.
 
-- `RateLimit` - Provides the current limit, number of remaining requests, and the time at which the quota will reset for the limit that is closest to being exhausted for the requested resource and action.
-- `RateLimit-Policy` - Describes the limits for the requested resource and action.
-
-If the request is limited, Boundary sends the client a 429 HTTP status code with a `Retry-After` header.
+If the request is rate limited, Boundary sends the client a 429 HTTP status code with a `Retry-After` header.
 The `Retry-After` header contains the number of seconds the client should wait before it sends the request again.
+
+For more information, refer to [HTTP headers](/boundary/docs/api-clients/api#http-headers).
 
 ## More information
 

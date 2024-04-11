@@ -82,6 +82,14 @@ The following method conventions are used within Boundary's API:
 
 `DELETE` is used for deleting a specific resource, and is only used against a particular resource path.
 
+## HTTP headers
+
+Clients that make requests to the controller API can inspect HTTP response headers to understand the configured limits and current usage.
+Responses may contain the following headers:
+
+- `RateLimit` - Provides the current limit, number of remaining requests, and the time at which the quota will reset for the limit that is closest to being exhausted for the requested resource and action.
+- `RateLimit-Policy` - Describes the limits for the requested resource and action.
+
 ## Manage system resources
 
 If your controllers try to process every API request, they may either run out of resources or overwhelm the database server.
