@@ -236,7 +236,7 @@ resource "boundary_credential_store_vault" "vault_cred_store" {
   address       = "http://127.0.0.1:8200"       # change to Vault address
   token         = "s.0ufRo6XEGU2jOqnIr7OlFYP5"  # change to valid Vault token
   scope_id      = boundary_scope.project.id     # change to target scope
-  worker_filter = "\"vault\" in \"/tags/type\"" # change to valid Vault worker filter
+  worker_filter = "\"vault\" in \"/tags/type\"" # change to access private Vault cluster
 }
 ```
 
