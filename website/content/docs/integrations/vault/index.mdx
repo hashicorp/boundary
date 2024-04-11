@@ -22,6 +22,12 @@ Timely access to resources creates improvements in workflow efficiency by removi
 
 ## Credential management
 
+To configure credential brokering or credential injection with static credentials on Vault, please see [Manage static credentials with Vault](/boundary/docs/configuration/credential-management/static-cred-vault).
+
+
+# Credentials
+Vault can work with Boundary to be a credential [store](https://developer.hashicorp.com/boundary/docs/concepts/domain-model/credential-stores) and [library](https://developer.hashicorp.com/boundary/docs/concepts/domain-model/credential-libraries), which allows for credentials to be stored in Vault and used by Boundary. There are two configuration options:
+
 Within Boundary, you can configure Vault as a [credential store](/boundary/docs/concepts/domain-model/credential-stores) and [credential library](/boundary/docs/concepts/domain-model/credential-libraries).
 
 There are two configuration options:
