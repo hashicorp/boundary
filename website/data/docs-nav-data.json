@@ -133,7 +133,7 @@
         "routes": [
           {
             "title": "Overview",
-            "path": "install-boundary/terraform-patterns/terraform-patterns"
+            "path": "install-boundary/terraform-patterns"
           },
           {
             "title": "Scopes",
