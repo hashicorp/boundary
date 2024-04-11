@@ -9,19 +9,20 @@ description: |-
 
 <EnterpriseAlert product="boundary">This feature requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary or Boundary Enterprise</a></EnterpriseAlert>
 
-Most organizations want to provide access to infrastructure without exposing private networks. Many organizations also have complex network topologies requiring
+Organizations must provide access to infrastructure without exposing private networks. Many organizations also have complex network topologies that require
 inbound traffic to route through multiple network enclaves to reach the target system.
 Multi-hop sessions allow you to chain together two or more workers
 across multiple networks to form reverse proxy connections between the user and the target, even in complex networks with strict outbound-only policies.
 
-Multi-hop sessions let you connect to private endpoints without necessarily opening inbound access to isolated or private networks.
+Multi-hop sessions let you connect to private endpoints without opening inbound access to isolated or private networks.
 By allowing outbound access from an egress worker in the private network to an upstream worker on a specific port, a Boundary client can access the target using a secure tunnel that is initiated by an ingress worker in the chain.
+Because multi-hop workers reside in the private network, you do not have to expose network resources publicly.
 
 ## Introduction
 
 Multi-hop capabilities, including multi-hop sessions and Vault private access,
 is when a session or Vault credential request goes through more than one worker.
-To enable this, you must connect two or more workers to each other in some
+To accomplish this, you must connect two or more workers to each other in some
 configuration. There are no limits on the number of workers allowed in a
 multi-hop session configuration.
 
@@ -36,7 +37,7 @@ You can deploy multi-hop workers in scenarios where inbound network traffic is
 not allowed. A worker in a private network can send outbound communication to
 its upstream worker, and create a reverse proxy to establish a session.
 
-## Multi-hop worker concepts
+## Concepts
 
 Multi-hop sessions introduces five concepts for how workers function.
 You can categorize them from the point of view of a client and a worker.
@@ -60,10 +61,10 @@ Boundary client connections egress the proxy chain at this worker to reach the t
 Note that ingress, intermediary, and egress are general ways to describe how the respective worker interfaces with resources.
 A worker can act as more than one of these at a time.
 
-## Multi-hop worker requirements
+## Requirements
 
 To configure multi-hop sessions, you must deploy [Boundary self-managed workers](/hcp/docs/boundary/self-managed-workers) into various networks.
-When you deploy multi-hop workers, it is important to configure [worker tags](/boundary/docs/concepts/filtering/worker-tags#workers) that establish ingress and egress workers.
+When you deploy workers for multi-hop sessions, you must configure [worker tags](/boundary/docs/concepts/filtering/worker-tags#workers) that establish ingress and egress workers.
 
 From a networking perspective, multi-hop workers have the following requirements:
 
