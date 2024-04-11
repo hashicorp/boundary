@@ -444,7 +444,7 @@
         "routes": [
           {
             "title": "Overview",
-            "path": "configuration/credential-management/overview"
+            "path": "configuration/credential-management"
           },
           {
             "title": "Create a static credential store",
