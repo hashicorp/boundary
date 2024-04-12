@@ -32,7 +32,7 @@ kms "gcpckms" {
 These parameters apply to the `kms` stanza in the Boundary configuration file:
 
 - `purpose` - Purpose of this KMS, acceptable values are: `worker-auth`, `worker-auth-storage`,
-   `root`, `previous-root`, `recovery`, or `config`.
+   `root`, `previous-root`, `recovery`, `bsr`, or `config`.
 
 - `credentials` `(string: <required>)`: The path to the credentials JSON file
   to use. May be also specified by the `GOOGLE_CREDENTIALS` or
