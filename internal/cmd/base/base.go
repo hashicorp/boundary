@@ -37,7 +37,11 @@ const (
 	EnabledPluginLoopback
 	EnabledPluginAws
 	EnabledPluginHostAzure
+	EnabledPluginMinio
 )
+
+// MinioEnabled controls if the Minio storage plugin should be initiated or not
+var MinioEnabled bool
 
 func (e EnabledPlugin) String() string {
 	switch e {
@@ -47,6 +51,8 @@ func (e EnabledPlugin) String() string {
 		return "AWS"
 	case EnabledPluginHostAzure:
 		return "Azure"
+	case EnabledPluginMinio:
+		return "MinIO"
 	default:
 		return ""
 	}

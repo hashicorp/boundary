@@ -825,6 +825,9 @@ func (c *Command) Run(args []string) int {
 
 	{
 		c.EnabledPlugins = append(c.EnabledPlugins, base.EnabledPluginAws, base.EnabledPluginHostAzure)
+		if base.MinioEnabled {
+			c.EnabledPlugins = append(c.EnabledPlugins, base.EnabledPluginMinio)
+		}
 		conf := &controller.Config{
 			RawConfig: c.Config,
 			Server:    c.Server,
