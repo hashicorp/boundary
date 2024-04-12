@@ -33,7 +33,7 @@ kms "azurekeyvault" {
 These parameters apply to the `kms` stanza in the Vault configuration file:
 
 - `purpose` - Purpose of this KMS, acceptable values are: `worker-auth`, `worker-auth-storage`,
-   `root`, `previous-root`, `recovery`, or `config`.
+   `root`, `previous-root`, `recovery`, `bsr`, or `config`.
 
 - `tenant_id` `(string: <required>)`: The tenant id for the Azure Active Directory organization. May
   also be specified by the `AZURE_TENANT_ID` environment variable.
