@@ -4,6 +4,9 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+
+## 0.16.0 (2024/04/15)
+
 ### New and Improved
 
 * Target aliases have been added: You can now create an alias for a target.
