@@ -17,6 +17,9 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * postgres `citext` dependency added to enable aliases to be globally unique in
   a case insensitive way.
 
+## 0.15.4
+* Go version bump 1.22.2 to address [CVE-2023-45288](https://github.com/advisories/GHSA-4v7x-pqxf-cx7m)
+
 ## 0.15.3
 
 ### Bug Fixes
