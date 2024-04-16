@@ -15,7 +15,6 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/targets"
 	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/hashicorp/boundary/internal/event"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/iam/store"
@@ -518,7 +517,6 @@ func (s Service) ListResolvableAliases(ctx context.Context, req *pbs.ListResolva
 			SortDir:      "desc",
 		}, nil
 	}
-	event.WriteSysEvent(ctx, op, "permissions found")
 
 	pageSize := int(s.maxPageSize)
 	// Use the requested page size only if it is smaller than
