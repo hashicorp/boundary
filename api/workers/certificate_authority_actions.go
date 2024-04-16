@@ -50,7 +50,7 @@ func (c *Client) ReinitializeCA(ctx context.Context, scopeId string, opt ...Opti
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.response = resp
+	target.Response = resp
 	return target, nil
 }
 
@@ -93,6 +93,6 @@ func (c *Client) ReadCA(ctx context.Context, scopeId string, opt ...Option) (*Ce
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.response = resp
+	target.Response = resp
 	return target, nil
 }

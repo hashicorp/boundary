@@ -34,12 +34,12 @@ type Role struct {
 	Grants            []*Grant          `json:"grants,omitempty"`
 	AuthorizedActions []string          `json:"authorized_actions,omitempty"`
 
-	response *api.Response
+	Response *api.Response
 }
 
 type RoleReadResult struct {
 	Item     *Role
-	response *api.Response
+	Response *api.Response
 }
 
 func (n RoleReadResult) GetItem() *Role {
@@ -47,14 +47,14 @@ func (n RoleReadResult) GetItem() *Role {
 }
 
 func (n RoleReadResult) GetResponse() *api.Response {
-	return n.response
+	return n.Response
 }
 
 type RoleCreateResult = RoleReadResult
 type RoleUpdateResult = RoleReadResult
 
 type RoleDeleteResult struct {
-	response *api.Response
+	Response *api.Response
 }
 
 // GetItem will always be nil for RoleDeleteResult
@@ -63,7 +63,7 @@ func (n RoleDeleteResult) GetItem() interface{} {
 }
 
 func (n RoleDeleteResult) GetResponse() *api.Response {
-	return n.response
+	return n.Response
 }
 
 type RoleListResult struct {
@@ -72,7 +72,7 @@ type RoleListResult struct {
 	RemovedIds   []string `json:"removed_ids,omitempty"`
 	ListToken    string   `json:"list_token,omitempty"`
 	ResponseType string   `json:"response_type,omitempty"`
-	response     *api.Response
+	Response     *api.Response
 }
 
 func (n RoleListResult) GetItems() []*Role {
@@ -96,7 +96,7 @@ func (n RoleListResult) GetResponseType() string {
 }
 
 func (n RoleListResult) GetResponse() *api.Response {
-	return n.response
+	return n.Response
 }
 
 // Client is a client for this collection
@@ -157,7 +157,7 @@ func (c *Client) Create(ctx context.Context, scopeId string, opt ...Option) (*Ro
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.response = resp
+	target.Response = resp
 	return target, nil
 }
 
@@ -198,7 +198,7 @@ func (c *Client) Read(ctx context.Context, id string, opt ...Option) (*RoleReadR
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.response = resp
+	target.Response = resp
 	return target, nil
 }
 
@@ -261,7 +261,7 @@ func (c *Client) Update(ctx context.Context, id string, version uint32, opt ...O
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.response = resp
+	target.Response = resp
 	return target, nil
 }
 
@@ -302,7 +302,7 @@ func (c *Client) Delete(ctx context.Context, id string, opt ...Option) (*RoleDel
 	}
 
 	target := &RoleDeleteResult{
-		response: resp,
+		Response: resp,
 	}
 	return target, nil
 }
@@ -344,7 +344,7 @@ func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) (*Role
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.response = resp
+	target.Response = resp
 	if target.ResponseType == "complete" || target.ResponseType == "" {
 		return target, nil
 	}
@@ -402,7 +402,7 @@ func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) (*Role
 		target.EstItemCount = page.EstItemCount
 		target.ListToken = page.ListToken
 		target.ResponseType = page.ResponseType
-		target.response = resp
+		target.Response = resp
 		if target.ResponseType == "complete" {
 			break
 		}
@@ -437,11 +437,11 @@ func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) (*Role
 	// Finally, since we made at least 2 requests to the server to fulfill this
 	// function call, resp.Body and resp.Map will only contain the most recent response.
 	// Overwrite them with the true response.
-	target.response.Body.Reset()
-	if err := json.NewEncoder(target.response.Body).Encode(target); err != nil {
+	target.Response.Body.Reset()
+	if err := json.NewEncoder(target.Response.Body).Encode(target); err != nil {
 		return nil, fmt.Errorf("error encoding final JSON list response: %w", err)
 	}
-	if err := json.Unmarshal(target.response.Body.Bytes(), &target.response.Map); err != nil {
+	if err := json.Unmarshal(target.Response.Body.Bytes(), &target.Response.Map); err != nil {
 		return nil, fmt.Errorf("error encoding final map list response: %w", err)
 	}
 	// Note: the HTTP response body is consumed by resp.Decode in the loop,
@@ -515,7 +515,7 @@ func (c *Client) AddGrantScopes(ctx context.Context, id string, version uint32, 
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.response = resp
+	target.Response = resp
 	return target, nil
 }
 
@@ -585,7 +585,7 @@ func (c *Client) AddGrants(ctx context.Context, id string, version uint32, grant
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.response = resp
+	target.Response = resp
 	return target, nil
 }
 
@@ -655,7 +655,7 @@ func (c *Client) AddPrincipals(ctx context.Context, id string, version uint32, p
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.response = resp
+	target.Response = resp
 	return target, nil
 }
 
@@ -721,7 +721,7 @@ func (c *Client) SetGrantScopes(ctx context.Context, id string, version uint32, 
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.response = resp
+	target.Response = resp
 	return target, nil
 }
 
@@ -787,7 +787,7 @@ func (c *Client) SetGrants(ctx context.Context, id string, version uint32, grant
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.response = resp
+	target.Response = resp
 	return target, nil
 }
 
@@ -853,7 +853,7 @@ func (c *Client) SetPrincipals(ctx context.Context, id string, version uint32, p
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.response = resp
+	target.Response = resp
 	return target, nil
 }
 
@@ -923,7 +923,7 @@ func (c *Client) RemoveGrantScopes(ctx context.Context, id string, version uint3
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.response = resp
+	target.Response = resp
 	return target, nil
 }
 
@@ -993,7 +993,7 @@ func (c *Client) RemoveGrants(ctx context.Context, id string, version uint32, gr
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.response = resp
+	target.Response = resp
 	return target, nil
 }
 
@@ -1063,6 +1063,6 @@ func (c *Client) RemovePrincipals(ctx context.Context, id string, version uint32
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.response = resp
+	target.Response = resp
 	return target, nil
 }

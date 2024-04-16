@@ -10,10 +10,14 @@ import (
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/accounts"
+	"github.com/hashicorp/boundary/api/aliases"
 	"github.com/hashicorp/boundary/api/authmethods"
+	"github.com/hashicorp/boundary/api/roles"
+	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/api/users"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/daemon/controller"
+	_ "github.com/hashicorp/boundary/internal/daemon/controller/handlers/targets/tcp"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -21,7 +25,7 @@ import (
 
 const global = "global"
 
-func TestCustom(t *testing.T) {
+func TestAddSetRemoveAccounts(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 	tc := controller.NewTestController(t, nil)
 	defer tc.Shutdown()
@@ -168,6 +172,93 @@ func TestCrud(t *testing.T) {
 	apiErr := api.AsServerError(err)
 	assert.NotNil(apiErr)
 	assert.EqualValues(http.StatusNotFound, apiErr.Response().StatusCode())
+}
+
+func TestListResolvableAliases(t *testing.T) {
+	assert, require := assert.New(t), require.New(t)
+	tc := controller.NewTestController(t, nil)
+	defer tc.Shutdown()
+
+	client := tc.Client()
+	token := tc.Token()
+	client.SetToken(token.Token)
+
+	{
+		tarClient := targets.NewClient(client)
+		resp, err := tarClient.List(tc.Context(), "global", targets.WithRecursive(true))
+		require.NoError(err)
+		assert.Len(resp.Items, 2)
+		firstTargetId := resp.Items[0].Id
+		secondTargetId := resp.Items[1].Id
+
+		// Delete the old authenticated user grants
+		rclient := roles.NewClient(client)
+		rresp, err := rclient.List(tc.Context(), "global", roles.WithRecursive(true))
+		require.NoError(err)
+		require.NotEmpty(t, rresp.Items)
+		for _, r := range rresp.Items {
+			if r.Name == "Authenticated User Grants" {
+				_, err = rclient.Delete(tc.Context(), r.Id)
+				require.NoError(err)
+				break
+			}
+		}
+
+		// add 1 grant to the unauthorized user for only a single target
+		newR, err := rclient.Create(tc.Context(), "global", roles.WithName("my role"))
+		require.NoError(err)
+		_, err = rclient.AddPrincipals(tc.Context(), newR.Item.Id, 0, []string{tc.UnprivilegedToken().UserId}, roles.WithAutomaticVersioning(true))
+		require.NoError(err)
+		roleAfterGrants, err := rclient.AddGrants(tc.Context(), newR.Item.Id, 0, []string{
+			"ids={{.User.Id}};type=user;actions=list-resolvable-aliases",
+			fmt.Sprintf("ids=%s;type=target;actions=read", firstTargetId),
+		}, roles.WithAutomaticVersioning(true))
+		require.NoError(err)
+		require.NotNil(t, roleAfterGrants)
+		_, err = rclient.SetGrantScopes(tc.Context(), newR.Item.Id, 0, []string{"this", "descendants"}, roles.WithAutomaticVersioning(true))
+		require.NoError(err)
+
+		aliasClient := aliases.NewClient(client)
+		aliasResp, err := aliasClient.Create(tc.Context(), "target", "global", aliases.WithValue("second"), aliases.WithDestinationId(secondTargetId))
+		require.NoError(err)
+		assert.NotNil(aliasResp)
+		aliasResp, err = aliasClient.Create(tc.Context(), "target", "global", aliases.WithValue("first"), aliases.WithDestinationId(firstTargetId))
+		require.NoError(err)
+		assert.NotNil(aliasResp)
+	}
+
+	// request as admin for admin
+	userClient := users.NewClient(client)
+	resp, err := userClient.ListResolvableAliases(tc.Context(), token.UserId)
+	require.NoError(err)
+	assert.Len(resp.Items, 2)
+	assert.Equal("first", resp.Items[0].Value)
+	assert.NotEmpty(resp.Items[0].DestinationId)
+	assert.Equal("second", resp.Items[1].Value)
+	assert.NotEmpty(resp.Items[1].DestinationId)
+
+	// request as admin for unprivileged
+	resp, err = userClient.ListResolvableAliases(tc.Context(), tc.UnprivilegedToken().UserId)
+	require.NoError(err)
+	assert.Len(resp.Items, 1)
+	assert.Equal("first", resp.Items[0].Value)
+	assert.NotEmpty(resp.Items[0].DestinationId)
+
+	// Request as unprivileged for unprivileged
+	client.SetToken(tc.UnprivilegedToken().Token)
+	upUserClient := users.NewClient(client)
+	resp, err = upUserClient.ListResolvableAliases(tc.Context(), tc.UnprivilegedToken().UserId)
+	require.NoError(err)
+	assert.Len(resp.Items, 1)
+	assert.Equal("first", resp.Items[0].Value)
+	assert.NotEmpty(resp.Items[0].DestinationId)
+
+	// Request as unprivileged for admin
+	_, err = upUserClient.ListResolvableAliases(tc.Context(), tc.Token().UserId)
+	require.Error(err)
+	apiErr := api.AsServerError(err)
+	assert.NotNil(apiErr)
+	assert.EqualValues(http.StatusForbidden, apiErr.Response().StatusCode())
 }
 
 func TestErrors(t *testing.T) {
