@@ -88,7 +88,7 @@ func (s *TestServer) AddResources(t *testing.T, p *authtokens.AuthToken, alts []
 	r, err := cache.NewRepository(ctx, s.CacheServer.store.Load(), &sync.Map{}, s.cmd.ReadTokenFromKeyring, atReadFn)
 	require.NoError(t, err)
 
-	altFn := func(ctx context.Context, _, tok string, _ cache.RefreshTokenValue) ([]*aliases.Alias, []string, cache.RefreshTokenValue, error) {
+	altFn := func(ctx context.Context, _, tok, _ string, _ cache.RefreshTokenValue) ([]*aliases.Alias, []string, cache.RefreshTokenValue, error) {
 		if tok != p.Token {
 			return nil, nil, "", nil
 		}

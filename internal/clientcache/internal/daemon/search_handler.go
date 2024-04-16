@@ -23,9 +23,9 @@ import (
 
 // SearchResult is the struct returned to search requests.
 type SearchResult struct {
-	Aliases  []*aliases.Alias    `json:"aliases,omitempty"`
-	Targets  []*targets.Target   `json:"targets,omitempty"`
-	Sessions []*sessions.Session `json:"sessions,omitempty"`
+	ResolvableAliases []*aliases.Alias    `json:"resolvable_aliases,omitempty"`
+	Targets           []*targets.Target   `json:"targets,omitempty"`
+	Sessions          []*sessions.Session `json:"sessions,omitempty"`
 }
 
 const (
@@ -149,9 +149,9 @@ func newSearchHandlerFunc(ctx context.Context, repo *cache.Repository, refreshSe
 // toApiResult converts a domain search result to an api search result
 func toApiResult(sr *cache.SearchResult) *SearchResult {
 	return &SearchResult{
-		Aliases:  sr.Aliases,
-		Targets:  sr.Targets,
-		Sessions: sr.Sessions,
+		ResolvableAliases: sr.ResolvableAliases,
+		Targets:           sr.Targets,
+		Sessions:          sr.Sessions,
 	}
 }
 
