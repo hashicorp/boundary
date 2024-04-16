@@ -30,8 +30,6 @@ type Account struct {
 	Attributes        map[string]interface{} `json:"attributes,omitempty"`
 	ManagedGroupIds   []string               `json:"managed_group_ids,omitempty"`
 	AuthorizedActions []string               `json:"authorized_actions,omitempty"`
-
-	Response *api.Response
 }
 
 type AccountReadResult struct {

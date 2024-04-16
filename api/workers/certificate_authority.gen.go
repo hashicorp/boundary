@@ -10,8 +10,6 @@ import (
 
 type CertificateAuthority struct {
 	Certs []*Certificate `json:"certs,omitempty"`
-
-	Response *api.Response
 }
 
 type CertificateAuthorityReadResult struct {

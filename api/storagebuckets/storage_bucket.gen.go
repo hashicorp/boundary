@@ -37,8 +37,6 @@ type StorageBucket struct {
 	SecretsHmac       string                 `json:"secrets_hmac,omitempty"`
 	WorkerFilter      string                 `json:"worker_filter,omitempty"`
 	AuthorizedActions []string               `json:"authorized_actions,omitempty"`
-
-	Response *api.Response
 }
 
 type StorageBucketReadResult struct {

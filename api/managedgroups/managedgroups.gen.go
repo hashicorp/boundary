@@ -30,8 +30,6 @@ type ManagedGroup struct {
 	Attributes        map[string]interface{} `json:"attributes,omitempty"`
 	MemberIds         []string               `json:"member_ids,omitempty"`
 	AuthorizedActions []string               `json:"authorized_actions,omitempty"`
-
-	Response *api.Response
 }
 
 type ManagedGroupReadResult struct {

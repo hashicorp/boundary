@@ -30,8 +30,6 @@ type Scope struct {
 	AuthorizedActions           []string            `json:"authorized_actions,omitempty"`
 	AuthorizedCollectionActions map[string][]string `json:"authorized_collection_actions,omitempty"`
 	StoragePolicyId             string              `json:"storage_policy_id,omitempty"`
-
-	Response *api.Response
 }
 
 type ScopeReadResult struct {

@@ -35,8 +35,6 @@ type HostCatalog struct {
 	SecretsHmac                 string                 `json:"secrets_hmac,omitempty"`
 	AuthorizedActions           []string               `json:"authorized_actions,omitempty"`
 	AuthorizedCollectionActions map[string][]string    `json:"authorized_collection_actions,omitempty"`
-
-	Response *api.Response
 }
 
 type HostCatalogReadResult struct {

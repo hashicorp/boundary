@@ -36,8 +36,6 @@ type Host struct {
 	ExternalId        string                 `json:"external_id,omitempty"`
 	ExternalName      string                 `json:"external_name,omitempty"`
 	AuthorizedActions []string               `json:"authorized_actions,omitempty"`
-
-	Response *api.Response
 }
 
 type HostReadResult struct {

@@ -29,8 +29,6 @@ type AuthToken struct {
 	ApproximateLastUsedTime time.Time         `json:"approximate_last_used_time,omitempty"`
 	ExpirationTime          time.Time         `json:"expiration_time,omitempty"`
 	AuthorizedActions       []string          `json:"authorized_actions,omitempty"`
-
-	Response *api.Response
 }
 
 type AuthTokenReadResult struct {

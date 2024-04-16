@@ -29,8 +29,6 @@ type Credential struct {
 	Type              string                 `json:"type,omitempty"`
 	Attributes        map[string]interface{} `json:"attributes,omitempty"`
 	AuthorizedActions []string               `json:"authorized_actions,omitempty"`
-
-	Response *api.Response
 }
 
 type CredentialReadResult struct {

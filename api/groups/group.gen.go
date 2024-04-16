@@ -29,8 +29,6 @@ type Group struct {
 	MemberIds         []string          `json:"member_ids,omitempty"`
 	Members           []*Member         `json:"members,omitempty"`
 	AuthorizedActions []string          `json:"authorized_actions,omitempty"`
-
-	Response *api.Response
 }
 
 type GroupReadResult struct {
