@@ -38,12 +38,12 @@ type Session struct {
 	AuthorizedActions []string          `json:"authorized_actions,omitempty"`
 	Connections       []*Connection     `json:"connections,omitempty"`
 
-	response *api.Response
+	Response *api.Response
 }
 
 type SessionReadResult struct {
 	Item     *Session
-	response *api.Response
+	Response *api.Response
 }
 
 func (n SessionReadResult) GetItem() *Session {
@@ -51,14 +51,14 @@ func (n SessionReadResult) GetItem() *Session {
 }
 
 func (n SessionReadResult) GetResponse() *api.Response {
-	return n.response
+	return n.Response
 }
 
 type SessionCreateResult = SessionReadResult
 type SessionUpdateResult = SessionReadResult
 
 type SessionDeleteResult struct {
-	response *api.Response
+	Response *api.Response
 }
 
 // GetItem will always be nil for SessionDeleteResult
@@ -67,7 +67,7 @@ func (n SessionDeleteResult) GetItem() interface{} {
 }
 
 func (n SessionDeleteResult) GetResponse() *api.Response {
-	return n.response
+	return n.Response
 }
 
 type SessionListResult struct {
@@ -76,7 +76,7 @@ type SessionListResult struct {
 	RemovedIds   []string   `json:"removed_ids,omitempty"`
 	ListToken    string     `json:"list_token,omitempty"`
 	ResponseType string     `json:"response_type,omitempty"`
-	response     *api.Response
+	Response     *api.Response
 }
 
 func (n SessionListResult) GetItems() []*Session {
@@ -100,7 +100,7 @@ func (n SessionListResult) GetResponseType() string {
 }
 
 func (n SessionListResult) GetResponse() *api.Response {
-	return n.response
+	return n.Response
 }
 
 // Client is a client for this collection
@@ -158,7 +158,7 @@ func (c *Client) Read(ctx context.Context, id string, opt ...Option) (*SessionRe
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.response = resp
+	target.Response = resp
 	return target, nil
 }
 
@@ -199,7 +199,7 @@ func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) (*Sess
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.response = resp
+	target.Response = resp
 	if target.ResponseType == "complete" || target.ResponseType == "" {
 		return target, nil
 	}
@@ -257,7 +257,7 @@ func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) (*Sess
 		target.EstItemCount = page.EstItemCount
 		target.ListToken = page.ListToken
 		target.ResponseType = page.ResponseType
-		target.response = resp
+		target.Response = resp
 		if target.ResponseType == "complete" {
 			break
 		}
@@ -292,11 +292,11 @@ func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) (*Sess
 	// Finally, since we made at least 2 requests to the server to fulfill this
 	// function call, resp.Body and resp.Map will only contain the most recent response.
 	// Overwrite them with the true response.
-	target.response.Body.Reset()
-	if err := json.NewEncoder(target.response.Body).Encode(target); err != nil {
+	target.Response.Body.Reset()
+	if err := json.NewEncoder(target.Response.Body).Encode(target); err != nil {
 		return nil, fmt.Errorf("error encoding final JSON list response: %w", err)
 	}
-	if err := json.Unmarshal(target.response.Body.Bytes(), &target.response.Map); err != nil {
+	if err := json.Unmarshal(target.Response.Body.Bytes(), &target.Response.Map); err != nil {
 		return nil, fmt.Errorf("error encoding final map list response: %w", err)
 	}
 	// Note: the HTTP response body is consumed by resp.Decode in the loop,

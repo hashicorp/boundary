@@ -75,6 +75,6 @@ func (c *Client) ChangeState(ctx context.Context, authMethodId string, version u
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.response = resp
+	target.Response = resp
 	return target, nil
 }
