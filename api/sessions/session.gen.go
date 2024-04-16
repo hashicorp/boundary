@@ -37,8 +37,6 @@ type Session struct {
 	TerminationReason string            `json:"termination_reason,omitempty"`
 	AuthorizedActions []string          `json:"authorized_actions,omitempty"`
 	Connections       []*Connection     `json:"connections,omitempty"`
-
-	Response *api.Response
 }
 
 type SessionReadResult struct {

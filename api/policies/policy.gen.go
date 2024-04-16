@@ -29,8 +29,6 @@ type Policy struct {
 	Version           uint32                 `json:"version,omitempty"`
 	Attributes        map[string]interface{} `json:"attributes,omitempty"`
 	AuthorizedActions []string               `json:"authorized_actions,omitempty"`
-
-	Response *api.Response
 }
 
 type PolicyReadResult struct {

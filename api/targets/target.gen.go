@@ -43,8 +43,6 @@ type Target struct {
 	Address                                string                 `json:"address,omitempty"`
 	Aliases                                []*Alias               `json:"aliases,omitempty"`
 	WithAliases                            []*Alias               `json:"with_aliases,omitempty"`
-
-	Response *api.Response
 }
 
 type TargetReadResult struct {

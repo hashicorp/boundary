@@ -33,8 +33,6 @@ type User struct {
 	FullName          string            `json:"full_name,omitempty"`
 	Email             string            `json:"email,omitempty"`
 	PrimaryAccountId  string            `json:"primary_account_id,omitempty"`
-
-	Response *api.Response
 }
 
 type UserReadResult struct {

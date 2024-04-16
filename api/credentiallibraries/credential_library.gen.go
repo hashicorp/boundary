@@ -31,8 +31,6 @@ type CredentialLibrary struct {
 	AuthorizedActions          []string               `json:"authorized_actions,omitempty"`
 	CredentialType             string                 `json:"credential_type,omitempty"`
 	CredentialMappingOverrides map[string]interface{} `json:"credential_mapping_overrides,omitempty"`
-
-	Response *api.Response
 }
 
 type CredentialLibraryReadResult struct {

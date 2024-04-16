@@ -33,8 +33,6 @@ type Role struct {
 	GrantStrings      []string          `json:"grant_strings,omitempty"`
 	Grants            []*Grant          `json:"grants,omitempty"`
 	AuthorizedActions []string          `json:"authorized_actions,omitempty"`
-
-	Response *api.Response
 }
 
 type RoleReadResult struct {

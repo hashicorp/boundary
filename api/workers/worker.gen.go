@@ -39,8 +39,6 @@ type Worker struct {
 	DirectlyConnectedDownstreamWorkers []string            `json:"directly_connected_downstream_workers,omitempty"`
 	AuthorizedActions                  []string            `json:"authorized_actions,omitempty"`
 	LocalStorageState                  string              `json:"local_storage_state,omitempty"`
-
-	Response *api.Response
 }
 
 type WorkerReadResult struct {

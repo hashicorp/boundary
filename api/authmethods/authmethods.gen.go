@@ -31,8 +31,6 @@ type AuthMethod struct {
 	IsPrimary                   bool                   `json:"is_primary,omitempty"`
 	AuthorizedActions           []string               `json:"authorized_actions,omitempty"`
 	AuthorizedCollectionActions map[string][]string    `json:"authorized_collection_actions,omitempty"`
-
-	Response *api.Response
 }
 
 type AuthMethodReadResult struct {

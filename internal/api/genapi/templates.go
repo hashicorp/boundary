@@ -719,9 +719,7 @@ import (
 
 type {{ .Name }} struct { {{ range .Fields }}
 {{ .Name }}  {{ .FieldType }} `, "`json:\"{{ .ProtoName }}{{ if ( ne ( len ( .JsonTags ) ) 0 ) }},{{ stringsjoin .JsonTags \",\" }}{{ end }}{{ if ( not .AllowEmpty ) }},omitempty{{ end }}\"`", `{{ end }}
-{{ if ( not ( eq ( len ( .CreateResponseTypes ) ) 0 ) )}}
-	Response *api.Response
-{{ else if ( eq .Name "Error" ) }}
+{{ if ( eq .Name "Error" ) }}
 	response *Response
 {{ end }}
 }
