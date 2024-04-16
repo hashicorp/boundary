@@ -73,6 +73,11 @@ variable "user_secret_access_key" {
   type        = string
   default     = "secretaccesskey"
 }
+variable "minio_alias" {
+  description = "Alias used in the minio cli"
+  type        = string
+  default     = "miniotest"
+}
 
 data "docker_registry_image" "minio_server" {
   name = var.image_name_server
@@ -139,6 +144,20 @@ resource "enos_local_exec" "init_minio" {
   inline = ["bash ./${path.module}/init.sh \"${var.image_name_client}\""]
 }
 
+resource "enos_local_exec" "set_alias" {
+  depends_on = [enos_local_exec.init_minio]
+  environment = {
+    MINIO_SERVER_CONTAINER_NAME = var.container_name,
+    MINIO_ALIAS                 = var.minio_alias
+    MINIO_ROOT_USER             = var.root_user,
+    MINIO_ROOT_PASSWORD         = var.root_password,
+  }
+
+  inline = [
+    "docker exec ${var.container_name} mc alias set ${var.minio_alias} http://localhost:9000 ${var.root_user} ${var.root_password}"
+  ]
+}
+
 output "bucket_name" {
   value = var.bucket_name
 }
@@ -157,4 +176,8 @@ output "bucket_region" {
 
 output "endpoint_url" {
   value = "http://${var.container_name}:9000"
+}
+
+output "alias" {
+  value = var.minio_alias
 }
