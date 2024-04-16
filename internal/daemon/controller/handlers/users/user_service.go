@@ -507,8 +507,7 @@ func (s Service) ListResolvableAliases(ctx context.Context, req *pbs.ListResolva
 		}
 	}
 
-	permissions := acl.ListResolvablePermissions(resource.Target,
-		action.Difference(targets.IdActions, action.NewActionSet(action.NoOp)))
+	permissions := acl.ListResolvablePermissions(resource.Target, targets.IdActions)
 
 	if len(permissions) == 0 {
 		// if there are no permitted targets then there will be no aliases that
