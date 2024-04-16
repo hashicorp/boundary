@@ -59,14 +59,18 @@ func (g GrantTuples) GrantHash(ctx context.Context) ([]byte, error) {
 	}
 	// Sort for deterministic output
 	slices.Sort(values)
-	hashVal, err := hashStrings(values...)
+	hashVal, err := hashStrings(ctx, values...)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	return binary.LittleEndian.AppendUint64(make([]byte, 0, 4), hashVal), nil
 }
 
-func hashStrings(s ...string) (uint64, error) {
+func hashStrings(ctx context.Context, s ...string) (uint64, error) {
+	const op = "perms.hashStrings"
+	if len(s) == 0 {
+		return 0, errors.New(ctx, errors.InvalidParameter, op, "no strings provided")
+	}
 	hasher := fnv.New64()
 	var h uint64
 	var err error
