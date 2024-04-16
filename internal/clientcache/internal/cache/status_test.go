@@ -123,7 +123,7 @@ func TestStatus(t *testing.T) {
 					},
 					Resources: []ResourceStatus{
 						{
-							Name:  string(aliasResourceType),
+							Name:  string(resolvableAliasResourceType),
 							Count: 0,
 						},
 						{
@@ -151,7 +151,7 @@ func TestStatus(t *testing.T) {
 					},
 					Resources: []ResourceStatus{
 						{
-							Name:  string(aliasResourceType),
+							Name:  string(resolvableAliasResourceType),
 							Count: 0,
 						},
 						{
@@ -211,8 +211,8 @@ func TestStatus(t *testing.T) {
 			alias("2"),
 			alias("3"),
 		}
-		err = r.refreshAliases(ctx, u1, map[AuthToken]string{{Id: "id"}: "something"},
-			WithAliasRetrievalFunc(testStaticResourceRetrievalFunc(t, [][]*aliases.Alias{als}, [][]string{nil})))
+		err = r.refreshResolvableAliases(ctx, u1, map[AuthToken]string{{Id: "id"}: "something"},
+			WithAliasRetrievalFunc(testStaticResourceRetrievalFuncForId(t, [][]*aliases.Alias{als}, [][]string{nil})))
 		require.NoError(t, err)
 
 		got, err := ss.Status(ctx)
@@ -230,7 +230,7 @@ func TestStatus(t *testing.T) {
 
 		assert.Equal(t, Map(got.Users[0].Resources, func(i ResourceStatus) string {
 			return i.Name
-		}), []string{string(aliasResourceType), string(targetResourceType), string(sessionResourceType)})
+		}), []string{string(resolvableAliasResourceType), string(targetResourceType), string(sessionResourceType)})
 
 		assert.Equal(t, Map(got.Users[0].Resources, func(i ResourceStatus) int {
 			return i.Count
@@ -251,7 +251,7 @@ func TestStatus(t *testing.T) {
 
 		assert.Equal(t, Map(got.Users[1].Resources, func(i ResourceStatus) string {
 			return i.Name
-		}), []string{string(aliasResourceType), string(targetResourceType), string(sessionResourceType)})
+		}), []string{string(resolvableAliasResourceType), string(targetResourceType), string(sessionResourceType)})
 
 		assert.Equal(t, Map(got.Users[1].Resources, func(i ResourceStatus) int {
 			return i.Count
@@ -307,8 +307,8 @@ func TestStatus_unsupported(t *testing.T) {
 		AuthTokenId: at1.Id,
 	}))
 
-	err = r.refreshAliases(ctx, u1, map[AuthToken]string{{Id: "id"}: "something"},
-		WithAliasRetrievalFunc(testNoRefreshRetrievalFunc[*aliases.Alias](t)))
+	err = r.refreshResolvableAliases(ctx, u1, map[AuthToken]string{{Id: "id"}: "something"},
+		WithAliasRetrievalFunc(testNoRefreshRetrievalFuncForId[*aliases.Alias](t)))
 	require.ErrorIs(t, err, ErrRefreshNotSupported)
 
 	err = r.refreshTargets(ctx, u1, map[AuthToken]string{{Id: "id"}: "something"},
@@ -342,7 +342,7 @@ func TestStatus_unsupported(t *testing.T) {
 			},
 			Resources: []ResourceStatus{
 				{
-					Name:  string(aliasResourceType),
+					Name:  string(resolvableAliasResourceType),
 					Count: 0,
 				},
 				{

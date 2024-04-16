@@ -30,7 +30,7 @@ var (
 	_ cli.CommandAutocomplete = (*SearchCommand)(nil)
 
 	supportedResourceTypes = []string{
-		"aliases",
+		"resolvable-aliases",
 		"targets",
 		"sessions",
 	}
@@ -165,8 +165,8 @@ func (c *SearchCommand) Run(args []string) int {
 		}
 	default:
 		switch {
-		case len(result.Aliases) > 0:
-			c.UI.Output(printAliasListTable(result.Aliases))
+		case len(result.ResolvableAliases) > 0:
+			c.UI.Output(printAliasListTable(result.ResolvableAliases))
 		case len(result.Targets) > 0:
 			c.UI.Output(printTargetListTable(result.Targets))
 		case len(result.Sessions) > 0:
@@ -247,12 +247,12 @@ func search(ctx context.Context, daemonPath string, fb filterBy, opt ...client.O
 
 func printAliasListTable(items []*aliases.Alias) string {
 	if len(items) == 0 {
-		return "No aliases found"
+		return "No resolvable aliases found"
 	}
 	var output []string
 	output = []string{
 		"",
-		"Alias information:",
+		"Resolvable Alias information:",
 	}
 	for i, item := range items {
 		if i > 0 {
@@ -267,11 +267,6 @@ func printAliasListTable(items []*aliases.Alias) string {
 				fmt.Sprintf("  ID:                    %s", "(not available)"),
 			)
 		}
-		if item.ScopeId != "" {
-			output = append(output,
-				fmt.Sprintf("    Scope ID:            %s", item.ScopeId),
-			)
-		}
 		if item.Version > 0 {
 			output = append(output,
 				fmt.Sprintf("    Version:             %d", item.Version),
@@ -282,16 +277,6 @@ func printAliasListTable(items []*aliases.Alias) string {
 				fmt.Sprintf("    Type:                %s", item.Type),
 			)
 		}
-		if item.Name != "" {
-			output = append(output,
-				fmt.Sprintf("    Name:                %s", item.Name),
-			)
-		}
-		if item.Description != "" {
-			output = append(output,
-				fmt.Sprintf("    Description:         %s", item.Description),
-			)
-		}
 		if item.DestinationId != "" {
 			output = append(output,
 				fmt.Sprintf("    DestinationId:       %s", item.DestinationId),
@@ -300,12 +285,6 @@ func printAliasListTable(items []*aliases.Alias) string {
 		if item.Value != "" {
 			output = append(output,
 				fmt.Sprintf("    Value:               %s", item.Value),
-			)
-		}
-		if len(item.AuthorizedActions) > 0 {
-			output = append(output,
-				"    Authorized Actions:",
-				base.WrapSlice(6, item.AuthorizedActions),
 			)
 		}
 	}

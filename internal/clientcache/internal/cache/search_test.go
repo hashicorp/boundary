@@ -205,8 +205,8 @@ func TestSearch(t *testing.T) {
 		require.NoError(t, rw.Create(ctx, at))
 
 		aliases := []any{
-			&Alias{FkUserId: u.Id, Id: "alt_1", Value: "one", Type: "target", Item: `{"id": "alt_1", "value": "one", "type": "target"}`},
-			&Alias{FkUserId: u.Id, Id: "alt_2", Value: "two", Type: "target", Item: `{"id": "alt_2", "value": "two", "type": "target"}`},
+			&ResolvableAlias{FkUserId: u.Id, Id: "alt_1", Value: "one", Type: "target", Item: `{"id": "alt_1", "value": "one", "type": "target"}`},
+			&ResolvableAlias{FkUserId: u.Id, Id: "alt_2", Value: "two", Type: "target", Item: `{"id": "alt_2", "value": "two", "type": "target"}`},
 		}
 		require.NoError(t, rw.CreateItems(ctx, aliases))
 

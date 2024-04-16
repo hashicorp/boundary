@@ -218,15 +218,24 @@ func upsertRefreshToken(ctx context.Context, writer db.Writer, u *user, rt resou
 type resourceType string
 
 const (
-	unknownResourceType resourceType = "unknown"
-	targetResourceType  resourceType = "target"
-	sessionResourceType resourceType = "session"
-	aliasResourceType   resourceType = "alias"
+	unknownResourceType         resourceType = "unknown"
+	targetResourceType          resourceType = "target"
+	sessionResourceType         resourceType = "session"
+	resolvableAliasResourceType resourceType = "resolvable-alias"
 )
+
+func (r resourceType) ColumnName() string {
+	switch r {
+	case resolvableAliasResourceType:
+		return "resolvable_alias"
+	default:
+		return string(r)
+	}
+}
 
 func (r resourceType) valid() bool {
 	switch r {
-	case aliasResourceType, targetResourceType, sessionResourceType:
+	case resolvableAliasResourceType, targetResourceType, sessionResourceType:
 		return true
 	}
 	return false

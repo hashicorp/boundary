@@ -74,14 +74,14 @@ func Test_GetOpts(t *testing.T) {
 		assert.Equal(t, opts, testOpts)
 	})
 	t.Run("WithAliasRetrievalFunc", func(t *testing.T) {
-		var f AliasRetrievalFunc = func(ctx context.Context, addr, authTok string, refreshTok RefreshTokenValue) ([]*aliases.Alias, []string, RefreshTokenValue, error) {
+		var f ResolvableAliasRetrievalFunc = func(ctx context.Context, addr, authTok, userId string, refreshTok RefreshTokenValue) ([]*aliases.Alias, []string, RefreshTokenValue, error) {
 			return nil, nil, "", nil
 		}
 		opts, err := getOpts(WithAliasRetrievalFunc(f))
 		require.NoError(t, err)
 
-		assert.NotNil(t, opts.withAliasRetrievalFunc)
-		opts.withAliasRetrievalFunc = nil
+		assert.NotNil(t, opts.withResolvableAliasRetrievalFunc)
+		opts.withResolvableAliasRetrievalFunc = nil
 
 		testOpts := getDefaultOptions()
 		assert.Equal(t, opts, testOpts)

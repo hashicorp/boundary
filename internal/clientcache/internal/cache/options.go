@@ -8,14 +8,14 @@ import (
 )
 
 type options struct {
-	withUpdateLastAccessedTime bool
-	withDbType                 dbw.DbType
-	withAuthTokenId            string
-	withUserId                 string
-	withAliasRetrievalFunc     AliasRetrievalFunc
-	withTargetRetrievalFunc    TargetRetrievalFunc
-	withSessionRetrievalFunc   SessionRetrievalFunc
-	withIgnoreSearchStaleness  bool
+	withUpdateLastAccessedTime       bool
+	withDbType                       dbw.DbType
+	withAuthTokenId                  string
+	withUserId                       string
+	withResolvableAliasRetrievalFunc ResolvableAliasRetrievalFunc
+	withTargetRetrievalFunc          TargetRetrievalFunc
+	withSessionRetrievalFunc         SessionRetrievalFunc
+	withIgnoreSearchStaleness        bool
 }
 
 // Option - how options are passed as args
@@ -63,9 +63,9 @@ func withUserId(id string) Option {
 }
 
 // WithAliasRetrievalFunc provides an option for specifying an aliasRetrievalFunc
-func WithAliasRetrievalFunc(fn AliasRetrievalFunc) Option {
+func WithAliasRetrievalFunc(fn ResolvableAliasRetrievalFunc) Option {
 	return func(o *options) error {
-		o.withAliasRetrievalFunc = fn
+		o.withResolvableAliasRetrievalFunc = fn
 		return nil
 	}
 }

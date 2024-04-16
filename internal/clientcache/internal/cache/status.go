@@ -125,7 +125,7 @@ func (s *StatusService) Status(ctx context.Context) (*Status, error) {
 			us.AuthTokens = append(us.AuthTokens, *ts)
 		}
 
-		for _, rt := range []resourceType{aliasResourceType, targetResourceType, sessionResourceType} {
+		for _, rt := range []resourceType{resolvableAliasResourceType, targetResourceType, sessionResourceType} {
 			ts, err := s.resourceStatus(ctx, u, rt)
 			if err != nil {
 				return nil, errors.Wrap(ctx, err, op)
@@ -165,7 +165,7 @@ func (s *StatusService) resourceStatus(ctx context.Context, u *user, rt resource
 	ret.LastError = errStatus
 
 	err = func() error {
-		query := fmt.Sprintf("select count(*) from %s where fk_user_id = @user_id", rt)
+		query := fmt.Sprintf("select count(*) from %s where fk_user_id = @user_id", rt.ColumnName())
 		r, err := s.repo.rw.Query(ctx, query, []any{sql.Named("user_id", u.Id)})
 		if err != nil {
 			return errors.Wrap(ctx, err, op)
