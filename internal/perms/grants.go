@@ -53,24 +53,21 @@ type GrantTuples []GrantTuple
 // GrantsHash returns a stable hash of all the grants in the GrantTuples.
 func (g GrantTuples) GrantHash(ctx context.Context) ([]byte, error) {
 	const op = "perms.(GrantTuples).GrantHash"
+	// TODO: Should this return an error when the GrantTuples is empty?
 	var values []string
 	for _, grant := range g {
 		values = append(values, grant.Grant, grant.RoleId, grant.ScopeId)
 	}
 	// Sort for deterministic output
 	slices.Sort(values)
-	hashVal, err := hashStrings(ctx, values...)
+	hashVal, err := hashStrings(values...)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	return binary.LittleEndian.AppendUint64(make([]byte, 0, 4), hashVal), nil
 }
 
-func hashStrings(ctx context.Context, s ...string) (uint64, error) {
-	const op = "perms.hashStrings"
-	if len(s) == 0 {
-		return 0, errors.New(ctx, errors.InvalidParameter, op, "no strings provided")
-	}
+func hashStrings(s ...string) (uint64, error) {
 	hasher := fnv.New64()
 	var h uint64
 	var err error
