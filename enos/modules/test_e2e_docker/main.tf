@@ -134,6 +134,11 @@ variable "bucket_name" {
   type        = string
   default     = ""
 }
+variable "minio_alias" {
+  description = "Alias used in the minio cli"
+  type        = string
+  default     = ""
+}
 variable "bucket_endpoint_url" {
   description = "Endpoint URL for the storage bucket"
   type        = string
@@ -258,6 +263,7 @@ resource "enos_local_exec" "run_e2e_test" {
     E2E_BUCKET_ENDPOINT_URL       = var.bucket_endpoint_url
     E2E_BUCKET_ACCESS_KEY_ID      = var.access_key_id
     E2E_BUCKET_SECRET_ACCESS_KEY  = var.secret_access_key
+    E2E_MINIO_ALIAS               = var.minio_alias
     E2E_REGION                    = var.region
     E2E_POSTGRES_USER             = var.postgres_user
     E2E_POSTGRES_PASSWORD         = var.postgres_password
