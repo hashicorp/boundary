@@ -13,6 +13,10 @@ import (
 	"github.com/hashicorp/boundary/api/aliases"
 )
 
+// ListResolvableAliases builds and sends a request to the API for listing
+// resolvable aliases for the specified user. It retrieves all remaining pages
+// and includes in the result the list token for paginating through future
+// updates. To use the list token use the users.WithListToken option.
 func (c *Client) ListResolvableAliases(ctx context.Context, userId string, opt ...Option) (*aliases.AliasListResult, error) {
 	if userId == "" {
 		return nil, fmt.Errorf("empty userId value passed into ListResolvableAliases request")
