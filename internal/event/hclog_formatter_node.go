@@ -35,7 +35,8 @@ type hclogFormatterFilter struct {
 	allow      []*filter
 	deny       []*filter
 	signer     signer
-	l          sync.RWMutex
+	// l protects the signer field
+	l sync.RWMutex
 }
 
 func newHclogFormatterFilter(jsonFormat bool, opt ...Option) (*hclogFormatterFilter, error) {
@@ -205,6 +206,8 @@ func (f *hclogFormatterFilter) Process(ctx context.Context, e *eventlogger.Event
 	if err != nil {
 		return nil, fmt.Errorf("%s: unable to format: %w", op, err)
 	}
+	f.l.Lock()
+	defer f.l.Unlock()
 	if f.signer != nil && string(e.Type) == string(AuditType) {
 		bufHmac, err := f.signer(ctx, buf.Bytes())
 		if err != nil {
