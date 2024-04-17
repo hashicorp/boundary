@@ -14,11 +14,13 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/boundary/globals"
+	talias "github.com/hashicorp/boundary/internal/alias/target"
 	"github.com/hashicorp/boundary/internal/auth/ldap"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
+	"github.com/hashicorp/boundary/internal/daemon/controller/common"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/users"
 	"github.com/hashicorp/boundary/internal/db"
@@ -28,7 +30,9 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/server"
+	"github.com/hashicorp/boundary/internal/target/tcp"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	pbalias "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/aliases"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/users"
 	"google.golang.org/genproto/protobuf/field_mask"
@@ -42,26 +46,30 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var testAuthorizedActions = []string{"no-op", "read", "update", "delete", "add-accounts", "set-accounts", "remove-accounts"}
+var testAuthorizedActions = []string{"no-op", "read", "update", "delete", "add-accounts", "set-accounts", "remove-accounts", "list-resolvable-aliases"}
 
-func createDefaultUserAndRepo(t *testing.T, withAccts bool) (*iam.User, []string, func() (*iam.Repository, error)) {
+func createDefaultUserAndRepos(t *testing.T, withAccts bool) (*iam.User, []string, common.IamRepoFactory, common.TargetAliasRepoFactory) {
 	t.Helper()
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrap := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, wrap)
+	rw := db.New(conn)
 	repo := iam.TestRepo(t, conn, wrap)
 	repoFn := func() (*iam.Repository, error) {
 		return repo, nil
+	}
+	aliasRepoFn := func() (*talias.Repository, error) {
+		return talias.NewRepository(context.Background(), rw, rw, kmsCache)
 	}
 	o, _ := iam.TestScopes(t, repo)
 	u := iam.TestUser(t, repo, o.GetPublicId(), iam.WithDescription("default"), iam.WithName("default"))
 
 	switch withAccts {
 	case false:
-		return u, nil, repoFn
+		return u, nil, repoFn, aliasRepoFn
 	default:
 		require := require.New(t)
-		ctx := context.Background()
-		kmsCache := kms.TestKms(t, conn, wrap)
 		databaseWrap, err := kmsCache.GetWrapper(ctx, o.PublicId, kms.KeyPurposeDatabase)
 		require.NoError(err)
 		primaryAm := oidc.TestAuthMethod(t, conn, databaseWrap, o.PublicId, oidc.ActivePublicState, "alice-rp", "fido",
@@ -84,12 +92,12 @@ func createDefaultUserAndRepo(t *testing.T, withAccts bool) (*iam.User, []string
 		// reload the user with their accounts
 		u, accts, err := repo.LookupUser(ctx, u.PublicId)
 		require.NoError(err)
-		return u, accts, repoFn
+		return u, accts, repoFn, aliasRepoFn
 	}
 }
 
 func TestGet(t *testing.T) {
-	u, uAccts, repoFn := createDefaultUserAndRepo(t, true)
+	u, uAccts, repoFn, aliasRepo := createDefaultUserAndRepos(t, true)
 
 	toMerge := &pbs.GetUserRequest{
 		Id: u.GetPublicId(),
@@ -149,7 +157,7 @@ func TestGet(t *testing.T) {
 			req := proto.Clone(toMerge).(*pbs.GetUserRequest)
 			proto.Merge(req, tc.req)
 
-			s, err := users.NewService(context.Background(), repoFn, 1000)
+			s, err := users.NewService(context.Background(), repoFn, aliasRepo, 1000)
 			require.NoError(err, "Couldn't create new user service.")
 
 			got, gErr := s.GetUser(auth.DisabledAuthTestContext(repoFn, u.GetScopeId()), req)
@@ -172,18 +180,20 @@ func TestGet(t *testing.T) {
 func TestList(t *testing.T) {
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, wrap)
 	iamRepo := iam.TestRepo(t, conn, wrap)
 	repoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
-	repo, err := repoFn()
-	require.NoError(t, err)
+	aliasRepoFn := func() (*talias.Repository, error) {
+		return talias.NewRepository(context.Background(), rw, rw, kmsCache)
+	}
 
-	oNoUsers, _ := iam.TestScopes(t, repo)
-	oWithUsers, _ := iam.TestScopes(t, repo)
+	oNoUsers, _ := iam.TestScopes(t, iamRepo)
+	oWithUsers, _ := iam.TestScopes(t, iamRepo)
 
-	kmsCache := kms.TestKms(t, conn, wrap)
 	databaseWrap, err := kmsCache.GetWrapper(context.Background(), oWithUsers.PublicId, kms.KeyPurposeDatabase)
 	require.NoError(t, err)
 	primaryAm := oidc.TestAuthMethod(t, conn, databaseWrap, oWithUsers.PublicId, oidc.ActivePublicState, "alice-rp", "fido",
@@ -191,12 +201,12 @@ func TestList(t *testing.T) {
 		oidc.WithApiUrl(oidc.TestConvertToUrls(t, "http://localhost:9200")[0]),
 		oidc.WithSigningAlgs(oidc.RS256),
 	)
-	iam.TestSetPrimaryAuthMethod(t, repo, oWithUsers, primaryAm.PublicId)
+	iam.TestSetPrimaryAuthMethod(t, iamRepo, oWithUsers, primaryAm.PublicId)
 
 	secondaryAm := password.TestAuthMethods(t, conn, oWithUsers.PublicId, 1)
 	require.Len(t, secondaryAm, 1)
 
-	s, err := users.NewService(context.Background(), repoFn, 1000)
+	s, err := users.NewService(context.Background(), repoFn, aliasRepoFn, 1000)
 	require.NoError(t, err)
 
 	var wantUsers []*pb.User
@@ -220,16 +230,16 @@ func TestList(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		newU, err := iam.NewUser(ctx, oWithUsers.GetPublicId())
 		require.NoError(t, err)
-		u, err := repo.CreateUser(context.Background(), newU)
+		u, err := iamRepo.CreateUser(context.Background(), newU)
 		require.NoError(t, err)
 		oidcAcct := oidc.TestAccount(t, conn, primaryAm, fmt.Sprintf("alice+%d", i), oidc.WithFullName("Alice Eve Smith"), oidc.WithEmail("alice@smith.com"))
 		pwAcct := password.TestAccount(t, conn, secondaryAm[0].PublicId, fmt.Sprintf("alice+%d", i))
 
-		added, err := repo.AddUserAccounts(ctx, u.PublicId, u.Version, []string{oidcAcct.PublicId, pwAcct.PublicId})
+		added, err := iamRepo.AddUserAccounts(ctx, u.PublicId, u.Version, []string{oidcAcct.PublicId, pwAcct.PublicId})
 		require.NoError(t, err)
 		require.Len(t, added, 2)
 
-		u, _, err = repo.LookupUser(ctx, u.PublicId)
+		u, _, err = iamRepo.LookupUser(ctx, u.PublicId)
 		require.NoError(t, err)
 		wantUsers = append(wantUsers, &pb.User{
 			Id:                u.GetPublicId(),
@@ -375,7 +385,7 @@ func userToProto(u *iam.User, si *scopes.ScopeInfo, authorizedActions []string) 
 		CreatedTime:       u.GetCreateTime().GetTimestamp(),
 		UpdatedTime:       u.GetUpdateTime().GetTimestamp(),
 		Version:           u.GetVersion(),
-		AuthorizedActions: testAuthorizedActions,
+		AuthorizedActions: authorizedActions,
 	}
 	if u.GetName() != "" {
 		pu.Name = wrapperspb.String(u.GetName())
@@ -404,6 +414,9 @@ func TestListPagination(t *testing.T) {
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
+	}
+	aliasRepoFn := func() (*talias.Repository, error) {
+		return talias.NewRepository(ctx, rw, rw, kms)
 	}
 	tokenRepoFn := func() (*authtoken.Repository, error) {
 		return authtoken.NewRepository(ctx, rw, rw, kms)
@@ -478,7 +491,7 @@ func TestListPagination(t *testing.T) {
 	}
 	slices.Reverse(allUsers)
 
-	a, err := users.NewService(ctx, iamRepoFn, 1000)
+	a, err := users.NewService(ctx, iamRepoFn, aliasRepoFn, 1000)
 	require.NoError(t, err, "Couldn't create new user service.")
 
 	// Run analyze to update postgres estimates
@@ -751,10 +764,355 @@ func TestListPagination(t *testing.T) {
 	assert.ErrorIs(t, handlers.ForbiddenError(), err)
 }
 
-func TestDelete(t *testing.T) {
-	u, _, repoFn := createDefaultUserAndRepo(t, false)
+func TestListResolvableAliasesPagination(t *testing.T) {
+	// Set database read timeout to avoid duplicates in response
+	oldReadTimeout := globals.RefreshReadLookbackDuration
+	globals.RefreshReadLookbackDuration = 0
+	t.Cleanup(func() {
+		globals.RefreshReadLookbackDuration = oldReadTimeout
+	})
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	sqlDB, err := conn.SqlDB(ctx)
+	require.NoError(t, err)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	rw := db.New(conn)
 
-	s, err := users.NewService(context.Background(), repoFn, 1000)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+	aliasRepoFn := func() (*talias.Repository, error) {
+		return talias.NewRepository(ctx, rw, rw, kms)
+	}
+	tokenRepoFn := func() (*authtoken.Repository, error) {
+		return authtoken.NewRepository(ctx, rw, rw, kms)
+	}
+	serversRepoFn := func() (*server.Repository, error) {
+		return server.NewRepository(ctx, rw, rw, kms)
+	}
+	tokenRepo, err := tokenRepoFn()
+	require.NoError(t, err)
+
+	// Run analyze to update postgres meta tables
+	_, err = sqlDB.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
+
+	_, p := iam.TestScopes(t, iamRepo)
+	tar := tcp.TestTarget(ctx, t, conn, p.GetPublicId(), "resolvable")
+
+	_, unresolvableP := iam.TestScopes(t, iamRepo)
+	unresolvedTar := tcp.TestTarget(ctx, t, conn, unresolvableP.GetPublicId(), "unresolvable")
+	// Create an alias that shouldn't be included in the paginated list results.
+	talias.TestAlias(t, rw, "unresolved.alias", talias.WithDestinationId(unresolvedTar.GetPublicId()))
+
+	authMethod := password.TestAuthMethods(t, conn, "global", 1)[0]
+	acct := password.TestAccount(t, conn, authMethod.GetPublicId(), "test_user")
+	u := iam.TestUser(t, iamRepo, "global", iam.WithAccountIds(acct.PublicId))
+
+	// add roles for requester to be able to perform all actions on everyone
+	allowedRole := iam.TestRole(t, conn, "global", iam.WithGrantScopeIds([]string{globals.GrantScopeThis, globals.GrantScopeDescendants}))
+	iam.TestRoleGrant(t, conn, allowedRole.GetPublicId(), "ids=*;type=*;actions=*")
+	iam.TestUserRole(t, conn, allowedRole.GetPublicId(), u.GetPublicId())
+
+	at, err := tokenRepo.CreateAuthToken(ctx, u, acct.GetPublicId())
+	require.NoError(t, err)
+
+	// add roles for user whose resolvable aliases are being listed they can
+	// only see the aliases which resolve to targets in project p.
+	resolvingUsersAt := authtoken.TestAuthToken(t, conn, kms, scope.Global.String())
+	roleForResolving := iam.TestRole(t, conn, "global", iam.WithGrantScopeIds([]string{p.GetPublicId(), globals.GrantScopeThis}))
+	iam.TestRoleGrant(t, conn, roleForResolving.GetPublicId(), "ids=*;type=target;actions=authorize-session")
+	iam.TestRoleGrant(t, conn, roleForResolving.GetPublicId(), "ids={{.User.Id}};type=user;actions=list-resolvable-aliases")
+	iam.TestUserRole(t, conn, roleForResolving.GetPublicId(), resolvingUsersAt.GetIamUserId())
+
+	var allAliases []*talias.Alias
+	var allAliasPbs []*pbalias.Alias
+	var safeToRemoveAlias *talias.Alias
+	for i := 0; i < 10; i++ {
+		na := talias.TestAlias(t, rw, fmt.Sprintf("aliase%d.test", i), talias.WithDestinationId(tar.GetPublicId()))
+		allAliases = append(allAliases, na)
+		allAliasPbs = append(allAliasPbs, &pbalias.Alias{
+			Id:            na.GetPublicId(),
+			Value:         na.GetValue(),
+			DestinationId: wrapperspb.String(na.GetDestinationId()),
+			CreatedTime:   na.GetCreateTime().GetTimestamp(),
+			UpdatedTime:   na.GetUpdateTime().GetTimestamp(),
+			Type:          "target",
+		})
+
+		safeToRemoveAlias = na
+	}
+	slices.Reverse(allAliases)
+	slices.Reverse(allAliasPbs)
+
+	a, err := users.NewService(ctx, iamRepoFn, aliasRepoFn, 1000)
+	require.NoError(t, err, "Couldn't create new user service.")
+
+	// Run analyze to update postgres estimates
+	_, err = sqlDB.ExecContext(context.Background(), "analyze")
+	require.NoError(t, err)
+
+	// +1 because we have one alias that points to an unresolvable target
+	itemCount := uint32(len(allAliasPbs)) + 1
+	testPageSize := int((itemCount - 2) / 2)
+
+	// See that the resolvingUser can query themselves
+	requestInfo := authpb.RequestInfo{
+		TokenFormat: uint32(auth.AuthTokenTypeBearer),
+		PublicId:    resolvingUsersAt.GetPublicId(),
+		Token:       resolvingUsersAt.GetToken(),
+	}
+	requestContext := context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
+	ctx = auth.NewVerifierContext(requestContext, iamRepoFn, tokenRepoFn, serversRepoFn, kms, &requestInfo)
+	got, err := a.ListResolvableAliases(ctx, &pbs.ListResolvableAliasesRequest{
+		Id: resolvingUsersAt.GetIamUserId(),
+	})
+	require.NoError(t, err)
+	assert.Empty(t,
+		cmp.Diff(
+			got,
+			&pbs.ListResolvableAliasesResponse{
+				Items:        allAliasPbs,
+				ResponseType: "complete",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+				RemovedIds:   nil,
+				EstItemCount: 10,
+			},
+			protocmp.Transform(),
+			protocmp.SortRepeated(func(a, b string) bool {
+				return strings.Compare(a, b) < 0
+			}),
+			protocmp.IgnoreFields(&pbs.ListResolvableAliasesResponse{}, "list_token"),
+		),
+	)
+
+	// This user cannot list resolvable for other aliases
+	_, err = a.ListResolvableAliases(ctx, &pbs.ListResolvableAliasesRequest{
+		Id: at.GetIamUserId(),
+	})
+	require.Error(t, err)
+	assert.ErrorIs(t, handlers.ForbiddenError(), err)
+
+	// Now let the admin user list resolvable aliases
+	requestInfo = authpb.RequestInfo{
+		TokenFormat: uint32(auth.AuthTokenTypeBearer),
+		PublicId:    at.GetPublicId(),
+		Token:       at.GetToken(),
+	}
+	requestContext = context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
+	ctx = auth.NewVerifierContext(requestContext, iamRepoFn, tokenRepoFn, serversRepoFn, kms, &requestInfo)
+
+	req := &pbs.ListResolvableAliasesRequest{
+		Id:        resolvingUsersAt.GetIamUserId(),
+		ListToken: "",
+		PageSize:  uint32(testPageSize),
+	}
+	got, err = a.ListResolvableAliases(ctx, req)
+	require.NoError(t, err)
+	require.Len(t, got.GetItems(), testPageSize)
+	// Compare without comparing the list token
+	assert.Empty(t,
+		cmp.Diff(
+			got,
+			&pbs.ListResolvableAliasesResponse{
+				Items:        allAliasPbs[0:testPageSize],
+				ResponseType: "delta",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+				RemovedIds:   nil,
+				// In addition to the added users, there are the users added
+				// by the test setup when specifying the permissions of the
+				// requester
+				EstItemCount: itemCount,
+			},
+			protocmp.SortRepeated(func(a, b string) bool {
+				return strings.Compare(a, b) < 0
+			}),
+			protocmp.Transform(),
+			protocmp.IgnoreFields(&pbs.ListResolvableAliasesResponse{}, "list_token"),
+		),
+	)
+
+	// Request second page
+	req.ListToken = got.ListToken
+	got, err = a.ListResolvableAliases(ctx, req)
+	require.NoError(t, err)
+	require.Len(t, got.GetItems(), testPageSize)
+	// Compare without comparing the list token
+	assert.Empty(t,
+		cmp.Diff(
+			got,
+			&pbs.ListResolvableAliasesResponse{
+				Items:        allAliasPbs[testPageSize : testPageSize*2],
+				ResponseType: "delta",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+				RemovedIds:   nil,
+				EstItemCount: itemCount,
+			},
+			protocmp.Transform(),
+			protocmp.SortRepeated(func(a, b string) bool {
+				return strings.Compare(a, b) < 0
+			}),
+			protocmp.IgnoreFields(&pbs.ListResolvableAliasesResponse{}, "list_token"),
+		),
+	)
+
+	// Request rest of results
+	req.ListToken = got.ListToken
+	req.PageSize = 10
+	got, err = a.ListResolvableAliases(ctx, req)
+	require.NoError(t, err)
+	require.Len(t, got.GetItems(), 2)
+	// Compare without comparing the list token
+	assert.Empty(t,
+		cmp.Diff(
+			got,
+			&pbs.ListResolvableAliasesResponse{
+				Items:        allAliasPbs[testPageSize*2:],
+				ResponseType: "complete",
+				SortBy:       "created_time",
+				SortDir:      "desc",
+				RemovedIds:   nil,
+				EstItemCount: itemCount,
+			},
+			protocmp.Transform(),
+			protocmp.SortRepeated(func(a, b string) bool {
+				return strings.Compare(a, b) < 0
+			}),
+			protocmp.IgnoreFields(&pbs.ListResolvableAliasesResponse{}, "list_token"),
+		),
+	)
+
+	// Update 2 aliases and see them in the refresh
+	aliasRepo, err := aliasRepoFn()
+	require.NoError(t, err)
+
+	for i := 0; i < 2; i++ {
+		r := allAliases[len(allAliasPbs)-1]
+		rPb := allAliasPbs[len(allAliasPbs)-1]
+		r.Description = fmt.Sprintf("updated%d", i)
+
+		updated, _, err := aliasRepo.UpdateAlias(ctx, r, r.GetVersion(), []string{"description"})
+		require.NoError(t, err)
+
+		r.Version = updated.GetVersion()
+		r.UpdateTime = updated.GetUpdateTime()
+		rPb.UpdatedTime = updated.GetUpdateTime().GetTimestamp()
+		// ListResolvableAliases does not return the description, or the version
+		// so we do not update those values here in the protobuf aliases
+		allAliases = append([]*talias.Alias{r}, allAliases[:len(allAliases)-1]...)
+		allAliasPbs = append([]*pbalias.Alias{rPb}, allAliasPbs[:len(allAliasPbs)-1]...)
+	}
+
+	// Run analyze to update postgres estimates
+	_, err = sqlDB.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
+
+	// Request updated results
+	req.ListToken = got.ListToken
+	req.PageSize = 1
+	got, err = a.ListResolvableAliases(ctx, req)
+	require.NoError(t, err)
+	require.Len(t, got.GetItems(), 1)
+	// Compare without comparing the list token
+	assert.Empty(t,
+		cmp.Diff(
+			got,
+			&pbs.ListResolvableAliasesResponse{
+				Items:        []*pbalias.Alias{allAliasPbs[0]},
+				ResponseType: "delta",
+				SortBy:       "updated_time",
+				SortDir:      "desc",
+				RemovedIds:   nil,
+				EstItemCount: itemCount,
+			},
+			protocmp.Transform(),
+			protocmp.SortRepeated(func(a, b string) bool {
+				return strings.Compare(a, b) < 0
+			}),
+			protocmp.IgnoreFields(&pbs.ListResolvableAliasesResponse{}, "list_token"),
+		),
+	)
+
+	// Get next page
+	req.ListToken = got.ListToken
+	got, err = a.ListResolvableAliases(ctx, req)
+	require.NoError(t, err)
+	require.Len(t, got.GetItems(), 1)
+	// Compare without comparing the list token
+	assert.Empty(t,
+		cmp.Diff(
+			got,
+			&pbs.ListResolvableAliasesResponse{
+				Items:        []*pbalias.Alias{allAliasPbs[1]},
+				ResponseType: "complete",
+				SortBy:       "updated_time",
+				SortDir:      "desc",
+				RemovedIds:   nil,
+				EstItemCount: itemCount,
+			},
+			protocmp.Transform(),
+			protocmp.SortRepeated(func(a, b string) bool {
+				return strings.Compare(a, b) < 0
+			}),
+			protocmp.IgnoreFields(&pbs.ListResolvableAliasesResponse{}, "list_token"),
+		),
+	)
+
+	_, err = aliasRepo.DeleteAlias(ctx, safeToRemoveAlias.GetPublicId())
+	require.NoError(t, err)
+	req.ListToken = got.ListToken
+	got, err = a.ListResolvableAliases(ctx, req)
+	require.NoError(t, err)
+	assert.Empty(t,
+		cmp.Diff(
+			got,
+			&pbs.ListResolvableAliasesResponse{
+				Items:        nil,
+				ResponseType: "complete",
+				SortBy:       "updated_time",
+				SortDir:      "desc",
+				RemovedIds:   []string{safeToRemoveAlias.GetPublicId()},
+				EstItemCount: itemCount,
+			},
+			protocmp.Transform(),
+			protocmp.SortRepeated(func(a, b string) bool {
+				return strings.Compare(a, b) < 0
+			}),
+			protocmp.IgnoreFields(&pbs.ListResolvableAliasesResponse{}, "list_token"),
+		),
+	)
+
+	// Create unauthenticated user
+	unauthAt := authtoken.TestAuthToken(t, conn, kms, scope.Global.String())
+	unauthR := iam.TestRole(t, conn, p.GetPublicId())
+	_ = iam.TestUserRole(t, conn, unauthR.GetPublicId(), unauthAt.GetIamUserId())
+
+	// Make a request with the unauthenticated user,
+	// ensure the response contains the pagination parameters.
+	requestInfo = authpb.RequestInfo{
+		TokenFormat: uint32(auth.AuthTokenTypeBearer),
+		PublicId:    unauthAt.GetPublicId(),
+		Token:       unauthAt.GetToken(),
+	}
+	requestContext = context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
+	ctx = auth.NewVerifierContext(requestContext, iamRepoFn, tokenRepoFn, serversRepoFn, kms, &requestInfo)
+
+	_, err = a.ListResolvableAliases(ctx, &pbs.ListResolvableAliasesRequest{
+		Id: resolvingUsersAt.GetIamUserId(),
+	})
+	require.Error(t, err)
+	assert.ErrorIs(t, handlers.ForbiddenError(), err)
+}
+
+func TestDelete(t *testing.T) {
+	u, _, repoFn, aliasRepoFn := createDefaultUserAndRepos(t, false)
+
+	s, err := users.NewService(context.Background(), repoFn, aliasRepoFn, 1000)
 	require.NoError(t, err, "Error when getting new user service.")
 
 	cases := []struct {
@@ -799,9 +1157,9 @@ func TestDelete(t *testing.T) {
 
 func TestDelete_twice(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	u, _, repoFn := createDefaultUserAndRepo(t, false)
+	u, _, repoFn, aliasRepoFn := createDefaultUserAndRepos(t, false)
 
-	s, err := users.NewService(context.Background(), repoFn, 1000)
+	s, err := users.NewService(context.Background(), repoFn, aliasRepoFn, 1000)
 	require.NoError(err, "Error when getting new user service")
 	req := &pbs.DeleteUserRequest{
 		Id: u.GetPublicId(),
@@ -815,7 +1173,7 @@ func TestDelete_twice(t *testing.T) {
 }
 
 func TestCreate(t *testing.T) {
-	defaultUser, _, repoFn := createDefaultUserAndRepo(t, false)
+	defaultUser, _, repoFn, aliasRepoFn := createDefaultUserAndRepos(t, false)
 	defaultCreated := defaultUser.GetCreateTime().GetTimestamp().AsTime()
 
 	cases := []struct {
@@ -893,7 +1251,7 @@ func TestCreate(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			s, err := users.NewService(context.Background(), repoFn, 1000)
+			s, err := users.NewService(context.Background(), repoFn, aliasRepoFn, 1000)
 			require.NoError(err, "Error when getting new user service.")
 
 			got, gErr := s.CreateUser(auth.DisabledAuthTestContext(repoFn, tc.req.GetItem().GetScopeId()), tc.req)
@@ -928,8 +1286,8 @@ func TestCreate(t *testing.T) {
 }
 
 func TestUpdate(t *testing.T) {
-	u, _, repoFn := createDefaultUserAndRepo(t, false)
-	tested, err := users.NewService(context.Background(), repoFn, 1000)
+	u, _, repoFn, aliasRepoFn := createDefaultUserAndRepos(t, false)
+	tested, err := users.NewService(context.Background(), repoFn, aliasRepoFn, 1000)
 	require.NoError(t, err, "Error when getting new user service.")
 
 	created := u.GetCreateTime().GetTimestamp().AsTime()
@@ -1208,12 +1566,16 @@ func TestAddAccount(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrap := db.TestWrapper(t)
 	ctx := context.Background()
+	rw := db.New(conn)
 	kmsCache := kms.TestKms(t, conn, wrap)
 	iamRepo := iam.TestRepo(t, conn, wrap)
 	repoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
-	s, err := users.NewService(ctx, repoFn, 1000)
+	aliasRepoFn := func() (*talias.Repository, error) {
+		return talias.NewRepository(ctx, rw, rw, kmsCache)
+	}
+	s, err := users.NewService(ctx, repoFn, aliasRepoFn, 1000)
 	require.NoError(t, err, "Error when getting new user service.")
 
 	o, _ := iam.TestScopes(t, iamRepo)
@@ -1368,12 +1730,16 @@ func TestSetAccount(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrap := db.TestWrapper(t)
 	ctx := context.Background()
+	rw := db.New(conn)
 	kmsCache := kms.TestKms(t, conn, wrap)
 	iamRepo := iam.TestRepo(t, conn, wrap)
 	repoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
-	s, err := users.NewService(ctx, repoFn, 1000)
+	aliasRepoFn := func() (*talias.Repository, error) {
+		return talias.NewRepository(ctx, rw, rw, kmsCache)
+	}
+	s, err := users.NewService(ctx, repoFn, aliasRepoFn, 1000)
 	require.NoError(t, err, "Error when getting new user service.")
 
 	o, _ := iam.TestScopes(t, iamRepo)
@@ -1530,12 +1896,16 @@ func TestRemoveAccount(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrap := db.TestWrapper(t)
 	ctx := context.Background()
+	rw := db.New(conn)
 	kmsCache := kms.TestKms(t, conn, wrap)
 	iamRepo := iam.TestRepo(t, conn, wrap)
 	repoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
-	s, err := users.NewService(ctx, repoFn, 1000)
+	aliasRepoFn := func() (*talias.Repository, error) {
+		return talias.NewRepository(ctx, rw, rw, kmsCache)
+	}
+	s, err := users.NewService(ctx, repoFn, aliasRepoFn, 1000)
 	require.NoError(t, err, "Error when getting new user service.")
 
 	o, _ := iam.TestScopes(t, iamRepo)

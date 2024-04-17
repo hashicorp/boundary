@@ -403,7 +403,7 @@ func (r *Repository) ListRoleGrantScopes(ctx context.Context, roleId string, opt
 	return roleGrantScopes, nil
 }
 
-func (r *Repository) GrantsForUser(ctx context.Context, userId string, _ ...Option) ([]perms.GrantTuple, error) {
+func (r *Repository) GrantsForUser(ctx context.Context, userId string, _ ...Option) (perms.GrantTuples, error) {
 	const op = "iam.(Repository).GrantsForUser"
 	if userId == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing user id")

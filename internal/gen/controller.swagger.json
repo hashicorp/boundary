@@ -5223,6 +5223,53 @@
         ]
       }
     },
+    "/v1/users/{id}:list-resolvable-aliases": {
+      "get": {
+        "summary": "Lists all Aliases which point to a resource for which the requester has some permission.",
+        "operationId": "UserService_ListResolvableAliases",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.ListResolvableAliasesResponse"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "description": "",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "list_token",
+            "description": "An opaque token used to continue an existing iteration or\nrequest updated items. If not specified, pagination\nwill start from the beginning.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "page_size",
+            "description": "The maximum size of a page in this iteration.\nIf unset, the default page size configured will be used.\nIf the page_size is greater than the default page configured,\nan error will be returned.",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int64"
+          }
+        ],
+        "tags": [
+          "User service"
+        ]
+      }
+    },
     "/v1/users/{id}:remove-accounts": {
       "post": {
         "summary": "Removes the specified Accounts from being associated with the provided User.",
@@ -9888,6 +9935,46 @@
             "type": "string"
           },
           "description": "A list of item IDs that have been removed since they were returned\nas part of a pagination. They should be dropped from any client cache.\nThis may contain items that are not known to the cache, if they were\ncreated and deleted between listings."
+        },
+        "est_item_count": {
+          "type": "integer",
+          "format": "int64",
+          "description": "An estimate at the total items available. This may change during pagination."
+        }
+      }
+    },
+    "controller.api.services.v1.ListResolvableAliasesResponse": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/controller.api.resources.aliases.v1.Alias"
+          }
+        },
+        "response_type": {
+          "type": "string",
+          "description": "The type of response, either \"delta\" or \"complete\".\nDelta signifies that this is part of a paginated result\nor an update to a previously completed pagination.\nComplete signifies that it is the last page."
+        },
+        "list_token": {
+          "type": "string",
+          "description": "An opaque token used to continue an existing pagination or\nrequest updated items. Use this token in the next list request\nto request the next page."
+        },
+        "sort_by": {
+          "type": "string",
+          "description": "The name of the field which the items are sorted by."
+        },
+        "sort_dir": {
+          "type": "string",
+          "description": "The direction of the sort, either \"asc\" or \"desc\"."
+        },
+        "removed_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "A list of item IDs that have been removed since they were returned\nas part of a pagination. This includes aliases which have their\ndestination_id removed or set to a resource for which the requester doesn't\nhave permissions."
         },
         "est_item_count": {
           "type": "integer",
