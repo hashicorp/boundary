@@ -19,15 +19,15 @@ import (
 type SearchableResource string
 
 const (
-	Unknown  SearchableResource = "unknown"
-	Aliases  SearchableResource = "aliases"
-	Targets  SearchableResource = "targets"
-	Sessions SearchableResource = "sessions"
+	Unknown           SearchableResource = "unknown"
+	ResolvableAliases SearchableResource = "resolvable-aliases"
+	Targets           SearchableResource = "targets"
+	Sessions          SearchableResource = "sessions"
 )
 
 func (r SearchableResource) Valid() bool {
 	switch r {
-	case Aliases, Targets, Sessions:
+	case ResolvableAliases, Targets, Sessions:
 		return true
 	}
 	return false
@@ -35,8 +35,8 @@ func (r SearchableResource) Valid() bool {
 
 func ToSearchableResource(s string) SearchableResource {
 	switch {
-	case strings.EqualFold(s, string(Aliases)):
-		return Aliases
+	case strings.EqualFold(s, string(ResolvableAliases)):
+		return ResolvableAliases
 	case strings.EqualFold(s, string(Targets)):
 		return Targets
 	case strings.EqualFold(s, string(Sessions)):
@@ -59,9 +59,9 @@ type SearchParams struct {
 
 // SearchResult returns the results from searching the cache.
 type SearchResult struct {
-	Aliases  []*aliases.Alias
-	Targets  []*targets.Target
-	Sessions []*sessions.Session
+	ResolvableAliases []*aliases.Alias    `json:"resolvable_aliases,omitempty"`
+	Targets           []*targets.Target   `json:"targets,omitempty"`
+	Sessions          []*sessions.Session `json:"sessions,omitempty"`
 }
 
 // SearchService is a domain service that can search across all resources in the
@@ -80,11 +80,11 @@ func NewSearchService(ctx context.Context, repo *Repository) (*SearchService, er
 	return &SearchService{
 		repo: repo,
 		searchableResources: map[SearchableResource]resourceSearcher{
-			Aliases: &resourceSearchFns[*aliases.Alias]{
-				list:  repo.ListAliases,
-				query: repo.QueryAliases,
+			ResolvableAliases: &resourceSearchFns[*aliases.Alias]{
+				list:  repo.ListResolvableAliases,
+				query: repo.QueryResolvableAliases,
 				searchResult: func(a []*aliases.Alias) *SearchResult {
-					return &SearchResult{Aliases: a}
+					return &SearchResult{ResolvableAliases: a}
 				},
 			},
 			Targets: &resourceSearchFns[*targets.Target]{

@@ -197,8 +197,8 @@ func (r *RefreshService) RefreshForSearch(ctx context.Context, authTokenid strin
 	}
 
 	switch resourceType {
-	case Aliases:
-		rtv, err := r.repo.lookupRefreshToken(ctx, u, aliasResourceType)
+	case ResolvableAliases:
+		rtv, err := r.repo.lookupRefreshToken(ctx, u, resolvableAliasResourceType)
 		if err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
@@ -208,7 +208,7 @@ func (r *RefreshService) RefreshForSearch(ctx context.Context, authTokenid strin
 				args = append(args, "alias staleness", time.Since(rtv.UpdateTime))
 			}
 			r.logger.Debug("refreshing aliases before performing search", args...)
-			if err := r.repo.refreshAliases(ctx, u, tokens, opt...); err != nil {
+			if err := r.repo.refreshResolvableAliases(ctx, u, tokens, opt...); err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
 		}
@@ -283,7 +283,7 @@ func (r *RefreshService) Refresh(ctx context.Context, opt ...Option) error {
 			continue
 		}
 
-		if err := r.repo.refreshAliases(ctx, u, tokens, opt...); err != nil {
+		if err := r.repo.refreshResolvableAliases(ctx, u, tokens, opt...); err != nil {
 			retErr = stderrors.Join(retErr, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("for user id %s", u.Id))))
 		}
 		if err := r.repo.refreshTargets(ctx, u, tokens, opt...); err != nil {
@@ -353,7 +353,7 @@ func (r *RefreshService) RecheckCachingSupport(ctx context.Context, opt ...Optio
 			}
 			retErr = stderrors.Join(retErr, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("for user id %s", u.Id))))
 		}
-		if err := r.repo.checkCachingAliases(ctx, u, tokens, opt...); err != nil {
+		if err := r.repo.checkCachingResolvableAliases(ctx, u, tokens, opt...); err != nil {
 			if err == ErrRefreshNotSupported {
 				// This is expected so no need to propagate the error up
 				continue
