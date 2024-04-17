@@ -35,7 +35,8 @@ type hclogFormatterFilter struct {
 	allow      []*filter
 	deny       []*filter
 	signer     signer
-	l          sync.RWMutex
+	// l protects the signer field
+	l sync.RWMutex
 }
 
 func newHclogFormatterFilter(jsonFormat bool, opt ...Option) (*hclogFormatterFilter, error) {
