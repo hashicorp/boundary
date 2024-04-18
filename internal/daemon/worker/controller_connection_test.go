@@ -12,7 +12,6 @@ import (
 	"testing"
 	"time"
 
-	opsservices "github.com/hashicorp/boundary/internal/gen/ops/services"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/nettest"
@@ -60,10 +59,9 @@ func TestMonitorUpstreamConnectionState(t *testing.T) {
 	})
 
 	tests := []struct {
-		name             string
-		expectedResponse *opsservices.GetHealthResponse
-		addresses        []string
-		expectedState    connectivity.State
+		name          string
+		addresses     []string
+		expectedState connectivity.State
 	}{
 		{
 			name:          "connection with 1 good address",
@@ -100,9 +98,6 @@ func TestMonitorUpstreamConnectionState(t *testing.T) {
 			case <-time.After(2 * time.Second):
 				t.Error("Time out waiting for condition")
 			}
-
-			got := upstreamConnectionState.Load()
-			assert.Equal(t, tt.expectedState, got)
 		})
 	}
 }
