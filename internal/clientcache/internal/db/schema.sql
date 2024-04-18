@@ -17,13 +17,13 @@ create table if not exists user (
 create table if not exists resource_type_enm(
   string text not null primary key
     constraint only_predefined_resource_types_allowed
-    check(string in ('unknown', 'alias', 'target', 'session'))
+    check(string in ('unknown', 'resolvable-alias', 'target', 'session'))
 );
 
 insert into resource_type_enm (string)
 values
   ('unknown'),
-  ('alias'),
+  ('resolvable-alias'),
   ('target'),
   ('session');
 
@@ -158,7 +158,7 @@ create table if not exists session (
 
 -- alias contains cached boundary alias resource for a specific user and
 -- with specific fields extracted to facilitate searching over those fields
-create table if not exists alias (
+create table if not exists resolvable_alias (
   -- the boundary user id of the user who has was able to read/list this resource
   fk_user_id text not null
     references user(id)
@@ -169,7 +169,6 @@ create table if not exists alias (
   -- the following fields are used for searching and are set to the values
   -- from the boundary resource
   type text,
-  scope_id text,
   destination_id text,
   value text,
   -- item is the json representation of this resource from the perspective of
