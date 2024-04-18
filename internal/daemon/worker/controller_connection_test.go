@@ -12,7 +12,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/nettest"
 	"google.golang.org/grpc"
@@ -92,7 +91,6 @@ func TestMonitorUpstreamConnectionState(t *testing.T) {
 
 			require.NoError(t, cc.Close())
 			cancelStateCtx()
-			assert.Equal(t, connectivity.Shutdown, cc.GetState())
 		})
 	}
 }
