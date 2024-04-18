@@ -259,8 +259,8 @@ func TestHttpRateLimit(t *testing.T) {
 	// require.NotEmpty(t, retryAfterHeader)
 	// retryAfter, err = strconv.Atoi(retryAfterHeader)
 	// require.NoError(t, err)
-	t.Logf("Waiting for %d seconds to retry API request...", policyPeriod)
-	time.Sleep(time.Duration(policyPeriod) * time.Second)
+	t.Logf("Waiting for %d seconds to retry API request...", policyPeriod+1)
+	time.Sleep(time.Duration(policyPeriod+1) * time.Second)
 
 	// Do another request. Verify that request is successful
 	t.Log("Retrying...")
