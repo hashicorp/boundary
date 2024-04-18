@@ -590,10 +590,10 @@ func validateCreateRequest(req *pbs.CreateAliasRequest) error {
 		}
 		if req.GetItem().GetTargetAliasAttributes().GetAuthorizeSessionArguments().GetHostId() != "" {
 			if req.GetItem().GetDestinationId().GetValue() == "" {
-				badFields[globals.DestinationIdField] = "This field is required when 'attributes.authorize_sesion_arguments.host_id' is specified."
+				badFields[globals.DestinationIdField] = "This field is required when 'attributes.authorize_session_arguments.host_id' is specified."
 			}
 			if !handlers.ValidId(handlers.Id(req.GetItem().GetTargetAliasAttributes().GetAuthorizeSessionArguments().GetHostId()), globals.StaticHostPrefix, globals.PluginHostPrefix) {
-				badFields["host_id"] = "Incorrectly formatted identifier."
+				badFields["attributes.authorize_session_arguments.host_id"] = "Incorrectly formatted identifier."
 			}
 		}
 		return badFields
@@ -608,7 +608,7 @@ func validateUpdateRequest(req *pbs.UpdateAliasRequest) error {
 		}
 		if req.GetItem().GetTargetAliasAttributes().GetAuthorizeSessionArguments().GetHostId() != "" &&
 			!handlers.ValidId(handlers.Id(req.GetItem().GetTargetAliasAttributes().GetAuthorizeSessionArguments().GetHostId()), globals.StaticHostPrefix, globals.PluginHostPrefix) {
-			badFields["host_id"] = "Incorrectly formatted identifier."
+			badFields["attributes.authorize_session_arguments.host_id"] = "Incorrectly formatted identifier."
 		}
 		return badFields
 	}, globals.TargetAliasPrefix)

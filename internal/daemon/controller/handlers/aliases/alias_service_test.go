@@ -870,7 +870,7 @@ func TestCreate(t *testing.T) {
 					},
 				},
 			}},
-			errContains: `This field is required when 'attributes.authorize_sesion_arguments.host_id' is specified.`,
+			errContains: `This field is required when 'attributes.authorize_session_arguments.host_id' is specified.`,
 		},
 		{
 			name: "improperly formatted host id",
