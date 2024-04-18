@@ -43,13 +43,11 @@ type Target struct {
 	Address                                string                 `json:"address,omitempty"`
 	Aliases                                []*Alias               `json:"aliases,omitempty"`
 	WithAliases                            []*Alias               `json:"with_aliases,omitempty"`
-
-	response *api.Response
 }
 
 type TargetReadResult struct {
 	Item     *Target
-	response *api.Response
+	Response *api.Response
 }
 
 func (n TargetReadResult) GetItem() *Target {
@@ -57,14 +55,14 @@ func (n TargetReadResult) GetItem() *Target {
 }
 
 func (n TargetReadResult) GetResponse() *api.Response {
-	return n.response
+	return n.Response
 }
 
 type TargetCreateResult = TargetReadResult
 type TargetUpdateResult = TargetReadResult
 
 type TargetDeleteResult struct {
-	response *api.Response
+	Response *api.Response
 }
 
 // GetItem will always be nil for TargetDeleteResult
@@ -73,7 +71,7 @@ func (n TargetDeleteResult) GetItem() interface{} {
 }
 
 func (n TargetDeleteResult) GetResponse() *api.Response {
-	return n.response
+	return n.Response
 }
 
 type TargetListResult struct {
@@ -82,7 +80,7 @@ type TargetListResult struct {
 	RemovedIds   []string  `json:"removed_ids,omitempty"`
 	ListToken    string    `json:"list_token,omitempty"`
 	ResponseType string    `json:"response_type,omitempty"`
-	response     *api.Response
+	Response     *api.Response
 }
 
 func (n TargetListResult) GetItems() []*Target {
@@ -106,7 +104,7 @@ func (n TargetListResult) GetResponseType() string {
 }
 
 func (n TargetListResult) GetResponse() *api.Response {
-	return n.response
+	return n.Response
 }
 
 // Client is a client for this collection
@@ -172,7 +170,7 @@ func (c *Client) Create(ctx context.Context, resourceType string, scopeId string
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.response = resp
+	target.Response = resp
 	return target, nil
 }
 
@@ -213,7 +211,7 @@ func (c *Client) Read(ctx context.Context, id string, opt ...Option) (*TargetRea
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.response = resp
+	target.Response = resp
 	return target, nil
 }
 
@@ -276,7 +274,7 @@ func (c *Client) Update(ctx context.Context, id string, version uint32, opt ...O
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.response = resp
+	target.Response = resp
 	return target, nil
 }
 
@@ -317,7 +315,7 @@ func (c *Client) Delete(ctx context.Context, id string, opt ...Option) (*TargetD
 	}
 
 	target := &TargetDeleteResult{
-		response: resp,
+		Response: resp,
 	}
 	return target, nil
 }
@@ -359,7 +357,7 @@ func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) (*Targ
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.response = resp
+	target.Response = resp
 	if target.ResponseType == "complete" || target.ResponseType == "" {
 		return target, nil
 	}
@@ -417,7 +415,7 @@ func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) (*Targ
 		target.EstItemCount = page.EstItemCount
 		target.ListToken = page.ListToken
 		target.ResponseType = page.ResponseType
-		target.response = resp
+		target.Response = resp
 		if target.ResponseType == "complete" {
 			break
 		}
@@ -452,11 +450,11 @@ func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) (*Targ
 	// Finally, since we made at least 2 requests to the server to fulfill this
 	// function call, resp.Body and resp.Map will only contain the most recent response.
 	// Overwrite them with the true response.
-	target.response.Body.Reset()
-	if err := json.NewEncoder(target.response.Body).Encode(target); err != nil {
+	target.Response.Body.Reset()
+	if err := json.NewEncoder(target.Response.Body).Encode(target); err != nil {
 		return nil, fmt.Errorf("error encoding final JSON list response: %w", err)
 	}
-	if err := json.Unmarshal(target.response.Body.Bytes(), &target.response.Map); err != nil {
+	if err := json.Unmarshal(target.Response.Body.Bytes(), &target.Response.Map); err != nil {
 		return nil, fmt.Errorf("error encoding final map list response: %w", err)
 	}
 	// Note: the HTTP response body is consumed by resp.Decode in the loop,
@@ -524,7 +522,7 @@ func (c *Client) AddCredentialSources(ctx context.Context, id string, version ui
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.response = resp
+	target.Response = resp
 	return target, nil
 }
 
@@ -594,7 +592,7 @@ func (c *Client) AddHostSources(ctx context.Context, id string, version uint32, 
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.response = resp
+	target.Response = resp
 	return target, nil
 }
 
@@ -658,7 +656,7 @@ func (c *Client) SetCredentialSources(ctx context.Context, id string, version ui
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.response = resp
+	target.Response = resp
 	return target, nil
 }
 
@@ -724,7 +722,7 @@ func (c *Client) SetHostSources(ctx context.Context, id string, version uint32, 
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.response = resp
+	target.Response = resp
 	return target, nil
 }
 
@@ -788,7 +786,7 @@ func (c *Client) RemoveCredentialSources(ctx context.Context, id string, version
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.response = resp
+	target.Response = resp
 	return target, nil
 }
 
@@ -858,6 +856,6 @@ func (c *Client) RemoveHostSources(ctx context.Context, id string, version uint3
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.response = resp
+	target.Response = resp
 	return target, nil
 }
