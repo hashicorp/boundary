@@ -165,7 +165,13 @@ func TestCliAlias(t *testing.T) {
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
 
-	// Update the alias to include a host id
+	// Create invalid host and add it to the host set
+	invalidHostId, err := boundary.CreateHostCli(t, ctx, hostCatalogId, "invalid-address")
+	require.NoError(t, err)
+	err = boundary.AddHostToHostSetCli(t, ctx, hostSetId, invalidHostId)
+	require.NoError(t, err)
+
+	// Update the alias to include the valid host id
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"aliases", "update", "target",
