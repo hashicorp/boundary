@@ -778,6 +778,16 @@ func TestCreate(t *testing.T) {
 			},
 		},
 		{
+			name: "Alias to poorly formatted target id",
+			req: &pbs.CreateAliasRequest{Item: &pb.Alias{
+				Type:          "target",
+				ScopeId:       scope.Global.String(),
+				Value:         "target-assigned.valid.alias",
+				DestinationId: wrapperspb.String("this is not a valid target id"),
+			}},
+			errContains: `Incorrectly formatted identifier.`,
+		},
+		{
 			name: "Alias to existing target with static host id",
 			req: &pbs.CreateAliasRequest{Item: &pb.Alias{
 				Type:    "target",
@@ -870,7 +880,7 @@ func TestCreate(t *testing.T) {
 					},
 				},
 			}},
-			errContains: `This field is required when 'attributes.authorize_sesion_arguments.host_id' is specified.`,
+			errContains: `This field is required when 'attributes.authorize_session_arguments.host_id' is specified.`,
 		},
 		{
 			name: "improperly formatted host id",
@@ -1202,6 +1212,20 @@ func TestUpdate(t *testing.T) {
 					AuthorizedActions: testAuthorizedActions,
 				},
 			},
+		},
+		{
+			name:    "Update destination id",
+			scopeId: og.GetScopeId(),
+			req: &pbs.UpdateAliasRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"destination_id"},
+				},
+				Item: &pb.Alias{
+					Name:          wrapperspb.String("ignored"),
+					DestinationId: wrapperspb.String("invalid format for targets"),
+				},
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name:    "unset value",
