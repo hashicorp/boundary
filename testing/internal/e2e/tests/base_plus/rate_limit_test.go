@@ -204,19 +204,26 @@ func TestHttpRateLimit(t *testing.T) {
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", tokenAdmin))
 	res, err = http.DefaultClient.Do(req)
 	require.NoError(t, err)
+	t.Cleanup(func() {
+		res.Body.Close()
+	})
 	require.Equal(t, http.StatusOK, res.StatusCode)
 	rateLimitHeader = res.Header.Get("Ratelimit")
 	require.NotEmpty(t, rateLimitHeader)
 	t.Log(rateLimitHeader)
 	quota, err = getRateLimitStat(rateLimitHeader, "remaining")
 	require.NoError(t, err)
+
 	for quota > 0 {
 		requestURL = fmt.Sprintf("%s/v1/hosts/%s", bc.Address, hostId)
-		req, err = http.NewRequest(http.MethodGet, requestURL, nil)
+		req, err := http.NewRequest(http.MethodGet, requestURL, nil)
 		require.NoError(t, err)
 		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", tokenAdmin))
-		res, err = http.DefaultClient.Do(req)
+		res, err := http.DefaultClient.Do(req)
 		require.NoError(t, err)
+		t.Cleanup(func() {
+			res.Body.Close()
+		})
 		require.Equal(t, http.StatusOK, res.StatusCode)
 
 		rateLimitHeader := res.Header.Get("Ratelimit")
@@ -252,8 +259,8 @@ func TestHttpRateLimit(t *testing.T) {
 	// require.NotEmpty(t, retryAfterHeader)
 	// retryAfter, err = strconv.Atoi(retryAfterHeader)
 	// require.NoError(t, err)
-	t.Logf("Waiting for %d seconds to retry API request...", policyPeriod)
-	time.Sleep(time.Duration(policyPeriod) * time.Second)
+	t.Logf("Waiting for %d seconds to retry API request...", policyPeriod+1)
+	time.Sleep(time.Duration(policyPeriod+1) * time.Second)
 
 	// Do another request. Verify that request is successful
 	t.Log("Retrying...")
