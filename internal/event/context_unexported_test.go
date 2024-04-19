@@ -6,6 +6,7 @@ package event
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -45,6 +46,28 @@ func Test_newSendCtx(t *testing.T) {
 			wantCancel: true,
 		},
 		{
+			name: "deadline-exceeded-with-info",
+			ctx: func() context.Context {
+				var err error
+				ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(-1*time.Millisecond))
+				defer cancel()
+				ctx, err = NewRequestInfoContext(ctx, testInfo)
+				require.NoError(t, err)
+				return ctx
+			}(),
+			wantCancel: true,
+			wantInfo:   true,
+		},
+		{
+			name: "deadline-exceeded-no-info",
+			ctx: func() context.Context {
+				ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(-1*time.Millisecond))
+				defer cancel()
+				return ctx
+			}(),
+			wantCancel: true,
+		},
+		{
 			name:     "no-info",
 			ctx:      context.Background(),
 			wantInfo: false,
@@ -65,6 +88,7 @@ func Test_newSendCtx(t *testing.T) {
 			ctx, cancel := newSendCtx(tt.ctx)
 			require.NotNil(ctx)
 			assert.True(ctx.Err() != context.Canceled)
+			assert.True(ctx.Err() != context.DeadlineExceeded)
 			if tt.wantCancel {
 				require.NotNil(cancel)
 			} else {
