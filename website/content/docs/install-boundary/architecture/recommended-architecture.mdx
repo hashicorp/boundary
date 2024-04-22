@@ -11,7 +11,7 @@ Boundary has two main user workflows to consider when you deploy it to productio
 
 ## Administrative workflow
 
-The first is the Boundary administration workflow, where an administrator uses either the Boundary CI or GUI to configure Boundary.
+The first is the Boundary administration workflow, where an administrator uses either the Boundary CLI or GUI to configure Boundary.
 In this scenario, the administrator interfaces solely with the Boundary controllers, and a load balancer can be used to balance requests across multiple controllers.
 The Boundary controllers do not directly communicate with one another, all configuration and state is managed through an RDBMS, in this case PostgreSQL.
 
