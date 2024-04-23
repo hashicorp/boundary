@@ -192,6 +192,10 @@
         "path": "concepts/credential-management"
       },
       {
+        "title": "Aliases",
+        "path": "concepts/aliases"
+      },
+      {
         "title": "Auditing",
         "path": "concepts/auditing"
       },
@@ -290,6 +294,10 @@
           {
             "title": "Accounts",
             "path": "concepts/domain-model/accounts"
+          },
+          {
+            "title": "Aliases",
+            "path": "concepts/domain-model/aliases"
           },
           {
             "title": "Auth methods",
