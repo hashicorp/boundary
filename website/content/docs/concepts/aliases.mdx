@@ -1,0 +1,52 @@
+---
+layout: docs
+page_title: Aliases
+description: |-
+  Aliases let you associate a string with a Boundary resource. Learn how to use an alias instead of a target ID when you connect.
+---
+
+# Aliases
+
+An alias is a resource that lets you associate a string with a specific target.
+The string must be a globally unique value which follows DNS naming constraints.
+You can use the alias instead of the target ID when you run a command, and Boundary automatically substitutes the target resource that the alias references.
+
+## Background
+
+When you create a resource in Boundary, it assigns the resource a randomly generated identifier.
+You must use those IDs to perform actions in Boundary.
+
+For example, when you connect to a target using the Clipboard, you must reference the target ID by typing `boundary ssh connect -target-id tccp_123456789`.
+Since it can be difficult to remember the unique IDs, users frequently have to look up the identifiers for any resources they want to operate on.
+
+Aliases simplify this process.
+When you create an alias and associate it with a target, you can later use the alias instead of the target ID in commands.
+Boundary automatically resolves to the resource that the alias references.
+
+## Naming conventions
+
+Aliases must comply with DNS naming rules.
+The alias `value` parameter must meet the following criteria:
+
+- At least one label must be joined together by a period ( . )
+- Consists of alphanumeric characters A - Z, 0 - 9, and hyphens ( - )
+- Not case sensitive
+- Cannot start or end with a hyphen ( - )
+- Between 1 and 63 characters long
+- The final label cannot be all numeric characters
+
+## Scopes
+
+At this time, you can only create aliases in the `global` scope.
+An alias' destination target can be in any scope, however.
+If you delete a project, Boundary clears the `destination_id` parameter for any aliases that resolve to targets in that project, so that they no longer function.
+
+## Permissions
+
+The existence of an alias for a Boundary resource does not change how permissions function.
+Anyone can attempt to use an alias to access a target, but if you do not have permission to access the target, the attempt fails.
+You can create an alias for a target, even if you do not have permssion to access the target.
+
+Separating the permissions from aliases and destination resources means a different set of people can manage the aliases than the people who have permission to operate on targets.
+For example, you may have a project with a sensitive set of targets.
+You can configure Boundary to allow a select few users to manage those targets, while a different group of users manage the aliases.

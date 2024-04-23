@@ -1,0 +1,24 @@
+---
+layout: docs
+page_title: Domain model - aliases
+description: |-
+  The anatomy of a Boundary alias
+---
+
+# Aliases
+
+An alias is a resource that lets you associate a string with a specific target.
+The string must be a globally unique value which follows DNS naming constraints.
+You can use the alias instead of the target ID when you run a command, and Boundary automatically substitutes the target resource that the alias references.
+
+## Attributes
+
+All alias types have the following attributes:
+
+- `value` - Indicates the name of the alias string that represents a resource in Boundary.
+The value must be globally unique.
+- `destination_id` (optional) - Indicates a valid target ID in the same scope or child scope as the alias is in.
+- `scope_id` - Indicates the scope the alias resides in.
+At this time, aliases are only supported in the global scope.
+
+### Target subtypes
