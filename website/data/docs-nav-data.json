@@ -524,6 +524,23 @@
             "path": "configuration/session-recording"
           },
           {
+            "title": "Configure workers for storage",
+            "path": "configuration/session-recording/configure-worker-storage"
+          },
+          {
+            "title": "Configure storage provider",
+            "routes": [
+              {
+                "title": "Amazon S3",
+                "path": "configuration/session-recording/storage-providers/configure-s3"
+              },
+              {
+                "title": "MinIO",
+                "path": "configuration/session-recording/storage-providers/configure-minio"
+              }
+            ]
+          },
+          {
             "title": "Create storage buckets",
             "path": "configuration/session-recording/create-storage-bucket"
           },
