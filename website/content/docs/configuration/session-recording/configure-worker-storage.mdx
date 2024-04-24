@@ -15,7 +15,21 @@ description: |-
 
 </Note>
 
-## Requirements
+## Storage requirements
+
+A [BSR](/boundary/docs/concepts/auditing/#bsr-directory-structure) (Boundary Session Recording) captures all the data transmitted between a user and a target during a single session. As a result, the size of a BSR is dependent on user activity. At a minimum, a BSR for a session with one connection requires 8KB of space for its file for BSR keys, checksums, and metadata.
+
+Determining how much storage you need to allocate on workers and the external storage provider for recordings depends on user activity, but the following two examples are provided to help with storage estimates:
+
+- For one minute of simple shell activity, a BSR can be around 20KB in size. The storage requirements for 1,000 such sessions would be 20MB.
+
+- Sending 50MB of data results in a BSR around 50.1MB in size. The storage requirements for 1,000 such sessions would be 50.1 GB.
+
+When you estimate worker storage requirements, consider the number of concurrent sessions that will be recorded on that worker. Boundary writes the BSR to the worker's local storage while the session is active, and then moves it to the remote storage bucket when the session is closed.
+
+When you estimate storage requirements for the external storage provider, consider your [storage policy](/boundary/docs/concepts/domain-model/storage-policy) and how long a BSR will be retained in the external storage bucket.
+
+## Worker requirements
 
 Workers that you configure for storage must:
 
