@@ -1,0 +1,136 @@
+---
+layout: docs
+page_title: Configure Amazon S3
+description: |-
+  How to Amazon S3 as a storage provider for Boundary session recording.
+---
+
+# Configure Amazon S3 as a storage provider
+
+This page describes how to configure Amazon S3 as a storage provider for session recording with Boundary.
+
+## Requirements
+
+Before you can create a storage bucket in Boundary, you must ensure that your environment meets certain requirements.
+
+Session recording requires specific configuration for both the external storage provider and the Boundary worker.
+
+Refer to the [Configure workers for storage](/boundary/docs/configuration/session-recording/configure-worker-storage) to learn about configuring self-managed workers for session recording.
+
+### Storage requirements
+
+A [BSR](/boundary/docs/concepts/auditing/#bsr-directory-structure) (Boundary Session Recording) captures all the data transmitted between a user and a target during a single session. As a result, the size of a BSR is dependent on useractivity. At a minimum, a BSR for a session with one connection requires 8KB of space for its files- this is the overhead for BSR keys, checksums, metadata, etc.
+
+Determining how much storage you need to allocate on workers and AWS for recordings depends on user activity, but the following two examples are provided to help with storage estimates:
+
+- For a minute of simple shell activity, a BSR can be around 20KB in size. The storage requirements for 1,000 such sessions would be 20MB.
+
+- Sending 50MB of data results in a BSR around 50.1MB in size. The storage requirements for 1,000 such sessions would be 50.1 GB.
+
+When you estimate worker storage requirements, consider the number of concurrent sessions that will be recorded on that worker. Boundary writes the BSR to the worker's local storage while the session is active, and then moves it to the remote storage bucket when the session is closed.
+
+When you estimate AWS storage requirements, consider your [storage policy](/boundary/docs/concepts/domain-model/storage-policy)
+and how long a BSR will be retained in the storage bucket.
+
+### AWS requirements
+
+- An AWS S3 storage bucket
+
+   You must associate the Boundary storage bucket with an AWS S3 storage bucket.
+   An AWS S3 storage bucket contains the bucket name, region, and optional prefix, as well as any credentials needed to access the bucket.
+
+   The AWS S3 storage bucket can use static or dynamic credentials.
+   You can configure static credentials using an access key and secret key or dynamic credentials using the AWS [`AssumeRole` API](https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole).
+
+- An AWS IAM role policy with the following statement:
+
+   ```json
+   {
+     "Version": "2012-10-17",
+     "Statement": [
+        {
+           "Action": [
+             "s3:PutObject",
+             "s3:GetObject",
+             "s3:GetObjectAttributes",
+             "s3:DeleteObject",
+             "s3:ListBucket"
+           ],
+           "Effect": "Allow",
+           "Resource": "arn:aws:s3:::session_recording_storage*",
+           "Resource": "arn:aws:s3:::session_recording_storage/foo/bar/zoo/*"
+        },
+        {
+          "Action": [
+            "iam:DeleteAccessKey",
+            "iam:GetUser",
+            "iam:CreateAccessKey"
+          ],
+          "Effect": "Allow",
+          "Resource": "arn:aws:iam::123456789012:user/JohnDoe"
+        }
+     ]
+   }
+   ```
+
+- If you apply KMS encryption to the storage bucket, you must add these additional permissions to the role policy for the storage bucket's IAM user:
+
+   ```json
+   {
+     "Action": [
+       "kms:Decrypt",
+       "kms:GenerateDataKey",
+       "kms:DescribeKey"
+     ],
+     "Effect": "Allow",
+     "Resource": "arn:aws:kms:us-east-1:1234567890:key/uuid"
+   }
+   ```
+
+   The following is an example working policy with KMS encryption configured on the S3 bucket:
+
+    ```json
+    {
+      "Version": "2012-10-17",
+      "Statement": [
+         {
+            "Sid": "S3Permissions",
+            "Effect": "Allow",
+            "Action": [
+              "s3:PutObject",
+              "s3:GetObject",
+              "s3:GetObjectAttributes",
+              "s3:DeleteObject",
+              "s3:ListBucket"
+            ],
+            "Resource": [
+              "arn:aws:s3:::test-session-recording-bucket/*"
+            ]
+         },
+         {
+            "Sid": "UserPermissions",
+            "Effect": "Allow",
+            "Action": [
+              "iam:DeleteAccessKey",
+              "iam:GetUser",
+              "iam:CreateAccessKey"
+            ],
+            "Resource": [
+               "arn:aws:iam::1234567890:user/test-boundary"
+            ]
+         },
+         {
+            "Sid": "KMSPermissions",
+            "Effect": "Allow",
+            "Action": [
+              "kms:Decrypt",
+              "kms:GenerateDataKey",
+              "kms:DescribeKey"
+            ],
+            "Resource": [
+              "arn:aws:kms:us-east-2:1234567890:key  4b887395-c376-4936-8f37-80c592ea582c"
+            ]
+         }
+      ]
+    }
+    ```
