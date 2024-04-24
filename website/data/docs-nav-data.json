@@ -720,6 +720,35 @@
         ]
       },
       {
+        "title": "aliases",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "commands/aliases"
+          },
+          {
+            "title": "create",
+            "path": "commands/aliases/create"
+          },
+          {
+            "title": "delete",
+            "path": "commands/aliases/delete"
+          },
+          {
+            "title": "list",
+            "path": "commands/aliases/list"
+          },
+          {
+            "title": "read",
+            "path": "commands/aliases/read"
+          },
+          {
+            "title": "update",
+            "path": "commands/aliases/update"
+          }
+        ]
+      },
+      {
         "title": "auth-methods",
         "routes": [
           {

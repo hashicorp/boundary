@@ -50,3 +50,39 @@ You can create an alias for a target, even if you do not have permssion to acces
 Separating the permissions from aliases and destination resources means a different set of people can manage the aliases than the people who have permission to operate on targets.
 For example, you may have a project with a sensitive set of targets.
 You can configure Boundary to allow a select few users to manage those targets, while a different group of users manage the aliases.
+
+## Create an alias
+
+To create an alias for a target:
+
+1. Click **Aliases** in the left navigation pane.
+1. Click **New Alias**.
+1. Complete the following fields:
+   - **Name**: (Optional) Enter an optional name for the alias to use for identification purposes.
+   - **Description**: (Optional) Enter an optional description for the alias to use for identification purposes.
+   - **Type**: Select **Target**.
+   At this time, targets are the only Boundary resources that supports aliasing.
+   - **Alias Value**: Enter the alias value you would like to use for the resource.
+   The alias value can be a URL or ... ??
+   - **Target ID**: (Optional) Specify any optional targets you want to associate with the alias.
+   - **Host ID**: (Optional) Enter an optional host ID, if you would like to specify that the alias always uses the same host when you use it to connect to a target.
+1. Click **Save**.
+
+## Add an alias to a target
+
+To add an alias to a target resource:
+
+1. Click **Targets** in the left navigation pane.
+1. Select the target you want to add an alias to.
+1. Under the **Aliases** heading in the right sidebar, click **Add an alias**.
+1. Complete the following fields:
+   - **Name**: (Optional) Enter an optional name for the alias to use for identification purposes.
+   - **Description**: (Optional) Enter an optional description for the alias to use for identification purposes.
+   - **Type**: Select **Target**.
+   At this time, targets are the only Boundary resources that supports aliasing.
+   - **Alias Value**: Enter the alias value you would like to use for the resource.
+   The alias value can be a URL or ... ??
+   - **Target ID**: This field contains the ID of the target you selected to add an alias to.
+   It is read only.
+   - **Host ID**: (Optional) Enter an optional host ID, if you would like to specify that the alias always uses the same host when you use it to connect to a target.
+1. Click **Save**.
