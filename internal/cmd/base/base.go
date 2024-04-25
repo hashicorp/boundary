@@ -270,6 +270,11 @@ func (c *Command) Client(opt ...Option) (*api.Client, error) {
 		}
 	}
 
+	// Turn off retries on the CLI
+	if os.Getenv(api.EnvBoundaryMaxRetries) == "" {
+		c.client.SetMaxRetries(0)
+	}
+
 	switch {
 	case opts.withNoTokenValue:
 		c.client.SetToken("")
