@@ -15,10 +15,17 @@ You can use the alias instead of the target ID when you run a command, and Bound
 
 All alias types have the following attributes:
 
-- `value` - Indicates the name of the alias string that represents a resource in Boundary.
-The value must be globally unique.
-- `destination_id` (optional) - Indicates a valid target ID in the same scope or child scope as the alias is in.
-- `scope_id` - Indicates the scope the alias resides in.
-At this time, aliases are only supported in the global scope.
+   - `-description=<string>` - Specifies the optional description you want to use to describe the alias for identification purposes.
+   - `-destination-id=<string>` - Specifies the ID of the target that the alias points to.
+   - `-name=<string>` - Specifies the optional name you want to use to describe the alias for identification purposes.
+   - `-scope-id=<string>` - Scope in which to create the alias. The default is `global`.
+   You can also specify the scope using the BOUNDARY_SCOPE_ID environment variable.
+   At this time, aliases are only supported for the global scope.
+   - `-value=<string>` - Specifies the value of the alias that you want to use in commands to represent the target.
+   It must comply with DNS naming rules.
 
 ### Target subtypes
+
+The target subtype has the following additional attributes:
+
+ - `-authorize-session-host-id=<string>` - Indicates the host ID to use when you use the alias to authorize a session.

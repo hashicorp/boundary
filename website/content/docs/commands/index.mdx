@@ -234,6 +234,10 @@ $ boundary dev -help
 Every command that results in an API call contains a set of flags that control
 client options. Some notable options include the following:
 
+- `-ferry-port=<uint>` - Indicates the port on which the ferry daemon should listen.
+The default port is 9300.
+You can also specify the port using the BOUNDARY_FERRY_LISTENING_PORT environment variable.
+
 - `-keyring-type` `(string: "")` - The type of keyring to use. The default value is
   `auto`, which uses the Windows credential manager, OSX keychain, or
   cross-platform password store, depending on platform. Set this value to `none` to disable
@@ -254,6 +258,14 @@ client options. Some notable options include the following:
 - `-recovery-config` `(string: "")` - If set, specifies a configuration
   file that contains the information necessary to access a KMS configured to be
   used for the recovery workflow within a Boundary controller. You can also specify the configuration file using the **BOUNDARY_RECOVERY_CONFIG** environment variable.
+
+- `-skip-cache-daemon` - If set, skips starting the caching daemon or sending the current used or retrieved token to the caching daemon.
+The default is `false`.
+You can also specify this value using the BOUNDARY_SKIP_CACHE_DAEMON environment variable.
+
+- `-skip-ferry-daemon` - If set, skips sending the auth token used for the command to the ferry daemon, if it is running.
+The default value is `false`.
+You can also specify this value using the BOUNDARY_SKIP_FERRY_DAEMON environment variable.
 
 - `-token` `(string: "")` - A URL that points to a file on disk `(file://)` or an environment variable `(env://)` from which the token is read. This value overrides the `token-name` parameter.
 
@@ -317,6 +329,22 @@ to the Boundary controller. If you set the path, you must also specify a client 
 
 The path on the local disk to a single PEM-encoded private key that matches the client certificate
 specified by the `BOUNDARY_CLIENT_CERT` variable or the `-client-cert` connection option.
+
+### `BOUNDARY_FERRY_LISTENING_PORT`
+
+The port on which the ferry daemon should listen.
+The default port is 9300.
+You can use the `BOUNDARY_FERRY_LISTENING_PORT` variable or the `-ferry-port=<uint>` connection option.
+
+### `BOUNDARY_SKIP_CACHE_DAEMON`
+
+Prevents Boundary from starting the caching demon or sending the current used or retrieved token to the caching daemon.
+You can use the `BOUNDARY_SKIP_CACHE_DAEMON` variable or the `-skip-cache-daemon` connection option.
+
+### `BOUNDARY_SKIP_FERRY_DAEMON`
+
+Prevents Boundary from sending the auth token used for the command to the ferry daemon, if it is running.
+You can use the `BOUNDARY_SKIP_FERRY_DAEMON` variable or the `skip-ferry-daemon` connection option.
 
 ### `BOUNDARY_TLS_INSECURE`
 

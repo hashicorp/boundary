@@ -16,6 +16,12 @@ When you run this command, Boundary interprets it as the type-specific command.
 For example, if you enter the `update` command with a storage bucket ID, Boundary runs the `storage-buckets update` command.
 Help, error, or cURL output from the command may show the full command syntax.
 
+<Note>
+
+The generic `boundary update` command does not work for alias resources.
+
+</Note>
+
 ## Example
 
 This example updates a storage bucket with the ID `sb_1234567890` to add the name `devops` and the description `storage bucket for DevOps`:
