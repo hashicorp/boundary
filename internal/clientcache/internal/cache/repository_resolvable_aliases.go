@@ -26,10 +26,13 @@ type ResolvableAliasRetrievalFunc func(ctx context.Context, addr, authTok, userI
 
 func defaultResolvableAliasFunc(ctx context.Context, addr, authTok, userId string, refreshTok RefreshTokenValue) ([]*aliases.Alias, []string, RefreshTokenValue, error) {
 	const op = "cache.defaultResolvableAliasFunc"
-	client, err := api.NewClient(&api.Config{
-		Addr:  addr,
-		Token: authTok,
-	})
+	conf, err := api.DefaultConfig()
+	if err != nil {
+		return nil, nil, "", errors.Wrap(ctx, err, op)
+	}
+	conf.Addr = addr
+	conf.Token = authTok
+	client, err := api.NewClient(conf)
 	if err != nil {
 		return nil, nil, "", errors.Wrap(ctx, err, op)
 	}
