@@ -4,7 +4,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
-## 0.16.0 (2024/04/15)
+## 0.16.0 (2024/04/30)
 
 ### New and Improved
 
@@ -13,6 +13,12 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   the alias value. Create an alias with 
   `boundary aliases create target -value example.boundary -destination-id ttcp_1234567890`
   and connect to a target using an alias using `boundary connect example.boundary`
+* Worker local storage state: Self managed workers that are configured to be used for
+  session recordings will report the state of the its disk space. To learn more about this
+  new feature, refer to the [documentation](http://developer.hashicorp.com/boundary/docs/configuration/session-recording/create-storage-bucket#local-storage).
+* MinIO storage plugin: You can now create a storage bucket that allows Boundary to interoperate
+  with a MinIO cluster for Session Recording storage. This includes some added functionality such
+  as credential rotation and credential management. To learn more about the plugin, refer to the [readme](https://github.com/hashicorp/boundary-plugin-minio?tab=readme-ov-file#minio-plugin-for-hashicorp-boundary). *Note:* Due to a library incompatibility, this release is not yet compatible with the `netbsd` operating system. Please refer to the following [documentation](http://developer.hashicorp.com/boundary/docs/configuration/session-recording/create-storage-bucket) to learn how to create a storage bucket.
 * ui: Add UI support for filtering and pagination
   ([PR](https://github.com/hashicorp/boundary-ui/pull/2237))
 * ui: Add UI support for MinIO (Enterprise and HCP Boundary only)
@@ -23,14 +29,14 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * postgres `citext` dependency added to enable aliases to be globally unique in
   a case insensitive way.
 
-## 0.15.4
+## 0.15.4 (2024/04/09)
 
 ### Security
 
 * Go version bumped to 1.22.2 to address
   [CVE-2023-45288](https://github.com/advisories/GHSA-4v7x-pqxf-cx7m)
 
-## 0.15.3
+## 0.15.3 (2024/03/21)
 
 ### Bug Fixes
 
