@@ -25,3 +25,83 @@ When determining storage requirements for the external bucket, you should consid
 ### MinIO requirements
 
 - A MinIO storage bucket
+
+   You must associate the Boundary storage bucket with a MinIO storage bucket. A Boundary MinIO storage bucket contains the bucket name, endpoint URL, region, optional prefix, and the service account credentials needed to access the bucket. In order to enable credential rotation, you cannot add a Boundary storage bucket without a MinIO service account. Credential rotation can be disabled when creating the Boundary storage bucket.
+
+- A MinIO service account and access keys
+
+   Credential rotation is automatically performed for storage buckets using a MinIO service account. The service account access keys must be provided when configuring a Boundary storage bucket later on.
+
+   Refer to the [MinIO Access Keys](https://min.io/docs/minio/kubernetes/upstream/administration/console/security-and-access.html#access-keys) documentation page to learn how to set up a MinIO service account.
+
+- A MinIO storage bucket must be configured with R/W access. If using a 
+  restricted IAM user policy, the following policy actions must be allowed at a minimum.
+
+   ```json
+   {
+     "Version": "2012-10-17",
+     "Statement": [
+        {
+           "Action": [
+             "s3:PutObject",
+             "s3:GetObject",
+             "s3:GetObjectAttributes",
+             "s3:DeleteObject",
+             "s3:ListBucket"
+           ],
+           "Effect": "Allow",
+           "Resource": "arn:aws:s3:::test-session-recording-bucket/*"
+        }
+     ]
+   }
+   ```
+
+- If you apply KMS encryption to the storage bucket, you must add these additional permissions to the role policy for the storage bucket's IAM user:
+
+   ```json
+   {
+     "Action": [
+       "kms:Decrypt",
+       "kms:GenerateDataKey",
+       "kms:DescribeKey"
+     ],
+     "Effect": "Allow",
+     "Resource": "arn:aws:kms:us-east-1:1234567890:key/uuid"
+   }
+   ```
+
+   The following is an example working policy with KMS encryption configured on the S3 bucket:
+
+    ```json
+    {
+      "Version": "2012-10-17",
+      "Statement": [
+         {
+            "Sid": "S3Permissions",
+            "Effect": "Allow",
+            "Action": [
+              "s3:PutObject",
+              "s3:GetObject",
+              "s3:GetObjectAttributes",
+              "s3:DeleteObject",
+              "s3:ListBucket"
+            ],
+            "Resource": [
+              "arn:aws:s3:::test-session-recording-bucket/*"
+            ]
+         },
+         {
+            "Sid": "KMSPermissions",
+            "Effect": "Allow",
+            "Action": [
+              "kms:Decrypt",
+              "kms:GenerateDataKey",
+              "kms:DescribeKey"
+            ],
+            "Resource": [
+              "arn:aws:kms:us-east-2:1234567890:key  4b887395-c376-4936-8f37-80c592ea582c"
+            ]
+         }
+      ]
+    }
+    ```
