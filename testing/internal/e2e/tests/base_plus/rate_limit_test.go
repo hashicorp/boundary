@@ -50,16 +50,18 @@ func TestHttpRateLimit(t *testing.T) {
 	require.NoError(t, err)
 
 	// Authenticate over HTTP
-	res, err := boundary.AuthenticateHttp(t, ctx, bc.Address, bc.AuthMethodId, bc.AdminLoginName, bc.AdminLoginPassword)
+	resAuth, err := boundary.AuthenticateHttp(t, ctx, bc.Address, bc.AuthMethodId, bc.AdminLoginName, bc.AdminLoginPassword)
 	require.NoError(t, err)
-	require.Equal(t, http.StatusOK, res.StatusCode)
-	body, err := io.ReadAll(res.Body)
+	t.Cleanup(func() {
+		resAuth.Body.Close()
+	})
+	require.Equal(t, http.StatusOK, resAuth.StatusCode)
+	body, err := io.ReadAll(resAuth.Body)
 	require.NoError(t, err)
 	var r boundary.HttpResponseBody
 	err = json.Unmarshal(body, &r)
 	require.NoError(t, err)
 	tokenAdmin := r.Attributes.Token
-	res.Body.Close()
 
 	// Make initial API request
 	t.Log("Sending API requests until quota is hit...")
@@ -67,24 +69,25 @@ func TestHttpRateLimit(t *testing.T) {
 	req, err := http.NewRequest(http.MethodGet, requestURL, nil)
 	require.NoError(t, err)
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", tokenAdmin))
-	res, err = http.DefaultClient.Do(req)
+	resInitial, err := http.DefaultClient.Do(req)
 	require.NoError(t, err)
-	require.Equal(t, http.StatusOK, res.StatusCode)
-
-	body, err = io.ReadAll(res.Body)
+	t.Cleanup(func() {
+		resInitial.Body.Close()
+	})
+	require.Equal(t, http.StatusOK, resInitial.StatusCode)
+	body, err = io.ReadAll(resInitial.Body)
 	require.NoError(t, err)
-	res.Body.Close()
 	require.NotEmpty(t, body)
 	require.Contains(t, string(body), hostId)
 
 	// Check that the limit from the policy matches the actual limit
-	rateLimitPolicyHeader := res.Header.Get("Ratelimit-Policy")
+	rateLimitPolicyHeader := resInitial.Header.Get("Ratelimit-Policy")
 	require.NotEmpty(t, rateLimitPolicyHeader)
-	policyLimit, policyPeriod, err := getRateLimitPolicyStat(res.Header.Get("Ratelimit-Policy"), "auth-token")
+	policyLimit, policyPeriod, err := getRateLimitPolicyStat(resInitial.Header.Get("Ratelimit-Policy"), "auth-token")
 	require.NoError(t, err)
 	t.Log(rateLimitPolicyHeader)
 
-	rateLimitHeader := res.Header.Get("Ratelimit")
+	rateLimitHeader := resInitial.Header.Get("Ratelimit")
 	require.NotEmpty(t, rateLimitHeader)
 	t.Log(rateLimitHeader)
 	limit, err := getRateLimitStat(rateLimitHeader, "limit")
@@ -100,8 +103,11 @@ func TestHttpRateLimit(t *testing.T) {
 		req, err = http.NewRequest(http.MethodGet, requestURL, nil)
 		require.NoError(t, err)
 		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", tokenAdmin))
-		res, err = http.DefaultClient.Do(req)
+		res, err := http.DefaultClient.Do(req)
 		require.NoError(t, err)
+		t.Cleanup(func() {
+			res.Body.Close()
+		})
 		require.Equal(t, http.StatusOK, res.StatusCode)
 
 		rateLimitHeader := res.Header.Get("Ratelimit")
@@ -121,17 +127,18 @@ func TestHttpRateLimit(t *testing.T) {
 	req, err = http.NewRequest(http.MethodGet, requestURL, nil)
 	require.NoError(t, err)
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", tokenAdmin))
-	res, err = http.DefaultClient.Do(req)
+	resAfter, err := http.DefaultClient.Do(req)
 	require.NoError(t, err)
-	require.Equal(t, http.StatusTooManyRequests, res.StatusCode)
-
-	body, err = io.ReadAll(res.Body)
+	t.Cleanup(func() {
+		resAfter.Body.Close()
+	})
+	require.Equal(t, http.StatusTooManyRequests, resAfter.StatusCode)
+	body, err = io.ReadAll(resAfter.Body)
 	require.NoError(t, err)
-	res.Body.Close()
 	require.Empty(t, body)
 
 	// Wait for "Retry-After" time
-	retryAfterHeader := res.Header.Get("Retry-After")
+	retryAfterHeader := resAfter.Header.Get("Retry-After")
 	require.NotEmpty(t, retryAfterHeader)
 	retryAfter, err := strconv.Atoi(retryAfterHeader)
 	require.NoError(t, err)
@@ -144,13 +151,14 @@ func TestHttpRateLimit(t *testing.T) {
 	req, err = http.NewRequest(http.MethodGet, requestURL, nil)
 	require.NoError(t, err)
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", tokenAdmin))
-	res, err = http.DefaultClient.Do(req)
+	resRetry, err := http.DefaultClient.Do(req)
 	require.NoError(t, err)
-	require.Equal(t, http.StatusOK, res.StatusCode)
-
-	body, err = io.ReadAll(res.Body)
+	t.Cleanup(func() {
+		resRetry.Body.Close()
+	})
+	require.Equal(t, http.StatusOK, resRetry.StatusCode)
+	body, err = io.ReadAll(resRetry.Body)
 	require.NoError(t, err)
-	res.Body.Close()
 	require.NotEmpty(t, body)
 	require.Contains(t, string(body), hostId)
 
@@ -186,15 +194,17 @@ func TestHttpRateLimit(t *testing.T) {
 	require.NoError(t, err)
 
 	// Get auth token for second user
-	res, err = boundary.AuthenticateHttp(t, ctx, bc.Address, bc.AuthMethodId, acctName, acctPassword)
+	resAuth2, err := boundary.AuthenticateHttp(t, ctx, bc.Address, bc.AuthMethodId, acctName, acctPassword)
 	require.NoError(t, err)
-	require.Equal(t, http.StatusOK, res.StatusCode)
-	body, err = io.ReadAll(res.Body)
+	t.Cleanup(func() {
+		resAuth2.Body.Close()
+	})
+	require.Equal(t, http.StatusOK, resAuth2.StatusCode)
+	body, err = io.ReadAll(resAuth2.Body)
 	require.NoError(t, err)
 	err = json.Unmarshal(body, &r)
 	require.NoError(t, err)
 	tokenUser := r.Attributes.Token
-	res.Body.Close()
 
 	// Make request until quota is hit again using the first user
 	t.Log("Sending API requests until quota is hit...")
@@ -202,13 +212,13 @@ func TestHttpRateLimit(t *testing.T) {
 	req, err = http.NewRequest(http.MethodGet, requestURL, nil)
 	require.NoError(t, err)
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", tokenAdmin))
-	res, err = http.DefaultClient.Do(req)
+	resQuota, err := http.DefaultClient.Do(req)
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		res.Body.Close()
+		resQuota.Body.Close()
 	})
-	require.Equal(t, http.StatusOK, res.StatusCode)
-	rateLimitHeader = res.Header.Get("Ratelimit")
+	require.Equal(t, http.StatusOK, resQuota.StatusCode)
+	rateLimitHeader = resQuota.Header.Get("Ratelimit")
 	require.NotEmpty(t, rateLimitHeader)
 	t.Log(rateLimitHeader)
 	quota, err = getRateLimitStat(rateLimitHeader, "remaining")
@@ -243,13 +253,14 @@ func TestHttpRateLimit(t *testing.T) {
 	req, err = http.NewRequest(http.MethodGet, requestURL, nil)
 	require.NoError(t, err)
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", tokenUser))
-	res, err = http.DefaultClient.Do(req)
+	resReject, err := http.DefaultClient.Do(req)
 	require.NoError(t, err)
-	require.Equal(t, http.StatusServiceUnavailable, res.StatusCode)
-
-	body, err = io.ReadAll(res.Body)
+	t.Cleanup(func() {
+		resReject.Body.Close()
+	})
+	require.Equal(t, http.StatusServiceUnavailable, resReject.StatusCode)
+	body, err = io.ReadAll(resReject.Body)
 	require.NoError(t, err)
-	res.Body.Close()
 	require.Empty(t, body)
 
 	// Wait for "Retry-After" time
@@ -268,9 +279,12 @@ func TestHttpRateLimit(t *testing.T) {
 	req, err = http.NewRequest(http.MethodGet, requestURL, nil)
 	require.NoError(t, err)
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", tokenUser))
-	res, err = http.DefaultClient.Do(req)
+	resSuccess, err := http.DefaultClient.Do(req)
 	require.NoError(t, err)
-	require.Equal(t, http.StatusOK, res.StatusCode)
+	t.Cleanup(func() {
+		resSuccess.Body.Close()
+	})
+	require.Equal(t, http.StatusOK, resSuccess.StatusCode)
 	t.Log("Successfully sent request after waiting")
 
 	time.Sleep(time.Duration(policyPeriod) * time.Second)
@@ -338,16 +352,18 @@ func TestCliRateLimit(t *testing.T) {
 	require.NoError(t, err)
 
 	// Authenticate over HTTP
-	res, err := boundary.AuthenticateHttp(t, ctx, bc.Address, bc.AuthMethodId, bc.AdminLoginName, bc.AdminLoginPassword)
+	resAuth, err := boundary.AuthenticateHttp(t, ctx, bc.Address, bc.AuthMethodId, bc.AdminLoginName, bc.AdminLoginPassword)
 	require.NoError(t, err)
-	require.Equal(t, http.StatusOK, res.StatusCode)
-	body, err := io.ReadAll(res.Body)
+	t.Cleanup(func() {
+		resAuth.Body.Close()
+	})
+	require.Equal(t, http.StatusOK, resAuth.StatusCode)
+	body, err := io.ReadAll(resAuth.Body)
 	require.NoError(t, err)
 	var r boundary.HttpResponseBody
 	err = json.Unmarshal(body, &r)
 	require.NoError(t, err)
 	tokenAdmin := r.Attributes.Token
-	res.Body.Close()
 
 	// Make initial API request
 	t.Log("Getting rate limit info...")
@@ -355,14 +371,22 @@ func TestCliRateLimit(t *testing.T) {
 	req, err := http.NewRequest(http.MethodGet, requestURL, nil)
 	require.NoError(t, err)
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", tokenAdmin))
-	res, err = http.DefaultClient.Do(req)
+	resInitial, err := http.DefaultClient.Do(req)
 	require.NoError(t, err)
-	require.Equal(t, http.StatusOK, res.StatusCode)
+	t.Cleanup(func() {
+		resInitial.Body.Close()
+	})
+	require.Equal(t, http.StatusOK, resInitial.StatusCode)
 
-	rateLimitPolicyHeader := res.Header.Get("Ratelimit-Policy")
+	rateLimitPolicyHeader := resInitial.Header.Get("Ratelimit-Policy")
+	t.Log(rateLimitPolicyHeader)
 	require.NotEmpty(t, rateLimitPolicyHeader)
-	policyLimit, policyPeriod, err := getRateLimitPolicyStat(res.Header.Get("Ratelimit-Policy"), "auth-token")
+	policyLimit, policyPeriod, err := getRateLimitPolicyStat(resInitial.Header.Get("Ratelimit-Policy"), "auth-token")
 	require.NoError(t, err)
+
+	rateLimitHeader := resInitial.Header.Get("Ratelimit")
+	t.Log(rateLimitHeader)
+
 	// Wait for ratelimit to reset
 	time.Sleep(time.Duration(policyPeriod) * time.Second)
 
