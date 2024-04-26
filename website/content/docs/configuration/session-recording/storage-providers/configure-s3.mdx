@@ -24,12 +24,11 @@ When determining storage requirements for the external bucket, you should consid
 
 ### AWS requirements
 
-- An AWS S3 storage bucket
+- An Amazon S3 storage bucket
 
-   You must associate the Boundary storage bucket with an AWS S3 storage bucket.
-   An AWS S3 storage bucket contains the bucket name, region, and optional prefix, as well as any credentials needed to access the bucket.
+   You must associate the Boundary storage bucket with an Amazon S3 storage bucket. A Boundary Amazon S3 storage bucket contains the bucket name, region, and optional prefix, as well as any credentials needed to access the bucket.
 
-   The AWS S3 storage bucket can use static or dynamic credentials.
+   The Amazon S3 storage bucket can use static or dynamic credentials.
    You can configure static credentials using an access key and secret key or dynamic credentials using the AWS [`AssumeRole` API](https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole).
 
 - An AWS IAM role policy with the following statement:
