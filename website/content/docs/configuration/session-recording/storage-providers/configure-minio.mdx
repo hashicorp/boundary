@@ -26,11 +26,11 @@ When determining storage requirements for the external bucket, you should consid
 
 - A MinIO storage bucket
 
-   You must associate the Boundary storage bucket with a MinIO storage bucket. A Boundary MinIO storage bucket contains the bucket name, endpoint URL, region, optional prefix, and the service account credentials needed to access the bucket. In order to enable credential rotation, you cannot add a Boundary storage bucket without a MinIO service account. Credential rotation can be disabled when creating the Boundary storage bucket.
+   You must associate the Boundary storage bucket with a MinIO storage bucket. A Boundary MinIO storage bucket contains the bucket name, endpoint URL, optional region, optional prefix, and the service account credentials needed to access the bucket. In order to enable credential rotation, you cannot add a Boundary storage bucket without a MinIO service account. Credential rotation can be disabled when creating the Boundary storage bucket.
 
 - A MinIO service account and access keys
 
-   Credential rotation is automatically performed for storage buckets using a MinIO service account. The service account access keys must be provided when configuring a Boundary storage bucket later on.
+   Service account access keys must be provided when configuring a Boundary storage bucket later on.
 
    Refer to the [MinIO Access Keys](https://min.io/docs/minio/kubernetes/upstream/administration/console/security-and-access.html#access-keys) documentation page to learn how to set up a MinIO service account.
 
