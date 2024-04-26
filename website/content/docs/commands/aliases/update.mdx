@@ -66,7 +66,8 @@ $ boundary aliases update target [options] [args]
 - `-scope-id=<string>` - Scope in which the alias resides. The default is `global`.
 You can also specify the scope using the BOUNDARY_SCOPE_ID environment variable.
 At this time, aliases are only supported for the global scope.
-- `-value=<string>` - The value of the alias that you will use in commands to represent the target.
+- `-value=<string>` - The string that you want to use as the alias to represent the target.
+The `value` must comply with DNS naming rules.
 
 #### Target alias options
 

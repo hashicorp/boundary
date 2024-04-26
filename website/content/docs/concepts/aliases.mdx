@@ -16,12 +16,12 @@ You can use the alias instead of the target ID when you run a command, and Bound
 When you create a resource in Boundary, it assigns the resource a randomly generated identifier.
 You must use those IDs to perform actions in Boundary.
 
-For example, when you connect to a target using the Clipboard, you must reference the target ID by typing `boundary ssh connect -target-id tccp_123456789`.
+For example, when you connect to a target using the clipboard, you must reference the target ID by typing `boundary ssh connect -target-id tccp_123456789`.
 Since it can be difficult to remember the unique IDs, users frequently have to look up the identifiers for any resources they want to operate on.
 
 Aliases simplify this process.
-When you create an alias and associate it with a target, you can later use the alias instead of the target ID in commands.
-Boundary automatically resolves to the resource that the alias references.
+When you create an alias and associate it with a target, you can later use the alias `value` instead of the target ID in commands.
+Boundary automatically resolves to the target that the alias references.
 
 ## Permissions
 
@@ -53,7 +53,8 @@ If you delete a project, Boundary clears the `destination_id` parameter for any 
 
 ## Create an alias
 
-Complete the following steps to create an alias for a target:
+You can create a new alias and associate it with a target at the same time.
+Complete the following steps to create a new alias and associate it with a target:
 
 <Tabs>
 
@@ -74,15 +75,15 @@ Complete the following steps to create an alias for a target:
 
    You can use any of the following [attributes](/boundary/docs/concepts/domain-model/aliases) when you create an alias:
 
-   - `-description=<string>` - Specifies the optional description you want to use to describe the alias for identification purposes.
-   - `-destination-id=<string>` - Specifies the ID of the target that the alias points to.
+   - `-description=<string>` - Specifies the optional description you want to use for identification purposes.
+   - `-destination-id=<string>` - Specifies the ID of the target that the alias references.
    - `-name=<string>` - Specifies the optional name you want to use to describe the alias for identification purposes.
    - `-scope-id=<string>` - Scope in which to create the alias. The default is `global`.
    You can also specify the scope using the BOUNDARY_SCOPE_ID environment variable.
    At this time, aliases are only supported for the global scope.
-   - `-value=<string>` - Specifies the value of the alias that you want to use in commands to represent the target.
-   It must comply with DNS naming rules.
-   - `-authorize-session-host-id=<string>` - Indicates the host ID to use when you use the alias to authorize a session.
+   - `-value=<string>` - Specifies the string that you want to use as the alias to represent the target.
+   The alias `value` must comply with DNS naming rules.
+   - `-authorize-session-host-id=<string>` - Optionally indicates the host ID to use when you use the alias to authorize a session.
 
 </Tab>
 
@@ -96,8 +97,8 @@ Complete the following steps to create an alias for a target:
    - **Description**: (Optional) Enter an optional description for the alias to use for identification purposes.
    - **Type**: Select **Target**.
    At this time, targets are the only Boundary resources that supports aliasing.
-   - **Alias Value**: Enter the alias value you want to use in commands to represent the target.
-   It must comply with DNS naming rules.
+   - **Alias Value**: Enter the string that you want to use as the alias to represent the target.
+   The alias value must comply with DNS naming rules.
    - **Target ID**: (Optional) Specify any optional targets you want to associate with the alias.
    - **Host ID**: (Optional) Enter an optional host ID, if you would like to specify that the alias always uses the same host when you use it to connect to a target.
 1. Click **Save**.
@@ -108,7 +109,8 @@ Complete the following steps to create an alias for a target:
 
 ## Add an alias to a target
 
-To add an alias to a target resource:
+You can add an existing alias to a target in the UI.
+Complete the following steps to add an alias to a target:
 
 1. Log in to Boundary.
 1. Select **Targets** in the navigation pane.

@@ -21,11 +21,15 @@ All alias types have the following attributes:
    - `-scope-id=<string>` - Scope in which to create the alias. The default is `global`.
    You can also specify the scope using the BOUNDARY_SCOPE_ID environment variable.
    At this time, aliases are only supported for the global scope.
-   - `-value=<string>` - Specifies the value of the alias that you want to use in commands to represent the target.
-   It must comply with DNS naming rules.
+   - `-value=<string>` - Specifies the string that you want to use as the alias to represent the target.
+   The `value` must comply with DNS naming rules.
 
 ### Target subtypes
 
 The target subtype has the following additional attributes:
 
  - `-authorize-session-host-id=<string>` - Indicates the host ID to use when you use the alias to authorize a session.
+
+ ## More information
+
+ - [Aliases](/boundary/docs/concepts/aliases)
