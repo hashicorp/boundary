@@ -497,6 +497,7 @@ func (c *Command) FlagSet(bit FlagSetBit) *FlagSets {
 				Default: false,
 				EnvVar:  envSkipFerry,
 				Usage:   "Skips sending the auth token used for this command to the ferry daemon if it is running.",
+				Hidden:  true,
 			})
 
 			f.UintVar(&UintVar{
@@ -505,6 +506,7 @@ func (c *Command) FlagSet(bit FlagSetBit) *FlagSets {
 				Default: 9300,
 				EnvVar:  EnvFerryDaemonPort,
 				Usage:   "The port on which the ferry daemon is listening.",
+				Hidden:  true,
 			})
 		}
 
