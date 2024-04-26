@@ -4,7 +4,6 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
-
 ## 0.16.0 (2024/04/15)
 
 ### New and Improved
@@ -21,7 +20,11 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   a case insensitive way.
 
 ## 0.15.4
-* Go version bump 1.22.2 to address [CVE-2023-45288](https://github.com/advisories/GHSA-4v7x-pqxf-cx7m)
+
+### Security
+
+* Go version bumped to 1.22.2 to address
+  [CVE-2023-45288](https://github.com/advisories/GHSA-4v7x-pqxf-cx7m)
 
 ## 0.15.3
 
