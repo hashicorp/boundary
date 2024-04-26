@@ -1,0 +1,140 @@
+---
+layout: docs
+page_title: v0.16.0
+description: |-
+  Boundary release notes for v0.16.0
+---
+
+# Boundary 0.16.0 release notes
+
+**GA date:** April 30, 2024
+
+@include 'release-notes/intro.mdx'
+
+## New features
+
+<table>
+  <thead>
+    <tr>
+      <th style={{verticalAlign: 'middle'}}>Feature</th>
+      <th style={{verticalAlign: 'middle'}}>Update</th>
+      <th style={{verticalAlign: 'middle'}}>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+      Aliases
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+      GA
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+     A new resource was introduced in this release. Aliases let you associate a string with a Boundary target. Instead of entering the target's ID when you operate on it, you can enter the alias and Boundary automatically substitutes the target for the alias reference.
+      <br /><br />
+      Learn more:&nbsp;<a href="/boundary/docs/concepts/aliases">Aliases</a>.
+    </td>
+  </tr>
+
+   <tr>
+    <td style={{verticalAlign: 'middle'}}>
+      MinIO support for session recording
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+      GA
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+      You can now configure external MinIO storage to store recorded sessions. MinIO support provides an on-premises storage option for users who do not use AWS.
+      <br /><br />
+      Learn more:&nbsp;<a href="/boundary/docs/configuration/session-recording">Session recording overview</a>.
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+      Admin UI enhanced search and filtering
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+      GA
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+      Enhanced search and filter support was added to the Boundary CLI and API through a new list pagination feature in release 0.15.0. This functionality has been extended to the Admin UI in release 0.16.0.
+      <br /><br />
+      Learn more:&nbsp;<a href="/boundary/docs/api-clients/api/pagination">List pagination</a>.
+    </td>
+  </tr>
+
+
+  </tbody>
+</table>
+
+## Known issues and breaking changes
+
+<table>
+  <thead>
+    <tr>
+      <th style={{verticalAlign: 'middle'}}>Version</th>
+      <th style={{verticalAlign: 'middle'}}>Issue</th>
+      <th style={{verticalAligh: 'middle'}}>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    0.13.0+
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Rotation of AWS access and secret keys during a session results in stale recordings
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    In Boundary version 0.13.0+, when you rotate a storage bucket's secrets, any new sessions use the new credentials. However, previously established sessions continue to use the old credentials.
+    <br /><br />
+    As a best practice, administrators should rotate credentials in a phased manner, ensuring that all previously established sessions are completed before revoking the stale credentials.
+    Otherwise, you may end up with recordings that aren't stored in the remote storage bucket, and are unable to be played back.
+    </td>
+  </tr>
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    0.13.0+
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Unsupported recovery workflow during worker failure
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    If a worker fails during a recording, there is no way to recover the recording. This could happen due to a network connectivity issue or because a worker is scaled down, for example.
+    <br /><br />
+    Learn more:&nbsp;
+    <a href="/boundary/docs/troubleshoot/troubleshoot-recorded-sessions#unsupported-recovery-workflow">Unsupported recovery workflow</a>
+    </td>
+  </tr>
+
+  </tbody>
+</table>
+
+## Feature deprecations and EOL
+
+<table>
+  <thead>
+    <tr>
+      <th style={{verticalAlign: 'middle'}}>EOL</th>
+      <th style={{verticalAlign: 'middle'}}>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+      <code>kms</code> worker method
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+     As noted in the <a href="/boundary/docs/release-notes/v0_13_0#deprecations-and-changes">v0.13.0 release notes</a>, the <code>kms</code> worker method has been removed. Since version 0.13.0, you have had to opt in to use the deprecated method. Now it is no longer available and Boundary uses the new <code>kms</code> mechanism.
+      <br /><br />
+      Learn more:&nbsp;
+      <a href="/boundary/docs/configuration/worker/kms-worker">KMS worker configuration</a>
+    </td>
+  </tr>
+
+  </tbody>
+</table>
