@@ -1124,7 +1124,7 @@ func newOutputOpts(ctx context.Context, item *iam.Scope, authResults auth.Verify
 
 	authorizedActions := authResults.FetchActionSetForId(ctx, item.GetPublicId(), idActionsById(item.GetPublicId()), auth.WithResource(&res)).Strings()
 	if len(authorizedActions) == 0 {
-		return nil, true, nil
+		return nil, false, nil
 	}
 
 	outputFields := authResults.FetchOutputFields(res, action.List).SelfOrDefaults(authResults.UserId)
