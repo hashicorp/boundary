@@ -216,8 +216,38 @@ A value of `-1` means the connections are unlimited.
 
 ### Associate an existing alias with a target
 
-If you already created an alias, you can add it to an existing target in the UI.
+If you already created an alias, you can update it with an existing target.
 Complete the following steps to add an alias to a target:
+
+<Tabs>
+<Tab heading="CLI">
+
+1. Log in to Boundary.
+1. Use the following command to create an alias:
+
+   ```shell-session
+   $ boundary aliases update target \
+       -destination-id tcp_1234567890 \
+       -id alt_1234567890
+       -authorize-session-host-id hst_1234567890 \
+   ```
+
+   You can use any of the following [attributes](/boundary/docs/concepts/domain-model/aliases) when you update an alias:
+
+   - `-description=<string>` - Specifies the optional description you want to use for identification purposes.
+   - `-destination-id=<string>` - Specifies the ID of the target that the alias references.
+   - `id=<string>` - Specifies the ID of the alias you want to update.
+   - `-name=<string>` - Specifies the optional name you want to use to describe the alias for identification purposes.
+   - `-scope-id=<string>` - Scope in which to create the alias. The default is `global`.
+   You can also specify the scope using the BOUNDARY_SCOPE_ID environment variable.
+   At this time, aliases are only supported for the global scope.
+   - `-value=<string>` - Specifies the string that you want to use as the alias to represent the target.
+   The alias `value` must comply with DNS naming rules.
+   - `-authorize-session-host-id=<string>` - Optionally indicates the host ID to use when you use the alias to authorize a session.
+
+</Tab>
+
+<Tab heading="UI">
 
 1. Log in to Boundary.
 1. Select **Targets** in the navigation pane.
@@ -234,3 +264,6 @@ Complete the following steps to add an alias to a target:
    It is read only.
    - **Host ID**: (Optional) Enter an optional host ID, if you would like to specify that the alias always uses the same host when you use it to connect to a target.
 1. Click **Save**.
+
+</Tab>
+</Tabs>
