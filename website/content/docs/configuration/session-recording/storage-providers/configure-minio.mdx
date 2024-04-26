@@ -46,62 +46,50 @@ When determining storage requirements for the external bucket, you should consid
              "s3:PutObject",
              "s3:GetObject",
              "s3:GetObjectAttributes",
-             "s3:DeleteObject",
-             "s3:ListBucket"
+             "s3:DeleteObject"
            ],
            "Effect": "Allow",
            "Resource": "arn:aws:s3:::test-session-recording-bucket/*"
+        },
+        {
+           "Action": "s3:ListBucket",
+           "Effect": "Allow",
+           "Resource": "arn:aws:s3:::*"
         }
      ]
    }
    ```
 
-- If you apply KMS encryption to the storage bucket, you must add these additional permissions to the role policy for the storage bucket's IAM user:
+- We recommend enabling credential rotation. To enable credential rotation, use the following service account policy:
 
    ```json
    {
-     "Action": [
-       "kms:Decrypt",
-       "kms:GenerateDataKey",
-       "kms:DescribeKey"
-     ],
-     "Effect": "Allow",
-     "Resource": "arn:aws:kms:us-east-1:1234567890:key/uuid"
+     "Version": "2012-10-17",
+     "Statement": [
+        {
+           "Action": [
+             "s3:PutObject",
+             "s3:GetObject",
+             "s3:GetObjectAttributes",
+             "s3:DeleteObject"
+           ],
+           "Effect": "Allow",
+           "Resource": "arn:aws:s3:::test-session-recording-bucket/*"
+        },
+        {
+           "Action": "s3:ListBucket",
+           "Effect": "Allow",
+           "Resource": "arn:aws:s3:::*"
+        },
+        {
+           "Action": [
+           "admin:CreateServiceAccount",
+           "admin:RemoveServiceAccount"
+         ],
+         "Effect": "Allow"
+        }
+     ]
    }
    ```
 
-   The following is an example working policy with KMS encryption configured on the S3 bucket:
-
-    ```json
-    {
-      "Version": "2012-10-17",
-      "Statement": [
-         {
-            "Sid": "S3Permissions",
-            "Effect": "Allow",
-            "Action": [
-              "s3:PutObject",
-              "s3:GetObject",
-              "s3:GetObjectAttributes",
-              "s3:DeleteObject",
-              "s3:ListBucket"
-            ],
-            "Resource": [
-              "arn:aws:s3:::test-session-recording-bucket/*"
-            ]
-         },
-         {
-            "Sid": "KMSPermissions",
-            "Effect": "Allow",
-            "Action": [
-              "kms:Decrypt",
-              "kms:GenerateDataKey",
-              "kms:DescribeKey"
-            ],
-            "Resource": [
-              "arn:aws:kms:us-east-2:1234567890:key  4b887395-c376-4936-8f37-80c592ea582c"
-            ]
-         }
-      ]
-    }
-    ```
+   Refer to the [MinIO Policy Action Keys](https://min.io/docs/minio/linux/administration/identity-access-management/policy-based-access-control.html#mc-admin-policy-action-keys) documentation to learn more about restricting IAM user policies.
