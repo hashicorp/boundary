@@ -388,7 +388,8 @@ func TestCliRateLimit(t *testing.T) {
 	t.Log(rateLimitHeader)
 
 	// Wait for ratelimit to reset
-	time.Sleep(time.Duration(policyPeriod) * time.Second)
+	t.Logf("Waiting for %d seconds to reset rate limit...", policyPeriod+1)
+	time.Sleep(time.Duration(policyPeriod+1) * time.Second)
 
 	// Run tests until rate limit is hit. Expect to see a HTTP 429 when rate limited
 	t.Log("Sending multiple CLI requests to hit rate limit...")
