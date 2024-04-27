@@ -174,6 +174,10 @@ output "bucket_region" {
   value = var.region
 }
 
+output "bucket_user_id" {
+  value = var.user_id
+}
+
 output "endpoint_url" {
   value = "http://${var.container_name}:9000"
 }
