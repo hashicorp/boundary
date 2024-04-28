@@ -179,7 +179,7 @@ Complete the following steps to create a storage bucket in Boundary.
    - **Scope**: (Required) A storage bucket can belong to the Global scope or an Org scope.
    It can only associated with targets from the scope it belongs to.
    - **Provider**: (Required) The external storage bucket provider.
-   - **Endpoint URL**: (Required) The fully-qualified endpoint pointing to a MinIO S3 API.
+   - **Endpoint URL**: (Required) The fully-qualified endpoint pointing to a MinIO S3 API, such as `https://my-minio-instance.dev:9000`.
    - **Bucket name**: (Required) Name of the AWS bucket you want to associate with the Boundary storage bucket.
    - **Region**: (Optional) The region to configure the storage bucket for.
    - **Access key ID** (Required): The MinIO service account's access key to use with this storage bucket.
@@ -202,7 +202,7 @@ Complete the following steps to create a storage bucket in Boundary.
       -scope-id o_1234567890 \
       -bucket-prefix="foo/bar/zoo" \
       -worker-filter '"minio" in "/tags/type"' \
-      -attr endpoint_url="https://my-minio-instance.dev/s3-api" \
+      -attr endpoint_url="https://my-minio-instance.dev:9000" \
       -attr region="REGION" \
       -attr disable_credential_rotation=true \
       -secret access_key_id="KEY" \
