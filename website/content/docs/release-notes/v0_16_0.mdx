@@ -65,6 +65,20 @@ description: |-
     </td>
   </tr>
 
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+      Local storage state health
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+      GA
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+      Storage state values have been created to monitor the health of any local workers used for session recording. Boundary monitors the worker's available disk space and compares it to the value you configured for recording capacity. If the worker does not have adequate storage, it cannot be used for session recording.
+      <br /><br />
+      Learn more:&nbsp;<a href="/boundary/docs/configuration/session-recording/configure-worker-storage#local-storage">Local storage for session recording</a>.
+    </td>
+  </tr>
+
 
   </tbody>
 </table>
@@ -126,13 +140,8 @@ description: |-
 
   <tr>
     <td style={{verticalAlign: 'middle'}}>
-      <code>kms</code> worker method
-    </td>
+   </td>
     <td style={{verticalAlign: 'middle'}}>
-     As noted in the <a href="/boundary/docs/release-notes/v0_13_0#deprecations-and-changes">v0.13.0 release notes</a>, the <code>kms</code> worker method has been removed. Since version 0.13.0, you have had to opt in to use the deprecated method. Now it is no longer available and Boundary uses the new <code>kms</code> mechanism.
-      <br /><br />
-      Learn more:&nbsp;
-      <a href="/boundary/docs/configuration/worker/kms-worker">KMS worker configuration</a>
     </td>
   </tr>
 
