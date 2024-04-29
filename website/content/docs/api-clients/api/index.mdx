@@ -92,7 +92,8 @@ Responses may contain the following headers:
 - `X-Correlation-ID` - Identifies a transaction over a series of requests and responses.
 The `X-Correlation-ID` header is a universally unique identifier (UUIDv4).
 If you provide an `X-Correlation-ID` header in an HTTP request, Boundary logs that value for all audit events related to the request.
-It uses that value as the header when it makes related requests to an external system, such as Vault, so that you can correlate the event between the product logs.
+It then uses that value as the header when it makes related requests to an external system, such as Vault, so that you can correlate the event between the product logs.
+If you do not provide an `X-Correlation-ID` header, Boundary generates a unique value for each incoming request.
 
 ## Manage system resources
 
