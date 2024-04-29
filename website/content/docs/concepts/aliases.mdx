@@ -36,8 +36,8 @@ You can configure Boundary to allow a select few users to manage those targets, 
 
 ## Naming conventions
 
-An alias is a globally unique, DNS-like string that is associated with a destination resource.
-The alias `value` parameter does not have to be delimited by a suffix, and can be just a hostname.
+An alias is a globally unique, DNS-like string that is associated with a destination resource. The alias `value` parameter does not have to be delimited by a suffix, and can be just a hostname.
+
 Exampes of valid aliases include `webserver` and `webserver.boundary`.
 
 ## Scopes
@@ -65,6 +65,7 @@ boundary connect ssh example.alias.boundary
 ## Create aliases
 
 There are multiple ways that you can create aliases and associate them with targets in Boundary.
+
 You can:
 
 - [Create a new alias for an existing target](/boundary/docs/concepts/aliases#create-a-new-alias-for-an-existing-target)
@@ -77,8 +78,24 @@ You can create a new alias and associate it with an existing target at the same 
 Complete the following steps to create a new alias and associate it with a target:
 
 <Tabs>
+<Tab heading="UI" group="ui">
 
-<Tab heading="CLI">
+1. Log in to Boundary.
+1. Select **Aliases** in the navigation pane.
+1. Click **New Alias**.
+1. Complete the following fields:
+   - **Name**: (Optional) Enter an optional name for the alias to use for identification purposes.
+   - **Description**: (Optional) Enter an optional description for the alias to use for identification purposes.
+   - **Type**: Select **Target**.
+   At this time, targets are the only Boundary resources that supports aliasing.
+   - **Alias Value**: Enter the string that you want to use as the alias to represent the target.
+   An alias's value can be a hostname or a DNS-like string.
+   - **Target ID**: (Optional) Specify any targets you want to associate with the alias.
+   - **Host ID**: (Optional) Enter an optional host ID, if you would like to specify that the alias always uses the same host when you use it to connect to a target.
+1. Click **Save**.
+
+</Tab>
+<Tab heading="CLI" group="cli">
 
 1. Log in to Boundary.
 1. Use the following command to create an alias:
@@ -106,34 +123,40 @@ Complete the following steps to create a new alias and associate it with a targe
    - `-authorize-session-host-id=<string>` - Optionally indicates the host ID to use when you use the alias to authorize a session.
 
 </Tab>
-
-<Tab heading="UI">
-
-1. Log in to Boundary.
-1. Select **Aliases** in the navigation pane.
-1. Click **New Alias**.
-1. Complete the following fields:
-   - **Name**: (Optional) Enter an optional name for the alias to use for identification purposes.
-   - **Description**: (Optional) Enter an optional description for the alias to use for identification purposes.
-   - **Type**: Select **Target**.
-   At this time, targets are the only Boundary resources that supports aliasing.
-   - **Alias Value**: Enter the string that you want to use as the alias to represent the target.
-   An alias's value can be a hostname or a DNS-like string.
-   - **Target ID**: (Optional) Specify any targets you want to associate with the alias.
-   - **Host ID**: (Optional) Enter an optional host ID, if you would like to specify that the alias always uses the same host when you use it to connect to a target.
-1. Click **Save**.
-
-</Tab>
-
 </Tabs>
 
 ### Create a new target and alias
 
 You can create a new target and new alias at the same time and associate the two.
+
 Complete the following steps to create a new target and new alias at the same time:
 
 <Tabs>
-<Tab heading="CLI">
+<Tab heading="UI" group="ui">
+
+1. Log in to Boundary.
+1. Select **Targets** in the navigation pane.
+1. Click **New Target**.
+1. Complete the following fields:
+   - **Name**: Enter the target name for identification purposes.
+   - **Description**: (Optional) Enter an optional description for identification purposes.
+   - **Type**: Select the target type.
+   You can create SSH or TCP targets.
+   - **Target Address**: (Optional) Enter a valid IP address or DNS name.
+   Alternatively, you can configure host catalogs and host sets.
+   - **Default Port**: (Optional) Enter an optional default port for the target to use for connections.
+   - **Default Client Port**: (Optional) Enter an optional local proxy port on which to listen when a session is started on a client.
+   - **Maximum Duration**: (Optional) Enter an optional maximum duration for sessions on this target, in seconds.
+   - **Maximum Connection**: (Optional) Enter the maximum number of connections allowed per session on this target.
+   For unlimited connections, enter `-1`.
+   - **Workers**: (Optional) Select whether you want the worker to function as an ingress and/or egress worker.
+   - **Aliases**: (Optional) Enter the value fpr any aliases you want to associate with this target, and then click **Add**.
+   An alias's value can be a hostname or a DNS-like string.
+   You can associate multiple aliases with a target.
+1. Click **Save**.
+
+</Tab>
+<Tab heading="CLI" group="cli">
 
 1. Log in to Boundary.
 1. Use the following command to create a target:
@@ -182,31 +205,6 @@ A value of `-1` means the connections are unlimited.
      The example command in this section creates an SSH target.
 
 </Tab>
-
-<Tab heading="UI">
-
-1. Log in to Boundary.
-1. Select **Targets** in the navigation pane.
-1. Click **New Target**.
-1. Complete the following fields:
-   - **Name**: Enter the target name for identification purposes.
-   - **Description**: (Optional) Enter an optional description for identification purposes.
-   - **Type**: Select the target type.
-   You can create SSH or TCP targets.
-   - **Target Address**: (Optional) Enter a valid IP address or DNS name.
-   Alternatively, you can configure host catalogs and host sets.
-   - **Default Port**: (Optional) Enter an optional default port for the target to use for connections.
-   - **Default Client Port**: (Optional) Enter an optional local proxy port on which to listen when a session is started on a client.
-   - **Maximum Duration**: (Optional) Enter an optional maximum duration for sessions on this target, in seconds.
-   - **Maximum Connection**: (Optional) Enter the maximum number of connections allowed per session on this target.
-   For unlimited connections, enter `-1`.
-   - **Workers**: (Optional) Select whether you want the worker to function as an ingress and/or egress worker.
-   - **Aliases**: (Optional) Enter the value fpr any aliases you want to associate with this target, and then click **Add**.
-   An alias's value can be a hostname or a DNS-like string.
-   You can associate multiple aliases with a target.
-1. Click **Save**.
-
-</Tab>
 </Tabs>
 
 ### Associate an existing alias with a target
@@ -215,7 +213,26 @@ If you already created an alias, you can update it with an existing target.
 Complete the following steps to add an alias to a target:
 
 <Tabs>
-<Tab heading="CLI">
+<Tab heading="UI" group="ui">
+
+1. Log in to Boundary.
+1. Select **Targets** in the navigation pane.
+1. Select the target you want to add an alias to.
+1. Under the **Aliases** heading in the right sidebar, click **Add an alias**.
+1. Complete the following fields:
+   - **Name**: (Optional) Enter an optional name for the alias to use for identification purposes.
+   - **Description**: (Optional) Enter an optional description for the alias to use for identification purposes.
+   - **Type**: Select **Target**.
+   At this time, targets are the only Boundary resources that supports aliasing.
+   - **Alias Value**: Enter the alias value you want to use in commands to represent the target.
+   An alias's value can be a hostname or a DNS-like string.
+   - **Target ID**: This field contains the ID of the target you selected to add an alias to.
+   It is read only.
+   - **Host ID**: (Optional) Enter an optional host ID, if you would like to specify that the alias always uses the same host when you use it to connect to a target.
+1. Click **Save**.
+
+</Tab>
+<Tab heading="CLI" group="cli">
 
 1. Log in to Boundary.
 1. Use the following command to create an alias:
@@ -239,26 +256,6 @@ Complete the following steps to add an alias to a target:
    - `-value=<string>` - Specifies the string that you want to use as the alias to represent the target.
    The alias `value` must comply with DNS naming rules.
    - `-authorize-session-host-id=<string>` - Optionally indicates the host ID to use when you use the alias to authorize a session.
-
-</Tab>
-
-<Tab heading="UI">
-
-1. Log in to Boundary.
-1. Select **Targets** in the navigation pane.
-1. Select the target you want to add an alias to.
-1. Under the **Aliases** heading in the right sidebar, click **Add an alias**.
-1. Complete the following fields:
-   - **Name**: (Optional) Enter an optional name for the alias to use for identification purposes.
-   - **Description**: (Optional) Enter an optional description for the alias to use for identification purposes.
-   - **Type**: Select **Target**.
-   At this time, targets are the only Boundary resources that supports aliasing.
-   - **Alias Value**: Enter the alias value you want to use in commands to represent the target.
-   An alias's value can be a hostname or a DNS-like string.
-   - **Target ID**: This field contains the ID of the target you selected to add an alias to.
-   It is read only.
-   - **Host ID**: (Optional) Enter an optional host ID, if you would like to specify that the alias always uses the same host when you use it to connect to a target.
-1. Click **Save**.
 
 </Tab>
 </Tabs>
