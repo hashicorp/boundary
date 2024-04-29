@@ -17,7 +17,16 @@ A storage bucket can only belong to the global scope or an org scope. A storage 
 
 For more information about using session recording to audit user sessions, refer to [Auditing](/boundary/docs/concepts/auditing).
 
-### Create a storage bucket
+## Requirements
+
+Before you create a storage bucket in Boundary, you must:
+
+- [Configure workers for storage](/boundary/docs/configuration/session-recording/configure-worker-storage)
+- Configure one of the following storage providers:
+   - [Amazon S3](/boundary/docs/configuration/session-recording/storage-providers/configure-s3)
+   - [MinIO](/boundary/docs/configuration/session-recording/storage-providers/configure-minio)
+
+## Create a storage bucket
 
 Select a storage provider.
 
@@ -224,7 +233,7 @@ Complete the following steps to create a storage bucket in Boundary.
       - `endpoint_url` (Required): Fully-qualified endpoint pointing to a MinIO S3    API.
       - `region`: (Optional) The region to configure the storage bucket for.
       - `disable_credential_rotation`: (Optional) Controls whether the plugin will rotate the incoming credentials and manage a new MinIO service account. If this attribute is set to `false`, or not provided, the plugin will rotate the incoming credentials to create a new MinIO service account, then delete the incoming credentials.
-      
+
       This option must be set to `true` if you use dynamic credentials.
 
 </Tab>
