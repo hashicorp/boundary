@@ -54,8 +54,7 @@ Complete the following steps to create a storage bucket in Boundary.
    - **Worker filter**: (Required) A filter that indicates which Boundary workers have access to the storage. The filter must match an existing worker in order to create a Boundary storage bucket.
    - **Disable credential rotation**: (Optional) Prevents the AWS plugin from automatically rotating credentials.
 
-      Although credentials are stored encrypted in Boundary, by default the [AWS plugin](https://github.com/hashicorp/boundary-plugin-aws) attempts to rotate the credentials you provide.
-      The given credentials are used to create a new credential, and then the original credential is revoked.
+      Although credentials are stored encrypted in Boundary, by default the [AWS plugin](https://github.com/hashicorp/boundary-plugin-aws) attempts to rotate the credentials you provide. The given credentials are used to create a new credential, and then the original credential is revoked.
       After rotation, only Boundary knows the client secret the plugin uses.
 
    </Tab>
@@ -144,14 +143,14 @@ The required fields for creating a storage bucket depend on whether you configur
    - `worker-filter`: (Required) A filter that indicates which Boundary workers have access to the storage. The filter must match an existing worker in order to create a Boundary storage bucket.
    - `attributes` or `-attr`: Attributes of the Amazon S3 storage bucket.
       - `role_arn`: (Required) The ARN (Amazon Resource Name) role that is    attached to the EC2 instance that the self-managed worker runs on.
-      - `role_external_id`: (Optional) A required value if you delegate third    party access to your AWS resources.
-      For more information, refer to the AWS documentation for [How to use an    external ID when granting access to your AWS resources to a third party]   (https://docs.aws.amazon.com/IAM/latest/UserGuide/   id_roles_create_for-user_externalid.html).
+      - `role_external_id`: (Optional) A required value if you delegate third   party access to your AWS resources.
+      For more information, refer to the AWS documentation for [How to use an   external ID when granting access to your AWS resources to a third party](https://docs.aws.amazon.com/IAM/latest/UserGuide/   id_roles_create_for-user_externalid.html).
       - `role_session_name`: (Optional) A unique identifier for the AWS session.
-      You can use this value to control how IAM principals and applications name    their role sesions when they assume an IAM role.
-      By providing a session name, you enable tracking session actions in AWS    CloudTrail logs.
-      For more information, refer to the AWS documentation for [Logging IAM and    AWS STS API calls with AWS CloudTrail](https://docs.aws.amazon.com/IAM/   latest/UserGuide/cloudtrail-integration.html).
-      - `role_tags`: (Optional) An object with key-value pair attributes that is    passed when you assume an IAM role.
-      For more information, refer to the AWS documentation for [Passing session    tags in AWS STS](https://docs.aws.amazon.com/IAM/latest/UserGuide/   id_session-tags.html).
+      You can use this value to control how IAM principals and applications name their role sesions when they assume an IAM role.
+      By providing a session name, you enable tracking session actions in AWS CloudTrail logs.
+      For more information, refer to the AWS documentation for [Logging IAM and AWS STS API calls with AWS CloudTrail](https://docs.aws.amazon.com/IAM/   latest/UserGuide/cloudtrail-integration.html).
+      - `role_tags`: (Optional) An object with key-value pair attributes that is passed when you assume an IAM role.
+      For more information, refer to the AWS documentation for [Passing session tags in AWS STS](https://docs.aws.amazon.com/IAM/latest/UserGuide/   id_session-tags.html).
 
 </Tab>
 </Tabs>
@@ -239,3 +238,12 @@ Boundary creates the storage bucket resource and provides you with the bucket's 
 ## Next steps
 
 After the storage bucket is created in Boundary, you can use the bucket's ID to [enable session recording on targets](/boundary/docs/configuration/session-recording/enable-session-recording).
+
+## Resources
+
+The following docs are relevant to configuring storage buckets:
+
+- [Storage bucket attributes](/boundary/docs/concepts/domain-model/storage-buckets)
+- [Worker filter examples](/boundary/docs/concepts/filtering/worker-tags#example-worker-filter-for-storage-buckets)
+- [Boundary AWS plugin](https://github.com/hashicorp/boundary-plugin-aws)
+- [Boundary MinIO plugin](https://github.com/hashicorp/boundary-plugin-minio)
