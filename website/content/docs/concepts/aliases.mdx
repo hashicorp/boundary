@@ -53,13 +53,13 @@ Whenever you could use the `-id` flag or `-target` flag in the CLI, you can subs
 For example, you can use the following command to connect to an SSH target with the ID `ttcp_1234567890`:
 
 ```shell-session
-boundary connect ssh -target -id ttcp_1234567890
+$ boundary connect ssh -target -id ttcp_1234567890
 ```
 
 If you configured an alias named `example.alias.boundary` for the target, you could alternatively use the following command to connect to the target:
 
 ```shell-session
-boundary connect ssh example.alias.boundary
+$ boundary connect ssh example.alias.boundary
 ```
 
 ## Create aliases
@@ -103,11 +103,11 @@ Complete the following steps to create a new alias and associate it with a targe
    ```shell-session
    $ boundary aliases create target \
        -description 'This is an example alias for target tcp_1234567890' \
-       -destination-id tcp_1234567890
+       -destination-id tcp_1234567890 \
        -name Example Boundary alias \
        -scope-id global \
        -value example.alias.boundary \
-       -authorize-session-host-id hst_1234567890 \
+       -authorize-session-host-id hst_1234567890
    ```
 
    You can use any of the following [attributes](/boundary/docs/concepts/domain-model/aliases) when you create an alias:
@@ -168,7 +168,7 @@ Complete the following steps to create a new target and new alias at the same ti
        -scope-id global \
        -with-alias-authorize-session-host-id hst_1234567890 \
        -with-alias-scope-id global \
-       -with-alias-value example.alias.boundary \
+       -with-alias-value example.alias.boundary
    ```
 
    You can use any of the following [attributes](/boundary/docs/concepts/domain-model/targets) when you create a target:
@@ -240,8 +240,8 @@ Complete the following steps to add an alias to a target:
    ```shell-session
    $ boundary aliases update target \
        -destination-id tcp_1234567890 \
-       -id alt_1234567890
-       -authorize-session-host-id hst_1234567890 \
+       -id alt_1234567890 \
+       -authorize-session-host-id hst_1234567890
    ```
 
    You can use any of the following [attributes](/boundary/docs/concepts/domain-model/aliases) when you update an alias:
