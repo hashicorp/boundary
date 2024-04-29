@@ -89,7 +89,10 @@ Responses may contain the following headers:
 
 - `RateLimit` - Provides the current limit, number of remaining requests, and the time at which the quota will reset for the limit that is closest to being exhausted for the requested resource and action.
 - `RateLimit-Policy` - Describes the limits for the requested resource and action.
-- `x-correlation-id` - Indicates that an API request that came in to Boundary is also related to an audit event in Vault.
+- `X-Correlation-ID` - Identifies a transaction over a series of requests and responses.
+The `X-Correlation-ID` header is a universally unique identifier (UUIDv4).
+If you provide an `X-Correlation-ID` header in an HTTP request, Boundary logs that value for all audit events related to the request.
+It uses that value as the header when it makes related requests to an external system, such as Vault, so that you can correlate the event between the product logs.
 
 ## Manage system resources
 
