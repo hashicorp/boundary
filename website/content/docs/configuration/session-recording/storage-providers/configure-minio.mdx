@@ -7,6 +7,8 @@ description: |-
 
 # Configure MinIO as a storage provider
 
+<EnterpriseAlert product="boundary">This feature requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary or Boundary Enterprise</a></EnterpriseAlert>
+
 This page describes how to configure MinIO as a storage provider for session recording with Boundary.
 
 ## Requirements
@@ -34,7 +36,7 @@ When determining storage requirements for the external bucket, you should consid
 
    Refer to the [MinIO Access Keys](https://min.io/docs/minio/kubernetes/upstream/administration/console/security-and-access.html#access-keys) documentation page to learn how to set up a MinIO service account.
 
-- A MinIO storage bucket must be configured with R/W access. If using a 
+- A MinIO storage bucket must be configured with R/W access. If using a
   restricted IAM user policy, the following policy actions must be allowed at a minimum.
 
    ```json

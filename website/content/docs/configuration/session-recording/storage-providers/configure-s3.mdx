@@ -7,6 +7,8 @@ description: |-
 
 # Configure Amazon S3 as a storage provider
 
+<EnterpriseAlert product="boundary">This feature requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary or Boundary Enterprise</a></EnterpriseAlert>
+
 This page describes how to configure Amazon S3 as a storage provider for session recording with Boundary.
 
 ## Requirements
@@ -20,7 +22,7 @@ Refer to the [Configure workers for storage]to learn about configuring self-mana
 When determining storage requirements for the external bucket, you should consider:
 
 - [Local worker storage requirements](/boundary/docs/configuration/session-recording/configure-worker-storage#storage-requirements)
-- [Storage bucket retention policies](/boundary/docs/configuration/session-recording/configure-storage-policy) 
+- [Storage bucket retention policies](/boundary/docs/configuration/session-recording/configure-storage-policy)
 
 ### AWS requirements
 
