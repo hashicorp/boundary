@@ -95,23 +95,27 @@ The required fields for creating a storage bucket depend on whether you configur
    $ boundary storage-buckets create \
       -bucket-name mybucket1 \
       -plugin-name aws \
-      -secrets ‘{“access_key_id”: “123456789” , “secret_access_key” : “123/456789/12345678”}’ \
+      -scope-id o_1234567890 \
       -worker-filter ‘“dev” in “/tags/type”’ \
-      -attributes ‘{“region”:”us-east-1”,”disable_credential_rotation”:true}’ \
-      -scope-id o_1234567890
+      -secret ‘{“access_key_id”: “123456789” , “secret_access_key” : “123/456789/12345678”}’ \
+      -attributes ‘{“region”:”us-east-1”,”disable_credential_rotation”:true}’
    ```
 
-   Replace the values above with the following required AWS secrets and any optional [attributes](/boundary/docs/concepts/domain-model/storage-buckets) you want to associate with the Boundary storage bucket:
+   Replace the values above with the following required AWS secrets and any [attributes](/boundary/docs/concepts/domain-model/storage-buckets) you want to associate with the Boundary storage bucket:
 
    - `region`: (Required) The AWS region to use.
-   - `bucket-name`: (Required) Name of the AWS bucket you want to associate with the Boundary storage bucket.
-   - `access_key_id`: (Required) The AWS access key to use.
-   - `secret_access_key_id`: (Required) The AWS secret access key to use.
-    This attribute contains the secret access key for static credentials.
+   - `bucket-name`: (Required) The name of the AWS bucket you want to associate with the Boundary storage bucket.
+   - `plugin-name`: (Required) The name of the Boundary storage plugin.
+   - `scope_id`: (Required) A storage bucket can belong to the Global scope or an Org scope.
    - `worker-filter`: (Required) A filter that indicates which Boundary workers have access to the storage. The filter must match an existing worker in order to create a Boundary storage bucket.
-   - `shared_credentials_file`: (Optional) The shared credentials file to use.
-   - `shared_credentials_profile`: (Optional) The profile name to use in the shared credentials file.
-   - `disable_credential_rotation`: (Optional) Prevents the AWS plugin from automatically rotating credentials.
+   - `secret`: (Required) The AWS credentials to use.
+      - `access_key_id`: (Required) The AWS access key to use.
+      - `secret_access_key_id`: (Required) The AWS secret access key to use.
+        This attribute contains the secret access key for static credentials.
+   - `attributes` or `-attr`: Attributes of the Amazon S3 storage bucket.
+      - `shared_credentials_file`: (Optional) The shared credentials file to use.
+      - `shared_credentials_profile`: (Optional) The profile name to use in the shared credentials file.
+      - `disable_credential_rotation`: (Optional) Prevents the AWS plugin from automatically rotating credentials.
 
      Although credentials are stored encrypted in Boundary, by default the [AWS plugin](https://github.com/hashicorp/boundary-plugin-aws) attempts to rotate the credentials you provide. The given credentials are used to create a new credential, and then the original credential is revoked. After rotation, only Boundary knows the client secret the plugin uses.
 
@@ -131,24 +135,23 @@ The required fields for creating a storage bucket depend on whether you configur
       -attributes ‘{“region”:”us-east-1”,”disable_credential_rotation”:true,"role_arn":"arn:aws:iam::123456789012:role/S3Access"}’
    ```
 
-   Replace the values above with the following required AWS secrets and any optional [attributes](/boundary/docs/concepts/domain-model/storage-buckets) you want to associate with the Boundary storage bucket:
+   Replace the values above with the following required AWS secrets and any [attributes](/boundary/docs/concepts/domain-model/storage-buckets) you want to associate with the Boundary storage bucket:
 
    - `region`: (Required) The AWS region to use.
-   - `bucket-name`: (Required) Name of the AWS bucket you want to associate with the Boundary storage bucket.
-   - `role_arn`: (Required) The ARN (Amazon Resource Name) role that is attached to the EC2 instance that the self-managed worker runs on.
-   - `role_external_id`: (Optional) A required value if you delegate third party access to your AWS resources.
-   For more information, refer to the AWS documentation for [How to use an external ID when granting access to your AWS resources to a third party](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_create_for-user_externalid.html).
-   - `role_session_name`: (Optional) A unique identifier for the AWS session.
-   You can use this value to control how IAM principals and applications name their role sesions when they assume an IAM role.
-   By providing a session name, you enable tracking session actions in AWS CloudTrail logs.
-   For more information, refer to the AWS documentation for [Logging IAM and AWS STS API calls with AWS CloudTrail](https://docs.aws.amazon.com/IAM/latest/UserGuide/cloudtrail-integration.html).
-   - `role_tags`: (Optional) An object with key-value pair attributes that is passed when you assume an IAM role.
-   For more information, refer to the AWS documentation for [Passing session tags in AWS STS](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_session-tags.html).
+   - `bucket-name`: (Required) The name of the AWS bucket you want to associate with the Boundary storage bucket.
+   - `plugin-name`: (Required) The name of the Boundary storage plugin.
+   - `scope_id`: (Required) A storage bucket can belong to the Global scope or an Org scope.
    - `worker-filter`: (Required) A filter that indicates which Boundary workers have access to the storage. The filter must match an existing worker in order to create a Boundary storage bucket.
-   - `shared_credentials_file`: (Optional) The shared credentials file to use.
-   - `shared_credentials_profile`: (Optional) The profile name to use in the shared credentials file.
-   - `disable_credential_rotation`: (Required) Prevents the AWS plugin from automatically rotating credentials.
-   This option must be set to `true` if you use dynamic credentials.
+   - `attributes` or `-attr`: Attributes of the Amazon S3 storage bucket.
+      - `role_arn`: (Required) The ARN (Amazon Resource Name) role that is    attached to the EC2 instance that the self-managed worker runs on.
+      - `role_external_id`: (Optional) A required value if you delegate third    party access to your AWS resources.
+      For more information, refer to the AWS documentation for [How to use an    external ID when granting access to your AWS resources to a third party]   (https://docs.aws.amazon.com/IAM/latest/UserGuide/   id_roles_create_for-user_externalid.html).
+      - `role_session_name`: (Optional) A unique identifier for the AWS session.
+      You can use this value to control how IAM principals and applications name    their role sesions when they assume an IAM role.
+      By providing a session name, you enable tracking session actions in AWS    CloudTrail logs.
+      For more information, refer to the AWS documentation for [Logging IAM and    AWS STS API calls with AWS CloudTrail](https://docs.aws.amazon.com/IAM/   latest/UserGuide/cloudtrail-integration.html).
+      - `role_tags`: (Optional) An object with key-value pair attributes that is    passed when you assume an IAM role.
+      For more information, refer to the AWS documentation for [Passing session    tags in AWS STS](https://docs.aws.amazon.com/IAM/latest/UserGuide/   id_session-tags.html).
 
 </Tab>
 </Tabs>
@@ -177,7 +180,7 @@ Complete the following steps to create a storage bucket in Boundary.
    - **Name**: (Optional) The name field is optional, but if you enter a name it must be unique.
    - **Description**: (Optional) An optional description of the Boundary storage bucket for identification purposes.
    - **Scope**: (Required) A storage bucket can belong to the Global scope or an Org scope.
-   It can only associated with targets from the scope it belongs to.
+   It can only be associated with targets from the scope it belongs to.
    - **Provider**: (Required) The external storage bucket provider.
    - **Endpoint URL**: (Required) The fully-qualified endpoint pointing to a MinIO S3 API, such as `https://my-minio-instance.dev:9000`.
    - **Bucket name**: (Required) Name of the AWS bucket you want to associate with the Boundary storage bucket.
@@ -211,14 +214,19 @@ Complete the following steps to create a storage bucket in Boundary.
 
    Replace the values above with the following required secrets and any optional [attributes](/boundary/docs/concepts/domain-model/storage-buckets) you want to associate with the Boundary storage bucket:
 
-   - `endpoint_url` (Required): Fully-qualified endpoint pointing to a MinIO S3 API.
    - `bucket-name`: (Required) Name of the MinIO bucket you want to associate with the Boundary storage bucket.
-   - `region`: (Optional) The region to configure the storage bucket for.
+   - `plugin-name`: (Required) The name of the Boundary storage plugin.
+   - `scope_id`: (Required) A storage bucket can belong to the Global scope or an Org scope.
    - `worker-filter`: (Required) A filter that indicates which Boundary workers have access to the storage. The filter must match an existing worker in order to create a Boundary storage bucket.
-   - `disable_credential_rotation`: (Optional) Controls whether the plugin will rotate the incoming credentials and manage a new MinIO service account. If this attribute is set to `false`, or not provided, the plugin will rotate the incoming credentials to create a new MinIO service account, then delete the incoming credentials.
-   This option must be set to `true` if you use dynamic credentials.
-   - `access_key_id` (Required): The MinIO service account's access key to use with this storage bucket.
-   - `secret_access_key` (Required): The MinIO service account's secret key to use with this storage bucket.
+   - `secret`: (Required) The MinIO credentials to use.
+      - `access_key_id` (Required): The MinIO service account's access key to use    with this storage bucket.
+      - `secret_access_key` (Required): The MinIO service account's secret key to use with this storage bucket.
+   - `attributes` or `-attr`: Attributes of the MinIO storage bucket.
+      - `endpoint_url` (Required): Fully-qualified endpoint pointing to a MinIO S3    API.
+      - `region`: (Optional) The region to configure the storage bucket for.
+      - `disable_credential_rotation`: (Optional) Controls whether the plugin will rotate the incoming credentials and manage a new MinIO service account. If this attribute is set to `false`, or not provided, the plugin will rotate the incoming credentials to create a new MinIO service account, then delete the incoming credentials.
+      
+      This option must be set to `true` if you use dynamic credentials.
 
 </Tab>
 </Tabs>
