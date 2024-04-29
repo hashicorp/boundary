@@ -16,7 +16,7 @@ You can use the alias instead of the target ID when you run a command, and Bound
 When you create a resource in Boundary, it assigns the resource a randomly generated identifier.
 You must use those IDs to perform actions in Boundary.
 
-For example, when you connect to a target using the clipboard, you must reference the target ID by typing `boundary ssh connect -target-id tccp_123456789`.
+When you connect to a target using the terminal, you must reference the target ID or target-name & scope-name. As an example, to SSH to a target, you can type `boundary connect ssh -target-id ttcp_123456789`.
 Since it can be difficult to remember the unique IDs, users frequently have to look up the identifiers for any resources they want to operate on.
 
 Aliases simplify this process.
@@ -107,7 +107,7 @@ Complete the following steps to create a new alias and associate it with a targe
    You can also specify the scope using the BOUNDARY_SCOPE_ID environment variable.
    At this time, aliases are only supported for the global scope.
    - `-value=<string>` - Specifies the string that you want to use as the alias to represent the target.
-   The alias `value` must comply with DNS naming rules.
+   The alias `value` can be a hostname or a DNS-like string.
    - `-authorize-session-host-id=<string>` - Optionally indicates the host ID to use when you use the alias to authorize a session.
 
 </Tab>
@@ -123,7 +123,7 @@ Complete the following steps to create a new alias and associate it with a targe
    - **Type**: Select **Target**.
    At this time, targets are the only Boundary resources that supports aliasing.
    - **Alias Value**: Enter the string that you want to use as the alias to represent the target.
-   The alias value must comply with DNS naming rules.
+   An alias's value can be a hostname or a DNS-like string.
    - **Target ID**: (Optional) Specify any targets you want to associate with the alias.
    - **Host ID**: (Optional) Enter an optional host ID, if you would like to specify that the alias always uses the same host when you use it to connect to a target.
 1. Click **Save**.
@@ -207,7 +207,7 @@ A value of `-1` means the connections are unlimited.
    For unlimited connections, enter `-1`.
    - **Workers**: (Optional) Select whether you want the worker to function as an ingress and/or egress worker.
    - **Aliases**: (Optional) Enter the value fpr any aliases you want to associate with this target, and then click **Add**.
-   The value must match DNS naming rules.
+   An alias's value can be a hostname or a DNS-like string.
    You can associate multiple aliases with a target.
 1. Click **Save**.
 
@@ -259,7 +259,7 @@ Complete the following steps to add an alias to a target:
    - **Type**: Select **Target**.
    At this time, targets are the only Boundary resources that supports aliasing.
    - **Alias Value**: Enter the alias value you want to use in commands to represent the target.
-   It must comply with DNS naming rules.
+   An alias's value can be a hostname or a DNS-like string.
    - **Target ID**: This field contains the ID of the target you selected to add an alias to.
    It is read only.
    - **Host ID**: (Optional) Enter an optional host ID, if you would like to specify that the alias always uses the same host when you use it to connect to a target.
