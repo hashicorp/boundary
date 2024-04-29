@@ -19,7 +19,7 @@ Session recording requires specific configuration for both the external storage 
 
 Refer to [Configure workers for session recording](/boundary/docs/configuration/session-recording/configure-worker-storage) to learn about configuring self-managed workers for session recording.
 
-When determining storage requirements for the external bucket, you should consider:
+When you determine storage requirements for the external bucket, you should consider:
 
 - [BSR storage considerations](/boundary/docs/configuration/session-recording#storage-considerations)
 - [Storage bucket retention policies](/boundary/docs/configuration/session-recording/configure-storage-policy)
@@ -28,15 +28,15 @@ When determining storage requirements for the external bucket, you should consid
 
 - A MinIO storage bucket
 
-   You must associate the Boundary storage bucket with a MinIO storage bucket. A Boundary MinIO storage bucket contains the bucket name, endpoint URL, optional region, optional prefix, and the service account credentials needed to access the bucket. In order to enable credential rotation, you cannot add a Boundary storage bucket without a MinIO service account. Credential rotation can be disabled when creating the Boundary storage bucket.
+   You must associate the Boundary storage bucket with a MinIO storage bucket. A Boundary MinIO storage bucket contains the bucket name, endpoint URL, optional region, optional prefix, and the service account credentials needed to access the bucket. To enable credential rotation, you cannot add a Boundary storage bucket without a MinIO service account. You can disable credential rotation when you create the Boundary storage bucket.
 
 - A MinIO service account and access keys
 
-   Service account access keys must be provided when configuring a Boundary storage bucket later on.
+   You must provide service account access keys when you configure a Boundary storage bucket later on.
 
    Refer to the [MinIO Access Keys](https://min.io/docs/minio/kubernetes/upstream/administration/console/security-and-access.html#access-keys) documentation page to learn how to set up a MinIO service account.
 
-- A MinIO storage bucket must be configured with R/W access. If using a
+- A MinIO storage bucket must be configured with R/W access. If you use a
   restricted IAM user policy, the following policy actions must be allowed at a minimum.
 
    ```json
@@ -62,7 +62,7 @@ When determining storage requirements for the external bucket, you should consid
    }
    ```
 
-- We recommend enabling credential rotation. To enable credential rotation, use the following service account policy:
+- HashiCorp recommends that you enable credential rotation. To enable credential rotation, use the following service account policy:
 
    ```json
    {
