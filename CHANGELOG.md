@@ -10,9 +10,13 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 * Target aliases have been added: You can now create an alias for a target.
   In most situations where you would use a target id, you can now instead use
-  the alias value. Crate an alias with 
+  the alias value. Create an alias with 
   `boundary aliases create target -value example.boundary -destination-id ttcp_1234567890`
   and connect to a target using an alias using `boundary connect example.boundary`
+* ui: Add UI support for filtering and pagination
+  ([PR](https://github.com/hashicorp/boundary-ui/pull/2237))
+* ui: Add UI support for MinIO (Enterprise and HCP Boundary only)
+  ([PR](https://github.com/hashicorp/boundary-ui/pull/2248))
 
 ### Added dependency
 
