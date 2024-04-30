@@ -94,7 +94,7 @@ func TestWorkerStatusReport(t *testing.T) {
 				require.NoError(t, err)
 				require.NoError(t, err)
 
-				_, _, err = connRepo.AuthorizeConnection(ctx, sess.PublicId, worker.PublicId)
+				_, err = connRepo.AuthorizeConnection(ctx, sess.PublicId, worker.PublicId)
 				require.NoError(t, err)
 
 				_, err = repo.CancelSession(ctx, sess.PublicId, sess.Version)
@@ -126,7 +126,7 @@ func TestWorkerStatusReport(t *testing.T) {
 				require.NoError(t, err)
 				require.NoError(t, err)
 
-				connection, _, err := connRepo.AuthorizeConnection(ctx, sess.PublicId, worker.PublicId)
+				connection, err := connRepo.AuthorizeConnection(ctx, sess.PublicId, worker.PublicId)
 				require.NoError(t, err)
 				return testCase{
 					worker: worker,
@@ -160,7 +160,7 @@ func TestWorkerStatusReport(t *testing.T) {
 				tofu := session.TestTofu(t)
 				sess, _, err = repo.ActivateSession(ctx, sess.PublicId, sess.Version, tofu)
 				require.NoError(t, err)
-				connection, _, err := connRepo.AuthorizeConnection(ctx, sess.PublicId, worker.PublicId)
+				connection, err := connRepo.AuthorizeConnection(ctx, sess.PublicId, worker.PublicId)
 				require.NoError(t, err)
 				_, err = repo.CancelSession(ctx, sess.PublicId, sess.Version)
 				require.NoError(t, err)
@@ -224,7 +224,7 @@ func TestWorkerStatusReport(t *testing.T) {
 				tofu := session.TestTofu(t)
 				sess, _, err = repo.ActivateSession(ctx, sess.PublicId, sess.Version, tofu)
 				require.NoError(t, err)
-				connection, _, err := connRepo.AuthorizeConnection(ctx, sess.PublicId, worker.PublicId)
+				connection, err := connRepo.AuthorizeConnection(ctx, sess.PublicId, worker.PublicId)
 				require.NoError(t, err)
 				_, err = repo.CancelSession(ctx, sess.PublicId, sess.Version)
 				require.NoError(t, err)
@@ -242,7 +242,7 @@ func TestWorkerStatusReport(t *testing.T) {
 				tofu2 := session.TestTofu(t)
 				sess2, _, err = repo.ActivateSession(ctx, sess2.PublicId, sess2.Version, tofu2)
 				require.NoError(t, err)
-				connection2, _, err := connRepo.AuthorizeConnection(ctx, sess2.PublicId, worker.PublicId)
+				connection2, err := connRepo.AuthorizeConnection(ctx, sess2.PublicId, worker.PublicId)
 				require.NoError(t, err)
 				_, err = repo.CancelSession(ctx, sess2.PublicId, sess2.Version)
 				require.NoError(t, err)
@@ -295,7 +295,7 @@ func TestWorkerStatusReport(t *testing.T) {
 				tofu := session.TestTofu(t)
 				sess, _, err = repo.ActivateSession(ctx, sess.PublicId, sess.Version, tofu)
 				require.NoError(t, err)
-				connection, _, err := connRepo.AuthorizeConnection(ctx, sess.PublicId, worker.PublicId)
+				connection, err := connRepo.AuthorizeConnection(ctx, sess.PublicId, worker.PublicId)
 				require.NoError(t, err)
 
 				sess2 := session.TestSession(t, conn, wrapper, session.ComposedOf{
@@ -311,7 +311,7 @@ func TestWorkerStatusReport(t *testing.T) {
 				tofu2 := session.TestTofu(t)
 				sess2, _, err = repo.ActivateSession(ctx, sess2.PublicId, sess2.Version, tofu2)
 				require.NoError(t, err)
-				connection2, _, err := connRepo.AuthorizeConnection(ctx, sess2.PublicId, worker.PublicId)
+				connection2, err := connRepo.AuthorizeConnection(ctx, sess2.PublicId, worker.PublicId)
 				require.NoError(t, err)
 				require.NotEqual(t, connection.PublicId, connection2.PublicId)
 
@@ -348,7 +348,7 @@ func TestWorkerStatusReport(t *testing.T) {
 				tofu := session.TestTofu(t)
 				sess, _, err = repo.ActivateSession(ctx, sess.PublicId, sess.Version, tofu)
 				require.NoError(t, err)
-				connection, _, err := connRepo.AuthorizeConnection(ctx, sess.PublicId, worker.PublicId)
+				connection, err := connRepo.AuthorizeConnection(ctx, sess.PublicId, worker.PublicId)
 				require.NoError(t, err)
 				_, err = repo.CancelSession(ctx, sess.PublicId, sess.Version)
 				require.NoError(t, err)
@@ -366,9 +366,9 @@ func TestWorkerStatusReport(t *testing.T) {
 				tofu2 := session.TestTofu(t)
 				sess2, _, err = repo.ActivateSession(ctx, sess2.PublicId, sess2.Version, tofu2)
 				require.NoError(t, err)
-				connection2, _, err := connRepo.AuthorizeConnection(ctx, sess2.PublicId, worker.PublicId)
+				connection2, err := connRepo.AuthorizeConnection(ctx, sess2.PublicId, worker.PublicId)
 				require.NoError(t, err)
-				connection3, _, err := connRepo.AuthorizeConnection(ctx, sess2.PublicId, worker.PublicId)
+				connection3, err := connRepo.AuthorizeConnection(ctx, sess2.PublicId, worker.PublicId)
 				require.NoError(t, err)
 				_, err = repo.CancelSession(ctx, sess2.PublicId, sess2.Version)
 				require.NoError(t, err)
@@ -417,12 +417,10 @@ func TestWorkerStatusReport(t *testing.T) {
 			require.NoError(err)
 			assert.ElementsMatch(tc.want, got)
 			for _, dc := range tc.orphanedConnections {
-				gotConn, states, err := connRepo.LookupConnection(ctx, dc)
+				gotConn, err := connRepo.LookupConnection(ctx, dc)
 				require.NoError(err)
 				assert.Equal(session.ConnectionSystemError, session.ClosedReason(gotConn.ClosedReason))
-				assert.Equal(2, len(states))
-				assert.Nil(states[0].EndTime)
-				assert.Equal(session.StatusClosed, states[0].Status)
+				assert.Equal(session.StatusClosed, session.ConnectionStatusFromString(gotConn.ConnectionStatus))
 			}
 		})
 	}

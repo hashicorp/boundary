@@ -17,17 +17,17 @@ import (
 // If any of these criteria is not met, it returns an error with Code InvalidSessionState.
 func AuthorizeConnection(ctx context.Context, sessionRepoFn *Repository, connectionRepoFn *ConnectionRepository,
 	sessionId, workerId string, opt ...Option,
-) (*Connection, []*ConnectionState, *AuthzSummary, error) {
+) (*Connection, *AuthzSummary, error) {
 	const op = "session.AuthorizeConnection"
 
-	connection, connectionStates, err := connectionRepoFn.AuthorizeConnection(ctx, sessionId, workerId)
+	connection, err := connectionRepoFn.AuthorizeConnection(ctx, sessionId, workerId)
 	if err != nil {
-		return nil, nil, nil, errors.Wrap(ctx, err, op)
+		return nil, nil, errors.Wrap(ctx, err, op)
 	}
 
 	authzSummary, err := sessionRepoFn.sessionAuthzSummary(ctx, sessionId)
 	if err != nil {
-		return nil, nil, nil, errors.Wrap(ctx, err, op)
+		return nil, nil, errors.Wrap(ctx, err, op)
 	}
-	return connection, connectionStates, authzSummary, nil
+	return connection, authzSummary, nil
 }

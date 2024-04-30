@@ -97,7 +97,7 @@ func TestStatus(t *testing.T) {
 	tofu := session.TestTofu(t)
 	canceledSess, _, err = repo.ActivateSession(ctx, canceledSess.PublicId, canceledSess.Version, tofu)
 	require.NoError(t, err)
-	canceledConn, _, err := connRepo.AuthorizeConnection(ctx, canceledSess.PublicId, worker1.PublicId)
+	canceledConn, err := connRepo.AuthorizeConnection(ctx, canceledSess.PublicId, worker1.PublicId)
 	require.NoError(t, err)
 
 	canceledSess, err = repo.CancelSession(ctx, canceledSess.PublicId, canceledSess.Version)
@@ -120,7 +120,7 @@ func TestStatus(t *testing.T) {
 	s := NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connRepoFn, nil, new(sync.Map), kms, new(atomic.Int64), fce)
 	require.NotNil(t, s)
 
-	connection, _, err := connRepo.AuthorizeConnection(ctx, sess.PublicId, worker1.PublicId)
+	connection, err := connRepo.AuthorizeConnection(ctx, sess.PublicId, worker1.PublicId)
 	require.NoError(t, err)
 
 	cases := []struct {
@@ -562,7 +562,7 @@ func TestStatusSessionClosed(t *testing.T) {
 	s := NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connRepoFn, nil, new(sync.Map), kms, new(atomic.Int64), fce)
 	require.NotNil(t, s)
 
-	connection, _, err := connRepo.AuthorizeConnection(ctx, sess.PublicId, worker1.PublicId)
+	connection, err := connRepo.AuthorizeConnection(ctx, sess.PublicId, worker1.PublicId)
 	require.NoError(t, err)
 
 	cases := []struct {
@@ -757,9 +757,9 @@ func TestStatusDeadConnection(t *testing.T) {
 	s := NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connRepoFn, nil, new(sync.Map), kms, new(atomic.Int64), fce)
 	require.NotNil(t, s)
 
-	connection, _, err := connRepo.AuthorizeConnection(ctx, sess.PublicId, worker1.PublicId)
+	connection, err := connRepo.AuthorizeConnection(ctx, sess.PublicId, worker1.PublicId)
 	require.NoError(t, err)
-	deadConn, _, err := connRepo.AuthorizeConnection(ctx, sess2.PublicId, worker1.PublicId)
+	deadConn, err := connRepo.AuthorizeConnection(ctx, sess2.PublicId, worker1.PublicId)
 	require.NoError(t, err)
 	require.NotEqual(t, deadConn.PublicId, connection.PublicId)
 
@@ -823,12 +823,10 @@ func TestStatusDeadConnection(t *testing.T) {
 		),
 	)
 
-	gotConn, states, err := connRepo.LookupConnection(ctx, deadConn.PublicId)
+	gotConn, err := connRepo.LookupConnection(ctx, deadConn.PublicId)
 	require.NoError(t, err)
 	assert.Equal(t, session.ConnectionSystemError, session.ClosedReason(gotConn.ClosedReason))
-	assert.Equal(t, 2, len(states))
-	assert.Nil(t, states[0].EndTime)
-	assert.Equal(t, session.StatusClosed, states[0].Status)
+	assert.Equal(t, session.StatusClosed, session.ConnectionStatusFromString(gotConn.ConnectionStatus))
 }
 
 func TestStatusWorkerWithKeyId(t *testing.T) {
@@ -927,7 +925,7 @@ func TestStatusWorkerWithKeyId(t *testing.T) {
 	s := NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connRepoFn, nil, new(sync.Map), kms, new(atomic.Int64), fce)
 	require.NotNil(t, s)
 
-	connection, _, err := connRepo.AuthorizeConnection(ctx, sess.PublicId, worker1.PublicId)
+	connection, err := connRepo.AuthorizeConnection(ctx, sess.PublicId, worker1.PublicId)
 	require.NoError(t, err)
 
 	cases := []struct {

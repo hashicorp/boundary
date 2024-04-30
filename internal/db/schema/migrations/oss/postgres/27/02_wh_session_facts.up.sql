@@ -7,6 +7,7 @@ begin;
 drop trigger wh_insert_session_connection on session_connection;
 drop function wh_insert_session_connection();
 
+-- Updated in 87/01_remove_session_connection_state
 create function wh_insert_session_connection() returns trigger
 as $$
 declare
