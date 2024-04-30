@@ -38,6 +38,7 @@ A target has the following configurable attributes:
   The `name` must be unique within the target's [project][].
 
 - `description` - (optional)
+  An optional description of the target for identificaiton purposes.
 
 - `address` - (optional)
   This value represents a network resource address and is used when establishing a session.
@@ -73,6 +74,16 @@ A target has the following configurable attributes:
   when a session reaches the maximum duration.
   The default is 8 hours (28800 seconds).
   This value must be greater than 0.
+
+- `with-alias-authorize-session-host-id` (Optional)
+  The authorize session host ID flag that an alias uses when you create the alias at the same time as you create the target.
+
+- `with-alias-scope-id` (Optional)
+  The scope ID for the alias to be created in, when you create it at the same time as you create the target.
+  The default scope is global.
+
+- `with-alias-value` (Optional)
+  The string that you want to use as the alias to represent the target, when you create an alias at the same time as you create the target.
 
 ## Target types
 

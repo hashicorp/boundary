@@ -255,6 +255,10 @@ client options. Some notable options include the following:
   file that contains the information necessary to access a KMS configured to be
   used for the recovery workflow within a Boundary controller. You can also specify the configuration file using the **BOUNDARY_RECOVERY_CONFIG** environment variable.
 
+- `-skip-cache-daemon` - If set, skips starting the caching daemon or sending the current used or retrieved token to the caching daemon.
+The default is `false`.
+You can also specify this value using the BOUNDARY_SKIP_CACHE_DAEMON environment variable.
+
 - `-token` `(string: "")` - A URL that points to a file on disk `(file://)` or an environment variable `(env://)` from which the token is read. This value overrides the `token-name` parameter.
 
 - `-token-name` `(string: "")` - The name of the token. When the CLI authenticates, it stores the token
@@ -317,6 +321,11 @@ to the Boundary controller. If you set the path, you must also specify a client 
 
 The path on the local disk to a single PEM-encoded private key that matches the client certificate
 specified by the `BOUNDARY_CLIENT_CERT` variable or the `-client-cert` connection option.
+
+### `BOUNDARY_SKIP_CACHE_DAEMON`
+
+Prevents Boundary from starting the caching demon or sending the current used or retrieved token to the caching daemon.
+You can use the `BOUNDARY_SKIP_CACHE_DAEMON` variable or the `-skip-cache-daemon` connection option.
 
 ### `BOUNDARY_TLS_INSECURE`
 
