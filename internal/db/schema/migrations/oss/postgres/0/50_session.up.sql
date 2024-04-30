@@ -219,6 +219,7 @@ begin;
   create trigger insert_new_session_state after insert on session
     for each row execute procedure insert_new_session_state();
 
+  -- Updated in 87/01_remove_session_connection_state
   -- update_connection_state_on_closed_reason() is used in an update insert trigger on the
   -- session_connection table.  it will valiadate that all the session's
   -- connections are closed, and then insert a state of "closed" in

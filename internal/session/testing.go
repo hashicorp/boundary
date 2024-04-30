@@ -41,24 +41,7 @@ func TestConnection(t testing.TB, conn *db.DB, sessionId, clientTcpAddr string, 
 	err = rw.Create(ctx, c)
 	require.NoError(err)
 
-	connectedState, err := NewConnectionState(ctx, c.PublicId, StatusConnected)
-	require.NoError(err)
-	err = rw.Create(ctx, connectedState)
-	require.NoError(err)
 	return c
-}
-
-// TestConnectionState creates a test connection state for the connectionId in the repository.
-func TestConnectionState(t testing.TB, conn *db.DB, connectionId string, state ConnectionStatus) *ConnectionState {
-	t.Helper()
-	ctx := context.Background()
-	require := require.New(t)
-	rw := db.New(conn)
-	s, err := NewConnectionState(ctx, connectionId, state)
-	require.NoError(err)
-	err = rw.Create(context.Background(), s)
-	require.NoError(err)
-	return s
 }
 
 // TestState creates a test state for the sessionId in the repository.
