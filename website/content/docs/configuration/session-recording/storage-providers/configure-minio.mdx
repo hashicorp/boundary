@@ -30,6 +30,8 @@ When you determine storage requirements for the external bucket, you should cons
 
    You must associate the Boundary storage bucket with a MinIO storage bucket. A Boundary MinIO storage bucket contains the bucket name, endpoint URL, optional region, optional prefix, and the service account credentials needed to access the bucket. To enable credential rotation, you cannot add a Boundary storage bucket without a MinIO service account. You can disable credential rotation when you create the Boundary storage bucket.
 
+   At this time, the NetBSD operating system is not supported for the MinIO storage bucket.
+
 - A MinIO service account and access keys
 
    You must provide service account access keys when you configure a Boundary storage bucket later on.
