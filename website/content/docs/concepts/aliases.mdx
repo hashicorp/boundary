@@ -17,7 +17,7 @@ For example, if you have an alias `boundary.dev`, you can use it to connect to a
 When you create a resource in Boundary, it assigns the resource a randomly generated identifier.
 You must use those IDs to perform actions in Boundary.
 
-When you connect to a target using the terminal, you must reference the target ID or target name and scope name. As an example, to SSH to a target, you can type `boundary connect ssh -target-id ttcp_123456789`.
+When you connect to a target using the terminal, you must reference the target ID or target name and scope name. As an example, to SSH to a target, you can execute the command `boundary connect ssh -target-id ttcp_123456789`.
 Since it can be difficult to remember the unique IDs, users frequently have to look up the identifiers for any resources they want to operate on.
 
 Aliases simplify this process.
@@ -43,7 +43,7 @@ Exampes of valid aliases include `webserver` and `webserver.boundary`.
 ## Scopes
 
 At this time, you can only create aliases in the `global` scope.
-An alias' destination target can be in any scope, however.
+The destination target for an alias can be in any scope, however.
 If you delete a project, Boundary clears the `destination_id` parameter for any aliases that resolve to targets in that project, so that they no longer function.
 
 ## Connect to a target using an alias
@@ -72,7 +72,7 @@ You can:
 - [Create a new target and alias at the same time](/boundary/docs/concepts/aliases#create-a-new-target-and-alias)
 - [Associate an existing alias with a target](/boundary/docs/concepts/aliases#associate-an-existing-alias-with-a-target)
 
-### Create a new alias for an existing target
+### Create an alias for an existing target
 
 You can create a new alias and associate it with an existing target at the same time.
 Complete the following steps to create a new alias and associate it with a target:
@@ -125,7 +125,7 @@ Complete the following steps to create a new alias and associate it with a targe
 </Tab>
 </Tabs>
 
-### Create a new target and alias
+### Create an alias during target creation
 
 You can create a new target and new alias at the same time and associate the two.
 
