@@ -192,6 +192,10 @@
         "path": "concepts/credential-management"
       },
       {
+        "title": "Aliases",
+        "path": "concepts/aliases"
+      },
+      {
         "title": "Auditing",
         "path": "concepts/auditing"
       },
@@ -290,6 +294,10 @@
           {
             "title": "Accounts",
             "path": "concepts/domain-model/accounts"
+          },
+          {
+            "title": "Aliases",
+            "path": "concepts/domain-model/aliases"
           },
           {
             "title": "Auth methods",
@@ -725,6 +733,35 @@
           {
             "title": "update",
             "path": "commands/accounts/update"
+          }
+        ]
+      },
+      {
+        "title": "aliases",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "commands/aliases"
+          },
+          {
+            "title": "create",
+            "path": "commands/aliases/create"
+          },
+          {
+            "title": "delete",
+            "path": "commands/aliases/delete"
+          },
+          {
+            "title": "list",
+            "path": "commands/aliases/list"
+          },
+          {
+            "title": "read",
+            "path": "commands/aliases/read"
+          },
+          {
+            "title": "update",
+            "path": "commands/aliases/update"
           }
         ]
       },
