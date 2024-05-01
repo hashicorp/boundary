@@ -11,6 +11,12 @@ description: |-
 
 @include 'release-notes/intro.mdx'
 
+<Note>
+
+  In a future version Boundary will no longer automatically create roles when new scopes are created. This was implemented prior to multi-scope grants to ensure administrators and users had default permissions in new scopes. Since Boundary 0.15, initial roles created for new clusters provide these permissions by default to all scopes using multi-scope grants.
+
+</Note>
+
 ## New features
 
 <table>
