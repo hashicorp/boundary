@@ -17,6 +17,16 @@ export NEW_HOST="host_for_alias_test"
   [ "$status" -eq 0 ]
 }
 
+@test "boundary/alias: admin user cannot create alias with incorrectly formatted destination id" {
+  run create_target_alias $ALIAS_VALUE incorrectly-formatted-destination-id
+  [ "$status" -eq 1 ]
+}
+
+@test "boundary/alias: admin user cannot create alias with incorrectly formatted host id" {
+  run create_target_alias_with_host_id $ALIAS_VALUE $DEFAULT_TARGET incorrectly-formatted-host-id
+  [ "$status" -eq 1 ]
+}
+
 @test "boundary/alias: admin user can create alias" {
   run create_target_alias $ALIAS_VALUE $DEFAULT_TARGET
   echo $output
@@ -58,6 +68,18 @@ export NEW_HOST="host_for_alias_test"
   local id=$(alias_id_from_target_alias $ALIAS_VALUE)
   run update_target_alias_host_id $id $DEFAULT_HOST
   [ "$status" -eq 0 ]
+}
+
+@test "boundary/alias: admin user cannot update alias with incorrectly formatted host id" {
+  local id=$(alias_id_from_target_alias $ALIAS_VALUE)
+  run update_target_alias_host_id $id incorrectly-formatted-host-id
+  [ "$status" -eq 1 ]
+}
+
+@test "boundary/alias: admin user cannot update alias with incorrectly formatted destination id" {
+  local id=$(alias_id_from_target_alias $ALIAS_VALUE)
+  run update_target_alias_destination_id $id incorrectly-formatted-destination-id
+  [ "$status" -eq 1 ]
 }
 
 @test "boundary/alias: admin user can connect using an alias configured with host id" {
