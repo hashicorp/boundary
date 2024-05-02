@@ -27,6 +27,17 @@ export NEW_HOST="host_for_alias_test"
   [ "$status" -eq 1 ]
 }
 
+@test "boundary/alias: admin user can create alias with host id" {
+  run create_target_alias_with_host_id $ALIAS_VALUE $DEFAULT_TARGET $DEFAULT_HOST
+  [ "$status" -eq 0 ]
+}
+
+@test "boundary/alias: delete alias with host id" {
+  local id=$(alias_id_from_target_alias $ALIAS_VALUE)
+  run delete_alias $id
+  [ "$status" -eq 0 ]
+}
+
 @test "boundary/alias: admin user can create alias" {
   run create_target_alias $ALIAS_VALUE $DEFAULT_TARGET
   echo $output
