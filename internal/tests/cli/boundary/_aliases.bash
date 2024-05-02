@@ -12,6 +12,17 @@ function create_target_alias() {
     -format json
 }
 
+function create_target_alias_with_host_id() {
+  local value=$1
+  local destid=$2
+  local hostid=$3
+  boundary aliases create target \
+    -value $value \
+    -destination-id $destid \
+    -authorize-session-host-id $hostid \
+    -format json
+}
+
 function read_alias(){
   boundary aliases read -id $1 -format json
 }
