@@ -50,7 +50,7 @@ The worker-auth storage KMS key is used by a Worker for the encrypted storage of
 This is recommended Workers using controller-led or worker-led methods. If it is not specified, the authentication keys are not encrypted on disk.
 Optionally, if you deploy KMS authentication-driven Boundary workers, an additional KMS key must be generated to authenticate the Boundary worker with the controller.
 
-HashiCorp strongly recommends using the Key Management Ssytem (KMS) of the cloud provider where you deploy your Boundary workers.
+HashiCorp strongly recommends using the Key Management System (KMS) of the cloud provider where you deploy your Boundary workers.
 Keep in mind that Boundary workers must have the correct level of permissions for interacting with the cloud provider's KMS.
 Refer to your cloud provider's documentation, for more information.
 
