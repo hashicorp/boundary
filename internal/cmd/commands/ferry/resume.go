@@ -5,7 +5,6 @@ package ferry
 
 import (
 	"context"
-	"fmt"
 	"strings"
 	"time"
 
@@ -45,7 +44,24 @@ Usage: boundary ferry resume
 }
 
 func (c *ResumeCommand) Flags() *base.FlagSets {
-	return c.FlagSet(base.FlagSetNone)
+	set := c.FlagSet(base.FlagSetOutputFormat)
+	f := set.NewFlagSet("Client Options")
+
+	f.BoolVar(&base.BoolVar{
+		Name:   "output-curl-string",
+		Target: &c.FlagOutputCurlString,
+		Usage:  "Instead of executing the request, print an equivalent cURL command string and exit.",
+	})
+
+	f.UintVar(&base.UintVar{
+		Name:    "ferry-port",
+		Target:  &c.FlagFerryDaemonPort,
+		Default: 9300,
+		EnvVar:  base.EnvFerryDaemonPort,
+		Usage:   "The port on which the ferry daemon is listening.",
+	})
+
+	return set
 }
 
 func (c *ResumeCommand) AutocompleteArgs() complete.Predictor {
@@ -58,6 +74,11 @@ func (c *ResumeCommand) AutocompleteFlags() complete.Flags {
 
 func (c *ResumeCommand) Run(args []string) int {
 	ctx := c.Context
+	f := c.Flags()
+	if err := f.Parse(args); err != nil {
+		c.PrintCliError(err)
+		return base.CommandUserError
+	}
 
 	resp, apiErr, err := c.Resume(ctx)
 	if err != nil {
@@ -69,14 +90,14 @@ func (c *ResumeCommand) Run(args []string) int {
 		return base.CommandApiError
 	}
 
-	if ok := c.PrintJsonItem(resp); !ok {
+	if resp.StatusCode() != 200 {
 		return base.CommandCliError
 	}
 	return base.CommandSuccess
 }
 
 func (c *ResumeCommand) Resume(ctx context.Context) (*api.Response, *api.Error, error) {
-	const op = "ferry.(ResumeCommand).Status"
+	const op = "ferry.(ResumeCommand).Resume"
 	client := retryablehttp.NewClient()
 	client.Logger = nil
 	client.RetryWaitMin = 100 * time.Millisecond
@@ -86,7 +107,6 @@ func (c *ResumeCommand) Resume(ctx context.Context) (*api.Response, *api.Error, 
 	if err != nil {
 		return nil, nil, err
 	}
-	req.Header.Set("content-type", "application/json")
 
 	if c.FlagOutputCurlString {
 		api.LastOutputStringError = &api.OutputStringError{Request: req}
@@ -98,14 +118,5 @@ func (c *ResumeCommand) Resume(ctx context.Context) (*api.Response, *api.Error, 
 		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("client do failed"))
 	}
 	apiResp := api.NewResponse(resp)
-
-	res := &GetStatusResponse{}
-	apiErr, err := apiResp.Decode(&res)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error when sending request to the ferry daemon: %w", err)
-	}
-	if apiErr != nil {
-		return apiResp, apiErr, nil
-	}
 	return apiResp, nil, nil
 }
