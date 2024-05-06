@@ -90,8 +90,13 @@ func (c *PauseCommand) Run(args []string) int {
 		return base.CommandApiError
 	}
 
-	if resp.StatusCode() != 200 {
-		return base.CommandCliError
+	switch base.Format(c.UI) {
+	case "json":
+		if ok := c.PrintJsonItem(resp); !ok {
+			return base.CommandCliError
+		}
+	default:
+		c.UI.Output("Ferry has been successfully paused.")
 	}
 	return base.CommandSuccess
 }
@@ -118,5 +123,14 @@ func (c *PauseCommand) Pause(ctx context.Context) (*api.Response, *api.Error, er
 		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("client do failed"))
 	}
 	apiResp := api.NewResponse(resp)
+
+	apiErr, err := apiResp.Decode(nil)
+	if err != nil {
+		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("error decoding Resume response"))
+	}
+	if apiErr != nil {
+		return nil, apiErr, nil
+	}
+
 	return apiResp, nil, nil
 }
