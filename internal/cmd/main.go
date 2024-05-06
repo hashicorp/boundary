@@ -241,7 +241,7 @@ func RunCustom(args []string, runOpts *RunOptions) (exitCode int) {
 
 	initCommands(ui, serverCmdUi, runOpts)
 
-	hiddenCommands := []string{"version", "ferry", "ferry status"}
+	hiddenCommands := []string{"version", "ferry", "ferry status", "ferry pause", "ferry resume"}
 
 	cli := &cli.CLI{
 		Name:     "boundary",
