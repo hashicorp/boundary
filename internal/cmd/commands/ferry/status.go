@@ -139,7 +139,7 @@ func (c *StatusCommand) Status(ctx context.Context) (*api.Response, *GetStatusRe
 	res := &GetStatusResponse{}
 	apiErr, err := apiResp.Decode(&res)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("error when sending request to the ferry daemon: %w", err)
+		return nil, nil, nil, fmt.Errorf("Error when sending request to the ferry daemon: %w.", err)
 	}
 	if apiErr != nil {
 		return apiResp, nil, apiErr, nil
