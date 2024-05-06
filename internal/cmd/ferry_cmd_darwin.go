@@ -21,5 +21,15 @@ func init() {
 				Command: base.NewCommand(ui),
 			}, nil
 		}
+		Commands["ferry pause"] = func() (cli.Command, error) {
+			return &ferry.PauseCommand{
+				Command: base.NewCommand(ui),
+			}, nil
+		}
+		Commands["ferry resume"] = func() (cli.Command, error) {
+			return &ferry.ResumeCommand{
+				Command: base.NewCommand(ui),
+			}, nil
+		}
 	})
 }
