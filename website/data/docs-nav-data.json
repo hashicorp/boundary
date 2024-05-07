@@ -1373,6 +1373,10 @@
             "path": "commands/session-recordings"
           },
           {
+            "title": "delete",
+            "path": "commands/session-recordings/delete"
+          },
+          {
             "title": "download",
             "path": "commands/session-recordings/download"
           },
@@ -1383,6 +1387,10 @@
           {
             "title": "read",
             "path": "commands/session-recordings/read"
+          },
+          {
+            "title": "reapply-storage-policy",
+            "path": "commands/session-recordings/reapply-storage-policy"
           }
         ]
       },
