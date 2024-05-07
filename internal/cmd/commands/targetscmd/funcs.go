@@ -497,6 +497,10 @@ func (c *Command) printListTable(items []*targets.Target) string {
 	return base.WrapForHelpText(output)
 }
 
+func PrintItemTable(item *targets.Target) string {
+	return printItemTable(item, nil)
+}
+
 func printItemTable(item *targets.Target, resp *api.Response) string {
 	nonAttributeMap := map[string]any{}
 	if item.Id != "" {

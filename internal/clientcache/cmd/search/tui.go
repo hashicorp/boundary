@@ -12,13 +12,14 @@ import (
 
 	"github.com/hashicorp/boundary/api/targets"
 	daemoncmd "github.com/hashicorp/boundary/internal/clientcache/cmd/daemon"
+	"github.com/hashicorp/boundary/internal/cmd/commands/targetscmd"
 	"github.com/hashicorp/boundary/internal/gen/controller/api"
 
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/lipgloss"
 )
 
@@ -42,7 +43,7 @@ func (c *SearchCommand) tui(ctx context.Context) error {
 
 	searchFn := searchFn(strings.Join(tSlice[:2], "_"), dotPath)
 	m := initModel(searchFn)
-	p := tea.NewProgram(m, tea.WithAltScreen())
+	p := tea.NewProgram(m, tea.WithMouseCellMotion(), tea.WithAltScreen())
 	if _, err := p.Run(); err != nil {
 		return err
 	}
@@ -72,6 +73,13 @@ func initModel(searchFn func(input string) tea.Cmd) *model {
 }
 
 func initSearchInput() textarea.Model {
+	focusedBorderStyle := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color("238"))
+
+	blurredBorderStyle := lipgloss.NewStyle().
+		Border(lipgloss.HiddenBorder())
+
 	ta := textarea.New()
 	ta.Placeholder = "Type in your search..."
 	ta.Focus()
@@ -80,7 +88,8 @@ func initSearchInput() textarea.Model {
 	ta.CharLimit = 280
 	ta.SetWidth(30)
 	ta.SetHeight(1)
-	ta.FocusedStyle.CursorLine = lipgloss.NewStyle()
+	ta.FocusedStyle.Base = focusedBorderStyle
+	ta.BlurredStyle.Base = blurredBorderStyle
 	ta.ShowLineNumbers = false
 	return ta
 }
@@ -97,6 +106,24 @@ func initTargetTable() table.Model {
 		table.WithFocused(false),
 		table.WithHeight(20),
 		table.WithFocused(false),
+		table.WithKeyMap(table.KeyMap{
+			LineUp: key.NewBinding(
+				key.WithKeys("up"),
+				key.WithHelp("↑", "up"),
+			),
+			LineDown: key.NewBinding(
+				key.WithKeys("down"),
+				key.WithHelp("↓", "down"),
+			),
+			HalfPageUp: key.NewBinding(
+				key.WithKeys("pgup"),
+				key.WithHelp("pgup", "½ page up"),
+			),
+			HalfPageDown: key.NewBinding(
+				key.WithKeys("pgdown"),
+				key.WithHelp("pgdn", "½ page down"),
+			),
+		}),
 	)
 	s := table.DefaultStyles()
 	s.Header = s.Header.
@@ -104,44 +131,67 @@ func initTargetTable() table.Model {
 		BorderForeground(lipgloss.Color("240")).
 		BorderBottom(true).
 		Bold(false)
-	s.Selected = s.Selected.
-		Foreground(lipgloss.Color("229")).
-		Background(lipgloss.Color("57")).
-		Bold(false)
+	s.Selected = tableSelectionBlurStyle
 	tarTable.SetStyles(s)
 	return tarTable
 }
 
+var (
+	detailsFocusedStyle = lipgloss.NewStyle().
+				BorderStyle(lipgloss.RoundedBorder()).
+				BorderForeground(lipgloss.Color("62")).
+				PaddingRight(2)
+
+	detailsBlurStyle = lipgloss.NewStyle().
+				BorderStyle(lipgloss.RoundedBorder()).
+				BorderForeground(lipgloss.Color("#222222")).
+				PaddingRight(2)
+
+	tableSelectionFocusStyle = table.DefaultStyles().Selected.
+					Foreground(lipgloss.Color("229")).
+					Background(lipgloss.Color("57")).
+					Bold(false)
+
+	tableSelectionBlurStyle = table.DefaultStyles().Selected.
+				Foreground(lipgloss.Color("229")).
+				Background(lipgloss.Color("#222222")).
+				Bold(false)
+)
+
 const detailsWidth = 118
 
 func initDetailsView() viewport.Model {
-
 	vp := viewport.New(detailsWidth, 20)
-	vp.Style = lipgloss.NewStyle().
-		BorderStyle(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color("62")).
-		PaddingRight(2)
-
-	renderer, err := glamour.NewTermRenderer(
-		glamour.WithAutoStyle(),
-		glamour.WithWordWrap(detailsWidth),
-	)
-	if err != nil {
-		return vp
+	vp.Style = detailsBlurStyle
+	vp.MouseWheelEnabled = true
+	vp.KeyMap = viewport.KeyMap{
+		Up: key.NewBinding(
+			key.WithKeys("up"),
+			key.WithHelp("↑", "up"),
+		),
+		Down: key.NewBinding(
+			key.WithKeys("down"),
+			key.WithHelp("↓", "down"),
+		),
+		HalfPageUp: key.NewBinding(
+			key.WithKeys("pgup"),
+			key.WithHelp("pgup", "½ page up"),
+		),
+		HalfPageDown: key.NewBinding(
+			key.WithKeys("pgdown"),
+			key.WithHelp("pgdn", "½ page down"),
+		),
 	}
 
-	str, err := renderer.Render("")
-	if err != nil {
-		return vp
-	}
-
-	vp.SetContent(str)
+	vp.SetContent("")
 	return vp
 }
 
-const tuiSectionCount = 2
+const tuiSectionCount = 3
 
 type model struct {
+	log string
+
 	selectedTargetId      string
 	selectedConnectSubCmd string
 
@@ -149,8 +199,7 @@ type model struct {
 	searchInput textarea.Model
 
 	// Section 1
-	resources       []string
-	resourcesCursor int
+	resources []string
 
 	// Section 2
 	targetTable   table.Model
@@ -171,9 +220,8 @@ func (m *model) Init() tea.Cmd {
 
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var (
-		searchCmd  tea.Cmd
-		tableCmd   tea.Cmd
-		detailsCmd tea.Cmd
+		searchCmd tea.Cmd
+		tableCmd  tea.Cmd
 	)
 
 	switch msg := msg.(type) {
@@ -189,7 +237,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.updateSectionFocus(msg)
 		searchCmd = m.updateSearch(msg)
 		tableCmd = m.updateTableNavigation(msg)
-		detailsCmd = m.updateDetailsView(msg)
+		m.updateDetailsView()
 	case *resultsMsg:
 		m.targetResults = msg.targets
 		var rows []table.Row
@@ -204,11 +252,12 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case errMsg:
 		// TODO: something
 	}
+	detailsCmd := m.updateDetailsPaging(msg)
 
 	return m, tea.Batch(searchCmd, tableCmd, detailsCmd)
 }
 
-func (m *model) updateDetailsView(msg tea.Msg) tea.Cmd {
+func (m *model) updateDetailsView() tea.Cmd {
 	if !m.targetTable.Focused() || m.targetTable.SelectedRow() == nil {
 		return nil
 	}
@@ -217,32 +266,19 @@ func (m *model) updateDetailsView(msg tea.Msg) tea.Cmd {
 		return nil
 	}
 	tar := m.targetResults[idx]
-	const content = `
-	# ID %s (Type: %s)
-	**Name**:        %s
-	**Description**: %s
-	**Address**:     %s
-	**Created**:     %s
-	**Updated**:     %s
-	**Scope**:       %s
-	`
-
-	renderer, err := glamour.NewTermRenderer(
-		glamour.WithAutoStyle(),
-		glamour.WithWordWrap(detailsWidth),
-	)
-	if err != nil {
-		return nil
-	}
-
-	str, err := renderer.Render(fmt.Sprintf(content,
-		tar.Id, tar.Type, tar.Name, tar.Description, tar.Address, tar.CreatedTime, tar.UpdatedTime, tar.ScopeId))
-	if err != nil {
-		return nil
-	}
-
-	m.detailsView.SetContent(str)
+	m.detailsView.SetContent(targetscmd.PrintItemTable(tar))
 	return nil
+}
+
+func (m *model) updateDetailsPaging(msg tea.Msg) tea.Cmd {
+	if m.targetTable.Focused() || m.searchInput.Focused() {
+		return nil
+	}
+
+	// The details is selected! Allow scrolling.
+	var cmd tea.Cmd
+	m.detailsView, cmd = m.detailsView.Update(msg)
+	return cmd
 }
 
 func (m *model) updateSearch(msg tea.Msg) tea.Cmd {
@@ -252,7 +288,7 @@ func (m *model) updateSearch(msg tea.Msg) tea.Cmd {
 	var inputCmd tea.Cmd
 	m.searchInput, inputCmd = m.searchInput.Update(msg)
 	searchCmd := m.searchFn(m.searchInput.Value())
-	return tea.Sequence(inputCmd, searchCmd)
+	return tea.Batch(inputCmd, searchCmd)
 }
 
 func (m *model) updateExecDetection(msg tea.Msg) tea.Cmd {
@@ -286,11 +322,6 @@ func (m *model) updateExecDetection(msg tea.Msg) tea.Cmd {
 			m.selectedTargetId = targetId
 			m.selectedConnectSubCmd = "rdp"
 			return tea.Quit
-		case "k":
-			targetId := m.targetTable.SelectedRow()[0]
-			m.selectedTargetId = targetId
-			m.selectedConnectSubCmd = "kube"
-			return tea.Quit
 		}
 	}
 	return nil
@@ -308,14 +339,27 @@ func (m *model) updateTableNavigation(msg tea.Msg) tea.Cmd {
 func (m *model) updateSectionFocus(msg tea.Msg) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		if msg.Type != tea.KeyTab {
+		switch msg.Type {
+		case tea.KeyTab:
+			m.sectionSelected = (m.sectionSelected + 1) % tuiSectionCount
+		case tea.KeyShiftTab:
+			m.sectionSelected = (m.sectionSelected + (tuiSectionCount - 1)) % tuiSectionCount
+		default:
 			return
 		}
-		m.sectionSelected = (m.sectionSelected + 1) % tuiSectionCount
 	default:
 		return
 	}
 
+	tableStyle := table.DefaultStyles()
+	tableStyle.Header = tableStyle.Header.
+		BorderStyle(lipgloss.NormalBorder()).
+		BorderForeground(lipgloss.Color("240")).
+		BorderBottom(true).
+		Bold(false)
+	tableStyle.Selected = tableSelectionBlurStyle
+
+	detailsStyle := detailsBlurStyle
 	m.targetTable.Blur()
 	m.searchInput.Blur()
 	switch m.sectionSelected {
@@ -323,7 +367,12 @@ func (m *model) updateSectionFocus(msg tea.Msg) {
 		m.searchInput.Focus()
 	case 1:
 		m.targetTable.Focus()
+		tableStyle.Selected = tableSelectionFocusStyle
+	case 2:
+		detailsStyle = detailsFocusedStyle
 	}
+	m.detailsView.Style = detailsStyle
+	m.targetTable.SetStyles(tableStyle)
 }
 
 func (m *model) View() string {
@@ -333,19 +382,26 @@ func (m *model) View() string {
 	if m.apiErr != nil {
 		s += fmt.Sprintf("Error: %s\n", m.apiErr.Message)
 	}
+	if m.err != nil {
+		s += fmt.Sprintf("Error: %s\n", m.err)
+	}
+	if m.log != "" {
+		s += fmt.Sprintf("Log: %s\n", m.err)
+	}
+	s += "\n"
 	s += m.targetTable.View()
 	s += "\n"
 
 	// The footer
 	if m.targetTable.Focused() && m.targetTable.SelectedRow() != nil {
 		targetId := m.targetTable.SelectedRow()[0]
-		s += fmt.Sprintf("Press ENTER to connect to %q. 's' with ssh, 'p' with postgres, 'h' with http, 'r' with rdp, 'k' with kube\n", targetId)
+		s += fmt.Sprintf("Press ENTER to connect to %q. 's' with ssh, 'p' with postgres, 'h' with http, 'r' with rdp\n", targetId)
 	} else {
 		s += "\n"
 	}
 	s += m.detailsView.View()
 	s += "\n"
-	s += "\nPress Ctrl+C or ESC to quit. Press TAB to switch between search and results.\n"
+	s += "\nPress Ctrl+C or ESC to quit. Press TAB/Shift+TAB to switch between search and results.\n"
 
 	// Send the UI for rendering
 	return s
@@ -408,13 +464,4 @@ func connectFn(tid, subCmd string) error {
 	c.Stdout = os.Stdout
 	c.Stdin = os.Stdin
 	return c.Run()
-}
-
-type execFinishedMsg struct{ err error }
-
-func openEditor() tea.Cmd {
-	c := exec.Command("uname") //nolint:gosec
-	return tea.ExecProcess(c, func(err error) tea.Msg {
-		return execFinishedMsg{err}
-	})
 }
