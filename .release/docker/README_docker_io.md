@@ -38,8 +38,8 @@ The postgres URL setting is defined with `env://BOUNDARY_POSTGRES_URL` so it can
 
 ```bash
 docker run \
-    --network host
-    -e 'BOUNDARY_POSTGRES_URL=postgresql://postgres:postgres@0.0.0.0:5432/postgres?sslmode=disable'
+    --network host \
+    -e 'BOUNDARY_POSTGRES_URL=postgresql://postgres:postgres@0.0.0.0:5432/postgres?sslmode=disable' \
     hashicorp/boundary
 ```
 
