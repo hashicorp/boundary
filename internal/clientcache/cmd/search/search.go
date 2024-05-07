@@ -43,6 +43,7 @@ type SearchCommand struct {
 	flagQuery        string
 	flagResource     string
 	flagForceRefresh bool
+	flagTui          bool
 }
 
 func (c *SearchCommand) Synopsis() string {
@@ -96,6 +97,12 @@ func (c *SearchCommand) Flags() *base.FlagSets {
 	})
 
 	f = set.NewFlagSet("Command Options")
+
+	f.BoolVar(&base.BoolVar{
+		Name:   "tui",
+		Target: &c.flagTui,
+		Usage:  `If set opens the search functionality in a TUI.`,
+	})
 	f.StringVar(&base.StringVar{
 		Name:   "query",
 		Target: &c.flagQuery,
@@ -140,12 +147,22 @@ func (c *SearchCommand) Run(args []string) int {
 
 	switch {
 	case slices.Contains(supportedResourceTypes, c.flagResource):
+	case c.flagResource == "" && c.flagTui:
+		// Let the TUI handle collection of the resource id
 	case c.flagResource == "":
 		c.PrintCliError(stderrors.New("Resource is required but not passed in via -resource"))
 		return base.CommandUserError
 	default:
 		c.PrintCliError(stderrors.New("The value passed in with -resource is not currently supported in search"))
 		return base.CommandUserError
+	}
+
+	if c.flagResource == "" && c.flagTui {
+		if err := c.tui(ctx); err != nil {
+			c.PrintCliError(err)
+			return base.CommandUserError
+		}
+		return base.CommandSuccess
 	}
 
 	resp, result, apiErr, err := c.Search(ctx)
