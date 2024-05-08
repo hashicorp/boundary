@@ -193,9 +193,23 @@ And optionally, a KMS stanza for configuration encryption purpose:
 # Configuration encryption block: decrypts sensitive values in the
 # configuration file. See `boundary config [encrypt|decrypt] -h`.
 kms "aead" {
-  purpose   = "config"`
+  purpose = "config"`
   aead_type = "aes-gcm"
-  key       = "7xtkEoS5EXPbgynwd+dDLHopaCqK8cq0Rpep4eooaTs="
+  key = "7xtkEoS5EXPbgynwd+dDLHopaCqK8cq0Rpep4eooaTs="
+}
+```
+
+And optionally, a KMS stanza to enable the session recording feature:
+
+```hcl
+# BSR encryption block: encrypts data and checks the integrity
+# of session recordings. If you do not add a BSR key to your
+# controller configuration, you cannot enable session recording.
+kms "aead" {
+  purpose = "bsr"`
+  aead_type = "aes-gcm"
+  key = "8Vg!XCbS.fzNKB@Uu.ccB588H#4iyHAd:TpgjuwC/;J;"
+  key_id = "session_recording"
 }
 ```
 
@@ -314,5 +328,15 @@ kms "aead" {
   aead_type = "aes-gcm"
   key = "8fZBjCUfN0TzjEGLQldGY4+iE9AkOvCfjh7+p0GtRBQ="
   key_id = "global_recovery"
+}
+
+# BSR encryption block: encrypts data and checks the integrity
+# of session recordings. If you do not add a BSR key to your
+# controller configuration, you cannot enable session recording.
+kms "aead" {
+  purpose = "bsr"`
+  aead_type = "aes-gcm"
+  key = "8Vg!XCbS.fzNKB@Uu.ccB588H#4iyHAd:TpgjuwC/;J;"
+  key_id = "session_recording"
 }
 ```
