@@ -6,8 +6,15 @@ package main
 import (
 	"fmt"
 	"os"
+	"slices"
 	"sort"
 	"strings"
+
+	// Import the ratelimiter logic for the side effect of getting all service
+	// handlers imported and their resources and actions registered.
+	_ "github.com/hashicorp/boundary/internal/ratelimit"
+	"github.com/hashicorp/boundary/internal/types/action"
+	"github.com/hashicorp/boundary/internal/types/resource"
 )
 
 const permsFile = "website/content/docs/concepts/security/permissions/resource-table.mdx"
@@ -49,24 +56,119 @@ var page = &Page{
 }
 
 func main() {
-	page.Resources = append(page.Resources,
-		account,
-		authMethod,
-		authToken,
-		group,
-		host,
-		hostCatalog,
-		hostSet,
-		managedGroup,
-		role,
-		scope,
-		session,
-		sessionRecording,
-		storageBucket,
-		target,
-		user,
-		worker,
-	)
+	var orderedResources []resource.Type
+	for _, res := range resource.Map {
+		orderedResources = append(orderedResources, res)
+	}
+	slices.SortFunc(orderedResources, func(a, b resource.Type) int {
+		return strings.Compare(a.String(), b.String())
+	})
+
+	for _, res := range orderedResources {
+		switch res {
+		case resource.Unknown, resource.All, resource.Controller:
+			continue
+		}
+		info := resources[res]
+
+		name := strings.Replace(res.String(), "-", " ", 1)
+		singularName := name
+		switch []rune(strings.ToLower(singularName))[0] {
+		case 'a', 'e', 'i', 'o', 'u':
+			singularName = "an " + singularName
+		default:
+			singularName = "a " + singularName
+		}
+
+		var pin string
+		if parent := resource.Parent(res); parent != res {
+			pin = parent.String()
+		}
+		collectionEndpoints := &Endpoint{
+			Path: fmt.Sprintf("/%s", res.PluralString()),
+			Params: map[string]string{
+				"Type": res.String(),
+			},
+		}
+		colActions, err := action.CollectionActionSetForResource(res)
+		if err != nil {
+			panic("This shouldn't happen!")
+		}
+		for a := range colActions {
+			examples := []string{
+				fmt.Sprintf("type=<type>;actions=%s", a.String()),
+			}
+			collectionEndpoints.Actions = append(collectionEndpoints.Actions, &Action{
+				Name:        a.String(),
+				Examples:    examples,
+				Description: info.description(a, singularName),
+			})
+		}
+		slices.SortFunc(collectionEndpoints.Actions, func(a, b *Action) int {
+			return strings.Compare(a.Name, b.Name)
+		})
+
+		idEndpoints := &Endpoint{
+			Path: fmt.Sprintf("/%s/<id>", res.PluralString()),
+			Params: map[string]string{
+				"ID":   "<id>",
+				"Type": res.String(),
+			},
+		}
+		if pin != "" {
+			idEndpoints.Params["Pin"] = fmt.Sprintf("<%s-id>", pin)
+		}
+		idActionSet, err := action.IdActionSetForResource(res)
+		if err != nil {
+			panic("This shouldn't happen!")
+		}
+		var idActions []action.Type
+		for a := range idActionSet {
+			idActions = append(idActions, a)
+		}
+
+		// Always put the first actions as Read, Update, Delete in that order
+		weighted := map[action.Type]int{
+			action.Read:   100,
+			action.Update: 90,
+			action.Delete: 80,
+		}
+		slices.SortFunc(idActions, func(a, b action.Type) int {
+			aWeight := weighted[a]
+			bWeight := weighted[b]
+			return strings.Compare(a.String(), b.String()) - aWeight + bWeight
+		})
+
+		fmt.Printf("======= Resource ======: %s\n", res.String())
+		for _, a := range idActions {
+			fmt.Printf("Action: %s\n", a.String())
+			if a == action.NoOp {
+				continue
+			}
+			examples := []string{
+				fmt.Sprintf("ids=<id>;actions=%s", a.String()),
+			}
+			if pin != "" {
+				examples = append(examples, fmt.Sprintf("ids=<pin>;type=<type>;actions=%s", a.String()))
+			}
+			idEndpoints.Actions = append(idEndpoints.Actions, &Action{
+				Name:        a.String(),
+				Examples:    examples,
+				Description: info.description(a, singularName),
+			})
+		}
+
+		pr := &Resource{
+			Type:   name,
+			Scopes: info.scopes,
+			Endpoints: []*Endpoint{
+				collectionEndpoints,
+				idEndpoints,
+			},
+		}
+
+		page.Resources = append(page.Resources, pr)
+	}
 
 	fileContents, err := os.ReadFile(permsFile)
 	if err != nil {
@@ -217,10 +319,6 @@ func escape(s string) string {
 	return strings.Replace(ret, ">", "&gt;", -1)
 }
 
-func indent(num int) string {
-	return strings.Repeat(" ", num)
-}
-
 func sortedKeys(in map[string]string) []string {
 	out := make([]string, 0, len(in))
 	for k := range in {
@@ -230,725 +328,139 @@ func sortedKeys(in map[string]string) []string {
 	return out
 }
 
-func lActions(typ string) []*Action {
-	listVersion := strings.TrimPrefix(strings.TrimPrefix(typ, "an "), "a ")
-	return []*Action{
-		{
-			Name:        "list",
-			Description: fmt.Sprintf("List %ss", listVersion),
-			Examples: []string{
-				"type=<type>;actions=list",
-			},
-		},
+type info struct {
+	scopes             []string
+	actionDescriptions map[action.Type]string
+}
+
+func (i info) description(t action.Type, singleResourceName string) string {
+	if s, ok := i.actionDescriptions[t]; ok {
+		return s
 	}
-}
-
-func clActions(typ string) []*Action {
-	return append([]*Action{
-		{
-			Name:        "create",
-			Description: fmt.Sprintf("Create %s", typ),
-			Examples: []string{
-				"type=<type>;actions=create",
-			},
-		},
-	}, lActions(typ)...)
-}
-
-func rudActions(typ string, pin bool) []*Action {
-	ret := []*Action{
-		{
-			Name:        "read",
-			Description: fmt.Sprintf("Read %s", typ),
-			Examples: []string{
-				"ids=<id>;actions=read",
-			},
-		},
-		{
-			Name:        "update",
-			Description: fmt.Sprintf("Update %s", typ),
-			Examples: []string{
-				"ids=<id>;actions=update",
-			},
-		},
-		{
-			Name:        "delete",
-			Description: fmt.Sprintf("Delete %s", typ),
-			Examples: []string{
-				"ids=<id>;actions=delete",
-			},
-		},
+	switch t {
+	case action.List:
+		singleResourceName := strings.TrimPrefix(strings.TrimPrefix(singleResourceName, "an "), "a ")
+		return fmt.Sprintf("List %ss", singleResourceName)
+	case action.Read:
+		return fmt.Sprintf("Read %s", singleResourceName)
+	case action.Update:
+		return fmt.Sprintf("Update %s", singleResourceName)
+	case action.Delete:
+		return fmt.Sprintf("Delete %s", singleResourceName)
+	case action.Create:
+		return fmt.Sprintf("Create %s", singleResourceName)
 	}
-	if pin {
-		ret[0].Examples = append(ret[0].Examples, "ids=<pin>;type=<type>;actions=read")
-		ret[1].Examples = append(ret[1].Examples, "ids=<pin>;type=<type>;actions=update")
-		ret[2].Examples = append(ret[2].Examples, "ids=<pin>;type=<type>;actions=delete")
+	// TODO: Add something here which follows the template
+	// "Add Xs to an R"
+	// "Set the full set of Xs on an R"
+	// "Remove Xs from an R"
+	switch {
+	case strings.HasPrefix(t.String(), "add-"):
+	case strings.HasPrefix(t.String(), "set-"):
+	case strings.HasPrefix(t.String(), "remove-"):
 	}
-
-	return ret
+	return ""
 }
 
-var account = &Resource{
-	Type:   "Account",
-	Scopes: iamScopes,
-	Endpoints: []*Endpoint{
-		{
-			Path: "/accounts",
-			Params: map[string]string{
-				"Type": "account",
-			},
-			Actions: clActions("an account"),
-		},
-		{
-			Path: "/accounts/<id>",
-			Params: map[string]string{
-				"ID":   "<id>",
-				"Type": "account",
-				"Pin":  "<auth-method-id>",
-			},
-			Actions: append(
-				rudActions("an account", true),
-				&Action{
-					Name:        "set-password",
-					Description: "Set a password on an account, without requiring the current password",
-					Examples: []string{
-						"ids=<id>;actions=set-password",
-						"ids=<pin>;type=<type>;actions=set-password",
-					},
-				},
-				&Action{
-					Name:        "change-password",
-					Description: "Change a password on an account given the current password",
-					Examples: []string{
-						"ids=<id>;actions=change-password",
-						"ids=<pin>;type=<type>;actions=change-password",
-					},
-				},
-			),
+var resources = map[resource.Type]info{
+	resource.Account: {
+		scopes: iamScopes,
+		actionDescriptions: map[action.Type]string{
+			action.SetPassword:    "Set a password on an account, without requiring the current password",
+			action.ChangePassword: "Change a password on an account given the current password",
 		},
 	},
-}
-
-var authMethod = &Resource{
-	Type:   "Auth Method",
-	Scopes: iamScopes,
-	Endpoints: []*Endpoint{
-		{
-			Path: "/auth-methods",
-			Params: map[string]string{
-				"Type": "auth-method",
-			},
-			Actions: clActions("an auth method"),
-		},
-		{
-			Path: "/auth-methods/<id>",
-			Params: map[string]string{
-				"ID":   "<id>",
-				"Type": "auth-method",
-			},
-			Actions: append(
-				rudActions("an auth method", false),
-				&Action{
-					Name:        "authenticate",
-					Description: "Authenticate to an auth method",
-					Examples: []string{
-						"ids=<id>;actions=authenticate",
-					},
-				},
-			),
+	resource.AuthMethod: {
+		scopes: iamScopes,
+		actionDescriptions: map[action.Type]string{
+			action.Authenticate: "Authenticate to an auth method",
 		},
 	},
-}
-
-var authToken = &Resource{
-	Type:   "Auth Token",
-	Scopes: iamScopes,
-	Endpoints: []*Endpoint{
-		{
-			Path: "/auth-tokens",
-			Params: map[string]string{
-				"Type": "auth-token",
-			},
-			Actions: []*Action{
-				{
-					Name:        "list",
-					Description: "List auth tokens",
-					Examples: []string{
-						"type=<type>;actions=list",
-					},
-				},
-			},
-		},
-		{
-			Path: "/auth-tokens/<id>",
-			Params: map[string]string{
-				"ID":   "<id>",
-				"Type": "auth-token",
-			},
-			Actions: []*Action{
-				{
-					Name:        "read",
-					Description: "Read an auth token",
-					Examples: []string{
-						"ids=<id>;actions=read",
-					},
-				},
-				{
-					Name:        "delete",
-					Description: "Delete an auth token",
-					Examples: []string{
-						"ids=<id>;actions=delete",
-					},
-				},
-			},
+	resource.AuthToken: {
+		scopes: iamScopes,
+	},
+	resource.Group: {
+		scopes: append(iamScopes, infraScope...),
+		actionDescriptions: map[action.Type]string{
+			action.AddMembers:    "Add members to a group",
+			action.SetMembers:    "Set the full set of members on a group",
+			action.RemoveMembers: "Remove members from a group",
 		},
 	},
-}
-
-var group = &Resource{
-	Type:   "Group",
-	Scopes: append(iamScopes, infraScope...),
-	Endpoints: []*Endpoint{
-		{
-			Path: "/groups",
-			Params: map[string]string{
-				"Type": "group",
-			},
-			Actions: clActions("a group"),
-		},
-		{
-			Path: "/groups/<id>",
-			Params: map[string]string{
-				"ID":   "<id>",
-				"Type": "group",
-			},
-			Actions: append(
-				rudActions("a group", false),
-				&Action{
-					Name:        "add-members",
-					Description: "Add members to a group",
-					Examples: []string{
-						"ids=<id>;actions=add-members",
-					},
-				},
-				&Action{
-					Name:        "set-members",
-					Description: "Set the full set of members on a group",
-					Examples: []string{
-						"ids=<id>;actions=set-members",
-					},
-				},
-				&Action{
-					Name:        "remove-members",
-					Description: "Remove members from a group",
-					Examples: []string{
-						"ids=<id>;actions=remove-members",
-					},
-				},
-			),
+	resource.Host: {
+		scopes: infraScope,
+	},
+	resource.HostCatalog: {
+		scopes: infraScope,
+	},
+	resource.HostSet: {
+		scopes: infraScope,
+		actionDescriptions: map[action.Type]string{
+			action.AddHosts:    "Add hosts to a host-set",
+			action.SetHosts:    "Set the full set of hosts on a host set",
+			action.RemoveHosts: "Remove hosts from a host set",
 		},
 	},
-}
-
-var host = &Resource{
-	Type:   "Host",
-	Scopes: infraScope,
-	Endpoints: []*Endpoint{
-		{
-			Path: "/hosts",
-			Params: map[string]string{
-				"Type": "host",
-			},
-			Actions: clActions("a host"),
-		},
-		{
-			Path: "/hosts/<id>",
-			Params: map[string]string{
-				"ID":   "<id>",
-				"Type": "host",
-				"Pin":  "<host-catalog-id>",
-			},
-			Actions: rudActions("a host", true),
+	resource.ManagedGroup: {
+		scopes: iamScopes,
+	},
+	resource.Role: {
+		scopes: append(iamScopes, infraScope...),
+		actionDescriptions: map[action.Type]string{
+			action.AddPrincipals:    "Add principals to a role",
+			action.SetPrincipals:    "Set the full set of principals on a role",
+			action.RemovePrincipals: "Remove principals from a role",
+			action.AddGrants:        "Add grants to a role",
+			action.SetGrants:        "Set the full set of grants on a role",
+			action.RemoveGrants:     "Remove grants from a role",
 		},
 	},
-}
-
-var hostCatalog = &Resource{
-	Type:   "Host Catalog",
-	Scopes: infraScope,
-	Endpoints: []*Endpoint{
-		{
-			Path: "/host-catalogs",
-			Params: map[string]string{
-				"Type": "host-catalog",
-			},
-			Actions: clActions("a host catalog"),
-		},
-		{
-			Path: "/host-catalogs/<id>",
-			Params: map[string]string{
-				"ID":   "<id>",
-				"Type": "host-catalog",
-			},
-			Actions: rudActions("a host catalog", false),
+	resource.Scope: {
+		scopes: iamScopes,
+	},
+	resource.Session: {
+		scopes: infraScope,
+		actionDescriptions: map[action.Type]string{
+			action.Cancel:     "Cancel a session",
+			action.CancelSelf: "Cancel a session, which must be associated with the calling user",
+			action.ReadSelf:   "Read a session, which must be associated with the calling user",
 		},
 	},
-}
-
-var hostSet = &Resource{
-	Type:   "Host Set",
-	Scopes: infraScope,
-	Endpoints: []*Endpoint{
-		{
-			Path: "/host-sets",
-			Params: map[string]string{
-				"Type": "host-set",
-			},
-			Actions: clActions("a host set"),
-		},
-		{
-			Path: "/host-sets/<id>",
-			Params: map[string]string{
-				"ID":   "<id>",
-				"Type": "host-set",
-				"Pin":  "<host-catalog-id>",
-			},
-			Actions: append(
-				rudActions("a host set", true),
-				&Action{
-					Name:        "add-hosts",
-					Description: "Add hosts to a host-set",
-					Examples: []string{
-						"ids=<id>;actions=add-hosts",
-						"ids=<pin>;type=<type>;actions=add-hosts",
-					},
-				},
-				&Action{
-					Name:        "set-hosts",
-					Description: "Set the full set of hosts on a host set",
-					Examples: []string{
-						"ids=<id>;actions=set-hosts",
-						"ids=<pin>;type=<type>;actions=set-hosts",
-					},
-				},
-				&Action{
-					Name:        "remove-hosts",
-					Description: "Remove hosts from a host set",
-					Examples: []string{
-						"ids=<id>;actions=remove-hosts",
-						"ids=<pin>;type=<type>;actions=remove-hosts",
-					},
-				},
-			),
+	resource.SessionRecording: {
+		scopes: iamScopes,
+		actionDescriptions: map[action.Type]string{
+			action.Download:             "Download a session recording",
+			action.ReApplyStoragePolicy: "Reapply the storage policy to a session recording",
 		},
 	},
-}
-
-var managedGroup = &Resource{
-	Type:   "Managed Group",
-	Scopes: iamScopes,
-	Endpoints: []*Endpoint{
-		{
-			Path: "/managed-groups",
-			Params: map[string]string{
-				"Type": "managed-group",
-			},
-			Actions: clActions("a managed group"),
-		},
-		{
-			Path: "/managed-groups/<id>",
-			Params: map[string]string{
-				"ID":   "<id>",
-				"Type": "managed-group",
-				"Pin":  "<auth-method-id>",
-			},
-			Actions: rudActions("a managed group", true),
+	resource.StorageBucket: {
+		scopes: iamScopes,
+	},
+	resource.Target: {
+		scopes: infraScope,
+		actionDescriptions: map[action.Type]string{
+			action.AddHostSources:          "Add host sources to a target",
+			action.SetHostSources:          "Set the full set of host sources on a target",
+			action.RemoveHostSources:       "Remove host sources from a target",
+			action.AddCredentialSources:    "Add credential sources to a target",
+			action.SetCredentialSources:    "Set the full set of credential sources on a target",
+			action.RemoveCredentialSources: "Remove credential sources from a target",
+			action.AuthorizeSession:        "Authorize a session via the target",
 		},
 	},
-}
-
-var role = &Resource{
-	Type:   "Role",
-	Scopes: append(iamScopes, infraScope...),
-	Endpoints: []*Endpoint{
-		{
-			Path: "/roles",
-			Params: map[string]string{
-				"Type": "role",
-			},
-			Actions: clActions("a role"),
-		},
-		{
-			Path: "/roles/<id>",
-			Params: map[string]string{
-				"ID":   "<id>",
-				"Type": "role",
-			},
-			Actions: append(
-				rudActions("a role", false),
-				&Action{
-					Name:        "add-principals",
-					Description: "Add principals to a role",
-					Examples: []string{
-						"ids=<id>;actions=add-principals",
-					},
-				},
-				&Action{
-					Name:        "set-principals",
-					Description: "Set the full set of principals on a role",
-					Examples: []string{
-						"ids=<id>;actions=set-principals",
-					},
-				},
-				&Action{
-					Name:        "remove-principals",
-					Description: "Remove principals from a role",
-					Examples: []string{
-						"ids=<id>;actions=remove-principals",
-					},
-				},
-				&Action{
-					Name:        "add-grants",
-					Description: "Add grants to a role",
-					Examples: []string{
-						"ids=<id>;actions=add-grants",
-					},
-				},
-				&Action{
-					Name:        "set-grants",
-					Description: "Set the full set of grants on a role",
-					Examples: []string{
-						"ids=<id>;actions=set-grants",
-					},
-				},
-				&Action{
-					Name:        "remove-grants",
-					Description: "Remove grants from a role",
-					Examples: []string{
-						"ids=<id>;actions=remove-grants",
-					},
-				},
-			),
+	resource.User: {
+		scopes: iamScopes,
+		actionDescriptions: map[action.Type]string{
+			action.AddAccounts:    "Add accounts to a user",
+			action.SetAccounts:    "Set the full set of accounts on a user",
+			action.RemoveAccounts: "Remove accounts from a user",
 		},
 	},
-}
-
-var scope = &Resource{
-	Type:   "Scope",
-	Scopes: iamScopes,
-	Endpoints: []*Endpoint{
-		{
-			Path: "/scopes",
-			Params: map[string]string{
-				"Type": "scope",
-			},
-			Actions: clActions("a scope"),
-		},
-		{
-			Path: "/scopes/<id>",
-			Params: map[string]string{
-				"ID":   "<id>",
-				"Type": "scope",
-			},
-			Actions: rudActions("a scope", false),
-		},
-	},
-}
-
-var session = &Resource{
-	Type:   "Session",
-	Scopes: infraScope,
-	Endpoints: []*Endpoint{
-		{
-			Path: "/sessions",
-			Params: map[string]string{
-				"Type": "session",
-			},
-			Actions: []*Action{
-				{
-					Name:        "list",
-					Description: "List sessions",
-					Examples: []string{
-						"type=<type>;actions=list",
-					},
-				},
-			},
-		},
-		{
-			Path: "/session/<id>",
-			Params: map[string]string{
-				"ID":   "<id>",
-				"Type": "session",
-			},
-			Actions: []*Action{
-				{
-					Name:        "read",
-					Description: "Read a session",
-					Examples: []string{
-						"ids=<id>;actions=read",
-					},
-				},
-				{
-					Name:        "cancel",
-					Description: "Cancel a session",
-					Examples: []string{
-						"ids=<id>;actions=cancel",
-					},
-				},
-				{
-					Name:        "read:self",
-					Description: "Read a session, which must be associated with the calling user",
-					Examples: []string{
-						"ids=*;type=session;actions=read:self",
-					},
-				},
-				{
-					Name:        "cancel:self",
-					Description: "Cancel a session, which must be associated with the calling user",
-					Examples: []string{
-						"ids=*;type=session;actions=cancel:self",
-					},
-				},
-			},
-		},
-	},
-}
-
-var sessionRecording = &Resource{
-	Type:   "Session Recording",
-	Scopes: iamScopes,
-	Endpoints: []*Endpoint{
-		{
-			Path: "/session-recordings",
-			Params: map[string]string{
-				"Type": "session-recording",
-			},
-			Actions: []*Action{
-				{
-					Name:        "list",
-					Description: "List session recordings",
-					Examples: []string{
-						"type=<type>;actions=list",
-					},
-				},
-			},
-		},
-		{
-			Path: "/session-recordings/<id>",
-			Params: map[string]string{
-				"ID":   "<id>",
-				"Type": "session-recording",
-			},
-			Actions: []*Action{
-				{
-					Name:        "read",
-					Description: "Read a session recording",
-					Examples: []string{
-						"ids=<id>;actions=read",
-					},
-				},
-				{
-					Name:        "download",
-					Description: "Download a session recording",
-					Examples: []string{
-						"ids=<id>;actions=download",
-					},
-				},
-				{
-					Name:        "reapply-storage-policy",
-					Description: "Reapply the storage policy to a session recording",
-					Examples: []string{
-						"ids=<id>;actions=reapply-storage-policy",
-					},
-				},
-				{
-					Name:        "delete",
-					Description: "Delete a session recording",
-					Examples: []string{
-						"ids=<id>;actions=delete",
-					},
-				},
-			},
-		},
-	},
-}
-
-var storageBucket = &Resource{
-	Type:   "Storage Bucket",
-	Scopes: iamScopes,
-	Endpoints: []*Endpoint{
-		{
-			Path: "/storage-buckets",
-			Params: map[string]string{
-				"Type": "storage-bucket",
-			},
-			Actions: clActions("a storage bucket"),
-		},
-		{
-			Path: "/storage-buckets/<id>",
-			Params: map[string]string{
-				"ID":   "<id>",
-				"Type": "storage-bucket",
-			},
-			Actions: rudActions("a storage bucket", false),
-		},
-	},
-}
-
-var target = &Resource{
-	Type:   "Target",
-	Scopes: infraScope,
-	Endpoints: []*Endpoint{
-		{
-			Path: "/targets",
-			Params: map[string]string{
-				"Type": "target",
-			},
-			Actions: clActions("a target"),
-		},
-		{
-			Path: "/targets/<id>",
-			Params: map[string]string{
-				"ID":   "<id>",
-				"Type": "target",
-			},
-			Actions: append(
-				rudActions("a target", false),
-				&Action{
-					Name:        "add-host-sources",
-					Description: "Add host sources to a target",
-					Examples: []string{
-						"ids=<id>;actions=add-host-sources",
-					},
-				},
-				&Action{
-					Name:        "set-host-sources",
-					Description: "Set the full set of host sources on a target",
-					Examples: []string{
-						"ids=<id>;actions=set-host-sources",
-					},
-				},
-				&Action{
-					Name:        "remove-host-sources",
-					Description: "Remove host sources from a target",
-					Examples: []string{
-						"ids=<id>;actions=remove-host-sources",
-					},
-				},
-				&Action{
-					Name:        "add-credential-sources",
-					Description: "Add credential sources to a target",
-					Examples: []string{
-						"ids=<id>;actions=add-credential-sources",
-					},
-				},
-				&Action{
-					Name:        "set-credential-sources",
-					Description: "Set the full set of credential sources on a target",
-					Examples: []string{
-						"ids=<id>;actions=set-credential-sources",
-					},
-				},
-				&Action{
-					Name:        "remove-credential-sources",
-					Description: "Remove credential sources from a target",
-					Examples: []string{
-						"ids=<id>;actions=remove-credential-sources",
-					},
-				},
-				&Action{
-					Name:        "authorize-session",
-					Description: "Authorize a session via the target",
-					Examples: []string{
-						"ids=<id>;actions=authorize-session",
-					},
-				},
-			),
-		},
-	},
-}
-
-var user = &Resource{
-	Type:   "User",
-	Scopes: iamScopes,
-	Endpoints: []*Endpoint{
-		{
-			Path: "/users",
-			Params: map[string]string{
-				"Type": "user",
-			},
-			Actions: clActions("a user"),
-		},
-		{
-			Path: "/users/<id>",
-			Params: map[string]string{
-				"ID":   "<id>",
-				"Type": "user",
-			},
-			Actions: append(
-				rudActions("a user", false),
-				&Action{
-					Name:        "add-accounts",
-					Description: "Add accounts to a user",
-					Examples: []string{
-						"ids=<id>;actions=add-accounts",
-					},
-				},
-				&Action{
-					Name:        "set-accounts",
-					Description: "Set the full set of accounts on a user",
-					Examples: []string{
-						"ids=<id>;actions=set-accounts",
-					},
-				},
-				&Action{
-					Name:        "remove-accounts",
-					Description: "Remove accounts from a user",
-					Examples: []string{
-						"ids=<id>;actions=remove-accounts",
-					},
-				},
-			),
-		},
-	},
-}
-
-var worker = &Resource{
-	Type:   "Worker",
-	Scopes: []string{"Global"},
-	Endpoints: []*Endpoint{
-		{
-			Path: "/workers",
-			Params: map[string]string{
-				"Type": "worker",
-			},
-			Actions: append(
-				lActions("a worker"),
-				&Action{
-					Name:        "create:controller-led",
-					Description: "Create a worker using the controller-led workflow",
-					Examples: []string{
-						"type=<type>;actions=create",
-						"type=<type>;actions=create:controller-led",
-					},
-				},
-				&Action{
-					Name:        "create:worker-led",
-					Description: "Create a worker using the worker-led workflow",
-					Examples: []string{
-						"type=<type>;actions=create",
-						"type=<type>;actions=create:worker-led",
-					},
-				},
-			),
-		},
-		{
-			Path: "/workers/<id>",
-			Params: map[string]string{
-				"ID":   "<id>",
-				"Type": "worker",
-			},
-			Actions: rudActions("a worker", false),
+	resource.Worker: {
+		scopes: []string{"Global"},
+		actionDescriptions: map[action.Type]string{
+			action.CreateControllerLed: "Create a worker using the controller-led workflow",
+			action.CreateWorkerLed:     "Create a worker using the worker-led workflow",
 		},
 	},
 }
