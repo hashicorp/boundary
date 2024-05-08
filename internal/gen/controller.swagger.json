@@ -75,6 +75,10 @@
       }
     },
     {
+      "name": "Help service",
+      "description": "Provides a way for the user to ask for help from the Boundary docs."
+    },
+    {
       "name": "Host catalog service",
       "description": "A host catalog serves as a central repository for managing and organizing the target hosts or resources that Boundary can access and control. The host catalog service provides endpoints for managing host catalogs in Boundary.",
       "externalDocs": {
@@ -1952,6 +1956,39 @@
         ],
         "tags": [
           "Group service"
+        ]
+      }
+    },
+    "/v1/help": {
+      "post": {
+        "summary": "Requests help from the configured help backend.",
+        "operationId": "HelpService_Help",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.HelpResponse"
+            }
+          },
+          "default": {
+            "description": "Returned when there is an error processing the request.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.Error"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.HelpRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Help service"
         ]
       }
     },
@@ -9339,6 +9376,22 @@
             "type": "string"
           },
           "title": ""
+        }
+      }
+    },
+    "controller.api.services.v1.HelpRequest": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string"
+        }
+      }
+    },
+    "controller.api.services.v1.HelpResponse": {
+      "type": "object",
+      "properties": {
+        "answer": {
+          "type": "string"
         }
       }
     },

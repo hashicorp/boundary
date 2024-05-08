@@ -1,0 +1,35 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
+syntax = "proto3";
+
+package controller.api.services.v1;
+
+import "google/api/annotations.proto";
+import "protoc-gen-openapiv2/options/annotations.proto";
+
+option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/services;services";
+
+service HelpService {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_tag) = {
+    name: "Help service"
+    description: "Provides a way for the user to ask for help from the Boundary docs."
+  };
+
+  // Help requests help from the configured help backend.
+  rpc Help(HelpRequest) returns (HelpResponse) {
+    option (google.api.http) = {
+      post: "/v1/help"
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Requests help from the configured help backend."};
+  }
+}
+
+message HelpRequest {
+  string query = 1;
+}
+
+message HelpResponse {
+  string answer = 1;
+}
