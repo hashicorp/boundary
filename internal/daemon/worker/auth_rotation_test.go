@@ -6,6 +6,7 @@ package worker_test
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -45,6 +46,7 @@ func TestRotationTicking(t *testing.T) {
 		Logger:                          logger.Named("controller"),
 		WorkerAuthCaCertificateLifetime: rotationPeriod,
 		WorkerAuthDebuggingEnabled:      workerAuthDebugEnabled,
+		EnableEventing:                  true,
 	})
 
 	// names should not be set when using pki workers
@@ -57,6 +59,10 @@ func TestRotationTicking(t *testing.T) {
 		Logger:                     logger.Named("worker"),
 		Config:                     wConf,
 		WorkerAuthDebuggingEnabled: workerAuthDebugEnabled,
+		EnableAuditEvents:          true,
+		EnableSysEvents:            true,
+		EnableObservationEvents:    true,
+		EnableErrorEvents:          true,
 	})
 
 	// Get a server repo and worker auth repo
@@ -68,6 +74,7 @@ func TestRotationTicking(t *testing.T) {
 	// Give time for the job to ensure that roots are created and offset us from
 	// the rotation period
 	time.Sleep(rotationPeriod / 2)
+	fmt.Printf("1\n")
 
 	// Verify that there are no nodes authorized yet
 	auths, err := workerAuthRepo.List(c.Context(), (*types.NodeInformation)(nil))
@@ -88,14 +95,27 @@ func TestRotationTicking(t *testing.T) {
 	}, server.WithFetchNodeCredentialsRequest(req))
 	require.NoError(err)
 
+	// there should be one auth node currently (no rotation has occurred yet)
+	auths, err = workerAuthRepo.List(c.Context(), (*types.NodeInformation)(nil))
+	require.NoError(err)
+	assert.Len(auths, 1)
+
 	// Wait for a short while; there will be an initial rotation of credentials
 	// after authentication
 	time.Sleep(rotationPeriod / 2)
 
 	// Verify we see authorized credentials now
-	auths, err = workerAuthRepo.List(c.Context(), (*types.NodeInformation)(nil))
-	require.NoError(err)
-	assert.Len(auths, 2)
+	for i := 0; i < 5; i++ {
+		auths, err = workerAuthRepo.List(c.Context(), (*types.NodeInformation)(nil))
+		require.NoError(err)
+		if len(auths) == 2 {
+			break
+		} else {
+			fmt.Printf("    ==> expected 2 nodes, but found %v: %v", len(auths), auths)
+		}
+		time.Sleep(rotationPeriod / 4)
+	}
+	require.Len(auths, 2, fmt.Sprintf("expected 2 nodes, but found %v: %v", len(auths), auths))
 	// Fetch creds and store current key
 	currNodeCreds, err := types.LoadNodeCredentials(
 		w.Context(),
@@ -129,7 +149,7 @@ func TestRotationTicking(t *testing.T) {
 		// Verify we see 2- after credentials have rotated, we should see current and previous
 		auths, err = workerAuthRepo.List(deadlineCtx, (*types.NodeInformation)(nil))
 		require.NoError(err)
-		assert.Len(auths, 2)
+		assert.Len(auths, 2, fmt.Sprintf("expected 2 nodes, but found %v: %v", len(auths), auths))
 
 		// Fetch creds and compare current key
 		currNodeCreds, err := types.LoadNodeCredentials(

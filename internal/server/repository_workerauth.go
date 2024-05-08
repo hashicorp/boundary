@@ -9,6 +9,7 @@ import (
 	"database/sql"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/fatih/structs"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -931,6 +932,11 @@ func (r *WorkerAuthRepositoryStorage) listNodeInformation(ctx context.Context) (
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
+	var auths []string
+	for _, i := range nodeAuths {
+		auths = append(auths, fmt.Sprintf("{%v}", *i))
+	}
+	fmt.Printf("==> nodeAuths: [%s]\n", strings.Join(auths, ", "))
 
 	var nodeIds []string
 	for _, auth := range nodeAuths {
