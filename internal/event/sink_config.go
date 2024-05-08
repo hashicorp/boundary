@@ -24,6 +24,7 @@ type SinkConfig struct {
 	FileConfig     *FileSinkTypeConfig   `hcl:"file"`             // FileConfig defines parameters for a file output.
 	WriterConfig   *WriterSinkTypeConfig `hcl:"-"`                // WriterConfig defines parameters for an io.Writer output. This is not available via HCL.
 	AuditConfig    *AuditConfig          `hcl:"audit_config"`     // AuditConfig defines optional parameters for audit events (if EventTypes contains audit)
+	KafkaConfig    *KafkaSinkConfig      `hcl:"kafka_config"`     // KafkaConfig defines parameters for a Kafka-based output.
 }
 
 func (sc *SinkConfig) Validate() error {
@@ -43,6 +44,9 @@ func (sc *SinkConfig) Validate() error {
 		foundSinkTypeConfigs++
 	}
 	if sc.WriterConfig != nil {
+		foundSinkTypeConfigs++
+	}
+	if sc.KafkaConfig != nil {
 		foundSinkTypeConfigs++
 	}
 	if foundSinkTypeConfigs > 1 {
@@ -71,6 +75,16 @@ func (sc *SinkConfig) Validate() error {
 		}
 		if sc.WriterConfig.Writer == nil {
 			return fmt.Errorf("%s: missing writer: %w", op, ErrInvalidParameter)
+		}
+	case KafkaSink:
+		if sc.KafkaConfig == nil {
+			return fmt.Errorf("%s: missing kafka config: %w", op, ErrInvalidParameter)
+		}
+		if len(sc.KafkaConfig.Brokers) == 0 {
+			return fmt.Errorf("%s: missing kafka brokers: %w", op, ErrInvalidParameter)
+		}
+		if len(sc.KafkaConfig.Topic) == 0 {
+			return fmt.Errorf("%s: missing kafka topic: %w", op, ErrInvalidParameter)
 		}
 	}
 	if sc.Name == "" {
@@ -119,6 +133,11 @@ type FileSinkTypeConfig struct {
 // WriterSinkTypeConfig contains configuration structures for writer sink types
 type WriterSinkTypeConfig struct {
 	Writer io.Writer `hcl:"-" mapstructure:"-"` // The writer to write to
+}
+
+type KafkaSinkConfig struct {
+	Brokers []string `hcl:"brokers" mapstructure:"brokers"`
+	Topic   string   `hcl:"topic" mapstructure:"topic"`
 }
 
 // FilterType defines a type for filters (allow or deny)
