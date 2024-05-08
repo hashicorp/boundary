@@ -60,7 +60,7 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 		})
 	case "add-worker-tags":
 		helpStr = base.WrapForHelpText([]string{
-			"Usage: boundary workers add-worker-tags [sub command] [args]",
+			"Usage: boundary workers add-worker-tags [options] [args]",
 			"",
 			"  This command allows adding api tags to worker resources. Example:",
 			"",
@@ -72,7 +72,7 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 		})
 	case "set-worker-tags":
 		helpStr = base.WrapForHelpText([]string{
-			"Usage: boundary workers set-worker-tags [sub command] [args]",
+			"Usage: boundary workers set-worker-tags [options] [args]",
 			"",
 			"  This command allows setting api tags for worker resources. Example:",
 			"",
@@ -84,7 +84,7 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 		})
 	case "remove-worker-tags":
 		helpStr = base.WrapForHelpText([]string{
-			"Usage: boundary workers remove-worker-tags [sub command] [args]",
+			"Usage: boundary workers remove-worker-tags [options] [args]",
 			"",
 			"  This command allows removing api tags from worker resources. Example:",
 			"",
