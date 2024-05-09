@@ -295,33 +295,46 @@ func (m *model) updateExecDetection(msg tea.Msg) tea.Cmd {
 	if !m.targetTable.Focused() {
 		return nil
 	}
+	if m.targetTable.SelectedRow()[1] == "ssh" {
+		m.selectedConnectSubCmd = "ssh"
+	}
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		switch msg.String() {
-		case tea.KeyEnter.String():
-			targetId := m.targetTable.SelectedRow()[0]
-			m.selectedTargetId = targetId
-			return tea.Quit
-		case "s":
-			targetId := m.targetTable.SelectedRow()[0]
-			m.selectedTargetId = targetId
-			m.selectedConnectSubCmd = "ssh"
-			return tea.Quit
-		case "h":
-			targetId := m.targetTable.SelectedRow()[0]
-			m.selectedTargetId = targetId
-			m.selectedConnectSubCmd = "http"
-			return tea.Quit
-		case "p":
-			targetId := m.targetTable.SelectedRow()[0]
-			m.selectedTargetId = targetId
-			m.selectedConnectSubCmd = "postgres"
-			return tea.Quit
-		case "r":
-			targetId := m.targetTable.SelectedRow()[0]
-			m.selectedTargetId = targetId
-			m.selectedConnectSubCmd = "rdp"
-			return tea.Quit
+		if m.targetTable.SelectedRow()[1] == "ssh" {
+			switch msg.String() {
+			case tea.KeyEnter.String(), "s":
+				targetId := m.targetTable.SelectedRow()[0]
+				m.selectedTargetId = targetId
+				m.selectedConnectSubCmd = "ssh"
+				return tea.Quit
+			}
+		} else {
+			switch msg.String() {
+			case tea.KeyEnter.String():
+				targetId := m.targetTable.SelectedRow()[0]
+				m.selectedTargetId = targetId
+				return tea.Quit
+			case "s":
+				targetId := m.targetTable.SelectedRow()[0]
+				m.selectedTargetId = targetId
+				m.selectedConnectSubCmd = "ssh"
+				return tea.Quit
+			case "h":
+				targetId := m.targetTable.SelectedRow()[0]
+				m.selectedTargetId = targetId
+				m.selectedConnectSubCmd = "http"
+				return tea.Quit
+			case "p":
+				targetId := m.targetTable.SelectedRow()[0]
+				m.selectedTargetId = targetId
+				m.selectedConnectSubCmd = "postgres"
+				return tea.Quit
+			case "r":
+				targetId := m.targetTable.SelectedRow()[0]
+				m.selectedTargetId = targetId
+				m.selectedConnectSubCmd = "rdp"
+				return tea.Quit
+			}
 		}
 	}
 	return nil
@@ -395,7 +408,12 @@ func (m *model) View() string {
 	// The footer
 	if m.targetTable.Focused() && m.targetTable.SelectedRow() != nil {
 		targetId := m.targetTable.SelectedRow()[0]
-		s += fmt.Sprintf("Press ENTER to connect to %q. 's' with ssh, 'p' with postgres, 'h' with http, 'r' with rdp\n", targetId)
+		switch m.targetTable.SelectedRow()[1] {
+		case "ssh":
+			s += fmt.Sprintf("Press ENTER or 's' to connect to %q.\n", targetId)
+		default:
+			s += fmt.Sprintf("Press ENTER to connect to %q. 's' with ssh, 'p' with postgres, 'h' with http, 'r' with rdp\n", targetId)
+		}
 	} else {
 		s += "\n"
 	}
