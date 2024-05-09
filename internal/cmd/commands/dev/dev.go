@@ -468,7 +468,7 @@ func (c *Command) Flags() *base.FlagSets {
 		Name:   "help-model-type",
 		Target: &c.flagHelpModelType,
 		EnvVar: "BOUNDARY_DEV_HELP_MODEL_TYPE",
-		Usage:  `If set, the type of help model to use. Valid values are "gemini".`,
+		Usage:  `If set, the type of help model to use. Valid values are "gemini", "openai".`,
 	})
 	f.StringVar(&base.StringVar{
 		Name:   "help-model-api-key",
