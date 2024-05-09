@@ -74,7 +74,9 @@ func main() {
 		name := strings.Replace(res.String(), "-", " ", 1)
 		singularName := name
 		switch []rune(strings.ToLower(singularName))[0] {
-		case 'a', 'e', 'i', 'o', 'u':
+		case 'a', 'e', 'i', 'o':
+			// 'u' is not included since our only u word is 'user' which
+			// should use an 'a'.
 			singularName = "an " + singularName
 		default:
 			singularName = "a " + singularName
@@ -95,8 +97,13 @@ func main() {
 			panic("This shouldn't happen!")
 		}
 		for a := range colActions {
+			actionName := a.String()
 			examples := []string{
-				fmt.Sprintf("type=<type>;actions=%s", a.String()),
+				fmt.Sprintf("type=<type>;actions=%s", actionName),
+			}
+			if strings.Contains(actionName, ":") {
+				parentActionName := strings.SplitN(actionName, ":", 1)[0]
+				examples = append([]string{fmt.Sprintf("type=<type>;actions=%s", parentActionName)}, examples...)
 			}
 			collectionEndpoints.Actions = append(collectionEndpoints.Actions, &Action{
 				Name:        a.String(),
@@ -139,9 +146,7 @@ func main() {
 			return strings.Compare(a.String(), b.String()) - aWeight + bWeight
 		})
 
-		fmt.Printf("======= Resource ======: %s\n", res.String())
 		for _, a := range idActions {
-			fmt.Printf("Action: %s\n", a.String())
 			if a == action.NoOp {
 				continue
 			}
@@ -158,13 +163,17 @@ func main() {
 			})
 		}
 
+		endpoints := make([]*Endpoint, 0, 2)
+		if len(collectionEndpoints.Actions) > 0 {
+			endpoints = append(endpoints, collectionEndpoints)
+		}
+		if len(idEndpoints.Actions) > 0 {
+			endpoints = append(endpoints, idEndpoints)
+		}
 		pr := &Resource{
-			Type:   name,
-			Scopes: info.scopes,
-			Endpoints: []*Endpoint{
-				collectionEndpoints,
-				idEndpoints,
-			},
+			Type:      name,
+			Scopes:    info.scopes,
+			Endpoints: endpoints,
 		}
 
 		page.Resources = append(page.Resources, pr)
@@ -243,11 +252,13 @@ func (r *Resource) Marshal() (ret []string) {
 	for _, s := range r.Scopes {
 		scopes = append(scopes, fmt.Sprintf("**%s**", s))
 	}
-	ret = append(ret, fmt.Sprintf(
-		"The **%s** resource type supports the following scopes: %s\n",
-		toSentenceCase(r.Type),
-		strings.TrimSpace(strings.Join(scopes, ", ")),
-	))
+	if len(scopes) > 0 {
+		ret = append(ret, fmt.Sprintf(
+			"The **%s** resource type supports the following scopes: %s\n",
+			toSentenceCase(r.Type),
+			strings.TrimSpace(strings.Join(scopes, ", ")),
+		))
+	}
 
 	// Table Header
 	ret = append(ret, fmt.Sprintf("| %s |", strings.Join(tableHeaders, " | ")))
@@ -350,14 +361,19 @@ func (i info) description(t action.Type, singleResourceName string) string {
 	case action.Create:
 		return fmt.Sprintf("Create %s", singleResourceName)
 	}
-	// TODO: Add something here which follows the template
-	// "Add Xs to an R"
-	// "Set the full set of Xs on an R"
-	// "Remove Xs from an R"
 	switch {
 	case strings.HasPrefix(t.String(), "add-"):
+		thing := strings.SplitN(t.String(), "-", 2)[1]
+		thing = strings.ReplaceAll(thing, "-", " ")
+		return fmt.Sprintf("Add %s to %s", thing, singleResourceName)
 	case strings.HasPrefix(t.String(), "set-"):
+		thing := strings.SplitN(t.String(), "-", 2)[1]
+		thing = strings.ReplaceAll(thing, "-", " ")
+		return fmt.Sprintf("Set the full set of %s on %s", thing, singleResourceName)
 	case strings.HasPrefix(t.String(), "remove-"):
+		thing := strings.SplitN(t.String(), "-", 2)[1]
+		thing = strings.ReplaceAll(thing, "-", " ")
+		return fmt.Sprintf("Remove %s from %s", thing, singleResourceName)
 	}
 	return ""
 }
@@ -370,6 +386,9 @@ var resources = map[resource.Type]info{
 			action.ChangePassword: "Change a password on an account given the current password",
 		},
 	},
+	resource.Alias: {
+		scopes: append(iamScopes, infraScope...),
+	},
 	resource.AuthMethod: {
 		scopes: iamScopes,
 		actionDescriptions: map[action.Type]string{
@@ -379,13 +398,17 @@ var resources = map[resource.Type]info{
 	resource.AuthToken: {
 		scopes: iamScopes,
 	},
+	resource.Credential: {
+		scopes: infraScope,
+	},
+	resource.CredentialLibrary: {
+		scopes: infraScope,
+	},
+	resource.CredentialStore: {
+		scopes: infraScope,
+	},
 	resource.Group: {
 		scopes: append(iamScopes, infraScope...),
-		actionDescriptions: map[action.Type]string{
-			action.AddMembers:    "Add members to a group",
-			action.SetMembers:    "Set the full set of members on a group",
-			action.RemoveMembers: "Remove members from a group",
-		},
 	},
 	resource.Host: {
 		scopes: infraScope,
@@ -395,25 +418,12 @@ var resources = map[resource.Type]info{
 	},
 	resource.HostSet: {
 		scopes: infraScope,
-		actionDescriptions: map[action.Type]string{
-			action.AddHosts:    "Add hosts to a host-set",
-			action.SetHosts:    "Set the full set of hosts on a host set",
-			action.RemoveHosts: "Remove hosts from a host set",
-		},
 	},
 	resource.ManagedGroup: {
 		scopes: iamScopes,
 	},
 	resource.Role: {
 		scopes: append(iamScopes, infraScope...),
-		actionDescriptions: map[action.Type]string{
-			action.AddPrincipals:    "Add principals to a role",
-			action.SetPrincipals:    "Set the full set of principals on a role",
-			action.RemovePrincipals: "Remove principals from a role",
-			action.AddGrants:        "Add grants to a role",
-			action.SetGrants:        "Set the full set of grants on a role",
-			action.RemoveGrants:     "Remove grants from a role",
-		},
 	},
 	resource.Scope: {
 		scopes: iamScopes,
@@ -439,22 +449,11 @@ var resources = map[resource.Type]info{
 	resource.Target: {
 		scopes: infraScope,
 		actionDescriptions: map[action.Type]string{
-			action.AddHostSources:          "Add host sources to a target",
-			action.SetHostSources:          "Set the full set of host sources on a target",
-			action.RemoveHostSources:       "Remove host sources from a target",
-			action.AddCredentialSources:    "Add credential sources to a target",
-			action.SetCredentialSources:    "Set the full set of credential sources on a target",
-			action.RemoveCredentialSources: "Remove credential sources from a target",
-			action.AuthorizeSession:        "Authorize a session via the target",
+			action.AuthorizeSession: "Authorize a session via the target",
 		},
 	},
 	resource.User: {
 		scopes: iamScopes,
-		actionDescriptions: map[action.Type]string{
-			action.AddAccounts:    "Add accounts to a user",
-			action.SetAccounts:    "Set the full set of accounts on a user",
-			action.RemoveAccounts: "Remove accounts from a user",
-		},
 	},
 	resource.Worker: {
 		scopes: []string{"Global"},
