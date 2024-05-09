@@ -18,6 +18,7 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/commands/credentialstorescmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/database"
 	"github.com/hashicorp/boundary/internal/cmd/commands/dev"
+	"github.com/hashicorp/boundary/internal/cmd/commands/docscmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/genericcmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/groupscmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/hostcatalogscmd"
@@ -711,6 +712,11 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Func:    "remove-members",
 			}
 		}),
+		"docs": func() (cli.Command, error) {
+			return &docscmd.Command{
+				Command: base.NewCommand(ui, opts...),
+			}, nil
+		},
 
 		"host-catalogs": func() (cli.Command, error) {
 			return &hostcatalogscmd.Command{
