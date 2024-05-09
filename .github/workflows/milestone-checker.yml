@@ -27,7 +27,7 @@ jobs:
         with:
           repository: "grafana/grafana-github-actions"
           path: ./actions
-          ref: be89ad434792280ebaa4d982ac72ba548b6f7095
+          ref: 3e07b3b88b3984f28067a76dce5a052f0c5d3c73
       - name: Set up Node.js
         uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8 # v4.0.2
         with:

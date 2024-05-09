@@ -32,13 +32,6 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.JIRA_SYNC_GITHUB_TOKEN }}
 
-    - name: Login
-      uses: atlassian/gajira-login@45fd029b9f1d6d8926c6f04175aa80c0e42c9026 # v3.0.1
-      env:
-        JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
-        JIRA_USER_EMAIL: ${{ secrets.JIRA_USER_EMAIL }}
-        JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
-
     - name: Set ticket type
       if: github.event.action == 'opened' && !steps.boundary-team-role.outputs.role
       id: set-ticket-type
@@ -52,6 +45,10 @@ jobs:
     - name: Create ticket
       if: github.event.action == 'opened' && !steps.boundary-team-role.outputs.role
       uses: tomhjp/gh-action-jira-create@3ed1789cad3521292e591a7cfa703215ec1348bf # v0.2.1
+      env:
+        JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+        JIRA_USER_EMAIL: ${{ secrets.JIRA_USER_EMAIL }}
+        JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
       with:
         project: ICU
         issuetype: "GH Issue"
@@ -64,6 +61,10 @@ jobs:
       if: github.event.action != 'opened'
       id: search
       uses: tomhjp/gh-action-jira-search@04700b457f317c3e341ce90da5a3ff4ce058f2fa # v0.2.2
+      env:
+        JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+        JIRA_USER_EMAIL: ${{ secrets.JIRA_USER_EMAIL }}
+        JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
       with:
         # cf[10089] is Issue Link custom field
         jql: 'issuetype = "GH Issue" and cf[10089]="${{ github.event.issue.html_url || github.event.pull_request.html_url }}"'
@@ -71,20 +72,38 @@ jobs:
     - name: Sync comment
       if: github.event.action == 'created' && steps.search.outputs.issue
       uses: tomhjp/gh-action-jira-comment@6eb6b9ead70221916b6badd118c24535ed220bd9 # v0.2.0
+      env:
+        JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+        JIRA_USER_EMAIL: ${{ secrets.JIRA_USER_EMAIL }}
+        JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
       with:
         issue: ${{ steps.search.outputs.issue }}
         comment: "${{ github.actor }} ${{ github.event.review.state || 'commented' }}:\n\n${{ github.event.comment.body || github.event.review.body }}\n\n${{ github.event.comment.html_url || github.event.review.html_url }}"
 
-    - name: Close ticket
-      if: (github.event.action == 'closed' || github.event.action == 'deleted') && steps.search.outputs.issue
-      uses: atlassian/gajira-transition@38fc9cd61b03d6a53dd35fcccda172fe04b36de3 # v3.0.1
-      with:
-        issue: ${{ steps.search.outputs.issue }}
-        transition: Done
+    - name: Transitions
+      id: transitions
+      if: steps.search.outputs.issue
+      run: |
+        if [[ "${{ github.event.action }}" == "closed" || "${{ github.event.action }}" == "deleted" ]]; then
+          echo "Closing ticket"
+          echo "name=Done" >> "$GITHUB_OUTPUT"
+        elif [[ "${{ github.event.action }}" == "reopened" ]]; then
+          echo "Reopening ticket"
+          echo "name='Reopen'" >> "$GITHUB_OUTPUT"
+        fi
 
-    - name: Reopen ticket
-      if: github.event.action == 'reopened' && steps.search.outputs.issue
-      uses: atlassian/gajira-transition@38fc9cd61b03d6a53dd35fcccda172fe04b36de3 # v3.0.1
-      with:
-        issue: ${{ steps.search.outputs.issue }}
-        transition: "To Do"
+      # Transition issue API reference: https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issues/#api-rest-api-3-issue-issueidorkey-transitions-post
+    - name: Transition ticket
+      if: steps.transitions.outputs.name
+      run: |
+        transitions="$(curl --silent \
+          --url "${{ secrets.JIRA_BASE_URL }}rest/api/3/issue/${{ steps.search.outputs.issue }}/transitions" \
+          --user "${{ secrets.JIRA_USER_EMAIL }}:${{ secrets.JIRA_API_TOKEN }}" \
+          --header "Accept: application/json")"
+        id="$(echo "${transitions}" | jq -r '.transitions[] | select(.name == "${{ steps.transitions.outputs.name }}") | .id')"
+        curl --silent \
+          --url "${{ secrets.JIRA_BASE_URL }}rest/api/3/issue/${{ steps.search.outputs.issue }}/transitions" \
+          --user "${{ secrets.JIRA_USER_EMAIL }}:${{ secrets.JIRA_API_TOKEN }}" \
+          --header "Accept: application/json" \
+          --header "Content-Type: application/json" \
+          --data "$(printf '{"transition": {"id": "%s"}}' "${id}")"
