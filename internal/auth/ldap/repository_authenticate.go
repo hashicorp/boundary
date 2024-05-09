@@ -108,11 +108,27 @@ func (r *Repository) Authenticate(ctx context.Context, authMethodId, loginName, 
 	acct.Dn = authResult.UserDN
 
 	if authResult.UserAttributes != nil {
-		found, email := caseInsensitiveAttributeSearch(DefaultEmailAttribute, authResult.UserAttributes)
+		emailAttr := DefaultEmailAttribute
+		fullNameAttr := DefaultFullNameAttribute
+
+		attrMaps, err := am.convertAccountAttributeMaps(ctx)
+		if err == nil {
+			for _, attrMap := range attrMaps {
+				aam := attrMap.(*AccountAttributeMap)
+				if aam.ToAttribute == DefaultEmailAttribute {
+					emailAttr = aam.FromAttribute
+				}
+				if aam.ToAttribute == DefaultFullNameAttribute {
+					fullNameAttr = aam.FromAttribute
+				}
+			}
+		}
+
+		found, email := caseInsensitiveAttributeSearch(emailAttr, authResult.UserAttributes)
 		if found {
 			acct.Email = email[0]
 		}
-		found, fullName := caseInsensitiveAttributeSearch(DefaultFullNameAttribute, authResult.UserAttributes)
+		found, fullName := caseInsensitiveAttributeSearch(fullNameAttr, authResult.UserAttributes)
 		if found {
 			acct.FullName = fullName[0]
 		}

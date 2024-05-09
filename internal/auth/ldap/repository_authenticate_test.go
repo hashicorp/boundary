@@ -63,12 +63,26 @@ func TestRepository_authenticate(t *testing.T) {
 		WithGroupDn(testCtx, testdirectory.DefaultGroupDN),
 	)
 
+	testAmAccAttrs := TestAuthMethod(t, testConn, orgDbWrapper, org.PublicId,
+		[]string{fmt.Sprintf("ldaps://%s:%d", td.Host(), td.Port())},
+		WithCertificates(testCtx, tdCerts...),
+		WithDiscoverDn(testCtx),
+		WithEnableGroups(testCtx),
+		WithUserDn(testCtx, testdirectory.DefaultUserDN),
+		WithGroupDn(testCtx, testdirectory.DefaultGroupDN),
+		WithAccountAttributeMap(testCtx, map[string]AccountToAttribute{
+			"fn": "fullName",
+			"at": "email",
+		}),
+	)
+
 	const (
 		testLoginName = "alice"
 		testPassword  = "password"
 	)
 
 	testAccount := TestAccount(t, testConn, testAm, testLoginName)
+	testAccountAccAttrs := TestAccount(t, testConn, testAmAccAttrs, testLoginName)
 
 	groups := []*gldap.Entry{
 		testdirectory.NewGroup(t, "admin", []string{"alice"}),
@@ -98,6 +112,8 @@ func TestRepository_authenticate(t *testing.T) {
 			gldap.NewEntryAttribute(ldap.DefaultADUserPasswordAttribute, []string{"password"}),
 			gldap.NewEntryAttribute(ldap.DefaultOpenLDAPUserPasswordAttribute, []string{"password"}),
 			gldap.NewEntryAttribute("fullName", []string{"test-full-name"}),
+			gldap.NewEntryAttribute("fn", []string{"test-fn"}),
+			gldap.NewEntryAttribute("at", []string{"testat@email.com"}),
 		)
 	}
 	td.SetUsers(users...)
@@ -131,6 +147,28 @@ func TestRepository_authenticate(t *testing.T) {
 					Dn:             "cn=alice,ou=people,dc=example,dc=org",
 					Email:          "alice@example.com",
 					FullName:       "test-full-name",
+					LoginName:      "alice",
+					MemberOfGroups: "[\"cn=admin,ou=groups,dc=example,dc=org\"]",
+				}}
+				return a
+			},
+		},
+		{
+			name:         "success-with-account-acc-attrs",
+			ctx:          testCtx,
+			repo:         testRepo,
+			authMethodId: testAmAccAttrs.PublicId,
+			loginName:    testAccountAccAttrs.LoginName,
+			password:     testPassword,
+			want: func(got *Account) *Account {
+				a := &Account{Account: &store.Account{
+					AuthMethodId:   testAmAccAttrs.PublicId,
+					ScopeId:        testAccountAccAttrs.ScopeId,
+					PublicId:       testAccountAccAttrs.PublicId,
+					Version:        testAccountAccAttrs.Version,
+					Dn:             "cn=alice,ou=people,dc=example,dc=org",
+					Email:          "testat@email.com",
+					FullName:       "test-fn",
 					LoginName:      "alice",
 					MemberOfGroups: "[\"cn=admin,ou=groups,dc=example,dc=org\"]",
 				}}
