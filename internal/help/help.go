@@ -10,7 +10,7 @@ import (
 )
 
 // NewNoopModel returns a new noop model, which just returns a message that no model is configured.
-func NewNoopModel(ctx context.Context) llms.Model {
+func NewNoopModel(ctx context.Context) *noopModel {
 	return &noopModel{}
 }
 
@@ -29,4 +29,12 @@ func (*noopModel) GenerateContent(ctx context.Context, messages []llms.MessageCo
 
 func (*noopModel) Call(ctx context.Context, prompt string, options ...llms.CallOption) (string, error) {
 	return "No model configured", nil
+}
+
+func (*noopModel) CreateEmbedding(ctx context.Context, texts []string) ([][]float32, error) {
+	var embs [][]float32
+	for range texts {
+		embs = append(embs, []float32{0.0})
+	}
+	return embs, nil
 }

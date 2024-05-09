@@ -331,9 +331,10 @@ func (c *Command) Flags() *base.FlagSets {
 		Usage:  `If set, specifies the URL used to connect to the database for initialization (otherwise a Docker container will be started). This can refer to a file on disk (file://) from which a URL will be read; an env var (env://) from which the URL will be read; or a direct database URL.`,
 	})
 	f.StringVar(&base.StringVar{
-		Name:   "container-image",
-		Target: &c.flagContainerImage,
-		Usage:  `Specifies a container image to be utilized. Must be in <repo>:<tag> format`,
+		Name:    "container-image",
+		Target:  &c.flagContainerImage,
+		Default: "ankane/pgvector:latest",
+		Usage:   `Specifies a container image to be utilized. Must be in <repo>:<tag> format`,
 	})
 	f.StringVar(&base.StringVar{
 		Name:       "event-format",
