@@ -5,10 +5,12 @@ package ldap
 
 import (
 	"context"
+	"database/sql/driver"
 	"encoding/pem"
 	"fmt"
 	"testing"
 
+	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/internal/auth/ldap/store"
 	"github.com/hashicorp/boundary/internal/db"
@@ -249,6 +251,101 @@ func TestRepository_authenticate(t *testing.T) {
 			password:        testPassword,
 			wantErrMatch:    errors.T(errors.Unknown),
 			wantErrContains: "auth-method-id-lookup-err",
+		},
+		{
+			name: "invalid-attribute-maps",
+			ctx:  testCtx,
+			repo: func() *Repository {
+				conn, mock := db.TestSetupWithMock(t)
+				mock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows(
+					[]string{
+						"is_primary_auth_method",
+						"public_id",
+						"scope_id",
+						"name",
+						"description",
+						"create_time",
+						"update_time",
+						"version",
+						"state",
+						"start_tls",
+						"insecure_tls",
+						"discover_dn",
+						"anon_group_search",
+						"upn_domain",
+						"enable_groups",
+						"use_token_groups",
+						"maximum_page_size",
+						"urls",
+						"certs",
+						"account_attribute_map",
+						"user_dn",
+						"user_attr",
+						"user_filter",
+						"group_dn",
+						"group_attr",
+						"group_filter",
+						"client_certificate_key",
+						"client_certificate_key_hmac",
+						"client_certificate_key_id",
+						"client_certificate_cert",
+						"bind_dn",
+						"bind_password",
+						"bind_password_hmac",
+						"bind_password_key_id",
+						"dereference_aliases",
+					},
+				).AddRow(
+					"f",
+					"amldap_badattrs",
+					"o_1234567890",
+					nil,
+					nil,
+					"2024-05-15 17:40:31.327736+00",
+					"2024-05-15 17:40:31.327736+00",
+					1,
+					"inactive",
+					"f",
+					"f",
+					"t",
+					"f",
+					nil,
+					"t",
+					"f",
+					0,
+					fmt.Sprintf("ldaps://%s:%d", td.Host(), td.Port()),
+					func() driver.Value {
+						certs, err := EncodeCertificates(testCtx, tdCerts...)
+						require.NoError(t, err)
+						return certs[0]
+					}(),
+					"at=email|fn=fullName|bad=invalidAttribute",
+					"ou=people,dc=example,dc=org",
+					nil,
+					nil,
+					"ou=groups,dc=example,dc=org",
+					nil,
+					nil,
+					nil,
+					nil,
+					nil,
+					nil,
+					nil,
+					nil,
+					nil,
+					nil,
+					nil,
+				))
+				rw := db.New(conn)
+				r, err := NewRepository(testCtx, rw, rw, testKms)
+				require.NoError(t, err)
+				return r
+			}(),
+			authMethodId:    "amldap_badattrs",
+			loginName:       "alice",
+			password:        testPassword,
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrContains: `failed to convert account attribute maps: ldap.(AuthMethod).convertAccountAttributeMaps: ldap.ParseAccountAttributeMaps: ldap.ConvertToAccountToAttribute: "invalidAttribute" is not a valid ToAccountAttribute value ("email", "fullName")`,
 		},
 	}
 	for _, tc := range tests {

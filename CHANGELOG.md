@@ -21,6 +21,11 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   the cluster's listener configuration.
   ([PR](https://github.com/hashicorp/boundary/pull/4803) and
   [PR](https://github.com/hashicorp/boundary/pull/4805))
+* LDAP account attribute maps. Account attribute maps have been supported since
+  the introduction of LDAP authentication, however a bug was present where we
+  wouldn't take those into account upon authenticating (when receiving the
+  information from the LDAP server). This is now resolved
+  ([PR]((https://github.com/hashicorp/boundary/pull/4788))).
 
 ## 0.16.0 (2024/04/30)
 
