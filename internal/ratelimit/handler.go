@@ -138,7 +138,7 @@ func Handler(ctx context.Context, f LimiterFunc, next http.Handler) http.Handler
 		res, a, err := extractResourceAction(req.URL.Path, req.Method)
 		if err != nil {
 			if extractErr, ok := err.(*extractResourceActionErr); ok {
-				rw.WriteHeader(extractErr.statusCode)
+				http.Error(rw, extractErr.msg, extractErr.statusCode)
 				return
 			}
 			rw.WriteHeader(http.StatusInternalServerError)

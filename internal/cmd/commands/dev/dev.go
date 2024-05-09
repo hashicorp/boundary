@@ -115,6 +115,9 @@ type Command struct {
 	flagWorkerRecordingStorageDir                      string
 	flagWorkerRecordingStorageMinimumAvailableCapacity string
 	flagBsrKey                                         string
+	flagHelpModelType                                  string
+	flagHelpModelApiKey                                string
+	flagHelpNumHintDocs                                int
 }
 
 func (c *Command) Synopsis() string {
@@ -461,6 +464,26 @@ func (c *Command) Flags() *base.FlagSets {
 		Hidden: true,
 	})
 
+	f.StringVar(&base.StringVar{
+		Name:   "help-model-type",
+		Target: &c.flagHelpModelType,
+		EnvVar: "BOUNDARY_DEV_HELP_MODEL_TYPE",
+		Usage:  `If set, the type of help model to use. Valid values are "gemini".`,
+	})
+	f.StringVar(&base.StringVar{
+		Name:   "help-model-api-key",
+		Target: &c.flagHelpModelApiKey,
+		EnvVar: "BOUNDARY_DEV_HELP_MODEL_API_KEY",
+		Usage:  "If set, the API key to use for the help model specified.",
+	})
+	f.IntVar(&base.IntVar{
+		Name:    "help-model-num-hint-docs",
+		Target:  &c.flagHelpNumHintDocs,
+		EnvVar:  "BOUNDARY_DEV_HELP_MODEL_NUM_HINT_DOCS",
+		Default: 5,
+		Usage:   "If set, number of hint docs to include in the help model prompt.",
+	})
+
 	return set
 }
 
@@ -522,6 +545,10 @@ func (c *Command) Run(args []string) int {
 			}
 		}
 	}
+
+	c.Config.Controller.Help.Type = c.flagHelpModelType
+	c.Config.Controller.Help.ApiKey = c.flagHelpModelApiKey
+	c.Config.Controller.Help.NumHintDocuments = c.flagHelpNumHintDocs
 
 	c.WorkerAuthDebuggingEnabled.Store(c.flagWorkerAuthDebuggingEnabled)
 

@@ -184,6 +184,7 @@ func TestHandleImplementedPaths(t *testing.T) {
 			"v1/users/someid:add-accounts",
 			"v1/users/someid:set-accounts",
 			"v1/users/someid:remove-accounts",
+			"v1/help",
 		},
 		"DELETE": {
 			"v1/accounts/someid",
