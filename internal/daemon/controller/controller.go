@@ -164,7 +164,10 @@ type Controller struct {
 
 	kms *kms.Kms
 
-	llm      llms.Model
+	llm interface {
+		llms.Model
+		help.Embedder
+	}
 	searcher *help.Searcher
 
 	enabledPlugins []base.EnabledPlugin
@@ -501,17 +504,9 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		if c.conf.RawConfig.Controller.Help.EmbeddingModel != "" {
 			opts = append(opts, googleai.WithDefaultEmbeddingModel(c.conf.RawConfig.Controller.Help.EmbeddingModel))
 		}
-		llm, err := googleai.New(ctx, opts...)
+		c.llm, err = googleai.New(ctx, opts...)
 		if err != nil {
 			return nil, fmt.Errorf("unable to initialize gemini model: %w", err)
-		}
-		c.llm = llm
-		c.searcher, err = help.NewSearcher(ctx, eventLogger.Named("help"), dbase, dbase, llm, c.conf.RawConfig.Controller.Help.NumHintDocuments)
-		if err != nil {
-			return nil, fmt.Errorf("unable to create searcher: %w", err)
-		}
-		if err := c.searcher.CreateEmbeddings(ctx); err != nil {
-			return nil, fmt.Errorf("unable to create embeddings: %w", err)
 		}
 	case "openai":
 		if c.conf.RawConfig.Controller.Help.ApiKey == "" {
@@ -526,17 +521,9 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		if c.conf.RawConfig.Controller.Help.EmbeddingModel != "" {
 			opts = append(opts, openai.WithEmbeddingModel(c.conf.RawConfig.Controller.Help.EmbeddingModel))
 		}
-		llm, err := openai.New(opts...)
+		c.llm, err = openai.New(opts...)
 		if err != nil {
 			return nil, fmt.Errorf("unable to initialize open AI model: %w", err)
-		}
-		c.llm = llm
-		c.searcher, err = help.NewSearcher(ctx, eventLogger.Named("help"), dbase, dbase, llm, c.conf.RawConfig.Controller.Help.NumHintDocuments)
-		if err != nil {
-			return nil, fmt.Errorf("unable to create searcher: %w", err)
-		}
-		if err := c.searcher.CreateEmbeddings(ctx); err != nil {
-			return nil, fmt.Errorf("unable to create embeddings: %w", err)
 		}
 	case "ollama":
 		if c.conf.RawConfig.Controller.Help.Model == "" {
@@ -548,20 +535,21 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		opts := []ollama.Option{
 			ollama.WithModel(c.conf.RawConfig.Controller.Help.Model),
 		}
-		llm, err := ollama.New(opts...)
+		c.llm, err = ollama.New(opts...)
 		if err != nil {
 			return nil, fmt.Errorf("unable to initialize ollama model: %w", err)
 		}
-		c.llm = llm
-		c.searcher, err = help.NewSearcher(ctx, eventLogger.Named("help"), dbase, dbase, llm, c.conf.RawConfig.Controller.Help.NumHintDocuments)
-		if err != nil {
-			return nil, fmt.Errorf("unable to create searcher: %w", err)
-		}
-		if err := c.searcher.CreateEmbeddings(ctx); err != nil {
-			return nil, fmt.Errorf("unable to create embeddings: %w", err)
-		}
-	default:
+	case "":
 		c.llm = help.NewNoopModel(ctx)
+	default:
+		return nil, fmt.Errorf("unknown help model type %q", c.conf.RawConfig.Controller.Help.Type)
+	}
+	c.searcher, err = help.NewSearcher(ctx, eventLogger.Named("help"), dbase, dbase, c.llm, c.conf.RawConfig.Controller.Help.NumHintDocuments)
+	if err != nil {
+		return nil, fmt.Errorf("unable to create searcher: %w", err)
+	}
+	if err := c.searcher.CreateEmbeddings(ctx); err != nil {
+		return nil, fmt.Errorf("unable to create embeddings: %w", err)
 	}
 
 	if downstreamersFactory != nil {
