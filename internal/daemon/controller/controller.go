@@ -34,7 +34,6 @@ import (
 	"github.com/hashicorp/boundary/internal/event"
 	intglobals "github.com/hashicorp/boundary/internal/globals"
 	"github.com/hashicorp/boundary/internal/help"
-	"github.com/hashicorp/boundary/internal/help/gemini"
 	"github.com/hashicorp/boundary/internal/host"
 	pluginhost "github.com/hashicorp/boundary/internal/host/plugin"
 	"github.com/hashicorp/boundary/internal/host/static"
@@ -489,19 +488,23 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		if c.conf.RawConfig.Controller.Help.ApiKey == "" {
 			return nil, fmt.Errorf(`api key is required with help model "gemini"`)
 		}
-		var opts []googleai.Option
+		opts := []googleai.Option{
+			googleai.WithAPIKey(c.conf.RawConfig.Controller.Help.ApiKey),
+			googleai.WithDefaultEmbeddingModel("models/text-embedding-004"),
+			googleai.WithDefaultModel("models/gemini-1.5-pro-latest"),
+		}
 		if c.conf.RawConfig.Controller.Help.Model != "" {
 			opts = append(opts, googleai.WithDefaultModel(c.conf.RawConfig.Controller.Help.Model))
 		}
 		if c.conf.RawConfig.Controller.Help.EmbeddingModel != "" {
 			opts = append(opts, googleai.WithDefaultEmbeddingModel(c.conf.RawConfig.Controller.Help.EmbeddingModel))
 		}
-		googleai, err := gemini.NewModel(ctx, c.conf.RawConfig.Controller.Help.ApiKey, opts...)
+		llm, err := googleai.New(ctx, opts...)
 		if err != nil {
 			return nil, fmt.Errorf("unable to initialize gemini model: %w", err)
 		}
-		c.llm = googleai
-		c.searcher, err = help.NewSearcher(ctx, eventLogger.Named("help"), dbase, dbase, googleai, c.conf.RawConfig.Controller.Help.NumHintDocuments)
+		c.llm = llm
+		c.searcher, err = help.NewSearcher(ctx, eventLogger.Named("help"), dbase, dbase, llm, c.conf.RawConfig.Controller.Help.NumHintDocuments)
 		if err != nil {
 			return nil, fmt.Errorf("unable to create searcher: %w", err)
 		}
