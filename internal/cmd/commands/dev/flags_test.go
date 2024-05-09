@@ -73,6 +73,9 @@ func TestCommand_Flags(t *testing.T) {
 	assert.Contains(completions, "-worker-recording-storage-dir")
 	assert.Contains(completions, "-worker-recording-storage-minimum-available-capacity")
 	assert.Contains(completions, "-worker-auth-storage-skip-cleanup")
+	assert.Contains(completions, "-help-model-type")
+	assert.Contains(completions, "-help-model-api-key")
+	assert.Contains(completions, "-help-model-num-hint-docs")
 
 	// keep adding assertions for other flags which should be set as a result of cmd.Flags()
 }

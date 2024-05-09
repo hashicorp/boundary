@@ -31,6 +31,7 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/credentialstores"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/groups"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/health"
+	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/help"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/host_catalogs"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/host_sets"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/hosts"
@@ -49,7 +50,6 @@ import (
 	"github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	authpb "github.com/hashicorp/boundary/internal/gen/controller/auth"
 	opsservices "github.com/hashicorp/boundary/internal/gen/ops/services"
-	"github.com/hashicorp/boundary/internal/ratelimit"
 	"github.com/hashicorp/go-cleanhttp"
 	"github.com/hashicorp/go-secure-stdlib/listenerutil"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
@@ -77,7 +77,9 @@ func createMuxWithEndpoints(c *Controller, props HandlerProperties) (http.Handle
 	}
 
 	mux := http.NewServeMux()
-	mux.Handle("/v1/", ratelimit.Handler(c.baseContext, c.getRateLimiter, grpcGwMux))
+	// mux.Handle("/v1/", ratelimit.Handler(c.baseContext, c.getRateLimiter, grpcGwMux))
+	// Disable rate limiting just to make it easier to hack this together.
+	mux.Handle("/v1/", grpcGwMux)
 	mux.Handle(uiPath, handleUi(c))
 
 	isUiRequest := func(req *http.Request) bool {
@@ -371,6 +373,13 @@ func (c *Controller) registerGrpcServices(s *grpc.Server) error {
 		}
 		services.RegisterBillingServiceServer(s, bs)
 	}
+	if _, ok := currentServices[services.HelpService_ServiceDesc.ServiceName]; !ok {
+		ss, err := help.NewService(c.baseContext, c.llm, c.searcher)
+		if err != nil {
+			return fmt.Errorf("failed to create help handler service: %w", err)
+		}
+		services.RegisterHelpServiceServer(s, ss)
+	}
 
 	return nil
 }
@@ -443,6 +452,9 @@ func registerGrpcGatewayEndpoints(ctx context.Context, gwMux *runtime.ServeMux, 
 	}
 	if err := services.RegisterBillingServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
 		return fmt.Errorf("failed to register billing service handler: %w", err)
+	}
+	if err := services.RegisterHelpServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
+		return fmt.Errorf("failed to register help service handler: %w", err)
 	}
 
 	return nil

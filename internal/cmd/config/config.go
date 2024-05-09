@@ -174,6 +174,7 @@ type Controller struct {
 	Database          *Database `hcl:"database"`
 	PublicClusterAddr string    `hcl:"public_cluster_addr"`
 	Scheduler         Scheduler `hcl:"scheduler"`
+	Help              Help      `hcl:"help"`
 
 	// AuthTokenTimeToLive is the total valid lifetime of a token denoted by time.Duration
 	AuthTokenTimeToLive         any           `hcl:"auth_token_time_to_live"`
@@ -357,6 +358,16 @@ type Reporting struct {
 
 type License struct {
 	Enabled bool `hcl:"enabled"`
+}
+
+type Help struct {
+	// The type of help service to use.
+	// Valid values are "gemini".
+	Type             string `hcl:"type"`
+	ApiKey           string `hcl:"api_key"`
+	Model            string `hcl:"model"`
+	EmbeddingModel   string `hcl:"embedding_model"`
+	NumHintDocuments int    `hcl:"num_hint_documents"`
 }
 
 // DevWorker is a Config that is used for dev mode of Boundary
@@ -728,6 +739,21 @@ func Parse(d string) (*Config, error) {
 						reflect.TypeOf(t).String())
 				}
 			}
+		}
+
+		switch result.Controller.Help.Type {
+		case "gemini":
+			if result.Controller.Help.ApiKey == "" {
+				return nil, errors.New(`help type "gemini" requires an API key`)
+			}
+		case "":
+			// No type is valid, falls back to noop helper.
+		default:
+			return nil, errors.New(`"gemini" is the only supported help backend`)
+		}
+
+		if result.Controller.Help.NumHintDocuments < 0 {
+			return nil, errors.New("num_hint_documents must be a non-negative integer")
 		}
 
 		result.Controller.ApiRateLimits, err = parseApiRateLimits(obj.Node)

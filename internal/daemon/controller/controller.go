@@ -33,6 +33,8 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/event"
 	intglobals "github.com/hashicorp/boundary/internal/globals"
+	"github.com/hashicorp/boundary/internal/help"
+	"github.com/hashicorp/boundary/internal/help/gemini"
 	"github.com/hashicorp/boundary/internal/host"
 	pluginhost "github.com/hashicorp/boundary/internal/host/plugin"
 	"github.com/hashicorp/boundary/internal/host/static"
@@ -62,6 +64,8 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/mlock"
 	"github.com/hashicorp/go-secure-stdlib/pluginutil/v2"
 	"github.com/hashicorp/nodeenrollment"
+	"github.com/tmc/langchaingo/llms"
+	"github.com/tmc/langchaingo/llms/googleai"
 	ua "go.uber.org/atomic"
 	"google.golang.org/grpc"
 )
@@ -158,6 +162,9 @@ type Controller struct {
 	scheduler *scheduler.Scheduler
 
 	kms *kms.Kms
+
+	llm      llms.Model
+	searcher *help.Searcher
 
 	enabledPlugins []base.EnabledPlugin
 
@@ -268,14 +275,11 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		return nil, fmt.Errorf("error initializing rate limiter: %w", err)
 	}
 
-	var pluginLogger hclog.Logger
+	eventLogger, err := event.NewHclogLogger(ctx, c.conf.Server.Eventer)
+	if err != nil {
+		return nil, fmt.Errorf("error creating event logger: %w", err)
+	}
 	for _, enabledPlugin := range c.enabledPlugins {
-		if pluginLogger == nil {
-			pluginLogger, err = event.NewHclogLogger(ctx, c.conf.Server.Eventer)
-			if err != nil {
-				return nil, fmt.Errorf("error creating host catalog plugin logger: %w", err)
-			}
-		}
 		switch {
 		case enabledPlugin == base.EnabledPluginLoopback:
 			lp, err := loopback.NewLoopbackPlugin()
@@ -299,7 +303,7 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 					pluginutil.WithPluginExecutionDirectory(conf.RawConfig.Plugins.ExecutionDir),
 					pluginutil.WithPluginsFilesystem(boundary_plugin_assets.PluginPrefix, boundary_plugin_assets.FileSystem()),
 				),
-				external_plugins.WithLogger(pluginLogger.Named(pluginType)),
+				external_plugins.WithLogger(eventLogger.Named(pluginType)),
 			)
 			if err != nil {
 				return nil, fmt.Errorf("error creating %s host plugin: %w", pluginType, err)
@@ -317,7 +321,7 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 					pluginutil.WithPluginExecutionDirectory(conf.RawConfig.Plugins.ExecutionDir),
 					pluginutil.WithPluginsFilesystem(boundary_plugin_assets.PluginPrefix, boundary_plugin_assets.FileSystem()),
 				),
-				external_plugins.WithLogger(pluginLogger.Named(pluginType)),
+				external_plugins.WithLogger(eventLogger.Named(pluginType)),
 			)
 			if err != nil {
 				return nil, fmt.Errorf("error creating %s host plugin: %w", pluginType, err)
@@ -478,6 +482,34 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	_, err = server.RotateRoots(ctx, serversRepo, nodeenrollment.WithCertificateLifetime(conf.TestOverrideWorkerAuthCaCertificateLifetime))
 	if err != nil {
 		event.WriteSysEvent(ctx, op, "unable to ensure worker auth roots exist, may be due to multiple controllers starting at once, continuing")
+	}
+
+	switch c.conf.RawConfig.Controller.Help.Type {
+	case "gemini":
+		if c.conf.RawConfig.Controller.Help.ApiKey == "" {
+			return nil, fmt.Errorf(`api key is required with help model "gemini"`)
+		}
+		var opts []googleai.Option
+		if c.conf.RawConfig.Controller.Help.Model != "" {
+			opts = append(opts, googleai.WithDefaultModel(c.conf.RawConfig.Controller.Help.Model))
+		}
+		if c.conf.RawConfig.Controller.Help.EmbeddingModel != "" {
+			opts = append(opts, googleai.WithDefaultEmbeddingModel(c.conf.RawConfig.Controller.Help.EmbeddingModel))
+		}
+		googleai, err := gemini.NewModel(ctx, c.conf.RawConfig.Controller.Help.ApiKey, opts...)
+		if err != nil {
+			return nil, fmt.Errorf("unable to initialize gemini model: %w", err)
+		}
+		c.llm = googleai
+		c.searcher, err = help.NewSearcher(ctx, eventLogger.Named("help"), dbase, dbase, googleai, c.conf.RawConfig.Controller.Help.NumHintDocuments)
+		if err != nil {
+			return nil, fmt.Errorf("unable to create searcher: %w", err)
+		}
+		if err := c.searcher.CreateEmbeddings(ctx); err != nil {
+			return nil, fmt.Errorf("unable to create embeddings: %w", err)
+		}
+	default:
+		c.llm = help.NewNoopModel(ctx)
 	}
 
 	if downstreamersFactory != nil {
