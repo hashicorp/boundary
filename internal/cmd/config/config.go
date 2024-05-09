@@ -362,7 +362,7 @@ type License struct {
 
 type Help struct {
 	// The type of help service to use.
-	// Valid values are "gemini".
+	// Valid values are "gemini", "openai".
 	Type             string `hcl:"type"`
 	ApiKey           string `hcl:"api_key"`
 	Model            string `hcl:"model"`
@@ -742,14 +742,14 @@ func Parse(d string) (*Config, error) {
 		}
 
 		switch result.Controller.Help.Type {
-		case "gemini":
+		case "gemini", "openai":
 			if result.Controller.Help.ApiKey == "" {
-				return nil, errors.New(`help type "gemini" requires an API key`)
+				return nil, fmt.Errorf(`help type %q requires an API key`, result.Controller.Help.Type)
 			}
 		case "":
 			// No type is valid, falls back to noop helper.
 		default:
-			return nil, errors.New(`"gemini" is the only supported help backend`)
+			return nil, fmt.Errorf(`unsupported help backend %q`, result.Controller.Help.Type)
 		}
 
 		if result.Controller.Help.NumHintDocuments < 0 {

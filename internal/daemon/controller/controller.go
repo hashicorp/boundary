@@ -34,7 +34,6 @@ import (
 	"github.com/hashicorp/boundary/internal/event"
 	intglobals "github.com/hashicorp/boundary/internal/globals"
 	"github.com/hashicorp/boundary/internal/help"
-	"github.com/hashicorp/boundary/internal/help/gemini"
 	"github.com/hashicorp/boundary/internal/host"
 	pluginhost "github.com/hashicorp/boundary/internal/host/plugin"
 	"github.com/hashicorp/boundary/internal/host/static"
@@ -66,6 +65,7 @@ import (
 	"github.com/hashicorp/nodeenrollment"
 	"github.com/tmc/langchaingo/llms"
 	"github.com/tmc/langchaingo/llms/googleai"
+	"github.com/tmc/langchaingo/llms/openai"
 	ua "go.uber.org/atomic"
 	"google.golang.org/grpc"
 )
@@ -489,19 +489,48 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		if c.conf.RawConfig.Controller.Help.ApiKey == "" {
 			return nil, fmt.Errorf(`api key is required with help model "gemini"`)
 		}
-		var opts []googleai.Option
+		opts := []googleai.Option{
+			googleai.WithAPIKey(c.conf.RawConfig.Controller.Help.ApiKey),
+			googleai.WithDefaultEmbeddingModel("models/text-embedding-004"),
+			googleai.WithDefaultModel("models/gemini-1.5-pro-latest"),
+		}
 		if c.conf.RawConfig.Controller.Help.Model != "" {
 			opts = append(opts, googleai.WithDefaultModel(c.conf.RawConfig.Controller.Help.Model))
 		}
 		if c.conf.RawConfig.Controller.Help.EmbeddingModel != "" {
 			opts = append(opts, googleai.WithDefaultEmbeddingModel(c.conf.RawConfig.Controller.Help.EmbeddingModel))
 		}
-		googleai, err := gemini.NewModel(ctx, c.conf.RawConfig.Controller.Help.ApiKey, opts...)
+		llm, err := googleai.New(ctx, opts...)
 		if err != nil {
 			return nil, fmt.Errorf("unable to initialize gemini model: %w", err)
 		}
-		c.llm = googleai
-		c.searcher, err = help.NewSearcher(ctx, eventLogger.Named("help"), dbase, dbase, googleai, c.conf.RawConfig.Controller.Help.NumHintDocuments)
+		c.llm = llm
+		c.searcher, err = help.NewSearcher(ctx, eventLogger.Named("help"), dbase, dbase, llm, c.conf.RawConfig.Controller.Help.NumHintDocuments)
+		if err != nil {
+			return nil, fmt.Errorf("unable to create searcher: %w", err)
+		}
+		if err := c.searcher.CreateEmbeddings(ctx); err != nil {
+			return nil, fmt.Errorf("unable to create embeddings: %w", err)
+		}
+	case "openai":
+		if c.conf.RawConfig.Controller.Help.ApiKey == "" {
+			return nil, fmt.Errorf(`api key is required with help model "openai"`)
+		}
+		opts := []openai.Option{
+			openai.WithToken(c.conf.RawConfig.Controller.Help.ApiKey),
+		}
+		if c.conf.RawConfig.Controller.Help.Model != "" {
+			opts = append(opts, openai.WithModel(c.conf.RawConfig.Controller.Help.Model))
+		}
+		if c.conf.RawConfig.Controller.Help.EmbeddingModel != "" {
+			opts = append(opts, openai.WithEmbeddingModel(c.conf.RawConfig.Controller.Help.EmbeddingModel))
+		}
+		llm, err := openai.New(opts...)
+		if err != nil {
+			return nil, fmt.Errorf("unable to initialize open AI model: %w", err)
+		}
+		c.llm = llm
+		c.searcher, err = help.NewSearcher(ctx, eventLogger.Named("help"), dbase, dbase, llm, c.conf.RawConfig.Controller.Help.NumHintDocuments)
 		if err != nil {
 			return nil, fmt.Errorf("unable to create searcher: %w", err)
 		}

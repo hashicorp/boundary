@@ -14,8 +14,11 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/pgvector/pgvector-go"
 	"github.com/philippgille/chromem-go"
-	"github.com/tmc/langchaingo/llms/googleai"
 )
+
+type Embedder interface {
+	CreateEmbedding(ctx context.Context, texts []string) ([][]float32, error)
+}
 
 const (
 	useInMemoryDB      = false
@@ -26,12 +29,12 @@ type Searcher struct {
 	logger      hclog.Logger
 	reader      db.Reader
 	writer      db.Writer
-	llm         *googleai.GoogleAI
+	embedder    Embedder
 	cdb         *chromem.Collection
 	numHintDocs int
 }
 
-func NewSearcher(ctx context.Context, logger hclog.Logger, w db.Writer, r db.Reader, llm *googleai.GoogleAI, numHintDocs int) (*Searcher, error) {
+func NewSearcher(ctx context.Context, logger hclog.Logger, w db.Writer, r db.Reader, embedder Embedder, numHintDocs int) (*Searcher, error) {
 	cdb, err := chromem.NewDB().CreateCollection("boundary", nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create in-memory vector DB: %w", err)
@@ -46,7 +49,7 @@ func NewSearcher(ctx context.Context, logger hclog.Logger, w db.Writer, r db.Rea
 		logger:      logger,
 		reader:      r,
 		writer:      w,
-		llm:         llm,
+		embedder:    embedder,
 		cdb:         cdb,
 		numHintDocs: numHintDocs,
 	}, nil
@@ -75,7 +78,7 @@ func (s *Searcher) CreateEmbeddings(ctx context.Context) error {
 		return fmt.Errorf("failed to collect docs")
 	}
 	t := time.Now()
-	embeddings, err := s.llm.CreateEmbedding(ctx, texts)
+	embeddings, err := s.embedder.CreateEmbedding(ctx, texts)
 	if err != nil {
 		return fmt.Errorf("failed to get embeddings: %w", err)
 	}
@@ -113,7 +116,7 @@ func (s *Searcher) CreateEmbeddings(ctx context.Context) error {
 }
 
 func (s *Searcher) FindTopDocsForQuery(ctx context.Context, query string) ([]string, error) {
-	embeddings, err := s.llm.CreateEmbedding(ctx, []string{query})
+	embeddings, err := s.embedder.CreateEmbedding(ctx, []string{query})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get embedding for query: %w", err)
 	}
