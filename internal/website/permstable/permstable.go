@@ -339,13 +339,19 @@ func sortedKeys(in map[string]string) []string {
 	return out
 }
 
+// info holds information for a specific resource
 type info struct {
-	scopes             []string
-	actionDescriptions map[action.Type]string
+	// The scopes this resource can be in
+	scopes []string
+	// If the auto generated descriptions do not correctly cover these actions
+	// for this resource, including the action and a description here will
+	// cause this to be used instead of the auto generated one.
+	actionDescOverrides map[action.Type]string
 }
 
+// get the description for a resource.
 func (i info) description(t action.Type, singleResourceName string) string {
-	if s, ok := i.actionDescriptions[t]; ok {
+	if s, ok := i.actionDescOverrides[t]; ok {
 		return s
 	}
 	switch t {
@@ -381,7 +387,7 @@ func (i info) description(t action.Type, singleResourceName string) string {
 var resources = map[resource.Type]info{
 	resource.Account: {
 		scopes: iamScopes,
-		actionDescriptions: map[action.Type]string{
+		actionDescOverrides: map[action.Type]string{
 			action.SetPassword:    "Set a password on an account, without requiring the current password",
 			action.ChangePassword: "Change a password on an account given the current password",
 		},
@@ -391,7 +397,7 @@ var resources = map[resource.Type]info{
 	},
 	resource.AuthMethod: {
 		scopes: iamScopes,
-		actionDescriptions: map[action.Type]string{
+		actionDescOverrides: map[action.Type]string{
 			action.Authenticate: "Authenticate to an auth method",
 		},
 	},
@@ -430,7 +436,7 @@ var resources = map[resource.Type]info{
 	},
 	resource.Session: {
 		scopes: infraScope,
-		actionDescriptions: map[action.Type]string{
+		actionDescOverrides: map[action.Type]string{
 			action.Cancel:     "Cancel a session",
 			action.CancelSelf: "Cancel a session, which must be associated with the calling user",
 			action.ReadSelf:   "Read a session, which must be associated with the calling user",
@@ -438,7 +444,7 @@ var resources = map[resource.Type]info{
 	},
 	resource.SessionRecording: {
 		scopes: iamScopes,
-		actionDescriptions: map[action.Type]string{
+		actionDescOverrides: map[action.Type]string{
 			action.Download:             "Download a session recording",
 			action.ReApplyStoragePolicy: "Reapply the storage policy to a session recording",
 		},
@@ -448,7 +454,7 @@ var resources = map[resource.Type]info{
 	},
 	resource.Target: {
 		scopes: infraScope,
-		actionDescriptions: map[action.Type]string{
+		actionDescOverrides: map[action.Type]string{
 			action.AuthorizeSession: "Authorize a session via the target",
 		},
 	},
@@ -457,7 +463,7 @@ var resources = map[resource.Type]info{
 	},
 	resource.Worker: {
 		scopes: []string{"Global"},
-		actionDescriptions: map[action.Type]string{
+		actionDescOverrides: map[action.Type]string{
 			action.CreateControllerLed: "Create a worker using the controller-led workflow",
 			action.CreateWorkerLed:     "Create a worker using the worker-led workflow",
 		},
