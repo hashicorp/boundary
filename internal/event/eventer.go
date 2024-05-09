@@ -339,10 +339,9 @@ func NewEventer(log hclog.Logger, serializationLock *sync.Mutex, serverName stri
 		case KafkaSink:
 			ksc := s.KafkaConfig
 			sinkNode = &eventlogger.KafkaSink{
-				Format: string(s.Format),
-				Topic:  ksc.Topic,
-				// TODO: create producer.
-				Producer: nil,
+				Format:  string(s.Format),
+				Topic:   ksc.Topic,
+				Brokers: ksc.Brokers,
 			}
 			id, err := NewId(fmt.Sprintf("kafka_%s", ksc.Topic))
 			if err != nil {
