@@ -52,7 +52,7 @@ The **Account** resource type supports the following scopes: **Global**, **Org**
 
 ## Alias
 
-The **Alias** resource type supports the following scopes: 
+The **Alias** resource type supports the following scopes: **Global**, **Org**, **Project**
 
 | API endpoint | Parameters into permissions engine | Available actions / examples |
 | ------------ | ---------------------------------- | ---------------------------- |
@@ -79,16 +79,13 @@ The **Auth token** resource type supports the following scopes: **Global**, **Or
 
 ## Billing
 
-The **Billing** resource type supports the following scopes: 
-
 | API endpoint | Parameters into permissions engine | Available actions / examples |
 | ------------ | ---------------------------------- | ---------------------------- |
 | <code>/billing</code> | <ul><li>Type</li><ul><li><code>billing</code></li></ul></ul> | <ul><li><code>monthly-active-users</code>: </li><ul><li>`type=<type>;actions=monthly-active-users`</li></ul></ul> |
-| <code>/billing/&lt;id&gt;</code> | <ul><li>ID</li><ul><li><code>&lt;id&gt;</code></li></ul><li>Type</li><ul><li><code>billing</code></li></ul></ul> | <ul></ul> |
 
 ## Credential
 
-The **Credential** resource type supports the following scopes: 
+The **Credential** resource type supports the following scopes: **Project**
 
 | API endpoint | Parameters into permissions engine | Available actions / examples |
 | ------------ | ---------------------------------- | ---------------------------- |
@@ -97,7 +94,7 @@ The **Credential** resource type supports the following scopes:
 
 ## Credential library
 
-The **Credential library** resource type supports the following scopes: 
+The **Credential library** resource type supports the following scopes: **Project**
 
 | API endpoint | Parameters into permissions engine | Available actions / examples |
 | ------------ | ---------------------------------- | ---------------------------- |
@@ -106,7 +103,7 @@ The **Credential library** resource type supports the following scopes:
 
 ## Credential store
 
-The **Credential store** resource type supports the following scopes: 
+The **Credential store** resource type supports the following scopes: **Project**
 
 | API endpoint | Parameters into permissions engine | Available actions / examples |
 | ------------ | ---------------------------------- | ---------------------------- |
@@ -147,7 +144,7 @@ The **Host set** resource type supports the following scopes: **Project**
 | API endpoint | Parameters into permissions engine | Available actions / examples |
 | ------------ | ---------------------------------- | ---------------------------- |
 | <code>/host-sets</code> | <ul><li>Type</li><ul><li><code>host-set</code></li></ul></ul> | <ul><li><code>create</code>: Create a host set</li><ul><li>`type=<type>;actions=create`</li></ul><li><code>list</code>: List host sets</li><ul><li>`type=<type>;actions=list`</li></ul></ul> |
-| <code>/host-sets/&lt;id&gt;</code> | <ul><li>ID</li><ul><li><code>&lt;id&gt;</code></li></ul><li>Pin</li><ul><li><code>&lt;host-catalog-id&gt;</code></li></ul><li>Type</li><ul><li><code>host-set</code></li></ul></ul> | <ul><li><code>read</code>: Read a host set</li><ul><li>`ids=<id>;actions=read`</li><li>`ids=<pin>;type=<type>;actions=read`</li></ul><li><code>update</code>: Update a host set</li><ul><li>`ids=<id>;actions=update`</li><li>`ids=<pin>;type=<type>;actions=update`</li></ul><li><code>delete</code>: Delete a host set</li><ul><li>`ids=<id>;actions=delete`</li><li>`ids=<pin>;type=<type>;actions=delete`</li></ul><li><code>add-hosts</code>: Add hosts to a host-set</li><ul><li>`ids=<id>;actions=add-hosts`</li><li>`ids=<pin>;type=<type>;actions=add-hosts`</li></ul><li><code>remove-hosts</code>: Remove hosts from a host set</li><ul><li>`ids=<id>;actions=remove-hosts`</li><li>`ids=<pin>;type=<type>;actions=remove-hosts`</li></ul><li><code>set-hosts</code>: Set the full set of hosts on a host set</li><ul><li>`ids=<id>;actions=set-hosts`</li><li>`ids=<pin>;type=<type>;actions=set-hosts`</li></ul></ul> |
+| <code>/host-sets/&lt;id&gt;</code> | <ul><li>ID</li><ul><li><code>&lt;id&gt;</code></li></ul><li>Pin</li><ul><li><code>&lt;host-catalog-id&gt;</code></li></ul><li>Type</li><ul><li><code>host-set</code></li></ul></ul> | <ul><li><code>read</code>: Read a host set</li><ul><li>`ids=<id>;actions=read`</li><li>`ids=<pin>;type=<type>;actions=read`</li></ul><li><code>update</code>: Update a host set</li><ul><li>`ids=<id>;actions=update`</li><li>`ids=<pin>;type=<type>;actions=update`</li></ul><li><code>delete</code>: Delete a host set</li><ul><li>`ids=<id>;actions=delete`</li><li>`ids=<pin>;type=<type>;actions=delete`</li></ul><li><code>add-hosts</code>: Add hosts to a host set</li><ul><li>`ids=<id>;actions=add-hosts`</li><li>`ids=<pin>;type=<type>;actions=add-hosts`</li></ul><li><code>remove-hosts</code>: Remove hosts from a host set</li><ul><li>`ids=<id>;actions=remove-hosts`</li><li>`ids=<pin>;type=<type>;actions=remove-hosts`</li></ul><li><code>set-hosts</code>: Set the full set of hosts on a host set</li><ul><li>`ids=<id>;actions=set-hosts`</li><li>`ids=<pin>;type=<type>;actions=set-hosts`</li></ul></ul> |
 
 ## Managed group
 
@@ -159,8 +156,6 @@ The **Managed group** resource type supports the following scopes: **Global**, *
 | <code>/managed-groups/&lt;id&gt;</code> | <ul><li>ID</li><ul><li><code>&lt;id&gt;</code></li></ul><li>Pin</li><ul><li><code>&lt;auth-method-id&gt;</code></li></ul><li>Type</li><ul><li><code>managed-group</code></li></ul></ul> | <ul><li><code>read</code>: Read a managed group</li><ul><li>`ids=<id>;actions=read`</li><li>`ids=<pin>;type=<type>;actions=read`</li></ul><li><code>update</code>: Update a managed group</li><ul><li>`ids=<id>;actions=update`</li><li>`ids=<pin>;type=<type>;actions=update`</li></ul><li><code>delete</code>: Delete a managed group</li><ul><li>`ids=<id>;actions=delete`</li><li>`ids=<pin>;type=<type>;actions=delete`</li></ul></ul> |
 
 ## Policy
-
-The **Policy** resource type supports the following scopes: 
 
 | API endpoint | Parameters into permissions engine | Available actions / examples |
 | ------------ | ---------------------------------- | ---------------------------- |
@@ -174,7 +169,7 @@ The **Role** resource type supports the following scopes: **Global**, **Org**, *
 | API endpoint | Parameters into permissions engine | Available actions / examples |
 | ------------ | ---------------------------------- | ---------------------------- |
 | <code>/roles</code> | <ul><li>Type</li><ul><li><code>role</code></li></ul></ul> | <ul><li><code>create</code>: Create a role</li><ul><li>`type=<type>;actions=create`</li></ul><li><code>list</code>: List roles</li><ul><li>`type=<type>;actions=list`</li></ul></ul> |
-| <code>/roles/&lt;id&gt;</code> | <ul><li>ID</li><ul><li><code>&lt;id&gt;</code></li></ul><li>Type</li><ul><li><code>role</code></li></ul></ul> | <ul><li><code>read</code>: Read a role</li><ul><li>`ids=<id>;actions=read`</li></ul><li><code>update</code>: Update a role</li><ul><li>`ids=<id>;actions=update`</li></ul><li><code>delete</code>: Delete a role</li><ul><li>`ids=<id>;actions=delete`</li></ul><li><code>add-grant-scopes</code>: </li><ul><li>`ids=<id>;actions=add-grant-scopes`</li></ul><li><code>add-grants</code>: Add grants to a role</li><ul><li>`ids=<id>;actions=add-grants`</li></ul><li><code>add-principals</code>: Add principals to a role</li><ul><li>`ids=<id>;actions=add-principals`</li></ul><li><code>remove-grant-scopes</code>: </li><ul><li>`ids=<id>;actions=remove-grant-scopes`</li></ul><li><code>remove-grants</code>: Remove grants from a role</li><ul><li>`ids=<id>;actions=remove-grants`</li></ul><li><code>remove-principals</code>: Remove principals from a role</li><ul><li>`ids=<id>;actions=remove-principals`</li></ul><li><code>set-grant-scopes</code>: </li><ul><li>`ids=<id>;actions=set-grant-scopes`</li></ul><li><code>set-grants</code>: Set the full set of grants on a role</li><ul><li>`ids=<id>;actions=set-grants`</li></ul><li><code>set-principals</code>: Set the full set of principals on a role</li><ul><li>`ids=<id>;actions=set-principals`</li></ul></ul> |
+| <code>/roles/&lt;id&gt;</code> | <ul><li>ID</li><ul><li><code>&lt;id&gt;</code></li></ul><li>Type</li><ul><li><code>role</code></li></ul></ul> | <ul><li><code>read</code>: Read a role</li><ul><li>`ids=<id>;actions=read`</li></ul><li><code>update</code>: Update a role</li><ul><li>`ids=<id>;actions=update`</li></ul><li><code>delete</code>: Delete a role</li><ul><li>`ids=<id>;actions=delete`</li></ul><li><code>add-grant-scopes</code>: Add grant scopes to a role</li><ul><li>`ids=<id>;actions=add-grant-scopes`</li></ul><li><code>add-grants</code>: Add grants to a role</li><ul><li>`ids=<id>;actions=add-grants`</li></ul><li><code>add-principals</code>: Add principals to a role</li><ul><li>`ids=<id>;actions=add-principals`</li></ul><li><code>remove-grant-scopes</code>: Remove grant scopes from a role</li><ul><li>`ids=<id>;actions=remove-grant-scopes`</li></ul><li><code>remove-grants</code>: Remove grants from a role</li><ul><li>`ids=<id>;actions=remove-grants`</li></ul><li><code>remove-principals</code>: Remove principals from a role</li><ul><li>`ids=<id>;actions=remove-principals`</li></ul><li><code>set-grant-scopes</code>: Set the full set of grant scopes on a role</li><ul><li>`ids=<id>;actions=set-grant-scopes`</li></ul><li><code>set-grants</code>: Set the full set of grants on a role</li><ul><li>`ids=<id>;actions=set-grants`</li></ul><li><code>set-principals</code>: Set the full set of principals on a role</li><ul><li>`ids=<id>;actions=set-principals`</li></ul></ul> |
 
 ## Scope
 
@@ -227,8 +222,8 @@ The **User** resource type supports the following scopes: **Global**, **Org**
 
 | API endpoint | Parameters into permissions engine | Available actions / examples |
 | ------------ | ---------------------------------- | ---------------------------- |
-| <code>/users</code> | <ul><li>Type</li><ul><li><code>user</code></li></ul></ul> | <ul><li><code>create</code>: Create an user</li><ul><li>`type=<type>;actions=create`</li></ul><li><code>list</code>: List users</li><ul><li>`type=<type>;actions=list`</li></ul></ul> |
-| <code>/users/&lt;id&gt;</code> | <ul><li>ID</li><ul><li><code>&lt;id&gt;</code></li></ul><li>Type</li><ul><li><code>user</code></li></ul></ul> | <ul><li><code>read</code>: Read an user</li><ul><li>`ids=<id>;actions=read`</li></ul><li><code>update</code>: Update an user</li><ul><li>`ids=<id>;actions=update`</li></ul><li><code>delete</code>: Delete an user</li><ul><li>`ids=<id>;actions=delete`</li></ul><li><code>add-accounts</code>: Add accounts to a user</li><ul><li>`ids=<id>;actions=add-accounts`</li></ul><li><code>list-resolvable-aliases</code>: </li><ul><li>`ids=<id>;actions=list-resolvable-aliases`</li></ul><li><code>remove-accounts</code>: Remove accounts from a user</li><ul><li>`ids=<id>;actions=remove-accounts`</li></ul><li><code>set-accounts</code>: Set the full set of accounts on a user</li><ul><li>`ids=<id>;actions=set-accounts`</li></ul></ul> |
+| <code>/users</code> | <ul><li>Type</li><ul><li><code>user</code></li></ul></ul> | <ul><li><code>create</code>: Create a user</li><ul><li>`type=<type>;actions=create`</li></ul><li><code>list</code>: List users</li><ul><li>`type=<type>;actions=list`</li></ul></ul> |
+| <code>/users/&lt;id&gt;</code> | <ul><li>ID</li><ul><li><code>&lt;id&gt;</code></li></ul><li>Type</li><ul><li><code>user</code></li></ul></ul> | <ul><li><code>read</code>: Read a user</li><ul><li>`ids=<id>;actions=read`</li></ul><li><code>update</code>: Update a user</li><ul><li>`ids=<id>;actions=update`</li></ul><li><code>delete</code>: Delete a user</li><ul><li>`ids=<id>;actions=delete`</li></ul><li><code>add-accounts</code>: Add accounts to a user</li><ul><li>`ids=<id>;actions=add-accounts`</li></ul><li><code>list-resolvable-aliases</code>: </li><ul><li>`ids=<id>;actions=list-resolvable-aliases`</li></ul><li><code>remove-accounts</code>: Remove accounts from a user</li><ul><li>`ids=<id>;actions=remove-accounts`</li></ul><li><code>set-accounts</code>: Set the full set of accounts on a user</li><ul><li>`ids=<id>;actions=set-accounts`</li></ul></ul> |
 
 ## Worker
 
@@ -236,8 +231,8 @@ The **Worker** resource type supports the following scopes: **Global**
 
 | API endpoint | Parameters into permissions engine | Available actions / examples |
 | ------------ | ---------------------------------- | ---------------------------- |
-| <code>/workers</code> | <ul><li>Type</li><ul><li><code>worker</code></li></ul></ul> | <ul><li><code>create:controller-led</code>: Create a worker using the controller-led workflow</li><ul><li>`type=<type>;actions=create:controller-led`</li></ul><li><code>create:worker-led</code>: Create a worker using the worker-led workflow</li><ul><li>`type=<type>;actions=create:worker-led`</li></ul><li><code>list</code>: List workers</li><ul><li>`type=<type>;actions=list`</li></ul><li><code>read-certificate-authority</code>: </li><ul><li>`type=<type>;actions=read-certificate-authority`</li></ul><li><code>reinitialize-certificate-authority</code>: </li><ul><li>`type=<type>;actions=reinitialize-certificate-authority`</li></ul></ul> |
-| <code>/workers/&lt;id&gt;</code> | <ul><li>ID</li><ul><li><code>&lt;id&gt;</code></li></ul><li>Type</li><ul><li><code>worker</code></li></ul></ul> | <ul><li><code>read</code>: Read a worker</li><ul><li>`ids=<id>;actions=read`</li></ul><li><code>update</code>: Update a worker</li><ul><li>`ids=<id>;actions=update`</li></ul><li><code>delete</code>: Delete a worker</li><ul><li>`ids=<id>;actions=delete`</li></ul><li><code>add-worker-tags</code>: </li><ul><li>`ids=<id>;actions=add-worker-tags`</li></ul><li><code>remove-worker-tags</code>: </li><ul><li>`ids=<id>;actions=remove-worker-tags`</li></ul><li><code>set-worker-tags</code>: </li><ul><li>`ids=<id>;actions=set-worker-tags`</li></ul></ul> |
+| <code>/workers</code> | <ul><li>Type</li><ul><li><code>worker</code></li></ul></ul> | <ul><li><code>create:controller-led</code>: Create a worker using the controller-led workflow</li><ul><li>`type=<type>;actions=create:controller-led`</li><li>`type=<type>;actions=create:controller-led`</li></ul><li><code>create:worker-led</code>: Create a worker using the worker-led workflow</li><ul><li>`type=<type>;actions=create:worker-led`</li><li>`type=<type>;actions=create:worker-led`</li></ul><li><code>list</code>: List workers</li><ul><li>`type=<type>;actions=list`</li></ul><li><code>read-certificate-authority</code>: </li><ul><li>`type=<type>;actions=read-certificate-authority`</li></ul><li><code>reinitialize-certificate-authority</code>: </li><ul><li>`type=<type>;actions=reinitialize-certificate-authority`</li></ul></ul> |
+| <code>/workers/&lt;id&gt;</code> | <ul><li>ID</li><ul><li><code>&lt;id&gt;</code></li></ul><li>Type</li><ul><li><code>worker</code></li></ul></ul> | <ul><li><code>read</code>: Read a worker</li><ul><li>`ids=<id>;actions=read`</li></ul><li><code>update</code>: Update a worker</li><ul><li>`ids=<id>;actions=update`</li></ul><li><code>delete</code>: Delete a worker</li><ul><li>`ids=<id>;actions=delete`</li></ul><li><code>add-worker-tags</code>: Add worker tags to a worker</li><ul><li>`ids=<id>;actions=add-worker-tags`</li></ul><li><code>remove-worker-tags</code>: Remove worker tags from a worker</li><ul><li>`ids=<id>;actions=remove-worker-tags`</li></ul><li><code>set-worker-tags</code>: Set the full set of worker tags on a worker</li><ul><li>`ids=<id>;actions=set-worker-tags`</li></ul></ul> |
 
 
 <!-- END TABLE -->
