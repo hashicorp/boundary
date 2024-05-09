@@ -65,6 +65,7 @@ import (
 	"github.com/hashicorp/nodeenrollment"
 	"github.com/tmc/langchaingo/llms"
 	"github.com/tmc/langchaingo/llms/googleai"
+	"github.com/tmc/langchaingo/llms/ollama"
 	"github.com/tmc/langchaingo/llms/openai"
 	ua "go.uber.org/atomic"
 	"google.golang.org/grpc"
@@ -528,6 +529,28 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		llm, err := openai.New(opts...)
 		if err != nil {
 			return nil, fmt.Errorf("unable to initialize open AI model: %w", err)
+		}
+		c.llm = llm
+		c.searcher, err = help.NewSearcher(ctx, eventLogger.Named("help"), dbase, dbase, llm, c.conf.RawConfig.Controller.Help.NumHintDocuments)
+		if err != nil {
+			return nil, fmt.Errorf("unable to create searcher: %w", err)
+		}
+		if err := c.searcher.CreateEmbeddings(ctx); err != nil {
+			return nil, fmt.Errorf("unable to create embeddings: %w", err)
+		}
+	case "ollama":
+		if c.conf.RawConfig.Controller.Help.Model == "" {
+			return nil, fmt.Errorf(`model is required with help model "ollama"`)
+		}
+		if c.conf.RawConfig.Controller.Help.EmbeddingModel != "" {
+			return nil, fmt.Errorf(`embedding model is not supported with help model "ollama"`)
+		}
+		opts := []ollama.Option{
+			ollama.WithModel(c.conf.RawConfig.Controller.Help.Model),
+		}
+		llm, err := ollama.New(opts...)
+		if err != nil {
+			return nil, fmt.Errorf("unable to initialize ollama model: %w", err)
 		}
 		c.llm = llm
 		c.searcher, err = help.NewSearcher(ctx, eventLogger.Named("help"), dbase, dbase, llm, c.conf.RawConfig.Controller.Help.NumHintDocuments)

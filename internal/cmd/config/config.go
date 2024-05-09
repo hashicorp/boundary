@@ -362,7 +362,7 @@ type License struct {
 
 type Help struct {
 	// The type of help service to use.
-	// Valid values are "gemini", "openai".
+	// Valid values are "gemini", "openai", "ollama".
 	Type             string `hcl:"type"`
 	ApiKey           string `hcl:"api_key"`
 	Model            string `hcl:"model"`
@@ -745,6 +745,13 @@ func Parse(d string) (*Config, error) {
 		case "gemini", "openai":
 			if result.Controller.Help.ApiKey == "" {
 				return nil, fmt.Errorf(`help type %q requires an API key`, result.Controller.Help.Type)
+			}
+		case "ollama":
+			if result.Controller.Help.Model == "" {
+				return nil, fmt.Errorf(`model is required with help model "ollama"`)
+			}
+			if result.Controller.Help.EmbeddingModel != "" {
+				return nil, fmt.Errorf(`embedding model is not supported with help model "ollama"`)
 			}
 		case "":
 			// No type is valid, falls back to noop helper.
