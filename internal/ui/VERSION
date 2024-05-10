@@ -1,4 +1,4 @@
-ee53eafb716f3532c798eee9cf3224fd61f01325
+8a4615c5e2b6caa95da9f7e87f2c30e3f8a00cdb
 # This file determines the version of the UI to embed in the boundary binary.
 # Update this file by running 'make update-ui-version' from the root of this repo.
 # Set UI_COMMITISH when running the above target to update to a specific version.
