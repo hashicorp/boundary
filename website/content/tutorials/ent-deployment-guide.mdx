@@ -1,0 +1,969 @@
+---
+id: 410535e4-2d22-4419-b329-3434406e639a
+name: Boundary Enterprise deployment guide
+short_name: Boundary Enterprise deployment guide
+description: |-
+  This guide outlines the required steps to deploy a Boundary Enterprise Cluster.
+read_time: 15
+edition: enterprise
+products_used:
+  - product: boundary
+    min_version: 0.13.0
+    max_version: 0.13.0
+default_collection_context: boundary/enterprise
+---
+
+This deployment guide outlines the required steps to manually install and
+configure a single HashiCorp Boundary cluster as defined in the [Boundary
+Enterprise Reference
+Architecture](/boundary/tutorials/enterprise/ent-reference-architecture) on
+virtual machines (VMs) or bare-metal servers running a Debian or RedHat-based
+Linux distribution.
+
+This guide includes general patterns as well as specific recommendations for
+popular cloud infrastructure platforms. These recommendations have also been
+encoded into official Terraform reference architectures for
+[AWS](https://github.com/hashicorp/boundary-reference-architecture/tree/main/deployment/aws),
+[Azure](https://github.com/hashicorp/boundary-reference-architecture/tree/main/deployment/azure),
+and
+[GCP](https://github.com/hashicorp/boundary-reference-architecture/tree/main/deployment/gcp).
+
+## Install Boundary
+
+Pre-built Boundary packages are available from the [HashiCorp Linux
+Repository](https://www.hashicorp.com/blog/announcing-the-hashicorp-linux-repository).
+In addition to the installing the Boundary binary, the official package also
+provides a systemd service unit, and a local `boundary` user account under which
+the service runs.
+
+The following installation steps must be completed for each Boundary controller
+and worker node that you want to deploy. The binary operates as either a worker
+or controller, depending on the subsequent configuration that is generated for
+the Boundary binary.
+
+The steps vary by Linux distribution. Select your distribution and complete the
+steps to install Boundary:
+
+<Tabs>
+<Tab heading="Ubuntu/Debian">
+
+Use the following command to add the HashiCorp GPC key as a trusted
+package-signing key:
+
+```shell-session
+$ curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo apt-key add -
+```
+
+Add the official HashiCorp Linux repository:
+
+```shell-session
+$ sudo apt-add-repository "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main"
+```
+
+Update the package index:
+
+```shell-session
+$ sudo apt update
+```
+
+Install Boundary:
+
+```shell-session
+$ sudo apt install boundary-enterprise
+```
+
+<Note>
+
+  To install Boundary Community Edition, replace `boundary-enterprise` with `boundary`.
+
+</Note>
+
+</Tab>
+<Tab heading="CentOS/RHEL">
+
+
+Use the following command to install yum-config-manager to manage your
+repositories:
+
+```shell-session
+$ sudo yum install -y yum-utils
+```
+
+Add the official HashiCorp Linux repository:
+
+```shell-session
+$ sudo yum-config-manager --add-repo https://rpm.releases.hashicorp.com/RHEL/hashicorp.repo
+```
+
+Install Boundary:
+
+```shell-session
+$ sudo yum -y install boundary-enterprise
+```
+
+<Note>
+
+  To install Boundary Community Edition, replace `boundary-enterprise` with `boundary`.
+
+</Note>
+
+</Tab>
+</Tabs>
+
+## Configure Boundary controllers
+
+Refer to the following sections for more information about configuring Boundary
+controllers:
+
+- [Prepare TLS certificates](#prepare-tls-certificates)
+- [Prepare KMS keys](#prepare-kms-keys)
+- [Prepare the database](#prepare-the-database)
+- [Create controller configuration](#create-controller-configuration)
+- [Start the Boundary service](#start-the-boundary-service)
+- [Authenticate using a KMS recovery key](#authenticate-using-a-kms-recovery-key)
+
+### Prepare TLS certificates
+
+HashiCorp recommends that the Boundary controller nodes handle TLS via (Public Key Infrastructure) for
+user connections. Further, we strongly recommend that you use certificates that
+are generated and signed by an appropriate certificate authority (CA).
+
+You must have two files for using TLS on each Boundary controller node. You may
+have to create a new directory to store the certificate material at
+/etc/boundary.d/tls. Place the files in the following paths:
+
+- `/etc/boundary.d/tls/boundary-cert.pem` - The Boundary TLS certificate itself,
+  with a Common Name (CN) and Subject Alternate Name (SAN) that matches your
+  planned primary DNS record for accessing the Boundary controllers, and any
+  additional SANs as necessary.
+- `/etc/boundary.d/tls/boundary-key.pem` - The Boundary TLS certificate’s private key.
+
+If you do not generate unique TLS key material for each node, you should
+securely distribute the key material to each of the Boundary controller nodes.
+
+### Prepare KMS keys
+
+Boundary controllers require the following two different cryptographic keys to operate:
+
+- **Root Key**: The root KMS key acts as a KEK (Key Encrypting Key) for the
+  scope-specific KEKs (also referred to as the scope’s root key). The scope’s
+  root KEK and the various DEKs (Data Encryption Keys) are created when a scope
+  is created. The DEKs are encrypted with the scope’s root KEK, and this is in
+  turn encrypted with the KMS key marked for the root purpose.
+- **Recovery Key**: The recovery KMS is used for rescue/recovery operations that
+  can be used by a client to authenticate almost any Boundary operation. A nonce
+  and creation time are included as an encrypted payload, formatted as a token
+  and sent to the controller. The time and nonce are used to ensure that a value
+  cannot be replayed by an adversary, and also to ensure that each operation
+  must be individually authenticated by a client so that revoking access to the
+  KMS has an immediate result.
+
+The following key is optional:
+
+- **Worker-Auth Key**: (optional) The worker-auth key is shared by the
+  controller and worker in order to authenticate a worker to the controller. If
+  a worker is used with an authentication token, this is unnecessary.
+
+There are other optional KMS keys that can be configured for different
+encryption scenarios. These scenarios include Boundary worker auth token
+encryption and Boundary worker or controller config encryption. Refer to [Data
+security in Boundary](/boundary/docs/concepts/security/data-encryption) for
+further information.
+
+<Note>
+
+  There are three methods for [authorizing Boundary workers](/boundary/docs/configuration/worker/worker-configuration#authorization-methods): controller-led, worker-led, and KMS-led. Controller-led and worker-led methods use an auth token exchange to authenticate with the controllers. KMS-led uses a user-provided KMS key that can be used for authentication by both the worker and the controller. In this example, the KMS-led method is used to provide an AWS KMS auth key to enable worker authentication.
+
+</Note>
+
+HashiCorp strongly recommends using either Vault Transit, or the key management
+system for whatever cloud provider where you deploy your Boundary controllers.
+Refer to the following documentation for more information:
+
+- [Vault Transit](/vault/docs/secrets/transit)
+- [AWS KMS](https://aws.amazon.com/kms/)
+- [Azure Key Vault](https://azure.microsoft.com/en-us/products/key-vault)
+- [GCP Cloud Key Manager](https://cloud.google.com/security-key-management)
+
+After you create the keys in Vault or the key management system of your choice,
+you can prepare the PostgreSQL database.
+
+### Prepare the database
+
+Boundary manages its state and configuration in a Relational Database Management
+System (RDBMS), namely PostgreSQL. You should create, set up, and make the
+PostgreSQL database accessible to the Boundary controller nodes before you
+configure the nodes themselves.
+
+Refer to the enterprise reference architecture documentation for examples of
+[cloud managed PostgreSQL databases](#database-recommendations).
+
+### Create controller configuration
+
+At this point, the assumption is that you have completed the following steps:
+
+- Prepared at least three virtual machines with Boundary installed
+- Prepared at least one set of TLS certificate and key to distribute to the
+  virtual machines for TLS communication
+- Prepared the KMS keys that you’ll use for at least root and recovery
+  operations
+- Prepared a PostgreSQL database that you’ll use to manage configuration and
+  state
+
+You must complete the following controller configuration for each of the
+Boundary controller nodes.
+
+#### Base controller configuration
+
+The core required values for a Boundary controller configuration include the
+following:
+
+- listener blocks for api, cluster, and ops
+- A kms block
+- disable_mlock
+- A controller block
+
+Installing Boundary from the HashiCorp Linux Repository installs some example
+configuration files under /etc/boundary.d/ which you will replace in the
+following steps.
+
+Use the following commands to rename the existing configuration files.
+
+```shell-session
+$ sudo mv boundary.hcl boundary.hcl.old
+```
+
+```shell-session
+$ sudo mv controller.hcl controller.hcl.old
+```
+
+```shell-session
+$ sudo mv worker.hcl worker.hcl.old
+```
+
+We recommend using either the `env://` or `file://` notation within the
+configuration files to securely provide secret configuration components to the
+Boundary controller binaries. In the following controller configuration example,
+we use `env://` to declare the PostgreSQL connection string, as well as secure
+the AWS KMS configuration items.
+
+When you install the Boundary binary using a package manager, it includes a unit
+file that configures an environment file at `/etc/boundary.d/boundary.env`. We
+will use this file to set the sensitive values that are used to configure the
+Boundary controllers and workers. The following file is an example of how this
+environment file could be configured:
+
+<CodeBlockConfig filename="/etc/boundary.d/boundary.env">
+
+```text
+POSTGRESQL_CONNECTION_STRING=postgresql://boundary:boundary@postgres.yourdomain.com:5432/boundary
+AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE
+AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+```
+
+</CodeBlockConfig>
+
+<Note>
+
+  In the example above, the proper IAM roles and permissions for the given
+  `AWS_ACCESS_KEY` and `AWS_SECRET_ACCESS_KEY` must be in place for Boundary to
+  use them to access the different KMS keys.
+
+</Note>
+
+Next, populate the `controller.hcl` file with any relevant configuration
+information. The following example configuration file is a good starting point
+for a production Boundary controller installation. It defines the three
+`listener` blocks, two unique `kms` blocks that are specific to AWS (as an
+example), the `disable_mlock` value, and the `controller` block.
+
+<CodeBlockConfig filename="/etc/boundary.d/controller.hcl">
+
+```hcl
+# disable memory from being swapped to disk
+disable_mlock = true
+
+# API listener configuration block
+listener "tcp" {
+  # Should be the address of the NIC that the controller server will be reached on
+  # Use 0.0.0.0 to listen on all interfaces
+  address = "0.0.0.0:9200"
+  # The purpose of this listener block
+  purpose = "api"
+
+  # TLS Configuration
+  tls_disable   = false
+  tls_cert_file = "/etc/boundary.d/tls/boundary-cert.pem"
+  tls_key_file  = "/etc/boundary.d/tls/boundary-key.pem"
+
+  # Uncomment to enable CORS for the Admin UI. Be sure to set the allowed origin(s)
+  # to appropriate values.
+  #cors_enabled = true
+  #cors_allowed_origins = ["https://yourcorp.yourdomain.com", "serve://boundary"]
+}
+
+# Data-plane listener configuration block (used for worker coordination)
+listener "tcp" {
+  # Should be the IP of the NIC that the worker will connect on
+  address = "0.0.0.0:9201"
+  # The purpose of this listener
+  purpose = "cluster"
+}
+
+# Ops listener for operations like health checks for load balancers
+listener "tcp" {
+  # Should be the address of the interface where your external systems'
+  # (eg: Load-Balancer and metrics collectors) will connect on.
+  address = "0.0.0.0:9203"
+  # The purpose of this listener block
+  purpose = "ops"
+
+  tls_disable   = false
+  tls_cert_file = "/etc/boundary.d/tls/boundary-cert.pem"
+  tls_key_file  = "/etc/boundary.d/tls/boundary-key.pem"
+}
+
+# Controller configuration block
+controller {
+  # This name attr must be unique across all controller instances if running in HA mode
+  name = "boundary-controller-1"
+  description = "Boundary controller number one"
+
+  # This is the public hostname or IP where the workers can reach the
+  # controller. This should typically be a load balancer address
+  public_cluster_addr = "example-cluster-lb.example.com"
+
+  # Enterprise license file, can also be the raw value or env:// value
+  license = "file:///path/to/license/file.hclic"
+
+  # After receiving a shutdown signal, Boundary will wait 10s before initiating the shutdown process.
+  graceful_shutdown_wait_duration = "10s"
+
+  # Database URL for postgres. This is set in boundary.env and
+  #consumed via the “env://” notation.
+  database {
+      url = "env://POSTGRESQL_CONNECTION_STRING"
+  }
+}
+
+# Events (logging) configuration. This
+# configures logging for ALL events to both
+# stderr and a file at /var/log/boundary/controller.log
+events {
+  audit_enabled       = true
+  sysevents_enabled   = true
+  observations_enable = true
+  sink "stderr" {
+    name = "all-events"
+    description = "All events sent to stderr"
+    event_types = ["*"]
+    format = "cloudevents-json"
+  }
+  sink {
+    name = "file-sink"
+    description = "All events sent to a file"
+    event_types = ["*"]
+    format = "cloudevents-json"
+    file {
+      path = "/var/log/boundary"
+      file_name = "controller.log"
+    }
+    audit_config {
+      audit_filter_overrides {
+        sensitive = "redact"
+        secret    = "redact"
+      }
+    }
+  }
+}
+
+# Root KMS Key (managed by AWS KMS in this example)
+# Keep in mind that sensitive values are provided via ENV VARS
+# in this example, such as access_key and secret_key
+kms "awskms" {
+  purpose    = "root"
+  region     = "us-east-1"
+  kms_key_id = "19ec80b0-dfdd-4d97-8164-c6examplekey"
+  endpoint   = "https://vpce-0e1bb1852241f8cc6-pzi0do8n.kms.us-east-1.vpce.amazonaws.com"
+}
+
+# Recovery KMS Key
+kms "awskms" {
+  purpose    = "recovery"
+  region     = "us-east-1"
+  kms_key_id = "19ec80b0-dfdd-4d97-8164-c6examplekey2"
+  endpoint   = "https://vpce-0e1bb1852241f8cc6-pzi0do8n.kms.us-east-1.vpce.amazonaws.com"
+}
+
+# Worker-Auth KMS Key (optional, only needed if using
+# KMS authenticated workers)
+kms "awskms" {
+  purpose    = "worker-auth"
+  region     = "us-east-1"
+  kms_key_id = "19ec80b0-dfdd-4d97-8164-c6examplekey3"
+  endpoint   = "https://vpce-0e1bb1852241f8cc6-pzi0do8n.kms.us-east-1.vpce.amazonaws.com"
+}
+```
+
+</CodeBlockConfig>
+
+#### Parameter explanation
+
+- `disable_mlock` `(bool: false)` –  Disables the server from executing the
+  `mlock` syscall, which prevents memory from being swapped to the disk. This is
+  fine for local development and testing. However, it is not recommended for
+  production unless the systems running Boundary use only encrypted swap or do
+  not use swap at all. Boundary only supports memory locking on UNIX-like
+  systems that support mlock() syscall (Linux, FreeBSD, etc.).
+
+  On Linux, to give the Boundary executable the ability to use mlock syscall
+  without running the process as root, execute the following command::
+
+  ```shell-session
+  $ sudo setcap cap_ipc_lock=+ep $(readlink -f $(which boundary))
+  ```
+
+  If you use a Linux distribution with a modern version of systemd, you can add
+  the following directive to the `"[Service]"` configuration section:
+
+  ```ini
+  LimitMEMLOCK=infinity
+  ```
+
+- [`listener`](/boundary/docs/configuration/listener): Configures the listeners on which
+  Boundary serves traffic (API, cluster, and proxy).
+
+- [`controller`](/boundary/docs/configuration/controller): Configures the
+  controller. If present, `boundary server` will start a Controller subprocess.
+
+- [`events`](/boundary/docs/configuration/events): Configures Boundary
+  events-specific parameters.
+
+  <Note>
+
+    The example events configuration above is exhaustive and writes all events
+    to both stderr and a file. This configuration may or may not work for your
+    organization’s logging solution.
+
+  </Note>
+
+- [`kms`](/boundary/docs/configuration/kms): Configures KMS blocks [for various
+  purposes](/boundary/docs/concepts/security/data-encryption).
+
+The `recovery` block specifies the key used to "recover" Boundary, but you can
+also use it to authenticate to Boundary and manage it as a "global" super user.
+This allows you to authenticate from the CLI or from Terraform in order to
+manage Boundary on first run. This key is utilized later to set up basic
+administrative accounts.
+
+Refer to the links below for configuration information for the different cloud KMS blocks:
+
+- [AWS](/boundary/docs/configuration/kms/awskms)
+- [Azure](/boundary/docs/configuration/kms/azurekeyvault)
+- [GCP](/boundary/docs/configuration/kms/gcpckms)
+- [OCI](/boundary/docs/configuration/kms/ocikms)
+- [AliCloud](/boundary/docs/configuration/kms/alicloudkms)
+- [Vault Transit](/boundary/docs/configuration/kms/transit)
+
+Refer to the documentation for additional [top-level configuration
+options](/boundary/docs/configuration) and additional Boundary
+[controller-specific options](/boundary/docs/configuration/controller).
+
+### Set logging permissions
+
+To ensure the boundary process has rights to write to the log destination,
+create the logging directory and set write-access permissions:
+
+```shell-session
+$ mkdir /var/log/boundary
+```
+
+```shell-session
+$ sudo chmod +rw /var/log/boundary
+```
+
+If setting the boundary service to run under a specific user and group, change
+the ownership of the log directory.
+
+For example, if running the boundary service under the boundary user and and
+boundary group:
+
+```shell-session
+$ sudo chown boundary:boundary /var/log/boundary
+```
+
+### Initialize the database
+
+Before you can start Boundary, you must initialize the database from one
+Boundary controller. This operation is only required once which will execute the
+required database migrations for the Boundary cluster to operate.The following
+command with the included flags will create initial resources within Boundary as
+an example. For finer control over these resources, remove the flags. Execute
+the following command to initialize the Boundary database:
+
+```shell-session
+$ boundary database init \
+   -skip-auth-method-creation \
+   -skip-host-resources-creation \
+   -skip-scopes-creation \
+   -skip-target-creation \
+   -config /etc/boundary.d/controller.hcl
+```
+
+You can use the help output for the init command to view the flags available to
+skip the creation of any auto-generated resources:
+
+```shell-session
+$ boundary database init -h
+```
+
+### Start the Boundary service
+
+When the configuration files are in place on each Boundary controller, you can
+proceed to enable and start the binary via systemd on each of the Boundary
+controller nodes using the following commands:
+
+```shell-session
+$ sudo systemctl enable boundary
+```
+
+```shell-session
+$ sudo systemctl start boundary
+```
+
+### Authenticate using a KMS recovery key
+
+To authenticate to a new Boundary installation, we recommend configuring a KMS
+recovery key, as outlined in the [Base controller
+configuration](#base-controller-configuration) section. This key can be used to
+manage a new Boundary installation.
+
+Below are examples of authenticating to a new Boundary installation using the
+CLI or Terraform.
+
+<Tabs>
+<Tab heading="CLI">
+
+To use the recovery workflow on the CLI, you must pass the `-recovery-config
+<path_to_kms_recovery_config>` flag or set the environment variable for
+`BOUNDARY_RECOVERY_CONFIG` for every command ran. Authentication takes place for
+every command ran when using the recovery workflow, there is no `boundary
+authenticate` step:
+
+```bash
+$ cat << EOF > /tmp/recovery.hcl
+kms "aead" {
+        purpose   = "recovery"
+        region     = "us-east-1"
+        kms_key_id = "19ec80b0-dfdd-4d97-8164-c6examplekey2"
+        endpoint   = "https://vpce-0e1bb1852241f8cc6-pzi0do8n.kms.us-east-1.vpce.amazonaws.com"
+}
+EOF
+```
+
+Now, you can create a user by passing the recovery key via the `recovery-config`
+option:
+
+```shell-session
+$ boundary users create <truncated> -recovery-config /tmp/recovery.hcl
+```
+
+</Tab>
+<Tab heading="Terraform">
+
+To configure your provider to use the recovery KMS workflow, provide the KMS
+block as the value for `recovery_kms_hcl`:
+
+```hcl
+provider "boundary" {
+  addr             = 'https://boundary.mycorp.com:9200'
+  recovery_kms_hcl = <<EOT
+kms "aead" {
+  purpose    = "recovery"
+  region     = "us-east-1"
+  kms_key_id = "19ec80b0-dfdd-4d97-8164-c6examplekey2"
+  endpoint   = "https://vpce-0e1bb1852241f8cc6-pzi0do8n.kms.us-east-1.vpce.amazonaws.com"
+}
+EOT
+}
+```
+
+</Tab>
+</Tabs>
+
+Upon logging in to Boundary for the first time, HashiCorp recommends creating an
+admin user for the global and project level scopes to manage Boundary. This will
+allow our user to configure targets within those scopes and manage them.
+
+Refer to the [Creating your first login
+account](/boundary/docs/oss/installing/no-gen-resources#creating-your-first-login-account)
+documentation to learn about setting up your first auth method, user, account,
+and role to login to Boundary going forward without the recovery KMS workflow.
+
+## Configure Boundary workers
+
+For the purposes of this guide, we will follow an opinionated deployment model
+in order to demonstrate additional Boundary Enterprise features such as
+multi-hop sessions.
+
+At this point, the assumption is that you have completed the following steps:
+
+- Installed Boundary on at least three controller nodes. Refer to the previous
+  section [Configure Boundary controllers](#create-controller-configuration).
+- Prepared (or use existing) three network boundaries:
+  - Public/DMZ network
+  - Intermediary network
+  - Private network
+- Prepared three virtual machines for Boundary workers, one in each network
+  boundary with the Boundary binary installed.
+
+In the following three configuration files (one for each worker in a unique
+network boundary), there are common configuration components as well as some
+unique components depending on the role the Boundary worker performs. In a
+multi-hop configuration, the Boundary workers can serve one of three purposes:
+an ingress worker, an ingress/egress worker, and an egress worker.
+
+## Prepare an environment file
+
+To securely provide secret configuration components to the Boundary worker
+binaries, HashiCorp recommends using either the `env://` or `file://` notation
+within the configuration files. In the following controller configuration
+example we will use `env://` to secure AWS KMS configuration items.
+
+When you install the Boundary binary using a package manager, it includes a unit
+file which configures an environment file at /etc/boundar.d/boundary.env. This
+file is used to set sensitive values that configure the Boundary workers. The
+following is an example of configuring this environment file:
+
+<CodeBlockConfig filename="/etc/boundary.d/boundary.env">
+
+```text
+AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE
+AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+```
+
+</CodeBlockConfig>
+
+<Note>
+
+  In the example above the proper IAM roles and permissions for the given
+  `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` must be in place to allow
+  Boundary access to the different KMS keys.
+
+</Note>
+
+### Prepare worker KMS keys
+
+The worker-auth-storage KMS key is used by a worker for the encrypted
+storage of authentication keys. This is recommended for workers. If it is
+not specified, the authentication keys are not encrypted on disk. Optionally, if
+you deploy KMS authentication-drive Boundary workers, an additional KMS key must
+be generated to authenticate the Boundary worker with the controller.
+
+HashiCorp strongly recommends using the Key Management System of the cloud
+provider where you deploy your Boundary workers. Keep in mind that Boundary
+workers must have the correct level of permissions for interacting with the
+cloud provider’s KMS.
+
+Refer to the following pages for more information about the cloud provider’s
+KMS:
+
+- [AWS KMS](https://aws.amazon.com/kms/),
+- [Azure Key Vault](https://azure.microsoft.com/en-us/products/key-vault),
+- [GCP Cloud Key Manager](https://cloud.google.com/security-key-management)
+
+After you create the requisite key(s) in the cloud provider of your choice, you
+can begin configuring the workers.
+
+The following configuration examples all employ the auth token method of authentication with a worker-led authorization flow. For more information on configuring authentication for Boundary workers, refer to the [worker
+configuration](/boundary/docs/configuration/worker/worker-configuration) documentation.
+
+### Ingress worker configuration
+
+Create the ingress-worker.hcl file with the relevant configuration information:
+
+<CodeBlockConfig filename="/etc/boundary.d/ingress-worker.hcl">
+
+```hcl
+# disable memory from being swapped to disk
+disable_mlock = true
+
+# listener denoting this is a worker proxy
+listener "tcp" {
+  address = "0.0.0.0:9202"
+  purpose = "proxy"
+}
+
+# worker block for configuring the specifics of the
+# worker service
+worker {
+  public_addr = "<worker_public_addr>"
+  initial_upstreams = ["<controller_lb_address>:9201"]
+  auth_storage_path = "/var/lib/boundary"
+  tags {
+    type = ["worker1", "upstream"]
+  }
+}
+
+# Events (logging) configuration. This
+# configures logging for ALL events to both
+# stderr and a file at /var/log/boundary/<boundary_use>.log
+events {
+  audit_enabled       = true
+  sysevents_enabled   = true
+  observations_enable = true
+  sink "stderr" {
+    name = "all-events"
+    description = "All events sent to stderr"
+    event_types = ["*"]
+    format = "cloudevents-json"
+  }
+  sink {
+    name = "file-sink"
+    description = "All events sent to a file"
+    event_types = ["*"]
+    format = "cloudevents-json"
+    file {
+      path = "/var/log/boundary"
+      file_name = "ingress-worker.log"
+    }
+    audit_config {
+      audit_filter_overrides {
+        sensitive = "redact"
+        secret    = "redact"
+      }
+    }
+  }
+}
+
+# kms block for encrypting the authentication material
+kms "awskms" {
+  purpose    = "worker-auth-storage"
+  region     = "us-east-1"
+  kms_key_id = "19ec80b0-dfdd-4d97-8164-c6examplekey3"
+  endpoint   = "https://vpce-0e1bb1852241f8cc6-pzi0do8n.kms.us-east-1.vpce.amazonaws.com"
+}
+```
+</CodeBlockConfig>
+
+### Intermediate worker configuration
+
+Create the intermediate-worker.hcl file with the relevant configuration
+information:
+
+<CodeBlockConfig filename="/etc/boundary.d/intermediate-worker.hcl">
+
+```hcl
+# disable memory from being swapped to disk
+disable_mlock = true
+
+# listener denoting this is a worker proxy
+listener "tcp" {
+  address = "0.0.0.0:9202"
+  purpose = "proxy"
+}
+
+# worker block for configuring the specifics of the
+# worker service
+worker {
+  public_addr = "<worker_public_addr>"
+  initial_upstreams = ["<ingress_worker_address>:9202"]
+  auth_storage_path = "/var/lib/boundary"
+  tags {
+    type = ["worker2", "intermediate"]
+  }
+}
+
+# Events (logging) configuration. This
+# configures logging for ALL events to both
+# stderr and a file at /var/log/boundary/<boundary_use>.log
+events {
+  audit_enabled       = true
+  sysevents_enabled   = true
+  observations_enable = true
+  sink "stderr" {
+    name = "all-events"
+    description = "All events sent to stderr"
+    event_types = ["*"]
+    format = "cloudevents-json"
+  }
+  sink {
+    name = "file-sink"
+    description = "All events sent to a file"
+    event_types = ["*"]
+    format = "cloudevents-json"
+    file {
+      path = "/var/log/boundary"
+      file_name = "intermediate-worker.log"
+    }
+    audit_config {
+      audit_filter_overrides {
+        sensitive = "redact"
+        secret    = "redact"
+      }
+    }
+  }
+}
+
+# kms block for encrypting the authentication material
+kms "awskms" {
+  purpose    = "worker-auth-storage"
+  region     = "us-east-1"
+  kms_key_id = "19ec80b0-dfdd-4d97-8164-c6examplekey4"
+  endpoint   = "https://vpce-0e1bb1852241f8cc6-pzi0do8n.kms.us-east-1.vpce.amazonaws.com"
+}
+```
+</CodeBlockConfig>
+
+### Egress worker configuration
+
+Create the egress-worker.hcl file with the relevant configuration information:
+
+<CodeBlockConfig filename="/etc/boundary.d/egress-worker.hcl">
+
+```hcl
+# disable memory from being swapped to disk
+disable_mlock = true
+
+# listener denoting this is a worker proxy
+listener "tcp" {
+  address = "0.0.0.0:9202"
+  purpose = "proxy"
+}
+
+# worker block for configuring the specifics of the
+# worker service
+worker {
+  public_addr = "<worker_public_addr>"
+  initial_upstreams = ["<intermediate_worker_address>:9202"]
+  auth_storage_path = "/var/lib/boundary"
+  tags {
+    type = ["worker3", "egress"]
+  }
+}
+
+# Events (logging) configuration. This
+# configures logging for ALL events to both
+# stderr and a file at /var/log/boundary/<boundary_use>.log
+events {
+  audit_enabled       = true
+  sysevents_enabled   = true
+  observations_enable = true
+  sink "stderr" {
+    name = "all-events"
+    description = "All events sent to stderr"
+    event_types = ["*"]
+    format = "cloudevents-json"
+  }
+  sink {
+    name = "file-sink"
+    description = "All events sent to a file"
+    event_types = ["*"]
+    format = "cloudevents-json"
+    file {
+      path = "/var/log/boundary"
+      file_name = "egress-worker.log"
+    }
+    audit_config {
+      audit_filter_overrides {
+        sensitive = "redact"
+        secret    = "redact"
+      }
+    }
+  }
+}
+
+# kms block for encrypting the authentication material
+kms "awskms" {
+  purpose    = "worker-auth-storage"
+  region     = "us-east-1"
+  kms_key_id = "19ec80b0-dfdd-4d97-8164-c6examplekey5"
+  endpoint   = "https://vpce-0e1bb1852241f8cc6-pzi0do8n.kms.us-east-1.vpce.amazonaws.com"
+}
+```
+</CodeBlockConfig>
+
+#### Parameter explanation
+
+- `disable_mlock` `(bool: false)` – Disables the server from executing the mlock
+  syscall, which prevents memory from being swapped to the disk. This is fine
+  for local development and testing. However, it is not recommended for
+  production unless the systems running Boundary use only encrypted swap or do
+  not use swap at all. Boundary only supports memory locking on UNIX-like
+  systems that support mlock() syscall (Linux, FreeBSD, etc.).
+
+  On Linux, to give the Boundary executable the ability to use `mlock` syscall
+  without running the process as root, execute the following command:
+
+  ```shell-session
+  $ sudo setcap cap_ipc_lock=+ep $(readlink -f $(which boundary))
+  ```
+
+  If you use a Linux distribution with a modern version of systemd, you can add
+  the following directive to the `“[Service]”` configuration section:
+
+  ```ini
+  LimitMEMLOCK=infinity
+  ```
+
+- [`listener`](/boundary/docs/configuration/listener):  Configures the listeners
+  on which Boundary serves traffic (API cluster and proxy).
+
+- [`worker`](/boundary/docs/configuration/worker): Configures the worker. If
+  present, `boundary server` starts a worker subprocess.
+
+- [`events`](/boundary/docs/configuration/events): Configures Boundary
+  events-specific parameters.
+
+  <Note>
+
+    The example events configuration above is exhaustive and writes all events
+    to both stderr and a file. This configuration may or may not work for your
+    organization’s logging solution.
+
+  </Note>
+
+- [`kms`](/boundary/docs/configuration/kms): Configures KMS blocks for [various
+  purposes](/boundary/docs/concepts/security/data-encryption).
+
+Refer to the links below for configuration information for the different cloud
+KMS blocks:
+
+- [AWS](/boundary/docs/configuration/kms/awskms)
+- [Azure](/boundary/docs/configuration/kms/azurekeyvault)
+- [GCP](/boundary/docs/configuration/kms/gcpckms)
+- [OCI](/boundary/docs/configuration/kms/ocikms)
+- [AliCloud](/boundary/docs/configuration/kms/alicloudkms)
+- [Vault Transit](/boundary/docs/configuration/kms/transit)
+
+
+Refer to the documentation for additional [top-level configuration
+options](/boundary/docs/configuration) and additional Boundary
+[worker-specific options](/boundary/docs/configuration/worker).
+
+### Start the Boundary service
+
+When the configuration files are in place on each Boundary controller, you can
+proceed to enable and start the binary via systemd on each of the Boundary
+worker nodes using the following commands:
+
+```shell-session
+$ sudo systemctl enable boundary
+```
+
+```shell-session
+$ sudo systemctl start boundary
+```
+
+### Adopt the workers (optional)
+
+If using workers as outlined above, follow the guide from
+[this tutorial](/boundary/tutorials/hcp-administration/hcp-manage-workers#register-the-worker-with-hcp)
+until the end (ignoring HCP nomenclature) in order to adopt the Boundary
+Workers.
+
+If you use the workers as outlined above, follow the procedure to [Register
+the worker with the control
+plane](/boundary/tutorials/hcp-administration/hcp-manage-workers#register-the-worker-with-hcp)
+to adopt the Boundary workers. Even though this guide uses an HCP deployment,
+the steps are identical for registering workers.

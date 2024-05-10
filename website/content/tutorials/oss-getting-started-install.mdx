@@ -1,0 +1,286 @@
+---
+id: 1e05e55c-474e-4087-9445-07efe5c82aed
+name: Install Boundary
+short_name: Install Boundary
+description: >-
+  Visit the Boundary downloads page and download the appropriate installer or
+  package for your platform.
+products_used:
+  - product: boundary
+    min_version: 0.2.1
+    max_version: 0.12.0
+default_collection_context: boundary/oss-getting-started
+---
+
+Boundary must first be installed on your machine. Boundary is available as source
+code, as a pre-compiled binary, or in packaged formats.
+
+This tutorial will not cover how to compile Boundary from source, but compiling from
+source is covered in the [README](https://github.com/hashicorp/boundary#build-and-start-boundary-in-dev-mode) for those who
+want to be sure they're compiling source they trust into the final binary.
+
+<Tabs>
+<Tab heading="macOS">
+
+The macOS binary is available to be installed manually or through Homebrew.
+
+<Tabs>
+<Tab heading="Manual">
+
+To install Boundary, find the [appropriate
+package](/boundary/install/) for your system and
+download it. Boundary is packaged as a zip archive.
+
+After downloading Boundary, unzip the package. Boundary runs as a single binary
+named `boundary`. Make sure that the `boundary` binary is available on your
+`PATH`. You can check the locations available on your path by running this
+command.
+
+```shell-session
+$ echo $PATH
+```
+
+**Example output:**
+
+```shell-session hideClipboard
+/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
+```
+
+The output is a list of locations separated by colons. You can make Boundary
+available by moving the binary to one of the listed locations, or by adding
+Boundary's location to your `PATH`.
+
+<Tip>
+
+ Permanently add a new location to your path by
+editing your shell's settings file (usually called something like `~/.bashrc`,
+where the part of the file name after the `.` and before `rc` is the name of
+your shell). In that file you will see a line that starts with `export PATH=`,
+followed by a colon-separated list of locations. Add the location of the Boundary
+binary to that list and save the file. Then reload your shell's configuration
+with the command `source ~/.bashrc`, replacing `bash` with the name of your
+shell.
+
+</Tip>
+
+</Tab>
+
+<Tab heading="Homebrew">
+
+[Homebrew](https://brew.sh) is a free and open-source package management system
+for macOS. Install the official [boundary
+formula](https://github.com/hashicorp/homebrew-tap) from the terminal.
+
+```shell-session
+$ brew install hashicorp/tap/boundary
+```
+
+<Note>
+
+ This installs a signed binary and is automatically updated with
+every new official release.
+
+</Note>
+
+To update to the latest, run
+
+```shell-session
+$ brew upgrade hashicorp/tap/boundary
+```
+
+</Tab>
+</Tabs>
+
+</Tab>
+<Tab heading="Windows">
+
+The Windows binary is available to be installed manually or through Scoop. 
+[Windows Subsystem for Linux](https://docs.microsoft.com/en-us/windows/wsl/) 
+(WSL2) is recommended for Windows users running Boundary, and instructions 
+can be found under the Linux tab.
+
+<Tabs>
+<Tab heading="Manual">
+
+To install Boundary, find the [appropriate
+package](/boundary/install/) for your system and
+download it. Boundary is packaged as a zip archive.
+
+After downloading Boundary, unzip the package. Boundary runs as a single binary
+named `boundary`. Make sure that the `boundary` binary is available on your
+`PATH`. 
+
+-> **Tip: ** Add a location to your path via the GUI by navigating to
+`Environment Variables` in your system settings, and look for the variable
+called `PATH`. You will see a semicolon-separated list of locations. Add the
+Boundary binary's location to that list and then launch a new console window.
+
+</Tab>
+<Tab heading="Scoop">
+
+[Scoop](https://scoop.sh/) is a free and open-source package management system
+for Windows. Install Boundary from the command-line.
+
+```shell-session
+$ scoop install boundary
+```
+
+<Note>
+
+ The [Scoop main bucket
+repository](https://github.com/ScoopInstaller/Main/blob/master/bucket/boundary.json)
+is **NOT** maintained by HashiCorp. The latest version of Boundary is always
+available by manual installation.
+
+</Note>
+
+</Tab>
+</Tabs>
+</Tab>
+
+<Tab heading="Linux">
+
+HashiCorp officially maintains and signs packages for the following Linux distributions.
+
+<Tabs>
+<Tab heading="Ubuntu/Debian">
+
+Add the HashiCorp [GPG key][gpg-key].
+
+```shell-session
+$ curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
+```
+
+Add the official HashiCorp Linux repository.
+
+```shell-session
+$ echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
+```
+
+Update and install.
+
+```shell-session
+$ sudo apt update && sudo apt install boundary
+```
+
+</Tab>
+<Tab heading="CentOS/RHEL">
+
+Install `yum-config-manager` to manage your repositories.
+
+```shell-session
+$ sudo yum install -y yum-utils
+```
+
+Use `yum-config-manager` to add the official HashiCorp Linux repository.
+
+```shell-session
+$ sudo yum-config-manager --add-repo https://rpm.releases.hashicorp.com/RHEL/hashicorp.repo
+```
+
+Install.
+
+```shell-session
+$ sudo yum -y install boundary
+```
+
+</Tab>
+<Tab heading="Fedora">
+
+Install `dnf config-manager` to manage your repositories.
+
+```shell-session
+$ sudo dnf install -y dnf-plugins-core
+```
+
+Use `dnf config-manager` to add the official HashiCorp Linux repository.
+
+```shell-session
+$ sudo dnf config-manager --add-repo https://rpm.releases.hashicorp.com/fedora/hashicorp.repo
+```
+
+Install.
+
+```shell-session
+sudo dnf -y install boundary
+```
+
+</Tab>
+<Tab heading="Amazon Linux">
+
+Install `yum-config-manager` to manage your repositories.
+
+```shell-session
+$ sudo yum install -y yum-utils
+```
+
+Use `yum-config-manager` to add the official HashiCorp Linux repository.
+
+```shell-session
+$ sudo yum-config-manager --add-repo https://rpm.releases.hashicorp.com/AmazonLinux/hashicorp.repo
+```
+
+Install.
+
+```shell-session
+$ sudo yum -y install boundary
+```
+
+</Tab>
+</Tabs>
+
+<Tip>
+
+ Now that you have added the HashiCorp repository, you can install
+[Terraform](/terraform/tutorials/aws-get-started/install-cli), [Consul](/consul/tutorials/get-started-vms/virtual-machine-gs-deploy), [Nomad](/nomad/tutorials/get-started/get-started-install) and [Packer](/packer/tutorials/docker-get-started/get-started-install-cli) with the same command.
+
+</Tip>
+
+</Tab>
+</Tabs>
+
+
+## Verify the installation
+
+After installing Boundary, verify the installation worked by opening a new
+command prompt or console, and checking that `boundary` is available.
+
+<Tip>
+
+ If you receive an error that Boundary is not
+found, try logging out and logging back in to your system (particularly
+necessary sometimes for Windows).
+
+</Tip>
+
+```shell-session
+$ boundary
+Usage: boundary <command> [args]
+
+Commands:
+    accounts           Manage Boundary accounts
+    auth-methods       Manage Boundary auth-methods
+    auth-tokens        Manage Boundary auth-tokens
+    authenticate       Authenticate the Boundary command-line client
+    config             Manage resources related to Boundary's local configuration
+    connect            Authorize a session against a target and launch a proxied connection
+    database           Manage Boundary's database
+    dev                Start a Boundary dev environment
+    groups             Manage Boundary groups
+    host-catalogs      Manage Boundary host-catalogs
+    host-sets          Manage Boundary host-sets
+    hosts              Manage Boundary hosts
+    proxy              Launch the Boundary CLI in proxy mode
+    roles              Manage Boundary roles
+    scopes             Manage Boundary scopes
+    server             Start a Boundary server
+    sessions           Manage Boundary sessions
+    targets            Manage Boundary targets
+    users              Manage Boundary users
+```
+
+You have successfully downloaded and installed Boundary! Continue to the next
+tutorial to set up your first Boundary project.
+
+
+[gpg-key]: https://apt.releases.hashicorp.com/gpg 'HashiCorp GPG key'

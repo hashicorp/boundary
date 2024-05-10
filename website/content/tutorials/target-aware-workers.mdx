@@ -1,0 +1,1405 @@
+---
+id: 1c9c782d-8bda-4011-9be9-9bbcdec750e6
+name: Worker-aware targets
+short_name: Worker-aware targets
+description: >-
+  Instructions to deploy a Boundary environment and configure worker-aware
+  targets and query targets after applying worker filters.
+read_time: 18
+products_used:
+  - product: terraform
+  - product: boundary
+    min_version: 0.1.5
+    max_version: 0.10.0
+default_collection_context: boundary/worker-management
+---
+
+This tutorial explores worker-aware target configuration and applying worker
+filters.
+
+### Background
+
+In the multi-datacenter and multi-cloud operating models, patterns of dividing
+up controllers, workers and targets into appropriate regions or networks is
+often desired to reduce latency or comply with security standards.
+
+Worker-aware targets allow for specification of a boolean-expression filter
+against worker tags to control which workers are allowed to handle a given
+target's session. This pattern effectively "ties" a worker to a given target. A
+common example is allowing a single set of controllers to live in one region,
+and then place workers in many regions where the targets they proxy live.
+
+![Boundary Worker-Aware Targets](/img/boundary/boundary-target-aware-workers-0.png)
+
+This tutorial covers the process of defining worker tags, and applying target
+filters to force Boundary to only connect with workers available on the target's
+network.
+
+### Tutorial Contents
+
+1. [Get setup](#get-setup)
+1. [Define worker tags](#define-worker-tags)
+1. [Restart the workers](#restart-the-workers)
+1. [Define worker filters](#worker-filters)
+1. [Configure updated target filters](#define-target-worker-filters)
+1. [Verify target availability](#verify-target-availability)
+
+## Prerequisites
+
+- [Docker](https://docs.docker.com/get-docker/) is installed
+
+- [Docker-Compose](https://docs.docker.com/compose/install/) is installed
+
+<Tip>
+
+ Docker Desktop 20.10 and above include the Docker Compose binary, and
+does not require separate installation.
+
+</Tip>
+
+- A [Boundary binary](/boundary/install/) greater than
+  0.1.5 in your `PATH`. This tutorial uses the 0.7.5 version of Boundary.
+
+- [Terraform 0.13.0 or greater](/terraform/tutorials/aws-get-started/install-cli) in your `PATH`
+
+- A [psql binary](https://www.postgresql.org/download/) greater than 13.0 in
+  your `PATH`
+
+- A [redis-cli binary](https://redis.io/topics/quickstart) greater than 6.0 in
+  your `PATH`
+
+- A [mysql
+  binary](https://dev.mysql.com/doc/mysql-shell/8.0/en/mysql-shell-install.html)
+  greater than 8.0 in your `PATH`
+
+~> In addition to Docker, Terraform and the Boundary binary, it is important
+that the `psql`, `redis`, and `mysql` executables are available in your path to
+complete this tutorial. Ensure they are properly installed before attempting to
+connect to the database targets provided with the Docker lab environment.
+
+## Get setup
+
+The demo environment provided for this tutorial includes a Docker Compose
+cluster that deploys these containers:
+
+- A Boundary 0.7.5 controller server
+- A Postgres database
+- 2 worker instances (worker1, worker2)
+- 3 database targets (postgres, mysql, redis)
+
+The [Terraform Boundary
+Provider](https://registry.terraform.io/providers/hashicorp/boundary/latest) is
+also used in this tutorial to easily provision resources using Docker, and must
+be available in your `PATH` when deploying the demo environment.
+
+![Boundary components](/img/boundary/boundary-target-aware-workers-1.png)
+
+To learn more about the various
+Boundary components, refer back to the [Start a Development
+Environment](/boundary/tutorials/oss-getting-started/oss-getting-started-dev) tutorial.
+
+### Deploy the lab environment
+
+The lab environment can be downloaded or cloned from the following Github repository:
+
+-> https://github.com/hashicorp-education/learn-boundary-target-aware-workers
+
+1. In your terminal, clone the repository to get the example files locally:
+
+   ```shell-session
+   $ git clone git@github.com:hashicorp-education/learn-boundary-target-aware-workers.git
+   ```
+
+1. Move into the `learn-boundary-target-aware-workers` folder.
+
+   ```shell-session
+   $ cd learn-boundary-target-aware-workers
+   ```
+
+1. Ensure that you are in the correct directory by listing its contents.
+
+   ```shell-session
+   $ ls -R1
+    README.md
+    compose
+    run
+    terraform
+
+    ./compose:
+    controller.hcl
+    docker-compose.yml
+    worker1.hcl
+    worker2.hcl
+
+    ./terraform:
+    main.tf
+    outputs.tf
+    versions.tf
+   ```
+
+   The repository contains the following files:
+
+   - `run`: A script used to deploy and tear down the Docker-Compose
+     configuration.
+   - `compose/docker-compose.yml`: The Docker-Compose configuration file
+     describing how to provision and network the boundary cluster and targets.
+   - `compose/controller.hcl`: The controller configuration file.
+   - `compose/worker1.hcl`: The worker1 configuration file.
+   - `compose/worker2.hcl`: The worker2 configuration file.
+   - `terraform/main.tf`: The terraform provisioning instructions using the
+     Boundary provider.
+   - `terraform/outputs.tf`: The terraform outputs file for printing user
+     connection details.
+
+1. This tutorial makes it easy to launch the test environment with the `run` script.
+
+   ```shell-session
+   $ ./run all
+   ~/learn-boundary-target-aware-workers/compose ~/learn-boundary-target-aware-workers
+   Creating boundary_postgres_1 ... done
+   Creating boundary_mysql_1    ... done
+   Creating boundary_db_1       ... done
+   Creating boundary_redis_1    ... done
+   Creating boundary_db-init_1  ... done
+   Creating boundary_controller_1 ... done
+   Creating boundary_worker1_1    ... done
+   Creating boundary_worker2_1    ... done
+   ~/Projects/hashicorp/tutorial-repos/learn-boundary-target-aware-workers-test
+   ~/Projects/hashicorp/tutorial-repos/learn-boundary-target-aware-workers-test/terraform ~/Projects/hashicorp/   tutorial-repos/learn-boundary-target-aware-workers-test
+   
+   Initializing the backend...
+   
+   Initializing provider plugins...
+   - Finding hashicorp/boundary versions matching "1.0.5"...
+   - Installing hashicorp/boundary v1.0.5...
+   - Installed hashicorp/boundary v1.0.5 (signed by HashiCorp)
+   
+   Terraform has created a lock file .terraform.lock.hcl to record the provider
+   selections it made above. Include this file in your version control repository
+   so that Terraform can guarantee to make the same selections by default when
+   you run "terraform init" in the future.
+   
+   Terraform has been successfully initialized!
+   
+   You may now begin working with Terraform. Try running "terraform plan" to see
+   any changes that are required for your infrastructure. All Terraform commands
+   should now work.
+   
+   If you ever set or change modules or backend configuration for Terraform,
+   rerun this command to reinitialize your working directory. If you forget, other
+   commands will detect it and remind you to do so if necessary.
+
+   ...
+   ... truncated output ...
+   ...
+ 
+   Plan: 24 to add, 0 to change, 0 to destroy.
+
+   Changes to Outputs:
+     + username = {
+         + user1 = {
+             + auth_method_id = (known after apply)
+             + description    = "User account for user1"
+             + id             = (known after apply)
+             + login_name     = "user1"
+             + name           = "user1"
+             + password       = "password"
+             + type           = "password"
+           }
+       }
+   boundary_scope.global: Creating...
+   boundary_scope.global: Creation complete after 0s [id=global]
+   boundary_scope.org: Creating...
+   boundary_role.global_anon_listing: Creating...
+   boundary_scope.org: Creation complete after 0s [id=o_zYT1ci74Xp]
+   boundary_auth_method.password: Creating...
+   boundary_scope.project: Creating...
+   boundary_role.org_anon_listing: Creating...
+   boundary_scope.project: Creation complete after 1s [id=p_uMmQ2Nmyzr]
+   boundary_host_catalog.databases: Creating...
+   boundary_auth_method.password: Creation complete after 1s [id=ampw_rZ6z1yjsNQ]
+   boundary_account.user["user1"]: Creating...
+   boundary_host_catalog.databases: Creation complete after 0s [id=hcst_Iws4PPJ0Cd]
+   boundary_host.redis: Creating...
+   boundary_host.localhost: Creating...
+   boundary_host.postgres: Creating...
+   boundary_host.mysql: Creating...
+   boundary_account.user["user1"]: Creation complete after 1s [id=acctpw_z3wsUqIxl0]
+   boundary_user.user["user1"]: Creating...
+   boundary_role.global_anon_listing: Creation complete after 2s [id=r_jf0aBQrlq9]
+   boundary_host.redis: Creation complete after 1s [id=hst_AfZWO0NmRH]
+   boundary_host_set.redis: Creating...
+   boundary_host.localhost: Creation complete after 1s [id=hst_nhrRtmEj9I]
+   boundary_host_set.local: Creating...
+   boundary_host.mysql: Creation complete after 2s [id=hst_Q5xGrzzScq]
+   boundary_host_set.mysql: Creating...
+   boundary_host.postgres: Creation complete after 2s [id=hst_Ldeq2F7kv8]
+   boundary_host_set.postgres: Creating...
+   boundary_user.user["user1"]: Creation complete after 2s [id=u_pOKwHpmtcU]
+   boundary_role.org_admin: Creating...
+   boundary_role.proj_admin: Creating...
+   boundary_host_set.redis: Creation complete after 3s [id=hsst_S7l0x5zjuz]
+   boundary_target.redis: Creating...
+   boundary_host_set.local: Creation complete after 3s [id=hsst_eE4utKkMdf]
+   boundary_target.ssh: Creating...
+   boundary_target.db: Creating...
+   boundary_host_set.mysql: Creation complete after 2s [id=hsst_pM0jH8cuYH]
+   boundary_target.mysql: Creating...
+   boundary_host_set.postgres: Creation complete after 2s [id=hsst_Tw28V0csEe]
+   boundary_target.postgres: Creating...
+   boundary_role.org_anon_listing: Creation complete after 6s [id=r_KSvb9NCBkv]
+   boundary_target.redis: Creation complete after 2s [id=ttcp_SiRtRammJ5]
+   boundary_target.ssh: Creation complete after 3s [id=ttcp_MIUmI7qIy1]
+   boundary_target.db: Creation complete after 3s [id=ttcp_IuXDHJkWm2]
+   boundary_target.mysql: Creation complete after 3s [id=ttcp_zZ8NOru2I7]
+   boundary_target.postgres: Creation complete after 3s [id=ttcp_DsWKi9rV6V]
+   boundary_role.org_admin: Creation complete after 5s [id=r_IlaiZHKfSy]
+   boundary_role.proj_admin: Creation complete after 5s [id=r_H2qppOfYG9]
+   ╷
+   │ Warning: Argument is deprecated
+   │
+   │   with boundary_account.user,
+   │   on main.tf line 69, in resource "boundary_account" "user":
+   │   69:   login_name     = lower(each.key)
+   │
+   │ Will be removed in favor of using attributes parameter
+   │
+   │ (and 20 more similar warnings elsewhere)
+   ╵
+   
+   Apply complete! Resources: 24 added, 0 changed, 0 destroyed.
+   
+   Outputs:
+ 
+   username = {
+     "user1" = {
+       "auth_method_id" = "ampw_woTDKKJXoq"
+       "description" = "User account for user1"
+       "id" = "acctpw_VaeyCEvMMY"
+       "login_name" = "user1"
+       "name" = "user1"
+       "password" = "password"
+       "type" = "password"
+     }
+   }
+   ```
+
+   Any resource deprecation warnings in the output can safely be ignored.
+   
+   The user details are printed in the shell output, and can also be viewed by
+   inspecting the `terraform/terraform.tfstate` file. You will need the user1
+   `auth_method_id` to authenticate via the CLI and establish sessions later on.
+
+   You can tear down the environment at any time by executing `./run cleanup`.
+
+1. To verify that the environment deployed correctly, print the running docker
+   containers and notice the ones named with the prefix "boundary".
+
+   ```shell-session
+   $ docker ps --format "table {{.ID}}\t{{.Names}}\t{{.Image}}"
+   CONTAINER ID   NAMES                   IMAGE
+   31199b571926   boundary_worker1_1      hashicorp/boundary:0.7.5
+   080bed30805a   boundary_worker2_1      hashicorp/boundary:0.7.5
+   a624347ebace   boundary_controller_1   hashicorp/boundary:0.7.5
+   7027eaf0cca1   boundary_db_1           postgres
+   8cb2d32d91d3   boundary_redis_1        redis
+   6431a9aae6e0   boundary_mysql_1        mariadb
+   8f6f095ce16a   boundary_postgres_1     postgres
+   ```
+
+   This tutorial focuses on the relationship between the controller, workers,
+   and the three targets `boundary_postgres_1`, `boundary_redis_1`, and
+   `boundary_mysql_1`.
+
+Here is a diagram that shows the Boundary cluster network configuration. The
+targets are only able to communicate with the worker that lives on their same
+network.
+
+![Boundary Worker-Aware Targets](/img/boundary/boundary-target-aware-workers-2.png)
+
+The pre-defined network schema associates the workers with these targets:
+
+- _postgres:_ **worker1**
+- _mysql:_ **worker1**
+- _redis:_ **worker2**
+
+If a target is misconfigured and associates a target with the incorrect worker,
+Boundary will produce an error stating that no workers are available to handle a
+connection request.
+
+### Query the targets
+
+Start by authenticating using the CLI as `user1` with the password of
+`password`. You will need user1's `auth_method_id` printed when [deploying the
+lab environment](#deploy-the-lab-environment).
+
+**Example:** The auth method ID is `ampw_1tT18L3AZd` in the following example. 
+
+```shell-session
+$ boundary authenticate password -auth-method-id ampw_1tT18L3AZd -login-name user1
+Please enter the password (it will be hidden): <password>
+
+Authentication information:
+  Account ID:      acctpw_VaeyCEvMMY
+  Auth Method ID:  ampw_woTDKKJXoq
+  Expiration Time: Tue, 08 Mar 2022 11:34:41
+  User ID:         u_htjHguh4Ew
+
+The token was successfully stored in the chosen keyring and is not displayed here.
+```
+
+~> In this tutorial connections are established using the `boundary connect`
+command. This requires the `psql`, `redis-cli` and `mysql` CLI tools to be
+available in your path, and additional connection options that are provided in
+the examples. If these tools don't work for you, refer back to the [tutorial
+prerequisites](#prerequisites) and ensure they are installed and in your `PATH`.
+
+Try establishing a connection with the `boundary_postgres_1` target. The target
+name of `postgres` was defined in the `terraform/main.tf` file, and provisioned
+with the Boundary Terraform provider.
+
+In the example below, the psql CLI option `-l` lists the available databases
+after a connection is made. Re-run the command a few times until you are
+prompted for a password, which is `postgres`.
+
+```shell-session
+$ boundary connect postgres -target-name postgres -target-scope-name databases -username postgres -- -l
+psql: error: connection to server at "127.0.0.1", port 53971 failed: server closed the connection unexpectedly
+	This probably means the server terminated abnormally
+	before or while processing the request.
+```
+
+After running the command a few times you should eventually be able to establish
+a session. If you were prompted for a password on the first try, re-run the
+command until you receive the error message above.
+
+```shell-session
+$ boundary connect postgres -target-name postgres -target-scope-name databases -username postgres -- -l
+Password for user postgres:
+                                 List of databases
+   Name    |  Owner   | Encoding |  Collate   |   Ctype    |   Access privileges
+-----------+----------+----------+------------+------------+-----------------------
+ postgres  | postgres | UTF8     | en_US.utf8 | en_US.utf8 |
+ template0 | postgres | UTF8     | en_US.utf8 | en_US.utf8 | =c/postgres          +
+           |          |          |            |            | postgres=CTc/postgres
+ template1 | postgres | UTF8     | en_US.utf8 | en_US.utf8 | =c/postgres          +
+           |          |          |            |            | postgres=CTc/postgres
+ test1     | postgres | UTF8     | en_US.utf8 | en_US.utf8 |
+(4 rows)
+```
+
+The `test1` database output confirms the existence of a test database, defined
+in the `compose/docker-compose.yml` Docker configuration for this sample target.
+
+<Note>
+
+ If you are unable to connect to the postgres target at all, expand
+the Troubleshooting section below. 
+
+</Note>
+
+<Accordion heading="Troubleshoot Connection Errors" collapse>
+
+Occasionally the controller container may have issues initializing connection
+with the workers on first boot. If this occurs, you may be unable to establish a
+connection to any of the targets. 
+
+Remember, the following error is **expected**:
+
+```shell-session
+$ boundary connect postgres -target-name postgres -target-scope-name databases -username postgres -- -l
+psql: error: connection to server at "127.0.0.1", port 54748 failed: server closed the connection unexpectedly
+	This probably means the server terminated abnormally
+	before or while processing the request.
+```
+
+The above error should occur occasionally, but sometime you should be prompted
+for the password for the postgres database.
+
+If the controller container needs to be restarted, you may receive one of the
+following errors when connecting to the postgres target:
+
+Error 1:
+
+```shell-session
+$ boundary connect postgres -target-name postgres -target-scope-name databases -username postgres -- -l
+Error trying to authorize a session against target: error performing client request during AuthorizeSession call: Post "http://127.0.0.1:9200/v1/targets/postgres:authorize-session": EOF
+```
+
+Error 2:
+
+```shell-session
+$ boundary connect postgres -target-name postgres -target-scope-name databases -username postgres -- -l
+Error dialing the worker: failed to WebSocket dial: failed to send handshake request: Get "https://localhost:9202/v1/proxy": EOF
+psql: error: connection to server at "127.0.0.1", port 54231 failed: server closed the connection unexpectedly
+	This probably means the server terminated abnormally
+	before or while processing the request.
+error fetching connection to send session teardown request to worker: Error dialing the worker: failed to WebSocket dial: failed to send handshake request: Get "https://localhost:9202/v1/proxy": EOF
+```
+
+You may also simply receive a 400 message that `No workers are available to
+handle this session, or all have been filtered` with every request that you
+make.
+
+```shell-session
+$ boundary connect postgres -target-name postgres -target-scope-name databases -username postgres -- -l
+Error from controller when performing authorize-session action against given target
+
+Error information:
+  Kind:                FailedPrecondition
+  Message:             No workers are available to handle this session, or all have been filtered.
+  Status:              400
+  context:             Error from controller when performing authorize-session action against given target
+```
+
+If any of these error messages persist after executing `boundary connect`
+repeatedly, try restarting the `boundary_controller_1` container once or twice: 
+
+```shell-session
+$ docker restart boundary_controller_1
+boundary_controller_1
+```
+
+If you are still unable to establish a connection, re-provision the environment
+by executing `./run cleanup` followed by `./run all`, and then try again.
+
+</Accordion>
+
+-> **The connection to the Postgres target is intermittent. What's going on?**
+
+Boundary's current configuration does not define which worker is allowed to
+handle a request.
+
+Recall that the targets are isolated to the following network
+configuration:
+
+- _postgres:_ **worker1**
+- _mysql:_ **worker1**
+- _redis:_ **worker2**
+
+When Boundary attempts to establish the a connection to the postgres target via
+worker2, a `psql: error` message is returned stating that the connection could
+not be made because that target is not available on worker2's network.
+
+Next, try querying the redis target. You should find similar behavior.
+
+```shell-session
+$ boundary connect -exec redis-cli -target-name redis -target-scope-name databases -- -h 127.0.0.1 -p {{boundary.port}} ping
+
+Proxy listening information:
+  Address:             127.0.0.1
+  Connection Limit:    -1
+  Expiration:          Mon, 04 Oct 2021 18:28:16 MDT
+  Port:                56456
+  Protocol:            tcp
+  Session ID:          s_oZG2zE5Cr6
+Error: Server closed the connection
+```
+
+After trying a few times, you should be able to get a response of `PONG` from
+the redis target.
+
+```shell-session
+$ boundary connect -exec redis-cli -target-name redis -target-scope-name databases -- -h 127.0.0.1 -p {{boundary.port}} ping
+Proxy listening information:
+  Address:             127.0.0.1
+  Connection Limit:    -1
+  Expiration:          Mon, 04 Oct 2021 18:18:22 MDT
+  Port:                54760
+  Protocol:            tcp
+  Session ID:          s_GR5EFT7uEb
+PONG
+```
+
+Both the postgres and redis targets only allow for connections when the correct
+worker is selected by Boundary to handle the request.
+
+The lab environment purposely misconfigured the mysql target to demonstrate what
+happens when worker filters are applied incorrectly. You will fix this issue by
+updating the tags and filters in the following sections.
+
+Try to make a connection to the mysql target.
+
+```shell-session
+$ boundary connect -exec mysql -target-name mysql -target-scope-name databases -- -h 127.0.0.1 -P {{boundary.port}} --protocol=tcp -uroot -p"my-secret-pw" --execute="SHOW DATABASES;"
+Error from controller when performing authorize-session action against given target
+
+Error information:
+  Kind:                FailedPrecondition
+  Message:             No workers are available to handle this session, or all have been filtered.
+  Status:              400
+  context:             Error from controller when performing authorize-session action against given target
+```
+
+The request returns `Message: No workers are available to handle this session, or all have been filtered.` In the following sections you will learn how to
+correctly assign worker tags, and create filters that assign targets to the
+worker available on the target's same network.
+
+-> This tutorial makes use of the `boundary connect` command to establish
+sessions, but the [Boundary Desktop
+App](/boundary/tutorials/oss-getting-started/oss-getting-started-desktop-app) could also be used to open
+connections.
+
+## Worker tags
+
+Worker tags allow for descriptions of where traffic should be routed and what
+targets they should be tied to. These tags are arbitrary, and left to the
+administrator to define and enforce.
+
+### Worker tag structure
+
+Tags are defined as sets of key/value pairs in a worker's HCL configuration
+file.
+
+<CodeBlockConfig hideClipboard>
+
+```hcl
+worker {
+  name = "web-prod-us-east-1"
+  tags {
+    region = ["us-east-1"]
+    type   = ["prod", "databases"]
+  }
+}
+```
+
+</CodeBlockConfig>
+
+HCL is JSON-compatible, so the tags can also be written in pure JSON. This has
+the benefit of mapping closely to the filter structure that will be implemented
+later.
+
+<CodeBlockConfig hideClipboard>
+
+```json
+{
+  "worker": {
+    "name": "web-prod-us-east-1",
+    "tags": {
+      "region": ["us-east-1"],
+      "type": ["prod", "databases"]
+    }
+  }
+}
+```
+
+</CodeBlockConfig>
+
+Note that filter tags can also be specified using a pure key=value syntax.
+
+<CodeBlockConfig hideClipboard>
+
+```plaintext
+worker {
+  name = "web-prod-us-east-1"
+  tags = ["region=us-east-1", "type=prod", "type=databases"]
+}
+```
+
+</CodeBlockConfig>
+
+This format has some limitations, like the inability to use an `=` as part of
+the key name.
+
+### Define worker tags
+
+The lab environment for this tutorial includes predefined worker tags. Here is
+the contents of the worker stanza in the `compose/worker1.hcl` file:
+
+<CodeBlockConfig hideClipboard>
+
+```hcl
+worker {
+  name = "worker1"
+  description = "A worker for a docker demo"
+  address     = "worker1"
+  public_addr = "localhost:9202"
+  controllers = ["boundary"]
+  tags {
+    region    = ["us-east-1"]
+    type      = ["prod"]
+  }
+}
+```
+
+</CodeBlockConfig>
+
+With the current configuration, the tags that could be used for this worker are `name: worker1`,
+`region: us-east-1`, and `type: prod`.
+
+For more specificity, these filters can be updated to specify what types of
+targets they communicate with. The postgres and mysql database targets should be
+handled by worker1, which lives on the same network.
+
+Update the worker stanza in the `compose/worker1.hcl` file to include three new
+tags under the type key of database, postgres, and mysql.
+
+```hcl
+worker {
+  name = "worker1"
+  description = "A worker for a docker demo"
+  address     = "worker1"
+  public_addr = "localhost:9202"
+  controllers = ["boundary"]
+  tags {
+    region    = ["us-east-1"]
+    type      = ["prod", "database", "postgres", "mysql"]
+  }
+}
+```
+
+Perhaps our dev environments live in the us-west-1 region, and use Redis for
+testing purposes. Update the worker stanza in the `compose/worker2.hcl` file
+with type tags of database and redis.
+
+```hcl
+worker {
+  name = "worker2"
+  description = "A worker for a docker demo"
+  address     = "worker2"
+  public_addr = "localhost:9203"
+  controllers = ["boundary"]
+  tags {
+    region    = ["us-west-1"]
+    type      = ["dev", "database", "redis"]
+  }
+}
+```
+
+### Restart the workers
+
+With the updated worker tags in place, restart the workers to deploy the new
+configuration file.
+
+<Note>
+
+ In non-containerized environments it is sufficient to stop the
+`boundary server` process and restart it with an updated `worker.hcl` file.
+
+</Note>
+
+Restart worker1:
+
+```shell-session
+$ docker restart boundary_worker1_1
+boundary_worker1_1
+```
+
+And restart worker2:
+
+```shell-session
+$ docker restart boundary_worker2_1
+boundary_worker2_1
+```
+
+With the new tags in place it is time to apply filters to the targets.
+
+## Worker filters
+
+Targets need filters applied to enable the controller to associate them with the
+appropriate worker. These filters can be applied via the CLI or using the
+Boundary Terraform provider.
+
+### Worker filter structure
+
+Target filters are regular expressions that reference worker tags.
+
+As an example, here is a simple filter that searches for workers that begin with
+the name `worker`.
+
+`"/name" matches "worker[12]"`
+
+This expression would return worker1 or worker2 in the final worker set.
+
+More strict filtering can be easily applied, like the following expression that
+strictly matches targets named worker2.
+
+`"/name" == "worker2"`
+
+Complex filters can be created by grouping expressions. In the next example,
+only workers with a name of `worker1` _and_ a region tag of `us-east-1` would
+match.
+
+`"/name" == "worker1" and "us-east-1" in "/tags/region"`
+
+And further complexity can be created by compounding expressions. These are
+created by grouping an expression in parenthesis and using values like `and`,
+`or`, and `not`. In the last example workers must have a region tag of
+`us-east-1` _and_ a name of `worker1`, _or_ a type tag of redis to match. In the
+worker configurations defined above, this would allow worker1 or worker 2 to
+handle the request.
+
+`("us-east-1" in "/tags/region" and "/name" == "worker1") or "redis" in "/tags/type"`
+
+-> If an expression fails due to a key not being found within the input data,
+the worker is not included in the final set. Ensure all workers that should
+match a given filter are populated with tags referenced in the filter string. As
+a corollary, it is not possible to distinguish between a worker that is not
+included due to the expression itself and a worker that did not have correct
+tags.
+
+### Define target worker filters
+
+Next target filters will be applied for the postgres, redis and mysql targets.
+
+<Tabs>
+<Tab heading="CLI" group="cli">
+
+
+Discover the target ids for the postgres, redis and mysql targets using
+recursive listing and filters.
+
+```shell-session
+$ boundary targets list -recursive -filter '"/item/name" matches "postgres|redis|mysql"'
+
+Target information:
+  ID:                    ttcp_zBj1qQnAAH
+    Scope ID:            p_m03TsXTVtX
+    Version:             2
+    Type:                tcp
+    Name:                mysql
+    Description:         MySQL server
+    Authorized Actions:
+      no-op
+      read
+      update
+      delete
+      add-credential-libraries
+      set-credential-libraries
+      remove-credential-libraries
+      add-credential-sources
+      set-credential-sources
+      remove-credential-sources
+      authorize-session
+
+  ID:                    ttcp_enGJe4fOlr
+    Scope ID:            p_m03TsXTVtX
+    Version:             2
+    Type:                tcp
+    Name:                postgres
+    Description:         postgres server
+    Authorized Actions:
+      no-op
+      read
+      update
+      delete
+      add-credential-libraries
+      set-credential-libraries
+      remove-credential-libraries
+      add-credential-sources
+      set-credential-sources
+      remove-credential-sources
+      authorize-session
+
+  ID:                    ttcp_pnC02ZAY7O
+    Scope ID:            p_m03TsXTVtX
+    Version:             2
+    Type:                tcp
+    Name:                redis
+    Description:         Redis server
+    Authorized Actions:
+      no-op
+      read
+      update
+      delete
+      add-credential-libraries
+      set-credential-libraries
+      remove-credential-libraries
+      add-credential-sources
+      set-credential-sources
+      remove-credential-sources
+      authorize-session
+```
+
+Copy the **postgres** target ID, and update the target with a simple filter that
+selects workers with a name of `worker1`. When using the CLI a filter is
+specified using the `-worker-filter` option.
+
+~> Double quotes are part of the filter syntax. When using the CLI, it is likely
+easier to surround the `-worker-filter` argument with single quotes. Otherwise
+escape syntax needs to be used when surrounding the expression with double
+quotes.
+
+```shell-session
+$ boundary targets update tcp -id ttcp_enGJe4fOlr -worker-filter='"/name" == "worker1"'
+
+Target information:
+  Created Time:               Fri, 01 Oct 2021 15:40:20 MDT
+  Description:                postgres server
+  ID:                         ttcp_enGJe4fOlr
+  Name:                       postgres
+  Session Connection Limit:   -1
+  Session Max Seconds:        20
+  Type:                       tcp
+  Updated Time:               Mon, 04 Oct 2021 17:27:07 MDT
+  Version:                    3
+  Worker Filter:              "/name" == "worker1"
+
+  Scope:
+    ID:                       p_m03TsXTVtX
+    Name:                     databases
+    Parent Scope ID:          o_1UXK0ttelh
+    Type:                     project
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    add-credential-libraries
+    set-credential-libraries
+    remove-credential-libraries
+    add-credential-sources
+    set-credential-sources
+    remove-credential-sources
+    authorize-session
+
+  Host Sources:
+    Host Catalog ID:          hcst_sIoiq5r6xB
+    ID:                       hsst_AhdLqEubSL
+
+    Host Catalog ID:          hcst_sIoiq5r6xB
+    ID:                       hsst_AhdLqEubSL
+
+  Attributes:
+    Default Port:             5432
+```
+
+Notice the `Worker Filter:` line, and ensure it contains the correct filter
+expression. If an expression fails due to a key not being found within the input
+data the worker will not be included in the final set.
+
+For **redis** apply the following filter:
+
+`"us-west-1" in "/tags/region" or "redis" in "/tags/type"`
+
+```shell-session
+$ boundary targets update tcp -id ttcp_sEKSg5Bt1n -worker-filter='"us-west-1" in "/tags/region" or "redis" in "/tags/type"'
+
+Target information:
+  Created Time:               Fri, 01 Oct 2021 15:40:20 MDT
+  Description:                Redis server
+  ID:                         ttcp_pnC02ZAY7O
+  Name:                       redis
+  Session Connection Limit:   -1
+  Session Max Seconds:        20
+  Type:                       tcp
+  Updated Time:               Mon, 04 Oct 2021 17:27:47 MDT
+  Version:                    3
+  Worker Filter:              "us-west-1" in "/tags/region" or "redis" in "/tags/type"
+
+  Scope:
+    ID:                       p_m03TsXTVtX
+    Name:                     databases
+    Parent Scope ID:          o_1UXK0ttelh
+    Type:                     project
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    add-credential-libraries
+    set-credential-libraries
+    remove-credential-libraries
+    add-credential-sources
+    set-credential-sources
+    remove-credential-sources
+    authorize-session
+
+  Host Sources:
+    Host Catalog ID:          hcst_sIoiq5r6xB
+    ID:                       hsst_r97dkNxrWu
+
+    Host Catalog ID:          hcst_sIoiq5r6xB
+    ID:                       hsst_r97dkNxrWu
+
+  Attributes:
+    Default Port:             6379
+```
+
+For redis this will return worker2, which has a region tag of `us-west-1` and a
+type tag of `redis`.
+
+And for **mysql** implement this filter:
+
+`"/name" == "worker1" or ("prod" in "/tags/type" and "database" in "/tags/type")"`
+
+```shell-session
+$ boundary targets update tcp -id ttcp_zBj1qQnAAH -worker-filter='"/name" == "worker1" or ("prod" in "/tags/type" and "database" in "/tags/type")'
+
+Target information:
+  Created Time:               Fri, 01 Oct 2021 15:40:19 MDT
+  Description:                MySQL server
+  ID:                         ttcp_zBj1qQnAAH
+  Name:                       mysql
+  Session Connection Limit:   -1
+  Session Max Seconds:        100
+  Type:                       tcp
+  Updated Time:               Mon, 04 Oct 2021 17:29:30 MDT
+  Version:                    3
+  Worker Filter:              "/name" == "worker1" or ("prod" in "/tags/type" and "database" in "/tags/type")
+
+  Scope:
+    ID:                       p_m03TsXTVtX
+    Name:                     databases
+    Parent Scope ID:          o_1UXK0ttelh
+    Type:                     project
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    add-credential-libraries
+    set-credential-libraries
+    remove-credential-libraries
+    add-credential-sources
+    set-credential-sources
+    remove-credential-sources
+    authorize-session
+
+  Host Sources:
+    Host Catalog ID:          hcst_sIoiq5r6xB
+    ID:                       hsst_du9cw25nXV
+
+    Host Catalog ID:          hcst_sIoiq5r6xB
+    ID:                       hsst_du9cw25nXV
+
+  Attributes:
+    Default Port:             3306
+```
+
+For the mysql target only worker1 is allowed to handle requests, because the
+filter allows a name tag of `worker1` _or_ a type tag of `prod` and `database`.
+
+</Tab>
+<Tab heading="Terraform" group="terraform">
+
+
+When utilizing the Boundary Terraform provider, worker filters are applied with
+the `worker_filter` attribute for the `boundary_target` resource.
+
+Open the `terraform/main.tf` file in an editor, and locate the `boundary_target`
+resources for postgres, redis and mysql.
+
+Below is an example of the `boundary_target` resource for `postgres`.
+
+<CodeBlockConfig hideClipboard filename="terraform/main.tf">
+
+```hcl
+resource "boundary_target" "postgres" {
+  type                     = "tcp"
+  name                     = "postgres"
+  description              = "postgres server"
+  scope_id                 = boundary_scope.project.id
+  session_connection_limit = -1
+  session_max_seconds      = 20
+  default_port             = 5432
+  host_set_ids = [
+    boundary_host_set.postgres.id
+  ]
+  // worker_filter             = "\"/name\" == \"worker1\""
+  // worker_filter_unformatted = "/name" == "worker1" # Unformatted filter, don't uncomment
+}
+```
+
+</CodeBlockConfig>
+
+Notice the `worker_filter` line that is currently commented out. It is important
+that the correct filter expression is rendered when Terraform is run. If an
+expression fails due to a key not being found within the input data, the worker
+will not be included in the final set.
+
+The following filters are provided in this file:
+
+For **postgres**, the following filter will simply return workers that have a name
+of `worker1`.
+
+`"/name" == "worker1"`
+
+For **redis**, the following filter will return worker2, which has a region tag of
+`us-west-1` and a type tag of `redis`.
+
+`"us-west-1" in "/tags/region" or "redis" in "/tags/type"`
+
+For **mysql**, only worker1 is allowed to handle requests, because the filter
+allows a name tag of `worker1` _or_ a type tag of `prod` and `database`.
+
+`"/name" == "worker1" or ("prod" in "/tags/type" and "database" in "/tags/type")`
+
+~> When writing a filter expression using Terraform an escape character (`\`) is
+needed inside any value that uses double-quotes (`"`) as part of the expression.
+Rendered filters require double-quotes, and because HCL files also require the
+use of double-quoted values each instance of `"` inside the expression must be
+updated to `\"`.
+
+Uncomment the lines labeled `worker_filter` (lines 196, 228, and 261) by
+removing the `//` at the front of the line. **Delete line 260**, which contains
+the badly formatted worker filter preventing a connection with the mysql target.
+
+<Warning>
+
+**Do NOT** uncomment the lines labeled `worker_filter_unformatted`. These are
+only present to show the structure of the filter without escape syntax, and how
+the final filter should be rendered.
+
+</Warning>
+
+The relevant code blocks are shown below. Update your `boundary_target`
+resources to match.
+
+<CodeBlockConfig hideClipboard filename="terraform/main.tf">
+
+```hcl
+...
+...
+...
+resource "boundary_target" "postgres" {
+  type                     = "tcp"
+  name                     = "postgres"
+  description              = "postgres server"
+  scope_id                 = boundary_scope.project.id
+  session_connection_limit = -1
+  session_max_seconds      = 20
+  default_port             = 5432
+  host_set_ids = [
+    boundary_host_set.postgres.id
+  ]
+  worker_filter             = "\"/name\" == \"worker1\""
+  // worker_filter_unformatted = "/name" == "worker1" # Unformatted filter, don't uncomment
+}
+...
+...
+...
+resource "boundary_target" "redis" {
+  type                     = "tcp"
+  name                     = "redis"
+  description              = "Redis server"
+  scope_id                 = boundary_scope.project.id
+  session_connection_limit = -1
+  session_max_seconds      = 20
+  default_port             = 6379
+  host_set_ids = [
+    boundary_host_set.redis.id
+  ]
+  worker_filter             = "\"us-west-1\" in \"/tags/region\" or \"redis\" in \"/tags/type\""
+  // worker_filter_unformatted = "us-west-1" in "/tags/region" or "redis" in "/tags/type" # Unformatted filter, don't uncomment
+}
+...
+...
+...
+resource "boundary_target" "mysql" {
+  type                     = "tcp"
+  name                     = "mysql"
+  description              = "MySQL server"
+  scope_id                 = boundary_scope.project.id
+  session_connection_limit = -1
+  session_max_seconds      = 100
+  default_port             = 3306
+  host_set_ids = [
+    boundary_host_set.mysql.id
+  ]
+  worker_filter             = "\"/name\" == \"worker1\" or (\"prod\" in \"/tags/type\" and \"database\" in \"/tags/type\")"
+  // worker_filter_unformatted = "/name" == "worker1" or ("prod" in "/tags/type" and "database" in "/tags/type")" # Unformatted filter, don't uncomment
+}
+```
+
+</CodeBlockConfig>
+
+Apply the updated configuration by running Terraform. 
+
+**The following command is run from the from the root of the
+`learn-boundary-target-aware-workers` directory.** It changes into the
+`terraform/` directory, runs `terraform apply`, and then changes back into the
+`learn-boundary-target-aware-workers` directory when complete.
+
+```shell-session
+$ pushd terraform/; terraform apply --auto-approve; popd;
+~/target-aware-workers/terraform ~/target-aware-workers
+boundary_scope.global: Refreshing state... [id=global]
+boundary_scope.org: Refreshing state... [id=o_0pPBbCm4OT]
+boundary_role.global_anon_listing: Refreshing state... [id=r_1EOcMM55AO]
+boundary_scope.project: Refreshing state... [id=p_P8QsIdrvQ7]
+boundary_role.org_anon_listing: Refreshing state... [id=r_NTXoLO92Lb]
+boundary_auth_method.password: Refreshing state... [id=ampw_iy0F9pH0bm]
+boundary_host_catalog.databases: Refreshing state... [id=hcst_DV0W1LGexv]
+boundary_account.user["user1"]: Refreshing state... [id=acctpw_f2oNzM7J1T]
+boundary_host.mysql: Refreshing state... [id=hst_f7BNAoieAw]
+boundary_host.redis: Refreshing state... [id=hst_0i06WlW4cS]
+boundary_host.postgres: Refreshing state... [id=hst_G7DqGRiZ0n]
+boundary_host.localhost: Refreshing state... [id=hst_zRHuRBpWCW]
+boundary_user.user["user1"]: Refreshing state... [id=u_qC0sSYiqmM]
+boundary_host_set.mysql: Refreshing state... [id=hsst_7HzCYLaLiU]
+boundary_host_set.redis: Refreshing state... [id=hsst_Pqmo7rglyT]
+boundary_host_set.postgres: Refreshing state... [id=hsst_ikSaSitGLb]
+boundary_host_set.local: Refreshing state... [id=hsst_u62YAfr8bB]
+boundary_role.org_admin: Refreshing state... [id=r_TlaxnRzml9]
+boundary_role.proj_admin: Refreshing state... [id=r_53rmg5Zw0N]
+boundary_target.mysql: Refreshing state... [id=ttcp_mYq3ILG6R2]
+boundary_target.redis: Refreshing state... [id=ttcp_z7CpuSUibx]
+boundary_target.postgres: Refreshing state... [id=ttcp_9gwXcrteZb]
+boundary_target.db: Refreshing state... [id=ttcp_3OHEk5gHpC]
+boundary_target.ssh: Refreshing state... [id=ttcp_HVH8xtZX3K]
+
+Note: Objects have changed outside of Terraform
+
+...
+... Truncated output ...
+...
+
+Plan: 0 to add, 4 to change, 0 to destroy.
+boundary_scope.global: Modifying... [id=global]
+boundary_target.redis: Modifying... [id=ttcp_z7CpuSUibx]
+boundary_target.mysql: Modifying... [id=ttcp_mYq3ILG6R2]
+boundary_target.postgres: Modifying... [id=ttcp_9gwXcrteZb]
+boundary_scope.global: Modifications complete after 0s [id=global]
+boundary_target.postgres: Modifications complete after 0s [id=ttcp_9gwXcrteZb]
+boundary_target.mysql: Modifications complete after 0s [id=ttcp_mYq3ILG6R2]
+boundary_target.redis: Modifications complete after 1s [id=ttcp_z7CpuSUibx]
+
+Apply complete! Resources: 0 added, 4 changed, 0 destroyed.
+```
+
+You can safely ignore any resource deprecation warnings.
+
+</Tab>
+</Tabs>
+
+
+## Verify target availability
+
+With the workers tagged and filters in place for the targets, read the target
+data to ensure the filters were applied correctly.
+
+First use recursive listing and a filter to find the target ids postgres, redis,
+and mysql.
+
+```shell-session
+$ boundary targets list -recursive -filter '"/item/name" matches "postgres|redis|mysql"'
+
+Target information:
+  ID:                    ttcp_enGJe4fOlr
+    Scope ID:            p_m03TsXTVtX
+    Version:             3
+    Type:                tcp
+    Name:                postgres
+    Description:         postgres server
+    Authorized Actions:
+      no-op
+      read
+      update
+      delete
+      add-credential-libraries
+      set-credential-libraries
+      remove-credential-libraries
+      add-credential-sources
+      set-credential-sources
+      remove-credential-sources
+      authorize-session
+
+  ID:                    ttcp_pnC02ZAY7O
+    Scope ID:            p_m03TsXTVtX
+    Version:             3
+    Type:                tcp
+    Name:                redis
+    Description:         Redis server
+    Authorized Actions:
+      no-op
+      read
+      update
+      delete
+      add-credential-libraries
+      set-credential-libraries
+      remove-credential-libraries
+      add-credential-sources
+      set-credential-sources
+      remove-credential-sources
+      authorize-session
+
+  ID:                    ttcp_zBj1qQnAAH
+    Scope ID:            p_m03TsXTVtX
+    Version:             3
+    Type:                tcp
+    Name:                mysql
+    Description:         MySQL server
+    Authorized Actions:
+      no-op
+      read
+      update
+      delete
+      add-credential-libraries
+      set-credential-libraries
+      remove-credential-libraries
+      add-credential-sources
+      set-credential-sources
+      remove-credential-sources
+      authorize-session
+```
+
+Copy the target id for postgres and verify that it was set correctly by reading
+the target details.
+
+```shell-session
+$ boundary targets read -id ttcp_22X4blwMb1
+
+Target information:
+  Created Time:               Fri, 01 Oct 2021 15:40:20 MDT
+  Description:                postgres server
+  ID:                         ttcp_enGJe4fOlr
+  Name:                       postgres
+  Session Connection Limit:   -1
+  Session Max Seconds:        20
+  Type:                       tcp
+  Updated Time:               Mon, 04 Oct 2021 17:27:07 MDT
+  Version:                    3
+  Worker Filter:              "/name" == "worker1"
+
+  Scope:
+    ID:                       p_m03TsXTVtX
+    Name:                     databases
+    Parent Scope ID:          o_1UXK0ttelh
+    Type:                     project
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    add-credential-libraries
+    set-credential-libraries
+    remove-credential-libraries
+    add-credential-sources
+    set-credential-sources
+    remove-credential-sources
+    authorize-session
+
+  Host Sources:
+    Host Catalog ID:          hcst_sIoiq5r6xB
+    ID:                       hsst_AhdLqEubSL
+
+    Host Catalog ID:          hcst_sIoiq5r6xB
+    ID:                       hsst_AhdLqEubSL
+
+  Attributes:
+    Default Port:             5432
+```
+
+Look at the `Worker Filter:` line and verify that the filter query is correct.
+
+Repeat this process for the `redis` and `mysql` targets.
+
+### Establish sessions
+
+Now the filters can be validated by establishing sessions using `boundary connect`.
+
+Verify that a session can be reliably established to the **postgres** target,
+entering the password `postgres` when prompted.
+
+```shell-session
+$ boundary connect postgres -target-name postgres -target-scope-name databases -username postgres -- -l
+Password for user postgres:
+                                 List of databases
+   Name    |  Owner   | Encoding |  Collate   |   Ctype    |   Access privileges
+-----------+----------+----------+------------+------------+-----------------------
+ postgres  | postgres | UTF8     | en_US.utf8 | en_US.utf8 |
+ template0 | postgres | UTF8     | en_US.utf8 | en_US.utf8 | =c/postgres          +
+           |          |          |            |            | postgres=CTc/postgres
+ template1 | postgres | UTF8     | en_US.utf8 | en_US.utf8 | =c/postgres          +
+           |          |          |            |            | postgres=CTc/postgres
+ test1     | postgres | UTF8     | en_US.utf8 | en_US.utf8 |
+(4 rows)
+```
+
+Verify that a session can be reliably established to the **redis** target.
+Notice that the proxy information is displayed prior to the client response when
+using `boundary connect -exec`.
+
+```shell-session
+$ boundary connect -exec redis-cli -target-name redis -target-scope-name databases -- -h 127.0.0.1 -p {{boundary.port}} ping
+
+Proxy listening information:
+  Address:             127.0.0.1
+  Connection Limit:    -1
+  Expiration:          Mon, 04 Oct 2021 17:56:11 MDT
+  Port:                52015
+  Protocol:            tcp
+  Session ID:          s_qYgkJk8KdB
+PONG
+```
+
+Verify that a session can be reliably established to the **mysql** target.
+
+```shell-session
+$ boundary connect -exec mysql -target-name mysql -target-scope-name databases -- -h 127.0.0.1 -P {{boundary.port}} --protocol=tcp -uroot -p"my-secret-pw" --execute="SHOW DATABASES;"
+
+Proxy listening information:
+  Address:             127.0.0.1
+  Connection Limit:    -1
+  Expiration:          Mon, 04 Oct 2021 17:57:15 MDT
+  Port:                51958
+  Protocol:            tcp
+  Session ID:          s_DdWBdvTp6Z
+mysql: [Warning] Using a password on the command line interface can be insecure.
++--------------------+
+| Database           |
++--------------------+
+| information_schema |
+| mysql              |
+| performance_schema |
+| sys                |
++--------------------+
+```
+
+If you are not able to establish sessions to these targets, carefully check the
+filters applied in the [previous section](#verify-target-availability), and
+[re-define them](#define-target-worker-filters) if any are set incorrectly. If
+the filters look correct, verify that the [tags were properly
+applied](#define-worker-tags), and that the [workers were
+restarted](#restart-the-workers) to apply the new configuration.
+
+## Cleanup and teardown
+
+The Boundary cluster containers and network resources can be cleaned up
+using the provided `run` script.
+
+```shell-session
+$ ./run cleanup
+~/target-aware-workers/compose ~/target-aware-workers
+Stopping boundary_worker1_1    ... done
+Stopping boundary_worker2_1    ... done
+Stopping boundary_controller_1 ... done
+Stopping boundary_redis_1      ... done
+Stopping boundary_db_1         ... done
+Stopping boundary_mysql_1      ... done
+Stopping boundary_postgres_1   ... done
+Going to remove boundary_worker1_1, boundary_worker2_1, boundary_controller_1, boundary_db-init_1, boundary_redis_1, boundary_db_1, boundary_mysql_1, boundary_postgres_1
+Removing boundary_worker1_1    ... done
+Removing boundary_worker2_1    ... done
+Removing boundary_controller_1 ... done
+Removing boundary_db-init_1    ... done
+Removing boundary_redis_1      ... done
+Removing boundary_db_1         ... done
+Removing boundary_mysql_1      ... done
+Removing boundary_postgres_1   ... done
+```
+
+Check your work with a quick `docker ps` and ensure there are no more containers
+with the `boundary_` prefix leftover. If unexpected containers still exist,
+execute `docker rm -f CONTAINER_NAME` against each to remove them.
+
+## Help and reference
+
+- [Boundary command documentation](/boundary/docs/commands)
+
+- [Installation
+  Notes](/boundary/docs/oss/installing/no-gen-resources)
+
+- [Worker Tags
+  Docs](/boundary/docs/concepts/filtering/worker-tags)
+
+- [Resource Listing
+  Docs](/boundary/docs/concepts/filtering/resource-listing)
+
+- [Terraform Boundary
+  Provider](https://registry.terraform.io/providers/hashicorp/boundary/latest)

@@ -1,0 +1,731 @@
+---
+id: 069a5d79-0fce-42b5-8ae0-541bcc6aff8d
+name: Manage roles and permissions with HCP Boundary
+short_name: Manage roles and permissions with HCP
+description: Define roles to manage the permissions given to principals (users and groups).
+read_time: 8
+edition: hcp
+products_used:
+  - product: boundary
+  - product: terraform
+    min_version: 0.12.0
+    max_version: 0.13.1
+default_collection_context: boundary/hcp-administration
+---
+
+[Roles](/boundary/docs/concepts/domain-model/roles) in
+Boundary manage the permissions given to principals
+([users](/boundary/docs/concepts/domain-model/users) and
+[groups](/boundary/docs/concepts/domain-model/groups)).
+Roles can be defined at the global, org, or project scopes.
+
+This tutorial demonstrates the creation of a role in Boundary. You will assign
+grants and principals to the role.
+
+<Note>
+
+All resource IDs in this tutorial are illustrations only. IDs are uniquely
+generated for every resource upon creation. Be sure to use the resource IDs that are
+generated for your environment.
+
+</Note>
+
+## Prerequisites
+
+This tutorial assumes that you successfully completed the [Manage
+Scopes](/boundary/tutorials/hcp-administration/hcp-manage-scopes) and [Manage
+Users and Groups](/boundary/tutorials/hcp-administration/hcp-manage-users-groups) tutorials.
+
+## Verify user permissions
+
+To begin, verify the current permissions for the `tester01` user created in the
+previous tutorial.
+
+<Tabs>
+<Tab heading="CLI" group="cli">
+
+
+Find the auth method ID for the `org_auth_method` created in the Manage Scopes
+tutorial.
+
+```shell-session
+$ boundary auth-methods list -recursive
+
+Auth Method information:
+  ID:                     amoidc_1234567890
+    Scope ID:             global
+    Version:              1
+    Type:                 oidc
+    Name:                 Generated global scope initial oidc auth method
+    Description:          Provides initial administrative and unprivileged authentication into Boundary
+    Authorized Actions:
+      no-op
+      read
+      update
+      delete
+      change-state
+      authenticate
+
+  ID:                     ampw_1234567890
+    Scope ID:             global
+    Version:              1
+    Type:                 password
+    Name:                 Generated global scope initial password auth method
+    Description:          Provides initial administrative and unprivileged authentication into Boundary
+    Is Primary For Scope: true
+    Authorized Actions:
+      no-op
+      read
+      update
+      delete
+      authenticate
+
+  ID:                     ampw_ZbB6UXpW3B
+    Scope ID:             o_u54jrD6ydN
+    Version:              1
+    Type:                 password
+    Name:                 org_auth_method
+    Description:          Org auth method
+    Authorized Actions:
+      no-op
+      read
+      update
+      delete
+      authenticate
+```
+
+In this example, the generated auth method ID is `ampw_ZbB6UXpW3B`.
+
+If you haven't already, copy the ID for `org_auth_method` and save it as an
+environment variable, `BOUNDARY_AUTH_METHOD_ID`.
+
+**Example:**
+
+```shell-session
+$ export BOUNDARY_AUTH_METHOD_ID=ampw_ZbB6UXpW3B
+```
+
+Log in to the CLI as the `tester01` user. In the previous tutorial its password
+was defined as `supersecure`. Enter `tester01` when prompted for the login name
+and `supersecure` at the `Please enter the password (it will be hidden):`
+prompt.
+
+```shell-session
+$ boundary authenticate
+Please enter the login name (it will be hidden):
+Please enter the password (it will be hidden):
+Authentication information:
+  Account ID:      acctpw_VOeNSFX8pQ
+  Auth Method ID:  ampw_ZbB6UXpW3B
+  Expiration Time: Mon, 13 Feb 2023 12:35:32 MST
+  User ID:         u_ogz79sV4sT
+The token was successfully stored in the chosen keyring and is not displayed here.
+```
+
+Now attempt to read the details of the group.
+
+```shell-session
+$ boundary groups read -id $GROUP_ID
+Error from controller when performing read on group
+
+Error information:
+  Kind:                PermissionDenied
+  Message:             Forbidden.
+  Status:              403
+  context:             Error from controller when performing read on group
+```
+
+The user does not currently have read permissions for any resources. In this
+tutorial you will create a role with read-only permissions, and assign the
+`group01` resource created in the previous tutorial to the role.
+
+</Tab>
+<Tab heading="Admin Console" group="admin">
+
+Log in to the Admin Console as the `tester01` user. In the previous tutorial its
+password was defined as `supersecure`. Ensure you are logging into the
+`IT_Support` scope.
+
+![Unprivileged User](/img/boundary/boundary-ui-unprivileged-0.png)
+
+Attempting to access any resources, such as the Projects view, will print the
+message *While you do not have permission to read this scope, you may have
+permission to view resources within it.* This means you must be granted
+permissions to view this data.
+
+![Unprivileged User](/img/boundary/boundary-ui-unprivileged-1.png)
+
+Log out of the Admin Console by clicking the `tester01` dropdown menu in the
+upper-right corner of the window and selecting **Sign Out**.
+
+</Tab>
+</Tabs>
+
+## Create a role
+
+You can create roles in the global, org, or project scopes. In this tutorial,
+you will create a role in the `IT_Support` org which you created in the [Manage
+Scopes](/boundary/tutorials/hcp-administration/hcp-manage-scopes) tutorial.
+
+If using Terraform, skip to the [assign grants
+section](#assign-grants-to-a-role).
+
+<Tabs>
+<Tab heading="CLI" group="cli">
+
+Log back into the CLI as the `admin` user. Enter `password` at the `Please enter
+the password (it will be hidden):` prompt.
+
+```shell-session
+$ boundary authenticate
+Please enter the login name (it will be hidden):
+Please enter the password (it will be hidden):
+Authentication information:
+  Account ID:      acctpw_VOeNSFX8pQ
+  Auth Method ID:  ampw_wxzojlKJLN
+  Expiration Time: Mon, 13 Feb 2023 12:35:32 MST
+  User ID:         u_1vUkf5fPs9
+The token was successfully stored in the chosen keyring and is not displayed here.
+```
+
+Create a role named, "read-only".
+
+```shell-session
+$ boundary roles create \
+  -scope-id=$ORG_ID \
+  -name="read-only" \
+  -description="Role with read-only permission"
+```
+
+**Example output:**
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary roles create \
+  -scope-id=$ORG_ID \
+  -name="read-only" \
+  -description="Role with read-only permission"
+
+Role information:
+  Created Time:        Fri, 27 May 2022 11:28:49 MDT
+  Description:         Role with read-only permission
+  Grant Scope ID:      o_u54jrD6ydN
+  ID:                  r_8ziMMwippL
+  Name:                read-only
+  Updated Time:        Fri, 27 May 2022 11:28:49 MDT
+  Version:             1
+
+  Scope:
+    ID:                o_u54jrD6ydN
+    Name:              IT_Support
+    Parent Scope ID:   global
+    Type:              org
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    add-principals
+    set-principals
+    remove-principals
+    add-grants
+    set-grants
+    remove-grants
+```
+
+</CodeBlockConfig>
+
+In the example output, the `read-only` role ID is `r_8ziMMwippL`.
+
+Copy the generated role ID and save it as an environment variable, `ROLE_ID`.
+
+**Example:**
+
+```shell-session
+$ export ROLE_ID=r_8ziMMwippL
+```
+
+</Tab>
+<Tab heading="Admin Console" group="admin">
+
+1. Log into the Admin Console global scope using the username `admin` and
+   password `password`.
+
+1. Select **IT_Support** org from the **Orgs** list.
+
+1. Select **Roles** and click **New**.
+   ![Role](/img/boundary/boundary-ui-role-0.png)
+
+1. Enter `read-only` in the **Name** field, and `Role with read-only permission`
+   in the **Description** field.
+   ![Role](/img/boundary/boundary-ui-role-1.png)
+
+1. Click **Save**.
+
+</Tab>
+</Tabs>
+
+## Assign principals to a role
+
+Users and groups (collectively known as principals) are granted permissions to perform actions by assigning them to
+a role. Add the `tester01` user which you created in the [Manage Users and
+Groups](/boundary/tutorials/hcp-administration/hcp-manage-users-groups) tutorial to the newly created
+`read-only` role by assigning the group it belongs to as a principal to the role.
+
+<Tabs>
+<Tab heading="CLI" group="cli">
+
+Retrieve the `group01` ID.
+
+```shell-session
+$ boundary groups list -scope-id=$ORG_ID
+
+Group information:
+  ID:                    g_wRpm66iPOX
+    Version:             2
+    Name:                group01
+    Description:         A test group
+    Authorized Actions:
+      no-op
+      read
+      update
+      delete
+      add-members
+      set-members
+      remove-members
+```
+
+In the example, the group ID is `g_wRpm66iPOX`.
+
+If you haven't already, copy the ID and save it as an environment variable,
+`GROUP_ID`.
+
+**Example:**
+
+```shell-session
+$ export GROUP_ID=g_wRpm66iPOX
+```
+
+Now, assign the `group01` group to the `read-only` role.
+
+```shell-session
+$ boundary roles add-principals -id=$ROLE_ID -principal=$GROUP_ID
+
+Role information:
+  Created Time:        Fri, 27 May 2022 11:28:49 MDT
+  Description:         Role with read-only permission
+  Grant Scope ID:      o_u54jrD6ydN
+  ID:                  r_8ziMMwippL
+  Name:                read-only
+  Updated Time:        Fri, 27 May 2022 11:30:47 MDT
+  Version:             2
+
+  Scope:
+    ID:                o_u54jrD6ydN
+    Name:              IT_Support
+    Parent Scope ID:   global
+    Type:              org
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    add-principals
+    set-principals
+    remove-principals
+    add-grants
+    set-grants
+    remove-grants
+
+  Principals:
+    ID:             g_wRpm66iPOX
+      Type:         group
+      Scope ID:     o_u54jrD6ydN
+```
+
+</Tab>
+<Tab heading="Admin Console" group="admin">
+
+1. Select the **Principals** tab, and select **Add Principals**.
+   ![Role](/img/boundary/boundary-ui-role-2.png)
+
+1. Filter the scopes to include only **IT_Support**. Select the check-box for
+   the `group01` group.
+   ![Role](/img/boundary/boundary-ui-role-3.png)
+
+1. Click **Add Principals**.
+
+</Tab>
+</Tabs>
+
+## Assign grants to a role
+
+Grants describe the actions that the principals can perform. For more
+information on how to format grants, refer to [Permission Grant
+Formats](/boundary/docs/concepts/security/permissions#permission-grant-formats).
+In this tutorial, you give read and list permissions to the `read-only` role you
+created.
+
+<Tabs>
+<Tab heading="CLI">
+
+Define the grant which permits read and list all resources
+(`ids=*;type=*;actions=read,list`) and assign it to the `read-only` role. Be sure
+to replace `<role_id>` with your `read-only` role ID.
+
+```shell-session
+$ boundary roles add-grants -id=$ROLE_ID -grant="ids=*;type=*;actions=read,list"
+
+Role information:
+  Created Time:        Fri, 27 May 2022 11:28:49 MDT
+  Description:         Role with read-only permission
+  Grant Scope ID:      o_u54jrD6ydN
+  ID:                  r_8ziMMwippL
+  Name:                read-only
+  Updated Time:        Fri, 27 May 2022 11:31:10 MDT
+  Version:             3
+
+  Scope:
+    ID:                o_u54jrD6ydN
+    Name:              IT_Support
+    Parent Scope ID:   global
+    Type:              org
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    add-principals
+    set-principals
+    remove-principals
+    add-grants
+    set-grants
+    remove-grants
+
+  Principals:
+    ID:             g_wRpm66iPOX
+      Type:         group
+      Scope ID:     o_u54jrD6ydN
+
+  Canonical Grants:
+    ids=*;type=*;actions=list,read
+```
+
+</Tab>
+<Tab heading="Admin Console" group="admin">
+
+1. Select the **Grants** tab.
+
+1. Enter `ids=*;type=*;actions=read,list` in the **New Grant** field.
+   ![Role](/img/boundary/boundary-ui-role-4.png)
+
+1. Click **Add** and then **Save**.
+
+</Tab>
+<Tab heading="Terraform">
+
+In your Terraform configuration file, define a [`boundary_role`
+resource](https://registry.terraform.io/providers/hashicorp/boundary/latest/docs/resources/role)
+to create a new role, "read-only" and assign the `tester01` user to that role.
+
+```hcl
+resource "boundary_role" "read-only" {
+  name            = "read-only"
+  description     = "Role with read-only permission"
+  scope_id        = boundary_scope.org.id
+  principal_ids   = [boundary_user.tester01.id]
+  grant_strings   = ["ids=*;type=*;actions=read,list"]
+}
+```
+
+The entire `main.tf` file contents are printed below for reference.
+
+<CodeBlockConfig filename="main.tf">
+
+```hcl
+terraform {
+  required_providers {
+    boundary = {
+      source  = "hashicorp/boundary"
+      version = "1.0.7"
+    }
+  }
+}
+
+variable "boundary_addr" {
+  type = string
+}
+
+variable "auth_method_id" {
+  type = string
+}
+
+variable "password_auth_method_login_name" {
+  type = string
+}
+
+variable "password_auth_method_password" {
+  type = string
+}
+
+provider "boundary" {
+  addr                            = var.boundary_addr
+  auth_method_id                  = var.auth_method_id
+  password_auth_method_login_name = var.password_auth_method_login_name
+  password_auth_method_password   = var.password_auth_method_password
+}
+
+resource "boundary_scope" "org" {
+  scope_id                 = "global"
+  name                     = "IT_Support"
+  description              = "IT Support Team"
+  auto_create_default_role = true
+  auto_create_admin_role   = true
+}
+
+resource "boundary_scope" "project" {
+    name             = "QA_Tests"
+    description      = "Manage QA machines"
+    scope_id                 = boundary_scope.org.id
+    auto_create_admin_role   = true
+    auto_create_default_role = true
+}
+
+resource "boundary_host_catalog_static" "devops" {
+  name        = "DevOps"
+  description = "For DevOps usage"
+  scope_id    = boundary_scope.project.id
+}
+
+resource "boundary_host_static" "postgres" {
+  name            = "postgres"
+  description     = "Postgres host"
+  address         = "127.0.0.1"
+  host_catalog_id = boundary_host_catalog_static.devops.id
+}
+
+resource "boundary_host_static" "localhost" {
+  name            = "localhost"
+  description     = "Localhost for testing"
+  address         = "localhost"
+  host_catalog_id = boundary_host_catalog_static.devops.id
+}
+
+resource "boundary_host_set_static" "test-machines" {
+  name            = "test-machines"
+  description     = "Host set for postgres"
+  host_catalog_id = boundary_host_catalog_static.devops.id
+  host_ids = [
+      boundary_host_static.postgres.id,
+      boundary_host_static.localhost.id,
+  ]
+}
+
+resource "boundary_target" "tests" {
+  type                     = "tcp"
+  name                     = "tests"
+  description              = "Test target"
+  scope_id                 = boundary_scope.project.id
+  session_connection_limit = -1
+  default_port             = 22
+  host_source_ids = [
+    boundary_host_set_static.test-machines.id
+  ]
+}
+
+resource "boundary_auth_method" "password" {
+  name        = "org_password_auth"
+  description = "Password auth method for org"
+  type        = "password"
+  scope_id    = boundary_scope.org.id
+}
+
+resource "boundary_account_password" "test_account" {
+  name           = "test_account"
+  description    = "Test password account"
+  type           = "password"
+  login_name     = "tester01"
+  password       = "supersecure"
+  auth_method_id = boundary_auth_method.password.id
+}
+
+resource "boundary_user" "tester01" {
+  name        = "tester01"
+  description = "A test user"
+  account_ids = [
+     boundary_account_password.test_account.id
+  ]
+  scope_id    = boundary_scope.org.id
+}
+
+resource "boundary_group" "group01" {
+  name        = "My group"
+  description = "A test group"
+  member_ids  = [boundary_user.tester01.id]
+  scope_id    = boundary_scope.org.id
+}
+
+resource "boundary_role" "read-only" {
+  name            = "read-only"
+  description     = "Role with read-only permission"
+  scope_id        = boundary_scope.org.id
+  principal_ids   = [boundary_user.tester01.id]
+  grant_strings   = ["ids=*;type=*;actions=read,list"]
+}
+```
+
+</CodeBlockConfig>
+
+**Save this file**.
+
+Now apply the Terraform config. Enter `yes` when prompted for confirmation.
+
+```shell-session
+$ terraform apply
+boundary_scope.org: Refreshing state... [id=o_bwxPCcurNS]
+boundary_scope.project: Refreshing state... [id=p_6lpARRpNyE]
+boundary_auth_method.password: Refreshing state... [id=ampw_gIvR3hAj42]
+boundary_host_catalog_static.devops: Refreshing state... [id=hcst_2cMGFPL905]
+boundary_account_password.test_account: Refreshing state... [id=acctpw_OCy6qu1sBb]
+boundary_user.tester01: Refreshing state... [id=u_1oeaM4wbcs]
+boundary_host_static.localhost: Refreshing state... [id=hst_gnZ56JJevN]
+boundary_host_static.postgres: Refreshing state... [id=hst_dlij7JuZDv]
+boundary_group.group01: Refreshing state... [id=g_oYrpXzBPpq]
+boundary_host_set_static.test-machines: Refreshing state... [id=hsst_jDYylMgDTw]
+boundary_target.tests: Refreshing state... [id=ttcp_oZZoQ6Kjm5]
+
+Note: Objects have changed outside of Terraform
+
+Terraform detected the following changes made outside of Terraform since the last "terraform apply":
+
+  # boundary_target.tests has been changed
+  ~ resource "boundary_target" "tests" {
+      + application_credential_source_ids = []
+        id                                = "ttcp_oZZoQ6Kjm5"
+        name                              = "tests"
+        # (7 unchanged attributes hidden)
+    }
+
+Unless you have made equivalent changes to your configuration, or ignored the relevant attributes using ignore_changes, the following plan may
+include actions to undo or respond to these changes.
+
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+Terraform used the selected providers to generate the following execution plan. Resource actions are indicated with the following symbols:
+  + create
+
+Terraform will perform the following actions:
+
+  # boundary_role.read-only will be created
+  + resource "boundary_role" "read-only" {
+      + description    = "Role with read-only permission"
+      + grant_scope_id = (known after apply)
+      + grant_strings  = [
+          + "ids=*;type=*;actions=read,list",
+        ]
+      + id             = (known after apply)
+      + name           = "read-only"
+      + principal_ids  = [
+          + "u_1oeaM4wbcs",
+        ]
+      + scope_id       = "o_bwxPCcurNS"
+    }
+
+Plan: 1 to add, 0 to change, 0 to destroy.
+
+Do you want to perform these actions?
+  Terraform will perform the actions described above.
+  Only 'yes' will be accepted to approve.
+
+  Enter a value: yes
+
+boundary_role.read-only: Creating...
+boundary_role.read-only: Creation complete after 0s [id=r_At6k50SSbs]
+
+Apply complete! Resources: 1 added, 0 changed, 0 destroyed.
+```
+
+</Tab>
+</Tabs>
+
+## Verify read-only permissions
+
+<Tabs>
+<Tab heading="CLI" group="cli">
+
+Log back into the CLI as the `tester01` user. Enter `supersecure` at the `Please
+enter the password (it will be hidden):` prompt.
+
+```shell-session
+$ boundary authenticate
+Please enter the login name (it will be hidden):
+Please enter the password (it will be hidden):
+Authentication information:
+  Account ID:      acctpw_VOeNSFX8pQ
+  Auth Method ID:  ampw_ZbB6UXpW3B
+  Expiration Time: Mon, 13 Feb 2023 12:35:32 MST
+  User ID:         u_ogz79sV4sT
+The token was successfully stored in the chosen keyring and is not displayed here.
+```
+
+Now attempt to read the details of the group again.
+
+```shell-session
+$ boundary groups read -id $GROUP_ID
+
+Group information:
+  Created Time:        Fri, 27 May 2022 11:20:55 MDT
+  Description:         A test group
+  ID:                  g_wRpm66iPOX
+  Name:                group01
+  Updated Time:        Fri, 27 May 2022 11:21:42 MDT
+  Version:             2
+
+  Scope:
+    ID:                o_u54jrD6ydN
+    Name:              IT_Support
+    Parent Scope ID:   global
+    Type:              org
+
+  Authorized Actions:
+    read
+
+  Members:
+    ID:                u_ogz79sV4sT
+    Scope ID:          o_u54jrD6ydN
+```
+
+The `tester01` user is a member of `group01`, and as a principal of the
+`read-only` role it automatically inherits the defined permissions.
+
+</Tab>
+<Tab heading="Admin Console" group="admin">
+
+Log in to the Admin Console as the `tester01` user. Ensure you are logging into
+the `IT_Support` scope.
+
+The `tester01` user is a member of `group01`, and as a principal of the
+`read-only` role it automatically inherits the defined permissions.
+
+Now when attempting to access any resources, such as the Users view, the
+associated resources will be displayed as expected, although no changes can be
+made. This can be tested by attempting to create a new user or group, which will
+result in a _Forbidden_ error.
+
+![Unprivileged User](/img/boundary/boundary-ui-unprivileged-2.png)
+
+When finished, log out of the Admin Console by clicking the `tester01` dropdown
+menu in the upper-right corner of the window and selecting **Deauthenticate**.
+
+</Tab>
+</Tabs>
+
+## Next steps
+
+You have completed the common Boundary resource management tasks. In the [Manage
+Sessions](/boundary/tutorials/hcp-administration/hcp-manage-sessions) tutorial you will learn about
+connecting to targets and managing sessions.

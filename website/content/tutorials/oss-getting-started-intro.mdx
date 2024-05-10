@@ -1,0 +1,41 @@
+---
+id: 091fc67e-541f-4bbe-bdf6-15c5d8c6eadb
+name: What is Boundary?
+short_name: What is Boundary?
+description: What is Boundary and what security challenges does it solves?
+products_used:
+  - boundary
+default_collection_context: boundary/oss-getting-started
+video_id: wk06629r3x
+video_host: wistia
+---
+
+Boundary enables simple and secure access to dynamic infrastructure by:
+
+- **Identity-based access controls:** Streamline just-in-time access to
+privileged sessions (e.g. TCP, SSH, RDP) for users and applications. Tightly
+control access permissions with extensible role-based access controls.
+
+- **Access Automation:** Define your perimeter of resources, identities, and
+access controls as code through Boundary's fully-instrumented Terraform
+Provider, REST API, CLI, and SDK. Automate the discovery of new resources and
+enforcement of existing policies as resources are provisioned.
+
+- **Session Visibility:** Security administrators gain visibility into users
+  accessing monitored targets. If necessary, the administrators can terminate
+  the sessions from the admin console.
+
+![Boundary Workflow](/img/boundary/boundary-workflow.png)
+
+Traditional approaches like SSH bastion hosts or VPNs that require distributing
+and managing credentials, configure network controls like firewalls, and expose
+the private network.  Boundary provides a secure way to access hosts and
+critical systems without having to manage credentials or expose your network.
+
+![Boundary overview](/img/boundary/boundary-overview-2.png)
+
+Refer to the [Boundary documentation
+page](/boundary/docs/concepts).
+
+The Boundary getting started tutorials will walk you through your first
+Boundary project, highlighting major features of Boundary.

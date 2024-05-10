@@ -1,0 +1,1523 @@
+---
+id: 07b234f6-ed2f-42b7-951b-a7f88332c22f
+name: Vault credential brokering quickstart
+short_name: Vault credential brokering quickstart
+description: |-
+  Instructions to integrate Vault and Boundary Community Edition in dev mode to enable
+  credential brokering.
+read_time: 20
+products_used:
+  - product: vault
+  - product: boundary
+    min_version: 0.12.0
+    max_version: 0.13.0
+default_collection_context: boundary/credential-management
+---
+
+This tutorial provides an example of an integration with Vault to broker secrets to
+Boundary clients.
+
+### Background
+
+Boundary integrates with Vault to broker Vault secrets to Boundary clients.
+Secrets are brokered using the command line or desktop clients to use Boundary
+sessions.
+
+This feature enables Boundary as a credential broker for
+infrastructure targets by binding credentials with user sessions, and surfacing
+those credentials during session initialization.
+
+![Boundary Vault Overview](/img/boundary/boundary-vault-quickstart-overview.png)
+
+This tutorial sets up development versions of Vault and Boundary, and then walks
+through the process of creating Boundary credentials stores and credential
+libraries for brokering of Vault secrets.
+
+### Tutorial Contents
+
+1. Deploy a demo database
+2. Setup Vault
+3. Setup Boundary
+4. Broker credentials for the database via Boundary
+
+## Prerequisites
+
+- A [Boundary binary](/boundary/install/) greater than
+  0.12 in your `PATH`
+
+- This tutorial assumes that you are able to launch Boundary in [dev
+  mode](/boundary/tutorials/oss-getting-started/oss-getting-started-dev).
+
+- A [Vault binary](/vault/install/) greater than 1.7.0 in
+  your `PATH`
+
+- [Docker](https://docs.docker.com/get-docker/) is installed
+
+- A [psql binary](https://www.postgresql.org/download/) greater than 13.0 in
+  your `PATH`
+
+- Installing the [Boundary Desktop
+  App](/boundary/tutorials/oss-getting-started/oss-getting-started-desktop-app) provides an optional
+  workflow at the end of this tutorial. The [1.2.0
+  version](https://releases.hashicorp.com/boundary-desktop/1.2.0/) or above is
+  required for Vault support.
+
+This tutorial assumes prior foundational knowledge of using Vault, including
+running a development server and managing policies, roles and tokens.
+
+If you are new to using Vault, consider completing the [Getting Started with
+Vault](/vault/tutorials/getting-started) quick
+start tutorials before integrating Vault with Boundary.
+
+## Tutorial Scenario
+
+Connecting to a networked service often requires credentials for authentication
+and authorization. For example, a financial analyst might require access to
+their company's sales database to create a monthly report. When the analyst
+wants to create the report, they will (hopefully) need database credentials
+which their reporting tool can use to connect to the sales database and run the
+report.
+
+In this example, the analyst only needs credentials to the sales database once a
+month and only for a limited amount of time. If connection to the sales database
+was through Boundary, the credentials could be generated at the beginning of the
+session, returned to the analyst, and then revoked when the session is
+terminated.
+
+This tutorial provides an example of enabling the analyst scenario by setting up
+a Vault integration with Boundary, and introduces the Boundary resources used
+for managing credentials.
+
+## Get setup
+
+Three pieces must be setup for this tutorial:
+
+- A demo postgres database target
+- A Vault server with policies allowing connections from Boundary
+- Boundary credential resources for managing credential lifecycle
+
+The
+[learn-boundary-vault-quickstart](https://github.com/hashicorp-education/learn-boundary-vault-quickstart)
+repository contains the lab environment for this tutorial.
+
+Open a terminal and navigate to a working directory, such as the home directory.
+Clone down the sample repository containing the starter configuration files.
+
+```shell-session
+$ git clone https://github.com/hashicorp-education/learn-boundary-vault-quickstart
+```
+
+Navigate into the learn-boundary-vault-quickstart directory and list its
+contents.
+
+```shell-session
+$ ls -R1
+README.md
+analyst.sql.hcl
+boundary-controller-policy.hcl
+dba.sql.hcl
+northwind-database-policy.hcl
+northwind-database.sql
+northwind-roles.sql
+```
+
+The repository contains the following files:
+
+- **analyst.sql.hcl**: Vault role for generating credentials for the analyst
+  database
+- **boundary-controller-policy.hcl**: Vault policy for the Boundary controller
+  that enables token management
+- **dba.sql.hcl**: Vault role for the database analyst credential generation
+- **northwind-database-policy.hcl**: Vault policy for the demo database admin
+- **northwind-database.sql**: Demo database tables
+- **northwind-roles.sql**: Demo database roles and permissions
+
+### Setup PostgreSQL Northwind demo database
+
+Start by deploying the northwind postgres database container target. This will
+be the target that Boundary brokers credentials for via Vault.
+
+Export the database name and URL as environment variables.
+
+```shell-session
+$ export PG_DB="northwind";export PG_URL="postgres://postgres:secret@localhost:16001/${PG_DB}?sslmode=disable"
+```
+
+Now launch the postgres container with Docker, passing the postgres password,
+database name, and URL port mapping as options.
+
+```shell-session
+$ docker run -d \
+   -e POSTGRES_PASSWORD=secret \
+   -e POSTGRES_DB="${PG_DB}" \
+   --name ${PG_DB} \
+   -p 16001:5432 \
+   postgres
+```
+
+Check that the container is running.
+
+```shell-session
+$ docker ps --format "table {{.ID}}\t{{.Names}}\t{{.Image}}\t{{.Status}}"
+CONTAINER ID   NAMES       IMAGE      STATUS
+af573c7093cd   northwind   postgres   Up About a minute
+```
+
+Next, seed the database tables.
+
+```shell-session
+$ psql -d $PG_URL -f northwind-database.sql --quiet
+```
+
+Lastly, apply the database roles and permissions.
+
+```shell-session
+$ psql -d $PG_URL -f northwind-roles.sql --quiet
+```
+
+This information will be queried at the end of the tutorial after the
+credentials are successfully brokered via Vault.
+
+## Setup Vault
+
+Vault needs to be configured to generate secrets for the database target. To set up Vault you need to:
+
+1. Start Vault
+1. Set up a Boundary controller policy
+1. Enable the database secrets engine
+1. Configure the postgres database plugin
+1. Create a database admin role to generate credentials
+1. Create an analyst role to generate credentials
+
+### Run Vault in dev mode
+
+Export the Vault address and set the token to the default admin user `groot`.
+
+```shell-session
+$ export VAULT_ADDR="http://127.0.0.1:8200"; export VAULT_TOKEN="groot"
+```
+
+Now start Vault in dev mode, passing in the `VAULT_TOKEN` variable.
+
+```shell-session
+$ vault server -dev -dev-root-token-id=${VAULT_TOKEN}
+==> Vault server configuration:
+
+             Api Address: http://127.0.0.1:8200
+                     Cgo: disabled
+         Cluster Address: https://127.0.0.1:8201
+              Go Version: go1.16.7
+              Listener 1: tcp (addr: "127.0.0.1:8200", cluster address: "127.0.0.1:8201", max_request_duration: "1m30s", max_request_size: "33554432", tls: "disabled")
+               Log Level: info
+                   Mlock: supported: false, enabled: false
+           Recovery Mode: false
+                 Storage: inmem
+                 Version: Vault v1.8.2
+             Version Sha: aca76f63357041a43b49f3e8c11d67358496959f
+
+==> Vault server started! Log data will stream in below:
+
+...
+...
+...
+
+The unseal key and root token are displayed below in case you want to
+seal/unseal the Vault or re-authenticate.
+
+Unseal Key: yhEyybUnBCEfxYpuVX1yh6arllBNfufcnfIvR0Q9UpA=
+Root Token: groot
+
+Development mode should NOT be used in production installations!
+```
+
+Leave the Vault server running in this terminal, and open a new session to
+continue setting up Vault.
+
+<Note>
+
+ Ensure that you navigate back into the
+`learn-boundary-vault-quickstart` directory where the sample code is located
+before proceeding.
+
+</Note>
+
+### Create the boundary-controller policy
+
+Boundary needs to lookup, renew, and revoke tokens and leases in order to broker
+credentials properly.
+
+Examine the `boundary-controller-policy.hcl` policy file, which assigns the
+following:
+
+- read `auth/token/lookup-self`
+- update `auth/token/renew-self`
+- update `auth/token/revoke-self`
+- update `sys/leases/renew`
+- update `sys/leases/revoke`
+- update `sys/capabilities-self`
+
+In the new shell session, export the Vault address and token environment
+variables again.
+
+```shell-session
+$ export VAULT_ADDR="http://127.0.0.1:8200"; export VAULT_TOKEN="groot"
+```
+
+Create the `boundary-controller` policy.
+
+```shell-session
+$ vault policy write boundary-controller boundary-controller-policy.hcl
+Success! Uploaded policy: boundary-controller
+```
+
+### Configure the database secrets engine
+
+Next, the database secrets engine must be enabled and configured with the
+postgresql plugin. Then a database admin (DBA) role and analyst role are created
+to enable credential generation.
+
+1. Enable the database secrets engine.
+
+  ```shell-session
+  $ vault secrets enable database
+  Success! Enabled the database secrets engine at: database/
+  ```
+
+1. Configure Vault with the postgres-database-plugin, connection
+   information and allowed roles of dba and analyst:
+
+  ```shell-session
+  $ vault write database/config/northwind \
+        plugin_name=postgresql-database-plugin \
+        connection_url="postgresql://{{username}}:{{password}}@localhost:16001/postgres?sslmode=disable" \
+        allowed_roles=dba,analyst \
+        username="vault" \
+        password="vault-password"
+  ```
+
+1. Create the DBA role that creates credentials with `dba.sql.hcl`:
+
+  ```shell-session
+  $ vault write database/roles/dba \
+        db_name=northwind \
+        creation_statements=@dba.sql.hcl \
+        default_ttl=3m \
+        max_ttl=60m
+  ```
+
+  Request the DBA credentials from Vault to confirm.
+
+  ```shell-session
+  $ vault read database/creds/dba
+  Key                Value
+  ---                -----
+  lease_id           database/creds/dba/mLuQEYJGTQbycgIDRe5Uig0G
+  lease_duration     3m
+  lease_renewable    true
+  password           0WDx5u6wSI5GE-RVT6LO
+  username           v-token-dba-nyI68lAMnqyqS2JdBhAp-1624918829
+  ```
+
+1. Create the analyst role that creates credentials with `analyst.sql.hcl`:
+
+  ```shell-session
+  $ vault write database/roles/analyst \
+        db_name=northwind \
+        creation_statements=@analyst.sql.hcl \
+        default_ttl=3m \
+        max_ttl=60m
+  ```
+
+  Request the analyst credentials from Vault to confirm.
+
+  ```shell-session
+  $ vault read database/creds/analyst
+  Key                Value
+  ---                -----
+  lease_id           database/creds/analyst/VBTw3MLVq8UYWXHaNBBpYzax
+  lease_duration     3m
+  lease_renewable    true
+  password           ZYjokywhm6U-0e01mrdA
+  username           v-token-analyst-CFmmvAtFKpkg5PcHP7Ni-1624918869
+  ```
+
+### Create northwind-database policy
+
+A policy needs to be created that grants read access for both the DBA and
+analyst roles.
+
+Examine the `northwind-database-policy.hcl` policy file, which assigns the
+following:
+
+- read `database/creds/analyst`
+- read `database/creds/dba`
+
+```shell-session
+$ vault policy write northwind-database northwind-database-policy.hcl
+Success! Uploaded policy: northwind-database
+```
+
+### Create Vault token for Boundary
+
+Lastly, a [Vault token](/vault/docs/concepts/tokens) is
+needed to access the Boundary credential store that will be configured when
+setting up Boundary.
+
+It's very important that the token is:
+
+- periodic
+- orphan
+- renewable
+
+Boundary may not be able to broker credentials unless the Vault token has these
+properties.
+
+Create the token with the `boundary-controller` and `northwind-database`
+policies.
+
+```shell-session
+$ vault token create \
+  -no-default-policy=true \
+  -policy="boundary-controller" \
+  -policy="northwind-database" \
+  -orphan=true \
+  -period=20m \
+  -renewable=true
+```
+
+**Example output:**
+
+<CodeBlockConfig hideClipboard>
+
+```plaintext
+Key                  Value
+---                  -----
+token                s.B2X1XMd0Y78yHoUcEV4zNTQ1
+token_accessor       djb0YsXztZoAYDUEcEqR0GT2
+token_duration       20m
+token_renewable      true
+token_policies       ["boundary-controller" "northwind-database"]
+identity_policies    []
+policies             ["boundary-controller" "northwind-database"]
+```
+
+</CodeBlockConfig>
+
+<Note>
+
+ Copy and store the generated token for setting up Boundary later
+on. In this example the token value is `s.B2X1XMd0Y78yHoUcEV4zNTQ1`.
+
+</Note>
+
+## Setup Boundary
+
+Start Boundary in dev mode.
+
+```shell-session
+$ boundary dev
+==> Boundary server configuration:
+
+        [Controller] AEAD Key Bytes: nI6pdy5GbZZg02jvFw9SUodRwdap3+r1/lWk9umgvhA=
+          [Recovery] AEAD Key Bytes: twFJE7UkqgD9xGlK3kENafxIvD6OTYNhUyh75HI2VNU=
+       [Worker-Auth] AEAD Key Bytes: t0iRAbP+S3/rNLxi9bxcn2DipcisaM00I308U5B1LGY=
+               [Recovery] AEAD Type: aes-gcm
+                   [Root] AEAD Type: aes-gcm
+            [Worker-Auth] AEAD Type: aes-gcm
+                                Cgo: disabled
+     Controller Public Cluster Addr: 127.0.0.1:9201
+             Dev Database Container: quirky_bell
+                   Dev Database Url: postgres://postgres:password@localhost:55009/boundary?sslmode=disable
+         Generated Admin Login Name: admin
+           Generated Admin Password: password
+          Generated Host Catalog Id: hcst_1234567890
+                  Generated Host Id: hst_1234567890
+              Generated Host Set Id: hsst_1234567890
+      Generated Oidc Auth Method Id: amoidc_1234567890
+             Generated Org Scope Id: o_1234567890
+  Generated Password Auth Method Id: ampw_1234567890
+         Generated Project Scope Id: p_1234567890
+                Generated Target Id: ttcp_1234567890
+  Generated Unprivileged Login Name: user
+    Generated Unprivileged Password: password
+                         Listener 1: tcp (addr: "127.0.0.1:9200", cors_allowed_headers: "[]", cors_allowed_origins: "[*]", cors_enabled: "true", max_request_duration: "1m30s", purpose: "api")
+                         Listener 2: tcp (addr: "127.0.0.1:9201", max_request_duration: "1m30s", purpose: "cluster")
+                         Listener 3: tcp (addr: "127.0.0.1:9202", max_request_duration: "1m30s", purpose: "proxy")
+                          Log Level: info
+                              Mlock: supported: false, enabled: false
+                            Version: Boundary v0.12
+                        Version Sha: 5f88243ddc6182db9c71ba84fd401040de4f5d41
+           Worker Public Proxy Addr: 127.0.0.1:9202
+
+==> Boundary server started! Log data will stream in below:
+```
+
+Leave Boundary running in this terminal session, and open a new one to continue
+the tutorial.
+
+Authenticate to Boundary as the admin user.
+
+<Tabs>
+<Tab heading="CLI" group="cli">
+
+```shell-session
+$ boundary authenticate password \
+  -auth-method-id=ampw_1234567890 \
+  -login-name=admin
+```
+
+</Tab>
+<Tab heading="Admin Console" group="admin">
+
+Navigate to `http://localhost:9200` in your browser, click on "Choose a
+different scope" and select the **Generated global scope initial password auth
+method**. Enter the Login Name `admin` and the Password `password` and click
+**Authenticate**.
+
+![Admin Console Login](/img/boundary/boundary-ui-dev-login.png)
+
+</Tab>
+</Tabs>
+
+### Configure database target
+
+Two targets need to be created in Boundary's default project scope, one for the DBA
+and another for the analyst. The default host set will then be assigned to both
+targets.
+
+<Tabs>
+<Tab heading="CLI" group="cli">
+
+1. Create a target for the DBA
+
+  ```shell-session
+  $ boundary targets create tcp \
+    -scope-id "p_1234567890" \
+    -default-port=16001 \
+    -session-connection-limit=-1 \
+    -name "Northwind DBA Database"
+  ```
+
+  **Example output:**
+
+  <CodeBlockConfig hideClipboard>
+
+  ```plaintext
+  Target information:
+    Created Time:               Mon, 28 Jun 2021 16:33:36 MDT
+    ID:                         ttcp_2A3gcglw61
+    Name:                       Northwind DBA Database
+    Session Connection Limit:   -1
+    Session Max Seconds:        28800
+    Type:                       tcp
+    Updated Time:               Mon, 28 Jun 2021 16:33:36 MDT
+    Version:                    1
+
+    Scope:
+      ID:                       p_1234567890
+      Name:                     Generated project scope
+      Parent Scope ID:          o_1234567890
+      Type:                     project
+
+    Authorized Actions:
+      no-op
+      read
+      update
+      delete
+      add-credential-libraries
+      set-credential-libraries
+      remove-credential-libraries
+      authorize-session
+
+    Attributes:
+      Default Port:             16001
+  ```
+
+  </CodeBlockConfig>
+
+  Export the DBA target ID as an environment variable. In this example, the
+  target ID is `ttcp_2A3gcglw61`.
+
+  ```shell-session
+  $ export DBA_TARGET_ID="ttcp_2A3gcglw61"
+  ```
+
+1. Create a target for analyst
+
+  ```shell-session
+  $ boundary targets create tcp \
+    -scope-id "p_1234567890" \
+    -default-port=16001 \
+    -session-connection-limit=-1 \
+    -name "Northwind Analyst Database"
+  ```
+
+  **Example output:**
+
+  <CodeBlockConfig hideClipboard>
+
+  ```plaintext
+  Target information:
+    Created Time:               Mon, 28 Jun 2021 16:34:41 MDT
+    ID:                         ttcp_1r9XGCXdwE
+    Name:                       Northwind Analyst Database
+    Session Connection Limit:   -1
+    Session Max Seconds:        28800
+    Type:                       tcp
+    Updated Time:               Mon, 28 Jun 2021 16:34:41 MDT
+    Version:                    1
+
+    Scope:
+      ID:                       p_1234567890
+      Name:                     Generated project scope
+      Parent Scope ID:          o_1234567890
+      Type:                     project
+
+    Authorized Actions:
+      no-op
+      read
+      update
+      delete
+      add-credential-libraries
+      set-credential-libraries
+      remove-credential-libraries
+      authorize-session
+
+    Attributes:
+      Default Port:             16001
+  ```
+
+  </CodeBlockConfig>
+
+  Export the analyst target ID as an environment variable. In this example, the
+  target ID is `ttcp_1r9XGCXdwE`.
+
+  ```shell-session
+  $ export ANALYST_TARGET_ID="ttcp_1r9XGCXdwE"
+  ```
+
+1. Add the default host set to both targets. Ensure you supply the target IDs
+   copied previously.
+
+   Add host set to the DBA target:
+
+  ```shell-session
+  $ boundary targets add-host-sources -host-source=hsst_1234567890 -id=$DBA_TARGET_ID
+
+  Target information:
+    Created Time:               Mon, 28 Jun 2021 16:33:36 MDT
+    ID:                         ttcp_2A3gcglw61
+    Name:                       Northwind DBA Database
+    Session Connection Limit:   -1
+    Session Max Seconds:        28800
+    Type:                       tcp
+    Updated Time:               Mon, 28 Jun 2021 16:38:22 MDT
+    Version:                    2
+
+    Scope:
+      ID:                       p_1234567890
+      Name:                     Generated project scope
+      Parent Scope ID:          o_1234567890
+      Type:                     project
+
+    Authorized Actions:
+      no-op
+      read
+      update
+      delete
+      add-credential-libraries
+      set-credential-libraries
+      remove-credential-libraries
+      authorize-session
+
+    Host Sets:
+      Host Catalog ID:          hcst_1234567890
+      ID:                       hsst_1234567890
+
+    Attributes:
+      Default Port:             16001
+  ```
+
+  Add host set to the analyst target:
+
+  ```shell-session
+  $ boundary targets add-host-sources -host-source=hsst_1234567890 -id=$ANALYST_TARGET_ID
+
+  Target information:
+    Created Time:               Mon, 28 Jun 2021 16:34:41 MDT
+    ID:                         ttcp_1r9XGCXdwE
+    Name:                       Northwind Analyst Database
+    Session Connection Limit:   -1
+    Session Max Seconds:        28800
+    Type:                       tcp
+    Updated Time:               Mon, 28 Jun 2021 16:40:00 MDT
+    Version:                    2
+
+    Scope:
+      ID:                       p_1234567890
+      Name:                     Generated project scope
+      Parent Scope ID:          o_1234567890
+      Type:                     project
+
+    Authorized Actions:
+      no-op
+      read
+      update
+      delete
+      add-credential-libraries
+      set-credential-libraries
+      remove-credential-libraries
+      authorize-session
+
+    Host Sets:
+      Host Catalog ID:          hcst_1234567890
+      ID:                       hsst_1234567890
+
+    Attributes:
+      Default Port:             16001
+  ```
+
+</Tab>
+<Tab heading="Admin Console" group="admin">
+
+Click on the **Generated org scope**, then click on the **Generated project
+scope**.
+
+![Admin Console Org Scope](/img/boundary/boundary-ui-generated-org-scope.png)
+
+![Admin Console Project Scope](/img/boundary/boundary-ui-generated-project-scope.png)
+
+1. Create a target for the DBA
+
+   Navigate to the **Targets** tab and click **New**.
+
+   ![Admin Console New Target](/img/boundary/boundary-ui-generated-target-new.png)
+
+   Fill out the form details for the new TCP DBA Database target. Enter:
+
+   1. Name: `Northwind DBA Database`
+   1. Maximum Duration (in seconds): `28800`
+   1. Maximum Connections: `-1`
+   1. Default Port: `16001`
+
+   Click **Save** when finished.
+
+   ![Admin Console DBA Target](/img/boundary/boundary-vault-quickstart-ui-new-dba-target.png)
+
+   Copy the DBA target ID. In this example, the target ID is `ttcp_2A3gcglw61`.
+
+   <Note>
+
+    You will need the generated DBA target ID (in this example, the
+      ID is `ttcp_2A3gcglw61`) to connect to the PostgreSQL as the DBA role.
+
+   </Note>
+
+1. Create a target for the analyst
+
+   Navigate to the **Targets** tab and click **New**.
+
+   Fill out the form details for the new TCP Analyst Database target. Enter:
+
+   1. Name: `Northwind Analyst Database`
+   1. Maximum Duration (in seconds): `28800`
+   1. Maximum Connections: `-1`
+   1. Default Port: `16001`
+
+   Click **Save** when finished.
+
+   Copy the analyst target ID. In this example, the target ID is `ttcp_1r9XGCXdwE`.
+
+   <Note>
+
+    You will need the generated analyst target ID (in this example,
+      the ID is `ttcp_1r9XGCXdwE`) to connect to the PostgreSQL as a analyst role.
+
+   </Note>
+
+   ![Admin Console Targets](/img/boundary/boundary-vault-quickstart-ui-targets.png)
+
+1. Add the default host set to both targets.
+
+   1. Add host set to the DBA target:
+
+      Click on the **Northwind DBA Database** target to view its details. Click on
+      the **Host Sources** tab and select **Add Host Sources**.
+
+      Check the box beside the **hsst_1234567890** Host Catalog, then click **Add
+      Host Sources**.
+
+      ![Admin Console Add Host Sources](/img/boundary/boundary-vault-quickstart-ui-add-host-sources.png)
+
+      The *Generated host set* should now be displayed under the Host Sources tab.
+
+   1. Add host set to the analyst target:
+
+      **Repeat the steps above for adding the Generated host set to the Northwind
+      Analysts Database target.**
+
+      When finished, the *Generated host set* should be listed under the Host
+      Sources tab for the Northwind Analyst Database target.
+
+      ![Admin Console Host Sources Tab](/img/boundary/boundary-vault-quickstart-ui-host-sources.png)
+
+</Tab>
+</Tabs>
+
+### Test connection to the sample database
+
+Verify that Boundary can connect to the database target directly, without having
+a credential brokered from Vault. This is to ensure the target container is
+accessible to Boundary before attempting to broker credentials via Vault.
+
+Authenticate to Boundary as the admin user.
+
+```shell-session
+$ boundary authenticate password \
+  -auth-method-id=ampw_1234567890 \
+  -login-name=admin
+```
+
+Execute `boundary connect postgres` to verify the connection to the analyst
+target. When prompted, enter the password `secret` to connect.
+
+```shell-session
+$ boundary connect postgres -target-id $ANALYST_TARGET_ID -username postgres
+Password for user postgres:
+psql (13.2)
+Type "help" for help.
+
+postgres=#
+```
+
+<Note>
+
+ If you followed the Admin Console workflow and did not export the
+`ANALYST_TARGET_ID` environment variable, supply it directly instead. In this
+example the analyst target ID is `ttcp_1r9XGCXdwE`.
+
+</Note>
+
+After successfully testing the connection, terminate the session by executing
+`\q`.
+
+~> If unable to connect to the target, revisit the section on [deploying the
+demo database](#setup-postgresql-northwind-demo-database) at the beginning of
+the tutorial, and ensure the instance was configured properly.
+
+## Credential stores
+
+A credential store belongs to a scope and must support the principle of least
+privilege by providing mechanisms to limit the credentials it can access to the
+minimum necessary for the scope it is in.
+
+A credential store:
+
+- is a Boundary resource
+- belongs to one and only one scope
+- owns zero or more credentials
+- owns zero or more credential libraries
+- is deleted when the scope it belongs to is deleted
+
+In this example the credential store is created to manage HashiCorp Vault
+secrets. Configuring a Vault credential store requires:
+
+- A Vault token with appropriate permissions to allow Boundary to access Vault
+  secrets
+- One or more credential libraries and credentials that specify the paths where
+  Boundary should access Vault credentials
+
+### Create vault credential store
+
+Create a credential store resource in the default project scope. Supply the
+token [created when setting up Vault](#create-vault-token-for-boundary).
+
+<Tabs>
+<Tab heading="CLI" group="cli">
+
+```shell-session
+$ boundary credential-stores create vault -scope-id "p_1234567890" \
+  -vault-address "http://127.0.0.1:8200" \
+  -vault-token "${VAULT_BOUNDARY_TOKEN}"
+```
+
+**Example output:**
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary credential-stores create vault -scope-id "p_1234567890" \
+  -vault-address "http://127.0.0.1:8200" \
+  -vault-token "s.NL1Az6rTsCRxMTmPRnDgpN7i"
+
+Credential Store information:
+  Created Time:        Mon, 28 Jun 2021 16:44:38 MDT
+  ID:                  csvlt_ytzGHsfp3r
+  Type:                vault
+  Updated Time:        Mon, 28 Jun 2021 16:44:38 MDT
+  Version:             1
+
+  Scope:
+    ID:                p_1234567890
+    Name:              Generated project scope
+    Parent Scope ID:   o_1234567890
+    Type:              project
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+
+  Attributes:
+    Address:           http://127.0.0.1:8200
+    Token HMAC:        xMJIrVWRISWvS2_d2jGpB-lKgrUKXxpNyDK_T9Ig618
+```
+
+</CodeBlockConfig>
+
+Export the credential store ID as an environment variable. In this example, the
+target ID is `csvlt_ytzGHsfp3r`.
+
+```shell-session
+$ export CRED_STORE_ID="csvlt_ytzGHsfp3r"
+```
+
+</Tab>
+<Tab heading="Admin Console" group="admin">
+
+Navigate to the **Credential Stores** tab and click **New**.
+
+![Admin Console Credential Stores Tab](/img/boundary/boundary-vault-quickstart-ui-new-cred-store.png)
+
+Fill out the following required fields for the *vault* credential type.
+
+- Address: `http://127.0.0.1:8200`
+-   Token: `s.B2X1XMd0Y78yHoUcEV4zNTQ1` **Replace with the Vault token**
+
+Ensure that the *Token* field matches the token generated by running `vault
+token create` in the [Create Vault token for
+Boundary](#create-vault-token-for-boundary) section.
+
+Click **Save** when finished.
+
+![Admin Console New Credential Store](/img/boundary/boundary-vault-quickstart-ui-new-cred-store-details.png)
+
+After the credential store has been created, copy the cred store ID from its
+*Details* page. In this example the cred store ID is `csvlt_ytzGHsfp3r`.
+
+![Admin Console Credential Store ID](/img/boundary/boundary-vault-quickstart-ui-cred-store-id.png)
+
+</Tab>
+</Tabs>
+
+## Credential libraries
+
+A credential library provides credentials for sessions. All credentials returned
+by a library must be equivalent from an access control perspective. A
+credential library is responsible for managing the lifecycle of the credentials
+it returns. For dynamic secrets, this includes creation, renewal, and
+revocation. For rotating credentials, this includes check-out, check-in, and
+rotation of secrets. The system retrieves credentials from a library for a
+session and notifies the library when the session has been terminated. A
+credential library belongs to a single credential store.
+
+Vault credential libraries are the Boundary resource that maps to [Vault secrets
+engines](/vault/docs/secrets). A single credential store
+may have multiple types of credential libraries. For example, Vault credential
+store might include separate credential libraries corresponding to each of the
+Vault secret engine backends.
+
+A credential library:
+
+- is a Boundary resource
+- belongs to one and only one credential store
+- can be associated with zero or more targets
+- can contain zero or more credentials
+- is deleted when the credential store it belongs to is deleted
+
+### Create credential libraries
+
+While there is only a single database target, two separate credential libraries
+should be created for the DBA and analyst roles within the credential store.
+
+The DBA credential library is responsible for brokering credentials at the
+`database/creds/dba` vault path, while the analyst credential library brokers
+credentials at `database/creds/analyst`. Using two credential libraries allows
+for separation of privileges, and enables distinct lifecycle management for the
+different database roles.
+
+<Tabs>
+<Tab heading="CLI" group="cli">
+
+1. Create a credential library for DBA credentials. Supply the credential store
+   ID from above.
+
+  ```shell-session
+  $ boundary credential-libraries create vault-generic \
+      -credential-store-id $CRED_STORE_ID \
+      -vault-path "database/creds/dba" \
+      -name "northwind dba"
+  ```
+
+  **Example output:**
+
+  <CodeBlockConfig hideClipboard>
+
+  ```shell-session
+  $ boundary credential-libraries create vault-generic \
+      -credential-store-id csvlt_ytzGHsfp3r \
+      -vault-path "database/creds/dba" \
+      -name "northwind dba"
+
+  Credential Library information:
+    Created Time:          Mon, 28 Jun 2021 16:52:50 MDT
+    Credential Store ID:   csvlt_ytzGHsfp3r
+    ID:                    clvlt_G20RCg2y2x
+    Name:                  northwind dba
+    Type:                  vault
+    Updated Time:          Mon, 28 Jun 2021 16:52:50 MDT
+    Version:               1
+
+    Scope:
+      ID:                  p_1234567890
+      Name:                Generated project scope
+      Parent Scope ID:     o_1234567890
+      Type:                project
+
+    Authorized Actions:
+      no-op
+      read
+      update
+      delete
+
+    Attributes:
+      HTTP Method:         GET
+      Path:                database/creds/dba
+  ```
+
+  </CodeBlockConfig>
+
+  Export the DBA credential library ID. In this example the DBA credential
+  library ID is `clvlt_G20RCg2y2x`.
+
+  ```shell-session
+  $ export DBA_CRED_LIB_ID="clvlt_G20RCg2y2x"
+  ```
+
+1. Create a credential library for analyst credentials. Supply the credential
+   store ID from above.
+
+  ```shell-session
+  $ boundary credential-libraries create vault-generic \
+      -credential-store-id $CRED_STORE_ID \
+      -vault-path "database/creds/analyst" \
+      -name "northwind analyst"
+  ```
+
+  **Example output:**
+
+  <CodeBlockConfig hideClipboard>
+
+  ```shell-session
+  $ boundary credential-libraries create vault-generic \
+      -credential-store-id csvlt_ytzGHsfp3r \
+      -vault-path "database/creds/analyst" \
+      -name "northwind analyst"
+
+  Credential Library information:
+    Created Time:          Mon, 28 Jun 2021 16:55:16 MDT
+    Credential Store ID:   csvlt_ytzGHsfp3r
+    ID:                    clvlt_5A8xDDWpIm
+    Name:                  northwind analyst
+    Type:                  vault
+    Updated Time:          Mon, 28 Jun 2021 16:55:16 MDT
+    Version:               1
+
+    Scope:
+      ID:                  p_1234567890
+      Name:                Generated project scope
+      Parent Scope ID:     o_1234567890
+      Type:                project
+
+    Authorized Actions:
+      no-op
+      read
+      update
+      delete
+
+    Attributes:
+      HTTP Method:         GET
+      Path:                database/creds/analyst
+  ```
+
+  </CodeBlockConfig>
+
+  Export the analyst credential library ID. In this example the analyst
+  credential library ID is `clvlt_5A8xDDWpIm`.
+
+  ```shell-session
+  $ export ANALYST_CRED_LIB_ID="clvlt_5A8xDDWpIm"
+  ```
+
+</Tab>
+<Tab heading="Admin Console" group="admin">
+
+1. Create a credential library for DBA credentials. Supply the credential store
+   ID copied above.
+
+   Navigate to the **Credential Stores** tab and select the ID of the new
+   credential store (`csvlt_ytzGHsfp3r` in this example).
+
+   ![Admin Console Credential Stores](/img/boundary/boundary-vault-quickstart-ui-cred-store-select.png)
+
+   Select the **Credential Libraries** tab. Click **New**.
+
+   ![Admin Console Credential Libraries](/img/boundary/boundary-vault-quickstart-ui-new-cred-library.png)
+
+   Fill in the *Name* and *Vault Path* for the DBA credential as follows:
+
+   - Name: `northwind dba`
+   - Vault Path: `database/creds/dba`
+
+   Leave the *HTTP Method* set as *Get*. Click **Save** when finished.
+
+   ![Admin Console Credential Library Details](/img/boundary/boundary-vault-quickstart-ui-new-cred-library-details.png)
+
+   Note the DBA credential library ID. In this example the DBA credential
+   library ID is `clvlt_G20RCg2y2x`.
+
+1. Create a credential library for analyst credentials. From the **Credential
+   Stores** tab, select the **Manage** dropdown and click **New Credential
+   Library**.
+
+   ![Admin Console Credential Store ID](/img/boundary/boundary-vault-quickstart-ui-new-cred-library-manage.png)
+
+   Fill in the *Name* and *Vault Path* for the analyst credential as follows:
+
+   - Name: `northwind analyst`
+   - Vault Path: `database/creds/analyst`
+
+   Leave the *HTTP Method* set as *Get*. Click **Save** when finished.
+
+   Note the analyst credential library ID. In this example the analyst
+   credential library ID is `clvlt_5A8xDDWpIm`.
+
+   ![Admin Console Credential Libraries](/img/boundary/boundary-vault-quickstart-ui-cred-libraries.png)
+
+</Tab>
+</Tabs>
+
+## Credentials and targets
+
+A credential is a data structure containing one or more secrets that binds an
+identity to a set of permissions or capabilities. Static credential and dynamic
+credential are two additional base types derived from the credential base type.
+
+A credential:
+
+- may be a Boundary resource
+- belongs to one and only one credential store
+- can be associated with zero or more targets directly if it is a resource
+- can be associated with zero or more libraries directly if it is a resource
+- is deleted when the credential store or credential library it belongs to is
+  deleted
+
+A target can have multiple credentials or credential libraries associated with
+it:
+
+- one for the connection from a user to a worker (ingress)
+- one for the connection from a worker to an endpoint (egress)
+- multiple for application credentials (like username and password)
+
+Application credentials are returned to the user from the controller. Ingress
+and egress credentials are only given to a worker from a controller, and users
+never have direct access to them.
+
+### Add credential libraries to targets
+
+With the credential libraries created, assign them to the appropriate targets.
+You will need the target ID and credential library ID for the respective
+targets.
+
+<Tabs>
+<Tab heading="CLI" group="cli">
+
+1. Add a credential library to the DBA target. Ensure that you provide the
+   correct target ID and credential library ID associated with the DBA.
+
+  ```shell-session
+  $ boundary targets add-credential-sources \
+    -id=$DBA_TARGET_ID \
+    -application-credential-source=$DBA_CRED_LIB_ID
+  ```
+
+  **Example output:**
+
+  <CodeBlockConfig hideClipboard>
+
+  ```shell-session
+  $ boundary targets add-credential-sources \
+    -id=ttcp_2A3gcglw61 \
+    -application-credential-source=clvlt_G20RCg2y2x
+
+  Target information:
+    Created Time:               Mon, 28 Jun 2021 16:33:36 MDT
+    ID:                         ttcp_2A3gcglw61
+    Name:                       Northwind DBA Database
+    Session Connection Limit:   -1
+    Session Max Seconds:        28800
+    Type:                       tcp
+    Updated Time:               Mon, 28 Jun 2021 17:02:46 MDT
+    Version:                    3
+
+    Scope:
+      ID:                       p_1234567890
+      Name:                     Generated project scope
+      Parent Scope ID:          o_1234567890
+      Type:                     project
+
+    Authorized Actions:
+      no-op
+      read
+      update
+      delete
+      add-credential-libraries
+      set-credential-libraries
+      remove-credential-libraries
+      authorize-session
+
+    Host Sets:
+      Host Catalog ID:          hcst_1234567890
+      ID:                       hsst_1234567890
+
+    Application Credential Libraries:
+      Credential Store ID:      csvlt_ytzGHsfp3r
+      ID:                       clvlt_G20RCg2y2x
+
+    Attributes:
+      Default Port:             16001
+  ```
+
+  </CodeBlockConfig>
+
+1. Add a credential library to the analyst target. Ensure that you provide the
+   correct target ID and credential library ID associated with the analyst.
+
+  ```shell-session
+  $ boundary targets add-credential-sources \
+    -id=$ANALYST_TARGET_ID \
+    -application-credential-source=$ANALYST_CRED_LIB_ID
+  ```
+
+  **Example output:**
+
+  <CodeBlockConfig hideClipboard>
+
+  ```shell-session
+  $ boundary targets add-credential-sources \
+    -id=ttcp_1r9XGCXdwE \
+    -application-credential-source=clvlt_5A8xDDWpIm
+
+  Target information:
+    Created Time:               Mon, 28 Jun 2021 16:34:41 MDT
+    ID:                         ttcp_1r9XGCXdwE
+    Name:                       Northwind Analyst Database
+    Session Connection Limit:   -1
+    Session Max Seconds:        28800
+    Type:                       tcp
+    Updated Time:               Mon, 28 Jun 2021 17:04:45 MDT
+    Version:                    3
+
+    Scope:
+      ID:                       p_1234567890
+      Name:                     Generated project scope
+      Parent Scope ID:          o_1234567890
+      Type:                     project
+
+    Authorized Actions:
+      no-op
+      read
+      update
+      delete
+      add-credential-libraries
+      set-credential-libraries
+      remove-credential-libraries
+      authorize-session
+
+    Host Sets:
+      Host Catalog ID:          hcst_1234567890
+      ID:                       hsst_1234567890
+
+    Application Credential Libraries:
+      Credential Store ID:      csvlt_ytzGHsfp3r
+      ID:                       clvlt_5A8xDDWpIm
+
+    Attributes:
+      Default Port:             16001
+  ```
+
+  </CodeBlockConfig>
+
+</Tab>
+<Tab heading="Admin Console" group="admin">
+
+Navigate to the **Targets** tab.
+
+![Admin Console Targets](/img/boundary/boundary-vault-quickstart-ui-targets.png)
+
+1. Add a credential library to the DBA target.
+
+   Select the **Northwind DBA Database** target.
+
+   Under the **Credential Sources** tab, select **Add Credential Sources**.
+
+   ![Admin Console Credential Store ID](/img/boundary/boundary-vault-quickstart-ui-targets-add-cred-source.png)
+
+   Select the checkbox next to the ID of the credential library associated with
+   the `northwind dba` target (`clvlt_G20RCg2y2x` in this example).
+
+   Click **Add Credential Sources** when finished.
+
+   ![Admin Console Credential Source](/img/boundary/boundary-vault-quickstart-ui-targets-select-cred-source.png)
+
+1. Add a credential library to the analyst target.
+
+   Navigate back to the **Targets** tab and select the **Northwind Analyst
+   Database** target.
+
+   Under the **Credential Sources** tab, select **Add Credential Sources**.
+
+   Select the checkbox next to the ID of the credential library associated with
+   the `northwind analyst` target (`clvlt_5A8xDDWpIm` in this example).
+
+   Click **Add Credential Sources** when finished.
+
+   ![Admin Console Credential Source](/img/boundary/boundary-vault-quickstart-ui-targets-select-cred-source-2.png)
+
+</Tab>
+</Tabs>
+
+## Broker credentials via Vault
+
+With their respective credential libraries assigned added to the targets,
+sessions can be authorized using credentials brokered by Vault.
+
+### Use Boundary to connect to the northwind demo database
+
+A session can be authorized directly using the `boundary targets
+authorize-session` command.
+
+Authorize a session to the analyst target, supplying its target ID.
+
+<Note>
+
+ If you followed the Admin Console workflow and did not export the
+`ANALYST_TARGET_ID` environment variable, supply it directly instead. In this
+example the analyst target ID is `ttcp_1r9XGCXdwE`.
+
+</Note>
+
+```shell-session
+$ boundary targets authorize-session -id $ANALYST_TARGET_ID
+
+Target information:
+  Authorization Token:
+  HvCqnk9BRvRKDibZ1LKHiWbCsvLNBYNSphAPzttGJYseqE6ncSQ4KQsXstqtnXSAvQuFQ4Z7HeYgZ2oZZJ2Z7HJjA9FiiAUV9mFrbJEsDb8gw8pV4DjidHeefbRc3bGLRmnhJm1mkj57CV9qeGTi2g4HeTF5JB7X2Xr6eVh5dWF2gzqLkbCfN1ctQtLM9rqvcgAyRnkr7kiYAMSmhNP1WSaPsmpaMsAQYj7nmEzD5hjTZ9gkvS6wkefZGQPAHpTRiXirfDvPm1HeUqjmUJiaBNFW1EBqQ66UDjogKuSeEWPQ61nYbekVGWcyPmDcRKqbmf29r4R47qNbTdMvwh3iCtzG839rS1ypE1EibXzwLMfUwJngiRy365b1ULw5XX1bgkF464hmCdoPWzaVn1vJe4TVHY428SRNRgBsD1ZPhB3gsa4ktREdf6e21NXkkbcLDwG4Nm5mzNTRfeyG2LeZyGxppNHXBCQ82JLtKQTXcJckbGzLYH5vEB243oLZYirhVJecPUhDEKGVa4HkvDb7iPv1hqf9Wth44cwFvehBYhvVgXfWVorejuJf23GdKnF8MxNS8Mxp4W2LeJQ8s5Gn2G1UgQUBAHSQYYnEny3mHiZHT1dzu3Ji3F4iCQn9bfggRWUzryqdhn1rGadz2cbnWM6EWkG1uthm3Tz5kwBmnqFqWLSBXcbbuoxJeCkcVaaYpyJQgQN26TckWVytApqG623Ym5UrK4eCvWHG2DXHuvJ8p91rCrS6XjSUZR7WaDXwc2JsAQekHNgZCCEF3uVvyJvZdnTE2miM3rnD5WczkQCURdp22kBi5pw3eRfb48nH7BKAgCDVmPtm
+  Created Time:          Mon, 28 Jun 2021 17:07:37 MDT
+  Endpoint:              tcp://localhost:16001
+  Host ID:               hst_1234567890
+  Scope ID:              p_1234567890
+  Session ID:            s_SJQMxQSxTu
+  Target ID:             ttcp_1r9XGCXdwE
+  Type:                  tcp
+  User ID:               u_1234567890
+
+  Credentials:
+    Credential Store ID:            csvlt_ytzGHsfp3r
+    Credential Library ID:          clvlt_5A8xDDWpIm
+    Credential Library Type:        vault
+    Credential Library Name:        northwind analyst
+    Secret:
+      {
+        "password": "TxNG8yqgN-kgAoOyIx6t",
+        "username": "v-token-analyst-dca8kVx4Ipjd93dyIoIn-1624921657"
+      }
+```
+
+Notice the `Credentials:` section of the output, which displays the base64 credentials.
+
+If desired, `jq` can be used to parse the output and display the decoded credentials.
+
+```shell-session
+$ boundary targets authorize-session -id $ANALYST_TARGET_ID -format json | jq .
+{
+  "status_code": 200,
+  "decoded_credentials": [
+    {
+      "credential_library": {
+        "id": "clvlt_5A8xDDWpIm",
+        "name": "northwind analyst",
+        "credential_store_id": "csvlt_ytzGHsfp3r",
+        "type": "vault"
+      },
+      "secret": {
+        "password": "-Z5g06pzUZ2aY-jltA0R",
+        "username": "v-token-analyst-1ee37SuBH6J92Ex6RDRp-1624921756"
+      }
+    }
+  ],
+  "item": {
+    "session_id": "s_cEBfUD8D9X",
+    "target_id": "ttcp_1r9XGCXdwE",
+    "scope": {
+      "id": "p_1234567890",
+      "type": "project",
+      "name": "Generated project scope",
+      "description": "Provides an initial project scope in Boundary",
+      "parent_scope_id": "o_1234567890"
+    },
+    "created_time": "2021-06-28T23:09:16.882279Z",
+    "user_id": "u_1234567890",
+    "host_set_id": "hsst_1234567890",
+    "host_id": "hst_1234567890",
+    "type": "tcp",
+    "authorization_token": "HvCqnkePJEuSqL5be1Fy8Y3SGFuvBs2MjKZzt8rkCG1bkzsRs85NQ8Jj7gYib12EWJE45RHLVFPqEHD9FdK5cmxTfVKWyaXh51jkbBEGpdtTaBJNCUButs7xQCsxRTa6HvShYj3BniTmrWjsFNpU2DkBMQJKAiTA7tNh7Qgv2ifnFkU24DbamKuLaAnuNi95q7r4FTfFXCLBDdvZW5Xt4bEyhHyTkxuS7BNA2ezC4bThHLdfLu8VQTJJuwaVpS3vgJU4TeTYZgUC8WPQnQLatpghKMiNYJj1KetXLabGkmFnFNxyuoXZTDU12QPgw2Rv3Upy5d2bj34eHuqZ5egPU7wGgsrocq8ZTcNr3KG6TiVBUkvAbiStzw3YbAb9KNLctx6DYvBCacUEcPweg2TUAKQNXRWBG6CNoZWi63QY5s8PYVDHsRk9vbjiqET8ms9oDHMAxo7nFtYnBeNJFyZLwWgucbYUhSu4JERfwiC3jXqyWLNNKRZmzxWz18JSWzH5499F5mHVRF1kKiCj3yvyjySMtw541TZFByMBpzArKBDMmJoMpPAzKf65u7wY3yHoMFB6LfhgN1Gc2XhBXhGzm57EbjExsdkbBmisD3UeUQdisJtCP6pzQ2ahDgyAfaeJ16qz8bZo3eBgLTMd2NsSvjYEy7MAbBza8SFnJ732tWvxWc6SRpY3dzrhmapfjxE8Qg9yzVFHLhe58kkAFRYUtMCaXw3tx8NWZqoLNm5qNFerZpbN3FDJcCe8EnjAxKaWTpyCyNBGoKXxrQoqF7SkjK2B341uAXcQqCZU7TLJPRt7pixfiDiipWjpUVYseASWSBPC3xUzJehP",
+    "endpoint": "tcp://localhost:16001",
+    "credentials": [
+      {
+        "credential_library": {
+          "id": "clvlt_5A8xDDWpIm",
+          "name": "northwind analyst",
+          "credential_store_id": "csvlt_ytzGHsfp3r",
+          "type": "vault"
+        },
+        "secret": "eyJwYXNzd29yZCI6Ii1aNWcwNnB6VVoyYVktamx0QTBSIiwidXNlcm5hbWUiOiJ2LXRva2VuLWFuYWx5c3QtMWVlMzdTdUJINko5MkV4NlJEUnAtMTYyNDkyMTc1NiJ9"
+      }
+    ]
+  }
+}
+```
+
+The `decoded_credentials` key displays the credentials without the base64
+encryption.
+
+Next, establish a connection to the analyst target using the `boundary connect
+postgres` command. This will automatically pass the brokered credentials for the
+target and establish a psql session to the northwind database.
+
+```shell-session
+$ boundary connect postgres -target-id ttcp_1r9XGCXdwE -dbname northwind
+
+psql (13.2)
+Type "help" for help.
+
+northwind=>
+```
+
+A psql connection to the northwind database should open. Query the available schema.
+
+```shell-session
+$ \d
+                 List of relations
+ Schema |          Name          | Type  |  Owner
+--------+------------------------+-------+----------
+ public | categories             | table | postgres
+ public | customer_customer_demo | table | postgres
+ public | customer_demographics  | table | postgres
+ public | customers              | table | postgres
+ public | employee_territories   | table | postgres
+ public | employees              | table | postgres
+ public | order_details          | table | postgres
+ public | orders                 | table | postgres
+ public | products               | table | postgres
+ public | region                 | table | postgres
+ public | shippers               | table | postgres
+ public | suppliers              | table | postgres
+ public | territories            | table | postgres
+ public | us_states              | table | postgres
+(14 rows)
+```
+
+When finished, run `\q` to close the connection.
+
+Check the controller spool in the terminal where `boundary dev` was executed.
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+[INFO]  controller.worker-handler: session activated: session_id=s_ikEN6aEiab target_id=ttcp_xA6k6Di332 user_id=u_1234567890 host_set_id=hsst_1234567890 host_id=hst_1234567890
+[INFO]  controller.worker-handler: authorized connection: session_id=s_ikEN6aEiab connection_id=sc_O7EfwnWOoc connections_left=-1
+[INFO]  controller.worker-handler: connection established: session_id=s_ikEN6aEiab connection_id=sc_O7EfwnWOoc client_tcp_address=127.0.0.1 client_tcp_port=62496 endpoint_tcp_address=::1 endpoint_tcp_port=16001
+[INFO]  controller.worker-handler: connection closed: connection_id=sc_O7EfwnWOoc
+[INFO]  controller: terminating completed sessions successful: sessions_terminated=1
+```
+
+</CodeBlockConfig>
+
+Notice the session authorization, connection, and termination logs. Connections
+can also be monitored using the Admin Console or the Boundary Desktop app in the
+Sessions tab in the Generated project scope.
+
+![Desktop App
+Sessions](/img/boundary/boundary-vault-quickstart-ui-sessions.png)
+
+### Connect using the Desktop App
+
+Credentials can also be brokered using the Boundary Desktop App.
+
+Launch the Desktop app and authenticate to dev mode at `http://127.0.0.1:9200`
+using the credentials `admin` and `password`.
+
+Navigate to the **Targets** view, locate the **Northwind Analyst Database**
+target and click **Connect**.
+
+![Desktop App Connect](/img/boundary/boundary-vault-quickstart-ui-connect.png)
+
+The credentials can be copied directly from this view. Depending on the target
+type other credentials may be available, such as the certificate and private
+key. The Desktop App's connect interface can be used instead of generating the
+credentials on the command-line.
+
+![Desktop App
+Credentials](/img/boundary/boundary-vault-quickstart-ui-connect-details.png)
+
+The password, username and raw API output can also be displayed within the UI.
+
+![Desktop App
+Credentials](/img/boundary/boundary-vault-quickstart-ui-connect-details-2.png)
+
+## Cleanup and teardown
+
+1. Locate the terminal session used to start the `boundary dev` command, and
+execute `ctrl+c` to stop Boundary.
+
+1. Locate the terminal session used to start the `vault server` command, and
+execute `ctrl+c` to stop Vault.
+
+1. Unset the environment variables used in any active terminal windows for this
+tutorial.
+
+   ```shell-session
+   $ unset VAULT_ADDR; unset VAULT_TOKEN
+   ```
+
+1. Destroy the northwind postgres container created for the tutorial.
+
+   ```shell-session
+   $ docker rm -f northwind
+   ```
+
+Check your work with a quick `docker ps` and ensure there are no more postgres
+containers from the tutorial leftover. If unexpected containers still exist,
+execute `docker rm -f <CONTAINER_ID>` against each to remove them.
+
+## Help and reference
+
+- [Boundary command
+  documentation](/boundary/docs/commands)
+
+- [Installation
+  Notes](/boundary/docs/oss/installing/no-gen-resources)
+
+- [Vault Documentation](/vault/docs/)

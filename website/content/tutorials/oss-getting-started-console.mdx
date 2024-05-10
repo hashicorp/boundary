@@ -1,0 +1,127 @@
+---
+id: 6d513ad7-1f86-4b08-aade-3fdade3e8e57
+name: Boundary Admin Console
+short_name: Boundary Admin Console
+description: Explore the Boundary Admin Console to manage resources.
+products_used:
+  - product: boundary
+    max_version: 0.12.0
+default_collection_context: boundary/oss-getting-started
+---
+
+Boundary's Admin Console provides an easy way to manage resources. This tutorial takes
+a quick tour of the Boundary Admin Console by exploring the resources in the
+**Generated org scope**.
+
+## Explore Admin Console
+
+1.  Select **Generated org scope** and then **Roles**.
+
+    ![Roles](/img/boundary/boundary-ui-role.png)
+
+1.  Select **Administration** and then click the **Principals** tab.
+
+    ![Roles](/img/boundary/boundary-ui-role-principal.png)
+
+    Notice that `admin` user is listed. **User**, **group**, and **project** are
+    a type of principal which can be assigned to roles.
+
+1.  Click on the **Grants** tab to view the permissions allowed on this role.
+
+    ![Grants](/img/boundary/boundary-ui-role-permissions.png)
+
+    Grants represent strings of actions on resources: `id=<resource_id>; action=<actions>`
+
+    The grant for Administration role indicates that all actions (`actions=*`)
+    on all resources (`ids=*;type=*`) are permitted. Refer to the
+    [documentation](/boundary/docs/concepts/security/permissions#permission-grant-formats)
+    for more details.
+
+1.  Return to the **Roles** list and select **Login and Default Grants** role.
+
+1.  Click the **Grants** to view its permissions.
+
+    ![Grants](/img/boundary/boundary-ui-role-permissions-2.png)
+
+    A role can have multiple grants defined. Those grants are deleted when the
+    role is deleted. A grant is also deleted if its associated resource is
+    deleted.
+
+1.  Select **Projects** and then **Generated project scope**.
+
+    ![Project](/img/boundary/boundary-ui-project.png)
+
+    Notice that you can see **Sessions**, **Targets** and **Host Catalogs**.
+
+1.  Select **Host Catalogs**.
+
+    ![Host Catalog](/img/boundary/boundary-ui-host-catalog.png)
+
+1.  Select **Generated host catalog**.
+
+1.  Click on the **Host Sets** tab and then **Generated host set** to view its
+    details.
+
+1.  Click on the **Hosts** tab to view attached hosts.
+
+    ![Host Set](/img/boundary/boundary-ui-host-set.png)
+
+    Currently, **Generated host** with ID, `hst_1234567890` is the only host
+    attached to this host set. From the **Manage** menu, you can add or delete
+    hosts from the host set.
+
+    ![Host Set](/img/boundary/boundary-ui-manage-host-set.png)
+
+1.  Select **Generated host**. Its **Address** is set to `localhost`.
+
+1.  Select **Targets** from the left-pane.
+
+    ![Target](/img/boundary/boundary-ui-target.png)
+
+1.  Select **Generated target**.
+
+    The **Generated target** allows TCP connection, and its ID is
+    `ttcp_1234567890`.
+
+    ![Target](/img/boundary/boundary-ui-target-2.png)
+
+    Using the **Manage** menu, you can add additional host sets to the target,
+    or delete this target.
+
+    ![Target](/img/boundary/boundary-ui-target-3.png)
+
+## Boundary resource summary
+
+The relationships between hosts, host sets, and targets are as shown in the
+following diagram:
+
+![Resources](/img/boundary/boundary-resources.png)
+
+Host catalog contains host sets, and each host set has a list of hosts with its
+network address. Targets define zero or more host sets. Targets are what end user
+uses to connect through Boundary. For example, to create an ssh session to a
+host through Boundary, an administrator must first define a target. Admins can
+define targets by specifying a host set - which provide host addressing
+information - as well as the type of connection (eg TCP).
+
+| Resource     | Description                                                                                                                                                                                                                                     |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Scope        | Abstract permission boundary modeled as a container. A scope can contain scopes forming a tree.                                                                                                                                                 |
+| Organization | Top-level container (scope) which owns zero to many projects and zero to many authentication methods. An organization inherits from scope allowing it to own zero to many groups, roles, policies, targets, host catalogs or credential stores. |
+| Project      | Child scope of an organization.                                                                                                                                                                                                                 |
+| User         | Any entity authorized to access Boundary using authentication credentials specific to one of the configured authentication methods. A user can belong to zero or more groups.                                                                   |
+| Group        | Collection of users used for access control. A group is owned by one and only one scope.                                                                                                                                                        |
+| Role         | Collection of capabilities granted to any principal (user, group, or project) the role is assigned to. A role belongs to one and only one scope, and owns zero or more direct grants.                                                           |
+| Host         | Computing element with a network address reachable from Boundary.                                                                                                                                                                               |
+| Host catalog | Permission boundary modeled as a container containing scopes forming a tree.                                                                                                                                                                    |
+| Host set     | Subset of hosts from the set of hosts of the host catalog it belongs to. A host set belongs to one and only one host; therefore, it gets deleted when its host catalog is deleted.                                                              |
+| Target       | Networked service a user can connect to and interact with through Boundary. A target can contain zero or more host sets.                                                                                                                        |
+
+## Next steps
+
+This tutorial explored the Boundary resources created by default when you run
+Boundary in dev mode.
+
+Next, you are going to [connect to a
+target](/boundary/tutorials/oss-getting-started/oss-getting-started-connect) using the generated
+configurations and view and manage the established sessions.

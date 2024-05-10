@@ -1,0 +1,1041 @@
+---
+id: 52ab6b49-6e35-43d7-a517-9e1f7b9c9c6c
+name: Connect to Kubernetes using Boundary lab setup
+description: >-
+  Prepare your environment by installing Boundary, Vault, and Kubernetes.
+products_used:
+  - product: vault
+  - product: boundary
+default_collection_context: boundary/kubernetes-connect
+short_name: Set up Kubernetes
+variants:
+  - slug: boundary-deploy
+    options:
+      - hcp
+      - dev
+---
+
+In this tutorial you will take on the role of the `operations` team to deploy
+Boundary, Vault, and Kubernetes.
+
+## Prerequisites
+
+This tutorial requires you to have completed the [Connect to Kubernetes using
+Boundary
+introduction](/boundary/tutorials/kubernetes-connect/kubernetes-getting-started-intro)
+tutorial.
+
+## Deploy Kubernetes
+
+(**Persona:** `operations`)
+
+[minikube](https://minikube.sigs.k8s.io/) is a CLI tool that provisions and
+manages the lifecycle of single-node [Kubernetes
+cluster](https://kubernetes.io/docs/concepts/architecture) locally
+on your system.
+
+Deploy a Kubernetes cluser using minikube.
+
+1. Open a new terminal session.
+
+1. Create a new working directory in your home directory called
+`boundary-kubernetes` to complete the lab exercises. Execute all commands from
+this working directory unless otherwise specified.
+
+   ```shell-session
+   $ mkdir ~/boundary-kubernetes && cd ~/boundary-kubernetes/
+   ```
+
+1. Start a Kubernetes cluster.
+
+   ```shell-session
+   $ minikube start
+
+   😄  minikube v1.25.2 on Darwin 12.3
+   ✨  Automatically selected the docker driver. Other choices: hyperkit, virtualbox, ssh
+   👍  Starting control plane node minikube in cluster minikube
+   🚜  Pulling base image ...
+   🔥  Creating docker container (CPUs=2, Memory=8100MB) ...
+   🐳  Preparing Kubernetes v1.23.3 on Docker 20.10.12 ...
+       ▪ kubelet.housekeeping-interval=5m
+       ▪ Generating certificates and keys ...
+       ▪ Booting up control plane ...
+       ▪ Configuring RBAC rules ...
+   🔎  Verifying Kubernetes components...
+       ▪ Using image gcr.io/k8s-minikube/storage-provisioner:v5
+   🌟  Enabled addons: storage-provisioner
+   🏄  Done! kubectl is now configured to use "minikube" cluster and "default" namespace by default
+   ```
+
+   The initialization process takes several minutes as it retrieves any
+   necessary dependencies and executes various container images.
+
+1. Verify the status of the Minikube cluster.
+
+   ```shell-session
+   $ minikube status
+
+   minikube
+   type: Control Plane
+   host: Running
+   kubelet: Running
+   apiserver: Running
+   kubeconfig: Configured
+   ```
+
+   Kubernetes is now set up.
+
+1. Start a pod that represents a production workload a `developer` may need to
+   view.
+
+   ```shell-session
+   $ kubectl run nginx --image=nginx
+   pod/nginx created
+   ```
+
+## Deploy Boundary
+
+(**Persona:** `operations`)
+
+HashiCorp Boundary is an identity-aware proxy aimed at simplifying and securing
+least-privileged access to cloud infrastructure.
+
+<Variant slug="boundary-deploy" option="hcp">
+
+In this workflow you will test integrating Kubernetes with HCP Boundary.
+
+1. Launch the [HCP
+   Portal](https://portal.cloud.hashicorp.com/sign-up?utm_source=learn&utm_content=tutorial_boundary)
+   and login.
+
+1. From the **Overview** page, click **Boundary** in the left navigation menu.
+
+1. Click **Deploy Boundary**.
+   ![ui-hcp-boundary-deploy](/img/boundary/ui-hcp-boundary-deploy.png)
+
+1. In the **Instance Name** text box, provide a name for your Boundary instance.
+
+1. Under the **Create an administrator account** section, enter the **Username**
+   and **Password** for the initial Boundary administrator account. You will use
+   the administrative username and password to authenticate with Boundary.
+
+   <Note>
+
+   The Boundary instance is publicly accessible. Be sure to use a non-standard
+   username (e.g. not root or administrator) and create a strong password.
+
+   </Note>
+
+1. Click **Deploy**.
+   ![ui-hcp-boundary-start-deploy](/img/boundary/ui-hcp-boundary-start-deploy.png)
+
+   Wait for the instance to initialize before proceeding.
+
+1. Click the copy icon for the Cluster URL in the **Getting started with
+   Boundary** section.
+   ![ui-hcp-getting-started-boundary](/img/boundary/ui-hcp-getting-started-boundary.png)
+
+1. **Return to the terminal you started Kubernetes in** and set the `BOUNDARY_ADDR`
+   environment variable to the copied URL.
+
+   ```shell-session
+   $ export BOUNDARY_ADDR=<actual-boundary-address>
+   ```
+
+   HCP Boundary is now set up.
+
+</Variant>
+<Variant slug="boundary-deploy" option="dev">
+
+In this workflow you will test integrating Kubernetes with Boundary's dev mode.
+
+<Note>
+
+As of version 4.13.0 of Docker, you need to enable **Allow the default Docker
+socket to be used** in the **Advanced** settings section to run Boundary in dev
+mode.
+
+</Note>
+
+1. **Open a new terminal window**, and start Boundary in `dev` mode:
+
+   <CodeBlockConfig highlight="1,14-15,26">
+
+   ```shell-session
+   $ boundary dev
+   ==> Boundary server configuration:
+
+           [Controller] AEAD Key Bytes: cXte2+fkVq/mnQ/VKO3cOL0bYQZKqJsQhWgPLvX9VsY=
+             [Recovery] AEAD Key Bytes: XGcczs8FJ7lIwd8PQJaP34go/ILiPIeMs+7anHkK+vE=
+          [Worker-Auth] AEAD Key Bytes: Y9A1Gw4Ja+IJbFtuGTSXLIw3L+aEPcwEpN+/lRqvWIQ=
+                  [Recovery] AEAD Type: aes-gcm
+                      [Root] AEAD Type: aes-gcm
+               [Worker-Auth] AEAD Type: aes-gcm
+                                   Cgo: disabled
+        Controller Public Cluster Addr: 127.0.0.1:9201
+                Dev Database Container: bold_heisenberg
+                      Dev Database Url: postgres://postgres:password@localhost:55001/boundary?sslmode=disable
+            Generated Admin Login Name: admin
+              Generated Admin Password: password
+             Generated Host Catalog Id: hcst_1234567890
+                     Generated Host Id: hst_1234567890
+                 Generated Host Set Id: hsst_1234567890
+         Generated Oidc Auth Method Id: amoidc_1234567890
+                Generated Org Scope Id: o_1234567890
+     Generated Password Auth Method Id: ampw_1234567890
+            Generated Project Scope Id: p_1234567890
+                   Generated Target Id: ttcp_1234567890
+     Generated Unprivileged Login Name: user
+       Generated Unprivileged Password: password
+                            Listener 1: tcp (addr: "127.0.0.1:9200", cors_allowed_headers: "[]", cors_allowed_origins: "[*]", cors_enabled: "true", max_request_duration: "1m30s", purpose: "api")
+                            Listener 2: tcp (addr: "127.0.0.1:9201", max_request_duration: "1m30s", purpose: "cluster")
+                            Listener 3: tcp (addr: "127.0.0.1:9203", max_request_duration: "1m30s", purpose: "ops")
+                            Listener 4: tcp (addr: "127.0.0.1:9202", max_request_duration: "1m30s", purpose: "proxy")
+                             Log Level: info
+                                 Mlock: supported: false, enabled: false
+                               Version: Boundary v0.8.0
+                           Version Sha: 9b48dbc2fd4f9a9f0bda4ca68488590f681dbd9e+CHANGES
+              Worker Public Proxy Addr: 127.0.0.1:9202
+
+   ==> Boundary server started! Log data will stream in below:
+
+   ... snip ...
+   ```
+
+   </CodeBlockConfig>
+
+   Dev mode starts Boundary to listen on port `9200` and with a pre-configured
+   administrative user named `admin` and a password of `password`. You will use
+   the admin username and password to authenticate with Boundary.
+
+1. **Return to the terminal you started Kubernetes in** and set the
+   `BOUNDARY_ADDR` environment variable.
+
+   ```shell-session
+   $ export BOUNDARY_ADDR=http://127.0.0.1:9200
+   ```
+
+   Boundary is now set up.
+
+</Variant>
+
+## Deploy Vault
+
+(**Persona:** `operations`)
+
+Vault is an identity-based secrets and encryption management system. Vault can
+generate secrets on-demand for some systems, such as AWS, and Kubernetes.
+
+Select the appropriate tab to deploy an HCP Vault Dedicated cluster or deploy a Vault in
+dev mode.
+
+<Tabs>
+<Tab heading="HCP Vault Dedicated" group="hcpv">
+
+1. Launch the [HCP
+   Portal](https://portal.cloud.hashicorp.com/sign-up?utm_source=learn&utm_content=tutorial_vault)
+   and login.
+
+1. From the **Overview** page, click **Vault** in the left navigation menu.
+
+1. From the **Vault overview** click **Create cluster** under the **Start from
+   scratch** section.
+   ![ui-hcp-portal-start-from-scratch](/img/vault/cloud/ui-hcp-portal-start-from-scratch.png)
+
+1. Select your preferred cloud provider.
+   ![ui-hcp-create-vault-select-provider](/img/vault/cloud/ui-hcp-create-vault-select-provider.png)
+
+1. Click the **Vault tier** pull down menu and select **Development**.
+
+1. Click the **Cluster size** pull down menu and select **Extra Small**.
+
+1. Under the **Network** section, accept or edit the **Network ID**, **Region
+   selection**, and **CIDR block** for the HVN.
+
+1. Leave **Cluster accessibility** set to **Public**.
+
+   <Warning title="Security consideration">
+
+   All new development tier Vault Dedicated clusters are configured with **public**
+   access enabled by default. This means clients can connect from anywhere. For
+   production tiers (starter, standard, and plus) **private** access will be
+   enabled by default. This means you can only connect from a transit gateway or
+   peered VPC (AWS) or VNet (Azure).
+
+   </Warning>
+
+1. Under the **Basics** section, accept or edit the default **Cluster ID**
+   (`vault-cluster`).
+   ![create-a-vault-cluster](/img/vault/cloud/ui-hcp-create-vault-cluster-id.png)
+
+1. Under **Templates**, select **Start from scratch**.
+
+1. Click **Create cluster**.
+
+1. Wait for the cluster to initialize before proceeding.
+   ![ui-vault-cluster-create-process](/img/vault/cloud/ui-vault-cluster-create-process.png)
+
+1. Under **Quick actions**, click **Public** Cluster URL.
+   ![Public Cluster URL](/img/vault/cloud/ui-hcp-vault-copy-public-url.png)
+
+1. **Return to the terminal you started Kubernetes in** and set the `VAULT_ADDR`
+   environment variable to the copied URL.
+
+   ```shell-session
+   $ export VAULT_ADDR=<public_cluster_URL>
+   ```
+
+1. Return to the **Overview** page and click **Generate token**.
+   ![Generate a Token](/img/vault/cloud/ui-hcp-vault-create-admin-token.png)
+
+   Within a few moments a new token will be generated.
+
+1. Copy the **Admin Token**.
+   ![Generated Token](/img/vault/cloud/ui-hcp-vault-copy-admin-token.png)
+
+1. **Return to the terminal you started Kubernetes in** and set the
+   `VAULT_TOKEN` environment variable to the copied token.
+
+   ```shell-session
+   $ export VAULT_TOKEN=<admin_token>
+   ```
+
+1. Set the `VAULT_NAMESPACE` environment variable to `admin`.
+
+   ```shell-session
+   $ export VAULT_NAMESPACE=admin
+   ```
+
+1. **Open a new terminal window**, and start a proxy to expose the Kubernetes
+   API.
+
+   ```shell-session
+   $ kubectl proxy --disable-filter=true
+
+   Request filter disabled, your proxy is vulnerable to XSRF attacks, please be cautious
+   Starting to serve on 127.0.0.1:8001
+   ```
+
+   Leave this terminal open with the proxy running.
+
+1. **Open a new terminal window**, and start ngrok and create a tunnel to the
+   proxy listening on port `8001`.
+
+   <Warning>
+
+   ngrok is used to expose the Kubernetes API to Vault Dedicated. Using
+   `--scheme=http` exposes the API without encryption to avoid TLS certificate
+   errors.
+
+   For production workloads, use a private peering or transit gateway connection
+   with trusted certificates.
+
+   </Warning>
+
+   ```shell-session
+   $ ngrok http --scheme=http 127.0.0.1:8001
+   ```
+
+   **Example output:**
+
+   <CodeBlockConfig hideClipboard>
+
+   ```plaintext
+   ngrok                                                                                                                                                              (Ctrl+C to quit)
+
+   Session Status                online
+   Account                       username (Plan: Free)
+   Update                        update available (version 3.0.5, Ctrl-U to update)
+   Version                       3.1.1
+   Region                        United States (us)
+   Latency                       32.791235ms
+   Web Interface                 http://127.0.0.1:4040
+   Forwarding                    http://d12b-34-567-89-10.ngrok.io -> 127.0.0.1:8001
+
+   Connections                   ttl     opn     rt1     rt5     p50     p90
+                                 0       0       0.00    0.00    0.00    0.00
+   ```
+
+   </CodeBlockConfig>
+
+   Leave this terminal open with ngrok running.
+
+1. Copy the ngrok forwarding address.
+
+1. **Return to the terminal you started Kubernetes in** and set an environment
+   variable for the ngrok forwarding address.
+
+   ```shell-session
+   $ export KUBE_API_URL=<actual-address-from-ngrok>
+   ```
+
+   Vault Dedicated is now set up.
+
+</Tab>
+<Tab heading="Dev mode" group="devv">
+
+Learn the current terminal window open.
+
+1. **In a new terminal**, start Vault in dev mode.
+
+   <CodeBlockConfig highlight="1,27,33">
+
+   ```shell-session
+   $ vault server -dev -dev-root-token-id=root
+
+   ==> Vault server configuration:
+
+               Api Address: http://127.0.0.1:8200
+                        Cgo: disabled
+            Cluster Address: https://127.0.0.1:8201
+               Go Version: go1.19.1
+               Listener 1: tcp (addr: "127.0.0.1:8200", cluster address: "127.0.0.1:8201", max_request_duration: "1m30s", max_request_size: "33554432", tls: "disabled")
+                  Log Level: info
+                     Mlock: supported: false, enabled: false
+            Recovery Mode: false
+                  Storage: inmem
+                  Version: Vault v1.13.0-dev1, built 2022-09-26T14:39:49Z
+               Version Sha: 2a7c3f2f76e6fd6a7f8622ea68d82bcf9dcf9686
+
+   ==> Vault server started! Log data will stream in below:
+
+   # ...snip...
+
+   WARNING! dev mode is enabled! In this mode, Vault runs entirely in-memory
+   and starts unsealed with a single unseal key. The root token is already
+   authenticated to the CLI, so you can immediately begin using Vault.
+
+   You may need to set the following environment variables:
+
+      $ export VAULT_ADDR='http://127.0.0.1:8200'
+
+   The unseal key and root token are displayed below in case you want to
+   seal/unseal the Vault or re-authenticate.
+
+   Unseal Key: PLV0OXO9VmF5VB8qAnq4pQIGzWkzzYypRNcDtrhSSgU=
+   Root Token: root
+
+   Development mode should NOT be used in production installations!
+   ```
+
+   </CodeBlockConfig>
+
+   Dev mode starts Vault to listen on port `8200` and uses the
+   `-dev-root-token-id` parameter to set the root token to `root`.
+
+1. **Return to the terminal you started Kubernetes in** and set the `VAULT_ADDR`
+   environment variable.
+
+   ```shell-session
+   $ export VAULT_ADDR='http://127.0.0.1:8200'
+   ```
+
+1. Set the `VAULT_TOKEN` environment variable.
+
+   ```shell-session
+   $ export VAULT_TOKEN=root
+   ```
+
+1. **Open a new terminal window**, and start a proxy to expose the Kubernetes
+   API.
+
+   ```shell-session
+   $ kubectl proxy --disable-filter=true
+
+   Request filter disabled, your proxy is vulnerable to XSRF attacks, please be cautious
+   Starting to serve on 127.0.0.1:8001
+   ```
+
+   Leave this terminal open with the proxy running.
+
+1. **Return to the terminal you started Kubernetes in** and set an environment
+   variable for the Kubernetes API URL.
+
+   ```shell-session
+   $ export KUBE_API_URL=http://127.0.0.1:8001
+   ```
+
+Vault is now set up.
+
+<Variant slug="boundary-deploy" option="hcp">
+
+### Deploy an HCP Boundary worker
+
+An HCP worker deployed on the same network as Vault is required for integrating
+private Vault clusters with HCP Boundary. To learn more about setting up
+self-managed workers, refer to the [Self-Managed Worker Registration with HCP
+Boundary](/boundary/tutorials/hcp-administration/hcp-manage-workers) tutorial.
+
+#### Download the Boundary Enterprise binary
+
+Download the Boundary Enterprise binary to the `~/boundary-kubernetes/`
+directory.
+
+You can manually download the latest binary for your operating system by
+navigating to the [Boundary releases
+page](https://releases.hashicorp.com/boundary). The example below demonstrates
+downloading the binary using the command line.
+
+<Note>
+
+ The binary version should match the version of the HCP control plane. Check the
+version of the control plane in the HCP Boundary portal, and download the
+appropriate version using wget. The example below installs the 0.13.2 version of
+the Boundary Enterprise binary.
+
+</Note>
+
+Below is an example of downloading and unzipping the Boundary Enterprise binary
+on Ubuntu, MacOS, and Windows.
+
+<Tabs>
+<Tab heading="Ubuntu" group="ubuntu">
+
+The following command downloads the Boundary Enterprise binary and unzips it to
+the current directory.
+
+```shell-session
+$ wget -q https://releases.hashicorp.com/boundary/0.13.2+ent/boundary_0.13.2+ent_linux_amd64.zip ;\
+sudo apt-get update && sudo apt-get install unzip ;\
+unzip *.zip
+```
+
+Once downloaded, verify the version of the `boundary` binary.
+
+```shell-session
+$ ./boundary version
+
+Version information:
+  Build Date:          2023-08-04T12:29:52Z
+  Git Revision:        b1f75f5c731c843f5c987feae310d86e635806c7
+  Metadata:            ent
+  Version Number:      0.13.2+ent
+```
+
+</Tab>
+<Tab heading="MacOS" group="macos">
+
+The following command downloads the Boundary Enterprise binary and unzips it to
+the current directory.
+
+```shell-session
+$ wget -q https://releases.hashicorp.com/boundary/0.13.2+ent/boundary_0.13.2+ent_darwin_amd64.zip ;\
+/usr/bin/unzip *.zip
+```
+
+Once downloaded, verify the version of the `boundary` binary.
+
+```shell-session
+$ ./boundary version
+
+Version information:
+  Build Date:          2023-08-04T12:29:52Z
+  Git Revision:        b1f75f5c731c843f5c987feae310d86e635806c7
+  Metadata:            ent
+  Version Number:      0.13.2+ent
+```
+
+</Tab>
+<Tab heading="Windows" group="windows">
+
+The following command downloads the Boundary Enterprise binary and unzips it to
+the current directory.
+
+```shell-session
+$ Invoke-WebRequest -OutFile worker.zip https://releases.hashicorp.com/boundary/0.13.2+ent/boundary_0.13.2+ent_windows_amd64.zip ;
+Expand-Archive -Path worker.zip -DestinationPath .
+```
+
+Once downloaded, verify the version of the `boundary` binary.
+
+```shell-session
+$ .\boundary.exe version
+
+Version information:
+  Build Date:          2023-06-07T16:41:10Z
+  Git Revision:        fb4ed58459d555d480e70ddc20d2639c26ad0f8f
+  Metadata:            ent
+  Version Number:      0.13.2+ent
+```
+
+</Tab>
+</Tabs>
+
+**Ensure the Version Number matches the version of the HCP Boundary control
+plane.** They should match in order to get the latest HCP Boundary features.
+
+### Write the worker config
+
+Next, **create a new file** named `hcp-worker.hcl` in the `~/boundary-kubernetes/`
+directory.
+
+```shell-session
+$ touch ~/boundary-kubernetes/hcp-worker.hcl
+```
+
+Open the file with a text editor, such as Vi.
+
+**Paste the following configuration into the worker config file:**
+
+<Tabs>
+<Tab heading="Ubuntu" group="ubuntu">
+
+<CodeBlockConfig lineNumbers filename="~/boundary-kubernetes/hcp-worker.hcl">
+
+```hcl
+disable_mlock = true
+
+hcp_boundary_cluster_id = "<cluster-id>"
+
+listener "tcp" {
+  address = "127.0.0.1:9202"
+  purpose = "proxy"
+}
+
+worker {
+  auth_storage_path = "/home/myusername/boundary/hcp-worker"
+  tags {
+    type = ["worker", "dev"]
+  }
+}
+```
+
+</CodeBlockConfig>
+
+**Update the cluster id in the `hcp-worker.hcl` file:**
+
+The **`<cluster-id>`** on line 3 can be determined from the UUID in the HCP
+Boundary Cluster URL. For example, if your Cluster URL is:
+
+`https://c3a7a20a-f663-40f3-a8e3-1b2f69b36254.boundary.hashicorp.cloud`,
+then the cluster id is `c3a7a20a-f663-40f3-a8e3-1b2f69b36254`
+
+The `auth_storage_path` should match the full path to the `~/boundary-kubernetes/hcp-worker`
+directory, such as `/home/myusername/boundary/hcp-worker`.
+
+</Tab>
+<Tab heading="MacOS" group="macos">
+
+<CodeBlockConfig lineNumbers filename="~/boundary-kubernetes/hcp-worker.hcl">
+
+```hcl
+disable_mlock = true
+
+hcp_boundary_cluster_id = "<cluster-id>"
+
+listener "tcp" {
+  address = "127.0.0.1:9202"
+  purpose = "proxy"
+}
+
+worker {
+  auth_storage_path = "/Users/myusername/boundary-kubernetes/hcp-worker"
+  tags {
+    type = ["worker", "dev"]
+  }
+}
+```
+
+</CodeBlockConfig>
+
+**Update the cluster id in the `hcp-worker.hcl` file:**
+
+The **`<cluster-id>`** on line 3 can be determined from the UUID in the HCP
+Boundary Cluster URL. For example, if your Cluster URL is:
+
+`https://c3a7a20a-f663-40f3-a8e3-1b2f69b36254.boundary.hashicorp.cloud`,
+then the cluster id is `c3a7a20a-f663-40f3-a8e3-1b2f69b36254`
+
+The `auth_storage_path` should match the full path to the `~/boundary-kubernetes/hcp-worker`
+directory, such as `/Users/myusername/boundary-kubernetes/hcp-worker`.
+
+</Tab>
+<Tab heading="Windows" group="windows">
+
+<CodeBlockConfig lineNumbers filename="~/boundary-kubernetes/hcp-worker.hcl">
+
+```hcl
+disable_mlock = true
+
+hcp_boundary_cluster_id = "<cluster-id>"
+
+listener "tcp" {
+  address = "127.0.0.1:9202"
+  purpose = "proxy"
+}
+
+worker {
+  auth_storage_path = "C:/Users/myusername/boundary-kubernetes/hcp-worker"
+  tags {
+    type = ["worker", "dev"]
+  }
+}
+```
+
+</CodeBlockConfig>
+
+**Update the cluster id in the `hcp-worker.hcl` file:**
+
+The **`<cluster-id>`** on line 3 can be determined from the UUID in the HCP
+Boundary Cluster URL. For example, if your Cluster URL is:
+
+`https://c3a7a20a-f663-40f3-a8e3-1b2f69b36254.boundary.hashicorp.cloud`,
+then the cluster id is `c3a7a20a-f663-40f3-a8e3-1b2f69b36254`
+
+The `auth_storage_path` should match the full path to the `~/boundary-kubernetes/hcp-worker`
+directory, such as `C:/Users/myusername/boundary-kubernetes/hcp-worker`.
+
+</Tab>
+</Tabs>
+
+**Save this file.**
+
+### Start the worker
+
+With the worker config defined, start the worker server. Provide the full path
+to the worker config file (such as `/home/myusername/boundary/hcp-worker.hcl`).
+
+<Tabs>
+<Tab heading="Ubuntu" group="ubuntu">
+
+<CodeBlockConfig lineNumbers highlight="1,12">
+
+```shell-session
+$ ./boundary server -config="/home/myusername/boundary/hcp-worker.hcl"
+
+==> Boundary server configuration:
+
+                               Cgo: disabled
+                        Listener 1: tcp (addr: "0.0.0.0:9202", max_request_duration: "1m30s", purpose: "proxy")
+                         Log Level: info
+                             Mlock: supported: true, enabled: false
+                           Version: Boundary v0.13.2+ent
+                       Version Sha: b1f75f5c731c843f5c987feae310d86e635806c7
+        Worker Auth Current Key Id: preaching-favored-verbalize-widen-duchess-relish-jurist-sly
+  Worker Auth Registration Request: GzusqckarbczHoLGQ4UA25uSRmUHY1BGSRA6cePp8RWHQFUYSrf3hnDw4ETPswFnMrcxx6tq7BUWD5azGULzPecPicuYGD6qg3qYvaGRgHgKwvh9FLY9Gu891KSj8hAef19JjHog8d7qpo9f9KoiwrhfcV2YxGyVu1P943656iNGCFHWiBR3ofsyTatQ7fzcMV2ciKtuYYGfx4FfiRStnkAzoE98RdR2LeCk2huRkFt7ayeeWVfD7Awm8xaZfFJn4pYRJwu2LRBeNs915warEBaS8XHXSKoi3cRUYif8Qu
+          Worker Auth Storage Path: /home/ubuntu/boundary-kubernetes/hcp-worker
+          Worker Public Proxy Addr: 127.0.0.1:9202
+
+==> Boundary server started! Log data will stream in below:
+
+{"id":"Rb7PMMBdZa","source":"https://hashicorp.com/boundary/ip-172-31-84-100/worker","specversion":"1.0","type":"system","data":{"version":"v0.1","op":"worker.(Worker).StartControllerConnections","data":{"msg":"Setting HCP Boundary cluster address e58fe114-7624-431c-994d-b6670e90b09f.proxy.boundary.hashicorp.cloud:9202 as upstream address"}},"datacontentype":"application/cloudevents","time":"2022-09-19T22:16:38.770232603Z"}
+```
+
+</CodeBlockConfig>
+
+</Tab>
+<Tab heading="MacOS" group="macos">
+
+<CodeBlockConfig lineNumbers highlight="1,12">
+
+```shell-session
+$ ./boundary server -config="/Users/myusername/boundary/hcp-worker.hcl"
+
+==> Boundary server configuration:
+
+                               Cgo: disabled
+                        Listener 1: tcp (addr: "0.0.0.0:9202", max_request_duration: "1m30s", purpose: "proxy")
+                         Log Level: info
+                             Mlock: supported: true, enabled: false
+                           Version: Boundary v0.13.2+ent
+                       Version Sha: b1f75f5c731c843f5c987feae310d86e635806c7
+        Worker Auth Current Key Id: preaching-favored-verbalize-widen-duchess-relish-jurist-sly
+  Worker Auth Registration Request: GzusqckarbczHoLGQ4UA25uSRmUHY1BGSRA6cePp8RWHQFUYSrf3hnDw4ETPswFnMrcxx6tq7BUWD5azGULzPecPicuYGD6qg3qYvaGRgHgKwvh9FLY9Gu891KSj8hAef19JjHog8d7qpo9f9KoiwrhfcV2YxGyVu1P943656iNGCFHWiBR3ofsyTatQ7fzcMV2ciKtuYYGfx4FfiRStnkAzoE98RdR2LeCk2huRkFt7ayeeWVfD7Awm8xaZfFJn4pYRJwu2LRBeNs915warEBaS8XHXSKoi3cRUYif8Qu
+          Worker Auth Storage Path: /Users/myusername/boundary-kubernetes/hcp-worker
+          Worker Public Proxy Addr: 127.0.0.1:9202
+
+==> Boundary server started! Log data will stream in below:
+
+{"id":"Rb7PMMBdZa","source":"https://hashicorp.com/boundary/ip-172-31-84-100/worker","specversion":"1.0","type":"system","data":{"version":"v0.1","op":"worker.(Worker).StartControllerConnections","data":{"msg":"Setting HCP Boundary cluster address e58fe114-7624-431c-994d-b6670e90b09f.proxy.boundary.hashicorp.cloud:9202 as upstream address"}},"datacontentype":"application/cloudevents","time":"2022-09-19T22:16:38.770232603Z"}
+```
+
+</CodeBlockConfig>
+
+</Tab>
+<Tab heading="Windows" group="windows">
+
+<CodeBlockConfig lineNumbers highlight="1,12">
+
+```shell-session
+$ .\boundary.exe server -config="C:\Users\myusername\boundary\hcp-worker.hcl"
+
+==> Boundary server configuration:
+
+                               Cgo: disabled
+                        Listener 1: tcp (addr: "0.0.0.0:9202", max_request_duration: "1m30s", purpose: "proxy")
+                         Log Level: info
+                             Mlock: supported: true, enabled: false
+                           Version: Boundary v0.13.2+ent
+                       Version Sha: b1f75f5c731c843f5c987feae310d86e635806c7
+        Worker Auth Current Key Id: preaching-favored-verbalize-widen-duchess-relish-jurist-sly
+  Worker Auth Registration Request: GzusqckarbczHoLGQ4UA25uSRmUHY1BGSRA6cePp8RWHQFUYSrf3hnDw4ETPswFnMrcxx6tq7BUWD5azGULzPecPicuYGD6qg3qYvaGRgHgKwvh9FLY9Gu891KSj8hAef19JjHog8d7qpo9f9KoiwrhfcV2YxGyVu1P943656iNGCFHWiBR3ofsyTatQ7fzcMV2ciKtuYYGfx4FfiRStnkAzoE98RdR2LeCk2huRkFt7ayeeWVfD7Awm8xaZfFJn4pYRJwu2LRBeNs915warEBaS8XHXSKoi3cRUYif8Qu
+          Worker Auth Storage Path: /Users/myusername/boundary-kubernetes/hcp-worker
+          Worker Public Proxy Addr: 127.0.0.1:9202
+
+==> Boundary server started! Log data will stream in below:
+
+{"id":"Rb7PMMBdZa","source":"https://hashicorp.com/boundary/ip-172-31-84-100/worker","specversion":"1.0","type":"system","data":{"version":"v0.1","op":"worker.(Worker).StartControllerConnections","data":{"msg":"Setting HCP Boundary cluster address e58fe114-7624-431c-994d-b6670e90b09f.proxy.boundary.hashicorp.cloud:9202 as upstream address"}},"datacontentype":"application/cloudevents","time":"2022-09-19T22:16:38.770232603Z"}
+```
+
+</CodeBlockConfig>
+
+</Tab>
+</Tabs>
+
+The worker will start and begin attempting to connect to the upstream
+Controller.
+
+The worker also outputs its authorization request as the *Worker Auth
+Registration Request* token. This will also be saved to a file,
+`auth_request_token`, defined by the `auth_storage_path` in the worker config.
+
+Note the `Worker Auth Registration Request:` value. This value can also be
+located in the `~/boundary-kubernetes/hcp-worker/auth_request_token` directory. **Copy this
+value.**
+
+#### Register the worker with HCP
+
+HCP workers can be registered using the Boundary CLI or Admin Console Web UI.
+
+<Tabs>
+<Tab heading="Admin UI">
+
+Authenticate to HCP Boundary as the admin user.
+
+1. Log in to the [HCP portal](https://portal.cloud.hashicorp.com/).
+
+1. From the HCP Portal's **Boundary** page, click **Open Admin UI** - a new page will open.
+
+1. Enter the admin username and password you created when you deployed the new instance and click **Authenticate**.
+
+Once logged in, navigate to the **Workers** page.
+
+Notice that only HCP workers are listed.
+
+Click **New**.
+
+![HCP Workers](/img/boundary/workers-new.png)
+
+Scroll down to the bottom of the *New Worker* page and paste the Worker Auth
+Registration Request key you copied earlier.
+
+Click **Register Worker**.
+
+![HCP Workers](/img/boundary/workers-token-register.png)
+
+Click **Done** and notice the new worker on the *Workers* page.
+
+![HCP Workers](/img/boundary/workers-id.png)
+
+</Tab>
+<Tab heading="CLI" group="cli">
+
+Ensure that the `BOUNDARY_AUTH_METHOD_ID` and `BOUNDARY_ADDR` variables are set.
+
+```shell-session
+$ export BOUNDARY_AUTH_METHOD_ID=copied-value-from-boundary-ui; export BOUNDARY_ADDR=copied-value-from-hcp-portal
+```
+
+Log into the CLI, providing the admin login name and admin password when
+prompted.
+
+```shell-session
+$ boundary authenticate
+Please enter the login name (it will be hidden):
+Please enter the password (it will be hidden):
+Authentication information:
+  Account ID:      acctpw_VOeNSFX8pQ
+  Auth Method ID:  ampw_ZbB6UXpW3B
+  Expiration Time: Mon, 13 Feb 2023 12:35:32 MST
+  User ID:         u_ogz79sV4sT
+The token was successfully stored in the chosen keyring and is not displayed here.
+```
+
+Next, **export the Worker Auth Request Token value as an environment variable.**
+
+```shell-session
+$ export WORKER_TOKEN=<Worker Auth Registration Request Value>
+```
+
+The token is used to issue a create worker request that will authorize the
+worker to Boundary and make it available. Currently worker creation is only
+supported for workers with an authorization token.
+
+Now, **create the HCP worker:**
+
+```shell-session
+$ boundary workers create worker-led -worker-generated-auth-token=$WORKER_TOKEN
+
+Worker information:
+  Active Connection Count:   0
+  Created Time:              Tue, 27 Sep 2022 16:20:21 MDT
+  ID:                        w_2yjenAlGvV
+  Type:                      pki
+  Updated Time:              Tue, 27 Sep 2022 16:20:21 MDT
+  Version:                   1
+
+  Scope:
+    ID:                      global
+    Name:                    global
+    Type:                    global
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    add-worker-tags
+    set-worker-tags
+    remove-worker-tags
+```
+
+The worker logs should now show a successful authentication event:
+
+<CodeBlockConfig hideClipboard highlight="1,24">
+
+```shell-session
+$ docker logs boundary-worker-hcp
+
+==> Boundary server configuration:
+
+                               Cgo: disabled
+                        Listener 1: tcp (addr: "127.0.0.1:9202", max_request_duration: "1m30s", purpose: "proxy")
+                         Log Level: info
+                             Mlock: supported: true, enabled: false
+                           Version: Boundary v0.13.2+ent
+                       Version Sha: b1f75f5c731c843f5c987feae310d86e635806c7
+        Worker Auth Current Key Id: peddling-exploring-playing-tripping-morphine-ammonium-subsiding-observant
+  Worker Auth Registration Request: pdZ5SAAebKa9DmnokkNu5EuBPbKECPFbRtxRpPL8uTVyUHz77jE1tvoHxdPWshGfbXEz8RoQ7hFpDK88nAzqZjysgetKHcskDnAW3WGmLnN42KUb4YbvU5UyXCNkr1yrjCekUrzSuaEQQEyFGp4g7R4h9ZCg2caTzERqCyg8SuPcyzpphHDtErpWKuFF6JVUiCuKaN2E1qTxNjsTuvnYpikD6vpMfsg8D3dHVhqH1vU4dFz64pjYkmr1Vp4b4BiuiBchcpdhegUnMRW2xBPYfUm99AojYsVge8j9Yjm
+          Worker Auth Storage Path: /boundary-kubernetes/hcp-worker
+          Worker Public Proxy Addr: 127.0.0.1:9202
+
+==> Boundary server started! Log data will stream in below:
+
+{"id":"mdMRjeMyL5","source":"https://hashicorp.com/boundary/c0d799c7b255/worker","specversion":"1.0","type":"system","data":{"version":"v0.1","op":"worker.(Worker).StartControllerConnections","data":{"msg":"Setting HCP Boundary cluster address cf8ecb28-11df-468b-a093-8c5807bb5652.proxy.boundary.hashicorp.cloud:9202 as upstream address"}},"datacontentype":"application/cloudevents","time":"2022-09-27T22:13:16.09562876Z"}
+{"id":"YYyh4B2xTl","source":"https://hashicorp.com/boundary/c0d799c7b255/worker","specversion":"1.0","type":"system","data":{"version":"v0.1","op":"worker.(Worker).controllerDialerFunc","data":{"msg":"worker has successfully authenticated"}},"datacontentype":"application/cloudevents","time":"2022-09-27T22:20:24.417419275Z"}
+{"id":"e8piDOzNc1","source":"https://hashicorp.com/boundary/c0d799c7b255/worker","specversion":"1.0","type":"error","data":{"error":"rpc error: code = Unavailable desc = last connection error: connection error: desc = \"transport: Error while dialing node is not yet authorized\"","error_fields":{},"id":"e_sW2xqiJJml","version":"v0.1","op":"worker.(Worker).sendWorkerStatus","info":{"msg":"error making status request to controller"}},"datacontentype":"application/cloudevents","time":"2022-09-27T22:20:24.420569017Z"}
+{"id":"KOpQeo8GTx","source":"https://hashicorp.com/boundary/c0d799c7b255/worker","specversion":"1.0","type":"error","data":{"error":"status error grace period has expired, canceling all sessions on worker","error_fields":{},"id":"e_mmLXDKAWys","version":"v0.1","op":"worker.(Worker).sendWorkerStatus","info":{"grace_period":15000000000,"last_status_time":"2022-09-27 22:13:16.092815366 +0000 UTC m=+0.232876928"}},"datacontentype":"application/cloudevents","time":"2022-09-27T22:20:24.4207781Z"}
+{"id":"EcvpxxQMqO","source":"https://hashicorp.com/boundary/c0d799c7b255/worker","specversion":"1.0","type":"system","data":{"version":"v0.1","op":"worker.(Worker).sendWorkerStatus","data":{"msg":"Upstreams after first status set to: [2e5750e5-59d0-8655-2d57-2bc07642143c.proxy.boundary.hashicorp.cloud:9202 b25ab36d-99b2-68bf-108e-25ac1582288f.proxy.boundary.hashicorp.cloud:9202 d6da51d4-89ab-4521-d8f5-109b45681775.proxy.boundary.hashicorp.cloud:9202]"}},"datacontentype":"application/cloudevents","time":"2022-09-27T22:20:26.995860237Z"}
+{"id":"ZtPAnCcxe6","source":"https://hashicorp.com/boundary/c0d799c7b255/worker","specversion":"1.0","type":"system","data":{"version":"v0.1","op":"worker.(Worker).controllerDialerFunc","data":{"msg":"worker has successfully authenticated"}},"datacontentype":"application/cloudevents","time":"2022-09-27T22:20:27.36120034Z"}
+{"id":"rBrS6MBLSN","source":"https://hashicorp.com/boundary/c0d799c7b255/worker","specversion":"1.0","type":"system","data":{"version":"v0.1","op":"worker.checkHcpConnection","data":{"msg":"validated HCP Boundary upstream"}},"datacontentype":"application/cloudevents","time":"2022-09-27T22:20:27.463751132Z"}
+```
+
+</CodeBlockConfig>
+
+</Tab>
+</Tabs>
+
+</Variant>
+
+</Tab>
+</Tabs>
+
+## Validate lab setup
+
+The tutorials in this series use environment variables to simplify the provided
+commands.
+
+1. Verify all necessary environment variables are set.
+
+   ```shell-session
+   $ printenv | grep 'VAULT_\|BOUNDARY_\|KUBE_'
+   BOUNDARY_ADDR=https://6a6eade6-example.boundary.hashicorp.cloud
+   VAULT_ADDR=https://vault-cluster-exampe-012034567.06f0568a.z1.hashicorp.cloud:8200
+   VAULT_TOKEN=not.a.real.keyCAESIPA-K6F9TfY5Vm2nfObyzYum-peHhXPuYzX_BsybIKJMGicKImh2cy4wVXN4NWpyN3A4NUJ
+   VAULT_NAMESPACE=admin
+   KUBE_API_URL=http://d12b-34-567-89-10.ngrok.io
+   ```
+
+   If you are missing any of the environment variables, go back and verify each
+   product is running and set the required variables.
+
+   <Highlight title="HCP Vault Dedicated">
+
+   `VAULT_NAMESPACE` is only required when using Vault Dedicated and will not be
+   present when following the Vault Dev mode workflow.
+
+   </Highlight>
+
+1. Verify connectivity by authenticating to Boundary. Enter the admin username
+   and password when prompted.
+
+   ```shell-session
+   $ boundary authenticate
+   Please enter the login name (it will be hidden):
+   Please enter the password (it will be hidden):
+
+   Authentication information:
+     Account ID:      acctpw_NgTnYJHTls
+     Auth Method ID:  ampw_PqQpz2sqvx
+     Expiration Time: Wed, 19 Jul 2023 09:52:02 EDT
+     User ID:         u_09ja9DkXo3
+
+   The token was successfully stored in the chosen keyring and is not displayed here.
+   ```
+
+1. Verify connectivity to Vault.
+
+   ```shell-session
+   $ vault login token=$VAULT_TOKEN
+   WARNING! The VAULT_TOKEN environment variable is set! The value of this
+   variable will take precedence; if this is unwanted please unset VAULT_TOKEN or
+   update its value accordingly.
+
+   Success! You are now authenticated. The token information displayed below
+   is already stored in the token helper. You do NOT need to run "vault login"
+   again. Future Vault requests will automatically use this token.
+
+   Key                  Value
+   ---                  -----
+   token                not.a.real.keyEXamPl3t7782QvHbHatL2f56i98VpKePzgqvHGicKImh2cy55bXZyMUVseWNZa00yem9pM3NuaHppRnQuOXpoQ0UQ9gE
+   token_accessor       tzwWshH6PwGHIFWq1dCCN2Xz.9zhCE
+   token_duration       5h54m30s
+   token_renewable      false
+   token_policies       ["default" "hcp-root"]
+   identity_policies    []
+   policies             ["default" "hcp-root"]
+   ```
+
+1. Verify connectivity to Kubernetes.
+
+   ```shell-session
+   $ kubectl config view
+   apiVersion: v1
+   clusters:
+   - cluster:
+       certificate-authority: /Users/username/.minikube/ca.crt
+       extensions:
+       - extension:
+           last-update: Wed, 12 Jul 2023 10:04:18 EDT
+           provider: minikube.sigs.k8s.io
+           version: v1.30.1
+         name: cluster_info
+       server: https://127.0.0.1:63060
+     name: minikube
+   contexts:
+   - context:
+       cluster: minikube
+       extensions:
+       - extension:
+           last-update: Wed, 12 Jul 2023 10:04:18 EDT
+           provider: minikube.sigs.k8s.io
+           version: v1.30.1
+         name: context_info
+       namespace: default
+       user: minikube
+     name: minikube
+   current-context: minikube
+   ...snip...
+   ```
+
+   A local `minikube` cluster will be listed under `contexts`.
+
+## Next steps
+
+Boundary, Vault, and Kubernetes have been deployed and are ready to be
+configured.
+
+In the [Connect to Kubernetes using Boundary
+configuration](/boundary/tutorials/kubernetes-connect/kubernetes-getting-started-config)
+tutorial, you will configure Kubernetes, configure Vault for Kubernetes, and
+configure Boundary to broker credentials from Vault to the Kubernetes cluster.

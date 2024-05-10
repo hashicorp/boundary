@@ -1,0 +1,591 @@
+---
+id: 9c497751-6142-477e-9ec4-afd891fb4451
+name: Connect to Kubernetes using Boundary configuration
+description: >-
+  Configure Boundary, Vault, and Kubernetes to allow users to connect to Kubernetes using Boundary.
+products_used:
+  - product: vault
+  - product: boundary
+default_collection_context: boundary/kubernetes-connect
+short_name: Configure Boundary, Vault, and Kubernetes
+variants:
+  - slug: boundary-deploy
+    options:
+      - hcp
+      - dev
+---
+
+In this tutorial you take on the role of the `operations` team to configure
+Boundary, Vault, and Kubernetes to allow the `developer` team to connect to
+Kubernetes using Boundary.
+
+## Prerequisites
+
+This tutorial requires you to have completed the [Connect to Kubernetes using
+Boundary lab
+setup](/boundary/tutorials/kubernetes-connect/kubernetes-getting-started-setup)
+tutorial.
+
+## Configure Kubernetes
+
+(**Persona:** `operations`)
+
+The `operations` team needs to set up a Kubernetes service account, token, and
+role which are used by Vault to manage service accounts in Kubernetes.
+
+1. Create a Kubernetes namespace for Vault. This namespace is used to
+   create a service account for Vault to interact with your Kubernetes cluster.
+
+   ```shell-session
+   $ kubectl create namespace vault
+   namespace/vault created
+   ```
+
+1. Create a service account named `vault` with a service token. The service
+   account and token are used by Vault to authenticate with Kubernetes.
+
+   ```shell-session
+   $ kubectl create -f - <<EOF
+   apiVersion: v1
+   kind: ServiceAccount
+   metadata:
+     name: vault
+     namespace: vault
+   ---
+   apiVersion: v1
+   kind: Secret
+   metadata:
+     name: vault
+     namespace: vault
+     annotations:
+       kubernetes.io/service-account.name: vault
+   type: kubernetes.io/service-account-token
+   EOF
+   ```
+
+   **Example output:**
+
+   <CodeBlockConfig hideClipboard>
+
+   ```plaintext
+   serviceaccount/vault created
+   secret/vault created
+   ```
+
+   </CodeBlockConfig>
+
+1. Create a cluster role for the `vault` service account. This role provides
+   Vault with the necessary permissions to manage short-lived service accounts
+   which will be requested by the `developer` team.
+
+   ```shell-session
+   $ kubectl create -f - <<EOF
+   apiVersion: rbac.authorization.k8s.io/v1
+   kind: ClusterRole
+   metadata:
+     name: k8s-full-secrets-abilities-with-labels
+   rules:
+   - apiGroups: [""]
+     resources: ["namespaces"]
+     verbs: ["get"]
+   - apiGroups: [""]
+     resources: ["serviceaccounts", "serviceaccounts/token"]
+     verbs: ["create", "update", "delete"]
+   - apiGroups: ["rbac.authorization.k8s.io"]
+     resources: ["rolebindings", "clusterrolebindings"]
+     verbs: ["create", "update", "delete"]
+   - apiGroups: ["rbac.authorization.k8s.io"]
+     resources: ["roles", "clusterroles"]
+     verbs: ["bind", "escalate", "create", "update", "delete"]
+   EOF
+   ```
+
+   **Example output:**
+
+   <CodeBlockConfig hideClipboard>
+
+   ```plaintext
+   clusterrole.rbac.authorization.k8s.io/k8s-full-secrets-abilities-with-labels created
+   ```
+
+   </CodeBlockConfig>
+
+1. Associate the `vault` service account with the cluster role.
+
+   ```shell-session
+   $ kubectl create -f - <<EOF
+   apiVersion: rbac.authorization.k8s.io/v1
+   kind: ClusterRoleBinding
+   metadata:
+     name: vault-token-creator-binding
+   roleRef:
+     apiGroup: rbac.authorization.k8s.io
+     kind: ClusterRole
+     name: k8s-full-secrets-abilities-with-labels
+   subjects:
+   - kind: ServiceAccount
+     name: vault
+     namespace: vault
+   EOF
+   ```
+
+   **Example output:**
+
+   <CodeBlockConfig hideClipboard>
+
+   ```plaintext
+   clusterrolebinding.rbac.authorization.k8s.io/vault-token-creator-binding created
+   ```
+
+   </CodeBlockConfig>
+
+1. Retrieve the `vault` Kubernetes secret and store it as an environment variable.
+
+   ```shell-session
+   $ KUBE_VAULT_SECRET=$(kubectl get secret -n vault vault -o json | jq -r '.data')
+   ```
+
+1. Decode the `ca.crt` certificate and store it as an environment variable.
+
+   ```shell-session
+   $ KUBE_CA_CRT=$(echo $KUBE_VAULT_SECRET | jq -r '."ca.crt"' | base64 -d)
+   ```
+
+1. Decode the token and store it as an environment variable.
+
+   ```shell-session
+   $ KUBE_VAULT_TOKEN=$(echo $KUBE_VAULT_SECRET | jq -r '.token' | base64 -d)
+   ```
+
+1. Verify the environment variables are set correctly. The `KUBE_API_URL`
+   environment variable was set in the [Deploy Vault
+   section](/boundary/tutorials/kubernetes-connect/kubernetes-getting-started-setup#deploy-vault)
+   in the previous tutorial. If it is missing, return to the previous tutorial
+   and export the enviroment variable again.
+
+   ```shell-session
+   $ echo KUBE_API_URL=$KUBE_API_URL && echo KUBE_VAULT_TOKEN=$KUBE_VAULT_TOKEN && echo KUBE_CA_CRT=$KUBE_CA_CRT
+
+   KUBE_API_URL=https://127.0.0.1:55581
+   KUBE_VAULT_TOKEN=eyJhbGciOiJSUzI1NiIsImtpZCI6IjV0U3AtXzJNUHVveDQzaGRqdjNwTmRRbWdNM0ZvZ3RnaWh0Sk1IMmNuOFUifQ.eyJpc3MiOiJrdWJlcm5ldGVzL3NlcnZpY2VhY2NvdW50Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9uYW1lc3BhY2UiOiJ2YXVsdCIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VjcmV0Lm5hbWUiOiJ2YXVsdCIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VydmljZS1hY2NvdW50Lm5hbWUiOiJ2YXVsdCIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VydmljZS1hY2NvdW50LnVpZCI6Ijc3MmZhZmNhLWIwODAtNDY5Ni05MDk0LWQwNGYyZTU3ODEwNyIsInN1YiI6InN5c3RlbTpzZXJ2aWNlYWNjb3VudDp2YXVsdDp2YXVsdCJ9.hLz-BpQmDcL_d5GetlxTkvn2KrJwMK_z6Y3S3OYgjBaEZWysoTEdKL1AWSofS-0HJ9rSrsPwuE0mJSaTbx2bpL3Uo7DYkOAoa2jCG9aqDl9PSrZ8GaV_1uERUf-thKfdHwbNHtYlCOBVCj-CYNJVtaO8jLEFXk7KmD1KBEcueH45romnCAiF3fA7OL0ELrxtQOjhpDF-cbjxGdfhgzekAybEAdTslSkwcs03Q_j4wogM4LhElDxdYucpXE1qRrgUUH43GTwzCXqCcY5dn6gnNmE6TIlxaprO_x74FRt1y47okLs_XA_Yc95-ldOb3Jr8E-QsENVE9FtH0KM7m7jxpg
+   KUBE_CA_CRT=-----BEGIN CERTIFICATE-----
+   MIIDBjCCAe6gAwIBAgIBATANBgkqhkiG9w0BAQsFADAVMRMwEQYDVQQDEwptaW5p
+   a3ViZUNBMB4XDTIyMDQyNjE0MDE0NVoXDTMyMDQyNDE0MDE0NVowFTETMBEGA1UE
+   AxMKbWluaWt1YmVDQTCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBALVq
+   ..snip...
+   tIS6p2TV6cW+Fa6VFvRYcjb4hfPovAB5gjhm36YravcjgP9rt+h0rFbQEc5oTtMa
+   hThaYp4czraioA==
+   ```
+
+   If any of the values are empty, return to the previous steps and re-run the
+   related command(s).
+
+## Configure Vault for Kubernetes
+
+(**Persona:** `operations`)
+
+The `operations` team needs to use the Kubernetes service account, token, and
+associated secrets to configure the [Kubernetes secret
+engine](/vault/docs/secrets/kubernetes).
+
+1. Enable the Kubernetes secret engine.
+
+   ```shell-session
+   $ vault secrets enable kubernetes
+
+   Success! Enabled the kubernetes secrets engine at: kubernetes/
+   ```
+
+1. Configure the Kubernetes secret engine with the settings for the Kubernetes
+   cluster created in the previous section.
+
+   ```shell-session
+   $ vault write -f kubernetes/config \
+       kubernetes_host=$KUBE_API_URL \
+       kubernetes_ca_cert=$KUBE_CA_CRT \
+       service_account_jwt=$KUBE_VAULT_TOKEN
+   ```
+
+   **Example output:**
+
+   <CodeBlockConfig hideClipboard>
+
+   ```plaintext
+   Success! Data written to: kubernetes/config
+   ```
+
+   </CodeBlockConfig>
+
+1. Create a Vault role. The `generated_role_rules` parameter defines the
+   permission granted to the service account Vault creates. The `developer` team
+   only needed to be able to list running pods.
+
+   ```shell-session
+   $ vault write kubernetes/roles/auto-managed-sa-and-role \
+   allowed_kubernetes_namespaces="*" \
+   token_default_ttl="10m" \
+   generated_role_rules='{"rules":[{"apiGroups":[""],"resources":["pods"],"verbs":["list"]}]}'
+   ```
+
+   **Example output:**
+
+   <CodeBlockConfig hideClipboard>
+
+   ```plaintext
+   Success! Data written to: kubernetes/roles/auto-managed-sa-and-role
+   ```
+
+   </CodeBlockConfig>
+
+1. Generate a new service account token using the Vault
+   `auto-managed-sa-and-role` role.
+
+   ```shell-session
+   $ vault write kubernetes/creds/auto-managed-sa-and-role \
+       kubernetes_namespace=default
+   ```
+
+   **Example output:**
+
+   <CodeBlockConfig hideClipboard>
+
+   ```plaintext
+   Key                          Value
+   ---                          -----
+   lease_id                     kubernetes/creds/auto-managed-sa-and-role/jYBIbpNeT2Rk1rDJRR3sEZKA.OxcQe
+   lease_duration               10m
+   lease_renewable              false
+   service_account_name         v-token-hc-auto-man-1690317440-h18tjn0rvi7cng8nhs1zxtpe
+   service_account_namespace    default
+   service_account_token        eyJhbGciOiJSUzI1NiIsImtpZCI6ImlDOGZ...snip...J9uYEE7BEo4tQJstm_i5rC5u6VzhVtXgabc
+   ```
+
+   </CodeBlockConfig>
+
+1. Confirm the service account was created in Kubernetes.
+
+   ```shell-session
+   $ kubectl get serviceaccount
+
+   NAME                                                      SECRETS   AGE
+   default                                                   0         114m
+   v-token-hc-auto-man-1690317440-h18tjn0rvi7cng8nhs1zxtpe   0         77s
+   ```
+
+   The Kubernetes auth method is now configured and successfully created a
+   short-lived service account in Kubernetes.
+
+## Configure Vault for Boundary
+
+(**Persona:** `operations`)
+
+The `operations` team needs to configure Vault to permit Boundary to manage an
+orphan token, used to authenticate Boundary to Vault when a new Kubernetes
+service account is requested.
+
+1. Create a Vault policy to permit Boundary to manage its lease, including the
+   `auto-managed-sa-and-role` role created previously.
+
+   ```shell-session
+   $ vault policy write boundary-controller - <<EOF
+    path "auth/token/lookup-self" {
+      capabilities = ["read"]
+    }
+
+    path "auth/token/renew-self" {
+      capabilities = ["update"]
+    }
+
+    path "auth/token/revoke-self" {
+      capabilities = ["update"]
+    }
+
+    path "sys/leases/renew" {
+      capabilities = ["update"]
+    }
+
+    path "sys/leases/revoke" {
+      capabilities = ["update"]
+    }
+
+    path "sys/capabilities-self" {
+      capabilities = ["update"]
+    }
+
+    path "kubernetes/creds/auto-managed-sa-and-role" {
+      capabilities = ["update"]
+    }
+   EOF
+   ```
+
+   **Example output:**
+
+   <CodeBlockConfig hideClipboard>
+
+   ```plaintext
+   Success! Uploaded policy: boundary-controller
+   ```
+
+   </CodeBlockConfig>
+
+1. Create a orphan token with the new policy attached. This token will be used
+   to set up the Boundary credential store.
+
+   ```shell-session
+   $ BOUNDARY_CRED_STORE_TOKEN=$(vault token create \
+       -no-default-policy=true \
+       -policy="boundary-controller" \
+       -orphan=true \
+       -period=20m \
+       -renewable=true \
+       -format=json | jq -r '.auth | .client_token') && echo $BOUNDARY_CRED_STORE_TOKEN
+   ```
+
+   **Example output:**
+
+   <CodeBlockConfig hideClipboard>
+
+   ```plaintext
+   not.a.real.keyCAESIAuDQi_4SNucX5auXd123...snip...F2aXBDUjdScm8uOFQ1N2oQyAQ
+   ```
+
+   </CodeBlockConfig>
+
+## Configure Boundary
+
+(**Persona:** `operations`)
+
+The `operations` team needs to configure resources in Boundary so the
+`developer` team has access to only the resources required by the team.
+
+1. Authenticate with Boundary. Enter the username and password for your Boundary
+   instance.
+
+   ```shell-session
+   $ boundary authenticate
+     Please enter the login name (it will be hidden):
+     Please enter the password (it will be hidden):
+
+     Authentication information:
+       Account ID:      acctpw_NgTnYJHTls
+       Auth Method ID:  ampw_PqQpz2sqvx
+       Expiration Time: Wed, 19 Jul 2023 09:52:02 EDT
+       User ID:         u_09ja9DkXo3
+
+     The token was successfully stored in the chosen keyring and is not displayed here.
+   ```
+
+1. Create a new Boundary org and store the org ID as an environment variable.
+
+   ```shell-session
+   $ DEVOPS_ORG_ID=$(boundary scopes create \
+       -scope-id=global \
+       -name=devops \
+       -description="DevOps" \
+       -format json | jq -r '.item | .id') && echo $DEVOPS_ORG_ID
+   ```
+
+   **Example output:**
+
+   <CodeBlockConfig hideClipboard>
+
+   ```plaintext
+   o_12cdlnPlh24yz
+   ```
+
+   </CodeBlockConfig>
+
+1. Create a new project in the DevOps org and store the project ID as an
+   environment variable..
+
+   ```shell-session
+   $ KUBE_PROJ_ID=$(boundary scopes create \
+       -scope-id=$DEVOPS_ORG_ID \
+       -name=kubernetes \
+       -description="Kubernetes clusters" \
+       -format json | jq -r '.item | .id') && echo $KUBE_PROJ_ID
+   ```
+
+   **Example output:**
+
+   <CodeBlockConfig hideClipboard>
+
+   ```plaintext
+   p_i74790QuaD
+   ```
+
+   </CodeBlockConfig>
+
+1. Create a new credential store in the `kubernetes` project and store the
+   credential store ID as an environment variable.
+
+   Select the tab below that matches your Vault deployment type.
+
+   <Tabs>
+   <Tab heading="HCP Vault Dedicated" group="hcpv">
+
+   ```shell-session
+   $ BOUNDARY_CRED_STORE_ID=$(boundary credential-stores create vault \
+       -scope-id $KUBE_PROJ_ID \
+       -vault-address $VAULT_ADDR \
+       -vault-namespace $VAULT_NAMESPACE \
+       -vault-token $BOUNDARY_CRED_STORE_TOKEN \
+       -format json | jq -r '.item | .id') && echo $BOUNDARY_CRED_STORE_ID
+   ```
+
+   </Tab>
+   <Tab heading="Dev mode" group="ossv">
+
+   ```shell-session
+   $ BOUNDARY_CRED_STORE_ID=$(boundary credential-stores create vault \
+       -scope-id $KUBE_PROJ_ID \
+       -vault-address $VAULT_ADDR \
+       -vault-token $BOUNDARY_CRED_STORE_TOKEN \
+       -format json | jq -r '.item | .id') && echo $BOUNDARY_CRED_STORE_ID
+   ```
+
+   </Tab>
+   </Tabs>
+
+   **Example output:**
+
+   <CodeBlockConfig hideClipboard>
+
+   ```plaintext
+   csvlt_3EYyRfsghJ
+   ```
+
+   </CodeBlockConfig>
+
+1. Create a credential library and store the library ID as an environment
+   variable.
+
+   ```shell-session
+   $ BOUNDARY_CRED_LIB_ID=$(boundary credential-libraries create vault \
+       -credential-store-id $BOUNDARY_CRED_STORE_ID \
+       -vault-http-method "POST" \
+       -vault-http-request-body "{\"kubernetes_namespace\": \"default\"}" \
+       -vault-path "kubernetes/creds/auto-managed-sa-and-role" \
+       -name "vault-cred-library" \
+       -format json | jq -r '.item | .id') && echo $BOUNDARY_CRED_LIB_ID
+   ```
+
+   **Example output:**
+
+   <CodeBlockConfig hideClipboard>
+
+   ```plaintext
+   clvlt_YAw8XTkIHa
+   ```
+
+   </CodeBlockConfig>
+
+1. Create a target for the Kubernetes API URL and store the target ID as an
+   environment variable.
+
+   Select the tab below that matches your Vault deployment type.
+
+   <Tabs>
+   <Tab heading="HCP Vault Dedicated" group="hcpv">
+
+   ```shell-session
+   $ KUBE_TARGET_ID=$(boundary targets create tcp \
+       -name="kubernetes-api" \
+       -description="Kubernetes API" \
+       -default-port=80 \
+       -scope-id=$KUBE_PROJ_ID \
+       -address=$(echo $KUBE_API_URL | cut -c 8-) \
+       -session-connection-limit="-1" \
+       -format json | jq -r '.item | .id') && echo $KUBE_TARGET_ID
+   ```
+
+   </Tab>
+   <Tab heading="Dev mode" group="ossv">
+
+   ```shell-session
+   $ KUBE_TARGET_ID=$(boundary targets create tcp \
+       -name="kubernetes-api" \
+       -description="Kubernetes API" \
+       -default-port=8001 \
+       -scope-id=$KUBE_PROJ_ID \
+       -address="127.0.0.1" \
+       -session-connection-limit="-1" \
+       -format json | jq -r '.item | .id') && echo $KUBE_TARGET_ID
+   ```
+
+   </Tab>
+   </Tabs>
+
+   **Example output:**
+
+   <CodeBlockConfig hideClipboard>
+
+   ```plaintext
+   ttcp_wgZEUiMfVe
+   ```
+
+   </CodeBlockConfig>
+
+1. Add the brokered credential store to the Kubernetes target.
+
+   ```shell-session
+   $ boundary targets add-credential-sources \
+        -id=$KUBE_TARGET_ID \
+        -application-credential-source=$BOUNDARY_CRED_LIB_ID
+   ```
+
+   **Example output:**
+
+   <CodeBlockConfig hideClipboard>
+
+   ```plaintext
+   Target information:
+     Address:                    a285-96-252-115-16.ngrok-free.app
+     Created Time:               Mon, 31 Jul 2023 15:10:14 EDT
+     Description:                Kubernetes API
+     ID:                         ttcp_qeEdrzA8v0
+     Name:                       kubernetes-api
+     Session Connection Limit:   -1
+     Session Max Seconds:        28800
+     Type:                       tcp
+     Updated Time:               Mon, 31 Jul 2023 15:20:29 EDT
+     Version:                    2
+
+     Scope:
+       ID:                       p_i6TIeeIqJJ
+       Name:                     kubernetes
+       Parent Scope ID:          o_70lnPlhQz8
+       Type:                     project
+
+     Authorized Actions:
+       no-op
+       read
+       update
+       delete
+       add-host-sources
+       set-host-sources
+       remove-host-sources
+       add-credential-sources
+       set-credential-sources
+       remove-credential-sources
+       authorize-session
+
+     Brokered Credential Sources:
+       Credential Store ID:      csvlt_3EYyRfsghJ
+       ID:                       clvlt_YAw8XTkIHa
+
+     Attributes:
+       Default Port:             80
+   ```
+
+   </CodeBlockConfig>
+
+## Next steps
+
+Boundary, Vault, and Kubernetes have been configured to provide just-in-time
+access to the Kubernetes cluster.
+
+In the [Connect to Kubernetes using
+Boundary](/boundary/tutorials/kubernetes-connect/kubernetes-getting-started-connect)
+tutorial, you will broker credentials from Vault and establish a session to the
+Kubernetes cluster.

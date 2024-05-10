@@ -1,0 +1,69 @@
+---
+id: 2d44d843-26d9-497b-af40-a3bd82148c8f
+name: What is HCP Boundary?
+short_name: What is HCP Boundary?
+description: What is HCP Boundary, and how does it differ from Boundary Community Edition?
+products_used:
+  - product: boundary
+edition: hcp
+default_collection_context: boundary/hcp-getting-started
+video_id: YowP4xV2Jf0
+video_host: youtube
+---
+
+The HashiCorp Cloud Platform (HCP) is a fully managed platform which is operated by HashiCorp
+allowing organizations to get up and running quickly. Customers get production-grade infrastructure,
+built-in security, and pay-as-you-go pricing to accelerate cloud adoption. HCP Boundary provides
+a consistent user experience compared to a self-managed Boundary cluster.
+
+<VideoEmbed url={video} />
+
+### Boundary Community Edition vs. HCP Boundary
+
+Here is a quick comparison between Boundary Community Edition features and an
+HCP Boundary instance.
+
+| Feature                                                                                                      | Boundary Community Edition                                                                                 | HCP Boundary                                                                                                                                                                                                                                                                         |
+| ------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| OIDC Auth Integration                                                                                        | Included                                                                                                   | Included                                                                                                                                                                                                                                                                             |
+| Dynamic Host Catalogs                                                                                        | Included                                                                                                   | Included                                                                                                                                                                                                                                                                     |
+| Self-Managed Workers                                                                                         | Included                                                                                                   | Included                                                                                                                                                                                                                                                                     |
+| Credential Brokering with Vault                                                                              | Included                                                                                                   | Included                                                                                                                                                                                                                                                                     |
+| Credential Injection with Vault                                                                              |                                                                                                            | Included                                                                                                                                                                                                                                                                     |
+| Push button deployment                                                                                       |                                                                                                            | Included                                                                                                                                                                                                                                                                     |
+| Real time audit log streaming                                                                                |                                                                                                            | Included                                                                                                                                                                                                                                                                     |
+| Session recording                                                                                            |                                                                                                            | Included                                                                                                                                                                                                                                                                     |
+
+| Support                                                                                                      | Boundary Community Edition                                                                                 | HCP Boundary                                                                                                                                                                                                                                                                         |
+| ------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Automatic backups                                                                                            |                                                                                                            | Included                                                                                                                                                                                                                                                                             |
+| Automatic upgrades                                                                                           |                                                                                                            | Included                                                                                                                                                                                                                                                                     |
+| Uptime SLA or Support &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;                     | Community; no SLA                                                                                          | Included                                                                                                                                                                                                                                                                     |
+
+### How does HCP Boundary work?
+
+Organizations that adopt HCP Boundary can focus on integrating Boundary into
+their environments without the need to focus on traditional operational tasks,
+such as which operating system to deploy the Boundary cluster on, how to manage
+and monitor the Boundary application, or how to upgrade to newer versions of
+Boundary.
+
+Boundary can be deployed in just a few clicks via the HashiCorp Cloud Platform
+Portal. Once deployed, Boundary administrators can interact with Boundary
+through the admin console or command line interface (CLI) to manage orgs, users,
+groups, permissions, and roles to provide fine-grained access to Boundary
+targets and projects.
+
+### Support and community
+
+To connect with other HashiCorp practitioners using in the HCP Boundary, please
+[join the Boundary discuss
+community](https://discuss.hashicorp.com/c/boundary/50).
+
+For issues with HCP Boundary, please [submit a support
+request](https://support.hashicorp.com/hc/en-us/requests/new).
+
+## Next steps
+
+In the next tutorial you will learn how to install the Boundary CLI to manage
+your HCP Boundary instance.

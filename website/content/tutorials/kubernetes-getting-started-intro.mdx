@@ -1,0 +1,207 @@
+---
+id: ff360ec5-4e54-4668-a8a6-9814d9595568
+name: Connect to Kubernetes using Boundary introduction
+description: >-
+  Understand the challenges providing access to Kubernetes and how Boundary can
+  facilitate access with credential brokering.
+products_used:
+  - product: vault
+  - product: boundary
+default_collection_context: boundary/kubernetes-connect
+short_name: Introduction
+---
+
+This tutorial series demonstrates how to configure remote access to Kubernetes
+clusters using `kubectl`. HashiCorp Vault is used to generate just-in-time
+credentials to prevent remote users from storing permanent Kubernetes tokens
+locally.
+
+## Scenario
+
+Your organization is undergoing a security transformation under the direction of
+the new Chief Security Officer.
+
+The developer team has requested remote access to their production Kubernetes
+environment to view running pods. However, the new operations team security
+policies require limiting teams to only have access to resources necessary to
+perform their job duties. The existing VPN solution is not able to limit access
+to specific endpoints, and anyone that connects to the VPN has access to the
+entire network.
+
+Additionally, the operations team is trying to limit the use of long-lived
+credentials that provide access to production environments.
+
+The teams work together, discussing the challenges and requirements on what
+needs to be implemented to ensure production runs smoothly.
+
+## Challenge
+
+The traditional VPN and jump/bastion hosts allow remote users to access their
+infrastructure resources. The challenge with this approach is that the VPN and
+jump hosts have limited capabilities to control users' access once they
+are on the network.
+
+In addition, the VPN and jump hosts have limited (if any) capabilities to manage
+short-lived credentials across the various types of resources in the
+environment. Each person who requires access would need a dedicated, long-lived
+username on the jump host and in the Kubernetes environment.
+
+Using long-lived static credentials limits the operations team's ability to
+control access to their infrastructure. Long-lived user credentials are a
+security concern and increase the risk of the credentials being exposed and used
+by hackers. The operations team does not currently have a method to use
+short-lived credentials, and requires additional tools to ensure these
+credentials are generated just-in-time and expire appropriately.
+
+## Solution
+
+HashiCorp Boundary is a tool for managing identity-based access for modern,
+dynamic infrastructure. Remote users can access their assigned infrastructure
+resources using credentials associated with an existing identity provider (Okta,
+Ping, Active Directory, etc) without having to store or manage long-lived
+credentials to the different target resources. The operations team can centrally
+control and precisely assign the resources each remote user is allowed to
+access.
+
+To facilitate the use of short-lived credentials, Boundary can integrate with
+HashiCorp Vault to provide credentials when needed, and configured with a TTL
+that will expire the credentials. Once expired, credentials will no longer grant
+access to the production environment.
+
+In this series of tutorials you will configure Boundary to allow the DevOps team
+access their Kubernetes clusters using `kubectl`. You will leverage HashiCorp
+Vault to generate just-in-time credentials, so remote users do not need to store
+permanent Kubernetes tokens on their local machines.
+
+## Personas
+
+The end-to-end scenario described in this tutorial series involves two personas:
+
+- `operations` with privileged permissions to deploy and manage Boundary, Vault,
+  and Kubernetes
+- `developers` granted access Kubernetes by the `operations` team
+
+You will start by assuming the role of a Boundary operator who is deploying and
+configuring the environment for the first time. Then you will test the
+experience of a Kubernetes developer by remotely connecting to the assigned
+Kubernetes cluster. The goal is to show the end-to-end experience of both the
+administrator and end user so you understand how everything works.
+
+## Prerequisites
+
+The tutorials in this series assume a working knowledge of Boundary, Vault, and
+Kubernetes.
+
+If you are not familiar with Boundary, complete the [HCP
+Boundary](/boundary/tutorials/hcp-getting-started) or [self-managed
+Boundary](/boundary/tutorials/oss-getting-started) quick start tutorials.
+
+If you are not familiar with Vault, complete the [HCP
+Vault](/vault/tutorials/cloud) or [Vault CLI](/vault/tutorials/getting-started)
+quick start tutorials.
+
+<Note>
+
+  You can complete this tutorial using HashiCorp Cloud Platform (HCP) or by
+  using a Vault dev server and Boundary's dev mode. If you use dev mode, an HCP
+  account is not required as a prerequisite.
+
+</Note>
+
+- A [Boundary binary](/boundary/install/) greater than 0.13.0 in your `PATH`
+- [Boundary
+  Desktop](/boundary/tutorials/oss-getting-started/oss-getting-started-desktop-app)
+  is installed
+- A [Vault binary](/vault/install/) greater than 1.7.0 in your `PATH`
+- An [HCP account](https://portal.cloud.hashicorp.com/sign-in?utm_source=learn)
+- An HCP user assigned the contributor role (or higher) to perform allow the
+  creations of HCP Vault Dedicated and HCP Boundary clusters.
+- [Docker](https://docs.docker.com/get-docker/) installed
+- [minikube](https://minikube.sigs.k8s.io/) installed
+- [Kubernetes command-line interface
+  (CLI)](https://kubernetes.io/docs/tasks/tools/install-kubectl/) installed
+- [ngrok](https://ngrok.com/download) installed and configured with an auth
+  token (Vault Dedicated only)
+
+### Tools for this lab
+
+This tutorial was last tested on 8 August 2023 using macOS 13.4. Before moving
+on, check that the following versions or greater are installed.
+
+<Note>
+
+Newer versions should work, but have the potential to introduce new behavior
+that may cause one or more steps to fail.
+
+</Note>
+
+1. Verify the version of Boundary.
+
+   ```shell-session
+   $ boundary version
+
+   Version information:
+     Build Date:          2023-06-09T16:42:30Z
+     Git Revision:        6eb1c9919f495b21ca900e89b2a7e2f735a79fbc
+     Version Number:      0.13.1
+   ```
+
+1. Verify the version of Boundary Desktop. The `brew` utility is only available
+   on macOS.
+
+   ```shell-session
+   $ brew info hashicorp-boundary-desktop
+   ==> hashicorp-boundary-desktop: 1.6.0
+   https://www.boundaryproject.io/
+   /usr/local/Caskroom/hashicorp-boundary-desktop/1.6.0 (122B)
+   From: https://github.com/hashicorp/homebrew-tap/blob/HEAD/Casks/hashicorp-boundary-desktop.rb
+   ==> Name
+   Boundary Desktop
+   ==> Description
+
+   ==> Artifacts
+   Boundary.app (App)
+   ```
+
+1. Verify the version of Vault.
+
+   ```shell-session
+   $ vault --version
+   Vault v1.14.1 (bf23fe8636b04d554c0fa35a756c75c2f59026c0), built 2023-07-21T10:15:14Z
+   ```
+
+1. Verify the version of Docker.
+
+   ```shell-session
+   $ docker --version
+   Docker version 24.0.2, build cb74dfc
+   ```
+
+1. Verify the version of minikube.
+
+   ```shell-session
+   $ minikube version
+   minikube version: v1.31.1
+   commit: fd3f3801765d093a485d255043149f92ec0a695f
+   ```
+
+1. Verify the version of kubectl. This step assumes you have not used minikube
+   to start Kubernetes.
+
+   ```shell-session
+   $ kubectl version --short
+   Flag --short has been deprecated, and will be removed in the future. The --short output will become the default.
+   Client Version: v1.27.2
+   Kustomize Version: v5.0.1
+   ```
+
+## Next steps
+
+You have verified the installation and version of each tool used in subsequent
+tutorials.
+
+In the [Connect to Kubernetes using Boundary lab
+setup](/boundary/tutorials/kubernetes-connect/kubernetes-getting-started-setup)
+tutorial, you will start an environment that consists of Boundary, Vault, and
+Kubernetes. Once each service is started, you will verify connectivity to each
+service.

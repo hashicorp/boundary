@@ -1,0 +1,675 @@
+---
+id: 21c3efe5-f4ae-4609-8482-bef37926e744
+name: Manage sessions
+short_name: Manage sessions
+description: Sessions are Boundary resources created when connecting to a target.
+read_time: 8
+products_used:
+  - product: boundary
+    min_version: 0.8.1
+    max_version: 0.11.2
+default_collection_context: boundary/oss-administration
+---
+
+[Sessions](/boundary/docs/concepts/domain-model/sessions)
+are Boundary resources created when connecting to a
+[target](/boundary/docs/concepts/domain-model/targets). A
+target allows Boundary users to define an endpoint with a protocol and default
+port to establish a session. Unless specified with a `-host-id` flag when
+establishing a session, Boundary will choose one
+[host](/boundary/docs/concepts/domain-model/hosts) from the
+target's [host
+sets](/boundary/docs/concepts/domain-model/host-sets) to
+connect to at random.
+
+This tutorial demonstrates the basics of how to start a session, view the
+session details and cancel a session in Boundary.
+
+## Prerequisites
+
+This tutorial assumes that you successfully completed the [Manage
+Scopes](/boundary/tutorials/oss-administration/oss-manage-scopes) and [Manage
+Targets](/boundary/tutorials/oss-administration/oss-manage-targets) tutorials.
+
+## Retrieve resource IDs
+
+To connect to a target, you need the target ID and host ID to use the `-host-id`
+flag. If you are not sure about those IDs, follow the steps in this section;
+otherwise, skip to the [Start a session](#start-a-session) section.
+
+<Tabs>
+<Tab heading="CLI" group="cli">
+
+Log back into the CLI as the admin user. Enter `password` at the `Please enter the password (it will be hidden):` prompt.
+
+```shell-session
+$ boundary authenticate password \
+  -auth-method-id=ampw_1234567890 \
+  -login-name=admin
+```
+
+1. List the existing targets under the `QA_Tests` project.
+
+   ```shell-session
+   $ boundary targets list -scope-id=$PROJECT_ID
+
+   Target information:
+     ID:                    ttcp_34yV5O9cwt
+       Version:             2
+       Type:                tcp
+       Name:                tests
+       Description:         Test target
+       Authorized Actions:
+         no-op
+         read
+         update
+         delete
+         add-host-sources
+         set-host-sources
+         remove-host-sources
+         add-credential-libraries
+         set-credential-libraries
+         remove-credential-libraries
+         add-credential-sources
+         set-credential-sources
+         remove-credential-sources
+         authorize-session
+   ```
+
+   Now, you have the target ID (e.g. `ttcp_34yV5O9cwt`).
+
+   If you haven't already, copy the ID and save it as an environment variable,
+   `TARGET_ID`.
+
+   **Example:**
+
+   ```shell-session
+   $ export TARGET_ID=ttcp_34yV5O9cwt
+   ```
+
+1. List the host IDs that belong to the host catalog.
+
+   ```shell-session
+   $ boundary hosts list -host-catalog-id=$HOST_CATALOG_ID
+
+   Host information:
+     ID:                    hst_FrdNPd9Zm9
+       Version:             1
+       Type:                static
+       Name:                localhost
+       Description:         Localhost for testing
+       Authorized Actions:
+         no-op
+         read
+         update
+         delete
+
+     ID:                    hst_U1qYKzKfXO
+       Version:             1
+       Type:                static
+       Name:                postgres
+       Description:         Postgres host
+       Authorized Actions:
+         no-op
+         read
+         update
+         delete
+   ```
+
+   Copy the localhost host ID. In the example output, the ID is
+   `hst_FrdNPd9Zm9`.
+
+</Tab>
+<Tab heading="Admin Console" group="admin">
+
+
+1. Select **Projects > QA_Tests**
+   ![Project](/img/boundary/boundary-ui-project-3.png)
+
+1. Select **Targets** and copy the ID of the **postgres** target.
+   ![Project](/img/boundary/boundary-ui-target-11.png)
+
+</Tab>
+</Tabs>
+
+## Start a session
+
+<Tabs>
+<Tab heading="CLI" group="cli">
+
+Open a session to the postgres target using `boundary connect`. When prompted,
+enter the password `secret` to connect.
+
+```shell-session
+$ boundary connect postgres -target-id $TARGET_ID -username postgres
+Password for user postgres:
+psql (13.2)
+Type "help" for help.
+
+postgres=#
+```
+
+<Note>
+
+ If you followed the Admin Console workflow and did not export the
+`TARGET_ID` environment variable, supply it directly instead. such as
+`ttcp_34yV5O9cwt`.
+
+</Note>
+
+</Tab>
+<Tab heading="Boundary Desktop" group="admin">
+
+Open a session to the postgres target using the [Boundary Desktop
+App](/boundary/tutorials/hcp-getting-started/hcp-getting-started-desktop-app).
+
+Open the Desktop App and enter `http://127.0.0.1:9200` for the Cluster URL.
+
+![Desktop Cluster URL](/img/boundary/desktop/desktop-cluster-url_light.png#light-theme-only)
+![Desktop Cluster URL](/img/boundary/desktop/desktop-cluster-url_dark.png#dark-theme-only)
+
+Sign in to the `global` scope using the credentials `admin` and `password`.
+
+Select the `IT_Support` scope in the upper-left corner of the app.
+
+Navigate to the **Targets** view.
+
+![Boundary Desktop Targets](/img/boundary/desktop/desktop-postgres-target_light.png#light-theme-only)
+![Boundary Desktop Targets](/img/boundary/desktop/desktop-postgres-target_dark.png#dark-theme-only)
+
+Click **Connect** beside the `postgres` target.
+
+![Connect to target](/img/boundary/desktop/desktop-postgres-target-connect_light.png#light-theme-only)
+![Connect to target](/img/boundary/desktop/desktop-postgres-target-connect_dark.png#dark-theme-only)
+
+Copy the Proxy URL, such as `127.0.0.1:59801`.
+
+Next, select the **Terminal** tab, or open a new terminal session. Use the `psql` client to establish a session with the postgres container via the local proxy created by Boundary. Enter the password `secret` when prompted for the `sampledb` database password.
+
+```shell-session
+$ psql -h 127.0.0.1 -p 59801 -d sampledb -U postgres
+Password for user postgres:
+psql (14.2, server 15.1 (Debian 15.1-1.pgdg110+1))
+WARNING: psql major version 14, server major version 15.
+         Some psql features might not work.
+Type "help" for help.
+
+sampledb=#
+```
+
+![Connect to postgres](/img/boundary/desktop/desktop-postgres-sampledb_light.png#light-theme-only)
+![Connect to postgres](/img/boundary/desktop/desktop-postgres-sampledb_dark.png#dark-theme-only)
+
+</Tab>
+</Tabs>
+
+For more information regarding different ways to connect to a target behind
+Boundary see [Connect to
+Target](/boundary/docs/getting-started/connect-to-target)
+and the [Advanced Session Establishment](#advanced-session-establishment)
+section.
+
+## View sessions
+
+<Tabs>
+<Tab heading="CLI" group="cli">
+
+<Note>
+
+ After connecting to the postgres container, the exported
+environment variables may no longer be available in your shell session. **Leave
+this session open, and open a new terminal window to proceed.**
+
+</Note>
+
+Log back into the CLI as the admin user. Enter `password` at the `Please enter the password (it will be hidden):` prompt.
+
+```shell-session
+$ boundary authenticate password \
+  -auth-method-id=ampw_1234567890 \
+  -login-name=admin
+```
+
+List the available scopes.
+
+<CodeBlockConfig highlight="1,37-46">
+
+```shell-session
+$ boundary scopes list -recursive
+
+Scope information:
+  ID:                    o_1234567890
+    Scope ID:            global
+    Version:             1
+    Name:                Generated org scope
+    Description:         Provides an initial org scope in Boundary
+    Authorized Actions:
+      no-op
+      read
+      update
+      delete
+
+  ID:                    o_u54jrD6ydN
+    Scope ID:            global
+    Version:             1
+    Name:                IT_Support
+    Description:         IT Support Team
+    Authorized Actions:
+      no-op
+      read
+      update
+      delete
+
+  ID:                    p_1234567890
+    Scope ID:            o_1234567890
+    Version:             1
+    Name:                Generated project scope
+    Description:         Provides an initial project scope in Boundary
+    Authorized Actions:
+      no-op
+      read
+      update
+      delete
+
+  ID:                    p_oMgeFL2hP6
+    Scope ID:            o_u54jrD6ydN
+    Version:             1
+    Name:                QA_Tests
+    Description:         Manage QA machines
+    Authorized Actions:
+      no-op
+      read
+      update
+      delete
+```
+
+</CodeBlockConfig>
+
+Copy the `QA_Tests` project scope ID, such as `p_oMgeFL2hP6`.
+
+View all sessions which Boundary has under the QA_Tests project by listing them.
+
+```shell-session
+$ boundary sessions list -scope-id=p_oMgeFL2hP6
+
+Session information:
+  ID:                    s_gEbbaTbBw2
+    Status:              active
+    Created Time:        Tue, 24 Jan 2023 17:09:53 MST
+    Expiration Time:     Wed, 25 Jan 2023 01:09:53 MST
+    Updated Time:        Tue, 24 Jan 2023 17:09:53 MST
+    User ID:             u_1234567890
+    Target ID:           ttcp_wtXnow8Krb
+    Authorized Actions:
+      no-op
+      read
+      read:self
+      cancel
+      cancel:self
+```
+
+We can get a more detailed view of a specific session by reading it.
+
+```shell-session
+$ boundary sessions read -id=s_nUho4KvZcL
+
+Session information:
+  Auth Token ID:       at_CMcMUgC23p
+  Created Time:        Tue, 24 Jan 2023 17:09:53 MST
+  Endpoint:            tcp://127.0.0.1:16001
+  Expiration Time:     Wed, 25 Jan 2023 01:09:53 MST
+  Host ID:             hst_DHei2VpkBH
+  Host Set ID:         hsst_LzkHrusOQt
+  ID:                  s_gEbbaTbBw2
+  Status:              active
+  Target ID:           ttcp_wtXnow8Krb
+  Type:                tcp
+  Updated Time:        Tue, 24 Jan 2023 17:09:53 MST
+  User ID:             u_1234567890
+  Version:             2
+
+  Scope:
+    ID:                p_VF6GGqKxMz
+    Name:              QA_Tests
+    Parent Scope ID:   o_aKfCM4fHnU
+    Type:              project
+
+  Authorized Actions:
+    no-op
+    read
+    read:self
+    cancel
+    cancel:self
+
+  States:
+    Start Time:        Tue, 24 Jan 2023 17:09:53 MST
+    Status:            active
+
+    End Time:          Tue, 24 Jan 2023 17:09:53 MST
+    Start Time:        Tue, 24 Jan 2023 17:09:53 MST
+    Status:            pending
+
+
+  Connections:
+    Bytes Down:        587
+    Bytes Up:          256
+    Client Address:    127.0.0.1:60434
+    Endpoint Address:  127.0.0.1:16001
+
+    Bytes Down:        25
+    Bytes Up:          92
+    Client Address:    127.0.0.1:60429
+    Closed Reason:     unknown
+    Endpoint Address:  127.0.0.1:16001
+```
+
+</Tab>
+<Tab heading="Desktop App" group="admin">
+
+
+1. Open the Boundary Desktop app.
+
+1. Select **Sessions** to view the list of sessions.
+   ![View active sessions](/img/boundary/desktop/desktop-postgres-sessions_light.png#light-theme-only)
+   ![View active sessions](/img/boundary/desktop/desktop-postgres-sessions_dark.png#dark-theme-only)
+
+</Tab>
+</Tabs>
+
+
+## Cancel a session
+
+If unexpected activity is detected, you can force-cancel the session.
+
+<Tabs>
+<Tab heading="CLI">
+
+
+Cancel the session using the session ID copied in the previous step.
+
+<CodeBlockConfig highlight="1,11,31-33">
+
+```shell-session
+$ boundary sessions cancel -id=s_nUho4KvZcL
+
+Session information:
+  Auth Token ID:        at_CMcMUgC23p
+  Created Time:         Tue, 24 Jan 2023 17:09:53 MST
+  Endpoint:             tcp://127.0.0.1:16001
+  Expiration Time:      Wed, 25 Jan 2023 01:09:53 MST
+  Host ID:              hst_DHei2VpkBH
+  Host Set ID:          hsst_LzkHrusOQt
+  ID:                   s_gEbbaTbBw2
+  Status:               terminated
+  Target ID:            ttcp_wtXnow8Krb
+  Termination Reason:   canceled
+  Type:                 tcp
+  Updated Time:         Tue, 24 Jan 2023 17:20:58 MST
+  User ID:              u_1234567890
+  Version:              5
+
+  Scope:
+    ID:                 p_VF6GGqKxMz
+    Name:               QA_Tests
+    Parent Scope ID:    o_aKfCM4fHnU
+    Type:               project
+
+  Authorized Actions:
+    no-op
+    read
+    read:self
+    cancel
+    cancel:self
+
+  States:
+    Start Time:         Tue, 24 Jan 2023 17:12:43 MST
+    Status:             canceling
+
+    End Time:           Tue, 24 Jan 2023 17:12:43 MST
+    Start Time:         Tue, 24 Jan 2023 17:09:53 MST
+    Status:             active
+
+    End Time:           Tue, 24 Jan 2023 17:09:53 MST
+    Start Time:         Tue, 24 Jan 2023 17:09:53 MST
+    Status:             pending
+```
+
+</CodeBlockConfig>
+
+The status is now `canceling`. When it completes, the session status will change
+to `terminated`.
+
+Wait a moment, and then read the session details.
+
+<CodeBlockConfig highlight="1,11,32-34">
+
+```shell-session
+$ boundary sessions read -id=s_nUho4KvZcL
+
+Session information:
+  Auth Token ID:        at_CMcMUgC23p
+  Created Time:         Tue, 24 Jan 2023 17:09:53 MST
+  Endpoint:             tcp://127.0.0.1:16001
+  Expiration Time:      Wed, 25 Jan 2023 01:09:53 MST
+  Host ID:              hst_DHei2VpkBH
+  Host Set ID:          hsst_LzkHrusOQt
+  ID:                   s_gEbbaTbBw2
+  Status:               terminated
+  Target ID:            ttcp_wtXnow8Krb
+  Termination Reason:   canceled
+  Type:                 tcp
+  Updated Time:         Tue, 24 Jan 2023 17:25:59 MST
+  User ID:              u_1234567890
+  Version:              5
+
+  Scope:
+    ID:                 p_VF6GGqKxMz
+    Name:               QA_Tests
+    Parent Scope ID:    o_aKfCM4fHnU
+    Type:               project
+
+  Authorized Actions:
+    no-op
+    read
+    read:self
+    cancel
+    cancel:self
+
+  States:
+    Start Time:         Tue, 24 Jan 2023 17:12:43 MST
+    Status:             terminated
+
+    End Time:           Tue, 24 Jan 2023 17:12:43 MST
+    Start Time:         Tue, 24 Jan 2023 17:12:43 MST
+    Status:             canceling
+
+    End Time:           Tue, 24 Jan 2023 17:12:43 MST
+    Start Time:         Tue, 24 Jan 2023 17:09:53 MST
+    Status:             active
+
+    End Time:           Tue, 24 Jan 2023 17:09:53 MST
+    Start Time:         Tue, 24 Jan 2023 17:09:53 MST
+    Status:             pending
+
+
+  Connections:
+    Bytes Down:         587
+    Bytes Up:           256
+    Client Address:     127.0.0.1:60434
+    Closed Reason:      unknown
+    Endpoint Address:   127.0.0.1:16001
+
+    Bytes Down:         25
+    Bytes Up:           92
+    Client Address:     127.0.0.1:60429
+    Closed Reason:      unknown
+    Endpoint Address:   127.0.0.1:16001
+```
+
+</CodeBlockConfig>
+
+</Tab>
+<Tab heading="Desktop App" group="admin">
+
+
+Click on the **Cancel** button to cancel a particular session.
+
+![Cancelled sessions](/img/boundary/desktop/desktop-postgres-target-cancelled_light.png#light-theme-only)
+![Cancelled sessions](/img/boundary/desktop/desktop-postgres-target-cancelled_dark.png#dark-theme-only)
+
+The session status becomes `canceling` and then `terminated`.
+
+If you attempt to run a command in the existing `psql` shell you will receive a
+connection error because Boundary has terminated the session:
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ postgres=# \d
+server closed the connection unexpectedly
+	This probably means the server terminated abnormally
+	before or while processing the request.
+The connection to the server was lost. Attempting reset: Unable to authorize connection
+Failed.
+!?>
+```
+
+</CodeBlockConfig>
+
+</Tab>
+</Tabs>
+
+
+## Advanced session establishment
+
+In addition to the `boundary connect` command, you can create a session to a
+target and connect to that session in separate steps. This is accomplished using
+the `boundary targets authorize-session` command, which generates an
+authorization token that a user can use to start a session via `boundary connect
+-authz-token` at their own convenience.
+
+```shell-session
+$ boundary targets authorize-session -id=<target_id> -host-id=<host_id>
+```
+
+For this example, gather the target ID and host ID as demonstrated in the previous tutorials:
+
+List all targets.
+
+```shell-session
+$ boundary targets list -recursive
+```
+
+Copy the `postgres` target ID.
+
+List all host catalogs.
+
+```shell-session
+$ boundary host-catalogs list -recursive
+```
+
+Copy the `DevOps` host catalog ID, and then list all hosts within the host
+catalog.
+
+```shell-session
+$ boundary hosts list -host-catalog-id=<HOST_CATALOG_ID>
+```
+
+Then copy the localhost host ID, such as `hst_FrdNPd9Zm9`.
+
+With these IDs gathered, generate an authorize token for the localhost host.
+
+**Example:**
+
+```shell-session
+$ boundary targets authorize-session -id=ttcp_wtXnow8Krb -host-id=hst_DHei2VpkBH
+
+Target information:
+  Authorization Token:
+  3vYggdcgyASTqU5dvh8vXLkohH9e3PzPyLLoZUXaVFFu4kDFSjoMDx5SzH5X7yjNdF4K6SkVxhAKjhK3fFufFUs7GUxfMVsPC6YdA6gp57FqzGSogRVjGpi4LtsqgedE4GpHzfkV3bYkz8YxqLbpBRV4ZtPSmvtvTxJZtLXZLSzpeWvJdB2r5Gq7uhqEe81aMUZKEZcwd5TpS79VwKnD3USyw9mdo7SNbe32G6Vru3BMgQRk5KYX7QUNJUCUVAzmMp9m2G7jDpzZUW7dyvq58rpYwGGVZYRjuwF87KN3i34o6oJ7kUSYr1vvd58JjVzsWncEpAGMxyt9RcHd4vKgDyYbV5gdHHfKdMyDBB7NFAXXzRjCXeF8k7yFZ2rT973dBBpN4GyGcF1Xq9YfMRAE2QTXC9noJ2zdadruQoWZRsRpWm3mdLbiXWXE4AtGkTG6eyQ2bgyBK8BmZk3k4AJrkzpMAcSd8NfCcAFaPnvpGZgAMMBz2sZJ6CBahxeW1A55ccqBVgT95ZL77wBA57Pmia4Hfz38KpbeTtwDBK6CuW16C1aRGnwzajwsFeYSL4vJgLfDhJvjkfKK5mLwYJtcp2gVqxbQMZvDSqGXM1TQHC8g74JfpxLE6oQEBZ7yjGWT32zd4kaQufceN7biiZAJSiVqxPGpRGfgMcW4ZLTq8DALWtviA1p4aFJETzedDoJ4c16wnL2GoHgHtsT7xUjZvKq7v659Psg55iKgNQmrt2ubHoU3GcLK54UQ7ho27wMZdPgSu6Xv2nUjcG7f6CaaDkYgCKTq1b
+  Created Time:          Tue, 24 Jan 2023 17:26:33 MST
+  Endpoint:              tcp://127.0.0.1:16001
+  Host ID:               hst_DHei2VpkBH
+  Scope ID:              p_VF6GGqKxMz
+  Session ID:            s_mraN5QJr7t
+  Target ID:             ttcp_wtXnow8Krb
+  Type:                  tcp
+  User ID:               u_1234567890
+```
+
+Copy the generated `Authorization Token` value.
+
+<Note>
+
+ In the absence of `-host-id` flag, Boundary will pick a host from
+the host set. If there is more than one host in the host set attached to the
+target, one is selected automatically.
+
+</Note>
+
+```shell-session
+$ boundary connect -authz-token=<authorization_token>
+```
+
+**Example:**
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary connect -authz-token="3vYggdcgyASTqU5dvh8vXLkohH9e3PzPyLLoZUXaVFFu4kDFSjoMDx5SzH5X7yjNdF4K6SkVxhAKjhK3fFufFUs7GUxfMVsPC6YdA6gp57FqzGSogRVjGpi4LtsqgedE4GpHzfkV3bYkz8YxqLbpBRV4ZtPSmvtvTxJZtLXZLSzpeWvJdB2r5Gq7uhqEe81aMUZKEZcwd5TpS79VwKnD3USyw9mdo7SNbe32G6Vru3BMgQRk5KYX7QUNJUCUVAzmMp9m2G7jDpzZUW7dyvq58rpYwGGVZYRjuwF87KN3i34o6oJ7kUSYr1vvd58JjVzsWncEpAGMxyt9RcHd4vKgDyYbV5gdHHfKdMyDBB7NFAXXzRjCXeF8k7yFZ2rT973dBBpN4GyGcF1Xq9YfMRAE2QTXC9noJ2zdadruQoWZRsRpWm3mdLbiXWXE4AtGkTG6eyQ2bgyBK8BmZk3k4AJrkzpMAcSd8NfCcAFaPnvpGZgAMMBz2sZJ6CBahxeW1A55ccqBVgT95ZL77wBA57Pmia4Hfz38KpbeTtwDBK6CuW16C1aRGnwzajwsFeYSL4vJgLfDhJvjkfKK5mLwYJtcp2gVqxbQMZvDSqGXM1TQHC8g74JfpxLE6oQEBZ7yjGWT32zd4kaQufceN7biiZAJSiVqxPGpRGfgMcW4ZLTq8DALWtviA1p4aFJETzedDoJ4c16wnL2GoHgHtsT7xUjZvKq7v659Psg55iKgNQmrt2ubHoU3GcLK54UQ7ho27wMZdPgSu6Xv2nUjcG7f6CaaDkYgCKTq1b"
+
+Proxy listening information:
+  Address:             127.0.0.1
+  Connection Limit:    -1
+  Expiration:          Wed, 25 Jan 2023 01:26:33 MST
+  Port:                61617
+  Protocol:            tcp
+  Session ID:          s_mraN5QJr7t
+```
+
+</CodeBlockConfig>
+
+With the above address and port information, you can connect to the local proxy
+and have your tcp traffic sent through the Boundary system.
+
+Copy the **Port** (such as `61617`) and note the **Address** (`127.0.0.1`).
+
+**Open a new terminal window.**
+
+Attempt to establish an ssh session to the postgres container again.
+
+When prompted, enter the sampledb password `secret`.
+
+```shell-session
+$ psql -h 127.0.0.1 -p 61617 -d sampledb -U postgres
+Password for user postgres:
+psql (14.2, server 15.1 (Debian 15.1-1.pgdg110+1))
+WARNING: psql major version 14, server major version 15.
+         Some psql features might not work.
+Type "help" for help.
+
+sampledb=#
+```
+
+Practice cancelling the session, [as demonstrated before](#cancel-a-session).
+
+## Summary
+
+The [Manage Scopes](/boundary/tutorials/oss-administration/oss-manage-scopes) tutorial demonstrated
+the steps to create a new org (`IT_Support`) and a project (`QA_Tests`) under
+the org.
+
+The [Manage Targets](/boundary/tutorials/oss-administration/oss-manage-targets) tutorial demonstrated
+the creation of a host catalog, a host set, and hosts. Then, associated the host
+set to a target.
+
+You also enabled a new authorization method (`password`) for the `IT_Support`
+org and created a new user in the [Manage Users and
+Groups](/boundary/tutorials/oss-administration/oss-manage-users-groups) tutorial. The [Manage Roles and
+Permissions](/boundary/tutorials/oss-administration/oss-manage-roles) tutorial showed you how to create
+a role and assign a grant which specifies a set of permissions.
+
+Finally, this tutorial demonstrated session management based on the target you
+defined for the `QA_Tests` project.
+
+To continue learning about Boundary, check out the [Self-Hosted Administration Workflows](/boundary/tutorials/oss-configuration).

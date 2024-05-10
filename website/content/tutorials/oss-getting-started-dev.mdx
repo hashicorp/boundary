@@ -1,0 +1,454 @@
+---
+id: 14acd2c2-a823-432e-8f16-0188667df240
+name: Start a development environment
+short_name: Start a development environment
+description: Start and authenticate to a local Boundary dev environment.
+read_time: 8
+products_used:
+  - product: boundary
+    min_version: 0.2.1
+    max_version: 0.12.0
+default_collection_context: boundary/oss-getting-started
+hands_on_lab_id: hashicorp-learn/tracks/getting-started-with-boundary?token=em_nV14ChnpFggxWmeW
+hands_on_lab_provider: instruqt
+---
+
+In this tutorial, you will start Boundary in dev mode and authenticate as the
+admin user.
+
+Boundary provides a dev mode to enable quick testing and exploration. Dev mode
+provides admin credentials for password authentication.
+
+## Prerequisites
+
+1. [Docker](https://docs.docker.com/get-docker/) is installed
+1. A route to download the [Postgres Docker image](https://hub.docker.com/_/postgres) image or a local image cached
+1. A [Boundary binary](/boundary/install/) in your `PATH`
+
+<InteractiveLabCallout />
+
+## Start a dev environment
+
+A deployment of a highly available (HA) Boundary service requires multiple
+**controllers** and **workers** to construct a cluster.
+
+![Boundary components](/img/boundary/boundary-components-min.png)
+
+- **Controllers** are responsible for understanding configuration,
+  authenticating and authorizing users, and serving user API requests (e.g. to
+  initiate a session).
+
+- Boundary clusters require an accessible **key management service** (KMS) and
+  **database** shared by controllers. Boundary's database maintains the state of
+  Boundary's resources, identities, and access policies. Boundary's KMS is
+  customer-defined and serves as Boundary's root-of-trust for at-rest and
+  in-transit encryption.
+
+- **Workers** are responsible for the actual session recording/proxying
+  capability and other tasks that involve storage.
+
+Dev mode brings up a fully functioning instance of Boundary which includes:
+
+- A controller server
+- A worker server
+- A Postgres database
+
+These components are ephemeral; therefore, data is not persisted and convenient
+for quick testing.
+
+<Warning>
+
+Dev mode is not suitable for production environments.
+
+</Warning>
+
+Check the help message for `boundary dev` command.
+
+```shell-session
+$ boundary dev -h
+```
+
+There are optional flags available to configure Boundary environment through the
+command line.
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+Usage: boundary dev [options]
+
+  Start a dev environment:
+
+      $ boundary dev
+
+  For a full list of examples, refer to the [documentation](/boundary/docs/configuration).
+
+Connection Options:
+
+  -addr=<string>
+      Address of the Boundary controller, as a complete URL (for example, 
+      https://boundary.example.com:9200). The address can also be specified via the
+      BOUNDARY_ADDR environment variable.
+
+  -ca-cert=<string>
+      Path on the local disk to a single PEM-encoded CA certificate to
+      verify the controller or worker server's SSL certificate. This path
+      takes precedence over -ca-path. It can also be specified via the
+      BOUNDARY_CACERT environment variable.
+
+  -ca-path=<string>
+      Path on the local disk to a directory of PEM-encoded CA certificates to
+      verify the SSL certificate of the controller. This path can also be specified
+      via the BOUNDARY_CAPATH environment variable.
+...snip...
+```
+
+</CodeBlockConfig>
+
+Start Boundary in development mode.
+
+```shell-session
+$ boundary dev
+
+==> Boundary server configuration:
+
+           [Controller] AEAD Key Bytes: y5bkQ1jrxSKf5Pf2UUVDFoiAxG/Ykg2y
+             [Recovery] AEAD Key Bytes: 2Z2/Wvo3tFFrJLdIVxdWk6ScA+pJd/O5
+          [Worker-Auth] AEAD Key Bytes: FbHNA/809fN8PsvtBQFrrq2SA2EPDX5J
+                  [Recovery] AEAD Type: aes-gcm
+                      [Root] AEAD Type: aes-gcm
+       [Worker-Auth-Storage] AEAD Type: aes-gcm
+               [Worker-Auth] AEAD Type: aes-gcm
+                                   Cgo: disabled
+        Controller Public Cluster Addr: 127.0.0.1:9201
+                Dev Database Container: objective_morse
+                      Dev Database Url: postgres://postgres:password@localhost:32768/boundary?sslmode=disable
+            Generated Admin Login Name: admin
+              Generated Admin Password: password
+             Generated Host Catalog Id: hcst_1234567890
+                     Generated Host Id: hst_1234567890
+                 Generated Host Set Id: hsst_1234567890
+         Generated Oidc Auth Method Id: amoidc_1234567890
+                Generated Org Scope Id: o_1234567890
+     Generated Password Auth Method Id: ampw_1234567890
+            Generated Project Scope Id: p_1234567890
+      Generated Target With Address Id: ttcp_1234567890
+  Generated Target With Host Source Id: ttcp_0987654321
+     Generated Unprivileged Login Name: user
+       Generated Unprivileged Password: password
+                            Listener 1: tcp (addr: "127.0.0.1:9200", cors_allowed_headers: "[]", cors_allowed_origins: "[*]", cors_enabled: "true", max_request_duration: "1m30s", purpose: "api")
+                            Listener 2: tcp (addr: "127.0.0.1:9201", max_request_duration: "1m30s", purpose: "cluster")
+                            Listener 3: tcp (addr: "127.0.0.1:9203", max_request_duration: "1m30s", purpose: "ops")
+                            Listener 4: tcp (addr: "127.0.0.1:9202", max_request_duration: "1m30s", purpose: "proxy")
+                             Log Level: info
+                                 Mlock: supported: false, enabled: false
+                               Version: Boundary v0.12.0
+                           Version Sha: 034f27ec8528251ce23b5afbf3851c48b0c54bec
+            Worker Auth Current Key Id: unscented-debit-pawing-neatly-award-favorably-amigo-player
+              Worker Auth Storage Path: /var/folders/8g/4dnhwwzx2d771tkklxwrd0380000gp/T/nodeenrollment2899128441
+              Worker Public Proxy Addr: 127.0.0.1:9202
+
+==> Boundary server started! Log data will stream in below:
+
+{
+  "id": "TdP8QniOgA",
+  "source": "https://hashicorp.com/boundary/robinbeck-C02DRAWTMD6R/controller+worker",
+  "specversion": "1.0",
+  "type": "system",
+  "data": {
+    "version": "v0.1",
+    "op": "github.com/hashicorp/boundary/internal/observability/event.(*HclogLoggerAdapter).writeEvent",
+    "data": {
+      "@original-log-level": "none",
+      "@original-log-name": "aws",
+      "msg": "configuring client automatic mTLS"
+    }
+  },
+  "datacontentype": "text/plain",
+  "time": "2023-02-10T11:38:19.46364-07:00"
+}
+
+...snip...
+```
+
+<Accordion heading='Troubleshooting "Error creating dev database container" on Windows' collapse>
+
+<Warning>
+
+On Windows systems you may encounter the following error when running
+`boundary dev`:
+
+</Warning>
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary dev
+
+Error creating dev database container: unable to start dev database with dialect postgres: could not start resource: : Post "http://localhost:2375/images/create?fromImage=postgres&tag=12": dial tcp [::1]:2375: connectex: No connection could be made because the target machine actively refused it.
+```
+
+</CodeBlockConfig>
+
+<Warning>
+
+If the error is similar to the one printed above, the Docker daemon may need
+to be exposed on port 2375 without TLS.
+
+</Warning>
+
+Open Docker Desktop, and navigate to the **Settings** panel by clicking on the gear
+icon at the top-right of the screen.
+
+Under **General** settings, click the checkbox next to _Expose deamon on
+tcp://localhost:2375 without TLS_ to enable the setting. Then click **Apply &
+Restart** to restart Docker Desktop. The screenshot below shows the setting that
+should be enabled.
+
+![](/img/boundary/boundary-docker-expose-daemon-0.png)
+
+After Docker Desktop restarts, attempt running `boundary dev` again.
+
+</Accordion>
+
+Boundary starts in dev mode with default authentication credentials and
+a set of pre-defined [resources](/boundary/docs/concepts/domain-model).
+
+These admin credentials enable you to log in the Boundary console.
+
+- Generated Auth Method Id: `ampw_1234567890`
+- Generated Auth Method Login Name: `admin`
+- Generated Auth Method Password: `password`
+
+-> The default login name and password can be overwritten with `-login-name` and
+`-password` flags (e.g. `boundary dev -login-name="dev-admin" -password="p@ssw0rd"`).
+
+## Login to the Boundary console
+
+You can authenticate to the Boundary console via the Admin console or the CLI.
+
+<Tabs>
+<Tab heading="Admin console">
+
+
+1. In a browser window, navigate to the Boundary Admin console at `http://127.0.0.1:9200`
+
+   This launches the Boundary Admin console.
+
+   ![](/img/boundary/boundary-ui-login.png)
+
+1. Enter `admin` in the **Username** field.
+
+   This is the _Generated Auth Method Login Name_.
+
+1. Enter `password` in the **Password** field.
+
+   This is the _Generated Auth Method Password_.
+
+1. Click **Authenticate**.
+
+   You are presented with the _global_ scope, which contains the _Generated org scope_
+   with the ID `o_1234567890`.
+
+   ![Organizations](/img/boundary/boundary-ui-org.png)
+
+</Tab>
+
+
+<Tab heading="CLI command">
+
+
+Display the help message for `boundary authenticate` command.
+
+```shell-session
+$ boundary authenticate help
+
+Usage: boundary authenticate [sub command] [options] [args]
+
+  This command authenticates the Boundary commandline client using a specified auth method. Examples:
+
+    Authenticate with password auth method:
+
+      $ boundary authenticate password -auth-method-id ampw_1234567890 -login-name foo
+
+  Please see the auth method subcommand help for detailed usage information.
+
+Subcommands:
+    password    Invoke the password auth method to authenticate with Boundary
+```
+
+The CLI supports password authentication.
+
+Authenticate with the password method using `auth-method-id` and `login-name`. If using the default dev environment, the password will be `password`.
+
+```shell-session
+$ boundary authenticate password \
+    -auth-method-id=ampw_1234567890 \
+    -login-name=admin
+```
+
+- The `auth-method-id` is the Generated Auth Method Id: `ampw_1234567890`
+- The `login-name` is the Generated Auth Method Login Name: `admin`
+- The `password` is the Generated Auth Method Password: `password`
+
+**Example output:**
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+Authentication information:
+  Account ID:      acctpw_1234567890
+  Auth Method ID:  ampw_1234567890
+  Expiration Time: Mon, 13 Dec 2021 11:20:22 MST
+  User ID:         u_1234567890
+
+The token was successfully stored in the chosen keyring and is not displayed here.
+```
+
+</CodeBlockConfig>
+
+The login saves a token to the KMS running on the system. Future requests use
+this token to authenticate until it expires.
+
+You can also utilize Boundary's environment variables to make authentication
+simpler.
+
+Export the following environment variables:
+
+- `BOUNDARY_ADDR`: The controller address, `http://127.0.0.1:9200` in dev mode
+- `BOUNDARY_AUTH_METHOD_ID`: The generated password auth method ID,
+  `ampw_1234567890` in dev mode
+
+```shell-session
+$ export BOUNDARY_ADDR="http://127.0.0.1:9200"
+```
+
+```shell-session
+$ export BOUNDARY_AUTH_METHOD_ID="ampw_1234567890"
+```
+
+Log into the CLI as the admin user, providing the `admin` username and password
+`password` when prompted.
+
+```shell-session
+$ boundary authenticate
+Please enter the login name (it will be hidden):
+Please enter the password (it will be hidden):
+Authentication information:
+  Account ID:      acctpw_VOeNSFX8pQ
+  Auth Method ID:  ampw_wxzojlKJLN
+  Expiration Time: Mon, 13 Feb 2023 12:35:32 MST
+  User ID:         u_1vUkf5fPs9
+The token was successfully stored in the chosen keyring and is not displayed here.
+```
+
+When using Boundary in the future, keep in mind that auth methods can be set up
+at different scopes. To log into a differnt scope, you may need to set a
+different `BOUNDARY_AUTH_METHOD_ID` shell variable, or pass it as the
+`auth-method-id` option when executing `boundary authenticate`.
+
+</Tab>
+</Tabs>
+
+
+## Troubleshooting
+
+Boundary clusters require an accessible **key management service** (KMS). An
+error may occur if this service is not running.
+
+-> If you are having problems logging in with `boundary authenticate`,
+especially on Unix-like operating systems other than MacOS, you may be having
+problems with your local key store. See the [Deploy and Login to
+Boundary](/boundary/docs/getting-started/deploy-and-login)
+page in Boundary's documentation for more details.
+
+Click on the error message below for step-by-step solutions to continue the
+Getting Started tutorials.
+
+<Accordion heading="ERROR MESSAGE: Error reading auth token from system
+credential store" collapse="true">
+
+
+In a Unix shell this error implies that the freedesktop.org Secret Service
+implementation is not available. To fix this issue you can either bypass the
+keyring or enable the system KMS.
+
+### Method 1: Bypass the keyring
+
+The CLI can bypass the operating system's keyring manager by overriding the
+keyring type and managing the token in the environment variable.
+
+Set the `BOUNDARY_TOKEN` environment variable to the authentication token.
+
+~> If you are using Boundary 0.9.1 or lower, use this command:
+
+```shell-session
+$ export BOUNDARY_TOKEN=$(boundary authenticate password \
+  -auth-method-id=ampw_1234567890 \
+  -login-name=admin \
+  -password=password \
+  -keyring-type=none \
+  -format=json | jq -r ".item.attributes.token")
+```
+
+~> If you are using Boundary 0.10.0 or higher, use these commands:
+
+```shell-session
+$ export BOUNDARY_PASS=password
+$ export BOUNDARY_TOKEN=$(boundary authenticate password \
+  -auth-method-id=ampw_1234567890 \
+  -login-name=admin \
+  -password=env://BOUNDARY_PASS \
+  -keyring-type=none \
+  -format=json | jq -r ".item.attributes.token")
+```
+
+
+The keyring is bypassed by setting `keyring-type` to disabled (`none`). The
+results are formatted to json `-format=json`, and parsed by `jq` for the `token`
+value.
+
+### Method 2: Enable the system KMS
+
+You can fix this error by installing the `dbus-x11` and `gnome-keyring` packages
+and manually invoking the keyring daemon.
+
+On Ubuntu, install the `dbus-x11` and `gnome-keyring` packages.
+
+```shell-session
+$ sudo apt install dbus-x11 gnome-keyring
+```
+
+Create the variable `KEYRING_PASSWORD` with a password.
+
+```shell-session
+$ KEYRING_PASSWORD="FOOBAR\n"
+```
+
+~> You can prevent the password from being captured on the command line by
+running the `gnome-keyring-daemon` command directly and entering in the password
+when requested, followed by a newline (return) and an EOF (`Ctrl+D`).
+
+Substitute `FOOBAR` with a password of your choice. Leave the `\n`.
+
+Create a default keyring and unlock it with a password.
+
+```shell-session
+$ eval "$(printf '$KEYRING_PASSWORD' | gnome-keyring-daemon --unlock)"
+```
+
+Connect to the keyring daemon and initialize it with the same password.
+
+```shell-session
+$ eval "$(printf 'KEYRING_PASSWORD' | gnome-keyring-daemon --start)"
+```
+
+Run this in any shell where the Boundary CLI is invoked.
+
+</Accordion>
+
+
+## Next steps
+
+You started Boundary in dev mode and authenticated as the admin user. Next you
+will manage resources using the [Boundary admin
+console](/boundary/tutorials/oss-getting-started/oss-getting-started-console).

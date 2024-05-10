@@ -1,0 +1,351 @@
+---
+id: abf31c76-f585-4879-afc1-7e07d2b1e985
+name: Install Boundary Desktop
+short_name: Install Boundary Desktop
+description: Install the Boundary Desktop app and connect to a running controller instance.
+read_time: 10
+products_used:
+  - product: boundary
+    min_version: 1.0.0
+    max_version: 2.0.0
+default_collection_context: boundary/oss-getting-started
+---
+
+End-users of Boundary can use the Desktop app to connect to a running
+Boundary server to easily:
+
+- Browse available targets
+- Connect to targets
+- Manage active sessions
+
+Security administrators use the Boundary CLI and API to automate infrastructure
+access management, but the Desktop app makes Boundary accessible to low-code and
+no-code users. Users that establish sessions with targets often
+find the browse, connect, and manage functionality convenient for day-to-day
+operations.
+
+In this tutorial, you will install the Boundary Desktop app, start Boundary in
+dev mode and connect to a target.
+
+## Prerequisites
+
+1. A MacOS, Windows, or Linux Workstation
+1. Boundary is still running in [dev
+   mode](/boundary/tutorials/oss-getting-started/oss-getting-started-dev)
+
+## Install Boundary Desktop
+
+Boundary Desktop can be installed on MacOS, Windows, or Linux systems. Select
+the tab for your preferred OS.
+
+<Tabs>
+<Tab heading="MacOS">
+
+Boundary Desktop on MacOS can be installed by either:
+
+- The [Homebrew](https://brew.sh) package manager
+- Direct Download
+
+<Tabs>
+<Tab heading="Homebrew">
+
+[Homebrew](https://brew.sh) is a free and open-source package management system
+for macOS. Install from the official [Boundary Desktop
+cask](https://github.com/hashicorp/homebrew-tap) from the terminal.
+
+First, install the HashiCorp tap, a repository of all our Homebrew packages.
+
+```shell-session
+$ brew tap hashicorp/tap
+```
+
+Next, install Boundary Desktop with Homebrew:
+
+```shell-session
+$ brew install hashicorp-boundary-desktop
+```
+
+</Tab>
+<Tab heading="Direct Download">
+
+Download the latest .dmg installer from the [releases
+page](https://releases.hashicorp.com/boundary-desktop).
+
+1. Double-click the downloaded .dmg file to run the installer
+1. Drag-and-drop Boundary Desktop into the Applications folder
+
+![Install Boundary Desktop](/img/boundary/desktop/boundary-desktop-install.png)
+
+</Tab>
+</Tabs>
+</Tab>
+
+<Tab heading="Windows">
+
+
+Boundary Desktop on Windows can be installed via direct download of the zipped
+.exe application file.
+
+<Tabs>
+<Tab heading="Direct Download">
+
+Download the latest zipped copy of the .exe from the [releases
+page](https://releases.hashicorp.com/boundary-desktop).
+
+1. Locate the downloaded boundary-desktop zip file and extract its contents
+1. Open the unzipped `Boundary/` folder and locate the `boundary-desktop_<version>_.exe` file. You may move the application file to your Desktop, or your preferred location for quicker access
+1. Double-click the `boundary-desktop_<version>_.exe` file to launch the Desktop application
+
+![Install Boundary Desktop](/img/boundary/desktop/boundary-desktop-install-windows.png)
+
+</Tab>
+</Tabs>
+</Tab>
+
+<Tab heading="Linux">
+
+Boundary Desktop on Linux is currently only available as a .deb package, and can
+be installed via direct download of the application file.
+
+<Tabs>
+<Tab heading="Direct Download">
+
+Download the latest .deb installer from the [releases
+page](https://releases.hashicorp.com/boundary-desktop).
+
+On Debian systems either:
+
+1. Right-click the downloaded .deb file and choose `Kubuntu Package Menu ->
+   Install Package`
+1. Open a terminal and point `dpkg` to the installer file:
+   ```shell-session
+   $ sudo dpkg -i boundary-desktop_1.5.0_linux_amd64.deb
+   ```
+
+![Install Boundary Desktop Linux](/img/boundary/desktop/boundary-desktop-install-linux.png)
+
+</Tab>
+</Tabs>
+</Tab>
+
+</Tabs>
+
+
+## Start a dev environment
+
+Boundary Desktop connects with a running instance of a Boundary controller. In
+non-dev environments, Boundary Desktop would connect to this running controller
+without hosting it locally.
+
+In this tutorial, you will run a Boundary controller locally using dev mode.
+
+You already have a Boundary instance running in dev mode. If not, start it again.
+
+```shell-session
+$ boundary dev
+
+==> Boundary server configuration:
+
+           [Controller] AEAD Key Bytes: y5bkQ1jrxSKf5Pf2UUVDFoiAxG/Ykg2y
+             [Recovery] AEAD Key Bytes: 2Z2/Wvo3tFFrJLdIVxdWk6ScA+pJd/O5
+          [Worker-Auth] AEAD Key Bytes: FbHNA/809fN8PsvtBQFrrq2SA2EPDX5J
+                  [Recovery] AEAD Type: aes-gcm
+                      [Root] AEAD Type: aes-gcm
+       [Worker-Auth-Storage] AEAD Type: aes-gcm
+               [Worker-Auth] AEAD Type: aes-gcm
+                                   Cgo: disabled
+        Controller Public Cluster Addr: 127.0.0.1:9201
+                Dev Database Container: objective_morse
+                      Dev Database Url: postgres://postgres:password@localhost:32768/boundary?sslmode=disable
+            Generated Admin Login Name: admin
+              Generated Admin Password: password
+             Generated Host Catalog Id: hcst_1234567890
+                     Generated Host Id: hst_1234567890
+                 Generated Host Set Id: hsst_1234567890
+         Generated Oidc Auth Method Id: amoidc_1234567890
+                Generated Org Scope Id: o_1234567890
+     Generated Password Auth Method Id: ampw_1234567890
+            Generated Project Scope Id: p_1234567890
+      Generated Target With Address Id: ttcp_1234567890
+  Generated Target With Host Source Id: ttcp_0987654321
+     Generated Unprivileged Login Name: user
+       Generated Unprivileged Password: password
+                            Listener 1: tcp (addr: "127.0.0.1:9200", cors_allowed_headers: "[]", cors_allowed_origins: "[*]", cors_enabled: "true", max_request_duration: "1m30s", purpose: "api")
+                            Listener 2: tcp (addr: "127.0.0.1:9201", max_request_duration: "1m30s", purpose: "cluster")
+                            Listener 3: tcp (addr: "127.0.0.1:9203", max_request_duration: "1m30s", purpose: "ops")
+                            Listener 4: tcp (addr: "127.0.0.1:9202", max_request_duration: "1m30s", purpose: "proxy")
+                             Log Level: info
+                                 Mlock: supported: false, enabled: false
+                               Version: Boundary v0.14.0
+                           Version Sha: 034f27ec8528251ce23b5afbf3851c48b0c54bec
+            Worker Auth Current Key Id: unscented-debit-pawing-neatly-award-favorably-amigo-player
+              Worker Auth Storage Path: /var/folders/8g/4dnhwwzx2d771tkklxwrd0380000gp/T/nodeenrollment2899128441
+              Worker Public Proxy Addr: 127.0.0.1:9202
+
+==> Boundary server started! Log data will stream in below:
+
+{
+  "id": "TdP8QniOgA",
+  "source": "https://hashicorp.com/boundary/robinbeck-C02DRAWTMD6R/controller+worker",
+  "specversion": "1.0",
+  "type": "system",
+  "data": {
+    "version": "v0.1",
+    "op": "github.com/hashicorp/boundary/internal/observability/event.(*HclogLoggerAdapter).writeEvent",
+    "data": {
+      "@original-log-level": "none",
+      "@original-log-name": "aws",
+      "msg": "configuring client automatic mTLS"
+    }
+  },
+  "datacontentype": "text/plain",
+  "time": "2023-02-10T11:38:19.46364-07:00"
+}
+```
+
+Recall that Boundary starts in dev mode with default authentication credentials and
+a set of pre-defined [resources](/boundary/docs/concepts/domain-model).
+
+These admin credentials enable you to log into the Boundary console.
+
+- Generated Auth Method Login Name: `admin`
+- Generated Auth Method Password: `password`
+
+-> The default login name and password can be overwritten with `-login-name` and
+`-password` flags (e.g. `boundary dev -login-name="dev-admin" -password="p@ssw0rd"`).
+
+If you have any trouble getting dev mode to start properly, refer back to the
+[Start a Development Environment](/boundary/tutorials/oss-getting-started/oss-getting-started-dev)
+tutorial and then come back here.
+
+## Authenticate with Boundary Desktop
+
+Next you will launch the Boundary Desktop app and connect it to the running
+controller.
+
+1. Open the Boundary Desktop app installed earlier.
+
+   You will be prompted for the Boundary Cluster URL, which is the URL for the
+   client to connect to the controller via the Boundary API. Running in dev
+   mode, this will be `http://127.0.0.1:9200`
+
+   ![Boundary Desktop URI](/img/boundary/desktop/desktop-cluster-url_light.png#light-theme-only)
+   ![Boundary Desktop URI](/img/boundary/desktop/desktop-cluster-url_dark.png#dark-theme-only)
+
+1. Select the `Global` scope. In non-dev environments you would select the
+   scope you have been provided access credentials for.
+
+1. Select **Generated global scope initial password auth method**. In non-dev environments, you may have the option to select a different auth method.
+
+1. Enter `admin` in the **Login Name** field.
+
+   This is the _Generated Auth Method Login Name_.
+
+1. Enter `password` in the **Password** field.
+
+   This is the _Generated Auth Method Password_.
+
+1. Click **Sign In**.
+
+   ![Boundary Desktop Login](/img/boundary/desktop/desktop-login_light.png#light-theme-only)
+   ![Boundary Desktop Login](/img/boundary/desktop/desktop-login_dark.png#dark-theme-only)
+
+   You are presented with the _Targets_ view, which contains a target generated using a direct address and a target generated using host sources. The _Generated target with a direct address_ with the ID `ttcp_1234567890` is the default target enabled by
+   dev mode on your localhost.
+
+   ![Initial Targets](/img/boundary/desktop/desktop-targets-initial_light.png#light-theme-only)
+   ![Initial Targets](/img/boundary/desktop/desktop-targets-initial_dark.png#dark-theme-only)
+
+## Connect to a target
+
+Next you will connect to the default target using the Desktop app.
+
+1. Establish a connection
+
+   Click on **Connect** next to the default target.
+
+   You will be presented with a screen that displays the target's connection
+   info. You can copy the connection details to your clipboard by clicking the
+   buttons to the right of the **Address & port** or **SSH** fields.
+
+   ![Connection Details](/img/boundary/desktop/desktop-connection-details_light.png#light-theme-only)
+   ![Connection Details](/img/boundary/desktop/desktop-connection-details_dark.png#dark-theme-only)
+
+1. Copy the target's connection details
+
+   In this example, we are using SSH to connect. On the **Details** tab, select **SSH** and then click the copy button.
+
+   ![Copy Connection Details](/img/boundary/desktop/desktop-copy-connection-details_light.png#light-theme-only)
+   ![Copy Connection Details](/img/boundary/desktop/desktop-copy-connection-details_dark.png#dark-theme-only)
+
+1. View the pending connection
+
+   Navigate to the _Sessions_ view using the sidebar on the
+   left. Notice that the status for the Generated target has been updated to
+   `Pending`.
+
+   ![Pending Target Connection](/img/boundary/desktop/desktop-sessions-pending_light.png#light-theme-only)
+   ![Pending Target Connection](/img/boundary/desktop/desktop-sessions-pending_dark.png#dark-theme-only)
+
+1. Start an SSH session
+
+   Select the ID of the target, and then select the **>_ Shell** tab. Paste the information you copied into the shell and run it. Enter your local administrator
+   password when prompted to connect to the localhost target.
+
+   ![SSH Connection Established](/img/boundary/desktop/desktop-ssh-connection_light.png#light-theme-only)
+   ![SSH Connection Established](/img/boundary/desktop/desktop-ssh-connection_dark.png#dark-theme-only)
+
+   -> Issues connecting or disconnects right after entering your password could
+   be due to SSH restrictions on your local machine. Using **System
+   Preferences** in MacOS, click **Sharing**, ensure that **Remote Login** is
+   enabled, and check the **Allow access for** section to make sure that your
+   user has the correct permissions to log in.
+
+   Once connected, the _Sessions_ view in the Boundary Desktop app should show the
+   Generated target's status has been updated to `Active`.
+
+   ![Pending Target Connection](/img/boundary/desktop/desktop-sessions-active_light.png#light-theme-only)
+   ![Pending Target Connection](/img/boundary/desktop/desktop-sessions-active_dark.png#dark-theme-only)
+
+1. Terminate the connection
+
+   You can close the active session directly from the Boundary Desktop app.
+
+   Under the _Sessions_ view, click **Cancel** to the right of the status for
+   the Generated target. The status will update to `Canceling` and a
+   confirmation dialog should appear to verify the successful session
+   termination.
+
+   ![Terminate Target Connection](/img/boundary/desktop/desktop-sessions-cancelled_light.png#light-theme-only)
+   ![Terminate Target Connection](/img/boundary/desktop/desktop-sessions-cancelled_dark.png#dark-theme-only)
+
+1. Clean up
+
+   Shutdown the dev environment by navigating back to the terminal session used
+   to run `boundary dev`, and enter the `ctrl+c` keystroke to shutdown the dev
+   server.
+
+   <CodeBlockConfig hideClipboard>
+
+   ```shell-session
+   ^C==> Boundary dev environment shutdown triggered
+   T13:45:14.835-0600 [INFO]  worker: status ticking shutting down
+   T13:45:14.836-0600 [INFO]  controller: recovery nonce ticking shutting down
+   T13:45:14.836-0600 [INFO]  controller: terminating completed sessions ticking shutting down
+   T13:45:14.836-0600 [INFO]  controller: status ticking shutting down
+   $
+   ```
+
+   </CodeBlockConfig>
+
+## Next steps
+
+You installed the Boundary Desktop app, connected to a running controller and
+viewed and managed an SSH session using the app. The Desktop app is typically
+used for session management, while the Admin console is used for administrative
+tasks like defining and managing Users, Groups, Roles, Projects and Host
+Catalogs.
+
+The next step is to [configure](/boundary/tutorials/oss-getting-started/oss-getting-started-config) and
+manage targets that your organization wishes to protect. The recommended
+approach is to use Terraform to codify the Boundary configuration.

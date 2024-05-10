@@ -1,0 +1,4739 @@
+---
+id: 836fef2c-5541-4770-aa52-16630c7d7b03
+name: LDAP authentication
+short_name: LDAP authentication
+description: |-
+  Instructions to configure the Lightweight Directory Access Protocol (LDAP)
+  authentication method with Boundary.
+read_time: 18
+products_used:
+  - product: boundary
+    min_version: 0.14.0
+    max_version: 0.14.2
+default_collection_context: boundary/identity-management
+variants:
+  - slug: boundary-deploy
+    options:
+      - hcp
+      - dev
+---
+
+[Lightweight Directory Access Protocol](https://ldap.com/) (LDAP) is a
+standards-based protocol that sits on top of TCP/IP and allows clients to
+perform a variety of operations in a directory server, including storing and
+retrieving data, searching for data matching a given set of criteria,
+authenticating clients, and more. LDAP is an open, vendor-neutral application
+protocol for accessing and maintaining that directory data.
+
+Boundary now includes an LDAP auth method which allows Boundary to delegate
+authentication to an LDAP directory.  The first time a user successfully
+authenticates using an LDAP auth method, a new LDAP account is created using the
+user’s account login name.  If groups are enabled for an LDAP auth method, then
+each time a user authenticates their account’s group memberships are updated in
+Boundary.  LDAP managed groups allow administrators to assign roles within
+Boundary based on an LDAP account’s group memberships.
+
+This tutorial provides an example of setting up LDAP as an authentication method
+for Boundary using HCP Boundary or Boundary's dev mode.
+
+### LDAP authentication method overview
+
+1. [Get setup](#get-setup)
+1. [LDAP setup](#ldap-setup)
+1. [Create an auth method](#auth-method-creation)
+1. [Authentication states](#authentication-states)
+1. [Authenticate a user](#authenticate-using-ldap)
+1. [Define a managed group](#define-a-managed-group)
+
+## Prerequisites
+
+- A [Boundary binary](/boundary/install/) greater than
+  0.14.0 in your `PATH`
+
+- This tutorial assumes you can [connect to an HCP Boundary
+  cluster](/boundary/tutorials/hcp-getting-started/hcp-getting-started-console)
+  **or** launch Boundary in [dev
+  mode](/boundary/tutorials/oss-getting-started/oss-getting-started-dev).
+
+- `git` is required for cloning repositories used in the scenario.
+
+- Installing [Terraform 0.13.0 or greater](/terraform/tutorials/aws-get-started/install-cli)
+  provides an optional workflow for this tutorial. The binary must be available
+  in your `PATH`.
+
+- Access to the [online LDAP test
+  server](https://www.forumsys.com/2022/05/10/online-ldap-test-server/)
+
+**OR**
+
+- A Windows environment with Active Directory. This scenario uses the community
+  based [Vagrant environment for a Windows Server based Active
+  Directory](https://github.com/splitbrain/vagrant-active-directory) project.
+
+- [Vagrant](/vagrant/install) 2.2 or newer is required if you choose to use the
+  Vagrant environment for an Active Directory Server. This scenario was last
+  tested with version 2.3.7.
+
+- [VirtualBox](https://www.virtualbox.org/) 6.1.34 or newer is also needed if
+  using the Vagrant environment for an Active Directory Server.
+
+- If you follow along on a Linux based host, you will need `xdg-open`.
+  Sometimes this utility is part of an xdg-utils meta-package that you can
+  install with your OS package manager. Check your distribution specific
+  documentation for details on how to install `xdg-open`.
+
+<Note>
+
+ If you use the Vagrant environment for Windows paired with HCP Boundary, a free
+[ngrok](https://ngrok.com/) account is also required to create a publicly
+routable address. Instructions for installing and configuring ngrok are provided
+later on.
+
+</Note>
+
+## Get setup
+
+In this tutorial, you will test the LDAP auth method using HCP Boundary or by
+running a Boundary controller locally using dev mode.
+
+<Variant slug="boundary-deploy" option="hcp">
+
+The [HCP Quickstart](/boundary/tutorials/hcp-getting-started) tutorials provide
+an overview of getting started with an HCP Boundary cluster.
+
+If you have an HCP Boundary cluster deployed, the [Access HCP
+Boundary](/boundary/tutorials/hcp-getting-started/hcp-getting-started-console)
+tutorial provides an overview of configuring your local machine to authenticate
+with your HCP cluster.
+
+This tutorial currently provides Admin Console UI and CLI workflows for setting
+up LDAP authentication.
+
+<Tabs>
+<Tab heading="Admin UI" group="admin">
+
+To proceed with the UI workflow:
+
+1. Open the Admin Console UI by entering your HCP Boundary Cluster URL into a
+   browser (such as
+   `https://e58fe114-7624-431c-994d-b6670e90b03J.boundary.hashicorp.cloud`).
+
+1. Enter the admin login name and password you created when you deployed the new
+   instance and click **Sign In**.
+
+![Admin UI Login](/img/boundary/boundary-ui-login-hcp_light.png#light-theme-only)
+![Admin UI Login](/img/boundary/boundary-ui-login-hcp_dark.png#dark-theme-only)
+
+You are now logged into your HCP Boundary instance's **Global** scope via the
+web UI. This is the default scope for all new Boundary clusters. You can now
+proceed to the [Providers](#providers) section to proceed with the Admin Console
+UI workflow.
+
+</Tab>
+<Tab heading="CLI" group="cli">
+
+To proceed with the CLI workflow:
+
+1. Return to the HCP web Portal **Boundary** page, then click the copy icon for
+   the **Cluster URL** in the **Getting started with Boundary** section.
+
+   In your terminal, **set the `BOUNDARY_ADDR` environment variable** to the
+   copied URL.
+
+   ```shell-session
+   $ export BOUNDARY_ADDR=<actual-boundary-address>
+   ```
+
+1. Log in with the administrator credentials you created when you deployed the
+   HCP Boundary instance. Enter your password at the `Please enter the password
+   (it will be hidden):` prompt.
+
+   ```shell-session
+   $ boundary authenticate -login-name admin
+   Please enter the password (it will be hidden):
+
+   Authentication information:
+     Account ID:      acctpw_FfOfCS1d5K
+     Auth Method ID:  ampw_YfIUt060sp
+     Expiration Time: Fri, 30 Sep 2022 11:25:48 MDT
+     User ID:         u_RapeEBo5Uf
+
+   The token was successfully stored in the chosen keyring and is not displayed here.
+   ```
+
+1. Take note of the **Auth Method ID** from the output. Export it as the
+   `ADMIN_AUTH_METHOD_ID` variable for use later on.
+
+   ```shell-session
+   $ export ADMIN_AUTH_METHOD_ID=ampw_7c7W19uiez
+   ```
+
+   You are now logged into your HCP Boundary instance's **Global** scope via the
+   CLI. This is the default scope for all new Boundary clusters.
+
+</Tab>
+<Tab heading="Terraform" group="terraform">
+
+To proceed with the Terraform workflow:
+
+The following values are needed to set up the [Boundary Terraform
+provider](https://registry.terraform.io/providers/hashicorp/boundary). The
+`auth_method_login_name` and `auth_method_password` are
+created when first [setting up HCP
+Boundary](/boundary/tutorials/hcp-getting-started/hcp-getting-started-create), and the others can be
+gathered from the HCP portal or the Boundary Admin Console UI.
+
+- `addr` (from HCP portal)
+- `auth_method_id` (from Boundary Admin Console UI)
+- `auth_method_login_name` (from initial Boundary Cluster creation)
+- `auth_method_password` (from initial Boundary Cluster creation)
+- `scope_id` (global scope from Boundary Admin Console UI)
+
+Locate these values and have them ready for setting up the Terraform config
+files later on.
+
+</Tab>
+</Tabs>
+
+</Variant>
+<Variant slug="boundary-deploy" option="dev">
+
+Start Boundary in dev mode:
+
+```shell-session
+$ boundary dev
+==> Boundary server configuration:
+
+                        [Bsr] AEAD Key Bytes: Y2Qkr9cXlX+e16tuGh60rCj9D7pTZ6qi
+                 [Controller] AEAD Key Bytes: CL643Nlmlu3DufHZSfpRJMiR7i/Be4PD
+                   [Recovery] AEAD Key Bytes: 1jlRWVEBmsL05139sQcyq4uJTdrHFtiM
+                [Worker-Auth] AEAD Key Bytes: B9pPVoojYCb2ADdu5V3GxEolYjS31mxU
+                             [Bsr] AEAD Type: aes-gcm
+                        [Recovery] AEAD Type: aes-gcm
+                            [Root] AEAD Type: aes-gcm
+             [Worker-Auth-Storage] AEAD Type: aes-gcm
+                     [Worker-Auth] AEAD Type: aes-gcm
+                                         Cgo: disabled
+              Controller Public Cluster Addr: 127.0.0.1:9201
+                      Dev Database Container: beautiful_curran
+                            Dev Database Url: postgres://postgres:password@localhost:55000/boundary?sslmode=disable
+                  Generated Admin Login Name: admin
+                    Generated Admin Password: password
+                   Generated Host Catalog Id: hcst_1234567890
+                           Generated Host Id: hst_1234567890
+                       Generated Host Set Id: hsst_1234567890
+  Generated Ldap Auth Method Base Search DNs: users="ou=people,dc=example,dc=org" groups="ou=groups,dc=example,dc=org"
+        Generated Ldap Auth Method Host:Port: 127.0.0.1:63165 (does not have a root DSE; use simple bind)
+               Generated Ldap Auth Method Id: amldap_1234567890
+               Generated Oidc Auth Method Id: amoidc_1234567890
+                      Generated Org Scope Id: o_1234567890
+           Generated Password Auth Method Id: ampw_1234567890
+                  Generated Project Scope Id: p_1234567890
+            Generated Target With Address Id: ttcp_1234567890
+        Generated Target With Host Source Id: ttcp_0987654321
+           Generated Unprivileged Login Name: user
+             Generated Unprivileged Password: password
+                                  Listener 1: tcp (addr: "127.0.0.1:9200", cors_allowed_headers: "[]", cors_allowed_origins: "[*]", cors_enabled: "true", max_request_duration: "1m30s", purpose: "api")
+                                  Listener 2: tcp (addr: "127.0.0.1:9201", max_request_duration: "1m30s", purpose: "cluster")
+                                  Listener 3: tcp (addr: "127.0.0.1:9203", max_request_duration: "1m30s", purpose: "ops")
+                                  Listener 4: tcp (addr: "127.0.0.1:9202", max_request_duration: "1m30s", purpose: "proxy")
+                                   Log Level: info
+                                       Mlock: supported: false, enabled: false
+                                     Version: Boundary v0.14.2
+                                 Version Sha: a86ee182c2853913f019c2559f1451d926235707
+                  Worker Auth Current Key Id: surrender-flaky-exemption-phrasing-skillet-huskiness-president-fit
+                    Worker Auth Storage Path: (in-memory)
+                    Worker Public Proxy Addr: 127.0.0.1:9202
+
+==> Boundary server started! Log data will stream in below:
+
+{
+  "id": "mM9ggiN06v",
+  "source": "https://hashicorp.com/boundary/robinbeck-C02DRAWTMD6R/controller+worker",
+  "specversion": "1.0",
+  "type": "system",
+  "data": {
+    "version": "v0.1",
+    "op": "github.com/hashicorp/boundary/internal/event.(*HclogLoggerAdapter).writeEvent",
+    "data": {
+      "@original-log-level": "none",
+      "@original-log-name": "aws",
+      "msg": "configuring client automatic mTLS"
+    }
+  },
+...
+... More log output ...
+...
+```
+
+Leave dev mode running in the current session, and open a new terminal window or
+tab.
+
+Authenticate to the local Boundary dev server. Enter the password `password`
+when prompted.
+
+```shell-session
+$ boundary authenticate
+Please enter the login name (it will be hidden):
+Please enter the password (it will be hidden):
+
+Authentication information:
+  Account ID:      acctpw_AnOiGVNB62
+  Auth Method ID:  ampw_7c7W19uiez
+  Expiration Time: Tue, 10 Oct 2023 18:14:50 MDT
+  User ID:         u_PtOpf9SyEk
+
+The token was successfully stored in the chosen keyring and is not displayed here.
+```
+
+Take note of the **Auth Method ID** from the output. Export it as the
+`ADMIN_AUTH_METHOD_ID` variable for use later on.
+
+```shell-session
+$ export ADMIN_AUTH_METHOD_ID=ampw_1234567890
+```
+
+</Variant>
+
+### LDAP setup
+
+To enable an LDAP auth method an administrator must first configure their LDAP
+server, and then Boundary.
+
+If you do not want to set up an LDAP server, this tutorial provides a workflow
+using an [online LDAP test
+server](https://www.forumsys.com/2022/05/10/online-ldap-test-server/).
+
+Alternatively, you can use Vagrant to set up Active Directory by selecting
+the Active Directory tab below. For HCP Boundary,
+[ngrok](https://ngrok.com/) is also required to expose the local LDAP server to
+Boundary.
+
+<Note>
+
+ Be aware that using ngrok creates a publicly routable address for the postgres
+container. If you do not wish to use ngrok, consider using the online LDAP test
+server, or running Boundary in dev mode.
+
+</Note>
+
+If you want to use your own development LDAP server, you will need the
+appropriate configuration information about the LDAP server you wish to use. For an
+exhaustive list of configuration parameters, refer to: [LDAP auth method
+attributes](/boundary/docs/concepts/domain-model/auth-methods#ldap-auth-method-attributes).
+
+Select a workflow to continue the tutorial.
+
+<Tabs>
+<Tab heading="LDAP test server" group="test">
+
+You can use an [online LDAP test
+server](https://www.forumsys.com/2022/05/10/online-ldap-test-server/) provided
+by forumsys.com to complete this tutorial without setting up an LDAP
+server. To deploy an LDAP server using Active Directory instead, select the
+`Active Directory` tab.
+
+The online LDAP server at ldap.forumsys.com is a public, read-only test server.
+In this public server, all user passwords are `password`. You may also bind to
+individual Users (`uid`).
+
+The following group is also provided, and will be used to test Boundary's
+managed group access:
+
+`ou=scientists,dc=example,dc=com`
+- `einstein`
+- `newton`
+- `galieleo`
+- `tesla`
+
+</Tab>
+<Tab heading="Active Directory" group="ad">
+
+You will use a terminal session and command line to start an Active Directory
+virtual machine.
+
+Open a new terminal session to begin the lab setup.
+
+For ease of cleanup and simplicity, create a directory to contain all required
+configuration for the scenario. This example sets up the working directory in
+the users home directory `~/`, but you can create it elsewhere too.
+
+```shell-session
+$ mkdir ~/learn-boundary-ldap-auth/
+```
+
+Change into this directory; you will execute all scenario commands on the local
+host from this directory or one of its descendants.
+
+```shell-session
+$ cd learn-boundary-ldap-auth/
+```
+
+#### Windows Server with Active Directory
+
+To set up your Windows Server environment with Active Directory environment,
+clone the
+[vagrant-active-directory](https://github.com/splitbrain/vagrant-active-directory)
+community project repository.
+
+```shell-session
+$ git clone https://github.com/splitbrain/vagrant-active-directory.git
+```
+
+Change into the project directory.
+
+```shell-session
+$ cd vagrant-active-directory
+```
+
+<Note>
+
+ If you are using VirtualBox version 6.1.26 or later, you need to add additional
+ configuration to support the `host-only` network adapter configured with this
+ Vagrant box.
+
+</Note>
+
+Create a directory for the extra VirtualBox network configuration.
+
+```shell-session
+$ sudo mkdir /etc/vbox
+```
+
+Write the configuration file.
+
+```shell-session
+$ sudo sh -c 'cat << EOF > /etc/vbox/networks.conf
+* 10.0.0.0/8 192.168.0.0/16
+* 2001::/64
+EOF'
+```
+
+Start the virtual machine with Vagrant.
+
+```shell-session
+$ vagrant up
+```
+
+<Note>
+
+ The process of starting the Windows Server virtual machine and bringing up the
+ Active Directory service is lengthy, and requires 20 minutes or more on a
+ contemporary developer laptop.
+
+</Note>
+
+The last lines in the Vagrant log output show that the Active Directory server
+is ready because it begins creating the users and groups:
+
+<CodeBlockConfig hideClipboard>
+
+```plaintext
+    dc: Waiting for the AD to become available... (Can take a long time)
+    dc: Creating Groups...
+    dc: Creating Users...
+```
+
+</CodeBlockConfig>
+
+Confirm that the Active Directory services are available by connecting to the
+virtual machine with WinRM and using dcdiag to test services.
+
+```shell-session
+$ vagrant winrm -c 'dcdiag /test:Services' dc | grep passed
+         ......................... DC passed test Connectivity
+         ......................... DC passed test Services
+```
+
+If the tests also show passing status, then the Active Directory server is
+ready.
+
+<Variant slug="boundary-deploy" option="hcp">
+
+### Configure ngrok
+
+If you use HCP Boundary, set up ngrok to expose the LDAP server to Boundary.
+
+Follow the official instructions to download ngrok for your OS distribution and
+set up a free account:
+
+[https://ngrok.com/download](https://ngrok.com/download)
+
+After setting up your account and obtaining an
+[authtoken](https://ngrok.com/docs/secure-tunnels#tunnel-authtokens), configure
+ngrok with the auth token:
+
+```shell-session
+$ ngrok config add-authtoken <token>
+```
+
+Lastly, create a publicly routable address to the postgres docker container
+using ngrok by passing in the localhost port mapping on `7389`.
+
+```shell-session
+$ ngrok tcp 127.0.0.1:7389
+
+ngrok                                                                                                               (Ctrl+C to quit)
+
+Visit http://localhost:4040/ to inspect, replay, and modify your requests
+
+Session Status                online
+Account                       Jane Doe (Plan: Free)
+Version                       3.1.0
+Region                        United States (us)
+Latency                       103ms
+Web Interface                 http://127.0.0.1:4040
+Forwarding                    tcp://4.tcp.us-cal-1.ngrok.io:13713 -> 127.0.0.1:7389
+
+Connections                   ttl     opn     rt1     rt5     p50     p90
+                              3       0       0.00    0.00    9.44    502.94
+```
+
+Locate the **Forwarding** output, and copy the address, such as
+`4.tcp.us-cal-1.ngrok.io:13713`.
+
+Save this value to set up the auth method later on.
+
+</Variant>
+
+</Tab>
+</Tabs>
+
+## Auth method creation
+
+To enable an LDAP auth method, an administrator must configure Boundary with
+parameters which specify how to connect, bind, and search the directory for a
+user and their associated groups.  Care has been taken to use the same
+parameters used for [configuring Vault's LDAP auth
+methods](/vault/docs/auth/ldap).
+
+The [LDAP auth method configuration
+options](/boundary/docs/concepts/domain-model/auth-methods#ldap-auth-method-attributes)
+are categorized and detailed below.
+
+<Tip>
+
+  Detailed knowledge of LDAP is not required to proceed with the tutorial. To
+  skip to the next section, visit [Create the auth method for the
+  provider](#create-the-auth-method-for-the-provider).
+
+</Tip>
+
+### Connection parameters:
+
+These values are used to establish a connection between Boundary and the
+directory server. That connection can be either insecure,  TLS or mTLS.
+
+- `urls` (string, required) - A set of [LDAP
+URLs](https://www.ietf.org/rfc/rfc4516.txt) that specifies a set of LDAP servers
+to connect to. Examples: `ldap://ldap.myorg.com`, `ldaps://ldap.myorg.com:636`.
+If there's more than one URL configured, the directories will be tried in order
+if there are errors during the connection process.  The URL scheme must be
+either `ldap` or `ldaps`. The port is optional.  If you don't specify a port, then a
+default of `389` is used for ldap and a default of `689` is used for ldaps.
+- `start_tls` (bool, optional) - If `true`, issues a
+[StartTLS](https://datatracker.ietf.org/doc/html/rfc4513#section-3) command
+after establishing an unencrypted connection.
+- `insecure_tls` (bool, optional) - If `true`, skips LDAP server SSL certificate
+verification.
+- `certificates` (string, optional) - CA certificate to use when verifying LDAP
+server certificate, must be x509 PEM encoded.
+- `client_certificate` (string, optional) - Client certificate to provide to the
+LDAP server for mTLS connections, must be x509 PEM encoded.
+- `client_certificate_key` (string, optional) - Client certificate private key
+used with the ClientTLSCert for mTLS connections to  the LDAP server, must be
+x509 PEM encoded.
+
+#### Bind parameters
+
+Before authenticating an end user, Boundary must first find the end user’s entry
+in the directory. There are two alternate methods of resolving the user entry
+Boundary uses to authenticate the end user: *Search* or *User Principal Name*. When you use
+*Search*, the [bind](https://datatracker.ietf.org/doc/html/rfc4513#section-5) can
+be either
+[anonymous](https://datatracker.ietf.org/doc/html/rfc4513#section-5.1.1) or
+[authenticated](https://datatracker.ietf.org/doc/html/rfc4513#section-5.1.3).
+*User Principal Name* is a method of specifying users supported by [Active
+Directory](https://en.wikipedia.org/wiki/Active_Directory). More information on
+[UPN can be found
+here](https://docs.microsoft.com/en-us/windows/win32/ad/naming-properties?redirectedfrom=MSDN#userPrincipalName).
+
+#### Binding - Authenticated search
+
+These parameters allow Boundary to bind (aka authenticate) using the credentials
+provided when searching for the user entry used to authenticate the end user:
+
+- `bind_dn` (string, optional) - Distinguished name of entry to bind when
+performing user and group search. Example: `cn=vault,ou=Users,dc=example,dc=com`
+- `bind_password` (string, optional) - Password to use along with `binddn` when
+performing user search.
+
+#### Binding - Anonymous search
+
+These parameters allow Boundary to bind anonymously to the directory when
+searching for the user entry used to authenticate the end user:
+
+- `discover_dn` (bool, optional) - If `true`, use anonymous bind to discover the
+bind DN of a user.
+- `anon_group_search` (bool, optional) - Use anonymous binds when performing
+LDAP group searches. Defaults to `false`.
+
+#### Binding - User principal name (AD)
+
+Active Directory uses [UPNs
+(userPrincipalNames)](https://docs.microsoft.com/en-us/windows/win32/ad/naming-properties?redirectedfrom=MSDN#userPrincipalName)
+as a user’s logon name. The following parameter allows Boundary to construct a
+user’s UPN from the username provided during authentication:
+
+- `upn_domain` (string, optional) - userPrincipalDomain used to construct the
+UPN string for the authenticating user. The constructed UPN will appear as
+[username]@UPNDomain  Example: example.com, which will cause Boundary to bind as
+username@example.com when authenticating the user.
+
+#### Search parameters: user entries
+
+Before authenticating an end user, Boundary must first find the end user’s entry
+in the directory.  The following parameters are used when searching for the
+user’s entry:
+
+- `user_dn` (string, optional) - Base DN under which to perform user search.
+Example: `ou=Users,dc=example,dc=com`
+- `user_attr`  (string, optional) - Attribute on user attribute entry matching
+the username passed when authenticating.  Examples: `cn`, `uid`
+- `user_filter` (string, optional) - Go template used to construct a LDAP user
+search filter. The template can access the following context variables:
+[UserAttr, Username]. The default userfilter is `({{.UserAttr}}={{.Username}})`
+or `(userPrincipalName={{.Username}}@UPNDomain)` if the upndomain parameter is
+set. The user [search filter](https://datatracker.ietf.org/doc/html/rfc4515) can
+be used to restrict what user can attempt to log in. For example, to limit login
+to users that are not contractors, you could write
+`(&(objectClass=user)({{.UserAttr}}={{.Username}})(!(employeeType=Contractor)))`
+
+#### Search parameters: group entries
+
+Once a user has been authenticated, the LDAP auth method must know how to
+resolve which groups the user is a member of. The configuration for this can
+vary depending on your LDAP server and your directory schema.
+
+There are two main strategies when resolving group membership - the first is
+searching for the authenticated user object and following an attribute to groups
+it is a member of. The second is to search for group objects of which the
+authenticated user is a member of. Both methods are supported.
+
+- `group_filter` (string, optional) - Go template used when constructing the
+group membership query. The template can access the following context variables:
+`[UserDN, Username]`. The default is
+`(|(memberUid={{.Username}})(member={{.UserDN}})(uniqueMember={{.UserDN}}))`,
+which is compatible with several common directory schemas. To support nested
+group resolution for Active Directory, instead use the following query:
+`(&(objectClass=group)(member:1.2.840.113556.1.4.1941:={{.UserDN}}))`.
+- `group_dn` (string, required) - LDAP search base to use for group membership
+search. This can be the root containing either groups or users. Example:
+`ou=Groups,dc=example,dc=com`.
+- `group_attr` (string, optional) - LDAP attribute to follow on objects returned
+by GroupFilter in order to enumerate user group membership. Examples: for
+GroupFilter queries returning group objects, use: `cn`. For queries returning
+user objects, use: `memberOf`. The default is `cn`.
+
+### Create auth method for the provider
+
+To set up a new auth method for your provider you need the appropriate
+connection, binding, and search parameters for your LDAP server.
+
+<Tabs>
+<Tab heading="LDAP test server" group="test">
+
+The following parameters are needed for the LDAP test server:
+
+- `urls`: `"ldap://ldap.forumsys.com"`
+- `bind-dn`: `"cn=read-only-admin,dc=example,dc=com"`
+- `bind-password`: `file://bind-pass.txt` (passed directly if using Terraform)
+- `user-dn`: `"dc=example,dc=com"`
+- `user-attr`: `"uid"`
+- `group-dn`: `"dc=example,dc=com"`
+
+</Tab>
+<Tab heading="Active Directory" group="ad">
+
+The following parameters are needed for the LDAP test server:
+
+<Variant slug="boundary-deploy" option="hcp">
+
+- `urls`: `"ldap://<NGROK_ADDRESS>:<NGROK_PORT>"`
+- `user-dn`: `"CN=Users,DC=example,DC=local"`
+- `user-attr`: `"sAMAccountName"`
+- `group-dn`: `"CN=Users,DC=example,DC=local"`
+- `group-attr`: `"memberOf"`
+- `bind-dn`: `"CN=vagrant,CN=Users,DC=example,DC=local"`
+- `bind-password`: `file://bind-pass.txt` (passed directly if using Terraform)
+
+</Variant>
+
+<Variant slug="boundary-deploy" option="dev">
+
+- `urls`: `["ldap://localhost:7389"]`
+- `user-dn`: `"CN=Users,DC=example,DC=local"`
+- `user-attr`: `"sAMAccountName"`
+- `group-dn`: `"CN=Users,DC=example,DC=local"`
+- `group-attr`: `"memberOf"`
+- `bind-dn`: `"CN=vagrant,CN=Users,DC=example,DC=local"`
+- `bind-password`: `file://bind-pass.txt` (passed directly if using Terraform)
+
+</Variant>
+
+</Tab>
+</Tabs>
+
+You can create auth methods using the Admin Console, CLI, or Terraform.
+
+<Tabs>
+<Tab heading="Admin Console" group="admin">
+
+
+The Boundary Admin Console provides a UI for creating and managing LDAP
+resources, including auth methods and managed groups.
+
+<Variant slug="boundary-deploy" option="hcp">
+
+Open the Admin Console UI by entering your HCP Boundary Cluster URL into a
+browser (such as
+`https://e58fe114-7624-431c-994d-b6670e90b03J.boundary.hashicorp.cloud`).
+
+Enter the admin login name and password you created when you deployed the new
+instance and click **Sign In**.
+
+</Variant>
+<Variant slug="boundary-deploy" option="dev">
+
+Open the Admin Console UI by entering the Dev Controller URL of
+`http://localhost:9200` into a browser.
+
+Enter the admin username `admin` and password `password` and click
+**Authenticate**.
+
+</Variant>
+
+![Admin Console Login](/img/boundary/boundary-ui-login-hcp_light.png#light-theme-only)
+![Admin Console Login](/img/boundary/boundary-ui-login-hcp_dark.png#dark-theme-only)
+
+Start by navigating to the Auth Methods settings view using the menu on the left
+side of the Admin Console. Select **New** and click **LDAP**.
+
+![Admin Console new LDAP auth method](/img/boundary/ldap/admin-new-ldap-auth_light.png#light-theme-only)
+![Admin Console new LDAP auth method](/img/boundary/ldap/admin-new-ldap-auth_dark.png#dark-theme-only)
+
+Fill out the form details using the settings gathered from the LDAP server.
+
+![Admin Console new LDAP auth method form](/img/boundary/ldap/admin-new-ldap-auth_form_light.png#light-theme-only)
+![Admin Console new LDAP auth method form](/img/boundary/ldap/admin-new-ldap-auth_form_dark.png#dark-theme-only)
+
+<Tabs>
+<Tab heading="LDAP test server" group="test">
+
+Add the following:
+
+- Name: `LDAP-test-auth`
+- Description: `Test server LDAP auth method`
+
+#### Connection
+
+- Server address: `ldap://ldap.forumsys.com`
+
+#### Authenticated search
+
+- Bind DN `cn=read-only-admin,dc=example,dc=com`
+- Bind Password `password`
+
+#### User entries
+
+- User DN `dc=example,dc=com`
+- User Attribute `uid`
+
+#### Group entries
+
+- Group DN `dc=example,dc=com`
+
+Toggle the switch beside **Enable Groups**.
+
+</Tab>
+<Tab heading="Active Directory" group="ad">
+
+Add the following:
+
+<Variant slug="boundary-deploy" option="hcp">
+
+- Name: `LDAP-test-auth`
+- Description: `Test server LDAP auth method`
+
+#### Connection
+
+- Server address: `ldap://NGROK_ADDRESS:NGROK_PORT` (_Example: `ldap://4.tcp.us-cal-1.ngrok.io:17592`_)
+
+#### Authenticated search
+
+- Bind DN: `CN=vagrant,CN=Users,DC=example,DC=local`
+- Bind Password: `vagrant`
+
+#### User entries
+
+- User DN: `CN=Users,DC=example,DC=local`
+- User Attribute: `sAMAccountName`
+
+#### Group entries
+
+- Group DN: `CN=Users,DC=example,DC=local`
+- Group Attribute: `memberOf`
+
+Toggle the switch beside **Enable Groups**.
+
+</Variant>
+<Variant slug="boundary-deploy" option="dev">
+
+- Name: `LDAP-test-auth`
+- Description: `Test server LDAP auth method`
+
+#### Connection
+
+- Server address: `ldap://localhost:7389`
+
+#### Authenticated search
+
+- Bind DN: `CN=vagrant,CN=Users,DC=example,DC=local`
+- Bind Password: `vagrant`
+
+#### User entries
+
+- User DN: `CN=Users,DC=example,DC=local`
+- User Attribute: `sAMAccountName`
+
+#### Group entries
+
+- Group DN: `CN=Users,DC=example,DC=local`
+- Group Attribute: `memberOf`
+
+Toggle the switch beside **Enable Groups**.
+
+</Variant>
+
+</Tab>
+</Tabs>
+
+Once the form is completed, click **Save**.
+
+The new authentication method has now been created. To the right of the new auth
+method's details, notice the state is set to _Inactive_. Before you can use it,
+the new auth method must be switched to an active state.
+
+Next we will review the available authentication states and activate the new
+LDAP auth method.
+
+</Tab>
+<Tab heading="CLI" group="cli">
+<Tabs>
+<Tab heading="LDAP test server" group="test">
+
+To create the auth method, you must supply a password using the `bind-password`
+parameter.
+
+Create a new file in your working directory called `bind-pass.txt`. Enter
+`password` as the only text, and save the file.
+
+<CodeBlockConfig filename="bind-pass.txt">
+
+```
+password
+```
+
+</CodeBlockConfig>
+
+Next, create a new LDAP auth method, passing the required parameters as
+attributes to Boundary.
+
+```shell-session
+$ boundary auth-methods create ldap \
+  -urls "ldap://ldap.forumsys.com" \
+  -bind-dn "cn=read-only-admin,dc=example,dc=com" \
+  -bind-password file://bind-pass.txt \
+  -user-dn "dc=example,dc=com" \
+  -user-attr "uid" \
+  -group-dn "dc=example,dc=com"
+```
+
+**Example:**
+
+<CodeBlockConfig hideClipboard highlight="1-7,9,11,36-45">
+
+```shell-session
+$ boundary auth-methods create ldap \
+  -urls "ldap://ldap.forumsys.com" \
+  -bind-dn "cn=read-only-admin,dc=example,dc=com" \
+  -bind-password file://bind-pass.txt \
+  -user-dn "dc=example,dc=com" \
+  -user-attr "uid" \
+  -group-dn "dc=example,dc=com"
+
+Auth Method information:
+  Created Time:         Tue, 03 Oct 2023 18:32:16 MDT
+  ID:                   amldap_gLx3Gg3ZdG
+  Type:                 ldap
+  Updated Time:         Tue, 03 Oct 2023 18:32:16 MDT
+  Version:              1
+
+  Scope:
+    ID:                 global
+    Name:               global
+    Type:               global
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    authenticate
+
+  Authorized Actions on Auth Method's Collections:
+    accounts:
+      create
+      list
+    managed-groups:
+      create
+      list
+
+  Attributes:
+    bind_dn:            cn=read-only-admin,dc=example,dc=com
+    bind_password_hmac: IC29KNPDTPC57nc2aT9UFthOh4Kh1i3660_euBsgL7Y
+    group_dn:           dc=example,dc=com
+    state:              inactive
+    urls:               [ldap://ldap.forumsys.com]
+    user_attr:          uid
+    user_dn:            dc=example,dc=com
+```
+
+</CodeBlockConfig>
+
+</Tab>
+<Tab heading="Active Directory" group="ad">
+
+To create the auth method, a password must be supplied using the `bind-password`
+parameter.
+
+Create a new file in your working directory called `bind-pass.txt`. Enter
+`vagrant` as the only text, and save the file.
+
+<CodeBlockConfig filename="bind-pass.txt">
+
+```
+vagrant
+```
+
+</CodeBlockConfig>
+
+Next, create a new LDAP auth method, passing the required parameters as
+attributes to Boundary.
+
+<Variant slug="boundary-deploy" option="hcp">
+
+Replace the `urls` parameter `<ldap://NGROK_ADDRESS:NGROK_PORT>` with your ngrok
+address and port.
+
+```shell-session
+$ boundary auth-methods create ldap \
+  -urls "ldap://<NGROK_ADDRESS>:<NGROK_PORT>" \
+  -user-dn "CN=Users,DC=example,DC=local" \
+  -user-attr "sAMAccountName" \
+  -group-dn "CN=Users,DC=example,DC=local" \
+  -group-attr "memberOf" \
+  -bind-dn "CN=vagrant,CN=Users,DC=example,DC=local" \
+  -bind-password file://bind-pass.txt \
+  -insecure_tls true
+```
+
+**Example:**
+
+<CodeBlockConfig hideClipboard highlight="1-7,9,11,36-45">
+
+```shell-session
+$ boundary auth-methods create ldap \
+  -urls "ldap://4.tcp.us-cal-1.ngrok.io:17592" \
+  -user-attr "sAMAccountName" \
+  -user-dn "CN=Users,DC=example,DC=local" \
+  -group-attr "memberOf" \
+  -group-dn "CN=Users,DC=example,DC=local" \
+  -bind-dn "CN=vagrant,CN=Users,DC=example,DC=local" \
+  -bind-password file://bind-pass.txt \
+  -insecure-tls true
+
+Auth Method information:
+  Created Time:         Thu, 05 Oct 2023 14:24:10 MDT
+  ID:                   amldap_cfLSUbXOQY
+  Type:                 ldap
+  Updated Time:         Thu, 05 Oct 2023 14:24:10 MDT
+  Version:              1
+
+  Scope:
+    ID:                 global
+    Name:               global
+    Type:               global
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    authenticate
+
+  Authorized Actions on Auth Method's Collections:
+    accounts:
+      create
+      list
+    managed-groups:
+      create
+      list
+
+  Attributes:
+    bind_dn:            CN=vagrant,CN=Users,DC=example,DC=local
+    bind_password_hmac: 7iT91021QsRmV95bD_Qw-m5cHkZbGlWOjYq2cytRjZU
+    group_attr:         memberOf
+    group_dn:           CN=Users,DC=example,DC=local
+    state:              inactive
+    urls:               [ldap://4.tcp.us-cal-1.ngrok.io:13713]
+    user_attr:          SamAccountName
+    user_dn:            CN=Users,DC=example,DC=local
+```
+
+</CodeBlockConfig>
+
+</Variant>
+
+<Variant slug="boundary-deploy" option="dev">
+
+```shell-session
+$ boundary auth-methods create ldap \
+  -urls "localhost" \
+  -bind-dn "CN=vagrant,CN=Users,DC=example,DC=local" \
+  -bind-password file://bind-pass.txt \
+  -user-dn "CN=Users,DC=example,DC=local" \
+  -user-attr "sAMAccountName" \
+  -group-dn "CN=Users,DC=example,DC=local"
+```
+
+**Example:**
+
+<CodeBlockConfig hideClipboard highlight="1-7,9,11,36-45">
+
+```shell-session
+$ boundary auth-methods create ldap \
+  -urls "ldap://ldap.forumsys.com" \
+  -bind-dn "cn=read-only-admin,dc=example,dc=com" \
+  -bind-password file://bind-pass.txt \
+  -user-dn "dc=example,dc=com" \
+  -user-attr "uid" \
+  -group-dn "dc=example,dc=com" \
+
+Auth Method information:
+  Created Time:         Tue, 03 Oct 2023 18:32:16 MDT
+  ID:                   amldap_gLx3Gg3ZdG
+  Type:                 ldap
+  Updated Time:         Tue, 03 Oct 2023 18:32:16 MDT
+  Version:              1
+
+  Scope:
+    ID:                 global
+    Name:               global
+    Type:               global
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    authenticate
+
+  Authorized Actions on Auth Method's Collections:
+    accounts:
+      create
+      list
+    managed-groups:
+      create
+      list
+
+  Attributes:
+    bind_dn:            cn=read-only-admin,dc=example,dc=com
+    bind_password_hmac: IC29KNPDTPC57nc2aT9UFthOh4Kh1i3660_euBsgL7Y
+    group_dn:           dc=example,dc=com
+    state:              inactive
+    urls:               [ldap://ldap.forumsys.com]
+    user_attr:          uid
+    user_dn:            dc=example,dc=com
+```
+
+</CodeBlockConfig>
+
+</Variant>
+
+</Tab>
+</Tabs>
+
+The new authentication method has now been created. Under the **Attributes**
+output, notice the **state** is set to _inactive_. Before you can use it, the new
+auth method must be switched to an active state.
+
+<Tip>
+
+  An auth method can be set to active during creation by setting the `-state`
+  attribute to `active-public`. This tutorial demonstrates manually changing the
+  auth method's state.
+
+</Tip>
+
+Copy the new LDAP Auth Method ID from the output, and export it as an
+environment variable.
+
+```shell-session
+$ export BOUNDARY_AUTH_METHOD_ID=amldap_gLx3Gg3ZdG
+```
+
+Next we will review the available authentication states and activate the new
+LDAP auth method.
+
+</Tab>
+<Tab heading="Terraform" group="terraform">
+
+
+Begin by creating a working directory to store the Terraform configuration file
+and changing into that directory. This tutorial will work out of the user's
+`HOME` directory.
+
+```shell-session
+$ mkdir learn-boundary-ldap-auth && cd learn-boundary-ldap-auth/
+```
+
+Next, create a Terraform configuration file called `main.tf`.
+
+```shell-session
+$ touch main.tf
+```
+
+Open the `main.tf` file in your code editor and add the base Boundary provider
+configuration below. The `1.1.8` version or above is required to support LDAP.
+An `output` value is included to print the LDAP auth method id when Terraform
+applies the configuration.
+
+The initial setup should set the boundary provider to match Boundary's
+authentication configuration so that Terraform can authenticate to Boundary.
+These settings are discussed in the [Get Setup](#get-setup) section.
+
+<Variant slug="boundary-deploy" option="hcp">
+
+Copy the following configuration, but update the `addr`, `auth_method_id`,
+`auth_method_login_name`, and `auth_method_password` with the correct values for
+your Boundary org. 
+
+- `addr` is the `BOUNDARY_ADDR` copied from the HCP portal. 
+- `auth_method_id` is for the `password` auth method and can be gathered from
+  the Boundary Admin Console UI. 
+- `auth_method_login_name` and `auth_method_password` were created upon initial
+  setup of the HCP Boundary cluster.
+
+<CodeBlockConfig filename="learn-boundary-ldap-auth/main.tf">
+
+```hcl
+terraform {
+  required_providers {
+    boundary = {
+      source  = "hashicorp/boundary"
+      version = "1.1.10"
+    }
+  }
+}
+
+provider "boundary" {
+  addr                   = "BOUNDARY_ADDR"      # updateme
+  auth_method_id         = "ampw_1234567890"    # updateme
+  auth_method_login_name = "myuser"             # updateme
+  auth_method_password   = "passpass"           # updateme
+}
+```
+
+</CodeBlockConfig>
+
+</Variant>
+<Variant slug="boundary-deploy" option="dev">
+
+Copy the following configuration, but replace the `recovery_kms_hcl` `key` with
+the value printed in the `boundary dev` terminal window.
+
+<CodeBlockConfig filename="learn-boundary-ldap-auth/main.tf">
+
+```hcl
+terraform {
+  required_providers {
+    boundary = {
+      source  = "hashicorp/boundary"
+      version = "1.1.10"
+    }
+  }
+}
+
+output "auth-method-id" {
+  value = boundary_auth_method_ldap.test_server.id
+}
+
+provider "boundary" {
+  addr             = "http://127.0.0.1:9200"
+  recovery_kms_hcl = <<EOT
+kms "aead" {
+  purpose = "recovery"
+  aead_type = "aes-gcm"
+  key = "nXz1K39auzqY+Bs02bGga0HS8xgFsNvE"
+  key_id = "global_recovery"
+}
+EOT
+}
+```
+
+</CodeBlockConfig>
+
+</Variant>
+
+The Terraform Boundary provider enables LDAP using the
+`boundary_auth_method_ldap` and `boundary_account_ldap` resources.
+
+The
+[`boundary_auth_method_ldap`](https://registry.terraform.io/providers/hashicorp/boundary/latest/docs/resources/auth_method_ldap)
+resource can use the following attributes to configure a new LDAP auth method:
+
+<CodeBlockConfig hideClipboard>
+
+```hcl
+resource "boundary_auth_method_ldap" "name" {
+  name                        = (String)
+  description                 = (String)
+  scope_id                    = (String)
+  account_attribute_maps      = (List of String)
+  anon_group_search           = (Boolean)
+  bind_dn                     = (String)
+  bind_password               = (String)
+  bind_password_hmac          = (String)
+  certificates                = (List of String)
+  client_certificate          = (String)
+  client_certificate_key      = (String)
+  client_certificate_key_hmac = (String)
+  dereference_aliases         = (String)   
+  discover_dn                 = (Boolean)
+  enable_groups               = (Boolean)
+  group_attr                  = (String)
+  group_dn                    = (String)
+  group_filter                = (String)
+  insecure_tls                = (Boolean)
+  is_primary_for_scope        = (Boolean)
+  maximum_page_size           = (Number)
+  start_tls                   = (Boolean)
+  state                       = (String)
+  type                        = (String)
+  upn_domain                  = (String)
+  urls                        = (String)
+  use_token_groups            = (Boolean)
+  user_attr                   = (String)
+  user_dn                     = (String)
+  user_filter                 = (String)
+}
+```
+
+</CodeBlockConfig>
+
+These parameters are explained in detail in the [Connection
+parameters](#connection-parameters) section. For a full list of attributes,
+refer to the
+[boundary_auth_method_ldap](https://registry.terraform.io/providers/hashicorp/boundary/latest/docs/resources/auth_method_ldap)
+Terraform registry docs.
+
+The
+[`boundary_account_ldap`](https://registry.terraform.io/providers/hashicorp/boundary/latest/docs/resources/account_ldap)
+resource uses the following attributes to configure a new auth method:
+
+<CodeBlockConfig hideClipboard>
+
+```hcl
+resource "boundary_account_ldap" "name" {
+  name           = (String)
+  description    = (String)
+  auth_method_id = (String)
+  login_name     = (String)
+  name           = (String)
+}
+```
+
+</CodeBlockConfig>
+
+- The `auth_method_id` is defined by the `boundary_auth_method_ldap` resource,
+  and can be accessed using the named scope id, like
+  `boundary_auth_method_ldap.name.id`
+- The `login_name` is the login name for this account.
+- The `name` is the account name. Defaults to the resource name.
+- `is_primary_for_scope` is set to `true` to make the LDAP auth method primary
+  for the defined scope, in this case `global`. Users will automatically be
+  created when logging in with LDAP.
+
+Add these two resources into your `main.tf` file. The entire file contents are
+shown below.
+
+<Tabs>
+<Tab heading="LDAP test server" group="test">
+
+<Variant slug="boundary-deploy" option="hcp">
+
+Make sure the following values are updated:
+
+- `addr` (from HCP portal)
+- `auth_method_id` (from Boundary Admin Console UI)
+- `auth_method_login_name` (from initial Boundary Cluster creation)
+- `auth_method_password` (from initial Boundary Cluster creation)
+
+<Tip>
+
+  For simplicity, the `bind-password` is passed directly in the Terraform config
+  file. In practice, this value should be supplied using an environment variable
+  or Terraform variables file.
+
+</Tip>
+
+<CodeBlockConfig filename="learn-boundary-ldap-auth/main.tf">
+
+```hcl
+terraform {
+  required_providers {
+    boundary = {
+      source  = "hashicorp/boundary"
+      version = "1.1.10"
+    }
+  }
+}
+
+output "auth-method-id" {
+  value = boundary_auth_method_ldap.test_server.id
+}
+
+provider "boundary" {
+  addr                   = "BOUNDARY_ADDR"     # updateme
+  auth_method_id         = "ampw_1234567890"   # updateme
+  auth_method_login_name = "myuser"            # updateme
+  auth_method_password   = "passpass"          # updateme
+}
+
+resource "boundary_auth_method_ldap" "test_server" {
+  name          = "LDAP Test Auth"
+  description   = "LDAP auth method for test server"
+  scope_id      = "global"
+  urls          = "ldap://ldap.forumsys.com"
+  bind-dn       = "cn=read-only-admin,dc=example,dc=com"
+  bind-password = "password"
+  user-dn       = "dc=example,dc=com"
+  user-attr     = "uid"
+  group-dn      = "dc=example,dc=com"
+  is_primary_for_scope = true
+}
+
+resource "boundary_account_ldap" "ldap_user" {
+  name           = "user1"
+  description    = "LDAP account for user1"
+  auth_method_id = boundary_auth_method_ldap.test_server.id
+  login_name     = "user1"
+}
+```
+
+</CodeBlockConfig>
+
+</Variant>
+<Variant slug="boundary-deploy" option="dev">
+
+Make sure the following value is updated:
+
+- `kms` `key` (`[Recovery] AEAD Key` from the output of `boundary dev`)
+
+<Tip>
+
+  For simplicity, the `bind-password` is passed directly in the Terraform config
+  file. In practice, this value should be supplied using an environment variable
+  or Terraform variables file.
+
+</Tip>
+
+<CodeBlockConfig filename="learn-boundary-ldap-auth/main.tf">
+
+```hcl
+terraform {
+  required_providers {
+    boundary = {
+      source  = "hashicorp/boundary"
+      version = "1.1.10"
+    }
+  }
+}
+
+output "auth-method-id" {
+  value = boundary_auth_method_ldap.test_server.id
+}
+
+provider "boundary" {
+  addr             = "http://127.0.0.1:9200"
+  recovery_kms_hcl = <<EOT
+kms "aead" {
+  purpose = "recovery"
+  aead_type = "aes-gcm"
+  key = "nXz1K39auzqY+Bs02bGga0HS8xgFsNvE"
+  key_id = "global_recovery"
+}
+EOT
+}
+
+resource "boundary_auth_method_ldap" "test_server" {
+  name          = "LDAP Test Auth"
+  description   = "LDAP auth method for test server"
+  scope_id      = "global"
+  urls          = "ldap://ldap.forumsys.com"
+  bind-dn       = "cn=read-only-admin,dc=example,dc=com"
+  bind-password = "password"
+  user-dn       = "dc=example,dc=com"
+  user-attr     = "uid"
+  group-dn      = "dc=example,dc=com"
+  is_primary_for_scope = true
+}
+
+resource "boundary_account_ldap" "ldap_user" {
+  name           = "user1"
+  description    = "LDAP account for user1"
+  auth_method_id = boundary_auth_method_ldap.test_server.id
+  login_name     = "user1"
+}
+```
+
+</CodeBlockConfig>
+
+</Variant>
+
+</Tab>
+<Tab heading="Active Directory" group="ad">
+
+<Variant slug="boundary-deploy" option="hcp">
+
+Make sure the following values are updated:
+
+- `addr` (from HCP portal)
+- `auth_method_id` (from Boundary Admin Console UI)
+- `auth_method_login_name` (from initial Boundary Cluster creation)
+- `auth_method_password` (from initial Boundary Cluster creation)
+- `urls` (substitue ngrok details in for `["ldap://<NGROK_ADDRESS>:<NGROK_PORT>"]`, such as `["ldap://2.tcp.us-cal-1.ngrok.io:11816"]`)
+
+<Tip>
+
+  For simplicity, the `bind-password` is passed directly in the Terraform config
+  file. In practice, this value should be supplied using an environment variable
+  or Terraform variables file.
+
+</Tip>
+
+<CodeBlockConfig filename="learn-boundary-ldap-auth/main.tf">
+
+```hcl
+terraform {
+  required_providers {
+    boundary = {
+      source  = "hashicorp/boundary"
+      version = "1.1.10"
+    }
+  }
+}
+
+output "auth-method-id" {
+  value = boundary_auth_method_ldap.ad_test_server.id
+}
+
+provider "boundary" {
+  addr                   = "BOUNDARY_ADDR"      # updateme
+  auth_method_id         = "ampw_1234567890"    # updateme
+  auth_method_login_name = "myuser"             # updateme
+  auth_method_password   = "passpass"           # updateme
+}
+
+resource "boundary_auth_method_ldap" "ad_test_server" {
+  name                 = "LDAP Test Auth"
+  description          = "LDAP auth method for AD test server"
+  scope_id             = "global"
+  urls                 = ["ldap://<NGROK_ADDRESS>:<NGROK_PORT>"]  # updateme
+  bind_dn              = "CN=vagrant,CN=Users,DC=example,DC=local"
+  bind_password        = "vagrant"
+  user_dn              = "CN=Users,DC=example,DC=local"
+  user_attr            = "sAMAccountName"
+  group_dn             = "CN=Users,DC=example,DC=local"
+  group_attr           = "memberOf"
+  insecure_tls         = true
+  is_primary_for_scope = true
+}
+
+resource "boundary_account_ldap" "ldap_user" {
+  name           = "user1"
+  description    = "LDAP account for user1"
+  auth_method_id = boundary_auth_method_ldap.ad_test_server.id
+  login_name     = "user1"
+}
+```
+
+</CodeBlockConfig>
+
+</Variant>
+<Variant slug="boundary-deploy" option="dev">
+
+Make sure the following value is updated:
+
+- `kms` `key` (`[Recovery] AEAD Key` from the output of `boundary dev`)
+
+<Tip>
+
+  For simplicity, the `bind-password` is passed directly in the Terraform config
+  file. In practice, this value should be supplied using an environment variable
+  or Terraform variables file.
+
+</Tip>
+
+<CodeBlockConfig filename="learn-boundary-ldap-auth/main.tf">
+
+```hcl
+terraform {
+  required_providers {
+    boundary = {
+      source  = "hashicorp/boundary"
+      version = "1.1.10"
+    }
+  }
+}
+
+output "auth-method-id" {
+  value = boundary_auth_method_ldap.ad_test_server.id
+}
+
+provider "boundary" {
+  addr             = "http://127.0.0.1:9200"
+  recovery_kms_hcl = <<EOT
+kms "aead" {
+  purpose = "recovery"
+  aead_type = "aes-gcm"
+  key = "1jlRWVEBmsL05139sQcyq4uJTdrHFtiM"
+  key_id = "global_recovery"
+}
+EOT
+}
+
+resource "boundary_auth_method_ldap" "ad_test_server" {
+  name          = "LDAP Test Auth"
+  description   = "LDAP auth method for AD test server"
+  scope_id      = "global"
+  urls          = ["ldap://localhost:7389"]
+  bind_dn       = "CN=vagrant,CN=Users,DC=example,DC=local"
+  bind_password = "vagrant"
+  user_dn       = "CN=Users,DC=example,DC=local"
+  user_attr     = "sAMAccountName"
+  group_dn      = "CN=Users,DC=example,DC=local"
+  group_attr    = "memberOf"
+  insecure_tls  = true
+  is_primary_for_scope = true
+}
+
+resource "boundary_account_ldap" "ldap_user" {
+  name           = "user1"
+  description    = "LDAP account for user1"
+  auth_method_id = boundary_auth_method_ldap.ad_test_server.id
+  login_name     = "user1"
+}
+```
+
+</CodeBlockConfig>
+
+</Variant>
+
+</Tab>
+</Tabs>
+
+With these resources in place, first initialize Terraform.
+
+```shell-session
+$ terraform init
+
+Initializing the backend...
+
+Initializing provider plugins...
+- Finding hashicorp/boundary versions matching "1.1.10"...
+- Installing hashicorp/boundary v1.1.10...
+- Installed hashicorp/boundary v1.1.10 (signed by HashiCorp)
+
+Terraform has created a lock file .terraform.lock.hcl to record the provider
+selections it made above. Include this file in your version control repository
+so that Terraform can guarantee to make the same selections by default when
+you run "terraform init" in the future.
+
+Terraform has been successfully initialized!
+
+You may now begin working with Terraform. Try running "terraform plan" to see
+any changes that are required for your infrastructure. All Terraform commands
+should now work.
+
+If you ever set or change modules or backend configuration for Terraform,
+rerun this command to reinitialize your working directory. If you forget, other
+commands will detect it and remind you to do so if necessary.
+```
+
+Next, apply the configuration. Enter `yes` when prompted for confirmation.
+
+<Tabs>
+<Tab heading="LDAP test server" group="test">
+
+<Variant slug="boundary-deploy" option="hcp">
+
+```shell-session
+$ terraform apply
+
+Terraform used the selected providers to generate the following execution plan. Resource
+actions are indicated with the following symbols:
+  + create
+
+Terraform will perform the following actions:
+
+  # boundary_account_ldap.ldap_user will be created
+  + resource "boundary_account_ldap" "ldap_user" {
+      + auth_method_id = (known after apply)
+      + description    = "LDAP account for user1"
+      + id             = (known after apply)
+      + login_name     = "user1"
+      + name           = "user1"
+      + type           = "ldap"
+    }
+
+  # boundary_auth_method_ldap.test_server will be created
+  + resource "boundary_auth_method_ldap" "test_server" {
+      + bind_dn                     = "cn=read-only-admin,dc=example,dc=com"
+      + bind_password               = "password"
+      + bind_password_hmac          = (known after apply)
+      + client_certificate_key_hmac = (known after apply)
+      + dereference_aliases         = (known after apply)
+      + description                 = "LDAP auth method for test server"
+      + group_dn                    = "dc=example,dc=com"
+      + id                          = (known after apply)
+      + is_primary_for_scope        = true
+      + name                        = "LDAP Test Auth"
+      + scope_id                    = "global"
+      + state                       = "active-public"
+      + type                        = "ldap"
+      + urls                        = [
+          + "ldap://ldap.forumsys.com",
+        ]
+      + user_attr                   = "uid"
+      + user_dn                     = "dc=example,dc=com"
+    }
+
+Plan: 2 to add, 0 to change, 0 to destroy.
+
+Changes to Outputs:
+  + auth-method-id = (known after apply)
+
+Do you want to perform these actions?
+  Terraform will perform the actions described above.
+  Only 'yes' will be accepted to approve.
+
+  Enter a value: yes
+
+boundary_auth_method_ldap.test_server: Creating...
+boundary_auth_method_ldap.test_server: Creation complete after 1s [id=amldap_r99QdtaZsm]
+boundary_account_ldap.ldap_user: Creating...
+boundary_account_ldap.ldap_user: Creation complete after 0s [id=acctldap_WpViEGYhWY]
+
+Apply complete! Resources: 2 added, 0 changed, 0 destroyed.
+
+Outputs:
+
+auth-method-id = "amldap_r99QdtaZsm"
+```
+
+</Variant>
+
+<Variant slug="boundary-deploy" option="dev">
+
+```shell-session
+$ terraform apply
+
+Terraform used the selected providers to generate the following execution plan. Resource
+actions are indicated with the following symbols:
+  + create
+
+Terraform will perform the following actions:
+
+  # boundary_account_ldap.ldap_user will be created
+  + resource "boundary_account_ldap" "ldap_user" {
+      + auth_method_id = (known after apply)
+      + description    = "LDAP account for user1"
+      + id             = (known after apply)
+      + login_name     = "user1"
+      + name           = "user1"
+      + type           = "ldap"
+    }
+
+  # boundary_auth_method_ldap.test_server will be created
+  + resource "boundary_auth_method_ldap" "test_server" {
+      + bind_dn                     = "cn=read-only-admin,dc=example,dc=com"
+      + bind_password               = "password"
+      + bind_password_hmac          = (known after apply)
+      + client_certificate_key_hmac = (known after apply)
+      + dereference_aliases         = (known after apply)
+      + description                 = "LDAP auth method for test server"
+      + group_dn                    = "dc=example,dc=com"
+      + id                          = (known after apply)
+      + is_primary_for_scope        = true
+      + name                        = "LDAP Test Auth"
+      + scope_id                    = "global"
+      + state                       = "active-public"
+      + type                        = "ldap"
+      + urls                        = [
+          + "ldap://ldap.forumsys.com",
+        ]
+      + user_attr                   = "uid"
+      + user_dn                     = "dc=example,dc=com"
+    }
+
+Plan: 2 to add, 0 to change, 0 to destroy.
+
+Changes to Outputs:
+  + auth-method-id = (known after apply)
+
+Do you want to perform these actions?
+  Terraform will perform the actions described above.
+  Only 'yes' will be accepted to approve.
+
+  Enter a value: yes
+
+boundary_auth_method_ldap.test_server: Creating...
+boundary_auth_method_ldap.test_server: Creation complete after 0s [id=amldap_bGdOpSdD6u]
+boundary_account_ldap.ldap_user: Creating...
+boundary_account_ldap.ldap_user: Creation complete after 0s [id=acctldap_6E0BNj9UgA]
+
+Apply complete! Resources: 2 added, 0 changed, 0 destroyed.
+
+Outputs:
+
+auth-method-id = "amldap_bGdOpSdD6u"
+```
+
+</Variant>
+
+The new authentication method has been created! If Terraform encounters an
+error, ensure the `boundary_auth_method_ldap` resource `urls` attribute has been
+entered correctly.
+
+Copy the `auth-method-id` from the output.
+
+</Tab>
+<Tab heading="Active Directory" group="ad">
+
+<Variant slug="boundary-deploy" option="hcp">
+
+```shell-session
+$ terraform apply
+
+Terraform used the selected providers to generate the following execution plan. Resource actions
+are indicated with the following symbols:
+  + create
+
+Terraform will perform the following actions:
+
+  # boundary_account_ldap.ldap_user will be created
+  + resource "boundary_account_ldap" "ldap_user" {
+      + auth_method_id = (known after apply)
+      + description    = "LDAP account for user1"
+      + id             = (known after apply)
+      + login_name     = "user1"
+      + name           = "user1"
+      + type           = "ldap"
+    }
+
+  # boundary_auth_method_ldap.ad_test_server will be created
+  + resource "boundary_auth_method_ldap" "ad_test_server" {
+      + bind_dn                     = "CN=vagrant,CN=Users,DC=example,DC=local"
+      + bind_password               = "vagrant"
+      + bind_password_hmac          = (known after apply)
+      + client_certificate_key_hmac = (known after apply)
+      + dereference_aliases         = (known after apply)
+      + description                 = "LDAP auth method for AD test server"
+      + group_attr                  = "memberOf"
+      + group_dn                    = "CN=Users,DC=example,DC=local"
+      + id                          = (known after apply)
+      + insecure_tls                = true
+      + is_primary_for_scope        = true
+      + name                        = "LDAP Test Auth"
+      + scope_id                    = "global"
+      + state                       = (known after apply)
+      + type                        = "ldap"
+      + urls                        = [
+          + "ldap://2.tcp.us-cal-1.ngrok.io:11816",
+        ]
+      + user_attr                   = "sAMAccountName"
+      + user_dn                     = "CN=Users,DC=example,DC=local"
+    }
+
+Plan: 2 to add, 0 to change, 0 to destroy.
+
+Changes to Outputs:
+  + auth-method-id = (known after apply)
+
+Do you want to perform these actions?
+  Terraform will perform the actions described above.
+  Only 'yes' will be accepted to approve.
+
+  Enter a value: yes
+
+boundary_auth_method_ldap.ad_test_server: Creating...
+boundary_auth_method_ldap.ad_test_server: Creation complete after 1s [id=amldap_Tn4uKBpo1b]
+boundary_account_ldap.ldap_user: Creating...
+boundary_account_ldap.ldap_user: Creation complete after 0s [id=acctldap_wA9ibRCGzD]
+
+Apply complete! Resources: 2 added, 0 changed, 0 destroyed.
+
+Outputs:
+
+auth-method-id = "amldap_Tn4uKBpo1b"
+```
+
+</Variant>
+
+<Variant slug="boundary-deploy" option="dev">
+
+```shell-session
+$ terraform apply
+
+Terraform used the selected providers to generate the following execution plan. Resource
+actions are indicated with the following symbols:
+  + create
+
+Terraform will perform the following actions:
+
+  # boundary_account_ldap.ldap_user will be created
+  + resource "boundary_account_ldap" "ldap_user" {
+      + auth_method_id = (known after apply)
+      + description    = "LDAP account for user1"
+      + id             = (known after apply)
+      + login_name     = "user1"
+      + name           = "user1"
+      + type           = "ldap"
+    }
+
+  # boundary_auth_method_ldap.ad_test_server will be created
+  + resource "boundary_auth_method_ldap" "ad_test_server" {
+      + bind_dn                     = "CN=vagrant,CN=Users,DC=example,DC=local"
+      + bind_password               = "vagrant"
+      + bind_password_hmac          = (known after apply)
+      + client_certificate_key_hmac = (known after apply)
+      + dereference_aliases         = (known after apply)
+      + description                 = "LDAP auth method for AD test server"
+      + group_attr                  = "memberOf"
+      + group_dn                    = "CN=Users,DC=example,DC=local"
+      + id                          = (known after apply)
+      + insecure_tls                = true
+      + is_primary_for_scope        = true
+      + name                        = "LDAP Test Auth"
+      + scope_id                    = "global"
+      + state                       = (known after apply)
+      + type                        = "ldap"
+      + urls                        = [
+          + "ldap://localhost:7389",
+        ]
+      + user_attr                   = "sAMAccountName"
+      + user_dn                     = "CN=Users,DC=example,DC=local"
+    }
+
+Plan: 2 to add, 0 to change, 0 to destroy.
+
+Changes to Outputs:
+  + auth-method-id = (known after apply)
+
+Do you want to perform these actions?
+  Terraform will perform the actions described above.
+  Only 'yes' will be accepted to approve.
+
+  Enter a value: yes
+
+boundary_auth_method_ldap.ad_test_server: Creating...
+boundary_auth_method_ldap.ad_test_server: Creation complete after 0s [id=amldap_IffTU3qAy5]
+boundary_account_ldap.ldap_user: Creating...
+boundary_account_ldap.ldap_user: Creation complete after 0s [id=acctldap_XAy2Jza0yy]
+
+Apply complete! Resources: 2 added, 0 changed, 0 destroyed.
+
+Outputs:
+
+auth-method-id = "amldap_IffTU3qAy5"
+```
+
+</Variant>
+
+The new authentication method has been created! If Terraform encounters an
+error, ensure the `boundary_auth_method_ldap` resource `urls` attribute has been
+entered correctly.
+
+Copy the `auth-method-id` from the output.
+
+</Tab>
+</Tabs>
+
+</Tab>
+</Tabs>
+
+
+## Authentication states
+
+An LDAP auth method can be in one of several different states. The current state
+of an auth method affects how endpoints respond to requests and, in some cases,
+whether access to an endpoint requires authentication.
+
+### State change operations
+
+- _MakeInactive_ transitions an auth method from either the Active Private or
+  the Active Public state into the Inactive state.
+- _MakePrivate_ transitions an auth method from either the Inactive or the
+  Active Public state into the Active Private state. If transitioning from the
+  Inactive state, the transition will only succeed if the configuration is
+  valid.
+- _MakePublic_ transitions an auth method from either the Inactive or the Active
+  Private state into the Active Public state. If transitioning from the Inactive
+  state, the transition will only succeed if the configuration is valid.
+
+Three different states exist for an authentication method:
+
+- `inactive` users can not authenticate with inactive auth methods and the
+  inactive auth methods are not listed for unauthenticated users.
+- `active-private` users can authenticate with active-private auth methods and
+  active-private auth methods are not listed for unauthenticated users.
+- `active-public` users can authenticate active-public auth methods and
+  active-public auth methods are listed for unauthenticated users.
+
+If a change is made from active-public or active-private to inactive, all
+in-flight authentications will succeed unless the auth method’s configuration is
+modified while the request is in-flight.
+
+### Activate the LDAP auth method
+
+Now that a new LDAP auth method has been created, you can activate it and assign
+it as the default login type for the global scope.
+
+Auth methods can be activated using the CLI, Admin Console, or using Terraform.
+
+<Tabs>
+<Tab heading="Admin Console" group="admin">
+
+Currently the login type is set as inactive, and won't allow authentication.
+
+<Tabs>
+<Tab heading="LDAP test server" group="test">
+
+```shell-session
+$ boundary authenticate ldap -auth-method-id $BOUNDARY_AUTH_METHOD_ID -login-name einstein
+Please enter the password (it will be hidden):
+Error from controller when performing authentication
+
+Error information:
+  Kind:                Unauthenticated
+  Message:             Unable to authenticate.
+  Status:              401
+  context:             Error from controller when performing authentication
+```
+
+</Tab>
+<Tab heading="Active Directory" group="ad">
+
+```shell-session
+$ boundary authenticate ldap -auth-method-id $BOUNDARY_AUTH_METHOD_ID -login-name m.barten
+Please enter the password (it will be hidden):
+Error from controller when performing authentication
+
+Error information:
+  Kind:                Unauthenticated
+  Message:             Unable to authenticate.
+  Status:              401
+  context:             Error from controller when performing authentication
+```
+
+</Tab>
+</Tabs>
+
+You must set the new auth method to an active state before it will be allowed.
+
+Under the settings for the new auth method, select **Inactive** from the menu in
+the upper-right side of the page and change its state by clicking **Public**.
+
+![Admin Console change auth method state](/img/boundary/ldap/admin-change-state-public_light.png#light-theme-only)
+![Admin Console change auth method state](/img/boundary/ldap/admin-change-state-public_dark.png#dark-theme-only)
+
+The login type is now allowed.
+
+### Set LDAP as primary login
+
+Global and organization scopes may have auth methods in Boundary, and each scope
+has one primary auth-method ID. Boundary automatically creates a user upon
+first successful authentication via the scope’s primary auth method, which will
+be used by scopes with only one auth method available.
+
+When [migrating the database](/boundary/tutorials/oss-configuration/upgrade-version), Boundary
+will produce a log of any auth methods which resulted in no primary auth method
+being set for the scope.
+
+Set the new LDAP auth method as the primary auth method for the global scope.
+
+Under the settings for the new auth method, select **Manage** from the menu in
+the upper-right side of the page.
+
+![Admin Console primary auth method](/img/boundary/ldap/admin-make-primary_light.png#light-theme-only)
+![Admin Console primary auth method](/img/boundary/ldap/admin-make-primary_dark.png#dark-theme-only)
+
+A confirmation window will be displayed to inform you that new users that sign
+in via LDAP will automatically be added to the new auth method. Click **OK** to
+continue.
+
+</Tab>
+<Tab heading="CLI" group="cli">
+
+Currently the login type is set as inactive, and won't allow authentication.
+
+<Tabs>
+<Tab heading="LDAP test server" group="test">
+
+```shell-session
+$ boundary authenticate ldap -auth-method-id $BOUNDARY_AUTH_METHOD_ID -login-name einstein
+Please enter the password (it will be hidden):
+Error from controller when performing authentication
+
+Error information:
+  Kind:                Unauthenticated
+  Message:             Unable to authenticate.
+  Status:              401
+  context:             Error from controller when performing authentication
+```
+
+ method by updating its state to `active-public`.
+
+<CodeBlockConfig highlight="1-3,30-37">
+
+```shell-session
+$ boundary auth-methods update ldap -id $BOUNDARY_AUTH_METHOD_ID -state active-public
+
+Auth Method information:
+  Created Time:         Tue, 03 Oct 2023 18:32:16 MDT
+  ID:                   amldap_gLx3Gg3ZdG
+  Type:                 ldap
+  Updated Time:         Tue, 03 Oct 2023 18:49:23 MDT
+  Version:              2
+
+  Scope:
+    ID:                 global
+    Name:               global
+    Type:               global
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    authenticate
+
+  Authorized Actions on Auth Method's Collections:
+    accounts:
+      create
+      list
+    managed-groups:
+      create
+      list
+
+  Attributes:
+    bind_dn:            cn=read-only-admin,dc=example,dc=com
+    bind_password_hmac: IC29KNPDTPC57nc2aT9UFthOh4Kh1i3660_euBsgL7Y
+    group_dn:           dc=example,dc=com
+    state:              active-public
+    urls:               [ldap://ldap.forumsys.com]
+    user_attr:          uid
+    user_dn:            dc=example,dc=com
+```
+
+</CodeBlockConfig>
+
+</Tab>
+<Tab heading="Active Directory" group="ad">
+
+```shell-session
+$ boundary authenticate ldap -auth-method-id $BOUNDARY_AUTH_METHOD_ID -login-name m.barten
+Please enter the password (it will be hidden):
+Error from controller when performing authentication
+
+Error information:
+  Kind:                Unauthenticated
+  Message:             Unable to authenticate.
+  Status:              401??
+  context:             Error from controller when performing authentication
+```
+
+ method by updating its state to `active-public`.
+
+<CodeBlockConfig highlight="1-3,30-37">
+
+```shell-session
+$ boundary auth-methods update ldap -id $BOUNDARY_AUTH_METHOD_ID -state active-public
+
+Auth Method information:
+  Created Time:         Thu, 05 Oct 2023 14:07:56 MDT
+  ID:                   amldap_1cOqu39sSS
+  Type:                 ldap
+  Updated Time:         Thu, 05 Oct 2023 14:13:40 MDT
+  Version:              2
+
+  Scope:
+    ID:                 global
+    Name:               global
+    Type:               global
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    authenticate
+
+  Authorized Actions on Auth Method's Collections:
+    accounts:
+      create
+      list
+    managed-groups:
+      create
+      list
+
+  Attributes:
+    bind_dn:            CN=vagrant,CN=Users,DC=example,DC=local
+    bind_password_hmac: jHkdqn-vmn6IbSaT1rkzz5ypVrRCwZ2BjBV4aCwpP5E
+    group_dn:           CN=Users,DC=example,DC=local
+    state:              active-public
+    urls:               [ldap://4.tcp.us-cal-1.ngrok.io:13713]
+    user_attr:          sAMAccountName
+    user_dn:            CN=Users,DC=example,DC=local
+```
+
+</CodeBlockConfig>
+
+</Tab>
+</Tabs>
+
+The login type will now allow be allowed.
+
+### Set LDAP as the primary login
+
+Global and organization scopes may have auth methods in Boundary, and each scope
+has one primary auth-method ID. Boundary automatically creates a user upon
+first successful authentication via the scope’s primary auth method, which will
+be used by scopes with only one auth method available.
+
+When [migrating the
+database](/boundary/tutorials/oss-configuration/upgrade-version), Boundary will
+produce a log of any auth methods which resulted in no primary auth method being
+set for the scope.
+
+If LDAP is not the only auth method for a scope, it should be set as primary
+when initially creating the auth method.
+
+Set the new LDAP auth method as the primary auth method for the global scope.
+
+```shell-session
+$ boundary scopes update -primary-auth-method-id $BOUNDARY_AUTH_METHOD_ID -id global
+
+Scope information:
+  Created Time:             Wed, 20 Sep 2023 10:22:22 MDT
+  ID:                       global
+  Primary Auth Method ID:   amldap_gLx3Gg3ZdG
+  Updated Time:             Tue, 03 Oct 2023 18:54:24 MDT
+  Version:                  4
+
+  Scope (parent):
+    ID:                     global
+    Name:                   global
+    Type:                   global
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+
+  Authorized Actions on Scope's Collections:
+    auth-methods:
+      create
+      list
+    auth-tokens:
+      list
+    groups:
+      create
+      list
+    roles:
+      create
+      list
+    scopes:
+      create
+      list
+      list-keys
+      rotate-keys
+      list-key-version-destruction-jobs
+      destroy-key-version
+    session-recordings:
+      list
+    storage-buckets:
+      create
+      list
+    users:
+      create
+      list
+    workers:
+      create:controller-led
+      create:worker-led
+      list
+      read-certificate-authority
+      reinitialize-certificate-authority
+```
+
+</Tab>
+<Tab heading="Terraform" group="terraform">
+
+Auth methods must be updated to an active state before they can be used.
+
+You can check the state of the new auth method using the read operation. First,
+ensure you are logged in as the admin user.
+
+```shell-session
+$ boundary authenticate password -auth-method-id ampw_1234567890 -login-name admin
+Please enter the password (it will be hidden): <password>
+
+Authentication information:
+  Account ID:      apw_DZRvFzmb0Y
+  Auth Method ID:  ampw_1234567890
+  Expiration Time: Thu, 20 May 2021 16:32:06 MDT
+  User ID:         u_1234567890
+
+The token was successfully stored in the chosen keyring and is not displayed here.
+```
+
+Next read the auth method details. Use the `auth-method-id` you copied from the
+`terraform apply` output.
+
+<CodeBlockConfig highlight="1,3,36">
+
+```shell-session
+$ boundary auth-methods read -id amldap_tXtzfylpwz
+
+Auth Method information:
+  Created Time:         Fri, 01 Dec 2023 12:03:23 MST
+  Description:          LDAP auth method for test server
+  ID:                   amldap_tXtzfylpwz
+  Name:                 LDAP Test Auth
+  Type:                 ldap
+  Updated Time:         Fri, 01 Dec 2023 12:03:23 MST
+  Version:              1
+
+  Scope:
+    ID:                 global
+    Name:               global
+    Type:               global
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    authenticate
+
+  Authorized Actions on Auth Method's Collections:
+    accounts:
+      create
+      list
+    managed-groups:
+      create
+      list
+
+  Attributes:
+    bind_dn:            cn=read-only-admin,dc=example,dc=com
+    bind_password_hmac: sHocbfa-JtlGvCzZ6-aTMFAlvun7t4oMl0SmxLbUn_g
+    group_dn:           dc=example,dc=com
+    state:              active-public
+    urls:               [ldap://ldap.forumsys.com]
+    user_attr:          uid
+    user_dn:            dc=example,dc=com
+```
+
+</CodeBlockConfig>
+
+Notice at the bottom of the output that the login state is already set to
+`active-public`.
+
+It's important to be aware that using Terraform to provision an auth method will
+set the state to active by default, unless otherwise defined. The `state`
+attribute can be used on the `boundary_auth_method_ldap` resource to set an auth
+method to `active-private` or `inactive`.
+
+Now that the auth method state has been verified, define it explicitly in the
+Terraform configuration file.
+
+### Set LDAP to active-public
+
+Global and organization scopes may have auth methods in Boundary, and each scope
+has one primary auth-method ID. Boundary will automatically create a user upon
+first successful authentication via the scope’s primary auth method, which will
+be used by scopes with only one auth method available.
+
+When [migrating the
+database](/boundary/tutorials/oss-configuration/upgrade-version), Boundary will
+produce a log of any auth methods which have more than one auth method which
+resulted in no primary auth method being set for the scope.
+
+Update the `boundary_auth_method_ldap` resource in the `main.tf` file to set the
+auth method's `state` to `active-public` for clarity
+
+Below is an example. Update your `main.tf` file accordingly.
+
+<Tabs>
+<Tab heading="LDAP test server" group="test">
+
+```hcl
+resource "boundary_auth_method_ldap" "test_server" {
+  name                 = "LDAP Test Auth"
+  description          = "LDAP auth method for test server"
+  scope_id             = "global"
+  urls                 = ["ldap://ldap.forumsys.com"]
+  bind_dn              = "cn=read-only-admin,dc=example,dc=com"
+  bind_password        = "password"
+  user_dn              = "dc=example,dc=com"
+  user_attr            = "uid"
+  group_dn             = "dc=example,dc=com"
+  is_primary_for_scope = true
+  state                = "active-public"
+}
+```
+
+</Tab>
+<Tab heading="Active Directory" group="ad">
+
+<Variant slug="boundary-deploy" option="hcp">
+
+```hcl
+resource "boundary_auth_method_ldap" "ad_test_server" {
+  name                 = "LDAP Test Auth"
+  description          = "LDAP auth method for AD test server"
+  scope_id             = "global"
+  urls                 = ["ldap://<NGROK_ADDRESS>:<NGROK_PORT>"]  # updateme
+  bind_dn              = "CN=vagrant,CN=Users,DC=example,DC=local"
+  bind_password        = "vagrant"
+  user_dn              = "CN=Users,DC=example,DC=local"
+  user_attr            = "sAMAccountName"
+  group_dn             = "CN=Users,DC=example,DC=local"
+  group_attr           = "memberOf"
+  insecure_tls         = true
+  is_primary_for_scope = true
+  state                = "active-public"
+}
+```
+
+</Variant>
+
+<Variant slug="boundary-deploy" option="dev">
+
+```hcl
+resource "boundary_auth_method_ldap" "ad_test_server" {
+  name          = "LDAP Test Auth"
+  description   = "LDAP auth method for AD test server"
+  scope_id      = "global"
+  urls          = ["ldap://localhost:7389"]
+  bind_dn       = "CN=vagrant,CN=Users,DC=example,DC=local"
+  bind_password = "vagrant"
+  user_dn       = "CN=Users,DC=example,DC=local"
+  user_attr     = "sAMAccountName"
+  group_dn      = "CN=Users,DC=example,DC=local"
+  group_attr    = "memberOf"
+  insecure_tls  = true
+  is_primary_for_scope = true
+  state                = "active-public"
+}
+```
+
+</Variant>
+
+</Tab>
+</Tabs>
+
+Apply the updated configuration. Enter `yes` when prompted.
+
+```shell-session
+$ terraform apply
+boundary_auth_method_ldap.test_server: Refreshing state... [id=amldap_07AEZFZtR7]
+boundary_account_ldap.ldap_user: Refreshing state... [id=acctldap_KsFP35tx0Z]
+
+No changes. Your infrastructure matches the configuration.
+
+Terraform has compared your real infrastructure against your configuration and found no
+differences, so no changes are needed.
+
+Apply complete! Resources: 0 added, 0 changed, 0 destroyed.
+
+Outputs:
+
+auth-method-id = "amldap_07AEZFZtR7"
+```
+
+Notice no changes were made, since the auth method is already set as
+`active-public`. The auth method can be disabled in the future by updating the
+`state` attribute and re-applying the Terraform configuration.
+
+With the auth method verified as active and defined as the primary login method,
+users can authenticate using the LDAP server.
+
+</Tab>
+</Tabs>
+
+## Authenticate using LDAP
+
+With the LDAP auth method set to active-public, Boundary users can authenticate
+via the CLI, Admin Console, or Boundary Desktop app. Boundary administrators will
+usually follow a CLI or Admin Console workflow, while clients and end-users can
+use the CLI or the Boundary Desktop app.
+
+<Tabs>
+<Tab heading="Desktop App" group="desktop">
+
+
+The [Boundary Desktop](/boundary/tutorials/oss-getting-started/oss-getting-started-desktop-app)
+app is currently available for MacOS and Windows users.
+
+~> Ensure that the latest version of the Boundary Desktop app is installed from
+the [releases](https://releases.hashicorp.com/boundary-desktop/) page before
+attempting to login with OIDC. The minimum version of the app allowing LDAP
+login is [1.7.0](https://releases.hashicorp.com/boundary-desktop/1.7.0/).
+
+1. Launch the Boundary Desktop app and enter the Boundary Cluster URL.
+
+   <Variant slug="boundary-deploy" option="hcp">
+
+   The Cluster URL was copied from the HCP portal, such as
+   `https://e58fe114-7624-431c-994d-b6670e90b03J.boundary.hashicorp.cloud`.
+   Click **Submit**.
+
+   </Variant>
+   <Variant slug="boundary-deploy" option="dev">
+
+   Launch the Boundary Desktop app and enter `http://localhost:9200` as the
+   Cluster URL, then click **Submit**.
+
+   </Variant>
+
+   ![Desktop App Url](/img/boundary/desktop/desktop-url_light.png#light-theme-only)
+   ![Desktop App Url](/img/boundary/desktop/desktop-url_dark.png#dark-theme-only)
+
+1. Select **LDAP**.
+
+   Enter the following LDAP credentials:
+
+   <Tabs>
+   <Tab heading="LDAP test server" group="test">
+
+   - Login Name: `einstein`
+   - Password : `password`
+
+   </Tab>
+   <Tab heading="Active Directory" group="ad">
+
+   - Login Name: `m.barten`
+   - Password : `Foo_b_ar123!`
+
+   </Tab>
+   </Tabs>
+
+   Click **Sign in**.
+
+The Boundary Desktop App provides a view of Targets and Sessions.
+
+To continue learning about assigning LDAP accounts to a managed group to control
+permissions grants, ensure you can also log in using the Admin Console or CLI.
+
+</Tab>
+<Tab heading="Admin Console" group="admin">
+
+Select the **admin** user menu in the top-right corner of the page and click
+**Sign Out**.
+
+Next, select the new auth method called **LDAP-test-auth**.
+
+Enter the following LDAP credentials:
+
+<Tabs>
+<Tab heading="LDAP test server" group="test">
+
+- Login Name: `einstein`
+- Password : `password`
+
+</Tab>
+<Tab heading="Active Directory" group="ad">
+
+- Login Name: `m.barten`
+- Password : `Foo_b_ar123!`
+
+</Tab>
+</Tabs>
+
+After successful authentication you are automatically redirected to the Admin
+Console. Notice the restricted permissions for this new user, which cannot
+currently view resources like auth methods or roles.
+
+If you were to log back into the Admin Console as the admin user, you would
+notice the new LDAP user has automatically been added under the **Users** view.
+
+Next you will review the various methods that can be used to authenticate to
+Boundary using the new LDAP auth method.
+
+</Tab>
+<Tab heading="CLI" group="cli">
+
+
+The `boundary authenticate` command will use the primary auth method for the
+default scope, which has been set to the LDAP auth method. The `boundary
+authenticate ldap` command can be used to select an LDAP auth method not set as
+primary for a scope.
+
+Now try authenticating using the newly created LDAP auth method.
+
+<Tabs>
+<Tab heading="LDAP test server" group="test">
+
+Use the user `einstein` and password `password`.
+
+```shell-session
+$ boundary authenticate
+Please enter the login name: einstein
+Please enter the password (it will be hidden):
+
+Authentication information:
+  Account ID:      acctldap_xj6SPKdN6a
+  Auth Method ID:  amldap_gLx3Gg3ZdG
+  Expiration Time: Tue, 10 Oct 2023 18:55:33 MDT
+  User ID:         u_DHVWuJUCve
+
+The token was successfully stored in the chosen keyring and is not displayed here.
+```
+
+</Tab>
+<Tab heading="Active Directory" group="ad">
+
+Use the user `m.barten` and password `Foo_b_ar123!`.
+
+```shell-session
+$ boundary authenticate
+Please enter the login name: m.barten
+Please enter the password (it will be hidden):
+
+Authentication information:
+  Account ID:      acctldap_xj6SPKdN6a
+  Auth Method ID:  amldap_gLx3Gg3ZdG
+  Expiration Time: Tue, 10 Oct 2023 18:55:33 MDT
+  User ID:         u_DHVWuJUCve
+
+The token was successfully stored in the chosen keyring and is not displayed here.
+```
+
+</Tab>
+</Tabs>
+
+You have now successfully authenticated using the new LDAP auth method.
+
+After logging in your terminal should confirm the account and user IDs.
+
+Listing various scope items show this user is not able to access most
+resources by default.
+
+Try recursively listing the available roles.
+
+```shell-session
+$ boundary roles list -recursive
+Error from controller when performing list on roles
+
+Error information:
+  Kind:                PermissionDenied
+  Message:             Forbidden.
+  Status:              403
+  context:             Error from controller when performing list on roles
+```
+
+Next, you will set up a Boundary managed group to provide role-based access for
+LDAP groups.
+
+</Tab>
+</Tabs>
+
+## Define a managed group
+
+In Boundary, the managed group resource represents a collection of accounts. A
+collection is automatically maintained by evaluating a filter defined in the
+managed group's configuration against the information returned by auth method's
+identity provider (IdP).
+
+You can associate accounts with zero or more managed groups within the same auth
+method, and you can associate grants with a managed group when they are used as a
+principal within a role.
+
+Membership in a managed group is defined when an LDAP auth method is used for
+authentication. Membership is determined by matching the LDAP group names
+against an LDAP account's associated groups, and every authentication updates
+the group membership comparison.
+
+<Tabs>
+<Tab heading="LDAP test server" group="test">
+
+According to the [Online LDAP Test
+Server](https://www.forumsys.com/2022/05/10/online-ldap-test-server/), two
+groups exist for testing LDAP:
+
+- `ou=mathematicians`
+- `ou=scientists`
+
+The `scientists` group contains the following users:
+
+- `uid=einstein`
+- `uid=newton`
+- `uid=galieleo`
+- `uid=tesla`
+
+### Verify LDAP account details
+
+Earlier, you authenticated with the `einstein` user account. First, check that
+this account is associated with the LDAP auth method.
+
+<Tabs>
+<Tab heading="Admin Console" group="admin">
+
+1. Log back into Boundary as the admin user.
+
+   Select the **einstein** user menu in the top-right corner of the page and
+   click **Sign Out**.
+
+   From the **Sign In** page, select the **password** auth method.
+
+   Enter the admin user account details, then click **Sign In**.
+
+Next, select the new auth method called **LDAP-test-auth**.
+
+1. Navigate to the **Auth Methods** page in the **Global** scope. Select the
+   `LDAP-test-auth` auth method.
+
+1. Select the **Accounts** tab.
+
+1. Notice the new account with the following details:
+
+   - **Dn**: `uid=einstein,dc=example,dc=com`
+   - **Group Names**: `Scientists`
+
+This information is populated by the LDAP server for any accounts that have
+authenticated using LDAP.
+
+### Create the managed group
+
+We know that the `einstein` user belongs to the `Scientists` LDAP group.
+
+Create a new Boundary managed group, specifying the `Scientists` group name to
+define the managed group membership.
+
+1. Navigate to the **Auth Methods** page in the **Global** scope. Select the
+   `LDAP-test-auth` auth method.
+
+1. Select the **Managed Groups** tab.
+
+1. Click **Create Managed Group**.
+
+1. Fill in the form details with the following:
+
+   - **Name**: `science-group`
+   - **Group Names**: `Scientists`
+
+   Click **Add**, then **Save**.
+
+</Tab>
+<Tab heading="CLI" group="cli">
+
+Log back into Boundary as the admin user.
+
+```shell-session
+$ boundary authenticate password -auth-method-id $ADMIN_AUTH_METHOD_ID
+```
+
+List the accounts associated with the LDAP auth method.
+
+```shell-session
+$ boundary accounts list -auth-method-id $BOUNDARY_AUTH_METHOD_ID
+
+Account information:
+  ID:                    acctldap_xj6SPKdN6a
+    Version:             2
+    Type:                ldap
+    Authorized Actions:
+      no-op
+      read
+      update
+      delete
+```
+
+Copy the LDAP account ID and read its details.
+
+<CodeBlockConfig highlight="1-3,22-24">
+
+```shell-session
+$ boundary accounts read -id acctldap_xj6SPKdN6a
+
+Account information:
+  Auth Method ID:      amldap_gLx3Gg3ZdG
+  Created Time:        Tue, 03 Oct 2023 18:44:46 MDT
+  ID:                  acctldap_xj6SPKdN6a
+  Type:                ldap
+  Updated Time:        Tue, 03 Oct 2023 18:55:33 MDT
+  Version:             2
+
+  Scope:
+    ID:                global
+    Name:              global
+    Type:              global
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+
+  Attributes:
+    Login Name:        einstein
+    dn:                uid=einstein,dc=example,dc=com
+```
+
+</CodeBlockConfig>
+
+Notice the **Attributes** section of the output. This information is populated
+by the LDAP server, and displays the **Login Name** for our user, `einstein`.
+
+### Enable LDAP auth method groups
+
+First, enable group membership for the LDAP auth method.
+
+<CodeBlockConfig hightlight="1-3,30,33">
+
+```shell-session
+$ boundary auth-methods update ldap -id $BOUNDARY_AUTH_METHOD_ID -enable-groups
+
+Auth Method information:
+  Created Time:           Tue, 03 Oct 2023 18:32:16 MDT
+  ID:                     amldap_gLx3Gg3ZdG
+  Is Primary For Scope:   true
+  Type:                   ldap
+  Updated Time:           Wed, 04 Oct 2023 21:52:40 MDT
+  Version:                3
+
+  Scope:
+    ID:                   global
+    Name:                 global
+    Type:                 global
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    authenticate
+
+  Authorized Actions on Auth Method's Collections:
+    accounts:
+      create
+      list
+    managed-groups:
+      create
+      list
+
+  Attributes:
+    bind_dn:              cn=read-only-admin,dc=example,dc=com
+    bind_password_hmac:   IC29KNPDTPC57nc2aT9UFthOh4Kh1i3660_euBsgL7Y
+    enable_groups:        true
+    group_dn:             dc=example,dc=com
+    state:                active-public
+    urls:                 [ldap://ldap.forumsys.com]
+    user_attr:            uid
+    user_dn:              dc=example,dc=com
+```
+
+</CodeBlockConfig>
+
+<Tip>
+
+  You can enable groups during auth method creation with the `-enable-groups`
+  parameter.
+
+</Tip>
+
+### Create the managed group
+
+We know that the `einstein` user belongs to the `Scientists` LDAP group.
+
+Create a new Boundary managed group, specifying the `Scientists` group name to
+define the managed group membership.
+
+```shell-session
+$ boundary managed-groups create ldap \
+-name science-group \
+-group-names Scientists
+```
+
+**Example:**
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary managed-groups create ldap \
+-name science-group \
+-group-names Scientists
+
+Managed Group information:
+  Auth Method ID:      amldap_gLx3Gg3ZdG
+  Created Time:        Wed, 04 Oct 2023 21:19:49 MDT
+  ID:                  mgldap_hk5TbtFkQv
+  Name:                science-group
+  Type:                ldap
+  Updated Time:        Wed, 04 Oct 2023 21:19:49 MDT
+  Version:             1
+
+  Scope:
+    ID:                global
+    Name:              global
+    Type:              global
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+
+  Attributes:
+    group_names:       [Scientists]
+```
+
+</CodeBlockConfig>
+
+Copy the managed group ID from the output, such as `mgldap_hk5TbtFkQv` and
+create an environment variable called `MG_LDAP_ID`.
+
+```shell-session
+$ export MG_LDAP_ID="mgldap_hk5TbtFkQv"
+```
+
+</Tab>
+<Tab heading="Terraform" group="terraform">
+
+Log into Boundary as the admin user.
+
+```shell-session
+$ boundary authenticate password -auth-method-id $ADMIN_AUTH_METHOD_ID -login-name admin
+```
+
+List the accounts associated with the LDAP auth method.
+
+```shell-session
+$ boundary accounts list -auth-method-id $BOUNDARY_AUTH_METHOD_ID
+
+Account information:
+  ID:                    acctldap_xj6SPKdN6a
+    Version:             2
+    Type:                ldap
+    Authorized Actions:
+      no-op
+      read
+      update
+      delete
+```
+
+Copy the LDAP account ID and read its details.
+
+<CodeBlockConfig highlight="1-3,22-24">
+
+```shell-session
+$ boundary accounts read -id acctldap_xj6SPKdN6a
+
+Account information:
+  Auth Method ID:      amldap_gLx3Gg3ZdG
+  Created Time:        Tue, 03 Oct 2023 18:44:46 MDT
+  ID:                  acctldap_xj6SPKdN6a
+  Type:                ldap
+  Updated Time:        Tue, 03 Oct 2023 18:55:33 MDT
+  Version:             2
+
+  Scope:
+    ID:                global
+    Name:              global
+    Type:              global
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+
+  Attributes:
+    Login Name:        einstein
+    dn:                uid=einstein,dc=example,dc=com
+```
+
+</CodeBlockConfig>
+
+Notice the **Attributes** section of the output. This information is populated
+by the LDAP server, and displays the **Login Name** for our user, `einstein`.
+
+### Enable LDAP auth method groups
+
+Enable group membership for the LDAP auth method.
+
+Open `main.tf` and update the `boundary_auth_method_ldap` resource to include
+the `enable_groups` attribute, which should be set to `true`.
+
+<CodeBlockConfig filename="main.tf" hightlight="1,13">
+
+```hcl
+resource "boundary_auth_method_ldap" "test_server" {
+  name                 = "LDAP Test Auth"
+  description          = "LDAP auth method for test server"
+  scope_id             = "global"
+  urls                 = ["ldap://ldap.forumsys.com"]
+  bind_dn              = "cn=read-only-admin,dc=example,dc=com"
+  bind_password        = "password"
+  user_dn              = "dc=example,dc=com"
+  user_attr            = "uid"
+  group_dn             = "dc=example,dc=com"
+  is_primary_for_scope = true
+  state                = "active-public"
+  enable_groups        = true
+}
+```
+
+</CodeBlockConfig>
+
+### Create the managed group
+
+We know that the `einstein` user belongs to the `Scientists` LDAP group.
+
+Create a new Boundary managed group using the `boundary_managed_group_ldap`
+resource. Specify the `Scientists` group name to define the managed group
+membership.
+
+<CodeBlockConfig filename="main.tf">
+
+```hcl
+resource "boundary_managed_group_ldap" "science_group" {
+  auth_method_id = boundary_auth_method_ldap.test_server.id
+  name           = "science-group"
+  group_names    = ["Scientists"]
+}
+```
+
+</CodeBlockConfig>
+
+</Tab>
+</Tabs>
+</Tab>
+<Tab heading="Active Directory" group="ad">
+
+According to the
+[vagrant-active-directory](https://github.com/splitbrain/vagrant-active-directory#usage)
+usage docs, [sevaral
+groups](https://github.com/splitbrain/vagrant-active-directory/blob/master/scripts/users.csv)
+exist for testing LDAP, including:
+
+- `alpha`
+- `beta`
+- `Gamma Nested`
+- `omega nested`
+
+The `alpha` group contains many users, including:
+
+- `m.barten`
+- `j.padula`
+- `g.schrei`
+- `a.clemot`
+
+All users have the password `Foo_b_ar123!`
+
+### Verify LDAP account details
+
+Earlier, you authenticated with the `m.barten` user account.
+
+First, check that this account is associated with the LDAP auth method.
+
+<Tabs>
+<Tab heading="Admin Console" group="admin">
+
+1. Log back into Boundary as the admin user.
+
+   Select the **m.barten** user menu in the top-right corner of the page and
+   click **Sign Out**.
+
+   From the Sign In page, select the **password** auth method.
+
+   Enter the admin user account details, then click **Sign In**.
+
+1. Navigate to the **Auth Methods** page in the **Global** scope.
+
+1. Select the **Accounts** tab.
+
+1. Notice the new account with the following details:
+
+   - **Dn**: `CN=Milka Barten,CN=Users,DC=example,DC=local`
+   - **Group Names**: `alpha`
+
+This information is populated by the LDAP server for any accounts that have
+authenticated using LDAP.
+
+### Create the managed group
+
+We know that the `m.barten` user belongs to the `alpha` LDAP group.
+
+Create a new Boundary managed group, specifying the `alpha` group name to define
+the managed group membership.
+
+1. Navigate to the **Auth Methods** page in the **Global** scope. Select the
+   `LDAP-test-auth` auth method.
+
+1. Select the **Managed Groups** tab.
+
+1. Click **Create Managed Group**.
+
+1. Fill in the form details with the following:
+
+   - **Name**: `alpha-group`
+   - **Group Names**: `alpha`
+
+   Click **Add**, then **Save**.
+
+</Tab>
+<Tab heading="CLI" group="cli">
+
+Log back into Boundary as the admin user.
+
+```shell-session
+$ boundary authenticate password -auth-method-id $ADMIN_AUTH_METHOD_ID
+```
+
+List the accounts associated with the LDAP auth method.
+
+```shell-session
+$ boundary accounts list -auth-method-id $BOUNDARY_AUTH_METHOD_ID
+
+Account information:
+  ID:                    acctldap_xj6SPKdN6a
+    Version:             1
+    Type:                ldap
+    Authorized Actions:
+      no-op
+      read
+      update
+      delete
+```
+
+Copy the LDAP account ID and read its details.
+
+<CodeBlockConfig highlight="1-3,22-24">
+
+```shell-session
+$ boundary accounts read -id acctldap_xj6SPKdN6a
+
+Account information:
+  Auth Method ID:      amldap_inmNgkYyBA
+  Created Time:        Thu, 05 Oct 2023 18:04:53 MDT
+  ID:                  acctldap_Gh2bYmHRC2
+  Type:                ldap
+  Updated Time:        Thu, 05 Oct 2023 18:04:53 MDT
+  Version:             1
+
+  Scope:
+    ID:                global
+    Name:              global
+    Type:              global
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+
+  Attributes:
+    Login Name:        m.barten
+    dn:                CN=Milka Barten,CN=Users,DC=example,DC=local
+```
+
+</CodeBlockConfig>
+
+Notice the **Attributes** section of the output. This information is populated
+by the LDAP server, and displays the **Login Name** for our user, `m.barten`.
+
+### Enable LDAP auth method groups
+
+First, enable group membership for the LDAP auth method.
+
+<CodeBlockConfig hightlight="1-3,30,33">
+
+```shell-session
+$ boundary auth-methods update ldap -id $BOUNDARY_AUTH_METHOD_ID -enable-groups
+
+Auth Method information:
+  Created Time:         Thu, 05 Oct 2023 18:03:21 MDT
+  ID:                   amldap_inmNgkYyBA
+  Type:                 ldap
+  Updated Time:         Thu, 05 Oct 2023 20:19:14 MDT
+  Version:              3
+
+  Scope:
+    ID:                 global
+    Name:               global
+    Type:               global
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    authenticate
+
+  Authorized Actions on Auth Method's Collections:
+    accounts:
+      create
+      list
+    managed-groups:
+      create
+      list
+
+  Attributes:
+    bind_dn:            CN=vagrant,CN=Users,DC=example,DC=local
+    bind_password_hmac: 8x3QV2Mc2E-OyAQ3vZ0Xi--rXjLrz3GB132TFX7ftRU
+    enable_groups:      true
+    group_attr:         memberOf
+    group_dn:           CN=Users,DC=example,DC=local
+    state:              active-public
+    urls:               [ldap://4.tcp.us-cal-1.ngrok.io:17592]
+    user_attr:          sAMAccountName
+    user_dn:            CN=Users,DC=example,DC=local
+```
+
+</CodeBlockConfig>
+
+<Tip>
+
+  You can enable groups during auth method creation with the `-enable-groups`
+  parameter.
+
+</Tip>
+
+### Create the managed group
+
+We know that the `m.barten` user belongs to the `alpha` LDAP group.
+
+Create a new Boundary managed group, specifying the `alpha` group name to define
+the managed group membership.
+
+```shell-session
+$ boundary managed-groups create ldap \
+-name alpha-group \
+-group-names alpha
+```
+
+**Example:**
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+Managed Group information:
+  Auth Method ID:      amldap_inmNgkYyBA
+  Created Time:        Thu, 05 Oct 2023 20:22:53 MDT
+  ID:                  mgldap_wiow7ig6DI
+  Name:                alpha-group
+  Type:                ldap
+  Updated Time:        Thu, 05 Oct 2023 20:22:53 MDT
+  Version:             1
+
+  Scope:
+    ID:                global
+    Name:              global
+    Type:              global
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+
+  Attributes:
+    group_names:       [alpha]
+```
+
+</CodeBlockConfig>
+
+Copy the managed group ID from the output, such as `mgldap_hk5TbtFkQv` and
+create an environment variable called `MG_LDAP_ID`.
+
+```shell-session
+$ export MG_LDAP_ID="mgldap_hk5TbtFkQv"
+```
+
+</Tab>
+<Tab heading="Terraform" group="terraform">
+
+Log back into Boundary as the admin user.
+
+```shell-session
+$ boundary authenticate password -auth-method-id $ADMIN_AUTH_METHOD_ID -login-name admin
+```
+
+List the accounts associated with the LDAP auth method.
+
+```shell-session
+$ boundary accounts list -auth-method-id $BOUNDARY_AUTH_METHOD_ID
+
+Account information:
+  ID:                    acctldap_xj6SPKdN6a
+    Version:             1
+    Type:                ldap
+    Authorized Actions:
+      no-op
+      read
+      update
+      delete
+```
+
+Copy the LDAP account ID and read its details.
+
+<CodeBlockConfig highlight="1-3,22-24">
+
+```shell-session
+$ boundary accounts read -id acctldap_xj6SPKdN6a
+
+Account information:
+  Auth Method ID:      amldap_inmNgkYyBA
+  Created Time:        Thu, 05 Oct 2023 18:04:53 MDT
+  ID:                  acctldap_Gh2bYmHRC2
+  Type:                ldap
+  Updated Time:        Thu, 05 Oct 2023 18:04:53 MDT
+  Version:             1
+
+  Scope:
+    ID:                global
+    Name:              global
+    Type:              global
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+
+  Attributes:
+    Login Name:        m.barten
+    dn:                CN=Milka Barten,CN=Users,DC=example,DC=local
+```
+
+</CodeBlockConfig>
+
+Notice the **Attributes** section of the output. This information is populated
+by the LDAP server, and displays the **Login Name** for our user, `m.barten`.
+
+### Enable LDAP auth method groups
+
+Enable group membership for the LDAP auth method.
+
+Open `main.tf` and update the `boundary_auth_method_ldap` resource to include
+the `enable_groups` attribute, which should be set to `true`.
+
+<Variant slug="boundary-deploy" option="hcp">
+
+<CodeBlockConfig filename="main.tf" hightlight="1,16">
+
+```hcl
+resource "boundary_auth_method_ldap" "ad_test_server" {
+  name                 = "LDAP Test Auth"
+  description          = "LDAP auth method for AD test server"
+  scope_id             = "global"
+  urls                 = ["ldap://<NGROK_ADDRESS>:<NGROK_PORT>"]  # updateme
+  bind_dn              = "CN=vagrant,CN=Users,DC=example,DC=local"
+  bind_password        = "vagrant"
+  user_dn              = "CN=Users,DC=example,DC=local"
+  user_attr            = "sAMAccountName"
+  group_dn             = "CN=Users,DC=example,DC=local"
+  group_attr           = "memberOf"
+  insecure_tls         = true
+  is_primary_for_scope = true
+  state                = "active-public"
+  state                = "active-public"
+  enable_groups        = true
+}
+```
+
+</CodeBlockConfig>
+
+</Variant>
+
+<Variant slug="boundary-deploy" option="dev">
+
+<CodeBlockConfig filename="main.tf" hightlight="1,16">
+
+```hcl
+resource "boundary_auth_method_ldap" "ad_test_server" {
+  name                 = "LDAP Test Auth"
+  description          = "LDAP auth method for AD test server"
+  scope_id             = "global"
+  urls                 = ["ldap://localhost:7389"]
+  bind_dn              = "CN=vagrant,CN=Users,DC=example,DC=local"
+  bind_password        = "vagrant"
+  user_dn              = "CN=Users,DC=example,DC=local"
+  user_attr            = "sAMAccountName"
+  group_dn             = "CN=Users,DC=example,DC=local"
+  group_attr           = "memberOf"
+  insecure_tls         = true
+  is_primary_for_scope = true
+  state                = "active-public"
+  state                = "active-public"
+  enable_groups        = true
+}
+```
+
+</CodeBlockConfig>
+
+</Variant>
+
+### Create the managed group
+
+We know that the `m.barten` user belongs to the `alpha` LDAP group.
+
+Create a new Boundary managed group using the `boundary_managed_group_ldap`
+resource. Specify the `alpha` group name to define the managed group membership.
+
+<CodeBlockConfig filename="main.tf">
+
+```hcl
+resource "boundary_managed_group_ldap" "alpha_group" {
+  auth_method_id = boundary_auth_method_ldap.ad_test_server
+  name           = "alpha-group"
+  group_names    = ["alpha"]
+}
+```
+
+</CodeBlockConfig>
+
+</Tab>
+</Tabs>
+
+</Tab>
+</Tabs>
+
+With the managed group configured, the next time our user authenticates it will
+belong to the managed group.
+
+### Create a role
+
+With the managed group created and automatically managing group membership, the
+next step is to apply permissions to the group by creating a role.
+
+After you create a role, the managed group is added as a role principal and grants
+are assigned to the role. To learn more about group principals, check out the
+[Manage Users and Groups tutorial](/boundary/tutorials/oss-administration/oss-manage-users-groups). To
+understand how permissions are granted, check out the [Manage Roles
+tutorial](/boundary/tutorials/oss-administration/oss-manage-roles).
+
+<Tabs>
+<Tab heading="Admin Console" group="admin">
+
+First, create a new role in the `global` scope.
+
+1. Navigate to the **Roles** page in the **Global** scope.
+
+1. Click **New Role**. Fill in the following role details:
+
+   - **Name**: `read-roles`
+
+   Click **Save**.
+
+1. On the **Settings** page, Click **Edit Form**. Select a scope underneath
+   Global, such as **Generated org scope**, **quick-start-org**, or any other
+   org you have created.
+
+   Click **Save**.
+
+### Assign grants to roles
+
+Use the grant `ids=*;type=role;actions=list,read`, which selects any role ID
+and allows you to perform list and read actions.
+Include the grant `ids=*;type=scope;actions=list,read`, which selects any scope 
+and allows you to perform list and read actions. To learn more about
+setting permission grants, check out the [Permission Grant Formats
+documentation](/boundary/docs/concepts/security/permissions#permission-grant-formats).
+
+1. Select the **Grants** tab.
+
+1. In the **New Grant** field, enter the following:
+
+   - `ids=*;type=role;actions=list,read`
+
+1. Click **Add**.
+
+1. In the **New Grant** field, enter the following:
+
+   - `ids=*;type=scope;actions=list,read`
+
+1. Click **Add**, then **Save**.
+
+### Add managed group as a role principle
+
+Next, add the new managed group as a role principal so the group will inherit
+any grants associated with the role.
+
+<Tabs>
+<Tab heading="LDAP test server" group="test">
+
+1. From the `read-roles` role page, select the **Principals** tab.
+
+1. Add the managed group as a role principal.
+
+   Click **+ Add Principals**.
+
+   Check the box beside the `science-group` managed group.
+
+   ![Select role principal](/img/boundary/ldap/admin-assign-principals-test_light.png#light-theme-only)
+   ![Select role principal](/img/boundary/ldap/admin-assign-principals-test_dark.png#dark-theme-only)
+
+   Click the **Add Principals** button.
+
+</Tab>
+<Tab heading="Active Directory" group="ad">
+
+1. From the `read-roles` role page, select the **Principals** tab.
+
+1. Add the managed group as a role principal.
+
+   Click **+ Add Principals**.
+
+   Check the box beside the `alpha-group` managed group.
+
+   ![Select role principal](/img/boundary/ldap/admin-assign-principals-ad_light.png#light-theme-only)
+   ![Select role principal](/img/boundary/ldap/admin-assign-principals-ad_dark.png#dark-theme-only)
+
+   Click the **Add Principals** button.
+
+</Tab>
+</Tabs>
+
+With the grants in place the LDAP user should automatically be allowed to list
+and read roles upon authentication.
+
+### Test managed group membership
+
+Test that the LDAP user belongs to the managed group, and has inherited the
+defined role principals.
+
+1. Log back in using the LDAP auth method.
+
+1. Select the **admin** user menu in the top-right corner of the page and click
+**Sign Out**.
+
+1. Authenticate using the new auth method.
+
+   Select the auth method called **LDAP-test-auth**.
+
+   Enter the following LDAP credentials:
+   
+   <Tabs>
+   <Tab heading="LDAP test server" group="test">
+   
+   - Login Name: `einstein`
+   - Password : `password`
+   
+   </Tab>
+   <Tab heading="Active Directory" group="ad">
+   
+   - Login Name: `m.barten`
+   - Password : `Foo_b_ar123!`
+   
+   </Tab>
+   </Tabs>
+
+   Click **Sign In**.
+
+1. After successful authentication you are automatically redirected to the Admin
+Console. Select **global** scope.
+
+1. Check that you are now able to view the **Roles** page.
+
+   ![Admin Console view roles](/img/boundary/ldap/admin-check-roles_light1.png#light-theme-only)
+   ![Admin Console view roles](/img/boundary/ldap/admin-check-roles_dark1.png#dark-theme-only)
+
+</Tab>
+<Tab heading="CLI" group="cli">
+
+First, create a new role in the `global` scope.
+
+<CodeBlockConfig highlight="1,6">
+
+```shell-session
+$ boundary roles create -scope-id=global -name="read-roles"
+
+Role information:
+  Created Time:        Wed, 04 Oct 2023 21:24:38 MDT
+  Grant Scope ID:      global
+  ID:                  r_12BNVEo23v
+  Updated Time:        Wed, 04 Oct 2023 21:24:38 MDT
+  Version:             1
+
+  Scope:
+    ID:                global
+    Name:              global
+    Type:              global
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    add-principals
+    set-principals
+    remove-principals
+    add-grants
+    set-grants
+    remove-grants
+```
+
+</CodeBlockConfig>
+
+Copy the role ID from the output, such as `r_12BNVEo23v` and create
+an environment variable.
+
+```shell-session
+$ export ROLE_ID="r_12BNVEo23v"
+```
+
+### Add managed group as a role principle
+
+Next, add the new managed group as a role principal so the group will inherit
+any grants associated with the role.
+
+```shell-session
+$ boundary roles add-principals -id=$ROLE_ID -principal $MG_LDAP_ID
+
+Role information:
+  Created Time:        Wed, 04 Oct 2023 21:24:38 MDT
+  Grant Scope ID:      global
+  ID:                  r_12BNVEo23v
+  Updated Time:        Wed, 04 Oct 2023 21:27:17 MDT
+  Version:             2
+
+  Scope:
+    ID:                global
+    Name:              global
+    Type:              global
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    add-principals
+    set-principals
+    remove-principals
+    add-grants
+    set-grants
+    remove-grants
+
+  Principals:
+    ID:             mgldap_hk5TbtFkQv
+      Type:         managed group
+      Scope ID:     global
+```
+
+### Assign grants to roles
+
+Use the grant `ids=*;type=role;actions=list,read`, which selects any role ID
+and allows you to perform list and read actions.
+Include the grant `ids=*;type=scope;actions=list,read`, which selects any scope 
+and allows you to perform list and read actions. To learn more about
+setting permission grants, check out the [Permission Grant Formats
+documentation](/boundary/docs/concepts/security/permissions#permission-grant-formats).
+
+```shell-session
+$ boundary roles add-grants -id=$ROLE_ID -grant "ids=*;type=role;actions=list,read" -grant "ids=*;type=scope;actions=list,read"
+
+Role information:
+  Created Time:        Wed, 04 Oct 2023 21:24:38 MDT
+  Grant Scope ID:      global
+  ID:                  r_12BNVEo23v
+  Updated Time:        Wed, 04 Oct 2023 21:28:30 MDT
+  Version:             3
+
+  Scope:
+    ID:                global
+    Name:              global
+    Type:              global
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    add-principals
+    set-principals
+    remove-principals
+    add-grants
+    set-grants
+    remove-grants
+
+  Principals:
+    ID:             mgldap_hk5TbtFkQv
+      Type:         managed group
+      Scope ID:     global
+
+  Canonical Grants:
+    ids=*;type=role;actions=list,read
+    ids=*;type=scope;actions=list,read
+```
+
+With the grants in place the LDAP user should automatically be allowed to list
+and read roles upon authentication.
+
+### Test managed group membership
+
+Test that the LDAP user belongs to the managed group, and has inherited the
+defined role principals.
+
+<Tabs>
+<Tab heading="LDAP test server" group="test">
+
+1. Log back in using the LDAP auth method.   
+
+   This time, check that the `tesla` user is able to authenticate with the password
+   `password`.
+   
+   ```shell-session
+   $ boundary authenticate
+   Please enter the login name: tesla
+   Please enter the password (it will be hidden):
+   
+   Authentication information:
+     Account ID:      acctldap_ZWmKyufRRS
+     Auth Method ID:  amldap_gLx3Gg3ZdG
+     Expiration Time: Wed, 11 Oct 2023 21:31:18 MDT
+     User ID:         u_mQKs7bVVtG
+   
+   The token was successfully stored in the chosen keyring and is not displayed here.
+   ```
+
+1. Check that you are now able to recursively list the available roles.
+
+   ```shell-session
+   $ boundary roles list -recursive
+   
+   Role information:
+     ID:                    r_E8a2Bq2IAt
+       Scope ID:            global
+       Version:             3
+       Name:                Login and Default Grants
+       Description:         Role created for login capability, account self-management, 
+       and other default grants for users of the global scope at its creation time
+       Authorized Actions:
+         read
+   
+     ID:                    r_h09lmRSpAx
+       Scope ID:            global
+       Version:             3
+       Name:                Administration
+       Description:         Provides admin grants within the "global" scope to the initial user
+       Authorized Actions:
+         read
+   
+     ID:                    r_12BNVEo23v
+       Scope ID:            global
+       Version:             32
+       Name:                read-roles
+       Authorized Actions:
+         read
+   ```
+
+1. Log back into Boundary as the admin user.
+
+   ```shell-session
+   $ boundary authenticate password -auth-method-id $ADMIN_AUTH_METHOD_ID
+   ```
+
+1. List the accounts associated with the LDAP auth method.
+
+   ```shell-session
+   $ boundary accounts list -auth-method-id $BOUNDARY_AUTH_METHOD_ID
+   
+   Account information:
+     ID:                    acctldap_xj6SPKdN6a
+       Version:             1
+       Type:                ldap
+       Authorized Actions:
+         no-op
+         read
+         update
+         delete
+   
+     ID:                    acctldap_ZWmKyufRRS
+       Version:             1
+       Type:                ldap
+       Authorized Actions:
+         no-op
+         read
+         update
+         delete
+   ```
+
+1. Read the new account details.
+
+   ```shell-session
+   $ Account information:
+     Auth Method ID:      amldap_gLx3Gg3ZdG
+     Created Time:        Wed, 04 Oct 2023 21:31:18 MDT
+     ID:                  acctldap_ZWmKyufRRS
+     Type:                ldap
+     Updated Time:        Wed, 04 Oct 2023 21:56:49 MDT
+     Version:             2
+   
+     Scope:
+       ID:                global
+       Name:              global
+       Type:              global
+   
+     Managed Group IDs:
+       mgldap_hk5TbtFkQv
+   
+     Authorized Actions:
+       no-op
+       read
+       update
+       delete
+   
+     Attributes:
+       Login Name:        tesla
+       dn:                uid=tesla,dc=example,dc=com
+       member_of_groups:  [Scientists Italians]
+   ```
+
+Notice that the account **Attributes** contains `member_of_groups:  [Scientists
+Italians]`, as expected.
+
+</Tab>
+<Tab heading="Active Directory" group="ad">
+
+1. This time, check that the `j.padula` user is able to authenticate with the
+password `Foo_b_ar123!`.
+
+   ```shell-session
+   $ boundary authenticate
+   Please enter the login name: j.padula
+   Please enter the password (it will be hidden):
+   
+   Authentication information:
+     Account ID:      acctldap_xJBpXiWey8
+     Auth Method ID:  amldap_inmNgkYyBA
+     Expiration Time: Thu, 12 Oct 2023 20:28:48 MDT
+     User ID:         u_oRfdCn0a02
+   
+   The token was successfully stored in the chosen keyring and is not displayed here.
+   ```
+
+1. Check that you are now able to recursively list the available roles.
+
+   ```shell-session
+   $ boundary roles list -recursive
+   
+   Role information:
+     ID:                    r_E8a2Bq2IAt
+       Scope ID:            global
+       Version:             3
+       Name:                Login and Default Grants
+       Description:         Role created for login capability, account self-management, 
+       and other default grants for users of the global scope at its creation time
+       Authorized Actions:
+         read
+   
+     ID:                    r_h09lmRSpAx
+       Scope ID:            global
+       Version:             3
+       Name:                Administration
+       Description:         Provides admin grants within the "global" scope to the initial user
+       Authorized Actions:
+         read
+   
+     ID:                    r_12BNVEo23v
+       Scope ID:            global
+       Version:             32
+       Name:                read-roles
+       Authorized Actions:
+         read
+   ```
+
+1. Log back into Boundary as the admin user.
+
+   ```shell-session
+   $ boundary authenticate password -auth-method-id $ADMIN_AUTH_METHOD_ID
+   ```
+
+1. List the accounts associated with the LDAP auth method.
+
+   ```shell-session
+   $ boundary accounts list -auth-method-id $BOUNDARY_AUTH_METHOD_ID
+   
+   Account information:
+     ID:                    acctldap_xj6SPKdN6a
+       Version:             1
+       Type:                ldap
+       Authorized Actions:
+         no-op
+         read
+         update
+         delete
+   
+     ID:                    acctldap_ZWmKyufRRS
+       Version:             1
+       Type:                ldap
+       Authorized Actions:
+         no-op
+         read
+         update
+         delete
+   ```
+
+1. Read the new account details.
+
+   ```shell-session
+   $ boundary accounts read -id acctldap_ZWmKyufRRS
+   
+   Account information:
+     Auth Method ID:      amldap_jffvwRV7r9
+     Created Time:        Thu, 05 Oct 2023 20:50:13 MDT
+     ID:                  acctldap_ZWmKyufRRS
+     Type:                ldap
+     Updated Time:        Thu, 05 Oct 2023 20:50:13 MDT
+     Version:             1
+   
+     Scope:
+       ID:                global
+       Name:              global
+       Type:              global
+   
+     Managed Group IDs:
+       mgldap_OIesW2xlHP
+   
+     Authorized Actions:
+       no-op
+       read
+       update
+       delete
+   
+     Attributes:
+       Login Name:        j.padula
+       dn:                CN=Joni Padula,CN=Users,DC=example,DC=local
+       member_of_groups:  [alpha]
+   ```
+
+Notice that the account **Attributes** contains `member_of_groups:  [alpha]`, as
+expected.
+
+</Tab>
+</Tabs>
+
+</Tab>
+<Tab heading="Terraform" group="terraform">
+
+First, create a new role in the `global` scope.
+
+Open the `main.tf` file and add a new `boundary_role` resource. Add the `name`,
+`description`, `principal_ids`, `grant_strings`, and `scope_id` schema.
+
+Use the `global` scope id. For the `principal_ids`, add the new managed group as
+a role principal so the group will inherit any grants associated with the role.
+
+Set `grant_strings` to `grant_strings =
+["ids=*;type=role;actions=list,read","ids=*;type=scope;actions=list,read"]`, which
+selects any role ID and allows list and read actions to be performed, and allows
+the user to view the scopes that contain the role. To learn more about setting
+permission grants, check out the [Permission Grant Formats
+documentation](/boundary/docs/concepts/security/permissions#permission-grant-formats).
+
+Additionally, add a new `outputs` value to print the id of the role.
+
+<Tabs>
+<Tab heading="LDAP test server" group="test">
+
+```hcl
+resource "boundary_role" "read_roles" {
+  name          = "read-roles"
+  description   = "List and read roles"
+  principal_ids = [boundary_managed_group.science_group.id]
+  grant_strings = ["ids=*;type=role;actions=list,read","ids=*;type=scope;actions=list,read"]
+  scope_id      = "global"
+}
+
+output "role-id" {
+  value = boundary_role.read_roles.id
+}
+```
+
+-> To see an example of a completed `main.tf` file, expand the accordion below.
+
+<Accordion heading="Full Terraform Plan" collapse>
+
+<Variant slug="boundary-deploy" option="hcp">
+
+```hcl
+terraform {
+  required_providers {
+    boundary = {
+      source  = "hashicorp/boundary"
+      version = "1.1.10"
+    }
+  }
+}
+
+output "auth-method-id" {
+  value = boundary_auth_method_ldap.test_server.id
+}
+
+output "managed-group-id" {
+  value = boundary_managed_group.science_group.id
+}
+
+output "role-id" {
+  value = boundary_role.read_roles.id
+}
+
+provider "boundary" {
+  addr                   = "BOUNDARY_ADDR"      # updateme
+  auth_method_id         = "ampw_1234567890"    # updateme
+  auth_method_login_name = "myuser"             # updateme
+  auth_method_password   = "passpass"           # updateme
+}
+
+resource "boundary_auth_method_ldap" "test_server" {
+  name                 = "LDAP Test Auth"
+  description          = "LDAP auth method for test server"
+  scope_id             = "global"
+  urls                 = ["ldap://ldap.forumsys.com"]
+  bind_dn              = "cn=read-only-admin,dc=example,dc=com"
+  bind_password        = "password"
+  user_dn              = "dc=example,dc=com"
+  user_attr            = "uid"
+  group_dn             = "dc=example,dc=com"
+  is_primary_for_scope = true
+  state                = "active-public"
+  enable_groups        = true
+}
+
+resource "boundary_account_ldap" "ldap_user" {
+  name           = "user1"
+  description    = "LDAP account for user1"
+  auth_method_id = boundary_auth_method_ldap.ad_test_server.id
+  login_name     = "user1"
+}
+
+resource "boundary_managed_group_ldap" "science_group" {
+  auth_method_id = boundary_auth_method_ldap.test_server.id
+  name           = "science-group"
+  group_names    = ["Scientists"]
+}
+
+resource "boundary_role" "read_roles" {
+  name          = "read-roles"
+  description   = "List and read roles"
+  principal_ids = [boundary_managed_group.science_group.id]
+  grant_strings = ["ids=*;type=role;actions=list,read","ids=*;type=scope;actions=list,read"]
+  scope_id      = "global"
+}
+```
+
+</Variant>
+
+<Variant slug="boundary-deploy" option="dev">
+
+```hcl
+terraform {
+  required_providers {
+    boundary = {
+      source  = "hashicorp/boundary"
+      version = "1.1.10"
+    }
+  }
+}
+
+output "auth-method-id" {
+  value = boundary_auth_method_ldap.test_server.id
+}
+
+output "managed-group-id" {
+  value = boundary_managed_group.science_group.id
+}
+
+output "role-id" {
+  value = boundary_role.read_roles.id
+}
+
+provider "boundary" {
+  addr             = "http://127.0.0.1:9200"
+  recovery_kms_hcl = <<EOT
+kms "aead" {
+  purpose = "recovery"
+  aead_type = "aes-gcm"
+  key = "EDrPfCkzxRrNlsPwp+lAp11Dtnu0C14vLDCzBSxvo1s="   #updateme
+  key_id = "global_recovery"
+}
+EOT
+}
+
+resource "boundary_auth_method_ldap" "test_server" {
+  name                 = "LDAP Test Auth"
+  description          = "LDAP auth method for test server"
+  scope_id             = "global"
+  urls                 = ["ldap://ldap.forumsys.com"]
+  bind_dn              = "cn=read-only-admin,dc=example,dc=com"
+  bind_password        = "password"
+  user_dn              = "dc=example,dc=com"
+  user_attr            = "uid"
+  group_dn             = "dc=example,dc=com"
+  is_primary_for_scope = true
+  state                = "active-public"
+  enable_groups        = true
+}
+
+resource "boundary_account_ldap" "ldap_user" {
+  name           = "user1"
+  description    = "LDAP account for user1"
+  auth_method_id = boundary_auth_method_ldap.ad_test_server.id
+  login_name     = "user1"
+}
+
+resource "boundary_managed_group_ldap" "science_group" {
+  auth_method_id = boundary_auth_method_ldap.test_server.id
+  name           = "science-group"
+  group_names    = ["Scientists"]
+}
+
+resource "boundary_role" "read_roles" {
+  name          = "read-roles"
+  description   = "List and read roles"
+  principal_ids = [boundary_managed_group.science_group.id]
+  grant_strings = ["ids=*;type=role;actions=list,read","ids=*;type=scope;actions=list,read"]
+  scope_id      = "global"
+}
+```
+
+</Variant>
+
+</Accordion>
+
+Apply the new configuration. Enter `yes` when prompted for confirmation.
+
+<CodeBlockConfig highlight="1,63-69">
+
+```shell-session
+$ terraform apply
+boundary_auth_method_ldap.test_server: Refreshing state... [id=amldap_OghYhJ8kG6]
+boundary_account_ldap.ldap_user: Refreshing state... [id=acctldap_WGVbJLXtEm]
+
+Terraform used the selected providers to generate the following execution plan. Resource actions
+are indicated with the following symbols:
+  + create
+  ~ update in-place
+
+Terraform will perform the following actions:
+
+  # boundary_auth_method_ldap.test_server will be updated in-place
+  ~ resource "boundary_auth_method_ldap" "test_server" {
+      ~ enable_groups        = false -> true
+        id                   = "amldap_OghYhJ8kG6"
+        name                 = "LDAP Test Auth"
+        # (17 unchanged attributes hidden)
+    }
+
+  # boundary_managed_group_ldap.science_group will be created
+  + resource "boundary_managed_group_ldap" "science_group" {
+      + auth_method_id = "amldap_OghYhJ8kG6"
+      + group_names    = [
+          + "Scientists",
+        ]
+      + id             = (known after apply)
+      + name           = "science-group"
+    }
+
+  # boundary_role.read_roles will be created
+  + resource "boundary_role" "read_roles" {
+      + description    = "List and read roles"
+      + grant_scope_id = (known after apply)
+      + grant_strings  = [
+          + "ids=*;type=role;actions=list,read",
+          + "ids=*;type=scope;actions=list,read",
+        ]
+      + id             = (known after apply)
+      + name           = "read-roles"
+      + principal_ids  = (known after apply)
+      + scope_id       = "global"
+    }
+
+Plan: 2 to add, 1 to change, 0 to destroy.
+
+Changes to Outputs:
+  + managed-group-id = (known after apply)
+  + role-id          = (known after apply)
+
+Do you want to perform these actions?
+  Terraform will perform the actions described above.
+  Only 'yes' will be accepted to approve.
+
+  Enter a value: yes
+
+boundary_auth_method_ldap.test_server: Modifying... [id=amldap_OghYhJ8kG6]
+boundary_auth_method_ldap.test_server: Modifications complete after 0s [id=amldap_OghYhJ8kG6]
+boundary_managed_group_ldap.science_group: Creating...
+boundary_managed_group_ldap.science_group: Creation complete after 0s [id=mgldap_8txVupegPg]
+boundary_role.read_roles: Creating...
+boundary_role.read_roles: Creation complete after 0s [id=r_KVncZBh6tj]
+
+Apply complete! Resources: 2 added, 1 changed, 0 destroyed.
+
+Outputs:
+
+auth-method-id = "amldap_OghYhJ8kG6"
+managed-group-id = "mgldap_8txVupegPg"
+role-id = "r_KVncZBh6tj"
+```
+
+</CodeBlockConfig>
+
+</Tab>
+<Tab heading="Active Directory" group="ad">
+
+```hcl
+resource "boundary_role" "read_roles" {
+  name          = "read-roles"
+  description   = "List and read roles"
+  principal_ids = [boundary_managed_group.alpha_group.id]
+  grant_strings = ["ids=*;type=role;actions=list,read","ids=*;type=scope;actions=list,read"]
+  scope_id      = "global"
+}
+
+output "role-id" {
+  value = boundary_role.read_roles.id
+}
+```
+
+-> To see an example of a completed `main.tf` file, expand the accordion below.
+
+<Accordion heading="Full Terraform Plan" collapse>
+
+<Variant slug="boundary-deploy" option="hcp">
+
+```hcl
+terraform {
+  required_providers {
+    boundary = {
+      source  = "hashicorp/boundary"
+      version = "1.1.10"
+    }
+  }
+}
+
+output "auth-method-id" {
+  value = boundary_auth_method_ldap.ad_test_server.id
+}
+
+output "managed-group-id" {
+  value = boundary_managed_group_ldap.alpha_group.id
+}
+
+output "role-id" {
+  value = boundary_role.read_roles.id
+}
+
+provider "boundary" {
+  addr                   = "BOUNDARY_ADDR"      # updateme
+  auth_method_id         = "ampw_1234567890"    # updateme
+  auth_method_login_name = "myuser"             # updateme
+  auth_method_password   = "passpass"           # updateme
+}
+
+resource "boundary_auth_method_ldap" "ad_test_server" {
+  name                 = "LDAP Test Auth"
+  description          = "LDAP auth method for AD test server"
+  scope_id             = "global"
+  urls                 = ["ldap://<NGROK_ADDRESS>:<NGROK_PORT>"]  # updateme
+  bind_dn              = "CN=vagrant,CN=Users,DC=example,DC=local"
+  bind_password        = "vagrant"
+  user_dn              = "CN=Users,DC=example,DC=local"
+  user_attr            = "sAMAccountName"
+  group_dn             = "CN=Users,DC=example,DC=local"
+  group_attr           = "memberOf"
+  insecure_tls         = true
+  is_primary_for_scope = true
+  state                = "active-public"
+  enable_groups        = true
+}
+
+resource "boundary_account_ldap" "ldap_user" {
+  name           = "user1"
+  description    = "LDAP account for user1"
+  auth_method_id = boundary_auth_method_ldap.ad_test_server.id
+  login_name     = "user1"
+}
+
+resource "boundary_managed_group_ldap" "alpha_group" {
+  auth_method_id = boundary_auth_method_ldap.ad_test_server.id
+  name           = "alpha-group"
+  group_names    = ["alpha"]
+}
+
+resource "boundary_role" "read_roles" {
+  name          = "read-roles"
+  description   = "List and read roles"
+  principal_ids = [boundary_managed_group_ldap.alpha_group.id]
+  grant_strings = ["ids=*;type=role;actions=list,read","ids=*;type=scope;actions=list,read"]
+  scope_id      = "global"
+}
+```
+
+</Variant>
+
+<Variant slug="boundary-deploy" option="dev">
+
+```hcl
+terraform {
+  required_providers {
+    boundary = {
+      source  = "hashicorp/boundary"
+      version = "1.1.10"
+    }
+  }
+}
+
+output "auth-method-id" {
+  value = boundary_auth_method_ldap.ad_test_server.id
+}
+
+output "managed-group-id" {
+  value = boundary_managed_group.alpha_group.id
+}
+
+output "role-id" {
+  value = boundary_role.read_roles.id
+}
+
+provider "boundary" {
+  addr             = "http://127.0.0.1:9200"
+  recovery_kms_hcl = <<EOT
+kms "aead" {
+  purpose = "recovery"
+  aead_type = "aes-gcm"
+  key = "EDrPfCkzxRrNlsPwp+lAp11Dtnu0C14vLDCzBSxvo1s="   #updateme
+  key_id = "global_recovery"
+}
+EOT
+}
+
+resource "boundary_auth_method_ldap" "ad_test_server" {
+  name                 = "LDAP Test Auth"
+  description          = "LDAP auth method for AD test server"
+  scope_id             = "global"
+  urls                 = ["ldap://localhost:7389"]
+  bind_dn              = "CN=vagrant,CN=Users,DC=example,DC=local"
+  bind_password        = "vagrant"
+  user_dn              = "CN=Users,DC=example,DC=local"
+  user_attr            = "sAMAccountName"
+  group_dn             = "CN=Users,DC=example,DC=local"
+  group_attr           = "memberOf"
+  insecure_tls         = true
+  is_primary_for_scope = true
+  state                = "active-public"
+  enable_groups        = true
+}
+
+resource "boundary_account_ldap" "ldap_user" {
+  name           = "user1"
+  description    = "LDAP account for user1"
+  auth_method_id = boundary_auth_method_ldap.ad_test_server.id
+  login_name     = "user1"
+}
+
+resource "boundary_managed_group_ldap" "alpha_group" {
+  auth_method_id = boundary_auth_method_ldap.ad_test_server.id
+  name           = "alpha-group"
+  group_names    = ["alpha"]
+}
+
+resource "boundary_role" "read_roles" {
+  name          = "read-roles"
+  description   = "List and read roles"
+  principal_ids = [boundary_managed_group_ldap.alpha_group.id]
+  grant_strings = ["ids=*;type=role;actions=list,read","ids=*;type=scope;actions=list,read"]
+  scope_id      = "global"
+}
+```
+
+</Variant>
+
+</Accordion>
+
+Apply the new configuration. Enter `yes` when prompted for confirmation.
+
+<CodeBlockConfig highlight="1,63-69">
+
+```shell-session
+$ terraform apply
+boundary_auth_method_ldap.ad_test_server: Refreshing state... [id=amldap_Tn4uKBpo1b]
+boundary_account_ldap.ldap_user: Refreshing state... [id=acctldap_wA9ibRCGzD]
+
+Terraform used the selected providers to generate the following execution plan. Resource actions
+are indicated with the following symbols:
+  + create
+  ~ update in-place
+
+Terraform will perform the following actions:
+
+  # boundary_auth_method_ldap.ad_test_server will be updated in-place
+  ~ resource "boundary_auth_method_ldap" "ad_test_server" {
+      ~ enable_groups        = false -> true
+        id                   = "amldap_Tn4uKBpo1b"
+        name                 = "LDAP Test Auth"
+        # (18 unchanged attributes hidden)
+    }
+
+  # boundary_managed_group_ldap.alpha_group will be created
+  + resource "boundary_managed_group_ldap" "alpha_group" {
+      + auth_method_id = "amldap_Tn4uKBpo1b"
+      + group_names    = [
+          + "alpha",
+        ]
+      + id             = (known after apply)
+      + name           = "alpha-group"
+    }
+
+  # boundary_role.read_roles will be created
+  + resource "boundary_role" "read_roles" {
+      + description    = "List and read roles"
+      + grant_scope_id = (known after apply)
+      + grant_strings  = [
+          + "ids=*;type=role;actions=list,read",
+          + "ids=*;type=scope;actions=list,read",
+        ]
+      + id             = (known after apply)
+      + name           = "read-roles"
+      + principal_ids  = (known after apply)
+      + scope_id       = "global"
+    }
+
+Plan: 2 to add, 1 to change, 0 to destroy.
+
+Changes to Outputs:
+  + managed-group-id = (known after apply)
+  + role-id          = (known after apply)
+
+Do you want to perform these actions?
+  Terraform will perform the actions described above.
+  Only 'yes' will be accepted to approve.
+
+  Enter a value: yes
+
+boundary_auth_method_ldap.ad_test_server: Modifying... [id=amldap_Tn4uKBpo1b]
+boundary_auth_method_ldap.ad_test_server: Modifications complete after 0s [id=amldap_Tn4uKBpo1b]
+boundary_managed_group_ldap.alpha_group: Creating...
+boundary_managed_group_ldap.alpha_group: Creation complete after 0s [id=mgldap_Sdx83nE1HC]
+boundary_role.read_roles: Creating...
+boundary_role.read_roles: Creation complete after 1s [id=r_puRWK8bxT1]
+
+Apply complete! Resources: 2 added, 1 changed, 0 destroyed.
+
+Outputs:
+
+auth-method-id = "amldap_Tn4uKBpo1b"
+managed-group-id = "mgldap_Sdx83nE1HC"
+role-id = "r_puRWK8bxT1"
+```
+
+</CodeBlockConfig>
+
+</Tab>
+</Tabs>
+
+Note the role ID from the output, such as `r_0Uz8McGUEs`
+
+With the grants in place the ldap user should automatically be allowed to list
+and read roles upon authentication.
+
+### Test managed group membership
+
+Test that the LDAP user belongs to the managed group, and has inherited the
+defined role principals.
+
+<Tabs>
+<Tab heading="Admin Console" group="admin">
+
+1. Log back in using the LDAP auth method.
+
+1. Select the **admin** user menu in the top-right corner of the page and click
+**Sign Out**.
+
+1. Authenticate using the new auth method.
+
+   Select the auth method called **LDAP-test-auth**.
+
+   Enter the following LDAP credentials:
+   
+   <Tabs>
+   <Tab heading="LDAP test server" group="test">
+   
+   - Login Name: `einstein`
+   - Password : `password`
+   
+   </Tab>
+   <Tab heading="Active Directory" group="ad">
+   
+   - Login Name: `m.barten`
+   - Password : `Foo_b_ar123!`
+   
+   </Tab>
+   </Tabs>
+
+   Click **Sign In**.
+
+1. After successful authentication you are automatically redirected to the Admin
+Console. Select **global** scope.
+
+1. Check that you are now able to view the **Roles** page.
+
+   ![Admin Console view roles](/img/boundary/ldap/admin-check-roles_light1.png#light-theme-only)
+   ![Admin Console view roles](/img/boundary/ldap/admin-check-roles_dark1.png#dark-theme-only)
+
+</Tab>
+<Tab heading="CLI" group="cli">
+
+<Tabs>
+<Tab heading="LDAP test server" group="test">
+
+1. Log back in using the LDAP auth method.   
+
+   This time, check that the `tesla` user is able to authenticate with the password
+   `password`.
+   
+   ```shell-session
+   $ boundary authenticate
+   Please enter the login name: tesla
+   Please enter the password (it will be hidden):
+   
+   Authentication information:
+     Account ID:      acctldap_ZWmKyufRRS
+     Auth Method ID:  amldap_gLx3Gg3ZdG
+     Expiration Time: Wed, 11 Oct 2023 21:31:18 MDT
+     User ID:         u_mQKs7bVVtG
+   
+   The token was successfully stored in the chosen keyring and is not displayed here.
+   ```
+
+1. Check that you are now able to recursively list the available roles.
+
+   ```shell-session
+   $ boundary roles list -recursive
+   
+   Role information:
+     ID:                    r_E8a2Bq2IAt
+       Scope ID:            global
+       Version:             3
+       Name:                Login and Default Grants
+       Description:         Role created for login capability, account self-management, 
+       and other default grants for users of the global scope at its creation time
+       Authorized Actions:
+         read
+   
+     ID:                    r_h09lmRSpAx
+       Scope ID:            global
+       Version:             3
+       Name:                Administration
+       Description:         Provides admin grants within the "global" scope to the initial user
+       Authorized Actions:
+         read
+   
+     ID:                    r_12BNVEo23v
+       Scope ID:            global
+       Version:             32
+       Name:                read-roles
+       Authorized Actions:
+         read
+   ```
+
+1. Log back into Boundary as the admin user.
+
+   ```shell-session
+   $ boundary authenticate password -auth-method-id $ADMIN_AUTH_METHOD_ID
+   ```
+
+1. List the accounts associated with the LDAP auth method.
+
+   ```shell-session
+   $ boundary accounts list -auth-method-id $BOUNDARY_AUTH_METHOD_ID
+   
+   Account information:
+     ID:                    acctldap_xj6SPKdN6a
+       Version:             1
+       Type:                ldap
+       Authorized Actions:
+         no-op
+         read
+         update
+         delete
+   
+     ID:                    acctldap_ZWmKyufRRS
+       Version:             1
+       Type:                ldap
+       Authorized Actions:
+         no-op
+         read
+         update
+         delete
+   ```
+
+1. Read the new account details.
+
+   ```shell-session
+   $ Account information:
+     Auth Method ID:      amldap_gLx3Gg3ZdG
+     Created Time:        Wed, 04 Oct 2023 21:31:18 MDT
+     ID:                  acctldap_ZWmKyufRRS
+     Type:                ldap
+     Updated Time:        Wed, 04 Oct 2023 21:56:49 MDT
+     Version:             2
+   
+     Scope:
+       ID:                global
+       Name:              global
+       Type:              global
+   
+     Managed Group IDs:
+       mgldap_hk5TbtFkQv
+   
+     Authorized Actions:
+       no-op
+       read
+       update
+       delete
+   
+     Attributes:
+       Login Name:        tesla
+       dn:                uid=tesla,dc=example,dc=com
+       member_of_groups:  [Scientists Italians]
+   ```
+
+Notice that the account **Attributes** contains `member_of_groups:  [Scientists
+Italians]`, as expected.
+
+</Tab>
+<Tab heading="Active Directory" group="ad">
+
+1. This time, check that the `j.padula` user is able to authenticate with the
+password `Foo_b_ar123!`.
+
+   ```shell-session
+   $ boundary authenticate
+   Please enter the login name: j.padula
+   Please enter the password (it will be hidden):
+   
+   Authentication information:
+     Account ID:      acctldap_xJBpXiWey8
+     Auth Method ID:  amldap_inmNgkYyBA
+     Expiration Time: Thu, 12 Oct 2023 20:28:48 MDT
+     User ID:         u_oRfdCn0a02
+   
+   The token was successfully stored in the chosen keyring and is not displayed here.
+   ```
+
+1. Check that you are now able to recursively list the available roles.
+
+   ```shell-session
+   $ boundary roles list -recursive
+   
+   Role information:
+     ID:                    r_E8a2Bq2IAt
+       Scope ID:            global
+       Version:             3
+       Name:                Login and Default Grants
+       Description:         Role created for login capability, account self-management, 
+       and other default grants for users of the global scope at its creation time
+       Authorized Actions:
+         read
+   
+     ID:                    r_h09lmRSpAx
+       Scope ID:            global
+       Version:             3
+       Name:                Administration
+       Description:         Provides admin grants within the "global" scope to the initial user
+       Authorized Actions:
+         read
+   
+     ID:                    r_12BNVEo23v
+       Scope ID:            global
+       Version:             32
+       Name:                read-roles
+       Authorized Actions:
+         read
+   ```
+
+1. Log back into Boundary as the admin user.
+
+   ```shell-session
+   $ boundary authenticate password -auth-method-id $ADMIN_AUTH_METHOD_ID
+   ```
+
+1. List the accounts associated with the LDAP auth method.
+
+   ```shell-session
+   $ boundary accounts list -auth-method-id $BOUNDARY_AUTH_METHOD_ID
+   
+   Account information:
+     ID:                    acctldap_xj6SPKdN6a
+       Version:             1
+       Type:                ldap
+       Authorized Actions:
+         no-op
+         read
+         update
+         delete
+   
+     ID:                    acctldap_ZWmKyufRRS
+       Version:             1
+       Type:                ldap
+       Authorized Actions:
+         no-op
+         read
+         update
+         delete
+   ```
+
+1. Read the new account details.
+
+   ```shell-session
+   $ boundary accounts read -id acctldap_ZWmKyufRRS
+   
+   Account information:
+     Auth Method ID:      amldap_jffvwRV7r9
+     Created Time:        Thu, 05 Oct 2023 20:50:13 MDT
+     ID:                  acctldap_ZWmKyufRRS
+     Type:                ldap
+     Updated Time:        Thu, 05 Oct 2023 20:50:13 MDT
+     Version:             1
+   
+     Scope:
+       ID:                global
+       Name:              global
+       Type:              global
+   
+     Managed Group IDs:
+       mgldap_OIesW2xlHP
+   
+     Authorized Actions:
+       no-op
+       read
+       update
+       delete
+   
+     Attributes:
+       Login Name:        j.padula
+       dn:                CN=Joni Padula,CN=Users,DC=example,DC=local
+       member_of_groups:  [alpha]
+   ```
+
+Notice that the account **Attributes** contains `member_of_groups:  [alpha]`, as
+expected.
+
+</Tab>
+</Tabs>
+
+</Tab>
+</Tabs>
+
+</Tab>
+</Tabs>
+
+You have now finished configuring an LDAP auth method and a role with an
+associated managed group principal.
+
+## Cleanup and teardown
+
+<Variant slug="boundary-deploy" option="hcp">
+
+1. Remove any unwanted test auth methods from your HCP Boundary cluster. This
+   can be done by deleting the auth method in the Admin Console UI, or by
+   providing your auth method ID using the CLI:
+
+   ```shell-session
+   $ boundary auth-methods delete -id amoidc_40fr5jkLpk
+   ```
+
+1. Delete the `read-roles` role within the Admin Console.
+
+1. If following the Active Directory workflow, clean up Vagrant and ngrok.
+
+   Stop ngrok by locating the terminal where ngrok is running, then execute
+   `ctrl + c`.
+
+   Clean up Vagrant by destroying the Windows virtual machine.
+
+   ```shell-session
+   $ vagrant destroy
+   ```
+
+</Variant>
+<Variant slug="boundary-deploy" option="dev">
+
+1. Stop Boundary dev mode
+
+   Locate the shell where `boundary dev` was run and enter `ctrl+c` to stop dev
+   mode.
+
+   <CodeBlockConfig>
+
+   ```shell-session
+   ^C==> Boundary dev environment shutdown triggered
+   [INFO]  worker: status ticking shutting down
+   [INFO]  controller: terminating completed sessions ticking shutting down
+   [INFO]  controller: closing expired pending tokens ticking shutting down
+   [INFO]  controller: status ticking shutting down
+   [INFO]  controller: recovery nonce ticking shutting down
+   ```
+
+   </CodeBlockConfig>
+
+1. If following the Active Directory workflow, clean up Vagrant by destroying
+   the Windows virtual machine.
+
+   ```shell-session
+   $ vagrant destroy
+   ```
+
+</Variant>
+
+## Next steps
+
+This tutorial demonstrated the steps to add an LDAP authentication method and
+define role principals using a managed group.
+
+You set up an LDAP auth method with Boundary, and verified that you can
+authenticate using an LDAP account. After that, you created a managed group that
+determined membership based on the LDAP groups associated with user accounts.
+Finally, you verified that users belonging the the managed group inherited
+grants assigned by a role principal.
+
+To learn more about the basics of managing user accounts, check out the [Manage
+Users and Groups](/boundary/tutorials/oss-administration/oss-manage-users-groups) and [Manage
+Roles](/boundary/tutorials/oss-administration/oss-manage-roles) tutorials.

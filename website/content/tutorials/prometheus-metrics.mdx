@@ -1,0 +1,1339 @@
+---
+id: 1c9c782d-8bda-4011-9be9-9bbcdec750e7
+name: Prometheus metrics
+short_name: Prometheus metrics
+description: >-
+  Gather and visualize Boundary metrics using Prometheus and Grafana.
+read_time: 20
+products_used:
+  - product: boundary
+  - product: terraform
+    min_version: 0.8.0
+    max_version: 0.10.0
+default_collection_context: boundary/self-managed-deployment
+---
+
+This tutorial shows how to enable metrics collection using Prometheus, and
+configures Grafana to easily visualize metrics data.
+
+### Background
+
+Visibility into Boundary workers and controllers plays an important role in
+ensuring the health of production deployments. Boundary 0.8 adds monitoring
+capabilities using the OpenMetric exposition format, enabling administrators to
+collect the data using tools like Prometheus and export it into a data
+visualizer.
+
+This tutorial reviews metrics collection in dev mode, and demonstrates how to
+enable metrics in a more realistic deployment scenario. Prometheus is then used
+to gather metrics, and Grafana for visualization.
+
+### Tutorial Contents
+
+1. [Get setup: dev mode](#get-setup-dev-mode)
+1. [Install Prometheus](#install-prometheus)
+1. [Examine Metrics](#examine-metrics)
+1. [Get setup: Docker Compose](#get-setup-docker-compose)
+1. [Configure Prometheus](#configure-prometheus)
+1. [Configure Grafana](#configure-grafana)
+1. [Examine Graph Metrics](#configure-prometheus)
+
+## Prerequisites
+
+- [Docker](https://docs.docker.com/get-docker/) is installed
+
+- [Docker-Compose](https://docs.docker.com/compose/install/) is installed
+
+<Tip>
+
+ Docker Desktop 20.10 and above include the Docker Compose binary, and
+does not require separate installation.
+
+</Tip>
+
+- A [Boundary binary](/boundary/install/) greater than
+  0.8.0 in your `PATH`. This tutorial uses the 0.8.0 version of Boundary.
+
+- [Terraform 0.13.0 or greater](/terraform/tutorials/aws-get-started/install-cli) in your `PATH`
+
+- Access to [prometheus.io/download](https://prometheus.io/download/)
+
+## Get setup: dev mode
+
+Metrics are available for controllers and workers in a Boundary deployment. To
+quickly view metrics data, you will first use Boundary's dev mode and deploy
+Prometheus locally. Later in the tutorial a Docker Compose environment will be
+used to visualize metrics with Grafana.
+
+In production deployments, metrics are enabled in Boundary's [config
+file](/boundary/docs/configuration) by declaring an `"ops"`
+listener. This will be explored later on.
+
+Start `boundary dev`, which uses a configuration with a pre-defined ops listener.
+
+```shell-session
+$ boundary dev
+==> Boundary server configuration:
+
+        [Controller] AEAD Key Bytes: cXte2+fkVq/mnQ/VKO3cOL0bYQZKqJsQhWgPLvX9VsY=
+          [Recovery] AEAD Key Bytes: XGcczs8FJ7lIwd8PQJaP34go/ILiPIeMs+7anHkK+vE=
+       [Worker-Auth] AEAD Key Bytes: Y9A1Gw4Ja+IJbFtuGTSXLIw3L+aEPcwEpN+/lRqvWIQ=
+               [Recovery] AEAD Type: aes-gcm
+                   [Root] AEAD Type: aes-gcm
+            [Worker-Auth] AEAD Type: aes-gcm
+                                Cgo: disabled
+     Controller Public Cluster Addr: 127.0.0.1:9201
+             Dev Database Container: bold_heisenberg
+                   Dev Database Url: postgres://postgres:password@localhost:55001/boundary?sslmode=disable
+         Generated Admin Login Name: admin
+           Generated Admin Password: password
+          Generated Host Catalog Id: hcst_1234567890
+                  Generated Host Id: hst_1234567890
+              Generated Host Set Id: hsst_1234567890
+      Generated Oidc Auth Method Id: amoidc_1234567890
+             Generated Org Scope Id: o_1234567890
+  Generated Password Auth Method Id: ampw_1234567890
+         Generated Project Scope Id: p_1234567890
+                Generated Target Id: ttcp_1234567890
+  Generated Unprivileged Login Name: user
+    Generated Unprivileged Password: password
+                         Listener 1: tcp (addr: "127.0.0.1:9200", cors_allowed_headers: "[]", cors_allowed_origins: "[*]", cors_enabled: "true", max_request_duration: "1m30s", purpose: "api")
+                         Listener 2: tcp (addr: "127.0.0.1:9201", max_request_duration: "1m30s", purpose: "cluster")
+                         Listener 3: tcp (addr: "127.0.0.1:9203", max_request_duration: "1m30s", purpose: "ops")
+                         Listener 4: tcp (addr: "127.0.0.1:9202", max_request_duration: "1m30s", purpose: "proxy")
+                          Log Level: info
+                              Mlock: supported: false, enabled: false
+                            Version: Boundary v0.8.0
+                        Version Sha: 9b48dbc2fd4f9a9f0bda4ca68488590f681dbd9e+CHANGES
+           Worker Public Proxy Addr: 127.0.0.1:9202
+
+==> Boundary server started! Log data will stream in below:
+
+{
+  "id": "QH3NNVS84T",
+  "source": "https://hashicorp.com/boundary/dev-controller/boundary-dev",
+  "specversion": "1.0",
+  "type": "system",
+  "data": {
+    "version": "v0.1",
+    "op": "github.com/hashicorp/boundary/internal/observability/event.(*HclogLoggerAdapter).writeEvent",
+    "data": {
+      "@original-log-level": "none",
+      "@original-log-name": "aws",
+      "msg": "configuring client automatic mTLS"
+    }
+  },
+  "datacontentype": "text/plain",
+  "time": "2022-04-19T13:38:37.377958-06:00"
+}
+
+...
+... More output ...
+...
+```
+
+**Open a web browser** and navigate to `http://localhost:9203/metrics`. A list
+of metrics events are available at this endpoint, reported in the OpenMetric
+format. Monitoring solutions like Prometheus enable metrics reporting by
+scraping the values from this endpoint.
+
+Leave dev mode running in the current terminal session, and open a new terminal
+window or tab to continue the tutorial.
+
+## Install Prometheus
+
+[Prometheus](https://prometheus.io/) is an open-source monitoring and alerting
+toolkit. It gathers and stores metrics reported in the [OpenMetric exposition
+format](https://prometheus.io/docs/instrumenting/exposition_formats/#openmetrics-text-format).
+
+From [Prometheus's docs](https://prometheus.io/docs/introduction/overview/):
+
+Prometheus scrapes metrics from instrumented jobs, either directly or via an
+intermediary push gateway for short-lived jobs. It stores all scraped samples
+locally and runs rules over this data to either aggregate and record new time
+series from existing data or generate alerts. Grafana or other API consumers can
+be used to visualize the collected data.
+
+**Download** the latest [Prometheus monitoring
+binary](https://prometheus.io/download/) for your system. This tutorial uses
+version 2.35.0. **Extract the archive** to your local machine.
+
+For example, on MacOS:
+
+```shell-session
+$ curl -OL https://github.com/prometheus/prometheus/releases/download/v2.35.0-rc0/prometheus-2.35.0-rc0.darwin-amd64.tar.gz
+```
+
+Next, unzip the archive:
+
+```shell-session
+$ tar -zxvf prometheus-2.35.0-rc0.darwin-amd64.tar.gz
+```
+
+Change into the extracted folder and view its contents:
+
+```shell-session
+$ cd prometheus-2.35.0-rc0.darwin-amd64/
+```
+
+<CodeBlockConfig highlight="1,6-7">
+
+```shell-session
+$ ls -R1
+LICENSE
+NOTICE
+console_libraries
+consoles
+prometheus
+prometheus.yml
+promtool
+
+./console_libraries:
+menu.lib
+prom.lib
+
+./consoles:
+index.html.example
+node-cpu.html
+node-disk.html
+node-overview.html
+node.html
+prometheus-overview.html
+prometheus.html
+```
+
+</CodeBlockConfig>
+
+The `prometheus.yml` in this directory is Prometheus's configuration file, used
+by the `prometheus` binary.
+
+Open `prometheus.yml` in your text editor, and locate `static_configs` under the
+`scrape_configs` block. 
+
+The `targets` allow you to define the endpoints Prometheus should attempt to
+scrape metrics from. Notice that `localhost:9090` is already defined for
+`job_name: "prometheus"`. This is Prometheus's metrics endpoint, where it
+collects data about itself.
+
+For a simple look at metrics, **add an additional target** for `localhost:9203`,
+the standard metrics endpoint for Boundary.
+
+<CodeBlockConfig highlight="28-29">
+
+```yml
+# my global config
+global:
+  scrape_interval: 15s # Set the scrape interval to every 15 seconds. Default is every 1 minute.
+  evaluation_interval: 15s # Evaluate rules every 15 seconds. The default is every 1 minute.
+  # scrape_timeout is set to the global default (10s).
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          # - alertmanager:9093
+
+# Load rules once and periodically evaluate them according to the global 'evaluation_interval'.
+rule_files:
+  # - "first_rules.yml"
+  # - "second_rules.yml"
+
+# A scrape configuration containing exactly one endpoint to scrape:
+# Here it's Prometheus itself.
+scrape_configs:
+  # The job name is added as a label `job=<job_name>` to any timeseries scraped from this config.
+  - job_name: "prometheus"
+
+    # metrics_path defaults to '/metrics'
+    # scheme defaults to 'http'.
+
+    static_configs:
+      - targets: ["localhost:9090", "localhost:9203"]
+```
+
+</CodeBlockConfig>
+
+**Save this file**, and return to your terminal.
+
+## Examine metrics
+
+With the configuration file targeting Boundary's `/metrics` endpoint, Prometheus
+can be started to begin monitoring.
+
+Ensure you are located in the extracted directory. **Execute Prometheus**,
+supplying the `prometheus.yml` config file.
+
+```shell-session
+$ ./prometheus --config.file="prometheus.yml"
+ts=2022-04-19T20:52:52.324Z caller=main.go:488 level=info msg="No time or size retention was set so using the default time retention" duration=15d
+ts=2022-04-19T20:52:52.324Z caller=main.go:525 level=info msg="Starting Prometheus" version="(version=2.35.0-rc0, branch=HEAD, revision=5b73e518260d8bab36ebb1c0d0a5826eba8fc0a0)"
+ts=2022-04-19T20:52:52.324Z caller=main.go:530 level=info build_context="(go=go1.18, user=root@56c744483836, date=20220408-13:08:41)"
+ts=2022-04-19T20:52:52.325Z caller=main.go:531 level=info host_details=(darwin)
+ts=2022-04-19T20:52:52.325Z caller=main.go:532 level=info fd_limits="(soft=256, hard=unlimited)"
+ts=2022-04-19T20:52:52.325Z caller=main.go:533 level=info vm_limits="(soft=unlimited, hard=unlimited)"
+ts=2022-04-19T20:52:52.327Z caller=web.go:541 level=info component=web msg="Start listening for connections" address=0.0.0.0:9090
+ts=2022-04-19T20:52:52.327Z caller=main.go:957 level=info msg="Starting TSDB ..."
+ts=2022-04-19T20:52:52.328Z caller=tls_config.go:195 level=info component=web msg="TLS is disabled." http2=false
+ts=2022-04-19T20:52:52.330Z caller=head.go:493 level=info component=tsdb msg="Replaying on-disk memory mappable chunks if any"
+ts=2022-04-19T20:52:52.330Z caller=head.go:536 level=info component=tsdb msg="On-disk memory mappable chunks replay completed" duration=5.635µs
+ts=2022-04-19T20:52:52.330Z caller=head.go:542 level=info component=tsdb msg="Replaying WAL, this may take a while"
+ts=2022-04-19T20:52:52.337Z caller=head.go:613 level=info component=tsdb msg="WAL segment loaded" segment=0 maxSegment=1
+ts=2022-04-19T20:52:52.338Z caller=head.go:613 level=info component=tsdb msg="WAL segment loaded" segment=1 maxSegment=1
+ts=2022-04-19T20:52:52.338Z caller=head.go:619 level=info component=tsdb msg="WAL replay completed" checkpoint_replay_duration=132.121µs wal_replay_duration=8.100601ms total_replay_duration=8.257285ms
+ts=2022-04-19T20:52:52.339Z caller=main.go:978 level=info fs_type=1a
+ts=2022-04-19T20:52:52.339Z caller=main.go:981 level=info msg="TSDB started"
+ts=2022-04-19T20:52:52.339Z caller=main.go:1162 level=info msg="Loading configuration file" filename=prometheus.yml
+ts=2022-04-19T20:52:52.357Z caller=main.go:1199 level=info msg="Completed loading of configuration file" filename=prometheus.yml totalDuration=17.705208ms db_storage=537ns remote_storage=1.164µs web_handler=817ns query_engine=673ns scrape=17.309393ms scrape_sd=32.689µs notify=33.186µs notify_sd=7.118µs rules=4.899µs tracing=16.002µs
+ts=2022-04-19T20:52:52.357Z caller=main.go:930 level=info msg="Server is ready to receive web requests."
+```
+
+**Open a web browser**, and navigate to `http://localhost:9090`. You will be
+redirected to the `/graph` page, where queries can be constructed and executed.
+
+Type `boundary` into the search box. Notice that autocomplete shows a scrollable
+list of metrics that can be queried for the controller and worker.
+
+![Prometheus Search](/img/boundary/metrics/prometheus-metrics-search-0.png)
+
+The metric names are automatically populated from the values available at the
+`/metrics` endpoint. 
+
+As of Boundary 0.8, the available metrics include:
+
+**Controller metrics:**
+- HTTP request latency
+- HTTP request size
+- HTTP response size
+- gRPC service latency
+
+**Worker metrics:**
+- Open proxy connections
+- Sent bytes for proxying, handled by worker
+- Received bytes for proxying, handled by worker
+- Time elapsed before a header is written back to the end user
+
+**Other metrics:**
+- Build info for version details
+
+This is an initial set of operational metrics and more will be added in the
+future. To learn more about specific metrics and how to access them, refer to
+the [metrics
+documentation](/boundary/docs/oss/operations/metrics).
+
+**Execute** a simple query by clicking on a metric value. For example, select
+`boundary_cluster_client_grpc_request_duration_seconds_sum`, and then click
+**Execute**.
+
+![Prometheus Query](/img/boundary/metrics/prometheus-metrics-search-1.png)
+
+The
+[`boundary_cluster_client_grpc_request_duration_seconds`](/boundary/docs/oss/operations/metrics#controller)
+metric reports latencies for requests made to the [gRPC
+service](https://grpc.io) running on the cluster listener.
+
+The returned results show the matching queries. Scrolling through the
+*Evaluation time* allows for quick navigation through metrics reported at a
+particular timestamp. Most metrics in this example will share the same timestamp
+because they were generated when `boundary dev` was executed.
+
+Select the **Graph** view to show these metrics over time.
+
+![Prometheus Graph](/img/boundary/metrics/prometheus-metrics-graph-0.png)
+
+Additional queries to Boundary would produce more metrics. For example,
+authenticating to Boundary as the admin user would produce more events reported
+by the `boundary_controller_api_http_request_size_bytes` metric.
+
+```shell-session
+$ boundary authenticate password -auth-method-id ampw_1234567890 -login-name admin
+Please enter the password (it will be hidden): <password>
+
+Authentication information:
+  Account ID:      acctpw_1234567890
+  Auth Method ID:  ampw_1234567890
+  Expiration Time: Tue, 26 Apr 2022 16:12:20 MDT
+  User ID:         u_1234567890
+
+The token was successfully stored in the chosen keyring and is not displayed here.
+```
+
+Return to Prometheus, and then execute a query for
+`boundary_controller_api_http_request_size_bytes_sum`. This would report a
+number of `method="get"` requests to the API at a single point in time.
+
+![Prometheus Query](/img/boundary/metrics/prometheus-metrics-search-2.png)
+
+![Prometheus Graph](/img/boundary/metrics/prometheus-metrics-graph-1.png)
+
+Also notice that several metrics are available for `boundary_worker`. Boundary's
+dev mode includes a controller and worker instance for testing. Next, metrics
+will be examined using a more realistic Boundary deployment with Docker Compose.
+
+When finished examining dev mode metrics, locate the correct shell session and
+**stop Prometheus** using `ctrl+c`.
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ ./prometheus --config.file="prometheus.yml"
+ts=2022-04-19T21:02:33.144Z caller=main.go:488 level=info msg="No time or size retention was set so using the default time retention" duration=15d
+ts=2022-04-19T21:02:33.144Z caller=main.go:525 level=info msg="Starting Prometheus" version="(version=2.35.0-rc0, branch=HEAD, revision=5b73e518260d8bab36ebb1c0d0a5826eba8fc0a0)"
+...
+... More output ...
+...
+ts=2022-04-19T21:02:33.495Z caller=main.go:930 level=info msg="Server is ready to receive web requests."
+^Cts=2022-04-19T22:30:17.168Z caller=main.go:796 level=warn msg="Received SIGTERM, exiting gracefully..."
+ts=2022-04-19T22:30:17.168Z caller=main.go:819 level=info msg="Stopping scrape discovery manager..."
+ts=2022-04-19T22:30:17.168Z caller=main.go:833 level=info msg="Stopping notify discovery manager..."
+ts=2022-04-19T22:30:17.168Z caller=main.go:815 level=info msg="Scrape discovery manager stopped"
+ts=2022-04-19T22:30:17.168Z caller=main.go:829 level=info msg="Notify discovery manager stopped"
+ts=2022-04-19T22:30:17.168Z caller=main.go:855 level=info msg="Stopping scrape manager..."
+ts=2022-04-19T22:30:17.169Z caller=main.go:849 level=info msg="Scrape manager stopped"
+ts=2022-04-19T22:30:17.169Z caller=manager.go:950 level=info component="rule manager" msg="Stopping rule manager..."
+ts=2022-04-19T22:30:17.170Z caller=manager.go:960 level=info component="rule manager" msg="Rule manager stopped"
+ts=2022-04-19T22:30:17.270Z caller=notifier.go:600 level=info component=notifier msg="Stopping notification manager..."
+ts=2022-04-19T22:30:17.271Z caller=main.go:1088 level=info msg="Notifier manager stopped"
+ts=2022-04-19T22:30:17.271Z caller=main.go:1100 level=info msg="See you next time!"
+```
+
+</CodeBlockConfig>
+
+Lastly, locate the terminal session where `boundary dev` was executed, and
+**stop the dev server** using `ctrl+c`.
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary dev
+...
+... More output ...
+...
+{
+  "id": "p25tDGirn0",
+  "source": "https://hashicorp.com/boundary/dev-controller/boundary-dev",
+  "specversion": "1.0",
+  "type": "observation",
+  "data": {
+    "latency-ms": 192.433153,
+    "request_info": {
+      "id": "gtraceid_MUGDhzXB7BNaGYcnzCTp",
+      "method": "POST",
+      "path": "/v1/auth-methods/ampw_1234567890:authenticate",
+      "client_ip": "127.0.0.1"
+    },
+    "start": "2022-04-19T16:12:19.947235-06:00",
+    "status": 200,
+    "stop": "2022-04-19T16:12:20.139673-06:00",
+    "version": "v0.1"
+  },
+  "datacontentype": "text/plain",
+  "time": "2022-04-19T16:12:20.139694-06:00"
+}
+^C==> Boundary dev environment shutdown triggered, interrupt again to force
+==> Health is enabled, waiting 0s before shutdown
+{
+  "id": "EEe0SywUPE",
+  "source": "https://hashicorp.com/boundary/dev-controller/boundary-dev",
+  "specversion": "1.0",
+  "type": "system",
+  "data": {
+    "version": "v0.1",
+    "op": "worker.(Worker).startStatusTicking",
+    "data": {
+      "msg": "status ticking shutting down"
+    }
+  },
+  "datacontentype": "text/plain",
+  "time": "2022-04-19T16:32:13.94708-06:00"
+}
+...
+... More output ...
+...
+```
+
+</CodeBlockConfig>
+
+## Get setup: Docker Compose
+
+The [demo environment](https://github.com/hashicorp-education/learn-boundary-prometheus-metrics) provided for this tutorial includes a Docker Compose
+cluster that deploys these containers:
+
+- A Boundary 0.8.0 controller server
+- A Boundary database
+- 1 worker instance
+- 1 postgres database target
+- Prometheus
+- Grafana
+
+The [Terraform Boundary
+Provider](https://registry.terraform.io/providers/hashicorp/boundary/latest) is
+also used in this tutorial to easily provision resources using Docker, and must
+be available in your `PATH` when deploying the demo environment.
+
+To learn more about the various
+Boundary components, refer back to the [Start a Development
+Environment](/boundary/tutorials/oss-getting-started/oss-getting-started-dev) tutorial.
+
+### Deploy the lab environment
+
+The lab environment can be downloaded or cloned from the following Github repository:
+
+-> https://github.com/hashicorp-education/learn-boundary-prometheus-metrics
+
+1. In your terminal, clone the repository to get the example files locally:
+
+   ```shell-session
+   $ git clone git@github.com:hashicorp-education/learn-boundary-prometheus-metrics.git
+   ```
+
+1. Move into the `learn-boundary-prometheus-metrics` folder.
+
+   ```shell-session
+   $ cd learn-boundary-prometheus-metrics
+   ```
+
+1. Ensure that you are in the correct directory by listing its contents.
+
+   ```shell-session
+   $ ls -R1
+   README.md
+   compose
+   deploy
+   terraform
+   
+   ./compose:
+   controller.hcl
+   datasource.yml
+   docker-compose.yml
+   prometheus.yml
+   worker.hcl
+   
+   ./terraform:
+   main.tf
+   outputs.tf
+   versions.tf
+   ```
+
+   The repository contains the following files:
+
+   - `deploy`: A script used to deploy and tear down the Docker-Compose
+     configuration.
+   - `compose/docker-compose.yml`: The Docker-Compose configuration file
+     describing how to provision and network the boundary cluster.
+   - `compose/controller.hcl`: The controller configuration file.
+   - `compose/worker.hcl`: The worker configuration file.
+   - `compose/prometheus.yml`: The Prometheus configuration file.
+   - `terraform/main.tf`: The terraform provisioning instructions using the
+     Boundary provider.
+   - `terraform/outputs.tf`: The terraform outputs file for printing user
+     connection details.
+
+1. This tutorial makes it easy to launch the test environment with the `deploy` script.
+
+   ```shell-session
+   $ ./deploy all
+   ~/learn-boundary-prometheus-metrics-dev/compose ~/   learn-boundary-prometheus-metrics-dev
+   Creating boundary_postgres_1   ... done
+   Creating boundary_prometheus_1 ... done
+   Creating boundary_db_1         ... done
+   Creating boundary_grafana_1    ... done
+   Creating boundary_db-init_1    ... done
+   Creating boundary_controller_1 ... done
+   Creating boundary_worker_1     ... done
+   ~/learn-boundary-prometheus-metrics-dev
+   ~/learn-boundary-prometheus-metrics-dev/terraform ~/   learn-boundary-prometheus-metrics-dev
+   
+   Initializing the backend...
+   
+   Initializing provider plugins...
+   - Reusing previous version of hashicorp/boundary from the dependency lock file
+   - Using previously-installed hashicorp/boundary v1.0.5
+   
+   Terraform has been successfully initialized!
+   ...
+   ... truncated output ...
+   ...
+ 
+   Plan: 18 to add, 0 to change, 0 to destroy.
+   
+   Changes to Outputs:
+     + username = {
+         + user1 = {
+             + auth_method_id = (known after apply)
+             + description    = "User account for user1"
+             + id             = (known after apply)
+             + login_name     = "user1"
+             + name           = "user1"
+             + password       = "password"
+             + type           = "password"
+           }
+       }
+   boundary_scope.global: Creating...
+   boundary_scope.global: Creation complete after 1s [id=global]
+   boundary_scope.org: Creating...
+   boundary_role.global_anon_listing: Creating...
+   boundary_scope.org: Creation complete after 0s [id=o_fEgxPvWKif]
+   boundary_auth_method.password: Creating...
+   boundary_scope.project: Creating...
+   boundary_role.org_anon_listing: Creating...
+   boundary_auth_method.password: Creation complete after 0s [id=ampw_7tKwNDUNse]
+   boundary_account.user["user1"]: Creating...
+   boundary_scope.project: Creation complete after 0s [id=p_RzPqkBmIkV]
+   boundary_host_catalog.databases: Creating...
+   boundary_account.user["user1"]: Creation complete after 1s [id=acctpw_bKVv9ty2n3]
+   boundary_user.user["user1"]: Creating...
+   boundary_host_catalog.databases: Creation complete after 1s [id=hcst_lweuQ5p4ts]
+   boundary_host.postgres: Creating...
+   boundary_host.localhost: Creating...
+   boundary_role.global_anon_listing: Creation complete after 2s [id=r_9oRueUGB2k]
+   boundary_host.localhost: Creation complete after 1s [id=hst_DRS2Xk6qn2]
+   boundary_host_set.local: Creating...
+   boundary_host.postgres: Creation complete after 1s [id=hst_I3f2FL6zSH]
+   boundary_host_set.postgres: Creating...
+   boundary_user.user["user1"]: Creation complete after 2s [id=u_191M9UTSVT]
+   boundary_role.proj_admin: Creating...
+   boundary_role.org_admin: Creating...
+   boundary_host_set.local: Creation complete after 2s [id=hsst_rFHhQkPlU0]
+   boundary_target.db: Creating...
+   boundary_target.ssh: Creating...
+   boundary_host_set.postgres: Creation complete after 2s [id=hsst_6Avhk65GDr]
+   boundary_target.postgres: Creating...
+   boundary_role.org_anon_listing: Creation complete after 4s [id=r_2tccCCSFRc]
+   boundary_target.ssh: Creation complete after 2s [id=ttcp_BTpkLLLAFq]
+   boundary_target.db: Creation complete after 2s [id=ttcp_WN873v1rD2]
+   boundary_target.postgres: Creation complete after 2s [id=ttcp_wcuAUCNNRs]
+   boundary_role.proj_admin: Creation complete after 4s [id=r_QjVLNWtd6p]
+   boundary_role.org_admin: Creation complete after 4s [id=r_Lg6irpogWJ]
+   ╷
+   │ Warning: Argument is deprecated
+   │
+   │   with boundary_account.user,
+   │   on main.tf line 69, in resource "boundary_account" "user":
+   │   69:   login_name     = lower(each.key)
+   │
+   │ Will be removed in favor of using attributes parameter
+   │
+   │ (and 14 more similar warnings elsewhere)
+   ╵
+   
+   Apply complete! Resources: 18 added, 0 changed, 0 destroyed.
+   
+   Outputs:
+   
+   username = {
+     "user1" = {
+       "auth_method_id" = "ampw_7tKwNDUNse"
+       "description" = "User account for user1"
+       "id" = "acctpw_bKVv9ty2n3"
+       "login_name" = "user1"
+       "name" = "user1"
+       "password" = "password"
+       "type" = "password"
+     }
+   }
+   ```
+
+   Any resource deprecation warnings in the output can safely be ignored.
+   
+   The Boundary user login details are printed in the shell output, and can also
+   be viewed by inspecting the `terraform/terraform.tfstate` file. You will need
+   the user1 `auth_method_id` to authenticate via the CLI and establish sessions
+   later on.
+
+   You can tear down the environment at any time by executing `./deploy cleanup`.
+
+1. To verify that the environment deployed correctly, print the running docker
+   containers and notice the ones named with the prefix "boundary".
+
+   ```shell-session
+   $ docker ps --format "table {{.ID}}\t{{.Names}}\t{{.Image}}"
+   CONTAINER ID   NAMES                   IMAGE
+   ce337fdfcaeb   boundary_worker_1       hashicorp/boundary:latest-0c8dd578e
+   36448e4b32db   boundary_controller_1   hashicorp/boundary:latest-0c8dd578e
+   7819c107cfbf   boundary_grafana_1      grafana/grafana
+   fa44393130fc   boundary_prometheus_1   prom/prometheus
+   782561cf257d   boundary_postgres_1     postgres
+   da9187b717ec   boundary_db_1           postgres
+   ```
+
+   The next part of this tutorial focuses on the relationship between the
+   controller, worker, the Prometheus metrics server, and Grafana.
+
+### Enable metrics
+
+Both the controller and worker instances can be configured to report metrics at
+their `/metrics` endpoint.
+
+To enable metrics, a `tcp` listener with the `"ops"` purpose must be defined in
+the server configuration file:
+
+```hcl
+listener "tcp" {
+    purpose = "ops"
+    tls_disable = true
+}
+```
+
+This example is the minimum needed to enable metrics. To expose the `/metrics`
+endpoint to Prometheus, a port should be specified in the listener configuration
+as well.
+
+Open the controller configuration file, `compose/controller.hcl`. **Uncomment
+lines 26 - 30.**
+
+<CodeBlockConfig filename="compose/controller.yml" lineNumbers highlight="26-30">
+
+```hcl
+disable_mlock = true
+
+controller {
+  name = "docker-controller"
+  description = "A controller for a docker demo!"
+  address = "boundary"
+  database {
+      url = "env://BOUNDARY_PG_URL"
+  }
+}
+
+listener "tcp" {
+  address = "0.0.0.0:9200"
+  purpose = "api"
+  tls_disable = true
+  cors_enabled = true
+  cors_allowed_origins = ["*"]
+}
+
+listener "tcp" {
+  address = "boundary:9201"
+  purpose = "cluster"
+  tls_disable = true
+}
+
+listener "tcp" {
+  address = "0.0.0.0:9203"
+  purpose = "ops"
+  tls_disable = true
+}
+
+kms "aead" {
+  purpose = "root"
+  aead_type = "aes-gcm"
+  key = "sP1fnF5Xz85RrXyELHFeZg9Ad2qt4Z4bgNHVGtD6ung="
+  key_id = "global_root"
+}
+
+kms "aead" {
+  purpose = "worker-auth"
+  aead_type = "aes-gcm"
+  key = "8fZBjCUfN0TzjEGLQldGY4+iE9AkOvCfjh7+p0GtRBQ="
+  key_id = "global_worker-auth"
+}
+
+kms "aead" {
+  purpose = "recovery"
+  aead_type = "aes-gcm"
+  key = "8fZBjCUfN0TzjEGLQldGY4+iE9AkOvCfjh7+p0GtRBQ="
+  key_id = "global_recovery"
+}
+```
+
+</CodeBlockConfig>
+
+Adding this listener block to a Boundary server will enable metrics collection
+at the address `0.0.0.0:9203`. **Save this file**.
+
+In the `compose/docker-compose.yml` file, notice that the `controller` container
+maps port `9203` to the localhost's `9203`.
+
+<CodeBlockConfig filename="compose/docker-compose.yml" highlight="1,7-10" hideClipboard>
+
+```yml
+  controller:
+    image: hashicorp/boundary:latest-0c8dd578e
+    entrypoint: sh -c "sleep 3 && exec boundary server -config /boundary/controller.hcl -log-level debug"
+    volumes:
+      - "${PWD}/:/boundary/"
+    hostname: boundary
+    ports:
+      - "9200:9200"
+      - "9201:9201"
+      - "9203:9203"
+    environment:
+      - HOSTNAME=boundary
+      - BOUNDARY_PG_URL=postgresql://postgres:postgres@db/boundary?sslmode=disable
+    depends_on:
+      - db-init
+      - prometheus
+    networks:
+      - default
+      - worker
+```
+
+</CodeBlockConfig>
+
+With this configuration in place, restart the controller.
+
+```shell-session
+$ docker restart boundary_controller_1
+boundary_controller_1
+```
+
+<Note>
+
+ Depending on the OS and Docker installation method, Compose may
+name the containers differently. If the controller name does not match, list the
+running containers with `docker ps` and restart the controller using the listed
+name (such as `boundary-controller_1`).
+
+</Note>
+
+Open your web browser, and visit `http://localhost:9203/metrics`. You will find
+a list of controller metrics, similar to what was displayed at this endpoint
+when running `boundary dev` earlier.
+
+Unlike in dev mode, only the controller-related metrics are shown, including:
+
+- `boundary_controller_api_http_request_duration_second`
+- `boundary_controller_api_http_request_size_bytes`
+- `boundary_controller_api_http_response_size_bytes`
+- `boundary_controller_cluster_grpc_request_duration_seconds`
+
+and other Go-related and generic Prometheus metrics.
+
+Next, follow the same procedure to enable metrics on the worker.
+
+Open the worker configuration file, `compose/worker.hcl`. **Uncomment lines 26 -
+30.**
+
+<CodeBlockConfig filename="compose/worker.yml" lineNumbers highlight="17-23">
+
+```hcl
+// compose/worker.hcl
+
+disable_mlock = true
+
+listener "tcp" {
+  address = "worker"
+  purpose = "proxy"
+  tls_disable = true
+}
+
+listener "tcp" {
+  address = "0.0.0.0:9203"
+  purpose = "ops"
+  tls_disable = true
+}
+
+worker {
+  name = "worker"
+  description = "A worker for a docker demo"
+  address     = "worker"
+  public_addr = "127.0.0.1:9202"
+  controllers = ["boundary:9201"]
+}
+
+kms "aead" {
+  purpose = "worker-auth"
+  aead_type = "aes-gcm"
+  key = "8fZBjCUfN0TzjEGLQldGY4+iE9AkOvCfjh7+p0GtRBQ="
+  key_id = "global_worker-auth"
+}
+```
+
+</CodeBlockConfig>
+
+Adding this listener block to a Boundary server will enable metrics collection
+at the address `0.0.0.0:9203`. **Save this file**.
+
+In the `compose/docker-compose.yml` file, notice that the `worker` container
+maps port `9203` to the localhost's `9204`. This is to prevent a port collision
+on `9203`, where the controller metrics are being reported.
+
+<CodeBlockConfig filename="compose/docker-compose.yml" highlight="1,7-9" hideClipboard>
+
+```yml
+  worker:
+    image:  hashicorp/boundary:latest-0c8dd578e
+    command: ["server", "-config", "/boundary/worker.hcl", "-log-level", "debug"]
+    volumes:
+      - "${PWD}/:/boundary/"
+    hostname: worker
+    ports:
+      - "9202:9202"
+      - "9204:9203"
+    environment:
+      - HOSTNAME=worker
+    depends_on:
+      - controller
+    networks:
+      - default
+      - worker
+```
+
+</CodeBlockConfig>
+
+With this configuration in place, restart the worker.
+
+```shell-session
+$ docker restart boundary_worker_1
+boundary_worker_1
+```
+
+<Note>
+
+ Depending on the OS and Docker installation method, Compose may
+name the containers differently. If the worker name does not match, list the
+running containers with `docker ps` and restart the controller using the listed
+name (such as `boundary-worker_1`).
+
+</Note>
+
+Open your web browser, and visit `http://localhost:9204/metrics`. You will find
+a list of worker metrics. Unlike the controller, the metrics reported for the
+worker mostly contain:
+
+- `boundary_cluster_client_grpc_request_duration_seconds`
+- `boundary_worker_proxy_http_write_header_duration_seconds`
+- `boundary_worker_proxy_websocket_active_connections`
+- `boundary_worker_proxy_websocket_sent_bytes`
+
+and other Go-related and generic Prometheus metrics.
+
+## Configure Prometheus
+
+With metrics enabled on the controller and worker servers, Prometheus is ready
+to be configured.
+
+Open the `compose/prometheus.yml` configuration file. This tutorial pre-defines
+the Prometheus jobs under the `scrape_configs` section:
+
+<CodeBlockConfig filename="compose/prometheus.yml" lineNumbers highlight="21-39">
+
+```yml
+# my global config
+global:
+  scrape_interval: 15s # Set the scrape interval to every 15 seconds. Default is every 1 minute.
+  evaluation_interval: 15s # Evaluate rules every 15 seconds. The default is every 1 minute.
+  # scrape_timeout is set to the global default (10s).
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          # - alertmanager:9093
+
+# Load rules once and periodically evaluate them according to the global 'evaluation_interval'.
+rule_files:
+  # - "first_rules.yml"
+  # - "second_rules.yml"
+
+# A scrape configuration containing exactly one endpoint to scrape:
+# Here it's Prometheus itself.
+scrape_configs:
+  # The job name is added as a label `job=<job_name>` to any timeseries scraped from this config.
+  - job_name: "prometheus"
+
+    # metrics_path defaults to '/metrics'
+    # scheme defaults to 'http'.
+
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  - job_name: "controller"
+
+    static_configs:
+      - targets: ["boundary:9203"]
+
+  - job_name: "worker"
+
+    static_configs:
+      - targets: ["worker:9203"]
+```
+
+</CodeBlockConfig>
+
+Prometheus collects metrics about itself on `localhost:9090`.
+
+For the `controller` job, Prometheus listens on the `boundary` host at port
+`9203`. Similarly, the `worker` job listens on the `worker` host at port `9203`.
+Remember that the Prometheus container is within the Docker Compose deployment,
+so it is listening on the host's exposed `ops` port, *not* the forwarded port on
+your machine's localhost.
+
+This configuration is already correct. **Open your web browser and navigate to
+`http://localhost:9090` to view the Prometheus dashboard.**
+
+This dashboard is the same as when you deployed Prometheus locally earlier when
+running `boundary dev`. Check that various `boundary_controller_` and
+`boundary_worker_` metrics are available within the **Expression** search box.
+**Execute a query** for the controller and worker to ensure metrics are properly
+enabled.
+
+With Prometheus successfully reporting metrics, a more robust visualization tool
+can be used to explore Boundary metrics.
+
+## Configure Grafana
+
+[Grafana](https://grafana.com) is an observability tool commonly integrated with
+Prometheus. The tool enables a more robust view of metrics than can be easily
+created using Prometheus alone.
+
+This tutorial uses the [Grafana Docker
+image](https://hub.docker.com/r/grafana/grafana), but [Grafana
+Cloud](https://grafana.com/products/cloud/) can also be integrated with minimal
+additional configuration using a [`remote_write`
+block](https://grafana.com/docs/grafana-cloud/metrics-prometheus/) added to the
+`compose/prometheus.yml` file.
+
+Examine the Grafana configuration on lines 85 - 95 in the
+`compose/docker-compose.yml` file.
+
+<CodeBlockConfig filename="compose/docker-compose.yml" hideClipboard>
+
+```yml
+grafana:
+  image: grafana/grafana
+  volumes:
+    - "${PWD}/datasource.yml:/etc/grafana/provisioning/datasources/prometheus_datasource.yml"
+  hostname: grafana
+  ports:
+    - "3000:3000"
+  depends_on:
+    - prometheus
+  networks:
+    - default
+```
+
+</CodeBlockConfig>
+
+The `compose/datasource.yml` file is copied to the `grafana` container into
+`/etc/grafana/provisioning/datasources/`, the default config directory for
+Grafana. When Grafana is started it automatically loads this file.
+
+The `grafana` container is mapped to port `3000` on your localhost.
+
+Open `compose/datasource.yml`.
+
+<CodeBlockConfig filename="compose/datasource.yml" lineNumbers>
+
+```yml
+# config file version
+apiVersion: 1
+
+datasources:
+- name: boundary
+  type: prometheus
+  access: server
+  orgId: 1
+  url: http://prometheus:9090
+  password:
+  user:
+  database:
+  basicAuth:
+  basicAuthUser:
+  basicAuthPassword:
+  withCredentials:
+  isDefault:
+  jsonData:
+     graphiteVersion: "1.1"
+     tlsAuth: false
+     tlsAuthWithCACert: false
+  secureJsonData:
+    tlsCACert: ""
+    tlsClientCert: ""
+    tlsClientKey: ""
+  version: 1
+  editable: true
+```
+
+</CodeBlockConfig>
+
+This basic Grafana configuration specifies a datasource named `boundary`, of
+type `prometheus`. The `url: http://prometheus:9090` specifies the default
+location where Prometheus is running, and serves as the source of metrics for
+Grafana.
+
+This configuration is already correct. **Open your web browser and navigate to
+`http://localhost:3000` to view the Grafana dashboard.**
+
+![Grafana Login](/img/boundary/metrics/prometheus-metrics-grafana-login.png)
+
+Login using the default Grafana credentials:
+
+- Email or username: `admin`
+- Password: `admin`
+
+Skip the prompt to create a new password to continue to the dashboard.
+
+## Examine graph metrics
+
+From the Grafana Home, open the settings menu and select **Data Sources**.
+
+![Grafana Home](/img/boundary/metrics/prometheus-metrics-grafana-home.png)
+
+Within the Configuration menu **boundary** should be listed under **Data
+sources**. If there are no data sources, check that no changes were made to the
+`compose/datasource.yml` file, where this config is sourced from.
+
+![Grafana Data Sources](/img/boundary/metrics/prometheus-metrics-grafana-data-sources.png)
+
+Click on the **boundary** data source to view its settings.
+
+![Grafana Boundary Settings](/img/boundary/metrics/prometheus-metrics-grafana-boundary-settings.png)
+
+Open the **Dashboards** page.
+
+![Grafana Import Dashboards](/img/boundary/metrics/prometheus-metrics-grafana-import-dashboards.png)
+
+Click **Import** for the **Prometheus 2.0 Stats** and **Grafana metrics** dashboards.
+
+![Grafana Search Dashboards](/img/boundary/metrics/prometheus-metrics-grafana-search-dashboards.png)
+
+After importing, select **Search dashboards** from the left-hand navigation.
+
+![Grafana Search Dashboards](/img/boundary/metrics/prometheus-metrics-grafana-prometheus-stats.png)
+
+Open the **Prometheus 2.0 Stats** dashboard.
+
+This standard Prometheus dashboard shows generic metrics, such as a *Memory
+Profile*. Explore these metrics in more detail by clicking on any panel and
+selecting *View*.
+
+A simple dashboard compiling the controller and worker metrics has been provided
+for this tutorial in the
+`learn-boundary-prometheus-metrics-dev/compose/Boundary-Overview-Dashboard.json`
+file.
+
+To load this dashboard, open the **Create** menu from the sidebar and select
+**Import**.
+
+![Grafana Import Dashboards](/img/boundary/metrics/prometheus-metrics-grafana-import-dashboards-1.png)
+
+Next, click **Upload JSON file** and select the
+`learn-boundary-prometheus-metrics-dev/compose/Boundary-Overview-Dashboard.json`
+file.
+
+Click on **Select a Prometheus data source** and select **boundary**. When
+finished, click **Import**.
+
+![Grafana Import Dashboards](/img/boundary/metrics/prometheus-metrics-grafana-import-dashboards-2.png)
+
+You will be redirected to the imported Boundary Overview Dashboard. The relevant
+Boundary metrics have been organized into simple panels that overlay common
+renderings of the same metric value, such as the panel:
+
+**boundary_controller_api_http_request_duration_seconds**
+- `boundary_controller_api_http_request_duration_seconds_bucket`
+- `boundary_controller_api_http_request_duration_seconds_count`
+- `boundary_controller_api_http_request_duration_seconds_sum`
+
+<Note>
+
+ There are many ways to organize these metrics values. The provided
+sample dashboard is not intended to recommend any best practices on metrics
+visualization or monitoring in general.
+
+</Note>
+
+Return to a terminal session and proceed to make various queries and requests to
+Boundary. You will need the `user1` `auth_method_id` from [deploying the lab
+environment](#get-setup-docker-compose) to authenticate. The `user1` password is
+`password`.
+
+```shell-session
+$ boundary authenticate password -auth-method-id ampw_3c0u8u2wsv -login-name user1
+Please enter the password (it will be hidden): <password>
+
+Authentication information:
+  Account ID:      acctpw_vuC8ttaT7q
+  Auth Method ID:  ampw_3c0u8u2wsv
+  Expiration Time: Thu, 28 Apr 2022 19:03:48 MDT
+  User ID:         u_lLN5ajmjjR
+
+The token was successfully stored in the chosen keyring and is not displayed here.
+```
+
+Next, examine the Boundary deployment by querying for various resources, such as
+[listing targets and reading target details](/boundary/tutorials/oss-administration/oss-manage-targets).
+
+```shell-session
+$ boundary targets list -recursive
+
+Target information:
+  ID:                    ttcp_OVdplA2NOD
+    Scope ID:            p_4zconn633N
+    Version:             2
+    Type:                tcp
+    Name:                postgres
+    Description:         postgres server
+    Authorized Actions:
+      no-op
+      read
+      update
+      delete
+      add-host-sources
+      set-host-sources
+      remove-host-sources
+      add-credential-libraries
+      set-credential-libraries
+      remove-credential-libraries
+      add-credential-sources
+      set-credential-sources
+      remove-credential-sources
+      authorize-session
+
+  ID:                    ttcp_4AvJDpwe5C
+    Scope ID:            p_4zconn633N
+    Version:             2
+    Type:                tcp
+    Name:                ssh
+    Description:         SSH server
+    Authorized Actions:
+      no-op
+      read
+      update
+      delete
+      add-host-sources
+      set-host-sources
+      remove-host-sources
+      add-credential-libraries
+      set-credential-libraries
+      remove-credential-libraries
+      add-credential-sources
+      set-credential-sources
+      remove-credential-sources
+      authorize-session
+
+  ID:                    ttcp_LBkMY9JVbI
+    Scope ID:            p_4zconn633N
+    Version:             2
+    Type:                tcp
+    Name:                boundary-db
+    Description:         Boundary Postgres server
+    Authorized Actions:
+      no-op
+      read
+      update
+      delete
+      add-host-sources
+      set-host-sources
+      remove-host-sources
+      add-credential-libraries
+      set-credential-libraries
+      remove-credential-libraries
+      add-credential-sources
+      set-credential-sources
+      remove-credential-sources
+      authorize-session
+```
+
+Additionally, you can log into the `postgres` target to establish an active
+session. The postgres user's password is `password`.
+
+```shell-session
+$ boundary connect postgres -target-name postgres -target-scope-name databases -username postgres
+Password for user postgres:
+psql (14.2, server 13.2 (Debian 13.2-1.pgdg100+1))
+Type "help" for help.
+
+postgres=#
+```
+
+Note that the postgres target sessions are automatically cancelled after 5
+minutes, as defined in `terraform/main.tf`. To exit the postgres session, enter
+`\q` into the `postgres=#` prompt.
+
+After interacting with Boundary, return to the Grafana dashboard. You will
+notice various metrics being reported and graphed over time as more are
+available.
+
+![Grafana Boundary Overview Dashboard](/img/boundary/metrics/prometheus-metrics-grafana-boundary-overview-dashboard.png)
+
+### Examine health check endpoint
+
+Boundary 0.8 also introduces a [health check
+endpoint](/boundary/docs/oss/operations/health) for the controller.
+
+Like metrics, the health endpoint is enabled when a listener with the `"ops"`
+purpose is defined, by default on port `9203`. This configuration enables the
+`/health` endpoint where the controller's overall status can be monitored.
+
+Health checks are critical for load-balanced Boundary deployments, and
+situations where a [shutdown grace
+period](/boundary/docs/oss/operations/health#shutdown-grace-period)
+is needed. 
+
+The new controller health service introduces a single read-only endpoint:
+
+| Status        | Description                                                    |
+|--------------|----------------------------------------------------------------|
+| `200`        | `GET /health` returns HTTP status 200 OK if the controller's api gRPC Server is up |
+| `5xx`        | `GET /health` returns HTTP status `5XX` or request timeout if unhealthy |
+| `503`        | `GET /health` returns HTTP status `503 Service Unavailable` status if the controller is shutting down |
+
+All responses return empty bodies. `GET /health` does not support any input.
+
+Querying this in a terminal session using `curl`, `Invoke-WebRequest` or `wget`
+returns a `200` response when the controller is healthy.
+
+```shell-session
+$ curl -i http://localhost:9203/health
+HTTP/1.1 200 OK
+Cache-Control: no-store
+Content-Type: application/json
+Grpc-Metadata-Content-Type: application/grpc
+Date: Fri, 22 Apr 2022 02:10:02 GMT
+Content-Length: 2
+```
+
+## Cleanup and teardown
+
+The Boundary cluster containers and network resources can be cleaned up
+using the provided `deploy` script.
+
+```shell-session
+$ ./deploy cleanup
+~/target-aware-workers/compose ~/target-aware-workers
+~/learn-boundary-prometheus-metrics-dev/compose ~/learn-boundary-prometheus-metrics-dev
+Stopping boundary_worker_1     ... done
+Stopping boundary_controller_1 ... done
+Stopping boundary_grafana_1    ... done
+Stopping boundary_prometheus_1 ... done
+Stopping boundary_db_1         ... done
+Stopping boundary_postgres_1   ... done
+Going to remove boundary_worker_1, boundary_controller_1, boundary_db-init_1, boundary_grafana_1, boundary_prometheus_1, boundary_db_1, boundary_postgres_1
+Removing boundary_worker_1     ... done
+Removing boundary_controller_1 ... done
+Removing boundary_db-init_1    ... done
+Removing boundary_grafana_1    ... done
+Removing boundary_prometheus_1 ... done
+Removing boundary_db_1         ... done
+Removing boundary_postgres_1   ... done
+~/learn-boundary-prometheus-metrics-dev
+~/learn-boundary-prometheus-metrics-dev/terraform ~/learn-boundary-prometheus-metrics-dev
+~/learn-boundary-prometheus-metrics-dev
+```
+
+Check your work with a quick `docker ps` and ensure there are no more containers
+with the `boundary_` prefix leftover. If unexpected containers still exist,
+execute `docker rm -f CONTAINER_NAME` against each to remove them.
+
+## Help and reference
+
+- [Boundary command
+  documentation](/boundary/docs/commands)
+
+- [Metrics documentation](/boundary/docs/oss/operations/metrics)
+
+- [Health endpoint documentation](/boundary/docs/oss/operations/health)
+
+- [Prometheus documentation](https://prometheus.io/docs/introduction/overview/)
+
+- [Prometheus Grafana integration](https://prometheus.io/docs/visualization/grafana/)
+
+- [Grafana documentation](https://grafana.com/docs/)
+
+- [Terraform Boundary
+  Provider](https://registry.terraform.io/providers/hashicorp/boundary/latest)

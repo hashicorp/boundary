@@ -1,0 +1,83 @@
+---
+id: e3f1a7f6-8300-474d-a7fa-84ec2865a7a4
+name: Create a Boundary instance on HCP
+short_name: Create a Boundary instance on HCP
+description: >-
+  Log into the HCP Portal and create a new Boundary instance.
+edition: hcp
+products_used:
+  - product: boundary
+    min_version: 0.11.0
+    max_version: 0.12.0
+default_collection_context: boundary/hcp-getting-started
+---
+
+HashiCorp Cloud Platform (HCP) enables you to quickly deploy a production ready
+Boundary instance. As a fully managed service, it allows you to leverage
+Boundary to enable access to dynamic infrastructure while offloading the
+operational burden to the Site Reliability Engineering (SRE) experts at
+HashiCorp.
+
+In this tutorial, you will deploy a Boundary instance guided by the HCP portal.
+
+## Prerequisites
+
+- An HCP account to complete this tutorial.
+- [Boundary 0.12.0 installed](/boundary/tutorials/hcp-getting-started/hcp-getting-started-install).
+
+## Create a Boundary instance
+
+1. Launch the [HCP Portal](https://portal.cloud.hashicorp.com/sign-up?utm_source=learn&utm_content=tutorial_boundary) and login.
+
+1. From the **Overview** page, click **Boundary** in the left navigation menu.
+
+1. Click **Deploy Boundary**.
+   ![ui-hcp-boundary-deploy](/img/boundary/ui-hcp-boundary-deploy.png)
+
+1. In the **Instance Name** text box, provide a name for your Boundary instance.
+
+1. Under the **Create an administrator account** section, enter the **Username** and **Password** for the initial Boundary administrator account.
+
+  <Note>
+
+   The Boundary instance is publicly accessible. Be sure to use a non-standard username (e.g. not root or administrator) and create a strong password.
+
+   </Note>
+
+1. Click **Deploy**.
+   ![ui-hcp-boundary-start-deploy](/img/boundary/ui-hcp-boundary-start-deploy.png)
+
+   Wait for the instance to initialize before proceeding.
+
+1. Open a new terminal and export an environment variable for the username.
+
+   ```shell-session
+   $ export BOUNDARY_ADMIN=<actual-username-created>
+   ```
+
+   <Note>
+
+   Creating the environment variables for the Boundary is not required, but used for the ease of following the tutorials.
+
+   </Note>
+
+   <Warning>
+
+   If the HCP Boundary status does not change change from **Creating** to **Running** after a few minutes, refresh the page.
+
+   </Warning>
+
+## Boundary overview
+
+When the HCP Boundary deployment completes, you will be redirected to the **Boundary Overview** page. The overview page provides details about instance.
+
+1. Instance details
+1. Instructions on connecting Boundary Desktop to the HCP Boundary instance.
+1. Session usage, including active and terminated sessions.
+
+![ui-hcp-boundary-cluster-overview](/img/boundary/ui-hcp-boundary-cluster-overview.png)
+
+## Next steps
+
+You have successfully created a Boundary instance on the HashiCorp Cloud Platform. In the next tutorial
+you will learn how to connect to HCP Boundary though the Boundary admin console and Boundary CLI.

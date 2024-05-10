@@ -1,0 +1,1256 @@
+---
+id: 3359abec-fa6a-4967-ada3-c2c9062780b8
+name: Event filtering and sink configuration
+short_name: Event filtering and sink configuration
+description: >-
+    Configure an event sink using filters to store emitted Boundary events, then 
+    visualize data using Elasticsearch and Kibana.
+read_time: 20
+products_used:
+  - product: boundary
+    min_version: 0.8.1
+    max_version: 0.10.0
+  - product: terraform
+default_collection_context: boundary/self-managed-deployment
+---
+
+Boundary 0.8 increases observability with the general availability of
+event-logging for operators, allowing for more fine-grained visibility when
+managing Boundary clusters. System information can now be logged in a
+well-defined, structured format that provides operators increased visibility
+into emitted events.
+
+When enabled, event logs are the only type of logging Boundary performs and
+standard system information and debug logs will no longer appear in `stdout`.
+Event logs are filterable by event type and other defined expressions, although
+HCLog output is still currently available.
+
+This tutorial demonstrates the basics of how to define and configure a logging
+event sink, and then visualize events using Elasticsearch and Kibana.
+
+## Prerequisites
+
+This tutorial assumes that you understand how to [Start a Development
+Environment](/boundary/tutorials/oss-getting-started/oss-getting-started-config).
+
+- [Docker](https://docs.docker.com/get-docker/) is installed
+
+- [Docker-Compose](https://docs.docker.com/compose/install/) is installed
+
+<Tip>
+
+ Docker Desktop 20.10 and above include the Docker Compose binary, and
+does not require separate installation.
+
+</Tip>
+
+- A [Boundary binary](/boundary/install/) greater than
+  0.8.1 in your `PATH`
+
+- [Terraform 0.13.0 or greater](/terraform/tutorials/aws-get-started/install-cli) in your `PATH`
+
+## Logging in Dev mode
+
+Boundary can be started in dev mode using the `-event-allow-filter` option to
+specify what kinds of events should be logged. It is important to know what
+kinds of events are emitted by Boundary in order to know what should be logged.
+
+For example, requests to the `"/data/request_info/path"` endpoint that contain
+`":authenticate"` reference authentication events. Requests to the `"/data/op"`
+endpoint that contain `".createClientConn"` reference client connection events.
+
+`boundary dev` can be started with these pre-configured event sinks like this:
+
+```shell-session
+$ boundary dev \
+    -event-allow-filter '"/data/request_info/path" contains ":authenticate"' \
+    -event-allow-filter '"/data/op" contains ".createClientConn"'
+```
+
+These events are then emitted to `stdout`. By default, `boundary dev` logs all
+events to `stdout`, unless otherwise specified using `-event-allow-filter`.
+
+## Get Setup
+
+The lab environment for this tutorial uses Docker Compose to deploy these
+containers:
+
+- Boundary controller server
+- Boundary worker server
+- Boundary Postgres database
+- Elasticsearch
+- Kibana
+- Filebeat
+- A Postgres target
+
+This tutorial includes an "ELK" stack (or really a EFK stack) with:
+
+- elasticsearch for persisting and searching event logs
+- filebeat to collect and send event logs to elasticsearch
+- kibana to visualize events
+
+To learn more about the various
+Boundary components, refer back to the [Start a Development
+Environment](/boundary/tutorials/oss-getting-started/oss-getting-started-dev) tutorial.
+
+### Deploy the lab environment
+
+The lab environment can be downloaded or cloned from the following Github
+repository:
+
+-> https://github.com/hashicorp-education/learn-boundary-event-logging
+
+1. In your terminal, clone the repository to get the example files locally:
+
+   ```shell-session
+   $ git clone git@github.com:hashicorp-education/learn-boundary-event-logging.git
+   ```
+
+1. Move into the `learn-boundary-event-logging` folder.
+
+   ```shell-session
+   $ cd learn-boundary-event-logging
+   ```
+
+1. Ensure that you are in the correct directory by listing its contents.
+
+   ```shell-session
+   $ ls -R1
+   README.md
+   auditlogs
+   compose
+   deploy
+   filebeat.docker.yml
+   postgres
+   terraform
+   
+   ./auditlogs:
+   
+   ./compose:
+   controller.hcl
+   docker-compose.yml
+   worker.hcl
+   
+   ./postgres:
+   postgresql.conf
+   
+   ./terraform:
+   main.tf
+   outputs.tf
+   versions.tf
+   ```
+
+   The repository contains the following files:
+
+   - `auditlogs/`: A shared directory for log files.
+   - `deploy`: A script used to deploy and tear down the Docker-Compose
+     configuration.
+   - `filebeat.docker.yml`: The filbeat config for sending event logs to
+     elasticsearch
+   - `compose/docker-compose.yml`: The Docker-Compose configuration file
+     describing how to provision and network the boundary cluster.
+   - `compose/controller.hcl`: The controller configuration file.
+   - `compose/worker.hcl`: The worker configuration file.
+   - `postgres/postgresql.conf`: The Boundary database config file.
+   - `terraform/main.tf`: The terraform provisioning instructions using the
+     Boundary provider.
+
+1. This tutorial makes it easy to launch the test environment with the `deploy` script.
+
+   ```shell-session
+   $ ./deploy all
+   ~/learn-boundary-event-logging/compose ~/learn-boundary-event-logging
+   [+] Running 9/9
+    ⠿ Container boundary-setup-elastic-1     Healthy                                                                                            2.3s
+    ⠿ Container boundary-filebeat-1          Started                                                                                            0.8s
+    ⠿ Container boundary-db-1                Healthy                                                                                            4.3s
+    ⠿ Container boundary-postgres-1          Started                                                                                            0.8s
+    ⠿ Container boundary-elasticsearch-1     Healthy                                                                                           23.0s
+    ⠿ Container boundary-db-init-1           Started                                                                                            4.6s
+    ⠿ Container boundary-kibana-1            Started                                                                                           23.4s
+    ⠿ Container boundary-controller-1        Healthy                                                                                           15.1s
+    ⠿ Container boundary-worker-1            Started                                                                                           15.4s
+   ~/learn-boundary-event-logging
+   ~/learn-boundary-event-logging/terraform ~/ /learn-boundary-event-logging
+   
+   Initializing the backend...
+   
+   Initializing provider plugins...
+   - Finding hashicorp/boundary versions matching "1.0.9"...
+   - Installing hashicorp/boundary v1.0.9...
+   - Installed hashicorp/boundary v1.0.9 (signed by HashiCorp)
+
+   Terraform has created a lock file .terraform.lock.hcl to record the provider
+   selections it made above. Include this file in your version control repository
+   so that Terraform can guarantee to make the same selections by default when
+   you run "terraform init" in the future.
+   
+   Terraform has been successfully initialized!
+   
+   You may now begin working with Terraform. Try running "terraform plan" to see
+   any changes that are required for your infrastructure. All Terraform commands
+   should now work.
+   
+   If you ever set or change modules or backend configuration for Terraform,
+   rerun this command to reinitialize your working directory. If you forget, other
+   commands will detect it and remind you to do so if necessary.
+   
+   Terraform used the selected providers to generate the following execution plan. Resource actions are    indicated with the following symbols:
+     + create
+   
+   Terraform will perform the following actions:
+
+     # boundary_account_password.user["user1"] will be created
+     + resource "boundary_account_password" "user" {
+         + auth_method_id = (known after apply)
+         + description    = "User account for user1"
+         + id             = (known after apply)
+         + login_name     = "user1"
+         + name           = "user1"
+         + password       = "password"
+         + type           = "password"
+       }
+   
+     # boundary_auth_method.password will be created
+     + resource "boundary_auth_method" "password" {
+         + description           = "Password auth method for org"
+         + id                    = (known after apply)
+         + min_login_name_length = (known after apply)
+         + min_password_length   = (known after apply)
+         + name                  = "org_password_auth"
+         + scope_id              = (known after apply)
+         + type                  = "password"
+       }
+ 
+   ...
+   ... Truncated output ...
+   ...
+
+   boundary_scope.global: Creating...
+   boundary_scope.global: Creation complete after 0s [id=global]
+   boundary_scope.org: Creating...
+   boundary_role.global_anon_listing: Creating...
+   boundary_scope.org: Creation complete after 0s [id=o_oiMbfokaLj]
+   boundary_scope.project: Creating...
+   boundary_auth_method.password: Creating...
+   boundary_role.org_anon_listing: Creating...
+   boundary_scope.project: Creation complete after 0s [id=p_YgjWBK7soq]
+   boundary_host_catalog_static.databases: Creating...
+   boundary_auth_method.password: Creation complete after 0s [id=ampw_6brUA5BOz0]
+   boundary_account_password.user["user1"]: Creating...
+   boundary_host_catalog_static.databases: Creation complete after 1s [id=hcst_6W62dG3ca4]
+   boundary_host_static.localhost: Creating...
+   boundary_host_static.postgres: Creating...
+   boundary_account_password.user["user1"]: Creation complete after 1s    [id=acctpw_bHOjcSBki7]
+   boundary_user.user["user1"]: Creating...
+   boundary_role.global_anon_listing: Creation complete after 1s [id=r_cLhZAG1ARq]
+   boundary_host_static.postgres: Creation complete after 0s [id=hst_lQDL11kXGB]
+   boundary_host_set_static.postgres: Creating...
+   boundary_host_static.localhost: Creation complete after 1s [id=hst_MygbVomjZ1]
+   boundary_host_set_static.local: Creating...
+   boundary_user.user["user1"]: Creation complete after 2s [id=u_9J1CR9ii87]
+   boundary_role.org_admin: Creating...
+   boundary_role.proj_admin: Creating...
+   boundary_host_set_static.postgres: Creation complete after 2s [id=hsst_oNP6QSkGcK]
+   boundary_target.postgres: Creating...
+   boundary_host_set_static.local: Creation complete after 1s [id=hsst_nM3LlyvmWp]
+   boundary_target.ssh: Creating...
+   boundary_target.db: Creating...
+   boundary_role.org_anon_listing: Creation complete after 4s [id=r_RFb2WS1dCe]
+   boundary_target.postgres: Creation complete after 2s [id=ttcp_9lMmb60eWv]
+   boundary_target.ssh: Creation complete after 2s [id=ttcp_UtrWdTWqF1]
+   boundary_target.db: Creation complete after 2s [id=ttcp_cVJrGSQRM8]
+   boundary_role.org_admin: Creation complete after 3s [id=r_ZdYLrN7voM]
+   boundary_role.proj_admin: Creation complete after 4s [id=r_TpVJsw7hSm]
+   
+   Apply complete! Resources: 18 added, 0 changed, 0 destroyed.
+   
+   Outputs:
+   
+   username = {
+     "user1" = {
+       "auth_method_id" = "ampw_xxF3EIBn4k"
+       "description" = "User account for user1"
+       "id" = "acctpw_JQXp0QHxQL"
+       "login_name" = "user1"
+       "name" = "user1"
+       "password" = "password"
+       "type" = "password"
+     }
+   }
+   ~/learn-boundary-event-logging
+   ```
+
+   Any resource deprecation warnings in the output can safely be ignored.
+   
+   The user details are printed in the shell output, and can also be viewed by
+   inspecting the `terraform/terraform.tfstate` file. 
+   
+   You will need the user1 `auth_method_id` to authenticate via the CLI and
+   establish sessions later on. Export this value as an environment variable:
+
+   ```shell-session
+   $ export BOUNDARY_AUTH_METHOD_ID=ampw_xxF3EIBn4k
+   ```
+
+   You can tear down the environment at any time by executing `./deploy cleanup`.
+
+1. To verify that the environment deployed correctly, print the running docker
+   containers in the `boundary` deployment.
+
+   First, export the Docker Compose project name, `boundary`, as an environment variable.
+
+   ```shell-session
+   $ export COMPOSE_PROJECT_NAME=boundary
+   ```
+
+   Then print the containers created using Compose.
+
+   ```shell-session
+   $ docker compose ps
+   NAME                       COMMAND                  SERVICE             STATUS              PORTS
+   boundary-controller-1      "sh -c 'sleep 5 && e…"   controller          running (healthy)   0.0.0.   0:9200-9201->9200-9201/tcp, 0.0.0.0:9203->9203/tcp
+   boundary-db-1              "docker-entrypoint.s…"   db                  running (healthy)   0.0.0.   0:5432->5432/tcp
+   boundary-db-init-1         "docker-entrypoint.s…"   db-init             exited (0)
+   boundary-elasticsearch-1   "/bin/tini -- /usr/l…"   elasticsearch       running (healthy)   127.0.0.   1:19200->9200/tcp
+   boundary-filebeat-1        "/usr/bin/tini -- /u…"   filebeat            running
+   boundary-kibana-1          "/bin/tini -- /usr/l…"   kibana              running (healthy)   0.0.0.   0:5601->5601/tcp
+   boundary-postgres-1        "docker-entrypoint.s…"   postgres            running (healthy)   5432/tcp
+   boundary-setup-elastic-1   "/bin/tini -- /usr/l…"   setup-elastic       exited (0)
+   boundary-worker-1          "docker-entrypoint.s…"   worker              running             0.0.0.   0:9202->9202/tcp
+   ```
+
+   This tutorial will examine the configuration of event sink logs on the
+   controller and worker containers.
+
+## Event sinks
+
+An [event
+sink](/boundary/docs/configuration/events) is a
+location where events can be written to. Sinks can be configured to allow or
+deny event types using filter syntax.
+
+Common event types include [cloudevents](https://github.com/cloudevents/spec)
+and [hclog](https://github.com/hashicorp/go-hclog), which can be encoded as text
+and json. 
+
+To better understand events, examine the `stderr` on the running controller
+container by checking its logs.
+
+```shell-session
+$ docker compose logs controller
+boundary-controller-1  | ==> Boundary server configuration:
+boundary-controller-1  |
+boundary-controller-1  |             [Recovery] AEAD Type: aes-gcm
+boundary-controller-1  |                 [Root] AEAD Type: aes-gcm
+boundary-controller-1  |          [Worker-Auth] AEAD Type: aes-gcm
+boundary-controller-1  |                              Cgo: disabled
+boundary-controller-1  |   Controller Public Cluster Addr: boundary:9201
+boundary-controller-1  |                       Listener 1: tcp (addr: "0.0.0.0:9200", cors_allowed_headers: "[]", cors_allowed_origins: "[*]", cors_enabled: "true", max_request_duration: "1m30s", purpose: "api")
+boundary-controller-1  |                       Listener 2: tcp (addr: "boundary:9201", max_request_duration: "1m30s", purpose: "cluster")
+boundary-controller-1  |                       Listener 3: tcp (addr: "0.0.0.0:9203", max_request_duration: "1m30s", purpose: "ops")
+boundary-controller-1  |                        Log Level: info
+boundary-controller-1  |                            Mlock: supported: true, enabled: false
+boundary-controller-1  |                          Version: Boundary v0.9.1
+boundary-controller-1  |                      Version Sha: 15f8f63b2d11d750e03eb5d2318edf1565560d93
+boundary-controller-1  |
+boundary-controller-1  | ==> Boundary server started! Log data will stream in below:
+boundary-controller-1  |
+boundary-controller-1  | {"id":"F0xdb3hD02","source":"https://hashicorp.com/boundary/boundary/controller","specversion":"1.0","type":"system","data":{"version":"v0.1","op":"github.com/hashicorp/boundary/internal/observability/event.(*HclogLoggerAdapter).writeEvent","data":{"@original-log-level":"none","@original-log-name":"aws","msg":"configuring client automatic mTLS"}},"datacontentype":"application/cloudevents","time":"2022-07-20T18:56:13.000035843Z"}
+boundary-controller-1  | {"id":"fkhGQYcchZ","source":"https://hashicorp.com/boundary/boundary/controller","specversion":"1.0","type":"system","data":{"version":"v0.1","op":"github.com/hashicorp/boundary/internal/observability/event.(*HclogLoggerAdapter).writeEvent","data":{"@original-log-level":"none","@original-log-name":"aws","args":["/tmp/2698923715/boundary-plugin-host-aws.gz"],"msg":"starting plugin","path":"/tmp/2698923715/boundary-plugin-host-aws.gz"}},"datacontentype":"application/cloudevents","time":"2022-07-20T18:56:13.000334567Z"}
+boundary-controller-1  | {"id":"Xw4rSgZQes","source":"https://hashicorp.com/boundary/boundary/controller","specversion":"1.0","type":"system","data":{"version":"v0.1","op":"github.com/hashicorp/boundary/internal/observability/event.(*HclogLoggerAdapter).writeEvent","data":{"@original-log-level":"none","@original-log-name":"aws","msg":"plugin started","path":"/tmp/2698923715/boundary-plugin-host-aws.gz","pid":20}},"datacontentype":"application/cloudevents","time":"2022-07-20T18:56:13.001709763Z"}
+boundary-controller-1  | {"id":"HEzl3Dy4pj","source":"https://hashicorp.com/boundary/boundary/controller","specversion":"1.0","type":"system","data":{"version":"v0.1","op":"github.com/hashicorp/boundary/internal/observability/event.(*HclogLoggerAdapter).writeEvent","data":{"@original-log-level":"none","@original-log-name":"aws","msg":"waiting for RPC address","path":"/tmp/2698923715/boundary-plugin-host-aws.gz"}},"datacontentype":"application/cloudevents","time":"2022-07-20T18:56:13.001892916Z"}
+boundary-controller-1  | {"id":"nh4fEJceac","source":"https://hashicorp.com/boundary/boundary/controller","specversion":"1.0","type":"system","data":{"version":"v0.1","op":"github.com/hashicorp/boundary/internal/observability/event.(*HclogLoggerAdapter).writeEvent","data":{"@original-log-level":"none","@original-log-name":"aws.boundary-plugin-host-aws.gz","msg":"configuring server automatic mTLS","timestamp":"2022-07-20T18:56:12.699Z"}},"datacontentype":"application/cloudevents","time":"2022-07-20T18:56:13.001959041Z"}
+boundary-controller-1  | {"id":"hxCoQuqtrF","source":"https://hashicorp.com/boundary/boundary/controller","specversion":"1.0","type":"system","data":{"version":"v0.1","op":"github.com/hashicorp/boundary/internal/observability/event.(*HclogLoggerAdapter).writeEvent","data":{"@original-log-level":"none","@original-log-name":"aws","msg":"using plugin","version":1}},"datacontentype":"application/cloudevents","time":"2022-07-20T18:56:13.00222396Z"}
+boundary-controller-1  | {"id":"ruuQVdtvAz","source":"https://hashicorp.com/boundary/boundary/controller","specversion":"1.0","type":"system","data":{"version":"v0.1","op":"github.com/hashicorp/boundary/internal/observability/event.(*HclogLoggerAdapter).writeEvent","data":{"@original-log-level":"none","@original-log-name":"aws.boundary-plugin-host-aws.gz","address":"/tmp/plugin2307237177","msg":"plugin address","network":"unix","timestamp":"2022-07-20T18:56:12.715Z"}},"datacontentype":"application/cloudevents","time":"2022-07-20T18:56:13.002306787Z"}
+boundary-controller-1  | {"id":"IbRkvzqcC6","source":"https://hashicorp.com/boundary/boundary/controller","specversion":"1.0","type":"system","data":{"version":"v0.1","op":"github.com/hashicorp/boundary/internal/observability/event.(*HclogLoggerAdapter).writeEvent","data":{"@original-log-level":"none","@original-log-name":"aws.stdio","msg":"waiting for stdio data"}},"datacontentype":"application/cloudevents","time":"2022-07-20T18:56:13.002377211Z"}
+boundary-controller-1  | {"id":"p826WYeT4i","source":"https://hashicorp.com/boundary/boundary/controller","specversion":"1.0","type":"system","data":{"version":"v0.1","op":"github.com/hashicorp/boundary/internal/observability/event.(*HclogLoggerAdapter).writeEvent","data":{"@original-log-level":"none","@original-log-name":"azure","msg":"configuring client automatic mTLS"}},"datacontentype":"application/cloudevents","time":"2022-07-20T18:56:13.002515441Z"}
+boundary-controller-1  | {"id":"sGWC1kYRrO","source":"https://hashicorp.com/boundary/boundary/controller","specversion":"1.0","type":"system","data":{"version":"v0.1","op":"github.com/hashicorp/boundary/internal/observability/event.(*HclogLoggerAdapter).writeEvent","data":{"@original-log-level":"none","@original-log-name":"azure","args":["/tmp/2050627971/boundary-plugin-host-azure.gz"],"msg":"starting plugin","path":"/tmp/2050627971/boundary-plugin-host-azure.gz"}},"datacontentype":"application/cloudevents","time":"2022-07-20T18:56:13.002619226Z"}
+boundary-controller-1  | {"id":"khjHS4O1V4","source":"https://hashicorp.com/boundary/boundary/controller","specversion":"1.0","type":"system","data":{"version":"v0.1","op":"github.com/hashicorp/boundary/internal/observability/event.(*HclogLoggerAdapter).writeEvent","data":{"@original-log-level":"none","@original-log-name":"azure","msg":"plugin started","path":"/tmp/2050627971/boundary-plugin-host-azure.gz","pid":31}},"datacontentype":"application/cloudevents","time":"2022-07-20T18:56:13.002707022Z"}
+boundary-controller-1  | {"id":"9TZAYtDu6w","source":"https://hashicorp.com/boundary/boundary/controller","specversion":"1.0","type":"system","data":{"version":"v0.1","op":"github.com/hashicorp/boundary/internal/observability/event.(*HclogLoggerAdapter).writeEvent","data":{"@original-log-level":"none","@original-log-name":"azure","msg":"waiting for RPC address","path":"/tmp/2050627971/boundary-plugin-host-azure.gz"}},"datacontentype":"application/cloudevents","time":"2022-07-20T18:56:13.002752623Z"}
+
+...
+... More output ...
+...
+```
+
+These events were emitted as part of the provisioning process when the `deploy`
+script was executed.
+
+An event sink is set up in the configuration file for a controller or worker
+server. Below are the contents of the `events` stanza in the
+`compose/controller.hcl` configuration file:
+
+<CodeBlockConfig hideClipboard>
+
+```hcl
+events {
+  audit_enabled        = true
+  observations_enabled = true
+  sysevents_enabled    = true
+
+  sink "stderr" {
+    name        = "all-events"
+    description = "All events sent to stderr"
+    event_types = ["*"]
+    format      = "cloudevents-json"
+  }
+
+  sink {
+    name        = "controller-audit-sink"
+    description = "Audit sent to a file"
+    event_types = ["audit"]
+    format      = "cloudevents-json"
+
+    file {
+      path      = "/logs"
+      file_name = "controller.log"
+    }
+
+    audit_config {
+      audit_filter_overrides {
+        secret    = "encrypt"
+        sensitive = "hmac-sha256"
+      }
+    }
+  }
+}
+```
+
+</CodeBlockConfig>
+
+The types of events that should be emitted by Boundary are declared at the top
+of the `events` stanza. In this example audit, observation and sysevents are all
+enabled.
+
+<CodeBlockConfig hideClipboard>
+
+```
+audit_enabled = true
+observation_enabled = true
+sysevents_enabled = true
+```
+
+</CodeBlockConfig>
+
+- `audit_enabled`: Audit events can specify what data is included and different
+  options for redacting and encrypting that data.
+- `observation_enabled`: Specifies if observation events should be emitted.
+- `sysevents_enabled`: Specifies if system events should be emitted.
+
+The `sink` stanza is used to declare a location for emitted events to be sent.
+Two types of sinks are available:
+
+- `stderr`: The stderr sink configures Boundary to send events to a stderr.
+- `file`: The file sink configures Boundary to send events to a file.
+
+The sink stanza can be repeated to make Boundary send events to multiple sinks,
+but each file sink must have a unique path + file_name.
+
+
+### Default events
+
+When no event stanza is specified, the following default is used:
+
+```hcl
+events {
+  audit_enabled = false
+  observations_enabled = true
+  sysevents_enabled = true
+  sink "stderr" {
+    name = "default"
+    event_types = ["*"]
+    format = "cloudevents-json"
+  }
+}
+```
+
+While this configuration is the default, **if other sinks are configured it must
+be declared explicitly to send events to `stderr`.**
+
+If logs should be printed to `stderr` on the controller or workers, the
+following configuration must be present:
+
+<CodeBlockConfig hideClipboard>
+
+```hcl
+events {
+  audit_enabled = false
+  observation_enabled = true
+  sysevents_enabled = true
+  sink "stderr" {
+    name = "all-events"
+    description = "All events sent to stderr"
+    event_types = ["*"]
+    format = "hclog-text"
+  }
+}
+```
+
+</CodeBlockConfig>
+
+### File sinks
+
+The second sink in the `events` stanza declares a file sink:
+
+<CodeBlockConfig hideClipboard>
+
+```hcl
+sink {
+  name        = "controller-audit-sink"
+  description = "Audit sent to a file"
+  event_types = ["audit"]
+  format      = "cloudevents-json"
+
+  file {
+    path      = "/logs"
+    file_name = "controller.log"
+  }
+
+  audit_config {
+    audit_filter_overrides {
+      secret    = "encrypt"
+      sensitive = "hmac-sha256"
+    }
+  }
+}
+```
+
+</CodeBlockConfig>
+
+Each sink declares the type of events that should be written to it. Here all
+`"audit"` events will be written in the `cloudevents-json` format.
+
+In the `file` block the `path` and `file_name` attributes declare where this
+file should be stored on the local filesystem. Note that this file will be
+written to `/logs/controller.log` within the controller container. The lab
+environment for this tutorial defined in the `docker-compose.yml` file sets up the
+`learn-boundary-event-logging/auditlogs/` path as a shared directory for the
+controller and worker docker containers, available on the hosts at `/logs`.
+This can be verified by printing the contents of the log file on the
+controller.
+
+```shell-session
+$ docker compose exec controller sh -c "cat /logs/controller.log"
+joibG9jYWxob3N0OjkyMDIifX19LCJyZXNwb25zZSI6eyJkZXRhaWxzIjp7ImNhbGN1bGF0ZWRfdXBzdHJlYW1zIjpbeyJ0eXBlIjoxLCJhZGRyZXNzIjoiYm91bmRhcnk6OTIwMSJ9XSwid29ya2VyX2lkIjoid19YbENYOGJPV3MyIn19fSwiZGF0YWNvbnRlbnR5cGUiOiJhcHBsaWNhdGlvbi9jbG91ZGV2ZW50cyIsInRpbWUiOiIyMDIyLTA3LTIwVDE4OjU4OjI5LjM5MjIwMTIxWiJ9Cg","serialized_hmac":"hmac-sha256:dv3p9XkqZ9MB4BjiegscLQu2qjJRy6H-LiHI4eK7Yjo"}
+{"id":"BUDsTQtDIJ","source":"https://hashicorp.com/boundary/boundary/controller","specversion":"1.0","type":"audit","data":{"id":"e_wOWItPlaqb","version":"v0.1","type":"APIRequest","timestamp":"2022-07-20T18:58:18.287892168Z","request_info":{"id":"gtraceid_iiBp4CZ1UsGnKauHdOSU","method":"/controller.servers.services.v1.ServerCoordinationService/Status"},"request":{"details":{"worker_status":{"name":"worker","description":"A worker for a docker demo","address":"localhost:9202"}}},"response":{"details":{"calculated_upstreams":[{"type":1,"address":"boundary:9201"}],"worker_id":"w_XlCX8bOWs2"}}},"datacontentype":"application/cloudevents","time":"2022-07-20T18:58:29.393986607Z","serialized":"eyJpZCI6IkJVRHNUUXRESUoiLCJzb3VyY2UiOiJodHRwczovL2hhc2hpY29ycC5jb20vYm91bmRhcnkvYm91bmRhcnkvY29udHJvbGxlciIsInNwZWN2ZXJzaW9uIjoiMS4wIiwidHlwZSI6ImF1ZGl0IiwiZGF0YSI6eyJpZCI6ImVfd09XSXRQbGFxYiIsInZlcnNpb24iOiJ2MC4xIiwidHlwZSI6IkFQSVJlcXVlc3QiLCJ0aW1lc3RhbXAiOiIyMDIyLTA3LTIwVDE4OjU4OjE4LjI4Nzg5MjE2OFoiLCJyZXF1ZXN0X2luZm8iOnsiaWQiOiJndHJhY2VpZF9paUJwNENaMVVzR25LYXVIZE9TVSIsIm1ldGhvZCI6Ii9jb250cm9sbGVyLnNlcnZlcnMuc2VydmljZXMudjEuU2VydmVyQ29vcmRpbmF0aW9uU2VydmljZS9TdGF0dXMifSwicmVxdWVzdCI6eyJkZXRhaWxzIjp7Indvcmtlcl9zdGF0dXMiOnsibmFtZSI6IndvcmtlciIsImRlc2NyaXB0aW9uIjoiQSB3b3JrZXIgZm9yIGEgZG9ja2VyIGRlbW8iLCJhZGRyZXNzIjoibG9jYWxob3N0OjkyMDIifX19LCJyZXNwb25zZSI6eyJkZXRhaWxzIjp7ImNhbGN1bGF0ZWRfdXBzdHJlYW1zIjpbeyJ0eXBlIjoxLCJhZGRyZXNzIjoiYm91bmRhcnk6OTIwMSJ9XSwid29ya2VyX2lkIjoid19YbENYOGJPV3MyIn19fSwiZGF0YWNvbnRlbnR5cGUiOiJhcHBsaWNhdGlvbi9jbG91ZGV2ZW50cyIsInRpbWUiOiIyMDIyLTA3LTIwVDE4OjU4OjI5LjM5Mzk4NjYwN1oifQo","serialized_hmac":"hmac-sha256:ykDnrO_KzViGZbRfYDQXob93j-QiHO894uQg2srb7PI"}
+{"id":"UuhmbWY1JO","source":"https://hashicorp.com/boundary/boundary/controller","specversion":"1.0","type":"audit","data":{"id":"e_xmPGBWNhWk","version":"v0.1","type":"APIRequest","timestamp":"2022-07-20T18:58:20.518052983Z","request_info":{"id":"gtraceid_x4uo0vDQr3qmXX8xpeUd","method":"/controller.servers.services.v1.ServerCoordinationService/Status"},"request":{"details":{"worker_status":{"name":"worker","description":"A worker for a docker demo","address":"localhost:9202"}}},"response":{"details":{"calculated_upstreams":[{"type":1,"address":"boundary:9201"}],"worker_id":"w_XlCX8bOWs2"}}},"datacontentype":"application/cloudevents","time":"2022-07-20T18:58:30.945987014Z","serialized":"eyJpZCI6IlV1aG1iV1kxSk8iLCJzb3VyY2UiOiJodHRwczovL2hhc2hpY29ycC5jb20vYm91bmRhcnkvYm91bmRhcnkvY29udHJvbGxlciIsInNwZWN2ZXJzaW9uIjoiMS4wIiwidHlwZSI6ImF1ZGl0IiwiZGF0YSI6eyJpZCI6ImVfeG1QR0JXTmhXayIsInZlcnNpb24iOiJ2MC4xIiwidHlwZSI6IkFQSVJlcXVlc3QiLCJ0aW1lc3RhbXAiOiIyMDIyLTA3LTIwVDE4OjU4OjIwLjUxODA1Mjk4M1oiLCJyZXF1ZXN0X2luZm8iOnsiaWQiOiJndHJhY2VpZF94NHVvMHZEUXIzcW1YWDh4cGVVZCIsIm1ldGhvZCI6Ii9jb250cm9sbGVyLnNlcnZlcnMuc2VydmljZXMudjEuU2VydmVyQ29vcmRpbmF0aW9uU2VydmljZS9TdGF0dXMifSwicmVxdWVzdCI6eyJkZXRhaWxzIjp7Indvcmtlcl9zdGF0dXMiOnsibmFtZSI6IndvcmtlciIsImRlc2NyaXB0aW9uIjoiQSB3b3JrZXIgZm9yIGEgZG9ja2VyIGRlbW8iLCJhZGRyZXNzIjoibG9jYWxob3N0OjkyMDIifX19LCJyZXNwb25zZSI6eyJkZXRhaWxzIjp7ImNhbGN1bGF0ZWRfdXBzdHJlYW1zIjpbeyJ0eXBlIjoxLCJhZGRyZXNzIjoiYm91bmRhcnk6OTIwMSJ9XSwid29ya2VyX2lkIjoid19YbENYOGJPV3MyIn19fSwiZGF0YWNvbnRlbnR5cGUiOiJhcHBsaWNhdGlvbi9jbG91ZGV2ZW50cyIsInRpbWUiOiIyMDIyLTA3LTIwVDE4OjU4OjMwLjk0NTk4NzAxNFoifQo","serialized_hmac":"hmac-sha256:0rKN02Vtxb92HVPDKpGWlW-TFrBE6fDSbtLmKEbtCs8"}
+{"id":"hDEuPdUMQL","source":"https://hashicorp.com/boundary/boundary/controller","specversion":"1.0","type":"audit","data":{"id":"e_xmPGBWNhWk","version":"v0.1","type":"APIRequest","timestamp":"2022-07-20T18:58:20.518052983Z","request_info":{"id":"gtraceid_x4uo0vDQr3qmXX8xpeUd","method":"/controller.servers.services.v1.ServerCoordinationService/Status"},"request":{"details":{"worker_status":{"name":"worker","description":"A worker for a docker demo","address":"localhost:9202"}}},"response":{"details":{"calculated_upstreams":[{"type":1,"address":"boundary:9201"}],"worker_id":"w_XlCX8bOWs2"}}},"datacontentype":"application/cloudevents","time":"2022-07-20T18:58:30.947809051Z","serialized":"eyJpZCI6ImhERXVQZFVNUUwiLCJzb3VyY2UiOiJodHRwczovL2hhc2hpY29ycC5jb20vYm91bmRhcnkvYm91bmRhcnkvY29udHJvbGxlciIsInNwZWN2ZXJzaW9uIjoiMS4wIiwidHlwZSI6ImF1ZGl0IiwiZGF0YSI6eyJpZCI6ImVfeG1QR0JXTmhXayIsInZlcnNpb24iOiJ2MC4xIiwidHlwZSI6IkFQSVJlcXVlc3QiLCJ0aW1lc3RhbXAiOiIyMDIyLTA3LTIwVDE4OjU4OjIwLjUxODA1Mjk4M1oiLCJyZXF1ZXN0X2luZm8iOnsiaWQiOiJndHJhY2VpZF94NHVvMHZEUXIzcW1YWDh4cGVVZCIsIm1ldGhvZCI6Ii9jb250cm9sbGVyLnNlcnZlcnMuc2VydmljZXMudjEuU2VydmVyQ29vcmRpbmF0aW9uU2VydmljZS9TdGF0dXMifSwicmVxdWVzdCI6eyJkZXRhaWxzIjp7Indvcmtlcl9zdGF0dXMiOnsibmFtZSI6IndvcmtlciIsImRlc2NyaXB0aW9uIjoiQSB3b3JrZXIgZm9yIGEgZG9ja2VyIGRlbW8iLCJhZGRyZXNzIjoibG9jYWxob3N0OjkyMDIifX19LCJyZXNwb25zZSI6eyJkZXRhaWxzIjp7ImNhbGN1bGF0ZWRfdXBzdHJlYW1zIjpbeyJ0eXBlIjoxLCJhZGRyZXNzIjoiYm91bmRhcnk6OTIwMSJ9XSwid29ya2VyX2lkIjoid19YbENYOGJPV3MyIn19fSwiZGF0YWNvbnRlbnR5cGUiOiJhcHBsaWNhdGlvbi9jbG91ZGV2ZW50cyIsInRpbWUiOiIyMDIyLTA3LTIwVDE4OjU4OjMwLjk0NzgwOTA1MVoifQo","serialized_hmac":"hmac-sha256:UYf6PtyfbQAM9evDYVtPEhIZMs08pXYiDHieHTvfYr4"}
+{"id":"YqcG52Apmk","source":"https://hashicorp.com/boundary/boundary/controller","specversion":"1.0","type":"audit","data":{"id":"e_qHaKMHciWd","version":"v0.1","type":"APIRequest","timestamp":"2022-07-20T18:58:22.121518465Z","request_info":{"id":"gtraceid_9fah7Gk3fYgoS8U7eOAm","method":"/controller.servers.services.v1.ServerCoordinationService/Status"},"request":{"details":{"worker_status":{"name":"worker","description":"A worker for a docker demo","address":"localhost:9202"}}},"response":{"details":{"calculated_upstreams":[{"type":1,"address":"boundary:9201"}],"worker_id":"w_XlCX8bOWs2"}}},"datacontentype":"application/cloudevents","time":"2022-07-20T18:58:32.961631427Z","serialized":"eyJpZCI6IllxY0c1MkFwbWsiLCJzb3VyY2UiOiJodHRwczovL2hhc2hpY29ycC5jb20vYm91bmRhcnkvYm91bmRhcnkvY29udHJvbGxlciIsInNwZWN2ZXJzaW9uIjoiMS4wIiwidHlwZSI6ImF1ZGl0IiwiZGF0YSI6eyJpZCI6ImVfcUhhS01IY2lXZCIsInZlcnNpb24iOiJ2MC4xIiwidHlwZSI6IkFQSVJlcXVlc3QiLCJ0aW1lc3RhbXAiOiIyMDIyLTA3LTIwVDE4OjU4OjIyLjEyMTUxODQ2NVoiLCJyZXF1ZXN0X2luZm8iOnsiaWQiOiJndHJhY2VpZF85ZmFoN0drM2ZZZ29TOFU3ZU9BbSIsIm1ldGhvZCI6Ii9jb250cm9sbGVyLnNlcnZlcnMuc2VydmljZXMudjEuU2VydmVyQ29vcmRpbmF0aW9uU2VydmljZS9TdGF0dXMifSwicmVxdWVzdCI6eyJkZXRhaWxzIjp7Indvcmtlcl9zdGF0dXMiOnsibmFtZSI6IndvcmtlciIsImRlc2NyaXB0aW9uIjoiQSB3b3JrZXIgZm9yIGEgZG9ja2VyIGRlbW8iLCJhZGRyZXNzIjoibG9jYWxob3N0OjkyMDIifX19LCJyZXNwb25zZSI6eyJkZXRhaWxzIjp7ImNhbGN1bGF0ZWRfdXBzdHJlYW1zIjpbeyJ0eXBlIjoxLCJhZGRyZXNzIjoiYm91bmRhcnk6OTIwMSJ9XSwid29ya2VyX2lkIjoid19YbENYOGJPV3MyIn19fSwiZGF0YWNvbnRlbnR5cGUiOiJhcHBsaWNhdGlvbi9jbG91ZGV2ZW50cyIsInRpbWUiOiIyMDIyLTA3LTIwVDE4OjU4OjMyLjk2MTYzMTQyN1oifQo","serialized_hmac":"hmac-sha256:9A1K2PCEWMzoky_Wzw1jwuhjqcI-UD-SiIaQgLNpK4w"}
+{"id":"Da6p7uroTj","source":"https://hashicorp.com/boundary/boundary/controller","specversion":"1.0","type":"audit","data":{"id":"e_qHaKMHciWd","version":"v0.1","type":"APIRequest","timestamp":"2022-07-20T18:58:22.121518465Z","request_info":{"id":"gtraceid_9fah7Gk3fYgoS8U7eOAm","method":"/controller.servers.services.v1.ServerCoordinationService/Status"},"request":{"details":{"worker_status":{"name":"worker","description":"A worker for a docker demo","address":"localhost:9202"}}},"response":{"details":{"calculated_upstreams":[{"type":1,"address":"boundary:9201"}],"worker_id":"w_XlCX8bOWs2"}}},"datacontentype":"application/cloudevents","time":"2022-07-20T18:58:32.962688046Z","serialized":"eyJpZCI6IkRhNnA3dXJvVGoiLCJzb3VyY2UiOiJodHRwczovL2hhc2hpY29ycC5jb20vYm91bmRhcnkvYm91bmRhcnkvY29udHJvbGxlciIsInNwZWN2ZXJzaW9uIjoiMS4wIiwidHlwZSI6ImF1ZGl0IiwiZGF0YSI6eyJpZCI6ImVfcUhhS01IY2lXZCIsInZlcnNpb24iOiJ2MC4xIiwidHlwZSI6IkFQSVJlcXVlc3QiLCJ0aW1lc3RhbXAiOiIyMDIyLTA3LTIwVDE4OjU4OjIyLjEyMTUxODQ2NVoiLCJyZXF1ZXN0X2luZm8iOnsiaWQiOiJndHJhY2VpZF85ZmFoN0drM2ZZZ29TOFU3ZU9BbSIsIm1ldGhvZCI6Ii9jb250cm9sbGVyLnNlcnZlcnMuc2VydmljZXMudjEuU2VydmVyQ29vcmRpbmF0aW9uU2VydmljZS9TdGF0dXMifSwicmVxdWVzdCI6eyJkZXRhaWxzIjp7Indvcmtlcl9zdGF0dXMiOnsibmFtZSI6IndvcmtlciIsImRlc2NyaXB0aW9uIjoiQSB3b3JrZXIgZm9yIGEgZG9ja2VyIGRlbW8iLCJhZGRyZXNzIjoibG9jYWxob3N0OjkyMDIifX19LCJyZXNwb25zZSI6eyJkZXRhaWxzIjp7ImNhbGN1bGF0ZWRfdXBzdHJlYW1zIjpbeyJ0eXBlIjoxLCJhZGRyZXNzIjoiYm91bmRhcnk6OTIwMSJ9XSwid29ya2VyX2lkIjoid19YbENYOGJPV3MyIn19fSwiZGF0YWNvbnRlbnR5cGUiOiJhcHBsaWNhdGlvbi9jbG91ZGV2ZW50cyIsInRpbWUiOiIyMDIyLTA3LTIwVDE4OjU4OjMyLjk2MjY4ODA0NloifQo","serialized_hmac":"hmac-sha256:FeRto9-qx-MUMx_q3SUM2KxdTOt3BR7751rB6QcEb_s"}
+{"id":"PxdKQuid4o","source":"https://hashicorp.com/boundary/boundary/controller","specversion":"1.0","type":"audit","data":{"id":"e_QmAoubIkgi","version":"v0.1","type":"APIRequest","timestamp":"2022-07-20T18:58:24.19581501Z","request_info":{"id":"gtraceid_rvKPLQmp9tTmU0wbvcOq","method":"/controller.servers.services.v1.ServerCoordinationService/Status"},"request":{"details":{"worker_status":{"name":"worker","description":"A worker for a docker demo","address":"localhost:9202"}}},"response":{"details":{"calculated_upstreams":[{"type":1,"address":"boundary:9201"}],"worker_id":"w_XlCX8bOWs2"}}},"datacontentype":"application/cloudevents","time":"2022-07-20T18:58:35.090103312Z","serialized":"eyJpZCI6IlB4ZEtRdWlkNG8iLCJzb3VyY2UiOiJodHRwczovL2hhc2hpY29ycC5jb20vYm91bmRhcnkvYm91bmRhcnkvY29udHJvbGxlciIsInNwZWN2ZXJzaW9uIjoiMS4wIiwidHlwZSI6ImF1ZGl0IiwiZGF0YSI6eyJpZCI6ImVfUW1Bb3ViSWtnaSIsInZlcnNpb24iOiJ2MC4xIiwidHlwZSI6IkFQSVJlcXVlc3QiLCJ0aW1lc3RhbXAiOiIyMDIyLTA3LTIwVDE4OjU4OjI0LjE5NTgxNTAxWiIsInJlcXVlc3RfaW5mbyI6eyJpZCI6Imd0cmFjZWlkX3J2S1BMUW1wOXRUbVUwd2J2Y09xIiwibWV0aG9kIjoiL2NvbnRyb2xsZXIuc2VydmVycy5zZXJ2aWNlcy52MS5TZXJ2ZXJDb29yZGluYXRpb25TZXJ2aWNlL1N0YXR1cyJ9LCJyZXF1ZXN0Ijp7ImRldGFpbHMiOnsid29ya2VyX3N0YXR1cyI6eyJuYW1lIjoid29ya2VyIiwiZGVzY3JpcHRpb24iOiJBIHdvcmtlciBmb3IgYSBkb2NrZXIgZGVtbyIsImFkZHJlc3MiOiJsb2NhbGhvc3Q6OTIwMiJ9fX0sInJlc3BvbnNlIjp7ImRldGFpbHMiOnsiY2FsY3VsYXRlZF91cHN0cmVhbXMiOlt7InR5cGUiOjEsImFkZHJlc3MiOiJib3VuZGFyeTo5MjAxIn1dLCJ3b3JrZXJfaWQiOiJ3X1hsQ1g4Yk9XczIifX19LCJkYXRhY29udGVudHlwZSI6ImFwcGxpY2F0aW9uL2Nsb3VkZXZlbnRzIiwidGltZSI6IjIwMjItMDctMjBUMTg6NTg6MzUuMDkwMTAzMzEyWiJ9Cg","serialized_hmac":"hmac-sha256:T6QeIx5NhQ6KZ3hoVaX73y9-R8JF0SH0GR7juFGxRrg"}
+{"id":"xtxp16rNzI","source":"https://hashicorp.com/boundary/boundary/controller","specversion":"1.0","type":"audit","data":{"id":"e_QmAoubIkgi","version":"v0.1","type":"APIRequest","timestamp":"2022-07-20T18:58:24.19581501Z","request_info":{"id":"gtraceid_rvKPLQmp9tTmU0wbvcOq","method":"/controller.servers.services.v1.ServerCoordinationService/Status"},"request":{"details":{"worker_status":{"name":"worker","description":"A worker for a docker demo","address":"localhost:9202"}}},"response":{"details":{"calculated_upstreams":[{"type":1,"address":"boundary:9201"}],"worker_id":"w_XlCX8bOWs2"}}},"datacontentype":"application/cloudevents","time":"2022-07-20T18:58:35.091256602Z","serialized":"eyJpZCI6Inh0eHAxNnJOekkiLCJzb3VyY2UiOiJodHRwczovL2hhc2hpY29ycC5jb20vYm91bmRhcnkvYm91bmRhcnkvY29udHJvbGxlciIsInNwZWN2ZXJzaW9uIjoiMS4wIiwidHlwZSI6ImF1ZGl0IiwiZGF0YSI6eyJpZCI6ImVfUW1Bb3ViSWtnaSIsInZlcnNpb24iOiJ2MC4xIiwidHlwZSI6IkFQSVJlcXVlc3QiLCJ0aW1lc3RhbXAiOiIyMDIyLTA3LTIwVDE4OjU4OjI0LjE5NTgxNTAxWiIsInJlcXVlc3RfaW5mbyI6eyJpZCI6Imd0cmFjZWlkX3J2S1BMUW1wOXRUbVUwd2J2Y09xIiwibWV0aG9kIjoiL2NvbnRyb2xsZXIuc2VydmVycy5zZXJ2aWNlcy52MS5TZXJ2ZXJDb29yZGluYXRpb25TZXJ2aWNlL1N0YXR1cyJ9LCJyZXF1ZXN0Ijp7ImRldGFpbHMiOnsid29ya2VyX3N0YXR1cyI6eyJuYW1lIjoid29ya2VyIiwiZGVzY3JpcHRpb24iOiJBIHdvcmtlciBmb3IgYSBkb2NrZXIgZGVtbyIsImFkZHJlc3MiOiJsb2NhbGhvc3Q6OTIwMiJ9fX0sInJlc3BvbnNlIjp7ImRldGFpbHMiOnsiY2FsY3VsYXRlZF91cHN0cmVhbXMiOlt7InR5cGUiOjEsImFkZHJlc3MiOiJib3VuZGFyeTo5MjAxIn1dLCJ3b3JrZXJfaWQiOiJ3X1hsQ1g4Yk9XczIifX19LCJkYXRhY29udGVudHlwZSI6ImFwcGxpY2F0aW9uL2Nsb3VkZXZlbnRzIiwidGltZSI6IjIwMjItMDctMjBUMTg6NTg6MzUuMDkxMjU2NjAyWiJ9Cg","serialized_hmac":"hmac-sha256:Bco9Jjx43JC3Npt324_Ac56K4_PaWzYZn-urbF6m3lI"}
+{"id":"BBWlbsvVpR","source":"https://hashicorp.com/boundary/boundary/controller","specversion":"1.0","type":"audit","data":{"id":"e_m8W8HHh8Y1","version":"v0.1","type":"APIRequest","timestamp":"2022-07-20T18:58:26.284839076Z","request_info":{"id":"gtraceid_yIWcrcG1SAbWuGIy39Od","method":"/controller.servers.services.v1.ServerCoordinationService/Status"},"request":{"details":{"worker_status":{"name":"worker","description":"A worker for a docker demo","address":"localhost:9202"}}},"response":{"details":{"calculated_upstreams":[{"type":1,"address":"boundary:9201"}],"worker_id":"w_XlCX8bOWs2"}}},"datacontentype":"application/cloudevents","time":"2022-07-20T18:58:37.159616684Z","serialized":"eyJpZCI6IkJCV2xic3ZWcFIiLCJzb3VyY2UiOiJodHRwczovL2hhc2hpY29ycC5jb20vYm91bmRhcnkvYm91bmRhcnkvY29udHJvbGxlciIsInNwZWN2ZXJzaW9uIjoiMS4wIiwidHlwZSI6ImF1ZGl0IiwiZGF0YSI6eyJpZCI6ImVfbThXOEhIaDhZMSIsInZlcnNpb24iOiJ2MC4xIiwidHlwZSI6IkFQSVJlcXVlc3QiLCJ0aW1lc3RhbXAiOiIyMDIyLTA3LTIwVDE4OjU4OjI2LjI4NDgzOTA3NloiLCJyZXF1ZXN0X2luZm8iOnsiaWQiOiJndHJhY2VpZF95SVdjcmNHMVNBYld1R0l5MzlPZCIsIm1ldGhvZCI6Ii9jb250cm9sbGVyLnNlcnZlcnMuc2VydmljZXMudjEuU2VydmVyQ29vcmRpbmF0aW9uU2VydmljZS9TdGF0dXMifSwicmVxdWVzdCI6eyJkZXRhaWxzIjp7Indvcmtlcl9zdGF0dXMiOnsibmFtZSI6IndvcmtlciIsImRlc2NyaXB0aW9uIjoiQSB3b3JrZXIgZm9yIGEgZG9ja2VyIGRlbW8iLCJhZGRyZXNzIjoibG9jYWxob3N0OjkyMDIifX19LCJyZXNwb25zZSI6eyJkZXRhaWxzIjp7ImNhbGN1bGF0ZWRfdXBzdHJlYW1zIjpbeyJ0eXBlIjoxLCJhZGRyZXNzIjoiYm91bmRhcnk6OTIwMSJ9XSwid29ya2VyX2lkIjoid19YbENYOGJPV3MyIn19fSwiZGF0YWNvbnRlbnR5cGUiOiJhcHBsaWNhdGlvbi9jbG91ZGV2ZW50cyIsInRpbWUiOiIyMDIyLTA3LTIwVDE4OjU4OjM3LjE1OTYxNjY4NFoifQo","serialized_hmac":"hmac-sha256:LMQwOBRQpJvF-UsXaaigDPmXDYphO3zglh2YoOx4HnA"}
+...
+... More Output ...
+...
+```
+
+The contents of this file should also be available within the
+`learn-boundary-event-logging/auditlogs/controller.log` file on your local
+machine. **Use the `auditlogs/` directory to view the log files for the rest of
+this tutorial.**
+
+### Event sink filtering
+
+Event sinks can be configured to filter events, so that a subset of events can
+be sent to a sink. This is useful for tracking when Boundary produces certain
+events relevant to operators or sysadmins, such as authentication or session
+management events.
+
+For example, below is an authentication event:
+
+<CodeBlockConfig hideClipboard>
+
+```json
+{"id":"vTsxyZo2hr","source":"https://hashicorp.com/boundary/docker-controller","specversion":"1.0","type":"observation","data":{"latency-ms":192.5899,"request_info":{"id":"gtraceid_fEougalk2xU5LqOBJEG6","method":"POST","path":"/v1/auth-methods/ampw_IihbGh5KA1:authenticate","client_ip":"172.16.238.1"},"start":"2022-05-11T18:10:29.62851Z","status":200,"stop":"2022-05-11T18:10:29.8210976Z","version":"v0.1"},"datacontentype":"application/cloudevents","time":"2022-05-11T18:10:29.8211461Z"}
+```
+
+</CodeBlockConfig>
+
+For authentication events, the `"path"` for the API request contains
+`:authenticate`. In this example the full `"path"` is
+`"/v1/auth-methods/ampw_IihbGh5KA1:authenticate"`.
+
+To create a sink for these events, the following filter captures events with a
+`"path"` containing `:authenticate`:
+
+`"/data/request_info/path" contains ":authenticate"`
+
+### Define an authentication sink
+
+Next, define a new file sink that only captures authentication events.
+
+**Open the `compose/controller.hcl` config file.**
+
+**Uncomment lines 84 - 96**, which define the following sink:
+
+<CodeBlockConfig>
+
+```hcl
+sink {
+  name = "auth-sink"
+  description = "Authentications sent to a file"
+  event_types = ["observation"]
+  format = "cloudevents-json"
+  allow_filters = [
+    "\"/data/request_info/path\" contains \":authenticate\""
+  ]
+  file {
+    path = "/logs/"
+    file_name = "auth.log"
+  }
+}
+```
+
+</CodeBlockConfig>
+
+**Save this file.**
+
+Notice the `allow_filters` syntax for authentication events:
+
+<CodeBlockConfig hideClipboard>
+
+```hcl
+allow_filters = [
+  "\"/data/request_info/path\" contains \":authenticate\""
+]
+```
+
+</CodeBlockConfig>
+
+The `allow_filters` sink attribute is a logical "or" operator, meaning that only
+the defined events will be captured. Sinks also support the `deny_filters`
+attribute, which instead defines what events should **not** be captured. Event
+sink filtering uses the [standard filter
+syntax](/boundary/docs/concepts/filtering) used elsewhere
+in Boundary.
+
+<Warning>
+
+HCL configuration files require the use of double-quotes when defining
+parameters. This means the filter must be surrounded with double-quotes, and
+then escape syntax (`\`) used when a literal `"` is written.
+
+</Warning>
+
+The earlier filter:
+
+`"/data/request_info/path" contains ":authenticate"`
+
+must then be written as:
+
+`"\"/data/request_info/path\" contains \":authenticate\""`
+
+Use escape syntax when defining any filters within a Boundary HCL config file.
+
+**Restart the controller** to apply the new config:
+
+```shell-session
+$ docker compose restart controller
+[+] Running 1/1
+ ⠿ Container boundary-controller-1  Started
+```
+
+Next, authenticate as `user1` using the password `password`.
+
+```shell-session
+$ boundary authenticate password -login-name user1
+Please enter the password (it will be hidden): <password>
+
+Authentication information:
+  Account ID:      acctpw_JQXp0QHxQL
+  Auth Method ID:  ampw_xxF3EIBn4k
+  Expiration Time: Thu, 26 May 2022 11:36:27 MDT
+  User ID:         u_RlkqMP6jUv
+
+The token was successfully stored in the chosen keyring and is not displayed here.
+```
+
+Check the shared directory and locate the new
+`learn-boundary-event-logging/auditlogs/auth.log` file. It should contain a
+single event from the recent authentication as user1. Future authentication
+events will be logged here, too.
+
+### Define an authorize session sink
+
+Another useful event sink might be dedicated to requests to authorize sessions
+to targets. These events are already captured as `audit` events in the
+controller's log file.
+
+An example of a session authorization request is printed below.
+
+<CodeBlockConfig hideClipboard>
+
+```json
+{"id":"1UyggqIfe8","source":"https://hashicorp.com/boundary/docker-controller","specversion":"1.0","type":"audit","data":{"id":"e_VT12EkK2Rj","version":"v0.1","type":"APIRequest","timestamp":"2022-05-12T17:11:42.5563865Z","request_info":{"id":"gtraceid_cOD24OAwbTn4vQzRnbwO","method":"POST","path":"/v1/targets/postgres:authorize-session","public_id":"at_Tjdwwr74lu","client_ip":"172.16.238.1"},"auth":{"auth_token_id":"","user_info":{"id":"u_NQGczvwjpb","auth_account_id":"acctpw_hgjZgauleQ"},"grants_info":{"grants":[{"grant":"ids=*;type=scope;actions=list,no-op","scope_id":"global","role_id":"r_HEaKYXOJZW"},{"grant":"ids=*;type=auth-method;actions=authenticate,list","scope_id":"global","role_id":"r_HEaKYXOJZW"},{"grant":"id={{account.id}};actions=change-password,read","scope_id":"global","role_id":"r_HEaKYXOJZW"},{"grant":"ids=*;type=auth-token;actions=delete:self,list,read:self","scope_id":"global","role_id":"r_HEaKYXOJZW"},{"grant":"ids=*;type=scope;actions=list,no-op","scope_id":"o_HRsjnWNOLk","role_id":"r_O4l1barxzg"},{"grant":"ids=*;type=auth-method;actions=authenticate,list","scope_id":"o_HRsjnWNOLk","role_id":"r_O4l1barxzg"},{"grant":"id={{account.id}};actions=change-password,read","scope_id":"o_HRsjnWNOLk","role_id":"r_O4l1barxzg"},{"grant":"ids=*;type=auth-token;actions=delete:self,list,read:self","scope_id":"o_HRsjnWNOLk","role_id":"r_O4l1barxzg"},{"grant":"ids=*;type=session;actions=cancel:self,list,read:self","scope_id":"p_EDcMeXps8E","role_id":"r_CMPoxGcM7I"},{"grant":"type=target;actions=list","scope_id":"p_EDcMeXps8E","role_id":"r_CMPoxGcM7I"},{"grant":"ids=*;type=session;actions=cancel:self,list,read:self","scope_id":"p_ohRuMZx5TG","role_id":"r_6NXX9eO8v6"},{"grant":"type=target;actions=list","scope_id":"p_ohRuMZx5TG","role_id":"r_6NXX9eO8v6"},{"grant":"ids=*;type=auth-method;actions=authenticate,list","scope_id":"global","role_id":"r_9NWpA4bf9t"},{"grant":"id={{account.id}};actions=change-password,read","scope_id":"global","role_id":"r_9NWpA4bf9t"},{"grant":"type=scope;actions=list","scope_id":"global","role_id":"r_9NWpA4bf9t"},{"grant":"ids=*;type=auth-method;actions=authenticate,list","scope_id":"o_6DipMh4MBK","role_id":"r_FEtTnavuo8"},{"grant":"id={{account.id}};actions=change-password,read","scope_id":"o_6DipMh4MBK","role_id":"r_FEtTnavuo8"},{"grant":"type=scope;actions=list","scope_id":"o_6DipMh4MBK","role_id":"r_FEtTnavuo8"},{"grant":"ids=*;type=*;actions=*","scope_id":"p_ohRuMZx5TG","role_id":"r_Nb3CoZpRcM"},{"grant":"ids=*;type=*;actions=*","scope_id":"o_6DipMh4MBK","role_id":"r_MS8qqWkesb"}]},"email":"hmac-sha256:QzQpK8sc8mVg1AuVsvNQTR0Aa9QnRMJs_WxaXrvxUe8","name":"hmac-sha256:QzQpK8sc8mVg1AuVsvNQTR0Aa9QnRMJs_WxaXrvxUe8"},"request":{"details":{"id":"postgres","name":"postgres","scope_name":"databases"}},"response":{"status_code":200,"details":{"item":{"session_id":"s_0gpENlJyEJ","target_id":"ttcp_t0T9VgxqHT","scope":{"id":"p_ohRuMZx5TG","type":"project","name":"databases","description":"Databases project","parent_scope_id":"o_6DipMh4MBK"},"created_time":{"seconds":1652375502,"nanos":535560000},"user_id":"u_NQGczvwjpb","host_set_id":"hsst_xaIEghmHfi","host_id":"hst_CNFn79c91t","type":"tcp","authorization_token":"[REDACTED]","endpoint":"tcp://postgres:5432"}}}},"datacontentype":"application/cloudevents","time":"2022-05-12T17:11:42.5565725Z","serialized":"eyJpZCI6IjFVeWdncUlmZTgiLCJzb3VyY2UiOiJodHRwczovL2hhc2hpY29ycC5jb20vYm91bmRhcnkvZG9ja2VyLWNvbnRyb2xsZXIiLCJzcGVjdmVyc2lvbiI6IjEuMCIsInR5cGUiOiJhdWRpdCIsImRhdGEiOnsiaWQiOiJlX1ZUMTJFa0syUmoiLCJ2ZXJzaW9uIjoidjAuMSIsInR5cGUiOiJBUElSZXF1ZXN0IiwidGltZXN0YW1wIjoiMjAyMi0wNS0xMlQxNzoxMTo0Mi41NTYzODY1WiIsInJlcXVlc3RfaW5mbyI6eyJpZCI6Imd0cmFjZWlkX2NPRDI0T0F3YlRuNHZRelJuYndPIiwibWV0aG9kIjoiUE9TVCIsInBhdGgiOiIvdjEvdGFyZ2V0cy9wb3N0Z3JlczphdXRob3JpemUtc2Vzc2lvbiIsInB1YmxpY19pZCI6ImF0X1RqZHd3cjc0bHUiLCJjbGllbnRfaXAiOiIxNzIuMTYuMjM4LjEifSwiYXV0aCI6eyJhdXRoX3Rva2VuX2lkIjoiIiwidXNlcl9pbmZvIjp7ImlkIjoidV9OUUdjenZ3anBiIiwiYXV0aF9hY2NvdW50X2lkIjoiYWNjdHB3X2hnalpnYXVsZVEifSwiZ3JhbnRzX2luZm8iOnsiZ3JhbnRzIjpbeyJncmFudCI6ImlkPSo7dHlwZT1zY29wZTthY3Rpb25zPWxpc3Qsbm8tb3AiLCJzY29wZV9pZCI6Imdsb2JhbCIsInJvbGVfaWQiOiJyX0hFYUtZWE9KWlcifSx7ImdyYW50IjoiaWQ9Kjt0eXBlPWF1dGgtbWV0aG9kO2FjdGlvbnM9YXV0aGVudGljYXRlLGxpc3QiLCJzY29wZV9pZCI6Imdsb2JhbCIsInJvbGVfaWQiOiJyX0hFYUtZWE9KWlcifSx7ImdyYW50IjoiaWQ9e3thY2NvdW50LmlkfX07YWN0aW9ucz1jaGFuZ2UtcGFzc3dvcmQscmVhZCIsInNjb3BlX2lkIjoiZ2xvYmFsIiwicm9sZV9pZCI6InJfSEVhS1lYT0paVyJ9LHsiZ3JhbnQiOiJpZD0qO3R5cGU9YXV0aC10b2tlbjthY3Rpb25zPWRlbGV0ZTpzZWxmLGxpc3QscmVhZDpzZWxmIiwic2NvcGVfaWQiOiJnbG9iYWwiLCJyb2xlX2lkIjoicl9IRWFLWVhPSlpXIn0seyJncmFudCI6ImlkPSo7dHlwZT1zY29wZTthY3Rpb25zPWxpc3Qsbm8tb3AiLCJzY29wZV9pZCI6Im9fSFJzam5XTk9MayIsInJvbGVfaWQiOiJyX080bDFiYXJ4emcifSx7ImdyYW50IjoiaWQ9Kjt0eXBlPWF1dGgtbWV0aG9kO2FjdGlvbnM9YXV0aGVudGljYXRlLGxpc3QiLCJzY29wZV9pZCI6Im9fSFJzam5XTk9MayIsInJvbGVfaWQiOiJyX080bDFiYXJ4emcifSx7ImdyYW50IjoiaWQ9e3thY2NvdW50LmlkfX07YWN0aW9ucz1jaGFuZ2UtcGFzc3dvcmQscmVhZCIsInNjb3BlX2lkIjoib19IUnNqbldOT0xrIiwicm9sZV9pZCI6InJfTzRsMWJhcnh6ZyJ9LHsiZ3JhbnQiOiJpZD0qO3R5cGU9YXV0aC10b2tlbjthY3Rpb25zPWRlbGV0ZTpzZWxmLGxpc3QscmVhZDpzZWxmIiwic2NvcGVfaWQiOiJvX0hSc2puV05PTGsiLCJyb2xlX2lkIjoicl9PNGwxYmFyeHpnIn0seyJncmFudCI6ImlkPSo7dHlwZT1zZXNzaW9uO2FjdGlvbnM9Y2FuY2VsOnNlbGYsbGlzdCxyZWFkOnNlbGYiLCJzY29wZV9pZCI6InBfRURjTWVYcHM4RSIsInJvbGVfaWQiOiJyX0NNUG94R2NNN0kifSx7ImdyYW50IjoidHlwZT10YXJnZXQ7YWN0aW9ucz1saXN0Iiwic2NvcGVfaWQiOiJwX0VEY01lWHBzOEUiLCJyb2xlX2lkIjoicl9DTVBveEdjTTdJIn0seyJncmFudCI6ImlkPSo7dHlwZT1zZXNzaW9uO2FjdGlvbnM9Y2FuY2VsOnNlbGYsbGlzdCxyZWFkOnNlbGYiLCJzY29wZV9pZCI6InBfb2hSdU1aeDVURyIsInJvbGVfaWQiOiJyXzZOWFg5ZU84djYifSx7ImdyYW50IjoidHlwZT10YXJnZXQ7YWN0aW9ucz1saXN0Iiwic2NvcGVfaWQiOiJwX29oUnVNWng1VEciLCJyb2xlX2lkIjoicl82TlhYOWVPOHY2In0seyJncmFudCI6ImlkPSo7dHlwZT1hdXRoLW1ldGhvZDthY3Rpb25zPWF1dGhlbnRpY2F0ZSxsaXN0Iiwic2NvcGVfaWQiOiJnbG9iYWwiLCJyb2xlX2lkIjoicl85TldwQTRiZjl0In0seyJncmFudCI6ImlkPXt7YWNjb3VudC5pZH19O2FjdGlvbnM9Y2hhbmdlLXBhc3N3b3JkLHJlYWQiLCJzY29wZV9pZCI6Imdsb2JhbCIsInJvbGVfaWQiOiJyXzlOV3BBNGJmOXQifSx7ImdyYW50IjoidHlwZT1zY29wZTthY3Rpb25zPWxpc3QiLCJzY29wZV9pZCI6Imdsb2JhbCIsInJvbGVfaWQiOiJyXzlOV3BBNGJmOXQifSx7ImdyYW50IjoiaWQ9Kjt0eXBlPWF1dGgtbWV0aG9kO2FjdGlvbnM9YXV0aGVudGljYXRlLGxpc3QiLCJzY29wZV9pZCI6Im9fNkRpcE1oNE1CSyIsInJvbGVfaWQiOiJyX0ZFdFRuYXZ1bzgifSx7ImdyYW50IjoiaWQ9e3thY2NvdW50LmlkfX07YWN0aW9ucz1jaGFuZ2UtcGFzc3dvcmQscmVhZCIsInNjb3BlX2lkIjoib182RGlwTWg0TUJLIiwicm9sZV9pZCI6InJfRkV0VG5hdnVvOCJ9LHsiZ3JhbnQiOiJ0eXBlPXNjb3BlO2FjdGlvbnM9bGlzdCIsInNjb3BlX2lkIjoib182RGlwTWg0TUJLIiwicm9sZV9pZCI6InJfRkV0VG5hdnVvOCJ9LHsiZ3JhbnQiOiJpZD0qO3R5cGU9KjthY3Rpb25zPSoiLCJzY29wZV9pZCI6InBfb2hSdU1aeDVURyIsInJvbGVfaWQiOiJyX05iM0NvWnBSY00ifSx7ImdyYW50IjoiaWQ9Kjt0eXBlPSo7YWN0aW9ucz0qIiwic2NvcGVfaWQiOiJvXzZEaXBNaDRNQksiLCJyb2xlX2lkIjoicl9NUzhxcVdrZXNiIn1dfSwiZW1haWwiOiJobWFjLXNoYTI1NjpRelFwSzhzYzhtVmcxQXVWc3ZOUVRSMEFhOVFuUk1Kc19XeGFYcnZ4VWU4IiwibmFtZSI6ImhtYWMtc2hhMjU2OlF6UXBLOHNjOG1WZzFBdVZzdk5RVFIwQWE5UW5STUpzX1d4YVhydnhVZTgifSwicmVxdWVzdCI6eyJkZXRhaWxzIjp7ImlkIjoicG9zdGdyZXMiLCJuYW1lIjoicG9zdGdyZXMiLCJzY29wZV9uYW1lIjoiZGF0YWJhc2VzIn19LCJyZXNwb25zZSI6eyJzdGF0dXNfY29kZSI6MjAwLCJkZXRhaWxzIjp7Iml0ZW0iOnsic2Vzc2lvbl9pZCI6InNfMGdwRU5sSnlFSiIsInRhcmdldF9pZCI6InR0Y3BfdDBUOVZneHFIVCIsInNjb3BlIjp7ImlkIjoicF9vaFJ1TVp4NVRHIiwidHlwZSI6InByb2plY3QiLCJuYW1lIjoiZGF0YWJhc2VzIiwiZGVzY3JpcHRpb24iOiJEYXRhYmFzZXMgcHJvamVjdCIsInBhcmVudF9zY29wZV9pZCI6Im9fNkRpcE1oNE1CSyJ9LCJjcmVhdGVkX3RpbWUiOnsic2Vjb25kcyI6MTY1MjM3NTUwMiwibmFub3MiOjUzNTU2MDAwMH0sInVzZXJfaWQiOiJ1X05RR2N6dndqcGIiLCJob3N0X3NldF9pZCI6Imhzc3RfeGFJRWdobUhmaSIsImhvc3RfaWQiOiJoc3RfQ05Gbjc5YzkxdCIsInR5cGUiOiJ0Y3AiLCJhdXRob3JpemF0aW9uX3Rva2VuIjoiW1JFREFDVEVEXSIsImVuZHBvaW50IjoidGNwOi8vcG9zdGdyZXM6NTQzMiJ9fX19LCJkYXRhY29udGVudHlwZSI6ImFwcGxpY2F0aW9uL2Nsb3VkZXZlbnRzIiwidGltZSI6IjIwMjItMDUtMTJUMTc6MTE6NDIuNTU2NTcyNVoifQo","serialized_hmac":"hmac-sha256:cMKaF753UHm6yy2l9HFBMnfRFTHDVjIDnSAGfLA6Q-8"}
+```
+
+</CodeBlockConfig>
+
+For session authorization events, the `"path"` for the API request contains
+`:authorize-session`. In this example the full `"path"` is
+`"/v1/targets/postgres:authorize-session"`.
+
+To create a sink for these events, the following filter captures events with a
+`"path"` containing `:authorize-session`:
+
+`"/data/request_info/path" contains ":authorize-session"`
+
+In addition to authorizations, Boundary sessions also produce the following
+events:
+
+- AuthorizeConnection
+- ActivateSession
+- ConnectConnection
+- LookupSession
+- CancelSession
+- CloseConnection
+
+For these session events, the `"method"` for the API request contains
+`SessionService`. An example of an AuthorizeConnection request is printed below:
+
+<CodeBlockConfig hideClipboard>
+
+```json
+{"id":"fs4JJS6qE4","source":"https://hashicorp.com/boundary/docker-controller","specversion":"1.0","type":"audit","data":{"id":"e_0DeWUzwsLZ","version":"v0.1","type":"APIRequest","timestamp":"2022-05-18T20:05:24.170444737Z","request_info":{"id":"gtraceid_6mnTRg2NB0FOvbfSc4Vh","method":"/controller.servers.services.v1.SessionService/AuthorizeConnection"},"request":{"details":{"session_id":"s_0US6KDcGuP","worker_id":"worker"}},"response":{"details":{"connection_id":"sc_WV6ynVQx0m","status":1,"connections_left":-1}}},"datacontentype":"application/cloudevents","time":"2022-05-18T20:05:35.791128461Z","serialized":"eyJpZCI6ImZzNEpKUzZxRTQiLCJzb3VyY2UiOiJodHRwczovL2hhc2hpY29ycC5jb20vYm91bmRhcnkvZG9ja2VyLWNvbnRyb2xsZXIiLCJzcGVjdmVyc2lvbiI6IjEuMCIsInR5cGUiOiJhdWRpdCIsImRhdGEiOnsiaWQiOiJlXzBEZVdVendzTFoiLCJ2ZXJzaW9uIjoidjAuMSIsInR5cGUiOiJBUElSZXF1ZXN0IiwidGltZXN0YW1wIjoiMjAyMi0wNS0xOFQyMDowNToyNC4xNzA0NDQ3MzdaIiwicmVxdWVzdF9pbmZvIjp7ImlkIjoiZ3RyYWNlaWRfNm1uVFJnMk5CMEZPdmJmU2M0VmgiLCJtZXRob2QiOiIvY29udHJvbGxlci5zZXJ2ZXJzLnNlcnZpY2VzLnYxLlNlc3Npb25TZXJ2aWNlL0F1dGhvcml6ZUNvbm5lY3Rpb24ifSwicmVxdWVzdCI6eyJkZXRhaWxzIjp7InNlc3Npb25faWQiOiJzXzBVUzZLRGNHdVAiLCJ3b3JrZXJfaWQiOiJ3b3JrZXIifX0sInJlc3BvbnNlIjp7ImRldGFpbHMiOnsiY29ubmVjdGlvbl9pZCI6InNjX1dWNnluVlF4MG0iLCJzdGF0dXMiOjEsImNvbm5lY3Rpb25zX2xlZnQiOi0xfX19LCJkYXRhY29udGVudHlwZSI6ImFwcGxpY2F0aW9uL2Nsb3VkZXZlbnRzIiwidGltZSI6IjIwMjItMDUtMThUMjA6MDU6MzUuNzkxMTI4NDYxWiJ9Cg","serialized_hmac":"hmac-sha256:JZMWsDbduTlhHg3jPmqNnoIpH0Eek_lvbEqdllp82kA"}
+```
+
+</CodeBlockConfig>
+
+In this example the full `"method"` is
+`"/controller.servers.services.v1.SessionService/AuthorizeConnection"`.
+
+The following filter captures events related to session management by filtering
+for a `"method"` containing `SessionService`:
+
+`"/data/request_info/method" contains "SessionService"`
+
+Now that you understand the filter syntax needed to capture session events,
+**define a new file sink that captures session events**, including
+authorizations and session services.
+
+**Open the `compose/controller.hcl` config file.** 
+
+**Copy the the following sink and paste it beneath the auth-sink in the
+`compose/controller.hcl`**:
+
+<CodeBlockConfig>
+
+```hcl
+sink {
+  name = "session-sink"
+  description = "Authorize session requests and services sent to a file"
+  event_types = ["audit"]
+  format = "cloudevents-json"
+  allow_filters = [
+    "\"/data/request_info/path\" contains \":authorize-session\"",
+    "\"/data/request_info/method\" contains \"SessionService\"",
+  ]
+  file {
+    path = "/logs/"
+    file_name = "sessions.log"
+  }
+}
+```
+
+</CodeBlockConfig>
+
+Ensure that the session sink is pasted **within the events{} stanza**. There
+should be a closing `}` following the copy-paste of the above filter.
+
+Note that **escape syntax** is used again when defining the filter.
+
+The full contents of the events stanza within the `compose/controller.hcl` file
+is printed below for reference.
+
+<CodeBlockConfig filename="controller.hcl" highlight="46-59">
+
+```hcl
+events {
+  audit_enabled        = true
+  observations_enabled = true
+  sysevents_enabled    = true
+
+  sink "stderr" {
+    name        = "all-events"
+    description = "All events sent to stderr"
+    event_types = ["*"]
+    format      = "cloudevents-json"
+  }
+
+  sink {
+    name        = "controller-audit-sink"
+    description = "Audit sent to a file"
+    event_types = ["audit"]
+    format      = "cloudevents-json"
+
+    file {
+      path      = "/logs"
+      file_name = "controller.log"
+    }
+
+    audit_config {
+      audit_filter_overrides {
+        secret    = "encrypt"
+        sensitive = "hmac-sha256"
+      }
+    }
+  }
+
+  sink {
+    name = "auth-sink"
+    description = "Authentications sent to a file"
+    event_types = ["observation"]
+    format = "cloudevents-json"
+    allow_filters = [
+      "\"/data/request_info/path\" contains \":authenticate\""
+    ]
+    file {
+      path = "/logs/"
+      file_name = "auth.log"
+    }
+  }
+
+  sink {
+    name = "session-sink"
+    description = "Authorize session requests and services sent to a file"
+    event_types = ["audit"]
+    format = "cloudevents-json"
+    allow_filters = [
+      "\"/data/request_info/path\" contains \":authorize-session\"",
+      "\"/data/request_info/method\" contains \"SessionService\"",
+    ]
+    file {
+      path = "/logs/"
+      file_name = "sessions.log"
+    }
+  }
+}
+```
+
+</CodeBlockConfig>
+
+**Save this file** and **restart the controller container** to apply the new
+configuration.
+
+```shell-session
+$ docker compose restart controller
+[+] Running 1/1
+ ⠿ Container boundary-controller-1  Started
+```
+
+To test this event sink, a postgres target is included in the Docker Compose
+deployment.
+
+Wait a moment for the controller to restart, and then **establish a session** to
+the `postgres` target as the `postgres` user using `boundary connect postgres`.
+Enter the password `postgres` when prompted.
+
+```shell-session
+$ boundary connect postgres -target-name postgres -target-scope-name databases -username postgres
+Password for user postgres:
+psql (14.2, server 13.2 (Debian 13.2-1.pgdg100+1))
+Type "help" for help.
+
+postgres=#
+```
+
+**Enter `exit` to close the connection.**
+
+**Check the shared `auditlogs/` directory and locate the new
+`learn-boundary-event-logging/auditlogs/sessions.log` file.** 
+
+It should contain an `authorize-session` event and several `SessionService`
+events, including `LookupSession`, `ActivateSession`, `AuthorizeConnection`,
+`CloseConnection` and `CancelConnection`. The sink filter defined earlier
+captures these events, which all contain `SessionService` in the
+`data.request_info.method` JSON data. If the operator only wanted to capture a
+subset of these events, a more granular filter could be created to allow only
+those events, such as `AuthorizeConnection`.
+
+### Define a worker sink
+
+Next you will set up an event sink for the worker.
+
+Begin by checking the logs on the `boundary-worker-1` container.
+
+```shell-session
+$ docker compose logs worker
+boundary-worker-1  | Couldn't start Boundary with IPC_LOCK. Disabling IPC_LOCK, please use --privileged or --cap-add IPC_LOCK
+boundary-worker-1  | The "controllers" field for worker config is deprecated. Please use "initial_upstreams" instead.
+boundary-worker-1  | ==> Boundary server configuration:
+boundary-worker-1  |
+boundary-worker-1  |    [Worker-Auth] AEAD Type: aes-gcm
+boundary-worker-1  |                        Cgo: disabled
+boundary-worker-1  |                 Listener 1: tcp (addr: "worker:9202", max_request_duration: "1m30s", purpose: "proxy")
+boundary-worker-1  |                  Log Level: info
+boundary-worker-1  |                      Mlock: supported: true, enabled: false
+boundary-worker-1  |                    Version: Boundary v0.9.1
+boundary-worker-1  |                Version Sha: 15f8f63b2d11d750e03eb5d2318edf1565560d93
+boundary-worker-1  |   Worker Public Proxy Addr: localhost:9202
+boundary-worker-1  |
+boundary-worker-1  | ==> Boundary server started! Log data will stream in below:
+boundary-worker-1  |
+boundary-worker-1  | {"id":"d1B5y4fR5u","source":"https://hashicorp.com/boundary/worker/worker","specversion":"1.0","type":"system","data":{"version":"v0.1","op":"worker.(Worker).sendWorkerStatus","data":{"msg":"worker is not authenticated to an upstream, not sending status"}},"datacontentype":"application/cloudevents","time":"2022-07-20T18:56:18.54390533Z"}
+boundary-worker-1  | {"id":"KsOAVWQAl0","source":"https://hashicorp.com/boundary/worker/worker","specversion":"1.0","type":"system","data":{"version":"v0.1","op":"worker.(Worker).startAuthRotationTicking","data":{"msg":"using kms worker authentication; pki auth rotation ticking not running"}},"datacontentype":"application/cloudevents","time":"2022-07-20T18:56:18.543933924Z"}
+boundary-worker-1  | {"id":"SQ3F2xiFLh","source":"https://hashicorp.com/boundary/worker/worker","specversion":"1.0","type":"system","data":{"version":"v0.1","op":"worker.(Worker).controllerDialerFunc","data":{"msg":"worker has successfully authenticated"}},"datacontentype":"application/cloudevents","time":"2022-07-20T18:56:18.551249722Z"}
+boundary-worker-1  | {"id":"i5PtjZaqTu","source":"https://hashicorp.com/boundary/worker/worker","specversion":"1.0","type":"system","data":{"version":"v0.1","op":"worker.(Worker).sendWorkerStatus","data":{"msg":"Upstreams after first status set to: [boundary:9201]"}},"datacontentype":"application/cloudevents","time":"2022-07-20T18:56:21.021120509Z"}
+```
+
+You will notice a single `.createClientConn` event. This is produced by the
+default events behavior, which sends everything to `stderr` when no event
+configuration is defined.
+
+Open the `compose/worker.hcl` configuration file. **Add the following events
+stanza to the end of the file:**
+
+```hcl
+events {
+  audit_enabled        = true
+  observations_enabled = true
+  sysevents_enabled    = true
+
+  sink "stderr" {
+    name        = "all-events"
+    description = "All events sent to stderr"
+    event_types = ["*"]
+    format      = "cloudevents-json"
+  }
+
+  sink {
+    name        = "worker-audit-sink"
+    description = "All events sent to a file"
+    event_types = ["*"]
+    format      = "cloudevents-json"
+
+    file {
+      path      = "/logs"
+      file_name = "worker.log"
+    }
+
+    audit_config {
+      audit_filter_overrides {
+        secret    = "encrypt"
+        sensitive = "hmac-sha256"
+      }
+    }
+  }
+}
+```
+
+**Save this file.**
+
+This configuration is nearly identical to the controller event sink. It sends
+all events to `stderr` in the `cloudevents-json` format, and defines a file sink
+for all event types (`"*"`), instead of just audit events. It will save the file
+as `auditlogs/worker.log` in the shared docker-compose directory, like the
+controller does.
+
+**Restart the worker container.**
+
+```shell-session
+$ docker compose restart worker
+[+] Running 1/1
+ ⠿ Container boundary-worker-1  Started
+```
+
+Thie worker primarily logs events from connection errors, such as when the
+worker attempts to dial the worker on port `9201`. This may happen when either
+the controller or worker are restarted.
+
+Examine the `auditevents/worker.log` file. It should contain a single
+`createClientConn` event from when the worker established a connection with the
+controller upon restart.
+
+**Restart the controller container.**
+
+```shell-session
+$ docker compose restart controller
+[+] Running 1/1
+ ⠿ Container boundary-controller-1  Started
+```
+
+The `worker.log` file should now contain several `rpc error` messages, stating
+`Error while dialing unable to dial to controller`. The worker will stop
+producing these events once the controller is available again.
+
+## Event Visualization
+
+Event visualization enables operators to source data in various formats and then
+search, analyze and visualize that data in real time.
+[Elastic](https://www.elastic.co/) provides a common architecture for event
+visualization built on the "elastic stack", or an "ELK stack". Typically this
+setup is comprised of Elasticsearch, Kibana, Beats, and Logstash.
+
+This tutorial utilizes an "EFK" stack, where Logstash is replaced with
+[Filebeat](https://www.elastic.co/beats/filebeat) for collecting and sending
+event logs to Elasticsearch.
+[Kibana](https://www.elastic.co/guide/en/kibana/current/introduction.html) is a
+frontend application that provides search and visualization for the events
+indexed by Elasticsearch.
+
+### Configure Kibana
+
+**Kibana is pre-configured for this tutorial.** You do not need to set up
+Elasticsearch or Kibana.
+
+If you want to learn more about how Elasticsearch and Kibana were deployed,
+examine the following files:
+
+   - `auditlogs/`: A shared directory for log files.
+   - `deploy`: A script used to deploy and tear down the EFK stack.
+   - `filebeat.docker.yml`: The filbeat config for sending event logs to
+     elasticsearch
+   - `compose/docker-compose.yml`: The Docker-Compose configuration file
+     describing how to provision and network the EFK stack containers.
+   - `compose/.env`: A set of tunable environment variables for deploying
+     Elasticsearch and Kibana.
+
+The `compose/docker-compose` file describes the configurations for the
+`setup-elastic`, `elasticsearch`, `kibana` and `filebeat` containers. Filebeat
+has a dedicated config file located at
+`learn-boundary-event-logging/filebeat.docker.yml`. A set of environment
+variables that control the deployment are located in `compose/.env`. In order to
+provide access for Elasticsearch to the logs created by Docker, the `deploy`
+script changes the permissions on the `auditlogs/` directory to allow read and
+write access to everyone.
+
+This basic Elasticsearch configuration utilizes Filebeat to send all `.log`
+files from the `auditlogs/` directory to `https://elasticsearch:9200`, where
+Elasticsearch is listening for data sources. Kibana acts as a frontend for
+Elasticsearch, and is accessible on `http://localhost:5601`.
+
+This configuration is already correct. **Open your web browser and navigate to
+[http://localhost:5601/app/management/kibana/dataViews](http://localhost:5601/app/management/kibana/dataViews)
+to view the Kibana dashboard.**
+
+![Kibana Login](/img/boundary/event-logging/event-logging-kibana-login.png)
+
+**Login using the following credentials** (these are defined in `compose/.env`):
+
+- Email or username: `elastic`
+- Password: `elastic`
+
+### Create a data view
+
+Upon logging in you should be presented with the page stating "You have data is
+Elasticsearch", prompting you to create a new data view. If you do not see this
+page, visit
+[http://localhost:5601/app/management/kibana/dataViews](http://localhost:5601/app/management/kibana/dataViews)
+directly.
+
+![Kibana Data View](/img/boundary/event-logging/event-logging-kibana-create-data-view.png)
+
+Click **+ Create data view**.
+
+Under the Create data view page, enter `filebeat-*` into the **Name** field. A
+message should appear stating that "Your index pattern matches 1 source."
+
+<Note>
+
+ If a data view is not automatically discovered, check the
+permissions on the `learn-boundary-event-logging/auditlogs/` directory. Execute
+`chmod 777 auditlogs/` and refresh the data views page.
+
+</Note>
+
+Leave the **Timestamp field** set to `@timestamp`. **Click Create data view**
+when finished.
+
+![Kibana Data View](/img/boundary/event-logging/event-logging-kibana-create-data-view-source.png)
+
+You will be redirected to the `filebeat-*` Management page. 
+
+**Open a new browser tab, and navigate to
+[http://localhost:5601/app/discover#](http://localhost:5601/app/discover#).**
+
+The discover dashboard shows recent events, allowing you to inspect their
+details and search for events over a specific time period.
+
+![Kibana Discover Dashboard](/img/boundary/event-logging/event-logging-kibana-discover.png)
+
+### Visualize audit logs
+
+Earlier the following file sinks were configured:
+
+- auth-sink
+- controller-audit-sink
+- worker-audit-sink
+- session-sink
+
+These sinks resulted in the creation of the following files in the `auditlogs/`
+directory:
+
+- `auth.log`
+- `controller.log`
+- `worker.log`
+- `sessions.log`
+
+This data has been imported into Kibana, and can be searched for in the Discover
+dashboard.
+
+Similar to how the sink was written based on the content of the log entry,
+common search queries can be constructed by examining the `request_info.method`
+or `request_info.path` json data from the log.
+
+**Click on the Search box** and then enter in the following query:
+
+```
+json.data.request_info.method : "/controller.servers.services.v1.SessionService/ActivateSession"
+```
+
+Click **-> Update** after the search query has been entered.
+
+![Kibana Search](/img/boundary/event-logging/event-logging-kibana-activate-session-logs.png)
+
+This view shows all log entries that describe a request made to the
+`v1/SessionService/ActivateSession` endpoint.
+
+Unlike Boundary's filtering syntax, KQL requires exact matching for search
+values (although fields can use wildcard and fuzzy matching). This means we
+cannot easily search for all entries containing ":activate", like the event sink
+does.
+
+By default, Kibana uses the [Kibana Query Language
+(KQL)](https://www.elastic.co/guide/en/kibana/current/kuery-query.html) to parse
+queries by default. KQL supports boolean `and`, `or`, and `not` operators to
+create complex queries.
+
+For KQL, this means searching for all the following events directly:
+
+- `json.data.request_info.path: "/v1/targets/postgres:authorize-session"`
+- `json.data.request_info.method: "/controller.servers.services.v1.SessionService/ActivateSession"`
+- `json.data.request_info.method: "/controller.servers.services.v1.SessionService/AuthorizeConnection"`
+- `json.data.request_info.method: "/controller.servers.services.v1.SessionService/CancelSession"`
+- `json.data.request_info.method: "/controller.servers.services.v1.SessionService/CloseConnection"`
+- `json.data.request_info.method: "/controller.servers.services.v1.SessionService/ConnectConnection"`
+- `json.data.request_info.method: "/controller.servers.services.v1.SessionService/LookupSession"`
+
+To search for all the events collected by the `session-sink` file sink using
+KQL, **enter the following search query:**
+
+```
+json.data.request_info.path: "/v1/targets/postgres:authorize-session" or json.data.request_info.method: "/controller.servers.services.v1.SessionService/ActivateSession" or json.data.request_info.method: "/controller.servers.services.v1.SessionService/AuthorizeConnection" or json.data.request_info.method: "/controller.servers.services.v1.SessionService/CancelSession" or json.data.request_info.method: "/controller.servers.services.v1.SessionService/CloseConnection" or json.data.request_info.method: "/controller.servers.services.v1.SessionService/ConnectConnection" or json.data.request_info.method: "/controller.servers.services.v1.SessionService/LookupSession"
+```
+
+This query may seem awkward. A simpler query can be made using [Lucene query
+syntax](https://www.elastic.co/guide/en/kibana/current/lucene-query.html), which
+accepts [regular expressions](https://www.regular-expressions.info) in queries.
+Lucene is also built into Kibana, and can be enabled by disabling KQL.
+
+**Locate the KQL button to the right of the search bar. Click on it, and the
+toggle the KQL switch off to enable Lucene.**
+
+![Kibana Session Logs](/img/boundary/event-logging/event-logging-kibana-toggle-lucene.png)
+
+The KQL button should now be replaced with **Lucene**.
+
+Enter the following Lucene query to search for the session-sink events:
+
+```
+json.data.request_info.method: /.*SessionService.*/ or json.data.request_info.path: /.*:authorize-session.*/
+```
+
+![Kibana Session Logs](/img/boundary/event-logging/event-logging-kibana-session-logs.png)
+
+Both the KQL and Lucene searches will return all the events created by the
+session-sink filter:
+
+- `"/data/request_info/path" contains ":authorize-session"`
+- `"/data/request_info/method" contains "SessionService"`
+
+Other useful information can also be gathered with Kibana, such as metrics
+related to health checks.
+
+For example, the controller container has a healthcheck defined in the
+`compose/docker-compose.yml` file. It queries the `http://boundary:9203/health`
+endpoint every 10 seconds to determine if the controller is healthy:
+
+<CodeBlockConfig hideClipboard>
+
+```yml
+healthcheck:
+  test: ["CMD-SHELL", "wget --no-verbose --tries=1 --output-document /dev/null http://boundary:9203/health"]
+  interval: 10s
+  timeout: 5s
+  retries: 5
+```
+
+</CodeBlockConfig>
+
+**To view these requests, perform the following search with Lucene:**
+
+```
+json.data.request_info.path: /.*health*/
+```
+
+Click **-> Update** after the search query has been entered.
+
+![Kibana Health Check Logs](/img/boundary/event-logging/event-logging-kibana-health-logs.png)
+
+This query can also be perfomed using the following KQL query:
+
+```
+json.data.request_info.path : "/health"
+```
+
+## Cleanup and teardown
+
+The Boundary cluster containers and network resources can be cleaned up
+using the provided `deploy` script.
+
+```shell-session
+$ ./deploy cleanup
+~/learn-boundary-event-logging/compose ~/learn-boundary-event-logging
+[+] Running 9/8
+ ⠿ Container boundary-worker-1         Stopped                                                                                            0.4s
+ ⠿ Container boundary-kibana-1         Stopped                                                                                            0.4s
+ ⠿ Container boundary-postgres-1       Stopped                                                                                            0.3s
+ ⠿ Container boundary-filebeat-1       Stopped                                                                                            0.3s
+ ⠿ Container boundary-controller-1     Stopped                                                                                            0.3s
+ ⠿ Container boundary-elasticsearch-1  Stopped                                                                                            2.7s
+ ⠿ Container boundary-db-init-1        Stopped                                                                                            0.0s
+ ⠿ Container boundary-db-1             Stopped                                                                                            0.2s
+ ⠿ Container boundary-setup-elastic-1  Stopped                                                                                            0.0s
+Going to remove boundary-worker-1, boundary-controller-1, boundary-kibana-1, boundary-db-init-1, boundary-elasticsearch-1, boundary-db-1, boundary-filebeat-1, boundary-postgres-1, boundary-setup-elastic-1
+[+] Running 9/0
+ ⠿ Container boundary-setup-elastic-1  Removed                                                                                            0.1s
+ ⠿ Container boundary-db-1             Removed                                                                                            0.0s
+ ⠿ Container boundary-controller-1     Removed                                                                                            0.0s
+ ⠿ Container boundary-db-init-1        Removed                                                                                            0.0s
+ ⠿ Container boundary-kibana-1         Removed                                                                                            0.0s
+ ⠿ Container boundary-postgres-1       Removed                                                                                            0.0s
+ ⠿ Container boundary-filebeat-1       Removed                                                                                            0.0s
+ ⠿ Container boundary-elasticsearch-1  Removed                                                                                            0.0s
+ ⠿ Container boundary-worker-1         Removed                                                                                            0.0s
+~/learn-boundary-event-logging
+~/learn-boundary-event-logging/terraform ~/learn-boundary-event-logging
+~/learn-boundary-event-logging
+```
+
+Check your work with a quick `docker ps` and ensure there are no more containers
+with the `boundary-` prefix leftover. If unexpected containers still exist,
+execute `docker rm -f CONTAINER_NAME` against each to remove them.
+
+## Help and reference
+
+- [Boundary command
+  documentation](/boundary/docs/commands)
+
+- [Events documentation](/boundary/docs/configuration/events)
+
+- [Event filtering documentation](/boundary/docs/concepts/filtering/events)
+
+- [Filtering syntax documentation](/boundary/docs/concepts/filtering)
+
+- [Elastic documentation](https://www.elastic.co/guide/index.html)
+
+- [Kibana guide](https://www.elastic.co/guide/en/kibana/current/index.html)
+
+- [Kibana Query Language](https://www.elastic.co/guide/en/kibana/current/kuery-query.html)
+
+- [Lucene Query Syntax](https://www.elastic.co/guide/en/kibana/current/lucene-query.html)
+
+- [Terraform Boundary
+  Provider](https://registry.terraform.io/providers/hashicorp/boundary/latest)

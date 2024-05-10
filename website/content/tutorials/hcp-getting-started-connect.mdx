@@ -1,0 +1,343 @@
+---
+id: c56f0ab0-5fbf-4d7f-9edb-852660666967
+name: Connect to your first target
+short_name: Connect to your first target
+description: >-
+  Connect to your first target through your HCP Boundary instance.
+edition: hcp
+products_used:
+  - product: boundary
+    min_version: 0.11.0
+    max_version: 0.12.0
+default_collection_context: boundary/hcp-getting-started
+---
+
+A target represents a networked service with an associated set of permissions a
+user can connect to through a Boundary session. A target can be part of a host
+set or have an address attached directly to the target.
+
+Direct target addressing, introduced in Boundary 0.12, is useful for stand-alone
+services or smaller environments. Host sets are useful when there are multiple
+related network resources that are functionally equivalent.
+
+In this tutorial, you will create a target with a direct address specified.
+You can learn more about host catalogs and host sets in the
+[HCP Administration](/boundary/tutorials/hcp-administration) tutorials.
+
+## Prerequisites
+
+- Access to an HCP Boundary instance.
+- [Boundary 0.12.0 installed](/boundary/tutorials/hcp-getting-started/hcp-getting-started-install).
+- Completed the previous quick start tutorials.
+- A publicly accessible Ubuntu instance.
+- A ssh key-pair that can be used to authenticate with the Ubuntu instance.
+
+<Note>
+
+ Ubuntu is used in this tutorial for demonstration purposes only. You can
+[follow this guide](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EC2_GetStarted.html)
+to create a publicly accessible EC2 instance to use for this tutorial.
+
+</Note>
+
+## Lab setup
+
+<Note>
+
+ The use of environment variables is not required to use HCP Boundary.
+   Environment variables are used throughout the tutorial for ease of following along and
+   copying the required commands.
+
+</Note>
+
+1. Verify you have the necessary environment variables set from the previous getting started tutorials.
+
+   ```shell-session
+   $ printenv | grep 'BOUNDARY_\|ORG_ID\|BOUNDARY_AUTH_METHOD_ID'
+   ```
+
+   **Example output:**
+
+   <CodeBlockConfig hideClipboard>
+
+   ```plaintext
+   BOUNDARY_ADMIN=admin
+   ORG_ID=o_WxyZ123d
+   BOUNDARY_AUTH_METHOD_ID=ampw_hiJKlm404
+   BOUNDARY_ADDR=https://501abc-8675-309e-n1n3-18f2be8b9714.boundary.hashicorp.cloud
+   ```
+
+   </CodeBlockConfig>
+
+  If you do not have `BOUNDARY_ADMIN`, `BOUNDARY_ADDR`, `ORG_ID`, and `BOUNDARY_AUTH_METHOD_ID` set, complete the previous tutorials.
+
+1. Retrieve the public IP address of your Ubuntu instance and export the address as
+  an environment variable. Replace `public-ip` with the actual IP address.
+
+   ```shell-session
+   $ export UBUNTU_IP=public-ip
+   ```
+
+1. Export an environment variable for your Ubuntu host's username and path to the
+private key. Replace the username and path to the key file with valid values for your host.
+
+   ```shell-session
+   $ export UBUNTU_USER=actualusername UBUNTU_KEY=private_key.pem
+   ```
+
+   Use the same terminal for the duration of this tutorial for both the Boundary
+   CLI and Boundary Admin UI workflows.
+
+## Configure HCP Boundary
+
+<Tabs>
+<Tab heading="Admin UI" group="admin">
+
+1. Open a web browser and log into the HCP Portal.
+
+1. Click **Boundary** in the left navigation menu and select your Boundary instance.
+
+1. Click the **Open Admin UI** button.
+
+1. Log in with the username and password you created in the [Create a Boundary Instance on HCP](/boundary/tutorials/hcp-getting-started/hcp-getting-started-create) tutorial.
+
+   ~> **Note:** If you were already authenticated from the previous tutorial, you will redirected to the **Orgs** page.
+
+1. Click **quick-start-org** to load the **Projects** page.
+
+   [Projects](/boundary/docs/concepts/domain-model/scopes#projects)
+   are contained within an `org`, and are organizational scopes to contain
+   roles, host catalogs, hosts, and targets.
+
+1. From the **Projects** page, click **New**.
+   ![ui-boundary-projects-new](/img/boundary/ui-boundary-projects-new.png)
+
+1. In the **Name** field enter `quick-start-project` and then click **Save**.
+   ![ui-boundary-create-project](/img/boundary/ui-boundary-create-project.png)
+
+1. After creating a new project the ID is displayed.
+   ![ui-boundary-project](/img/boundary/ui-boundary-project.png)
+
+1. Click the copy icon for the project ID.
+   ![ui-boundary-project-copy-id](/img/boundary/ui-boundary-project-copy-id.png)
+
+1. Switch to the terminal used in the [Lab setup](#lab-setup) section.
+
+1. Create an environment variable named `PROJECT_ID` with the value copied from the previous step.
+
+   ```shell-session
+   $ export PROJECT_ID=<actual-project-id>
+   ```
+
+1. Return to the Boundary Admin UI.
+
+1. Click **Targets** in the left navigation menu.
+
+   [Targets](/boundary/docs/concepts/domain-model/targets)
+   are defined within a project and their associated
+   permissions end users can interact with. Users that have permission to
+   establish sessions with a target through a
+   [role](/boundary/docs/concepts/domain-model/roles) can
+   connect to targets through Boundary.
+
+1. Click **New**, enter `ubuntu-target` in the **Name** field and select
+   `Generic TCP` for the **Type**. 
+   
+   Enter `22` in the **Default Port** field and enter the IP address of your
+   Ubuntu host in the **Address** field. Enter `-1` in the **Maximum
+   Connections` field to allow an unlimited number of connections to the target.
+   
+   Click **Save**. The target ID is then displayed.
+   ![ui-boundary-new-target-form](/img/boundary/ui-boundary-new-target-form.png)
+
+1. Click the **copy icon** for the target ID.
+
+1. Switch to the terminal used in the [Lab setup](#lab-setup) section and create
+   an environment variable named `TARGET_ID` with the value copied from the
+   previous step.
+
+   ```shell-session
+   $ export TARGET_ID=<actual-host-id>
+   ```
+
+</Tab>
+<Tab heading="CLI" group="cli">
+
+1. Log into your HCP Boundary instance. Enter `password` at the `Please enter
+   the password (it will be hidden):` prompt.
+
+   ```shell-session
+   $ boundary authenticate
+   Please enter the login name (it will be hidden):
+   Please enter the password (it will be hidden):
+   Authentication information:
+     Account ID:      acctpw_VOeNSFX8pQ
+     Auth Method ID:  ampw_wxzojlKJLN
+     Expiration Time: Mon, 13 Feb 2023 12:35:32 MST
+     User ID:         u_1vUkf5fPs9
+   The token was successfully stored in the chosen keyring and is not displayed here.
+   ```
+
+1. [Projects](/boundary/docs/concepts/domain-model/scopes#projects)
+   are contained within an `org`, and are organizational scopes to contain
+   roles, host catalogs, hosts, and targets.
+
+   A new project can be created using the `boundary scopes create` command, and
+   passing an `org` ID to create the project under:
+
+   <CodeBlockConfig hideClipboard>
+
+   ```shell-session
+   $ boundary scopes create \
+      -scope-id $ORG_ID \
+      -name my-project
+
+   Scope information:
+     Created Time:        Wed, 31 Aug 2022 10:33:44 MDT
+     ID:                  p_9fcesfVKOO
+     Name:                my-project
+     Updated Time:        Wed, 31 Aug 2022 10:33:44 MDT
+     Version:             1
+
+     Scope (parent):
+       ID:                o_XVoiuPfG1D
+       Name:              Marketing Department
+       Parent Scope ID:   global
+       Type:              org
+
+     Authorized Actions:
+       no-op
+       read
+       update
+       delete
+   ```
+
+   </CodeBlockConfig>
+
+   After creating a new project, it's ID is displayed, as shown in the output
+   above.
+
+   To make many Boundary tutorials simple to follow along with, resource IDs are
+   often stored as environment variables. The command below will create the new
+   project, format the output as JSON, select the ID, and store it as the
+   `PROJECT_ID` variable.
+
+1. Create a new project and export the project ID as the `PROJECT_ID` environment variable.
+
+   ```shell-session
+   $ export PROJECT_ID=$(boundary scopes create \
+      -scope-id=$ORG_ID \
+      -name=quick-start-project \
+      -description="My first project" \
+      -format json | jq -r '.item | .id')
+   ```
+
+1. [Targets](/boundary/docs/concepts/domain-model/targets)
+   are defined within a project. Users that have permission to
+   establish sessions with a target through a
+   [role](/boundary/docs/concepts/domain-model/roles) can
+   connect to targets through Boundary.
+
+   A target can be created using the `boundary targets create` command, where
+   the type of target is then provided, such as `tcp` or `ssh`. The `tcp` target
+   type is the simplest to get started with, and requires a `default-port` and
+   `scope-id` when being defined.
+
+   For example:
+
+   <CodeBlockConfig hideClipboard>
+
+   ```shell-session
+   $ boundary targets create tcp \
+      -name="my-first-target" \
+      -description="my first target" \
+      -default-port=22 \
+      -scope-id=$PROJECT_ID
+
+   Target information:
+     Created Time:               Wed, 31 Aug 2022 13:44:50 MDT
+     Description:                my first target
+     ID:                         ttcp_Gymo7Vcq7Y
+     Name:                       my-first-target
+     Session Connection Limit:   -1
+     Session Max Seconds:        28800
+     Type:                       tcp
+     Updated Time:               Wed, 31 Aug 2022 13:44:50 MDT
+     Version:                    1
+
+     Scope:
+       ID:                       p_vM7cfGEgq8
+       Name:                     quick-start-project
+       Parent Scope ID:          o_XVoiuPfG1D
+       Type:                     project
+
+     Authorized Actions:
+       no-op
+       read
+       update
+       delete
+       add-host-sources
+       set-host-sources
+       remove-host-sources
+       add-credential-sources
+       set-credential-sources
+       remove-credential-sources
+       authorize-session
+
+     Attributes:
+       Default Port:             22
+   ```
+
+   </CodeBlockConfig>
+
+   After creating a target, it's ID is displayed, like shown in the output
+   above.
+
+1. Create a target and export the target ID as the `TARGET_ID` environment variable.
+
+   ```shell-session
+   $ export TARGET_ID=$(boundary targets create tcp \
+      -name="ubuntu-target" \
+      -description="ubuntu target" \
+      -default-port=22 \
+      -scope-id=$PROJECT_ID \
+      -address=$UBUNTU_IP \
+      -session-connection-limit="-1" \
+      -format json | jq -r '.item | .id')
+   ```
+
+   You now have a single target available with an address added to it.
+
+</Tab>
+</Tabs>
+
+## Connect to a target
+
+You are now ready to connect to the target and establish a session.
+
+1. Connect to the `ubuntu-target` using Boundary.
+
+   <Note>
+
+   `$UBUNTU_USER` should reference the login user for the Ubuntu host and `$UBUNTU_KEY` should reference the path to your private key. See the [Lab setup](#lab-setup) section if these values are not defined. If prompted, enter `yes` to continue connecting.
+
+   </Note>
+
+   ```shell-session
+   $ boundary connect ssh -target-id=$TARGET_ID -- -l $UBUNTU_USER -i $UBUNTU_KEY
+
+   The authenticity of host 'ec2-198-52-100-1.compute-1.amazonaws.com (198-51-100-1)' can't be established.
+   ECDSA key fingerprint is l4UB/neBad9tvkgJf1QZWxheQmR59WgrgzEimCG6kZY.
+   Are you sure you want to continue connecting (yes/no)? yes
+
+   ubuntu@ip-172-32-88-177:~
+   ```
+
+   You are now connected to your Ubuntu host!
+
+
+## Next steps
+
+In this tutorial you learned how to configure Boundary and connect to an
+external host. Next, you will learn how to broker static credentials to the
+client when connecting to a target.

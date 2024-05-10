@@ -1,0 +1,524 @@
+---
+id: 74af989b-5be1-4f00-8656-217995556a03
+name: Upgrade and database migration
+short_name: Upgrade and database migration
+description: |-
+  Step-by-step instructions to successfully upgrade Boundary to its
+  latest version, including database backup and data migration.
+read_time: 13
+products_used:
+  - product: terraform
+  - product: boundary
+    min_version: 0.1.6
+    max_version: 0.12.0
+default_collection_context: boundary/self-managed-deployment
+---
+
+This tutorial provides step-by-step instructions to safely upgrade
+Boundary to its latest version, including database backup and data migration.
+
+### When to upgrade
+
+While new features are added to Boundary the backing database schema must be
+updated to support these features. Database migration is a simple process that
+is performed prior to upgrading Boundary on controller instances.
+
+Even though the migrate command is resilient to errors due to utilizing
+PostgreSQL transactions, it is still highly recommended that you follow good
+database practices and backup prior to migrating because the migrate command
+does not allow reverting back to an older version. Versions of Boundary greater
+than 0.1.5 will not let you start a new controller until the database migration
+is complete, but will direct you to use the boundary database migrate command.
+
+~> Read the [release
+notes](/boundary/docs/release-notes) to learn if
+there are any version specific notes related to your current Boundary version or
+any versions between your current version and the intended upgrade version.
+
+### Boundary database migration workflow
+
+1. [Backup Postgres database](#prepare-for-an-upgrade)
+1. [Stop all running controllers](#upgrade-the-boundary-controllers)
+1. [Perform database migration](#perform-database-migration)
+1. [Restart controllers](#perform-database-migration)
+1. [Upgrade Workers](#upgrade-the-boundary-workers)
+
+## Prerequisites
+
+- [Docker](https://docs.docker.com/get-docker/) is installed
+
+- [Docker-Compose](https://docs.docker.com/compose/install/) is installed
+
+- A route to download the [Postgres Docker
+  image](https://hub.docker.com/_/postgres) image or a local image cached
+
+- A [Boundary binary](/boundary/install/) in your `PATH`
+
+- [Terraform 0.13.0 or later installed](/terraform/tutorials/aws-get-started/install-cli) and in your `PATH`
+
+## Deploy the demo environment
+
+The demo environment provided for this tutorial includes a Docker-Compose cluster that deploys:
+
+- A Boundary 0.11.2 controller server
+- A Postgres database
+
+The [Terraform Boundary
+Provider](https://registry.terraform.io/providers/hashicorp/boundary/latest) is
+also used in this tutorial to easily provision resources using Docker, and must
+be available in your `PATH` when deploying the demo environment.
+
+![Boundary components](/img/boundary/boundary-upgrade-lab-env-0.png)
+
+A worker server is not used in this example, but the process outlined in this
+tutorial applies to workers as well.
+
+To learn more about the various
+Boundary components, refer back to the [Start a Development
+Environment](/boundary/tutorials/oss-getting-started/oss-getting-started-dev) tutorial.
+
+The lab environment can be downloaded or cloned from the following Github repository:
+
+-> https://github.com/hashicorp-education/learn-boundary-upgrade
+
+1. In your terminal, clone the repository to get the example files locally:
+
+   ```shell-session
+   $ git clone git@github.com:hashicorp-education/learn-boundary-upgrade.git
+   ```
+
+1. Move into the `learn-boundary-upgrade` folder.
+
+   ```shell-session
+   $ cd learn-boundary-upgrade
+   ```
+
+1. Ensure that you are in the correct directory by listing its contents.
+
+   ```shell-session
+   $ ls -R1
+   README.md
+   compose
+   run
+   terraform
+
+   ./compose:
+   boundary.hcl
+   docker-compose.yml
+
+   ./terraform:
+   main.tf
+   ```
+
+   The repository contains the following files:
+
+   - `run`: A script used to deploy and tear down the Docker-Compose configuration.
+   - `compose/docker-compose.yml`: The Docker-Compose configuration file describing
+     how to provision and network the database and the controller.
+   - `compose/boundary.hcl`: The controller configuration file used when running Boundary.
+   - `terraform/main.tf`: The terraform provisioning instructions using the
+     Boundary provider.
+
+1. This tutorial makes it easy to launch the test environment with the `run` script.
+
+   ```shell-session
+   $ ./run all
+   ~/learn-boundary-upgrade/compose ~/learn-boundary-upgrade
+   Creating boundary_db_1 ... done
+   Creating boundary_db-init_1 ... done
+   Creating boundary_controller_1 ... done
+   ~/learn-boundary-upgrade
+   ~/learn-boundary-upgrade/terraform ~/learn-boundary-upgrade
+
+   Initializing the backend...
+
+   Initializing provider plugins...
+   - Reusing previous version of hashicorp/boundary from the dependency lock file
+   - Installing hashicorp/boundary v1.1.4...
+   - Installed hashicorp/boundary v1.1.4 (signed by HashiCorp)
+
+   Terraform has been successfully initialized!
+
+   You may now begin working with Terraform. Try running "terraform plan" to see
+   any changes that are required for your infrastructure. All Terraform commands
+   should now work.
+
+   If you ever set or change modules or backend configuration for Terraform,
+   rerun this command to reinitialize your working directory. If you forget, other
+   commands will detect it and remind you to do so if necessary.
+   boundary_scope.global: Creating...
+   boundary_scope.global: Creation complete after 0s [id=global]
+   boundary_scope.org: Creating...
+   boundary_role.global_anon_listing: Creating...
+   boundary_scope.org: Creation complete after 0s [id=o_s8On2vNvek]
+   boundary_auth_method.password: Creating...
+   boundary_scope.project: Creating...
+   boundary_role.org_anon_listing: Creating...
+   boundary_scope.project: Creation complete after 0s [id=p_rPNIMwdKR6]
+   boundary_host_catalog.databases: Creating...
+   boundary_auth_method.password: Creation complete after 0s [id=ampw_nvdhLojZ5L]
+   boundary_account.user["user3"]: Creating...
+   boundary_account.user["user2"]: Creating...
+   boundary_account.user["user1"]: Creating...
+   boundary_host_catalog.databases: Creation complete after 1s [id=hcst_1OlyrFWz49]
+   boundary_host.localhost: Creating...
+   boundary_account.user["user3"]: Creation complete after 1s [id=apw_8NeMx1Zlue]
+   boundary_account.user["user1"]: Creation complete after 2s [id=apw_aoxvyDgUHE]
+   boundary_account.user["user2"]: Creation complete after 2s [id=apw_KEGlxo60hU]
+   boundary_user.user["user1"]: Creating...
+   boundary_user.user["user3"]: Creating...
+   boundary_user.user["user2"]: Creating...
+   boundary_role.global_anon_listing: Creation complete after 2s [id=r_6EkHHA90LO]
+   boundary_host.localhost: Creation complete after 1s [id=hst_sIUKY2KyFX]
+   boundary_host_set.local: Creating...
+   boundary_user.user["user1"]: Creation complete after 2s [id=u_MQrWfzZfVj]
+   boundary_user.user["user3"]: Creation complete after 2s [id=u_HFaZjpc3Qf]
+   boundary_user.user["user2"]: Creation complete after 2s [id=u_7p18aQAw8n]
+   boundary_role.proj_admin: Creating...
+   boundary_role.org_admin: Creating...
+   boundary_host_set.local: Creation complete after 2s [id=hsst_EAIm8i6sQk]
+   boundary_target.ssh: Creating...
+   boundary_target.postgres: Creating...
+   boundary_role.org_anon_listing: Creation complete after 4s [id=r_rROmpodNgH]
+   boundary_target.postgres: Creation complete after 2s [id=ttcp_vF60hdPacR]
+   boundary_target.ssh: Creation complete after 2s [id=ttcp_NSWrkMNOxO]
+   boundary_role.org_admin: Creation complete after 3s [id=r_EYtyxVVV8q]
+   boundary_role.proj_admin: Creation complete after 3s [id=r_ykBlbeDPyd]
+
+   Apply complete! Resources: 19 added, 0 changed, 0 destroyed.
+   ```
+
+   The generated scope ids or user details can be viewed by inspecting the
+   `terraform/terraform.tfstate` file.
+
+   You can tear down the environment at any time by executing `./run cleanup`.
+
+1. To verify that you deployed everything correctly, print the running docker
+   containers and notice the ones named with the prefix "boundary".
+
+   ```shell-session
+   $ docker ps
+   CONTAINER ID   IMAGE                      COMMAND                  CREATED         STATUS                     PORTS                              NAMES
+   f8af936f1818   hashicorp/boundary:0.11.2   "/bin/boundary serve…"   6 minutes ago   Up 6 minutes (healthy)     0.0.0.0:9200-9202->9200-9202/tcp   boundary_controller_1
+   ab73470b49fd   postgres                   "docker-entrypoint.s…"   6 minutes ago   Up 6 minutes (healthy)     0.0.0.0:5432->5432/tcp             boundary_db_1
+   ```
+
+## Prepare for an upgrade
+
+Before performing the Boundary upgrade it is recommended to backup the existing
+Postgres database. This is done manually using the [Postgres
+CLI](https://www.postgresql.org/docs/13/app-psql.html). Note that your database
+instance must be running Postgres 11 or greater.
+
+Versions of Boundary greater than 0.1.5 will notify the user if a database
+migration needs to be performed. This occurs when the database schema is updated
+to reflect new and updated features. It's important to note that running an
+earlier version of Boundary after performing a database migration is not
+supported, and careful backup and verification is encouraged to prevent data
+loss.
+
+### Backup Postgres database
+
+If you're interested in examining the database schema before running a backup,
+you can do so by accessing the database on port 5432 with the username and
+password `postgres`.
+
+To create a backup, run `pg_dump` on the `boundary_db_1` container as the root
+user and output the database to a file like `boundary_backup.sql`.
+
+```shell-session
+$ docker exec -it --user=root boundary_db_1 pg_dump -h localhost \
+       -p 5432 -U postgres -d boundary -f boundary_backup.sql
+```
+
+The backup file `boundary_backup.sql` will be present in the current working
+directory on the boundary_db_1 container. You can verify that the backup was
+performed by using `grep` to search for the schema names in the backup file.
+
+```shell-session
+$ docker exec boundary_db_1 grep 'CREATE TABLE' boundary_backup.sql | awk -F'.' '{print $2}' | tr -d '('
+auth_account
+auth_method
+auth_password_account
+auth_password_argon2_conf
+auth_password_argon2_cred
+auth_password_conf
+auth_password_credential
+auth_password_method
+auth_token
+db_test_car
+db_test_rental
+db_test_scooter
+db_test_user
+host
+host_catalog
+host_set
+iam_group
+iam_group_member_user
+iam_user
+iam_group_role
+iam_role
+iam_user_role
+iam_role_grant
+iam_scope
+iam_scope_global
+iam_scope_org
+iam_scope_project
+iam_scope_type_enm
+kms_database_key
+kms_database_key_version
+kms_oplog_key
+kms_oplog_key_version
+kms_root_key
+kms_root_key_version
+kms_session_key
+kms_session_key_version
+kms_token_key
+kms_token_key_version
+oplog_entry
+oplog_metadata
+oplog_ticket
+recovery_nonces
+schema_migrations
+server
+session
+session_connection
+session_connection_closed_reason_enm
+session_connection_state
+session_connection_state_enm
+session_state
+session_state_enm
+session_termination_reason_enm
+static_host
+static_host_catalog
+static_host_set
+static_host_set_member
+target
+target_tcp
+target_host_set
+wh_date_dimension
+wh_host_dimension
+wh_session_accumulating_fact
+wh_session_connection_accumulating_fact
+wh_time_of_day_dimension
+wh_user_dimension
+```
+
+<Note>
+
+ This tutorial does **NOT** use best practices for backing up a Postgres
+database. The method outlined here creates a _logical_ backup of the database in
+a human-readable format, and does not offer point-in-time recovery (PITR). For
+production scenarios, use of an automated backup process to perform PITR
+_physical_ backups is highly recommended. One such solution would be Backup and
+Recovery Manager, [Barman](https://www.pgbarman.org). For more information refer
+to the [Postgres Backup
+Documentation](https://www.postgresql.org/docs/current/backup.html).
+
+</Note>
+
+## Upgrade the Boundary controllers
+
+<Note>
+
+ Currently Boundary only supports offline database migration, so
+there will be necessary downtime while the migration is performed.
+
+</Note>
+
+1. Stop all running controllers
+
+   Controllers need to be upgraded to the latest version of Boundary, and must
+   be stopped while the upgrade is performed. In practice, this might look like
+   logging in to the running controller and stopping the `boundary server`
+   process. For this Docker example, we must kill the process by stopping the
+   controller container and started a new one with the upgraded version of
+   Boundary installed.
+
+   ```shell-session
+   $ docker stop boundary_controller_1
+   ```
+
+1. Upgrade the controllers
+
+   In this tutorial the controllers are upgraded by launching an upgraded
+   Boundary controller container. The `docker run` command below will place you
+   in an interactive shell session where you can run the Boundary CLI directly.
+
+   <Note>
+
+    Do not exit the interactive session until the tutorial is complete.
+      Open a new shell session if you want to return to your local machine.
+
+    </Note>
+
+   ```shell-session
+   $ docker run -it \
+      --network boundary_default \
+      --volume "${PWD}/compose/:/boundary/" \
+      -p "9200:9200" -p "9201:9201" -p "9202:9202" \
+      --env "BOUNDARY_PG_URL=postgresql://postgres:postgres@db/boundary?sslmode=disable" \
+      --name boundary_controller_upgrade \
+      --entrypoint /bin/sh \
+      hashicorp/boundary:0.12.0
+   ```
+
+   - The `network` is the running Docker-Compose network the database is on:
+     `boundary_default`
+
+   - The `volume` is the path to the local compose/ files to be copied onto the new
+     container: `"${PWD}/compose/:/boundary/"`
+
+   - The `p` options are the published (forwarded) ports the controller requires:
+     `9200:9200`, `9201:9201`, `9202:9202`
+
+   - The `env` is the exported environment variable:
+     `"BOUNDARY_PG_URL=postgresql://postgres:postgres@db/boundary?sslmode=disable"`
+
+   - The `name` is the the name we can reference the container with:
+     `boundary_controller_upgrade`
+
+   - The `entrypoint` is the command we should run on the container to start a
+     shell session: `/bin/sh`
+
+   - `hashicorp/boundary:0.12.0` is the name of the newer image containing an
+     upgraded version of Boundary
+
+1. Check the version of Boundary
+
+   ```shell-session
+   $ boundary version
+
+   Version information:
+     Git Revision:        034f27ec8528251ce23b5afbf3851c48b0c54bec
+     Version Number:      0.12.0
+   ```
+
+1. Attempt to restart Boundary
+
+   Now that the new version of Boundary is available, try restarting the
+   Boundary server.
+
+   ```shell-session
+   $ boundary server -config boundary/boundary.hcl
+   Database schema must be updated to use this version. Run 'boundary database
+   migrate' to update the database. NOTE: Boundary does not currently support
+   live migration; ensure all controllers are shut down before running the
+   migration command.
+   ```
+
+   Versions of Boundary greater than 0.1.5 will display this message when the
+   new version requires a schema update for the database, and will prevent
+   Boundary from starting. Be aware upgrades prior to this version will not show
+   this message.
+
+   <Note>
+
+    If the `boundary/` directory or the `boundary/boundary.hcl` files
+      are missing from the container it implies that the `docker run` command was
+      executed from the wrong directory. In this case you will need to:
+
+    </Note>
+
+   - `exit` the running container and run `docker rm -f boundary_controller_upgrade`
+   - Navigate back to the `learn-boundary-upgrade` folder
+   - Proceed back to the [Upgrade the controllers](#upgrade-the-boundary-controllers) section above and execute `docker run` again
+
+## Perform database migration
+
+With the Postgres database successfully backed up the migration can safely be performed.
+
+1. Run the migration
+
+   ```shell-session
+   $ boundary database migrate -config boundary/boundary.hcl
+   Migrations successfully run.
+   ```
+
+1. Restart Boundary
+
+   ```shell-session
+   $ boundary server -config boundary/boundary.hcl
+   ==> Boundary server configuration:
+
+               [Recovery] AEAD Type: aes-gcm
+                  [Root] AEAD Type: aes-gcm
+            [Worker-Auth] AEAD Type: aes-gcm
+                              Cgo: disabled
+   Controller Public Cluster Addr: 0.0.0.0:9201
+                        Listener 1: tcp (addr: "0.0.0.0:9200", cors_allowed_headers: "[]", cors_allowed_origins: "[serve://boundary]", cors_enabled: "true", max_request_duration: "1m30s", purpose: "api")
+                        Listener 2: tcp (addr: "0.0.0.0:9201", max_request_duration: "1m30s", purpose: "cluster")
+                        Listener 3: tcp (addr: "0.0.0.0:9202", max_request_duration: "1m30s", purpose: "proxy")
+                        Log Level: info
+                              Mlock: supported: true, enabled: false
+                           Version: Boundary v0.12.0
+                        Version Sha: 034f27ec8528251ce23b5afbf3851c48b0c54bec
+
+   ==> Boundary server started! Log data will stream in below:
+
+   ```
+
+   Boundary should now be up and running. You can open a new shell session to
+   test as needed, or visit the Boundary Web UI in a browser tab on
+   `http://localhost:9200`, logging into the `primary` scope as `user1` and the
+   password `password` or with any of the user info in the
+   `terraform/terraform.tfstate` file.
+
+## Upgrade the Boundary workers
+
+This tutorial doesn't include a worker, but it is recommended that the same
+upgrade process is performed on any worker instances when upgrading a
+controller. While workers do not directly connect to database instances,
+upgrading workers and controllers to the same version of Boundary ensures
+continued protocol compatibility and communication.
+
+To upgrade your workers:
+
+1. Stop the Boundary service on the worker instance
+1. Replace the Boundary binary
+1. Restart the Boundary service
+
+## Recommended approach for High Availability
+
+This tutorial covers a simple example of what to expect when performing an
+upgrade and migration. For non-dev environments and High-Availability
+considerations, be sure to familiarize yourself with the [HA architecture
+recommendations and controller
+configurations](/boundary/docs/oss/installing/high-availability).
+
+## Cleanup and teardown
+
+1. Stop and destroy the upgraded controller
+
+   The upgraded controller container is running independently of Docker-Compose,
+   and must be stopped and removed directly. It is not necessary `exit` the shell
+   session you have running in the background to destroy the container.
+
+   ```shell-session
+   $ docker rm -f boundary_controller_upgrade
+   ```
+
+1. Cleanup the database instance
+
+   The remaining database container and network resources can be cleaned up
+   using the provided `run` script.
+
+   ```shell-session
+   $ ./run cleanup
+   ```
+
+   Check your work with a quick `docker ps` and ensure there are no more
+   containers with the `boundary_` prefix leftover. If unexpected containers
+   still exist, execute the `docker rm -f` command from above on each to remove
+   them.
+
+## Help and reference
+
+- [Boundary command
+  documentation](/boundary/docs/commands)
+
+- [Installation
+  Notes](/boundary/docs/oss/installing/no-gen-resources)
+
+- [Terraform Boundary
+  Provider](https://registry.terraform.io/providers/hashicorp/boundary/latest)

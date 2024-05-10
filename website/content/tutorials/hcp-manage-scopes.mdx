@@ -1,0 +1,584 @@
+---
+id: cc34244a-8a91-47ff-b384-4b99a2236167
+name: Manage scopes with HCP Boundary
+short_name: Manage scopes with HCP
+description: >-
+  Scopes are a fundamental part of HCP Boundary which allow users to partition
+  resources and assign ownership.
+read_time: 8
+edition: hcp
+products_used:
+  - product: boundary
+    min_version: 0.12.0
+    max_version: 0.13.1
+  - product: terraform
+default_collection_context: boundary/hcp-administration
+---
+
+[Scopes](/boundary/docs/concepts/domain-model/scopes) are a
+foundational part of Boundary. By modeling permission boundaries as a container,
+scopes allow users to partition resources and assign ownership of resources to
+principals.
+
+There are three types of scopes within Boundary:
+
+- Global (`global`)
+- Org
+- Project
+
+<Note>
+
+Within the software itself and in the documentation, Boundary uses
+**org** instead of **organization** to remove ambiguity between different
+regional spellings of the word.
+
+</Note>
+
+#### Scopes hierarchy:
+
+- The `global` scope is the outermost scope. There is only one `global` scope,
+  and it cannot be deleted. It is the entry point for initial
+  administration, setup, and management of the org scopes.
+- The `global` scope can contain multiple org scopes. Orgs are used to hold
+  IAM-related resources and project scopes.
+- Each org scope can contain multiple project scopes. Projects are used to hold
+  infrastructure-related resources.
+
+Some resources can only be associated with a specific level of scope. For
+example,
+[targets](/boundary/docs/concepts/domain-model/targets) can
+only be created within a project, while users can be created at the global-level or
+an org-level. See the [domain
+model](/boundary/docs/concepts/domain-model) for detailed
+resource-specific information.
+
+In this tutorial, you will create two scopes: an org and a project.
+
+<Note>
+
+All resource IDs in this tutorial are illustrations only. IDs are uniquely
+generated for every resource upon creation. Be sure to use the resource IDs that are
+generated for your environment.
+
+</Note>
+
+## Prerequisites
+
+To perform the tasks described in this tutorial, you need to have set up an HCP
+Boundary environment. Refer to the [Getting
+Started](/boundary/tutorials/hcp-getting-started/hcp-getting-started-install) tutorial to learn
+about installation and creating a HCP Boundary instance.
+
+To complete this tutorial, you need:
+
+- A [Boundary binary](/boundary/install/) in your `PATH`.
+  This tutorial uses the 0.12.0 or greater version of Boundary.
+
+- HCP Boundary instance available.
+
+- [Terraform 0.13.0 or greater](/terraform/tutorials/aws-get-started/install-cli) provides an
+  optional workflow for these tutorials. The binary must be available in your
+  `PATH`.
+
+## Create an org
+
+Start by creating an org under the `global` scope.
+
+<Tabs>
+<Tab heading="CLI" group="cli">
+
+The CLI and Admin Console create administrative roles automatically when a scope
+is generated. This allows the user that created the scope to immediately manage
+it.
+
+Log in to Boundary as the admin user. Enter `password` at the `Please enter the
+password (it will be hidden):` prompt.
+
+```shell-session
+$ boundary authenticate password \
+    -auth-method-id=$BOUNDARY_AUTH_METHOD_ID \
+    -login-name=admin
+```
+
+Create a new org under the `global` scope named "IT_Support" with the
+description "IT Support Team".
+
+```shell-session
+$ boundary scopes create -scope-id=global -name=IT_Support -description="IT Support Team"
+
+Scope information:
+  Created Time:        Fri, 27 May 2022 10:40:27 MDT
+  Description:         IT Support Team
+  ID:                  o_u54jrD6ydN
+  Name:                IT_Support
+  Updated Time:        Fri, 27 May 2022 10:40:27 MDT
+  Version:             1
+
+  Scope (parent):
+    ID:                global
+    Name:              global
+    Type:              global
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+```
+
+List the existing scopes.
+
+```shell-session
+$ boundary scopes list
+
+Scope information:
+  ID:                    o_1234567890
+    Version:             1
+    Name:                Generated org scope
+    Description:         Provides an initial org scope in Boundary
+    Authorized Actions:
+      no-op
+      read
+      update
+      delete
+
+  ID:                    o_u54jrD6ydN
+    Version:             1
+    Name:                IT_Support
+    Description:         IT Support Team
+    Authorized Actions:
+      no-op
+      read
+      update
+      delete
+```
+
+In this example, the generated scope ID for **IT_Support** is `o_u54jrD6ydN`.
+Notice that org ID starts with `o_`.
+
+Copy the ID of the `IT_Support` org and save it as the environment variable
+`ORG_ID`.
+
+```shell-session
+$ export ORG_ID=<IT_Support_Org_ID>
+```
+
+**Example:**
+
+```shell-session
+$ export ORG_ID="o_u54jrD6ydN"
+```
+
+</Tab>
+<Tab heading="Admin Console" group="admin">
+
+The CLI and Admin Console create administrative roles automatically when a scope
+is generated. This allows the user that created the scope to immediately manage
+it.
+
+1. Log into the Boundary Admin Console at the global scope. You can
+   retrieve the Boundary URL from the HCP Portal.
+
+1. Click **New** button.
+   ![New org](/img/boundary/boundary-ui-org.png)
+
+1. Enter the **Name** and **Description** for the new org you wish to create.
+   For example, enter `IT_Support` in the **Name** field, and `IT Support Team` in the
+   **Description** field.
+   ![New org](/img/boundary/boundary-ui-new-org-1.png)
+
+1. Click **Save**. You should be automatically directed into the newly created
+   org.
+   ![New org](/img/boundary/boundary-ui-new-org-2.png)
+
+</Tab>
+<Tab heading="Terraform" group="terraform">
+
+The CLI and Admin Console create administrative roles automatically when a scope
+is generated. This allows the user that created the scope to immediately manage
+it. The [Boundary Terraform
+provider](https://registry.terraform.io/providers/hashicorp/boundary) skips
+creation of those roles so that resources are not created outside of Terraform's
+management. You must explicitly define these roles in this section, and in the
+next section where you create a project scope.
+
+This tutorial recommends creating a working directory to store the Terraform
+configuration within. Change into this directory and use it as the working
+directory for the remainder of these tutorials.
+
+```shell-session
+$ mkdir boundary-administration && cd boundary-administration/
+```
+
+Next, **create a terraform configuration file named `main.tf`.**
+
+```shell-session
+$ touch main.tf
+```
+
+Open `main.tf` in your code editor.
+
+This tutorial uses [version
+1.0.7](https://registry.terraform.io/providers/hashicorp/boundary/1.0.7) of the
+Boundary provider.
+
+**Define the provider version at the top of `main.tf`.**
+
+```hcl
+terraform {
+  required_providers {
+    boundary = {
+      source  = "hashicorp/boundary"
+      version = "1.0.7"
+    }
+  }
+}
+```
+
+To allow Terraform to configure Boundary, the
+[provider](https://registry.terraform.io/providers/hashicorp/boundary/latest/docs)
+block defines the Boundary server connection details, such as the HCP Boundary
+instance address and the authentication details.
+
+To configure via Terraform, the following details are required:
+
+- `addr`: The HCP Boundary instance address
+- `auth_method_id`: The password auth_method_id
+- `password_auth_method_login_name`: The admin user login name
+- `password_auth_method_password`: The admin user password
+
+These details are gathered from the HCP portal and Boundary Admin Console. Refer
+back to the [Getting Started](/boundary/tutorials/hcp-getting-started/hcp-getting-started-console)
+tutorials for instructions on gathering the instance address and auth method ID.
+
+To avoid hard-coding authentication details into the Terraform config, variables
+are used in the example below. These variables can be sourced directly from the
+shell session Terraform will be executed from.
+
+**Add the following provider config below the Terraform version.**
+
+```hcl
+variable "boundary_addr" {
+  type = string
+}
+
+variable "auth_method_id" {
+  type = string
+}
+
+variable "password_auth_method_login_name" {
+  type = string
+}
+
+variable "password_auth_method_password" {
+  type = string
+}
+
+provider "boundary" {
+  addr                            = var.boundary_addr
+  auth_method_id                  = var.auth_method_id
+  password_auth_method_login_name = var.password_auth_method_login_name
+  password_auth_method_password   = var.password_auth_method_password
+}
+```
+
+With this configuration in place, **open a terminal session**. This session
+should be where `terraform apply` will be executed from.
+
+Define the `boundary_addr` and `auth_method_id` Terraform variables as shell
+variables.
+
+```shell-session
+$ export BOUNDARY_ADDR="<hcp-boundary-instance-address>"; export BOUNDARY_AUTH_METHOD_ID="<password-auth-method-id>";
+```
+
+Example:
+
+```shell-session
+$ export BOUNDARY_ADDR="https://594349a0-e50d-4467-b12e-6d3e338f8840.boundary.hashicorp.cloud"; export BOUNDARY_AUTH_METHOD_ID="ampw_RGUvGIMinE"
+```
+
+The `password_auth_method_login_name` and `password_auth_method_password`
+variables will be supplied later on, when Terraform is applied.
+
+Next, define a [`boundary_scope`
+resource](https://registry.terraform.io/providers/hashicorp/boundary/latest/docs/resources/scope)
+to create a new org under the `global` scope named, "IT_Support" with
+description, "IT Support Team".
+
+```hcl
+resource "boundary_scope" "org" {
+  scope_id                 = "global"
+  name                     = "IT_Support"
+  description              = "IT Support Team"
+  auto_create_default_role = true
+  auto_create_admin_role   = true
+}
+```
+
+</Tab>
+</Tabs>
+
+
+## Create a project
+
+Next, create a new project named **QA_Tests** under the "IT_Support" scope with
+the description "Manage QA machines".
+
+<Tabs>
+<Tab heading="CLI" group="cli">
+
+
+To create a project under the `IT_Support` org, execute the `boundary scopes
+create` command.
+
+```shell-session
+$ boundary scopes create -scope-id=$ORG_ID -name=QA_Tests -description="Manage QA machines"
+
+Scope information:
+  Created Time:        Fri, 27 May 2022 10:43:28 MDT
+  Description:         Manage QA machines
+  ID:                  p_oMgeFL2hP6
+  Name:                QA_Tests
+  Updated Time:        Fri, 27 May 2022 10:43:28 MDT
+  Version:             1
+
+  Scope (parent):
+    ID:                o_u54jrD6ydN
+    Name:              IT_Support
+    Parent Scope ID:   global
+    Type:              org
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+```
+
+List the project under the `IT_Support` org to verify.
+
+```shell-session
+$ boundary scopes list -scope-id=$ORG_ID
+
+Scope information:
+  ID:                    p_oMgeFL2hP6
+    Version:             1
+    Name:                QA_Tests
+    Description:         Manage QA machines
+    Authorized Actions:
+      no-op
+      read
+      update
+      delete
+```
+
+In this example, the generated project ID is `p_MoXk2hMkhW`. Notice that project
+ID starts with `p_`.
+
+Copy the ID of the `QA_Tests` project and save it as an environment variable,
+`PROJECT_ID`.
+
+```shell-session
+$ export PROJECT_ID=<QA_Tests_Project_ID>
+```
+
+**Example:**
+
+```shell-session
+$ export PROJECT_ID="p_oMgeFL2hP6"
+```
+
+</Tab>
+<Tab heading="Admin Console" group="admin">
+
+
+1. Select **Projects** and click **New**.
+   ![New Project](/img/boundary/boundary-ui-project-0.png)
+
+1. Enter `QA_Tests` in the **Name** field, and `Manage QA machines` in the
+   **Description** field.
+   ![New Project](/img/boundary/boundary-ui-project-1.png)
+
+1. Click **Save**.
+   ![New Project](/img/boundary/boundary-ui-project-2.png)
+
+   By default, you cannot edit the details to help prevent unintended edits. To
+   edit the newly created project, click the **Edit Form** button.
+
+</Tab>
+<Tab heading="Terraform" group="terraform">
+
+
+Similar to creating a new org, define a [`boundary_scope`
+resource](https://registry.terraform.io/providers/hashicorp/boundary/latest/docs/resources/scope)
+which retrieves the parent org ID dynamically via `boundary_scope.org.id`.
+
+```hcl
+resource "boundary_scope" "project" {
+  name             = "QA_Tests"
+  description      = "Manage QA machines"
+
+  # scope_id is taken from the org resource defined for 'IT_Support'
+  scope_id                 = boundary_scope.org.id
+  auto_create_admin_role   = true
+  auto_create_default_role = true
+}
+```
+
+The entire `main.tf` file contents are printed below for reference.
+
+<CodeBlockConfig filename="main.tf">
+
+```hcl
+terraform {
+  required_providers {
+    boundary = {
+      source  = "hashicorp/boundary"
+      version = "1.0.7"
+    }
+  }
+}
+
+variable "boundary_addr" {
+  type = string
+}
+
+variable "auth_method_id" {
+  type = string
+}
+
+variable "password_auth_method_login_name" {
+  type = string
+}
+
+variable "password_auth_method_password" {
+  type = string
+}
+
+provider "boundary" {
+  addr                            = var.boundary_addr
+  auth_method_id                  = var.auth_method_id
+  password_auth_method_login_name = var.password_auth_method_login_name
+  password_auth_method_password   = var.password_auth_method_password
+}
+
+resource "boundary_scope" "org" {
+  scope_id                 = "global"
+  name                     = "IT_Support"
+  description              = "IT Support Team"
+  auto_create_default_role = true
+  auto_create_admin_role   = true
+}
+
+resource "boundary_scope" "project" {
+  name             = "QA_Tests"
+  description      = "Manage QA machines"
+  scope_id                 = boundary_scope.org.id
+  auto_create_admin_role   = true
+  auto_create_default_role = true
+}
+```
+
+</CodeBlockConfig>
+
+**Save this file**.
+
+Next, **initalize Terraform** within the working directory where `main.tf` is
+located.
+
+```shell-session
+$ terraform init
+
+Initializing the backend...
+
+Initializing provider plugins...
+- Finding hashicorp/boundary versions matching "1.0.7"...
+- Installing hashicorp/boundary v1.0.7...
+- Installed hashicorp/boundary v1.0.7 (signed by HashiCorp)
+
+Terraform has created a lock file .terraform.lock.hcl to record the provider
+selections it made above. Include this file in your version control repository
+so that Terraform can guarantee to make the same selections by default when
+you run "terraform init" in the future.
+
+Terraform has been successfully initialized!
+
+You may now begin working with Terraform. Try running "terraform plan" to see
+any changes that are required for your infrastructure. All Terraform commands
+should now work.
+
+If you ever set or change modules or backend configuration for Terraform,
+rerun this command to reinitialize your working directory. If you forget, other
+commands will detect it and remind you to do so if necessary.
+```
+
+The Terraform config is ready to be applied. The admin username and password
+still need to be provided to terraform. You can directly execute `terraform
+apply` and then enter the variables `boundary_addr`, `auth_method_id`,
+`password_auth_method_login_name` and `password_auth_method_password` when
+prompted for them, or you can supply these values using the `-var` option. The
+method below supplies these values to `terraform apply`.
+
+Execute Terraform. Replace the `password_auth_method_login_name` and
+`password_auth_method_password` values with your HCP Boundary admin credentials.
+Enter `yes` when prompted for confirmation.
+
+```shell-session
+$ terraform apply -var "boundary_addr=$BOUDNARY_ADDR" -var "auth_method_id=$BOUNDARY_AUTH_METHOD_ID" -var "password_auth_method_login_name=admin" -var "password_auth_method_password=password"
+
+
+Terraform used the selected providers to generate the following execution plan. Resource actions are indicated with the following symbols:
+  + create
+
+Terraform will perform the following actions:
+
+  # boundary_scope.org will be created
+  + resource "boundary_scope" "org" {
+      + auto_create_admin_role   = true
+      + auto_create_default_role = true
+      + description              = "IT Support Team"
+      + id                       = (known after apply)
+      + name                     = "IT_Support"
+      + scope_id                 = "global"
+    }
+
+  # boundary_scope.project will be created
+  + resource "boundary_scope" "project" {
+      + auto_create_admin_role   = true
+      + auto_create_default_role = true
+      + description              = "Manage QA machines"
+      + id                       = (known after apply)
+      + name                     = "QA_Tests"
+      + scope_id                 = (known after apply)
+    }
+
+Plan: 2 to add, 0 to change, 0 to destroy.
+
+Do you want to perform these actions?
+  Terraform will perform the actions described above.
+  Only 'yes' will be accepted to approve.
+
+  Enter a value: yes
+
+boundary_scope.org: Creating...
+boundary_scope.org: Creation complete after 0s [id=o_DusYGH4a9K]
+boundary_scope.project: Creating...
+boundary_scope.project: Creation complete after 0s [id=p_DkX4anJefM]
+
+Apply complete! Resources: 2 added, 0 changed, 0 destroyed.
+```
+
+</Tab>
+</Tabs>
+
+
+## Next steps
+
+You created a new org, **IT_Support** which has the **QA_Tests** project. Those
+new scopes can help create logical groupings of Boundary resources such as
+targets, users, groups, and roles.
+
+You are now ready to define scope-level resources and manage them per scope.
+Next, the [Manage Targets](/boundary/tutorials/hcp-administration/hcp-manage-targets) tutorial
+demonstrates adding Targets to Boundary.

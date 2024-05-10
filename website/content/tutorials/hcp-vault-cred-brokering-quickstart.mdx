@@ -1,0 +1,2965 @@
+---
+id: 04245c23-0ad0-4c91-8ac4-ebf947a100e0
+name: HCP Boundary Vault credential brokering quickstart
+short_name: HCP Boundary Vault cred brokering quickstart
+description: >-
+  Instructions to integrate HCP Boundary and Vault to enable credential
+  brokering.
+read_time: 20
+products_used:
+  - product: vault
+  - product: boundary
+    min_version: 0.12.0
+    max_version: 0.13.1
+default_collection_context: boundary/credential-management
+---
+
+This tutorial demonstrated integrating HCP Boundary and Vault to broker secrets
+to Boundary clients.
+
+### Background
+
+Boundary integrates with Vault to broker Vault secrets to Boundary clients.
+Secrets are brokered using the command line or desktop clients to use Boundary
+sessions.
+
+Boundary 0.11 adds support for brokering secrets from private Vault clusters.
+
+This feature enables Boundary as a credential broker for infrastructure targets
+by binding credentials with user sessions, and surfacing those credentials
+during session initialization.
+
+![Boundary Vault Overview](/img/boundary/boundary-vault-quickstart-overview.png)
+
+This tutorial provides examples of integrating HCP Boundary and Vault, and then
+walks through the process of creating Boundary credentials stores and credential
+libraries for brokering of Vault secrets.
+
+### Tutorial Contents
+
+1. Setup Vault
+1. Deploy a demo database
+1. Setup Boundary
+1. Broker credentials for the database via Boundary
+
+## Prerequisites
+
+- A [Boundary binary](/boundary/install/) greater than
+  0.12.0 in your `PATH`
+
+- A [Vault binary](/vault/install/) greater than 1.7.0 in
+  your `PATH`
+
+- A [psql binary](https://www.postgresql.org/download/) greater than 13.0 in
+  your `PATH`
+
+- [Docker](https://docs.docker.com/get-docker/) is installed OR an [AWS
+  account](https://console.aws.amazon.com/) for deploying Postgres
+
+- Installing the [Boundary Desktop
+  App](https://releases.hashicorp.com/boundary-desktop/) provides an optional
+  workflow at the end of this tutorial. The 1.2.0 version or greater is required
+  for Vault support, and installing the latest version is recommended.
+
+This tutorial assumes prior foundational knowledge of using Vault, including
+running a development server and managing policies, roles and tokens.
+
+If you are new to using Vault, consider completing the [Getting Started with
+Vault](/vault/tutorials/getting-started) quick
+start tutorials before integrating Vault with Boundary.
+
+<Note>
+
+If using a public HCP Vault Dedicated cluster and Docker to deploy Postgres,
+a free [ngrok](https://ngrok.com/) account will also be required to create a
+publicly routable address. Instructions for installing and configuring ngrok are
+provided later on.
+
+</Note>
+
+## Tutorial Scenario
+
+Connecting to a networked service often requires credentials for authentication
+and authorization. For example, a financial analyst might require access to
+their company's sales database to create a monthly report. When the analyst
+wants to create the report, they will (hopefully) need database credentials
+which their reporting tool can use to connect to the sales database and run the
+report.
+
+In this example, the analyst only needs credentials to the sales database once a
+month and only for a limited amount of time. If connection to the sales database
+was through Boundary, the credentials could be generated at the beginning of the
+session, returned to the analyst, and then revoked when the session is
+terminated.
+
+This tutorial provides an example of enabling the analyst scenario by setting up
+a Vault integration with Boundary, and introduces the Boundary resources used
+for managing credentials.
+
+## Get setup
+
+Three pieces must be setup for this tutorial:
+
+- A demo postgres database target
+- A Vault server with policies allowing connections from Boundary
+- Boundary credential resources for managing credential lifecycle
+
+Open a terminal and navigate to a working directory, such as the home directory.
+Clone down the sample repository containing starter configuration files.
+
+```shell-session
+$ git clone https://github.com/hashicorp/learn-boundary-vault-quickstart
+```
+
+Navigate into the learn-boundary-vault-quickstart directory and list its
+contents.
+
+```shell-session
+$ ls -R1
+LICENSE
+README.md
+analyst.sql.hcl
+boundary-controller-policy.hcl
+dba.sql.hcl
+northwind-database-policy.hcl
+northwind-database.sql
+northwind-roles.sql
+worker.hcl
+```
+
+The repository contains the following files:
+
+- `analyst.sql.hcl`: Vault role for generating credentials for the analyst
+  database
+- `boundary-controller-policy.hcl`: Vault policy for the Boundary controller
+  that enables token management
+- `dba.sql.hcl`: Vault role for the database analyst credential generation
+- `northwind-database-policy.hcl`: Vault policy for the demo database admin
+- `northwind-database.sql`: Demo database tables
+- `northwind-roles.sql`: Demo database roles and permissions
+- `worker.hcl`: Self-managed HCP worker config
+
+## Setup Vault
+
+Vault needs to be configured to generate secrets for the database target. To set up Vault you need to:
+
+1. Start Vault
+1. Set up a Boundary controller policy
+1. Enable the database secrets engine
+1. Configure the postgres database plugin
+1. Create a database admin role to generate credentials
+1. Create an analyst role to generate credentials
+
+Public or private Vault access is supported by HCP Boundary. Select one of the
+options for configuring Vault to continue.
+
+<Tabs>
+<Tab heading="Public Vault" group="public">
+
+The simplest method of testing Vault integration with HCP Boundary is using a
+public Vault address. This can be accomplished using HCP Vault Dedicated or Vault
+Enterprise, but this tutorial demonstrates Vault Dedicated using a public address.
+
+Open the Vault Dedicated cluster *Overview* page and click **Public** under **Cluster URLs**. This will copy the URL to your clipboard.
+
+![Public Cluster URL](/img/vault/cloud/ui-hcp-vault-copy-public-url.png)
+
+In a terminal, set the `VAULT_ADDR` environment variable to the copied address.
+```shell-session
+$ export VAULT_ADDR="https://vault-cluster-boundary.vault.11eb3a47-8920-4714-ba99-0242ac11000e.aws.hashicorp.cloud:8200"
+```
+
+Return to the **Overview** page and click **Generate token** under *New admin
+token*. Click **Copy** to copy the token into your clipboard.
+
+![Generate a Token](/img/vault/cloud/ui-hcp-vault-create-admin-token.png)
+
+Return to the terminal and set the `VAULT_TOKEN` environment variable.
+
+```shell-session
+$ export VAULT_TOKEN=not.actually.a.key.CAESIJm8BHiBBvJNaWW9Pqmjd8uOn3nrAJBpOcbsiPPMlQ5kGicKImh2cy5IMTBqUmt0end6RHNqVFJxQkk5bVZBVXIuQ2RYMGEQngI
+```
+
+Vault Dedicated also requires an exported `VAULT_NAMESPACE` variable. This tutorial
+demonstrates using the `admin` namespace.
+
+Export the `VAULT_NAMESPACE` variable.
+
+```shell-session
+$ export VAULT_NAMESPACE=admin
+```
+
+Verify that you are able to connect to Vault:
+
+```shell-session
+$ vault status
+```
+
+### Setup PostgreSQL Northwind demo database
+
+The Postgres database target can either be deployed using AWS or Docker. Choose
+the workflow that best meets your needs.
+
+<Tabs>
+<Tab heading="AWS" group="aws">
+
+While most deployments of Postgres will work with the following steps, this
+tutorial demonstrates configuring Postgres on an Ubuntu instance.
+
+<Note>
+
+Ubuntu is used in this tutorial for demonstration purposes only.
+You can [follow this
+guide](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EC2_GetStarted.html)
+to create a publicly accessible EC2 instance to use for this tutorial.
+
+</Note>
+
+<Warning>
+
+For the purposes of this tutorial it is important that the security group
+policy for the AWS Ubuntu instance accepts inbound TCP connections on port 5432
+to allow incoming connections to Postgres. Additionally, you will want to allow
+inbound SSH and outbound TCP. To learn more about creating this security group
+and attaching it to your instance, check the AWS EC2 [security group
+documentation](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/authorizing-access-to-an-instance.html).
+The screenshot below shows an example of this security group policy.
+
+</Warning>
+
+![AWS Postgres Security Group](/img/boundary/aws/postgres-aws-security-group.png)
+
+Log in to the Ubuntu instance that will be configured to run Postgres.
+
+For example, using SSH:
+
+```shell-session
+$ ssh ubuntu@198.51.100.1 -i /path/my-key-pair.pem
+The authenticity of host 'ec2-198-51-100-1.compute-1.amazonaws.com (198-51-100-1)' can't be established.
+ECDSA key fingerprint is l4UB/neBad9tvkgJf1QZWxheQmR59WgrgzEimCG6kZY.
+Are you sure you want to continue connecting (yes/no)? yes
+
+ubuntu@ip-172-31-88-177:~
+```
+
+<Note>
+
+ The above example is for demonstrative purposes. You will need to
+supply your Ubuntu instance's username, public IP address, and public key to
+connect. If using AWS EC2, [check this
+article](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/AccessingInstancesLinux.html)
+to learn more about connecting to a Linux instance using SSH.
+
+</Note>
+
+Next, update the package manager and install PostgreSQL.
+
+```shell-session
+$ sudo apt update
+```
+
+```shell-session
+$ sudo apt install postgresql-14
+```
+
+After confirming the installation, execute the following command to modify the
+`postgresql.conf` file to allow Postgres to listen on all ports.
+
+```shell-session
+$ sudo sed -ibak "s/#listen_addresses\ \=\ 'localhost'/listen_addresses = '*'/g" /etc/postgresql/14/main/postgresql.conf
+```
+
+Next, execute the following command to modify the `pg_hba.conf` file to allow
+connections from any address.
+
+```shell-session
+$ sudo sed -ibak 's/127.0.0.1\/32/0.0.0.0\/0/g' /etc/postgresql/14/main/pg_hba.conf
+```
+
+Now start the Postgres service.
+
+```shell-session
+$ sudo systemctl start postgresql.service
+```
+
+Ensure that Postgres is running:
+
+```shell-session
+$ sudo systemctl status postgresql
+● postgresql.service - PostgreSQL RDBMS
+     Loaded: loaded (/lib/systemd/system/postgresql.service; enabled; vendor preset: enabled)
+     Active: active (exited) since Wed 2022-10-19 17:23:47 UTC; 44s ago
+    Process: 6897 ExecStart=/bin/true (code=exited, status=0/SUCCESS)
+   Main PID: 6897 (code=exited, status=0/SUCCESS)
+        CPU: 1ms
+
+Oct 19 17:23:47 ip-172-31-19-96 systemd[1]: Starting PostgreSQL RDBMS...
+Oct 19 17:23:47 ip-172-31-19-96 systemd[1]: Finished PostgreSQL RDBMS.
+```
+
+Next, log in as the `postgres` user. Your prompt will change to `postgres@`.
+
+```shell-session
+$ sudo -i -u postgres
+postgres@ip-172-31-19-96:~$
+```
+
+Download the lab environment repository for this tutorial to the Ubuntu
+instance:
+
+```shell-session
+$ git clone https://github.com/hashicorp/learn-boundary-vault-quickstart
+```
+
+Navigate into the `~/learn-boundary-vault-quickstart` directory and list its
+contents.
+
+```shell-session
+$ cd learn-boundary-vault-quickstart/
+```
+
+```shell-session
+$ ls -R1
+README.md
+analyst.sql.hcl
+boundary-controller-policy.hcl
+dba.sql.hcl
+northwind-database-policy.hcl
+northwind-database.sql
+northwind-roles.sql
+worker.hcl
+```
+
+Create the `northwind` database.
+
+```shell-session
+$ createdb northwind
+```
+
+Seed the database tables using the provided sql configuration.
+
+```shell-session
+$ psql -d northwind -f northwind-database.sql --quiet
+```
+
+Apply the database roles and permissions.
+
+```shell-session
+$ psql -d northwind -f northwind-roles.sql --quiet
+```
+
+And check that the database tables were written correctly:
+
+```shell-session
+$ psql -d northwind -c '\dt'
+                 List of relations
+ Schema |          Name          | Type  |  Owner
+--------+------------------------+-------+----------
+ public | categories             | table | postgres
+ public | customer_customer_demo | table | postgres
+ public | customer_demographics  | table | postgres
+ public | customers              | table | postgres
+ public | employee_territories   | table | postgres
+ public | employees              | table | postgres
+ public | order_details          | table | postgres
+ public | orders                 | table | postgres
+ public | products               | table | postgres
+ public | region                 | table | postgres
+ public | shippers               | table | postgres
+ public | suppliers              | table | postgres
+ public | territories            | table | postgres
+ public | us_states              | table | postgres
+(14 rows)
+```
+
+This information will be queried at the end of the tutorial after the
+credentials are successfully brokered via Vault.
+
+Before logging out of the account, set a password for the `postgres` user to
+make it easy to test the initial connection from Boundary. This tutorial uses
+the password `secret`. Enter the password when prompted.
+
+```shell-session
+$ psql -c '\password'
+Enter new password for user "postgres":
+Enter it again:
+```
+
+When finished, log out of the postgres account using `exit`, and then log out of
+the Ubuntu instance using `exit`.
+
+</Tab>
+<Tab heading="Docker " group="docker">
+
+In addition to Docker, [ngrok](https://ngrok.com/) is required to expose the
+postgres container running on your localhost.
+
+<Note>
+
+Be aware that using ngrok creates a publicly routable address for
+the postgres container. If you do not wish to use ngrok, consider the AWS
+workflow instead.
+
+</Note>
+
+Follow the official instructions to download ngrok for your OS distribution and
+set up a free account:
+
+[https://ngrok.com/download](https://ngrok.com/download)
+
+After setting up your account and obtaining an
+[authtoken](https://ngrok.com/docs/secure-tunnels#tunnel-authtokens), configure
+ngrok with the auth token:
+
+```shell-session
+$ ngrok config add-authtoken <token>
+```
+
+Next, deploy the northwind postgres database container target. This will be the
+target that Boundary brokers credentials for via Vault.
+
+Export the database name and URL as environment variables.
+
+```shell-session
+$ export PG_DB="northwind";export PG_URL="postgres://postgres:secret@localhost:16001/${PG_DB}?sslmode=disable"
+```
+
+Note that the postgres service within the container (running on port `5432`)
+will be exposed on your localhost's port `16001`.
+
+Now launch the postgres container with Docker, passing the postgres password,
+database name, and URL port mapping as options.
+
+```shell-session
+$ docker run -d \
+   -e POSTGRES_PASSWORD=secret \
+   -e POSTGRES_DB="${PG_DB}" \
+   --name ${PG_DB} \
+   -p 16001:5432 \
+   postgres
+```
+
+Check that the container is running.
+
+```shell-session
+$ docker ps --format "table {{.ID}}\t{{.Names}}\t{{.Image}}\t{{.Status}}"
+CONTAINER ID   NAMES       IMAGE      STATUS
+af573c7093cd   northwind   postgres   Up About a minute
+```
+
+Next, seed the database tables.
+
+```shell-session
+$ psql -d $PG_URL -f northwind-database.sql --quiet
+```
+
+Apply the database roles and permissions.
+
+```shell-session
+$ psql -d $PG_URL -f northwind-roles.sql --quiet
+```
+
+Check that the database tables were written correctly:
+
+```shell-session
+$ psql -d $PG_URL -c '\dt'
+                 List of relations
+ Schema |          Name          | Type  |  Owner
+--------+------------------------+-------+----------
+ public | categories             | table | postgres
+ public | customer_customer_demo | table | postgres
+ public | customer_demographics  | table | postgres
+ public | customers              | table | postgres
+ public | employee_territories   | table | postgres
+ public | employees              | table | postgres
+ public | order_details          | table | postgres
+ public | orders                 | table | postgres
+ public | products               | table | postgres
+ public | region                 | table | postgres
+ public | shippers               | table | postgres
+ public | suppliers              | table | postgres
+ public | territories            | table | postgres
+ public | us_states              | table | postgres
+(14 rows)
+```
+
+This information will be queried at the end of the tutorial after the
+credentials are successfully brokered via Vault.
+
+In another terminal, create a publicly routable address to the postgres docker container
+using ngrok by passing in the localhost port mapping on `16001`.
+
+```shell-session
+$ ngrok tcp 127.0.0.1:16001
+
+ngrok                                                                                                               (Ctrl+C to quit)
+
+Visit http://localhost:4040/ to inspect, replay, and modify your requests
+
+Session Status                online
+Account                       Jeff Albertson (Plan: Free)
+Version                       3.1.0
+Region                        United States (us)
+Latency                       103ms
+Web Interface                 http://127.0.0.1:4040
+Forwarding                    tcp://6.tcp.ngrok.io:13866 -> 127.0.0.1:16001
+
+Connections                   ttl     opn     rt1     rt5     p50     p90
+                              3       0       0.00    0.00    9.44    502.94
+```
+
+</Tab>
+</Tabs>
+
+</Tab>
+<Tab heading="Private Vault" group="private">
+
+Integrating private Vault with HCP Boundary requires a self-managed worker
+to be deployed in the same network as Vault. If a Vault credential store is
+defined with a worker filter, Boundary’s controller will know that Vault
+requests should be routed to workers matching that filter.
+
+![Private Vault On-Premise](/img/boundary/hcp-private-vault-on-prem.png)
+
+Private Vault clusters running on HCP can be configured to access HCP Boundary
+via a self-managed worker placed in a peered network via a HashiCorp Virtual
+Network (HCVN).
+
+![Private Vault HCPV](/img/boundary/hcp-private-vault-hcpv.png)
+
+For simplicity, this tutorial demonstrates integrating HCP Boundary with a
+private Vault cluster running locally in development mode with the worker
+also running locally.
+
+To learn more about HCVNs, refer to the [HCP Virtual
+Network](/hcp/tutorials/networking) tutorial collection.
+
+To learn more about deploying a self-managed worker for HCP, refer to the
+[Self-Managed Worker Registration with HCP
+Boundary](/boundary/tutorials/hcp-administration/hcp-manage-workers) tutorial.
+
+### Run Vault in dev mode
+
+Export the Vault address and set the token to the default admin user `groot`.
+
+```shell-session
+$ export VAULT_ADDR="http://127.0.0.1:8200"; export VAULT_TOKEN="groot"
+```
+
+Now start Vault in dev mode, passing in the `VAULT_TOKEN` variable.
+
+```shell-session
+$ vault server -dev -dev-root-token-id=${VAULT_TOKEN}
+==> Vault server configuration:
+
+             Api Address: http://127.0.0.1:8200
+                     Cgo: disabled
+         Cluster Address: https://127.0.0.1:8201
+              Go Version: go1.16.7
+              Listener 1: tcp (addr: "127.0.0.1:8200", cluster address: "127.0.0.1:8201", max_request_duration: "1m30s", max_request_size: "33554432", tls: "disabled")
+               Log Level: info
+                   Mlock: supported: false, enabled: false
+           Recovery Mode: false
+                 Storage: inmem
+                 Version: Vault v1.8.2
+             Version Sha: aca76f63357041a43b49f3e8c11d67358496959f
+
+==> Vault server started! Log data will stream in below:
+
+...
+...
+...
+
+The unseal key and root token are displayed below in case you want to
+seal/unseal the Vault or re-authenticate.
+
+Unseal Key: yhEyybUnBCEfxYpuVX1yh6arllBNfufcnfIvR0Q9UpA=
+Root Token: groot
+
+Development mode should NOT be used in production installations!
+```
+
+Leave the Vault server running in this terminal, and open a new session to
+continue setting up Vault.
+
+<Note>
+
+ Ensure that you navigate back into the
+`learn-boundary-vault-quickstart` directory where the sample code is located
+before proceeding.
+
+</Note>
+
+### Deploy a self-managed worker
+
+An HCP worker deployed on the same network as Vault is required for integrating
+private Vault clusters with HCP Boundary. To learn more about setting up
+self-managed workers, refer to the [Self-Managed Worker Registration with HCP
+Boundary](/boundary/tutorials/hcp-administration/hcp-manage-workers) tutorial.
+
+#### Download the Boundary Enterprise binary
+
+Download the Boundary Enterprise binary to the
+`~/learn-boundary-vault-quickstart/` directory.
+
+You can manually download the latest binary for your operating system by
+navigating to the [Boundary releases
+page](https://releases.hashicorp.com/boundary). The example below demonstrates
+downloading the binary using the command line.
+
+<Note>
+
+  The binary version should match the version of the HCP control plane. Check
+  the version of the control plane in the HCP Boundary portal, and download the
+  appropriate version using wget. The example below installs the 0.13.0 version
+  of the Boundary Enterprise binary.
+
+</Note>
+
+Below is an example of downloading and unzipping the Boundary Enterprise binary
+on Ubuntu, MacOS, and Windows.
+
+<Tabs>
+<Tab heading="Ubuntu" group="ubuntu">
+
+The following command downloads the Boundary Enterprise binary and unzips it to
+the current directory.
+
+```shell-session
+$ wget -q https://releases.hashicorp.com/boundary/0.13.0+ent/boundary_0.13.0+ent_linux_amd64.zip ;\
+sudo apt-get update && sudo apt-get install unzip ;\
+unzip *.zip
+```
+
+Once downloaded, verify the version of the Boundary Enterprise binary.
+
+```shell-session
+$ ./boundary version
+
+Version information:
+  Build Date:          2023-06-07T16:41:10Z
+  Git Revision:        fb4ed58459d555d480e70ddc20d2639c26ad0f8f
+  Metadata:            ent
+  Version Number:      0.13.0+ent
+```
+
+</Tab>
+<Tab heading="MacOS" group="macos">
+
+The following command downloads the Boundary Enterprise binary and unzips it to the
+current directory.
+
+```shell-session
+$ wget -q https://releases.hashicorp.com/boundary/0.13.0+ent/boundary_0.13.0+ent_darwin_amd64.zip ;\
+/usr/bin/unzip *.zip
+```
+
+Once downloaded, verify the version of the boundary binary.
+
+```shell-session
+$ ./boundary version
+
+Version information:
+  Build Date:          2023-06-07T16:41:10Z
+  Git Revision:        fb4ed58459d555d480e70ddc20d2639c26ad0f8f
+  Metadata:            ent
+  Version Number:      0.13.0+ent
+```
+
+</Tab>
+<Tab heading="Windows" group="windows">
+
+The following command downloads the Boundary Enterprise binary and unzips it to the
+current directory.
+
+```shell-session
+$ Invoke-WebRequest -OutFile worker.zip https://releases.hashicorp.com/boundary/0.13.0+ent/boundary_0.13.0+ent_windows_amd64.zip ;
+Expand-Archive -Path worker.zip -DestinationPath .
+```
+
+Once downloaded, verify the version of the boundary binary.
+
+```shell-session
+$ .\boundary.exe version
+
+Version information:
+  Build Date:          2023-06-07T16:41:10Z
+  Git Revision:        fb4ed58459d555d480e70ddc20d2639c26ad0f8f
+  Metadata:            ent
+  Version Number:      0.13.0+ent
+```
+
+</Tab>
+</Tabs>
+
+**Ensure the Version Number matches the version of the HCP Boundary control
+plane.** They should match in order to get the latest HCP Boundary features.
+
+### Write the worker config
+
+Next, **open the `worker.hcl` file** with a text editor.
+
+**Update the worker config file:**
+
+<Tabs>
+<Tab heading="Ubuntu" group="ubuntu">
+
+<CodeBlockConfig lineNumbers filename="~/learn-boundary-vault-quickstart/worker.hcl">
+
+```hcl
+disable_mlock = true
+
+hcp_boundary_cluster_id = "<cluster-id>"
+
+listener "tcp" {
+  address = "127.0.0.1:9202"
+  purpose = "proxy"
+}
+
+worker {
+  auth_storage_path = "/home/myusername/learn-boundary-vault-quickstart/worker1"
+  tags {
+    type = ["worker", "dev"]
+  }
+}
+```
+
+</CodeBlockConfig>
+
+**Update the cluster id in the `worker.hcl` file:**
+
+The **`<cluster-id>`** on line 3 can be determined from the UUID in the HCP
+Boundary Cluster URL. For example, if your Cluster URL is:
+
+`https://c3a7a20a-f663-40f3-a8e3-1b2f69b36254.boundary.hashicorp.cloud`,
+then the cluster id is `c3a7a20a-f663-40f3-a8e3-1b2f69b36254`
+
+The `auth_storage_path` should match the full path to the `~/learn-boundary-vault-quickstart/worker1`
+directory, such as `/home/myusername/learn-boundary-vault-quickstart/worker1`.
+
+</Tab>
+<Tab heading="MacOS" group="macos">
+
+<CodeBlockConfig lineNumbers filename="~/learn-boundary-vault-quickstart/worker.hcl">
+
+```hcl
+disable_mlock = true
+
+hcp_boundary_cluster_id = "<cluster-id>"
+
+listener "tcp" {
+  address = "127.0.0.1:9202"
+  purpose = "proxy"
+}
+
+worker {
+  auth_storage_path = "/Users/myusername/learn-boundary-vault-quickstart/worker1"
+  tags {
+    type = ["worker", "dev"]
+  }
+}
+```
+
+</CodeBlockConfig>
+
+**Update the cluster id in the `worker.hcl` file:**
+
+The **`<cluster-id>`** on line 3 can be determined from the UUID in the HCP
+Boundary Cluster URL. For example, if your Cluster URL is:
+
+`https://c3a7a20a-f663-40f3-a8e3-1b2f69b36254.boundary.hashicorp.cloud`,
+then the cluster id is `c3a7a20a-f663-40f3-a8e3-1b2f69b36254`
+
+The `auth_storage_path` should match the full path to the `~/learn-boundary-vault-quickstart/worker1`
+directory, such as `/Users/myusername/learn-boundary-vault-quickstart/worker1`.
+
+</Tab>
+<Tab heading="Windows" group="windows">
+
+<CodeBlockConfig lineNumbers filename="~/learn-boundary-vault-quickstart/worker.hcl">
+
+```hcl
+disable_mlock = true
+
+hcp_boundary_cluster_id = "<cluster-id>"
+
+listener "tcp" {
+  address = "127.0.0.1:9202"
+  purpose = "proxy"
+}
+
+worker {
+  auth_storage_path = "C:/Users/myusername/learn-boundary-vault-quickstart/worker1"
+  tags {
+    type = ["worker", "dev"]
+  }
+}
+```
+
+</CodeBlockConfig>
+
+**Update the cluster id in the `worker.hcl` file:**
+
+The **`<cluster-id>`** on line 3 can be determined from the UUID in the HCP
+Boundary Cluster URL. For example, if your Cluster URL is:
+
+`https://c3a7a20a-f663-40f3-a8e3-1b2f69b36254.boundary.hashicorp.cloud`,
+then the cluster id is `c3a7a20a-f663-40f3-a8e3-1b2f69b36254`
+
+The `auth_storage_path` should match the full path to the `~/learn-boundary-vault-quickstart/worker1`
+directory, such as `C:/Users/myusername/learn-boundary-vault-quickstart/worker1`.
+
+</Tab>
+</Tabs>
+
+**Save this file.**
+
+### Start the worker
+
+With the worker config defined, start the worker server. Provide the full path
+to the worker config file (such as `/home/myusername/learn-boundary-vault-quickstart/worker.hcl`).
+
+<Tabs>
+<Tab heading="Ubuntu" group="ubuntu">
+
+<CodeBlockConfig lineNumbers highlight="1,12">
+
+```shell-session
+$ ./boundary server -config="/home/myusername/learn-boundary-vault-quickstart/worker.hcl"
+
+==> Boundary server configuration:
+
+                               Cgo: disabled
+                        Listener 1: tcp (addr: "0.0.0.0:9202", max_request_duration: "1m30s", purpose: "proxy")
+                         Log Level: info
+                             Mlock: supported: true, enabled: false
+                           Version: Boundary v0.13.0+ent
+                       Version Sha: fb4ed58459d555d480e70ddc20d2639c26ad0f8f
+        Worker Auth Current Key Id: preaching-favored-verbalize-widen-duchess-relish-jurist-sly
+  Worker Auth Registration Request: GzusqckarbczHoLGQ4UA25uSRmUHY1BGSRA6cePp8RWHQFUYSrf3hnDw4ETPswFnMrcxx6tq7BUWD5azGULzPecPicuYGD6qg3qYvaGRgHgKwvh9FLY9Gu891KSj8hAef19JjHog8d7qpo9f9KoiwrhfcV2YxGyVu1P943656iNGCFHWiBR3ofsyTatQ7fzcMV2ciKtuYYGfx4FfiRStnkAzoE98RdR2LeCk2huRkFt7ayeeWVfD7Awm8xaZfFJn4pYRJwu2LRBeNs915warEBaS8XHXSKoi3cRUYif8Qu
+          Worker Auth Storage Path: /home/ubuntu/learn-boundary-vault-quickstart/worker1
+          Worker Public Proxy Addr: 127.0.0.1:9202
+
+==> Boundary server started! Log data will stream in below:
+
+{"id":"Rb7PMMBdZa","source":"https://hashicorp.com/boundary/ip-172-31-84-100/worker","specversion":"1.0","type":"system","data":{"version":"v0.1","op":"worker.(Worker).StartControllerConnections","data":{"msg":"Setting HCP Boundary cluster address e58fe114-7624-431c-994d-b6670e90b09f.proxy.boundary.hashicorp.cloud:9202 as upstream address"}},"datacontentype":"application/cloudevents","time":"2022-09-19T22:16:38.770232603Z"}
+```
+
+</CodeBlockConfig>
+
+</Tab>
+<Tab heading="MacOS" group="macos">
+
+<CodeBlockConfig lineNumbers highlight="1,12">
+
+```shell-session
+$ ./boundary server -config="/Users/myusername/learn-boundary-vault-quickstart/hcp-worker.hcl"
+
+==> Boundary server configuration:
+
+                               Cgo: disabled
+                        Listener 1: tcp (addr: "0.0.0.0:9202", max_request_duration: "1m30s", purpose: "proxy")
+                         Log Level: info
+                             Mlock: supported: true, enabled: false
+                           Version: Boundary v0.13.0+ent
+                       Version Sha: fb4ed58459d555d480e70ddc20d2639c26ad0f8f
+        Worker Auth Current Key Id: preaching-favored-verbalize-widen-duchess-relish-jurist-sly
+  Worker Auth Registration Request: GzusqckarbczHoLGQ4UA25uSRmUHY1BGSRA6cePp8RWHQFUYSrf3hnDw4ETPswFnMrcxx6tq7BUWD5azGULzPecPicuYGD6qg3qYvaGRgHgKwvh9FLY9Gu891KSj8hAef19JjHog8d7qpo9f9KoiwrhfcV2YxGyVu1P943656iNGCFHWiBR3ofsyTatQ7fzcMV2ciKtuYYGfx4FfiRStnkAzoE98RdR2LeCk2huRkFt7ayeeWVfD7Awm8xaZfFJn4pYRJwu2LRBeNs915warEBaS8XHXSKoi3cRUYif8Qu
+          Worker Auth Storage Path: /Users/myusername/learn-boundary-vault-quickstart/worker1
+          Worker Public Proxy Addr: 127.0.0.1:9202
+
+==> Boundary server started! Log data will stream in below:
+
+{"id":"Rb7PMMBdZa","source":"https://hashicorp.com/boundary/ip-172-31-84-100/worker","specversion":"1.0","type":"system","data":{"version":"v0.1","op":"worker.(Worker).StartControllerConnections","data":{"msg":"Setting HCP Boundary cluster address e58fe114-7624-431c-994d-b6670e90b09f.proxy.boundary.hashicorp.cloud:9202 as upstream address"}},"datacontentype":"application/cloudevents","time":"2022-09-19T22:16:38.770232603Z"}
+```
+
+</CodeBlockConfig>
+
+</Tab>
+<Tab heading="Windows" group="windows">
+
+<CodeBlockConfig lineNumbers highlight="1,12">
+
+```shell-session
+$ .\boundary.exe server -config="C:\Users\myusername\learn-boundary-vault-quickstart\hcp-worker.hcl"
+
+==> Boundary server configuration:
+
+                               Cgo: disabled
+                        Listener 1: tcp (addr: "0.0.0.0:9202", max_request_duration: "1m30s", purpose: "proxy")
+                         Log Level: info
+                             Mlock: supported: true, enabled: false
+                           Version: Boundary v0.13.0+ent
+                       Version Sha: fb4ed58459d555d480e70ddc20d2639c26ad0f8f
+        Worker Auth Current Key Id: preaching-favored-verbalize-widen-duchess-relish-jurist-sly
+  Worker Auth Registration Request: GzusqckarbczHoLGQ4UA25uSRmUHY1BGSRA6cePp8RWHQFUYSrf3hnDw4ETPswFnMrcxx6tq7BUWD5azGULzPecPicuYGD6qg3qYvaGRgHgKwvh9FLY9Gu891KSj8hAef19JjHog8d7qpo9f9KoiwrhfcV2YxGyVu1P943656iNGCFHWiBR3ofsyTatQ7fzcMV2ciKtuYYGfx4FfiRStnkAzoE98RdR2LeCk2huRkFt7ayeeWVfD7Awm8xaZfFJn4pYRJwu2LRBeNs915warEBaS8XHXSKoi3cRUYif8Qu
+          Worker Auth Storage Path: /Users/myusername/learn-boundary-vault-quickstart/worker1
+          Worker Public Proxy Addr: 127.0.0.1:9202
+
+==> Boundary server started! Log data will stream in below:
+
+{"id":"Rb7PMMBdZa","source":"https://hashicorp.com/boundary/ip-172-31-84-100/worker","specversion":"1.0","type":"system","data":{"version":"v0.1","op":"worker.(Worker).StartControllerConnections","data":{"msg":"Setting HCP Boundary cluster address e58fe114-7624-431c-994d-b6670e90b09f.proxy.boundary.hashicorp.cloud:9202 as upstream address"}},"datacontentype":"application/cloudevents","time":"2022-09-19T22:16:38.770232603Z"}
+```
+
+</CodeBlockConfig>
+
+</Tab>
+</Tabs>
+
+The worker will start and begin attempting to connect to the upstream
+Controller.
+
+The worker also outputs its authorization request as the *Worker Auth
+Registration Request* token. This will also be saved to a file,
+`auth_request_token`, defined by the `auth_storage_path` in the worker config.
+
+Note the `Worker Auth Registration Request:` value. This value can also be
+located in the `~/learn-boundary-vault-quickstart/worker1/auth_request_token` directory. **Copy this
+value.**
+
+#### Register the worker with HCP
+
+Workers can be registered using the Boundary CLI or Admin Console Web UI.
+
+<Tabs>
+<Tab heading="Admin UI" group="admin">
+
+Workers can be registered and managed via the Boundary Admin Web UI.
+
+Authenticate to HCP Boundary as the admin user:
+
+- Log in to the [HCP portal](https://portal.cloud.hashicorp.com/).
+
+- From the HCP Portal's **Boundary** page, click **Open Admin UI** - a new page will open.
+
+- Enter the admin username and password you created when you deployed the new instance and click **Authenticate**.
+
+Once logged in, navigate to the **Workers** page.
+
+Notice that only HCP workers are listed.
+
+Click **New**.
+
+![HCP Workers](/img/boundary/workers-new.png)
+
+Scroll down to the bottom of the *New Worker* page and paste the Worker Auth
+Registration Request key you copied earlier.
+
+Click **Register Worker**.
+
+![HCP Workers](/img/boundary/workers-token-register.png)
+
+Click **Done** and notice the new worker on the *Workers* page.
+
+![HCP Workers](/img/boundary/workers-id.png)
+
+</Tab>
+<Tab heading="CLI" group="cli">
+
+Ensure that the `BOUNDARY_ADDR` and `BOUNDARY_AUTH_METHOD_ID` environment
+variables are set.
+
+```shell-session
+$ export BOUNDARY_ADDR="https://c3a7a20a-f663-40f3-a8e3-1b2f69b36254.boundary.hashicorp.cloud"
+```
+
+```shell-session
+$ export BOUNDARY_AUTH_METHOD_ID="ampw_KfLAjMS2CG"
+```
+
+Log into the CLI as the admin user, providing the admin login name and password
+when prompted.
+
+```shell-session
+$ boundary authenticate
+Please enter the login name (it will be hidden):
+Please enter the password (it will be hidden):
+Authentication information:
+  Account ID:      acctpw_VOeNSFX8pQ
+  Auth Method ID:  ampw_ZbB6UXpW3B
+  Expiration Time: Mon, 13 Feb 2023 12:35:32 MST
+  User ID:         u_ogz79sV4sT
+The token was successfully stored in the chosen keyring and is not displayed here.
+```
+
+Next, **export the Worker Auth Request Token value as an environment variable.**
+
+```shell-session
+$ export WORKER_TOKEN=<Worker Auth Registration Request Value>
+```
+
+The token is used to issue a create worker request that will authorize the
+worker to Boundary and make it available.
+
+Now, **create the worker:**
+
+```shell-session
+$ boundary workers create worker-led -worker-generated-auth-token=$WORKER_TOKEN
+
+Worker information:
+  Active Connection Count:   0
+  Created Time:              Tue, 27 Sep 2022 16:20:21 MDT
+  ID:                        w_2yjenAlGvV
+  Type:                      pki
+  Updated Time:              Tue, 27 Sep 2022 16:20:21 MDT
+  Version:                   1
+
+  Scope:
+    ID:                      global
+    Name:                    global
+    Type:                    global
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    add-worker-tags
+    set-worker-tags
+    remove-worker-tags
+```
+
+The worker logs should now show a successful authentication event:
+
+<CodeBlockConfig hideClipboard highlight="1,24">
+
+```shell-session
+$ docker logs boundary-worker-hcp
+
+==> Boundary server configuration:
+
+                               Cgo: disabled
+                        Listener 1: tcp (addr: "127.0.0.1:9202", max_request_duration: "1m30s", purpose: "proxy")
+                         Log Level: info
+                             Mlock: supported: true, enabled: false
+                           Version: Boundary v0.13.0+ent
+                       Version Sha: fb4ed58459d555d480e70ddc20d2639c26ad0f8f
+        Worker Auth Current Key Id: peddling-exploring-playing-tripping-morphine-ammonium-subsiding-observant
+  Worker Auth Registration Request: pdZ5SAAebKa9DmnokkNu5EuBPbKECPFbRtxRpPL8uTVyUHz77jE1tvoHxdPWshGfbXEz8RoQ7hFpDK88nAzqZjysgetKHcskDnAW3WGmLnN42KUb4YbvU5UyXCNkr1yrjCekUrzSuaEQQEyFGp4g7R4h9ZCg2caTzERqCyg8SuPcyzpphHDtErpWKuFF6JVUiCuKaN2E1qTxNjsTuvnYpikD6vpMfsg8D3dHVhqH1vU4dFz64pjYkmr1Vp4b4BiuiBchcpdhegUnMRW2xBPYfUm99AojYsVge8j9Yjm
+          Worker Auth Storage Path: /boundary/worker1
+          Worker Public Proxy Addr: 127.0.0.1:9202
+
+==> Boundary server started! Log data will stream in below:
+
+{"id":"mdMRjeMyL5","source":"https://hashicorp.com/boundary/c0d799c7b255/worker","specversion":"1.0","type":"system","data":{"version":"v0.1","op":"worker.(Worker).StartControllerConnections","data":{"msg":"Setting HCP Boundary cluster address cf8ecb28-11df-468b-a093-8c5807bb5652.proxy.boundary.hashicorp.cloud:9202 as upstream address"}},"datacontentype":"application/cloudevents","time":"2022-09-27T22:13:16.09562876Z"}
+{"id":"YYyh4B2xTl","source":"https://hashicorp.com/boundary/c0d799c7b255/worker","specversion":"1.0","type":"system","data":{"version":"v0.1","op":"worker.(Worker).controllerDialerFunc","data":{"msg":"worker has successfully authenticated"}},"datacontentype":"application/cloudevents","time":"2022-09-27T22:20:24.417419275Z"}
+{"id":"e8piDOzNc1","source":"https://hashicorp.com/boundary/c0d799c7b255/worker","specversion":"1.0","type":"error","data":{"error":"rpc error: code = Unavailable desc = last connection error: connection error: desc = \"transport: Error while dialing node is not yet authorized\"","error_fields":{},"id":"e_sW2xqiJJml","version":"v0.1","op":"worker.(Worker).sendWorkerStatus","info":{"msg":"error making status request to controller"}},"datacontentype":"application/cloudevents","time":"2022-09-27T22:20:24.420569017Z"}
+{"id":"KOpQeo8GTx","source":"https://hashicorp.com/boundary/c0d799c7b255/worker","specversion":"1.0","type":"error","data":{"error":"status error grace period has expired, canceling all sessions on worker","error_fields":{},"id":"e_mmLXDKAWys","version":"v0.1","op":"worker.(Worker).sendWorkerStatus","info":{"grace_period":15000000000,"last_status_time":"2022-09-27 22:13:16.092815366 +0000 UTC m=+0.232876928"}},"datacontentype":"application/cloudevents","time":"2022-09-27T22:20:24.4207781Z"}
+{"id":"EcvpxxQMqO","source":"https://hashicorp.com/boundary/c0d799c7b255/worker","specversion":"1.0","type":"system","data":{"version":"v0.1","op":"worker.(Worker).sendWorkerStatus","data":{"msg":"Upstreams after first status set to: [2e5750e5-59d0-8655-2d57-2bc07642143c.proxy.boundary.hashicorp.cloud:9202 b25ab36d-99b2-68bf-108e-25ac1582288f.proxy.boundary.hashicorp.cloud:9202 d6da51d4-89ab-4521-d8f5-109b45681775.proxy.boundary.hashicorp.cloud:9202]"}},"datacontentype":"application/cloudevents","time":"2022-09-27T22:20:26.995860237Z"}
+{"id":"ZtPAnCcxe6","source":"https://hashicorp.com/boundary/c0d799c7b255/worker","specversion":"1.0","type":"system","data":{"version":"v0.1","op":"worker.(Worker).controllerDialerFunc","data":{"msg":"worker has successfully authenticated"}},"datacontentype":"application/cloudevents","time":"2022-09-27T22:20:27.36120034Z"}
+{"id":"rBrS6MBLSN","source":"https://hashicorp.com/boundary/c0d799c7b255/worker","specversion":"1.0","type":"system","data":{"version":"v0.1","op":"worker.checkHcpConnection","data":{"msg":"validated HCP Boundary upstream"}},"datacontentype":"application/cloudevents","time":"2022-09-27T22:20:27.463751132Z"}
+```
+
+</CodeBlockConfig>
+
+</Tab>
+</Tabs>
+
+### Setup PostgreSQL Northwind demo database
+
+The Postgres database target can either be deployed using AWS or Docker. Choose
+the workflow that best meets your needs.
+
+<Tabs>
+<Tab heading="AWS" group="aws">
+
+While most deployments of Postgres will work with the following steps, this
+tutorial demonstrates configuring Postgres on an Ubuntu instance.
+
+<Note>
+
+ Ubuntu is used in this tutorial for demonstration purposes only.
+You can [follow this
+guide](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EC2_GetStarted.html)
+to create a publicly accessible EC2 instance to use for this tutorial.
+
+</Note>
+
+<Warning>
+
+For the purposes of this tutorial it is important that the security group
+policy for the AWS Ubuntu instance accepts inbound TCP connections on port 5432
+to allow incoming connections to Postgres. Additionally, you will want to allow
+inbound SSH and outbound TCP. To learn more about creating this security group
+and attaching it to your instance, check the AWS EC2 [security group
+documentation](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/authorizing-access-to-an-instance.html).
+The screenshot below shows an example of this security group policy.
+
+</Warning>
+
+![AWS Postgres Security Group](/img/boundary/aws/postgres-aws-security-group.png)
+
+Log in to the Ubuntu instance that will be configured to run Postgres.
+
+For example, using SSH:
+
+```shell-session
+$ ssh ubuntu@198.51.100.1 -i /path/my-key-pair.pem
+The authenticity of host 'ec2-198-51-100-1.compute-1.amazonaws.com (198-51-100-1)' can't be established.
+ECDSA key fingerprint is l4UB/neBad9tvkgJf1QZWxheQmR59WgrgzEimCG6kZY.
+Are you sure you want to continue connecting (yes/no)? yes
+
+ubuntu@ip-172-31-88-177:~
+```
+
+<Note>
+
+ The above example is for demonstrative purposes. You will need to
+supply your Ubuntu instance's username, public IP address, and public key to
+connect. If using AWS EC2, [check this
+article](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/AccessingInstancesLinux.html)
+to learn more about connecting to a Linux instance using SSH.
+
+</Note>
+
+Next, update the package manager and install PostgreSQL.
+
+```shell-session
+$ sudo apt update
+```
+
+```shell-session
+$ sudo apt install postgresql-14
+```
+
+After confirming the installation, execute the following command to modify the
+`postgresql.conf` file to allow Postgres to listen on all ports.
+
+```shell-session
+$ sed -ibak "s/#listen_addresses\ \=\ 'localhost'/listen_addresses = '*'/g" /etc/postgresql/14/main/postgresql.conf
+```
+
+Next, execute the following command to modify the `pg_hba.conf` file to allow
+connections from any address.
+
+```shell-session
+$ sed -ibak 's/127.0.0.1\/32/0.0.0.0\/0/g' /etc/postgresql/14/main/pg_hba.conf
+```
+
+Now start the Postgres service.
+
+```shell-session
+$ sudo systemctl start postgresql.service
+```
+
+Ensure that Postgres is running:
+
+```shell-session
+$ sudo systemctl status postgresql
+● postgresql.service - PostgreSQL RDBMS
+     Loaded: loaded (/lib/systemd/system/postgresql.service; enabled; vendor preset: enabled)
+     Active: active (exited) since Wed 2022-10-19 17:23:47 UTC; 44s ago
+    Process: 6897 ExecStart=/bin/true (code=exited, status=0/SUCCESS)
+   Main PID: 6897 (code=exited, status=0/SUCCESS)
+        CPU: 1ms
+
+Oct 19 17:23:47 ip-172-31-19-96 systemd[1]: Starting PostgreSQL RDBMS...
+Oct 19 17:23:47 ip-172-31-19-96 systemd[1]: Finished PostgreSQL RDBMS.
+```
+
+Next, log in as the `postgres` user. Your prompt will change to `postgres@`.
+
+```shell-session
+$ sudo -i -u postgres
+postgres@ip-172-31-19-96:~$
+```
+
+Download the lab environment repository for this tutorial to the Ubuntu
+instance:
+
+```shell-session
+$ git clone https://github.com/hashicorp/learn-boundary-vault-quickstart
+```
+
+Navigate into the `~/learn-boundary-vault-quickstart` directory and list its
+contents.
+
+```shell-session
+$ cd learn-boundary-vault-quickstart/
+```
+
+```shell-session
+$ ls -R1
+README.md
+analyst.sql.hcl
+boundary-controller-policy.hcl
+dba.sql.hcl
+northwind-database-policy.hcl
+northwind-database.sql
+northwind-roles.sql
+worker.hcl
+```
+
+Create the `northwind` database.
+
+```shell-session
+$ createdb northwind
+```
+
+Seed the database tables using the provided sql configuration.
+
+```shell-session
+$ psql -d northwind -f northwind-database.sql --quiet
+```
+
+Lastly, apply the database roles and permissions.
+
+```shell-session
+$ psql -d northwind -f northwind-roles.sql --quiet
+```
+
+And check that the database tables were written correctly:
+
+```shell-session
+$ psql -d northwind -c '\dt'
+                 List of relations
+ Schema |          Name          | Type  |  Owner
+--------+------------------------+-------+----------
+ public | categories             | table | postgres
+ public | customer_customer_demo | table | postgres
+ public | customer_demographics  | table | postgres
+ public | customers              | table | postgres
+ public | employee_territories   | table | postgres
+ public | employees              | table | postgres
+ public | order_details          | table | postgres
+ public | orders                 | table | postgres
+ public | products               | table | postgres
+ public | region                 | table | postgres
+ public | shippers               | table | postgres
+ public | suppliers              | table | postgres
+ public | territories            | table | postgres
+ public | us_states              | table | postgres
+(14 rows)
+```
+
+This information will be queried at the end of the tutorial after the
+credentials are successfully brokered via Vault.
+
+When finished, log out of the postgres account using `exit`, and then log out of
+the Ubuntu instance using `exit`.
+
+</Tab>
+<Tab heading="Docker " group="docker">
+
+Next, deploy the northwind postgres database container target. This will be the
+target that Boundary brokers credentials for via Vault.
+
+Export the database name and URL as environment variables.
+
+```shell-session
+$ export PG_DB="northwind";export PG_URL="postgres://postgres:secret@localhost:16001/${PG_DB}?sslmode=disable"
+```
+
+Note that the postgres service within the container (running on port `5432`)
+will be exposed on your localhost's port `16001`.
+
+Now launch the postgres container with Docker, passing the postgres password,
+database name, and URL port mapping as options.
+
+```shell-session
+$ docker run -d \
+   -e POSTGRES_PASSWORD=secret \
+   -e POSTGRES_DB="${PG_DB}" \
+   --name ${PG_DB} \
+   -p 16001:5432 \
+   postgres
+```
+
+Check that the container is running.
+
+```shell-session
+$ docker ps --format "table {{.ID}}\t{{.Names}}\t{{.Image}}\t{{.Status}}"
+CONTAINER ID   NAMES       IMAGE      STATUS
+af573c7093cd   northwind   postgres   Up About a minute
+```
+
+Next, seed the database tables.
+
+```shell-session
+$ psql -d $PG_URL -f northwind-database.sql --quiet
+```
+
+Lastly, apply the database roles and permissions.
+
+```shell-session
+$ psql -d $PG_URL -f northwind-roles.sql --quiet
+```
+
+This information will be queried at the end of the tutorial after the
+credentials are successfully brokered via Vault.
+
+</Tab>
+</Tabs>
+
+</Tab>
+</Tabs>
+
+### Create the boundary-controller policy
+
+Boundary needs to lookup, renew, and revoke tokens and leases in order to broker
+credentials properly.
+
+Examine the `boundary-controller-policy.hcl` policy file, which assigns the
+following:
+
+- read `auth/token/lookup-self`
+- update `auth/token/renew-self`
+- update `auth/token/revoke-self`
+- update `sys/leases/renew`
+- update `sys/leases/revoke`
+- update `sys/capabilities-self`
+
+Create the `boundary-controller` policy.
+
+```shell-session
+$ vault policy write boundary-controller boundary-controller-policy.hcl
+Success! Uploaded policy: boundary-controller
+```
+
+### Configure the database secrets engine
+
+Next, the database secrets engine must be enabled and configured with the
+postgresql plugin. Then a database admin (DBA) role and analyst role are created
+to enable credential generation.
+
+1. Enable the database secrets engine.
+
+  ```shell-session
+  $ vault secrets enable database
+  Success! Enabled the database secrets engine at: database/
+  ```
+
+1. Configure Vault with the postgres-database-plugin, connection
+   information and allowed roles of dba and analyst.
+
+  <Tabs>
+  <Tab heading="AWS" group="aws">
+
+  Replace the `107.20.88.136` IP address example in the following command with
+  your Postgres instance's public IP address.
+
+  ```shell-session
+  $ vault write database/config/northwind \
+        plugin_name=postgresql-database-plugin \
+        connection_url="postgresql://{{username}}:{{password}}@107.20.88.136:5432/postgres?sslmode=disable" \
+        allowed_roles=dba,analyst \
+        username="vault" \
+        password="vault-password"
+  ```
+
+  </Tab>
+  <Tab heading="Docker" group="docker">
+
+  <Note>
+
+  If you are using HCP Vault Dedicated, and Postgres in a Docker container, replace `localhost:16001` with the
+  ngrok address. For example `8.tcp.ngrok.io:16118`
+
+  </Note>
+
+  ```shell-session
+  $ vault write database/config/northwind \
+        plugin_name=postgresql-database-plugin \
+        connection_url="postgresql://{{username}}:{{password}}@localhost:16001/postgres?sslmode=disable" \
+        allowed_roles=dba,analyst \
+        username="vault" \
+        password="vault-password"
+  ```
+
+  </Tab>
+  </Tabs>
+
+1. Create the DBA role that creates credentials with `dba.sql.hcl`:
+
+  ```shell-session
+  $ vault write database/roles/dba \
+        db_name=northwind \
+        creation_statements=@dba.sql.hcl \
+        default_ttl=3m \
+        max_ttl=60m
+  ```
+
+  Request the DBA credentials from Vault to confirm.
+
+  ```shell-session
+  $ vault read database/creds/dba
+  Key                Value
+  ---                -----
+  lease_id           database/creds/dba/mLuQEYJGTQbycgIDRe5Uig0G
+  lease_duration     3m
+  lease_renewable    true
+  password           0WDx5u6wSI5GE-RVT6LO
+  username           v-token-dba-nyI68lAMnqyqS2JdBhAp-1624918829
+  ```
+
+1. Create the analyst role that creates credentials with `analyst.sql.hcl`:
+
+  ```shell-session
+  $ vault write database/roles/analyst \
+        db_name=northwind \
+        creation_statements=@analyst.sql.hcl \
+        default_ttl=3m \
+        max_ttl=60m
+  ```
+
+  Request the analyst credentials from Vault to confirm.
+
+  ```shell-session
+  $ vault read database/creds/analyst
+  Key                Value
+  ---                -----
+  lease_id           database/creds/analyst/VBTw3MLVq8UYWXHaNBBpYzax
+  lease_duration     3m
+  lease_renewable    true
+  password           ZYjokywhm6U-0e01mrdA
+  username           v-token-analyst-CFmmvAtFKpkg5PcHP7Ni-1624918869
+  ```
+
+### Create northwind-database policy
+
+A policy needs to be created that grants read access for both the DBA and
+analyst roles.
+
+Examine the `northwind-database-policy.hcl` policy file, which assigns the
+following:
+
+- read `database/creds/analyst`
+- read `database/creds/dba`
+
+```shell-session
+$ vault policy write northwind-database northwind-database-policy.hcl
+Success! Uploaded policy: northwind-database
+```
+
+### Create Vault token for Boundary
+
+Lastly, a [Vault token](/vault/docs/concepts/tokens) is
+needed to access the Boundary credential store that will be configured when
+setting up Boundary.
+
+It's very important that the token is:
+
+- periodic
+- orphan
+- renewable
+
+Boundary may not be able to broker credentials unless the Vault token has these
+properties.
+
+Create the token with the `boundary-controller` and `northwind-database`
+policies.
+
+```shell-session
+$ vault token create \
+  -no-default-policy=true \
+  -policy="boundary-controller" \
+  -policy="northwind-database" \
+  -orphan=true \
+  -period=20m \
+  -renewable=true \
+  -field=token
+```
+
+**Example output:**
+
+<CodeBlockConfig hideClipboard>
+
+```plaintext
+not.a.real.keyCAESIAEzd9SuNo84gRvPRnxmck05fJBC5hcbgbMHBlDvR_EqGh4KHGh2cy5YWFp4WUQ4YUtVRDU0amJoOElzcHVkSDU
+```
+
+</CodeBlockConfig>
+
+Export the Vault Boundary token and a the `CRED_STORE_TOKEN` environment
+variable. This will be used to set up a Vault credential store later on.
+
+```shell-session
+$ export CRED_STORE_TOKEN=not.a.real.keyCAESIAEzd9SuNo84gRvPRnxmck05fJBC5hcbgbMHBlDvR_EqGh4KHGh2cy5YWFp4WUQ4YUtVRDU0amJoOElzcHVkSDU
+```
+
+<Note>
+
+Copy and store the generated token for setting up Boundary later on in case the environment variable
+is lost. In this example the token value is:
+
+`not.a.real.keyCAESIAEzd9SuNo84gRvPR...snip...2cy5YWFp4WUQ4YUtVRDU0amJoOElzcHVkSDU`.
+
+</Note>
+
+## Set up Boundary
+
+Next the Boundary targets, host sets, and credential libraries will be
+configured for the database targets and credentials.
+
+First, ensure that you are logged in to HCP Boundary.
+
+Enter the username and password for your Boundary admin user.
+
+### Configure database targets
+
+Two targets need to be created in Boundary's default project scope, one for the
+DBA and another for the analyst. The default host set will then be assigned to
+both targets.
+
+<Tabs>
+<Tab heading="Admin Console" group="admin">
+
+1. Create a new scope for the DB targets.
+
+   Open the **Orgs** page and click **New**.
+
+   Name the new org `db-org` and click **Save**.
+
+1. Create a new project within `db-org`.
+
+   Open the **Projects** page and click **New**.
+
+   Name the new project `db-project` and click **Save**.
+
+1. Create a new host catalog named `db-catalog`.
+
+   Open the **Host Catalogs** page and click **New**.
+
+   Fill out the following details:
+
+   - Name: `db-catalog`
+   - Type: `static`
+
+   Click **Save**.
+
+1. Create a new host set named `db-host-set`.
+
+   Within the new host catalog page, click on the **Host Sets** tab.
+
+   Click **New** and name the host set `db-host-set`. Click **Save**.
+
+1. Create a new host named `postgres-host`.
+
+   <Tabs>
+   <Tab heading="AWS" group="aws">
+
+   From the Host Set page, click on the **Manage** dropdown and click **Create
+   and Add Host**.
+
+   Fill out the following details:
+
+   - Name: `postgres-host`
+   - Address: `107.20.88.136`
+
+   Replace the `107.20.88.136` IP address example in the following command with
+   your Postgres instance's public IP address.
+
+   </Tab>
+   <Tab heading="Docker" group="docker">
+
+   From the Host Set page, click on the **Manage** dropdown and click **Create
+   and Add Host**.
+
+   Fill out the following details:
+
+   - Name: `postgres-host`
+   - Address: `127.0.0.1`
+
+   </Tab>
+   </Tabs>
+
+   Click **Save**.
+
+1. Create a target for the DBA.
+
+   Navigate to the **Targets** page and click **New**.
+
+   <Tabs>
+   <Tab heading="AWS" group="aws">
+
+   Fill out the form details for the new TCP DBA Database target:
+
+   - Name: `Northwind DBA Database`
+   - Type: `tcp`
+   - Maximum Duration (in seconds): `28800`
+   - Maximum Connections: `-1`
+   - Default Port: `5432`
+
+   </Tab>
+   <Tab heading="Docker" group="docker">
+
+   Fill out the form details for the new TCP DBA Database target:
+
+   - Name: `Northwind DBA Database`
+   - Type: `tcp`
+   - Maximum Duration (in seconds): `28800`
+   - Maximum Connections: `-1`
+   - Default Port: `16001`
+
+   </Tab>
+   </Tabs>
+
+   Click **Save**.
+
+1. Create a target for the analyst.
+
+   Navigate to the **Targets** tab and click **New**.
+
+   <Tabs>
+   <Tab heading="AWS" group="aws">
+
+   Fill out the form details for the new TCP Analyst Database target:
+
+   1. Name: `Northwind Analyst Database`
+   1. Type: `tcp`
+   1. Maximum Duration (in seconds): `28800`
+   1. Maximum Connections: `-1`
+   1. Default Port: `5432`
+
+   </Tab>
+   <Tab heading="Docker" group="docker">
+
+   Fill out the form details for the new TCP Analyst Database target:
+
+   1. Name: `Northwind Analyst Database`
+   1. Type: `tcp`
+   1. Maximum Duration (in seconds): `28800`
+   1. Maximum Connections: `-1`
+   1. Default Port: `16001`
+
+   </Tab>
+   </Tabs>
+
+   Click **Save**.
+
+
+1. Add the default host set to both targets.
+
+   1. Add host set to the DBA target:
+
+      Click on the **Northwind DBA Database** target to view its details. Click on
+      the **Host Sources** tab and select **Add Host Sources**.
+
+      Check the box beside the **db-host-set** Host Set, then click **Add
+      Host Sources**.
+
+      ![Add Host Sources](/img/boundary/vault/hcp-vault-add-host-sources.png)
+
+      The `db-host-set` should now be displayed under the Host Sources tab.
+
+   1. Add host set to the analyst target:
+
+      **Repeat the steps above for adding the `db-host-set` to the Northwind
+      Analysts Database target.**
+
+      When finished, the `db-host-set` should be listed under the Host
+      Sources tab for the Northwind Analyst Database target.
+
+</Tab>
+<Tab heading="CLI" group="cli">
+
+Authenticate to Boundary as the admin user. Ensure you have exported the
+`BOUNDARY_AUTH_METHOD_ID` and `BOUNDARY_ADDR` environment variables.
+
+```shell-session
+$ boundary authenticate
+Please enter the login name (it will be hidden):
+Please enter the password (it will be hidden):
+Authentication information:
+  Account ID:      acctpw_VOeNSFX8pQ
+  Auth Method ID:  ampw_ZbB6UXpW3B
+  Expiration Time: Mon, 13 Feb 2023 12:35:32 MST
+  User ID:         u_ogz79sV4sT
+The token was successfully stored in the chosen keyring and is not displayed here.
+```
+
+1. Create a new scope for the DB targets.
+
+   ```shell-session
+   $ boundary scopes create -name db-org
+
+   Scope information:
+     Created Time:        Tue, 27 Sep 2022 21:33:17 MDT
+     ID:                  o_ufEcQDnNdY
+     Name:                db-org
+     Updated Time:        Tue, 27 Sep 2022 21:33:17 MDT
+     Version:             1
+
+     Scope (parent):
+       ID:                global
+       Name:              global
+       Type:              global
+
+     Authorized Actions:
+       no-op
+       read
+       update
+       delete
+   ```
+
+   Copy the org ID, such as `o_ufEcQDnNdY`.
+
+   Create a new project within `db-org`, passing the copied org ID.
+
+   ```shell-session
+   $ boundary scopes create -scope-id o_R1QFYcO743 -name db-project
+
+   Scope information:
+     Created Time:        Tue, 27 Sep 2022 21:35:43 MDT
+     ID:                  p_EZaXO0OZPX
+     Name:                db-project
+     Updated Time:        Tue, 27 Sep 2022 21:35:43 MDT
+     Version:             1
+
+     Scope (parent):
+       ID:                o_R1QFYcO743
+       Name:              SecOps
+       Parent Scope ID:   global
+       Type:              org
+
+     Authorized Actions:
+       no-op
+       read
+       update
+       delete
+   ```
+
+   Copy the new project ID (such as `p_EZaXO0OZPX`) and export the project ID as
+   an environment variable.
+
+   ```shell-session
+   $ export PROJECT_ID=p_EZaXO0OZPX
+   ```
+
+1. Create a new host catalog and host set.
+
+   ```shell-session
+   $ boundary host-catalogs create static -scope-id=$PROJECT_ID -name=db-catalog
+
+   Host Catalog information:
+     Created Time:        Tue, 27 Sep 2022 21:46:03 MDT
+     ID:                  hcst_Ivg9Qk6NI5
+     Name:                db-catalog
+     Type:                static
+     Updated Time:        Tue, 27 Sep 2022 21:46:03 MDT
+     Version:             1
+
+     Scope:
+       ID:                p_EZaXO0OZPX
+       Name:              db-project
+       Parent Scope ID:   o_R1QFYcO743
+       Type:              project
+
+     Authorized Actions:
+       no-op
+       read
+       update
+       delete
+
+     Authorized Actions on Host Catalog's Collections:
+       host-sets:
+         create
+         list
+       hosts:
+         create
+         list
+   ```
+
+   Copy the host catalog ID (such as `hcst_Ivg9Qk6NI5`) and export it as an
+   environment variable.
+
+   ```shell-session
+   $ export HOST_CATALOG_ID=hcst_Ivg9Qk6NI5
+   ```
+
+   Create a new host set.
+
+   ```shell-session
+   $ boundary host-sets create static -name=db-host-set -host-catalog-id=$HOST_CATALOG_ID
+
+   Host Set information:
+     Created Time:        Tue, 27 Sep 2022 21:48:49 MDT
+     Host Catalog ID:     hcst_Ivg9Qk6NI5
+     ID:                  hsst_W3bAm8XRWe
+     Name:                db-host-set
+     Type:                static
+     Updated Time:        Tue, 27 Sep 2022 21:48:49 MDT
+     Version:             1
+
+     Scope:
+       ID:                p_EZaXO0OZPX
+       Name:              db-project
+       Parent Scope ID:   o_R1QFYcO743
+       Type:              project
+
+     Authorized Actions:
+       no-op
+       read
+       update
+       delete
+       add-hosts
+       set-hosts
+       remove-hosts
+   ```
+
+   Copy the host set ID (such as `hsst_W3bAm8XRWe`) and export it as an
+   environment variable.
+
+   ```shell-session
+   $ export HOST_SET_ID=hsst_W3bAm8XRWe
+   ```
+
+1. Create a new host named `postgres-host`
+
+   ```shell-session
+   $ boundary hosts create static \
+   -name=postgres-host \
+   -description="postgres host" \
+   -address="127.0.0.1" \
+   -host-catalog-id=$HOST_CATALOG_ID
+   ```
+
+    **Example:**
+
+   <CodeBlockConfig>
+
+   ```shell-session
+   $ boundary hosts create static \
+   -name=postgres-host \
+   -description="postgres host" \
+   -address="127.0.0.1" \
+   -host-catalog-id=$HOST_CATALOG_ID
+
+   Host information:
+     Created Time:        Wed, 28 Sep 2022 09:48:20 MDT
+     Description:         postgres host
+     Host Catalog ID:     hcst_Ivg9Qk6NI5
+     ID:                  hst_0hN45yxfod
+     Name:                postgres-host
+     Type:                static
+     Updated Time:        Wed, 28 Sep 2022 09:48:20 MDT
+     Version:             1
+
+     Scope:
+       ID:                p_EZaXO0OZPX
+       Name:              db-project
+       Parent Scope ID:   o_R1QFYcO743
+       Type:              project
+
+     Authorized Actions:
+       no-op
+       read
+       update
+       delete
+
+     Attributes:
+       address:           127.0.0.1
+     ```
+
+     </CodeBlockConfig>
+
+   Copy the new host ID (such as `hst_0hN45yxfod`) and export the project ID
+   as an environment variable.
+
+   ```shell-session
+   $ export POSTGRES_HOST_ID=hst_0hN45yxfod
+   ```
+
+1. Add the `postgres-host` to the host set.
+
+   ```shell-session
+   $ boundary host-sets add-hosts \
+   -id=$HOST_SET_ID \
+   -host=$POSTGRES_HOST_ID
+   ```
+
+1. Create a target for the DBA within the project scope.
+
+   ```shell-session
+   $ boundary targets create tcp \
+     -scope-id $PROJECT_ID \
+     -default-port=16001 \
+     -session-connection-limit=-1 \
+     -name "Northwind DBA Database"
+   ```
+
+   **Example output:**
+
+   <CodeBlockConfig hideClipboard>
+
+   ```plaintext
+    Target information:
+      Created Time:               Tue, 27 Sep 2022 21:38:44 MDT
+      ID:                         ttcp_c6evoRGGlJ
+      Name:                       Northwind DBA Database
+      Session Connection Limit:   -1
+      Session Max Seconds:        28800
+      Type:                       tcp
+      Updated Time:               Tue, 27 Sep 2022 21:38:44 MDT
+      Version:                    1
+
+      Scope:
+        ID:                       p_EZaXO0OZPX
+        Name:                     db-project
+        Parent Scope ID:          o_R1QFYcO743
+        Type:                     project
+
+      Authorized Actions:
+        no-op
+        read
+        update
+        delete
+        add-host-sources
+        set-host-sources
+        remove-host-sources
+        add-credential-sources
+        set-credential-sources
+        remove-credential-sources
+        authorize-session
+
+      Attributes:
+        Default Port:             16001
+   ```
+
+   </CodeBlockConfig>
+
+   Export the DBA target ID as an environment variable. In this example, the
+   target ID is `ttcp_c6evoRGGlJ`.
+
+   ```shell-session
+   $ export DBA_TARGET_ID=ttcp_c6evoRGGlJ
+   ```
+
+1. Create a target for the analyst
+
+   ```shell-session
+   $ boundary targets create tcp \
+     -scope-id $PROJECT_ID \
+     -default-port=16001 \
+     -session-connection-limit=-1 \
+     -name "Northwind Analyst Database"
+   ```
+
+   **Example output:**
+
+   <CodeBlockConfig hideClipboard>
+
+   ```plaintext
+   Target information:
+     Created Time:               Tue, 27 Sep 2022 21:40:56 MDT
+     ID:                         ttcp_1LI5QP0cNi
+     Name:                       Northwind Analyst Database
+     Session Connection Limit:   -1
+     Session Max Seconds:        28800
+     Type:                       tcp
+     Updated Time:               Tue, 27 Sep 2022 21:40:56 MDT
+     Version:                    1
+
+     Scope:
+       ID:                       p_EZaXO0OZPX
+       Name:                     db-project
+       Parent Scope ID:          o_R1QFYcO743
+       Type:                     project
+
+     Authorized Actions:
+       no-op
+       read
+       update
+       delete
+       add-host-sources
+       set-host-sources
+       remove-host-sources
+       add-credential-sources
+       set-credential-sources
+       remove-credential-sources
+       authorize-session
+
+     Attributes:
+       Default Port:             16001
+   ```
+
+   </CodeBlockConfig>
+
+   Export the analyst target ID as an environment variable. In this example, the
+   target ID is `ttcp_1LI5QP0cNi`.
+
+   ```shell-session
+   $ export ANALYST_TARGET_ID=ttcp_1LI5QP0cNi
+   ```
+
+1. Add the host set to the targets.
+
+   Add host set to the DBA target:
+
+   ```shell-session
+   $ boundary targets add-host-sources -host-source=$HOST_SET_ID -id=$DBA_TARGET_ID
+
+   Target information:
+     Created Time:               Tue, 27 Sep 2022 21:38:44 MDT
+     ID:                         ttcp_c6evoRGGlJ
+     Name:                       Northwind DBA Database
+     Session Connection Limit:   -1
+     Session Max Seconds:        28800
+     Type:                       tcp
+     Updated Time:               Tue, 27 Sep 2022 21:50:44 MDT
+     Version:                    2
+
+     Scope:
+       ID:                       p_EZaXO0OZPX
+       Name:                     db-project
+       Parent Scope ID:          o_R1QFYcO743
+       Type:                     project
+
+     Authorized Actions:
+       no-op
+       read
+       update
+       delete
+       add-host-sources
+       set-host-sources
+       remove-host-sources
+       add-credential-sources
+       set-credential-sources
+       remove-credential-sources
+       authorize-session
+
+     Host Sources:
+       Host Catalog ID:          hcst_Ivg9Qk6NI5
+       ID:                       hsst_W3bAm8XRWe
+
+     Attributes:
+       Default Port:             16001
+  ```
+
+  Add host set to the analyst target:
+
+   ```shell-session
+   $ boundary targets add-host-sources -host-source=$HOST_SET_ID -id=$ANALYST_TARGET_ID
+
+   Target information:
+     Created Time:               Tue, 27 Sep 2022 21:40:56 MDT
+     ID:                         ttcp_1LI5QP0cNi
+     Name:                       Northwind Analyst Database
+     Session Connection Limit:   -1
+     Session Max Seconds:        28800
+     Type:                       tcp
+     Updated Time:               Tue, 27 Sep 2022 21:52:07 MDT
+     Version:                    2
+
+     Scope:
+       ID:                       p_EZaXO0OZPX
+       Name:                     db-project
+       Parent Scope ID:          o_R1QFYcO743
+       Type:                     project
+
+     Authorized Actions:
+       no-op
+       read
+       update
+       delete
+       add-host-sources
+       set-host-sources
+       remove-host-sources
+       add-credential-sources
+       set-credential-sources
+       remove-credential-sources
+       authorize-session
+
+     Host Sources:
+       Host Catalog ID:          hcst_Ivg9Qk6NI5
+       ID:                       hsst_W3bAm8XRWe
+
+     Attributes:
+       Default Port:             16001
+  ```
+
+</Tab>
+</Tabs>
+
+### Test connection to the sample database
+
+Verify that Boundary can connect to the database target directly, without having
+a credential brokered from Vault. This is to ensure the target container is
+accessible to Boundary before attempting to broker credentials via Vault.
+
+Authenticate to Boundary as the admin user. Ensure you have exported the
+`BOUNDARY_AUTH_METHOD_ID` and `BOUNDARY_ADDR` environment variables.
+
+```shell-session
+$ boundary authenticate
+Please enter the login name (it will be hidden):
+Please enter the password (it will be hidden):
+Authentication information:
+  Account ID:      acctpw_VOeNSFX8pQ
+  Auth Method ID:  ampw_ZbB6UXpW3B
+  Expiration Time: Mon, 13 Feb 2023 12:35:32 MST
+  User ID:         u_ogz79sV4sT
+The token was successfully stored in the chosen keyring and is not displayed here.
+```
+
+Execute `boundary connect postgres` to verify the connection to the analyst
+target. When prompted, enter the password `secret` to connect.
+
+```shell-session
+$ boundary connect postgres -target-id $ANALYST_TARGET_ID -username postgres
+Password for user postgres:
+psql (13.2)
+Type "help" for help.
+
+postgres=#
+```
+
+<Note>
+
+ If you followed the Admin Console workflow and did not export the
+`ANALYST_TARGET_ID` environment variable, supply it directly instead. In this
+example the analyst target ID is `ttcp_1r9XGCXdwE`.
+
+</Note>
+
+After successfully testing the connection, terminate the session by executing
+`\q`.
+
+~> If unable to connect to the target, revisit the section on [deploying the
+demo database](#setup-postgresql-northwind-demo-database) at the beginning of
+the tutorial, and ensure the instance was configured properly.
+
+## Credential stores
+
+A credential store belongs to a scope and must support the principle of least
+privilege by providing mechanisms to limit the credentials it can access to the
+minimum necessary for the scope it is in.
+
+A credential store:
+
+- is a Boundary resource
+- belongs to one and only one scope
+- owns zero or more credentials
+- owns zero or more credential libraries
+- is deleted when the scope it belongs to is deleted
+
+In this example the credential store is created to manage HashiCorp Vault
+secrets. Configuring a Vault credential store requires:
+
+- A Vault token with appropriate permissions to allow Boundary to access Vault
+  secrets
+- One or more credential libraries and credentials that specify the paths where
+  Boundary should access Vault credentials
+
+### Create vault credential store
+
+When setting up an HCP worker, it's important to create a worker filter for the
+credential store. A worker filter will identify workers that should be used as
+proxies for the new credential store, and ensure these credentials are brokered
+from the private Vault.
+
+Recall the filters defined in the `worker.hcl` file earlier:
+
+<CodeBlockConfig hideClipboard>
+
+```hcl
+worker {
+  auth_storage_path = "./hcp-worker1"
+  tags {
+    type = ["worker", "vault"]
+  }
+}
+```
+
+</CodeBlockConfig>
+
+The `Tags` or `Name` of the worker (`hcp-worker1`) can be used to create a
+worker filter for the target.
+
+The example below adds a worker tag filter that searches for workers with the
+`worker` tag. Boundary will consider any worker with this tag assigned to it an
+acceptable proxy for the new credential store.
+
+Create a credential store resource in the default project scope. Supply the
+token [created when setting up Vault](#create-vault-token-for-boundary).
+
+<Tabs>
+<Tab heading="Admin Console" group="admin">
+<Tabs>
+<Tab heading="Public Vault" group="public">
+
+Navigate to the **Credential Stores** tab and click **New**.
+
+Fill out the following required fields for the *vault* credential type.
+
+- Address: `https://vault-cluster-boundary.vault.11eb3a47-8920-4714-ba99-0242ac11000e.aws.hashicorp.cloud:8200` **Recplace with your own public Vault address**
+- Token: `not.a.real.keyCAESIAEzd9SuNo84gRvPRnxmck05fJBC5hcbgbMHBlDvR_EqGh4KHGh2cy5YWFp4WUQ4YUtVRDU0amJoOElzcHVkSDU` **Replace with the Vault token**
+- Namespace: `admin` **Replace with your Vault namespace**
+
+Ensure that the *Token* field matches the token generated by running `vault
+token create` in the [Create Vault token for
+Boundary](#create-vault-token-for-boundary) section.
+
+Click **Save** when finished.
+
+![New Credential Store](/img/boundary/vault/hcp-public-new-cred-store-details.png)
+
+After the credential store has been created, copy the cred store ID (such as
+`csvlt_ytzGHsfp3r`) from its *Details* page.
+
+</Tab>
+<Tab heading="Private Vault" group="private">
+
+Navigate to the **Credential Stores** tab and click **New**.
+
+Fill out the following required fields for the *vault* credential type.
+
+- Address: `http://127.0.0.1:8200`
+- Worker Filter: `"worker" in "/tags/type"`
+- Token: `s.B2X1XMd0Y78yHoUcEV4zNTQ1` **Replace with the Vault token**
+
+Ensure that the *Token* field matches the token generated by running `vault
+token create` in the [Create Vault token for
+Boundary](#create-vault-token-for-boundary) section.
+
+Click **Save** when finished.
+
+![Admin Console New Credential Store](/img/boundary/vault/hcp-private-new-cred-store-details.png)
+
+</Tab>
+</Tabs>
+</Tab>
+<Tab heading="CLI" group="cli">
+<Tabs>
+<Tab heading="Public Vault" group="public">
+
+```shell-session
+$ boundary credential-stores create vault -scope-id $PROJECT_ID \
+  -vault-address $VAULT_ADDR \
+  -vault-token $CRED_STORE_TOKEN \
+  -vault-namespace $VAULT_NAMESPACE
+```
+
+**Example output:**
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary credential-stores create vault -scope-id $PROJECT_ID \
+  -vault-address $VAULT_ADDR \
+  -vault-token $CRED_STORE_TOKEN \
+  -vault-namespace $VAULT_NAMESPACE
+
+Credential Store information:
+  Created Time:        Thu, 28 Jul 2022 15:08:12 MDT
+  ID:                  csvlt_ytzGHsfp3r
+  Type:                vault
+  Updated Time:        Thu, 28 Jul 2022 15:08:12 MDT
+  Version:             1
+
+  Scope:
+    ID:                p_jd7lspegXk
+    Name:              ssh-project
+    Parent Scope ID:   o_SN2K0DAGpi
+    Type:              project
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+
+  Authorized Actions on Credential Store's Collections:
+    credential-libraries:
+      create
+      list
+
+  Attributes:
+    Address:           https://vault-cluster-boundary.vault.11eb3a47-8920-4714-ba99-0242ac11000e.aws.hashicorp.cloud:8200
+    Token HMAC:        NZJWT74Jyq09gLQfP4RiK5eDWfY7NWXYHoKL4nKQFDY
+```
+
+</CodeBlockConfig>
+
+Export the credential store ID as an environment variable. In this example, the
+target ID is `csvlt_ytzGHsfp3r`.
+
+```shell-session
+$ export CRED_STORE_ID="csvlt_ytzGHsfp3r"
+```
+
+</Tab>
+<Tab heading="Private Vault" group="private">
+
+```shell-session
+$ boundary credential-stores create vault -scope-id $PROJECT_ID \
+  -vault-address "http://127.0.0.1:8200" \
+  -vault-token $CRED_STORE_TOKEN \
+  -worker-filter='"worker" in "/tags/type"'
+```
+
+**Example output:**
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary credential-stores create vault -scope-id $PROJECT_ID \
+  -vault-address "http://127.0.0.1:8200" \
+  -vault-token $CRED_STORE_TOKEN \
+  -worker-filter='"worker" in "/tags/type"'
+
+Credential Store information:
+  Created Time:        Wed, 28 Sep 2022 08:48:11 MDT
+  ID:                  csvlt_Xqa6V6QwfM
+  Type:                vault
+  Updated Time:        Wed, 28 Sep 2022 08:48:11 MDT
+  Version:             1
+
+  Scope:
+    ID:                p_EZaXO0OZPX
+    Name:              db-project
+    Parent Scope ID:   o_R1QFYcO743
+    Type:              project
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+
+  Authorized Actions on Credential Store's Collections:
+    credential-libraries:
+      create
+      list
+
+  Attributes:
+    Address:           http://127.0.0.1:8200
+    Token HMAC:        Sy0A4erjSaWyCVk-b85vQo0YVrCI1LVsC1J8Wpx4S9o
+    Token Status:      current
+    Worker Filter:     "worker" in "/tags/type"
+```
+
+</CodeBlockConfig>
+
+Export the credential store ID as an environment variable. In this example, the
+target ID is `csvlt_Xqa6V6QwfM`.
+
+```shell-session
+$ export CRED_STORE_ID=csvlt_Xqa6V6QwfM
+```
+
+</Tab>
+</Tabs>
+</Tab>
+</Tabs>
+
+<Note>
+
+ If you experience any issues creating the credential store, try
+regenerating the [vault credential store
+token](#create-vault-token-for-boundary) you created earlier. If the token is
+not renewed by Boundary within a timely fashion, it may be rejected when you
+attempt to create the credential store. After creating a new token, retry
+setting up the credential store.
+
+</Note>
+
+## Credential libraries
+
+A credential library provides credentials for sessions. All credentials returned
+by a library must be equivalent from an access control perspective. A
+credential library is responsible for managing the lifecycle of the credentials
+it returns. For dynamic secrets, this includes creation, renewal, and
+revocation. For rotating credentials, this includes check-out, check-in, and
+rotation of secrets. The system retrieves credentials from a library for a
+session and notifies the library when the session has been terminated. A
+credential library belongs to a single credential store.
+
+Vault credential libraries are the Boundary resource that maps to [Vault secrets
+engines](/vault/docs/secrets). A single credential store
+may have multiple types of credential libraries. For example, Vault credential
+store might include separate credential libraries corresponding to each of the
+Vault secret engine backends.
+
+A credential library:
+
+- is a Boundary resource
+- belongs to one and only one credential store
+- can be associated with zero or more targets
+- can contain zero or more credentials
+- is deleted when the credential store it belongs to is deleted
+
+### Create credential libraries
+
+While there is only a single database target, two separate credential libraries
+should be created for the DBA and analyst roles within the credential store.
+
+The DBA credential library is responsible for brokering credentials at the
+`database/creds/dba` vault path, while the analyst credential library brokers
+credentials at `database/creds/analyst`. Using two credential libraries allows
+for separation of privileges, and enables distinct lifecycle management for the
+different database roles.
+
+<Tabs>
+<Tab heading="Admin Console" group="admin">
+
+1. Create a credential library for DBA credentials. Supply the credential store
+   ID copied above.
+
+   Navigate to the **Credential Stores** tab and select the ID of the new
+   credential store (`csvlt_W6MP2X0OfP` in this example).
+
+   Select the **Credential Libraries** tab. Click **New**.
+
+   Fill in the *Name* and *Vault Path* for the DBA credential as follows:
+
+   - Name: `northwind dba`
+   - Vault Path: `database/creds/dba`
+
+   Leave the *HTTP Method* set as *Get*. Click **Save** when finished.
+
+   ![New Credential Library Details](/img/boundary/vault/hcp-new-cred-library-details.png)
+
+   Note the DBA credential library ID. In this example the DBA credential
+   library ID is `clvlt_ahqypiUJnK`.
+
+1. Create a credential library for analyst credentials. From the **Credential
+   Stores** tab, select the **Manage** dropdown and click **New Credential
+   Library**.
+
+   ![New Credential Library](/img/boundary/vault/hcp-manage-new-cred-library.png)
+
+   Fill in the *Name* and *Vault Path* for the analyst credential as follows:
+
+   - Name: `northwind analyst`
+   - Vault Path: `database/creds/analyst`
+
+   Leave the *HTTP Method* set as *Get*. Click **Save** when finished.
+
+   Note the analyst credential library ID. In this example the analyst
+   credential library ID is `clvlt_ejPFjL3Djf`.
+
+   ![Admin Console Credential Libraries](/img/boundary/vault/hcp-cred-libraries.png)
+
+</Tab>
+<Tab heading="CLI" group="cli">
+
+1. Create a credential library for DBA credentials. Supply the credential store
+   ID from above.
+
+   ```shell-session
+   $ boundary credential-libraries create vault-generic \
+       -credential-store-id $CRED_STORE_ID \
+       -vault-path "database/creds/dba" \
+       -name "northwind dba"
+   ```
+
+   **Example output:**
+
+   <CodeBlockConfig hideClipboard>
+
+   ```shell-session
+   $ boundary credential-libraries create vault-generic \
+       -credential-store-id $CRED_STORE_ID \
+       -vault-path "database/creds/dba" \
+       -name "northwind dba"
+
+   Credential Library information:
+     Created Time:          Wed, 28 Sep 2022 08:50:32 MDT
+     Credential Store ID:   csvlt_Xqa6V6QwfM
+     ID:                    clvlt_Ex17uiP7FO
+     Name:                  northwind dba
+     Type:                  vault-generic
+     Updated Time:          Wed, 28 Sep 2022 08:50:32 MDT
+     Version:               1
+
+     Scope:
+       ID:                  p_EZaXO0OZPX
+       Name:                db-project
+       Parent Scope ID:     o_R1QFYcO743
+       Type:                project
+
+     Authorized Actions:
+       no-op
+       read
+       update
+       delete
+
+     Attributes:
+       HTTP Method:         GET
+       Path:                database/creds/dba
+   ```
+
+   </CodeBlockConfig>
+
+   Export the DBA credential library ID. In this example the DBA credential
+   library ID is `clvlt_Ex17uiP7FO`.
+
+   ```shell-session
+   $ export DBA_CRED_LIB_ID=clvlt_Ex17uiP7FO
+   ```
+
+1. Create a credential library for analyst credentials. Supply the credential
+   store ID from above.
+
+   ```shell-session
+   $ boundary credential-libraries create vault-generic \
+       -credential-store-id $CRED_STORE_ID \
+       -vault-path "database/creds/analyst" \
+       -name "northwind analyst"
+   ```
+
+   **Example output:**
+
+   <CodeBlockConfig hideClipboard>
+
+   ```shell-session
+   $ boundary credential-libraries create vault-generic \
+       -credential-store-id csvlt_ytzGHsfp3r \
+       -vault-path "database/creds/analyst" \
+       -name "northwind analyst"
+
+   Credential Library information:
+     Created Time:          Wed, 28 Sep 2022 08:52:14 MDT
+     Credential Store ID:   csvlt_Xqa6V6QwfM
+     ID:                    clvlt_ZdVjVaxkln
+     Name:                  northwind analyst
+     Type:                  vault
+     Updated Time:          Wed, 28 Sep 2022 08:52:14 MDT
+     Version:               1
+
+     Scope:
+       ID:                  p_EZaXO0OZPX
+       Name:                db-project
+       Parent Scope ID:     o_R1QFYcO743
+       Type:                project
+
+     Authorized Actions:
+       no-op
+       read
+       update
+       delete
+
+     Attributes:
+       HTTP Method:         GET
+       Path:                database/creds/analyst
+   ```
+
+   </CodeBlockConfig>
+
+   Export the analyst credential library ID. In this example the analyst
+   credential library ID is `clvlt_ZdVjVaxkln`.
+
+   ```shell-session
+   $ export ANALYST_CRED_LIB_ID=clvlt_ZdVjVaxkln
+   ```
+
+</Tab>
+</Tabs>
+
+## Credentials and targets
+
+A credential is a data structure containing one or more secrets that binds an
+identity to a set of permissions or capabilities. Static credential and dynamic
+credential are two additional base types derived from the credential base type.
+
+A credential:
+
+- may be a Boundary resource
+- belongs to one and only one credential store
+- can be associated with zero or more targets directly if it is a resource
+- can be associated with zero or more libraries directly if it is a resource
+- is deleted when the credential store or credential library it belongs to is
+  deleted
+
+A target can have multiple credentials or credential libraries associated with
+it:
+
+- one for the connection from a user to a worker (ingress)
+- one for the connection from a worker to an endpoint (egress)
+- multiple for application credentials (like username and password)
+
+Application credentials are returned to the user from the controller. Ingress
+and egress credentials are only given to a worker from a controller, and users
+never have direct access to them.
+
+### Add credential libraries to targets
+
+With the credential libraries created, assign them to the appropriate targets.
+You will need the target ID and credential library ID for the respective
+targets.
+
+<Tabs>
+<Tab heading="Admin Console" group="admin">
+
+Navigate to the **Targets** tab.
+
+1. Add a credential library to the DBA target.
+
+   Select the **Northwind DBA Database** target.
+
+   Under the **Brokered Credentials** tab, select **Add Brokered Credentials**.
+
+   ![Add Credential Sources](/img/boundary/vault/hcp-targets-add-brokered-credentials.png)
+
+   Select the checkbox next to the ID of the credential library associated with
+   the `northwind dba` target.
+
+   Click **Add Brokered Credentials** when finished.
+
+   ![Select Credential Source](/img/boundary/vault/hcp-targets-select-cred-source.png)
+
+1. Add a credential library to the analyst target.
+
+   Navigate back to the **Targets** tab and select the **Northwind Analyst
+   Database** target.
+
+   Under the **Brokered Credentials** tab, select **Add Brokered Credentials**.
+
+   Select the checkbox next to the ID of the credential library associated with
+   the `northwind analyst` target.
+
+   Click **Add Brokered Credentials** when finished.
+
+</Tab>
+<Tab heading="CLI" group="cli">
+
+1. Add a credential library to the DBA target. Ensure that you provide the
+   correct target ID and credential library ID associated with the DBA.
+
+   ```shell-session
+   $ boundary targets add-credential-sources \
+     -id=$DBA_TARGET_ID \
+     -application-credential-source=$DBA_CRED_LIB_ID
+   ```
+
+   **Example output:**
+
+   <CodeBlockConfig hideClipboard>
+
+   ```shell-session
+   $ boundary targets add-credential-sources \
+     -id=$DBA_TARGET_ID \
+     -application-credential-source=$DBA_CRED_LIB_ID
+
+   Target information:
+     Created Time:               Tue, 27 Sep 2022 21:38:44 MDT
+     ID:                         ttcp_c6evoRGGlJ
+     Name:                       Northwind DBA Database
+     Session Connection Limit:   -1
+     Session Max Seconds:        28800
+     Type:                       tcp
+     Updated Time:               Wed, 28 Sep 2022 08:54:51 MDT
+     Version:                    3
+
+     Scope:
+       ID:                       p_EZaXO0OZPX
+       Name:                     db-project
+       Parent Scope ID:          o_R1QFYcO743
+       Type:                     project
+
+     Authorized Actions:
+       no-op
+       read
+       update
+       delete
+       add-host-sources
+       set-host-sources
+       remove-host-sources
+       add-credential-sources
+       set-credential-sources
+       remove-credential-sources
+       authorize-session
+
+     Host Sources:
+       Host Catalog ID:          hcst_Ivg9Qk6NI5
+       ID:                       hsst_W3bAm8XRWe
+
+     Brokered Credential Sources:
+       Credential Store ID:      csvlt_Xqa6V6QwfM
+       ID:                       clvlt_Ex17uiP7FO
+
+     Attributes:
+       Default Port:             16001
+   ```
+
+   </CodeBlockConfig>
+
+1. Add a credential library to the analyst target. Ensure that you provide the
+   correct target ID and credential library ID associated with the analyst.
+
+   ```shell-session
+   $ boundary targets add-credential-sources \
+     -id=$ANALYST_TARGET_ID \
+     -application-credential-source=$ANALYST_CRED_LIB_ID
+   ```
+
+   **Example output:**
+
+   <CodeBlockConfig hideClipboard>
+
+   ```shell-session
+   $ boundary targets add-credential-sources \
+     -id=ttcp_1r9XGCXdwE \
+     -application-credential-source=clvlt_5A8xDDWpIm
+
+   Target information:
+     Created Time:               Tue, 27 Sep 2022 21:40:56 MDT
+     ID:                         ttcp_1LI5QP0cNi
+     Name:                       Northwind Analyst Database
+     Session Connection Limit:   -1
+     Session Max Seconds:        28800
+     Type:                       tcp
+     Updated Time:               Wed, 28 Sep 2022 08:55:54 MDT
+     Version:                    3
+
+     Scope:
+       ID:                       p_EZaXO0OZPX
+       Name:                     db-project
+       Parent Scope ID:          o_R1QFYcO743
+       Type:                     project
+
+     Authorized Actions:
+       no-op
+       read
+       update
+       delete
+       add-host-sources
+       set-host-sources
+       remove-host-sources
+       add-credential-sources
+       set-credential-sources
+       remove-credential-sources
+       authorize-session
+
+     Host Sources:
+       Host Catalog ID:          hcst_Ivg9Qk6NI5
+       ID:                       hsst_W3bAm8XRWe
+
+     Brokered Credential Sources:
+       Credential Store ID:      csvlt_Xqa6V6QwfM
+       ID:                       clvlt_ZdVjVaxkln
+
+     Attributes:
+       Default Port:             16001
+   ```
+
+   </CodeBlockConfig>
+
+</Tab>
+</Tabs>
+
+## Broker credentials via Vault
+
+With their respective credential libraries assigned added to the targets,
+sessions can be authorized using credentials brokered by Vault.
+
+### Use Boundary to connect to the northwind demo database
+
+A session can be authorized directly using the `boundary targets
+authorize-session` command.
+
+Authenticate to Boundary as the admin user. Ensure you have exported the
+`BOUNDARY_AUTH_METHOD_ID` and `BOUNDARY_ADDR` environment variables.
+
+```shell-session
+$ boundary authenticate
+Please enter the login name (it will be hidden):
+Please enter the password (it will be hidden):
+Authentication information:
+  Account ID:      acctpw_VOeNSFX8pQ
+  Auth Method ID:  ampw_ZbB6UXpW3B
+  Expiration Time: Mon, 13 Feb 2023 12:35:32 MST
+  User ID:         u_ogz79sV4sT
+The token was successfully stored in the chosen keyring and is not displayed here.
+```
+
+Authorize a session to the analyst target, supplying its target ID.
+
+<Note>
+
+ If you followed the Admin Console workflow and did not export the
+`ANALYST_TARGET_ID` environment variable, copy it from the web UI and supply it
+directly instead. In this example the analyst target ID is `ttcp_1r9XGCXdwE`.
+
+</Note>
+
+```shell-session
+$ boundary targets authorize-session -id $ANALYST_TARGET_ID
+
+Target information:
+  Authorization Token:
+  Gy89BTaB1gYeMyWFH19eVSz5wX8fZwPvHmuK6NNdjHZKKdyTL2Pmz6s4BZzsVDDTBH9U3mFkPHukKqev65bJkvLt8w5xwdUj2dvNuCBZ6hS5Y4x2m9qKBfLaD23DprCcrTY7F37tEZmW3qVhrJpr63uSM4BtWPDoSApTTXumKPHJiFGx15TTmggHTexx5C7gWeDLu4yVwpZoFV28FbPiyrY4H5zukzBruGVCGhaKQ5orYJfbjwQe3YfBkVarpMwC2ABj2DrJCM3cmA9UturejmD7XApAvqrG3tqBmh2FYoC1oWPu88FT73vZNdF8jJB1dtGCekzRKmsvZ9SHnQ9gMeBppAw6ME1kaQrSzKaSBqRuhEF86FJ47pAB8V7metTmXXyhPh6DWhpow7PneXMTsvy93sb94fJeBrCifAgUzSWbEF4VftybUVamEkVVHywnfH1So3qQU9YyvZ7LmUuSYXk3UEfZwpsxt6GFCs14WS4QpJHpeWqArpPCSm9MPmZLf4En3A4hN11PPr9aWch7kRP1VGrmJrZyj7RnaLE1FnKhmbUSyt71vpf9kBUHDWbpYrmS5umYQHM6L9qciZytsJ7PCHb2NZeRrAXPUf315E8gxU38PPtpEN5oa3tTWcFtvwxY7bVeKgpPHdFhrAjaWxqEZY4jMbNb5cty45tXQkLNpNRNv1CBFUW39bnjC1NC2QEKEHz3NFmeHhZ8dzXVVdoJ2YGGDEr7NhKUpnKdKPELK1HDk7HN4nzegDa8FZLw1nS1f
+  Created Time:          Fri, 30 Sep 2022 11:57:54 MDT
+  Endpoint:              tcp://127.0.0.1:16001
+  Host ID:               hst_xGokAphK8a
+  Scope ID:              p_JUo2oXfQ8V
+  Session ID:            s_Sk15Ra9QLk
+  Target ID:             ttcp_WnvTBiDkXT
+  Type:                  tcp
+  User ID:               u_XXupFxmcJn
+
+  Credentials:
+    Credential Store ID:           csvlt_W6MP2X0OfP
+    Credential Source ID:          clvlt_ejPFjL3Djf
+    Credential Source Type:        vault
+    Credential Source Name:        northwind analyst
+    Secret:
+      {
+        "password": "vTyCeBD-ZYEUCBcTU50L",
+        "username": "v-token-analyst-TCqh52mi6basivp9z5LZ-1664560674"
+      }
+```
+
+Notice the `Credentials:` section of the output, which displays the base64 credentials.
+
+If desired, `jq` can be used to parse the output and display the decoded credentials.
+
+```shell-session
+$ boundary targets authorize-session -id $ANALYST_TARGET_ID -format json | jq .
+{
+  "status_code": 200,
+  "item": {
+    "session_id": "s_fCkIVFsRoG",
+    "target_id": "ttcp_WnvTBiDkXT",
+    "scope": {
+      "id": "p_JUo2oXfQ8V",
+      "type": "project",
+      "name": "db-project",
+      "parent_scope_id": "o_gqU7PutJyJ"
+    },
+    "created_time": "2022-09-30T17:58:22.826896Z",
+    "user_id": "u_XXupFxmcJn",
+    "host_set_id": "hsst_SCw3foI32I",
+    "host_id": "hst_xGokAphK8a",
+    "type": "tcp",
+    "authorization_token": "Gy89BU8gNJ1RdmLfn31KzBme8eLHmL1QgC2nu2oGu8bmjpKeGa2gF8zZuyV5taoAkE8KFdPmNYLzoTX5zJHZGs2foX94q8rkcCFFpnCM6RGRP6gYEw8PGbdnTdXN3UzvcPKnyC8UAQW2DnWSZg6VFn3DMjgJNjYZh8A55dZn2CkNhx4ki9zPonMHe3bLrSw5bifpGnwnqDXiWdRg4hf3LRMH69obpHYcbAucxoiMQr3vL48GRQpeEt6VsRavroNCmDo77YGKrxWuDsCA6EwQgZ3UrxsENeuccfMAHUiTLAcfaBatJhypLqWDSkMdxWf1tfVNY5TmAEq9XLxJfNJX8obim8torU3qRuKxenhXi1pKZx6okYH46nNfcY7F7QFK51ZytaKuH1D8tfJqqgzwUHhERhCW1QQvVMw6sJmiTDJHFUZ8JrF9rXMchfSskyjvxg4HsQTTS91s3YgQCKF1iKmpMfbs9hnmRFbP4DzYm8VswPVE638nwd6U7mdD7RmWbvEKoPAoEbtP1fTcw1pzfThHcYmMshPKCdbqg8hXL7bHvLwCKAswHfXhbgTq8UDu2MEbLJE49PkLequV3zrvHphKCx6Vzc1D7a7sxWhPgb2VdQTEKQBCWwXDaszAbsj8Cn3tEQcbnYMbTUPsVqzV1mpz5Vj23ps8SxJ7diRUVAuCjc4s1xAuph9UtSHqWFmK86SqWvVga3GB4GnofCeaNV8Tx4oR8azx66QEG1wt1dMinjAxF9sMnmPNiu2VTmse76hN9",
+    "endpoint": "tcp://127.0.0.1:16001",
+    "credentials": [
+      {
+        "credential_source": {
+          "id": "clvlt_ejPFjL3Djf",
+          "name": "northwind analyst",
+          "credential_store_id": "csvlt_W6MP2X0OfP",
+          "type": "vault"
+        },
+        "secret": {
+          "raw": "eyJwYXNzd29yZCI6IlZJaG01V0hMT0hKS2VGY0stNVVpIiwidXNlcm5hbWUiOiJ2LXRva2VuLWFuYWx5c3QtWW9pa0pVRDA2RUcyRVZvazN4eTgtMTY2NDU2MDcwMiJ9",
+          "decoded": {
+            "password": "VIhm5WHLOHJKeFcK-5Ui",
+            "username": "v-token-analyst-YoikJUD06EG2EVok3xy8-1664560702"
+          }
+        }
+      }
+    ]
+  }
+}
+```
+
+The `decoded_credentials` key displays the credentials without the base64
+encryption.
+
+Next, establish a connection to the analyst target using the `boundary connect
+postgres` command. This will automatically pass the brokered credentials for the
+target and establish a psql session to the northwind database.
+
+```shell-session
+$ boundary connect postgres -target-id ttcp_1r9XGCXdwE -dbname northwind
+
+psql (13.2)
+Type "help" for help.
+
+northwind=>
+```
+
+A psql connection to the northwind database should open. Query the available schema.
+
+```shell-session
+$ \d
+                 List of relations
+ Schema |          Name          | Type  |  Owner
+--------+------------------------+-------+----------
+ public | categories             | table | postgres
+ public | customer_customer_demo | table | postgres
+ public | customer_demographics  | table | postgres
+ public | customers              | table | postgres
+ public | employee_territories   | table | postgres
+ public | employees              | table | postgres
+ public | order_details          | table | postgres
+ public | orders                 | table | postgres
+ public | products               | table | postgres
+ public | region                 | table | postgres
+ public | shippers               | table | postgres
+ public | suppliers              | table | postgres
+ public | territories            | table | postgres
+ public | us_states              | table | postgres
+(14 rows)
+```
+
+When finished, run `\q` to close the connection.
+
+Connections can also be monitored using the Admin Console or the Boundary
+Desktop app in the Sessions tab in the Generated project scope.
+
+![Desktop App
+Sessions](/img/boundary/boundary-vault-quickstart-ui-sessions.png)
+
+### Connect using the Desktop App
+
+Credentials can also be brokered using the Boundary Desktop App.
+
+Launch the Desktop app and authenticate to your HCP Boundary cluster by entering the `BOUNDARY_ADDR` (such as `https://c3a7a20a-f663-40f3-a8e3-1b2f69b36254.boundary.hashicorp.cloud`) and your admin credentials.
+
+![Boundary Desktop Login](/img/boundary/desktop-hcp-creds.png)
+
+Navigate to the **Targets** view, locate the **Northwind Analyst Database**
+target and click **Connect**.
+
+![Desktop App Connect](/img/boundary/vault/desktop-analyst-connect.png)
+
+The credentials can be copied directly from this view. Depending on the target
+type other credentials may be available, such as the certificate and private
+key. The Desktop App's connect interface can be used instead of generating the
+credentials on the command-line.
+
+![Desktop App
+Credentials](/img/boundary/boundary-vault-quickstart-ui-connect-details.png)
+
+The password, username and raw API output can also be displayed within the UI.
+
+![Desktop App
+Credentials](/img/boundary/boundary-vault-quickstart-ui-connect-details-2.png)
+
+## Cleanup and teardown
+
+1. Locate the terminal session used to start the `vault server` command, and
+execute `ctrl+c` to stop Vault.
+
+1. Unset the environment variables used in any active terminal windows for this
+tutorial.
+
+   ```shell-session
+   $ unset VAULT_ADDR; unset VAULT_TOKEN
+   ```
+
+1. Destroy the northwind postgres container created for the tutorial.
+
+   ```shell-session
+   $ docker rm -f northwind
+   ```
+
+   Check your work with a quick `docker ps` and ensure there are no more
+   postgres containers from the tutorial leftover. If unexpected containers
+   still exist, execute `docker rm -f <CONTAINER_ID>` against each to remove
+   them.
+
+1. Cleanup the `db-org` org and associated test resources in your HCP Boundary
+   cluster.
+
+   Open the **Orgs** page and select the `db-org`.
+
+   Navigate to the **Org Settings** page and click the **Manage** dropdown.
+
+   Click **Delete Org** and confirm the deletion.
+
+   ![Delete Org](/img/boundary/vault/delete-org.png)
+
+## Help and reference
+
+- [Boundary command
+  documentation](/boundary/docs/commands)
+
+- [Installation
+  Notes](/boundary/docs/oss/installing/no-gen-resources)
+
+- [Vault Documentation](/vault/docs/)

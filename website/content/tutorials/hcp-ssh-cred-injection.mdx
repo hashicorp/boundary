@@ -1,0 +1,1811 @@
+---
+id: 597ff724-4d52-47dd-9278-93a5aa7cefeb
+name: Inject SSH credentials with HCP Boundary
+short_name: Inject Vault credentials with HCP
+description: Broker and inject SSH application credentials with HCP Boundary.
+read_time: 20
+edition: hcp
+products_used:
+  - product: vault
+  - product: boundary
+    min_version: 0.12.0
+    max_version: 0.13.1
+default_collection_context: boundary/hcp-administration
+---
+
+Boundary includes support for credential management of SSH keys though its
+credential brokering feature. HCP Boundary and Boundary Enterprise introduce
+**credential injection**: the ability to inject SSH credentials into sessions,
+particularly using Vault.
+
+This tutorial will demonstrate SSH credential injection for an SSH target
+previously configured in this tutorial series.
+
+<Warning>
+
+This tutorial requires you to have completed all previous tutorials in this
+series. For a complete example of SSH credential injection, refer to the [HCP
+credential injection with private
+Vault](/boundary/tutorials/credential-management/hcp-private-vault-cred-injection)
+tutorial.
+
+</Warning>
+
+A self-managed HCP worker is required for integrating private Vault clusters
+with HCP Boundary. To learn more about setting up self-managed workers, refer
+back to the [Self-Managed Worker Registration with HCP
+Boundary](/boundary/tutorials/hcp-administration/hcp-manage-workers) tutorial.
+
+## Tutorial overview
+
+1. [Prerequisites](#prerequisites)
+1. [Background](#credential-injection-background)
+1. [Set up Vault](#set-up-vault)
+1. [Set up Boundary](#set-up-boundary)
+1. [Configure an SSH target](#create-an-ssh-target)
+1. [Inject credentials into sessions](#inject-credentials-into-sessions)
+
+## Prerequisites
+
+- This tutorial assumes the learner has completed all previous tutorials in the
+[HCP Boundary Getting Administration](/boundary/tutorials/hcp-administration)
+collection. The learner should have a working HCP Boundary cluster, a
+preconfigured Ubuntu target, and a self-managed worker deployed in the same
+network as the target.
+
+- A [Boundary binary](/boundary/install/) greater than
+  0.12.0 in your `PATH`
+
+- A [Vault binary](/vault/install/) greater than 1.7.0 in
+  your `PATH`
+
+- Installing the [Boundary Desktop
+  App](/boundary/tutorials/hcp-getting-started/hcp-getting-started-desktop-app) provides an optional
+  workflow at the end of this tutorial. The [1.2.0
+  version](https://releases.hashicorp.com/boundary-desktop/1.2.0/) or above is
+  required for Vault support.
+
+This tutorial assumes basic knowledge of using Vault, including running a
+development server and managing policies, roles, and tokens. If you are new to
+using Vault, complete the [Getting Started with
+Vault](/vault/tutorials/getting-started) quick start tutorials before
+integrating Vault with Boundary.
+
+## Credential injection background
+
+Boundary is a distributed system for managing identity-based access to computing
+resources.  Core to Boundary are controllers and workers which, from a resource
+point of view, are referred to as servers. Controllers are responsible for
+authenticating and authorizing users, as well as serving user API requests for
+processes like session initiation. They also assign jobs to workers, such as
+session handling, session recording, and parsing.  Workers are responsible for
+session proxying, as well as other jobs that involve storage.
+
+SSH, also known as Secure Shell, is arguably the de facto tool for remote
+administration, enabling end users and administrators with a simple, powerful
+and secure access method. SSH offers a variety of benefits and configurations,
+such as:
+
+- Encryption
+- Support for multiple keys types and sizes
+- Built in key exchange
+- Ability to create a tunnel and spawn multiple channels
+
+Boundary seamlessly provides authenticated users access to remote machines via
+their SSH client, regardless of the authentication mechanisms implemented by
+their administrators.
+
+Previously Boundary supported **credential brokering**, where Boundary
+controllers check out credentials from Vault and return them back to users and
+clients. In this workflow, Boundary acts as a broker of the credential.
+
+Brokering lacks the ability to hide credentials from clients. For **credential
+injection**, controllers instead return credentials to Boundary workers and
+create a session to a target where the user/client never has access to the
+credential. This workflow is called credential injection because the credential
+is injected into a worker’s session, instead of being passed back to the
+client.
+
+## Set up Vault
+
+<Note>
+
+This tutorial uses a Vault dev server to test credential injection. To access
+Vault, HCP Boundary requires a self-managed worker deployed in the same network.
+
+</Note>
+
+Open a new terminal session and run Vault in development mode.
+
+```shell-session
+$ vault server -dev -dev-root-token-id=groot
+==> Vault server configuration:
+
+             Api Address: http://127.0.0.1:8200
+                     Cgo: disabled
+         Cluster Address: https://127.0.0.1:8201
+              Go Version: go1.16.7
+              Listener 1: tcp (addr: "127.0.0.1:8200", cluster address: "127.0.0.1:8201", max_request_duration: "1m30s", max_request_size: "33554432", tls: "disabled")
+               Log Level: info
+                   Mlock: supported: false, enabled: false
+           Recovery Mode: false
+                 Storage: inmem
+                 Version: Vault v1.8.2
+             Version Sha: aca76f63357041a43b49f3e8c11d67358496959f
+
+==> Vault server started! Log data will stream in below:
+
+2022-05-05T14:01:31.647-0500 [INFO]  proxy environment: http_proxy="" https_proxy="" no_proxy=""
+2022-05-05T14:01:31.648-0500 [WARN]  no `api_addr` value specified in config or in VAULT_API_ADDR; falling back to detection if possible, but this value should be manually set
+2022-05-05T14:01:31.649-0500 [INFO]  core: security barrier not initialized
+2022-05-05T14:01:31.650-0500 [INFO]  core: security barrier initialized: stored=1 shares=1 threshold=1
+2022-05-05T14:01:31.650-0500 [INFO]  core: post-unseal setup starting
+2022-05-05T14:01:31.657-0500 [INFO]  core: loaded wrapping token key
+2022-05-05T14:01:31.657-0500 [INFO]  core: successfully setup plugin catalog: plugin-directory=""
+2022-05-05T14:01:31.657-0500 [INFO]  core: no mounts; adding default mount table
+2022-05-05T14:01:31.658-0500 [INFO]  core: successfully mounted backend: type=cubbyhole path=cubbyhole/
+2022-05-05T14:01:31.659-0500 [INFO]  core: successfully mounted backend: type=system path=sys/
+2022-05-05T14:01:31.659-0500 [INFO]  core: successfully mounted backend: type=identity path=identity/
+2022-05-05T14:01:31.663-0500 [INFO]  core: successfully enabled credential backend: type=token path=token/
+2022-05-05T14:01:31.663-0500 [INFO]  rollback: starting rollback manager
+2022-05-05T14:01:31.663-0500 [INFO]  core: restoring leases
+2022-05-05T14:01:31.664-0500 [INFO]  identity: entities restored
+2022-05-05T14:01:31.664-0500 [INFO]  identity: groups restored
+2022-05-05T14:01:31.666-0500 [INFO]  core: post-unseal setup complete
+2022-05-05T14:01:31.667-0500 [INFO]  expiration: lease restore complete
+2022-05-05T14:01:31.667-0500 [INFO]  core: root token generated
+2022-05-05T14:01:31.667-0500 [INFO]  core: pre-seal teardown starting
+2022-05-05T14:01:31.667-0500 [INFO]  rollback: stopping rollback manager
+2022-05-05T14:01:31.667-0500 [INFO]  core: pre-seal teardown complete
+2022-05-05T14:01:31.668-0500 [INFO]  core.cluster-listener.tcp: starting listener: listener_address=127.0.0.1:8201
+2022-05-05T14:01:31.668-0500 [INFO]  core.cluster-listener: serving cluster requests: cluster_listen_address=127.0.0.1:8201
+2022-05-05T14:01:31.668-0500 [INFO]  core: post-unseal setup starting
+2022-05-05T14:01:31.668-0500 [INFO]  core: loaded wrapping token key
+2022-05-05T14:01:31.668-0500 [INFO]  core: successfully setup plugin catalog: plugin-directory=""
+2022-05-05T14:01:31.668-0500 [INFO]  core: successfully mounted backend: type=system path=sys/
+2022-05-05T14:01:31.668-0500 [INFO]  core: successfully mounted backend: type=identity path=identity/
+2022-05-05T14:01:31.668-0500 [INFO]  core: successfully mounted backend: type=cubbyhole path=cubbyhole/
+2022-05-05T14:01:31.669-0500 [INFO]  core: successfully enabled credential backend: type=token path=token/
+2022-05-05T14:01:31.669-0500 [INFO]  rollback: starting rollback manager
+2022-05-05T14:01:31.669-0500 [INFO]  core: restoring leases
+2022-05-05T14:01:31.670-0500 [INFO]  identity: entities restored
+2022-05-05T14:01:31.670-0500 [INFO]  identity: groups restored
+2022-05-05T14:01:31.670-0500 [INFO]  expiration: lease restore complete
+2022-05-05T14:01:31.670-0500 [INFO]  core: post-unseal setup complete
+2022-05-05T14:01:31.670-0500 [INFO]  core: vault is unsealed
+2022-05-05T14:01:31.672-0500 [INFO]  expiration: revoked lease: lease_id=auth/token/root/h49a4c4a4eef16a18370b98f2883fff349e0917dd5913d74c02bd97d04d8edcbb
+2022-05-05T14:01:31.675-0500 [INFO]  core: successful mount: namespace="" path=secret/ type=kv
+2022-05-05T14:01:31.686-0500 [INFO]  secrets.kv.kv_c1ca00f3: collecting keys to upgrade
+2022-05-05T14:01:31.686-0500 [INFO]  secrets.kv.kv_c1ca00f3: done collecting keys: num_keys=1
+2022-05-05T14:01:31.686-0500 [INFO]  secrets.kv.kv_c1ca00f3: upgrading keys finished
+WARNING! dev mode is enabled! In this mode, Vault runs entirely in-memory
+and starts unsealed with a single unseal key. The root token is already
+authenticated to the CLI, so you can immediately begin using Vault.
+
+You may need to set the following environment variable:
+
+    $ export VAULT_ADDR='http://127.0.0.1:8200'
+
+The unseal key and root token are displayed below in case you want to
+seal/unseal the Vault or re-authenticate.
+
+Unseal Key: Yc27V3wm7l9axQaYQTxeZUlsn4AVOtqOPPUvvQuVOng=
+Root Token: groot
+
+Development mode should NOT be used in production installations!
+```
+
+Leave Vault running in dev mode and **open a new terminal window.**
+
+Next, export the required Vault environment variables for the address and token.
+
+```shell-session
+$ export VAULT_ADDR="http://127.0.0.1:8200"; export VAULT_TOKEN="groot"
+```
+
+### Deploy a self-managed worker
+
+An HCP worker deployed on the same network as Vault is required for integrating
+private Vault clusters with HCP Boundary. To learn more about setting up
+self-managed workers, refer to the [Self-Managed Worker Registration with HCP
+Boundary](/boundary/tutorials/hcp-administration/hcp-manage-workers) tutorial.
+
+#### Download the Boundary Enterprise binary
+
+Download the Boundary Enterprise binary to the `~/boundary/` directory. If you
+already have the Boundary Enterprise binary locally available from a previous
+tutorial, skip to the [Write the worker config](#write-the-worker-config)
+section.
+
+<Note>
+
+If you already deployed a self-managed worker locally in the [Self-managed worker
+registration](/boundary/tutorials/hcp-administration/hcp-manage-workers)
+tutorial, verify it is still running, then skip to the [Define the controller
+policy](#define-the-controller-policy) section.
+
+</Note>
+
+You can manually download the latest binary for your operating system by
+navigating to the [Boundary releases
+page](https://releases.hashicorp.com/boundary). The example below demonstrates
+downloading the binary using the command line.
+
+<Note>
+
+The binary version should match the version of the HCP control plane. Check the
+version of the control plane in the HCP Boundary portal, and download the
+appropriate version using wget. The example below downloads the 0.13.2 version
+of the Boundary Enterprise binary.
+
+</Note>
+
+Below is an example of downloading and unzipping the Boundary Enterprise binary
+on Ubuntu, MacOS, and Windows.
+
+<Tabs>
+<Tab heading="Ubuntu" group="ubuntu">
+
+The following command downloads the Boundary Enterprise binary and unzips it to
+the current directory.
+
+```shell-session
+$ wget -q https://releases.hashicorp.com/boundary/0.13.2+ent/boundary_0.13.2+ent_linux_amd64.zip ;\
+sudo apt-get update && sudo apt-get install unzip ;\
+unzip *.zip
+```
+
+Once downloaded, verify the version of the boundary binary.
+
+```shell-session
+$ ./boundary version
+
+Version information:
+  Build Date:          2023-06-07T16:41:10Z
+  Git Revision:        b1f75f5c731c843f5c987feae310d86e635806c7
+  Metadata:            ent
+  Version Number:      0.13.2+ent
+```
+
+</Tab>
+<Tab heading="MacOS" group="macos">
+
+The following command downloads the Boundary Enterprise binary and unzips it to
+the current directory.
+
+```shell-session
+$ wget -q https://releases.hashicorp.com/boundary/0.13.2+ent/boundary_0.13.2+ent_darwin_amd64.zip ;\
+/usr/bin/unzip *.zip
+```
+
+Once downloaded, verify the version of the boundary binary.
+
+```shell-session
+$ ./boundary version
+
+Version information:
+  Build Date:          2023-06-07T16:41:10Z
+  Git Revision:        b1f75f5c731c843f5c987feae310d86e635806c7
+  Metadata:            ent
+  Version Number:      0.13.2+ent
+```
+
+</Tab>
+<Tab heading="Windows" group="windows">
+
+The following command downloads the Boundary Enterprise binary and unzips it to
+the current directory.
+
+```shell-session
+$ Invoke-WebRequest -OutFile worker.zip https://releases.hashicorp.com/boundary/0.13.2+ent/boundary_0.13.2+ent_windows_amd64.zip ;
+Expand-Archive -Path worker.zip -DestinationPath .
+```
+
+Once downloaded, verify the version of the boundary binary.
+
+```shell-session
+$ .\boundary.exe version
+
+Version information:
+  Build Date:          2023-06-07T16:41:10Z
+  Git Revision:        b1f75f5c731c843f5c987feae310d86e635806c7
+  Metadata:            ent
+  Version Number:      0.13.2+ent
+```
+
+</Tab>
+</Tabs>
+
+**Ensure the Version Number matches the version of the HCP Boundary control
+plane.** They should match in order to get the latest HCP Boundary features.
+
+### Write the worker config
+
+Next, **create a new file** named `vault-worker.hcl` in the `~/boundary/`
+directory.
+
+```shell-session
+$ touch ~/boundary/vault-worker.hcl
+```
+
+Open the file with a text editor, such as Vi.
+
+**Paste the following configuration into the worker config file:**
+
+<Tabs>
+<Tab heading="Ubuntu" group="ubuntu">
+
+<CodeBlockConfig lineNumbers filename="~/boundary/vault-worker.hcl">
+
+```hcl
+disable_mlock = true
+
+hcp_boundary_cluster_id = "<cluster-id>"
+
+listener "tcp" {
+  address = "127.0.0.1:9202"
+  purpose = "proxy"
+}
+
+worker {
+  auth_storage_path = "/home/myusername/boundary/vault-worker"
+  tags {
+    type = ["worker", "vault"]
+  }
+}
+```
+
+</CodeBlockConfig>
+
+**Update the cluster id in the `vault-worker.hcl` file:**
+
+The **`<cluster-id>`** on line 3 can be determined from the UUID in the HCP
+Boundary Cluster URL. For example, if your Cluster URL is:
+
+`https://c3a7a20a-f663-40f3-a8e3-1b2f69b36254.boundary.hashicorp.cloud`,
+then the cluster id is `c3a7a20a-f663-40f3-a8e3-1b2f69b36254`
+
+The `auth_storage_path` should match the full path to the `~/boundary/vault-worker`
+directory, such as `/home/myusername/boundary/vault-worker`.
+
+</Tab>
+<Tab heading="MacOS" group="macos">
+
+<CodeBlockConfig lineNumbers filename="~/boundary/vault-worker.hcl">
+
+```hcl
+disable_mlock = true
+
+hcp_boundary_cluster_id = "<cluster-id>"
+
+listener "tcp" {
+  address = "127.0.0.1:9202"
+  purpose = "proxy"
+}
+
+worker {
+  auth_storage_path = "/Users/myusername/boundary/vault-worker"
+  tags {
+    type = ["worker", "vault"]
+  }
+}
+```
+
+</CodeBlockConfig>
+
+**Update the cluster id in the `vault-worker.hcl` file:**
+
+The **`<cluster-id>`** on line 3 can be determined from the UUID in the HCP
+Boundary Cluster URL. For example, if your Cluster URL is:
+
+`https://c3a7a20a-f663-40f3-a8e3-1b2f69b36254.boundary.hashicorp.cloud`,
+then the cluster id is `c3a7a20a-f663-40f3-a8e3-1b2f69b36254`
+
+The `auth_storage_path` should match the full path to the `~/boundary/vault-worker`
+directory, such as `/Users/myusername/boundary/vault-worker`.
+
+</Tab>
+<Tab heading="Windows" group="windows">
+
+<CodeBlockConfig lineNumbers filename="~/boundary/vault-worker.hcl">
+
+```hcl
+disable_mlock = true
+
+hcp_boundary_cluster_id = "<cluster-id>"
+
+listener "tcp" {
+  address = "127.0.0.1:9202"
+  purpose = "proxy"
+}
+
+worker {
+  auth_storage_path = "C:/Users/myusername/boundary/vault-worker"
+  tags {
+    type = ["worker", "vault"]
+  }
+}
+```
+
+</CodeBlockConfig>
+
+**Update the cluster id in the `vault-worker.hcl` file:**
+
+The **`<cluster-id>`** on line 3 can be determined from the UUID in the HCP
+Boundary Cluster URL. For example, if your Cluster URL is:
+
+`https://c3a7a20a-f663-40f3-a8e3-1b2f69b36254.boundary.hashicorp.cloud`,
+then the cluster id is `c3a7a20a-f663-40f3-a8e3-1b2f69b36254`
+
+The `auth_storage_path` should match the full path to the `~/boundary/vault-worker`
+directory, such as `C:/Users/myusername/boundary/vault-worker`.
+
+</Tab>
+</Tabs>
+
+**Save this file.**
+
+### Start the worker
+
+With the worker config defined, start the worker server. Provide the full path
+to the worker config file (such as `/home/myusername/boundary/vault-worker.hcl`).
+
+<Tabs>
+<Tab heading="Ubuntu" group="ubuntu">
+
+<CodeBlockConfig lineNumbers highlight="1,12">
+
+```shell-session
+$ ./boundary server -config="/home/myusername/boundary/vault-worker.hcl"
+
+==> Boundary server configuration:
+
+                               Cgo: disabled
+                        Listener 1: tcp (addr: "0.0.0.0:9202", max_request_duration: "1m30s", purpose: "proxy")
+                         Log Level: info
+                             Mlock: supported: true, enabled: false
+                           Version: Boundary v0.13.2+ent
+                       Version Sha: b1f75f5c731c843f5c987feae310d86e635806c7
+        Worker Auth Current Key Id: preaching-favored-verbalize-widen-duchess-relish-jurist-sly
+  Worker Auth Registration Request: GzusqckarbczHoLGQ4UA25uSRmUHY1BGSRA6cePp8RWHQFUYSrf3hnDw4ETPswFnMrcxx6tq7BUWD5azGULzPecPicuYGD6qg3qYvaGRgHgKwvh9FLY9Gu891KSj8hAef19JjHog8d7qpo9f9KoiwrhfcV2YxGyVu1P943656iNGCFHWiBR3ofsyTatQ7fzcMV2ciKtuYYGfx4FfiRStnkAzoE98RdR2LeCk2huRkFt7ayeeWVfD7Awm8xaZfFJn4pYRJwu2LRBeNs915warEBaS8XHXSKoi3cRUYif8Qu
+          Worker Auth Storage Path: /home/ubuntu/boundary/vault-worker
+          Worker Public Proxy Addr: 127.0.0.1:9202
+
+==> Boundary server started! Log data will stream in below:
+
+{"id":"Rb7PMMBdZa","source":"https://hashicorp.com/boundary/ip-172-31-84-100/worker","specversion":"1.0","type":"system","data":{"version":"v0.1","op":"worker.(Worker).StartControllerConnections","data":{"msg":"Setting HCP Boundary cluster address e58fe114-7624-431c-994d-b6670e90b09f.proxy.boundary.hashicorp.cloud:9202 as upstream address"}},"datacontentype":"application/cloudevents","time":"2022-09-19T22:16:38.770232603Z"}
+```
+
+</CodeBlockConfig>
+
+</Tab>
+<Tab heading="MacOS" group="macos">
+
+<CodeBlockConfig lineNumbers highlight="1,12">
+
+```shell-session
+$ ./boundary server -config="/Users/myusername/boundary/vault-worker.hcl"
+
+==> Boundary server configuration:
+
+                               Cgo: disabled
+                        Listener 1: tcp (addr: "0.0.0.0:9202", max_request_duration: "1m30s", purpose: "proxy")
+                         Log Level: info
+                             Mlock: supported: true, enabled: false
+                           Version: Boundary v0.13.2+ent
+                       Version Sha: b1f75f5c731c843f5c987feae310d86e635806c7
+        Worker Auth Current Key Id: preaching-favored-verbalize-widen-duchess-relish-jurist-sly
+  Worker Auth Registration Request: GzusqckarbczHoLGQ4UA25uSRmUHY1BGSRA6cePp8RWHQFUYSrf3hnDw4ETPswFnMrcxx6tq7BUWD5azGULzPecPicuYGD6qg3qYvaGRgHgKwvh9FLY9Gu891KSj8hAef19JjHog8d7qpo9f9KoiwrhfcV2YxGyVu1P943656iNGCFHWiBR3ofsyTatQ7fzcMV2ciKtuYYGfx4FfiRStnkAzoE98RdR2LeCk2huRkFt7ayeeWVfD7Awm8xaZfFJn4pYRJwu2LRBeNs915warEBaS8XHXSKoi3cRUYif8Qu
+          Worker Auth Storage Path: /Users/myusername/boundary/vault-worker
+          Worker Public Proxy Addr: 127.0.0.1:9202
+
+==> Boundary server started! Log data will stream in below:
+
+{"id":"Rb7PMMBdZa","source":"https://hashicorp.com/boundary/ip-172-31-84-100/worker","specversion":"1.0","type":"system","data":{"version":"v0.1","op":"worker.(Worker).StartControllerConnections","data":{"msg":"Setting HCP Boundary cluster address e58fe114-7624-431c-994d-b6670e90b09f.proxy.boundary.hashicorp.cloud:9202 as upstream address"}},"datacontentype":"application/cloudevents","time":"2022-09-19T22:16:38.770232603Z"}
+```
+
+</CodeBlockConfig>
+
+</Tab>
+<Tab heading="Windows" group="windows">
+
+<CodeBlockConfig lineNumbers highlight="1,12">
+
+```shell-session
+$ .\boundary.exe server -config="C:\Users\myusername\boundary\vault-worker.hcl"
+
+==> Boundary server configuration:
+
+                               Cgo: disabled
+                        Listener 1: tcp (addr: "0.0.0.0:9202", max_request_duration: "1m30s", purpose: "proxy")
+                         Log Level: info
+                             Mlock: supported: true, enabled: false
+                           Version: Boundary v0.13.2+ent
+                       Version Sha: b1f75f5c731c843f5c987feae310d86e635806c7
+        Worker Auth Current Key Id: preaching-favored-verbalize-widen-duchess-relish-jurist-sly
+  Worker Auth Registration Request: GzusqckarbczHoLGQ4UA25uSRmUHY1BGSRA6cePp8RWHQFUYSrf3hnDw4ETPswFnMrcxx6tq7BUWD5azGULzPecPicuYGD6qg3qYvaGRgHgKwvh9FLY9Gu891KSj8hAef19JjHog8d7qpo9f9KoiwrhfcV2YxGyVu1P943656iNGCFHWiBR3ofsyTatQ7fzcMV2ciKtuYYGfx4FfiRStnkAzoE98RdR2LeCk2huRkFt7ayeeWVfD7Awm8xaZfFJn4pYRJwu2LRBeNs915warEBaS8XHXSKoi3cRUYif8Qu
+          Worker Auth Storage Path: /Users/myusername/boundary/vault-worker
+          Worker Public Proxy Addr: 127.0.0.1:9202
+
+==> Boundary server started! Log data will stream in below:
+
+{"id":"Rb7PMMBdZa","source":"https://hashicorp.com/boundary/ip-172-31-84-100/worker","specversion":"1.0","type":"system","data":{"version":"v0.1","op":"worker.(Worker).StartControllerConnections","data":{"msg":"Setting HCP Boundary cluster address e58fe114-7624-431c-994d-b6670e90b09f.proxy.boundary.hashicorp.cloud:9202 as upstream address"}},"datacontentype":"application/cloudevents","time":"2022-09-19T22:16:38.770232603Z"}
+```
+
+</CodeBlockConfig>
+
+</Tab>
+</Tabs>
+
+The worker will start and begin attempting to connect to the upstream
+Controller.
+
+The worker also outputs its authorization request as the *Worker Auth
+Registration Request* token. This will also be saved to a file,
+`auth_request_token`, defined by the `auth_storage_path` in the worker config.
+
+Note the `Worker Auth Registration Request:` value. This value can also be
+located in the `~/boundary/vault-worker/auth_request_token` directory. **Copy this
+value.**
+
+#### Register the worker with HCP
+
+HCP workers can be registered using the Boundary CLI or Admin Console Web UI.
+
+<Tabs>
+<Tab heading="Admin UI">
+
+Authenticate to HCP Boundary as the admin user.
+
+1. Log in to the [HCP portal](https://portal.cloud.hashicorp.com/).
+
+1. From the HCP Portal's **Boundary** page, click **Open Admin UI** - a new page will open.
+
+1. Enter the admin username and password you created when you deployed the new instance and click **Authenticate**.
+
+Once logged in, navigate to the **Workers** page.
+
+Notice that only HCP workers are listed.
+
+Click **New**.
+
+![HCP Workers](/img/boundary/workers-new.png)
+
+Scroll down to the bottom of the *New Worker* page and paste the Worker Auth
+Registration Request key you copied earlier.
+
+Click **Register Worker**.
+
+![HCP Workers](/img/boundary/workers-token-register.png)
+
+Click **Done** and notice the new worker on the *Workers* page.
+
+![HCP Workers](/img/boundary/workers-id.png)
+
+</Tab>
+<Tab heading="CLI" group="cli">
+
+Ensure that the `BOUNDARY_AUTH_METHOD_ID` and `BOUNDARY_ADDR` variables are set.
+
+```shell-session
+$ export BOUNDARY_AUTH_METHOD_ID=copied-value-from-boundary-ui; export BOUNDARY_ADDR=copied-value-from-hcp-portal
+```
+
+Log into the CLI, providing the admin login name and admin password when
+prompted.
+
+```shell-session
+$ boundary authenticate
+Please enter the login name (it will be hidden):
+Please enter the password (it will be hidden):
+Authentication information:
+  Account ID:      acctpw_VOeNSFX8pQ
+  Auth Method ID:  ampw_ZbB6UXpW3B
+  Expiration Time: Mon, 13 Feb 2023 12:35:32 MST
+  User ID:         u_ogz79sV4sT
+The token was successfully stored in the chosen keyring and is not displayed here.
+```
+
+Next, **export the Worker Auth Request Token value as an environment variable.**
+
+```shell-session
+$ export WORKER_TOKEN=<Worker Auth Registration Request Value>
+```
+
+The token is used to issue a create worker request that will authorize the
+worker to Boundary and make it available.
+
+Now, **create the HCP worker:**
+
+```shell-session
+$ boundary workers create worker-led -worker-generated-auth-token=$WORKER_TOKEN
+
+Worker information:
+  Active Connection Count:   0
+  Created Time:              Thu, 24 Aug 2023 17:32:44
+  MDT
+  ID:                        w_ODgyMSuDrK
+  Type:                      pki
+  Updated Time:              Thu, 24 Aug 2023 17:32:44
+  MDT
+  Version:                   1
+
+  Scope:
+    ID:                      global
+    Name:                    global
+    Type:                    global
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    add-worker-tags
+    set-worker-tags
+    remove-worker-tags
+```
+
+</Tab>
+</Tabs>
+
+### Define the controller policy
+
+The following Vault policy must be defined for the Boundary controller to
+support credential brokering. To learn more about these policies, refer to the
+[HCP Boundary Vault credential brokering
+quickstart](/boundary/tutorials/credential-management/hcp-vault-cred-brokering-quickstart)
+tutorial.
+
+Export the required Vault environment variables to store the Vault address and
+token.
+
+```shell-session
+$ export VAULT_ADDR="http://127.0.0.1:8200"; export VAULT_TOKEN="groot"
+```
+
+Now write the controller policy to Vault.
+
+```shell-session
+$ vault policy write boundary-controller -<<EOF
+path "auth/token/lookup-self" {
+  capabilities = ["read"]
+}
+path "auth/token/renew-self" {
+  capabilities = ["update"]
+}
+path "auth/token/revoke-self" {
+  capabilities = ["update"]
+}
+path "sys/leases/renew" {
+  capabilities = ["update"]
+}
+path "sys/leases/revoke" {
+  capabilities = ["update"]
+}
+path "sys/capabilities-self" {
+  capabilities = ["update"]
+}
+EOF
+```
+
+### Define the KV policy
+
+A policy must also be defined for the key-value secrets that will be brokered
+via Vault.
+
+Create a new `kv-read` policy in Vault.
+
+```shell-session
+$ vault policy write kv-read -<<EOF
+path "secret/data/ubuntu-secret" {
+  capabilities = ["read"]
+}
+EOF
+```
+
+Lastly, create a new Vault KV credential at the `secret/my-secret` path and
+provide the username and private key for the ubuntu target machine you are
+connecting to. If using a cloud provider like AWS, [the private
+key](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/get-set-up-for-amazon-ec2.html#create-a-key-pair)
+was provided or created when the instance was set up at the beginning of the
+[HCP administration
+tutorials](/boundary/tutorials/hcp-administration/hcp-manage-intro#prerequisites).
+
+Ensure the path to the private key is entered after the `@` symbol (for example,
+`private_key=@/Users/myuser/.ssh/ubuntu-private-key.pem`)
+
+```shell-session
+$ vault kv put secret/ubuntu-secret username=ubuntu private_key=@/path/to/private-key
+
+====== Secret Path ======
+secret/data/ubuntu-secret
+
+======= Metadata =======
+Key                Value
+---                -----
+created_time       2023-08-24T23:45:06.923374Z
+custom_metadata    <nil>
+deletion_time      n/a
+destroyed          false
+version            1
+```
+
+### Create a Vault token
+
+Now **create a Vault token**.
+
+```shell-session
+$  vault token create \
+  -no-default-policy=true \
+  -policy="boundary-controller" \
+  -policy="kv-read" \
+  -orphan=true \
+  -period=20m \
+  -renewable=true \
+  -field=token
+```
+
+**Example:**
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ vault token create \
+  -no-default-policy=true \
+  -policy="boundary-controller" \
+  -policy="kv-read" \
+  -orphan=true \
+  -period=20m \
+  -renewable=true \
+  -field=token
+
+not.a.real.keyCAESIIGB4m5Z0ZkimEXi0GKZ5k0twCBkJPI5mcHyPq1rSs_wGh4KHGh2cy5Rb1F4NDVabTVIb1lwVUMzY3ZMdThsVTE
+```
+</CodeBlockConfig>
+
+Copy the token value and export it as the `$CRED_STORE_TOKEN` variable.
+
+<Note>
+
+ If you plan on using the Admin Console UI to connect, save this
+value for creating a credential store later on.
+
+</Note>
+
+```shell-session
+$ export CRED_STORE_TOKEN=not.a.real.keyCAESIIGB4m5Z0ZkimEXi0GKZ5k0twCBkJPI5mcHyPq1rSs_wGh4KHGh2cy5Rb1F4NDVabTVIb1lwVUMzY3ZMdThsVTE
+```
+
+## Set up Boundary
+
+Start by logging in to HCP Boundary within the terminal.
+
+**Export the `BOUNDARY_ADDR` and `BOUNDARY_AUTH_METHOD_ID` environment variables.** These
+values are gathered from the HCP Boundary Admin Console, as demonstrated in the
+[Get Started with HCP
+Boundary](/boundary/tutorials/hcp-getting-started/hcp-getting-started-console)
+tutorials.
+
+```shell-session
+$ export BOUNDARY_AUTH_METHOD_ID=copied-value-from-boundary-ui; export BOUNDARY_ADDR=copied-value-from-hcp-portal
+```
+
+**Log in to the CLI as an admin user**, or a user with privileges to manage
+resources in the global scope. Enter your admin username for `login-name`.
+
+Enter `password` at the `Please enter the password (it will be hidden):` prompt.
+
+```shell-session
+$ boundary authenticate password \
+  -auth-method-id=$BOUNDARY_AUTH_METHOD_ID \
+  -login-name=awesome-admin
+```
+
+You will also need an `ORG_ID` to create the SSH test project within. You may
+create a new global scope for this, or utilize an existing scope used for
+testing.
+
+**If creating a new org for testing, execute the following:**
+
+```shell-session
+$ boundary scopes create -scope-id=global -name=testing-org -description="SSH testing org"
+
+Scope information:
+  Created Time:        Mon, 09 May 2022 12:33:12 CDT
+  Description:         SSH testing org
+  ID:                  o_YcngFcjRcP
+  Name:                testing-org
+  Updated Time:        Mon, 09 May 2022 12:33:12 CDT
+  Version:             1
+
+  Scope (parent):
+    ID:                global
+    Name:              global
+    Type:              global
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+```
+
+Whether you create a new org or not, **be sure to export the org ID.**
+
+```shell-session
+$ export ORG_ID=global-testing-org-id
+```
+
+### Set up a new project
+
+Create a new project scope within Boundary. You will need an org ID to create
+the new project within. To view your existing orgs, execute `boundary scopes
+list -recursive`.
+
+<Note>
+
+ You may use an existing org scope, or create a new org scope for
+the ssh-project. Refer to the [Manage
+Scopes](/boundary/tutorials/hcp-administration/hcp-manage-scopes) tutorial to learn more about
+creating and managing scopes.
+
+</Note>
+
+```shell-session
+$ boundary scopes create -scope-id=$ORG_ID -name=ssh-project -description="SSH test machines"
+
+Scope information:
+  Created Time:        Fri, 06 May 2022 14:13:39 CDT
+  Description:         SSH test machines
+  ID:                  p_TRfAEMzkAP
+  Name:                ssh-project
+  Updated Time:        Fri, 06 May 2022 14:13:39 CDT
+  Version:             1
+
+  Scope (parent):
+    ID:                o_26VOj9vJjN
+    Name:              ssh-org
+    Parent Scope ID:   global
+    Type:              org
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+```
+
+**Copy the ID** from the output and **export it as the `$PROJECT_ID` variable.**
+
+```shell-session
+$ export PROJECT_ID=p_TRfAEMzkAP
+```
+
+### Create a credential store
+
+Next, create a new credential store within Boundary using the new token. The
+`vault` credential store type is used to integrate with Vault, but `static`
+credential stores can also be used with credential injection.
+
+When setting up an HCP worker, it's important to create a worker filter for the
+credential store. A worker filter will identify workers that should be used as
+proxies for the new credential store, and ensure these credentials are brokered
+from the private Vault.
+
+Recall the filters defined in the `vault-worker.hcl` file earlier:
+
+<CodeBlockConfig hideClipboard>
+
+```hcl
+worker {
+  auth_storage_path = "/home/myusername/boundary/vault-worker"
+  tags {
+    type = ["worker", "vault"]
+  }
+}
+```
+
+</CodeBlockConfig>
+
+The `Tags` or `Name` of the worker (`vault-worker`) can be used to create a
+worker filter for the target.
+
+The example below adds a worker tag filter that searches for workers with the
+`vault` tag. Boundary will consider any worker with this tag assigned to it an
+acceptable proxy for the new credential store.
+
+Create a new `vault` credential store with a `worker-filter`.
+
+```shell-session
+$ boundary credential-stores create vault \
+  -scope-id $PROJECT_ID \
+  -vault-address $VAULT_ADDR \
+  -vault-token $CRED_STORE_TOKEN \
+  -worker-filter='"vault" in "/tags/type"'
+```
+
+**Example output:**
+
+<CodeBlockConfig hideClipboard highlight="1-5,9">
+
+```shell-session
+$ boundary credential-stores create vault \
+  -scope-id $PROJECT_ID \
+  -vault-address $VAULT_ADDR \
+  -vault-token $CRED_STORE_TOKEN \
+  -worker-filter='"vault" in "/tags/type"'
+
+Credential Store information:
+  Created Time:        Thu, 24 Aug 2023 17:57:27 MDT
+  ID:                  csvlt_ItzbO5ULBF
+  Type:                vault
+  Updated Time:        Thu, 24 Aug 2023 17:57:27 MDT
+  Version:             1
+
+  Scope:
+    ID:                p_1PgXI0HPSR
+    Name:              ssh-project
+    Parent Scope ID:   o_pwVF9V4hK6
+    Type:              project
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+
+  Authorized Actions on Credential Store's Collections:
+    credential-libraries:
+      create
+      list
+
+  Attributes:
+    Address:           http://127.0.0.1:8200
+    Token HMAC:
+    8xy1fErkPOtQ36OZbyKg4TPOp2XQtQRZXE7V9WZJPk0
+    Token Status:      current
+    Worker Filter:     "vault" in "/tags/type"
+```
+
+</CodeBlockConfig>
+
+Store the returned ID value in the `$CRED_STORE_ID` variable.
+
+```shell-session
+$ export CRED_STORE_ID=csvlt_ItzbO5ULBF
+```
+
+### Create credential library
+
+**Create a new credential library of type `ssh_private_key`** within Boundary
+using the credential store ID and passing the vault-path of `ubuntu-secret`.
+
+```shell-session
+$ boundary credential-libraries create vault-generic \
+  -credential-store-id $CRED_STORE_ID \
+  -vault-path "secret/data/ubuntu-secret" \
+  -name "vault-cred-library" \
+  -credential-type ssh_private_key
+```
+
+**Example output:**
+
+```shell-session
+$ boundary credential-libraries create vault-generic \
+  -credential-store-id $CRED_STORE_ID \
+  -vault-path "secret/data/ubuntu-secret" \
+  -name "vault-cred-library" \
+  -credential-type ssh_private_key
+
+Credential Library information:
+  Created Time:          Thu, 24 Aug 2023 18:00:37 MDT
+  Credential Store ID:   csvlt_ItzbO5ULBF
+  ID:                    clvlt_xzJeddzCw6
+  Name:                  vault-cred-library
+  Type:                  vault-generic
+  Updated Time:          Thu, 24 Aug 2023 18:00:37 MDT
+  Version:               1
+
+  Scope:
+    ID:                  p_1PgXI0HPSR
+    Name:                ssh-project
+    Parent Scope ID:     o_pwVF9V4hK6
+    Type:                project
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+
+  Attributes:
+    HTTP Method:         GET
+    Path:                secret/data/ubuntu-secret
+
+  Credential Type:
+    ssh_private_key
+```
+
+Copy the ID from the output and export it as the `$CRED_LIB_SSH_ID` variable.
+
+```shell-session
+$ export CRED_LIB_ID=clvlt_xzJeddzCw6
+```
+
+### Create an SSH target
+
+Earlier in this series, you created a target of type `tcp`. To inject SSH
+credentials, a target of type `ssh` is required instead.
+
+In the previous tutorials on worker management, you set up a multi-hop session
+to the target by configuring egress and ingress workers.
+
+Ensure that you have the correct worker filter defined when setting up your
+target. If you have modified how Boundary accesses the target, select from the
+following examples to define the target worker config. For example, if you are
+testing injection using a public ip address, you can omit the
+`-egress-worker-filter` entirely.
+
+Select the appropriate tab for your worker setup.
+
+Create a new ssh target, and set the address directly. Replace
+`"ubuntu-public-ip-address"` with the actual address of your Ubuntu host.
+
+<Tabs>
+<Tab heading="Public IP">
+
+```shell-session
+$ boundary targets create ssh -scope-id $PROJECT_ID \
+  -name "ubuntu ssh target" \
+  -address "ubuntu-public-ip-address" \
+  -session-connection-limit -1 \
+  -default-port 22
+```
+
+**Example output:**
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary targets create ssh -scope-id $PROJECT_ID \
+  -name "ubuntu ssh target" \
+  -address 50.16.114.201 \
+  -session-connection-limit -1 \
+  -default-port 22
+
+Target information:
+  Address:                    50.16.114.201
+  Created Time:               Thu, 24 Aug 2023
+  18:17:33 MDT
+  ID:                         tssh_4lKEOzTdi6
+  Name:                       ubuntu ssh target
+  Session Connection Limit:   -1
+  Session Max Seconds:        28800
+  Type:                       ssh
+  Updated Time:               Thu, 24 Aug 2023
+  18:17:33 MDT
+  Version:                    1
+
+  Scope:
+    ID:                       p_1PgXI0HPSR
+    Name:                     ssh-project
+    Parent Scope ID:          o_pwVF9V4hK6
+    Type:                     project
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    add-host-sources
+    set-host-sources
+    remove-host-sources
+    add-credential-sources
+    set-credential-sources
+    remove-credential-sources
+    authorize-session
+
+  Attributes:
+    Default Port:             22
+    Enable Session Recording: false
+```
+
+</CodeBlockConfig>
+
+</Tab>
+<Tab heading="Egress only">
+
+```shell-session
+$ boundary targets create ssh -scope-id $PROJECT_ID \
+  -name "ubuntu ssh target" \
+  -address "ubuntu-public-ip-address" \
+  -session-connection-limit -1 \
+  -default-port 22 \
+  -egress-worker-filter '"worker1" in "/tags/type"'
+```
+
+**Example output:**
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary targets create ssh -scope-id $PROJECT_ID \
+  -name "ubuntu ssh target" \
+  -address 50.16.114.201 \
+  -session-connection-limit -1 \
+  -default-port 22 \
+  -egress-worker-filter '"worker1" in "/tags/type"'
+
+Target information:
+  Address:                    50.16.114.201
+  Created Time:               Fri, 25 Aug 2023
+  11:14:20 MDT
+  Egress Worker Filter:       "worker1" in
+  "/tags/type"
+  ID:                         tssh_7364hf69el
+  Name:                       ubuntu ssh target
+  Session Connection Limit:   -1
+  Session Max Seconds:        28800
+  Type:                       ssh
+  Updated Time:               Fri, 25 Aug 2023
+  11:14:20 MDT
+  Version:                    1
+
+  Scope:
+    ID:                       p_1PgXI0HPSR
+    Name:                     ssh-project
+    Parent Scope ID:          o_pwVF9V4hK6
+    Type:                     project
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    add-host-sources
+    set-host-sources
+    remove-host-sources
+    add-credential-sources
+    set-credential-sources
+    remove-credential-sources
+    authorize-session
+
+  Attributes:
+    Default Port:             22
+    Enable Session Recording: false
+```
+
+</CodeBlockConfig>
+
+</Tab>
+<Tab heading="Multi-hop">
+
+```shell-session
+$ boundary targets create ssh -scope-id $PROJECT_ID \
+  -name "ubuntu ssh target" \
+  -address "ubuntu-public-ip-address" \
+  -session-connection-limit -1 \
+  -default-port 22 \
+  -egress-worker-filter '"downstream" in "/tags/type"' \
+  -ingress-worker-filter '"upstream" in "/tags/type"'
+```
+
+**Example output:**
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary targets create ssh -scope-id $PROJECT_ID \
+  -name "ubuntu ssh target" \
+  -address 50.16.114.201 \
+  -session-connection-limit -1 \
+  -default-port 22 \
+  -egress-worker-filter '"downstream" in "/tags/type"' \
+  -ingress-worker-filter '"upstream" in "/tags/type"'
+
+Target information:
+  Address:                    50.16.114.201
+  Created Time:               Fri, 25 Aug 2023
+  11:18:03 MDT
+  Egress Worker Filter:       "downstream" in
+  "/tags/type"
+  ID:                         tssh_PSIW91pCbf
+  Ingress Worker Filter:      "upstream" in
+  "/tags/type"
+  Name:                       ubuntu ssh target
+  Session Connection Limit:   -1
+  Session Max Seconds:        28800
+  Type:                       ssh
+  Updated Time:               Fri, 25 Aug 2023
+  11:18:03 MDT
+  Version:                    1
+
+  Scope:
+    ID:                       p_1PgXI0HPSR
+    Name:                     ssh-project
+    Parent Scope ID:          o_pwVF9V4hK6
+    Type:                     project
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    add-host-sources
+    set-host-sources
+    remove-host-sources
+    add-credential-sources
+    set-credential-sources
+    remove-credential-sources
+    authorize-session
+
+  Attributes:
+    Default Port:             22
+    Enable Session Recording: false
+```
+
+</CodeBlockConfig>
+
+</Tab>
+</Tabs>
+
+**Copy the ID** from the output and **export it as the `$SSH_TARGET_ID`
+variable.**
+
+```shell-session
+$ export SSH_TARGET_ID=tssh_4lKEOzTdi6
+```
+
+Associate the SSH target with the SSH credential library for credential
+injection.
+
+```shell-session
+$ boundary targets add-credential-sources -id $SSH_TARGET_ID -injected-application-credential-source $CRED_LIB_ID
+
+Target information:
+  Address:                    50.16.114.201
+  Created Time:               Thu, 24 Aug 2023
+  18:17:33 MDT
+  ID:                         tssh_4lKEOzTdi6
+  Name:                       ubuntu ssh target
+  Session Connection Limit:   -1
+  Session Max Seconds:        28800
+  Type:                       ssh
+  Updated Time:               Thu, 24 Aug 2023
+  18:18:53 MDT
+  Version:                    2
+
+  Scope:
+    ID:                       p_1PgXI0HPSR
+    Name:                     ssh-project
+    Parent Scope ID:          o_pwVF9V4hK6
+    Type:                     project
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    add-host-sources
+    set-host-sources
+    remove-host-sources
+    add-credential-sources
+    set-credential-sources
+    remove-credential-sources
+    authorize-session
+
+  Host Sources:
+    Host Catalog ID:          hcst_51IX0mMocD
+    ID:                       hsst_xhgJzsoEO8
+
+  Injected Application Credential Sources:
+    Credential Store ID:      csvlt_EsUGNcboLT
+    ID:                       clvlt_i5ZCg7LH4Q
+
+  Attributes:
+    Default Port:             2222
+    Enable Session Recording: false
+```
+
+## Inject credentials into sessions
+
+Now you are ready to inject credentials directly into the shell session. You can
+accomplish this using the `boundary connect` command, which has a helper called
+`ssh`.
+
+Enter `yes` when prompted to establish the connection.
+
+```shell-session
+$ boundary connect ssh -target-id $SSH_TARGET_ID
+The authenticity of host '[127.0.0.1]:58677 ([127.0.0.1]:58677)' can't be established.
+ED25519 key fingerprint is SHA256:WDPtMwr4whbVp5VUJwvzee7x9O25XhqMyApnz1mmNfg.
+This host key is known by the following other names/addresses:
+    ~/.ssh/known_hosts:9: hst_7jeh2z1mkk
+Are you sure you want to continue connecting (yes/no/[fingerprint])? yes
+Warning: Permanently added '[127.0.0.1]:58677' (ED25519) to the list of known hosts.
+
+Welcome to Ubuntu 22.04.2 LTS (GNU/Linux 5.19.0-1025-aws x86_64)
+
+ * Documentation:  https://help.ubuntu.com
+ * Management:     https://landscape.canonical.com
+ * Support:        https://ubuntu.com/advantage
+
+ubuntu@ip-172-32-88-177:~
+```
+
+Notice that you do not have to pass the target credentials to the `boundary
+connect` command. The credentials are injected by Boundary directly from Vault,
+and never returned to the client.
+
+<Note title="Troubleshooting">
+
+  If the `boundary connect ssh` command fails with the following error message, then the Vault credential store token may have expired.
+ 
+  Expand the accordion below to continue troubleshooting.
+
+</Note>
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ Error from controller when performing authorize-session action against given target
+
+Error information:
+  Kind:                FailedPrecondition
+  Message:             No egress workers can handle this session, as they have all been filtered
+  out.
+  Status:              400
+  context:             Error from controller when performing authorize-session action against
+  given target
+```
+
+</CodeBlockConfig>
+
+<Accordion heading="Troubleshoot authorize-session error" collapse>
+
+The error information states that `No egress workers can handle this session, as they have all been filtered`.
+
+This implies that Boundary does not understand which worker should handle the session, and cannot route traffic through the worker it selected.
+
+In this example the error could be due to either of the following errors:
+
+1. Boundary is unable to log into Vault using the provided credential store token.
+1. The ubuntu target's worker filters are unset, or incorrect.
+
+First, troubleshoot the Vault credential store by generating a new Vault token.
+
+```shell-session
+$ export CRED_STORE_TOKEN=$(vault token create \
+  -no-default-policy=true \
+  -policy="boundary-controller" \
+  -policy="kv-read" \
+  -orphan=true \
+  -period=20m \
+  -renewable=true \
+  -field=token) && echo $CRED_STORE_TOKEN
+```
+
+Copy this token (such as `not.a.real.keyCAESIAbmG5WIi0qILYm87ucbJSGa0rv879aJAchvFR6wG0pbGh4KHGh2cy5xY1BzTGpHUW91ZEx4ZGFTcFVDTkdPMTY`), and then update Boundary's Vault cred store with the new token value.
+
+<Tabs>
+<Tab heading="Admin UI" group="ui">
+
+1. Log in to the Boundary Admin UI and select the `testing-org` scope. Select the `ssh-project`, then click **Credential Stores**.
+
+1. Select the **Vault** credential store (such as `csvlt_EsUGNcboLT`). Scroll down to the bottom of the credential store's Details page, and click **Edit Form**.
+
+1. Paste the newly generated vault token into the **Token** field, then click **Save** at the bottom of the page.
+
+</Tab>
+<Tab heading="CLI" group="cli">
+
+Update the vault credential store's token, and ensure that the worker filter has been correctly defined.
+
+```shell-session
+$ boundary credential-stores update vault \
+  -id $CRED_STORE_ID \
+  -vault-token $CRED_STORE_TOKEN \
+  -worker-filter='"vault" in "/tags/type"'
+```
+
+</Tab>
+</Tabs>
+
+With the updated token in place, attempt to connect to the SSH target again.
+
+```shell-session
+$ boundary connect ssh -target-id $SSH_TARGET_ID
+```
+
+If you are still unable to establish a connection, check that the filter has been defined correctly on the SSH target.
+
+<Tabs>
+<Tab heading="Public IP">
+
+<Tabs>
+<Tab heading="Admin UI" group="ui">
+
+1. Navigate to **Targets** using the sidebar and select the **ubuntu ssh target**.
+
+1. Scroll down to the bottom of the target Details page. Ensure that the **Egress worker filter** toggle is off, because any worker can be used to connect to the public instance.
+
+1. If this is enabled, click **Edit Form** and disable the Egress worker filter. When finished, click **Save**.
+
+</Tab>
+<Tab heading="CLI" group="cli">
+
+Read the details of the ubuntu target:
+
+<CodeBlockConfig highlight="1,5">
+
+```shell-session
+$ boundary targets read -id $SSH_TARGET_ID
+
+Target information:
+  Address:                    50.16.114.201
+  Created Time:               Thu, 24 Aug 2023
+  18:17:33 MDT
+  ID:                         tssh_4lKEOzTdi6
+  Name:                       ubuntu ssh target
+  Session Connection Limit:   -1
+  Session Max Seconds:        28800
+  Type:                       ssh
+  Updated Time:               Thu, 24 Aug 2023
+  18:18:53 MDT
+  Version:                    2
+
+  Scope:
+    ID:                       p_1PgXI0HPSR
+    Name:                     ssh-project
+    Parent Scope ID:          o_pwVF9V4hK6
+    Type:                     project
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    add-host-sources
+    set-host-sources
+    remove-host-sources
+    add-credential-sources
+    set-credential-sources
+    remove-credential-sources
+    authorize-session
+
+  Host Sources:
+    Host Catalog ID:          hcst_51IX0mMocD
+    ID:                       hsst_xhgJzsoEO8
+
+  Injected Application Credential Sources:
+    Credential Store ID:      csvlt_EsUGNcboLT
+    ID:                       clvlt_i5ZCg7LH4Q
+
+  Attributes:
+    Default Port:             2222
+    Enable Session Recording: false
+```
+
+</CodeBlockConfig>
+
+Check that there is no *Egress worker filter* set on the target.
+
+If a worker filter has been defined, update the target to disable the filter:
+
+```shell-session
+$ boundary targets update ssh \
+  -id $SSH_TARGET_ID \
+  -egress-worker-filter ''
+```
+
+</Tab>
+</Tabs>
+
+</Tab>
+<Tab heading="Egress only">
+
+<Tabs>
+<Tab heading="Admin UI" group="ui">
+
+1. Navigate to **Targets** using the sidebar and select the **ubuntu ssh target**.
+
+1. Scroll down to the bottom of the target Details page. Ensure that the **Egress worker filter** toggle is on, and the **Filter** contains the following expression:
+
+   <CodeBlockConfig hideClipboard>
+   
+   ```plaintext
+   "worker1" in "/tags/type"
+   ```
+
+   </CodeBlockConfig>
+
+1. If this is missing, click **Edit Form** and enable the Egress worker filter, and paste in the above filter expression. When finished, click **Save**.
+
+</Tab>
+<Tab heading="CLI" group="cli">
+
+Read the details of the ubuntu target:
+
+<CodeBlockConfig highlight="1,6">
+
+```shell-session
+$ boundary targets read -id $SSH_TARGET_ID
+
+Target information:
+  Address:                    50.16.114.201
+  Created Time:               Fri, 25 Aug 2023
+  11:14:20 MDT
+  Egress Worker Filter:       "worker1" in
+  "/tags/type"
+  ID:                         tssh_7364hf69el
+  Name:                       ubuntu ssh target
+  Session Connection Limit:   -1
+  Session Max Seconds:        28800
+  Type:                       ssh
+  Updated Time:               Fri, 25 Aug 2023
+  11:14:20 MDT
+  Version:                    1
+
+  Scope:
+    ID:                       p_1PgXI0HPSR
+    Name:                     ssh-project
+    Parent Scope ID:          o_pwVF9V4hK6
+    Type:                     project
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    add-host-sources
+    set-host-sources
+    remove-host-sources
+    add-credential-sources
+    set-credential-sources
+    remove-credential-sources
+    authorize-session
+
+  Host Sources:
+    Host Catalog ID:          hcst_51IX0mMocD
+    ID:                       hsst_xhgJzsoEO8
+
+  Injected Application Credential Sources:
+    Credential Store ID:      csvlt_EsUGNcboLT
+    ID:                       clvlt_i5ZCg7LH4Q
+
+  Attributes:
+    Default Port:             2222
+    Enable Session Recording: false
+```
+
+</CodeBlockConfig>
+
+Check that the *Egress worker filter* on line 5 of the output matches the following:
+
+```plaintext
+"worker1" in "/tags/type"
+```
+
+If this is missing or incorrect, update the target with the correct filter:
+
+```shell-session
+$ boundary targets update ssh \
+  -id $SSH_TARGET_ID \
+  -egress-worker-filter '"worker1" in "/tags/type"'
+```
+
+</Tab>
+</Tabs>
+
+</Tab>
+<Tab heading="Multi-hop">
+
+<Tabs>
+<Tab heading="Admin UI" group="ui">
+
+1. Navigate to **Targets** using the sidebar and select the **ubuntu ssh target**.
+
+1. Scroll down to the bottom of the target Details page. Ensure that the **Egress worker filter** toggle is on, and the **Filter** contains the following expression:
+
+   ```plaintext
+   "worker1" in "/tags/type"
+   ```
+
+1. If this is missing, click **Edit Form** and enable the Egress worker filter, and paste in the above filter expression. When finished, click **Save**.
+
+</Tab>
+<Tab heading="CLI" group="cli">
+
+Read the details of the ubuntu target:
+
+<CodeBlockConfig lineNumbers highlight="1,6,7">
+
+```shell-session
+$ boundary targets read -id $SSH_TARGET_ID
+
+Target information:
+  Address:                    50.16.114.201
+  Created Time:               Fri, 25 Aug 2023
+  11:18:03 MDT
+  Egress Worker Filter:       "downstream" in
+  "/tags/type"
+  ID:                         tssh_PSIW91pCbf
+  Ingress Worker Filter:      "upstream" in
+  "/tags/type"
+  Name:                       ubuntu ssh target
+  Session Connection Limit:   -1
+  Session Max Seconds:        28800
+  Type:                       ssh
+  Updated Time:               Fri, 25 Aug 2023
+  11:18:03 MDT
+  Version:                    1
+
+  Scope:
+    ID:                       p_1PgXI0HPSR
+    Name:                     ssh-project
+    Parent Scope ID:          o_pwVF9V4hK6
+    Type:                     project
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    add-host-sources
+    set-host-sources
+    remove-host-sources
+    add-credential-sources
+    set-credential-sources
+    remove-credential-sources
+    authorize-session
+
+  Attributes:
+    Default Port:             22
+    Enable Session Recording: false
+
+  Host Sources:
+    Host Catalog ID:          hcst_51IX0mMocD
+    ID:                       hsst_xhgJzsoEO8
+
+  Injected Application Credential Sources:
+    Credential Store ID:      csvlt_EsUGNcboLT
+    ID:                       clvlt_i5ZCg7LH4Q
+
+  Attributes:
+    Default Port:             2222
+    Enable Session Recording: false
+```
+
+</CodeBlockConfig>
+
+Check that the *Egress worker filter* in the output matches the following:
+
+```plaintext
+"downstream" in "/tags/type"
+```
+
+Check that the *Ingress worker filter* in the output matches the following:
+
+```plaintext
+"upstream" in "/tags/type"
+```
+
+If either of these filters are missing or incorrect, update the target with the correct filters:
+
+```shell-session
+$ boundary targets update ssh \
+  -id $SSH_TARGET_ID \
+  -egress-worker-filter '"downstream" in "/tags/type"' \
+  -ingress-worker-filter '"upstream" in "/tags/type"'
+```
+
+</Tab>
+</Tabs>
+
+</Tab>
+</Tabs>
+
+After verifying the correct filter value, attempt to establish a session.
+
+```shell-session
+$ boundary connect ssh -target-id $SSH_TARGET_ID
+```
+
+</Accordion>
+
+When finished, the user can close the connection to the server using `exit`, or
+the session can be canceled directly from Boundary in a new authenticated
+terminal window.
+
+### Inject credentials with the Desktop App
+
+To log into Boundary using the Desktop App, the `BOUNDARY_ADDR` (Boundary
+cluster address) and `BOUNDARY_AUTH_METHOD_ID` (user Auth Method ID) values must be
+gathered from the HCP Boundary Admin Console, as demonstrated in the [HCP
+Boundary Getting Started](/boundary/tutorials/hcp-getting-started/hcp-getting-started-console)
+tutorial.
+
+**Open the Boundary desktop app.**
+
+**Enter the Boundary cluster URL** (for example,
+`https://ffee961b-5fd8-4e68-ba1d-2bbb487b576e.boundary.hashicorp.cloud`) and
+**click Submit.**
+
+**Authenticate using your HCP Boundary user credentials.**
+
+![Boundary Desktop Login](/img/boundary/desktop-hcp-creds.png)
+
+Under the Targets page, notice the target details for the `ubuntu ssh target`.
+
+Click **Connect** to initiate a session.
+
+The *Successfully Connected* page will display the target ID (Target Connection
+details) and Proxy URL. Copy the Proxy URL and port.
+
+To start a session, open your terminal or SSH client. A session can be
+started using SSH and the Proxy URL from the Boundary Desktop app.
+
+Start an SSH connection on `127.0.0.1` and provide the proxy port using the
+`-p` option. Enter `yes` when prompted to establish a connection.
+
+```shell-session
+$ ssh 127.0.0.1 -p 51968
+
+The authenticity of host '[127.0.0.1]:53639 ([127.0.0.1]:53639)' can't be established.
+ED25519 key fingerprint is SHA256:FkCPEt0izeFdyNkD1iRDa8IygT0UoHMxC2+NmneAyT8.
+This key is not known by any other names
+Are you sure you want to continue connecting (yes/no/[fingerprint])? yes
+Warning: Permanently added '[127.0.0.1]:53639' (ED25519) to the list of known hosts.
+
+Welcome to Ubuntu 22.04.2 LTS (GNU/Linux 5.19.0-1025-aws x86_64)
+
+ * Documentation:  https://help.ubuntu.com
+ * Management:     https://landscape.canonical.com
+ * Support:        https://ubuntu.com/advantage
+
+ubuntu@ip-172-32-88-177:~
+```
+
+When finished, the user can close the connection to the server by entering
+`exit`, or the session can be canceled directly from the Boundary desktop app
+under the *Sessions* view.
+
+## Cleanup and teardown
+
+1. Locate the terminal session used to execute the `vault dev` server command, and
+execute `ctrl+c` to stop Vault.
+
+1. Locate the terminal session used to deploy the HCP worker server command, and
+execute `ctrl+c` to stop the Boundary worker.
+
+1. Unset the environment variables used in any active terminal windows for this
+tutorial.
+
+   ```shell-session
+   $ unset VAULT_ADDR; unset VAULT_TOKEN
+   ```
+
+1. Clean up the Ubuntu target in Amazon EC2. Refer to the instructions for
+   [terminating your Ubuntu
+   instance](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/terminating-instances.html).
+
+## Next steps
+
+This tutorial demonstrated the steps to set up credential injection using HCP
+Boundary and an SSH target previously configured in this tutorial collection.
+You set up Vault, configured a self-managed worker to access Vault, and
+configured an SSH target within Boundary. Then you associated a vault credential
+store with the SSH target, and tested credential injection.
+
+To learn more about credential injection, check out the [SSH credential
+injection with private
+Vault](/boundary/tutorials/credential-management/hcp-private-vault-cred-injection)
+tutorial.
+
+## Help and reference
+
+- [HCP Boundary Documentation](/hcp/docs/boundary)
+- [HCP Boundary Getting
+  Started](/boundary/tutorials/hcp-getting-started/hcp-getting-started-intro)
+- [Boundary command documentation](/boundary/docs/commands)
+- [Vault Documentation](/vault/docs/)

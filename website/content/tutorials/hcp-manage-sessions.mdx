@@ -1,0 +1,615 @@
+---
+id: 24a3effd-5ba2-4566-90a2-47ca8f62056f
+name: Manage sessions with HCP Boundary
+short_name: Manage sessions with HCP
+description: Sessions are Boundary resources created when connecting to a target.
+read_time: 8
+edition: hcp
+products_used:
+  - product: boundary
+    min_version: 0.12.0
+    max_version: 0.13.1
+default_collection_context: boundary/hcp-administration
+---
+
+[Sessions](/boundary/docs/concepts/domain-model/sessions)
+are Boundary resources created when connecting to a
+[target](/boundary/docs/concepts/domain-model/targets). A
+target allows Boundary users to define an endpoint with a protocol and default
+port to establish a session. Unless specified with a `-host-id` flag when
+establishing a session, Boundary will choose one
+[host](/boundary/docs/concepts/domain-model/hosts) from the
+target's [host
+sets](/boundary/docs/concepts/domain-model/host-sets) to
+connect to at random.
+
+This tutorial demonstrates the basics of how to start a session, view the
+session details and cancel a session in Boundary.
+
+<Note>
+
+All resource IDs in this tutorial are illustrations only. IDs are uniquely
+generated for every resource upon creation. Be sure to use the resource IDs that are
+generated for your environment.
+
+</Note>
+
+## Prerequisites
+
+This tutorial assumes that you successfully completed the [Manage
+Scopes](/boundary/tutorials/hcp-administration/hcp-manage-scopes) and [Manage
+Targets](/boundary/tutorials/hcp-administration/hcp-manage-targets) tutorials.
+
+## Retrieve resource IDs
+
+To connect to a target, you need the target ID and host ID to use the `-host-id`
+flag. If you are not sure about those IDs, follow the steps in this section;
+otherwise, skip to the [Start a session](#start-a-session) section.
+
+<Tabs>
+<Tab heading="CLI" group="cli">
+
+Log back into the CLI as the admin user. Enter `password` at the `Please enter
+the password (it will be hidden):` prompt.
+
+```shell-session
+$ boundary authenticate password \
+  -auth-method-id=$BOUNDARY_AUTH_METHOD_ID \
+  -login-name=admin
+```
+
+1. List the existing targets under the `QA_Tests` project.
+
+   ```shell-session
+   $ boundary targets list -scope-id=$PROJECT_ID
+
+   Target information:
+     ID:                    ttcp_34yV5O9cwt
+       Version:             4
+       Type:                tcp
+       Name:                ubuntu-target
+       Description:         Ubuntu target
+       Authorized Actions:
+         no-op
+         read
+         update
+         delete
+         add-host-sources
+         set-host-sources
+         remove-host-sources
+         add-credential-sources
+         set-credential-sources
+         remove-credential-sources
+         authorize-session
+   ```
+
+   Now, you have the target ID (e.g. `ttcp_34yV5O9cwt`).
+
+   If you haven't already, copy the ID and save it as an environment variable,
+   `TARGET_ID`.
+
+   **Example:**
+
+   ```shell-session
+   $ export TARGET_ID=ttcp_34yV5O9cwt
+   ```
+
+1. List the host IDs that belong to the host catalog.
+
+   ```shell-session
+   $ boundary hosts list -host-catalog-id=$HOST_CATALOG_ID
+
+   Host information:
+     ID:                    hst_FrdNPd9Zm9
+       Version:             1
+       Type:                static
+       Name:                ubuntu
+       Description:         Ubuntu host
+       Authorized Actions:
+         no-op
+         read
+         update
+         delete
+   ```
+
+
+1. Copy the generated host ID and create an environment variable called HOST_ID using copied value.
+   In the example output, the ID is `hst_FrdNPd9Zm9`.
+
+   ```shell-session
+   $ export HOST_ID=<ubuntu_host_id>
+   ```
+
+</Tab>
+<Tab heading="Admin Console" group="admin">
+
+1. Select **Projects > QA_Tests**
+   ![Project](/img/boundary/boundary-ui-project-3.png)
+
+1. Select **Targets** and copy the ID of the **ubuntu** target.
+   ![Project](/img/boundary/boundary-ui-target-6.png)
+
+</Tab>
+</Tabs>
+
+
+Now, you have the target ID and host ID.
+
+## Start a session
+
+You are now ready to connect to the target and establish a session.
+
+1. Retrieve the public IP address of your Ubuntu instance and export the address as
+  an environment variable. Replace `public-ip` with the actual IP address.
+
+   ```shell-session
+   $ export UBUNTU_IP=public-ip
+   ```
+
+1. Export an environment variable for your Ubuntu host's username and path to the
+private key. Replace the username and path to the key file with valid values for your host.
+
+   ```shell-session
+   $ export UBUNTU_USER=actualusername UBUNTU_KEY=private_key.pem
+   ```
+
+1. Connect to the `ubuntu-target` using Boundary.
+
+   ```shell-session
+   $ boundary connect ssh -target-id=$TARGET_ID -host-id=$HOST_ID -- -l $UBUNTU_USER -i $UBUNTU_KEY
+   The authenticity of host 'ec2-198-52-100-1.compute-1.amazonaws.com (198-51-100-1)' can't be established.
+   ECDSA key fingerprint is l4UB/neBad9tvkgJf1QZWxheQmR59WgrgzEimCG6kZY.
+   Are you sure you want to continue connecting (yes/no)? yes
+
+   Welcome to Ubuntu 22.04.2 LTS (GNU/Linux 5.19.0-1025-aws x86_64)
+
+    * Documentation:  https://help.ubuntu.com
+    * Management:     https://landscape.canonical.com
+    * Support:        https://ubuntu.com/advantage
+
+   ubuntu@ip-172-32-88-177:~
+   ```
+
+For more information regarding different ways to connect to a target behind
+Boundary see [Connect to
+Target](/boundary/docs/getting-started/connect-to-target)
+and the [Advanced Session Establishment](#advanced-session-establishment)
+section.
+
+## View sessions
+
+<Tabs>
+<Tab heading="CLI" group="cli">
+
+<Note>
+
+ Leave this session open, and open a new terminal window to proceed.
+Note that the exported environment variables will no longer be available in the
+new shell session.
+
+</Note>
+
+Log back into the CLI as the admin user. Enter `password` at the `Please enter
+the password (it will be hidden):` prompt.
+
+```shell-session
+$ boundary authenticate password \
+  -auth-method-id=$BOUNDARY_AUTH_METHOD_ID \
+  -login-name=admin
+```
+
+List the available scopes.
+
+<CodeBlockConfig highlight="1,37-46">
+
+```shell-session
+$ boundary scopes list -recursive
+
+Scope information:
+  ID:                    o_1234567890
+    Scope ID:            global
+    Version:             1
+    Name:                Generated org scope
+    Description:         Provides an initial org scope in Boundary
+    Authorized Actions:
+      no-op
+      read
+      update
+      delete
+
+  ID:                    o_u54jrD6ydN
+    Scope ID:            global
+    Version:             1
+    Name:                IT_Support
+    Description:         IT Support Team
+    Authorized Actions:
+      no-op
+      read
+      update
+      delete
+
+  ID:                    p_1234567890
+    Scope ID:            o_1234567890
+    Version:             1
+    Name:                Generated project scope
+    Description:         Provides an initial project scope in Boundary
+    Authorized Actions:
+      no-op
+      read
+      update
+      delete
+
+  ID:                    p_oMgeFL2hP6
+    Scope ID:            o_u54jrD6ydN
+    Version:             1
+    Name:                QA_Tests
+    Description:         Manage QA machines
+    Authorized Actions:
+      no-op
+      read
+      update
+      delete
+```
+
+</CodeBlockConfig>
+
+Copy the `QA_Tests` project scope ID, such as `p_oMgeFL2hP6`.
+
+View all sessions which Boundary has under the QA_Tests project by listing them.
+
+```shell-session
+$ boundary sessions list -scope-id=p_oMgeFL2hP6
+
+Session information:
+  ID:                    s_7JwF1yMY2g
+    Status:              active
+    Created Time:        Thu, 24 Aug 2023 16:35:40 MDT
+    Expiration Time:     Fri, 25 Aug 2023 00:35:40 MDT
+    Updated Time:        Thu, 24 Aug 2023 16:35:41 MDT
+    User ID:             u_r1jtIlLsjK
+    Target ID:           ttcp_TV3E2bW91i
+    Authorized Actions:
+      no-op
+      read
+      read:self
+      cancel
+      cancel:self
+```
+
+We can get a more detailed view of a specific session by reading it.
+
+```shell-session
+$ boundary sessions read -id=s_7JwF1yMY2g
+
+Session information:
+  Auth Token ID:       at_wdKAieLzv8
+  Created Time:        Thu, 24 Aug 2023 16:35:40 MDT
+  Endpoint:            tcp://3.88.69.227:22
+  Expiration Time:     Fri, 25 Aug 2023 00:35:40 MDT
+  Host ID:             hst_7Jeh2Z1mKk
+  Host Set ID:         hsst_qzAKjQKXgq
+  ID:                  s_7JwF1yMY2g
+  Status:              active
+  Target ID:           ttcp_TV3E2bW91i
+  Type:                tcp
+  Updated Time:        Thu, 24 Aug 2023 16:35:41 MDT
+  User ID:             u_r1jtIlLsjK
+  Version:             2
+
+  Scope:
+    ID:                p_ZWc13Om0sf
+    Name:              QA_Tests
+    Parent Scope ID:   o_GHxE1QbtE5
+    Type:              project
+
+  Authorized Actions:
+    no-op
+    read
+    read:self
+    cancel
+    cancel:self
+
+  States:
+    Start Time:        Thu, 24 Aug 2023 16:35:41 MDT
+    Status:            active
+
+    End Time:          Thu, 24 Aug 2023 16:35:41 MDT
+    Start Time:        Thu, 24 Aug 2023 16:35:40 MDT
+    Status:            pending
+
+
+  Connections:
+    Bytes Down:        7129
+    Bytes Up:          4461
+    Client Address:    172.17.0.1:37856
+    Endpoint Address:  3.88.69.227:22
+```
+
+</Tab>
+<Tab heading="Admin Console" group="admin">
+
+
+1. Select **Projects > QA_Tests**
+   ![Project](/img/boundary/boundary-ui-project-3.png)
+
+1. Select **Sessions** to view the list of sessions.
+   ![Project](/img/boundary/boundary-ui-sessions-0.png)
+
+</Tab>
+</Tabs>
+
+
+## Cancel a session
+
+If unexpected activity is detected, you can force-cancel the session.
+
+<Tabs>
+<Tab heading="CLI" group="cli">
+
+
+Cancel the session using the session ID copied in the previous step.
+
+<CodeBlockConfig highlight="1,11,31-33">
+
+```shell-session
+$ boundary sessions cancel -id=s_7JwF1yMY2g
+
+Session information:
+  Auth Token ID:       at_wdKAieLzv8
+  Created Time:        Thu, 24 Aug 2023 16:35:40 MDT
+  Endpoint:            tcp://3.88.69.227:22
+  Expiration Time:     Fri, 25 Aug 2023 00:35:40 MDT
+  Host ID:             hst_7Jeh2Z1mKk
+  Host Set ID:         hsst_qzAKjQKXgq
+  ID:                  s_7JwF1yMY2g
+  Status:              canceling
+  Target ID:           ttcp_TV3E2bW91i
+  Type:                tcp
+  Updated Time:        Thu, 24 Aug 2023 16:38:05 MDT
+  User ID:             u_r1jtIlLsjK
+  Version:             3
+
+  Scope:
+    ID:                p_ZWc13Om0sf
+    Name:              QA_Tests
+    Parent Scope ID:   o_GHxE1QbtE5
+    Type:              project
+
+  Authorized Actions:
+    no-op
+    read
+    read:self
+    cancel
+    cancel:self
+
+  States:
+    Start Time:        Thu, 24 Aug 2023 16:38:05 MDT
+    Status:            canceling
+
+    End Time:          Thu, 24 Aug 2023 16:38:05 MDT
+    Start Time:        Thu, 24 Aug 2023 16:35:41 MDT
+    Status:            active
+
+    End Time:          Thu, 24 Aug 2023 16:35:41 MDT
+    Start Time:        Thu, 24 Aug 2023 16:35:40 MDT
+    Status:            pending
+```
+
+</CodeBlockConfig>
+
+The status is now `canceling`. When it completes, the session status will change
+to `terminated`.
+
+Wait a moment, and then read the session details.
+
+<CodeBlockConfig highlight="1,11,32-34">
+
+```shell-session
+$ boundary sessions read -id=s_7JwF1yMY2g
+
+Session information:
+  Auth Token ID:        at_wdKAieLzv8
+  Created Time:         Thu, 24 Aug 2023 16:35:40 MDT
+  Endpoint:             tcp://3.88.69.227:22
+  Expiration Time:      Fri, 25 Aug 2023 00:35:40 MDT
+  Host ID:              hst_7Jeh2Z1mKk
+  Host Set ID:          hsst_qzAKjQKXgq
+  ID:                   s_7JwF1yMY2g
+  Status:               terminated
+  Target ID:            ttcp_TV3E2bW91i
+  Termination Reason:   canceled
+  Type:                 tcp
+  Updated Time:         Thu, 24 Aug 2023 16:38:06 MDT
+  User ID:              u_r1jtIlLsjK
+  Version:              5
+
+  Scope:
+    ID:                 p_ZWc13Om0sf
+    Name:               QA_Tests
+    Parent Scope ID:    o_GHxE1QbtE5
+    Type:               project
+
+  Authorized Actions:
+    no-op
+    read
+    read:self
+    cancel
+    cancel:self
+
+  States:
+    Start Time:         Thu, 24 Aug 2023 16:38:06 MDT
+    Status:             terminated
+
+    End Time:           Thu, 24 Aug 2023 16:38:06 MDT
+    Start Time:         Thu, 24 Aug 2023 16:38:05
+    MDT
+    Status:             canceling
+
+  Connections:
+    Bytes Down:         12585
+    Bytes Up:           8609
+    Client Address:     172.17.0.1:37856
+    Closed Reason:      unknown
+    Endpoint Address:   3.88.69.227:22
+```
+
+</CodeBlockConfig>
+
+</Tab>
+<Tab heading="Admin Console" group="admin">
+
+
+Click on the **Cancel** button to cancel a particular session.
+
+![Session](/img/boundary/boundary-ui-sessions-3.png)
+
+The session status becomes `canceling` and then `terminated`.
+
+</Tab>
+</Tabs>
+
+
+## Advanced session establishment
+
+In addition to the `boundary connect` command, you can create a session to a
+target and connect to that session in separate steps. This is accomplished using
+the `boundary targets authorize-session` command, which generates an
+authorization token that a user can use to start a session via `boundary connect
+-authz-token` at their own convenience.
+
+```shell-session
+$ boundary targets authorize-session -id=<target_id> -host-id=<host_id>
+```
+
+For this example, gather the target ID and host ID as demonstrated in the previous tutorials:
+
+List all targets.
+
+```shell-session
+$ boundary targets list -recursive
+```
+
+Copy the `tests` target ID.
+
+List all host catalogs.
+
+```shell-session
+$ boundary host-catalogs list -recursive
+```
+
+You created the `DevOps` host catalog during the [Manage Targets with HCP Boundary](/boundary/tutorials/hcp-administration/hcp-manage-targets) tutorial.
+
+List and review the available hosts created previously.
+
+```shell-session
+$ boundary hosts list -host-catalog-id=$HOST_CATALOG_ID
+```
+
+Generate an authorization token for the ubuntu host.
+
+**Example:**
+
+```shell-session
+$ boundary targets authorize-session -id=$TARGET_ID -host-id=$HOST_ID
+
+Target information:
+  Authorization Token:
+  KrPM2b5ikACAhdm7RBMHC2rsrunbSGwsK8BDVLYkraQ9D5KZgS8gTfNGjbfzxnpdRfQt5V8ErX1hrvNZn4DLLTHXXjXhLMuFvwKjUi8xEfgNkvqrYwrXbYB3gR49cu7hvgfKCNTbkrT4per5XYdbKaJhRmUZ7vkpgzrGpC8cCgZK5cfNRAwZ4yaP6HrgpoVsWZm96r43Qpzztq3qBDQsssXueqqmckSpEEsKce5ev6CPXhAT4PwTxZ8ALJfHArqxE4p5WrDCs93RTzGn6zzbGPuCQ5TuSwYKqSqk7y8ZR85vWrSJuqDdyf35fyNdk5miY9AnSaghh1sppoia1NijDXuTXb8RMbpJcy5rqxQgvbnxDRSN9b5Ca2N12rzAChcvSCB2koTqtF8kY24vhvjoVf8hbWHc3TGvevUEASEGEuGXzxh2UF7P9WrMonage3xiEwpnJhXvdu8vCsyXG2jds3ygFwFqhGdeac8gU6CEN5Ud6YM78UhqAXeXmAdkcq7J9ySneHowHrqQH71rhPXH7E9r7ah8Da3yvhvYG6Lz36it321bEFknkTPHPoegUCc8QHjtfJCA6M3m7NEc7JBksZnC5LskVapbY5QgHdGcfXu5Gt8mFfU7xUojzZW42v8DmLzxXY6ZTjWvfpfLfCYc7T7aq1Zvezy1CvXFUvTZBG3qTYfb4VXPHHacVNWczKvUSbBTn33d2a5bPmktWKhbWbRyjbgUyCS8KQ1REkQNcaZTMUdLaR8vSVBnHfhd5Tpw4YuKdp5Rn2zLVsHoHTMPRppQTVfECk6hzbzDTMmKB2tXjFGn2FkdH6cfCNwwqViDroKY6T86p7q9Vak5etWqhMmNuNm3cE79xZKUdKgoPd6raVQ7SP8hcsmahFMkoKpfihCj1K65iysVqD4AJtqHUSUcC3ajnYPu4NEXW2txuTYLzdBEYSuMiwvmxYmRSwUYA7np6PuB5pjL8fn56ygSUL2uT6u54ygUeQhcSEEVTtF8VAigKuWTfFGveA6XR4SwjRVZkZ2QviWD516KA1eGosKUc7AEhvrrst4Bar9sBngzv5YcTyZfuh2mZ4hHinqfnnu32eNjwjf2k4EHfTePtR5ajzh15wyy2PruiKLADPZ63WvG2txjuGwD1ZxRm2FzcNwcH2GJuZrQGKruf
+  Created Time:          Thu, 24 Aug 2023 16:40:36 MDT
+  Endpoint:              tcp://3.88.69.227:22
+  Host ID:               hst_7Jeh2Z1mKk
+  Scope ID:              p_ZWc13Om0sf
+  Session ID:            s_RilblR6Arw
+  Target ID:             ttcp_TV3E2bW91i
+  Type:                  tcp
+  User ID:               u_r1jtIlLsjK
+```
+
+Copy the generated `Authorization Token` value.
+
+<Note>
+
+ In the absence of `-host-id` flag, Boundary will pick a host from
+the host set. If there is more than one host in the host set attached to the
+target, one is selected automatically.
+
+</Note>
+
+```shell-session
+$ boundary connect -authz-token=<authorization_token>
+```
+
+**Example:**
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary connect ssh -authz-token="SunS4TVHcdxa8JfJUFWvSwbQfB9Njy6NTnL5ExZYm1k5SpFkVS6RwZfnHuKQnDhDveBzqibAsTb4Wj3jwwBQ2AoruqgRDjXfg4zoU8Y7dkBZCxEzzXt7ii5nLH8HNa7vBxUH95bLR5TkpMMFSVvn9oH4QekDyeiLfNZSBxMFLkhSWhJTrJQpqii6CjLogxQaAJMf5bmtCJBf4YRT3N2FqKdACSM73zHFgb1a5VhMJwbha33yyZ2QzjcWFo3NCv2kaiRjiYL6qjaeaW7hRcA3jm2Cf5tSwdogP4mni4phhKQhRbh4BFNwDNWjWdTDa12ZbxwYcryAgMBPnQgiJQ5gZXL2LKDqPqG6ULx5bsJMtEvPASADSKFKV4esEZMaSoccbtBq63fmvpRPCh8w8QF4iK5jmgrp5j9dYopYRNY1GP5wuKMUnE4SWr52XpiTQqZ35fkYWSTURaxgJ9SqUAikZWXb4ToBUsFG1Yig4pMo7XRvcKwH4Z71QGZus6tYxUzWS2zs2NjXZPFeACpMLfBYEKMsUZ7tbmME6ByqFfdTvtzwkSsXnqtL3nr32fw3TpcG6SqgoaxhfoZXUEsBvsLHNDP7tJLURtrbUsVuFcjRQ9pB51CBd3gQv8HBYQ2m7w1zGPrUzpRfRnLizjbgTsX8n3CcR5NRHau6KyxB45PTKJgXkmNAAVq6D8xLTwz1U8mahdC1SgXoJkfwF6kSaUGzwUHjvunCzTV5NnyGog5cTG4PzhrLHv3V7Z59CdAiPCZxs7DuGodqy6dF2mfj4tQWpFBo"
+
+Proxy listening information:
+  Address:             127.0.0.1
+  Connection Limit:    -1
+  Expiration:          Fri, 25 Aug 2023 00:45:56 MDT
+  Port:                58677
+  Protocol:            tcp
+  Session ID:          s_tDBDJCxDnv
+```
+
+</CodeBlockConfig>
+
+With the above address and port information, you can connect to the local proxy
+and have your tcp traffic sent through the Boundary system.
+
+Copy the **Port** (such as `61135`) and note the **Address** (`127.0.0.1`).
+
+**Open a new terminal window.**
+
+Attempt to establish an ssh session to your localhost again. Like before, Remote
+Login may need to be enabled for the session to connect as expected.
+
+When prompted, enter `yes` to continue connecting to the host.
+
+```shell-session
+$ ssh 127.0.0.1 -p 52185 -l $UBUNTU_USER -i $UBUNTU_KEY
+The authenticity of host '[127.0.0.1]:58677 ([127.0.0.1]:58677)' can't be established.
+ED25519 key fingerprint is SHA256:WDPtMwr4whbVp5VUJwvzee7x9O25XhqMyApnz1mmNfg.
+This host key is known by the following other names/addresses:
+    ~/.ssh/known_hosts:9: hst_7jeh2z1mkk
+Are you sure you want to continue connecting (yes/no/[fingerprint])? yes
+Warning: Permanently added '[127.0.0.1]:58677' (ED25519) to the list of known hosts.
+
+Welcome to Ubuntu 22.04.2 LTS (GNU/Linux 5.19.0-1025-aws x86_64)
+
+ * Documentation:  https://help.ubuntu.com
+ * Management:     https://landscape.canonical.com
+ * Support:        https://ubuntu.com/advantage
+
+ubuntu@ip-172-32-88-177:~
+```
+
+Practice cancelling the session, [as demonstrated before](#cancel-a-session).
+
+## Summary
+
+The [Manage Scopes](/boundary/tutorials/hcp-administration/hcp-manage-scopes)
+tutorial demonstrated the steps to create a new org (`IT_Support`) and a project
+(`QA_Tests`) under the org.
+
+The [Manage Targets](/boundary/tutorials/hcp-administration/hcp-manage-targets)
+tutorial demonstrated the creation of a host catalog, a host set, and hosts.
+Then, associated the host set to a target.
+
+You also enabled a new authorization method (`password`) for the `IT_Support`
+org and created a new user in the [Manage Users and
+Groups](/boundary/tutorials/hcp-administration/hcp-manage-users-groups)
+tutorial. The [Manage Roles and
+Permissions](/boundary/tutorials/hcp-administration/hcp-manage-roles) tutorial
+showed you how to create a role and assign a grant which specifies a set of
+permissions.
+
+Finally, this tutorial demonstrated session management based on the target you
+defined for the `QA_Tests` project.
+
+To continue learning about HCP Boundary, check out the [Self-Managed Worker
+Registration](/boundary/tutorials/hcp-administration/hcp-manage-workers)
+tutorial.

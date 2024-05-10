@@ -1,0 +1,642 @@
+---
+id: 3359abec-fa6a-4967-ada3-c2c9062780b9
+name: Configure self-hosted Boundary with Terraform
+short_name: Configure self-hosted Boundary with Terraform
+description: >-
+  Configure your self-hosted Boundary environment using Terraform to codify the 
+  initial setup to make the process repeatable.
+products_used:
+  - product: boundary
+    min_version: 0.10.0
+    max_version: 0.12.0
+  - product: terraform
+default_collection_context: boundary/oss-getting-started
+---
+
+With Boundary is still running in dev mode, you are going to use Terraform to
+configure your Boundary environment.
+
+This tutorial will configure the following resources:
+
+| Type         | Name                | Notes                                                 |
+| ------------ | ------------------- | ----------------------------------------------------- |
+| Organization | corp_one            | A new organization                                    |
+| Users        | (_multiple_)        | Creates 9 users (Jim, Jeff, Randy, etc.)              |
+| Group        | read-only           | A new group with 3 users                              |
+| Roles        | (_multiple_)        | 2 new roles (**Read-only** and **admin**)             |
+| Auth Method  | Corp Password       | A new password auth method                            |
+| Project      | core_infra          | A new project within the **corp_one** organization    |
+| Host catalog | backend_servers     | A new host catalog with one host set                  |
+| Host set     | backend_servers_ssh | A new host set with 2 hosts                           |
+| Targets      | (_multiple_)        | 2 new targets (**ssh_server** and **backend_server**) |
+
+## Prerequisites
+
+- [Terraform 0.13.0 or later installed](/terraform/tutorials/aws-get-started/install-cli)
+- Boundary is still [running in dev mode](/boundary/tutorials/oss-getting-started/oss-getting-started-dev)
+
+## Background
+
+[Terraform](/terraform/) is an infrastructure automation tool that
+makes provisioning resources simple and repeatable. The process of configuring
+Boundary resources using the CLI can be tedious and time-intensive. Using
+Terraform, setting up the resources needed for a Boundary deployment can be
+simplified and easily repeated at scale.
+
+This tutorial uses version 1.0.10 of the official [Boundary
+provider](https://registry.terraform.io/providers/hashicorp/boundary) in the
+Terraform registry. Other Terraform modules exist that simplify the process of
+standing up an environment further, such as the [getting-started
+module](https://registry.terraform.io/modules/devops-rob/getting-started/boundary)
+that deploys everything needed for first log in.
+
+## Configure Boundary
+
+To get started, create a directory named, `boundary-test`.
+
+```shell-session
+$ mkdir ~/boundary-test && cd ~/boundary-test
+```
+
+Create a Terraform configuration file, `main.tf` and paste in the following.
+
+<CodeBlockConfig filename="main.tf" lineNumbers>
+
+
+```hcl
+provider "boundary" {
+  addr                            = "http://127.0.0.1:9200"
+  auth_method_id                  = "ampw_1234567890"
+  password_auth_method_login_name = "admin"
+  password_auth_method_password   = "password"
+}
+
+variable "users" {
+  type    = set(string)
+  default = [
+    "Jim",
+    "Mike",
+    "Todd",
+    "Jeff",
+    "Randy",
+    "Susmitha"
+  ]
+}
+
+variable "readonly_users" {
+  type    = set(string)
+  default = [
+    "Chris",
+    "Pete",
+    "Justin"
+  ]
+}
+
+variable "backend_server_ips" {
+  type    = set(string)
+  default = [
+    "10.1.0.1",
+    "10.1.0.2",
+  ]
+}
+
+resource "boundary_scope" "global" {
+  global_scope = true
+  description  = "My first global scope!"
+  scope_id     = "global"
+}
+
+resource "boundary_scope" "corp" {
+  name                     = "corp_one"
+  description              = "My first scope!"
+  scope_id                 = boundary_scope.global.id
+  auto_create_admin_role   = true
+  auto_create_default_role = true
+}
+
+## Use password auth method
+resource "boundary_auth_method" "password" {
+  name     = "Corp Password"
+  scope_id = boundary_scope.corp.id
+  type     = "password"
+}
+
+resource "boundary_account_password" "users_acct" {
+  for_each       = var.users
+  name           = each.key
+  description    = "User account for ${each.key}"
+  type           = "password"
+  login_name     = lower(each.key)
+  password       = "password"
+  auth_method_id = boundary_auth_method.password.id
+}
+
+resource "boundary_user" "users" {
+  for_each    = var.users
+  name        = each.key
+  description = "User resource for ${each.key}"
+  scope_id    = boundary_scope.corp.id
+}
+
+resource "boundary_user" "readonly_users" {
+  for_each    = var.readonly_users
+  name        = each.key
+  description = "User resource for ${each.key}"
+  scope_id    = boundary_scope.corp.id
+}
+
+resource "boundary_group" "readonly" {
+  name        = "read-only"
+  description = "Organization group for readonly users"
+  member_ids  = [for user in boundary_user.readonly_users : user.id]
+  scope_id    = boundary_scope.corp.id
+}
+
+resource "boundary_role" "organization_readonly" {
+  name        = "Read-only"
+  description = "Read-only role"
+  principal_ids = [boundary_group.readonly.id]
+  grant_strings = ["ids=*;type=*;actions=read"]
+  scope_id    = boundary_scope.corp.id
+}
+
+resource "boundary_role" "organization_admin" {
+  name        = "admin"
+  description = "Administrator role"
+  principal_ids = concat(
+    [for user in boundary_user.users: user.id]
+  )
+  grant_strings   = ["ids=*;type=*;actions=create,read,update,delete"]
+  scope_id = boundary_scope.corp.id
+}
+
+resource "boundary_scope" "core_infra" {
+  name                   = "core_infra"
+  description            = "My first project!"
+  scope_id               = boundary_scope.corp.id
+  auto_create_admin_role = true
+}
+
+resource "boundary_host_catalog_static" "backend_servers" {
+  name        = "backend_servers"
+  description = "Backend servers host catalog"
+  scope_id    = boundary_scope.core_infra.id
+}
+
+resource "boundary_host_static" "backend_servers" {
+  for_each        = var.backend_server_ips
+  type            = "static"
+  name            = "backend_server_service_${each.value}"
+  description     = "Backend server host"
+  address         = each.key
+  host_catalog_id = boundary_host_catalog_static.backend_servers.id
+}
+
+resource "boundary_host_set_static" "backend_servers_ssh" {
+  type            = "static"
+  name            = "backend_servers_ssh"
+  description     = "Host set for backend servers"
+  host_catalog_id = boundary_host_catalog_static.backend_servers.id
+  host_ids        = [for host in boundary_host_static.backend_servers : host.id]
+}
+
+# create target for accessing backend servers on port :8000
+resource "boundary_target" "backend_servers_service" {
+  type         = "tcp"
+  name         = "backend_server"
+  description  = "Backend service target"
+  scope_id     = boundary_scope.core_infra.id
+  default_port = "8080"
+
+  host_source_ids = [
+    boundary_host_set_static.backend_servers_ssh .id
+  ]
+}
+
+# create target for accessing backend servers on port :22
+resource "boundary_target" "backend_servers_ssh" {
+  type         = "tcp"
+  name         = "ssh_server"
+  description  = "Backend SSH target"
+  scope_id     = boundary_scope.core_infra.id
+  default_port = "22"
+
+  host_source_ids = [
+    boundary_host_set_static.backend_servers_ssh.id
+  ]
+}
+```
+
+</CodeBlockConfig>
+
+The Terraform resources in this configuration map to these Boundary resources:
+
+- **boundary_scope** (line 37) -> A
+  [Scope](/boundary/docs/concepts/domain-model/scopes) is a
+  permission boundary modeled as a container.
+- **boundary_auth_method** (line 52) -> An [auth
+  method](/boundary/docs/concepts/domain-model/auth-methods)
+  provides a mechanism for users to authenticate to Boundary.
+- **boundary_account_password** (line 58) -> An
+  [account](/boundary/docs/concepts/domain-model/accounts)
+  represents a unique set of credentials issued from a configured authentication
+  method which can be used to establish the identity of a user.
+- **boundary_user** (line 68) -> A
+  [user](/boundary/docs/concepts/domain-model/users)
+  represents an individual person or entity for the purposes of access control.
+- **boundary_group** (line 82) -> A
+  [group](/boundary/docs/concepts/domain-model/groups)
+  represents a collection of users which can be treated equally for the purposes
+  of access control.
+- **boundary_role** (line 97) -> A
+  [role](/boundary/docs/concepts/domain-model/roles)
+  contains a collection of permissions which are granted to any principal
+  assigned to the role.
+- **boundary_host_catalog_static** (line 114) -> A [static host
+  catalog](/boundary/docs/concepts/domain-model/host-catalogs)
+  contains hosts and host sets.
+- **boundary_host_static** (line 121) -> A [static
+  host](/boundary/docs/concepts/domain-model/hosts)
+  represents a computing element with a network address reachable from Boundary.
+- **boundary_host_set_static** (line 130) -> A [static host
+  set](/boundary/docs/concepts/domain-model/host-sets)
+  represents a collection of hosts which are considered equivalent for the
+  purposes of access control.
+- **boundary_target** (line 152) -> A
+  [target](/boundary/docs/concepts/domain-model/targets)
+  represents a networked service with an associated set of permissions a user
+  can connect to and interact with through Boundary by way of a session.
+
+-> For more detail description and example for each resource, refer to the
+[Terraform Boundary provider
+documentation](https://registry.terraform.io/providers/hashicorp/boundary/latest/docs).
+
+Now, you are ready to initialize Terraform.
+
+```shell-session
+$ terraform init
+
+Initializing the backend...
+
+Initializing provider plugins...
+##...snip...
+
+Terraform has been successfully initialized!
+
+You may now begin working with Terraform. Try running "terraform plan" to see
+any changes that are required for your infrastructure. All Terraform commands
+should now work.
+
+If you ever set or change modules or backend configuration for Terraform,
+rerun this command to reinitialize your working directory. If you forget, other
+commands will detect it and remind you to do so if necessary.
+```
+
+The `init` command downloads the latest available Terraform Provider for
+Boundary. Alternatively, you can clone the [Terraform Boundary Provider GitHub
+repository](https://github.com/hashicorp/terraform-provider-boundary) and build
+it from the source code. Refer to its README for more detail.
+
+Run `terraform apply` and review the planned actions. Your terminal output
+should indicate the plan is running and what resources will be created.
+
+```shell-session
+$ terraform apply
+
+##...snip...
+Plan: 28 to add, 0 to change, 0 to destroy.
+
+Do you want to perform these actions?
+  Terraform will perform the actions described above.
+  Only 'yes' will be accepted to approve.
+
+  Enter a value:
+```
+
+Enter `yes` to confirm and resume.
+
+When it completes, you should see "_Apply complete_" message. Any warnings about
+deprecated attributes can be ignored for this example.
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+Apply complete! Resources: 28 added, 0 changed, 0 destroyed.
+```
+
+</CodeBlockConfig>
+
+From the admin console, select the newly created **corp_one** organization, and
+verify that Terraform created users, groups, roles and other resources.
+
+![New Organization](/img/boundary/boundary-ui-new-org.png)
+
+## Connecting to Targets
+
+The `boundary connect` command can be used to establish sessions with hosts that
+Boundary manages. First, log into Boundary as the `admin` user. Enter the
+password `password` when prompted.
+
+```shell-session
+$ boundary authenticate
+Please enter the login name (it will be hidden):
+Please enter the password (it will be hidden):
+Authentication information:
+  Account ID:      acctpw_VOeNSFX8pQ
+  Auth Method ID:  ampw_ZbB6UXpW3B
+  Expiration Time: Mon, 13 Feb 2023 12:35:32 MST
+  User ID:         u_ogz79sV4sT
+The token was successfully stored in the chosen keyring and is not displayed here.
+```
+
+Next, find the names of all the available scopes using recursive listing.
+
+```shell-session
+$ boundary scopes list -recursive
+
+Scope information:
+  ID:                    o_1234567890
+    Scope ID:            global
+    Version:             1
+    Name:                Generated org scope
+    Description:         Provides an initial org scope in Boundary
+    Authorized Actions:
+      no-op
+      read
+      update
+      delete
+
+  ID:                    o_zW0hNEE0PT
+    Scope ID:            global
+    Version:             1
+    Name:                corp_one
+    Description:         My first scope!
+    Authorized Actions:
+      no-op
+      read
+      update
+      delete
+
+  ID:                    p_1234567890
+    Scope ID:            o_1234567890
+    Version:             1
+    Name:                Generated project scope
+    Description:         Provides an initial project scope in Boundary
+    Authorized Actions:
+      no-op
+      read
+      update
+      delete
+
+  ID:                    p_c58m00i3u4
+    Scope ID:            o_zW0hNEE0PT
+    Version:             1
+    Name:                core_infra
+    Description:         My first project!
+    Authorized Actions:
+      no-op
+      read
+      update
+      delete
+```
+
+Copy the **corp_one** Scope ID, and use recursive listing again to find all the
+available targets in the new scope.
+
+```shell-session
+$ boundary targets list -scope-id o_7NAS3dPsSo -recursive
+
+Target information:
+  ID:                    ttcp_WaRDd3pQGi
+    Scope ID:            p_c58m00i3u4
+    Version:             2
+    Type:                tcp
+    Name:                ssh_server
+    Description:         Backend SSH target
+    Authorized Actions:
+      no-op
+      read
+      update
+      delete
+      add-host-sources
+      set-host-sources
+      remove-host-sources
+      add-credential-sources
+      set-credential-sources
+      remove-credential-sources
+      authorize-session
+
+  ID:                    ttcp_ClFIihPbCU
+    Scope ID:            p_c58m00i3u4
+    Version:             2
+    Type:                tcp
+    Name:                backend_server
+    Description:         Backend service target
+    Authorized Actions:
+      no-op
+      read
+      update
+      delete
+      add-host-sources
+      set-host-sources
+      remove-host-sources
+      add-credential-sources
+      set-credential-sources
+      remove-credential-sources
+      authorize-session
+```
+
+Two tcp targets are available, `ssh_server` and `backend_server`.
+
+-> It's important to note that these targets do not actually exist in this dev
+environment; the targets have simply been added to the Boundary host catalog
+using Terraform. In a more realistic scenario these targets would have first
+been provisioned, and then added to Boundary.
+
+Sessions can be established to targets using the `boundary connect` command.
+There are several built-in sub-commands for accessing targets with specific
+protocols.
+
+Subcommands:
+
+- `http` Authorize a session against a target and invoke an HTTP client to connect
+- `kube` Authorize a session against a target and invoke a Kubernetes client to connect
+- `postgres` Authorize a session against a target and invoke a Postgres client to connect
+- `rdp` Authorize a session against a target and invoke an RDP client to connect
+- `ssh` Authorize a session against a target and invoke an SSH client to connect
+
+Start by establishing an ssh connection to the Backend SSH target using `boundary connect`.
+
+```shell-session
+$ boundary connect ssh -target-id ttcp_WaRDd3pQGi
+```
+
+The pending connection will hang as a session is attempted. Remember, these
+targets do not actually exist, so this demonstration simply shows how the
+`boundary connect` command can be used against targets in the host catalog.
+
+The pending connection can be viewed by recursively listing the sessions.
+
+```shell-session
+$ boundary sessions list -recursive
+
+Session information:
+  ID:                    s_vaKCsqjT1p
+    Scope ID:            p_c58m00i3u4
+    Status:              active
+    Created Time:        Thu, 11 Aug 2022 15:56:07 MDT
+    Expiration Time:     Thu, 11 Aug 2022 23:56:07 MDT
+    Updated Time:        Thu, 11 Aug 2022 15:56:07 MDT
+    User ID:             u_1234567890
+    Target ID:           ttcp_WaRDd3pQGi
+    Authorized Actions:
+      no-op
+      read
+      read:self
+      cancel
+      cancel:self
+```
+
+The session can be canceled using the `boundary sessions` command and providing
+the session ID.
+
+```shell-session
+$ boundary sessions cancel -id s_vaKCsqjT1p
+
+Session information:
+  Auth Token ID:       at_7oFKYe3Wdq
+  Created Time:        Thu, 11 Aug 2022 15:56:07 MDT
+  Endpoint:            tcp://10.1.0.1:22
+  Expiration Time:     Thu, 11 Aug 2022 23:56:07 MDT
+  Host ID:             hst_6hFlfbub97
+  Host Set ID:         hsst_AIwMLxLozx
+  ID:                  s_vaKCsqjT1p
+  Status:              canceling
+  Target ID:           ttcp_WaRDd3pQGi
+  Type:                tcp
+  Updated Time:        Thu, 11 Aug 2022 15:57:22 MDT
+  User ID:             u_1234567890
+  Version:             3
+
+  Scope:
+    ID:                p_c58m00i3u4
+    Name:              core_infra
+    Parent Scope ID:   o_zW0hNEE0PT
+    Type:              project
+
+  Authorized Actions:
+    no-op
+    read
+    read:self
+    cancel
+    cancel:self
+
+  States:
+    Start Time:        Thu, 11 Aug 2022 15:57:22 MDT
+    Status:            canceling
+
+    End Time:          Thu, 11 Aug 2022 15:57:22 MDT
+    Start Time:        Thu, 11 Aug 2022 15:56:07 MDT
+    Status:            active
+
+    End Time:          Thu, 11 Aug 2022 15:56:07 MDT
+    Start Time:        Thu, 11 Aug 2022 15:56:07 MDT
+    Status:            pending
+```
+
+Verify that the session shows `Status: Terminated` by running `boundary sessions list -recursive` again.
+
+Targets can be addressed directly using the `-target-id` option, or using a
+combination of the `-target-name` and `-target-scope-name` options if you
+provide the project name that the target exists within (core_infra, in this
+example).
+
+Try this workflow with the other target, `backend_server`. The `boundary connect` command can be used for generic tcp connections, without the protocol
+sub-command.
+
+```shell-session
+$ boundary connect -target-name backend_server -target-scope-name core_infra
+
+Proxy listening information:
+  Address:             127.0.0.1
+  Connection Limit:    -1
+  Expiration:          Thu, 11 Aug 2022 23:58:15 MDT
+  Port:                56822
+  Protocol:            tcp
+  Session ID:          s_p1SRXOqkuM
+```
+
+Again, the session will hang as a connection is attempted with the target. Like
+the previous example with the SSH target, verify the pending connection, and
+then cancel it using the `boundary sessions` command.
+
+<Accordion heading='Troubleshooting "No workers are available to handle this session" Error' collapse>
+
+
+<Warning>
+
+You man encounter the following error when running `boundary connect`:
+
+</Warning>
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary connect -target-name backend_server -target-scope-name corp_one
+
+Error from controller when performing authorize-session action against given target
+
+Error information:
+  Kind:                FailedPrecondition
+  Message:             No workers are available to handle this session, or all have been filtered.
+  Status:              400
+  context:             Error from controller when performing authorize-session action against given target
+```
+
+</CodeBlockConfig>
+
+<Warning>
+
+If you check the terminal window where `boundary dev` was run, you may see a
+log entry related to runtime memory.
+
+</Warning>
+
+<CodeBlockConfig hideClipboard>
+
+```plaintext
+==> Boundary server started! Log data will stream in below:
+
+[INFO]  worker: connected to controller: address=127.0.0.1:9201
+[INFO]  controller: worker successfully authed: name=dev-worker
+[INFO]  controller.worker-handler: session activated: session_id=s_S7kiNTnKB9 target_id=ttcp_kj5dezNOhU user_id=u_1234567890 host_set_id=hsst_pw1tP5ehvD host_id=hst_g13wOr6k7e
+[INFO]  controller.worker-handler: authorized connection: session_id=s_S7kiNTnKB9 connection_id=sc_pt0YuhtP76 connections_left=0
+[INFO]  controller.worker-handler: connection closed: connection_id=sc_eWPtlZpM7Q
+[ERROR] worker: error dialing endpoint: error="dial tcp 10.1.0.1:22: connect: operation timed out" endpoint=tcp://10.1.0.1:22
+[INFO]  controller.worker-handler: connection closed: connection_id=sc_eWPtlZpM7Q
+[INFO]  worker: http: panic serving 127.0.0.1:60746: runtime error: invalid memory address or nil pointer dereference
+```
+
+</CodeBlockConfig>
+
+<Warning>
+
+This implies that the Boundary controller started with dev mode has run out
+of memory. This can occur after running too many connections agains the dev
+sever, or by re-provisioning too many times. Simply stop dev mode by entering
+**Ctrl+C**, start dev mode again with `boundary dev`, and run `terraform apply --auto-approve` to set up the environment again.
+
+</Warning>
+
+</Accordion>
+
+
+-> You can edit the Terraform configuration file (`main.tf`) to make changes,
+and then run `terraform apply` again to commit the changes. Terraform stores
+state about your managed infrastructure and configuration which is used to map
+real world resources to your configuration, keep track of metadata, and to
+improve performance for large infrastructures. To learn more about Terraform,
+visit [Terraform Learn](/terraform/tutorials/).
+
+To stop the Boundary dev server, enter **Ctrl+C** in the terminal where it is
+running.

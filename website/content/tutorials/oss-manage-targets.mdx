@@ -1,0 +1,1055 @@
+---
+id: 8deb918f-184c-4967-a36f-3602c3f08cb5
+name: Manage targets
+short_name: Manage targets
+description: >-
+  Configure targets to define an endpoint with a default port and protocol to
+  establish a session.
+read_time: 10
+products_used:
+  - product: boundary
+  - product: terraform
+    min_version: 0.8.1
+    max_version: 0.11.2
+default_collection_context: boundary/oss-administration
+---
+
+[Targets](/boundary/docs/concepts/domain-model/targets) are
+Boundary resources that contain one or more [host
+sets](/boundary/docs/concepts/domain-model/host-sets). A
+target allows Boundary users to define an endpoint with a default port and a
+protocol to establish a session. Unless specified with a `-host-id` flag,
+Boundary will choose one
+[Host](/boundary/docs/concepts/domain-model/hosts) in the
+host set to connect to at random.
+
+This tutorial demonstrates the basics of how to define a host, host set, and a
+target in Boundary on the CLI, the admin console, and using our [Terraform
+provider](https://github.com/hashicorp/terraform-provider-boundary).
+
+<Warning>
+
+All resource IDs in this tutorial are illustrations only. IDs are uniquely
+generated for every resource upon creation with the exception being generated
+resources in development mode. Be sure to use the resource IDs that are
+generated for your environment.
+
+</Warning>
+
+You will create a host catalog, a host set containing hosts, and a
+target.
+
+![Scenario](/img/boundary/diagram-resource-mgmt.png)
+
+## Prerequisites
+
+This tutorial assumes that you successfully completed the [Manage
+Scopes](/boundary/tutorials/oss-administration/oss-manage-scopes) tutorial.
+
+### Setup a PostgreSQL target
+
+Deploy a postgres database container, which will be configured as a
+target.
+
+Launch the container by passing the postgres password, sample database name, and
+URL port mapping as options. In this example the sample database is named
+"sample".
+
+Export the database URL as an environment variable.
+
+```shell-session
+$ export PG_URL="postgres://postgres:secret@localhost:16001/sampledb?sslmode=disable"
+```
+
+Next, start the Postgres container.
+
+```shell-session
+$ docker run -d \
+   -e POSTGRES_PASSWORD=secret \
+   -e POSTGRES_DB="sampledb" \
+   --name postgres \
+   -p 16001:5432 \
+   postgres
+```
+
+Check that the container is running.
+
+```shell-session
+$ docker ps --format "table {{.ID}}\t{{.Names}}\t{{.Image}}\t{{.Status}}"
+CONTAINER ID   NAMES       IMAGE      STATUS
+af573c7093cd   postgres   postgres   Up About a minute
+```
+
+## Add hosts to project
+
+Hosts and host sets are defined within a host catalog, so you need to create a
+host catalog first.
+
+![Scenario](/img/boundary/diagram-host-catalog.png)
+
+<Tabs>
+<Tab heading="CLI" group="cli">
+
+~> To start this tutorial, be sure to [Login to the Boundary Console](/boundary/tutorials/oss-getting-started/oss-getting-started-dev#login-to-the-boundary-console)
+first.
+
+1. Create a host catalog named, "DevOps" with description, "For DevOps usage" in
+   the `QA_Tests` project.
+
+   ```shell-session
+   $ boundary host-catalogs create static \
+     -scope-id=$PROJECT_ID \
+     -name=DevOps \
+     -description="For DevOps usage"
+   ```
+
+   **Example output:**
+
+   <CodeBlockConfig hideClipboard>
+
+   ```shell-session
+   $ boundary host-catalogs create static \
+     -scope-id=$PROJECT_ID \
+     -name=DevOps \
+     -description="For DevOps usage"
+
+    Host Catalog information:
+      Created Time:        Fri, 27 May 2022 10:46:07 MDT
+      Description:         For DevOps usage
+      ID:                  hcst_xM3iCCkf1K
+      Name:                DevOps
+      Type:                static
+      Updated Time:        Fri, 27 May 2022 10:46:07 MDT
+      Version:             1
+    
+      Scope:
+        ID:                p_oMgeFL2hP6
+        Name:              QA_Tests
+        Parent Scope ID:   o_u54jrD6ydN
+        Type:              project
+    
+      Authorized Actions:
+        no-op
+        read
+        update
+        delete
+    
+      Authorized Actions on Host Catalog's Collections:
+        host-sets:
+          create
+          list
+        hosts:
+          create
+          list
+   ```
+
+   </CodeBlockConfig>
+
+1. Copy the generated host catalog ID and save it as an environment variabe,
+   `HOST_CATALOG_ID`.
+
+   ```shell-session
+   $ export HOST_CATALOG_ID=<host_catalog_id>
+   ```
+
+   **Example:**
+
+   ```shell-session
+   $ export HOST_CATALOG_ID="hcst_xM3iCCkf1K"
+   ```
+
+1. Now, create a new host named, "postgres" with description, "Postgres host"
+   under the newly created host catalog.
+
+   ```shell-session
+   $ boundary hosts create static \
+     -name=postgres \
+     -description="Postgres host" \
+     -address="127.0.0.1" \
+     -host-catalog-id=$HOST_CATALOG_ID
+   ```
+
+   **Example output:**
+
+   <CodeBlockConfig hideClipboard>
+
+   ```shell-session
+   $ boundary hosts create static \
+     -name=postgres \
+     -description="Postgres host" \
+     -address="127.0.0.1" \
+     -host-catalog-id=$HOST_CATALOG_ID
+
+    Host information:
+      Created Time:        Fri, 27 May 2022 10:48:29 MDT
+      Description:         Postgres host
+      Host Catalog ID:     hcst_xM3iCCkf1K
+      ID:                  hst_U1qYKzKfXO
+      Name:                postgres
+      Type:                static
+      Updated Time:        Fri, 27 May 2022 10:48:29 MDT
+      Version:             1    
+
+      Scope:
+        ID:                p_oMgeFL2hP6
+        Name:              QA_Tests
+        Parent Scope ID:   o_u54jrD6ydN
+        Type:              project    
+
+      Authorized Actions:
+        no-op
+        read
+        update
+        delete    
+
+      Attributes:
+        address:           127.0.0.1
+   ```
+
+   </CodeBlockConfig>
+
+1. Repeat the step to create another host named, "localhost".
+
+   ```shell-session
+   $ boundary hosts create static \
+     -name=localhost \
+     -description="Localhost for testing" \
+     -address="localhost" \
+     -host-catalog-id=$HOST_CATALOG_ID
+   ```
+
+   **Example output:**
+
+   <CodeBlockConfig hideClipboard>
+
+   ```shell-session
+   $ boundary hosts create static \
+     -name=localhost \
+     -description="Localhost for testing" \
+     -address="localhost" \
+     -host-catalog-id=$HOST_CATALOG_ID
+
+    Host information:
+      Created Time:        Fri, 27 May 2022 10:49:40 MDT
+      Description:         Localhost for testing
+      Host Catalog ID:     hcst_xM3iCCkf1K
+      ID:                  hst_FrdNPd9Zm9
+      Name:                localhost
+      Type:                static
+      Updated Time:        Fri, 27 May 2022 10:49:40 MDT
+      Version:             1
+    
+      Scope:
+        ID:                p_oMgeFL2hP6
+        Name:              QA_Tests
+        Parent Scope ID:   o_u54jrD6ydN
+        Type:              project
+    
+      Authorized Actions:
+        no-op
+        read
+        update
+        delete
+    
+      Attributes:
+        address:           localhost
+   ```
+
+   </CodeBlockConfig>
+
+</Tab>
+<Tab heading="Admin Console" group="admin">
+
+
+1. Select the project you wish to define a host (in this case, `QA_Tests`).
+
+1. Select **Host Catalogs**.
+
+1. Choose **New**.
+   ![Host Catalog](/img/boundary/boundary-ui-host-catalog-0.png)
+
+1. Enter `DevOps` in the **Name** field, and `For DevOps usage` in the
+   **Description** field.
+   ![Host Catalog](/img/boundary/boundary-ui-host-catalog-1.png)
+
+1. Click **Save**.
+
+1. Select the **Hosts** tab, and then select **New**.
+   ![Host Catalog](/img/boundary/boundary-ui-host-0.png)
+
+1. Enter `postgres` in the **Name** field, `Postgres host` in the
+   **Description** field, and `127.0.0.1` in the **Address** field.
+   ![Host Catalog](/img/boundary/boundary-ui-host-4.png)
+
+1. Click **Save**.
+
+1. Select **Host Catalogs > DevOps** and then select **New Host** from the
+   **Manage** menu.
+   ![Host Catalog](/img/boundary/boundary-ui-host-catalog-2.png)
+
+1. Enter `localhost` in the **Name** field, `Localhost for testing` in the
+   **Description** field, and `localhost` in the **Address**.
+   ![Host Catalog](/img/boundary/boundary-ui-host-5.png)
+
+1. Click **Save**.
+
+</Tab>
+<Tab heading="Terraform" group="terraform">
+
+
+In your Terraform `main.tf` configuration file, define a
+[`boundary_host_catalog_static`
+resource](https://registry.terraform.io/providers/hashicorp/boundary/latest/docs/resources/host_catalog_static)
+to create a new host catalog in the "IT_Support" project, and define a
+[`boundary_host_static`
+resource](https://registry.terraform.io/providers/hashicorp/boundary/latest/docs/resources/host_static)
+to create two host definitions, one for `postgres` and another for `localhost`.
+
+To define this same host using our Terraform provider:
+
+```hcl
+resource "boundary_host_catalog_static" "devops" {
+  name        = "DevOps"
+  description = "For DevOps usage"
+  scope_id    = boundary_scope.project.id
+}
+
+resource "boundary_host_static" "postgres" {
+  name            = "postgres"
+  description     = "Postgres host"
+  address         = "127.0.0.1"
+  host_catalog_id = boundary_host_catalog_static.devops.id
+}
+
+resource "boundary_host_static" "localhost" {
+  name            = "localhost"
+  description     = "Localhost for testing"
+  address         = "localhost"
+  host_catalog_id = boundary_host_catalog_static.devops.id
+}
+```
+
+</Tab>
+</Tabs>
+
+
+## Create a host set
+
+A host set groups together hosts. These hosts provide logically equivalent services.
+
+![Scenario](/img/boundary/diagram-host-set.png)
+
+<Note>
+
+ A target works off of host sets. Therefore, even if there is only
+one host, you still create a host set containing one host.
+
+</Note>
+
+<Tabs>
+<Tab heading="CLI" group="cli">
+
+
+1. Create a host set named, "test-machines".
+
+   ```shell-session
+   $ boundary host-sets create static \
+     -name="test-machines" \
+     -description="Test machine host set" \
+     -host-catalog-id=$HOST_CATALOG_ID
+   ```
+
+   **Example output:**
+
+   <CodeBlockConfig hideClipboard>
+
+   ```shell-session
+   $ boundary host-sets create static \
+     -name="test-machines" \
+     -description="Test machine host set" \
+     -host-catalog-id=$HOST_CATALOG_ID
+
+    Host Set information:
+      Created Time:        Fri, 27 May 2022 10:51:02 MDT
+      Description:         Test machine host set
+      Host Catalog ID:     hcst_xM3iCCkf1K
+      ID:                  hsst_X8gmzYXbO4
+      Name:                test-machines
+      Type:                static
+      Updated Time:        Fri, 27 May 2022 10:51:02 MDT
+      Version:             1
+    
+      Scope:
+        ID:                p_oMgeFL2hP6
+        Name:              QA_Tests
+        Parent Scope ID:   o_u54jrD6ydN
+        Type:              project
+    
+      Authorized Actions:
+        no-op
+        read
+        update
+        delete
+        add-hosts
+        set-hosts
+        remove-hosts
+   ```
+
+   </CodeBlockConfig>
+
+   Copy the `test-machines` host set ID and save it as an environment variable,
+   `HOST_SET_ID`.. In the example, the ID is `hsst_X8gmzYXbO4`.
+
+   ```shell-session
+   $ export HOST_SET_ID=<test-machines_HOST_SET_ID>
+   ```
+
+   **Example:**
+   
+   ```shell-session
+   $ export HOST_SET_ID="hsst_X8gmzYXbO4"
+   ```
+
+1. Retrieve the host IDs.
+
+   ```shell-session
+   $ boundary hosts list -host-catalog-id=$HOST_CATALOG_ID
+
+   Host information:
+     ID:                    hst_FrdNPd9Zm9
+       Version:             1
+       Type:                static
+       Name:                localhost
+       Description:         Localhost for testing
+       Authorized Actions:
+         no-op
+         read
+         update
+         delete
+   
+     ID:                    hst_U1qYKzKfXO
+       Version:             1
+       Type:                static
+       Name:                postgres
+       Description:         Postgres host
+       Authorized Actions:
+         no-op
+         read
+         update
+         delete
+   ```
+
+   In the example output, the `postgres` host ID is `hst_U1qYKzKfXO` and the
+   `localhost` host ID is `hst_FrdNPd9Zm9`. You will pass these IDs in the next
+   step.
+
+1. Add `postgres` and `localhost` hosts to the `test-machines` host set. Be sure
+   to replace `<postgres_host_id>` and `<localhost_host_id>` with the host IDs you
+   just retrieved.
+
+   ```shell-session
+   $ boundary host-sets add-hosts \
+     -id=$HOST_SET_ID \
+     -host=<postgres_host_id> \
+     -host=<localhost_host_id>
+   ```
+
+   **Example:**
+
+   <CodeBlockConfig hideClipboard>
+
+   ```shell-session
+   $ boundary host-sets add-hosts \
+     -id=$HOST_SET_ID \
+     -host=hst_U1qYKzKfXO \
+     -host=hst_FrdNPd9Zm9
+   
+    Host Set information:
+      Created Time:        Fri, 27 May 2022 10:51:02 MDT
+      Description:         Test machine host set
+      Host Catalog ID:     hcst_xM3iCCkf1K
+      ID:                  hsst_X8gmzYXbO4
+      Name:                test-machines
+      Type:                static
+      Updated Time:        Fri, 27 May 2022 10:59:00 MDT
+      Version:             2
+    
+      Scope:
+        ID:                p_oMgeFL2hP6
+        Name:              QA_Tests
+        Parent Scope ID:   o_u54jrD6ydN
+        Type:              project
+    
+      Authorized Actions:
+        no-op
+        read
+        update
+        delete
+        add-hosts
+        set-hosts
+        remove-hosts
+    
+      Host IDs:
+        hst_U1qYKzKfXO
+        hst_FrdNPd9Zm9
+   ```
+
+   </CodeBlockConfig>
+
+</Tab>
+<Tab heading="Admin Console" group="admin">
+
+
+1. Select the **Host Sets** tab, and then select **New**.
+   ![Host Set](/img/boundary/boundary-ui-host-set-0.png)
+
+1. Enter `test-machines` in the **Name** field, and `Test machine host set` in the
+   **Description** field.
+   ![Host Set](/img/boundary/boundary-ui-host-set-1.png)
+
+1. Click **Save**.
+
+1. Select the **Hosts** tab.
+
+1. From the **Manage** menu, select **Add Existing Host**.
+   ![Host Set](/img/boundary/boundary-ui-host-2.png)
+
+1. Select the check-box for **Postgres host** and **Localhost for testing**.
+   ![Host Set](/img/boundary/boundary-ui-host-3.png)
+
+1. Click **Add Hosts**.
+
+</Tab>
+<Tab heading="Terraform" group="terraform">
+
+
+In your Terraform configuration file, define a [`boundary_host_set_static`
+resource](https://registry.terraform.io/providers/hashicorp/boundary/latest/docs/resources/host_set_static)
+to create a new host set, and use `boundary_host.postgres.id` and
+`boundary_host.localhost.id` to retrieve the host IDs and attach them to the
+DevOps host catalog (`boundary_host_catalog_static.devops.id`).
+
+```hcl
+resource "boundary_host_set_static" "test-machines" {
+  name            = "test-machines"
+  description     = "Host set for postgres"
+  host_catalog_id = boundary_host_catalog_static.devops.id
+  host_ids = [
+      boundary_host_static.postgres.id,
+      boundary_host_static.localhost.id,
+  ]
+}
+```
+
+</Tab>
+</Tabs>
+
+
+## Define a target
+
+Finally, create a target associated with the `QA_Tests` project.
+
+![Targets](/img/boundary/diagram-host-catalog-localhost-postgres-target.png)
+
+<Tabs>
+<Tab heading="CLI" group="cli">
+
+1. Create a target named, "postgres" with description, "Postgres target". Set
+   the default port to be `16001`. To allow unlimited number of session
+   connections, set the session connection limit to `-1`.
+
+   ```shell-session
+   $ boundary targets create tcp \
+     -name="postgres" \
+     -description="Postgres target" \
+     -default-port=16001 \
+     -scope-id=$PROJECT_ID \
+     -session-connection-limit="-1"
+   ```
+
+   **Example output:**
+
+   <CodeBlockConfig hideClipboard>
+
+   ```plaintext
+    Target information:
+      Created Time:               Fri, 27 May 2022 11:02:22 MDT
+      Description:                Postgres target
+      ID:                         ttcp_34yV5O9cwt
+      Name:                       postgres
+      Session Connection Limit:   -1
+      Session Max Seconds:        28800
+      Type:                       tcp
+      Updated Time:               Fri, 27 May 2022 11:02:22 MDT
+      Version:                    1
+    
+      Scope:
+        ID:                       p_oMgeFL2hP6
+        Name:                     QA_Tests
+        Parent Scope ID:          o_u54jrD6ydN
+        Type:                     project
+    
+      Authorized Actions:
+        no-op
+        read
+        update
+        delete
+        add-host-sources
+        set-host-sources
+        remove-host-sources
+        add-credential-libraries
+        set-credential-libraries
+        remove-credential-libraries
+        add-credential-sources
+        set-credential-sources
+        remove-credential-sources
+        authorize-session
+    
+      Attributes:
+        Default Port:             16001
+   ```
+
+   </CodeBlockConfig>
+
+   In this example, the generated target ID is `ttcp_34yV5O9cwt`. Notice that
+   target IDs starts with `ttcp_`.
+
+   Copy the ID of the `tests` target and save it as an environment variable,
+   `TARGET_ID`.   
+
+   ```shell-session
+   $ export TARGET_ID=<postgres_TARGET_ID>
+   ```   
+
+   **Example:**   
+
+   ```shell-session
+   $ export TARGET_ID="ttcp_34yV5O9cwt"
+   ```
+
+1. Add the `test-machines` host set to the `postgres` target. Replace
+   `<target_id>` with your postgres target ID, and `<host_set_id>` with your
+   test-machines host set ID.
+
+   ```shell-session
+   $ boundary targets add-host-sources -id=$TARGET_ID -host-source=$HOST_SET_ID
+
+    Target information:
+      Created Time:               Fri, 27 May 2022 11:02:22 MDT
+      Description:                Postgres target
+      ID:                         ttcp_34yV5O9cwt
+      Name:                       postgres
+      Session Connection Limit:   -1
+      Session Max Seconds:        28800
+      Type:                       tcp
+      Updated Time:               Fri, 27 May 2022 11:07:59 MDT
+      Version:                    2
+    
+      Scope:
+        ID:                       p_oMgeFL2hP6
+        Name:                     QA_Tests
+        Parent Scope ID:          o_u54jrD6ydN
+        Type:                     project
+    
+      Authorized Actions:
+        no-op
+        read
+        update
+        delete
+        add-host-sources
+        set-host-sources
+        remove-host-sources
+        add-credential-libraries
+        set-credential-libraries
+        remove-credential-libraries
+        add-credential-sources
+        set-credential-sources
+        remove-credential-sources
+        authorize-session
+    
+      Host Sources:
+        Host Catalog ID:          hcst_xM3iCCkf1K
+        ID:                       hsst_X8gmzYXbO4
+    
+      Attributes:
+        Default Port:             16001
+   ```
+
+</Tab>
+<Tab heading="Admin Console" group="admin">
+
+
+1. Select **Target** and select **New**.
+   ![Target](/img/boundary/boundary-ui-target-0.png)
+
+1. Enter `postgres` in the **Name** field, `Postgres target` in the
+   **Description** filed, `-1` in the **Maximum Connections** field, and `16001` in
+   the **Default Port** field.
+   ![Target](/img/boundary/boundary-ui-target-7.png)
+
+1. Click **Save**.
+
+1. Select the **Host Sources** tab and then **Add Host Sources**.
+   ![Target](/img/boundary/boundary-ui-target-8.png)
+
+1. Select the check-box for **Test machine host set**.
+   ![Target](/img/boundary/boundary-ui-target-9.png)
+
+1. Click **Add Host Sources** to assign the target.
+
+</Tab>
+<Tab heading="Terraform" group="terraform">
+
+
+In your Terraform configuration file, define a [`boundary_target`
+resource](https://registry.terraform.io/providers/hashicorp/boundary/latest/docs/resources/target)
+to define a new target, and use `boundary_host_set.postgres.id` to retrieve the
+the `postgres` host set ID and set it to `host_set_ids`.
+
+```hcl
+resource "boundary_target" "postgres" {
+  type                     = "tcp"
+  name                     = "postgres"
+  description              = "Postgres target"
+  scope_id                 = boundary_scope.project.id
+  session_connection_limit = -1
+  default_port             = 16001
+  host_source_ids = [
+    boundary_host_set_static.test-machines.id
+  ]
+}
+```
+
+The entire `main.tf` file contents are printed below for reference.
+
+<CodeBlockConfig filename="main.tf">
+
+```hcl
+terraform {
+  required_providers {
+    boundary = {
+      source  = "hashicorp/boundary"
+      version = "1.0.7"
+    }
+  }
+}
+
+provider "boundary" {
+  addr             = "http://127.0.0.1:9200"
+  recovery_kms_hcl = <<EOT
+kms "aead" {
+  purpose = "recovery"
+  aead_type = "aes-gcm"
+  key = "Zg5vogpvOjhM4USNEa21f2zLiKJlWl8Ulklp29gEAcI="
+  key_id = "global_recovery"
+}
+EOT
+}
+
+resource "boundary_scope" "org" {
+  scope_id                 = "global"
+  name                     = "IT_Support"
+  description              = "IT Support Team"
+  auto_create_default_role = true
+  auto_create_admin_role   = true
+}
+
+resource "boundary_scope" "project" {
+  name             = "QA_Tests"
+  description      = "Manage QA machines"
+  scope_id                 = boundary_scope.org.id
+  auto_create_admin_role   = true
+  auto_create_default_role = true
+}
+
+resource "boundary_host_catalog_static" "devops" {
+  name        = "DevOps"
+  description = "For DevOps usage"
+  scope_id    = boundary_scope.project.id
+}
+
+resource "boundary_host_static" "postgres" {
+  name            = "postgres"
+  description     = "Postgres host"
+  address         = "127.0.0.1"
+  host_catalog_id = boundary_host_catalog_static.devops.id
+}
+
+resource "boundary_host_static" "localhost" {
+  name            = "localhost"
+  description     = "Localhost for testing"
+  address         = "localhost"
+  host_catalog_id = boundary_host_catalog_static.devops.id
+}
+
+resource "boundary_host_set_static" "test-machines" {
+  name            = "test-machines"
+  description     = "Host set for postgres"
+  host_catalog_id = boundary_host_catalog_static.devops.id
+  host_ids = [
+      boundary_host_static.postgres.id,
+      boundary_host_static.localhost.id,
+  ]
+}
+    
+resource "boundary_target" "postgres" {
+  type                     = "tcp"
+  name                     = "postgres"
+  description              = "Postgres target"
+  scope_id                 = boundary_scope.project.id
+  session_connection_limit = -1
+  default_port             = 16001
+  host_source_ids = [
+    boundary_host_set_static.test-machines.id
+  ]
+}
+```
+
+</CodeBlockConfig>
+
+**Save this file**.
+
+Now apply the Terraform config. Enter `yes` when prompted for confirmation.
+
+```shell-session
+$ terraform apply
+boundary_scope.org: Refreshing state... [id=o_g7eiK1eamt]
+boundary_scope.project: Refreshing state... [id=p_VRM1S65q8w]
+
+Terraform used the selected providers to generate the following execution plan. Resource actions are indicated with the following symbols:
+  + create
+
+Terraform will perform the following actions:
+
+  # boundary_host_catalog_static.devops will be created
+  + resource "boundary_host_catalog_static" "devops" {
+      + description = "For DevOps usage"
+      + id          = (known after apply)
+      + name        = "DevOps"
+      + scope_id    = "p_VRM1S65q8w"
+    }
+
+  # boundary_host_set_static.test-machines will be created
+  + resource "boundary_host_set_static" "test-machines" {
+      + description     = "Host set for postgres"
+      + host_catalog_id = (known after apply)
+      + host_ids        = (known after apply)
+      + id              = (known after apply)
+      + name            = "test-machines"
+      + type            = "static"
+    }
+
+  # boundary_host_static.localhost will be created
+  + resource "boundary_host_static" "localhost" {
+      + address         = "localhost"
+      + description     = "Localhost for testing"
+      + host_catalog_id = (known after apply)
+      + id              = (known after apply)
+      + name            = "localhost"
+      + type            = "static"
+    }
+
+  # boundary_host_static.postgres will be created
+  + resource "boundary_host_static" "postgres" {
+      + address         = "127.0.0.1"
+      + description     = "Postgres host"
+      + host_catalog_id = (known after apply)
+      + id              = (known after apply)
+      + name            = "postgres"
+      + type            = "static"
+    }
+
+  # boundary_target.postgres will be created
+  + resource "boundary_target" "postgres" {
+      + default_port             = 16001
+      + description              = "Postgres target"
+      + host_source_ids          = (known after apply)
+      + id                       = (known after apply)
+      + name                     = "postgres"
+      + scope_id                 = "p_VRM1S65q8w"
+      + session_connection_limit = -1
+      + session_max_seconds      = (known after apply)
+      + type                     = "tcp"
+    }
+
+Plan: 5 to add, 0 to change, 0 to destroy.
+
+Do you want to perform these actions?
+  Terraform will perform the actions described above.
+  Only 'yes' will be accepted to approve.
+
+  Enter a value: yes
+
+boundary_host_catalog_static.devops: Creating...
+boundary_host_catalog_static.devops: Creation complete after 0s [id=hcst_W71jEjUw4n]
+boundary_host_static.postgres: Creating...
+boundary_host_static.localhost: Creating...
+boundary_host_static.localhost: Creation complete after 0s [id=hst_rKcwslUEXf]
+boundary_host_static.postgres: Creation complete after 0s [id=hst_xoKMbUsmQw]
+boundary_host_set_static.test-machines: Creating...
+boundary_host_set_static.test-machines: Creation complete after 0s [id=hsst_Nafr6vOzgF]
+boundary_target.postgres: Creating...
+boundary_target.postgres: Creation complete after 0s [id=ttcp_ge1Mowyrej]
+
+Apply complete! Resources: 5 added, 0 changed, 0 destroyed.
+```
+
+</Tab>
+</Tabs>
+
+## Manage targets
+
+First, verify you can connect to the target. Then update the target description.
+
+<Tabs>
+<Tab heading="CLI" group="cli">
+
+Open a session to the postgres target using `boundary connect`. When prompted,
+enter the password `secret` to connect.
+
+```shell-session
+$ boundary connect postgres -target-id $TARGET_ID -username postgres
+Password for user postgres:
+psql (13.2)
+Type "help" for help.
+
+postgres=#
+```
+
+<Note>
+
+ If you followed the Admin Console workflow and did not export the
+`TARGET_ID` environment variable, supply it directly instead. In this example
+the target ID is `ttcp_34yV5O9cwt`.
+
+</Note>
+
+After successfully testing the connection, terminate the session by executing
+`\q`.
+
+Targets can be managed using arguments to the `boundary targets` command, such
+as `update`, `delete`, `add-host-sources` and `delete-host-sources`.
+
+Update the target description.
+
+```shell-session
+$ boundary targets update tcp -id $TARGET_ID -description "updated postgres target"
+
+Target information:
+  Created Time:               Mon, 23 Jan 2023 17:47:38 MST
+  Description:                updated postgres target
+  ID:                         ttcp_UYMMW2Z13C
+  Name:                       postgres
+  Session Connection Limit:   -1
+  Session Max Seconds:        28800
+  Type:                       tcp
+  Updated Time:               Mon, 23 Jan 2023 17:48:42 MST
+  Version:                    3
+
+  Scope:
+    ID:                       p_OVOOKRiV5J
+    Name:                     QA_Tests
+    Parent Scope ID:          o_8EhpHB3qEN
+    Type:                     project
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    add-host-sources
+    set-host-sources
+    remove-host-sources
+    add-credential-sources
+    set-credential-sources
+    remove-credential-sources
+    authorize-session
+
+  Host Sources:
+    Host Catalog ID:          hcst_k9Ezh5xv0k
+    ID:                       hsst_FWqrawz1hn
+
+  Attributes:
+    Default Port:             16001
+```
+
+</Tab>
+<Tab heading="Boundary Desktop" group="admin">
+
+Open a session to the postgres target using the [Boundary Desktop
+App](/boundary/tutorials/hcp-getting-started/hcp-getting-started-desktop-app).
+
+Open the Desktop App and enter `http://127.0.0.1:9200` for the Cluster URL.
+
+![Desktop Cluster URL](/img/boundary/desktop/desktop-cluster-url_light.png#light-theme-only)
+![Desktop Cluster URL](/img/boundary/desktop/desktop-cluster-url_dark.png#dark-theme-only)
+
+Sign in to the `global` scope using the credentials `admin` and `password`.
+
+Select the `IT_Support` scope in the upper-left corner of the app.
+
+Navigate to the **Targets** view.
+
+![Boundary Desktop Targets](/img/boundary/desktop/desktop-postgres-target_light.png#light-theme-only)
+![Boundary Desktop Targets](/img/boundary/desktop/desktop-postgres-target_dark.png#dark-theme-only)
+ 
+Click **Connect** beside the `postgres` target.
+
+![Connect to target](/img/boundary/desktop/desktop-postgres-target-connect_light.png#light-theme-only)
+![Connect to target](/img/boundary/desktop/desktop-postgres-target-connect_dark.png#dark-theme-only)
+
+Copy the Proxy URL, such as `127.0.0.1:59801`.
+
+Next, open a new terminal session. Use the `psql` client to establish a session
+with the postgres container via the local proxy created by Boundary. Enter the
+password `secret` when prompted for the `sampledb` database password.
+
+```shell-session
+$ psql -h 127.0.0.1 -p 59801 -d sampledb -U postgres
+Password for user postgres:
+psql (14.2, server 15.1 (Debian 15.1-1.pgdg110+1))
+WARNING: psql major version 14, server major version 15.
+         Some psql features might not work.
+Type "help" for help.
+
+sampledb=#
+```
+
+![Connect to postgres](/img/boundary/desktop/desktop-postgres-sampledb_light.png#light-theme-only)
+![Connect to postgres](/img/boundary/desktop/desktop-postgres-sampledb_dark.png#dark-theme-only)
+
+Enter `\q` when finished to close the session, or cancel the session from the
+Desktop app.
+
+From the Desktop app, select the `postgres` target to check its details.
+
+![Desktop target details](/img/boundary/desktop/desktop-postgres-target-details_light.png#light-theme-only)
+![Desktop target details](/img/boundary/desktop/desktop-postgres-target-details_dark.png#dark-theme-only)
+
+You should see the description `Postgres target` beneath the target name.
+
+Targets can be managed using the Admin Console UI. 
+
+Open the Admin Console in your web browser and navigate to the **Targets** view.
+
+Next, click the `postgres` target to view its details. Select **Edit Form** to
+update the target details. 
+
+Enter `updated postgres target` and click **Save**.
+
+![Boundary Desktop](/img/boundary/boundary-ui-target-10.png)
+
+Open the Boundary Desktop app again and refresh the **Targets** view. You will
+see the `updated postgres target` description in the `postgres` target details.
+
+</Tab>
+</Tabs>
+
+## Next steps
+
+This tutorial demonstrated the steps to define and manage targets under a scope
+(`QA_Tests`). Targets represent network services a user can connect to, such as
+the `postgres` Docker container.
+
+In the [Manage Users and Groups](/boundary/tutorials/oss-administration/oss-manage-users-groups)
+tutorial, you will add and manage users in the `org` scope.

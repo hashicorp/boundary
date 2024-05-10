@@ -1,0 +1,273 @@
+---
+id: b53d11de-e2fd-4e7b-942d-b9024e1782b9
+name: Connect to Kubernetes using Boundary
+description: >-
+  Configure Boundary, Vault, and Kubernetes to allow users to connect to Kubernetes using Boundary.
+products_used:
+  - product: vault
+  - product: boundary
+default_collection_context: boundary/kubernetes-connect
+short_name: Connect to Kubernetes using Boundary
+variants:
+  - slug: boundary-deploy
+    options:
+      - hcp
+      - dev
+---
+
+In this tutorial you will take on the role of the `developer` team to connect to
+Kubernetes using Boundary with brokered credentials from Vault.
+
+## Prerequisites
+
+This tutorial requires you to have completed the [Connect to Kubernetes using
+Boundary
+configuration](/boundary/tutorials/kubernetes-connect/kubernetes-getting-started-config)
+tutorial.
+
+## Connect to Kubernetes using the Boundary CLI
+
+To connect to Kubernetes, a `developer` will need a Kubernetes service account
+and token. You will simulate this process using the Boundary administrative
+user.
+
+You can learn how to create users in Boundary, and assign roles in the [HCP
+administration](/boundary/tutorials/hcp-administration) or [Self-managed
+administration](/boundary/tutorials/oss-administration) tutorials.
+
+1. Ensure you have logged in to Boundary as the admin user. Enter the username
+   and password for your Boundary instance.
+
+   ```shell-session
+   $ boundary authenticate
+     Please enter the login name (it will be hidden):
+     Please enter the password (it will be hidden):
+
+     Authentication information:
+       Account ID:      acctpw_NgTnYJHTls
+       Auth Method ID:  ampw_PqQpz2sqvx
+       Expiration Time: Wed, 19 Jul 2023 09:52:02 EDT
+       User ID:         u_09ja9DkXo3
+
+     The token was successfully stored in the chosen keyring and is not displayed here.
+   ```
+
+1. Authorize a new session.
+
+   ```shell-session
+   $ BROKERED_KUBE_TOKEN=$(boundary targets authorize-session \
+        -id $KUBE_TARGET_ID \
+        -format json | jq -r '.item | .credentials[] | .secret | .decoded | .service_account_token') \
+        && echo $BROKERED_KUBE_TOKEN
+   ```
+
+   **Example output:**
+
+   <CodeBlockConfig hideClipboard>
+
+   ```plaintext
+   eyJhbGciOiJSUzI1NiIsImtpZCI6IjhqNVZuSHZINkhwaDFBZnU2Y1ZzM2k1aUZ3elQwLWtFbnhjUVhGY2
+   ZKTEEifQ.eyJhdWQiOlsiaHR0cHM6Ly9rdWJlcm5ldGVzLmRlZmF1bHQuc3ZjLmNsdXN0ZXIubG9jYWwiX
+   ...snip...
+   uF8uZkBiNvte-afKzzbqdvMF3KdFNGSTf5hWx88SZJUJAzdpoKbYbd_jbksUx4Ek4WGZtybUGdLlGo9f4D
+   B4c0wSvqnMSAMOFaN67OCmeMSW-9eWKhKSR3c5EvAwZWq5w-SkdQ06-VzBHM-M8Yp2YqK698iluRG3nRYk
+   G4iz9g
+   ```
+
+   </CodeBlockConfig>
+
+1. Create and switch to an empty `kubectl` context. This is done to ensure the
+   `kubectl` config is not overriding parameters to connect to the Kubernetes
+   cluster.
+
+   ```shell-session
+   $ kubectl config set-context empty && kubectl config use-context empty
+
+   Context "empty" created.
+   Switched to context "empty".
+   ```
+
+1. Use the brokered service account token to authenticate with the minikube
+   cluster. The `server` parameter is passed to the minikube cluster because the current `kubectl`
+   config is set to an invalid cluster context.
+
+   ```shell-session
+   $ kubectl get pod --insecure-skip-tls-verify --server=$KUBE_API_URL --token=$BROKERED_KUBE_TOKEN
+   NAME    READY   STATUS    RESTARTS   AGE
+   nginx   1/1     Running   0          4d17h
+   ```
+
+## Connect to Kubernetes using Boundary Desktop
+
+Lastly, test the experience of connecting to the Kubernetes cluster using the
+Boundary Desktop app.
+
+To log into Boundary using the Desktop App, the `BOUNDARY_ADDR` (Boundary
+cluster address) must be gathered.
+
+If you use HCP Boundary, you can locate the `BOUNDARY_ADDR` in the HCP Boundary
+Admin Console, as demonstrated in the [HCP Boundary Getting
+Started](/boundary/tutorials/hcp-getting-started/hcp-getting-started-console)
+tutorial.
+
+If you use Boundary in dev mode, the `BOUNDARY_ADDR` is `http://127.0.0.1:9200`.
+
+1. Open the Boundary desktop app.
+
+1. Enter the **Boundary cluster URL** (for example,
+`https://ffee961b-5fd8-4e68-ba1d-2bbb487b576e.boundary.hashicorp.cloud`) and
+click **Submit.**
+
+1. Authenticate using your Boundary admin user credentials.
+
+   ![Boundary Desktop Login](/img/boundary/desktop-hcp-creds.png)
+
+1. Under the **Targets** page, notice the target details for `kubernetes-api`. Click
+   **Connect**.
+
+   ![Kubernetes Desktop Target](/img/boundary/desktop-kubernetes-target.png)
+
+   You are presented with a **Proxy URL** port number and a
+   **service_account_token**.
+
+1. Click on the copy icon for the `service_account_token`.
+
+1. On your local terminal, paste the service account token into an
+   environment variable:
+
+   ```shell-session
+   $ export BROKERED_KUBE_TOKEN=<YOUR_SERVICE_ACCOUNT_TOKEN>
+   ```
+
+1. Next, paste the proxy port number from the **Proxy URL** into an environment variable:
+
+   ```shell-session
+   $ export KUBERNETES_PORT=<YOUR_PORT_NUMBER>
+   ```
+
+1. Test the `kubectl` connection:
+
+   ```shell-session
+   $ kubectl get pod --insecure-skip-tls-verify --server http://127.0.0.1:$KUBERNETES_PORT --token $BROKERED_KUBE_TOKEN
+   NAME    READY   STATUS    RESTARTS   AGE
+   nginx   1/1     Running   0          68m
+   ```
+
+You can now use `kubectl` to connect to the Kubernetes API from Boundary.
+
+## Set the Kubernetes context
+
+To decrease friction when using the `kubectl` command, you can set the
+Kubernetes context. This will automatically pass the TLS server name, server
+address, and brokered token when envoking `kubectl`.
+
+Create a new `kubectl` context set called `boundary`. Set the server address,
+TLS server name, and path to the certificate authority file.
+
+```shell-session
+$ kubectl config set-cluster boundary-cluster --server=http://127.0.0.1:$KUBERNETES_PORT --insecure-skip-tls-verify=true
+Cluster "boundary-cluster" set.
+```
+
+Set the credentials for the cluster context by creating a new user names
+`boundary-user`, and passing the `BROKERED_KUBE_TOKEN`.
+
+```shell-session
+$ kubectl config set-credentials boundary-user --token=$BROKERED_KUBE_TOKEN
+User "boundary-user" set.
+```
+
+Set the new context.
+
+```
+$ kubectl config set-context boundary --cluster boundary-cluster --user boundary-user
+Context "boundary" created.
+```
+
+And lastly, use the new context.
+
+```shell-session
+$ kubectl config use-context boundary
+```
+
+Test the `kubectl` CLI without any additional options.
+
+```shell-session
+$ kubectl get pods
+NAME    READY   STATUS    RESTARTS   AGE
+nginx   1/1     Running   0          74m
+```
+
+<Note>
+
+  When the Boundary session is terminated, the context will no longer be valid.
+  Once a new session is authorized, set the `boundary-cluster` port again using
+  `KUBERNETES_PORT`, and the `boundary-user` with `BROKERED_KUBE_TOKEN`.
+
+</Note>
+
+## Cleanup and teardown
+
+1. Clean up Boundary.
+
+   <Variant slug="boundary-deploy" option="hcp">
+
+   If you used an HCP Boundary test cluster, consider cleaning up the cluster by
+   deleting it, or deleting the org and its associated projects used for testing
+   the Boundary and Kubernetes integration.
+
+   </Variant>
+   <Variant slug="boundary-deploy" option="dev">
+
+   Locate the terminal session used to execute the `boundary dev` server command,
+   and execute `ctrl+c` to stop Boundary.
+
+   </Variant>
+
+1. Clean up Vault.
+
+   <Tabs>
+   <Tab heading="HCP Vault Dedicated">
+
+   If you use a HCP Vault Dedicated test cluster, consider cleaning up the cluster by deleting
+   it. Ensure you only delete the cluster used for testing the Boundary and
+   Kubernetes integration.
+
+   </Tab>
+   <Tab heading="Vault dev mode">
+
+   Locate the terminal session used to execute the `vault dev` server command,
+   and execute `ctrl+c` to stop Vault.
+
+   </Tab>
+   </Tabs>
+
+1. Locate the terminal session used to execute the `kubectl proxy
+--disable-filter=true` server command, and execute `ctrl+c`.
+
+1. Delete the minikube cluster.
+
+   ```shell-session
+   $ minikube delete
+   ```
+
+1. Unset the environment variables used in any active terminal windows for
+this tutorial.
+
+## Summary
+
+This tutorial demonstrated configuring Boundary and Vault to facilitate
+just-in-time access to Kubernetes deployments.
+
+To continue learning about Boundary, check out the [Credential
+management](/boundary/tutorials/credential-management) tutorials.
+
+## Help and reference
+
+- [HCP Boundary documentation](/hcp/docs/boundary)
+- [HCP Boundary getting started](/boundary/tutorials/hcp-getting-started/hcp-getting-started-intro)
+- [Boundary command
+  documentation](/boundary/docs/commands)
+- [Vault documentation](/vault/docs/)
+- [Kubernetes documentation](https://kubernetes.io/docs/home/)
+- [minikube documentation](https://minikube.sigs.k8s.io/docs/)

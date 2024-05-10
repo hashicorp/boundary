@@ -1,0 +1,3127 @@
+---
+id: 51b8a14a-baa8-43f3-a91e-372c16c8a516
+name: Dynamic host catalogs on Azure
+short_name: Dynamic host catalogs on Azure
+description: >-
+  Instructions to configure dynamic host catalogs with Microsoft Azure.
+read_time: 20
+products_used:
+  - product: boundary
+    min_version: 0.7.1
+    max_version: 0.13.1
+default_collection_context: boundary/host-management
+---
+
+Dynamic updates to host catalogs is an important differentiator for Boundary
+from traditional access methods that rely on manual target configuration, and
+enables even tighter integrations with major cloud providers for seamlessly
+onboarding cloud tenant identities, roles, and targets.
+
+Boundary 0.7 introduces a key Boundary component by enabling automated discovery
+of target hosts and services. Starting with support for Azure and AWS, dynamic
+connections to any service registry ensures that hosts and host catalogs are
+consistently up-to-date. This critical workflow offers access-on-demand and
+eliminates the need to manually configure targets for dynamic, cloud-based
+infrastructure.
+
+This tutorial demonstrates configuring a dynamic host catalog using Microsoft
+Azure.
+
+### Dynamic hosts catalog overview
+
+1. [Get setup](#get-setup)
+1. [Dynamic host catalogs background](#dynamic-host-catalogs-background)
+1. [Set up cloud hosts](#set-up-cloud-hosts)
+1. [Build a host catalog](#build-a-host-catalog)
+1. [Verify catalog membership](#verify-catalog-membership)
+
+## Prerequisites
+
+- A [Boundary binary](/boundary/install/) greater than
+  0.7.1 in your `PATH`.
+
+- This tutorial assumes you can [connect to an HCP Boundary
+  cluster](/boundary/tutorials/hcp-getting-started/hcp-getting-started-console) **or** launch
+  Boundary in [dev mode](/boundary/tutorials/oss-getting-started/oss-getting-started-dev).
+
+- A [Microsoft Azure](https://portal.azure.com/) account. **This tutorial
+  requires the creation of new cloud resources and will incur costs associated
+  with the deployment and management of these resources.**
+
+- Installing the [Azure
+  CLI](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli) provides an
+  optional workflow for this tutorial.The executable must be available within
+  your `PATH`.
+
+- Installing [Terraform 0.14.9 or greater](/terraform/tutorials/aws-get-started/install-cli)
+  provides an optional workflow for this tutorial. The binary must be available
+  in your `PATH`.
+
+## Get setup
+
+In this tutorial, you will test dynamic host catalog integrations using HCP
+Boundary or by running a Boundary controller locally using dev mode.
+
+<Tabs>
+<Tab heading="HCP" group="hcp">
+
+The [HCP Quickstart](/boundary/tutorials/hcp-getting-started) tutorials
+provide an overview of getting started with an HCP Boundary cluster.
+
+If you have an HCP Boundary cluster deployed, the [Access HCP
+Boundary](/boundary/tutorials/hcp-getting-started/hcp-getting-started-console) tutorial provides an
+overview of configuring your local machine to authenticate with your HCP
+cluster.
+
+This tutorial provides both CLI and UI workflows for setting up OIDC
+authentication.
+
+<Tabs>
+<Tab heading="CLI" group="cli">
+
+To proceed with the CLI workflow:
+
+1. Log in to the Boundary web UI and copy your org ID by clicking the copy icon.
+
+   Open a terminal session and **set a environment variable for the org ID.**
+
+   ```shell-session
+   $ export ORG_ID=<org-id>
+   ```
+
+1. In the Boundary web UI, click **Projects** and copy your project ID by clicking the copy icon.
+
+   Open a terminal session and **set a environment variable for the project ID.**
+
+   ```shell-session
+   $ export PROJECT_ID=<project-id>
+   ```
+
+1. In the Boundary web UI, click **Orgs** in the left navigation menu to return
+   to the global scope, and then click **Auth Methods**.
+
+   Click the copy icon for the **Password** auth method.
+
+   In your terminal **set an environment variable named `BOUNDARY_AUTH_METHOD_ID`** to the
+   copied ID.
+
+   ```shell-session
+   $ export BOUNDARY_AUTH_METHOD_ID=<auth-id>
+   ```
+
+   Close the Boundary web UI.
+
+1. Return to the HCP web Portal **Boundary** page, then click the copy icon for
+   the **Cluster URL** in the **Getting started with Boundary** section.
+
+   In your terminal, **set the `BOUNDARY_ADDR` environment variable** to the
+   copied URL.
+
+   ```shell-session
+   $ export BOUNDARY_ADDR=<actual-boundary-address>
+   ```
+
+1. Log in with the administrator credentials you created when you deployed the
+   HCP Boundary instance. Enter your password at the `Please enter the password
+   (it will be hidden):` prompt.
+
+   ```shell-session
+   $ boundary authenticate
+   Please enter the login name (it will be hidden):
+   Please enter the password (it will be hidden):
+   Authentication information:
+     Account ID:      acctpw_VOeNSFX8pQ
+     Auth Method ID:  ampw_wxzojlKJLN
+     Expiration Time: Mon, 13 Feb 2023 12:35:32 MST
+     User ID:         u_1vUkf5fPs9
+   The token was successfully stored in the chosen keyring and is not displayed here.
+   ```
+
+You are now logged into your HCP Boundary instance's **Global** scope via the
+CLI. This is the default scope for all new Boundary clusters.
+
+</Tab>
+<Tab heading="Admin Console" group="admin">
+
+To proceed with the UI workflow:
+
+1. Open the Admin Console UI by entering your HCP Boundary Cluster URL into a
+   browser (such as
+   `https://e58fe114-7624-431c-994d-b6670e90b03J.boundary.hashicorp.cloud`).
+
+1. Enter the admin username and password you created when you deployed the new
+   instance and click **Authenticate**.
+
+![Admin UI Login](/img/boundary/boundary-ui-login-hcp_light.png#light-theme-only)
+![Admin UI Login](/img/boundary/boundary-ui-login-hcp_dark.png#dark-theme-only)
+
+You are now logged into your HCP Boundary instance's **Global** scope via the
+web UI. This is the default scope for all new Boundary clusters. You can now
+proceed to the [Providers](#providers) section to proceed with the Admin Console
+UI workflow.
+
+</Tab>
+<Tab heading="Terraform" group="terraform">
+
+To proceed with the Terraform workflow:
+
+The following values are needed to set up the [Boundary Terraform
+provider](https://registry.terraform.io/providers/hashicorp/boundary). The
+`password_auth_method_login_name` and `password_auth_method_password` are
+created when first [setting up HCP
+Boundary](/boundary/tutorials/hcp-getting-started/hcp-getting-started-create), and the others can be
+gathered from the HCP portal or the Boundary Admin Console UI.
+
+- `addr` (from HCP portal)
+- `auth_method_id` (from Boundary Admin Console UI)
+- `password_auth_method_login_name` (from initial Boundary Cluster creation)
+- `password_auth_method_password` (from initial Boundary Cluster creation)
+- `scope_id` (global scope from Boundary Admin Console UI)
+
+Locate these values and have them ready for setting up the Terraform config
+files later on.
+
+</Tab>
+</Tabs>
+</Tab>
+
+<Tab heading="Dev Mode" group="dev">
+
+Start Boundary in dev mode:
+
+```shell-session
+$ boundary dev
+==> Boundary server configuration:
+
+        [Controller] AEAD Key Bytes: hdcjQ5gegRbttzQ66D5GJjcxB+xtdHzL
+          [Recovery] AEAD Key Bytes: E1/gdhTuDyhsvIm+tkQR0i4m/uSRrd5A
+       [Worker-Auth] AEAD Key Bytes: gwo86AYxBlbPCLsw9lsBzZ4Fd7adcydw
+               [Recovery] AEAD Type: aes-gcm
+                   [Root] AEAD Type: aes-gcm
+    [Worker-Auth-Storage] AEAD Type: aes-gcm
+            [Worker-Auth] AEAD Type: aes-gcm
+                                Cgo: disabled
+     Controller Public Cluster Addr: 127.0.0.1:9201
+             Dev Database Container: hardcore_keller
+                   Dev Database Url: postgres://postgres:password@localhost:55000/boundary?sslmode=disable
+         Generated Admin Login Name: admin
+           Generated Admin Password: password
+          Generated Host Catalog Id: hcst_1234567890
+                  Generated Host Id: hst_1234567890
+              Generated Host Set Id: hsst_1234567890
+      Generated Oidc Auth Method Id: amoidc_1234567890
+             Generated Org Scope Id: o_1234567890
+  Generated Password Auth Method Id: ampw_1234567890
+         Generated Project Scope Id: p_1234567890
+                Generated Target Id: ttcp_1234567890
+  Generated Unprivileged Login Name: user
+    Generated Unprivileged Password: password
+                         Listener 1: tcp (addr: "127.0.0.1:9200", cors_allowed_headers: "[]", cors_allowed_origins: "[*]", cors_enabled: "true", max_request_duration: "1m30s", purpose: "api")
+                         Listener 2: tcp (addr: "127.0.0.1:9201", max_request_duration: "1m30s", purpose: "cluster")
+                         Listener 3: tcp (addr: "127.0.0.1:9203", max_request_duration: "1m30s", purpose: "ops")
+                         Listener 4: tcp (addr: "127.0.0.1:9202", max_request_duration: "1m30s", purpose: "proxy")
+                          Log Level: info
+                              Mlock: supported: false, enabled: false
+                            Version: Boundary v0.10.3
+                        Version Sha: d9eba38993eb70820a396894f2f1e28601d13c3d
+         Worker Auth Current Key Id: folic-obliged-dude-stroller-skinless-eloquence-legible-dispense
+   Worker Auth Registration Request: GzusqckarbczHoLGQ4UA25uSRm41paoR5HikgcBsCT4PMDFT7StpsFy5xjiWJwxszReKwcfGniKLcdpQto5HjhH3PqmdLU8fdT9kM7RMLiyzLKWdLqVWBhhdUiEy7Re2ConJcGWdHsGK7Th6zVQ3SXjqND3dQ3ytcVtAhdEznJQ58ib6HoMvpMTs66TS5ULCBXxpQ1u2syC6ChNPEPbaSpQd9pKWjPcPRVDjKpMzp6cjw9LZSPxBdadM81f7yS3voWoM5yMciXdUW6rqSMaP1NxRvQUAdhVQsM1ZqGLHNV
+           Worker Auth Storage Path: /var/folders/8g/4dnhwwzx2d771tkklxwrd0380000gp/T/nodeenrollment1533264699
+           Worker Public Proxy Addr: 127.0.0.1:9202
+
+==> Boundary server started! Log data will stream in below:
+
+{
+  "id": "GypYTtKfJI",
+  "source": "https://hashicorp.com/boundary/localmachine/controller+worker",
+  "specversion": "1.0",
+  "type": "system",
+  "data": {
+    "version": "v0.1",
+    "op": "github.com/hashicorp/boundary/internal/observability/event.(*HclogLoggerAdapter).writeEvent",
+    "data": {
+      "@original-log-level": "none",
+      "@original-log-name": "aws",
+      "msg": "configuring client automatic mTLS"
+    }
+  },
+  "datacontentype": "text/plain",
+  "time": "2022-09-06T14:14:37.939433-06:00"
+}
+...
+... More log output ...
+...
+```
+
+Leave dev mode running in the current session, and **open a new terminal window or
+tab.**
+
+**Authenticate to the local Boundary dev server.** Enter the password `password`
+when prompted.
+
+```shell-session
+$ boundary authenticate
+Please enter the login name (it will be hidden):
+Please enter the password (it will be hidden):
+Authentication information:
+  Account ID:      acctpw_VOeNSFX8pQ
+  Auth Method ID:  ampw_wxzojlKJLN
+  Expiration Time: Mon, 13 Feb 2023 12:35:32 MST
+  User ID:         u_1vUkf5fPs9
+The token was successfully stored in the chosen keyring and is not displayed here.
+```
+
+</Tab>
+</Tabs>
+
+## Dynamic host catalogs background
+
+In a cloud operating model infrastructure resources are highly dynamic and
+ephemeral. Boundary lacks an on-target agent or daemon, and as a result cannot
+recognize when a host service migrates or is redeployed. Instead, Boundary
+relies on an external entity, such as manual configuration by an administrator
+or IaC application (such as Terraform), to ensure host definitions route to the
+appropriate network location. This is a pattern followed by many other secure
+access solutions.
+
+Dynamic host catalog plugins provide an alternative mechanism for automating the
+discovery and configuration of Boundary hosts and targets by delegating the host
+registry and their connection information to a cloud infrastructure provider.
+Administrators provide credentials to the catalog provider and a set of
+tag-based rules for discovery resources in the catalog. For example, "this
+catalog contains all VMs in Azure's useast region within the marketing
+subscription". This model differs from other that rely on either IaC target
+discovery or agent-based target discovery.
+
+To accommodate this model, Boundary 0.7.0 introduces plugin support via
+[Go-Plugin](https://github.com/hashicorp/go-plugin) for expanding the dynamic
+host catalog ecosystem. While this initial release of Boundary plug-ins are
+limited to dynamic host catalogs, plugins enable a future ecosystem of partner
+and community contributed integrations across each step in the Boundary access
+workflow.
+
+### Host tag filtering
+
+To successfully maintain a dynamic host catalog, hosts should be tagged in a
+logical way that enables sorting into the appropriate host sets identifiable by
+filters.
+
+For examples, this tutorial configures hosts on Azure using the following tags:
+
+- `"tagName eq 'service-type' and tagValue eq 'database'"`
+- `"tagName eq 'application' and tagValue eq 'dev'"`
+- `"tagName eq 'application' and tagValue eq 'production'"`
+
+Hosts with these tags will be sorted into any host catalogs and host sets
+configured using these filtering attributes.
+
+## Set up cloud hosts
+
+<Warning>
+
+ This tutorial deploys cloud machines to test host catalog plugin
+configuration. You are responsible for any costs incurred by following the steps
+in this tutorial. Recommendations for destroying the  associated cloud resources
+are detailed in the [Cleanup and teardown](#cleanup-and-teardown) section.
+
+</Warning>
+
+A Microsoft Azure account and sample application are required to setup the
+Boundary [Azure host plugin](https://github.com/hashicorp/boundary-plugin-host-azure).
+If you don't have an account, [sign up for Azure](https://azure.microsoft.com/en-us/free/).
+A free account is suitable for the steps outlined in this tutorial, but please note that
+you are responsible for any charges incurred by following the steps in this tutorial.
+
+This tutorial enables configuration of the test hosts using the Azure CLI,
+Terraform, or the Azure Portal UI.
+
+<Tabs>
+<Tab heading="CLI" group="cli">
+
+There are four tasks necessary to set up hosts using the Azure CLI.
+
+1. Create an Application in Azure Active Directory with an associated Service
+Principal
+1. Create a role assignment granting the new application Reader permissions to
+your subscription
+1. Generate a Client Secret for the Azure Active Directory Application,
+enabling Boundary to authenticate
+1. Tag the hosts, so they can be filtered into catalogs by Boundary.
+
+### Register a new Azure AD application
+
+First, log in to Azure. You will need to know the [Tenant domain
+name](https://docs.microsoft.com/en-us/partner-center/find-ids-and-domain-names).
+If you need to add a new Tenant to your Subscription, [create a new
+Tenant](https://docs.microsoft.com/en-us/partner-center/multi-tenant-account)
+and then copy its domain.
+
+```shell-session
+$ az login --tenant boundary.onmicrosoft.com
+The default web browser has been opened at https://login.microsoftonline.com/0e3e2e88-8caf-41ca-b4da-q3b33b6c43tz/oauth2/v2.0/authorize. Please continue the login in the web browser. If no web browser is available or if the web browser fails to open, use device code flow with `az login --use-device-code`.
+```
+
+A browser window will open prompting you to login with your Azure credentials.
+Upon successful authentication, you should receive a  confirmation message that
+`You have logged into Microsoft Azure!`, and you can then close the browser tab.
+
+Returning to the terminal session, you should see updated output containing the
+`tenantID`.
+
+**Example output:**
+
+<CodeBlockConfig hideClipboard highlight="1,7,12">
+
+```shell-session
+$ az login --tenant boundaryoidc.onmicrosoft.com
+The default web browser has been opened at https://login.microsoftonline.com/0e3e2e88-8caf-41ca-b4da-q3b33b6c43tz/oauth2/v2.0/authorize. Please continue the login in the web browser. If no web browser is available or if the web browser fails to open, use device code flow with `az login --use-device-code`.
+[
+  {
+    "cloudName": "AzureCloud",
+    "homeTenantId": "0e3e2e88-8caf-41ca-b4da-q3b33b6c43tz",
+    "id": "c9ed8610-47a3-4107-a2b2-a322114dkd78",
+    "isDefault": true,
+    "managedByTenants": [],
+    "name": "Default Subscription",
+    "state": "Enabled",
+    "tenantId": "0e3e2e88-8caf-41ca-b4da-q3b33b6c43tz",
+    "user": {
+      "name": "admin@boundary.com",
+      "type": "user"
+    }
+  }
+]
+```
+
+</CodeBlockConfig>
+
+Copy the Tenant ID (`0e3e2e88-8caf-41ca-b4da-q3b33b6c43tz` in this example).
+
+Additionally, copy the `id` field, which contains the Subscription ID
+(`c9ed8610-47a3-4107-a2b2-a322114dkd78` in this example). These values will be
+used in the next step and when configuring Boundary.
+
+<Note>
+
+ Subscription and Tenant IDs can also be gathered using the `az
+account list` command.
+
+</Note>
+
+Export the Tenant ID and Subscription ID as environment variables for use in the
+following steps.
+
+```shell-session
+$ export ARM_TENANT_ID=<Tenant ID> \
+  export ARM_SUBSCRIPTION_ID=<Subscription ID>
+```
+
+The Azure AD application needs a service principle that enables role-based
+access control (RBAC) to other resources, in this case the ability to read
+subscription information. This will allow Boundary to filter for hosts that
+match its filter criteria later on. This type of application is created using
+the `az ad sp create-for-rbac` command.
+
+<CodeBlockConfig highlight="1,6">
+
+```shell-session
+$ az ad sp create-for-rbac --name "Boundary Dynamic Hosts Test" --role Reader
+Creating 'Reader' role assignment under scope '/subscriptions/c9ed8610-47a3-4107-a2b2-a322114dkd78'
+The output includes credentials that you must protect. Be sure that you do not include these credentials in your code or check the credentials into your source control. For more information, see https://aka.ms/azadsp-cli
+'name' property in the output is deprecated and will be removed in the future. Use 'appId' instead.
+{
+  "appId": "c2f9b423-9aa1-4ed4-809d-0af5b28397f9",
+  "displayName": "Boundary Dynamic Hosts Test",
+  "name": "c2f9b423-9aa1-4ed4-809d-0af5b28397f9",
+  "password": "fdrAfz72~FSw8ZHZG1y2Nd83iBG~k-Y_Io",
+  "tenant": "0e3e2e88-8caf-41ca-b4da-q3b33b6c43tz"
+}
+```
+
+</CodeBlockConfig>
+
+Copy the `appId` from the output (`c2f9b423-9aa1-4ed4-809d-0af5b28397f9` in this
+example). This is the Application or Client ID. Export it as an environment
+variable.
+
+```shell-session
+$ export ARM_CLIENT_ID=<Client ID>
+```
+
+Now, create a role assignment for the new application granting it the Reader
+role within your subscription. Supply the `appID` and Subscription ID using the
+environment variables exported earlier.
+
+```shell-session
+$ az role assignment create \
+  --assignee $ARM_CLIENT_ID \
+  --role Reader \
+  --scope /subscriptions/$ARM_SUBSCRIPTION_ID
+```
+
+**Example output:**
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ az role assignment create \
+  --assignee $ARM_CLIENT_ID \
+  --role Reader \
+  --scope /subscriptions/$ARM_SUBSCRIPTION_ID
+{
+  "canDelegate": null,
+  "condition": null,
+  "conditionVersion": null,
+  "description": null,
+  "id": "/subscriptions/0e3e2e88-8caf-41ca-b4da-q3b33b6c43tz/providers/Microsoft.Authorization/roleAssignments/e8cf2a65-fb1b-4c13-97be-7b9bd6e134fd",
+  "name": "e8cf2a65-fb1b-4c13-97be-7b9bd6e134fd",
+  "principalId": "23b2681c-8ba0-4144-9304-7e22f1bf94d1",
+  "principalName": "c2f9b423-9aa1-4ed4-809d-0af5b28397f9",
+  "principalType": "ServicePrincipal",
+  "roleDefinitionId": "/subscriptions/0e3e2e88-8caf-41ca-b4da-q3b33b6c43tz/providers/Microsoft.Authorization/roleDefinitions/acdd72a7-3385-48ef-bd42-f606fba81ae7",
+  "roleDefinitionName": "Reader",
+  "scope": "/subscriptions/0e3e2e88-8caf-41ca-b4da-q3b33b6c43tz",
+  "type": "Microsoft.Authorization/roleAssignments"
+}
+```
+
+</CodeBlockConfig>
+
+### Generate a client secret for the application
+
+With the application created and Reader role assigned, generate an application
+client secret for Boundary to use for authentication.
+
+The `az add app credential reset` command is used to append or overwrite an
+application's password or certificate credentials.
+
+```shell-session
+$ az ad app credential reset --append \
+  --id $ARM_CLIENT_ID \
+  --credential-description "boundary-secret"
+```
+
+**Example output:**
+
+<CodeBlockConfig hideClipboard highlight="1-3,8">
+
+```shell-session
+$ az ad app credential reset --append \
+  --id $ARM_CLIENT_ID \
+  --credential-description "boundary-secret"
+The output includes credentials that you must protect. Be sure that you do not include these credentials in your code or check the credentials into your source control. For more information, see https://aka.ms/azadsp-cli
+{
+  "appId": "c2f9b423-9aa1-4ed4-809d-0af5b28397f9",
+  "name": "c2f9b423-9aa1-4ed4-809d-0af5b28397f9",
+  "password": "FJY4nDv7P_bKgQBrY-k2MWwrfm-mj130Bq",
+  "tenant": "0e3e2e88-8caf-41ca-b4da-q3b33b6c43tz"
+}
+```
+
+</CodeBlockConfig>
+
+Export the `password` returned in the output
+(`FJY4nDv7P_bKgQBrY-k2MWwrfm-mj130Bq` in this example) as an environment
+variable for use when configuring Boundary later on. **Store this value
+somewhere safe, because it cannot be accessed again.**
+
+```shell-session
+$ export ARM_CLIENT_SECRET=FJY4nDv7P_bKgQBrY-k2MWwrfm-mj130Bq
+```
+
+### Create hosts
+
+With the Azure AD application in place, hosts can be deployed to test the
+dynamic host catalog integration.
+
+To easily deploy a set of pre-configured hosts, a template file is available for
+use with the Azure Resource Manager (ARM).
+
+Clone down the sample template repository.
+
+```shell-session
+$ git clone https://github.com/hashicorp-education/learn-boundary-cloud-host-catalogs.git
+```
+
+Navigate into the `azure` directory.
+
+```shell-session
+$ cd learn-boundary-cloud-host-catalogs/azure/
+```
+
+Next, deploy a new resource group using the provided `azure-dynamic-hosts`
+template.
+
+First, create a new resource group within your subscription that will contain
+the hosts. This tutorial uses the `eastus` location, but you can use any
+location you want. Check the available locations with `az account
+list-locations`.
+
+```shell-session
+$ az group create \
+  --location eastus \
+  --name boundary-dynamic-hosts_group \
+  --subscription $ARM_SUBSCRIPTION_ID
+```
+
+**Example output:**
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ az group create \
+  --location eastus \
+  --name boundary-dynamic-hosts_group \
+  --subscription $ARM_SUBSCRIPTION_ID
+{
+  "id": "/subscriptions/0e3e2e88-8caf-41ca-b4da-q3b33b6c43tz/resourceGroups/boundary-dynamic-hosts_group",
+  "location": "eastus",
+  "managedBy": null,
+  "name": "boundary-dynamic-hosts_group",
+  "properties": {
+    "provisioningState": "Succeeded"
+  },
+  "tags": null,
+  "type": "Microsoft.Resources/resourceGroups"
+}
+```
+
+</CodeBlockConfig>
+
+With the new resource group created, the host template file can be deployed.
+
+```shell-session
+$ az deployment group create \
+  --resource-group boundary-dynamic-hosts_group \
+  --template-file azure-dynamic-hosts.template
+```
+
+The output will prompt `Please provide securestring value for 'adminPasswordOrKey'
+(? for help):`
+
+This is a required password or SSH key to access the VMs.
+
+<Note>
+
+ This tutorial does not log into the associated VMs, but it is best
+practice to copy the password or retain the private key for the duration of the
+tutorial.
+
+</Note>
+
+After entering a password, hit `Enter` to proceed.
+
+The deployment will take a few minutes. When complete, a large amount of output
+will be displayed containing details for the newly created hosts and associated
+resources.
+
+Check the template deployment completed successfully by querying the deployment
+group. List all resources in the `boundary-dynamic-hosts_group` using the
+`--query` option on the `az` command.
+
+```shell-session
+$ az deployment group list --resource-group boundary-dynamic-hosts_group --query "[].properties.dependencies[*].resourceName[]"
+[
+  "boundary-vm-test_group-vnet/boundary-subnet",
+  "boundary-vm-3-production",
+  "boundary-vm-4-production",
+  "boundary-vm-NetInt-1",
+  "boundary-vm-NetInt-2",
+  "boundary-vm-NetInt-3",
+  "boundary-vm-NetInt-4",
+  "boundary-vm1-dev",
+  "boundary-vm2-dev"
+]
+```
+
+### Gather plugin details
+
+To use the Boundary Azure hosts plugin, the following details must be gathered
+from Azure:
+
+- ARM Tenant (Directory) ID
+- ARM Subscription ID
+- ARM Client (Application) ID
+- ARM Client Secret
+
+These values should be available as environment variables within the terminal
+session, or copied to a safe location for use when setting up Boundary.
+
+</Tab>
+<Tab heading="Terraform" group="terraform">
+
+
+The prerequisites for setting up the learning environment with Terraform are:
+
+1. [Terraform 0.14.9 or greater](/terraform/tutorials/aws-get-started/install-cli) or greater is installed
+1. An Azure account with an active subscription
+1. The Azure CLI is installed and available in your `PATH`.
+
+
+There are three tasks within Azure that Terraform needs to configure to set up
+the lab environment.
+
+1. Create an Application in Azure Active Directory with an associated Service
+   Principal
+1. Create a role assignment granting the new application Reader permissions to
+your subscription
+1. Generate a Client Secret for the Azure Active Directory Application,
+enabling Boundary to authenticate
+
+### Register a new Azure AD application
+
+First, log in to Azure. You will need to know the [Tenant domain
+name](https://docs.microsoft.com/en-us/partner-center/find-ids-and-domain-names).
+If you need to add a new Tenant to your Subscription, [create a new
+Tenant](https://docs.microsoft.com/en-us/partner-center/multi-tenant-account)
+and then copy its domain.
+
+```shell-session
+$ az login --tenant boundary.onmicrosoft.com
+The default web browser has been opened at https://login.microsoftonline.com/0e3e2e88-8caf-41ca-b4da-q3b33b6c43tz/oauth2/v2.0/authorize. Please continue the login in the web browser. If no web browser is available or if the web browser fails to open, use device code flow with `az login --use-device-code`.
+```
+
+A browser window will open prompting you to login with your Azure credentials.
+Upon successful authentication, you should receive a  confirmation message that
+`You have logged into Microsoft Azure!`, and you can then close the browser tab.
+
+Returning to the terminal session, you should see updated output containing the
+`tenantID`.
+
+**Example output:**
+
+<CodeBlockConfig hideClipboard highlight="1,7,12">
+
+```shell-session
+$ az login --tenant boundaryoidc.onmicrosoft.com
+The default web browser has been opened at https://login.microsoftonline.com/0e3e2e88-8caf-41ca-b4da-q3b33b6c43tz/oauth2/v2.0/authorize. Please continue the login in the web browser. If no web browser is available or if the web browser fails to open, use device code flow with `az login --use-device-code`.
+[
+  {
+    "cloudName": "AzureCloud",
+    "homeTenantId": "0e3e2e88-8caf-41ca-b4da-q3b33b6c43tz",
+    "id": "c9ed8610-47a3-4107-a2b2-a322114dkd78",
+    "isDefault": true,
+    "managedByTenants": [],
+    "name": "Default Subscription",
+    "state": "Enabled",
+    "tenantId": "0e3e2e88-8caf-41ca-b4da-q3b33b6c43tz",
+    "user": {
+      "name": "admin@boundary.com",
+      "type": "user"
+    }
+  }
+]
+```
+
+</CodeBlockConfig>
+
+Copy the Tenant ID (`0e3e2e88-8caf-41ca-b4da-q3b33b6c43tz` in this example).
+
+Additionally, copy the `id` field, which contains the Subscription ID
+(`c9ed8610-47a3-4107-a2b2-a322114dkd78` in this example). These values will be
+used in the next step and when configuring Boundary.
+
+<Note>
+
+ Subscription and Tenant IDs can also be gathered using the `az
+account list` command.
+
+</Note>
+
+Export the Tenant ID and Subscription ID as environment variables for use in the
+following steps.
+
+```shell-session
+$ export ARM_TENANT_ID=<Tenant ID> \
+  export ARM_SUBSCRIPTION_ID=<Subscription ID>
+```
+
+Create a new working directory called `learn-dynamic-host-catalogs` and change
+into that directory. This tutorial assumes working out of the home directory
+`~/`.
+
+```shell-session
+$ mkdir learn-dynamic-host-catalogs && cd learn-dynamic-host-catalogs/
+```
+
+Create a new file called `main.tf` and paste the following configuration.
+
+```hcl
+# Configure the Azure provider
+terraform {
+  required_providers {
+    azurerm = {
+      source  = "hashicorp/azurerm"
+      version = "~> 2.65"
+    }
+    azuread = {
+      source  = "hashicorp/azuread"
+      version = "~> 2.11.0"
+    }
+  }
+
+  required_version = ">= 0.14.9"
+}
+
+output "client_id" {
+  value = azuread_application.boundary_app.application_id
+}
+
+provider "azurerm" {
+  features {}
+}
+
+provider "azuread" {
+}
+
+resource "azurerm_resource_group" "boundary_rg" {
+  name     = "boundary-dynamic-hosts_group"
+  location = "eastus"
+}
+
+# Create an application with Reader app role
+data "azurerm_subscription" "primary" {}
+data "azuread_client_config" "current" {}
+
+resource "azuread_application" "boundary_app" {
+  display_name = "boundary_app"
+  owners       = [data.azuread_client_config.current.object_id]
+
+  app_role {
+    allowed_member_types = ["Application"]
+    description          = "Reader role enabling app to read subscription details"
+    display_name         = "Reader"
+    enabled              = true
+    id                   = "1b19509b-32b1-4e9f-b71d-4992aa991967"
+    value                = "Read.All"
+  }
+}
+
+# Create a service principle for the application
+resource "azuread_service_principal" "boundary_service_principal" {
+  application_id = azuread_application.boundary_app.application_id
+  app_role_assignment_required = false
+  owners         = [data.azuread_client_config.current.object_id]
+}
+
+# Assign the Contributor role to the application service principle
+resource "azurerm_role_assignment" "contributor_role_assignment" {
+  scope                = data.azurerm_subscription.primary.id
+  role_definition_name = "Contributor"
+  principal_id         = azuread_service_principal.boundary_service_principal.object_id
+}
+```
+
+<Note>
+
+ The `location` of your resource group is hardcoded in this example.
+If you do not have access to the resource group location `eastus`, update the
+`main.tf` file with your [Azure
+region](https://docs.microsoft.com/en-us/azure/virtual-machines/regions).
+
+</Note>
+
+<Note>
+
+ The `id` of the `app_role` is arbitrary and hardcoded in this
+example. You may use the provided `id`, or replace it with your own.
+
+</Note>
+
+Now initialize the Terraform plan.
+
+```shell-session
+$ terraform init
+
+Initializing the backend...
+
+Initializing provider plugins...
+- Finding hashicorp/azurerm versions matching "~> 2.65"...
+- Finding hashicorp/azuread versions matching "~> 2.11.0"...
+- Installing hashicorp/azurerm v2.88.0...
+- Installed hashicorp/azurerm v2.88.0 (signed by HashiCorp)
+- Installing hashicorp/azuread v2.11.0...
+- Installed hashicorp/azuread v2.11.0 (signed by HashiCorp)
+
+Terraform has created a lock file .terraform.lock.hcl to record the provider
+selections it made above. Include this file in your version control repository
+so that Terraform can guarantee to make the same selections by default when
+you run "terraform init" in the future.
+
+Terraform has been successfully initialized!
+
+You may now begin working with Terraform. Try running "terraform plan" to see
+any changes that are required for your infrastructure. All Terraform commands
+should now work.
+
+If you ever set or change modules or backend configuration for Terraform,
+rerun this command to reinitialize your working directory. If you forget, other
+commands will detect it and remind you to do so if necessary.
+```
+
+After initialization, apply the plan and confirm by inputting `yes` when
+prompted.
+
+```shell-session
+$ terraform apply
+
+data.azuread_client_config.current: Reading...
+data.azuread_client_config.current: Read complete after 0s [id=237fbc04-c52a-458b-af97-eaf7157c0cd4-04b07795-8ddb-461a-bbee-02f9e1bf7b46-6f9d40ee-126e-42ea-ab0d-39737c95352e]
+data.azurerm_subscription.primary: Reading...
+data.azurerm_subscription.primary: Read complete after 0s [id=/subscriptions/697a1dce-94eb-4480-8cb8-2116492b04bf]
+
+Terraform used the selected providers to generate the following execution plan. Resource actions are indicated with
+the following symbols:
+  + create
+
+Terraform will perform the following actions:
+
+  # azuread_application.boundary_hosts_app will be created
+  + resource "azuread_application" "boundary_hosts_app" {
+      + app_role_ids                = (known after apply)
+      + application_id              = (known after apply)
+      + disabled_by_microsoft       = (known after apply)
+      + display_name                = "boundary_hosts_app"
+      + id                          = (known after apply)
+      + logo_url                    = (known after apply)
+      + oauth2_permission_scope_ids = (known after apply)
+      + object_id                   = (known after apply)
+      + owners                      = [
+          + "6f9d40ee-126e-42ea-ab0d-39737c95352e",
+        ]
+      + prevent_duplicate_names     = false
+      + publisher_domain            = (known after apply)
+      + sign_in_audience            = "AzureADMyOrg"
+      + tags                        = (known after apply)
+      + template_id                 = (known after apply)
+
+      + app_role {
+          + allowed_member_types = [
+              + "Application",
+            ]
+          + description          = "Reader role enabling app to read subscription details"
+          + display_name         = "Reader"
+          + enabled              = true
+          + id                   = "1b19509b-32b1-4e9f-b71d-4992aa991967"
+          + value                = "Read.All"
+        }
+    }
+
+  # azuread_service_principal.boundary_service_principal will be created
+  + resource "azuread_service_principal" "boundary_service_principal" {
+      + account_enabled              = true
+      + app_role_assignment_required = false
+      + app_role_ids                 = (known after apply)
+      + app_roles                    = (known after apply)
+      + application_id               = (known after apply)
+      + application_tenant_id        = (known after apply)
+      + display_name                 = (known after apply)
+      + homepage_url                 = (known after apply)
+      + id                           = (known after apply)
+      + logout_url                   = (known after apply)
+      + oauth2_permission_scope_ids  = (known after apply)
+      + oauth2_permission_scopes     = (known after apply)
+      + object_id                    = (known after apply)
+      + owners                       = [
+          + "6f9d40ee-126e-42ea-ab0d-39737c95352e",
+        ]
+      + redirect_uris                = (known after apply)
+      + saml_metadata_url            = (known after apply)
+      + service_principal_names      = (known after apply)
+      + sign_in_audience             = (known after apply)
+      + tags                         = (known after apply)
+      + type                         = (known after apply)
+    }
+
+  # azurerm_resource_group.boundary_rg will be created
+  + resource "azurerm_resource_group" "boundary_rg" {
+      + id       = (known after apply)
+      + location = "eastus"
+      + name     = "boundary-dynamic-hosts_group"
+    }
+
+  # azurerm_role_assignment.contributor_role_assignment will be created
+  + resource "azurerm_role_assignment" "contributor_role_assignment" {
+      + id                               = (known after apply)
+      + name                             = (known after apply)
+      + principal_id                     = (known after apply)
+      + principal_type                   = (known after apply)
+      + role_definition_id               = (known after apply)
+      + role_definition_name             = "Contributor"
+      + scope                            = "/subscriptions/697a1dce-94eb-4480-8cb8-2116492b04bf"
+      + skip_service_principal_aad_check = (known after apply)
+    }
+
+Plan: 4 to add, 0 to change, 0 to destroy.
+
+Changes to Outputs:
+  + client_id = (known after apply)
+
+Do you want to perform these actions?
+  Terraform will perform the actions described above.
+  Only 'yes' will be accepted to approve.
+
+  Enter a value: yes
+
+azuread_application.boundary_hosts_app: Creating...
+azuread_application.boundary_hosts_app: Creation complete after 8s [id=73ae3e33-0206-436c-b921-cb828e62391a]
+azuread_service_principal.boundary_service_principal: Creating...
+azurerm_resource_group.boundary_rg: Creating...
+azuread_service_principal.boundary_service_principal: Creation complete after 1s [id=16aeb3a9-a15f-4314-a5bb-5ee084d4d82d]
+azurerm_resource_group.boundary_rg: Creation complete after 1s [id=/subscriptions/697a1dce-94eb-4480-8cb8-2116492b04bf/resourceGroups/boundary-dynamic-hosts_group]
+azurerm_role_assignment.contributor_role_assignment: Creating...
+azurerm_role_assignment.contributor_role_assignment: Still creating... [10s elapsed]
+azurerm_role_assignment.contributor_role_assignment: Still creating... [20s elapsed]
+azurerm_role_assignment.contributor_role_assignment: Creation complete after 24s [id=/subscriptions/697a1dce-94eb-4480-8cb8-2116492b04bf/providers/Microsoft.Authorization/roleAssignments/62050dc9-25a9-160b-6506-68161761d586]
+
+Apply complete! Resources: 4 added, 0 changed, 0 destroyed.
+
+Outputs:
+
+client_id = "f83cf739-3901-4010-af2e-0a4402332eec"
+```
+
+The Terraform run will output the Client (Application) ID as the `client_id`.
+Copy this value and export it as an environment variable.
+
+```shell-session
+$ export ARM_CLIENT_ID=<client_id>
+```
+
+### Create hosts
+
+With the Azure AD application in place, hosts can be deployed to test the
+dynamic host catalog integration.
+
+Create a new Terraform configuration file called `hosts.tf`. Paste the following
+configuration in the new hosts file.
+
+```hcl
+# Configure the Azure VM hosts
+variable "instances" {
+  default = [
+    "boundary-vm-1",
+    "boundary-vm-2",
+    "boundary-vm-3",
+    "boundary-vm-4"
+  ]
+}
+
+variable "vm_tags" {
+  default = [
+    {"service-type":"database", "application":"dev"},
+    {"service-type":"database", "application":"dev"},
+    {"service-type":"database", "application":"production"},
+    {"service-type":"database", "application":"prod"}
+  ]
+}
+
+resource "azurerm_virtual_network" "boundary-vm-test_group-vnet" {
+  name                = "boundary-vm-test_group-vnet"
+  address_space       = ["10.0.0.0/16"]
+  location            = azurerm_resource_group.boundary_rg.location
+  resource_group_name = azurerm_resource_group.boundary_rg.name
+}
+
+resource "azurerm_subnet" "boundary_subnet" {
+  name                 = "boundary_subnet"
+  resource_group_name  = azurerm_resource_group.boundary_rg.name
+  virtual_network_name = azurerm_virtual_network.boundary-vm-test_group-vnet.name
+  address_prefixes     = ["10.0.2.0/24"]
+}
+
+resource "azurerm_network_interface" "nic" {
+  count               = length(var.instances)
+  name                = "nic-${count.index+1}"
+  location            = azurerm_resource_group.boundary_rg.location
+  resource_group_name = azurerm_resource_group.boundary_rg.name
+
+  ip_configuration {
+    name                          = "internal"
+    subnet_id                     = azurerm_subnet.boundary_subnet.id
+    private_ip_address_allocation = "Dynamic"
+  }
+}
+
+resource "azurerm_linux_virtual_machine" "boundary-vm" {
+  count               = length(var.instances)
+  name                = element(var.instances, count.index)
+  resource_group_name = azurerm_resource_group.boundary_rg.name
+  location            = azurerm_resource_group.boundary_rg.location
+  size                = "Standard_B1ls"
+  admin_username      = "adminuser"
+  admin_password      = "SuperSecret123"
+  disable_password_authentication = false
+  network_interface_ids = [element(azurerm_network_interface.nic.*.id, count.index)]
+  tags = var.vm_tags[count.index]
+
+  os_disk {
+    caching              = "ReadWrite"
+    storage_account_type = "Standard_LRS"
+  }
+
+  source_image_reference {
+    publisher = "OpenLogic"
+    offer     = "CentOS"
+    sku       = "7_9-gen2"
+    version   = "latest"
+  }
+}
+```
+
+Save this file and run `terraform apply` again, confirming the new configuration
+by entering `yes` when prompted.
+
+<Note>
+
+ For comparison, you can find the `main.tf` and `hosts.tf` files
+within the `azure/terraform/` directory in the
+[learn-boundary-cloud-host-catalogs](https://github.com/hashicorp-education/learn-boundary-cloud-host-catalogs)
+Github repository.
+
+</Note>
+
+```shell-session
+$ terraform apply
+data.azuread_client_config.current: Reading...
+data.azuread_client_config.current: Read complete after 0s [id=237fbc04-c52a-458b-af97-eaf7157c0cd4-04b07795-8ddb-461a-bbee-02f9e1bf7b46-6f9d40ee-126e-42ea-ab0d-39737c95352e]
+azuread_application.boundary_hosts_app: Refreshing state... [id=73ae3e33-0206-436c-b921-cb828e62391a]
+azuread_service_principal.boundary_service_principal: Refreshing state... [id=16aeb3a9-a15f-4314-a5bb-5ee084d4d82d]
+data.azurerm_subscription.primary: Reading...
+azurerm_resource_group.boundary_rg: Refreshing state... [id=/subscriptions/697a1dce-94eb-4480-8cb8-2116492b04bf/resourceGroups/boundary-dynamic-hosts_group]
+data.azurerm_subscription.primary: Read complete after 0s [id=/subscriptions/697a1dce-94eb-4480-8cb8-2116492b04bf]
+azurerm_role_assignment.contributor_role_assignment: Refreshing state... [id=/subscriptions/697a1dce-94eb-4480-8cb8-2116492b04bf/providers/Microsoft.Authorization/roleAssignments/62050dc9-25a9-160b-6506-68161761d586]
+
+Terraform used the selected providers to generate the following execution plan. Resource actions are indicated with
+the following symbols:
+  + create
+
+Terraform will perform the following actions:
+
+  # azurerm_linux_virtual_machine.boundary-vm[0] will be created
+  + resource "azurerm_linux_virtual_machine" "boundary-vm" {
+      + admin_password                  = (sensitive value)
+      + admin_username                  = "adminuser"
+      + allow_extension_operations      = true
+      + computer_name                   = (known after apply)
+      + disable_password_authentication = false
+      + extensions_time_budget          = "PT1H30M"
+      + id                              = (known after apply)
+      + location                        = "eastus"
+      + max_bid_price                   = -1
+      + name                            = "boundary-vm-1"
+      + network_interface_ids           = (known after apply)
+      + patch_mode                      = "ImageDefault"
+      + platform_fault_domain           = -1
+      + priority                        = "Regular"
+      + private_ip_address              = (known after apply)
+      + private_ip_addresses            = (known after apply)
+      + provision_vm_agent              = true
+      + public_ip_address               = (known after apply)
+      + public_ip_addresses             = (known after apply)
+      + resource_group_name             = "boundary-dynamic-hosts_group"
+      + size                            = "Standard_B1ls"
+      + tags                            = {
+          + "application"  = "dev"
+          + "service-type" = "database"
+        }
+      + virtual_machine_id              = (known after apply)
+      + zone                            = (known after apply)
+
+      + os_disk {
+          + caching                   = "ReadWrite"
+          + disk_size_gb              = (known after apply)
+          + name                      = (known after apply)
+          + storage_account_type      = "Standard_LRS"
+          + write_accelerator_enabled = false
+        }
+
+      + source_image_reference {
+          + offer     = "CentOS"
+          + publisher = "OpenLogic"
+          + sku       = "7_9-gen2"
+          + version   = "latest"
+        }
+    }
+
+...
+...Truncated Output...
+...
+
+  # azurerm_virtual_network.boundary-vm-test_group-vnet will be created
+  + resource "azurerm_virtual_network" "boundary-vm-test_group-vnet" {
+      + address_space         = [
+          + "10.0.0.0/16",
+        ]
+      + dns_servers           = (known after apply)
+      + guid                  = (known after apply)
+      + id                    = (known after apply)
+      + location              = "eastus"
+      + name                  = "boundary-vm-test_group-vnet"
+      + resource_group_name   = "boundary-dynamic-hosts_group"
+      + subnet                = (known after apply)
+      + vm_protection_enabled = false
+    }
+
+Plan: 10 to add, 0 to change, 0 to destroy.
+
+Do you want to perform these actions?
+  Terraform will perform the actions described above.
+  Only 'yes' will be accepted to approve.
+
+  Enter a value: yes
+
+azurerm_virtual_network.boundary-vm-test_group-vnet: Creating...
+azurerm_virtual_network.boundary-vm-test_group-vnet: Creation complete after 5s [id=/subscriptions/697a1dce-94eb-4480-8cb8-2116492b04bf/resourceGroups/boundary-dynamic-hosts_group/providers/Microsoft.Network/virtualNetworks/boundary-vm-test_group-vnet]
+azurerm_subnet.boundary_subnet: Creating...
+azurerm_subnet.boundary_subnet: Creation complete after 4s [id=/subscriptions/697a1dce-94eb-4480-8cb8-2116492b04bf/resourceGroups/boundary-dynamic-hosts_group/providers/Microsoft.Network/virtualNetworks/boundary-vm-test_group-vnet/subnets/boundary_subnet]
+azurerm_network_interface.nic[0]: Creating...
+azurerm_network_interface.nic[1]: Creating...
+azurerm_network_interface.nic[2]: Creating...
+azurerm_network_interface.nic[3]: Creating...
+azurerm_network_interface.nic[3]: Creation complete after 2s [id=/subscriptions/697a1dce-94eb-4480-8cb8-2116492b04bf/resourceGroups/boundary-dynamic-hosts_group/providers/Microsoft.Network/networkInterfaces/nic-4]
+azurerm_network_interface.nic[0]: Creation complete after 3s [id=/subscriptions/697a1dce-94eb-4480-8cb8-2116492b04bf/resourceGroups/boundary-dynamic-hosts_group/providers/Microsoft.Network/networkInterfaces/nic-1]
+azurerm_network_interface.nic[1]: Creation complete after 5s [id=/subscriptions/697a1dce-94eb-4480-8cb8-2116492b04bf/resourceGroups/boundary-dynamic-hosts_group/providers/Microsoft.Network/networkInterfaces/nic-2]
+azurerm_network_interface.nic[2]: Creation complete after 6s [id=/subscriptions/697a1dce-94eb-4480-8cb8-2116492b04bf/resourceGroups/boundary-dynamic-hosts_group/providers/Microsoft.Network/networkInterfaces/nic-3]
+azurerm_linux_virtual_machine.boundary-vm[1]: Creating...
+azurerm_linux_virtual_machine.boundary-vm[3]: Creating...
+azurerm_linux_virtual_machine.boundary-vm[2]: Creating...
+azurerm_linux_virtual_machine.boundary-vm[0]: Creating...
+azurerm_linux_virtual_machine.boundary-vm[0]: Still creating... [10s elapsed]
+azurerm_linux_virtual_machine.boundary-vm[1]: Still creating... [10s elapsed]
+azurerm_linux_virtual_machine.boundary-vm[2]: Still creating... [10s elapsed]
+azurerm_linux_virtual_machine.boundary-vm[3]: Still creating... [10s elapsed]
+azurerm_linux_virtual_machine.boundary-vm[2]: Still creating... [20s elapsed]
+azurerm_linux_virtual_machine.boundary-vm[0]: Still creating... [20s elapsed]
+azurerm_linux_virtual_machine.boundary-vm[1]: Still creating... [20s elapsed]
+azurerm_linux_virtual_machine.boundary-vm[3]: Still creating... [20s elapsed]
+azurerm_linux_virtual_machine.boundary-vm[1]: Still creating... [30s elapsed]
+azurerm_linux_virtual_machine.boundary-vm[2]: Still creating... [30s elapsed]
+azurerm_linux_virtual_machine.boundary-vm[0]: Still creating... [30s elapsed]
+azurerm_linux_virtual_machine.boundary-vm[3]: Still creating... [30s elapsed]
+azurerm_linux_virtual_machine.boundary-vm[2]: Still creating... [40s elapsed]
+azurerm_linux_virtual_machine.boundary-vm[0]: Still creating... [40s elapsed]
+azurerm_linux_virtual_machine.boundary-vm[1]: Still creating... [40s elapsed]
+azurerm_linux_virtual_machine.boundary-vm[3]: Still creating... [40s elapsed]
+azurerm_linux_virtual_machine.boundary-vm[2]: Still creating... [50s elapsed]
+azurerm_linux_virtual_machine.boundary-vm[3]: Still creating... [50s elapsed]
+azurerm_linux_virtual_machine.boundary-vm[1]: Still creating... [50s elapsed]
+azurerm_linux_virtual_machine.boundary-vm[0]: Still creating... [50s elapsed]
+azurerm_linux_virtual_machine.boundary-vm[1]: Still creating... [1m0s elapsed]
+azurerm_linux_virtual_machine.boundary-vm[2]: Still creating... [1m0s elapsed]
+azurerm_linux_virtual_machine.boundary-vm[0]: Still creating... [1m0s elapsed]
+azurerm_linux_virtual_machine.boundary-vm[3]: Still creating... [1m0s elapsed]
+azurerm_linux_virtual_machine.boundary-vm[3]: Still creating... [1m10s elapsed]
+azurerm_linux_virtual_machine.boundary-vm[1]: Still creating... [1m10s elapsed]
+azurerm_linux_virtual_machine.boundary-vm[0]: Still creating... [1m10s elapsed]
+azurerm_linux_virtual_machine.boundary-vm[2]: Still creating... [1m10s elapsed]
+azurerm_linux_virtual_machine.boundary-vm[0]: Still creating... [1m20s elapsed]
+azurerm_linux_virtual_machine.boundary-vm[2]: Still creating... [1m20s elapsed]
+azurerm_linux_virtual_machine.boundary-vm[3]: Still creating... [1m20s elapsed]
+azurerm_linux_virtual_machine.boundary-vm[1]: Still creating... [1m20s elapsed]
+azurerm_linux_virtual_machine.boundary-vm[1]: Still creating... [1m30s elapsed]
+azurerm_linux_virtual_machine.boundary-vm[0]: Still creating... [1m30s elapsed]
+azurerm_linux_virtual_machine.boundary-vm[2]: Still creating... [1m30s elapsed]
+azurerm_linux_virtual_machine.boundary-vm[3]: Still creating... [1m30s elapsed]
+azurerm_linux_virtual_machine.boundary-vm[3]: Still creating... [1m40s elapsed]
+azurerm_linux_virtual_machine.boundary-vm[1]: Still creating... [1m40s elapsed]
+azurerm_linux_virtual_machine.boundary-vm[0]: Still creating... [1m40s elapsed]
+azurerm_linux_virtual_machine.boundary-vm[2]: Still creating... [1m40s elapsed]
+azurerm_linux_virtual_machine.boundary-vm[1]: Creation complete after 1m49s [id=/subscriptions/697a1dce-94eb-4480-8cb8-2116492b04bf/resourceGroups/boundary-dynamic-hosts_group/providers/Microsoft.Compute/virtualMachines/boundary-vm-2]
+azurerm_linux_virtual_machine.boundary-vm[2]: Creation complete after 1m49s [id=/subscriptions/697a1dce-94eb-4480-8cb8-2116492b04bf/resourceGroups/boundary-dynamic-hosts_group/providers/Microsoft.Compute/virtualMachines/boundary-vm-3]
+azurerm_linux_virtual_machine.boundary-vm[3]: Creation complete after 1m49s [id=/subscriptions/697a1dce-94eb-4480-8cb8-2116492b04bf/resourceGroups/boundary-dynamic-hosts_group/providers/Microsoft.Compute/virtualMachines/boundary-vm-4]
+azurerm_linux_virtual_machine.boundary-vm[0]: Still creating... [1m50s elapsed]
+azurerm_linux_virtual_machine.boundary-vm[0]: Creation complete after 1m50s [id=/subscriptions/697a1dce-94eb-4480-8cb8-2116492b04bf/resourceGroups/boundary-dynamic-hosts_group/providers/Microsoft.Compute/virtualMachines/boundary-vm-1]
+
+Apply complete! Resources: 10 added, 0 changed, 0 destroyed.
+
+Outputs:
+
+client_id = "f83cf739-3901-4010-af2e-0a4402332eec"
+```
+
+### Generate a client secret for the application
+
+With the Azure AD application and hosts created, generate an application client
+secret for Boundary to use for authentication.
+
+The `az add app credential reset` command is used to append or overwrite an
+application's password or certificate credentials.
+
+```shell-session
+$ az ad app credential reset --append \
+  --id $ARM_CLIENT_ID \
+  --credential-description "boundary-secret"
+```
+
+**Example output:**
+
+<CodeBlockConfig hideClipboard highlight="1-3,8">
+
+```shell-session
+$ az ad app credential reset --append \
+  --id $ARM_CLIENT_ID \
+  --credential-description "boundary-secret"
+The output includes credentials that you must protect. Be sure that you do not include these credentials in your code or check the credentials into your source control. For more information, see https://aka.ms/azadsp-cli
+{
+  "appId": "72a29e03-c0fc-42b4-bf58-83792425e497",
+  "name": "e04478dd-66e1-4d4b-ab48-d45c34a31a96",
+  "password": "K_6DkmSPRn3~ddhJR7G-VQCeL743wYP0nr",
+  "tenant": "0e3e2e88-8caf-41ca-b4da-q3b33b6c43tz"
+}
+```
+
+</CodeBlockConfig>
+
+Export the `password` returned in the output
+(`K_6DkmSPRn3~ddhJR7G-VQCeL743wYP0nr` in this example) as an environment
+variable for use when configuring Boundary later on. **Store this value
+somewhere safe, because it cannot be accessed again.**
+
+```shell-session
+$ export ARM_CLIENT_SECRET=<password>
+```
+
+### Gather plugin details
+
+To use the Boundary Azure hosts plugin, the following details must be gathered
+from Azure:
+
+- ARM Tenant (Directory) ID
+- ARM Subscription ID
+- ARM Client (Application) ID
+- ARM Client Secret
+
+These values should be available as environment variables within the terminal
+session, or copied to a safe location for use when setting up Boundary.
+
+Check that the values have been exported in your current shell session:
+
+```shell-session
+$ echo $ARM_TENANT_ID; echo $ARM_SUBSCRIPTION_ID; echo $ARM_CLIENT_ID; echo $ARM_CLIENT_SECRET
+0e3e2e88-8caf-41ca-b4da-q3b33b6c43tz
+c9ed8610-47a3-4107-a2b2-a322114dkd78
+c2520eac-f580-435a-a12a-1efc823ca054
+K_6DkmSPRn3~ddhJR7G-VQCeL743wYP0nr
+```
+
+</Tab>
+<Tab heading="Azure Portal" group="azure-portal">
+
+There are four tasks necessary to set up hosts using the Azure Portal:
+
+1. Create an Application in Azure Active Directory, which creates an associated
+Service Principal
+1. Generate a Client Secret for the Azure Active Directory
+Application, enabling Boundary to authenticate
+1. Grant the Service Principal access to read resources in your Azure
+subscription
+1. Tag the hosts, so they can be filtered into catalogs by Boundary.
+
+### Register a new Azure AD application
+
+Navigate to the **Azure Active Directory** overview within the Azure Portal and
+select the **App Registration** blade.
+
+![Azure Portal](/img/boundary/boundary-oidc-azure-create-user-0.png)
+
+Click the **New registration** button at the top to create a new application
+within Azure Active Directory.
+
+![Azure Create Application](/img/boundary/boundary-oidc-azure-create-app-0.png)
+
+On this page, set the following values:
+
+- `Name`: This tutorial calls the application `Boundary Dynamic Hosts Test`
+- `Supported Account Types`: Set this to `Accounts in this organizational
+  directory only (single-tenant)`
+- `Redirect URI`: Choose "Web" for the URI type.
+
+Select **Register**.
+
+![Azure Create Application](/img/boundary/azure/azure-app-dynamic-hosts-create.png)
+
+The newly created Azure Active Directory application should now be visible
+on-screen. If not, navigate to the the **App Registration** blade and select the
+Azure Active Directory application (`Boundary Dynamic Hosts Test`).
+
+At the top of application overview page, copy these values for later use:
+
+- `Application (client) ID`
+- `Directory (tenant) ID`
+
+![Azure Create Application](/img/boundary/azure/azure-app-dynamic-hosts-details.png)
+
+### Generate a client secret for the application
+
+Next, create a Client Secret for Boundary to use for authentication.
+
+Select `Certificates & Secrets`. This screen displays the Certificates and
+Client Secrets (i.e. passwords) which are associated with this Azure Active
+Directory Application.
+
+![Azure Create Secret](/img/boundary/azure/azure-app-dynamic-hosts-new-secret.png)
+
+Click **New client secret** and fill out the secret details. This tutorial
+describes the secret as *Boundary Dynamic Hosts Test Secret*.
+
+Click **Add**.
+
+![Azure New Secret](/img/boundary/azure/azure-app-dynamic-hosts-secret-details.png)
+
+Copy the client **Secret** value and store it for use later. Ensure you grab the
+**Value**, _not_ the Secret ID.
+
+![Azure New Secret](/img/boundary/azure/azure-app-dynamic-hosts-copy-secret.png)
+
+### Grant the application access to manage resources in your Azure Subscription
+
+In order for Boundary to read host details, the new application must be granted
+permissions to read resources in the Azure Subscription.
+
+Use the *Search resources* box at the top of the Azure Portal to search for **Subscriptions**.
+
+![Azure Subscriptions](/img/boundary/azure/azure-app-dynamic-hosts-locate-subscriptions.png)
+
+From the **Subscriptions** blade, select the name of the subscription you would
+like to use.
+
+![Azure Subscriptions](/img/boundary/azure/azure-app-dynamic-hosts-all-subscriptions.png)
+
+~> If no subscription exists, first ensure you are located in the correct
+Directory, and [switch
+directories](https://azure.microsoft.com/en-us/updates/edit-directory-now-in-new-portal/)
+if necessary. If you created the application in the wrong directory, you may
+need to re-create the application to proceed. If no subscriptions exist in any
+directory, you will need to follow the instructions for [setting up a new
+subscription](https://docs.microsoft.com/en-us/azure/cost-management-billing/manage/create-subscription).
+A free subscription trial should be sufficient for completing this tutorial, but
+note that you are responsible for any incurred charges.
+
+On this page, copy the **Subscription ID** for the subscription you would like
+to use.
+
+![Azure Subscriptions](/img/boundary/azure/azure-app-dynamic-hosts-copy-subscription.png)
+
+Next, click **Access Control (IAM)** and select **Add role assignment** under
+*Grant access to this resource*.
+
+![Azure Role Assignment](/img/boundary/azure/azure-app-dynamic-hosts-add-role-assignment.png)
+
+Use the *Search by role name or description* box to search for the **Reader**
+role, with a Description of *View all resources, but does not allow you to make
+any changes*.
+
+Select **Reader**, then click **Next**.
+
+![Azure Reader Role](/img/boundary/azure/azure-app-dynamic-hosts-select-reader-role.png)
+
+Under the **Members** page, click the **+ Select Members** button.
+
+Use the *Search by name or email address* box to search for the **Boundary
+Dynamic Hosts Test** application name you created earlier, and select it.
+
+![Azure Reader Role](/img/boundary/azure/azure-app-dynamic-hosts-assign-reader-role.png)
+
+With the application listed under *Selected members:*, click **Select**.
+
+Lastly, click the **Review + assign** button, and then click **Review + assign**
+again if the role assignment details appear correct.
+
+### Create hosts
+
+With the application configured, test hosts can be set up. These hosts will be
+members of Boundary's dynamic host catalog.
+
+Navigate **Home** and open the hamburger menu on the upper-left of the Azure
+portal. Select **+ Create a resource**.
+
+![Azure Create a resource](/img/boundary/azure/azure-app-dynamic-hosts-create-a-resource.png)
+
+Using the search box, type **template** and select **Template deployment** from
+the list of results.
+
+![Azure Resource Template](/img/boundary/azure/azure-app-dynamic-hosts-select-template.png)
+
+From the *Template deployment (deploy using custom templates)* page, select
+**Create**.
+
+![Azure Resource Template](/img/boundary/azure/azure-app-dynamic-hosts-template-deployment.png)
+
+Under the *Custom deployment* page, select **Build your own template in the
+editor**.
+
+![Azure Resource Template](/img/boundary/azure/azure-app-dynamic-hosts-build-your-own-template.png)
+
+Under the *Edit template* page, delete the custom template scaffolding.
+
+![Azure Resource Template](/img/boundary/azure/azure-app-dynamic-hosts-delete-template.png)
+
+The custom template contents can be found in the
+[learn-boundary-cloud-host-catalogs Github
+repository](https://github.com/hashicorp-education/learn-boundary-cloud-host-catalogs).
+**Open this repository in a new browser tab and navigate to the
+`azure/azure-dynamic-hosts.template` file.**
+
+This template creates **4** separate Virtual Machines for testing with a
+Boundary host catalog. The resources needed to deploy these VMs are specified
+within the template file.
+
+**Copy the contents of the `azure-dynamic-hosts.template` file.**
+
+Navigate back to the Azure Portal, and paste the template contents into the
+*Edit template* form.
+
+![Azure Resource Template](/img/boundary/azure/azure-app-dynamic-hosts-populate-template.png)
+
+Click **Save**.
+
+The *Custom deployment* page is populated with the parameters available from the
+template. Under the **Resource group** field, select **Create new**. Enter
+`boundary-dynamic-hosts_group` as the *Name* and click **OK**.
+
+Next, a password or private key must be configured.
+
+<Note>
+
+ This tutorial does not log into the associated VMs, but it is best
+practice to copy the password or retain the private key for the duration of the
+tutorial.
+
+</Note>
+
+After entering a password or configuring a private key, click **Review +
+create**.
+
+![Azure Resource Template](/img/boundary/azure/azure-app-dynamic-hosts-deployment-details.png)
+
+When the template parameters are validated a *Validation Passed* message will be
+displayed.
+
+<Note>
+
+ If the template validation fails, you may have copy-and-pasted the
+contents of the template incorrectly. Navigate back to the **Basics** tab,
+select **Edit template** and re-populate the template contents with the content
+of the `azure-dynamic-hosts.template` file.
+
+</Note>
+
+![Azure Resource Template](/img/boundary/azure/azure-app-dynamic-hosts-template-validation.png)
+
+Click **Create**.
+
+After some time, a notification that **Your deployment is complete** will be
+displayed.
+
+![Azure Resource Template](/img/boundary/azure/azure-app-dynamic-hosts-deployment-complete.png)
+
+Select **Go to resource group** and keep this page open for reference later.
+
+### Gather plugin details
+
+To use the Boundary Azure hosts plugin, the following details must be gathered
+from Azure:
+
+- ARM Tenant (Directory) ID
+- ARM Subscription ID
+- ARM Client (Application) ID
+- ARM Client Secret
+
+Ensure these values have been copied from the Azure Portal. If not, proceed back
+to the **Azure AD** and **Subscriptions** Blades and copy their values.
+
+Now define the ARM parameters gathered when creating the cloud hosts as
+environment variables to use when setting up Boundary.
+
+```shell-session
+$ export ARM_TENANT_ID=<Tenant ID> \
+  export ARM_SUBSCRIPTION_ID=<Subscription ID> \
+  export ARM_CLIENT_ID=<Client ID> \
+  export ARM_CLIENT_SECRET=<Client secret>
+```
+
+Check that the values have been exported in your current shell session:
+
+```shell-session
+$ echo $ARM_TENANT_ID; echo $ARM_SUBSCRIPTION_ID; echo $ARM_CLIENT_ID; echo $ARM_CLIENT_SECRET
+0e3e2e88-8caf-41ca-b4da-q3b33b6c43tz
+c9ed8610-47a3-4107-a2b2-a322114dkd78
+c2f9b423-9aa1-4ed4-809d-0af5b28397f9
+K_6DkmSPRn3~ddhJR7G-VQCeL743wYP0nr
+```
+
+</Tab>
+</Tabs>
+
+
+## Host catalog plugins
+
+For Boundary, the process for creating a dynamic host catalog has two steps:
+
+1. Create a plugin-type host catalog
+1. Create a host set that defines membership using filters
+
+A plugin-type host catalog can be created using some cloud provider resource
+details, and the host set is then defined using a filter that selects hosts for
+membership based on the tags defined when [setting up the hosts](#set-up-cloud-hosts).
+
+Host set filter expressions are defined by the plugin provider, in this case
+Azure. The Azure plugin uses simple filter queries to specify tags associated
+with hosts based on `tagName` and `tagValue`.
+
+For example, a host set filter that selects all hosts tagged with
+`"service_type": "database"` is written as:
+
+- `"tagName eq 'service-type' and tagValue eq 'database'"`
+
+Resources within Azure can generally be filtered by tag names and values, and
+additional operators such as `ne` (not equals) can be utilized.
+
+To learn more about Azure filters for listing resources, visit the `$filter`
+section in the [Azure API
+docs](https://docs.microsoft.com/en-us/rest/api/resources/Resources/List).
+
+### Build a host catalog
+
+With the cloud provider details gathered, a plugin host catalog can now be
+created that will contain the respective host sets for the database and
+application filters.
+
+### Create a host catalog plugin
+
+Check that the ARM parameter environment variable values were set correctly in
+your session.
+
+```shell-session
+$ echo $ARM_TENANT_ID; echo $ARM_SUBSCRIPTION_ID; echo $ARM_CLIENT_ID; echo $ARM_CLIENT_SECRET
+0e3e2e88-8caf-41ca-b4da-q3b33b6c43tz
+c9ed8610-47a3-4107-a2b2-a322114dkd78
+c2f9b423-9aa1-4ed4-809d-0af5b28397f9
+notarealtokenmG27Q~Kr842OROnJUwWtG0ygbfG5RKxe.DeZ-
+```
+
+If necessary, authenticate to Boundary as the admin user.
+
+```shell-session
+$ boundary authenticate
+Please enter the login name (it will be hidden):
+Please enter the password (it will be hidden):
+Authentication information:
+  Account ID:      acctpw_VOeNSFX8pQ
+  Auth Method ID:  ampw_wxzojlKJLN
+  Expiration Time: Mon, 13 Feb 2023 12:35:32 MST
+  User ID:         u_1vUkf5fPs9
+The token was successfully stored in the chosen keyring and is not displayed here.
+```
+
+Next, create a new plugin-type host catalog with a `-plugin-name` of `azure`,
+providing the ARM Tenant ID, Subscription ID, and Client ID using the `-attr`
+flag, and the ARM Client Secret using the `-secret` flag. These values should
+map to the environment variables defined above.
+
+```shell-session
+$ boundary host-catalogs create plugin \
+  -scope-id $PROJECT_ID \
+  -plugin-name azure \
+  -attr disable_credential_rotation=true \
+  -attr tenant_id=env://ARM_TENANT_ID \
+  -attr subscription_id=env://ARM_SUBSCRIPTION_ID \
+  -attr client_id=env://ARM_CLIENT_ID \
+  -secret secret_value=env://ARM_CLIENT_SECRET
+```
+
+Command flags:
+
+- `-plugin-name`: This corresponds to the host catalog plugin's name, such as
+`azure` or `aws`
+- `disable_credential_rotation`: This tutorial utilizes a static secret by
+setting this value to `true`
+- `tenant_id`: The ARM Tenant(Directory) ID, supplied as an environment variable
+- `subscription_id`: The ARM Subscription ID, supplied as an environment variable
+- `client_id`: The ARM Client (Application) ID, supplied as an environment variable
+- `secret_value`: The ARM Client Secret, supplied as an environment variable
+
+<Note>
+
+ Although credentials are stored encrypted within Boundary, by
+default this plugin attempts to rotate credentials supplied through the
+`secrets` object during a create or update call to the host catalog resource.
+The given credentials will be used to create a new credential, and then the
+given credential will be revoked. In this way, after rotation, only Boundary
+knows the client secret in use by this plugin. Credential rotation will be
+generally available in a future release of Boundary.
+
+</Note>
+
+**Sample output:**
+
+<CodeBlockConfig hideClipboard highlight="1-8,13">
+
+```shell-session
+$ boundary host-catalogs create plugin \
+  -scope-id $PROJECT_ID \
+  -plugin-name azure \
+  -attr disable_credential_rotation=true \
+  -attr tenant_id=env://ARM_TENANT_ID \
+  -attr subscription_id=env://ARM_SUBSCRIPTION_ID \
+  -attr client_id=env://ARM_CLIENT_ID \
+  -secret secret_value=env://ARM_CLIENT_SECRET
+
+
+Host Catalog information:
+  Created Time:                  Mon, 13 Feb 2023 16:15:47 MST
+  ID:                            hcplg_zZfpE9UHlz
+  Plugin ID:                     pl_z7Edh0X67z
+  Secrets HMAC:                  5wVcSKk1YhkqRp41zPjMP88SkiJLv8dcJcHs1UNYCmtc
+  Type:                          plugin
+  Updated Time:                  Mon, 13 Feb 2023 16:15:47 MST
+  Version:                       1
+
+  Scope:
+    ID:                          p_1234567890
+    Name:                        Generated project scope
+    Parent Scope ID:             o_1234567890
+    Type:                        project
+
+  Plugin:
+    ID:                          pl_p1J8mSiPuI
+    Name:                        azure
+
+  Attributes:
+    client_id:                   c2f9b423-9aa1-4ed4-809d-0af5b28397f9
+    disable_credential_rotation: true
+    subscription_id:             c9ed8610-47a3-4107-a2b2-a322114dkd78
+    tenant_id:                   0e3e2e88-8caf-41ca-b4da-q3b33b6c43tz
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+
+  Authorized Actions on Host Catalog's Collections:
+    host-sets:
+      create
+      list
+    hosts:
+      list
+```
+
+</CodeBlockConfig>
+
+Copy the host catalog ID from the output (`hcplg_zZfpE9UHlz` in this example) and
+store it in the `HOST_CATALOG_ID` environment variable.
+
+```shell-session
+$ export HOST_CATALOG_ID=hcplg_zZfpE9UHlz
+```
+
+### Create the host sets
+
+With the dynamic host catalog created, host sets can now be defined that
+correspond to the service-type and application tags added to the hosts.
+
+Recall the three host sets we wish to create:
+
+- All hosts with a `service-type` tag of `database`
+- All hosts with an `application` tag of `dev`
+- All hosts with an `application` tag of `production`
+
+The respective host set filters can be constructed as:
+
+- `"tagName eq 'service-type' and tagValue eq 'database'"`
+- `"tagName eq 'application' and tagValue eq 'dev'"`
+- `"tagName eq 'application' and tagValue eq 'production'"`
+
+Create the first plugin host set containing hosts tagged with a `service-type`
+of `database`, supplying the host catalog ID copied above and the needed filter
+using the `-attr` flag.
+
+```shell-session
+$ boundary host-sets create plugin \
+  -name database \
+  -host-catalog-id $HOST_CATALOG_ID \
+  -attr filter="tagName eq 'service-type' and tagValue eq 'database'"
+```
+
+**Sample output:**
+
+<CodeBlockConfig hideClipboard highlight="1-4,9">
+
+```shell-session
+$ boundary host-sets create plugin \
+  -name database \
+  -host-catalog-id $HOST_CATALOG_ID \
+  -attr filter="tagName eq 'service-type' and tagValue eq 'database'"
+
+Host Set information:
+  Created Time:        Mon, 13 Feb 2023 16:35:35 MST
+  Host Catalog ID:     hcplg_zZfpE9UHlz
+  ID:                  hsplg_IiQgeZYxKJ
+  Name:                database
+  Type:                plugin
+  Updated Time:        Mon, 13 Feb 2023 16:35:35 MST
+  Version:             1
+
+  Scope:
+    ID:                p_1234567890
+    Name:              Generated project scope
+    Parent Scope ID:   o_1234567890
+    Type:              project
+
+  Plugin:
+    ID:                pl_z7Edh0X67z
+    Name:              azure
+
+  Attributes:
+    filter:            tagName eq 'service-type' and tagValue eq 'database'
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+```
+
+</CodeBlockConfig>
+
+Copy the database host set ID from the output (`hsplg_IiQgeZYxKJ` in this example) and
+store it in the `DATABASE_HOST_SET_ID` environment variable.
+
+```shell-session
+$ export DATABASE_HOST_SET_ID=hsplg_IiQgeZYxKJ
+```
+
+Wait a moment, then list all available hosts within the `azure` host catalog,
+which contains the newly created `database` host set.
+
+<Note>
+
+ It may take up to five minutes for the host catalog to sync with
+the cloud provider.
+
+</Note>
+
+```shell-session
+$ boundary hosts list -host-catalog-id $HOST_CATALOG_ID
+
+Host information:
+  ID:                    hplg_35sD4tOrCP
+    External ID:
+    /subscriptions/c9ed8610-47a3-4107-a2b2-a322114dkd78/resourceGroups/boundary-dynamic-hosts_group/providers/Microsoft.Compute/virtualMachines/boundary-vm1-dev
+    Version:             1
+    Type:                plugin
+    Authorized Actions:
+      no-op
+      read
+
+  ID:                    hplg_cxiWeokxkJ
+    External ID:
+    /subscriptions/c9ed8610-47a3-4107-a2b2-a322114dkd78/resourceGroups/boundary-dynamic-hosts_group/providers/Microsoft.Compute/virtualMachines/boundary-vm-4-production
+    Version:             1
+    Type:                plugin
+    Authorized Actions:
+      no-op
+      read
+
+  ID:                    hplg_s5pQuIjAiP
+    External ID:
+    /subscriptions/c9ed8610-47a3-4107-a2b2-a322114dkd78/resourceGroups/boundary-dynamic-hosts_group/providers/Microsoft.Compute/virtualMachines/boundary-vm2-dev
+    Version:             1
+    Type:                plugin
+    Authorized Actions:
+      no-op
+      read
+
+  ID:                    hplg_xSU4Fs5ZKc
+    External ID:
+    /subscriptions/c9ed8610-47a3-4107-a2b2-a322114dkd78/resourceGroups/boundary-dynamic-hosts_group/providers/Microsoft.Compute/virtualMachines/boundary-vm-3-production
+    Version:             1
+    Type:                plugin
+    Authorized Actions:
+      no-op
+      read
+```
+
+<Note title="Troubleshooting">
+
+ If the `boundary hosts list` command returns `No hosts
+found`, expand the accordion below to check your work.
+
+</Note>
+
+<Accordion heading="Troubleshoot Missing Hosts" collapse>
+
+
+If the host catalog is misconfigured, hosts will not be discoverable by
+Boundary. There are two issues to check:
+
+1. The host catalog ARM ID's supplied as environment variables are incorrect
+1. The Azure subscription role of `Reader` has not been applied to the application
+
+<Note>
+
+ Depending on the type of configuration issue, you will need to wait
+approximately 5 - 10 minutes for the existing host catalog or host sets to sync
+with the provider and refresh their values. If you do not want to wait a new
+host catalog and host set can be created from scratch, but these will also take
+several minutes to sync upon creation.
+
+</Note>
+
+If incorrect, update the managed group filter. This process can also be used to
+update the managed group filter criteria in the future for any existing managed
+groups.
+
+First, check the environment variables defined when [creating a host catalog
+plugin](#create-a-host-catalog-plugin). Ensure these are the correct values
+gathered when [setting up the cloud hosts](#set-up-cloud-hosts) in the Azure
+portal.
+
+If these are incorrectly defined, set the environment variables again,
+and update the host catalog:
+
+```shell-session
+$ boundary host-catalogs update plugin \
+  -id $HOST_CATALOG_ID \
+  -plugin-name azure \
+  -attr disable_credential_rotation=true \
+  -attr tenant_id=env://ARM_TENANT_ID \
+  -attr subscription_id=env://ARM_SUBSCRIPTION_ID \
+  -attr client_id=env://ARM_CLIENT_ID \
+  -secret secret_value=env://ARM_CLIENT_SECRET
+```
+
+Second, check is the Reader role assignment to the Azure AD application's
+subscription. If incorrect permissions are assigned or the wrong application is
+selected, Boundary will not be able to view the hosts from the application
+granting it access.
+
+Review the steps for [granting the application access to manage resources in
+your Azure
+Subscription](#grant-the-application-access-to-manage-resources-in-your-azure-subscription).
+
+After correcting the role, give Boundary up to five minutes to refresh the
+connection to Azure, and list the available hosts again.
+
+</Accordion>
+
+Now create a host set that correspond to the `application` tag of `dev`.
+
+```shell-session
+$ boundary host-sets create plugin \
+  -name dev \
+  -host-catalog-id $HOST_CATALOG_ID \
+  -attr filter="tagName eq 'application' and tagValue eq 'dev'"
+```
+
+**Sample output:**
+
+<CodeBlockConfig hideClipboard highlight="1-4,9">
+
+```shell-session
+$ boundary host-sets create plugin \
+  -name dev \
+  -host-catalog-id $HOST_CATALOG_ID \
+  -attr filter="tagName eq 'application' and tagValue eq 'dev'"
+
+Host Set information:
+  Created Time:        Mon, 13 Feb 2023 16:39:41 MST
+  Host Catalog ID:     hcplg_zZfpE9UHlz
+  ID:                  hsplg_sqcZJGNxHD
+  Name:                dev
+  Type:                plugin
+  Updated Time:        Mon, 13 Feb 2023 16:39:41 MST
+  Version:             1
+
+  Scope:
+    ID:                p_1234567890
+    Name:              Generated project scope
+    Parent Scope ID:   o_1234567890
+    Type:              project
+
+  Plugin:
+    ID:                pl_z7Edh0X67z
+    Name:              azure
+
+  Attributes:
+    filter:            tagName eq 'application' and tagValue eq 'dev'
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+```
+
+</CodeBlockConfig>
+
+Copy the dev host set ID from the output (`hsplg_sqcZJGNxHD` in this example) and
+store it in the `DEV_HOST_SET_ID` environment variable.
+
+```shell-session
+$ export DEV_HOST_SET_ID=hsplg_sqcZJGNxHD
+```
+
+Lastly, create a host set that correspond to the `application` tag of
+`production`.
+
+```shell-session
+$ boundary host-sets create plugin \
+  -name production \
+  -host-catalog-id $HOST_CATALOG_ID \
+  -attr filter="tagName eq 'application' and tagValue eq 'production'"
+```
+
+**Sample output:**
+
+<CodeBlockConfig hideClipboard highlight="1-4,9">
+
+```shell-session
+$ boundary host-sets create plugin \
+  -name production \
+  -host-catalog-id $HOST_CATALOG_ID \
+  -attr filter="tagName eq 'application' and tagValue eq 'production'"
+
+Host Set information:
+  Created Time:        Mon, 13 Feb 2023 16:40:29 MST
+  Host Catalog ID:     hcplg_zZfpE9UHlz
+  ID:                  hsplg_qUm6k52Tmu
+  Name:                production
+  Type:                plugin
+  Updated Time:        Mon, 13 Feb 2023 16:40:29 MST
+  Version:             1
+
+  Scope:
+    ID:                p_1234567890
+    Name:              Generated project scope
+    Parent Scope ID:   o_1234567890
+    Type:              project
+
+  Plugin:
+    ID:                pl_z7Edh0X67z
+    Name:              azure
+
+  Attributes:
+    filter:            tagName eq 'application' and tagValue eq 'production'
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+```
+
+</CodeBlockConfig>
+
+Copy the production host set ID from the output (`hsplg_qUm6k52Tmu` in this
+example) and store it in the `PRODUCTION_HOST_SET_ID` environment variable.
+
+```shell-session
+$ export PRODUCTION_HOST_SET_ID=hsplg_qUm6k52Tmu
+```
+
+## Verify catalog membership
+
+With the `database`, `dev`, and `prod` host sets defined within the azure host
+catalog, the next step is to verify that the four VM hosts listed as members of
+the catalog are dynamically included in the correct host sets.
+
+Host membership can be verified by reading the host set details and verifying
+its membership IDs.
+
+First, verify that the `database` host set contains all four members of the
+azure host catalog.
+
+Perform a read on the host set named `database` to view its members.
+
+<CodeBlockConfig highlight="1,7,31-35">
+
+```
+$ boundary host-sets read -id $DATABASE_HOST_SET_ID
+
+Host Set information:
+  Created Time:        Mon, 13 Feb 2023 16:35:35 MST
+  Host Catalog ID:     hcplg_zZfpE9UHlz
+  ID:                  hsplg_IiQgeZYxKJ
+  Name:                database
+  Type:                plugin
+  Updated Time:        Mon, 13 Feb 2023 16:52:00 MST
+  Version:             3
+
+  Scope:
+    ID:                p_1234567890
+    Name:              Generated project scope
+    Parent Scope ID:   o_1234567890
+    Type:              project
+
+  Plugin:
+    ID:                pl_z7Edh0X67z
+    Name:              azure
+
+  Attributes:
+    filter:            tagName eq 'service-type' and tagValue eq 'database'
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+
+  Host IDs:
+    hplg_35sD4tOrCP
+    hplg_cxiWeokxkJ
+    hplg_s5pQuIjAiP
+    hplg_xSU4Fs5ZKc
+```
+
+</CodeBlockConfig>
+
+If the `Host IDs` section is missing, expand the troubleshooting accordion to
+diagnose what could be wrong.
+
+<Accordion heading="Troubleshoot Misconfigured Host Set" collapse>
+
+
+If the host catalog is misconfigured, hosts will not be discoverable by
+Boundary.
+
+At this point in the tutorial hosts are contained within the host catalog, but
+not appearing in one or more host sets. This implies that the host set itself is
+misconfigured.
+
+Above, you performed a `read` on the database host set. Check the `Attributes`
+section, and verify it matches the correctly defined filter:
+
+<CodeBlockConfig hideClipboard>
+
+```
+  Attributes:
+    filter:            tagName eq 'service-type' and tagValue eq 'database'
+```
+
+</CodeBlockConfig>
+
+If the tag is incorrectly assigned, perform an update on the affected host set
+to fix the filter:
+
+```shell-session
+$ boundary host-sets update plugin \
+  -id $DATABASE_HOST_SET_ID \
+  -name production \
+  -attr filter="tagName eq 'application' and tagValue eq 'production'"
+```
+
+After updating the filter, Boundary will automatically refresh the host set.
+
+<Note>
+
+ Depending on the type of configuration issue, you will need to wait
+approximately 5 - 10 minutes for the existing host catalog or host sets to sync
+with the provider and refresh their values. If you do not want to wait a new
+host catalog and host set can be created from scratch, but these will also take
+several minutes to sync upon creation.
+
+</Note>
+
+Check that the updated filter is working by performing another `read` on the
+`database` host set.
+
+```shell-session
+$ boundary host-sets read -id $DATABASE_HOST_SET_ID
+```
+
+If the `dev` or `production` host sets are affected by incorrect filters, follow
+the same procedure to update their filters accordingly.
+
+</Accordion>
+
+Next, read the `dev` host set details. Verify the Host IDs are the correctly
+tagged hosts from the cloud provider.
+
+<CodeBlockConfig highlight="1,7,31-33">
+
+```shell-session
+$ boundary host-sets read -id $DEV_HOST_SET_ID
+
+Host Set information:
+  Created Time:        Mon, 13 Feb 2023 16:39:41 MST
+  Host Catalog ID:     hcplg_zZfpE9UHlz
+  ID:                  hsplg_sqcZJGNxHD
+  Name:                dev
+  Type:                plugin
+  Updated Time:        Mon, 13 Feb 2023 16:39:56 MST
+  Version:             2
+
+  Scope:
+    ID:                p_1234567890
+    Name:              Generated project scope
+    Parent Scope ID:   o_1234567890
+    Type:              project
+
+  Plugin:
+    ID:                pl_z7Edh0X67z
+    Name:              azure
+
+  Attributes:
+    filter:            tagName eq 'application' and tagValue eq 'dev'
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+
+  Host IDs:
+    hplg_35sD4tOrCP
+    hplg_s5pQuIjAiP
+```
+
+</CodeBlockConfig>
+
+Notice the `Host IDs` section of the output, which returns the two dev VMs
+configured in Azure.
+
+Next, read the production host set and verify its Host IDs.
+
+<CodeBlockConfig highlight="1,7,31-32">
+
+```shell-session
+$ boundary host-sets read -id $PRODUCTION_HOST_SET_ID
+
+Host Set information:
+  Created Time:        Mon, 13 Feb 2023 16:40:29 MST
+  Host Catalog ID:     hcplg_zZfpE9UHlz
+  ID:                  hsplg_qUm6k52Tmu
+  Name:                production
+  Type:                plugin
+  Updated Time:        Mon, 13 Feb 2023 16:40:55 MST
+  Version:             2
+
+  Scope:
+    ID:                p_1234567890
+    Name:              Generated project scope
+    Parent Scope ID:   o_1234567890
+    Type:              project
+
+  Plugin:
+    ID:                pl_z7Edh0X67z
+    Name:              azure
+
+  Attributes:
+    filter:            tagName eq 'application' and tagValue eq 'production'
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+
+  Host IDs:
+    hplg_xSU4Fs5ZKc
+```
+
+</CodeBlockConfig>
+
+Notice the `Host IDs` section of this output. Even though there are two production
+VMs, only one is listed in the host set.
+
+To figure out what could be wrong, compare the members of the `production` host
+set to the members of the `database` host set. Remember, members of the
+`production` and `dev` host sets are a sub-set of the `database` host set.
+
+<CodeBlockConfig highlight="1,7,31-35">
+
+```shell-session
+$ boundary host-sets read -id $DATABASE_HOST_SET_ID
+
+Host Set information:
+  Created Time:        Mon, 13 Feb 2023 16:35:35 MST
+  Host Catalog ID:     hcplg_zZfpE9UHlz
+  ID:                  hsplg_IiQgeZYxKJ
+  Name:                database
+  Type:                plugin
+  Updated Time:        Mon, 13 Feb 2023 16:52:00 MST
+  Version:             3
+
+  Scope:
+    ID:                p_1234567890
+    Name:              Generated project scope
+    Parent Scope ID:   o_1234567890
+    Type:              project
+
+  Plugin:
+    ID:                pl_z7Edh0X67z
+    Name:              azure
+
+  Attributes:
+    filter:            tagName eq 'service-type' and tagValue eq 'database'
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+
+  Host IDs:
+    hplg_35sD4tOrCP
+    hplg_cxiWeokxkJ
+    hplg_s5pQuIjAiP
+    hplg_xSU4Fs5ZKc
+```
+
+</CodeBlockConfig>
+
+By comparing the `Host IDs` of the `dev` host catalog to the `production`
+catalog, notice that host `hplg_cxiWeokxkJ` is missing from the `production` host
+set, although it is contained within `database`.
+
+### Update the misconfigured host
+
+<Tabs>
+<Tab heading="CLI" group="cli">
+
+Perform a read on the missing host.
+
+<CodeBlockConfig highlight="1,5-7">
+
+```shell-session
+$ boundary hosts read -id hplg_cxiWeokxkJ
+
+Host information:
+  Created Time:        Mon, 13 Feb 2023 16:35:58 MST
+  External ID:
+  /subscriptions/c9ed8610-47a3-4107-a2b2-a322114dkd78/resourceGroups/boundary-dynamic-hosts_group/providers/Microsoft.Compute/virtualMachines/boundary-vm-4-production
+  Host Catalog ID:     hcplg_zZfpE9UHlz
+  ID:                  hplg_cxiWeokxkJ
+  Type:                plugin
+  Updated Time:        Mon, 13 Feb 2023 16:35:58 MST
+  Version:             1
+
+  Scope:
+    ID:                p_1234567890
+    Name:              Generated project scope
+    Parent Scope ID:   o_1234567890
+    Type:              project
+
+  Plugin:
+    ID:                pl_z7Edh0X67z
+    Name:              azure
+
+  Authorized Actions:
+    no-op
+    read
+
+  IP Addresses:
+    10.1.0.4
+    20.124.98.203
+```
+
+</CodeBlockConfig>
+
+The `External ID` field shows the name of the misconfigured host:
+`boundary-vm-4-production` (*Scroll to the right in the output to find
+`/virtualMachines/boundary-vm-4-production`*).
+
+<Note>
+
+ Your configuration may show either `boundary-vm-3-production` or
+`boundary-vm-4-production` as the misconfigured VM. Continue with the host that
+is misconfigured.
+
+</Note>
+
+Recall that host set membership is defined based on the VM tags.
+
+List the details for the `boundary-vm-4-production` VM, and query for its tag
+values.
+
+```shell-session
+$ az vm show --resource-group boundary-dynamic-hosts_group --name boundary-vm-4-production --query 'tags'
+{
+  "application": "prod",
+  "service-type": "database"
+}
+```
+
+Notice that the `application` tag is misconfigured as `prod`, instead of
+`production`. An easy mistake to make!
+
+Remember the filter defined for the `production` host set:
+
+`"tagName eq 'application' and tagValue eq 'production'"`
+
+The `tagValue` must equal `production` exactly to be included in this host set.
+
+<Note>
+
+ It is possible to create a more generic filter that could include
+`tagName` values that can be selected by prefix, but this would require a
+restructure of the tagging schema for the VMs. To learn more about filters and
+resource tagging, check the [Azure API
+docs](https://docs.microsoft.com/en-us/rest/api/resources/Resources/List).
+
+</Note>
+
+Update the `application` tag to `production`.
+
+```shell-session
+$ az vm update --resource-group boundary-dynamic-hosts_group --name boundary-vm-4-production --set tags.application=production
+```
+
+The output will display the updated tags, but you can re-run `az vm show` to
+directly query for the tag values.
+
+```shell-session
+$ az vm show --resource-group boundary-dynamic-hosts_group --name boundary-vm-4-production --query 'tags'
+{
+  "application": "production",
+  "service-type": "database"
+}
+```
+
+</Tab>
+<Tab heading="Terraform" group="terraform">
+
+Perform a read on the missing host.
+
+<CodeBlockConfig highlight="1,5-7">
+
+```shell-session
+$ boundary hosts read -id hplg_cxiWeokxkJ
+
+Host information:
+  Created Time:        Mon, 13 Feb 2023 16:35:58 MST
+  External ID:
+  /subscriptions/c9ed8610-47a3-4107-a2b2-a322114dkd78/resourceGroups/boundary-dynamic-hosts_group/providers/Microsoft.Compute/virtualMachines/boundary-vm-4
+  Host Catalog ID:     hcplg_zZfpE9UHlz
+  ID:                  hplg_cxiWeokxkJ
+  Type:                plugin
+  Updated Time:        Mon, 13 Feb 2023 16:35:58 MST
+  Version:             1
+
+  Scope:
+    ID:                p_1234567890
+    Name:              Generated project scope
+    Parent Scope ID:   o_1234567890
+    Type:              project
+
+  Plugin:
+    ID:                pl_z7Edh0X67z
+    Name:              azure
+
+  Authorized Actions:
+    no-op
+    read
+
+  IP Addresses:
+    10.1.0.4
+    20.124.98.203
+```
+
+</CodeBlockConfig>
+
+The `External ID` field shows the name of the misconfigured host:
+`boundary-vm-4` (*Scroll to the right in the output to find
+`/virtualMachines/boundary-vm-4`*).
+
+Recall that host set membership is defined based on the VM tags.
+
+List the details for the `boundary-vm-4` VM, and query for its tag values.
+
+```shell-session
+$ az vm show --resource-group boundary-dynamic-hosts_group --name boundary-vm-4 --query 'tags'
+{
+  "application": "prod",
+  "service-type": "database"
+}
+```
+
+Notice that the `application` tag is misconfigured as `prod`, instead of
+`production`. An easy mistake to make!
+
+Remember the filter defined for the `production` host set:
+
+`"tagName eq 'application' and tagValue eq 'production'"`
+
+The `tagValue` must equal `production` exactly to be included in this host set.
+
+<Note>
+
+ It is possible to create a more generic filter that could include
+`tagName` values that can be selected by prefix, but this would require a
+restructure of the tagging schema for the VMs. To learn more about filters and
+resource tagging, check the [Azure API
+docs](https://docs.microsoft.com/en-us/rest/api/resources/Resources/List).
+
+</Note>
+
+Update the `application` tag to `production` by fixing the misconfigured tags in
+the `hosts.tf` configuration file.
+
+<CodeBlockConfig lineNumbers highlight="13-16" hideClipboard filename="hosts.tf">
+
+```hcl
+# Configure the Azure VM hosts
+variable "instances" {
+  default = [
+    "boundary-vm-1",
+    "boundary-vm-2",
+    "boundary-vm-3",
+    "boundary-vm-4"
+  ]
+}
+
+variable "vm_tags" {
+  default = [
+    {"service-type":"database", "application":"dev"},
+    {"service-type":"database", "application":"dev"},
+    {"service-type":"database", "application":"production"},
+    {"service-type":"database", "application":"prod"}
+  ]
+}
+
+...
+...
+...
+```
+
+</CodeBlockConfig>
+
+Lines 13 - 16 define the tags for each VM. **Update the application tags on line
+16 to match line 15**, such that `"application":"production"`.
+
+```hcl
+variable "vm_tags" {
+  default = [
+    {"service-type":"database", "application":"dev"},
+    {"service-type":"database", "application":"dev"},
+    {"service-type":"database", "application":"production"},
+    {"service-type":"database", "application":"production"}
+  ]
+```
+
+Run `terraform apply` and confirm the new configuration with `yes` when
+prompted.
+
+```shell-session
+$ terraform apply
+azuread_application.boundary_app: Refreshing state...
+
+Note: Objects have changed outside of Terraform
+
+Terraform detected the following changes made outside of Terraform since the last "terraform apply":
+
+  # azurerm_network_interface.nic[3] has been changed
+  ~ resource "azurerm_network_interface" "nic" {
+        id                            = "/subscriptions/c9ed8610-47a3-4107-a2b2-a322114dkd78/resourceGroups/boundary-dynamic-hosts_group/providers/Microsoft.Network/networkInterfaces/nic-4"
+      + mac_address                   = "00-22-48-2A-84-D0"
+        name                          = "nic-4"
+      + tags                          = {}
+      + virtual_machine_id            = "/subscriptions/c9ed8610-47a3-4107-a2b2-a322114dkd78/resourceGroups/boundary-dynamic-hosts_group/providers/Microsoft.Compute/virtualMachines/boundary-vm-4"
+        # (9 unchanged attributes hidden)
+
+        # (1 unchanged block hidden)
+    }
+  # azurerm_network_interface.nic[0] has been changed
+  ~ resource "azurerm_network_interface" "nic" {
+        id                            = "/subscriptions/c9ed8610-47a3-4107-a2b2-a322114dkd78/resourceGroups/boundary-dynamic-hosts_group/providers/Microsoft.Network/networkInterfaces/nic-1"
+      + mac_address                   = "00-22-48-2A-80-55"
+        name                          = "nic-1"
+      + tags                          = {}
+      + virtual_machine_id            = "/subscriptions/c9ed8610-47a3-4107-a2b2-a322114dkd78/resourceGroups/boundary-dynamic-hosts_group/providers/Microsoft.Compute/virtualMachines/boundary-vm-1"
+        # (9 unchanged attributes hidden)
+
+        # (1 unchanged block hidden)
+    }
+  # azurerm_network_interface.nic[1] has been changed
+  ~ resource "azurerm_network_interface" "nic" {
+        id                            = "/subscriptions/c9ed8610-47a3-4107-a2b2-a322114dkd78/resourceGroups/boundary-dynamic-hosts_group/providers/Microsoft.Network/networkInterfaces/nic-2"
+      + mac_address                   = "00-22-48-2A-84-AF"
+        name                          = "nic-2"
+      + tags                          = {}
+      + virtual_machine_id            = "/subscriptions/c9ed8610-47a3-4107-a2b2-a322114dkd78/resourceGroups/boundary-dynamic-hosts_group/providers/Microsoft.Compute/virtualMachines/boundary-vm-2"
+        # (9 unchanged attributes hidden)
+
+        # (1 unchanged block hidden)
+    }
+  # azurerm_network_interface.nic[2] has been changed
+  ~ resource "azurerm_network_interface" "nic" {
+        id                            = "/subscriptions/c9ed8610-47a3-4107-a2b2-a322114dkd78/resourceGroups/boundary-dynamic-hosts_group/providers/Microsoft.Network/networkInterfaces/nic-3"
+      + mac_address                   = "00-0D-3A-8C-BD-69"
+        name                          = "nic-3"
+      + tags                          = {}
+      + virtual_machine_id            = "/subscriptions/c9ed8610-47a3-4107-a2b2-a322114dkd78/resourceGroups/boundary-dynamic-hosts_group/providers/Microsoft.Compute/virtualMachines/boundary-vm-3"
+        # (9 unchanged attributes hidden)
+
+        # (1 unchanged block hidden)
+    }
+  # azurerm_subnet.boundary_subnet has been changed
+  ~ resource "azurerm_subnet" "boundary_subnet" {
+        id                                             = "/subscriptions/c9ed8610-47a3-4107-a2b2-a322114dkd78/resourceGroups/boundary-dynamic-hosts_group/providers/Microsoft.Network/virtualNetworks/boundary-vm-test_group-vnet/subnets/boundary_subnet"
+        name                                           = "boundary_subnet"
+      + service_endpoint_policy_ids                    = []
+      + service_endpoints                              = []
+        # (6 unchanged attributes hidden)
+    }
+  # azurerm_virtual_network.boundary-vm-test_group-vnet has been changed
+  ~ resource "azurerm_virtual_network" "boundary-vm-test_group-vnet" {
+        id                      = "/subscriptions/c9ed8610-47a3-4107-a2b2-a322114dkd78/resourceGroups/boundary-dynamic-hosts_group/providers/Microsoft.Network/virtualNetworks/boundary-vm-test_group-vnet"
+        name                    = "boundary-vm-test_group-vnet"
+      ~ subnet                  = [
+          + {
+              + address_prefix = "10.0.2.0/24"
+              + id             = "/subscriptions/c9ed8610-47a3-4107-a2b2-a322114dkd78/resourceGroups/boundary-dynamic-hosts_group/providers/Microsoft.Network/virtualNetworks/boundary-vm-test_group-vnet/subnets/boundary_subnet"
+              + name           = "boundary_subnet"
+              + security_group = ""
+            },
+        ]
+      + tags                    = {}
+        # (7 unchanged attributes hidden)
+    }
+
+Unless you have made equivalent changes to your configuration, or ignored the relevant attributes using ignore_changes, the following plan may
+include actions to undo or respond to these changes.
+
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+Terraform used the selected providers to generate the following execution plan. Resource actions are indicated with the following symbols:
+  ~ update in-place
+
+Terraform will perform the following actions:
+
+  # azurerm_linux_virtual_machine.boundary-vm[3] will be updated in-place
+  ~ resource "azurerm_linux_virtual_machine" "boundary-vm" {
+        id                              = "/subscriptions/c9ed8610-47a3-4107-a2b2-a322114dkd78/resourceGroups/boundary-dynamic-hosts_group/providers/Microsoft.Compute/virtualMachines/boundary-vm-4"
+        name                            = "boundary-vm-4"
+      ~ tags                            = {
+          ~ "application"  = "prod" -> "production"
+            # (1 unchanged element hidden)
+        }
+        # (22 unchanged attributes hidden)
+
+
+        # (2 unchanged blocks hidden)
+    }
+
+Plan: 0 to add, 1 to change, 0 to destroy.
+
+Do you want to perform these actions?
+  Terraform will perform the actions described above.
+  Only 'yes' will be accepted to approve.
+
+  Enter a value: yes
+
+azurerm_linux_virtual_machine.boundary-vm[3]: Modifying... [id=/subscriptions/c9ed8610-47a3-4107-a2b2-a322114dkd78/resourceGroups/boundary-dynamic-hosts_group/providers/Microsoft.Compute/virtualMachines/boundary-vm-4]
+azurerm_linux_virtual_machine.boundary-vm[3]: Modifications complete after 3s [id=/subscriptions/c9ed8610-47a3-4107-a2b2-a322114dkd78/resourceGroups/boundary-dynamic-hosts_group/providers/Microsoft.Compute/virtualMachines/boundary-vm-4]
+
+Apply complete! Resources: 0 added, 1 changed, 0 destroyed.
+
+Outputs:
+
+client_id = "c2520eac-f580-435a-a12a-1efc823ca054"
+```
+
+The output will display the updated tags, but you can execute `az vm show` to
+directly query for the tag values.
+
+```shell-session
+$ az vm show --resource-group boundary-dynamic-hosts_group --name boundary-vm-4 --query 'tags'
+{
+  "application": "production",
+  "service-type": "database"
+}
+```
+
+</Tab>
+<Tab heading="Azure Portal" group="azure-portal">
+
+Perform a read on the missing host.
+
+<CodeBlockConfig highlight="1,5-7">
+
+```shell-session
+$ boundary hosts read -id hplg_cxiWeokxkJ
+
+Host information:
+  Created Time:        Mon, 13 Feb 2023 16:35:58 MST
+  External ID:
+  /subscriptions/c9ed8610-47a3-4107-a2b2-a322114dkd78/resourceGroups/boundary-dynamic-hosts_group/providers/Microsoft.Compute/virtualMachines/boundary-vm-4-production
+  Host Catalog ID:     hcplg_zZfpE9UHlz
+  ID:                  hplg_cxiWeokxkJ
+  Type:                plugin
+  Updated Time:        Mon, 13 Feb 2023 16:35:58 MST
+  Version:             1
+
+  Scope:
+    ID:                p_1234567890
+    Name:              Generated project scope
+    Parent Scope ID:   o_1234567890
+    Type:              project
+
+  Plugin:
+    ID:                pl_z7Edh0X67z
+    Name:              azure
+
+  Authorized Actions:
+    no-op
+    read
+
+  IP Addresses:
+    10.1.0.4
+    20.124.98.203
+```
+
+</CodeBlockConfig>
+
+The `External ID` field shows the name of the misconfigured host:
+`boundary-vm-4-production` (*Scroll to the right in the output to find
+`/virtualMachines/boundary-vm-4-production`*).
+
+<Note>
+
+ Your configuration may show either `boundary-vm-3-production` or
+`boundary-vm-4-production` as the misconfigured VM. Continue with the host that
+is misconfigured.
+
+</Note>
+
+Return to the Azure Portal, and navigate to the `boundary-vm-4-production` VM
+*Overview* Blade.
+
+![Azure VM Overview](/img/boundary/azure/azure-app-dynamic-hosts-boundary-vm-4-production-overview.png)
+
+Under the **Tags**, notice that the `application` tag is misconfigured as
+`prod`, instead of `production`. An easy mistake to make!
+
+Remember the filter defined for the `production` host set:
+
+`"tagName eq 'application' and tagValue eq 'production'"`
+
+The `tagValue` must equal `production` exactly to be included in this host set.
+
+<Note>
+
+ It is possible to create a more generic filter that could include
+`tagName` values that can be selected by prefix, but this would require a
+restructure of the tagging schema for the VMs. To learn more about filters and
+resource tagging, check the [Azure API
+docs](https://docs.microsoft.com/en-us/rest/api/resources/Resources/List).
+
+</Note>
+
+Update the Tags by clicking on **Edit**, and change the `application` tag to
+`production`.
+
+![Azure VM Update](/img/boundary/azure/azure-app-dynamic-hosts-boundary-vm-4-production-update.png)
+
+When finished, click **Save**.
+
+</Tab>
+</Tabs>
+
+Boundary will update the `production` host set automatically the next time it
+refreshes. This process could take up to ten minutes.
+
+After waiting, read the `production` host set again and verify that its `Host
+IDs` contain the updated host as a member.
+
+<CodeBlockConfig highlight="1,7,31-33">
+
+```shell-session
+$ boundary host-sets read -id $PRODUCTION_HOST_SET_ID
+
+Host Set information:
+  Created Time:        Mon, 13 Feb 2023 16:40:29 MST
+  Host Catalog ID:     hcplg_zZfpE9UHlz
+  ID:                  hsplg_qUm6k52Tmu
+  Name:                production
+  Type:                plugin
+  Updated Time:        Mon, 13 Feb 2023 17:25:01 MST
+  Version:             6
+
+  Scope:
+    ID:                p_1234567890
+    Name:              Generated project scope
+    Parent Scope ID:   o_1234567890
+    Type:              project
+
+  Plugin:
+    ID:                pl_z7Edh0X67z
+    Name:              azure
+
+  Attributes:
+    filter:            tagName eq 'application' and tagValue eq 'production'
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+
+  Host IDs:
+    hplg_plnxAhd2Vm
+    hplg_xSU4Fs5ZKc
+```
+
+</CodeBlockConfig>
+
+## Cleanup and teardown
+
+<Tabs>
+<Tab heading="CLI" group="cli">
+
+1. Destroy the `boundary-dynamic-hosts_group` resource group in Azure.
+
+   Delete all resources using `az group delete`. Enter `y` when prompted to
+   confirm the operation.
+
+   ```shell-session
+   $ az group delete --name boundary-dynamic-hosts_group  --subscription $ARM_SUBSCRIPTION_ID
+   Are you sure you want to perform this operation? (y/n):
+    \ Running ..
+   ```
+
+   This will take some time.
+
+   Verify that the resource group has been destroyed by listing the available
+   resource groups.
+
+   ```shell-session
+   $ az group list
+   ```
+
+1. Delete the `Boundary Dynamic Hosts Test` sample application from Azure AD.
+
+   Delete the `Boundary Dynamic Hosts Test` app using `az ad app delete`.
+
+   ```
+   $ az ad app delete --id $ARM_CLIENT_ID
+   ```
+
+   Check that the application has been destroyed by attempting to query its ID.
+
+   ```shell-session
+   $ az ad app show --id $ARM_CLIENT_ID
+   Resource 'c2f9b423-9aa1-4ed4-809d-0af5b28397f9' does not exist or one of its queried reference-property objects are not present.
+   ```
+
+   This operation also removes the client secrets and certificates created to
+   access the application.
+
+1. Stop Boundary
+
+   <Tabs>
+   <Tab heading="HCP" group="hcp">
+
+   Log in to the HCP portal and delete the HCP Boundary instance.
+
+   </Tab>
+   <Tab heading="Dev Mode" group="dev">
+
+   Locate the shell where `boundary dev` was run and enter `ctrl+c` to stop dev
+   mode.
+
+   <CodeBlockConfig hideClipboard>
+
+   ```shell-session
+   ^C==> Boundary dev environment shutdown triggered, interrupt again to force
+   ...
+   ...
+   ...
+   {
+     "id": "lOp2Pa9JKe",
+     "source": "https://hashicorp.com/boundary/dev-controller/boundary-dev",
+     "specversion": "1.0",
+     "type": "system",
+     "data": {
+       "version": "v0.1",
+       "op": "github.com/hashicorp/cap/oidc.(*TestProvider).startCachedCodesCleanupTicking.func1",
+       "data": {
+         "msg": "cleanup of cached codes shutting down"
+       }
+     },
+     "datacontentype": "text/plain",
+     "time": "2021-08-16T17:06:36.275678-06:00"
+   }
+   ```
+
+   </CodeBlockConfig>
+
+   </Tab>
+   </Tabs>
+
+</Tab>
+<Tab heading="Terraform" group="terraform">
+
+1. Destroy the `boundary-dynamic-hosts_group` resource group in Azure.
+
+   First, unset the `$ARM_CLIENT_SECRET` environment variable. This prevents
+   Terraform from attempting to use the secret for authentication when running
+   cleanup on subscription-level resources.
+
+   ```shell-session
+   $ unset ARM_CLIENT_SECRET
+   ```
+
+   Remove all resources using `terraform apply -destroy`. Enter `yes` when
+   prompted to confirm the operation.
+
+   <Note>
+
+    Terraform 0.15.2+ uses `terraform apply -destroy` to cleanup
+      resources. If using an earlier version of Terraform, you may need to execute
+      `terraform destroy`.
+
+   </Note>
+
+   ```shell-session
+   $ terraform apply -destroy
+   azuread_application.boundary_app: Refreshing state... [id=b13469af-b351-4e7c-958a-11a564866a38]
+   azuread_service_principal.boundary_service_principal: Refreshing  state... [id=63ac9376-9f81-4a3d-a507-e63dfa482255]
+
+   Terraform used the selected providers to generate the following  execution plan. Resource actions are indicated with the following  symbols:
+     - destroy
+
+   Terraform will perform the following actions:
+
+     # azuread_application.boundary_app will be destroyed
+     - resource "azuread_application" "boundary_app" {
+         - app_role_ids                   = {
+             - "Read.All" = "1b19509b-32b1-4e9f-b71d-4992aa991967"
+           } -> null
+         - application_id                 =  "0802ce2e-5860-4ef0-a507-802c260c1b7e" -> null
+         - device_only_auth_enabled       = false -> null
+         - disabled_by_microsoft          = "<nil>" -> null
+         - display_name                   = "boundary_app" -> null
+         - fallback_public_client_enabled = false -> null
+         - group_membership_claims        = [] -> null
+         - id                             =  "b13469af-b351-4e7c-958a-11a564866a38" -> null
+         - identifier_uris                = [] -> null
+         - oauth2_permission_scope_ids    = {} -> null
+         - oauth2_post_response_required  = false -> null
+         - object_id                      =  "b13469af-b351-4e7c-958a-11a564866a38" -> null
+         - owners                         = [] -> null
+         - prevent_duplicate_names        = false -> null
+         - publisher_domain               = "boundaryoidc.onmicrosoft. com" -> null
+         - sign_in_audience               = "AzureADMyOrg" -> null
+         - tags                           = [] -> null
+
+         - api {
+             - known_client_applications      = [] -> null
+             - mapped_claims_enabled          = false -> null
+             - requested_access_token_version = 1 -> null
+           }
+
+         - app_role {
+             - allowed_member_types = [
+                 - "Application",
+               ] -> null
+             - description          = "Reader role enabling app to  read subscription details" -> null
+             - display_name         = "Reader" -> null
+             - enabled              = true -> null
+             - id                   =  "1b19509b-32b1-4e9f-b71d-4992aa991967" -> null
+             - value                = "Read.All" -> null
+           }
+
+         - feature_tags {
+             - custom_single_sign_on = false -> null
+             - enterprise            = false -> null
+             - gallery               = false -> null
+             - hide                  = false -> null
+           }
+
+         - optional_claims {
+           }
+
+         - public_client {
+             - redirect_uris = [] -> null
+           }
+
+         - single_page_application {
+             - redirect_uris = [] -> null
+           }
+
+         - web {
+             - redirect_uris = [] -> null
+
+             - implicit_grant {
+                 - access_token_issuance_enabled = false -> null
+                 - id_token_issuance_enabled     = false -> null
+               }
+           }
+       }
+
+   ...
+   ... Truncated Output ...
+   ...
+
+   Plan: 0 to add, 0 to change, 14 to destroy.
+
+   Changes to Outputs:
+      - client_id = "0802ce2e-5860-4ef0-a507-802c260c1b7e" -> null
+
+   Do you really want to destroy all resources?
+     Terraform will destroy all your managed infrastructure, as shown above.
+     There is no undo. Only 'yes' will be accepted to confirm.
+
+     Enter a value: yes
+
+   azurerm_role_assignment.contributor_role_assignment: Destroying... [id=/subscriptions/c9ed8610-47a3-4107-a2b2-a322114dkd78/providers/Microsoft.Authorization/roleAssignments/0dc19a07-8d98-fefb-111b-94bf5cf9f137]
+   azurerm_linux_virtual_machine.boundary-vm[2]: Destroying... [id=/subscriptions/   c9ed8610-47a3-4107-a2b2-a322114dkd78/resourceGroups/boundary-dynamic-hosts_group/providers/Microsoft.   Compute/virtualMachines/boundary-vm-3]
+   azurerm_linux_virtual_machine.boundary-vm[1]: Destroying... [id=/subscriptions/   c9ed8610-47a3-4107-a2b2-a322114dkd78/resourceGroups/boundary-dynamic-hosts_group/providers/Microsoft.   Compute/virtualMachines/boundary-vm-2]
+   azurerm_linux_virtual_machine.boundary-vm[3]: Destroying... [id=/subscriptions/   c9ed8610-47a3-4107-a2b2-a322114dkd78/resourceGroups/boundary-dynamic-hosts_group/providers/Microsoft.   Compute/virtualMachines/boundary-vm-4]
+   azurerm_linux_virtual_machine.boundary-vm[0]: Destroying... [id=/subscriptions/   c9ed8610-47a3-4107-a2b2-a322114dkd78/resourceGroups/boundary-dynamic-hosts_group/providers/Microsoft.   Compute/virtualMachines/boundary-vm-1]
+   azurerm_role_assignment.contributor_role_assignment: Destruction complete after 1s
+   azuread_service_principal.boundary_service_principal: Destroying...    [id=1d1182d5-5b21-42e0-8228-5331335c7403]
+
+   ...
+   ... Truncated Output ...
+   ...
+
+   azurerm_resource_group.boundary_rg: Destruction complete after 1m17s
+
+   Apply complete! Resources: 0 added, 0 changed, 14 destroyed.
+
+1. Remove the terraform state files.
+
+   ```shell-session
+   $ rm *.tfstate*
+   ```
+
+1. Stop Boundary dev mode.
+
+   <Tabs>
+   <Tab heading="HCP" group="hcp">
+
+   Log in to the HCP portal and delete the HCP Boundary instance.
+
+   </Tab>
+   <Tab heading="Dev Mode" group="dev">
+
+   Locate the shell where `boundary dev` was run and enter `ctrl+c` to stop dev
+   mode.
+
+   <CodeBlockConfig hideClipboard>
+
+   ```shell-session
+   ^C==> Boundary dev environment shutdown triggered, interrupt again to force
+   ...
+   ...
+   ...
+   {
+     "id": "lOp2Pa9JKe",
+     "source": "https://hashicorp.com/boundary/dev-controller/boundary-dev",
+     "specversion": "1.0",
+     "type": "system",
+     "data": {
+       "version": "v0.1",
+       "op": "github.com/hashicorp/cap/oidc.(*TestProvider).startCachedCodesCleanupTicking.func1",
+       "data": {
+         "msg": "cleanup of cached codes shutting down"
+       }
+     },
+     "datacontentype": "text/plain",
+     "time": "2021-08-16T17:06:36.275678-06:00"
+   }
+   ```
+
+   </CodeBlockConfig>
+
+   </Tab>
+   </Tabs>
+
+</Tab>
+<Tab heading="Azure Portal" group="azure-portal">
+
+1. Destroy the `boundary-dynamic-hosts_group` resource group in Azure.
+
+   Navigate to the Azure Portal and select **Resource Groups** from the
+   upper-left menu.
+
+   ![Azure Resource Groups](/img/boundary/azure/azure-app-dynamic-hosts-select-resource-groups.png)
+
+   Select the `boundary-dynamic-hosts_group` resource group. Within its
+   *Overview* page, select **Delete resource group**.
+
+   ![Azure Resource Groups](/img/boundary/azure/azure-dynamic-hosts-delete-resource-group.png)
+
+   Type the name of the resource group `boundary-dynamic-hosts_group` to confirm
+   the deletion request, then click **Delete**.
+
+   ![Azure Resource Groups](/img/boundary/azure/azure-dynamic-hosts-confirm-delete-resource-group.png)
+
+   The associated resources will take some time to be destroyed. After some
+   time, confirm their deletion using the **Refresh** button.
+
+1. Delete the `Boundary Dynamic Hosts Test` sample application from Azure AD.
+
+   Revisit the **Azure Active Directory** blade within the Azure Portal.
+
+   Select **App Registrations** and then click on the `Boundary Dynamic Hosts
+   Test` app.
+
+   Click **Delete**, then under the *Delete app registration* page confirm the
+   removal of the app by checking the *I understand the implications of deleting
+   this app registration* box and clicking **Delete** again.
+
+   This operation also removes the client secrets and certificates created to
+   access the application.
+
+1. Stop Boundary dev mode
+
+   <Tabs>
+   <Tab heading="HCP" group="hcp">
+
+   Log in to the HCP portal and delete the HCP Boundary instance.
+
+   </Tab>
+   <Tab heading="Dev Mode" group="dev">
+
+   Locate the shell where `boundary dev` was run and enter `ctrl+c` to stop dev
+   mode.
+
+   <CodeBlockConfig hideClipboard>
+
+   ```shell-session
+   ^C==> Boundary dev environment shutdown triggered, interrupt again to force
+   ...
+   ...
+   ...
+   {
+     "id": "lOp2Pa9JKe",
+     "source": "https://hashicorp.com/boundary/dev-controller/boundary-dev",
+     "specversion": "1.0",
+     "type": "system",
+     "data": {
+       "version": "v0.1",
+       "op": "github.com/hashicorp/cap/oidc.(*TestProvider).startCachedCodesCleanupTicking.func1",
+       "data": {
+         "msg": "cleanup of cached codes shutting down"
+       }
+     },
+     "datacontentype": "text/plain",
+     "time": "2021-08-16T17:06:36.275678-06:00"
+   }
+   ```
+
+   </CodeBlockConfig>
+
+   </Tab>
+   </Tabs>
+
+</Tab>
+</Tabs>
+
+## Next steps
+
+This tutorial demonstrated the steps to set up a dynamic host catalog using the
+Azure host plugin. You deployed and tagged hosts within Azure, configured a
+plugin-type host catalog within Boundary, and created three host sets that
+filtered for the  hosts based on their tag values.
+
+To learn more about integrating Boundary with cloud providers like AWS and
+Azure, check out the [OIDC
+Authentication](/boundary/tutorials/access-management/oidc-auth)
+tutorial.

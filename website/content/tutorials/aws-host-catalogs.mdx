@@ -1,0 +1,3176 @@
+---
+id: 51b8a14a-baa8-43f3-a91e-372c16c8a517
+name: Dynamic host catalogs on AWS
+short_name: Dynamic host catalogs on AWS
+description: >-
+  Instructions to configure dynamic host catalogs with Amazon Web Services (AWS).
+read_time: 20
+products_used:
+  - product: boundary
+    min_version: 0.7.1
+    max_version: 0.13.1
+default_collection_context: boundary/host-management
+---
+
+Dynamic updates to host catalogs is an important differentiator for Boundary
+from traditional access methods that rely on manual target configuration, and
+enables even tighter integrations with major cloud providers for seamlessly
+onboarding cloud tenant identities, roles, and targets.
+
+Boundary 0.7 introduces a key Boundary component by enabling automated discovery
+of target hosts and services. Starting with support for Azure and AWS, dynamic
+connections to any service registry ensures that hosts and host catalogs are
+consistently up-to-date. This critical workflow offers access-on-demand and
+eliminates the need to manually configure targets for dynamic, cloud-based
+infrastructure.
+
+This tutorial demonstrates configuring a dynamic host catalog using Amazon Web
+Services.
+
+### Dynamic hosts catalog overview
+
+1. [Get setup](#get-setup)
+1. [Dynamic host catalogs background](#dynamic-host-catalogs-background)
+1. [Set up cloud hosts](#set-up-cloud-hosts)
+1. [Build a host catalog](#build-a-host-catalog)
+1. [Verify catalog membership](#verify-catalog-membership)
+
+## Prerequisites
+
+- A [Boundary binary](/boundary/install/) greater than
+  0.7.1 in your `PATH`
+
+- This tutorial assumes you can [connect to an HCP Boundary
+  cluster](/boundary/tutorials/hcp-getting-started/hcp-getting-started-console) **or** launch
+  Boundary in [dev mode](/boundary/tutorials/oss-getting-started/oss-getting-started-dev).
+
+- An [Amazon Web Services](https://console.aws.amazon.com/) test account. **This
+  tutorial requires the creation of new cloud resources and will incur costs
+  associated with the deployment and management of these resources.**
+
+- Installing the [AWS
+  CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
+  provides an optional workflow for this tutorial. If using the AWS CLI,
+  [CloudFormation](https://docs.aws.amazon.com/cloudformation-cli/latest/userguide/what-is-cloudformation-cli.html)
+  must also be available within your `PATH`.
+
+- Installing [Terraform 0.14.9 or greater](/terraform/tutorials/aws-get-started/install-cli)
+  provides an optional workflow for this tutorial. The binary must be available
+  in your `PATH`.
+
+## Get setup
+
+In this tutorial, you will test dynamic host catalog integrations using HCP
+Boundary or by running a Boundary controller locally using dev mode.
+
+<Tabs>
+<Tab heading="HCP" group="hcp">
+
+The [HCP Quickstart](/boundary/tutorials/hcp-getting-started) tutorials
+provide an overview of getting started with an HCP Boundary cluster.
+
+If you have an HCP Boundary cluster deployed, the [Access HCP
+Boundary](/boundary/tutorials/hcp-getting-started/hcp-getting-started-console) tutorial provides an
+overview of configuring your local machine to authenticate with your HCP
+cluster.
+
+This tutorial provides both CLI and UI workflows for setting up Dynamic updates to host catalogs
+on AWS.
+
+<Tabs>
+<Tab heading="CLI" group="cli">
+
+To proceed with the CLI workflow:
+
+1. Log in to the Boundary web UI and copy your org ID by clicking the copy icon.
+
+   Open a terminal session and **set a environment variable for the org ID.**
+
+   ```shell-session
+   $ export ORG_ID=<org-id>
+   ```
+
+1. In the Boundary web UI, click **Orgs** in the left navigation menu to return
+   to the global scope, and then click **Auth Methods**.
+
+   Click the copy icon for the **Password** auth method.
+
+   In your terminal **set an environment variable named `BOUNDARY_AUTH_METHOD_ID`** to the
+   copied ID.
+
+   ```shell-session
+   $ export BOUNDARY_AUTH_METHOD_ID=<auth-id>
+   ```
+
+1. Click **Projects** in the left navigation and then click the project card.
+
+   Click the copy icon for the project.
+
+   In your terminal **set an environment variable named `PROJECT_ID`** to the
+   copied ID.
+
+   ```shell-session
+   $ export PROJECT_ID=<project-id>
+   ```
+
+   Close the Boundary web UI.
+
+1. Return to the HCP web Portal **Boundary** page, then click the copy icon for
+   the **Cluster URL** in the **Getting started with Boundary** section.
+
+   In your terminal, **set the `BOUNDARY_ADDR` environment variable** to the
+   copied URL.
+
+   ```shell-session
+   $ export BOUNDARY_ADDR=<actual-boundary-address>
+   ```
+
+1. Log in with the administrator credentials you created when you deployed the
+   HCP Boundary instance. Ensure that the `BOUNDARY_ADDR` and
+   `BOUNDARY_AUTH_METHOD_ID` environment variables are set, then run `boundary
+   authenticate`. Enter your password at the `Please enter the password (it will
+   be hidden):` prompt.
+   
+   ```shell-session
+   $ boundary authenticate
+   Please enter the login name (it will be hidden):
+   Please enter the password (it will be hidden):
+   Authentication information:
+     Account ID:      acctpw_VOeNSFX8pQ
+     Auth Method ID:  ampw_wxzojlKJLN
+     Expiration Time: Mon, 13 Feb 2023 12:35:32 MST
+     User ID:         u_1vUkf5fPs9
+   The token was successfully stored in the chosen keyring and is not displayed here.
+   ```
+
+You are now logged into your HCP Boundary instance's **Global** scope via the
+CLI. This is the default scope for all new Boundary clusters.
+
+</Tab>
+<Tab heading="Admin Console" group="admin">
+
+To proceed with the UI workflow:
+
+1. Open the Admin UI
+
+1. Enter the admin username and password you created when you deployed the new
+   instance and click **Authenticate**.
+
+![Admin UI Login](/img/boundary/boundary-ui-login-hcp_light.png#light-theme-only)
+![Admin UI Login](/img/boundary/boundary-ui-login-hcp_dark.png#dark-theme-only)
+
+You are now logged into your HCP Boundary instance's **Global** scope via the
+web UI. This is the default scope for all new Boundary clusters. You can now
+proceed to the [Providers](#providers) section to proceed with the Admin Console
+UI workflow.
+
+</Tab>
+<Tab heading="Terraform" group="terraform">
+
+To proceed with the Terraform workflow:
+
+The following values are needed to set up the [Boundary Terraform
+provider](https://registry.terraform.io/providers/hashicorp/boundary). The
+`password_auth_method_login_name` and `password_auth_method_password` are
+created when first [setting up HCP
+Boundary](/boundary/tutorials/hcp-getting-started/hcp-getting-started-create), and the others can be
+gathered from the HCP portal or the Boundary Admin Console UI.
+
+- `addr` (from HCP portal)
+- `auth_method_id` (from Boundary Admin Console UI)
+- `password_auth_method_login_name` (from initial Boundary Cluster creation)
+- `password_auth_method_password` (from initial Boundary Cluster creation)
+- `scope_id` (global scope from Boundary Admin Console UI)
+
+</Tab>
+</Tabs>
+</Tab>
+
+<Tab heading="Dev Mode" group="dev">
+
+Open a new terminal session and start Boundary in dev mode:
+
+```shell-session
+$ boundary dev
+==> Boundary server configuration:
+
+        [Controller] AEAD Key Bytes: 2auB8k/4H+FtMlOsmREyAhZF+UKSW/ON2WLZQOawg1E=
+          [Recovery] AEAD Key Bytes: 6+i5uZzU7SVTSBrroNW5FhY/ZAMSdm3tjAOcZsY9ODs=
+       [Worker-Auth] AEAD Key Bytes: yy/9yCfHJgZGy7/JzKDIL7jvlf52bupxtlKzW2V+sfg=
+               [Recovery] AEAD Type: aes-gcm
+                   [Root] AEAD Type: aes-gcm
+            [Worker-Auth] AEAD Type: aes-gcm
+                                Cgo: disabled
+     Controller Public Cluster Addr: 127.0.0.1:9201
+             Dev Database Container: condescending_khayyam
+                   Dev Database Url: postgres://postgres:password@localhost:55011/boundary?sslmode=disable
+         Generated Admin Login Name: admin
+           Generated Admin Password: password
+          Generated Host Catalog Id: hcst_1234567890
+                  Generated Host Id: hst_1234567890
+              Generated Host Set Id: hsst_1234567890
+      Generated Oidc Auth Method Id: amoidc_1234567890
+             Generated Org Scope Id: o_1234567890
+  Generated Password Auth Method Id: ampw_1234567890
+         Generated Project Scope Id: p_1234567890
+                Generated Target Id: ttcp_1234567890
+  Generated Unprivileged Login Name: user
+    Generated Unprivileged Password: password
+                         Listener 1: tcp (addr: "127.0.0.1:9200", cors_allowed_headers: "[]", cors_allowed_origins: "[*]", cors_enabled: "true", max_request_duration: "1m30s", purpose: "api")
+                         Listener 2: tcp (addr: "127.0.0.1:9201", max_request_duration: "1m30s", purpose: "cluster")
+                         Listener 3: tcp (addr: "127.0.0.1:9202", max_request_duration: "1m30s", purpose: "proxy")
+                          Log Level: info
+                              Mlock: supported: false, enabled: false
+                            Version: Boundary v0.7.1
+                        Version Sha: abd695e5bc42d01e4412bf6c76211c3fc93a93d7
+           Worker Public Proxy Addr: 127.0.0.1:9202
+
+==> Boundary server started! Log data will stream in below:
+
+{
+  "id": "uOgAddIzAL",
+  "source": "https://hashicorp.com/boundary/dev-controller/boundary-dev",
+  "specversion": "1.0",
+  "type": "system",
+  "data": {
+    "version": "v0.1",
+    "op": "worker.(Worker).createClientConn",
+    "data": {
+      "address": "127.0.0.1:9201",
+      "msg": "connected to controller"
+    }
+  },
+  "datacontentype": "text/plain",
+  "time": "2021-11-18T21:16:10.726593-07:00"
+}
+{
+  "id": "PWrgfVwa7O",
+  "source": "https://hashicorp.com/boundary/dev-controller/boundary-dev",
+  "specversion": "1.0",
+  "type": "system",
+  "data": {
+    "version": "v0.1",
+    "op": "controller.(interceptingListener).Accept",
+    "data": {
+      "msg": "worker successfully authed",
+      "name": "dev-worker"
+    }
+  },
+  "datacontentype": "text/plain",
+  "time": "2021-11-18T21:16:10.746329-07:00"
+}
+```
+
+Leave dev mode running in the current session, and open a new terminal window or
+tab to continue the tutorial.
+
+If you intend on using Terraform to configure Boundary, copy the `[Recovery]
+AEAD Key Bytes` field from the output of `boundary dev`.
+
+Ensure you are able to authenticate to Boundary as the admin user:
+
+```shell-session
+$ boundary authenticate
+Please enter the login name (it will be hidden):
+Please enter the password (it will be hidden):
+Authentication information:
+  Account ID:      acctpw_VOeNSFX8pQ
+  Auth Method ID:  ampw_wxzojlKJLN
+  Expiration Time: Mon, 13 Feb 2023 12:35:32 MST
+  User ID:         u_1vUkf5fPs9
+The token was successfully stored in the chosen keyring and is not displayed here.
+```
+
+</Tab>
+</Tabs>
+
+## Dynamic host catalogs background
+
+In a cloud operating model infrastructure resources are highly dynamic and
+ephemeral. Boundary lacks an on-target agent or daemon, and as a result cannot
+recognize when a host service migrates or is redeployed. Instead, Boundary
+relies on an external entity, such as manual configuration by an administrator
+or IaC application (such as Terraform), to ensure host definitions route to the
+appropriate network location. This is a pattern followed by many other secure
+access solutions.
+
+Dynamic host catalog plugins provide an alternative mechanism for automating the
+discovery and configuration of Boundary hosts and targets by delegating the host
+registry and their connection information to a cloud infrastructure provider.
+Administrators provide credentials to the catalog provider and a set of
+tag-based rules for discovery resources in the catalog. For example, "this
+catalog contains all EC2 instance types in AWS’s US-West-2 region within the
+marketing subscription". This model differs from other that rely on either IaC
+target discovery or agent-based target discovery.
+
+To accommodate this model, Boundary 0.7.0 introduces plugin support via
+[Go-Plugin](https://github.com/hashicorp/go-plugin) for expanding the dynamic
+host catalog ecosystem. While this initial release of Boundary plug-ins are
+limited to dynamic host catalogs, plugins enable a future ecosystem of partner
+and community contributed integrations across each step in the Boundary access
+workflow.
+
+### Host tag filtering
+
+To successfully maintain a dynamic host catalog, hosts should be tagged in a
+logical way that enables sorting into the appropriate host sets identifiable by
+filters.
+
+For example, this tutorial configures hosts on AWS using the following tags:
+
+- `tag:service-type=database`
+- `tag:application=dev`
+- `tag:application=production`
+
+Hosts tagged accordingly will be sorted into any host catalogs and host sets
+configured using these filtering attributes.
+
+## Set up cloud hosts
+
+<Warning>
+
+ This tutorial deploys cloud machines to test host catalog plugin
+configuration. You are responsible for any costs incurred by following the steps
+in this tutorial. Recommendations for destroying the  associated cloud resources
+are detailed in the [Cleanup and teardown](#cleanup-and-teardown) section.
+
+</Warning>
+
+An Amazon Web Services test account is required to set up the Boundary [AWS host
+plugin](https://github.com/hashicorp/boundary-plugin-host-aws).
+
+This tutorial enables configuration of the test hosts using the AWS CLI,
+Terraform, or the AWS Console UI.
+
+An AWS account and sample application are required to setup the AWS hosts plugin
+for Boundary. If you don't have an account, [sign up for
+AWS](https://aws.amazon.com/free). A free account is suitable for the steps
+outlined in this tutorial, but please note that you are responsible for any
+charges incurred by following the steps in this tutorial.
+
+<Tabs>
+<Tab heading="CLI" group="cli">
+
+This tutorial sets up permissions and hosts for host catalogs using the [AWS
+CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
+and
+[CloudFormation](https://docs.aws.amazon.com/cloudformation-cli/latest/userguide/what-is-cloudformation-cli.html).
+
+There are four tasks necessary to set up hosts using the AWS CLI.
+
+1. Deploy and tag the host set members appropriately
+1. Configure user permissions for Boundary
+1. Assign `ec2:DescribeInstances` IAM privileges to the configured IAM user (may be skipped)
+1. Generate a Secret Access Key for the IAM user, enabling Boundary to
+   authenticate and access the tagged hosts
+
+First, ensure that the AWS CLI is configured correct with your account
+credentials. You will need the AWS Access Key, Secret Access Key, and (if
+needed) a Session Token.
+
+Common ways to get set up include: 
+
+- Execute `aws configure` and pass the access values
+- Export the access values as environment variables
+- Configure the AWS credentials file
+
+For more information on setting up the AWS CLI to interact with AWS, check the
+[Configuring the AWS CLI
+documentation](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-configure.html).
+
+### Create hosts
+
+This tutorial deploys tagged hosts to test the dynamic host catalog integration.
+
+To easily deploy a set of pre-configured hosts, a CloudFormation template file
+is available for use with AWS.
+[CloudFormation](https://aws.amazon.com/cloudformation/faqs/) is used to easily
+deploy the EC2 instances in this tutorial.
+
+Clone down the sample template repository.
+
+```shell-session
+$ git clone https://github.com/hashicorp-education/learn-boundary-cloud-host-catalogs.git
+```
+
+Navigate into the `aws` directory.
+
+```shell-session
+$ cd learn-boundary-cloud-host-catalogs/aws/
+```
+
+The provided `aws-dynamic-hosts.json` template will be used to deploy a
+CloudFormation resource stack that contains the hosts to be included in our
+Boundary host catalog.
+
+This tutorial uses the `us-east-1a` availability zone to deploy the EC2
+instances, but you can use any region you want. To change the region, open the
+`aws-dynamic-hosts.json` file and update the  `AvailabilityZone`.
+
+Next, create a
+[keypair](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-key-pairs.html#having-ec2-create-your-key-pair)
+to be used for the instances. Alternatively, you may open the
+`aws-dynamic-hosts.json` file and update the `boundary-keypair` to match the
+name of an existing EC2 keypair.
+
+```shell-session
+$ aws ec2 create-key-pair \
+    --key-name boundary-keypair \
+    --key-type rsa \
+    --query "KeyMaterial" \
+    --output text > boundary-keypair.pem
+```
+
+<Note>
+
+ The `boundary-keypair.pem` file was created within your working
+directory. This tutorial does not log into the associated VMs, but it is best
+practice to retain the private key for the duration of the tutorial. The
+tutorial deletes this keypair in the [Cleanup and
+teardown](#cleanup-and-teardown) section. If you choose to keep this keypair,
+consider moving it into another directory like `~/.aws/`. **Do not check this
+key into source control**.
+
+</Note>
+
+Ensure you are within the `learn-boundary-cloud-host-catalogs/aws/` directory
+where the `aws-dynamic-hosts.json` file is located.
+
+Deploy a new resource stack using the provided `aws-dynamic-hosts.json`
+template.
+
+```shell-session
+$ aws cloudformation create-stack \
+  --stack-name boundary-dynamic-hosts \
+  --template-body file://./aws-dynamic-hosts.json
+```
+
+**Example output:**
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ aws cloudformation create-stack \
+  --stack-name boundary-dynamic-hosts \
+  --template-body file://./aws-dynamic-hosts.json
+{
+    "StackId": "arn:aws:cloudformation:us-east-1:157470686136:stack/boundary-dynamic-hosts/c29af940-78b6-11ec-849d-12bc7613d5b9"
+}
+```
+</CodeBlockConfig>
+
+The deployment may take a few minutes.
+
+Check that the stack was successfully created.
+
+<CodeBlockConfig highlight="1,9">
+
+```shell-session
+$ aws cloudformation list-stacks
+{
+    "StackSummaries": [
+        {
+            "StackId": "arn:aws:cloudformation:us-east-1:157470686136:stack/boundary-dynamic-hosts/da9ebb30-78a7-11ec-bb47-0eddcb3d6bf3",
+            "StackName": "boundary-dynamic-hosts",
+            "TemplateDescription": "AWS CloudFormation template for Boundary Dynamic Hosts tutorial. Deploying this template will incur costs to your AWS account.",
+            "CreationTime": "2022-01-18T22:43:11.249000+00:00",
+            "StackStatus": "CREATE_COMPLETE",
+            "DriftInformation": {
+                "StackDriftStatus": "NOT_CHECKED"
+            }
+        }
+    ]
+}
+```
+
+</CodeBlockConfig>
+
+Lastly, verify that the hosts were successfully created by printing their
+`"Name"` tag using `aws ec2 describe-instances`. The following command will only
+print running instances, and will also report the availability zone and instance
+ID in table format.
+
+```shell-session
+$ aws ec2 describe-instances \
+  --output table \
+  --filters Name=instance-state-name,Values=running \
+  --filters Name=tag-key,Values=Name \
+  --query 'Reservations[*].Instances[*].{Instance:InstanceId,AZ:Placement.AvailabilityZone,Name:Tags[?Key==`Name`]|[0].Value}'
+```
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ aws ec2 describe-instances \
+  --output table \
+  --filters Name=instance-state-name,Values=running \
+  --filters Name=tag-key,Values=Name \
+  --query 'Reservations[*].Instances[*].{Instance:InstanceId,AZ:Placement.AvailabilityZone,Name:Tags[?Key==`Name`]|[0].Value}'
+----------------------------------------------------------------
+|                       DescribeInstances                      |
++------------+-----------------------+-------------------------+
+|     AZ     |       Instance        |          Name           |
++------------+-----------------------+-------------------------+
+|  us-east-1a|  i-06f5a1240a2e0c3fb  |  boundary-3-production  |
+|  us-east-1a|  i-0657b0de7662f9863  |  boundary-1-dev         |
+|  us-east-1a|  i-0ac5cfcae66bdacf5  |  boundary-2-dev         |
+|  us-east-1a|  i-0b6d3ad435c586783  |  boundary-4-production  |
++------------+-----------------------+-------------------------+
+```
+
+</CodeBlockConfig>
+
+### Configure an IAM user
+
+Usually, you might configure an IAM user with the correct policies assigned for
+keeping the dynamic host catalog up-to-date. You may also use an existing IAM
+user and assign it the policy, or an [IAM instance
+profile](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/iam-roles-for-amazon-ec2.html).
+
+This tutorial demonstrates creating a new IAM user, but the tutorial can also be
+continued using root credentials. **To continue using root credentials, skip to
+the [Gather plugin details](#gather-plugin-details-3) section.**
+
+Next, create a new IAM user for Boundary.
+
+```shell-session
+$ aws iam create-user --user-name boundary
+{
+    "User": {
+        "Path": "/",
+        "UserName": "boundary",
+        "UserId": "AIDASWVU2XLZFFIP6P4IN",
+        "Arn": "arn:aws:iam::157470686136:user/boundary",
+        "CreateDate": "2022-01-12T19:35:32+00:00"
+    }
+}
+```
+
+Create a new file called `boundary-describe-instances-policy.json`, and fill it
+with the following policy:
+
+<CodeBlockConfig filename="boundary-describe-instances-policy.json">
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Action": [
+        "ec2:DescribeInstances"
+      ],
+      "Effect": "Allow",
+      "Resource": "*"
+    }
+  ]
+}
+```
+
+</CodeBlockConfig>
+
+This policy allows the `boundary` IAM user to run the `DescribeInstances` API
+call, similar to running the `aws ec2 describe-instances` command using the CLI.
+Boundary will be able to list these details, including the host's tags. This
+will allow Boundary to sort hosts into their appropriate catalogs.
+
+Next, attach this as an inline policy to the `boundary` user, giving it the name
+`BoundaryDescribeInstances`. This command assume the json policy file is located
+in the same directory the command is executed from.
+
+```shell-session
+$ aws iam put-user-policy \
+  --user-name boundary \
+  --policy-name BoundaryDescribeInstances \
+  --policy-document file://./boundary-describe-instances-policy.json
+```
+
+Check your work by listing the policies attached to the user.
+
+```shell-session
+$ aws iam get-user-policy --user-name boundary --policy-name BoundaryDescribeInstances
+{
+    "UserName": "boundary",
+    "PolicyName": "BoundaryDescribeInstances",
+    "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Action": [
+                    "ec2:DescribeInstances"
+                ],
+                "Effect": "Allow",
+                "Resource": "*"
+            }
+        ]
+    }
+}
+```
+
+The last step is to create an access key for the user.
+
+```shell-session
+$ aws iam create-access-key --user-name boundary
+{
+    "AccessKey": {
+        "UserName": "boundary",
+        "AccessKeyId": "NOTAREALKEYAKIASWVU2XLZLFLIDMVW",
+        "Status": "Active",
+        "SecretAccessKey": "NOTAREALKEY/k/+d79JGLoJXcqXGEZiUPEcx0O",
+        "CreateDate": "2022-01-19T02:26:11+00:00"
+    }
+}
+```
+
+Keep the `AccessKeyId` and `SecretAccessKey` in a safe location for the
+remainder of this tutorial.
+
+To get ready to configure Boundary, export these values as environment
+variables.
+
+```shell-session
+$ export BOUNDARY_ACCESS_KEY_ID=<AWS Access Key ID> \
+  export BOUNDARY_SECRET_ACCESS_KEY=<AWS Secret Access Key>
+```
+
+<Note>
+
+ This tutorial disables credential rotation for the host catalog. To
+learn more about the required IAM permissions for enabling credential rotation,
+refer to the
+[boundary-plugin-host-aws](https://github.com/hashicorp/boundary-plugin-host-aws#attributes-and-secrets)
+documentation.
+
+</Note>
+
+### Gather plugin details
+
+To use the [Boundary AWS hosts
+plugin](https://github.com/hashicorp/boundary-plugin-host-aws#attributes-and-secrets),
+the following details must be available for a user that has access to the
+`DescribeInstances` API.
+
+- AWS Access Key ID
+- AWS Secret Access Key
+
+These values should be available as environment variables within the terminal
+session, or copied to a safe location for use when setting up Boundary. This
+tutorial created the IAM user `boundary` and exported these values as
+environment variables.
+
+<Note>
+
+ If using root credentials instead of creating an IAM user, you
+should export these values as the environment variables defined below. These
+values will be passed to Boundary when creating the host catalog later on.
+
+</Note>
+
+```shell-session
+$ export BOUNDARY_ACCESS_KEY_ID=<AWS Access Key ID> \
+  export BOUNDARY_SECRET_ACCESS_KEY=<AWS Secret Access Key>
+```
+
+</Tab>
+<Tab heading="Terraform" group="terraform">
+
+The prerequisites for setting up the learning environment with Terraform are:
+
+1. [Terraform 0.14.9 or greater](/terraform/tutorials/aws-get-started/install-cli) or greater is installed
+1. An active AWS account
+1. The AWS CLI is installed and available in your `PATH`.
+
+
+There are three tasks within AWS that Terraform needs to configure to set up the
+lab environment.
+
+1. Deploy and tag the host set members appropriately
+1. Configure user permissions for Boundary
+1. Assign ec2:DescribeInstances IAM privileges to the configured IAM user
+1. Generate a Secret Access Key for the IAM user, enabling Boundary to
+   authenticate and access the tagged hosts
+
+### Configure Terraform and IAM user privileges
+
+First, ensure that the CLI is properly configured and can contact your AWS
+account. 
+
+Export the account Access Key ID and Secret Access Key as environment variables
+for use by Terraform in the following steps. If you wish to change the region
+from `us-east-1`, change its value before export.
+
+```shell-session
+$ export AWS_ACCESS_KEY_ID=<Access Key ID> \
+  export AWS_SECRET_ACCESS_KEY=<Secret Access Key> \
+  export AWS_REGION=user-east-1
+```
+
+Execute the following command in your terminal to make sure your
+credentials are configured.
+
+```shell-session
+$ aws sts get-caller-identity
+{
+    "UserId": "AIDAWV7SJJRSWAD2Q32ES",
+    "Account": "157470686136",
+    "Arn": "arn:aws:iam::157470686136:user/username"
+}
+```
+
+If the command does not return the correct user information, ensure the correct
+credentials have been exported in the terminal session.
+
+Create a new working directory called `learn-dynamic-host-catalogs` and change
+into that directory. This tutorial assumes working out of the home directory
+`~/`.
+
+```shell-session
+$ mkdir learn-dynamic-host-catalogs && cd learn-dynamic-host-catalogs/
+```
+
+Create a new file called `main.tf` and paste the following configuration.
+
+<Note>
+
+ If you choose to proceed without creating an IAM user, expand the
+following accordion to proceed.
+
+</Note>
+
+<Accordion heading="Terraform Configuration without IAM" collapse>
+
+This configuration is intended to enable configuration without creating the
+`boundary` IAM user. Instead, Boundary will be configured using the
+`AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` environment variable values
+later on.
+
+Note that the user credentials provided to Boundary must have the
+`ec2:DescribeInstances` policy available for the host catalog to be configured
+correctly. This corresponds to the following policy:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Action": [
+        "ec2:DescribeInstances"
+      ],
+      "Effect": "Allow",
+      "Resource": "*"
+    }
+  ]
+}
+```
+
+Generally, if the user is able to execute the `aws ec2 describe-instances`
+command, those user credentials can be used to configure Boundary.
+
+Paste the following configuration in your `main.tf` to proceed without a
+`boundary` IAM user. This configuration simply sets up the AWS Terraform
+provider.
+
+```hcl
+# Configure the AWS provider
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 3.73"
+      }
+  }
+  required_version = ">= 0.14.9"
+}
+
+provider "aws" {
+}
+```
+
+When finished, skip to the [Create Hosts](#create-hosts) secton to proceed.
+
+</Accordion>
+
+```hcl
+# Configure the AWS provider
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 3.73"
+      }
+  }
+  required_version = ">= 0.14.9"
+}
+
+output "boundary_access_key_id" {
+    value = aws_iam_access_key.boundary.id
+}
+
+output "boundary_secret_access_key" {
+  value = aws_iam_access_key.boundary.secret
+  sensitive = true
+}
+
+provider "aws" {
+}
+
+resource "aws_iam_user" "boundary" {
+  name = "boundary"
+  path = "/"
+}
+
+resource "aws_iam_access_key" "boundary" {
+  user = aws_iam_user.boundary.name
+}
+
+resource "aws_iam_user_policy" "BoundaryDescribeInstances" {
+  name = "BoundaryDescribeInstances"
+  user = aws_iam_user.boundary.name
+  policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Action": [
+        "ec2:DescribeInstances"
+      ],
+      "Effect": "Allow",
+      "Resource": "*"
+    }
+  ]
+}
+EOF
+}
+```
+
+Now initialize the Terraform plan.
+
+```shell-session
+$ terraform init
+
+Initializing the backend...
+
+Initializing provider plugins...
+- Finding latest version of hashicorp/azurerm...
+- Finding hashicorp/aws versions matching "~> 3.73"...
+
+- Installing hashicorp/aws v3.73.0...
+- Installed hashicorp/aws v3.73.0 (signed by HashiCorp)
+
+Terraform has created a lock file .terraform.lock.hcl to record the provider
+selections it made above. Include this file in your version control repository
+so that Terraform can guarantee to make the same selections by default when
+you run "terraform init" in the future.
+
+Terraform has been successfully initialized!
+
+You may now begin working with Terraform. Try running "terraform plan" to see
+any changes that are required for your infrastructure. All Terraform commands
+should now work.
+
+If you ever set or change modules or backend configuration for Terraform,
+rerun this command to reinitialize your working directory. If you forget, other
+commands will detect it and remind you to do so if necessary.
+```
+
+After initialization, apply the plan and confirm by inputting `yes` when
+prompted.
+
+```shell-session
+$ terraform apply
+
+Terraform used the selected providers to generate the following execution plan. Resource actions are indicated with
+the following symbols:
+  + create
+
+Terraform will perform the following actions:
+
+  # aws_iam_access_key.boundary will be created
+  + resource "aws_iam_access_key" "boundary" {
+      + create_date                    = (known after apply)
+      + encrypted_secret               = (known after apply)
+      + encrypted_ses_smtp_password_v4 = (known after apply)
+      + id                             = (known after apply)
+      + key_fingerprint                = (known after apply)
+      + secret                         = (sensitive value)
+      + ses_smtp_password_v4           = (sensitive value)
+      + status                         = "Active"
+      + user                           = "boundary"
+    }
+
+  # aws_iam_user.boundary will be created
+  + resource "aws_iam_user" "boundary" {
+      + arn           = (known after apply)
+      + force_destroy = false
+      + id            = (known after apply)
+      + name          = "boundary"
+      + path          = "/"
+      + tags_all      = (known after apply)
+      + unique_id     = (known after apply)
+    }
+
+  # aws_iam_user_policy.BoundaryDescribeInstances will be created
+  + resource "aws_iam_user_policy" "BoundaryDescribeInstances" {
+      + id     = (known after apply)
+      + name   = "BoundaryDescribeInstances"
+      + policy = jsonencode(
+            {
+              + Statement = [
+                  + {
+                      + Action   = [
+                          + "ec2:DescribeInstances",
+                        ]
+                      + Effect   = "Allow"
+                      + Resource = "*"
+                    },
+                ]
+              + Version   = "2012-10-17"
+            }
+        )
+      + user   = "boundary"
+    }
+
+Plan: 3 to add, 0 to change, 0 to destroy.
+
+Changes to Outputs:
+  + boundary_access_key_id     = (known after apply)
+  + boundary_secret_access_key = (sensitive value)
+
+Do you want to perform these actions?
+  Terraform will perform the actions described above.
+  Only 'yes' will be accepted to approve.
+
+  Enter a value: yes
+
+aws_iam_user.boundary: Creating...
+aws_iam_user.boundary: Creation complete after 0s [id=boundary]
+aws_iam_user_policy.BoundaryDescribeInstances: Creating...
+aws_iam_access_key.boundary: Creating...
+aws_iam_access_key.boundary: Creation complete after 0s [id=NOTAREALKEYAKIASWVU2XLZOLN2IRD3]
+aws_iam_user_policy.BoundaryDescribeInstances: Creation complete after 0s [id=boundary:BoundaryDescribeInstances]
+
+Apply complete! Resources: 3 added, 0 changed, 0 destroyed.
+
+Outputs:
+
+boundary_access_key_id = "NOTAREALKEYAKIASWVU2XLZOLN2IRD3"
+boundary_secret_access_key = <sensitive>
+```
+
+The Terraform run will output the `boundary` user's Access Key ID as the
+`boundary_access_key_id`, and the encrypted Secret Access Key as the
+`boundary_secret_access_key`. Terraform requires the protection of sensitive
+secret values, and will not print this value directly in the run output.
+
+Copy the `boundary_access_key_id` (`NOTAREALKEYAKIASWVU2XLZOLN2IRD3` in this example) and
+export it as an environment variable.
+
+```shell-session
+$ export BOUNDARY_ACCESS_KEY_ID=<boundary_access_key_id>
+```
+
+If you have `jq` installed, run the following command to select the decrypted
+`boundary_secret_access_key` from the `terraform.tfstate` file and export it as
+an environment variable.
+
+```shell-session
+$ export BOUNDARY_SECRET_ACCESS_KEY=$(jq -r '.outputs.boundary_secret_access_key.value' terraform.tfstate)
+```
+
+If `jq` is not installed, open the `terraform.tfstate` file and locate the
+`boundary_secret_access_key` `value` and export it directly, like so:
+
+```shell-session
+$ export BOUNDARY_SECRET_ACCESS_KEY=<boundary_secret_access_key>
+```
+
+Check your work by ensuring the value is available within your shell session.
+
+```shell-session
+$ echo $BOUNDARY_SECRET_ACCESS_KEY
+notarealkeynm4Oph+Tlt7bss+z7RuYhqFaKSbkKEPDokv6hr9S
+```
+
+### Create hosts
+
+Next, a `hosts.tf` file is configured and deployed to test the dynamic host
+catalog integration.
+
+Create a new Terraform configuration file called `hosts.tf`. Paste the following
+configuration in the new hosts file.
+
+```hcl
+# Configure the AWS VM hosts
+
+data "aws_availability_zones" "boundary" {}
+
+resource "aws_vpc" "boundary_hosts_vpc" {
+  cidr_block           = "10.0.0.0/16"
+  enable_dns_hostnames = true
+
+  tags = {
+    Name = "boundary_hosts_vpc"
+  }
+}
+
+resource "aws_subnet" "boundary_hosts_subnet" {
+  vpc_id                  = aws_vpc.boundary_hosts_vpc.id
+  cidr_block              = aws_vpc.boundary_hosts_vpc.cidr_block
+  availability_zone       = data.aws_availability_zones.boundary.names[0]
+  map_public_ip_on_launch = true
+  
+  tags = {
+    Name = "boundary_hosts_subnet"
+  }
+}
+
+resource "aws_security_group" "boundary_ssh" {
+  name        = "boundary_allow_ssh"
+  description = "Allow SSH inbound traffic"
+  vpc_id      = aws_vpc.boundary_hosts_vpc.id
+
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "allow_ssh"
+  }
+}
+
+variable "instances" {
+  default = [
+    "boundary-1-dev", 
+    "boundary-2-dev", 
+    "boundary-3-production", 
+    "boundary-4-production"
+  ]
+}
+
+variable "vm_tags" {
+  default = [
+    {"Name":"boundary-1-dev","service-type":"database", "application":"dev"},
+    {"Name":"boundary-2-dev","service-type":"database", "application":"dev"},
+    {"Name":"boundary-3-production","service-type":"database", "application":"production"},
+    {"Name":"boundary-4-production","service-type":"database", "application":"prod"}
+  ]
+}
+
+resource "aws_instance" "boundary_instance" {
+  count                  = length(var.instances)
+  ami                    = "ami-083602cee93914c0c"
+  instance_type          = "t3.micro"
+  subnet_id              = aws_subnet.boundary_hosts_subnet.id
+  vpc_security_group_ids = [aws_security_group.boundary_ssh.id]
+  tags                   = var.vm_tags[count.index]
+}
+```
+
+Save this file and run `terraform apply` again, confirming the new configuration
+by entering `yes` when prompted.
+
+<Note>
+
+ For comparison, you can find the `main.tf` and `hosts.tf` files
+within the `aws/terraform/` directory in the
+[learn-boundary-cloud-host-catalogs](https://github.com/hashicorp-education/learn-boundary-cloud-host-catalogs)
+Github repository.
+
+</Note>
+
+```shell-session
+$ terraform apply
+
+data.aws_availability_zones.boundary: Reading...
+aws_iam_user.boundary: Refreshing state... [id=boundary]
+aws_iam_user_policy.BoundaryDescribeInstances: Refreshing state... [id=boundary:BoundaryDescribeInstances]
+aws_iam_access_key.boundary: Refreshing state... [id=NOTAREALKEYAKIA3X2NGVVK2FXR66XH]
+data.aws_availability_zones.boundary: Read complete after 0s [id=us-east-1]
+
+Terraform used the selected providers to generate the following execution plan. Resource actions are indicated with
+the following symbols:
+  + create
+
+Terraform will perform the following actions:
+
+  # aws_instance.boundary_instance[0] will be created
+  + resource "aws_instance" "boundary_instance" {
+      + ami                                  = "ami-083602cee93914c0c"
+      + arn                                  = (known after apply)
+      + associate_public_ip_address          = (known after apply)
+      + availability_zone                    = (known after apply)
+      + cpu_core_count                       = (known after apply)
+      + cpu_threads_per_core                 = (known after apply)
+      + disable_api_termination              = (known after apply)
+      + ebs_optimized                        = (known after apply)
+      + get_password_data                    = false
+      + host_id                              = (known after apply)
+      + id                                   = (known after apply)
+      + instance_initiated_shutdown_behavior = (known after apply)
+      + instance_state                       = (known after apply)
+      + instance_type                        = "t3.micro"
+      + ipv6_address_count                   = (known after apply)
+      + ipv6_addresses                       = (known after apply)
+      + key_name                             = (known after apply)
+      + monitoring                           = (known after apply)
+      + outpost_arn                          = (known after apply)
+      + password_data                        = (known after apply)
+      + placement_group                      = (known after apply)
+      + placement_partition_number           = (known after apply)
+      + primary_network_interface_id         = (known after apply)
+      + private_dns                          = (known after apply)
+      + private_ip                           = (known after apply)
+      + public_dns                           = (known after apply)
+      + public_ip                            = (known after apply)
+      + secondary_private_ips                = (known after apply)
+      + security_groups                      = (known after apply)
+      + source_dest_check                    = true
+      + subnet_id                            = (known after apply)
+      + tags                                 = {
+          + "Name"         = "boundary-1-dev"
+          + "application"  = "dev"
+          + "service-type" = "database"
+        }
+      + tags_all                             = {
+          + "Name"         = "boundary-1-dev"
+          + "application"  = "dev"
+          + "service-type" = "database"
+        }
+      + tenancy                              = (known after apply)
+      + user_data                            = (known after apply)
+      + user_data_base64                     = (known after apply)
+      + vpc_security_group_ids               = (known after apply)
+    }
+
+  # aws_instance.boundary_instance[1] will be created
+  + resource "aws_instance" "boundary_instance" {
+      + ami                                  = "ami-083602cee93914c0c"
+      + arn                                  = (known after apply)
+      + associate_public_ip_address          = (known after apply)
+      + availability_zone                    = (known after apply)
+      + cpu_core_count                       = (known after apply)
+      + cpu_threads_per_core                 = (known after apply)
+      + disable_api_termination              = (known after apply)
+      + ebs_optimized                        = (known after apply)
+      + get_password_data                    = false
+      + host_id                              = (known after apply)
+      + id                                   = (known after apply)
+      + instance_initiated_shutdown_behavior = (known after apply)
+      + instance_state                       = (known after apply)
+      + instance_type                        = "t3.micro"
+      + ipv6_address_count                   = (known after apply)
+      + ipv6_addresses                       = (known after apply)
+      + key_name                             = (known after apply)
+      + monitoring                           = (known after apply)
+      + outpost_arn                          = (known after apply)
+      + password_data                        = (known after apply)
+      + placement_group                      = (known after apply)
+      + placement_partition_number           = (known after apply)
+      + primary_network_interface_id         = (known after apply)
+      + private_dns                          = (known after apply)
+      + private_ip                           = (known after apply)
+      + public_dns                           = (known after apply)
+      + public_ip                            = (known after apply)
+      + secondary_private_ips                = (known after apply)
+      + security_groups                      = (known after apply)
+      + source_dest_check                    = true
+      + subnet_id                            = (known after apply)
+      + tags                                 = {
+          + "Name"         = "boundary-2-dev"
+          + "application"  = "dev"
+          + "service-type" = "database"
+        }
+      + tags_all                             = {
+          + "Name"         = "boundary-2-dev"
+          + "application"  = "dev"
+          + "service-type" = "database"
+        }
+      + tenancy                              = (known after apply)
+      + user_data                            = (known after apply)
+      + user_data_base64                     = (known after apply)
+      + vpc_security_group_ids               = (known after apply)
+    }
+
+...
+... Truncated Output ...
+...
+
+  # aws_vpc.boundary_hosts_vpc will be created
+  + resource "aws_vpc" "boundary_hosts_vpc" {
+      + arn                                  = (known after apply)
+      + cidr_block                           = "10.0.0.0/16"
+      + default_network_acl_id               = (known after apply)
+      + default_route_table_id               = (known after apply)
+      + default_security_group_id            = (known after apply)
+      + dhcp_options_id                      = (known after apply)
+      + enable_classiclink                   = (known after apply)
+      + enable_classiclink_dns_support       = (known after apply)
+      + enable_dns_hostnames                 = true
+      + enable_dns_support                   = true
+      + id                                   = (known after apply)
+      + instance_tenancy                     = "default"
+      + ipv6_association_id                  = (known after apply)
+      + ipv6_cidr_block                      = (known after apply)
+      + ipv6_cidr_block_network_border_group = (known after apply)
+      + main_route_table_id                  = (known after apply)
+      + owner_id                             = (known after apply)
+      + tags                                 = {
+          + "Name" = "boundary_hosts_vpc"
+        }
+      + tags_all                             = {
+          + "Name" = "boundary_hosts_vpc"
+        }
+    }
+
+Plan: 7 to add, 0 to change, 0 to destroy.
+
+Do you want to perform these actions?
+  Terraform will perform the actions described above.
+  Only 'yes' will be accepted to approve.
+
+  Enter a value: yes
+
+aws_vpc.boundary_hosts_vpc: Creating...
+aws_vpc.boundary_hosts_vpc: Still creating... [10s elapsed]
+aws_vpc.boundary_hosts_vpc: Creation complete after 14s [id=vpc-069ce0ae15adba350]
+aws_subnet.boundary_hosts_subnet: Creating...
+aws_security_group.boundary_ssh: Creating...
+aws_security_group.boundary_ssh: Creation complete after 3s [id=sg-06f337d1052e1f7a5]
+aws_subnet.boundary_hosts_subnet: Still creating... [10s elapsed]
+aws_subnet.boundary_hosts_subnet: Creation complete after 12s [id=subnet-013951bb5195e3073]
+aws_instance.boundary_instance[1]: Creating...
+aws_instance.boundary_instance[3]: Creating...
+aws_instance.boundary_instance[0]: Creating...
+aws_instance.boundary_instance[2]: Creating...
+aws_instance.boundary_instance[2]: Still creating... [10s elapsed]
+aws_instance.boundary_instance[3]: Still creating... [10s elapsed]
+aws_instance.boundary_instance[1]: Still creating... [10s elapsed]
+aws_instance.boundary_instance[0]: Still creating... [10s elapsed]
+aws_instance.boundary_instance[2]: Creation complete after 14s [id=i-04a8dd7b1831e6303]
+aws_instance.boundary_instance[3]: Creation complete after 14s [id=i-0703a0432faa6a78b]
+aws_instance.boundary_instance[0]: Creation complete after 14s [id=i-07d5db7b36b0c59c4]
+aws_instance.boundary_instance[1]: Creation complete after 14s [id=i-0e6d4e1eb045eb46d]
+
+Apply complete! Resources: 7 added, 0 changed, 0 destroyed.
+
+Outputs:
+
+boundary_access_key_id = "NOTAREALKEYAKIASWVU2XLZOLN2IRD3"
+boundary_secret_access_key = <sensitive>
+```
+
+### Gather plugin details
+
+To use the Boundary AWS hosts plugin, the following details must be available:
+
+- AWS (Boundary user) Access Key ID
+- AWS (Boundary user) Secret Access Key
+- AWS Region
+
+These values should be available as environment variables within the terminal
+session, or copied to a safe location for use when setting up Boundary. 
+
+Check that the values have been exported in your current shell session:
+
+```shell-session
+$ echo $BOUNDARY_ACCESS_KEY_ID; echo $BOUNDARY_SECRET_ACCESS_KEY; echo $AWS_REGION
+NOTAREALKEYAKIASWVU2XLZOLN2IRD3
+notarealtokenaXe492h+rcr4jyhEWwc9FP+6XOiusDl4D8RarHP0
+us-east-1
+```
+
+If these values are unavailable, see the previous sections on [configuring
+Terraform users](#configure-Terraform-and-IAM-user-privileges) before
+proceeding.
+
+</Tab>
+<Tab heading="AWS Console" group="aws-console">
+
+This tutorial sets up permissions and hosts for host catalogs using the [AWS
+Console](https://console.aws.amazon.com/) and
+[CloudFormation](https://aws.amazon.com/cloudformation/).
+
+There are four tasks necessary to set up hosts using the AWS Console:
+
+1. Deploy and tag the host set members appropriately
+1. Configure user permissions for Boundary
+1. Assign `ec2:DescribeInstances` IAM privileges to the configured IAM user (may be skipped)
+1. Generate a Secret Access Key for the IAM user, enabling Boundary to
+   authenticate and access the tagged hosts
+
+### Create hosts
+
+This tutorial deploys tagged hosts to test the dynamic host catalog integration.
+
+To easily deploy a set of pre-configured hosts, a CloudFormation template file
+is available for use with AWS.
+[CloudFormation](https://aws.amazon.com/cloudformation/faqs/) is used to easily
+deploy the EC2 instances in this tutorial.
+
+Clone down the sample template repository.
+
+```shell-session
+$ git clone https://github.com/hashicorp-education/learn-boundary-cloud-host-catalogs.git
+```
+
+Navigate into the `aws` directory.
+
+```shell-session
+$ cd learn-boundary-cloud-host-catalogs/aws/
+```
+
+The provided `aws-dynamic-hosts.json` template will be used to deploy a
+CloudFormation resource stack that contains the hosts to be included in our
+Boundary host catalog.
+
+This tutorial uses the `us-east-1a` availability zone to deploy the EC2
+instances, but you can use any region you want. To change the region, open the
+`aws-dynamic-hosts.json` file and update the `AvailabilityZone`.
+
+Next, create a
+[keypair](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-key-pairs.html#having-ec2-create-your-key-pair)
+to be used for the instances. Alternatively, you may open the
+`aws-dynamic-hosts.json` file and update the `boundary-keypair` to match the
+name of an existing EC2 keypair.
+
+Log into the [AWS Console](https://console.aws.amazon.com/) and navigate to the [EC2
+portal](https://console.aws.amazon.com/ec2). Ensure that the `us-east-1` region
+is selected.
+
+![AWS Select Region](/img/boundary/aws/aws-ec2-select-region.png)
+
+Next, select **Key Pairs** from the Resources list or using the left-hand
+navigation bar under *Network & Security*.
+
+Click **Create key pair**. Name the keypair `boundary-keypair`, leaving the type
+set to `RSA` and the file format set to `.pem`. Click **Create key pair** when
+finished.
+
+![AWS Create Keypair](/img/boundary/aws/aws-ec2-create-boundary-keypair.png)
+
+The keypair will then be downloaded to your local machine.
+
+<Note>
+
+ Keep the `boundary-keypair.pem` file safe. This tutorial does not
+log into the associated VMs, but it is best practice to retain the private key
+for the duration of the tutorial. The tutorial deletes this keypair in the
+[Cleanup and teardown](#cleanup-and-teardown) section. If you choose to keep
+this keypair, consider moving it into another directory like `~/.aws/`. **Do not
+check this key into source control**.
+
+</Note>
+
+Next, a set of sample hosts will be deployed using CloudFormation. You will need
+access to the location of the `learn-boundary-cloud-host-catalogs` repository
+downloaded earlier.
+
+Navigate to the [CloudFormation
+Portal](https://console.aws.amazon.com/cloudformation) by using the **Search**
+field. 
+
+Select **Create stack**.
+
+From the *Create Stack* form, select **Upload a template file** from the
+*Specify template* section. Then click the **Choose file** button. Select the
+provided `learn-boundary-cloud-host-catalogs/aws/aws-dynamic-hosts.json`
+template file, then click **Next**.
+
+![AWS Create Stack](/img/boundary/aws/aws-cloudformation-select-template-file.png)
+
+Under the *Specify stack details* form, enter the *Stack name*
+`boundary-dynamic-hosts`. Under *KeyName*, select the `boundary-keypair` created
+earlier. The SSHLocation can be left as `0.0.0.0/0`.
+
+![AWS Stack Details](/img/boundary/aws/aws-cloudformation-stack-details.png)
+
+Leave the details on the *Configure stack options* page as-is, and click
+**Next**.
+
+Confirm the stack details on the *Review boundary-dynamic-hosts* page, then
+scroll down and click **Create stack**.
+
+The *boundary-dynamic-hosts* page will be displayed, with a list of *Events*.
+After a couple of minutes, press the Refresh button **⟳** until the *Status*
+shows **CREATE_COMPLETE** for each `EC2Instance`.
+
+![AWS CloudFormation Stack Status](/img/boundary/aws/aws-cloudformation-stack-complete.png)
+
+### Configure an IAM user
+
+Usually you might configure an IAM user with the correct policies assigned for
+keeping the dynamic host catalog up-to-date. You may also use an existing IAM
+user and assign it the policy, or an [IAM instance
+profile](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/iam-roles-for-amazon-ec2.html).
+
+-> This tutorial demonstrates creating a new IAM user, but the tutorial can also
+be continued using root credentials. **To avoid creating an IAM user and
+continue using root credentials, skip to the [Gather plugin
+details](#gather-plugin-details-5) section.**
+
+First, define the policy that will be attached to the new user.
+
+Navigate to the [IAM Portal](https://console.aws.amazon.com/iam) using the
+*Search* function.
+
+Select **Policies** from the left-hand sidebar and click **Create Policy**.
+
+![AWS IAM Create Policy](/img/boundary/aws/aws-iam-create-policy.png)
+
+Under the *Create policy* form, select the **JSON** tab.
+
+Copy the following policy statement and paste it into the JSON editor.
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Action": [
+        "ec2:DescribeInstances"
+      ],
+      "Effect": "Allow",
+      "Resource": "*"
+    }
+  ]
+}
+```
+
+This policy allows the `boundary` IAM user to run the `DescribeInstances` API
+call, similar to running the `aws ec2 describe-instances` command using the CLI.
+Boundary will be able to list these details, including the host's tags. This
+will allow Boundary to sort hosts into their appropriate catalogs.
+
+When finished, click **Next: Tags**.
+
+![AWS IAM DescribeInstances Policy](/img/boundary/aws/aws-iam-describeinstances-policy.png)
+
+Skip adding any tags and click **Next: Review**.
+
+In the *Review policy* form, name the policy `BoundaryDescribeInstances`. 
+
+The *Access level* should be set as *Limited: List* and *Resource* should be set
+as *All resources*. If any of this is incorrect, click *Previous* and check that
+the JSON policy was copy-pasted correctly.
+
+When finished, click **Create policy**.
+
+![AWS IAM Review Policy](/img/boundary/aws/aws-iam-boundarydescribeinstances-policy-create.png)
+
+The new policy should now be available under the *Policies* page.
+
+Next, create a new IAM user for Boundary.
+
+Select **Users** from the left-hand sidebar, then click **Add users** from the
+*Users* page.
+
+![AWS IAM Add Users](/img/boundary/aws/aws-iam-add-users.png)
+
+In the *Add user* form, set the **User name** to `boundary`, and check the
+**Access key - Programmatic access** box. This will create an Access Key ID and
+Secret Access Key that Boundary can use to authenticate as the `boundary` user.
+
+When finished, click the **Next: Permissions** button at the bottom of the page.
+
+![AWS IAM User Details](/img/boundary/aws/aws-iam-boundary-user-details.png)
+
+Click the **Attach existing policies directly** tab. Use the Search function and
+type "boundary" to locate the `BoundaryDescribeInstances` policy. Check the box
+next to the policy, then click **Next: Tags**.
+
+![AWS IAM Set User Permissions](/img/boundary/aws/aws-iam-boundarydescribeinstances-attach-policy.png)
+
+Skip adding any tags and click **Next: Review**.
+
+Review the new user details, ensuring that the *AWS access type* is defined as
+*Programmatic access - with an access key*. The Permissions summary should
+contain the *Managed policy* named *BoundaryDescribeInstances*.
+
+When finished, click **Create user**.
+
+Under the *Success* page, copy the `boundary` user credentials. Ensure that you
+copy both the **Access key ID** *and* the **Secret access key** by clicking the
+*show* button. You can also choose to click the **Download .csv** button
+instead, and copy the credentials from the downloaded file. *These credentials
+cannot be accessed again, so ensure they are copied correctly from this page.*
+
+![AWS IAM Copy Credentials](/img/boundary/aws/aws-iam-user-copy-keys.png)
+
+Keep the `AccessKeyId` and `SecretAccessKey` in a safe location for the
+remainder of this tutorial.
+
+To get ready to configure Boundary, export these values as environment
+variables in a new terminal session.
+
+```shell-session
+$ export BOUNDARY_ACCESS_KEY_ID=<AWS Access Key ID> \
+  export BOUNDARY_SECRET_ACCESS_KEY=<AWS Secret Access Key>
+```
+
+<Note>
+
+ This tutorial disables credential rotation for the host catalog. To
+learn more about the required IAM permissions for enabling credential rotation,
+refer to the
+[boundary-plugin-host-aws](https://github.com/hashicorp/boundary-plugin-host-aws#attributes-and-secrets)
+documentation.
+
+</Note>
+
+### Gather plugin details
+
+To use the [Boundary AWS hosts
+plugin](https://github.com/hashicorp/boundary-plugin-host-aws#attributes-and-secrets),
+the following details must be available for a user that has access to the
+`DescribeInstances` API.
+
+- AWS Access Key ID
+- AWS Secret Access Key
+
+These values should be available as environment variables within the terminal
+session, or copied to a safe location for use when setting up Boundary. This
+tutorial created the IAM user `boundary` and exported these values as
+environment variables.
+
+<Note>
+
+ If using root credentials instead of creating an IAM user, you
+should export the root credentials as the environment variables defined below.
+These values will be passed to Boundary when creating the host catalog later on.
+
+</Note>
+
+```shell-session
+$ export BOUNDARY_ACCESS_KEY_ID=<AWS Access Key ID> \
+  export BOUNDARY_SECRET_ACCESS_KEY=<AWS Secret Access Key>
+```
+
+</Tab>
+</Tabs>
+
+
+## Host catalog plugins
+
+For Boundary, the process for creating a dynamic host catalog has two steps:
+
+1. Create a plugin-type host catalog 
+1. Create a host set that defines membership using filters
+
+A plugin-type host catalog can be created using some cloud provider resource
+details, and the host set is then defined using a filter that selects hosts for
+membership based on the tags defined when [setting up the hosts](#set-up-cloud-hosts).
+
+Host set filter expressions are defined by the plugin provider, in this case
+AWS. The AWS plugin uses simple filter queries to specify tags
+associated with hosts based on `tag:Name=Value`. 
+
+For example, a host set filter that selects all hosts tagged with
+`"service-type": "database"` is written as: 
+
+- `tag:service-type=database`
+
+Resources within AWS can generally be filtered by tag names and values, and
+filters can be designed to use either/or selectors for tag values. This process
+is described in the Boundary [AWS Host Plugin
+documentation](https://github.com/hashicorp/boundary-plugin-host-aws).
+
+To learn more about AWS filters for listing resources, visit the
+[`describe-instances` CLI documentation
+page](https://docs.aws.amazon.com/cli/latest/reference/ec2/describe-instances.html)
+and the Describe Instances [AWS EC2 API
+docs](https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_DescribeInstances.html).
+
+### Build a host catalog
+
+With the cloud provider details gathered, a plugin host catalog can now be
+created that will contain the respective host sets for the database and
+application filters.
+
+### Create a host catalog plugin
+
+Check that the AWS parameter environment variable values were set correctly in
+your session.
+
+```shell-session
+$ echo $BOUNDARY_ACCESS_KEY_ID; echo $BOUNDARY_SECRET_ACCESS_KEY
+NOTAREALKEYAKIASWVU2XLZLFLIDMVW
+NOTAREALKEY8BnyuNv7egZG9/k/+d79JGLoJXcqXGEZiUPEcx0O
+```
+
+<Note>
+
+ If you proceeded without setting up the `boundary` IAM user, expand
+the accordion to proceed.
+
+</Note>
+
+<Accordion heading="Configure Boundary without IAM" collapse>
+
+Boundary simply requires user credentials that can execute the `aws ec2
+describe-instances` command.
+
+To proceed with different user credentials (such as root account credentials for
+testing purposes) simply export these values and provide them to Boundary in the
+following section. These values may already be available in your terminal
+session as the `$AWS_ACCESS_KEY_ID` and `$AWS_SECRET_ACCESS_KEY` environment
+variables.
+
+```shell-session
+$ export BOUNDARY_ACCESS_KEY_ID=<AWS_ACCESS_KEY_ID>
+```
+
+```shell-session
+$ export BOUNDARY_SECRET_ACCESS_KEY=<AWS_SECRET_ACCESS_KEY>
+```
+
+</Accordion>
+
+If necessary, authenticate to Boundary as the admin user.
+
+```shell-session
+$ boundary authenticate
+Please enter the login name (it will be hidden):
+Please enter the password (it will be hidden):
+Authentication information:
+  Account ID:      acctpw_VOeNSFX8pQ
+  Auth Method ID:  ampw_wxzojlKJLN
+  Expiration Time: Mon, 13 Feb 2023 12:35:32 MST
+  User ID:         u_1vUkf5fPs9
+The token was successfully stored in the chosen keyring and is not displayed here.
+```
+
+Next, create a new plugin-type host catalog with a `-plugin-name` of `aws`,
+providing the Boundary Access Key ID and Boundary Secret Access Key using the
+`-secret` flag. These values should map to the environment variables defined
+above. Additionally, ensure `disable_credential_rotation` and `region` are set
+using the `-attr` flag.
+
+```shell-session
+$ boundary host-catalogs create plugin \
+  -scope-id $PROJECT_ID \
+  -plugin-name aws \
+  -attr disable_credential_rotation=true \
+  -attr region=us-east-1 \
+  -secret access_key_id=env://BOUNDARY_ACCESS_KEY_ID \
+  -secret secret_access_key=env://BOUNDARY_SECRET_ACCESS_KEY
+```
+
+Command flags:
+
+- `-plugin-name`: This corresponds to the host catalog plugin's name, such as
+`azure` or `aws` 
+- `disable_credential_rotation`: This tutorial utilizes a static secret by 
+setting this value to `true` 
+- `region`: The region to configure the host catalog for. All host sets in this
+catalog will be configured for this region
+- `access_key_id`: The access key ID for the IAM user to use with this host catalog 
+- `secret_access_key`: The secret access key for the IAM user to use with this host catalog
+
+<Note>
+
+ Although credentials are stored encrypted within Boundary, by
+default this plugin attempts to rotate credentials supplied through the
+`secrets` object during a create or update call to the host catalog resource.
+The given credentials will be used to create a new credential, and then the
+given credential will be revoked. In this way, after rotation, only Boundary
+knows the client secret in use by this plugin. Credential rotation will be
+generally available in a future release of Boundary.
+
+</Note>
+
+**Sample output:**
+
+<CodeBlockConfig hideClipboard highlight="1-7,11">
+
+```shell-session
+$ boundary host-catalogs create plugin \
+  -scope-id p_1234567890 \
+  -plugin-name aws \
+  -attr disable_credential_rotation=true \
+  -attr region=us-east-1 \
+  -secret access_key_id=env://BOUNDARY_ACCESS_KEY_ID \
+  -secret secret_access_key=env://BOUNDARY_SECRET_ACCESS_KEY
+
+Host Catalog information:
+  Created Time:                  Tue, 18 Jul 2023 10:08:12 MDT
+  ID:                            hcplg_N9p1Woaq8l
+  Plugin ID:                     pl_1PRTDb78iY
+  Secrets HMAC:                  3AcXDqAEALitc7WKM2KUw8dSUVEyYG2391x1DZZCS32z
+  Type:                          plugin
+  Updated Time:                  Tue, 18 Jul 2023 10:08:12 MDT
+  Version:                       1
+
+  Scope:
+    ID:                          p_1234567890
+    Name:                        Generated project scope
+    Parent Scope ID:             o_1234567890
+    Type:                        project
+
+  Plugin:
+    ID:                          pl_1PRTDb78iY
+    Name:                        aws
+
+  Attributes:
+    disable_credential_rotation: true
+    region:                      us-east-1
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+
+  Authorized Actions on Host Catalog's Collections:
+    host-sets:
+      create
+      list
+    hosts:
+      list
+```
+
+</CodeBlockConfig>
+
+Copy the host catalog ID from the output (`hcplg_N9p1Woaq8l` in this example) and
+store it in the `HOST_CATALOG_ID` environment variable. 
+
+```shell-session 
+$ export HOST_CATALOG_ID=hcplg_N9p1Woaq8l
+```
+
+### Create the host sets
+
+With the dynamic host catalog created, host sets can now be defined that
+correspond to the service-type and application tags added to the hosts.
+
+Recall the three host sets we wish to create:
+
+- All hosts with a `service-type` tag of `database`
+- All hosts with an `application` tag of `dev`
+- All hosts with an `application` tag of `production`
+
+The respective host set filters can be constructed as:
+
+- `tag:service-type=database`
+- `tag:application=dev`
+- `tag:application=production`
+
+Create the first plugin host set containing hosts tagged with a `service-type`
+of `database`, supplying the host catalog ID copied above and the needed filter
+using the `-attr` flag.
+
+```shell-session
+$ boundary host-sets create plugin \
+  -name database \
+  -host-catalog-id $HOST_CATALOG_ID \
+  -attr filters=tag:service-type=database
+```
+
+**Sample output:**
+
+<CodeBlockConfig hideClipboard highlight="1-4,9">
+
+```shell-session
+$ boundary host-sets create plugin \
+  -name database \
+  -host-catalog-id $HOST_CATALOG_ID \
+  -attr filters=tag:service-type=database
+
+Host Set information:
+  Created Time:        Tue, 18 Jul 2023 10:20:19 MDT
+  Host Catalog ID:     hcplg_N9p1Woaq8l
+  ID:                  hsplg_sSCs67KYGD
+  Name:                database
+  Type:                plugin
+  Updated Time:        Tue, 18 Jul 2023 10:20:19 MDT
+  Version:             1
+
+  Scope:
+    ID:                p_1234567890
+    Name:              Generated project scope
+    Parent Scope ID:   o_1234567890
+    Type:              project
+
+  Plugin:
+    ID:                pl_5pQekoPRJt
+    Name:              aws
+
+  Attributes:
+    filters:           tag:service-type=database
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+```
+
+</CodeBlockConfig>
+
+Copy the database host set ID from the output (`hsplg_sSCs67KYGD` in this
+example) and store it in the `DATABASE_HOST_SET_ID` environment variable. 
+
+```shell-session
+$ export DATABASE_HOST_SET_ID=hsplg_sSCs67KYGD
+```
+
+Wait a moment, then list all available hosts within the `aws` host catalog,
+which contains the newly created `database` host set.
+
+<Note>
+
+ It may take up to five minutes for the host catalog to sync with
+the cloud provider.
+
+</Note>
+
+```shell-session
+$ boundary hosts list -host-catalog-id $HOST_CATALOG_ID
+
+Host information:
+  ID:                    hplg_AAdFY3zsdP
+    External ID:         i-0c482cd40f62309e2
+    Version:             1
+    Type:                plugin
+    Authorized Actions:
+      no-op
+      read
+
+  ID:                    hplg_6PlZJpEzgx
+    External ID:         i-0767b38ec388cf165
+    Version:             1
+    Type:                plugin
+    Authorized Actions:
+      no-op
+      read
+
+  ID:                    hplg_7KjFRrcLxD
+    External ID:         i-08c588f2d58120192
+    Version:             1
+    Type:                plugin
+    Authorized Actions:
+      no-op
+      read
+
+  ID:                    hplg_FQzmhOmDqn
+    External ID:         i-0dac079e5f8760b9c
+    Version:             1
+    Type:                plugin
+    Authorized Actions:
+      no-op
+      read
+```
+
+<Note title="Troubleshooting">
+
+ If the `boundary hosts list` command returns `No hosts
+found`, expand the accordion below to check your work.
+
+</Note>
+
+<Accordion heading="Troubleshoot Missing Hosts" collapse>
+
+
+If the host catalog is misconfigured, hosts will not be discoverable by
+Boundary. There are three issues to check:
+
+1. The host set filter is defined correctly
+1. The host catalog and host set ID's are exported correctly as environment
+   variables
+1. The IAM profile assigning `DescribeInstances` permissions has been assigned
+   to the IAM boundary user
+
+<Note>
+
+ Depending on the type of configuration issue, you will need to wait
+approximately 5 - 10 minutes for the existing host catalog or host sets to sync
+with the provider and refresh their values. If you do not want to wait a new
+host catalog and host set can be created from scratch, but these will also take
+several minutes to sync upon creation.
+
+</Note>
+
+If incorrect, update the managed group filter. This process can also be used to
+update the managed group filter criteria in the future for any existing managed
+groups.
+
+First, check the environment variables defined when [creating a host catalog
+plugin](#create-a-host-catalog-plugin). Ensure these are the correct values
+gathered when [setting up the cloud hosts](#set-up-cloud-hosts). 
+
+If these are incorrectly defined, set the environment variables again,
+and update the host catalog:
+
+```shell-session
+$ boundary host-catalogs update plugin \
+  -id $HOST_CATALOG_ID \
+  -plugin-name aws \
+  -attr disable_credential_rotation=true \
+  -attr region=us-east-1 \
+  -secret access_key_id=env://BOUNDARY_ACCESS_KEY_ID \
+  -secret secret_access_key=env://BOUNDARY_SECRET_ACCESS_KEY
+```
+
+Second, check is the `DescribeInstances` profile was assigned to the `boundary`
+IAM user. If incorrect permissions are assigned or the wrong user is defined,
+Boundary will not be able to view the hosts.
+
+Review the steps for [configuring an IAM user](#configure-an-iam-user).
+
+After correcting the profile, give Boundary up to five minutes to refresh the
+connection to AWS, and list the available hosts again.
+
+</Accordion>
+
+Now create a host set that correspond to the `application` tag of `dev`.
+
+```shell-session
+$ boundary host-sets create plugin \
+  -name dev \
+  -host-catalog-id $HOST_CATALOG_ID \
+  -attr filters=tag:application=dev
+```
+
+**Sample output:**
+
+<CodeBlockConfig hideClipboard highlight="1-4,9">
+
+```shell-session
+$ boundary host-sets create plugin \
+  -name dev \
+  -host-catalog-id $HOST_CATALOG_ID \
+  -attr filters=tag:application=dev
+
+Host Set information:
+  Created Time:        Tue, 18 Jul 2023 10:20:19 MDT
+  Host Catalog ID:     hcplg_Ia7R4E39oF
+  ID:                  hsplg_yG2pSNlbTM
+  Name:                dev
+  Type:                plugin
+  Updated Time:        Tue, 18 Jul 2023 10:20:19 MDT
+  Version:             1
+
+  Scope:
+    ID:                p_1234567890
+    Name:              Generated project scope
+    Parent Scope ID:   o_1234567890
+    Type:              project
+
+  Plugin:
+    ID:                pl_1PRTDb78iY
+    Name:              aws
+
+  Attributes:
+    filters:           tag:application=dev
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+```
+
+</CodeBlockConfig>
+
+Copy the dev host set ID from the output (`hsplg_yG2pSNlbTM` in this example)
+and store it in the `DEV_HOST_SET_ID` environment variable. 
+
+```shell-session
+$ export DEV_HOST_SET_ID=hsplg_yG2pSNlbTM
+```
+
+Lastly, create a host set that correspond to the `application` tag of
+`production`.
+
+```shell-session
+$ boundary host-sets create plugin \
+  -name production \
+  -host-catalog-id $HOST_CATALOG_ID \
+  -attr filters=tag:application=production
+```
+
+**Sample output:**
+
+<CodeBlockConfig hideClipboard highlight="1-4,9">
+
+```shell-session
+$ boundary host-sets create plugin \
+  -name production \
+  -host-catalog-id $HOST_CATALOG_ID \
+  -attr filters=tag:application=production
+
+Host Set information:
+  Created Time:        Tue, 18 Jul 2023 10:20:19 MDT
+  Host Catalog ID:     hcplg_Ia7R4E39oF
+  ID:                  hsplg_ZmoClk4HiD
+  Name:                production
+  Type:                plugin
+  Updated Time:        Tue, 18 Jul 2023 10:20:19 MDT
+  Version:             1
+
+  Scope:
+    ID:                p_1234567890
+    Name:              Generated project scope
+    Parent Scope ID:   o_1234567890
+    Type:              project
+
+  Plugin:
+    ID:                pl_1PRTDb78iY
+    Name:              aws
+
+  Attributes:
+    filters:           tag:application=production
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+```
+
+</CodeBlockConfig>
+
+Copy the production host set ID from the output (`hsplg_ZmoClk4HiD` in this
+example) and store it in the `PRODUCTION_HOST_SET_ID` environment variable. 
+
+```shell-session
+$ export PRODUCTION_HOST_SET_ID=hsplg_ZmoClk4HiD
+```
+
+## Verify catalog membership
+
+With the `database`, `dev`, and `prod` host sets defined within the aws host
+catalog, the next step is to verify that the four instances listed as members of
+the catalog are dynamically included in the correct host sets.
+
+Host membership can be verified by reading the host set details and verifying
+its membership IDs.
+
+First, verify that the `database` host set contains all four members of the aws
+host catalog.
+
+Perform a read on the host set named `database` to view its members.
+
+<CodeBlockConfig highlight="1,7,31-35">
+
+```shell-session
+$ boundary host-sets read -id $DATABASE_HOST_SET_ID
+
+Host Set information:
+  Created Time:        Tue, 18 Jul 2023 10:20:19 MDT
+  Host Catalog ID:     hcplg_N9p1Woaq8l
+  ID:                  hsplg_sSCs67KYGD
+  Name:                database
+  Type:                plugin
+  Updated Time:        Tue, 18 Jul 2023 10:20:19 MDT
+  Version:             3
+
+  Scope:
+    ID:                p_1234567890
+    Name:              Generated project scope
+    Parent Scope ID:   o_1234567890
+    Type:              project
+
+  Plugin:
+    ID:                pl_1PRTDb78iY
+    Name:              aws
+
+  Attributes:
+    filters:           tag:service-type=database
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+
+  Host IDs:
+    hplg_4JwY7y6il2
+    hplg_6PlZJpEzgx
+    hplg_7KjFRrcLxD
+    hplg_FQzmhOmDqn
+```
+
+</CodeBlockConfig>
+
+If the `Host IDs` section is missing, expand the troubleshooting accordion to
+diagnose what could be wrong.
+
+<Accordion heading="Troubleshoot Misconfigured Host Set" collapse>
+
+
+If the host catalog is misconfigured, hosts will not be discoverable by
+Boundary. 
+
+At this point in the tutorial hosts are contained within the host catalog, but
+not appearing in one or more host sets. This implies that the host set itself is
+misconfigured.
+
+Above, you performed a `read` on the database host set. Check the `Attributes`
+section, and verify it matches the correctly defined filter:
+
+<CodeBlockConfig hideClipboard>
+
+```
+  Attributes:
+    filters:           tag:service-type=database
+```
+
+</CodeBlockConfig>
+
+If the tag is incorrectly assigned, perform an update on the affected host set
+to fix the filter:
+
+```shell-session
+$ boundary host-sets update plugin \
+  -id $DATABASE_HOST_SET_ID \
+  -name production \
+  -attr filters=tag:application=production
+```
+
+After updating the filter, Boundary will automatically refresh the host set.
+
+<Note>
+
+ Depending on the type of configuration issue, you will need to wait
+approximately 5 - 10 minutes for the existing host catalog or host sets to sync
+with the provider and refresh their values. If you do not want to wait a new
+host catalog and host set can be created from scratch, but these will also take
+several minutes to sync upon creation.
+
+</Note>
+
+Check that the updated filter is working by performing another `read` on the
+`database` host set.
+
+```shell-session
+$ boundary host-sets read -id $DATABASE_HOST_SET_ID
+```
+
+If the `dev` or `production` host sets are affected by incorrect filters, follow
+the same procedure to update their filters accordingly.
+
+</Accordion>
+
+Next, read the `dev` host set details. Verify the Host IDs are the correctly
+tagged hosts from the cloud provider.
+
+<CodeBlockConfig highlight="1,7,31-33">
+
+```shell-session
+$ boundary host-sets read -id $DEV_HOST_SET_ID
+
+Host Set information:
+  Created Time:        Tue, 18 Jul 2023 10:27:29 MDT
+  Host Catalog ID:     hcplg_Ia7R4E39oF
+  ID:                  hsplg_yG2pSNlbTM
+  Name:                dev
+  Type:                plugin
+  Updated Time:        Tue, 18 Jul 2023 10:27:29 MDT
+  Version:             2
+
+  Scope:
+    ID:                p_1234567890
+    Name:              Generated project scope
+    Parent Scope ID:   o_1234567890
+    Type:              project
+
+  Plugin:
+    ID:                pl_1PRTDb78iY
+    Name:              aws
+
+  Attributes:
+    filters:           tag:application=dev
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+
+  Host IDs:
+    hplg_6PlZJpEzgx
+    hplg_FQzmhOmDqn
+```
+
+</CodeBlockConfig>
+
+Notice the `Host IDs` section of the output, which returns the two dev instances
+configured in AWS.
+
+Next, read the production host set and verify its Host IDs.
+
+<CodeBlockConfig highlight="1,7,31-32">
+
+```shell-session
+$ boundary host-sets read -id $PRODUCTION_HOST_SET_ID
+
+Host Set information:
+  Created Time:        Tue, 18 Jul 2023 10:31:46 MDT
+  Host Catalog ID:     hcplg_Ia7R4E39oF
+  ID:                  hsplg_ZmoClk4HiD
+  Name:                production
+  Type:                plugin
+  Updated Time:        Tue, 18 Jul 2023 10:31:46 MDT
+  Version:             2
+
+  Scope:
+    ID:                p_1234567890
+    Name:              Generated project scope
+    Parent Scope ID:   o_1234567890
+    Type:              project
+
+  Plugin:
+    ID:                pl_1PRTDb78iY
+    Name:              aws
+
+  Attributes:
+    filters:           tag:application=production
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+
+  Host IDs:
+    hplg_4JwY7y6il2
+```
+
+</CodeBlockConfig>
+
+Notice the `Host IDs` section of this output. Even though there are two production
+instances, only one is listed in the host set.
+
+To figure out what could be wrong, compare the members of the `production` host
+set to the members of the `database` host set. Remember, members of the
+`production` and `dev` host sets are a sub-set of the `database` host set.
+
+<CodeBlockConfig highlight="1,7,31-35">
+
+```
+$ boundary host-sets read -id $DATABASE_HOST_SET_ID
+
+Host Set information:
+  Created Time:        Tue, 18 Jul 2023 10:35:54 MDT
+  Host Catalog ID:     hcplg_Ia7R4E39oF
+  ID:                  hsplg_qnQM03I6yT
+  Name:                database
+  Type:                plugin
+  Updated Time:        Tue, 18 Jul 2023 10:35:54 MDT
+  Version:             3
+
+  Scope:
+    ID:                p_1234567890
+    Name:              Generated project scope
+    Parent Scope ID:   o_1234567890
+    Type:              project
+
+  Plugin:
+    ID:                pl_1PRTDb78iY
+    Name:              aws
+
+  Attributes:
+    filters:           tag:service-type=database
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+
+  Host IDs:
+    hplg_4JwY7y6il2
+    hplg_6PlZJpEzgx
+    hplg_7KjFRrcLxD
+    hplg_FQzmhOmDqn
+```
+
+</CodeBlockConfig>
+
+By comparing the `Host IDs` of the `dev` host catalog to the `production`
+catalog, notice that host `hplg_7KjFRrcLxD` is missing from the `production`
+host set, although it is contained within `database`.
+
+### Update the misconfigured host
+
+<Tabs>
+<Tab heading="CLI" group="cli">
+
+Perform a read on the missing host.
+
+<CodeBlockConfig highlight="1,5">
+
+```shell-session
+$ boundary hosts read -id hplg_7KjFRrcLxD
+
+Host information:
+  Created Time:        Tue, 18 Jul 2023 10:37:22 MDT
+  External ID:         i-08c588f2d58120192
+  Host Catalog ID:     hcplg_Ia7R4E39oF
+  ID:                  hplg_7KjFRrcLxD
+  Type:                plugin
+  Updated Time:        Tue, 18 Jul 2023 10:37:22 MDT
+  Version:             1
+
+  Scope:
+    ID:                p_1234567890
+    Name:              Generated project scope
+    Parent Scope ID:   o_1234567890
+    Type:              project
+
+  Plugin:
+    ID:                pl_1PRTDb78iY
+    Name:              aws
+
+  Authorized Actions:
+    no-op
+    read
+
+  Host Set IDs:
+    hsplg_qnQM03I6yT
+
+  IP Addresses:
+    172.31.71.39
+    3.239.215.108
+
+  DNS Names:
+    ec2-3-239-215-108.compute-1.amazonaws.com
+    ip-172-31-71-39.ec2.internal
+```
+
+</CodeBlockConfig>
+
+The `External ID:` field shows the ID of the misconfigured host
+(`i-08c588f2d58120192` in this example). Copy this value.
+
+Recall that host set membership is defined based on the instance tags.
+
+Describe the instance's details, and query for its tag values.
+
+```shell-session
+$ aws ec2 describe-instances \
+  --instance-ids i-08c588f2d58120192 \
+  --output table \
+  --query 'Reservations[*].Instances[*].Tags[?contains(Key, `aws`) == `false`]'
+```
+
+**Sample output:**
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ aws ec2 describe-instances \
+  --instance-ids i-08c588f2d58120192 \
+  --output table \
+  --query 'Reservations[*].Instances[*].Tags[?contains(Key, `aws`) == `false`]'
+
+-------------------------------------------
+|            DescribeInstances            |
++---------------+-------------------------+
+|      Key      |          Value          |
++---------------+-------------------------+
+|  service-type |  database               |
+|  Name         |  boundary-4-production  |
+|  application  |  prod                   |
++---------------+-------------------------+
+```
+
+</CodeBlockConfig>
+
+Notice that the `application` tag is misconfigured as `prod`, instead of
+`production`. An easy mistake to make!
+
+Remember the filter defined for the `production` host set:
+
+`tag:application=production`
+
+The tag's value must equal `production` exactly to be included in this host set.
+
+Update the `application` tag to `production` for the misconfigured instance
+using the `aws ec2 create-tags` command, which will overwrite the existing tag
+value.
+
+```shell-session
+$ aws ec2 create-tags --resources i-08c588f2d58120192 --tags Key=application,Value=production
+```
+
+Re-run the `describe-instances` command to directly query for the updated tag
+values.
+
+**Sample output:**
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ aws ec2 describe-instances \
+  --instance-ids i-08c588f2d58120192 \
+  --output table \
+  --query 'Reservations[*].Instances[*].Tags[?contains(Key, `aws`) == `false`]'
+
+-------------------------------------------
+|            DescribeInstances            |
++---------------+-------------------------+
+|      Key      |          Value          |
++---------------+-------------------------+
+|  application  |  production             |
+|  service-type |  database               |
+|  Name         |  boundary-4-production  |
++---------------+-------------------------+
+```
+
+</CodeBlockConfig>
+
+</Tab>
+<Tab heading="Terraform" group="terraform">
+
+Perform a read on the missing host.
+
+<CodeBlockConfig highlight="1,5">
+
+```shell-session
+$ boundary hosts read -id hplg_7KjFRrcLxD
+
+Host information:
+  Created Time:        Tue, 18 Jul 2023 10:41:34 MDT
+  External ID:         i-08c588f2d58120192
+  Host Catalog ID:     hcplg_Ia7R4E39oF
+  ID:                  hplg_7KjFRrcLxD
+  Type:                plugin
+  Updated Time:        Tue, 18 Jul 2023 10:41:34 MDT
+  Version:             1
+
+  Scope:
+    ID:                p_1234567890
+    Name:              Generated project scope
+    Parent Scope ID:   o_1234567890
+    Type:              project
+
+  Plugin:
+    ID:                pl_1PRTDb78iY
+    Name:              aws
+
+  Authorized Actions:
+    no-op
+    read
+
+  Host Set IDs:
+    hsplg_qnQM03I6yT
+
+  IP Addresses:
+    172.31.71.39
+    3.239.215.108
+
+  DNS Names:
+    ec2-3-239-215-108.compute-1.amazonaws.com
+    ip-172-31-71-39.ec2.internal
+```
+
+</CodeBlockConfig>
+
+The `External ID:` field shows the ID of the misconfigured host
+(`i-08c588f2d58120192` in this example). Copy this value.
+
+Recall that host set membership is defined based on the instance tags.
+
+Describe the instance's details, and query for its tag values.
+
+```shell-session
+$ aws ec2 describe-instances \
+  --instance-ids i-08c588f2d58120192 \
+  --output table \
+  --query 'Reservations[*].Instances[*].Tags[?contains(Key, `aws`) == `false`]'
+```
+
+**Sample output:**
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ aws ec2 describe-instances \
+  --instance-ids i-08c588f2d58120192 \
+  --output table \
+  --query 'Reservations[*].Instances[*].Tags[?contains(Key, `aws`) == `false`]'
+
+-------------------------------------------
+|            DescribeInstances            |
++---------------+-------------------------+
+|      Key      |          Value          |
++---------------+-------------------------+
+|  service-type |  database               |
+|  application  |  prod                   |
+|  Name         |  boundary-4-production  |
++---------------+-------------------------+
+```
+
+</CodeBlockConfig>
+
+Notice that the `application` tag is misconfigured as `prod`, instead of
+`production`. An easy mistake to make!
+
+Remember the filter defined for the `production` host set:
+
+`tag:application=production`
+
+The tag's value must equal `production` exactly to be included in this host set.
+
+Update the `application` tag to `production` by fixing the misconfigured tags in
+the `hosts.tf` configuration file.
+
+<CodeBlockConfig lineNumbers highlight="13-16" hideClipboard filename="hosts.tf">
+
+```hcl
+# Configure the AWS hosts
+variable "instances" {
+  default = [
+    "boundary-1-dev", 
+    "boundary-2-dev", 
+    "boundary-3-production", 
+    "boundary-4-production"
+  ]
+}
+
+variable "vm_tags" {
+  default = [
+    {"Name":"boundary-1-dev","service-type":"database", "application":"dev"},
+    {"Name":"boundary-2-dev","service-type":"database", "application":"dev"},
+    {"Name":"boundary-3-production","service-type":"database", "application":"production"},
+    {"Name":"boundary-4-production","service-type":"database", "application":"prod"}
+  ]
+}
+
+...
+...
+...
+```
+
+</CodeBlockConfig>
+
+Lines 13 - 16 define the tags for each VM. **Update the application tags on line
+16 to match line 15**, such that `"application":"production"`.
+
+```hcl
+variable "vm_tags" {
+  default = [
+    {"Name":"boundary-1-dev","service-type":"database", "application":"dev"},
+    {"Name":"boundary-2-dev","service-type":"database", "application":"dev"},
+    {"Name":"boundary-3-production","service-type":"database", "application":"production"},
+    {"Name":"boundary-4-production","service-type":"database", "application":"production"}
+  ]
+}
+```
+
+Run `terraform apply` and confirm the new configuration with `yes` when
+prompted.
+
+```shell-session
+$ terraform apply
+aws_security_group.boundary-ssh: Refreshing state... [id=sg-06aa32c32ea2dc6ba]
+aws_iam_user.boundary: Refreshing state... [id=boundary]
+aws_iam_user_policy.BoundaryDescribeInstances: Refreshing state... [id=boundary:BoundaryDescribeInstances]
+aws_iam_access_key.boundary: Refreshing state... [id=NOTAREALKEYAKIASWVU2XLZOLN2IRD3]
+aws_instance.boundary-instance[3]: Refreshing state... [id=i-0636d8f305a675a0f]
+aws_instance.boundary-instance[0]: Refreshing state... [id=i-0a101da665471ef6c]
+aws_instance.boundary-instance[1]: Refreshing state... [id=i-03174fc1e7685ed89]
+aws_instance.boundary-instance[2]: Refreshing state... [id=i-09c28775132890622]
+
+Terraform used the selected providers to generate the following execution plan. Resource actions are indicated with the following symbols:
+  ~ update in-place
+
+Terraform will perform the following actions:
+
+  # aws_instance.boundary-instance[3] will be updated in-place
+  ~ resource "aws_instance" "boundary-instance" {
+        id                                   = "i-0636d8f305a675a0f"
+      ~ tags                                 = {
+          ~ "application"  = "prod" -> "production"
+            # (2 unchanged elements hidden)
+        }
+      ~ tags_all                             = {
+          ~ "application"  = "prod" -> "production"
+            # (2 unchanged elements hidden)
+        }
+        # (27 unchanged attributes hidden)
+
+
+
+
+
+        # (5 unchanged blocks hidden)
+    }
+
+Plan: 0 to add, 1 to change, 0 to destroy.
+
+Do you want to perform these actions?
+  Terraform will perform the actions described above.
+  Only 'yes' will be accepted to approve.
+
+  Enter a value: yes
+
+aws_instance.boundary-instance[3]: Modifying... [id=i-0636d8f305a675a0f]
+aws_instance.boundary-instance[3]: Modifications complete after 2s [id=i-0636d8f305a675a0f]
+
+Apply complete! Resources: 0 added, 1 changed, 0 destroyed.
+
+Outputs:
+
+boundary_access_key_id = "NOTAREALKEYAKIASWVU2XLZOLN2IRD3"
+boundary_secret_access_key = <sensitive>
+```
+
+The output will display the updated tags, but you can execute `aws ec2
+describe-instances` to directly query for the tag values.
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ aws ec2 describe-instances \
+  --instance-ids i-08c588f2d58120192 \
+  --output table \
+  --query 'Reservations[*].Instances[*].Tags[?contains(Key, `aws`) == `false`]'
+
+-------------------------------------------
+|            DescribeInstances            |
++---------------+-------------------------+
+|      Key      |          Value          |
++---------------+-------------------------+
+|  application  |  production             |
+|  service-type |  database               |
+|  Name         |  boundary-4-production  |
++---------------+-------------------------+
+```
+
+</CodeBlockConfig>
+
+</Tab>
+<Tab heading="AWS Console" group="aws-console">
+
+Perform a read on the missing host.
+
+<CodeBlockConfig highlight="1,5">
+
+```shell-session
+$ boundary hosts read -id hplg_7KjFRrcLxD
+
+Host information:
+  Created Time:        Tue, 18 Jul 2023 10:46:52 MDT
+  External ID:         i-0cb29c70786bf3916
+  Host Catalog ID:     hcplg_Ia7R4E39oF
+  ID:                  hplg_7KjFRrcLxD
+  Type:                plugin
+  Updated Time:        Tue, 18 Jul 2023 10:46:52 MDT
+  Version:             1
+
+  Scope:
+    ID:                p_1234567890
+    Name:              Generated project scope
+    Parent Scope ID:   o_1234567890
+    Type:              project
+
+  Plugin:
+    ID:                pl_1PRTDb78iY
+    Name:              aws
+
+  Authorized Actions:
+    no-op
+    read
+
+  Host Set IDs:
+    hsplg_qnQM03I6yT
+
+  IP Addresses:
+    172.31.71.39
+    3.239.215.108
+
+  DNS Names:
+    ec2-3-239-215-108.compute-1.amazonaws.com
+    ip-172-31-71-39.ec2.internal
+```
+
+</CodeBlockConfig>
+
+The `External ID:` field shows the ID of the misconfigured host
+(`i-0cb29c70786bf3916` in this example). Copy this value.
+
+Recall that host set membership is defined based on the instance tags.
+
+Open the [AWS EC2 Console](https://console.aws.amazon.com/ec2) and navigate to
+the **Instances** dashboard. 
+
+Select the instance whose `Instance ID` matches the misconfigured host. Then,
+open it's **Tags** tab and check the defined values.
+
+![AWS EC2 Instances Summary](/img/boundary/aws/aws-ec2-boundary-dymanic-hosts-instances.png)
+
+Notice that the `application` tag is misconfigured as `prod`, instead of
+`production`. An easy mistake to make!
+
+Remember the filter defined for the `production` host set:
+
+`tag:application=production`
+
+The tag's value must equal `production` exactly to be included in this host set.
+
+Click **Manage tags** and update the `application` tag to `production` for the
+misconfigured instance. Click **Save** when finished.
+
+![AWS EC2 Update Tags](/img/boundary/aws/aws-ec2-update-misconfigured-tag.png)
+
+</Tab>
+</Tabs>
+
+Boundary will update the `production` host set automatically the next time it
+refreshes. This process could take up to ten minutes.
+
+After waiting, read the `production` host set again and verify that its `Host
+IDs` contain the updated host as a member.
+
+<CodeBlockConfig highlight="1,7,31-33">
+
+```shell-session
+$ boundary host-sets read -id $PRODUCTION_HOST_SET_ID
+
+Host Set information:
+  Created Time:        Tue, 18 Jul 2023 10:52:31 MDT
+  Host Catalog ID:     hcplg_Ia7R4E39oF
+  ID:                  hsplg_ZmoClk4HiD
+  Name:                production
+  Type:                plugin
+  Updated Time:        Tue, 18 Jul 2023 10:52:31 MDT
+  Version:             6
+
+  Scope:
+    ID:                p_1234567890
+    Name:              Generated project scope
+    Parent Scope ID:   o_1234567890
+    Type:              project
+
+  Plugin:
+    ID:                pl_1PRTDb78iY
+    Name:              aws
+
+  Attributes:
+    filters:           tag:application=production
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+
+  Host IDs:
+    hplg_4JwY7y6il2
+    hplg_7KjFRrcLxD
+```
+
+</CodeBlockConfig>
+
+## Cleanup and teardown
+
+<Tabs>
+<Tab heading="CLI" group="cli">
+
+1. Delete the CloudFormation `boundary-dynamic-hosts` stack
+  
+  ```shell-session
+  $ aws cloudformation delete-stack --stack-name boundary-dynamic-hosts
+  ```
+
+  Wait a minute, then check that the `StackStatus` has changed to
+  `DELETE_COMPLETE`.
+
+  <CodeBlockConfig highlight="1,12">
+
+  ```shell-session
+  $ aws cloudformation list-stacks
+  {
+    "StackSummaries": [
+        {
+            "StackId": "arn:aws:cloudformation:us-east-1:157470686136:stack/boundary-dynamic-hosts/05ea64a0-7bbf-11ec-9531-120baac28e1f",
+            "StackName": "boundary-dynamic-hosts",
+            "TemplateDescription": "AWS CloudFormation template for Boundary Dynamic Hosts tutorial. Deploying this template will incur costs to your AWS account.",
+            "CreationTime": "2022-01-22T20:08:11.060000+00:00",
+            "DeletionTime": "2022-01-22T21:22:37.577000+00:00",
+            "StackStatus": "DELETE_COMPLETE",
+            "DriftInformation": {
+                "StackDriftStatus": "NOT_CHECKED"
+            }
+        }
+    ]
+  }
+  ```
+
+  </CodeBlockConfig>
+
+1. Delete the `boundary-keypair` EC2 keypair.
+
+  ```shell-session
+  $ aws ec2 delete-key-pair --key-name boundary-keypair
+  ```
+
+1. Delete the `boundary` user access key.
+
+  Before deleting the `boundary` user all items attached to the user must be
+  deleted. For more on deleting an IAM user, check the [User Guide
+  docs](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_users_manage.html#id_users_deleting_cli).
+
+  First list the `boundary` user access keys.
+
+  <CodeBlockConfig highlight="1,6">
+
+  ```shell-session
+  $ aws iam list-access-keys --user-name boundary
+  {
+    "AccessKeyMetadata": [
+        {
+            "UserName": "boundary",
+            "AccessKeyId": "NOTAREALKEYAKIASWVU2XLZLFLIDMVW",
+            "Status": "Active",
+            "CreateDate": "2022-01-19T02:26:11+00:00"
+        }
+    ]
+  }
+  ```
+
+  </CodeBlockConfig>
+
+  Copy the `AccessKeyId` value (`NOTAREALKEYAKIASWVU2XLZLFLIDMVW` in this example).
+
+  Now delete the access key.
+
+  ```shell-session
+  $ aws iam delete-access-key --user-name boundary --access-key-id NOTAREALKEYAKIASWVU2XLZLFLIDMVW
+  ```
+
+1. Delete the `BoundaryDescribeInstances` policy.
+
+  ```shell-session
+  $ aws iam delete-user-policy --user-name boundary --policy-name BoundaryDescribeInstances
+  ```
+
+1. Delete the `boundary` IAM user.
+
+  ```shell-session
+  $ aws iam delete-user --user-name boundary
+  ```
+
+1. Stop Boundary
+
+   <Tabs>
+   <Tab heading="HCP" group="hcp">
+
+   Log in to the HCP portal and delete the HCP Boundary instance.
+
+   </Tab>
+   <Tab heading="Dev Mode" group="dev">
+
+   Locate the shell where `boundary dev` was run and enter `ctrl+c` to stop dev
+   mode.
+
+   <CodeBlockConfig hideClipboard>
+
+   ```shell-session
+   ^C==> Boundary dev environment shutdown triggered, interrupt again to force
+   ...
+   ...
+   ...
+   {
+     "id": "lOp2Pa9JKe",
+     "source": "https://hashicorp.com/boundary/dev-controller/boundary-dev",
+     "specversion": "1.0",
+     "type": "system",
+     "data": {
+       "version": "v0.1",
+       "op": "github.com/hashicorp/cap/oidc.(*TestProvider).startCachedCodesCleanupTicking.func1",
+       "data": {
+         "msg": "cleanup of cached codes shutting down"
+       }
+     },
+     "datacontentype": "text/plain",
+     "time": "2021-08-16T17:06:36.275678-06:00"
+   }
+   ```
+
+   </CodeBlockConfig>
+
+   </Tab>
+   </Tabs>
+
+</Tab>
+<Tab heading="Terraform" group="terraform">
+
+1. Destroy the Terraform resources in AWS.
+
+   Remove all resources using `terraform apply -destroy`. Enter `yes` when
+   prompted to confirm the operation.
+
+   <Note>
+
+    Terraform 0.15.2+ uses `terraform apply -destroy` to cleanup
+      resources. If using an earlier version of Terraform, you may need to execute
+      `terraform destroy`.
+
+   </Note>
+
+   ```shell-session
+   $ terraform apply -destroy
+   aws_security_group.boundary-ssh: Refreshing state... [id=sg-06aa32c32ea2dc6ba]
+   aws_iam_user.boundary: Refreshing state... [id=boundary]
+   aws_iam_user_policy.BoundaryDescribeInstances: Refreshing state...    [id=boundary:BoundaryDescribeInstances]
+   aws_iam_access_key.boundary: Refreshing state... [id=NOTAREALKEYAKIASWVU2XLZOLN2IRD3]
+   aws_instance.boundary-instance[3]: Refreshing state... [id=i-0636d8f305a675a0f]
+   aws_instance.boundary-instance[0]: Refreshing state... [id=i-0a101da665471ef6c]
+   aws_instance.boundary-instance[2]: Refreshing state... [id=i-09c28775132890622]
+   aws_instance.boundary-instance[1]: Refreshing state... [id=i-03174fc1e7685ed89]
+   
+   Terraform used the selected providers to generate the following execution plan. Resource actions are    indicated with the following symbols:
+     - destroy
+   
+   Terraform will perform the following actions:
+   
+     # aws_iam_access_key.boundary will be destroyed
+     - resource "aws_iam_access_key" "boundary" {
+         - create_date          = "2022-01-28T18:44:18Z" -> null
+         - id                   = "NOTAREALKEYAKIASWVU2XLZOLN2IRD3" -> null
+         - secret               = (sensitive value)
+         - ses_smtp_password_v4 = (sensitive value)
+         - status               = "Active" -> null
+         - user                 = "boundary" -> null
+       }
+   
+     # aws_iam_user.boundary will be destroyed
+     - resource "aws_iam_user" "boundary" {
+         - arn           = "arn:aws:iam::186136574706:user/boundary" -> null
+         - force_destroy = false -> null
+         - id            = "boundary" -> null
+         - name          = "boundary" -> null
+         - path          = "/" -> null
+         - tags          = {} -> null
+         - tags_all      = {} -> null
+         - unique_id     = "AIDASWVU2XLZPCRFR4LW7" -> null
+       }
+   
+     # aws_iam_user_policy.BoundaryDescribeInstances will be destroyed
+     - resource "aws_iam_user_policy" "BoundaryDescribeInstances" {
+         - id     = "boundary:BoundaryDescribeInstances" -> null
+         - name   = "BoundaryDescribeInstances" -> null
+         - policy = jsonencode(
+               {
+                 - Statement = [
+                     - {
+                         - Action   = [
+                             - "ec2:DescribeInstances",
+                           ]
+                         - Effect   = "Allow"
+                         - Resource = "*"
+                       },
+                   ]
+                 - Version   = "2012-10-17"
+               }
+           ) -> null
+         - user   = "boundary" -> null
+       }
+   
+     # aws_instance.boundary-instance[0] will be destroyed
+     
+   ...
+   ... Tuncated Output ...
+   ...
+
+   Plan: 0 to add, 0 to change, 8 to destroy.
+   
+   Changes to Outputs:
+     - boundary_access_key_id     = "NOTAREALKEYAKIASWVU2XLZOLN2IRD3" -> null
+     - boundary_secret_access_key = (sensitive value)
+   
+   Do you really want to destroy all resources?
+     Terraform will destroy all your managed infrastructure, as shown above.
+     There is no undo. Only 'yes' will be accepted to confirm.
+   
+     Enter a value: yes
+   
+   aws_iam_user_policy.BoundaryDescribeInstances: Destroying... [id=boundary:BoundaryDescribeInstances]
+   aws_iam_access_key.boundary: Destroying... [id=NOTAREALKEYAKIASWVU2XLZOLN2IRD3]
+   aws_instance.boundary-instance[2]: Destroying... [id=i-09c28775132890622]
+   aws_instance.boundary-instance[1]: Destroying... [id=i-03174fc1e7685ed89]
+   aws_instance.boundary-instance[0]: Destroying... [id=i-0a101da665471ef6c]
+   aws_instance.boundary-instance[3]: Destroying... [id=i-0636d8f305a675a0f]
+   aws_iam_access_key.boundary: Destruction complete after 0s
+   aws_iam_user_policy.BoundaryDescribeInstances: Destruction complete after 0s
+   aws_iam_user.boundary: Destroying... [id=boundary]
+   aws_iam_user.boundary: Destruction complete after 0s
+   aws_instance.boundary-instance[0]: Still destroying... [id=i-0a101da665471ef6c, 10s elapsed]
+   aws_instance.boundary-instance[2]: Still destroying... [id=i-09c28775132890622, 10s elapsed]
+   aws_instance.boundary-instance[1]: Still destroying... [id=i-03174fc1e7685ed89, 10s elapsed]
+   aws_instance.boundary-instance[3]: Still destroying... [id=i-0636d8f305a675a0f, 10s elapsed]
+   aws_instance.boundary-instance[0]: Still destroying... [id=i-0a101da665471ef6c, 20s elapsed]
+   aws_instance.boundary-instance[1]: Still destroying... [id=i-03174fc1e7685ed89, 20s elapsed]
+   aws_instance.boundary-instance[3]: Still destroying... [id=i-0636d8f305a675a0f, 20s elapsed]
+   aws_instance.boundary-instance[2]: Still destroying... [id=i-09c28775132890622, 20s elapsed]
+   aws_instance.boundary-instance[3]: Still destroying... [id=i-0636d8f305a675a0f, 30s elapsed]
+   aws_instance.boundary-instance[0]: Still destroying... [id=i-0a101da665471ef6c, 30s elapsed]
+   aws_instance.boundary-instance[2]: Still destroying... [id=i-09c28775132890622, 30s elapsed]
+   aws_instance.boundary-instance[1]: Still destroying... [id=i-03174fc1e7685ed89, 30s elapsed]
+   aws_instance.boundary-instance[0]: Destruction complete after 31s
+   aws_instance.boundary-instance[1]: Destruction complete after 31s
+   aws_instance.boundary-instance[2]: Destruction complete after 31s
+   aws_instance.boundary-instance[3]: Still destroying... [id=i-0636d8f305a675a0f, 40s elapsed]
+   aws_instance.boundary-instance[3]: Still destroying... [id=i-0636d8f305a675a0f, 50s elapsed]
+   aws_instance.boundary-instance[3]: Still destroying... [id=i-0636d8f305a675a0f, 1m0s elapsed]
+   aws_instance.boundary-instance[3]: Destruction complete after 1m2s
+   aws_security_group.boundary-ssh: Destroying... [id=sg-06aa32c32ea2dc6ba]
+   aws_security_group.boundary-ssh: Destruction complete after 2s
+   
+   Apply complete! Resources: 0 added, 0 changed, 8 destroyed.
+
+1. Remove the terraform state files.
+
+   ```shell-session
+   $ rm *.tfstate*
+   ```
+
+1. Stop Boundary
+
+   <Tabs>
+   <Tab heading="HCP" group="hcp">
+
+   Log in to the HCP portal and delete the HCP Boundary instance.
+
+   </Tab>
+   <Tab heading="Dev Mode" group="dev">
+
+   Locate the shell where `boundary dev` was run and enter `ctrl+c` to stop dev
+   mode.
+
+   <CodeBlockConfig hideClipboard>
+
+   ```shell-session
+   ^C==> Boundary dev environment shutdown triggered, interrupt again to force
+   ...
+   ...
+   ...
+   {
+     "id": "lOp2Pa9JKe",
+     "source": "https://hashicorp.com/boundary/dev-controller/boundary-dev",
+     "specversion": "1.0",
+     "type": "system",
+     "data": {
+       "version": "v0.1",
+       "op": "github.com/hashicorp/cap/oidc.(*TestProvider).startCachedCodesCleanupTicking.func1",
+       "data": {
+         "msg": "cleanup of cached codes shutting down"
+       }
+     },
+     "datacontentype": "text/plain",
+     "time": "2021-08-16T17:06:36.275678-06:00"
+   }
+   ```
+
+   </CodeBlockConfig>
+
+   </Tab>
+   </Tabs>
+
+</Tab>
+<Tab heading="AWS Console" group="aws-console">
+
+1. Delete the CloudFormation `boundary-dynamic-hosts` stack
+  
+  Navigate to the [CloudFormation
+  Dashboard](https://console.aws.amazon.com/cloudformation). Select the
+  `boundary-dynamic-hosts` Stack name. Then click **Delete** and confirm by
+  clicking **Delete stack**.
+
+  When the delete is complete, the stack's *Status* will change to
+  *DELETE_COMPLETE*.
+
+  ![AWS CloudFormation Delete Stack](/img/boundary/aws/aws-cloudformation-delete-stack.png)
+
+1. Delete the `boundary-keypair` EC2 keypair.
+
+  Navigate to the [EC2 Console Dashboard](https://console.aws.amazon.com/ec2).
+  Select **Key Pairs** under *Network & Security* on the left side of the page. 
+  
+  Check the box next to `boundary-keypair`, then select the **Actions** dropdown
+  and click **Delete**. Confirm the deletion of the keypair by typing "Delete"
+  in the field and clicking **Delete** again.
+
+  ![AWS EC2 Delete Keypair](/img/boundary/aws/aws-ec2-delete-keypair.png)
+
+1. Delete the `boundary` user and associated access key.
+
+  Navigate to the [IAM Dashboard](https://console.aws.amazon.com/iam). Select
+  the **Users** panel, then check the box next to the `boundary` user. Click
+  **Delete**, and confirm by typing the name of the user `boundary` and clicking
+  **Delete** again. This will also delete the access key associated with the
+  user.
+
+  ![AWS IAM Delete User](/img/boundary/aws/aws-iam-delete-user.png) 
+
+1. Delete the `BoundaryDescribeInstances` policy.
+
+  Click on the **Policies** panel, and select the **BoundaryDescribeInstances**
+  policy. Then click the **Actions** dropdown and select **Delete**.
+
+  Confirm by typing the name of the policy `BoundaryDescribeInstances` into the
+  field and clicking **Delete**.
+
+  ![AWS IAM Delete Policy](/img/boundary/aws/aws-iam-delete-policy.png)
+
+1. Stop Boundary
+
+   <Tabs>
+   <Tab heading="HCP" group="hcp">
+
+   Log in to the HCP portal and delete the HCP Boundary instance.
+
+   </Tab>
+   <Tab heading="Dev Mode" group="dev">
+
+   Locate the shell where `boundary dev` was run and enter `ctrl+c` to stop dev
+   mode.
+
+   <CodeBlockConfig hideClipboard>
+
+   ```shell-session
+   ^C==> Boundary dev environment shutdown triggered, interrupt again to force
+   ...
+   ...
+   ...
+   {
+     "id": "lOp2Pa9JKe",
+     "source": "https://hashicorp.com/boundary/dev-controller/boundary-dev",
+     "specversion": "1.0",
+     "type": "system",
+     "data": {
+       "version": "v0.1",
+       "op": "github.com/hashicorp/cap/oidc.(*TestProvider).startCachedCodesCleanupTicking.func1",
+       "data": {
+         "msg": "cleanup of cached codes shutting down"
+       }
+     },
+     "datacontentype": "text/plain",
+     "time": "2021-08-16T17:06:36.275678-06:00"
+   }
+   ```
+
+   </CodeBlockConfig>
+
+   </Tab>
+   </Tabs>
+
+</Tab>
+</Tabs>
+
+## Next steps
+
+This tutorial demonstrated the steps to set up a dynamic host catalog using the
+AWS host plugin. You deployed and tagged hosts within AWS, configured a
+plugin-type host catalog within Boundary, and created three host sets that
+filtered for the  hosts based on their tag values.
+
+To learn more about integrating Boundary with cloud providers like AWS and
+Azure, check out the [OIDC
+Authentication](/boundary/tutorials/access-management/oidc-auth)
+tutorial.

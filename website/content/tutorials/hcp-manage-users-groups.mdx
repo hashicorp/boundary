@@ -1,0 +1,893 @@
+---
+id: 7535939d-7023-4a96-bf33-78d0d5c74d3c
+name: Manage users and groups with HCP Boundary
+short_name: Manage users and groups with HCP
+description: Define users and groups to assign role-based access controls.
+read_time: 10
+edition: hcp
+products_used:
+  - product: boundary
+  - product: terraform
+    min_version: 0.12.0
+    max_version: 0.13.1
+default_collection_context: boundary/hcp-administration
+---
+
+Users and groups in Boundary are collectively known as **principals**. Assigning
+[grants](/boundary/docs/concepts/security/permissions) on
+[roles](/boundary/docs/concepts/domain-model/roles) is
+performed through principal IDs; that is, the unique IDs of users, groups, or
+both.
+
+This tutorial focus on completing user management tasks within a Boundary
+environment.
+
+<Note>
+
+All resource IDs in this tutorial are illustrations only. IDs are uniquely
+generated for every resource upon creation. Be sure to use the resource IDs that are
+generated for your environment.
+
+</Note>
+
+## Prerequisites
+
+This tutorial assumes that you successfully completed the [Manage
+Scopes](/boundary/tutorials/hcp-administration/hcp-manage-scopes) tutorial.
+
+## Users
+
+Users in Boundary represent an _internal_ notion of a particular entity (human,
+machine, etc.). Users can be correlated with one or more
+[account](/boundary/docs/concepts/domain-model/accounts)
+resources via [auth
+methods](/boundary/docs/concepts/domain-model/auth-methods).
+Accounts represent _external_ notions of a particular entity. Among other
+use-cases, this mechanism allows for an easy way to switch users to new IdPs
+within the organization deploying Boundary.
+
+An auth method can be defined at the org and global scopes. In this tutorial,
+you will create an account and user for an auth method at the org level.
+
+~> Currently, all auth methods create users upon authentication. If there is no
+user linked with an account, Boundary creates a user when the authentication
+against that account was successful. This behavior may be convenient, but in
+other situations (such as when you want Terraform to describe the Boundary
+resources), this may be undesirable. The steps in this tutorial demonstrate
+manually making these resources and linking them. A future Boundary update will
+allow turning off auto-vivification on a per-auth-method basis.
+
+## Add an auth method
+
+Enable a password-type auth method in the `IT_Support` org which you created in
+the [Manage Scopes](/boundary/tutorials/hcp-administration/hcp-manage-scopes) tutorial.
+
+<Tabs>
+<Tab heading="CLI" group="cli">
+
+
+Create a password auth method in the `IT_Support` org.
+
+```shell-session
+$ boundary auth-methods create password \
+  -scope-id=$ORG_ID \
+  -name="org_auth_method" \
+  -description="Org auth method"
+```
+
+**Example:**
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary auth-methods create password \
+  -scope-id=$ORG_ID \
+  -name="org_auth_method" \
+  -description="Org auth method"
+
+Auth Method information:
+  Created Time:                Fri, 27 May 2022 11:14:30 MDT
+  Description:                 Org auth method
+  ID:                          ampw_ZbB6UXpW3B
+  Name:                        org_auth_method
+  Type:                        password
+  Updated Time:                Fri, 27 May 2022 11:14:30 MDT
+  Version:                     1
+
+  Scope:
+    ID:                        o_u54jrD6ydN
+    Name:                      IT_Support
+    Parent Scope ID:           global
+    Type:                      org
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    authenticate
+
+  Authorized Actions on Auth Method's Collections:
+    accounts:
+      create
+      list
+    managed-groups:
+      create
+      list
+
+  Attributes:
+    Minimum Login Name Length: 3
+    Minimum Password Length:   8
+```
+
+</CodeBlockConfig>
+
+In this example output, the password auth method ID is `ampw_ZbB6UXpW3B`.
+
+Copy the auth method ID and save it as an environment variable, `BOUNDARY_AUTH_METHOD_ID`.
+
+**Example:**
+
+```shell-session
+$ export BOUNDARY_AUTH_METHOD_ID=ampw_ZbB6UXpW3B
+```
+
+</Tab>
+<Tab heading="Admin Console" group="admin">
+
+1. Select **IT_Support** org under **Orgs**.
+   ![Select Org](/img/boundary/boundary-ui-select-org.png)
+
+1. Select **Auth Methods** and then select **New**.
+   ![Auth Method](/img/boundary/boundary-ui-auth-0.png)
+
+1. Enter `org_auth_method` in the **Name** field, and `Org auth method` in the
+   **Description** field.
+   ![Auth Method](/img/boundary/boundary-ui-auth-1.png)
+
+1. Click **Save**.
+
+</Tab>
+<Tab heading="Terraform" group="terraform">
+
+In your Terraform configuration file, define a [`boundary_auth_method`
+resource](https://registry.terraform.io/providers/hashicorp/boundary/latest/docs/resources/auth_method)
+to create a new auth method under the `IT_Support` scope which you created in
+the [Manage Scopes](/boundary/tutorials/hcp-administration/hcp-manage-scopes) tutorial.
+
+```hcl
+resource "boundary_auth_method" "password" {
+  name        = "org_auth_method"
+  description = "Password auth method for org"
+  type        = "password"
+  scope_id    = boundary_scope.org.id
+}
+```
+
+</Tab>
+</Tabs>
+
+## Create an account
+
+Create an account for the org-scoped auth method.
+
+<Note>
+
+ User names must be all lowercase alphanumeric of at least 3
+characters and the password must be 8 or more characters. (The minimum lengths
+can be changed in the attributes for the auth method if desired.)
+
+</Note>
+
+<Tabs>
+<Tab heading="CLI" group="cli">
+
+Create an account named "test_account". For the password, use `supersecure`. Or, use a password of your choosing, but be sure to remember it!
+
+```shell-session
+$ boundary accounts create password \
+  -auth-method-id=$BOUNDARY_AUTH_METHOD_ID \
+  -login-name="tester01" \
+  -name=test_account \
+  -description="Test password account"
+Please enter the password (it will be hidden):
+```
+
+**Example output:**
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary accounts create password \
+  -auth-method-id=$BOUNDARY_AUTH_METHOD_ID \
+  -login-name="tester01" \
+  -name=test_account \
+  -description="Test password account"
+Please enter the password (it will be hidden):
+
+Account information:
+  Auth Method ID:      ampw_ZbB6UXpW3B
+  Created Time:        Fri, 27 May 2022 11:16:47 MDT
+  Description:         Test password account
+  ID:                  acctpw_A8R1escktO
+  Name:                test_account
+  Type:                password
+  Updated Time:        Fri, 27 May 2022 11:16:47 MDT
+  Version:             1
+
+  Scope:
+    ID:                o_u54jrD6ydN
+    Name:              IT_Support
+    Parent Scope ID:   global
+    Type:              org
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    set-password
+    change-password
+
+  Attributes:
+    Login Name:        tester01
+```
+
+</CodeBlockConfig>
+
+In this example, the generated account ID is `acctpw_A8R1escktO`.
+
+Copy the ID of `test_account` and save it as an environment variable, `ACCOUNT_ID`.
+
+```shell-session
+$ export ACCOUNT_ID=acctpw_A8R1escktO
+```
+
+</Tab>
+<Tab heading="Admin Console" group="admin">
+
+1. Select the **Accounts** tab, and then select **Create Account**.
+   ![Auth Method](/img/boundary/boundary-ui-auth-2.png)
+
+1. Enter `test_account` in the **Name** field, `Test password account` in the **Description** field, `tester01` in the **Login Name**, and `supersecure` (or your preferred password) in the **Password** field.
+   ![Auth Method](/img/boundary/boundary-ui-auth-3.png)
+
+1. Click **Save**.
+
+</Tab>
+<Tab heading="Terraform" group="terraform">
+
+In your Terraform configuration file, define a [`boundary_account_password`
+resource](https://registry.terraform.io/providers/hashicorp/boundary/latest/docs/resources/account_password)
+to create a new account in the `org_auth_method` you created in the previous
+step.
+
+```hcl
+resource "boundary_account_password" "test_account" {
+  name           = "test_account"
+  description    = "Test password account"
+  type           = "password"
+  login_name     = "tester01"
+  password       = "supersecure"
+  auth_method_id = boundary_auth_method.password.id
+}
+```
+
+</Tab>
+</Tabs>
+
+## Create a user
+
+Next, create a user at the org scope.
+
+<Tabs>
+<Tab heading="CLI" group="cli">
+
+Create a user, "tester01" under the `IT_Support` org.
+
+```shell-session
+$ boundary users create -name="tester01" -description="A test user" -scope-id=$ORG_ID
+
+User information:
+  Created Time:        Fri, 27 May 2022 11:17:35 MDT
+  Description:         A test user
+  ID:                  u_ogz79sV4sT
+  Name:                tester01
+  Updated Time:        Fri, 27 May 2022 11:17:35 MDT
+  Version:             1
+
+  Scope:
+    ID:                o_u54jrD6ydN
+    Name:              IT_Support
+    Parent Scope ID:   global
+    Type:              org
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    add-accounts
+    set-accounts
+    remove-accounts
+```
+
+In the example output, the `tester01` user ID is `u_ogz79sV4sT`.
+
+Copy the generated user ID and save it as an environment variable, `USER_ID`.
+
+**Example:**
+
+```shell-session
+$ export USER_ID=u_ogz79sV4sT
+```
+
+Now, associate the `tester01` user with the `test_account` account previously
+created.
+
+```shell-session
+$ boundary users set-accounts -id=$USER_ID -account=$ACCOUNT_ID
+
+User information:
+  Created Time:        Fri, 27 May 2022 11:17:35 MDT
+  Description:         A test user
+  ID:                  u_ogz79sV4sT
+  Name:                tester01
+  Updated Time:        Fri, 27 May 2022 11:18:37 MDT
+  Version:             2
+
+  Scope:
+    ID:                o_u54jrD6ydN
+    Name:              IT_Support
+    Parent Scope ID:   global
+    Type:              org
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    add-accounts
+    set-accounts
+    remove-accounts
+
+  Accounts:
+    ID:                acctpw_A8R1escktO
+    Scope ID:          o_u54jrD6ydN
+```
+
+</Tab>
+<Tab heading="Admin Console" group="admin">
+
+1. Select **Users** and then select **New**.
+   ![Users](/img/boundary/boundary-ui-user-0.png)
+
+1. Enter `tester01` in the **Name** field, and `A test user` in the
+   **Description** field.
+   ![Users](/img/boundary/boundary-ui-user-1.png)
+
+1. Click **Save**.
+
+1. Select **Add Accounts** from the **Manage** menu.
+   ![Users](/img/boundary/boundary-ui-user-2.png)
+
+1. Select the check-box for **Test password account** and then click **Add
+   Accounts**.
+   ![Users](/img/boundary/boundary-ui-user-3.png)
+
+</Tab>
+<Tab heading="Terraform" group="terraform">
+
+In your Terraform configuration file, define a [`boundary_user`
+resource](https://registry.terraform.io/providers/hashicorp/boundary/latest/docs/resources/user)
+to create a new user and associate that with `test_account` you created in the
+previous step.
+
+```hcl
+resource "boundary_user" "tester01" {
+  name        = "tester01"
+  description = "A test user"
+  account_ids = [
+     boundary_account_password.test_account.id
+  ]
+  scope_id    = boundary_scope.org.id
+}
+```
+
+</Tab>
+</Tabs>
+
+## Verify Users
+
+Now, test to make sure that you can authenticate with Boundary as `tester01`
+user.
+
+<Tabs>
+<Tab heading="CLI" group="cli">
+
+Authenticate with Boundary using the newly created user. Enter `tester01` when
+prompted for the login name and `supersecure` when prompted for the password.
+
+```shell-session
+$ boundary authenticate
+Please enter the login name (it will be hidden):
+Please enter the password (it will be hidden):
+Authentication information:
+  Account ID:      acctpw_VOeNSFX8pQ
+  Auth Method ID:  ampw_ZbB6UXpW3B
+  Expiration Time: Mon, 13 Feb 2023 12:35:32 MST
+  User ID:         u_ogz79sV4sT
+The token was successfully stored in the chosen keyring and is not displayed here.
+```
+
+<Warning>
+
+To continue the tutorial, re-authenticate with the admin username and password
+that you were using. Make sure to then select the **IT_Support** group again.
+
+</Warning>
+
+Authenticate to Boundary again as the `admin` user, using the password
+`password`.
+
+```shell-session
+$ boundary authenticate
+Please enter the login name (it will be hidden):
+Please enter the password (it will be hidden):
+Authentication information:
+  Account ID:      acctpw_VOeNSFX8pQ
+  Auth Method ID:  ampw_ZbB6UXpW3B
+  Expiration Time: Mon, 13 Feb 2023 12:35:32 MST
+  User ID:         u_1vUkf5fPs9
+The token was successfully stored in the chosen keyring and is not displayed here.
+```
+
+</Tab>
+<Tab heading="Admin Console" group="admin">
+
+1. Log out by selecting **Deauthenticate** from the upper-right menu.
+   ![Logout](/img/boundary/boundary-ui-deauthenticate.png)
+
+1. Select **IT_Support** to set the scope to log in.
+
+1. Enter `tester01` in the **Login Name** field, and `supersecure` in the
+   **Password** field.
+   ![Logout](/img/boundary/boundary-ui-authenticate.png)
+
+1. Click **Sign In**.
+
+1. Log out by selecting **Sign Out** from the upper-right menu.
+
+   <Warning>
+
+   To continue the tutorial, re-authenticate with the admin username and
+   password that you were using.
+
+   </Warning>
+
+1. Leave the scope to be **Global** and enter the **Login Name** and
+   **Password**.
+
+</Tab>
+<Tab heading="Terraform" group="terraform">
+
+This tutorial uses a pre-existing admin account to manage Terraform resources.
+This approach allows Boundary to be configured programmatically, with minimal
+bootstrapping of Boundary with accounts or users. If using this method, consider
+utilizing [Terraform input
+variables](/terraform/language/values/variables), like the sample
+code for this tutorial demonstrates. Also note that the account must already
+exist in order for Terraform to manage resources using this method.
+
+To [configure the Boundary provider using
+Terraform](https://registry.terraform.io/providers/hashicorp/boundary/latest/docs),
+provide the valid auth method ID, login name, and password for a pre-existing
+auth method to authenticate. The user must have appropriate grants assigned to
+manage resources in the desired scope. The next tutorial will discuss roles and
+grants.
+
+```hcl
+provider "boundary" {
+  addr                            = "http://127.0.0.1:9200"
+  auth_method_id                  = "ampw_sOXVI7JS2l"
+  password_auth_method_login_name = "tester01"
+  password_auth_method_password   = "supersecure"
+}
+```
+
+These values can be hard-coded into the Terraform config, or supplied using
+variables like this tutorial demonstrates.
+
+Do **NOT** add this configuration to your `main.tf` file. It has already been
+configured.
+
+</Tab>
+</Tabs>
+
+## Groups
+
+A group in Boundary is a resource that represents a collection of users that are
+treated equally for the purposes of access control. A group is a principal,
+which allows it to be assigned to roles. Roles assigned to a group are
+indirectly assigned to the users in the group, and users receive all permissions
+of the assigned roles. Groups can be defined at the
+[Global](/boundary/docs/concepts/domain-model/scopes#global),
+[Organization](/boundary/docs/concepts/domain-model/scopes#organizations),
+or
+[Project](/boundary/docs/concepts/domain-model/scopes#projects)
+scope.
+
+The group resource membership is managed manually. If using an [OIDC
+Auth](/boundary/tutorials/access-management/oidc-auth) provider, such
+as Auth0, Okta or Azure AD, [Managed
+Groups](/boundary/docs/concepts/domain-model/managed-groups)
+can be used to automatically map membership to a collection of accounts defined
+by the auth method's identity provider using
+[filtering](/boundary/docs/concepts/filtering/oidc-managed-groups).
+
+## Create a group
+
+Create a user at the org scope.
+
+<Tabs>
+<Tab heading="CLI" group="cli">
+
+Create a group, "group01" under the `IT_Support` org.
+
+```shell-session
+$ boundary groups create -name="group01" -description="A test group" -scope-id=$ORG_ID
+
+Group information:
+  Created Time:        Fri, 27 May 2022 11:20:55 MDT
+  Description:         A test group
+  ID:                  g_wRpm66iPOX
+  Name:                group01
+  Updated Time:        Fri, 27 May 2022 11:20:55 MDT
+  Version:             1
+
+  Scope:
+    ID:                o_u54jrD6ydN
+    Name:              IT_Support
+    Parent Scope ID:   global
+    Type:              org
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    add-members
+    set-members
+    remove-members
+```
+
+In the example output, the `group01` group ID is `g_wRpm66iPOX`.
+
+Copy the generated group ID and save it as an environment variable, `GROUP_ID`.
+
+**Example:**
+
+```shell-session
+$ export GROUP_ID=g_wRpm66iPOX
+```
+
+Now, add the `tester01` user created previously to `group01`.
+
+```shell-session
+$ boundary groups add-members -id=$GROUP_ID -member=$USER_ID
+
+Group information:
+  Created Time:        Fri, 27 May 2022 11:20:55 MDT
+  Description:         A test group
+  ID:                  g_wRpm66iPOX
+  Name:                group01
+  Updated Time:        Fri, 27 May 2022 11:21:42 MDT
+  Version:             2
+
+  Scope:
+    ID:                o_u54jrD6ydN
+    Name:              IT_Support
+    Parent Scope ID:   global
+    Type:              org
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    add-members
+    set-members
+    remove-members
+
+  Members:
+    ID:                u_ogz79sV4sT
+    Scope ID:          o_u54jrD6ydN
+```
+
+</Tab>
+<Tab heading="Admin Console" group="admin">
+
+1. Log back into the Admin Console as the admin user, then select the
+   **IT_Support** group again.
+
+1. Select **Groups** and then select **New**.
+   ![Groups](/img/boundary/boundary-ui-groups-0.png)
+
+1. Enter `group01` in the **Name** field, and `A test group` in the
+   **Description** field.
+   ![Groups](/img/boundary/boundary-ui-groups-1.png)
+
+1. Click **Save**.
+
+1. Select the **Members** tab and click **Add Members**.
+   ![Groups](/img/boundary/boundary-ui-groups-2.png)
+
+1. Filter the **Scope** to the *IT_Support* org. Select the check-box for
+   **tester01** and then click **Add Members**.
+   ![Groups](/img/boundary/boundary-ui-groups-3.png)
+
+</Tab>
+<Tab heading="Terraform" group="terraform">
+
+In your Terraform configuration file, define a [`boundary_group`
+resource](https://registry.terraform.io/providers/hashicorp/boundary/latest/docs/resources/group)
+to create a new group and associate it with the `tester01` user you created in
+the previous step.
+
+```hcl
+resource "boundary_group" "group01" {
+  name        = "My group"
+  description = "A test group"
+  member_ids  = [boundary_user.tester01.id]
+  scope_id    = boundary_scope.org.id
+}
+```
+
+The entire `main.tf` file contents are printed below for reference.
+
+<CodeBlockConfig filename="main.tf">
+
+```hcl
+terraform {
+  required_providers {
+    boundary = {
+      source  = "hashicorp/boundary"
+      version = "1.0.7"
+    }
+  }
+}
+
+variable "boundary_addr" {
+  type = string
+}
+
+variable "auth_method_id" {
+  type = string
+}
+
+variable "password_auth_method_login_name" {
+  type = string
+}
+
+variable "password_auth_method_password" {
+  type = string
+}
+
+provider "boundary" {
+  addr                            = var.boundary_addr
+  auth_method_id                  = var.auth_method_id
+  password_auth_method_login_name = var.password_auth_method_login_name
+  password_auth_method_password   = var.password_auth_method_password
+}
+
+resource "boundary_scope" "org" {
+  scope_id                 = "global"
+  name                     = "IT_Support"
+  description              = "IT Support Team"
+  auto_create_default_role = true
+  auto_create_admin_role   = true
+}
+
+resource "boundary_scope" "project" {
+  name             = "QA_Tests"
+  description      = "Manage QA machines"
+  scope_id                 = boundary_scope.org.id
+  auto_create_admin_role   = true
+  auto_create_default_role = true
+}
+
+resource "boundary_host_catalog_static" "devops" {
+  name        = "DevOps"
+  description = "For DevOps usage"
+  scope_id    = boundary_scope.project.id
+}
+
+resource "boundary_host_static" "postgres" {
+  name            = "postgres"
+  description     = "Postgres host"
+  address         = "127.0.0.1"
+  host_catalog_id = boundary_host_catalog_static.devops.id
+}
+
+resource "boundary_host_static" "localhost" {
+  name            = "localhost"
+  description     = "Localhost for testing"
+  address         = "localhost"
+  host_catalog_id = boundary_host_catalog_static.devops.id
+}
+
+resource "boundary_host_set_static" "test-machines" {
+  name            = "test-machines"
+  description     = "Host set for postgres"
+  host_catalog_id = boundary_host_catalog_static.devops.id
+  host_ids = [
+      boundary_host_static.postgres.id,
+      boundary_host_static.localhost.id,
+  ]
+}
+
+resource "boundary_target" "tests" {
+  type                     = "tcp"
+  name                     = "tests"
+  description              = "Test target"
+  scope_id                 = boundary_scope.project.id
+  session_connection_limit = -1
+  default_port             = 22
+  host_source_ids = [
+    boundary_host_set_static.test-machines.id
+  ]
+}
+
+resource "boundary_auth_method" "password" {
+  name        = "org_password_auth"
+  description = "Password auth method for org"
+  type        = "password"
+  scope_id    = boundary_scope.org.id
+}
+
+resource "boundary_account_password" "test_account" {
+  name           = "test_account"
+  description    = "Test password account"
+  type           = "password"
+  login_name     = "tester01"
+  password       = "supersecure"
+  auth_method_id = boundary_auth_method.password.id
+}
+
+resource "boundary_user" "tester01" {
+  name        = "tester01"
+  description = "A test user"
+  account_ids = [
+     boundary_account_password.test_account.id
+  ]
+  scope_id    = boundary_scope.org.id
+}
+
+resource "boundary_group" "group01" {
+  name        = "My group"
+  description = "A test group"
+  member_ids  = [boundary_user.tester01.id]
+  scope_id    = boundary_scope.org.id
+}
+```
+
+</CodeBlockConfig>
+
+**Save this file**.
+
+Now apply the Terraform config. Enter `yes` when prompted for confirmation.
+
+```shell-session
+$ terraform apply -var "boundary_addr=$BOUDNARY_ADDR" -var "auth_method_id=$BOUNDARY_BOUNDARY_AUTH_METHOD_ID" -var "password_auth_method_login_name=admin" -var "password_auth_method_password=password"
+
+boundary_scope.org: Refreshing state... [id=o_u8j8RSASFv]
+boundary_scope.project: Refreshing state... [id=p_zFs59oil3J]
+boundary_host_catalog_static.devops: Refreshing state... [id=hcst_8iV7jlvqi7]
+boundary_host_static.localhost: Refreshing state... [id=hst_mZxekgMKS6]
+boundary_host_static.postgres: Refreshing state... [id=hst_KCvhOn9l1Y]
+boundary_host_set_static.test-machines: Refreshing state... [id=hsst_2kyFXQrsqY]
+boundary_target.tests: Refreshing state... [id=ttcp_HwZP7XG1PR]
+
+Note: Objects have changed outside of Terraform
+
+Terraform detected the following changes made outside of Terraform since the last "terraform apply":
+
+  # boundary_target.tests has been changed
+  ~ resource "boundary_target" "tests" {
+      + application_credential_source_ids = []
+        id                                = "ttcp_HwZP7XG1PR"
+        name                              = "tests"
+        # (7 unchanged attributes hidden)
+    }
+
+Unless you have made equivalent changes to your configuration, or ignored the relevant attributes using ignore_changes, the following plan may
+include actions to undo or respond to these changes.
+
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+Terraform used the selected providers to generate the following execution plan. Resource actions are indicated with the following symbols:
+  + create
+
+Terraform will perform the following actions:
+
+  # boundary_account_password.test_account will be created
+  + resource "boundary_account_password" "test_account" {
+      + auth_method_id = (known after apply)
+      + description    = "Test password account"
+      + id             = (known after apply)
+      + login_name     = "tester01"
+      + name           = "test_account"
+      + password       = "supersecure"
+      + type           = "password"
+    }
+
+  # boundary_auth_method.password will be created
+  + resource "boundary_auth_method" "password" {
+      + description           = "Password auth method for org"
+      + id                    = (known after apply)
+      + min_login_name_length = (known after apply)
+      + min_password_length   = (known after apply)
+      + name                  = "org_password_auth"
+      + scope_id              = "o_u8j8RSASFv"
+      + type                  = "password"
+    }
+
+  # boundary_group.group01 will be created
+  + resource "boundary_group" "group01" {
+      + description = "A test group"
+      + id          = (known after apply)
+      + member_ids  = (known after apply)
+      + name        = "My group"
+      + scope_id    = "o_u8j8RSASFv"
+    }
+
+  # boundary_user.tester01 will be created
+  + resource "boundary_user" "tester01" {
+      + account_ids = (known after apply)
+      + description = "A test user"
+      + id          = (known after apply)
+      + name        = "tester01"
+      + scope_id    = "o_u8j8RSASFv"
+    }
+
+Plan: 4 to add, 0 to change, 0 to destroy.
+
+Do you want to perform these actions?
+  Terraform will perform the actions described above.
+  Only 'yes' will be accepted to approve.
+
+  Enter a value: yes
+
+boundary_auth_method.password: Creating...
+boundary_auth_method.password: Creation complete after 0s [id=ampw_pWFjqh3pks]
+boundary_account_password.test_account: Creating...
+boundary_account_password.test_account: Creation complete after 0s [id=acctpw_kYycBlo7Wd]
+boundary_user.tester01: Creating...
+boundary_user.tester01: Creation complete after 0s [id=u_5B7g3YUFMf]
+boundary_group.group01: Creating...
+boundary_group.group01: Creation complete after 0s [id=g_wueUZm3ZGq]
+
+Apply complete! Resources: 4 added, 0 changed, 0 destroyed.
+```
+
+</Tab>
+</Tabs>
+
+By itself, group membership does not inherently assign its members any
+permissions. In the next tutorial, a
+[role](/boundary/docs/concepts/domain-model/roles) will be
+assigned to the group and the included members will inherit the role's
+permissions.
+
+## Next steps
+
+This tutorial demonstrated the steps to add a new authentication method to an
+org (`IT_Support`), created a new user and group within the org, and added the
+user as a member of the group. You verified that you can authenticate and logged
+into the `IT_Support` org using the newly created user credential.
+
+The next step is to define the permissions to control what operations members of
+the group can perform. In the [Manage Roles and
+Permissions](/boundary/tutorials/hcp-administration/hcp-manage-roles) tutorial, you will create a
+role, assign grants to the role, and then add the group as a principle of the
+new role. This group members will then inherit the defined permissions.

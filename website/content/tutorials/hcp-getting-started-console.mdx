@@ -1,0 +1,140 @@
+---
+id: e3111542-09b5-4739-b781-3b28cf4f8b6c
+name: Access HCP Boundary
+short_name: Access HCP Boundary
+description: >-
+  Access your HCP Boundary instance using the web UI or CLI using the 
+  installed Boundary binary.
+edition: hcp
+products_used:
+  - product: boundary
+    min_version: 0.11.0
+    max_version: 0.12.0
+default_collection_context: boundary/hcp-getting-started
+---
+
+You can access your HCP Boundary instance through the Boundary web UI using a
+browser or Command Line Interface (CLI) using the [installed Boundary
+binary](/boundary/tutorials/hcp-getting-started/hcp-getting-started-install).
+
+Before you can use the Boundary CLI, you must complete the initial setup using
+the Boundary web UI. In this tutorial series you will use the **Manual** setup
+wizard to have a better understanding of how Boundary is organized.
+
+## Prerequisites
+
+- An HCP account to complete this tutorial.
+- [Boundary 0.12.0 installed](/boundary/tutorials/hcp-getting-started/hcp-getting-started-install).
+
+## Boundary UI
+
+1. From the HCP Portal's **Boundary** page, click **Open Admin UI** - a new page
+   will open.
+
+1. Enter the admin username and password you created when you deployed the new
+   instance and click **Authenticate**.
+
+   You are now logged into your HCP Boundary instance via the web UI and
+   presented with the Boundary setup wizard.
+   ![ui-boundary-setup-wizard](/img/boundary/ui-boundary-setup-wizard.png)
+
+   <Note> 
+
+     The setup wizard can create sample resources for quick testing by
+     providing a target ID and connection port. This tutorial illustrates the
+     process of setting up Boundary projects and targets manually to show new
+     users around the UI. To use the setup wizard instead, enter a test target's
+     public IP address and TCP connection port, such as `18.206.227.218` and `22`
+     if using SSH.
+
+   </Note>
+
+1. Click **Do this later**.
+
+1. Click **New**.
+
+1. In the **Name** field enter `quick-start-org` and click **Save**.
+
+   You are now authenticated to your HCP Boundary instance's Global scope via
+   the web UI. This is the default scope for all new Boundary clusters.
+
+1. The **Org Settings** page includes the **Name** of the org, an optional
+   **Description**, and the org ID (highlighted).
+   ![ui-boundary-org](/img/boundary/ui-boundary-org.png)
+
+   ID's are an important concept to understand in Boundary. Each resource in
+   Boundary is identified by an ID. ID's are commonly referenced when managing
+   your Boundary instance, or connecting to Boundary resources. These additional
+   resources will be covered throughout the Getting Started series.
+
+## Boundary CLI
+
+1. From the [Boundary web UI](#boundary-ui), click the org menu and select
+   **quick-start-org**.
+   ![ui-boundary-select-org](/img/boundary/ui-boundary-select-org.png)
+
+1. Click **Org Settings**.
+
+1. Copy the org ID by clicking the copy icon.
+   ![ui-boundary-copy-orgid.pngui-boundary-copy-orgid](/img/boundary/ui-boundary-copy-orgid.png)
+
+1. Switch to your terminal and export a environment variable for the org ID.
+
+   ```shell-session
+   $ export ORG_ID=<actual-org-id>
+   ```
+
+1. Click **Orgs** in the left navigation menu to return to the global scope.
+
+   <Note> 
+
+     You can verify the active org in the Boundary UI by the org pull down menu.
+     ![ui-boundary-active-org](/img/boundary/ui-boundary-active-org.png)
+
+   </Note>
+
+1. Click **Auth Methods** and copy the **Password** auth method ID.
+   ![ui-boundary-copy-pw-auth-id](/img/boundary/ui-boundary-copy-pw-auth-id.png)
+
+1. Open your terminal and set an environment variable named
+   `BOUNDARY_AUTH_METHOD_ID` to the copied ID.
+
+   ```shell-session
+   $ export BOUNDARY_AUTH_METHOD_ID=<actual-auth-id>
+   ```
+
+1. Close the Boundary web UI.
+
+1. Return to the HCP Portal **Boundary** page and click the copy icon for the
+   Cluster URL in the **Getting started with Boundary** section.
+   ![ui-hcp-getting-started-boundary](/img/boundary/ui-hcp-getting-started-boundary.png)
+
+1. In your terminal, set the `BOUNDARY_ADDR` environment variable to the copied URL.
+
+   ```shell-session
+   $ export BOUNDARY_ADDR=<actual-boundary-address>
+   ```
+
+1. Log in with the administrator credentials you created when you deployed the
+   HCP Boundary instance. When prompted, enter the administrator username and
+   password you selected when creating your Boundary instance.
+
+   ```shell-session
+   $ boundary authenticate
+   Please enter the login name (it will be hidden):
+   Please enter the password (it will be hidden):
+   Authentication information:
+     Account ID:      acctpw_VOeNSFX8pQ
+     Auth Method ID:  ampw_wxzojlKJLN
+     Expiration Time: Mon, 13 Feb 2023 12:35:32 MST
+     User ID:         u_1vUkf5fPs9
+   The token was successfully stored in the chosen keyring and is not displayed here.
+   ```
+
+You are now logged into your HCP Boundary instance's **Global** scope via the
+CLI. This is the default scope for all new Boundary clusters.
+
+## Next steps
+
+Now that you have authenticated to the HCP Boundary instance, you are ready to
+setup and connect to your first target.

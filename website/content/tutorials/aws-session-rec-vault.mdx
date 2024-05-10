@@ -1,0 +1,3897 @@
+---
+id: f21504a9-3885-4968-8d3d-8f28f9c3daf9
+name: Enable session recording with AWS and Vault
+short_name: Session recording with AWS and Vault
+description: Enable session recording with AWS resources and Vault credential  injection.
+read_time: 25
+edition: hcp
+products_used:
+  - product: boundary
+  - product: vault
+  - product: terraform
+    min_version: 0.13.2
+    max_version: 0.14.0
+default_collection_context: boundary/host-management
+variants:
+  - slug: boundary-deploy
+    options:
+      - hcp
+---
+
+Boundary 0.13 added SSH session recording support for HCP Boundary Plus and
+Boundary Enterprise. Session recording provides insight into user actions over
+remote SSH sessions to meet regulatory requirements for organizations and
+prevent malicious behavior. Administrators can enable session recording on SSH
+targets in their Boundary environment and replay recordings back within the
+Boundary admin UI.
+
+This tutorial demonstrates enabling SSH session recording using Amazon S3 as the
+storage backend and HashiCorp Vault for credential management. Learners will
+deploy the required AWS resources using Terraform.
+
+## Tutorial overview
+
+1. [Prerequisites](#prerequisites)
+1. [Background](#session-recording-background)
+1. [Get setup](#get-set-up)
+1. [Deploy Vault, targets, and workers](#deploy-vault-targets-and-workers)
+1. [Configure Vault](#configure-vault)
+1. [Set up Boundary](#set-up-boundary)
+1. [Enable session recording](#enable-session-recording)
+1. [Verify and play back recordings](#view-the-recording)
+
+## Prerequisites
+
+<Note>
+
+  This tutorial was tested on 10 October 2023 using macOS 13.6, and in the
+  Windows Subsystem for Linux (WSL) with Ubuntu 20.04. If you deploy the lab on
+  a Windows machine, ensure you perform all the lab steps within the WSL.
+  
+  Before moving on, check that the following versions or greater are installed.
+
+</Note>
+
+- This tutorial recommends completing the [HCP Boundary
+administration](/boundary/tutorials/hcp-administration) tutorials first. The
+learner should have a working Boundary cluster and org running on HCP.
+
+- A [Boundary binary](/boundary/install/) greater than 0.13.2 in your `PATH`
+
+- A [Vault binary](/vault/install/) greater than 1.12.0 in your `PATH` is
+  recommended. Any version of Vault greater than 1.7 should work with this
+  tutorial.
+
+- [Terraform 0.14.9 or
+  greater](/terraform/tutorials/aws-get-started/install-cli) is required. The
+  binary must be available in your `PATH`.
+
+- The [`jq` utility](https://stedolan.github.io/jq/download/) installed and in
+  your `PATH`
+
+- The [`make` utility](https://www.gnu.org/software/make/) is recommended to
+  simplify workflow management for this tutorial, and should be installed and in
+  your `PATH`.The tutorial can be completed without using `make`.
+
+- Installing the [Boundary Desktop
+  App](/boundary/tutorials/hcp-getting-started/hcp-getting-started-desktop-app)
+  provides an optional workflow at the end of this tutorial. The [1.2.0 version
+  or above](https://releases.hashicorp.com/boundary-desktop/) is required for
+  Vault support.
+
+This tutorial assumes basic knowledge of using Vault, including managing
+policies, roles, and tokens. If you are new to using Vault, complete the
+[Getting Started with Vault](/vault/tutorials/getting-started) quick start
+tutorials before you integrate Vault with Boundary.
+
+## Session recording background
+
+In highly regulated environments, a common requirement and challenge is having a
+system of record that archives actions taken on the network so that
+organizations can improve their security posture and enhance compliance.
+
+Session recording allows administrators to get insight into user
+actions over remote SSH sessions in order to meet various regulatory
+requirements for organizations and prevent malicious behavior. Administrators
+can enable session recording on SSH targets in their Boundary environment, store
+signed recordings in their Amazon S3 storage bucket, and replay recordings back
+within the Boundary admin UI.
+
+Recorded sessions are converted into a Boundary session recording (BSR), a
+binary file format and specification created to define the structure of Boundary
+recording files.
+
+BSR is designed to:
+
+- Support the recording of both multiplexed and non-multiplexed protocols 
+- Allow recordings of independent byte streams in a session to be written in
+parallel
+- Support an optimal user experience during playback 
+- Be extensible to support more protocols in the future 
+
+BSR contains all of the data transmitted between a user and a target during a
+session and is available within your storage bucket. These files are signed to
+ensure they are tamper-proof.
+
+SSH session recording is available as a part of the new Plus tier in both HCP
+Boundary and Boundary Enterprise.
+
+## Configure the lab environment
+
+Several components are needed for the lab environment for this tutorial:
+
+- HCP Boundary Plus or Boundary Enterprise cluster
+- Amazon S3 storage bucket
+- SSH host for testing recordings
+- Vault server with policies allowing connections from Boundary and credentials
+  for the SSH target
+- Boundary AWS host catalog, Vault credential store, and SSH target resources
+
+### Deploy an HCP Boundary Plus cluster
+
+Session recording, credential injection, and SSH targets are features available
+in HCP Boundary Plus.
+
+First, deploy an HCP Boundary cluster with the HCP Plus sku selected.
+
+1. Launch the [HCP Portal](https://portal.cloud.hashicorp.com/) and login.
+
+1. Select your organization and project. From within that project, select
+   **Boundary** from the **Services** menu in the left navigation.
+
+1. Click **Deploy Boundary**.
+   ![Deploy Boundary Service](/img/boundary/ui-hcp-boundary-deploy.png)
+
+1. In the **Instance Name** text box, provide a name for your Boundary instance.
+
+1. Under **Choose a tier**, select the **Plus** option to enable session
+   recording.
+
+1. Under the **Create an administrator account** section, enter the **Username**
+   and **Password** for the initial Boundary administrator account.
+
+1. Click **Deploy**. Wait for the instance to initialize before proceeding.
+   ![Plus SKU selection](/img/boundary/hcp/plus-sku.png)
+
+<Note>
+
+  The first 50 sessions for any HCP Boundary cluster are free, after which you
+  will be charged. You can safely delete the HCP Plus cluster after this tutorial
+  without incurring any costs.
+
+</Note>
+
+The following values will be used as environment variables later on. Copy the
+**Boundary Cluster URL** from the HCP Boundary portal.
+
+- Boundary address: the `BOUNDARY_ADDR` variable
+- Boundary Cluster ID: the `BOUNDARY_CLUSTER_ID` variable
+- Boundary admin username: the `BOUNDARY_USERNAME` variable
+- Boundary admin password: the `BOUNDARY_PASSWORD` variable
+
+Store these values in a safe location.
+
+<Note>
+
+  The Boundary cluster ID is derived from the Boundary address. For example, if
+  your cluster URL is:
+
+  `https://abcd1234-e567-f890-1ab2-cde345f6g789.boundary.hashicorp.cloud`
+
+  Then your cluster id is `abcd1234-e567-f890-1ab2-cde345f6g789`.
+
+</Note>
+
+Next, click **Open Admin UI**.
+
+Log in to Boundary using your admin credentials used to launch the cluster.
+
+Navigate to the **Auth Methods** page using the left navigation panel. Locate the
+`password` auth method, and copy its **ID** (such as `ampw_AQSr776Hnm`).
+
+You will use this value later on:
+
+- Boundary auth method ID: the `BOUNDARY_AUTH_METHOD_ID` variable
+
+### Review Terraform configuration
+
+Open a terminal and navigate to a working directory, such as the home directory.
+Clone the sample repository containing the lab environment config files.
+
+```shell-session
+$ git clone https://github.com/hashicorp-education/learn-boundary-session-rec-aws-vault
+```
+
+Navigate into the learn-boundary-vault-quickstart directory and list its
+contents.
+
+```shell-session
+$ ls -R1
+Makefile
+README.md
+infra
+scripts
+vault
+
+./infra:
+ec2.tf
+iam.tf
+key_pair.tf
+kms.tf
+main.tf
+outputs.tf
+s3.tf
+security_groups.tf
+terraform.tfstate.d
+variables.tf
+vpc.tf
+
+./scripts:
+boundary-worker
+target_worker_init.sh
+setup.sh
+vault
+vault_init.sh
+vault_worker_init.sh
+
+./vault:
+boundary-controller-policy.hcl
+kv-policy.hcl
+```
+
+The repository contains the following files and folders:
+
+- `Makefile`: Definitions of scripts for easy lab deployment and cleanup.
+- `infra/`: Terraform resources for configuring Vault, EC2 hosts, Amazon S3
+  storage buckets, and Boundary workers.
+- `scripts/`: Setup script for Make, and service scripts needed by Vault and
+  Boundary workers.
+- `vault`/: Vault policies for Boundary and the KV secrets engine.
+
+Because this lab environment utilizes Vault for credential management, `make` is
+used to reduce complexity when deploying Terraform, configuring Vault, and
+setting up the Boundary workers.
+
+The tutorial content can be completed without using `make`.
+
+These components are explained at a high level in this tutorial, but review the
+content at your own pace before proceeding. While the Terraform code is
+extensive, a deep knowledge of Terraform is not necessary to deploy the lab
+environment and continue learning about session recording.
+
+## Deploy Vault, targets, and workers
+
+The `infra/` folder contains several Terraform config files that specify the
+resources used in this lab:
+
+```shell-session
+$ ls -R1 infra/
+ec2.tf
+iam.tf
+key_pair.tf
+kms.tf
+main.tf
+outputs.tf
+s3.tf
+security_groups.tf
+terraform.tfstate.d
+variables.tf
+vpc.tf
+```
+
+By default, the following resources are deployed:
+
+- 1 HashiCorp Vault instance  (including Boundary worker service)
+- 2 Amazon Linux EC2 target instances (including Boundary worker service)
+- 1 key pair for EC2 instance access (for Vault and targets)
+- 1 Amazon S3 storage bucket
+- 2 IAM users (1 for the host catalog, 1 for the S3 storage bucket)
+
+The required IAM roles and policies are also deployed and associated with the
+storage bucket, instances, and IAM users. VPCs, subnets, and gateways are also
+assigned as required to allow the Boundary worker services to communicate with
+HCP Boundary.
+
+<Tip>
+
+  This is a simplified workflow. To reduce costs, this setup does not deploy
+  separate Boundary workers to the target VPCs. Instead, the targets and Vault
+  run the Boundary worker service itself. In a more realistic environment, these
+  services would run on dedicated instances, and provide access to the hosts on
+  their respective VPCs.
+
+</Tip>
+
+An HCP worker deployed on the same network as Vault is required for integrating
+private Vault clusters with HCP Boundary. Additionally, a self-managed worker is
+also needed to route traffic to targets on private networks, like the AWS target
+hosts in this tutorial. To learn more about setting up self-managed workers,
+refer to the [Self-Managed Worker Registration with HCP
+Boundary](/boundary/tutorials/hcp-administration/hcp-manage-workers) tutorial.
+  
+This tutorial automatically deploys the latest available worker binary for the
+HCP Boundary control plane. To use a different version of the worker binary,
+modify the `scripts/vault_worker_init` and `scripts/target_worker_init` files.
+The binary version should match the version of the control plane you are
+deploying to. Check the version of the control plane in the HCP Boundary portal.
+
+### Set required environment variables
+
+The following environment variables are required to deploy the lab environment:
+
+- `AWS_ACCESS_KEY_ID`
+- `AWS_SECRET_ACCESS_KEY`
+- `AWS_REGION`
+- `BOUNDARY_ADDR`
+- `BOUNDARY_USERNAME`
+- `BOUNDARY_PASSWORD`
+- `BOUNDARY_AUTH_METHOD_ID`
+- `BOUNDARY_CLUSTER_ID`
+
+First, set the AWS variables.
+
+```shell-session
+$ export AWS_ACCESS_KEY_ID="<YOUR_ACCESS_KEY_ID>"; \
+  export AWS_SECRET_ACCESS_KEY="<YOUR_SECRET_ACCESS_KEY>"; \
+  export AWS_REGION="us-east-1"
+```
+
+Next, set the required Boundary variables.
+
+```shell-session
+$ export BOUNDARY_ADDR="<YOUR_BOUNDARY_ADDR>"; \
+  export BOUNDARY_USERNAME="<YOUR_ADMIN_USERNAME>"; \
+  export BOUNDARY_PASSWORD="<YOUR_ADMIN_PASSWORD>"; \
+  export BOUNDARY_AUTH_METHOD_ID="<YOUR_AUTH_METHOD_ID>"; \
+  export BOUNDARY_CLUSTER_ID="<YOUR_CLUSTER_ID>"
+```
+
+Verify all the environment variables have been set:
+
+```shell-session
+$ echo $AWS_ACCESS_KEY_ID; \
+  echo $AWS_SECRET_ACCESS_KEY; \
+  echo $AWS_REGION; \
+  echo $BOUNDARY_ADDR; \
+  echo $BOUNDARY_USERNAME; \
+  echo $BOUNDARY_PASSWORD; \
+  echo $BOUNDARY_AUTH_METHOD_ID; \
+  echo $BOUNDARY_CLUSTER_ID
+```
+
+### Apply Terraform
+
+The `make` utility is used to manage the Terraform deployment.
+
+You can execute the following `make` commands from the `learn-boundary-session-rec-aws-vault/` directory to interact with Terraform:
+
+- `apply`: Deploys a set of AWS resources defined in the infra folder.
+  Supporting the ability to test a self managed Boundary worker & any version of
+  Vault. Required env variables: `BOUNDARY_CLUSTER_ID`. Optional env variables:
+  `INSTANCE_COUNT` (determine number of aws_instances to create for testing
+  dynamic host catalog[1,5]). Created resource names will be prefixed with the
+  Terraform workspace value, which will be derived from the whoami output.
+- `force-apply`: Taints the aws_instance resource to recreate and
+  refresh Vault.
+- `destroy`: Destroys the AWS resources defined in the infra folder.
+
+Remember that you can only use `make` from the root of this repository.
+
+<Tip>
+
+  You do not have to use `make`. For example, if the tutorial tells you to
+  execute `make apply`, you can use the following syntax instead:
+
+  ```shell-session
+  $ bash -c "source ./scripts/setup.sh && apply"
+  ```
+
+  The generic syntax for any `make` command used in this tutorial is:
+
+  ```shell-session
+  $ bash -c "source ./scripts/setup.sh && MAKE_COMMAND"
+  ```
+
+  All of the `make` commands can be viewed within the `Makefile`, and should be
+  executed from the `learn-boundary-session-rec-aws/` directory.
+
+</Tip>
+
+Next, apply Terraform using `make apply`. The deployment will usually complete
+within five minutes.
+
+<CodeBlockConfig highlight="1,119-178">
+
+```shell-session
+$ make apply
+
+bash -c "source ./scripts/setup.sh && apply"
+~/learn-boundary-session-rec-aws-vault/infra ~/learn-boundary-session-rec-aws-vault
+
+Initializing the backend...
+
+Initializing provider plugins...
+- Finding hashicorp/aws versions matching ">= 4.32.0"...
+- Finding latest version of hashicorp/random...
+- Finding latest version of hashicorp/tls...
+- Finding latest version of hashicorp/http...
+- Installing hashicorp/random v3.5.1...
+- Installed hashicorp/random v3.5.1 (signed by HashiCorp)
+- Installing hashicorp/tls v4.0.4...
+- Installed hashicorp/tls v4.0.4 (signed by HashiCorp)
+- Installing hashicorp/http v3.4.0...
+- Installed hashicorp/http v3.4.0 (signed by HashiCorp)
+- Installing hashicorp/aws v5.17.0...
+- Installed hashicorp/aws v5.17.0 (signed by HashiCorp)
+
+Terraform has created a lock file .terraform.lock.hcl to record the provider
+selections it made above. Include this file in your version control repository
+so that Terraform can guarantee to make the same selections by default when
+you run "terraform init" in the future.
+
+Terraform has been successfully initialized!
+
+You may now begin working with Terraform. Try running "terraform plan" to see
+any changes that are required for your infrastructure. All Terraform commands
+should now work.
+
+If you ever set or change modules or backend configuration for Terraform,
+rerun this command to reinitialize your working directory. If you forget, other
+commands will detect it and remind you to do so if necessary.
+
+Workspace "username" doesn't exist.
+
+You can create this workspace with the "new" subcommand
+or include the "-or-create" flag with the "select" subcommand.
+Created and switched to workspace "username"!
+
+You're now on a new, empty workspace. Workspaces isolate their state,
+so if you run "terraform plan" Terraform will not see any existing state
+for this configuration.
+data.http.myip: Reading...
+data.http.myip: Read complete after 0s [id=http://ipv4.icanhazip.com]
+data.aws_region.current: Reading...
+data.aws_caller_identity.current: Reading...
+data.aws_region.current: Read complete after 0s [id=us-east-1]
+data.aws_availability_zones.vault: Reading...
+data.aws_availability_zones.azs: Reading...
+data.aws_iam_policy_document.assume_role_ec2: Reading...
+data.aws_ami.amazon: Reading...
+data.aws_iam_policy_document.assume_role_ec2: Read complete after 0s [id=2851119427]
+data.aws_caller_identity.current: Read complete after 0s [id=807078899029]
+data.aws_iam_policy_document.host_catalog_plugin: Reading...
+data.aws_iam_policy_document.host_catalog_plugin: Read complete after 0s [id=4284702873]
+data.aws_availability_zones.azs: Read complete after 0s [id=us-east-1]
+data.aws_availability_zones.vault: Read complete after 0s [id=us-east-1]
+data.aws_ami.amazon: Read complete after 1s [id=ami-06ebe71ace29050cc]
+
+Terraform used the selected providers to generate the following execution plan. Resource actions are indicated with
+the following symbols:
+  + create
+ <= read (data resources)
+
+Terraform will perform the following actions:
+
+  # data.aws_iam_policy_document.vault will be read during apply
+  # (config refers to values not yet known)
+ <= data "aws_iam_policy_document" "vault" {
+      + id   = (known after apply)
+      + json = (known after apply)
+
+      + statement {
+          + actions   = [
+              + "ec2:DescribeInstances",
+            ]
+          + effect    = "Allow"
+          + resources = [
+              + "*",
+            ]
+        }
+      + statement {
+          + actions   = [
+              + "ec2:DescribeInstances",
+              + "iam:GetInstanceProfile",
+              + "iam:GetRole",
+              + "iam:GetUser",
+            ]
+          + effect    = "Allow"
+          + resources = [
+              + "*",
+            ]
+          + sid       = "VaultAWSAuthMethod"
+        }
+      + statement {
+          + actions   = [
+              + "kms:Decrypt",
+              + "kms:DescribeKey",
+              + "kms:Encrypt",
+            ]
+          + effect    = "Allow"
+          + resources = [
+              + (known after apply),
+            ]
+          + sid       = "VaultKMSUnseal"
+        }
+    }
+
+...
+... Truncated output ...
+...
+
+aws_instance.vault: Still creating... [1m30s elapsed]
+aws_instance.vault: Creation complete after 1m33s [id=i-06b3d867404c36c64]
+
+Apply complete! Resources: 79 added, 0 changed, 0 destroyed.
+
+Outputs:
+
+recording_bucket_name = "demobucket2666366231"
+recording_iam_access_key_ids = <sensitive>
+recording_iam_secret_access_keys = <sensitive>
+recording_iam_user_arns = [
+  "arn:aws:iam::807078899029:user/demo-username3626805416",
+  "arn:aws:iam::807078899029:user/demo-username3176066671",
+]
+recording_iam_user_names = [
+  "demo-username3626805416",
+  "demo-username3176066671",
+]
+recording_storage_user_access_key_id = <sensitive>
+recording_storage_user_secret_access_key = <sensitive>
+target_access_key_id = <sensitive>
+target_instance_ids = [
+  "i-032a3dbad304d600f",
+  "i-062cf0294c8977c03",
+]
+target_instance_ids_map = {
+  "i-032a3dbad304d600f" = "3.238.76.90"
+  "i-062cf0294c8977c03" = "44.192.101.166"
+}
+target_instance_private_ips = [
+  "10.0.53.115",
+  "10.0.65.164",
+]
+target_instance_public_dns = [
+  "ec2-3-238-76-90.compute-1.amazonaws.com",
+  "ec2-44-192-101-166.compute-1.amazonaws.com",
+]
+target_instance_public_ips = [
+  "3.238.76.90",
+  "44.192.101.166",
+]
+target_instance_tags = {
+  "i-032a3dbad304d600f" = tomap({
+    "Name" = "boundary-host-1"
+    "User" = "aws-username"
+    "env" = "dev"
+    "workspace" = "username"
+  })
+  "i-062cf0294c8977c03" = tomap({
+    "Name" = "boundary-host-2"
+    "User" = "aws-username"
+    "env" = "prod"
+    "workspace" = "username"
+  })
+}
+target_secret_access_key = <sensitive>
+host_key_pair_name = "username-host-key"
+vault_private_ip = "10.0.189.179"
+vault_private_key = <sensitive>
+vault_public_dns = "ec2-44-214-93-198.compute-1.amazonaws.com"
+vault_public_ip = "44.214.93.198"
+vault_public_key = <<EOT
+ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDPpJ0in2G1FAC+oPFRBENDHu78vZzfkWjzF6FUbqeB2WtZ0IMwcBUvrhgf+uwrzKRid4Ez0QKN5fc6G8fQvHrSlPcYmDz5rSmGTSj+GiOui7jhP/eY9LbBRFV4LbjWvNABC6l270VVIh33GZXXEJ5sWTaCK8G1U+J9CPLV1sQkIZSC39n9UrtN2TNCNoNJ4ycw4N5MoQ/0xvwf7rmdCvBSCGVvp5TEPnrdHvrZkZiFLaOAqO48Ljj+mjy43Ra71KxrHRgoeS/2hkPQcmrj7Zg+rVgIU3LGOzqI2t4gfGlTQ6UkZa/W084PImg6sWwQw/PWWSUWHC/kp3PDD/9MiG/i4FA09hpGtX/GNYNBjB0NpwU5iVYe5C1Lh2MXPL7iRryX7ZNShkN9dTdzE1kZWxaxnT63Z0sB6bk8Rq9dAbaieeO3rR8TYEyCwhAY5RddTmlMSZ/rJkr2+nu6RkS+ZICTiBryeYAp9hm9GVflwR8d4Sso866GySFeG/XsuezYM63Vj1jHPmoAVuCNoeRTlh+ca/lPj73NF1uwl9NmcvIJJmn2qcsNhQNkOAhOxKwjK7QfPY/9UA5juUUAnvylQ5JFx764KsMTCfsEF6BJq0T1wcR6yXRbPvLlCQBDZi8t+K6lKJfiLjT8+NmJrgWtjrU6x5yDEta4ucC+b2xLLf6B5w==
+```
+
+</CodeBlockConfig>
+
+Your output will include container resources prefixed by your Terraform workspace name,
+which is derrived from the output of `whoami`. For example, the
+`host_key_pair_name` value is prefixed by `username-`, which will match the
+`whoami` output of the user that deployed Terraform.
+
+You can query these outputs any time by executing `make terraform_output`:
+
+```shell-session
+$ make terraform_output
+```
+
+The lab infrastructure is now deployed.
+
+Next, configure Vault and register the Boundary workers.
+
+### Configure Vault
+
+Setting up Vault to inject credentials for the targets requires the following
+steps:
+
+1. Obtain the Vault root token to enable login
+1. Write the `boundary-controller` and `kv-read` policies to Vault
+1. Enable the kv-v2 secrets engine
+1. Create a target secret, including a username and private key
+1. Register a Boundary worker to provide network access to Vault from HCP
+   Boundary
+
+These steps are simplified using two `make` calls:
+
+- `make vault_root_token`:  Copies the root token to your local machine from the
+  Vault host. The command also prints the `VAULT_TOKEN` and `VAULT_ADDR` values,
+  which should be exported as environment variables.
+- `make vault_init`: Logs into Vault, writes the `boundary-controller` and
+  `kv-read` policies to Vault, and generates a client token for Boundary. This
+  token will be used to set up the Vault credential store, and should be
+  exported as the `VAULT_CRED_STORE_TOKEN` variable.
+
+#### Obtain the root token
+
+Use `make vault_root_token` to print the Vault root token and Vault address.
+Enter `yes` when prompted to continue connecting to the Vault EC2 host.
+
+<CodeBlockConfig highlight="1,7,10-11">
+
+```shell-session
+$ make vault_root_token
+bash -c "source ./scripts/setup.sh && vault_root_token"
+~/learn-boundary-session-rec-aws-vault/infra ~/learn-boundary-session-rec-aws-vault
+The authenticity of host 'ec2-44-199-247-112.compute-1.amazonaws.com (44.199.247.112)' can't be established.
+ED25519 key fingerprint is SHA256:Aj+Pc0YreacQGRZ6puqa0qx9RU+U1y+qW4juJSl4yyg.
+This key is not known by any other names
+Are you sure you want to continue connecting (yes/no/[fingerprint])? yes
+Warning: Permanently added 'ec2-44-199-247-112.compute-1.amazonaws.com' (ED25519) to the list of known hosts.
+credentials                                                                       100%  897     9.0KB/s   00:00
+export VAULT_TOKEN="not.actually.a.token.3FJ6tTieyu6xRvLS1xfa4Spp"
+export VAULT_ADDR="http://ec2-44-199-247-112.compute-1.amazonaws.com:8200"
+```
+
+</CodeBlockConfig>
+
+Examine the output, and execute the suggested commands to export the
+`VAULT_TOKEN` and `VAULT_ADDR` environment variables.
+
+```shell-session
+$ export VAULT_TOKEN="<YOUR_VAULT_ROOT_TOKEN>" ; \
+  export VAULT_ADDR="<YOUR_VAULT_ADDR>"
+```
+
+Next, you will log in to Vault and write the necessary policies for Boundary,
+and generate a client token for the Boundary credential store.
+
+#### Write policies and create a client token
+
+The `make vault_init` comand performs the following actions:
+
+- Write the `boundary-controller` and `kv-read` policies to Vault
+- Create a kv secret at `secret/ssh_host` with the target credentials
+- Generate a client token for Boundary
+
+The target instances (and Vault) all utilize the same keypair to reduce
+complexity for this example. The username for all instances is `ec2-user`, and
+the keypair is stored on your local machine at `~/.ssh/username-host-key`. This
+means a single secret will be used when injecting the credentials later on with
+Boundary.
+
+To learn more about credential injection with Vault, refer to the [HCP
+credential injection with private
+Vault](/boundary/tutorials/credential-management/hcp-private-vault-cred-injection)
+tutorial.
+
+Execute `make vault_init`.
+
+<CodeBlockConfig highlight="1,25-31,41">
+
+```shell-session
+$ make vault_init
+bash -c "source ./scripts/setup.sh && vault_init"
+~/Projects/hashicorp/boundary/learn-boundary-session-rec-aws-vault/infra ~/Projects/hashicorp/boundary/learn-boundary-session-rec-aws-vault
+~/Projects/hashicorp/boundary/learn-boundary-session-rec-aws-vault
+~/Projects/hashicorp/boundary/learn-boundary-session-rec-aws-vault/vault ~/Projects/hashicorp/boundary/learn-boundary-session-rec-aws-vault
+./scripts/setup.sh: line 119: [: not.actually.a.key.3FJ6tTieyu6xRvLS1xfa4Spp: unary operator expected
+./scripts/setup.sh: line 123: [: http://ec2-44-199-247-112.compute-1.amazonaws.com:8200: unary operator expected
+WARNING! The VAULT_TOKEN environment variable is set! The value of this
+variable will take precedence; if this is unwanted please unset VAULT_TOKEN or
+update its value accordingly.
+
+Success! You are now authenticated. The token information displayed below
+is already stored in the token helper. You do NOT need to run "vault login"
+again. Future Vault requests will automatically use this token.
+
+Key                  Value
+---                  -----
+token                not.actually.a.key.3FJ6tTieyu6xRvLS1xfa4Spp
+token_accessor       aM8gT1MAbb2Nb76fYy8VQMQk
+token_duration       ∞
+token_renewable      false
+token_policies       ["root"]
+identity_policies    []
+policies             ["root"]
+Success! Uploaded policy: boundary-controller
+Success! Uploaded policy: kv-read
+Success! Disabled the secrets engine (if it existed) at: secret/
+Success! Enabled the kv-v2 secrets engine at: secret/
+Success! Data deleted (if it existed) at: secret/data/ssh_host
+==== Secret Path ====
+secret/data/ssh_host
+
+======= Metadata =======
+Key                Value
+---                -----
+created_time       2023-09-17T20:14:22.15172981Z
+custom_metadata    <nil>
+deletion_time      n/a
+destroyed          false
+version            1
+export VAULT_CRED_STORE_TOKEN="not.actually.a.token.CAESIOiWx3n6W6D-wlBKb5PUJsJ9H9xWlA_SlqRxOtpyKM2sGh4KHGh2cy5xampVRzhkbWJZNFNpc1R1QTNrRVJKSDI"
+```
+
+</CodeBlockConfig>
+
+Examine the output, and execute the suggested command to export the
+`VAULT_CRED_STORE_TOKEN` environment variable.
+
+```shell-session
+$ export VAULT_CRED_STORE_TOKEN="<YOUR_VAULT_CRED_STORE_TOKEN>"
+```
+
+#### Register the Vault worker
+
+A Boundary worker is required to privide private network access to HCP Boundary
+and connect users to targets. This means both Vault and the target instances
+require a Boundary worker deployed in their respective networks.
+
+While a worker would usually be deployed on a separate instances, this tutorial
+reduces costs by running the Boundary worker service on the same instances as
+Vault and the targets. The worker service was deployed as part of the Terraform apply.
+
+Refer to the `scripts/vault_worker_init` file to learn more about how the worker
+service was deployed.
+
+When the worker service was started, a token was produced to register the worker
+with HCP Boundary. You can register Boundary workers using the Boundary CLI or
+Admin Console Web UI.
+
+The `make register_vault_worker` command first logs into the Vault host and obtains
+the worker auth token. Next, it authenticates to your HCP Boundary instance
+using the `BOUNDARY_ADDR`, `BOUNDARY_USERNAME` and `BOUNDARY_PASSWORD`
+environment variables you set earlier. Finally, it registers the worker using
+the `boundary workers create` command.
+
+Execute `make register_vault_worker`.
+
+<CodeBlockConfig highlight="1,15-19">
+
+```shell-session
+$ make register_vault_worker
+bash -c "source ./scripts/setup.sh && vault_worker_token"
+
+Authentication information:
+  Account ID:      acctpw_byMkJ6gu9n
+  Auth Method ID:  ampw_AQSr776Hnm
+  Expiration Time: Sun, 24 Sep 2023 14:43:23 MDT
+  User ID:         u_IwFxiyB0I8
+
+The token was successfully stored in the chosen keyring and is not displayed here.
+~/Projects/hashicorp/boundary/learn-boundary-session-rec-aws-vault/infra ~/Projects/hashicorp/boundary/learn-boundary-session-rec-aws-vault
+worker_auth_token                                                                 100%  299     3.0KB/s   00:00
+BOUNDARY_WORKER_TOKEN="GzusqckarbczHoLGQ4UA25uSRxjFHAVnWHHH2xCKPEWjzqZqZ7hsc7JC6qE5MJU5K6RrLeL2vjxz8sBw2eCm8TFFDpKHTq1RiZTeTFYEMaWvbiPLdbY9t6yLwXNJCdxof5xSA1o8UpZNFpydGQk942SZUZVg46UpvrzBPSAqfjGJDNn96qtmpTL5qLNUJeKCgAqxLvAKQtYnhQs2CzpH36Nk3aMxWSxuoaxWLWYRZaJB874QtLm8ysomubFVWVA4Qy9EQP8FEojYMFeok4dvJweTT4qG9MuxbJovvBcPeT"
+
+Worker information:
+  Active Connection Count:   0
+  Created Time:              Sun, 17 Sep 2023 14:43:25 MDT
+  ID:                        w_j2k1hPytQe
+  Name:                      vault-worker
+  Type:                      pki
+  Updated Time:              Sun, 17 Sep 2023 14:43:25 MDT
+  Version:                   1
+
+  Scope:
+    ID:                      global
+    Name:                    global
+    Type:                    global
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    add-worker-tags
+    set-worker-tags
+    remove-worker-tags
+```
+
+</CodeBlockConfig>
+
+Copy the worker ID from the output.
+
+Next, verify that the worker was registered.
+
+Start by logging in to Boundary using your admin credentials.
+
+```shell-session
+$ boundary authenticate
+Please enter the login name (it will be hidden):
+Please enter the password (it will be hidden):
+
+Authentication information:
+  Account ID:      acctpw_byMkJ6gu9n
+  Auth Method ID:  ampw_AQSr776Hnm
+  Expiration Time: Sun, 24 Sep 2023 14:47:35 MDT
+  User ID:         u_IwFxiyB0I8
+
+The token was successfully stored in the chosen keyring and is not displayed here.
+```
+
+Read the worker details.
+
+<CodeBlockConfig highlight="1,9,20-24">
+
+```shell-session
+$ boundary workers read -id w_j2k1hPytQe
+
+Worker information:
+  Active Connection Count:   0
+  Address:                   44.199.247.112:9202
+  Created Time:              Sun, 17 Sep 2023 14:43:25 MDT
+  ID:                        w_j2k1hPytQe
+  Last Status Time:          2023-09-17 20:49:25.092423 +0000 UTC
+  Name:                      vault-worker
+  Release Version:           Boundary v0.13.2+ent
+  Type:                      pki
+  Updated Time:              Sun, 17 Sep 2023 14:49:25 MDT
+  Version:                   1
+
+  Scope:
+    ID:                      global
+    Name:                    global
+    Type:                    global
+
+  Tags:
+    Configuration:
+      type: ["s3" "vault" "worker"]
+    Canonical:
+      type: ["s3" "vault" "worker"]
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    add-worker-tags
+    set-worker-tags
+    remove-worker-tags
+```
+
+</CodeBlockConfig>
+
+Notice the tags defined for this worker:
+
+```
+Tags:
+  Configuration:
+    type: ["s3" "vault" "worker"]
+  Canonical:
+    type: ["s3" "vault" "worker"]
+```
+
+This worker is tagged with `"type":["worker","vault"]`, as defined in the worker
+configuration file in `scripts/vault_init`, deployed on the Vault host. These
+tags will be used later on when setting up Boundary's Vault credential store.
+
+#### Register the target workers
+
+Just like Vault, a Boundary worker is required to privide private network access
+to the targets. The worker service is also running directly on the targets in
+this example to reduce costs.
+
+The `make register_target_workers` command logs into the target's host and
+obtains the worker auth token. Next, it authenticates to your HCP Boundary
+instance and registers the worker using the `boundary workers create` command.
+
+Execute `make register_target_workers`. Enter `yes` twice when prompted to
+connect to the target instances and obtain the worker tokens.
+
+<CodeBlockConfig highlight="1,15,20-24,45,50-54">
+
+```shell-session
+$ make register_target_workers
+bash -c "source ./scripts/setup.sh && host_worker_tokens"
+
+Authentication information:
+  Account ID:      acctpw_byMkJ6gu9n
+  Auth Method ID:  ampw_AQSr776Hnm
+  Expiration Time: Sun, 24 Sep 2023 15:11:27 MDT
+  User ID:         u_IwFxiyB0I8
+
+The token was successfully stored in the chosen keyring and is not displayed here.
+~/Projects/hashicorp/boundary/learn-boundary-session-rec-aws-vault/infra ~/Projects/hashicorp/boundary/learn-boundary-session-rec-aws-vault
+The authenticity of host 'ec2-44-204-115-56.compute-1.amazonaws.com (44.204.115.56)' can't be established.
+ED25519 key fingerprint is SHA256:jZ0QheVXRanY96NCAWdi4m0axIKvOQIZLjUQalwSI8M.
+This key is not known by any other names
+Are you sure you want to continue connecting (yes/no/[fingerprint])? yes
+Warning: Permanently added 'ec2-44-204-115-56.compute-1.amazonaws.com' (ED25519) to the list of known hosts.
+worker_auth_token                                                                 100%  299     2.9KB/s   00:00
+export BOUNDARY_WORKER_$"{INSTANCE_COUNT}"TOKEN="GzusqckarbczHoLGQ4UA25uSQwRhdmCk9jiYgyeVpAr1sKXH2LWgdyx7dcU1J1dq8srBouM59sSifoN4NUHcNpWhRm1WUqFTfjpDfhe5b8KkHakMDrhzh9FkDdLhEf5ghMBT58ywcHTdLDPue66Hp9LwMhMp12ukWiPV7vCqeWQ8opQmdazZ3xqn6inwz8PToGdwHMSm2qRitj2ZYdVfCxEpjqpYqiHpSzXtbSfCBEWk89qtLsJ8ThS35PHpG72Bc42vphPZJJ9o7tCjhcwc8v1KLhsi4KP5sQvwjKY4LL"
+
+Worker information:
+  Active Connection Count:   0
+  Created Time:              Sun, 17 Sep 2023 15:51:56 MDT
+  ID:                        w_TMuFAPKvaV
+  Name:                      aws-worker-1
+  Type:                      pki
+  Updated Time:              Sun, 17 Sep 2023 15:51:56 MDT
+  Version:                   1
+
+  Scope:
+    ID:                      global
+    Name:                    global
+    Type:                    global
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    add-worker-tags
+    set-worker-tags
+    remove-worker-tags
+The authenticity of host 'ec2-3-237-101-224.compute-1.amazonaws.com (3.237.101.224)' can't be established.
+ED25519 key fingerprint is SHA256:5Jos8IPTq+Kkmlpk1VE0vo09L94mJfrvIbwnTPk8MM8.
+This key is not known by any other names
+Are you sure you want to continue connecting (yes/no/[fingerprint])? yes
+Warning: Permanently added 'ec2-3-237-101-224.compute-1.amazonaws.com' (ED25519) to the list of known hosts.
+worker_auth_token                                                                 100%  299     2.9KB/s   00:00
+export BOUNDARY_WORKER_2_TOKEN="GzusqckarbczHoLGQ4UA25uSRxQ2kPzqBETyn7dAgE9nuEeSfu9d4iytPQmF82wH12k22VBGmSqhvc1xg9Yov3UdzWK9PicGZpsA9LcbDaG8f98awwF2WtcEzPEbPsXegBHj7HWcDk5bvUV6rispjVYTMyqpPRLGkEN3sGUbQuu8XyDRRSQfBH6fSuPu6cqcCGsbcTTsdtj8vdgHgzmNEJ7pJ61e339ADe1RtY2KDLjVkxQndCQYyP3WJtQvexKBCRZ4CH23CTDv98ggAiSf6ozYaibefxnq1noB4YCjPM"
+
+Worker information:
+  Active Connection Count:   0
+  Created Time:              Sun, 17 Sep 2023 15:51:58 MDT
+  ID:                        w_jndPLPsB98
+  Name:                      aws-worker-2
+  Type:                      pki
+  Updated Time:              Sun, 17 Sep 2023 15:51:58 MDT
+  Version:                   1
+
+  Scope:
+    ID:                      global
+    Name:                    global
+    Type:                    global
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    add-worker-tags
+    set-worker-tags
+    remove-worker-tags
+```
+
+</CodeBlockConfig>
+
+Next, read the `aws-worker-1` details and examine its tags.
+
+<CodeBlockConfig highlight="1,9,20-24">
+
+```shell-session
+$ boundary workers read -id w_TMuFAPKvaV
+
+Worker information:
+  Active Connection Count:   0
+  Address:                   44.204.115.56:9202
+  Created Time:              Sun, 17 Sep 2023 15:51:56 MDT
+  ID:                        w_TMuFAPKvaV
+  Last Status Time:          2023-09-17 21:52:43.995072 +0000 UTC
+  Name:                      aws-worker-1
+  Release Version:           Boundary v0.13.2+ent
+  Type:                      pki
+  Updated Time:              Sun, 17 Sep 2023 15:52:43 MDT
+  Version:                   1
+
+  Scope:
+    ID:                      global
+    Name:                    global
+    Type:                    global
+
+  Tags:
+    Configuration:
+      type: ["dev-worker" "s3" "worker1"]
+    Canonical:
+      type: ["dev-worker" "s3" "worker1"]
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    add-worker-tags
+    set-worker-tags
+    remove-worker-tags
+```
+
+</CodeBlockConfig>
+
+Notice the tags defined for `worker1`:
+
+```
+Tags:
+  Configuration:
+    type: ["dev-worker" "s3" "worker1"]
+  Canonical:
+    type: ["dev-worker" "s3" "worker1"]
+```
+
+This worker is tagged with `"type":["dev-worker","worker1"]`, as defined in the
+worker configuration file in `scripts/worker_init` deployed on this target host.
+
+Now, read the `aws-worker-2` worker details.
+
+<CodeBlockConfig highlight="1,9,20-24">
+
+```shell-session
+$ boundary workers read -id w_jndPLPsB98
+
+Worker information:
+  Active Connection Count:   0
+  Address:                   3.238.52.202:9202
+  Created Time:              Sun, 17 Sep 2023 15:51:58 MDT
+  ID:                        w_jndPLPsB98
+  Last Status Time:          2023-09-17 21:54:02.317266 +0000 UTC
+  Name:                      aws-worker-2
+  Release Version:           Boundary v0.13.2+ent
+  Type:                      pki
+  Updated Time:              Sun, 17 Sep 2023 15:54:02 MDT
+  Version:                   1
+
+  Scope:
+    ID:                      global
+    Name:                    global
+    Type:                    global
+
+  Tags:
+    Configuration:
+      type: ["prod-worker" "s3" "worker2"]
+    Canonical:
+      type: ["prod-worker" "s3" "worker2"]
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    add-worker-tags
+    set-worker-tags
+    remove-worker-tags
+```
+
+</CodeBlockConfig>
+
+Notice the tags defined for `worker1`:
+
+```
+Tags:
+  Configuration:
+    type: ["prod-worker" "s3" "worker2"]
+  Canonical:
+    type: ["prod-worker" "s3" "worker2"]
+```
+
+This worker is tagged with `"type":["prod-worker","worker2"]`, as defined in the
+worker configuration file in `scripts/worker_init` deployed on this target host.
+These tags will be used later on when setting up Boundary's AWS host sets.
+
+## Set up Boundary
+
+The following are required to set up session recording for an SSH target in
+Boundary:
+
+1. A credential store
+1. A credential library
+1. A Boundary storage bucket
+1. An SSH target type with credential injection enabled
+
+These resources can be configured via the Admin Console UI, the CLI, or
+Terraform. Select a workflow below to continue setting up Boundary.
+
+<Warning>
+
+  Before proceeding, note that Boundary storage bucket lifecycle management is
+  still under development. In order to prevent unintentional loss of session
+  recordings, orgs that contain storage buckets cannot currently be deleted.
+  Before continuing, please note that the org created for this tutorial cannot
+  currently be deleted.
+
+</Warning>
+
+<Tabs>
+<Tab heading="Admin UI" group="admin">
+
+Start by logging in to HCP Boundary within the terminal.
+
+1. Log in to the [HCP portal](https://portal.cloud.hashicorp.com/).
+
+1. From the HCP Portal's **Boundary** page, click **Open Admin UI** - a new page
+   will open.
+
+1. Enter the admin username and password you created when you deployed the new
+   instance and click **Authenticate**.
+
+Next, set up a new testing org and project scope.
+
+<Note>
+  
+  Please use a new test org for this tutorial, because orgs that contain session
+  recordings cannot currently be deleted.
+
+</Note>
+
+1. Navigate to to the **Orgs** page and click **New Org**.
+
+1. Fill out the new org form with a **Name** of `ssh-recording-org` and
+   **Description** of `SSH test org`. Click **Save**.
+
+1. From within the new org, click **New Project**.
+
+1. Fill out the new project form with a **Name** of `ssh-recording-project` and
+   **Description** of `Secure Socket Handling recordings`. Click **Save**.
+
+### Create a host catalog
+
+You can use a dynamic host catalog to import the hosts created by Terraform into
+Boundary. These hosts will be used later on when configuring an SSH target.
+
+1. Select **Host Catalogs** from the left navigation panel.
+
+1. Choose **New**.
+   ![Host Catalog](/img/boundary/boundary-ui-host-catalog-0.png)
+
+1. Enter `aws-recording-catalog` in the **Name** field, and enter a description
+   of `aws session recording host catalog`. ![Host
+   Catalog](/img/boundary/boundary-ui-host-catalog-1.png)
+
+1. Select the **Dynamic** type. Select the **AWS** provider, and enter the
+   following details:
+
+   - **AWS Region**: `<YOUR_AWS_REGION>`
+   - **Access Key ID**: `<YOUR_host_catalog_access_key_id>`
+   - **Secret Access Key**: `<YOUR_host_catalog_secret_access_key>`
+
+   The `host_catalog_access_key_id` and `host_catalog_secret_access_key` are
+   sensitive Terraform outputs. This means you will have to manually extract
+   their contents from the terraform.tfstate file.
+
+   Open the shell session where Terraform was deployed, and execute the
+   following:
+
+   ```shell-session
+   $ export HOST_CATALOG_ACCESS_KEY_ID=$(jq -r ".outputs.host_catalog_access_key_id.value" "./infra/terraform.tfstate.d/boundary-recording-$(whoami)/terraform.tfstate"); \
+     echo "HOST_CATALOG_ACCESS_KEY_ID=$HOST_CATALOG_ACCESS_KEY_ID" ; \
+     export HOST_CATALOG_SECRET_ACCESS_KEY=$(jq -r ".outputs.host_catalog_secret_access_key.value" "./infra/terraform.tfstate.d/boundary-recording-$(whoami)/terraform.tfstate"); \
+     echo "HOST_CATALOG_SECRET_ACCESS_KEY=$HOST_CATALOG_SECRET_ACCESS_KEY"
+   ```
+
+   Copy these values into their fields.
+
+   Lastly, check the box beside **Disable credential rotation**.
+
+1. Click **Save**.
+
+### Create the dev host set
+
+A host set can be used to sort hosts by environment.
+
+Start by creating a host set for the dev hosts.
+
+1. Select the **Host Sets** tab, and then select **New**.
+
+1. Enter `dev_host_set` in the **Name** field.
+
+1. Next, define the instances that should belong to the dev host set. This can
+   be done by examining the instance tags, which are printed in the Terraform
+   output:
+
+   <CodeBlockConfig highlight="1,5,9,15" hideClipboard>
+
+   ```shell-session
+   $ make terraform_output
+   ...
+   ... 
+   ...
+   target_instance_tags = {
+     "i-04e6118b9e7ec37c7" = tomap({
+       "Name" = "boundary-host-2"
+       "User" = "aws_username"
+       "env" = "prod"
+       "workspace" = "username"
+     })
+     "i-0c3debf71c8a67661" = tomap({
+       "Name" = "boundary-host-1"
+       "User" = "aws_username"
+       "env" = "dev"
+       "workspace" = "username"
+     })
+   }
+   ...
+   ...
+   ...
+   ```
+
+   </CodeBlockConfig>
+
+   Notice the instance tagged as `"env" = "dev"`. 
+   
+   To select it for the host set, enter the following in the **Filter** field: 
+   
+   ```
+   `tag:env=dev`
+   ```
+
+1. Click **Save**.
+
+1. Click the **Hosts** tab, and verify that the `boundary-host-1` host appears
+   as expected. If it's missing, wait a few moments and refresh the page.
+
+### Create the prod host set
+
+Next, create a host set for the prod hosts.
+
+1. Navigate back to the `aws-recording-catalog` host catalog. Click **Manage**,
+   and select **New Host Set**.
+
+1. Enter `prod_host_set` in the **Name** field.
+
+1. Define the instances that should belong to the prod host set by selecting the
+   instance tagged as `"env" = "prod"`. 
+   
+   To select it for the host set, enter the following in the **Filter** field, 
+   
+   ```
+   `tag:env=prod`
+   ```
+
+1. Click **Save**.
+
+1. Click the **Hosts** tab, and verify that the `boundary-host-2` host appears
+   as expected. If it's missing, wait a few moments and refresh the page.
+
+### Create a credential store
+
+Next, create a Vault credential store within Boundary using the
+`VAULT_CRED_STORE_TOKEN` value, defined when [you set up Vault](#set-up-vault).
+The `vault` credential store type is used for Vault integration, but you can also use `static`
+credential stores with credential injection.
+
+When you set up a worker, it's important to create a filter for the credential
+store. A worker filter will identify workers that should be used as proxies for
+the new credential store, and ensure these credentials are brokered from the
+private Vault.
+
+Navigate to the global scope within the UI, and select the **Workers** page.
+
+Select `vault-worker`, and notice its **Worker Tags**:
+
+`"type" = ["s3", "vault", "worker"]`
+
+With the tags and `VAULT_CRED_STORE_TOKEN` value, set up a new credential store.
+
+1. Navigate back to the `ssh-recording-org`, and select the `ssh-recording-project`.
+
+1. Select the **Credential Stores** page, and click **New**.
+
+1. Enter the **Name** `Vault AWS Host Credentials`.
+
+1. Select the type **Vault**, and enter the following details:
+
+   - **Address**: `<YOUR_VAULT_ADDR>`
+   - **Worker Filter**: `"vault" in "/tags/type"`
+   - **Token**: `<YOUR_VAULT_CRED_STORE_TOKEN>`
+
+   The `VAULT_ADDR` and `VAULT_CRED_STORE_TOKEN` values were exported as
+   environment variables when executing `make vault_init` in the [Write policies
+   and create a client token](#write-policies-and-create-a-client-token)
+   section. Check their values in the terminal session used to apply Terraform:
+
+   ```shell-session
+   $ echo $VAULT_ADDR; echo $VAULT_CRED_STORE_TOKEN
+   ```
+
+   Copy these values into their fields.
+
+1. Click **Save**.
+
+### Create a credential library
+
+A credential library is used to determine what credentials should be accessed
+from Vault, and the path to query for them.
+
+<Note>
+
+  Credential libraries of type `ssh_private_key` cannot currently be created
+  with the UI. Use the CLI to create the credential library.
+
+</Note>
+
+Create a new credential library of type `ssh_private_key` within Boundary using
+the credential store ID and passing the vault-path of `secret/data/ssh_host`.
+
+To gather the `CRED_STORE_ID`, navigate to the **Credential Stores** page within
+the `ssh-recording-project`, and copy the `Vault AWS Host Credentials`
+credential store ID (such as `csvlt_CixM26cMMn`).
+
+Return to the shell session used to deploy Terraform and log in to Boundary
+using your admin credentials. These were set as environment variables at the
+beginning of the tutorial as `BOUNDARY_USERNAME` and `BOUNDARY_PASSWORD`.
+
+```shell-session
+$ boundary authenticate
+Please enter the login name (it will be hidden):
+Please enter the password (it will be hidden):
+
+Authentication information:
+  Account ID:      acctpw_byMkJ6gu9n
+  Auth Method ID:  ampw_AQSr776Hnm
+  Expiration Time: Tue, 26 Sep 2023 13:09:05 MDT
+  User ID:         u_IwFxiyB0I8
+
+The token was successfully stored in the chosen keyring and is not displayed here.
+```
+
+Next, create the credential library.
+
+```shell-session
+$ boundary credential-libraries create vault-generic \
+  -credential-store-id YOUR_CRED_STORE_ID \
+  -vault-path "secret/data/ssh_host" \
+  -name "vault-cred-library" \
+  -credential-type ssh_private_key
+```
+
+**Example output:**
+
+```shell-session
+$ boundary credential-libraries create vault-generic \
+  -credential-store-id csvlt_CixM26cMMn \
+  -vault-path "secret/data/ssh_host" \
+  -name "vault-cred-library" \
+  -credential-type ssh_private_key
+
+Credential Library information:
+  Created Time:          Tue, 19 Sep 2023 13:09:29 MDT
+  Credential Store ID:   csvlt_CixM26cMMn
+  ID:                    clvlt_64hCzmT2yG
+  Name:                  vault-cred-library
+  Type:                  vault-generic
+  Updated Time:          Tue, 19 Sep 2023 13:09:29 MDT
+  Version:               1
+
+  Scope:
+    ID:                  p_ODNjhpjfl3
+    Name:                ssh-recording-project
+    Parent Scope ID:     o_Mk1iM4Gge8
+    Type:                project
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+
+  Attributes:
+    HTTP Method:         GET
+    Path:                secret/data/ssh_host
+
+  Credential Type:
+    ssh_private_key
+```
+
+Open the Boundary Admin Web UI, and navigate back to the **Credential Stores**
+page. 
+
+From the `Vault AWS Host Credentials` host catalog, click the **Credential
+Libraries** tab. Verify that the `vault-cred-library` was created successfully,
+and click on its name to verify its details.
+
+</Tab>
+<Tab heading="CLI" group="cli">
+
+Open the terminal session used to deploy Terraform.
+
+Start by logging in to Boundary as the admin user.
+
+```shell-session
+$ boundary authenticate
+Please enter the login name (it will be hidden):
+Please enter the password (it will be hidden):
+Authentication information:
+  Account ID:      acctpw_VOeNSFX8pQ
+  Auth Method ID:  ampw_wxzojlKJLN
+  Expiration Time: Mon, 13 Feb 2023 12:35:32 MST
+  User ID:         u_1vUkf5fPs9
+The token was successfully stored in the chosen keyring and is not displayed here.
+```
+
+### Set up a new org and project
+
+Create a new org named `ssh-recording-org`. The following command executes
+`boundary scopes create`, prints the result, selects the org ID with `jq`, and
+stores the value as an environment variable. The `jq` utility is used to reduce
+the amount of copy-paste for IDs for the rest of this tutorial.
+
+```shell-session
+$ ORG_ID=$(boundary scopes create \
+  -scope-id=global \
+  -name=ssh-recording-org \
+  -description="SSH test org" \
+  -format json | tee /dev/tty | jq -r '.item | .id') && echo "ORG_ID=$ORG_ID"
+```
+
+**Example output:**
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ ORG_ID=$(boundary scopes create \
+  -scope-id=global \
+  -name=ssh-recording-org \
+  -description="SSH test org" \
+  -format json | tee /dev/tty | jq -r '.item | .id') && echo "ORG_ID=$ORG_ID"
+{"status_code":200,"item":{"id":"o_wYHjCRhcYD","scope_id":"global","scope":{"id":"global","type":"global","name":"global","description":"Global Scope"},"name":"ssh-recording-org-2","description":"SSH test org","created_time":"2023-09-19T21:36:30.134092Z","updated_time":"2023-09-19T21:36:30.134092Z","version":1,"type":"org","authorized_actions":["no-op","read","update","delete"]}}
+ORG_ID=o_wYHjCRhcYD
+```
+
+</CodeBlockConfig>
+
+Create a new project scope named `ssh-recording-project` within the
+`ssh-recording-org`. The following command also exports the `PROJECT_ID`
+environment variable.
+
+```shell-session
+$ PROJECT_ID=$(boundary scopes create \
+  -scope-id=$ORG_ID \
+  -name=ssh-recording-project \
+  -description="SSH test machines" \
+  -format json | tee /dev/tty | jq -r '.item | .id') && echo "PROJECT_ID=$PROJECT_ID"
+```
+
+**Example output:**
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ PROJECT_ID=$(boundary scopes create \
+  -scope-id=$ORG_ID \
+  -name=ssh-recording-project \
+  -description="SSH test machines" \
+  -format json | tee /dev/tty | jq -r '.item | .id') && echo "PROJECT_ID=$PROJECT_ID"
+{"status_code":200,"item":{"id":"p_9XqgVGnMaQ","scope_id":"o_wYHjCRhcYD","scope":{"id":"o_wYHjCRhcYD","type":"org","name":"ssh-recording-org","description":"SSH test org","parent_scope_id":"global"},"name":"ssh-recording-project","description":"SSH test machines","created_time":"2023-09-19T21:44:32.166448Z","updated_time":"2023-09-19T21:44:32.166448Z","version":1,"type":"project","authorized_actions":["no-op","read","update","delete"]}}
+PROJECT_ID=p_9XqgVGnMaQ
+```
+
+</CodeBlockConfig>
+
+### Create a host catalog
+
+You can use a dynamic host catalog to import the hosts created by Terraform into
+Boundary. These hosts will be used later on when configuring an SSH target.
+
+To create a host catalog, an AWS access key ID and secret access key are
+required. These should be associated with a user that has the required
+permissions to call the `DescribeInstances` API. This user has been
+pre-configured as part of the lab environment, and its policies can be viewed in
+the `infra/iam.tf` file.
+
+Refer to the [Dynamic host catalogs on AWS
+tutorial](/boundary/tutorials/host-management/aws-host-catalogs) to learn more.
+
+The `host_catalog_access_key_id` and `host_catalog_secret_access_key` are
+sensitive Terraform outputs. This means you will have to manually extract their
+contents from the terraform.tfstate file.
+
+Open the shell session where Terraform was deployed, and execute the following:
+
+```shell-session
+$ export HOST_CATALOG_ACCESS_KEY_ID=$(jq -r ".outputs.host_catalog_access_key_id.value" "./infra/terraform.tfstate.d/boundary-recording-$(whoami)/terraform.tfstate"); \
+  echo "HOST_CATALOG_ACCESS_KEY_ID=$HOST_CATALOG_ACCESS_KEY_ID"; \
+  export HOST_CATALOG_SECRET_ACCESS_KEY=$(jq -r ".outputs.host_catalog_secret_access_key.value" "./infra/terraform.tfstate.d/boundary-recording-$(whoami)/terraform.tfstate"); \
+  echo "HOST_CATALOG_SECRET_ACCESS_KEY=$HOST_CATALOG_SECRET_ACCESS_KEY"
+```
+
+Create the AWS host catalog. The following command also exports the
+`HOST_CATALOG_ID` environment variable.
+
+```shell-session
+$ HOST_CATALOG_ID=$(boundary host-catalogs create plugin \
+  -scope-id $PROJECT_ID \
+  -plugin-name aws \
+  -attr disable_credential_rotation=true \
+  -attr region=$AWS_REGION \
+  -secret access_key_id=env://HOST_CATALOG_ACCESS_KEY_ID \
+  -secret secret_access_key=env://HOST_CATALOG_SECRET_ACCESS_KEY \
+  -format json | tee /dev/tty | jq -r '.item | .id') && echo "HOST_CATALOG_ID=$HOST_CATALOG_ID"
+```
+
+**Example output:**
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ HOST_CATALOG_ID=$(boundary host-catalogs create plugin \
+  -scope-id $PROJECT_ID \
+  -plugin-name aws \
+  -attr disable_credential_rotation=true \
+  -attr region=$AWS_REGION \
+  -secret access_key_id=env://HOST_CATALOG_ACCESS_KEY_ID \
+  -secret secret_access_key=env://HOST_CATALOG_SECRET_ACCESS_KEY \
+  -format json | tee /dev/tty | jq -r '.item | .id') && echo "HOST_CATALOG_ID=$HOST_CATALOG_ID"
+{"status_code":200,"item":{"id":"hcplg_G1Auj5onC3","scope_id":"p_9XqgVGnMaQ","scope":{"id":"p_9XqgVGnMaQ","type":"project","name":"ssh-recording-project","description":"SSH test machines","parent_scope_id":"o_wYHjCRhcYD"},"plugin_id":"pl_m8nWNSPfbY","plugin":{"id":"pl_m8nWNSPfbY","name":"aws","description":"Built-in AWS host plugin"},"created_time":"2023-09-19T23:37:58.631019Z","updated_time":"2023-09-19T23:37:58.631019Z","version":1,"type":"plugin","attributes":{"disable_credential_rotation":true,"region":"us-east-1"},"secrets_hmac":"Cfag9TcS5yVq8Dc2ApeLm4oxxVMubr5mwkreQpqFfe3k","authorized_actions":["no-op","read","update","delete"],"authorized_collection_actions":{"host-sets":["create","list"],"hosts":["list"]}}}
+HOST_CATALOG_ID=hcplg_G1Auj5onC3
+```
+
+</CodeBlockConfig>
+
+### Create the dev host set
+
+You can use a host set to sort hosts by environment.
+
+Start creating a host set for the dev hosts by defining the instances tagged
+with `"env" = "dev"`. This can be done by examining the instance tags, which are
+printed in the Terraform output:
+
+<CodeBlockConfig highlight="1,5,9,15" hideClipboard>
+
+```shell-session
+$ make terraform_output
+...
+... 
+...
+target_instance_tags = {
+  "i-04e6118b9e7ec37c7" = tomap({
+    "Name" = "boundary-host-2"
+    "User" = "aws_username"
+    "env" = "prod"
+    "workspace" = "username"
+  })
+  "i-0c3debf71c8a67661" = tomap({
+    "Name" = "boundary-host-1"
+    "User" = "aws_username"
+    "env" = "dev"
+    "workspace" = "username"
+  })
+}
+...
+...
+...
+```
+
+</CodeBlockConfig>
+
+Notice the instance tagged as `"env" = "dev"`. To select it for the host set,
+you can use the following filter:
+
+```
+`tag:env=dev`
+```
+
+Next, create a host set for the dev hosts. The following command also exports the
+`DEV_HOST_SET_ID` environment variable.
+
+```shell-session
+$ DEV_HOST_SET_ID=$(boundary host-sets create plugin \
+  -name dev_host_set \
+  -host-catalog-id $HOST_CATALOG_ID \
+  -attr filters=tag:env=dev \
+  -format json | tee /dev/tty | jq -r '.item | .id') && echo "DEV_HOST_SET_ID=$DEV_HOST_SET_ID"
+```
+
+**Example output:**
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ DEV_HOST_SET_ID=$(boundary host-sets create plugin \
+  -name dev_host_set \
+  -host-catalog-id $HOST_CATALOG_ID \
+  -attr filters=tag:env=dev \
+  -format json | tee /dev/tty | jq -r '.item | .id') && echo "DEV_HOST_SET_ID=$DEV_HOST_SET_ID"
+{"status_code":200,"item":{"id":"hsplg_SmP0yLVJER","host_catalog_id":"hcplg_G1Auj5onC3","scope":{"id":"p_9XqgVGnMaQ","type":"project","name":"ssh-recording-project","description":"SSH test machines","parent_scope_id":"o_wYHjCRhcYD"},"plugin":{"id":"pl_m8nWNSPfbY","name":"aws","description":"Built-in AWS host plugin"},"name":"dev_host_set","created_time":"2023-09-19T23:44:21.160280Z","updated_time":"2023-09-19T23:44:21.160280Z","version":1,"type":"plugin","attributes":{"filters":["tag:env=dev"]},"authorized_actions":["no-op","read","update","delete"]}}
+DEV_HOST_SET_ID=hsplg_SmP0yLVJER
+```
+
+</CodeBlockConfig>
+
+Verify that the new host set was created correctly:
+
+```shell-session
+$ boundary host-sets read -id $DEV_HOST_SET_ID
+Host Set information:
+  Created Time:        Tue, 19 Sep 2023 17:44:21 MDT
+  Host Catalog ID:     hcplg_G1Auj5onC3
+  ID:                  hsplg_SmP0yLVJER
+  Name:                dev_host_set
+  Type:                plugin
+  Updated Time:        Tue, 19 Sep 2023 17:44:21 MDT
+  Version:             2
+
+  Scope:
+    ID:                p_9XqgVGnMaQ
+    Name:              ssh-recording-project
+    Parent Scope ID:   o_wYHjCRhcYD
+    Type:              project
+
+  Plugin:
+    ID:                pl_m8nWNSPfbY
+    Name:              aws
+
+  Attributes:
+    filters:           [tag:env=dev]
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+
+  Host IDs:
+    hplg_EQiYxHDgIb
+```
+
+Lastly, verify that the `Host ID` listed refers to the `boundary-host-1` host:
+
+<CodeBlockConfig highlight="1-5">
+
+```shell-session
+$ boundary hosts read -id hplg_EQiYxHDgIb
+Host information:
+  Created Time:        Tue, 19 Sep 2023 17:44:21 MDT
+  External ID:         i-00cfc6df25a4e425f
+  External Name:       boundary-host-1
+  Host Catalog ID:     hcplg_G1Auj5onC3
+  ID:                  hplg_EQiYxHDgIb
+  Type:                plugin
+  Updated Time:        Tue, 19 Sep 2023 17:44:21 MDT
+  Version:             1
+
+  Scope:
+    ID:                p_9XqgVGnMaQ
+    Name:              ssh-recording-project
+    Parent Scope ID:   o_wYHjCRhcYD
+    Type:              project
+
+  Plugin:
+    ID:                pl_m8nWNSPfbY
+    Name:              aws
+
+  Authorized Actions:
+    no-op
+    read
+
+  Host Set IDs:
+    hsplg_SmP0yLVJER
+
+  IP Addresses:
+    10.0.47.15
+    3.215.142.99
+
+  DNS Names:
+    ec2-3-215-142-99.compute-1.amazonaws.com
+    ip-10-0-47-15.ec2.internal
+```
+
+</CodeBlockConfig>
+
+### Create the prod host set
+
+Follow the same process for the prod hosts by defining the instances tagged with
+`"env" = "prod"`.
+
+Create a host set for the prod hosts. The following command also exports the
+`PROD_HOST_SET_ID` environment variable.
+
+```shell-session
+$ PROD_HOST_SET_ID=$(boundary host-sets create plugin \
+  -name prod_host_set \
+  -host-catalog-id $HOST_CATALOG_ID \
+  -attr filters=tag:env=prod \
+  -format json | tee /dev/tty | jq -r '.item | .id') && echo "PROD_HOST_SET_ID=$PROD_HOST_SET_ID"
+```
+
+**Example output:**
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ PROD_HOST_SET_ID=$(boundary host-sets create plugin \
+  -name prod_host_set \
+  -host-catalog-id $HOST_CATALOG_ID \
+  -attr filters=tag:env=prod \
+  -format json | tee /dev/tty | jq -r '.item | .id') && echo "PROD_HOST_SET_ID=$PROD_HOST_SET_ID"
+{"status_code":200,"item":{"id":"hsplg_Sv05NDr2A1","host_catalog_id":"hcplg_G1Auj5onC3","scope":{"id":"p_9XqgVGnMaQ","type":"project","name":"ssh-recording-project","description":"SSH test machines","parent_scope_id":"o_wYHjCRhcYD"},"plugin":{"id":"pl_m8nWNSPfbY","name":"aws","description":"Built-in AWS host plugin"},"name":"prod_host_set","created_time":"2023-09-19T23:50:06.376825Z","updated_time":"2023-09-19T23:50:06.376825Z","version":1,"type":"plugin","attributes":{"filters":["tag:env=prod"]},"authorized_actions":["no-op","read","update","delete"]}}
+PROD_HOST_SET_ID=hsplg_Sv05NDr2A1
+```
+
+</CodeBlockConfig>
+
+### Create a credential store
+
+Next, set up a Vault credential store using the `VAULT_CRED_STORE_TOKEN`. This
+value was exported as an environment variable when executing `make vault_init`
+in the [Write policies and create a client
+token](#write-policies-and-create-a-client-token) section.
+
+When creating a Vault credential store, you need to construct a worker filter.
+This tells Boundary which worker is deployed in the same network as Vault.
+
+Recall the tags associated with the `vault-worker`:
+
+```
+Tags:
+  Configuration:
+    type: ["s3", "vault" "worker"]
+  Canonical:
+    type: ["worker" "vault", "s3"]
+```
+
+The tags for this worker are:
+
+`"type" = ["s3", "vault" "worker"]`
+
+An appropriate filter to select this worker is:
+
+```
+"vault" in "/tags/type"
+```
+
+Create the Vault credential store. The following command also exports the
+`VAULT_CRED_STORE_ID` environment variable.
+
+```shell-session
+$ VAULT_CRED_STORE_ID=$(boundary credential-stores create vault \
+  -scope-id $PROJECT_ID \
+  -vault-address $VAULT_ADDR \
+  -vault-token $VAULT_CRED_STORE_TOKEN \
+  -worker-filter='"vault" in "/tags/type"' \
+  -format json | tee /dev/tty | jq -r '.item | .id') && echo "VAULT_CRED_STORE_ID=$VAULT_CRED_STORE_ID"
+```
+
+**Example output:**
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ VAULT_CRED_STORE_ID=$(boundary credential-stores create vault \
+  -scope-id $PROJECT_ID \
+  -vault-address $VAULT_ADDR \
+  -vault-token $VAULT_CRED_STORE_TOKEN \
+  -worker-filter='"vault" in "/tags/type"' \
+  -format json | tee /dev/tty | jq -r '.item | .id') && echo "VAULT_CRED_STORE_ID=$VAULT_CRED_STORE_ID"
+{"status_code":200,"item":{"id":"csvlt_K9E5sXmF7s","scope_id":"p_9XqgVGnMaQ","scope":{"id":"p_9XqgVGnMaQ","type":"project","name":"ssh-recording-project","description":"SSH test machines","parent_scope_id":"o_wYHjCRhcYD"},"created_time":"2023-09-19T22:13:33.167801Z","updated_time":"2023-09-19T22:13:33.167801Z","version":1,"type":"vault","attributes":{"address":"http://ec2-3-239-162-213.compute-1.amazonaws.com:8200","token_hmac":"JU7GIHDj_MKBf6b9zXYl2A9MaMSn7UycoSBjJVmf6I8","token_status":"current","worker_filter":"\"vault\" in \"/tags/type\""},"authorized_actions":["no-op","read","update","delete"],"authorized_collection_actions":{"credential-libraries":["create","list"]}}}
+VAULT_CRED_STORE_ID=csvlt_K9E5sXmF7s
+```
+
+</CodeBlockConfig>
+
+### Create a credential library
+
+A credential library is used to determine what credentials should be accessed
+from Vault, and the path to query for them.
+
+Create a credential library at the `secret/data/ssh_host` Vault path. The
+following command also exports the `VAULT_CRED_LIB_ID` environment variable.
+
+```shell-session
+$ VAULT_CRED_LIB_ID=$(boundary credential-libraries create vault \
+  -credential-store-id $VAULT_CRED_STORE_ID \
+  -vault-path "secret/data/ssh_host" \
+  -name "vault-cred-library" \
+  -credential-type ssh_private_key \
+  -format json | tee /dev/tty | jq -r '.item | .id') && echo "VAULT_CRED_LIB_ID=$VAULT_CRED_LIB_ID"
+```
+
+**Example output:**
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ VAULT_CRED_LIB_ID=$(boundary credential-libraries create vault \
+  -credential-store-id $VAULT_CRED_STORE_ID \
+  -vault-path "secret/data/ssh_host" \
+  -name "vault-cred-library" \
+  -credential-type ssh_private_key \
+  -format json | tee /dev/tty | jq -r '.item | .id') && echo "VAULT_CRED_LIB_ID=$VAULT_CRED_LIB_ID"
+{"status_code":200,"item":{"id":"clvlt_EcpfDBGuOl","credential_store_id":"csvlt_K9E5sXmF7s","scope":{"id":"p_9XqgVGnMaQ","type":"project","name":"ssh-recording-project","description":"SSH test machines","parent_scope_id":"o_wYHjCRhcYD"},"name":"vault-cred-library","created_time":"2023-09-19T22:18:09.092937Z","updated_time":"2023-09-19T22:18:09.092937Z","version":1,"type":"vault-generic","attributes":{"http_method":"GET","path":"secret/data/ssh_host"},"authorized_actions":["no-op","read","update","delete"],"credential_type":"ssh_private_key"}}
+VAULT_CRED_LIB_ID=clvlt_EcpfDBGuOl
+```
+
+</CodeBlockConfig>
+
+</Tab>
+<Tab heading="Terraform" group="terraform">
+
+This configuration references Terraform resources documented in the [Boundary
+Terraform
+provider](https://registry.terraform.io/providers/hashicorp/boundary/latest/docs).
+
+To simplify lab cleanup, create a new Terraform configuration file called
+`boundary.tf` in the top of the `learn-boundary-session-rec-aws-vault/` repo. Do
+not place this config in the nested `infra/` folder.
+
+```shell-session
+$ touch boundary.tf
+```
+
+Verify that the file was created in the correct location:
+
+```shell-session
+$ pwd && ls
+~/learn-boundary-session-rec-aws-vault
+Makefile	README.md	boundary.tf	infra		scripts		vault
+```
+
+Next, open `boundary.tf` in your text editor.
+
+### Set up the provider
+
+Start by defining Boundary as a required provider, and setting up the provider's
+input variables.
+
+<CodeBlockConfig filename="/learn-boundary-session-rec-aws-vault/boundary.tf">
+
+```hcl
+provider "boundary" {
+  addr                   = var.BOUNDARY_ADDR
+  auth_method_id         = var.BOUNDARY_AUTH_METHOD_ID
+  auth_method_login_name = var.BOUNDARY_USERNAME
+  auth_method_password   = var.BOUNDARY_PASSWORD
+}
+
+terraform {
+  required_version = ">= 1.3.0"
+  required_providers {
+    boundary = {
+      source  = "hashicorp/boundary",
+      version = ">= 1.1.9"
+    }
+  }
+}
+```
+
+</CodeBlockConfig>
+
+### Define the input variables
+
+The following variables will be passed to Terraform, so no default values are
+required. Define all these variables within the `boundary.tf` config file.
+
+```hcl
+variable "BOUNDARY_ADDR" {
+    type = string
+}
+
+variable "BOUNDARY_AUTH_METHOD_ID" {
+    type = string
+}
+
+variable "BOUNDARY_USERNAME" {
+    type = string
+}
+
+variable "BOUNDARY_PASSWORD" {
+    type = string
+}
+
+variable "HOST_CATALOG_ACCESS_KEY_ID" {
+    type = string
+}
+
+variable "HOST_CATALOG_SECRET_ACCESS_KEY" {
+    type = string
+}
+
+variable "AWS_REGION" {
+    type = string
+}
+
+variable "VAULT_ADDR" {
+    type = string
+}
+
+variable "VAULT_CRED_STORE_TOKEN" {
+    type = string
+}
+
+variable "recording_bucket_name" {
+    type = string
+}
+
+variable "recording_storage_user_access_key_id" {
+    type = string
+}
+
+variable "recording_storage_user_secret_access_key" {
+    type = string
+}
+```
+
+Next, locate the values of the following input variables used by the provider,
+including:
+
+- `BOUNDARY_ADDR`
+- `BOUNDARY_AUTH_METHOD_ID`
+- `BOUNDARY_USERNAME`
+- `BOUNDARY_PASSWORD`
+- `AWS_REGION`
+- `VAULT_ADDR`
+- `VAULT_CRED_STORE_TOKEN`
+
+Locate the following values in your shell session:
+
+```shell-session
+$ echo $BOUNDARY_ADDR ; \
+  echo $BOUNDARY_AUTH_METHOD_ID ; \
+  echo $BOUNDARY_USERNAME ; \
+  echo $BOUNDARY_PASSWORD ; \
+  echo $AWS_REGION ; \
+  echo $VAULT_ADDR ; \
+  echo $VAULT_CRED_STORE_TOKEN
+```
+
+All of the variables except the `BOUNDARY_AUTH_METHOD_ID` were previously
+defined.
+
+You can locate the admin password auth method ID using the CLI or the Admin Web
+UI.
+
+<Tabs>
+<Tab heading="Admin UI" group="admin">
+
+1. Navigate to the `global` scope.
+
+1. Navigate to the **Auth Methods** page.
+
+1. Copy the **ID** beside the `password` auth method (such as
+   `ampw_AQSr776Hnm`).
+
+</Tab>
+<Tab heading="CLI" group="cli">
+
+Authenticate to Boundary as the admin user.
+
+```shell-session
+$ boundary authenticate
+```
+
+List the available auth methods.
+
+```shell-session
+$ boundary auth-methods list
+
+Auth Method information:
+  ID:                     ampw_AQSr776Hnm
+    Version:              1
+    Type:                 password
+    Name:                 password
+    Description:          Password auth method
+    Is Primary For Scope: true
+    Authorized Actions:
+      no-op
+      read
+      update
+      delete
+      authenticate
+```
+
+Copy the `ID` of the password auth method.
+
+</Tab>
+</Tabs>
+
+Create a new file called `boundary.tfvars` in
+`~/learn-boundary-session-rec-aws-vault`. This file is used to pass the required
+variables to Terraform.
+
+<CodeBlockConfig filename="learn-boundary-session-rec-aws-vault/boundary.tfvars">
+
+```hcl
+AWS_REGION = "<YOUR_AWS_REGION>"
+
+BOUNDARY_ADDR = "<YOUR_BOUNDARY_ADDR>"
+
+BOUNDARY_USERNAME = "<YOUR_ADMIN_USERNAME>"
+
+BOUNDARY_PASSWORD = "<YOUR_ADMIN_PASSWORD>"
+
+BOUNDARY_AUTH_METHOD_ID = "<YOUR_AUTH_METHOD_ID>"
+
+BOUNDARY_CLUSTER_ID = "<YOUR_CLUSTER_ID>"
+
+VAULT_ADDR = "<YOUR_VAULT_ADDR>"
+
+VAULT_CRED_STORE_TOKEN = "<YOUR_VAULT_CRED_STORE_TOKEN>"
+```
+
+</CodeBlockConfig>
+
+The following variables will also be defined later on:
+
+- `HOST_CATALOG_ACCESS_KEY_ID`
+- `HOST_CATALOG_SECRET_ACCESS_KEY`
+- `recording_bucket_name`
+- `recording_storage_user_access_key_id`
+- `recording_storage_user_secret_access_key`
+
+### Set up a new org and project
+
+Define the `global` scope ID, then create a new org named `ssh-recording-org`
+with an associated password auth method.
+
+```hcl
+resource "boundary_scope" "global" {
+  global_scope = true
+  scope_id     = "global"
+}
+
+resource "boundary_scope" "org" {
+  name        = "ssh-recording-org"
+  description = "SSH test org"
+  scope_id    = boundary_scope.global.id
+  auto_create_admin_role   = true
+  auto_create_default_role = true
+}
+
+resource "boundary_auth_method_password" "password" {
+  name        = "org_password_auth"
+  description = "Password auth method for org"
+  type        = "password"
+  scope_id    = boundary_scope.org.id
+}
+```
+
+Create a new project scope named `ssh-recording-project` within the
+`ssh-recording-org`.
+
+```hcl
+resource "boundary_scope" "ssh" {
+  name                   = "ssh-recording-project"
+  description            = "Secure Socket Handling recordings"
+  scope_id               = boundary_scope.org.id
+  auto_create_admin_role = true
+}
+```
+
+### Create a host catalog
+
+You can use a dynamic host catalog to import the hosts created by Terraform into
+Boundary. These hosts will be used later on when configuring an SSH target.
+
+To create a host catalog, an AWS access key ID and secret access key are
+required. These should be associated with a user that has the required
+permissions to call the `DescribeInstances` API. This user has been
+pre-configured as part of the lab environment, and its policies can be viewed in
+the `infra/iam.tf` file.
+
+Refer to the [Dynamic host catalogs on AWS
+tutorial](/boundary/tutorials/host-management/aws-host-catalogs) to learn more.
+
+The `host_catalog_access_key_id` and `host_catalog_secret_access_key` are
+sensitive Terraform outputs. This means you will have to manually extract their
+contents from the terraform.tfstate file.
+
+Open the shell session where Terraform was deployed, and execute the following:
+
+```shell-session
+$ export HOST_CATALOG_ACCESS_KEY_ID=$(jq -r ".outputs.host_catalog_access_key_id.value" "./infra/terraform.tfstate.d/boundary-recording-$(whoami)/terraform.tfstate"); \
+  echo "HOST_CATALOG_ACCESS_KEY_ID=$host_catalog_access_key_id"; \
+  export HOST_CATALOG_SECRET_ACCESS_KEY=$(jq -r ".outputs.host_catalog_secret_access_key.value" "./infra/terraform.tfstate.d/boundary-recording-$(whoami)/terraform.tfstate"); \
+  echo "HOST_CATALOG_SECRET_ACCESS_KEY=$host_catalog_secret_access_key"
+```
+
+Copy these values and define them in your `boundary.tfvars` file.
+
+<CodeBlockConfig filename="learn-boundary-session-rec-aws-vault/boundary.tfvars">
+
+```hcl
+HOST_CATALOG_ACCESS_KEY_ID = "<YOUR_HOST_CATALOG_ACCESS_KEY_ID>"
+
+HOST_CATALOG_SECRET_ACCESS_KEY = "<YOUR_HOST_CATALOG_SECRET_ACCESS_KEY>"
+```
+
+</CodeBlockConfig>
+
+Next, return to the `boundary.tf` configuration file.
+
+Set up a host catalog plugin of type `aws`. Pass the `AWS_REGION` and
+`disable_credential_rotation` as JSON attributes, and the host catalog access
+key ID and secret access key as JSON secrets.
+
+```hcl
+resource "boundary_host_catalog_plugin" "aws_hosts" {
+  name            = "aws-recording-catalog"
+  description     = "AWS session recording host catalog"
+  scope_id        = boundary_scope.ssh.id
+  plugin_name     = "aws"
+  attributes_json = jsonencode({
+    "region"=var.AWS_REGION,
+    "disable_credential_rotation"=true,
+  })
+  secrets_json = jsonencode({
+    "access_key_id"     = var.HOST_CATALOG_ACCESS_KEY_ID,
+    "secret_access_key" = var.HOST_CATALOG_SECRET_ACCESS_KEY
+  })
+}
+```
+
+### Create the dev host set
+
+You can use a host set to sort hosts by environment.
+
+Start by creating a host set for the dev hosts by defining the instances tagged
+with `"env" = "dev"`. This can be done by examining the instance tags, which are
+printed in the Terraform output:
+
+<CodeBlockConfig highlight="1,5,9,15" hideClipboard>
+
+```shell-session
+$ make terraform_output
+...
+... 
+...
+target_instance_tags = {
+  "i-04e6118b9e7ec37c7" = tomap({
+    "Name" = "boundary-host-2"
+    "User" = "aws_username"
+    "env" = "prod"
+    "workspace" = "username"
+  })
+  "i-0c3debf71c8a67661" = tomap({
+    "Name" = "boundary-host-1"
+    "User" = "aws_username"
+    "env" = "dev"
+    "workspace" = "username"
+  })
+}
+...
+...
+...
+```
+
+</CodeBlockConfig>
+
+Notice the instance tagged as `"env" = "dev"`. To select it for the host set,
+use the following filter:
+
+```
+`tag:env=dev`
+```
+
+Now create a host set for the dev hosts using the filter.
+
+```hcl
+resource "boundary_host_set_plugin" "dev" {
+  name            = "dev_host_set"
+  host_catalog_id = boundary_host_catalog_plugin.aws_hosts.id
+  attributes_json = jsonencode({ "filters" = ["tag:env=dev"] })
+}
+```
+
+### Create the prod host set
+
+Follow the same process for the prod hosts by defining the instances tagged with
+`"env" = "prod"`.
+
+Create a host set for the prod hosts.
+
+```hcl
+resource "boundary_host_set_plugin" "prod" {
+  name            = "prod_host_set"
+  host_catalog_id = boundary_host_catalog_plugin.aws_hosts.id
+  attributes_json = jsonencode({ "filters" = ["tag:env=prod"] })
+}
+```
+
+### Create a credential store
+
+Next, set up a Vault credential store using the `VAULT_CRED_STORE_TOKEN` and
+`VAULT_ADDR`. This value was exported as an environment variable when executing
+`make vault_init` in the [Write policies and create a client
+token](#write-policies-and-create-a-client-token) section.
+
+When you create a Vault credential store, you need to construct a worker filter.
+The worker filter tells Boundary which worker is deployed in the same network as Vault.
+
+Recall the tags associated with the `vault-worker`:
+
+```
+Tags:
+  Configuration:
+    type: ["s3", "vault" "worker"]
+  Canonical:
+    type: ["worker" "vault", "s3"]
+```
+
+The tags for this worker are:
+
+`"type" = ["s3", "vault" "worker"]`
+
+An appropriate filter to select this worker is:
+
+```
+"vault" in "/tags/type"
+```
+
+Create the Vault credential store.
+
+```hcl
+resource "boundary_credential_store_vault" "vault_host_cred_store" {
+  name        = "Vault AWS Host Credentials"
+  address     = var.VAULT_ADDR
+  token       = var.VAULT_CRED_STORE_TOKEN
+  scope_id    = boundary_scope.ssh.id
+}
+```
+
+### Create a credential library
+
+A credential library is used to determine what credentials should be accessed
+from Vault, and the path to query for them.
+
+Create a credential library associated with the `vault_host_cred_store`
+credential store at the `secret/data/ssh_host` Vault path.
+
+```hcl
+resource "boundary_credential_library_vault" "vault_host_cred_library" {
+  name                = "Vault AWS Host Cred Library"
+  credential_store_id = boundary_credential_store_vault.vault_host_cred_store.id
+  credential_type     = "ssh_private_key"
+  path                = "secret/data/ssh_host" # change to Vault backend path
+  http_method         = "GET"
+}
+```
+
+</Tab>
+</Tabs>
+
+## Enable session recordings
+
+Two tasks are left to finish setting up session recordings:
+
+1. Set up a Boundary storage bucket
+1. Create an SSH target
+
+The SSH target requires the injected application credentials (supplied from the
+Vault credential library), and the Boundary storage bucket it should associate
+recordings with.
+
+<Tabs>
+<Tab heading="Admin UI" group="admin">
+
+### Create a storage bucket
+
+Within Boundary, a [storage
+bucket](/boundary/docs/concepts/domain-model/storage-buckets) resource is used
+to store the recorded sessions. A storage bucket represents a bucket in an
+external store, in this case, Amazon S3. You must create a Boundary storage bucket associated with an
+external store before enabling session recording.
+
+1. Navigate to to the `global` scope, and then the **Storage Buckets** page.
+
+1. Click **New Storage Bucket**. Fill out the following details:
+
+   - **Name**: ssh-test-bucket
+   - **Scope**: `ssh-recording-org`
+   - **Bucket** name: `YOUR_S3_BUCKET_NAME`
+   - **Region**: `YOUR_AWS_REGION`
+   - **Access key ID**: `YOUR_recording_storage_user_access_key_id`
+   - **Secret access key**: `YOUR_recording_storage_user_secret_access_key`
+   - **Worker filter**: `"s3" in "/tags/type"`
+
+   The `recording_storage_user_access_key_id` and
+   `recording_storage_user_secret_access_key` values are sensitive Terraform outputs.
+   This means you will have to manually extract their contents from the
+   terraform.tfstate file.
+
+   Additionally, the name of the Amazon S3 bucket is required from the Terraform
+   outputs.
+
+   Open the shell session where Terraform was deployed, and execute the
+   following:
+
+   ```shell-session
+   $ export recording_bucket_name=$(jq -r ".outputs.recording_bucket_name.value" "./infra/terraform.tfstate.d/boundary-recording-$(whoami)/terraform.tfstate"); \
+     echo "recording_bucket_name=$recording_bucket_name"; \
+     echo "AWS_REGION=$AWS_REGION"; \
+     export recording_storage_user_access_key_id=$(jq -r ".outputs.recording_storage_user_access_key_id.value" "./infra/terraform.tfstate.d/boundary-recording-$(whoami)/terraform.tfstate"); \
+     echo "recording_storage_user_access_key_id=$recording_storage_user_access_key_id"; \
+     export recording_storage_user_secret_access_key=$(jq -r ".outputs.recording_storage_user_secret_access_key.value" "./infra/terraform.tfstate.d/boundary-recording-$(whoami)/terraform.tfstate"); \
+     echo "recording_storage_user_secret_access_key=$recording_storage_user_secret_access_key"
+   ```
+
+   Copy these values into their fields.
+
+   For the **Worker Filter**, a worker with access to the S3 storage bucket is
+   needed. A public S3 bucket is used for this tutorial, meaning any worker will
+   have access. In the case of a private S3 bucket, a worker with appropriate
+   network access should be deployed and registered with Boundary, then entered
+   here.
+
+   Select the worker tagged with `"type" = ["s3", "vault", "worker"]`, which
+   also provides access to Vault. The following filter will select this worker:
+
+   ```
+   "s3" in "/tags/type"
+   ```
+
+   Lastly, check the box next to **Disable credential rotation**.
+
+1. Click **Save**.
+
+### Create an SSH target
+
+To finish setting up recordings, create a target for the `boundary-host-1` host.
+
+1. Navigate to the **Targets** page within `ssh-recording-project` and click
+   **New**.
+
+1. Fill out the New Target form. Select a **Type** of SSH.
+
+   - **Name**: `dev-recording-target`
+   - **Type**: `SSH`
+   - **Default Port**: `22`
+   - **Maximum Connections**: `-1`
+
+1. Slide the button next to **Egress worker filter**.
+
+   When you create a target, you can specify an egress worker filter. The filter tells
+   Boundary which worker is deployed in the same network as the target. An
+   ingress worker is not used in this example.
+
+   Recall the tags associated with the `aws-worker-1`, which provides access to
+   the `boundary-host-1` host:
+   
+   ```
+   Tags:
+     Configuration:
+       type: ["worker1" "dev-worker" "s3"]
+     Canonical:
+       type: ["dev-worker" "s3" "worker"]
+   ```
+   
+   The tags for this worker are:
+   
+   `"type" = ["worker1", "dev-worker", "s3"]`
+   
+   An appropriate filter to select this worker is:
+   
+   ```
+   "dev-worker" in "/tags/type"
+   ```
+
+   - **Egress worker filter**: `"dev-worker" in "/tags/type"`
+
+   Click **Save**.
+
+Now associate `dev-recording-target` with `dev-host-set`.
+
+1. Select the **Host Sources** tab for `dev-recording-target`.
+
+1. Click **Add Host Sources**.
+
+1. Check the box next to the host set named **dev_host_set**, then click **Add
+   Host Sources**.
+
+Now associate the SSH target with the Vault credential library.
+
+1. Select the **Injected Application Credentials** tab for `dev-recording-target`.
+
+1. Click **+Add Injected Application Credentials**.
+
+1. Check the box next to the credential library named **vault-cred-library**,
+   then click **Add Injected Application Credentials**.
+
+### Enable session recording
+
+Finally, enable session recording for the `dev-recording-target`.
+
+1. Navigate back to the `dev-recording-target` **Details** page.
+
+1. Under **Session Recording**, click **Enable recording**.
+
+1. On the **Enable Session Recording for Target** page, toggle the switch next to
+   **Record sessions for this target**.
+
+1. For the **AWS storage buckets**, select the `ssh-test-bucket`.
+
+1. Click **Save**.
+
+Under the `dev-recording-target` **Details** page, the `ssh-test-bucket` should
+now be listed under **Session Recording**.
+
+Optionally, you may repeat the process with a new `prod-recording-target`. This
+target should be configured like the dev target, but should use the
+`"prod-worker" in "/tags/type"` worker filter instead. You can use the same storage bucket
+for both targets.
+
+</Tab>
+<Tab heading="CLI" group="cli">
+
+### Create a storage bucket
+
+Within Boundary, a [storage
+bucket](/boundary/docs/concepts/domain-model/storage-buckets) resource is used
+to store the recorded sessions. A storage bucket represents a bucket in an
+external store, in this case, Amazon S3. You must create a Boundary storage bucket associated with an
+external store before enabling session recording.
+
+The following details are needed to set up a Boundary storage bucket:
+
+- **Name**: ssh-test-bucket
+- **Scope**: `ssh-recording-org`
+- **Bucket** name: `YOUR_S3_BUCKET_NAME`
+- **Region**: `YOUR_AWS_REGION`
+- **Access key ID**: `YOUR_recording_storage_user_access_key_id`
+- **Secret access key**: `YOUR_recording_storage_user_secret_access_key`
+- **Worker filter**: `"s3" in "/tags/type"`
+
+The `recording_storage_user_access_key_id` and
+`recording_storage_user_secret_access_key` are sensitive Terraform outputs.
+This means you will have to manually extract their contents from the
+terraform.tfstate file.
+
+Additionally, the name of the Amazon S3 bucket is required from the Terraform
+outputs.
+
+Open the shell session where Terraform was deployed, and execute the
+following to display these values:
+
+```shell-session
+$ export recording_bucket_name=$(jq -r ".outputs.recording_bucket_name.value" "./infra/terraform.tfstate.d/boundary-recording-$(whoami)/terraform.tfstate"); \
+  echo "recording_bucket_name=$recording_bucket_name"; \
+  echo "AWS_REGION=$AWS_REGION"; \
+  export recording_storage_user_access_key_id=$(jq -r ".outputs.recording_storage_user_access_key_id.value" "./infra/terraform.tfstate.d/boundary-recording-$(whoami)/terraform.tfstate"); \
+  echo "recording_storage_user_access_key_id=$recording_storage_user_access_key_id"; \
+  export recording_storage_user_secret_access_key=$(jq -r ".outputs.recording_storage_user_secret_access_key.value" "./infra/terraform.tfstate.d/boundary-recording-$(whoami)/terraform.tfstate"); \
+  echo "recording_storage_user_secret_access_key=$recording_storage_user_secret_access_key"
+```
+
+For the **Worker Filter**, a worker with access to the S3 storage bucket is
+needed. A public S3 bucket is used for this tutorial, meaning any worker will
+have access. In the case of a private S3 bucket, a worker with appropriate
+network access should be deployed and registered with Boundary, then entered
+here.
+
+Select the worker tagged with `"type" = ["s3", "vault", "worker"]`, which
+also provides access to Vault. The following filter will select this worker:
+
+```
+"s3" in "/tags/type"
+```
+
+Create a new storage bucket named `ssh-test-bucket`. Set the plugin name to
+`aws`, the AWS bucket name, and the worker filter. Pass the `AWS_REGION` and
+`disable_credential_rotation=true` as attributes, and the `access_key_id` and
+`secret_access_key` as `secrets`.
+
+```shell-session
+$ boundary storage-buckets create -scope-id $ORG_ID \
+  -name "ssh-test-bucket" \
+  -plugin-name aws \
+  -bucket-name $recording_bucket_name \
+  -worker-filter '"s3" in "/tags/type"' \
+  -attributes "{\"region\":\"${AWS_REGION}\", \"disable_credential_rotation\":true}" \
+  -secrets "{\"access_key_id\":\"${recording_storage_user_access_key_id}\", \"secret_access_key\":\"${recording_storage_user_secret_access_key}\"}"
+```
+
+**Example output:**
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary storage-buckets create -scope-id $ORG_ID \
+  -name "ssh-test-bucket" \
+  -plugin-name aws \
+  -bucket-name $recording_bucket_name \
+  -worker-filter '"s3" in "/tags/type"' \
+  -attributes "{\"region\":\"${AWS_REGION}\", \"disable_credential_rotation\":true}" \
+  -secrets "{\"access_key_id\":\"${recording_storage_user_access_key_id}\", \"secret_access_key\":\"${recording_storage_user_secret_access_key}\"}"
+
+Storage Bucket information:
+  Bucket Name:                   demobucket591735460
+  Created Time:                  Wed, 20 Sep 2023 03:31:06 MDT
+  ID:                            sb_nzFv30oX2E
+  Name:                          ssh-test-bucket
+  Plugin ID:                     pl_m8nWNSPfbY
+  Secrets HMAC:                  3bQqPTK4ehJNKiuWkxuQEyPBJaPR5jxCnKQaRo4VTD1s
+  Updated Time:                  Wed, 20 Sep 2023 03:31:06 MDT
+  Version:                       1
+  Worker Filter:                 "s3" in "/tags/type"
+
+  Scope:
+    ID:                          o_JgJNBHHKro
+    Name:                        ssh-recording-org
+    Parent Scope ID:             global
+    Type:                        org
+
+  Plugin:
+    ID:                          pl_m8nWNSPfbY
+    Name:                        aws
+
+  Attributes:
+    Region:                      us-east-1
+    disable_credential_rotation: true
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+```
+
+</CodeBlockConfig>
+
+Copy the ID from the output and export it as the `$STORAGE_BUCKET_ID` variable.
+
+```shell-session
+$ export STORAGE_BUCKET_ID=sb_nzFv30oX2E
+```
+
+~> **Tip:** If you have the [jq
+utility](https://stedolan.github.io/jq/download/) installed, you can copy the output and export it
+in a single step with this command:
+
+```shell-session
+$ export STORAGE_BUCKET_ID=`boundary storage-buckets create -scope-id $ORG_ID -name "ssh-test-bucket" -plugin-name aws -bucket-name $recording_bucket_name -worker-filter '"s3" in "/tags/type"' -attributes "{\"region\":\"${AWS_REGION}\", \"disable_credential_rotation\":true}" -secrets "{\"access_key_id\":\"${recording_storage_user_access_key_id}\", \"secret_access_key\":\"${recording_storage_user_secret_access_key}\"}" -format json | jq -r '.item.id'`
+```
+
+### Create an SSH target
+
+To finish setting up recordings, create a target for the `boundary-host-1` host.
+
+When you create a target, you can specify an egress worker filter. The filter tells
+Boundary which worker is deployed in the same network as the target. An ingress
+worker is not used in this example.
+
+Recall the tags associated with the `aws-worker-1`, which provides access to the
+`boundary-host-1` host:
+
+```
+Tags:
+  Configuration:
+    type: ["worker1" "dev-worker"]
+  Canonical:
+    type: ["dev-worker" "worker"]
+```
+
+The tags for this worker are:
+
+`"type" = ["worker1", "dev-worker"]`
+
+An appropriate filter to select this worker is:
+
+```
+"dev-worker" in "/tags/type"
+```
+
+Create a new target of type `ssh` named `dev-recording-target`. Set the default
+port to `22`, enable session recording, and pass the storage bucket ID and
+egress worker filter.
+
+```shell-session
+$ boundary targets create ssh -scope-id $PROJECT_ID \
+  -name "dev-recording-target" \
+  -session-connection-limit -1 \
+  -default-port 22 \
+  -egress-worker-filter '"dev-worker" in "/tags/type"' \
+  -storage-bucket-id=$STORAGE_BUCKET_ID \
+  -enable-session-recording=true
+```
+
+**Example output:**
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary targets create ssh -scope-id $PROJECT_ID \
+  -name "dev-recording-target" \
+  -session-connection-limit -1 \
+  -default-port 22 \
+  -egress-worker-filter '"dev-worker" in "/tags/type"' \
+  -storage-bucket-id=$STORAGE_BUCKET_ID \
+  -enable-session-recording=true
+
+Target information:
+  Created Time:               Tue, 19 Sep 2023 21:39:01 MDT
+  Egress Worker Filter:       "dev-worker" in "/tags/type"
+  ID:                         tssh_vO60a7TwpI
+  Name:                       dev-recording-target
+  Session Connection Limit:   -1
+  Session Max Seconds:        28800
+  Type:                       ssh
+  Updated Time:               Tue, 19 Sep 2023 21:39:01 MDT
+  Version:                    1
+
+  Scope:
+    ID:                       p_9XqgVGnMaQ
+    Name:                     ssh-recording-project
+    Parent Scope ID:          o_wYHjCRhcYD
+    Type:                     project
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    add-host-sources
+    set-host-sources
+    remove-host-sources
+    add-credential-sources
+    set-credential-sources
+    remove-credential-sources
+    authorize-session
+
+  Attributes:
+    Default Port:             22
+    Enable Session Recording: true
+    Storage Bucket ID:        sb_uQdsdZkWTO
+```
+
+</CodeBlockConfig>
+
+**Copy the ID** from the output and **export it as the `$DEV_TARGET_ID` variable.**
+
+```shell-session
+$ export DEV_TARGET_ID=tssh_vO60a7TwpI
+```
+
+~> **Tip:** If you have the [jq
+utility](https://stedolan.github.io/jq/download/) installed, you can copy the output and export it
+in a single step with this command:
+
+```shell-session
+$ export DEV_TARGET_ID=`boundary targets create ssh -scope-id $PROJECT_ID -name "dev-recording-target" -session-connection-limit -1 -default-port 22 -egress-worker-filter '"dev-worker" in "/tags/type"' -storage-bucket-id=$STORAGE_BUCKET_ID -enable-session-recording=true -format json | jq -r '.item.id'`
+```
+
+Next, add the `dev-host-set` as a host source for `dev-recording-target`.
+
+```shell-session
+$ boundary targets add-host-sources -id $DEV_TARGET_ID -host-source $DEV_HOST_SET_ID
+
+Target information:
+  Created Time:               Tue, 19 Sep 2023 21:39:01 MDT
+  Egress Worker Filter:       "dev-worker" in "/tags/type"
+  ID:                         tssh_vO60a7TwpI
+  Name:                       dev-recording-target
+  Session Connection Limit:   -1
+  Session Max Seconds:        28800
+  Type:                       ssh
+  Updated Time:               Tue, 19 Sep 2023 22:28:54 MDT
+  Version:                    3
+
+  Scope:
+    ID:                       p_9XqgVGnMaQ
+    Name:                     ssh-recording-project
+    Parent Scope ID:          o_wYHjCRhcYD
+    Type:                     project
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    add-host-sources
+    set-host-sources
+    remove-host-sources
+    add-credential-sources
+    set-credential-sources
+    remove-credential-sources
+    authorize-session
+
+  Host Sources:
+    Host Catalog ID:          hcplg_G1Auj5onC3
+    ID:                       hsplg_SmP0yLVJER
+
+  Attributes:
+    Default Port:             22
+    Enable Session Recording: true
+    Storage Bucket ID:        sb_uQdsdZkWTO
+```
+
+Now associate `dev-recording-target` with the Vault credential library.
+
+```shell-session
+$ boundary targets add-credential-sources -id $DEV_TARGET_ID -injected-application-credential-source $VAULT_CRED_LIB_ID
+
+Target information:
+  Created Time:               Tue, 19 Sep 2023 21:39:01 MDT
+  Egress Worker Filter:       "dev-worker" in "/tags/type"
+  ID:                         tssh_vO60a7TwpI
+  Name:                       dev-recording-target
+  Session Connection Limit:   -1
+  Session Max Seconds:        28800
+  Type:                       ssh
+  Updated Time:               Tue, 19 Sep 2023 22:31:31 MDT
+  Version:                    5
+
+  Scope:
+    ID:                       p_9XqgVGnMaQ
+    Name:                     ssh-recording-project
+    Parent Scope ID:          o_wYHjCRhcYD
+    Type:                     project
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    add-host-sources
+    set-host-sources
+    remove-host-sources
+    add-credential-sources
+    set-credential-sources
+    remove-credential-sources
+    authorize-session
+
+  Host Sources:
+    Host Catalog ID:          hcplg_G1Auj5onC3
+    ID:                       hsplg_SmP0yLVJER
+
+  Injected Application Credential Sources:
+    Credential Store ID:      csvlt_6QOHpmciXI
+    ID:                       clvlt_jt5ZuKAPpq
+
+  Attributes:
+    Default Port:             22
+    Enable Session Recording: true
+    Storage Bucket ID:        sb_uQdsdZkWTO
+```
+
+The SSH target now has a host source, injected credentials, and a storage bucket
+configured. Session recording is fully enabled.
+
+Optionally, you may repeat the process with a new `prod-recording-target`. This
+target should be configured like the dev target, but should use the
+`"prod-worker" in "/tags/type"` worker filter instead. The same storage bucket
+can be used for both targets.
+
+</Tab>
+<Tab heading="Terraform" group="terraform">
+
+### Create a storage bucket
+
+Within Boundary, a [storage
+bucket](/boundary/docs/concepts/domain-model/storage-buckets) resource is used
+to store the recorded sessions. A storage bucket represents a bucket in an
+external store, in this case, Amazon S3. You must create a Boundary storage bucket associated with an
+external store before enabling session recording.
+
+To create a storage bucket, the following details are required:
+
+   - **Name**: ssh-test-bucket
+   - **Scope**: `ssh-recording-org`
+   - **Bucket** name: `YOUR_recording_bucket_name`
+   - **Region**: `YOUR_AWS_REGION`
+   - **Access key ID**: `YOUR_recording_storage_user_access_key_id`
+   - **Secret access key**: `YOUR_recording_storage_user_secret_access_key`
+   - **Worker filter**: `"s3" in "/tags/type"`
+
+The `recording_storage_user_access_key_id` and
+`recording_storage_user_secret_access_key` are sensitive Terraform outputs. This
+means you will have to manually extract their contents from the
+terraform.tfstate file.
+
+Additionally, the name of the Amazon S3 bucket is required from the Terraform
+outputs.
+
+Open the shell session where Terraform was deployed, and execute the following
+to display these values and export them as environment variables:
+
+```shell-session
+$ export recording_bucket_name=$(jq -r ".outputs.recording_bucket_name.value" "./infra/terraform.tfstate.d/boundary-recording-$(whoami)/terraform.tfstate"); \
+  echo "recording_bucket_name=$recording_bucket_name"; \
+  echo "AWS_REGION=$AWS_REGION"; \
+  export recording_storage_user_access_key_id=$(jq -r ".outputs.recording_storage_user_access_key_id.value" "./infra/terraform.tfstate.d/boundary-recording-$(whoami)/terraform.tfstate"); \
+  echo "recording_storage_user_access_key_id=$recording_storage_user_access_key_id"; \
+  export recording_storage_user_secret_access_key=$(jq -r ".outputs.recording_storage_user_secret_access_key.value" "./infra/terraform.tfstate.d/boundary-recording-$(whoami)/terraform.tfstate"); \
+  echo "recording_storage_user_secret_access_key=$recording_storage_user_secret_access_key"
+```
+
+Copy these values and define them in your `boundary.tfvars` file.
+
+<CodeBlockConfig filename="learn-boundary-session-rec-aws-vault/boundary.tfvars">
+
+```hcl
+recording_bucket_name = "<YOUR_recording_bucket_name>"
+
+recording_storage_user_access_key_id = "<YOUR_storage_user_access_key_id>"
+
+recording_storage_user_secret_access_key = "<YOUR_storage_user_secret_access_key>"
+```
+
+</CodeBlockConfig>
+
+Save the `boundary.tfvars` file.
+
+For the **Worker Filter**, a worker with access to the S3 storage bucket is
+needed. A public S3 bucket is used for this tutorial, meaning any worker will
+have access. In the case of a private S3 bucket, a worker with appropriate
+network access should be deployed and registered with Boundary, then entered
+here.
+
+Select the worker tagged with `"type" = ["s3", "vault", "worker"]`, which
+also provides access to Vault. The following filter will select this worker:
+
+```
+"s3" in "/tags/type"
+```
+
+When using HCL, this filter must be rewritten using escape syntax:
+
+```
+"\"s3\" in \"/tags/type\""
+```
+
+Create a new storage bucket with a `plugin_name` of `aws` and pass in the
+`recording_bucket_name`. Pass the `AWS_REGION` and
+`disable_credential_rotation=true`as a JSON attributes, and the
+`recording_storage_user_access_key_id` and
+`recording_storage_user_secret_access_key` as JSON secrets. Lastly, supply the
+worker filter.
+
+```hcl
+resource "boundary_storage_bucket" "aws_bucket" {
+  name            = "ssh-test-bucketw"
+  description     = "SSH session recording test bucket"
+  scope_id        = boundary_scope.org.id
+  plugin_name     = "aws"
+  bucket_name     = var.recording_bucket_name
+  attributes_json = jsonencode({
+    "region" = "${var.AWS_REGION}",
+    "disable_credential_rotation" = true
+  })
+
+  secrets_json = jsonencode({
+    "access_key_id"     = "${var.recording_storage_user_access_key_id}",
+    "secret_access_key" = "${var.recording_storage_user_secret_access_key}"
+  })
+  
+  worker_filter = "\"s3\" in \"/tags/type\""
+}
+```
+
+### Create an SSH target
+
+To finish setting up recordings, create a target for the `boundary-host-1` host.
+
+When you create a target, you can specify an egress worker filter. The filter tells
+Boundary which worker is deployed in the same network as the target. An ingress
+worker is not used in this example.
+
+Recall the tags associated with the `aws-worker-1`, which provides access to the
+`boundary-host-1` host:
+
+```
+Tags:
+  Configuration:
+    type: ["worker1" "dev-worker"]
+  Canonical:
+    type: ["dev-worker" "worker"]
+```
+
+The tags for this worker are:
+
+`"type" = ["worker1", "dev-worker"]`
+
+An appropriate filter to select this worker is:
+
+```
+"dev-worker" in "/tags/type"
+```
+
+When using HCL, this filter must be rewritten using escape syntax:
+
+```
+"\"dev-worker\" in \"/tags/type\""
+```
+
+Create a new target with the following parameters:
+
+- `type`: `ssh` 
+- `name`: `dev-recording-target`
+- `default_port`: `22`
+- `egress_worker_filter`: `"\"dev-worker\" in \"/tags/type\""`
+- `host_source_ids`: `[boundary_host_set_plugin.dev.id]`
+- `injected_application_credential_source_ids` = `[boundary_credential_library_vault.vault_host_cred_library.id]`
+- `enable_session_recording`: `true`
+- `storage_bucket_it`: `boundary_storage_bucket.aws_bucket`
+
+```hcl
+resource "boundary_target" "ssh" {
+  name         = "dev-recording-target"
+  description  = "SSH target"
+  type         = "ssh"
+  default_port = "22"
+  scope_id     = boundary_scope.ssh-recording-project.id
+  egress_worker_filter     = "\"dev-worker\" in \"/tags/type\""
+  host_source_ids = [
+    boundary_host_set_plugin.dev.id
+  ]
+  injected_application_credential_source_ids = [
+    boundary_credential_library_vault.vault_host_cred_library.id
+  ]
+  enable_session_recording = true
+  storage_bucket_id        = boundary_storage_bucket.aws_bucket.id
+}
+```
+
+Once all the Boundary provider resources have been added, save this file.
+
+Expand the accordion below to see a completed version of the Terraform
+configuration files for Boundary. For reference, an example of these files with
+all resources commented out is also included with the lab repository, at
+`learn-boundary-session-rec-aws-vault/boundary-example.tf` and
+`learn-boundary-session-rec-aws-vault/boundary-example.tfvars`.
+
+<Accordion heading="Completed Boundary provider config" collapse>
+
+This is a completed version of the `boundary.tf` file.
+
+<CodeBlockConfig filename="learn-boundary-session-rec-aws-vault/boundary.tf">
+
+```hcl
+provider "boundary" {
+  addr                   = var.BOUNDARY_ADDR
+  auth_method_id         = var.BOUNDARY_AUTH_METHOD_ID
+  auth_method_login_name = var.BOUNDARY_USERNAME
+  auth_method_password   = var.BOUNDARY_PASSWORD
+}
+
+terraform {
+  required_version = ">= 1.3.0"
+  required_providers {
+    boundary = {
+      source  = "hashicorp/boundary",
+      version = ">= 1.1.9"
+    }
+  }
+}
+
+variable "BOUNDARY_ADDR" {
+    type = string
+}
+
+variable "BOUNDARY_AUTH_METHOD_ID" {
+    type = string
+}
+
+variable "BOUNDARY_USERNAME" {
+    type = string
+}
+
+variable "BOUNDARY_PASSWORD" {
+    type = string
+}
+
+variable "HOST_CATALOG_ACCESS_KEY_ID" {
+    type = string
+}
+
+variable "HOST_CATALOG_SECRET_ACCESS_KEY" {
+    type = string
+}
+
+variable "AWS_REGION" {
+    type = string
+}
+
+variable "VAULT_ADDR" {
+    type = string
+}
+
+variable "VAULT_CRED_STORE_TOKEN" {
+    type = string
+}
+
+variable "recording_bucket_name" {
+    type = string
+}
+
+variable "recording_storage_user_access_key_id" {
+    type = string
+}
+
+variable "recording_storage_user_secret_access_key" {
+    type = string
+}
+
+resource "boundary_scope" "global" {
+  global_scope = true
+  scope_id     = "global"
+}
+
+resource "boundary_scope" "org" {
+  name        = "ssh-recording-org"
+  description = "SSH test org"
+  scope_id    = boundary_scope.global.id
+  auto_create_admin_role   = true
+  auto_create_default_role = true
+}
+
+resource "boundary_auth_method_password" "password" {
+  name        = "org_password_auth"
+  description = "Password auth method for org"
+  type        = "password"
+  scope_id    = boundary_scope.org.id
+}
+
+resource "boundary_scope" "ssh-recording-project" {
+  name                   = "ssh-recording-project"
+  description            = "Secure Socket Handling recordings"
+  scope_id               = boundary_scope.org.id
+  auto_create_admin_role = true
+}
+
+resource "boundary_host_catalog_plugin" "aws_hosts" {
+  name            = "aws-recording-catalog"
+  description     = "AWS session recording host catalog"
+  scope_id        = boundary_scope.ssh-recording-project.id
+  plugin_name     = "aws"
+  attributes_json = jsonencode({
+    "region"=var.AWS_REGION,
+    "disable_credential_rotation"=true,
+  })
+  secrets_json = jsonencode({
+    "access_key_id"     = var.HOST_CATALOG_ACCESS_KEY_ID,
+    "secret_access_key" = var.HOST_CATALOG_SECRET_ACCESS_KEY
+  })
+}
+
+resource "boundary_host_set_plugin" "dev" {
+  name            = "dev_host_set"
+  host_catalog_id = boundary_host_catalog_plugin.aws_hosts.id
+  attributes_json = jsonencode({ "filters" = ["tag:env=dev"] })
+}
+
+resource "boundary_host_set_plugin" "prod" {
+  name            = "prod_host_set"
+  host_catalog_id = boundary_host_catalog_plugin.aws_hosts.id
+  attributes_json = jsonencode({ "filters" = ["tag:env=prod"] })
+}
+
+resource "boundary_credential_store_vault" "vault_host_cred_store" {
+  name        = "Vault AWS Host Credentials"
+  address     = var.VAULT_ADDR
+  token       = var.VAULT_CRED_STORE_TOKEN
+  scope_id    = boundary_scope.ssh-recording-project.id
+}
+
+resource "boundary_credential_library_vault" "vault_host_cred_library" {
+  name                = "Vault AWS Host Cred Library"
+  credential_store_id = boundary_credential_store_vault.vault_host_cred_store.id
+  credential_type     = "ssh_private_key"
+  path                = "secret/data/ssh_host"
+  http_method         = "GET"
+}
+
+resource "boundary_storage_bucket" "aws_bucket" {
+  name            = "ssh-test-bucket"
+  description     = "SSH session recording test bucket"
+  scope_id        = boundary_scope.org.id
+  plugin_name     = "aws"
+  bucket_name     = var.recording_bucket_name
+  attributes_json = jsonencode({
+    "region" = "${var.AWS_REGION}",
+    "disable_credential_rotation" = true
+  })
+
+  secrets_json = jsonencode({
+    "access_key_id"     = "${var.recording_storage_user_access_key_id}",
+    "secret_access_key" = "${var.recording_storage_user_secret_access_key}"
+  })
+  
+  worker_filter = "\"s3\" in \"/tags/type\""
+}
+
+resource "boundary_target" "ssh" {
+  name         = "dev-recording-target"
+  description  = "SSH target"
+  type         = "ssh"
+  default_port = "22"
+  scope_id     = boundary_scope.ssh-recording-project.id
+  egress_worker_filter     = "\"dev-worker\" in \"/tags/type\""
+  host_source_ids = [
+    boundary_host_set_plugin.dev.id
+  ]
+  injected_application_credential_source_ids = [
+    boundary_credential_library_vault.vault_host_cred_library.id
+  ]
+  enable_session_recording = true
+  storage_bucket_id        = boundary_storage_bucket.aws_bucket.id
+}
+```
+
+</CodeBlockConfig>
+
+This is a completed version of the `boundary.tfvars` file.
+
+<CodeBlockConfig filename="learn-boundary-session-rec-aws-vault/boundary.tfvars">
+
+```hcl
+AWS_REGION = "<YOUR_AWS_REGION>"
+
+BOUNDARY_ADDR = "<YOUR_BOUNDARY_ADDR>"
+
+BOUNDARY_USERNAME = "<YOUR_ADMIN_USERNAME>"
+
+BOUNDARY_PASSWORD = "<YOUR_ADMIN_PASSWORD>"
+
+BOUNDARY_AUTH_METHOD_ID = "<YOUR_AUTH_METHOD_ID>"
+
+BOUNDARY_CLUSTER_ID = "<YOUR_CLUSTER_ID>"
+
+HOST_CATALOG_ACCESS_KEY_ID = "<YOUR_HOST_CATALOG_ACCESS_KEY_ID>"
+
+HOST_CATALOG_SECRET_ACCESS_KEY = "<YOUR_HOST_CATALOG_SECRET_ACCESS_KEY>"
+
+VAULT_ADDR = "<YOUR_VAULT_ADDR>"
+
+VAULT_CRED_STORE_TOKEN = "<YOUR_VAULT_CRED_STORE_TOKEN>"
+
+recording_bucket_name = "<YOUR_recording_bucket_name>"
+
+recording_storage_user_access_key_id = "<YOUR_storage_user_access_key_id>"
+
+recording_storage_user_secret_access_key = "<YOUR_storage_user_secret_access_key>"
+```
+
+</CodeBlockConfig>
+
+</Accordion>
+
+### Apply Terraform
+
+From the root of the `learn-boundary-session-rec-aws-vault`, initialize
+Terraform.
+
+```shell-session
+$ terraform init
+
+Initializing the backend...
+
+Initializing provider plugins...
+- Finding hashicorp/boundary versions matching ">= 1.1.9"...
+- Installing hashicorp/boundary v1.1.9...
+- Installed hashicorp/boundary v1.1.9 (signed by HashiCorp)
+
+Terraform has created a lock file .terraform.lock.hcl to record the provider
+selections it made above. Include this file in your version control repository
+so that Terraform can guarantee to make the same selections by default when
+you run "terraform init" in the future.
+
+Terraform has been successfully initialized!
+
+You may now begin working with Terraform. Try running "terraform plan" to see
+any changes that are required for your infrastructure. All Terraform commands
+should now work.
+
+If you ever set or change modules or backend configuration for Terraform,
+rerun this command to reinitialize your working directory. If you forget, other
+commands will detect it and remind you to do so if necessary.
+```
+
+Apply Terraform, passing in the required environment variables using the
+`boundary.tfvars` file.
+
+```shell-session
+$ terraform apply -var-file="boundary.tfvars"
+```
+
+**Example output:**
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ terraform apply -var-file="boundary.tfvars"
+
+Terraform used the selected providers to generate the following execution plan. Resource actions are indicated with
+the following symbols:
+  + create
+
+Terraform will perform the following actions:
+
+  # boundary_auth_method_password.password will be created
+  + resource "boundary_auth_method_password" "password" {
+      + description           = "Password auth method for org"
+      + id                    = (known after apply)
+      + min_login_name_length = (known after apply)
+      + min_password_length   = (known after apply)
+      + name                  = "org_password_auth"
+      + scope_id              = (known after apply)
+      + type                  = "password"
+    }
+
+  # boundary_credential_library_vault.vault_host_cred_library will be created
+  + resource "boundary_credential_library_vault" "vault_host_cred_library" {
+      + credential_store_id = (known after apply)
+      + credential_type     = "ssh_private_key"
+      + http_method         = "GET"
+      + id                  = (known after apply)
+      + name                = "Vault AWS Host Cred Library"
+      + path                = "secret/data/ssh_host"
+    }
+
+  # boundary_credential_store_vault.vault_host_cred_store will be created
+  + resource "boundary_credential_store_vault" "vault_host_cred_store" {
+      + address                     = "http://ec2-44-215-71-106.compute-1.amazonaws.com:8200"
+      + client_certificate_key_hmac = (known after apply)
+      + id                          = (known after apply)
+      + name                        = "Vault AWS Host Credentials"
+      + scope_id                    = (known after apply)
+      + token                       = (sensitive value)
+      + token_hmac                  = (known after apply)
+    }
+
+  # boundary_host_catalog_plugin.aws_hosts will be created
+  + resource "boundary_host_catalog_plugin" "aws_hosts" {
+      + attributes_json                            = jsonencode(
+            {
+              + disable_credential_rotation = true
+              + region                      = "us-east-1"
+            }
+        )
+      + description                                = "AWS session recording host catalog"
+      + id                                         = (known after apply)
+      + internal_force_update                      = (known after apply)
+      + internal_hmac_used_for_secrets_config_hmac = (known after apply)
+      + internal_secrets_config_hmac               = (known after apply)
+      + name                                       = "aws-recording-catalog"
+      + plugin_id                                  = (known after apply)
+      + plugin_name                                = "aws"
+      + scope_id                                   = (known after apply)
+      + secrets_hmac                               = (known after apply)
+      + secrets_json                               = (sensitive value)
+    }
+
+  # boundary_host_set_plugin.dev will be created
+  + resource "boundary_host_set_plugin" "dev" {
+      + attributes_json = jsonencode(
+            {
+              + filters = [
+                  + "tag:env=dev",
+                ]
+            }
+        )
+      + host_catalog_id = (known after apply)
+      + id              = (known after apply)
+      + name            = "dev_host_set"
+      + type            = "plugin"
+    }
+
+  # boundary_host_set_plugin.prod will be created
+  + resource "boundary_host_set_plugin" "prod" {
+      + attributes_json = jsonencode(
+            {
+              + filters = [
+                  + "tag:env=prod",
+                ]
+            }
+        )
+      + host_catalog_id = (known after apply)
+      + id              = (known after apply)
+      + name            = "prod_host_set"
+      + type            = "plugin"
+    }
+
+  # boundary_scope.global will be created
+  + resource "boundary_scope" "global" {
+      + global_scope = true
+      + id           = (known after apply)
+      + scope_id     = "global"
+    }
+
+  # boundary_scope.org will be created
+  + resource "boundary_scope" "org" {
+      + auto_create_admin_role   = true
+      + auto_create_default_role = true
+      + description              = "SSH test org"
+      + id                       = (known after apply)
+      + name                     = "ssh-recording-org-4"
+      + scope_id                 = (known after apply)
+    }
+
+  # boundary_scope.ssh-recording-project will be created
+  + resource "boundary_scope" "ssh-recording-project" {
+      + auto_create_admin_role = true
+      + description            = "Secure Socket Handling recordings"
+      + id                     = (known after apply)
+      + name                   = "ssh-recording-project"
+      + scope_id               = (known after apply)
+    }
+
+  # boundary_storage_bucket.aws_bucket will be created
+  + resource "boundary_storage_bucket" "aws_bucket" {
+      + attributes_json                            = jsonencode(
+            {
+              + region = "us-east-1"
+              + disable_credential_rotation = true
+            }
+        )
+      + bucket_name                                = "demobucket307797066"
+      + description                                = "SSH session recording test bucket"
+      + id                                         = (known after apply)
+      + internal_force_update                      = (known after apply)
+      + internal_hmac_used_for_secrets_config_hmac = (known after apply)
+      + internal_secrets_config_hmac               = (known after apply)
+      + name                                       = "ssh-test-bucket-2"
+      + plugin_id                                  = (known after apply)
+      + plugin_name                                = "aws"
+      + scope_id                                   = (known after apply)
+      + secrets_hmac                               = (known after apply)
+      + secrets_json                               = (sensitive value)
+      + worker_filter                              = "\"s3\" in \"/tags/type\""
+    }
+
+  # boundary_target.ssh will be created
+  + resource "boundary_target" "ssh" {
+      + default_port                               = 22
+      + description                                = "SSH target"
+      + egress_worker_filter                       = "\"dev-worker\" in \"/tags/type\""
+      + enable_session_recording                   = true
+      + host_source_ids                            = (known after apply)
+      + id                                         = (known after apply)
+      + injected_application_credential_source_ids = (known after apply)
+      + name                                       = "dev-recording-target"
+      + scope_id                                   = (known after apply)
+      + session_connection_limit                   = (known after apply)
+      + session_max_seconds                        = (known after apply)
+      + storage_bucket_id                          = (known after apply)
+      + type                                       = "ssh"
+    }
+
+Plan: 11 to add, 0 to change, 0 to destroy.
+
+Do you want to perform these actions?
+  Terraform will perform the actions described above.
+  Only 'yes' will be accepted to approve.
+
+  Enter a value: yes
+
+boundary_scope.global: Creating...
+boundary_scope.global: Creation complete after 0s [id=global]
+boundary_scope.org: Creating...
+boundary_scope.org: Creation complete after 0s [id=o_yYn9pnppBm]
+boundary_scope.ssh-recording-project: Creating...
+boundary_auth_method_password.password: Creating...
+boundary_storage_bucket.aws_bucket: Creating...
+boundary_scope.ssh-recording-project: Creation complete after 0s [id=p_55RcwmX77r]
+boundary_auth_method_password.password: Creation complete after 0s [id=ampw_o9k12O77mJ]
+boundary_credential_store_vault.vault_host_cred_store: Creating...
+boundary_host_catalog_plugin.aws_hosts: Creating...
+boundary_host_catalog_plugin.aws_hosts: Creation complete after 1s [id=hcplg_WnAQZfDVjw]
+boundary_host_set_plugin.prod: Creating...
+boundary_host_set_plugin.dev: Creating...
+boundary_host_set_plugin.prod: Creation complete after 0s [id=hsplg_we0Elbp45A]
+boundary_host_set_plugin.dev: Creation complete after 0s [id=hsplg_W6brs1wXwG]
+boundary_credential_store_vault.vault_host_cred_store: Creating...
+boundary_credential_store_vault.vault_host_cred_store: Creation complete after 0s [id=csvlt_6jWdgKAD3y]
+boundary_credential_library_vault.vault_host_cred_library: Creating...
+boundary_credential_library_vault.vault_host_cred_library: Creation complete after 0s [id=clvlt_xMZtleoUtY]
+boundary_storage_bucket.aws_bucket: Creating...
+boundary_storage_bucket.aws_bucket: Creation complete after 0s [id=sb_TaYhu2DSS9]
+boundary_target.ssh: Creating...
+boundary_target.ssh: Creation complete after 0s [id=tssh_JNtJTlpsm3]
+
+Apply complete! Resources: 11 added, 0 changed, 0 destroyed.
+```
+
+</CodeBlockConfig>
+
+If you receive an error like the following, expand the accordion below to
+troubleshoot:
+
+> Error: error creating credential store:
+> {"kind":"Internal","message":"credentialstores.(Service).createInRepo: unable
+> to create credential store: vault.(Repository).CreateCredentialStore: unable
+> to lookup vault token: vault.(client).lookupToken: vault:
+> 403. Errors:\n\n* permission denied"}
+
+<Accordion heading="Terraform cred store error" collapse>
+
+The Terraform run may fail if the Vault credential store token has expired.
+
+To renew the token, open the terminal session used to deploy the lab evironment.
+
+Log in to Vault:
+
+```shell-session
+$ vault login $VAULT_TOKEN
+WARNING! The VAULT_TOKEN environment variable is set! The value of this
+variable will take precedence; if this is unwanted please unset VAULT_TOKEN or
+update its value accordingly.
+
+Success! You are now authenticated. The token information displayed below
+is already stored in the token helper. You do NOT need to run "vault login"
+again. Future Vault requests will automatically use this token.
+
+Key                  Value
+---                  -----
+token                not.a.real.keyXicS2Qz5r1E7mstAG1O6rmb4
+token_accessor       bq3z0WFoYYw48s9MXzZvclUg
+token_duration       ∞
+token_renewable      false
+token_policies       ["root"]
+identity_policies    []
+policies             ["root"]
+```
+
+Generate a new token and print its value:
+
+```shell-session
+$ client_token=$(vault token create \
+        -no-default-policy=true \
+        -policy="boundary-controller" \
+        -policy="kv-read" \
+        -orphan=true \
+        -period=20m \
+        -renewable=true \
+        -format=json | jq -r ".auth.client_token")
+    echo "export VAULT_CRED_STORE_TOKEN=\"${client_token}\""
+```
+
+Export the new token as the `VAULT_CRED_STORE_TOKEN` variable.
+
+```shell-session
+$ export VAULT_CRED_STORE_TOKEN="<NEW_VAULT_CRED_STORE_TOKEN_VALUE>"
+```
+
+Then re-run Terraform, and approve the new changes.
+
+```shell-session
+$ terraform apply -var-file="boundary-example.tfvars"
+```
+
+</Accordion>
+
+</Tab>
+</Tabs>
+
+### Record a session
+
+Now you are ready to test session recording using `dev-recording-target`.
+
+<Tabs>
+<Tab heading="Desktop app" group="admin">
+
+To log into Boundary using the Desktop app, you must gather the `BOUNDARY_ADDR`
+values from the HCP Boundary Admin Console.
+
+Check the value of `BOUNDARY_ADDR` in the terminal session where Terraform was
+applied.
+
+```shell-session
+$ echo $BOUNDARY_ADDR
+https://d2a6e010-ba05-431a-b7f2-5cbc4e1e9f06.boundary.hashicorp.cloud
+```
+
+Open the Boundary Desktop app.
+
+Enter the Boundary cluster URL (for example,
+`https://d2a6e010-ba05-431a-b7f2-5cbc4e1e9f06.boundary.hashicorp.cloud`) and
+click **Submit.**
+
+Authenticate using your HCP Boundary admin credentials.
+
+![Boundary Desktop Login](/img/boundary/desktop-hcp-creds.png)
+
+On the **Targets** page, notice the target details for `ssh-recording-target`.
+
+![Boundary Desktop Target Details](/img/boundary/desktop-openssh-target.png)
+
+Click **Connect** to initiate a session.
+
+The **Successfully Connected** page displays the target ID (Target Connection
+details) and Proxy URL.
+
+To start a session, open your terminal or SSH client. You can start a session
+using SSH and the Proxy URL from the Boundary Desktop app.
+
+Connect on 127.0.0.1 and provide the proxy port using the `-p` option. Enter
+`yes` when prompted to establish a connection.
+
+```shell-session
+$ ssh 127.0.0.1 -p 51968
+
+The authenticity of host '3.239.211.190 (3.239.211.190)' can't be established.
+ED25519 key fingerprint is SHA256:Bo4D8kPtsRVR6zu+kz2bgaSoCP3C/Zwhst/J+twVFyw.
+This host key is known by the following other names/addresses:
+    ~/.ssh/known_hosts:73: ec2-3-239-211-190.compute-1.amazonaws.com
+Are you sure you want to continue connecting (yes/no/[fingerprint])? yes
+Warning: Permanently added '3.239.211.190' (ED25519) to the list of known hosts.
+
+       __|  __|_  )
+       _|  (     /   Amazon Linux AMI
+      ___|\___|___|
+
+https://aws.amazon.com/amazon-linux-ami/2018.03-release-notes/
+[ec2-user@ip-10-0-51-203 ~]$
+```
+
+When you are finished, you can close the connection to the server by entering
+`exit`, or you can cancel the session directly from the Boundary Desktop app
+under the *Sessions* view.
+
+</Tab>
+<Tab heading="CLI" group="cli">
+
+Execute `boundary connect`, which has a helper called `ssh`.
+
+Enter `yes` when prompted to establish the connection.
+
+```shell-session
+$ boundary connect ssh -target-id $TARGET_ID
+Last login: Wed Sep 20 10:23:00 2023 from ip-10-0-51-203.ec2.internal
+
+       __|  __|_  )
+       _|  (     /   Amazon Linux AMI
+      ___|\___|___|
+
+https://aws.amazon.com/amazon-linux-ami/2018.03-release-notes/
+[ec2-user@ip-10-0-51-203 ~]$
+```
+
+Enter some commands, such as `whoami`. 
+
+When finished, close the connection to the server using `exit`.
+
+</Tab>
+</Tabs>
+
+## View the recording
+
+You can [view a list of all recorded
+sessions](/boundary/docs/operations/session-recordings/manage-recorded-sessions),
+or if you know the ID of a specific recorded session, you can find any channels
+associated with that recording.
+
+To play back a session, open the Admin Console Web UI, and re-authenticate as
+the admin user if necessary.
+
+From the `global` scope, navigate to the **Session Recordings** page.
+
+Note that the following details are listed for each recording:
+
+- Time
+- Status
+- User
+- Target
+- Duration
+
+Click **View** next to the recording.
+
+Within the **Session Playback** page, click **Play** for **Channel 1**.
+
+After the recording loads, hover your mouse on the video player and click the
+play button to start playback.
+
+Note the **Channel details** on the right, which display the duration and
+bytes up / bytes down.
+
+### Validate the recording
+
+A [session recording](/boundary/docs/concepts/domain-model/session-recordings)
+represents a directory structure of files in an external object store that
+together are the recording of a single
+[session](/boundary/docs/concepts/domain-model/sessions) between a user and a
+target.
+
+Verify that the recording exists within Boundary.
+
+```shell-session
+$ boundary session-recordings list -scope-id $ORG_ID
+
+Session Recording information:
+  ID:                    sr_U24hPOwjxI
+    Session ID:          s_13O5VD6AAw
+    Storage Bucket ID:   sb_nzFv30oX2E
+    Created Time:        Wed, 20 Sep 2023 04:22:59 MDT
+    Updated Time:        Wed, 20 Sep 2023 04:23:10 MDT
+    Start Time:          Wed, 20 Sep 2023 04:22:59 MDT
+    End Time:            Wed, 20 Sep 2023 04:23:10 MDT
+    Type:                ssh
+    State:               available
+    Authorized Actions:
+      no-op
+      read
+      download
+```
+
+Read the recording's details.
+
+<CodeBlockConfig highlight="1,91-100">
+
+```shell-session
+$ boundary session-recordings read -id sr_U24hPOwjxI
+
+Session Recording information:
+  Bytes Down:           475
+  Bytes Up:             34
+  Created Time:         Wed, 20 Sep 2023 04:22:59 MDT
+  Duration (Seconds):   10.69684
+  Endpoint:             ssh://10.0.51.203:22
+  ID:                   sr_U24hPOwjxI
+  Scope ID:             o_JgJNBHHKro
+  Session ID:           s_13O5VD6AAw
+  Start Time:           Wed, 20 Sep 2023 04:22:59 MDT
+  State:                available
+  Storage Bucket ID:    sb_nzFv30oX2E
+  Type:                 ssh
+  Updated Time:         Wed, 20 Sep 2023 04:23:10 MDT
+
+  Scope:
+    ID:                 o_JgJNBHHKro
+    Name:               ssh-recording-org-5
+    Parent Scope ID:    global
+    Type:               org
+
+  Authorized Actions:
+    no-op
+    read
+    download
+
+  User Info:
+    Description:         Global admin user
+    ID:                  u_IwFxiyB0I8
+    Name:                admin_user
+    Scope:
+      ID:                global
+      Name:
+      Type:              global
+
+  Target Info:
+    Default Port:               22
+    Egress Worker Filter:       "dev-worker" in "/tags/type"
+    ID:                         tssh_q6C6ntgdY4
+    Name:                       dev-recording-target
+    Session Connection Limit:   -1
+    Session Max Seconds:        28800
+    Scope:
+      ID:                       p_qTs8nChzTh
+      Name:                     ssh-recording-project
+      Parent Scope ID:          o_JgJNBHHKro
+      Type:                     project
+
+  Host Info:
+    External ID:         i-0802c7279592820b5
+    ID:                  hplg_OgiXZGoIEb
+    Type:                plugin
+    HostCatalog:
+      ID:                hcplg_ubB5WRCO89
+      Scope:
+        ID:                p_qTs8nChzTh
+        Name:              ssh-recording-project
+        Parent Scope ID:   o_JgJNBHHKro
+        Type:              project
+
+  Credential Libraries:
+    Http Method:       GET
+    ID:                clvlt_GuodMPs1lg
+    Name:              vault-cred-library
+    Purpose:           injected_application
+    Type:              vault-generic
+    Vault Path:        secret/data/ssh_host
+
+    Credential Store:
+      ID:                csvlt_JwBgPsVUbN
+      Name:              Vault Host Credentials Store
+      Scope ID:          p_qTs8nChzTh
+      Type:              vault
+      Vault Address:     http://ec2-3-239-226-229.compute-1.amazonaws.com:8200
+      Worker Filter:     "vault" in "/tags/type"
+
+
+  Connections Recordings:
+    Bytes Down:         475
+    Bytes Up:           34
+    Created Time:       Wed, 20 Sep 2023 04:22:59 MDT
+    Duration (Seconds): 8.297517
+    End Time:           Wed, 20 Sep 2023 04:23:08 MDT
+    ID:                 cr_HaEu1zxrAJ
+    Start Time:         Wed, 20 Sep 2023 04:22:59 MDT
+    Updated Time:       Wed, 20 Sep 2023 04:23:08 MDT
+
+
+    Channel Recordings:
+      Bytes Down:         475
+      Bytes Up:           34
+      Created Time:       Wed, 20 Sep 2023 04:23:08 MDT
+      Duration (Seconds): 7.99233
+      End Time:           Wed, 20 Sep 2023 04:23:08 MDT
+      ID:                 chr_cjTX96USZC
+      Mime Types:         application/x-asciicast
+      Start Time:         Wed, 20 Sep 2023 04:23:00 MDT
+      Updated Time:       Wed, 20 Sep 2023 04:23:08 MDT
+```
+
+</CodeBlockConfig>
+
+Note the `Channel Recording`, labeled `Mime Types: application/x-asciicast` (ID
+`chr_cjTX96USZC` in this example). Downloading this recording would produces a
+`.cast` file, which can be played back locally using
+[asciinema](https://asciinema.org/).
+
+If you want to download this file, execute the following command:
+
+```shell-session
+$ boundary session-recordings download -id chr_cjTX96USZC
+```
+
+### BSR files
+
+The [Boundary Session Recording
+(BSR)](/boundary/docs/concepts/auditing#bsr-directory-structure) file defines a
+hierarchical directory structure of files and a binary file format. It contains
+all the data transmitted between a user and a target during a single session.
+
+Boundary stores the recordings within the Amazon S3 storage bucket as BSR files.
+
+A BSR connections directory contains a summary of connections, as well as
+inbound and outbound requests. If you use a multiplexed protocol, there are
+subdirectories for the channels.
+
+The asciicast format is well suited for the playback of interactive shell activity.
+However, some aspects of the recording cannot be translated into asciicast.
+For example, if an SSH session uses the `RemoteCommand` option, or is used to `exec` a command, the command is not displayed in the asciicast.
+The output of the command may be displayed, though.
+If you use SSH for something other than an interactive shell, such as for file transfer, X11 forwarding, or port forwarding, Boundary does not attempt to create an asciicast.
+In all cases, the SSH session is still recorded in the [BSR file](/boundary/docs/concepts/auditing/#bsr-directory-structure) and you can view the BSR file in the external storage bucket.
+
+## Cleanup and teardown
+
+1. Destroy the AWS resources.
+
+   Execute `make destroy` to destroy the Terraform resources in AWS. Enter `yes`
+   to confirm the deletion.
+
+   ```shell-session
+   $ make destroy
+   ```
+
+1. Destroy the Boundary resources.
+
+   <Note>
+   
+     Recall that Boundary storage bucket lifecycle management is still under
+     development. In order to prevent unintentional loss of session recordings,
+     orgs that contain storage buckets cannot currently be deleted. When destroying
+     your Boundary resources, you will receive an error if you attempt to delete
+     the storage bucket, or the scopes that contain the bucket.
+   
+   </Note>
+
+   <Tabs>
+   <Tab heading="Admin UI" group="admin">
+
+   From the Admin Console Web UI, destroy the following resources:
+
+   - Targets
+   - Vault host catalog
+   - Vault credential store
+
+   Scopes containing session recordings cannot currently be deleted.
+
+   </Tab>
+   <Tab heading="CLI" group="cli">
+
+   Clean up the following Boundary resources:
+
+   - Targets
+   - Vault host catalog
+   - Vault credential store
+   - Boundary workers
+
+   1. Delete the Vault host catalog.
+      
+      ```shell-session
+      $ boundary host-catalogs delete -id $HOST_CATALOG_ID
+      The delete operation completed successfully.
+      ```
+
+   1. Delete the Vault credential store.
+
+      ```shell-session
+      $ boundary credential-stores delete -id $CRED_STORE_ID
+      The delete operation completed successfully.
+      ```
+
+   1. Delete the Boundary workers.
+
+      First, list the workers.
+   
+      ```shell-session
+      $ boundary workers list
+      Worker information:
+        ID:                        w_qVa62dhZJV
+          Type:                    pki
+          Version:                 1
+          Name:                    vault-worker
+          Address:                 3.239.226.229:9202
+          ReleaseVersion:          Boundary v0.13.2+ent
+          Last Status Time:        Wed, 20 Sep 2023 11:07:46 UTC
+          Authorized Actions:
+            no-op
+            read
+            update
+            delete
+            add-worker-tags
+            set-worker-tags
+            remove-worker-tags
+      
+        ID:                        w_KX8S0hadVC
+          Type:                    pki
+          Version:                 1
+          Name:                    aws-worker-2
+          Address:                 44.205.8.57:9202
+          ReleaseVersion:          Boundary v0.13.2+ent
+          Last Status Time:        Wed, 20 Sep 2023 11:07:45 UTC
+          Authorized Actions:
+            no-op
+            read
+            update
+            delete
+            add-worker-tags
+            set-worker-tags
+            remove-worker-tags
+      ...
+      ... more output ...
+      ...
+      ```
+   
+      Copy the IDs of the workers created for this tutorial and delete them.
+   
+      **Example:**
+   
+      ```shell-session
+      $ boundary workers delete -id w_qVa62dhZJV
+      The delete operation completed successfully
+      ```
+
+   </Tab>
+   <Tab heading="Terraform" group="terraform">
+   
+   Execute `terraform destroy` to clean up the Boundary resources. Enter `yes`
+   when prompted to confirm the deletion.
+   
+   Note that this will produce an error when attempting to delete the storage
+   bucket resource, and the scopes containing the storage bucket will not be
+   deleted.
+
+   ```shell-session
+   $ terraform destroy
+   ```
+
+   </Tab>
+   </Tabs>
+
+1. Unset the environment variables used in any active terminal windows for this
+tutorial.
+
+```shell-session
+$ unset BOUNDARY_ADDR; \
+  unset BOUNDARY_AUTH_METHOD_ID; \
+  unset BOUNDARY_USERNAME; \
+  unset BOUNDARY_PASSWORD; \
+  unset HOST_CATALOG_ACCESS_KEY_ID; \
+  unset HOST_CATALOG_SECRET_ACCESS_KEY; \
+  unset AWS_REGION; \
+  unset AWS_ACCESS_KEY_ID; \
+  unset AWS_SECRET_ACCESS_KEY; \
+  unset VAULT_ADDR; \
+  unset VAULT_TOKEN; \
+  unset VAULT_CRED_STORE_TOKEN; \
+  unset recording_bucket_name; \
+  unset recording_storage_user_access_key_id; \
+  unset recording_storage_user_secret_access_key
+```
+
+## Help and reference
+
+- [HCP Boundary Documentation](/hcp/docs/boundary)
+- [HCP Boundary Getting Started](/boundary/tutorials/hcp-getting-started/hcp-getting-started-intro)
+- [Boundary command
+  documentation](/boundary/docs/commands)
+- [Vault Documentation](/vault/docs/)

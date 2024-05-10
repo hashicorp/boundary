@@ -1,0 +1,514 @@
+---
+id: acbed202-08e3-4232-b9ea-6a154d08f3f8
+name: Connect to your first target
+short_name: Connect to your first target
+description: >-
+  After starting Boundary in dev mode and logging in, you can connect to your
+  first target.
+products_used:
+  - product: boundary
+    min_version: 0.10.0
+    max_version: 0.12.0
+default_collection_context: boundary/oss-getting-started
+---
+
+In the admin console, you saw that `localhost` was listed as **Generated
+target** with connection type, TCP. The default target is a TCP target with a
+default port of `22` (SSH). In this tutorial, you will start an ssh session
+to this default target using the CLI command.
+
+Open a command terminal and set up environment variables to support your
+Boundary instance.
+
+<Note>
+
+ The use of environment variables is not required but used for the
+ease of following this tutorial.
+
+</Note>
+
+Create an environment variable for the **Global** scopes password auth method ID.
+
+```shell-session
+$ export BOUNDARY_AUTH_METHOD_ID=ampw_1234567890
+```
+
+Create an environment variable for the **Generated target** ID.
+
+```shell-session
+$ export TARGET_ID=ttcp_1234567890
+```
+
+If you authenticated through the admin console, authenticate with Boundary via
+CLI with the login name `admin` and password `password`.
+
+```shell-session
+$ boundary authenticate
+Please enter the login name (it will be hidden):
+Please enter the password (it will be hidden):
+Authentication information:
+  Account ID:      acctpw_VOeNSFX8pQ
+  Auth Method ID:  ampw_ZbB6UXpW3B
+  Expiration Time: Mon, 13 Feb 2023 12:35:32 MST
+  User ID:         u_ogz79sV4sT
+The token was successfully stored in the chosen keyring and is not displayed here.
+```
+
+~> Boundary clusters require an accessible **key management service** (KMS). An
+error may occur if this service is not running. If you have any issues check
+the **Troubleshooting** section in the [Getting Started with
+Boundary](/boundary/tutorials/oss-getting-started/oss-getting-started-dev#troubleshooting) tutorial.
+
+### Read the Target Details
+
+Read the details about the **Generated target**.
+
+```shell-session
+$ boundary targets read -id $TARGET_ID
+
+Target information:
+  Address:                    127.0.0.1
+  Created Time:               Mon, 23 Jan 2023 17:54:42 UTC
+  Description:                Provides an initial target using an address in Boundary
+  ID:                         ttcp_1234567890
+  Name:                       Generated target with a direct address
+  Session Connection Limit:   -1
+  Session Max Seconds:        28800
+  Type:                       tcp
+  Updated Time:               Mon, 23 Jan 2023 17:54:42 UTC
+  Version:                    1
+
+  Scope:
+    ID:                       p_1234567890
+    Name:                     Generated project scope
+    Parent Scope ID:          o_1234567890
+    Type:                     project
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    add-host-sources
+    set-host-sources
+    remove-host-sources
+    add-credential-sources
+    set-credential-sources
+    remove-credential-sources
+    authorize-session
+
+  Attributes:
+    Default Port:             22
+```
+
+Use the `boundary connect` command to SSH into the localhost.
+
+```shell-session
+$ boundary connect ssh -target-id $TARGET_ID
+```
+
+This will attempt to establish an ssh session to your localhost. Remote Login
+may need to be enabled for the session to connect as expected.
+
+When prompted, enter your local administrator user password to proceed.
+
+<Accordion heading="Troubleshooting MacOS Connections" collapse>
+
+
+~> On MacOS you might receive an error message similar to `No connection could be made because the target machine actively refused it.` In this case, you may
+need to enable _Remote Login_ under the _System Preferences_ -> _Sharing_
+settings for your user.
+
+Even with **Remote Login** enabled, you may need to directly add your username
+to the list of users under "Allow access for:". Enable "Only these users" and
+add your username to the list using the ** + ** button.
+
+An example of this settings panel is shown below. You may need to add your
+username instead of "Administrators". After enabling, try running `boundary connect ssh` again.
+
+![MacOS Troubleshooting](/img/boundary/boundary-getting-started-connect-troubleshooting-0.png)
+
+</Accordion>
+
+
+If you want to specify a username to login with, you can do so via the
+`-username` flag. For example:
+
+```shell-session
+$ boundary connect ssh -target-id $TARGET_ID -username james
+```
+
+There is also a `-style` flag to specify a different SSH clients. Currently,
+the `boundary connect ssh` command supports `-style putty` to support passing
+connection information to PuTTY for **_Windows_** users.
+
+```shell-session
+$ boundary connect ssh -style putty -exec putty.exe -target-id $TARGET_ID
+```
+
+If you want to pass additional arguments to the SSH client, provide them to the
+command line separated by "`--`" (space, two hyphens, space). Any arguments
+after that will be sent directly to the executed client.
+
+For example, the following command accomplishes the same as `-username` flag.
+
+```shell-session
+$ boundary connect ssh -target-id $TARGET_ID -- -l james
+```
+
+In the terminal where Boundary server is running, you should see `connection
+successfully authorized` message similar to below.
+
+<CodeBlockConfig hideClipboard highlight="11,32,49">
+
+```shell-session
+{
+  "id": "c2gZj1Zq3D",
+  "source": "https://hashicorp.com/boundary/robinbeck-C02DRAWTMD6R/controller+worker",
+  "specversion": "1.0",
+  "type": "observation",
+  "data": {
+    "latency-ms": 74.372085,
+    "request_info": {
+      "id": "gtraceid_rrJtYjkNfQZBJy5uEVf7",
+      "method": "POST",
+      "path": "/v1/targets/ttcp_1234567890:authorize-session",
+      "public_id": "at_bsKu3RIHT7",
+      "client_ip": "127.0.0.1"
+    },
+    "start": "2023-02-10T12:10:16.513567-07:00",
+    "status": 200,
+    "stop": "2023-02-10T12:10:16.58794-07:00",
+    "version": "v0.1"
+  },
+  "datacontentype": "text/plain",
+  "time": "2023-02-10T12:10:16.587974-07:00"
+}
+{
+  "id": "ZSUaYxVtlq",
+  "source": "https://hashicorp.com/boundary/robinbeck-C02DRAWTMD6R/controller+worker",
+  "specversion": "1.0",
+  "type": "system",
+  "data": {
+    "version": "v0.1",
+    "op": "worker.(Worker).handleProxy",
+    "data": {
+      "msg": "session successfully activated",
+      "session_id": "s_m8tkT4VKyc"
+    }
+  },
+  "datacontentype": "text/plain",
+  "time": "2023-02-10T12:10:16.736856-07:00"
+}
+{
+  "id": "jIoB1c4Okz",
+  "source": "https://hashicorp.com/boundary/robinbeck-C02DRAWTMD6R/controller+worker",
+  "specversion": "1.0",
+  "type": "system",
+  "data": {
+    "version": "v0.1",
+    "op": "worker.(Worker).handleProxy",
+    "data": {
+      "connection_id": "sc_Epn3R6EvXE",
+      "msg": "connection successfully authorized",
+      "session_id": "s_m8tkT4VKyc"
+    }
+  },
+  "datacontentype": "text/plain",
+  "time": "2023-02-10T12:10:16.760951-07:00"
+}
+```
+
+</CodeBlockConfig>
+
+-> Read the [Boundary connect usages](#boundary-connect-usages) section to learn
+more about the `boundary connect` command.
+
+## Manage sessions
+
+<Tabs>
+<Tab heading="Admin console">
+
+In the admin console, select **Sessions**. The UI will show an entry with session
+ID matching in the server log (e.g. `s_895vskVZh0`).
+
+![Sessions](/img/boundary/boundary-ui-sessions.png)
+
+Open a new command terminal and execute the `boundary connect` command again.
+
+```shell-session
+$ boundary connect ssh -target-id $TARGET_ID
+```
+
+Return to the admin console. You should see two sessions listed.
+
+![Sessions](/img/boundary/boundary-ui-sessions-2.png)
+
+Click the **Cancel** button of one of the sessions. The status changes to
+`canceling` and then `terminated`.
+
+</Tab>
+<Tab heading="CLI command">
+
+You can list sessions within an enclosing scope or resource via CLI. The dev
+mode created a default scope named, **Generated project scope** with ID,
+`p_1234567890`.
+
+Create an environment variable for the **Global** scopes password auth method ID.
+
+```shell-session
+$ export BOUNDARY_PROJECT=p_1234567890
+```
+
+List the sessions for the **Generated project scope**.
+
+```shell-session
+$ boundary sessions list -scope-id=$BOUNDARY_PROJECT
+
+Session information:
+  ID:                 s_895vskVZh0
+    Status:           active
+    Created Time:     Wed, 07 Oct 2020 18:34:05 PDT
+    Expiration Time:  Thu, 08 Oct 2020 02:34:05 PDT
+    Updated Time:     Wed, 07 Oct 2020 18:34:06 PDT
+    User ID:          u_1234567890
+    Target ID:        ttcp_1234567890
+```
+
+Open a new command terminal and execute the `boundary connect` command again.
+
+```shell-session
+$ boundary connect ssh -target-id $TARGET_ID
+```
+
+List sessions again.
+
+```shell-session
+$ boundary sessions list -scope-id=$BOUNDARY_PROJECT
+
+Session information:
+  ID:                 s_895vskVZh0
+    Status:           active
+    Created Time:     Wed, 07 Oct 2020 18:34:05 PDT
+    Expiration Time:  Thu, 08 Oct 2020 02:34:05 PDT
+    Updated Time:     Wed, 07 Oct 2020 18:34:06 PDT
+    User ID:          u_1234567890
+    Target ID:        ttcp_1234567890
+
+  ID:                 s_7VCb07G202
+    Status:           active
+    Created Time:     Wed, 07 Oct 2020 18:37:53 PDT
+    Expiration Time:  Thu, 08 Oct 2020 02:37:53 PDT
+    Updated Time:     Wed, 07 Oct 2020 18:37:53 PDT
+    User ID:          u_1234567890
+    Target ID:        ttcp_1234567890
+```
+
+Pick one of the sessions and copy its ID to terminate the session.
+
+```shell-session
+$ boundary sessions cancel -id=s_a8XKH5Zg5J
+
+Session information:
+  Auth Token ID:       at_6FOC0R3hDG
+  Created Time:        Wed, 07 Oct 2020 18:37:53 PDT
+  Endpoint:            tcp://localhost:22
+  Expiration Time:     Thu, 08 Oct 2020 02:37:53 PDT
+  Host ID:             hst_1234567890
+  Host Set ID:         hsst_1234567890
+  ID:                  s_7VCb07G202
+  Status:              canceling
+  Target ID:           ttcp_1234567890
+  Type:                tcp
+  Updated Time:        Wed, 07 Oct 2020 18:42:39 PDT
+  User ID:             u_1234567890
+  Version:             3
+
+  Scope:
+    ID:                p_1234567890
+    Name:              Generated project scope
+    Parent Scope ID:   o_1234567890
+    Type:              project
+
+  States:
+    Start Time:        Wed, 07 Oct 2020 18:42:39 PDT
+    Status:            canceling
+
+    End Time:          Wed, 07 Oct 2020 18:42:39 PDT
+    Start Time:        Wed, 07 Oct 2020 18:37:53 PDT
+    Status:            active
+
+    End Time:          Wed, 07 Oct 2020 18:37:53 PDT
+    Start Time:        Wed, 07 Oct 2020 18:37:53 PDT
+    Status:            pending
+```
+
+List sessions to verify their current status.
+
+```shell-session
+$ boundary sessions list -scope-id=$BOUNDARY_PROJECT
+
+Session information:
+  ID:                 s_895vskVZh0
+    Status:           active
+    Created Time:     Wed, 07 Oct 2020 18:34:05 PDT
+    Expiration Time:  Thu, 08 Oct 2020 02:34:05 PDT
+    Updated Time:     Wed, 07 Oct 2020 18:34:06 PDT
+    User ID:          u_1234567890
+    Target ID:        ttcp_1234567890
+
+  ID:                 s_7VCb07G202
+    Status:           terminated
+    Created Time:     Wed, 07 Oct 2020 18:37:53 PDT
+    Expiration Time:  Thu, 08 Oct 2020 02:37:53 PDT
+    Updated Time:     Wed, 07 Oct 2020 18:42:41 PDT
+    User ID:          u_1234567890
+    Target ID:        ttcp_1234567890
+```
+
+Notice that one of the session status shows, `terminated`.
+
+</Tab>
+</Tabs>
+
+
+The command terminal where the SSH session was running should indicate that the
+connection was closed.
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+Connection closed by 127.0.0.1 port 53909
+```
+
+</CodeBlockConfig>
+
+In the Boundary server log, you should see a message indicating that the
+**worker** terminated the SSH session.
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+[INFO]  worker: terminated connection due to cancelation or expiration: session_id=s_7VCb07G202 connection_id=sc_ph2gtsFAa7
+[INFO]  controller.worker-handler: connection closed: connection_id=sc_ph2gtsFAa7
+[INFO]  controller.worker-handler: connection closed: connection_id=sc_ph2gtsFAa7
+```
+
+</CodeBlockConfig>
+
+## Boundary connect usages
+
+### Build-in commands
+
+Out of the box, Boundary supports the following connection protocols.
+
+| Subcommand | Description                                                                           |
+| ---------- | ------------------------------------------------------------------------------------- |
+| `http`     | Authorize a session against a target and invoke an HTTP client to connect             |
+| `ssh`      | Authorize a session against a target and invoke an SSH client to connect              |
+| `postgres` | Authorize a session against a target and invoke a Postgres client (`psql`) to connect |
+| `rdp`      | Authorize a session against a target and invoke an RDP client (`mstsc`) to connect    |
+
+### Exec command
+
+The `boundary connect` can execute clients even when there is no built-in
+wrapper subcommand for it using `-exec`. The `-exec` flag is a very powerful
+tool, allowing you to wrap Boundary TCP sessions in your preferred client. You
+can use this flag to create an authenticated proxy to almost anything.
+
+If all command flags are followed by "`--`" (space, two hyphens, space), then
+any arguments after that will be sent directly to the client. This can be
+specified via the `BOUNDARY_CONNECT_EXEC` environment variable as well.
+
+#### Example
+
+cURL can be used to do an authenticated download of `hashicorp.com`.
+
+First, update the default TCP target (`ttcp_1234567890`) port from `22` to `443`
+using the `boundary targets update` command.
+
+```shell-session
+$ boundary targets update tcp -default-port 443 -id $TARGET_ID
+
+Target information:
+
+  ## ...snip...
+
+  Attributes:
+    Default Port:             443
+```
+
+Now, execute the cURL command using the `-exec` flag.
+
+```shell-session
+$ boundary connect -exec curl -target-id $TARGET_ID \
+     -- -vvsL --output /dev/null hashicorp.com
+```
+
+## Set session limits
+
+By default, the session max time is set to 8 hours (28800 seconds). You can
+overwrite the default to limit the session duration using the `boundary targets update` command.
+
+Set the max session time to **15 seconds** to see how it behaves. Also, set the
+default TCP port back to `22` if you modified it to use `443`.
+
+```shell-session
+$ boundary targets update tcp -id $TARGET_ID \
+   -default-port 22 \
+   -session-max-seconds 15
+```
+
+Example Output:
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary targets update tcp -id $TARGET_ID \
+   -default-port 22 \
+   -session-max-seconds 15
+
+Target information:
+  Created Time:               Wed, 30 Sep 2020 19:12:57 PDT
+  Description:                Provides an initial target in Boundary
+  ID:                         ttcp_1234567890
+  Name:                       Generated target
+  Session Connection Limit:   1
+  Session Max Seconds:        15
+  Type:                       tcp
+  Updated Time:               Wed, 30 Sep 2020 22:29:00 PDT
+  Version:                    3
+
+  ## ...snip...
+
+  Attributes:
+    Default Port:             22
+```
+
+</CodeBlockConfig>
+
+Run the `boundary connect` command again to SSH into the localhost.
+
+```shell-session
+$ boundary connect ssh -target-id $TARGET_ID
+```
+
+The session automatically terminates after 15 seconds.
+
+<CodeBlockConfig hideClipboard>
+
+```plaintext
+Connection closed by 127.0.0.1 port 61789
+
+Termination information:
+  Reason:   Session has expired
+```
+
+</CodeBlockConfig>
+
+## Next steps
+
+You learned the `boundary connect` command, viewed and managed the SSH sessions.
+
+The next step is to install the Boundary Desktop app, and ensure you can repeat
+relevant steps in this tutorial related to viewing and managing SSH sessions.

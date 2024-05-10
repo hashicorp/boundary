@@ -1,0 +1,1964 @@
+---
+id: f3d2ec2d-bd01-44e0-84cc-e7f17e78ebac
+name: OIDC authentication with Auth0
+short_name: OIDC authentication with Auth0
+description: |-
+  Instructions to configure Open-ID Connect (OIDC) authentication with 
+  Boundary and Auth0.
+read_time: 18
+products_used:
+  - product: boundary
+    min_version: 0.2.1
+    max_version: 0.10.3
+  - product: terraform
+default_collection_context: boundary/identity-management
+variants:
+  - slug: boundary-deploy
+    options:
+      - hcp
+      - dev
+---
+
+[OpenID Connect](https://openid.net/specs/openid-connect-core-1_0.html) (OIDC)
+is an internet-scale federated identity and authentication protocol built on top
+of the [OAuth 2.0](https://tools.ietf.org/html/rfc6749) authorization framework
+and the [JSON Object Signing and
+Encryption](https://tools.ietf.org/html/rfc7520) (JOSE) cryptographic system.
+OIDC builds on top of the OAuth 2.0 authorization protocol to enable a user to
+authorize a third-party application to access the user’s identity and
+authentication information.
+
+The OIDC authentication method allows Boundary users to delegate authentication
+to an OIDC provider. This feature allows Boundary to integrate with popular
+identity providers like Auth0, cloud-hosted active directory services with an
+OIDC frontend, and cloud identity management systems such as AWS IAM.
+
+Boundary users can create, read, update, and delete new OIDC authentication
+methods using the Admin Console UI, Boundary CLI, or the Boundary Terraform
+provider to enable login. OIDC auth methods can also be utilized for logging
+into the Admin Console and Desktop applications.
+
+This tutorial provides an example of setting up OIDC with the Auth0 provider and
+managing OIDC authentication methods.
+
+### OIDC authentication methods overview
+
+1. [Authentication workflow](#authentication-workflow)
+1. [Auth0 configuration](#providers)
+1. [Auth method creation](#auth-method-creation)
+1. [Authentication states](#authentication-states)
+1. [OIDC authentication](#authenticate-using-oidc)
+
+## Prerequisites
+
+- A [Boundary binary](/boundary/install/) greater than
+  0.8.0 in your `PATH`
+
+- This tutorial assumes you can [connect to an HCP Boundary
+  cluster](/boundary/tutorials/hcp-getting-started/hcp-getting-started-console) **or** launch
+  Boundary in [dev mode](/boundary/tutorials/oss-getting-started/oss-getting-started-dev).
+
+- An [Auth0](https://auth0.com) test account. The associated email address
+  should not be tied to another SSO method, so use of a personal account is
+  recommended.
+
+- Installing the [Boundary Desktop
+  App](/boundary/tutorials/oss-getting-started/oss-getting-started-desktop-app) provides an optional
+  workflow for this tutorial. The [1.2.0
+  version](https://releases.hashicorp.com/boundary-desktop/1.2.0/) or above is
+  required for OIDC support.
+
+- Installing [Terraform 0.13.0 or greater](/terraform/tutorials/aws-get-started/install-cli)
+  provides an optional workflow for this tutorial. The binary must be available
+  in your `PATH`.
+
+## Get setup
+
+In this tutorial, you will test OIDC integrations using HCP Boundary or by
+running a Boundary controller locally using dev mode.
+
+<Variant slug="boundary-deploy" option="hcp">
+
+The [HCP Quickstart](/boundary/tutorials/hcp-getting-started) tutorials
+provide an overview of getting started with an HCP Boundary cluster.
+
+If you have an HCP Boundary cluster deployed, the [Access HCP
+Boundary](/boundary/tutorials/hcp-getting-started/hcp-getting-started-console) tutorial provides an
+overview of configuring your local machine to authenticate with your HCP
+cluster.
+
+This tutorial provides both CLI and UI workflows for setting up OIDC
+authentication.
+
+<Tabs>
+<Tab heading="Admin Console" group="admin">
+
+To proceed with the UI workflow:
+
+1. Open the Admin Console UI by entering your HCP Boundary Cluster URL into a
+   browser (such as
+   `https://e58fe114-7624-431c-994d-b6670e90b03J.boundary.hashicorp.cloud`).
+
+1. Enter the admin username and password you created when you deployed the new
+   instance and click **Authenticate**.
+
+![Admin UI Login](/img/boundary/boundary-ui-login-hcp_light.png#light-theme-only)
+![Admin UI Login](/img/boundary/boundary-ui-login-hcp_dark.png#dark-theme-only)
+
+You are now logged into your HCP Boundary instance's **Global** scope using the
+web UI. This is the default scope for all new Boundary clusters. You can now
+proceed to the [Providers](#providers) section to proceed with the Admin Console
+UI workflow.
+
+</Tab>
+<Tab heading="CLI" group="cli">
+
+To proceed with the CLI workflow:
+
+1. Log in to the Boundary web UI and copy your org ID by clicking the copy icon.
+
+   Open a terminal session and **set a environment variable for the org ID.**
+
+   ```shell-session
+   $ export ORG_ID=<org-id>
+   ```
+
+1. In the Boundary web UI, click **Orgs** in the left navigation menu to return
+   to the global scope, and then click **Auth Methods**.
+
+   Click the copy icon for the **Password** auth method.
+
+   In your terminal **set an environment variable named `BOUNDARY_AUTH_METHOD_ID`** to the
+   copied ID.
+
+   ```shell-session
+   $ export BOUNDARY_AUTH_METHOD_ID=<auth-method-id>
+   ```
+
+   Close the Boundary web UI.
+
+1. Return to the HCP web Portal **Boundary** page, then click the copy icon for
+   the **Cluster URL** in the **Getting started with Boundary** section.
+
+   In your terminal, **set the `BOUNDARY_ADDR` environment variable** to the
+   copied URL.
+
+   ```shell-session
+   $ export BOUNDARY_ADDR=<actual-boundary-address>
+   ```
+
+1. Log in with the administrator credentials you created when you deployed the
+   HCP Boundary instance. Enter your password at the `Please enter the password
+   (it will be hidden):` prompt.
+
+   ```shell-session
+   $ boundary authenticate password -auth-method-id $BOUNDARY_AUTH_METHOD_ID -login-name admin
+   Please enter the password (it will be hidden):
+
+   Authentication information:
+     Account ID:      acctpw_FfOfCS1d5K
+     Auth Method ID:  ampw_YfIUt060sp
+     Expiration Time: Fri, 30 Sep 2022 11:25:48 MDT
+     User ID:         u_RapeEBo5Uf
+   
+   The token was successfully stored in the chosen keyring and is not displayed here.
+   ```
+
+You are now logged into your HCP Boundary instance's **Global** scope using the
+CLI. This is the default scope for all new Boundary clusters.
+
+</Tab>
+<Tab heading="Terraform" group="terraform">
+
+To proceed with the Terraform workflow:
+
+The following values are needed to set up the [Boundary Terraform
+provider](https://registry.terraform.io/providers/hashicorp/boundary). The
+`password_auth_method_login_name` and `password_auth_method_password` are
+created when first [setting up HCP
+Boundary](/boundary/tutorials/hcp-getting-started/hcp-getting-started-create), and the others can be
+gathered from the HCP portal or the Boundary Admin Console UI.
+
+- `addr` (from HCP portal)
+- `auth_method_id` (from Boundary Admin Console UI)
+- `password_auth_method_login_name` (from initial Boundary Cluster creation)
+- `password_auth_method_password` (from initial Boundary Cluster creation)
+- `scope_id` (global scope from Boundary Admin Console UI)
+
+Locate these values and have them ready for setting up the Terraform config
+files later on.
+
+</Tab>
+</Tabs>
+
+</Variant>
+<Variant slug="boundary-deploy" option="dev">
+
+Start Boundary in dev mode:
+
+```shell-session
+$ boundary dev
+==> Boundary server configuration:
+
+        [Controller] AEAD Key Bytes: hdcjQ5gegRbttzQ66D5GJjcxB+xtdHzL
+          [Recovery] AEAD Key Bytes: E1/gdhTuDyhsvIm+tkQR0i4m/uSRrd5A
+       [Worker-Auth] AEAD Key Bytes: gwo86AYxBlbPCLsw9lsBzZ4Fd7adcydw
+               [Recovery] AEAD Type: aes-gcm
+                   [Root] AEAD Type: aes-gcm
+    [Worker-Auth-Storage] AEAD Type: aes-gcm
+            [Worker-Auth] AEAD Type: aes-gcm
+                                Cgo: disabled
+     Controller Public Cluster Addr: 127.0.0.1:9201
+             Dev Database Container: hardcore_keller
+                   Dev Database Url: postgres://postgres:password@localhost:55000/boundary?sslmode=disable
+         Generated Admin Login Name: admin
+           Generated Admin Password: password
+          Generated Host Catalog Id: hcst_1234567890
+                  Generated Host Id: hst_1234567890
+              Generated Host Set Id: hsst_1234567890
+      Generated Oidc Auth Method Id: amoidc_1234567890
+             Generated Org Scope Id: o_1234567890
+  Generated Password Auth Method Id: ampw_1234567890
+         Generated Project Scope Id: p_1234567890
+                Generated Target Id: ttcp_1234567890
+  Generated Unprivileged Login Name: user
+    Generated Unprivileged Password: password
+                         Listener 1: tcp (addr: "127.0.0.1:9200", cors_allowed_headers: "[]", cors_allowed_origins: "[*]", cors_enabled: "true", max_request_duration: "1m30s", purpose: "api")
+                         Listener 2: tcp (addr: "127.0.0.1:9201", max_request_duration: "1m30s", purpose: "cluster")
+                         Listener 3: tcp (addr: "127.0.0.1:9203", max_request_duration: "1m30s", purpose: "ops")
+                         Listener 4: tcp (addr: "127.0.0.1:9202", max_request_duration: "1m30s", purpose: "proxy")
+                          Log Level: info
+                              Mlock: supported: false, enabled: false
+                            Version: Boundary v0.10.3
+                        Version Sha: d9eba38993eb70820a396894f2f1e28601d13c3d
+         Worker Auth Current Key Id: folic-obliged-dude-stroller-skinless-eloquence-legible-dispense
+   Worker Auth Registration Request: GzusqckarbczHoLGQ4UA25uSRm41paoR5HikgcBsCT4PMDFT7StpsFy5xjiWJwxszReKwcfGniKLcdpQto5HjhH3PqmdLU8fdT9kM7RMLiyzLKWdLqVWBhhdUiEy7Re2ConJcGWdHsGK7Th6zVQ3SXjqND3dQ3ytcVtAhdEznJQ58ib6HoMvpMTs66TS5ULCBXxpQ1u2syC6ChNPEPbaSpQd9pKWjPcPRVDjKpMzp6cjw9LZSPxBdadM81f7yS3voWoM5yMciXdUW6rqSMaP1NxRvQUAdhVQsM1ZqGLHNV
+           Worker Auth Storage Path: /var/folders/8g/4dnhwwzx2d771tkklxwrd0380000gp/T/nodeenrollment1533264699
+           Worker Public Proxy Addr: 127.0.0.1:9202
+
+==> Boundary server started! Log data will stream in below:
+
+{
+  "id": "GypYTtKfJI",
+  "source": "https://hashicorp.com/boundary/localmachine/controller+worker",
+  "specversion": "1.0",
+  "type": "system",
+  "data": {
+    "version": "v0.1",
+    "op": "github.com/hashicorp/boundary/internal/observability/event.(*HclogLoggerAdapter).writeEvent",
+    "data": {
+      "@original-log-level": "none",
+      "@original-log-name": "aws",
+      "msg": "configuring client automatic mTLS"
+    }
+  },
+  "datacontentype": "text/plain",
+  "time": "2022-09-06T14:14:37.939433-06:00"
+}
+...
+... More log output ...
+...
+```
+
+Leave dev mode running in the current session, and **open a new terminal window or
+tab.**
+
+**Authenticate to the local Boundary dev server.** Enter the password `password`
+when prompted.
+
+```shell-session
+$ boundary authenticate password -auth-method-id ampw_1234567890 -login-name admin
+Please enter the password (it will be hidden): <password>
+
+Authentication information:
+  Account ID:      acctpw_1234567890
+  Auth Method ID:  ampw_1234567890
+  Expiration Time: Wed, 14 Jul 2021 11:38:18 MDT
+  User ID:         u_1234567890
+
+The token was successfully stored in the chosen keyring and is not displayed here.
+```
+
+</Variant>
+
+### Providers
+
+To enable an OIDC auth method an administrator must first configure their OIDC
+provider, and then Boundary. The administrator registers Boundary as a new
+client with their OIDC provider by providing some values unique to their
+Boundary deployment. The administrator then configures Boundary with unique
+client information provided by their OIDC provider during registration. These
+values must match up for OIDC to work.
+
+The administrator will need to provide a list of Boundary callback URLs when
+configuring the OIDC provider. The callback URLs route to one of the controllers
+and must begin with 'https', unless Boundary is in dev mode, where the URLs will
+route to localhost.
+
+Many OIDC providers can be integrated with Boundary. This tutorial demonstrates
+working with Auth0, a popular provider for OIDC.
+
+### Get setup with Auth0
+
+A developer account and sample application are required to setup Auth0 as an OIDC
+provider for Boundary. If you don't have a developer account, [sign up for
+Auth0](https://auth0.com/signup). It is recommended to use a personal account
+for testing, and to avoid integrating an account that might already be
+associated with Auth0. A free account is suitable for testing OIDC integration
+with Boundary.
+
+### Create a user
+
+First, create an Auth0 user that will be permitted to log into the application
+that authorizes Boundary.
+
+1. Once signed up, the Auth0 Dashboard is displayed. Navigate to the **User
+   Management** view using the sidebar on the left side of the page.
+
+   ![Auth0 Dashboard](/img/boundary/oidc/oidc-auth0-dashboard-0.png)
+
+1. Click **+ Create User**.
+
+   ![Auth0 Dashboard](/img/boundary/oidc/oidc-auth0-create-user-0.png)
+
+1. Enter the user _Email_ and _Password_, then Click **Create**.
+
+   ![Auth0 Dashboard](/img/boundary/oidc/oidc-auth0-create-user-1.png)
+
+1. The new user's details should be displayed in the User Management Dashboard.
+
+   ![Auth0 Dashboard](/img/boundary/oidc/oidc-auth0-create-user-2.png)
+
+1. If using Terraform to provision Boundary, copy the **user_id** value under
+   the _Identity Provider Attributes_ section. Save this value for defining the
+   `oidc_user` `subject` later on.
+
+   ![Auth0 Dashboard](/img/boundary/oidc/oidc-auth0-create-user-3.png)
+
+### Create an application
+
+An [application](https://auth0.com/docs/applications) is what authorizes Auth0
+users added in the previous step to connect with Boundary. After creating an
+application, its configuration details are used to add the OIDC auth method to
+Boundary.
+
+1. Navigate to the **Applications** view using the sidebar on the left side of
+   the page.
+
+1. From the Applications view, click the **+ Create Application** button.
+
+   ![Auth0 Create Application](/img/boundary/oidc/oidc-auth0-dashboard-create-0.png)
+
+1. Select **Regular Web Application** and give your application a name. This
+   tutorial calls the application _Boundary OIDC Test_. Click **Create**.
+
+   ![Auth0 Name Web Application](/img/boundary/oidc/oidc-auth0-dashboard-create-1.png)
+
+1. Once created the browser should redirect to the application settings view. If
+   not, visit **Applications** using the navigation bar on the left, select the new
+   application and visit its **Settings** view.
+
+   Scroll down to the **Application URIs** section.
+
+   <Variant slug="boundary-deploy" option="hcp">
+
+   Create a callback URL by entering the HCP Boundary cluster address, followed
+   by `/v1/auth-methods/oidc:authenticate:callback` under the _Allowed Callback
+   URLs_ field. For example,
+   `https://e58fe114-7624-431c-994d-b6670e90b03J.boundary.hashicorp.cloud/v1/auth-methods/oidc:authenticate:callback`.
+
+   ```plaintext
+   https://BOUNDARY_ADDR/v1/auth-methods/oidc:authenticate:callback
+   ```
+
+   This value is also printed later on when creating the OIDC method with the
+   Boundary CLI, but is fixed and can be entered into the Auth0 provider
+   settings ahead of time.
+
+   Lastly, locate the _Allowed Logout URLs_ section directly below, and enter
+   the HCP Boundary Cluster address followed by `:3000` (such as
+   `https://e58fe114-7624-431c-994d-b6670e90b03J.boundary.hashicorp.cloud:3000`)
+
+   ```plaintext
+   https://BOUNDARY_ADDR:3000
+   ```
+
+   Make sure your config matches the image shown below.
+
+   ![Auth0 Application Settings](/img/boundary/oidc/oidc-auth0-app-settings-hcp.png)
+   
+   </Variant>
+   <Variant slug="boundary-deploy" option="dev">
+
+   Paste the following callback URL under the _Allowed Callback URLs_ field.
+
+   ```plaintext
+   http://localhost:9200/v1/auth-methods/oidc:authenticate:callback
+   ```
+
+   This value is also printed later on when creating the OIDC method with the
+   Boundary CLI, but is fixed and can be entered into the Auth0 provider
+   settings ahead of time.
+
+   Lastly, locate the _Allowed Logout URLs_ section directly below, and enter
+   `http://localhost:3000` because Boundary is running in dev mode.
+
+   Make sure your config matches the image shown below.
+
+   ![Auth0 Application Settings](/img/boundary/oidc/oidc-auth0-app-settings-1.png)
+
+   </Variant>
+
+1. Three important values are listed at the top of the **Settings** view for use
+   when configuring OIDC with Boundary.
+
+   - Domain
+   - Client ID
+   - Client Secret
+
+   Keep this page open to refer to these values in the next steps.
+
+   ![Auth0 Application Settings](/img/boundary/oidc/oidc-auth0-app-settings-0.png)
+
+## Auth method creation
+
+Authentication is the process of establishing a user's identity. The user
+initiates this process by selecting an auth method.
+
+When the user selects an OIDC auth method, the user's client sends a request to
+the system and includes additional data about the client itself. The system then
+returns two URLs: an OIDC authentication request URL and a Boundary token
+request URL.
+
+If the user's client is a web browser, the client stores the Boundary token
+request URL in local storage then redirects the page to the OIDC authentication
+request URL. If the user's client is not a web browser, the client opens a web
+browser to the OIDC authentication request URL and begins polling the Boundary
+token request URL.
+
+The user interacts with the OIDC provider to prove their identity using the
+browser window opened by the user's client. Once the OIDC provider has
+authenticated the user's identity, it redirects the browser window back to
+Boundary. The user's client then retrieves a Boundary token from the request
+URL.
+
+To get started, an authentication method must be created for the provider of
+choice.
+
+### Create auth method for the provider
+
+To set up a new auth method for your provider you will need the following from
+your provider's application settings:
+
+- issuer
+- client-id
+- client-secret
+
+Auth methods can be created using the Admin Console UI, CLI, or using Terraform.
+
+<Tabs>
+<Tab heading="Admin Console" group="admin">
+
+
+The Boundary Admin Console provides a UI for creating and managing OIDC
+resources, including auth methods.
+
+<Variant slug="boundary-deploy" option="hcp">
+
+Open the Admin Console UI by entering your HCP Boundary Cluster URL into a
+browser (such as
+`https://e58fe114-7624-431c-994d-b6670e90b03J.boundary.hashicorp.cloud`).
+
+Enter the admin username and password you created when you deployed the new
+instance and click **Authenticate**.
+
+</Variant>
+<Variant slug="boundary-deploy" option="dev">
+
+Open the Admin Console UI by entering the Dev Controller URL of
+`http://localhost:9200` into a browser.
+
+Enter the admin username `admin` and password `password` and click
+**Authenticate**.
+
+</Variant>
+
+![Admin UI Login](/img/boundary/boundary-ui-login-hcp_light.png#light-theme-only)
+![Admin UI Login](/img/boundary/boundary-ui-login-hcp_dark.png#dark-theme-only)
+
+For **Auth0**, these settings map to the following:
+
+- `issuer` -> _Domain_
+- `client-id` -> _Client ID_
+- `client-secret` -> _Client Secret_
+
+With these values you gathered from the Auth0 application settings above a new
+OIDC auth method can be created.
+
+Start by navigating to the Auth Methods settings view using the menu on the left
+side of the Admin Console. Select **New** and click **OIDC**.
+
+![Admin Console New Auth Method](/img/boundary/oidc/admin-new-oidc-auth_light.png#light-theme-only)
+![Admin Console New Auth Method](/img/boundary/oidc/admin-new-oidc-auth_dark.png#dark-theme-only)
+
+Fill out the form details using the settings gathered from the Auth0 application
+settings.
+
+![Admin Console Auth Method Details](/img/boundary/oidc/admin-new-oidc-auth-form_light.png#light-theme-only)
+![Admin Console Auth Method Details](/img/boundary/oidc/admin-new-oidc-auth-form_dark.png#dark-theme-only)
+
+These include:
+
+- Name (_Example: `Auth0`_)
+- Description (_Example: `Auth0 OIDC test auth method`_)
+- Issuer (_Example: `https://dev-1vdl8c0q.us.auth0.com/`_) **Ensure the Issuer has a trailing `/` at the end**
+- Client ID (_Example: `zbaJLTZh3n14WqSV7qQ9onuIVRDaZdzz`_)
+- Client Secret (_Example: `t35c9NNw1aZ8haQKYJjCL0lauNOSp5UNPovUJXo8Ea2sPZAR1DszEowX-5-lg-Xr`_)
+
+<Variant slug="boundary-deploy" option="hcp">
+
+Additionally, set the **Max Age** and **API URL Prefix**. The Max Age is set to
+`0`, while the API URL Prefix is set to the HCP Boundary Cluster URL (for
+example,
+`https://e58fe114-7624-431c-994d-b6670e90b03J.boundary.hashicorp.cloud`)
+
+- Max Age: `0`
+- API URL Prefix: `https://BOUNDARY_ADDR`
+
+<Tip title="Max Age">
+
+The _Max Age_ property defines the amount of time since the user's last
+authentication that must pass before the user must log in again. For this
+demonstration, it will prevent any existing Auth0 accounts currently
+authenticated in the browser from being used when the authentication is
+performed.
+
+</Tip>
+
+
+<Tip title="API URL Prefix">
+
+The _API URL Prefix_ is used for actions like token retrieval and
+redirection.
+
+</Tip>
+
+</Variant>
+<Variant slug="boundary-deploy" option="dev">
+
+Additionally, set the **Max Age** and **API URL Prefix** as follows:
+
+- Max Age: `0`
+- API URL Prefix: `http://localhost:9200`
+
+<Tip title="Max Age">
+
+The _Max Age_ property defines the amount of time since the user's last
+authentication that must pass before the user must log in again. For this
+demonstration, it will prevent any existing Auth0 accounts currently
+authenticated in the browser from being used when the authentication is
+performed.
+
+</Tip>
+
+
+<Tip title="API URL Prefix">
+
+The _API URL Prefix_ is set to `http://localhost:9200` because Boundary is
+running in dev mode. This URL is used for actions like token retrieval and
+redirection.
+
+</Tip>
+
+</Variant>
+
+Once the form is completed, click **Save**.
+
+With the new auth method created, an allowed signing algorithm can be added.
+
+Click **Edit Form** for the new auth method and scroll down to the **Signing
+Algorithms** section. Ensure that **RS256** is selected and click **Add**.
+
+Once added, **Save** the form.
+
+The new authentication method has now been created. To the right of the new auth
+method, notice the state is set to _Inactive_. Before it can be used the new
+auth method must be switched to an active state.
+
+Next we will review the available authentication states and activate the new
+OIDC auth method.
+
+<Note title="Troubleshooting">
+
+If unable to save the auth method, ensure that the **Issuer** has a trailing `/` at the end of the URL.
+
+</Note>
+
+</Tab>
+<Tab heading="CLI" group="cli">
+
+
+Start by ensuring you are **logged in to Boundary as the admin user.**
+
+For **Auth0**, these settings map to the following:
+
+- `issuer` -> _Domain_
+- `client-id` -> _Client ID_
+- `client-secret` -> _Client Secret_
+
+With these values you gathered from the Auth0 application settings above a new
+OIDC auth method can be created.
+
+Start by setting the Client ID, Client Secret, and Issuer URL as environment variables.
+
+```shell-session
+$ export CLIENT_ID="<COPIED-CLIENT-ID>"; \
+export CLIENT_SECRET="<COPIED-CLIENT-SECRET>"; \
+export ISSUER_URL="<COPIED-DOMAIN>"
+```
+
+**Example:**
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ export CLIENT_ID="zaxJLTZh3n14WqSQ7qQ9onuIVRDaZdzz"; \
+export CLIENT_SECRET="t35c9NNw1aZ8haEKFJbJF0lauMOSp5UNPovUJXo8Ea2sPZAR1DszEowX-6-lg-Xr"; \
+export ISSUER_URL="dev-1sdl8c0z.us.auth0.com"
+```
+
+</CodeBlockConfig>
+
+These values will be passed to Boundary when creating the new OIDC auth method.
+
+<Note>
+
+ The `api-url-prefix` must be set to the URL of your Boundary
+cluster. Select **HCP** or **Dev mode** to see an example.
+
+</Note>
+
+<Variant slug="boundary-deploy" option="hcp">
+
+For HCP the `api-url-prefix` is set to the HCP cluster's address found in the
+HCP cloud portal. This value is identical to the `BOUNDARY_ADDR` environment
+variable set when [logging in to the CLI](#get-setup) (for example,
+`https://e58fe114-7624-431c-994d-b6670e90b03J.boundary.hashicorp.cloud`). The
+following example passes this shell variable to the `boundary auth-methods
+create oidc` command, but the cluster address can also be passed directly.
+
+```shell-session
+$ boundary auth-methods create oidc \
+  -issuer "https://$ISSUER_URL" \
+  -client-id "$CLIENT_ID" \
+  -client-secret "$CLIENT_SECRET" \
+  -signing-algorithm RS256 \
+  -api-url-prefix "$BOUNDARY_ADDR" \
+  -name "auth0"
+```
+
+- The `signing-algorithm` is commonly set to `RS256`.
+
+- The `api-url-prefix` is used by the OIDC provider in the authentication flow,
+  and should match the HCP Boundary cluster's address. The `BOUNDARY_ADDR`
+  variable is passed in this example.
+
+**Example:**
+
+<CodeBlockConfig hideClipboard highlight="1-7,11,38-45">
+
+```shell-session
+$ boundary auth-methods create oidc \
+   -issuer "https://$ISSUER_URL" \
+   -client-id "$CLIENT_ID" \
+   -client-secret "$CLIENT_SECRET" \
+   -signing-algorithm RS256 \
+   -api-url-prefix "$BOUNDARY_ADDR" \
+   -name "auth0"
+
+Auth Method information:
+  Created Time:         Fri, 09 Sep 2022 11:11:55 MDT
+  ID:                   amoidc_40fr5jkLpk
+  Name:                 auth0
+  Type:                 oidc
+  Updated Time:         Fri, 09 Sep 2022 11:11:55 MDT
+  Version:              1
+
+  Scope:
+    ID:                 global
+    Name:               global
+    Type:               global
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    change-state
+    authenticate
+
+  Authorized Actions on Auth Method's Collections:
+    accounts:
+      create
+      list
+    managed-groups:
+      create
+      list
+
+  Attributes:
+    api_url_prefix:     https://e58fe114-7624-431c-994d-b6670e90b03J.boundary.hashicorp.cloud
+    callback_url:       https://e58fe114-7624-431c-994d-b6670e90b03J.boundary.hashicorp.cloud/v1/auth-methods/oidc:authenticate:callback
+    client_id:          zaxJLTZh3n14WqSQ7qQ9onuIVRDaZdzz
+    client_secret_hmac: Qc3i8NdnTP6rl4JANIg-a2GXgRW5rEKTp2ReIK_BOng
+    issuer:             https://dev-1sdl8c0z.us.auth0.com
+    signing_algorithms: [RS256]
+    state:              inactive
+```
+
+</CodeBlockConfig>
+
+</Variant>
+<Variant slug="boundary-deploy" option="dev">
+
+For Dev mode the `api-url-prefix` is set to the local controller's address of
+`http://localhost:9200`.
+
+```shell-session
+$ boundary auth-methods create oidc \
+  -issuer "https://$ISSUER_URL" \
+  -client-id "$CLIENT_ID" \
+  -client-secret "$CLIENT_SECRET" \
+  -signing-algorithm RS256 \
+  -api-url-prefix "http://localhost:9200" \
+  -name "auth0"
+```
+
+- The `signing-algorithm` is commonly set to `RS256`.
+
+- The `api-url-prefix` is used by the OIDC provider in the authentication flow,
+  and should match the Boundary controller's address, set to
+  `http://localhost:9200` in this example.
+
+**Example:**
+
+<CodeBlockConfig hideClipboard highlight="1-7,11,35-42">
+
+```shell-session
+$ boundary auth-methods create oidc \
+   -issuer "https://$ISSUER_URL" \
+   -client-id "$CLIENT_ID" \
+   -client-secret "$CLIENT_SECRET" \
+   -signing-algorithm RS256 \
+   -api-url-prefix "http://localhost:9200" \
+   -name "auth0"
+
+Auth Method information:
+  Created Time:         Thu, 06 May 2021 16:39:33 MDT
+  ID:                   amoidc_oHt4HQFCrN
+  Name:                 auth0
+  Type:                 oidc
+  Updated Time:         Thu, 06 May 2021 16:39:33 MDT
+  Version:              1
+
+  Scope:
+    ID:                 global
+    Name:               global
+    Type:               global
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    change-state
+    authenticate
+
+  Authorized Actions on Auth Method's Collections:
+    accounts:
+      create
+      list
+
+  Attributes:
+    api_url_prefix:     http://localhost:9200
+    callback_url:       http://localhost:9200/v1/auth-methods/oidc:authenticate:callback
+    client_id:          zbaJLTZh3n14WqSV7qQ9onuIVRDaZdzx
+    client_secret_hmac: ayJRYSCphzxcHiKJvBrnDVtz1yiR958ejQuRGdQJMeM
+    issuer:             https://dev-1vdl8c0q.us.auth0.com
+    signing_algorithms: [RS256]
+    state:              inactive
+```
+
+</CodeBlockConfig>
+
+</Variant>
+
+The new authentication method has now been created. Under the **Attributes**
+output, notice the **state** is set to _inactive_. Before it can be used the new
+auth method must be switched to an active state.
+
+**Copy the new OIDC Auth Method ID from the output.**
+
+Next we will review the available authentication states and activate the new
+OIDC auth method.
+
+</Tab>
+<Tab heading="Terraform" group="terraform">
+
+
+Begin by creating a working directory to store the Terraform configuration file
+and changing into that directory. This tutorial will work out of the user's
+`HOME` directory.
+
+```shell-session
+$ mkdir learn-boundary-oidc && cd learn-boundary-oidc/
+```
+
+Next, create a Terraform configuration file called `main.tf`.
+
+```shell-session
+$ touch main.tf
+```
+
+Open the `main.tf` file in your code editor and add the base Boundary provider
+configuration below. The `1.0.2` version or above is required to support OIDC.
+An `output` value is included to print the oidc auth method id when Terraform
+applies the configuration.
+
+The initial setup should set the boundary provider to match Boundary's
+authentication configuration so that Terraform can authenticate to Boundary.
+These settings are discussed in the [Get Setup](#get-setup) section.
+
+<Variant slug="boundary-deploy" option="hcp">
+
+Copy the following configuration, but update the `addr`, `auth_method_id`,
+`password_auth_method_login_name`, and `password_auth_method_password` with the
+correct values for your Boundary org. 
+
+- `addr` is the `BOUNDARY_ADDR` copied from the HCP portal. 
+- `auth_method_id` is for the `password` auth method and can be gathered from
+  the Boundary Admin Console UI. 
+- `password_auth_method_login_name` and `password_auth_method_password` were
+  created upon initial setup of the HCP Boundary cluster.
+
+<CodeBlockConfig filename="learn-boundary-oidc/main.tf">
+
+```hcl
+terraform {
+  required_providers {
+    boundary = {
+      source  = "hashicorp/boundary"
+      version = "1.0.12"
+    }
+  }
+}
+
+provider "boundary" {
+  addr                            = "BOUNDARY_ADDR" # updateme
+  auth_method_id                  = "ampw_1234567890"    # updateme
+  password_auth_method_login_name = "myuser"             # updateme
+  password_auth_method_password   = "passpass"           # updateme
+}
+```
+
+</CodeBlockConfig>
+
+</Variant>
+<Variant slug="boundary-deploy" option="dev">
+
+Copy the following configuration, but replace the `recovery_kms_hcl` `key` with
+the value printed in the `boundary dev` terminal window.
+
+<CodeBlockConfig filename="learn-boundary-oidc/main.tf">
+
+```hcl
+terraform {
+  required_providers {
+    boundary = {
+      source  = "hashicorp/boundary"
+      version = "1.0.12"
+    }
+  }
+}
+
+output "auth-method-id" {
+  value = boundary_auth_method_oidc.provider.id
+}
+
+provider "boundary" {
+  addr             = "http://127.0.0.1:9200"
+  recovery_kms_hcl = <<EOT
+kms "aead" {
+  purpose = "recovery"
+  aead_type = "aes-gcm"
+  key = "1/niAcbdYlJGqwOJfRtx3AyewF+Ty2EnioOR/q7tWRo="
+  key_id = "global_recovery"
+}
+EOT
+}
+```
+
+</CodeBlockConfig>
+
+</Variant>
+
+Next, Boundary Terraform resources will be used to set up the provider of
+choice.
+
+For **Auth0**, these settings map to the following:
+
+- `issuer` -> _Domain_
+- `client-id` -> _Client ID_
+- `client-secret` -> _Client Secret_
+- `subject` -> _user_id_
+
+With these values you gathered from the [Auth0 application settings](#create-an-application) a new
+OIDC auth method can be created.
+
+The Terraform Boundary provider enables OIDC using the
+`boundary_auth_method_oidc` and `boundary_account_oidc` resources.
+
+The
+[`boundary_auth_method_oidc`](https://registry.terraform.io/providers/hashicorp/boundary/latest/docs/resources/auth_method_oidc)
+resource uses the following attributes to configure a new auth method:
+
+<CodeBlockConfig hideClipboard>
+
+```plainText
+resource "boundary_auth_method_oidc" "name" {
+  name                = (String)
+  description         = (String)
+  scope_id            = (String)
+  issuer              = (String)
+  client_id           = (String)
+  client_secret       = (String)
+  signing_algorithms  = (List of String)
+  api_url_prefix      = (String)
+}
+```
+
+</CodeBlockConfig>
+
+- The `scope_id` is the global scope ID. For HCP this is gathered from the
+  Boundary Admin Console UI, or is `o_1234567890` if using Boundary's Dev mode.
+- The `issuer` was gathered from the provider, and should be prefixed by `https://`
+- The `client_id` was gathered from the provider
+- The `client_secret` was gathered from the provider
+- The `signing_algorithms` are defined by the provider's issued tokens, and will
+  usually include RS256
+- The `api_url_prefix` is used when generating callback urls and corresponds to
+  an address where the controller is reachable by the provider. For HCP Boundary
+  this is the Boundary Cluster URL found in the HCP portal (such as
+  `https://e58fe114-7624-431c-994d-b6670e90b03J.boundary.hashicorp.cloud`). For
+  dev mode this is `http://localhost:9200`
+
+The
+[`boundary_account_oidc`](https://registry.terraform.io/providers/hashicorp/boundary/latest/docs/resources/account_oidc)
+resource uses the following attributes to configure a new auth method:
+
+<CodeBlockConfig hideClipboard>
+
+```plainText
+resource "boundary_account_oidc" "name" {
+  name           = (String)
+  description    = (String)
+  auth_method_id = (String)
+  issuer         = (String)
+  subject        = (String)
+}
+```
+
+</CodeBlockConfig>
+
+- The `auth_method_id` is defined by the `boundary_auth_method_oidc` resource,
+  and can be accessed using the named scope id, like
+  `boundary_auth_meethod_oidc.name.id`
+- The `issuer` was gathered from the provider, and should be prefixed by `https://`
+- The `subject` maps to the user ID, and was gathered from the provider when
+  creating a user
+
+Add these two resources into your `main.tf` file. The entire file contents are
+shown below.
+
+<Variant slug="boundary-deploy" option="hcp">
+
+**_Make sure the following values are updated_**:
+
+- `addr` (from HCP portal)
+- `auth_method_id` (from Boundary Admin Console UI)
+- `password_auth_method_login_name` (from initial Boundary Cluster creation)
+- `password_auth_method_password` (from initial Boundary Cluster creation)
+- `scope_id` (global scope from Boundary Admin Console UI)
+- `issuer` (from provider)
+- `client_id` (from provider)
+- `client_secret` (from provider)
+- `subject` (from provider)
+
+<CodeBlockConfig filename="learn-boundary-oidc/main.tf">
+
+```hcl
+terraform {
+  required_providers {
+    boundary = {
+      source  = "hashicorp/boundary"
+      version = "1.0.12"
+    }
+  }
+}
+
+provider "boundary" {
+  addr                            = "BOUNDARY_ADDR" # updateme
+  auth_method_id                  = "ampw_1234567890"    # updateme
+  password_auth_method_login_name = "myuser"             # updateme
+  password_auth_method_password   = "passpass"           # updateme
+}
+
+resource "boundary_auth_method_oidc" "provider" {
+  name               = "Auth0"
+  description        = "OIDC auth method for Auth0"
+  scope_id           = "o_1234567890"                    # updateme
+  issuer             = "https://dev-1vdl8c0q.us.auth0.com/"   # updateme
+  client_id          = "zbaJLTZh3n14WqSV7qQ9onuIVRDaZdzx"     # updateme
+  client_secret      = "t35c9NNw1aZ8haQKYJjCL0lauNOSp5UNPovUJXo8Ea2sPZAR1DszEowX-5-lg-Xr"   # updateme
+  signing_algorithms = ["RS256"]
+  api_url_prefix     = "BOUNDARY_ADDR"                   # updateme
+}
+
+resource "boundary_account_oidc" "oidc_user" {
+  name           = "user1"
+  description    = "OIDC account for user1"
+  auth_method_id = boundary_auth_method_oidc.provider.id
+  issuer  = "https://dev-1vdl8c0q.us.auth0.com/"              # updateme
+  subject = "auth0|6077581e2ce19d006dfaf211"
+}
+```
+
+</CodeBlockConfig>
+
+</Variant>
+<Variant slug="boundary-deploy" option="dev">
+
+**_Make sure the following values are updated_**:
+
+- `kms` `key` (from `boundary dev`)
+- `issuer` (from provider)
+- `client_id` (from provider)
+- `client_secret` (from provider)
+- `subject` (from provider)
+
+<CodeBlockConfig filename="learn-boundary-oidc/main.tf">
+
+```hcl
+terraform {
+  required_providers {
+    boundary = {
+      source  = "hashicorp/boundary"
+      version = "1.0.12"
+    }
+  }
+}
+
+output "auth-method-id" {
+  value = boundary_auth_method_oidc.provider.id
+}
+
+provider "boundary" {
+  addr             = "http://127.0.0.1:9200"
+  recovery_kms_hcl = <<EOT
+kms "aead" {
+  purpose = "recovery"
+  aead_type = "aes-gcm"
+  key = "gm0aHvU1ENpc9mrB5Kt2bqCyh9PODOqnDznryFksyI0="
+  key_id = "global_recovery"
+}
+EOT
+}
+
+resource "boundary_auth_method_oidc" "provider" {
+  name               = "Auth0"
+  description        = "OIDC auth method for Auth0"
+  scope_id           = "o_1234567890"
+  issuer             = "https://dev-1vdl8c0q.us.auth0.com/"
+  client_id          = "zbaJLTZh3n14WqSV7qQ9onuIVRDaZdzx"
+  client_secret      = "t35c9NNw1aZ8haQKYJjCL0lauNOSp5UNPovUJXo8Ea2sPZAR1DszEowX-5-lg-Xr"
+  signing_algorithms = ["RS256"]
+  api_url_prefix     = "http://localhost:9200"
+}
+
+resource "boundary_account_oidc" "oidc_user" {
+  name           = "user1"
+  description    = "OIDC account for user1"
+  auth_method_id = boundary_auth_method_oidc.provider.id
+  issuer  = "https://dev-1vdl8c0q.us.auth0.com/"
+  subject = "auth0|6077581e2ce19d006dfaf211"
+}
+```
+
+</CodeBlockConfig>
+
+</Variant>
+
+With these resources in place, first initialize Terraform.
+
+```shell-session
+$ terraform init
+
+Initializing the backend...
+
+Initializing provider plugins...
+- Finding hashicorp/boundary versions matching "1.0.12"...
+- Installing hashicorp/boundary v1.0.12...
+- Installed hashicorp/boundary v1.0.12 (signed by HashiCorp)
+
+Terraform has created a lock file .terraform.lock.hcl to record the provider
+selections it made above. Include this file in your version control repository
+so that Terraform can guarantee to make the same selections by default when
+you run "terraform init" in the future.
+
+Terraform has been successfully initialized!
+
+You may now begin working with Terraform. Try running "terraform plan" to see
+any changes that are required for your infrastructure. All Terraform commands
+should now work.
+
+If you ever set or change modules or backend configuration for Terraform,
+rerun this command to reinitialize your working directory. If you forget, other
+commands will detect it and remind you to do so if necessary.
+```
+
+Next, apply the configuration. Enter `yes` when prompted for confirmation.
+
+```shell-session
+$ terraform apply
+
+An execution plan has been generated and is shown below.
+Resource actions are indicated with the following symbols:
+  + create
+
+Terraform will perform the following actions:
+
+  # boundary_account_oidc.oidc_user will be created
+  + resource "boundary_account_oidc" "oidc_user" {
+      + auth_method_id = (known after apply)
+      + description    = "OIDC account for user1"
+      + id             = (known after apply)
+      + issuer         = "https://dev-1vdl8c0q.us.auth0.com/"
+      + name           = "user1"
+      + subject        = "auth0|6077581e2ce19d006dfaf211"
+    }
+
+  # boundary_auth_method_oidc.provider will be created
+  + resource "boundary_auth_method_oidc" "provider" {
+      + api_url_prefix     = "https://e58fe114-7624-431c-994d-b6670e90b03J.boundary.hashicorp.cloud"
+      + callback_url       = (known after apply)
+      + client_id          = "zbaJLTZh3n14WqSV7qQ9onuIVRDaZdzx"
+      + client_secret      = "t35c9NNw1aZ8haQKYJjCL0lauNOSp5UNPovUJXo8Ea2sPZAR1DszEowX-5-lg-Xr"
+      + client_secret_hmac = (known after apply)
+      + description        = "OIDC auth method for Auth0"
+      + id                 = (known after apply)
+      + issuer             = "https://dev-1vdl8c0q.us.auth0.com/"
+      + name               = "Auth0"
+      + scope_id           = "o_1234567890"
+      + signing_algorithms = [
+          + "RS256",
+        ]
+      + state              = (known after apply)
+      + type               = "oidc"
+    }
+
+Plan: 2 to add, 0 to change, 0 to destroy.
+
+Do you want to perform these actions?
+  Terraform will perform the actions described above.
+  Only 'yes' will be accepted to approve.
+
+  Enter a value: yes
+
+boundary_auth_method_oidc.provider: Creating...
+boundary_auth_method_oidc.provider: Creation complete after 1s [id=amoidc_AliCbVihqv]
+boundary_account_oidc.oidc_user: Creating...
+boundary_account_oidc.oidc_user: Creation complete after 0s [id=acctoidc_Hrbbcmxuny]
+
+Apply complete! Resources: 2 added, 0 changed, 0 destroyed.
+
+Outputs:
+
+auth-method-id = amoidc_AliCbVihqv
+```
+
+The new authentication method has been created! If Terraform encounters an
+error, ensure the `issuer`, `client_id` and `client_secret` have been copied
+correctly from the provider, and that the issuer is prefixed with `https://`.
+
+Copy the `auth-method-id` from the output.
+
+</Tab>
+</Tabs>
+
+
+## Authentication states
+
+An OIDC auth method can be in one of several different states: Inactive, Active
+Private, and Active Public. The current state of an OIDC auth method
+affects how endpoints respond to requests and, in some cases, whether access to
+an endpoint requires authentication.
+
+### State change operations
+
+- _MakeInactive_ transitions an OIDC auth method from either the Active Private
+  or the Active Public state into the Inactive state.
+- _MakePrivate_ transitions an OIDC auth method from either the Inactive or the
+  Active Public state into the Active Private state. If transitioning from the
+  Inactive state, the transition will only succeed if the configuration is
+  valid.
+- _MakePublic_ transitions an OIDC auth method from either the Inactive or the
+  Active Private state into the Active Public state. If transitioning from the
+  Inactive state, the transition will only succeed if the configuration is
+  valid.
+
+Three different states exist for an authentication method:
+
+- `inactive` users can not authenticate with inactive auth methods and the inactive auth methods are not
+  listed for unauthenticated users.
+- `active-private` users can authenticate with active-private auth methods and active-private
+  auth methods are not listed for unauthenticated users.
+- `active-public` users can authenticate active-public auth methods and active-public auth methods are
+  listed for unauthenticated users.
+
+Before changing the state of an auth-method, Boundary will retrieve the
+Provider’s discovery document for the auth method’s issuer and attempt to
+validate the auth-method’s configuration against this published information. If
+Boundary is unable to validate the configuration an error is returned and the
+state change is not made.
+
+If a change is made from active-public or active-private to inactive, all
+in-flight authentications will succeed unless the auth method’s configuration is
+modified while the request is in-flight.
+
+When changing an auth method's state using `boundary auth-methods change-state`
+the `-disable-discovered-config-validation` flag is used to disable validation
+against the provider’s published discovery document. This allows for the very
+rare occurrence when the Provider has published an invalid discovery document.
+
+### Activate the OIDC auth method
+
+Now that a new OIDC method has been created, it can be activated and assigned as
+the default login type for the global scope.
+
+Currently the login type is set as inactive, and won't allow authentication.
+
+```shell-session
+$ boundary authenticate oidc -auth-method-id amoidc_oHt4HQFCrN
+Error from controller when performing authentication start
+
+Error information:
+  Kind:                Internal
+  Message:             authmethod_service.(Service).authenticateOidcStart: Error generating parameters for starting the OIDC flow.: unknown: error #500
+  Status:              500
+  context:             Error from controller when performing authentication start
+```
+
+Auth methods can be activated using the Admin Console UI, CLI, or using Terraform.
+
+<Tabs>
+<Tab heading="Admin Console" group="admin">
+
+Before the new auth method will be allowed it must be set to an active state.
+
+Under the settings for the new auth method, select **Inactive** from the menu in
+the upper-right side of the page and change its state by clicking **Public**.
+
+The login type is now allowed.
+
+### Set OIDC as primary login
+
+Global and organization scopes may have auth methods in Boundary, and each scope
+has one primary auth-method ID. Boundary will automatically create a user upon
+first successful authentication using the scope’s primary auth method, which will
+be used by scopes with only one auth method available.
+
+When [migrating the database](/boundary/tutorials/oss-configuration/upgrade-version), Boundary
+will produce a log of any auth methods which resulted in no primary auth method
+being set for the scope.
+
+Set the new OIDC auth method as the primary auth method for the global scope.
+
+Under the settings for the new auth method, select **Manage** from the menu in
+the upper-right side of the page.
+
+A confirmation window will be displayed to inform you that new users that sign
+in using OIDC will automatically be added to the new auth method. Select **OK** to
+continue.
+
+Now try authenticating using the newly created OIDC auth method.
+
+Select the **admin** user menu in the top-right corner of the page and select
+**Deauthenticate**.
+
+Next, select the new auth method called **Auth0**, and click **Authenticate**.
+
+![Admin Console Auth0](/img/boundary/oidc/admin-auth0-authenticate_light.png#light-theme-only)
+![Admin Console Auth0](/img/boundary/oidc/admin-auth0-authenticate_dark.png#dark-theme-only)
+
+A browser tab should automatically open and prompt you to log in with your Auth0
+user account credentials.
+
+![Auth0 Application Login](/img/boundary/oidc/oidc-auth0-login.png)
+
+After successful authentication you are automatically redirected to the Admin
+Console. Notice the restricted permissions for this new user, which can be
+updated and assigned using
+[Roles](/boundary/docs/concepts/domain-model/roles) and
+[Groups](/boundary/docs/concepts/domain-model/groups).
+
+If you were to log back into the Admin Console as the admin user, you would
+notice the new OIDC user has automatically been added under the **Users** view.
+
+![Admin Console New User](/img/boundary/oidc/admin-users-new_light.png#light-theme-only)
+![Admin Console New User](/img/boundary/oidc/admin-users-new_dark.png#dark-theme-only)
+
+Next you will review the various methods that can be used to authenticate to
+Boundary using the new OIDC auth method.
+
+</Tab>
+<Tab heading="CLI" group="cli">
+
+If you attempt to enable the the auth method by updating its state to public, an error will be produced.
+
+```shell-session
+$ boundary auth-methods change-state oidc -id amoidc_oHt4HQFCrN -state active-public
+Error from controller when performing change-state on oidc-type auth method
+
+Error information:
+  Kind:                Internal
+  Message:             oidc.(Repository).MakePublic: oidc.(Repository).transitionAuthMethodTo: oidc.(Repository).ValidateDiscoveryInfo:
+  oidc.convertToProvider: AuthMethod cannot be converted to a valid OIDC Provider: parameter violation: error #100: NewProvider: unable to create provider:
+  oidc: issuer did not match the issuer returned by provider, expected "https://dev-1vdl8c0q.us.auth0.com" got "https://dev-1vdl8c0q.us.auth0.com/"
+  Status:              500
+  context:             Error from controller when performing change-state on oidc-type auth method
+```
+
+Notice the 500 error, and the discrepancy between the expected URLs. The issuer
+URL needs to be updated to include a `/` at the end.
+
+Additionally, set the `-max-age` option to `0`, which will force the user to
+re-authenticate if they are already logged in with the current browser session.
+
+```shell-session
+$ boundary auth-methods update oidc -id amoidc_oHt4HQFCrN -issuer "https://ISSUER_URL/" -max-age 0
+```
+
+**Example:**
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary auth-methods update oidc -id amoidc_oHt4HQFCrN -issuer "https://dev-1vdl8c0q.us.auth0.com/" -max-age 0
+
+Auth Method information:
+  Created Time:         Thu, 06 May 2021 16:39:33 MDT
+  ID:                   amoidc_oHt4HQFCrN
+  Name:                 auth0
+  Type:                 oidc
+  Updated Time:         Thu, 06 May 2021 16:58:21 MDT
+  Version:              2
+
+  Scope:
+    ID:                 global
+    Name:               global
+    Type:               global
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    change-state
+    authenticate
+
+  Authorized Actions on Auth Method's Collections:
+    accounts:
+      create
+      list
+
+  Attributes:
+    api_url_prefix:     https://e58fe114-7624-431c-994d-b6670e90b03J.boundary.hashicorp.cloud
+    callback_url:       https://e58fe114-7624-431c-994d-b6670e90b03J.boundary.hashicorp.cloud/v1/auth-methods/oidc:authenticate:callback
+    client_id:          zbaJLTZh3n14WqSV7qQ9onuIVRDaZdzx
+    client_secret_hmac: ayJRYSCphzxcHiKJvBrnDVtz1yiR958ejQuRGdQJMeM
+    issuer:             https://dev-1vdl8c0q.us.auth0.com/
+    max_age:            0
+    signing_algorithms: [RS256]
+    state:              inactive
+```
+
+</CodeBlockConfig>
+
+The auth method's state can now be set to active-public.
+
+```shell-session
+$ boundary auth-methods change-state oidc -id amoidc_oHt4HQFCrN -state active-public
+
+Auth Method information:
+  Created Time:         Fri, 09 Sep 2022 11:11:55 MDT
+  ID:                   amoidc_oHt4HQFCrN
+  Name:                 auth0
+  Type:                 oidc
+  Updated Time:         Fri, 09 Sep 2022 11:41:33 MDT
+  Version:              3
+
+  Scope:
+    ID:                 global
+    Name:               global
+    Type:               global
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    change-state
+    authenticate
+
+  Authorized Actions on Auth Method's Collections:
+    accounts:
+      create
+      list
+    managed-groups:
+      create
+      list
+
+  Attributes:
+    api_url_prefix:     https://e58fe114-7624-431c-994d-b6670e90b03J.boundary.hashicorp.cloud
+    callback_url:       https://e58fe114-7624-431c-994d-b6670e90b03J.boundary.hashicorp.cloud/v1/auth-methods/oidc:authenticate:callback
+    client_id:          zbaJLTZh3n14WqSV7qQ9onuIVRDaZdzx
+    client_secret_hmac: Qc3i8NdnTP6rl4JANIg-a2GXgRW5rEKTp2ReIK_BOng
+    issuer:             https://dev-1vdl8c0q.us.auth0.com/
+    max_age:            0
+    signing_algorithms: [RS256]
+    state:              active-public
+```
+
+And the login type will now allow be allowed.
+
+### Set OIDC as primary login
+
+Global and organization scopes may have auth methods in Boundary, and each scope
+has one primary auth-method ID. Boundary will automatically create a user upon
+first successful authentication using the scope’s primary auth method, which will
+be used by scopes with only one auth method available.
+
+When [migrating the database](/boundary/tutorials/oss-configuration/upgrade-version), Boundary
+will produce a log of any auth methods which resulted in no primary auth method
+being set for the scope.
+
+Set the new OIDC auth method as the primary auth method for the global scope.
+
+```shell-session
+$ boundary scopes update -primary-auth-method-id amoidc_q7jAdI1QgA -id global
+
+Scope information:
+  Created Time:             Thu, 18 Aug 2022 10:55:18 MDT
+  Description:              Global Scope
+  ID:                       global
+  Name:                     global
+  Primary Auth Method ID:   amoidc_q7jAdI1QgA
+  Updated Time:             Mon, 12 Sep 2022 14:44:54 MDT
+  Version:                  5
+
+  Scope (parent):
+    ID:                     global
+    Name:                   global
+    Type:                   global
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+
+  Authorized Actions on Scope's Collections:
+    auth-methods:
+      create
+      list
+    auth-tokens:
+      list
+    groups:
+      create
+      list
+    roles:
+      create
+      list
+    scopes:
+      create
+      list
+    users:
+      create
+      list
+    workers:
+      create:worker-led
+      list
+```
+
+Now try authenticating using the newly created OIDC auth method.
+
+```shell-session
+$ boundary authenticate oidc -auth-method-id amoidc_q7jAdI1QgA
+Opening returned authentication URL in your browser...
+
+```
+
+A browser tab should automatically open and prompt you to log in with your Auth0
+user account credentials.
+
+After successful authentication, return to your terminal and notice the
+Authentication information that is printed.
+
+```shell-session
+$ boundary authenticate oidc -auth-method-id amoidc_q7jAdI1QgA
+Opening returned authentication URL in your browser...
+
+Authentication information:
+  Account ID:      acctoidc_oztPFBFesH
+  Auth Method ID:  amoidc_oHt4HQFCrN
+  Expiration Time: Thu, 13 May 2021 17:01:11 MDT
+  User ID:         u_JCRQP3ID7l
+
+The token was successfully stored in the chosen keyring and is not displayed here.
+```
+
+</Tab>
+<Tab heading="Terraform" group="terraform">
+
+Auth methods must be updated to an active state before they can be used.
+
+The state of the new auth method can be checked using the read operation. First,
+ensure you are logged in as the admin user.
+
+```shell-session
+$ boundary authenticate password -auth-method-id ampw_1234567890 -login-name admin
+Please enter the password (it will be hidden): <password>
+
+Authentication information:
+  Account ID:      apw_DZRvFzmb0Y
+  Auth Method ID:  ampw_1234567890
+  Expiration Time: Thu, 20 May 2021 16:32:06 MDT
+  User ID:         u_1234567890
+
+The token was successfully stored in the chosen keyring and is not displayed here.
+```
+
+Next read the auth method details. Use the `auth-method-id` you copied from the
+`terraform apply` output.
+
+```shell-session
+$ boundary auth-methods read -id amoidc_AliCbVihqv
+
+Auth Method information:
+  Created Time:         Thu, 13 May 2021 17:01:02 MDT
+  Description:          OIDC auth method for Auth0
+  ID:                   amoidc_AliCbVihqv
+  Name:                 Auth0
+  Type:                 oidc
+  Updated Time:         Thu, 13 May 2021 17:01:02 MDT
+  Version:              2
+
+  Scope:
+    ID:                 o_1234567890
+    Name:               Generated org scope
+    Parent Scope ID:    global
+    Type:               org
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    change-state
+    authenticate
+
+  Authorized Actions on Auth Method's Collections:
+    accounts:
+      create
+      list
+
+  Attributes:
+    api_url_prefix:     http://localhost:9200
+    callback_url:       http://localhost:9200/v1/auth-methods/oidc:authenticate:callback
+    client_id:          zbaJLTZh3n14WqSV7qQ9onuIVRDaZdzx
+    client_secret_hmac: AhyxTBqlZpnny78iA9M7QHKAKocI17bjwvS70B1ccg0
+    issuer:             https://dev-1vdl8c0q.us.auth0.com/
+    signing_algorithms: [RS256]
+    state:              active-public
+```
+
+Notice at the bottom of the output that the login state is already set to
+`active-public`.
+
+It's important to be aware that using Terraform to provision an auth method will
+set the state to active by default, unless otherwise defined. The `state`
+attribute can be used on the `boundary_auth_method_oidc` resource to set an auth
+method to `active-private` or `inactive`.
+
+Now that the auth method state has been verified, the primary login type can be
+defined for the global scope.
+
+### Set OIDC as primary login
+
+Global and organization scopes may have auth methods in Boundary, and each scope
+has one primary auth-method ID. Boundary will automatically create a user upon
+first successful authentication using the scope’s primary auth method, which will
+be used by scopes with only one auth method available.
+
+When [migrating the database](/boundary/tutorials/oss-configuration/upgrade-version), Boundary
+will produce a log of any auth methods which have more than one auth method
+which resulted in no primary auth method being set for the Scope.
+
+Make three updates to the `boundary_auth_method_oidc` resource in the `main.tf`
+file:
+
+- Set the auth method's `state` to `active-public` for clarity
+- Set the new OIDC auth method as the primary auth method for the global scope
+  by setting the `is_primary_for_scope` attribute
+- Set the `-max-age` option to `0`, which will force the user to re-authenticate
+  if they are already logged in with the current browser session.
+
+Below is an example. Update your `main.tf` file accordingly.
+
+```hcl
+resource "boundary_auth_method_oidc" "provider" {
+  name                 = "Auth0"
+  description          = "OIDC auth method for Auth0"
+  scope_id             = "o_1234567890"
+  issuer             = "https://dev-1vdl8c0q.us.auth0.com/"
+  client_id          = "zbaJLTZh3n14WqSV7qQ9onuIVRDaZdzx"
+  client_secret      = "t35c9NNw1aZ8haQKYJjCL0lauNOSp5UNPovUJXo8Ea2sPZAR1DszEowX-5-lg-Xr"
+  signing_algorithms = ["RS256"]
+  api_url_prefix     = "http://localhost:9200"
+  is_primary_for_scope = true
+  state = "active-public"
+  max_age = 0
+}
+```
+
+Apply the updated configuration. Enter `yes` when prompted.
+
+```shell-session
+$ terraform apply
+boundary_auth_method_oidc.provider: Refreshing state... [id=amoidc_AliCbVihqv]
+boundary_account_oidc.oidc_user: Refreshing state... [id=acctoidc_Hrbbcmxuny]
+
+An execution plan has been generated and is shown below.
+Resource actions are indicated with the following symbols:
+  ~ update in-place
+-/+ destroy and then create replacement
+
+Terraform will perform the following actions:
+
+  # boundary_account_oidc.oidc_user must be replaced
+-/+ resource "boundary_account_oidc" "oidc_user" {
+        auth_method_id = "amoidc_AliCbVihqv"
+        description    = "OIDC account for user1"
+      ~ id             = "acctoidc_Hrbbcmxuny" -> (known after apply)
+      + issuer         = "https://dev-1vdl8c0q.us.auth0.com/" # forces replacement
+        name           = "user1"
+      + subject        = "auth0|6077581e2ce19d006dfaf211"
+    }
+
+  # boundary_auth_method_oidc.provider will be updated in-place
+  ~ resource "boundary_auth_method_oidc" "provider" {
+        api_url_prefix       = "http://localhost:9200"
+        callback_url         = "http://localhost:9200/v1/auth-methods/oidc:authenticate:callback"
+        client_id            = "zbaJLTZh3n14WqSV7qQ9onuIVRDaZdzx"
+        client_secret        = "t35c9NNw1aZ8haQKYJjCL0lauNOSp5UNPovUJXo8Ea2sPZAR1DszEowX-5-lg-Xr"
+        client_secret_hmac   = "AhyxTBqlZpnny78iA9M7QHKAKocI17bjwvS70B1ccg0"
+        description          = "OIDC auth method for Auth0"
+        id                   = "amoidc_AliCbVihqv"
+      + is_primary_for_scope = true
+        issuer               = "https://dev-1vdl8c0q.us.auth0.com/"
+      + max_age              = 0
+        name                 = "Auth0"
+        scope_id             = "o_1234567890"
+        signing_algorithms   = [
+            "RS256",
+        ]
+        state                = "active-public"
+        type                 = "oidc"
+    }
+
+Plan: 1 to add, 1 to change, 1 to destroy.
+
+Do you want to perform these actions?
+  Terraform will perform the actions described above.
+  Only 'yes' will be accepted to approve.
+
+  Enter a value: yes
+
+boundary_account_oidc.oidc_user: Destroying... [id=acctoidc_Hrbbcmxuny]
+boundary_auth_method_oidc.provider: Modifying... [id=amoidc_AliCbVihqv]
+boundary_auth_method_oidc.provider: Modifications complete after 0s [id=amoidc_AliCbVihqv]
+boundary_account_oidc.oidc_user: Destruction complete after 0s
+boundary_account_oidc.oidc_user: Creating...
+boundary_account_oidc.oidc_user: Creation complete after 0s [id=acctoidc_VUKa3gJkPp]
+
+Apply complete! Resources: 1 added, 1 changed, 1 destroyed.
+
+Outputs:
+
+auth-method-id = amoidc_AliCbVihqv
+```
+
+With the auth method set to active and defined as the primary login method,
+users can now authenticate using their preferred method of choice.
+
+</Tab>
+</Tabs>
+
+## Authenticate using OIDC
+
+With the OIDC provider configured, Boundary users can authenticate using the
+CLI, Admin Console or Boundary Desktop app. Boundary administrators will usually
+follow a CLI or Admin Console workflow, while clients and end-users can use the
+CLI or Desktop application.
+
+<Tabs>
+<Tab heading="Desktop App" group="desktop">
+
+
+The [Boundary Desktop](/boundary/tutorials/oss-getting-started/oss-getting-started-desktop-app)
+app is currently available for MacOS and Windows users.
+
+<Note>
+
+Ensure that the latest version of the Boundary Desktop app is installed from
+the [releases](https://releases.hashicorp.com/boundary-desktop/) page before
+attempting to login with OIDC. The minimum version of the app allowing OIDC
+login is [1.0.0](https://releases.hashicorp.com/boundary-desktop/1.0.0/).
+
+</Note>
+
+1. Launch the Boundary Desktop app and enter the Boundary Cluster URL. 
+
+   <Variant slug="boundary-deploy" option="hcp">
+   
+   The Cluster URL was copied from the HCP portal, such as
+   `https://e58fe114-7624-431c-994d-b6670e90b03J.boundary.hashicorp.cloud`.
+   Click **Submit**.
+
+   ![Desktop Cluster URL](/img/boundary/desktop/desktop-cluster-url_light.png#light-theme-only)
+   ![Desktop Cluster URL](/img/boundary/desktop/desktop-cluster-url_dark.png#dark-theme-only)
+
+   </Variant>
+   <Variant slug="boundary-deploy" option="dev">
+
+   Launch the Boundary Desktop app and enter `http://localhost:9200` as the
+   Cluster URL, then click **Submit**.
+
+   ![Desktop Cluster URL](/img/boundary/desktop/desktop-cluster-url_light.png#light-theme-only)
+   ![Desktop Cluster URL](/img/boundary/desktop/desktop-cluster-url_dark.png#dark-theme-only)
+
+   </Variant>
+
+1. Select **Auth0** and click **Authenticate**.
+
+1. A browser window should launch and prompt for your provider's user
+   credentials. You may see an "Authentication Pending" message, and can click
+   the "Retry" button to force a new authentication tab to open.
+
+   ![Desktop Application Login](/img/boundary/oidc/desktop-auth-pending.png)
+
+   Submit your OIDC provider user credentials. Below is an example of
+   authenticating using Auth0.
+
+   ![Desktop Application Login](/img/boundary/oidc/oidc-auth0-login.png)
+
+1. You should receive a "Successful Authentication" message.
+
+   ![Desktop Successful Auth](/img/boundary/oidc/admin-successful-auth_light.png#light-theme-only)
+   ![Desktop Successful Auth](/img/boundary/oidc/admin-successful-auth_dark.png#dark-theme-only)
+
+   Once authenticated, open the Boundary Desktop app again and verify the
+   authenticated user in the upper-right corner of the application window.
+
+   It is expected for this user to be unprivileged, and to be denied access to
+   view targets and sessions. The OIDC user could be updated to include new
+   privileges if an admin user [assigns it to a
+   role](/boundary/tutorials/oss-administration/oss-manage-roles).
+
+   ![Desktop Restricted Permissions](/img/boundary/oidc/desktop-not-authorized_light.png#light-theme-only)
+   ![Desktop Restricted Permissions](/img/boundary/oidc/desktop-not-authorized_dark.png#dark-theme-only)
+
+   You have now completed OIDC integration with the Boundary Desktop app.
+
+</Tab>
+<Tab heading="Admin Console" group="admin">
+
+
+1. Navigate to the Boundary Cluster URL in your web browser. This is your HCP Cluster
+   URL, such as
+   `https://e58fe114-7624-431c-994d-b6670e90b03J.boundary.hashicorp.cloud`, or
+   `http://localhost:9200` if using Dev mode. 
+   
+   Select the new auth method (such as **Auth0**) and click **Authenticate**.
+
+   ![Admin Console Azure](/img/boundary/oidc/admin-azure-authenticate_light.png#light-theme-only)
+   ![Admin Console Azure](/img/boundary/oidc/admin-azure-authenticate_dark.png#dark-theme-only)
+
+1. If your browser doesn't allow pop-ups, you may be presented with an
+   "Authentication Pending" message, which you can bypass by clicking **Retry**.
+   If you do not encounter this message proceed to the next step. Consider
+   enabling pop-ups from your localhost for the rest of this tutorial.
+
+   ![Auth0 Application Login](/img/boundary/oidc/admin-console-1.png)
+
+1. Next, enter your Auth0 user credentials and click **Continue**.
+
+   ![Auth0 Application Login](/img/boundary/oidc/admin-console-2.png)
+
+1. You should receive a "Successful Authentication" message and automatically be
+   redirected to the Admin Console. If you are not redirected, check to make
+   sure your browser is not blocking pop-ups from `http://localhost:9200`, or
+   allow pop-ups temporarily.
+
+   ![Successful
+   Auth](/img/boundary/oidc/admin-successful-auth_light.png#light-theme-only)
+   ![Successful
+   Auth](/img/boundary/oidc/admin-successful-auth_dark.png#dark-theme-only)
+
+1. Once authenticated, navigate to the **Auth Methods** view on the left, and
+   notice the `OIDC` Type and ID used when setting up the auth method. Explore
+   the other views and notice what this user has access to view and not view.
+   The OIDC user could be updated to include new privileges if an admin user
+   [assigns it to a role](/boundary/tutorials/oss-administration/oss-manage-roles).
+
+   You have now completed OIDC integration with the Admin Console.
+
+</Tab>
+<Tab heading="CLI" group="cli">
+
+
+The `boundary authenticate oidc` command will launch a browser session to enable
+authentication using the configured provider.
+
+```shell-session
+$ boundary authenticate oidc -auth-method-id amoidc_q7jAdI1QgA
+Opening returned authentication URL in your browser...
+```
+
+The provider's login page should open in a browser tab, prompting for the username
+and password for the account used to configure the Boundary OIDC Test
+application. Below is an example of the Auth0 provider's login prompt.
+
+![Auth0 Application Login](/img/boundary/oidc/oidc-auth0-login.png)
+
+<Warning>
+
+**Trouble logging in?** If you receive an _Unsuccessful authentication_
+message from Boundary, try logging out of the provider in your browser, then run
+`boundary authenticate oidc` again and re-authenticate. This is especially
+important if you created a new provider user in the [Create a
+user](#create-a-user) section. Ensure you are logging in as the correct user.
+
+</Warning>
+
+After logging in your terminal should confirm the Account and User IDs.
+
+```shell-session
+$ boundary authenticate oidc -auth-method-id amoidc_q7jAdI1QgA
+Opening returned authentication URL in your browser...
+
+Authentication information:
+  Account ID:      acctoidc_f0wWsno9jQ
+  Auth Method ID:  amoidc_q7jAdI1QgA
+  Expiration Time: Wed, 21 Apr 2021 15:02:38 MDT
+  User ID:         u_zAfnbL9b7y
+
+The token was successfully stored in the chosen keyring and is not displayed here.
+```
+
+The user is now authenticated using OIDC. Listing various scope items would show
+this user is not able to access most resources by default. The OIDC user could
+be updated to include new privileges if an admin user [assigns it to a
+role](/boundary/tutorials/oss-administration/oss-manage-roles).
+
+You have now completed OIDC integration using the CLI.
+
+</Tab>
+</Tabs>
+
+
+## Cleanup and teardown
+
+<Warning>
+
+If you plan on completing the [Manage IdP Groups
+tutorial](/boundary/tutorials/access-management/oidc-idp-groups), **leave the current
+configuration running**. Successful completion of this tutorial is a
+pre-requisite for the Manage IdP Groups tutorial.
+
+</Warning>
+
+If you are not continuing on to the next tutorial, tear down the environment:
+
+<Variant slug="boundary-deploy" option="hcp">
+
+1\. Remove any unwanted test auth methods from your HCP Boundary Cluster. This
+can be done by deleting the auth method in the Admin Console UI, or by
+providing your auth method ID using the CLI:
+
+```shell-session
+$ boundary auth-methods delete -id amoidc_40fr5jkLpk
+```
+
+</Variant>
+<Variant slug="boundary-deploy" option="dev">
+
+1\. Stop Boundary dev mode
+   
+Locate the shell where `boundary dev` was run and enter `ctrl+c` to stop dev
+mode.
+
+<CodeBlockConfig>
+
+```shell-session
+^C==> Boundary dev environment shutdown triggered
+[INFO]  worker: status ticking shutting down
+[INFO]  controller: terminating completed sessions ticking shutting down
+[INFO]  controller: closing expired pending tokens ticking shutting down
+[INFO]  controller: status ticking shutting down
+[INFO]  controller: recovery nonce ticking shutting down
+```
+
+</CodeBlockConfig>
+
+</Variant>
+
+2\. Delete any sample applications from your OIDC provider.
+   
+This tutorial provided steps for configuring an Auth0 sample applications as
+Boundary auth methods. **Revisit the provider settings and delete any sample
+applications you no longer need.**
+
+3\. Delete any test users from your OIDC provider.
+   
+This tutorial created sample users within Auth0 to authenticate using the CLI,
+Admin Console or Desktop app. **Revisit the Auth0 settings and remove any test
+users created for this tutorial.**
+
+4\. Delete any test client secrets from your OIDC provider.
+   
+This tutorial may have created client secrets within Auth0. **Revisit the
+provider settings and remove any client secrets created for this tutorial.**
+
+## Next steps
+
+This tutorial demonstrated the steps to add an OIDC authentication method and
+create a new user. You set up a provider application to authenticate with
+Boundary, and verified that you can authenticate using the newly created user.
+
+Next, check out the [Manage IdP Groups
+tutorial](/boundary/tutorials/access-management/oidc-idp-groups) to learn about automatically
+managing group membership claims with OIDC auth methods.
+
+To learn more about the basics of managing user accounts, check out the [Manage
+Users and Groups](/boundary/tutorials/oss-administration/oss-manage-users-groups) and [Manage
+Roles](/boundary/tutorials/oss-administration/oss-manage-roles) tutorials.

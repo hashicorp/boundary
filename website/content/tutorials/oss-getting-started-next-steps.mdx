@@ -1,0 +1,30 @@
+---
+id: 16e8fae8-24d7-4b77-9662-8237da55cb6c
+name: Next steps
+short_name: Next steps
+description: Resources and further tracks now that you're confident using Boundary.
+products_used:
+  - boundary
+  - terraform
+default_collection_context: boundary/oss-getting-started
+---
+
+Boundary dev mode was a convenient way to explore and test. The next step is to
+deploy a non-dev highly available (HA) environment.
+
+The following diagram shows a general architecture on Amazon Web Services (AWS).
+
+![](/img/boundary/boundary-ref-arch-aws.png)
+
+You should run a minimum of 3 controllers and 3 workers for fault tolerance.
+
+~> For the complete guide, refer to the Boundary [High Availability
+Install](/boundary/docs/oss/installing/high-availability)
+documentation. Find Terraform files at [Boundary AWS Reference Architecture
+GitHub repository](https://github.com/hashicorp/boundary-reference-architecture)
+to deploy a cluster as shown in the diagram. 
+
+-> Boundary Docker image
+([`hashicorp/boundary`](https://hub.docker.com/r/hashicorp/boundary)) is also
+available. The Dockerfile can be found in the [GitHub
+repository](https://github.com/hashicorp/boundary/blob/main/Dockerfile).

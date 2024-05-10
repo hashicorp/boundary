@@ -1,0 +1,3411 @@
+---
+id: 51b8a14a-baa8-43f3-a91e-372c16c8a515
+name: Manage OIDC IdP groups
+short_name: Manage OIDC IdP groups
+description: >-
+  Instructions to configure Open-ID Connect (OIDC) Managed Groups using
+  Identity Providers (IdP) like Auth0, Okta or Azure Active Directory.
+read_time: 13
+products_used:
+  - product: boundary
+    min_version: 0.5.0
+    max_version: 0.11.0
+default_collection_context: boundary/identity-management
+---
+
+The OIDC authentication method allows Boundary users to delegate authentication
+to an OIDC provider. This feature allows Boundary to integrate with popular
+identity providers like Okta, cloud-hosted active directory services with an
+OIDC frontend, and cloud identity management systems such as AWS IAM.
+
+OIDC group membership can be automatically maintained using [managed
+groups](/boundary/docs/concepts/domain-model/managed-groups).
+
+This tutorial provides an example of managing identity provider (IdP) groups with Auth0, Okta, or
+Azure Active Directory providers and managing those authentication methods from
+HCP Boundary or Boundary's dev mode. Examples are provided for management via the CLI, Admin
+Console, or Terraform. The managed group is then used as a principal within a
+[role](/boundary/docs/concepts/domain-model/roles) to
+assign an example grant.
+
+### Manage IdP groups overview
+
+1. [Get setup](#get-setup)
+1. [Managed groups background](#managed-groups-background)
+1. [Create a managed group](#create-a-managed-group)
+1. [Create a role](#create-a-role)
+1. [Verify permissions](#verify-permissions)
+
+## Prerequisites
+
+- This tutorial assumes the user has completed setting up an identity provider
+  according to the instructions in the
+  [Auth0](/boundary/tutorials/identity-management/oidc-auth0),
+  [Okta](/boundary/tutorials/identity-management/oidc-okta), or [Azure
+  AD](/boundary/tutorials/identity-management/oidc-azure) OIDC tutorials. This
+  tutorial assumes the user has left the instance of HCP Boundary or Boundary's
+  dev mode running, with an OIDC auth method fully configured.
+
+- A [Boundary binary](/boundary/install/) greater than
+  0.5.0 in your `PATH`
+
+- This tutorial assumes that you are able to launch Boundary in [dev
+  mode](/boundary/tutorials/oss-getting-started/oss-getting-started-dev).
+
+- An [Auth0](https://auth0.com), [Okta](https://www.okta.com), or
+  [Azure](https://portal.azure.com/) test account. The associated email address should
+  not be tied to another SSO method, so use of a personal account is
+  recommended.
+
+- Installing [Terraform 0.13.0 or greater](/terraform/tutorials/aws-get-started/install-cli)
+  provides an optional workflow for this tutorial. The binary must be available
+  in your `PATH`.
+
+## Get setup
+
+This tutorial assumes the reader has successfully completed setting up an OIDC
+provider test account according to the instructions in the
+  [Auth0](/boundary/tutorials/identity-management/oidc-auth0),
+  [Okta](/boundary/tutorials/identity-management/oidc-okta), or [Azure
+AD](/boundary/tutorials/identity-management/oidc-azure) OIDC tutorials. The reader
+should have left an instance of HCP Boundary or Boundary's dev mode running,
+with the sample OIDC provider configured.
+
+<Tip>
+
+ If you want an environment that's easy to deploy for testing OIDC,
+consider following the Terraform deployment instructions in the [OIDC
+Authentication](/boundary/tutorials/identity-management/oidc-auth0) tutorial. The dev environment can
+then easily be re-deployed in the future by launching Boundary and running Terraform.
+
+</Tip>
+
+To check that everything is set up properly, ensure that you can authenticate
+via OIDC using the CLI or Admin Console.
+
+<Tabs>
+<Tab heading="Admin Console" group="admin">
+
+The following steps demonstrate authentication to Boundary using the Auth0
+provider. The steps are essentially the same for any OIDC provider. If you
+encounter issues logging in, refer back to the [OIDC
+Authentication](/boundary/tutorials/identity-management/oidc-auth0#authenticate-via-oidc) tutorial
+for detailed steps on configuring an OIDC provider.
+
+1. Navigate to the Boundary admin UI.
+
+   <Tabs>
+   <Tab heading="HCP Boundary" group="hcp">
+
+   Navigate to the HCP Boundary cluster address in your browser (such as `https://a2c4e6-867-53o9-994d-b6670e90b03J.boundary.hashicorp.cloud`),
+   click on "Choose a different scope" and select the **Global scope**.
+   Select provider's name (such as Auth0) or "OIDC" and click **Authenticate**.
+
+   </Tab>
+   <Tab heading="Dev Mode" group="dev">
+
+   Navigate to `http://localhost:9200` in your browser, click on "Choose a
+   different scope" and select the **Generated org scope**. Select provider's
+   name (such as Auth0) or "OIDC" and click **Authenticate**.
+
+   </Tab>
+   </Tabs>
+
+   ![Auth0 Application Login](/img/boundary/oidc/oidc-admin-generated-org-scope-login.png)
+
+2. If your browser doesn't allow pop-ups, you may be presented with an
+   "Authentication Pending" message, which you can bypass by clicking **Retry**.
+   If you do not encounter this message proceed to the next step. Consider
+   enabling pop-ups from your localhost for the rest of this tutorial.
+
+   ![Auth0 Application Login](/img/boundary/oidc/oidc-admin-console-1.png)
+
+3. Next, enter your provider's test account credentials and click **Continue**.
+
+   ![Auth0 Application Login](/img/boundary/oidc/oidc-admin-console-2.png)
+
+4. You should receive a "Successful Authentication" message and automatically be
+   redirected to the Admin Console. If you are not redirected, check to make
+   sure your browser is not blocking pop-ups or allow pop-ups temporarily.
+
+   ![Auth0 Application Login](/img/boundary/oidc/oidc-admin-console-3.png)
+
+5. Once authenticated, navigate to the **Auth Methods** view on the left, and
+   notice the `OIDC` Type and ID used when setting up the auth method. Select
+   the auth method's name (such as Auth0) to view the account details. Click on
+   the **Roles** tab and notice that the user associated with the account does
+   not have permission to view the account details. The new user associated with
+   the account has very limited permissions by default, and is unable to read the
+   role details.
+
+   ![Auth0 Application Login](/img/boundary/oidc/oidc-admin-console-4.png)
+
+</Tab>
+<Tab heading="CLI" group="cli">
+
+Start by recursively listing the available authentication methods.
+
+```shell-session
+$ boundary auth-methods list -recursive
+
+Auth Method information:
+  ID:                     amoidc_1234567890
+    Scope ID:             global
+    Type:                 oidc
+    Name:                 Generated global scope initial oidc auth method
+    Description:          Provides initial administrative and unprivileged authentication into Boundary
+    Authorized Actions:
+      authenticate
+
+  ID:                     amoidc_9zoOFfKMmJ
+    Scope ID:             o_1234567890
+    Type:                 oidc
+    Name:                 Auth0
+    Description:          OIDC auth method for Auth0
+    Is Primary For Scope: true
+    Authorized Actions:
+      authenticate
+
+  ID:                     ampw_1234567890
+    Scope ID:             global
+    Type:                 password
+    Name:                 Generated global scope initial password auth method
+    Description:          Provides initial administrative and unprivileged authentication into Boundary
+    Is Primary For Scope: true
+    Authorized Actions:
+      authenticate
+```
+
+Copy the auth method oidc ID of your IdP, such as `amoidc_9zoOFfKMmJ` and
+create an environment variable.
+
+```shell-session
+$ export OIDC_AUTH_ID=<actual-auth-method-id>
+```
+
+Now, log in to Boundary using the OIDC auth method.
+
+```shell-session
+$ boundary authenticate oidc -auth-method-id $OIDC_AUTH_ID
+Opening returned authentication URL in your browser...
+
+```
+
+In your browser, enter the username and password associated with your provider's
+test account.
+
+![OIDC Login](/img/boundary/oidc/oidc-auth0-login.png)
+
+You should receive a "Successful authentication" message. Close the browser tab
+and return to your terminal.
+
+The OIDC account is now authenticated. Notice that the new user associated with
+the account has very limited permissions by default, and is unable to read the
+account details for the auth method ID copied earlier.
+
+```shell-session
+$ boundary auth-methods read -id $OIDC_AUTH_ID
+Error from controller when performing read on auth method
+
+Error information:
+  Kind:                PermissionDenied
+  Message:             Forbidden.
+  Status:              403
+  context:             Error from controller when performing read on auth method
+```
+
+This tutorial will demonstrate the process of managing group IdP claims, and
+assigning grants to a role that contains the managed group. All new OIDC accounts
+within the group will automatically be assigned the new grants once
+authenticated via Boundary.
+
+</Tab>
+</Tabs>
+
+## Managed groups background
+
+In Boundary, the managed group resource represents a collection of accounts. A
+collection is automatically maintained by evaluating a filter defined in the
+managed group's configuration against the information returned by auth method's
+identity provider (IdP).
+
+Accounts can be associated with zero or more managed groups within the same auth
+method, and grants can be associated with a managed group when used as a
+principle within a role.
+
+Membership in a managed group is defined when an OIDC auth method is used for
+authentication. The collection is built based on filter criteria that match
+against the OIDC ID token and User Info endpoints, and every authentication
+updates the group membership comparison against the filter.
+
+### Gather OIDC account attributes
+
+Managed Groups require filter criteria that describe which accounts belong to the
+group, and in turn should inherit any scoped permissions granted by an associate
+user and role. These filter attributes are returned from the OIDC provider when
+a user authenticates to Boundary using an OIDC account.
+
+Filters can be built on two types of data returned from the OIDC provider: the
+claims from the [JSON Web
+Token](https://openid.net/specs/draft-jones-json-web-token-07.html) (JWT), or
+the claims from the
+[UserInfo](https://openid.net/specs/openid-connect-core-1_0.html#UserInfo)
+endpoint.
+
+The claims can be obtained directly from an OIDC provider in a few ways. For
+example, [claims info from Azure
+AD](https://docs.microsoft.com/en-us/azure/active-directory/develop/active-directory-claims-mapping)
+could be obtained from the Azure Portal, the Azure CLI, The Azure AD PowerShell
+Module, or by [querying endpoint
+metadata](https://docs.microsoft.com/en-us/azure/active-directory/develop/v2-protocols-oidc).
+
+Boundary gathers claims info from the JWT and userinfo endpoint and stores them
+as account attributes. These attributes are updated upon authentication to an
+OIDC provider, and are used as the basis for resolving  a managed groups filter.
+
+Start by displaying the gathered claims info for your IdP provider. Examples are
+shown below for Auth0, Okta, and Azure AD.
+
+<Tabs>
+<Tab heading="Auth0" group="auth0">
+
+Ensure you are logged into the CLI as the admin user.
+
+```shell-session
+$ boundary authenticate password -auth-method-id $BOUNDARY_AUTH_METHOD_ID -login-name admin
+Please enter the password (it will be hidden): <password>
+
+Authentication information:
+  Account ID:      acctpw_1234567890
+  Auth Method ID:  ampw_1234567890
+  Expiration Time: Tue, 17 Aug 2021 13:56:57 MDT
+  User ID:         u_1234567890
+
+The token was successfully stored in the chosen keyring and is not displayed here.
+```
+
+List the accounts associated with the OIDC auth method.
+
+```shell-session
+$ boundary accounts list -auth-method-id $OIDC_AUTH_ID
+
+Account information:
+  ID:                    acctoidc_xyYYFpjk34
+    Version:             1
+    Type:                oidc
+    Authorized Actions:
+      no-op
+      read
+      update
+      delete
+```
+
+Copy the oidc account ID and read its details.
+
+```shell-session
+$ boundary accounts read -id acctoidc_xyYYFpjk34
+
+Account information:
+  Auth Method ID:      amoidc_9zoOFfKMmJ
+  Created Time:        Wed, 18 Aug 2021 11:10:20 MDT
+  ID:                  acctoidc_xyYYFpjk34
+  Type:                oidc
+  Updated Time:        Wed, 18 Aug 2021 11:10:20 MDT
+  Version:             1
+
+  Scope:
+    ID:                o_1234567890
+    Name:              Generated org scope
+    Parent Scope ID:   global
+    Type:              org
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+
+  Attributes:
+    issuer:            https://dev-1vdl8c0q.us.auth0.com/
+    subject:           auth0|6077581e2ce19d006dfaf211
+    token_claims:
+    {
+    "aud": "zbaJLTZh3n14WqSV7qQ9onuIVRDaZdzx",
+    "exp": 1629342620,
+    "iat": 1629306620,
+    "iss": "https://dev-1vdl8c0q.us.auth0.com/",
+    "nonce": "nI9FKzQuTUSELZdVxxPR",
+    "sub": "auth0|6077581e2ce19d006dfaf211"
+    }
+    userinfo_claims:
+    {
+    "sub": "auth0|6077581e2ce19d006dfaf211"
+    }
+```
+
+Notice the **Attributes** section of the output. This information is populated
+by the IdP provider claims returned from the JWT and userinfo endpoint.
+
+Custom claims can be utilized in Boundary by updating the info returned by the
+provider. This is non-trivial, and requires additional configuration of the
+provider. More information on account claims can be found in the [Auth0
+documentation](https://auth0.com/docs/scopes/sample-use-cases-scopes-and-claims).
+Claims attributes are updated when the user authenticates via Boundary using an
+associated account from the provider.
+
+Copy the `userinfo_claims: {"sub":}` value (`auth0|6077581e2ce19d006dfaf211` in
+this example).
+
+</Tab>
+<Tab heading="Okta" group="okta">
+
+Ensure you are logged into the CLI as the admin user.
+
+```shell-session
+$ boundary authenticate password -auth-method-id $BOUNDARY_AUTH_METHOD_ID -login-name admin
+Please enter the password (it will be hidden): <password>
+
+Authentication information:
+  Account ID:      acctpw_1234567890
+  Auth Method ID:  ampw_1234567890
+  Expiration Time: Thu, 26 Aug 2021 16:24:51 MDT
+  User ID:         u_1234567890
+
+The token was successfully stored in the chosen keyring and is not displayed here.
+```
+
+List the accounts associated with the OIDC auth method.
+
+```shell-session
+$ boundary accounts list -auth-method-id $OIDC_AUTH_ID
+
+Account information:
+  ID:                    acctoidc_xyYYFpjk34
+    Version:             1
+    Type:                oidc
+    Authorized Actions:
+      no-op
+      read
+      update
+      delete
+```
+
+Copy the oidc account ID and read its details.
+
+```shell-session
+$ boundary accounts read -id acctoidc_xyYYFpjk34
+
+Account information:
+  Auth Method ID:      amoidc_cjCWZnr79C
+  Created Time:        Thu, 19 Aug 2021 16:24:35 MDT
+  ID:                  acctoidc_xyYYFpjk34
+  Type:                oidc
+  Updated Time:        Thu, 19 Aug 2021 16:24:35 MDT
+  Version:             1
+
+  Scope:
+    ID:                o_1234567890
+    Name:              Generated org scope
+    Parent Scope ID:   global
+    Type:              org
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+
+  Attributes:
+    issuer:            https://dev-1944432.okta.com
+    subject:           00ul68uytv7ROjOHd5d6
+    token_claims:
+    {
+    "amr": [
+    "pwd"
+    ],
+    "at_hash": "1mHIRO-XeukEU0cg4HbTlQ",
+    "aud": "0oal6fr0tPGZ0DSbr5d6",
+    "auth_time": 1629411874,
+    "exp": 1629415475,
+    "iat": 1629411875,
+    "idp": "00ol67z7oGxNAG5IF5d6",
+    "iss": "https://dev-1944432.okta.com",
+    "jti": "ID.TSB4jePG94qrL9eOElHdJLAaTdcNo7dbDZa9ZG4jT0k",
+    "nonce": "ARu4by4EfppY1z1Xx0VB",
+    "sub": "00ul68uytv7ROjOHd5d6",
+    "ver": 1
+    }
+    userinfo_claims:
+    {
+    "sub": "00ul68uytv7ROjOHd5d6"
+    }
+```
+
+Notice the **Attributes** section of the output. This information is populated
+by the IdP provider claims returned from the JWT and userinfo endpoint.
+
+Custom claims can be utilized in Boundary by updating the info returned by the
+provider. This is non-trivial, and requires additional configuration of the
+provider. More information on account claims can be found in the [Auth0
+documentation](https://auth0.com/docs/scopes/sample-use-cases-scopes-and-claims).
+Claims attributes are updated when the user authenticates via Boundary using an
+associated account from the provider.
+
+Copy the `token_claims: {"iss":}` value (`https://dev-1944432.okta.com` in this
+example).
+
+</Tab>
+<Tab heading="Azure AD" group="azure">
+
+Ensure you are logged into the CLI as the admin user.
+
+```shell-session
+$ boundary authenticate password -auth-method-id $BOUNDARY_AUTH_METHOD_ID -login-name admin
+Please enter the password (it will be hidden): <password>
+
+Authentication information:
+  Account ID:      acctpw_1234567890
+  Auth Method ID:  ampw_1234567890
+  Expiration Time: Thu, 26 Aug 2021 14:23:04 MDT
+  User ID:         u_1234567890
+
+The token was successfully stored in the chosen keyring and is not displayed here.
+```
+
+List the accounts associated with the OIDC auth method.
+
+```shell-session
+$ boundary accounts list -auth-method-id $OIDC_AUTH_ID
+
+Account information:
+  ID:                    acctoidc_xyYYFpjk34
+    Version:             1
+    Type:                oidc
+    Authorized Actions:
+      no-op
+      read
+      update
+      delete
+```
+
+Copy the oidc account ID and read its details.
+
+```shell-session
+$ boundary accounts read -id acctoidc_xyYYFpjk34
+
+Account information:
+  Auth Method ID:      amoidc_3lnMVR7Erk
+  Created Time:        Thu, 19 Aug 2021 14:24:44 MDT
+  ID:                  acctoidc_xyYYFpjk34
+  Type:                oidc
+  Updated Time:        Thu, 19 Aug 2021 14:24:44 MDT
+  Version:             1
+
+  Scope:
+    ID:                o_1234567890
+    Name:              Generated org scope
+    Parent Scope ID:   global
+    Type:              org
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+
+  Attributes:
+    full_name:         admin
+    issuer:            https://sts.windows.net/e0ce29ea-29d7-4851-bfb3-5f8e35e1fb68/
+    subject:           VPTpUOEk0VTe5tL3y1Q2FF6-9OSnCqhhP_WCvvq8oqc
+    token_claims:
+    {
+    "aio": "AUQAu/8TAAAAezY5IaWAJPfZo3AkSqiHY4qNFKTYfxeQhT0JIwhvzh8PtPiZ88HqhtD4Kqm4Rp5U2ev0oHJMBoqjeDpSDv+mWg==",
+    "amr": [
+    "pwd",
+    "mfa"
+    ],
+    "aud": "a4d21a76-e08c-4d8d-8c47-e1c423ee4d11",
+    "exp": 1629408284,
+    "iat": 1629404384,
+    "ipaddr": "71.218.60.64",
+    "iss": "https://sts.windows.net/e0ce29ea-29d7-4851-bfb3-5f8e35e1fb68/",
+    "name": "admin",
+    "nbf": 1629404384,
+    "nonce": "00wOvHoaAhbwy44B1QRR",
+    "oid": "c3dc63d0-90e6-4855-b9c0-e87da14a9c5f",
+    "rh": "0.AX0A6inO4NcpUUi_s1-ONeH7aHYa0qSM4I1NjEfhxCPuTRF9AB4.",
+    "sub": "VPTpUOEk0VTe5tL3y1Q2FF6-9OSnCqhhP_WCvvq8oqc",
+    "tid": "e0ce29ea-29d7-4851-bfb3-5f8e35e1fb68",
+    "unique_name": "admin@boundaryoidc.onmicrosoft.com",
+    "upn": "admin@boundaryoidc.onmicrosoft.com",
+    "uti": "IkV3nxhGp0GVkJChFS0XAA",
+    "ver": "1.0"
+    }
+    userinfo_claims:
+    {
+    "aio": "AUQAu/8TAAAA/xL5x5i/lTMRCjI49qjwdkcx5oFcRKZAm+KXQXlMqagVbfY+itpzuDxI5woggDR77AAZSebXwr1KtuYvt0emuw==",
+    "amr": "[\"pwd\",\"mfa\"]",
+    "ipaddr": "71.218.60.64",
+    "name": "admin",
+    "oid": "c3dc63d0-90e6-4855-b9c0-e87da14a9c5f",
+    "rh": "0.AX0A6inO4NcpUUi_s1-ONeH7aHYa0qSM4I1NjEfhxCPuTRF9AB4.",
+    "sub": "VPTpUOEk0VTe5tL3y1Q2FF6-9OSnCqhhP_WCvvq8oqc",
+    "tid": "e0ce29ea-29d7-4851-bfb3-5f8e35e1fb68",
+    "unique_name": "admin@boundaryoidc.onmicrosoft.com",
+    "upn": "admin@boundaryoidc.onmicrosoft.com",
+    "uti": "Wlr5FcDbsUaijaLN3SYuAA",
+    "ver": "1.0"
+    }
+```
+
+Notice the **Attributes** section of the output. This information is populated
+by the IdP provider claims returned from the JWT and userinfo endpoint.
+
+Custom claims can be utilized in Boundary by updating the info returned by the
+provider. This is non-trivial, and requires additional configuration of the
+provider. More information on account claims can be found in the [Auth0
+documentation](https://auth0.com/docs/scopes/sample-use-cases-scopes-and-claims).
+Claims attributes are updated when the user authenticates via Boundary using an
+associated account from the provider.
+
+Copy the `userinfo_claims: {"upn":}` value (`admin@boundaryoidc.onmicrosoft.com`
+in this example).
+
+</Tab>
+</Tabs>
+
+### Managed groups filters
+
+Creating a managed group requires the oidc auth method ID and a filter that
+selects users for membership based on account claims.
+
+In Boundary, [filter
+expressions](/boundary/docs/concepts/filtering) are used to
+extend functionality. The filter syntax includes creating expressions that match
+operators with a selector and a value. These plaintext expressions support
+Boolean logic and parenthesization, enabling compound expressions by connecting
+logical `and`, `or` and `not` statements.
+
+[Managed groups
+filtering](/boundary/docs/concepts/filtering/oidc-managed-groups)
+enables automatic group management by selecting attributes from account claims
+returned by the OIDC provider. Claims associated with the JWT and userinfo
+endpoints are currently available for these filters.
+
+As an example, consider the following hypothetical attributes for a Boundary
+OIDC user account.
+
+<CodeBlockConfig hideClipboard>
+
+```yaml
+  Attributes:
+    issuer:            https://dev-1vdl8c0q.us.auth0.com/
+    subject:           auth0|6077581e2ce19d006dfaf211
+    token_claims:
+    {
+    "aud": "zbaJLTZh3n14WqSV7qQ9onuIVRDaZdzx",
+    "exp": 1628738383,
+    "iat": 1628702383,
+    "iss": "https://dev-1vdl8c0q.us.auth0.com/",
+    "nonce": "01BtOSuAunf0XeQXt3hR",
+    "sub": "auth0|6077581e2ce19d006dfaf211",
+    "custom":
+      {
+      "department": "infosec"
+      }
+    }
+    userinfo_claims:
+    {
+    "roles": ["user", "operator"],
+    "sub": "auth0|6077581e2ce19d006dfaf211",
+    "email": "operator@boundary.com",
+    "name": "operator"
+    }
+```
+
+</CodeBlockConfig>
+
+Examples of filters that could be used with a managed group include:
+
+- `"operator" in "/userinfo/roles"` matches accounts that include "operator" in the
+  roles returned in the userinfo reply
+- `"/token/custom/department" == "infosec"` matches accounts that have "infosec" in
+  the "/token/custom/department" JWT claim
+- `"boundary.com" in "/userinfo/email" and "auth0" in "/userinfo/sub"` matches
+  accounts that have "boundary.com" in the email claim and auth0 in the sub claim
+
+Expressions can be connected together to obtain the needed level of complexity
+for defining group membership. In this example, a user could receive the correct
+sets of permissions automatically by assigning them a role of "operator", or
+using another set of claims.
+
+<Note>
+
+ Not all of these claims are returned from an identity provider by
+default, and would require additional configuration of the provider before they
+would be available to Boundary.
+
+</Note>
+
+In order to create a managed group, filter criteria must first be selected from a
+set of account claims. Filters can be modified or updated later on after the
+creation of a managed group.
+
+## Create a managed group
+
+<Tabs>
+<Tab heading="Admin Console" group="admin">
+
+<Tabs>
+<Tab heading="Auth0" group="auth0">
+
+Create a managed group with the following filter criteria:
+
+`"auth0" in "/userinfo/sub"`
+
+Log back in to the Admin Console UI global scope as the admin user.
+
+Under the global scope, navigate to the **Auth Methods** view using the sidebar.
+Select the **Auth0** Auth Method. Click the **Managed Groups** tab, and then
+click **Create Managed Group**.
+
+![New Managed Group](/img/boundary/ui-managed-groups-new.png)
+
+Fill out the following type `oidc` managed group form fields:
+
+- **Name**: `auth0 userinfo`
+- **Filter**: `"auth0" in "/userinfo/sub"`
+
+Click **Save**.
+
+<Note>
+
+ When creating a custom claim, it may be necessary to use [JSON
+Pointer syntax](https://datatracker.ietf.org/doc/html/rfc6901) to render the
+namespace properly. If you receive an `Error evaluating submitted filter
+expression`, attempt to reformat your filter using JSON Pointer syntax. For
+example, in JSON Pointer syntax `http://` is written as `http:~1~1`. If your
+claim response contained `http://my-domain`, you might create the above filter
+like this: `"auth0" in "/userinfo/http:~1~1my-domain/sub"`
+
+</Note>
+
+This filter selects all accounts whose `/userinfo/sub` claim contains `auth0`.
+Any of the other filter criteria available under the `acctoidc` attributes can
+be used for building an appropriate filter.
+
+### Verify group membership
+
+Next, verify that oidc account is correctly assigned to the managed group.
+
+Select the **auth0 userinfo** managed group, and then the **Members** tab. The
+OIDC account ID associated with the `auth0` account should be displayed
+(`acctoidc_2g9lcC4fIL` in this example.)
+
+![Managed Groups Membership](/img/boundary/ui-managed-groups-members.png)
+
+<Note title="Troubleshooting">
+
+ If the Member IDs section is missing, first log out of
+the admin account, then log in as the OIDC user. This will refresh the userinfo
+claims for the OIDC user account. Next, re-authenticate as the admin user and
+attempt to verify the group membership again. If the member ID is still missing,
+check that the filter defined under the account details is correct. If the
+filter is incorrect, **edit** the managed group filter, then **save** the filter
+and attempt to verify the group membership again.
+
+</Note>
+
+</Tab>
+<Tab heading="Okta" group="okta">
+
+Create a managed group with the following filter criteria:
+
+`"okta.com" in "/token/iss"`
+
+Log back in to the Admin Console UI global scope as the admin user.
+
+Under the global scope, navigate to the **Auth Methods** view using the sidebar.
+Select the **Okta** Auth Method. Click the **Managed Groups** tab, and then
+click **Create Managed Group**.
+
+![New Managed Group](/img/boundary/ui-managed-groups-new.png)
+
+Fill out the following type `oidc` managed group form fields:
+
+- **Name**: `okta userinfo`
+- **Filter**: `"okta.com" in "/token/iss"`
+
+Click **Save**.
+
+This filter selects all accounts whose `/token/iss` claim contains `okta.com`. Any
+of the other filter criteria available under the acctoidc attributes can be used
+for building an appropriate filter.
+
+### Verify group membership
+
+Next, verify that oidc account is correctly assigned to the managed group.
+
+Select the **okta userinfo** managed group, and then the **Members** tab. The
+OIDC account ID associated with the `okta` account should be displayed
+(`acctoidc_2g9lcC4fIL` in this example.)
+
+![Managed Groups Membership](/img/boundary/ui-managed-groups-members.png)
+
+<Note title="Troubleshooting">
+
+ If the Member IDs section is missing, first attempt to
+out of the admin account, then log in as the OIDC user. After re-authenticating
+as the admin user, attempt to verify the group membership again. If the member
+ID is still missing, then ensure the filter under the account details is
+correct. If the filter is incorrect, **edit** the managed group filter, then
+**save** the filter and attempt to verify the group membership again.
+
+</Note>
+
+</Tab>
+<Tab heading="Azure AD" group="azure">
+
+Create a managed group with the following filter criteria:
+
+`"onmicrosoft.com" in "/userinfo/upn"`
+
+Log back in to the Admin Console UI global scope as the admin user.
+
+Under the global scope, navigate to the **Auth Methods** view using the sidebar.
+Select the **Azure** Auth Method. Click the **Managed Groups** tab, and then
+click **Create Managed Group**.
+
+![New Managed Group](/img/boundary/ui-managed-groups-new.png)
+
+Fill out the following type `oidc` managed group form fields:
+
+- **Name**: `azure userinfo`
+- **Filter**: `"onmicrosoft.com" in "/userinfo/upn"`
+
+Click **Save**.
+
+This filter selects all accounts whose `/userinfo/upn` claim contains
+`onmicrosoft.com`. Any of the other filter criteria available under the acctoidc
+attributes can be used for building an appropriate filter.
+
+### Verify group membership
+
+Next, verify that oidc account is correctly assigned to the managed group.
+
+Select the **azure userinfo** managed group, and then the **Members** tab. The
+OIDC account ID associated with the `azure` account should be displayed
+(`acctoidc_2g9lcC4fIL` in this example.)
+
+![Managed Groups Membership](/img/boundary/ui-managed-groups-members.png)
+
+<Note title="Troubleshooting">
+
+ If the Member IDs section is missing, first attempt to
+out of the admin account, then log in as the OIDC user. After re-authenticating
+as the admin user, attempt to verify the group membership again. If the member
+ID is still missing, then ensure the filter under the account details is
+correct. If the filter is incorrect, **edit** the managed group filter, then
+**save** the filter and attempt to verify the group membership again.
+
+</Note>
+
+</Tab>
+</Tabs>
+
+</Tab>
+<Tab heading="CLI" group="cli">
+
+<Tabs>
+<Tab heading="Auth0" group="auth0">
+
+Create a managed group with the following filter criteria:
+
+`"auth0" in "/userinfo/sub"`
+
+<CodeBlockConfig highlight="1,6">
+
+```shell-session
+$ boundary managed-groups create oidc -auth-method-id $OIDC_AUTH_ID -filter='"auth0" in "/userinfo/sub"'
+
+Managed Group information:
+  Auth Method ID:      amoidc_9zoOFfKMmJ
+  Created Time:        Wed, 18 Aug 2021 11:14:57 MDT
+  ID:                  mgoidc_VUsKIPJHS5
+  Type:                oidc
+  Updated Time:        Wed, 18 Aug 2021 11:14:57 MDT
+  Version:             1
+
+  Scope:
+    ID:                o_1234567890
+    Name:              Generated org scope
+    Parent Scope ID:   global
+    Type:              org
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+
+  Attributes:
+    Filter:            "auth0" in "/userinfo/sub"
+```
+
+</CodeBlockConfig>
+
+<Note>
+
+ When creating a custom claim, it may be necessary to use [JSON
+Pointer syntax](https://datatracker.ietf.org/doc/html/rfc6901) to render the
+namespace properly. If you receive an `Error evaluating submitted filter
+expression`, attempt to reformat your filter using JSON Pointer syntax. For
+example, in JSON Pointer syntax `http://` is written as `http:~1~1`. If your
+claim response contained `http://my-domain`, you might create the above filter
+like this: `"auth0" in "/userinfo/http:~1~1my-domain/sub"`
+
+</Note>
+
+Copy the managed group ID from the command output (`mgoidc_VUsKIPJHS5` in this
+example) and create an environment variable.
+
+```shell-session
+$ export MG_OIDC_ID=<actual-copied-value>
+```
+
+This filter selects all accounts whose `/userinfo/sub` claim contains `auth0`. Any
+of the other filter criteria available under the acctoidc attributes can be used
+for building an appropriate filter.
+
+### Verify group membership
+
+Next, verify that oidc account is correctly assigned to the managed group.
+
+Authenticate again via OIDC to update the account attributes.
+
+<CodeBlockConfig highlight="1,5">
+
+```shell-session
+$ boundary authenticate oidc -auth-method-id $OIDC_AUTH_ID
+Opening returned authentication URL in your browser...
+
+Authentication information:
+  Account ID:      acctoidc_xyYYFpjk34
+  Auth Method ID:  amoidc_9zoOFfKMmJ
+  Expiration Time: Wed, 25 Aug 2021 11:23:19 MDT
+  User ID:         u_Kt2AI1hPmC
+
+The token was successfully stored in the chosen keyring and is not displayed here.
+```
+
+</CodeBlockConfig>
+
+Now log back into Boundary as the admin user.
+
+```shell-session
+$ boundary authenticate password -auth-method-id $BOUNDARY_AUTH_METHOD_ID -login-name admin
+Please enter the password (it will be hidden): <password>
+
+Authentication information:
+  Account ID:      acctpw_1234567890
+  Auth Method ID:  ampw_1234567890
+  Expiration Time: Wed, 25 Aug 2021 11:24:38 MDT
+  User ID:         u_1234567890
+
+The token was successfully stored in the chosen keyring and is not displayed here.
+```
+
+Lastly, read the details for the managed group by providing its ID.
+
+<CodeBlockConfig highlight="1,23,24">
+
+```shell-session
+$ boundary managed-groups read -id $MG_OIDC_ID
+
+Managed Group information:
+  Auth Method ID:      amoidc_9zoOFfKMmJ
+  Created Time:        Wed, 18 Aug 2021 11:14:57 MDT
+  ID:                  mgoidc_VUsKIPJHS5
+  Type:                oidc
+  Updated Time:        Wed, 18 Aug 2021 11:23:19 MDT
+  Version:             2
+
+  Scope:
+    ID:                o_1234567890
+    Name:              Generated org scope
+    Parent Scope ID:   global
+    Type:              org
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+
+  Member IDs:
+    acctoidc_xyYYFpjk34
+
+  Attributes:
+    Filter:            "auth0" in "/userinfo/sub"
+```
+
+</CodeBlockConfig>
+
+Notice the `Member IDs:` section, which should contain the oidc account id.
+
+<Note title="Troubleshooting">
+
+ If the Member IDs section is missing, ensure the filter
+under the account details is correct. If the filter is incorrect, expand the
+accordion below to update the managed group filter.
+
+</Note>
+
+<Accordion heading="Troubleshoot Account Filters" collapse>
+
+If a filter is incorrectly set, the managed group information will not show the
+account member ID for the OIDC account.
+
+<Note>
+
+ You should always log back in as the OIDC user to test any newly
+applied filters. Remember that managed group membership is updated when the user
+authenticates to the IdP with the associated OIDC account.
+
+</Note>
+
+If incorrect, update the managed group filter. This process can also be used to
+update the managed group filter criteria in the future for any existing managed
+groups.
+
+```shell-session
+$ boundary managed-groups update oidc -id $MG_OIDC_ID -filter='"auth0" in "/userinfo/sub"'
+
+Managed Group information:
+  Auth Method ID:      amoidc_9zoOFfKMmJ
+  Created Time:        Wed, 18 Aug 2021 11:14:57 MDT
+  ID:                  mgoidc_VUsKIPJHS5
+  Type:                oidc
+  Updated Time:        Wed, 18 Aug 2021 11:23:19 MDT
+  Version:             2
+
+  Scope:
+    ID:                o_1234567890
+    Name:              Generated org scope
+    Parent Scope ID:   global
+    Type:              org
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+
+  Attributes:
+    Filter:            "auth0" in "/userinfo/sub"
+```
+
+After correcting the filter, go through the steps in the [Verify group
+membership](#verify-group-membership) section again to ensure the account has
+been added to the managed group correctly.
+
+</Accordion>
+
+</Tab>
+<Tab heading="Okta" group="okta">
+
+Create a managed group with the following filter criteria:
+
+`"okta.com" in "/token/iss"`
+
+<CodeBlockConfig highlight="1,6">
+
+```shell-session
+$ boundary managed-groups create oidc -auth-method-id $OIDC_AUTH_ID -filter='"okta.com" in "/token/iss"'
+
+Managed Group information:
+  Auth Method ID:      amoidc_cjCWZnr79C
+  Created Time:        Thu, 19 Aug 2021 16:30:49 MDT
+  ID:                  mgoidc_3Pl965OoGN
+  Type:                oidc
+  Updated Time:        Thu, 19 Aug 2021 16:30:49 MDT
+  Version:             1
+
+  Scope:
+    ID:                o_1234567890
+    Name:              Generated org scope
+    Parent Scope ID:   global
+    Type:              org
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+
+  Attributes:
+    Filter:            "okta.com" in "/token/iss"
+```
+
+</CodeBlockConfig>
+
+Copy the managed group ID from the command output (`mgoidc_3Pl965OoGN` in this
+example) and create an environment variable.
+
+```shell-session
+$ export MG_OIDC_ID=<actual-copied-value>
+```
+
+This filter selects all accounts whose `/token/iss` claim contains `okta.com`. Any
+of the other filter criteria available under the acctoidc attributes can be used
+for building an appropriate filter.
+
+### Verify group membership
+
+Next, verify that oidc account is correctly assigned to the managed group.
+
+Authenticate again via OIDC to update the account attributes.
+
+<CodeBlockConfig highlight="1,5">
+
+```shell-session
+$ boundary authenticate oidc -auth-method-id $OIDC_AUTH_ID
+Opening returned authentication URL in your browser...
+
+Authentication information:
+  Account ID:      acctoidc_xyYYFpjk34
+  Auth Method ID:  amoidc_cjCWZnr79C
+  Expiration Time: Thu, 26 Aug 2021 16:31:45 MDT
+  User ID:         u_NTcIopd1yv
+
+The token was successfully stored in the chosen keyring and is not displayed here.
+```
+
+</CodeBlockConfig>
+
+Now log back into Boundary as the admin user.
+
+```shell-session
+$ boundary authenticate password -auth-method-id $BOUNDARY_AUTH_METHOD_ID -login-name admin
+Please enter the password (it will be hidden): <password>
+
+Authentication information:
+  Account ID:      acctpw_1234567890
+  Auth Method ID:  ampw_1234567890
+  Expiration Time: Thu, 26 Aug 2021 16:32:02 MDT
+  User ID:         u_1234567890
+
+The token was successfully stored in the chosen keyring and is not displayed here.
+```
+
+Lastly, read the details for the managed group by providing its ID.
+
+<CodeBlockConfig highlight="1,23,24">
+
+```shell-session
+$ boundary managed-groups read -id $MG_OIDC_ID
+
+Managed Group information:
+  Auth Method ID:      amoidc_cjCWZnr79C
+  Created Time:        Thu, 19 Aug 2021 16:30:49 MDT
+  ID:                  mgoidc_3Pl965OoGN
+  Type:                oidc
+  Updated Time:        Thu, 19 Aug 2021 16:31:45 MDT
+  Version:             2
+
+  Scope:
+    ID:                o_1234567890
+    Name:              Generated org scope
+    Parent Scope ID:   global
+    Type:              org
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+
+  Member IDs:
+    acctoidc_xyYYFpjk34
+
+  Attributes:
+    Filter:            "okta.com" in "/token/iss"
+```
+
+</CodeBlockConfig>
+
+Notice the `Member IDs:` section, which should contain the oidc account id.
+
+<Note title="Troubleshooting">
+
+ If the Member IDs section is missing, ensure the filter
+under the account details is correct. If the filter is incorrect, expand the
+accordion below to update the managed group filter.
+
+</Note>
+
+<Accordion heading="Troubleshoot Account Filters" collapse>
+
+If a filter is incorrectly set, the managed group information will not show the
+account member ID for the OIDC account.
+
+<Note>
+
+ You should always log back in as the OIDC user to test any newly
+applied filters. Remember that managed group membership is updated when the user
+authenticates to the IdP with the associated OIDC account.
+
+</Note>
+
+If incorrect, update the managed group filter. This process can also be used to
+update the managed group filter criteria in the future for any existing managed
+groups.
+
+```shell-session
+$ boundary managed-groups update oidc -id $MG_OIDC_ID -filter='"okta.com" in "/token/iss"'
+
+Managed Group information:
+  Auth Method ID:      amoidc_cjCWZnr79C
+  Created Time:        Thu, 19 Aug 2021 16:30:49 MDT
+  ID:                  mgoidc_3Pl965OoGN
+  Type:                oidc
+  Updated Time:        Thu, 19 Aug 2021 16:31:45 MDT
+  Version:             2
+
+  Scope:
+    ID:                o_1234567890
+    Name:              Generated org scope
+    Parent Scope ID:   global
+    Type:              org
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+
+  Attributes:
+    Filter:            "okta.com" in "/token/iss"
+```
+
+After correcting the filter, go through the steps in the [Verify group
+membership](#verify-group-membership) section again to ensure the account has
+been added to the managed group correctly.
+
+</Accordion>
+
+</Tab>
+<Tab heading="Azure AD" group="azure">
+
+Create a managed group with the following filter criteria:
+
+`"onmicrosoft.com" in "/userinfo/upn"`
+
+<CodeBlockConfig highlight="1,6">
+
+```shell-session
+$ boundary managed-groups create oidc -auth-method-id $OIDC_AUTH_ID -filter='"onmicrosoft.com" in "/userinfo/upn"'
+
+Managed Group information:
+  Auth Method ID:      amoidc_3lnMVR7Erk
+  Created Time:        Thu, 19 Aug 2021 16:06:15 MDT
+  ID:                  mgoidc_9Ja4lmzfoQ
+  Type:                oidc
+  Updated Time:        Thu, 19 Aug 2021 16:06:15 MDT
+  Version:             1
+
+  Scope:
+    ID:                o_1234567890
+    Name:              Generated org scope
+    Parent Scope ID:   global
+    Type:              org
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+
+  Attributes:
+    Filter:            "onmicrosoft.com" in "/userinfo/upn"
+```
+
+</CodeBlockConfig>
+
+Copy the managed group ID from the command output (`mgoidc_9Ja4lmzfoQ` in this
+example) and create an environment variable.
+
+```shell-session
+$ export MG_OIDC_ID=<actual-copied-value>
+```
+
+This filter selects all accounts whose `/userinfo/upn` claim contains
+`onmicrosoft.com`. Any of the other filter criteria available under the acctoidc
+attributes can be used for building an appropriate filter.
+
+### Verify group membership
+
+Next, verify that oidc account is correctly assigned to the managed group.
+
+Authenticate again via OIDC to update the account attributes.
+
+<CodeBlockConfig highlight="1,5">
+
+```shell-session
+$ boundary authenticate oidc -auth-method-id $OIDC_AUTH_ID
+Opening returned authentication URL in your browser...
+
+Authentication information:
+  Account ID:      acctoidc_xyYYFpjk34
+  Auth Method ID:  amoidc_3lnMVR7Erk
+  Expiration Time: Thu, 26 Aug 2021 16:09:08 MDT
+  User ID:         u_TrrBnfk8hY
+
+The token was successfully stored in the chosen keyring and is not displayed here.
+```
+
+</CodeBlockConfig>
+
+Now log back into Boundary as the admin user.
+
+```shell-session
+$ boundary authenticate password -auth-method-id $BOUNDARY_AUTH_METHOD_ID -login-name admin
+Please enter the password (it will be hidden): <password>
+
+Authentication information:
+  Account ID:      acctpw_1234567890
+  Auth Method ID:  ampw_1234567890
+  Expiration Time: Thu, 26 Aug 2021 16:09:54 MDT
+  User ID:         u_1234567890
+
+The token was successfully stored in the chosen keyring and is not displayed here.
+```
+
+Lastly, read the details for the managed group by providing its ID.
+
+<CodeBlockConfig highlight="1,23,24">
+
+```shell-session
+$ boundary managed-groups read -id $MG_OIDC_ID
+
+Managed Group information:
+  Auth Method ID:      amoidc_3lnMVR7Erk
+  Created Time:        Thu, 19 Aug 2021 16:06:15 MDT
+  ID:                  mgoidc_9Ja4lmzfoQ
+  Type:                oidc
+  Updated Time:        Thu, 19 Aug 2021 16:09:08 MDT
+  Version:             2
+
+  Scope:
+    ID:                o_1234567890
+    Name:              Generated org scope
+    Parent Scope ID:   global
+    Type:              org
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+
+  Member IDs:
+    acctoidc_xyYYFpjk34
+
+  Attributes:
+    Filter:            "onmicrosoft.com" in "/userinfo/upn"
+```
+
+</CodeBlockConfig>
+
+Notice the `Member IDs:` section, which should contain the oidc account id.
+
+<Note title="Troubleshooting">
+
+ If the Member IDs section is missing, ensure the filter
+under the account details is correct. If the filter is incorrect, expand the
+accordion below to update the managed group filter.
+
+</Note>
+
+<Accordion heading="Troubleshoot Account Filters" collapse>
+
+If a filter is incorrectly set, the managed group information will not show the
+account member ID for the OIDC account.
+
+<Note>
+
+ You should always log back in as the OIDC user to test any newly
+applied filters. Remember that managed group membership is updated when the user
+authenticates to the IdP with the associated OIDC account.
+
+</Note>
+
+If incorrect, update the managed group filter. This process can also be used to
+update the managed group filter criteria in the future for any existing managed
+groups.
+
+```shell-session
+$ boundary managed-groups update oidc -id $MG_OIDC_ID -filter='"onmicrosoft.com" in "/userinfo/upn"'
+
+Managed Group information:
+  Auth Method ID:      amoidc_3lnMVR7Erk
+  Created Time:        Thu, 19 Aug 2021 16:06:15 MDT
+  ID:                  mgoidc_9Ja4lmzfoQ
+  Type:                oidc
+  Updated Time:        Thu, 19 Aug 2021 16:09:08 MDT
+  Version:             2
+
+  Scope:
+    ID:                o_1234567890
+    Name:              Generated org scope
+    Parent Scope ID:   global
+    Type:              org
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+
+  Attributes:
+    Filter:            "onmicrosoft.com" in "/userinfo/upn"
+```
+
+After correcting the filter, go through the steps in the [Verify group
+membership](#verify-group-membership) section again to ensure the account has
+been added to the managed group correctly.
+
+</Accordion>
+
+</Tab>
+</Tabs>
+
+</Tab>
+<Tab heading="Terraform" group="terraform">
+
+This tutorial expands on the Terraform configuration file created in the [OIDC
+Authentication](/boundary/tutorials/identity-management/oidc-auth0) tutorial. Select the appropriate
+provider, and check that your sample code matches the starting state for
+defining a managed group.
+
+<Note>
+
+ You should already have the provider configured correctly, as
+tested in the [Get setup](#get-setup) section. If you are unable to authenticate
+to the provider, compare against the sample code below and refer back to the
+[OIDC
+Authentication](/boundary/tutorials/identity-management/oidc-auth0#activate-the-oidc-auth-method)
+tutorial to run Terraform and finish setup.
+
+</Note>
+
+Managed groups capabilities were introduced with the 1.0.4 version of the
+[Boundary provider](https://registry.terraform.io/providers/hashicorp/boundary).
+This tutorial uses version `1.0.5`, the same version of the provider defined in
+the [OIDC Authentication](/boundary/tutorials/identity-management/oidc-auth0) tutorial.
+
+The
+[boundary_managed_group](https://registry.terraform.io/providers/hashicorp/boundary/latest/docs/resources/managed_group)
+Terraform resource is used to configure a managed group. The general structure
+of the resource is:
+
+<CodeBlockConfig hideClipboard>
+
+```hcl
+resource "boundary_managed_group" "example" {
+  name           = "example"
+  description    = "An example of an OIDC managed group"
+  auth_method_id = boundary_auth_method_oidc.example.id
+  filter         = "name == \"foo\""
+}
+```
+
+</CodeBlockConfig>
+
+The `boundary_managed_group` resource needs the ID of the
+`boundary_auth_method_oidc` resource used to set up the auth method and a filter
+that defines the managed group's membership. Additionally, the following schema
+for the
+[boundary_auth_method_oidc](https://registry.terraform.io/providers/hashicorp/boundary/latest/docs/resources/auth_method_oidc)
+resource are useful in enabling managed groups configuration.
+
+<CodeBlockConfig hideClipboard highlight="1,11-13,14">
+
+```hcl
+resource "boundary_auth_method_oidc" "example" {
+    name           = "example"
+    description    = "An example OIDC auth method using boundary's built-in OIDC test server"
+    scope_id       = boundary_scope.my_org.id
+    issuer         = "http://localhost:9200"
+    client_id      = "foo_id"
+    client_secret  = "foo_secret"
+    max_age        = 10
+    api_url_prefix = "http://localhost:9200"
+    signing_algorithms = ["ES256"]
+    allowed_audiences  = ["foo_aud"]
+    account_claim_maps = ["oid=sub"]
+    claims_scopes      = ["profile"]
+  }
+```
+
+</CodeBlockConfig>
+
+- The `allowed_audiences` is a list of strings for which provider responses will
+  allowed
+- The `account_claims_maps` is a list of strings that maps Account claims for
+  the `to_claim` of `sub`
+- The `claims_scopes` is a list of strings that define the claims scopes
+
+<Tabs>
+<Tab heading="Auth0" group="auth0">
+
+Create a managed group with the following filter criteria:
+
+`"auth0" in "/userinfo/sub"`
+
+This filter selects all accounts whose `/userinfo/sub` claim contains `auth0`. Any
+of the other filter criteria available under the acctoidc attributes can be used
+for building an appropriate filter.
+
+Add the `boundary_managed_group` resource to the `main.tf` file:
+
+```hcl
+resource "boundary_managed_group" "oidc_group" {
+  name           = "Auth0"
+  description    = "OIDC managed group for Auth0"
+  auth_method_id = boundary_auth_method_oidc.provider.id
+  filter         = "\"auth0\" in \"/userinfo/sub\""
+}
+```
+
+<Note>
+
+ Double-quoted arguments are required when defining Terraform
+schema. This enables interpolation, and complicates the definition of fitlers,
+which also require double-quotes. To render correctly, escape characters (`\`)
+must preceed any instance of double-quotes within a filter (`"I'm an
+/"example/""`). For more information, check the Terraform workflow tab in the
+[Target-Aware
+Workers](/boundary/tutorials/oss-configuration/target-aware-workers#define-target-worker-filters)
+tutorial.
+
+</Note>
+
+<Note>
+
+ When creating a custom claim, it may be necessary to use [JSON
+Pointer syntax](https://datatracker.ietf.org/doc/html/rfc6901) to render the
+namespace properly. If you receive an `Error evaluating submitted filter
+expression`, attempt to reformat your filter using JSON Pointer syntax. For
+example, in JSON Pointer syntax `http://` is written as `http:~1~1`. If your
+claim response contained `http://my-domain`, you might create the above filter
+like this: `\"auth0\" in \"/userinfo/http:~1~1my-domain/sub\"`.
+
+</Note>
+
+Additionally, add an additional `outputs` section to print the new managed group
+ID.
+
+```hcl
+output "managed-group-id" {
+  value = boundary_managed_group.oidc_group.id
+}
+```
+
+Next, execute Terraform to apply the configuration. Enter `yes` when prompted
+for confirmation.
+
+<CodeBlockConfig highlight="1,51,52">
+
+```shell-session
+$ terraform apply
+boundary_auth_method_oidc.provider: Refreshing state... [id=amoidc_AliCbVihqv]
+boundary_account_oidc.oidc_user: Refreshing state... [id=acctoidc_xyYYFpjk34]
+
+Terraform used the selected providers to generate the following execution plan. Resource actions are indicated with the following symbols:
+  + create
+-/+ destroy and then create replacement
+
+Terraform will perform the following actions:
+
+  # boundary_account_oidc.oidc_user must be replaced
+-/+ resource "boundary_account_oidc" "oidc_user" {
+      ~ id             = "acctoidc_xyYYFpjk34" -> (known after apply)
+      + issuer         = "https://dev-1vdl8c0q.us.auth0.com/" # forces replacement
+        name           = "user1"
+      + subject        = "auth0|6077581e2ce19d006dfaf211" # forces replacement
+        # (2 unchanged attributes hidden)
+    }
+
+  # boundary_managed_group.oidc_group will be created
+  + resource "boundary_managed_group" "oidc_group" {
+      + auth_method_id = "amoidc_AliCbVihqv"
+      + description    = "OIDC managed group for Auth0"
+      + filter         = "\"auth0\" in \"/userinfo/sub\""
+      + id             = (known after apply)
+      + name           = "Auth0"
+    }
+
+Plan: 2 to add, 0 to change, 1 to destroy.
+
+Changes to Outputs:
+  + managed-group-id = "mgoidc_VUsKIPJHS5"
+
+Do you want to perform these actions?
+  Terraform will perform the actions described above.
+  Only 'yes' will be accepted to approve.
+
+  Enter a value: yes
+
+boundary_account_oidc.oidc_user: Destroying... [id=acctoidc_xyYYFpjk34]
+boundary_managed_group.oidc_group: Creating...
+boundary_account_oidc.oidc_user: Destruction complete after 0s
+boundary_account_oidc.oidc_user: Creating...
+boundary_managed_group.oidc_group: Creation complete after 0s [id=mgoidc_VUsKIPJHS5]
+boundary_account_oidc.oidc_user: Creation complete after 0s [id=acctoidc_xyYYFpjk34]
+
+Apply complete! Resources: 2 added, 0 changed, 1 destroyed.
+
+Outputs:
+
+auth-method-id = "amoidc_AliCbVihqv"
+managed-group-id = "mgoidc_VUsKIPJHS5"
+```
+
+</CodeBlockConfig>
+
+Copy the `managed-group-id` from the command output (`mgoidc_VUsKIPJHS5` in this
+example) and create an environment variable.
+
+```shell-session
+$ export MG_OIDC_ID=<actual-copied-value>
+```
+
+### Verify group membership
+
+Next, verify that oidc account is correctly assigned to the managed group.
+
+Authenticate again via OIDC to update the account attributes.
+
+<CodeBlockConfig highlight="1,5">
+
+```shell-session
+$ boundary authenticate oidc -auth-method-id $OIDC_AUTH_ID
+Opening returned authentication URL in your browser...
+
+Authentication information:
+  Account ID:      acctoidc_xyYYFpjk34
+  Auth Method ID:  amoidc_AliCbVihqv
+  Expiration Time: Wed, 25 Aug 2021 11:23:19 MDT
+  User ID:         u_Kt2AI1hPmC
+
+The token was successfully stored in the chosen keyring and is not displayed here.
+```
+
+</CodeBlockConfig>
+
+Note the `Account ID`.
+
+Now log back into Boundary as the admin user.
+
+```shell-session
+$ boundary authenticate password -auth-method-id $BOUNDARY_AUTH_METHOD_ID -login-name admin
+Please enter the password (it will be hidden): <password>
+
+Authentication information:
+  Account ID:      acctpw_1234567890
+  Auth Method ID:  ampw_1234567890
+  Expiration Time: Wed, 25 Aug 2021 11:24:38 MDT
+  User ID:         u_1234567890
+
+The token was successfully stored in the chosen keyring and is not displayed here.
+```
+
+Lastly, read the details for the managed group by providing its ID.
+
+<CodeBlockConfig highlight="1,23,24">
+
+```shell-session
+$ boundary managed-groups read -id $MG_OIDC_ID
+
+Managed Group information:
+  Auth Method ID:      amoidc_AliCbVihqv
+  Created Time:        Wed, 18 Aug 2021 11:14:57 MDT
+  ID:                  mgoidc_VUsKIPJHS5
+  Type:                oidc
+  Updated Time:        Wed, 18 Aug 2021 11:23:19 MDT
+  Version:             2
+
+  Scope:
+    ID:                o_1234567890
+    Name:              Generated org scope
+    Parent Scope ID:   global
+    Type:              org
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+
+  Member IDs:
+    acctoidc_xyYYFpjk34
+
+  Attributes:
+    Filter:            "auth0" in "/userinfo/sub"
+```
+
+</CodeBlockConfig>
+
+Notice the `Member IDs:` section, which should contain the oidc account id.
+
+<Note title="Troubleshooting">
+
+ If the Member IDs section is missing, ensure the filter
+under the account details is correct. If the filter is incorrect, expand the
+accordion below to update the managed group filter.
+
+</Note>
+
+<Accordion heading="Troubleshoot Account Filters" collapse>
+
+The managed group information will not show the account member ID for the OIDC
+account if a filter is incorrectly defined.
+
+Verify the managed group filter defined in the `boundary_managed_group`
+resource. If incorrect, save the updated configuration and execute `terraform
+apply` again to update the filter.
+
+<Note>
+
+ You should always log back in as the OIDC user to test any newly
+applied filters. Remember that managed group membership is updated when the user
+authenticates to the IdP with the associated OIDC account.
+
+</Note>
+
+After correcting the filter, go through the steps in the [Verify group
+membership](#verify-group-membership-3) section again to ensure the account has
+been added to the managed group correctly.
+
+</Accordion>
+
+</Tab>
+<Tab heading="Okta" group="okta">
+
+Create a managed group with the following filter criteria:
+
+`"okta.com" in "/token/iss"`
+
+This filter selects all accounts whose `/token/iss` claim contains `okta.com`. Any
+of the other filter criteria available under the acctoidc attributes can be used
+for building an appropriate filter.
+
+Add the `boundary_managed_group` resource to the `main.tf` file:
+
+```hcl
+resource "boundary_managed_group" "oidc_group" {
+  name           = "Okta"
+  description    = "OIDC managed group for Okta"
+  auth_method_id = boundary_auth_method_oidc.provider.id
+  filter         = "\"okta.com\" in \"/token/iss\""
+}
+```
+
+<Note>
+
+ Double-quoted arguments are required when defining Terraform
+schema. This enables interpolation, and complicates the definition of fitlers,
+which also require double-quotes. To render correctly, escape characters (`\`)
+must preceed any instance of double-quotes within a filter (`"I'm an
+/"example/""`). For more information, check the Terraform workflow tab in the
+[Target-Aware
+Workers](/boundary/tutorials/oss-configuration/target-aware-workers#define-target-worker-filters)
+tutorial.
+
+</Note>
+
+Additionally, add an additional `outputs` section to print the new managed group
+ID.
+
+```hcl
+output "managed-group-id" {
+  value = boundary_managed_group.oidc_group.id
+}
+```
+
+Next, execute Terraform to apply the configuration. Enter `yes` when prompted
+for confirmation.
+
+<CodeBlockConfig highlight="1,68,69">
+
+```shell-session
+$ terraform apply
+boundary_auth_method_oidc.provider: Refreshing state... [id=amoidc_cjCWZnr79C]
+boundary_account_oidc.oidc_user: Refreshing state... [id=acctoidc_xyYYFpjk34]
+
+Note: Objects have changed outside of Terraform
+
+Terraform detected the following changes made outside of Terraform since the last "terraform apply":
+
+  # boundary_auth_method_oidc.provider has been changed
+  ~ resource "boundary_auth_method_oidc" "provider" {
+        id                   = "amoidc_cjCWZnr79C"
+        name                 = "Okta"
+      ~ state                = "inactive" -> "active-public"
+        # (12 unchanged attributes hidden)
+    }
+
+Unless you have made equivalent changes to your configuration, or ignored the relevant attributes using ignore_changes, the following plan may
+include actions to undo or respond to these changes.
+
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+Terraform used the selected providers to generate the following execution plan. Resource actions are indicated with the following symbols:
+  + create
+-/+ destroy and then create replacement
+
+Terraform will perform the following actions:
+
+  # boundary_account_oidc.oidc_user must be replaced
+-/+ resource "boundary_account_oidc" "oidc_user" {
+      ~ id             = "acctoidc_xyYYFpjk34" -> (known after apply)
+      + issuer         = "https://dev-1944432.okta.com" # forces replacement
+        name           = "user1"
+      + subject        = "00ul68uytv7ROjOHd5d6" # forces replacement
+        # (2 unchanged attributes hidden)
+    }
+
+  # boundary_managed_group.oidc_group will be created
+  + resource "boundary_managed_group" "oidc_group" {
+      + auth_method_id = "amoidc_cjCWZnr79C"
+      + description    = "OIDC managed group for Okta"
+      + filter         = "\"okta.com\" in \"/token/iss\""
+      + id             = (known after apply)
+      + name           = "Okta"
+    }
+
+Plan: 2 to add, 0 to change, 1 to destroy.
+
+Changes to Outputs:
+  + managed-group-id = (known after apply)
+
+Do you want to perform these actions?
+  Terraform will perform the actions described above.
+  Only 'yes' will be accepted to approve.
+
+  Enter a value: yes
+
+boundary_account_oidc.oidc_user: Destroying... [id=acctoidc_xyYYFpjk34]
+boundary_managed_group.oidc_group: Creating...
+boundary_account_oidc.oidc_user: Destruction complete after 0s
+boundary_account_oidc.oidc_user: Creating...
+boundary_managed_group.oidc_group: Creation complete after 0s [id=mgoidc_3Pl965OoGN]
+boundary_account_oidc.oidc_user: Creation complete after 0s [id=acctoidc_xyYYFpjk34]
+
+Apply complete! Resources: 2 added, 0 changed, 1 destroyed.
+
+Outputs:
+
+auth-method-id = "amoidc_cjCWZnr79C"
+managed-group-id = "mgoidc_3Pl965OoGN"
+```
+
+</CodeBlockConfig>
+
+Copy the `managed-group-id` from the command output (`mgoidc_3Pl965OoGN` in this
+example) and create an environment variable.
+
+```shell-session
+$ export MG_OIDC_ID=<actual-copied-value>
+```
+
+### Verify group membership
+
+Next, verify that oidc account is correctly assigned to the managed group.
+
+Authenticate again via OIDC to update the account attributes.
+
+<CodeBlockConfig highlight="1,5">
+
+```shell-session
+$ boundary authenticate oidc -auth-method-id $OIDC_AUTH_ID
+Opening returned authentication URL in your browser...
+
+Authentication information:
+  Account ID:      acctoidc_xyYYFpjk34
+  Auth Method ID:  amoidc_cjCWZnr79C
+  Expiration Time: Thu, 26 Aug 2021 16:31:45 MDT
+  User ID:         u_NTcIopd1yv
+
+The token was successfully stored in the chosen keyring and is not displayed here.
+```
+
+</CodeBlockConfig>
+
+Now log back into Boundary as the admin user.
+
+```shell-session
+$ boundary authenticate password -auth-method-id $BOUNDARY_AUTH_METHOD_ID -login-name admin
+Please enter the password (it will be hidden): <password>
+
+Authentication information:
+  Account ID:      acctpw_1234567890
+  Auth Method ID:  ampw_1234567890
+  Expiration Time: Thu, 26 Aug 2021 16:32:02 MDT
+  User ID:         u_1234567890
+
+The token was successfully stored in the chosen keyring and is not displayed here.
+```
+
+Lastly, read the details for the managed group by providing its ID.
+
+<CodeBlockConfig highlight="1,23,24">
+
+```shell-session
+$ boundary managed-groups read -id $MG_OIDC_ID
+
+Managed Group information:
+  Auth Method ID:      amoidc_cjCWZnr79C
+  Created Time:        Thu, 19 Aug 2021 16:30:49 MDT
+  ID:                  mgoidc_3Pl965OoGN
+  Type:                oidc
+  Updated Time:        Thu, 19 Aug 2021 16:31:45 MDT
+  Version:             2
+
+  Scope:
+    ID:                o_1234567890
+    Name:              Generated org scope
+    Parent Scope ID:   global
+    Type:              org
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+
+  Member IDs:
+    acctoidc_xyYYFpjk34
+
+  Attributes:
+    Filter:            "okta.com" in "/token/iss"
+```
+
+</CodeBlockConfig>
+
+Notice the `Member IDs:` section, which should contain the oidc account id.
+
+<Note title="Troubleshooting">
+
+ If the Member IDs section is missing, ensure the filter
+under the account details is correct. If the filter is incorrect, expand the
+accordion below to update the managed group filter.
+
+</Note>
+
+<Accordion heading="Troubleshoot Account Filters" collapse>
+
+If a filter is incorrectly set, the managed group information will not show the
+account member ID for the OIDC account.
+
+<Note>
+
+ You should always log back in as the OIDC user to test any newly
+applied filters. Remember that managed group membership is updated when the user
+authenticates to the IdP with the associated OIDC account.
+
+</Note>
+
+If incorrect, update the managed group filter. This process can also be used to
+update the managed group filter criteria in the future for any existing managed
+groups.
+
+```shell-session
+$ boundary managed-groups update oidc -id $MG_OIDC_ID -filter='"okta.com" in "/token/iss"'
+
+Managed Group information:
+  Auth Method ID:      amoidc_cjCWZnr79C
+  Created Time:        Thu, 19 Aug 2021 16:30:49 MDT
+  ID:                  mgoidc_3Pl965OoGN
+  Type:                oidc
+  Updated Time:        Thu, 19 Aug 2021 16:31:45 MDT
+  Version:             2
+
+  Scope:
+    ID:                o_1234567890
+    Name:              Generated org scope
+    Parent Scope ID:   global
+    Type:              org
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+
+  Attributes:
+    Filter:            "okta.com" in "/token/iss"
+```
+
+After correcting the filter, go through the steps in the [Verify group
+membership](#verify-group-membership) section again to ensure the account has
+been added to the managed group correctly.
+
+</Accordion>
+
+</Tab>
+<Tab heading="Azure AD" group="azure">
+
+Create a managed group with the following filter criteria:
+
+`"onmicrosoft.com" in "/userinfo/upn"`
+
+This filter selects all accounts whose `/userinfo/upn` claim contains
+`onmicrosoft.com`. Any of the other filter criteria available under the acctoidc
+attributes can be used for building an appropriate filter.
+
+Add the `boundary_managed_group` resource to the `main.tf` file:
+
+```hcl
+resource "boundary_managed_group" "oidc_group" {
+  name           = "Azure"
+  description    = "OIDC managed group for Azure"
+  auth_method_id = boundary_auth_method_oidc.provider.id
+  filter         = "\"onmicrosoft.com\" in \"/userinfo/upn\""
+}
+```
+
+<Note>
+
+ Double-quoted arguments are required when defining Terraform
+schema. This enables interpolation, and complicates the definition of fitlers,
+which also require double-quotes. To render correctly, escape characters (`\`)
+must preceed any instance of double-quotes within a filter (`"I'm an
+/"example/""`). For more information, check the Terraform workflow tab in the
+[Target-Aware
+Workers](/boundary/tutorials/oss-configuration/target-aware-workers#define-target-worker-filters)
+tutorial.
+
+</Note>
+
+Additionally, add an additional `outputs` section to print the new managed group
+ID.
+
+```hcl
+output "managed-group-id" {
+  value = boundary_managed_group.oidc_group.id
+}
+```
+
+Next, execute Terraform to apply the configuration. Enter `yes` when prompted
+for confirmation.
+
+<CodeBlockConfig highlight="1,68,69">
+
+```shell-session
+$ terraform apply
+boundary_auth_method_oidc.provider: Refreshing state... [id=amoidc_ZMettTQoi7]
+boundary_account_oidc.oidc_user: Refreshing state... [id=acctoidc_xyYYFpjk34]
+
+Note: Objects have changed outside of Terraform
+
+Terraform detected the following changes made outside of Terraform since the last "terraform apply":
+
+  # boundary_auth_method_oidc.provider has been changed
+  ~ resource "boundary_auth_method_oidc" "provider" {
+        id                   = "amoidc_ZMettTQoi7"
+        name                 = "Azure"
+      ~ state                = "inactive" -> "active-public"
+        # (11 unchanged attributes hidden)
+    }
+
+Unless you have made equivalent changes to your configuration, or ignored the relevant attributes using ignore_changes, the following plan may
+include actions to undo or respond to these changes.
+
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+Terraform used the selected providers to generate the following execution plan. Resource actions are indicated with the following symbols:
+  + create
+-/+ destroy and then create replacement
+
+Terraform will perform the following actions:
+
+  # boundary_account_oidc.oidc_user must be replaced
+-/+ resource "boundary_account_oidc" "oidc_user" {
+      ~ id             = "acctoidc_xyYYFpjk34" -> (known after apply)
+      + issuer         = "https://sts.windows.net/e0ce29ea-29d7-4851-bfb3-5f8e35e1fb68/" # forces replacement
+        name           = "user1"
+      + subject        = "c3dc63d0-90e6-4855-b9c0-e87da14a9c5f" # forces replacement
+        # (2 unchanged attributes hidden)
+    }
+
+  # boundary_managed_group.oidc_group will be created
+  + resource "boundary_managed_group" "oidc_group" {
+      + auth_method_id = "acctoidc_xyYYFpjk34"
+      + description    = "OIDC managed group for Azure"
+      + filter         = "\"onmicrosoft.com\" in \"/userinfo/upn\""
+      + id             = (known after apply)
+      + name           = "Azure"
+    }
+
+Plan: 2 to add, 0 to change, 1 to destroy.
+
+Changes to Outputs:
+  + managed-group-id = (known after apply)
+
+Do you want to perform these actions?
+  Terraform will perform the actions described above.
+  Only 'yes' will be accepted to approve.
+
+  Enter a value: yes
+
+boundary_account_oidc.oidc_user: Destroying... [id=acctoidc_xyYYFpjk34]
+boundary_managed_group.oidc_group: Creating...
+boundary_account_oidc.oidc_user: Destruction complete after 0s
+boundary_managed_group.oidc_group: Creation complete after 0s [id=mgoidc_ndN5Mr04a1]
+boundary_account_oidc.oidc_user: Creating...
+boundary_account_oidc.oidc_user: Creation complete after 0s [id=acctoidc_xyYYFpjk34]
+
+Apply complete! Resources: 2 added, 0 changed, 1 destroyed.
+
+Outputs:
+
+auth-method-id = "amoidc_ZMettTQoi7"
+managed-group-id = "mgoidc_ndN5Mr04a1"
+```
+
+</CodeBlockConfig>
+
+Copy the `managed-group-id` from the command output (`mgoidc_ndN5Mr04a1` in this
+example) and create an environment variable.
+
+```shell-session
+$ export MG_OIDC_ID=<actual-copied-value>
+```
+
+### Verify group membership
+
+Next, verify that oidc account is correctly assigned to the managed group.
+
+Authenticate again via OIDC to update the account attributes.
+
+<CodeBlockConfig highlight="1,5">
+
+```shell-session
+$ boundary authenticate oidc -auth-method-id $OIDC_AUTH_ID
+Opening returned authentication URL in your browser...
+
+Authentication information:
+  Account ID:      acctoidc_xyYYFpjk34
+  Auth Method ID:  amoidc_ZMettTQoi7
+  Expiration Time: Wed, 25 Aug 2021 11:23:19 MDT
+  User ID:         u_Kt2AI1hPmC
+
+The token was successfully stored in the chosen keyring and is not displayed here.
+```
+
+</CodeBlockConfig>
+
+Note the `Account ID`.
+
+Now log back into Boundary as the admin user.
+
+```shell-session
+$ boundary authenticate password -auth-method-id $BOUNDARY_AUTH_METHOD_ID -login-name admin
+Please enter the password (it will be hidden): <password>
+
+Authentication information:
+  Account ID:      acctpw_1234567890
+  Auth Method ID:  ampw_1234567890
+  Expiration Time: Wed, 25 Aug 2021 11:24:38 MDT
+  User ID:         u_1234567890
+
+The token was successfully stored in the chosen keyring and is not displayed here.
+```
+
+Lastly, read the details for the managed group by providing its ID.
+
+<CodeBlockConfig highlight="1,23,24">
+
+```shell-session
+$ boundary managed-groups read -id $MG_OIDC_ID
+
+Managed Group information:
+  Auth Method ID:      amoidc_ZMettTQoi7
+  Created Time:        Wed, 18 Aug 2021 11:14:57 MDT
+  ID:                  mgoidc_ndN5Mr04a1
+  Type:                oidc
+  Updated Time:        Wed, 18 Aug 2021 11:23:19 MDT
+  Version:             2
+
+  Scope:
+    ID:                o_1234567890
+    Name:              Generated org scope
+    Parent Scope ID:   global
+    Type:              org
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+
+  Member IDs:
+    acctoidc_xyYYFpjk34
+
+  Attributes:
+    Filter:            "auth0" in "/userinfo/sub"
+```
+
+</CodeBlockConfig>
+
+Notice the `Member IDs:` section, which should contain the oidc account id.
+
+<Note title="Troubleshooting">
+
+ If the Member IDs section is missing, ensure the filter
+under the account details is correct. If the filter is incorrect, expand the
+accordion below to update the managed group filter.
+
+</Note>
+
+<Accordion heading="Troubleshoot Account Filters" collapse>
+
+The managed group information will not show the account member ID for the OIDC
+account if a filter is incorrectly defined.
+
+Verify the managed group filter defined in the `boundary_managed_group`
+resource. If incorrect, save the updated configuration and execute `terraform
+apply` again to update the filter.
+
+<Note>
+
+ You should always log back in as the OIDC user to test any newly
+applied filters. Remember that managed group membership is updated when the user
+authenticates to the IdP with the associated OIDC account.
+
+</Note>
+
+After correcting the filter, go through the steps in the [Verify group
+membership](#verify-group-membership-3) section again to ensure the account has
+been added to the managed group correctly.
+
+</Accordion>
+
+</Tab>
+</Tabs>
+
+</Tab>
+</Tabs>
+
+## Create a role
+
+With the managed group created and automatically managing group membership, the
+next step is to apply permissions to the group by creating a role.
+
+After creating a role, the managed group is added as a role principle and grants
+are assigned to the role. To learn more about group principles, check out the
+[Manage Users and Groups tutorial](/boundary/tutorials/oss-administration/oss-manage-users-groups). To
+understand how permissions are granted, check out the [Manage Roles
+tutorial](/boundary/tutorials/oss-administration/oss-manage-roles).
+
+<Note>
+
+ While basic CRUD operations can be performed on managed groups,
+admins cannot currently add managed groups as role principals using the Admin
+Console UI. Complete the next section using the CLI or Terraform workflows.
+
+</Note>
+
+<Tabs>
+<Tab heading="CLI" group="cli">
+<Tabs>
+<Tab heading="Auth0" group="auth0">
+
+First, create a new role under the org scope.
+
+<CodeBlockConfig highlight="1,6">
+
+```shell-session
+$ boundary roles create -scope-id=$ORG_ID
+
+Role information:
+  Created Time:        Wed, 18 Aug 2021 11:58:34 MDT
+  Grant Scope ID:      o_1234567890
+  ID:                  r_0Uz8McGUEs
+  Updated Time:        Wed, 18 Aug 2021 11:58:34 MDT
+  Version:             1
+
+  Scope:
+    ID:                p_1234567890
+    Name:              Generated project scope
+    Parent Scope ID:   global
+    Type:              org
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    add-principals
+    set-principals
+    remove-principals
+    add-grants
+    set-grants
+    remove-grants
+```
+
+</CodeBlockConfig>
+
+Copy the role ID from the output, such as `r_0Uz8McGUEs` and create
+an environment variable.
+
+```shell-session
+$ export ROLE_ID=<actual-copied-value>
+```
+
+### Add Managed Group as a role principle
+
+Next, add the new managed group as a role principle so the group will inherit
+any grants associated with the role.
+
+```shell-session
+$ boundary roles add-principals -id=$ROLE_ID -principal $MG_OIDC_ID
+
+Role information:
+  Created Time:        Wed, 18 Aug 2021 11:58:34 MDT
+  Grant Scope ID:      o_1234567890
+  ID:                  r_0Uz8McGUEs
+  Updated Time:        Wed, 18 Aug 2021 12:09:50 MDT
+  Version:             3
+
+  Scope:
+    ID:                o_1234567890
+    Name:              Generated project scope
+    Parent Scope ID:   global
+    Type:              org
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    add-principals
+    set-principals
+    remove-principals
+    add-grants
+    set-grants
+    remove-grants
+
+  Principals:
+    ID:             mgoidc_VUsKIPJHS5
+      Type:         managed group
+      Scope ID:     o_1234567890
+```
+
+### Assign grants to roles
+
+Use the grant `ids=*;type=role;actions=list,read`, which selects any role ID and
+allows list and read actions to be performed. To learn more about setting
+permission grants, check out the [Permission Grant Formats
+documentation](/boundary/docs/concepts/security/permissions#permission-grant-formats).
+
+```shell-session
+$ boundary roles add-grants -id=$ROLE_ID -grant "ids=*;type=role;actions=list,read"
+
+Role information:
+  Created Time:        Wed, 18 Aug 2021 11:58:34 MDT
+  Grant Scope ID:      o_1234567890
+  ID:                  r_0Uz8McGUEs
+  Updated Time:        Wed, 18 Aug 2021 12:07:36 MDT
+  Version:             2
+
+  Scope:
+    ID:                o_1234567890
+    Name:              Generated project scope
+    Parent Scope ID:   global
+    Type:              org
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    add-principals
+    set-principals
+    remove-principals
+    add-grants
+    set-grants
+    remove-grants
+
+  Principals:
+    ID:             mgoidc_VUsKIPJHS5
+      Type:         managed group
+      Scope ID:     o_1234567890
+
+  Canonical Grants:
+    ids=*;type=role;actions=list,read
+```
+
+With the grants in place the oidc user should automatically be allowed to list
+and read roles upon authentication.
+
+</Tab>
+<Tab heading="Okta" group="okta">
+
+First, create a new role under the org scope.
+
+<CodeBlockConfig highlight="1,6">
+
+```shell-session
+$ boundary roles create -scope-id=$ORG_ID
+
+Role information:
+  Created Time:        Thu, 19 Aug 2021 16:34:31 MDT
+  Grant Scope ID:      o_1234567890
+  ID:                  r_uF4pvSBzSw
+  Updated Time:        Thu, 19 Aug 2021 16:34:31 MDT
+  Version:             1
+
+  Scope:
+    ID:                o_1234567890
+    Name:              Generated project scope
+    Parent Scope ID:   global
+    Type:              org
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    add-principals
+    set-principals
+    remove-principals
+    add-grants
+    set-grants
+    remove-grants
+```
+
+</CodeBlockConfig>
+
+Copy the role ID from the output, such as `r_uF4pvSBzSw` and create
+an environment variable.
+
+```shell-session
+$ export ROLE_ID=<actual-copied-value>
+```
+
+### Add Managed Group as a role principle
+
+Next, add the new managed group as a role principle so the group will inherit
+any grants associated with the role.
+
+```shell-session
+$ boundary roles add-principals -id=$ROLE_ID -principal $MG_OIDC_ID
+
+Role information:
+  Created Time:        Thu, 19 Aug 2021 16:34:31 MDT
+  Grant Scope ID:      o_1234567890
+  ID:                  r_uF4pvSBzSw
+  Updated Time:        Thu, 19 Aug 2021 16:35:09 MDT
+  Version:             2
+
+  Scope:
+    ID:                o_1234567890
+    Name:              Generated project scope
+    Parent Scope ID:   global
+    Type:              org
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    add-principals
+    set-principals
+    remove-principals
+    add-grants
+    set-grants
+    remove-grants
+
+  Principals:
+    ID:             mgoidc_3Pl965OoGN
+      Type:         managed group
+      Scope ID:     o_1234567890
+```
+
+### Assign grants to roles
+
+Use the grant `ids=*;type=role;actions=list,read`, which selects any role ID and
+allows list and read actions to be performed. To learn more about setting
+permission grants, check out the [Permission Grant Formats
+documentation](/boundary/docs/concepts/security/permissions#permission-grant-formats).
+
+```shell-session
+$ boundary roles add-grants -id=$ROLE_ID -grant "ids=*;type=role;actions=list,read"
+
+Role information:
+  Created Time:        Thu, 19 Aug 2021 16:34:31 MDT
+  Grant Scope ID:      o_1234567890
+  ID:                  r_uF4pvSBzSw
+  Updated Time:        Thu, 19 Aug 2021 16:35:37 MDT
+  Version:             3
+
+  Scope:
+    ID:                o_1234567890
+    Name:              Generated project scope
+    Parent Scope ID:   global
+    Type:              org
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    add-principals
+    set-principals
+    remove-principals
+    add-grants
+    set-grants
+    remove-grants
+
+  Principals:
+    ID:             mgoidc_3Pl965OoGN
+      Type:         managed group
+      Scope ID:     o_1234567890
+
+  Canonical Grants:
+    ids=*;type=role;actions=list,read
+```
+
+With the grants in place the oidc user should automatically be allowed to list
+and read roles upon authentication.
+
+</Tab>
+<Tab heading="Azure AD" group="azure">
+
+First, create a new role under the org scope.
+
+<CodeBlockConfig highlight="1,6">
+
+```shell-session
+$ boundary roles create -scope-id=$ORG_ID
+
+Role information:
+  Created Time:        Thu, 19 Aug 2021 16:13:09 MDT
+  Grant Scope ID:      o_1234567890
+  ID:                  r_NfCpSA8OZ9
+  Updated Time:        Thu, 19 Aug 2021 16:13:09 MDT
+  Version:             1
+
+  Scope:
+    ID:                o_1234567890
+    Name:              Generated project scope
+    Parent Scope ID:   global
+    Type:              org
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    add-principals
+    set-principals
+    remove-principals
+    add-grants
+    set-grants
+    remove-grants
+```
+
+</CodeBlockConfig>
+
+Copy the role ID from the output, such as `r_NfCpSA8OZ9` and create
+an environment variable.
+
+```shell-session
+$ export ROLE_ID=<actual-copied-value>
+```
+
+### Add Managed Group as a role principle
+
+Next, add the new managed group as a role principle so the group will inherit
+any grants associated with the role.
+
+```shell-session
+$ boundary roles add-principals -id=$ROLE_ID -principal $MG_OIDC_ID
+
+Role information:
+  Created Time:        Thu, 19 Aug 2021 16:13:09 MDT
+  Grant Scope ID:      o_1234567890
+  ID:                  r_NfCpSA8OZ9
+  Updated Time:        Thu, 19 Aug 2021 16:14:00 MDT
+  Version:             2
+
+  Scope:
+    ID:                o_1234567890
+    Name:              Generated project scope
+    Parent Scope ID:   global
+    Type:              org
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    add-principals
+    set-principals
+    remove-principals
+    add-grants
+    set-grants
+    remove-grants
+
+  Principals:
+    ID:             mgoidc_9Ja4lmzfoQ
+      Type:         managed group
+      Scope ID:     o_1234567890
+```
+
+### Assign grants to roles
+
+Use the grant `ids=*;type=role;actions=list,read`, which selects any role ID and
+allows list and read actions to be performed. To learn more about setting
+permission grants, check out the [Permission Grant Formats
+documentation](/boundary/docs/concepts/security/permissions#permission-grant-formats).
+
+```shell-session
+$ boundary roles add-grants -id=$ROLE_ID -grant "ids=*;type=role;actions=list,read"
+
+Role information:
+  Created Time:        Thu, 19 Aug 2021 16:13:09 MDT
+  Grant Scope ID:      o_1234567890
+  ID:                  r_NfCpSA8OZ9
+  Updated Time:        Thu, 19 Aug 2021 16:14:43 MDT
+  Version:             3
+
+  Scope:
+    ID:                o_1234567890
+    Name:              Generated project scope
+    Parent Scope ID:   global
+    Type:              org
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    add-principals
+    set-principals
+    remove-principals
+    add-grants
+    set-grants
+    remove-grants
+
+  Principals:
+    ID:             mgoidc_9Ja4lmzfoQ
+      Type:         managed group
+      Scope ID:     o_1234567890
+
+  Canonical Grants:
+    ids=*;type=role;actions=list,read
+```
+
+With the grants in place the oidc user should automatically be allowed to list
+and read roles upon authentication.
+
+</Tab>
+</Tabs>
+
+</Tab>
+<Tab heading="Terraform" group="terraform">
+
+Here the `boundary_role` resource is configured to provision a role. This role
+will allow OIDC users to list and read roles within the Generated org scope,
+for example an org with the ID `o_1234567890`.
+
+The newly configured managed group is added as a role principle, and both `list`
+and `read` grants are assigned.
+
+<Tabs>
+<Tab heading="Auth0" group="auth0">
+
+First, create a new role under the Generated org scope.
+
+Open the `main.tf` file and add a new `boundary_role` resource. Add the `name`,
+`description`, `principle_ids`, `grant_strings`, and `scope_id` schema.
+
+Use the Generated org scope id `o_1234567890` for the `scope_id`. For the
+`principle_ids`, add the new managed group as a role principle so the group will
+inherit any grants associated with the role.
+
+Set `grant_strings` to `ids=*;type=role;actions=list,read`, which selects any
+role ID and allows list and read actions to be performed. To learn more about
+setting permission grants, check out the [Permission Grant Formats
+documentation](/boundary/docs/concepts/security/permissions#permission-grant-formats).
+
+Additionally, add a new `outputs` value to print the id of the role.
+
+```hcl
+resource "boundary_role" "oidc_role" {
+  name          = "List and Read"
+  description   = "List and read role"
+  principal_ids = [boundary_managed_group.oidc_group.id]
+  grant_strings = ["ids=*;type=role;actions=list,read"]
+  scope_id      = "o_1234567890"
+}
+
+output "role-id" {
+  value = boundary_role.oidc_role.id
+}
+```
+
+-> To see an example of a completed `main.tf` file, expand the accordion below.
+
+<Accordion heading="Full Terraform Plan" collapse>
+
+```hcl
+terraform {
+  required_providers {
+    boundary = {
+      source  = "hashicorp/boundary"
+      version = "1.0.5"
+    }
+  }
+}
+
+output "auth-method-id" {
+  value = boundary_auth_method_oidc.provider.id
+}
+
+output "managed-group-id" {
+  value = boundary_managed_group.oidc_group.id
+}
+
+output "role-id" {
+  value = boundary_role.oidc_role.id
+}
+
+provider "boundary" {
+  addr             = "http://127.0.0.1:9200"
+  recovery_kms_hcl = <<EOT
+kms "aead" {
+  purpose = "recovery"
+  aead_type = "aes-gcm"
+  key = "EDrPfCkzxRrNlsPwp+lAp11Dtnu0C14vLDCzBSxvo1s="
+  key_id = "global_recovery"
+}
+EOT
+}
+
+resource "boundary_auth_method_oidc" "provider" {
+  name                 = "Auth0"
+  description          = "OIDC auth method for Auth0"
+  scope_id             = "o_1234567890"
+  issuer             = "https://dev-1vdl8c0q.us.auth0.com/"
+  client_id          = "zbaJLTZh3n14WqSV7qQ9onuIVRDaZdzz"
+  client_secret      = "t35c9NNw1aZ8haQKYJjCL0lauNOSp5UNPovUJXo8Ea2sPZAR1DszEowX-5-lg-Xr"
+  signing_algorithms = ["RS256"]
+  api_url_prefix     = "http://localhost:9200"
+  is_primary_for_scope = true
+  state = "active-public"
+  max_age = 0
+}
+
+resource "boundary_account_oidc" "oidc_user" {
+  name           = "user1"
+  description    = "OIDC account for user1"
+  auth_method_id = boundary_auth_method_oidc.provider.id
+  issuer  = "https://dev-1vdl8c0q.us.auth0.com/"
+  subject = "auth0|6077581e2ce19d006dfaf211"
+}
+
+resource "boundary_managed_group" "oidc_group" {
+  name           = "Auth0"
+  description    = "OIDC managed group for Auth0"
+  auth_method_id = boundary_auth_method_oidc.provider.id
+  filter         = "\"auth0\" in \"/userinfo/sub\""
+}
+
+resource "boundary_role" "oidc_role" {
+  name          = "List and Read"
+  description   = "List and read role"
+  principal_ids = [boundary_managed_group.oidc_group.id]
+  grant_strings = ["ids=*;type=role;actions=list,read"]
+  scope_id      = "o_1234567890"
+}
+```
+
+</Accordion>
+
+Apply the new configuration. Enter `yes` when prompted for confirmation.
+
+<CodeBlockConfig highlight="1,60">
+
+```shell-session
+$ terraform apply
+boundary_auth_method_oidc.provider: Refreshing state... [id=amoidc_AliCbVihqv]
+boundary_managed_group.oidc_group: Refreshing state... [id=mgoidc_VUsKIPJHS5]
+boundary_account_oidc.oidc_user: Refreshing state... [id=acctoidc_xyYYFpjk34]
+
+Terraform used the selected providers to generate the following execution plan. Resource actions are indicated with the following symbols:
+  + create
+-/+ destroy and then create replacement
+
+Terraform will perform the following actions:
+
+  # boundary_account_oidc.oidc_user must be replaced
+-/+ resource "boundary_account_oidc" "oidc_user" {
+      ~ id             = "acctoidc_xyYYFpjk34" -> (known after apply)
+      + issuer         = "https://dev-1vdl8c0q.us.auth0.com/" # forces replacement
+        name           = "user1"
+      + subject        = "auth0|6077581e2ce19d006dfaf211" # forces replacement
+        # (2 unchanged attributes hidden)
+    }
+
+  # boundary_role.oidc_role will be created
+  + resource "boundary_role" "oidc_role" {
+      + description    = "List and read role"
+      + grant_scope_id = (known after apply)
+      + grant_strings  = [
+          + "ids=*;type=role;actions=list,read",
+        ]
+      + id             = (known after apply)
+      + name           = "List and Read"
+      + principal_ids  = [
+          + "mgoidc_VUsKIPJHS5",
+        ]
+      + scope_id       = "o_1234567890"
+    }
+
+Plan: 2 to add, 0 to change, 1 to destroy.
+
+Changes to Outputs:
+  + role-id = (known after apply)
+
+Do you want to perform these actions?
+  Terraform will perform the actions described above.
+  Only 'yes' will be accepted to approve.
+
+  Enter a value: yes
+
+boundary_account_oidc.oidc_user: Destroying... [id=acctoidc_xyYYFpjk34]
+boundary_role.oidc_role: Creating...
+boundary_account_oidc.oidc_user: Destruction complete after 0s
+boundary_account_oidc.oidc_user: Creating...
+boundary_account_oidc.oidc_user: Creation complete after 0s [id=acctoidc_xyYYFpjk34]
+boundary_role.oidc_role: Creation complete after 1s [id=r_gpZ5TGM7nc]
+
+Apply complete! Resources: 2 added, 0 changed, 1 destroyed.
+
+Outputs:
+
+auth-method-id = "amoidc_AliCbVihqv"
+managed-group-id = "mgoidc_VUsKIPJHS5"
+role-id = "r_0Uz8McGUEs"
+```
+
+</CodeBlockConfig>
+
+Copy the role ID from the output, such as `r_0Uz8McGUEs` and create
+an environment variable.
+
+```shell-session
+$ export ROLE_ID=<actual-copied-value>
+```
+
+With the grants in place the oidc user should automatically be allowed to list
+and read roles upon authentication.
+
+</Tab>
+<Tab heading="Okta" group="okta">
+
+First, create a new role under the Generated org scope.
+
+Open the `main.tf` file and add a new `boundary_role` resource. Add the `name`,
+`description`, `principle_ids`, `grant_strings`, and `scope_id` schema.
+
+Use the Generated org scope id, for example `o_1234567890` for the `scope_id`. For the
+`principle_ids`, add the new managed group as a role principle so the group will
+inherit any grants associated with the role.
+
+Set `grant_strings` to `ids=*;type=role;actions=list,read`, which selects any
+role ID and allows list and read actions to be performed. To learn more about
+setting permission grants, check out the [Permission Grant Formats
+documentation](/boundary/docs/concepts/security/permissions#permission-grant-formats).
+
+Additionally, add a new `outputs` value to print the id of the role.
+
+```hcl
+resource "boundary_role" "oidc_role" {
+  name          = "List and Read"
+  description   = "List and read role"
+  principal_ids = [boundary_managed_group.oidc_group.id]
+  grant_strings = ["ids=*;type=role;actions=list,read"]
+  scope_id      = "o_1234567890"
+}
+
+output "role-id" {
+  value = boundary_role.oidc_role.id
+}
+```
+
+-> To see an example of a completed `main.tf` file, expand the accordion below.
+
+<Accordion heading="Full Terraform Plan" collapse>
+
+```hcl
+terraform {
+  required_providers {
+    boundary = {
+      source  = "hashicorp/boundary"
+      version = "1.0.5"
+    }
+  }
+}
+
+output "auth-method-id" {
+  value = boundary_auth_method_oidc.provider.id
+}
+
+output "managed-group-id" {
+  value = boundary_managed_group.oidc_group.id
+}
+
+output "role-id" {
+  value = boundary_role.oidc_role.id
+}
+
+provider "boundary" {
+  addr             = "http://127.0.0.1:9200"
+  recovery_kms_hcl = <<EOT
+kms "aead" {
+  purpose = "recovery"
+  aead_type = "aes-gcm"
+  key = "tL1flVGXQQ0+rToXqlflG7tls3m1Sbq9kXsQsPABinE="
+  key_id = "global_recovery"
+}
+EOT
+}
+
+resource "boundary_auth_method_oidc" "provider" {
+  name                 = "Okta"
+  description          = "OIDC auth method for Okta"
+  scope_id             = "o_1234567890"
+  issuer             = "https://dev-1944432.okta.com"
+  client_id          = "0oal6fr0tPGZ0DSbr5d6"
+  client_secret      = "4BStQlbuTTrh5P-JhGAKW2FVPh48idEbCAOWWVXM"
+  signing_algorithms = ["RS256"]
+  api_url_prefix     = "http://localhost:9200"
+  is_primary_for_scope = true
+  state = "active-public"
+  max_age = 0
+}
+
+resource "boundary_account_oidc" "oidc_user" {
+  name           = "user1"
+  description    = "OIDC account for user1"
+  auth_method_id = boundary_auth_method_oidc.provider.id
+  issuer  = "https://dev-1944432.okta.com"
+  subject = "00ul68uytv7ROjOHd5d6"
+}
+
+resource "boundary_managed_group" "oidc_group" {
+  name           = "Okta"
+  description    = "OIDC managed group for Okta"
+  auth_method_id = boundary_auth_method_oidc.provider.id
+  filter         = "\"okta.com\" in \"/token/iss\""
+}
+
+resource "boundary_role" "oidc_role" {
+  name          = "List and Read"
+  description   = "List and read role"
+  principal_ids = [boundary_managed_group.oidc_group.id]
+  grant_strings = ["ids=*;type=role;actions=list,read"]
+  scope_id      = "o_1234567890"
+}
+```
+
+</Accordion>
+
+Apply the new configuration. Enter `yes` when prompted for confirmation.
+
+<CodeBlockConfig highlight="1,77">
+
+```shell-session
+$ terraform apply
+boundary_auth_method_oidc.provider: Refreshing state... [id=amoidc_cjCWZnr79C]
+boundary_account_oidc.oidc_user: Refreshing state... [id=acctoidc_xyYYFpjk34]
+boundary_managed_group.oidc_group: Refreshing state... [id=mgoidc_3Pl965OoGN]
+
+Terraform used the selected providers to generate the following execution plan. Resource actions are indicated with the following symbols:
+  + create
+-/+ destroy and then create replacement
+
+Terraform will perform the following actions:
+
+  # boundary_account_oidc.oidc_user must be replaced
+-/+ resource "boundary_account_oidc" "oidc_user" {
+      ~ id             = "acctoidc_xyYYFpjk34" -> (known after apply)
+      + issuer         = "https://dev-1944432.okta.com" # forces replacement
+        name           = "user1"
+      + subject        = "00ul68uytv7ROjOHd5d6" # forces replacement
+        # (2 unchanged attributes hidden)
+    }
+
+  # boundary_role.oidc_role will be created
+  + resource "boundary_role" "oidc_role" {
+      + description    = "List and read role"
+      + grant_scope_id = (known after apply)
+      + grant_strings  = [
+          + "ids=*;type=role;actions=list,read",
+        ]
+      + id             = (known after apply)
+      + name           = "List and Read"
+      + principal_ids  = [
+          + "mgoidc_3Pl965OoGN",
+        ]
+      + scope_id       = "o_1234567890"
+    }
+
+Plan: 2 to add, 0 to change, 1 to destroy.
+
+Changes to Outputs:
+  + role-id = (known after apply)
+
+Do you want to perform these actions?
+  Terraform will perform the actions described above.
+  Only 'yes' will be accepted to approve.
+
+  Enter a value: yes
+
+boundary_account_oidc.oidc_user: Destroying... [id=acctoidc_xyYYFpjk34]
+boundary_role.oidc_role: Creating...
+boundary_account_oidc.oidc_user: Destruction complete after 0s
+boundary_account_oidc.oidc_user: Creating...
+boundary_account_oidc.oidc_user: Creation complete after 0s [id=acctoidc_xyYYFpjk34]
+boundary_role.oidc_role: Creation complete after 1s [id=r_D5hiPlVLS9]
+
+Apply complete! Resources: 2 added, 0 changed, 1 destroyed.
+
+Outputs:
+
+auth-method-id = "amoidc_cjCWZnr79C"
+managed-group-id = "mgoidc_3Pl965OoGN"
+role-id = "r_D5hiPlVLS9"
+```
+
+</CodeBlockConfig>
+
+Copy the role ID from the output, such as `r_D5hiPlVLS9` and create
+an environment variable.
+
+```shell-session
+$ export ROLE_ID=<actual-copied-value>
+```
+
+With the grants in place the oidc user should automatically be allowed to list
+and read roles upon authentication.
+
+</Tab>
+<Tab heading="Azure AD" group="azure">
+
+First, create a new role under the Generated org scope.
+
+Open the `main.tf` file and add a new `boundary_role` resource. Add the `name`,
+`description`, `principle_ids`, `grant_strings`, and `scope_id` schema.
+
+Use the Generated org scope id, for example `o_1234567890` for the `scope_id`. For the
+`principle_ids`, add the new managed group as a role principle so the group will
+inherit any grants associated with the role.
+
+Set `grant_strings` to `ids=*;type=role;actions=list,read`, which selects any
+role ID and allows list and read actions to be performed. To learn more about
+setting permission grants, check out the [Permission Grant Formats
+documentation](/boundary/docs/concepts/security/permissions#permission-grant-formats).
+
+Additionally, add a new `outputs` value to print the id of the role.
+
+```hcl
+resource "boundary_role" "oidc_role" {
+  name          = "List and Read"
+  description   = "List and read role"
+  principal_ids = [boundary_managed_group.oidc_group.id]
+  grant_strings = ["ids=*;type=role;actions=list,read"]
+  scope_id      = "o_1234567890"
+}
+
+output "role-id" {
+  value = boundary_role.oidc_role.id
+}
+```
+
+-> To see an example of a completed `main.tf` file, expand the accordion below.
+
+<Accordion heading="Full Terraform Plan" collapse>
+
+```hcl
+terraform {
+  required_providers {
+    boundary = {
+      source  = "hashicorp/boundary"
+      version = "1.0.5"
+    }
+  }
+}
+
+output "auth-method-id" {
+  value = boundary_auth_method_oidc.provider.id
+}
+
+output "managed-group-id" {
+  value = boundary_managed_group.oidc_group.id
+}
+
+output "role-id" {
+  value = boundary_role.oidc_role.id
+}
+
+provider "boundary" {
+  addr             = "http://127.0.0.1:9200"
+  recovery_kms_hcl = <<EOT
+kms "aead" {
+  purpose = "recovery"
+  aead_type = "aes-gcm"
+  key = "tZc29YvW562x4GlV3YIhTOofn53cFZJRFrGdwf3+jAk="
+  key_id = "global_recovery"
+}
+EOT
+}
+
+resource "boundary_auth_method_oidc" "provider" {
+  name                 = "Azure"
+  description          = "OIDC auth method for Azure"
+  scope_id             = "o_1234567890"
+  issuer               = "https://sts.windows.net/e0ce29ea-29d7-4851-bfb3-5f8e35e1fb68/"
+  client_id            = "a4d21a76-e08c-4d8d-8c47-e1c423ee4d11"
+  client_secret        = "oes095MXP~0QuEgNNEGh.87zb~~loZV2L-"
+  signing_algorithms   = ["RS256"]
+  api_url_prefix       = "http://localhost:9200"
+  is_primary_for_scope = true
+  state                = "active-public"
+}
+
+resource "boundary_account_oidc" "oidc_user" {
+  name           = "user1"
+  description    = "OIDC account for user1"
+  auth_method_id = boundary_auth_method_oidc.provider.id
+  issuer  = "https://sts.windows.net/e0ce29ea-29d7-4851-bfb3-5f8e35e1fb68/"
+  subject = "c3dc63d0-90e6-4855-b9c0-e87da14a9c5f"
+}
+
+resource "boundary_managed_group" "oidc_group" {
+  name           = "Azure"
+  description    = "OIDC managed group for Azure"
+  auth_method_id = boundary_auth_method_oidc.provider.id
+  filter         = "\"onmicrosoft.com\" in \"/userinfo/upn\""
+}
+
+resource "boundary_role" "oidc_role" {
+  name          = "List and Read"
+  description   = "List and read role"
+  principal_ids = [boundary_managed_group.oidc_group.id]
+  grant_strings = ["ids=*;type=role;actions=list,read"]
+  scope_id      = "o_1234567890"
+}
+```
+
+</Accordion>
+
+Apply the new configuration. Enter `yes` when prompted for confirmation.
+
+<CodeBlockConfig highlight="1,60">
+
+```shell-session
+$ terraform apply
+boundary_auth_method_oidc.provider: Refreshing state... [id=amoidc_ZMettTQoi7]
+boundary_managed_group.oidc_group: Refreshing state... [id=mgoidc_ndN5Mr04a1]
+boundary_account_oidc.oidc_user: Refreshing state... [id=acctoidc_xyYYFpjk34]
+
+Terraform used the selected providers to generate the following execution plan. Resource actions are indicated with the following symbols:
+  + create
+-/+ destroy and then create replacement
+
+Terraform will perform the following actions:
+
+  # boundary_account_oidc.oidc_user must be replaced
+-/+ resource "boundary_account_oidc" "oidc_user" {
+      ~ id             = "acctoidc_xyYYFpjk34" -> (known after apply)
+      + issuer         = "https://sts.windows.net/e0ce29ea-29d7-4851-bfb3-5f8e35e1fb68/" # forces replacement
+        name           = "user1"
+      + subject        = "c3dc63d0-90e6-4855-b9c0-e87da14a9c5f" # forces replacement
+        # (2 unchanged attributes hidden)
+    }
+
+  # boundary_role.oidc_role will be created
+  + resource "boundary_role" "oidc_role" {
+      + description    = "List and read role"
+      + grant_scope_id = (known after apply)
+      + grant_strings  = [
+          + "ids=*;type=role;actions=list,read",
+        ]
+      + id             = (known after apply)
+      + name           = "List and Read"
+      + principal_ids  = [
+          + "mgoidc_ndN5Mr04a1",
+        ]
+      + scope_id       = "o_1234567890"
+    }
+
+Plan: 2 to add, 0 to change, 1 to destroy.
+
+Changes to Outputs:
+  + role-id = (known after apply)
+
+Do you want to perform these actions?
+  Terraform will perform the actions described above.
+  Only 'yes' will be accepted to approve.
+
+  Enter a value: yes
+
+boundary_account_oidc.oidc_user: Destroying... [id=acctoidc_xyYYFpjk34]
+boundary_role.oidc_role: Creating...
+boundary_account_oidc.oidc_user: Destruction complete after 0s
+boundary_account_oidc.oidc_user: Creating...
+boundary_account_oidc.oidc_user: Creation complete after 0s [id=acctoidc_xyYYFpjk34]
+boundary_role.oidc_role: Creation complete after 0s [id=r_miOvA6NNrz]
+
+Apply complete! Resources: 2 added, 0 changed, 1 destroyed.
+
+Outputs:
+
+auth-method-id = "amoidc_ZMettTQoi7"
+managed-group-id = "mgoidc_ndN5Mr04a1"
+role-id = "r_miOvA6NNrz"
+```
+
+</CodeBlockConfig>
+
+Copy the role ID from the output, such as `r_miOvA6NNrz` and create
+an environment variable.
+
+```shell-session
+$ export ROLE_ID=<actual-copied-value>
+```
+
+With the grants in place the oidc user should automatically be allowed to list
+and read roles upon authentication.
+
+</Tab>
+</Tabs>
+
+</Tab>
+</Tabs>
+
+## Verify permissions
+
+Validate that the OIDC user has been granted permission to view roles.
+
+<Tabs>
+<Tab heading="CLI" group="cli">
+
+Log in using the OIDC authentication method.
+
+```shell-session
+$ boundary authenticate oidc -auth-method-id $OIDC_AUTH_ID
+Opening returned authentication URL in your browser...
+
+Authentication information:
+  Account ID:      acctoidc_xyYYFpjk34
+  Auth Method ID:  amoidc_9zoOFfKMmJ
+  Expiration Time: Wed, 25 Aug 2021 12:14:23 MDT
+  User ID:         u_Kt2AI1hPmC
+
+The token was successfully stored in the chosen keyring and is not displayed here.
+```
+
+In your browser, enter the username and password associated with your provider's
+test account.
+
+![OIDC Login](/img/boundary/oidc/oidc-admin-generated-org-scope-login.png)
+
+You should receive a "Successful authentication" message. Close the browser tab
+and return to your terminal.
+
+Check that OIDC user has permissions to read the role associated with the
+managed group by the admin user account.
+
+```shell-session
+$ boundary roles read -id $ROLE_ID
+
+Role information:
+  Created Time:        Wed, 18 Aug 2021 11:58:34 MDT
+  Grant Scope ID:      o_1234567890
+  ID:                  r_0Uz8McGUEs
+  Updated Time:        Wed, 18 Aug 2021 12:09:50 MDT
+  Version:             3
+
+  Scope:
+    ID:                o_1234567890
+    Name:              Generated project scope
+    Parent Scope ID:   global
+    Type:              org
+
+  Authorized Actions:
+    read
+
+  Principals:
+    ID:             mgoidc_VUsKIPJHS5
+      Type:         managed group
+      Scope ID:     o_1234567890
+
+  Canonical Grants:
+    ids=*;type=role;actions=list,read
+```
+
+The OIDC user now has permission to read the role created with the admin
+account.
+
+While the user can now list and read roles, other actions like reading account
+details are still restricted. Additional permissions can be granted by updating
+the filters associated with the managed group.
+
+</Tab>
+<Tab heading="Admin Console" group="admin">
+
+1. Navigate to the Boundary admin UI.
+
+   <Tabs>
+   <Tab heading="HCP Boundary" group="hcp">
+
+   Navigate to the HCP Boundary cluster address in your browser (such as `https://a2c4e6-867-53o9-994d-b6670e90b03J.boundary.hashicorp.cloud`),
+   click on "Choose a different scope" and select the **Global scope**.
+   Select provider's name (such as Auth0) or "OIDC" and click **Authenticate**.
+
+   </Tab>
+   <Tab heading="Dev Mode" group="dev">
+
+   Navigate to `http://localhost:9200` in your browser, click on "Choose a
+   different scope" and select the **Generated org scope**. Select provider's
+   name (such as Auth0) or "OIDC" and click **Authenticate**.
+
+   </Tab>
+   </Tabs>
+
+   ![Auth0 Application Login](/img/boundary/oidc/oidc-admin-generated-org-scope-login.png)
+
+1. If your browser doesn't allow pop-ups, you may be presented with an
+   "Authentication Pending" message, which you can bypass by clicking **Retry**.
+   If you do not encounter this message proceed to the next step. Consider
+   enabling pop-ups from your localhost for the rest of this tutorial.
+
+   ![Auth0 Application Login](/img/boundary/oidc/oidc-admin-console-1.png)
+
+1. Next, enter your provider's test user credentials and click **Continue**.
+
+   ![Auth0 Application Login](/img/boundary/oidc/oidc-admin-console-2.png)
+
+1. You should receive a "Successful Authentication" message and automatically be
+   redirected to the Admin Console. If you are not redirected, check to make
+   sure your browser is not blocking pop-ups or allow pop-ups temporarily.
+
+   ![Auth0 Application Login](/img/boundary/oidc/oidc-admin-console-3.png)
+
+1. Once authenticated, navigate to the **Roles** view on the left, noticing that
+   the user now has permissions to view the roles in the org scope. Select the
+   role's ID (such as `r_CoTJdydxLl`) to read its details.
+
+   ![View Roles](/img/boundary/oidc/oidc-admin-view-roles.png)
+
+</Tab>
+</Tabs>
+
+## Cleanup and teardown
+
+1. Clean up Terraform resources (optional)
+
+   If you followed the Terraform workflow and want to clean up, destroy the
+   managed resources, and enter `yes` when prompted for confirmation.
+
+   ```shell
+   $ terraform apply -destroy
+   ```
+
+   <Note>
+
+   Terraform 0.15.2 and above uses `terraform destroy -apply` to
+    clean up resources. If using an older version, execute `terraform destroy`
+    instead.
+
+   </Note>
+
+1. Stop Boundary
+
+   <Tabs>
+   <Tab heading="HCP Boundary" group="hcp">
+
+   Log in to the HCP portal and delete the HCP Boundary instance.
+
+   </Tab>
+   <Tab heading="Dev Mode" group="dev">
+
+   Locate the shell where `boundary dev` was run and enter `ctrl+c` to stop dev
+   mode.
+
+   <CodeBlockConfig hideClipboard>
+
+   ```shell-session
+   ^C==> Boundary dev environment shutdown triggered, interrupt again to force
+   ...
+   ...
+   ...
+   {
+     "id": "lOp2Pa9JKe",
+     "source": "https://hashicorp.com/boundary/dev-controller/boundary-dev",
+     "specversion": "1.0",
+     "type": "system",
+     "data": {
+       "version": "v0.1",
+       "op": "github.com/hashicorp/cap/oidc.(*TestProvider).startCachedCodesCleanupTicking.func1",
+       "data": {
+         "msg": "cleanup of cached codes shutting down"
+       }
+     },
+     "datacontentype": "text/plain",
+     "time": "2021-08-16T17:06:36.275678-06:00"
+   }
+   ```
+
+   </CodeBlockConfig>
+
+   </Tab>
+   </Tabs>
+
+1. Delete any sample applications from your OIDC provider.
+
+   This tutorial provided steps for configuring Auth0, Okta, or Azure AD sample
+   applications as Boundary auth methods. **Revisit those providers and delete
+   any sample applications you no longer need.**
+
+1. Delete any test users from your OIDC provider.
+
+   This tutorial created sample users within Auth0, Okta or Azure AD to
+   authenticate via the CLI, Admin Console or Desktop app. **Revisit the
+   provider settings and remove any test users created for this tutorial.**
+
+1. Delete any test client secrets from your OIDC provider.
+
+   This tutorial may have created client secrets within Auth0, Okta or Azure AD.
+   **Revisit the provider settings and remove any client secrets created for
+   this tutorial.**
+
+## Next steps
+
+This tutorial demonstrated the steps to create an OIDC managed group and assign
+it grants. You set up a managed group with a filter to automatically manage
+group membership, created a role, added the managed group as a role principle,
+and assigned grants to the role that were inherited by the managed group's
+members.
+
+To learn more about managing user accounts, check out the [Manage Users and
+Groups](/boundary/tutorials/oss-administration/oss-manage-users-groups) and [Manage
+Roles](/boundary/tutorials/oss-administration/oss-manage-roles) tutorials.

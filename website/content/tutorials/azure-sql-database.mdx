@@ -1,0 +1,2272 @@
+---
+id: f7aa226c-7d18-47ee-9df7-9f4b39771054
+name: Securing access to Azure SQL database
+short_name: Securing access to Azure SQL database
+description: |-
+  Secure Azure SQL database access with Azure Active Directory,
+  Boundary OIDC authentication method, & Vault credentials brokering.
+read_time: 100
+products_used:
+  - product: terraform
+    min_version: 1.0.0
+    max_version: 1.1.7
+  - product: vault
+    min_version: 1.9.3
+    max_version: 1.9.4
+  - product: boundary
+    min_version: 0.7.1
+    max_version: 0.7.5
+default_collection_context: boundary/self-managed-deployment
+---
+
+This tutorial demonstrates configuring HashiCorp Boundary with Azure Active
+Directory (AD) and HashiCorp Vault credentials brokering to secure database
+access from local development environments to [Azure SQL
+Database](https://docs.microsoft.com/en-us/azure/azure-sql/database/sql-database-paas-overview).
+
+<Note>
+
+ This tutorial deploys resources to Azure with **community** Terraform
+   modules that are not supported by HashiCorp. Furthermore, the tutorial uses
+   HCP Terraform [remote operations](/terraform/cloud-docs/run/remote-operations)
+   because deployment will take about 30 minutes. You are responsible for
+   any costs incurred by following the steps in this tutorial.
+
+</Note>
+
+## Overview
+
+- [Get setup](#get-setup)
+- [Configure Boundary with Azure AD](#configure-boundary-with-azure-ad)
+- [Verify Database Administrator Access](#verify-database-administrator-access)
+- [Broker Database Credentials via Vault](#broker-database-credentials-via-vault)
+- [Verify Developer Read-Only Access](#verify-developer-read-only-access)
+
+## Prerequisites
+
+- A [Boundary binary](/boundary/install/) greater than
+  0.7.1 in your `PATH`
+
+- A [Terraform binary](/terraform/tutorials/aws-get-started/install-cli) greater than 1.0.0 in
+  your `PATH`.
+
+- A [Vault binary](/vault/tutorials/getting-started/getting-started-install) greater than 1.9.3
+  in your `PATH`.
+
+- An [HCP Terraform](/terraform/tutorials/cloud-get-started/cloud-sign-up#create-an-account) test
+  account. **This tutorial requires the creation of new cloud resources that
+  will take over 30 minutes. Use HCP Terraform to deploy resources and avoid
+  errors.**
+
+- A [Microsoft Azure](https://portal.azure.com/) test account. **This tutorial
+  requires the creation of new cloud resources and will incur costs associated
+  with the deployment and management of these resources.**
+
+- Install the [Azure
+  CLI](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli). The
+  executable must be available within your `PATH`.
+
+- For [Linux](https://docs.microsoft.com/en-us/sql/connect/odbc/linux-mac/installing-the-microsoft-odbc-driver-for-sql-server?view=sql-server-ver15)
+  or [Mac](https://docs.microsoft.com/en-us/sql/connect/odbc/linux-mac/install-microsoft-odbc-driver-sql-server-macos?view=sql-server-ver15),
+  install the Microsoft ODBC Driver for SQL Server.
+
+- A [`sqlcmd`
+  utility](https://docs.microsoft.com/en-us/sql/tools/sqlcmd-utility) in your
+  `PATH`.
+
+- A [`jq` binary](https://stedolan.github.io/jq/download/) greater than 1.6 in
+  your `PATH`.
+
+## Tutorial Scenario
+
+As a database administrator or data engineer, you will need write access to
+manage and configure databases. Similarly, developers may also need access to a
+development database for testing. As a simple solution, everyone could use the
+same username and password.
+
+For example, imagine you want to add users with different access control to
+Azure SQL Database. For a more secure solution, you could add database
+administrators using Azure AD usernames. However, non-administrative database
+access requires [additional
+configuration](https://docs.microsoft.com/en-us/azure/azure-sql/database/logins-create-manage)
+by creating SQL logins in the database. Separate logins introduces a separate
+configuration workflow.
+
+Instead, you could use HashiCorp Boundary to provide a single workflow that
+allows engineers and developers to access a database from their local
+development environment. Boundary enables engineering teams to simulate
+least-privilege access of their services connecting to databases and avoid the
+statement, “It works on my machine!”
+
+This tutorial provides an example of allowing a **database admin** to
+authenticate to Boundary and connect to a private Azure SQL Database with their
+Azure AD credentials. Then, you will re-authenticate to Boundary as a
+**developer** and connect to the database with a username and password from
+Vault. The username and password grant temporary read-only access to developers.
+
+Why use Vault credentials brokering for developer access to the database? It allows
+you to do the following:
+
+- Limit developer access control policy to tables and database.
+- Define a short time window for database access.
+- Simulate access control of applications to the database.
+- Eliminate separate configuration of
+  [Azure SQL Database non-administrator users](https://docs.microsoft.com/en-us/azure/azure-sql/database/logins-create-manage#create-accounts-for-non-administrator-users).
+
+A developer can use similar credentials to their application for local testing
+*without* using the application’s actual credentials. This approach minimizes
+the risk of compromising a secret due to user access.
+
+## Get setup
+
+In this tutorial, you will use Terraform to create the following cloud
+resources:
+
+- HCP Terraform organization and workspaces
+- Azure Virtual Network
+- Azure Active Directory users and groups
+- Azure SQL Database and Private Endpoint Connection
+- Boundary cluster
+- Vault cluster
+
+Open a terminal and navigate to a working directory, such as the home directory.
+Clone down the sample repository containing configuration files.
+
+```shell-session
+$ git clone https://github.com/hashicorp-education/learn-boundary-azure-sql-database.git
+```
+
+Navigate into the `learn-boundary-azure-sql-database` directory and list its
+contents. You will use the repository as your working directory for the rest of
+the tutorial.
+
+```shell-session
+$ ls -R1
+
+README.md
+bootstrap
+database
+run
+terraform
+
+./bootstrap:
+main.tf
+outputs.tf
+secrets.auto.tfvars
+tf-ad.sh
+variables.tf
+workspaces.tf
+
+./database:
+setup.sql
+
+./terraform:
+boundary
+infrastructure
+vault
+
+./terraform/boundary:
+auth.tf
+database.tf
+main.tf
+outputs.tf
+principals.tf
+roles.tf
+scopes.tf
+variables.tf
+
+./terraform/infrastructure:
+azuread_dba.tf
+azuread_dev.tf
+backend.tf
+database.tf
+globals.auto.tfvars
+main.tf
+oidc.tf
+outputs.tf
+variables.tf
+vnet.tf
+
+./terraform/vault:
+boundary.tf
+database.tf
+main.tf
+outputs.tf
+policy.tf
+variables.tf
+```
+
+### Get Azure credentials
+
+Log into Azure with your credentials. Make sure you have administrative
+access to create service principals.
+
+```shell-session
+$ az login --scope https://graph.windows.net//.default
+```
+
+Identify your Azure subscription and copy its ID. Set it as the
+`AZURERM_SUBSCRIPTION_ID` environment variable.
+
+```shell-session
+$ export AZURERM_SUBSCRIPTION_ID=<your Azure subscription ID>
+```
+
+Create an [Azure service
+principal](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/guides/service_principal_client_secret#creating-a-service-principal)
+for Terraform to create resources and configure Azure RBAC.
+Use the Azure CLI to configure a service principal with the following:
+
+- Role of `Owner`
+- Scoped access to the Azure subscription
+- Name of `HCP Terraform (learn-boundary-azure-sql-database)` for identification purposes
+
+The command includes a file redirect to save the service principal's credentials
+in the `azure.json` file.
+
+```shell-session
+$ az ad sp create-for-rbac --role="Owner" \
+  --scopes="/subscriptions/${AZURERM_SUBSCRIPTION_ID}" \
+  --name "HCP Terraform (learn-boundary-azure-sql-database)" > azure.json
+```
+
+Source the credentials from the `azure.json` file to environment variables
+for ease of access.
+
+Set the tenant ID to an environment variable, `AZURERM_TENANT_ID`.
+
+```shell-session
+$ export AZURERM_TENANT_ID=$(cat azure.json | jq -r '.tenant')
+```
+
+Set the application ID to an environment variable, `AZURERM_CLIENT_ID`.
+
+```shell-session
+$ export AZURERM_CLIENT_ID=$(cat azure.json | jq -r '.appId')
+```
+
+Set the password to an environment variable, `AZURERM_CLIENT_SECRET`.
+
+```shell-session
+$ export AZURERM_CLIENT_SECRET=$(cat azure.json | jq -r '.password')
+```
+
+Add API permissions to the the Azure application using the `bootstrap/tf-ad.sh`
+script. The Azure application for Terraform needs administrative consent to
+create users and groups.
+
+```shell-session
+$ bash bootstrap/tf-ad.sh
+```
+
+### Get HCP Terraform credentials
+
+In your terminal, generate an [HCP Terraform API
+token](/terraform/cli/commands/login). Type `yes` to generate a
+new token and open a browser window for HCP Terraform.
+
+```shell-session
+$ terraform login
+
+Terraform will request an API token for app.terraform.io using your browser.
+
+If login is successful, Terraform will store the token in plain text in
+the following file for use by subsequent commands:
+    ./.terraform.d/credentials.tfrc.json
+
+Do you want to proceed?
+  Only 'yes' will be accepted to confirm.
+
+  Enter a value:
+```
+
+Copy the API token from the browser and paste it into the terminal prompt for a
+token.
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+...
+... Truncated Output ...
+...
+
+
+---------------------------------------------------------------------------------
+
+Terraform must now open a web browser to the tokens page for app.terraform.io.
+
+If a browser does not open this automatically, open the following URL to proceed:
+    https://app.terraform.io/app/settings/tokens?source=terraform-login
+
+
+---------------------------------------------------------------------------------
+
+Generate a token using your browser, and copy-paste it into this prompt.
+
+Terraform will store the token in plain text in the following file
+for use by subsequent commands:
+    /Users/rosemarywang/.terraform.d/credentials.tfrc.json
+
+Token for app.terraform.io:
+  Enter a value:
+```
+
+</CodeBlockConfig>
+
+### Set up HCP Terraform
+
+Navigate to the `bootstrap/` folder.
+
+```shell-session
+$ cd bootstrap
+```
+
+Open the `terraform.auto.tfvars` file in the `bootstrap/` folder. **Replace**
+the values in the file with the following:
+
+- Azure credentials in the `azure_credentials`.
+  - Copy the value from the `AZURERM_CLIENT_ID` environment variable
+    and add it to the value of `arm_client_id`.
+  - Copy the value from the `AZURERM_CLIENT_SECRET` environment variable
+    and add it to the value of `arm_client_secret`.
+  - Copy the value from the `AZURERM_TENANT_ID` environment variable
+    and add it to the value of `arm_tenant_id`.
+  - Copy the value from the `AZURERM_SUBSCRIPTION_ID` environment variable
+    and add it to the value of `arm_subscription_id`.
+
+- Your associated HCP Terraform email address in `email`.
+
+- Azure Active Directory domain for user creation in `azure_ad_domain`.
+
+The attributes in this file get passed as sensitive variables to
+the HCP Terraform workspaces.
+
+<CodeBlockConfig lineNumbers hideClipboard
+filename="bootstrap/terraform.auto.tfvars">
+
+```hcl
+## Azure credentials for Terraform to create resources
+azure_credentials = {
+  arm_client_id       = ""
+  arm_client_secret   = ""
+  arm_subscription_id = ""
+  arm_tenant_id       = ""
+}
+
+## Email for HCP Terraform organization
+email = ""
+
+## Azure Active Directory domain to create users
+azure_ad_domain = ""
+```
+
+</CodeBlockConfig>
+
+Initialize Terraform to set the local backend for initial creation of
+workspaces.
+
+```shell-session
+$ terraform init
+```
+
+Apply Terraform to create an organization and three workspaces.  Type `yes`
+after reviewing your plan.
+
+```shell-session
+$ terraform apply
+
+...
+... Truncated Output ...
+...
+
+Plan: 23 to add, 0 to change, 0 to destroy.
+
+Do you want to perform these actions?
+  Terraform will perform the actions described above.
+  Only 'yes' will be accepted to approve.
+
+  Enter a value: yes
+
+...
+... Truncated Output ...
+...
+
+Apply complete! Resources: 23 added, 0 changed, 0 destroyed.
+```
+
+The Terraform configuration uses the
+[`random_pet` resource](https://registry.terraform.io/providers/hashicorp/random/latest/docs/resources/pet)
+to generate a unique prefix for your HCP Terraform organization
+and Azure resources. Your new HCP Terraform organization
+will take the format of `${PET_NAME}-learn-boundary-azure-sql`.
+
+<Note>
+
+ The tutorial will use `${PET_NAME}` in place
+   of the prefix randomly generated for your resources.
+
+</Note>
+
+For example, navigating to the HCP Terraform UI shows that this
+run of the tutorial generated the pet name `starling` and the organization
+`starling-learn-boundary-azure-sql`.
+
+![HashiCorp Boundary controller uses Azure Active Directory to authenticate,
+worker uses HashiCorp Vault creates database credentials for Boundary
+worker](/img/boundary/azure/azure-sql-database-terraform-cloud.png)
+
+This organization contains three workspaces for running this tutorial.
+
+- `infrastructure`: Creates Boundary cluster, Vault cluster, database, users,
+  and groups.
+- `boundary`: Configures Boundary projects and roles.
+- `vault`: Configures Vault and Vault credentials brokering in Boundary.
+
+Navigate to the top-level working directory.
+
+```shell-session
+$ cd ..
+```
+
+When you set up the HCP Terraform workspaces, the configuration created new
+Terraform variable files in the `terraform/infrastructure/`,
+`terraform/boundary/` and `terraform/vault` folders.
+
+Verify that you have three `backend.tf` files in the `terraform/` directories.
+It sets up a remote backend to your HCP Terraform organization and
+`infrastructure` workspace.
+
+```shell-session
+$ find . -name "backend.tf"
+
+./terraform/boundary/backend.tf
+./terraform/infrastructure/backend.tf
+./terraform/vault/backend.tf
+```
+
+Verify that you have three `globals.auto.tfvars` files in the `terraform/`
+directories. This passes the `${PET_NAME}` prefix for resource groups.
+
+```shell-session
+$ find . -name "globals.auto.tfvars"
+
+./terraform/boundary/globals.auto.tfvars
+./terraform/infrastructure/globals.auto.tfvars
+./terraform/vault/globals.auto.tfvars
+```
+
+### Review infrastructure
+
+You can now create infrastructure in Azure, including a Boundary cluster, Vault
+cluster, Azure SQL Database, Azure AD users, groups, and applications. Vault and
+Boundary access the Azure SQL Database over a private IP address.
+
+HashiCorp Boundary controller uses Azure Active Directory to authenticate,
+worker uses HashiCorp Vault creates database credentials for Boundary worker.
+
+<ImageConfig hideBorder>
+
+![Infrastructure Diagram](/img/boundary/azure/azure-sql-database-architecture.png)
+
+</ImageConfig>
+
+Check your working directory.
+
+```shell-session
+$ pwd
+
+./learn-boundary-azure-sql-database
+```
+
+Navigate to the `terraform/infrastructure/` folder.
+
+```shell-session
+$ cd terraform/infrastructure
+```
+
+Review the Terraform configuration for Azure AD users and groups in `azuread_dba.tf`.
+It defines a user named `${PET_NAME}-dba` belonging to the `database` group.
+
+<CodeBlockConfig lineNumbers hideClipboard
+filename="terraform/infrastructure/azuread_dba.tf">
+
+```hcl
+locals {
+  database_group  = "${azurerm_resource_group.resources.name}-database"
+}
+
+resource "random_password" "database_admin" {
+  length           = 16
+  special          = true
+  override_special = "_%@"
+}
+
+resource "azuread_user" "database" {
+  user_principal_name = local.database_username.user_principal_name
+  display_name        = local.database_username.display_name
+  mail_nickname       = local.database_username.mail_nickname
+  password            = random_password.database_admin.result
+}
+
+resource "azuread_group" "database" {
+  display_name     = local.database_group
+  security_enabled = true
+  owners           = [data.azuread_client_config.current.object_id]
+  members          = [azuread_user.database.object_id]
+}
+```
+
+</CodeBlockConfig>
+
+The `azuread_dev.tf` file also defines a user named
+`${PET_NAME}-dev` belonging to the `development` group.
+
+<CodeBlockConfig lineNumbers hideClipboard
+filename="terraform/infrastructure/azuread_dev.tf">
+
+```hcl
+locals {
+  developer_group = "${azurerm_resource_group.resources.name}-development"
+}
+
+resource "random_password" "developer" {
+  length           = 16
+  special          = true
+  override_special = "_%@"
+}
+
+resource "azuread_user" "developer" {
+  user_principal_name = local.developer_username.user_principal_name
+  display_name        = local.developer_username.display_name
+  mail_nickname       = local.developer_username.mail_nickname
+  password            = random_password.developer.result
+}
+
+resource "azuread_group" "developer" {
+  display_name     = local.developer_group
+  security_enabled = true
+  owners           = [data.azuread_client_config.current.object_id]
+  members          = [azuread_user.developer.object_id]
+}
+```
+
+</CodeBlockConfig>
+
+The configuration creates two [Azure Private
+Endpoints](https://docs.microsoft.com/en-us/azure/private-link/tutorial-private-endpoint-sql-portal).
+The endpoints allow Boundary and Vault to access the database over a private
+network. You cannot publicly access the database.
+
+<CodeBlockConfig hideClipboard filename="terraform/infrastructure/database.tf">
+
+```hcl
+resource "azurerm_private_endpoint" "boundary" {
+  depends_on          = [azurerm_mssql_server.database]
+  name                = "${azurerm_resource_group.resources.name}-boundary"
+  resource_group_name = azurerm_resource_group.resources.name
+  location            = var.location
+  subnet_id           = local.worker_subnet_id
+
+  private_service_connection {
+    name                           = "${azurerm_resource_group.resources.name}-boundary"
+    is_manual_connection           = false
+    private_connection_resource_id = azurerm_mssql_server.database.id
+    subresource_names              = ["sqlServer"]
+  }
+}
+
+resource "azurerm_private_endpoint" "vault" {
+  depends_on          = [azurerm_mssql_server.database]
+  name                = "${azurerm_resource_group.resources.name}-vault"
+  resource_group_name = azurerm_resource_group.resources.name
+  location            = var.location
+  subnet_id           = local.vault_subnet_id
+
+  private_service_connection {
+    name                           = "${azurerm_resource_group.resources.name}-vault"
+    is_manual_connection           = false
+    private_connection_resource_id = azurerm_mssql_server.database.id
+    subresource_names              = ["sqlServer"]
+  }
+}
+```
+
+</CodeBlockConfig>
+
+### Build infrastructure with Terraform
+
+Initialize Terraform to set the remote backend to the `infrastructure`
+workspace.
+
+```shell-session
+$ terraform init
+```
+
+Apply Terraform to create your infrastructure using remote operations. Type
+`yes` after reviewing your plan.
+
+<Note title="Troubleshooting">
+
+ This step will take 30 minutes. If you find it is taking
+   longer than 30 minutes or results in an error, expand the corresponding
+   accordion below to check your work.
+
+</Note>
+
+<Accordion heading="Terraform Takes Longer Than 30 Minutes" collapse>
+
+On occasion, Azure will rate-limit or encounter a race conditions
+when creating resources with Terraform. This results in a run taking longer than
+30 minutes.
+
+**Cancel Terraform Apply**
+
+In your terminal, enter `Ctrl-C` to cancel the `terraform apply`. Type `yes` to
+confirm the cancellation.
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+...
+... Truncated Output ...
+...
+
+^C
+Interrupt received.
+Please wait for Terraform to exit or data loss may occur.
+Gracefully shutting down...
+
+
+Do you want to cancel the remote operation?
+  Only 'yes' will be accepted to cancel.
+
+  Enter a value: yes
+```
+
+</CodeBlockConfig>
+
+Wait for a few minutes. If the run does not cancel, log into HCP Terraform
+and go to your organization. Select the `infrastructure` workspace and click
+the run that has the `Applying` state.
+
+![Select HCP Terraform workspace named infrastructure and select the run in applying state](/img/boundary/azure/azure-sql-database-terraform-cloud-run.png)
+
+Scroll down to the bottom of the run. A button to `Force Cancel`
+will appear at the bottom of the run. Click **Force Cancel** to stop the run.
+
+**Stuck on Azure Key Vault?**
+
+Examine the Terraform run. If you find it stuck creating
+`module.install.azurerm_key_vault.boundary`, you created an Azure Key
+Vault instance with the same name as another Key Vault instance. They must be
+globally unique in Azure.
+
+To fix this, make sure you are in
+the `terraform/infrastructure` working directory.
+
+```shell-session
+$ pwd
+
+./learn-boundary-azure-sql-database/terraform/infrastructure
+```
+
+Taint the random string used for generating the Azure Key Vault
+name. This tells Terraform to create a new name.
+
+```shell-session
+$ terraform taint module.install.random_string.vault
+```
+
+**Stuck on Subnet Network Security Group Association?**
+
+Alternatively, Terraform may be stuck trying to creating the following resources:
+
+```plaintext
+module.install.azurerm_subnet_network_security_group_association.controller
+module.install.azurerm_subnet_network_security_group_association.worker
+```
+
+You do not need to taint these resources. Azure may have difficulty
+creating these resources due to a race condition.
+
+**Re-Apply Terraform**
+
+Make sure you are in the `terraform/infrastructure` working directory.
+
+```shell-session
+$ pwd
+
+./learn-boundary-azure-sql-database/terraform/infrastructure
+```
+
+Return to your terminal and re-apply Terraform to create your infrastructure
+using remote operations. Type `yes` after reviewing your plan.
+
+```shell-session
+$ terraform apply
+```
+
+</Accordion>
+
+<Accordion heading="Terraform Results in Error" collapse>
+
+If you have an error, verify the error message. Terraform auto-generates
+IDs for different Azure resources. Sometimes, the IDs do not comply
+with Azure's requirements. For example, this could be the name of
+the Azure Key Vault instance for Boundary's recovery keys.
+
+To fix this, make sure you are in the `terraform/infrastructure` working directory.
+
+```shell-session
+$ pwd
+
+./learn-boundary-azure-sql-database/terraform/infrastructure
+```
+
+Taint the random string used for generating the Azure Key Vault
+name. This tells Terraform to create a new name.
+
+```shell-session
+$ terraform taint module.install.random_string.vault
+```
+
+Re-apply Terraform to create your infrastructure
+using remote operations. Type `yes` after reviewing your plan.
+
+```shell-session
+$ terraform apply
+```
+
+</Accordion>
+
+```shell-session
+$ terraform apply
+
+Running apply in the remote backend. Output will stream here. Pressing Ctrl-C
+will cancel the remote apply if it's still pending. If the apply started it
+will stop streaming the logs, but will not stop the apply running remotely.
+
+...
+... Truncated Output ...
+...
+
+Plan: 104 to add, 0 to change, 0 to destroy.
+
+Do you want to perform these actions?
+  Terraform will perform the actions described above.
+  Only 'yes' will be accepted to approve.
+
+  Enter a value: yes
+
+...
+... Truncated Output ...
+...
+
+Apply complete! Resources: 104 added, 0 changed, 0 destroyed.
+
+Outputs:
+
+azuread_group_database = "c5b5aabb-55e1-445f-9d4e-0782e3f77bfa"
+azuread_group_developer = "99097e12-5055-490e-bc0a-6e54f8fe3228"
+azuread_user_database = <sensitive>
+azuread_user_database_admin_password = <sensitive>
+azuread_user_database_object_id = <sensitive>
+azuread_user_database_username = <sensitive>
+azuread_user_developer = <sensitive>
+azuread_user_developer_object_id = <sensitive>
+azuread_user_developer_password = <sensitive>
+azuread_user_developer_username = <sensitive>
+boundary_fqdn = "${PET_NAME}-learn.eastus.cloudapp.azure.com"
+boundary_oidc_application_id = "b7b4375d-28d6-4fff-89ec-79d3248c79b7"
+boundary_oidc_azure_ad = <sensitive>
+boundary_recovery_service_principal_client_id = "3e75bbe3-3bc6-48ab-831f-da5f5759d10e"
+boundary_recovery_service_principal_client_secret = <sensitive>
+boundary_recovery_service_principal_tenant_id = "0e3e2e88-8caf-41ca-b4da-e3b33b6c52ec"
+boundary_url = "https://${PET_NAME}-learn.eastus.cloudapp.azure.com:9200"
+key_vault_name = "boundary-6SOTVGrJ2wk"
+mssql_admin_username = <sensitive>
+mssql_database_name = "DemoExpenses"
+mssql_ip_address = "10.0.1.5"
+mssql_password = <sensitive>
+mssql_server_name = "${PET_NAME}-learn-database"
+mssql_url = "${PET_NAME}-learn-database.database.windows.net"
+private_key = <sensitive>
+subscription_id = <sensitive>
+vault_fqdn = "${PET_NAME}-learn-vault.eastus.cloudapp.azure.com"
+vault_mssql_ip_address = "10.0.3.5"
+vault_private_key = <sensitive>
+vault_url = "http://${PET_NAME}-learn-vault.eastus.cloudapp.azure.com:8200"
+```
+
+This Terraform configuration outputs the IDs, URLs, and names of any
+infrastructure resources you need to configure Boundary and Vault. For example,
+the `boundary_oidc_application_id` outputs the client ID Boundary needs for the
+OIDC authentication method.
+
+### Initialize Vault
+
+The Terraform configuration builds a Vault server. However, you need to
+initialize and unseal the Vault server. This ensures that you get the Vault
+unseal key and root token for additional configuration.
+
+Check that you have the `infrastructure/` working directory.
+
+```shell-session
+$ pwd
+
+./learn-boundary-azure-sql-database/terraform/infrastructure
+```
+
+Set the Vault URL to the `VAULT_ADDR` environment variable.
+
+```shell-session
+$ export VAULT_ADDR=$(terraform output -raw vault_url)
+```
+
+Initialize Vault with one unseal key and save the output to `unseal.json` file.
+
+```shell-session
+$ vault operator init -key-shares=1 -key-threshold=1 -format=json > unseal.json
+```
+
+Unseal Vault with the key saved in the `unseal.json` file.
+
+```shell-session
+$ vault operator unseal $(cat unseal.json | jq -r '.unseal_keys_hex[0]')
+```
+
+Use the root token in `unseal.json` and set it to the `VAULT_ADDR` environment
+variable.
+
+```shell-session
+$ export VAULT_TOKEN=$(cat unseal.json | jq -r '.root_token')
+```
+
+You need to pass the `VAULT_TOKEN` to the HCP Terraform workspace for `vault`.
+This allows Terraform to configure secrets engines for Vault.
+
+```shell-session
+$ echo "vault_token = \"${VAULT_TOKEN}\"" > ../../bootstrap/vault.auto.tfvars
+```
+
+You need to re-run Terraform to add the `VAULT_TOKEN` variable to the `vault`
+workspace. Navigate to the `bootstrap/` folder.
+
+```shell-session
+$ cd ../../bootstrap
+```
+
+Apply Terraform.
+
+```shell-session
+$ terraform apply -auto-approve
+```
+
+Navigate to the main working directory, the `learn-azure-sql-database/`
+folder.
+
+```shell-session
+$ cd ..
+```
+
+## Configure Boundary with Azure AD
+
+If you already defined user access with Azure AD, you can use the same users and
+groups for HashiCorp Boundary. Enabling the [OIDC authentication
+method](/boundary/tutorials/identity-management/oidc-auth) allows you to use Azure AD’s single
+sign-on capabilities to authenticate to Boundary. A user will sign into Azure AD
+before receiving a Boundary token for target endpoint access.
+
+<ImageConfig hideBorder>
+
+![When a user logs into Boundary, Boundary delegates authentication to Azure
+Active Directory before returning a
+token](/img/boundary/azure/azure-sql-database-oidc-auth-method.png)
+
+</ImageConfig>
+
+### Register Azure AD application
+
+When you ran Terraform in the last step, you created an Azure AD application for
+Boundary's authentication method. Review the Terraform configuration in the
+`terraform/infrastructure/oidc.tf` file. The application needs access to
+Microsoft Graph API.
+
+<CodeBlockConfig lineNumbers hideClipboard
+filename="terraform/infrastructure/oidc.tf">
+
+```hcl
+resource "azuread_application" "oidc" {
+  display_name = "${azurerm_resource_group.resources.name}-boundary-oidc-auth"
+  owners       = [data.azuread_client_config.current.object_id]
+
+  group_membership_claims = ["All"]
+
+  required_resource_access {
+    resource_app_id = "00000003-0000-0000-c000-000000000000" # Microsoft Graph
+
+    resource_access {
+      id   = "df021288-bdef-4463-88db-98f22de89214" # User.Read.All
+      type = "Role"
+    }
+
+    resource_access {
+      id   = "b4e74841-8e56-480b-be8b-910348b18b4c" # User.ReadWrite
+      type = "Scope"
+    }
+
+    resource_access {
+      id   = "98830695-27a2-44f7-8c18-0c3ebc9698f6" # GroupMember.Read.All
+      type = "Role"
+    }
+  }
+
+  web {
+    redirect_uris = ["${module.install.url}/v1/auth-methods/oidc:authenticate:callback"]
+  }
+}
+
+resource "azuread_application_password" "oidc" {
+  application_object_id = azuread_application.oidc.object_id
+  display_name          = "Boundary secret"
+}
+
+resource "azuread_service_principal" "oidc" {
+  application_id = azuread_application.oidc.application_id
+  owners         = [data.azuread_client_config.current.object_id]
+}
+```
+
+</CodeBlockConfig>
+
+### Grant administrative consent for Azure AD application
+
+Before you configure Boundary, the Azure AD application you registered with
+Terraform needs [administrative
+consent](https://docs.microsoft.com/en-us/azure/active-directory/manage-apps/grant-admin-consent).
+Check that you have the `learn-boundary-azure-sql-database/` working directory.
+
+```shell-session
+$ pwd
+
+./learn-boundary-azure-sql-database
+```
+
+Use the Terraform output in `terraform/infrastructure/` to set the application's
+object ID to the `BOUNDARY_OIDC_APP_ID` environment variable.
+
+```shell-session
+$ export BOUNDARY_OIDC_APP_ID=$(cd terraform/infrastructure && terraform output -raw boundary_oidc_application_id)
+```
+
+Enable administrative consent for the Azure AD application.
+
+```shell-session
+$ az ad app permission grant \
+  --id ${BOUNDARY_OIDC_APP_ID} \
+  --api 00000003-0000-0000-c000-000000000000
+```
+
+### Configure Boundary OIDC authentication method
+
+Navigate to the `terraform/boundary/` folder.
+
+```shell-session
+$ cd terraform/boundary/
+```
+
+This folder configures Boundary with projects, scopes, and authentication
+methods. The configuration will create a Boundary organization named
+`${PET_NAME}-learn` and two projects, `db_infra` for database administrators and
+`application` for developers.
+
+<CodeBlockConfig lineNumbers hideClipboard
+filename="terraform/boundary/scopes.tf">
+
+```hcl
+resource "boundary_scope" "global" {
+  description  = "Global Scope"
+  global_scope = true
+  name         = "global"
+  scope_id     = "global"
+}
+
+resource "boundary_scope" "org" {
+  scope_id    = boundary_scope.global.id
+  name        = local.boundary_organization
+  description = "Organization scope for ${local.boundary_organization}"
+}
+
+resource "boundary_scope" "db_infra" {
+  name                     = "db_infra"
+  description              = "Database infrastructure project"
+  scope_id                 = boundary_scope.org.id
+  auto_create_admin_role   = true
+  auto_create_default_role = true
+}
+
+resource "boundary_scope" "application" {
+  name                     = "application"
+  description              = "Application endpoints project"
+  scope_id                 = boundary_scope.org.id
+  auto_create_admin_role   = true
+  auto_create_default_role = true
+}
+```
+
+</CodeBlockConfig>
+
+To configure the OIDC authentication method, get the outputs from the
+`infrastructure` workspace. The output includes the Azure AD application issuer,
+ID, and secret.
+
+The `terraform/boundary/auth.tf` file sets a `locals` configuration for
+the `url` and `oidc_service_principal`.
+It passes these attributes to the `boundary_auth_method_oidc` Terraform resource.
+The configuration sets Azure AD as the primary authentication method for the
+Boundary organization. Anyone who wants to access to the `${PET_NAME}-learn`
+organization must sign in with their Azure AD identity.
+
+Review the `terraform/boundary/auth.tf` file with the `locals` configuration.
+
+<CodeBlockConfig lineNumbers
+filename="terraform/boundary/auth.tf">
+
+```hcl
+locals {
+  url                    = data.terraform_remote_state.infrastructure.outputs.boundary_url
+  oidc_service_principal = data.terraform_remote_state.infrastructure.outputs.boundary_oidc_azure_ad
+}
+
+resource "boundary_auth_method_oidc" "azuread" {
+  name                 = "Azure AD"
+  description          = "Azure AD auth method for ${local.boundary_organization}"
+  scope_id             = boundary_scope.org.id
+  issuer               = local.oidc_service_principal.issuer
+  client_id            = local.oidc_service_principal.client_id
+  client_secret        = local.oidc_service_principal.client_secret
+  signing_algorithms   = ["RS256"]
+  api_url_prefix       = local.url
+  is_primary_for_scope = true
+  state                = "active-public"
+}
+```
+
+</CodeBlockConfig>
+
+### Add Boundary managed groups
+
+Link the Azure AD group identity to a Boundary managed group. The managed group
+can have access to Boundary organization and project scopes, which groups target
+endpoints. Managed groups memberships are automatically maintained by evaluating
+a filter defined in the managed group's configuration against the information
+returned by an auth method's identity provider (IdP), in this case Azure Active
+Directory.
+
+<ImageConfig hideBorder>
+
+![Database administrators access the db_infra project and operators access the
+application project based on their Azure AD
+group](/img/boundary/azure/azure-sql-database-managed-groups.png)
+
+</ImageConfig>
+
+Review the `terraform/boundary/principals.tf` file. It creates two managed
+groups in Boundary. One group matches on the database administrator Azure AD
+group and the other matches on the operator Azure AD group.
+
+<CodeBlockConfig lineNumbers hideClipboard
+filename="terraform/boundary/principals.tf">
+
+```hcl
+## Set up Azure AD groups for developers to log in
+resource "boundary_managed_group" "developer" {
+  auth_method_id = boundary_auth_method_oidc.azuread.id
+  description    = "Developer team managed group linked to Azure AD"
+  name           = "developers"
+  filter         = "\"${local.azuread_group_dev}\" in \"/token/groups\""
+}
+
+## Set up Azure AD groups for database admins to log in
+resource "boundary_managed_group" "database" {
+  auth_method_id = boundary_auth_method_oidc.azuread.id
+  description    = "Database administrators team managed group linked to Azure AD"
+  name           = "db-admins"
+  filter         = "\"${local.azuread_group_db}\" in \"/token/groups\""
+}
+```
+
+</CodeBlockConfig>
+
+The managed group filters on information in the JSON Web Token (JWT) returned by
+Azure AD. The metadata includes claim information on groups. The filter checks
+that the Azure AD group’s object ID exists in the `groups` claim. You can
+configure [additional filters on OIDC managed
+groups](/boundary/docs/concepts/filtering/oidc-managed-groups).
+
+Review the `terraform/boundary/roles.tf` file. The `boundary_role` resources add the managed groups to Boundary roles for each project. The database
+administrators have access to the `db_infra` project, while the developers have
+access to the `application` project.
+
+<CodeBlockConfig highlight="5,7,10,18,20,23" hideClipboard
+filename="terraform/boundary/roles.tf">
+
+```hcl
+resource "boundary_role" "db_admin" {
+  name           = "${boundary_scope.db_infra.id}-admin"
+  description    = "Administrator role for ${boundary_scope.db_infra.id}"
+  scope_id       = boundary_scope.org.id
+  grant_scope_id = boundary_scope.db_infra.id
+  grant_strings = [
+    "ids=*;type=*;actions=*"
+  ]
+  principal_ids = [
+    boundary_managed_group.database.id
+  ]
+}
+
+resource "boundary_role" "application" {
+  name           = "${boundary_scope.application.id}-admin"
+  description    = "Administrator role for ${boundary_scope.application.id}"
+  scope_id       = boundary_scope.org.id
+  grant_scope_id = boundary_scope.application.id
+  grant_strings = [
+    "ids=*;type=*;actions=*"
+  ]
+  principal_ids = [
+    boundary_managed_group.developer.id
+  ]
+}
+```
+
+</CodeBlockConfig>
+
+### Configure Boundary with Terraform
+
+Initialize Terraform to set the remote backend to the `boundary` workspace.
+
+```shell-session
+$ terraform init
+```
+
+Apply Terraform to configure Boundary using remote operations. Type `yes` after
+reviewing your plan.
+
+```shell-session
+$ terraform apply
+
+Running apply in the remote backend. Output will stream here. Pressing Ctrl-C
+will cancel the remote apply if it's still pending. If the apply started it
+will stop streaming the logs, but will not stop the apply running remotely.
+
+...
+... Truncated Output ...
+...
+
+Plan: 19 to add, 0 to change, 0 to destroy.
+
+Do you want to perform these actions?
+  Terraform will perform the actions described above.
+  Only 'yes' will be accepted to approve.
+
+  Enter a value: yes
+
+...
+... Truncated Output ...
+...
+
+Apply complete! Resources: 19 added, 0 changed, 0 destroyed.
+
+Outputs:
+
+azuread_auth_method_id = "amoidc_OmmQjOiZgt"
+database_admin_target_id = "ttcp_WZKLLzXOG2"
+developer_database_host_set_id = "hsst_O7xXtFqnBW"
+developer_scope_id = "p_7bY7KyfNKP"
+```
+
+This Terraform configuration outputs the Azure AD auth method and database
+target ID for database administrators to log into Boundary and the Azure SQL
+Database. Later in the tutorial, use the `application` project's scope and host
+set IDs for configuring Vault credentials brokering.
+
+Navigate to the main working directory, the `learn-azure-sql-database/`
+folder.
+
+```shell-session
+$ cd ../..
+```
+
+## Verify Database Administrator Access
+
+As a database administrator, you want to log into the database using your Azure
+AD credentials. However, you cannot access the database over a public
+connection. You must proxy through Boundary in order to connect to the database.
+
+Azure SQL Database allows you to attach database administrators using their
+Azure AD object ID. Review the configuration for Azure SQL Database in
+`database.tf`. The database server adds the `${PET_NAME}-dba` user as a database
+administrator and creates a new database named `DemoExpenses`.
+
+<CodeBlockConfig highlight="12-15" hideClipboard
+filename="terraform/infrastructure/database.tf">
+
+```hcl
+resource "azurerm_mssql_server" "database" {
+  depends_on                    = [module.install]
+  name                          = "${azurerm_resource_group.resources.name}-database"
+  resource_group_name           = azurerm_resource_group.resources.name
+  location                      = var.location
+  version                       = "12.0"
+  administrator_login           = "boundary"
+  administrator_login_password  = random_password.database.result
+  minimum_tls_version           = "1.2"
+  public_network_access_enabled = false
+
+  azuread_administrator {
+    login_username = azuread_user.database.user_principal_name
+    object_id      = azuread_user.database.object_id
+  }
+
+  tags = var.tags
+}
+
+resource "azurerm_mssql_database" "database" {
+  name      = var.database_name
+  server_id = azurerm_mssql_server.database.id
+  sku_name  = "Basic"
+  tags      = var.tags
+}
+```
+
+</CodeBlockConfig>
+
+The database's Terraform configuration requires a static username and password
+for the `administrator_login`. Define these attributes to access the database
+without an Azure AD login.
+
+Check that you are in the `learn-boundary-azure-sql-database/` directory.
+
+```shell-session
+$ pwd
+
+./learn-boundary-azure-sql-database
+```
+
+### Configure DNS forwarding
+
+Get the Azure SQL Database endpoint from the outputs of
+`terraform/infrastructure/` and set it to the `DATABASE_URL` environment
+variable.
+
+```shell-session
+$ export DATABASE_URL=$(cd terraform/infrastructure && terraform output -raw mssql_url)
+```
+
+Add a host entry to your local machine that forwards the Azure SQL Database
+endpoint to `127.0.0.1`, which represents the Boundary proxy.
+
+<Note>
+
+ To resolve to the database's private endpoint, add a host entry to
+   your local machine *for testing purposes only*. For production
+   environments, configure [a private DNS
+   zone](https://docs.microsoft.com/en-us/azure/private-link/private-endpoint-dns)
+   to resolve to the database’s private endpoint. Review Azure
+   [documentation](https://docs.microsoft.com/en-us/answers/questions/472505/connection-to-azure-sql-database-on-azure-private.html)
+   for recommendations.
+
+</Note>
+
+<Tabs>
+<Tab heading="Linux / Mac" group="linux">
+
+```shell-session
+$ sudo /bin/sh -c 'echo "127.0.0.1 '${DATABASE_URL}'" >> /etc/hosts'
+```
+
+</Tab>
+<Tab heading="Windows" group="windows">
+
+```shell-session
+$ echo 127.0.0.1 ${DATABASE_URL} >> %SystemRoot%\System32\drivers\etc\hosts
+```
+
+</Tab>
+</Tabs>
+
+### Authenticate to Boundary
+
+After setting up DNS forwarding through a local host entry or private zone,
+access Azure SQL Database through Boundary.
+
+#### Open a second terminal
+
+Open a new terminal window. Ensure you are still located in the
+`learn-boundary-azure-sql/` working directory by running `pwd`.
+
+```shell-session
+$ pwd
+
+./learn-boundary-azure-sql-database
+```
+
+In the new terminal, set the database administrator's Azure username in the
+`SQLCMDUSER` environment variable.
+
+```shell-session
+$ export SQLCMDUSER=$(cd terraform/infrastructure && terraform output -raw azuread_user_database_username)
+```
+
+Check that you saved the username in the `SQLCMDUSER` environment variable.
+
+```shell-session
+$ echo $SQLCMDUSER
+
+${PET_NAME}-dba@<Your Azure AD Domain>
+```
+
+In the second terminal, set the database administrator's Azure password in the
+`SQLCMDPASSWORD` environment variable.
+
+```shell-session
+$ export SQLCMDPASSWORD=$(cd terraform/infrastructure && terraform output -raw azuread_user_database_admin_password)
+```
+
+Check that you saved the password in the `SQLCMDPASSWORD` environment variable.
+
+```shell-session
+$ echo $SQLCMDPASSWORD
+
+REDACTED
+```
+
+<Note>
+
+ Be sure you can retrieve the username and password from the second terminal.
+   Use them to log into Azure via the browser.
+
+</Note>
+
+#### In the first terminal
+
+Go back to the first terminal window. Ensure you are still located in the
+`learn-boundary-azure-sql/` working directory by running `pwd`.
+
+```shell-session
+$ pwd
+
+./learn-boundary-azure-sql-database
+```
+
+Set the Boundary endpoint to the `BOUNDARY_ADDR` environment variable.
+
+```shell-session
+$ export BOUNDARY_ADDR=$(cd terraform/infrastructure && terraform output -raw boundary_url)
+```
+
+Set the `BOUNDARY_TLS_INSECURE` environment variable since the Boundary cluster
+does not have certificates configured.
+
+```shell-session
+$ export BOUNDARY_TLS_INSECURE=true
+```
+
+Set the authentication method ID from Boundary in the `BOUNDARY_AUTH_METHOD_ID`
+environment variable.
+
+```shell-session
+$ export BOUNDARY_AUTH_METHOD_ID=$(cd terraform/boundary && terraform output -raw azuread_auth_method_id)
+```
+
+Authenticate to Boundary as a database administrator in your terminal. This
+opens a browser window for you to log in using the database administrator's
+Azure AD credentials.
+
+<Note>
+
+ Before performing the authentication, ensure you have signed out of the
+   [Azure portal](https://portal.azure.com) in your default browser.
+
+</Note>
+
+**After the login page opens**, enter the information as follows:
+
+- Log in using the email address contained in the `SQLCMDUSER` environment variable
+- Log in using the password in the `SQLCMDPASSWORD` environment variable.
+- Ignore any prompts from Azure to enable additional account security.
+- Proceed past any certificate warnings from the browser.
+
+Boundary returns a token and stores it in the chosen keyring.
+
+```shell-session
+$ boundary authenticate oidc -auth-method-id=${BOUNDARY_AUTH_METHOD_ID}
+
+Opening returned authentication URL in your browser...
+
+Authentication information:
+  Account ID:      acctoidc_4xbvxa6aiU
+  Auth Method ID:  amoidc_OmmQjOiZgt
+  Expiration Time: Mon, 21 Mar 2022 14:26:33 EDT
+  User ID:         u_Sv6r6c8d1J
+
+The token was successfully stored in the chosen keyring and is not displayed here.
+```
+
+### Connect to database
+
+#### In the first terminal
+
+Set the database target ID in the `db_infra` project in the
+`BOUNDARY_DB_ADMIN_TARGET` environment variable.
+
+```shell-session
+$ export BOUNDARY_DB_ADMIN_TARGET_ID=$(cd terraform/boundary && terraform output -raw database_admin_target_id)
+```
+
+Start a proxy session in Boundary to listen on port 1433.
+
+```shell-session
+$ boundary connect -target-id ${BOUNDARY_DB_ADMIN_TARGET_ID} -listen-port 1433
+
+Proxy listening information:
+  Address:             127.0.0.1
+  Connection Limit:    1
+  Expiration:          Mon, 14 Mar 2022 22:28:14 EDT
+  Port:                1433
+  Protocol:            tcp
+  Session ID:          s_uhw0F2eHK6
+```
+
+#### In the second terminal
+
+In the second terminal, set the Azure SQL Database endpoint in the
+`SQLCMDSERVER` environment variable.
+
+```shell-session
+$ export SQLCMDSERVER=$(cd terraform/infrastructure && terraform output -raw mssql_url)
+```
+
+Set up a table in `DemoExpenses` database using the [`sqlcmd`
+utility](https://docs.microsoft.com/en-us/sql/tools/sqlcmd-utility). The `-G`
+option means you use an Azure AD login.
+
+```shell-session
+$ sqlcmd -C -G -d DemoExpenses -i database/setup.sql
+
+Changed database context to 'DemoExpenses'.
+```
+
+Use `sqlcmd` to connect to the database.
+
+```shell-session
+$ sqlcmd -C -G -d DemoExpenses
+
+1>
+```
+
+Test that you set up into the `ExpenseItems` table.
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+1> SELECT * FROM ExpenseItems
+2> GO
+Id                                                                                                                                                                                                                                                              Name                                                                                                                                                                                                                                                            TripId                                                                                                                                                                                                                                                          Cost                  Currency                                                                                                                                                                                                                                                        Date             Reimbursable
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- --------------------- --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- ---------------- ------------
+
+(0 rows affected)
+```
+
+</CodeBlockConfig>
+
+As a database administrator, you have write access to add data using the
+`sqlcmd` utility.
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+1> INSERT INTO ExpenseItems (Id,Name) VALUES (0,'learn')
+2> GO
+
+(1 rows affected)
+```
+
+</CodeBlockConfig>
+
+Exit from the Azure SQL Database. Boundary closes the session because no
+connections remain open.
+
+```shell-session
+1> exit
+```
+
+<Note>
+
+ Before continuing in the tutorial, go to the [Azure portal](https://portal.azure.com)
+   and **sign out** of the database administrator username.
+
+</Note>
+
+Alternatively, a security administrator could cancel the session through
+Boundary and require the database administrator to restart a new database
+connection.
+
+## Broker Database Credentials via Vault
+
+While the database administrators have edit access to the Azure SQL Database,
+you do not want to grant developers the same level of access. This problem has a
+few requirements, including:
+
+1. You want to limit developer access to reading data from a specific database.
+1. Developers should only have access for an hour.
+1. Developers need to simulate the access control of their application. They
+   need similar credentials to the application for local testing _without_
+   using the application’s actual credentials.
+
+To address all three requirements, you can set up [Vault credentials
+brokering](/boundary/tutorials/credential-management/oss-vault-cred-brokering-quickstart). Similar to
+the database administrator, a developer authenticates to Boundary and starts a
+connection with the database endpoint. However, they do not log into the
+database with their Azure AD credentials.
+
+Instead, Boundary requests a short-lived database username and password from
+HashiCorp Vault on the developer's behalf. The developer can use the temporary
+username and password to log into Azure SQL Database. When the developer
+disconnects, Boundary requests that Vault revoke the username and password.
+
+<ImageConfig hideBorder>
+
+![A developer logs into Boundary to access the database and gets a short-lived
+username and password from
+Vault](/img/boundary/azure/azure-sql-database-vault.png)
+
+</ImageConfig>
+
+### Configure database secrets engine in Vault
+
+**Return to the first terminal** you opened for this tutorial. Before configuring
+Vault credentials brokering, set up the database secrets
+engine and a periodic token for Boundary.
+
+Review the `terraform/vault/database.tf` file. Terraform enables the [Microsoft
+SQL Server database
+engine](/vault/docs/secrets/databases/mssql) at the
+`expense/database/mssql` path.
+
+<CodeBlockConfig hideClipboard
+filename="terraform/vault/database.tf">
+
+```hcl
+resource "vault_mount" "mssql" {
+  path = "${var.application}/database/mssql"
+  type = "database"
+}
+```
+
+</CodeBlockConfig>
+
+Use Terraform to set up the backend connection to the database. It connects to
+the `DemoExpenses` database with a static username and password you created as
+part of the Azure SQL Database.
+
+Since you did not set up DNS forwarding and Azure SQL Database uses a private
+endpoint connection, the Terraform configuration adds the database instance name
+as part of the user login in the `connection_url` for the secrets engine and its
+private IP address as the server endpoint.
+
+<CodeBlockConfig lineNumbers highlight="15" hideClipboard
+filename="terraform/vault/database.tf">
+
+```hcl
+locals {
+  vault_role = "app"
+}
+
+resource "vault_mount" "mssql" {
+  path = "${var.application}/database/mssql"
+  type = "database"
+}
+
+resource "vault_database_secret_backend_connection" "mssql" {
+  backend       = vault_mount.mssql.path
+  name          = "mssql"
+  allowed_roles = [local.vault_role]
+  mssql {
+    connection_url = "sqlserver://{{username}}@${local.mssql_url}:{{password}}@${local.mssql_ip_address}:${var.mssql_port}?database=${local.mssql_database_name}"
+    username       = var.mssql_username
+    password       = local.mssql_password
+  }
+}
+
+Add a Vault role that gives read-only access to the database. Vault will create
+a user in the `DemoExpenses` database with `SELECT` access to tables and delete
+the user when revoking the secret.
+
+<CodeBlockConfig highlight="5-6" hideClipboard
+filename="terraform/vault/database.tf">
+
+```hcl
+resource "vault_database_secret_backend_role" "application" {
+  backend               = vault_mount.mssql.path
+  name                  = local.vault_role
+  db_name               = vault_database_secret_backend_connection.mssql.name
+  creation_statements   = ["CREATE USER [{{name}}] WITH PASSWORD = '{{password}}';GRANT SELECT TO [{{name}}];"]
+  revocation_statements = ["DROP USER [{{name}}];"]
+}
+```
+
+</CodeBlockConfig>
+
+Imagine you have an application that reads data from `DemoExpenses`. With this
+configuration, you can use the same secrets engine and role to locally test your
+application's access to the database. Using the same Vault role allows a
+developer to accurately test their application’s connection to the database on
+the local machine with consistent access control policies. Otherwise, you may
+run into drift between elevated local access privilege and limited production
+access privilege.
+
+Next, review the Vault policies for Boundary to retrieve credentials. Boundary
+needs access to read credentials from the database secrets engine, renew its
+token, and look up its leases.
+
+<CodeBlockConfig lineNumbers hideClipboard filename="terraform/vault/policy.tf">
+
+```hcl
+locals {
+  boundary_creds_path = "${vault_mount.mssql.path}/creds/${vault_database_secret_backend_role.application.name}"
+}
+
+data "vault_policy_document" "boundary_controller" {
+  rule {
+    path         = "auth/token/lookup-self"
+    capabilities = ["read"]
+  }
+
+  rule {
+    path         = "auth/token/renew-self"
+    capabilities = ["update"]
+  }
+
+  rule {
+    path         = "auth/token/revoke-self"
+    capabilities = ["update"]
+  }
+
+  rule {
+    path         = "sys/leases/renew"
+    capabilities = ["update"]
+  }
+
+  rule {
+    path         = "sys/leases/revoke"
+    capabilities = ["update"]
+  }
+
+  rule {
+    path         = "sys/capabilities-self"
+    capabilities = ["update"]
+  }
+}
+
+resource "vault_policy" "boundary_controller" {
+  name   = "boundary-controller"
+  policy = data.vault_policy_document.boundary_controller.hcl
+}
+
+data "vault_policy_document" "boundary_product" {
+  rule {
+    path         = local.boundary_creds_path
+    capabilities = ["read"]
+    description  = "read credentials for expense database"
+  }
+}
+
+resource "vault_policy" "boundary_product" {
+  name   = "boundary"
+  policy = data.vault_policy_document.boundary_product.hcl
+}
+```
+
+</CodeBlockConfig>
+
+Attach the Vault policies to a [periodic
+token](/vault/docs/concepts/tokens#periodic-tokens).
+Boundary will use this token to retrieve the credentials from Vault. The token
+has a time-to-live of 24 hours. Boundary must use the token each day.
+
+<CodeBlockConfig highlight="4-5,13-14" hideClipboard
+filename="terraform/vault/policy.tf">
+
+```hcl
+resource "vault_token" "boundary" {
+  role_name = vault_token_auth_backend_role.boundary.role_name
+  policies = [
+    vault_policy.boundary_product.name,
+    vault_policy.boundary_controller.name
+  ]
+  period = "24h"
+}
+
+resource "vault_token_auth_backend_role" "boundary" {
+  role_name = "boundary"
+  allowed_policies = [
+    vault_policy.boundary_product.name,
+    vault_policy.boundary_controller.name
+  ]
+  disallowed_policies = ["default"]
+  orphan              = true
+  renewable           = true
+}
+```
+
+</CodeBlockConfig>
+
+### Configure credentials store in Boundary
+
+The `terraform/vault/` folder includes additional Terraform to add a credentials
+store and database target ID to the `application` project.
+
+Review the credentials store and library in `terraform/vault/boundary.tf`. The
+credentials store connects to Vault. The library allows Boundary to get the
+database credentials from the Vault API path,
+`expense/database/mssql/creds/app`.
+
+<CodeBlockConfig lineNumbers hideClipboard
+filename="terraform/vault/boundary.tf">
+
+```hcl
+resource "boundary_credential_store_vault" "vault" {
+  name            = "vault"
+  description     = "Vault credentials store"
+  address         = local.vault_url
+  tls_skip_verify = true
+  token           = vault_token.boundary.client_token
+  scope_id        = local.boundary_developer_scope
+}
+
+resource "boundary_credential_library_vault" "database" {
+  name                = "database"
+  description         = "Vault credential library for developer database access"
+  credential_store_id = boundary_credential_store_vault.vault.id
+  path                = local.boundary_creds_path
+  http_method         = "GET"
+}
+```
+
+</CodeBlockConfig>
+
+The `boundary_target` resource adds a new
+[target](/boundary/docs/concepts/domain-model/targets) to
+Boundary in the `application` project. Similar to the database target in the
+`db_infra` project, the new target connects to the same database endpoint.
+However, the `application` project allows developers to retrieve a database
+username and password when they connect to the database through Boundary.
+
+<CodeBlockConfig hideClipboard
+filename="terraform/vault/boundary.tf">
+
+```hcl
+resource "boundary_target" "db_app" {
+  type                     = "tcp"
+  name                     = "database"
+  description              = "MSSQL Database"
+  scope_id                 = local.boundary_developer_scope
+  session_connection_limit = 1
+  default_port             = 1433
+  host_source_ids = [
+    local.boundary_database_host_set
+  ]
+  application_credential_source_ids = [
+    boundary_credential_library_vault.database.id
+  ]
+}
+```
+
+</CodeBlockConfig>
+
+### Configure Vault and Boundary with Terraform
+
+Check that you have the `learn-boundary-azure-sql-database/` working directory.
+
+```shell-session
+$ pwd
+
+./learn-boundary-azure-sql-database
+```
+
+Navigate to `terraform/vault/` folder.
+
+```shell-session
+$ cd terraform/vault
+```
+
+Initialize Terraform to set the remote backend to the `vault` workspace.
+
+```shell-session
+$ terraform init
+```
+
+Apply Terraform to configure Boundary using remote operations. Type `yes` after
+reviewing your plan.
+
+```shell-session
+$ terraform apply
+
+Running apply in the remote backend. Output will stream here. Pressing Ctrl-C
+will cancel the remote apply if it's still pending. If the apply started it
+will stop streaming the logs, but will not stop the apply running remotely.
+
+...
+... Truncated Output ...
+...
+
+Plan: 10 to add, 0 to change, 0 to destroy.
+
+Do you want to perform these actions?
+  Terraform will perform the actions described above.
+  Only 'yes' will be accepted to approve.
+
+  Enter a value: yes
+
+...
+... Truncated Output ...
+...
+
+Apply complete! Resources: 10 added, 0 changed, 0 destroyed.
+
+Outputs:
+
+developer_target_id = "ttcp_uroHwXREdD"
+```
+
+This Terraform configuration outputs the target ID for the developer to access
+the database.
+
+Navigate to the main working directory, the `learn-azure-sql-database/`
+folder.
+
+```shell-session
+$ cd ../..
+```
+
+## Verify Developer Read-Only Access
+
+As a developer, you want to test an application on your local machine. The
+application accesses data in the `DemoExpenses` database.
+
+You log into Boundary by signing in to Azure AD. When you start the Boundary
+proxy to connect to the same database in the `application` project, you get a
+database username and password created by Vault.
+
+Check that you have the `learn-boundary-azure-sql-database/` working directory.
+
+```shell-session
+$ pwd
+
+./learn-boundary-azure-sql-database
+```
+
+### Authenticate to Boundary
+
+#### In the second terminal
+
+In your second terminal, set the developer's Azure username in the
+`DEVELOPER_USERNAME` environment variable.
+
+```shell-session
+$ export DEVELOPER_USERNAME=$(cd terraform/infrastructure && terraform output -raw azuread_user_developer_username)
+```
+
+Check that you saved the username in the `DEVELOPER_USERNAME` environment variable.
+
+```shell-session
+$ echo $DEVELOPER_USERNAME
+
+${PET_NAME}-dev@<Your Azure AD Domain>
+```
+
+In the second terminal, set the developer's Azure password in the
+`DEVELOPER_PASSWORD` environment variable.
+
+```shell-session
+$ export DEVELOPER_PASSWORD=$(cd terraform/infrastructure && terraform output -raw azuread_user_developer_password)
+```
+
+Check that you saved the password in the `DEVELOPER_PASSWORD` environment variable.
+
+```shell-session
+$ echo $DEVELOPER_PASSWORD
+
+REDACTED
+```
+
+<Note>
+
+ Be sure you can retrieve the username and password from the second terminal.
+   Use them to log into Azure via the browser.
+
+</Note>
+
+#### In the first terminal
+
+Return to the first terminal. Set the Boundary endpoint to the `BOUNDARY_ADDR`
+environment variable.
+
+```shell-session
+$ export BOUNDARY_ADDR=$(cd terraform/infrastructure && terraform output -raw boundary_url)
+```
+
+Set the `BOUNDARY_TLS_INSECURE` environment variable since the Boundary cluster
+does not have certificates configured.
+
+```shell-session
+$ export BOUNDARY_TLS_INSECURE=true
+```
+
+Set the authentication method ID from Boundary in the `BOUNDARY_AUTH_METHOD_ID`
+environment variable.
+
+```shell-session
+$ export BOUNDARY_AUTH_METHOD_ID=$(cd terraform/boundary && terraform output -raw azuread_auth_method_id)
+```
+
+Authenticate to Boundary as a developer in your terminal. This
+opens a browser window for you to log in using the developer's
+Azure AD credentials.
+
+<Note>
+
+ Before performing the authentication, ensure you have signed out of the
+   [Azure portal](https://portal.azure.com) in your default browser.
+
+</Note>
+
+**After the login page opens**, enter the information as follows:
+
+- Log in using the email address contained in the `DEVELOPER_USERNAME` environment variable
+- Log in using the password in the `DEVELOPER_PASSWORD` environment variable.
+- Ignore any prompts from Azure to enable additional account security.
+- Proceed past any certificate warnings from the browser.
+
+Boundary returns a token and stores it in the chosen keyring.
+
+```shell-session
+$ boundary authenticate oidc -auth-method-id=${BOUNDARY_AUTH_METHOD_ID}
+
+Opening returned authentication URL in your browser...
+
+Authentication information:
+  Account ID:      acctoidc_4xbvxa6aiU
+  Auth Method ID:  amoidc_OmmQjOiZgt
+  Expiration Time: Mon, 21 Mar 2022 14:26:33 EDT
+  User ID:         u_Sv6r6c8d1J
+
+The token was successfully stored in the chosen keyring and is not displayed here.
+```
+
+### Connect to database
+
+#### In the first terminal
+
+In your first terminal, set the database target ID in the `application` project
+in the `BOUNDARY_DB_DEV_TARGET_ID` environment variable.
+
+```shell-session
+$ export BOUNDARY_DB_DEV_TARGET_ID=$(cd terraform/vault && terraform output -raw developer_target_id)
+```
+
+Start a proxy session in Boundary to listen on port 1433. Since you set up
+credentials brokering, Boundary will return a database username and password for
+you to connect to the database.
+
+<CodeBlockConfig highlight="1,19-20">
+
+```shell-session
+$ boundary connect -target-id ${BOUNDARY_DB_DEV_TARGET_ID} -listen-port 1433
+
+Proxy listening information:
+  Address:             127.0.0.1
+  Connection Limit:    1
+  Expiration:          Mon, 14 Mar 2022 23:49:02 EDT
+  Port:                1433
+  Protocol:            tcp
+  Session ID:          s_i8qmgnFtBR
+
+  Credentials:
+    Credential Source Description: Vault credential library for developer database access
+    Credential Source ID:          clvlt_J3SFwohTof
+    Credential Source Name:        database
+    Credential Store ID:           csvlt_yMDVvEvMDO
+    Credential Store Type:         vault
+    Secret:
+        {
+              "password": "REDACTED",
+              "username": "v-token-token-app-9dnCqalLl8sgBaBQy23l-1647287343"
+        }
+```
+
+</CodeBlockConfig>
+
+#### In the second terminal
+
+Open the second terminal. Set the Azure SQL Database endpoint in the
+`SQLCMDSERVER` environment variable.
+
+```shell-session
+$ export SQLCMDSERVER=$(cd terraform/infrastructure && terraform output -raw mssql_url)
+```
+
+In the second terminal, copy the database username from the output of `boundary
+connect` and set it to the `SQLCMDUSER` environment variable.
+
+```shell-session
+$ export SQLCMDUSER=<Boundary's output for secret username>
+```
+
+In the second terminal, copy the database password from the output of `boundary
+connect` and set it to the `SQLCMDPASSWORD` environment variable.
+
+```shell-session
+$ export SQLCMDPASSWORD=<Boundary's output for secret password>
+```
+
+In the second terminal, access the database [`sqlcmd`
+utility](https://docs.microsoft.com/en-us/sql/tools/sqlcmd-utility). You do not
+need the `-G` option with a username and password from Vault.
+
+```shell-session
+$ sqlcmd -C -d DemoExpenses
+
+1>
+```
+
+Test that you select items from the `ExpenseItems` table.
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+1> SELECT * FROM ExpenseItems
+2> GO
+Id                                                                                                                                                                                                                                                              Name                                                                                                                                                                                                                                                            TripId                                                                                                                                                                                                                                                          Cost                  Currency                                                                                                                                                                                                                                                        Date             Reimbursable
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- --------------------- --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- ---------------- ------------
+0                                                                                                                                                                                                                                                               learn                                                                                                                                                                                                                                                           NULL                                                                                                                                                                                                                                                                             NULL NULL                                                                                                                                                                                                                                                                        NULL         NULL
+
+(1 rows affected)
+```
+
+</CodeBlockConfig>
+
+However, as a developer, you cannot edit any tables in the database.
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+1> INSERT INTO ExpenseItems (Id,Name) VALUES (0,'learn')
+2> GO
+
+Msg 229, Level 14, State 5, Server ${PET_NAME}-learn-database, Line 1
+The INSERT permission was denied on the object 'ExpenseItems', database 'DemoExpenses', schema 'dbo'.
+```
+
+</CodeBlockConfig>
+
+Exit from the Azure SQL Database. Boundary closes the session because no
+connections remain open.
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+1> exit
+```
+
+</CodeBlockConfig>
+
+When Boundary closes the session, it issues an asynchronous request to revoke
+the database username and password from Vault.
+
+As a developer, you get temporary read access to the database for any local
+testing or troubleshooting. If you would like developers to have additional
+access to the database, you can [add different credentials
+store](/boundary/docs/concepts/domain-model/credential-stores)
+to the same project with a different Vault role. The Vault role should create a
+user with elevated database privileges. If a developer wants additional access
+to edit data, they will have to use the credentials store with additional
+database access.
+
+Using Vault, you define a SQL statement to generate short-lived usernames and
+passwords with limited access to a database. Any identity, application or user,
+using the Vault role confirms to the database access policy defined in the SQL
+statement. A single access policy helps developers debug and mimic the behavior
+of applications accessing the database. What works on the developer’s local
+environment matches the behavior and expected access control of an application
+to the database.
+
+## Cleanup and teardown
+
+<Note>
+
+ Make sure you are in the first terminal when you issue
+   the commands to destroy the resources.
+
+</Note>
+
+Check that you have the `learn-boundary-azure-sql-database/` working directory.
+
+```shell-session
+$ pwd
+
+./learn-boundary-azure-sql-database
+```
+
+Check you have `VAULT_ADDR` set in an environment variable. If not,
+ensure that you are in the first terminal window.
+
+```shell-session
+$ echo $VAULT_ADDR
+```
+
+Force revoke all Vault leases.
+
+```shell-session
+$ vault lease revoke -f -prefix expense/database/mssql
+```
+
+Navigate to the `terraform/vault/` folder.
+
+```shell-session
+$ cd terraform/vault/
+```
+
+Delete all of the Vault configuration created by Terraform.
+
+```shell-session
+$ terraform destroy -auto-approve
+```
+
+Navigate to the `terraform/boundary/` folder.
+
+```shell-session
+$ cd ../boundary
+```
+
+Delete all of the Boundary configuration created by Terraform.
+
+```shell-session
+$ terraform destroy -auto-approve
+```
+
+Navigate to the `learn-boundary-azure-sql-database/` working directory.
+
+```shell-session
+$ cd ../..
+```
+
+Delete the Azure AD users using your terminal. For security, you do not grant
+sufficient API access to the Azure AD service principal for HCP Terraform to
+delete users.
+
+```shell-session
+$ az ad user delete --id $(cd terraform/infrastructure && terraform output -raw azuread_user_database_object_id) && \
+  az ad user delete --id $(cd terraform/infrastructure && terraform output -raw azuread_user_developer_object_id)
+```
+
+Navigate to the `terraform/infrastructure/` folder.
+
+```shell-session
+$ cd terraform/infrastructure/
+```
+
+Delete all of the infrastructure created by Terraform. This command will remove
+all resources *except* the Azure AD users, which must be deleted manually. The service principal
+does not have sufficient access to delete the Azure AD users.
+
+<Note title="Troubleshooting">
+
+ This step will take 30 minutes. If you find it
+   results in an error unrelated to deleting the Azure AD users,
+   expand the accordion below to check your work.
+
+</Note>
+
+<Accordion heading="Terraform Destroy Results in Error" collapse>
+
+Terraform may introduce a race condition in Azure when deleting the resources.
+If it results in an error, wait for a few minutes before running the destroy
+command again.
+
+```shell-session
+$ terraform destroy -auto-approve
+```
+
+</Accordion>
+
+```shell-session
+$ terraform destroy -auto-approve
+```
+
+Navigate to the `bootstrap/` folder.
+
+```shell-session
+$ cd ../../bootstrap
+```
+
+Delete the HCP Terraform workspaces and organization.
+
+```shell-session
+$ terraform destroy -auto-approve
+```
+
+Remove the local Terraform state file.
+
+```shell-session
+$ rm terraform.tfstate*
+```
+
+Navigate to the `learn-boundary-azure-sql-database/` working directory.
+
+```shell-session
+$ cd ..
+```
+
+Remove local files with credentials.
+
+```shell-session
+$ rm -f terraform/infrastructure/unseal.json azure.json
+```
+
+Remove the Terraform metadata files.
+
+```shell-session
+$ rm -rf terraform/infrastructure/.terraform \
+    terraform/boundary/.terraform \
+    terraform/vault/.terraform \
+    bootstrap/.terraform
+```
+
+Delete the Azure service principal you created for HCP Terraform.
+
+```shell-session
+$ az ad app delete --id ${AZURERM_CLIENT_ID}
+```
+
+## Next steps
+
+This tutorial demonstrated how to set up Boundary to control database access for
+database administrators and developers. You configured Boundary's OIDC
+authentication method and Vault credentials brokering with Terraform. Then, you
+logged in as the database administrator with Azure AD and the developer with
+Vault credentials for the database.
+
+This workflow reduces the operational complexity of enabling and auditing
+developer and database administrator access to a database and consolidates the
+management of access control policies in Boundary. Boundary offers one point of
+access control across multiple platforms and tools. You can apply a similar
+approach to controlling access to other endpoints that have [secrets
+engines](/vault/docs/secrets) in Vault, including caches,
+queues, and other databases.
+
+To learn more, check out the [OIDC
+Authentication](/boundary/tutorials/identity-management/oidc-auth), [managed
+groups](/boundary/tutorials/identity-management/oidc-idp-groups), and [Vault credentials
+brokering](/boundary/tutorials/credential-management/oss-vault-cred-brokering-quickstart) tutorials.

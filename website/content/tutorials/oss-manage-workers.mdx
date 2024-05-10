@@ -1,0 +1,1386 @@
+---
+id: af8ec76e-2d5b-4be3-bae4-08e128865714
+name: Manage workers
+short_name: Manage workers
+description: Authorize a worker to connect with Boundary Community Edition.
+read_time: 15
+products_used:
+  - product: boundary
+    min_version: 0.9.0
+    max_version: 0.11.2
+default_collection_context: boundary/oss-administration
+---
+
+Boundary Community Edition requires organizations to configure their own [self-managed workers](/boundary/docs/configuration/worker/worker-configuration). Workers can provide access to private networks while still communicating with an upstream Boundary control plane.
+
+<Note>
+
+ Workers should be kept up-to-date with the Boundary control
+plane's version, otherwise new features will not work as expected.
+
+</Note>
+
+Boundary is an identity-aware proxy that sits between users and the
+infrastructure they want to connect to. The proxy has two components:
+
+1. A control plane that manages state around users under management, targets,
+   and access policies.
+2. Worker nodes, assigned by the control plane once a user authenticates into
+   Boundary and selects a target.
+
+![Boundary Access Model](/img/boundary/access-model.png)
+
+Deploying workers allows Boundary users to securely connect to private
+endpoints (such as SSH services on hosts, databases, or HashiCorp Vault) without
+exposing a private network.
+
+This tutorial demonstrates the basics of how to register and manage workers
+using Boundary Boundary Community Edition.
+
+## Prerequisites
+
+This tutorial assumes you have:
+
+- Boundary Community Edition running in dev mode
+- Completed the previous Community Edition Administration tutorials and created
+  a `postgres` target in the [Manage
+  Targets](/boundary/tutorials/oss-administration/oss-manage-targets) tutorial
+
+This tutorial deploys a worker locally in a Docker container, which is then
+registered to the controller deployed using Boundary's [dev mode](/boundary/docs/getting-started/dev-mode/dev-mode).
+
+Workers must be able to install the [Boundary binary](/boundary/install).
+
+To begin, ensure Boundary is running locally in dev mode:
+
+```shell-session
+$ boundary dev
+==> Boundary server configuration:
+
+        [Controller] AEAD Key Bytes: pcPFykfubnEycoY+xLqn071qBQR5OB7u
+          [Recovery] AEAD Key Bytes: LtvZXRu1lOL3fMuctHn7kEohQvz/1eH9
+       [Worker-Auth] AEAD Key Bytes: j1QNfPHJhBmZJsGmxZ9BN+kHn+C81mJE
+               [Recovery] AEAD Type: aes-gcm
+                   [Root] AEAD Type: aes-gcm
+    [Worker-Auth-Storage] AEAD Type: aes-gcm
+            [Worker-Auth] AEAD Type: aes-gcm
+                                Cgo: disabled
+     Controller Public Cluster Addr: 127.0.0.1:9201
+             Dev Database Container: priceless_euler
+                   Dev Database Url: postgres://postgres:password@localhost:55000/boundary?sslmode=disable
+         Generated Admin Login Name: admin
+           Generated Admin Password: password
+          Generated Host Catalog Id: hcst_1234567890
+                  Generated Host Id: hst_1234567890
+              Generated Host Set Id: hsst_1234567890
+      Generated Oidc Auth Method Id: amoidc_1234567890
+             Generated Org Scope Id: o_1234567890
+  Generated Password Auth Method Id: ampw_1234567890
+         Generated Project Scope Id: p_1234567890
+                Generated Target Id: ttcp_1234567890
+  Generated Unprivileged Login Name: user
+    Generated Unprivileged Password: password
+                         Listener 1: tcp (addr: "127.0.0.1:9200", cors_allowed_headers: "[]", cors_allowed_origins: "[*]", cors_enabled: "true", max_request_duration: "1m30s", purpose: "api")
+                         Listener 2: tcp (addr: "127.0.0.1:9201", max_request_duration: "1m30s", purpose: "cluster")
+                         Listener 3: tcp (addr: "127.0.0.1:9203", max_request_duration: "1m30s", purpose: "ops")
+                         Listener 4: tcp (addr: "127.0.0.1:9202", max_request_duration: "1m30s", purpose: "proxy")
+                          Log Level: info
+                              Mlock: supported: false, enabled: false
+                            Version: Boundary v0.11.2
+                        Version Sha: 02e410af7a2606ae242b8637d8a02754f0a5f43e
+         Worker Auth Current Key Id: chastise-scone-lair-cussed-thrive-husband-haggler-trio
+           Worker Auth Storage Path: /var/folders/8g/4dnhwwzx2d771tkklxwrd0380000gp/T/nodeenrollment2003067152
+           Worker Public Proxy Addr: 127.0.0.1:9202
+
+==> Boundary server started! Log data will stream in below:
+...
+...
+...
+```
+
+If you restarted dev mode, go back to the [Manage
+Targets](/boundary/tutorials/oss-administration/oss-manage-targets) tutorial to
+create a postgres container and target.
+
+### Verify the Boundary installation
+
+Verify that Boundary 0.9.0 or above is installed locally.
+
+```shell-session
+$ boundary version
+
+Version information:
+  Git Revision:        02e410af7a2606ae242b8637d8a02754f0a5f43e
+  Version Number:      0.11.2
+```
+
+## Configure the worker
+
+To configure a worker, the following details are required:
+
+- Boundary Controller URL (Boundary address)
+- Auth Method ID (from the Admin Console)
+- Admin login name and password
+
+Because Boundary is running in dev mode, these values map to:
+
+- Boundary Controller URL: `http://127.0.0.1:9200`
+- Auth Method ID: `ampw_1234567890`
+- Admin login name and password: `admin` and `password`, respectively
+
+### Authorization Methods
+
+There are two workflows that can be used to register a worker in Boundary
+Community Edition:
+
+1. Controller-Led authorization workflow
+1. Worker-Led authorization workflow
+
+Select a workflow to proceed.
+
+<Tabs>
+<Tab heading="Controller-Led" group="controller">
+
+In this flow, the operator fetches an activation token from the controller. The
+token is then embedded in the worker's config file, and authorization is
+performed when the worker is started.
+
+First, authenticate to the controller. Enter the password of `password` when
+prompted.
+
+```shell-session
+$ boundary authenticate password -auth-method-id ampw_1234567890 -login-name admin
+Please enter the password (it will be hidden):
+
+Authentication information:
+  Account ID:      acctpw_1234567890
+  Auth Method ID:  ampw_1234567890
+  Expiration Time: Thu, 19 Jan 2023 15:37:46 MST
+  User ID:         u_1234567890
+
+The token was successfully stored in the chosen keyring and is not displayed here.
+```
+
+Next, generate an activation token for the new worker.
+
+<CodeBlockConfig lineNumbers highlight="1,5-6">
+
+```shell-session
+$ boundary workers create controller-led
+
+Worker information:
+  Active Connection Count:                 0
+  Controller-Generated Activation Token:
+  neslat_2KrT6eg8F8PE5znPhjesuWAtW9S2KdhqPox3w6Z4n9kXvWLfd37Sj1VMQMNB7tqtXCDwdbX9F4UMDHvW5CnLDbb61DjXh
+  Created Time:                            Thu, 12 Jan 2023
+  15:38:22 MST
+  ID:                                      w_rKKkVB2d8z
+  Type:                                    pki
+  Updated Time:                            Thu, 12 Jan 2023
+  15:38:22 MST
+  Version:                                 1
+
+  Scope:
+    ID:                                    global
+    Name:                                  global
+    Type:                                  global
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    add-worker-tags
+    set-worker-tags
+    remove-worker-tags
+```
+
+</CodeBlockConfig>
+
+Copy the `Controller-Generated Activation Token` value on line 6.
+
+### Write the worker config
+
+Create a new folder to store your Boundary config file. This tutorial creates
+the `boundary/` directory in the user's home directory `~/` (labeled as
+`myusername` later on) to store the worker config. If you do not have permission
+to create this directory, create the folder elsewhere.
+
+```shell-session
+$ mkdir ~/boundary/ && cd ~/boundary/
+```
+
+Next, **create a new file** named `worker.hcl` in the `~/boundary/`
+directory.
+
+```shell-session
+$ touch ~/boundary/worker.hcl
+```
+
+Open the file with a text editor, such as Vi.
+
+**Paste the following configuration into the worker config file:**
+
+<Tabs>
+<Tab heading="Ubuntu" group="ubuntu">
+
+<CodeBlockConfig lineNumbers filename="~/boundary/worker.hcl">
+
+```hcl
+disable_mlock = true
+
+listener "tcp" {
+  address = "127.0.0.1:9204"
+  purpose = "proxy"
+}
+
+worker {
+  auth_storage_path = "/home/myusername/boundary/worker1"
+  initial_upstreams = ["127.0.0.1"]
+  controller_generated_activation_token = "<Controller-Generated Activation Token Value>"
+  tags {
+    type = ["worker", "local"]
+  }
+}
+```
+
+</CodeBlockConfig>
+
+**Update the `<Controller-Generated Activation Token Value>`** on line 3 with
+the token value copied from the `boundary workers create controller-led` command
+output.
+
+**Update** the `auth_storage_path`** to match the full path to the
+`~/boundary/worker1`
+directory, such as `/home/myusername/boundary/worker1`.
+
+Notice the `listener "tcp"` `address` is set to `"127.0.0.1:9204"`. Because
+Boundary is running in dev mode, a pre-configured worker is already
+listening on port `9202`. To avoid conflicts, the new worker listens on
+`9204`. In a non-dev deployment, the worker would usually listen on
+port `9202`.
+
+Also notice the `worker` `initial_upstreams` is set to `127.0.0.1`. In a non-dev
+deployment, this address would resolve to an upstream controller.
+
+</Tab>
+<Tab heading="MacOS" group="macos">
+
+<CodeBlockConfig lineNumbers filename="~/boundary/worker.hcl">
+
+```hcl
+disable_mlock = true
+
+listener "tcp" {
+  address = "127.0.0.1:9204"
+  purpose = "proxy"
+}
+
+worker {
+  auth_storage_path = "/Users/myusername/boundary/worker1"
+  initial_upstreams = ["127.0.0.1"]
+  controller_generated_activation_token = "<Controller-Generated Activation Token Value>"
+  tags {
+    type = ["worker", "local"]
+  }
+}
+```
+
+</CodeBlockConfig>
+
+
+**Update the `<Controller-Generated Activation Token Value>`** on line 3 with
+the token value copied from the `boundary workers create controller-led` command
+output.
+
+**Update** the `auth_storage_path`** to match the full path to the
+`~/boundary/worker1` directory, such as `/Users/myusername/boundary/worker1`.
+
+Notice the `listener "tcp"` `address` is set to `"127.0.0.1:9204"`. Because
+Boundary is running in dev mode, a pre-configured worker is already
+listening on port `9202`. To avoid conflicts, the new worker listens on
+`9204`. In a non-dev deployment, the worker would usually listen on
+port `9202`.
+
+Also notice the `worker` `initial_upstreams` is set to `127.0.0.1`. In a non-dev
+deployment, this address would resolve to an upstream controller.
+
+</Tab>
+<Tab heading="Windows" group="windows">
+
+<CodeBlockConfig lineNumbers filename="~/boundary/worker.hcl">
+
+```hcl
+disable_mlock = true
+
+listener "tcp" {
+  address = "127.0.0.1:9204"
+  purpose = "proxy"
+}
+
+worker {
+  auth_storage_path = "C:/Users/myusername/boundary/worker1"
+  initial_upstreams = ["127.0.0.1"]
+  controller_generated_activation_token = "<Controller-Generated Activation Token Value>"
+  tags {
+    type = ["worker", "local"]
+  }
+}
+```
+
+</CodeBlockConfig>
+
+**Update the `<Controller-Generated Activation Token Value>`** on line 3 with
+the token value copied from the `boundary workers create controller-led` command
+output.
+
+**Update** the `auth_storage_path`** to match the full path to the
+`~/boundary/worker1` directory, such as `C:/Users/myusername/boundary/worker1`.
+
+Notice the `listener "tcp"` `address` is set to `"127.0.0.1:9204"`. Because
+Boundary is running in dev mode, a pre-configured worker is already
+listening on port `9202`. To avoid conflicts, the new worker listens on
+`9204`. In a non-dev deployment, the worker would usually listen on
+port `9202`.
+
+Also notice the `worker` `initial_upstreams` is set to `127.0.0.1`. In a non-dev
+deployment, this address would resolve to an upstream controller.
+
+</Tab>
+</Tabs>
+
+**Save this file.**
+
+Parameters that can be specified for workers include:
+- `auth_storage_path` is a local path where a worker will store its
+  credentials. Storage should not be shared between workers.
+
+- `controller_generated_activation_token` is one-time-use; it is safe to keep it
+  here even after the worker has successfully authorized and authenticated, as
+  it will be unusable at that point.
+
+- `initial_upstreams` indicates the address or addresses a worker will use when
+  initially connecting to Boundary. Do not use any HCP worker values for `initial_upstreams`.
+
+- `public_addr` attribute can be specified within the `worker {}` stanza. This
+example omits the worker's public address because the Boundary client and worker
+are deployed on the same local machine, but would be used in a non-dev
+deployment.
+
+To see all valid config options, refer to the [worker configuration](/boundary/docs/configuration/worker/worker-configuration) docs.
+
+### Start the worker
+
+With the worker config defined, start the worker server. Provide the full path
+to the worker config file.
+
+<Tabs>
+<Tab heading="Ubuntu" group="ubuntu">
+
+<CodeBlockConfig>
+
+```shell-session
+$ boundary server -config="/home/myusername/boundary/worker.hcl"
+
+==> Boundary server configuration:
+
+                               Cgo: disabled
+                        Listener 1: tcp (addr: "127.0.0.1:9204", max_request_duration: "1m30s", purpose: "proxy")
+                         Log Level: info
+                             Mlock: supported: false, enabled: false
+                           Version: Boundary v0.11.2
+                       Version Sha: 02e410af7a2606ae242b8637d8a02754f0a5f43e
+        Worker Auth Current Key Id: unable-sappy-manager-object-shakiness-overnight-pastime-lazily
+  Worker Auth Registration Request: GzusqckarbczHoLGQ4UA25uSRP2BhspoFcDqirahPonSvtyH3wD44KE9UUcRUgoVqNESjcCwtJ2rMZFun5LpRjmFWF5ykK4rvYTvzT8GppGeifvbdSH8qi3CstwAiJVynnLBVtRb2r8Ekwx6ksZ8mWC9u94m5sm3ayzhBLwEafSEnbN9FsjP5StCFLzPMDqny8iXUuvYJUS7MAeXJaEiv2g8pwYfJ4cZG7Hu7kqc2d8nKiNCsKbLohMRRFT887frRWDXDaUUETHbRG2RzexqGWhqC2q4UTodhSnzpdnX79
+          Worker Auth Storage Path: /home/myusername/boundary/worker1
+          Worker Public Proxy Addr: 127.0.0.1:9204
+
+==> Boundary server started! Log data will stream in below:
+```
+
+</CodeBlockConfig>
+
+</Tab>
+<Tab heading="MacOS" group="macos">
+
+<CodeBlockConfig>
+
+```shell-session
+$ boundary server -config="/Users/myusername/boundary/worker.hcl"
+
+==> Boundary server configuration:
+
+                               Cgo: disabled
+                        Listener 1: tcp (addr: "127.0.0.1:9204", max_request_duration: "1m30s", purpose: "proxy")
+                         Log Level: info
+                             Mlock: supported: false, enabled: false
+                           Version: Boundary v0.11.2
+                       Version Sha: 02e410af7a2606ae242b8637d8a02754f0a5f43e
+        Worker Auth Current Key Id: unable-sappy-manager-object-shakiness-overnight-pastime-lazily
+  Worker Auth Registration Request: GzusqckarbczHoLGQ4UA25uSRP2BhspoFcDqirahPonSvtyH3wD44KE9UUcRUgoVqNESjcCwtJ2rMZFun5LpRjmFWF5ykK4rvYTvzT8GppGeifvbdSH8qi3CstwAiJVynnLBVtRb2r8Ekwx6ksZ8mWC9u94m5sm3ayzhBLwEafSEnbN9FsjP5StCFLzPMDqny8iXUuvYJUS7MAeXJaEiv2g8pwYfJ4cZG7Hu7kqc2d8nKiNCsKbLohMRRFT887frRWDXDaUUETHbRG2RzexqGWhqC2q4UTodhSnzpdnX79
+          Worker Auth Storage Path: /Users/myusername/boundary/worker1
+          Worker Public Proxy Addr: 127.0.0.1:9204
+
+==> Boundary server started! Log data will stream in below:
+```
+
+</CodeBlockConfig>
+
+</Tab>
+<Tab heading="Windows" group="windows">
+
+<CodeBlockConfig>
+
+```shell-session
+$ boundary server -config="C:\Users\myusername\boundary\worker.hcl"
+
+==> Boundary server configuration:
+
+                               Cgo: disabled
+                        Listener 1: tcp (addr: "127.0.0.1:9204", max_request_duration: "1m30s", purpose: "proxy")
+                         Log Level: info
+                             Mlock: supported: false, enabled: false
+                           Version: Boundary v0.11.2
+                       Version Sha: 02e410af7a2606ae242b8637d8a02754f0a5f43e
+        Worker Auth Current Key Id: unable-sappy-manager-object-shakiness-overnight-pastime-lazily
+  Worker Auth Registration Request: GzusqckarbczHoLGQ4UA25uSRP2BhspoFcDqirahPonSvtyH3wD44KE9UUcRUgoVqNESjcCwtJ2rMZFun5LpRjmFWF5ykK4rvYTvzT8GppGeifvbdSH8qi3CstwAiJVynnLBVtRb2r8Ekwx6ksZ8mWC9u94m5sm3ayzhBLwEafSEnbN9FsjP5StCFLzPMDqny8iXUuvYJUS7MAeXJaEiv2g8pwYfJ4cZG7Hu7kqc2d8nKiNCsKbLohMRRFT887frRWDXDaUUETHbRG2RzexqGWhqC2q4UTodhSnzpdnX79
+          Worker Auth Storage Path: C:\Users\myusername\boundary\worker1
+          Worker Public Proxy Addr: 127.0.0.1:9204
+
+==> Boundary server started! Log data will stream in below:
+```
+
+</CodeBlockConfig>
+
+</Tab>
+</Tabs>
+
+## Verify the worker registration
+
+Verify the worker has successfully authenticated to the upstream controller by
+listing the available workers.
+
+There will be an initial worker created by `boundary dev` available at
+`127.0.0.1:9202`. The newly created worker will have an address of
+`127.0.0.1:9204`.
+
+<Tabs>
+<Tab heading="CLI" group="cli">
+
+```shell-session
+$ boundary workers list
+
+Worker information:
+  ID:                        w_WEbOvv0Wvl
+    Type:                    pki
+    Version:                 1
+    Address:                 127.0.0.1:9202
+    ReleaseVersion:          Boundary v0.11.2
+    Last Status Time:        Fri, 27 Jan 2023 20:21:26 UTC
+    Authorized Actions:
+      no-op
+      read
+      update
+      delete
+      add-worker-tags
+      set-worker-tags
+      remove-worker-tags
+
+  ID:                        w_O0pSsDWt0U
+    Type:                    pki
+    Version:                 1
+    Address:                 127.0.0.1:9204
+    ReleaseVersion:          Boundary v0.11.2
+    Last Status Time:        Fri, 27 Jan 2023 20:21:26 UTC
+    Authorized Actions:
+      no-op
+      read
+      update
+      delete
+      add-worker-tags
+      set-worker-tags
+      remove-worker-tags
+```
+
+</Tab>
+<Tab heading="Admin Console" group="admin">
+
+![Boundary Worker Registration](/img/boundary/oss/ui-workers-overview.png)
+
+</Tab>
+</Tabs>
+
+</Tab>
+<Tab heading="Worker-Led" group="worker">
+
+In this workflow, the worker prints out an authorization request token in two places: 
+
+1. The startup information printed to stdout
+1. A file called `auth_request_token` in the base of the configured
+   `auth_storage_path` from the worker's config file.
+
+This token can be submitted to a controller, with no additional values added to
+the worker's config file.
+
+### Write the worker config
+
+Create a new folder to store your Boundary config file. This tutorial creates
+the `boundary/` directory in the user's home directory `~/` (labeled as
+`myusername` later on) to store the worker config. If you do not have permission
+to create this directory, create the folder elsewhere.
+
+```shell-session
+$ mkdir ~/boundary/ && cd ~/boundary/
+```
+
+Next, **create a new file** named `worker.hcl` in the `~/boundary/`
+directory.
+
+```shell-session
+$ touch ~/boundary/worker.hcl
+```
+
+Open the file with a text editor, such as Vi.
+
+**Paste the following configuration into the worker config file:**
+
+<Tabs>
+<Tab heading="Ubuntu" group="ubuntu">
+
+<CodeBlockConfig lineNumbers filename="~/boundary/worker.hcl">
+
+```hcl
+disable_mlock = true
+
+listener "tcp" {
+  address = "127.0.0.1:9204"
+  purpose = "proxy"
+}
+
+worker {
+  auth_storage_path = "/home/myusername/boundary/worker1"
+  initial_upstreams = ["127.0.0.1"]
+  tags {
+    type = ["worker", "local"]
+  }
+}
+```
+
+</CodeBlockConfig>
+
+**Update** the `auth_storage_path`** to match the full path to the
+`~/boundary/worker1` directory, such as `/home/myusername/boundary/worker1`.
+
+Notice the `listener "tcp"` `address` is set to `"127.0.0.1:9204"`. Because
+Boundary is running in dev mode, a pre-configured worker is already
+listening on port `9202`. To avoid conflicts, the new worker listens on
+`9204`. In a non-dev deployment, the worker would usually listen on
+port `9202`.
+
+Also notice the `worker` `initial_upstreams` is set to `127.0.0.1`. In a non-dev
+deployment, this address would resolve to an upstream controller.
+
+</Tab>
+<Tab heading="MacOS" group="macos">
+
+<CodeBlockConfig lineNumbers filename="~/boundary/worker.hcl">
+
+```hcl
+disable_mlock = true
+
+listener "tcp" {
+  address = "127.0.0.1:9204"
+  purpose = "proxy"
+}
+
+worker {
+  auth_storage_path = "/Users/myusername/boundary/worker1"
+  initial_upstreams = ["127.0.0.1"]
+  tags {
+    type = ["worker", "local"]
+  }
+}
+```
+
+</CodeBlockConfig>
+
+**Update** the `auth_storage_path`** to match the full path to the
+`~/boundary/worker1` directory, such as `/Users/myusername/boundary/worker1`.
+
+Notice the `listener "tcp"` `address` is set to `"127.0.0.1:9204"`. Because
+Boundary is running in dev mode, a pre-configured worker is already
+listening on port `9202`. To avoid conflicts, the new worker listens on
+`9204`. In a non-dev deployment, the worker would usually listen on
+port `9202`.
+
+Also notice the `worker` `initial_upstreams` is set to `127.0.0.1`. In a non-dev
+deployment, this address would resolve to an upstream controller.
+
+</Tab>
+<Tab heading="Windows" group="windows">
+
+<CodeBlockConfig lineNumbers filename="~\boundary\worker.hcl">
+
+```hcl
+disable_mlock = true
+
+listener "tcp" {
+  address = "127.0.0.1:9204"
+  purpose = "proxy"
+}
+
+worker {
+  auth_storage_path = "C:\Users\myusername\boundary\worker1"
+  initial_upstreams = ["127.0.0.1"]
+  tags {
+    type = ["worker", "local"]
+  }
+}
+```
+
+</CodeBlockConfig>
+
+**Update** the `auth_storage_path`** to match the full path to the
+`~/boundary/worker1` directory, such as `C:\Users\myusername\boundary\worker1`.
+
+Notice the `listener "tcp"` `address` is set to `"127.0.0.1:9204"`. Because
+Boundary is running in dev mode, a pre-configured worker is already
+listening on port `9202`. To avoid conflicts, the new worker listens on
+`9204`. In a non-dev deployment, the worker would usually listen on
+port `9202`.
+
+Also notice the `worker` `initial_upstreams` is set to `127.0.0.1`. In a non-dev
+deployment, this address would resolve to an upstream controller.
+
+</Tab>
+</Tabs>
+
+**Save this file.**
+
+Parameters that can be specified for workers include:
+- `auth_storage_path` is a local path where a worker will store its
+  credentials. Storage should not be shared between workers.
+
+- `controller_generated_activation_token` can be supplied when using a
+  controller-led authorization workflow.
+
+- `initial_upstreams` indicates the address or addresses a worker will use when
+  initially connecting to Boundary. Do not use any HCP worker values for `initial_upstreams`.
+
+- `public_addr` attribute can be specified within the `worker {}` stanza. This
+example omits the worker's public address because the Boundary client and worker
+are deployed on the same local machine, but would be used in a non-dev
+deployment.
+
+To see all valid config options, refer to the [worker configuration](/boundary/docs/configuration/worker/worker-configuration) docs.
+
+### Start the worker
+
+With the worker config defined, start the worker server. Provide the full path
+to the worker config file.
+
+<Tabs>
+<Tab heading="Ubuntu" group="ubuntu">
+
+<CodeBlockConfig lineNumbers highlight="1,12">
+
+```shell-session
+$ boundary server -config="/home/myusername/boundary/worker.hcl"
+
+==> Boundary server configuration:
+
+                               Cgo: disabled
+                        Listener 1: tcp (addr: "127.0.0.1:9204", max_request_duration: "1m30s", purpose: "proxy")
+                         Log Level: info
+                             Mlock: supported: false, enabled: false
+                           Version: Boundary v0.11.2
+                       Version Sha: 02e410af7a2606ae242b8637d8a02754f0a5f43e
+        Worker Auth Current Key Id: unable-sappy-manager-object-shakiness-overnight-pastime-lazily
+  Worker Auth Registration Request: GzusqckarbczHoLGQ4UA25uSRP2BhspoFcDqirahPonSvtyH3wD44KE9UUcRUgoVqNESjcCwtJ2rMZFun5LpRjmFWF5ykK4rvYTvzT8GppGeifvbdSH8qi3CstwAiJVynnLBVtRb2r8Ekwx6ksZ8mWC9u94m5sm3ayzhBLwEafSEnbN9FsjP5StCFLzPMDqny8iXUuvYJUS7MAeXJaEiv2g8pwYfJ4cZG7Hu7kqc2d8nKiNCsKbLohMRRFT887frRWDXDaUUETHbRG2RzexqGWhqC2q4UTodhSnzpdnX79
+          Worker Auth Storage Path: /home/ubuntu/boundary/worker1
+          Worker Public Proxy Addr: 52.90.177.171:9202
+
+          Worker Public Proxy Addr: 127.0.0.1:9204
+
+==> Boundary server started! Log data will stream in below:
+```
+
+</CodeBlockConfig>
+
+</Tab>
+<Tab heading="MacOS" group="macos">
+
+<CodeBlockConfig lineNumbers highlight="1,12">
+
+```shell-session
+$ boundary server -config="/Users/myusername/boundary/worker.hcl"
+
+==> Boundary server configuration:
+
+                               Cgo: disabled
+                        Listener 1: tcp (addr: "127.0.0.1:9204", max_request_duration: "1m30s", purpose: "proxy")
+                         Log Level: info
+                             Mlock: supported: false, enabled: false
+                           Version: Boundary v0.11.2
+                       Version Sha: 02e410af7a2606ae242b8637d8a02754f0a5f43e
+        Worker Auth Current Key Id: unable-sappy-manager-object-shakiness-overnight-pastime-lazily
+  Worker Auth Registration Request: GzusqckarbczHoLGQ4UA25uSRP2BhspoFcDqirahPonSvtyH3wD44KE9UUcRUgoVqNESjcCwtJ2rMZFun5LpRjmFWF5ykK4rvYTvzT8GppGeifvbdSH8qi3CstwAiJVynnLBVtRb2r8Ekwx6ksZ8mWC9u94m5sm3ayzhBLwEafSEnbN9FsjP5StCFLzPMDqny8iXUuvYJUS7MAeXJaEiv2g8pwYfJ4cZG7Hu7kqc2d8nKiNCsKbLohMRRFT887frRWDXDaUUETHbRG2RzexqGWhqC2q4UTodhSnzpdnX79
+          Worker Auth Storage Path: /Users/myusername/boundary/worker1
+          Worker Public Proxy Addr: 127.0.0.1:9204
+
+==> Boundary server started! Log data will stream in below:
+```
+
+</CodeBlockConfig>
+
+</Tab>
+<Tab heading="Windows" group="windows">
+
+<CodeBlockConfig lineNumbers highlight="1,12">
+
+```shell-session
+$ boundary server -config="C:\Users\myusername\boundary\worker.hcl"
+
+==> Boundary server configuration:
+
+                               Cgo: disabled
+                        Listener 1: tcp (addr: "127.0.0.1:9204", max_request_duration: "1m30s", purpose: "proxy")
+                         Log Level: info
+                             Mlock: supported: false, enabled: false
+                           Version: Boundary v0.11.2
+                       Version Sha: 02e410af7a2606ae242b8637d8a02754f0a5f43e
+        Worker Auth Current Key Id: unable-sappy-manager-object-shakiness-overnight-pastime-lazily
+  Worker Auth Registration Request: GzusqckarbczHoLGQ4UA25uSRP2BhspoFcDqirahPonSvtyH3wD44KE9UUcRUgoVqNESjcCwtJ2rMZFun5LpRjmFWF5ykK4rvYTvzT8GppGeifvbdSH8qi3CstwAiJVynnLBVtRb2r8Ekwx6ksZ8mWC9u94m5sm3ayzhBLwEafSEnbN9FsjP5StCFLzPMDqny8iXUuvYJUS7MAeXJaEiv2g8pwYfJ4cZG7Hu7kqc2d8nKiNCsKbLohMRRFT887frRWDXDaUUETHbRG2RzexqGWhqC2q4UTodhSnzpdnX79
+          Worker Auth Storage Path: C:\Users\myusername\boundary\worker1
+          Worker Public Proxy Addr: 127.0.0.1:9204
+
+==> Boundary server started! Log data will stream in below:
+```
+
+</CodeBlockConfig>
+
+</Tab>
+</Tabs>
+
+The worker then starts and outputs its authorization request as `Worker Auth
+Registration Request`. This will also be saved to a file, `auth_request_token`,
+defined by the `auth_storage_path` in the worker config.
+
+Note the `Worker Auth Registration Request:` value on line 12. This value can
+also be located in the `~/boundary/auth_request_token` file. **Copy this
+value.**
+
+## Register the worker
+
+Workers can be registered using the Boundary CLI or Admin Console Web UI.
+
+<Tabs>
+<Tab heading="CLI" group="cli">
+
+Open a new terminal session.
+
+Log into the CLI as the admin user, providing the Auth Method ID, admin login
+name, and admin password `password` when prompted.
+
+```shell-session
+$ boundary authenticate password -auth-method-id ampw_1234567890 -login-name admin
+Please enter the password (it will be hidden):
+
+Authentication information:
+  Account ID:      acctpw_1234567890
+  Auth Method ID:  ampw_1234567890
+  Expiration Time: Thu, 19 Jan 2023 15:37:46 MST
+  User ID:         u_1234567890
+
+The token was successfully stored in the chosen keyring and is not displayed here.
+```
+
+Next, export the Worker Auth Request Token value as an environment variable.
+
+```shell-session
+$ export WORKER_TOKEN=<Worker Auth Registration Request Value>
+```
+
+The token is used to issue a create worker request that will authorize the
+worker to Boundary and make it available.
+
+Create a new worker:
+
+```shell-session
+$ boundary workers create worker-led -worker-generated-auth-token=$WORKER_TOKEN
+
+Worker information:
+  Active Connection Count:   0
+  Created Time:              Mon, 20 Jun 2022 22:17:04 MDT
+  ID:                        w_mAoEKay9vV
+  Type:                      pki
+  Updated Time:              Mon, 20 Jun 2022 22:17:04 MDT
+  Version:                   1
+
+  Scope:
+    ID:                      global
+    Name:                    global
+    Type:                    global
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+```
+
+<Note>
+
+ Workers can be managed using the standard `boundary` CRUD commands:
+create, read, list, update, and delete. Currently addresses and tags can only be
+set within the worker config file. Values that can be updated in the API are
+indicated as “Canonical”.
+
+</Note>
+
+These fields are available on the boundary worker resource:
+- **Id:** The read-only ID for this worker.
+- **Created time:** A timestamp indicating when the worker was created.
+- **Last status time:** A timestamp indicating when the worker last sent data to a controller
+- **Updated time:** A timestamp indicating when this worker resource was last updated
+- **Version:** A read-only field indicating the version number for this resource
+- **Active connection count:** A read only field indicating the number of active
+  session connections this worker is currently proxying.
+- **Scope:** Indicates the scope for this resource
+- **Worker-Provided Configuration:** Lists the values set in the worker’s configuration file
+- **Addresses:** Lists the addresses Boundary uses when handling an authorize
+  session request. This value will never be empty and is set within the worker
+  config file form the following values in decreasing priority:
+  - The value set in the `public_address` field in the `worker` stanza, if
+    present.
+  - The value set in the `address` field of the `listener` stanza with the
+    `"proxy"` purpose, if present.
+- **Tags:** Lists the tags set in the worker configuration file and canonical tags.
+
+</Tab>
+
+<Tab heading="Admin Console" group="admin">
+
+Authenticate to the Boundary Admin Console UI as the admin user.
+
+1. Log in to the Admin Console Web UI, running at
+   [http://127.0.0.1:9200](http://127.0.0.1:9200) in dev mode.
+
+1. Enter the admin username and password and click **Authenticate**.
+
+Once logged in, navigate to the **Workers** page.
+
+Notice that only a single worker is listed, created automatically by
+`boundary dev`.
+
+Click **New**.
+
+![Admin Console Workers](/img/boundary/oss/ui-workers-new.png)
+
+The new workers page can be used to construct the contents of the
+`worker.hcl` file.
+
+**Do not fill in any of the worker fields**.
+
+Providing the following details will construct the worker config file contents
+for you:
+
+- Worker Public Address
+- Config file path
+- Initial Upstreams
+- Worker Tags
+
+The instructions on this page provide details for constructing the worker config
+file and deploying the worker. This page can serve as a guide for setting up any
+new workers in the future.
+
+Because the worker has already been deployed, only the **Worker Auth
+Registration Request** key needs to be provided on this page.
+
+Scroll down to the bottom of the *New Worker* page and paste the **Worker
+Auth Registration Request key** you copied earlier.
+
+Click **Register Worker**.
+
+![Admin Console Workers](/img/boundary/workers-token-register.png)
+
+Click **Done** and notice the new worker on the *Workers* page.
+
+![Admin Console Workers](/img/boundary/oss/ui-workers-overview.png)
+
+</Tab>
+</Tabs>
+
+</Tab>
+</Tabs>
+
+## Worker management
+
+Workers can be managed and updated using the CLI or Admin Console UI.
+
+<Tabs>
+<Tab heading="CLI" group="cli">
+
+List the available workers:
+
+<CodeBlockConfig highlight="1,19-32">
+
+```shell-session
+$ boundary workers list
+
+Worker information:
+  ID:                        w_WEbOvv0Wvl
+    Type:                    pki
+    Version:                 1
+    Address:                 127.0.0.1:9202
+    ReleaseVersion:          Boundary v0.11.2
+    Last Status Time:        Fri, 27 Jan 2023 20:21:26 UTC
+    Authorized Actions:
+      no-op
+      read
+      update
+      delete
+      add-worker-tags
+      set-worker-tags
+      remove-worker-tags
+
+  ID:                        w_O0pSsDWt0U
+    Type:                    pki
+    Version:                 1
+    Address:                 127.0.0.1:9204
+    ReleaseVersion:          Boundary v0.11.2
+    Last Status Time:        Fri, 27 Jan 2023 20:21:26 UTC
+    Authorized Actions:
+      no-op
+      read
+      update
+      delete
+      add-worker-tags
+      set-worker-tags
+      remove-worker-tags
+```
+
+</CodeBlockConfig>
+
+Copy the new worker `ID` with an *Address* of `127.0.0.1:9204` (such as
+`w_O0pSsDWt0U`).
+
+Read the worker details:
+
+```shell-session
+$ boundary workers read -id w_O0pSsDWt0U
+
+Worker information:
+  Active Connection Count:   0
+  Address:                   127.0.0.1:9202
+  Created Time:              Thu, 12 Jan 2023 15:27:09 MST
+  ID:                        w_O0pSsDWt0U
+  Last Status Time:          2023-01-12 23:58:53.895606 +0000 UTC
+  Release Version:           Boundary v0.11.2
+  Type:                      pki
+  Updated Time:              Thu, 12 Jan 2023 16:58:53 MST
+  Version:                   1
+
+  Scope:
+    ID:                      global
+    Name:                    global
+    Type:                    global
+
+  Tags:
+    Configuration:
+      type: ["worker" "local"]
+    Canonical:
+      type: ["worker" "local"]
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    add-worker-tags
+    set-worker-tags
+    remove-worker-tags
+```
+
+To update a worker, issue an update request using the worker ID. The request
+should include the fields to update.
+
+**Update the worker name and description:**
+
+```shell-session
+$ boundary workers update -id=w_O0pSsDWt0U -name="worker1" -description="my first worker"
+
+Worker information:
+  Active Connection Count:   0
+  Address:                   127.0.0.1:9202
+  Created Time:              Thu, 12 Jan 2023 15:27:09 MST
+  Description:               my first worker
+  ID:                        w_O0pSsDWt0U
+  Last Status Time:          2023-01-12 23:59:21.099383 +0000 UTC
+  Name:                      worker1
+  Release Version:           Boundary v0.11.2
+  Type:                      pki
+  Updated Time:              Thu, 12 Jan 2023 16:59:22 MST
+  Version:                   2
+
+  Scope:
+    ID:                      global
+    Name:                    global
+    Type:                    global
+
+  Tags:
+    Configuration:
+      type: ["worker" "local"]
+    Canonical:
+      type: ["worker" "local"]
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    add-worker-tags
+    set-worker-tags
+    remove-worker-tags
+```
+
+Updating a worker will return the updated resource details.
+
+Lastly, a worker can be deleted by issuing a delete request using `boundary
+workers delete` and passing the worker ID. To verify deletion, check the worker
+no longer exists with `boundary workers list`.
+
+<Note>
+
+ Do not delete the new worker. Proceed to the next section to
+test the new worker using an existing target.
+
+</Note>
+
+</Tab>
+<Tab heading="Admin Console" group="admin">
+
+1. Log in to the Admin Console Web UI, running at
+   [http://127.0.0.1:9200](http://127.0.0.1:9200) in dev mode.
+
+1. Enter the admin username and password and click **Authenticate**.
+
+1. Navigate to the **Workers** page.
+
+1. Click on the ID of the newly registered worker with an address of
+`127.0.0.1:9204`. You will see the worker's *details* page.
+
+1. Click on **Edit Form** and update the worker *name* and *description*:
+
+   - Name: `worker1`
+   - Description: `my first worker`
+
+   ![Admin Console Workers](/img/boundary/oss/ui-worker1-details.png)
+
+1. Click **Save** when finished.
+
+1. Navigate back to the **Workers** view and notice the new worker's *name* and
+*description* have been updated.
+
+   ![Admin Console Workers](/img/boundary/oss/ui-workers-overview-updated.png)
+
+   Worker tags must be updated via the API or CLI.
+
+</Tab>
+</Tabs>
+
+
+## Worker-aware targets
+
+From the [Manage
+Targets](/boundary/tutorials/oss-administration/oss-manage-targets) tutorial you
+should already have a configured target.
+
+List the available targets:
+
+```shell-session
+$ boundary targets list -recursive
+
+Target information:
+  ID:                    ttcp_pF6i4wtOgy
+    Scope ID:            p_WJxjlrrkvP
+    Version:             1
+    Type:                tcp
+    Name:                postgres-target
+    Description:         updated postgres target
+    Authorized Actions:
+      no-op
+      read
+      update
+      delete
+      add-host-sets
+      set-host-sets
+      remove-host-sets
+      add-host-sources
+      set-host-sources
+      remove-host-sources
+      add-credential-sources
+      set-credential-sources
+      remove-credential-sources
+      authorize-session
+```
+
+**Export the target ID as an environment variable:**
+
+```shell-session
+$ export TARGET_ID=<postgres-target-ID>
+```
+
+Boundary can use [worker tags](/boundary/docs/concepts/filtering/worker-tags)
+that define key-value pairs targets can use to determine where they should route
+connections.
+
+A simple tag was included in the `worker.hcl` file from before:
+
+<CodeBlockConfig hideClipboard>
+
+```hcl
+worker {
+  tags {
+    type = ["worker", "local"]
+  }
+```
+
+</CodeBlockConfig>
+
+This config creates the resulting tags on the worker:
+
+<CodeBlockConfig hideClipboard>
+
+```
+Tags:
+  Worker Configuration:
+    type: ["worker" "local"]
+  Canonical:
+    type: ["worker" "local"]
+```
+
+</CodeBlockConfig>
+
+The `Tags` or `Name` of the worker (`worker1`) can be used to create a
+worker filter for the target.
+
+**Update the postgres target** to add a worker tag filter that searches for
+workers that have the `worker` tag. Boundary will consider any worker with this
+tag assigned to it an acceptable proxy for this target.
+
+```shell-session
+$ boundary targets update tcp -id $TARGET_ID -egress-worker-filter='"worker" in "/tags/type"'
+
+Target information:
+  Created Time:               Mon, 23 Jan 2023 18:29:48 MST
+  Description:                updated postgres target
+  Egress Worker Filter:       "worker" in "/tags/type"
+  ID:                         ttcp_xRRjzpH0qV
+  Name:                       postgres
+  Session Connection Limit:   -1
+  Session Max Seconds:        28800
+  Type:                       tcp
+  Updated Time:               Mon, 23 Jan 2023 19:58:15 MST
+  Version:                    5
+
+  Scope:
+    ID:                       p_OVOOKRiV5J
+    Name:                     QA_Tests
+    Parent Scope ID:          o_8EhpHB3qEN
+    Type:                     project
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    add-host-sources
+    set-host-sources
+    remove-host-sources
+    add-credential-sources
+    set-credential-sources
+    remove-credential-sources
+    authorize-session
+
+  Host Sources:
+    Host Catalog ID:          hcst_5g9PpiZjXZ
+    ID:                       hsst_vsoLdMEQSf
+
+  Attributes:
+    Default Port:             16001
+```
+
+<Note>
+
+ The `type: "local"` tag could have also been used, or a filter
+that searches for the name of the worker directly (`"/name" == "worker1"`).
+
+</Note>
+
+With the filter assigned, any connections to this target will be forced to proxy
+through the worker.
+
+Finally, open a session to the postgres target using `boundary connect
+postgres`. When prompted, enter the password `secret` to connect.
+
+```shell-session
+$ boundary connect postgres -target-id $TARGET_ID -username postgres
+Password for user postgres:
+psql (13.2)
+Type "help" for help.
+
+postgres=#
+```
+
+You can verify the session is running through the new worker by checking the
+worker's active sessions using the CLI or the Admin Console.
+
+<CodeBlockConfig highligh="1-4">
+
+```shell-session
+$ boundary workers read -id w_lzmuKKecGN
+
+Worker information:
+  Active Connection Count:   1
+  Address:                   127.0.0.1:9202
+  Created Time:              Tue, 24 Jan 2023 17:43:16 MST
+  ID:                        w_lzmuKKecGN
+  Last Status Time:          2023-01-25 00:52:07.523008 +0000 UTC
+  Release Version:           Boundary v0.11.2
+  Type:                      pki
+  Updated Time:              Tue, 24 Jan 2023 17:52:07 MST
+  Version:                   1
+
+  Scope:
+    ID:                      global
+    Name:                    global
+    Type:                    global
+
+  Tags:
+    Configuration:
+      type: ["worker" "local"]
+    Canonical:
+      type: ["worker" "local"]
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    add-worker-tags
+    set-worker-tags
+    remove-worker-tags
+```
+
+</CodeBlockConfig>
+
+![Worker session count](/img/boundary/oss/ui-workers-session-count.png)
+
+Sessions can be managed using the same methods discussed in the [Manage
+Sessions](/boundary/tutorials/oss-administration/oss-manage-sessions) tutorial.
+
+When finished, the session can be terminated manually using `\q`, or canceled
+via another authenticated Boundary command. Sessions can also be managed using
+the Admin Console UI or Boundary Desktop app.
+
+<Note>
+
+ To cancel this session using the CLI, you will need to open a new
+terminal window and authenticate to Boundary again using `boundary
+authenticate`.
+
+</Note>
+
+```shell-session
+$ boundary sessions list -recursive
+
+Session information:
+  ID:                    s_dcJqC5PgxQ
+    Scope ID:            p_VunaJTWd3d
+    Status:              active
+    Created Time:        Tue, 21 Jun 2022 13:04:37 MDT
+    Expiration Time:     Tue, 21 Jun 2022 21:04:37 MDT
+    Updated Time:        Tue, 21 Jun 2022 13:04:37 MDT
+    User ID:             u_qSOx2RdVhG
+    Target ID:           ttcp_eaMvjZpzx7
+    Authorized Actions:
+      no-op
+      read
+      read:self
+      cancel
+      cancel:self
+```
+
+**Cancel the existing session.**
+
+```shell-session
+$ boundary sessions cancel -id=s_dcJqC5PgxQ
+
+Session information:
+  Auth Token ID:       at_UXLZbQFJxN
+  Created Time:        Tue, 21 Jun 2022 13:04:37 MDT
+  Endpoint:            tcp://50.16.114.201:22
+  Expiration Time:     Tue, 21 Jun 2022 21:04:37 MDT
+  Host ID:             hst_JTzdAlOrgA
+  Host Set ID:         hsst_xvITBZHyZY
+  ID:                  s_dcJqC5PgxQ
+  Status:              canceling
+  Target ID:           ttcp_eaMvjZpzx7
+  Type:                tcp
+  Updated Time:        Tue, 21 Jun 2022 13:12:14 MDT
+  User ID:             u_qSOx2RdVhG
+  Version:             3
+
+  Scope:
+    ID:                p_VunaJTWd3d
+    Name:              quick-start-project
+    Parent Scope ID:   o_JYLvWHgCGv
+    Type:              project
+
+  Authorized Actions:
+    no-op
+    read
+    read:self
+    cancel
+    cancel:self
+
+  States:
+    Start Time:        Tue, 21 Jun 2022 13:12:14 MDT
+    Status:            canceling
+
+    End Time:          Tue, 21 Jun 2022 13:12:14 MDT
+    Start Time:        Tue, 21 Jun 2022 13:04:37 MDT
+    Status:            active
+
+    End Time:          Tue, 21 Jun 2022 13:04:37 MDT
+    Start Time:        Tue, 21 Jun 2022 13:04:37 MDT
+    Status:            pending
+```
+
+## Cleanup and teardown
+
+1. Locate the terminal session used to start the `boundary dev` command, and
+execute `ctrl+c` to stop Boundary.
+
+1. Destroy the postgres container created for the tutorial.
+
+   ```shell-session
+   $ docker rm -f postgres
+   ```
+
+Check your work by executing `docker ps` and ensure there are no more postgres
+containers remaining from the tutorial. If unexpected containers still exist,
+execute `docker rm -f <CONTAINER_ID>` against each to remove them.
+
+## Summary
+
+The [Community Edition Administration](/boundary/tutorials/oss-administration)
+tutorial collection demonstrated the common management workflows for a
+self-managed Boundary deployment.
+
+This tutorial demonstrated worker registration with Boundary Community
+Edition and discussed worker management.
+
+To continue learning about Boundary, check out the [Self-managed access
+management workflows](/boundary/tutorials/access-management).

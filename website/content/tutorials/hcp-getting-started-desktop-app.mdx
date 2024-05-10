@@ -1,0 +1,219 @@
+---
+id: 2341f7ab-f4a0-44b6-a0ef-e28b4cb1297e
+name: Install Boundary Desktop
+short_name: Install Boundary Desktop
+description: >-
+  Install the Boundary Desktop app and connect to a running host.
+products_used:
+  - product: boundary
+    min_version: 1.0.0
+    max_version: 2.0.0
+edition: hcp
+default_collection_context: boundary/hcp-getting-started
+---
+
+End-users of HCP Boundary can utilize the Boundary Desktop app to connect to a running
+HCP Boundary instance to easily:
+
+- Browse available targets
+- Connect to targets
+- Manage active sessions
+
+Security administrators use the Boundary CLI and API to automate infrastructure
+access management, but the Desktop app makes Boundary accessible to low-code and
+no-code users. Users that establish sessions with targets frequently will also
+find the browse, connect, and manage functionality convenient for day-to-day
+operations.
+
+In this tutorial, you will install the Boundary Desktop app and connect to a running target.
+
+## Prerequisites
+
+- Access to an HCP Boundary instance.
+- Completed the previous quick start tutorials.
+- A publicly accessible Ubuntu instance used in the [Connect to Your First Target](/boundary/tutorials/hcp-getting-started/hcp-getting-started-connect) tutorial.
+- A ssh key-pair that can be used to authenticate with the Ubuntu instance.
+
+## Install Boundary Desktop
+
+Boundary Desktop can be installed on MacOS, Windows, or Linux systems. Select
+the tab for your preferred OS.
+
+<Tabs>
+<Tab heading="MacOS">
+
+Boundary Desktop on MacOS can be installed by either:
+
+- The [Homebrew](https://brew.sh) package manager
+- Direct Download
+
+<Tabs>
+<Tab heading="Homebrew">
+
+[Homebrew](https://brew.sh) is a free and open-source package management system
+for macOS. Install from the official [Boundary Desktop
+cask](https://github.com/hashicorp/homebrew-tap) from the terminal.
+
+First, install the HashiCorp tap, a repository of all our Homebrew packages.
+
+```shell-session
+$ brew tap hashicorp/tap
+```
+
+Next, install Boundary Desktop with Homebrew:
+
+```shell-session
+$ brew install hashicorp-boundary-desktop
+```
+
+</Tab>
+<Tab heading="Direct Download">
+
+Download the latest .dmg installer from the [releases
+page](https://releases.hashicorp.com/boundary-desktop).
+
+1. Double-click the downloaded .dmg file to run the installer
+1. Drag-and-drop Boundary Desktop into the Applications folder
+
+![Install Boundary Desktop](/img/boundary/desktop/boundary-desktop-install.png)
+
+</Tab>
+</Tabs>
+</Tab>
+
+<Tab heading="Windows">
+
+Boundary Desktop on Windows can be installed via direct download of the zipped
+.exe application file.
+
+<Tabs>
+<Tab heading="Direct Download">
+
+Download the latest zipped copy of the .exe from the [releases
+page](https://releases.hashicorp.com/boundary-desktop).
+
+1. Locate the downloaded boundary-desktop zip file and extract its contents
+1. Open the unzipped `Boundary/` folder and locate the `boundary-desktop_<version>_.exe` file. You may move the application file to your Desktop, or your preferred location for quicker access
+1. Double-click the `boundary-desktop_<version>_.exe` file to launch the Desktop application
+
+![Install Boundary Desktop](/img/boundary/desktop/boundary-desktop-install-windows.png)
+
+</Tab>
+</Tabs>
+</Tab>
+
+<Tab heading="Linux">
+
+Boundary Desktop on Linux is currently only available as a .deb package, and can
+be installed via direct download of the application file.
+
+<Tabs>
+<Tab heading="Direct Download">
+
+Download the latest .deb installer from the [releases
+page](https://releases.hashicorp.com/boundary-desktop).
+
+On Debian systems either:
+
+1. Right-click the downloaded .deb file and choose `Kubuntu Package Menu ->
+   Install Package`
+1. Open a terminal and point `dpkg` to the installer file:
+   ```shell-session
+   $ sudo dpkg -i boundary-desktop_1.5.0_linux_amd64.deb
+   ```
+
+   ![Install Boundary Desktop Linux](/img/boundary/desktop/boundary-desktop-install-linux.png)
+
+</Tab>
+</Tabs>
+</Tab>
+
+</Tabs>
+
+## Authenticate with Boundary Desktop
+
+Next you will launch the Boundary Desktop app and connect it to the running
+controller.
+
+1. Open the Boundary Desktop app installed earlier.
+
+1. Enter the Boundary server **Cluster URL** and click **Submit**.
+
+   You can retrieve this from the HCP Portal or run `echo $BOUNDARY_ADDR` from
+   your terminal session.
+
+1. Click **Choose a different scope** and select the `Global` scope.
+
+1. Enter the administrator account in the **Login Name** field you selected when
+creating the HCP Boundary instance.
+
+1. Enter the password you selected for the administrator account in the **Password** field.
+
+1. Click **Sign In**.
+
+   You are presented with the _Targets_ view, which contains the targets created in the
+   [Connect to Your First Target](/boundary/tutorials/hcp-getting-started/hcp-getting-started-connect) tutorial.
+
+## Connect to a target
+
+Next you will connect to the default target using the Desktop app.
+
+1. Establish a connection
+
+   Click on **Connect** next to the default target.
+
+   You will be presented with a screen that displays the target's connection
+   info. You can copy the connection details to your clipboard by clicking the
+   buttons to the right of the **Address & port** or **SSH** fields.
+
+   ![Connection Details](/img/boundary/desktop/desktop-connection-details-hcp_light.png#light-theme-only)
+   ![Connection Details](/img/boundary/desktop/desktop-connection-details-hcp_dark.png#dark-theme-only)
+
+
+1. Copy the target's connection details
+
+   In this example, we are using SSH to connect. On the **Details** tab, select **SSH** and then click the copy button.
+
+   ![Copy Connection Details](/img/boundary/desktop/desktop-copy-connection-details-hcp_light.png#light-theme-only)
+   ![Copy Connection Details](/img/boundary/desktop/desktop-copy-connection-details-hcp_dark.png#dark-theme-only)
+
+1. View the pending connection
+
+    Navigate to the _Sessions_ view using the sidebar on the
+   left. Notice that the status for the Generated target has been updated to
+   `Pending`.
+
+   ![Pending Target Connection](/img/boundary/desktop/desktop-sessions-pending-hcp_light.png#light-theme-only)
+   ![Pending Target Connection](/img/boundary/desktop/desktop-sessions-pending-hcp_dark.png#dark-theme-only)
+
+1. Start an SSH session
+
+   Select the ID of the target, and then select the **>_ Shell** tab. Paste the information you copied into the shell and run it. Enter your local administrator
+   password when prompted to connect to the localhost target.
+
+   ![SSH Connection Established](/img/boundary/desktop/desktop-ssh-connection_light.png#light-theme-only)
+   ![SSH Connection Established](/img/boundary/desktop/desktop-ssh-connection_dark.png#dark-theme-only)
+
+1. Once connected, return to the Boundary Desktop and the _Sessions_ view should show the
+   Generated target's status has been updated to `Active`.
+
+   ![Pending Target Connection](/img/boundary/desktop/desktop-sessions-active-hcp_light.png#light-theme-only)
+   ![Pending Target Connection](/img/boundary/desktop/desktop-sessions-active-hcp_dark.png#dark-theme-only)
+
+1. Terminate the connection
+
+   You can close the active session directly from the Boundary Desktop app.
+
+   Under the _Sessions_ view, click **Cancel** to the right of the status for
+   the Generated target. The status will update to `Canceling` and a
+   confirmation dialog should appear to verify the successful session
+   termination.
+
+   ![Terminate Target Connection](/img/boundary/desktop/desktop-sessions-cancelled-hcp_light.png#light-theme-only)
+   ![Terminate Target Connection](/img/boundary/desktop/desktop-sessions-cancelled-hcp_dark.png#dark-theme-only)
+
+## Next steps
+
+You have completed the quick start series for HCP Boundary. Next, take a deeper dive
+into the various resources you created during this series such as scopes, targets, and
+host groups in the [HCP Administration](/boundary/tutorials/hcp-administration) series.

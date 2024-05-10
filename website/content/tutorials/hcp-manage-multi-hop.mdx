@@ -1,0 +1,1570 @@
+---
+id: f493a3d8-1b47-45d7-a905-eec76e274d9c
+name: Manage multi-hop sessions with HCP Boundary
+short_name: Manage multi-hop sessions with HCP
+description: >-
+  Connect multiple workers to provide access to targets on private networks
+  with HCP Boundary.
+read_time: 15
+edition: hcp
+products_used:
+  - product: boundary
+    min_version: 0.12.0
+    max_version: 0.13.1
+default_collection_context: boundary/hcp-administration
+---
+
+HCP Boundary allows organizations to register their own [self-managed workers](/boundary/docs/configuration/worker/worker-configuration).
+Self-managed workers can be deployed in private networks while still
+communicating with an upstream HCP Boundary cluster.
+
+Starting with Boundary 0.12, workers can be chained together through
+reverse-proxy connections. Multi-hop is when two or more workers are connected,
+creating multiple "hops" in the chain from a worker to a controller.
+
+<Note>
+
+Deploying self-managed workers with HCP Boundary requires the [Boundary
+Enterprise binary](https://releases.hashicorp.com/boundary) for the
+Linux, MacOS, Windows or other system the worker is deployed on. The workers
+should also be up-to-date with the HCP control plane's version, otherwise new
+features will not work as expected. The control plane version can be checked in
+the HCP Boundary portal. Multi-hop sessions require the 0.12.0 version of the
+binary or greater.
+
+</Note>
+
+HCP Boundary is an identity-aware proxy that sits between users and the
+infrastructure they want to connect to. The proxy has two components:
+
+1. A control plane that manages state around users under management, targets,
+   and access policies.
+2. Worker nodes, assigned by the control plane once a user authenticates into
+   HCP Boundary and selects a target.
+
+Multi-hop introduces the concept of “upstream” and “downstream” workers. Viewing
+controllers as the “top” of a multi-hop chain, downstream workers are those
+below a worker in the chain, while upstreams are those above a worker in the
+chain. In the diagram below, worker2’s upstream is worker1, and its downstream
+is worker3.
+
+![Multi-Hop Workers](/img/boundary/hcp/diagram-multi-hop-chain.png)
+
+A chain of workers can be deployed in scenarios where inbound network traffic is
+not allowed. A worker in a private network will send outbound communication to
+its upstream worker, and can create reverse proxies for session establishment.
+
+![Multi-Hop Workers](/img/boundary/hcp/diagram-multi-hop-scenario.png)
+
+Target worker filters can be used with workers to allow for fine
+grained control on which workers handle ingress and egress for session traffic
+to a target. Ingress worker filters determine which workers users will connect
+with to initiate a session, and egress worker filters determine which workers
+will be used to access targets.
+
+The table below describes the features available in HCP Boundary vs Boundary Community Edition.
+
+|           |                         No filter                           |                   Ingress-only                  |                       Egress-only                       |                                         Ingress + Egress
+| --------- | ----------------------------------------------------------- | :---------------------------------------------: | ------------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------: |
+| Community | Single-hop, any worker                                      |                      **X**                      |                       Single-hop, worker selected with egress filter                        |                                         **X**                                 |
+|    HCP    | Single-hop, directly connected worker (will be HCP-managed) | Single-hop, worker selected with ingress filter | Multi-hop*, client connects to HCP worker as ingress worker, egress worker connects to host | Multi-hop*, client connects to ingress worker, egress worker connects to host |
+
+* *If egress and ingress worker filters result in the same selected worker(s), or an egress filter results in a single-hop route, this is effectively single-hop.*
+
+<Note>
+
+Ingress worker filters are not available in Boundary Community Edition.
+
+</Note>
+
+![Multi-Hop Workers](/img/boundary/hcp/diagram-multi-hop-ingress-egress.png)
+
+This tutorial demonstrates the basics of deploying and managing workers in a
+multi-hop scenario using HCP Boundary.
+
+## Prerequisites
+
+This tutorial assumes you have:
+
+- Access to an HCP Boundary instance
+- Completed the previous HCP Administration tutorials
+- A [Boundary binary](/boundary/install/) greater than 0.12.0 in your `PATH`.
+  This tutorial uses the 0.13.2 version of Boundary.
+
+This tutorial provides two options for configuring the multi-hop worker scenario:
+
+1. Configuring of a downstream worker using AWS
+1. Deploying a downstream worker locally as a proof-of-concept
+
+Regardless of the method used, workers must install the [HCP Boundary worker
+binary](https://releases.hashicorp.com/boundary/) to be registered with
+HCP. If deploying a worker manually on AWS, you can [follow this
+guide](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EC2_GetStarted.html)
+to create a publicly accessible Amazon EC2 instance to use for this tutorial.
+
+## Configure the downstream worker
+
+To configure a downstream worker, the following details are required:
+
+- HCP Cluster URL (Boundary address)
+- Auth Method ID (from the Admin Console)
+- Admin login name and password
+
+Visit the [Getting Started on
+HCP](/boundary/tutorials/hcp-getting-started/hcp-getting-started-cloud) tutorial
+if you need to locate any of these values. For a comprehensive guide on
+deploying a worker, review the [Self-Managed Worker Registration with HCP
+Boundary](/boundary/tutorials/hcp-administration/hcp-manage-workers) tutorial.
+
+Select the **AWS** or **Local Worker** workflows to continue the tutorial setup.
+
+<Tabs>
+<Tab heading="AWS" group="aws">
+
+This tutorial picks up where the [Self-Managed Worker Registration with HCP
+Boundary](/boundary/tutorials/hcp-administration/hcp-manage-workers) tutorial
+left off. This workflow assumes you already have an Ubuntu target and a
+pre-configured worker registered with HCP Boundary.
+
+This workflow requires a publicly accessible Ubuntu instance to be used as a
+downstream worker. This setup is similar to the process for defining a single
+worker in the [Self-Managed Worker Registration with HCP
+Boundary](/boundary/tutorials/hcp-administration/hcp-manage-workers) tutorial,
+with some additional configuration in the worker config file.
+
+You should already have an Ubuntu target accessible via a worker. This
+worker can be considered the "upstream" worker, which the downstream worker will
+proxy traffic through when managing sessions to the target.
+
+![Multi-Hop Workers](/img/boundary/hcp/diagram-multi-hop-ingress-egress.png)
+
+This setup is designed to allow the target and egress worker to exist on their
+own private network, which the ingress worker will proxy the Boundary connection
+to. This allows the target to use a private IP address instead of the public
+address utilized in the previous tutorials. **The extra steps of defining a
+private network are not taken in this tutorial.**
+
+### Deploy an additional worker
+
+The next step is to deploy a new egress worker in the downstream chain to the
+target. This new worker will be downstream of worker1 from the previous
+tutorial, and will serve as the new egress worker that establishes connections
+to targets. `worker1` from the previous tutorial will now serve as the ingress
+worker, upstream from this new worker, `worker2`.
+
+<Note>
+
+You will need the public IP address of the upstream worker
+configured in the [Self-Managed Worker Registration with HCP
+Boundary](/boundary/tutorials/hcp-administration/hcp-manage-workers) tutorial.
+Copy this value for use in the following steps.
+
+</Note>
+
+Next, deploy an additional publicly accessible Ubuntu instance to be used as an
+downstream worker. You can [follow this
+guide](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EC2_GetStarted.html)
+to create a publicly accessible Amazon EC2 instance to use for this tutorial.
+
+<Warning>
+
+For the purposes of this tutorial it is important that the security group
+policy for the AWS worker instance accepts incoming TCP connections on port 9202
+to allow Boundary client connections. To learn more about creating this security
+group and attaching it to your instance, check the AWS EC2 [security group
+documentation](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/authorizing-access-to-an-instance.html).
+The screenshot below shows an example of this security group policy.
+
+</Warning>
+
+![AWS Worker Security Group](/img/boundary/boundary-worker-aws-security-group.png)
+
+### Log in and download Boundary Enterprise
+
+Log in to the Ubuntu instance that will be configured as the downstream worker.
+
+For example, using SSH:
+
+```shell-session
+$ ssh ubuntu@198.51.100.1 -i /path/my-key-pair.pem
+The authenticity of host 'ec2-198-51-100-1.compute-1.amazonaws.com (198-51-100-1)' can't be established.
+ECDSA key fingerprint is l4UB/neBad9tvkgJf1QZWxheQmR59WgrgzEimCG6kZY.
+Are you sure you want to continue connecting (yes/no)? yes
+
+ubuntu@ip-172-31-88-177:~
+```
+
+<Note>
+
+The above example is for demonstrative purposes. You will need to
+supply your Ubuntu instance's username, public IP address, and public key to
+connect. If using AWS EC2, [check this
+article](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/AccessingInstancesLinux.html)
+to learn more about connecting to a Linux instance using SSH.
+
+</Note>
+
+**Create a new folder to store your Boundary config file.** This tutorial
+creates the `boundary/` directory in the user's home directory to store the
+worker config. If you do not have permission to create this directory, create
+the folder elsewhere.
+
+```shell-session
+$ mkdir /home/ubuntu/boundary/ && cd /home/ubuntu/boundary/
+```
+
+Next, download and install the Boundary Enterprise binary.
+
+<Note>
+
+The binary version should match the version of the HCP control
+plane. Check the control plane's version in the HCP Boundary portal, and
+download the appropriate version using wget. The example below installs the
+0.13.2 version of the Boundary Enterprise binary, versioned as `0.13.2+ent`.
+
+</Note>
+
+**Enter the following command to install the latest version of the Boundary
+Enterprise binary on Ubuntu.**
+
+```shell-session
+$ curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg ;\
+echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list ;\
+sudo apt update && sudo apt install boundary-enterprise -y
+```
+
+Once installed, verify the version of the boundary binary.
+
+```shell-session
+$ boundary version
+
+Version information:
+  Build Date:          2023-06-07T16:41:10Z
+  Git Revision:        b1f75f5c731c843f5c987feae310d86e635806c7
+  Metadata:            ent
+  Version Number:      0.13.2+ent
+```
+
+**Ensure the Version Number matches the version of the HCP Boundary control
+plane.** They should match in order to get the latest HCP Boundary features.
+
+### Write the worker config
+
+<Note>
+
+This workflow utilizes a [worker-initiated authorization
+flow](/boundary/docs/configuration/worker/worker-configuration#worker-led-authorization-flow)
+to register with the HCP controller.
+
+</Note>
+
+Next, **create a new file** named `/home/ubuntu/boundary/downstream-worker.hcl`.
+
+```shell-session
+$ touch /home/ubuntu/boundary/downstream-worker.hcl
+```
+
+Open the file with a text editor, such as Vi.
+
+**Paste the following configuration into the worker config file:**
+
+<CodeBlockConfig lineNumbers filename="/home/ubuntu/boundary/downstream-worker.hcl">
+
+```hcl
+disable_mlock = true
+
+listener "tcp" {
+  address = "0.0.0.0:9202"
+  purpose = "proxy"
+}
+
+worker {
+  public_addr = "<worker_public_addr>"
+  initial_upstreams = ["<upstream_worker_public_addr>:9202"]
+  auth_storage_path = "/home/ubuntu/boundary/worker2"
+  tags {
+    type = ["worker2", "downstream"]
+  }
+}
+```
+
+</CodeBlockConfig>
+
+**Update the following values in the `downstream-worker.hcl` file:**
+
+- `<worker_public_addr>` on **line 9** should be replaced with the public IP
+  address of this ubuntu ingress worker, such as `18.206.227.218`
+- `<upstream_worker_public_addr>` on **line 10** should be replaced with the
+  public IP address of the original ubuntu (ingress) worker, such as
+  `107.22.128.152`
+
+The `public_addr` should match the public IP or DNS name of this Ubuntu
+instance being configured as an egress worker.
+
+You set the `initial_upstreams` when you connect workers together as part of
+a multi-hop chain. In this example, the upstream is the ingress worker that you created
+in the previous tutorial, which has access to the HCP Boundary cluster.
+
+The `initial_upstreams` should match the public IP or DNS name of your original
+worker Ubuntu instance deployed in the previous tutorial, and include the
+TCP listening port of worker1. It serves as the [ingress
+worker](/boundary/docs/configuration/worker#multi-hop-worker-capabilities-hcp-ent)
+and is "upstream" from the downstream egress worker being configured here.
+
+
+Note the `listener "tcp"` stanza:
+
+<CodeBlockConfig hideClipboard>
+
+```hcl
+listener "tcp" {
+  address = "0.0.0.0:9202"
+  purpose = "proxy"
+}
+```
+
+</CodeBlockConfig>
+
+The `address` port is set to `0.0.0.0:9202`. **This port should already be
+configured by the AWS security group for this instance to accept inbound TCP
+connections.** If a custom listener port is desired, it should be defined here.
+
+Ensure that the `initial_upstreams` defined in the worker stanza include the TCP
+listening port of the ingress worker. For example:
+
+<CodeBlockConfig hideClipboard>
+
+```hcl
+worker {
+  public_addr = "18.206.227.218"
+  initial_upstreams = ["107.22.128.152:9202"]
+  auth_storage_path = "/home/ubuntu/boundary/worker2"
+  tags {
+    type = ["worker2", "downstream"]
+  }
+}
+```
+
+</CodeBlockConfig>
+
+In the above example `initial_upstreams` is specified, which indicates the
+address or addresses a worker will use when initially connecting to Boundary.
+The `hcp_boundary_cluster_id` should be omitted, since this worker will forward
+connections to an upstream worker, which in this case is the original worker1
+ingress worker. Do not configure the `hcp_boundary_cluster_id` and
+`initial_upstreams` in the same config file, as the HCP cluster ID will take
+precedence over the initial upstreams.
+
+To see all valid config options, refer to the [worker configuration](/boundary/docs/configuration/worker/worker-configuration) docs.
+
+**Save this file.**
+
+### Start the downstream worker
+
+With the worker config defined, start the worker server. Provide the full path
+to the worker config file (such as `/home/ubuntu/boundary/downstream-worker.hcl`).
+
+<CodeBlockConfig lineNumbers highlight="1,12">
+
+```shell-session
+$ boundary server -config="/home/ubuntu/boundary/downstream-worker.hcl"
+
+==> Boundary server configuration:
+
+                               Cgo: disabled
+                        Listener 1: tcp (addr: "0.0.0.0:9202", max_request_duration: "1m30s", purpose: "proxy")
+                         Log Level: info
+                             Mlock: supported: true, enabled: false
+                           Version: Boundary v0.13.2+ent
+                       Version Sha: d8aaf3500f65fb7d605d27db232457fe3a26bf43
+        Worker Auth Current Key Id: harddisk-stunt-serve-shininess-essay-courier-manger-deface
+  Worker Auth Registration Request: GzusqckarbczHoLGQ4UA25uSRvw33DNChURoR2CF1BXRUm7frqLSncV64LeYWxQDCstE25Vj6QSBQ1aGh8BUo1dnz899rt3LgktzRGU4vWYcHmvPQKpsSUTJqA42nJxBfpxopKyCvzxZNxgbTSw5BNN9BUsnoy58niY5ui38NhKPKdmKjVDoU4TRVd4Bvti4F2H5C8pBB3qhY6qyeaSRoKjDcEzdTa7S3JicVzbtmfWnfyMLTJ21jRypH2S5haK4RBhFP319mw6DYNhVo7opBkBoW2FaaJbeowGj8b5wFX
+          Worker Auth Storage Path: /home/ubuntu/boundary/worker2
+          Worker Public Proxy Addr: 44.204.92.85:9202
+
+==> Boundary server started! Log data will stream in below:
+```
+
+</CodeBlockConfig>
+
+The downstream worker will start and begin attempting to connect to its upstream,
+worker1, which is also the ingress worker.
+
+The worker also outputs its authorization request as Worker Auth Registration
+Request. This will also be saved to a file, `auth_request_token`, defined by the
+`auth_storage_path` in the worker config.
+
+Note the `Worker Auth Registration Request:` value on line 12. This value can
+also be located in the `/boundary/auth_request_token` file. **Copy this value.**
+
+**Exit the downstream Ubuntu worker.**
+
+</Tab>
+<Tab heading="Local Worker" group="local">
+
+<Note>
+
+The Local Worker workflow is provided as a proof-of-concept to
+demonstrate deploying a worker for multi-hop sessions. This workflow requires
+that the Boundary client and worker are deployed on the same local machine, and
+picks up where the [Self-Managed Worker Registration with HCP
+Boundary](/boundary/tutorials/hcp-administration/hcp-manage-workers) tutorial
+left off. For a more realistic deployment model, refer to the AWS workflow.
+
+</Note>
+
+### Verify the Boundary binary
+
+First, check the location of your Boundary config file.
+
+This tutorial picks up where the previous tutorial left off. You should already
+have created the `boundary/` directory in your user's home directory `~/`
+(labeled as `myusername` later on) to store the worker configs. If you have not
+created the original `worker.hcl` config file and deployed a worker locally,
+**stop and complete to the previous tutorial**, [Self-Managed Worker
+Registration with HCP Boundary]
+(/boundary/tutorials/hcp-administration/hcp-manage-workers).
+
+```shell-session
+$ cd ~/boundary/ && ls -R1
+EULA.txt
+TermsOfEvaluation.txt
+boundary
+boundary_0.13.2+ent_darwin_amd64.zip
+worker.hcl
+worker1/
+```
+
+In the previous tutorial, you downloaded the latest version of the `boundary`
+binary (0.13.2 in the example above). The `worker.hcl` config file was used
+to deploy the upstream worker, and should be running in the background.
+
+Check that the worker is properly registered with HCP Boundary.
+
+Ensure that the `BOUNDARY_ADDR` is set as an environment variable.
+
+```shell-session
+$ export BOUNDARY_ADDR="https://c3a7a20a-f663-40f3-a8e3-1b2f69b36254.boundary.hashicorp.cloud"
+```
+
+Log into the CLI as the admin user, providing the admin login name and admin
+password when prompted.
+
+```shell-session
+$ boundary authenticate
+Please enter the login name (it will be hidden):
+Please enter the password (it will be hidden):
+
+Authentication information:
+  Account ID:      acctpw_VOeNSFX8pQ
+  Auth Method ID:  ampw_wxzojlKJLN
+  Expiration Time: Mon, 13 Feb 2023 12:35:32 MST
+  User ID:         u_1vUkf5fPs9
+
+The token was successfully stored in the chosen keyring and is not displayed here.
+```
+
+List the available workers:
+
+<CodeBlockConfig highlight="1-16">
+
+```shell-session
+$ boundary workers list
+
+Worker information:
+  ID:                        w_capdA9wS7x
+    Type:                    pki
+    Version:                 1
+    Address:                 100.24.18.207:9202
+    Last Status Time:        Mon, 19 Sep 2022 22:40:02 UTC
+    Authorized Actions:
+      no-op
+      read
+      update
+      delete
+      add-worker-tags
+      set-worker-tags
+      remove-worker-tags
+
+  ID:                        w_FYy3CJipUd
+    Type:                    kms
+    Version:                 1
+    Name:                    797132fe-1fcb-1bb8-122c-abfb32acad39-worker
+    Address:                 797132fe-1fcb-1bb8-122c-abfb32acad39.proxy.boundary.hashicorp.cloud:9202
+    Last Status Time:        Mon, 19 Sep 2022 22:40:02 UTC
+    Authorized Actions:
+      no-op
+      read
+      delete
+      add-worker-tags
+      set-worker-tags
+      remove-worker-tags
+
+  ID:                        w_djfIunfBrR
+    Type:                    kms
+    Version:                 1
+    Name:                    78eaad58-5e3f-4b04-83f6-360ef8828f07-worker
+    Address:                 78eaad58-5e3f-4b04-83f6-360ef8828f07.proxy.boundary.hashicorp.cloud:9202
+    Last Status Time:        Mon, 19 Sep 2022 22:40:03 UTC
+    Authorized Actions:
+      no-op
+      read
+      delete
+      add-worker-tags
+      set-worker-tags
+      remove-worker-tags
+
+  ID:                        w_xv0uKOxQW5
+    Type:                    kms
+    Version:                 1
+    Name:                    33c9d3bd-7326-2cf8-58ba-ee99ec43d34a-worker
+    Address:                 33c9d3bd-7326-2cf8-58ba-ee99ec43d34a.proxy.boundary.hashicorp.cloud:9202
+    Last Status Time:        Mon, 19 Sep 2022 22:40:03 UTC
+    Authorized Actions:
+      no-op
+      read
+      delete
+      add-worker-tags
+      set-worker-tags
+      remove-worker-tags
+```
+
+</CodeBlockConfig>
+
+**Copy the worker `ID`** (such as `w_capdA9wS7x`).
+
+Read the worker details:
+
+```shell-session
+$ boundary workers read -id w_capdA9wS7x
+
+Worker information:
+  Active Connection Count:   0
+  Address:                   100.24.18.207:9202
+  Created Time:              Mon, 19 Sep 2022 16:39:44 MDT
+  Description:               my first self-managed worker
+  ID:                        w_capdA9wS7x
+  Last Status Time:          2022-09-19 22:41:04.793293 +0000 UTC
+  Name:                      worker1
+  Type:                      pki
+  Updated Time:              Mon, 19 Sep 2022 16:41:05 MDT
+  Version:                   2
+
+  Scope:
+    ID:                      global
+    Name:                    global
+    Type:                    global
+
+  Tags:
+    Configuration:
+      type: ["worker1" "upstream"]
+    Canonical:
+      type: ["worker1" "upstream"]
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    add-worker-tags
+    set-worker-tags
+    remove-worker-tags
+```
+
+Lastly, verify that the ubuntu target configured in the [Manage
+Targets](/boundary/tutorials/hcp-administration/hcp-manage-targets) tutorial is
+still reachable by Boundary.
+
+List the available targets:
+
+```shell-session
+$ boundary targets list -recursive
+
+Target information:
+  ID:                    ttcp_xIxdzx3f68
+    Scope ID:            p_A3yaexUoKn
+    Version:             2
+    Type:                tcp
+    Name:                ubuntu-target
+    Description:         Ubuntu target
+    Authorized Actions:
+      no-op
+      read
+      update
+      delete
+      add-host-sources
+      set-host-sources
+      remove-host-sources
+      add-credential-sources
+      set-credential-sources
+      remove-credential-sources
+      authorize-session
+```
+
+Export the target ID as an environment variable:
+
+```shell-session
+$ export TARGET_ID=<ubuntu-target-ID>
+```
+
+Finally, validate the connection to the target:
+
+```shell-session
+$ boundary connect ssh -target-id $TARGET_ID -- -l ubuntu -i /path/to/key.pem
+
+Welcome to Ubuntu 22.04 LTS (GNU/Linux 5.15.0-1011-aws x86_64)
+
+ * Documentation:  https://help.ubuntu.com
+ * Management:     https://landscape.canonical.com
+ * Support:        https://ubuntu.com/advantage
+
+  System information as of Tue Sep 20 17:54:00 UTC 2022
+
+  System load:  0.0               Processes:             98
+  Usage of /:   22.7% of 7.58GB   Users logged in:       0
+  Memory usage: 25%               IPv4 address for eth0: 172.31.93.237
+  Swap usage:   0%
+
+ * Ubuntu Pro delivers the most comprehensive open source security and
+   compliance features.
+
+   https://ubuntu.com/aws/pro
+
+0 updates can be applied immediately.
+
+
+The list of available updates is more than a week old.
+To check for new updates run: sudo apt update
+
+Last login: Tue Sep 20 17:41:48 2022 from 44.194.155.74
+To run a command as administrator (user "root"), use "sudo <command>".
+See "man sudo_root" for details.
+
+ubuntu@ip-172-31-93-237:~$
+```
+
+When finished, close the connection to the target with `exit`.
+
+<Note>
+
+The Boundary Desktop App can also be used to establish a session with the target.
+
+</Note>
+
+This process validates that the upstream worker is configured properly, and can
+currently connect to the target. In a more realistic deployment scenario, the
+target and the downstream worker would be deployed on a separate private
+network.
+
+### Write the downstream worker config
+
+With the upstream worker functioning as expected, the downstream worker is ready
+to be configured. This worker will proxy connections from the ingress worker to
+the Ubuntu target.
+
+Next, **create a new file** named `downstream-worker.hcl` in the `~/boundary/`
+directory.
+
+```shell-session
+$ touch ~/boundary/downstream-worker.hcl
+```
+
+Open the file with a text editor, such as Vi.
+
+**Paste the following configuration into the worker config file:**
+
+<Tabs>
+<Tab heading="Ubuntu" group="ubuntu">
+
+<CodeBlockConfig lineNumbers filename="~/boundary/downstream-worker.hcl">
+
+```hcl
+disable_mlock = true
+
+listener "tcp" {
+  address = "127.0.0.1:9203"
+  purpose = "proxy"
+}
+
+worker {
+  initial_upstreams = ["127.0.0.1:9202"]
+  auth_storage_path = "/home/myusername/boundary/worker2"
+  tags {
+    type = ["worker2", "downstream"]
+  }
+}
+```
+
+</CodeBlockConfig>
+
+**Update the `auth_storage_path`** to match the full path to the
+`~/boundary/worker2` directory, such as `/home/myusername/boundary/worker2`.
+
+You set the `initial_upstreams` when you connect workers together as part of
+a multi-hop chain. In this example, the upstream is the ingress worker that you created
+in the previous tutorial, which has access to the HCP Boundary cluster.
+
+The `initial_upstreams` should match the address of your original worker
+deployed in the previous tutorial, which should be listening on
+`127.0.0.1:9202`. It serves as the ingress worker and is "upstream" from the
+downstream egress worker being configured here.
+
+Note the `listener "tcp"` stanza:
+
+```hcl
+listener "tcp" {
+  address = "0.0.0.0:9203"
+  purpose = "proxy"
+}
+```
+
+The `address` port is set to `0.0.0.0:9203`. This allows the worker to live on
+the same localhost as the other worker currently listening on port 9202.
+
+To see all valid config options, refer to the [worker configuration](/boundary/docs/configuration/worker/worker-configuration) docs.
+
+</Tab>
+<Tab heading="MacOS" group="macos">
+
+<CodeBlockConfig lineNumbers filename="~/boundary/downstream-worker.hcl">
+
+```hcl
+disable_mlock = true
+
+listener "tcp" {
+  address = "127.0.0.1:9203"
+  purpose = "proxy"
+}
+
+worker {
+  initial_upstreams = ["127.0.0.1:9202"]
+  auth_storage_path = "/Users/myusername/boundary/worker2"
+  tags {
+    type = ["worker2", "downstream"]
+  }
+}
+```
+
+</CodeBlockConfig>
+
+**Update the `auth_storage_path`** to match the full path to the
+`~/boundary/worker2` directory, such as `/Users/myusername/boundary/worker2`.
+
+You set the `initial_upstreams` when you connect workers together as part of
+a multi-hop chain. In this example, the upstream is the ingress worker that you created
+in the previous tutorial, which has access to the HCP Boundary cluster.
+
+The `initial_upstreams` should match the address of your original worker
+deployed in the previous tutorial, which should be listening on
+`127.0.0.1:9202`. It serves as the ingress worker and is "upstream" from the
+downstream egress worker being configured here.
+
+Note the `listener "tcp"` stanza:
+
+```hcl
+listener "tcp" {
+  address = "0.0.0.0:9203"
+  purpose = "proxy"
+}
+```
+
+The `address` port is set to `0.0.0.0:9203`. This allows the worker to live on
+the same localhost as the other worker currently listening on port 9202.
+
+To see all valid config options, refer to the [worker configuration](/boundary/docs/configuration/worker/worker-configuration) docs.
+
+</Tab>
+<Tab heading="Windows" group="windows">
+
+<CodeBlockConfig lineNumbers filename="~/boundary/downstream-worker.hcl">
+
+```hcl
+disable_mlock = true
+
+listener "tcp" {
+  address = "127.0.0.1:9203"
+  purpose = "proxy"
+}
+
+worker {
+  initial_upstreams = ["127.0.0.1:9202"]
+  auth_storage_path = "C:/Users/myusername/boundary/worker2"
+  tags {
+    type = ["worker2", "downstream"]
+  }
+}
+```
+
+</CodeBlockConfig>
+
+**Update the `auth_storage_path`** to match the full path to the
+`~/boundary/worker2` directory, such as `C:/Users/myusername/boundary/worker2`.
+
+You set the `initial_upstreams` when you connect workers together as part of
+a multi-hop chain. In this example, the upstream is the ingress worker that you created
+in the previous tutorial, which has access to the HCP Boundary cluster.
+
+The `initial_upstreams` should match the address of your original worker
+deployed in the previous tutorial, which should be listening on
+`127.0.0.1:9202`. It serves as the ingress worker and is "upstream" from the
+downstream egress worker being configured here.
+
+Note the `listener "tcp"` stanza:
+
+```hcl
+listener "tcp" {
+  address = "0.0.0.0:9203"
+  purpose = "proxy"
+}
+```
+
+The `address` port is set to `0.0.0.0:9203`. This allows the worker to live on
+the same localhost as the other worker currently listening on port 9202.
+
+To see all valid config options, refer to the [worker configuration](/boundary/docs/configuration/worker/worker-configuration) docs.
+
+</Tab>
+</Tabs>
+
+**Save this file.**
+
+In the above example `initial_upstreams` is specified, which indicates the
+address or addresses a worker will use when initially connecting to Boundary.
+The `hcp_boundary_cluster_id` should be omitted, since this worker will forward
+connections to an upstream worker, which in this case is the original worker1
+ingress worker. Do not configure the `hcp_boundary_cluster_id` and
+`initial_upstreams` in the same config file, as the HCP cluster ID will take
+precedence over the initial upstreams.
+
+<Note>
+
+Outside of the Local Worker workflow, a `public_addr` attribute
+should be supplied within the `worker {}` stanza. This example omits the
+worker's public address because the Boundary client and worker are deployed on
+the same local machine.
+
+</Note>
+
+To see all valid config options, refer to the [worker configuration](/boundary/docs/configuration/worker/worker-configuration) docs.
+
+### Start the downstream worker
+
+With the worker config defined, start the worker server. Provide the full path
+to the worker config file (such as `/home/myusername/boundary/downstream-worker.hcl`).
+
+<Tabs>
+<Tab heading="Ubuntu" group="ubuntu">
+
+<CodeBlockConfig lineNumbers highlight="1,12">
+
+```shell-session
+$ boundary server -config="/home/myusername/boundary/downstream-worker.hcl"
+
+==> Boundary server configuration:
+
+                               Cgo: disabled
+                        Listener 1: tcp (addr: "0.0.0.0:9203", max_request_duration: "1m30s", purpose: "proxy")
+                         Log Level: info
+                             Mlock: supported: true, enabled: false
+                           Version: Boundary v0.13.2+ent
+                       Version Sha: b1f75f5c731c843f5c987feae310d86e635806c7
+        Worker Auth Current Key Id: knoll-unengaged-twisting-kite-envelope-dock-liftoff-legend
+  Worker Auth Registration Request: GzusqckarbczHoLGQ4UA25uSR7RQJqCjDfxGSJZvEpwQpE7HzYvpDJ88a4QMP3cUUeBXhS5oTgck3ZvZ3nrZWD3HxXzgq4wNScpy7WE7JmNrrGNLNEFeqqMcyhjqGJVvg2PqiZA6arL6zYLNLNCEFtRhcvG5LLMeHc3bthkrbwLg7R7TNswTjDJWmwh4peYpnKuQ9qHEuTK9fapmw4fdvRTiTbrq78ju4asvLByFTCTR3nbk62Tc15iANYsUAn9JLSxjgRXTsuTBkp4QoqBqz89pEi258Wd1ywcACBHRT3
+          Worker Auth Storage Path: /home/ubuntu/boundary/worker2
+          Worker Public Proxy Addr: 127.0.0.1:9203
+
+==> Boundary server started! Log data will stream in below:
+
+{"id":"l0UQKrAg7b","source":"https://hashicorp.com/boundary/ip-172-31-86-85/worker","specversion":"1.0","type":"system","data":{"version":"v0.1","op":"worker.(Worker).StartControllerConnections","data":{"msg":"Setting HCP Boundary cluster address 6f40d99c-ed7a-4f22-ae52-931a5bc79c03.proxy.boundary.hashicorp.cloud:9202 as upstream address"}},"datacontentype":"application/cloudevents","time":"2023-01-10T04:34:52.616180263Z"}
+```
+
+</CodeBlockConfig>
+
+</Tab>
+<Tab heading="MacOS" group="macos">
+
+<CodeBlockConfig lineNumbers highlight="1,12">
+
+```shell-session
+$ ./boundary server -config="/Users/myusername/boundary/downstream-worker.hcl"
+
+==> Boundary server configuration:
+
+                               Cgo: disabled
+                        Listener 1: tcp (addr: "0.0.0.0:9203", max_request_duration: "1m30s", purpose: "proxy")
+                         Log Level: info
+                             Mlock: supported: true, enabled: false
+                           Version: Boundary v0.13.2+ent
+                       Version Sha: b1f75f5c731c843f5c987feae310d86e635806c7
+        Worker Auth Current Key Id: knoll-unengaged-twisting-kite-envelope-dock-liftoff-legend
+  Worker Auth Registration Request: GzusqckarbczHoLGQ4UA25uSR7RQJqCjDfxGSJZvEpwQpE7HzYvpDJ88a4QMP3cUUeBXhS5oTgck3ZvZ3nrZWD3HxXzgq4wNScpy7WE7JmNrrGNLNEFeqqMcyhjqGJVvg2PqiZA6arL6zYLNLNCEFtRhcvG5LLMeHc3bthkrbwLg7R7TNswTjDJWmwh4peYpnKuQ9qHEuTK9fapmw4fdvRTiTbrq78ju4asvLByFTCTR3nbk62Tc15iANYsUAn9JLSxjgRXTsuTBkp4QoqBqz89pEi258Wd1ywcACBHRT3
+          Worker Auth Storage Path: /Users/myusername/boundary/worker2
+          Worker Public Proxy Addr: 127.0.0.1:9203
+
+==> Boundary server started! Log data will stream in below:
+
+{"id":"l0UQKrAg7b","source":"https://hashicorp.com/boundary/ip-172-31-86-85/worker","specversion":"1.0","type":"system","data":{"version":"v0.1","op":"worker.(Worker).StartControllerConnections","data":{"msg":"Setting HCP Boundary cluster address 6f40d99c-ed7a-4f22-ae52-931a5bc79c03.proxy.boundary.hashicorp.cloud:9202 as upstream address"}},"datacontentype":"application/cloudevents","time":"2023-01-10T04:34:52.616180263Z"}
+```
+
+</CodeBlockConfig>
+
+</Tab>
+<Tab heading="Windows" group="windows">
+
+<CodeBlockConfig lineNumbers highlight="1,12">
+
+```shell-session
+$ .\boundary.exe server -config="C:\Users\myusername\boundary\downstream-worker.hcl"
+
+==> Boundary server configuration:
+
+                               Cgo: disabled
+                        Listener 1: tcp (addr: "0.0.0.0:9203", max_request_duration: "1m30s", purpose: "proxy")
+                         Log Level: info
+                             Mlock: supported: true, enabled: false
+                           Version: Boundary v0.13.2+ent
+                       Version Sha: b1f75f5c731c843f5c987feae310d86e635806c7
+        Worker Auth Current Key Id: knoll-unengaged-twisting-kite-envelope-dock-liftoff-legend
+  Worker Auth Registration Request: GzusqckarbczHoLGQ4UA25uSR7RQJqCjDfxGSJZvEpwQpE7HzYvpDJ88a4QMP3cUUeBXhS5oTgck3ZvZ3nrZWD3HxXzgq4wNScpy7WE7JmNrrGNLNEFeqqMcyhjqGJVvg2PqiZA6arL6zYLNLNCEFtRhcvG5LLMeHc3bthkrbwLg7R7TNswTjDJWmwh4peYpnKuQ9qHEuTK9fapmw4fdvRTiTbrq78ju4asvLByFTCTR3nbk62Tc15iANYsUAn9JLSxjgRXTsuTBkp4QoqBqz89pEi258Wd1ywcACBHRT3
+          Worker Auth Storage Path: C:\Users\myusername\boundary\worker2
+          Worker Public Proxy Addr: 127.0.0.1:9203
+
+==> Boundary server started! Log data will stream in below:
+
+{"id":"l0UQKrAg7b","source":"https://hashicorp.com/boundary/ip-172-31-86-85/worker","specversion":"1.0","type":"system","data":{"version":"v0.1","op":"worker.(Worker).StartControllerConnections","data":{"msg":"Setting HCP Boundary cluster address 6f40d99c-ed7a-4f22-ae52-931a5bc79c03.proxy.boundary.hashicorp.cloud:9202 as upstream address"}},"datacontentype":"application/cloudevents","time":"2023-01-10T04:34:52.616180263Z"}
+```
+
+</CodeBlockConfig>
+
+</Tab>
+</Tabs>
+
+The downstream worker will start and begin attempting to connect to its
+upstream, worker1, which is also the ingress worker.
+
+The worker also outputs its authorization request as Worker Auth Registration
+Request. This will also be saved to a file, `auth_request_token`, defined by the
+`auth_storage_path` in the worker config.
+
+Note the `Worker Auth Registration Request:` value on line 12. This value can
+also be located in the `/boundary/auth_request_token` file. **Copy this value.**
+
+</Tab>
+</Tabs>
+
+## Register the worker with HCP
+
+HCP workers can be registered using the Boundary CLI or Admin Console Web UI.
+
+<Tabs>
+<Tab heading="Admin UI" group="admin">
+
+Authenticate to HCP Boundary as the admin user.
+
+1. Log in to the [HCP portal](https://portal.cloud.hashicorp.com/).
+
+1. From the HCP Portal's **Boundary** page, click **Open Admin UI** - a new page will open.
+
+1. Enter the admin username and password you created when you deployed the new instance and click **Authenticate**.
+
+Once logged in, navigate to the **Workers** page.
+
+From the previous [Self-Managed Worker Registration with HCP Boundary](/boundary/tutorials/hcp-administration/hcp-manage-workers) tutorial there
+should already be a worker registered.
+
+Click **New**.
+
+<Tabs>
+<Tab heading="AWS" group="aws">
+
+![HCP Workers](/img/boundary/workers-id-aws.png)
+
+</Tab>
+<Tab heading="Local Worker" group="local">
+
+![HCP Workers](/img/boundary/workers-id.png)
+
+</Tab>
+</Tabs>
+
+The new worker page can be used to construct the contents of the
+`downstream-worker.hcl` file.
+
+**Do not fill in any of the worker fields**.
+
+Providing the following details will construct the worker config file contents
+for you:
+
+- Boundary Cluster ID
+- Worker Public Address
+- Config file path
+- Worker Tags
+
+The instructions on this page provide details for installing the HCP
+`boundary` binary and deploying the constructed config file.
+
+Because the worker has already been deployed, only the Worker Auth Registration
+Request key needs to be provided on this page.
+
+**Scroll down to the bottom of the *New Worker* page** and **paste the
+Worker Auth Registration Request key** you copied earlier.
+
+Click **Register Worker**.
+
+![HCP Workers](/img/boundary/workers-token-register.png)
+
+Click **Done** and notice the new worker on the *Workers* page.
+
+<Tabs>
+<Tab heading="AWS" group="aws">
+
+![HCP Workers](/img/boundary/hcp/workers-multi-hop-aws.png)
+
+</Tab>
+<Tab heading="Local Worker" group="local">
+
+![HCP Workers](/img/boundary/hcp/workers-multi-hop-local.png)
+
+</Tab>
+</Tabs>
+</Tab>
+<Tab heading="CLI" group="cli">
+
+Open a terminal session on your local machine, where **Boundary 0.13.2 or
+greater** is installed.
+
+Ensure that the `BOUNDARY_ADDR` is set as an environment variable.
+
+```shell-session
+$ export BOUNDARY_ADDR="https://c3a7a20a-f663-40f3-a8e3-1b2f69b36254.boundary.hashicorp.cloud"
+```
+
+Log into the CLI as the admin user, providing the admin login name and admin
+password when prompted.
+
+```shell-session
+$ boundary authenticate
+Please enter the login name (it will be hidden):
+Please enter the password (it will be hidden):
+
+Authentication information:
+  Account ID:      acctpw_VOeNSFX8pQ
+  Auth Method ID:  ampw_wxzojlKJLN
+  Expiration Time: Mon, 13 Feb 2023 12:35:32 MST
+  User ID:         u_1vUkf5fPs9
+
+The token was successfully stored in the chosen keyring and is not displayed here.
+```
+
+Next, **export the Worker Auth Request Token value as an environment variable.**
+
+```shell-session
+$ export WORKER_TOKEN=<Worker Auth Registration Request Value>
+```
+
+The token is used to issue a create worker request that will authorize the
+worker to Boundary and make it available. Currently worker creation is only
+supported for workers with an authorization token.
+
+**Create a new worker:**
+
+```shell-session
+$ boundary workers create worker-led -worker-generated-auth-token=$WORKER_TOKEN
+
+Worker information:
+  Active Connection Count:   0
+  Address:                   44.204.92.85:9202
+  Created Time:              Thu, 09 Feb 2023 12:45:13 MST
+  ID:                        w_capdA9wS7x
+  Last Status Time:          2023-02-09 23:32:09.361979 +0000 UTC
+  Release Version:           Boundary v0.13.2+ent
+  Type:                      pki
+  Updated Time:              Thu, 09 Feb 2023 16:32:09 MST
+  Version:                   1
+
+  Scope:
+    ID:                      global
+    Name:                    global
+    Type:                    global
+
+  Tags:
+    Configuration:
+      type: ["downstream" "worker2"]
+    Canonical:
+      type: ["worker2" "downstream"]
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    add-worker-tags
+    set-worker-tags
+    remove-worker-tags
+```
+
+List all the available workers.
+
+<CodeBlockConfig highlight="1-19,57-70">
+
+```shell-session
+$ boundary workers list
+
+Worker information:
+  ID:                        w_JH6lk8Ft2P
+    Type:                    pki
+    Version:                 1
+    Address:                 44.202.118.128:9202
+    ReleaseVersion:          Boundary v0.13.2+ent
+    Last Status Time:        Thu, 09 Feb 2023 23:35:46 UTC
+    Directly Connected Downstream Workers:
+      w_capdA9wS7x
+    Authorized Actions:
+      no-op
+      read
+      update
+      delete
+      add-worker-tags
+      set-worker-tags
+      remove-worker-tags
+
+  ID:                        w_VH6yOyjdEt
+    Type:                    kms
+    Version:                 1
+    Name:                    hcp-managed-worker-2
+    Address:
+    ed4cac40-b531-5a02-dd94-7f48f394c7ad.proxy.boundary.hcp.to:9202
+    ReleaseVersion:          Boundary v0.13.2+ent.int
+    Last Status Time:        Thu, 09 Feb 2023 23:35:47 UTC
+    Directly Connected Downstream Workers:
+      w_JH6lk8Ft2P
+    Authorized Actions:
+      no-op
+      read
+      delete
+      add-worker-tags
+      set-worker-tags
+      remove-worker-tags
+
+  ID:                        w_NdnBI7xXKC
+    Type:                    kms
+    Version:                 1
+    Name:                    hcp-managed-worker-0
+    Address:
+    b8a1bd22-2ee9-a8cf-7743-c4f98ffec923.proxy.boundary.hcp.to:9202
+    ReleaseVersion:          Boundary v0.13.2+ent.int
+    Last Status Time:        Thu, 09 Feb 2023 23:35:47 UTC
+    Directly Connected Downstream Workers:
+      w_JH6lk8Ft2P
+    Authorized Actions:
+      no-op
+      read
+      delete
+      add-worker-tags
+      set-worker-tags
+      remove-worker-tags
+
+  ID:                        w_capdA9wS7x
+    Type:                    pki
+    Version:                 1
+    Address:                 44.204.92.85:9202
+    ReleaseVersion:          Boundary v0.13.2+ent
+    Last Status Time:        Thu, 09 Feb 2023 23:35:47 UTC
+    Authorized Actions:
+      no-op
+      read
+      update
+      delete
+      add-worker-tags
+      set-worker-tags
+      remove-worker-tags
+
+  ID:                        w_xoWtH7a92J
+    Type:                    kms
+    Version:                 1
+    Name:                    hcp-managed-worker-1
+    Address:
+    d42af9dd-763d-1738-e69b-11449c2526ce.proxy.boundary.hcp.to:9202
+    ReleaseVersion:          Boundary v0.13.2+ent.int
+    Last Status Time:        Thu, 09 Feb 2023 23:35:48 UTC
+    Directly Connected Downstream Workers:
+      w_JH6lk8Ft2P
+    Authorized Actions:
+      no-op
+      read
+      delete
+      add-worker-tags
+      set-worker-tags
+      remove-worker-tags
+```
+
+</CodeBlockConfig>
+
+You can verify new worker is established as a downstream worker by reading the
+details of its upstream:
+
+<CodeBlockConfig highlight="1,25-26">
+
+```shell-session
+$ boundary workers read -id w_r61cCrlm4M
+
+Worker information:
+  Active Connection Count:   1
+  Address:                   44.202.118.128:9202
+  Created Time:              Wed, 08 Feb 2023 14:05:28 MST
+  ID:                        w_JH6lk8Ft2P
+  Last Status Time:          2023-02-09 23:28:29.732829 +0000 UTC
+  Release Version:           Boundary v0.13.2+ent
+  Type:                      pki
+  Updated Time:              Thu, 09 Feb 2023 16:28:29 MST
+  Version:                   1
+
+  Scope:
+    ID:                      global
+    Name:                    global
+    Type:                    global
+
+  Tags:
+    Configuration:
+      type: ["upstream" "worker1"]
+    Canonical:
+      type: ["upstream" "worker1"]
+
+  Directly Connected Downstream Workers:
+    w_capdA9wS7x
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    add-worker-tags
+    set-worker-tags
+    remove-worker-tags
+```
+
+</CodeBlockConfig>
+
+Notice the **Directly Connected Downstream Workers** field, which shows the ID
+of the newly created downstream worker.
+
+</Tab>
+</Tabs>
+
+## Worker-aware targets
+
+From the [Manage Targets](/boundary/tutorials/hcp-administration/hcp-manage-targets) tutorial you
+should already have the `ubuntu-target` configured in Boundary.
+
+Boundary uses [worker tags](/boundary/docs/concepts/filtering/worker-tags) that
+define key-value pairs targets can use to determine where they should route
+connections.
+
+A simple tag was included in the `downstream-worker.hcl` file from before:
+
+```hcl
+worker {
+  tags {
+    type = ["worker2", "downstream"]
+  }
+}
+```
+
+This config creates the resulting tags on the worker:
+
+<CodeBlockConfig hideClipboard>
+
+```
+Tags:
+  Worker Configuration:
+    type: ["worker2" "downstream"]
+  Canonical:
+    type: ["worker2" "downstream"]
+```
+
+</CodeBlockConfig>
+
+The `Tags` can be used to create a worker filter for the target.
+
+<Tabs>
+<Tab heading="Admin UI" group="admin">
+
+Open the Boundary Admin Console UI navigate to the **Targets** page within the
+**IT_Support** org.
+
+Click on the `ubuntu-target`. Scroll to the bottom the the target details page
+and click **Edit Form**.
+
+Toggle the **Ingress worker filter** switch to add an ingress worker filter that
+searches for workers with the `upstream` tag:
+
+```plaintext
+"upstream" in "/tags/type"
+```
+
+Toggle the **Egress worker filter** switch to add an egress worker filter that searches for
+workers that have the `downstream` tag:
+
+```plaintext
+"downstream" in "/tags/type"
+```
+
+![HCP Workers](/img/boundary/hcp/workers-multi-hop-filters.png)
+
+When finished, click **Save**.
+
+<Note>
+
+The `type: "worker2"` tag could have also been used for the egress
+filter, or a filter that searches for the name of the worker, if assigned. (such
+as `"/name" == "downstream-worker"`).
+
+</Note>
+
+</Tab>
+<Tab heading="CLI" group="cli">
+
+**Update this target** to add an egress worker filter that searches for workers
+that have the `downstream` tag. Boundary will consider any worker with this tag
+assigned to it an acceptable proxy for this target.
+
+```shell-session
+$ boundary targets update tcp -id $TARGET_ID -egress-worker-filter='"downstream" in "/tags/type"'
+
+Target information:
+  Created Time:               Wed, 08 Feb 2023 13:58:43 MST
+  Description:                Ubuntu target
+  Egress Worker Filter:       "downstream" in "/tags/type"
+  ID:                         ttcp_EcoBxVwg0Y
+  Name:                       ubuntu-target
+  Session Connection Limit:   -1
+  Session Max Seconds:        28800
+  Type:                       tcp
+  Updated Time:               Thu, 09 Feb 2023 15:30:52 MST
+  Version:                    19
+
+  Scope:
+    ID:                       p_p7smJxUmK4
+    Name:                     QA_Tests
+    Parent Scope ID:          o_cJBJF1PUmd
+    Type:                     project
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    add-host-sources
+    set-host-sources
+    remove-host-sources
+    add-credential-sources
+    set-credential-sources
+    remove-credential-sources
+    authorize-session
+
+  Host Sources:
+    Host Catalog ID:          hcst_HKuvpaMhiV
+    ID:                       hsst_iYZzbdLHYw
+
+  Attributes:
+    Default Port:             22
+```
+
+<Note>
+
+The `type: "worker2"` tag could have also been used for the egress
+filter, or a filter that searches for the name of the worker, if assigned. (such
+as `"/name" == "downstream-worker"`).
+
+</Note>
+
+Next, **update this target** to add an ingress worker filter that searches for
+workers that have the `upstream` tag.
+
+```shell-session
+$ boundary targets update tcp -id $TARGET_ID -ingress-worker-filter='"upstream" in "/tags/type"'
+
+Target information:
+  Created Time:               Wed, 08 Feb 2023 13:58:43 MST
+  Description:                Ubuntu target
+  Egress Worker Filter:       "downstream" in "/tags/type"
+  ID:                         ttcp_EcoBxVwg0Y
+  Ingress Worker Filter:      "upstream" in "/tags/type"
+  Name:                       ubuntu-target
+  Session Connection Limit:   -1
+  Session Max Seconds:        28800
+  Type:                       tcp
+  Updated Time:               Thu, 09 Feb 2023 15:31:30 MST
+  Version:                    20
+
+  Scope:
+    ID:                       p_p7smJxUmK4
+    Name:                     QA_Tests
+    Parent Scope ID:          o_cJBJF1PUmd
+    Type:                     project
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    add-host-sources
+    set-host-sources
+    remove-host-sources
+    add-credential-sources
+    set-credential-sources
+    remove-credential-sources
+    authorize-session
+
+  Host Sources:
+    Host Catalog ID:          hcst_HKuvpaMhiV
+    ID:                       hsst_iYZzbdLHYw
+
+  Attributes:
+    Default Port:             22
+```
+
+</Tab>
+</Tabs>
+
+With the filters assigned, any connections to this target will be forced to proxy
+through the ingress worker, which will forward connections to the next downstream
+worker until it reaches the egress worker. In this example only one "hop" is
+made directly from the ingress worker to the egress worker.
+
+Finally, establish a connection to the target. Enter your instance's login name
+after the `-l` option and the path to your instance's public key after the `-i`
+option.
+
+<Note>
+
+The Boundary Desktop App can also be used to establish a session with the target and manage sessions.
+
+</Note>
+
+```shell-session
+$ boundary connect ssh -target-id $TARGET_ID -- -l ubuntu -i /path/to/key.pem
+
+Welcome to Ubuntu 22.04 LTS (GNU/Linux 5.15.0-1011-aws x86_64)
+
+ * Documentation:  https://help.ubuntu.com
+ * Management:     https://landscape.canonical.com
+ * Support:        https://ubuntu.com/advantage
+
+  System information as of Tue Sep 20 17:54:00 UTC 2022
+
+  System load:  0.0               Processes:             98
+  Usage of /:   22.7% of 7.58GB   Users logged in:       0
+  Memory usage: 25%               IPv4 address for eth0: 172.31.93.237
+  Swap usage:   0%
+
+ * Ubuntu Pro delivers the most comprehensive open source security and
+   compliance features.
+
+   https://ubuntu.com/aws/pro
+
+0 updates can be applied immediately.
+
+
+The list of available updates is more than a week old.
+To check for new updates run: sudo apt update
+
+Last login: Tue Sep 20 17:41:48 2022 from 44.194.155.74
+To run a command as administrator (user "root"), use "sudo <command>".
+See "man sudo_root" for details.
+
+ubuntu@ip-172-31-93-237:~$
+```
+
+You can verify that the ingress worker handles the initial connection to the
+worker using the CLI or Admin Console.
+
+<Tabs>
+<Tab heading="Admin UI" group="admin">
+
+Navigate to the **Workers** page while the connection to the Ubuntu target is
+still open.
+
+Notice the **Session Count** next to the worker configured as the ingress
+worker.
+
+![HCP Workers](/img/boundary/hcp/workers-multi-hop-ingress-session.png)
+
+</Tab>
+<Tab heading="CLI" group="cli">
+
+With the connection to the Ubuntu target still open, read the worker details for
+the ingress worker:
+
+<CodeBlockConfig highlight="1-4">
+
+```shell-session
+$ boundary workers read -id w_JH6lk8Ft2P
+
+Worker information:
+  Active Connection Count:   1
+  Address:                   44.202.118.128:9202
+  Created Time:              Wed, 08 Feb 2023 14:05:28 MST
+  ID:                        w_JH6lk8Ft2P
+  Last Status Time:          2023-02-09 23:28:29.732829 +0000 UTC
+  Release Version:           Boundary v0.13.2+ent
+  Type:                      pki
+  Updated Time:              Thu, 09 Feb 2023 16:28:29 MST
+  Version:                   1
+
+  Scope:
+    ID:                      global
+    Name:                    global
+    Type:                    global
+
+  Tags:
+    Configuration:
+      type: ["upstream" "worker1"]
+    Canonical:
+      type: ["upstream" "worker1"]
+
+  Directly Connected Downstream Workers:
+    w_capdA9wS7x
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    add-worker-tags
+    set-worker-tags
+    remove-worker-tags
+```
+
+</CodeBlockConfig>
+
+</Tab>
+</Tabs>
+
+Sessions can be managed using the same methods discussed in the [Manage
+Sessions](/boundary/tutorials/hcp-administration/hcp-manage-sessions) tutorial.
+
+When finished, the session can be terminated manually, or canceled via another
+authenticated Boundary command. Sessions can also be managed using the Admin
+Console UI.
+
+<Note>
+
+To cancel this session using the CLI, you will need to open a new
+terminal window and re-export the `BOUNDARY_ADDR` and `BOUNDARY_AUTH_METHOD_ID`
+environment variables. Then log back into Boundary using `boundary
+authenticate`.
+
+</Note>
+
+## Summary
+
+The [HCP Administration](/boundary/tutorials/hcp-administration) tutorial
+collection demonstrated the common HCP Boundary management workflows.
+
+This tutorial demonstrated configuring multi-hop workers with HCP Boundary
+and discussed worker management.
+
+To continue learning about Boundary, check out the [Inject SSH credentials with
+HCP Boundary](/boundary/tutorials/hcp-administration/hcp-ssh-cred-injection)
+tutorial.

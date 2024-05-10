@@ -1,0 +1,453 @@
+---
+id: 39ee9562-973f-4ef0-9936-127f860561d3
+name: Boundary Enterprise reference architecture
+short_name: Boundary Enterprise reference architecture
+description: >-
+  Recommended best practices for infrastructure architects and operators to
+  follow when deploying a Boundary Enterprise cluster in a production environment.
+read_time: 15
+edition: enterprise
+products_used:
+  - product: boundary
+    min_version: 0.13.0
+    max_version: 0.13.0
+default_collection_context: boundary/enterprise
+---
+
+<Note>
+
+  This guide applies to Boundary versions 0.13 and above.
+
+</Note>
+
+This guide describes recommended best practices for infrastructure architects
+and operators to follow when deploying a Boundary Enterprise cluster in a
+production environment.
+
+## Recommended architecture
+
+Boundary has two main user workflows to consider when you deploy it into
+production.
+
+The first is the Boundary administration workflow, where an administrator uses
+either the Boundary CLI or GUI to configure Boundary. In this scenario, the
+administrator interfaces solely with the Boundary controllers, ideally through a
+layer 4 or layer 7 load balancer. The Boundary controllers do not directly
+communicate with one another, all configuration and state is managed through an
+RDBMS, in this case PostgreSQL.
+
+The following diagram shows the recommended architecture for deploying Boundary
+controller nodes within a single region:
+
+![Single-Region Controller](/img/boundary/ent/enterprise-controller-architecture.png)
+
+Unlike other HashiCorp products such as Vault, Boundary controllers are
+stateless and do not operate using consensus protocols such as Raft. They are
+therefore able to  withstand failure scenarios where only one node is
+accessible.
+
+If deploying Boundary to three availability zones is not possible, you can use
+the same architecture across one or two availability zones, at the expense of a
+reliability risk in case of an availability zone outage.
+
+The second workflow is a user connecting to a Boundary target. In this scenario,
+the user initiates a session connecting to a target they have been granted
+access to using either the Boundary CLI or desktop application.  
+
+1. If the user is not authenticated, they must first authenticate by communicating
+with the Boundary controllers (and any relied-upon OIDC IdP if necessary).
+1. Once authenticated, the user’s session can be initiated and a tunnel is built
+from their client to an ingress worker.
+1. If there are multiple layers of network boundaries, a tunnel is built from the
+ingress worker to an egress worker. The last step is traffic being proxied
+through the egress worker to the target. 
+
+It is ideal to have multiple ingress and egress workers with identical
+configurations within each network boundary to provide high availability. Load
+balancing the Boundary workers is not recommended, as the Boundary control plane
+handles session scaling and balancing when users initiate sessions.
+
+The following diagram shows the recommended architecture for deploying Boundary
+workers:
+
+![Worker Deployment Pattern](/img/boundary/ent/enterprise-worker-architecture.png)
+
+The Boundary controllers also depend on a PostgreSQL database. This database
+should be deployed in a fashion where it is reachable by all Boundary controller
+nodes.
+
+## System requirements
+
+This section contains specific recommendations for the following system requirements:
+
+- [Hardware sizing](#hardware-sizing-for-boundary-servers)
+- [Hardware considerations](#hardware-considerations)
+- [Network considerations](#network-considerations)
+- [Network connectivity](#network-connectivity)
+- [Network traffic encryption](#network-traffic-encryption)
+- [Database recommendations](#database-recommendations)
+- [Load balancer recommendations](#load-balancer-recommendations)
+
+Each hosting environment is different, and every customer’s Boundary usage
+profile is different. These recommendations should only serve as a starting
+point for operations staff to observe and adjust to meet the unique needs of
+each deployment.
+
+To match your requirements and maximize the stability of your Boundary
+controller and worker instances, it’s important to ensure that you perform load
+tests and continue to monitor resource usage as well as all reported matrices
+from Boundary’s telemetry.
+
+<Warning>
+
+  All specifications outlined in this document are minimum recommendations without
+  any reservations toward vertical scaling, redundancy, or other SRE needs, and
+  without measure of your user volumes or their use cases in all scenarios. All
+  resource requirements are directly proportional to the operations being
+  performed by the Boundary cluster as well as the end users’ level of usage.
+
+</Warning>
+
+### Hardware sizing for Boundary servers
+
+Refer to the tables below for sizing recommendations for controller nodes and
+worker nodes, as well as small and large use cases, based on expected usage.
+
+**Small** deployments would be appropriate for most initial production
+deployments or for development and testing environments.
+
+**Large** deployments are production environments with a consistently high
+workload, such as a large number of sessions.
+
+#### Controller nodes
+
+| Size  | CPU      | Memory       | Disk Capacity | Network Throughput |
+| ----- | -------- | ------------ | ------------- | ------------------ |
+| Small | 2-4 core | 8-16 GB RAM  | 50+ GB        | Minimum 5 GB/s     |
+| Large | 4-8 core | 32-64 GB RAM | 200+ GB       | Minimum 10 GB/s    |
+
+#### Worker nodes
+
+| Size  | CPU      | Memory       | Disk Capacity | Network Throughput |
+| ----- | -------- | ------------ | ------------- | ------------------ |
+| Small | 2-4 core | 8-16 GB RAM  | 50+ GB        | Minimum 10 GB/s    |
+| Large | 4-8 core | 32-64 GB RAM | 200+ GB       | Minimum 10 GB/s    |
+
+For each cluster size, the following table gives recommended hardware specs
+for each major cloud infrastructure provider.
+
+| Provider  | Size  | Instance/VM Types                     |
+| --------- | ----- | ------------------------------------- |
+| **AWS**   | Small | `m5.large`, `m5.xlarge`               |
+|           | Large | `m5.2xlarge`, `m5.4xlarge`            |
+| **Azure** | Small | `Standard_D2s_v3`, `Standard_D4s_v3`  |
+|           | Large | `Standard_D8s_v3`, `Standard_D16s_v3` |
+| **GCP**   | Small | `n2-standard-2`, `n2-standard-4`      |
+|           | Large | `n2-standard-8`, `n2-standard-16`     |
+
+<Note>
+
+ For predictable performance on cloud providers, it's recommended to avoid
+ "burstable" CPU and storage options (such as AWS `t2` and `t3` instance types)
+ whose performance may degrade rapidly under continuous load.
+
+</Note>
+
+### Hardware considerations
+
+The Boundary controller and worker nodes perform two very different tasks. The
+Boundary controller nodes handle requests for authentication and configuration,
+among other tasks. The Boundary worker nodes are used to proxy client
+connections to Boundary targets and thus may require additional resources.
+
+Depending on the number of clients connecting to Boundary targets at any given
+time, Boundary workers could become memory or file descriptor constrained. As
+new sessions are created on the Boundary worker node, additional sockets and
+ultimately file descriptors are created. It is imperative to monitor both the
+file descriptor usage and the memory consumption of each Boundary worker node.
+
+
+### Network considerations
+
+The amount of network bandwidth used by the Boundary controllers and workers
+depends on your specific usage patterns. With regards to Boundary controllers,
+even a high request volume does not necessarily translate to a large amount of
+network bandwidth consumption. However, Boundary worker nodes proxy client
+sessions to Boundary targets, so the bandwidth consumption will be highly
+dependent on the amount of potential clients, the number of sessions being
+created, and the amount of data being transferred in either direction to and
+from the Boundary targets. 
+
+It’s also important to consider bandwidth requirements to other external systems
+such as monitoring and logging collectors. It is imperative to monitor
+networking metrics of the Boundary workers, as to avoid situations where the
+Boundary workers can no longer initiate session connections.
+
+It may be necessary to increase the size of the VM in order to take advantage of
+additional network throughput in certain circumstances.
+
+<Note>
+
+  Refer to the following pages for provider-specific virtual machine networking
+  limitations:
+
+  - [AWS](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-network-bandwidth.html)
+  - [Azure](https://learn.microsoft.com/en-us/azure/virtual-network/virtual-machine-network-throughput)
+  - [GCP](https://cloud.google.com/compute/docs/network-bandwidth)
+
+</Note>
+
+### Network connectivity
+
+The following table outlines the default ingress network connectivity
+requirements for Boundary cluster nodes. If general network egress is
+restricted, particular attention must be paid to granting outgoing access from:
+
+- Boundary controllers to any external integration providers (for example, OIDC
+  authentication providers) as well as external log handlers, metrics
+  collection, and security and configuration management providers.
+- Boundary workers to controllers and any upstream workers.
+
+<Note>
+
+  If the default network port mappings below do not meet your organization’s
+  requirements, default listening ports may be updated using the [listener
+  stanza](/boundary/docs/configuration#shared-oss-and-hcp-boundary-parameters)
+  of the resource. 
+
+</Note>
+
+![Network Connectivity Examples](/img/boundary/ent/lb-network-connectivity.png)
+
+| Source          | Destination                 | Default destination port | protocol  | Purpose                                 |
+| --------------- | --------------------------- | ------------------------ | --------- | --------------------------------------  |
+| Client machines | Controller load balancer    | 443                      | tcp       | Request distribution                    |
+| Load balancer   | Controller servers          | 9200                     | tcp       | Boundary API                            |
+| Load balancer   | Controller servers          | 9203                     | tcp       | Health checks                           |
+| Worker servers  | Controller load balancer    | 9201                     | tcp       | Session authorization, credentials, etc |
+| Controllers     | Postgres                    | 5432                     | tcp       | Storing system state                    |
+| Client machines | Worker servers \*           | 9202                     | tcp       | Session proxing                         |
+| Worker servers  | Boundary targets\*          | various                  | tcp       | Session proxing                         |
+| Client machines | Ingress worker servers \*\* | 9202                     | tcp       | Multi-hop session proxing               |
+| Egress workers  | Ingress worker servers \*\* | 9202                     | tcp       | Multi-hop session proxing               |
+| Egress workers  | Boundary targets \*\*       | various                  | tcp       | Multi-hop session proxing               |
+
+**\*** In this scenario, the client connects directly to one worker, which then
+proxies the connection to the Boundary target.
+
+**\*\*** In this scenario, the client connects to an ingress worker, then the
+ingress worker connects to a downstream egress worker, then the downstream
+egress worker connects to the Boundary target. Ingress and egress workers can be
+chained together further to provide multiple layers of session proxying.
+
+### Network traffic encryption
+
+You should encrypt connections to the Boundary control plane at the controller
+nodes themselves using standard PKI HTTPS TLS. This also means that you can use
+a simple layer 4 load balancer to pass through traffic to the Boundary
+controllers, or a layer 7 load balancer with no configured TLS termination.
+
+### Database recommendations
+
+Boundary clusters depend on a PostgreSQL database for managing state and configuration.
+Each major cloud provider offers a managed PostgreSQL database service:
+
+| Cloud     | Managed Database Service                                                          |
+| --------- | --------------------------------------------------------------------------------------- |
+| **AWS**   | [Amazon RDS for PostgreSQL](https://aws.amazon.com/rds/postgresql/)                     |
+| **Azure** | [Azure Database for PostgreSQL](https://azure.microsoft.com/en-us/products/postgresql/) |
+| **GCP**   | [Cloud SQL for PostgreSQL](https://cloud.google.com/sql/postgresql)                     |
+
+If using a cloud provider’s managed database service is not practical, you can
+operate your own open source PostgreSQL instance to use with Boundary.
+
+### Load balancer recommendations
+
+For the highest levels of reliability and stability, we recommend that you use
+some load balancing technology to distribute requests to your Boundary
+controller nodes. Each major cloud platform provides good options for managed
+load balancer services. There are also a number of self-hosted options, as well
+as service discovery systems like Consul.
+
+To monitor the health of Boundary controller nodes, you should configure the
+load balancer to poll the /health API endpoint to detect the status of the node
+and direct traffic accordingly. Refer to the listener stanza documentation for
+details on configuring the Boundary controller operational endpoints.
+
+Each major cloud provider offers one or more managed load balancing services:
+
+
+| Cloud     | Layer     | Managed Load Balancing Service                                                                                     |
+| --------- | --------- | ------------------------------------------------------------------------------------------------------------------ |
+| **AWS**   | Layer 4   | [Network Load Balancer](https://docs.aws.amazon.com/elasticloadbalancing/latest/network/introduction.html)         |
+|           | Layer 7   | [Application Load Balancer](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/introduction.html) |
+| **Azure** | Layer 4   | [Azure Load Balancer](https://docs.microsoft.com/en-us/azure/load-balancer/)                                       |
+|           | Layer 7   | [Azure Application Gateway](https://docs.microsoft.com/en-us/azure/application-gateway/)                           |
+| **GCP**   | Layer 4/7 | [Cloud Load Balancing](https://cloud.google.com/load-balancing/docs/load-balancing-overview)                       |
+
+Boundary workers do not require any load balancing. Load balancing for the
+Boundary workers is handled by the Boundary controllers when clients initiate
+sessions to Boundary targets.
+
+## Failure tolerance characteristics
+
+Refer to the following section for fault tolerance recommendations for
+[nodes](#node-failure), [availability zones](#availability-zone-failure), and
+[regional failures](#regional-failures).
+
+### Node failure
+
+The following section provides recommendations to prevent node failure on
+controllers and workers.
+
+#### Controllers
+
+Boundary controllers store all state and configuration within a PostgreSQL
+database that must not be deployed on the controller nodes. When a controller
+node fails, users will still be able to interact with other Boundary
+controllers, assuming the presence of additional nodes behind a load balancer.
+
+#### Workers
+
+Boundary workers are used as either proxies or reverse proxies. Boundary workers
+routinely communicate with Boundary controllers in order to report their health.
+In the event of a Boundary worker node failure, it’s best practice to have at
+least three Boundary workers per network boundary, per type (ingress and
+egress). Therefore, the controller will assign a user’s proxy session to an
+active Boundary worker node.
+
+### Availability zone failure
+
+The following section provides recommendations to overcome availability zone
+outages for controllers and workers.
+
+#### Controllers
+
+By deploying Boundary controllers in the recommended architecture across three
+availability zones with load balancing in front of them, the Boundary control
+plane can survive outages in up to 2 availability zones.
+
+#### Workers
+
+The best practice for deploying Boundary workers is to have at least one worker
+deployed per availability zone. In the case of an availability zone outage, if
+the networking service is still up, users will have their attempted session
+connection proxied through a worker in a different availability zone and then
+onto the target (granted the proper security rules are in place to allow for
+cross subnet/availability zone communication).
+
+### Regional failures
+
+Generally speaking, when there is a failure in an entire cloud region, the
+resources running in that region will most likely be inaccessible, especially if
+the networking service is affected.
+
+#### Controllers
+
+To continue to serve Boundary controller requests in the event of a regional
+outage, there must be a deployment like the one outlined in this guide in a
+different region. The nodes in the secondary region must be able to communicate
+with with PostgreSQL database, which can be accomplished with multi-regional
+database technologies from the various cloud providers (for example AWS RDS Read
+Replicas, where a read replica can be promoted to a primary in the event the
+primary resides in a failed region).
+
+Another point of consideration is how to handle load balancing Boundary
+controller requests to regions that are not in a failed state. Services like
+[AWS Global Accelerator](https://aws.amazon.com/global-accelerator/) for AWS,
+[Cross-region Load
+Balancer](https://learn.microsoft.com/en-us/azure/load-balancer/cross-region-overview)
+for Azure, and [GCP Cloud Load
+Balancer](https://cloud.google.com/load-balancing/docs/choosing-load-balancer#global-regional)
+for GCP all provide this level of functionality with some configuration.
+
+<Note>
+
+  Refer to the following documents for additional information regarding
+  multi-region disaster recovery strategies for PostgreSQL on the following
+  cloud providers:
+
+  - [AWS](https://aws.amazon.com/blogs/database/implementing-a-disaster-recovery-strategy-with-amazon-rds/)
+  - [Azure](https://learn.microsoft.com/en-us/azure/postgresql/single-server/concepts-read-replicas)
+  - [GCP](https://cloud.google.com/sql/docs/postgres/replication)
+
+</Note>
+
+#### Workers
+
+In the case of a regional outage, if a Boundary worker cannot reach its upstream
+worker, cannot reach a controller, a user cannot reach the worker, or any
+combination of the above, the user will not be able to establish a proxied
+session to the target.
+
+## Glossary
+
+### Boundary controller
+
+Boundary controllers manage state for users, hosts, and access policies, and the
+external providers Boundary can query for service discovery.
+
+### Boundary worker
+
+Boundary worker nodes are assigned by the control plane once an authenticated
+user selects a target to connect to. Workers with end-network access proxy
+sessions to hosts under management.
+
+### Availability zone
+
+An availability zone is a single network failure domain that hosts part or
+all of a Boundary deployment. Examples of availability zones include:
+
+- An isolated datacenter
+- An isolated cage in a datacenter if it is isolated from other cages by all
+  other means (power, network, etc)
+- An "Availability Zone" in AWS or Azure; A "Zone" in GCP
+
+### Region
+
+A region is a collection of one or more availability zones on a low-latency
+network. Regions are typically separated by significant distances. A region
+could host one or more Boundary controllers or workers.
+
+### Autoscaling
+
+Autoscaling is the process of automatically scaling computational resources
+based on service activity. Autoscaling may be either horizontal, meaning to
+add more machines into the pool of resources, or vertical, meaning to increase
+the capacity of existing machines.
+
+Each major cloud provider offers a managed autoscaling service:
+
+| Cloud     | Managed Autoscaling Service                                                                                           |
+| --------- | --------------------------------------------------------------------------------------------------------------------- |
+| **AWS**   | [Auto Scaling Groups](https://docs.aws.amazon.com/autoscaling/ec2/userguide/AutoScalingGroup.html)                    |
+| **Azure** | [Virtual Machine Scale Sets](https://docs.microsoft.com/en-us/azure/virtual-machine-scale-sets/)                      |
+| **GCP**   | [Managed Instance Groups](https://cloud.google.com/compute/docs/instance-groups/creating-groups-of-managed-instances) |
+
+### Load balancer
+
+A load balancer is a system that distributes network requests across multiple
+servers. It may be a managed service from a cloud provider, a physical network
+appliance, a piece of software, or a service discovery platform such as Consul.
+
+Each major cloud provider offers one or more managed load balancing services:
+
+| Cloud     | Layer     | Managed Load Balancing Service                                                                                     |
+| --------- | --------- | ------------------------------------------------------------------------------------------------------------------ |
+| **AWS**   | Layer 4   | [Network Load Balancer](https://docs.aws.amazon.com/elasticloadbalancing/latest/network/introduction.html)         |
+|           | Layer 7   | [Application Load Balancer](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/introduction.html) |
+| **Azure** | Layer 4   | [Azure Load Balancer](https://docs.microsoft.com/en-us/azure/load-balancer/)                                       |
+|           | Layer 7   | [Azure Application Gateway](https://docs.microsoft.com/en-us/azure/application-gateway/)                           |
+| **GCP**   | Layer 4/7 | [Cloud Load Balancing](https://cloud.google.com/load-balancing/docs/load-balancing-overview)                       |
+
+## Next steps
+
+- [Install a Boundary Enterprise License](/boundary/tutorials/enterprise/hashicorp-enterprise-license)
+
+- [Boundary Enterprise Deployment Guide](/boundary/tutorials/enterprise/ent-deployment-guide)
+
+## Additional references
+
+- [Boundary Enterprise documentation](/boundary/docs/enterprise)
+
+- [Boundary reference architecture](https://github.com/hashicorp/boundary-reference-architecture)

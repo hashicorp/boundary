@@ -1,0 +1,106 @@
+---
+id: 6f2420c4-fd09-49e3-a9ba-0605bc553739
+name: Introduction to HCP Boundary
+short_name: Introduction to HCP Boundary
+description: Introduction to Boundary common workflow tutorials on HCP.
+read_time: 3
+edition: hcp
+products_used:
+  - product: boundary
+    min_version: 0.12.0
+    max_version: 0.13.1
+  - product: terraform
+default_collection_context: boundary/hcp-administration
+---
+
+The [Getting Started tutorials](/boundary/tutorials/hcp-getting-started) gave
+you a tour of the Admin Console UI and examined different [Boundary
+resources](/boundary/tutorials/hcp-getting-started/hcp-getting-started-console#boundary-resource-summary).
+
+This sequence of tutorials demonstrates common resource management operations
+for HCP Boundary. Complete the tutorials in sequential order to create the
+complete set of resources shown in the diagram below.
+
+![Resources](/img/boundary/diagram-resource-mgmt.png)
+
+## Prerequisites
+
+To complete this collection of tutorials, you need:
+
+- A [Boundary binary](/boundary/install/) in your `PATH`.
+  This tutorial uses the 0.12.0 version of Boundary.
+
+- [Terraform 0.13.0 or greater](/terraform/tutorials/aws-get-started/install-cli) provides an
+  optional workflow for these tutorials. The binary must be available in your
+  `PATH`.
+
+- Access to an HCP Boundary instance.
+
+- A publicly accessible Ubuntu instance (for use as a target).
+
+- An ssh key-pair that can be used to authenticate with the Ubuntu instance.
+  
+  Ensure that you have a local copy of the private key. This tutorial collection
+  references the private key stored at an example path of
+  `/Users/myuser/.ssh/ubuntu-private-key.pem`
+
+<Note>
+
+ Ubuntu is used in this tutorial for demonstration purposes only. You can
+ [follow this
+ guide](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EC2_GetStarted.html)
+ to create a publicly accessible EC2 instance to use for this tutorial. Ensure
+ that you have access to the [key
+ pair](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/get-set-up-for-amazon-ec2.html#create-a-key-pair)
+ used to provision the instance. This key will be used later on to access the
+ instance.
+
+</Note>
+
+To perform the tasks described in this collection, you need to have an HCP
+Boundary environment. Refer to the [Getting
+Started](/boundary/tutorials/hcp-getting-started/hcp-getting-started-intro) tutorial to set up HCP
+Boundary.
+
+## Get setup
+
+Start by authenticating to Boundary using the **Cluster URL** copied from HCP,
+and the **Auth Method ID** copied from the Admin Console UI. Export these values
+as environment variables, and then log in.
+
+First, open a shell session and export the `BOUNDARY_ADDR` environment variable.
+Visit the [Create a Boundary Instance on HCP](/boundary/tutorials/hcp-getting-started/hcp-getting-started-create)
+tutorial if you need to locate this value.
+
+```shell-session
+$ export BOUNDARY_ADDR=<HCP-CLUSTER-URL>
+```
+
+Now export the `BOUNDARY_AUTH_METHOD_ID` environment variable. Visit the [Getting Started
+with the Admin Console](/boundary/tutorials/hcp-getting-started/hcp-getting-started-console) tutorial if you
+need to locate this value.
+
+```shell-session
+$ export BOUNDARY_AUTH_METHOD_ID=<PASSWORD-AUTH-METHOD-ID>
+```
+
+Now log in to Boundary by specifying the **login name** and **password** for the
+admin user for the HCP Boundary cluster. Visit the [Getting Started on
+HCP](/boundary/tutorials/hcp-getting-started/hcp-getting-started-cloud) tutorial for a reminder of how this
+user was set up. In the example below, the login name is `admin`. Enter `password`
+at the `Please enter the password (it will be hidden):` prompt.
+
+```shell-session
+$ boundary authenticate
+Please enter the login name (it will be hidden):
+Please enter the password (it will be hidden):
+Authentication information:
+  Account ID:      acctpw_VOeNSFX8pQ
+  Auth Method ID:  ampw_wxzojlKJLN
+  Expiration Time: Mon, 13 Feb 2023 12:35:32 MST
+  User ID:         u_1vUkf5fPs9
+The token was successfully stored in the chosen keyring and is not displayed here.
+```
+
+Next, the [Manage Scopes](/boundary/tutorials/hcp-administration/hcp-manage-scopes) tutorial
+demonstrates basic resource management and permissions modeling.

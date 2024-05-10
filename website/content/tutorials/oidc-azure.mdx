@@ -1,0 +1,2120 @@
+---
+id: e447dc0a-8a02-4c55-92c6-e288f7377c4e
+name: OIDC authentication with Microsoft Azure
+short_name: OIDC authentication with Azure
+description: |-
+  Instructions to configure Open-ID Connect (OIDC) authentication with 
+  Boundary and Microsoft Entra ID.
+read_time: 18
+products_used:
+  - product: boundary
+    min_version: 0.2.1
+    max_version: 0.15.1
+  - product: terraform
+default_collection_context: boundary/identity-management
+variants:
+  - slug: boundary-deploy
+    options:
+      - hcp
+      - dev
+---
+
+[OpenID Connect](https://openid.net/specs/openid-connect-core-1_0.html) (OIDC) is an internet-scale federated identity and authentication protocol built on top of the [OAuth 2.0](https://tools.ietf.org/html/rfc6749) authorization framework and the [JSON Object Signing and Encryption](https://tools.ietf.org/html/rfc7520) (JOSE) cryptographic system. OIDC builds on top of the OAuth 2.0 authorization protocol to enable a user to authorize a third-party application to access the user’s identity and authentication information.
+
+The OIDC authentication method allows Boundary users to delegate authentication to an OIDC provider. This feature allows Boundary to integrate with popular identity providers like Microsoft Entra ID, cloud-hosted active directory services with an OIDC frontend, and cloud identity management systems such as AWS IAM.
+
+Boundary users can create, read, update, and delete new OIDC authentication
+methods using the Admin Console UI, Boundary CLI, or the Boundary Terraform
+provider to enable login. OIDC auth methods can also be utilized for logging
+into the Admin Console and Desktop applications.
+
+This tutorial provides an example of setting up OIDC with the Microsoft Entra ID provider and managing OIDC authentication methods.
+
+### OIDC authentication methods overview
+
+1. [Get setup](#get-setup)
+1. [Microsoft Entra ID configuration](#providers)
+1. [Auth method creation](#auth-method-creation)
+1. [Authentication states](#authentication-states)
+1. [OIDC authentication](#authenticate-using-oidc)
+
+## Prerequisites
+
+- A [Boundary binary](/boundary/install/) greater than 0.8.0 in your `PATH`
+
+- This tutorial assumes you can [connect to an HCP Boundary cluster](/boundary/tutorials/hcp-getting-started/hcp-getting-started-console) **or** launch Boundary in [dev mode](/boundary/tutorials/oss-getting-started/oss-getting-started-dev).
+
+- An [Azure](https://portal.azure.com/) test account. The associated email address should not be tied to another SSO method, so use of a personal account is recommended.
+
+- Installing the [Boundary Desktop App](/boundary/tutorials/oss-getting-started/oss-getting-started-desktop-app) provides an optional workflow for this tutorial. The [1.2.0 version](https://releases.hashicorp.com/boundary-desktop/1.2.0/) or above is required for OIDC support.
+
+- Installing [Terraform 0.13.0 or greater](/terraform/tutorials/aws-get-started/install-cli) provides an optional workflow for this tutorial. The binary must be available in your `PATH`.
+
+## Get setup
+
+In this tutorial, you will test OIDC integrations using HCP Boundary or by deploying a Boundary controller locally using dev mode.
+
+<Variant slug="boundary-deploy" option="hcp">
+
+The [HCP Quickstart](/boundary/tutorials/hcp-getting-started) tutorials provide an overview of getting started with an HCP Boundary cluster.
+
+If you have an HCP Boundary cluster deployed, the [Access HCP Boundary](/boundary/tutorials/hcp-getting-started/hcp-getting-started-console) tutorial provides an overview of configuring your local machine to authenticate with your HCP cluster.
+
+This tutorial provides both CLI and UI workflows for setting up OIDC authentication.
+
+<Tabs>
+<Tab heading="Admin Console" group="admin">
+
+To proceed with the UI workflow:
+
+1. Open the Admin Console UI by entering your HCP Boundary Cluster URL into a
+   browser (such as
+   `https://e58fe114-7624-431c-994d-b6670e90b03J.boundary.hashicorp.cloud`).
+
+1. Enter the admin username and password you created when you deployed the new
+   instance and click **Authenticate**.
+
+![Admin UI Login](/img/boundary/boundary-ui-login-hcp_light.png#light-theme-only)
+![Admin UI Login](/img/boundary/boundary-ui-login-hcp_dark.png#dark-theme-only)
+
+You are now logged into your HCP Boundary instance's **Global** scope using the
+web UI. This is the default scope for all new Boundary clusters. You can now
+proceed to the [Providers](#providers) section to proceed with the Admin Console
+UI workflow.
+
+</Tab>
+<Tab heading="CLI" group="cli">
+
+To proceed with the CLI workflow:
+
+1. Log in to the Boundary web UI and copy the ID of the scope or org you want to enable OIDC in by clicking the copy icon.
+
+   Open a terminal session and **set a environment variable for the org ID.** You may use the `global` scope for the org ID, create a new org, or select an existing org where OIDC should be configured. This example will enable OIDC in the `global` scope.
+
+   ```shell-session
+   $ export BOUNDARY_SCOPE_ID=global
+   ```
+
+1. In the Boundary web UI, click **Orgs** in the left navigation menu to return
+   to the global scope, and then click **Auth Methods**.
+
+   Click the copy icon for the **Password** auth method.
+
+   In your terminal **set an environment variable named `BOUNDARY_AUTH_METHOD_ID`** to the
+   copied ID.
+
+   ```shell-session
+   $ export BOUNDARY_AUTH_METHOD_ID=<auth-method-id>
+   ```
+
+   Close the Boundary web UI.
+
+1. Return to the HCP web Portal **Boundary** page, then click the copy icon for
+   the **Cluster URL** in the **Getting started with Boundary** section.
+
+   In your terminal, **set the `BOUNDARY_ADDR` environment variable** to the
+   copied URL.
+
+   ```shell-session
+   $ export BOUNDARY_ADDR=<actual-boundary-address>
+   ```
+
+1. Log in with the administrator credentials you created when you deployed the
+   HCP Boundary instance. Enter your password at the `Please enter the password
+   (it will be hidden):` prompt.
+
+   ```shell-session
+   $ boundary authenticate password -auth-method-id $BOUNDARY_AUTH_METHOD_ID -login-name admin
+   Please enter the password (it will be hidden):
+
+   Authentication information:
+     Account ID:      acctpw_FfOfCS1d5K
+     Auth Method ID:  ampw_YfIUt060sp
+     Expiration Time: Fri, 30 Sep 2022 11:25:48 MDT
+     User ID:         u_RapeEBo5Uf
+   
+   The token was successfully stored in the chosen keyring and is not displayed here.
+   ```
+
+You are now logged into your HCP Boundary instance's **Global** scope using the
+CLI. This is the default scope for all new Boundary clusters.
+
+</Tab>
+<Tab heading="Terraform" group="terraform">
+
+To proceed with the Terraform workflow:
+
+The following values are needed to set up the [Boundary Terraform
+provider](https://registry.terraform.io/providers/hashicorp/boundary). The
+`password_auth_method_login_name` and `password_auth_method_password` are
+created when first [setting up HCP
+Boundary](/boundary/tutorials/hcp-getting-started/hcp-getting-started-create), and the others can be
+gathered from the HCP portal or the Boundary Admin Console UI.
+
+- `addr` (from HCP portal)
+- `auth_method_id` (from Boundary Admin Console UI)
+- `password_auth_method_login_name` (from initial Boundary Cluster creation)
+- `password_auth_method_password` (from initial Boundary Cluster creation)
+- `scope_id` (global scope from Boundary Admin Console UI)
+
+Locate these values and have them ready for setting up the Terraform config
+files later on.
+
+</Tab>
+</Tabs>
+
+</Variant>
+<Variant slug="boundary-deploy" option="dev">
+
+Start Boundary in dev mode:
+
+```shell-session
+$ boundary dev
+==> Boundary server configuration:
+
+        [Controller] AEAD Key Bytes: hdcjQ5gegRbttzQ66D5GJjcxB+xtdHzL
+          [Recovery] AEAD Key Bytes: E1/gdhTuDyhsvIm+tkQR0i4m/uSRrd5A
+       [Worker-Auth] AEAD Key Bytes: gwo86AYxBlbPCLsw9lsBzZ4Fd7adcydw
+               [Recovery] AEAD Type: aes-gcm
+                   [Root] AEAD Type: aes-gcm
+    [Worker-Auth-Storage] AEAD Type: aes-gcm
+            [Worker-Auth] AEAD Type: aes-gcm
+                                Cgo: disabled
+     Controller Public Cluster Addr: 127.0.0.1:9201
+             Dev Database Container: hardcore_keller
+                   Dev Database Url: postgres://postgres:password@localhost:55000/boundary?sslmode=disable
+         Generated Admin Login Name: admin
+           Generated Admin Password: password
+          Generated Host Catalog Id: hcst_1234567890
+                  Generated Host Id: hst_1234567890
+              Generated Host Set Id: hsst_1234567890
+      Generated Oidc Auth Method Id: amoidc_1234567890
+             Generated Org Scope Id: o_1234567890
+  Generated Password Auth Method Id: ampw_1234567890
+         Generated Project Scope Id: p_1234567890
+                Generated Target Id: ttcp_1234567890
+  Generated Unprivileged Login Name: user
+    Generated Unprivileged Password: password
+                         Listener 1: tcp (addr: "127.0.0.1:9200", cors_allowed_headers: "[]", cors_allowed_origins: "[*]", cors_enabled: "true", max_request_duration: "1m30s", purpose: "api")
+                         Listener 2: tcp (addr: "127.0.0.1:9201", max_request_duration: "1m30s", purpose: "cluster")
+                         Listener 3: tcp (addr: "127.0.0.1:9203", max_request_duration: "1m30s", purpose: "ops")
+                         Listener 4: tcp (addr: "127.0.0.1:9202", max_request_duration: "1m30s", purpose: "proxy")
+                          Log Level: info
+                              Mlock: supported: false, enabled: false
+                            Version: Boundary v0.10.3
+                        Version Sha: d9eba38993eb70820a396894f2f1e28601d13c3d
+         Worker Auth Current Key Id: folic-obliged-dude-stroller-skinless-eloquence-legible-dispense
+   Worker Auth Registration Request: GzusqckarbczHoLGQ4UA25uSRm41paoR5HikgcBsCT4PMDFT7StpsFy5xjiWJwxszReKwcfGniKLcdpQto5HjhH3PqmdLU8fdT9kM7RMLiyzLKWdLqVWBhhdUiEy7Re2ConJcGWdHsGK7Th6zVQ3SXjqND3dQ3ytcVtAhdEznJQ58ib6HoMvpMTs66TS5ULCBXxpQ1u2syC6ChNPEPbaSpQd9pKWjPcPRVDjKpMzp6cjw9LZSPxBdadM81f7yS3voWoM5yMciXdUW6rqSMaP1NxRvQUAdhVQsM1ZqGLHNV
+           Worker Auth Storage Path: /var/folders/8g/4dnhwwzx2d771tkklxwrd0380000gp/T/nodeenrollment1533264699
+           Worker Public Proxy Addr: 127.0.0.1:9202
+
+==> Boundary server started! Log data will stream in below:
+
+{
+  "id": "GypYTtKfJI",
+  "source": "https://hashicorp.com/boundary/localmachine/controller+worker",
+  "specversion": "1.0",
+  "type": "system",
+  "data": {
+    "version": "v0.1",
+    "op": "github.com/hashicorp/boundary/internal/observability/event.(*HclogLoggerAdapter).writeEvent",
+    "data": {
+      "@original-log-level": "none",
+      "@original-log-name": "aws",
+      "msg": "configuring client automatic mTLS"
+    }
+  },
+  "datacontentype": "text/plain",
+  "time": "2022-09-06T14:14:37.939433-06:00"
+}
+...
+... More log output ...
+...
+```
+
+Leave dev mode running in the current session, and **open a new terminal window or
+tab.**
+
+**Authenticate to the local Boundary dev server.** Enter the password `password`
+when prompted.
+
+```shell-session
+$ boundary authenticate password -auth-method-id ampw_1234567890 -login-name admin
+Please enter the password (it will be hidden): <password>
+
+Authentication information:
+  Account ID:      acctpw_1234567890
+  Auth Method ID:  ampw_1234567890
+  Expiration Time: Wed, 14 Jul 2021 11:38:18 MDT
+  User ID:         u_1234567890
+
+The token was successfully stored in the chosen keyring and is not displayed here.
+```
+
+</Variant>
+
+### Providers
+
+To enable an OIDC auth method an administrator must first configure their OIDC
+provider, and then Boundary. The administrator registers Boundary as a new
+client with their OIDC provider by providing some values unique to their
+Boundary deployment. The administrator then configures Boundary with unique
+client information provided by their OIDC provider during registration. These
+values must match up for OIDC to work.
+
+The administrator will need to provide a list of Boundary callback URLs when
+configuring the OIDC provider. The callback URLs route to one of the controllers
+and must begin with 'https', unless Boundary is in dev mode, where the URLs will
+route to localhost.
+
+Many OIDC providers can be integrated with Boundary. This tutorial demonstrates
+working with Microsoft Entra ID, a popular provider for OIDC.
+
+### Get setup on Microsoft Entra ID
+
+An Azure account and sample application are required to setup Entra ID as an
+OIDC provider for Boundary. If you don't have an account, [sign up for
+Azure](https://azure.microsoft.com/en-us/free/). It is recommended to use a
+personal Microsoft account for testing, and to avoid integrating an account that
+might already be associated with Azure. A free account is suitable for testing
+OIDC integration with Boundary. Please note that you are responsible for any
+charges incurred by following the steps in this tutorial.
+
+### Create a user
+
+First, create an Entra ID user that will be permitted to log into the
+application that authorizes Boundary.
+
+<Tip>
+
+  You may also use your existing Azure user account to test OIDC with Boundary. Skip to the [Create an application](#create-an-application) section to avoid creating a new user.
+
+</Tip>
+
+1. Once signed up, it may take some time for a new tenant to become available.
+   Once available, sign in to the [Azure Portal](https://portal.azure.com/).
+   Navigate to the **Microsoft Entra ID** view using the sidebar on the left
+   side of the page.
+
+   ![Azure Portal](/img/boundary/oidc/azure-entra-create-user-0.png)
+
+1. You will need an Entra ID tenant that is permitted to log into the
+   application that authorizes Boundary. If no tenants are listed in the Azure
+   AD view, **create a new tenant** by following [these
+   instructions](https://learn.microsoft.com/en-us/entra/fundamentals/create-new-tenant)
+   in the Azure docs. You can also use a pre-existing tenant if one is already
+   set up. This tutorial uses the _Boundary_ organization and the _boundaryoidc_
+   domain name.
+
+1. Next, create a new user. In the tenant sidebar menu, select **Users** from
+   the _Manage_ section. Click the **+ New User** button.
+
+   ![Azure Users Portal](/img/boundary/oidc/azure-entra-create-user-1.png)
+
+1. Enter the _User name_, and under _Password_ enable the **Let me create the
+   password** option. Define a password, then click **Create**.
+
+   ![Azure Create User](/img/boundary/oidc/azure-entra-create-user-2.png)
+
+1. The new user should then be displayed under the Entra ID Users portal. This
+   tutorial created a user named _admin_ with the User Principle Name
+   `admin@boundaryoidc.onmicrosoft.com`.
+
+   ![Azure Create User](/img/boundary/oidc/azure-entra-create-user-3.png)
+
+1. If using Terraform to provision Boundary, select the newly created user to
+   view its details. Copy the **Object ID** value under the _Identity_ section.
+   Save this value for defining the `oidc_user` `subject` later on.
+
+   ![Azure Create User](/img/boundary/oidc/azure-entra-create-user-4.png)
+
+### Create an application
+
+An
+[application](https://learn.microsoft.com/en-us/entra/identity-platform/app-objects-and-service-principals?tabs=browser#application-object)
+is what authorizes Entra ID users added in the previous step to connect with
+Boundary. After creating an application, its configuration details are used to
+add the OIDC auth method to Boundary. 
+
+There are two methods for setting up Boundary as an OIDC provider with Microsoft Azure:
+
+1. Microsoft Entra enterprise application
+1. Generic Entra web application
+
+Either method allows for authentication to Boundary using Microsoft Entra ID as an identity provider. Select an Microsoft Entra configuration method to proceed.
+
+<Tabs>
+<Tab heading="Entra enterprise app" group="azure-enterprise">
+
+This content borrows heavily from the Microsoft Entra [single sign-on (SSO) integration with HashiCorp Boundary](https://learn.microsoft.com/en-us/entra/identity/saas-apps/hashicorp-tutorial) documentation.
+
+1. From the Microsoft Entra ID view, select **Enterprise applications** using
+   the sidebar on the left side of the page.
+
+   ![Azure Enterprise
+   applications](/img/boundary/oidc/azure-entra-ent-app-0.png)
+
+1. From the Enterprise applications view, click the **+ New application** 
+   button.
+
+1. Type `hashicorp boundary` in the search bar, and click on the **HashiCorp
+   Boundary** result.
+
+   Confirm the name of your Boundary integration (this example uses `HashiCorp Boundary`) and click **Create**.
+
+   ![Azure Create Application](/img/boundary/oidc/azure-entra-ent-app-1.png)
+
+1. From the **HashiCorp Boundary | Overview** page, click **Single sign-on**.
+
+   From the **HashiCorp Boundary | OIDC-based Sign-on** page, click **Go to application**.
+
+   ![Azure OIDC App](/img/boundary/oidc/azure-entra-ent-app-2.png)
+
+1. Click **Authentication** under the _Manage_ sidebar.
+
+   <Variant slug="boundary-deploy" option="hcp">
+   
+   The callback URI is shown under the **Redirect URIs** section. This URI is
+   created by appending `/v1/auth-methods/oidc:authenticate:callback` after your
+   HCP Boundary Cluster URL. For example,
+   `https://e58fe114-7624-431c-994d-b6670e90b03J.boundary.hashicorp.cloud/v1/auth-methods/oidc:authenticate:callback`.
+
+   Modify the **Redirect URIs** by pasting your Boundary address into the callback URI. 
+
+   Paste the callback URI in the _Web_ field.
+
+   ```plaintext
+   http://BOUNDARY_ADDR/v1/auth-methods/oidc:authenticate:callback
+   ```
+
+   For example:
+
+   <CodeBlockConfig hideClipboard>
+
+   ```plaintext
+   http://https://e58fe114-7624-431c-994d-b6670e90b03J.boundary.hashicorp.cloud/v1/auth-methods/oidc:authenticate:callback/v1/auth-methods/oidc:authenticate:callback
+   ```
+
+   </CodeBlockConfig>
+
+   Scroll down and locate the **Front-channel logout URL**. The logout URL
+   ensures session logouts are handled correctly.
+   
+   Construct the logout URL by appending `:3000` to the end of your HCP Boundary
+   Cluster URl. For example,
+   `https://e58fe114-7624-431c-994d-b6670e90b03J.boundary.hashicorp.cloud:3000`
+
+   ```plaintext
+   https://BOUNDARY_ADDR:3000
+   ``` 
+
+   </Variant>
+   <Variant slug="boundary-deploy" option="dev">
+
+   Provide the redirect URI, which is
+   `http://localhost:9200/v1/auth-methods/oidc:authenticate:callback` when
+   Boundary is running in dev mode.
+
+   Paste the following redirect URI in the _Web_ field.
+
+   ```plaintext
+   http://localhost:9200/v1/auth-methods/oidc:authenticate:callback
+   ```
+
+   Scroll down and locate the **Front-channel logout URL**. The logout URL
+   ensures session logouts are handled correctly.
+   
+   Construct the logout URL by appending `:3000` to the end of your Boundary's
+   https URL. In Dev mode, this is:
+
+   ```plaintext
+   https://localhost:3000
+   ``` 
+
+   </Variant>
+
+   Click **Save**.
+
+   ![Azure Authentication URI](/img/boundary/oidc/azure-entra-ent-app-3.png)
+
+1. Select **Certificates & Secrets** from the _Manage_ sidebar on the left.
+   Click **New client secret** and fill out the secret details. This tutorial
+   describes the secret as _Boundary OIDC test secret_.
+
+   Click **Add**.
+
+   ![Azure New Secret](/img/boundary/oidc/azure-entra-ent-app-4.png)
+
+   Copy the client **Secret** value and store it for use later. Ensure you grab
+   the **Value**, _not_ the Secret ID.
+
+   ![Azure New Secret](/img/boundary/oidc/azure-entra-ent-app-5.png)
+
+1. Lastly, navigate back to the App overview view using the menu on the left.
+
+   From this view, copy the **Directory (Tenant) ID** and the **Application (client) ID**.
+
+   ![Azure App Settings](/img/boundary/oidc/azure-entra-ent-app-6.png)
+
+   You will also need to construct the application **Issuer** URL.
+
+   An Entra ID OIDC identity provider issuer is usually formatted like
+   `https://login.windows-ppe.net/Tenant_ID/v2.0`, but it may vary depending on
+   your account.
+
+   This is constructed from the **OpenID Connect metadata document** value, which is located in the application **Endpoints** view on the **Overview** page.
+
+   Click on **Endpoints**. Copy the **OpenID Connect metadata document** value, up to the `/v2.0`. For example,
+
+   ```plaintext
+   https://login.windows-ppe.net/e29eae0c-29d7-4851-5e1fb68bfb3-5f8e3/v2.0
+   ```
+
+   ![Azure App Endpoints](/img/boundary/oidc/azure-entra-ent-app-7.png)
+
+   This value will be the **Issuer** used to configure the Boundary OIDC auth method.
+
+   <Note>
+
+    You may need to refer to [Entra OIDC
+    documentation](https://learn.microsoft.com/en-us/entra/identity-platform/v2-protocols)
+    for the latest OIDC endpoint schemas.
+
+   </Note>
+
+   Three important values are needed to configure OIDC with Boundary.
+
+   - Issuer
+   - Client ID
+   - Client Secret
+
+   The following format is used for these values:
+
+   - `issuer` -> `https://login.windows-ppe.net/Tenant_ID/v2.0` (copied from OpenID Connect metadata document)
+   - `client-id` -> _Application (client) ID)_
+   - `client-secret` -> _Client Secret value_
+
+   For example, this tutorial uses the following values:
+
+   - Issuer: `https://login.windows-ppe.net/e29eae0c-29d7-4851-5e1fb68bfb3-5f8e3/v2.0`
+   - Client ID: `a4d21a76-e08c-4d8d-8c47-e1c423ee4d11`
+   - Client Secret: `X9u~u58--~rWLR4Q9i1-PtdZOi_s04~9O-`
+
+   Keep these values in a safe place for use in the next steps.
+
+</Tab>
+<Tab heading="Entra web app" group="azure-web-app">
+
+This content borrows heavily from the Microsoft Entra [register an application](https://learn.microsoft.com/en-us/entra/identity-platform/quickstart-register-app) documentation.
+
+1. From the Entra ID view, select **App Registrations** using the sidebar on the
+   left side of the page.
+
+1. From the Applications view, click the **+ New Registration** button.
+
+   ![Azure Create Application](/img/boundary/oidc/azure-entra-web-app-0.png)
+
+1. On the **Register an application** page, name your applciation and select its
+   tenancy model. For this proof-of-concept tutorial, select **Single-tenant**.
+   This tutorial names the application _Boundary OIDC Test_.
+
+   <Variant slug="boundary-deploy" option="hcp">
+
+   Under **Redirect URI** select the **Web** field.
+   
+   Construct a callback URI and paste it under the **Redirect URI** field. The
+   callback URI is created by appending
+   `/v1/auth-methods/oidc:authenticate:callback` after your HCP Boundary Cluster
+   URL. For example,
+   `https://e58fe114-7624-431c-994d-b6670e90b03J.boundary.hashicorp.cloud/v1/auth-methods/oidc:authenticate:callback`.
+
+   Paste the callback URI in the _Web_ field.
+
+   ```plaintext
+   https://BOUNDARY_ADDR/v1/auth-methods/oidc:authenticate:callback
+   ```
+
+   </Variant>
+   <Variant slug="boundary-deploy" option="dev">
+
+   Under **Redirect URI** select the **Web** field. In dev mode, Boundary's
+   callback URI uses `localhost:9200`.
+
+   Paste the following redirect URI in the _Web_ field.
+
+   ```plaintext
+   http://localhost:9200/v1/auth-methods/oidc:authenticate:callback
+   ```
+
+   </Variant>
+
+   Click **Register**.
+
+   ![Azure Register Application](/img/boundary/oidc/azure-entra-web-app-1.png)
+
+   Once registered, you will be taken to the Overview page for your new app
+   registration.
+
+1. Select **Certificates & Secrets** from the Entra ID menu on the left. Click
+   **New client secret** and fill out the secret details. This tutorial
+   describes the secret as _Boundary OIDC test secret_.
+
+   Click **Add**.
+
+   ![Azure New Secret](/img/boundary/oidc/azure-entra-web-app-2.png)
+
+   Copy the client **Secret** value and store it for use later. Ensure you grab
+   the **Value**, _not_ the Secret ID.
+
+   ![Azure Copy Secret](/img/boundary/oidc/azure-entra-web-app-3.png)
+
+1. Select **Authentication** from the Boundary OIDC test menu on the left.
+
+   Under **Platform configurations** click **+ Add a platform**, then select **Web**.
+
+   ![Add Authentication Web Platform](/img/boundary/oidc/azure-entra-web-app-4.png)
+
+   <Variant slug="boundary-deploy" option="hcp">
+
+   Click **Configure**.
+   
+   Under **Redirect URIs**, verify the callback URI you constructed earlier
+   using the following format:
+
+   ```plaintext
+   http://BOUNDARY_ADDR/v1/auth-methods/oidc:authenticate:callback
+   ```
+
+   Update the callback URI if it is missing or incorrect.
+
+   The **Front-channel logout URL** ensures that session logouts are handled
+   correctly.
+   
+   Construct the logout URL by appending `:3000` to the end of your HCP Boundary
+   Cluster URl. For example,
+   `https://e58fe114-7624-431c-994d-b6670e90b03J.boundary.hashicorp.cloud:3000`
+
+   ```plaintext
+   https://BOUNDARY_ADDR:3000
+   ``` 
+
+   Click **Save** when finished.
+
+   </Variant>
+   <Variant slug="boundary-deploy" option="dev">
+
+   Click **Configure**.
+   
+   Under **Redirect URIs**, verify the callback URI you constructed earlier
+   using the following format:
+
+   ```plaintext
+   http://localhost:9200/v1/auth-methods/oidc:authenticate:callback
+   ```
+   
+   Update the callback URI if it is missing or incorrect.
+   
+   Under **Front-channel logout URL**, enter the following:
+   
+   ```plaintext
+   https://localhost:3000
+   ``` 
+   
+   This ensures session logouts are handled correctly with Boundary running in
+   dev mode.
+
+   Click **Save** when finished.
+
+   </Variant>
+
+1. Now navigate back to the app's **Overview** page using the menu on the left.
+
+   From this view, copy the **Directory (Tenant) ID** and the **Application (client) ID**.
+
+   ![Azure App Settings](/img/boundary/oidc/azure-entra-web-app-5.png)
+
+   You will also need to construct the application **Issuer** URL.
+
+   An Entra ID OIDC identity provider issuer will typically have format of
+   `https://login.microsoftonline.com/Tenant_ID/v2.0`, but it may vary depending on your account.
+
+   On the application **Overview** page, click on **Endpoints**. Copy the
+   **OpenID Connect metadata document** value, up to the `/v2.0`. For example,
+
+   ```plaintext
+   https://login.microsoftonline.com/e29eae0c-29d7-4851-5e1fb68bfb3-5f8e3/v2.0
+   ```
+
+   ![Azure App Endpoints](/img/boundary/oidc/azure-entra-web-app-6.png)
+
+   This value will be the **Issuer** used to configure the Boundary OIDC auth method.
+
+   <Note>
+
+    You may need to refer to [Entra OIDC
+    documentation](https://learn.microsoft.com/en-us/entra/identity-platform/v2-protocols)
+    for the latest OIDC endpoint schemas.
+
+   </Note>
+
+   Three important values are needed when configuring OIDC with Boundary.
+
+   - Issuer
+   - Client ID
+   - Client Secret
+
+   The following format is used for these values:
+
+   - `issuer` -> `https://login.microsoftonline.com/Tenant_ID/v2.0`
+   - `client-id` -> _Application (client) ID)_
+   - `client-secret` -> _Client Secret value_
+
+   For example, this tutorial uses the following values:
+
+   - Issuer: `https://login.microsoftonline.com/e29eae0c-29d7-4851-5e1fb68bfb3-5f8e3/v2.0`
+   - Client ID: `a4d21a76-e08c-4d8d-8c47-e1c423ee4d11`
+   - Client Secret: `X9u~u58--~rWLR4Q9i1-PtdZOi_s04~9O-`
+
+   Keep these values in a safe place for use in the next steps.
+
+</Tab>
+</Tabs>
+
+## Auth method creation
+
+Authentication is the process of establishing a user's identity. The user
+initiates this process by selecting an auth method.
+
+When the user selects an OIDC auth method, the user's client sends a request to
+the system and includes additional data about the client itself. The system then
+returns two URLs: an OIDC authentication request URL and a Boundary token
+request URL.
+
+If the user's client is a web browser, the client stores the Boundary token
+request URL in local storage then redirects the page to the OIDC authentication
+request URL. If the user's client is not a web browser, the client opens a web
+browser to the OIDC authentication request URL and begins polling the Boundary
+token request URL.
+
+The user interacts with the OIDC provider to prove their identity using the
+browser window opened by the user's client. Once the OIDC provider has
+authenticated the user's identity, it redirects the browser window back to
+Boundary. The user's client then retrieves a Boundary token from the request
+URL.
+
+To get started, an authentication method must be created for the provider of
+choice.
+
+### Create auth method for the provider
+
+To set up a new auth method for your provider you will need the following from
+your provider's application settings:
+
+- issuer
+- client-id
+- client-secret
+
+Auth methods can be created using the Admin Console UI, CLI, or using Terraform.
+
+<Tabs>
+<Tab heading="Admin Console" group="admin">
+
+
+The Boundary Admin Console provides a UI for creating and managing OIDC
+resources, including auth methods.
+
+<Variant slug="boundary-deploy" option="hcp">
+
+Open the Admin Console UI by entering your HCP Boundary Cluster URL into a
+browser (such as
+`https://e58fe114-7624-431c-994d-b6670e90b03J.boundary.hashicorp.cloud`).
+
+Enter the admin username and password you created when you deployed the new
+instance and click **Authenticate**.
+
+</Variant>
+<Variant slug="boundary-deploy" option="dev">
+
+Open the Admin Console UI by entering the Dev Controller URL of
+`http://localhost:9200` into a browser.
+
+Enter the admin username `admin` and password `password` and click
+**Authenticate**.
+
+</Variant>
+
+![Admin UI Login](/img/boundary/boundary-ui-login-hcp_light.png#light-theme-only)
+![Admin UI Login](/img/boundary/boundary-ui-login-hcp_dark.png#dark-theme-only)
+
+For **Entra ID**, these settings map to the following:
+
+- `issuer` -> `https://login.windows-ppe.net/Tenant_ID/v2.0`
+- `client-id` -> _Application (client) ID)_
+- `client-secret` -> _Client Secret value_
+
+With these values you gathered from setting up an Entra ID application, a new
+OIDC auth method can be created.
+
+Start by navigating to the Auth Methods settings view using the menu on the left
+side of the Admin Console. Select **New** and click **OIDC**.
+
+![Admin Console New Auth Method](/img/boundary/oidc/admin-new-oidc-auth_light.png#light-theme-only)
+![Admin Console New Auth Method](/img/boundary/oidc/admin-new-oidc-auth_dark.png#dark-theme-only)
+
+Fill out the form details using the settings gathered from the Entra ID
+application settings.
+
+![Admin Console Auth Method Details](/img/boundary/oidc/admin-new-oidc-auth-form_light.png#light-theme-only)
+![Admin Console Auth Method Details](/img/boundary/oidc/admin-new-oidc-auth-form_dark.png#dark-theme-only)
+
+These include:
+
+- Name (_Example: `Azure`_)
+- Description (_Example: `Azure OIDC test auth method`_)
+- Issuer (_Example: `https://login.windows-ppe.net/e29eae0c-29d7-4851-5e1fb68bfb3-5f8e3/v2.0`_)
+- Client ID (_Example: `a4d21a76-e08c-4d8d-8c47-e1c423ee4d11`_)
+- Client Secret (_Example: `X9u~u58--~rWLR4Q9i1-PtdZOi_s04~91-`_)
+
+<Variant slug="boundary-deploy" option="hcp">
+
+Additionally, set the **API URL Prefix**. The API URL Prefix is set to the HCP
+Boundary Cluster URL (for example,
+`https://e58fe114-7624-431c-994d-b6670e90b03J.boundary.hashicorp.cloud`)
+
+- API URL Prefix: `https://BOUNDARY_ADDR`
+
+<Tip title="API URL Prefix">
+
+  The _API URL Prefix_ is used for actions like token retrieval and redirection.
+
+</Tip>
+
+</Variant>
+<Variant slug="boundary-deploy" option="dev">
+
+Additionally, set the **API URL Prefix** as follows:
+
+- API URL Prefix: `http://localhost:9200`
+
+<Tip title="API URL Prefix">
+
+  The _API URL Prefix_ is set to `http://localhost:9200` because Boundary is running in dev mode. This URL is used for actions like token retrieval and redirection.
+
+</Tip>
+
+</Variant>
+
+Once the form is completed, click **Save**.
+
+With the new auth method created, an allowed signing algorithm can be added.
+
+Click **Edit Form** for the new auth method and scroll down to the **Signing
+Algorithms** section. Ensure that **RS256** is selected and click **Add**.
+
+Once added, **Save** the form.
+
+The new authentication method has now been created. Under the **Attributes**
+output, notice the **state** is set to _inactive_. Before it can be used the new
+auth method must be switched to an active state.
+
+Next we will review the available authentication states and activate the new
+OIDC auth method.
+
+<Note title="Troubleshooting">
+
+  Troubleshooting: If unable to save the auth method, ensure that the **Issuer** is prefixed by `https://` and has a trailing `/` at the end of the URL.
+
+</Note>
+
+</Tab>
+<Tab heading="CLI" group="cli">
+
+
+Start by ensuring you are **logged in to Boundary as the admin user.**
+
+For **Entra ID**, these settings map to the following:
+
+- `issuer` -> `https://login.windows-ppe.net/Tenant_ID/v2.0`
+- `client-id` -> _Application (client) ID)_
+- `client-secret` -> _Client Secret value_
+
+With these values you gathered from setting up an Entra ID application, a new
+OIDC auth method can be created.
+
+Start by setting the Client ID, Client Secret, and Tenant ID as environment variables.
+
+```shell-session
+$ export CLIENT_ID="<COPIED-CLIENT-ID>"; \
+export CLIENT_SECRET="<COPIED-CLIENT-SECRET>"; \
+export TENANT_ID="<COPIED-TENANT-ID>"
+```
+
+**Example:**
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ export CLIENT_ID="a4d21a76-e08c-4d8d-8c47-e1c423ee4d11"; \
+export CLIENT_SECRET="X9u~u58--~rWLR4Q9i1-PtdZOi_s04~91-"; \
+export TENANT_ID="e29eae0c-29d7-4851-5e1fb68bfb3-5f8e3"
+```
+
+</CodeBlockConfig>
+
+These values will be passed to Boundary when creating the new OIDC auth method.
+
+<Note>
+
+ The `api-url-prefix` must be set to the URL of your Boundary cluster. Select **HCP** or **Dev mode** to see an example.
+
+</Note>
+
+<Variant slug="boundary-deploy" option="hcp">
+
+For HCP the `api-url-prefix` is set to the HCP cluster's address found in the
+HCP cloud portal. This value is identical to the `BOUNDARY_ADDR` environment
+variable set when [logging in to the CLI](#get-setup) (for example,
+`https://e58fe114-7624-431c-994d-b6670e90b03J.boundary.hashicorp.cloud`). The
+following example passes this shell variable to the `boundary auth-methods
+create oidc` command, but the cluster address can also be passed directly.
+
+```shell-session
+$ boundary auth-methods create oidc \
+  -issuer "https://login.windows-ppe.net/$TENANT_ID/v2.0" \
+  -client-id "$CLIENT_ID" \
+  -client-secret "$CLIENT_SECRET" \
+  -signing-algorithm RS256 \
+  -api-url-prefix "$BOUNDARY_ADDR" \
+  -name "azure"
+```
+
+- The `signing-algorithm` is commonly set to `RS256`.
+
+- The `api-url-prefix` is used by the OIDC provider in the authentication flow,
+  and should match the HCP Boundary cluster's address. The `BOUNDARY_ADDR`
+  variable is passed in this example.
+
+**Example:**
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary auth-methods create oidc \
+  -issuer "https://login.windows-ppe.net/$TENANT_ID/v2.0" \
+  -client-id "$CLIENT_ID" \
+  -client-secret "$CLIENT_SECRET" \
+  -signing-algorithm RS256 \
+  -api-url-prefix "$BOUNDARY_ADDR" \
+  -name "azure"
+
+Auth Method information:
+  Created Time:         Mon, 12 Sep 2022 13:40:38 MDT
+  ID:                   amoidc_rFqhKQlrvn
+  Name:                 azure
+  Type:                 oidc
+  Updated Time:         Mon, 12 Sep 2022 13:40:38 MDT
+  Version:              1
+
+  Scope:
+    ID:                 global
+    Name:               global
+    Type:               global
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    change-state
+    authenticate
+
+  Authorized Actions on Auth Method's Collections:
+    accounts:
+      create
+      list
+    managed-groups:
+      create
+      list
+
+  Attributes:
+    api_url_prefix:     https://e29eae0c-29d7-4851-5e1fb68bfb3-5f8e3.boundary.hashicorp.cloud
+    callback_url:       https://e29eae0c-29d7-4851-5e1fb68bfb3-5f8e3.boundary.hashicorp.cloud/v1/auth-methods/oidc:authenticate:callback
+    client_id:          09443893-b713-4dbf-a417-8882bff4168d
+    client_secret_hmac: SEOTy9cZgs7BTYRknG44rFxQQ64xY3qp2i1iEDpkvX0
+    issuer:             https://login.windows-ppe.net/0e3e2e88-8caf-41ca-b4da-e3b33b6c52ec/
+    signing_algorithms: [RS256]
+    state:              inactive
+```
+
+</CodeBlockConfig>
+
+</Variant>
+<Variant slug="boundary-deploy" option="dev">
+
+For Dev mode the `api-url-prefix` is set to the local controller's address of
+`http://localhost:9200`.
+
+```shell-session
+$ boundary auth-methods create oidc \
+  -issuer "https://login.windows-ppe.net/$TENANT_ID/v2.0" \
+  -client-id "$CLIENT_ID" \
+  -client-secret "$CLIENT_SECRET" \
+  -signing-algorithm RS256 \
+  -api-url-prefix "http://localhost:9200" \
+  -name "azure"
+```
+
+- The `signing-algorithm` is commonly set to `RS256`.
+
+- The `api-url-prefix` is used by the OIDC provider in the authentication flow,
+  and should match the Boundary controller's address, set to
+  `http://localhost:9200` in this example.
+
+**Example:**
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary auth-methods create oidc \
+  -issuer "https://login.windows-ppe.net/$TENANT_ID/v2.0" \
+  -client-id "$CLIENT_ID" \
+  -client-secret "$CLIENT_SECRET" \
+  -signing-algorithm RS256 \
+  -api-url-prefix "https://localhost:9200" \
+  -name "azure"
+
+Auth Method information:
+  Created Time:         Mon, 07 Jun 2021 14:28:45 MDT
+  ID:                   amoidc_rFqhKQlrvn
+  Name:                 azure
+  Type:                 oidc
+  Updated Time:         Mon, 07 Jun 2021 14:28:45 MDT
+  Version:              1
+
+  Scope:
+    ID:                 global
+    Name:               global
+    Type:               global
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    change-state
+    authenticate
+
+  Authorized Actions on Auth Method's Collections:
+    accounts:
+      create
+      list
+
+  Attributes:
+    api_url_prefix:     https://localhost:9200
+    callback_url:       https://localhost:9200/v1/auth-methods/oidc:authenticate:callback
+    client_id:          a4d21a76-e08c-4d8d-8c47-e1c423ee4d11
+    client_secret_hmac: SOhcIKhF0rBbe_Xc-2eHY0BNfIc3AO8GkQ0iohgLT_4
+    issuer:             https://login.windows-ppe.net/e29eae0c-29d7-4851-5e1fb68bfb3-5f8e3/
+    signing_algorithms: [RS256]
+    state:              inactive
+```
+
+</CodeBlockConfig>
+
+</Variant>
+
+The new authentication method has now been created. Under the **Attributes**
+output, notice the **state** is set to _inactive_. Before it can be used the new
+auth method must be switched to an active state.
+
+Next we will review the available authentication states and activate the new
+OIDC auth method.
+
+</Tab>
+<Tab heading="Terraform" group="terraform">
+
+Begin by creating a working directory to store the Terraform configuration file
+and changing into that directory. This tutorial will work out of the user's
+`HOME` directory.
+
+```shell-session
+$ mkdir learn-boundary-oidc && cd learn-boundary-oidc/
+```
+
+Next, create a Terraform configuration file called `main.tf`.
+
+```shell-session
+$ touch main.tf
+```
+
+Open the `main.tf` file in your code editor and add the base Boundary provider
+configuration below. The `1.0.2` version or above is required to support OIDC.
+An `output` value is included to print the oidc auth method id when Terraform
+applies the configuration.
+
+The initial setup should set the boundary provider to match Boundary's
+authentication configuration so that Terraform can authenticate to Boundary.
+These settings are discussed in the [Get Setup](#get-setup) section.
+
+<Variant slug="boundary-deploy" option="hcp">
+
+Copy the following configuration, but update the `addr`, `auth_method_id`,
+`password_auth_method_login_name`, and `password_auth_method_password` with the
+correct values for your Boundary org. 
+
+- `addr` is the `BOUNDARY_ADDR` copied from the HCP portal. 
+- `auth_method_id` is for the `password` auth method and can be gathered from
+  the Boundary Admin Console UI. 
+- `password_auth_method_login_name` and `password_auth_method_password` were
+  created upon initial setup of the HCP Boundary cluster.
+
+<CodeBlockConfig filename="learn-boundary-oidc/main.tf">
+
+```hcl
+terraform {
+  required_providers {
+    boundary = {
+      source  = "hashicorp/boundary"
+      version = "1.0.12"
+    }
+  }
+}
+
+provider "boundary" {
+  addr                            = "BOUNDARY_ADDR" # updateme
+  auth_method_id                  = "ampw_1234567890"    # updateme
+  password_auth_method_login_name = "myuser"             # updateme
+  password_auth_method_password   = "passpass"           # updateme
+}
+```
+
+</CodeBlockConfig>
+
+</Variant>
+<Variant slug="boundary-deploy" option="dev">
+
+Copy the following configuration, but replace the `recovery_kms_hcl` `key` with
+the value printed in the `boundary dev` terminal window.
+
+<CodeBlockConfig filename="learn-boundary-oidc/main.tf">
+
+```hcl
+terraform {
+  required_providers {
+    boundary = {
+      source  = "hashicorp/boundary"
+      version = "1.0.12"
+    }
+  }
+}
+
+output "auth-method-id" {
+  value = boundary_auth_method_oidc.provider.id
+}
+
+provider "boundary" {
+  addr             = "http://127.0.0.1:9200"
+  recovery_kms_hcl = <<EOT
+kms "aead" {
+  purpose = "recovery"
+  aead_type = "aes-gcm"
+  key = "1/niAcbdYlJGqwOJfRtx3AyewF+Ty2EnioOR/q7tWRo="
+  key_id = "global_recovery"
+}
+EOT
+}
+```
+
+</CodeBlockConfig>
+
+</Variant>
+
+Next, Boundary Terraform resources will be used to set up the provider of
+choice.
+
+For **Entra ID**, these settings map to the following:
+
+- `issuer` -> `https://login.windows-ppe.net/Tenant_ID/v2.0`
+- `client-id` -> _Application (client) ID)_
+- `client-secret` -> _Client Secret value_
+- `subject` -> _User `object_id`_
+
+With these values you gathered from the Entra ID application settings a new OIDC
+auth method can be created.
+
+The Terraform Boundary provider enables OIDC using the
+`boundary_auth_method_oidc` and `boundary_account_oidc` resources.
+
+The
+[`boundary_auth_method_oidc`](https://registry.terraform.io/providers/hashicorp/boundary/latest/docs/resources/auth_method_oidc)
+resource uses the following attributes to configure a new auth method:
+
+<CodeBlockConfig hideClipboard>
+
+```plainText
+resource "boundary_auth_method_oidc" "name" {
+  name                = (String)
+  description         = (String)
+  scope_id            = (String)
+  issuer              = (String)
+  client_id           = (String)
+  client_secret       = (String)
+  signing_algorithms  = (List of String)
+  api_url_prefix      = (String)
+}
+```
+
+</CodeBlockConfig>
+
+- The `scope_id` is the global scope ID. For HCP this is gathered from the
+  Boundary Admin Console UI, or is `o_1234567890` if using Boundary's Dev mode.
+- The `issuer` was gathered from the provider, and should be prefixed by `https://`
+- The `client_id` was gathered from the provider
+- The `client_secret` was gathered from the provider
+- The `signing_algorithms` are defined by the provider's issued tokens, and will
+  usually include RS256
+- The `api_url_prefix` is used when generating callback urls and corresponds to
+  an address where the controller is reachable by the provider. For HCP Boundary
+  this is the Boundary Cluster URL found in the HCP portal (such as
+  `https://e58fe114-7624-431c-994d-b6670e90b03J.boundary.hashicorp.cloud`). For
+  dev mode this is `http://localhost:9200`
+
+The
+[`boundary_account_oidc`](https://registry.terraform.io/providers/hashicorp/boundary/latest/docs/resources/account_oidc)
+resource uses the following attributes to configure a new auth method:
+
+<CodeBlockConfig hideClipboard>
+
+```plainText
+resource "boundary_account_oidc" "name" {
+  name           = (String)
+  description    = (String)
+  auth_method_id = (String)
+  issuer         = (String)
+  subject        = (String)
+}
+```
+
+</CodeBlockConfig>
+
+- The `auth_method_id` is defined by the `boundary_auth_method_oidc` resource,
+  and can be accessed using the named scope id, like
+  `boundary_auth_meethod_oidc.name.id`
+- The `issuer` was gathered from the provider, and should be prefixed by `https://`
+- The `subject` maps to the user Object ID, and was gathered from the provider
+  when creating a user
+
+Add these two resources into your `main.tf` file. The entire file contents are
+shown below.
+
+<Variant slug="boundary-deploy" option="hcp">
+
+**_Make sure the following values are updated_**:
+
+- `addr` (from HCP portal)
+- `auth_method_id` (from Boundary Admin Console UI)
+- `password_auth_method_login_name` (from initial Boundary Cluster creation)
+- `password_auth_method_password` (from initial Boundary Cluster creation)
+- `scope_id` (global scope from Boundary Admin Console UI)
+- `issuer` (from provider)
+- `client_id` (from provider)
+- `client_secret` (from provider)
+- `subject` (from provider)
+
+<CodeBlockConfig filename="learn-boundary-oidc/main.tf">
+
+
+```hcl
+terraform {
+  required_providers {
+    boundary = {
+      source  = "hashicorp/boundary"
+      version = "1.0.12"
+    }
+  }
+}
+
+provider "boundary" {
+  addr                            = "BOUNDARY_ADDR" # updateme
+  auth_method_id                  = "ampw_1234567890"    # updateme
+  password_auth_method_login_name = "myuser"             # updateme
+  password_auth_method_password   = "passpass"           # updateme
+}
+
+resource "boundary_auth_method_oidc" "provider" {
+  name                 = "Azure"
+  description          = "OIDC auth method for Azure"
+  scope_id             = "o_1234567890"                  # updateme
+  issuer               = "https://login.windows-ppe.net/e29eae0c-29d7-4851-5e1fb68bfb3-5f8e3/v2.0"   # updateme
+  client_id            = "a4d21a76-e08c-4d8d-8c47-e1c423ee4d11"   # updateme
+  client_secret        = "X9u~u58--~rWLR4Q9i1-PtdZOi_s04~9O-"     # updateme
+  signing_algorithms   = ["RS256"]
+  api_url_prefix       = "https://BOUNDARY_ADDR"             # updateme
+}
+
+resource "boundary_account_oidc" "oidc_user" {
+  name           = "user1"
+  description    = "OIDC account for user1"
+  auth_method_id = boundary_auth_method_oidc.provider.id
+  issuer  = "https://login.windows-ppe.net/e29eae0c-29d7-4851-5e1fb68bfb3-5f8e3/v2.0"  # updateme
+  subject = "c3dc63d0-90e6-4855-b9c0-e87da14a9c5f"
+}
+```
+
+</CodeBlockConfig>
+
+</Variant>
+<Variant slug="boundary-deploy" option="dev">
+
+**_Make sure the following values are updated_**:
+
+- `kms` `key` (from `boundary dev`)
+- `issuer` (from provider)
+- `client_id` (from provider)
+- `client_secret` (from provider)
+- `subject` (from provider)
+
+<CodeBlockConfig filename="learn-boundary-oidc/main.tf">
+
+
+```hcl
+terraform {
+  required_providers {
+    boundary = {
+      source  = "hashicorp/boundary"
+      version = "1.0.12"
+    }
+  }
+}
+
+output "auth-method-id" {
+  value = boundary_auth_method_oidc.provider.id
+}
+
+provider "boundary" {
+  addr             = "http://127.0.0.1:9200"
+  recovery_kms_hcl = <<EOT
+kms "aead" {
+  purpose = "recovery"
+  aead_type = "aes-gcm"
+  key = "m4+NMLonZAcAbr0VhFRThgnt+QM/P6BelMCEdYCBAa0="
+  key_id = "global_recovery"
+}
+EOT
+}
+
+resource "boundary_auth_method_oidc" "provider" {
+  name                 = "Azure"
+  description          = "OIDC auth method for Azure"
+  scope_id             = "o_1234567890"
+  issuer               = "https://login.windows-ppe.net/e29eae0c-29d7-4851-5e1fb68bfb3-5f8e3/v2.0"
+  client_id            = "a4d21a76-e08c-4d8d-8c47-e1c423ee4d11"
+  client_secret        = "X9u~u58--~rWLR4Q9i1-PtdZOi_s04~9O-"
+  signing_algorithms   = ["RS256"]
+  api_url_prefix       = "http://localhost:9200"
+}
+
+resource "boundary_account_oidc" "oidc_user" {
+  name           = "user1"
+  description    = "OIDC account for user1"
+  auth_method_id = boundary_auth_method_oidc.provider.id
+  issuer  = "https://login.windows-ppe.net/e29eae0c-29d7-4851-5e1fb68bfb3-5f8e3/v2.0"
+  subject = "c3dc63d0-90e6-4855-b9c0-e87da14a9c5f"
+}
+```
+
+</CodeBlockConfig>
+
+</Variant>
+
+With these resources in place, first initialize Terraform.
+
+```shell-session
+$ terraform init
+
+Initializing the backend...
+
+Initializing provider plugins...
+- Finding hashicorp/boundary versions matching "1.0.12"...
+- Installing hashicorp/boundary v1.0.12...
+- Installed hashicorp/boundary v1.0.12 (signed by HashiCorp)
+
+Terraform has created a lock file .terraform.lock.hcl to record the provider
+selections it made above. Include this file in your version control repository
+so that Terraform can guarantee to make the same selections by default when
+you run "terraform init" in the future.
+
+Terraform has been successfully initialized!
+
+You may now begin working with Terraform. Try running "terraform plan" to see
+any changes that are required for your infrastructure. All Terraform commands
+should now work.
+
+If you ever set or change modules or backend configuration for Terraform,
+rerun this command to reinitialize your working directory. If you forget, other
+commands will detect it and remind you to do so if necessary.
+```
+
+Next, apply the configuration. Enter `yes` when prompted for confirmation.
+
+```shell-session
+$ terraform apply
+
+An execution plan has been generated and is shown below.
+Resource actions are indicated with the following symbols:
+  + create
+
+Terraform will perform the following actions:
+
+  # boundary_account_oidc.oidc_user will be created
+  + resource "boundary_account_oidc" "oidc_user" {
+      + auth_method_id = (known after apply)
+      + description    = "OIDC account for user1"
+      + id             = (known after apply)
+      + issuer         = "https://login.windows-ppe.net/e29eae0c-29d7-4851-5e1fb68bfb3-5f8e3/v2.0"
+      + name           = "user1"
+      + subject        = "c3dc63d0-90e6-4855-b9c0-e87da14a9c5f"
+    }
+
+  # boundary_auth_method_oidc.provider will be created
+  + resource "boundary_auth_method_oidc" "provider" {
+      + api_url_prefix     = "http://localhost:9200"
+      + callback_url       = (known after apply)
+      + client_id          = "a4d21a76-e08c-4d8d-8c47-e1c423ee4d11"
+      + client_secret      = "X9u~u58--~rWLR4Q9i1-PtdZOi_s04~9O-"
+      + client_secret_hmac = (known after apply)
+      + description        = "OIDC auth method for Azure"
+      + id                 = (known after apply)
+      + issuer             = "https://login.windows-ppe.net/e29eae0c-29d7-4851-5e1fb68bfb3-5f8e3/v2.0"
+      + name               = "Azure"
+      + scope_id           = "o_1234567890"
+      + signing_algorithms = [
+          + "RS256",
+        ]
+      + state              = (known after apply)
+      + type               = "oidc"
+    }
+
+Plan: 2 to add, 0 to change, 0 to destroy.
+
+Do you want to perform these actions?
+  Terraform will perform the actions described above.
+  Only 'yes' will be accepted to approve.
+
+  Enter a value: yes
+
+boundary_auth_method_oidc.provider: Creating...
+boundary_auth_method_oidc.provider: Creation complete after 1s [id=amoidc_ZMettTQoi7]
+boundary_account_oidc.oidc_user: Creating...
+boundary_account_oidc.oidc_user: Creation complete after 0s [id=acctoidc_RioLnuyZMw]
+
+Apply complete! Resources: 2 added, 0 changed, 0 destroyed.
+
+Outputs:
+
+auth-method-id = amoidc_ZMettTQoi7
+```
+
+The new authentication method has been created! If Terraform encounters an
+error, ensure the `issuer`, `client_id` and `client_secret` have been copied
+correctly from the provider, and that the issuer is prefixed with `https://`.
+
+Copy the `auth-method-id` from the output.
+
+</Tab>
+</Tabs>
+
+## Authentication states
+
+An OIDC auth method can be in one of several different states: Inactive, Active
+Private, and Active Public. The current state of an OIDC auth method
+affects how endpoints respond to requests and, in some cases, whether access to
+an endpoint requires authentication.
+
+### State change operations
+
+- _MakeInactive_ transitions an OIDC auth method from either the Active Private
+  or the Active Public state into the Inactive state.
+- _MakePrivate_ transitions an OIDC auth method from either the Inactive or the
+  Active Public state into the Active Private state. If transitioning from the
+  Inactive state, the transition will only succeed if the configuration is
+  valid.
+- _MakePublic_ transitions an OIDC auth method from either the Inactive or the
+  Active Private state into the Active Public state. If transitioning from the
+  Inactive state, the transition will only succeed if the configuration is
+  valid.
+
+Three different states exist for an authentication method:
+
+- `inactive` users can not authenticate with inactive auth methods and the inactive auth methods are not
+  listed for unauthenticated users.
+- `active-private` users can authenticate with active-private auth methods and active-private
+  auth methods are not listed for unauthenticated users.
+- `active-public` users can authenticate active-public auth methods and active-public auth methods are
+  listed for unauthenticated users.
+
+Before changing the state of an auth-method, Boundary will retrieve the
+Provider’s discovery document for the auth method’s issuer and attempt to
+validate the auth-method’s configuration against this published information. If
+Boundary is unable to validate the configuration an error is returned and the
+state change is not made.
+
+If a change is made from active-public or active-private to inactive, all
+in-flight authentications will succeed unless the auth method’s configuration is
+modified while the request is in-flight.
+
+When changing an auth method's state using `boundary auth-methods change-state`
+the `-disable-discovered-config-validation` flag is used to disable validation
+against the provider’s published discovery document. This allows for the very
+rare occurrence when the Provider has published an invalid discovery document.
+
+### Activate the OIDC auth method
+
+Now that a new OIDC method has been created, it can be activated and assigned as
+the default login type for the global scope.
+
+Currently the login type is set as inactive, and won't allow authentication.
+
+```shell-session
+$ boundary authenticate oidc -auth-method-id amoidc_oHt4HQFCrN
+Error from controller when performing authentication start
+
+Error information:
+  Kind:                Internal
+  Message:             authmethod_service.(Service).authenticateOidcStart: Error generating parameters for starting the OIDC flow.: unknown: error #500
+  Status:              500
+  context:             Error from controller when performing authentication start
+```
+
+Auth methods can be activated using the Admin Console UI, CLI, or using Terraform.
+
+<Tabs>
+<Tab heading="Admin Console" group="admin">
+
+Before the new auth method will be allowed it must be set to an active state.
+
+Under the settings for the new auth method, select **Inactive** from the menu in
+the upper-right side of the page and change its state by clicking **Public**.
+
+The login type will now allow be allowed.
+
+### Set OIDC as primary login
+
+Global and organization scopes may have auth methods in Boundary, and each scope
+has one primary auth-method ID. Boundary will automatically create a user upon
+first successful authentication using the scope’s primary auth method, which will
+be used by scopes with only one auth method available.
+
+When [migrating the database](/boundary/tutorials/oss-configuration/upgrade-version), Boundary
+will produce a log of any auth methods which resulted in no primary auth method
+being set for the scope.
+
+Set the new OIDC auth method as the primary auth method for the global scope.
+
+Under the settings for the new auth method, select **Manage** from the menu in
+the upper-right side of the page.
+
+A confirmation window will be displayed to inform you that new users that sign
+in using OIDC will automatically be added to the new auth method. Select **OK** to
+continue.
+
+Now try authenticating using the newly created OIDC auth method.
+
+Select the **admin** user menu in the top-right corner of the page and select
+**Deauthenticate**.
+
+Next, select the new auth method called **Azure**, and click **Authenticate**.
+
+![Admin Console Azure](/img/boundary/oidc/admin-azure-authenticate_light.png#light-theme-only)
+![Admin Console Azure](/img/boundary/oidc/admin-azure-authenticate_dark.png#dark-theme-only)
+
+A browser tab should automatically open and prompt you to log in with your Azure
+user account credentials. Ensure you log in with the test user credentials
+created in the Entra ID application setup, **not** your primary Azure account.
+
+![Azure Application Login](/img/boundary/oidc/azure-login.png)
+
+<Note title="Login Issues">
+
+ If you experience any issues logging in, you may be logged into the wrong Azure account. Visit the Azure Portal, select your username in the upper-right corner of the window and click **Sign Out**. Then, revisit the previously opened _Authenticate_ Boundary browser tab and click **Retry** to log back into Azure with the test user account credentials.
+
+</Note>
+
+After successful authentication you are automatically redirected to the Admin
+Console. Notice the restricted permissions for this new user, which can be
+updated and assigned using
+[Roles](/boundary/docs/concepts/domain-model/roles) and
+[Groups](/boundary/docs/concepts/domain-model/groups).
+
+If you were to log back into the Admin Console as the admin user, you would
+notice the new OIDC user has automatically been added under the **Users** view.
+
+![Admin Console New User](/img/boundary/oidc/admin-users-new_light.png#light-theme-only)
+![Admin Console New User](/img/boundary/oidc/admin-users-new_dark.png#dark-theme-only)
+
+Next you will review the various methods that can be used to authenticate to
+Boundary using the new OIDC auth method.
+
+</Tab>
+<Tab heading="CLI" group="cli">
+
+Enable the the auth method by updating its state to `active-public`.
+
+```shell-session
+$ boundary auth-methods change-state oidc -id amoidc_rFqhKQlrvn -state active-public
+
+Auth Method information:
+  Created Time:         Mon, 12 Sep 2022 13:40:38 MDT
+  ID:                   amoidc_rFqhKQlrvn
+  Name:                 azure
+  Type:                 oidc
+  Updated Time:         Mon, 12 Sep 2022 13:56:43 MDT
+  Version:              2
+
+  Scope:
+    ID:                 global
+    Name:               global
+    Type:               global
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    change-state
+    authenticate
+
+  Authorized Actions on Auth Method's Collections:
+    accounts:
+      create
+      list
+    managed-groups:
+      create
+      list
+
+  Attributes:
+    api_url_prefix:     https://e29eae0c-29d7-4851-5e1fb68bfb3-5f8e3.boundary.hashicorp.cloud
+    callback_url:       https://e29eae0c-29d7-4851-5e1fb68bfb3-5f8e3.boundary.hashicorp.cloud/v1/auth-methods/oidc:authenticate:callback
+    client_id:          09443893-b713-4dbf-a417-8882bff4168d
+    client_secret_hmac: SEOTy9cZgs7BTYRknG44rFxQQ64xY3qp2i1iEDpkvX0
+    issuer:             https://login.windows-ppe.net/0e3e2e88-8caf-41ca-b4da-e3b33b6c52ec/v2.0
+    signing_algorithms: [RS256]
+    state:              active-public
+```
+
+With the state set to active the login type will now be allowed.
+
+### Set OIDC as primary login
+
+Global and organization scopes may have auth methods in Boundary, and each scope
+has one primary auth-method ID. Boundary will automatically create a user upon
+first successful authentication using the scope’s primary auth method, which will
+be used by scopes with only one auth method available.
+
+When [migrating the database](/boundary/tutorials/oss-configuration/upgrade-version), Boundary
+will produce a log of any auth methods which resulted in no primary auth method
+being set for the scope.
+
+Set the new OIDC auth method as the primary auth method for the global scope.
+
+```shell-session
+$ boundary scopes update -primary-auth-method-id amoidc_rFqhKQlrvn -id global
+
+Scope information:
+  Created Time:             Thu, 18 Aug 2022 10:55:18 MDT
+  Description:              Global Scope
+  ID:                       global
+  Name:                     global
+  Primary Auth Method ID:   amoidc_rFqhKQlrvn
+  Updated Time:             Mon, 12 Sep 2022 13:58:47 MDT
+  Version:                  3
+
+  Scope (parent):
+    ID:                     global
+    Name:                   global
+    Type:                   global
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+
+  Authorized Actions on Scope's Collections:
+    auth-methods:
+      create
+      list
+    auth-tokens:
+      list
+    groups:
+      create
+      list
+    roles:
+      create
+      list
+    scopes:
+      create
+      list
+    users:
+      create
+      list
+    workers:
+      create:worker-led
+      list
+```
+
+Now try authenticating using the newly created OIDC auth method.
+
+```shell-session
+$ boundary authenticate oidc -auth-method-id amoidc_rFqhKQlrvn
+Opening returned authentication URL in your browser...
+```
+
+A browser tab should automatically open and prompt you to log in with the user
+credentials created when setting up Entra ID.
+
+After successful authentication, return to your terminal and notice the
+Authentication information that is printed.
+
+```shell-session
+$ boundary authenticate oidc -auth-method-id amoidc_rFqhKQlrvn
+Opening returned authentication URL in your browser...
+
+Authentication information:
+  Account ID:      acctoidc_oztPFBFesH
+  Auth Method ID:  amoidc_rFqhKQlrvn
+  Expiration Time: Thu, 13 May 2021 17:01:11 MDT
+  User ID:         u_JCRQP3ID7l
+
+The token was successfully stored in the chosen keyring and is not displayed here.
+```
+
+</Tab>
+<Tab heading="Terraform" group="terraform">
+
+Auth methods must be updated to an active state before they can be used.
+
+The state of the new auth method can be checked using the read operation. First,
+ensure you are logged in as the admin user.
+
+```shell-session
+$ boundary authenticate password -auth-method-id ampw_1234567890 -login-name admin
+Please enter the password (it will be hidden): <password>
+
+Authentication information:
+  Account ID:      apw_DZRvFzmb0Y
+  Auth Method ID:  ampw_1234567890
+  Expiration Time: Thu, 20 May 2021 16:32:06 MDT
+  User ID:         u_1234567890
+
+The token was successfully stored in the chosen keyring and is not displayed here.
+```
+
+Next read the auth method details. Use the `auth-method-id` you copied from the
+`terraform apply` output.
+
+```shell-session
+$ boundary auth-methods read -id amoidc_ZMettTQoi7
+
+Auth Method information:
+  Created Time:         Wed, 09 Jun 2021 12:59:44 MDT
+  Description:          OIDC auth method for Azure
+  ID:                   amoidc_ZMettTQoi7
+  Name:                 Azure
+  Type:                 oidc
+  Updated Time:         Wed, 09 Jun 2021 12:59:45 MDT
+  Version:              2
+
+  Scope:
+    ID:                 o_1234567890
+    Name:               Generated org scope
+    Parent Scope ID:    global
+    Type:               org
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    change-state
+    authenticate
+
+  Authorized Actions on Auth Method's Collections:
+    accounts:
+      create
+      list
+
+  Attributes:
+    api_url_prefix:     http://localhost:9200
+    callback_url:       http://localhost:9200/v1/auth-methods/oidc:authenticate:callback
+    client_id:          a4d21a76-e08c-4d8d-8c47-e1c423ee4d11
+    client_secret_hmac: qbLhGSr0XZpZhdEjChZwjJMqG-dZzsX9gSRG4f44jWQ
+    issuer:             https://login.windows-ppe.net/e29eae0c-29d7-4851-5e1fb68bfb3-5f8e3/v2.0
+    signing_algorithms: [RS256]
+    state:              active-public
+```
+
+Notice at the bottom of the output that the login state is already set to
+`active-public`.
+
+It's important to be aware that using Terraform to provision an auth method will
+set the state to active by default, unless otherwise defined. The `state`
+attribute can be used on the `boundary_auth_method_oidc` resource to set an auth
+method to `active-private` or `inactive`.
+
+Now that the auth method state has been verified, the primary login type can be
+defined for the global scope.
+
+### Set OIDC as primary login
+
+Global and organization scopes may have auth methods in Boundary, and each scope
+has one primary auth-method ID. Boundary will automatically create a user upon
+first successful authentication using the scope’s primary auth method, which will
+be used by scopes with only one auth method available.
+
+When [migrating the database](/boundary/tutorials/oss-configuration/upgrade-version), Boundary
+will produce a log of any auth methods which have more than one auth method
+which resulted in no primary auth method being set for the Scope.
+
+Make three updates to the `boundary_auth_method_oidc` resource in the `main.tf`
+file:
+
+- Set the auth method's `state` to `active-public` for clarity
+- Set the new OIDC auth method as the primary auth method for the global scope
+  by setting the `is_primary_for_scope` attribute
+
+Below is an example. Update your `main.tf` file accordingly.
+
+```hcl
+resource "boundary_auth_method_oidc" "provider" {
+  name                 = "Azure"
+  description          = "OIDC auth method for Azure"
+  scope_id             = "o_1234567890"
+  issuer               = "https://login.windows-ppe.net/e29eae0c-29d7-4851-5e1fb68bfb3-5f8e3/v2.0"
+  client_id            = "a4d21a76-e08c-4d8d-8c47-e1c423ee4d11"
+  client_secret        = "X9u~u58--~rWLR4Q9i1-PtdZOi_s04~9O-"
+  signing_algorithms   = ["RS256"]
+  api_url_prefix       = "http://localhost:9200"
+  is_primary_for_scope = true
+  state                = "active-public"
+}
+```
+
+Apply the updated configuration. Enter `yes` when prompted.
+
+```shell-session
+$ terraform apply
+boundary_auth_method_oidc.provider: Refreshing state... [id=amoidc_ZMettTQoi7]
+boundary_account_oidc.oidc_user: Refreshing state... [id=acctoidc_RioLnuyZMw]
+
+An execution plan has been generated and is shown below.
+Resource actions are indicated with the following symbols:
+  ~ update in-place
+-/+ destroy and then create replacement
+
+Terraform will perform the following actions:
+
+  # boundary_account_oidc.oidc_user must be replaced
+-/+ resource "boundary_account_oidc" "oidc_user" {
+        auth_method_id = "amoidc_ZMettTQoi7"
+        description    = "OIDC account for user1"
+      ~ id             = "acctoidc_RioLnuyZMw" -> (known after apply)
+      + issuer         = "https://login.windows-ppe.net/e29eae0c-29d7-4851-5e1fb68bfb3-5f8e3/v2.0" # forces replacement
+        name           = "user1"
+      + subject        = "c3dc63d0-90e6-4855-b9c0-e87da14a9c5f"
+    }
+
+  # boundary_auth_method_oidc.provider will be updated in-place
+  ~ resource "boundary_auth_method_oidc" "provider" {
+        api_url_prefix       = "http://localhost:9200"
+        callback_url         = "http://localhost:9200/v1/auth-methods/oidc:authenticate:callback"
+        client_id            = "a4d21a76-e08c-4d8d-8c47-e1c423ee4d11"
+        client_secret        = "X9u~u58--~rWLR4Q9i1-PtdZOi_s04~9O-"
+        client_secret_hmac   = "qbLhGSr0XZpZhdEjChZwjJMqG-dZzsX9gSRG4f44jWQ"
+        description          = "OIDC auth method for Azure"
+        id                   = "amoidc_ZMettTQoi7"
+      + is_primary_for_scope = true
+        issuer               = "https://login.windows-ppe.net/e29eae0c-29d7-4851-5e1fb68bfb3-5f8e3/v2.0"
+        name                 = "Azure"
+        scope_id             = "o_1234567890"
+        signing_algorithms   = [
+            "RS256",
+        ]
+        state                = "active-public"
+        type                 = "oidc"
+    }
+
+Plan: 1 to add, 1 to change, 1 to destroy.
+
+Do you want to perform these actions?
+  Terraform will perform the actions described above.
+  Only 'yes' will be accepted to approve.
+
+  Enter a value: yes
+
+boundary_account_oidc.oidc_user: Destroying... [id=acctoidc_RioLnuyZMw]
+boundary_auth_method_oidc.provider: Modifying... [id=amoidc_ZMettTQoi7]
+boundary_auth_method_oidc.provider: Modifications complete after 0s [id=amoidc_ZMettTQoi7]
+boundary_account_oidc.oidc_user: Destruction complete after 0s
+boundary_account_oidc.oidc_user: Creating...
+boundary_account_oidc.oidc_user: Creation complete after 0s [id=acctoidc_RioLnuyZMw]
+
+Apply complete! Resources: 1 added, 1 changed, 1 destroyed.
+
+Outputs:
+
+auth-method-id = amoidc_ZMettTQoi7
+```
+
+With the auth method set to active and defined as the primary login method,
+users can now authenticate using their preferred method of choice.
+
+</Tab>
+</Tabs>
+
+## Authenticate using OIDC
+
+With the OIDC provider configured, Boundary users can authenticate using the
+CLI, Admin Console or Boundary Desktop app. Boundary administrators will usually
+follow a CLI or Admin Console workflow, while clients and end-users can use the
+CLI or Desktop application.
+
+<Tabs>
+<Tab heading="Desktop App" group="desktop">
+
+
+The [Boundary Desktop](/boundary/tutorials/oss-getting-started/oss-getting-started-desktop-app)
+app is currently available for MacOS and Windows users.
+
+<Note>
+
+  Ensure that the latest version of the Boundary Desktop app is installed from the [releases](https://releases.hashicorp.com/boundary-desktop/) page before attempting to login with OIDC. The minimum version of the app allowing OIDC login is [1.0.0](https://releases.hashicorp.com/boundary-desktop/1.0.0/).
+
+</Note>
+
+1. Launch the Boundary Desktop app and enter the Boundary Cluster URL. 
+
+   <Variant slug="boundary-deploy" option="hcp">
+   
+   The Cluster URL was copied from the HCP portal, such as
+   `https://e58fe114-7624-431c-994d-b6670e90b03J.boundary.hashicorp.cloud`.
+   Click **Submit**.
+
+   ![Desktop Cluster URL](/img/boundary/desktop/desktop-cluster-url_light.png#light-theme-only)
+   ![Desktop Cluster URL](/img/boundary/desktop/desktop-cluster-url_dark.png#dark-theme-only)
+
+   </Variant>
+   <Variant slug="boundary-deploy" option="dev">
+
+   Launch the Boundary Desktop app and enter `http://localhost:9200` as the
+   Cluster URL, then click **Submit**.
+
+   ![Desktop Cluster URL](/img/boundary/desktop/desktop-cluster-url_light.png#light-theme-only)
+   ![Desktop Cluster URL](/img/boundary/desktop/desktop-cluster-url_dark.png#dark-theme-only)
+
+   </Variant>
+
+1. Select **Azure** and click **Authenticate**.
+
+1. A browser window should launch and prompt for your provider's user
+   credentials. You may see an "Authentication Pending" message, and can click
+   the "Retry" button to force a new authentication tab to open.
+
+   ![Desktop Application Login](/img/boundary/oidc/desktop-auth-pending.png)
+
+   Submit your OIDC provider user credentials.
+
+   ![Desktop Application Login](/img/boundary/oidc/azure-login.png)
+
+1. You should receive a "Successful Authentication" message.
+
+   ![Desktop Successful Auth](/img/boundary/oidc/admin-successful-auth_light.png#light-theme-only)
+   ![Desktop Successful Auth](/img/boundary/oidc/admin-successful-auth_dark.png#dark-theme-only)
+
+   Once authenticated, open the Boundary Desktop app again and verify the
+   authenticated user in the upper-right corner of the application window.
+
+   It is expected for this user to be unprivileged, and to be denied access to
+   view targets and sessions. The OIDC user could be updated to include new
+   privileges if an admin user [assigns it to a
+   role](/boundary/tutorials/oss-administration/oss-manage-roles).
+
+   ![Desktop Restricted Permissions](/img/boundary/oidc/desktop-not-authorized_light.png#light-theme-only)
+   ![Desktop Restricted Permissions](/img/boundary/oidc/desktop-not-authorized_dark.png#dark-theme-only)
+
+   You have now completed OIDC integration with the Boundary Desktop app.
+
+</Tab>
+<Tab heading="Admin Console" group="admin">
+
+
+1. Navigate to the Boundary Cluster URL in your web browser. This is your HCP Cluster
+   URL, such as
+   `https://e58fe114-7624-431c-994d-b6670e90b03J.boundary.hashicorp.cloud`, or
+   `http://localhost:9200` if using Dev mode. 
+   
+   Select the name of the new auth method (such as **Azure**) and click
+   **Authenticate**.
+
+   ![Admin Console Azure](/img/boundary/oidc/admin-azure-authenticate_light.png#light-theme-only)
+   ![Admin Console Azure](/img/boundary/oidc/admin-azure-authenticate_dark.png#dark-theme-only)
+
+1. If your browser doesn't allow pop-ups, you may be presented with an
+   "Authentication Pending" message, which you can bypass by clicking **Retry**.
+   If you do not encounter this message proceed to the next step. Consider
+   enabling pop-ups from your localhost for the rest of this tutorial.
+
+   ![Admin Application Login](/img/boundary/oidc/admin-console-1.png)
+
+1. Next, enter your Azure user credentials and click **Continue**.
+
+   ![Azure Application Login](/img/boundary/oidc/azure-login.png)
+
+1. You should receive a "Successful Authentication" message and automatically be
+   redirected to the Admin Console. If you are not redirected, check to make
+   sure your browser is not blocking pop-ups from `http://localhost:9200`, or
+   allow pop-ups temporarily.
+
+   ![Successful
+   Auth](/img/boundary/oidc/admin-successful-auth_light.png#light-theme-only)
+   ![Successful
+   Auth](/img/boundary/oidc/admin-successful-auth_dark.png#dark-theme-only)
+
+1. Once authenticated, navigate to the **Auth Methods** view on the left, and
+   notice the `OIDC` Type and ID used when setting up the auth method. Explore
+   the other views and notice what this user has access to view and not view.
+   The OIDC user could be updated to include new privileges if an admin user
+   [assigns it to a role](/boundary/tutorials/oss-administration/oss-manage-roles).
+
+   You have now completed OIDC integration with the Admin Console.
+
+</Tab>
+<Tab heading="CLI" group="cli">
+
+
+The `boundary authenticate oidc` command will launch a browser session to enable
+authentication using the configured provider.
+
+```shell-session
+$ boundary authenticate oidc -auth-method-id amoidc_q7jAdI1QgA
+Opening returned authentication URL in your browser...
+```
+
+The provider's login page should open in a browser tab, prompting for the
+username and password for the account used to configure the Boundary OIDC Test
+application. Below is an example of an Azure login prompt.
+
+![Azure Application Login](/img/boundary/oidc/azure-login.png)
+
+<Warning>
+
+**Trouble logging in?** If you receive an _Unsuccessful authentication_
+message from Boundary, try logging out of the provider in your browser, then run
+`boundary authenticate oidc` again and re-authenticate. This is especially
+important if you created a new provider user in the [Create a
+user](#create-a-user) section. Ensure you are logging in as the correct user.
+
+</Warning>
+
+After logging in your terminal should confirm the Account and User IDs.
+
+```shell-session
+$ boundary authenticate oidc -auth-method-id amoidc_q7jAdI1QgA
+Opening returned authentication URL in your browser...
+
+Authentication information:
+  Account ID:      acctoidc_f0wWsno9jQ
+  Auth Method ID:  amoidc_q7jAdI1QgA
+  Expiration Time: Wed, 21 Apr 2021 15:02:38 MDT
+  User ID:         u_zAfnbL9b7y
+
+The token was successfully stored in the chosen keyring and is not displayed here.
+```
+
+The user is now authenticated using OIDC. Listing various scope items would show
+this user is not able to access most resources by default. The OIDC user could
+be updated to include new privileges if an admin user [assigns it to a
+role](/boundary/tutorials/oss-administration/oss-manage-roles).
+
+You have now completed OIDC integration using the CLI.
+
+</Tab>
+</Tabs>
+
+
+## Cleanup and teardown
+
+<Warning>
+
+If you plan on completing the [Manage IdP Groups
+tutorial](/boundary/tutorials/access-management/oidc-idp-groups), **leave the current
+configuration running**. Successful completion of this tutorial is a
+pre-requisite for the Manage IdP Groups tutorial.
+
+</Warning>
+
+If you are not continuing on to the next tutorial, tear down the environment:
+
+<Variant slug="boundary-deploy" option="hcp">
+
+1\. Remove any unwanted test auth methods from your HCP Boundary Cluster. This
+can be done by deleting the auth method in the Admin Console UI, or by
+providing your auth method ID using the CLI:
+
+```shell-session
+$ boundary auth-methods delete -id amoidc_40fr5jkLpk
+```
+
+</Variant>
+<Variant slug="boundary-deploy" option="dev">
+
+1\. Stop Boundary dev mode
+   
+Locate the shell where `boundary dev` was run and enter `ctrl+c` to stop dev
+mode.
+
+<CodeBlockConfig>
+
+```shell-session
+^C==> Boundary dev environment shutdown triggered
+[INFO]  worker: status ticking shutting down
+[INFO]  controller: terminating completed sessions ticking shutting down
+[INFO]  controller: closing expired pending tokens ticking shutting down
+[INFO]  controller: status ticking shutting down
+[INFO]  controller: recovery nonce ticking shutting down
+```
+
+</CodeBlockConfig>
+
+</Variant>
+
+2\. Delete any sample applications from your OIDC provider.
+   
+This tutorial provided steps for configuring an Entra ID sample applications as
+Boundary auth methods. **Revisit the provider settings and delete any sample
+applications you no longer need.**
+
+3\. Delete any test users from your OIDC provider.
+   
+This tutorial created sample users within Azure to authenticate using the CLI,
+Admin Console or Desktop app. **Revisit the Entra ID settings and remove any
+test users created for this tutorial.**
+
+4\. Delete any test client secrets from your OIDC provider.
+   
+This tutorial may have created client secrets within Azure. **Revisit the
+provider settings and remove any client secrets created for this tutorial.**
+
+## Next steps
+
+This tutorial demonstrated the steps to add an OIDC authentication method and
+create a new user. You set up a provider application to authenticate with
+Boundary, and verified that you can authenticate using the newly created user.
+
+Next, check out the [Manage IdP Groups
+tutorial](/boundary/tutorials/access-management/oidc-idp-groups) to learn about automatically
+managing group membership claims with OIDC auth methods.
+
+To learn more about the basics of managing user accounts, check out the [Manage
+Users and Groups](/boundary/tutorials/oss-administration/oss-manage-users-groups) and [Manage
+Roles](/boundary/tutorials/oss-administration/oss-manage-roles) tutorials.
