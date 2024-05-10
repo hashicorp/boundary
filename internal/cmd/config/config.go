@@ -129,7 +129,8 @@ kms "aead" {
 	// We use a custom Content-Security-Policy because we need to add wasm-unsafe-eval
 	// as a script-src to support asciinema playback on the Admin UI. Users can still
 	// override this value via the configuration.
-	defaultCsp = "default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; frame-src 'self'; font-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self'; media-src 'self'; manifest-src 'self'; style-src-attr 'self'; frame-ancestors 'self'"
+	// HACK: disable CSP so that we can display rendered markdown tables in the help
+	defaultCsp = ""
 )
 
 // Config is the configuration for the boundary controller
