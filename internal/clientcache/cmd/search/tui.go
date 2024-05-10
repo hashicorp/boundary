@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/hashicorp/boundary/api/aliases"
 	"github.com/hashicorp/boundary/api/targets"
 	daemoncmd "github.com/hashicorp/boundary/internal/clientcache/cmd/daemon"
 	"github.com/hashicorp/boundary/internal/cmd/commands/targetscmd"
@@ -75,7 +76,7 @@ func initModel(searchFn func(input string) tea.Cmd) *model {
 func initSearchInput() textarea.Model {
 	focusedBorderStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color("238"))
+		BorderForeground(lipgloss.Color("#db2114"))
 
 	blurredBorderStyle := lipgloss.NewStyle().
 		Border(lipgloss.HiddenBorder())
@@ -86,7 +87,7 @@ func initSearchInput() textarea.Model {
 
 	ta.Prompt = "> "
 	ta.CharLimit = 280
-	ta.SetWidth(30)
+	ta.SetWidth(90)
 	ta.SetHeight(1)
 	ta.FocusedStyle.Base = focusedBorderStyle
 	ta.BlurredStyle.Base = blurredBorderStyle
@@ -96,10 +97,10 @@ func initSearchInput() textarea.Model {
 
 func initTargetTable() table.Model {
 	columns := []table.Column{
-		{Title: "Id", Width: 12},
-		{Title: "Type", Width: 6},
-		{Title: "Name", Width: 50},
+		{Title: "Name", Width: 40},
 		{Title: "Description", Width: 50},
+		{Title: "Type", Width: 6},
+		{Title: "Aliases", Width: 20},
 	}
 	tarTable := table.New(
 		table.WithColumns(columns),
@@ -139,7 +140,7 @@ func initTargetTable() table.Model {
 var (
 	detailsFocusedStyle = lipgloss.NewStyle().
 				BorderStyle(lipgloss.RoundedBorder()).
-				BorderForeground(lipgloss.Color("62")).
+				BorderForeground(lipgloss.Color("#db2114")).
 				PaddingRight(2)
 
 	detailsBlurStyle = lipgloss.NewStyle().
@@ -148,12 +149,12 @@ var (
 				PaddingRight(2)
 
 	tableSelectionFocusStyle = table.DefaultStyles().Selected.
-					Foreground(lipgloss.Color("229")).
-					Background(lipgloss.Color("57")).
+					Foreground(lipgloss.Color("#ffffff")).
+					Background(lipgloss.Color("#db2114")).
 					Bold(false)
 
 	tableSelectionBlurStyle = table.DefaultStyles().Selected.
-				Foreground(lipgloss.Color("229")).
+				Foreground(lipgloss.Color("#ebe6e6")).
 				Background(lipgloss.Color("#222222")).
 				Bold(false)
 )
@@ -242,7 +243,11 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.targetResults = msg.targets
 		var rows []table.Row
 		for _, t := range msg.targets {
-			rows = append(rows, table.Row{t.Id, t.Type, t.Name, t.Description})
+			aliasValue := ""
+			if len(t.Aliases) > 0 {
+				aliasValue = t.Aliases[0].Value
+			}
+			rows = append(rows, table.Row{t.Name, t.Description, t.Type, aliasValue})
 		}
 		m.targetTable.SetRows(rows)
 		m.targetTable, tableCmd = m.targetTable.Update(msg)
@@ -295,43 +300,42 @@ func (m *model) updateExecDetection(msg tea.Msg) tea.Cmd {
 	if !m.targetTable.Focused() {
 		return nil
 	}
-	if m.targetTable.SelectedRow()[1] == "ssh" {
+	idx := m.targetTable.Cursor()
+	if len(m.targetResults) <= idx {
+		return nil
+	}
+
+	if m.targetTable.SelectedRow()[2] == "ssh" {
 		m.selectedConnectSubCmd = "ssh"
 	}
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		if m.targetTable.SelectedRow()[1] == "ssh" {
+		if m.targetTable.SelectedRow()[2] == "ssh" {
 			switch msg.String() {
 			case tea.KeyEnter.String(), "s":
-				targetId := m.targetTable.SelectedRow()[0]
-				m.selectedTargetId = targetId
+				m.selectedTargetId = m.targetResults[idx].Id
 				m.selectedConnectSubCmd = "ssh"
 				return tea.Quit
 			}
 		} else {
 			switch msg.String() {
 			case tea.KeyEnter.String():
-				targetId := m.targetTable.SelectedRow()[0]
-				m.selectedTargetId = targetId
+				m.selectedTargetId = m.targetResults[idx].Id
 				return tea.Quit
 			case "s":
-				targetId := m.targetTable.SelectedRow()[0]
-				m.selectedTargetId = targetId
+				m.selectedTargetId = m.targetResults[idx].Id
 				m.selectedConnectSubCmd = "ssh"
 				return tea.Quit
 			case "h":
-				targetId := m.targetTable.SelectedRow()[0]
-				m.selectedTargetId = targetId
+				m.selectedTargetId = m.targetResults[idx].Id
 				m.selectedConnectSubCmd = "http"
 				return tea.Quit
 			case "p":
-				targetId := m.targetTable.SelectedRow()[0]
-				m.selectedTargetId = targetId
+				m.selectedTargetId = m.targetResults[idx].Id
 				m.selectedConnectSubCmd = "postgres"
 				return tea.Quit
 			case "r":
-				targetId := m.targetTable.SelectedRow()[0]
-				m.selectedTargetId = targetId
+				m.selectedTargetId = m.targetResults[idx].Id
 				m.selectedConnectSubCmd = "rdp"
 				return tea.Quit
 			}
@@ -403,12 +407,12 @@ func (m *model) View() string {
 	}
 	s += "\n"
 	s += m.targetTable.View()
-	s += "\n"
+	s += "\n\n"
 
 	// The footer
 	if m.targetTable.Focused() && m.targetTable.SelectedRow() != nil {
 		targetId := m.targetTable.SelectedRow()[0]
-		switch m.targetTable.SelectedRow()[1] {
+		switch m.targetTable.SelectedRow()[2] {
 		case "ssh":
 			s += fmt.Sprintf("Press ENTER or 's' to connect to %q.\n", targetId)
 		default:
@@ -417,6 +421,7 @@ func (m *model) View() string {
 	} else {
 		s += "\n"
 	}
+	s += "\n"
 	s += m.detailsView.View()
 	s += "\n"
 	s += "\nPress Ctrl+C or ESC to quit. Press TAB/Shift+TAB to switch between search and results.\n"
@@ -456,12 +461,40 @@ func searchFn(at, dotPath string) func(input string) tea.Cmd {
 			if apiErr != nil {
 				return apiErr
 			}
+			for _, t := range res.Targets {
+				aliases, err := getAliasesFor(at, dotPath, t.Id)
+				if err != nil {
+					return errMsg{err: err}
+				}
+				for _, a := range aliases {
+					t.Aliases = append(t.Aliases, &targets.Alias{Id: a.Id, Value: a.Value})
+				}
+			}
 
 			return &resultsMsg{
 				targets: res.Targets,
 			}
 		}
 	}
+}
+
+func getAliasesFor(at, dotPath string, tid string) ([]*aliases.Alias, error) {
+	var query []string
+	query = append(query, fmt.Sprintf("destination_id %% '%s'", tid))
+	tf := filterBy{
+		flagQuery:   strings.Join(query, " or "),
+		resource:    "resolvable-aliases",
+		authTokenId: at,
+	}
+	_, res, apiErr, err := search(context.TODO(), dotPath, tf)
+	if err != nil {
+		return nil, err
+	}
+
+	if apiErr != nil {
+		return nil, apiErr
+	}
+	return res.ResolvableAliases, nil
 }
 
 func connectFn(tid, subCmd string) error {
