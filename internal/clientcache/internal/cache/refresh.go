@@ -186,11 +186,6 @@ func (r *RefreshService) RefreshForSearch(ctx context.Context, authTokenid strin
 		return errors.New(ctx, errors.Internal, op, "unexpected number of refreshable users", errors.WithoutEvent())
 	}
 
-	tokens, err := r.cleanAndPickAuthTokens(ctx, u)
-	if err != nil {
-		return errors.Wrap(ctx, err, op, errors.WithoutEvent())
-	}
-
 	opts, err := getOpts(opt...)
 	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithoutEvent())
@@ -203,6 +198,10 @@ func (r *RefreshService) RefreshForSearch(ctx context.Context, authTokenid strin
 			return errors.Wrap(ctx, err, op)
 		}
 		if opts.withIgnoreSearchStaleness || rtv != nil && time.Since(rtv.UpdateTime) > r.maxSearchStaleness {
+			tokens, err := r.cleanAndPickAuthTokens(ctx, u)
+			if err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithoutEvent())
+			}
 			args := []any{"user", u.Id, "force refresh", opts.withIgnoreSearchStaleness}
 			if rtv != nil {
 				args = append(args, "alias staleness", time.Since(rtv.UpdateTime))
@@ -218,6 +217,10 @@ func (r *RefreshService) RefreshForSearch(ctx context.Context, authTokenid strin
 			return errors.Wrap(ctx, err, op, errors.WithoutEvent())
 		}
 		if opts.withIgnoreSearchStaleness || rtv != nil && time.Since(rtv.UpdateTime) > r.maxSearchStaleness {
+			tokens, err := r.cleanAndPickAuthTokens(ctx, u)
+			if err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithoutEvent())
+			}
 			args := []any{"user", u.Id, "force refresh", opts.withIgnoreSearchStaleness}
 			if rtv != nil {
 				args = append(args, "target staleness", time.Since(rtv.UpdateTime))
@@ -233,6 +236,10 @@ func (r *RefreshService) RefreshForSearch(ctx context.Context, authTokenid strin
 			return errors.Wrap(ctx, err, op)
 		}
 		if opts.withIgnoreSearchStaleness || rtv != nil && time.Since(rtv.UpdateTime) > r.maxSearchStaleness {
+			tokens, err := r.cleanAndPickAuthTokens(ctx, u)
+			if err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithoutEvent())
+			}
 			args := []any{"user", u.Id, "force refresh", opts.withIgnoreSearchStaleness}
 			if rtv != nil {
 				args = append(args, "session staleness", time.Since(rtv.UpdateTime))
