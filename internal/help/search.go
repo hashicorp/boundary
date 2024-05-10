@@ -82,7 +82,7 @@ func (s *Searcher) CreateEmbeddings(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to get embeddings: %w", err)
 	}
-	s.logger.Info("Embedding creation complete", "numDocs", len(texts), "took", time.Since(t))
+	s.logger.Info("Embedding creation complete", "numDocs", len(texts), "took", time.Since(t).String())
 	if len(embeddings) != len(paths) {
 		return fmt.Errorf("expected %v embeddings; got %v", len(paths), len(embeddings))
 	}
