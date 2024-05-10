@@ -493,6 +493,9 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		if c.conf.RawConfig.Controller.Help.ApiKey == "" {
 			return nil, fmt.Errorf(`api key is required with help model "gemini"`)
 		}
+		if c.conf.RawConfig.Controller.Help.ServerUrl != "" {
+			return nil, fmt.Errorf(`server url is not supported with help model "gemini"`)
+		}
 		opts := []googleai.Option{
 			googleai.WithAPIKey(c.conf.RawConfig.Controller.Help.ApiKey),
 			googleai.WithDefaultEmbeddingModel("models/text-embedding-004"),
@@ -521,6 +524,9 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		if c.conf.RawConfig.Controller.Help.EmbeddingModel != "" {
 			opts = append(opts, openai.WithEmbeddingModel(c.conf.RawConfig.Controller.Help.EmbeddingModel))
 		}
+		if c.conf.RawConfig.Controller.Help.ServerUrl != "" {
+			opts = append(opts, openai.WithBaseURL(c.conf.RawConfig.Controller.Help.ServerUrl))
+		}
 		c.llm, err = openai.New(opts...)
 		if err != nil {
 			return nil, fmt.Errorf("unable to initialize open AI model: %w", err)
@@ -534,6 +540,9 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		}
 		opts := []ollama.Option{
 			ollama.WithModel(c.conf.RawConfig.Controller.Help.Model),
+		}
+		if c.conf.RawConfig.Controller.Help.ServerUrl != "" {
+			opts = append(opts, ollama.WithServerURL(c.conf.RawConfig.Controller.Help.ServerUrl))
 		}
 		c.llm, err = ollama.New(opts...)
 		if err != nil {

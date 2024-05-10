@@ -368,6 +368,7 @@ type Help struct {
 	Model            string `hcl:"model"`
 	EmbeddingModel   string `hcl:"embedding_model"`
 	NumHintDocuments int    `hcl:"num_hint_documents"`
+	ServerUrl        string `hcl:"server_url"`
 }
 
 // DevWorker is a Config that is used for dev mode of Boundary
@@ -742,7 +743,12 @@ func Parse(d string) (*Config, error) {
 		}
 
 		switch result.Controller.Help.Type {
-		case "gemini", "openai":
+		case "gemini":
+			if result.Controller.Help.ServerUrl != "" {
+				return nil, fmt.Errorf(`server url is not supported with help model "gemini"`)
+			}
+			fallthrough // How often do you get to use this
+		case "openai":
 			if result.Controller.Help.ApiKey == "" {
 				return nil, fmt.Errorf(`help type %q requires an API key`, result.Controller.Help.Type)
 			}
