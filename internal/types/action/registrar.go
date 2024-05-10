@@ -71,3 +71,23 @@ func ActionSetForResource(r resource.Type) (ActionSet, error) {
 	}
 	return a.valid, nil
 }
+
+// CollectionActionSetForResource returns the collection ActionSet registered
+// for r or an error if r has not been registered.
+func CollectionActionSetForResource(r resource.Type) (ActionSet, error) {
+	a, err := byResourceRegistrar.get(r)
+	if err != nil {
+		return nil, err
+	}
+	return a.collection, nil
+}
+
+// IdActionSetForResource returns the individual ActionSet registered
+// for r or an error if r has not been registered.
+func IdActionSetForResource(r resource.Type) (ActionSet, error) {
+	a, err := byResourceRegistrar.get(r)
+	if err != nil {
+		return nil, err
+	}
+	return a.individual, nil
+}
