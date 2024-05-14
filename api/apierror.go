@@ -15,6 +15,7 @@ var (
 	ErrInvalidArgument  = &Error{Kind: codes.InvalidArgument.String(), response: &Response{resp: &http.Response{StatusCode: http.StatusBadRequest}}}
 	ErrPermissionDenied = &Error{Kind: codes.PermissionDenied.String(), response: &Response{resp: &http.Response{StatusCode: http.StatusForbidden}}}
 	ErrUnauthorized     = &Error{Kind: codes.Unauthenticated.String(), response: &Response{resp: &http.Response{StatusCode: http.StatusUnauthorized}}}
+	ErrUnimplemented    = &Error{Kind: codes.Unimplemented.String(), response: &Response{resp: &http.Response{StatusCode: http.StatusNotImplemented}}}
 	ErrInvalidListToken = &Error{Kind: "invalid list token", response: &Response{resp: &http.Response{StatusCode: http.StatusBadRequest}}}
 )
 
