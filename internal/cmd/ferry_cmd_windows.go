@@ -33,5 +33,10 @@ func init() {
 				Command: base.NewCommand(ui),
 			}, nil
 		}
+		Commands["ferry sessions"] = func() (cli.Command, error) {
+			return &ferry.SessionsCommand{
+				Command: base.NewCommand(ui),
+			}, nil
+		}
 	})
 }

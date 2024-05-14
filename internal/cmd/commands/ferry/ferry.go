@@ -35,6 +35,15 @@ Usage: boundary ferry [sub command] [options]
 
       $ boundary ferry status
 
+  Pause and resume the daemon:
+
+      $ boundary ferry pause
+      $ boundary ferry resume
+
+  List active transparent sessions:
+
+      $ boundary ferry sessions
+
   For a full list of examples, please see the documentation.
 
 `
