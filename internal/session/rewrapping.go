@@ -109,7 +109,7 @@ func sessionRewrapFn(ctx context.Context, dataKeyVersionId string, scopeId strin
 			}
 			continue
 		}
-		if err := decryptAndMaybeUpdateSession(ctx, kmsRepo, session, writer); err != nil {
+		if err := decrypt(ctx, kmsRepo, session); err != nil {
 			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to decrypt session"))
 		}
 		wrapper, err := kmsRepo.GetWrapper(ctx, session.GetProjectId(), kms.KeyPurposeSessions)
