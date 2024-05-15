@@ -60,8 +60,8 @@ github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 h1:El6M4kTTCOh6aBiKaU
 github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510/go.mod h1:pupxD2MaaD3pAXIBCelhxNneeOaAeabZDe5s4K6zSpQ=
 github.com/google/uuid v1.5.0 h1:1p67kYwdtXjb0gL0BPiP1Av9wiZPo5A8z2cWkTZ+eyU=
 github.com/google/uuid v1.5.0/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
-github.com/hashicorp/boundary-plugin-minio v0.1.1 h1:/Dr42eMNlNJgX8kMqOzR+I3TSB6XHU9llGakatFH+bw=
-github.com/hashicorp/boundary-plugin-minio v0.1.1/go.mod h1:SGZen1uwxv3dha13c0Jh3oOpiSvcEEjYFI7ik0ONIZ0=
+github.com/hashicorp/boundary-plugin-minio v0.1.2 h1:2X1pr9Oqfe/R3tAzPLY9u3IRzZxLNp7mzvnsjEFx7d8=
+github.com/hashicorp/boundary-plugin-minio v0.1.2/go.mod h1:SGZen1uwxv3dha13c0Jh3oOpiSvcEEjYFI7ik0ONIZ0=
 github.com/hashicorp/boundary/sdk v0.0.42 h1:iRDdnM6/6q9qLtBP7/cpq/FWQGf69TFSsBQFxgGK8Jw=
 github.com/hashicorp/boundary/sdk v0.0.42/go.mod h1:QJhm4rky2YMtk9DS5Rj8QJhDKB/6zQbVrm3R0QgdYmQ=
 github.com/hashicorp/errwrap v1.0.0/go.mod h1:YH+1FKiLXxHSkmPseP+kNlulaMuP3n2brvKWEqk/Jc4=
