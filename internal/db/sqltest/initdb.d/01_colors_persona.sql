@@ -401,11 +401,17 @@ begin;
   values
     ('pl__plg___sb');
 
-  insert into storage_plugin_storage_bucket
-    (plugin_id,      scope_id,       public_id,      bucket_name,             worker_filter,        secrets_hmac)
+  insert into storage_bucket_credential_environmental
+    (private_id, storage_bucket_id)
   values
-    ('pl__plg___sb', 'global',       'sb____global', 'Global Storage Bucket', 'test worker filter', '\xdeadbeef'),
-    ('pl__plg___sb', 'o_____colors', 'sb____colors', 'Colors Storage Bucket', 'test worker filter', '\xdeadbeef');
+    ('sbc___global', 'sb____global'),
+    ('sbc___colors', 'sb____colors');
+
+  insert into storage_plugin_storage_bucket
+    (plugin_id,      scope_id,       public_id,      bucket_name,             worker_filter,        secrets_hmac, storage_bucket_credential_id)
+  values
+    ('pl__plg___sb', 'global',       'sb____global', 'Global Storage Bucket', 'test worker filter', '\xdeadbeef', 'sbc___global'),
+    ('pl__plg___sb', 'o_____colors', 'sb____colors', 'Colors Storage Bucket', 'test worker filter', '\xdeadbeef', 'sbc___colors');
 
   insert into target_tcp
     (project_id,     public_id,      name)

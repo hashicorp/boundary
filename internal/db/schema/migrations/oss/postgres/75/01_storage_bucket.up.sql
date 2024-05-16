@@ -9,6 +9,7 @@ alter table storage_plugin_storage_bucket
   drop constraint if exists secrets_hmac_must_not_be_empty,
   alter column secrets_hmac drop not null;
 
+-- Replaced in 88/01_storage_bucket_credential.up.sql
 create view storage_plugin_storage_bucket_with_secret as
   select
     spsb.public_id,
