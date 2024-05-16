@@ -3,6 +3,7 @@
 
 begin;
 
+  -- Replaced in 88/01_storage_bucket_credential.up.sql
   create view find_session_recordings_for_delete as
     select
       -- fields for session recordings
