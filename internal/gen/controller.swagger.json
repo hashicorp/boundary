@@ -7920,6 +7920,10 @@
           "description": "",
           "title": "Filters to the worker(s) that can handle requests for this storage bucket"
         },
+        "storage_bucket_credential_id": {
+          "type": "string",
+          "description": "Internal use only. The storage bucket credential id for this storage bucket."
+        },
         "authorized_actions": {
           "type": "array",
           "items": {

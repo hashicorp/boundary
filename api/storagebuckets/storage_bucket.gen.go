@@ -19,24 +19,25 @@ import (
 )
 
 type StorageBucket struct {
-	Id                string                 `json:"id,omitempty"`
-	ScopeId           string                 `json:"scope_id,omitempty"`
-	Scope             *scopes.ScopeInfo      `json:"scope,omitempty"`
-	PluginId          string                 `json:"plugin_id,omitempty"`
-	Plugin            *plugins.PluginInfo    `json:"plugin,omitempty"`
-	Name              string                 `json:"name,omitempty"`
-	Description       string                 `json:"description,omitempty"`
-	BucketName        string                 `json:"bucket_name,omitempty"`
-	BucketPrefix      string                 `json:"bucket_prefix,omitempty"`
-	CreatedTime       time.Time              `json:"created_time,omitempty"`
-	UpdatedTime       time.Time              `json:"updated_time,omitempty"`
-	Version           uint32                 `json:"version,omitempty"`
-	Type              string                 `json:"type,omitempty"`
-	Attributes        map[string]interface{} `json:"attributes,omitempty"`
-	Secrets           map[string]interface{} `json:"secrets,omitempty"`
-	SecretsHmac       string                 `json:"secrets_hmac,omitempty"`
-	WorkerFilter      string                 `json:"worker_filter,omitempty"`
-	AuthorizedActions []string               `json:"authorized_actions,omitempty"`
+	Id                        string                 `json:"id,omitempty"`
+	ScopeId                   string                 `json:"scope_id,omitempty"`
+	Scope                     *scopes.ScopeInfo      `json:"scope,omitempty"`
+	PluginId                  string                 `json:"plugin_id,omitempty"`
+	Plugin                    *plugins.PluginInfo    `json:"plugin,omitempty"`
+	Name                      string                 `json:"name,omitempty"`
+	Description               string                 `json:"description,omitempty"`
+	BucketName                string                 `json:"bucket_name,omitempty"`
+	BucketPrefix              string                 `json:"bucket_prefix,omitempty"`
+	CreatedTime               time.Time              `json:"created_time,omitempty"`
+	UpdatedTime               time.Time              `json:"updated_time,omitempty"`
+	Version                   uint32                 `json:"version,omitempty"`
+	Type                      string                 `json:"type,omitempty"`
+	Attributes                map[string]interface{} `json:"attributes,omitempty"`
+	Secrets                   map[string]interface{} `json:"secrets,omitempty"`
+	SecretsHmac               string                 `json:"secrets_hmac,omitempty"`
+	WorkerFilter              string                 `json:"worker_filter,omitempty"`
+	StorageBucketCredentialId string                 `json:"storage_bucket_credential_id,omitempty"`
+	AuthorizedActions         []string               `json:"authorized_actions,omitempty"`
 }
 
 type StorageBucketReadResult struct {

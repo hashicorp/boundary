@@ -97,3 +97,30 @@ message WorkerTag {
   // @inject_tag: `gorm:"primary_key"`
   string source = 40;
 }
+
+// WorkerStorageBucketCredentialState is a state for a storage bucket credential for a worker.
+// The primary key is comprised of the worker_id, storage_bucket_credential_id, permission_type.
+message WorkerStorageBucketCredentialState {
+  // worker_id is the public key of the worker.
+  // @inject_tag: `gorm:"primary_key"`
+  string worker_id = 10;
+
+  // storage_bucket_credential_id is the public key of the storage bucket credential.
+  // @inject_tag: `gorm:"primary_key"`
+  string storage_bucket_credential_id = 20;
+
+  // permission_type is a enum that defines the permission type.
+  // @inject_tag: `gorm:"primary_key"`
+  string permission_type = 30;
+
+  // state is a enum that defines the permission state.
+  // @inject_tag: `gorm:"not_null"`
+  string state = 40;
+
+  // error_details is the error message returned from the external object store service.
+  string error_details = 50;
+
+  // checked_at is the utc timestamp of when the permission was tested.
+  // @inject_tag: `gorm:"not_null"`
+  timestamp.v1.Timestamp checked_at = 60;
+}

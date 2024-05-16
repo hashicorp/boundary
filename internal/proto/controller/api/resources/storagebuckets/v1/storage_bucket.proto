@@ -96,6 +96,9 @@ message StorageBucket {
     }
   ]; // @gotags: `class:"public"`
 
+  // Internal use only. The storage bucket credential id for this storage bucket.
+  string storage_bucket_credential_id = 160; // @gotags: `class:"public"`
+
   // Output only. The available actions on this resource for this user.
   repeated string authorized_actions = 300 [json_name = "authorized_actions"]; // @gotags: `class:"public"`
 }

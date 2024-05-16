@@ -167,3 +167,40 @@ message DeleteObjectsResponse {
   // informational and not meant to be used for validation.
   uint32 objects_deleted = 10;
 }
+
+enum StateType {
+  STATE_TYPE_UNSPECIFIED = 0;
+  STATE_TYPE_OK = 1;
+  STATE_TYPE_ERROR = 2;
+  STATE_TYPE_UNKNOWN = 3;
+}
+
+message Permission {
+  // Required. The state of the permission.
+  StateType state = 10;
+
+  // Optional. The error details returned from the external object store service.
+  string error_details = 20;
+
+  // Required. The utc timestamp of when the permission was tested.
+  google.protobuf.Timestamp checked_at = 30;
+}
+
+message Permissions {
+  // Optional. The write permission state.
+  Permission write = 10;
+
+  // Optional. The read permission state.
+  Permission read = 20;
+
+  // Optional. The delete permission state.
+  Permission delete = 30;
+}
+
+message StorageBucketCredentialState {
+  // Required. The permission states.
+  Permissions state = 10;
+
+  // Required. The version of the storage bucket.
+  uint32 version = 20;
+}
