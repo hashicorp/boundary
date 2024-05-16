@@ -71,6 +71,10 @@ message StorageBucket {
   // secrets_hmac is a sha256-hmac of the unencrypted secrets stored in the db.
   // @inject_tag: `gorm:"default:null"`
   bytes secrets_hmac = 13;
+
+  // storage_bucket_credential_id is the private key of the storage bucket credential.
+  // @inject_tag: `gorm:"default:null"`
+  string storage_bucket_credential_id = 14;
 }
 
 message StorageBucketSecret {
@@ -91,4 +95,48 @@ message StorageBucketSecret {
   // It must be set.
   // @inject_tag: `gorm:"not_null"`
   string key_id = 4;
+}
+
+message StorageBucketCredential {
+  // private_id is a surrogate key suitable for use via API.
+  // @inject_tag: `gorm:"primary_key"`
+  string private_id = 1;
+
+  // storage_bucket_id is the public id of the storage bucket.
+  // @inject_tag: `gorm:"not_null"`
+  string storage_bucket_id = 2;
+}
+
+message StorageBucketCredentialEnvironmental {
+  // private_id is a surrogate key suitable for use in a public API.
+  // @inject_tag: `gorm:"primary_key"`
+  string private_id = 1;
+
+  // storage_bucket_id is the public id of the storage bucket.
+  // @inject_tag: `gorm:"not_null"`
+  string storage_bucket_id = 2;
+}
+
+message StorageBucketCredentialManagedSecret {
+  // private_id is a surrogate key suitable for use via API.
+  // @inject_tag: `gorm:"primary_key"`
+  string private_id = 1;
+
+  // storage_bucket_id is the public id of the storage bucket.
+  // @inject_tag: `gorm:"not_null"`
+  string storage_bucket_id = 2;
+
+  // secrets is the plain-text of the secret data. We are not storing this plain-text
+  // value in the database.
+  // @inject_tag: `gorm:"-" wrapping:"pt,secrets_data"`
+  bytes secrets = 3;
+
+  // ct_secrets is the ciphertext of the secret data stored in the db.
+  // @inject_tag: `gorm:"column:secrets_encrypted;not_null" wrapping:"ct,secrets_data"`
+  bytes ct_secrets = 4;
+
+  // The key_id of the kms database key used for encrypting this entry.
+  // It must be set.
+  // @inject_tag: `gorm:"not_null"`
+  string key_id = 5;
 }

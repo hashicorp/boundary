@@ -283,6 +283,106 @@ func (x *WorkerTag) GetSource() string {
 	return ""
 }
 
+// WorkerStorageBucketCredentialState is a state for a storage bucket credential for a worker.
+// The primary key is comprised of the worker_id, storage_bucket_credential_id, permission_type.
+type WorkerStorageBucketCredentialState struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	// worker_id is the public key of the worker.
+	// @inject_tag: `gorm:"primary_key"`
+	WorkerId string `protobuf:"bytes,10,opt,name=worker_id,json=workerId,proto3" json:"worker_id,omitempty" gorm:"primary_key"`
+	// storage_bucket_credential_id is the public key of the storage bucket credential.
+	// @inject_tag: `gorm:"primary_key"`
+	StorageBucketCredentialId string `protobuf:"bytes,20,opt,name=storage_bucket_credential_id,json=storageBucketCredentialId,proto3" json:"storage_bucket_credential_id,omitempty" gorm:"primary_key"`
+	// permission_type is a enum that defines the permission type.
+	// @inject_tag: `gorm:"primary_key"`
+	PermissionType string `protobuf:"bytes,30,opt,name=permission_type,json=permissionType,proto3" json:"permission_type,omitempty" gorm:"primary_key"`
+	// state is a enum that defines the permission state.
+	// @inject_tag: `gorm:"not_null"`
+	State string `protobuf:"bytes,40,opt,name=state,proto3" json:"state,omitempty" gorm:"not_null"`
+	// error_details is the error message returned from the external object store service.
+	ErrorDetails string `protobuf:"bytes,50,opt,name=error_details,json=errorDetails,proto3" json:"error_details,omitempty"`
+	// checked_at is the utc timestamp of when the permission was tested.
+	// @inject_tag: `gorm:"not_null"`
+	CheckedAt *timestamp.Timestamp `protobuf:"bytes,60,opt,name=checked_at,json=checkedAt,proto3" json:"checked_at,omitempty" gorm:"not_null"`
+}
+
+func (x *WorkerStorageBucketCredentialState) Reset() {
+	*x = WorkerStorageBucketCredentialState{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_controller_storage_servers_store_v1_worker_proto_msgTypes[2]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *WorkerStorageBucketCredentialState) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WorkerStorageBucketCredentialState) ProtoMessage() {}
+
+func (x *WorkerStorageBucketCredentialState) ProtoReflect() protoreflect.Message {
+	mi := &file_controller_storage_servers_store_v1_worker_proto_msgTypes[2]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WorkerStorageBucketCredentialState.ProtoReflect.Descriptor instead.
+func (*WorkerStorageBucketCredentialState) Descriptor() ([]byte, []int) {
+	return file_controller_storage_servers_store_v1_worker_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *WorkerStorageBucketCredentialState) GetWorkerId() string {
+	if x != nil {
+		return x.WorkerId
+	}
+	return ""
+}
+
+func (x *WorkerStorageBucketCredentialState) GetStorageBucketCredentialId() string {
+	if x != nil {
+		return x.StorageBucketCredentialId
+	}
+	return ""
+}
+
+func (x *WorkerStorageBucketCredentialState) GetPermissionType() string {
+	if x != nil {
+		return x.PermissionType
+	}
+	return ""
+}
+
+func (x *WorkerStorageBucketCredentialState) GetState() string {
+	if x != nil {
+		return x.State
+	}
+	return ""
+}
+
+func (x *WorkerStorageBucketCredentialState) GetErrorDetails() string {
+	if x != nil {
+		return x.ErrorDetails
+	}
+	return ""
+}
+
+func (x *WorkerStorageBucketCredentialState) GetCheckedAt() *timestamp.Timestamp {
+	if x != nil {
+		return x.CheckedAt
+	}
+	return nil
+}
+
 var File_controller_storage_servers_store_v1_worker_proto protoreflect.FileDescriptor
 
 var file_controller_storage_servers_store_v1_worker_proto_rawDesc = []byte{
@@ -342,11 +442,31 @@ var file_controller_storage_servers_store_v1_worker_proto_rawDesc = []byte{
 	0x65, 0x79, 0x18, 0x14, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x6b, 0x65, 0x79, 0x12, 0x14, 0x0a,
 	0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x18, 0x1e, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x76, 0x61,
 	0x6c, 0x75, 0x65, 0x12, 0x16, 0x0a, 0x06, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x18, 0x28, 0x20,
-	0x01, 0x28, 0x09, 0x52, 0x06, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x42, 0x3b, 0x5a, 0x39, 0x67,
-	0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x68, 0x61, 0x73, 0x68, 0x69, 0x63,
-	0x6f, 0x72, 0x70, 0x2f, 0x62, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x72, 0x79, 0x2f, 0x69, 0x6e, 0x74,
-	0x65, 0x72, 0x6e, 0x61, 0x6c, 0x2f, 0x73, 0x65, 0x72, 0x76, 0x65, 0x72, 0x2f, 0x73, 0x74, 0x6f,
-	0x72, 0x65, 0x3b, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x01, 0x28, 0x09, 0x52, 0x06, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x22, 0xb1, 0x02, 0x0a, 0x22,
+	0x57, 0x6f, 0x72, 0x6b, 0x65, 0x72, 0x53, 0x74, 0x6f, 0x72, 0x61, 0x67, 0x65, 0x42, 0x75, 0x63,
+	0x6b, 0x65, 0x74, 0x43, 0x72, 0x65, 0x64, 0x65, 0x6e, 0x74, 0x69, 0x61, 0x6c, 0x53, 0x74, 0x61,
+	0x74, 0x65, 0x12, 0x1b, 0x0a, 0x09, 0x77, 0x6f, 0x72, 0x6b, 0x65, 0x72, 0x5f, 0x69, 0x64, 0x18,
+	0x0a, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x77, 0x6f, 0x72, 0x6b, 0x65, 0x72, 0x49, 0x64, 0x12,
+	0x3f, 0x0a, 0x1c, 0x73, 0x74, 0x6f, 0x72, 0x61, 0x67, 0x65, 0x5f, 0x62, 0x75, 0x63, 0x6b, 0x65,
+	0x74, 0x5f, 0x63, 0x72, 0x65, 0x64, 0x65, 0x6e, 0x74, 0x69, 0x61, 0x6c, 0x5f, 0x69, 0x64, 0x18,
+	0x14, 0x20, 0x01, 0x28, 0x09, 0x52, 0x19, 0x73, 0x74, 0x6f, 0x72, 0x61, 0x67, 0x65, 0x42, 0x75,
+	0x63, 0x6b, 0x65, 0x74, 0x43, 0x72, 0x65, 0x64, 0x65, 0x6e, 0x74, 0x69, 0x61, 0x6c, 0x49, 0x64,
+	0x12, 0x27, 0x0a, 0x0f, 0x70, 0x65, 0x72, 0x6d, 0x69, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x5f, 0x74,
+	0x79, 0x70, 0x65, 0x18, 0x1e, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0e, 0x70, 0x65, 0x72, 0x6d, 0x69,
+	0x73, 0x73, 0x69, 0x6f, 0x6e, 0x54, 0x79, 0x70, 0x65, 0x12, 0x14, 0x0a, 0x05, 0x73, 0x74, 0x61,
+	0x74, 0x65, 0x18, 0x28, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x73, 0x74, 0x61, 0x74, 0x65, 0x12,
+	0x23, 0x0a, 0x0d, 0x65, 0x72, 0x72, 0x6f, 0x72, 0x5f, 0x64, 0x65, 0x74, 0x61, 0x69, 0x6c, 0x73,
+	0x18, 0x32, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0c, 0x65, 0x72, 0x72, 0x6f, 0x72, 0x44, 0x65, 0x74,
+	0x61, 0x69, 0x6c, 0x73, 0x12, 0x49, 0x0a, 0x0a, 0x63, 0x68, 0x65, 0x63, 0x6b, 0x65, 0x64, 0x5f,
+	0x61, 0x74, 0x18, 0x3c, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x2a, 0x2e, 0x63, 0x6f, 0x6e, 0x74, 0x72,
+	0x6f, 0x6c, 0x6c, 0x65, 0x72, 0x2e, 0x73, 0x74, 0x6f, 0x72, 0x61, 0x67, 0x65, 0x2e, 0x74, 0x69,
+	0x6d, 0x65, 0x73, 0x74, 0x61, 0x6d, 0x70, 0x2e, 0x76, 0x31, 0x2e, 0x54, 0x69, 0x6d, 0x65, 0x73,
+	0x74, 0x61, 0x6d, 0x70, 0x52, 0x09, 0x63, 0x68, 0x65, 0x63, 0x6b, 0x65, 0x64, 0x41, 0x74, 0x42,
+	0x3b, 0x5a, 0x39, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x68, 0x61,
+	0x73, 0x68, 0x69, 0x63, 0x6f, 0x72, 0x70, 0x2f, 0x62, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x72, 0x79,
+	0x2f, 0x69, 0x6e, 0x74, 0x65, 0x72, 0x6e, 0x61, 0x6c, 0x2f, 0x73, 0x65, 0x72, 0x76, 0x65, 0x72,
+	0x2f, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x3b, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x62, 0x06, 0x70, 0x72,
+	0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -361,21 +481,23 @@ func file_controller_storage_servers_store_v1_worker_proto_rawDescGZIP() []byte 
 	return file_controller_storage_servers_store_v1_worker_proto_rawDescData
 }
 
-var file_controller_storage_servers_store_v1_worker_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_controller_storage_servers_store_v1_worker_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_controller_storage_servers_store_v1_worker_proto_goTypes = []interface{}{
-	(*Worker)(nil),              // 0: controller.storage.servers.store.v1.Worker
-	(*WorkerTag)(nil),           // 1: controller.storage.servers.store.v1.WorkerTag
-	(*timestamp.Timestamp)(nil), // 2: controller.storage.timestamp.v1.Timestamp
+	(*Worker)(nil),    // 0: controller.storage.servers.store.v1.Worker
+	(*WorkerTag)(nil), // 1: controller.storage.servers.store.v1.WorkerTag
+	(*WorkerStorageBucketCredentialState)(nil), // 2: controller.storage.servers.store.v1.WorkerStorageBucketCredentialState
+	(*timestamp.Timestamp)(nil),                // 3: controller.storage.timestamp.v1.Timestamp
 }
 var file_controller_storage_servers_store_v1_worker_proto_depIdxs = []int32{
-	2, // 0: controller.storage.servers.store.v1.Worker.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	2, // 1: controller.storage.servers.store.v1.Worker.update_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	2, // 2: controller.storage.servers.store.v1.Worker.last_status_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	3, // [3:3] is the sub-list for method output_type
-	3, // [3:3] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	3, // 0: controller.storage.servers.store.v1.Worker.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	3, // 1: controller.storage.servers.store.v1.Worker.update_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	3, // 2: controller.storage.servers.store.v1.Worker.last_status_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	3, // 3: controller.storage.servers.store.v1.WorkerStorageBucketCredentialState.checked_at:type_name -> controller.storage.timestamp.v1.Timestamp
+	4, // [4:4] is the sub-list for method output_type
+	4, // [4:4] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_controller_storage_servers_store_v1_worker_proto_init() }
@@ -408,6 +530,18 @@ func file_controller_storage_servers_store_v1_worker_proto_init() {
 				return nil
 			}
 		}
+		file_controller_storage_servers_store_v1_worker_proto_msgTypes[2].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*WorkerStorageBucketCredentialState); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -415,7 +549,7 @@ func file_controller_storage_servers_store_v1_worker_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_controller_storage_servers_store_v1_worker_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   2,
+			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
