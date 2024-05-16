@@ -79,7 +79,7 @@ jobs:
           path: /tmp
       - name: Unpack boundary bundle
         run: |
-          unzip /tmp/${{ inputs.artifact-name }} -d /usr/local/bin
+          unzip -o /tmp/${{ inputs.artifact-name }} -d /usr/local/bin
           rm /tmp/${{ inputs.artifact-name }}
       - name: Versions
         run: |
