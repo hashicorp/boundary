@@ -18,6 +18,9 @@ import (
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/nodeenrollment"
+	"github.com/hashicorp/nodeenrollment/registration"
+	"github.com/hashicorp/nodeenrollment/rotation"
+	nodeeinmem "github.com/hashicorp/nodeenrollment/storage/inmem"
 	"github.com/hashicorp/nodeenrollment/types"
 	"github.com/mr-tron/base58"
 	"github.com/stretchr/testify/assert"
@@ -175,4 +178,109 @@ func TestRotationTicking(t *testing.T) {
 		require.NoError(w.Worker().StartControllerConnections())
 		rotationCount++
 	}
+}
+
+func TestSplitBrainFault(t *testing.T) {
+	ctx := context.Background()
+	workerStorage, err := nodeeinmem.New(ctx)
+	require.NoError(t, err)
+	controllerStorage, err := nodeeinmem.New(ctx)
+	require.NoError(t, err)
+
+	// Create initial node creds
+	_, err = rotation.RotateRootCertificates(ctx, controllerStorage)
+	require.NoError(t, err)
+	initCreds, err := types.NewNodeCredentials(ctx, workerStorage)
+	require.NoError(t, err)
+	req, err := initCreds.CreateFetchNodeCredentialsRequest(ctx)
+	require.NoError(t, err)
+	_, err = registration.AuthorizeNode(ctx, controllerStorage, req)
+	require.NoError(t, err)
+	fetchResp, err := registration.FetchNodeCredentials(ctx, controllerStorage, req)
+	require.NoError(t, err)
+	initCreds, err = initCreds.HandleFetchNodeCredentialsResponse(ctx, workerStorage, fetchResp)
+	require.NoError(t, err)
+
+	// Simulate the auth rotation
+	// Worker side ----------------------------------
+	newCreds, err := types.NewNodeCredentials(ctx, workerStorage, nodeenrollment.WithSkipStorage(true))
+	require.NoError(t, err)
+
+	require.NoError(t, newCreds.SetPreviousEncryptionKey(initCreds))
+	fetchReq, err := newCreds.CreateFetchNodeCredentialsRequest(ctx)
+	require.NoError(t, err)
+
+	encFetchReq, err := nodeenrollment.EncryptMessage(ctx, fetchReq, initCreds)
+	require.NoError(t, err)
+
+	controllerReq := &types.RotateNodeCredentialsRequest{
+		CertificatePublicKeyPkix:             initCreds.CertificatePublicKeyPkix,
+		EncryptedFetchNodeCredentialsRequest: encFetchReq,
+	}
+
+	// Send request to controller
+	// Controller side ------------------------------
+
+	keyId, err := nodeenrollment.KeyIdFromPkix(controllerReq.CertificatePublicKeyPkix)
+	require.NoError(t, err)
+
+	oldNodeInfo, err := types.LoadNodeInformation(ctx, controllerStorage, keyId)
+	require.NoError(t, err)
+
+	fetchRequest := new(types.FetchNodeCredentialsRequest)
+	require.NoError(t, nodeenrollment.DecryptMessage(ctx, encFetchReq, oldNodeInfo, fetchRequest))
+
+	// Stores the new worker credentials
+	_, err = registration.AuthorizeNode(ctx, controllerStorage, fetchRequest)
+	require.NoError(t, err)
+
+	fetchResp, err = registration.FetchNodeCredentials(ctx, controllerStorage, fetchRequest)
+	require.NoError(t, err)
+
+	encFetchResp, err := nodeenrollment.EncryptMessage(ctx, fetchResp, oldNodeInfo)
+	require.NoError(t, err)
+
+	// Send response to worker
+	// Worker side ----------------------------------
+
+	// Simulate response going missing
+	_ = encFetchResp
+
+	// Now simulate the subsequent auth rotation attempt
+	newNewCreds, err := types.NewNodeCredentials(ctx, workerStorage, nodeenrollment.WithSkipStorage(true))
+	require.NoError(t, err)
+
+	require.NoError(t, newNewCreds.SetPreviousEncryptionKey(initCreds))
+	fetchReq, err = newNewCreds.CreateFetchNodeCredentialsRequest(ctx)
+	require.NoError(t, err)
+
+	encFetchReq, err = nodeenrollment.EncryptMessage(ctx, fetchReq, initCreds)
+	require.NoError(t, err)
+
+	controllerReq = &types.RotateNodeCredentialsRequest{
+		CertificatePublicKeyPkix:             initCreds.CertificatePublicKeyPkix,
+		EncryptedFetchNodeCredentialsRequest: encFetchReq,
+	}
+
+	// Send request to controller
+	// Controller side ------------------------------
+
+	keyId, err = nodeenrollment.KeyIdFromPkix(controllerReq.CertificatePublicKeyPkix)
+	require.NoError(t, err)
+
+	oldNodeInfo, err = types.LoadNodeInformation(ctx, controllerStorage, keyId)
+	require.NoError(t, err)
+
+	// Expect this to fail
+	fetchRequest = new(types.FetchNodeCredentialsRequest)
+	require.NoError(t, nodeenrollment.DecryptMessage(ctx, encFetchReq, oldNodeInfo, fetchRequest))
+
+	_, err = registration.AuthorizeNode(ctx, controllerStorage, fetchRequest)
+	require.NoError(t, err)
+
+	fetchResp, err = registration.FetchNodeCredentials(ctx, controllerStorage, fetchRequest)
+	require.NoError(t, err)
+
+	_, err = nodeenrollment.EncryptMessage(ctx, fetchResp, oldNodeInfo)
+	require.NoError(t, err)
 }
