@@ -5,7 +5,8 @@ name: Check Milestone
 
 on:
   pull_request:
-    types: [opened, synchronize, labeled, unlabeled]
+    # milestoned and demilestoned are supported even if IDE is complaining
+    types: [opened, synchronize, labeled, unlabeled, milestoned, demilestoned ]
     # Runs on PRs to main and release branches
     branches:
       - main
