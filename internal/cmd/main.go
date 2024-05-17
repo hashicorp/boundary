@@ -241,7 +241,7 @@ func RunCustom(args []string, runOpts *RunOptions) (exitCode int) {
 
 	initCommands(ui, serverCmdUi, runOpts)
 
-	hiddenCommands := []string{"version", "ferry", "ferry status", "ferry pause", "ferry resume"}
+	hiddenCommands := []string{"version", "client-agent", "client-agent status", "client-agent pause", "client-agent resume", "client-agent sessions"}
 
 	cli := &cli.CLI{
 		Name:     "boundary",
@@ -298,7 +298,7 @@ func groupedHelpFunc(f cli.HelpFunc) cli.HelpFunc {
 		typeSpecificCommands := make([]string, 0, len(commands)-cap(genericCommands)-cap(clientCommands))
 		for k := range commands {
 			switch k {
-			case "authenticate", "config", "connect", "daemon", "dev", "ferry", "logout", "search", "server":
+			case "authenticate", "config", "connect", "daemon", "dev", "client-agent", "logout", "search", "server":
 				clientCommands = append(clientCommands, k)
 			case "read", "update", "delete":
 				genericCommands = append(genericCommands, k)
