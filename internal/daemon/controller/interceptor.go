@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"reflect"
 	"runtime/debug"
+	"time"
 
 	grpc_recovery "github.com/grpc-ecosystem/go-grpc-middleware/recovery"
 	"github.com/hashicorp/boundary/globals"
@@ -493,6 +494,15 @@ func eventsResponseInterceptor(
 		}
 
 		return resp, err
+	}
+}
+
+func requestMaxDurationInterceptor(_ context.Context, maxRequestDuration time.Duration) grpc.UnaryServerInterceptor {
+	const op = "controller.requestMaxDurationInterceptor"
+	return func(interceptorCtx context.Context, req any, _ *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
+		withTimeout, cancel := context.WithTimeout(interceptorCtx, maxRequestDuration)
+		defer cancel()
+		return handler(withTimeout, req)
 	}
 }
 
