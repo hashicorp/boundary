@@ -4,6 +4,24 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+### Bug Fixes
+
+* Fix a dead lock issue where the controller could get stuck with all of its
+  available database connections being stuck in `idle in transaction`.
+  If a controller is configured to have a `max_open_connections`, and was under
+  sufficient load in the form of requests from workers interacting with
+  sessions, like in the form of authorizing new session connections, the
+  controller could get stuck after consuming all of the database connections,
+  leaving them in the `idle in transaction` state. This was due to a
+  combination of issues, including the lack of a request timeout for worker to
+  controller grpc requests, and the session repository attempting to use a
+  separate database connection to retrieve a kms.Wrapper after already starting
+  a database transaction. The fixes move these kms operations outside of the
+  transaction and set a max request duration for the grpc requests based on
+  the cluster's listener configuration.
+  ([PR](https://github.com/hashicorp/boundary/pull/4803) and
+  [PR](https://github.com/hashicorp/boundary/pull/4805))
+
 ## 0.16.0 (2024/04/30)
 
 ### New and Improved
