@@ -5,34 +5,34 @@ package cmd
 
 import (
 	"github.com/hashicorp/boundary/internal/cmd/base"
-	"github.com/hashicorp/boundary/internal/cmd/commands/ferry"
+	"github.com/hashicorp/boundary/internal/cmd/commands/clientagentcmd"
 	"github.com/mitchellh/cli"
 )
 
 func init() {
 	extraCommandsFuncs = append(extraCommandsFuncs, func(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
-		Commands["ferry"] = func() (cli.Command, error) {
-			return &ferry.FerryCommand{
+		Commands["client-agent"] = func() (cli.Command, error) {
+			return &clientagentcmd.ClientAgentCommand{
 				Command: base.NewCommand(ui),
 			}, nil
 		}
-		Commands["ferry status"] = func() (cli.Command, error) {
-			return &ferry.StatusCommand{
+		Commands["client-agent status"] = func() (cli.Command, error) {
+			return &clientagentcmd.StatusCommand{
 				Command: base.NewCommand(ui),
 			}, nil
 		}
-		Commands["ferry pause"] = func() (cli.Command, error) {
-			return &ferry.PauseCommand{
+		Commands["client-agent pause"] = func() (cli.Command, error) {
+			return &clientagentcmd.PauseCommand{
 				Command: base.NewCommand(ui),
 			}, nil
 		}
-		Commands["ferry resume"] = func() (cli.Command, error) {
-			return &ferry.ResumeCommand{
+		Commands["client-agent resume"] = func() (cli.Command, error) {
+			return &clientagentcmd.ResumeCommand{
 				Command: base.NewCommand(ui),
 			}, nil
 		}
-		Commands["ferry sessions"] = func() (cli.Command, error) {
-			return &ferry.SessionsCommand{
+		Commands["client-agent sessions"] = func() (cli.Command, error) {
+			return &clientagentcmd.SessionsCommand{
 				Command: base.NewCommand(ui),
 			}, nil
 		}

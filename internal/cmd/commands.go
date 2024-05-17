@@ -651,10 +651,10 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 			}, nil
 		},
 
-		"ferry": func() (cli.Command, error) {
+		"client-agent": func() (cli.Command, error) {
 			return &unsupported.UnsupportedCommand{
 				Command:     base.NewCommand(ui, opts...),
-				CommandName: "ferry",
+				CommandName: "client-agent",
 			}, nil
 		},
 

@@ -1,7 +1,7 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: BUSL-1.1
 
-package ferry
+package clientagentcmd
 
 import (
 	"context"
@@ -17,25 +17,25 @@ import (
 )
 
 var (
-	_ cli.Command             = (*PauseCommand)(nil)
-	_ cli.CommandAutocomplete = (*PauseCommand)(nil)
+	_ cli.Command             = (*ResumeCommand)(nil)
+	_ cli.CommandAutocomplete = (*ResumeCommand)(nil)
 )
 
-type PauseCommand struct {
+type ResumeCommand struct {
 	*base.Command
 }
 
-func (c *PauseCommand) Synopsis() string {
-	return "Pauses the running boundary ferry daemon"
+func (c *ResumeCommand) Synopsis() string {
+	return "Resumes the paused boundary client agent"
 }
 
-func (c *PauseCommand) Help() string {
+func (c *ResumeCommand) Help() string {
 	helpText := `
-Usage: boundary ferry pause
+Usage: boundary client-agent resume
 
-  Pause the boundary ferry daemon:
+  Resume the boundary client agent:
 
-      $ boundary ferry pause
+      $ boundary client-agent resume
 
   For a full list of examples, please see the documentation.
 	
@@ -43,7 +43,7 @@ Usage: boundary ferry pause
 	return strings.TrimSpace(helpText)
 }
 
-func (c *PauseCommand) Flags() *base.FlagSets {
+func (c *ResumeCommand) Flags() *base.FlagSets {
 	set := c.FlagSet(base.FlagSetOutputFormat)
 	f := set.NewFlagSet("Client Options")
 
@@ -54,25 +54,25 @@ func (c *PauseCommand) Flags() *base.FlagSets {
 	})
 
 	f.UintVar(&base.UintVar{
-		Name:    "ferry-port",
-		Target:  &c.FlagFerryDaemonPort,
+		Name:    "client-agent-port",
+		Target:  &c.FlagClientAgentPort,
 		Default: 9300,
-		EnvVar:  base.EnvFerryDaemonPort,
-		Usage:   "The port on which the ferry daemon is listening.",
+		EnvVar:  base.EnvClientAgentPort,
+		Usage:   "The port on which the client agent is listening.",
 	})
 
 	return set
 }
 
-func (c *PauseCommand) AutocompleteArgs() complete.Predictor {
+func (c *ResumeCommand) AutocompleteArgs() complete.Predictor {
 	return complete.PredictNothing
 }
 
-func (c *PauseCommand) AutocompleteFlags() complete.Flags {
+func (c *ResumeCommand) AutocompleteFlags() complete.Flags {
 	return c.Flags().Completions()
 }
 
-func (c *PauseCommand) Run(args []string) int {
+func (c *ResumeCommand) Run(args []string) int {
 	ctx := c.Context
 	f := c.Flags()
 	if err := f.Parse(args); err != nil {
@@ -80,13 +80,13 @@ func (c *PauseCommand) Run(args []string) int {
 		return base.CommandUserError
 	}
 
-	resp, apiErr, err := c.Pause(ctx)
+	resp, apiErr, err := c.Resume(ctx)
 	if err != nil {
 		c.PrintCliError(err)
 		return base.CommandCliError
 	}
 	if apiErr != nil {
-		c.PrintApiError(apiErr, "Error from ferry daemon when attempting to pause")
+		c.PrintApiError(apiErr, "Error from client agent when attempting to resume")
 		return base.CommandApiError
 	}
 
@@ -96,19 +96,19 @@ func (c *PauseCommand) Run(args []string) int {
 			return base.CommandCliError
 		}
 	default:
-		c.UI.Output("Ferry has been successfully paused.")
+		c.UI.Output("The client agent has been successfully resumed.")
 	}
 	return base.CommandSuccess
 }
 
-func (c *PauseCommand) Pause(ctx context.Context) (*api.Response, *api.Error, error) {
-	const op = "ferry.(PauseCommand).Pause"
+func (c *ResumeCommand) Resume(ctx context.Context) (*api.Response, *api.Error, error) {
+	const op = "clientagentcmd.(ResumeCommand).Resume"
 	client := retryablehttp.NewClient()
 	client.Logger = nil
 	client.RetryWaitMin = 100 * time.Millisecond
 	client.RetryWaitMax = 1000 * time.Millisecond
 
-	req, err := retryablehttp.NewRequestWithContext(ctx, "POST", ferryUrl(c.FlagFerryDaemonPort, "v1/pause"), nil)
+	req, err := retryablehttp.NewRequestWithContext(ctx, "POST", clientAgentUrl(c.FlagClientAgentPort, "v1/resume"), nil)
 	if err != nil {
 		return nil, nil, err
 	}

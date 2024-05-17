@@ -1,7 +1,7 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: BUSL-1.1
 
-package ferry
+package clientagentcmd
 
 import (
 	"context"
@@ -11,17 +11,17 @@ import (
 )
 
 // TODO (ICU-13140): Remove this and re-enable error output for background
-// ferry daemon token sending.
+// client agent token sending.
 const allowErrorOutput = false
 
 func init() {
-	if err := wrapper.RegisterSuccessfulCommandCallback("ferry", hook); err != nil {
+	if err := wrapper.RegisterSuccessfulCommandCallback("client-agent", hook); err != nil {
 		panic(err)
 	}
 }
 
 func hook(ctx context.Context, baseCmd *base.Command, token string) {
-	if baseCmd.FlagSkipFerry {
+	if baseCmd.FlagSkipClientAgent {
 		return
 	}
 	client, err := baseCmd.Client()
@@ -32,11 +32,11 @@ func hook(ctx context.Context, baseCmd *base.Command, token string) {
 	if token != "" {
 		client.SetToken(token)
 	}
-	_, apiErr, err := addToken(ctx, client, baseCmd.FlagFerryDaemonPort)
+	_, apiErr, err := addToken(ctx, client, baseCmd.FlagClientAgentPort)
 	if err != nil && allowErrorOutput {
 		baseCmd.PrintCliError(err)
 	}
 	if apiErr != nil && allowErrorOutput {
-		baseCmd.PrintApiError(apiErr, "sending token to ferry daemon in the background")
+		baseCmd.PrintApiError(apiErr, "sending token to client agent in the background")
 	}
 }

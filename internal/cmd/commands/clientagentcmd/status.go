@@ -1,7 +1,7 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: BUSL-1.1
 
-package ferry
+package clientagentcmd
 
 import (
 	"context"
@@ -27,16 +27,16 @@ type StatusCommand struct {
 }
 
 func (c *StatusCommand) Synopsis() string {
-	return "Get the status information of the running boundary ferry daemon"
+	return "Get the status information of the running boundary client agent"
 }
 
 func (c *StatusCommand) Help() string {
 	helpText := `
-Usage: boundary ferry status [options]
+Usage: boundary client-agent status [options]
 
-  Get the status of the boundary ferry daemon:
+  Get the status of the boundary client agent:
 
-      $ boundary ferry status
+      $ boundary client-agent status
 
   For a full list of examples, please see the documentation.
 
@@ -55,11 +55,11 @@ func (c *StatusCommand) Flags() *base.FlagSets {
 	})
 
 	f.UintVar(&base.UintVar{
-		Name:    "ferry-port",
-		Target:  &c.FlagFerryDaemonPort,
+		Name:    "client-agent-port",
+		Target:  &c.FlagClientAgentPort,
 		Default: 9300,
-		EnvVar:  base.EnvFerryDaemonPort,
-		Usage:   "The port on which the ferry daemon is listening.",
+		EnvVar:  base.EnvClientAgentPort,
+		Usage:   "The port on which the client agent is listening.",
 	})
 
 	return set
@@ -87,7 +87,7 @@ func (c *StatusCommand) Run(args []string) int {
 		return base.CommandCliError
 	}
 	if apiErr != nil {
-		c.PrintApiError(apiErr, "Error from ferry daemon when getting its status")
+		c.PrintApiError(apiErr, "Error from client agent when getting its status")
 		return base.CommandApiError
 	}
 
@@ -113,13 +113,13 @@ type GetStatusResponse struct {
 }
 
 func (c *StatusCommand) Status(ctx context.Context) (*api.Response, *GetStatusResponse, *api.Error, error) {
-	const op = "ferry.(StatusCommand).Status"
+	const op = "clientagentcmd.(StatusCommand).Status"
 	client := retryablehttp.NewClient()
 	client.Logger = nil
 	client.RetryWaitMin = 100 * time.Millisecond
 	client.RetryWaitMax = 1500 * time.Millisecond
 
-	req, err := retryablehttp.NewRequestWithContext(ctx, "GET", ferryUrl(c.FlagFerryDaemonPort, "v1/status"), nil)
+	req, err := retryablehttp.NewRequestWithContext(ctx, "GET", clientAgentUrl(c.FlagClientAgentPort, "v1/status"), nil)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -139,7 +139,7 @@ func (c *StatusCommand) Status(ctx context.Context) (*api.Response, *GetStatusRe
 	res := &GetStatusResponse{}
 	apiErr, err := apiResp.Decode(&res)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("Error when sending request to the ferry daemon: %w.", err)
+		return nil, nil, nil, fmt.Errorf("Error when sending request to the client agent: %w.", err)
 	}
 	if apiErr != nil {
 		return apiResp, nil, apiErr, nil

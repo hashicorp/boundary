@@ -74,8 +74,8 @@ const (
 	EnvKeyringType     = "BOUNDARY_KEYRING_TYPE"
 	envRecoveryConfig  = "BOUNDARY_RECOVERY_CONFIG"
 	envSkipCacheDaemon = "BOUNDARY_SKIP_CACHE_DAEMON"
-	envSkipFerry       = "BOUNDARY_SKIP_FERRY_DAEMON"
-	EnvFerryDaemonPort = "BOUNDARY_FERRY_LISTENING_PORT"
+	envSkipClientAgent = "BOUNDARY_SKIP_CLIENT_AGENT"
+	EnvClientAgentPort = "BOUNDARY_CLIENT_AGENT_LISTENING_PORT"
 
 	StoredTokenName = "HashiCorp Boundary Auth Token"
 )
@@ -114,9 +114,9 @@ type Command struct {
 	FlagRecoveryConfig   string
 	FlagOutputCurlString bool
 	FlagSkipCacheDaemon  bool
-	FlagSkipFerry        bool
+	FlagSkipClientAgent  bool
 
-	FlagFerryDaemonPort uint
+	FlagClientAgentPort uint
 
 	FlagScopeId           string
 	FlagScopeName         string
@@ -492,20 +492,20 @@ func (c *Command) FlagSet(bit FlagSetBit) *FlagSets {
 			})
 
 			f.BoolVar(&BoolVar{
-				Name:    "skip-ferry-daemon",
-				Target:  &c.FlagSkipFerry,
+				Name:    "skip-client-agent-daemon",
+				Target:  &c.FlagSkipClientAgent,
 				Default: false,
-				EnvVar:  envSkipFerry,
-				Usage:   "Skips sending the auth token used for this command to the ferry daemon if it is running.",
+				EnvVar:  envSkipClientAgent,
+				Usage:   "Skips sending the auth token used for this command to the client agent if it is running.",
 				Hidden:  true,
 			})
 
 			f.UintVar(&UintVar{
-				Name:    "ferry-port",
-				Target:  &c.FlagFerryDaemonPort,
+				Name:    "client-agent-port",
+				Target:  &c.FlagClientAgentPort,
 				Default: 9300,
-				EnvVar:  EnvFerryDaemonPort,
-				Usage:   "The port on which the ferry daemon is listening.",
+				EnvVar:  EnvClientAgentPort,
+				Usage:   "The port on which the client agent is listening.",
 				Hidden:  true,
 			})
 		}

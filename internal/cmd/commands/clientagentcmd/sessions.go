@@ -1,7 +1,7 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: BUSL-1.1
 
-package ferry
+package clientagentcmd
 
 import (
 	"bytes"
@@ -31,16 +31,16 @@ type SessionsCommand struct {
 }
 
 func (c *SessionsCommand) Synopsis() string {
-	return "List active transparent sessions managed by the Ferry daemon."
+	return "List active transparent sessions managed by the client agent."
 }
 
 func (c *SessionsCommand) Help() string {
 	helpText := `
-Usage: boundary ferry sessions [options]
+Usage: boundary client-agent sessions [options]
 
   List the active transparent sessions:
 
-      $ boundary ferry sessions
+      $ boundary client-agent sessions
 
   For a full list of examples, please see the documentation.
 
@@ -59,11 +59,11 @@ func (c *SessionsCommand) Flags() *base.FlagSets {
 	})
 
 	f.UintVar(&base.UintVar{
-		Name:    "ferry-port",
-		Target:  &c.FlagFerryDaemonPort,
+		Name:    "client-agent-port",
+		Target:  &c.FlagClientAgentPort,
 		Default: 9300,
-		EnvVar:  base.EnvFerryDaemonPort,
-		Usage:   "The port on which the ferry daemon is listening.",
+		EnvVar:  base.EnvClientAgentPort,
+		Usage:   "The port on which the client agent is listening.",
 	})
 
 	return set
@@ -91,7 +91,7 @@ func (c *SessionsCommand) Run(args []string) int {
 		return base.CommandCliError
 	}
 	if apiErr != nil {
-		c.PrintApiError(apiErr, "Error from ferry daemon when getting its Sessions")
+		c.PrintApiError(apiErr, "Error from client agent when getting its Sessions")
 		return base.CommandApiError
 	}
 
@@ -120,13 +120,13 @@ type ListSessionsResponse struct {
 }
 
 func (c *SessionsCommand) Sessions(ctx context.Context) (*api.Response, *ListSessionsResponse, *api.Error, error) {
-	const op = "ferry.(SessionsCommand).Sessions"
+	const op = "clientagentcmd.(SessionsCommand).Sessions"
 	client := retryablehttp.NewClient()
 	client.Logger = nil
 	client.RetryWaitMin = 100 * time.Millisecond
 	client.RetryWaitMax = 1500 * time.Millisecond
 
-	req, err := retryablehttp.NewRequestWithContext(ctx, "GET", ferryUrl(c.FlagFerryDaemonPort, "v1/sessions"), nil)
+	req, err := retryablehttp.NewRequestWithContext(ctx, "GET", clientAgentUrl(c.FlagClientAgentPort, "v1/sessions"), nil)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -146,7 +146,7 @@ func (c *SessionsCommand) Sessions(ctx context.Context) (*api.Response, *ListSes
 	res := &ListSessionsResponse{}
 	apiErr, err := apiResp.Decode(&res)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("Error when sending request to the ferry daemon: %w.", err)
+		return nil, nil, nil, fmt.Errorf("Error when sending request to the client agent: %w.", err)
 	}
 	if apiErr != nil {
 		return apiResp, nil, apiErr, nil
