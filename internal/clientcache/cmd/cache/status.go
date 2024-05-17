@@ -1,7 +1,7 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: BUSL-1.1
 
-package daemon
+package cache
 
 import (
 	"context"
@@ -22,7 +22,7 @@ import (
 	"golang.org/x/text/language"
 )
 
-var errDaemonNotRunning = stderr.New("The daemon process is not running.")
+var errCacheNotRunning = stderr.New("The cache process is not running.")
 
 var (
 	_ cli.Command             = (*AddTokenCommand)(nil)
@@ -34,16 +34,16 @@ type StatusCommand struct {
 }
 
 func (c *StatusCommand) Synopsis() string {
-	return "Get the status information of the running boundary daemon"
+	return "Get the status information of the running boundary cache"
 }
 
 func (c *StatusCommand) Help() string {
 	helpText := `
-Usage: boundary daemon status [options]
+Usage: boundary cache status [options]
 
-  Get the status of the boundary daemon:
+  Get the status of the boundary cache:
 
-      $ boundary daemon status
+      $ boundary cache status
 
   For a full list of examples, please see the documentation.
 
@@ -86,7 +86,7 @@ func (c *StatusCommand) Run(args []string) int {
 		return base.CommandCliError
 	}
 	if apiErr != nil {
-		c.PrintApiError(apiErr, "Error from daemon when getting the status")
+		c.PrintApiError(apiErr, "Error from cache when getting the status")
 		return base.CommandApiError
 	}
 
@@ -115,11 +115,11 @@ func (c *StatusCommand) Status(ctx context.Context) (*api.Response, *daemon.Stat
 }
 
 func status(ctx context.Context, daemonPath string, opt ...client.Option) (*api.Response, *daemon.StatusResult, *api.Error, error) {
-	const op = "daemon.status"
+	const op = "cache.status"
 	addr := daemon.SocketAddress(daemonPath)
 	_, err := os.Stat(addr.Path)
 	if addr.Scheme == "unix" && err != nil {
-		return nil, nil, nil, errDaemonNotRunning
+		return nil, nil, nil, errCacheNotRunning
 	}
 	c, err := client.New(ctx, addr)
 	if err != nil {
@@ -134,7 +134,7 @@ func status(ctx context.Context, daemonPath string, opt ...client.Option) (*api.
 	res := &daemon.StatusResult{}
 	apiErr, err := resp.Decode(&res)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("Error when sending request to the daemon: %w.", err)
+		return nil, nil, nil, fmt.Errorf("Error when sending request to the cache: %w.", err)
 	}
 	if apiErr != nil {
 		return resp, nil, apiErr, nil

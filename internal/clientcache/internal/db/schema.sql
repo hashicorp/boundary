@@ -27,7 +27,7 @@ values
   ('target'),
   ('session');
 
--- Contains refresh tokens for list requests sent by the client daemon to the
+-- Contains refresh tokens for list requests sent by the client cache to the
 -- boundary instance.
 create table if not exists refresh_token(
   user_id text not null

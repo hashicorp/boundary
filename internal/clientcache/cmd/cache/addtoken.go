@@ -1,7 +1,7 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: BUSL-1.1
 
-package daemon
+package cache
 
 import (
 	"context"
@@ -28,16 +28,16 @@ type AddTokenCommand struct {
 }
 
 func (c *AddTokenCommand) Synopsis() string {
-	return "Add an auth token to a running boundary daemon"
+	return "Add an auth token to a running boundary cache"
 }
 
 func (c *AddTokenCommand) Help() string {
 	helpText := `
-Usage: boundary daemon add-token [options]
+Usage: boundary cache add-token [options]
 
-  Add an auth token to the daemon:
+  Add an auth token to the cache:
 
-      $ boundary daemon add-token
+      $ boundary cache add-token
 
   For a full list of examples, please see the documentation.
 
@@ -121,7 +121,7 @@ func (c *AddTokenCommand) Run(args []string) int {
 		return base.CommandCliError
 	}
 	if apiErr != nil {
-		c.PrintApiError(apiErr, "Error from daemon when adding a token")
+		c.PrintApiError(apiErr, "Error from cache when adding a token")
 		return base.CommandApiError
 	}
 	switch base.Format(c.UI) {
@@ -130,13 +130,13 @@ func (c *AddTokenCommand) Run(args []string) int {
 			return base.CommandCliError
 		}
 	case "table":
-		c.UI.Output("The daemon add-token operation completed successfully.")
+		c.UI.Output("The cache add-token operation completed successfully.")
 	}
 	return base.CommandSuccess
 }
 
 // Add builds the UpsertTokenRequest using the client's address and token,
-// and trying to leverage the keyring. It then sends the request to the daemon.
+// and trying to leverage the keyring. It then sends the request to the cache.
 // The passed in cli.Ui is used to print out any errors when looking up the
 // auth token from the keyring. This allows background operations calling this
 // method to pass in a silent UI to suppress any output.
@@ -206,7 +206,7 @@ func addToken(ctx context.Context, daemonPath string, p *daemon.UpsertTokenReque
 	}
 	resp, err := c.Post(ctx, "/v1/tokens", p, opt...)
 	if err != nil {
-		return nil, nil, fmt.Errorf("Error when sending request to the daemon: %w.", err)
+		return nil, nil, fmt.Errorf("Error when sending request to the cache: %w.", err)
 	}
 	apiErr, err := resp.Decode(nil)
 	return resp, apiErr, err

@@ -1,22 +1,22 @@
 ---
 layout: docs
-page_title: daemon start - Command
+page_title: cache start - Command
 description: |-
-  The "daemon start" command lets you manually start the Boundary daemon and customize the behavior of the local cache.
+  The "cache start" command lets you manually start the Boundary cache and customize the behavior of the local cache.
 ---
 
-# daemon start
+# cache start
 
-Command: `boundary daemon start`
+Command: `boundary cache start`
 
-The `boundary daemon start` command lets you manually start the Boundary daemon and customize the behavior of the local cache.
+The `boundary cache start` command lets you manually start the Boundary cache and customize the behavior of the local cache.
 
 ## Example
 
-The following command starts the Boundary daemon in the background:
+The following command starts the Boundary cache in the background:
 
 ```shell-session
-$ boundary daemon start -background
+$ boundary cache start -background
 ```
 
 ## Usage
@@ -24,16 +24,16 @@ $ boundary daemon start -background
 <CodeBlockConfig hideClipboard>
 
 ```shell-session
-$ boundary daemon start [options] [args]
+$ boundary cache start [options] [args]
 ```
 
 </CodeBlockConfig>
 
 ### Command options
 
-- `background` - Starts the Boundary daemon in the background.
+- `background` - Starts the Boundary cache in the background.
 The default value is `false`.
-By default, the daemon starts in the foreground.
+By default, the cache starts in the foreground.
 - `log-format=<string>` - Specifies the log format, mostly as a fallback for events.
 Supported values are `standard` and `json`.
 - `max-search-refresh-timeout=<duration>` - If a search request triggers a best effort refresh, this value specifies how long the refresh should run before time out.

@@ -1,7 +1,7 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: BUSL-1.1
 
-package daemon
+package cache
 
 import (
 	"bytes"
@@ -53,12 +53,12 @@ func startDaemon(ctx context.Context, baseCmd *base.Command) bool {
 
 	cmdName, err := os.Executable()
 	if err != nil {
-		baseCmd.UI.Error(fmt.Sprintf("unable to find boundary binary for daemon startup: %s", err.Error()))
+		baseCmd.UI.Error(fmt.Sprintf("unable to find boundary binary for cache startup: %s", err.Error()))
 		return false
 	}
 
 	var stdErr bytes.Buffer
-	cmd := exec.Command(cmdName, "daemon", "start", "-background")
+	cmd := exec.Command(cmdName, "cache", "start", "-background")
 	cmd.Stderr = &stdErr
 
 	// We use Run here instead of Start because the command spawns off a subprocess and returns.

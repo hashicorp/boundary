@@ -28,7 +28,7 @@ type RefreshTokenValue string
 const sentinelNoRefreshToken RefreshTokenValue = "__no_refresh_token_supported__"
 
 // CacheSupport is an enum that identifies if a boundary instance can be supported
-// by the client daemon cache.
+// by the client cache.
 type CacheSupport string
 
 const (

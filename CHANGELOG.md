@@ -4,6 +4,13 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+### Deprecations/Changes
+
+* The `boundary daemon` command has been deprecated in favor of the new
+  `boundary cache` command. The behavior remains the same. The `boundary search`
+  command is unchanged.
+  ([PR](https://github.com/hashicorp/boundary/pull/4808))
+
 ### Bug Fixes
 
 * Fix a dead lock issue where the controller could get stuck with all of its

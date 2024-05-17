@@ -1,15 +1,15 @@
 ---
 layout: docs
-page_title: daemon add-token - Command
+page_title: cache add-token - Command
 description: |-
-  The "daemon add-token" command lets you add an auth token to a Boundary daemon that is running.
+  The "cache add-token" command lets you add an auth token to a Boundary cache that is running.
 ---
 
-# daemon add-token
+# cache add-token
 
-Command: `boundary daemon add-token`
+Command: `boundary cache add-token`
 
-The `boundary daemon add-token` command lets you add an auth token from your keyring to a Boundary daemon that is running.
+The `boundary cache add-token` command lets you add an auth token from your keyring to a Boundary cache that is running.
 
 By default, the Boundary CLI tries to use a keyring to store and receive auth tokens.
 Whenever you use an auth token to interact with Boundary, the client cache stores the auth token and syncs the data associated with it.
@@ -32,13 +32,13 @@ For more information, refer to [Identity and access management (IAM)](/boundary/
 The following command adds an auth token to the client cache from your keyring:
 
 ```shell-session
-$ boundary daemon add-token
+$ boundary cache add-token
 ```
 
 The following command specifies the name of the keyring `development` from which you want to add the token:
 
 ```shell-session
-$ boundary daemon add-token -token-name development
+$ boundary cache add-token -token-name development
 ```
 
 ## Usage
@@ -46,7 +46,7 @@ $ boundary daemon add-token -token-name development
 <CodeBlockConfig hideClipboard>
 
 ```shell-session
-$ boundary daemon add-token [options]
+$ boundary cache add-token [options]
 ```
 
 </CodeBlockConfig>

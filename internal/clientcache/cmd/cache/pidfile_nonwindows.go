@@ -4,7 +4,7 @@
 //go:build !windows
 // +build !windows
 
-package daemon
+package cache
 
 import (
 	"context"
@@ -16,7 +16,7 @@ import (
 )
 
 func writePidFile(ctx context.Context, pidFile string) (pidCleanup, error) {
-	const op = "daemon.writePidFile"
+	const op = "cache.writePidFile"
 
 	// Determine if we should clean up the file after we are done or if
 	// it should stick around in the case of lock aquision error since this
@@ -57,7 +57,7 @@ func writePidFile(ctx context.Context, pidFile string) (pidCleanup, error) {
 }
 
 func pidFileInUse(ctx context.Context, pidFile string) (*os.Process, error) {
-	const op = "daemon.pidFileInUse"
+	const op = "cache.pidFileInUse"
 	if pidFile == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "pid filename is empty")
 	}
