@@ -982,27 +982,27 @@
         ]
       },
       {
-        "title": "daemon",
+        "title": "cache",
         "routes": [
           {
             "title": "Overview",
-            "path": "commands/daemon"
+            "path": "commands/cache"
           },
           {
             "title": "add-token",
-            "path": "commands/daemon/add-token"
+            "path": "commands/cache/add-token"
           },
           {
             "title": "start",
-            "path": "commands/daemon/start"
+            "path": "commands/cache/start"
           },
           {
             "title": "status",
-            "path": "commands/daemon/status"
+            "path": "commands/cache/status"
           },
           {
             "title": "stop",
-            "path": "commands/daemon/stop"
+            "path": "commands/cache/stop"
           }
         ]
       },
