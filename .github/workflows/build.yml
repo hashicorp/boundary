@@ -293,7 +293,7 @@ jobs:
     needs:
       - product-metadata
       - set-product-version
-    runs-on: ${{ fromJSON(vars.BUILDER_MACOS) }}
+    runs-on: ${{ fromJSON(vars.BUILDER_LINUX) }}
     strategy:
       matrix:
         goos: [ darwin ]
