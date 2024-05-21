@@ -71,9 +71,6 @@ message ListSessionsRequest {
   // You can specify that the filter should only return items that match.
   // Refer to [filter expressions](https://developer.hashicorp.com/boundary/docs/concepts/filtering) for more information.
   string filter = 30 [json_name = "filter"]; // @gotags: `class:"public"`
-  // Experimental. By default only non-terminated (i.e. pending, active, canceling) are returned.
-  // Set this option to include terminated sessions as well.
-  bool include_terminated = 40 [json_name = "include_terminated"]; // @gotags: `class:"public" eventstream:"observation"`
   // An opaque token that Boundary uses to continue an existing iteration or
   // request updated items. If you do not specify a token, pagination
   // starts from the beginning. To learn more about list pagination
@@ -84,6 +81,14 @@ message ListSessionsRequest {
   // If the page_size is greater than the default page configured,
   // the page size will be truncated to this number..
   uint32 page_size = 60 [json_name = "page_size"]; // @gotags: `class:"public"`
+
+  // include_terminated as an experimental flag which allowed terminated sessions
+  // to be returned in the ListSessionResponse. They were removed for performance
+  // reasons. Since this was added sessions have started being cleaned up after
+  // an hour and list pagination was introduced with solves all the performance
+  // issues that this flag was needed for.
+  reserved "include_terminated";
+  reserved 40;
 }
 
 message ListSessionsResponse {

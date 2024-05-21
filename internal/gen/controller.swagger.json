@@ -4220,13 +4220,6 @@
             "type": "string"
           },
           {
-            "name": "include_terminated",
-            "description": "Experimental. By default only non-terminated (i.e. pending, active, canceling) are returned.\nSet this option to include terminated sessions as well.",
-            "in": "query",
-            "required": false,
-            "type": "boolean"
-          },
-          {
             "name": "list_token",
             "description": "An opaque token that Boundary uses to continue an existing iteration or\nrequest updated items. If you do not specify a token, pagination\nstarts from the beginning. To learn more about list pagination\nin Boundary, refer to [list pagination](https://developer.hashicorp.com/boundary/docs/api-clients/api/pagination).",
             "in": "query",

@@ -212,10 +212,9 @@ func (s Service) ListSessions(ctx context.Context, req *pbs.ListSessionsRequest)
 
 	var listResp *pagination.ListResponse[*session.Session]
 	var sortBy string
-	includeTerminated := req.GetIncludeTerminated()
 	if req.GetListToken() == "" {
 		sortBy = "created_time"
-		listResp, err = session.List(ctx, grantsHash, pageSize, filterItemFn, repo, includeTerminated)
+		listResp, err = session.List(ctx, grantsHash, pageSize, filterItemFn, repo)
 		if err != nil {
 			return nil, err
 		}
@@ -227,19 +226,19 @@ func (s Service) ListSessions(ctx context.Context, req *pbs.ListSessionsRequest)
 		switch st := listToken.Subtype.(type) {
 		case *listtoken.PaginationToken:
 			sortBy = "created_time"
-			listResp, err = session.ListPage(ctx, grantsHash, pageSize, filterItemFn, listToken, repo, includeTerminated)
+			listResp, err = session.ListPage(ctx, grantsHash, pageSize, filterItemFn, listToken, repo)
 			if err != nil {
 				return nil, err
 			}
 		case *listtoken.StartRefreshToken:
 			sortBy = "updated_time"
-			listResp, err = session.ListRefresh(ctx, grantsHash, pageSize, filterItemFn, listToken, repo, includeTerminated)
+			listResp, err = session.ListRefresh(ctx, grantsHash, pageSize, filterItemFn, listToken, repo)
 			if err != nil {
 				return nil, err
 			}
 		case *listtoken.RefreshToken:
 			sortBy = "updated_time"
-			listResp, err = session.ListRefreshPage(ctx, grantsHash, pageSize, filterItemFn, listToken, repo, includeTerminated)
+			listResp, err = session.ListRefreshPage(ctx, grantsHash, pageSize, filterItemFn, listToken, repo)
 			if err != nil {
 				return nil, err
 			}

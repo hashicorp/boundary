@@ -22,7 +22,6 @@ func List(
 	pageSize int,
 	filterItemFn pagination.ListFilterFunc[*Session],
 	repo *Repository,
-	includeTerminated bool,
 ) (*pagination.ListResponse[*Session], error) {
 	const op = "session.List"
 
@@ -43,11 +42,6 @@ func List(
 		}
 		if lastPageItem != nil {
 			opts = append(opts, WithStartPageAfterItem(lastPageItem))
-		}
-		if includeTerminated {
-			opts = append(opts,
-				WithTerminated(includeTerminated),
-			)
 		}
 		return repo.listSessions(ctx, opts...)
 	}

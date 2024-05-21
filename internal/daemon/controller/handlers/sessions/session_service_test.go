@@ -331,7 +331,6 @@ func TestList(t *testing.T) {
 	var wantSession []*pb.Session
 	var wantOtherSession []*pb.Session
 	var wantAllSessions []*pb.Session
-	var wantIncludeTerminatedSessions []*pb.Session
 	for i := 0; i < 10; i++ {
 		sess := session.TestSession(t, conn, wrap, session.ComposedOf{
 			UserId:      uId,
@@ -370,8 +369,6 @@ func TestList(t *testing.T) {
 		}
 		wantSession = append(wantSession, firstOrgSession)
 		wantAllSessions = append(wantAllSessions, firstOrgSession)
-
-		wantIncludeTerminatedSessions = append(wantIncludeTerminatedSessions, wantSession[i])
 
 		sess = session.TestSession(t, conn, wrap, session.ComposedOf{
 			UserId:      uIdOther,
@@ -457,7 +454,8 @@ func TestList(t *testing.T) {
 			Connections:       []*pb.Connection{}, // connections should not be returned for list
 		}
 
-		wantIncludeTerminatedSessions = append(wantIncludeTerminatedSessions, expected)
+		wantSession = append(wantSession, expected)
+		wantAllSessions = append(wantAllSessions, expected)
 	}
 
 	// Run analyze to update postgres estimates
@@ -468,7 +466,6 @@ func TestList(t *testing.T) {
 	slices.Reverse(wantSession)
 	slices.Reverse(wantOtherSession)
 	slices.Reverse(wantAllSessions)
-	slices.Reverse(wantIncludeTerminatedSessions)
 
 	cases := []struct {
 		name          string
@@ -486,24 +483,6 @@ func TestList(t *testing.T) {
 				ResponseType: "complete",
 				SortBy:       "created_time",
 				SortDir:      "desc",
-				EstItemCount: 10,
-			},
-			otherRes: &pbs.ListSessionsResponse{
-				Items:        []*pb.Session{},
-				ResponseType: "complete",
-				SortBy:       "created_time",
-				SortDir:      "desc",
-			},
-			allSessionRes: &pbs.ListSessionsResponse{Items: wantSession},
-		},
-		{
-			name: "List Many Include Terminated",
-			req:  &pbs.ListSessionsRequest{ScopeId: pWithSessions.GetPublicId(), IncludeTerminated: true},
-			res: &pbs.ListSessionsResponse{
-				Items:        wantIncludeTerminatedSessions,
-				ResponseType: "complete",
-				SortBy:       "created_time",
-				SortDir:      "desc",
 				EstItemCount: 11,
 			},
 			otherRes: &pbs.ListSessionsResponse{
@@ -512,7 +491,7 @@ func TestList(t *testing.T) {
 				SortBy:       "created_time",
 				SortDir:      "desc",
 			},
-			allSessionRes: &pbs.ListSessionsResponse{Items: wantIncludeTerminatedSessions},
+			allSessionRes: &pbs.ListSessionsResponse{Items: wantSession},
 		},
 		{
 			name: "List No Sessions",
@@ -538,7 +517,7 @@ func TestList(t *testing.T) {
 				ResponseType: "complete",
 				SortBy:       "created_time",
 				SortDir:      "desc",
-				EstItemCount: 10,
+				EstItemCount: 11,
 			},
 			otherRes: &pbs.ListSessionsResponse{
 				Items:        wantOtherSession,
@@ -578,7 +557,7 @@ func TestList(t *testing.T) {
 				ResponseType: "complete",
 				SortBy:       "created_time",
 				SortDir:      "desc",
-				EstItemCount: 10,
+				EstItemCount: 11,
 			},
 			otherRes: &pbs.ListSessionsResponse{
 				Items:        []*pb.Session{},

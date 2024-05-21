@@ -30,7 +30,6 @@ func ListRefresh(
 	filterItemFn pagination.ListFilterFunc[*Session],
 	tok *listtoken.Token,
 	repo *Repository,
-	includeTerminated bool,
 ) (*pagination.ListResponse[*Session], error) {
 	const op = "session.ListRefresh"
 
@@ -59,11 +58,6 @@ func ListRefresh(
 		}
 		if lastPageItem != nil {
 			opts = append(opts, WithStartPageAfterItem(lastPageItem))
-		}
-		if includeTerminated {
-			opts = append(opts,
-				WithTerminated(includeTerminated),
-			)
 		}
 		// Add the database read timeout to account for any creations missed due to concurrent
 		// transactions in the initial pagination phase.

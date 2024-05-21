@@ -296,9 +296,6 @@ func (r *Repository) listSessions(ctx context.Context, opt ...Option) ([]*Sessio
 	opts := getOpts(opt...)
 
 	permissionWhereClause := "(" + strings.Join(where, " or ") + ")"
-	if !opts.withTerminated {
-		permissionWhereClause += " and termination_reason is null"
-	}
 
 	limit := r.defaultLimit
 	if opts.withLimit > 0 {
@@ -338,9 +335,6 @@ func (r *Repository) listSessionsRefresh(ctx context.Context, updatedAfter time.
 	opts := getOpts(opt...)
 
 	permissionWhereClause := "(" + strings.Join(where, " or ") + ")"
-	if !opts.withTerminated {
-		permissionWhereClause += " and termination_reason is null"
-	}
 
 	limit := r.defaultLimit
 	if opts.withLimit > 0 {

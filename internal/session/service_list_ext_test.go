@@ -78,7 +78,7 @@ func TestService_List(t *testing.T) {
 			filterFunc := func(_ context.Context, s *session.Session) (bool, error) {
 				return true, nil
 			}
-			_, err := session.List(ctx, nil, 1, filterFunc, repo, true)
+			_, err := session.List(ctx, nil, 1, filterFunc, repo)
 			require.ErrorContains(t, err, "missing grants hash")
 		})
 		t.Run("zero page size", func(t *testing.T) {
@@ -86,7 +86,7 @@ func TestService_List(t *testing.T) {
 			filterFunc := func(_ context.Context, s *session.Session) (bool, error) {
 				return true, nil
 			}
-			_, err := session.List(ctx, []byte("some hash"), 0, filterFunc, repo, true)
+			_, err := session.List(ctx, []byte("some hash"), 0, filterFunc, repo)
 			require.ErrorContains(t, err, "page size must be at least 1")
 		})
 		t.Run("negative page size", func(t *testing.T) {
@@ -94,12 +94,12 @@ func TestService_List(t *testing.T) {
 			filterFunc := func(_ context.Context, s *session.Session) (bool, error) {
 				return true, nil
 			}
-			_, err := session.List(ctx, []byte("some hash"), -1, filterFunc, repo, true)
+			_, err := session.List(ctx, []byte("some hash"), -1, filterFunc, repo)
 			require.ErrorContains(t, err, "page size must be at least 1")
 		})
 		t.Run("nil filter func", func(t *testing.T) {
 			t.Parallel()
-			_, err := session.List(ctx, []byte("some hash"), 1, nil, repo, true)
+			_, err := session.List(ctx, []byte("some hash"), 1, nil, repo)
 			require.ErrorContains(t, err, "missing filter item callback")
 		})
 		t.Run("nil repo", func(t *testing.T) {
@@ -107,7 +107,7 @@ func TestService_List(t *testing.T) {
 			filterFunc := func(_ context.Context, s *session.Session) (bool, error) {
 				return true, nil
 			}
-			_, err := session.List(ctx, []byte("some hash"), 1, filterFunc, nil, true)
+			_, err := session.List(ctx, []byte("some hash"), 1, filterFunc, nil)
 			require.ErrorContains(t, err, "missing repo")
 		})
 	})
@@ -120,7 +120,7 @@ func TestService_List(t *testing.T) {
 			}
 			tok, err := listtoken.NewPagination(ctx, fiveDaysAgo, resource.Session, []byte("some hash"), "some-id", fiveDaysAgo)
 			require.NoError(t, err)
-			_, err = session.ListPage(ctx, nil, 1, filterFunc, tok, repo, true)
+			_, err = session.ListPage(ctx, nil, 1, filterFunc, tok, repo)
 			require.ErrorContains(t, err, "missing grants hash")
 		})
 		t.Run("zero page size", func(t *testing.T) {
@@ -130,7 +130,7 @@ func TestService_List(t *testing.T) {
 			}
 			tok, err := listtoken.NewPagination(ctx, fiveDaysAgo, resource.Session, []byte("some hash"), "some-id", fiveDaysAgo)
 			require.NoError(t, err)
-			_, err = session.ListPage(ctx, []byte("some hash"), 0, filterFunc, tok, repo, true)
+			_, err = session.ListPage(ctx, []byte("some hash"), 0, filterFunc, tok, repo)
 			require.ErrorContains(t, err, "page size must be at least 1")
 		})
 		t.Run("negative page size", func(t *testing.T) {
@@ -140,14 +140,14 @@ func TestService_List(t *testing.T) {
 			}
 			tok, err := listtoken.NewPagination(ctx, fiveDaysAgo, resource.Session, []byte("some hash"), "some-id", fiveDaysAgo)
 			require.NoError(t, err)
-			_, err = session.ListPage(ctx, []byte("some hash"), -1, filterFunc, tok, repo, true)
+			_, err = session.ListPage(ctx, []byte("some hash"), -1, filterFunc, tok, repo)
 			require.ErrorContains(t, err, "page size must be at least 1")
 		})
 		t.Run("nil filter func", func(t *testing.T) {
 			t.Parallel()
 			tok, err := listtoken.NewPagination(ctx, fiveDaysAgo, resource.Session, []byte("some hash"), "some-id", fiveDaysAgo)
 			require.NoError(t, err)
-			_, err = session.ListPage(ctx, []byte("some hash"), 1, nil, tok, repo, true)
+			_, err = session.ListPage(ctx, []byte("some hash"), 1, nil, tok, repo)
 			require.ErrorContains(t, err, "missing filter item callback")
 		})
 		t.Run("nil token", func(t *testing.T) {
@@ -155,7 +155,7 @@ func TestService_List(t *testing.T) {
 			filterFunc := func(_ context.Context, s *session.Session) (bool, error) {
 				return true, nil
 			}
-			_, err := session.ListPage(ctx, []byte("some hash"), 1, filterFunc, nil, repo, true)
+			_, err := session.ListPage(ctx, []byte("some hash"), 1, filterFunc, nil, repo)
 			require.ErrorContains(t, err, "missing token")
 		})
 		t.Run("wrong token type", func(t *testing.T) {
@@ -165,7 +165,7 @@ func TestService_List(t *testing.T) {
 			}
 			tok, err := listtoken.NewStartRefresh(ctx, fiveDaysAgo, resource.Session, []byte("some hash"), fiveDaysAgo, fiveDaysAgo)
 			require.NoError(t, err)
-			_, err = session.ListPage(ctx, []byte("some hash"), 1, filterFunc, tok, repo, true)
+			_, err = session.ListPage(ctx, []byte("some hash"), 1, filterFunc, tok, repo)
 			require.ErrorContains(t, err, "token did not have a pagination token component")
 		})
 		t.Run("nil repo", func(t *testing.T) {
@@ -175,7 +175,7 @@ func TestService_List(t *testing.T) {
 			}
 			tok, err := listtoken.NewPagination(ctx, fiveDaysAgo, resource.Session, []byte("some hash"), "some-id", fiveDaysAgo)
 			require.NoError(t, err)
-			_, err = session.ListPage(ctx, []byte("some hash"), 1, filterFunc, tok, nil, true)
+			_, err = session.ListPage(ctx, []byte("some hash"), 1, filterFunc, tok, nil)
 			require.ErrorContains(t, err, "missing repo")
 		})
 		t.Run("wrong token resource type", func(t *testing.T) {
@@ -185,7 +185,7 @@ func TestService_List(t *testing.T) {
 			}
 			tok, err := listtoken.NewPagination(ctx, fiveDaysAgo, resource.Target, []byte("some hash"), "some-id", fiveDaysAgo)
 			require.NoError(t, err)
-			_, err = session.ListPage(ctx, []byte("some hash"), 1, filterFunc, tok, repo, true)
+			_, err = session.ListPage(ctx, []byte("some hash"), 1, filterFunc, tok, repo)
 			require.ErrorContains(t, err, "token did not have a session resource type")
 		})
 	})
@@ -198,7 +198,7 @@ func TestService_List(t *testing.T) {
 			}
 			tok, err := listtoken.NewStartRefresh(ctx, fiveDaysAgo, resource.Session, []byte("some hash"), fiveDaysAgo, fiveDaysAgo)
 			require.NoError(t, err)
-			_, err = session.ListPage(ctx, nil, 1, filterFunc, tok, repo, true)
+			_, err = session.ListPage(ctx, nil, 1, filterFunc, tok, repo)
 			require.ErrorContains(t, err, "missing grants hash")
 		})
 		t.Run("zero page size", func(t *testing.T) {
@@ -208,7 +208,7 @@ func TestService_List(t *testing.T) {
 			}
 			tok, err := listtoken.NewStartRefresh(ctx, fiveDaysAgo, resource.Session, []byte("some hash"), fiveDaysAgo, fiveDaysAgo)
 			require.NoError(t, err)
-			_, err = session.ListPage(ctx, []byte("some hash"), 0, filterFunc, tok, repo, true)
+			_, err = session.ListPage(ctx, []byte("some hash"), 0, filterFunc, tok, repo)
 			require.ErrorContains(t, err, "page size must be at least 1")
 		})
 		t.Run("negative page size", func(t *testing.T) {
@@ -218,14 +218,14 @@ func TestService_List(t *testing.T) {
 			}
 			tok, err := listtoken.NewStartRefresh(ctx, fiveDaysAgo, resource.Session, []byte("some hash"), fiveDaysAgo, fiveDaysAgo)
 			require.NoError(t, err)
-			_, err = session.ListPage(ctx, []byte("some hash"), -1, filterFunc, tok, repo, true)
+			_, err = session.ListPage(ctx, []byte("some hash"), -1, filterFunc, tok, repo)
 			require.ErrorContains(t, err, "page size must be at least 1")
 		})
 		t.Run("nil filter func", func(t *testing.T) {
 			t.Parallel()
 			tok, err := listtoken.NewStartRefresh(ctx, fiveDaysAgo, resource.Session, []byte("some hash"), fiveDaysAgo, fiveDaysAgo)
 			require.NoError(t, err)
-			_, err = session.ListPage(ctx, []byte("some hash"), 1, nil, tok, repo, true)
+			_, err = session.ListPage(ctx, []byte("some hash"), 1, nil, tok, repo)
 			require.ErrorContains(t, err, "missing filter item callback")
 		})
 		t.Run("nil token", func(t *testing.T) {
@@ -233,7 +233,7 @@ func TestService_List(t *testing.T) {
 			filterFunc := func(_ context.Context, s *session.Session) (bool, error) {
 				return true, nil
 			}
-			_, err := session.ListPage(ctx, []byte("some hash"), 1, filterFunc, nil, repo, true)
+			_, err := session.ListPage(ctx, []byte("some hash"), 1, filterFunc, nil, repo)
 			require.ErrorContains(t, err, "missing token")
 		})
 		t.Run("wrong token type", func(t *testing.T) {
@@ -243,7 +243,7 @@ func TestService_List(t *testing.T) {
 			}
 			tok, err := listtoken.NewPagination(ctx, fiveDaysAgo, resource.Session, []byte("some hash"), "some-id", fiveDaysAgo)
 			require.NoError(t, err)
-			_, err = session.ListRefresh(ctx, []byte("some hash"), 1, filterFunc, tok, repo, true)
+			_, err = session.ListRefresh(ctx, []byte("some hash"), 1, filterFunc, tok, repo)
 			require.ErrorContains(t, err, "token did not have a start-refresh token component")
 		})
 		t.Run("nil repo", func(t *testing.T) {
@@ -253,7 +253,7 @@ func TestService_List(t *testing.T) {
 			}
 			tok, err := listtoken.NewStartRefresh(ctx, fiveDaysAgo, resource.Session, []byte("some hash"), fiveDaysAgo, fiveDaysAgo)
 			require.NoError(t, err)
-			_, err = session.ListPage(ctx, []byte("some hash"), 1, filterFunc, tok, nil, true)
+			_, err = session.ListPage(ctx, []byte("some hash"), 1, filterFunc, tok, nil)
 			require.ErrorContains(t, err, "missing repo")
 		})
 		t.Run("wrong token resource type", func(t *testing.T) {
@@ -263,7 +263,7 @@ func TestService_List(t *testing.T) {
 			}
 			tok, err := listtoken.NewStartRefresh(ctx, fiveDaysAgo, resource.Target, []byte("some hash"), fiveDaysAgo, fiveDaysAgo)
 			require.NoError(t, err)
-			_, err = session.ListPage(ctx, []byte("some hash"), 1, filterFunc, tok, repo, true)
+			_, err = session.ListPage(ctx, []byte("some hash"), 1, filterFunc, tok, repo)
 			require.ErrorContains(t, err, "token did not have a session resource type")
 		})
 	})
@@ -276,7 +276,7 @@ func TestService_List(t *testing.T) {
 			}
 			tok, err := listtoken.NewRefresh(ctx, fiveDaysAgo, resource.Session, []byte("some hash"), fiveDaysAgo, fiveDaysAgo, fiveDaysAgo, "some other id", fiveDaysAgo)
 			require.NoError(t, err)
-			_, err = session.ListRefreshPage(ctx, nil, 1, filterFunc, tok, repo, true)
+			_, err = session.ListRefreshPage(ctx, nil, 1, filterFunc, tok, repo)
 			require.ErrorContains(t, err, "missing grants hash")
 		})
 		t.Run("zero page size", func(t *testing.T) {
@@ -286,7 +286,7 @@ func TestService_List(t *testing.T) {
 			}
 			tok, err := listtoken.NewRefresh(ctx, fiveDaysAgo, resource.Session, []byte("some hash"), fiveDaysAgo, fiveDaysAgo, fiveDaysAgo, "some other id", fiveDaysAgo)
 			require.NoError(t, err)
-			_, err = session.ListRefreshPage(ctx, []byte("some hash"), 0, filterFunc, tok, repo, true)
+			_, err = session.ListRefreshPage(ctx, []byte("some hash"), 0, filterFunc, tok, repo)
 			require.ErrorContains(t, err, "page size must be at least 1")
 		})
 		t.Run("negative page size", func(t *testing.T) {
@@ -296,14 +296,14 @@ func TestService_List(t *testing.T) {
 			}
 			tok, err := listtoken.NewRefresh(ctx, fiveDaysAgo, resource.Session, []byte("some hash"), fiveDaysAgo, fiveDaysAgo, fiveDaysAgo, "some other id", fiveDaysAgo)
 			require.NoError(t, err)
-			_, err = session.ListRefreshPage(ctx, []byte("some hash"), -1, filterFunc, tok, repo, true)
+			_, err = session.ListRefreshPage(ctx, []byte("some hash"), -1, filterFunc, tok, repo)
 			require.ErrorContains(t, err, "page size must be at least 1")
 		})
 		t.Run("nil filter func", func(t *testing.T) {
 			t.Parallel()
 			tok, err := listtoken.NewRefresh(ctx, fiveDaysAgo, resource.Session, []byte("some hash"), fiveDaysAgo, fiveDaysAgo, fiveDaysAgo, "some other id", fiveDaysAgo)
 			require.NoError(t, err)
-			_, err = session.ListRefreshPage(ctx, []byte("some hash"), 1, nil, tok, repo, true)
+			_, err = session.ListRefreshPage(ctx, []byte("some hash"), 1, nil, tok, repo)
 			require.ErrorContains(t, err, "missing filter item callback")
 		})
 		t.Run("nil token", func(t *testing.T) {
@@ -311,7 +311,7 @@ func TestService_List(t *testing.T) {
 			filterFunc := func(_ context.Context, s *session.Session) (bool, error) {
 				return true, nil
 			}
-			_, err := session.ListRefreshPage(ctx, []byte("some hash"), 1, filterFunc, nil, repo, true)
+			_, err := session.ListRefreshPage(ctx, []byte("some hash"), 1, filterFunc, nil, repo)
 			require.ErrorContains(t, err, "missing token")
 		})
 		t.Run("wrong token type", func(t *testing.T) {
@@ -321,7 +321,7 @@ func TestService_List(t *testing.T) {
 			}
 			tok, err := listtoken.NewPagination(ctx, fiveDaysAgo, resource.Session, []byte("some hash"), "some-id", fiveDaysAgo)
 			require.NoError(t, err)
-			_, err = session.ListRefreshPage(ctx, []byte("some hash"), 1, filterFunc, tok, repo, true)
+			_, err = session.ListRefreshPage(ctx, []byte("some hash"), 1, filterFunc, tok, repo)
 			require.ErrorContains(t, err, "token did not have a refresh token component")
 		})
 		t.Run("nil repo", func(t *testing.T) {
@@ -331,7 +331,7 @@ func TestService_List(t *testing.T) {
 			}
 			tok, err := listtoken.NewRefresh(ctx, fiveDaysAgo, resource.Session, []byte("some hash"), fiveDaysAgo, fiveDaysAgo, fiveDaysAgo, "some other id", fiveDaysAgo)
 			require.NoError(t, err)
-			_, err = session.ListRefreshPage(ctx, []byte("some hash"), 1, filterFunc, tok, nil, true)
+			_, err = session.ListRefreshPage(ctx, []byte("some hash"), 1, filterFunc, tok, nil)
 			require.ErrorContains(t, err, "missing repo")
 		})
 		t.Run("wrong token resource type", func(t *testing.T) {
@@ -341,7 +341,7 @@ func TestService_List(t *testing.T) {
 			}
 			tok, err := listtoken.NewRefresh(ctx, fiveDaysAgo, resource.Target, []byte("some hash"), fiveDaysAgo, fiveDaysAgo, fiveDaysAgo, "some other id", fiveDaysAgo)
 			require.NoError(t, err)
-			_, err = session.ListRefreshPage(ctx, []byte("some hash"), 1, filterFunc, tok, repo, true)
+			_, err = session.ListRefreshPage(ctx, []byte("some hash"), 1, filterFunc, tok, repo)
 			require.ErrorContains(t, err, "token did not have a session resource type")
 		})
 	})
@@ -350,7 +350,7 @@ func TestService_List(t *testing.T) {
 		filterFunc := func(_ context.Context, s *session.Session) (bool, error) {
 			return true, nil
 		}
-		resp, err := session.List(ctx, []byte("some hash"), 1, filterFunc, repo, true)
+		resp, err := session.List(ctx, []byte("some hash"), 1, filterFunc, repo)
 		require.NoError(t, err)
 		require.NotNil(t, resp.ListToken)
 		require.Equal(t, resp.ListToken.GrantsHash, []byte("some hash"))
@@ -360,7 +360,7 @@ func TestService_List(t *testing.T) {
 		require.Len(t, resp.Items, 1)
 		require.Empty(t, cmp.Diff(resp.Items[0], allSessions[0], cmpIgnoreUnexportedOpts, cmpIgnoreFieldsOpts))
 
-		resp2, err := session.ListPage(ctx, []byte("some hash"), 1, filterFunc, resp.ListToken, repo, true)
+		resp2, err := session.ListPage(ctx, []byte("some hash"), 1, filterFunc, resp.ListToken, repo)
 		require.NoError(t, err)
 		require.Equal(t, resp2.ListToken.GrantsHash, []byte("some hash"))
 		require.False(t, resp2.CompleteListing)
@@ -369,7 +369,7 @@ func TestService_List(t *testing.T) {
 		require.Len(t, resp2.Items, 1)
 		require.Empty(t, cmp.Diff(resp2.Items[0], allSessions[1], cmpIgnoreUnexportedOpts, cmpIgnoreFieldsOpts))
 
-		resp3, err := session.ListPage(ctx, []byte("some hash"), 1, filterFunc, resp2.ListToken, repo, true)
+		resp3, err := session.ListPage(ctx, []byte("some hash"), 1, filterFunc, resp2.ListToken, repo)
 		require.NoError(t, err)
 		require.Equal(t, resp3.ListToken.GrantsHash, []byte("some hash"))
 		require.False(t, resp3.CompleteListing)
@@ -378,7 +378,7 @@ func TestService_List(t *testing.T) {
 		require.Len(t, resp3.Items, 1)
 		require.Empty(t, cmp.Diff(resp3.Items[0], allSessions[2], cmpIgnoreUnexportedOpts, cmpIgnoreFieldsOpts))
 
-		resp4, err := session.ListPage(ctx, []byte("some hash"), 1, filterFunc, resp3.ListToken, repo, true)
+		resp4, err := session.ListPage(ctx, []byte("some hash"), 1, filterFunc, resp3.ListToken, repo)
 		require.NoError(t, err)
 		require.Equal(t, resp4.ListToken.GrantsHash, []byte("some hash"))
 		require.False(t, resp4.CompleteListing)
@@ -387,7 +387,7 @@ func TestService_List(t *testing.T) {
 		require.Len(t, resp4.Items, 1)
 		require.Empty(t, cmp.Diff(resp4.Items[0], allSessions[3], cmpIgnoreUnexportedOpts, cmpIgnoreFieldsOpts))
 
-		resp5, err := session.ListPage(ctx, []byte("some hash"), 1, filterFunc, resp4.ListToken, repo, true)
+		resp5, err := session.ListPage(ctx, []byte("some hash"), 1, filterFunc, resp4.ListToken, repo)
 		require.NoError(t, err)
 		require.Equal(t, resp5.ListToken.GrantsHash, []byte("some hash"))
 		require.True(t, resp5.CompleteListing)
@@ -398,7 +398,7 @@ func TestService_List(t *testing.T) {
 
 		// Finished initial pagination phase, request refresh
 		// Expect no results.
-		resp6, err := session.ListRefresh(ctx, []byte("some hash"), 1, filterFunc, resp5.ListToken, repo, true)
+		resp6, err := session.ListRefresh(ctx, []byte("some hash"), 1, filterFunc, resp5.ListToken, repo)
 		require.NoError(t, err)
 		require.Equal(t, resp6.ListToken.GrantsHash, []byte("some hash"))
 		require.True(t, resp6.CompleteListing)
@@ -423,7 +423,7 @@ func TestService_List(t *testing.T) {
 		require.NoError(t, err)
 
 		// Refresh again, should get newS2
-		resp7, err := session.ListRefresh(ctx, []byte("some hash"), 1, filterFunc, resp6.ListToken, repo, true)
+		resp7, err := session.ListRefresh(ctx, []byte("some hash"), 1, filterFunc, resp6.ListToken, repo)
 		require.NoError(t, err)
 		require.Equal(t, resp7.ListToken.GrantsHash, []byte("some hash"))
 		require.False(t, resp7.CompleteListing)
@@ -433,7 +433,7 @@ func TestService_List(t *testing.T) {
 		require.Empty(t, cmp.Diff(resp7.Items[0], newS2, cmpIgnoreUnexportedOpts, cmpIgnoreFieldsOpts))
 
 		// Refresh again, should get newS1
-		resp8, err := session.ListRefreshPage(ctx, []byte("some hash"), 1, filterFunc, resp7.ListToken, repo, true)
+		resp8, err := session.ListRefreshPage(ctx, []byte("some hash"), 1, filterFunc, resp7.ListToken, repo)
 		require.NoError(t, err)
 		require.Equal(t, resp8.ListToken.GrantsHash, []byte("some hash"))
 		require.True(t, resp8.CompleteListing)
@@ -443,7 +443,7 @@ func TestService_List(t *testing.T) {
 		require.Empty(t, cmp.Diff(resp8.Items[0], newS1, cmpIgnoreUnexportedOpts, cmpIgnoreFieldsOpts))
 
 		// Refresh again, should get no results
-		resp9, err := session.ListRefresh(ctx, []byte("some hash"), 1, filterFunc, resp8.ListToken, repo, true)
+		resp9, err := session.ListRefresh(ctx, []byte("some hash"), 1, filterFunc, resp8.ListToken, repo)
 		require.NoError(t, err)
 		require.Equal(t, resp9.ListToken.GrantsHash, []byte("some hash"))
 		require.True(t, resp9.CompleteListing)
@@ -457,7 +457,7 @@ func TestService_List(t *testing.T) {
 			return s.GetPublicId() == allSessions[1].GetPublicId() ||
 				s.GetPublicId() == allSessions[len(allSessions)-1].GetPublicId(), nil
 		}
-		resp, err := session.List(ctx, []byte("some hash"), 1, filterFunc, repo, true)
+		resp, err := session.List(ctx, []byte("some hash"), 1, filterFunc, repo)
 		require.NoError(t, err)
 		require.NotNil(t, resp.ListToken)
 		require.Equal(t, resp.ListToken.GrantsHash, []byte("some hash"))
@@ -467,7 +467,7 @@ func TestService_List(t *testing.T) {
 		require.Len(t, resp.Items, 1)
 		require.Empty(t, cmp.Diff(resp.Items[0], allSessions[1], cmpIgnoreUnexportedOpts, cmpIgnoreFieldsOpts))
 
-		resp2, err := session.ListPage(ctx, []byte("some hash"), 1, filterFunc, resp.ListToken, repo, true)
+		resp2, err := session.ListPage(ctx, []byte("some hash"), 1, filterFunc, resp.ListToken, repo)
 		require.NoError(t, err)
 		require.NotNil(t, resp2.ListToken)
 		require.Equal(t, resp2.ListToken.GrantsHash, []byte("some hash"))
@@ -478,7 +478,7 @@ func TestService_List(t *testing.T) {
 		require.Empty(t, cmp.Diff(resp2.Items[0], allSessions[len(allSessions)-1], cmpIgnoreUnexportedOpts, cmpIgnoreFieldsOpts))
 
 		// request a refresh, nothing should be returned
-		resp3, err := session.ListRefresh(ctx, []byte("some hash"), 1, filterFunc, resp.ListToken, repo, true)
+		resp3, err := session.ListRefresh(ctx, []byte("some hash"), 1, filterFunc, resp.ListToken, repo)
 		require.NoError(t, err)
 		require.Equal(t, resp3.ListToken.GrantsHash, []byte("some hash"))
 		require.True(t, resp3.CompleteListing)
@@ -513,7 +513,7 @@ func TestService_List(t *testing.T) {
 				s.GetPublicId() == newS1.GetPublicId(), nil
 		}
 		// Refresh again, should get newS3
-		resp4, err := session.ListRefresh(ctx, []byte("some hash"), 1, filterFunc, resp3.ListToken, repo, true)
+		resp4, err := session.ListRefresh(ctx, []byte("some hash"), 1, filterFunc, resp3.ListToken, repo)
 		require.NoError(t, err)
 		require.Equal(t, resp4.ListToken.GrantsHash, []byte("some hash"))
 		require.False(t, resp4.CompleteListing)
@@ -523,7 +523,7 @@ func TestService_List(t *testing.T) {
 		require.Empty(t, cmp.Diff(resp4.Items[0], newS3, cmpIgnoreUnexportedOpts, cmpIgnoreFieldsOpts))
 
 		// Refresh again, should get newS1
-		resp5, err := session.ListRefreshPage(ctx, []byte("some hash"), 1, filterFunc, resp4.ListToken, repo, true)
+		resp5, err := session.ListRefreshPage(ctx, []byte("some hash"), 1, filterFunc, resp4.ListToken, repo)
 		require.NoError(t, err)
 		require.Equal(t, resp5.ListToken.GrantsHash, []byte("some hash"))
 		require.True(t, resp5.CompleteListing)
@@ -546,7 +546,7 @@ func TestService_List(t *testing.T) {
 		_, err = sqlDb.ExecContext(ctx, "analyze")
 		require.NoError(t, err)
 
-		resp, err := session.List(ctx, []byte("some hash"), 1, filterFunc, repo, true)
+		resp, err := session.List(ctx, []byte("some hash"), 1, filterFunc, repo)
 		require.NoError(t, err)
 		require.NotNil(t, resp.ListToken)
 		require.Equal(t, resp.ListToken.GrantsHash, []byte("some hash"))
@@ -557,7 +557,7 @@ func TestService_List(t *testing.T) {
 		require.Empty(t, cmp.Diff(resp.Items[0], allSessions[0], cmpIgnoreUnexportedOpts, cmpIgnoreFieldsOpts))
 
 		// request remaining results
-		resp2, err := session.ListPage(ctx, []byte("some hash"), 3, filterFunc, resp.ListToken, repo, true)
+		resp2, err := session.ListPage(ctx, []byte("some hash"), 3, filterFunc, resp.ListToken, repo)
 		require.NoError(t, err)
 		require.Equal(t, resp2.ListToken.GrantsHash, []byte("some hash"))
 		require.True(t, resp2.CompleteListing)
@@ -576,7 +576,7 @@ func TestService_List(t *testing.T) {
 		require.NoError(t, err)
 
 		// request a refresh, nothing should be returned except the deleted id
-		resp3, err := session.ListRefresh(ctx, []byte("some hash"), 1, filterFunc, resp2.ListToken, repo, true)
+		resp3, err := session.ListRefresh(ctx, []byte("some hash"), 1, filterFunc, resp2.ListToken, repo)
 		require.NoError(t, err)
 		require.Equal(t, resp3.ListToken.GrantsHash, []byte("some hash"))
 		require.True(t, resp3.CompleteListing)
@@ -589,7 +589,7 @@ func TestService_List(t *testing.T) {
 		filterFunc := func(_ context.Context, s *session.Session) (bool, error) {
 			return true, nil
 		}
-		resp, err := session.List(ctx, []byte("some hash"), 3, filterFunc, repo, true)
+		resp, err := session.List(ctx, []byte("some hash"), 3, filterFunc, repo)
 		require.NoError(t, err)
 		require.NotNil(t, resp.ListToken)
 		require.Equal(t, resp.ListToken.GrantsHash, []byte("some hash"))
@@ -604,7 +604,7 @@ func TestService_List(t *testing.T) {
 		_, err = sqlDb.ExecContext(ctx, "analyze")
 		require.NoError(t, err)
 
-		resp2, err := session.ListRefresh(ctx, []byte("some hash"), 1, filterFunc, resp.ListToken, repo, true)
+		resp2, err := session.ListRefresh(ctx, []byte("some hash"), 1, filterFunc, resp.ListToken, repo)
 		require.NoError(t, err)
 		require.NotNil(t, resp2.ListToken)
 		require.Equal(t, resp2.ListToken.GrantsHash, []byte("some hash"))

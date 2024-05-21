@@ -26,7 +26,6 @@ func ListPage(
 	filterItemFn pagination.ListFilterFunc[*Session],
 	tok *listtoken.Token,
 	repo *Repository,
-	includeTerminated bool,
 ) (*pagination.ListResponse[*Session], error) {
 	const op = "session.ListPage"
 
@@ -60,11 +59,6 @@ func ListPage(
 				return nil, time.Time{}, err
 			}
 			opts = append(opts, WithStartPageAfterItem(lastItem))
-		}
-		if includeTerminated {
-			opts = append(opts,
-				WithTerminated(includeTerminated),
-			)
 		}
 		return repo.listSessions(ctx, opts...)
 	}
