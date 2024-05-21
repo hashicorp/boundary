@@ -84,7 +84,7 @@ service StorageBucketService {
 }
 
 message GetStorageBucketRequest {
-  string id = 1; // @gotags: `class:"public"`
+  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
 }
 
 message GetStorageBucketResponse {
@@ -92,8 +92,8 @@ message GetStorageBucketResponse {
 }
 
 message ListStorageBucketsRequest {
-  string scope_id = 1 [json_name = "scope_id"]; // @gotags: `class:"public"`
-  bool recursive = 20 [json_name = "recursive"]; // @gotags: `class:"public"`
+  string scope_id = 1 [json_name = "scope_id"]; // @gotags: `class:"public" eventstream:"observation"`
+  bool recursive = 20 [json_name = "recursive"]; // @gotags: `class:"public" eventstream:"observation"`
   // You can specify that the filter should only return items that match.
   // Refer to [filter expressions](https://developer.hashicorp.com/boundary/docs/concepts/filtering) for more information.
   string filter = 30 [json_name = "filter"]; // @gotags: `class:"public"`
@@ -142,12 +142,12 @@ message CreateStorageBucketRequest {
 }
 
 message CreateStorageBucketResponse {
-  string uri = 1; // @gotags: `class:"public"`
+  string uri = 1; // @gotags: `class:"public" eventstream:"observation"`
   api.resources.storagebuckets.v1.StorageBucket item = 2;
 }
 
 message UpdateStorageBucketRequest {
-  string id = 1; // @gotags: `class:"public"`
+  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
   api.resources.storagebuckets.v1.StorageBucket item = 2;
   google.protobuf.FieldMask update_mask = 3;
 }
@@ -157,7 +157,7 @@ message UpdateStorageBucketResponse {
 }
 
 message DeleteStorageBucketRequest {
-  string id = 1; // @gotags: `class:"public"`
+  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
 }
 
 message DeleteStorageBucketResponse {}
