@@ -203,7 +203,7 @@ func AddHostToHostSetCli(t testing.TB, ctx context.Context, hostSetId string, ho
 
 // CreateAwsHostCatalogCli uses the cli to create a new AWS dynamic host catalog.
 // Returns the id of the new host catalog.
-func CreateAwsHostCatalogCli(t testing.TB, ctx context.Context, projectId string, accessKeyId string, secretAccessKey string) (string, error) {
+func CreateAwsHostCatalogCli(t testing.TB, ctx context.Context, projectId, accessKeyId, secretAccessKey, region string) (string, error) {
 	name, err := base62.Random(16)
 	if err != nil {
 		return "", err
@@ -215,7 +215,7 @@ func CreateAwsHostCatalogCli(t testing.TB, ctx context.Context, projectId string
 			"-scope-id", projectId,
 			"-plugin-name", "aws",
 			"-attr", "disable_credential_rotation=true",
-			"-attr", "region=us-east-1",
+			"-attr", fmt.Sprintf("region=%s", region),
 			"-secret", "access_key_id=env://E2E_AWS_ACCESS_KEY_ID",
 			"-secret", "secret_access_key=env://E2E_AWS_SECRET_ACCESS_KEY",
 			"-name", fmt.Sprintf("e2e Host Catalog %s", name),
