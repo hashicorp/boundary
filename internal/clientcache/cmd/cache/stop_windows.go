@@ -4,7 +4,7 @@
 //go:build windows
 // +build windows
 
-package daemon
+package cache
 
 import (
 	"context"
@@ -19,7 +19,7 @@ import (
 	"github.com/hashicorp/boundary/internal/util"
 )
 
-// stop will send a term signal to the daemon to shut down.
+// stop will send a term signal to the cache to shut down.
 func (c *StopCommand) stop(ctx context.Context) error {
 	switch {
 	case util.IsNil(ctx):
@@ -40,7 +40,7 @@ func (c *StopCommand) stop(ctx context.Context) error {
 		} else if apiErr != nil {
 			errMsg = apiErr.Message
 		}
-		c.UI.Warn(fmt.Sprintf("Failed stopping the daemon through the handler: %q, now killing the process", errMsg))
+		c.UI.Warn(fmt.Sprintf("Failed stopping the cache through the handler: %q, now killing the process", errMsg))
 	default:
 		// there wasn't an error stopping it through the handler. No need to
 		// force kill the process
@@ -51,12 +51,12 @@ func (c *StopCommand) stop(ctx context.Context) error {
 	p, err := pidFileInUse(ctx, pidPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return errors.New("Unable to stop the daemon: pid file not found.")
+			return errors.New("Unable to stop the cache: pid file not found.")
 		}
-		return fmt.Errorf("Error when trying to stop the daemon: %w", err)
+		return fmt.Errorf("Error when trying to stop the cache: %w", err)
 	}
 	if p == nil {
-		return errors.New("Daemon process was not found.")
+		return errors.New("Cache process was not found.")
 	}
 
 	if err := p.Kill(); err != nil {
@@ -73,7 +73,7 @@ func stopThroughHandler(ctx context.Context, dotPath string) (*api.Error, error)
 	}
 	resp, err := c.Post(ctx, "/v1/stop", nil)
 	if err != nil {
-		return nil, fmt.Errorf("Error when sending request to the daemon: %w.", err)
+		return nil, fmt.Errorf("Error when sending request to the cache: %w.", err)
 	}
 	apiErr, err := resp.Decode(nil)
 	return apiErr, err

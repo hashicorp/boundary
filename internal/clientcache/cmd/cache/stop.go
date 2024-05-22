@@ -1,7 +1,7 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: BUSL-1.1
 
-package daemon
+package cache
 
 import (
 	"context"
@@ -17,16 +17,16 @@ type StopCommand struct {
 }
 
 func (c *StopCommand) Synopsis() string {
-	return "Stop a Boundary daemon"
+	return "Stop the Boundary cache"
 }
 
 func (c *StopCommand) Help() string {
 	helpText := `
-Usage: boundary daemon stop
+Usage: boundary cache stop
 
-  Stop a daemon:
+  Stop a cache:
 
-      $ boundary daemon stop
+      $ boundary cache stop
 
   For a full list of examples, please see the documentation.
 
@@ -59,7 +59,7 @@ func (c *StopCommand) Run(args []string) int {
 	}
 	if err := c.stop(c.Context); err != nil {
 		if errors.Match(errors.T(errors.NotFound), err) {
-			c.PrintCliError(errDaemonNotRunning)
+			c.PrintCliError(errCacheNotRunning)
 		} else {
 			c.PrintCliError(err)
 		}

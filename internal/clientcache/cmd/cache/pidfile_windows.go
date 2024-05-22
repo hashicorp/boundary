@@ -4,7 +4,7 @@
 //go:build windows
 // +build windows
 
-package daemon
+package cache
 
 import (
 	"bytes"
@@ -20,7 +20,7 @@ import (
 )
 
 func writePidFile(ctx context.Context, pidFile string) (pidCleanup, error) {
-	const op = "daemon.writePidFile"
+	const op = "cache.writePidFile"
 	// Create the file for writing, and set shared read so following processes
 	// cannot open this file for writing.
 	fd, err := windows.CreateFile(&(windows.StringToUTF16(pidFile)[0]), windows.GENERIC_WRITE,
@@ -59,7 +59,7 @@ func writePidFile(ctx context.Context, pidFile string) (pidCleanup, error) {
 }
 
 func pidFileInUse(ctx context.Context, pidFile string) (*os.Process, error) {
-	const op = "daemon.pidFileInUse"
+	const op = "cache.pidFileInUse"
 	if pidFile == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "pid filename is empty")
 	}

@@ -189,7 +189,7 @@ type resourceSearcher interface {
 // is returned and the returned SearchResults will be empty.
 // search implements searcher.
 func (l *resourceSearchFns[T]) search(ctx context.Context, p SearchParams) (*SearchResult, error) {
-	const op = "daemon.(resourceSearchFns).search"
+	const op = "cache.(resourceSearchFns).search"
 
 	var found []T
 	var err error

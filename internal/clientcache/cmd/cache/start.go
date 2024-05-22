@@ -1,7 +1,7 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: BUSL-1.1
 
-package daemon
+package cache
 
 import (
 	"context"
@@ -30,7 +30,7 @@ const (
 	logFileName = "cache.log"
 
 	// Mark of process as having been started in the background
-	backgroundEnvName = "_BOUNDARY_DAEMON_BACKGROUND"
+	backgroundEnvName = "_BOUNDARY_CACHE_BACKGROUND"
 	backgroundEnvVal  = "1"
 )
 
@@ -54,16 +54,16 @@ type StartCommand struct {
 }
 
 func (c *StartCommand) Synopsis() string {
-	return "Start a Boundary daemon"
+	return "Start a Boundary cache"
 }
 
 func (c *StartCommand) Help() string {
 	helpText := `
-Usage: boundary daemon start [options]
+Usage: boundary cache start [options]
 
-  Start a daemon:
+  Start a cache:
 
-      $ boundary daemon start
+      $ boundary cache start
 
   For a full list of examples, please see the documentation.
 
@@ -132,7 +132,7 @@ func (c *StartCommand) Flags() *base.FlagSets {
 		Name:    "background",
 		Target:  &c.flagBackground,
 		Default: false,
-		Usage:   `Run the client cache daemon in the background`,
+		Usage:   `Run the cache daemon in the background`,
 	})
 
 	return set
@@ -242,7 +242,7 @@ func (c *StartCommand) Run(args []string) int {
 
 // DefaultDotDirectory returns the default path to the boundary dot directory.
 func DefaultDotDirectory(ctx context.Context) (string, error) {
-	const op = "daemon.DefaultDotDirectory"
+	const op = "cache.DefaultDotDirectory"
 	homeDir, err := homedir.Dir()
 	if err != nil {
 		return "", errors.Wrap(ctx, err, op)
@@ -256,7 +256,7 @@ func DefaultDotDirectory(ctx context.Context) (string, error) {
 // are saved as backup. When a new log file is rotated and there is already 3
 // backups created, the oldest one is deleted.
 func logFile(ctx context.Context, dotDir string, maxSizeMb int) (io.WriteCloser, string, error) {
-	const op = "daemon.logFile"
+	const op = "cache.logFile"
 	logFilePath := filepath.Join(dotDir, logFileName)
 	{
 		// Ensure the file is created with the desired permissions.
@@ -277,14 +277,14 @@ func logFile(ctx context.Context, dotDir string, maxSizeMb int) (io.WriteCloser,
 }
 
 func (c *StartCommand) makeBackground(ctx context.Context, dotDir string) (bool, []io.Writer, pidCleanup, error) {
-	const op = "daemon.makeBackground"
+	const op = "cache.makeBackground"
 
 	writers := []io.Writer{}
 	pidPath := filepath.Join(dotDir, pidFileName)
 	if running, err := pidFileInUse(ctx, pidPath); running != nil {
-		return false, writers, noopPidCleanup, stderrors.New("The daemon is already running.")
+		return false, writers, noopPidCleanup, stderrors.New("The cache is already running.")
 	} else if err != nil && !errors.Match(errors.T(errors.NotFound), err) {
-		return false, writers, noopPidCleanup, fmt.Errorf("Error when checking if the daemon pid is in use: %w.", err)
+		return false, writers, noopPidCleanup, fmt.Errorf("Error when checking if the cache pid is in use: %w.", err)
 	}
 
 	if !c.flagBackground && os.Getenv(backgroundEnvName) != backgroundEnvVal {
@@ -308,7 +308,7 @@ func (c *StartCommand) makeBackground(ctx context.Context, dotDir string) (bool,
 
 	env := os.Environ()
 	env = append(env, fmt.Sprintf("%s=%s", backgroundEnvName, backgroundEnvVal))
-	args := []string{"daemon", "start"}
+	args := []string{"cache", "start"}
 	args = append(args, "-refresh-interval", c.flagRefreshInterval.String())
 	args = append(args, "-max-search-staleness", c.flagMaxSearchStaleness.String())
 	args = append(args, "-max-search-refresh-timeout", c.flagMaxSearchRefreshTimeout.String())

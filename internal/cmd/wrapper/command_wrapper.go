@@ -35,7 +35,7 @@ type WrappableCommand interface {
 	BaseCommand() *base.Command
 }
 
-// CommandWrapper starts the boundary daemon after the command was Run and attempts
+// CommandWrapper starts the boundary cache after the command was Run and attempts
 // to send the current persona to any running daemon.
 type CommandWrapper struct {
 	WrappableCommand
@@ -50,8 +50,8 @@ func Wrap(c func() WrappableCommand) cli.CommandFactory {
 	}
 }
 
-// Run runs the wrapped command and then attempts to start the boundary daemon and send
-// the current persona
+// Run runs the wrapped command and then attempts to start the boundary cache and send
+// the current token to it.
 func (w *CommandWrapper) Run(args []string) int {
 	// potentially intercept the token in case it isn't stored in the keyring
 	var token string
