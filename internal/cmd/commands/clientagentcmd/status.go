@@ -103,13 +103,13 @@ func (c *StatusCommand) Run(args []string) int {
 }
 
 type GetStatusResponse struct {
-	BoundaryAddr    string    `json:"boundary_addr"`
-	AuthTokenId     string    `json:"auth_token_id"`
-	AuthTokenExpiry time.Time `json:"auth_token_expiry"`
-	Version         string    `json:"version"`
-	Status          string    `json:"status"`
-	Errors          []string  `json:"errors"`
-	Warnings        []string  `json:"warnings"`
+	BoundaryAddr    string     `json:"boundary_addr"`
+	AuthTokenId     string     `json:"auth_token_id"`
+	AuthTokenExpiry *time.Time `json:"auth_token_expiry"`
+	Version         string     `json:"version"`
+	Status          string     `json:"status"`
+	Errors          []string   `json:"errors"`
+	Warnings        []string   `json:"warnings"`
 }
 
 func (c *StatusCommand) Status(ctx context.Context) (*api.Response, *GetStatusResponse, *api.Error, error) {
@@ -149,11 +149,17 @@ func (c *StatusCommand) Status(ctx context.Context) (*api.Response, *GetStatusRe
 
 func printStatusTable(status *GetStatusResponse) string {
 	nonAttributeMap := map[string]any{
-		"Address":               status.BoundaryAddr,
-		"Auth Token Id":         status.AuthTokenId,
-		"Auth Token Expiration": time.Until(status.AuthTokenExpiry).Round(time.Second).String(),
-		"Version":               status.Version,
-		"Status":                status.Status,
+		"Version": status.Version,
+		"Status":  status.Status,
+	}
+	if status.AuthTokenId != "" {
+		nonAttributeMap["Auth Token Id"] = status.AuthTokenId
+	}
+	if status.BoundaryAddr != "" {
+		nonAttributeMap["Address"] = status.BoundaryAddr
+	}
+	if status.AuthTokenExpiry != nil {
+		nonAttributeMap["Auth Token Expiration"] = time.Until(*status.AuthTokenExpiry).Round(time.Second).String()
 	}
 
 	maxLength := base.MaxAttributesLength(nonAttributeMap, nil, nil)
