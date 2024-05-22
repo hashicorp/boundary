@@ -4,6 +4,11 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+### New and Improved
+
+* Allow descriptions to contain newlines and other whitespace
+  ([PR](https://github.com/hashicorp/boundary/pull/2599))
+
 ## 0.16.1 (2024/05/30)
 
 ### New and Improved
