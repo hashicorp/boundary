@@ -107,6 +107,7 @@ type GetStatusResponse struct {
 	AuthTokenId     string    `json:"auth_token_id"`
 	AuthTokenExpiry time.Time `json:"auth_token_expiry"`
 	Version         string    `json:"version"`
+	Status          string    `json:"status"`
 	Errors          []string  `json:"errors"`
 	Warnings        []string  `json:"warnings"`
 }
@@ -152,6 +153,7 @@ func printStatusTable(status *GetStatusResponse) string {
 		"Auth Token Id":         status.AuthTokenId,
 		"Auth Token Expiration": time.Until(status.AuthTokenExpiry).Round(time.Second).String(),
 		"Version":               status.Version,
+		"Status":                status.Status,
 	}
 
 	maxLength := base.MaxAttributesLength(nonAttributeMap, nil, nil)
