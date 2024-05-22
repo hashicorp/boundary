@@ -7,10 +7,22 @@ package controller.api.services.v1;
 
 import "controller/api/resources/apptokens/v1/apptoken.proto";
 import "google/api/annotations.proto";
+import "protoc-gen-openapiv2/options/annotations.proto";
 
 option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/services;services";
 
 service AppTokenService {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_tag) = {
+    name: "App token service"
+    description:
+      "The app token service exposes endpoints for interacting with app tokens in Boundary. "
+      "An app token defines an identity which machines can use to authenticate with Boundary. "
+    external_docs: {
+      url: "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/app-tokens";
+      description: "Read about app tokens in the Boundary domain model";
+    }
+  };
+
   rpc CreateAppToken(CreateAppTokenRequest) returns (CreateAppTokenResponse) {
     option (google.api.http) = {
       post: "/v1/app-tokens"
