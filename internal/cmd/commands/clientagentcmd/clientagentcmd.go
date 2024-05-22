@@ -68,5 +68,5 @@ func (c *ClientAgentCommand) Run(args []string) int {
 
 // clientAgentUrl constructs the full URL for a client agent request given a port and path.
 func clientAgentUrl(port uint, path string) string {
-	return fmt.Sprintf("http://127.0.0.1:%d/%s", port, path)
+	return fmt.Sprintf("http://localhost:%d/%s", port, path)
 }
