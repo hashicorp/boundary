@@ -1,7 +1,7 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: BUSL-1.1
 
-package ferry
+package clientagentcmd
 
 import (
 	"bytes"
@@ -26,7 +26,7 @@ type UpsertTokenRequest struct {
 }
 
 // addToken builds the UpsertTokenRequest using the client's address and token.
-// It then sends the request to the ferry daemon.
+// It then sends the request to the client agent.
 // The passed in cli.Ui is used to print out any errors when looking up the
 // auth token from the keyring. This allows background operations calling this
 // method to pass in a silent UI to suppress any output.
@@ -48,12 +48,12 @@ func addToken(ctx context.Context, apiClient *api.Client, port uint) (*api.Respo
 	client.RetryWaitMin = 100 * time.Millisecond
 	client.RetryWaitMax = 1500 * time.Millisecond
 
-	// TODO (ICU-13140): Until we release ferry feature, do not retry attempts
-	// to connect to the ferry daemon since it adds a noticeably long delay to
+	// TODO (ICU-13140): Until we release the client agent, do not retry attempts
+	// to connect to the client agent since it adds a noticeably long delay to
 	// the command.
 	client.RetryMax = 0
 
-	req, err := retryablehttp.NewRequestWithContext(ctx, "POST", ferryUrl(port, "v1/tokens"),
+	req, err := retryablehttp.NewRequestWithContext(ctx, "POST", clientAgentUrl(port, "v1/tokens"),
 		retryablehttp.ReaderFunc(func() (io.Reader, error) {
 			b, err := json.Marshal(&pa)
 			if err != nil {
@@ -67,7 +67,7 @@ func addToken(ctx context.Context, apiClient *api.Client, port uint) (*api.Respo
 	req.Header.Set("content-type", "application/json")
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, nil, fmt.Errorf("Error when sending request to the ferry daemon: %w.", err)
+		return nil, nil, fmt.Errorf("Error when sending request to the client agent: %w.", err)
 	}
 	apiResp := api.NewResponse(resp)
 	apiErr, err := apiResp.Decode(nil)

@@ -338,6 +338,13 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 			}
 		}),
 
+		"client-agent": func() (cli.Command, error) {
+			return &unsupported.UnsupportedCommand{
+				Command:     base.NewCommand(ui, opts...),
+				CommandName: "client-agent",
+			}, nil
+		},
+
 		"config": func() (cli.Command, error) {
 			return &config.Command{
 				Command: base.NewCommand(ui, opts...),
@@ -416,22 +423,6 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Func:    "ssh",
 			}
 		}),
-
-		"database": func() (cli.Command, error) {
-			return &database.Command{
-				Command: base.NewCommand(ui, opts...),
-			}, nil
-		},
-		"database init": func() (cli.Command, error) {
-			return &database.InitCommand{
-				Server: base.NewServer(base.NewCommand(ui, opts...)),
-			}, nil
-		},
-		"database migrate": func() (cli.Command, error) {
-			return &database.MigrateCommand{
-				Command: base.NewCommand(ui, opts...),
-			}, nil
-		},
 
 		"credential-libraries": func() (cli.Command, error) {
 			return &credentiallibrariescmd.Command{
@@ -644,17 +635,26 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 			}, nil
 		},
 
+		"database": func() (cli.Command, error) {
+			return &database.Command{
+				Command: base.NewCommand(ui, opts...),
+			}, nil
+		},
+		"database init": func() (cli.Command, error) {
+			return &database.InitCommand{
+				Server: base.NewServer(base.NewCommand(ui, opts...)),
+			}, nil
+		},
+		"database migrate": func() (cli.Command, error) {
+			return &database.MigrateCommand{
+				Command: base.NewCommand(ui, opts...),
+			}, nil
+		},
+
 		"delete": func() (cli.Command, error) {
 			return &genericcmd.Command{
 				Command: base.NewCommand(ui, opts...),
 				Func:    "delete",
-			}, nil
-		},
-
-		"ferry": func() (cli.Command, error) {
-			return &unsupported.UnsupportedCommand{
-				Command:     base.NewCommand(ui, opts...),
-				CommandName: "ferry",
 			}, nil
 		},
 
