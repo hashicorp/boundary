@@ -98,6 +98,7 @@ scenario "e2e_aws" {
       vpc_tag_module           = step.create_base_infra.vpc_tag_module
       worker_count             = var.worker_count
       worker_instance_type     = var.worker_instance_type
+      aws_region               = var.aws_region
     }
   }
 
@@ -239,6 +240,7 @@ scenario "e2e_aws" {
       target_address           = step.create_isolated_target.target_ips[0]
       worker_tag_egress        = local.egress_tag
       max_page_size            = step.create_boundary_cluster.max_page_size
+      aws_region               = var.aws_region
     }
   }
 

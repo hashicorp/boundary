@@ -103,6 +103,7 @@ scenario "e2e_ui_aws" {
       worker_count             = var.worker_count
       worker_instance_type     = var.worker_instance_type
       worker_type_tags         = [local.egress_tag]
+      aws_region               = var.aws_region
     }
   }
 
