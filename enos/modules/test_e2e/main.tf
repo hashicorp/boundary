@@ -192,7 +192,7 @@ resource "enos_local_exec" "run_e2e_test" {
   }
 
   inline = var.debug_no_run ? [""] : [
-    "set -o pipefail; PATH=\"${var.local_boundary_dir}:$PATH\" go test -v ${var.test_package} -count=1 -json -timeout ${var.test_timeout}| tparse -follow -format plain 2>&1 | tee ${path.module}/../../test-e2e-${local.package_name}.log"
+    "set -o pipefail; PATH=\"${var.local_boundary_dir}:$PATH\" go test -v ${var.test_package} -count=1 -timeout ${var.test_timeout} | tee ${path.module}/../../test-e2e-${local.package_name}.log"
   ]
 }
 
