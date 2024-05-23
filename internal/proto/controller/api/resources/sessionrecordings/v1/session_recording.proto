@@ -97,7 +97,7 @@ message User {
   string description = 3; // @gotags: class:"sensitive"
 
   // The scope that the User is in.
-  resources.scopes.v1.ScopeInfo scope = 7; // @gotags: eventstream:"observation"
+  resources.scopes.v1.ScopeInfo scope = 7;
 }
 
 // HostCatalog describes the HostCatalog that contains the host chosen for the
@@ -107,7 +107,7 @@ message HostCatalog {
   string id = 1; // @gotags: class:"public" eventstream:"observation"
 
   // The scope that the Host Catalog is in
-  resources.scopes.v1.ScopeInfo scope = 2; // @gotags: class:"public" eventstream:"observation"
+  resources.scopes.v1.ScopeInfo scope = 2; // @gotags: class:"public"
 
   // The plugin id used by this Host Catalog, if any.
   string plugin_id = 3 [json_name = "plugin_id"]; // @gotags: class:"public" eventstream:"observation"
@@ -183,7 +183,7 @@ message Target {
   string description = 3; // @gotags: class:"public"
 
   // The scope that the Target is in.
-  resources.scopes.v1.ScopeInfo scope = 4; // @gotags: eventstream:"observation"
+  resources.scopes.v1.ScopeInfo scope = 4;
 
   // Maximum total lifetime of a created Session, in seconds.
   uint32 session_max_seconds = 5 [json_name = "session_max_seconds"]; // @gotags: class:"public" eventstream:"observation"
@@ -442,7 +442,7 @@ message SessionRecording {
   // The scope that the Session Recording is in.
   // This is inferred from the storage bucket associated
   // with the target.
-  resources.scopes.v1.ScopeInfo scope = 2; // @gotags: class:"public" eventstream:"observation"
+  resources.scopes.v1.ScopeInfo scope = 2; // @gotags: class:"public"
 
   // The ID of the Session which this Session Recording recorded.
   string session_id = 3 [json_name = "session_id"]; // @gotags: class:"public" eventstream:"observation"

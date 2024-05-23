@@ -7567,7 +7567,7 @@
         },
         "scope": {
           "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
-          "description": "The scope that the Target is in.\n\n@gotags: eventstream:\"observation\""
+          "description": "The scope that the Target is in."
         },
         "session_max_seconds": {
           "type": "integer",
@@ -7619,7 +7619,7 @@
         },
         "scope": {
           "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
-          "description": "The scope that the User is in.\n\n@gotags: eventstream:\"observation\""
+          "description": "The scope that the User is in."
         }
       },
       "description": "User describes an authenticated user in Boundary."
