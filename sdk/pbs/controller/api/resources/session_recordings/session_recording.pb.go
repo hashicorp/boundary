@@ -301,7 +301,7 @@ type User struct {
 	// The description of the User that created the Session.
 	Description string `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty" class:"sensitive"` // @gotags: class:"sensitive"
 	// The scope that the User is in.
-	Scope *scopes.ScopeInfo `protobuf:"bytes,7,opt,name=scope,proto3" json:"scope,omitempty" eventstream:"observation"` // @gotags: eventstream:"observation"
+	Scope *scopes.ScopeInfo `protobuf:"bytes,7,opt,name=scope,proto3" json:"scope,omitempty"`
 }
 
 func (x *User) Reset() {
@@ -374,7 +374,7 @@ type HostCatalog struct {
 	// The ID of the Host Catalog
 	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
 	// The scope that the Host Catalog is in
-	Scope *scopes.ScopeInfo `protobuf:"bytes,2,opt,name=scope,proto3" json:"scope,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
+	Scope *scopes.ScopeInfo `protobuf:"bytes,2,opt,name=scope,proto3" json:"scope,omitempty" class:"public"` // @gotags: class:"public"
 	// The plugin id used by this Host Catalog, if any.
 	PluginId string `protobuf:"bytes,3,opt,name=plugin_id,proto3" json:"plugin_id,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
 	// The name of the Host Catalog, if set
@@ -695,7 +695,7 @@ type Target struct {
 	// The description of the Target, if set.
 	Description string `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty" class:"public"` // @gotags: class:"public"
 	// The scope that the Target is in.
-	Scope *scopes.ScopeInfo `protobuf:"bytes,4,opt,name=scope,proto3" json:"scope,omitempty" eventstream:"observation"` // @gotags: eventstream:"observation"
+	Scope *scopes.ScopeInfo `protobuf:"bytes,4,opt,name=scope,proto3" json:"scope,omitempty"`
 	// Maximum total lifetime of a created Session, in seconds.
 	SessionMaxSeconds uint32 `protobuf:"varint,5,opt,name=session_max_seconds,proto3" json:"session_max_seconds,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
 	// Maximum number of connections allowed in a Session.  Unlimited is indicated by the value -1.
@@ -1907,7 +1907,7 @@ type SessionRecording struct {
 	// The scope that the Session Recording is in.
 	// This is inferred from the storage bucket associated
 	// with the target.
-	Scope *scopes.ScopeInfo `protobuf:"bytes,2,opt,name=scope,proto3" json:"scope,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
+	Scope *scopes.ScopeInfo `protobuf:"bytes,2,opt,name=scope,proto3" json:"scope,omitempty" class:"public"` // @gotags: class:"public"
 	// The ID of the Session which this Session Recording recorded.
 	SessionId string `protobuf:"bytes,3,opt,name=session_id,proto3" json:"session_id,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
 	// The ID of the Storage Bucket for the Target of this Session Recording.
