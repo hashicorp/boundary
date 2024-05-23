@@ -4031,7 +4031,7 @@
           },
           {
             "name": "page_size",
-            "description": "The maximum size of a page in this iteration.\nIf you do not set a page size, Boundary uses the configured default page size.\nIf the page_size is greater than the default page size configured,\nBoundary truncates the page size to this number. eventstream:\"observation\"",
+            "description": "The maximum size of a page in this iteration.\nIf you do not set a page size, Boundary uses the configured default page size.\nIf the page_size is greater than the default page size configured,\nBoundary truncates the page size to this number.",
             "in": "query",
             "required": false,
             "type": "integer",
@@ -4094,7 +4094,7 @@
         "parameters": [
           {
             "name": "id",
-            "description": " eventstream:\"observation\"",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -7373,7 +7373,6 @@
         },
         "host_catalog": {
           "$ref": "#/definitions/controller.api.resources.sessionrecordings.v1.HostCatalog",
-          "description": "",
           "title": "The Host Catalog this Host is in"
         },
         "name": {
@@ -7414,7 +7413,6 @@
         },
         "scope": {
           "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
-          "description": "",
           "title": "The scope that the Host Catalog is in"
         },
         "plugin_id": {
@@ -10077,7 +10075,7 @@
         },
         "response_type": {
           "type": "string",
-          "description": "The type of response, either \"delta\" or \"complete\".\nDelta signifies that this is part of a paginated result\nor an update to a previously completed pagination.\nComplete signifies that it is the last page. eventstream:\"observation\""
+          "description": "The type of response, either \"delta\" or \"complete\".\nDelta signifies that this is part of a paginated result\nor an update to a previously completed pagination.\nComplete signifies that it is the last page."
         },
         "list_token": {
           "type": "string",
@@ -10085,23 +10083,23 @@
         },
         "sort_by": {
           "type": "string",
-          "description": "The name of the field which the items are sorted by. eventstream:\"observation\""
+          "description": "The name of the field which the items are sorted by."
         },
         "sort_dir": {
           "type": "string",
-          "description": "The direction of the sort, either \"asc\" or \"desc\". eventstream:\"observation\""
+          "description": "The direction of the sort, either \"asc\" or \"desc\"."
         },
         "removed_ids": {
           "type": "array",
           "items": {
             "type": "string"
           },
-          "description": "A list of item IDs that have been removed since they were returned\nas part of a pagination. They should be dropped from any client cache.\nThis may contain items that are not known to the cache, if they were\ncreated and deleted between listings. eventstream:\"observation\""
+          "description": "A list of item IDs that have been removed since they were returned\nas part of a pagination. They should be dropped from any client cache.\nThis may contain items that are not known to the cache, if they were\ncreated and deleted between listings."
         },
         "est_item_count": {
           "type": "integer",
           "format": "int64",
-          "description": "An estimate at the total items available. This may change during pagination. eventstream:\"observation\""
+          "description": "An estimate at the total items available. This may change during pagination."
         }
       }
     },

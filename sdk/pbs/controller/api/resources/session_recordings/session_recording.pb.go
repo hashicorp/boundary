@@ -374,7 +374,7 @@ type HostCatalog struct {
 	// The ID of the Host Catalog
 	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
 	// The scope that the Host Catalog is in
-	Scope *scopes.ScopeInfo `protobuf:"bytes,2,opt,name=scope,proto3" json:"scope,omitempty" class:"public"` // @gotags: class:"public"
+	Scope *scopes.ScopeInfo `protobuf:"bytes,2,opt,name=scope,proto3" json:"scope,omitempty"`
 	// The plugin id used by this Host Catalog, if any.
 	PluginId string `protobuf:"bytes,3,opt,name=plugin_id,proto3" json:"plugin_id,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
 	// The name of the Host Catalog, if set
@@ -497,7 +497,7 @@ type Host struct {
 	// The ID of the Host
 	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
 	// The Host Catalog this Host is in
-	HostCatalog *HostCatalog `protobuf:"bytes,2,opt,name=host_catalog,proto3" json:"host_catalog,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
+	HostCatalog *HostCatalog `protobuf:"bytes,2,opt,name=host_catalog,proto3" json:"host_catalog,omitempty"`
 	// The name of the Host, if set.
 	Name string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty" class:"public"` // @gotags: class:"public"
 	// The description of the Host, if set.
@@ -1135,7 +1135,7 @@ type Credential struct {
 	// The ID of the Credential.
 	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
 	// The Credential Store of which this Credential is a part.
-	CredentialStore *CredentialStore `protobuf:"bytes,2,opt,name=credential_store,proto3" json:"credential_store,omitempty" class:"public"` // @gotags: class:"public"
+	CredentialStore *CredentialStore `protobuf:"bytes,2,opt,name=credential_store,proto3" json:"credential_store,omitempty"`
 	// The name of the credential.
 	Name string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty" class:"public"` // @gotags: class:"public"
 	// Optional user-set description.
@@ -1474,7 +1474,7 @@ type CredentialLibrary struct {
 	// The ID of the Credential Library.
 	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
 	// The credential store of which this library is a part.
-	CredentialStore *CredentialStore `protobuf:"bytes,2,opt,name=credential_store,proto3" json:"credential_store,omitempty" class:"public"` // @gotags: class:"public"
+	CredentialStore *CredentialStore `protobuf:"bytes,2,opt,name=credential_store,proto3" json:"credential_store,omitempty"`
 	// Optional name of this Credential Library.
 	Name string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty" class:"public"` // @gotags: class:"public"
 	// Optional user-set description of this Credential Library.

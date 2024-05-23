@@ -107,7 +107,7 @@ message HostCatalog {
   string id = 1; // @gotags: class:"public" eventstream:"observation"
 
   // The scope that the Host Catalog is in
-  resources.scopes.v1.ScopeInfo scope = 2; // @gotags: class:"public"
+  resources.scopes.v1.ScopeInfo scope = 2;
 
   // The plugin id used by this Host Catalog, if any.
   string plugin_id = 3 [json_name = "plugin_id"]; // @gotags: class:"public" eventstream:"observation"
@@ -133,7 +133,7 @@ message Host {
   string id = 1; // @gotags: class:"public" eventstream:"observation"
 
   // The Host Catalog this Host is in
-  HostCatalog host_catalog = 2 [json_name = "host_catalog"]; // @gotags: class:"public" eventstream:"observation"
+  HostCatalog host_catalog = 2 [json_name = "host_catalog"];
 
   // The name of the Host, if set.
   string name = 3; // @gotags: class:"public"
@@ -279,7 +279,7 @@ message Credential {
   string id = 1; // @gotags: class:"public" eventstream:"observation"
 
   // The Credential Store of which this Credential is a part.
-  CredentialStore credential_store = 2 [json_name = "credential_store"]; // @gotags: class:"public"
+  CredentialStore credential_store = 2 [json_name = "credential_store"];
 
   // The name of the credential.
   string name = 3; // @gotags: class:"public"
@@ -344,7 +344,7 @@ message CredentialLibrary {
   string id = 1; // @gotags: class:"public" eventstream:"observation"
 
   // The credential store of which this library is a part.
-  CredentialStore credential_store = 2 [json_name = "credential_store"]; // @gotags: class:"public"
+  CredentialStore credential_store = 2 [json_name = "credential_store"];
 
   //  Optional name of this Credential Library.
   string name = 3; // @gotags: class:"public"
