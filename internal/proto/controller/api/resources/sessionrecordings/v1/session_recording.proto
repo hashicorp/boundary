@@ -201,7 +201,7 @@ message Target {
   string ingress_worker_filter = 9 [json_name = "ingress_worker_filter"]; // @gotags: class:"public"
 
   // The type of the Target.
-  string type = 10; // @gotags: `class:"public"` eventstream:"observation"
+  string type = 10; // @gotags: class:"public" eventstream:"observation"
 
   oneof attrs {
     // Here we use the google.protobuf.Struct so the generated structs in
@@ -448,7 +448,7 @@ message SessionRecording {
   string session_id = 3 [json_name = "session_id"]; // @gotags: class:"public" eventstream:"observation"
 
   // The ID of the Storage Bucket for the Target of this Session Recording.
-  string storage_bucket_id = 4 [json_name = "storage_bucket_id"]; // @gotags: class:"public"
+  string storage_bucket_id = 4 [json_name = "storage_bucket_id"]; // @gotags: class:"public" eventstream:"observation"
 
   // The total number of bytes uploaded from the client in the Session.
   // This includes all bytes uploaded over all Connections, including

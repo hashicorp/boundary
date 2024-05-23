@@ -707,7 +707,7 @@ type Target struct {
 	// Optional boolean expressions to filter the ingress workers that are allowed to satisfy this request.
 	IngressWorkerFilter string `protobuf:"bytes,9,opt,name=ingress_worker_filter,proto3" json:"ingress_worker_filter,omitempty" class:"public"` // @gotags: class:"public"
 	// The type of the Target.
-	Type string `protobuf:"bytes,10,opt,name=type,proto3" json:"type,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public"` eventstream:"observation"
+	Type string `protobuf:"bytes,10,opt,name=type,proto3" json:"type,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
 	// Types that are assignable to Attrs:
 	//
 	//	*Target_Attributes
@@ -1911,7 +1911,7 @@ type SessionRecording struct {
 	// The ID of the Session which this Session Recording recorded.
 	SessionId string `protobuf:"bytes,3,opt,name=session_id,proto3" json:"session_id,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
 	// The ID of the Storage Bucket for the Target of this Session Recording.
-	StorageBucketId string `protobuf:"bytes,4,opt,name=storage_bucket_id,proto3" json:"storage_bucket_id,omitempty" class:"public"` // @gotags: class:"public"
+	StorageBucketId string `protobuf:"bytes,4,opt,name=storage_bucket_id,proto3" json:"storage_bucket_id,omitempty" class:"public" eventstream:"observation"` // @gotags: class:"public" eventstream:"observation"
 	// The total number of bytes uploaded from the client in the Session.
 	// This includes all bytes uploaded over all Connections, including
 	// any protocol overhead.
