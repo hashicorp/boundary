@@ -8,6 +8,7 @@ import (
 	"crypto/x509"
 	"database/sql"
 	"fmt"
+	"github.com/hashicorp/go-dbw"
 	"strconv"
 
 	"github.com/fatih/structs"
@@ -22,7 +23,6 @@ import (
 	"github.com/hashicorp/boundary/internal/server/store"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/internal/util"
-	"github.com/hashicorp/go-dbw"
 	"github.com/hashicorp/nodeenrollment"
 	"github.com/hashicorp/nodeenrollment/types"
 	"github.com/mitchellh/mapstructure"
@@ -425,7 +425,7 @@ func (r *WorkerAuthRepositoryStorage) storeRootCertificates(ctx context.Context,
 // Load implements the Storage interface.
 // Load loads values into the given message. The message must be populated
 // with the ID value. If not found, the returned error should be ErrNotFound.
-func (r *WorkerAuthRepositoryStorage) Load(ctx context.Context, msg nodeenrollment.MessageWithId) error {
+func (r *WorkerAuthRepositoryStorage) Load(ctx context.Context, msg nodeenrollment.MessageWithId, opt ...nodeenrollment.Option) error {
 	const op = "server.(WorkerAuthRepositoryStorage).Load"
 	if err := types.ValidateMessage(msg); err != nil {
 		return errors.Wrap(ctx, err, op)
@@ -437,7 +437,7 @@ func (r *WorkerAuthRepositoryStorage) Load(ctx context.Context, msg nodeenrollme
 	var err error
 	switch t := msg.(type) {
 	case *types.NodeInformation:
-		err = r.loadNodeInformation(ctx, t)
+		err = r.loadNodeInformation(ctx, t, opt...)
 
 	case *types.ServerLedActivationToken:
 		err = r.loadServerLedActivationToken(ctx, t)
@@ -461,61 +461,121 @@ func (r *WorkerAuthRepositoryStorage) Load(ctx context.Context, msg nodeenrollme
 }
 
 // Node information is loaded in two parts:
-// * the workerAuth record
+// * the workerAuth record, including the prior encryption key, if present
 // * its certificate bundles
-// * the prior encryption key, if present
-func (r *WorkerAuthRepositoryStorage) loadNodeInformation(ctx context.Context, node *types.NodeInformation) error {
+func (r *WorkerAuthRepositoryStorage) loadNodeInformation(ctx context.Context, node *types.NodeInformation, opt ...nodeenrollment.Option) error {
 	const op = "server.(WorkerAuthRepositoryStorage).loadNodeInformation"
 	if node == nil {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing NodeInformation")
 	}
 
-	query := getWorkerAuthsByWorkerKeyIdQuery
-	rows, err := r.reader.Query(ctx, query, []any{sql.Named("worker_key_identifier", node.Id)})
+	opts, err := nodeenrollment.GetOpts(opt...)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
-	defer rows.Close()
 
-	var workerAuths []*WorkerAuth
-	for rows.Next() {
-		var s WorkerAuth
-		if err := r.reader.ScanRows(ctx, rows, &s); err != nil {
-			return errors.Wrap(ctx, err, op, errors.WithMsg("scan row failed"))
-		}
-		workerAuths = append(workerAuths, &s)
-	}
-	if err := rows.Err(); err != nil {
-		return errors.Wrap(ctx, err, op)
-	}
+	var thisWorkerAuth *WorkerAuth
+	_, err = r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(reader db.Reader, w db.Writer) error {
+			var err error
 
-	workerAuthorizedSet, err := r.validateWorkerAuths(ctx, workerAuths)
+			query := getWorkerAuthsByWorkerKeyIdQuery
+			rows, err := reader.Query(ctx, query, []any{sql.Named("worker_key_identifier", node.Id)})
+			if err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+			defer rows.Close()
+
+			var workerAuths []*WorkerAuth
+			for rows.Next() {
+				var s WorkerAuth
+				if err := reader.ScanRows(ctx, rows, &s); err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("scan row failed"))
+				}
+				workerAuths = append(workerAuths, &s)
+			}
+			if err := rows.Err(); err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+
+			workerAuthorizedSet, err := r.validateWorkerAuths(ctx, workerAuths)
+			if err != nil {
+				if errors.IsNotFoundError(err) {
+					return nodeenrollment.ErrNotFound
+				}
+				return errors.Wrap(ctx, err, op)
+			}
+
+			if workerAuthorizedSet == nil || workerAuthorizedSet.Current == nil {
+				return nodeenrollment.ErrNotFound
+			}
+
+			// It's possible the controller saved a "current" set of credentials for the worker but the connection
+			// to the worker failed before the worker got a response, so we're in a "split brain" scenario.
+			// Check the key id passed in against what is set as current and previous and act accordingly
+			switch {
+			case node.Id == workerAuthorizedSet.Current.WorkerKeyIdentifier:
+				thisWorkerAuth = workerAuthorizedSet.Current
+				if workerAuthorizedSet.Previous != nil {
+					priorKey := &types.EncryptionKey{
+						KeyId:           workerAuthorizedSet.Previous.WorkerKeyIdentifier,
+						PrivateKeyPkcs8: workerAuthorizedSet.Previous.ControllerEncryptionPrivKey,
+						PrivateKeyType:  types.KEYTYPE_X25519,
+						PublicKeyPkix:   workerAuthorizedSet.Previous.WorkerEncryptionPubKey,
+						PublicKeyType:   types.KEYTYPE_X25519,
+					}
+
+					node.PreviousEncryptionKey = priorKey
+				}
+			case workerAuthorizedSet.Previous != nil && node.Id == workerAuthorizedSet.Previous.WorkerKeyIdentifier:
+				thisWorkerAuth = workerAuthorizedSet.Previous
+				// If WithRemoveUnusedCredentials is set, this indicates we're in a split brain scenario for auth rotation
+				// and we need to discard what we have saved in current and set the 'previous' to current
+				if opts.WithRemoveUnusedCredentials {
+					err = removeNodeInformationTx(ctx, w, workerAuthorizedSet.Current.WorkerKeyIdentifier)
+					_, err = w.Exec(ctx, updateWorkerAuthToCurrentQuery, []any{
+						sql.Named("worker_key_identifier", workerAuthorizedSet.Previous.WorkerKeyIdentifier)})
+					if err != nil {
+						return err
+					}
+				}
+			default:
+				// We shouldn't hit this based on the logic in validateWorkerAuths, but just in case...
+				return errors.New(ctx, errors.NotSpecificIntegrity, op, "no worker auths match the passed worker key identifier")
+			}
+
+			var bundles []*WorkerCertBundle
+			err = r.reader.SearchWhere(ctx, &bundles, "worker_key_identifier = ?", []any{node.Id}, db.WithLimit(-1))
+			if err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+
+			certBundle := []*types.CertificateBundle{}
+			for _, bundle := range bundles {
+				thisBundle := &types.CertificateBundle{}
+				if err := proto.Unmarshal(bundle.WorkerCertBundle.CertBundle, thisBundle); err != nil {
+					return errors.New(ctx, errors.Decode, op, "error unmarshaling message", errors.WithWrap(err))
+				}
+				certBundle = append(certBundle, thisBundle)
+			}
+			node.CertificateBundles = certBundle
+
+			return nil
+		},
+	)
 	if err != nil {
-		if errors.IsNotFoundError(err) {
+		if errors.Is(err, nodeenrollment.ErrNotFound) {
 			return nodeenrollment.ErrNotFound
 		}
 		return errors.Wrap(ctx, err, op)
 	}
 
-	if workerAuthorizedSet == nil || workerAuthorizedSet.Current == nil {
-		return nodeenrollment.ErrNotFound
-	}
-
-	if workerAuthorizedSet.Previous != nil {
-		priorKey := &types.EncryptionKey{
-			KeyId:           workerAuthorizedSet.Previous.WorkerKeyIdentifier,
-			PrivateKeyPkcs8: workerAuthorizedSet.Previous.ControllerEncryptionPrivKey,
-			PrivateKeyType:  types.KEYTYPE_X25519,
-			PublicKeyPkix:   workerAuthorizedSet.Previous.WorkerEncryptionPubKey,
-			PublicKeyType:   types.KEYTYPE_X25519,
-		}
-
-		node.PreviousEncryptionKey = priorKey
-	}
-
-	node.EncryptionPublicKeyBytes = workerAuthorizedSet.Current.WorkerEncryptionPubKey
-	node.CertificatePublicKeyPkix = workerAuthorizedSet.Current.WorkerSigningPubKey
-	node.RegistrationNonce = workerAuthorizedSet.Current.Nonce
+	node.EncryptionPublicKeyBytes = thisWorkerAuth.WorkerEncryptionPubKey
+	node.CertificatePublicKeyPkix = thisWorkerAuth.WorkerSigningPubKey
+	node.RegistrationNonce = thisWorkerAuth.Nonce
 
 	// Default values are used for key types
 	node.EncryptionPublicKeyType = types.KEYTYPE_X25519
@@ -523,16 +583,16 @@ func (r *WorkerAuthRepositoryStorage) loadNodeInformation(ctx context.Context, n
 	node.ServerEncryptionPrivateKeyType = types.KEYTYPE_X25519
 
 	// Decrypt private key
-	databaseWrapper, err := r.kms.GetWrapper(ctx, scope.Global.String(), kms.KeyPurposeDatabase, kms.WithKeyId(workerAuthorizedSet.Current.KeyId))
+	databaseWrapper, err := r.kms.GetWrapper(ctx, scope.Global.String(), kms.KeyPurposeDatabase, kms.WithKeyId(thisWorkerAuth.KeyId))
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
-	if err = workerAuthorizedSet.Current.decrypt(ctx, databaseWrapper); err != nil {
+	if err = thisWorkerAuth.decrypt(ctx, databaseWrapper); err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
-	node.ServerEncryptionPrivateKeyBytes = workerAuthorizedSet.Current.ControllerEncryptionPrivKey
+	node.ServerEncryptionPrivateKeyBytes = thisWorkerAuth.ControllerEncryptionPrivKey
 
-	workerIdInfo := workerAuthWorkerId{WorkerId: workerAuthorizedSet.Current.GetWorkerId()}
+	workerIdInfo := workerAuthWorkerId{WorkerId: thisWorkerAuth.GetWorkerId()}
 	s := structs.New(workerIdInfo)
 	s.TagName = "mapstructure"
 	state, err := structpb.NewStruct(s.Map())
@@ -540,13 +600,6 @@ func (r *WorkerAuthRepositoryStorage) loadNodeInformation(ctx context.Context, n
 		return errors.Wrap(ctx, err, op)
 	}
 	node.State = state
-
-	// Get cert bundles from the other table
-	certBundles, err := r.findCertBundles(ctx, node.Id)
-	if err != nil {
-		return errors.Wrap(ctx, err, op)
-	}
-	node.CertificateBundles = certBundles
 
 	return nil
 }
@@ -591,30 +644,6 @@ func (r *WorkerAuthRepositoryStorage) loadServerLedActivationToken(ctx context.C
 	}
 
 	return nil
-}
-
-func (r *WorkerAuthRepositoryStorage) findCertBundles(ctx context.Context, workerKeyId string) ([]*types.CertificateBundle, error) {
-	const op = "server.(WorkerAuthRepositoryStorage).findCertBundles"
-	if workerKeyId == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "empty workerKeyId")
-	}
-
-	var bundles []*WorkerCertBundle
-	err := r.reader.SearchWhere(ctx, &bundles, "worker_key_identifier = ?", []any{workerKeyId}, db.WithLimit(-1))
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-
-	certBundle := []*types.CertificateBundle{}
-	for _, bundle := range bundles {
-		thisBundle := &types.CertificateBundle{}
-		if err := proto.Unmarshal(bundle.WorkerCertBundle.CertBundle, thisBundle); err != nil {
-			return nil, errors.New(ctx, errors.Decode, op, "error unmarshaling message", errors.WithWrap(err))
-		}
-		certBundle = append(certBundle, thisBundle)
-	}
-
-	return certBundle, nil
 }
 
 // FilterToAuthorizedWorkerKeyIds returns all the worker key identifiers that
@@ -748,6 +777,20 @@ func (r *WorkerAuthRepositoryStorage) Remove(ctx context.Context, msg nodeenroll
 	return nil
 }
 
+func removeNodeInformationTx(ctx context.Context, w db.Writer, workerKeyId string) error {
+	const op = "server.removeNodeInformationTx"
+	var err error
+	_, err = w.Exec(ctx, deleteWorkerAuthQuery, []any{sql.Named("worker_key_identifier", workerKeyId)})
+	if err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
+	_, err = w.Exec(ctx, deleteWorkerCertBundlesQuery, []any{sql.Named("worker_key_identifier", workerKeyId)})
+	if err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to delete workerAuth"))
+	}
+	return nil
+}
+
 func (r *WorkerAuthRepositoryStorage) removeNodeInformation(ctx context.Context, msg *types.NodeInformation) error {
 	const op = "server.(WorkerAuthRepositoryStorage).removeNodeInformation"
 	switch {
@@ -762,16 +805,7 @@ func (r *WorkerAuthRepositoryStorage) removeNodeInformation(ctx context.Context,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
-			var err error
-			_, err = w.Exec(ctx, deleteWorkerAuthQuery, []any{sql.Named("worker_key_identifier", msg.Id)})
-			if err != nil {
-				return errors.Wrap(ctx, err, op)
-			}
-			_, err = w.Exec(ctx, deleteWorkerCertBundlesQuery, []any{sql.Named("worker_key_identifier", msg.Id)})
-			if err != nil {
-				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to delete workerAuth"))
-			}
-			return nil
+			return removeNodeInformationTx(ctx, w, msg.Id)
 		},
 	)
 	if err != nil {

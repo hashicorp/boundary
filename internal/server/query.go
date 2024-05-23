@@ -34,6 +34,12 @@ const (
 		select * from worker_auth_authorized where worker_id in (select * from key_id_to_worker_id)
 	`
 
+	updateWorkerAuthToCurrentQuery = `
+        update worker_auth_authorized 
+            set state = 'current'
+            where worker_key_identifier = @worker_key_identifier;
+    `
+
 	authorizedWorkerQuery = `
 		select distinct w.worker_key_identifier 
 		from 

@@ -629,6 +629,7 @@ func (r *Repository) CreateWorker(ctx context.Context, worker *Worker, opt ...Op
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
 	}
 
+	workerAuthRepo, err = NewRepositoryStorage(ctx, r.reader, r.writer, r.kms)
 	var returnedWorker *Worker
 	if _, err := r.writer.DoTx(
 		ctx,
@@ -646,7 +647,6 @@ func (r *Repository) CreateWorker(ctx context.Context, worker *Worker, opt ...Op
 
 			switch {
 			case opts.WithFetchNodeCredentialsRequest != nil:
-				workerAuthRepo, err = NewRepositoryStorage(ctx, read, w, r.kms)
 				if err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to create worker auth repository"))
 				}
