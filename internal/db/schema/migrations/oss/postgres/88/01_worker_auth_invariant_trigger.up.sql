@@ -9,7 +9,7 @@ begin;
 -- two rows in the worker_auth_authorized table: one with a state of 'current'
 -- and one with the state of 'previous'.
 --
---- This trigger function ensures that there is only ever one entry for
+--- This trigger function ensures that there is only ever one entry
 --  with a state of 'current' and one with a state of 'previous'.
 create function update_worker_auth_authorized() returns trigger
 as $$
@@ -17,7 +17,7 @@ begin
     if new.state = 'current' then
         perform
         from worker_auth_authorized
-          where state = 'current';
+          where state = 'current' and worker_id = new.worker_id and worker_key_identifier != new.worker_key_identifier;
         if found then
           raise 'current worker auth already exists; cannot set %s to current', new.worker_key_identifier;
         end if;
@@ -25,7 +25,7 @@ begin
     if new.state = 'previous' then
         perform
         from worker_auth_authorized
-          where state = 'previous';
+          where state = 'previous' and worker_id = new.worker_id and worker_key_identifier != new.worker_key_identifier;
         if found then
           raise 'previous worker auth already exists; cannot set %s to previous', new.worker_key_identifier;
         end if;

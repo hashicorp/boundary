@@ -8,13 +8,9 @@ import (
 	"crypto/x509"
 	"database/sql"
 	"fmt"
-	"github.com/hashicorp/go-dbw"
 	"strconv"
 
 	"github.com/fatih/structs"
-	"google.golang.org/protobuf/types/known/structpb"
-	"google.golang.org/protobuf/types/known/timestamppb"
-
 	"github.com/hashicorp/boundary/internal/daemon/cluster"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
@@ -23,10 +19,13 @@ import (
 	"github.com/hashicorp/boundary/internal/server/store"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/internal/util"
+	"github.com/hashicorp/go-dbw"
 	"github.com/hashicorp/nodeenrollment"
 	"github.com/hashicorp/nodeenrollment/types"
 	"github.com/mitchellh/mapstructure"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/structpb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // Ensure we implement the Storage interfaces
@@ -537,7 +536,8 @@ func (r *WorkerAuthRepositoryStorage) loadNodeInformation(ctx context.Context, n
 				if opts.WithRemoveUnusedCredentials {
 					err = removeNodeInformationTx(ctx, w, workerAuthorizedSet.Current.WorkerKeyIdentifier)
 					_, err = w.Exec(ctx, updateWorkerAuthToCurrentQuery, []any{
-						sql.Named("worker_key_identifier", workerAuthorizedSet.Previous.WorkerKeyIdentifier)})
+						sql.Named("worker_key_identifier", workerAuthorizedSet.Previous.WorkerKeyIdentifier),
+					})
 					if err != nil {
 						return err
 					}
