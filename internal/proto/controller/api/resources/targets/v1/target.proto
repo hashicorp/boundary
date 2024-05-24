@@ -310,7 +310,7 @@ message SshTargetAttributes {
       this: "attributes.storage_bucket_id"
       that: "StorageBucketId"
     }
-  ]; // @gotags: `class:"public"`
+  ]; // @gotags: `class:"public" eventstream:"observation"`
 
   // A boolean indicating if session recording has been enabled
   google.protobuf.BoolValue enable_session_recording = 40 [

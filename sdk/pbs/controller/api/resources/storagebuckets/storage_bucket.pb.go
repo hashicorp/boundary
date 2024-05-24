@@ -40,11 +40,11 @@ type StorageBucket struct {
 	// The ID of the Scope of which this storage bucket is a part.
 	ScopeId string `protobuf:"bytes,20,opt,name=scope_id,proto3" json:"scope_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. Scope information for this resource.
-	Scope *scopes.ScopeInfo `protobuf:"bytes,30,opt,name=scope,proto3" json:"scope,omitempty" class:"public"` // @gotags: `class:"public"`
+	Scope *scopes.ScopeInfo `protobuf:"bytes,30,opt,name=scope,proto3" json:"scope,omitempty"`
 	// The ID of the plugin of which this storage bucket is created.
 	PluginId string `protobuf:"bytes,34,opt,name=plugin_id,proto3" json:"plugin_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. Plugin information for this resource.
-	Plugin *plugins.PluginInfo `protobuf:"bytes,35,opt,name=plugin,proto3" json:"plugin,omitempty" class:"public"` // @gotags: `class:"public"`
+	Plugin *plugins.PluginInfo `protobuf:"bytes,35,opt,name=plugin,proto3" json:"plugin,omitempty"`
 	// Optional name for identification purposes.
 	Name *wrapperspb.StringValue `protobuf:"bytes,40,opt,name=name,proto3" json:"name,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Optional user-set description for identification purposes.
