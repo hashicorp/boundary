@@ -10,6 +10,11 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   `boundary cache` command. The behavior remains the same. The `boundary search`
   command is unchanged.
   ([PR](https://github.com/hashicorp/boundary/pull/4808))
+* The include_terminated field in the list sessions request will be removed
+  in an upcoming release. After the deprecation process is complete and the
+  field is removed terminated sessions will be returned
+  in all list session responses unless filtered out using the filter field.
+  ([PR](https://github.com/hashicorp/boundary/pull/4602))
 
 ### Bug Fixes
 
