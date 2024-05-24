@@ -23,7 +23,7 @@ message StorageBucket {
   string scope_id = 20 [json_name = "scope_id"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. Scope information for this resource.
-  resources.scopes.v1.ScopeInfo scope = 30; // @gotags: `class:"public"`
+  resources.scopes.v1.ScopeInfo scope = 30;
 
   // The ID of the plugin of which this storage bucket is created.
   string plugin_id = 34 [
@@ -32,7 +32,7 @@ message StorageBucket {
   ]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. Plugin information for this resource.
-  resources.plugins.v1.PluginInfo plugin = 35; // @gotags: `class:"public"`
+  resources.plugins.v1.PluginInfo plugin = 35;
 
   // Optional name for identification purposes.
   google.protobuf.StringValue name = 40 [

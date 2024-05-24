@@ -870,7 +870,7 @@ type SshTargetAttributes struct {
 	// The default TCP port that will be listened on by the client's local proxy.
 	DefaultClientPort *wrapperspb.UInt32Value `protobuf:"bytes,20,opt,name=default_client_port,proto3" json:"default_client_port,omitempty" class:"public"` // @gotags: `class:"public"`
 	// PublicId of the storage bucket associated with the target
-	StorageBucketId *wrapperspb.StringValue `protobuf:"bytes,30,opt,name=storage_bucket_id,proto3" json:"storage_bucket_id,omitempty" class:"public"` // @gotags: `class:"public"`
+	StorageBucketId *wrapperspb.StringValue `protobuf:"bytes,30,opt,name=storage_bucket_id,proto3" json:"storage_bucket_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// A boolean indicating if session recording has been enabled
 	EnableSessionRecording *wrapperspb.BoolValue `protobuf:"bytes,40,opt,name=enable_session_recording,proto3" json:"enable_session_recording,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 }
