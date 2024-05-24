@@ -17,22 +17,22 @@ option go_package = "github.com/hashicorp/boundary/sdk/pbs/controller/api/resour
 // StorageBucket manages external object stores
 message StorageBucket {
   // Output only. The ID of the storage bucket.
-  string id = 10; // @gotags: `class:"public"`
+  string id = 10; // @gotags: `class:"public" eventstream:"observation"`
 
   // The ID of the Scope of which this storage bucket is a part.
-  string scope_id = 20 [json_name = "scope_id"]; // @gotags: `class:"public"`
+  string scope_id = 20 [json_name = "scope_id"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. Scope information for this resource.
-  resources.scopes.v1.ScopeInfo scope = 30; // @gotags: `class:"public"`
+  resources.scopes.v1.ScopeInfo scope = 30;
 
   // The ID of the plugin of which this storage bucket is created.
   string plugin_id = 34 [
     json_name = "plugin_id",
     (custom_options.v1.generate_sdk_option) = true
-  ]; // @gotags: `class:"public"`
+  ]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. Plugin information for this resource.
-  resources.plugins.v1.PluginInfo plugin = 35; // @gotags: `class:"public"`
+  resources.plugins.v1.PluginInfo plugin = 35;
 
   // Optional name for identification purposes.
   google.protobuf.StringValue name = 40 [
@@ -65,7 +65,7 @@ message StorageBucket {
   ]; // @gotags: `class:"public"`
 
   // Output only. The time this resource was created.
-  google.protobuf.Timestamp created_time = 80 [json_name = "created_time"]; // @gotags: `class:"public"`
+  google.protobuf.Timestamp created_time = 80 [json_name = "created_time"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. The time this resource was last updated.
   google.protobuf.Timestamp updated_time = 90 [json_name = "updated_time"]; // @gotags: `class:"secret"`
@@ -75,7 +75,7 @@ message StorageBucket {
   uint32 version = 100; // @gotags: `class:"public"`
 
   // The type of Storage Bucket (currently only plugin).
-  string type = 110; // @gotags: `class:"public"`
+  string type = 110; // @gotags: `class:"public" eventstream:"observation"`
 
   // Attributes specific to the catalog type.
   google.protobuf.Struct attributes = 120 [(custom_options.v1.generate_sdk_option) = true]; // @gotags: `class:"public"`
