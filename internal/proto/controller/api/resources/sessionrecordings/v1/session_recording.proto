@@ -18,62 +18,62 @@ option go_package = "github.com/hashicorp/boundary/sdk/pbs/controller/api/resour
 // Channels are only present in multiplexed protocols, such as SSH.
 message ChannelRecording {
   // The ID of the Channel recording.
-  string id = 1; // @gotags: class:"public"
+  string id = 1; // @gotags: class:"public" eventstream:"observation"
 
   // The total number of bytes uploaded from the client in the Channel.
-  uint64 bytes_up = 2 [json_name = "bytes_up"]; // @gotags: class:"public"
+  uint64 bytes_up = 2 [json_name = "bytes_up"]; // @gotags: class:"public" eventstream:"observation"
 
   // The total number of bytes downloaded to the client in the Channel.
-  uint64 bytes_down = 3 [json_name = "bytes_down"]; // @gotags: class:"public"
+  uint64 bytes_down = 3 [json_name = "bytes_down"]; // @gotags: class:"public" eventstream:"observation"
 
   // The time the Channel was created in the controller.
-  google.protobuf.Timestamp created_time = 4 [json_name = "created_time"]; // @gotags: class:"public"
+  google.protobuf.Timestamp created_time = 4 [json_name = "created_time"]; // @gotags: class:"public" eventstream:"observation"
 
   // The time of the most recent update to the Channel.
-  google.protobuf.Timestamp updated_time = 5 [json_name = "updated_time"]; // @gotags: class:"public"
+  google.protobuf.Timestamp updated_time = 5 [json_name = "updated_time"]; // @gotags: class:"public" eventstream:"observation"
 
   // The time the Channel started.
-  google.protobuf.Timestamp start_time = 6 [json_name = "start_time"]; // @gotags: class:"public"
+  google.protobuf.Timestamp start_time = 6 [json_name = "start_time"]; // @gotags: class:"public" eventstream:"observation"
 
   // The time the Channel ended.
-  google.protobuf.Timestamp end_time = 7 [json_name = "end_time"]; // @gotags: class:"public"
+  google.protobuf.Timestamp end_time = 7 [json_name = "end_time"]; // @gotags: class:"public" eventstream:"observation"
 
   // The total duration of the Channel.
-  google.protobuf.Duration duration = 8; // @gotags: class:"public"
+  google.protobuf.Duration duration = 8; // @gotags: class:"public" eventstream:"observation"
 
   // MimeTypes define the mime types that can
   // be used to consume the recording of this Channel.
   // The only supported mime type is "application/x-asciicast".
-  repeated string mime_types = 9 [json_name = "mime_types"]; // @gotags: class:"public"
+  repeated string mime_types = 9 [json_name = "mime_types"]; // @gotags: class:"public" eventstream:"observation"
 }
 
 // ConnectionRecording contains the recording of a single Connection within a Session.
 message ConnectionRecording {
   // The ID of the Connection recording.
-  string id = 1; // @gotags: class:"public"
+  string id = 1; // @gotags: class:"public" eventstream:"observation"
 
   // The total number of bytes uploaded from the client in the Connection.
   // This includes any protocol overhead.
-  uint64 bytes_up = 2 [json_name = "bytes_up"]; // @gotags: class:"public"
+  uint64 bytes_up = 2 [json_name = "bytes_up"]; // @gotags: class:"public" eventstream:"observation"
 
   // The total number of bytes downloaded to the client in the Connection.
   // This includes any protocol overhead.
-  uint64 bytes_down = 3 [json_name = "bytes_down"]; // @gotags: class:"public"
+  uint64 bytes_down = 3 [json_name = "bytes_down"]; // @gotags: class:"public" eventstream:"observation"
 
   // The time the Connection was created in the controller.
-  google.protobuf.Timestamp created_time = 4 [json_name = "created_time"]; // @gotags: class:"public"
+  google.protobuf.Timestamp created_time = 4 [json_name = "created_time"]; // @gotags: class:"public" eventstream:"observation"
 
   // The time of the most recent update to the Connection.
-  google.protobuf.Timestamp updated_time = 5 [json_name = "updated_time"]; // @gotags: class:"public"
+  google.protobuf.Timestamp updated_time = 5 [json_name = "updated_time"]; // @gotags: class:"public" eventstream:"observation"
 
   // The time the Connection started.
-  google.protobuf.Timestamp start_time = 6 [json_name = "start_time"]; // @gotags: class:"public"
+  google.protobuf.Timestamp start_time = 6 [json_name = "start_time"]; // @gotags: class:"public" eventstream:"observation"
 
   // The time the Connection ended.
-  google.protobuf.Timestamp end_time = 7 [json_name = "end_time"]; // @gotags: class:"public"
+  google.protobuf.Timestamp end_time = 7 [json_name = "end_time"]; // @gotags: class:"public" eventstream:"observation"
 
   // The total duration of the Connection.
-  google.protobuf.Duration duration = 8; // @gotags: class:"public"
+  google.protobuf.Duration duration = 8; // @gotags: class:"public" eventstream:"observation"
 
   // MimeTypes define the mime types that can
   // be used to consume the recording of this Connection.
@@ -88,7 +88,7 @@ message ConnectionRecording {
 // User describes an authenticated user in Boundary.
 message User {
   // The ID of the User.
-  string id = 1; // @gotags: class:"public"
+  string id = 1; // @gotags: class:"public" eventstream:"observation"
 
   // The name of the User that created the Session.
   string name = 2; // @gotags: class:"sensitive"
@@ -104,13 +104,13 @@ message User {
 // recorded session.
 message HostCatalog {
   // The ID of the Host Catalog
-  string id = 1; // @gotags: class:"public"
+  string id = 1; // @gotags: class:"public" eventstream:"observation"
 
   // The scope that the Host Catalog is in
-  resources.scopes.v1.ScopeInfo scope = 2; // @gotags: class:"public"
+  resources.scopes.v1.ScopeInfo scope = 2;
 
   // The plugin id used by this Host Catalog, if any.
-  string plugin_id = 3 [json_name = "plugin_id"]; // @gotags: class:"public"
+  string plugin_id = 3 [json_name = "plugin_id"]; // @gotags: class:"public" eventstream:"observation"
 
   // The name of the Host Catalog, if set
   string name = 4; // @gotags: class:"public"
@@ -119,7 +119,7 @@ message HostCatalog {
   string description = 5; // @gotags: class:"public"
 
   // The type of the Host Catalog.  This will be either "static" or "plugin"
-  string type = 6; // @gotags: class:"public"
+  string type = 6; // @gotags: class:"public" eventstream:"observation"
 
   oneof attrs {
     // The attributes of the Host Catalog.
@@ -130,10 +130,10 @@ message HostCatalog {
 // Host describes the Host that was chosen for the recorded session.
 message Host {
   // The ID of the Host
-  string id = 1; // @gotags: class:"public"
+  string id = 1; // @gotags: class:"public" eventstream:"observation"
 
   // The Host Catalog this Host is in
-  HostCatalog host_catalog = 2 [json_name = "host_catalog"]; // @gotags: class:"public"
+  HostCatalog host_catalog = 2 [json_name = "host_catalog"];
 
   // The name of the Host, if set.
   string name = 3; // @gotags: class:"public"
@@ -142,7 +142,7 @@ message Host {
   string description = 4; // @gotags: class:"public"
 
   // The type of the host. This will be either "static" or "plugin"
-  string type = 5; // @gotags: class:"public"
+  string type = 5; // @gotags: class:"public" eventstream:"observation"
 
   oneof attrs {
     // Here we use the google.protobuf.Struct so the generated structs in
@@ -174,7 +174,7 @@ message StaticHostAttributes {
 // Target describes a target in Boundary.
 message Target {
   // The ID of the Target.
-  string id = 1; // @gotags: class:"public"
+  string id = 1; // @gotags: class:"public" eventstream:"observation"
 
   // The name of the Target, if set.
   string name = 2; // @gotags: class:"public"
@@ -186,10 +186,10 @@ message Target {
   resources.scopes.v1.ScopeInfo scope = 4;
 
   // Maximum total lifetime of a created Session, in seconds.
-  uint32 session_max_seconds = 5 [json_name = "session_max_seconds"]; // @gotags: class:"public"
+  uint32 session_max_seconds = 5 [json_name = "session_max_seconds"]; // @gotags: class:"public" eventstream:"observation"
 
   // Maximum number of connections allowed in a Session.  Unlimited is indicated by the value -1.
-  int32 session_connection_limit = 6 [json_name = "session_connection_limit"]; // @gotags: class:"public"
+  int32 session_connection_limit = 6 [json_name = "session_connection_limit"]; // @gotags: class:"public" eventstream:"observation"
 
   // Optional boolean expression to filter the workers that are allowed to satisfy this request.
   string worker_filter = 7 [json_name = "worker_filter"]; // @gotags: class:"public"
@@ -201,7 +201,7 @@ message Target {
   string ingress_worker_filter = 9 [json_name = "ingress_worker_filter"]; // @gotags: class:"public"
 
   // The type of the Target.
-  string type = 10; // @gotags: `class:"public"`
+  string type = 10; // @gotags: class:"public" eventstream:"observation"
 
   oneof attrs {
     // Here we use the google.protobuf.Struct so the generated structs in
@@ -231,10 +231,10 @@ message SshTargetAttributes {
 // CredentialStore contains all fields related to a Credential Store resource
 message CredentialStore {
   // The ID of the Credential Store.
-  string id = 1; // @gotags: class:"public"
+  string id = 1; // @gotags: class:"public" eventstream:"observation"
 
   // The ID of the Scope of which this Credential Store is a part.
-  string scope_id = 2 [json_name = "scope_id"]; // @gotags: class:"public"
+  string scope_id = 2 [json_name = "scope_id"]; // @gotags: class:"public" eventstream:"observation"
 
   // The name for identification purposes if set.
   string name = 3; // @gotags: class:"public"
@@ -243,7 +243,7 @@ message CredentialStore {
   string description = 4; // @gotags: class:"public"
 
   // The Credential Store type.
-  string type = 5; // @gotags: class:"public"
+  string type = 5; // @gotags: class:"public" eventstream:"observation"
 
   oneof attrs {
     // The attributes that are applicable for the specific Credential Store type.
@@ -276,10 +276,10 @@ message VaultCredentialStoreAttributes {
 // Credential contains fields related to an Credential resource
 message Credential {
   // The ID of the Credential.
-  string id = 1; // @gotags: class:"public"
+  string id = 1; // @gotags: class:"public" eventstream:"observation"
 
   // The Credential Store of which this Credential is a part.
-  CredentialStore credential_store = 2 [json_name = "credential_store"]; // @gotags: class:"public"
+  CredentialStore credential_store = 2 [json_name = "credential_store"];
 
   // The name of the credential.
   string name = 3; // @gotags: class:"public"
@@ -291,7 +291,7 @@ message Credential {
   repeated string purposes = 5; // @gotags: class:"public"
 
   // The Credential type.
-  string type = 6; // @gotags: class:"public"
+  string type = 6; // @gotags: class:"public" eventstream:"observation"
 
   oneof attrs {
     // The attributes that are applicable for the specific Credential type.
@@ -341,10 +341,10 @@ message JsonCredentialAttributes {
 // CredentialLibrary contains all fields related to an Credential Library resource
 message CredentialLibrary {
   // The ID of the Credential Library.
-  string id = 1; // @gotags: class:"public"
+  string id = 1; // @gotags: class:"public" eventstream:"observation"
 
   // The credential store of which this library is a part.
-  CredentialStore credential_store = 2 [json_name = "credential_store"]; // @gotags: class:"public"
+  CredentialStore credential_store = 2 [json_name = "credential_store"];
 
   //  Optional name of this Credential Library.
   string name = 3; // @gotags: class:"public"
@@ -356,7 +356,7 @@ message CredentialLibrary {
   repeated string purposes = 5; // @gotags: class:"public"
 
   // The Credential Library type.
-  string type = 6; // @gotags: class:"public"
+  string type = 6; // @gotags: class:"public" eventstream:"observation"
 
   oneof attrs {
     // The attributes that are applicable for the specific Credential Library type.
@@ -445,42 +445,42 @@ message SessionRecording {
   resources.scopes.v1.ScopeInfo scope = 2; // @gotags: class:"public"
 
   // The ID of the Session which this Session Recording recorded.
-  string session_id = 3 [json_name = "session_id"]; // @gotags: class:"public"
+  string session_id = 3 [json_name = "session_id"]; // @gotags: class:"public" eventstream:"observation"
 
   // The ID of the Storage Bucket for the Target of this Session Recording.
-  string storage_bucket_id = 4 [json_name = "storage_bucket_id"]; // @gotags: class:"public"
+  string storage_bucket_id = 4 [json_name = "storage_bucket_id"]; // @gotags: class:"public" eventstream:"observation"
 
   // The total number of bytes uploaded from the client in the Session.
   // This includes all bytes uploaded over all Connections, including
   // any protocol overhead.
-  uint64 bytes_up = 5 [json_name = "bytes_up"]; // @gotags: class:"public"
+  uint64 bytes_up = 5 [json_name = "bytes_up"]; // @gotags: class:"public" eventstream:"observation"
 
   // The total number of bytes downloaded to the client in the Session.
   // This includes all bytes downloaded over all Connections, including
   // any protocol overhead.
-  uint64 bytes_down = 6 [json_name = "bytes_down"]; // @gotags: class:"public"
+  uint64 bytes_down = 6 [json_name = "bytes_down"]; // @gotags: class:"public" eventstream:"observation"
 
   // The time the Session Recording was created in the controller.
-  google.protobuf.Timestamp created_time = 7 [json_name = "created_time"]; // @gotags: class:"public"
+  google.protobuf.Timestamp created_time = 7 [json_name = "created_time"]; // @gotags: class:"public" eventstream:"observation"
 
   // The time of the most recent update to the Session Recording.
-  google.protobuf.Timestamp updated_time = 8 [json_name = "updated_time"]; // @gotags: class:"public"
+  google.protobuf.Timestamp updated_time = 8 [json_name = "updated_time"]; // @gotags: class:"public" eventstream:"observation"
 
   // The time the Session started.
-  google.protobuf.Timestamp start_time = 9 [json_name = "start_time"]; // @gotags: class:"public"
+  google.protobuf.Timestamp start_time = 9 [json_name = "start_time"]; // @gotags: class:"public" eventstream:"observation"
 
   // The time the Session ended.
-  google.protobuf.Timestamp end_time = 10 [json_name = "end_time"]; // @gotags: class:"public"
+  google.protobuf.Timestamp end_time = 10 [json_name = "end_time"]; // @gotags: class:"public" eventstream:"observation"
 
   // The total duration of the Session.
-  google.protobuf.Duration duration = 11; // @gotags: class:"public"
+  google.protobuf.Duration duration = 11; // @gotags: class:"public" eventstream:"observation"
 
   // Type of the Session that was recorded (e.g. ssh).
-  string type = 12; // @gotags: class:"public"
+  string type = 12; // @gotags: class:"public" eventstream:"observation"
 
   // The current state of the session recording. One of
   // "started", "available" and "unknown".
-  string state = 13; // @gotags: class:"public"
+  string state = 13; // @gotags: class:"public" eventstream:"observation"
 
   // Any error seen during the closing of the session recording.
   // Currently only set if state is "unknown".
@@ -489,7 +489,7 @@ message SessionRecording {
   // MimeTypes define the mime types that can
   // be used to consume the recording of this Session.
   // No mime types are currently supported.
-  repeated string mime_types = 15 [json_name = "mime_types"]; // @gotags: class:"public"
+  repeated string mime_types = 15 [json_name = "mime_types"]; // @gotags: class:"public" eventstream:"observation"
 
   // The endpoint of the Session; that is, the address to which the egress worker connected.
   string endpoint = 16; // @gotags: class:"public"
@@ -506,8 +506,8 @@ message SessionRecording {
   repeated string authorized_actions = 19 [json_name = "authorized_actions"]; // @gotags: class:"public"
 
   // The time until a session recording is required to be stored.
-  google.protobuf.Timestamp retain_until = 20 [json_name = "retain_until"]; // @gotags: class:"public"
+  google.protobuf.Timestamp retain_until = 20 [json_name = "retain_until"]; // @gotags: class:"public" eventstream:"observation"
 
   // The time a session recording is scheduled to be automatically deleted.
-  google.protobuf.Timestamp delete_after = 21 [json_name = "delete_after"]; // @gotags: class:"public"
+  google.protobuf.Timestamp delete_after = 21 [json_name = "delete_after"]; // @gotags: class:"public" eventstream:"observation"
 }

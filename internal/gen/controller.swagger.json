@@ -7373,7 +7373,6 @@
         },
         "host_catalog": {
           "$ref": "#/definitions/controller.api.resources.sessionrecordings.v1.HostCatalog",
-          "description": "",
           "title": "The Host Catalog this Host is in"
         },
         "name": {
@@ -7414,7 +7413,6 @@
         },
         "scope": {
           "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
-          "description": "",
           "title": "The scope that the Host Catalog is in"
         },
         "plugin_id": {
