@@ -72,8 +72,11 @@ message AppToken {
     }
   ]; // @gotags: `class:"public" eventstream:"observation"`
 
+  // The scope of the AppToken.
+  string scope_id = 120 [json_name = "scope_id"]; // @gotags: `class:"public" eventstream:"observation"`
+
   // Output only. The available actions on this resource for this user.
-  repeated string authorized_actions = 120 [json_name = "authorized_actions"]; // @gotags: `class:"public"`
+  repeated string authorized_actions = 130 [json_name = "authorized_actions"]; // @gotags: `class:"public"`
 }
 
 message GrantJson {

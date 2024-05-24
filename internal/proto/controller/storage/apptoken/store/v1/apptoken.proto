@@ -46,6 +46,10 @@ message AppToken {
   // We use this as the unique constraint.
   // @inject_tag: `gorm:"-"`
   repeated AppTokenGrant grants = 90;
+
+  // the scope the grants apply to (optional)
+  // @inject_tag: `gorm:"default:null;column:grant_scope_id_or_special"`
+  string grant_scope_id = 100;
 }
 
 message AppTokenPeriodicExpirationInterval {
