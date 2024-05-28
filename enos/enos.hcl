@@ -24,7 +24,7 @@ terraform "default" {
 }
 
 provider "aws" "default" {
-  region = "us-east-1"
+  region = var.aws_region
 }
 
 provider "enos" "default" {
