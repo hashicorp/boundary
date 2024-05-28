@@ -207,6 +207,7 @@ scenario "e2e_ui_aws" {
       aws_host_set_filter       = step.create_tag_inputs.tag_string
       aws_host_set_ips          = step.create_targets_with_tag.target_ips
       worker_tag_egress         = local.egress_tag
+      aws_region                = var.aws_region
     }
   }
 
