@@ -128,6 +128,7 @@ scenario "e2e_database" {
       aws_secret_access_key    = step.iam_setup.secret_access_key
       aws_host_set_filter1     = step.create_tag_inputs.tag_string
       max_page_size            = 10
+      aws_region               = var.aws_region
     }
   }
 

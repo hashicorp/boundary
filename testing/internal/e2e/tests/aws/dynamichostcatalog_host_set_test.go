@@ -43,7 +43,7 @@ func TestCliCreateAwsDynamicHostCatalogWithHostSet(t *testing.T) {
 	})
 	projectId, err := boundary.CreateProjectCli(t, ctx, orgId)
 	require.NoError(t, err)
-	hostCatalogId, err := boundary.CreateAwsHostCatalogCli(t, ctx, projectId, c.AwsAccessKeyId, c.AwsSecretAccessKey)
+	hostCatalogId, err := boundary.CreateAwsHostCatalogCli(t, ctx, projectId, c.AwsAccessKeyId, c.AwsSecretAccessKey, c.AwsRegion)
 	require.NoError(t, err)
 
 	// Set up a host set
@@ -178,7 +178,7 @@ func TestApiCreateAwsDynamicHostCatalog(t *testing.T) {
 		hostcatalogs.WithPluginName("aws"),
 		hostcatalogs.WithAttributes(map[string]any{
 			"disable_credential_rotation": true,
-			"region":                      "us-east-1",
+			"region":                      c.AwsRegion,
 		}),
 		hostcatalogs.WithSecrets(map[string]any{
 			"access_key_id":     c.AwsAccessKeyId,
