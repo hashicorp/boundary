@@ -147,6 +147,8 @@ description: |-
   <tr>
     <td style={{verticalAlign: 'middle'}}>
     0.16.0
+    <br /><br />
+    (Fixed in 0.16.1 for Community and Enterprise editions)
     </td>
     <td style={{verticalAlign: 'middle'}}>
     Controller dead lock with database connections stuck in <code>idle in transaction</code> state
@@ -156,7 +158,7 @@ description: |-
     <br /><br />
     The cause of this problem was due to a combination of issues including the lack of a request timeout for worker-to-controller GRPC requests, and the session repository attempting to use a separate database connection to retrieve a KMS wrapper, after already starting a database transaction.
     <br /><br />
-    This issue is fixed in release 0.16.1. KMS operations now occur outside of the transaction, and a max request duration for GRPC requests is now set based on the cluster's listener configuration.
+    This issue is fixed in release 0.16.1 for Community and Enterprise editions. KMS operations now occur outside of the transaction, and a max request duration for GRPC requests is now set based on the cluster's listener configuration.
     <br /><br />
     <a href="/boundary/tutorials/self-managed-deployment/upgrade-version">Upgrade to the latest version of Boundary</a>
     </td>
