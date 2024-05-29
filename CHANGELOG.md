@@ -6,8 +6,8 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### New and Improved
 
-* The observation tag was added to Session Recording and Storage Bucket proto messages for telemetry purposes. If you enable telemetry and observation events, Boundary will now collect data about session recording and storage buckets.
-([PR](https://github.com/hashicorp/boundary/pull/4824))
+* The observation tag was added to session recording and storage bucket proto messages for telemetry purposes. If you enable telemetry and observation events, Boundary will now collect data about session recording and storage buckets.
+([PR](https://github.com/hashicorp/boundary/pull/4824)) and ([PR](https://github.com/hashicorp/boundary/pull/4825))
 
 ### Deprecations/Changes
 
