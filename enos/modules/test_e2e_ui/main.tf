@@ -123,6 +123,36 @@ variable "aws_host_set_ips" {
   type        = list(string)
   default     = [""]
 }
+variable "access_key_id" {
+  description = "Access Key Id for AWS IAM user used in dynamic host catalogs"
+  type        = string
+  default     = ""
+}
+variable "secret_access_key" {
+  description = "Secret Access Key for AWS IAM user used in dynamic host catalogs"
+  type        = string
+  default     = ""
+}
+variable "region" {
+  description = "AWS region where the resources will be created"
+  type        = string
+  default     = ""
+}
+variable "bucket_name" {
+  description = "Storage bucket name"
+  type        = string
+  default     = ""
+}
+variable "bucket_user_id" {
+  description = "User ID created in bucket"
+  type        = string
+  default     = ""
+}
+variable "bucket_endpoint_url" {
+  description = "Endpoint URL for the storage bucket"
+  type        = string
+  default     = ""
+}
 variable "ldap_address" {
   description = "URL to LDAP server"
   type        = string
@@ -197,6 +227,12 @@ resource "enos_local_exec" "run_e2e_test" {
     E2E_AWS_HOST_SET_IPS          = local.aws_host_set_ips
     E2E_AWS_REGION                = var.aws_region
     E2E_AWS_BUCKET_NAME           = var.aws_bucket_name
+    E2E_BUCKET_NAME               = var.bucket_name
+    E2E_BUCKET_ENDPOINT_URL       = var.bucket_endpoint_url
+    E2E_BUCKET_USER_ID            = var.bucket_user_id
+    E2E_BUCKET_ACCESS_KEY_ID      = var.access_key_id
+    E2E_BUCKET_SECRET_ACCESS_KEY  = var.secret_access_key
+    E2E_REGION                    = var.region
     E2E_LDAP_ADDR                 = var.ldap_address
     E2E_LDAP_DOMAIN_DN            = var.ldap_domain_dn
     E2E_LDAP_ADMIN_DN             = var.ldap_admin_dn
