@@ -168,12 +168,20 @@ func New(ctx context.Context, authzToken string, opt ...Option) (*ClientProxy, e
 //
 // EXPERIMENTAL: While this API is not expected to change, it is new and
 // feedback from users may necessitate changes.
-func (p *ClientProxy) Start() (retErr error) {
+func (p *ClientProxy) Start(opt ...Option) (retErr error) {
+	opts, err := getOpts(opt...)
+	if err != nil {
+		return fmt.Errorf("could not parse options: %w", err)
+	}
 	if !p.started.CompareAndSwap(false, true) {
 		return errors.New("proxy was already started")
 	}
 
 	defer p.cancel()
+
+	if opts.withSessionTeardownTimeout == 0 {
+		opts.withSessionTeardownTimeout = sessionCancelTimeout
+	}
 
 	if p.listener.Load() == nil {
 		var err error
@@ -317,7 +325,7 @@ func (p *ClientProxy) Start() (retErr error) {
 		return nil
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), sessionCancelTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), opts.withSessionTeardownTimeout)
 	defer cancel()
 	if err := p.sendSessionTeardown(ctx); err != nil {
 		return fmt.Errorf("error sending session teardown request to worker: %w", err)
