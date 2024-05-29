@@ -35,22 +35,22 @@ func TestCliSearch(t *testing.T) {
 
 	// If daemon is already running, stop it so that we can start it with a
 	// shorter refresh interval
-	output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("daemon", "status", "-format", "json"))
+	output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("cache", "status", "-format", "json"))
 	if output.Err == nil {
 		t.Log("Stopping daemon...")
-		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("daemon", "stop"))
+		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("cache", "stop"))
 		require.NoError(t, output.Err, string(output.Stderr))
 	}
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
-			"daemon", "start",
+			"cache", "start",
 			"-refresh-interval", "5s",
 			"-background",
 		),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
 	t.Cleanup(func() {
-		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("daemon", "stop"))
+		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("cache", "stop"))
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
 
@@ -59,7 +59,7 @@ func TestCliSearch(t *testing.T) {
 	var statusResult clientcache.StatusResult
 	err = backoff.RetryNotify(
 		func() error {
-			output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("daemon", "status", "-format", "json"))
+			output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("cache", "status", "-format", "json"))
 			if output.Err != nil {
 				return errors.New(strings.TrimSpace(string(output.Stderr)))
 			}
@@ -102,7 +102,7 @@ func TestCliSearch(t *testing.T) {
 	require.NoError(t, err)
 
 	// Get current number of targets
-	output = e2e.RunCommand(ctx, "boundary", e2e.WithArgs("daemon", "status", "-format", "json"))
+	output = e2e.RunCommand(ctx, "boundary", e2e.WithArgs("cache", "status", "-format", "json"))
 	require.NoError(t, output.Err, string(output.Stderr))
 	statusResult = clientcache.StatusResult{}
 	err = json.Unmarshal(output.Stdout, &statusResult)
@@ -154,7 +154,7 @@ func TestCliSearch(t *testing.T) {
 	t.Log("Waiting for client cache to populate data...")
 	err = backoff.RetryNotify(
 		func() error {
-			output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("daemon", "status", "-format", "json"))
+			output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("cache", "status", "-format", "json"))
 			if output.Err != nil {
 				return backoff.Permanent(errors.New(string(output.Stderr)))
 			}
