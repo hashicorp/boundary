@@ -15,6 +15,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/sessions"
 	"github.com/hashicorp/boundary/api/targets"
 	cleanhttp "github.com/hashicorp/go-cleanhttp"
@@ -38,7 +39,7 @@ type ClientProxy struct {
 	connectionsLeft         *atomic.Int32
 	connsLeftCh             chan int32
 	callerConnectionsLeftCh chan int32
-	sessionsClient          *sessions.Client
+	apiClient               *api.Client
 	sessionAuthzData        *targets.SessionAuthorizationData
 	createTime              time.Time
 	expiration              time.Time
@@ -99,7 +100,7 @@ func New(ctx context.Context, authzToken string, opt ...Option) (*ClientProxy, e
 		callerConnectionsLeftCh: opts.WithConnectionsLeftCh,
 		started:                 new(atomic.Bool),
 		skipSessionTeardown:     opts.WithSkipSessionTeardown,
-		sessionsClient:          opts.withSessionsClient,
+		apiClient:               opts.withApiClient,
 	}
 
 	if opts.WithListener != nil {
@@ -263,12 +264,12 @@ func (p *ClientProxy) Start(opt ...Option) (retErr error) {
 					p.cancel()
 					return
 				}
-				if p.sessionsClient != nil {
+				if p.apiClient != nil {
 					// If we can tell that the session for the connection we just
 					// closed is terminated, we can close the listener, otherwise
 					// might as well leave it open so the next connection can be
 					// tried.
-					sess, err := p.sessionsClient.Read(p.ctx, p.sessionAuthzData.SessionId)
+					sess, err := sessions.NewClient(p.apiClient).Read(p.ctx, p.sessionAuthzData.SessionId)
 					if err != nil || sess == nil || sess.Item == nil || sess.Item.TerminationReason == "" {
 						return
 					}
