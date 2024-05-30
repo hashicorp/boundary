@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/api"
+	"github.com/hashicorp/boundary/api/sessions"
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -95,5 +97,15 @@ func Test_GetOpts(t *testing.T) {
 		opts, err = getOpts(WithSessionTeardownTimeout(3 * time.Millisecond))
 		require.NoError(t, err)
 		assert.Equal(3*time.Millisecond, opts.withSessionTeardownTimeout)
+	})
+	t.Run("withSessionsClient", func(t *testing.T) {
+		assert := assert.New(t)
+		opts, err := getOpts()
+		require.NoError(t, err)
+		assert.Nil(opts.withSessionsClient)
+		client := sessions.NewClient(&api.Client{})
+		opts, err = getOpts(WithSessionsClient(client))
+		require.NoError(t, err)
+		assert.Equal(client, opts.withSessionTeardownTimeout)
 	})
 }
