@@ -132,7 +132,7 @@ func WithSessionTeardownTimeout(with time.Duration) Option {
 	}
 }
 
-// WithApiClient provides an optional sessions client
+// WithApiClient provides an optional Boundary API client
 func WithApiClient(with *api.Client) Option {
 	return func(o *Options) error {
 		o.withApiClient = with
