@@ -9,7 +9,7 @@ import (
 	"net/netip"
 	"time"
 
-	"github.com/hashicorp/boundary/api/sessions"
+	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/targets"
 )
 
@@ -38,7 +38,7 @@ type Options struct {
 	WithSessionAuthorizationData *targets.SessionAuthorizationData
 	WithSkipSessionTeardown      bool
 	withSessionTeardownTimeout   time.Duration
-	withSessionsClient           *sessions.Client
+	withApiClient                *api.Client
 }
 
 // Option is a function that takes in an options struct and sets values or
@@ -132,10 +132,10 @@ func WithSessionTeardownTimeout(with time.Duration) Option {
 	}
 }
 
-// WithSessionsClient provides an optional sessions client
-func WithSessionsClient(with *sessions.Client) Option {
+// WithApiClient provides an optional sessions client
+func WithApiClient(with *api.Client) Option {
 	return func(o *Options) error {
-		o.withSessionsClient = with
+		o.withApiClient = with
 		return nil
 	}
 }
