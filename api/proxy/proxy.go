@@ -264,6 +264,9 @@ func (p *ClientProxy) Start(opt ...Option) (retErr error) {
 					p.cancel()
 					return
 				}
+
+				// TODO: Determine if this is useful or if there is a better approach
+				// that we may use in the long term.
 				if p.apiClient != nil {
 					// If we can tell that the session for the connection we just
 					// closed is terminated, we can close the listener, otherwise
