@@ -4,6 +4,11 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+### New and Improved
+
+* The observation tag was added to session recording and storage bucket proto messages for telemetry purposes. If you enable telemetry and observation events, Boundary will now collect data about session recording and storage buckets.
+([PR](https://github.com/hashicorp/boundary/pull/4824)) and ([PR](https://github.com/hashicorp/boundary/pull/4825))
+
 ### Deprecations/Changes
 
 * The `boundary daemon` command has been deprecated in favor of the new
@@ -45,7 +50,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 * Target aliases have been added: You can now create an alias for a target.
   In most situations where you would use a target id, you can now instead use
-  the alias value. Create an alias with 
+  the alias value. Create an alias with
   `boundary aliases create target -value example.boundary -destination-id ttcp_1234567890`
   and connect to a target using an alias using `boundary connect example.boundary`
 * Worker local storage state: Self managed workers that are configured to be used for
@@ -108,10 +113,10 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### Bug Fixes
 
-* cli: Update proxy listener to not close when the number of connections left 
-  for the session is zero. The listener will refuse new connections when the 
-  number of connections left is zero but existing connections will be active. 
-  This fixes a CLI client issue where sessions with max connection count 
+* cli: Update proxy listener to not close when the number of connections left
+  for the session is zero. The listener will refuse new connections when the
+  number of connections left is zero but existing connections will be active.
+  This fixes a CLI client issue where sessions with max connection count
   configured were closed when the number of connections left hit 0.
   ([Issue](https://github.com/hashicorp/boundary/issues/4364),
   ([PR](https://github.com/hashicorp/boundary/pull/4389)))
@@ -161,9 +166,9 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   `grant_scope_id` field on roles will continue to be able to be set, which will
   set a single grant scope, but this capability is now deprecated.
 * Policies (Enterprise and HCP Boundary only): This release introduces Policies, a
-  Boundary resource that represents a Governance Policy to enforce. The first 
-  implementation targets Storage Policies, which enables administrators to automate 
-  the process of retention and deletion of Session Recordings, ensuring that they're only 
+  Boundary resource that represents a Governance Policy to enforce. The first
+  implementation targets Storage Policies, which enables administrators to automate
+  the process of retention and deletion of Session Recordings, ensuring that they're only
   retaining data that is explicitly required from a security/compliance perspective.
   * ui: Add full UI support for Storage Policies managing the lifecycle of Session Recordings.
   ([PR](https://github.com/hashicorp/boundary-ui/pull/2089))
@@ -215,7 +220,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * Update go-kms-wrapping/extras/kms dependency to allow external wrappers
   without a key id to be used within a KMS config stanza.  Note: this fix allows
   GCP KMS keys to be again with Boundary, which had stopped working in v0.13.0.
-  ([PR](https://github.com/hashicorp/boundary/pull/4058)) 
+  ([PR](https://github.com/hashicorp/boundary/pull/4058))
 
 * Two Vault client settings were not being properly used when constructing a
   Vault client. ([PR](https://github.com/hashicorp/boundary/pull/3973))
