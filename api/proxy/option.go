@@ -133,6 +133,9 @@ func WithSessionTeardownTimeout(with time.Duration) Option {
 }
 
 // WithApiClient provides an optional Boundary API client
+// Experimental: It is unclear whether the current usage of this option is the
+// approach that we want to take in the long term. This may be removed at any
+// point going forward.
 func WithApiClient(with *api.Client) Option {
 	return func(o *Options) error {
 		o.withApiClient = with
