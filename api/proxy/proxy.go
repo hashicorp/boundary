@@ -280,7 +280,7 @@ func (p *ClientProxy) Start(opt ...Option) (retErr error) {
 					// We got a valid session response for the session we just
 					// closed a connection for. Since the status isn't active
 					// we can treat the session as no longer being able to
-					// suport connections so close this proxy.
+					// support connections, so close this proxy.
 					fin <- fmt.Errorf("session no longer active")
 					listenerCloseFunc()
 					p.cancel()
