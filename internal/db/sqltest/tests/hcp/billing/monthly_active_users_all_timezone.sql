@@ -2,7 +2,18 @@
 -- SPDX-License-Identifier: BUSL-1.1
 
 begin;
-  select plan(11);
+  select plan(27);
+
+  create function test_is_not_same_month(start_time timestamptz, end_time timestamptz) returns boolean
+  as $$
+  begin
+    if date_trunc('month', start_time) != date_trunc('month', end_time) then
+      return true;
+    end if;
+    return false;
+  end;
+  $$ language plpgsql;
+
   select lives_ok('truncate wh_auth_token_accumulating_fact,
                             wh_user_dimension,
                             wh_session_accumulating_fact,
@@ -82,98 +93,123 @@ begin;
   select is(count(*), 6::bigint,  'wh_user_dimension is not empty')               from wh_user_dimension;
 
   -- calling the view directly yields results at NZ month boundaries.
-  select results_eq(
-            'select * from hcp_billing_monthly_active_users_all',
-            $$
-            values (date_trunc('month', now(),                       'nz'), date_trunc('hour',  now(),                       'nz'), 0::bigint),
-                   (date_trunc('month', now() - interval  '1 month', 'nz'), date_trunc('month', now(),                       'nz'), 6::bigint),
-                   (date_trunc('month', now() - interval  '2 month', 'nz'), date_trunc('month', now() - interval  '1 month', 'nz'), 6::bigint),
-                   (date_trunc('month', now() - interval  '3 month', 'nz'), date_trunc('month', now() - interval  '2 month', 'nz'), 6::bigint),
-                   (date_trunc('month', now() - interval  '4 month', 'nz'), date_trunc('month', now() - interval  '3 month', 'nz'), 6::bigint),
-                   (date_trunc('month', now() - interval  '5 month', 'nz'), date_trunc('month', now() - interval  '4 month', 'nz'), 6::bigint),
-                   (date_trunc('month', now() - interval  '6 month', 'nz'), date_trunc('month', now() - interval  '5 month', 'nz'), 6::bigint),
-                   (date_trunc('month', now() - interval  '7 month', 'nz'), date_trunc('month', now() - interval  '6 month', 'nz'), 6::bigint),
-                   (date_trunc('month', now() - interval  '8 month', 'nz'), date_trunc('month', now() - interval  '7 month', 'nz'), 6::bigint),
-                   (date_trunc('month', now() - interval  '9 month', 'nz'), date_trunc('month', now() - interval  '8 month', 'nz'), 6::bigint),
-                   (date_trunc('month', now() - interval '10 month', 'nz'), date_trunc('month', now() - interval  '9 month', 'nz'), 6::bigint),
-                   (date_trunc('month', now() - interval '11 month', 'nz'), date_trunc('month', now() - interval '10 month', 'nz'), 6::bigint),
-                   (date_trunc('month', now() - interval '12 month', 'nz'), date_trunc('month', now() - interval '11 month', 'nz'), 6::bigint)
-            $$);
+  select case when test_is_not_same_month('yesterday'::timestamptz, now())
+         then skip('certain tests don''t work on the first day of the month', 3)
+         else results_eq(
+           'select * from hcp_billing_monthly_active_users_all',
+           $$
+           values (date_trunc('month', now(),                       'nz'), date_trunc('hour',  now(),                       'nz'), 0::bigint),
+                  (date_trunc('month', now() - interval  '1 month', 'nz'), date_trunc('month', now(),                       'nz'), 6::bigint),
+                  (date_trunc('month', now() - interval  '2 month', 'nz'), date_trunc('month', now() - interval  '1 month', 'nz'), 6::bigint),
+                  (date_trunc('month', now() - interval  '3 month', 'nz'), date_trunc('month', now() - interval  '2 month', 'nz'), 6::bigint),
+                  (date_trunc('month', now() - interval  '4 month', 'nz'), date_trunc('month', now() - interval  '3 month', 'nz'), 6::bigint),
+                  (date_trunc('month', now() - interval  '5 month', 'nz'), date_trunc('month', now() - interval  '4 month', 'nz'), 6::bigint),
+                  (date_trunc('month', now() - interval  '6 month', 'nz'), date_trunc('month', now() - interval  '5 month', 'nz'), 6::bigint),
+                  (date_trunc('month', now() - interval  '7 month', 'nz'), date_trunc('month', now() - interval  '6 month', 'nz'), 6::bigint),
+                  (date_trunc('month', now() - interval  '8 month', 'nz'), date_trunc('month', now() - interval  '7 month', 'nz'), 6::bigint),
+                  (date_trunc('month', now() - interval  '9 month', 'nz'), date_trunc('month', now() - interval  '8 month', 'nz'), 6::bigint),
+                  (date_trunc('month', now() - interval '10 month', 'nz'), date_trunc('month', now() - interval  '9 month', 'nz'), 6::bigint),
+                  (date_trunc('month', now() - interval '11 month', 'nz'), date_trunc('month', now() - interval '10 month', 'nz'), 6::bigint),
+                  (date_trunc('month', now() - interval '12 month', 'nz'), date_trunc('month', now() - interval '11 month', 'nz'), 6::bigint)
+            $$)
+         end;
+
 
   -- calling the function yields results at UTC month boundaries.
-  select results_eq(
-            'select count(*) from hcp_billing_monthly_active_users_all()',
-            $$
-            values (14::bigint);
-            $$);
-  select results_eq(
+  select case when test_is_not_same_month('yesterday'::timestamptz, now())
+         then skip('certain tests don''t work on the first day of the month', 3)
+         else results_eq(
+           'select count(*) from hcp_billing_monthly_active_users_all()',
+           $$
+           values (14::bigint);
+           $$)
+         end;
+  select case when test_is_not_same_month('yesterday'::timestamptz, now())
+         then skip('certain tests don''t work on the first day of the month', 3)
+         else results_eq(
+           'select * from hcp_billing_monthly_active_users_all()',
+           $$
+           values (date_trunc('month', now(),                       'utc'), date_trunc('hour',  now(),                       'utc'), 0::bigint),
+                  (date_trunc('month', now() - interval  '1 month', 'utc'), date_trunc('month', now(),                       'utc'), 0::bigint),
+                  (date_trunc('month', now() - interval  '2 month', 'utc'), date_trunc('month', now() - interval  '1 month', 'utc'), 6::bigint),
+                  (date_trunc('month', now() - interval  '3 month', 'utc'), date_trunc('month', now() - interval  '2 month', 'utc'), 6::bigint),
+                  (date_trunc('month', now() - interval  '4 month', 'utc'), date_trunc('month', now() - interval  '3 month', 'utc'), 6::bigint),
+                  (date_trunc('month', now() - interval  '5 month', 'utc'), date_trunc('month', now() - interval  '4 month', 'utc'), 6::bigint),
+                  (date_trunc('month', now() - interval  '6 month', 'utc'), date_trunc('month', now() - interval  '5 month', 'utc'), 6::bigint),
+                  (date_trunc('month', now() - interval  '7 month', 'utc'), date_trunc('month', now() - interval  '6 month', 'utc'), 6::bigint),
+                  (date_trunc('month', now() - interval  '8 month', 'utc'), date_trunc('month', now() - interval  '7 month', 'utc'), 6::bigint),
+                  (date_trunc('month', now() - interval  '9 month', 'utc'), date_trunc('month', now() - interval  '8 month', 'utc'), 6::bigint),
+                  (date_trunc('month', now() - interval '10 month', 'utc'), date_trunc('month', now() - interval  '9 month', 'utc'), 6::bigint),
+                  (date_trunc('month', now() - interval '11 month', 'utc'), date_trunc('month', now() - interval '10 month', 'utc'), 6::bigint),
+                  (date_trunc('month', now() - interval '12 month', 'utc'), date_trunc('month', now() - interval '11 month', 'utc'), 6::bigint),
+                  (date_trunc('month', now() - interval '13 month', 'utc'), date_trunc('month', now() - interval '12 month', 'utc'), 6::bigint)
+           $$)
+         end;
+  select case when test_is_not_same_month('yesterday'::timestamptz, now())
+         then skip('certain tests don''t work on the first day of the month', 3)
+         else results_ne(
             'select * from hcp_billing_monthly_active_users_all()',
-            $$
-            values (date_trunc('month', now(),                       'utc'), date_trunc('hour',  now(),                       'utc'), 0::bigint),
-                   (date_trunc('month', now() - interval  '1 month', 'utc'), date_trunc('month', now(),                       'utc'), 0::bigint),
-                   (date_trunc('month', now() - interval  '2 month', 'utc'), date_trunc('month', now() - interval  '1 month', 'utc'), 6::bigint),
-                   (date_trunc('month', now() - interval  '3 month', 'utc'), date_trunc('month', now() - interval  '2 month', 'utc'), 6::bigint),
-                   (date_trunc('month', now() - interval  '4 month', 'utc'), date_trunc('month', now() - interval  '3 month', 'utc'), 6::bigint),
-                   (date_trunc('month', now() - interval  '5 month', 'utc'), date_trunc('month', now() - interval  '4 month', 'utc'), 6::bigint),
-                   (date_trunc('month', now() - interval  '6 month', 'utc'), date_trunc('month', now() - interval  '5 month', 'utc'), 6::bigint),
-                   (date_trunc('month', now() - interval  '7 month', 'utc'), date_trunc('month', now() - interval  '6 month', 'utc'), 6::bigint),
-                   (date_trunc('month', now() - interval  '8 month', 'utc'), date_trunc('month', now() - interval  '7 month', 'utc'), 6::bigint),
-                   (date_trunc('month', now() - interval  '9 month', 'utc'), date_trunc('month', now() - interval  '8 month', 'utc'), 6::bigint),
-                   (date_trunc('month', now() - interval '10 month', 'utc'), date_trunc('month', now() - interval  '9 month', 'utc'), 6::bigint),
-                   (date_trunc('month', now() - interval '11 month', 'utc'), date_trunc('month', now() - interval '10 month', 'utc'), 6::bigint),
-                   (date_trunc('month', now() - interval '12 month', 'utc'), date_trunc('month', now() - interval '11 month', 'utc'), 6::bigint),
-                   (date_trunc('month', now() - interval '13 month', 'utc'), date_trunc('month', now() - interval '12 month', 'utc'), 6::bigint)
-            $$);
-  select results_ne(
-            'select * from hcp_billing_monthly_active_users_all()',
-            'select * from hcp_billing_monthly_active_users_all');
+            'select * from hcp_billing_monthly_active_users_all')
+         end;
   -- can provide a start time (inclusive) to limit the results.
-  select results_eq(
-            $$
-            select * from hcp_billing_monthly_active_users_all(date_trunc('month', now() - interval '5 month', 'utc'));
-            $$,
-            $$
-            values (date_trunc('month', now(),                       'utc'), date_trunc('hour',  now(),                       'utc'), 0::bigint),
-                   (date_trunc('month', now() - interval  '1 month', 'utc'), date_trunc('month', now(),                       'utc'), 0::bigint),
-                   (date_trunc('month', now() - interval  '2 month', 'utc'), date_trunc('month', now() - interval  '1 month', 'utc'), 6::bigint),
-                   (date_trunc('month', now() - interval  '3 month', 'utc'), date_trunc('month', now() - interval  '2 month', 'utc'), 6::bigint),
-                   (date_trunc('month', now() - interval  '4 month', 'utc'), date_trunc('month', now() - interval  '3 month', 'utc'), 6::bigint),
-                   (date_trunc('month', now() - interval  '5 month', 'utc'), date_trunc('month', now() - interval  '4 month', 'utc'), 6::bigint)
-            $$);
-  -- can provide a start time (inclusive) and end time (exclusive) to limit results. 
-  select results_eq(
-            $$
-            select * from hcp_billing_monthly_active_users_all(date_trunc('month', now() - interval '5 month', 'utc'),
-                                                               date_trunc('month', now() - interval '3 month', 'utc'));
-            $$,
-            $$
-            values (date_trunc('month', now() - interval  '4 month', 'utc'), date_trunc('month', now() - interval  '3 month', 'utc'), 6::bigint),
-                   (date_trunc('month', now() - interval  '5 month', 'utc'), date_trunc('month', now() - interval  '4 month', 'utc'), 6::bigint)
-            $$);
+  select case when test_is_not_same_month('yesterday'::timestamptz, now())
+         then skip('certain tests don''t work on the first day of the month', 3)
+         else results_eq(
+           $$
+           select * from hcp_billing_monthly_active_users_all(date_trunc('month', now() - interval '5 month', 'utc'));
+           $$,
+           $$
+           values (date_trunc('month', now(),                       'utc'), date_trunc('hour',  now(),                       'utc'), 0::bigint),
+                  (date_trunc('month', now() - interval  '1 month', 'utc'), date_trunc('month', now(),                       'utc'), 0::bigint),
+                  (date_trunc('month', now() - interval  '2 month', 'utc'), date_trunc('month', now() - interval  '1 month', 'utc'), 6::bigint),
+                  (date_trunc('month', now() - interval  '3 month', 'utc'), date_trunc('month', now() - interval  '2 month', 'utc'), 6::bigint),
+                  (date_trunc('month', now() - interval  '4 month', 'utc'), date_trunc('month', now() - interval  '3 month', 'utc'), 6::bigint),
+                  (date_trunc('month', now() - interval  '5 month', 'utc'), date_trunc('month', now() - interval  '4 month', 'utc'), 6::bigint)
+           $$)
+         end;
+  -- can provide a start time (inclusive) and end time (exclusive) to limit results.
+  select case when test_is_not_same_month('yesterday'::timestamptz, now())
+         then skip('certain tests don''t work on the first day of the month', 3)
+         else results_eq(
+           $$
+           select * from hcp_billing_monthly_active_users_all(date_trunc('month', now() - interval '5 month', 'utc'),
+                                                              date_trunc('month', now() - interval '3 month', 'utc'));
+           $$,
+           $$
+           values (date_trunc('month', now() - interval  '4 month', 'utc'), date_trunc('month', now() - interval  '3 month', 'utc'), 6::bigint),
+                  (date_trunc('month', now() - interval  '5 month', 'utc'), date_trunc('month', now() - interval  '4 month', 'utc'), 6::bigint)
+           $$)
+         end;
   -- can provide an end time (exclusive) to limit results.
-  select results_eq(
-            $$
-            select * from hcp_billing_monthly_active_users_all(null,
-                                                               date_trunc('month', now() - interval '3 month', 'utc'));
-            $$,
-            $$
-            values (date_trunc('month', now() - interval  '4 month', 'utc'), date_trunc('month', now() - interval  '3 month', 'utc'), 6::bigint),
-                   (date_trunc('month', now() - interval  '5 month', 'utc'), date_trunc('month', now() - interval  '4 month', 'utc'), 6::bigint),
-                   (date_trunc('month', now() - interval  '6 month', 'utc'), date_trunc('month', now() - interval  '5 month', 'utc'), 6::bigint),
-                   (date_trunc('month', now() - interval  '7 month', 'utc'), date_trunc('month', now() - interval  '6 month', 'utc'), 6::bigint),
-                   (date_trunc('month', now() - interval  '8 month', 'utc'), date_trunc('month', now() - interval  '7 month', 'utc'), 6::bigint),
-                   (date_trunc('month', now() - interval  '9 month', 'utc'), date_trunc('month', now() - interval  '8 month', 'utc'), 6::bigint),
-                   (date_trunc('month', now() - interval '10 month', 'utc'), date_trunc('month', now() - interval  '9 month', 'utc'), 6::bigint),
-                   (date_trunc('month', now() - interval '11 month', 'utc'), date_trunc('month', now() - interval '10 month', 'utc'), 6::bigint),
-                   (date_trunc('month', now() - interval '12 month', 'utc'), date_trunc('month', now() - interval '11 month', 'utc'), 6::bigint),
-                   (date_trunc('month', now() - interval '13 month', 'utc'), date_trunc('month', now() - interval '12 month', 'utc'), 6::bigint)
-            $$);
+  select case when test_is_not_same_month('yesterday'::timestamptz, now())
+         then skip('certain tests don''t work on the first day of the month', 3)
+         else results_eq(
+           $$
+           select * from hcp_billing_monthly_active_users_all(null,
+                                                              date_trunc('month', now() - interval '3 month', 'utc'));
+           $$,
+           $$
+           values (date_trunc('month', now() - interval  '4 month', 'utc'), date_trunc('month', now() - interval  '3 month', 'utc'), 6::bigint),
+                  (date_trunc('month', now() - interval  '5 month', 'utc'), date_trunc('month', now() - interval  '4 month', 'utc'), 6::bigint),
+                  (date_trunc('month', now() - interval  '6 month', 'utc'), date_trunc('month', now() - interval  '5 month', 'utc'), 6::bigint),
+                  (date_trunc('month', now() - interval  '7 month', 'utc'), date_trunc('month', now() - interval  '6 month', 'utc'), 6::bigint),
+                  (date_trunc('month', now() - interval  '8 month', 'utc'), date_trunc('month', now() - interval  '7 month', 'utc'), 6::bigint),
+                  (date_trunc('month', now() - interval  '9 month', 'utc'), date_trunc('month', now() - interval  '8 month', 'utc'), 6::bigint),
+                  (date_trunc('month', now() - interval '10 month', 'utc'), date_trunc('month', now() - interval  '9 month', 'utc'), 6::bigint),
+                  (date_trunc('month', now() - interval '11 month', 'utc'), date_trunc('month', now() - interval '10 month', 'utc'), 6::bigint),
+                  (date_trunc('month', now() - interval '12 month', 'utc'), date_trunc('month', now() - interval '11 month', 'utc'), 6::bigint),
+                  (date_trunc('month', now() - interval '13 month', 'utc'), date_trunc('month', now() - interval '12 month', 'utc'), 6::bigint)
+           $$)
+         end;
   -- an end time that is before the start time will yield no results.
-  select is_empty(
-            $$
-            select * from hcp_billing_monthly_active_users_all(date_trunc('month', now() - interval '2 month', 'utc'),
-                                                               date_trunc('month', now() - interval '5 month', 'utc'));
-            $$);
+  select case when test_is_not_same_month('yesterday'::timestamptz, now())
+         then skip('certain tests don''t work on the first day of the month', 3)
+         else is_empty(
+           $$
+           select * from hcp_billing_monthly_active_users_all(date_trunc('month', now() - interval '2 month', 'utc'),
+                                                              date_trunc('month', now() - interval '5 month', 'utc'));
+           $$)
+         end;
 
   select * from finish();
 rollback;
