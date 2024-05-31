@@ -45,7 +45,7 @@ func Test_MonthlyActiveUsers(t *testing.T) {
 	// start of the month. For example, if...
 	// today -> May 30th
 	// today.AddDate(0, -3, 0).Month() -> March
-	// February was expcted here, but we get March. This seems to be a
+	// February was expected here, but we get March. This seems to be a
 	// rounding thing since February 30th is not a valid date. Instead, the
 	// start of the month is used to ensure the correct months are calculated.
 	monthStart := time.Date(today.Year(), today.Month(), 1, 0, 0, 0, 0, time.UTC)
