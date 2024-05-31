@@ -273,14 +273,14 @@ func (p *ClientProxy) Start(opt ...Option) (retErr error) {
 					// might as well leave it open so the next connection can be
 					// tried.
 					sess, err := sessions.NewClient(p.apiClient).Read(p.ctx, p.sessionAuthzData.SessionId)
-					if err != nil || sess == nil || sess.Item == nil || sess.Item.TerminationReason == "" {
+					if err != nil || sess == nil || sess.Item == nil || sess.Item.Status == "active" {
 						return
 					}
 
 					// We got a valid session response for the session we just
-					// closed a connection for. Since there is a termination reason
-					// we can treat the session as being terminated so no more
-					// connections will be able to be established.
+					// closed a connection for. Since the status isn't active
+					// we can treat the session as no longer being able to
+					// support connections, so close this proxy.
 					fin <- fmt.Errorf("session no longer active")
 					listenerCloseFunc()
 					p.cancel()
