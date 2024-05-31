@@ -41,8 +41,16 @@ func Test_MonthlyActiveUsers(t *testing.T) {
 	}
 
 	today := time.Now().UTC()
-	threeMonthsAgo := time.Date(today.AddDate(0, -3, 0).Year(), today.AddDate(0, -3, 0).Month(), 1, 0, 0, 0, 0, time.UTC).Format("2006-01")
-	oneMonthAgo := time.Date(today.AddDate(0, -1, 0).Year(), today.AddDate(0, -1, 0).Month(), 1, 0, 0, 0, 0, time.UTC).Format("2006-01")
+	// Some time calculations are impacted when using the current day vs. the
+	// start of the month. For example, if...
+	// today -> May 30th
+	// today.AddDate(0, -3, 0).Month() -> March
+	// February was expcted here, but we get March. This seems to be a
+	// rounding thing since February 30th is not a valid date. Instead, the
+	// start of the month is used to ensure the correct months are calculated.
+	monthStart := time.Date(today.Year(), today.Month(), 1, 0, 0, 0, 0, time.UTC)
+	threeMonthsAgo := time.Date(monthStart.AddDate(0, -3, 0).Year(), monthStart.AddDate(0, -3, 0).Month(), 1, 0, 0, 0, 0, time.UTC).Format("2006-01")
+	oneMonthAgo := time.Date(monthStart.AddDate(0, -1, 0).Year(), monthStart.AddDate(0, -1, 0).Month(), 1, 0, 0, 0, 0, time.UTC).Format("2006-01")
 	badFormat := time.Date(today.Year(), today.Month(), 15, 0, 0, 0, 0, time.UTC).String()
 
 	cases := []struct {
