@@ -5,13 +5,17 @@ package apptoken
 
 import (
 	"context"
+	"crypto/rand"
 	"testing"
 	"time"
 
 	"github.com/hashicorp/boundary/internal/apptoken/store"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/perms"
+	"github.com/hashicorp/boundary/internal/types/scope"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/stretchr/testify/require"
 )
 
@@ -67,4 +71,29 @@ func TestAppToken(t *testing.T, conn *db.DB, scopeId, createdBy string, grantsSt
 	}
 	appToken.Grants = gs
 	return appToken
+}
+
+// TestRepo creates a repo that can be used for various purposes. Crucially, it
+// ensures that the global scope contains a valid root key.
+func TestRepo(t testing.TB, conn *db.DB, rootWrapper wrapping.Wrapper, gf grantFinder, opt ...Option) *Repository {
+	t.Helper()
+	ctx := context.Background()
+	require := require.New(t)
+	rw := db.New(conn)
+	kmsCache := kms.TestKms(t, conn, rootWrapper)
+	wrapper, err := kmsCache.GetWrapper(ctx, scope.Global.String(), kms.KeyPurposeOplog)
+	if err != nil {
+		err = kmsCache.CreateKeys(ctx, scope.Global.String(), kms.WithRandomReader(rand.Reader))
+		require.NoError(err)
+		wrapper, err = kmsCache.GetWrapper(ctx, scope.Global.String(), kms.KeyPurposeOplog)
+		if err != nil {
+			panic(err)
+		}
+	}
+	require.NoError(err)
+	require.NotNil(wrapper)
+
+	repo, err := NewRepository(ctx, rw, rw, kmsCache, gf, opt...)
+	require.NoError(err)
+	return repo
 }

@@ -14,6 +14,10 @@ import (
 	"github.com/hashicorp/boundary/internal/util"
 )
 
+// RepositoryFactory enables `apptoken.Repository` object instantiation,
+// and is used by the various service packages/controller object to do so.
+type RepositoryFactory func(...Option) (*Repository, error)
+
 // grantFinder defines a single func interface which is implemented by iam.Repository.
 type grantFinder interface {
 	GrantsForUser(ctx context.Context, userId string, opt ...iam.Option) ([]perms.GrantTuple, error)

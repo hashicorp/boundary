@@ -7,6 +7,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/apptoken/store"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -41,6 +42,12 @@ func NewAppToken(ctx context.Context, scopeId string, expirationTime time.Time, 
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
+
+	grantScopeId := opts.withGrantScopeId
+	if opts.withGrantScopeId == "" {
+		grantScopeId = globals.GrantScopeThis
+	}
+
 	return &AppToken{
 		AppToken: &store.AppToken{
 			ScopeId:                        scopeId,
@@ -49,6 +56,7 @@ func NewAppToken(ctx context.Context, scopeId string, expirationTime time.Time, 
 			Name:                           opts.withName,
 			Description:                    opts.withDescription,
 			ExpirationIntervalInMaxSeconds: opts.withExpirationInterval,
+			GrantScopeId:                   grantScopeId,
 		},
 	}, nil
 }

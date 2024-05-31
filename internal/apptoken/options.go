@@ -17,6 +17,7 @@ type options struct {
 	withLimit              int
 	withExpirationInterval uint32
 	withReader             db.Reader
+	withGrantScopeId       string
 }
 
 // Option - how options are passed as args
@@ -86,6 +87,19 @@ func withReader(ctx context.Context, reader db.Reader) Option {
 			return errors.New(ctx, errors.InvalidParameter, op, "missing reader")
 		}
 		o.withReader = reader
+		return nil
+	}
+}
+
+// WithGrantScopeId provides an option to specify the scope ID for the grants for
+// an apptoken.
+func WithGrantScopeId(_ context.Context, id string) Option {
+	const op = "apptoken.WithGrantScopeId"
+	return func(o *options) error {
+		if o.withGrantScopeId == "" {
+			o.withGrantScopeId = ""
+		}
+		o.withGrantScopeId = id
 		return nil
 	}
 }

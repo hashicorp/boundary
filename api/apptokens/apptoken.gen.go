@@ -22,5 +22,6 @@ type AppToken struct {
 	GrantStrings       []string          `json:"grant_strings,omitempty"`
 	Grants             []*Grant          `json:"grants,omitempty"`
 	ExpirationInterval uint32            `json:"expiration_interval,omitempty"`
+	ScopeId            string            `json:"scope_id,omitempty"`
 	AuthorizedActions  []string          `json:"authorized_actions,omitempty"`
 }

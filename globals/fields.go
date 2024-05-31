@@ -124,4 +124,9 @@ const (
 	ValueField                                  = "value"
 	WithAliasesField                            = "with_aliases"
 	LocalStorageStateField                      = "local_storage_state"
+	CreatedByField                              = "created_by"
+	ExpirationIntervalField                     = "expiration_interval"
+	CanonicalGrantField                         = "canonical_grant_field"
+	JsonGrantField                              = "json_grant"
+	RawGrantField                               = "raw_grant"
 )

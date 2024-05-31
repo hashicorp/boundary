@@ -5997,6 +5997,10 @@
           "format": "int64",
           "description": "Optional expiration interval for the app token in max seconds."
         },
+        "scope_id": {
+          "type": "string",
+          "description": "The scope of the AppToken."
+        },
         "authorized_actions": {
           "type": "array",
           "items": {
