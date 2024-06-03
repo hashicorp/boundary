@@ -747,6 +747,128 @@ func TestFilterToAuthorizedWorkerKeyIds(t *testing.T) {
 	assert.Equal(t, []string{keyId2}, got)
 }
 
+func TestSplitBrain(t *testing.T) {
+	ctx := context.Background()
+	require := require.New(t)
+
+	wrapper := db.TestWrapper(t)
+	conn, _ := db.TestSetup(t, "postgres")
+	kmsCache := kms.TestKms(t, conn, wrapper)
+	// Ensures the global scope contains a valid root key
+	err := kmsCache.CreateKeys(context.Background(), scope.Global.String(), kms.WithRandomReader(rand.Reader))
+	require.NoError(err)
+	wrapper, err = kmsCache.GetWrapper(context.Background(), scope.Global.String(), kms.KeyPurposeDatabase)
+	require.NoError(err)
+	require.NotNil(t, wrapper)
+
+	rw := db.New(conn)
+
+	serversRepo, err := NewRepository(ctx, rw, rw, kmsCache)
+	require.NoError(err)
+
+	require.NoError(err)
+	wrk := NewWorker(scope.Global.String())
+	wrk, err = serversRepo.CreateWorker(ctx, wrk)
+	require.NoError(err)
+	require.NotNil(wrk)
+
+	controllerStorage, err := NewRepositoryStorage(ctx, rw, rw, kmsCache)
+	require.NoError(err)
+
+	_, err = rotation.RotateRootCertificates(ctx, controllerStorage)
+	require.NoError(err)
+
+	// Create struct to pass in with workerId that will be passed along to storage
+	state, err := AttachWorkerIdToState(ctx, wrk.PublicId)
+	require.NoError(err)
+
+	// This happens on the worker
+	workerStorage, err := file.New(ctx)
+	require.NoError(err)
+	initCreds, err := types.NewNodeCredentials(ctx, workerStorage)
+	require.NoError(err)
+	// Create request using worker id
+	fetchReq, err := initCreds.CreateFetchNodeCredentialsRequest(ctx)
+	require.NoError(err)
+	registeredNode, err := registration.AuthorizeNode(ctx, controllerStorage, fetchReq, nodeenrollment.WithState(state))
+	require.NoError(err)
+	require.NotNil(registeredNode)
+
+	fetchResp, err := registration.FetchNodeCredentials(ctx, controllerStorage, fetchReq)
+	require.NoError(err)
+	initCreds, err = initCreds.HandleFetchNodeCredentialsResponse(ctx, workerStorage, fetchResp)
+	require.NoError(err)
+
+	// Simulate the auth rotation
+	// Worker side ----------------------------------
+	newCreds, err := types.NewNodeCredentials(ctx, workerStorage, nodeenrollment.WithSkipStorage(true))
+	require.NoError(err)
+
+	require.NoError(newCreds.SetPreviousEncryptionKey(initCreds))
+	fetchReq, err = newCreds.CreateFetchNodeCredentialsRequest(ctx)
+	require.NoError(err)
+
+	encFetchReq, err := nodeenrollment.EncryptMessage(ctx, fetchReq, initCreds)
+	require.NoError(err)
+
+	controllerReq := &types.RotateNodeCredentialsRequest{
+		CertificatePublicKeyPkix:             initCreds.CertificatePublicKeyPkix,
+		EncryptedFetchNodeCredentialsRequest: encFetchReq,
+	}
+
+	// Send request to controller
+	// Controller side ------------------------------
+	resp, err := rotation.RotateNodeCredentials(ctx, controllerStorage, controllerReq)
+	require.NoError(err)
+
+	// Send response to worker
+	// Worker side ----------------------------------
+	// Simulate response going missing
+	_ = resp
+
+	// Now simulate the subsequent auth rotation attempt
+	newNewCreds, err := types.NewNodeCredentials(ctx, workerStorage, nodeenrollment.WithSkipStorage(true))
+	require.NoError(err)
+	require.NotEqual(t, newNewCreds.CertificatePublicKeyPkix, newCreds.CertificatePublicKeyPkix)
+
+	require.NoError(newNewCreds.SetPreviousEncryptionKey(initCreds))
+	fetchReq, err = newNewCreds.CreateFetchNodeCredentialsRequest(ctx)
+	require.NoError(err)
+
+	encFetchReq, err = nodeenrollment.EncryptMessage(ctx, fetchReq, initCreds)
+	require.NoError(err)
+
+	controllerReq = &types.RotateNodeCredentialsRequest{
+		CertificatePublicKeyPkix:             initCreds.CertificatePublicKeyPkix,
+		EncryptedFetchNodeCredentialsRequest: encFetchReq,
+	}
+
+	// Send request to controller
+	// Controller side ------------------------------
+	// Split brain would fail this, as it used the wrong creds for decryption
+	resp, err = rotation.RotateNodeCredentials(ctx, controllerStorage, controllerReq)
+	require.NoError(err)
+
+	// Ensure new key has been stored
+	keyId, err := nodeenrollment.KeyIdFromPkix(newNewCreds.CertificatePublicKeyPkix)
+	require.NoError(err)
+	_, err = types.LoadNodeInformation(ctx, controllerStorage, keyId)
+	require.NoError(err)
+
+	// Verify that "split brain" creds have been removed from the DB
+	keyId, err = nodeenrollment.KeyIdFromPkix(newCreds.CertificatePublicKeyPkix)
+	require.NoError(err)
+	_, err = types.LoadNodeInformation(ctx, controllerStorage, keyId)
+	require.Error(err)
+	require.ErrorIs(err, nodeenrollment.ErrNotFound)
+
+	// Ensure the correct previous key is still stored
+	keyId, err = nodeenrollment.KeyIdFromPkix(initCreds.CertificatePublicKeyPkix)
+	require.NoError(err)
+	_, err = types.LoadNodeInformation(ctx, controllerStorage, keyId)
+	require.NoError(err)
+}
+
 type mockTestWrapper struct {
 	wrapping.Wrapper
 	decryptError bool

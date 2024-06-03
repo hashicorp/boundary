@@ -34,6 +34,25 @@ const (
 		select * from worker_auth_authorized where worker_id in (select * from key_id_to_worker_id)
 	`
 
+	getWorkerAuthStateByKeyIdQuery = `
+		select state from worker_auth_authorized where worker_key_identifier = @worker_key_identifier
+	`
+
+	deleteWorkerAuthByKeyId = `
+		with key_id_to_worker_id as (
+		 select worker_id from worker_auth_authorized where worker_key_identifier = @worker_key_identifier
+		)
+		delete from worker_auth_authorized where state = 'current' and worker_id in (select * from key_id_to_worker_id)
+	`
+
+	updateWorkerAuthStateByKeyId = `
+		update worker_auth_authorized set state = 'current' where worker_key_identifier = @worker_key_identifier
+	`
+
+	getWorkerAuthsByWorkerIdQuery = `
+		select * from worker_auth_authorized where worker_id = @worker_id
+	`
+
 	authorizedWorkerQuery = `
 		select distinct w.worker_key_identifier 
 		from 
