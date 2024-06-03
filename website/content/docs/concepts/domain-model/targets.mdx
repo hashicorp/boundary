@@ -114,8 +114,8 @@ SSH targets use injected application credentials to authenticate an SSH session 
 Injected credentials allow users to securely connect to remost hosts using SSH, while never being in the possession of a valid credential for that target host.
 The injected credentials can be a username/password or username/private key credential from Vault [credential libraries][] or they can be static [credentials][] or an SSH certificate from Vault SSH credential libraries.
 
-You cannot establish an SSH connection to a target using brokered credentials.
-If you do not configure injected credentials to make the SSH connection, any attempts to connect to the SSH target result in an error.
+SSH targets require you to configure injected credentials to create a session.
+If you attempt to create a session against an SSH target without configuring injected credentials, it results in an error.
 However, you can use brokered credentials with SSH targets for purposes other than establishing the initial SSH connection.
 
 SSH targets have the following additional attributes:
