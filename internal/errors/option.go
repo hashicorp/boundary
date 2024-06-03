@@ -29,7 +29,7 @@ func getDefaultOptions() Options {
 	return Options{}
 }
 
-// WithErrCode provides an option to provide an error to wrap when creating a
+// WithWrap provides an option to provide an error to wrap when creating a
 // new error.
 func WithWrap(e error) Option {
 	return func(o *Options) {
@@ -38,7 +38,7 @@ func WithWrap(e error) Option {
 }
 
 // WithMsg provides an option to provide a message when creating a new
-// error.  If args are provided, the the msg string is used as a fmt specifier
+// error.  If args are provided, the msg string is used as a fmt specifier
 // for the arguments and the resulting string is used as the msg.
 func WithMsg(msg string, args ...any) Option {
 	return func(o *Options) {

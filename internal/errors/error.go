@@ -38,6 +38,12 @@ type Err struct {
 	// Wrapped is the error which this Err wraps and will be nil if there's no
 	// error to wrap.
 	Wrapped error
+
+	// Written is a flag used to indicate that the error has been Written via
+	// event.WriteError. When using wrapped errors this prevents the same
+	// error being Written multiple times depending on how many layers up
+	// the stack it is wrapped after its first return.
+	Written bool
 }
 
 // E creates a new Err with provided code and supports the options of:
@@ -73,17 +79,23 @@ func E(ctx context.Context, opt ...Option) error {
 		code = opts.withCode
 	}
 
+	var written bool
+	if err != nil {
+		written = err.Written
+	}
+
 	err = &Err{
 		Code:    code,
 		Op:      opts.withOp,
 		Wrapped: opts.withErrWrapped,
 		Msg:     fmt.Sprintf(opts.withErrMsg, opts.withErrMsgArgs...),
+		Written: written,
 	}
 	if opts.withoutEvent {
 		return err
 	}
 
-	{
+	if !err.Written {
 		// events require an Op, but we don't want to change the error specified
 		// by the caller.  So we'll build a new event and conditionally set a
 		// reasonable Op based on the call stack.
@@ -92,6 +104,7 @@ func E(ctx context.Context, opt ...Option) error {
 			Op:      err.Op,
 			Wrapped: err.Wrapped,
 			Msg:     err.Msg,
+			Written: err.Written,
 		}
 		if eventErr.Op == "" {
 			const has = "github.com/hashicorp/boundary/internal/errors."
@@ -111,7 +124,9 @@ func E(ctx context.Context, opt ...Option) error {
 				eventErr.Op = "unknown operation"
 			}
 		}
+
 		event.WriteError(ctx, event.Op(eventErr.Op), eventErr)
+		err.Written = true
 	}
 
 	return err

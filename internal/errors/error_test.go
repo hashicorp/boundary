@@ -38,13 +38,15 @@ func Test_ErrorE(t *testing.T) {
 				Wrapped: errRecordNotFound,
 				Msg:     "test msg",
 				Code:    errors.InvalidParameter,
+				Written: true,
 			},
 		},
 		{
 			name: "no-options",
 			opt:  nil,
 			want: &errors.Err{
-				Code: errors.Unknown,
+				Code:    errors.Unknown,
+				Written: true,
 			},
 		},
 		{
@@ -53,7 +55,8 @@ func Test_ErrorE(t *testing.T) {
 				errors.WithCode(errors.RecordNotFound),
 			},
 			want: &errors.Err{
-				Code: errors.RecordNotFound,
+				Code:    errors.RecordNotFound,
+				Written: true,
 			},
 		},
 		{
@@ -64,6 +67,7 @@ func Test_ErrorE(t *testing.T) {
 			want: &errors.Err{
 				Code:    errors.RecordNotFound,
 				Wrapped: errRecordNotFound,
+				Written: true,
 			},
 		},
 		{
@@ -75,6 +79,24 @@ func Test_ErrorE(t *testing.T) {
 			want: &errors.Err{
 				Code:    errors.InvalidFieldMask,
 				Wrapped: errRecordNotFound,
+				Written: true,
+			},
+		},
+		{
+			name: "no-event",
+			opt: []errors.Option{
+				errors.WithCode(errors.InvalidParameter),
+				errors.WithOp("alice.Bob"),
+				errors.WithWrap(errRecordNotFound),
+				errors.WithMsg("test msg"),
+				errors.WithoutEvent(),
+			},
+			want: &errors.Err{
+				Op:      "alice.Bob",
+				Wrapped: errRecordNotFound,
+				Msg:     "test msg",
+				Code:    errors.InvalidParameter,
+				Written: false,
 			},
 		},
 	}
@@ -96,7 +118,8 @@ func Test_ErrorE(t *testing.T) {
 		err := errors.E(nil, errors.WithCode(errors.InvalidParameter))
 		require.Error(err)
 		assert.Equal(&errors.Err{
-			Code: errors.InvalidParameter,
+			Code:    errors.InvalidParameter,
+			Written: true,
 		}, err)
 	})
 }
@@ -125,6 +148,7 @@ func Test_NewError(t *testing.T) {
 				Wrapped: errors.E(ctx, errors.WithoutEvent(), errors.WithCode(errors.RecordNotFound)),
 				Msg:     "test msg",
 				Code:    errors.InvalidParameter,
+				Written: true,
 			},
 		},
 		{
@@ -133,15 +157,17 @@ func Test_NewError(t *testing.T) {
 			op:   "",
 			msg:  "test msg",
 			want: &errors.Err{
-				Msg:  "test msg",
-				Code: errors.InvalidParameter,
+				Msg:     "test msg",
+				Code:    errors.InvalidParameter,
+				Written: true,
 			},
 		},
 		{
 			name: "no-options",
 			opt:  nil,
 			want: &errors.Err{
-				Code: errors.Unknown,
+				Code:    errors.Unknown,
+				Written: true,
 			},
 		},
 		{
@@ -151,8 +177,9 @@ func Test_NewError(t *testing.T) {
 				errors.WithOp("bab.Op"),
 			},
 			want: &errors.Err{
-				Op:   "alice.Bob",
-				Code: errors.Unknown,
+				Op:      "alice.Bob",
+				Code:    errors.Unknown,
+				Written: true,
 			},
 		},
 		{
@@ -162,8 +189,9 @@ func Test_NewError(t *testing.T) {
 				errors.WithMsg("dont use this message"),
 			},
 			want: &errors.Err{
-				Msg:  "test msg",
-				Code: errors.Unknown,
+				Msg:     "test msg",
+				Code:    errors.Unknown,
+				Written: true,
 			},
 		},
 	}
@@ -200,6 +228,7 @@ func Test_WrapError(t *testing.T) {
 				Op:      "alice.Bob",
 				Msg:     "test msg",
 				Code:    errors.InvalidParameter,
+				Written: true,
 			},
 		},
 		{
@@ -212,6 +241,7 @@ func Test_WrapError(t *testing.T) {
 				Wrapped: testErr,
 				Msg:     "test msg",
 				Code:    errors.InvalidParameter,
+				Written: true,
 			},
 		},
 		{
@@ -220,6 +250,7 @@ func Test_WrapError(t *testing.T) {
 			want: &errors.Err{
 				Wrapped: testErr,
 				Code:    errors.InvalidParameter,
+				Written: true,
 			},
 		},
 		{
@@ -228,6 +259,7 @@ func Test_WrapError(t *testing.T) {
 			want: &errors.Err{
 				Wrapped: fmt.Errorf("std error"),
 				Code:    errors.Unknown,
+				Written: true,
 			},
 		},
 		{
@@ -239,6 +271,7 @@ func Test_WrapError(t *testing.T) {
 			want: &errors.Err{
 				Wrapped: testErr,
 				Code:    errors.InvalidParameter,
+				Written: true,
 			},
 		},
 		{
@@ -252,6 +285,7 @@ func Test_WrapError(t *testing.T) {
 				Wrapped: testErr,
 				Op:      "alice.Bob",
 				Code:    errors.InvalidParameter,
+				Written: true,
 			},
 		},
 		{
@@ -263,6 +297,7 @@ func Test_WrapError(t *testing.T) {
 			want: &errors.Err{
 				Wrapped: errors.E(ctx, errors.WithoutEvent(), errors.WithCode(errors.NotSpecificIntegrity), errors.WithMsg("test msg")),
 				Code:    errors.NotSpecificIntegrity,
+				Written: true,
 			},
 		},
 	}
@@ -452,7 +487,7 @@ func TestConvertError(t *testing.T) {
 			e: &pgconn.PgError{
 				Code: "23001",
 			},
-			wantErr: errors.E(ctx, errors.WithCode(errors.NotSpecificIntegrity)),
+			wantErr: errors.E(ctx, errors.WithCode(errors.NotSpecificIntegrity), errors.WithoutEvent()),
 		},
 		{
 			name:    "convert-domain-error",
