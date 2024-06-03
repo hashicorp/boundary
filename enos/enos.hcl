@@ -3,10 +3,6 @@
 
 terraform_cli "default" {
   plugin_cache_dir = abspath("./terraform-plugin-cache")
-
-  credentials "app.terraform.io" {
-    token = var.tfc_api_token
-  }
 }
 
 terraform "default" {
@@ -14,7 +10,7 @@ terraform "default" {
 
   required_providers {
     enos = {
-      source = "app.terraform.io/hashicorp-qti/enos"
+      source = "registry.terraform.io/hashicorp-forge/enos"
     }
 
     aws = {
