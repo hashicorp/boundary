@@ -2,7 +2,7 @@
 -- SPDX-License-Identifier: BUSL-1.1
 
 begin;
-  select plan(27);
+  select plan(11);
 
   create function test_is_not_same_month(start_time timestamptz, end_time timestamptz) returns boolean
   as $$
@@ -94,7 +94,7 @@ begin;
 
   -- calling the view directly yields results at NZ month boundaries.
   select case when test_is_not_same_month('yesterday'::timestamptz, now())
-         then skip('certain tests don''t work on the first day of the month', 3)
+         then skip('certain tests don''t work on the first day of the month', 1)
          else results_eq(
            'select * from hcp_billing_monthly_active_users_all',
            $$
@@ -117,7 +117,7 @@ begin;
 
   -- calling the function yields results at UTC month boundaries.
   select case when test_is_not_same_month('yesterday'::timestamptz, now())
-         then skip('certain tests don''t work on the first day of the month', 3)
+         then skip('certain tests don''t work on the first day of the month', 1)
          else results_eq(
            'select count(*) from hcp_billing_monthly_active_users_all()',
            $$
@@ -125,7 +125,7 @@ begin;
            $$)
          end;
   select case when test_is_not_same_month('yesterday'::timestamptz, now())
-         then skip('certain tests don''t work on the first day of the month', 3)
+         then skip('certain tests don''t work on the first day of the month', 1)
          else results_eq(
            'select * from hcp_billing_monthly_active_users_all()',
            $$
@@ -146,14 +146,14 @@ begin;
            $$)
          end;
   select case when test_is_not_same_month('yesterday'::timestamptz, now())
-         then skip('certain tests don''t work on the first day of the month', 3)
+         then skip('certain tests don''t work on the first day of the month', 1)
          else results_ne(
             'select * from hcp_billing_monthly_active_users_all()',
             'select * from hcp_billing_monthly_active_users_all')
          end;
   -- can provide a start time (inclusive) to limit the results.
   select case when test_is_not_same_month('yesterday'::timestamptz, now())
-         then skip('certain tests don''t work on the first day of the month', 3)
+         then skip('certain tests don''t work on the first day of the month', 1)
          else results_eq(
            $$
            select * from hcp_billing_monthly_active_users_all(date_trunc('month', now() - interval '5 month', 'utc'));
@@ -169,7 +169,7 @@ begin;
          end;
   -- can provide a start time (inclusive) and end time (exclusive) to limit results.
   select case when test_is_not_same_month('yesterday'::timestamptz, now())
-         then skip('certain tests don''t work on the first day of the month', 3)
+         then skip('certain tests don''t work on the first day of the month', 1)
          else results_eq(
            $$
            select * from hcp_billing_monthly_active_users_all(date_trunc('month', now() - interval '5 month', 'utc'),
@@ -182,7 +182,7 @@ begin;
          end;
   -- can provide an end time (exclusive) to limit results.
   select case when test_is_not_same_month('yesterday'::timestamptz, now())
-         then skip('certain tests don''t work on the first day of the month', 3)
+         then skip('certain tests don''t work on the first day of the month', 1)
          else results_eq(
            $$
            select * from hcp_billing_monthly_active_users_all(null,
@@ -203,7 +203,7 @@ begin;
          end;
   -- an end time that is before the start time will yield no results.
   select case when test_is_not_same_month('yesterday'::timestamptz, now())
-         then skip('certain tests don''t work on the first day of the month', 3)
+         then skip('certain tests don''t work on the first day of the month', 1)
          else is_empty(
            $$
            select * from hcp_billing_monthly_active_users_all(date_trunc('month', now() - interval '2 month', 'utc'),
