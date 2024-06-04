@@ -3,4 +3,5 @@ objectClass: inetOrgPerson
 cn: ${user_name}
 sn: ${user_name}
 uid: ${user_name}
+mail: ${user_name}@mail.com
 userPassword: ${user_password}
