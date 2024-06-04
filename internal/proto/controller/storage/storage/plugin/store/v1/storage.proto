@@ -77,26 +77,6 @@ message StorageBucket {
   string storage_bucket_credential_id = 14;
 }
 
-message StorageBucketSecret {
-  // storage_bucket_id is the public id of the storage bucket using this secret.
-  // @inject_tag: `gorm:"primary_key"`
-  string storage_bucket_id = 1;
-
-  // secrets is the plain-text of the secret data. We are not storing this plain-text
-  // value in the database.
-  // @inject_tag: `gorm:"-" wrapping:"pt,secrets_data"`
-  bytes secrets = 2;
-
-  // ct_secrets is the ciphertext of the secret data stored in the db.
-  // @inject_tag: `gorm:"column:secrets_encrypted;not_null" wrapping:"ct,secrets_data"`
-  bytes ct_secrets = 3;
-
-  // The key_id of the kms database key used for encrypting this entry.
-  // It must be set.
-  // @inject_tag: `gorm:"not_null"`
-  string key_id = 4;
-}
-
 message StorageBucketCredential {
   // private_id is a surrogate key suitable for use via API.
   // @inject_tag: `gorm:"primary_key"`

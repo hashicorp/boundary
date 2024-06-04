@@ -22,7 +22,7 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
-func TestRewrap_storageBucketSecretRewrapFn(t *testing.T) {
+func TestRewrap_storageBucketCredentialManagedSecretRewrapFn(t *testing.T) {
 	ctx := context.Background()
 	t.Run("errors-on-query-error", func(t *testing.T) {
 		conn, mock := db.TestSetupWithMock(t)
@@ -38,7 +38,7 @@ func TestRewrap_storageBucketSecretRewrapFn(t *testing.T) {
 		mock.ExpectQuery(
 			`SELECT \* FROM "storage_plugin_storage_bucket_secret" WHERE key_id=\$1`,
 		).WillReturnError(errors.New("Query error"))
-		err := storageBucketSecretRewrapFn(ctx, "some_id", "some_scope", rw, rw, kmsCache)
+		err := storageBucketCredentialManagedSecretRewrapFn(ctx, "some_id", "some_scope", rw, rw, kmsCache)
 		require.Error(t, err)
 	})
 	t.Run("success", func(t *testing.T) {
@@ -78,7 +78,7 @@ func TestRewrap_storageBucketSecretRewrapFn(t *testing.T) {
 		require.NoError(rw.Create(ctx, sb))
 
 		// now store secret
-		cred, err := newStorageBucketSecret(ctx, sb.PublicId, sb.Secrets)
+		cred, err := newStorageBucketCredentialManagedSecret(ctx, sb.PublicId, sb.Secrets)
 		require.NoError(err)
 		kmsWrapper1, err := kmsCache.GetWrapper(context.Background(), org.GetPublicId(), 1)
 		require.NoError(err)
@@ -88,11 +88,11 @@ func TestRewrap_storageBucketSecretRewrapFn(t *testing.T) {
 
 		// now things are stored in the db, we can rotate and rewrap
 		require.NoError(kmsCache.RotateKeys(ctx, org.Scope.GetPublicId()))
-		require.NoError(storageBucketSecretRewrapFn(ctx, cred.KeyId, org.Scope.GetPublicId(), rw, rw, kmsCache))
+		require.NoError(storageBucketCredentialManagedSecretRewrapFn(ctx, cred.KeyId, org.Scope.GetPublicId(), rw, rw, kmsCache))
 
 		// now we pull the config back from the db, decrypt it with the new key, and ensure things match
-		got := &StorageBucketSecret{
-			StorageBucketSecret: &store.StorageBucketSecret{
+		got := &StorageBucketCredentialManagedSecret{
+			StorageBucketCredentialManagedSecret: &store.StorageBucketCredentialManagedSecret{
 				StorageBucketId: sb.PublicId,
 			},
 		}
