@@ -7,10 +7,13 @@ begin;
 -- table of server_worker. A row contains a set encryption keys for a
 -- server_worker that are unique to that worker. A server_worker can only have
 -- two rows in the worker_auth_authorized table: one with a state of 'current'
--- and one with the state of 'previous'.
+-- and one with the state of 'previous'. Rotation from current to previous
+-- is handled by the insert trigger function, insert_worker_auth_authorized.
 --
---- This trigger function ensures that there is only ever one entry
---  with a state of 'current' and one with a state of 'previous'.
+-- This trigger function ensures that on update there is only ever one entry
+-- with a state of 'current' and one with a state of 'previous'.
+-- It does this by checking that if we are inserting a `current` or `previous`
+-- entry, there does not already exist an entry with the same state for the worker_id.
 create function update_worker_auth_authorized() returns trigger
 as $$
 begin
