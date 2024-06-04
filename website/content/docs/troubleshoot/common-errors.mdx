@@ -75,3 +75,17 @@ Error information:
 You may experience this error when attempting credential injection via Vault. Currently username_password and ssh_private_key credential
 types are supported for credential injection, but only username_password can be set up using the Web UI. If you experience this error,
 attempt to create the Vault ssh_private_key credential library using the CLI instead of the UI.
+
+## Error from controller when performing authorize-session action against given target: No ingress workers with valid next-hop paths could be found for this multi-hop session.
+
+```
+boundary connect ssh -target-id ttcp_3DxjpP9Y3o Error from controller when performing authorize-session action against given target
+
+Error information:
+  Kind:                FailedPrecondition
+  Message:             No ingress workers with valid next-hop paths could be found for this multi-hop session.
+  Status:              400
+  context:             Error from controller when performing authorize-session action against given target
+```
+
+You may experience this error when deploying multiple Boundary controllers in HA mode if you have not assigned a unique name to each controller. Ensure each controller has a [unique name](/boundary/docs/configuration/controller#name) in the controller stanza.
