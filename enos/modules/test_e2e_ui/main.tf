@@ -143,11 +143,6 @@ variable "bucket_name" {
   type        = string
   default     = ""
 }
-variable "bucket_user_id" {
-  description = "User ID created in bucket"
-  type        = string
-  default     = ""
-}
 variable "bucket_endpoint_url" {
   description = "Endpoint URL for the storage bucket"
   type        = string
@@ -229,7 +224,6 @@ resource "enos_local_exec" "run_e2e_test" {
     E2E_AWS_BUCKET_NAME           = var.aws_bucket_name
     E2E_BUCKET_NAME               = var.bucket_name
     E2E_BUCKET_ENDPOINT_URL       = var.bucket_endpoint_url
-    E2E_BUCKET_USER_ID            = var.bucket_user_id
     E2E_BUCKET_ACCESS_KEY_ID      = var.access_key_id
     E2E_BUCKET_SECRET_ACCESS_KEY  = var.secret_access_key
     E2E_REGION                    = var.region
