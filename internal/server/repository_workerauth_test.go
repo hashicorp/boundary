@@ -846,7 +846,7 @@ func TestSplitBrain(t *testing.T) {
 	// Send request to controller
 	// Controller side ------------------------------
 	// Split brain would fail this, as it used the wrong creds for decryption
-	resp, err = rotation.RotateNodeCredentials(ctx, controllerStorage, controllerReq)
+	_, err = rotation.RotateNodeCredentials(ctx, controllerStorage, controllerReq)
 	require.NoError(err)
 
 	// Ensure new key has been stored
