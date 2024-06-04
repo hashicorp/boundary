@@ -13,15 +13,15 @@ import (
 )
 
 const (
-	storageBucketSecretTablename = "storage_plugin_storage_bucket_secret"
+	storageBucketCredentialManagedSecretTablename = "storage_bucket_credential_managed_secret"
 )
 
 func init() {
-	kms.RegisterTableRewrapFn(storageBucketSecretTablename, storageBucketSecretRewrapFn)
+	kms.RegisterTableRewrapFn(storageBucketCredentialManagedSecretTablename, storageBucketCredentialManagedSecretRewrapFn)
 }
 
-// storageBucketRewrapFn provides a kms.Rewrapfn for the StorageBucketSecret type
-func storageBucketSecretRewrapFn(ctx context.Context, dataKeyVersionId, scopeId string, reader db.Reader, writer db.Writer, kmsRepo kms.GetWrapperer) error {
+// storageBucketRewrapFn provides a kms.Rewrapfn for the StorageBucketCredentialManagedSecret type
+func storageBucketCredentialManagedSecretRewrapFn(ctx context.Context, dataKeyVersionId, scopeId string, reader db.Reader, writer db.Writer, kmsRepo kms.GetWrapperer) error {
 	const op = "storage.storageBucketRewrapFn"
 	switch {
 	case dataKeyVersionId == "":
@@ -35,17 +35,17 @@ func storageBucketSecretRewrapFn(ctx context.Context, dataKeyVersionId, scopeId 
 	case kmsRepo == nil:
 		return errors.New(ctx, errors.InvalidParameter, op, "missing kms repository")
 	}
-	var secrets []*StorageBucketSecret
+	var sbcms []*StorageBucketCredentialManagedSecret
 	// The only index on this table is on the primary key (storage bucket id) and we can't find it that way.
 	// This is the fastest query we can use without creating a new index on key_id.
-	if err := reader.SearchWhere(ctx, &secrets, "key_id=?", []any{dataKeyVersionId}, db.WithLimit(-1)); err != nil {
+	if err := reader.SearchWhere(ctx, &sbcms, "key_id=?", []any{dataKeyVersionId}, db.WithLimit(-1)); err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg("failed to query sql for rows that need rewrapping"))
 	}
 	wrapper, err := kmsRepo.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase)
 	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg("failed to fetch kms wrapper for rewrapping"))
 	}
-	for _, secret := range secrets {
+	for _, secret := range sbcms {
 		if err := secret.decrypt(ctx, wrapper); err != nil {
 			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to decrypt storage bucket secret"))
 		}

@@ -83,23 +83,23 @@ func (s *StorageBucket) oplog(op oplog.OpType) oplog.Metadata {
 	return metadata
 }
 
-type StorageBucketSecret struct {
-	*store.StorageBucketSecret
+type StorageBucketCredentialManagedSecret struct {
+	*store.StorageBucketCredentialManagedSecret
 	tableName string `gorm:"-"`
 }
 
-func allocStorageBucketSecret() *StorageBucketSecret {
-	return &StorageBucketSecret{
-		StorageBucketSecret: &store.StorageBucketSecret{},
+func allocStorageBucketCredentialManagedSecret() *StorageBucketCredentialManagedSecret {
+	return &StorageBucketCredentialManagedSecret{
+		StorageBucketCredentialManagedSecret: &store.StorageBucketCredentialManagedSecret{},
 	}
 }
 
-// newStorageBucketSecret creates an in memory storage bucket secret from a json
+// newStorageBucketCredentialManagedSecret creates an in memory storage bucket secret from a json
 // formatted generic struct.
-func newStorageBucketSecret(ctx context.Context, storageBucketId string, secret *structpb.Struct) (*StorageBucketSecret, error) {
-	const op = "plugin.newStorageBucketSecret"
-	s := &StorageBucketSecret{
-		StorageBucketSecret: &store.StorageBucketSecret{
+func newStorageBucketCredentialManagedSecret(ctx context.Context, storageBucketId string, secret *structpb.Struct) (*StorageBucketCredentialManagedSecret, error) {
+	const op = "plugin.newStorageBucketCredentialManagedSecret"
+	s := &StorageBucketCredentialManagedSecret{
+		StorageBucketCredentialManagedSecret: &store.StorageBucketCredentialManagedSecret{
 			StorageBucketId: storageBucketId,
 		},
 	}
@@ -114,23 +114,23 @@ func newStorageBucketSecret(ctx context.Context, storageBucketId string, secret 
 	return s, nil
 }
 
-func (sbs *StorageBucketSecret) clone() *StorageBucketSecret {
-	cp := proto.Clone(sbs.StorageBucketSecret)
-	return &StorageBucketSecret{
-		StorageBucketSecret: cp.(*store.StorageBucketSecret),
+func (sbs *StorageBucketCredentialManagedSecret) clone() *StorageBucketCredentialManagedSecret {
+	cp := proto.Clone(sbs.StorageBucketCredentialManagedSecret)
+	return &StorageBucketCredentialManagedSecret{
+		StorageBucketCredentialManagedSecret: cp.(*store.StorageBucketCredentialManagedSecret),
 	}
 }
 
 // TableName returns the table name for the storage bucket secrets.
-func (sbs *StorageBucketSecret) TableName() string {
+func (sbs *StorageBucketCredentialManagedSecret) TableName() string {
 	if sbs.tableName != "" {
 		return sbs.tableName
 	}
-	return "storage_plugin_storage_bucket_secret"
+	return "storage_bucket_credential_managed_secret"
 }
 
 // SetTableName sets the table name.
-func (sbs *StorageBucketSecret) SetTableName(n string) {
+func (sbs *StorageBucketCredentialManagedSecret) SetTableName(n string) {
 	sbs.tableName = n
 }
 
@@ -146,8 +146,8 @@ func hmacField(ctx context.Context, cipher wrapping.Wrapper, field []byte, publi
 
 // only hmac's the secret's value. does not modify the underlying secret
 // returns nil on failure
-func (sbs *StorageBucketSecret) hmacSecrets(ctx context.Context, cipher wrapping.Wrapper) ([]byte, error) {
-	const op = "plugin.(StorageBucketSecret).hmacSecrets"
+func (sbs *StorageBucketCredentialManagedSecret) hmacSecrets(ctx context.Context, cipher wrapping.Wrapper) ([]byte, error) {
+	const op = "plugin.(StorageBucketCredentialManagedSecret).hmacSecrets"
 	if cipher == nil {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing cipher")
 	}
@@ -164,12 +164,12 @@ func (sbs *StorageBucketSecret) hmacSecrets(ctx context.Context, cipher wrapping
 }
 
 // encrypt the bind credential before writing it to the database
-func (sbs *StorageBucketSecret) encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
-	const op = "plugin.(StorageBucketSecret).encrypt"
+func (sbs *StorageBucketCredentialManagedSecret) encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
+	const op = "plugin.(StorageBucketCredentialManagedSecret).encrypt"
 	if util.IsNil(cipher) {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing cipher")
 	}
-	if err := structwrapping.WrapStruct(ctx, cipher, sbs.StorageBucketSecret); err != nil {
+	if err := structwrapping.WrapStruct(ctx, cipher, sbs.StorageBucketCredentialManagedSecret); err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt))
 	}
 	var err error
@@ -180,20 +180,20 @@ func (sbs *StorageBucketSecret) encrypt(ctx context.Context, cipher wrapping.Wra
 	return nil
 }
 
-func (sbs *StorageBucketSecret) decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
-	const op = "plugin.(StorageBucketSecret).decrypt"
+func (sbs *StorageBucketCredentialManagedSecret) decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
+	const op = "plugin.(StorageBucketCredentialManagedSecret).decrypt"
 	if util.IsNil(cipher) {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing cipher")
 	}
-	if err := structwrapping.UnwrapStruct(ctx, cipher, sbs.StorageBucketSecret, nil); err != nil {
+	if err := structwrapping.UnwrapStruct(ctx, cipher, sbs.StorageBucketCredentialManagedSecret, nil); err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Decrypt))
 	}
 	sbs.CtSecrets = nil
 	return nil
 }
 
-func (sbs *StorageBucketSecret) toPersisted(ctx context.Context) (*storagebuckets.StorageBucketPersisted, error) {
-	const op = "plugin.(StorageBucketSecret).toPersisted"
+func (sbs *StorageBucketCredentialManagedSecret) toPersisted(ctx context.Context) (*storagebuckets.StorageBucketPersisted, error) {
+	const op = "plugin.(StorageBucketCredentialManagedSecret).toPersisted"
 	if sbs.Secrets == nil {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "secret data not populated")
 	}
@@ -233,7 +233,7 @@ func (sba *storageBucketAgg) GetPublicId() string {
 	return sba.PublicId
 }
 
-func (sba *storageBucketAgg) toStorageBucketAndSecret() (*StorageBucket, *StorageBucketSecret) {
+func (sba *storageBucketAgg) toStorageBucketAndSecret() (*StorageBucket, *StorageBucketCredentialManagedSecret) {
 	sb := allocStorageBucket()
 	sb.PublicId = sba.PublicId
 	sb.ScopeId = sba.ScopeId
@@ -249,9 +249,9 @@ func (sba *storageBucketAgg) toStorageBucketAndSecret() (*StorageBucket, *Storag
 	sb.Attributes = sba.Attributes
 	sb.SecretsHmac = sba.SecretsHmac
 
-	var sbs *StorageBucketSecret
+	var sbs *StorageBucketCredentialManagedSecret
 	if len(sba.SecretsEncrypted) > 0 {
-		sbs = allocStorageBucketSecret()
+		sbs = allocStorageBucketCredentialManagedSecret()
 		sbs.StorageBucketId = sba.PublicId
 		sbs.CtSecrets = sba.SecretsEncrypted
 		sbs.KeyId = sba.KeyId
