@@ -1761,7 +1761,7 @@ func TestAuthenticate_OIDC_Token(t *testing.T) {
 				Command:      "token",
 				AuthMethodId: s.authMethod.GetPublicId(),
 			},
-			wantErrMatch: errors.T(errors.InvalidParameter),
+			wantErr: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name: "success",
@@ -1796,7 +1796,7 @@ func TestAuthenticate_OIDC_Token(t *testing.T) {
 					},
 				},
 			},
-			wantErrMatch: errors.T(errors.AuthAttemptExpired),
+			wantErr: handlers.ApiErrorWithCode(codes.PermissionDenied),
 		},
 		{
 			name: "invalid-token-id-not-encoded-encrypted-proto",
@@ -1809,7 +1809,7 @@ func TestAuthenticate_OIDC_Token(t *testing.T) {
 					},
 				},
 			},
-			wantErrMatch: errors.T(errors.Unknown),
+			wantErr: handlers.ApiErrorWithCode(codes.Internal),
 		},
 	}
 	for _, tc := range cases {

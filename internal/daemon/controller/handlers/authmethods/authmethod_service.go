@@ -1423,19 +1423,19 @@ func (s Service) ConvertInternalAuthTokenToApiAuthToken(ctx context.Context, tok
 func (s Service) convertToAuthenticateResponse(ctx context.Context, req *pbs.AuthenticateRequest, authResults *requestauth.VerifyResults, tok *pba.AuthToken) (*pbs.AuthenticateResponse, error) {
 	const op = "authmethod.convertToAuthenticateResponse"
 	if req == nil {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "Missing request.")
+		return nil, handlers.InvalidArgumentErrorf("Nil request.", nil)
 	}
 	if authResults == nil {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "Missing auth results.")
+		return nil, handlers.InvalidArgumentErrorf("Nil auth results.", nil)
 	}
 	if authResults.Scope == nil {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "Missing auth results scope.")
+		return nil, handlers.InvalidArgumentErrorf("Missing auth results scope.", nil)
 	}
 	if authResults.Scope.Id == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "Missing auth results scope ID.")
+		return nil, handlers.InvalidArgumentErrorf("Missing auth results scope ID.", nil)
 	}
 	if tok == nil {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "Missing auth token.")
+		return nil, handlers.InvalidArgumentErrorf("Missing auth token", nil)
 	}
 	res := &perms.Resource{
 		ScopeId: authResults.Scope.Id,
