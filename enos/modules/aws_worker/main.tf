@@ -130,7 +130,7 @@ resource "aws_instance" "worker" {
   vpc_security_group_ids = [aws_security_group.default.id]
   subnet_id              = aws_subnet.default.id
   key_name               = var.ssh_aws_keypair
-  iam_instance_profile   = var.iam_instance_profile_name
+  iam_instance_profile   = aws_iam_instance_profile.boundary_profile.name
   monitoring             = var.worker_monitoring
 
   root_block_device {
@@ -199,4 +199,12 @@ resource "enos_boundary_start" "worker_start" {
       host = aws_instance.worker.public_ip
     }
   }
+}
+
+resource "random_string" "cluster_id" {
+  length  = 8
+  lower   = true
+  upper   = false
+  numeric = false
+  special = false
 }

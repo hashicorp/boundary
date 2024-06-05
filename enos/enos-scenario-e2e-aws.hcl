@@ -160,19 +160,18 @@ scenario "e2e_aws" {
     module     = module.aws_worker
     depends_on = [step.create_boundary_cluster]
     variables {
-      vpc_id                    = step.create_base_infra.vpc_id
-      availability_zones        = step.create_base_infra.availability_zone_names
-      kms_key_arn               = step.create_base_infra.kms_key_arn
-      ubuntu_ami_id             = step.create_base_infra.ami_ids["ubuntu"]["amd64"]
-      local_artifact_path       = step.build_boundary.artifact_path
-      boundary_install_dir      = local.boundary_install_dir
-      iam_instance_profile_name = step.create_boundary_cluster.iam_instance_profile_name
-      name_prefix               = step.create_boundary_cluster.name_prefix
-      cluster_tag               = step.create_boundary_cluster.cluster_tag
-      controller_addresses      = step.create_boundary_cluster.public_controller_addresses
-      controller_sg_id          = step.create_boundary_cluster.controller_aux_sg_id
-      worker_type_tags          = [local.egress_tag]
-      config_file_path          = "templates/worker.hcl"
+      vpc_id               = step.create_base_infra.vpc_id
+      availability_zones   = step.create_base_infra.availability_zone_names
+      kms_key_arn          = step.create_base_infra.kms_key_arn
+      ubuntu_ami_id        = step.create_base_infra.ami_ids["ubuntu"]["amd64"]
+      local_artifact_path  = step.build_boundary.artifact_path
+      boundary_install_dir = local.boundary_install_dir
+      name_prefix          = step.create_boundary_cluster.name_prefix
+      cluster_tag          = step.create_boundary_cluster.cluster_tag
+      controller_addresses = step.create_boundary_cluster.public_controller_addresses
+      controller_sg_id     = step.create_boundary_cluster.controller_aux_sg_id
+      worker_type_tags     = [local.egress_tag]
+      config_file_path     = "templates/worker.hcl"
     }
   }
 
