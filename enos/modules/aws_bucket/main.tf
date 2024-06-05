@@ -29,6 +29,7 @@ data "aws_iam_policy_document" "default" {
 }
 
 resource "aws_iam_user_policy" "default" {
+  count  = var.is_user ? 1 : 0
   name   = "${aws_s3_bucket.default.id}_${var.user}_access"
   user   = var.user
   policy = data.aws_iam_policy_document.default.json

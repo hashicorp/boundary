@@ -131,6 +131,11 @@ variable "aws_bucket_name" {
   type        = string
   default     = ""
 }
+variable "aws_role_arn" {
+  description = "AWS Role ARN that has access to bucket"
+  type        = string
+  default     = ""
+}
 variable "worker_tag_ingress" {
   type    = string
   default = ""
@@ -185,6 +190,7 @@ resource "enos_local_exec" "run_e2e_test" {
     E2E_AWS_HOST_SET_IPS2         = local.aws_host_set_ips2
     E2E_AWS_REGION                = var.aws_region
     E2E_AWS_BUCKET_NAME           = var.aws_bucket_name
+    E2E_AWS_ROLE_ARN              = var.aws_role_arn
     E2E_WORKER_TAG_INGRESS        = var.worker_tag_ingress
     E2E_WORKER_TAG_EGRESS         = var.worker_tag_egress
     E2E_WORKER_ADDRESS            = var.worker_address
