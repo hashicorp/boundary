@@ -44,9 +44,16 @@ func TestValidId(t *testing.T) {
 	assert.False(t, ValidId(Id("prefix_short"), "short"))
 }
 
-func TestValidNameDescription(t *testing.T) {
-	assert.True(t, ValidNameDescription("foobar"))
-	assert.False(t, ValidNameDescription("foo\u200Bbar"))
+func TestValidDescription(t *testing.T) {
+	assert.True(t, ValidDescription("foobar"))
+	assert.True(t, ValidDescription("this is\n a long description"))
+	assert.False(t, ValidDescription("foo\u200Bbar"))
+}
+
+func TestValidName(t *testing.T) {
+	assert.True(t, ValidName("foobar"))
+	assert.False(t, ValidName("this is\n a long description"))
+	assert.False(t, ValidName("foo\u200Bbar"))
 }
 
 func TestValidateGetRequest(t *testing.T) {

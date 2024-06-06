@@ -1006,7 +1006,7 @@ func validateUpdateRequest(req *pbs.UpdateScopeRequest) error {
 		switch {
 		case trimmed == "":
 			badFields["name"] = "Cannot set empty string as name"
-		case !handlers.ValidNameDescription(trimmed):
+		case !handlers.ValidName(trimmed):
 			badFields["name"] = "Name contains unprintable characters"
 		default:
 			item.GetName().Value = trimmed
@@ -1017,7 +1017,7 @@ func validateUpdateRequest(req *pbs.UpdateScopeRequest) error {
 		switch {
 		case trimmed == "":
 			badFields["description"] = "Cannot set empty string as description"
-		case !handlers.ValidNameDescription(trimmed):
+		case !handlers.ValidDescription(trimmed):
 			badFields["description"] = "Description contains unprintable characters"
 		default:
 			item.GetDescription().Value = trimmed
