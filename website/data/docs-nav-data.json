@@ -396,8 +396,8 @@
             "path": "concepts/filtering"
           },
           {
-            "title": "OIDC managed groups",
-            "path": "concepts/filtering/oidc-managed-groups"
+            "title": "Managed groups",
+            "path": "concepts/filtering/managed-groups"
           },
           {
             "title": "Resource listing",
