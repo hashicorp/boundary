@@ -9,14 +9,14 @@ description: |-
 
 # Filter managed groups
 
-This page describes how to use filters with OIDC or LDAP managed groups. It assumes that the reader is familiar with the general [filter syntax][] as well as with [OpenID Connect](https://openid.net/specs/openid-connect-core-1_0.html) or [LDAP](https://ldap.com/ldap-specifications/).
+This page describes how to use filters with OIDC or LDAP managed groups. It assumes that you are familiar with the general [filter syntax][] as well as [OpenID Connect](https://openid.net/specs/openid-connect-core-1_0.html) or [LDAP](https://ldap.com/ldap-specifications/).
 
 
 ## OIDC filters
 
-Currently, two blocks of data are available for these filters for OIDC:
+Currently, two blocks of data are available for OIDC filters:
 
-- `/token/<claims>` contains claims from the JWT returned by the OIDC Identity
+- `/token/<claims>` contains claims from the JSON web token (JWT) that is returned by the OIDC Identity
   Provider (IdP). For example, `/token/sub` is the `"sub"` claim from the token.
 
 - `/userinfo/<claims>` contains claims from the
@@ -25,11 +25,9 @@ Currently, two blocks of data are available for these filters for OIDC:
 
 ### OIDC examples
 
-As the content of these claims is specific to the given IdP (other than those
-claims mandated by the OIDC specification), no specific syntax can be conveyed,
-but some examples are given below using contrived sets of claims.
-
-Given the example claims below:
+The specific content of the claims is unique to the IdP, besides any claims that are part of the OIDC specification.
+We provide some examples in this section using sample claims.
+Refer to your IdP for the specific syntax.
 
 Example JWT claims:
 
@@ -69,46 +67,48 @@ Example UserInfo claims:
 
 The following are some examples of using these values in filters:
 
-- `"operator" in "/userinfo/roles"` would match users (like Alice) that have
-  `"operator"` in the roles returned in the UserInfo reply.
+- `"operator" in "/userinfo/roles"` matches users (like Alice) that have
+  `"operator"` in the roles returned by UserInfo.
 
-- `"/token/custom/department" == "infosec" or "/token/custom/department" == "ops"` would match users (like Alice) that are either in the `ops` or `infosec`
-  departments.
+- `"/token/custom/department" == "infosec" or "/token/custom/department" == "ops"` matches users (like Alice) that are either in the `ops` or `infosec` departments.
 
 ## LDAP managed groups
 
-Membership is determined by matching the LDAP group names against an LDAP account's associated groups, and every authentication updates the group membership comparison.
+Membership is determined by matching the LDAP group names against an LDAP account's associated groups.
+Every authentication updates the group membership comparison.
 
-To enable managed groups, the LDAP auth method `enable_groups` attribute should be set to `true`. 
+To enable managed groups, set the LDAP auth method `enable_groups` attribute to `true`.
 
-After enabling groups on the auth method, the managed group membership is defined as a list with the `group-names` attribute on the managed group itself.
+After you enable groups on the auth method, the managed group membership is defined as a list with the `group-names` attribute on the managed group itself.
 
 ### LDAP auth method search filter attributes
 
-When defining the auth method, a number of group and user attributes can be set to resolve group membership according to the structure of your directory schema.
+When you define the auth method, you can set a number of group and user attributes to resolve group membership according to the structure of your directory schema.
 
-An optional `group_dn` can be set to define the base DN to perform a group search under. A common example is:
+You can set an optional `group_dn` to define the base distinguished name (DN) to perform a group search under. A common example is:
 
 `ou=Groups,dc=example,dc=com`
 
-Because the directory schema can vary, a `group_filter` may be specified that constructs a group membership query from a template. The following default template is compatible with several common directory schemas:
+Because the directory schema can vary, you may specify a `group_filter` that constructs a group membership query from a template. The following default template is compatible with several common directory schemas:
 
 `(|(memberUid={{.Username}})(member={{.UserDN}})(uniqueMember={{.UserDN}}))`
 
-A `group_attr` may also be set that enumerates group membership based on the objects returned from the `group_filter`. Common examples include:
+You may also set a `group_attr` value that enumerates group membership based on the objects returned from the `group_filter`. Common examples include:
 
 - `group_filter` queries returning group objects, use: `cn`. This is the default.
 - `group_filter` queries returning user objects, use: `memberOf`.
 
-### LDAP Examples
+### LDAP examples
 
-Because directory schemas can vary according to implementation, no specific syntax can be conveyed, but some examples are given below using the schema declared for the [Online LDAP Test Server](https://www.forumsys.com/2022/05/10/online-ldap-test-server/) provided by ForumSystems.
+Directory schemas can vary according to your implementation.
+We provide some examples in this section using the schema declared for the [Online LDAP Test Server](https://www.forumsys.com/2022/05/10/online-ldap-test-server/) provided by ForumSystems.
+Refer to your directory schema for the specific syntax.
 
-LDAP Server Information (read-only access): 
+LDAP server information (read-only access):
 Server: `ldap.forumsys.com  `
 Port: `389`
 Bind DN: `cn=read-only-admin,dc=example,dc=com`
-Bind Password: `password`
+Bind password: `password`
 
 All user passwords are `password`. You may also bind to individual Users (uid) or the two Groups (ou) that include:
 
@@ -146,7 +146,7 @@ In this example, the following attributes are set on the LDAP auth method:
 
 - `urls:` `"ldap://ldap.forumsys.com"`
 - `bind-dn`:` "cn=read-only-admin,dc=example,dc=com"`
-- `bind-password`:` file://bind-pass.txt` (passed directly if using Terraform)
+- `bind-password`:` file://bind-pass.txt` (passed directly if you use Terraform)
 - `user-dn`:` "dc=example,dc=com"`
 - `user-attr`:` "uid"`
 - `group-dn`:` "dc=example,dc=com"`
