@@ -12,6 +12,9 @@ function create_role() {
     -scope-id $sid \
     -name $name \
     -description 'test role' \
+  
+  boundary roles set-grant-scopes \
+    -id $(role_id $name $sid) \
     -grant-scope-id $gsid
 }
 

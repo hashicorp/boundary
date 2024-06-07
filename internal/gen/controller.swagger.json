@@ -6896,10 +6896,6 @@
           "format": "int64",
           "description": "Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
         },
-        "grant_scope_id": {
-          "type": "string",
-          "description": "The Scope the grants will apply to. If the Role is at the global scope,\nthis can be an org or project. If the Role is at an org scope, this can be\na project within the org. It is invalid for this to be anything other than\nthe Role's scope when the Role's scope is a project.\n\nDeprecated: Use \"grant_scope_ids\" instead."
-        },
         "grant_scope_ids": {
           "type": "array",
           "items": {

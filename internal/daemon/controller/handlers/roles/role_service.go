@@ -739,9 +739,6 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Role
 	if item.GetDescription() != nil {
 		opts = append(opts, iam.WithDescription(item.GetDescription().GetValue()))
 	}
-	if item.GetGrantScopeId() != nil {
-		opts = append(opts, iam.WithGrantScopeId(item.GetGrantScopeId().GetValue()))
-	}
 	u, err := iam.NewRole(ctx, scopeId, opts...)
 	if err != nil {
 		return nil, nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build role for creation: %v.", err)
@@ -782,27 +779,8 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 		return nil, nil, nil, nil, err
 	}
 
-	// This has to be separate from Translate since the field only exists on the
-	// API side now.
-	var hasGrantScopeIdMask bool
-	if grantScopeId := item.GetGrantScopeId(); grantScopeId != nil {
-		// Have to manually check the masks, which could be concatenated strings or slices
-		for _, v := range mask {
-			if strutil.StrListContains(strings.Split(v, ","), "grant_scope_id") {
-				opts = append(opts, iam.WithGrantScopeId(grantScopeId.GetValue()))
-				hasGrantScopeIdMask = true
-				break
-			}
-		}
-		if hasGrantScopeIdMask {
-			if err := validateRoleGrantScopesHierarchy(ctx, repo, id, []string{item.GetGrantScopeId().GetValue()}); err != nil {
-				return nil, nil, nil, nil, err
-			}
-		}
-	}
-
 	dbMask := maskManager.Translate(mask)
-	if len(dbMask) == 0 && !hasGrantScopeIdMask {
+	if len(dbMask) == 0 {
 		return nil, nil, nil, nil, handlers.InvalidArgumentErrorf("No valid fields provided in the update mask.", map[string]string{"update_mask": "No valid fields provided in the update mask."})
 	}
 
@@ -813,7 +791,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 	// This is slightly problematic but it's a very unlikely error case and when
 	// we remove the ability to update grant scope ID via here in 0.17 it will
 	// go away.
-	if rowsUpdated == 0 && !hasGrantScopeIdMask {
+	if rowsUpdated == 0 {
 		return nil, nil, nil, nil, handlers.NotFoundErrorf("Role %q doesn't exist or incorrect version provided.", id)
 	}
 	return out, pr, gr, grantScopes, nil
@@ -1128,9 +1106,6 @@ func toProto(ctx context.Context, in *iam.Role, principals []*iam.PrincipalRole,
 		}
 		sort.Strings(out.GrantScopeIds)
 	}
-	if outputFields.Has(globals.GrantScopeIdField) && len(grantScopes) == 1 {
-		out.GrantScopeId = &wrapperspb.StringValue{Value: grantScopes[0].ScopeIdOrSpecial}
-	}
 	if outputFields.Has(globals.PrincipalsField) {
 		for _, p := range principals {
 			principal := &pb.Principal{
@@ -1194,17 +1169,6 @@ func validateCreateRequest(req *pbs.CreateRoleRequest) error {
 			scope.Global.String() != item.GetScopeId() {
 			badFields["scope_id"] = "This field is missing or improperly formatted."
 		}
-		if item.GetGrantScopeId() != nil {
-			switch {
-			case handlers.ValidId(handlers.Id(item.GetScopeId()), scope.Project.Prefix()):
-				switch item.GetGrantScopeId().GetValue() {
-				case item.GetScopeId(),
-					globals.GrantScopeThis:
-				default:
-					badFields["grant_scope_id"] = "When the role is in a project scope this value must be that project's scope ID or \"this\"."
-				}
-			}
-		}
 		if item.GetPrincipals() != nil {
 			badFields["principals"] = "This is a read only field."
 		}
@@ -1229,17 +1193,6 @@ func validateUpdateRequest(req *pbs.UpdateRoleRequest) error {
 		}
 		if req.GetItem().GetGrantStrings() != nil {
 			badFields["grant_strings"] = "This is a read only field and cannot be specified in an update request."
-		}
-		if item := req.GetItem(); item != nil {
-			switch {
-			case handlers.ValidId(handlers.Id(item.GetScopeId()), scope.Project.Prefix()):
-				switch item.GetGrantScopeId().GetValue() {
-				case item.GetScopeId(),
-					globals.GrantScopeThis:
-				default:
-					badFields["grant_scope_id"] = "When the role is in a project scope this value must be that project's scope ID or \"this\"."
-				}
-			}
 		}
 		return badFields
 	}, globals.RolePrefix)
@@ -1531,7 +1484,7 @@ func validateRoleGrantScopesHierarchy(ctx context.Context, repo *iam.Repository,
 				return handlers.InvalidArgumentErrorf(
 					"Invalid grant scope.",
 					map[string]string{
-						"grant_scope_id": `Project scopes can only have their own scope ID or "this" as a grant scope ID.`,
+						"grant_scope_ids": `Project scopes can only have their own scope ID or "this" as a grant scope ID.`,
 					})
 			}
 		}
@@ -1547,7 +1500,7 @@ func validateRoleGrantScopesHierarchy(ctx context.Context, repo *iam.Repository,
 				return handlers.InvalidArgumentErrorf(
 					"Invalid grant scope.",
 					map[string]string{
-						"grant_scope_id": fmt.Sprintf("Grant scope ID %q is not valid to set on an organization role.", grantScope),
+						"grant_scope_ids": fmt.Sprintf("Grant scope ID %q is not valid to set on an organization role.", grantScope),
 					})
 			}
 		}
@@ -1556,7 +1509,7 @@ func validateRoleGrantScopesHierarchy(ctx context.Context, repo *iam.Repository,
 		return handlers.InvalidArgumentErrorf(
 			"Improperly formatted identifier.",
 			map[string]string{
-				"grant_scope_id": `Unknown scope prefix type.`,
+				"grant_scope_ids": `Unknown scope prefix type.`,
 			})
 	}
 	return nil

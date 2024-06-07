@@ -9,6 +9,11 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * Allow descriptions to contain newlines and other whitespace
   ([PR](https://github.com/hashicorp/boundary/pull/2599))
 
+### Deprecations/Changes
+
+* The `grant_scope_id` field on roles, which was deprecated in 0.15.0, has been removed.
+  ([PR](https://github.com/hashicorp/boundary/pull/4886))
+
 ## 0.16.1 (2024/05/30)
 
 ### New and Improved

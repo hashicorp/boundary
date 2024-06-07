@@ -85,17 +85,6 @@ func WithLimit(limit int) Option {
 	}
 }
 
-// WithGrantScopeId provides an option to specify the scope ID for grants in
-// roles.
-func WithGrantScopeId(id string) Option {
-	return func(o *options) {
-		if o.withGrantScopeId == nil {
-			o.withGrantScopeId = new(string)
-		}
-		*o.withGrantScopeId = id
-	}
-}
-
 // WithGrantScopeIds provides an option to specify the scope ID for grants in
 // roles. In most tests this is likely the option to use, however, for tests
 // that call repo functions instead of test functions the other option is still

@@ -378,7 +378,10 @@ Assumes recovery key export from above steps is still set:
 ```shell-session
 $ boundary roles create -name 'org_admin' \
   -recovery-config /tmp/recovery.hcl \
-  -scope-id 'global' \
+  -scope-id 'global'
+
+$ boundary roles set-grant-scopes \
+  -id <org_admin_id> \
   -grant-scope-id <org_scope_id>
 
 $ boundary roles add-grants -id <org_admin_id> \
@@ -397,7 +400,7 @@ $ boundary roles add-principals -id <org_admin_id> \
 ```hcl
 resource "boundary_role" "org_admin" {
   scope_id       = "global"
-  grant_scope_id = boundary_scope.org.id
+  grant_scope_ids = [boundary_scope.org.id]
   grant_strings = [
     "ids=*;type=*;actions=*"
   ]
@@ -438,8 +441,8 @@ $ boundary roles add-principals -id <project_admin_id> \
 
 ```hcl
 resource "boundary_role" "project_admin" {
-  scope_id       = boundary_scope.org.id
-  grant_scope_id = boundary_scope.project.id
+  scope_id        = boundary_scope.org.id
+  grant_scope_ids = [boundary_scope.project.id]
   grant_strings = [
     "ids=*;type=*;actions=*"
   ]
