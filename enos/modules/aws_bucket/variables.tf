@@ -12,7 +12,14 @@ variable "cluster_tag" {
   type        = string
 }
 
+variable "is_user" {
+  description = "Boolean to specify if a user was provided to this module."
+  type        = bool
+  default     = false
+}
+
 variable "user" {
   description = "A username that will be allowed access to this module's bucket."
   type        = string
+  default     = ""
 }
