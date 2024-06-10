@@ -104,7 +104,7 @@ module "aws_target" {
 }
 
 module "vault" {
-  source = "app.terraform.io/hashicorp-qti/aws-vault/enos"
+  source = "./modules/aws_vault"
 
   project_name = "qti-enos-boundary"
   environment  = var.environment

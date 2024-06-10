@@ -119,11 +119,6 @@ variable "boundary_install_dir" {
   default     = "/opt/boundary/bin"
 }
 
-variable "tfc_api_token" {
-  description = "The Terraform Cloud QTI Organization API token."
-  type        = string
-}
-
 variable "vault_instance_type" {
   description = "Instance type for test target nodes"
   type        = string

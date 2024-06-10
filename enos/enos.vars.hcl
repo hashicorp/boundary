@@ -19,11 +19,6 @@
 // the workflow will be used automatically in the CI.
 // enos_user = "enos"
 
-// The app.terraform.io API token for the QTI organization. There is a shared
-// token for the Boundary team in 1Password, or you can request access to the
-// organization by reaching out to the members of #team-quality.
-// tfc_api_token  = "xxxxxxxx.atlasv1.xxx...."
-
 // The directory that contains the copy of boundary you want to local execution
 // from. `make install` should install it into the $GOBIN, which is usually
 // similar to what is listed below.
