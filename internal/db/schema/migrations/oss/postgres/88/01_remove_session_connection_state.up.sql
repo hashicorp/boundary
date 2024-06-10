@@ -24,9 +24,6 @@ begin;
   drop trigger wh_insert_session_connection on session_connection;
   drop function wh_insert_session_connection();
 
-  drop table session_connection_state;
-  drop table session_connection_state_enm;
-
   --  If the connected_time_range is null, it means the connection is authorized but not connected.
   --  If the upper value of connected_time_range is > now() (upper range is infinity) then the state is connected.
   --  If the upper value of connected_time_range is <= now() then the connection is closed.
@@ -41,22 +38,8 @@ begin;
     where session_connection_state.connection_id = session_connection.public_id
  group by connection_id );
 
-select * from not_active;
-    update session_connection
-         set connected_time_range = tstzrange(lower(connected_time_range), 'infinity'::timestamptz)
-     where public_id in (
-         select connection_id
-         from session_connection_state
-        where state = 'connected'
-     );
-  -- Closed connections are represented by the connected_time_range having an upper bound of now()
-    update session_connection
-         set connected_time_range = tstzrange(lower(connected_time_range), now())
-     where public_id in (
-         select connection_id
-         from session_connection_state
-        where state = 'closed'
-     );
+  drop table session_connection_state;
+  drop table session_connection_state_enm;
 
   -- Insert on session_connection creates the connection entry, leaving the connected_time_range to null, indicating the connection is authorized
   -- "Connected" is handled by the function ConnectConnection, which sets the connected_time_range lower bound to now() and upper bound to infinity
