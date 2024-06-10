@@ -2,7 +2,12 @@
 
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
-## Next
+## 0.16.2 (2024/06/10)
+
+### New and Improved
+
+* Updated Minio plugin to allow for potential use with other S3-compatible storage providers.
+([PR](https://github.com/hashicorp/boundary-plugin-minio/pull/16)) and ([PR](https://github.com/hashicorp/boundary-plugin-minio/pull/17))
 
 ## 0.16.1 (2024/05/30)
 
