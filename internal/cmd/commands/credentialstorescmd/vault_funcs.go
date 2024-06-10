@@ -27,6 +27,7 @@ const (
 	vaultTokenFlagName           = "vault-token"
 	clientCertificateFlagName    = "vault-client-certificate"
 	clientCertificateKeyFlagName = "vault-client-certificate-key"
+	tokenWrappedFlagName         = "vault-token-wrapped"
 	workerFilterFlagName         = "worker-filter"
 )
 
@@ -40,6 +41,7 @@ type extraVaultCmdVars struct {
 	flagTlsServerName string
 	flagTlsSkipVerify bool
 	flagWorkerFilter  string
+	flagTokenWrapped  bool
 }
 
 func extraVaultActionsFlagsMapFuncImpl() map[string][]string {
@@ -53,6 +55,7 @@ func extraVaultActionsFlagsMapFuncImpl() map[string][]string {
 			vaultTokenFlagName,
 			clientCertificateFlagName,
 			clientCertificateKeyFlagName,
+			tokenWrappedFlagName,
 			workerFilterFlagName,
 		},
 	}
@@ -112,6 +115,12 @@ func extraVaultFlagsFuncImpl(c *VaultCommand, set *base.FlagSets, _ *base.FlagSe
 				Name:   clientCertificateKeyFlagName,
 				Target: &c.flagClientCertKey,
 				Usage:  `The client certificate's private key to use when boundary connects to vault for this store. This can be the value itself, refer to a file on disk (file://) from which the value will be read, or an env var (env://) from which the value will be read.`,
+			})
+		case tokenWrappedFlagName:
+			f.BoolVar(&base.BoolVar{
+				Name:   tokenWrappedFlagName,
+				Target: &c.flagTokenWrapped,
+				Usage:  "Indicates that the provided vault token was wrapped using vault's response wrapping.",
 			})
 		case workerFilterFlagName:
 			f.StringVar(&base.StringVar{
@@ -178,6 +187,9 @@ func extraVaultFlagHandlingFuncImpl(c *VaultCommand, f *base.FlagSets, opts *[]c
 	}
 	if c.flagTlsSkipVerify {
 		*opts = append(*opts, credentialstores.WithVaultCredentialStoreTlsSkipVerify(c.flagTlsSkipVerify))
+	}
+	if c.flagTokenWrapped {
+		*opts = append(*opts, credentialstores.WithVaultCredentialStoreTokenWrapped(c.flagTokenWrapped))
 	}
 
 	return true

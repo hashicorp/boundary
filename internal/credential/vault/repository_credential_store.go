@@ -68,6 +68,12 @@ func (r *Repository) CreateCredentialStore(ctx context.Context, cs *CredentialSt
 
 	cs = cs.clone()
 
+	if cs.TokenWrapped {
+		if err := cs.Unwrap(ctx); err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+	}
+
 	id, err := newCredentialStoreId(ctx)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
@@ -498,6 +504,12 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 		}
 	}
 	if updateToken {
+		if cs.TokenWrapped {
+			if err := cs.Unwrap(ctx); err != nil {
+				return nil, 0, errors.Wrap(ctx, err, op)
+			}
+		}
+
 		renewedToken, err := client.renewToken(ctx)
 		if err != nil {
 			return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to renew vault token"))
