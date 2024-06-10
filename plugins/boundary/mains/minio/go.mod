@@ -3,7 +3,7 @@ module github.com/hashicorp/boundary/plugins/boundary/mains/minio
 go 1.22.2
 
 require (
-	github.com/hashicorp/boundary-plugin-minio v0.1.2
+	github.com/hashicorp/boundary-plugin-minio v0.1.3
 	github.com/hashicorp/boundary/sdk v0.0.42
 )
 
