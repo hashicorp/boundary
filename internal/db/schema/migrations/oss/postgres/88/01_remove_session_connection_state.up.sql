@@ -33,12 +33,36 @@ begin;
   alter table session_connection
     add column connected_time_range tstzrange;
 
+  -- Migrate existing data from session_connection_state to session_connection
+   update session_connection
+      set connected_time_range =
+  (select tstzrange(min(start_time), max(start_time))
+     from session_connection_state
+    where session_connection_state.connection_id = session_connection.public_id
+ group by connection_id );
+
+select * from not_active;
+    update session_connection
+         set connected_time_range = tstzrange(lower(connected_time_range), 'infinity'::timestamptz)
+     where public_id in (
+         select connection_id
+         from session_connection_state
+        where state = 'connected'
+     );
+  -- Closed connections are represented by the connected_time_range having an upper bound of now()
+    update session_connection
+         set connected_time_range = tstzrange(lower(connected_time_range), now())
+     where public_id in (
+         select connection_id
+         from session_connection_state
+        where state = 'closed'
+     );
+
   -- Insert on session_connection creates the connection entry, leaving the connected_time_range to null, indicating the connection is authorized
   -- "Connected" is handled by the function ConnectConnection, which sets the connected_time_range lower bound to now() and upper bound to infinity
   -- "Closed" is handled by the trigger function, update_connected_time_range_on_closed_reason, which sets the connected_time_range upper bound to now()
   -- State transitions are guarded by the trigger function, check_connection_state_transition, which ensures that the state transitions are valid
-
-  create or replace function check_connection_state_transition() returns trigger
+  create function check_connection_state_transition() returns trigger
   as $$
     begin
       -- Authorized state
@@ -64,23 +88,17 @@ begin;
   create trigger check_connection_state_transition before update of connected_time_range on session_connection
     for each row execute procedure check_connection_state_transition();
 
-  create or replace function update_connected_time_range_on_closed_reason() returns trigger
+  create function update_connected_time_range_on_closed_reason() returns trigger
   as $$
     begin
       if new.closed_reason is not null then
-        perform from
-          session_connection cs
-        where
-          cs.public_id = new.public_id and
-          -- If the connection is already closed, there's no need to update the connected_time_range
-          upper(cs.connected_time_range) <= now();
-        if not found then
           update session_connection
-          set
-            connected_time_range = tstzrange(lower(connected_time_range), now())
-          where
-            public_id = new.public_id;
-        end if;
+             set connected_time_range = tstzrange(lower(connected_time_range), now())
+           where public_id = new.public_id
+            -- connection is either authorized or connected
+            and (connected_time_range is null
+             or connected_time_range = tstzrange(lower(connected_time_range), 'infinity'::timestamptz)
+            );
       end if;
     return new;
     end;
@@ -89,24 +107,17 @@ begin;
   create trigger update_connected_time_range_closed_reason after update of closed_reason on session_connection
     for each row execute procedure update_connected_time_range_on_closed_reason();
 
-  create or replace function update_session_state_on_termination_reason() returns trigger
+  create function update_session_state_on_termination_reason() returns trigger
     as $$
   begin
     if new.termination_reason is not null then
-      perform  from
-        session
-      where
-        public_id = new.public_id and
-        public_id not in (
-            select session_id
-              from session_connection
-            where
-              -- open connections will have a connected_time_range with an upper bound of infinity
-              upper(connected_time_range) > now()
-        );
-      if not found then
-        raise 'session %s has open connections', new.public_id;
-      end if;
+        perform
+         from session_connection
+        where session_id = new.public_id
+          and upper(connected_time_range) = 'infinity'::timestamptz;
+        if found then
+            raise 'session %s has open connections', new.public_id;
+        end if;
       -- check to see if there's a terminated state already, before inserting a
       -- new one.
       perform from
@@ -127,7 +138,7 @@ begin;
   create trigger update_session_state_on_termination_reason after update of termination_reason on session
     for each row execute procedure update_session_state_on_termination_reason();
 
-  create or replace function wh_insert_session_connection() returns trigger
+  create function wh_insert_session_connection() returns trigger
     as $$
     declare
   new_row wh_session_connection_accumulating_fact%rowtype;
@@ -135,48 +146,48 @@ begin;
     with
       authorized_timestamp (date_dim_key, time_dim_key, ts) as (
         select wh_date_key(create_time), wh_time_key(create_time), create_time
-        from session_connection
-        where public_id = new.public_id
-          and connected_time_range is null
+          from session_connection
+         where public_id = new.public_id
+           and connected_time_range is null
       ),
       session_dimension (host_dim_key, user_dim_key, credential_group_dim_key) as (
         select host_key, user_key, credential_group_key
-        from wh_session_accumulating_fact
-        where session_id = new.session_id
+          from wh_session_accumulating_fact
+         where session_id = new.session_id
       )
     insert into wh_session_connection_accumulating_fact (
-        connection_id,
-        session_id,
-        host_key,
-        user_key,
-        credential_group_key,
-        connection_authorized_date_key,
-        connection_authorized_time_key,
-        connection_authorized_time,
-        client_tcp_address,
-        client_tcp_port_number,
-        endpoint_tcp_address,
-        endpoint_tcp_port_number,
-        bytes_up,
-        bytes_down
+                connection_id,
+                session_id,
+                host_key,
+                user_key,
+                credential_group_key,
+                connection_authorized_date_key,
+                connection_authorized_time_key,
+                connection_authorized_time,
+                client_tcp_address,
+                client_tcp_port_number,
+                endpoint_tcp_address,
+                endpoint_tcp_port_number,
+                bytes_up,
+                bytes_down
     )
     select new.public_id,
-       new.session_id,
-       session_dimension.host_dim_key,
-       session_dimension.user_dim_key,
-       session_dimension.credential_group_dim_key,
-       authorized_timestamp.date_dim_key,
-       authorized_timestamp.time_dim_key,
-       authorized_timestamp.ts,
-       new.client_tcp_address,
-       new.client_tcp_port,
-       new.endpoint_tcp_address,
-       new.endpoint_tcp_port,
-       new.bytes_up,
-       new.bytes_down
-    from authorized_timestamp,
-       session_dimension
-         returning * into strict new_row;
+           new.session_id,
+           session_dimension.host_dim_key,
+           session_dimension.user_dim_key,
+           session_dimension.credential_group_dim_key,
+           authorized_timestamp.date_dim_key,
+           authorized_timestamp.time_dim_key,
+           authorized_timestamp.ts,
+           new.client_tcp_address,
+           new.client_tcp_port,
+           new.endpoint_tcp_address,
+           new.endpoint_tcp_port,
+           new.bytes_up,
+           new.bytes_down
+      from authorized_timestamp,
+           session_dimension
+ returning * into strict new_row;
     return null;
   end;
   $$ language plpgsql;
@@ -187,11 +198,11 @@ begin;
   create function wh_insert_session_connection_state() returns trigger
   as $$
     declare
-      state text;
+         state text;
       date_col text;
       time_col text;
-      ts_col text;
-      q text;
+        ts_col text;
+             q text;
       connection_row wh_session_connection_accumulating_fact%rowtype;
     begin
       if new.connected_time_range is null then
@@ -202,24 +213,27 @@ begin;
         return null;
       end if;
 
-      if upper(new.connected_time_range) > now() then
-        state = 'connected';
+      if upper(new.connected_time_range) = 'infinity'::timestamptz then
+            update wh_session_connection_accumulating_fact
+               set (connection_connected_date_key,
+                    connection_connected_time_key,
+                    connection_connected_time) = (
+             select wh_date_key(new.update_time),
+                    wh_time_key(new.update_time),
+                    new.update_time::timestamptz)
+              where connection_id = new.public_id;
+        --  returning *;
       else
-        state = 'closed';
+          update wh_session_connection_accumulating_fact
+                set (connection_closed_date_key,
+                     connection_closed_time_key,
+                     connection_closed_time) = (
+              select wh_date_key(new.update_time),
+                     wh_time_key(new.update_time),
+                     new.update_time::timestamptz)
+               where connection_id = new.public_id;
+          -- returning *;
       end if;
-
-      date_col = 'connection_' || state || '_date_key';
-      time_col = 'connection_' || state || '_time_key';
-      ts_col   = 'connection_' || state || '_time';
-
-      q = format('update wh_session_connection_accumulating_fact
-                   set (%I, %I, %I) = (select wh_date_key(%L), wh_time_key(%L), %L::timestamptz)
-                   where connection_id = %L
-                   returning *',
-                   date_col,       time_col,       ts_col,
-                   new.update_time, new.update_time, new.update_time,
-                   new.public_id);
-      execute q into strict connection_row;
 
       return null;
     end;
