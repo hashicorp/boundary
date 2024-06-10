@@ -9,6 +9,15 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * Updated Minio plugin to allow for potential use with other S3-compatible storage providers.
 ([PR](https://github.com/hashicorp/boundary-plugin-minio/pull/16)) and ([PR](https://github.com/hashicorp/boundary-plugin-minio/pull/17))
 
+### Bug Fixes
+* Fixed a bug where a worker credential rotation request suceeded on the controller but the response to the worker was lost.
+This resulted in the controller using a separate set of credentials than the worker, causing the worker to be unable to connect 
+to the controller. The fix implements the new nodeenrollment library NodeIdLoader interface, which ensures that on store, 
+if worker NodeInformation has a previous key set, the worker will check and correct its stored credential set to match. 
+LodeNodeInformation was also updated to fix a bug where in this split credential scenario, the current credential key was
+assumed to be the incoming worker key, which caused the wrong key information to be populated for the key id.
+([PR](https://github.com/hashicorp/boundary/pull/4870))
+
 ## 0.16.1 (2024/05/30)
 
 ### New and Improved
