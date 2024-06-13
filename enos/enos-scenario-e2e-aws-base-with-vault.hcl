@@ -161,6 +161,7 @@ scenario "e2e_aws_base_with_vault" {
       vault_addr               = step.create_vault_cluster.instance_public_ips[0]
       vault_root_token         = step.create_vault_cluster.vault_root_token
       aws_region               = var.aws_region
+      max_page_size            = step.create_boundary_cluster.max_page_size
     }
   }
 
