@@ -209,7 +209,7 @@ func (s Service) ListRoles(ctx context.Context, req *pbs.ListRolesRequest) (*pbs
 		if !ok {
 			continue
 		}
-		item, err := toProto(ctx, item, nil, nil, nil, outputOpts...)
+		item, err := toProto(ctx, item, nil, nil, item.GrantScopes, outputOpts...)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}

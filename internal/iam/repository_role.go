@@ -185,7 +185,7 @@ func (r *Repository) LookupRole(ctx context.Context, withPublicId string, opt ..
 		if err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
-		rgs, err = repo.ListRoleGrantScopes(ctx, withPublicId)
+		rgs, err = repo.ListRoleGrantScopes(ctx, []string{withPublicId})
 		if err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
@@ -311,20 +311,38 @@ func (r *Repository) queryRoles(ctx context.Context, whereClause string, args []
 	const op = "iam.(Repository).queryRoles"
 
 	var transactionTimestamp time.Time
-	var ret []*Role
+	var retRoles []*Role
+	var retRoleGrantScopes []*RoleGrantScope
 	if _, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(rd db.Reader, w db.Writer) error {
 		var inRet []*Role
 		if err := rd.SearchWhere(ctx, &inRet, whereClause, args, opt...); err != nil {
-			return errors.Wrap(ctx, err, op)
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to query roles"))
 		}
-		ret = inRet
+		retRoles = inRet
 		var err error
+		if len(retRoles) > 0 {
+			roleIds := make([]string, 0, len(retRoles))
+			for _, retRole := range retRoles {
+				roleIds = append(roleIds, retRole.PublicId)
+			}
+			retRoleGrantScopes, err = r.ListRoleGrantScopes(ctx, roleIds)
+			if err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg("failed to query role grant scopes"))
+			}
+		}
 		transactionTimestamp, err = rd.Now(ctx)
 		return err
 	}); err != nil {
 		return nil, time.Time{}, err
 	}
-	return ret, transactionTimestamp, nil
+	roleGrantScopesMap := make(map[string][]*RoleGrantScope)
+	for _, rgs := range retRoleGrantScopes {
+		roleGrantScopesMap[rgs.RoleId] = append(roleGrantScopesMap[rgs.RoleId], rgs)
+	}
+	for _, role := range retRoles {
+		role.GrantScopes = roleGrantScopesMap[role.PublicId]
+	}
+	return retRoles, transactionTimestamp, nil
 }
 
 // listRoleDeletedIds lists the public IDs of any roles deleted since the timestamp provided.

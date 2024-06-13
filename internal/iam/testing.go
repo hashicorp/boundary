@@ -216,6 +216,7 @@ func TestRole(t testing.TB, conn *db.DB, scopeId string, opt ...Option) *Role {
 		gs, err := NewRoleGrantScope(ctx, id, gsi)
 		require.NoError(err)
 		require.NoError(rw.Create(ctx, gs))
+		role.GrantScopes = append(role.GrantScopes, gs)
 	}
 	require.Equal(opts.withDescription, role.Description)
 	require.Equal(opts.withName, role.Name)
