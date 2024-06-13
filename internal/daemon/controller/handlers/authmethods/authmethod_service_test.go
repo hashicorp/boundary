@@ -813,7 +813,7 @@ func TestCreate(t *testing.T) {
 					Type:        oidc.Subtype.String(),
 					Attrs: &pb.AuthMethod_OidcAuthMethodsAttributes{
 						OidcAuthMethodsAttributes: &pb.OidcAuthMethodAttributes{
-							Issuer:           wrapperspb.String("https://example.discovery.url:4821/"),
+							Issuer:           wrapperspb.String("https://example.discovery.url:4821"),
 							ClientId:         wrapperspb.String("someclientid"),
 							ClientSecretHmac: "<hmac>",
 							State:            string(oidc.InactiveState),
@@ -1488,7 +1488,7 @@ func TestCreate(t *testing.T) {
 					Type:        oidc.Subtype.String(),
 					Attrs: &pb.AuthMethod_OidcAuthMethodsAttributes{
 						OidcAuthMethodsAttributes: &pb.OidcAuthMethodAttributes{
-							Issuer:           wrapperspb.String("https://example.discovery.url:4821/"),
+							Issuer:           wrapperspb.String("https://example.discovery.url:4821"),
 							ClientId:         wrapperspb.String("exampleclientid"),
 							ClientSecretHmac: "<hmac>",
 							State:            string(oidc.InactiveState),

@@ -443,7 +443,7 @@ func TestUpdate_OIDC(t *testing.T) {
 					Type:        oidc.Subtype.String(),
 					Attrs: func() *pb.AuthMethod_OidcAuthMethodsAttributes {
 						f := proto.Clone(defaultReadAttributes.OidcAuthMethodsAttributes).(*pb.OidcAuthMethodAttributes)
-						f.Issuer = wrapperspb.String("http://localhost:72759/somepath/")
+						f.Issuer = wrapperspb.String("http://localhost:72759/somepath")
 						f.DisableDiscoveredConfigValidation = true
 						return &pb.AuthMethod_OidcAuthMethodsAttributes{OidcAuthMethodsAttributes: f}
 					}(),

@@ -409,9 +409,7 @@ func toStorageOidcAuthMethod(ctx context.Context, scopeId string, in *pb.AuthMet
 	}
 
 	if iss := strings.TrimSpace(attrs.GetIssuer().GetValue()); iss != "" {
-		// Strip off everything after and including ".well-known/openid-configuration"
-		// but leave the "/" attached to the end.
-		iss = strings.SplitN(iss, ".well-known/", 2)[0]
+		iss = strings.SplitN(iss, "/.well-known/", 2)[0]
 		issuer, err := url.Parse(iss)
 		if err != nil {
 			return nil, false, false, errors.Wrap(ctx, err, op, errors.WithMsg("cannot parse issuer"), errors.WithCode(errors.InvalidParameter))
