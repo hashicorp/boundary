@@ -235,11 +235,8 @@ func rotateWorkerAuth(ctx context.Context, w *Worker, currentNodeCreds *types.No
 	if err != nil {
 		return 0, berrors.Wrap(ctx, err, op)
 	}
-
-	err = newNodeCreds.SetPreviousEncryptionKey(currentNodeCreds)
-	if err != nil {
-		return 0, berrors.Wrap(ctx, err, op)
-	}
+	
+	newNodeCreds.PreviousCertificatePublicKeyPkix = currentNodeCreds.CertificatePublicKeyPkix
 
 	// Get a signed request from the new credentials
 	fetchReq, err := newNodeCreds.CreateFetchNodeCredentialsRequest(ctx, randReaderOpt)
