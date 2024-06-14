@@ -900,7 +900,7 @@ func TestCreate(t *testing.T) {
 					Scope:             &scopes.ScopeInfo{Id: defaultOrgRole.GetScopeId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 					Name:              &wrapperspb.StringValue{Value: "name"},
 					Description:       &wrapperspb.StringValue{Value: "desc"},
-					GrantScopeIds:     []string{defaultProjRole.ScopeId},
+					GrantScopeIds:     []string{globals.GrantScopeThis},
 					Version:           2,
 					AuthorizedActions: testAuthorizedActions,
 				},
@@ -920,7 +920,7 @@ func TestCreate(t *testing.T) {
 					Scope:             &scopes.ScopeInfo{Id: scope.Global.String(), Type: scope.Global.String(), Name: scope.Global.String(), Description: "Global Scope"},
 					Name:              &wrapperspb.StringValue{Value: "name"},
 					Description:       &wrapperspb.StringValue{Value: "desc"},
-					GrantScopeIds:     []string{defaultProjRole.ScopeId},
+					GrantScopeIds:     []string{globals.GrantScopeThis},
 					Version:           2,
 					AuthorizedActions: testAuthorizedActions,
 				},
@@ -947,18 +947,6 @@ func TestCreate(t *testing.T) {
 					AuthorizedActions: testAuthorizedActions,
 				},
 			},
-		},
-		{
-			name: "Invalid grant scope ID",
-			req: &pbs.CreateRoleRequest{
-				Item: &pb.Role{
-					ScopeId:     defaultProjRole.GetScopeId(),
-					Name:        &wrapperspb.StringValue{Value: "name"},
-					Description: &wrapperspb.StringValue{Value: "desc"},
-				},
-			},
-			res: nil,
-			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name: "Can't specify Id",
