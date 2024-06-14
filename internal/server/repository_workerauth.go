@@ -249,9 +249,13 @@ func StoreNodeInformationTx(ctx context.Context, reader db.Reader, writer db.Wri
 	// It's possible a connection dropped during a rotate credentials response, so the control plane's stored
 	// previous and current WorkerAuth records may not match what the worker has stored.
 	// Check what the worker indicates is its previous key and fix what we have stored before inserting the new record.
-	if node.PreviousEncryptionKey != nil {
+	if node.PreviousCertificatePublicKeyPkix != nil {
+		previousKeyId, err := nodeenrollment.KeyIdFromPkix(node.PreviousCertificatePublicKeyPkix)
+		if err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
 		query := getWorkerAuthStateByKeyIdQuery
-		rows, err := reader.Query(ctx, query, []any{sql.Named("worker_key_identifier", node.PreviousEncryptionKey.KeyId)})
+		rows, err := reader.Query(ctx, query, []any{sql.Named("worker_key_identifier", previousKeyId)})
 		if err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
@@ -271,12 +275,12 @@ func StoreNodeInformationTx(ctx context.Context, reader db.Reader, writer db.Wri
 		// ensure proper state rotation on store
 		if state == previousWorkerAuthState {
 			query := deleteWorkerAuthByKeyId
-			_, err := writer.Exec(ctx, query, []any{sql.Named("worker_key_identifier", node.PreviousEncryptionKey.KeyId)})
+			_, err := writer.Exec(ctx, query, []any{sql.Named("worker_key_identifier", previousKeyId)})
 			if err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
 			query = updateWorkerAuthStateByKeyId
-			_, err = writer.Exec(ctx, query, []any{sql.Named("worker_key_identifier", node.PreviousEncryptionKey.KeyId)})
+			_, err = writer.Exec(ctx, query, []any{sql.Named("worker_key_identifier", previousKeyId)})
 			if err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
@@ -773,7 +777,7 @@ func (r *WorkerAuthRepositoryStorage) LoadByNodeId(ctx context.Context, msg node
 
 	var err error
 	switch t := msg.(type) {
-	case *types.NodeInformations:
+	case *types.NodeInformationSet:
 		err = r.loadNodeInfosByNodeId(ctx, t)
 	default:
 		return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("message type %T not supported for LoadByNodeId", t))
@@ -790,7 +794,7 @@ func (r *WorkerAuthRepositoryStorage) LoadByNodeId(ctx context.Context, msg node
 	return nil
 }
 
-func (r *WorkerAuthRepositoryStorage) loadNodeInfosByNodeId(ctx context.Context, nodeInfos *types.NodeInformations) error {
+func (r *WorkerAuthRepositoryStorage) loadNodeInfosByNodeId(ctx context.Context, nodeInfos *types.NodeInformationSet) error {
 	const op = "server.(WorkerAuthRepositoryStorage).loadNodeInfosByNodeId"
 	if nodeInfos == nil {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing NodeInformations")

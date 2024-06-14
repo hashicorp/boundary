@@ -804,7 +804,7 @@ func TestSplitBrain(t *testing.T) {
 	newCreds, err := types.NewNodeCredentials(ctx, workerStorage, nodeenrollment.WithSkipStorage(true))
 	require.NoError(err)
 
-	require.NoError(newCreds.SetPreviousEncryptionKey(initCreds))
+	newCreds.PreviousCertificatePublicKeyPkix = initCreds.CertificatePublicKeyPkix
 	fetchReq, err = newCreds.CreateFetchNodeCredentialsRequest(ctx)
 	require.NoError(err)
 
@@ -831,7 +831,7 @@ func TestSplitBrain(t *testing.T) {
 	require.NoError(err)
 	require.NotEqual(t, newNewCreds.CertificatePublicKeyPkix, newCreds.CertificatePublicKeyPkix)
 
-	require.NoError(newNewCreds.SetPreviousEncryptionKey(initCreds))
+	newNewCreds.PreviousCertificatePublicKeyPkix = initCreds.CertificatePublicKeyPkix
 	fetchReq, err = newNewCreds.CreateFetchNodeCredentialsRequest(ctx)
 	require.NoError(err)
 

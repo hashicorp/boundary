@@ -106,9 +106,6 @@ func TestRotationTicking(t *testing.T) {
 	require.NoError(err)
 	currKey := currNodeCreds.CertificatePublicKeyPkix
 
-	priorKeyId, err := nodeenrollment.KeyIdFromPkix(currKey)
-	require.NoError(err)
-
 	// Now we wait and check that we see new values in the DB and different
 	// creds on the worker after each rotation period
 
@@ -150,11 +147,6 @@ func TestRotationTicking(t *testing.T) {
 		require.NoError(err)
 		assert.Equal(currKeyId, w.Worker().WorkerAuthCurrentKeyId.Load())
 
-		// Check that we've got the correct prior encryption key
-		previousKeyId, _, err := currNodeCreds.PreviousX25519EncryptionKey()
-		require.NoError(err)
-		assert.Equal(priorKeyId, previousKeyId)
-
 		// Get workerAuthSet for this worker id and compare keys
 		workerAuthSet, err := workerAuthRepo.FindWorkerAuthByWorkerId(c.Context(), newWorker.PublicId)
 		require.NoError(err)
@@ -162,10 +154,6 @@ func TestRotationTicking(t *testing.T) {
 		assert.NotNil(workerAuthSet.Previous)
 		assert.NotNil(workerAuthSet.Current)
 		assert.Equal(workerAuthSet.Current.WorkerKeyIdentifier, currKeyId)
-		assert.Equal(workerAuthSet.Previous.WorkerKeyIdentifier, previousKeyId)
-
-		// Save priorKeyId
-		priorKeyId = currKeyId
 
 		// Stop and start the client connections to ensure the new credentials
 		// are valid; if not, we won't establish a new connection and rotation
