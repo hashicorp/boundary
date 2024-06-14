@@ -30,7 +30,6 @@ type options struct {
 	withName                    string
 	withDescription             string
 	withLimit                   int
-	withGrantScopeId            *string
 	withGrantScopeIds           []string
 	withSkipVetForWrite         bool
 	withDisassociate            bool

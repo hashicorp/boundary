@@ -40,18 +40,6 @@ func (r *Repository) CreateRole(ctx context.Context, role *Role, opt ...Option) 
 	c := role.Clone().(*Role)
 	c.PublicId = id
 
-	opts := getOpts(opt...)
-
-	var initialScope string
-	switch {
-	case opts.withGrantScopeId == nil:
-		initialScope = globals.GrantScopeThis
-	case *opts.withGrantScopeId == "":
-		initialScope = globals.GrantScopeThis
-	default:
-		initialScope = *opts.withGrantScopeId
-	}
-
 	var resource Resource
 	var pr []*PrincipalRole
 	var rg []*RoleGrant
@@ -65,7 +53,7 @@ func (r *Repository) CreateRole(ctx context.Context, role *Role, opt ...Option) 
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("while creating role"))
 			}
-			_, _, err = r.SetRoleGrantScopes(ctx, id, resource.(*Role).Version, []string{initialScope}, WithReaderWriter(reader, writer))
+			_, _, err = r.SetRoleGrantScopes(ctx, id, resource.(*Role).Version, []string{globals.GrantScopeThis}, WithReaderWriter(reader, writer))
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("while setting grant scopes"))
 			}
@@ -112,18 +100,6 @@ func (r *Repository) UpdateRole(ctx context.Context, role *Role, version uint32,
 		}
 	}
 
-	opts := getOpts(opt...)
-	var grantScopeIdToSet []string
-	if opts.withGrantScopeId != nil {
-		// If the value is empty, they're trying to clear it (e.g. a
-		// null field), which is represented by an empty slice in
-		// SetRoleGrantScopes
-		grantScopeIdToSet = make([]string, 0, 1)
-		if *opts.withGrantScopeId != "" {
-			grantScopeIdToSet = append(grantScopeIdToSet, *opts.withGrantScopeId)
-		}
-	}
-
 	var dbMask, nullFields []string
 	dbMask, nullFields = dbw.BuildUpdatePaths(
 		map[string]any{
@@ -133,9 +109,11 @@ func (r *Repository) UpdateRole(ctx context.Context, role *Role, version uint32,
 		fieldMaskPaths,
 		nil,
 	)
-	if len(dbMask) == 0 && len(nullFields) == 0 && grantScopeIdToSet == nil {
+
+	if len(dbMask) == 0 && len(nullFields) == 0 {
 		return nil, nil, nil, nil, db.NoRowsAffected, errors.E(ctx, errors.WithCode(errors.EmptyFieldMask), errors.WithOp(op))
 	}
+
 	var resource Resource
 	var rowsUpdated int
 	var pr []*PrincipalRole
@@ -156,12 +134,7 @@ func (r *Repository) UpdateRole(ctx context.Context, role *Role, version uint32,
 				}
 				version = resource.(*Role).Version
 			}
-			if grantScopeIdToSet != nil {
-				_, _, err = r.SetRoleGrantScopes(ctx, role.PublicId, version, grantScopeIdToSet, WithReaderWriter(read, w))
-				if err != nil {
-					return errors.Wrap(ctx, err, op, errors.WithMsg("while setting grant scopes"))
-				}
-			}
+
 			// Do a fresh lookup since version may have gone up by 1 or 2 based
 			// on grant scope id
 			resource, pr, rg, grantScopes, err = r.LookupRole(ctx, role.PublicId, WithReaderWriter(read, w))
