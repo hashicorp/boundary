@@ -30,7 +30,6 @@ type options struct {
 	withName                    string
 	withDescription             string
 	withLimit                   int
-	withGrantScopeId            *string
 	withGrantScopeIds           []string
 	withSkipVetForWrite         bool
 	withDisassociate            bool
@@ -82,17 +81,6 @@ func WithName(name string) Option {
 func WithLimit(limit int) Option {
 	return func(o *options) {
 		o.withLimit = limit
-	}
-}
-
-// WithGrantScopeId provides an option to specify the scope ID for grants in
-// roles.
-func WithGrantScopeId(id string) Option {
-	return func(o *options) {
-		if o.withGrantScopeId == nil {
-			o.withGrantScopeId = new(string)
-		}
-		*o.withGrantScopeId = id
 	}
 }
 

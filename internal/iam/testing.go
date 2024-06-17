@@ -192,9 +192,6 @@ func TestUser(t testing.TB, repo *Repository, scopeId string, opt ...Option) *Us
 func TestRole(t testing.TB, conn *db.DB, scopeId string, opt ...Option) *Role {
 	t.Helper()
 	opts := getOpts(opt...)
-	if opts.withGrantScopeId != nil && *opts.withGrantScopeId != "" && len(opts.withGrantScopeIds) > 0 {
-		require.FailNow(t, "cannot specify both withGrantScopeId and withGrantScopeIds")
-	}
 
 	ctx := context.Background()
 	require := require.New(t)
@@ -210,16 +207,7 @@ func TestRole(t testing.TB, conn *db.DB, scopeId string, opt ...Option) *Role {
 
 	grantScopeIds := opts.withGrantScopeIds
 	if len(grantScopeIds) == 0 {
-		var scpId string
-		switch {
-		case opts.withGrantScopeId == nil:
-			scpId = globals.GrantScopeThis
-		case *opts.withGrantScopeId == "":
-			scpId = globals.GrantScopeThis
-		default:
-			scpId = *opts.withGrantScopeId
-		}
-		grantScopeIds = []string{scpId}
+		grantScopeIds = []string{globals.GrantScopeThis}
 	}
 	for _, gsi := range grantScopeIds {
 		if gsi == "testing-none" {

@@ -6,12 +6,20 @@ load _authorized_actions
 function create_role() {
   local sid=$1
   local name=$2
-  local gsid=$3
 
   boundary roles create \
     -scope-id $sid \
     -name $name \
-    -description 'test role' \
+    -description 'test role'
+}
+
+function set_grant_scopes() {
+  local sid=$1
+  local name=$2
+  local gsid=$3
+
+  boundary roles set-grant-scopes \
+    -id $(role_id $name $sid) \
     -grant-scope-id $gsid
 }
 

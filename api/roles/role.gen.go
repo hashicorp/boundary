@@ -26,7 +26,6 @@ type Role struct {
 	CreatedTime       time.Time         `json:"created_time,omitempty"`
 	UpdatedTime       time.Time         `json:"updated_time,omitempty"`
 	Version           uint32            `json:"version,omitempty"`
-	GrantScopeId      string            `json:"grant_scope_id,omitempty"`
 	GrantScopeIds     []string          `json:"grant_scope_ids,omitempty"`
 	PrincipalIds      []string          `json:"principal_ids,omitempty"`
 	Principals        []*Principal      `json:"principals,omitempty"`

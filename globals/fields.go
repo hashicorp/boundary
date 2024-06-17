@@ -31,7 +31,6 @@ const (
 	HostIdsField                                = "host_ids"
 	PrincipalIdsField                           = "principal_ids"
 	PrincipalsField                             = "principals"
-	GrantScopeIdField                           = "grant_scope_id"
 	GrantScopeIdsField                          = "grant_scope_ids"
 	GrantsField                                 = "grants"
 	GrantStringsField                           = "grant_strings"

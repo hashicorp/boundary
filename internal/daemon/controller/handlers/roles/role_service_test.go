@@ -59,7 +59,7 @@ func createDefaultRolesAndRepo(t *testing.T) (*iam.Role, *iam.Role, func() (*iam
 	}
 
 	o, p := iam.TestScopes(t, iamRepo)
-	or := iam.TestRole(t, conn, o.GetPublicId(), iam.WithDescription("default"), iam.WithName("default"), iam.WithGrantScopeId(p.GetPublicId()))
+	or := iam.TestRole(t, conn, o.GetPublicId(), iam.WithDescription("default"), iam.WithName("default"), iam.WithGrantScopeIds([]string{p.GetPublicId()}))
 	pr := iam.TestRole(t, conn, p.GetPublicId(), iam.WithDescription("default"), iam.WithName("default"))
 	return or, pr, repoFn
 }
@@ -101,7 +101,6 @@ func TestGet(t *testing.T) {
 		Scope:             &scopes.ScopeInfo{Id: or.GetScopeId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 		Name:              &wrapperspb.StringValue{Value: or.GetName()},
 		Description:       &wrapperspb.StringValue{Value: or.GetDescription()},
-		GrantScopeId:      &wrapperspb.StringValue{Value: pr.GetScopeId()},
 		GrantScopeIds:     []string{pr.GetScopeId()},
 		CreatedTime:       or.CreateTime.GetTimestamp(),
 		UpdatedTime:       or.UpdateTime.GetTimestamp(),
@@ -115,7 +114,6 @@ func TestGet(t *testing.T) {
 		Scope:             &scopes.ScopeInfo{Id: pr.GetScopeId(), Type: scope.Project.String(), ParentScopeId: or.GetScopeId()},
 		Name:              &wrapperspb.StringValue{Value: pr.GetName()},
 		Description:       &wrapperspb.StringValue{Value: pr.GetDescription()},
-		GrantScopeId:      &wrapperspb.StringValue{Value: globals.GrantScopeThis},
 		GrantScopeIds:     []string{globals.GrantScopeThis},
 		CreatedTime:       pr.CreateTime.GetTimestamp(),
 		UpdatedTime:       pr.UpdateTime.GetTimestamp(),
@@ -891,10 +889,9 @@ func TestCreate(t *testing.T) {
 		{
 			name: "Create a valid Role",
 			req: &pbs.CreateRoleRequest{Item: &pb.Role{
-				ScopeId:      defaultOrgRole.GetScopeId(),
-				Name:         &wrapperspb.StringValue{Value: "name"},
-				Description:  &wrapperspb.StringValue{Value: "desc"},
-				GrantScopeId: &wrapperspb.StringValue{Value: defaultProjRole.ScopeId},
+				ScopeId:     defaultOrgRole.GetScopeId(),
+				Name:        &wrapperspb.StringValue{Value: "name"},
+				Description: &wrapperspb.StringValue{Value: "desc"},
 			}},
 			res: &pbs.CreateRoleResponse{
 				Uri: fmt.Sprintf("roles/%s_", globals.RolePrefix),
@@ -903,8 +900,7 @@ func TestCreate(t *testing.T) {
 					Scope:             &scopes.ScopeInfo{Id: defaultOrgRole.GetScopeId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 					Name:              &wrapperspb.StringValue{Value: "name"},
 					Description:       &wrapperspb.StringValue{Value: "desc"},
-					GrantScopeId:      &wrapperspb.StringValue{Value: defaultProjRole.ScopeId},
-					GrantScopeIds:     []string{defaultProjRole.ScopeId},
+					GrantScopeIds:     []string{globals.GrantScopeThis},
 					Version:           2,
 					AuthorizedActions: testAuthorizedActions,
 				},
@@ -913,10 +909,9 @@ func TestCreate(t *testing.T) {
 		{
 			name: "Create a valid Global Role",
 			req: &pbs.CreateRoleRequest{Item: &pb.Role{
-				ScopeId:      scope.Global.String(),
-				Name:         &wrapperspb.StringValue{Value: "name"},
-				Description:  &wrapperspb.StringValue{Value: "desc"},
-				GrantScopeId: &wrapperspb.StringValue{Value: defaultProjRole.ScopeId},
+				ScopeId:     scope.Global.String(),
+				Name:        &wrapperspb.StringValue{Value: "name"},
+				Description: &wrapperspb.StringValue{Value: "desc"},
 			}},
 			res: &pbs.CreateRoleResponse{
 				Uri: fmt.Sprintf("roles/%s_", globals.RolePrefix),
@@ -925,8 +920,7 @@ func TestCreate(t *testing.T) {
 					Scope:             &scopes.ScopeInfo{Id: scope.Global.String(), Type: scope.Global.String(), Name: scope.Global.String(), Description: "Global Scope"},
 					Name:              &wrapperspb.StringValue{Value: "name"},
 					Description:       &wrapperspb.StringValue{Value: "desc"},
-					GrantScopeId:      &wrapperspb.StringValue{Value: defaultProjRole.ScopeId},
-					GrantScopeIds:     []string{defaultProjRole.ScopeId},
+					GrantScopeIds:     []string{globals.GrantScopeThis},
 					Version:           2,
 					AuthorizedActions: testAuthorizedActions,
 				},
@@ -948,25 +942,11 @@ func TestCreate(t *testing.T) {
 					Scope:             &scopes.ScopeInfo{Id: defaultProjRole.GetScopeId(), Type: scope.Project.String(), ParentScopeId: defaultOrgRole.GetScopeId()},
 					Name:              &wrapperspb.StringValue{Value: "name"},
 					Description:       &wrapperspb.StringValue{Value: "desc"},
-					GrantScopeId:      &wrapperspb.StringValue{Value: globals.GrantScopeThis},
 					GrantScopeIds:     []string{globals.GrantScopeThis},
 					Version:           2,
 					AuthorizedActions: testAuthorizedActions,
 				},
 			},
-		},
-		{
-			name: "Invalid grant scope ID",
-			req: &pbs.CreateRoleRequest{
-				Item: &pb.Role{
-					ScopeId:      defaultProjRole.GetScopeId(),
-					Name:         &wrapperspb.StringValue{Value: "name"},
-					Description:  &wrapperspb.StringValue{Value: "desc"},
-					GrantScopeId: &wrapperspb.StringValue{Value: defaultOrgRole.GetScopeId()},
-				},
-			},
-			res: nil,
-			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name: "Can't specify Id",
@@ -1128,7 +1108,6 @@ func TestUpdate(t *testing.T) {
 					Name:              &wrapperspb.StringValue{Value: "new"},
 					Description:       &wrapperspb.StringValue{Value: "desc"},
 					CreatedTime:       or.GetCreateTime().GetTimestamp(),
-					GrantScopeId:      &wrapperspb.StringValue{Value: p.GetPublicId()},
 					GrantScopeIds:     []string{p.GetPublicId()},
 					GrantStrings:      []string{grant.GetRaw()},
 					Grants:            []*pb.Grant{grant},
@@ -1143,12 +1122,11 @@ func TestUpdate(t *testing.T) {
 			scopeId: or.GetScopeId(),
 			req: &pbs.UpdateRoleRequest{
 				UpdateMask: &field_mask.FieldMask{
-					Paths: []string{"name,description,grant_scope_id"},
+					Paths: []string{"name,description"},
 				},
 				Item: &pb.Role{
-					Name:         &wrapperspb.StringValue{Value: "new"},
-					Description:  &wrapperspb.StringValue{Value: "desc"},
-					GrantScopeId: &wrapperspb.StringValue{Value: globals.GrantScopeThis},
+					Name:        &wrapperspb.StringValue{Value: "new"},
+					Description: &wrapperspb.StringValue{Value: "desc"},
 				},
 			},
 			res: &pbs.UpdateRoleResponse{
@@ -1159,8 +1137,7 @@ func TestUpdate(t *testing.T) {
 					Name:              &wrapperspb.StringValue{Value: "new"},
 					Description:       &wrapperspb.StringValue{Value: "desc"},
 					CreatedTime:       or.GetCreateTime().GetTimestamp(),
-					GrantScopeId:      &wrapperspb.StringValue{Value: globals.GrantScopeThis},
-					GrantScopeIds:     []string{globals.GrantScopeThis},
+					GrantScopeIds:     []string{p.GetPublicId()},
 					GrantStrings:      []string{grant.GetRaw()},
 					Grants:            []*pb.Grant{grant},
 					PrincipalIds:      []string{u.GetPublicId()},
@@ -1190,7 +1167,6 @@ func TestUpdate(t *testing.T) {
 					Name:              &wrapperspb.StringValue{Value: "new"},
 					Description:       &wrapperspb.StringValue{Value: "desc"},
 					CreatedTime:       pr.GetCreateTime().GetTimestamp(),
-					GrantScopeId:      &wrapperspb.StringValue{Value: globals.GrantScopeThis},
 					GrantScopeIds:     []string{globals.GrantScopeThis},
 					GrantStrings:      []string{grant.GetRaw()},
 					Grants:            []*pb.Grant{grant},
@@ -1221,7 +1197,6 @@ func TestUpdate(t *testing.T) {
 					Name:              &wrapperspb.StringValue{Value: "new"},
 					Description:       &wrapperspb.StringValue{Value: "desc"},
 					CreatedTime:       pr.GetCreateTime().GetTimestamp(),
-					GrantScopeId:      &wrapperspb.StringValue{Value: globals.GrantScopeThis},
 					GrantScopeIds:     []string{globals.GrantScopeThis},
 					GrantStrings:      []string{grant.GetRaw()},
 					Grants:            []*pb.Grant{grant},
@@ -1283,8 +1258,7 @@ func TestUpdate(t *testing.T) {
 					Scope:             &scopes.ScopeInfo{Id: or.GetScopeId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 					Description:       &wrapperspb.StringValue{Value: "default"},
 					CreatedTime:       or.GetCreateTime().GetTimestamp(),
-					GrantScopeId:      &wrapperspb.StringValue{Value: globals.GrantScopeThis},
-					GrantScopeIds:     []string{globals.GrantScopeThis},
+					GrantScopeIds:     []string{p.GetPublicId()},
 					GrantStrings:      []string{grant.GetRaw()},
 					Grants:            []*pb.Grant{grant},
 					PrincipalIds:      []string{u.GetPublicId()},
@@ -1313,8 +1287,7 @@ func TestUpdate(t *testing.T) {
 					Name:              &wrapperspb.StringValue{Value: "updated"},
 					Description:       &wrapperspb.StringValue{Value: "default"},
 					CreatedTime:       or.GetCreateTime().GetTimestamp(),
-					GrantScopeId:      &wrapperspb.StringValue{Value: globals.GrantScopeThis},
-					GrantScopeIds:     []string{globals.GrantScopeThis},
+					GrantScopeIds:     []string{p.GetPublicId()},
 					GrantStrings:      []string{grant.GetRaw()},
 					Grants:            []*pb.Grant{grant},
 					PrincipalIds:      []string{u.GetPublicId()},
@@ -1343,8 +1316,7 @@ func TestUpdate(t *testing.T) {
 					Name:              &wrapperspb.StringValue{Value: "default"},
 					Description:       &wrapperspb.StringValue{Value: "notignored"},
 					CreatedTime:       or.GetCreateTime().GetTimestamp(),
-					GrantScopeId:      &wrapperspb.StringValue{Value: globals.GrantScopeThis},
-					GrantScopeIds:     []string{globals.GrantScopeThis},
+					GrantScopeIds:     []string{p.GetPublicId()},
 					GrantStrings:      []string{grant.GetRaw()},
 					Grants:            []*pb.Grant{grant},
 					PrincipalIds:      []string{u.GetPublicId()},
