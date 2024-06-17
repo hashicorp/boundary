@@ -69,6 +69,7 @@ type Command struct {
 	presetConfig                         *atomic.String // for tests
 	flagWorkerAuthWorkerRotationInterval time.Duration  // for tests
 	flagWorkerAuthCaCertificateLifetime  time.Duration  // for tests
+	flagWorkerAuthCaReinitialize         bool           // for tests
 }
 
 func (c *Command) Synopsis() string {
@@ -138,6 +139,11 @@ func (c *Command) Flags() *base.FlagSets {
 	f.DurationVar(&base.DurationVar{
 		Name:   "worker-auth-ca-certificate-lifetime",
 		Target: &c.flagWorkerAuthCaCertificateLifetime,
+		Hidden: true,
+	})
+	f.BoolVar(&base.BoolVar{
+		Name:   "worker-auth-ca-reinitialize",
+		Target: &c.flagWorkerAuthCaReinitialize,
 		Hidden: true,
 	})
 
@@ -629,6 +635,7 @@ func (c *Command) StartController(ctx context.Context) error {
 		RawConfig: c.Config,
 		Server:    c.Server,
 		TestOverrideWorkerAuthCaCertificateLifetime: c.flagWorkerAuthCaCertificateLifetime,
+		TestWorkerAuthCaReinitialize:                c.flagWorkerAuthCaReinitialize,
 	}
 
 	var err error
