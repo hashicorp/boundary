@@ -148,7 +148,7 @@ description: |-
     <td style={{verticalAlign: 'middle'}}>
     0.16.0
     <br /><br />
-    (Fixed in 0.16.1 for Community and Enterprise editions)
+    (Fixed in 0.16.1 for Community/Enterprise editions and 0.16.2 for HCP Boundary)
     </td>
     <td style={{verticalAlign: 'middle'}}>
     Controller dead lock with database connections stuck in <code>idle in transaction</code> state
@@ -158,7 +158,45 @@ description: |-
     <br /><br />
     The cause of this problem was due to a combination of issues. There was no request timeout for worker-to-controller GRPC requests. Also, the session repository attempted to use a separate database connection to retrieve a KMS wrapper after already starting a database transaction.
     <br /><br />
-    This issue is fixed in release 0.16.1 for the Community and Enterprise editions. Boundary now sets a max request duration for GRPC requests based on the cluster's listener configuration. KMS operations now occur outside of the transaction.
+    This issue is fixed in release 0.16.1 for the Community and Enterprise editions. It is fixed in release 0.16.2 for HCP Boundary.
+    <br /><br />
+    Boundary now sets a max request duration for GRPC requests based on the cluster's listener configuration. KMS operations now occur outside of the transaction.
+    <br /><br />
+    <a href="/boundary/tutorials/self-managed-deployment/upgrade-version">Upgrade to the latest version of Boundary</a>
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    0.16.0
+    <br /><br />
+    (Fixed in 0.16.2)
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    TLS handshake error
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    When you rotated credentials for a worker, sometimes the request succeeded on the controller, but the worker did not receive the response. Because the controller and worker used different sets of credentials, the worker was unable to connect to the controller and you received a TLS handshake error.
+    <br /><br />
+    In release 0.16.2, we added a new NodeIDLoader interface. The worker uses the interface to check its key set and correct its stored credential set to match the controller, if necessary. This issue is now resolved.
+    <br /><br />
+    <a href="/boundary/tutorials/self-managed-deployment/upgrade-version">Upgrade to the latest version of Boundary</a>
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    0.16.0
+    <br /><br />
+    (Fixed in 0.16.2)
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    OIDC error codes
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    In releases 0.16.0 and earlier, Boundary used internal error codes for OIDC errors. The internal error codes could cause confusion, since the codes were non-standard HTTP response codes.
+    <br /><br />
+    In release 0.16.2, we updated the OIDC request handlers to return standard gRPC status codes for errors. The 4xx status codes are more descriptive of the error.
     <br /><br />
     <a href="/boundary/tutorials/self-managed-deployment/upgrade-version">Upgrade to the latest version of Boundary</a>
     </td>
