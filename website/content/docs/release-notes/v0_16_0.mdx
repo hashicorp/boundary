@@ -178,7 +178,7 @@ description: |-
     <td style={{verticalAlign: 'middle'}}>
     When you rotated credentials for a worker, sometimes the request succeeded on the controller, but the worker did not receive the response. Because the controller and worker used different sets of credentials, the worker was unable to connect to the controller and you received a TLS handshake error.
     <br /><br />
-    In release 0.16.2, we added a new NodeIDLoader interface. The worker uses the interface to check its key set, and correct its stored credential set to match the controller, if necessary. This issue is now resolved.
+    In release 0.16.2, we added a new NodeIDLoader interface. The worker uses the interface to check its key set and correct its stored credential set to match the controller, if necessary. This issue is now resolved.
     <br /><br />
     <a href="/boundary/tutorials/self-managed-deployment/upgrade-version">Upgrade to the latest version of Boundary</a>
     </td>
