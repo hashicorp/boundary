@@ -8,6 +8,8 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 * Allow descriptions to contain newlines and other whitespace
   ([PR](https://github.com/hashicorp/boundary/pull/2599))
+* Listed roles contain grant scope ID information
+  ([PR](https://github.com/hashicorp/boundary/pull/4893))
 
 ### Deprecations/Changes
 

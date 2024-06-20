@@ -23,8 +23,8 @@ const (
 // Roles are granted permissions and assignable to Users and Groups.
 type Role struct {
 	*store.Role
-	GrantScopes []*RoleGrantScope
-	tableName   string `gorm:"-"`
+	GrantScopes []*RoleGrantScope `gorm:"-"`
+	tableName   string            `gorm:"-"`
 }
 
 // ensure that Role implements the interfaces of: Resource, Cloneable, and db.VetForWriter.

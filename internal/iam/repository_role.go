@@ -39,9 +39,6 @@ func (r *Repository) CreateRole(ctx context.Context, role *Role, opt ...Option) 
 	}
 	c := role.Clone().(*Role)
 	c.PublicId = id
-	// We don't want to clone embedded GrantScopes which are used for
-	// output, so clear them or we'll get errors as they are immutable
-	c.GrantScopes = nil
 
 	var resource Resource
 	var pr []*PrincipalRole
@@ -129,9 +126,6 @@ func (r *Repository) UpdateRole(ctx context.Context, role *Role, version uint32,
 		func(read db.Reader, w db.Writer) error {
 			var err error
 			c := role.Clone().(*Role)
-			// We don't want to clone embedded GrantScopes which are used for
-			// output, so clear them or we'll get errors as they are immutable
-			c.GrantScopes = nil
 			resource = c // If we don't have dbMask or nullFields, we'll return this
 			if len(dbMask) > 0 || len(nullFields) > 0 {
 				resource, rowsUpdated, err = r.update(ctx, c, version, dbMask, nullFields, WithReaderWriter(read, w))
