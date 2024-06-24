@@ -164,6 +164,22 @@ resource "enos_bundle_install" "worker" {
   }
 }
 
+resource "enos_remote_exec" "update_path_worker" {
+  depends_on = [enos_bundle_install.worker]
+
+  environment = {
+    BOUNDARY_INSTALL_DIR = var.boundary_install_dir
+  }
+
+  scripts = [abspath("${path.module}/scripts/set-up-login-shell-profile.sh")]
+
+  transport = {
+    ssh = {
+      host = aws_instance.worker.public_ip
+    }
+  }
+}
+
 resource "enos_file" "worker_config" {
   depends_on = [enos_bundle_install.worker]
 

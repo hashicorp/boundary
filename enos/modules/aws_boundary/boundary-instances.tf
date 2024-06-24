@@ -72,6 +72,23 @@ resource "enos_bundle_install" "controller" {
   }
 }
 
+resource "enos_remote_exec" "update_path_controller" {
+  depends_on = [enos_bundle_install.controller]
+  for_each   = toset([for idx in range(var.controller_count) : tostring(idx)])
+
+  environment = {
+    BOUNDARY_INSTALL_DIR = var.boundary_install_dir
+  }
+
+  scripts = [abspath("${path.module}/scripts/set-up-login-shell-profile.sh")]
+
+  transport = {
+    ssh = {
+      host = aws_instance.controller[tonumber(each.value)].public_ip
+    }
+  }
+}
+
 resource "enos_file" "controller_config" {
   depends_on  = [enos_bundle_install.controller]
   destination = "/etc/boundary/boundary.hcl"
@@ -153,6 +170,24 @@ resource "enos_bundle_install" "worker" {
     }
   }
 }
+
+resource "enos_remote_exec" "update_path_worker" {
+  depends_on = [enos_bundle_install.worker]
+  for_each   = toset([for idx in range(var.worker_count) : tostring(idx)])
+
+  environment = {
+    BOUNDARY_INSTALL_DIR = var.boundary_install_dir
+  }
+
+  scripts = [abspath("${path.module}/scripts/set-up-login-shell-profile.sh")]
+
+  transport = {
+    ssh = {
+      host = aws_instance.worker[tonumber(each.value)].public_ip
+    }
+  }
+}
+
 
 resource "enos_file" "worker_config" {
   depends_on  = [enos_bundle_install.worker]
