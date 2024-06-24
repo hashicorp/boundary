@@ -48,9 +48,9 @@ begin;
   create function check_connection_state_transition() returns trigger
   as $$
     begin
-      -- Authorized state
-      if new.connected_time_range is null then
-        return new;
+      -- Prevent invalid bounds (-infinity)
+      if lower(new.connected_time_range) = '-infinity' or upper(new.connected_time_range) ='-infinity' then
+        raise exception 'Invalid connected_time_range bounds: cannot be -infinity';
       end if;
       -- If the old state was authorized, any transition is valid
       if old.connected_time_range is null then
@@ -75,44 +75,39 @@ begin;
   as $$
     begin
       if new.closed_reason is not null then
-          update session_connection
-             set connected_time_range = tstzrange(lower(connected_time_range), now())
-           where public_id = new.public_id
-            -- connection is either authorized or connected
-            and (connected_time_range is null
-             or connected_time_range = tstzrange(lower(connected_time_range), 'infinity'::timestamptz)
-            );
+          if old.connected_time_range is null or old.connected_time_range = tstzrange(lower(old.connected_time_range), 'infinity'::timestamptz) then
+             new.connected_time_range = tstzrange(lower(old.connected_time_range), now(), '[]');
+          end if;
       end if;
     return new;
     end;
   $$ language plpgsql;
 
-  create trigger update_connected_time_range_closed_reason after update of closed_reason on session_connection
+  create trigger update_connected_time_range_closed_reason before update of closed_reason on session_connection
     for each row execute procedure update_connected_time_range_on_closed_reason();
 
   create function update_session_state_on_termination_reason() returns trigger
     as $$
   begin
     if new.termination_reason is not null then
-        perform
+      perform
          from session_connection
-        where session_id = new.public_id
+        where session_id                  = new.public_id
           and upper(connected_time_range) = 'infinity'::timestamptz;
         if found then
             raise 'session %s has open connections', new.public_id;
         end if;
       -- check to see if there's a terminated state already, before inserting a
       -- new one.
-      perform from
-        session_state ss
-      where
-        ss.session_id = new.public_id and
-        ss.state = 'terminated';
+      perform
+         from session_state ss
+        where ss.session_id = new.public_id and
+                   ss.state = 'terminated';
       if found then
         return new;
       end if;
-    insert into session_state (session_id, state)
-      values (new.public_id, 'terminated');
+    insert into session_state (session_id,    state)
+                       values (new.public_id, 'terminated');
     end if;
     return new;
   end;
