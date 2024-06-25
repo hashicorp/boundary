@@ -20,7 +20,7 @@ type RepositoryFactory func(...Option) (*Repository, error)
 
 // grantFinder defines a single func interface which is implemented by iam.Repository.
 type grantFinder interface {
-	GrantsForUser(ctx context.Context, userId string, opt ...iam.Option) ([]perms.GrantTuple, error)
+	GrantsForUser(ctx context.Context, userId string, opt ...iam.Option) (perms.GrantTuples, error)
 }
 
 // Repository is the apptoken database repository
