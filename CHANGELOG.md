@@ -22,6 +22,8 @@ assumed to be the incoming worker key, which caused the wrong key information to
 
 * Allow descriptions to contain newlines and other whitespace
   ([PR](https://github.com/hashicorp/boundary/pull/2599))
+* Listed roles contain grant scope ID information
+  ([PR](https://github.com/hashicorp/boundary/pull/4893))
 
 ### Deprecations/Changes
 

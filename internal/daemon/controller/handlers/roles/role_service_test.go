@@ -220,6 +220,7 @@ func TestList(t *testing.T) {
 	var totalRoles []*pb.Role
 	for i := 0; i < 10; i++ {
 		or := iam.TestRole(t, conn, oWithRoles.GetPublicId())
+		_ = iam.TestRoleGrantScope(t, conn, or.GetPublicId(), globals.GrantScopeChildren)
 		wantOrgRoles = append(wantOrgRoles, &pb.Role{
 			Id:                or.GetPublicId(),
 			ScopeId:           or.GetScopeId(),
@@ -228,6 +229,7 @@ func TestList(t *testing.T) {
 			UpdatedTime:       or.GetUpdateTime().GetTimestamp(),
 			Version:           or.GetVersion(),
 			AuthorizedActions: testAuthorizedActions,
+			GrantScopeIds:     []string{"this", "children"},
 		})
 		totalRoles = append(totalRoles, wantOrgRoles[i])
 		pr := iam.TestRole(t, conn, pWithRoles.GetPublicId())
@@ -239,6 +241,7 @@ func TestList(t *testing.T) {
 			UpdatedTime:       pr.GetUpdateTime().GetTimestamp(),
 			Version:           pr.GetVersion(),
 			AuthorizedActions: testAuthorizedActions,
+			GrantScopeIds:     []string{"this"},
 		})
 		totalRoles = append(totalRoles, wantProjRoles[i])
 	}
@@ -422,7 +425,7 @@ func TestList(t *testing.T) {
 }
 
 func roleToProto(r *iam.Role, scope *scopes.ScopeInfo, authorizedActions []string) *pb.Role {
-	return &pb.Role{
+	ret := &pb.Role{
 		Id:                r.GetPublicId(),
 		ScopeId:           r.GetScopeId(),
 		Scope:             scope,
@@ -431,6 +434,10 @@ func roleToProto(r *iam.Role, scope *scopes.ScopeInfo, authorizedActions []strin
 		Version:           r.GetVersion(),
 		AuthorizedActions: testAuthorizedActions,
 	}
+	for _, r := range r.GrantScopes {
+		ret.GrantScopeIds = append(ret.GrantScopeIds, r.ScopeIdOrSpecial)
+	}
+	return ret
 }
 
 func TestListPagination(t *testing.T) {
