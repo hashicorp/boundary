@@ -126,7 +126,7 @@ scenario "e2e_aws" {
       enos_user            = var.enos_user
       instance_type        = var.target_instance_type
       vpc_id               = step.create_base_infra.vpc_id
-      target_count         = 2
+      target_count         = var.target_count <= 1 ? 2 : var.target_count
       additional_tags      = step.create_tag1_inputs.tag_map
       subnet_ids           = step.create_boundary_cluster.subnet_ids
     }
@@ -233,10 +233,10 @@ scenario "e2e_aws" {
       aws_access_key_id        = step.iam_setup.access_key_id
       aws_secret_access_key    = step.iam_setup.secret_access_key
       aws_host_set_filter1     = step.create_tag1_inputs.tag_string
-      aws_host_set_ips1        = step.create_targets_with_tag1.target_ips
+      aws_host_set_ips1        = step.create_targets_with_tag1.target_private_ips
       aws_host_set_filter2     = step.create_tag2_inputs.tag_string
-      aws_host_set_ips2        = step.create_isolated_target.target_ips
-      target_address           = step.create_isolated_target.target_ips[0]
+      aws_host_set_ips2        = step.create_isolated_target.target_private_ips
+      target_address           = step.create_isolated_target.target_private_ips[0]
       worker_tag_egress        = local.egress_tag
       max_page_size            = step.create_boundary_cluster.max_page_size
       aws_region               = var.aws_region
@@ -245,5 +245,17 @@ scenario "e2e_aws" {
 
   output "test_results" {
     value = step.run_e2e_test.test_results
+  }
+
+  output "controller_ips" {
+    value = step.create_boundary_cluster.controller_ips
+  }
+
+  output "worker_ips" {
+    value = step.create_boundary_cluster.worker_ips
+  }
+
+  output "target_ips" {
+    value = step.create_targets_with_tag1.target_public_ips
   }
 }

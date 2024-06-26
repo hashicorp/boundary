@@ -93,6 +93,10 @@ resource "enos_remote_exec" "wait" {
   }
 }
 
-output "target_ips" {
+output "target_private_ips" {
   value = aws_instance.target.*.private_ip
+}
+
+output "target_public_ips" {
+  value = aws_instance.target.*.public_ip
 }
