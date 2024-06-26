@@ -121,9 +121,9 @@ The PKI mechanism is set up via transport of a single value from the Worker to
 any cluster Controller. Once established, certificates and encryption keys are
 automatically rotated periodically, currently at a period of two weeks.
 
-There may be various permutations of this mechanism in the future; there is only
-one mechanism now, referred to as _worker-led_ registration because the Worker
-produces the initial key material.
+There are two variations on this mechanism in the future; _worker-led_, where the Worker
+produces the initial key material, and _controller-led_, where the Controller produces
+the initial key material.
 
 Note that the mechanisms described in this section omit detail for clarity.
 
@@ -161,13 +161,45 @@ Registration proceeds as follows:
    2, and that the keys also match. If so, the Controller uses its
    Worker-specific encryption private key and the Worker's encryption public key
    to derive a shared symmetric encryption key, and uses it to encrypt the
-   Worker certificate, its CA certifciate, and the nonce, and returns it to the
+   Worker certificate, its CA certificate, and the nonce, and returns it to the
    Worker along with its encryption public key.
 
 6. The Worker uses the given Controller encryption public key and its private
    key to derive the shared symmetric key; confirms it can decrypt the returned
    bundle; and validates the nonce, storing the issued certificate and CA
    certificate.
+
+#### Controller-led PKI-based registration
+
+Registration proceeds as follows:
+
+1. An operator requests a worker activation token. The Controller creates a Worker resource and generates a single-use
+activation token and nonce, returning this value to the operator.
+
+2. The operator puts this token in the `controller_generated_activation_token` field of a worker's configuration
+file.
+
+3. The Worker generates a signing public/private Ed25519 keypair and an
+encryption public/private X25519 keypair, and signs this bundle.
+
+4. The Worker requests to its configured upstream(s) to fetch its issued
+credentials. It provides its public keys and the activation token in
+the request, which is signed via the Worker's private Ed25519 key. (Here
+again this means that a MitM cannot masquerade as the Worker due to lacking
+the signing key.) If the configured upstream is a Controller, it can respond
+directly; otherwise the request is relayed up to the cluster Controllers.
+
+5. A Controller receiving the request validates the activation token generated in step 1.
+If so, the Controller associates the given key material with the premade Worker resource.
+The Controller also signs a _client-only_ certificate authenticating the Worker's signing key
+and generates its own encryption public/private keypair specific to that Worker. This is used
+to derive a shared symmetric encryption key, and to encrypt the
+Worker certificate and its CA certificate, and returns it to the
+Worker along with its public encryption key.
+
+6. The Worker uses the given Controller encryption public key and its private
+key to derive the shared symmetric key; confirms it can decrypt the returned
+bundle; and stores the issued certificate and CA certificate.
 
 #### PKI-based session establishment
 
