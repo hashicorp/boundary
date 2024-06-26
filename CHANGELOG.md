@@ -2,22 +2,109 @@
 
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
-## Next
+## 0.16.2 (2024/06/10)
+
+### New and Improved
+
+* Updated Minio plugin to allow for potential use with other S3-compatible storage providers.
+([PR](https://github.com/hashicorp/boundary-plugin-minio/pull/16)) and ([PR](https://github.com/hashicorp/boundary-plugin-minio/pull/17))
+
+### Bug Fixes
+* Fixed a bug where a worker credential rotation request suceeded on the controller but the response to the worker was lost.
+This resulted in the controller using a separate set of credentials than the worker, causing the worker to be unable to connect 
+to the controller. The fix implements the new nodeenrollment library NodeIdLoader interface, which ensures that on store, 
+if worker NodeInformation has a previous key set, the worker will check and correct its stored credential set to match. 
+LodeNodeInformation was also updated to fix a bug where in this split credential scenario, the current credential key was
+assumed to be the incoming worker key, which caused the wrong key information to be populated for the key id.
+([PR](https://github.com/hashicorp/boundary/pull/4870))
+
+### New and Improved
+
+* Allow descriptions to contain newlines and other whitespace
+  ([PR](https://github.com/hashicorp/boundary/pull/2599))
+* Listed roles contain grant scope ID information
+  ([PR](https://github.com/hashicorp/boundary/pull/4893))
+
+### Deprecations/Changes
+
+* The `grant_scope_id` field on roles, which was deprecated in 0.15.0, has been removed.
+  ([PR](https://github.com/hashicorp/boundary/pull/4886))
+
+## 0.16.1 (2024/05/30)
+
+### New and Improved
+
+* The observation tag was added to session recording and storage bucket proto messages for telemetry purposes. If you enable telemetry and observation events, Boundary will now collect data about session recording and storage buckets.
+([PR](https://github.com/hashicorp/boundary/pull/4824)) and ([PR](https://github.com/hashicorp/boundary/pull/4825))
+
+### Deprecations/Changes
+
+* The `boundary daemon` command has been deprecated in favor of the new
+  `boundary cache` command. The behavior remains the same. The `boundary search`
+  command is unchanged.
+  ([PR](https://github.com/hashicorp/boundary/pull/4808))
+* The include_terminated field in the list sessions request will be removed
+  in an upcoming release. After the deprecation process is complete and the
+  field is removed terminated sessions will be returned
+  in all list session responses unless filtered out using the filter field.
+  ([PR](https://github.com/hashicorp/boundary/pull/4602))
+
+### Bug Fixes
+
+* Fix a dead lock issue where the controller could get stuck with all of its
+  available database connections being stuck in `idle in transaction`.
+  If a controller is configured to have a `max_open_connections`, and was under
+  sufficient load in the form of requests from workers interacting with
+  sessions, like in the form of authorizing new session connections, the
+  controller could get stuck after consuming all of the database connections,
+  leaving them in the `idle in transaction` state. This was due to a
+  combination of issues, including the lack of a request timeout for worker to
+  controller grpc requests, and the session repository attempting to use a
+  separate database connection to retrieve a kms.Wrapper after already starting
+  a database transaction. The fixes move these kms operations outside of the
+  transaction and set a max request duration for the grpc requests based on
+  the cluster's listener configuration.
+  ([PR](https://github.com/hashicorp/boundary/pull/4803) and
+  [PR](https://github.com/hashicorp/boundary/pull/4805))
+* LDAP account attribute maps. Account attribute maps have been supported since
+  the introduction of LDAP authentication, however a bug was present where we
+  wouldn't take those into account upon authenticating (when receiving the
+  information from the LDAP server). This is now resolved
+  ([PR]((https://github.com/hashicorp/boundary/pull/4788))).
+
+## 0.16.0 (2024/04/30)
 
 ### New and Improved
 
 * Target aliases have been added: You can now create an alias for a target.
   In most situations where you would use a target id, you can now instead use
-  the alias value. Crate an alias with 
+  the alias value. Create an alias with
   `boundary aliases create target -value example.boundary -destination-id ttcp_1234567890`
   and connect to a target using an alias using `boundary connect example.boundary`
+* Worker local storage state: Self managed workers that are configured to be used for
+  session recordings will report the state of the its disk space. To learn more about this
+  new feature, refer to the [documentation](http://developer.hashicorp.com/boundary/docs/configuration/session-recording/create-storage-bucket#local-storage).
+* MinIO storage plugin: You can now create a storage bucket that allows Boundary to interoperate
+  with a MinIO cluster for Session Recording storage. This includes some added functionality such
+  as credential rotation and credential management. To learn more about the plugin, refer to the [readme](https://github.com/hashicorp/boundary-plugin-minio?tab=readme-ov-file#minio-plugin-for-hashicorp-boundary). *Note:* Due to a library incompatibility, this release is not yet compatible with the `netbsd` operating system. Please refer to the following [documentation](http://developer.hashicorp.com/boundary/docs/configuration/session-recording/create-storage-bucket) to learn how to create a storage bucket.
+* ui: Add UI support for filtering and pagination
+  ([PR](https://github.com/hashicorp/boundary-ui/pull/2237))
+* ui: Add UI support for MinIO (Enterprise and HCP Boundary only)
+  ([PR](https://github.com/hashicorp/boundary-ui/pull/2248))
 
 ### Added dependency
 
 * postgres `citext` dependency added to enable aliases to be globally unique in
   a case insensitive way.
 
-## 0.15.3
+## 0.15.4 (2024/04/09)
+
+### Security
+
+* Go version bumped to 1.22.2 to address
+  [CVE-2023-45288](https://github.com/advisories/GHSA-4v7x-pqxf-cx7m)
+
+## 0.15.3 (2024/03/21)
 
 ### Bug Fixes
 
@@ -54,10 +141,10 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### Bug Fixes
 
-* cli: Update proxy listener to not close when the number of connections left 
-  for the session is zero. The listener will refuse new connections when the 
-  number of connections left is zero but existing connections will be active. 
-  This fixes a CLI client issue where sessions with max connection count 
+* cli: Update proxy listener to not close when the number of connections left
+  for the session is zero. The listener will refuse new connections when the
+  number of connections left is zero but existing connections will be active.
+  This fixes a CLI client issue where sessions with max connection count
   configured were closed when the number of connections left hit 0.
   ([Issue](https://github.com/hashicorp/boundary/issues/4364),
   ([PR](https://github.com/hashicorp/boundary/pull/4389)))
@@ -107,9 +194,9 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   `grant_scope_id` field on roles will continue to be able to be set, which will
   set a single grant scope, but this capability is now deprecated.
 * Policies (Enterprise and HCP Boundary only): This release introduces Policies, a
-  Boundary resource that represents a Governance Policy to enforce. The first 
-  implementation targets Storage Policies, which enables administrators to automate 
-  the process of retention and deletion of Session Recordings, ensuring that they're only 
+  Boundary resource that represents a Governance Policy to enforce. The first
+  implementation targets Storage Policies, which enables administrators to automate
+  the process of retention and deletion of Session Recordings, ensuring that they're only
   retaining data that is explicitly required from a security/compliance perspective.
   * ui: Add full UI support for Storage Policies managing the lifecycle of Session Recordings.
   ([PR](https://github.com/hashicorp/boundary-ui/pull/2089))
@@ -161,7 +248,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * Update go-kms-wrapping/extras/kms dependency to allow external wrappers
   without a key id to be used within a KMS config stanza.  Note: this fix allows
   GCP KMS keys to be again with Boundary, which had stopped working in v0.13.0.
-  ([PR](https://github.com/hashicorp/boundary/pull/4058)) 
+  ([PR](https://github.com/hashicorp/boundary/pull/4058))
 
 * Two Vault client settings were not being properly used when constructing a
   Vault client. ([PR](https://github.com/hashicorp/boundary/pull/3973))

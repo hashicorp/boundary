@@ -228,7 +228,7 @@ plugins {
 			"WARNING! mlock is not supported on this system! An mlockall(2)-like " +
 				"syscall to prevent memory from being swapped to disk is not " +
 				"supported on this system. For better security, only run Boundary on " +
-				"systems where this call is supported. If you are running Boundary" +
+				"systems where this call is supported. If you are running Boundary " +
 				"in a Docker container, provide the IPC_LOCK cap to the container."))
 	}
 

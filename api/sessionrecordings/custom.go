@@ -96,6 +96,6 @@ func (c *Client) ReApplyStoragePolicy(ctx context.Context, contentId string, opt
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.response = resp
+	target.Response = resp
 	return target, nil
 }

@@ -97,6 +97,7 @@ scenario "e2e_aws_base" {
       vpc_tag_module           = step.create_base_infra.vpc_tag_module
       worker_count             = var.worker_count
       worker_instance_type     = var.worker_instance_type
+      aws_region               = var.aws_region
     }
   }
 
@@ -135,6 +136,7 @@ scenario "e2e_aws_base" {
       target_user              = "ubuntu"
       target_port              = "22"
       max_page_size            = step.create_boundary_cluster.max_page_size
+      aws_region               = var.aws_region
     }
   }
 

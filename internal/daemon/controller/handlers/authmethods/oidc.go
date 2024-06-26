@@ -168,7 +168,7 @@ func (s Service) authenticateOidc(ctx context.Context, req *pbs.AuthenticateRequ
 func (s Service) authenticateOidcStart(ctx context.Context, req *pbs.AuthenticateRequest) (*pbs.AuthenticateResponse, error) {
 	const op = "authmethod_service.(Service).authenticateOidcStart"
 	if req == nil {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "Nil request.")
+		return nil, handlers.InvalidArgumentErrorf("Nil request.", nil)
 	}
 
 	var opts []oidc.Option
@@ -179,10 +179,8 @@ func (s Service) authenticateOidcStart(ctx context.Context, req *pbs.Authenticat
 
 	authUrl, tokenId, err := oidc.StartAuth(ctx, s.oidcRepoFn, req.GetAuthMethodId(), opts...)
 	if err != nil {
-		// this event.WriteError(...) may cause a dup error to be emitted...
-		// it should be removed if that's the case.
 		event.WriteError(ctx, op, err, event.WithInfoMsg("error starting the oidc authentication flow"))
-		return nil, errors.New(ctx, errors.Internal, op, "Error generating parameters for starting the OIDC flow. See the controller's log for more information.")
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Error generating parameters for starting the OIDC flow. See the controller's log for more information.")
 	}
 
 	return &pbs.AuthenticateResponse{
@@ -208,22 +206,22 @@ func (s Service) authenticateOidcCallback(ctx context.Context, req *pbs.Authenti
 	//   in the redirect URL once we start looking at the url used for this
 	//   request instead of requiring the API URL to be set on the auth method.
 	if req == nil {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "Nil request.")
+		return nil, handlers.InvalidArgumentErrorf("Nil request.", nil)
 	}
 
 	repo, err := s.oidcRepoFn()
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, err.Error())
 	}
 	am, err := repo.LookupAuthMethod(ctx, req.GetAuthMethodId())
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, err.Error())
 	}
 	if am == nil {
-		return nil, errors.New(ctx, errors.RecordNotFound, op, fmt.Sprintf("Auth method %s not found.", req.GetAuthMethodId()))
+		return nil, handlers.NotFoundErrorf("Auth method %s not found.", req.GetAuthMethodId())
 	}
 	if am.GetApiUrl() == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "Auth method doesn't have API URL defined.")
+		return nil, handlers.InvalidArgumentErrorf("Auth method doesn't have API URL defined.", nil)
 	}
 
 	errRedirectBase := fmt.Sprintf(oidc.AuthenticationErrorsEndpoint, am.GetApiUrl())
@@ -232,7 +230,8 @@ func (s Service) authenticateOidcCallback(ctx context.Context, req *pbs.Authenti
 		pbErr := handlers.ToApiError(err)
 		out, err := handlers.JSONMarshaler().Marshal(pbErr)
 		if err != nil {
-			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to marshal the error for callback"))
+			event.WriteError(ctx, op, err, event.WithInfoMsg("unable to marshal the error for callback"))
+			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "unable to marshal the error for callback")
 		}
 		u.Add("error", string(out))
 		errRedirect := fmt.Sprintf("%s?%s", errRedirectBase, u.Encode())
@@ -278,38 +277,33 @@ func (s Service) authenticateOidcCallback(ctx context.Context, req *pbs.Authenti
 func (s Service) authenticateOidcToken(ctx context.Context, req *pbs.AuthenticateRequest, authResults *auth.VerifyResults) (*pbs.AuthenticateResponse, error) {
 	const op = "authmethod_service.(Service).authenticateOidcToken"
 	if req == nil {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "Nil request.")
+		return nil, handlers.InvalidArgumentErrorf("Nil request.", nil)
 	}
 	if authResults == nil {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "Nil auth results.")
+		return nil, handlers.InvalidArgumentErrorf("Nil auth results.", nil)
 	}
 	if req.GetOidcAuthMethodAuthenticateTokenRequest() == nil {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "Nil request attributes.")
+		return nil, handlers.InvalidArgumentErrorf("Nil request attributes.", nil)
 	}
 
 	attrs := req.GetOidcAuthMethodAuthenticateTokenRequest()
 	if attrs.TokenId == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "Empty token ID in request attributes.")
+		return nil, handlers.InvalidArgumentErrorf("Empty token ID in request attributes.", nil)
 	}
 
 	token, err := oidc.TokenRequest(ctx, s.kms, s.atRepoFn, req.GetAuthMethodId(), attrs.TokenId)
 	if err != nil {
 		switch {
 		case errors.Match(errors.T(errors.Forbidden), err):
-			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("Forbidden."))
+			return nil, handlers.ForbiddenError()
 		case errors.Match(errors.T(errors.AuthAttemptExpired), err):
-			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("Forbidden."))
+			return nil, handlers.ForbiddenError()
 		default:
-			// this event.WriteError(...) may cause a dup error to be emitted...
-			// it should be removed if that's the case.
 			event.WriteError(ctx, op, err, event.WithInfoMsg("error generating parameters for token request"))
-			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("Error generating parameters for token request. See the controller's log for more information."))
+			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Error generating parameters for token request. See the controller's log for more information.")
 		}
 	}
 	if token == nil {
-		if err != nil {
-			return nil, errors.New(ctx, errors.Internal, op, "Error generating response attributes.", errors.WithWrap(err))
-		}
 		return &pbs.AuthenticateResponse{
 			Command: req.Command,
 			Attrs: &pbs.AuthenticateResponse_OidcAuthMethodAuthenticateTokenResponse{
@@ -325,7 +319,8 @@ func (s Service) authenticateOidcToken(ctx context.Context, req *pbs.Authenticat
 		token,
 	)
 	if err != nil {
-		return nil, errors.New(ctx, errors.Internal, op, "Error converting response to proper format.", errors.WithWrap(err))
+		event.WriteError(ctx, op, err, event.WithInfoMsg("error converting response to proper format."))
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Error converting response to proper format. See the controller's log for more information.")
 	}
 	return s.convertToAuthenticateResponse(ctx, req, authResults, responseToken)
 }

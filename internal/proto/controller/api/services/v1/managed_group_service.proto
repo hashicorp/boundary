@@ -15,6 +15,17 @@ option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/s
 option (custom_options.v1.domain) = "auth";
 
 service ManagedGroupService {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_tag) = {
+    name: "Managed group service"
+    description:
+      "A managed group is a resource that represents a collection of accounts. "
+      "The managed group service provides endpoints for creating, reading, updating, and deleting managed groups in Boundary."
+    external_docs: {
+      url: "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/managed-groups";
+      description: "Read about managed groups in the Boundary domain model";
+    }
+  };
+
   // GetManagedGroup returns a stored ManagedGroup if present. The provided request must
   // include the id for the ManagedGroup be retrieved. If missing, malformed or
   // referencing a non existing ManagedGroup an error is returned.
@@ -28,7 +39,7 @@ service ManagedGroupService {
 
   // ListManagedGroups returns a list of stored ManagedGroups which exist inside the
   // provided Auth Method. The request must include the Auth Method id which
-  // contains the ManagedGroups being listed. If missing or malformed an error
+  // contains the ManagedGroups being listed. If missing or malformed, an error
   // is returned.
   rpc ListManagedGroups(ListManagedGroupsRequest) returns (ListManagedGroupsResponse) {
     option (google.api.http) = {get: "/v1/managed-groups"};
@@ -85,15 +96,18 @@ message GetManagedGroupResponse {
 
 message ListManagedGroupsRequest {
   string auth_method_id = 1 [json_name = "auth_method_id"]; // @gotags: `class:"public" eventstream:"observation"`
+  // You can specify that the filter should only return items that match.
+  // Refer to [filter expressions](https://developer.hashicorp.com/boundary/docs/concepts/filtering) for more information.
   string filter = 30 [json_name = "filter"]; // @gotags: `class:"public"`
-  // An opaque token used to continue an existing iteration or
-  // request updated items. If not specified, pagination
-  // will start from the beginning.
+  // An opaque token that Boundary uses to continue an existing iteration or
+  // request updated items. If you do not specify a token, pagination
+  // starts from the beginning. To learn more about list pagination
+  // in Boundary, refer to [list pagination](https://developer.hashicorp.com/boundary/docs/api-clients/api/pagination).
   string list_token = 40 [json_name = "list_token"]; // @gotags: `class:"public"`
   // The maximum size of a page in this iteration.
   // If unset, the default page size configured will be used.
   // If the page_size is greater than the default page configured,
-  // an error will be returned.
+  // the page size will be truncated to this number..
   uint32 page_size = 50 [json_name = "page_size"]; // @gotags: `class:"public"`
 }
 

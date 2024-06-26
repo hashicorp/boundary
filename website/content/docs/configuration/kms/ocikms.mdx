@@ -31,7 +31,7 @@ kms "ocikms" {
 These parameters apply to the `kms` stanza in the Boundary configuration file:
 
 - `purpose` - Purpose of this KMS, acceptable values are: `worker-auth`, `worker-auth-storage`,
-   `root`, `previous-root`, `recovery`, or `config`.
+   `root`, `previous-root`, `recovery`, `bsr`, or `config`.
 - `key_id` `(string: <required>)`: The OCI KMS key ID to use.
 - `crypto_endpoint` `(string: <required>)`: The OCI KMS cryptographic endpoint (or data plane endpoint)
   to be used to make OCI KMS encryption/decryption requests.

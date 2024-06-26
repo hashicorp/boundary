@@ -26,10 +26,10 @@ jobs:
       base-product-version: $${{ steps.set-product-version.outputs.base-product-version }}
       prerelease-product-version: ${{ steps.set-product-version.outputs.prerelease-product-version }}
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29 # v4.1.6
       - name: Set Product version
         id: set-product-version
-        uses: hashicorp/actions-set-product-version@v1  # TSCCR: loading action configs: failed to query HEAD reference: failed to get advertised references: authorization failed
+        uses: hashicorp/actions-set-product-version@v2  # TSCCR: loading action configs: failed to query HEAD reference: failed to get advertised references: authorization failed
 
   product-metadata:
     needs: set-product-version
@@ -39,7 +39,7 @@ jobs:
       product-edition: ${{ steps.get-product-edition.outputs.product-edition }}
       go-version: ${{ steps.get-go-version.outputs.go-version }}
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29 # v4.1.6
       - name: Determine Go version
         id: get-go-version
         # We use .go-version as our source of truth for current Go
@@ -48,7 +48,7 @@ jobs:
           echo "Building with Go $(cat .go-version)"
           echo "go-version=$(cat .go-version)" >> "$GITHUB_OUTPUT"
       - name: Set up Go
-        uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491 # v5.0.0
+        uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7 # v5.0.1
         with:
           go-version: "${{ steps.get-go-version.outputs.go-version }}"
           cache: false
@@ -58,7 +58,7 @@ jobs:
           echo "go-build=$(go env GOCACHE)" >> "$GITHUB_OUTPUT"
           echo "go-mod=$(go env GOMODCACHE)" >> "$GITHUB_OUTPUT"
       - name: Set up Go modules cache
-        uses: actions/cache@13aacd865c20de90d75de3b17ebe84f7a17d57d2 # v4.0.0
+        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
         with:
           path: |
             ${{ steps.go-cache-paths.outputs.go-build }}
@@ -86,7 +86,7 @@ jobs:
     runs-on: ${{ fromJSON(vars.BUILDER_LINUX) }}
     steps:
       - name: 'Checkout directory'
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29 # v4.1.6
       - run: |
           echo "Product Version - ${{ needs.set-product-version.outputs.product-version }}"
           echo "Product Prerelease - ${{ needs.set-product-version.outputs.prerelease-product-version }}"
@@ -100,7 +100,7 @@ jobs:
       filepath: ${{ steps.generate-metadata-file.outputs.filepath }}
     steps:
       - name: 'Checkout directory'
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29 # v4.1.6
       - name: Generate metadata file
         id: generate-metadata-file
         uses: hashicorp/actions-generate-metadata@v1  # TSCCR: loading action configs: failed to query HEAD reference: failed to get advertised references: authorization failed
@@ -108,7 +108,7 @@ jobs:
           repository: boundary
           version: ${{ needs.set-product-version.outputs.product-version }}
           product: ${{ env.PKG_NAME }}
-      - uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
+      - uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4.3.3
         with:
           name: metadata.json
           path: ${{ steps.generate-metadata-file.outputs.filepath }}
@@ -137,9 +137,9 @@ jobs:
       GOPRIVATE: "github.com/hashicorp"
       GO111MODULE: on
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29 # v4.1.6
       - name: Set up go
-        uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491 # v5.0.0
+        uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7 # v5.0.1
         with:
           go-version: ${{ matrix.go }}
           cache: false
@@ -149,7 +149,7 @@ jobs:
           echo "go-build=$(go env GOCACHE)" >> "$GITHUB_OUTPUT"
           echo "go-mod=$(go env GOMODCACHE)" >> "$GITHUB_OUTPUT"
       - name: Set up Go modules cache
-        uses: actions/cache@13aacd865c20de90d75de3b17ebe84f7a17d57d2 # v4.0.0
+        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
         with:
           path: |
             ${{ steps.go-cache-paths.outputs.go-build }}
@@ -163,7 +163,7 @@ jobs:
         id: set-sha
         run: echo "sha=$(head -n1 internal/ui/VERSION | cut -d ' ' -f1)" >> "$GITHUB_OUTPUT"
       - name: Download UI artifact
-        uses: dawidd6/action-download-artifact@71072fbb1229e1317f1a8de6b04206afb461bd67 # v3.1.2
+        uses: dawidd6/action-download-artifact@09f2f74827fd3a8607589e5ad7f9398816f540fe # v3.1.4
         with:
           workflow: build-admin-ui.yaml
           commit: ${{ steps.set-sha.outputs.sha }}
@@ -175,7 +175,7 @@ jobs:
           CGO_ENABLED: "0"
           PRERELEASE_PRODUCT_VERSION: ${{ needs.set-product-version.outputs.prerelease-product-version }}
           METADATA_PRODUCT_VERSION: ${{ needs.product-metadata.outputs.product-edition }}
-        uses: hashicorp/actions-go-build@v0.1.9  # TSCCR: loading action configs: failed to query HEAD reference: failed to get advertised references: authorization failed
+        uses: hashicorp/actions-go-build@v1  # TSCCR: loading action configs: failed to query HEAD reference: failed to get advertised references: authorization failed
         with:
           product_name: ${{ env.PKG_NAME }}
           product_version: ${{ needs.set-product-version. outputs.product-version }}
@@ -185,10 +185,6 @@ jobs:
           reproducible: report
           instructions: |-
             make build
-      - uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
-        with:
-          name: ${{ env.PKG_NAME }}_${{ needs.set-product-version.outputs.product-version }}_${{ matrix.goos }}_${{ matrix.goarch }}.zip
-          path: out/${{ env.PKG_NAME }}_${{ needs.set-product-version.outputs.product-version }}_${{ matrix.goos }}_${{ matrix.goarch }}.zip
 
   build-linux:
     needs:
@@ -209,11 +205,11 @@ jobs:
       GO111MODULE: on
 
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29 # v4.1.6
       - name: Set up Git
         run: git config --global url."https://${{ secrets.ELEVATED_GITHUB_TOKEN }}:@github.com".insteadOf "https://github.com"
       - name: Set up Go
-        uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491 # v5.0.0
+        uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7 # v5.0.1
         with:
           go-version: ${{ matrix.go }}
           cache: false
@@ -223,7 +219,7 @@ jobs:
           echo "go-build=$(go env GOCACHE)" >> "$GITHUB_OUTPUT"
           echo "go-mod=$(go env GOMODCACHE)" >> "$GITHUB_OUTPUT"
       - name: Set up Go modules cache
-        uses: actions/cache@13aacd865c20de90d75de3b17ebe84f7a17d57d2 # v4.0.0
+        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
         with:
           path: |
             ${{ steps.go-cache-paths.outputs.go-build }}
@@ -235,7 +231,7 @@ jobs:
         id: set-sha
         run: echo "sha=$(head -n1 internal/ui/VERSION | cut -d ' ' -f1)" >> "$GITHUB_OUTPUT"
       - name: Download UI artifact
-        uses: dawidd6/action-download-artifact@71072fbb1229e1317f1a8de6b04206afb461bd67 # v3.1.2
+        uses: dawidd6/action-download-artifact@09f2f74827fd3a8607589e5ad7f9398816f540fe # v3.1.4
         with:
           workflow: build-admin-ui.yaml
           commit: ${{ steps.set-sha.outputs.sha }}
@@ -247,7 +243,7 @@ jobs:
           CGO_ENABLED: "0"
           PRERELEASE_PRODUCT_VERSION: ${{ needs.set-product-version.outputs.prerelease-product-version }}
           METADATA_PRODUCT_VERSION: ${{ needs.product-metadata.outputs.product-edition }}
-        uses: hashicorp/actions-go-build@v0.1.9  # TSCCR: loading action configs: failed to query HEAD reference: failed to get advertised references: authorization failed
+        uses: hashicorp/actions-go-build@v1  # TSCCR: loading action configs: failed to query HEAD reference: failed to get advertised references: authorization failed
         with:
           product_name: ${{ env.PKG_NAME }}
           product_version: ${{ needs.set-product-version. outputs.product-version }}
@@ -257,10 +253,11 @@ jobs:
           reproducible: report
           instructions: |-
             make build
-      - uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
-        with:
-          name: ${{ env.PKG_NAME }}_${{ needs.set-product-version.outputs.product-version }}_${{ matrix.goos }}_${{ matrix.goarch }}.zip
-          path: out/${{ env.PKG_NAME }}_${{ needs.set-product-version.outputs.product-version }}_${{ matrix.goos }}_${{ matrix.goarch }}.zip
+      - name: Copy license file to config_dir
+        env:
+          LICENSE_DIR: ".release/linux/package/usr/share/doc/${{ env.PKG_NAME }}"
+        run: |
+          mkdir -p "$LICENSE_DIR" && cp LICENSE "$LICENSE_DIR/LICENSE.txt"
       - name: Package
         uses: hashicorp/actions-packaging-linux@v1  # TSCCR: loading action configs: failed to query HEAD reference: failed to get advertised references: authorization failed
         with:
@@ -282,12 +279,12 @@ jobs:
           echo "RPM_PACKAGE=$(basename out/*.rpm)" >> "$GITHUB_ENV"
           echo "DEB_PACKAGE=$(basename out/*.deb)" >> "$GITHUB_ENV"
       - name: Upload RPM package
-        uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
+        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4.3.3
         with:
           name: ${{ env.RPM_PACKAGE }}
           path: out/${{ env.RPM_PACKAGE }}
       - name: Upload DEB package
-        uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
+        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4.3.3
         with:
           name: ${{ env.DEB_PACKAGE }}
           path: out/${{ env.DEB_PACKAGE }}
@@ -296,7 +293,7 @@ jobs:
     needs:
       - product-metadata
       - set-product-version
-    runs-on: ${{ fromJSON(vars.BUILDER_MACOS) }}
+    runs-on: ${{ fromJSON(vars.BUILDER_LINUX) }}
     strategy:
       matrix:
         goos: [ darwin ]
@@ -310,9 +307,9 @@ jobs:
       GO111MODULE: on
 
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29 # v4.1.6
       - name: Set up go
-        uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491 # v5.0.0
+        uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7 # v5.0.1
         with:
           go-version: ${{ matrix.go }}
           cache: false
@@ -322,7 +319,7 @@ jobs:
           echo "go-build=$(go env GOCACHE)" >> "$GITHUB_OUTPUT"
           echo "go-mod=$(go env GOMODCACHE)" >> "$GITHUB_OUTPUT"
       - name: Set up Go modules cache
-        uses: actions/cache@13aacd865c20de90d75de3b17ebe84f7a17d57d2 # v4.0.0
+        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
         with:
           path: |
             ${{ steps.go-cache-paths.outputs.go-build }}
@@ -334,7 +331,7 @@ jobs:
         id: set-sha
         run: echo "sha=$(head -n1 internal/ui/VERSION | cut -d ' ' -f1)" >> "$GITHUB_OUTPUT"
       - name: Download UI artifact
-        uses: dawidd6/action-download-artifact@71072fbb1229e1317f1a8de6b04206afb461bd67 # v3.1.2
+        uses: dawidd6/action-download-artifact@09f2f74827fd3a8607589e5ad7f9398816f540fe # v3.1.4
         with:
           workflow: build-admin-ui.yaml
           commit: ${{ steps.set-sha.outputs.sha }}
@@ -346,7 +343,7 @@ jobs:
           CGO_ENABLED: "0"
           PRERELEASE_PRODUCT_VERSION: ${{ needs.set-product-version.outputs.prerelease-product-version }}
           METADATA_PRODUCT_VERSION: ${{ needs.product-metadata.outputs.product-edition }}
-        uses: hashicorp/actions-go-build@v0.1.9  # TSCCR: loading action configs: failed to query HEAD reference: failed to get advertised references: authorization failed
+        uses: hashicorp/actions-go-build@v1  # TSCCR: loading action configs: failed to query HEAD reference: failed to get advertised references: authorization failed
         with:
           product_name: ${{ env.PKG_NAME }}
           product_version: ${{ needs.set-product-version. outputs.product-version }}
@@ -356,10 +353,6 @@ jobs:
           reproducible: report
           instructions: |-
             make build
-      - uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
-        with:
-          name: ${{ env.PKG_NAME }}_${{ needs.set-product-version.outputs.product-version }}_${{ matrix.goos }}_${{ matrix.goarch }}.zip
-          path: out/${{ env.PKG_NAME }}_${{ needs.set-product-version.outputs.product-version }}_${{ matrix.goos }}_${{ matrix.goarch }}.zip
 
   build-docker:
     name: Docker ${{ matrix.arch }} build
@@ -378,9 +371,9 @@ jobs:
       version: ${{ needs.set-product-version.outputs.product-version }}
       minor-version: ${{ needs.product-metadata.outputs.product-minor-version }}
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29 # v4.1.6
       - name: Docker Build (Action)
-        uses: hashicorp/actions-docker-build@v1  # TSCCR: loading action configs: failed to query HEAD reference: failed to get advertised references: authorization failed
+        uses: hashicorp/actions-docker-build@v2  # TSCCR: loading action configs: failed to query HEAD reference: failed to get advertised references: authorization failed
         with:
           version: ${{ env.version }}
           target: default

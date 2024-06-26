@@ -28,29 +28,34 @@ func TestCliPaginateHostSets(t *testing.T) {
 
 	ctx := context.Background()
 	boundary.AuthenticateAdminCli(t, ctx)
-	newOrgId := boundary.CreateNewOrgCli(t, ctx)
+	orgId, err := boundary.CreateOrgCli(t, ctx)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		ctx := context.Background()
 		boundary.AuthenticateAdminCli(t, ctx)
-		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", newOrgId))
+		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", orgId))
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
-	newProjectId := boundary.CreateNewProjectCli(t, ctx, newOrgId)
-	newHostCatalogId := boundary.CreateNewHostCatalogCli(t, ctx, newProjectId)
+	projectId, err := boundary.CreateProjectCli(t, ctx, orgId)
+	require.NoError(t, err)
+	hostCatalogId, err := boundary.CreateHostCatalogCli(t, ctx, projectId)
+	require.NoError(t, err)
 
 	// Create enough host sets to overflow a single page.
 	client, err := boundary.NewApiClient()
 	require.NoError(t, err)
 	var hostSetIds []string
 	for i := 0; i < c.MaxPageSize+1; i++ {
-		hostSetIds = append(hostSetIds, boundary.CreateNewHostSetApi(t, ctx, client, newHostCatalogId))
+		hostSetId, err := boundary.CreateHostSetApi(t, ctx, client, hostCatalogId)
+		require.NoError(t, err)
+		hostSetIds = append(hostSetIds, hostSetId)
 	}
 
 	// List host sets
 	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"host-sets", "list",
-			"-host-catalog-id", newHostCatalogId,
+			"-host-catalog-id", hostCatalogId,
 			"-format=json",
 		),
 	)
@@ -72,7 +77,8 @@ func TestCliPaginateHostSets(t *testing.T) {
 	assert.Empty(t, initialHostSets.ListToken)
 
 	// Create a new host set and destroy one of the other host sets
-	newHostSetId := boundary.CreateNewHostSetApi(t, ctx, client, newHostCatalogId)
+	hostSetId, err := boundary.CreateHostSetApi(t, ctx, client, hostCatalogId)
+	require.NoError(t, err)
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"host-sets", "delete",
@@ -85,7 +91,7 @@ func TestCliPaginateHostSets(t *testing.T) {
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"host-sets", "list",
-			"-host-catalog-id", newHostCatalogId,
+			"-host-catalog-id", hostCatalogId,
 			"-format=json",
 		),
 	)
@@ -99,7 +105,7 @@ func TestCliPaginateHostSets(t *testing.T) {
 	// The first item should be the most recently created, which
 	// should be our new host set
 	firstItem := newHostSets.Items[0]
-	assert.Equal(t, newHostSetId, firstItem.Id)
+	assert.Equal(t, hostSetId, firstItem.Id)
 	assert.Empty(t, newHostSets.ResponseType)
 	assert.Empty(t, newHostSets.RemovedIds)
 	assert.Empty(t, newHostSets.ListToken)
@@ -121,23 +127,28 @@ func TestApiPaginateHostSets(t *testing.T) {
 	ctx := context.Background()
 	sClient := scopes.NewClient(client)
 	hsClient := hostsets.NewClient(client)
-	newOrgId := boundary.CreateNewOrgApi(t, ctx, client)
+	orgId, err := boundary.CreateOrgApi(t, ctx, client)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		ctx := context.Background()
-		_, err := sClient.Delete(ctx, newOrgId)
+		_, err := sClient.Delete(ctx, orgId)
 		require.NoError(t, err)
 	})
-	newProjectId := boundary.CreateNewProjectApi(t, ctx, client, newOrgId)
-	newHostCatalogId := boundary.CreateNewHostCatalogApi(t, ctx, client, newProjectId)
+	projectId, err := boundary.CreateProjectApi(t, ctx, client, orgId)
+	require.NoError(t, err)
+	hostCatalogId, err := boundary.CreateHostCatalogApi(t, ctx, client, projectId)
+	require.NoError(t, err)
 
 	// Create enough host sets to overflow a single page.
 	var hostSetIds []string
 	for i := 0; i < c.MaxPageSize+1; i++ {
-		hostSetIds = append(hostSetIds, boundary.CreateNewHostSetApi(t, ctx, client, newHostCatalogId))
+		hostSetId, err := boundary.CreateHostSetApi(t, ctx, client, hostCatalogId)
+		require.NoError(t, err)
+		hostSetIds = append(hostSetIds, hostSetId)
 	}
 
 	// List host sets
-	initialHostSets, err := hsClient.List(ctx, newHostCatalogId)
+	initialHostSets, err := hsClient.List(ctx, hostCatalogId)
 	require.NoError(t, err)
 
 	var returnedIds []string
@@ -157,12 +168,13 @@ func TestApiPaginateHostSets(t *testing.T) {
 	assert.Len(t, mapSliceItems, c.MaxPageSize+1)
 
 	// Create a new host set and destroy one of the other host sets
-	newHostSetId := boundary.CreateNewHostSetApi(t, ctx, client, newHostCatalogId)
+	hostSetId, err := boundary.CreateHostSetApi(t, ctx, client, hostCatalogId)
+	require.NoError(t, err)
 	_, err = hsClient.Delete(ctx, initialHostSets.Items[0].Id)
 	require.NoError(t, err)
 
 	// List again, should have the new and deleted host set
-	newHostSets, err := hsClient.List(ctx, newHostCatalogId, hostsets.WithListToken(initialHostSets.ListToken))
+	newHostSets, err := hsClient.List(ctx, hostCatalogId, hostsets.WithListToken(initialHostSets.ListToken))
 	require.NoError(t, err)
 
 	// Note that this will likely contain all the host sets,
@@ -173,7 +185,7 @@ func TestApiPaginateHostSets(t *testing.T) {
 	// The first item should be the most recently created, which
 	// should be our new host set
 	firstItem := newHostSets.Items[0]
-	assert.Equal(t, newHostSetId, firstItem.Id)
+	assert.Equal(t, hostSetId, firstItem.Id)
 	assert.Equal(t, "complete", newHostSets.ResponseType)
 	// Note that the removed IDs may contain entries from other tests,
 	// so just check that there is at least 1 entry and that our entry

@@ -18,7 +18,7 @@ jobs:
     env:
       GITHUB_TOKEN: ${{ secrets.SERVICE_USER_GITHUB_TOKEN }}
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29 # v4.1.6
       - uses: hashicorp/setup-terraform@a1502cd9e758c50496cc9ac5308c4843bcd56d36    # TSCCR: loading action configs: failed to query HEAD reference: failed to get advertised references: authorization failed
         with:
           terraform_wrapper: false

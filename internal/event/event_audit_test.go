@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/eventlogger"
+	"github.com/hashicorp/go-uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -15,6 +16,9 @@ import (
 func Test_newAudit(t *testing.T) {
 	t.Parallel()
 	testNow := time.Now()
+
+	corId, err := uuid.GenerateUUID()
+	require.NoError(t, err)
 
 	tests := []struct {
 		name      string
@@ -46,17 +50,19 @@ func Test_newAudit(t *testing.T) {
 				WithRequest(testRequest(t)),
 				WithResponse(testResponse(t)),
 				WithFlush(),
+				withCorrelationId(corId),
 			},
 			want: &audit{
-				Id:          "all-opts",
-				Version:     auditVersion,
-				Type:        string(ApiRequest),
-				Timestamp:   testNow,
-				RequestInfo: TestRequestInfo(t),
-				Auth:        testAuth(t),
-				Request:     testRequest(t),
-				Response:    testResponse(t),
-				Flush:       true,
+				Id:            "all-opts",
+				Version:       auditVersion,
+				Type:          string(ApiRequest),
+				Timestamp:     testNow,
+				RequestInfo:   TestRequestInfo(t),
+				Auth:          testAuth(t),
+				Request:       testRequest(t),
+				Response:      testResponse(t),
+				Flush:         true,
+				CorrelationId: corId,
 			},
 		},
 	}
@@ -142,6 +148,8 @@ func TestAudit_FlushEvent(t *testing.T) {
 
 func TestAudit_ComposeFrom(t *testing.T) {
 	t.Parallel()
+	corId, err := uuid.GenerateUUID()
+	require.NoError(t, err)
 	testNow := time.Now()
 	tests := []struct {
 		name            string
@@ -236,6 +244,15 @@ func TestAudit_ComposeFrom(t *testing.T) {
 				},
 				{
 					Payload: &audit{
+						Id:            "valid",
+						Version:       auditVersion,
+						Type:          string(ApiRequest),
+						Timestamp:     testNow,
+						CorrelationId: corId,
+					},
+				},
+				{
+					Payload: &audit{
 						Id:        "valid",
 						Version:   auditVersion,
 						Type:      string(ApiRequest),
@@ -245,14 +262,15 @@ func TestAudit_ComposeFrom(t *testing.T) {
 				},
 			},
 			want: audit{
-				Id:          "valid",
-				Version:     auditVersion,
-				Type:        string(ApiRequest),
-				Timestamp:   testNow,
-				Auth:        testAuth(t),
-				Request:     testRequest(t),
-				Response:    testResponse(t),
-				RequestInfo: TestRequestInfo(t),
+				Id:            "valid",
+				Version:       auditVersion,
+				Type:          string(ApiRequest),
+				Timestamp:     testNow,
+				Auth:          testAuth(t),
+				Request:       testRequest(t),
+				Response:      testResponse(t),
+				RequestInfo:   TestRequestInfo(t),
+				CorrelationId: corId,
 			},
 		},
 	}

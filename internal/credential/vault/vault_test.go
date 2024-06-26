@@ -11,7 +11,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/event"
+	"github.com/hashicorp/go-uuid"
 	vault "github.com/hashicorp/vault/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -20,19 +23,27 @@ import (
 func Test_newClient(t *testing.T) {
 	t.Parallel()
 	v := NewTestVaultServer(t)
-	ctx := context.Background()
+
+	corId, err := uuid.GenerateUUID()
+	require.NoError(t, err)
+	corCtx, err := event.NewCorrelationIdContext(context.Background(), corId)
+	require.NoError(t, err)
 
 	tests := []struct {
 		name         string
+		ctx          context.Context
 		wantErr      bool
+		wantCorId    string
 		clientConfig *clientConfig
 	}{
 		{
 			name:    "nil-config",
+			ctx:     context.Background(),
 			wantErr: true,
 		},
 		{
 			name: "empty-addr",
+			ctx:  context.Background(),
 			clientConfig: &clientConfig{
 				Token: TokenSecret(v.RootToken),
 			},
@@ -40,6 +51,7 @@ func Test_newClient(t *testing.T) {
 		},
 		{
 			name: "empty-token",
+			ctx:  context.Background(),
 			clientConfig: &clientConfig{
 				Addr: v.Addr,
 			},
@@ -47,17 +59,28 @@ func Test_newClient(t *testing.T) {
 		},
 		{
 			name: "valid-config",
+			ctx:  context.Background(),
 			clientConfig: &clientConfig{
 				Addr:  v.Addr,
 				Token: TokenSecret(v.RootToken),
 			},
+			wantCorId: "",
+		},
+		{
+			name: "valid-config-with-correlation-id",
+			ctx:  corCtx,
+			clientConfig: &clientConfig{
+				Addr:  v.Addr,
+				Token: TokenSecret(v.RootToken),
+			},
+			wantCorId: corId,
 		},
 	}
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			client, err := newClient(ctx, tt.clientConfig)
+			client, err := newClient(tt.ctx, tt.clientConfig)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Nil(client)
@@ -65,6 +88,11 @@ func Test_newClient(t *testing.T) {
 			}
 			require.NoError(err)
 			assert.NotNil(client)
+
+			headers, err := client.headers(context.Background())
+			require.NoError(err)
+			corIdHeader := headers.Get(globals.CorrelationIdKey)
+			assert.Equal(tt.wantCorId, corIdHeader)
 		})
 	}
 }
@@ -287,4 +315,28 @@ func TestClient_revokeLease(t *testing.T) {
 
 	// verify the database credentials no longer work
 	assert.Error(testDatabase.ValidateCredential(t, cred))
+}
+
+func Test_headers(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	v := NewTestVaultServer(t)
+
+	clientConfig := &clientConfig{
+		Addr:  v.Addr,
+		Token: TokenSecret(v.RootToken),
+	}
+
+	client, err := newClient(ctx, clientConfig)
+	require.NoError(t, err)
+	assert.NotNil(t, client)
+
+	// Add header to underlying vault client
+	client.cl.AddHeader("test-header", "test-header-value")
+
+	// Get headers from client
+	headers, err := client.headers(context.Background())
+	require.NoError(t, err)
+	got := headers.Get("test-header")
+	assert.Equal(t, "test-header-value", got)
 }

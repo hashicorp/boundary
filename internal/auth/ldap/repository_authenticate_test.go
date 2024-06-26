@@ -5,10 +5,12 @@ package ldap
 
 import (
 	"context"
+	"database/sql/driver"
 	"encoding/pem"
 	"fmt"
 	"testing"
 
+	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/internal/auth/ldap/store"
 	"github.com/hashicorp/boundary/internal/db"
@@ -63,12 +65,26 @@ func TestRepository_authenticate(t *testing.T) {
 		WithGroupDn(testCtx, testdirectory.DefaultGroupDN),
 	)
 
+	testAmAccAttrs := TestAuthMethod(t, testConn, orgDbWrapper, org.PublicId,
+		[]string{fmt.Sprintf("ldaps://%s:%d", td.Host(), td.Port())},
+		WithCertificates(testCtx, tdCerts...),
+		WithDiscoverDn(testCtx),
+		WithEnableGroups(testCtx),
+		WithUserDn(testCtx, testdirectory.DefaultUserDN),
+		WithGroupDn(testCtx, testdirectory.DefaultGroupDN),
+		WithAccountAttributeMap(testCtx, map[string]AccountToAttribute{
+			"fn": "fullName",
+			"at": "email",
+		}),
+	)
+
 	const (
 		testLoginName = "alice"
 		testPassword  = "password"
 	)
 
 	testAccount := TestAccount(t, testConn, testAm, testLoginName)
+	testAccountAccAttrs := TestAccount(t, testConn, testAmAccAttrs, testLoginName)
 
 	groups := []*gldap.Entry{
 		testdirectory.NewGroup(t, "admin", []string{"alice"}),
@@ -98,6 +114,8 @@ func TestRepository_authenticate(t *testing.T) {
 			gldap.NewEntryAttribute(ldap.DefaultADUserPasswordAttribute, []string{"password"}),
 			gldap.NewEntryAttribute(ldap.DefaultOpenLDAPUserPasswordAttribute, []string{"password"}),
 			gldap.NewEntryAttribute("fullName", []string{"test-full-name"}),
+			gldap.NewEntryAttribute("fn", []string{"test-fn"}),
+			gldap.NewEntryAttribute("at", []string{"testat@email.com"}),
 		)
 	}
 	td.SetUsers(users...)
@@ -131,6 +149,28 @@ func TestRepository_authenticate(t *testing.T) {
 					Dn:             "cn=alice,ou=people,dc=example,dc=org",
 					Email:          "alice@example.com",
 					FullName:       "test-full-name",
+					LoginName:      "alice",
+					MemberOfGroups: "[\"cn=admin,ou=groups,dc=example,dc=org\"]",
+				}}
+				return a
+			},
+		},
+		{
+			name:         "success-with-account-acc-attrs",
+			ctx:          testCtx,
+			repo:         testRepo,
+			authMethodId: testAmAccAttrs.PublicId,
+			loginName:    testAccountAccAttrs.LoginName,
+			password:     testPassword,
+			want: func(got *Account) *Account {
+				a := &Account{Account: &store.Account{
+					AuthMethodId:   testAmAccAttrs.PublicId,
+					ScopeId:        testAccountAccAttrs.ScopeId,
+					PublicId:       testAccountAccAttrs.PublicId,
+					Version:        testAccountAccAttrs.Version,
+					Dn:             "cn=alice,ou=people,dc=example,dc=org",
+					Email:          "testat@email.com",
+					FullName:       "test-fn",
 					LoginName:      "alice",
 					MemberOfGroups: "[\"cn=admin,ou=groups,dc=example,dc=org\"]",
 				}}
@@ -211,6 +251,101 @@ func TestRepository_authenticate(t *testing.T) {
 			password:        testPassword,
 			wantErrMatch:    errors.T(errors.Unknown),
 			wantErrContains: "auth-method-id-lookup-err",
+		},
+		{
+			name: "invalid-attribute-maps",
+			ctx:  testCtx,
+			repo: func() *Repository {
+				conn, mock := db.TestSetupWithMock(t)
+				mock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows(
+					[]string{
+						"is_primary_auth_method",
+						"public_id",
+						"scope_id",
+						"name",
+						"description",
+						"create_time",
+						"update_time",
+						"version",
+						"state",
+						"start_tls",
+						"insecure_tls",
+						"discover_dn",
+						"anon_group_search",
+						"upn_domain",
+						"enable_groups",
+						"use_token_groups",
+						"maximum_page_size",
+						"urls",
+						"certs",
+						"account_attribute_map",
+						"user_dn",
+						"user_attr",
+						"user_filter",
+						"group_dn",
+						"group_attr",
+						"group_filter",
+						"client_certificate_key",
+						"client_certificate_key_hmac",
+						"client_certificate_key_id",
+						"client_certificate_cert",
+						"bind_dn",
+						"bind_password",
+						"bind_password_hmac",
+						"bind_password_key_id",
+						"dereference_aliases",
+					},
+				).AddRow(
+					"f",
+					"amldap_badattrs",
+					"o_1234567890",
+					nil,
+					nil,
+					"2024-05-15 17:40:31.327736+00",
+					"2024-05-15 17:40:31.327736+00",
+					1,
+					"inactive",
+					"f",
+					"f",
+					"t",
+					"f",
+					nil,
+					"t",
+					"f",
+					0,
+					fmt.Sprintf("ldaps://%s:%d", td.Host(), td.Port()),
+					func() driver.Value {
+						certs, err := EncodeCertificates(testCtx, tdCerts...)
+						require.NoError(t, err)
+						return certs[0]
+					}(),
+					"at=email|fn=fullName|bad=invalidAttribute",
+					"ou=people,dc=example,dc=org",
+					nil,
+					nil,
+					"ou=groups,dc=example,dc=org",
+					nil,
+					nil,
+					nil,
+					nil,
+					nil,
+					nil,
+					nil,
+					nil,
+					nil,
+					nil,
+					nil,
+				))
+				rw := db.New(conn)
+				r, err := NewRepository(testCtx, rw, rw, testKms)
+				require.NoError(t, err)
+				return r
+			}(),
+			authMethodId:    "amldap_badattrs",
+			loginName:       "alice",
+			password:        testPassword,
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrContains: `failed to convert account attribute maps: ldap.(AuthMethod).convertAccountAttributeMaps: ldap.ParseAccountAttributeMaps: ldap.ConvertToAccountToAttribute: "invalidAttribute" is not a valid ToAccountAttribute value ("email", "fullName")`,
 		},
 	}
 	for _, tc := range tests {

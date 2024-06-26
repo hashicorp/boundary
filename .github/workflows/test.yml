@@ -25,7 +25,7 @@ jobs:
       plugin-cache-key: ${{ steps.plugin-cache-key.outputs.key }}
     runs-on: ${{ fromJSON(vars.RUNNER) }}
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29 # v4.1.6
         with:
           fetch-depth: '0'
       - name: Determine Go version
@@ -36,7 +36,7 @@ jobs:
           echo "Building with Go $(cat .go-version)"
           echo "go-version=$(cat .go-version)" >> "$GITHUB_OUTPUT"
       - name: Set up Go
-        uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491 # v5.0.0
+        uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7 # v5.0.1
         with:
           go-version: "${{ steps.get-go-version.outputs.go-version }}"
           cache: false
@@ -51,7 +51,7 @@ jobs:
           echo "go-mod=$(go env GOMODCACHE)" >> "$GITHUB_OUTPUT"
           echo "go-bin=$(go env GOPATH)/bin" >> "$GITHUB_OUTPUT"
       - name: Set up Go modules cache
-        uses: actions/cache@13aacd865c20de90d75de3b17ebe84f7a17d57d2 # v4.0.0
+        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
         with:
           path: |
             ${{ steps.go-cache-paths.outputs.go-build }}
@@ -74,7 +74,7 @@ jobs:
           echo "path=plugins/**/assets/*.gz" >> "$GITHUB_OUTPUT"
       - name: Set up plugin cache
         id: plugin-cache
-        uses: actions/cache@13aacd865c20de90d75de3b17ebe84f7a17d57d2 # v4.0.0
+        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
         with:
           path: |
             ${{ steps.plugin-cache-paths.outputs.path }}
@@ -93,14 +93,14 @@ jobs:
       matrix:
         module: ["api", "sdk"]
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29 # v4.1.6
       - name: Set up go
-        uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491 # v5.0.0
+        uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7 # v5.0.1
         with:
           go-version: "${{ needs.setup.outputs.go-version }}"
           cache: false
       - name: Set up Go modules cache
-        uses: actions/cache@13aacd865c20de90d75de3b17ebe84f7a17d57d2 # v4.0.0
+        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
         with:
           path: |
             ${{ needs.setup.outputs.cache-go-build }}
@@ -125,14 +125,14 @@ jobs:
           ulimit -Sa
           echo "Hard limits"
           ulimit -Ha
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29 # v4.1.6
       - name: Set up go
-        uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491 # v5.0.0
+        uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7 # v5.0.1
         with:
           go-version: "${{ needs.setup.outputs.go-version }}"
           cache: false
       - name: Set up Go modules cache
-        uses: actions/cache@13aacd865c20de90d75de3b17ebe84f7a17d57d2 # v4.0.0
+        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
         with:
           path: |
             ${{ needs.setup.outputs.cache-go-build }}
@@ -144,7 +144,7 @@ jobs:
           fail-on-cache-miss: true
       - name: Set up plugin cache
         id: plugin-cache
-        uses: actions/cache@13aacd865c20de90d75de3b17ebe84f7a17d57d2 # v4.0.0
+        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
         with:
           path: |
             ${{ needs.setup.outputs.plugin-cache-path }}

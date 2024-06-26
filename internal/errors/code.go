@@ -66,6 +66,7 @@ const (
 	WorkerNotFoundForRequest = 133 // WorkerNotFoundForRequest represents an error when no appropriate worker is found which meets the conditions required to handle a request
 	Closed                   = 134 // Closed represents an error when an operation cannot be completed because the thing being operated on is closed
 	ChecksumMismatch         = 135 // ChecksumMismatch represents an error when a checksum is mismatched
+	Paused                   = 136 // Paused represents an error when an operation cannot be completed because the thing being operated on is paused
 
 	InvalidListToken Code = 136 // InvalidListToken represents an error where the provided list token is invalid
 
@@ -127,6 +128,8 @@ const (
 	UnexpectedRowsAffected Code = 1107
 	// ImmutableColumn is used when an operation attempted to mutate an immutable column.
 	ImmutableColumn Code = 1108
+	// InvalidTextRepresentation represents a value does not have the correct text representation.
+	InvalidTextRepresentation Code = 1109
 
 	// Migration setup errors are codes 2000-2999
 	MigrationIntegrity Code = 2000 // MigrationIntegrity represents an error with the generated migration related code

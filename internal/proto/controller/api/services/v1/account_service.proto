@@ -15,31 +15,42 @@ option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/s
 option (custom_options.v1.domain) = "auth";
 
 service AccountService {
-  // GetAccount returns a stored Account if present. The provided request must
-  // include the id for the Account be retrieved. If missing, malformed or
-  // referencing a non existing Account an error is returned.
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_tag) = {
+    name: "Account service"
+    description:
+      "The account service exposes endpoints for interacting with accounts in Boundary. "
+      "Accounts belong to an auth method and are associated with users."
+    external_docs: {
+      url: "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/accounts";
+      description: "Read about accounts in the Boundary domain model";
+    }
+  };
+
+  // GetAccount returns a stored account if present. The provided request must
+  // include the id for the account be retrieved. If missing, malformed or
+  // referencing a non existing account an error is returned.
   rpc GetAccount(GetAccountRequest) returns (GetAccountResponse) {
     option (google.api.http) = {
       get: "/v1/accounts/{id}"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Gets a single Account."};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Gets a single account based on the input ID"};
   }
 
-  // ListAccounts returns a list of stored Accounts which exist inside the
-  // provided Auth Method. The request must include the Auth Method id which
-  // contains the Accounts being listed. If missing or malformed an error
+  // ListAccounts returns a list of stored accounts which exist inside the
+  // provided auth method. The request must include the auth method id which
+  // contains the accounts being listed. If missing or malformed, an error
   // is returned.
   rpc ListAccounts(ListAccountsRequest) returns (ListAccountsResponse) {
     option (google.api.http) = {get: "/v1/accounts"};
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Lists all Accounts in a specific Auth Method."};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Lists all accounts in a specific auth method."};
   }
 
-  // CreateAccount creates and stores an Account in boundary. The provided
-  // request must include the Auth Method ID in which the Account will be
-  // created. If the Auth Method ID is missing, malformed, or references a non
+  // CreateAccount creates and stores an account in boundary. The provided
+  // request must include the auth method ID in which the account will be
+  // created. If the auth method ID is missing, malformed, or references a non
   // existing resource an error is returned. If a name or login_name is
-  // provided that is in use in another Account in the same Auth Method an
+  // provided that is in use in another account in the same auth method an
   // error is returned.
   rpc CreateAccount(CreateAccountRequest) returns (CreateAccountResponse) {
     option (google.api.http) = {
@@ -47,34 +58,34 @@ service AccountService {
       body: "item"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Creates a single Account in the provided Auth Method."};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Creates a single account in the provided auth method."};
   }
 
-  // UpdateAccount updates an existing Account in boundary. The provided Account
+  // UpdateAccount updates an existing account in boundary. The provided account
   // must not have any read only fields set. The update mask must be included in
   // the request and contain at least 1 mutable field. To unset a field's value,
   // include the field in the update mask and don't set it in the provided
-  // Account. An error is returned if the Account id is missing or references a
+  // account. An error is returned if the account id is missing or references a
   // non-existing resource. An error is also returned if the request attempts
   // to update the name or login_name to one that is already in use in the
-  // containing Auth Method.
+  // containing auth method.
   rpc UpdateAccount(UpdateAccountRequest) returns (UpdateAccountResponse) {
     option (google.api.http) = {
       patch: "/v1/accounts/{id}"
       body: "item"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Updates an Account."};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Updates an account."};
   }
 
-  // DeleteAccount removes an Account from Boundary. If the provided Account Id
+  // DeleteAccount removes an account from Boundary. If the provided account Id
   // is malformed or not provided an error is returned.
   rpc DeleteAccount(DeleteAccountRequest) returns (DeleteAccountResponse) {
     option (google.api.http) = {delete: "/v1/accounts/{id}"};
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Deletes an Account."};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Deletes an account."};
   }
 
-  // SetPassword sets the Account's password to the one provided in the
+  // SetPassword sets the account's password to the one provided in the
   // request. This method is intended for administration purpose and as such
   // does not require the old password.
   rpc SetPassword(SetPasswordRequest) returns (SetPasswordResponse) {
@@ -83,10 +94,10 @@ service AccountService {
       body: "*"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Sets the password for the provided Account."};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Sets the password for the provided account."};
   }
 
-  // ChangePassword changes the Account's password to the one provided in the
+  // ChangePassword changes the account's password to the one provided in the
   // request. This method is intended for end users and requires the existing
   // password to be provided for authentication purposes.
   rpc ChangePassword(ChangePasswordRequest) returns (ChangePasswordResponse) {
@@ -95,11 +106,12 @@ service AccountService {
       body: "*"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Sets the password for the provided Account."};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Sets the password for the provided account."};
   }
 }
 
 message GetAccountRequest {
+  // The ID of the account that should be retrieved.
   string id = 1; // @gotags: `class:"public" eventstream:"observation"`
 }
 
@@ -108,20 +120,25 @@ message GetAccountResponse {
 }
 
 message ListAccountsRequest {
+  // The ID of the auth method whose accounts should be listed.
   string auth_method_id = 1 [json_name = "auth_method_id"]; // @gotags: `class:"public" eventstream:"observation"`
+  // You can specify that the filter should only return items that match.
+  // Refer to [filter expressions](https://developer.hashicorp.com/boundary/docs/concepts/filtering) for more information.
   string filter = 30 [json_name = "filter"]; // @gotags: `class:"sensitive"`
-  // An opaque token used to continue an existing iteration or
-  // request updated items. If not specified, pagination
-  // will start from the beginning.
+  // An opaque token that Boundary uses to continue an existing iteration or
+  // request updated items. If you do not specify a token, pagination
+  // starts from the beginning. To learn more about list pagination
+  // in Boundary, refer to [list pagination](https://developer.hashicorp.com/boundary/docs/api-clients/api/pagination).
   string list_token = 40 [json_name = "list_token"]; // @gotags: `class:"public"`
   // The maximum size of a page in this iteration.
-  // If unset, the default page size configured will be used.
-  // If the page_size is greater than the default page configured,
-  // an error will be returned.
+  // If you do not set a page size, Boundary uses the configured default page size.
+  // If the page_size is greater than the default page size configured,
+  // Boundary truncates the page size to this number.
   uint32 page_size = 50 [json_name = "page_size"]; // @gotags: `class:"public"`
 }
 
 message ListAccountsResponse {
+  // The list of accounts.
   repeated resources.accounts.v1.Account items = 1;
   // The type of response, either "delta" or "complete".
   // Delta signifies that this is part of a paginated result
@@ -155,7 +172,9 @@ message CreateAccountResponse {
 }
 
 message UpdateAccountRequest {
+  // The ID of the account that should be updated.
   string id = 1; // @gotags: `class:"public" eventstream:"observation"`
+  // A subset of the account that contains the fields to update.
   resources.accounts.v1.Account item = 2;
   google.protobuf.FieldMask update_mask = 3 [json_name = "update_mask"];
 }
@@ -165,16 +184,19 @@ message UpdateAccountResponse {
 }
 
 message DeleteAccountRequest {
+  // The ID of the account to delete.
   string id = 1; // @gotags: `class:"public" eventstream:"observation"`
 }
 
 message DeleteAccountResponse {}
 
 message SetPasswordRequest {
+  // The ID of the account for which the password should be set.
   string id = 1; // @gotags: `class:"public" eventstream:"observation"`
   // Version is used to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
   uint32 version = 2; // @gotags: `class:"public"`
+  // The password that should be set.
   string password = 3; // @gotags: `class:"secret"`
 }
 
@@ -183,11 +205,14 @@ message SetPasswordResponse {
 }
 
 message ChangePasswordRequest {
+  // The ID of the account for which the password should be changed.
   string id = 1; // @gotags: `class:"public" eventstream:"observation"`
   // Version is used to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
   uint32 version = 2; // @gotags: `class:"public"`
+  // The current password for the account.
   string current_password = 3 [json_name = "current_password"]; // @gotags: `class:"secret"`
+  // The new password that should be set.
   string new_password = 4 [json_name = "new_password"]; // @gotags: `class:"secret"`
 }
 

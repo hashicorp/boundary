@@ -859,6 +859,9 @@ func (s Service) toProto(ctx context.Context, in *server.Worker, opt ...handlers
 	if outputFields.Has(globals.ScopeField) {
 		out.Scope = opts.WithScope
 	}
+	if outputFields.Has(globals.LocalStorageStateField) {
+		out.LocalStorageState = in.GetLocalStorageState()
+	}
 	if outputFields.Has(globals.AuthorizedActionsField) && opts.WithAuthorizedActions != nil {
 		out.AuthorizedActions = opts.WithAuthorizedActions
 		possibleKmsWorkerId, err := server.NewWorkerIdFromScopeAndName(ctx, in.GetScopeId(), in.GetName())

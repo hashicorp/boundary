@@ -4,15 +4,19 @@
 package controller
 
 import (
+	"context"
 	"fmt"
 	"math"
+	"net/http"
 	"testing"
 
 	"github.com/hashicorp/boundary/api/targets"
+	"github.com/hashicorp/boundary/globals"
 	_ "github.com/hashicorp/boundary/internal/daemon/controller/handlers/targets/tcp"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/target/tcp"
+	"github.com/hashicorp/go-uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -47,4 +51,44 @@ func Test_gatewayDialOptions(t *testing.T) {
 	require.NoError(err)
 	assert.NotEmpty(res)
 	assert.Equal(targetCount, len(res.Items))
+}
+
+func Test_correlationIdAnnotator(t *testing.T) {
+	corId, err := uuid.GenerateUUID()
+	require.NoError(t, err)
+	req := &http.Request{
+		Header: map[string][]string{
+			globals.CorrelationIdKey: {corId},
+		},
+	}
+
+	md := correlationIdAnnotator(context.Background(), req)
+	require.NotNil(t, md)
+	corIds := md.Get(globals.CorrelationIdKey)
+	require.Len(t, corIds, 1)
+	assert.Equal(t, corId, corIds[0])
+
+	// Now see if we do not pass a correlation id it generates one
+	md = correlationIdAnnotator(context.Background(), &http.Request{})
+	require.NotNil(t, md)
+	corIds = md.Get(globals.CorrelationIdKey)
+	require.Len(t, corIds, 1)
+	assert.NotEqual(t, corId, corIds[0])
+	// Validate it parses as valid uuid
+	_, err = uuid.ParseUUID(corIds[0])
+	assert.NoError(t, err)
+
+	// Validate correlationIdAnnotator is case-insensitive
+	corId, err = uuid.GenerateUUID()
+	require.NoError(t, err)
+	req = &http.Request{
+		Header: map[string][]string{
+			"X-CorReLAtion-id": {corId},
+		},
+	}
+	md = correlationIdAnnotator(context.Background(), req)
+	require.NotNil(t, md)
+	corIds = md.Get(globals.CorrelationIdKey)
+	require.Len(t, corIds, 1)
+	assert.Equal(t, corId, corIds[0])
 }

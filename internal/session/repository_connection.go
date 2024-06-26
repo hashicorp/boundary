@@ -416,8 +416,8 @@ func (r *ConnectionRepository) closeOrphanedConnections(ctx context.Context, wor
 		ctx,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
-		func(reader db.Reader, w db.Writer) error {
-			rows, err := r.reader.Query(ctx, fmt.Sprintf(orphanedConnectionsCte, notInClause), args)
+		func(_ db.Reader, w db.Writer) error {
+			rows, err := w.Query(ctx, fmt.Sprintf(orphanedConnectionsCte, notInClause), args)
 			if err != nil {
 				return errors.Wrap(ctx, err, op)
 			}

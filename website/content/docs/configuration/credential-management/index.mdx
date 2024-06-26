@@ -1,0 +1,41 @@
+---
+layout: docs
+page_title: Configure credentials with Boundary
+description: |-
+  Credential stores let you store and manage credentials in Boundary. Learn about configuring user workflows with credential management or credential injection.
+---
+
+# Overview
+
+When users connect to a target machine, they typically need a set of credentials for authentication. Rather than requiring users to securely store and manage credentials for every target resource, Boundary centralizes credential management to enhance security.
+
+## Credential stores
+
+Boundary supports credential management using [credential stores](/boundary/docs/concepts/domain-model/credential-stores), which are resources that store credentials for various targets.
+
+There are two types of credential stores:
+
+1. Static credential store
+1. Vault credential store
+
+Static credential stores are built into Boundary and only store static credentials like username and password, or keypairs. Vault credential stores point to a HashiCorp Vault instance, which provides additional capabilities like generating short-lived dynamic credentials.
+
+Boundary can retrieve credentials from the credential stores and present them back to the user when they connect to targets. This workflow is referred to as **credential brokering**. Boundary can also inject credentials directly into the session on behalf of the user. This workflow is referred to as **credential injection**.
+
+
+## End user workflows
+
+End users can experience three workflows when they connect to a target. In the first workflow, when an end user connects to a target, Boundary initiates the session, but the end user must know the credentials to authenticate into the session. This workflow is available for testing purposes, but it is not recommended because it places the burden on the users to securely store and manage credentials.
+
+The second workflow uses a feature called credential brokering, where credentials are retrieved from a credentials store and returned back to the end user. The end user then enters the credentials into the session when prompted by the target. This workflow is more secure than the first workflow since credentials are centrally managed through Boundary. For more information, see the [credential brokering](/boundary/docs/concepts/credential-management#credential-brokering) concepts page.
+
+The third workflow uses a featured called credential injection, where credentials are retrieved from a credential store and injected directly into the session on behalf of the end user. This workflow is the most secure because credentials are not exposed to the end user, reducing the chances of a leaked credential. This workflow is also more streamlined as the user goes through a passwordless experience.  For more information, see the [credential injection](/boundary/docs/concepts/credential-management#credential-injection) concepts page.
+
+## Next steps
+
+The following pages provide steps to configure static credentials using both a static credential store and a Vault credential store. You can also configure targets for either credential brokering or credential injection workflows.
+
+- [Create a static credential store](/boundary/docs/configuration/credential-management/static-cred-boundary)
+- [Create a Vault credential store](/boundary/docs/configuration/credential-management/static-cred-vault)
+- [Configure targets with credential brokering](/boundary/docs/configuration/credential-management/configure-credential-brokering)
+- [Configure targets with credential injection](/boundary/docs/configuration/credential-management/configure-credential-injection)

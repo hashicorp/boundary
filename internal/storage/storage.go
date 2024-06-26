@@ -9,9 +9,16 @@ import (
 	"io/fs"
 
 	"github.com/hashicorp/boundary/internal/boundary"
+	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/storagebuckets"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 )
+
+// DefaultMinimumAvailableDiskSpace is the default value a Boundary worker will use
+// if the user does not configure the worker with a RecordingStorageMinimumAvailableCapacity
+// value. This value is equivalent to 500MiB. This value is used to determine the worker's
+// local storage state.
+const DefaultMinimumAvailableDiskSpace = 500 * 1024 * 1024
 
 // RecordingStorage can be used to create an FS usable for session recording.
 type RecordingStorage interface {
@@ -27,6 +34,8 @@ type RecordingStorage interface {
 	// CreateTemp creates a temporary file that is cleaned up when closed. All temp files
 	// are also removed when storage is initialized.
 	CreateTemp(ctx context.Context, p string) (TempFile, error)
+	// GetLocalStorageState returns the current local storage state of the storage instance.
+	GetLocalStorageState(ctx context.Context) server.LocalStorageState
 }
 
 // Bucket is a resource that represents a bucket in an external object store

@@ -23,7 +23,8 @@ const (
 // Roles are granted permissions and assignable to Users and Groups.
 type Role struct {
 	*store.Role
-	tableName string `gorm:"-"`
+	GrantScopes []*RoleGrantScope `gorm:"-"`
+	tableName   string            `gorm:"-"`
 }
 
 // ensure that Role implements the interfaces of: Resource, Cloneable, and db.VetForWriter.
@@ -60,9 +61,13 @@ func allocRole() Role {
 // Clone creates a clone of the Role.
 func (role *Role) Clone() any {
 	cp := proto.Clone(role.Role)
-	return &Role{
+	ret := &Role{
 		Role: cp.(*store.Role),
 	}
+	for _, grantScope := range role.GrantScopes {
+		ret.GrantScopes = append(ret.GrantScopes, grantScope.Clone().(*RoleGrantScope))
+	}
+	return ret
 }
 
 // VetForWrite implements db.VetForWrite() interface.

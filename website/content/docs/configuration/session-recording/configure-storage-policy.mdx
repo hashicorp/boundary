@@ -22,9 +22,7 @@ For more information about using session recording to audit user sessions, refer
 
 ## Requirements
 
-Before you can create a storage bucket in Boundary, you must ensure that your environment meets certain requirements.
-Session recording requires specific configuration for both the external store and the Boundary worker.
-At this time, the only supported storage is AWS S3.
+Before you can create a storage bucket in Boundary, you must ensure that your environment meets certain requirements. Session recording requires specific configuration for both the external storage provider and the Boundary worker.
 
 A Boundary worker configured for local storage is also required to set up session recording and configure recording bucket policies.
 
@@ -47,7 +45,7 @@ Complete the following steps to create a storage policy in Boundary for session 
 <Tab heading="UI" group="ui">
 
 1. Log in to Boundary.
-1. Select **Storage Policies** in the navigation panel in the `global` scope.
+1. Click **Storage Policies** in the navigation panel in the `global` scope.
 1. Click **Create a new storage policy**.
 1. Complete the following fields to create the Boundary storage policy:
    - **Name**: (Optional) The name field is optional, but if you enter a name it must be unique.
@@ -202,8 +200,8 @@ The following example applies the policy created above to an org named `prod-dat
 <Tab heading="UI" group="ui">
 
 1. Log in to Boundary.
-1. Select **Orgs** in the navigation panel and select the `prod-databases` org.
-1. Select **Org Settings** in the navigation panel for the `prod-databases` org.
+1. Click **Orgs** in the navigation panel and select the `prod-databases` org.
+1. Click **Org Settings** in the navigation panel for the `prod-databases` org.
 1. Under **Storage Policy**, click **Add Storage Policy**.
 1. Select the `soc2-policy`.
 1. Click **Save**. This applies the policy to this scope and its children.
@@ -363,8 +361,8 @@ Check that the storage policy was successfully attached to the `prod-databases` 
 <Tab heading="UI">
 
 1. Log in to Boundary.
-1. Select **Orgs** in the navigation panel and select the `prod-databases` org.
-1. Select **Org Settings** in the navigation panel for the `prod-databases` org.
+1. Click **Orgs** in the navigation panel and select the `prod-databases` org.
+1. Click **Org Settings** in the navigation panel for the `prod-databases` org.
 1. Verify that the `soc2-policy` is listed under **Storage Policy**.
 
 </Tab>
@@ -505,8 +503,8 @@ New session recordings under the `prod-databases` scope should now show a `retai
 
 1. Create a new session recording on a target within the `prod-databases` org.
 1. Log in to Boundary.
-1. Select **Session Recordings** in the navigation panel. 
-1. Select **View** for a new recording that was made after the storage policy was attached to the `prod-databases` scope.
+1. Click **Session Recordings** in the navigation panel. 
+1. Click **View** for a new recording that was made after the storage policy was attached to the `prod-databases` scope.
 1. Under **Session details**, verify that the *Retain until* and *Delete after* dates match the durations defined in the `soc2-policy`.
 
 </Tab>

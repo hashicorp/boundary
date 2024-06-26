@@ -38,9 +38,9 @@ The postgres URL setting is defined with `env://BOUNDARY_POSTGRES_URL` so it can
 
 ```bash
 docker run \
-    --network host
-    -e 'BOUNDARY_POSTGRES_URL=postgresql://postgres:postgres@0.0.0.0:5432/postgres?sslmode=disable'
-    boundary
+    --network host \
+    -e 'BOUNDARY_POSTGRES_URL=postgresql://postgres:postgres@0.0.0.0:5432/postgres?sslmode=disable' \
+    hashicorp/boundary
 ```
 
 ### Database Init
@@ -53,7 +53,7 @@ initialize the database using the default `config.hcl`:
 docker run \
   --network host \
   -e 'BOUNDARY_POSTGRES_URL=postgresql://postgres:postgres@0.0.0.0:5432/postgres?sslmode=disable' \
-  boundary database init -config /boundary/config.hcl
+  hashicorp/boundary database init -config /boundary/config.hcl
 ```
 
 If you want to run this with your own `config.hcl` (assuming `config.hcl` is located at `$(pwd)/config.hcl`):
@@ -63,7 +63,7 @@ docker run \
   --network host \
   -e 'BOUNDARY_POSTGRES_URL=postgresql://postgres:postgres@0.0.0.0:5432/postgres?sslmode=disable' \
   -v "$(pwd)":/boundary/ \
-  boundary database init -config /boundary/config.hcl
+  hashicorp/boundary database init -config /boundary/config.hcl
 ```
 
 ### Database Migration
@@ -76,7 +76,7 @@ you will need to apply the database migrations:
 docker run \
   --network host \
   -e 'BOUNDARY_POSTGRES_URL=postgresql://postgres:postgres@0.0.0.0:5432/postgres?sslmode=disable' \
-  boundary database migrate -config /boundary/config.hcl
+  hashicorp/boundary database migrate -config /boundary/config.hcl
 ```
 
 If you want to run this with your own `config.hcl` (assuming `config.hcl` is located at `$(pwd)/config.hcl`):
@@ -86,7 +86,7 @@ docker run \
   --network host \
   -e 'BOUNDARY_POSTGRES_URL=postgresql://postgres:postgres@0.0.0.0:5432/postgres?sslmode=disable' \
   -v "$(pwd)":/boundary/ \
-  boundary database migrate -config /boundary/config.hcl
+  hashicorp/boundary database migrate -config /boundary/config.hcl
 ```
 
 ### Server
@@ -100,7 +100,7 @@ docker run \
   -p 9201:9201 \
   -p 9202:9202 \
   -e 'BOUNDARY_POSTGRES_URL=postgresql://postgres:postgres@0.0.0.0:5432/postgres?sslmode=disable' \
-  boundary
+  hashicorp/boundary
 ```
 
 Start a Boundary server using your own `config.hcl`, assuming it's located at `$(pwd)/config.hcl`:
@@ -113,5 +113,5 @@ docker run \
   -p 9202:9202 \
   -v "$(pwd)":/boundary/ \
   -e 'BOUNDARY_POSTGRES_URL=postgresql://postgres:postgres@0.0.0.0:5432/postgres?sslmode=disable' \
-  boundary
+  hashicorp/boundary
 ```

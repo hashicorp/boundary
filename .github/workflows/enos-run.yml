@@ -34,11 +34,11 @@ jobs:
       go-cache-key: ${{ steps.go-cache-key.outputs.key }}
     runs-on: ${{ fromJSON(vars.RUNNER) }}
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29 # v4.1.6
         with:
           fetch-depth: '0'
       - name: Set up Go
-        uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491 # v5.0.0
+        uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7 # v5.0.1
         with:
           go-version: ${{ inputs.go-version }}
           cache: false
@@ -53,7 +53,7 @@ jobs:
           echo "go-mod=$(go env GOMODCACHE)" >> "$GITHUB_OUTPUT"
           echo "go-bin=$(go env GOPATH)/bin" >> "$GITHUB_OUTPUT"
       - name: Set up Go modules cache
-        uses: actions/cache@13aacd865c20de90d75de3b17ebe84f7a17d57d2 # v4.0.0
+        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
         with:
           path: |
             ${{ steps.go-cache-paths.outputs.go-build }}
@@ -96,7 +96,6 @@ jobs:
       ENOS_VAR_local_boundary_src_dir: ${{ github.workspace }}
       ENOS_VAR_local_boundary_ui_src_dir: ./support/src/boundary-ui
       ENOS_VAR_crt_bundle_path: ./support/boundary.zip
-      ENOS_VAR_tfc_api_token: ${{ secrets.TF_API_TOKEN }}
       ENOS_VAR_test_email: ${{ secrets.SERVICE_USER_EMAIL }}
       ENOS_VAR_boundary_edition: ${{ inputs.edition }}
       ENOS_VAR_boundary_docker_image_name: ${{ inputs.docker-image-name }}
@@ -104,14 +103,14 @@ jobs:
       ENOS_VAR_go_version: ${{ inputs.go-version }}
     steps:
       - name: Checkout
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29 # v4.1.6
       - name: Set up Go
-        uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491 # v5.0.0
+        uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7 # v5.0.1
         with:
           go-version: ${{ inputs.go-version }}
           cache: false
       - name: Set up Go modules cache
-        uses: actions/cache@13aacd865c20de90d75de3b17ebe84f7a17d57d2 # v4.0.0
+        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
         with:
           path: |
             ${{ needs.setup.outputs.cache-go-build }}
@@ -161,7 +160,7 @@ jobs:
           echo "debug_data_artifact_name=enos-debug-data_$(echo ${{ matrix.filter }} | sed -e 's/ /_/g' | sed -e 's/:/=/g')" >> "$GITHUB_OUTPUT"
       - name: Set up dependency cache
         id: dep-cache
-        uses: actions/cache@13aacd865c20de90d75de3b17ebe84f7a17d57d2 # v4.0.0
+        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
         with:
           path: /tmp/test-deps
           key: enos-test-deps-password-store-1.7.4-vault-1.12.2
@@ -199,7 +198,7 @@ jobs:
           ssh -V
       - name: Download Boundary Linux AMD64 bundle
         id: download
-        uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a # v3.0.2
+        uses: actions/download-artifact@65a9edc5881444af0b9093a5e628f2fe47ea3b2e # v4.1.7
         with:
           name: ${{ inputs.artifact-name }}
           path: ./enos/support/downloads
@@ -209,7 +208,7 @@ jobs:
           mv ${{steps.download.outputs.download-path}}/*.zip enos/support/boundary.zip
       - name: Download Boundary Linux AMD64 docker image
         if: contains(matrix.filter, 'e2e_docker')
-        uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a # v3.0.2
+        uses: actions/download-artifact@65a9edc5881444af0b9093a5e628f2fe47ea3b2e # v4.1.7
         id: download-docker
         with:
           name: ${{ inputs.docker-image-file }}
@@ -224,7 +223,7 @@ jobs:
         with:
           node-version: '16.x'
       - name: Checkout boundary-ui
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29 # v4.1.6
         if: contains(matrix.filter, 'e2e_ui')
         with:
           repository: hashicorp/boundary-ui
@@ -267,7 +266,7 @@ jobs:
           SCENARIO=$(echo "${{ matrix.filter }}" | cut -d' ' -f1)
           echo fragment="${SCENARIO}" >> "$GITHUB_OUTPUT"
       - name: Upload e2e tests output
-        uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
+        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4.3.3
         with:
           name: test-${{ steps.split.outputs.fragment }}
           path: enos/*.log
@@ -280,7 +279,7 @@ jobs:
           docker logs database
       - name: Upload e2e UI tests debug info
         if: contains(matrix.filter, 'e2e_ui') && steps.run.outcome == 'failure'
-        uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
+        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4.3.3
         with:
           name: test-e2e-ui-debug
           path: enos/support/src/boundary-ui/ui/admin/tests/e2e/artifacts/test-failures
@@ -293,7 +292,7 @@ jobs:
           enos scenario launch --timeout 60m0s --chdir ./enos ${{ matrix.filter }}
       - name: Upload Debug Data
         if: ${{ always() && steps.run_retry.outcome == 'failure' }}
-        uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
+        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4.3.3
         with:
           # The name of the artifact is the same as the matrix scenario name with the spaces replaced with underscores and colons replaced by equals.
           name: ${{ steps.prepare_scenario.outputs.debug_data_artifact_name }}
@@ -328,7 +327,7 @@ jobs:
           env
           find ./enos -name "scenario.tf" -exec cat {} \;
       - name: Send Slack message if Run and Retry fails (or if something else went wrong)
-        uses: slackapi/slack-github-action@6c661ce58804a1a20f6dc5fbee7f0381b469e001 # v1.25.0
+        uses: slackapi/slack-github-action@70cd7be8e40a46e8b0eced40b0de447bdb42f68e # v1.26.0
         # steps.run.outcome reports as failure when there is an error in `Run Enos scenario`
         # failure() captures errors before `Run Enos scenario`
         # failure() does not capture errors in `Run Enos scenario` due to continue-on-error
@@ -342,7 +341,7 @@ jobs:
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOUNDARY_TEST_BOT_TOKEN }}
       - name: Send Slack message if Run but Retry passes
-        uses: slackapi/slack-github-action@6c661ce58804a1a20f6dc5fbee7f0381b469e001 # v1.25.0
+        uses: slackapi/slack-github-action@70cd7be8e40a46e8b0eced40b0de447bdb42f68e # v1.26.0
         if: ${{ steps.run.outcome == 'failure' && steps.run_retry.outcome != 'failure' }}
         with:
           channel-id: ${{ secrets.SLACK_BOUNDARY_TEST_BOT_CHANNEL_ID }}

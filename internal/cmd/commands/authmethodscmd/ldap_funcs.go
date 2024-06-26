@@ -69,7 +69,7 @@ const (
 	bindDnFlagName               = "bind-dn"
 	bindPasswordFlagName         = "bind-password"
 	useTokenGroupsFlagName       = "use-token-groups"
-	accountAttributeMaps         = "account-attribute-map"
+	accountAttributeMapsFlagName = "account-attribute-map"
 	maxPageSizeFlagName          = "max-page-size"
 	derefAliasesFlagName         = "deref-aliases"
 )
@@ -96,7 +96,7 @@ func extraLdapActionsFlagsMapFuncImpl() map[string][]string {
 			bindDnFlagName,
 			bindPasswordFlagName,
 			useTokenGroupsFlagName,
-			accountAttributeMaps,
+			accountAttributeMapsFlagName,
 			stateFlagName,
 			maxPageSizeFlagName,
 			derefAliasesFlagName,
@@ -242,6 +242,12 @@ func extraLdapFlagsFuncImpl(c *LdapCommand, set *base.FlagSets, _ *base.FlagSet)
 				Name:   derefAliasesFlagName,
 				Target: &c.flagDerefAliases,
 				Usage:  "Control how aliases are dereferenced when performing the search. Possible values are: never, finding, searching, and always (optional).",
+			})
+		case accountAttributeMapsFlagName:
+			f.StringSliceVar(&base.StringSliceVar{
+				Name:   accountAttributeMapsFlagName,
+				Target: &c.flagAccountAttributeMaps,
+				Usage:  "Attribute maps from custom attributes to the standard fullName and email account attributes. These maps are represented as key=value where the key equals the from_attribute, and the value equals the to_attribute.",
 			})
 		}
 	}

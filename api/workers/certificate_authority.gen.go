@@ -10,13 +10,11 @@ import (
 
 type CertificateAuthority struct {
 	Certs []*Certificate `json:"certs,omitempty"`
-
-	response *api.Response
 }
 
 type CertificateAuthorityReadResult struct {
 	Item     *CertificateAuthority
-	response *api.Response
+	Response *api.Response
 }
 
 func (n CertificateAuthorityReadResult) GetItem() *CertificateAuthority {
@@ -24,5 +22,5 @@ func (n CertificateAuthorityReadResult) GetItem() *CertificateAuthority {
 }
 
 func (n CertificateAuthorityReadResult) GetResponse() *api.Response {
-	return n.response
+	return n.Response
 }

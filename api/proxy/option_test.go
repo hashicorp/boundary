@@ -7,7 +7,9 @@ import (
 	"net"
 	"net/netip"
 	"testing"
+	"time"
 
+	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -85,5 +87,25 @@ func Test_GetOpts(t *testing.T) {
 		opts, err = getOpts(WithSkipSessionTeardown(true))
 		require.NoError(t, err)
 		assert.True(opts.WithSkipSessionTeardown)
+	})
+	t.Run("withSessionTeardownTimeout", func(t *testing.T) {
+		assert := assert.New(t)
+		opts, err := getOpts()
+		require.NoError(t, err)
+		assert.Empty(opts.withSessionTeardownTimeout)
+		opts, err = getOpts(WithSessionTeardownTimeout(3 * time.Millisecond))
+		require.NoError(t, err)
+		assert.Equal(3*time.Millisecond, opts.withSessionTeardownTimeout)
+	})
+	t.Run("withSessionsClient", func(t *testing.T) {
+		assert := assert.New(t)
+		opts, err := getOpts()
+		require.NoError(t, err)
+		assert.Nil(opts.withApiClient)
+		client, err := api.NewClient(nil)
+		require.NoError(t, err)
+		opts, err = getOpts(WithApiClient(client))
+		require.NoError(t, err)
+		assert.Equal(client, opts.withApiClient)
 	})
 }

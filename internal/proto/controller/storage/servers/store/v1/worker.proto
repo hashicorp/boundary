@@ -65,6 +65,17 @@ message Worker {
   // The state of the worker, to indicate if the worker is active or in shutdown.
   // @inject_tag: `gorm:"not_null"`
   string operational_state = 150;
+
+  // The local_storage_state indicates the state of the local disk space of the worker.
+  // Possible values are:
+  // - available: The worker local storage state is at an acceptable state
+  // - low storage: The worker is below the minimum threshold for local storage
+  // - critically low storage: The worker local storage state is below the critical minimum threshold for local storage
+  // - out of storage: The worker is out of local disk space
+  // - not configured: The worker does not have a local storage path configured
+  // - unknown: The default local storage state of a worker. Used when the local storage state of a worker is not yet known
+  // @inject_tag: `gorm:"not_null"`
+  string local_storage_state = 160;
 }
 
 // WorkerTag is a tag for a worker.  The primary key is comprised of the

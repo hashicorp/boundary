@@ -49,6 +49,7 @@ type options struct {
 	WithCreateControllerLedActivationToken bool
 	withReleaseVersion                     string
 	withOperationalState                   string
+	withLocalStorageState                  string
 	withActiveWorkers                      bool
 	withFeature                            version.Feature
 	withDirectlyConnected                  bool
@@ -57,8 +58,9 @@ type options struct {
 
 func getDefaultOptions() options {
 	return options{
-		withNewIdFunc:        newWorkerId,
-		withOperationalState: ActiveOperationalState.String(),
+		withNewIdFunc:         newWorkerId,
+		withOperationalState:  ActiveOperationalState.String(),
+		withLocalStorageState: UnknownWorkerType.String(),
 	}
 }
 
@@ -265,5 +267,12 @@ func WithDirectlyConnected(conn bool) Option {
 func WithWorkerPool(workerIds []string) Option {
 	return func(o *options) {
 		o.withWorkerPool = workerIds
+	}
+}
+
+// WithLocalStorageState provides an optional local storage state.
+func WithLocalStorageState(state string) Option {
+	return func(o *options) {
+		o.withLocalStorageState = state
 	}
 }

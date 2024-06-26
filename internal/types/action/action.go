@@ -75,6 +75,7 @@ const (
 	SetGrantScopes                     Type = 61
 	RemoveGrantScopes                  Type = 62
 	MonthlyActiveUsers                 Type = 63
+	ListResolvableAliases              Type = 64
 
 	// When adding new actions, be sure to update:
 	//
@@ -146,6 +147,7 @@ var Map = map[string]Type{
 	SetGrantScopes.String():                     SetGrantScopes,
 	RemoveGrantScopes.String():                  RemoveGrantScopes,
 	MonthlyActiveUsers.String():                 MonthlyActiveUsers,
+	ListResolvableAliases.String():              ListResolvableAliases,
 }
 
 var DeprecatedMap = map[string]Type{
@@ -223,6 +225,7 @@ func (a Type) String() string {
 		"set-grant-scopes",
 		"remove-grant-scopes",
 		"monthly-active-users",
+		"list-resolvable-aliases",
 	}[a]
 }
 

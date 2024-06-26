@@ -102,3 +102,33 @@ func SeparateManagedWorkers(workers WorkerList) (managedWorkers, nonManagedWorke
 func IsManagedWorker(worker *server.Worker) bool {
 	return len(worker.CanonicalTags()[ManagedWorkerTag]) != 0
 }
+
+// FilterWorkersByLocalStorageState filters the workers by their local storage state.
+// Workers that support local storage state feature will be considered healthy if their
+// local storage state is Available.
+// If the worker does not have any workers in the Available local storage state, it
+// will return workers with Unknown local storage state.
+// Workers that do not support local storage state will be considered healthy.
+func FilterWorkersByLocalStorageState(workers WorkerList) (healthyWorkers WorkerList) {
+	availableWorkers := make([]*server.Worker, 0, len(workers))
+	unknownWorkers := make([]*server.Worker, 0, len(workers))
+
+	for _, worker := range workers {
+		sv := version.FromVersionString(worker.GetReleaseVersion()).Semver()
+		if version.SupportsFeature(sv, version.LocalStorageState) {
+			ls := worker.GetLocalStorageState()
+			if ls == server.AvailableLocalStorageState.String() {
+				availableWorkers = append(availableWorkers, worker)
+			} else if ls == server.UnknownLocalStorageState.String() {
+				unknownWorkers = append(unknownWorkers, worker)
+			}
+		} else {
+			availableWorkers = append(availableWorkers, worker)
+		}
+	}
+
+	if len(availableWorkers) > 0 {
+		return availableWorkers
+	}
+	return unknownWorkers
+}

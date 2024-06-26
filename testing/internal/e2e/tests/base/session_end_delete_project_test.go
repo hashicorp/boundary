@@ -27,37 +27,45 @@ func TestCliSessionEndWhenProjectIsDeleted(t *testing.T) {
 
 	ctx := context.Background()
 	boundary.AuthenticateAdminCli(t, ctx)
-	newOrgId := boundary.CreateNewOrgCli(t, ctx)
+	orgId, err := boundary.CreateOrgCli(t, ctx)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		ctx := context.Background()
 		boundary.AuthenticateAdminCli(t, ctx)
-		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", newOrgId))
+		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", orgId))
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
-	newProjectId := boundary.CreateNewProjectCli(t, ctx, newOrgId)
-	newTargetId := boundary.CreateNewTargetCli(t, ctx, newProjectId, c.TargetPort, target.WithAddress(c.TargetAddress))
-	acctName := "e2e-account"
-	newAccountId, acctPassword := boundary.CreateNewAccountCli(t, ctx, bc.AuthMethodId, acctName)
-	t.Cleanup(func() {
-		boundary.AuthenticateAdminCli(t, context.Background())
-		output := e2e.RunCommand(ctx, "boundary",
-			e2e.WithArgs("accounts", "delete", "-id", newAccountId),
-		)
-		require.NoError(t, output.Err, string(output.Stderr))
-	})
-	newUserId := boundary.CreateNewUserCli(t, ctx, "global")
-	t.Cleanup(func() {
-		boundary.AuthenticateAdminCli(t, context.Background())
-		output := e2e.RunCommand(ctx, "boundary",
-			e2e.WithArgs("users", "delete", "-id", newUserId),
-		)
-		require.NoError(t, output.Err, string(output.Stderr))
-	})
-	boundary.SetAccountToUserCli(t, ctx, newUserId, newAccountId)
-	newRoleId, err := boundary.CreateRoleCli(t, ctx, newProjectId)
+	projectId, err := boundary.CreateProjectCli(t, ctx, orgId)
 	require.NoError(t, err)
-	boundary.AddGrantToRoleCli(t, ctx, newRoleId, "ids=*;type=target;actions=authorize-session")
-	boundary.AddPrincipalToRoleCli(t, ctx, newRoleId, newUserId)
+	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort, target.WithAddress(c.TargetAddress))
+	require.NoError(t, err)
+	acctName := "e2e-account"
+	accountId, acctPassword, err := boundary.CreateAccountCli(t, ctx, bc.AuthMethodId, acctName)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		boundary.AuthenticateAdminCli(t, context.Background())
+		output := e2e.RunCommand(ctx, "boundary",
+			e2e.WithArgs("accounts", "delete", "-id", accountId),
+		)
+		require.NoError(t, output.Err, string(output.Stderr))
+	})
+	userId, err := boundary.CreateUserCli(t, ctx, "global")
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		boundary.AuthenticateAdminCli(t, context.Background())
+		output := e2e.RunCommand(ctx, "boundary",
+			e2e.WithArgs("users", "delete", "-id", userId),
+		)
+		require.NoError(t, output.Err, string(output.Stderr))
+	})
+	err = boundary.SetAccountToUserCli(t, ctx, userId, accountId)
+	require.NoError(t, err)
+	roleId, err := boundary.CreateRoleCli(t, ctx, projectId)
+	require.NoError(t, err)
+	err = boundary.AddGrantToRoleCli(t, ctx, roleId, "ids=*;type=target;actions=authorize-session")
+	require.NoError(t, err)
+	err = boundary.AddPrincipalToRoleCli(t, ctx, roleId, userId)
+	require.NoError(t, err)
 
 	// Connect to target to create a session
 	ctxCancel, cancel := context.WithCancel(context.Background())
@@ -69,7 +77,7 @@ func TestCliSessionEndWhenProjectIsDeleted(t *testing.T) {
 			e2e.WithArgs(
 				"connect",
 				"-token", "env://E2E_AUTH_TOKEN",
-				"-target-id", newTargetId,
+				"-target-id", targetId,
 				"-exec", "/usr/bin/ssh", "--",
 				"-l", c.TargetSshUser,
 				"-i", c.TargetSshKeyPath,
@@ -84,13 +92,13 @@ func TestCliSessionEndWhenProjectIsDeleted(t *testing.T) {
 		)
 	}()
 	t.Cleanup(cancel)
-	s := boundary.WaitForSessionCli(t, ctx, newProjectId)
+	s := boundary.WaitForSessionCli(t, ctx, projectId)
 	boundary.WaitForSessionStatusCli(t, ctx, s.Id, session.StatusActive.String())
-	assert.Equal(t, newTargetId, s.TargetId)
+	assert.Equal(t, targetId, s.TargetId)
 
 	// Delete Project
 	t.Log("Deleting project...")
-	output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", newProjectId))
+	output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", projectId))
 	require.NoError(t, output.Err, string(output.Stderr))
 
 	// Check if session has terminated

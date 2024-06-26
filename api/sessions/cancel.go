@@ -71,6 +71,6 @@ func (c *Client) Cancel(ctx context.Context, sessionId string, version uint32, o
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.response = resp
+	target.Response = resp
 	return target, nil
 }

@@ -43,6 +43,10 @@ var errorCodeInfo = map[Code]Info{
 		Message: "key/version not found",
 		Kind:    Integrity,
 	},
+	InvalidTextRepresentation: {
+		Message: "invalid text representation",
+		Kind:    Integrity,
+	},
 	TicketAlreadyRedeemed: {
 		Message: "ticket already redeemed",
 		Kind:    Integrity,

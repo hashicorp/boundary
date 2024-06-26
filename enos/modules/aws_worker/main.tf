@@ -4,7 +4,7 @@
 terraform {
   required_providers {
     enos = {
-      source = "app.terraform.io/hashicorp-qti/enos"
+      source = "registry.terraform.io/hashicorp-forge/enos"
     }
   }
 }
@@ -130,7 +130,7 @@ resource "aws_instance" "worker" {
   vpc_security_group_ids = [aws_security_group.default.id]
   subnet_id              = aws_subnet.default.id
   key_name               = var.ssh_aws_keypair
-  iam_instance_profile   = var.iam_instance_profile_name
+  iam_instance_profile   = aws_iam_instance_profile.boundary_profile.name
   monitoring             = var.worker_monitoring
 
   root_block_device {
@@ -156,6 +156,22 @@ resource "enos_bundle_install" "worker" {
   artifactory = var.boundary_artifactory_release
   path        = var.local_artifact_path
   release     = var.boundary_release == null ? var.boundary_release : merge(var.boundary_release, { product = "boundary", edition = "oss" })
+
+  transport = {
+    ssh = {
+      host = aws_instance.worker.public_ip
+    }
+  }
+}
+
+resource "enos_remote_exec" "update_path_worker" {
+  depends_on = [enos_bundle_install.worker]
+
+  environment = {
+    BOUNDARY_INSTALL_DIR = var.boundary_install_dir
+  }
+
+  scripts = [abspath("${path.module}/scripts/set-up-login-shell-profile.sh")]
 
   transport = {
     ssh = {
@@ -199,4 +215,12 @@ resource "enos_boundary_start" "worker_start" {
       host = aws_instance.worker.public_ip
     }
   }
+}
+
+resource "random_string" "cluster_id" {
+  length  = 8
+  lower   = true
+  upper   = false
+  numeric = false
+  special = false
 }

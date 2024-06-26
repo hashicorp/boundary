@@ -575,6 +575,154 @@ func TestDevWorkerCredentialStoragePath(t *testing.T) {
 	}
 }
 
+func TestDevWorkerRecordingStorageMinimumAvailableCapacity(t *testing.T) {
+	t.Parallel()
+	td := t.TempDir()
+	tests := []struct {
+		name                           string
+		devWorkerProvidedConfiguration string
+		storagePath                    string
+		storageCapacity                string
+		expectedDiskSpace              uint64
+		expectedErrMsg                 string
+	}{
+		{
+			name: "empty storage with empty capacity",
+			devWorkerProvidedConfiguration: `
+			listener "tcp" {
+				purpose = "proxy"
+			}
+
+			worker {
+				name = "w_1234567890"
+				description = "A default worker created in dev mode"
+				initial_upstreams = ["127.0.0.1"]
+				tags {
+					type = ["dev", "local"]
+				}
+			}
+			`,
+			expectedDiskSpace: 0,
+			storagePath:       "",
+		},
+		{
+			name: "empty storage path with set capacity",
+			devWorkerProvidedConfiguration: `
+			listener "tcp" {
+				purpose = "proxy"
+			}
+
+			worker {
+				name = "w_1234567890"
+				description = "A default worker created in dev mode"
+				initial_upstreams = ["127.0.0.1"]
+				tags {
+					type = ["dev", "local"]
+				}
+				recording_storage_minimum_available_capacity = "4kib"
+			}
+			`,
+			expectedErrMsg: "recording_storage_path cannot be empty when providing recording_storage_minimum_available_capacity",
+		},
+		{
+			name: "storage path with empty capacity defaults to 500mib",
+			devWorkerProvidedConfiguration: fmt.Sprintf(`
+			listener "tcp" {
+				purpose = "proxy"
+			}
+
+			worker {
+				name = "w_1234567890"
+				description = "A default worker created in dev mode"
+				initial_upstreams = ["127.0.0.1"]
+				tags {
+					type = ["dev", "local"]
+				}
+				recording_storage_path = "%v"
+			}
+			`, td),
+			storagePath:       td,
+			expectedDiskSpace: 524288000,
+		},
+		{
+			name: "storage path with capacity string",
+			devWorkerProvidedConfiguration: fmt.Sprintf(`
+			listener "tcp" {
+				purpose = "proxy"
+			}
+
+			worker {
+				name = "w_1234567890"
+				description = "A default worker created in dev mode"
+				initial_upstreams = ["127.0.0.1"]
+				tags {
+					type = ["dev", "local"]
+				}
+				recording_storage_path = "%v"
+				recording_storage_minimum_available_capacity = "4kib"
+			}
+			`, td),
+			storagePath:       td,
+			expectedDiskSpace: 4096,
+		},
+		{
+			name: "storage path with raw byte value",
+			devWorkerProvidedConfiguration: fmt.Sprintf(`
+			listener "tcp" {
+				purpose = "proxy"
+			}
+
+			worker {
+				name = "w_1234567890"
+				description = "A default worker created in dev mode"
+				initial_upstreams = ["127.0.0.1"]
+				tags {
+					type = ["dev", "local"]
+				}
+				recording_storage_path = "%v"
+				recording_storage_minimum_available_capacity = "4096"
+			}
+			`, td),
+			storagePath:       td,
+			expectedDiskSpace: 4096,
+		},
+		{
+			name: "storage path with invalid capacity input",
+			devWorkerProvidedConfiguration: fmt.Sprintf(`
+			listener "tcp" {
+				purpose = "proxy"
+			}
+
+			worker {
+				name = "w_1234567890"
+				description = "A default worker created in dev mode"
+				initial_upstreams = ["127.0.0.1"]
+				tags {
+					type = ["dev", "local"]
+				}
+				recording_storage_path = "%v"
+				recording_storage_minimum_available_capacity = "gib"
+			}
+			`, td),
+			storagePath:    td,
+			expectedErrMsg: "could not parse capacity from input",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			parsed, err := Parse(devConfig + tt.devWorkerProvidedConfiguration)
+			if tt.expectedErrMsg != "" {
+				require.Error(t, err)
+				assert.ErrorContains(t, err, tt.expectedErrMsg)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.storagePath, parsed.Worker.RecordingStoragePath)
+			assert.Equal(t, tt.expectedDiskSpace, parsed.Worker.RecordingStorageMinimumAvailableDiskSpace)
+		})
+	}
+}
+
 func TestDevWorkerRecordingStoragePath(t *testing.T) {
 	t.Parallel()
 	td := t.TempDir()

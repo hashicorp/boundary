@@ -106,7 +106,7 @@ func (c *Client) Post(ctx context.Context, path string, body any, opt ...Option)
 }
 
 // request returns a retryablehttp.Request with the url set to the domain socket
-// associated with this client and proper headers set for client daemon requests.
+// associated with this client and proper headers set for client cache requests.
 func request(ctx context.Context, method, path string) *retryablehttp.Request {
 	req := &http.Request{
 		Method: method,

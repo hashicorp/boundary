@@ -82,6 +82,19 @@ The following method conventions are used within Boundary's API:
 
 `DELETE` is used for deleting a specific resource, and is only used against a particular resource path.
 
+## HTTP headers
+
+Clients that make requests to the controller API can inspect HTTP response headers to understand the configured limits and current usage.
+Responses may contain the following headers:
+
+- `RateLimit` - Provides the current limit, number of remaining requests, and the time at which the quota will reset for the limit that is closest to being exhausted for the requested resource and action.
+- `RateLimit-Policy` - Describes the limits for the requested resource and action.
+- `X-Correlation-ID` - Identifies a transaction over a series of requests and responses.
+The `X-Correlation-ID` header is a universally unique identifier (UUIDv4).
+If you provide an `X-Correlation-ID` header in an HTTP request, Boundary logs that value for all audit events related to the request.
+It then uses that value as the header when it makes related requests to an external system, such as Vault, so that you can correlate the event between the product logs.
+If you do not provide an `X-Correlation-ID` header, Boundary generates a unique value for each incoming request.
+
 ## Manage system resources
 
 If your controllers try to process every API request, they may either run out of resources or overwhelm the database server.

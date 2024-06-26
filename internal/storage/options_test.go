@@ -71,4 +71,17 @@ func Test_getOpts(t *testing.T) {
 		testOpts.WithBuffer = 4096
 		assert.Equal(opts, testOpts)
 	})
+
+	t.Run("WithMinimumAvailableDiskSpace", func(t *testing.T) {
+		t.Parallel()
+		assert := assert.New(t)
+		testOpts := getDefaultOptions()
+		opts := GetOpts()
+		assert.Equal(testOpts, opts)
+
+		testOpts = getDefaultOptions()
+		opts = GetOpts(WithMinimumAvailableDiskSpace(4096))
+		testOpts.WithMinimumAvailableDiskSpace = 4096
+		assert.Equal(opts, testOpts)
+	})
 }

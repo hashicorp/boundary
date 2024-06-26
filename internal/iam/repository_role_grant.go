@@ -391,19 +391,30 @@ func (r *Repository) ListRoleGrants(ctx context.Context, roleId string, opt ...O
 
 // ListRoleGrantScopes returns the grant scopes for the roleId and supports the WithLimit
 // option.
-func (r *Repository) ListRoleGrantScopes(ctx context.Context, roleId string, opt ...Option) ([]*RoleGrantScope, error) {
+func (r *Repository) ListRoleGrantScopes(ctx context.Context, roleIds []string, opt ...Option) ([]*RoleGrantScope, error) {
 	const op = "iam.(Repository).ListRoleGrantScopes"
-	if roleId == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing role id")
+	if len(roleIds) == 0 {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing role ids")
+	}
+	query := "?"
+	var args []any
+	for i, roleId := range roleIds {
+		if roleId == "" {
+			return nil, errors.New(ctx, errors.InvalidParameter, op, "missing role ids")
+		}
+		if i > 0 {
+			query = query + ", ?"
+		}
+		args = append(args, roleId)
 	}
 	var roleGrantScopes []*RoleGrantScope
-	if err := r.list(ctx, &roleGrantScopes, "role_id = ?", []any{roleId}, opt...); err != nil {
+	if err := r.list(ctx, &roleGrantScopes, fmt.Sprintf("role_id in (%s)", query), args, opt...); err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to lookup role grant scopes"))
 	}
 	return roleGrantScopes, nil
 }
 
-func (r *Repository) GrantsForUser(ctx context.Context, userId string, _ ...Option) ([]perms.GrantTuple, error) {
+func (r *Repository) GrantsForUser(ctx context.Context, userId string, _ ...Option) (perms.GrantTuples, error) {
 	const op = "iam.(Repository).GrantsForUser"
 	if userId == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing user id")

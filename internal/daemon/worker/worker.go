@@ -99,9 +99,17 @@ type recorderManager interface {
 // create its reverseConnReceiver
 var reverseConnReceiverFactory func() reverseConnReceiver
 
-var recordingStorageFactory func(ctx context.Context, path string, plgClients map[string]plgpb.StoragePluginServiceClient, enableLoopback bool) (storage.RecordingStorage, error)
+var recordingStorageFactory func(
+	ctx context.Context,
+	path string,
+	plgClients map[string]plgpb.StoragePluginServiceClient,
+	enableLoopback bool,
+	minimumAvailableDiskSpace uint64,
+) (storage.RecordingStorage, error)
 
 var recorderManagerFactory func(*Worker) (recorderManager, error)
+
+var eventListenerFactory func(*Worker) (event.EventListener, error)
 
 var initializeReverseGrpcClientCollectors = noopInitializePromCollectors
 
@@ -136,10 +144,15 @@ type Worker struct {
 
 	recorderManager recorderManager
 
-	everAuthenticated       *ua.Uint32
-	lastStatusSuccess       *atomic.Value
-	workerStartTime         time.Time
-	operationalState        *atomic.Value
+	everAuthenticated *ua.Uint32
+	lastStatusSuccess *atomic.Value
+	workerStartTime   time.Time
+	operationalState  *atomic.Value
+	// localStorageState is the current state of the local storage.
+	// The local storage state is updated based on the local storage events.
+	localStorageState *atomic.Value
+
+	storageEventListener    event.EventListener
 	upstreamConnectionState *atomic.Value
 
 	controllerMultihopConn *atomic.Value
@@ -215,6 +228,7 @@ func New(ctx context.Context, conf *Config) (*Worker, error) {
 		WorkerAuthCurrentKeyId:      new(ua.String),
 		operationalState:            new(atomic.Value),
 		downstreamConnManager:       cluster.NewDownstreamManager(),
+		localStorageState:           new(atomic.Value),
 		successfulStatusGracePeriod: new(atomic.Int64),
 		statusCallTimeoutDuration:   new(atomic.Int64),
 		upstreamConnectionState:     new(atomic.Value),
@@ -222,6 +236,7 @@ func New(ctx context.Context, conf *Config) (*Worker, error) {
 	}
 
 	w.operationalState.Store(server.UnknownOperationalState)
+	w.localStorageState.Store(server.UnknownLocalStorageState)
 
 	if reverseConnReceiverFactory != nil {
 		w.downstreamReceiver = reverseConnReceiverFactory()
@@ -236,6 +251,10 @@ func New(ctx context.Context, conf *Config) (*Worker, error) {
 		conf.RawConfig.Worker = new(config.Worker)
 	}
 
+	if w.conf.RawConfig.Worker.RecordingStoragePath == "" {
+		w.localStorageState.Store(server.NotConfiguredLocalStorageState)
+	}
+
 	if w.conf.RawConfig.Worker.RecordingStoragePath != "" && recordingStorageFactory != nil {
 		pluginLogger, err := event.NewHclogLogger(ctx, w.conf.Server.Eventer)
 		if err != nil {
@@ -246,6 +265,8 @@ func New(ctx context.Context, conf *Config) (*Worker, error) {
 
 		for _, enabledPlugin := range w.conf.Server.EnabledPlugins {
 			switch {
+			case enabledPlugin == base.EnabledPluginMinio && !w.conf.SkipPlugins:
+				fallthrough
 			case enabledPlugin == base.EnabledPluginAws && !w.conf.SkipPlugins:
 				pluginType := strings.ToLower(enabledPlugin.String())
 				client, cleanup, err := external_plugins.CreateStoragePlugin(
@@ -268,7 +289,12 @@ func New(ctx context.Context, conf *Config) (*Worker, error) {
 		}
 
 		// passing in an empty context so that storage can finish syncing during an emergency shutdown or interrupt
-		s, err := recordingStorageFactory(context.Background(), w.conf.RawConfig.Worker.RecordingStoragePath, plgClients, enableStorageLoopback)
+		s, err := recordingStorageFactory(
+			context.Background(),
+			w.conf.RawConfig.Worker.RecordingStoragePath,
+			plgClients, enableStorageLoopback,
+			w.conf.RawConfig.Worker.RecordingStorageMinimumAvailableDiskSpace,
+		)
 		if err != nil {
 			return nil, fmt.Errorf("error create recording storage: %w", err)
 		}
@@ -310,6 +336,14 @@ func New(ctx context.Context, conf *Config) (*Worker, error) {
 	}
 	// FIXME: This is really ugly, but works.
 	session.CloseCallTimeout.Store(w.successfulStatusGracePeriod.Load())
+
+	if eventListenerFactory != nil {
+		var err error
+		w.storageEventListener, err = eventListenerFactory(w)
+		if err != nil {
+			return nil, fmt.Errorf("error calling eventListenerFactory: %w", err)
+		}
+	}
 
 	if recorderManagerFactory != nil {
 		var err error
@@ -529,6 +563,16 @@ func (w *Worker) Start() error {
 		return errors.Wrap(w.baseContext, err, op, errors.WithMsg("error starting worker listeners"))
 	}
 
+	if w.storageEventListener != nil {
+		if err := w.storageEventListener.Start(w.baseContext); err != nil {
+			return errors.Wrap(w.baseContext, err, op, errors.WithMsg("error starting worker event listener"))
+		}
+
+		if w.RecordingStorage != nil {
+			w.localStorageState.Store(w.RecordingStorage.GetLocalStorageState(w.baseContext))
+		}
+	}
+
 	w.operationalState.Store(server.ActiveOperationalState)
 
 	// Rather than deal with some of the potential error conditions for Add on
@@ -670,9 +714,17 @@ func (w *Worker) Shutdown() error {
 		ar.SetAddresses(nil)
 	}
 
+	if w.storageEventListener != nil {
+		err := w.storageEventListener.Shutdown(w.baseContext)
+		if err != nil {
+			return fmt.Errorf("error shutting down worker event listener: %w", err)
+		}
+	}
+
 	w.started.Store(false)
 	w.tickerWg.Wait()
 	recManWg.Wait()
+
 	if w.conf.Eventer != nil {
 		if err := w.conf.Eventer.FlushNodes(context.Background()); err != nil {
 			return fmt.Errorf("error flushing worker eventer nodes: %w", err)

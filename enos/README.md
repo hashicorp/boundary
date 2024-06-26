@@ -13,17 +13,12 @@ for further information regarding installation, execution or composing Enos scen
 ## Requirements
 * AWS access. HashiCorp Boundary developers should use Doormat.
 * Terraform >= 1.0
-* Enos >= v0.0.10. You can [install it from a release channel](https://github.com/hashicorp/Enos-Docs/blob/main/installation.md) or use `make tools` install it into `$GOBIN`.
-* Access to the QTI org in Terraform Cloud. HashiCorp Boundary developers can
-  access this token in 1Password or request their own in #team-quality on slack.
+* Enos >= v0.0.28 (`brew tap hashicorp/tap && brew update && brew install hashicorp/tap/enos`)
 * An SSH keypair in the AWS region you wish to run the scenario. You can use
   doormat to login to the AWS console to create or upload an existing keypair.
 * Boundary installed locally. `make install` will put it in `$GOPATH/bin`, which
   you can use with the `local_boundary_dir` variable, e.g.
   `local_boundary_dir = /Users/<user>/.go/bin`.
-* For the Bats CLI UI scenarios, you'll need `bats`, `jq` and a valid keychain
-  configured. Windows and macOS will use the system keychains by default. If
-  you're using Linux it will default to [pass](https://www.passwordstore.org/).
 
 ## Scenarios Variables
 In CI, each scenario is executed via Github Actions and has been configured using
@@ -33,7 +28,6 @@ For local execution you can specify all the required variables using environment
 variables, or you can update `enos.vars.hcl` with values and uncomment the lines.
 
 Variables that are required:
-- `tfc_api_token`
 - `aws_ssh_private_key_path`
 - `aws_ssh_keypair_name`
 - `enos_user`

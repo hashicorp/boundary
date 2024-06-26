@@ -27,30 +27,33 @@ func TestCliAlias(t *testing.T) {
 	// Set up the test
 	ctx := context.Background()
 	boundary.AuthenticateAdminCli(t, ctx)
-	newOrgId := boundary.CreateNewOrgCli(t, ctx)
+	orgId, err := boundary.CreateOrgCli(t, ctx)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		ctx := context.Background()
 		boundary.AuthenticateAdminCli(t, ctx)
-		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", newOrgId))
+		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", orgId))
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
-	newProjectId := boundary.CreateNewProjectCli(t, ctx, newOrgId)
+	projectId, err := boundary.CreateProjectCli(t, ctx, orgId)
+	require.NoError(t, err)
 
 	// Create an alias for a target
-	newTargetId := boundary.CreateNewTargetCli(
+	targetId, err := boundary.CreateTargetCli(
 		t,
 		ctx,
-		newProjectId,
+		projectId,
 		c.TargetPort,
 		target.WithAddress(c.TargetAddress),
 	)
+	require.NoError(t, err)
 	aliasTargetAddress := "example.alias.boundary"
 	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"aliases", "create", "target",
 			"-scope-id", "global",
 			"-value", aliasTargetAddress,
-			"-destination-id", newTargetId,
+			"-destination-id", targetId,
 			"-format", "json",
 		),
 	)
@@ -111,18 +114,24 @@ func TestCliAlias(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create another alias that uses a target with a host set
-	newHostCatalogId := boundary.CreateNewHostCatalogCli(t, ctx, newProjectId)
-	newHostSetId := boundary.CreateNewHostSetCli(t, ctx, newHostCatalogId)
-	newHostId := boundary.CreateNewHostCli(t, ctx, newHostCatalogId, c.TargetAddress)
-	boundary.AddHostToHostSetCli(t, ctx, newHostSetId, newHostId)
-	targetWithHost := boundary.CreateNewTargetCli(
+	hostCatalogId, err := boundary.CreateHostCatalogCli(t, ctx, projectId)
+	require.NoError(t, err)
+	hostSetId, err := boundary.CreateHostSetCli(t, ctx, hostCatalogId)
+	require.NoError(t, err)
+	hostId, err := boundary.CreateHostCli(t, ctx, hostCatalogId, c.TargetAddress)
+	require.NoError(t, err)
+	err = boundary.AddHostToHostSetCli(t, ctx, hostSetId, hostId)
+	require.NoError(t, err)
+	targetWithHost, err := boundary.CreateTargetCli(
 		t,
 		ctx,
-		newProjectId,
+		projectId,
 		c.TargetPort,
 		target.WithName("targetWithHost"),
 	)
-	boundary.AddHostSourceToTargetCli(t, ctx, targetWithHost, newHostSetId)
+	require.NoError(t, err)
+	err = boundary.AddHostSourceToTargetCli(t, ctx, targetWithHost, hostSetId)
+	require.NoError(t, err)
 	aliasTargetHost := "aliasTargetHost"
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
@@ -156,12 +165,18 @@ func TestCliAlias(t *testing.T) {
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
 
-	// Update the alias to include a host id
+	// Create invalid host and add it to the host set
+	invalidHostId, err := boundary.CreateHostCli(t, ctx, hostCatalogId, "invalid-address")
+	require.NoError(t, err)
+	err = boundary.AddHostToHostSetCli(t, ctx, hostSetId, invalidHostId)
+	require.NoError(t, err)
+
+	// Update the alias to include the valid host id
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"aliases", "update", "target",
 			"-id", aliasTargetHostId,
-			"-authorize-session-host-id", newHostId,
+			"-authorize-session-host-id", hostId,
 			"-format", "json",
 		),
 	)

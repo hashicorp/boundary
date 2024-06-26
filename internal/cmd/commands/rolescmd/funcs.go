@@ -32,8 +32,6 @@ type extraCmdVars struct {
 
 func extraActionsFlagsMapFuncImpl() map[string][]string {
 	return map[string][]string{
-		"create":              {"grant-scope-id"},
-		"update":              {"grant-scope-id"},
 		"add-principals":      {"id", "principal", "version"},
 		"set-principals":      {"id", "principal", "version"},
 		"remove-principals":   {"id", "principal", "version"},
@@ -207,20 +205,6 @@ func extraFlagsFuncImpl(c *Command, _ *base.FlagSets, f *base.FlagSet) {
 
 func extraFlagsHandlingFuncImpl(c *Command, _ *base.FlagSets, opts *[]roles.Option) bool {
 	switch c.Func {
-	case "create", "update":
-		switch len(c.flagGrantScopeIds) {
-		case 0:
-		case 1:
-			if c.flagGrantScopeIds[0] == "null" {
-				*opts = append(*opts, roles.DefaultGrantScopeId())
-			} else {
-				*opts = append(*opts, roles.WithGrantScopeId(c.flagGrantScopeIds[0]))
-			}
-		default:
-			c.UI.Error("-grant-scope-id cannot be specified multiple times when using the deprecated create/update grant_scope_id mechanism")
-			return false
-		}
-
 	case "add-principals", "remove-principals":
 		if len(c.flagPrincipals) == 0 {
 			c.UI.Error("No principals supplied via -principal")
@@ -426,9 +410,6 @@ func printItemTable(item *roles.Role, resp *api.Response) string {
 	}
 	if item.Description != "" {
 		nonAttributeMap["Description"] = item.Description
-	}
-	if item.GrantScopeId != "" {
-		nonAttributeMap["Grant Scope ID"] = item.GrantScopeId
 	}
 
 	maxLength := base.MaxAttributesLength(nonAttributeMap, nil, nil)

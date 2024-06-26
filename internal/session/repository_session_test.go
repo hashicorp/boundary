@@ -32,6 +32,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	"github.com/hashicorp/go-uuid"
 	"github.com/jackc/pgconn"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -502,6 +503,31 @@ func TestRepository_CreateSession(t *testing.T) {
 			},
 		},
 		{
+			name: "valid-with-correlation-id",
+			args: args{
+				composedOf: func() ComposedOf {
+					c := TestSessionParams(t, conn, wrapper, iamRepo)
+					c.CorrelationId, err = uuid.GenerateUUID()
+					require.NoError(t, err)
+					return c
+				}(),
+				workerAddresses: workerAddresses,
+			},
+		},
+		{
+			name: "invalid-correlation-id",
+			args: args{
+				composedOf: func() ComposedOf {
+					c := TestSessionParams(t, conn, wrapper, iamRepo)
+					c.CorrelationId = "invalid-format"
+					return c
+				}(),
+				workerAddresses: workerAddresses,
+			},
+			wantErr:     true,
+			wantIsError: errors.InvalidTextRepresentation,
+		},
+		{
 			name: "invalid-protocol-worker",
 			args: args{
 				composedOf: func() ComposedOf {
@@ -642,6 +668,7 @@ func TestRepository_CreateSession(t *testing.T) {
 				DynamicCredentials: tt.args.composedOf.DynamicCredentials,
 				StaticCredentials:  tt.args.composedOf.StaticCredentials,
 				ProtocolWorkerId:   tt.args.composedOf.ProtocolWorkerId,
+				CorrelationId:      tt.args.composedOf.CorrelationId,
 			}
 			ses, err := repo.CreateSession(context.Background(), wrapper, s, tt.args.workerAddresses)
 
@@ -1892,9 +1919,8 @@ func TestRepository_deleteTerminated(t *testing.T) {
 	}
 }
 
-func Test_decryptAndMaybeUpdateSession(t *testing.T) {
+func Test_decrypt(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
-	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	kmsRepo := kms.TestKms(t, conn, wrapper)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
@@ -1902,89 +1928,41 @@ func Test_decryptAndMaybeUpdateSession(t *testing.T) {
 
 	t.Run("errors-with-invalid-kms", func(t *testing.T) {
 		s := TestDefaultSession(t, conn, wrapper, iamRepo)
-		err := decryptAndMaybeUpdateSession(ctx, nil, s, rw)
+		err := decrypt(ctx, nil, s)
 		require.Error(t, err)
 	})
 	t.Run("errors-with-invalid-session", func(t *testing.T) {
-		err := decryptAndMaybeUpdateSession(ctx, kmsRepo, nil, rw)
-		require.Error(t, err)
-	})
-	t.Run("errors-with-invalid-writer", func(t *testing.T) {
-		s := TestDefaultSession(t, conn, wrapper, iamRepo)
-		err := decryptAndMaybeUpdateSession(ctx, kmsRepo, s, nil)
+		err := decrypt(ctx, kmsRepo, nil)
 		require.Error(t, err)
 	})
 	t.Run("errors-with-invalid-session-project-id", func(t *testing.T) {
 		s := TestDefaultSession(t, conn, wrapper, iamRepo)
 		s.ProjectId = ""
-		err := decryptAndMaybeUpdateSession(ctx, kmsRepo, s, rw)
+		err := decrypt(ctx, kmsRepo, s)
 		require.Error(t, err)
 	})
 	t.Run("errors-with-invalid-session-key-id", func(t *testing.T) {
 		s := TestDefaultSession(t, conn, wrapper, iamRepo)
 		s.KeyId = ""
-		err := decryptAndMaybeUpdateSession(ctx, kmsRepo, s, rw)
+		err := decrypt(ctx, kmsRepo, s)
 		require.Error(t, err)
 	})
 	t.Run("errors-with-invalid-session-user-id", func(t *testing.T) {
 		s := TestDefaultSession(t, conn, wrapper, iamRepo)
 		s.UserId = ""
-		err := decryptAndMaybeUpdateSession(ctx, kmsRepo, s, rw)
+		err := decrypt(ctx, kmsRepo, s)
 		require.Error(t, err)
 	})
 	t.Run("errors-with-invalid-session-public-id", func(t *testing.T) {
 		s := TestDefaultSession(t, conn, wrapper, iamRepo)
 		s.PublicId = ""
-		err := decryptAndMaybeUpdateSession(ctx, kmsRepo, s, rw)
+		err := decrypt(ctx, kmsRepo, s)
 		require.Error(t, err)
 	})
 	t.Run("session-with-local-session-key-succeeds", func(t *testing.T) {
 		s := TestDefaultSession(t, conn, wrapper, iamRepo)
-		err := decryptAndMaybeUpdateSession(ctx, kmsRepo, s, rw)
+		err := decrypt(ctx, kmsRepo, s)
 		require.NoError(t, err)
-	})
-	t.Run("session-with-derived-session-key-succeeds", func(t *testing.T) {
-		s := TestDefaultSession(t, conn, wrapper, iamRepo)
-		s.CtCertificatePrivateKey = nil
-		s.CertificatePrivateKey = nil
-		s.TofuToken = nil
-		s.CtTofuToken = nil
-		err := decryptAndMaybeUpdateSession(ctx, kmsRepo, s, rw)
-		require.NoError(t, err)
-	})
-	t.Run("session-with-derived-session-key-and-tofu-token-succeeds", func(t *testing.T) {
-		s := TestDefaultSession(t, conn, wrapper, iamRepo)
-		s.CtCertificatePrivateKey = nil
-		s.CertificatePrivateKey = nil
-		s.TofuToken = []byte("A token")
-		actualKeyId := s.KeyId
-		databaseWrapper, err := kmsRepo.GetWrapper(ctx, s.ProjectId, kms.KeyPurposeDatabase)
-		require.NoError(t, err)
-		err = s.encrypt(ctx, databaseWrapper)
-		require.NoError(t, err)
-		s.KeyId = actualKeyId // Restore this as the encrypt call above will overwrite it.
-		err = decryptAndMaybeUpdateSession(ctx, kmsRepo, s, rw)
-		require.NoError(t, err)
-	})
-	t.Run("session-with-derived-session-key-and-tofu-token-cannot-be-decrypted", func(t *testing.T) {
-		s := TestDefaultSession(t, conn, wrapper, iamRepo)
-		s.CtCertificatePrivateKey = nil
-		s.CertificatePrivateKey = nil
-		s.TofuToken = []byte("A token")
-		actualKeyId := s.KeyId
-		databaseWrapper, err := kmsRepo.GetWrapper(ctx, s.ProjectId, kms.KeyPurposeDatabase)
-		require.NoError(t, err)
-		err = s.encrypt(ctx, databaseWrapper)
-		require.NoError(t, err)
-		databaseKeyId := s.KeyId
-		err = kmsRepo.RotateKeys(ctx, s.ProjectId)
-		require.NoError(t, err)
-		ok, err := kmsRepo.DestroyKeyVersion(ctx, s.ProjectId, databaseKeyId)
-		require.NoError(t, err)
-		assert.True(t, ok)
-		s.KeyId = actualKeyId // Restore this as the encrypt call above will overwrite it.
-		err = decryptAndMaybeUpdateSession(ctx, kmsRepo, s, rw)
-		require.ErrorContains(t, err, "You may need to recreate your session")
 	})
 }
 

@@ -38,10 +38,13 @@ The DEKs are encrypted with the scope's root KEK, and this is in turn encrypted 
 A nonce and creation time are included as an encrypted payload, formatted as a token, and sent to the controller.
 The time and nonce are used to ensure that a value cannot be replayed by an adversary, and also to ensure that each operation must be individually authenticated by a client, so that revoking access to the KMS has an immediate result.
 
-The following key is optional:
+The following keys are optional:
 
 - **Worker-auth key (Optional)**: The worker-auth KMS key is shared by the controller and worker to authenticate a worker to the controller.
 If a worker is used with PKI authentication, this is unnecessary.
+- **BSR key (Optional)**: The BSR KMS key is required for session recording.
+Boundary uses the BSR key for encrypting data and checking the integrity of recordings.
+If you do not add a BSR key to your controller configuration, you receive an error when you attempt to enable session recording.
 
 There are other optional KMS keys that you can configure for different encryption scenarios.
 These scenarios include Boundary worker PKI auth encryption and Boundary worker or controller configuration encryption.
@@ -237,12 +240,21 @@ kms "awskms" {
   endpoint   = "https://vpce-0e1bb1852241f8cc6-pzi0do8n.kms.us-east-1.vpce.amazonaws.com"
 }
 
-# Worker-Auth KMS Key (optional, only needed if using
+# Worker-Auth KMS Key (optional, only needed if you use
 # KMS authenticated workers)
 kms "awskms" {
   purpose    = "worker-auth"
   region     = "us-east-1"
   kms_key_id = "19ec80b0-dfdd-4d97-8164-c6examplekey3"
+  endpoint   = "https://vpce-0e1bb1852241f8cc6-pzi0do8n.kms.us-east-1.vpce.amazonaws.com"
+}
+
+# BSR KMS Key (optional, only needed if you use the
+# session recording feature)
+kms "awskms" {
+  purpose    = "bsr"
+  region     = "us-east-1"
+  kms_key_id = "19ec80b0-dfdd-4d97-8164-c6examplekey4"
   endpoint   = "https://vpce-0e1bb1852241f8cc6-pzi0do8n.kms.us-east-1.vpce.amazonaws.com"
 }
 ```
@@ -289,12 +301,15 @@ Refer to the documentation for additional [top-level configuration options](/bou
 Before you can start Boundary, you must initialize the database from one Boundary controller.
 This operation is only required once; it will execute the required database migrations for the Boundary cluster to operate.
 
-The following command with the included flags creates initial resources in Boundary as an example.
-For finer control over these resources, remvoe the flags.
+```shell-session
+boundary database init -config /etc/boundary.d/controller.hcl
+```
 
-Run the following command to initialize the database:
+Boundary automatically generates a number of resources to make getting started easier. Default scopes, auth methods,
+user, account, and targets are some of the resources Boundary automatically generates unless you configure it not to. These
+resources, however, are not required. You can add the following flags to skip creating these initial resources:
 
-```hcl
+```shell-session
 boundary database init \
    -skip-auth-method-creation \
    -skip-host-resources-creation \
@@ -303,9 +318,9 @@ boundary database init \
    -config /etc/boundary.d/controller.hcl
 ```
 
-You can use the help output for the `init` command to view the flags available to skip the creation of any auto-generated resources:
+Use the following command to view the help for additional options:
 
-```hcl
+```shell-session
 boundary database init -h
 ```
 
@@ -322,5 +337,5 @@ Run the following commands to start the service:
 Upon logging in to Boundary for the first time, HashiCorp recommends creating an admin user for the global and project level scopes to manage Boundary.
 This allows you to configure targets within those scopes and manage them.
 
-We recommend that you use the [KMS recovery workflow](/boundary/docs/install-boundary/no-gen-resources#recovery-kms-workflow) to log in to Boundary for the first time.
-Refer to [Creating your first login account](/boundary/docs/install-boundary/no-gen-resources/#creating-your-first-login-account) to learn about setting up your first auth method, user, account, and role to log in to Boundary going forward without the recovery KMS workflow.
+HashiCorp recommends that you use the [KMS recovery workflow](/boundary/docs/install-boundary/initialize#log-in-with-recovery-kms) to log in to Boundary for the first time.
+Refer to [Creating your first login account](/boundary/docs/install-boundary/initialize#create-your-first-login-account) to learn about setting up your first auth method, user, account, and role to log in to Boundary going forward without the recovery KMS workflow.

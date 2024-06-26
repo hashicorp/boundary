@@ -5,7 +5,6 @@ package session
 
 import (
 	"context"
-	stderrors "errors"
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/errors"
@@ -44,27 +43,23 @@ func WorkerStatusReport(ctx context.Context, repo *Repository, connRepo *Connect
 		}
 	}
 
-	var merr error
 	err := connRepo.updateBytesUpBytesDown(ctx, reportedConnections...)
 	if err != nil {
-		merr = stderrors.Join(merr, errors.New(ctx, errors.Internal, op, fmt.Sprintf("failed to update bytes up and down for worker reported connections: %v", err)))
+		return nil, errors.New(ctx, errors.Internal, op, fmt.Sprintf("failed to update bytes up and down for worker reported connections: %v", err))
 	}
 
 	notActive, err := repo.CheckIfNotActive(ctx, reportedSessions)
 	if err != nil {
-		merr = stderrors.Join(merr, errors.New(ctx, errors.Internal, op, fmt.Sprintf("Error checking session state for worker %s: %v", workerId, err)))
+		return nil, errors.New(ctx, errors.Internal, op, fmt.Sprintf("Error checking session state for worker %s: %v", workerId, err))
 	}
 
 	closed, err := connRepo.closeOrphanedConnections(ctx, workerId, reportedConnectionIds)
 	if err != nil {
-		merr = stderrors.Join(merr, errors.New(ctx, errors.Internal, op, fmt.Sprintf("Error closing orphaned connections for worker %s: %v", workerId, err)))
+		return nil, errors.New(ctx, errors.Internal, op, fmt.Sprintf("Error closing orphaned connections for worker %s: %v", workerId, err))
 	}
 	if len(closed) > 0 {
 		event.WriteSysEvent(ctx, op, "marked unclaimed connections as closed", "worker_id", workerId, "count", len(closed))
 	}
 
-	if merr != nil {
-		return nil, merr
-	}
 	return notActive, nil
 }

@@ -16,7 +16,7 @@ import (
 	"github.com/hashicorp/boundary/api/aliases"
 	"github.com/hashicorp/boundary/api/sessions"
 	"github.com/hashicorp/boundary/api/targets"
-	daemoncmd "github.com/hashicorp/boundary/internal/clientcache/cmd/daemon"
+	cachecmd "github.com/hashicorp/boundary/internal/clientcache/cmd/cache"
 	"github.com/hashicorp/boundary/internal/clientcache/internal/client"
 	"github.com/hashicorp/boundary/internal/clientcache/internal/daemon"
 	"github.com/hashicorp/boundary/internal/cmd/base"
@@ -30,12 +30,12 @@ var (
 	_ cli.CommandAutocomplete = (*SearchCommand)(nil)
 
 	supportedResourceTypes = []string{
-		"aliases",
+		"resolvable-aliases",
 		"targets",
 		"sessions",
 	}
 
-	errDaemonNotRunning = stderrors.New("The deamon process is not running.")
+	errCacheNotRunning = stderrors.New("The cache process is not running.")
 )
 
 type SearchCommand struct {
@@ -46,7 +46,7 @@ type SearchCommand struct {
 }
 
 func (c *SearchCommand) Synopsis() string {
-	return "Search Boundary resources using client side cache"
+	return "Search Boundary resources using client cache"
 }
 
 func (c *SearchCommand) Help() string {
@@ -154,7 +154,7 @@ func (c *SearchCommand) Run(args []string) int {
 		return base.CommandCliError
 	}
 	if apiErr != nil {
-		c.PrintApiError(apiErr, "Error from daemon when performing search")
+		c.PrintApiError(apiErr, "Error from cache when performing search")
 		return base.CommandApiError
 	}
 
@@ -165,8 +165,8 @@ func (c *SearchCommand) Run(args []string) int {
 		}
 	default:
 		switch {
-		case len(result.Aliases) > 0:
-			c.UI.Output(printAliasListTable(result.Aliases))
+		case len(result.ResolvableAliases) > 0:
+			c.UI.Output(printAliasListTable(result.ResolvableAliases))
 		case len(result.Targets) > 0:
 			c.UI.Output(printTargetListTable(result.Targets))
 		case len(result.Sessions) > 0:
@@ -204,7 +204,7 @@ func (c *SearchCommand) Search(ctx context.Context) (*api.Response, *daemon.Sear
 		opts = append(opts, client.WithOutputCurlString())
 	}
 
-	dotPath, err := daemoncmd.DefaultDotDirectory(ctx)
+	dotPath, err := cachecmd.DefaultDotDirectory(ctx)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -215,7 +215,7 @@ func search(ctx context.Context, daemonPath string, fb filterBy, opt ...client.O
 	addr := daemon.SocketAddress(daemonPath)
 	_, err := os.Stat(addr.Path)
 	if addr.Scheme == "unix" && err != nil {
-		return nil, nil, nil, errDaemonNotRunning
+		return nil, nil, nil, errCacheNotRunning
 	}
 	c, err := client.New(ctx, addr)
 	if err != nil {
@@ -232,12 +232,12 @@ func search(ctx context.Context, daemonPath string, fb filterBy, opt ...client.O
 	}
 	resp, err := c.Get(ctx, "/v1/search", q, opt...)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("Error when sending request to the daemon: %w.", err)
+		return nil, nil, nil, fmt.Errorf("Error when sending request to the cache: %w.", err)
 	}
 	res := &daemon.SearchResult{}
 	apiErr, err := resp.Decode(&res)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("Error when decoding request from the daemon: %w.", err)
+		return nil, nil, nil, fmt.Errorf("Error when decoding request from the cache: %w.", err)
 	}
 	if apiErr != nil {
 		return resp, nil, apiErr, nil
@@ -247,12 +247,12 @@ func search(ctx context.Context, daemonPath string, fb filterBy, opt ...client.O
 
 func printAliasListTable(items []*aliases.Alias) string {
 	if len(items) == 0 {
-		return "No aliases found"
+		return "No resolvable aliases found"
 	}
 	var output []string
 	output = []string{
 		"",
-		"Alias information:",
+		"Resolvable Alias information:",
 	}
 	for i, item := range items {
 		if i > 0 {
@@ -267,11 +267,6 @@ func printAliasListTable(items []*aliases.Alias) string {
 				fmt.Sprintf("  ID:                    %s", "(not available)"),
 			)
 		}
-		if item.ScopeId != "" {
-			output = append(output,
-				fmt.Sprintf("    Scope ID:            %s", item.ScopeId),
-			)
-		}
 		if item.Version > 0 {
 			output = append(output,
 				fmt.Sprintf("    Version:             %d", item.Version),
@@ -282,16 +277,6 @@ func printAliasListTable(items []*aliases.Alias) string {
 				fmt.Sprintf("    Type:                %s", item.Type),
 			)
 		}
-		if item.Name != "" {
-			output = append(output,
-				fmt.Sprintf("    Name:                %s", item.Name),
-			)
-		}
-		if item.Description != "" {
-			output = append(output,
-				fmt.Sprintf("    Description:         %s", item.Description),
-			)
-		}
 		if item.DestinationId != "" {
 			output = append(output,
 				fmt.Sprintf("    DestinationId:       %s", item.DestinationId),
@@ -300,12 +285,6 @@ func printAliasListTable(items []*aliases.Alias) string {
 		if item.Value != "" {
 			output = append(output,
 				fmt.Sprintf("    Value:               %s", item.Value),
-			)
-		}
-		if len(item.AuthorizedActions) > 0 {
-			output = append(output,
-				"    Authorized Actions:",
-				base.WrapSlice(6, item.AuthorizedActions),
 			)
 		}
 	}

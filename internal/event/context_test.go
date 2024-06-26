@@ -18,6 +18,7 @@ import (
 	"github.com/hashicorp/eventlogger/filters/encrypt"
 	"github.com/hashicorp/eventlogger/formatter_filters/cloudevents"
 	"github.com/hashicorp/go-hclog"
+	"github.com/hashicorp/go-uuid"
 	"github.com/mitchellh/copystructure"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -32,15 +33,16 @@ const (
 )
 
 type testAudit struct {
-	Id          string             `json:"id"`                     // std audit/boundary field
-	Version     string             `json:"version"`                // std audit/boundary field
-	Type        string             `json:"type"`                   // std audit field
-	Timestamp   time.Time          `json:"timestamp"`              // std audit field
-	RequestInfo *event.RequestInfo `json:"request_info,omitempty"` // boundary field
-	Auth        *event.Auth        `json:"auth,omitempty"`         // std audit field
-	Request     *event.Request     `json:"request,omitempty"`      // std audit field
-	Response    *event.Response    `json:"response,omitempty"`     // std audit field
-	Flush       bool               `json:"-"`
+	Id            string             `json:"id"`                     // std audit/boundary field
+	Version       string             `json:"version"`                // std audit/boundary field
+	Type          string             `json:"type"`                   // std audit field
+	Timestamp     time.Time          `json:"timestamp"`              // std audit field
+	RequestInfo   *event.RequestInfo `json:"request_info,omitempty"` // boundary field
+	Auth          *event.Auth        `json:"auth,omitempty"`         // std audit field
+	Request       *event.Request     `json:"request,omitempty"`      // std audit field
+	Response      *event.Response    `json:"response,omitempty"`     // std audit field
+	Flush         bool               `json:"-"`
+	CorrelationId string             `json:"correlation_id,omitempty"`
 }
 
 func Test_NewRequestInfoContext(t *testing.T) {
@@ -670,6 +672,10 @@ func Test_WriteAudit(t *testing.T) {
 	require.NoError(t, err)
 	ctx, err = event.NewRequestInfoContext(ctx, info)
 	require.NoError(t, err)
+	corId, err := uuid.GenerateUUID()
+	require.NoError(t, err)
+	ctx, err = event.NewCorrelationIdContext(ctx, corId)
+	require.NoError(t, err)
 
 	testAuth := &event.Auth{
 		AuthTokenId: "test_auth_token_id",
@@ -763,7 +769,11 @@ func Test_WriteAudit(t *testing.T) {
 		{
 			name:    "use-syseventer",
 			noFlush: true,
-			ctx:     context.Background(),
+			ctx: func() context.Context {
+				ctx, err := event.NewCorrelationIdContext(context.Background(), corId)
+				require.NoError(t, err)
+				return ctx
+			}(),
 			auditOpts: [][]event.Option{
 				{
 					event.WithAuth(
@@ -800,6 +810,7 @@ func Test_WriteAudit(t *testing.T) {
 					}
 					return dup.(*event.Request)
 				}(),
+				CorrelationId: corId,
 			},
 			setup: func() error {
 				return event.InitSysEventer(testLogger, testLock, "use-syseventer", event.WithEventerConfig(&c.EventerConfig))
@@ -812,6 +823,8 @@ func Test_WriteAudit(t *testing.T) {
 			noFlush: true,
 			ctx: func() context.Context {
 				ctx, cancel := context.WithCancel(context.Background())
+				ctx, err = event.NewCorrelationIdContext(ctx, corId)
+				require.NoError(t, err)
 				defer cancel()
 				return ctx
 			}(),
@@ -839,6 +852,7 @@ func Test_WriteAudit(t *testing.T) {
 					}
 					return dup.(*event.Request)
 				}(),
+				CorrelationId: corId,
 			},
 			setup: func() error {
 				return event.InitSysEventer(testLogger, testLock, "use-syseventer", event.WithEventerConfig(&c.EventerConfig))
@@ -859,7 +873,8 @@ func Test_WriteAudit(t *testing.T) {
 				},
 			},
 			wantAudit: &testAudit{
-				Id: "411",
+				Id:            "411",
+				CorrelationId: corId,
 				Auth: func() *event.Auth {
 					dup, err := copystructure.Copy(testAuth)
 					require.NoError(t, err)
@@ -939,12 +954,13 @@ func Test_WriteAudit(t *testing.T) {
 					Time:            gotAudit.Time,
 					Type:            "audit",
 					Data: map[string]any{
-						"auth":      tt.wantAudit.Auth,
-						"id":        gotAudit.Data.(map[string]any)["id"],
-						"timestamp": now,
-						"request":   tt.wantAudit.Request,
-						"type":      apiRequest,
-						"version":   testAuditVersion,
+						"auth":           tt.wantAudit.Auth,
+						"id":             gotAudit.Data.(map[string]any)["id"],
+						"timestamp":      now,
+						"request":        tt.wantAudit.Request,
+						"type":           apiRequest,
+						"version":        testAuditVersion,
+						"correlation_id": tt.wantAudit.CorrelationId,
 					},
 				}
 				if tt.wantAudit.Id != "" {
@@ -1318,4 +1334,96 @@ func testLogger(t *testing.T, testLock hclog.Locker) hclog.Logger {
 		Name:       "test",
 		JSONFormat: true,
 	})
+}
+
+func Test_NewCorrelationIdContext(t *testing.T) {
+	corId, err := uuid.GenerateUUID()
+	require.NoError(t, err)
+
+	tests := []struct {
+		name            string
+		ctx             context.Context
+		correlationId   string
+		wantErrIs       error
+		wantErrContains string
+	}{
+		{
+			name:            "missing-ctx",
+			wantErrIs:       event.ErrInvalidParameter,
+			wantErrContains: "missing context",
+		},
+		{
+			name:            "missing-correlation-id",
+			ctx:             context.Background(),
+			wantErrIs:       event.ErrInvalidParameter,
+			wantErrContains: "missing correlation id",
+		},
+		{
+			name:          "valid",
+			ctx:           context.Background(),
+			correlationId: corId,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			ctx, err := event.NewCorrelationIdContext(tt.ctx, tt.correlationId)
+			if tt.wantErrIs != nil {
+				require.Errorf(err, "should have gotten an error")
+				assert.Nilf(ctx, "context should be nil")
+				assert.ErrorIs(err, tt.wantErrIs)
+				if tt.wantErrContains != "" {
+					assert.Contains(err.Error(), tt.wantErrContains)
+				}
+				return
+			}
+			require.NoError(err)
+			require.NotNil(ctx)
+			got, ok := event.CorrelationIdFromContext(ctx)
+			require.True(ok)
+			assert.Equal(tt.correlationId, got)
+		})
+	}
+}
+
+func Test_CorrelationIdFromContext(t *testing.T) {
+	corId, err := uuid.GenerateUUID()
+	require.NoError(t, err)
+	testCtx, err := event.NewCorrelationIdContext(context.Background(), corId)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name      string
+		ctx       context.Context
+		wantCorId string
+		wantNotOk bool
+	}{
+		{
+			name:      "missing-ctx",
+			wantNotOk: true,
+		},
+		{
+			name:      "no-correlation-id",
+			ctx:       context.Background(),
+			wantNotOk: true,
+		},
+		{
+			name:      "valid",
+			ctx:       testCtx,
+			wantCorId: corId,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			got, ok := event.CorrelationIdFromContext(tt.ctx)
+			if tt.wantNotOk {
+				require.False(ok)
+				assert.Empty(got)
+				return
+			}
+			require.True(ok)
+			assert.Equal(tt.wantCorId, got)
+		})
+	}
 }

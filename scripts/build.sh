@@ -93,6 +93,8 @@ if [ "${BOUNDARY_INSTALL_BINARY}x" != "x" ]; then
     mv -f "${BIN_PATH}" "${GOPATH}/bin/"
 fi
 
+cp LICENSE "${BIN_PARENT_DIR}/LICENSE.txt"
+
 # Done!
 echo "==> Results:"
 ls -hl ${BIN_PARENT_DIR}

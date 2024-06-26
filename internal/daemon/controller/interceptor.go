@@ -9,8 +9,10 @@ import (
 	"net/http"
 	"reflect"
 	"runtime/debug"
+	"time"
 
 	grpc_recovery "github.com/grpc-ecosystem/go-grpc-middleware/recovery"
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/alias"
 	commonSrv "github.com/hashicorp/boundary/internal/daemon/common"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
@@ -23,6 +25,7 @@ import (
 	pberrors "github.com/hashicorp/boundary/internal/gen/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/requests"
+	"github.com/hashicorp/go-uuid"
 	"github.com/mr-tron/base58"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -278,6 +281,42 @@ func sharedRequestInterceptorLogic(
 	return interceptorCtx, err // not convinced we want to wrap every error and turn them into domain errors...
 }
 
+func correlationIdInterceptor(
+	_ context.Context,
+) grpc.UnaryServerInterceptor {
+	const op = "controller.correlationIdInterceptor"
+	return func(interceptorCtx context.Context, req any,
+		_ *grpc.UnaryServerInfo, handler grpc.UnaryHandler,
+	) (any, error) {
+		md, ok := metadata.FromIncomingContext(interceptorCtx)
+		if !ok {
+			return nil, errors.New(interceptorCtx, errors.Internal, op, "no metadata")
+		}
+
+		values := md.Get(globals.CorrelationIdKey)
+		if len(values) == 0 {
+			return nil, errors.New(interceptorCtx, errors.Internal, op, "missing correlation id metadata")
+		}
+		if len(values) > 1 {
+			return nil, errors.New(interceptorCtx, errors.Internal, op, fmt.Sprintf("expected 1 value for %s metadata and got %d", globals.CorrelationIdKey, len(values)))
+		}
+		correlationId := values[0]
+
+		// Validate the correlationId
+		if _, err := uuid.ParseUUID(correlationId); err != nil {
+			return nil, errors.Wrap(interceptorCtx, err, op, errors.WithMsg("failed to validated correlation id"))
+		}
+
+		interceptorCtx, err := event.NewCorrelationIdContext(interceptorCtx, correlationId)
+		if err != nil {
+			return nil, errors.Wrap(interceptorCtx, err, op, errors.WithCode(errors.Internal), errors.WithMsg("unable to create context with correlation id"))
+		}
+
+		// call the handler...
+		return handler(interceptorCtx, req)
+	}
+}
+
 func errorInterceptor(
 	_ context.Context,
 ) grpc.UnaryServerInterceptor {
@@ -335,10 +374,9 @@ func errorInterceptor(
 // For an field in the request to be considered for alias resolution, it must
 // be annotated with the Aliasable proto option.
 func aliasResolutionInterceptor(
-	ctx context.Context,
+	_ context.Context,
 	aliasRepoFn common.AliasRepoFactory,
 ) grpc.UnaryServerInterceptor {
-	const op = "alias.ResolutionInterceptor"
 	return func(interceptorCtx context.Context,
 		req any,
 		_ *grpc.UnaryServerInfo,
@@ -355,7 +393,16 @@ func aliasResolutionInterceptor(
 		}
 		interceptorCtx, err = alias.ResolveRequestIds(interceptorCtx, reqMsg, r)
 		if err != nil {
-			return nil, err
+			// Since this is intercepted prior to checking that the requester
+			// is authorized to make the request, returning a 404 here and a 401
+			// when the request is checked in the handler would expose which
+			// aliases exist. Instead, we return a unauthenticated error here so there
+			// is no way to distinguish between a missing alias and an existing
+			// alias that points to a destination the requester is not allowed
+			// to perform an action on.
+			// handlers.UnauthenticatedError() turns into an http 401 status
+			// code "Unauthorized".
+			return nil, handlers.UnauthenticatedError()
 		}
 		return handler(interceptorCtx, req)
 	}
@@ -447,6 +494,15 @@ func eventsResponseInterceptor(
 		}
 
 		return resp, err
+	}
+}
+
+func requestMaxDurationInterceptor(_ context.Context, maxRequestDuration time.Duration) grpc.UnaryServerInterceptor {
+	const op = "controller.requestMaxDurationInterceptor"
+	return func(interceptorCtx context.Context, req any, _ *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
+		withTimeout, cancel := context.WithTimeout(interceptorCtx, maxRequestDuration)
+		defer cancel()
+		return handler(withTimeout, req)
 	}
 }
 
