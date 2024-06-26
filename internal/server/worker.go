@@ -16,17 +16,24 @@ import (
 )
 
 type (
-	WorkerType       string
-	OperationalState string
+	WorkerType        string
+	OperationalState  string
+	LocalStorageState string
 )
 
 const (
-	UnknownWorkerType        WorkerType       = "unknown"
-	KmsWorkerType            WorkerType       = "kms"
-	PkiWorkerType            WorkerType       = "pki"
-	ActiveOperationalState   OperationalState = "active"
-	ShutdownOperationalState OperationalState = "shutdown"
-	UnknownOperationalState  OperationalState = "unknown"
+	UnknownWorkerType                     WorkerType        = "unknown"
+	KmsWorkerType                         WorkerType        = "kms"
+	PkiWorkerType                         WorkerType        = "pki"
+	ActiveOperationalState                OperationalState  = "active"
+	ShutdownOperationalState              OperationalState  = "shutdown"
+	UnknownOperationalState               OperationalState  = "unknown"
+	AvailableLocalStorageState            LocalStorageState = "available"
+	LowStorageLocalStorageState           LocalStorageState = "low storage"
+	CriticallyLowStorageLocalStorageState LocalStorageState = "critically low storage"
+	OutOfStorageLocalStorageState         LocalStorageState = "out of storage"
+	NotConfiguredLocalStorageState        LocalStorageState = "not configured"
+	UnknownLocalStorageState              LocalStorageState = "unknown"
 )
 
 func (t WorkerType) Valid() bool {
@@ -63,6 +70,26 @@ func (t OperationalState) String() string {
 		return string(t)
 	}
 	return string(UnknownOperationalState)
+}
+
+func ValidLocalStorageState(s string) bool {
+	switch s {
+	case AvailableLocalStorageState.String(), LowStorageLocalStorageState.String(),
+		CriticallyLowStorageLocalStorageState.String(), OutOfStorageLocalStorageState.String(),
+		NotConfiguredLocalStorageState.String(), UnknownLocalStorageState.String():
+		return true
+	}
+	return false
+}
+
+func (t LocalStorageState) String() string {
+	switch t {
+	case AvailableLocalStorageState, LowStorageLocalStorageState,
+		OutOfStorageLocalStorageState, NotConfiguredLocalStorageState,
+		CriticallyLowStorageLocalStorageState:
+		return string(t)
+	}
+	return string(UnknownLocalStorageState)
 }
 
 // AttachWorkerIdToState accepts a workerId and creates a struct for use with the Nodeenrollment lib
@@ -108,12 +135,13 @@ func NewWorker(scopeId string, opt ...Option) *Worker {
 	opts := GetOpts(opt...)
 	worker := &Worker{
 		Worker: &store.Worker{
-			ScopeId:          scopeId,
-			Name:             opts.withName,
-			Description:      opts.withDescription,
-			Address:          opts.withAddress,
-			ReleaseVersion:   opts.withReleaseVersion,
-			OperationalState: opts.withOperationalState,
+			ScopeId:           scopeId,
+			Name:              opts.withName,
+			Description:       opts.withDescription,
+			Address:           opts.withAddress,
+			ReleaseVersion:    opts.withReleaseVersion,
+			OperationalState:  opts.withOperationalState,
+			LocalStorageState: opts.withLocalStorageState,
 		},
 		inputTags: opts.withWorkerTags,
 	}
@@ -231,6 +259,7 @@ type workerAggregate struct {
 	ApiTags               string
 	ActiveConnectionCount uint32
 	OperationalState      string
+	LocalStorageState     string
 	// Config Fields
 	LastStatusTime   *timestamp.Timestamp
 	WorkerConfigTags string
@@ -240,18 +269,19 @@ func (a *workerAggregate) toWorker(ctx context.Context) (*Worker, error) {
 	const op = "server.(workerAggregate).toWorker"
 	worker := &Worker{
 		Worker: &store.Worker{
-			PublicId:         a.PublicId,
-			Name:             a.Name,
-			Description:      a.Description,
-			Address:          a.Address,
-			CreateTime:       a.CreateTime,
-			UpdateTime:       a.UpdateTime,
-			ScopeId:          a.ScopeId,
-			Version:          a.Version,
-			LastStatusTime:   a.LastStatusTime,
-			Type:             a.Type,
-			ReleaseVersion:   a.ReleaseVersion,
-			OperationalState: a.OperationalState,
+			PublicId:          a.PublicId,
+			Name:              a.Name,
+			Description:       a.Description,
+			Address:           a.Address,
+			CreateTime:        a.CreateTime,
+			UpdateTime:        a.UpdateTime,
+			ScopeId:           a.ScopeId,
+			Version:           a.Version,
+			LastStatusTime:    a.LastStatusTime,
+			Type:              a.Type,
+			ReleaseVersion:    a.ReleaseVersion,
+			OperationalState:  a.OperationalState,
+			LocalStorageState: a.LocalStorageState,
 		},
 		activeConnectionCount: a.ActiveConnectionCount,
 	}

@@ -119,11 +119,6 @@ variable "boundary_install_dir" {
   default     = "/opt/boundary/bin"
 }
 
-variable "tfc_api_token" {
-  description = "The Terraform Cloud QTI Organization API token."
-  type        = string
-}
-
 variable "vault_instance_type" {
   description = "Instance type for test target nodes"
   type        = string
@@ -187,6 +182,7 @@ variable "go_test_timeout" {
 variable "aws_region" {
   description = "AWS region where the resources will be created"
   type        = string
+  default     = "us-east-1"
 }
 
 variable "go_version" {

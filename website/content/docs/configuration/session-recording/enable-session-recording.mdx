@@ -13,7 +13,7 @@ You must enable session recording for any targets that you want to record sessio
 When you [create a storage bucket](/boundary/docs/configuration/session-recording/create-storage-bucket), Boundary provides you with an ID.
 You use the storage bucket's ID to associate a target with the storage bucket.
 
-**Requirements**:
+## Requirements
 
 - One or more storage buckets to store the recordings.
 - Session recording is only supported for SSH targets at this time.
@@ -27,6 +27,35 @@ Refer to [SSH target attributes](/boundary/docs/concepts/domain-model/targets#ss
 Complete the following steps to enable session recording on a target.
 
 <Tabs>
+<Tab heading="UI">
+
+1. Log in to Boundary.
+1. Click **Orgs** in the navigation pane.
+1. Select the org that contains the target you want to enable for session recording.
+1. Select the project that contains the target you want to enable for session recording.
+1. Select **Targets** in the navigation pane.
+1. Do one of the following:
+
+   - To create a new target, select **New Target**.
+   - To edit an existing target, select the target, and then select **Edit Form**.
+1. Configure the target with any relevant [attributes](/boundary/docs/concepts/domain-model/targets).
+The following setting is required for session recording:
+
+   - Select **SSH** for the **Type**.
+
+1. Click **Save**.
+1. Click **Enable recording**.
+
+   ![Enable session recording](/img/enable-session-recording.png)
+
+1. Enable the **Record sessions for this target** option.
+1. Select the storage bucket where you want to store recordings from this target.
+
+   You can also [create a new storage bucket](/boundary/docs/configuration/session-recording/create-storage-bucket).
+
+1. Click **Save**.
+
+</Tab>
 <Tab heading="CLI">
 
 1. Log in to Boundary.
@@ -54,37 +83,11 @@ Complete the following steps to enable session recording on a target.
       You can now view the target from the **Targets** page in the Boundary console.
 
 </Tab>
-
-<Tab heading="UI">
-
-1. Log in to Boundary.
-1. Select **Orgs** in the navigation pane.
-1. Select the org that contains the target you want to enable for session recording.
-1. Select the project that contains the target you want to enable for session recording.
-1. Select **Targets** in the navigation pane.
-1. Do one of the following:
-
-   - To create a new target, select **New Target**.
-   - To edit an existing target, select the target, and then select **Edit Form**.
-1. Configure the target with any relevant [attributes](/boundary/docs/concepts/domain-model/targets).
-The following setting is required for session recording:
-
-   - Select **SSH** for the **Type**.
-
-1. Select **Save**.
-1. Select **Enable recording**.
-
-   ![Enable session recording](/img/enable-session-recording.png)
-
-1. Enable the **Record sessions for this target** option.
-1. Select the storage bucket where you want to store recordings from this target.
-
-   You can also [create a new storage bucket](/boundary/docs/configuration/session-recording/create-storage-bucket).
-
-1. Select **Save**.
-
-</Tab>
 </Tabs>
 
 The target is now enabled for session recording.
 Any user session that connects to the target is automatically recorded.
+
+## Next steps
+
+After you have enabled session recording, you may want to [configure storage policies](/boundary/docs/configuration/session-recording/configure-storage-policy) to codify the lifecycle management of your session recordings.

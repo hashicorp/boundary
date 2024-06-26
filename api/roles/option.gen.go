@@ -115,18 +115,6 @@ func DefaultDescription() Option {
 	}
 }
 
-func WithGrantScopeId(inGrantScopeId string) Option {
-	return func(o *options) {
-		o.postMap["grant_scope_id"] = inGrantScopeId
-	}
-}
-
-func DefaultGrantScopeId() Option {
-	return func(o *options) {
-		o.postMap["grant_scope_id"] = nil
-	}
-}
-
 func WithName(inName string) Option {
 	return func(o *options) {
 		o.postMap["name"] = inName

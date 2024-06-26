@@ -286,7 +286,7 @@ func (c *Client) AttachStoragePolicy(ctx context.Context, scopeId string, versio
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	s.response = resp
+	s.Response = resp
 	return s, nil
 }
 
@@ -350,6 +350,6 @@ func (c *Client) DetachStoragePolicy(ctx context.Context, scopeId string, versio
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	s.response = resp
+	s.Response = resp
 	return s, nil
 }

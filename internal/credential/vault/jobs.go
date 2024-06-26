@@ -549,6 +549,15 @@ func (r *CredentialRenewalJob) Run(ctx context.Context) error {
 		if err := ctx.Err(); err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
+
+		if c.SessionCorrelationId != "" {
+			ctx, err = event.NewCorrelationIdContext(ctx, c.SessionCorrelationId)
+			if err != nil {
+				event.WriteError(ctx, op, err, event.WithInfoMsg("error generating correlation context", "credential id", c.PublicId, "session id", c.SessionId))
+				continue
+			}
+		}
+
 		if err := r.renewCred(ctx, c); err != nil {
 			event.WriteError(ctx, op, err, event.WithInfoMsg("error renewing credential", "credential id", c.PublicId))
 		}
@@ -709,6 +718,16 @@ func (r *CredentialRevocationJob) Run(ctx context.Context) error {
 		if err := ctx.Err(); err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
+
+		if c.SessionCorrelationId != "" {
+			ctx, err = event.NewCorrelationIdContext(ctx, c.SessionCorrelationId)
+			if err != nil {
+				// log the error, but we should still revoke the credential in Vault since it is
+				// no longer being used.
+				event.WriteError(ctx, op, err, event.WithInfoMsg("error generating correlation context", "credential id", c.PublicId, "session id", c.SessionId))
+			}
+		}
+
 		if err := r.revokeCred(ctx, c); err != nil {
 			event.WriteError(ctx, op, err, event.WithInfoMsg("error revoking credential", "credential id", c.PublicId))
 		}

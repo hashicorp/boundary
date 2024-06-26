@@ -40,20 +40,28 @@ func TestCliStaticCredentialStore(t *testing.T) {
 
 	ctx := context.Background()
 	boundary.AuthenticateAdminCli(t, ctx)
-	newOrgId := boundary.CreateNewOrgCli(t, ctx)
+	orgId, err := boundary.CreateOrgCli(t, ctx)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		ctx := context.Background()
 		boundary.AuthenticateAdminCli(t, ctx)
-		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", newOrgId))
+		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", orgId))
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
-	newProjectId := boundary.CreateNewProjectCli(t, ctx, newOrgId)
-	newHostCatalogId := boundary.CreateNewHostCatalogCli(t, ctx, newProjectId)
-	newHostSetId := boundary.CreateNewHostSetCli(t, ctx, newHostCatalogId)
-	newHostId := boundary.CreateNewHostCli(t, ctx, newHostCatalogId, c.TargetAddress)
-	boundary.AddHostToHostSetCli(t, ctx, newHostSetId, newHostId)
-	newTargetId := boundary.CreateNewTargetCli(t, ctx, newProjectId, c.TargetPort)
-	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, newHostSetId)
+	projectId, err := boundary.CreateProjectCli(t, ctx, orgId)
+	require.NoError(t, err)
+	hostCatalogId, err := boundary.CreateHostCatalogCli(t, ctx, projectId)
+	require.NoError(t, err)
+	hostSetId, err := boundary.CreateHostSetCli(t, ctx, hostCatalogId)
+	require.NoError(t, err)
+	hostId, err := boundary.CreateHostCli(t, ctx, hostCatalogId, c.TargetAddress)
+	require.NoError(t, err)
+	err = boundary.AddHostToHostSetCli(t, ctx, hostSetId, hostId)
+	require.NoError(t, err)
+	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort)
+	require.NoError(t, err)
+	err = boundary.AddHostSourceToTargetCli(t, ctx, targetId, hostSetId)
+	require.NoError(t, err)
 
 	err = createPrivateKeyPemFile(testPemFile)
 	require.NoError(t, err)
@@ -63,14 +71,18 @@ func TestCliStaticCredentialStore(t *testing.T) {
 	})
 
 	// Create static credentials
-	newCredentialStoreId := boundary.CreateNewCredentialStoreStaticCli(t, ctx, newProjectId)
-	privateKeyCredentialsId := boundary.CreateNewStaticCredentialPrivateKeyCli(t, ctx, newCredentialStoreId, c.TargetSshUser, testPemFile)
-	pwCredentialsId := boundary.CreateNewStaticCredentialPasswordCli(t, ctx, newCredentialStoreId, c.TargetSshUser, testPassword)
-	jsonCredentialsId := boundary.CreateNewStaticCredentialJsonCli(t, ctx, newCredentialStoreId, testCredentialsFile)
+	storeId, err := boundary.CreateCredentialStoreStaticCli(t, ctx, projectId)
+	require.NoError(t, err)
+	privateKeyCredentialsId, err := boundary.CreateStaticCredentialPrivateKeyCli(t, ctx, storeId, c.TargetSshUser, testPemFile)
+	require.NoError(t, err)
+	pwCredentialId, err := boundary.CreateStaticCredentialPasswordCli(t, ctx, storeId, c.TargetSshUser, testPassword)
+	require.NoError(t, err)
+	jsonCredentialId, err := boundary.CreateStaticCredentialJsonCli(t, ctx, storeId, testCredentialsFile)
+	require.NoError(t, err)
 
 	// Get credentials for target (expect empty)
 	output := e2e.RunCommand(ctx, "boundary",
-		e2e.WithArgs("targets", "authorize-session", "-id", newTargetId, "-format", "json"),
+		e2e.WithArgs("targets", "authorize-session", "-id", targetId, "-format", "json"),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
 	var newSessionAuthorizationResult targets.SessionAuthorizationResult
@@ -79,13 +91,16 @@ func TestCliStaticCredentialStore(t *testing.T) {
 	require.True(t, newSessionAuthorizationResult.Item.Credentials == nil)
 
 	// Add credentials to target
-	boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, newTargetId, privateKeyCredentialsId)
-	boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, newTargetId, jsonCredentialsId)
-	boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, newTargetId, pwCredentialsId)
+	err = boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, targetId, privateKeyCredentialsId)
+	require.NoError(t, err)
+	err = boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, targetId, jsonCredentialId)
+	require.NoError(t, err)
+	err = boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, targetId, pwCredentialId)
+	require.NoError(t, err)
 
 	// Get credentials for target
 	output = e2e.RunCommand(ctx, "boundary",
-		e2e.WithArgs("targets", "authorize-session", "-id", newTargetId, "-format", "json"),
+		e2e.WithArgs("targets", "authorize-session", "-id", targetId, "-format", "json"),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
 	err = json.Unmarshal(output.Stdout, &newSessionAuthorizationResult)
@@ -117,14 +132,14 @@ func TestCliStaticCredentialStore(t *testing.T) {
 
 	// Delete credential store
 	output = e2e.RunCommand(ctx, "boundary",
-		e2e.WithArgs("credential-stores", "delete", "-id", newCredentialStoreId),
+		e2e.WithArgs("credential-stores", "delete", "-id", storeId),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
 	t.Log("Waiting for credential store to be deleted...")
 	err = backoff.RetryNotify(
 		func() error {
 			output := e2e.RunCommand(ctx, "boundary",
-				e2e.WithArgs("credential-stores", "read", "-id", newCredentialStoreId, "-format", "json"),
+				e2e.WithArgs("credential-stores", "read", "-id", storeId, "-format", "json"),
 			)
 			if output.Err == nil {
 				return fmt.Errorf("Deleted credential can still be read: '%s'", output.Stdout)
@@ -148,7 +163,7 @@ func TestCliStaticCredentialStore(t *testing.T) {
 		},
 	)
 	require.NoError(t, err)
-	t.Logf("Successfully deleted credential store")
+	t.Log("Successfully deleted credential store")
 }
 
 func createPrivateKeyPemFile(fileName string) error {
@@ -182,26 +197,35 @@ func TestApiStaticCredentialStore(t *testing.T) {
 	require.NoError(t, err)
 	ctx := context.Background()
 
-	newOrgId := boundary.CreateNewOrgApi(t, ctx, client)
+	orgId, err := boundary.CreateOrgApi(t, ctx, client)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		scopeClient := scopes.NewClient(client)
-		_, err := scopeClient.Delete(ctx, newOrgId)
+		_, err := scopeClient.Delete(ctx, orgId)
 		require.NoError(t, err)
 	})
-	newProjectId := boundary.CreateNewProjectApi(t, ctx, client, newOrgId)
-	newHostCatalogId := boundary.CreateNewHostCatalogApi(t, ctx, client, newProjectId)
-	newHostSetId := boundary.CreateNewHostSetApi(t, ctx, client, newHostCatalogId)
-	newHostId := boundary.CreateNewHostApi(t, ctx, client, newHostCatalogId, c.TargetAddress)
-	boundary.AddHostToHostSetApi(t, ctx, client, newHostSetId, newHostId)
-	newTargetId := boundary.CreateNewTargetApi(t, ctx, client, newProjectId, c.TargetPort)
-	boundary.AddHostSourceToTargetApi(t, ctx, client, newTargetId, newHostSetId)
-	newCredentialStoreId := boundary.CreateNewCredentialStoreStaticApi(t, ctx, client, newProjectId)
+	projectId, err := boundary.CreateProjectApi(t, ctx, client, orgId)
+	require.NoError(t, err)
+	hostCatalogId, err := boundary.CreateHostCatalogApi(t, ctx, client, projectId)
+	require.NoError(t, err)
+	hostSetId, err := boundary.CreateHostSetApi(t, ctx, client, hostCatalogId)
+	require.NoError(t, err)
+	hostId, err := boundary.CreateHostApi(t, ctx, client, hostCatalogId, c.TargetAddress)
+	require.NoError(t, err)
+	err = boundary.AddHostToHostSetApi(t, ctx, client, hostSetId, hostId)
+	require.NoError(t, err)
+	targetId, err := boundary.CreateTargetApi(t, ctx, client, projectId, c.TargetPort)
+	require.NoError(t, err)
+	err = boundary.AddHostSourceToTargetApi(t, ctx, client, targetId, hostSetId)
+	require.NoError(t, err)
+	storeId, err := boundary.CreateCredentialStoreStaticApi(t, ctx, client, projectId)
+	require.NoError(t, err)
 
 	// Create credentials
 	cClient := credentials.NewClient(client)
 	k, err := os.ReadFile(c.TargetSshKeyPath)
 	require.NoError(t, err)
-	newCredentialsResult, err := cClient.Create(ctx, "ssh_private_key", newCredentialStoreId,
+	newCredentialsResult, err := cClient.Create(ctx, "ssh_private_key", storeId,
 		credentials.WithSshPrivateKeyCredentialUsername(c.TargetSshUser),
 		credentials.WithSshPrivateKeyCredentialPrivateKey(string(k)),
 	)
@@ -211,14 +235,14 @@ func TestApiStaticCredentialStore(t *testing.T) {
 
 	// Add credentials to target
 	tClient := targets.NewClient(client)
-	_, err = tClient.AddCredentialSources(ctx, newTargetId, 0,
+	_, err = tClient.AddCredentialSources(ctx, targetId, 0,
 		targets.WithAutomaticVersioning(true),
 		targets.WithBrokeredCredentialSourceIds([]string{newCredentialsId}),
 	)
 	require.NoError(t, err)
 
 	// Authorize Session
-	newSessionAuthorizationResult, err := tClient.AuthorizeSession(ctx, newTargetId)
+	newSessionAuthorizationResult, err := tClient.AuthorizeSession(ctx, targetId)
 	require.NoError(t, err)
 	newSessionAuthorization := newSessionAuthorizationResult.Item
 	retrievedUser, ok := newSessionAuthorization.Credentials[0].Credential["username"].(string)

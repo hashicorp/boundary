@@ -13,6 +13,18 @@ import "protoc-gen-openapiv2/options/annotations.proto";
 option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/services;services";
 
 service SessionRecordingService {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_tag) = {
+    name: "Session recording service"
+    description:
+      "A session recording is a feature that enables administrators to record and play back user access sessions to target resources. "
+      "It provides an audit trail of user activity and lets administrators monitor access. "
+      "The session recording service provides endpoints that let you manage session recordings in Boundary."
+    external_docs: {
+      url: "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/session-recordings";
+      description: "Read about session recordings in the Boundary domain model";
+    }
+  };
+
   // GetSessionRecording returns a stored Session recording if present. The provided request
   // must include the Session recording ID for the Session recording being retrieved,
   // or the ID of the Session that was recorded. If that ID is missing, malformed or reference a
@@ -64,7 +76,7 @@ service SessionRecordingService {
 
 message GetSessionRecordingRequest {
   // The ID of the Session recording, or the ID of the Session that was recorded.
-  string id = 1; // @gotags: class:"public"
+  string id = 1; // @gotags: class:"public" eventstream:"observation"
 }
 
 message GetSessionRecordingResponse {
@@ -75,20 +87,21 @@ message GetSessionRecordingResponse {
 message ListSessionRecordingsRequest {
   // The scope in which to list session recordings.
   // Must be set unless recursive is set.
-  string scope_id = 1; // @gotags: class:"public"
+  string scope_id = 1; // @gotags: class:"public" eventstream:"observation"
   // Whether to recurse into child scopes when listing.
   // If set and scope_id is empty, shows session recordings in
   // all scopes the caller has access to.
-  bool recursive = 2; // @gotags: class:"public"
-  // An opaque token used to continue an existing iteration or
-  // request updated items. If not specified, pagination
-  // will start from the beginning.
+  bool recursive = 2; // @gotags: class:"public" eventstream:"observation"
+  // An opaque token that Boundary uses to continue an existing iteration or
+  // request updated items. If you do not specify a token, pagination
+  // starts from the beginning. To learn more about list pagination
+  // in Boundary, refer to [list pagination](https://developer.hashicorp.com/boundary/docs/api-clients/api/pagination).
   string list_token = 3 [json_name = "list_token"]; // @gotags: `class:"public"`
   // The maximum size of a page in this iteration.
-  // If unset, the default page size configured will be used.
-  // If the page_size is greater than the max page size configured,
-  // the page size will be truncated to this number.
-  uint32 page_size = 4 [json_name = "page_size"]; // @gotags: `class:"public"`
+  // If you do not set a page size, Boundary uses the configured default page size.
+  // If the page_size is greater than the default page size configured,
+  // Boundary truncates the page size to this number.
+  uint32 page_size = 4 [json_name = "page_size"]; // @gotags: class:"public" eventstream:"observation"
 }
 
 message ListSessionRecordingsResponse {
@@ -98,22 +111,22 @@ message ListSessionRecordingsResponse {
   // Delta signifies that this is part of a paginated result
   // or an update to a previously completed pagination.
   // Complete signifies that it is the last page.
-  string response_type = 2 [json_name = "response_type"]; // @gotags: `class:"public"`
+  string response_type = 2 [json_name = "response_type"]; // @gotags: class:"public" eventstream:"observation"
   // An opaque token used to continue an existing pagination or
   // request updated items. Use this token in the next list request
   // to request the next page.
   string list_token = 3 [json_name = "list_token"]; // @gotags: `class:"public"`
   // The name of the field which the items are sorted by.
-  string sort_by = 4 [json_name = "sort_by"]; // @gotags: `class:"public"`
+  string sort_by = 4 [json_name = "sort_by"]; // @gotags: class:"public" eventstream:"observation"
   // The direction of the sort, either "asc" or "desc".
-  string sort_dir = 5 [json_name = "sort_dir"]; // @gotags: `class:"public"`
+  string sort_dir = 5 [json_name = "sort_dir"]; // @gotags: class:"public" eventstream:"observation"
   // A list of item IDs that have been removed since they were returned
   // as part of a pagination. They should be dropped from any client cache.
   // This may contain items that are not known to the cache, if they were
   // created and deleted between listings.
-  repeated string removed_ids = 6 [json_name = "removed_ids"]; // @gotags: `class:"public"`
+  repeated string removed_ids = 6 [json_name = "removed_ids"]; // @gotags: class:"public" eventstream:"observation"
   // An estimate at the total items available. This may change during pagination.
-  uint32 est_item_count = 7 [json_name = "est_item_count"]; // @gotags: `class:"public"`
+  uint32 est_item_count = 7 [json_name = "est_item_count"]; // @gotags: class:"public" eventstream:"observation"
 }
 
 message DownloadRequest {
@@ -121,15 +134,15 @@ message DownloadRequest {
   //   - Session ID and Session recording ID for Session recordings
   //   - Connection ID and Connection recording ID for Connection recordings
   //   - Channel recording ID for Channel recordings
-  string id = 1; // @gotags: class:"public"
+  string id = 1; // @gotags: class:"public" eventstream:"observation"
   // The format of the response. The only supported mime type is "application/x-asciicast".
   // Defaults to "application/x-asciicast" if not set.
-  string mime_type = 2 [json_name = "mime_type"]; // @gotags: class:"public"
+  string mime_type = 2 [json_name = "mime_type"]; // @gotags: class:"public" eventstream:"observation"
 }
 
 message ReApplyStoragePolicyRequest {
   // The Session Recording ID
-  string id = 1; // @gotags: class:"public"
+  string id = 1; // @gotags: class:"public" eventstream:"observation"
 }
 
 message ReApplyStoragePolicyResponse {
@@ -138,7 +151,7 @@ message ReApplyStoragePolicyResponse {
 }
 
 message DeleteSessionRecordingRequest {
-  string id = 1; // @gotags: `class:"public"`
+  string id = 1; // @gotags: class:"public" eventstream:"observation"
 }
 
 message DeleteSessionRecordingResponse {}

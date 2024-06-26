@@ -138,6 +138,38 @@ func TestAction(t *testing.T) {
 			action: Download,
 			want:   "download",
 		},
+		{
+			action: AttachStoragePolicy,
+			want:   "attach-storage-policy",
+		},
+		{
+			action: DetachStoragePolicy,
+			want:   "detach-storage-policy",
+		},
+		{
+			action: ReApplyStoragePolicy,
+			want:   "reapply-storage-policy",
+		},
+		{
+			action: AddGrantScopes,
+			want:   "add-grant-scopes",
+		},
+		{
+			action: SetGrantScopes,
+			want:   "set-grant-scopes",
+		},
+		{
+			action: RemoveGrantScopes,
+			want:   "remove-grant-scopes",
+		},
+		{
+			action: MonthlyActiveUsers,
+			want:   "monthly-active-users",
+		},
+		{
+			action: ListResolvableAliases,
+			want:   "list-resolvable-aliases",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.want, func(t *testing.T) {

@@ -11,7 +11,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/go-rootcerts"
 	vault "github.com/hashicorp/vault/api"
 	"github.com/mitchellh/mapstructure"
@@ -28,6 +30,7 @@ type vaultClient interface {
 	get(context.Context, string) (*vault.Secret, error)
 	post(context.Context, string, []byte) (*vault.Secret, error)
 	capabilities(context.Context, []string) (pathCapabilities, error)
+	headers(ctx context.Context) (http.Header, error)
 }
 
 var vaultClientFactoryFn = vaultClientFactory
@@ -114,6 +117,10 @@ func newClient(ctx context.Context, c *clientConfig) (*client, error) {
 
 	if c.Namespace != "" {
 		vClient.SetNamespace(c.Namespace)
+	}
+
+	if correlationId, ok := event.CorrelationIdFromContext(ctx); ok {
+		vClient.AddHeader(globals.CorrelationIdKey, correlationId)
 	}
 
 	return &client{
@@ -263,4 +270,9 @@ func (c *client) capabilities(ctx context.Context, paths []string) (pathCapabili
 	}
 
 	return newPathCapabilities(res), nil
+}
+
+// headers returns the underlying Vault Client http headers
+func (c *client) headers(_ context.Context) (http.Header, error) {
+	return c.cl.Headers(), nil
 }

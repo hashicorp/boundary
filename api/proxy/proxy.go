@@ -15,6 +15,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/hashicorp/boundary/api"
+	"github.com/hashicorp/boundary/api/sessions"
 	"github.com/hashicorp/boundary/api/targets"
 	cleanhttp "github.com/hashicorp/go-cleanhttp"
 	"github.com/hashicorp/go-secure-stdlib/base62"
@@ -37,6 +39,7 @@ type ClientProxy struct {
 	connectionsLeft         *atomic.Int32
 	connsLeftCh             chan int32
 	callerConnectionsLeftCh chan int32
+	apiClient               *api.Client
 	sessionAuthzData        *targets.SessionAuthorizationData
 	createTime              time.Time
 	expiration              time.Time
@@ -97,6 +100,7 @@ func New(ctx context.Context, authzToken string, opt ...Option) (*ClientProxy, e
 		callerConnectionsLeftCh: opts.WithConnectionsLeftCh,
 		started:                 new(atomic.Bool),
 		skipSessionTeardown:     opts.WithSkipSessionTeardown,
+		apiClient:               opts.withApiClient,
 	}
 
 	if opts.WithListener != nil {
@@ -168,12 +172,20 @@ func New(ctx context.Context, authzToken string, opt ...Option) (*ClientProxy, e
 //
 // EXPERIMENTAL: While this API is not expected to change, it is new and
 // feedback from users may necessitate changes.
-func (p *ClientProxy) Start() (retErr error) {
+func (p *ClientProxy) Start(opt ...Option) (retErr error) {
+	opts, err := getOpts(opt...)
+	if err != nil {
+		return fmt.Errorf("could not parse options: %w", err)
+	}
 	if !p.started.CompareAndSwap(false, true) {
 		return errors.New("proxy was already started")
 	}
 
 	defer p.cancel()
+
+	if opts.withSessionTeardownTimeout == 0 {
+		opts.withSessionTeardownTimeout = sessionCancelTimeout
+	}
 
 	if p.listener.Load() == nil {
 		var err error
@@ -252,6 +264,27 @@ func (p *ClientProxy) Start() (retErr error) {
 					p.cancel()
 					return
 				}
+
+				// TODO: Determine if this is useful or if there is a better approach
+				// that we may use in the long term.
+				if p.apiClient != nil {
+					// If we can tell that the session for the connection we just
+					// closed is terminated, we can close the listener, otherwise
+					// might as well leave it open so the next connection can be
+					// tried.
+					sess, err := sessions.NewClient(p.apiClient).Read(p.ctx, p.sessionAuthzData.SessionId)
+					if err != nil || sess == nil || sess.Item == nil || sess.Item.Status == "active" {
+						return
+					}
+
+					// We got a valid session response for the session we just
+					// closed a connection for. Since the status isn't active
+					// we can treat the session as no longer being able to
+					// support connections, so close this proxy.
+					fin <- fmt.Errorf("session no longer active")
+					listenerCloseFunc()
+					p.cancel()
+				}
 			}()
 		}
 	}()
@@ -317,7 +350,7 @@ func (p *ClientProxy) Start() (retErr error) {
 		return nil
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), sessionCancelTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), opts.withSessionTeardownTimeout)
 	defer cancel()
 	if err := p.sendSessionTeardown(ctx); err != nil {
 		return fmt.Errorf("error sending session teardown request to worker: %w", err)

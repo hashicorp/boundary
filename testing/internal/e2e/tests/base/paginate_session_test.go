@@ -27,34 +27,41 @@ func TestCliPaginateSessions(t *testing.T) {
 
 	ctx := context.Background()
 	boundary.AuthenticateAdminCli(t, ctx)
-	newOrgId := boundary.CreateNewOrgCli(t, ctx)
+	orgId, err := boundary.CreateOrgCli(t, ctx)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		ctx := context.Background()
 		boundary.AuthenticateAdminCli(t, ctx)
-		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", newOrgId))
+		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", orgId))
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
 
-	newProjectId := boundary.CreateNewProjectCli(t, ctx, newOrgId)
-	newHostCatalogId := boundary.CreateNewHostCatalogCli(t, ctx, newProjectId)
-	newHostSetId := boundary.CreateNewHostSetCli(t, ctx, newHostCatalogId)
-	newHostId := boundary.CreateNewHostCli(t, ctx, newHostCatalogId, c.TargetAddress)
-	boundary.AddHostToHostSetCli(t, ctx, newHostSetId, newHostId)
+	projectId, err := boundary.CreateProjectCli(t, ctx, orgId)
 	require.NoError(t, err)
-	newTargetId := boundary.CreateNewTargetCli(t, ctx, newProjectId, c.TargetPort)
-	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, newHostSetId)
+	hostCatalogId, err := boundary.CreateHostCatalogCli(t, ctx, projectId)
+	require.NoError(t, err)
+	hostSetId, err := boundary.CreateHostSetCli(t, ctx, hostCatalogId)
+	require.NoError(t, err)
+	hostId, err := boundary.CreateHostCli(t, ctx, hostCatalogId, c.TargetAddress)
+	require.NoError(t, err)
+	err = boundary.AddHostToHostSetCli(t, ctx, hostSetId, hostId)
+	require.NoError(t, err)
+	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort)
+	require.NoError(t, err)
+	err = boundary.AddHostSourceToTargetCli(t, ctx, targetId, hostSetId)
+	require.NoError(t, err)
 
 	// Connect to targets to create a session
 	// Create enough sessions to overflow a single page
 	for i := 0; i < c.MaxPageSize+1; i++ {
-		boundary.ConnectCli(t, ctx, newTargetId)
+		boundary.ConnectCli(t, ctx, targetId)
 	}
 
 	// List sessions recursively
 	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"sessions", "list",
-			"-scope-id", newProjectId,
+			"-scope-id", projectId,
 			"-format=json",
 		),
 	)
@@ -71,13 +78,13 @@ func TestCliPaginateSessions(t *testing.T) {
 	assert.Empty(t, initialSessions.ListToken)
 
 	// Create a new session
-	boundary.ConnectCli(t, ctx, newTargetId)
+	boundary.ConnectCli(t, ctx, targetId)
 
 	// List again, should have the new session
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"sessions", "list",
-			"-scope-id", newProjectId,
+			"-scope-id", projectId,
 			"-format=json",
 		),
 	)
@@ -104,34 +111,42 @@ func TestApiPaginateSessions(t *testing.T) {
 	client, err := boundary.NewApiClient()
 	require.NoError(t, err)
 	ctx := context.Background()
-	newOrgId := boundary.CreateNewOrgApi(t, ctx, client)
+	orgId, err := boundary.CreateOrgApi(t, ctx, client)
+	require.NoError(t, err)
 	sClient := sessions.NewClient(client)
 	tClient := targets.NewClient(client)
 	t.Cleanup(func() {
 		ctx := context.Background()
 		scopeClient := scopes.NewClient(client)
-		_, err := scopeClient.Delete(ctx, newOrgId)
+		_, err := scopeClient.Delete(ctx, orgId)
 		require.NoError(t, err)
 	})
 
-	newProjectId := boundary.CreateNewProjectApi(t, ctx, client, newOrgId)
-	newHostCatalogId := boundary.CreateNewHostCatalogApi(t, ctx, client, newProjectId)
-	newHostSetId := boundary.CreateNewHostSetApi(t, ctx, client, newHostCatalogId)
-	newHostId := boundary.CreateNewHostApi(t, ctx, client, newHostCatalogId, c.TargetAddress)
-	boundary.AddHostToHostSetApi(t, ctx, client, newHostSetId, newHostId)
+	projectId, err := boundary.CreateProjectApi(t, ctx, client, orgId)
 	require.NoError(t, err)
-	newTargetId := boundary.CreateNewTargetApi(t, ctx, client, newProjectId, c.TargetPort)
-	boundary.AddHostSourceToTargetApi(t, ctx, client, newTargetId, newHostSetId)
+	hostCatalogId, err := boundary.CreateHostCatalogApi(t, ctx, client, projectId)
+	require.NoError(t, err)
+	hostSetId, err := boundary.CreateHostSetApi(t, ctx, client, hostCatalogId)
+	require.NoError(t, err)
+	hostId, err := boundary.CreateHostApi(t, ctx, client, hostCatalogId, c.TargetAddress)
+	require.NoError(t, err)
+	err = boundary.AddHostToHostSetApi(t, ctx, client, hostSetId, hostId)
+	require.NoError(t, err)
+	targetId, err := boundary.CreateTargetApi(t, ctx, client, projectId, c.TargetPort)
+	require.NoError(t, err)
+	err = boundary.AddHostSourceToTargetApi(t, ctx, client, targetId, hostSetId)
+	require.NoError(t, err)
 
 	// Connect to targets to create a session
 	// Create enough sessions to overflow a single page
 	for i := 0; i < c.MaxPageSize+1; i++ {
 		// boundary.ConnectCli(t, ctx, newTargetId)
-		tClient.AuthorizeSession(ctx, newTargetId)
+		_, err := tClient.AuthorizeSession(ctx, targetId)
+		require.NoError(t, err)
 	}
 
 	// List sessions
-	initialSessions, err := sClient.List(ctx, newProjectId)
+	initialSessions, err := sClient.List(ctx, projectId)
 	require.NoError(t, err)
 
 	require.Len(t, initialSessions.Items, c.MaxPageSize+1)
@@ -145,10 +160,10 @@ func TestApiPaginateSessions(t *testing.T) {
 	assert.Len(t, mapSliceItems, c.MaxPageSize+1)
 
 	// Create a new session
-	boundary.ConnectCli(t, ctx, newTargetId)
+	boundary.ConnectCli(t, ctx, targetId)
 
 	// List again, should have the new session
-	newSessions, err := sClient.List(ctx, newProjectId, sessions.WithListToken(initialSessions.ListToken))
+	newSessions, err := sClient.List(ctx, projectId, sessions.WithListToken(initialSessions.ListToken))
 	require.NoError(t, err)
 
 	// Note that this will likely contain all the sessions,

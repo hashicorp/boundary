@@ -28,11 +28,12 @@ func TestCliPaginateGroups(t *testing.T) {
 
 	ctx := context.Background()
 	boundary.AuthenticateAdminCli(t, ctx)
-	newOrgId := boundary.CreateNewOrgCli(t, ctx)
+	orgId, err := boundary.CreateOrgCli(t, ctx)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		ctx := context.Background()
 		boundary.AuthenticateAdminCli(t, ctx)
-		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", newOrgId))
+		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", orgId))
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
 
@@ -41,14 +42,16 @@ func TestCliPaginateGroups(t *testing.T) {
 	require.NoError(t, err)
 	var groupIds []string
 	for i := 0; i < c.MaxPageSize+1; i++ {
-		groupIds = append(groupIds, boundary.CreateNewGroupApi(t, ctx, client, newOrgId))
+		groupId, err := boundary.CreateGroupApi(t, ctx, client, orgId)
+		require.NoError(t, err)
+		groupIds = append(groupIds, groupId)
 	}
 
 	// List groups
 	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"groups", "list",
-			"-scope-id", newOrgId,
+			"-scope-id", orgId,
 			"-format=json",
 		),
 	)
@@ -70,7 +73,8 @@ func TestCliPaginateGroups(t *testing.T) {
 	assert.Empty(t, initialGroups.ListToken)
 
 	// Create a new group and destroy one of the other groups
-	newGroupId := boundary.CreateNewGroupApi(t, ctx, client, newOrgId)
+	groupId, err := boundary.CreateGroupApi(t, ctx, client, orgId)
+	require.NoError(t, err)
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"groups", "delete",
@@ -83,7 +87,7 @@ func TestCliPaginateGroups(t *testing.T) {
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"groups", "list",
-			"-scope-id", newOrgId,
+			"-scope-id", orgId,
 			"-format=json",
 		),
 	)
@@ -97,7 +101,7 @@ func TestCliPaginateGroups(t *testing.T) {
 	// The first item should be the most recently created, which
 	// should be our new group
 	firstItem := newGroups.Items[0]
-	assert.Equal(t, newGroupId, firstItem.Id)
+	assert.Equal(t, groupId, firstItem.Id)
 	assert.Empty(t, newGroups.ResponseType)
 	assert.Empty(t, newGroups.RemovedIds)
 	assert.Empty(t, newGroups.ListToken)
@@ -119,20 +123,23 @@ func TestApiPaginateGroups(t *testing.T) {
 	ctx := context.Background()
 	sClient := scopes.NewClient(client)
 	uClient := groups.NewClient(client)
-	newOrgId := boundary.CreateNewOrgApi(t, ctx, client)
+	orgId, err := boundary.CreateOrgApi(t, ctx, client)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		ctx := context.Background()
-		_, err := sClient.Delete(ctx, newOrgId)
+		_, err := sClient.Delete(ctx, orgId)
 		require.NoError(t, err)
 	})
 
 	var groupIds []string
 	for i := 0; i < c.MaxPageSize+1; i++ {
-		groupIds = append(groupIds, boundary.CreateNewGroupApi(t, ctx, client, newOrgId))
+		groupId, err := boundary.CreateGroupApi(t, ctx, client, orgId)
+		require.NoError(t, err)
+		groupIds = append(groupIds, groupId)
 	}
 
 	// List groups
-	initialGroups, err := uClient.List(ctx, newOrgId)
+	initialGroups, err := uClient.List(ctx, orgId)
 	require.NoError(t, err)
 
 	var returnedIds []string
@@ -153,12 +160,13 @@ func TestApiPaginateGroups(t *testing.T) {
 	assert.Len(t, mapSliceItems, c.MaxPageSize+1)
 
 	// Create a new group and destroy one of the other groups
-	newGroupId := boundary.CreateNewGroupApi(t, ctx, client, newOrgId)
+	groupId, err := boundary.CreateGroupApi(t, ctx, client, orgId)
+	require.NoError(t, err)
 	_, err = uClient.Delete(ctx, initialGroups.Items[0].Id)
 	require.NoError(t, err)
 
 	// List again, should have the new and deleted group
-	newGroups, err := uClient.List(ctx, newOrgId, groups.WithListToken(initialGroups.ListToken))
+	newGroups, err := uClient.List(ctx, orgId, groups.WithListToken(initialGroups.ListToken))
 	require.NoError(t, err)
 
 	// Note that this will likely contain all the groups,
@@ -169,7 +177,7 @@ func TestApiPaginateGroups(t *testing.T) {
 	// The first item should be the most recently created, which
 	// should be our new group
 	firstItem := newGroups.Items[0]
-	assert.Equal(t, newGroupId, firstItem.Id)
+	assert.Equal(t, groupId, firstItem.Id)
 	assert.Equal(t, "complete", newGroups.ResponseType)
 	// Note that the removed IDs may contain entries from other tests,
 	// so just check that there is at least 1 entry and that our entry

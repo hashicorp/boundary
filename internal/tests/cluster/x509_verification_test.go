@@ -156,7 +156,6 @@ func TestCustomX509Verification_Client(t *testing.T) {
 			// hijacked, just setting for completeness
 			transport.IdleConnTimeout = 0
 			transport.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
-				// time.Sleep(1000 * time.Second)
 				dialer := &tls.Dialer{Config: tlsConf}
 				return dialer.DialContext(ctx, network, addr)
 			}
@@ -261,7 +260,6 @@ func testCustomX509Verification_Server(ec event.TestConfig, certPool *x509.CertP
 		// hijacked, just setting for completeness
 		transport.IdleConnTimeout = 0
 		transport.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
-			// time.Sleep(1000 * time.Second)
 			dialer := &tls.Dialer{Config: tlsConf}
 			return dialer.DialContext(ctx, network, addr)
 		}

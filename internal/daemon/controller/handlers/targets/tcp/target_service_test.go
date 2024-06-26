@@ -34,6 +34,7 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/credentials"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/targets"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/event"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	authpb "github.com/hashicorp/boundary/internal/gen/controller/auth"
 	hostplugin "github.com/hashicorp/boundary/internal/host/plugin"
@@ -56,6 +57,7 @@ import (
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	"github.com/hashicorp/go-uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/ssh/testdata"
@@ -3272,6 +3274,12 @@ func TestAuthorizeSession(t *testing.T) {
 	require.NoError(t, err)
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
+			// Generate correlation Id and add it to the context
+			corId, err := uuid.GenerateUUID()
+			require.NoError(t, err)
+			ctx, err = event.NewCorrelationIdContext(ctx, corId)
+			require.NoError(t, err)
+
 			tar := tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), tc.name, target.WithDefaultPort(defaultPort))
 			apiTar, err := s.AddTargetHostSources(ctx, &pbs.AddTargetHostSourcesRequest{
 				Id:            tar.GetPublicId(),
@@ -3379,6 +3387,13 @@ func TestAuthorizeSession(t *testing.T) {
 			assert.Contains(t, cert.EmailAddresses, loginName)
 
 			gotCred.Secret = nil
+
+			// CorrelationId is not part of the authSession resp, query the session directly
+			sessRepo, err := sessionRepoFn()
+			require.NoError(t, err)
+			gotSess, _, err := sessRepo.LookupSession(ctx, got.SessionId)
+			require.NoError(t, err)
+			require.Equal(t, corId, gotSess.CorrelationId)
 
 			got.AuthorizationToken, got.SessionId, got.CreatedTime = "", "", nil
 			assert.Empty(t, cmp.Diff(
@@ -3951,6 +3966,12 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 			// Tell our DB that there is a worker ready to serve the data
 			server.TestKmsWorker(t, conn, wrapper)
 
+			// Generate correlation Id and add it to the context
+			corId, err := uuid.GenerateUUID()
+			require.NoError(t, err)
+			ctx, err = event.NewCorrelationIdContext(ctx, corId)
+			require.NoError(t, err)
+
 			asRes, err := s.AuthorizeSession(ctx, &pbs.AuthorizeSessionRequest{
 				Id: tar.GetPublicId(),
 			})
@@ -4205,8 +4226,15 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 		return tr.GetItem().GetVersion()
 	}
 
+	// Generate correlation Id and add it to the context
+	corId, err := uuid.GenerateUUID()
+	require.NoError(t, err)
+	ctxWithCor, err := event.NewCorrelationIdContext(ctx, corId)
+	require.NoError(t, err)
+
 	cases := []struct {
 		name            string
+		ctx             context.Context
 		setup           []func(target.Target) uint32
 		useTargetId     bool
 		wantErr         bool
@@ -4215,28 +4243,33 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 		{
 			// This one must be run first since it relies on the DB not having any worker details
 			name:            "no worker",
+			ctx:             ctxWithCor,
 			setup:           []func(tcpTarget target.Target) uint32{hostExists, libraryExists},
 			useTargetId:     true,
 			wantErrContains: "No workers are available to handle this session",
 		},
 		{
 			name:        "success",
+			ctx:         ctxWithCor,
 			setup:       []func(tcpTarget target.Target) uint32{workerExists, hostExists, libraryExists},
 			useTargetId: true,
 		},
 		{
 			name:            "no target",
+			ctx:             ctxWithCor,
 			setup:           []func(tcpTarget target.Target) uint32{workerExists, hostExists, libraryExists},
 			useTargetId:     false,
 			wantErrContains: "Resource not found",
 		},
 		{
 			name:        "no host port",
+			ctx:         ctxWithCor,
 			setup:       []func(tcpTarget target.Target) uint32{workerExists, hostWithoutPort, libraryExists},
 			useTargetId: true,
 		},
 		{
 			name: "host port",
+			ctx:  ctxWithCor,
 			setup: []func(tcpTarget target.Target) uint32{
 				workerExists, func(tcpTarget target.Target) uint32 {
 					tcpTarget.SetAddress("127.0.0.1:22")
@@ -4252,25 +4285,36 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 		},
 		{
 			name:            "no hosts",
+			ctx:             ctxWithCor,
 			setup:           []func(tcpTarget target.Target) uint32{workerExists, hostSetNoHostExists, libraryExists},
 			useTargetId:     true,
 			wantErrContains: "No host sources or address found for given target",
 		},
 		{
 			name:            "bad library configuration",
+			ctx:             ctxWithCor,
 			setup:           []func(tcpTarget target.Target) uint32{workerExists, hostExists, misConfiguredlibraryExists},
 			useTargetId:     true,
 			wantErrContains: "external system issue: error #3014: Error making API request",
 		},
 		{
 			name:            "expired token library",
+			ctx:             ctxWithCor,
 			setup:           []func(tcpTarget target.Target) uint32{workerExists, hostExists, expiredTokenLibrary},
 			useTargetId:     true,
 			wantErrContains: "vault.newClient: invalid configuration",
 		},
+		{
+			name:            "no correaltion id",
+			ctx:             ctx,
+			setup:           []func(tcpTarget target.Target) uint32{workerExists, hostExists, libraryExists},
+			useTargetId:     true,
+			wantErrContains: "authorize session: missing correlation id",
+		},
 	}
 	for i, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
+			ctx := tc.ctx
 			tar := tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), fmt.Sprintf("test-%d", i), target.WithDefaultPort(22))
 
 			for _, fn := range tc.setup {

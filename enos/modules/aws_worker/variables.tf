@@ -99,11 +99,6 @@ variable "boundary_install_dir" {
   default     = "/opt/boundary/bin"
 }
 
-variable "iam_instance_profile_name" {
-  description = "The name of the AWS IAM instance profile from the Boundary cluster module"
-  type        = string
-}
-
 variable "name_prefix" {
   description = "The name_prefix from the Boundary cluster module"
   type        = string
@@ -138,6 +133,12 @@ variable "config_file_path" {
 
 variable "recording_storage_path" {
   description = "Path on instance to store recordings"
+  type        = string
+  default     = ""
+}
+
+variable "bucket_arn" {
+  description = "ARN of the S3 bucket to store recordings"
   type        = string
   default     = ""
 }

@@ -33,43 +33,48 @@ func TestCliCreateAwsDynamicHostCatalogWithHostSet(t *testing.T) {
 
 	ctx := context.Background()
 	boundary.AuthenticateAdminCli(t, ctx)
-	newOrgId := boundary.CreateNewOrgCli(t, ctx)
+	orgId, err := boundary.CreateOrgCli(t, ctx)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		ctx := context.Background()
 		boundary.AuthenticateAdminCli(t, ctx)
-		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", newOrgId))
+		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", orgId))
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
-	newProjectId := boundary.CreateNewProjectCli(t, ctx, newOrgId)
-	newHostCatalogId := boundary.CreateNewAwsHostCatalogCli(t, ctx, newProjectId, c.AwsAccessKeyId, c.AwsSecretAccessKey)
+	projectId, err := boundary.CreateProjectCli(t, ctx, orgId)
+	require.NoError(t, err)
+	hostCatalogId, err := boundary.CreateAwsHostCatalogCli(t, ctx, projectId, c.AwsAccessKeyId, c.AwsSecretAccessKey, c.AwsRegion)
+	require.NoError(t, err)
 
 	// Set up a host set
-	newHostSetId1 := boundary.CreateNewAwsHostSetCli(t, ctx, newHostCatalogId, c.AwsHostSetFilter1)
+	hostSetId1, err := boundary.CreateAwsHostSetCli(t, ctx, hostCatalogId, c.AwsHostSetFilter1)
+	require.NoError(t, err)
 	var targetIps1 []string
 	err = json.Unmarshal([]byte(c.AwsHostSetIps1), &targetIps1)
 	expectedHostSetCount1 := len(targetIps1)
 	require.NoError(t, err)
-	boundary.WaitForNumberOfHostsInHostSetCli(t, ctx, newHostSetId1, expectedHostSetCount1)
+	boundary.WaitForNumberOfHostsInHostSetCli(t, ctx, hostSetId1, expectedHostSetCount1)
 
 	// Set up another host set
-	newHostSetId2 := boundary.CreateNewAwsHostSetCli(t, ctx, newHostCatalogId, c.AwsHostSetFilter2)
+	hostSetId2, err := boundary.CreateAwsHostSetCli(t, ctx, hostCatalogId, c.AwsHostSetFilter2)
+	require.NoError(t, err)
 	var targetIps2 []string
 	err = json.Unmarshal([]byte(c.AwsHostSetIps2), &targetIps2)
 	require.NoError(t, err)
 	expectedHostSetCount2 := len(targetIps2)
-	boundary.WaitForNumberOfHostsInHostSetCli(t, ctx, newHostSetId2, expectedHostSetCount2)
+	boundary.WaitForNumberOfHostsInHostSetCli(t, ctx, hostSetId2, expectedHostSetCount2)
 
 	// Update host set with a different filter
 	t.Log("Updating host set 2 with host set 1's filter...")
 	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"host-sets", "update", "plugin",
-			"-id", newHostSetId2,
+			"-id", hostSetId2,
 			"-attr", fmt.Sprintf("filters=%s", c.AwsHostSetFilter1),
 		),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
-	boundary.WaitForNumberOfHostsInHostSetCli(t, ctx, newHostSetId2, expectedHostSetCount1)
+	boundary.WaitForNumberOfHostsInHostSetCli(t, ctx, hostSetId2, expectedHostSetCount1)
 
 	// Get list of all hosts from host catalog
 	t.Logf("Looking for items in the host catalog...")
@@ -77,7 +82,7 @@ func TestCliCreateAwsDynamicHostCatalogWithHostSet(t *testing.T) {
 	err = backoff.RetryNotify(
 		func() error {
 			output := e2e.RunCommand(ctx, "boundary",
-				e2e.WithArgs("hosts", "list", "-host-catalog-id", newHostCatalogId, "-format", "json"),
+				e2e.WithArgs("hosts", "list", "-host-catalog-id", hostCatalogId, "-format", "json"),
 			)
 			if output.Err != nil {
 				return backoff.Permanent(errors.New(string(output.Stderr)))
@@ -107,14 +112,16 @@ func TestCliCreateAwsDynamicHostCatalogWithHostSet(t *testing.T) {
 	assert.Equal(t, expectedHostCatalogCount, actualHostCatalogCount, "Numbers of hosts in host catalog did not match expected amount")
 
 	// Create target
-	newTargetId := boundary.CreateNewTargetCli(t, ctx, newProjectId, c.TargetPort)
-	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, newHostSetId1)
+	targetId, err := boundary.CreateTargetCli(t, ctx, projectId, c.TargetPort)
+	require.NoError(t, err)
+	err = boundary.AddHostSourceToTargetCli(t, ctx, targetId, hostSetId1)
+	require.NoError(t, err)
 
 	// Connect to target
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"connect",
-			"-target-id", newTargetId,
+			"-target-id", targetId,
 			"-exec", "/usr/bin/ssh", "--",
 			"-l", c.TargetSshUser,
 			"-i", c.TargetSshKeyPath,
@@ -154,22 +161,24 @@ func TestApiCreateAwsDynamicHostCatalog(t *testing.T) {
 	require.NoError(t, err)
 	ctx := context.Background()
 
-	newOrgId := boundary.CreateNewOrgApi(t, ctx, client)
+	orgId, err := boundary.CreateOrgApi(t, ctx, client)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		scopeClient := scopes.NewClient(client)
-		_, err := scopeClient.Delete(ctx, newOrgId)
+		_, err := scopeClient.Delete(ctx, orgId)
 		require.NoError(t, err)
 	})
-	newProjectId := boundary.CreateNewProjectApi(t, ctx, client, newOrgId)
+	projectId, err := boundary.CreateProjectApi(t, ctx, client, orgId)
+	require.NoError(t, err)
 
 	// Create a dynamic host catalog
 	hcClient := hostcatalogs.NewClient(client)
-	newHostCatalogResult, err := hcClient.Create(ctx, "plugin", newProjectId,
+	newHostCatalogResult, err := hcClient.Create(ctx, "plugin", projectId,
 		hostcatalogs.WithName("e2e Automated Test Host Catalog"),
 		hostcatalogs.WithPluginName("aws"),
 		hostcatalogs.WithAttributes(map[string]any{
 			"disable_credential_rotation": true,
-			"region":                      "us-east-1",
+			"region":                      c.AwsRegion,
 		}),
 		hostcatalogs.WithSecrets(map[string]any{
 			"access_key_id":     c.AwsAccessKeyId,

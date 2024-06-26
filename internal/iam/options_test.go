@@ -61,15 +61,6 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withLimit = 1
 		assert.Equal(opts, testOpts)
 	})
-	t.Run("WithGrantScopeId", func(t *testing.T) {
-		assert := assert.New(t)
-		str := "o_1234"
-		opts := getOpts(WithGrantScopeId(str))
-		testOpts := getDefaultOptions()
-
-		testOpts.withGrantScopeId = &str
-		assert.Equal(opts, testOpts)
-	})
 	t.Run("WithDisassociate", func(t *testing.T) {
 		assert := assert.New(t)
 		// test default of false

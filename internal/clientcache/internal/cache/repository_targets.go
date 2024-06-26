@@ -25,10 +25,13 @@ type TargetRetrievalFunc func(ctx context.Context, addr, authTok string, refresh
 
 func defaultTargetFunc(ctx context.Context, addr, authTok string, refreshTok RefreshTokenValue) ([]*targets.Target, []string, RefreshTokenValue, error) {
 	const op = "cache.defaultTargetFunc"
-	client, err := api.NewClient(&api.Config{
-		Addr:  addr,
-		Token: authTok,
-	})
+	conf, err := api.DefaultConfig()
+	if err != nil {
+		return nil, nil, "", errors.Wrap(ctx, err, op)
+	}
+	conf.Addr = addr
+	conf.Token = authTok
+	client, err := api.NewClient(conf)
 	if err != nil {
 		return nil, nil, "", errors.Wrap(ctx, err, op)
 	}

@@ -34,17 +34,17 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type PolicyServiceClient interface {
 	// GetPolicy returns a policy with the given id, if it exists. The request
-	// must include a policy id. An error is returned if the id is missing,
-	// malformed, or if a policy with the provided id doesn't exist.
+	// must include a policy id. An error is returned if the ID is missing,
+	// malformed, or if a policy with the provided ID doesn't exist.
 	GetPolicy(ctx context.Context, in *GetPolicyRequest, opts ...grpc.CallOption) (*GetPolicyResponse, error)
 	// ListPolicies returns a list of stored policies in Boundary which exist
 	// inside the scope referenced in the request. The request must include the
-	// scope id for the policies being retrieved. An error is returned if the
-	// scope id is missing, malformed, or references a non existing scope.
+	// scope ID for the policies being retrieved. An error is returned if the
+	// scope ID is missing, malformed, or references a non existing scope.
 	ListPolicies(ctx context.Context, in *ListPoliciesRequest, opts ...grpc.CallOption) (*ListPoliciesResponse, error)
 	// CreatePolicy creates and stores a new policy in Boundary. The provided
-	// request must include the scope id in which the policy will be created. An
-	// error is returned if the scope id is missing, malformed or references a non
+	// request must include the scope ID in which the policy will be created. An
+	// error is returned if the scope ID is missing, malformed or references a non
 	// existing scope.
 	CreatePolicy(ctx context.Context, in *CreatePolicyRequest, opts ...grpc.CallOption) (*CreatePolicyResponse, error)
 	// UpdatePolicy updates an existing policy in Boundary. The provided policy
@@ -54,7 +54,7 @@ type PolicyServiceClient interface {
 	// the policy object.
 	UpdatePolicy(ctx context.Context, in *UpdatePolicyRequest, opts ...grpc.CallOption) (*UpdatePolicyResponse, error)
 	// DeletePolicy deletes a policy from Boundary. An error is returned if the
-	// policy id is malformed or not provided.
+	// policy ID is malformed or not provided.
 	DeletePolicy(ctx context.Context, in *DeletePolicyRequest, opts ...grpc.CallOption) (*DeletePolicyResponse, error)
 }
 
@@ -116,17 +116,17 @@ func (c *policyServiceClient) DeletePolicy(ctx context.Context, in *DeletePolicy
 // for forward compatibility
 type PolicyServiceServer interface {
 	// GetPolicy returns a policy with the given id, if it exists. The request
-	// must include a policy id. An error is returned if the id is missing,
-	// malformed, or if a policy with the provided id doesn't exist.
+	// must include a policy id. An error is returned if the ID is missing,
+	// malformed, or if a policy with the provided ID doesn't exist.
 	GetPolicy(context.Context, *GetPolicyRequest) (*GetPolicyResponse, error)
 	// ListPolicies returns a list of stored policies in Boundary which exist
 	// inside the scope referenced in the request. The request must include the
-	// scope id for the policies being retrieved. An error is returned if the
-	// scope id is missing, malformed, or references a non existing scope.
+	// scope ID for the policies being retrieved. An error is returned if the
+	// scope ID is missing, malformed, or references a non existing scope.
 	ListPolicies(context.Context, *ListPoliciesRequest) (*ListPoliciesResponse, error)
 	// CreatePolicy creates and stores a new policy in Boundary. The provided
-	// request must include the scope id in which the policy will be created. An
-	// error is returned if the scope id is missing, malformed or references a non
+	// request must include the scope ID in which the policy will be created. An
+	// error is returned if the scope ID is missing, malformed or references a non
 	// existing scope.
 	CreatePolicy(context.Context, *CreatePolicyRequest) (*CreatePolicyResponse, error)
 	// UpdatePolicy updates an existing policy in Boundary. The provided policy
@@ -136,7 +136,7 @@ type PolicyServiceServer interface {
 	// the policy object.
 	UpdatePolicy(context.Context, *UpdatePolicyRequest) (*UpdatePolicyResponse, error)
 	// DeletePolicy deletes a policy from Boundary. An error is returned if the
-	// policy id is malformed or not provided.
+	// policy ID is malformed or not provided.
 	DeletePolicy(context.Context, *DeletePolicyRequest) (*DeletePolicyResponse, error)
 	mustEmbedUnimplementedPolicyServiceServer()
 }

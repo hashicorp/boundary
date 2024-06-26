@@ -23,6 +23,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/internal/ratelimit"
+	"github.com/hashicorp/boundary/internal/storage"
 	"github.com/hashicorp/boundary/internal/util"
 	kms_plugin_assets "github.com/hashicorp/boundary/plugins/kms"
 	"github.com/hashicorp/boundary/sdk/wrapper"
@@ -196,7 +197,7 @@ type Controller struct {
 	// TODO: This isn't documented (on purpose) because the right place for this
 	// is central configuration so you can't drift across controllers, but we
 	// don't have that yet.
-	WorkerStatusGracePeriod         interface{}   `hcl:"worker_status_grace_period"`
+	WorkerStatusGracePeriod         any           `hcl:"worker_status_grace_period"`
 	WorkerStatusGracePeriodDuration time.Duration `hcl:"-"`
 
 	// LivenessTimeToStale represents the period of time (as a duration) after
@@ -206,7 +207,7 @@ type Controller struct {
 	// TODO: This isn't documented (on purpose) because the right place for this
 	// is central configuration so you can't drift across controllers, but we
 	// don't have that yet.
-	LivenessTimeToStale         interface{}   `hcl:"liveness_time_to_stale"`
+	LivenessTimeToStale         any           `hcl:"liveness_time_to_stale"`
 	LivenessTimeToStaleDuration time.Duration `hcl:"-"`
 
 	// SchedulerRunJobInterval is the time interval between waking up the
@@ -275,7 +276,7 @@ type Worker struct {
 	// canceling it to try again.
 	//
 	// TODO: This is currently not documented and considered internal.
-	StatusCallTimeout         interface{}   `hcl:"status_call_timeout"`
+	StatusCallTimeout         any           `hcl:"status_call_timeout"`
 	StatusCallTimeoutDuration time.Duration `hcl:"-"`
 
 	// SuccessfulStatusGracePeriod represents the period of time (as a duration)
@@ -284,7 +285,7 @@ type Worker struct {
 	// less than StatusCallTimeout.
 	//
 	// TODO: This is currently not documented and considered internal.
-	SuccessfulStatusGracePeriod         interface{}   `hcl:"successful_status_grace_period"`
+	SuccessfulStatusGracePeriod         any           `hcl:"successful_status_grace_period"`
 	SuccessfulStatusGracePeriodDuration time.Duration `hcl:"-"`
 
 	// AuthStoragePath represents the location a worker stores its node credentials, if set
@@ -293,6 +294,15 @@ type Worker struct {
 	// RecordingStoragePath represents the location a worker caches session recordings before
 	// they are sync'ed to the corresponding storage bucket. The path must already exist.
 	RecordingStoragePath string `hcl:"recording_storage_path"`
+
+	// RecordingStorageMinimumAvailableCapacity represents the minimum amount of available
+	// disk space a worker needs in the path defined by RecordingStoragePath for processing
+	// sessions with recording enabled. The expected input value for this field is a
+	// “capacity string“. Supported suffixes are kb, kib, mb, mib, gb, gib, tb, tib, which
+	// are not case sensitive. We use a raw interface for parsing so that users can input a
+	// "capacity string" which is converted into a uint64 value that is measured in bytes.
+	RecordingStorageMinimumAvailableCapacity  any    `hcl:"recording_storage_minimum_available_capacity"`
+	RecordingStorageMinimumAvailableDiskSpace uint64 `hcl:"-"`
 
 	// ControllerGeneratedActivationToken is a controller-generated activation
 	// token used to register this worker to the cluster. It can be a path, env
@@ -788,6 +798,21 @@ func Parse(d string) (*Config, error) {
 		}
 		if result.Worker.SuccessfulStatusGracePeriodDuration < 0 {
 			return nil, errors.New("Successful status grace period value is negative")
+		}
+
+		if !util.IsNil(result.Worker.RecordingStorageMinimumAvailableCapacity) {
+			if result.Worker.RecordingStoragePath == "" {
+				return nil, errors.New("recording_storage_path cannot be empty when providing recording_storage_minimum_available_capacity")
+			}
+			recordingStorageMinimumAvailableDiskSpace, err := parseutil.ParseCapacityString(result.Worker.RecordingStorageMinimumAvailableCapacity)
+			if err != nil {
+				return result, err
+			}
+			result.Worker.RecordingStorageMinimumAvailableDiskSpace = recordingStorageMinimumAvailableDiskSpace
+		}
+		// RecordingStorageMinimumAvailableDiskSpace defaults to 500MiB when not set by the user
+		if result.Worker.RecordingStoragePath != "" && result.Worker.RecordingStorageMinimumAvailableDiskSpace == 0 {
+			result.Worker.RecordingStorageMinimumAvailableDiskSpace = storage.DefaultMinimumAvailableDiskSpace
 		}
 
 		switch {

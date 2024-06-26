@@ -5,7 +5,8 @@ name: Check Milestone
 
 on:
   pull_request:
-    types: [opened, synchronize, labeled, unlabeled]
+    # milestoned and demilestoned are supported even if IDE is complaining
+    types: [opened, synchronize, labeled, unlabeled, milestoned, demilestoned ]
     # Runs on PRs to main and release branches
     branches:
       - main
@@ -22,20 +23,5 @@ jobs:
     if: contains(github.event.pull_request.labels.*.name, 'pr/no-milestone') != true
     runs-on: ${{ fromJSON(vars.RUNNER) }}
     steps:
-      - name: Checkout Actions
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
-        with:
-          repository: "grafana/grafana-github-actions"
-          path: ./actions
-          ref: be89ad434792280ebaa4d982ac72ba548b6f7095
-      - name: Set up Node.js
-        uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8 # v4.0.2
-        with:
-          node-version: '16.x'
-      - name: Install Actions
-        run: npm install --production --prefix ./actions
-      - name: Run PR Checks
-        uses: ./actions/pr-checks
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          configPath: configs/milestone-check
+      - name: Check milestone
+        run: ${{ github.event.pull_request.milestone != null }}

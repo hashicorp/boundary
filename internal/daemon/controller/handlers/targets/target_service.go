@@ -25,6 +25,7 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/event"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	intglobals "github.com/hashicorp/boundary/internal/globals"
 	"github.com/hashicorp/boundary/internal/host"
@@ -99,11 +100,11 @@ var (
 		action.List,
 	)
 
-	validateCredentialSourcesFn      = func(context.Context, globals.Subtype, []target.CredentialSource) error { return nil }
-	ValidateIngressWorkerFilterFn    = IngressWorkerFilterUnsupported
-	AuthorizeSessionWorkerFilterFn   = AuthorizeSessionWithWorkerFilter
-	PostSessionAuthorizationCallback = DefaultPostSessionAuthorizationCallback
-	WorkerFilterDeprecationMessage   = fmt.Sprintf("This field is deprecated. Use %s instead.", globals.EgressWorkerFilterField)
+	validateCredentialSourcesFn    = func(context.Context, globals.Subtype, []target.CredentialSource) error { return nil }
+	ValidateIngressWorkerFilterFn  = IngressWorkerFilterUnsupported
+	AuthorizeSessionWorkerFilterFn = AuthorizeSessionWithWorkerFilter
+	SessionRecordingFn             = NoSessionRecording
+	WorkerFilterDeprecationMessage = fmt.Sprintf("This field is deprecated. Use %s instead.", globals.EgressWorkerFilterField)
 )
 
 func init() {
@@ -784,8 +785,8 @@ func AuthorizeSessionWithWorkerFilter(
 	return selectedWorkers, nil, nil
 }
 
-func DefaultPostSessionAuthorizationCallback(context.Context, intglobals.ControllerExtension, *kms.Kms, *target.Repository, target.Target, *session.Session, *server.Worker) error {
-	return nil
+func NoSessionRecording(context.Context, intglobals.ControllerExtension, *kms.Kms, target.Target, *session.Session, *server.Worker) (string, error) {
+	return "", nil
 }
 
 func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSessionRequest) (_ *pbs.AuthorizeSessionResponse, retErr error) {
@@ -816,6 +817,10 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	)
 	if authResults.Error != nil {
 		return nil, authResults.Error
+	}
+	correlationId, ok := event.CorrelationIdFromContext(ctx)
+	if !ok {
+		return nil, stderrors.New("authorize session: missing correlation id")
 	}
 
 	if authResults.RoundTripValue == nil {
@@ -1039,6 +1044,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 		IngressWorkerFilter: t.GetIngressWorkerFilter(),
 		DynamicCredentials:  dynCreds,
 		StaticCredentials:   staticCreds,
+		CorrelationId:       correlationId,
 	}
 	if protoWorker != nil {
 		sessionComposition.ProtocolWorkerId = protoWorker.GetPublicId()
@@ -1217,15 +1223,15 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 		Credentials:        creds,
 	}
 
-	if err := PostSessionAuthorizationCallback(
+	ret.SessionRecordingId, err = SessionRecordingFn(
 		ctx,
 		s.controllerExt,
 		s.kmsCache,
-		repo,
 		t,
 		sess,
 		protoWorker,
-	); err != nil {
+	)
+	if err != nil {
 		// Errors here will automatically delete the session and associated resources
 		// using deferred statements above.
 		return nil, errors.Wrap(ctx, err, op)

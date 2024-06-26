@@ -1,0 +1,205 @@
+---
+layout: docs
+page_title: v0.16.0
+description: |-
+  Boundary release notes for v0.16.0
+---
+
+# Boundary 0.16.0 release notes
+
+**GA date:** April 30, 2024
+
+@include 'release-notes/intro.mdx'
+
+<Note>
+
+  In a future version Boundary will no longer automatically create roles when new scopes are created. This was implemented prior to multi-scope grants to ensure administrators and users had default permissions in new scopes. Since Boundary 0.15, initial roles created for new clusters provide these permissions by default to all scopes using multi-scope grants.
+
+</Note>
+
+## New features
+
+<table>
+  <thead>
+    <tr>
+      <th style={{verticalAlign: 'middle'}}>Feature</th>
+      <th style={{verticalAlign: 'middle'}}>Update</th>
+      <th style={{verticalAlign: 'middle'}}>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+      Aliases
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+      GA
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+     A new resource was introduced in this release. Aliases let you associate a string with a Boundary target. You can then establish a session to the target by referencing its alias, instead of having to provide a target ID or target name and scope ID.
+      <br /><br />
+      Learn more:&nbsp;<a href="/boundary/docs/concepts/aliases">Aliases</a>.
+    </td>
+  </tr>
+
+   <tr>
+    <td style={{verticalAlign: 'middle'}}>
+      MinIO support for session recording
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+      GA
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+      You can now configure external MinIO storage to store recorded sessions. MinIO support provides an on-premises storage option for users who do not use AWS.
+      <br /><br />
+      Learn more:&nbsp;<a href="/boundary/docs/configuration/session-recording">Session recording overview</a>.
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+      Admin UI enhanced search and filtering
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+      GA
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+      Enhanced search and filter support was added to the Boundary CLI and API through a new list pagination feature in release 0.15.0. This functionality has been extended to the Admin UI in release 0.16.0.
+      <br /><br />
+      Learn more:&nbsp;<a href="/boundary/docs/api-clients/api/pagination">List pagination</a>.
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+      Local storage state health
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+      GA
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+      Storage state values have been created to monitor the health of any local workers used for session recording. Boundary monitors the worker's available disk space and compares it to the value you configured for recording capacity. If the worker does not have adequate storage, it cannot be used for session recording.
+      <br /><br />
+      Learn more:&nbsp;<a href="/boundary/docs/configuration/session-recording/configure-worker-storage#local-storage">Local storage for session recording</a>.
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+      X-Correlation-ID HTTP header
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+      GA
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+      A new HTTP header was added to identify a transaction over a series of requests and responses. You can use the X-Correlation-ID header to correlate events between external systems and products. The initial release of the X-Correlation-ID header supports correlating events between Boundary and Vault.
+      <br /><br />
+      Learn more:&nbsp;<a href="/boundary/docs/api-clients/api#http-headers">HTTP headers</a>.
+    </td>
+  </tr>
+
+
+  </tbody>
+</table>
+
+## Known issues and breaking changes
+
+<table>
+  <thead>
+    <tr>
+      <th style={{verticalAlign: 'middle'}}>Version</th>
+      <th style={{verticalAlign: 'middle'}}>Issue</th>
+      <th style={{verticalAligh: 'middle'}}>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    0.13.0+
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Rotation of AWS access and secret keys during a session results in stale recordings
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    In Boundary version 0.13.0+, when you rotate a storage bucket's secrets, any new sessions use the new credentials. However, previously established sessions continue to use the old credentials.
+    <br /><br />
+    As a best practice, administrators should rotate credentials in a phased manner, ensuring that all previously established sessions are completed before revoking the stale credentials.
+    Otherwise, you may end up with recordings that aren't stored in the remote storage bucket, and are unable to be played back.
+    </td>
+  </tr>
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    0.13.0+
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Unsupported recovery workflow during worker failure
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    If a worker fails during a recording, there is no way to recover the recording. This could happen due to a network connectivity issue or because a worker is scaled down, for example.
+    <br /><br />
+    Learn more:&nbsp;
+    <a href="/boundary/docs/troubleshoot/troubleshoot-recorded-sessions#unsupported-recovery-workflow">Unsupported recovery workflow</a>
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    0.16.0
+    <br /><br />
+    (Fixed in 0.16.1 for Community/Enterprise editions and 0.16.2 for HCP Boundary)
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Controller dead lock with database connections stuck in <code>idle in transaction</code> state
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    If you configured a controller to have the maximum number of open connections and it was under enough load from worker requests, the controller could get stuck. Once the controller consumed all the database connections, it would leave them in an <code>idle in transaction</code> state. In extreme cases, this could cause Boundary clusters to become unresponsive.
+    <br /><br />
+    The cause of this problem was due to a combination of issues. There was no request timeout for worker-to-controller GRPC requests. Also, the session repository attempted to use a separate database connection to retrieve a KMS wrapper after already starting a database transaction.
+    <br /><br />
+    This issue is fixed in release 0.16.1 for the Community and Enterprise editions. It is fixed in release 0.16.2 for HCP Boundary.
+    <br /><br />
+    Boundary now sets a max request duration for GRPC requests based on the cluster's listener configuration. KMS operations now occur outside of the transaction.
+    <br /><br />
+    <a href="/boundary/tutorials/self-managed-deployment/upgrade-version">Upgrade to the latest version of Boundary</a>
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    0.16.0
+    <br /><br />
+    (Fixed in 0.16.2)
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    TLS handshake error
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    When you rotated credentials for a worker, sometimes the request succeeded on the controller, but the worker did not receive the response. Because the controller and worker used different sets of credentials, the worker was unable to connect to the controller and you received a TLS handshake error.
+    <br /><br />
+    In release 0.16.2, we added a new NodeIDLoader interface. The worker uses the interface to check its key set and correct its stored credential set to match the controller, if necessary. This issue is now resolved.
+    <br /><br />
+    <a href="/boundary/tutorials/self-managed-deployment/upgrade-version">Upgrade to the latest version of Boundary</a>
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    0.16.0
+    <br /><br />
+    (Fixed in 0.16.2)
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    OIDC error codes
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    In releases 0.16.0 and earlier, Boundary used internal error codes for OIDC errors. The internal error codes could cause confusion, since the codes were non-standard HTTP response codes.
+    <br /><br />
+    In release 0.16.2, we updated the OIDC request handlers to return standard gRPC status codes for errors. The 4xx status codes are more descriptive of the error.
+    <br /><br />
+    <a href="/boundary/tutorials/self-managed-deployment/upgrade-version">Upgrade to the latest version of Boundary</a>
+    </td>
+  </tr>
+  </tbody>
+</table>

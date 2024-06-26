@@ -336,9 +336,6 @@ func (c *TestSessionConnection) testSendRecv(t *testing.T) bool {
 		}
 
 		require.Equal(j, i)
-
-		// Sleep 1s
-		// time.Sleep(time.Second)
 	}
 
 	t.Log("finished send/recv successfully", "num_successfully_sent", testSendRecvSendMax)

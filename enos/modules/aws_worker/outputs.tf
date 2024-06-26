@@ -20,3 +20,8 @@ output "pet_id" {
   description = "The ID of the random_pet used in this module"
   value       = random_pet.worker.id
 }
+
+output "role_arn" {
+  description = "The ARN of the IAM role used in this module"
+  value       = aws_iam_role.boundary_instance_role.arn
+}

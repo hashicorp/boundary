@@ -158,5 +158,7 @@ func TestRepository_convertToSessions(t *testing.T) {
 	sess.CtTofuToken = nil
 	sess.TofuToken = nil
 	sess.KeyId = ""
+	// CorrelationId is an internal attribute and not returned
+	sess.CorrelationId = ""
 	assert.Equal(t, sessions[0], sess)
 }

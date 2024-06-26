@@ -37,7 +37,11 @@ const (
 	EnabledPluginLoopback
 	EnabledPluginAws
 	EnabledPluginHostAzure
+	EnabledPluginMinio
 )
+
+// MinioEnabled controls if the Minio storage plugin should be initiated or not
+var MinioEnabled bool
 
 func (e EnabledPlugin) String() string {
 	switch e {
@@ -47,6 +51,8 @@ func (e EnabledPlugin) String() string {
 		return "AWS"
 	case EnabledPluginHostAzure:
 		return "Azure"
+	case EnabledPluginMinio:
+		return "MinIO"
 	default:
 		return ""
 	}
@@ -68,6 +74,8 @@ const (
 	EnvKeyringType     = "BOUNDARY_KEYRING_TYPE"
 	envRecoveryConfig  = "BOUNDARY_RECOVERY_CONFIG"
 	envSkipCacheDaemon = "BOUNDARY_SKIP_CACHE_DAEMON"
+	envSkipClientAgent = "BOUNDARY_SKIP_CLIENT_AGENT"
+	EnvClientAgentPort = "BOUNDARY_CLIENT_AGENT_LISTENING_PORT"
 
 	StoredTokenName = "HashiCorp Boundary Auth Token"
 )
@@ -106,6 +114,9 @@ type Command struct {
 	FlagRecoveryConfig   string
 	FlagOutputCurlString bool
 	FlagSkipCacheDaemon  bool
+	FlagSkipClientAgent  bool
+
+	FlagClientAgentPort uint
 
 	FlagScopeId           string
 	FlagScopeName         string
@@ -478,6 +489,24 @@ func (c *Command) FlagSet(bit FlagSetBit) *FlagSets {
 				Default: false,
 				EnvVar:  envSkipCacheDaemon,
 				Usage:   "Skips starting the caching daemon or sending the current used/retrieved token to the caching daemon.",
+			})
+
+			f.BoolVar(&BoolVar{
+				Name:    "skip-client-agent",
+				Target:  &c.FlagSkipClientAgent,
+				Default: false,
+				EnvVar:  envSkipClientAgent,
+				Usage:   "Skips sending the auth token used for this command to the client agent if it is running.",
+				Hidden:  true,
+			})
+
+			f.UintVar(&UintVar{
+				Name:    "client-agent-port",
+				Target:  &c.FlagClientAgentPort,
+				Default: 9300,
+				EnvVar:  EnvClientAgentPort,
+				Usage:   "The port on which the client agent is listening.",
+				Hidden:  true,
 			})
 		}
 

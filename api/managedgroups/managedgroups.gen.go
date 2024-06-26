@@ -30,13 +30,11 @@ type ManagedGroup struct {
 	Attributes        map[string]interface{} `json:"attributes,omitempty"`
 	MemberIds         []string               `json:"member_ids,omitempty"`
 	AuthorizedActions []string               `json:"authorized_actions,omitempty"`
-
-	response *api.Response
 }
 
 type ManagedGroupReadResult struct {
 	Item     *ManagedGroup
-	response *api.Response
+	Response *api.Response
 }
 
 func (n ManagedGroupReadResult) GetItem() *ManagedGroup {
@@ -44,14 +42,14 @@ func (n ManagedGroupReadResult) GetItem() *ManagedGroup {
 }
 
 func (n ManagedGroupReadResult) GetResponse() *api.Response {
-	return n.response
+	return n.Response
 }
 
 type ManagedGroupCreateResult = ManagedGroupReadResult
 type ManagedGroupUpdateResult = ManagedGroupReadResult
 
 type ManagedGroupDeleteResult struct {
-	response *api.Response
+	Response *api.Response
 }
 
 // GetItem will always be nil for ManagedGroupDeleteResult
@@ -60,7 +58,7 @@ func (n ManagedGroupDeleteResult) GetItem() interface{} {
 }
 
 func (n ManagedGroupDeleteResult) GetResponse() *api.Response {
-	return n.response
+	return n.Response
 }
 
 type ManagedGroupListResult struct {
@@ -69,7 +67,7 @@ type ManagedGroupListResult struct {
 	RemovedIds   []string        `json:"removed_ids,omitempty"`
 	ListToken    string          `json:"list_token,omitempty"`
 	ResponseType string          `json:"response_type,omitempty"`
-	response     *api.Response
+	Response     *api.Response
 }
 
 func (n ManagedGroupListResult) GetItems() []*ManagedGroup {
@@ -93,7 +91,7 @@ func (n ManagedGroupListResult) GetResponseType() string {
 }
 
 func (n ManagedGroupListResult) GetResponse() *api.Response {
-	return n.response
+	return n.Response
 }
 
 // Client is a client for this collection
@@ -154,7 +152,7 @@ func (c *Client) Create(ctx context.Context, authMethodId string, opt ...Option)
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.response = resp
+	target.Response = resp
 	return target, nil
 }
 
@@ -195,7 +193,7 @@ func (c *Client) Read(ctx context.Context, id string, opt ...Option) (*ManagedGr
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.response = resp
+	target.Response = resp
 	return target, nil
 }
 
@@ -258,7 +256,7 @@ func (c *Client) Update(ctx context.Context, id string, version uint32, opt ...O
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.response = resp
+	target.Response = resp
 	return target, nil
 }
 
@@ -299,7 +297,7 @@ func (c *Client) Delete(ctx context.Context, id string, opt ...Option) (*Managed
 	}
 
 	target := &ManagedGroupDeleteResult{
-		response: resp,
+		Response: resp,
 	}
 	return target, nil
 }
@@ -341,7 +339,7 @@ func (c *Client) List(ctx context.Context, authMethodId string, opt ...Option) (
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.response = resp
+	target.Response = resp
 	if target.ResponseType == "complete" || target.ResponseType == "" {
 		return target, nil
 	}
@@ -399,7 +397,7 @@ func (c *Client) List(ctx context.Context, authMethodId string, opt ...Option) (
 		target.EstItemCount = page.EstItemCount
 		target.ListToken = page.ListToken
 		target.ResponseType = page.ResponseType
-		target.response = resp
+		target.Response = resp
 		if target.ResponseType == "complete" {
 			break
 		}
@@ -434,11 +432,11 @@ func (c *Client) List(ctx context.Context, authMethodId string, opt ...Option) (
 	// Finally, since we made at least 2 requests to the server to fulfill this
 	// function call, resp.Body and resp.Map will only contain the most recent response.
 	// Overwrite them with the true response.
-	target.response.Body.Reset()
-	if err := json.NewEncoder(target.response.Body).Encode(target); err != nil {
+	target.Response.Body.Reset()
+	if err := json.NewEncoder(target.Response.Body).Encode(target); err != nil {
 		return nil, fmt.Errorf("error encoding final JSON list response: %w", err)
 	}
-	if err := json.Unmarshal(target.response.Body.Bytes(), &target.response.Map); err != nil {
+	if err := json.Unmarshal(target.Response.Body.Bytes(), &target.Response.Map); err != nil {
 		return nil, fmt.Errorf("error encoding final map list response: %w", err)
 	}
 	// Note: the HTTP response body is consumed by resp.Decode in the loop,

@@ -66,6 +66,8 @@ type ComposedOf struct {
 	StaticCredentials []*StaticCredential
 	// Which worker is performing protocol-related tasks
 	ProtocolWorkerId string
+	// CorrelationId is the CorrelationId of the authorize-session request
+	CorrelationId string `json:"-" gorm:"default:null"`
 }
 
 // Session contains information about a user's session with a target
@@ -138,6 +140,9 @@ type Session struct {
 	// Connections for the session are for read only and are ignored during write operations
 	Connections []*Connection `gorm:"-"`
 
+	// CorrelationId is the CorrelationId of the authorize-session request
+	CorrelationId string `json:"-" gorm:"default:null"`
+
 	tableName string `gorm:"-"`
 }
 
@@ -205,6 +210,7 @@ func New(ctx context.Context, c ComposedOf, _ ...Option) (*Session, error) {
 		DynamicCredentials:  c.DynamicCredentials,
 		StaticCredentials:   c.StaticCredentials,
 		ProtocolWorkerId:    c.ProtocolWorkerId,
+		CorrelationId:       c.CorrelationId,
 	}
 	if err := s.validateNewSession(ctx); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
@@ -236,6 +242,7 @@ func (s *Session) Clone() any {
 		IngressWorkerFilter: s.IngressWorkerFilter,
 		KeyId:               s.KeyId,
 		ProtocolWorkerId:    s.ProtocolWorkerId,
+		CorrelationId:       s.CorrelationId,
 	}
 	if len(s.States) > 0 {
 		clone.States = make([]*State, 0, len(s.States))
@@ -412,6 +419,9 @@ func (s *Session) validateNewSession(ctx context.Context) error {
 	}
 	if s.CtTofuToken != nil {
 		return errors.New(ctx, errors.InvalidParameter, op, "ct must be empty")
+	}
+	if s.CorrelationId == "" {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing correlation id")
 	}
 	// It is okay for the worker filter and protocol worker ID to be empty, so
 	// they are not checked here.

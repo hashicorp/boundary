@@ -29,8 +29,9 @@ type WrappedError struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// An string indicating what operation was being run when the wrapped error was created.
-	Op      string `protobuf:"bytes,1,opt,name=op,proto3" json:"op,omitempty"`
+	// A string indicating what operation was being run when the wrapped error occurred.
+	Op string `protobuf:"bytes,1,opt,name=op,proto3" json:"op,omitempty"`
+	// The wrapped error message.
 	Message string `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
 }
 
@@ -208,7 +209,7 @@ type Error struct {
 	Op string `protobuf:"bytes,2,opt,name=op,proto3" json:"op,omitempty"`
 	// A human-readable explanation specific to this occurrence of the error.
 	Message string `protobuf:"bytes,3,opt,name=message,proto3" json:"message,omitempty"`
-	// Additional metadata regarding the error. Depending on the error, different fields will be populated.
+	// Additional metadata regarding the error. Depending on the error, different fields are populated.
 	Details *ErrorDetails `protobuf:"bytes,4,opt,name=details,proto3" json:"details,omitempty"`
 }
 

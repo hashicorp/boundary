@@ -29,14 +29,16 @@ func TestCliPaginateCredentialLibraries(t *testing.T) {
 
 	ctx := context.Background()
 	boundary.AuthenticateAdminCli(t, ctx)
-	newOrgId := boundary.CreateNewOrgCli(t, ctx)
+	orgId, err := boundary.CreateOrgCli(t, ctx)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		ctx := context.Background()
 		boundary.AuthenticateAdminCli(t, ctx)
-		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", newOrgId))
+		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", orgId))
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
-	newProjectId := boundary.CreateNewProjectCli(t, ctx, newOrgId)
+	projectId, err := boundary.CreateProjectCli(t, ctx, orgId)
+	require.NoError(t, err)
 
 	// Configure vault
 	boundaryPolicyName, kvPolicyFilePath := vault.Setup(t, "testdata/boundary-controller-policy.hcl")
@@ -89,7 +91,8 @@ func TestCliPaginateCredentialLibraries(t *testing.T) {
 	t.Log("Created Vault Cred Store Token")
 
 	// Create a credential store
-	newStoreId := boundary.CreateNewCredentialStoreVaultCli(t, ctx, newProjectId, c.VaultAddr, credStoreToken)
+	storeId, err := boundary.CreateCredentialStoreVaultCli(t, ctx, projectId, c.VaultAddr, credStoreToken)
+	require.NoError(t, err)
 
 	// Create enough credential libraries to overflow a single page.
 	client, err := boundary.NewApiClient()
@@ -98,7 +101,7 @@ func TestCliPaginateCredentialLibraries(t *testing.T) {
 	var libraryIds []string
 	for i := 0; i < c.MaxPageSize+1; i++ {
 		resp, err := cClient.Create(
-			ctx, "vault-generic", newStoreId,
+			ctx, "vault-generic", storeId,
 			credentiallibraries.WithVaultCredentialLibraryPath(c.VaultSecretPath+"/data/"+privateKeySecretName),
 			credentiallibraries.WithCredentialType("ssh_private_key"),
 		)
@@ -109,7 +112,7 @@ func TestCliPaginateCredentialLibraries(t *testing.T) {
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"credential-libraries", "list",
-			"-credential-store-id", newStoreId,
+			"-credential-store-id", storeId,
 			"-format=json",
 		),
 	)
@@ -131,7 +134,7 @@ func TestCliPaginateCredentialLibraries(t *testing.T) {
 	assert.Empty(t, initialCredentialLibraries.ListToken)
 
 	resp, err := cClient.Create(
-		ctx, "vault-generic", newStoreId,
+		ctx, "vault-generic", storeId,
 		credentiallibraries.WithVaultCredentialLibraryPath(c.VaultSecretPath+"/data/"+privateKeySecretName),
 		credentiallibraries.WithCredentialType("ssh_private_key"),
 	)
@@ -144,7 +147,7 @@ func TestCliPaginateCredentialLibraries(t *testing.T) {
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"credential-libraries", "list",
-			"-credential-store-id", newStoreId,
+			"-credential-store-id", storeId,
 			"-format=json",
 		),
 	)
@@ -180,13 +183,15 @@ func TestApiPaginateCredentialLibraries(t *testing.T) {
 	ctx := context.Background()
 	sClient := scopes.NewClient(client)
 	cClient := credentiallibraries.NewClient(client)
-	newOrgId := boundary.CreateNewOrgApi(t, ctx, client)
+	orgId, err := boundary.CreateOrgApi(t, ctx, client)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		ctx := context.Background()
-		_, err := sClient.Delete(ctx, newOrgId)
+		_, err := sClient.Delete(ctx, orgId)
 		require.NoError(t, err)
 	})
-	newProjectId := boundary.CreateNewProjectApi(t, ctx, client, newOrgId)
+	projectId, err := boundary.CreateProjectApi(t, ctx, client, orgId)
+	require.NoError(t, err)
 
 	// Configure vault
 	boundaryPolicyName, kvPolicyFilePath := vault.Setup(t, "testdata/boundary-controller-policy.hcl")
@@ -239,13 +244,14 @@ func TestApiPaginateCredentialLibraries(t *testing.T) {
 	t.Log("Created Vault Cred Store Token")
 
 	// Create a credential store
-	newStoreId := boundary.CreateNewCredentialStoreVaultApi(t, ctx, client, newProjectId, c.VaultAddr, credStoreToken)
+	storeId, err := boundary.CreateCredentialStoreVaultApi(t, ctx, client, projectId, c.VaultAddr, credStoreToken)
+	require.NoError(t, err)
 
 	// Create enough credential libraries to overflow a single page.
 	var libraryIds []string
 	for i := 0; i < c.MaxPageSize+1; i++ {
 		resp, err := cClient.Create(
-			ctx, "vault-generic", newStoreId,
+			ctx, "vault-generic", storeId,
 			credentiallibraries.WithVaultCredentialLibraryPath(c.VaultSecretPath+"/data/"+privateKeySecretName),
 			credentiallibraries.WithCredentialType("ssh_private_key"),
 		)
@@ -253,7 +259,7 @@ func TestApiPaginateCredentialLibraries(t *testing.T) {
 		libraryIds = append(libraryIds, resp.Item.Id)
 	}
 
-	initialCredentialLibraries, err := cClient.List(ctx, newStoreId)
+	initialCredentialLibraries, err := cClient.List(ctx, storeId)
 	require.NoError(t, err)
 
 	var returnedIds []string
@@ -274,7 +280,7 @@ func TestApiPaginateCredentialLibraries(t *testing.T) {
 
 	// Create a new library and destroy one of the others
 	resp, err := cClient.Create(
-		ctx, "vault-generic", newStoreId,
+		ctx, "vault-generic", storeId,
 		credentiallibraries.WithVaultCredentialLibraryPath(c.VaultSecretPath+"/data/"+privateKeySecretName),
 		credentiallibraries.WithCredentialType("ssh_private_key"),
 	)
@@ -284,7 +290,7 @@ func TestApiPaginateCredentialLibraries(t *testing.T) {
 	require.NoError(t, err)
 
 	// List again, should have the new and deleted library
-	newCredentialLibraries, err := cClient.List(ctx, newStoreId, credentiallibraries.WithListToken(initialCredentialLibraries.ListToken))
+	newCredentialLibraries, err := cClient.List(ctx, storeId, credentiallibraries.WithListToken(initialCredentialLibraries.ListToken))
 	require.NoError(t, err)
 
 	// Note that this will likely contain all the credential libraries,

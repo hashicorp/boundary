@@ -7,7 +7,9 @@ import (
 	"errors"
 	"net"
 	"net/netip"
+	"time"
 
+	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/targets"
 )
 
@@ -35,6 +37,8 @@ type Options struct {
 	WithWorkerHost               string
 	WithSessionAuthorizationData *targets.SessionAuthorizationData
 	WithSkipSessionTeardown      bool
+	withSessionTeardownTimeout   time.Duration
+	withApiClient                *api.Client
 }
 
 // Option is a function that takes in an options struct and sets values or
@@ -115,6 +119,26 @@ func WithSessionAuthorizationData(with *targets.SessionAuthorizationData) Option
 func WithSkipSessionTeardown(with bool) Option {
 	return func(o *Options) error {
 		o.WithSkipSessionTeardown = with
+		return nil
+	}
+}
+
+// WithSessionTeardownTimeout provides an optional duration which overwrites
+// the default session teardown timeout.
+func WithSessionTeardownTimeout(with time.Duration) Option {
+	return func(o *Options) error {
+		o.withSessionTeardownTimeout = with
+		return nil
+	}
+}
+
+// WithApiClient provides an optional Boundary API client
+// Experimental: It is unclear whether the current usage of this option is the
+// approach that we want to take in the long term. This may be removed at any
+// point going forward.
+func WithApiClient(with *api.Client) Option {
+	return func(o *Options) error {
+		o.withApiClient = with
 		return nil
 	}
 }

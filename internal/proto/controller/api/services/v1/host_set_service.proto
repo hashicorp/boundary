@@ -15,6 +15,17 @@ option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/s
 option (custom_options.v1.domain) = "host";
 
 service HostSetService {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_tag) = {
+    name: "Host set service"
+    description:
+      "A host set is a resource that represents a collection of hosts that are considered equivalent for the purposes of access control. "
+      "The host set service provides endpoints for managing host sets in Boundary."
+    external_docs: {
+      url: "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/host-sets";
+      description: "Read about host sets in the Boundary domain model";
+    }
+  };
+
   // GetHostSet returns a stored Host Set if present.  The provided request
   // must include the Host Set ID for the resource being retrieved. If missing,
   // malformed or reference a non existing resource an error is returned.
@@ -129,15 +140,18 @@ message GetHostSetResponse {
 
 message ListHostSetsRequest {
   string host_catalog_id = 1 [json_name = "host_catalog_id"]; // @gotags: `class:"public"`
+  // You can specify that the filter should only return items that match.
+  // Refer to [filter expressions](https://developer.hashicorp.com/boundary/docs/concepts/filtering) for more information.
   string filter = 30 [json_name = "filter"]; // @gotags: `class:"public"`
-  // An opaque token used to continue an existing iteration or
-  // request updated items. If not specified, pagination
-  // will start from the beginning.
+  // An opaque token that Boundary uses to continue an existing iteration or
+  // request updated items. If you do not specify a token, pagination
+  // starts from the beginning. To learn more about list pagination
+  // in Boundary, refer to [list pagination](https://developer.hashicorp.com/boundary/docs/api-clients/api/pagination).
   string list_token = 40 [json_name = "list_token"]; // @gotags: `class:"public"`
   // The maximum size of a page in this iteration.
   // If unset, the default page size configured will be used.
   // If the page_size is greater than the default page configured,
-  // an error will be returned.
+  // the page size will be truncated to this number..
   uint32 page_size = 50 [json_name = "page_size"]; // @gotags: `class:"public"`
 }
 

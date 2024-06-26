@@ -15,6 +15,17 @@ option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/s
 option (custom_options.v1.domain) = "storage";
 
 service StorageBucketService {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_tag) = {
+    name: "Storage bucket service"
+    description:
+      "A storage bucket is an external storage location used to store recordings of user access sessions. "
+      "The storage bucket service provides endpoints that let you manage storage buckets in Boundary."
+    external_docs: {
+      url: "https://developer.hashicorp.com/boundary/docs/concepts/domain-model/storage-buckets";
+      description: "Read about storage buckets in the Boundary domain model";
+    }
+  };
+
   // GetStorageBucket returns a stored Storage Bucket if present.  The provided
   // request must include the ID for the Storage Bucket being retrieved.
   // If missing, malformed, or referencing a non-existing resource an error is
@@ -73,7 +84,7 @@ service StorageBucketService {
 }
 
 message GetStorageBucketRequest {
-  string id = 1; // @gotags: `class:"public"`
+  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
 }
 
 message GetStorageBucketResponse {
@@ -81,17 +92,20 @@ message GetStorageBucketResponse {
 }
 
 message ListStorageBucketsRequest {
-  string scope_id = 1 [json_name = "scope_id"]; // @gotags: `class:"public"`
-  bool recursive = 20 [json_name = "recursive"]; // @gotags: `class:"public"`
+  string scope_id = 1 [json_name = "scope_id"]; // @gotags: `class:"public" eventstream:"observation"`
+  bool recursive = 20 [json_name = "recursive"]; // @gotags: `class:"public" eventstream:"observation"`
+  // You can specify that the filter should only return items that match.
+  // Refer to [filter expressions](https://developer.hashicorp.com/boundary/docs/concepts/filtering) for more information.
   string filter = 30 [json_name = "filter"]; // @gotags: `class:"public"`
-  // An opaque token used to continue an existing iteration or
-  // request updated items. If not specified, pagination
-  // will start from the beginning.
+  // An opaque token that Boundary uses to continue an existing iteration or
+  // request updated items. If you do not specify a token, pagination
+  // starts from the beginning. To learn more about list pagination
+  // in Boundary, refer to [list pagination](https://developer.hashicorp.com/boundary/docs/api-clients/api/pagination).
   string list_token = 40 [json_name = "list_token"]; // @gotags: `class:"public"`
   // The maximum size of a page in this iteration.
-  // If unset, the default page size configured will be used.
-  // If the page_size is greater than the max page size configured,
-  // the page size will be truncated to this number.
+  // If you do not set a page size, Boundary uses the configured default page size.
+  // If the page_size is greater than the default page size configured,
+  // Boundary truncates the page size to this number.
   uint32 page_size = 50 [json_name = "page_size"]; // @gotags: `class:"public"`
 }
 
@@ -128,12 +142,12 @@ message CreateStorageBucketRequest {
 }
 
 message CreateStorageBucketResponse {
-  string uri = 1; // @gotags: `class:"public"`
+  string uri = 1; // @gotags: `class:"public" eventstream:"observation"`
   api.resources.storagebuckets.v1.StorageBucket item = 2;
 }
 
 message UpdateStorageBucketRequest {
-  string id = 1; // @gotags: `class:"public"`
+  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
   api.resources.storagebuckets.v1.StorageBucket item = 2;
   google.protobuf.FieldMask update_mask = 3;
 }
@@ -143,7 +157,7 @@ message UpdateStorageBucketResponse {
 }
 
 message DeleteStorageBucketRequest {
-  string id = 1; // @gotags: `class:"public"`
+  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
 }
 
 message DeleteStorageBucketResponse {}

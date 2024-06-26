@@ -31,14 +31,16 @@ func TestCliPaginateManagedGroups(t *testing.T) {
 	boundary.AuthenticateAdminCli(t, ctx)
 	client, err := boundary.NewApiClient()
 	require.NoError(t, err)
-	newOrgId := boundary.CreateNewOrgCli(t, ctx)
+	orgId, err := boundary.CreateOrgCli(t, ctx)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		ctx := context.Background()
 		boundary.AuthenticateAdminCli(t, ctx)
-		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", newOrgId))
+		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", orgId))
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
-	amId := boundary.CreateNewOidcAuthMethodApi(t, ctx, client, newOrgId)
+	amId, err := boundary.CreateOidcAuthMethodApi(t, ctx, client, orgId)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		ctx := context.Background()
 		boundary.AuthenticateAdminCli(t, ctx)
@@ -49,7 +51,9 @@ func TestCliPaginateManagedGroups(t *testing.T) {
 	// Create enough managedgroups to overflow a single page.
 	var managedgroupIds []string
 	for i := 0; i < c.MaxPageSize+1; i++ {
-		managedgroupIds = append(managedgroupIds, boundary.CreateNewManagedGroupApi(t, ctx, client, amId))
+		managedGroupId, err := boundary.CreateManagedGroupApi(t, ctx, client, amId)
+		require.NoError(t, err)
+		managedgroupIds = append(managedgroupIds, managedGroupId)
 	}
 
 	// List managedgroups
@@ -78,7 +82,8 @@ func TestCliPaginateManagedGroups(t *testing.T) {
 	assert.Empty(t, initialManagedGroups.ListToken)
 
 	// Create a new managedgroup and destroy one of the other managed groups
-	newManagedGroupId := boundary.CreateNewManagedGroupApi(t, ctx, client, amId)
+	managedGroupId, err := boundary.CreateManagedGroupApi(t, ctx, client, amId)
+	require.NoError(t, err)
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"managed-groups", "delete",
@@ -105,7 +110,7 @@ func TestCliPaginateManagedGroups(t *testing.T) {
 	// The first item should be the most recently created, which
 	// should be our new managedgroup
 	firstItem := newManagedGroups.Items[0]
-	assert.Equal(t, newManagedGroupId, firstItem.Id)
+	assert.Equal(t, managedGroupId, firstItem.Id)
 	assert.Empty(t, newManagedGroups.ResponseType)
 	assert.Empty(t, newManagedGroups.RemovedIds)
 	assert.Empty(t, newManagedGroups.ListToken)
@@ -129,14 +134,16 @@ func TestApiPaginateManagedGroups(t *testing.T) {
 	sClient := scopes.NewClient(client)
 	amClient := authmethods.NewClient(client)
 	mgClient := managedgroups.NewClient(client)
-	newOrgId := boundary.CreateNewOrgApi(t, ctx, client)
+	orgId, err := boundary.CreateOrgApi(t, ctx, client)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		ctx := context.Background()
 		client.SetToken(adminToken)
-		_, err = sClient.Delete(ctx, newOrgId)
+		_, err = sClient.Delete(ctx, orgId)
 		require.NoError(t, err)
 	})
-	amId := boundary.CreateNewOidcAuthMethodApi(t, ctx, client, newOrgId)
+	amId, err := boundary.CreateOidcAuthMethodApi(t, ctx, client, orgId)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		ctx := context.Background()
 		client.SetToken(adminToken)
@@ -147,7 +154,9 @@ func TestApiPaginateManagedGroups(t *testing.T) {
 	// Create enough managedgroups to overflow a single page.
 	var managedgroupIds []string
 	for i := 0; i < c.MaxPageSize+1; i++ {
-		managedgroupIds = append(managedgroupIds, boundary.CreateNewManagedGroupApi(t, ctx, client, amId))
+		managedGroupId, err := boundary.CreateManagedGroupApi(t, ctx, client, amId)
+		require.NoError(t, err)
+		managedgroupIds = append(managedgroupIds, managedGroupId)
 	}
 
 	// List managedgroups
@@ -171,7 +180,8 @@ func TestApiPaginateManagedGroups(t *testing.T) {
 	assert.Len(t, mapSliceItems, c.MaxPageSize+1)
 
 	// Create a new managedgroup and destroy one of the other managed groups
-	newManagedGroupId := boundary.CreateNewManagedGroupApi(t, ctx, client, amId)
+	managedGroupId, err := boundary.CreateManagedGroupApi(t, ctx, client, amId)
+	require.NoError(t, err)
 	_, err = mgClient.Delete(ctx, initialManagedGroups.Items[0].Id)
 	require.NoError(t, err)
 
@@ -187,7 +197,7 @@ func TestApiPaginateManagedGroups(t *testing.T) {
 	// The first item should be the most recently created, which
 	// should be our new managedgroup
 	firstItem := newManagedGroups.Items[0]
-	assert.Equal(t, newManagedGroupId, firstItem.Id)
+	assert.Equal(t, managedGroupId, firstItem.Id)
 	assert.Equal(t, "complete", newManagedGroups.ResponseType)
 	// Note that the removed IDs may contain entries from other tests,
 	// so just check that there is at least 1 entry and that our entry

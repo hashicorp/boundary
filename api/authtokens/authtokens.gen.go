@@ -29,13 +29,11 @@ type AuthToken struct {
 	ApproximateLastUsedTime time.Time         `json:"approximate_last_used_time,omitempty"`
 	ExpirationTime          time.Time         `json:"expiration_time,omitempty"`
 	AuthorizedActions       []string          `json:"authorized_actions,omitempty"`
-
-	response *api.Response
 }
 
 type AuthTokenReadResult struct {
 	Item     *AuthToken
-	response *api.Response
+	Response *api.Response
 }
 
 func (n AuthTokenReadResult) GetItem() *AuthToken {
@@ -43,13 +41,13 @@ func (n AuthTokenReadResult) GetItem() *AuthToken {
 }
 
 func (n AuthTokenReadResult) GetResponse() *api.Response {
-	return n.response
+	return n.Response
 }
 
 type AuthTokenUpdateResult = AuthTokenReadResult
 
 type AuthTokenDeleteResult struct {
-	response *api.Response
+	Response *api.Response
 }
 
 // GetItem will always be nil for AuthTokenDeleteResult
@@ -58,7 +56,7 @@ func (n AuthTokenDeleteResult) GetItem() interface{} {
 }
 
 func (n AuthTokenDeleteResult) GetResponse() *api.Response {
-	return n.response
+	return n.Response
 }
 
 type AuthTokenListResult struct {
@@ -67,7 +65,7 @@ type AuthTokenListResult struct {
 	RemovedIds   []string     `json:"removed_ids,omitempty"`
 	ListToken    string       `json:"list_token,omitempty"`
 	ResponseType string       `json:"response_type,omitempty"`
-	response     *api.Response
+	Response     *api.Response
 }
 
 func (n AuthTokenListResult) GetItems() []*AuthToken {
@@ -91,7 +89,7 @@ func (n AuthTokenListResult) GetResponseType() string {
 }
 
 func (n AuthTokenListResult) GetResponse() *api.Response {
-	return n.response
+	return n.Response
 }
 
 // Client is a client for this collection
@@ -149,7 +147,7 @@ func (c *Client) Read(ctx context.Context, id string, opt ...Option) (*AuthToken
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.response = resp
+	target.Response = resp
 	return target, nil
 }
 
@@ -190,7 +188,7 @@ func (c *Client) Delete(ctx context.Context, id string, opt ...Option) (*AuthTok
 	}
 
 	target := &AuthTokenDeleteResult{
-		response: resp,
+		Response: resp,
 	}
 	return target, nil
 }
@@ -232,7 +230,7 @@ func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) (*Auth
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.response = resp
+	target.Response = resp
 	if target.ResponseType == "complete" || target.ResponseType == "" {
 		return target, nil
 	}
@@ -290,7 +288,7 @@ func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) (*Auth
 		target.EstItemCount = page.EstItemCount
 		target.ListToken = page.ListToken
 		target.ResponseType = page.ResponseType
-		target.response = resp
+		target.Response = resp
 		if target.ResponseType == "complete" {
 			break
 		}
@@ -325,11 +323,11 @@ func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) (*Auth
 	// Finally, since we made at least 2 requests to the server to fulfill this
 	// function call, resp.Body and resp.Map will only contain the most recent response.
 	// Overwrite them with the true response.
-	target.response.Body.Reset()
-	if err := json.NewEncoder(target.response.Body).Encode(target); err != nil {
+	target.Response.Body.Reset()
+	if err := json.NewEncoder(target.Response.Body).Encode(target); err != nil {
 		return nil, fmt.Errorf("error encoding final JSON list response: %w", err)
 	}
-	if err := json.Unmarshal(target.response.Body.Bytes(), &target.response.Map); err != nil {
+	if err := json.Unmarshal(target.Response.Body.Bytes(), &target.Response.Map); err != nil {
 		return nil, fmt.Errorf("error encoding final map list response: %w", err)
 	}
 	// Note: the HTTP response body is consumed by resp.Decode in the loop,

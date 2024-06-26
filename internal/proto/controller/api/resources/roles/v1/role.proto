@@ -51,6 +51,10 @@ message Grant {
 
 // Role contains all fields related to a Role resource
 message Role {
+  // Used to be "grant_scope_id", replaced with "grant_scope_ids".
+  reserved 90;
+  reserved "grant_scope_id";
+
   // Output only. The ID of the Role.
   string id = 10; // @gotags: `class:"public" eventstream:"observation"`
 
@@ -87,18 +91,6 @@ message Role {
   // Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
   uint32 version = 80; // @gotags: `class:"public"`
-
-  // The Scope the grants will apply to. If the Role is at the global scope,
-  // this can be an org or project. If the Role is at an org scope, this can be
-  // a project within the org. It is invalid for this to be anything other than
-  // the Role's scope when the Role's scope is a project.
-  //
-  // Deprecated: Use "grant_scope_ids" instead.
-  google.protobuf.StringValue grant_scope_id = 90 [
-    json_name = "grant_scope_id",
-    deprecated = true,
-    (custom_options.v1.generate_sdk_option) = true
-  ]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. The IDs of Scopes the grants will apply to. This can include
   // the role's own scope ID, or "this" for the same behavior; specific IDs of

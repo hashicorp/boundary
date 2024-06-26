@@ -283,6 +283,48 @@ description: |-
     </td>
   </tr>
 
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    0.14.0+
+    <br /><br />
+    (Fixed in 0.15.3)
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Cannot delete IAM access key resource
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    When you delete an AWS S3 storage bucket that had credential rotation enabled, Boundary cannot delete the associated IAM access key resource.
+    <br /><br />
+    This issue is fixed in version 0.15.3.
+     <br /><br />
+    <a href="/boundary/tutorials/self-managed-deployment/upgrade-version">Upgrade to the latest version of Boundary</a>
+    <br /><br />
+    Learn more:&nbsp;
+    <a href="/boundary/docs/configuration/session-recording/create-storage-bucket">Create a storage bucket</a>
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    0.14.0
+    <br /><br />
+    (Fixed in 0.14.6)
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Go CVE-2023-45288
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    The version of Go that was used in Boundary release 0.14.0 contained security vulnerabilities. The vulnerabilities were fixed in Go version 1.21.9. Boundary was updated to use the new Go version in release 0.14.6, and the issue is resolved.
+    <br /><br />
+    Learn more:&nbsp;
+    <br /><br />
+    CVE-2023-45288: <a href="https://www.cve.org/CVERecord?id=CVE-2023-45288">HTTP/2 CONTINUATION flood in net/http</a>
+    <br /><br />
+    <a href="/boundary/tutorials/self-managed-deployment/upgrade-version">Upgrade to the latest version of Boundary</a>
+    </td>
+  </tr>
+
+
   </tbody>
 </table>
 

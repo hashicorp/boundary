@@ -37,6 +37,9 @@ worker {
   # Local storage path required if session recording is enabled
   recording_storage_path = "tmp/boundary/"
 
+  # Minimum available disk space required in the local storage path if session recording is enabled
+  recording_storage_minimum_available_capacity = "500MB"
+
   # Mutually exclusive with hcp_boundary_cluster_id
   initial_upstreams = [
     "10.0.0.1",
@@ -83,6 +86,17 @@ worker {
 - `recording_storage_path` - A path to the local storage for recorded sessions.
    Session recordings are stored in the local storage while they are in progress.
    When the session is complete, Boundary moves the local session recording to remote storage and deletes the local copy.
+
+- `recording_storage_minimum_available_capacity` - A value measured in bytes that defines the worker's local storage state. 
+   Boundary compares this value with the available local disk space found in the `recording_storage_path` to determine if a worker can be used for session recording operations.
+   The supported suffixes are kb, kib, mb, mib, gb, gib, tb, tib, which are not case sensitive. Example: 2GB, 2gb, 2GiB, 2gib.
+   The possible storage states based on the `recording_storage_minimum_available_capacity` are:
+    - Available - The worker is above the storage threshold and is available to proxy sessions that are enabled with session recording.
+    - Low storage - The worker is below the storage threshold. Existing sessions can continue without interruption, but new sessions that are enabled with session recording cannot be proxied. The worker is not available to record new sessions or play back existing recordings.
+    - Critically low storage - The worker is below half the storage threshold. Existing sessions that are enabled with session recording will be forcefully closed. The worker is not available to record new sessions or play back existing recordings.
+    - Out of storage - The worker is out of local disk space. It is not available to record new sessions or play back existing recordings. The worker is in a unrecoverable state. An administrator must intervene to remedy the issue.
+    - Not configured - The worker does not have a local storage path configured.
+    - Unknown - The default local storage state of a worker. This state indicates that the local storage state of a worker is not yet known.
 
 - `tags` - A map of key-value pairs where values are an array of strings. Most
   commonly used for [filtering](/boundary/docs/concepts/filtering) targets a
@@ -166,6 +180,9 @@ worker {
 
   # Local storage path required if session recording is enabled
   recording_storage_path = "tmp/boundary/"
+
+  # Minimum available disk space required in the local storage path if session recording is enabled
+  recording_storage_minimum_available_capacity = "500MB"
 
   # Workers typically need to reach upstreams on :9201
   initial_upstreams = [

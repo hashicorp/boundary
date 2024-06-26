@@ -305,6 +305,8 @@ func (r *Repository) UpsertWorkerStatus(ctx context.Context, worker *Worker, opt
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "worker keyId and reported name are both empty; one is required")
 	case worker.OperationalState == "":
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "worker operational state is empty")
+	case worker.LocalStorageState == "":
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "worker local storage state is empty")
 	}
 
 	var workerId string
@@ -349,7 +351,7 @@ func (r *Repository) UpsertWorkerStatus(ctx context.Context, worker *Worker, opt
 				// KMS-PKI) PKI-based workers to come via API only. We can't
 				// really guard on this in the DB so we need to be sure to not
 				// include it here.
-				n, err := w.Update(ctx, workerClone, []string{"address", "ReleaseVersion", "OperationalState"}, nil)
+				n, err := w.Update(ctx, workerClone, []string{"address", "ReleaseVersion", "OperationalState", "LocalStorageState"}, nil)
 				if err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to update status of pki worker"))
 				}
@@ -366,7 +368,7 @@ func (r *Repository) UpsertWorkerStatus(ctx context.Context, worker *Worker, opt
 				workerClone.Type = KmsWorkerType.String()
 				workerCreateConflict := &db.OnConflict{
 					Target: db.Columns{"public_id"},
-					Action: append(db.SetColumns([]string{"address", "release_version", "operational_state"}),
+					Action: append(db.SetColumns([]string{"address", "release_version", "operational_state", "local_storage_state"}),
 						db.SetColumnValues(map[string]any{"last_status_time": "now()"})...),
 				}
 				var withRowsAffected int64
@@ -570,8 +572,10 @@ func (r *Repository) UpdateWorker(ctx context.Context, worker *Worker, version u
 // ReportedStatus and Tags are intentionally ignored when creating a worker (not
 // included).  Currently, a worker can only be created in the global scope
 //
-// Options supported: WithNewIdFunc (this option is likely only useful for
-// tests), WithFetchNodeCredentialsRequest,
+// Options supported:
+// WithNewIdFunc (this option is likely only useful for tests),
+// withLocalStorageState (this option is likely only useful for tests),
+// WithFetchNodeCredentialsRequest,
 // WithCreateControllerLedActivationToken. The latter two are mutually
 // exclusive.
 func (r *Repository) CreateWorker(ctx context.Context, worker *Worker, opt ...Option) (*Worker, error) {
@@ -597,6 +601,15 @@ func (r *Repository) CreateWorker(ctx context.Context, worker *Worker, opt ...Op
 	}
 
 	worker.OperationalState = UnknownOperationalState.String()
+	worker.LocalStorageState = UnknownLocalStorageState.String()
+
+	if opts.withLocalStorageState != "" {
+		validLocalStorageState := ValidLocalStorageState(opts.withLocalStorageState)
+		if !validLocalStorageState {
+			return nil, errors.New(ctx, errors.InvalidParameter, op, "invalid local storage state")
+		}
+		worker.LocalStorageState = opts.withLocalStorageState
+	}
 
 	var err error
 	if worker.PublicId, err = opts.withNewIdFunc(ctx); err != nil {

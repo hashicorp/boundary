@@ -226,6 +226,7 @@ func (c *Controller) configureForCluster(ln *base.ServerListener) (func(), error
 		grpc.UnaryInterceptor(
 			grpc_middleware.ChainUnaryServer(
 				workerReqInterceptor,
+				requestMaxDurationInterceptor(c.baseContext, ln.Config.MaxRequestDuration),
 				eventsRequestInterceptor(c.baseContext),  // before we get started, send the required events with the request
 				eventsResponseInterceptor(c.baseContext), // as we finish, send the required events with the response
 			),

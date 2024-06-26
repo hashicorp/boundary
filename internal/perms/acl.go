@@ -276,6 +276,31 @@ func (a ACL) Allowed(r Resource, aType action.Type, userId string, opt ...Option
 	return
 }
 
+// ListResolvablePermissions builds a set of Permissions based on the grants in
+// the ACL. The permissions will only be created if there is at least
+// one grant of the provided resource type that includes at least one of the
+// provided actions in the action set.
+// Note that unlike the ListPermissions method, this method does not attempt to
+// generate permissions for the u_recovery user. To get the resolvable aliases
+// for u_recovery, the user could simply query all aliases with a destination id.
+func (a ACL) ListResolvablePermissions(requestedType resource.Type, actions action.ActionSet) []Permission {
+	perms := make([]Permission, 0, len(a.scopeMap))
+	for scopeId := range a.scopeMap {
+		// Consider all scopes in the grants. They may not exist, but if that is
+		// the case the
+		p := Permission{
+			ScopeId:  scopeId,
+			Resource: requestedType,
+			Action:   action.ListResolvableAliases,
+			OnlySelf: true, // default to only self to be restrictive
+		}
+		if a.buildPermission(scopeId, requestedType, actions, &p) {
+			perms = append(perms, p)
+		}
+	}
+	return perms
+}
+
 // ListPermissions builds a set of Permissions based on the grants in the ACL.
 // Permissions are determined for the given resource for each of the provided scopes.
 // There must be a grant for a given resource for one of the provided "id actions"
@@ -301,55 +326,64 @@ func (a ACL) ListPermissions(requestedScopes map[string]*scopes.ScopeInfo,
 			perms = append(perms, p)
 			continue
 		}
-
-		// Get grants for a specific scope id from the source of truth.
-		grants := a.scopeMap[scopeId]
-		for _, grant := range grants {
-			// This grant doesn't match what we're looking for, ignore.
-			if grant.typ != requestedType && grant.typ != resource.All && globals.ResourceInfoFromPrefix(grant.id).Type != requestedType {
-				continue
-			}
-
-			// We found a grant that matches the requested resource type:
-			// Search to see if one or all actions in the action set have been granted.
-			found := false
-			if ok := grant.actions[action.All]; ok {
-				found = true
-			} else {
-				for a := range idActions {
-					if ok := grant.actions[a]; ok {
-						found = true
-						break
-					}
-				}
-			}
-			if !found { // In this case, none of the requested actions were granted for the given scope id.
-				continue
-			}
-
-			actions, _ := grant.Actions()
-			excludeList := make(action.ActionSet, len(actions))
-			for _, aa := range actions {
-				if aa != action.List {
-					excludeList.Add(aa)
-				}
-			}
-			p.OnlySelf = p.OnlySelf && excludeList.OnlySelf()
-
-			switch grant.id {
-			case "*":
-				p.All = true
-			case "":
-				continue
-			default:
-				p.ResourceIds = append(p.ResourceIds, grant.id)
-			}
-		}
-
-		if p.All || len(p.ResourceIds) > 0 {
+		if a.buildPermission(scopeId, requestedType, idActions, &p) {
 			perms = append(perms, p)
 		}
 	}
-
 	return perms
+}
+
+// buildPermission populates the provided permission with either the resource ids
+// or marking All to true if there are grants that have an action that match
+// one of the provided idActions for the provided type
+func (a ACL) buildPermission(scopeId string,
+	requestedType resource.Type,
+	idActions action.ActionSet,
+	p *Permission,
+) bool {
+	// Get grants for a specific scope id from the source of truth.
+	grants := a.scopeMap[scopeId]
+	for _, grant := range grants {
+		// This grant doesn't match what we're looking for, ignore.
+		if grant.typ != requestedType && grant.typ != resource.All && globals.ResourceInfoFromPrefix(grant.id).Type != requestedType {
+			continue
+		}
+
+		// We found a grant that matches the requested resource type:
+		// Search to see if one or all actions in the action set have been granted.
+		found := false
+		if ok := grant.actions[action.All]; ok {
+			found = true
+		} else {
+			for idA := range idActions {
+				if ok := grant.actions[idA]; ok {
+					found = true
+					break
+				}
+			}
+		}
+		if !found { // In this case, none of the requested actions were granted for the given scope id.
+			continue
+		}
+
+		actions, _ := grant.Actions()
+		excludeList := make(action.ActionSet, len(actions))
+		for _, aa := range actions {
+			if aa != action.List {
+				excludeList.Add(aa)
+			}
+		}
+		p.OnlySelf = p.OnlySelf && excludeList.OnlySelf()
+
+		switch grant.id {
+		case "*":
+			p.All = true
+		case "":
+			continue
+		default:
+			p.ResourceIds = append(p.ResourceIds, grant.id)
+		}
+	}
+
+	return p.All || len(p.ResourceIds) > 0
 }

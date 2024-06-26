@@ -22,7 +22,7 @@ message AuthToken {
   // @inject_tag: `gorm:"default:current_timestamp"`
   timestamp.v1.Timestamp update_time = 3;
 
-  // last_access_time indicates the last time the auth token was used on the boundary API.
+  // last_access_time indicates the last time the auth token was used on the Boundary API.
   // @inject_tag: `gorm:"default:current_timestamp"`
   timestamp.v1.Timestamp approximate_last_access_time = 4;
 

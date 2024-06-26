@@ -62,6 +62,6 @@ func (c *Client) SetPassword(ctx context.Context, accountId, password string, ve
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	target.response = resp
+	target.Response = resp
 	return target, nil
 }

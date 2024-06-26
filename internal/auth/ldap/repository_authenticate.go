@@ -108,11 +108,35 @@ func (r *Repository) Authenticate(ctx context.Context, authMethodId, loginName, 
 	acct.Dn = authResult.UserDN
 
 	if authResult.UserAttributes != nil {
-		found, email := caseInsensitiveAttributeSearch(DefaultEmailAttribute, authResult.UserAttributes)
+		emailAttr := DefaultEmailAttribute
+		fullNameAttr := DefaultFullNameAttribute
+
+		attrMaps, err := am.convertAccountAttributeMaps(ctx)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("failed to convert account attribute maps"))
+		}
+
+		for _, attrMap := range attrMaps {
+			aam, ok := attrMap.(*AccountAttributeMap)
+			if !ok {
+				return nil, errors.New(ctx, errors.Internal, op, "failed to convert attribute map into AccountAttributeMap type")
+			}
+
+			switch aam.ToAttribute {
+			case DefaultEmailAttribute:
+				emailAttr = aam.FromAttribute
+			case DefaultFullNameAttribute:
+				fullNameAttr = aam.FromAttribute
+			default:
+				return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("invalid to attribute %q", aam.ToAttribute))
+			}
+		}
+
+		found, email := caseInsensitiveAttributeSearch(emailAttr, authResult.UserAttributes)
 		if found {
 			acct.Email = email[0]
 		}
-		found, fullName := caseInsensitiveAttributeSearch(DefaultFullNameAttribute, authResult.UserAttributes)
+		found, fullName := caseInsensitiveAttributeSearch(fullNameAttr, authResult.UserAttributes)
 		if found {
 			acct.FullName = fullName[0]
 		}

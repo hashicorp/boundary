@@ -13,6 +13,7 @@ type config struct {
 	AwsAccessKeyId     string `envconfig:"E2E_AWS_ACCESS_KEY_ID" required:"true"`
 	AwsSecretAccessKey string `envconfig:"E2E_AWS_SECRET_ACCESS_KEY" required:"true"`
 	AwsHostSetFilter   string `envconfig:"E2E_AWS_HOST_SET_FILTER" required:"true"` // e.g. "tag:testtag=true"
+	AwsRegion          string `envconfig:"E2E_AWS_REGION" required:"true"`          // e.g. "us-east-1"
 }
 
 func loadTestConfig() (*config, error) {

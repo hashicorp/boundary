@@ -114,6 +114,7 @@ func (b *Server) CreateInitialAuthenticatedUserRole(ctx context.Context, opt ...
 		"ids=*;type=auth-token;actions=list",
 		"ids={{.Account.Id}};actions=read,change-password",
 		"ids=*;type=session;actions=list,read:self,cancel:self",
+		"ids={{.User.Id}};type=user;actions=list-resolvable-aliases",
 	}
 	opts := GetOpts(opt...)
 	if opts.withAuthUserTargetAuthorizeSessionGrant {

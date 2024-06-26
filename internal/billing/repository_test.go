@@ -74,8 +74,16 @@ func TestRepository_MonthlyActiveUsers(t *testing.T) {
 	TestGenerateActiveUsers(t, conn)
 
 	today := time.Now().UTC()
-	threeMonthsAgo := time.Date(today.AddDate(0, -3, 0).Year(), today.AddDate(0, -3, 0).Month(), 1, 0, 0, 0, 0, time.UTC)
-	oneMonthAgo := time.Date(today.AddDate(0, -1, 0).Year(), today.AddDate(0, -1, 0).Month(), 1, 0, 0, 0, 0, time.UTC)
+	// Some time calculations are impacted when using the current day vs. the
+	// start of the month. For example, if...
+	// today -> May 30th
+	// today.AddDate(0, -3, 0).Month() -> March
+	// February was expected here, but we get March. This seems to be a
+	// rounding thing since February 30th is not a valid date. Instead, the
+	// start of the month is used to ensure the correct months are calculated.
+	monthStart := time.Date(today.Year(), today.Month(), 1, 0, 0, 0, 0, time.UTC)
+	threeMonthsAgo := time.Date(monthStart.AddDate(0, -3, 0).Year(), monthStart.AddDate(0, -3, 0).Month(), 1, 0, 0, 0, 0, time.UTC)
+	oneMonthAgo := time.Date(monthStart.AddDate(0, -1, 0).Year(), monthStart.AddDate(0, -1, 0).Month(), 1, 0, 0, 0, 0, time.UTC)
 	midMonth := time.Date(today.Year(), today.Month(), 15, 0, 0, 0, 0, time.UTC)
 
 	t.Run("valid-no-options", func(t *testing.T) {
@@ -102,15 +110,17 @@ func TestRepository_MonthlyActiveUsers(t *testing.T) {
 		require.Len(t, activeUsers, 4)
 		for i := 0; i < 4; i++ {
 			// check counts for the last four months
+			expectedStartTime := time.Date(today.Year(), today.Month(), 1, 0, 0, 0, 0, time.UTC)
 			if i == 0 {
 				assert.Equal(t, uint32(0), activeUsers[i].ActiveUsersCount)
 				// the current month (contains the hour)
-				assert.Equal(t, time.Date(today.Year(), today.Month(), 1, 0, 0, 0, 0, time.UTC), activeUsers[i].StartTime)
+				assert.Equal(t, expectedStartTime, activeUsers[i].StartTime)
 				assert.Equal(t, time.Date(today.Year(), today.Month(), today.Day(), today.Hour(), 0, 0, 0, time.UTC), activeUsers[i].EndTime)
 			} else {
 				// create a sliding window of dates to assert start and end times are correct
-				expectedStartTime := time.Date(today.AddDate(0, -i, 0).Year(), today.AddDate(0, -i, 0).Month(), 1, 0, 0, 0, 0, time.UTC)
-				expectedEndTime := time.Date(today.AddDate(0, -i+1, 0).Year(), today.AddDate(0, -i+1, 0).Month(), 1, 0, 0, 0, 0, time.UTC)
+				// need to subtract month by month to prevent errors around month boundaries
+				expectedStartTime = time.Date(expectedStartTime.AddDate(0, -i, 0).Year(), expectedStartTime.AddDate(0, -i, 0).Month(), 1, 0, 0, 0, 0, time.UTC)
+				expectedEndTime := time.Date(expectedStartTime.AddDate(0, 1, 0).Year(), expectedStartTime.AddDate(0, 1, 0).Month(), 1, 0, 0, 0, 0, time.UTC)
 				assert.Equal(t, uint32(6), activeUsers[i].ActiveUsersCount)
 				assert.Equal(t, expectedStartTime, activeUsers[i].StartTime)
 				assert.Equal(t, expectedEndTime, activeUsers[i].EndTime)
@@ -123,14 +133,14 @@ func TestRepository_MonthlyActiveUsers(t *testing.T) {
 		activeUsers, err := repo.MonthlyActiveUsers(ctx, WithStartTime(&threeMonthsAgo), WithEndTime(&oneMonthAgo))
 		assert.NoError(t, err)
 		require.Len(t, activeUsers, 2)
-		expectedStartTime := time.Date(today.AddDate(0, -2, 0).Year(), today.AddDate(0, -2, 0).Month(), 1, 0, 0, 0, 0, time.UTC)
-		expectedEndTime := time.Date(today.AddDate(0, -1, 0).Year(), today.AddDate(0, -1, 0).Month(), 1, 0, 0, 0, 0, time.UTC)
+		expectedStartTime := time.Date(monthStart.AddDate(0, -2, 0).Year(), monthStart.AddDate(0, -2, 0).Month(), 1, 0, 0, 0, 0, time.UTC)
+		expectedEndTime := time.Date(monthStart.AddDate(0, -1, 0).Year(), monthStart.AddDate(0, -1, 0).Month(), 1, 0, 0, 0, 0, time.UTC)
 		require.Equal(t, uint32(6), activeUsers[0].ActiveUsersCount)
 		assert.Equal(t, expectedStartTime, activeUsers[0].StartTime)
 		assert.Equal(t, expectedEndTime, activeUsers[0].EndTime)
 
-		expectedStartTime = time.Date(today.AddDate(0, -3, 0).Year(), today.AddDate(0, -3, 0).Month(), 1, 0, 0, 0, 0, time.UTC)
-		expectedEndTime = time.Date(today.AddDate(0, -2, 0).Year(), today.AddDate(0, -2, 0).Month(), 1, 0, 0, 0, 0, time.UTC)
+		expectedStartTime = time.Date(monthStart.AddDate(0, -3, 0).Year(), monthStart.AddDate(0, -3, 0).Month(), 1, 0, 0, 0, 0, time.UTC)
+		expectedEndTime = time.Date(monthStart.AddDate(0, -2, 0).Year(), monthStart.AddDate(0, -2, 0).Month(), 1, 0, 0, 0, 0, time.UTC)
 		require.Equal(t, uint32(6), activeUsers[1].ActiveUsersCount)
 		assert.Equal(t, expectedStartTime, activeUsers[1].StartTime)
 		assert.Equal(t, expectedEndTime, activeUsers[1].EndTime)

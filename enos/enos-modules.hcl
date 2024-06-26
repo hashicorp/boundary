@@ -104,7 +104,7 @@ module "aws_target" {
 }
 
 module "vault" {
-  source = "app.terraform.io/hashicorp-qti/aws-vault/enos"
+  source = "./modules/aws_vault"
 
   project_name = "qti-enos-boundary"
   environment  = var.environment
@@ -173,4 +173,8 @@ module "docker_check_health" {
 
 module "docker_ldap" {
   source = "./modules/docker_ldap"
+}
+
+module "docker_minio" {
+  source = "./modules/docker_minio"
 }

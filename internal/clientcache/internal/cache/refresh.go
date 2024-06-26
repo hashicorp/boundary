@@ -186,29 +186,28 @@ func (r *RefreshService) RefreshForSearch(ctx context.Context, authTokenid strin
 		return errors.New(ctx, errors.Internal, op, "unexpected number of refreshable users", errors.WithoutEvent())
 	}
 
-	tokens, err := r.cleanAndPickAuthTokens(ctx, u)
-	if err != nil {
-		return errors.Wrap(ctx, err, op, errors.WithoutEvent())
-	}
-
 	opts, err := getOpts(opt...)
 	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithoutEvent())
 	}
 
 	switch resourceType {
-	case Aliases:
-		rtv, err := r.repo.lookupRefreshToken(ctx, u, aliasResourceType)
+	case ResolvableAliases:
+		rtv, err := r.repo.lookupRefreshToken(ctx, u, resolvableAliasResourceType)
 		if err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
 		if opts.withIgnoreSearchStaleness || rtv != nil && time.Since(rtv.UpdateTime) > r.maxSearchStaleness {
+			tokens, err := r.cleanAndPickAuthTokens(ctx, u)
+			if err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithoutEvent())
+			}
 			args := []any{"user", u.Id, "force refresh", opts.withIgnoreSearchStaleness}
 			if rtv != nil {
 				args = append(args, "alias staleness", time.Since(rtv.UpdateTime))
 			}
 			r.logger.Debug("refreshing aliases before performing search", args...)
-			if err := r.repo.refreshAliases(ctx, u, tokens, opt...); err != nil {
+			if err := r.repo.refreshResolvableAliases(ctx, u, tokens, opt...); err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
 		}
@@ -218,6 +217,10 @@ func (r *RefreshService) RefreshForSearch(ctx context.Context, authTokenid strin
 			return errors.Wrap(ctx, err, op, errors.WithoutEvent())
 		}
 		if opts.withIgnoreSearchStaleness || rtv != nil && time.Since(rtv.UpdateTime) > r.maxSearchStaleness {
+			tokens, err := r.cleanAndPickAuthTokens(ctx, u)
+			if err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithoutEvent())
+			}
 			args := []any{"user", u.Id, "force refresh", opts.withIgnoreSearchStaleness}
 			if rtv != nil {
 				args = append(args, "target staleness", time.Since(rtv.UpdateTime))
@@ -233,6 +236,10 @@ func (r *RefreshService) RefreshForSearch(ctx context.Context, authTokenid strin
 			return errors.Wrap(ctx, err, op)
 		}
 		if opts.withIgnoreSearchStaleness || rtv != nil && time.Since(rtv.UpdateTime) > r.maxSearchStaleness {
+			tokens, err := r.cleanAndPickAuthTokens(ctx, u)
+			if err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithoutEvent())
+			}
 			args := []any{"user", u.Id, "force refresh", opts.withIgnoreSearchStaleness}
 			if rtv != nil {
 				args = append(args, "session staleness", time.Since(rtv.UpdateTime))
@@ -283,7 +290,7 @@ func (r *RefreshService) Refresh(ctx context.Context, opt ...Option) error {
 			continue
 		}
 
-		if err := r.repo.refreshAliases(ctx, u, tokens, opt...); err != nil {
+		if err := r.repo.refreshResolvableAliases(ctx, u, tokens, opt...); err != nil {
 			retErr = stderrors.Join(retErr, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("for user id %s", u.Id))))
 		}
 		if err := r.repo.refreshTargets(ctx, u, tokens, opt...); err != nil {
@@ -353,7 +360,7 @@ func (r *RefreshService) RecheckCachingSupport(ctx context.Context, opt ...Optio
 			}
 			retErr = stderrors.Join(retErr, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("for user id %s", u.Id))))
 		}
-		if err := r.repo.checkCachingAliases(ctx, u, tokens, opt...); err != nil {
+		if err := r.repo.checkCachingResolvableAliases(ctx, u, tokens, opt...); err != nil {
 			if err == ErrRefreshNotSupported {
 				// This is expected so no need to propagate the error up
 				continue

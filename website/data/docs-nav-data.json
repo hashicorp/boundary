@@ -53,12 +53,12 @@
         "path": "getting-started"
       },
       {
-        "title": "Self-managed Boundary quick start",
-        "href": "https://developer.hashicorp.com/boundary/tutorials/oss-getting-started/"
-      },
-      {
         "title": "HCP Boundary quick start",
         "href": "https://developer.hashicorp.com/boundary/tutorials/hcp-getting-started/"
+      },
+      {
+        "title": "Self-managed Boundary quick start",
+        "href": "https://developer.hashicorp.com/boundary/tutorials/oss-getting-started/"
       },
       {
         "title": "Dev mode quick start",
@@ -87,16 +87,25 @@
         "path": "install-boundary"
       },
       {
-        "title": "Recommended architecture",
-        "path": "install-boundary/recommended-architecture"
-      },
-      {
-        "title": "System requirements",
-        "path": "install-boundary/system-requirements"
-      },
-      {
-        "title": "Fault tolerance recommendations",
-        "path": "install-boundary/fault-tolerance"
+        "title": "Architecture",
+        "routes": [
+          {
+            "title":"System requirements",
+            "path": "install-boundary/architecture/system-requirements"
+          },
+          {
+            "title": "Recommended architecture",
+            "path": "install-boundary/architecture/recommended-architecture"
+          },
+          {
+            "title": "Fault tolerance",
+            "path": "install-boundary/architecture/fault-tolerance"
+          },
+          {
+            "title": "High availability",
+            "path": "install-boundary/architecture/high-availability"
+          }
+        ]
       },
       {
         "title": "Install Boundary",
@@ -111,8 +120,8 @@
         "path": "install-boundary/configure-workers"
       },
       {
-        "title": "Non-dev environments",
-        "path": "install-boundary/no-gen-resources"
+        "title": "Initialize Boundary",
+        "path": "install-boundary/initialize"
       },
       {
         "title": "Systemd install",
@@ -120,8 +129,46 @@
         "path": "install-boundary/systemd"
       },
       {
-        "title": "Configure high availability",
-        "path": "install-boundary/high-availability"
+        "title": "Terraform patterns",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "install-boundary/terraform-patterns"
+          },
+          {
+            "title": "Scopes",
+            "path": "install-boundary/terraform-patterns/terraform-scopes"
+          },
+          {
+            "title": "Users and auth methods",
+            "path": "install-boundary/terraform-patterns/terraform-users-and-auth-methods"
+          },
+          {
+            "title": "Groups and RBAC",
+            "path": "install-boundary/terraform-patterns/terraform-groups-and-rbac"
+          },
+          {
+            "title": "Hosts and host management",
+            "path": "install-boundary/terraform-patterns/terraform-hosts-and-host-management"
+          },
+          {
+            "title": "Credentials and credential stores",
+            "path": "install-boundary/terraform-patterns/terraform-credentials-and-credential-stores"
+          },
+          {
+            "title": "Session recording",
+            "badge": {
+              "text": "HCP/ENT",
+              "type": "outlined",
+              "color": "neutral"
+            },
+            "path": "install-boundary/terraform-patterns/terraform-session-recording"
+          },
+          {
+            "title": "Targets",
+            "path": "install-boundary/terraform-patterns/terraform-targets"
+          }
+        ]
       }
     ]
   },
@@ -143,6 +190,10 @@
       {
         "title": "Credential management",
         "path": "concepts/credential-management"
+      },
+      {
+        "title": "Aliases",
+        "path": "concepts/aliases"
       },
       {
         "title": "Auditing",
@@ -245,6 +296,10 @@
             "path": "concepts/domain-model/accounts"
           },
           {
+            "title": "Aliases",
+            "path": "concepts/domain-model/aliases"
+          },
+          {
             "title": "Auth methods",
             "path": "concepts/domain-model/auth-methods"
           },
@@ -341,8 +396,8 @@
             "path": "concepts/filtering"
           },
           {
-            "title": "OIDC managed groups",
-            "path": "concepts/filtering/oidc-managed-groups"
+            "title": "Managed groups",
+            "path": "concepts/filtering/managed-groups"
           },
           {
             "title": "Resource listing",
@@ -435,6 +490,36 @@
         ]
       },
       {
+        "title": "Credential management",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "configuration/credential-management"
+          },
+          {
+            "title": "Create a static credential store",
+            "path": "configuration/credential-management/static-cred-boundary"
+          },
+          {
+            "title": "Create a Vault credential store",
+            "path": "configuration/credential-management/static-cred-vault"
+          },
+          {
+            "title": "Configure targets with credential brokering",
+            "path": "configuration/credential-management/configure-credential-brokering"
+          },
+          {
+            "title": "Configure targets with credential injection",
+            "path": "configuration/credential-management/configure-credential-injection",
+            "badge": {
+              "text": "HCP/ENT",
+              "type": "outlined",
+              "color": "neutral"
+            }
+          }
+        ]
+      },
+      {
         "title": "Session recordings",
         "badge": {
           "text": "HCP/ENT",
@@ -445,6 +530,23 @@
           {
             "title": "Overview",
             "path": "configuration/session-recording"
+          },
+          {
+            "title": "Configure workers for storage",
+            "path": "configuration/session-recording/configure-worker-storage"
+          },
+          {
+            "title": "Configure storage provider",
+            "routes": [
+              {
+                "title": "Amazon S3",
+                "path": "configuration/session-recording/storage-providers/configure-s3"
+              },
+              {
+                "title": "MinIO",
+                "path": "configuration/session-recording/storage-providers/configure-minio"
+              }
+            ]
           },
           {
             "title": "Create storage buckets",
@@ -631,6 +733,35 @@
           {
             "title": "update",
             "path": "commands/accounts/update"
+          }
+        ]
+      },
+      {
+        "title": "aliases",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "commands/aliases"
+          },
+          {
+            "title": "create",
+            "path": "commands/aliases/create"
+          },
+          {
+            "title": "delete",
+            "path": "commands/aliases/delete"
+          },
+          {
+            "title": "list",
+            "path": "commands/aliases/list"
+          },
+          {
+            "title": "read",
+            "path": "commands/aliases/read"
+          },
+          {
+            "title": "update",
+            "path": "commands/aliases/update"
           }
         ]
       },
@@ -851,27 +982,27 @@
         ]
       },
       {
-        "title": "daemon",
+        "title": "cache",
         "routes": [
           {
             "title": "Overview",
-            "path": "commands/daemon"
+            "path": "commands/cache"
           },
           {
             "title": "add-token",
-            "path": "commands/daemon/add-token"
+            "path": "commands/cache/add-token"
           },
           {
             "title": "start",
-            "path": "commands/daemon/start"
+            "path": "commands/cache/start"
           },
           {
             "title": "status",
-            "path": "commands/daemon/status"
+            "path": "commands/cache/status"
           },
           {
             "title": "stop",
-            "path": "commands/daemon/stop"
+            "path": "commands/cache/stop"
           }
         ]
       },
@@ -1242,6 +1373,10 @@
             "path": "commands/session-recordings"
           },
           {
+            "title": "delete",
+            "path": "commands/session-recordings/delete"
+          },
+          {
             "title": "download",
             "path": "commands/session-recordings/download"
           },
@@ -1252,6 +1387,10 @@
           {
             "title": "read",
             "path": "commands/session-recordings/read"
+          },
+          {
+            "title": "reapply-storage-policy",
+            "path": "commands/session-recordings/reapply-storage-policy"
           }
         ]
       },
@@ -1515,7 +1654,6 @@
       }
     ]
   },
-
   {
     "title": "Develop Boundary",
     "routes": [
@@ -1605,6 +1743,10 @@
       {
         "title": "Overview",
         "path": "release-notes"
+      },
+      {
+        "title": "v0.16.0",
+        "path": "release-notes/v0_16_0"
       },
       {
         "title": "v0.15.0",

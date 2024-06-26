@@ -326,6 +326,11 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 			if _, err := conf.RegisterPlugin(ctx, pluginType, client, []plugin.PluginType{plugin.PluginTypeHost, plugin.PluginTypeStorage}, plugin.WithDescription(fmt.Sprintf("Built-in %s host plugin", enabledPlugin.String()))); err != nil {
 				return nil, fmt.Errorf("error registering %s host plugin: %w", pluginType, err)
 			}
+		case enabledPlugin == base.EnabledPluginMinio && !c.conf.SkipPlugins:
+			pluginType := strings.ToLower(enabledPlugin.String())
+			if _, err := conf.RegisterPlugin(ctx, pluginType, nil, []plugin.PluginType{plugin.PluginTypeStorage}, plugin.WithDescription(fmt.Sprintf("Built-in %s storage plugin", enabledPlugin.String()))); err != nil {
+				return nil, fmt.Errorf("error registering %s storage plugin: %w", pluginType, err)
+			}
 		}
 	}
 
@@ -470,7 +475,7 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unable to instantiate worker auth repository: %w", err)
 	}
-	_, err = server.RotateRoots(ctx, serversRepo, nodeenrollment.WithCertificateLifetime(conf.TestOverrideWorkerAuthCaCertificateLifetime))
+	_, err = server.RotateRoots(ctx, serversRepo, nodeenrollment.WithCertificateLifetime(conf.TestOverrideWorkerAuthCaCertificateLifetime), nodeenrollment.WithReinitializeRoots(conf.TestWorkerAuthCaReinitialize))
 	if err != nil {
 		event.WriteSysEvent(ctx, op, "unable to ensure worker auth roots exist, may be due to multiple controllers starting at once, continuing")
 	}

@@ -39,9 +39,12 @@ func TestCliAuthenticatePrimary(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	f.Write([]byte(bc.AdminLoginName + "\n"))
-	f.Write([]byte(bc.AdminLoginPassword + "\n"))
-	f.Write([]byte{4}) // EOT (End of Transmission - marks end of file stream)
+	_, err = f.Write([]byte(bc.AdminLoginName + "\n"))
+	require.NoError(t, err)
+	_, err = f.Write([]byte(bc.AdminLoginPassword + "\n"))
+	require.NoError(t, err)
+	_, err = f.Write([]byte{4}) // EOT (End of Transmission - marks end of file stream)
+	require.NoError(t, err)
 
 	// Get last line from output (authentication response)
 	var buf bytes.Buffer
