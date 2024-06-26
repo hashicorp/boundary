@@ -113,3 +113,27 @@ Credential stores may contain multiple credential libraries. This means a single
 Boundary supports OIDC, LDAP, and username/password as [authentication methods](/boundary/docs/concepts/iam#access-management). Boundary can use Vault as an [OIDC bridge provider](/vault/tutorials/auth-methods/oidc-identity-provider). This allows Vault to delegate authentication to an external OIDC provider, such as Google Cloud, Okta, or Microsoft Entra ID.
 
 These providers then map the authenticated user's claims to Vault policies and identities. This allows users to authenticate to Boundary with any of Vault's supported authentication methods, even ones that Boundary does not natively support. When Boundary uses Vault as an OIDC provider, each user leveraging the authentication method then counts as a Vault client.
+
+## Vault as a key manager
+
+Boundary supports various KMS systems that protect the base encryption keys used for various functions. Boundary can use the Vault transit secrets engine as one such KMS system.
+
+### Boundary supported key types from Vault transit
+
+The Vault transit secrets engine provides the following key types which support the necessary operations for Boundary KMS:
+
+- `aes128-gcm96`: AES-GCM with a 128-bit AES key and a 96-bit nonce; supports encryption, decryption, key derivation, and convergent encryption
+- `aes256-gcm96`: AES-GCM with a 256-bit AES key and a 96-bit nonce; supports encryption, decryption, key derivation, and convergent encryption (default)
+- `chacha20-poly1305`: ChaCha20-Poly1305 with a 256-bit key; supports encryption, decryption, key derivation, and convergent encryption
+- `rsa-2048`: 2048-bit RSA key; supports encryption, decryption, signing, and signature verification
+- `rsa-3072`: 3072-bit RSA key; supports encryption, decryption, signing, and signature verification
+- `rsa-4096`: 4096-bit RSA key; supports encryption, decryption, signing, and signature verification
+
+### Boundary and Vault transit key lifecycle management
+
+The Vault transit secrets engine supports both automatic and manual rotation of configured keys.
+
+The Vault transit secrets engine can be configured with [`auto_rotate_period`](https://developer.hashicorp.com/vault/api-docs/secret/transit#auto_rotate_period) to configure
+automatic rotation of the configured keys. Boundary will accommodate the automatic rotation of keys in the backend.
+
+Keys can also be [manually rotated](/boundary/docs/concepts/security/data-encryption#key-version-lifecycle-management) from the Boundary API or CLI.
