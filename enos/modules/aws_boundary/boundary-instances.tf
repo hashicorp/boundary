@@ -196,7 +196,7 @@ resource "enos_file" "worker_config" {
     id                     = each.value
     kms_key_id             = data.aws_kms_key.kms_key.id,
     controller_ips         = jsonencode(aws_instance.controller.*.private_ip),
-    public_addr            = aws_instance.worker.0.public_ip
+    public_addr            = aws_instance.worker[tonumber(each.value)].public_ip
     region                 = var.aws_region
     type                   = jsonencode(var.worker_type_tags)
     recording_storage_path = var.recording_storage_path
