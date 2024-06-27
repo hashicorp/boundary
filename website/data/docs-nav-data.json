@@ -820,6 +820,19 @@
         ]
       },
       {
+        "title": "billing",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "commands/billing"
+          },
+          {
+            "title": "monthly-active-users",
+            "path": "commands/billing/monthly-active-users"
+          }
+        ]
+      },
+      {
         "title": "authenticate",
         "routes": [
           {
