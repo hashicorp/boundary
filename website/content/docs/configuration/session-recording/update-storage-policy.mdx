@@ -35,7 +35,7 @@ The policies mentioned here demonstrate how to apply an updated storage policy t
 
 ## Storage policy changes
 
-A storage policy defines how long the recording within a scope should retain its session recordings. 
+A storage policy defines how long the recording within a scope should retain its session recordings.
 
 Over time, you may update storage policies to reflect new organizational requirements, compliance changes, or cost management strategies. While updated policies automatically apply to new session recordings within the scopes associated with that policy, existing recordings maintain the previous policies unless you apply the new policy directly to those recordings.
 
@@ -115,7 +115,7 @@ The following is an example of updating the `soc2-policy` policy.
 </Tab>
 <Tab heading="Terraform" group="terraform">
 
-Due to the declarative nature of Terraform, policies are updated by modifying your existing Terraform configuration. To perform the requested changes, update your existing block of code as shown below, and then execute `terraform apply`.
+Due to the declarative nature of Terraform, you update policies by modifying your existing Terraform configuration. To perform the requested changes, update your existing block of code as shown below, and then execute `terraform apply`.
 
 ```hcl
 resource "boundary_policy_storage" "example" {
