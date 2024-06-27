@@ -7,7 +7,7 @@ description: |-
 
 # Create a storage bucket
 
-<EnterpriseAlert product="boundary">This feature requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary or Boundary Enterprise</a></EnterpriseAlert>
+<EnterpriseAlert product="boundary">This feature requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary Plus or Boundary Enterprise</a></EnterpriseAlert>
 
 User sessions can be recorded and audited using Boundary 0.13 or greater. A Boundary resource known as a [storage bucket](/boundary/docs/concepts/domain-model/storage-buckets) is used to store the recorded sessions.
 The storage bucket represents a bucket in an external storage provider.
@@ -67,7 +67,6 @@ Complete the following steps to create a storage bucket in Boundary.
       After rotation, only Boundary knows the client secret the plugin uses.
 
    </Tab>
-
    <Tab heading="Dynamic credentials">
 
    - **Role ARN**: (Required) The ARN (Amazon Resource Name) role that is attached to the EC2 instance that the self-managed worker runs on.
@@ -95,6 +94,12 @@ The required fields for creating a storage bucket depend on whether you configur
 
 <Tabs>
 <Tab heading="Static credentials">
+
+<Note>
+
+  The preferred way to authenticate to the S3 bucket is by using dynamic credentials. The example below uses static credentials instead.
+
+</Note>
 
 1. Log in to Boundary.
 1. Use the following command to create a storage bucket in Boundary:
@@ -160,6 +165,76 @@ The required fields for creating a storage bucket depend on whether you configur
       For more information, refer to the AWS documentation for [Logging IAM and AWS STS API calls with AWS CloudTrail](https://docs.aws.amazon.com/IAM/   latest/UserGuide/cloudtrail-integration.html).
       - `role_tags`: (Optional) An object with key-value pair attributes that is passed when you assume an IAM role.
       For more information, refer to the AWS documentation for [Passing session tags in AWS STS](https://docs.aws.amazon.com/IAM/latest/UserGuide/   id_session-tags.html).
+
+</Tab>
+</Tabs>
+
+</Tab>
+<Tab heading="Terraform" group="terraform">
+
+The HCL code for creating a storage bucket is different depending on whether you configured the AWS S3 bucket with static or dynamic credentials.
+
+<Tabs>
+<Tab heading="Static credentials">
+
+<Note>
+
+  The preferred way to authenticate to the S3 bucket is by using dynamic credentials. The code below uses static credentials instead.
+
+</Note>
+
+Apply the following Terraform policy:
+
+```hcl
+resource "boundary_storage_bucket" "aws_static_credentials_example" {
+  name            = "My aws storage bucket with static credentials"
+  description     = "My first storage bucket"
+  scope_id    = "o_1234567890"
+  plugin_name     = "aws"
+  bucket_name = "mybucket1"
+  attributes_json = jsonencode({ "region" = "us-east-1" })
+
+  # recommended to pass in aws secrets using a file() or using environment variables
+  # the secrets below must be generated in aws using an iam user with programmatic access
+  secrets_json = jsonencode({
+    "access_key_id"     = "aws_access_key_id_value",
+    "secret_access_key" = "aws_secret_access_key_value"
+  })
+  worker_filter = "\"dev\" in \"/tags/type\""
+}
+
+output "storage_bucket_id" {
+  value = boundary_storage_bucket.aws_static_credentials_example.id
+}
+```
+
+</Tab>
+<Tab heading="Dynamic credentials">
+
+Apply the following Terraform policy:
+
+```hcl
+resource "boundary_storage_bucket" "aws_dynamic_credentials_example" {
+  name        = "My aws storage bucket with dynamic credentials"
+  description = "My first storage bucket"
+  scope_id    = "o_1234567890"
+  plugin_name = "aws"
+  bucket_name = "mybucket1"
+
+  # the role_arn value should be the same arn used in the instance profile attached to the ec2 instance
+  # https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_use_switch-role-ec2_instance-profiles.html
+  attributes_json = jsonencode({
+    "region"                      = "us-east-1"
+    "role_arn"                    = "arn:aws:iam::123456789012:role/S3Access"
+    "disable_credential_rotation" = true
+  })
+  worker_filter = "\"dev\" in \"/tags/type\""
+}
+
+output "storage_bucket_id" {
+  value = boundary_storage_bucket.aws_dynamic_credentials_example.id
+}
+```
 
 </Tab>
 </Tabs>
