@@ -7,7 +7,7 @@ description: |-
 
 # Configure storage bucket policies
 
-<EnterpriseAlert product="boundary">This feature requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary or Boundary Enterprise</a></EnterpriseAlert>
+<EnterpriseAlert product="boundary">This feature requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary Plus or Boundary Enterprise</a></EnterpriseAlert>
 
 As of Boundary 0.15.0, retention policies can codify storage bucket lifecycle management for [session recordings][].
 A Boundary resource known as a [storage bucket][] is used to store recorded sessions.
@@ -99,6 +99,25 @@ Complete the following steps to create a storage policy in Boundary for session 
    - `retain-for-overridable`: (Optional) Indicates that a lower scope can override the `retain_for_days` attribute value. Defaults to `true`.
    - `delete-after-days`: (Optional) The number of days after creation when a session recording should be deleted.
    - `delete-after-overridable`: (Optional) Indicates that a lower scope can override the  `delete_after_days` attribute value. Defaults to `true`.
+
+</Tab>
+<Tab heading="Terraform" group="terraform">
+
+Apply the following Terraform policy:
+
+```hcl
+resource "boundary_policy_storage" "example" {
+  name = "soc2-policy"
+  description = "SOC 2 compliant storage policy for session recordings"
+  scope_id = data.boundary_scope.org.id
+
+  retain_for_days = 2557
+  retain_for_overridable = false
+
+  delete_after_days = 2657
+  delete_after_overridable = true
+}
+```
 
 </Tab>
 <Tab heading="API call using cURL" group="api">
@@ -219,6 +238,18 @@ The following example applies the policy created above to an org named `prod-dat
        -id o_aDkVBCDTvY \
        -storage-policy-id pst_WZ3SQSSYJY
    ```
+
+</Tab>
+<Tab heading="Terraform" group="terraform">
+
+Apply the following Terraform policy:
+
+```hcl
+resource "boundary_scope_policy_attachment" "example" {
+  policy_id = boundary_policy_storage.example.id
+  scope_id = data.boundary_scope.org.id
+}
+```
 
 </Tab>
 <Tab heading="API call using cURL" group="api">

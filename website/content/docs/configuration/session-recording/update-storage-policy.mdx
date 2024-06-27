@@ -7,7 +7,7 @@ description: |-
 
 # Update storage bucket policies
 
-<EnterpriseAlert product="boundary">This feature requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary or Boundary Enterprise</a></EnterpriseAlert>
+<EnterpriseAlert product="boundary">This feature requires <a href="https://www.hashicorp.com/products/boundary">HCP Boundary Plus or Boundary Enterprise</a></EnterpriseAlert>
 
 A [storage policy][] codifies [storage bucket][] lifecycle management for [session recordings][].
 
@@ -35,7 +35,7 @@ The policies mentioned here demonstrate how to apply an updated storage policy t
 
 ## Storage policy changes
 
-A storage policy defines how long the recording within a scope should retain its session recordings. 
+A storage policy defines how long the recording within a scope should retain its session recordings.
 
 Over time, you may update storage policies to reflect new organizational requirements, compliance changes, or cost management strategies. While updated policies automatically apply to new session recordings within the scopes associated with that policy, existing recordings maintain the previous policies unless you apply the new policy directly to those recordings.
 
@@ -111,6 +111,25 @@ The following is an example of updating the `soc2-policy` policy.
        -delete-after-days 2757 \
        -delete-after-overridable false
    ```
+
+</Tab>
+<Tab heading="Terraform" group="terraform">
+
+Due to the declarative nature of Terraform, you update policies by modifying your existing Terraform configuration. To perform the requested changes, update your existing block of code as shown below, and then execute `terraform apply`.
+
+```hcl
+resource "boundary_policy_storage" "example" {
+  name = "soc2-policy"
+  v2"
+  scope_id = data.boundary_scope.org.id
+
+  retain_for_days = 2557
+  retain_for_overridable = false
+
+  delete_after_days = 2757
+  delete_after_overridable = false
+}
+```
 
 </Tab>
 <Tab heading="API call using cURL" group="api">
@@ -261,6 +280,11 @@ In the event that an updated policy should be retroactively applied to existing 
    </CodeBlockConfig>
 
    Verify that the `Delete After` attribute reflects the updated storage policy.
+
+</Tab>
+<Tab heading="Terraform" group="terraform">
+
+Once the policy changes have been applied with Terraform, you can reapply the policy as needed by following the CLI instructions in this section.
 
 </Tab>
 <Tab heading="API call using cURL" group="api">
