@@ -182,16 +182,16 @@ file.
 3. The Worker generates a signing public/private Ed25519 keypair and an
 encryption public/private X25519 keypair, and signs this bundle.
 
-4. The Worker requests to its configured upstream(s) to fetch its issued
+4. The Worker sends a request to its configured upstream(s) to fetch its issued
 credentials. It provides its public keys and the activation token in
 the request, which is signed via the Worker's private Ed25519 key. (A man-in-the-middle cannot masquerade as the Worker due to lacking
 the signing key.) If the configured upstream is a Controller, it can respond
-directly; otherwise the request is relayed to the cluster Controllers.
+directly; otherwise the request is relayed to the cluster's Controllers.
 
 5. A Controller receiving the request validates the activation token generated in step 1.
 If the token is validated, the Controller associates the given key material with the premade Worker resource.
-The Controller also signs a _client-only_ certificate authenticating the Worker's signing key
-and generates its own encryption public/private keypair specific to that Worker. This is used
+The Controller also signs a _client-only_ certificate authenticating the Worker's signing key,
+and generates its own encryption public/private keypair specific to that Worker. The keypair is used
 to derive a shared symmetric encryption key, and to encrypt the
 Worker certificate and its CA certificate. The Controller returns it to the
 Worker along with its public encryption key.
