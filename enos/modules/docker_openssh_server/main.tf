@@ -66,6 +66,7 @@ resource "docker_container" "openssh_server" {
     "USER_NAME=${var.target_user}",
     "PUBLIC_KEY=${local.public_key}",
   ]
+  network_mode = "bridge"
   dynamic "networks_advanced" {
     for_each = var.network_name
     content {

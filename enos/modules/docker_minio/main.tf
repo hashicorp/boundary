@@ -115,7 +115,8 @@ resource "docker_container" "minio_server" {
     timeout  = "5s"
     retries  = 5
   }
-  wait = true
+  wait         = true
+  network_mode = "bridge"
   dynamic "networks_advanced" {
     for_each = var.network_name
     content {
