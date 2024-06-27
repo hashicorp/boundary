@@ -153,7 +153,7 @@ scenario "e2e_ui_aws" {
       enos_user            = var.enos_user
       instance_type        = var.target_instance_type
       vpc_id               = step.create_base_infra.vpc_id
-      target_count         = 2
+      target_count         = var.target_count <= 1 ? 2 : var.target_count
       additional_tags      = step.create_tag_inputs.tag_map
       subnet_ids           = step.create_boundary_cluster.subnet_ids
     }
@@ -197,7 +197,7 @@ scenario "e2e_ui_aws" {
       local_boundary_dir        = local.local_boundary_dir
       local_boundary_ui_src_dir = local.local_boundary_ui_src_dir
       aws_ssh_private_key_path  = local.aws_ssh_private_key_path
-      target_address            = step.create_targets_with_tag.target_ips[0]
+      target_address            = step.create_targets_with_tag.target_private_ips[0]
       target_user               = "ubuntu"
       target_port               = "22"
       vault_addr                = step.create_vault_cluster.instance_public_ips[0]
@@ -205,7 +205,7 @@ scenario "e2e_ui_aws" {
       aws_access_key_id         = step.iam_setup.access_key_id
       aws_secret_access_key     = step.iam_setup.secret_access_key
       aws_host_set_filter       = step.create_tag_inputs.tag_string
-      aws_host_set_ips          = step.create_targets_with_tag.target_ips
+      aws_host_set_ips          = step.create_targets_with_tag.target_private_ips
       worker_tag_egress         = local.egress_tag
       aws_region                = var.aws_region
     }
