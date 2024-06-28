@@ -24,6 +24,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/structpb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func TestLoopbackOnCreateStorageBucket(t *testing.T) {
@@ -376,13 +377,36 @@ func TestLoopbackValidatePermissions(t *testing.T) {
 
 	plg, err := NewLoopbackPlugin(
 		WithMockBuckets(map[BucketName]Bucket{
-			"aws_s3_mock": {},
-			"aws_s3_err":  {},
+			"aws_s3_mock":               {},
+			"aws_s3_err":                {},
+			"aws_s3_err_with_sbc_state": {},
 		}),
 		WithMockError(PluginMockError{
 			BucketName: "aws_s3_err",
 			ErrMsg:     "invalid credentials",
 			ErrCode:    codes.PermissionDenied,
+		}),
+		WithMockError(PluginMockError{
+			BucketName: "aws_s3_err_with_sbc_state",
+			ErrMsg:     "invalid credentials",
+			ErrCode:    codes.PermissionDenied,
+			StorageBucketCredentialState: &plgpb.StorageBucketCredentialState{
+				State: &plgpb.Permissions{
+					Write: &plgpb.Permission{
+						State:        plgpb.StateType_STATE_TYPE_ERROR,
+						CheckedAt:    timestamppb.Now(),
+						ErrorDetails: "invalid credentials",
+					},
+					Read: &plgpb.Permission{
+						State:     plgpb.StateType_STATE_TYPE_OK,
+						CheckedAt: timestamppb.Now(),
+					},
+					Delete: &plgpb.Permission{
+						State:     plgpb.StateType_STATE_TYPE_OK,
+						CheckedAt: timestamppb.Now(),
+					},
+				},
+			},
 		}),
 	)
 	assert.NoError(err)
@@ -396,9 +420,10 @@ func TestLoopbackValidatePermissions(t *testing.T) {
 	}
 
 	tests := []struct {
-		name        string
-		request     *plgpb.ValidatePermissionsRequest
-		expectedErr codes.Code
+		name             string
+		request          *plgpb.ValidatePermissionsRequest
+		expectedErr      codes.Code
+		expectedSBCState *plgpb.StorageBucketCredentialState
 	}{
 		{
 			name:        "missing request",
@@ -475,6 +500,38 @@ func TestLoopbackValidatePermissions(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "mocked error with SBC state",
+			request: &plgpb.ValidatePermissionsRequest{
+				Bucket: &storagebuckets.StorageBucket{
+					BucketName: "aws_s3_err_with_sbc_state",
+					Secrets:    secrets,
+					Attributes: &structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							"endpoint": structpb.NewStringValue("0.0.0.0"),
+						},
+					},
+				},
+			},
+			expectedErr: codes.PermissionDenied,
+			expectedSBCState: &plgpb.StorageBucketCredentialState{
+				State: &plgpb.Permissions{
+					Write: &plgpb.Permission{
+						State:        plgpb.StateType_STATE_TYPE_ERROR,
+						CheckedAt:    timestamppb.Now(),
+						ErrorDetails: "invalid credentials",
+					},
+					Read: &plgpb.Permission{
+						State:     plgpb.StateType_STATE_TYPE_OK,
+						CheckedAt: timestamppb.Now(),
+					},
+					Delete: &plgpb.Permission{
+						State:     plgpb.StateType_STATE_TYPE_OK,
+						CheckedAt: timestamppb.Now(),
+					},
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -485,6 +542,19 @@ func TestLoopbackValidatePermissions(t *testing.T) {
 				s, ok := status.FromError(err)
 				require.True(ok, "invalid error type")
 				assert.Equal(tt.expectedErr, s.Code())
+
+				if tt.expectedSBCState != nil {
+					sbcState := parseStorageBucketCredentialStateFromError(err)
+					require.NotNil(sbcState)
+					assert.Equal(tt.expectedSBCState.State.Write.GetState(), sbcState.State.Write.GetState())
+					assert.Equal(tt.expectedSBCState.State.Write.GetErrorDetails(), sbcState.State.Write.GetErrorDetails())
+
+					assert.Equal(tt.expectedSBCState.State.Read.GetState(), sbcState.State.Read.GetState())
+					assert.Equal(tt.expectedSBCState.State.Read.GetErrorDetails(), sbcState.State.Read.GetErrorDetails())
+
+					assert.Equal(tt.expectedSBCState.State.Delete.GetState(), sbcState.State.Delete.GetState())
+					assert.Equal(tt.expectedSBCState.State.Delete.GetErrorDetails(), sbcState.State.Delete.GetErrorDetails())
+				}
 				return
 			}
 
@@ -1503,4 +1573,35 @@ func TestLoopbackStoragePlugin(t *testing.T) {
 	require.NotEmpty(getObjectData)
 	require.NotEmpty(objectData)
 	assert.EqualValues(objectData, getObjectData)
+}
+
+func parseStorageBucketCredentialStateFromError(err error) *plgpb.StorageBucketCredentialState {
+	sbcState := &plgpb.StorageBucketCredentialState{
+		State: &plgpb.Permissions{
+			Write: &plgpb.Permission{
+				State:     plgpb.StateType_STATE_TYPE_UNKNOWN,
+				CheckedAt: timestamppb.Now(),
+			},
+			Read: &plgpb.Permission{
+				State:     plgpb.StateType_STATE_TYPE_UNKNOWN,
+				CheckedAt: timestamppb.Now(),
+			},
+			Delete: &plgpb.Permission{
+				State:     plgpb.StateType_STATE_TYPE_UNKNOWN,
+				CheckedAt: timestamppb.Now(),
+			},
+		},
+	}
+
+	// attempt to retrieve the StorageBucketCredentialState detail from the error.
+	if st, ok := status.FromError(err); ok {
+		for _, detail := range st.Details() {
+			if statusDetail, ok := detail.(*plgpb.StorageBucketCredentialState); ok {
+				sbcState = statusDetail
+				break
+			}
+		}
+	}
+
+	return sbcState
 }

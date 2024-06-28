@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
+	"fmt"
 	"io"
 	"os"
 	"path"
@@ -225,8 +226,12 @@ func (l *LoopbackStorage) validatePermissions(ctx context.Context, req *plgpb.Va
 	if _, ok := l.buckets[BucketName(req.GetBucket().GetBucketName())]; !ok {
 		return nil, status.Errorf(codes.NotFound, "%s: bucket not found", op)
 	}
+
 	for _, err := range l.errs {
 		if err.match(req.GetBucket(), "", ValidatePermissions) {
+			if err.StorageBucketCredentialState != nil {
+				return nil, createErrorWithBucketCredentialState(err.ErrCode, fmt.Sprintf("%s: %s", op, err.ErrMsg), err.StorageBucketCredentialState)
+			}
 			return nil, status.Errorf(err.ErrCode, "%s: %s", op, err.ErrMsg)
 		}
 	}
@@ -260,6 +265,9 @@ func (l *LoopbackStorage) headObject(ctx context.Context, req *plgpb.HeadObjectR
 	}
 	for _, err := range l.errs {
 		if err.match(req.GetBucket(), req.GetKey(), HeadObject) {
+			if err.StorageBucketCredentialState != nil {
+				return nil, createErrorWithBucketCredentialState(err.ErrCode, fmt.Sprintf("%s: %s", op, err.ErrMsg), err.StorageBucketCredentialState)
+			}
 			return nil, status.Errorf(err.ErrCode, "%s: %s", op, err.ErrMsg)
 		}
 	}
@@ -300,6 +308,9 @@ func (l *LoopbackStorage) getObject(req *plgpb.GetObjectRequest, stream plgpb.St
 	}
 	for _, err := range l.errs {
 		if err.match(req.GetBucket(), req.GetKey(), GetObject) {
+			if err.StorageBucketCredentialState != nil {
+				return createErrorWithBucketCredentialState(err.ErrCode, fmt.Sprintf("%s: %s", op, err.ErrMsg), err.StorageBucketCredentialState)
+			}
 			return status.Errorf(err.ErrCode, "%s: %s", op, err.ErrMsg)
 		}
 	}
@@ -368,6 +379,9 @@ func (l *LoopbackStorage) putObject(ctx context.Context, req *plgpb.PutObjectReq
 	// return an expected mock error if one was provided
 	for _, err := range l.errs {
 		if err.match(req.GetBucket(), req.GetKey(), PutObject) {
+			if err.StorageBucketCredentialState != nil {
+				return nil, createErrorWithBucketCredentialState(err.ErrCode, fmt.Sprintf("%s: %s", op, err.ErrMsg), err.StorageBucketCredentialState)
+			}
 			return nil, status.Errorf(err.ErrCode, "%s: %s", op, err.ErrMsg)
 		}
 	}
@@ -525,4 +539,13 @@ func MockObject(data []Chunk) *storagePluginStorageInfo {
 
 func copyBytes(in []byte) []byte {
 	return append([]byte{}, in...)
+}
+
+func createErrorWithBucketCredentialState(errCode codes.Code, msg string, sbcState *plgpb.StorageBucketCredentialState) error {
+	st := status.New(errCode, msg)
+	stWithDetails, stErr := st.WithDetails(sbcState)
+	if stErr == nil {
+		st = stWithDetails
+	}
+	return st.Err()
 }
