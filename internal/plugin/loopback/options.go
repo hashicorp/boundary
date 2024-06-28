@@ -47,12 +47,13 @@ const (
 
 // PluginMockError is used to mock an error when interacting with an external object store.
 type PluginMockError struct {
-	BucketName   string
-	BucketPrefix string
-	ObjectKey    string
-	ErrMsg       string
-	ErrCode      codes.Code
-	ErrMethod    Method
+	BucketName                   string
+	BucketPrefix                 string
+	ObjectKey                    string
+	ErrMsg                       string
+	ErrCode                      codes.Code
+	ErrMethod                    Method
+	StorageBucketCredentialState *plgpb.StorageBucketCredentialState
 }
 
 // match compares the given values from the parameters to the values provided in the mocked error.
