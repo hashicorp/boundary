@@ -17,8 +17,8 @@ scenario "e2e_docker_base_with_vault" {
 
   locals {
     aws_ssh_private_key_path   = abspath(var.aws_ssh_private_key_path)
-    local_boundary_dir         = abspath(var.local_boundary_dir)
-    local_boundary_src_dir     = abspath(var.local_boundary_src_dir)
+    local_boundary_dir         = var.local_boundary_dir != null ? abspath(var.local_boundary_dir) : null
+    local_boundary_src_dir     = var.local_boundary_src_dir != null ? abspath(var.local_boundary_src_dir) : null
     boundary_docker_image_file = abspath(var.boundary_docker_image_file)
     license_path               = abspath(var.boundary_license_path != null ? var.boundary_license_path : joinpath(path.root, "./support/boundary.hclic"))
 

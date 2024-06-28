@@ -136,6 +136,7 @@ tmp-errors-Test*
 /enos/terraform-plugin-cache
 /enos/*.zip
 /enos/support
+enos/enos-local.vars.hcl
 # Enos local Terraform files
 enos/.terraform/*
 enos/.terraform.lock.hcl
