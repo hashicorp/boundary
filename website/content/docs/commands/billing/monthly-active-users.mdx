@@ -31,8 +31,14 @@ $ boundary billing monthly-active-users [options] [args]
 
 ### Command options
 
-- `end-time=<string>` -  The end date for which you want to view monthly users in YYYY-MM format.
-If you do not include an end time, the command retrieves active users from the start time to the current month.
-- `start-time=<string>` -  The start date for which you want to view monthly users in YYYY-MM format.
+- `end-time=<string>` -  The end date for which you want to view monthly active users in YYYY-MM format.
+If you do not include an end time, the command retrieves active users from the start time through the current month.
+
+   The end time is exclusive, so the command returns monthly active users up to, but not including, the month you enter.
+   If the end time is **2024-07**, for example, the results include all active users from June (2024-06), but they would not include any users from July (2024-07).
+- `start-time=<string>` -  The start date for which you want to view monthly active users in YYYY-MM format.
+
+   The start time is inclusive, so any active users from the month you enter are included in the results.
+   If the start time is **2024-06**, for example, the command returns all users from June (2024-06) through the specified end time.
 
 @include 'cmd-option-note.mdx'
