@@ -122,8 +122,9 @@ resource "docker_container" "worker" {
     timeout  = "5s"
     retries  = 5
   }
-  wait     = var.worker_led_registration ? false : true
-  must_run = true
+  wait         = var.worker_led_registration ? false : true
+  must_run     = true
+  network_mode = "bridge"
   dynamic "networks_advanced" {
     for_each = var.network_name
     content {

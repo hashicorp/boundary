@@ -130,8 +130,9 @@ resource "docker_container" "boundary" {
     timeout  = "5s"
     retries  = 5
   }
-  wait     = true
-  must_run = true
+  wait         = true
+  must_run     = true
+  network_mode = "bridge"
   dynamic "networks_advanced" {
     for_each = var.network_name
     content {

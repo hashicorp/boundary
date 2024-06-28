@@ -76,6 +76,7 @@ resource "docker_container" "openssh_server" {
     "USER_NAME=${var.target_user}",
     "PUBLIC_KEY=${local.ssh_public_key}",
   ]
+  network_mode = "bridge"
   dynamic "networks_advanced" {
     for_each = var.network_name
     content {
@@ -105,7 +106,7 @@ resource "enos_local_exec" "wait" {
     docker_container.openssh_server
   ]
 
-  inline = ["timeout 30s bash -c 'until ssh -t -t -i ${var.private_key_file_path} -p 2222 -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o IdentitiesOnly=yes ${var.target_user}@localhost hostname; do sleep 2; done'"]
+  inline = ["timeout 60s bash -c 'until ssh -t -t -i ${var.private_key_file_path} -p 2222 -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o IdentitiesOnly=yes ${var.target_user}@localhost hostname; do sleep 2; done'"]
 }
 
 output "user" {

@@ -67,13 +67,12 @@ resource "docker_container" "ldap" {
     })
     file = "/tmp/ldap/group.ldif"
   }
-
-
   healthcheck {
     test = ["CMD", "ldapsearch", "-H", "ldap://localhost", "-b", "${local.domain_dn}", "-D", "${local.admin_dn}", "-w", "${local.admin_password}"]
   }
-  wait     = true
-  must_run = true
+  wait         = true
+  must_run     = true
+  network_mode = "bridge"
   dynamic "networks_advanced" {
     for_each = var.network_name
     content {
