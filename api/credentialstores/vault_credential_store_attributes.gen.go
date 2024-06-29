@@ -23,6 +23,7 @@ type VaultCredentialStoreAttributes struct {
 	ClientCertificateKeyHmac string `json:"client_certificate_key_hmac,omitempty"`
 	WorkerFilter             string `json:"worker_filter,omitempty"`
 	TokenStatus              string `json:"token_status,omitempty"`
+	TokenWrapped             bool   `json:"token_wrapped,omitempty"`
 }
 
 func AttributesMapToVaultCredentialStoreAttributes(in map[string]interface{}) (*VaultCredentialStoreAttributes, error) {

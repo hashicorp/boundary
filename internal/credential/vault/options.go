@@ -31,6 +31,7 @@ type options struct {
 	withMethod         Method
 	withRequestBody    []byte
 	withCredentialType globals.CredentialType
+	withTokenWrapped   bool
 
 	withOverrideUsernameAttribute             string
 	withOverridePasswordAttribute             string
@@ -143,6 +144,13 @@ func WithRequestBody(b []byte) Option {
 func WithCredentialType(t globals.CredentialType) Option {
 	return func(o *options) {
 		o.withCredentialType = t
+	}
+}
+
+// WithTokenWrapped signals that the provided vault token must be unwrapped.
+func WithTokenWrapped(wrapped bool) Option {
+	return func(o *options) {
+		o.withTokenWrapped = wrapped
 	}
 }
 
