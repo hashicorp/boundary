@@ -48,23 +48,24 @@ begin;
   create function check_connection_state_transition() returns trigger
   as $$
     begin
-      -- Prevent invalid bounds (-infinity)
-      if lower(new.connected_time_range) = '-infinity' or upper(new.connected_time_range) ='-infinity' then
-        raise exception 'Invalid connected_time_range bounds: cannot be -infinity';
-      end if;
-      -- If the old state was authorized, any transition is valid
-      if old.connected_time_range is null then
-        return new;
-      end if;
-      -- Prevent transitions from connected to connected
-      if upper(old.connected_time_range) = 'infinity' and upper(new.connected_time_range) = 'infinity' then
-        raise exception 'Invalid state transition from connected to connected';
-      end if;
-      -- Prevent transitions from closed to connected
-      if lower(new.connected_time_range) >= upper(old.connected_time_range) then
-        raise exception 'Invalid state transition from closed to connected';
-      end if;
+    -- If old state was authorized, allow transition to connected or closed
+    if old.connected_time_range is null then
       return new;
+    end if;
+
+    -- If old state was closed, no transitions are allowed
+    if upper(old.connected_time_range) < 'infinity' and old.connected_time_range != new.connected_time_range then
+      raise exception 'Invalid state transition from closed';
+    end if;
+
+    -- If old state was connected, allow transition to closed
+    if upper(old.connected_time_range) = 'infinity' and upper(new.connected_time_range) != 'infinity' then
+      return new;
+    else
+      raise exception 'Invalid state transition from connected';
+    end if;
+
+    return new;
     end;
   $$ language plpgsql;
 

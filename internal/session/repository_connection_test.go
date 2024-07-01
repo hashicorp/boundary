@@ -643,7 +643,7 @@ func TestRepository_StateTransitions(t *testing.T) {
 	// Attempt to connect again, expect failure
 	_, err = connRepo.ConnectConnection(context.Background(), cw)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "Invalid state transition from connected to connected")
+	require.Contains(t, err.Error(), "Invalid state transition from connected")
 
 	closeWith := CloseWith{
 		ConnectionId: c.PublicId,
@@ -686,7 +686,7 @@ func TestRepository_StateTransitions(t *testing.T) {
 	}
 	_, err = connRepo.ConnectConnection(context.Background(), cw2)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "Invalid state transition from closed to connected")
+	require.Contains(t, err.Error(), "Invalid state transition from closed")
 
 	gotConn, err = connRepo.LookupConnection(context.Background(), c2.PublicId)
 	require.NoError(t, err)
