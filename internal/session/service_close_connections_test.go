@@ -131,8 +131,8 @@ func TestServiceCloseConnections(t *testing.T) {
 
 			for _, r := range resp {
 				require.NotNil(r.Connection)
-				require.NotNil(r.ConnectionStates)
-				assert.Equal(StatusClosed, r.ConnectionStates[0].Status)
+				require.NotNil(r.ConnectionState)
+				assert.Equal(StatusClosed, r.ConnectionState)
 			}
 
 			// Ensure session is in the state we want- terminated if all conns closed, else active

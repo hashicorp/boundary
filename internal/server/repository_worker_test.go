@@ -206,10 +206,10 @@ func TestLookupWorker(t *testing.T) {
 		sess := session.TestSession(t, conn, wrapper, composedOf, session.WithDbOpts(db.WithSkipVetForWrite(true)), session.WithExpirationTime(exp))
 		sess, _, err = sessRepo.ActivateSession(ctx, sess.GetPublicId(), sess.Version, []byte("foo"))
 		require.NoError(t, err)
-		c, _, err := connRepo.AuthorizeConnection(ctx, sess.GetPublicId(), w.GetPublicId())
+		c, err := connRepo.AuthorizeConnection(ctx, sess.GetPublicId(), w.GetPublicId())
 		require.NoError(t, err)
 		require.NotNil(t, c)
-		c, _, err = connRepo.AuthorizeConnection(ctx, sess.GetPublicId(), w.GetPublicId())
+		c, err = connRepo.AuthorizeConnection(ctx, sess.GetPublicId(), w.GetPublicId())
 		require.NoError(t, err)
 		require.NotNil(t, c)
 	}
@@ -220,7 +220,7 @@ func TestLookupWorker(t *testing.T) {
 			session.WithDbOpts(db.WithSkipVetForWrite(true)))
 		sess2, _, err = sessRepo.ActivateSession(ctx, sess2.GetPublicId(), sess2.Version, []byte("foo"))
 		require.NoError(t, err)
-		c, _, err := connRepo.AuthorizeConnection(ctx, sess2.GetPublicId(), w.GetPublicId())
+		c, err := connRepo.AuthorizeConnection(ctx, sess2.GetPublicId(), w.GetPublicId())
 		require.NoError(t, err)
 		require.NotNil(t, c)
 	}

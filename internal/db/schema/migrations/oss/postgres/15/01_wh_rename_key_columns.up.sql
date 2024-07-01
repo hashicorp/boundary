@@ -404,6 +404,7 @@ begin;
   drop trigger wh_insert_session_connection_state on session_connection_state;
   drop function wh_insert_session_connection_state;
 
+-- Updated in 86/01_remove_session_connection_state.up.sql
   create function wh_insert_session_connection_state() returns trigger
   as $$
   declare
