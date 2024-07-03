@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/hashicorp/boundary/internal/daemon/common"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/server"
@@ -29,7 +28,7 @@ func TestWorkerList_Addresses(t *testing.T) {
 		"test4",
 	}
 	var workerInfos []*pb.WorkerInfo
-	var tested common.WorkerList
+	var tested server.WorkerList
 	for _, a := range addresses {
 		workerInfos = append(workerInfos, &pb.WorkerInfo{Address: a})
 		tested = append(tested, server.NewWorker(scope.Global.String(),

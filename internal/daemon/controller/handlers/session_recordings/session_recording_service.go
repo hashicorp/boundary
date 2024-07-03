@@ -43,6 +43,7 @@ func init() {
 // NewServiceFn returns a storage bucket service which is not implemented in OSS
 var NewServiceFn = func(ctx context.Context,
 	iamRepoFn common.IamRepoFactory,
+	serverRepoFn common.ServersRepoFactory,
 	workerStatusGracePeriod *atomic.Int64,
 	kms *kms.Kms,
 	maxPageSize uint,

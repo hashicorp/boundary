@@ -10,7 +10,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	dcommon "github.com/hashicorp/boundary/internal/daemon/common"
 	"github.com/hashicorp/boundary/internal/daemon/controller/common"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/event"
@@ -188,7 +187,7 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 			event.WriteError(ctx, op, err, event.WithInfoMsg("error getting known connected worker ids"))
 			return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error getting known connected worker ids: %v", err)
 		}
-		authorizedDownstreams.WorkerPublicIds = dcommon.WorkerList(knownConnectedWorkers).PublicIds()
+		authorizedDownstreams.WorkerPublicIds = server.WorkerList(knownConnectedWorkers).PublicIds()
 	}
 
 	if len(req.GetConnectedUnmappedWorkerKeyIdentifiers()) > 0 {
@@ -360,7 +359,7 @@ func (ws *workerServiceServer) ListHcpbWorkers(ctx context.Context, req *pbs.Lis
 		return nil, status.Errorf(codes.Internal, "Error looking up workers: %v", err)
 	}
 
-	managed, _ := dcommon.SeparateManagedWorkers(workers)
+	managed, _ := server.SeparateManagedWorkers(workers)
 	resp := &pbs.ListHcpbWorkersResponse{}
 	if len(managed) == 0 {
 		return resp, nil
