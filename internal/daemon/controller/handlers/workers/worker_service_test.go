@@ -13,7 +13,6 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/boundary/globals"
-	wl "github.com/hashicorp/boundary/internal/daemon/common"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/common"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
@@ -205,7 +204,7 @@ func TestGet(t *testing.T) {
 			server.WithAddress("test managed pki worker address"),
 			server.WithLocalStorageState(server.AvailableLocalStorageState.String()),
 			server.WithWorkerTags(&server.Tag{
-				Key:   wl.ManagedWorkerTag,
+				Key:   server.ManagedWorkerTag,
 				Value: "true",
 			})),
 		server.WithUpdateTags(true),
@@ -233,10 +232,10 @@ func TestGet(t *testing.T) {
 		LastStatusTime:        managedPkiWorker.GetLastStatusTime().GetTimestamp(),
 		ReleaseVersion:        managedPkiWorker.ReleaseVersion,
 		CanonicalTags: map[string]*structpb.ListValue{
-			wl.ManagedWorkerTag: structListValue(t, "true"),
+			server.ManagedWorkerTag: structListValue(t, "true"),
 		},
 		ConfigTags: map[string]*structpb.ListValue{
-			wl.ManagedWorkerTag: structListValue(t, "true"),
+			server.ManagedWorkerTag: structListValue(t, "true"),
 		},
 		Type:                               PkiWorkerType,
 		DirectlyConnectedDownstreamWorkers: connectedDownstreams,
@@ -499,7 +498,7 @@ func TestDelete(t *testing.T) {
 		Value: "bar",
 	}))
 	wManaged := server.TestKmsWorker(t, conn, wrap, server.WithWorkerTags(&server.Tag{
-		Key:   wl.ManagedWorkerTag,
+		Key:   server.ManagedWorkerTag,
 		Value: "bar",
 	}))
 
@@ -2059,7 +2058,7 @@ func TestService_AddWorkerTags(t *testing.T) {
 				return &pbs.AddWorkerTagsRequest{
 					Id:      worker.PublicId,
 					Version: worker.Version,
-					ApiTags: map[string]*structpb.ListValue{wl.ManagedWorkerTag: {Values: []*structpb.Value{structpb.NewStringValue("value2")}}},
+					ApiTags: map[string]*structpb.ListValue{server.ManagedWorkerTag: {Values: []*structpb.Value{structpb.NewStringValue("value2")}}},
 				}
 			}(),
 			wantErrContains: "Tag keys cannot be the managed worker tag.",
@@ -2222,7 +2221,7 @@ func TestService_SetWorkerTags(t *testing.T) {
 				return &pbs.SetWorkerTagsRequest{
 					Id:      worker.PublicId,
 					Version: worker.Version,
-					ApiTags: map[string]*structpb.ListValue{wl.ManagedWorkerTag: {Values: []*structpb.Value{structpb.NewStringValue("value2")}}},
+					ApiTags: map[string]*structpb.ListValue{server.ManagedWorkerTag: {Values: []*structpb.Value{structpb.NewStringValue("value2")}}},
 				}
 			}(),
 			wantErrContains: "Tag keys cannot be the managed worker tag.",

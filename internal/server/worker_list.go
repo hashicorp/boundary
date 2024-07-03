@@ -1,23 +1,25 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: BUSL-1.1
 
-package common
+package server
 
 import (
 	stderrors "errors"
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
-	"github.com/hashicorp/boundary/internal/server"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
+	"github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/hashicorp/boundary/version"
 	"github.com/hashicorp/go-bexpr"
 	"github.com/mitchellh/pointerstructure"
 	"google.golang.org/grpc/codes"
 )
 
+const ManagedWorkerTag = "boundary.cloud.hashicorp.com:managed"
+
 // WorkerList is a helper type to make the selection of workers clearer and more declarative.
-type WorkerList []*server.Worker
+type WorkerList []*Worker
 
 // addresses converts the slice of workers to a slice of their addresses
 func (w WorkerList) Addresses() []string {
@@ -50,7 +52,7 @@ func (w WorkerList) WorkerInfos() []*pb.WorkerInfo {
 // SupportsFeature returns a new WorkerList composed of all workers in this
 // WorkerList which supports the provided feature.
 func (w WorkerList) SupportsFeature(f version.Feature) WorkerList {
-	var ret []*server.Worker
+	var ret []*Worker
 	for _, worker := range w {
 		sv := version.FromVersionString(worker.GetReleaseVersion()).Semver()
 		if version.SupportsFeature(sv, f) {
@@ -63,7 +65,7 @@ func (w WorkerList) SupportsFeature(f version.Feature) WorkerList {
 // filtered returns a new workerList where all elements contained in it are the
 // ones which from the original workerList that pass the evaluator's evaluation.
 func (w WorkerList) Filtered(eval *bexpr.Evaluator) (WorkerList, error) {
-	var ret []*server.Worker
+	var ret []*Worker
 	for _, worker := range w {
 		filterInput := map[string]any{
 			"name": worker.GetName(),
@@ -86,8 +88,8 @@ func (w WorkerList) Filtered(eval *bexpr.Evaluator) (WorkerList, error) {
 // unmanaged workers, respectively
 func SeparateManagedWorkers(workers WorkerList) (managedWorkers, nonManagedWorkers WorkerList) {
 	// Build a set of managed and unmanaged workers
-	managedWorkers = make([]*server.Worker, 0, len(workers))
-	nonManagedWorkers = make([]*server.Worker, 0, len(workers))
+	managedWorkers = make([]*Worker, 0, len(workers))
+	nonManagedWorkers = make([]*Worker, 0, len(workers))
 	for _, worker := range workers {
 		if IsManagedWorker(worker) {
 			managedWorkers = append(managedWorkers, worker)
@@ -99,7 +101,7 @@ func SeparateManagedWorkers(workers WorkerList) (managedWorkers, nonManagedWorke
 }
 
 // IsManagedWorker indicates whether the given worker is managed
-func IsManagedWorker(worker *server.Worker) bool {
+func IsManagedWorker(worker *Worker) bool {
 	return len(worker.CanonicalTags()[ManagedWorkerTag]) != 0
 }
 
@@ -110,16 +112,16 @@ func IsManagedWorker(worker *server.Worker) bool {
 // will return workers with Unknown local storage state.
 // Workers that do not support local storage state will be considered healthy.
 func FilterWorkersByLocalStorageState(workers WorkerList) (healthyWorkers WorkerList) {
-	availableWorkers := make([]*server.Worker, 0, len(workers))
-	unknownWorkers := make([]*server.Worker, 0, len(workers))
+	availableWorkers := make([]*Worker, 0, len(workers))
+	unknownWorkers := make([]*Worker, 0, len(workers))
 
 	for _, worker := range workers {
 		sv := version.FromVersionString(worker.GetReleaseVersion()).Semver()
 		if version.SupportsFeature(sv, version.LocalStorageState) {
 			ls := worker.GetLocalStorageState()
-			if ls == server.AvailableLocalStorageState.String() {
+			if ls == AvailableLocalStorageState.String() {
 				availableWorkers = append(availableWorkers, worker)
-			} else if ls == server.UnknownLocalStorageState.String() {
+			} else if ls == UnknownLocalStorageState.String() {
 				unknownWorkers = append(unknownWorkers, worker)
 			}
 		} else {
@@ -131,4 +133,36 @@ func FilterWorkersByLocalStorageState(workers WorkerList) (healthyWorkers Worker
 		return availableWorkers
 	}
 	return unknownWorkers
+}
+
+// FilterStorageBucketCredentialStateFn is a function definition that is used to filter
+// out workers that are considered to be in a unhealthy state. The function should return
+// true for healthy workers.
+type FilterStorageBucketCredentialStateFn func(*plugin.StorageBucketCredentialState) bool
+
+// FilterStorageBucketCredentialByWriteAccess will return true if the write state is missing or
+// if the state is in an OK or UNKNOWN state.
+func FilterStorageBucketCredentialByWriteAccess(sbcState *plugin.StorageBucketCredentialState) bool {
+	if sbcState == nil || sbcState.State == nil || sbcState.State.Write == nil {
+		return true
+	}
+	return sbcState.State.Write.State != plugin.StateType_STATE_TYPE_ERROR
+}
+
+// FilterStorageBucketCredentialByReadAccess will return true if the read state is missing or
+// if the state is in an OK or UNKNOWN state.
+func FilterStorageBucketCredentialByReadAccess(sbcState *plugin.StorageBucketCredentialState) bool {
+	if sbcState == nil || sbcState.State == nil || sbcState.State.Read == nil {
+		return true
+	}
+	return sbcState.State.Read.State != plugin.StateType_STATE_TYPE_ERROR
+}
+
+// FilterStorageBucketCredentialByDeleteAccess will return true if the delete state is missing or
+// if the state is in an OK or UNKNOWN state.
+func FilterStorageBucketCredentialByDeleteAccess(sbcState *plugin.StorageBucketCredentialState) bool {
+	if sbcState == nil || sbcState.State == nil || sbcState.State.Delete == nil {
+		return true
+	}
+	return sbcState.State.Delete.State != plugin.StateType_STATE_TYPE_ERROR
 }

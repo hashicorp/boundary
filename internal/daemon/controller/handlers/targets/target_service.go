@@ -19,7 +19,6 @@ import (
 	"github.com/hashicorp/boundary/internal/alias"
 	talias "github.com/hashicorp/boundary/internal/alias/target"
 	"github.com/hashicorp/boundary/internal/credential"
-	wl "github.com/hashicorp/boundary/internal/daemon/common"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/common"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
@@ -749,12 +748,12 @@ func (s Service) RemoveTargetCredentialSources(ctx context.Context, req *pbs.Rem
 func AuthorizeSessionWithWorkerFilter(
 	_ context.Context,
 	t target.Target,
-	selectedWorkers wl.WorkerList,
+	selectedWorkers server.WorkerList,
 	_ string,
 	_ intglobals.ControllerExtension,
 	_ common.Downstreamers,
 	_ ...target.Option,
-) (wl.WorkerList, *server.Worker, error) {
+) (server.WorkerList, *server.Worker, error) {
 	if len(selectedWorkers) > 0 {
 		var eval *bexpr.Evaluator
 		var err error
@@ -1057,7 +1056,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	if err != nil {
 		return nil, err
 	}
-	sess, err = sessionRepo.CreateSession(ctx, wrapper, sess, wl.WorkerList(selectedWorkers).Addresses())
+	sess, err = sessionRepo.CreateSession(ctx, wrapper, sess, server.WorkerList(selectedWorkers).Addresses())
 	if err != nil {
 		return nil, err
 	}
@@ -1197,7 +1196,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 		PrivateKey:        sess.CertificatePrivateKey,
 		HostId:            hostId,
 		Endpoint:          endpointUrl.String(),
-		WorkerInfo:        wl.WorkerList(selectedWorkers).WorkerInfos(),
+		WorkerInfo:        server.WorkerList(selectedWorkers).WorkerInfos(),
 		ConnectionLimit:   t.GetSessionConnectionLimit(),
 		DefaultClientPort: t.GetDefaultClientPort(),
 	}

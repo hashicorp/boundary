@@ -15,7 +15,6 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	credstatic "github.com/hashicorp/boundary/internal/credential/static"
-	dcommon "github.com/hashicorp/boundary/internal/daemon/common"
 	"github.com/hashicorp/boundary/internal/db"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	intglobals "github.com/hashicorp/boundary/internal/globals"
@@ -587,28 +586,28 @@ func TestHcpbWorkers(t *testing.T) {
 	}
 
 	// Stale/unalive kms worker aren't expected...
-	server.TestKmsWorker(t, conn, wrapper, server.WithWorkerTags(&server.Tag{Key: dcommon.ManagedWorkerTag, Value: "true"}),
+	server.TestKmsWorker(t, conn, wrapper, server.WithWorkerTags(&server.Tag{Key: server.ManagedWorkerTag, Value: "true"}),
 		server.WithAddress("old.kms.1"))
 	// Sleep + 500ms longer than the liveness duration.
 	time.Sleep(time.Duration(liveDur.Load()) + time.Second)
 
-	server.TestKmsWorker(t, conn, wrapper, server.WithWorkerTags(&server.Tag{Key: dcommon.ManagedWorkerTag, Value: "true"}),
+	server.TestKmsWorker(t, conn, wrapper, server.WithWorkerTags(&server.Tag{Key: server.ManagedWorkerTag, Value: "true"}),
 		server.WithAddress("kms.1"))
-	server.TestKmsWorker(t, conn, wrapper, server.WithWorkerTags(&server.Tag{Key: dcommon.ManagedWorkerTag, Value: "true"}),
+	server.TestKmsWorker(t, conn, wrapper, server.WithWorkerTags(&server.Tag{Key: server.ManagedWorkerTag, Value: "true"}),
 		server.WithAddress("kms.2"))
 	server.TestKmsWorker(t, conn, wrapper, server.WithWorkerTags(&server.Tag{Key: "unrelated_tag", Value: "true"}),
 		server.WithAddress("unrelated_tag.kms.1"))
 
 	// Shutdown workers will be removed from routes and sessions, but still returned
 	// to downstream workers
-	server.TestKmsWorker(t, conn, wrapper, server.WithWorkerTags(&server.Tag{Key: dcommon.ManagedWorkerTag, Value: "true"}),
+	server.TestKmsWorker(t, conn, wrapper, server.WithWorkerTags(&server.Tag{Key: server.ManagedWorkerTag, Value: "true"}),
 		server.WithAddress("shutdown.kms.3"), server.WithOperationalState(server.ShutdownOperationalState.String()))
 
 	// PKI workers are also expected, if they have the managed worker tag
 	serverRepo, err := serversRepoFn()
 	require.NoError(err)
 	var keyId string
-	server.TestPkiWorker(t, conn, wrapper, server.WithWorkerTags(&server.Tag{Key: dcommon.ManagedWorkerTag, Value: "true"}),
+	server.TestPkiWorker(t, conn, wrapper, server.WithWorkerTags(&server.Tag{Key: server.ManagedWorkerTag, Value: "true"}),
 		server.WithTestPkiWorkerAuthorizedKeyId(&keyId))
 	_, err = serverRepo.UpsertWorkerStatus(ctx, server.NewWorker(scope.Global.String(), server.WithAddress("pki.1")), server.WithKeyId(keyId))
 	require.NoError(err)

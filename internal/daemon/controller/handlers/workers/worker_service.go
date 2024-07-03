@@ -12,7 +12,6 @@ import (
 	"strings"
 
 	"github.com/hashicorp/boundary/globals"
-	wl "github.com/hashicorp/boundary/internal/daemon/common"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/common"
 	"github.com/hashicorp/boundary/internal/daemon/controller/common/scopeids"
@@ -331,7 +330,7 @@ func (s Service) DeleteWorker(ctx context.Context, req *pbs.DeleteWorkerRequest)
 		return nil, err
 	}
 
-	if wl.IsManagedWorker(w) {
+	if server.IsManagedWorker(w) {
 		return nil, handlers.InvalidArgumentErrorf("Error in provided request.", map[string]string{"id": "Managed workers cannot be deleted."})
 	}
 
@@ -368,7 +367,7 @@ func (s Service) UpdateWorker(ctx context.Context, req *pbs.UpdateWorkerRequest)
 	// generated from the scope and name, it's functionally equivalent to
 	// checking the type, but works for both KMS-PKI and old-style KMS workers.
 	switch {
-	case wl.IsManagedWorker(w):
+	case server.IsManagedWorker(w):
 		return nil, handlers.InvalidArgumentErrorf(
 			"Error in provided request.",
 			map[string]string{"id": "Managed workers cannot be updated."},
@@ -879,7 +878,7 @@ func (s Service) toProto(ctx context.Context, in *server.Worker, opt ...handlers
 			}
 		}
 		// Managed workers cannot be deleted
-		if wl.IsManagedWorker(in) {
+		if server.IsManagedWorker(in) {
 			allActions := out.AuthorizedActions
 			out.AuthorizedActions = make([]string, 0, len(allActions))
 			for _, act := range allActions {
@@ -1069,7 +1068,7 @@ func validateStringForDb(str string) string {
 		return "must be non-empty."
 	case len(str) > 512:
 		return "must be within 512 characters."
-	case str == wl.ManagedWorkerTag:
+	case str == server.ManagedWorkerTag:
 		return "cannot be the managed worker tag."
 	default:
 		return ""

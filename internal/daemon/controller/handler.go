@@ -241,6 +241,7 @@ func (c *Controller) registerGrpcServices(s *grpc.Server) error {
 		srs, err := session_recordings.NewServiceFn(
 			c.baseContext,
 			c.IamRepoFn,
+			c.ServersRepoFn,
 			c.workerStatusGracePeriod,
 			c.kms,
 			c.conf.RawConfig.Controller.MaxPageSize,

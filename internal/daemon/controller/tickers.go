@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/internal/daemon/cluster"
-	"github.com/hashicorp/boundary/internal/daemon/common"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/internal/server"
@@ -204,7 +203,7 @@ func (c *Controller) startWorkerConnectionMaintenanceTicking(cancelCtx context.C
 						event.WriteError(cancelCtx, op, err, event.WithInfoMsg("couldn't get known workers from repo"))
 						break
 					}
-					connectionState.DisconnectMissingWorkers(common.WorkerList(knownWorker).PublicIds())
+					connectionState.DisconnectMissingWorkers(server.WorkerList(knownWorker).PublicIds())
 				}
 
 				if len(connectionState.UnmappedKeyIds()) > 0 {
